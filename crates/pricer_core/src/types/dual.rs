@@ -1,263 +1,216 @@
-//! Dual-mode numeric types for automatic differentiation.
+//! Dual number type integration for automatic differentiation.
 //!
-//! This module provides a unified interface for numeric types that can be used
-//! in both Enzyme (LLVM-level AD) and num-dual (dual number AD) modes.
-//!
-//! ## Design
-//!
-//! - **Enzyme mode** (`enzyme-mode` feature): Uses `f64` directly. Enzyme handles
-//!   differentiation at LLVM IR level with zero runtime overhead.
-//! - **num-dual mode** (`num-dual-mode` feature, default): Uses `num_dual::DualDVec64`
-//!   for forward-mode AD. Used for verification and testing.
+//! This module provides a type alias for num-dual's Dual64 type,
+//! enabling forward-mode automatic differentiation for verification
+//! against Enzyme's LLVM-level AD (implemented in Layer 3).
 //!
 //! ## Usage
 //!
-//! ```ignore
-//! use pricer_core::types::dual::{Dual, NumericType};
+//! ```
+//! use pricer_core::types::dual::DualNumber;
+//! use pricer_core::math::smoothing::smooth_max;
 //!
-//! fn price_option<T: NumericType>(spot: T, strike: f64) -> T {
-//!     let strike_t = T::from_f64(strike);
-//!     // ... pricing logic works with both Enzyme and num-dual
-//! }
+//! // Create dual numbers
+//! let a = DualNumber::from(3.0).derivative();  // da/da = 1.0
+//! let b = DualNumber::from(5.0);                // db/da = 0.0
+//!
+//! // Compute smooth_max with automatic differentiation
+//! let result = smooth_max(a, b, 1e-6);
+//!
+//! // Extract value and gradient
+//! let value = result.re();      // ≈ 5.0
+//! let gradient = result.eps;    // ∂smooth_max/∂a
 //! ```
 
-use num_traits::{Float, FloatConst, FromPrimitive, NumCast, One, Zero};
-use std::fmt;
-use std::ops::{Add, Div, Mul, Neg, Sub};
-
-// ============================================================================
-// Feature-gated type definitions
-// ============================================================================
-
-/// The concrete dual number type, determined by feature flags.
+/// Type alias for num-dual's Dual64 (f64-based dual numbers).
 ///
-/// - With `num-dual-mode` (default): `num_dual::DualDVec64<f64>`
-/// - With `enzyme-mode`: `f64`
-#[cfg(feature = "num-dual-mode")]
-pub type Dual = num_dual::DualDVec64<f64>;
-
-#[cfg(feature = "enzyme-mode")]
-pub type Dual = f64;
-
-// ============================================================================
-// NumericType trait
-// ============================================================================
-
-/// Core trait for numeric types used in pricing calculations.
+/// This type supports first-order automatic differentiation with:
+/// - `re()`: Real part (function value)
+/// - `eps`: Dual part (derivative/gradient)
 ///
-/// This trait abstracts over both `f64` (Enzyme mode) and `DualDVec64` (num-dual mode),
-/// allowing pricing functions to be generic and work with both backends.
+/// # Integration with Smoothing Functions
 ///
-/// ## Requirements
+/// All smoothing functions in `math::smoothing` are generic over `T: num_traits::Float`,
+/// which `DualNumber` implements. This allows seamless AD:
 ///
-/// Types implementing this trait must support:
-/// - Basic arithmetic operations (+, -, *, /, -)
-/// - Conversion to/from f64
-/// - Special values (zero, one)
-/// - Mathematical functions (exp, ln, sqrt, etc.)
-///
-/// ## Examples
-///
-/// ```ignore
-/// fn european_call_payoff<T: NumericType>(spot: T, strike: f64) -> T {
-///     let k = T::from_f64(strike);
-///     (spot - k).max(T::zero())
-/// }
 /// ```
-pub trait NumericType:
-    Copy
-    + Clone
-    + fmt::Debug
-    + fmt::Display
-    + PartialEq
-    + PartialOrd
-    + Add<Output = Self>
-    + Sub<Output = Self>
-    + Mul<Output = Self>
-    + Div<Output = Self>
-    + Neg<Output = Self>
-    + Zero
-    + One
-    + Float
-    + FloatConst
-    + FromPrimitive
-    + NumCast
-{
-    /// Create from f64 value.
-    fn from_f64(x: f64) -> Self;
-
-    /// Convert to f64 (extracts primal value for dual numbers).
-    fn to_f64(&self) -> f64;
-
-    /// Create a dual number with value x and derivative dx (for num-dual mode).
-    /// In Enzyme mode, this just returns x.
-    fn with_derivative(x: f64, dx: f64) -> Self;
-
-    /// Get the derivative (for num-dual mode).
-    /// In Enzyme mode, this returns 0.0.
-    fn derivative(&self) -> f64;
-}
-
-// ============================================================================
-// Implementation for f64 (Enzyme mode)
-// ============================================================================
-
-#[cfg(feature = "enzyme-mode")]
-impl NumericType for f64 {
-    #[inline(always)]
-    fn from_f64(x: f64) -> Self {
-        x
-    }
-
-    #[inline(always)]
-    fn to_f64(&self) -> f64 {
-        *self
-    }
-
-    #[inline(always)]
-    fn with_derivative(x: f64, _dx: f64) -> Self {
-        // Enzyme handles derivatives; we only need the primal value
-        x
-    }
-
-    #[inline(always)]
-    fn derivative(&self) -> f64 {
-        // In Enzyme mode, derivatives are computed by Enzyme, not stored in the value
-        0.0
-    }
-}
-
-// ============================================================================
-// Implementation for DualDVec64 (num-dual mode)
-// ============================================================================
-
-#[cfg(feature = "num-dual-mode")]
-impl NumericType for num_dual::DualDVec64<f64> {
-    #[inline(always)]
-    fn from_f64(x: f64) -> Self {
-        num_dual::DualDVec64::from_re(x)
-    }
-
-    #[inline(always)]
-    fn to_f64(&self) -> f64 {
-        self.re()
-    }
-
-    #[inline(always)]
-    fn with_derivative(x: f64, dx: f64) -> Self {
-        num_dual::DualDVec64::new(x, dx)
-    }
-
-    #[inline(always)]
-    fn derivative(&self) -> f64 {
-        // For DualDVec64, get first derivative component
-        // (assuming single variable differentiation)
-        self.eps()[0]
-    }
-}
-
-// ============================================================================
-// Utility functions
-// ============================================================================
-
-/// Create a constant (derivative = 0).
-#[inline]
-pub fn constant<T: NumericType>(x: f64) -> T {
-    T::from_f64(x)
-}
-
-/// Create a variable with derivative = 1 (for num-dual mode).
-#[inline]
-pub fn variable<T: NumericType>(x: f64) -> T {
-    T::with_derivative(x, 1.0)
-}
-
-// ============================================================================
-// Tests
-// ============================================================================
+/// use pricer_core::types::dual::DualNumber;
+/// use pricer_core::math::smoothing::{smooth_max, smooth_min, smooth_abs, smooth_indicator};
+///
+/// let x = DualNumber::from(2.0).derivative();
+/// let y = DualNumber::from(3.0);
+///
+/// // All smoothing functions propagate gradients
+/// let max_result = smooth_max(x, y, 1e-6);
+/// let min_result = smooth_min(x, y, 1e-6);
+/// let abs_result = smooth_abs(x, 1e-6);
+/// let ind_result = smooth_indicator(x, 1e-6);
+/// ```
+pub type DualNumber = num_dual::Dual64;
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[cfg(feature = "num-dual-mode")]
+    use crate::math::smoothing::{smooth_abs, smooth_indicator, smooth_max, smooth_min};
     use approx::assert_relative_eq;
+    use num_traits::Float;
+
+    // Task 3.2: Dual number integration tests
 
     #[test]
-    fn test_from_f64() {
-        let x = Dual::from_f64(5.0);
-        assert_eq!(x.to_f64(), 5.0);
+    fn test_dual_number_basic_arithmetic() {
+        // Verify num_traits integration
+        let a = DualNumber::from(3.0).derivative();
+        let b = DualNumber::from(5.0);
+
+        // Addition
+        let sum = a + b;
+        assert_eq!(sum.re(), 8.0);
+        assert_eq!(sum.eps, 1.0); // d(a+b)/da = 1
+
+        // Subtraction
+        let diff = a - b;
+        assert_eq!(diff.re(), -2.0);
+        assert_eq!(diff.eps, 1.0); // d(a-b)/da = 1
+
+        // Multiplication
+        let prod = a * b;
+        assert_eq!(prod.re(), 15.0);
+        assert_eq!(prod.eps, 5.0); // d(a*b)/da = b
+
+        // Division
+        let quot = b / a;
+        assert_relative_eq!(quot.re(), 5.0 / 3.0, epsilon = 1e-10);
+        assert_relative_eq!(quot.eps, -5.0 / 9.0, epsilon = 1e-10); // d(b/a)/da = -b/a²
     }
 
     #[test]
-    fn test_arithmetic() {
-        let x = Dual::from_f64(3.0);
-        let y = Dual::from_f64(2.0);
+    fn test_dual_number_transcendental_functions() {
+        let x = DualNumber::from(2.0).derivative();
 
-        assert_eq!((x + y).to_f64(), 5.0);
-        assert_eq!((x - y).to_f64(), 1.0);
-        assert_eq!((x * y).to_f64(), 6.0);
-        assert_eq!((x / y).to_f64(), 1.5);
+        // Exponential: d(exp(x))/dx = exp(x)
+        let exp_x = x.exp();
+        assert_relative_eq!(exp_x.re(), 2.0_f64.exp(), epsilon = 1e-10);
+        assert_relative_eq!(exp_x.eps, 2.0_f64.exp(), epsilon = 1e-10);
+
+        // Logarithm: d(ln(x))/dx = 1/x
+        let ln_x = x.ln();
+        assert_relative_eq!(ln_x.re(), 2.0_f64.ln(), epsilon = 1e-10);
+        assert_relative_eq!(ln_x.eps, 0.5, epsilon = 1e-10);
     }
 
     #[test]
-    fn test_math_functions() {
-        let x = Dual::from_f64(2.0);
+    fn test_smooth_max_gradient_propagation() {
+        // Test that smooth_max correctly propagates gradients through DualNumber
+        let a = DualNumber::from(3.0).derivative();
+        let b = DualNumber::from(5.0);
+        let epsilon = 1e-6;
 
-        assert_eq!(x.exp().to_f64(), 2.0_f64.exp());
-        assert_eq!(x.ln().to_f64(), 2.0_f64.ln());
-        assert_eq!(x.sqrt().to_f64(), 2.0_f64.sqrt());
-        assert_eq!(x.powi(3).to_f64(), 8.0);
-    }
+        let result = smooth_max(a, b, epsilon);
 
-    #[cfg(feature = "num-dual-mode")]
-    #[test]
-    fn test_derivative_forward_mode() {
-        // Test: f(x) = x^2
-        // Expected: f'(x) = 2x
-        // At x = 3: f'(3) = 6
+        // Value should be approximately max(3.0, 5.0) = 5.0
+        assert_relative_eq!(result.re(), 5.0, epsilon = 1e-3);
 
-        let x = variable::<Dual>(3.0); // x with dx/dx = 1
-        let y = x * x; // y = x^2
-
-        assert_relative_eq!(y.to_f64(), 9.0, epsilon = 1e-10);
-        assert_relative_eq!(y.derivative(), 6.0, epsilon = 1e-10);
-    }
-
-    #[cfg(feature = "num-dual-mode")]
-    #[test]
-    fn test_derivative_exp() {
-        // Test: f(x) = exp(x)
-        // Expected: f'(x) = exp(x)
-        // At x = 1: f'(1) = e
-
-        let x = variable::<Dual>(1.0);
-        let y = x.exp();
-
-        assert_relative_eq!(y.to_f64(), 1.0_f64.exp(), epsilon = 1e-10);
-        assert_relative_eq!(y.derivative(), 1.0_f64.exp(), epsilon = 1e-10);
+        // Gradient ∂smooth_max/∂a should be small (a is not the max)
+        // Analytically: ∂smooth_max/∂a = exp((a-b)/ε) / (exp((a-b)/ε) + exp(0))
+        // For a=3, b=5, ε=1e-6: exp(-2/1e-6) ≈ 0
+        assert!(result.eps.abs() < 0.01);
     }
 
     #[test]
-    fn test_zero_one() {
-        let zero = Dual::zero();
-        let one = Dual::one();
+    fn test_smooth_min_gradient_propagation() {
+        let a = DualNumber::from(3.0).derivative();
+        let b = DualNumber::from(5.0);
+        let epsilon = 1e-6;
 
-        assert_eq!(zero.to_f64(), 0.0);
-        assert_eq!(one.to_f64(), 1.0);
+        let result = smooth_min(a, b, epsilon);
+
+        // Value should be approximately min(3.0, 5.0) = 3.0
+        assert_relative_eq!(result.re(), 3.0, epsilon = 1e-3);
+
+        // Gradient ∂smooth_min/∂a should be close to 1 (a is the min)
+        assert_relative_eq!(result.eps, 1.0, epsilon = 0.01);
     }
 
     #[test]
-    fn test_constant_vs_variable() {
-        let c = constant::<Dual>(5.0);
-        let v = variable::<Dual>(5.0);
+    fn test_smooth_indicator_gradient_propagation() {
+        let x = DualNumber::from(0.0).derivative();
+        let epsilon = 1e-3; // Larger epsilon for better gradient at x=0
 
-        assert_eq!(c.to_f64(), 5.0);
-        assert_eq!(v.to_f64(), 5.0);
+        let result = smooth_indicator(x, epsilon);
 
-        #[cfg(feature = "num-dual-mode")]
-        {
-            assert_eq!(c.derivative(), 0.0); // Constant has zero derivative
-            assert_eq!(v.derivative(), 1.0); // Variable has derivative = 1
-        }
+        // Value at x=0 should be 0.5
+        assert_relative_eq!(result.re(), 0.5, epsilon = 1e-6);
+
+        // Gradient at x=0: d/dx[1/(1+exp(-x/ε))] = exp(-x/ε) / (ε(1+exp(-x/ε))²)
+        // At x=0: 1 / (4ε)
+        let expected_gradient = 1.0 / (4.0 * epsilon);
+        assert_relative_eq!(result.eps, expected_gradient, epsilon = 0.01);
+    }
+
+    #[test]
+    fn test_smooth_abs_gradient_propagation() {
+        // Test positive x
+        let x_pos = DualNumber::from(3.5).derivative();
+        let epsilon = 1e-6;
+
+        let result_pos = smooth_abs(x_pos, epsilon);
+        assert_relative_eq!(result_pos.re(), 3.5, epsilon = 1e-3);
+        // Gradient should be close to 1 for positive x
+        assert_relative_eq!(result_pos.eps, 1.0, epsilon = 0.01);
+
+        // Test negative x
+        let x_neg = DualNumber::from(-3.5).derivative();
+        let result_neg = smooth_abs(x_neg, epsilon);
+        assert_relative_eq!(result_neg.re(), 3.5, epsilon = 1e-3);
+        // Gradient should be close to -1 for negative x
+        assert_relative_eq!(result_neg.eps, -1.0, epsilon = 0.01);
+    }
+
+    #[test]
+    fn test_all_smoothing_functions_with_dual_numbers() {
+        // Verify that all smoothing functions work with DualNumber type
+        let a = DualNumber::from(2.0).derivative();
+        let b = DualNumber::from(4.0);
+        let epsilon = 1e-6;
+
+        // All functions should execute without panic and return finite values
+        let max_result = smooth_max(a, b, epsilon);
+        assert!(max_result.re().is_finite());
+        assert!(max_result.eps.is_finite());
+
+        let min_result = smooth_min(a, b, epsilon);
+        assert!(min_result.re().is_finite());
+        assert!(min_result.eps.is_finite());
+
+        let ind_result = smooth_indicator(a, epsilon);
+        assert!(ind_result.re().is_finite());
+        assert!(ind_result.eps.is_finite());
+
+        let abs_result = smooth_abs(a, epsilon);
+        assert!(abs_result.re().is_finite());
+        assert!(abs_result.eps.is_finite());
+    }
+
+    #[test]
+    fn test_analytical_vs_dual_gradient_smooth_max() {
+        // Compare analytical derivative with dual number gradient
+        let a = 3.0;
+        let b = 5.0;
+        let epsilon = 1e-4; // Larger epsilon for numerical stability
+
+        // Dual number computation
+        let a_dual = DualNumber::from(a).derivative();
+        let b_dual = DualNumber::from(b);
+        let result_dual = smooth_max(a_dual, b_dual, epsilon);
+
+        // Analytical gradient: ∂smooth_max/∂a = exp((a-m)/ε) / (exp((a-m)/ε) + exp((b-m)/ε))
+        // where m = max(a, b)
+        let m = a.max(b);
+        let exp_a = ((a - m) / epsilon).exp();
+        let exp_b = ((b - m) / epsilon).exp();
+        let analytical_gradient = exp_a / (exp_a + exp_b);
+
+        assert_relative_eq!(result_dual.eps, analytical_gradient, epsilon = 1e-6);
     }
 }
