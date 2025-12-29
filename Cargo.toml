@@ -1,0 +1,50 @@
+[workspace]
+members = [
+    "crates/pricer_core",
+    "crates/pricer_models",
+    "crates/pricer_kernel",
+    "crates/pricer_xva",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/neutryx-lab/neutryx-rust"
+authors = ["Neutryx Lab"]
+
+[workspace.dependencies]
+# Core numeric types
+num-traits = "0.2"
+num-dual = "0.9"
+
+# Random number generation
+rand = "0.8"
+rand_distr = "0.4"
+
+# Parallelization
+rayon = "1.10"
+
+# Date/time
+chrono = "0.4"
+
+# Error handling
+thiserror = "2.0"
+anyhow = "1.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+
+# Testing
+approx = "0.5"
+proptest = "1.6"
+criterion = "0.5"
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3
+
+[profile.bench]
+inherits = "release"

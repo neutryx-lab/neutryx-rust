@@ -1,0 +1,10 @@
+# Cargo configuration for Enzyme LLVM plugin
+
+[build]
+# Enzyme-specific LLVM flags (only affects pricer_kernel crate)
+# Uncomment when Enzyme is installed:
+# rustflags = ["-C", "llvm-args=-load=/usr/local/lib/LLVMEnzyme.so"]
+
+[target.x86_64-unknown-linux-gnu]
+# Additional optimization flags for release builds
+# rustflags = ["-C", "target-cpu=native"]
