@@ -360,7 +360,7 @@ impl DayCountConvention {
                 let d1_adj = if d1 == 31 { 30 } else { d1 };
                 let d2_adj = if d2 == 31 && d1_adj == 30 { 30 } else { d2 };
 
-                let days = 360 * (y2 - y1) + 30 * (m2 as i32 - m1 as i32) + (d2_adj - d1_adj);
+                let days = 360 * (y2 - y1) + 30 * (m2 as i32 - m1 as i32) + (d2_adj as i32 - d1_adj as i32);
                 days as f64 / 360.0
             }
         }
@@ -420,7 +420,7 @@ impl DayCountConvention {
                 let d2_adj = if d2 == 31 && d1_adj == 30 { 30 } else { d2 };
 
                 let days_30_360 =
-                    360 * (y2 - y1) + 30 * (m2 as i32 - m1 as i32) + (d2_adj - d1_adj);
+                    360 * (y2 - y1) + 30 * (m2 as i32 - m1 as i32) + (d2_adj as i32 - d1_adj as i32);
                 sign * days_30_360 as f64 / 360.0
             }
         }

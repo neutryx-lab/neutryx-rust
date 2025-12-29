@@ -38,8 +38,8 @@ Implementation tasks for Phase 1.3: Numerical Methods - Interpolation and Solver
   - Depends on: 1.1, 1.2 (error types and module structure)
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.6_
 
-- [ ] 3. Implement linear interpolation
-- [ ] 3.1 (P) Build linear interpolator structure and construction
+- [x] 3. Implement linear interpolation
+- [x] 3.1 (P) Build linear interpolator structure and construction
   - Create struct storing sorted x and y coordinate vectors
   - Implement constructor that validates minimum data point count (at least 2)
   - Add automatic sorting of input data when not already sorted
@@ -47,7 +47,7 @@ Implementation tasks for Phase 1.3: Numerical Methods - Interpolation and Solver
   - Depends on: 2.1 (interpolator trait)
   - _Requirements: 2.1, 2.3, 2.4, 1.5_
 
-- [ ] 3.2 Implement linear interpolation algorithm
+- [x] 3.2 Implement linear interpolation algorithm
   - Implement the `Interpolator<T>` trait for `LinearInterpolator<T>`
   - Use `partition_point` for O(log n) segment lookup via binary search
   - Apply linear interpolation formula: `y = y0 + (y1 - y0) * (x - x0) / (x1 - x0)`
@@ -55,7 +55,7 @@ Implementation tasks for Phase 1.3: Numerical Methods - Interpolation and Solver
   - Depends on: 3.1 (structure complete)
   - _Requirements: 2.1, 2.2, 1.2, 1.3_
 
-- [ ] 3.3 Add linear interpolator unit tests
+- [x] 3.3 Add linear interpolator unit tests
   - Test exact interpolation at knot points returns original y values
   - Test mid-segment interpolation accuracy against expected values
   - Test boundary behaviour at domain edges

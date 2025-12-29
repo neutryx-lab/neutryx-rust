@@ -26,7 +26,7 @@
 //!
 //! ## Example
 //!
-//! ```ignore
+//! ```
 //! use pricer_core::math::interpolators::{Interpolator, LinearInterpolator};
 //!
 //! let xs = [0.0, 1.0, 2.0, 3.0];
@@ -42,19 +42,19 @@
 //! assert!((y - 2.5).abs() < 1e-10);
 //! ```
 
+mod linear;
 mod traits;
 
-// Re-export the Interpolator trait at module level
+// Re-export public types at module level
+pub use linear::LinearInterpolator;
 pub use traits::Interpolator;
 
 // Future implementations will be added here:
-// mod linear;
 // mod cubic_spline;
 // mod monotonic;
 // mod bilinear;
 // mod smooth_interp;
 //
-// pub use linear::LinearInterpolator;
 // pub use cubic_spline::CubicSplineInterpolator;
 // pub use monotonic::MonotonicInterpolator;
 // pub use bilinear::BilinearInterpolator;

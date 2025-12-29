@@ -29,9 +29,17 @@ L4 (pricer_xva)     → Depends on L1+L2+L3, stable Rust
 **Purpose**: Math types, traits, smoothing functions (stable Rust)
 **Structure**:
 ```
-math/       → Smoothing functions (smooth_max, smooth_indicator)
+math/
+├── smoothing/      → Smooth approximations (smooth_max, smooth_indicator)
+├── interpolators/  → Interpolation methods (linear, traits for extensibility)
+└── solvers/        → Root-finding algorithms (Newton-Raphson, bisection)
+
 traits/     → Priceable, Differentiable, core abstractions
-types/      → Dual numbers (num-dual), time types
+types/
+├── dual.rs      → Dual numbers (num-dual) for AD
+├── time.rs      → Date, DayCountConvention for financial calculations
+├── currency.rs  → ISO 4217 currency codes with metadata
+└── error.rs     → Structured error types (PricingError, DateError, etc.)
 ```
 
 **Key Principle**: Zero dependencies on other pricer_* crates, pure foundation.
@@ -57,11 +65,14 @@ analytical/   → Closed-form solutions (Black-Scholes, barrier formulas)
 ```
 enzyme/       → Enzyme bindings, autodiff macros
 mc/           → Monte Carlo kernel, path generation
+rng/          → Random number generation (PRNG, QMC sequences)
 checkpoint/   → Memory management for path-dependent options
 verify/       → Enzyme vs num-dual verification tests
 ```
 
 **Key Principle**: **Only crate requiring nightly Rust and Enzyme**. Isolated from L1/L2/L4.
+
+**RNG Design**: Zero-allocation batch operations, static dispatch only, Enzyme-compatible. Supports reproducible seeding for deterministic simulations.
 
 ### Layer 4: Application (pricer_xva)
 
@@ -135,4 +146,5 @@ Current roadmap (see README.md):
 
 ---
 _Created: 2025-12-29_
+_Updated: 2025-12-29_ — Added L1 interpolators/solvers/expanded types, L3 rng/ module
 _Document patterns, not file trees. New files following patterns shouldn't require updates_

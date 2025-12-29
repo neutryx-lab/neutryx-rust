@@ -17,7 +17,12 @@
       "Bash(cmd.exe /c \"cd /d f:\\\\Codes\\\\neutryx-rust\\\\neutryx-rust && C:\\\\Users\\\\kenst\\\\.cargo\\\\bin\\\\cargo.exe test -p pricer_kernel 2>&1\")",
       "Bash(cmd.exe /c \"set PATH=%USERPROFILE%\\\\.cargo\\\\bin;%PATH% && cd /d f:\\\\Codes\\\\neutryx-rust\\\\neutryx-rust && cargo test -p pricer_kernel 2>&1\")",
       "Bash(powershell.exe -Command \"$env:Path = \"\"$env:USERPROFILE\\\\.cargo\\\\bin;$env:Path\"\"; Set-Location ''f:\\\\Codes\\\\neutryx-rust\\\\neutryx-rust''; cargo test -p pricer_kernel 2>&1\")",
-      "Bash(cargo fmt:*)"
+      "Bash(cargo fmt:*)",
+      "Skill(kiro:steering)",
+      "Skill(kiro:steering:*)",
+      "Bash(rustup component list:*)",
+      "Bash(cargo doc:*)",
+      "Bash(cargo check:*)"
     ]
   }
 }

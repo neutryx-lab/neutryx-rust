@@ -77,10 +77,7 @@ impl<T: Float> SolverConfig<T> {
     /// assert_eq!(config.max_iterations, 200);
     /// ```
     pub fn new(tolerance: T, max_iterations: usize) -> Self {
-        assert!(
-            tolerance > T::zero(),
-            "tolerance must be positive"
-        );
+        assert!(tolerance > T::zero(), "tolerance must be positive");
         assert!(max_iterations > 0, "max_iterations must be > 0");
         Self {
             tolerance,

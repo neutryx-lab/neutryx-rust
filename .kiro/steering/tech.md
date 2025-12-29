@@ -23,8 +23,11 @@ L4: pricer_xva      → Application (Stable)
 
 - **Numeric**: `num-traits`, `num-dual` (verification mode)
 - **Parallelization**: `rayon` (portfolio-level parallelism)
-- **Random**: `rand`, `rand_distr` (Monte Carlo)
-- **Time**: `chrono` (date arithmetic)
+- **Random**: `rand`, `rand_distr` (Monte Carlo, Ziggurat algorithm for normals)
+- **Time**: `chrono` (date arithmetic, day count conventions)
+- **LLVM Bindings**: `llvm-sys = "180"` (Enzyme integration in L3)
+- **Serialization**: `serde` (optional, ISO 4217 currency support)
+- **Error Handling**: `thiserror` (structured error types)
 - **Testing**: `approx`, `proptest`, `criterion`
 
 ## Development Standards
@@ -86,7 +89,7 @@ docker run -it neutryx-enzyme
 | **Static Dispatch (enum)** | Enzyme performs better with concrete types than trait objects |
 | **Dual-Mode Verification** | Enzyme (performance) + num-dual (correctness) for validation |
 | **Smooth Approximations** | Replace all discontinuities (if/max) with differentiable functions |
-| **Feature Flags** | `num-dual-mode` (default) vs `enzyme-mode` for L1 dual-mode support |
+| **Feature Flags** | `num-dual-mode` (default), `enzyme-mode`, `serde` for serialization |
 
 ## Performance Optimization
 
@@ -97,4 +100,5 @@ docker run -it neutryx-enzyme
 
 ---
 _Created: 2025-12-29_
+_Updated: 2025-12-29_ — Added llvm-sys, serde, thiserror libraries
 _Document standards and patterns, not every dependency_

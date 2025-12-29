@@ -426,7 +426,10 @@ mod tests {
     #[test]
     fn test_solver_error_no_bracket_display() {
         let err = SolverError::NoBracket { a: 0.0, b: 1.0 };
-        assert_eq!(format!("{}", err), "No bracket: f(0) and f(1) have same sign");
+        assert_eq!(
+            format!("{}", err),
+            "No bracket: f(0) and f(1) have same sign"
+        );
     }
 
     #[test]
