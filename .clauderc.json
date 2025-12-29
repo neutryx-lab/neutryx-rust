@@ -1,0 +1,20 @@
+{
+  "commands": {
+    "kiro:steering": {
+      "description": "Analyse project structure and generate core context files.",
+      "prompt": "Analyse the current project state. Generate 'product.md', 'tech.md', and 'structure.md'.\n[Directives]\n- Tone: Academic and Formal.\n- Accuracy: Prioritise factual verification over assumption."
+    },
+    "kiro:spec-requirements": {
+      "description": "Define requirements and acceptance criteria.",
+      "prompt": "Draft the requirements document based on the feature scope.\n[Directives]\n- Explicitly define mathematical constraints (e.g., non-negativity, boundary conditions).\n- Clarify numerical stability requirements."
+    },
+    "kiro:spec-design": {
+      "description": "Generate technical design documents.",
+      "prompt": "Create a technical design based on requirements.md.\n[Directives]\n- Language: Use **British English** for all interface definitions and technical terms.\n- Consistency: Ensure mathematical consistency with the Requirements.\n- Structure: Adhere to the existing project architecture."
+    },
+    "kiro:spec-impl": {
+      "description": "Implement the specified task.",
+      "prompt": "Implement the selected task based on design.md.\n[Coding Standards]\n- Language: **British English** for all comments and string literals.\n- Comments: Minimal and strictly professional.\n- Verification: Generate minimal reproduction scripts or test cases to verify numerical results."
+    }
+  }
+}
