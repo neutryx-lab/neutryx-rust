@@ -1,0 +1,23 @@
+[package]
+name = "pricer_core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+num-traits.workspace = true
+num-dual = { workspace = true, optional = true }
+chrono.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+approx.workspace = true
+proptest.workspace = true
+
+[features]
+default = ["num-dual-mode"]
+num-dual-mode = ["dep:num-dual"]  # Verification mode with dual numbers
+enzyme-mode = []                   # Production mode (Enzyme AD)

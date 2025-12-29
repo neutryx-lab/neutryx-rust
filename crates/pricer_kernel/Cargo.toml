@@ -1,0 +1,22 @@
+[package]
+name = "pricer_kernel"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+pricer_core = { path = "../pricer_core", features = ["enzyme-mode"] }
+pricer_models = { path = "../pricer_models" }
+rand.workspace = true
+rand_distr.workspace = true
+num-traits.workspace = true
+
+[dev-dependencies]
+approx.workspace = true
+pricer_core = { path = "../pricer_core", features = ["num-dual-mode"] }
+
+[build-dependencies]
+# Future: For linking Enzyme LLVM plugin
+# cc = "1.0"

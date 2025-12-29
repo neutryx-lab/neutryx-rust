@@ -1,0 +1,23 @@
+[package]
+name = "pricer_xva"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+pricer_core = { path = "../pricer_core" }
+pricer_models = { path = "../pricer_models" }
+pricer_kernel = { path = "../pricer_kernel" }
+rayon.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+approx.workspace = true
+criterion.workspace = true
+
+[[bench]]
+name = "portfolio_greeks"
+harness = false
