@@ -76,13 +76,21 @@
 // Enzyme-specific nightly features (commented until Enzyme is integrated in Phase 4)
 // #![feature(autodiff)]
 
-// Phase 3.0: Only verify module is active
+// Phase 3.0: Core modules
 pub mod verify;
+
+// Phase 3.0: Enzyme autodiff infrastructure (placeholder implementation)
+pub mod enzyme;
+
+// Phase 3.0: Enzyme gradient verification tests
+mod verify_enzyme;
 
 // Phase 3.1a: Random number generation infrastructure
 pub mod rng;
 
-// Phase 4: These modules will be activated for Monte Carlo and Enzyme integration
+// Phase 4: These modules will be activated for Monte Carlo
 // pub mod checkpoint;
-// pub mod enzyme;
 // pub mod mc;
+
+// Re-export commonly used items for convenience
+pub use enzyme::{Activity, gradient, gradient_with_step};

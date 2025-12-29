@@ -1,5 +1,6 @@
 [package]
 name = "pricer_kernel"
+description = "Enzyme LLVM-level automatic differentiation engine for XVA pricing (Layer 3)"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

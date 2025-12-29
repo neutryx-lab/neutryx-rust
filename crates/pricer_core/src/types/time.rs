@@ -1,9 +1,231 @@
 //! Time types and Day Count Conventions for financial calculations.
 //!
-//! This module provides date arithmetic and year fraction calculations
-//! using industry-standard Day Count Conventions.
+//! This module provides:
+//! - `Date`: Type-safe date wrapper around chrono::NaiveDate
+//! - `DayCountConvention`: Industry-standard day count conventions
+//! - Year fraction calculations for financial instruments
+//!
+//! # Examples
+//!
+//! ```
+//! use pricer_core::types::time::{Date, DayCountConvention};
+//!
+//! let start = Date::from_ymd(2024, 1, 1).unwrap();
+//! let end = Date::from_ymd(2024, 7, 1).unwrap();
+//!
+//! // Calculate year fraction using ACT/365
+//! let yf = DayCountConvention::ActualActual365.year_fraction_dates(start, end);
+//! assert!((yf - 0.4986).abs() < 0.001);
+//! ```
 
-use chrono::NaiveDate;
+use chrono::{Datelike, Local, NaiveDate};
+use std::fmt;
+use std::ops::Sub;
+use std::str::FromStr;
+
+use super::error::DateError;
+
+/// Type-safe date wrapper around chrono::NaiveDate.
+///
+/// Provides ISO 8601 serialisation and standard date arithmetic.
+/// This wrapper ensures type safety and provides a consistent API
+/// for date operations in financial calculations.
+///
+/// # Examples
+///
+/// ```
+/// use pricer_core::types::time::Date;
+///
+/// // Create from year, month, day
+/// let date = Date::from_ymd(2024, 6, 15).unwrap();
+/// assert_eq!(date.year(), 2024);
+/// assert_eq!(date.month(), 6);
+/// assert_eq!(date.day(), 15);
+///
+/// // Parse from ISO 8601 string
+/// let parsed: Date = "2024-06-15".parse().unwrap();
+/// assert_eq!(date, parsed);
+///
+/// // Calculate days between dates
+/// let start = Date::from_ymd(2024, 1, 1).unwrap();
+/// let end = Date::from_ymd(2024, 1, 11).unwrap();
+/// assert_eq!(end - start, 10);
+/// ```
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(transparent))]
+pub struct Date(NaiveDate);
+
+impl Date {
+    /// Creates a Date from year, month, and day components.
+    ///
+    /// # Arguments
+    /// * `year` - Year (e.g., 2024)
+    /// * `month` - Month (1-12)
+    /// * `day` - Day (1-31, depending on month)
+    ///
+    /// # Returns
+    /// `Ok(Date)` if the date is valid, `Err(DateError::InvalidDate)` otherwise.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pricer_core::types::time::Date;
+    ///
+    /// // Valid date
+    /// let date = Date::from_ymd(2024, 6, 15).unwrap();
+    ///
+    /// // Leap year February 29th
+    /// let leap = Date::from_ymd(2024, 2, 29).unwrap();
+    ///
+    /// // Invalid date returns error
+    /// let invalid = Date::from_ymd(2024, 2, 30);
+    /// assert!(invalid.is_err());
+    /// ```
+    pub fn from_ymd(year: i32, month: u32, day: u32) -> Result<Self, DateError> {
+        NaiveDate::from_ymd_opt(year, month, day)
+            .map(Date)
+            .ok_or(DateError::InvalidDate { year, month, day })
+    }
+
+    /// Returns today's date based on local system time.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pricer_core::types::time::Date;
+    ///
+    /// let today = Date::today();
+    /// // today is the current local date
+    /// ```
+    pub fn today() -> Self {
+        Date(Local::now().date_naive())
+    }
+
+    /// Parses a date from ISO 8601 format string (YYYY-MM-DD).
+    ///
+    /// # Arguments
+    /// * `s` - Date string in ISO 8601 format
+    ///
+    /// # Returns
+    /// `Ok(Date)` if parsing succeeds, `Err(DateError::ParseError)` otherwise.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pricer_core::types::time::Date;
+    ///
+    /// let date = Date::parse("2024-06-15").unwrap();
+    /// assert_eq!(date.year(), 2024);
+    ///
+    /// let invalid = Date::parse("not-a-date");
+    /// assert!(invalid.is_err());
+    /// ```
+    pub fn parse(s: &str) -> Result<Self, DateError> {
+        NaiveDate::parse_from_str(s, "%Y-%m-%d")
+            .map(Date)
+            .map_err(|e| DateError::ParseError(e.to_string()))
+    }
+
+    /// Returns the underlying NaiveDate.
+    ///
+    /// Use this method when you need access to chrono's full API.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pricer_core::types::time::Date;
+    /// use chrono::Datelike;
+    ///
+    /// let date = Date::from_ymd(2024, 6, 15).unwrap();
+    /// let naive = date.into_inner();
+    /// assert_eq!(naive.weekday(), chrono::Weekday::Sat);
+    /// ```
+    pub fn into_inner(self) -> NaiveDate {
+        self.0
+    }
+
+    /// Returns the year component.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pricer_core::types::time::Date;
+    ///
+    /// let date = Date::from_ymd(2024, 6, 15).unwrap();
+    /// assert_eq!(date.year(), 2024);
+    /// ```
+    pub fn year(&self) -> i32 {
+        self.0.year()
+    }
+
+    /// Returns the month component (1-12).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pricer_core::types::time::Date;
+    ///
+    /// let date = Date::from_ymd(2024, 6, 15).unwrap();
+    /// assert_eq!(date.month(), 6);
+    /// ```
+    pub fn month(&self) -> u32 {
+        self.0.month()
+    }
+
+    /// Returns the day component (1-31).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pricer_core::types::time::Date;
+    ///
+    /// let date = Date::from_ymd(2024, 6, 15).unwrap();
+    /// assert_eq!(date.day(), 15);
+    /// ```
+    pub fn day(&self) -> u32 {
+        self.0.day()
+    }
+}
+
+impl Sub for Date {
+    type Output = i64;
+
+    /// Returns the number of days between two dates.
+    ///
+    /// The result is positive if `self` is after `other`, negative otherwise.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pricer_core::types::time::Date;
+    ///
+    /// let start = Date::from_ymd(2024, 1, 1).unwrap();
+    /// let end = Date::from_ymd(2024, 1, 11).unwrap();
+    ///
+    /// assert_eq!(end - start, 10);
+    /// assert_eq!(start - end, -10);
+    /// ```
+    fn sub(self, other: Self) -> i64 {
+        (self.0 - other.0).num_days()
+    }
+}
+
+impl FromStr for Date {
+    type Err = DateError;
+
+    /// Parses a date from ISO 8601 format string (YYYY-MM-DD).
+    fn from_str(s: &str) -> Result<Self, DateError> {
+        Date::parse(s)
+    }
+}
+
+impl fmt::Display for Date {
+    /// Formats the date as ISO 8601 (YYYY-MM-DD).
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0.format("%Y-%m-%d"))
+    }
+}
 
 /// Day Count Convention (year fraction convention).
 ///
@@ -26,7 +248,7 @@ use chrono::NaiveDate;
 /// // 182 days / 365.0 ≈ 0.4986
 /// ```
 #[non_exhaustive]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DayCountConvention {
     /// Actual/365 Fixed: actual_days / 365.0
     ///
@@ -56,6 +278,28 @@ pub enum DayCountConvention {
 }
 
 impl DayCountConvention {
+    /// Returns the standard convention name.
+    ///
+    /// Returns industry-standard convention names for serialisation
+    /// and display purposes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pricer_core::types::time::DayCountConvention;
+    ///
+    /// assert_eq!(DayCountConvention::ActualActual365.name(), "ACT/365");
+    /// assert_eq!(DayCountConvention::ActualActual360.name(), "ACT/360");
+    /// assert_eq!(DayCountConvention::Thirty360.name(), "30/360");
+    /// ```
+    pub fn name(&self) -> &'static str {
+        match self {
+            DayCountConvention::ActualActual365 => "ACT/365",
+            DayCountConvention::ActualActual360 => "ACT/360",
+            DayCountConvention::Thirty360 => "30/360",
+        }
+    }
+
     /// Calculate year fraction between two dates.
     ///
     /// # Arguments
@@ -121,6 +365,117 @@ impl DayCountConvention {
             }
         }
     }
+
+    /// Calculates year fraction using Date type.
+    ///
+    /// Unlike `year_fraction`, this method returns negative values
+    /// when start > end instead of panicking. This is useful for
+    /// calculations where the sign indicates direction.
+    ///
+    /// # Arguments
+    /// * `start` - Start date
+    /// * `end` - End date
+    ///
+    /// # Returns
+    /// Year fraction as f64. Negative if start > end.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pricer_core::types::time::{Date, DayCountConvention};
+    ///
+    /// let start = Date::from_ymd(2024, 1, 1).unwrap();
+    /// let end = Date::from_ymd(2024, 7, 1).unwrap();
+    ///
+    /// let yf = DayCountConvention::ActualActual365.year_fraction_dates(start, end);
+    /// assert!((yf - 0.4986).abs() < 0.001);
+    ///
+    /// // Reversed dates return negative value
+    /// let yf_neg = DayCountConvention::ActualActual365.year_fraction_dates(end, start);
+    /// assert!((yf_neg + 0.4986).abs() < 0.001);
+    /// ```
+    pub fn year_fraction_dates(&self, start: Date, end: Date) -> f64 {
+        let days = end - start; // Returns i64, can be negative
+
+        match self {
+            DayCountConvention::ActualActual365 => days as f64 / 365.0,
+            DayCountConvention::ActualActual360 => days as f64 / 360.0,
+            DayCountConvention::Thirty360 => {
+                // For 30/360, we need to handle negative direction
+                let (start_inner, end_inner, sign) = if start <= end {
+                    (start.into_inner(), end.into_inner(), 1.0)
+                } else {
+                    (end.into_inner(), start.into_inner(), -1.0)
+                };
+
+                let y1 = start_inner.year();
+                let m1 = start_inner.month();
+                let d1 = start_inner.day();
+
+                let y2 = end_inner.year();
+                let m2 = end_inner.month();
+                let d2 = end_inner.day();
+
+                let d1_adj = if d1 == 31 { 30 } else { d1 };
+                let d2_adj = if d2 == 31 && d1_adj == 30 { 30 } else { d2 };
+
+                let days_30_360 =
+                    360 * (y2 - y1) + 30 * (m2 as i32 - m1 as i32) + (d2_adj - d1_adj);
+                sign * days_30_360 as f64 / 360.0
+            }
+        }
+    }
+}
+
+impl FromStr for DayCountConvention {
+    type Err = String;
+
+    /// Parses day count convention from string (case-insensitive).
+    ///
+    /// Supports multiple aliases for each convention:
+    /// - ACT/365: "ACT/365", "Actual/365", "Act365", "A365"
+    /// - ACT/360: "ACT/360", "Actual/360", "Act360", "A360"
+    /// - 30/360: "30/360", "Thirty360", "30360"
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_uppercase().replace('/', "").replace(' ', "").as_str() {
+            "ACT365" | "ACTUAL365" | "A365" => Ok(DayCountConvention::ActualActual365),
+            "ACT360" | "ACTUAL360" | "A360" => Ok(DayCountConvention::ActualActual360),
+            "30360" | "THIRTY360" => Ok(DayCountConvention::Thirty360),
+            _ => Err(format!("Unknown day count convention: {}", s)),
+        }
+    }
+}
+
+impl fmt::Display for DayCountConvention {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.name())
+    }
+}
+
+#[cfg(feature = "serde")]
+mod serde_impl {
+    use super::DayCountConvention;
+    use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+    use std::str::FromStr;
+
+    impl Serialize for DayCountConvention {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            serializer.serialize_str(self.name())
+        }
+    }
+
+    impl<'de> Deserialize<'de> for DayCountConvention {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            let s = String::deserialize(deserializer)?;
+            DayCountConvention::from_str(&s).map_err(de::Error::custom)
+        }
+    }
 }
 
 /// Calculate time to maturity using default convention (Act/365).
@@ -149,6 +504,37 @@ impl DayCountConvention {
 /// ```
 pub fn time_to_maturity(start: NaiveDate, end: NaiveDate) -> f64 {
     DayCountConvention::ActualActual365.year_fraction(start, end)
+}
+
+/// Calculate time to maturity using Date type and default convention (Act/365).
+///
+/// Unlike `time_to_maturity`, this function does not panic when start > end,
+/// instead returning a negative value.
+///
+/// # Arguments
+/// * `start` - Valuation date
+/// * `end` - Maturity date
+///
+/// # Returns
+/// Time to maturity in years (Act/365 convention). Negative if start > end.
+///
+/// # Examples
+///
+/// ```
+/// use pricer_core::types::time::{Date, time_to_maturity_dates};
+///
+/// let valuation_date = Date::from_ymd(2024, 1, 1).unwrap();
+/// let maturity_date = Date::from_ymd(2025, 1, 1).unwrap();
+///
+/// let ttm = time_to_maturity_dates(valuation_date, maturity_date);
+/// assert!((ttm - 1.0027).abs() < 0.001); // ~1 year (366 days in 2024 leap year)
+///
+/// // Negative time to maturity (expired)
+/// let ttm_neg = time_to_maturity_dates(maturity_date, valuation_date);
+/// assert!(ttm_neg < 0.0);
+/// ```
+pub fn time_to_maturity_dates(start: Date, end: Date) -> f64 {
+    DayCountConvention::ActualActual365.year_fraction_dates(start, end)
 }
 
 #[cfg(test)]
@@ -292,6 +678,234 @@ mod tests {
         // ratio should be close to 365/360
         let ratio = result_365 / result_360;
         assert_relative_eq!(ratio, 360.0 / 365.0, epsilon = 1e-10);
+    }
+
+    // Date tests
+
+    #[test]
+    fn test_date_from_ymd_valid() {
+        let date = Date::from_ymd(2024, 6, 15).unwrap();
+        assert_eq!(date.year(), 2024);
+        assert_eq!(date.month(), 6);
+        assert_eq!(date.day(), 15);
+    }
+
+    #[test]
+    fn test_date_from_ymd_leap_year() {
+        // 2024 is a leap year
+        let date = Date::from_ymd(2024, 2, 29).unwrap();
+        assert_eq!(date.month(), 2);
+        assert_eq!(date.day(), 29);
+    }
+
+    #[test]
+    fn test_date_from_ymd_invalid() {
+        // February 30 is invalid
+        let result = Date::from_ymd(2024, 2, 30);
+        assert!(result.is_err());
+
+        // Month 13 is invalid
+        let result = Date::from_ymd(2024, 13, 1);
+        assert!(result.is_err());
+
+        // Non-leap year February 29
+        let result = Date::from_ymd(2023, 2, 29);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_date_parse_valid() {
+        let date = Date::parse("2024-06-15").unwrap();
+        assert_eq!(date.year(), 2024);
+        assert_eq!(date.month(), 6);
+        assert_eq!(date.day(), 15);
+    }
+
+    #[test]
+    fn test_date_parse_invalid() {
+        let result = Date::parse("not-a-date");
+        assert!(result.is_err());
+
+        let result = Date::parse("2024/06/15"); // Wrong format
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_date_from_str() {
+        let date: Date = "2024-06-15".parse().unwrap();
+        assert_eq!(date.year(), 2024);
+    }
+
+    #[test]
+    fn test_date_display() {
+        let date = Date::from_ymd(2024, 6, 15).unwrap();
+        assert_eq!(format!("{}", date), "2024-06-15");
+    }
+
+    #[test]
+    fn test_date_subtraction() {
+        let start = Date::from_ymd(2024, 1, 1).unwrap();
+        let end = Date::from_ymd(2024, 1, 11).unwrap();
+
+        assert_eq!(end - start, 10);
+        assert_eq!(start - end, -10);
+    }
+
+    #[test]
+    fn test_date_ordering() {
+        let earlier = Date::from_ymd(2024, 1, 1).unwrap();
+        let later = Date::from_ymd(2024, 12, 31).unwrap();
+
+        assert!(earlier < later);
+        assert!(later > earlier);
+        assert!(earlier <= earlier);
+    }
+
+    #[test]
+    fn test_date_into_inner() {
+        let date = Date::from_ymd(2024, 6, 15).unwrap();
+        let naive = date.into_inner();
+        assert_eq!(naive.year(), 2024);
+    }
+
+    // DayCountConvention name() tests
+
+    #[test]
+    fn test_dcc_name() {
+        assert_eq!(DayCountConvention::ActualActual365.name(), "ACT/365");
+        assert_eq!(DayCountConvention::ActualActual360.name(), "ACT/360");
+        assert_eq!(DayCountConvention::Thirty360.name(), "30/360");
+    }
+
+    #[test]
+    fn test_dcc_display() {
+        assert_eq!(format!("{}", DayCountConvention::ActualActual365), "ACT/365");
+        assert_eq!(format!("{}", DayCountConvention::ActualActual360), "ACT/360");
+        assert_eq!(format!("{}", DayCountConvention::Thirty360), "30/360");
+    }
+
+    #[test]
+    fn test_dcc_from_str() {
+        assert_eq!(
+            "ACT/365".parse::<DayCountConvention>().unwrap(),
+            DayCountConvention::ActualActual365
+        );
+        assert_eq!(
+            "act/360".parse::<DayCountConvention>().unwrap(),
+            DayCountConvention::ActualActual360
+        );
+        assert_eq!(
+            "30/360".parse::<DayCountConvention>().unwrap(),
+            DayCountConvention::Thirty360
+        );
+        assert_eq!(
+            "Thirty360".parse::<DayCountConvention>().unwrap(),
+            DayCountConvention::Thirty360
+        );
+    }
+
+    #[test]
+    fn test_dcc_from_str_invalid() {
+        let result = "INVALID".parse::<DayCountConvention>();
+        assert!(result.is_err());
+    }
+
+    // year_fraction_dates tests
+
+    #[test]
+    fn test_year_fraction_dates_matches_year_fraction() {
+        let start_date = Date::from_ymd(2024, 1, 1).unwrap();
+        let end_date = Date::from_ymd(2024, 7, 1).unwrap();
+        let start_naive = NaiveDate::from_ymd_opt(2024, 1, 1).unwrap();
+        let end_naive = NaiveDate::from_ymd_opt(2024, 7, 1).unwrap();
+
+        for dcc in [
+            DayCountConvention::ActualActual365,
+            DayCountConvention::ActualActual360,
+            DayCountConvention::Thirty360,
+        ] {
+            let yf_dates = dcc.year_fraction_dates(start_date, end_date);
+            let yf_naive = dcc.year_fraction(start_naive, end_naive);
+            assert_relative_eq!(yf_dates, yf_naive, epsilon = 1e-10);
+        }
+    }
+
+    #[test]
+    fn test_year_fraction_dates_negative() {
+        let start = Date::from_ymd(2024, 7, 1).unwrap();
+        let end = Date::from_ymd(2024, 1, 1).unwrap();
+
+        // Should NOT panic, should return negative
+        let yf = DayCountConvention::ActualActual365.year_fraction_dates(start, end);
+        assert!(yf < 0.0);
+        assert_relative_eq!(yf, -182.0 / 365.0, epsilon = 1e-10);
+    }
+
+    #[test]
+    fn test_time_to_maturity_dates() {
+        let start = Date::from_ymd(2024, 1, 1).unwrap();
+        let end = Date::from_ymd(2025, 1, 1).unwrap();
+
+        let ttm = time_to_maturity_dates(start, end);
+        assert_relative_eq!(ttm, 366.0 / 365.0, epsilon = 1e-10);
+    }
+
+    #[test]
+    fn test_time_to_maturity_dates_negative() {
+        let start = Date::from_ymd(2025, 1, 1).unwrap();
+        let end = Date::from_ymd(2024, 1, 1).unwrap();
+
+        // Should NOT panic, should return negative
+        let ttm = time_to_maturity_dates(start, end);
+        assert!(ttm < 0.0);
+    }
+
+    #[cfg(feature = "serde")]
+    mod serde_tests {
+        use super::*;
+
+        #[test]
+        fn test_date_serde_roundtrip() {
+            let date = Date::from_ymd(2024, 6, 15).unwrap();
+            let json = serde_json::to_string(&date).unwrap();
+            assert_eq!(json, "\"2024-06-15\"");
+
+            let parsed: Date = serde_json::from_str(&json).unwrap();
+            assert_eq!(parsed, date);
+        }
+
+        #[test]
+        fn test_dcc_serde_roundtrip() {
+            let dcc = DayCountConvention::ActualActual365;
+            let json = serde_json::to_string(&dcc).unwrap();
+            assert_eq!(json, "\"ACT/365\"");
+
+            let parsed: DayCountConvention = serde_json::from_str(&json).unwrap();
+            assert_eq!(parsed, dcc);
+        }
+
+        #[test]
+        fn test_dcc_serde_all_variants() {
+            for dcc in [
+                DayCountConvention::ActualActual365,
+                DayCountConvention::ActualActual360,
+                DayCountConvention::Thirty360,
+            ] {
+                let json = serde_json::to_string(&dcc).unwrap();
+                let parsed: DayCountConvention = serde_json::from_str(&json).unwrap();
+                assert_eq!(parsed, dcc);
+            }
+        }
+
+        #[test]
+        fn test_dcc_serde_deserialize_alias() {
+            // Test case-insensitive and alias parsing
+            let parsed: DayCountConvention = serde_json::from_str("\"Actual/365\"").unwrap();
+            assert_eq!(parsed, DayCountConvention::ActualActual365);
+
+            let parsed: DayCountConvention = serde_json::from_str("\"30/360\"").unwrap();
+            assert_eq!(parsed, DayCountConvention::Thirty360);
+        }
     }
 
     // Task 6.2: Property-based tests for Day Count Convention

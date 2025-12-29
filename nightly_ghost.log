@@ -1,0 +1,5 @@
+spawn claude
+couldn't execute "claude": no such file or directory
+    while executing
+"spawn claude"
+    (file "../nightly_ghost.exp" line 22)

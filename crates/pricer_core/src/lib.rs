@@ -6,14 +6,17 @@
 //! - Differentiable smoothing functions (`math::smoothing`)
 //! - Dual number type integration (`types::dual`)
 //! - Traits for pricing and differentiability (`traits`)
-//! - Time types and Day Count Conventions (`types::time`)
+//! - Time types: `Date`, `DayCountConvention` (`types::time`)
+//! - Currency types: `Currency` (`types::currency`)
+//! - Error types: `PricingError`, `DateError`, `CurrencyError` (`types::error`)
 //!
 //! ## Zero Dependency Principle
 //!
 //! Layer 1 has no dependencies on other pricer_* crates, with minimal external dependencies:
 //! - num-traits: Traits for generic numerical computation
-//! - num-dual: Dual number types and automatic differentiation
+//! - num-dual: Dual number types and automatic differentiation (optional)
 //! - chrono: Date arithmetic
+//! - serde: Serialisation support (optional)
 //!
 //! ## Stable Rust Toolchain
 //!
@@ -24,27 +27,28 @@
 //!
 //! ```rust
 //! use pricer_core::math::smoothing::smooth_max;
-//! # #[cfg(feature = "num-dual-mode")]
-//! use pricer_core::types::dual::DualNumber;
+//! use pricer_core::types::{Date, DayCountConvention, Currency};
+//!
+//! // Date operations
+//! let start = Date::from_ymd(2024, 1, 1).unwrap();
+//! let end = Date::from_ymd(2024, 7, 1).unwrap();
+//! let year_fraction = DayCountConvention::ActualActual365.year_fraction_dates(start, end);
+//!
+//! // Currency information
+//! let usd = Currency::USD;
+//! assert_eq!(usd.code(), "USD");
+//! assert_eq!(usd.decimal_places(), 2);
 //!
 //! // Computation with f64
 //! let result = smooth_max(3.0, 5.0, 1e-6);
 //! # assert!((result - 5.0).abs() < 1e-3);
-//!
-//! # #[cfg(feature = "num-dual-mode")]
-//! # {
-//! // Automatic differentiation with Dual numbers
-//! let a = DualNumber::from(3.0).derivative();
-//! let b = DualNumber::from(5.0);
-//! let result = smooth_max(a, b, 1e-6);
-//! let gradient = result.eps; // ∂smooth_max/∂a
-//! # }
 //! ```
 //!
 //! ## Feature Flags
 //!
 //! - `num-dual-mode` (default): Use num-dual for automatic differentiation (verification mode)
 //! - `enzyme-mode`: Use f64 directly (Enzyme handles AD at LLVM level)
+//! - `serde` (default): Enable serialisation for Date, Currency, DayCountConvention
 
 #![warn(missing_docs)]
 
