@@ -1,22 +1,26 @@
 {
   "feature_name": "instrument-definitions",
   "created_at": "2025-12-30T13:10:00Z",
-  "updated_at": "2025-12-30T13:10:00Z",
+  "updated_at": "2025-12-30T14:30:00Z",
   "language": "ja",
-  "phase": "initialized",
+  "phase": "completed",
   "approvals": {
     "requirements": {
-      "generated": false,
-      "approved": false
+      "generated": true,
+      "approved": true
     },
     "design": {
-      "generated": false,
-      "approved": false
+      "generated": true,
+      "approved": true
     },
     "tasks": {
-      "generated": false,
-      "approved": false
+      "generated": true,
+      "approved": true
     }
   },
-  "ready_for_implementation": false
+  "ready_for_implementation": true,
+  "implementation": {
+    "completed": true,
+    "completed_at": "2025-12-30T14:30:00Z"
+  }
 }

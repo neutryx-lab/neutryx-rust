@@ -534,11 +534,7 @@ mod tests {
 
         #[test]
         fn test_interpolated_curve_with_dual64() {
-            let tenors = [
-                Dual64::from(0.5),
-                Dual64::from(1.0),
-                Dual64::from(2.0),
-            ];
+            let tenors = [Dual64::from(0.5), Dual64::from(1.0), Dual64::from(2.0)];
             let rates = [
                 Dual64::from(0.02),
                 Dual64::from(0.03).derivative(), // Differentiate w.r.t. 1Y rate

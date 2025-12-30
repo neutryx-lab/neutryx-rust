@@ -488,11 +488,7 @@ mod tests {
 
         #[test]
         fn test_interpolated_vol_surface_with_dual64() {
-            let strikes = [
-                Dual64::from(90.0),
-                Dual64::from(100.0),
-                Dual64::from(110.0),
-            ];
+            let strikes = [Dual64::from(90.0), Dual64::from(100.0), Dual64::from(110.0)];
             let expiries = [Dual64::from(0.5), Dual64::from(1.0)];
             let vols = [
                 &[Dual64::from(0.22), Dual64::from(0.20), Dual64::from(0.21)][..],
@@ -500,7 +496,9 @@ mod tests {
             ];
 
             let surface = InterpolatedVolSurface::new(&strikes, &expiries, &vols, false).unwrap();
-            let vol = surface.volatility(Dual64::from(100.0), Dual64::from(0.75)).unwrap();
+            let vol = surface
+                .volatility(Dual64::from(100.0), Dual64::from(0.75))
+                .unwrap();
 
             // Value should be between grid values
             assert!(vol.re() > 0.0 && vol.re() < 1.0);
