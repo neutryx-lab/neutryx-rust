@@ -28,5 +28,5 @@ A production-grade **XVA (Credit Valuation Adjustment) pricing library** for der
 
 ---
 _Created: 2025-12-29_
-_Updated: 2025-12-30_ — Added market data infrastructure capability
+_Updated: 2025-12-30_ — Added exposure metrics capability, SoA optimization mention
 _Focus on patterns and purpose, not exhaustive feature lists_

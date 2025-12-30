@@ -60,12 +60,12 @@ market_data/
 **Purpose**: Financial instruments and pricing models (stable Rust)
 **Structure**:
 ```
-instruments/  → Enum-based instrument definitions (VanillaOption, BarrierOption)
+instruments/  → Enum-based instrument definitions (VanillaOption, Forward, Swap)
 models/       → Stochastic models (GBM, Heston, local vol)
 analytical/   → Closed-form solutions (Black-Scholes, barrier formulas)
 ```
 
-**Key Principle**: Static dispatch via `enum Instrument` for Enzyme compatibility.
+**Key Principle**: Static dispatch via `enum Instrument<T: Float>` for Enzyme compatibility and AD support.
 
 ### Layer 3: AD Engine (pricer_kernel)
 
