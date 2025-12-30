@@ -264,7 +264,9 @@ impl TradeBuilder {
 mod tests {
     use super::*;
     use approx::assert_relative_eq;
-    use pricer_models::instruments::{Direction, ExerciseStyle, Forward, InstrumentParams};
+    use pricer_models::instruments::{
+        Direction, ExerciseStyle, Forward, InstrumentParams, VanillaOption,
+    };
 
     fn create_test_call() -> Instrument<f64> {
         let params = InstrumentParams::new(100.0, 1.0, 1.0).unwrap();

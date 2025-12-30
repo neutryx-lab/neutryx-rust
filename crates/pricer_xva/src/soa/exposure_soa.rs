@@ -159,7 +159,6 @@ impl ExposureSoA {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use approx::assert_relative_eq;
 
     fn create_test_exposure_soa() -> ExposureSoA {
         let time_grid = vec![0.0, 0.25, 0.5, 0.75, 1.0];

@@ -235,7 +235,7 @@ mod tests {
         let time_grid = vec![0.0, 0.25, 0.5, 0.75, 1.0];
         let df = create_flat_df(0.05, &time_grid);
 
-        let (fca, fba, fva) = compute_fva(&ee, &ene, &time_grid, 0.005, 0.005, &df);
+        let (_fca, _fba, fva) = compute_fva(&ee, &ene, &time_grid, 0.005, 0.005, &df);
 
         assert!(fva < 0.0); // Net benefit
     }
