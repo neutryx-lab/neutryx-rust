@@ -79,7 +79,7 @@ where
     items
         .par_iter()
         .map(mapper)
-        .reduce(|| identity, |a, b| reducer(a, b))
+        .reduce(|| identity, reducer)
 }
 
 /// Parallel sum of values.

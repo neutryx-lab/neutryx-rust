@@ -192,6 +192,7 @@ impl XvaCalculator {
     /// # Returns
     ///
     /// XVA result for the netting set.
+    #[allow(clippy::too_many_arguments)]
     pub fn compute_netting_set_xva(
         &self,
         netting_set_id: NettingSetId,
@@ -241,6 +242,7 @@ impl XvaCalculator {
     /// # Returns
     ///
     /// Aggregated XVA for the counterparty.
+    #[allow(clippy::too_many_arguments)]
     pub fn compute_counterparty_xva(
         &self,
         counterparty_id: CounterpartyId,
