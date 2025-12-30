@@ -181,10 +181,8 @@ impl<T: Float> BilinearInterpolator<T> {
 
         // Bilinear interpolation
         let one = T::one();
-        let z = (one - u) * (one - v) * z00
-            + u * (one - v) * z10
-            + (one - u) * v * z01
-            + u * v * z11;
+        let z =
+            (one - u) * (one - v) * z00 + u * (one - v) * z10 + (one - u) * v * z01 + u * v * z11;
 
         Ok(z)
     }

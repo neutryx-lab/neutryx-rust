@@ -149,14 +149,24 @@ impl<T: Float> CubicSplineInterpolator<T> {
             let c0 = T::zero(); // M[0] / 2 = 0
             let d0 = (m1 - T::zero()) / (six * h[0]); // (M[1] - M[0]) / (6*h[0])
             let b0 = (ys[1] - ys[0]) / h[0] - h[0] * (two * T::zero() + m1) / six;
-            coeffs.push(SplineCoeffs { a: a0, b: b0, c: c0, d: d0 });
+            coeffs.push(SplineCoeffs {
+                a: a0,
+                b: b0,
+                c: c0,
+                d: d0,
+            });
 
             // Segment 1: from x[1] to x[2]
             let a1 = ys[1];
             let c1 = m1 / two;
             let d1 = (T::zero() - m1) / (six * h[1]); // (M[2] - M[1]) / (6*h[1])
             let b1 = (ys[2] - ys[1]) / h[1] - h[1] * (two * m1 + T::zero()) / six;
-            coeffs.push(SplineCoeffs { a: a1, b: b1, c: c1, d: d1 });
+            coeffs.push(SplineCoeffs {
+                a: a1,
+                b: b1,
+                c: c1,
+                d: d1,
+            });
 
             return coeffs;
         }
@@ -187,7 +197,11 @@ impl<T: Float> CubicSplineInterpolator<T> {
 
         for i in 1..interior {
             let sub = h[i]; // sub-diagonal element
-            let sup = if i < interior - 1 { h[i + 1] } else { T::zero() }; // super-diagonal
+            let sup = if i < interior - 1 {
+                h[i + 1]
+            } else {
+                T::zero()
+            }; // super-diagonal
             let denom = diag[i] - h[i] * c_prime[i - 1];
             if i < interior - 1 {
                 c_prime.push(sup / denom);
@@ -444,8 +458,7 @@ mod tests {
 
     #[test]
     fn test_interpolate_out_of_bounds_low() {
-        let interp =
-            CubicSplineInterpolator::new(&[0.0, 1.0, 2.0], &[0.0, 1.0, 4.0]).unwrap();
+        let interp = CubicSplineInterpolator::new(&[0.0, 1.0, 2.0], &[0.0, 1.0, 4.0]).unwrap();
         let result = interp.interpolate(-0.1);
 
         assert!(result.is_err());
@@ -461,8 +474,7 @@ mod tests {
 
     #[test]
     fn test_interpolate_out_of_bounds_high() {
-        let interp =
-            CubicSplineInterpolator::new(&[0.0, 1.0, 2.0], &[0.0, 1.0, 4.0]).unwrap();
+        let interp = CubicSplineInterpolator::new(&[0.0, 1.0, 2.0], &[0.0, 1.0, 4.0]).unwrap();
         let result = interp.interpolate(2.1);
 
         assert!(result.is_err());
@@ -478,8 +490,7 @@ mod tests {
 
     #[test]
     fn test_interpolate_at_boundaries() {
-        let interp =
-            CubicSplineInterpolator::new(&[0.0, 1.0, 2.0], &[0.0, 1.0, 4.0]).unwrap();
+        let interp = CubicSplineInterpolator::new(&[0.0, 1.0, 2.0], &[0.0, 1.0, 4.0]).unwrap();
 
         assert!(interp.interpolate(0.0).is_ok());
         assert!(interp.interpolate(2.0).is_ok());

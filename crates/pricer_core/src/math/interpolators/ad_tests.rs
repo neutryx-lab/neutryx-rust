@@ -43,16 +43,8 @@ mod linear_ad_tests {
     #[test]
     fn test_linear_gradient_correct() {
         // For y = 2x, gradient should be 2
-        let xs: Vec<Dual64> = vec![
-            Dual64::from(0.0),
-            Dual64::from(1.0),
-            Dual64::from(2.0),
-        ];
-        let ys: Vec<Dual64> = vec![
-            Dual64::from(0.0),
-            Dual64::from(2.0),
-            Dual64::from(4.0),
-        ];
+        let xs: Vec<Dual64> = vec![Dual64::from(0.0), Dual64::from(1.0), Dual64::from(2.0)];
+        let ys: Vec<Dual64> = vec![Dual64::from(0.0), Dual64::from(2.0), Dual64::from(4.0)];
 
         let interp = LinearInterpolator::new(&xs, &ys).unwrap();
 
@@ -112,7 +104,10 @@ mod cubic_spline_ad_tests {
         let y = interp.interpolate(x).unwrap();
 
         // Gradient should be positive and reasonable for increasing data
-        assert!(y.eps > 0.0, "Gradient should be positive for increasing data");
+        assert!(
+            y.eps > 0.0,
+            "Gradient should be positive for increasing data"
+        );
         assert!(y.eps < 10.0, "Gradient should be reasonable magnitude");
     }
 }
@@ -227,16 +222,8 @@ mod smooth_interp_ad_tests {
 
     #[test]
     fn test_smooth_interp_with_dual64_returns_finite() {
-        let xs: Vec<Dual64> = vec![
-            Dual64::from(0.0),
-            Dual64::from(1.0),
-            Dual64::from(2.0),
-        ];
-        let ys: Vec<Dual64> = vec![
-            Dual64::from(0.0),
-            Dual64::from(2.0),
-            Dual64::from(4.0),
-        ];
+        let xs: Vec<Dual64> = vec![Dual64::from(0.0), Dual64::from(1.0), Dual64::from(2.0)];
+        let ys: Vec<Dual64> = vec![Dual64::from(0.0), Dual64::from(2.0), Dual64::from(4.0)];
 
         let x = Dual64::new(0.5, 1.0);
         let epsilon = Dual64::from(1e-4);
@@ -250,16 +237,8 @@ mod smooth_interp_ad_tests {
     #[test]
     fn test_smooth_interp_gradient_propagates() {
         // For y = 2x, gradient should be approximately 2
-        let xs: Vec<Dual64> = vec![
-            Dual64::from(0.0),
-            Dual64::from(1.0),
-            Dual64::from(2.0),
-        ];
-        let ys: Vec<Dual64> = vec![
-            Dual64::from(0.0),
-            Dual64::from(2.0),
-            Dual64::from(4.0),
-        ];
+        let xs: Vec<Dual64> = vec![Dual64::from(0.0), Dual64::from(1.0), Dual64::from(2.0)];
+        let ys: Vec<Dual64> = vec![Dual64::from(0.0), Dual64::from(2.0), Dual64::from(4.0)];
 
         let x = Dual64::new(0.5, 1.0);
         let epsilon = Dual64::from(1e-6);
@@ -314,16 +293,8 @@ mod gradient_verification {
 
     #[test]
     fn test_linear_gradient_vs_finite_diff() {
-        let xs: Vec<Dual64> = vec![
-            Dual64::from(0.0),
-            Dual64::from(1.0),
-            Dual64::from(2.0),
-        ];
-        let ys: Vec<Dual64> = vec![
-            Dual64::from(0.0),
-            Dual64::from(1.0),
-            Dual64::from(4.0),
-        ];
+        let xs: Vec<Dual64> = vec![Dual64::from(0.0), Dual64::from(1.0), Dual64::from(2.0)];
+        let ys: Vec<Dual64> = vec![Dual64::from(0.0), Dual64::from(1.0), Dual64::from(4.0)];
 
         let interp = LinearInterpolator::new(&xs, &ys).unwrap();
 
