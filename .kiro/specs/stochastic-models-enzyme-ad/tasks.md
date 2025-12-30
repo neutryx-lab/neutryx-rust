@@ -24,8 +24,8 @@
   - 安定化技法を使用して数値オーバーフローを防止
   - _Requirements: 8.3, 8.4, 8.5, 8.6_
 
-- [ ] 2. StochasticModelトレイト抽象化（L2: pricer_models）
-- [ ] 2.1 StochasticModelトレイトの定義
+- [x] 2. StochasticModelトレイト抽象化（L2: pricer_models）
+- [x] 2.1 StochasticModelトレイトの定義
   - 確率過程モデルの統一インターフェースを定義
   - ジェネリック型パラメータT: Floatを使用してf64およびDualNumber型をサポート
   - evolve_step、initial_state、brownian_dimメソッドを定義
@@ -34,7 +34,7 @@
   - 静的ディスパッチ（enum-based）のみをサポートし、Box<dyn Trait>は禁止
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6_
 
-- [ ] 2.2 StochasticModelEnumの定義
+- [x] 2.2 StochasticModelEnumの定義
   - GBM、Heston、SABRをenumバリアントとしてラップ
   - match式によるゼロコスト抽象化を実装
   - model_name、brownian_dim、is_two_factorメソッドを提供

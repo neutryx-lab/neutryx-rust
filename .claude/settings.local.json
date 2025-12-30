@@ -51,7 +51,11 @@
       "Bash(C:/Users/khosh/.cargo/bin/cargo.exe test:*)",
       "Bash(cmd.exe /c \"cd /d c:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust && cargo test -p pricer_models models::stochastic -- --nocapture 2>&1\")",
       "Bash(cmd.exe /c \"cd /d c:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust && cargo test -p pricer_models models::stochastic -- --nocapture\")",
-      "Bash(cmd.exe /c \"cd /d c:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust & cargo test -p pricer_models models::stochastic -- --nocapture\")"
+      "Bash(cmd.exe /c \"cd /d c:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust & cargo test -p pricer_models models::stochastic -- --nocapture\")",
+      "Bash(cmd.exe /c \"set PATH=%PATH%;C:\\\\Users\\\\khosh\\\\.cargo\\\\bin && cd /d c:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust && cargo test -p pricer_models models::stochastic\")",
+      "Bash(/c/Users/khosh/.cargo/bin/cargo test:*)",
+      "Bash(export PATH=\"$PATH:/c/Users/khosh/.cargo/bin\")",
+      "Bash(/c/Users/khosh/.rustup/toolchains/stable-x86_64-pc-windows-msvc/bin/cargo.exe test:*)"
     ]
   }
 }
