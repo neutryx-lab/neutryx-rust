@@ -22,7 +22,11 @@
       "Skill(kiro:steering:*)",
       "Bash(rustup component list:*)",
       "Bash(cargo doc:*)",
-      "Bash(cargo check:*)"
+      "Bash(cargo check:*)",
+      "Bash(cmd.exe /c \"cd /d f:\\\\Codes\\\\neutryx-rust\\\\neutryx-rust && cargo fmt --all\")",
+      "Bash(cmd.exe /c \"where cargo 2>nul || echo %USERPROFILE%\\\\.cargo\\\\bin\\\\cargo.exe\")",
+      "Bash(cmd.exe /c \"cd /d f:\\\\Codes\\\\neutryx-rust\\\\neutryx-rust && C:\\\\Users\\\\kenst\\\\.cargo\\\\bin\\\\cargo.exe fmt --all\")",
+      "Bash(cmd.exe /c \"dir f:\\\\Codes\\\\neutryx-rust\\\\neutryx-rust\")"
     ]
   }
 }
