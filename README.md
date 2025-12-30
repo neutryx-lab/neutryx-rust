@@ -24,10 +24,10 @@ neutryx-rust/
 
 | Layer | Purpose | Rust | Enzyme | Status |
 |-------|---------|------|--------|--------|
-| L1: pricer_core | Math types, traits, smoothing | Stable | No | 🚧 Phase 1 |
-| L2: pricer_models | Instruments, models, analytical | Stable | No | 🚧 Phase 2 |
-| L3: pricer_kernel | Monte Carlo, Enzyme AD | **Nightly** | **Yes** | 🚧 Phase 3 |
-| L4: pricer_xva | Portfolio, XVA, parallelization | Stable | No | 🚧 Phase 5 |
+| L1: pricer_core | Math types, traits, smoothing | Stable | No | ✅ Complete |
+| L2: pricer_models | Instruments, models, analytical | Stable | No | ✅ Complete |
+| L3: pricer_kernel | Monte Carlo, Enzyme AD | **Nightly** | **Yes** | 🚧 In Progress |
+| L4: pricer_xva | Portfolio, XVA, parallelization | Stable | No | ✅ Complete |
 
 ### Design Principles
 
@@ -172,11 +172,11 @@ neutryx-rust/
 ## 🎯 Roadmap
 
 - [x] **Phase 0**: Workspace scaffolding (Completed)
-- [ ] **Phase 1**: Foundation (L1) - types, traits, smoothing
-- [ ] **Phase 2**: Business logic (L2) - instruments, models
+- [x] **Phase 1**: Foundation (L1) - types, traits, smoothing
+- [x] **Phase 2**: Business logic (L2) - instruments, models
 - [ ] **Phase 3**: Enzyme integration (L3) - AD bindings, verification
 - [ ] **Phase 4**: Advanced MC - checkpointing, path-dependent options
-- [ ] **Phase 5**: XVA application (L4) - CVA, parallelization
+- [x] **Phase 5**: XVA application (L4) - CVA, DVA, FVA, exposure metrics
 - [ ] **Phase 6**: Production hardening - docs, benchmarks, CI/CD
 
 ## 📊 Performance Targets
@@ -224,4 +224,4 @@ cargo clippy --all-targets --all-features -- -D warnings
 
 ---
 
-**Status**: 🚧 Phase 0 complete - workspace scaffolding done!
+**Status**: ✅ Phases 1, 2, 5 complete | 🚧 Phase 3 (Enzyme AD) in progress
