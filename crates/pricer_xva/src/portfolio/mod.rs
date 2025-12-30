@@ -271,8 +271,9 @@ impl Portfolio {
 
     /// Returns a parallel iterator over netting sets.
     #[inline]
-    pub fn netting_sets_par_iter(&self) -> impl ParallelIterator<Item = (&NettingSetId, &NettingSet)>
-    {
+    pub fn netting_sets_par_iter(
+        &self,
+    ) -> impl ParallelIterator<Item = (&NettingSetId, &NettingSet)> {
         self.netting_sets.par_iter()
     }
 
@@ -444,7 +445,9 @@ mod tests {
         let portfolio = create_test_portfolio();
 
         assert!(portfolio.trade(&TradeId::new("T999")).is_none());
-        assert!(portfolio.counterparty(&CounterpartyId::new("CP999")).is_none());
+        assert!(portfolio
+            .counterparty(&CounterpartyId::new("CP999"))
+            .is_none());
         assert!(portfolio.netting_set(&NettingSetId::new("NS999")).is_none());
     }
 

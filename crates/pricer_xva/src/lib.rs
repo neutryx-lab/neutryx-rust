@@ -95,3 +95,8 @@ pub use portfolio::{
     NettingSetId, Portfolio, PortfolioBuilder, PortfolioError, Trade, TradeBuilder, TradeId,
 };
 pub use soa::{ExposureSoA, TradeSoA};
+pub use xva::{
+    compute_cva, compute_cva_with_survival, compute_dva, compute_dva_with_survival, compute_fba,
+    compute_fca, compute_fva, generate_flat_discount_factors, CounterpartyXva, FundingParams,
+    NettingSetXva, OwnCreditParams, PortfolioXva, XvaCalculator, XvaConfig, XvaError,
+};

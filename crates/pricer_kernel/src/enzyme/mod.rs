@@ -138,7 +138,7 @@ impl Activity {
 /// # Arguments
 ///
 /// * `f` - The function to differentiate. Must be a closure or function
-///         that takes `f64` and returns `f64`.
+///   that takes `f64` and returns `f64`.
 /// * `x` - The point at which to evaluate the gradient.
 ///
 /// # Returns

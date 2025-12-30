@@ -34,7 +34,10 @@
       "Bash(cargo clippy:*)",
       "Bash(cargo test:*)",
       "Bash(/c/Users/khosh/.cargo/bin/cargo test -p pricer_xva --no-fail-fast)",
-      "Bash(where cargo:*)"
+      "Bash(where cargo:*)",
+      "Bash(powershell.exe -Command \"cd ''c:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust''; cargo test -p pricer_xva --lib 2>&1 | Select-Object -First 100\")",
+      "Bash(powershell.exe -Command \"$env:USERPROFILE + ''\\\\.cargo\\\\bin\\\\cargo.exe''\")",
+      "Bash(powershell.exe:*)"
     ]
   }
 }
