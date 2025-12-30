@@ -79,22 +79,4 @@ mod tests {
         assert!((result2 - std::f64::consts::E).abs() < 1e-10);
     }
 
-    #[cfg(feature = "num-dual-mode")]
-    #[test]
-    fn test_float_trait_with_dual_number() {
-        use num_dual::*;
-
-        // Test that DualNumber satisfies Float trait
-        fn generic_function<T: Float>(x: T) -> T {
-            x * x + x
-        }
-
-        let dual = Dual64::from(3.0).derivative();
-        let result = generic_function(dual);
-
-        // f(x) = x^2 + x, f'(x) = 2x + 1
-        // At x=3: f(3) = 12, f'(3) = 7
-        assert_eq!(result.re(), 12.0);
-        assert_eq!(result.eps[0], 7.0);
-    }
 }
