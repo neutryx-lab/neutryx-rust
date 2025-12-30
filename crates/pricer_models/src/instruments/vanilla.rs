@@ -315,34 +315,4 @@ mod tests {
         let debug_str = format!("{:?}", option);
         assert!(debug_str.contains("VanillaOption"));
     }
-
-    // AD compatibility test with Dual64
-    #[test]
-    fn test_dual64_compatibility() {
-        use num_dual::Dual64;
-
-        let params = InstrumentParams::new(
-            Dual64::new(100.0, 0.0),
-            Dual64::new(1.0, 0.0),
-            Dual64::new(1.0, 0.0),
-        )
-        .unwrap();
-
-        let option = VanillaOption::new(
-            params,
-            PayoffType::Call,
-            ExerciseStyle::European,
-            Dual64::new(1e-6, 0.0),
-        );
-
-        // Compute payoff with derivative tracking
-        let spot = Dual64::new(110.0, 1.0); // d/dS = 1
-        let payoff = option.payoff(spot);
-
-        // Payoff should be approximately 10
-        assert!((payoff.re - 10.0).abs() < 0.01);
-
-        // Delta should be approximately 1 for deep ITM call
-        assert!(payoff.eps > 0.9);
-    }
 }

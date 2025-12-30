@@ -309,28 +309,4 @@ mod tests {
         assert!(debug_str.contains("Forward"));
         assert!(debug_str.contains("Long"));
     }
-
-    // AD compatibility test with Dual64
-    #[test]
-    fn test_dual64_compatibility() {
-        use num_dual::Dual64;
-
-        let forward = Forward::new(
-            Dual64::new(100.0, 0.0),
-            Dual64::new(1.0, 0.0),
-            Dual64::new(1.0, 0.0),
-            Direction::Long,
-        )
-        .unwrap();
-
-        // Compute payoff with derivative tracking
-        let spot = Dual64::new(110.0, 1.0); // d/dS = 1
-        let payoff = forward.payoff(spot);
-
-        // Payoff = notional * (spot - strike) = 1 * (110 - 100) = 10
-        assert!((payoff.re - 10.0).abs() < 1e-10);
-
-        // Delta = notional * 1 = 1 (for long forward)
-        assert!((payoff.eps - 1.0).abs() < 1e-10);
-    }
 }

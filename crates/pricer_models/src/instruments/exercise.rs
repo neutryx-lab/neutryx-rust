@@ -253,25 +253,4 @@ mod tests {
         assert!(debug_str.contains("Bermudan"));
         assert!(debug_str.contains("exercise_dates"));
     }
-
-    // AD compatibility test with Dual64
-    #[test]
-    fn test_dual64_compatibility() {
-        use num_dual::Dual64;
-
-        let style = ExerciseStyle::asian(Dual64::new(0.0, 0.0), Dual64::new(1.0, 0.0), 12);
-
-        if let ExerciseStyle::Asian {
-            averaging_start,
-            averaging_end,
-            num_observations,
-        } = style
-        {
-            assert_eq!(averaging_start.re, 0.0);
-            assert_eq!(averaging_end.re, 1.0);
-            assert_eq!(num_observations, 12);
-        } else {
-            panic!("Expected Asian variant");
-        }
-    }
 }

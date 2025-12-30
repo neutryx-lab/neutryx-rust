@@ -14,5 +14,4 @@ thiserror.workspace = true
 
 [dev-dependencies]
 approx.workspace = true
-num-dual.workspace = true
 proptest.workspace = true

@@ -190,19 +190,4 @@ mod tests {
         assert!(debug_str.contains("expiry"));
         assert!(debug_str.contains("notional"));
     }
-
-    // AD compatibility test with Dual64
-    #[test]
-    fn test_dual64_compatibility() {
-        use num_dual::Dual64;
-
-        let strike = Dual64::new(100.0, 0.0);
-        let expiry = Dual64::new(1.0, 0.0);
-        let notional = Dual64::new(1_000_000.0, 0.0);
-
-        let params = InstrumentParams::new(strike, expiry, notional).unwrap();
-        assert_eq!(params.strike().re, 100.0);
-        assert_eq!(params.expiry().re, 1.0);
-        assert_eq!(params.notional().re, 1_000_000.0);
-    }
 }

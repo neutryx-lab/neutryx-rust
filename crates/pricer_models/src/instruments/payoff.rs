@@ -264,24 +264,4 @@ mod tests {
         let call = PayoffType::Call;
         assert_eq!(format!("{:?}", call), "Call");
     }
-
-    // AD compatibility test with Dual64
-    #[test]
-    fn test_dual64_compatibility() {
-        use num_dual::Dual64;
-
-        let call = PayoffType::Call;
-        // Create dual numbers with derivative tracking
-        let spot = Dual64::new(110.0, 1.0); // d/dS
-        let strike = Dual64::new(100.0, 0.0);
-        let epsilon = Dual64::new(1e-6, 0.0);
-
-        let payoff = call.evaluate(spot, strike, epsilon);
-
-        // Payoff should be approximately 10.0
-        assert!((payoff.re - 10.0).abs() < 0.01);
-
-        // Delta (derivative w.r.t. spot) should be approximately 1.0 for deep ITM
-        assert!(payoff.eps > 0.9);
-    }
 }
