@@ -440,7 +440,7 @@ impl FromStr for DayCountConvention {
     /// - ACT/360: "ACT/360", "Actual/360", "Act360", "A360"
     /// - 30/360: "30/360", "Thirty360", "30360"
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_uppercase().replace('/', "").replace(' ', "").as_str() {
+        match s.to_uppercase().replace(['/', ' '], "").as_str() {
             "ACT365" | "ACTUAL365" | "A365" => Ok(DayCountConvention::ActualActual365),
             "ACT360" | "ACTUAL360" | "A360" => Ok(DayCountConvention::ActualActual360),
             "30360" | "THIRTY360" => Ok(DayCountConvention::Thirty360),

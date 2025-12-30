@@ -125,7 +125,7 @@ impl<T: Float> CubicSplineInterpolator<T> {
     fn compute_coefficients(xs: &[T], ys: &[T]) -> Vec<SplineCoeffs<T>> {
         let n = xs.len();
         let two = T::from(2.0).unwrap();
-        let three = T::from(3.0).unwrap();
+        let _three = T::from(3.0).unwrap();
         let six = T::from(6.0).unwrap();
 
         // Compute intervals h[i] = x[i+1] - x[i]
@@ -196,7 +196,7 @@ impl<T: Float> CubicSplineInterpolator<T> {
         d_prime.push(rhs[0] / diag[0]);
 
         for i in 1..interior {
-            let sub = h[i]; // sub-diagonal element
+            let _sub = h[i]; // sub-diagonal element
             let sup = if i < interior - 1 {
                 h[i + 1]
             } else {

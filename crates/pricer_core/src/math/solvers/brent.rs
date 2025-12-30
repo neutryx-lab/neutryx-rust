@@ -127,7 +127,7 @@ impl<T: Float> BrentSolver<T> {
         let two = T::from(2.0).unwrap();
         let three = T::from(3.0).unwrap();
 
-        for iteration in 0..self.config.max_iterations {
+        for _iteration in 0..self.config.max_iterations {
             // Check for convergence
             if fb.abs() < self.config.tolerance {
                 return Ok(b);

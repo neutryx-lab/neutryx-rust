@@ -105,7 +105,7 @@ impl<T: Float> NewtonRaphsonSolver<T> {
         let mut x = x0;
         let epsilon = T::from(1e-30).unwrap();
 
-        for iteration in 0..self.config.max_iterations {
+        for _iteration in 0..self.config.max_iterations {
             let f_val = f(x);
 
             // Check for convergence
@@ -123,7 +123,7 @@ impl<T: Float> NewtonRaphsonSolver<T> {
             }
 
             // Newton update
-            x = x - f_val / f_prime_val;
+            x -= f_val / f_prime_val;
 
             // Check for non-finite values
             if !x.is_finite() {
@@ -186,7 +186,7 @@ impl NewtonRaphsonSolver<f64> {
         let mut x = x0;
         let epsilon = 1e-30;
 
-        for iteration in 0..self.config.max_iterations {
+        for _iteration in 0..self.config.max_iterations {
             // Create dual number with derivative seed
             let x_dual = Dual64::new(x, 1.0);
             let f_dual = f(x_dual);
@@ -206,7 +206,7 @@ impl NewtonRaphsonSolver<f64> {
             }
 
             // Newton update
-            x = x - f_val / f_prime_val;
+            x -= f_val / f_prime_val;
 
             // Check for non-finite values
             if !x.is_finite() {
