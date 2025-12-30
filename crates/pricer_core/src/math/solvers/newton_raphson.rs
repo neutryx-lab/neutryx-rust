@@ -123,7 +123,10 @@ impl<T: Float> NewtonRaphsonSolver<T> {
             }
 
             // Newton update
-            x -= f_val / f_prime_val;
+            #[allow(clippy::assign_op_pattern)]
+            {
+                x = x - f_val / f_prime_val;
+            }
 
             // Check for non-finite values
             if !x.is_finite() {
