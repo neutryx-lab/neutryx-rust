@@ -20,7 +20,7 @@
 mod tests {
     use crate::enzyme::gradient;
     use crate::verify::{square, square_gradient};
-    use approx::assert_relative_eq;
+    use approx::{assert_relative_eq, relative_eq};
 
     // Requirement 5.2: Gradient of f(x) = x * x shall return 2 * x
 
@@ -57,13 +57,9 @@ mod tests {
         for x in test_values {
             let grad = square_gradient(x);
             let expected = 2.0 * x;
-            assert_relative_eq!(
-                grad,
-                expected,
-                epsilon = 1e-10,
-                "Gradient mismatch at x = {}",
-                x
-            );
+            if !relative_eq!(grad, expected, epsilon = 1e-10) {
+                panic!("Gradient mismatch at x = {}: left = {}, right = {}", x, grad, expected);
+            }
         }
     }
 
@@ -85,13 +81,9 @@ mod tests {
         for x in test_values {
             let grad = square_gradient(x);
             let expected = 2.0 * x;
-            assert_relative_eq!(
-                grad,
-                expected,
-                epsilon = 1e-10,
-                "Gradient mismatch at x = {}",
-                x
-            );
+            if !relative_eq!(grad, expected, epsilon = 1e-10) {
+                panic!("Gradient mismatch at x = {}: left = {}, right = {}", x, grad, expected);
+            }
         }
     }
 
@@ -118,13 +110,9 @@ mod tests {
             let analytical_grad = square_gradient(x);
 
             // Allow slightly larger epsilon for finite difference approximation
-            assert_relative_eq!(
-                enzyme_grad,
-                analytical_grad,
-                epsilon = 1e-6,
-                "Enzyme gradient should match analytical at x = {}",
-                x
-            );
+            if !relative_eq!(enzyme_grad, analytical_grad, epsilon = 1e-6) {
+                panic!("Enzyme gradient should match analytical at x = {}: left = {}, right = {}", x, enzyme_grad, analytical_grad);
+            }
         }
     }
 
@@ -139,12 +127,9 @@ mod tests {
         let fd_gradient = (square(x + h) - square(x - h)) / (2.0 * h);
         let analytical_gradient = square_gradient(x);
 
-        assert_relative_eq!(
-            fd_gradient,
-            analytical_gradient,
-            epsilon = 1e-6,
-            "Finite difference should approximate analytical gradient"
-        );
+        if !relative_eq!(fd_gradient, analytical_gradient, epsilon = 1e-6) {
+            panic!("Finite difference should approximate analytical gradient: left = {}, right = {}", fd_gradient, analytical_gradient);
+        }
     }
 
     // Test gradient of more complex functions using enzyme::gradient

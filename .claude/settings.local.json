@@ -31,7 +31,10 @@
       "Bash(powershell.exe -Command \"Set-Location ''f:\\\\Codes\\\\neutryx-rust\\\\neutryx-rust''; & ''C:\\\\Users\\\\kenst\\\\.cargo\\\\bin\\\\cargo.exe'' fmt --all\")",
       "Bash(powershell.exe -Command \"Get-ChildItem ''C:\\\\Users\\\\kenst\\\\.cargo\\\\bin\\\\'' | Select-Object Name\")",
       "Bash(powershell.exe -Command \"Set-Location ''f:\\\\Codes\\\\neutryx-rust\\\\neutryx-rust''; cargo fmt --all\")",
-      "Bash(cargo clippy:*)"
+      "Bash(cargo clippy:*)",
+      "Bash(cargo test:*)",
+      "Bash(/c/Users/khosh/.cargo/bin/cargo test -p pricer_xva --no-fail-fast)",
+      "Bash(where cargo:*)"
     ]
   }
 }

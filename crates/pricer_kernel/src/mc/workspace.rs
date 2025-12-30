@@ -226,7 +226,10 @@ impl PathWorkspace {
     #[inline]
     pub fn paths_and_payoffs_mut(&mut self) -> (&[f64], &mut [f64]) {
         let paths_len = self.size_paths * (self.size_steps + 1);
-        (&self.paths[..paths_len], &mut self.payoffs[..self.size_paths])
+        (
+            &self.paths[..paths_len],
+            &mut self.payoffs[..self.size_paths],
+        )
     }
 
     /// Returns mutable slice of paths and immutable slice of randoms.
