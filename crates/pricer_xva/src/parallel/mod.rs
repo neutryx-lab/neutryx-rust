@@ -72,7 +72,7 @@ where
 pub fn parallel_reduce<T, R, M, Red>(items: &[T], identity: R, mapper: M, reducer: Red) -> R
 where
     T: Sync,
-    R: Send + Copy,
+    R: Send + Sync + Copy,
     M: Fn(&T) -> R + Sync + Send,
     Red: Fn(R, R) -> R + Sync + Send,
 {
