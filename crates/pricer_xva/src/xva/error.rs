@@ -79,8 +79,7 @@ mod tests {
 
     #[test]
     fn test_error_is_error_trait() {
-        let err: Box<dyn std::error::Error> =
-            Box::new(XvaError::MissingOwnCreditParams);
+        let err: Box<dyn std::error::Error> = Box::new(XvaError::MissingOwnCreditParams);
         assert!(err.to_string().contains("own credit"));
     }
 }

@@ -476,9 +476,7 @@ pub fn generate_flat_discount_factors(rate: f64, time_grid: &[f64]) -> Vec<f64> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::portfolio::{
-        Counterparty, NettingSet, PortfolioBuilder,
-    };
+    use crate::portfolio::{Counterparty, NettingSet, PortfolioBuilder};
     use approx::assert_relative_eq;
 
     fn create_test_portfolio() -> Portfolio {
@@ -529,10 +527,7 @@ mod tests {
             NettingSetId::new("NS001"),
             vec![0.0, 30.0, 40.0, 30.0, 10.0],
         );
-        profiles.insert(
-            NettingSetId::new("NS002"),
-            vec![0.0, 20.0, 25.0, 15.0, 5.0],
-        );
+        profiles.insert(NettingSetId::new("NS002"), vec![0.0, 20.0, 25.0, 15.0, 5.0]);
         profiles.insert(
             NettingSetId::new("NS003"),
             vec![0.0, 50.0, 60.0, 40.0, 20.0],
@@ -647,8 +642,7 @@ mod tests {
         let ene_profiles = create_test_ene_profiles();
 
         let calc = XvaCalculator::new();
-        let result =
-            calc.compute_portfolio_xva(&portfolio, &ee_profiles, &ene_profiles, &[], &[]);
+        let result = calc.compute_portfolio_xva(&portfolio, &ee_profiles, &ene_profiles, &[], &[]);
 
         assert!(matches!(result, Err(XvaError::EmptyTimeGrid)));
     }
@@ -665,7 +659,10 @@ mod tests {
         let result =
             calc.compute_portfolio_xva(&portfolio, &ee_profiles, &ene_profiles, &time_grid, &df);
 
-        assert!(matches!(result, Err(XvaError::DiscountFactorMismatch { .. })));
+        assert!(matches!(
+            result,
+            Err(XvaError::DiscountFactorMismatch { .. })
+        ));
     }
 
     #[test]
