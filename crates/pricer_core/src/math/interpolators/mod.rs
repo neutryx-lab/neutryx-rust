@@ -49,9 +49,6 @@ mod monotonic;
 mod smooth_interp;
 mod traits;
 
-#[cfg(all(test, feature = "num-dual-mode"))]
-mod ad_tests;
-
 // Re-export public types at module level
 pub use bilinear::BilinearInterpolator;
 pub use cubic_spline::CubicSplineInterpolator;

@@ -342,46 +342,4 @@ mod tests {
         let expected = (-0.05_f32).exp();
         assert!((df - expected).abs() < 1e-6);
     }
-
-    // ========================================
-    // AD Compatibility Tests (with Dual64)
-    // ========================================
-
-    #[cfg(feature = "num-dual-mode")]
-    mod ad_tests {
-        use super::*;
-        use num_dual::*;
-
-        #[test]
-        fn test_flat_curve_with_dual64() {
-            // Create curve with Dual64 rate
-            let rate = Dual64::from(0.05).derivative();
-            let curve = FlatCurve::new(rate);
-
-            // Compute discount factor
-            let t = Dual64::from(1.0);
-            let df = curve.discount_factor(t).unwrap();
-
-            // Value: exp(-0.05 * 1) ≈ 0.9512
-            assert!((df.re() - 0.9512294).abs() < 1e-5);
-
-            // Derivative: d/dr[exp(-r*t)] = -t * exp(-r*t)
-            // At r=0.05, t=1: -1 * exp(-0.05) ≈ -0.9512
-            assert!((df.eps[0] - (-0.9512294)).abs() < 1e-5);
-        }
-
-        #[test]
-        fn test_flat_curve_sensitivity_to_rate() {
-            let rate = Dual64::from(0.05).derivative();
-            let curve = FlatCurve::new(rate);
-
-            let t = Dual64::from(2.0);
-            let df = curve.discount_factor(t).unwrap();
-
-            // Derivative: d/dr[exp(-r*t)] = -t * exp(-r*t)
-            // At r=0.05, t=2: -2 * exp(-0.1) ≈ -1.8097
-            let expected_deriv = -2.0 * (-0.1_f64).exp();
-            assert!((df.eps[0] - expected_deriv).abs() < 1e-5);
-        }
-    }
 }

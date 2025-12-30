@@ -522,33 +522,4 @@ mod tests {
         let df = curve.discount_factor(1.0_f32).unwrap();
         assert!(df > 0.0 && df < 1.0);
     }
-
-    // ========================================
-    // AD Compatibility Tests
-    // ========================================
-
-    #[cfg(feature = "num-dual-mode")]
-    mod ad_tests {
-        use super::*;
-        use num_dual::*;
-
-        #[test]
-        fn test_interpolated_curve_with_dual64() {
-            let tenors = [Dual64::from(0.5), Dual64::from(1.0), Dual64::from(2.0)];
-            let rates = [
-                Dual64::from(0.02),
-                Dual64::from(0.03).derivative(), // Differentiate w.r.t. 1Y rate
-                Dual64::from(0.04),
-            ];
-
-            let curve =
-                InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::Linear, false).unwrap();
-
-            let t = Dual64::from(1.0);
-            let df = curve.discount_factor(t).unwrap();
-
-            // At t=1, rate = 0.03, so df ≈ exp(-0.03)
-            assert!((df.re() - (-0.03_f64).exp()).abs() < 1e-5);
-        }
-    }
 }

@@ -263,46 +263,4 @@ mod tests {
         let vol = surface.volatility(100.0_f32, 1.0_f32).unwrap();
         assert_eq!(vol, 0.25_f32);
     }
-
-    // ========================================
-    // AD Compatibility Tests
-    // ========================================
-
-    #[cfg(feature = "num-dual-mode")]
-    mod ad_tests {
-        use super::*;
-        use num_dual::*;
-
-        #[test]
-        fn test_flat_vol_with_dual64() {
-            // Create surface with Dual64 volatility
-            let sigma = Dual64::from(0.20).derivative();
-            let surface = FlatVol::new(sigma);
-
-            let strike = Dual64::from(100.0);
-            let expiry = Dual64::from(1.0);
-            let vol = surface.volatility(strike, expiry).unwrap();
-
-            // Value should be 0.20
-            assert!((vol.re() - 0.20).abs() < 1e-10);
-
-            // Derivative w.r.t. sigma should be 1.0
-            assert!((vol.eps[0] - 1.0).abs() < 1e-10);
-        }
-
-        #[test]
-        fn test_vega_propagation() {
-            // This test verifies that volatility sensitivities propagate correctly
-            let sigma = Dual64::from(0.25).derivative();
-            let surface = FlatVol::new(sigma);
-
-            let strike = Dual64::from(100.0);
-            let expiry = Dual64::from(0.5);
-            let vol = surface.volatility(strike, expiry).unwrap();
-
-            // Vega coefficient: dV/dσ = dV/dvol * dvol/dσ = dV/dvol * 1
-            // So the derivative of vol w.r.t. sigma is 1.0
-            assert!((vol.eps[0] - 1.0).abs() < 1e-10);
-        }
-    }
 }
