@@ -321,7 +321,7 @@ impl XvaCalculator {
             .par_iter()
             .filter_map(|(cp_id, ns_ids)| {
                 // Get credit parameters for this counterparty
-                let counterparty = portfolio.get_counterparty(cp_id)?;
+                let counterparty = portfolio.counterparty(cp_id)?;
                 let credit_params = counterparty.credit_params();
 
                 Some(self.compute_counterparty_xva(
@@ -410,7 +410,7 @@ impl XvaCalculator {
         let counterparty_xvas: Vec<CounterpartyXva> = ns_by_counterparty
             .par_iter()
             .filter_map(|(cp_id, ns_ids)| {
-                let counterparty = portfolio.get_counterparty(cp_id)?;
+                let counterparty = portfolio.counterparty(cp_id)?;
                 let credit_params = counterparty.credit_params();
 
                 let netting_set_xvas: Vec<NettingSetXva> = ns_ids
