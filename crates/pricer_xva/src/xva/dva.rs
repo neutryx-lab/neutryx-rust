@@ -82,10 +82,7 @@ pub fn compute_dva_with_survival(
     own_credit: &OwnCreditParams,
     cp_survival: &[f64],
 ) -> f64 {
-    if time_grid.len() < 2
-        || ene.len() != time_grid.len()
-        || cp_survival.len() != time_grid.len()
-    {
+    if time_grid.len() < 2 || ene.len() != time_grid.len() || cp_survival.len() != time_grid.len() {
         return 0.0;
     }
 

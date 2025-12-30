@@ -163,10 +163,7 @@ mod tests {
 
     fn create_test_exposure_soa() -> ExposureSoA {
         let time_grid = vec![0.0, 0.25, 0.5, 0.75, 1.0];
-        let ns_ids = vec![
-            NettingSetId::new("NS001"),
-            NettingSetId::new("NS002"),
-        ];
+        let ns_ids = vec![NettingSetId::new("NS001"), NettingSetId::new("NS002")];
         let mut soa = ExposureSoA::new(time_grid, ns_ids);
 
         // Set some exposure values

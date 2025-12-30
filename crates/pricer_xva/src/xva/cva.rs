@@ -82,10 +82,7 @@ pub fn compute_cva_with_survival(
     credit_params: &CreditParams,
     own_survival: &[f64],
 ) -> f64 {
-    if time_grid.len() < 2
-        || ee.len() != time_grid.len()
-        || own_survival.len() != time_grid.len()
-    {
+    if time_grid.len() < 2 || ee.len() != time_grid.len() || own_survival.len() != time_grid.len() {
         return 0.0;
     }
 

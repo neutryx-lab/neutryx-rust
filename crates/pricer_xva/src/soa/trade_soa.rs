@@ -193,9 +193,7 @@ mod tests {
     use crate::portfolio::{CounterpartyId, NettingSetId};
     use approx::assert_relative_eq;
     use pricer_core::types::Currency;
-    use pricer_models::instruments::{
-        ExerciseStyle, Instrument, InstrumentParams, VanillaOption,
-    };
+    use pricer_models::instruments::{ExerciseStyle, Instrument, InstrumentParams, VanillaOption};
 
     fn create_test_trade(id: &str, strike: f64, payoff: PayoffType, notional: f64) -> Trade {
         let params = InstrumentParams::new(strike, 1.0, 1.0).unwrap();

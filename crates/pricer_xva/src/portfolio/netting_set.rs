@@ -429,10 +429,7 @@ mod tests {
 
     #[test]
     fn test_netting_set_creation() {
-        let ns = NettingSet::new(
-            NettingSetId::new("NS001"),
-            CounterpartyId::new("CP001"),
-        );
+        let ns = NettingSet::new(NettingSetId::new("NS001"), CounterpartyId::new("CP001"));
 
         assert_eq!(ns.id().as_str(), "NS001");
         assert_eq!(ns.counterparty_id().as_str(), "CP001");
@@ -460,10 +457,7 @@ mod tests {
 
     #[test]
     fn test_netting_set_add_trade() {
-        let mut ns = NettingSet::new(
-            NettingSetId::new("NS001"),
-            CounterpartyId::new("CP001"),
-        );
+        let mut ns = NettingSet::new(NettingSetId::new("NS001"), CounterpartyId::new("CP001"));
 
         ns.add_trade(TradeId::new("T001"));
         ns.add_trade(TradeId::new("T002"));
@@ -475,10 +469,7 @@ mod tests {
 
     #[test]
     fn test_netting_set_add_trades() {
-        let mut ns = NettingSet::new(
-            NettingSetId::new("NS001"),
-            CounterpartyId::new("CP001"),
-        );
+        let mut ns = NettingSet::new(NettingSetId::new("NS001"), CounterpartyId::new("CP001"));
 
         ns.add_trades(vec![
             TradeId::new("T001"),
@@ -491,10 +482,7 @@ mod tests {
 
     #[test]
     fn test_netting_set_remove_trade() {
-        let mut ns = NettingSet::new(
-            NettingSetId::new("NS001"),
-            CounterpartyId::new("CP001"),
-        );
+        let mut ns = NettingSet::new(NettingSetId::new("NS001"), CounterpartyId::new("CP001"));
 
         ns.add_trade(TradeId::new("T001"));
         ns.add_trade(TradeId::new("T002"));
@@ -509,10 +497,7 @@ mod tests {
 
     #[test]
     fn test_netting_set_clear_trades() {
-        let mut ns = NettingSet::new(
-            NettingSetId::new("NS001"),
-            CounterpartyId::new("CP001"),
-        );
+        let mut ns = NettingSet::new(NettingSetId::new("NS001"), CounterpartyId::new("CP001"));
 
         ns.add_trades(vec![TradeId::new("T001"), TradeId::new("T002")]);
         ns.clear_trades();
@@ -522,10 +507,7 @@ mod tests {
 
     #[test]
     fn test_netting_set_set_remove_collateral() {
-        let mut ns = NettingSet::new(
-            NettingSetId::new("NS001"),
-            CounterpartyId::new("CP001"),
-        );
+        let mut ns = NettingSet::new(NettingSetId::new("NS001"), CounterpartyId::new("CP001"));
 
         assert!(!ns.is_collateralised());
 
@@ -544,10 +526,7 @@ mod tests {
 
     #[test]
     fn test_netting_set_iter_trade_ids() {
-        let mut ns = NettingSet::new(
-            NettingSetId::new("NS001"),
-            CounterpartyId::new("CP001"),
-        );
+        let mut ns = NettingSet::new(NettingSetId::new("NS001"), CounterpartyId::new("CP001"));
 
         ns.add_trades(vec![TradeId::new("T001"), TradeId::new("T002")]);
 
@@ -557,10 +536,7 @@ mod tests {
 
     #[test]
     fn test_netting_set_clone() {
-        let mut ns1 = NettingSet::new(
-            NettingSetId::new("NS001"),
-            CounterpartyId::new("CP001"),
-        );
+        let mut ns1 = NettingSet::new(NettingSetId::new("NS001"), CounterpartyId::new("CP001"));
         ns1.add_trade(TradeId::new("T001"));
 
         let ns2 = ns1.clone();
