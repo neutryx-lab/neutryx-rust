@@ -110,8 +110,7 @@ mod tests {
 
     #[test]
     fn test_error_is_error_trait() {
-        let err: Box<dyn std::error::Error> =
-            Box::new(PortfolioError::EmptyPortfolio);
+        let err: Box<dyn std::error::Error> = Box::new(PortfolioError::EmptyPortfolio);
         assert!(err.to_string().contains("empty"));
     }
 }

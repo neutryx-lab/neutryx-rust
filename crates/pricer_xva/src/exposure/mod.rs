@@ -157,8 +157,7 @@ impl ExposureCalculator {
         (0..n_times)
             .into_par_iter()
             .map(|t| {
-                let mut exposures: Vec<f64> =
-                    values.iter().map(|path| path[t].max(0.0)).collect();
+                let mut exposures: Vec<f64> = values.iter().map(|path| path[t].max(0.0)).collect();
                 exposures.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
                 exposures[quantile_idx]
             })
@@ -368,13 +367,7 @@ mod tests {
 
     #[test]
     fn test_potential_future_exposure() {
-        let values = vec![
-            vec![10.0],
-            vec![5.0],
-            vec![15.0],
-            vec![20.0],
-            vec![25.0],
-        ];
+        let values = vec![vec![10.0], vec![5.0], vec![15.0], vec![20.0], vec![25.0]];
 
         let pfe_80 = ExposureCalculator::potential_future_exposure(&values, 0.80);
 
@@ -434,11 +427,7 @@ mod tests {
 
     #[test]
     fn test_expected_negative_exposure() {
-        let values = vec![
-            vec![10.0, -20.0],
-            vec![-5.0, -10.0],
-            vec![15.0, 5.0],
-        ];
+        let values = vec![vec![10.0, -20.0], vec![-5.0, -10.0], vec![15.0, 5.0]];
 
         let ene = ExposureCalculator::expected_negative_exposure(&values);
 

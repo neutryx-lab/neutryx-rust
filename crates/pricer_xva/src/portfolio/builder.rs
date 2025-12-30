@@ -111,10 +111,7 @@ impl PortfolioBuilder {
     }
 
     /// Adds multiple netting sets to the portfolio.
-    pub fn add_netting_sets(
-        mut self,
-        netting_sets: impl IntoIterator<Item = NettingSet>,
-    ) -> Self {
+    pub fn add_netting_sets(mut self, netting_sets: impl IntoIterator<Item = NettingSet>) -> Self {
         self.netting_sets.extend(netting_sets);
         self
     }
@@ -239,7 +236,7 @@ mod tests {
     use crate::portfolio::counterparty::CreditParams;
     use pricer_core::types::Currency;
     use pricer_models::instruments::{
-        ExerciseStyle, InstrumentParams, Instrument, PayoffType, VanillaOption,
+        ExerciseStyle, Instrument, InstrumentParams, PayoffType, VanillaOption,
     };
 
     fn create_test_instrument() -> Instrument<f64> {
@@ -322,7 +319,10 @@ mod tests {
             .add_counterparty(cp2)
             .build();
 
-        assert!(matches!(result, Err(PortfolioError::DuplicateCounterparty(_))));
+        assert!(matches!(
+            result,
+            Err(PortfolioError::DuplicateCounterparty(_))
+        ));
     }
 
     #[test]
@@ -337,7 +337,10 @@ mod tests {
             .add_netting_set(ns2)
             .build();
 
-        assert!(matches!(result, Err(PortfolioError::DuplicateNettingSet(_))));
+        assert!(matches!(
+            result,
+            Err(PortfolioError::DuplicateNettingSet(_))
+        ));
     }
 
     #[test]

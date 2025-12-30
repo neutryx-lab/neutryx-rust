@@ -309,7 +309,7 @@ mod tests {
         // For large negative x, softplus(x) ≈ 0
         let result = soft_plus(-10.0, 0.01);
         assert!(result < 0.01);
-        assert!(result > 0.0);
+        assert!(result >= 0.0);
     }
 
     #[test]

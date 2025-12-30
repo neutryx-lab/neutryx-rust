@@ -38,7 +38,10 @@ impl CreditRating {
     /// Returns whether this rating is investment grade (BBB or better).
     #[inline]
     pub fn is_investment_grade(&self) -> bool {
-        matches!(self, CreditRating::AAA | CreditRating::AA | CreditRating::A | CreditRating::BBB)
+        matches!(
+            self,
+            CreditRating::AAA | CreditRating::AA | CreditRating::A | CreditRating::BBB
+        )
     }
 
     /// Returns a typical hazard rate for this rating (annual, indicative only).
@@ -368,7 +371,11 @@ mod tests {
         assert_relative_eq!(params.survival_prob(0.0), 1.0, epsilon = 1e-10);
 
         // At t=1, survival prob = exp(-0.02) ≈ 0.9802
-        assert_relative_eq!(params.survival_prob(1.0), (-0.02_f64).exp(), epsilon = 1e-10);
+        assert_relative_eq!(
+            params.survival_prob(1.0),
+            (-0.02_f64).exp(),
+            epsilon = 1e-10
+        );
 
         // Survival probability decreases over time
         assert!(params.survival_prob(5.0) < params.survival_prob(1.0));
@@ -403,7 +410,9 @@ mod tests {
 
     #[test]
     fn test_credit_params_with_rating() {
-        let params = CreditParams::new(0.02, 0.4).unwrap().with_rating(CreditRating::BBB);
+        let params = CreditParams::new(0.02, 0.4)
+            .unwrap()
+            .with_rating(CreditRating::BBB);
         assert_eq!(params.rating(), Some(CreditRating::BBB));
     }
 

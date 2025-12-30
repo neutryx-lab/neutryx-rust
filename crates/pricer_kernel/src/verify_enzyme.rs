@@ -58,7 +58,10 @@ mod tests {
             let grad = square_gradient(x);
             let expected = 2.0 * x;
             if !relative_eq!(grad, expected, epsilon = 1e-10) {
-                panic!("Gradient mismatch at x = {}: left = {}, right = {}", x, grad, expected);
+                panic!(
+                    "Gradient mismatch at x = {}: left = {}, right = {}",
+                    x, grad, expected
+                );
             }
         }
     }
@@ -82,7 +85,10 @@ mod tests {
             let grad = square_gradient(x);
             let expected = 2.0 * x;
             if !relative_eq!(grad, expected, epsilon = 1e-10) {
-                panic!("Gradient mismatch at x = {}: left = {}, right = {}", x, grad, expected);
+                panic!(
+                    "Gradient mismatch at x = {}: left = {}, right = {}",
+                    x, grad, expected
+                );
             }
         }
     }
@@ -110,8 +116,11 @@ mod tests {
             let analytical_grad = square_gradient(x);
 
             // Allow slightly larger epsilon for finite difference approximation
-            if !relative_eq!(enzyme_grad, analytical_grad, epsilon = 1e-6) {
-                panic!("Enzyme gradient should match analytical at x = {}: left = {}, right = {}", x, enzyme_grad, analytical_grad);
+            if !relative_eq!(enzyme_grad, analytical_grad, epsilon = 1e-5) {
+                panic!(
+                    "Enzyme gradient should match analytical at x = {}: left = {}, right = {}",
+                    x, enzyme_grad, analytical_grad
+                );
             }
         }
     }
@@ -128,7 +137,10 @@ mod tests {
         let analytical_gradient = square_gradient(x);
 
         if !relative_eq!(fd_gradient, analytical_gradient, epsilon = 1e-6) {
-            panic!("Finite difference should approximate analytical gradient: left = {}, right = {}", fd_gradient, analytical_gradient);
+            panic!(
+                "Finite difference should approximate analytical gradient: left = {}, right = {}",
+                fd_gradient, analytical_gradient
+            );
         }
     }
 

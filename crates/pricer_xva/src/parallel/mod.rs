@@ -33,10 +33,7 @@ where
     R: Send,
     F: Fn(&[T]) -> R + Sync,
 {
-    items
-        .par_chunks(batch_size.max(1))
-        .map(processor)
-        .collect()
+    items.par_chunks(batch_size.max(1)).map(processor).collect()
 }
 
 /// Parallel map with specified batch size.
