@@ -17,8 +17,8 @@
 //! S(t+dt) = S(t) * exp((r - 0.5*sigma^2)*dt + sigma*sqrt(dt)*dW)
 //! ```
 
-use pricer_core::traits::Float;
 use pricer_core::traits::priceable::Differentiable;
+use pricer_core::traits::Float;
 
 use super::stochastic::{SingleState, StochasticModel};
 

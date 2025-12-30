@@ -138,7 +138,7 @@ pub fn smooth_abs<T: Float>(x: T, epsilon: T) -> T {
     let abs_x = x.abs();
     let two = T::from(2.0).unwrap();
     let term = (-two * abs_x / epsilon).exp();
-    
+
     abs_x + epsilon * (T::one() + term).ln()
 }
 
@@ -191,7 +191,11 @@ pub fn smooth_sqrt<T: Float>(x: T, epsilon: T) -> T {
     let eps_squared = epsilon * epsilon;
     let radicand = x + eps_squared;
     // Clamp to 0 to handle x < -ε² (e.g. large negative inputs)
-    let safe_radicand = if radicand < T::zero() { T::zero() } else { radicand };
+    let safe_radicand = if radicand < T::zero() {
+        T::zero()
+    } else {
+        radicand
+    };
     safe_radicand.sqrt() - epsilon
 }
 

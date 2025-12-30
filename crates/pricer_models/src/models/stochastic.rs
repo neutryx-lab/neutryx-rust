@@ -29,8 +29,8 @@
 //! // Model implementation would follow...
 //! ```
 
-use pricer_core::traits::Float;
 use pricer_core::traits::priceable::Differentiable;
+use pricer_core::traits::Float;
 
 /// State representation for stochastic models.
 ///
