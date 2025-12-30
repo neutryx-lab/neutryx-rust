@@ -391,7 +391,8 @@ mod tests {
 
     #[test]
     fn test_domain() {
-        let interp = LinearInterpolator::new(&[1.0, 2.0, 3.0, 4.0], &[1.0, 4.0, 9.0, 16.0]).unwrap();
+        let interp =
+            LinearInterpolator::new(&[1.0, 2.0, 3.0, 4.0], &[1.0, 4.0, 9.0, 16.0]).unwrap();
         let (x_min, x_max) = interp.domain();
         assert_eq!(x_min, 1.0);
         assert_eq!(x_max, 4.0);
