@@ -10,7 +10,7 @@ authors.workspace = true
 [dependencies]
 # Phase 3.0: NO dependencies on other pricer_* crates (complete isolation)
 # LLVM 18 bindings for Enzyme support
-llvm-sys = "180"
+llvm-sys = { version = "180", features = ["prefer-dynamic"] }
 
 # Basic numeric traits
 num-traits.workspace = true

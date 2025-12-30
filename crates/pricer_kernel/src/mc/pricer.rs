@@ -17,7 +17,7 @@
 //! The pricer maintains an internal [`PathWorkspace`](super::workspace::PathWorkspace)
 //! that is reused across pricing calls, minimising memory allocations.
 
-use super::config::{AdMode, MonteCarloConfig};
+use super::config::MonteCarloConfig;
 use super::error::ConfigError;
 use super::paths::{generate_gbm_paths, generate_gbm_paths_tangent_spot, GbmParams};
 use super::payoff::{compute_payoff, compute_payoffs, PayoffParams};
@@ -309,6 +309,11 @@ impl MonteCarloPricer {
         // Bump size: 1% of spot or minimum 0.01
         let bump = (0.01 * gbm.spot).max(0.01);
 
+        // Save RNG state for reproducibility
+        let seed = self.rng.seed();
+
+        // Price at S + bump
+        self.reset_with_seed(seed);
         let gbm_up = GbmParams {
             spot: gbm.spot + bump,
             ..gbm
@@ -410,7 +415,7 @@ impl MonteCarloPricer {
     }
 
     /// Computes Rho using central differences.
-    fn compute_rho(&mut self, gbm: GbmParams, payoff: PayoffParams, discount_factor: f64) -> f64 {
+    fn compute_rho(&mut self, gbm: GbmParams, payoff: PayoffParams, _discount_factor: f64) -> f64 {
         // Bump size: 1% rate change (absolute)
         let bump = 0.01;
         let seed = self.rng.seed();

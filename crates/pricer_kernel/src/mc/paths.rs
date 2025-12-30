@@ -150,8 +150,7 @@ pub fn generate_gbm_paths(
     let drift_dt = (params.rate - 0.5 * params.volatility * params.volatility) * dt;
     let vol_sqrt_dt = params.volatility * dt.sqrt();
 
-    let paths = workspace.paths_mut();
-    let randoms = workspace.randoms();
+    let (paths, randoms) = workspace.paths_mut_and_randoms();
     let n_steps_plus_1 = n_steps + 1;
 
     // Generate paths (outer loop over paths, inner over steps)
@@ -210,8 +209,7 @@ pub fn generate_gbm_paths_tangent_spot(
     let drift_dt = (params.rate - 0.5 * params.volatility * params.volatility) * dt;
     let vol_sqrt_dt = params.volatility * dt.sqrt();
 
-    let paths = workspace.paths_mut();
-    let randoms = workspace.randoms();
+    let (paths, randoms) = workspace.paths_mut_and_randoms();
     let n_steps_plus_1 = n_steps + 1;
 
     // Allocate tangent paths (outside simulation for Enzyme)

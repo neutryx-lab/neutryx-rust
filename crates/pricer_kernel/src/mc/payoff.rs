@@ -240,8 +240,7 @@ pub fn compute_payoffs(
     n_paths: usize,
     n_steps: usize,
 ) {
-    let paths = workspace.paths();
-    let payoffs = workspace.payoffs_mut();
+    let (paths, payoffs) = workspace.paths_and_payoffs_mut();
     let n_steps_plus_1 = n_steps + 1;
 
     for path_idx in 0..n_paths {
