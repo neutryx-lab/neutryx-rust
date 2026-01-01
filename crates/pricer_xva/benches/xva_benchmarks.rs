@@ -17,7 +17,7 @@ use pricer_xva::portfolio::{
     TradeId,
 };
 use pricer_xva::soa::TradeSoA;
-use pricer_xva::xva::{compute_cva, compute_dva, generate_flat_discount_factors, OwnCreditParams, XvaCalculator};
+use pricer_xva::xva::{compute_cva, compute_dva, generate_flat_discount_factors, OwnCreditParams};
 
 /// Generate synthetic exposure scenarios for benchmarking.
 fn generate_exposure_scenarios(n_scenarios: usize, n_times: usize) -> Vec<Vec<f64>> {
@@ -220,11 +220,8 @@ fn bench_trade_soa(c: &mut Criterion) {
     let mut group = c.benchmark_group("trade_soa");
 
     for n_trades in [100, 1000, 10000] {
-        // Create portfolio
-        let credit = CreditParams::new(0.02, 0.4).unwrap();
-        let counterparty = Counterparty::new(CounterpartyId::new("CP001"), credit);
-        let netting_set =
-            NettingSet::new(NettingSetId::new("NS001"), CounterpartyId::new("CP001"));
+        // Create trades for SoA benchmark (counterparty/netting_set not needed for TradeSoA)
+        let _credit = CreditParams::new(0.02, 0.4).unwrap();
 
         let trades: Vec<Trade> = (0..n_trades)
             .map(|i| {

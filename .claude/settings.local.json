@@ -59,7 +59,8 @@
       "Skill(kiro:spec-status)",
       "Skill(kiro:spec-status:*)",
       "Bash(cargo build:*)",
-      "Bash(RUSTDOCFLAGS=\"-D warnings\" cargo doc:*)"
+      "Bash(RUSTDOCFLAGS=\"-D warnings\" cargo doc:*)",
+      "Bash(cargo bench:*)"
     ]
   }
 }
