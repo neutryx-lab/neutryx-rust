@@ -17,8 +17,18 @@
 //!
 //! All functions use smooth operations only (no `if`, `max`, `min` on floats).
 //! This ensures Enzyme can compute gradients correctly.
+//!
+//! # L1/L2 Integration (Phase 4)
+//!
+//! When the `l1l2-integration` feature is enabled, this module uses
+//! smoothing functions from `pricer_core::math::smoothing` instead of
+//! local implementations. This ensures consistency across the crate hierarchy.
 
 use super::workspace::PathWorkspace;
+
+// Phase 4: Conditional import of pricer_core smoothing functions
+#[cfg(feature = "l1l2-integration")]
+use pricer_core::math::smoothing::{smooth_indicator, smooth_max};
 
 /// Payoff type for option pricing.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -106,6 +116,11 @@ impl PayoffParams {
 /// For large positive `x/ε`, uses the approximation `x` to avoid overflow.
 /// For large negative `x/ε`, uses the approximation `ε × exp(x/ε)` for accuracy.
 ///
+/// # L1/L2 Integration
+///
+/// When the `l1l2-integration` feature is enabled, this function delegates to
+/// `pricer_core::math::smoothing::smooth_max(x, 0, ε)` for consistency.
+///
 /// # Arguments
 ///
 /// * `x` - Input value
@@ -115,6 +130,17 @@ impl PayoffParams {
 ///
 /// Smooth approximation of max(x, 0).
 #[inline]
+#[cfg(feature = "l1l2-integration")]
+pub fn soft_plus(x: f64, epsilon: f64) -> f64 {
+    // Delegate to pricer_core's smooth_max for consistency
+    smooth_max(x, 0.0, epsilon)
+}
+
+/// Soft-plus function: smooth approximation of max(x, 0).
+///
+/// Local implementation used when `l1l2-integration` feature is disabled.
+#[inline]
+#[cfg(not(feature = "l1l2-integration"))]
 pub fn soft_plus(x: f64, epsilon: f64) -> f64 {
     let scaled = x / epsilon;
     if scaled > 20.0 {
@@ -134,6 +160,11 @@ pub fn soft_plus(x: f64, epsilon: f64) -> f64 {
 /// d/dx softplus(x, ε) = sigmoid(x/ε) = 1 / (1 + exp(-x/ε))
 /// ```
 ///
+/// # L1/L2 Integration
+///
+/// When the `l1l2-integration` feature is enabled, this function delegates to
+/// `pricer_core::math::smoothing::smooth_indicator(x, ε)` for consistency.
+///
 /// # Arguments
 ///
 /// * `x` - Input value
@@ -143,6 +174,17 @@ pub fn soft_plus(x: f64, epsilon: f64) -> f64 {
 ///
 /// Value in (0, 1), approximating the Heaviside step function.
 #[inline]
+#[cfg(feature = "l1l2-integration")]
+pub fn soft_plus_derivative(x: f64, epsilon: f64) -> f64 {
+    // Delegate to pricer_core's smooth_indicator for consistency
+    smooth_indicator(x, epsilon)
+}
+
+/// Derivative of soft-plus: the sigmoid function.
+///
+/// Local implementation used when `l1l2-integration` feature is disabled.
+#[inline]
+#[cfg(not(feature = "l1l2-integration"))]
 pub fn soft_plus_derivative(x: f64, epsilon: f64) -> f64 {
     let scaled = x / epsilon;
     if scaled > 20.0 {
@@ -449,5 +491,86 @@ mod tests {
         let payoff_put = asian_arithmetic_put_smooth(&[], 100.0, 1e-4);
         assert_eq!(payoff_call, 0.0);
         assert_eq!(payoff_put, 0.0);
+    }
+
+    /// Tests for pricer_core integration (Phase 4, Task 1.2).
+    ///
+    /// These tests verify that the soft_plus function (which now delegates to
+    /// pricer_core when l1l2-integration is enabled) produces consistent results.
+    #[cfg(feature = "l1l2-integration")]
+    mod core_integration_tests {
+        use super::*;
+        use pricer_core::math::smoothing::{smooth_indicator, smooth_max};
+
+        /// Verify soft_plus delegates to pricer_core smooth_max correctly.
+        ///
+        /// When l1l2-integration is enabled, soft_plus(x, ε) should return
+        /// the same result as smooth_max(x, 0, ε).
+        #[test]
+        fn test_soft_plus_delegates_to_smooth_max() {
+            let test_cases = [
+                (10.0, 0.01),  // Large positive
+                (-10.0, 0.01), // Large negative
+                (0.0, 1.0),    // At zero
+                (1.0, 1e-4),   // Small positive
+                (-1.0, 1e-4),  // Small negative
+                (100.0, 1e-6), // Very large positive
+                (0.5, 0.1),    // Intermediate
+            ];
+
+            for (x, epsilon) in test_cases {
+                let soft_plus_result = soft_plus(x, epsilon);
+                let smooth_max_result = smooth_max(x, 0.0, epsilon);
+
+                // Results should be identical since soft_plus delegates to smooth_max
+                assert_relative_eq!(soft_plus_result, smooth_max_result, epsilon = 1e-10);
+            }
+        }
+
+        /// Verify European call payoff uses pricer_core smoothing.
+        #[test]
+        fn test_european_call_uses_core_smoothing() {
+            let strike = 100.0;
+            let epsilon = 1e-4;
+
+            for terminal in [80.0, 100.0, 120.0] {
+                let payoff_result = european_call_smooth(terminal, strike, epsilon);
+                let expected = smooth_max(terminal - strike, 0.0, epsilon);
+
+                assert_relative_eq!(payoff_result, expected, epsilon = 1e-10);
+            }
+        }
+
+        /// Verify European put payoff uses pricer_core smoothing.
+        #[test]
+        fn test_european_put_uses_core_smoothing() {
+            let strike = 100.0;
+            let epsilon = 1e-4;
+
+            for terminal in [80.0, 100.0, 120.0] {
+                let payoff_result = european_put_smooth(terminal, strike, epsilon);
+                let expected = smooth_max(strike - terminal, 0.0, epsilon);
+
+                assert_relative_eq!(payoff_result, expected, epsilon = 1e-10);
+            }
+        }
+
+        /// Verify soft_plus_derivative delegates to smooth_indicator.
+        #[test]
+        fn test_soft_plus_derivative_delegates_to_smooth_indicator() {
+            let test_cases = [
+                (10.0, 0.01),  // Large positive → ~1
+                (-10.0, 0.01), // Large negative → ~0
+                (0.0, 1.0),    // At zero → 0.5
+            ];
+
+            for (x, epsilon) in test_cases {
+                let deriv_result = soft_plus_derivative(x, epsilon);
+                let indicator_result = smooth_indicator(x, epsilon);
+
+                // Results should be identical since soft_plus_derivative delegates to smooth_indicator
+                assert_relative_eq!(deriv_result, indicator_result, epsilon = 1e-10);
+            }
+        }
     }
 }

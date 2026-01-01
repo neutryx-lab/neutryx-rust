@@ -21,7 +21,7 @@
   - nightly Rustでの互換性確認
   - _Requirements: 4.1, 4.2, 4.5_
 
-- [ ] 1.2 (P) smoothing関数のpricer_core統合
+- [x] 1.2 (P) smoothing関数のpricer_core統合
   - ローカルのsoft_plus関数をpricer_core::math::smoothing::smooth_maxで置換
   - 既存のpayoff.rs内のsmooth payoff関数を更新
   - Float trait制約の追加とジェネリック化

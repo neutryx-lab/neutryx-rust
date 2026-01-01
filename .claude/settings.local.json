@@ -60,7 +60,8 @@
       "Skill(kiro:spec-status:*)",
       "Bash(cargo build:*)",
       "Bash(RUSTDOCFLAGS=\"-D warnings\" cargo doc:*)",
-      "Bash(cargo bench:*)"
+      "Bash(cargo bench:*)",
+      "Bash(git push:*)"
     ]
   }
 }
