@@ -41,15 +41,12 @@
 //! let state = manager.restore_state(nearest.unwrap());
 //! ```
 
+mod budget;
+mod manager;
 mod state;
 mod strategy;
 
+pub use budget::MemoryBudget;
+pub use manager::{CheckpointError, CheckpointManager, CheckpointResult};
 pub use state::{CheckpointStorage, SimulationState};
 pub use strategy::CheckpointStrategy;
-
-// Future modules (Phase 4.3):
-// mod manager;
-// mod error;
-
-// pub use manager::CheckpointManager;
-// pub use error::CheckpointError;

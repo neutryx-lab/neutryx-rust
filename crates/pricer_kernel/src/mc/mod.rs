@@ -148,7 +148,9 @@ pub mod error;
 pub mod paths;
 pub mod payoff;
 pub mod pricer;
+pub mod thread_local;
 pub mod workspace;
+pub mod workspace_checkpoint;
 
 // Re-exports for convenient access
 pub use config::{AdMode, MonteCarloConfig, MonteCarloConfigBuilder};
@@ -160,4 +162,9 @@ pub use payoff::{
     PayoffType,
 };
 pub use pricer::{Greek, MonteCarloPricer, PricingResult};
+pub use thread_local::{
+    current_thread_index, DefaultWorkspaceFactory, ParallelWorkspaces, ThreadLocalWorkspacePool,
+    WorkspaceFactory,
+};
 pub use workspace::PathWorkspace;
+pub use workspace_checkpoint::CheckpointWorkspace;

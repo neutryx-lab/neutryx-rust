@@ -19,9 +19,15 @@ llvm-sys = { version = "180", features = ["prefer-dynamic"], optional = true }
 # Basic numeric traits
 num-traits.workspace = true
 
+# Error handling
+thiserror.workspace = true
+
 # Random number generation (Phase 3.1a: RNG infrastructure)
 rand.workspace = true
 rand_distr.workspace = true
+
+# Parallel processing (Phase 4: Thread-local workspace)
+rayon.workspace = true
 
 [dev-dependencies]
 approx.workspace = true

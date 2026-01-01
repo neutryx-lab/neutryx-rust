@@ -119,7 +119,9 @@ impl CheckpointStrategy {
                 let ratio = step / base_interval;
                 ratio > 0 && (ratio & (ratio - 1)) == 0
             }
-            CheckpointStrategy::Adaptive { target_memory_mb: _ } => {
+            CheckpointStrategy::Adaptive {
+                target_memory_mb: _,
+            } => {
                 // Adaptive strategy requires runtime memory information
                 // For now, fall back to uniform with interval based on total_steps
                 if total_steps == 0 {

@@ -79,8 +79,7 @@ impl<T: Float> SimulationState<T> {
     /// Used for memory budget calculations.
     pub fn memory_size(&self) -> usize {
         // Base struct size + vector capacity
-        std::mem::size_of::<Self>()
-            + self.current_prices.capacity() * std::mem::size_of::<T>()
+        std::mem::size_of::<Self>() + self.current_prices.capacity() * std::mem::size_of::<T>()
     }
 }
 
@@ -341,13 +340,7 @@ mod tests {
     fn test_storage_replace_existing() {
         let mut storage: CheckpointStorage<f64> = CheckpointStorage::new(10);
 
-        let state1 = SimulationState::new(
-            100,
-            42,
-            1000,
-            PathObserverState::default(),
-            vec![100.0],
-        );
+        let state1 = SimulationState::new(100, 42, 1000, PathObserverState::default(), vec![100.0]);
         let state2 = SimulationState::new(
             100,
             42,
