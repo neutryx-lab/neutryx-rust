@@ -122,8 +122,10 @@ parallel/   → Rayon-based parallelization config
 - `install_enzyme.sh` - Enzyme installation helper
 - `verify_enzyme.sh` - Enzyme verification
 
-**CI/CD**: `.github/workflows/ci.yml`
-- Separate jobs for stable (L1/L2/L4) and nightly (L3)
+**CI/CD**: `.github/workflows/`
+
+- `ci.yml` - Separate jobs for stable (L1/L2/L4) and nightly (L3)
+- `release.yml` - Release automation and changelog generation (Phase 6)
 
 ## Naming Conventions
 
@@ -171,5 +173,5 @@ Current roadmap (see README.md):
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-01_ — Phase 3 status clarified (3.2 complete, autodiff integration Phase 4), Phase 6 now in progress
+_Updated: 2026-01-01_ — Added release.yml workflow (Phase 6 CI/CD automation)
 _Document patterns, not file trees. New files following patterns should not require updates_
