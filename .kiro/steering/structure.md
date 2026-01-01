@@ -162,14 +162,14 @@ use super::types::DualNumber;
 Current roadmap (see README.md):
 
 - Phase 0: Workspace scaffolding (complete)
-- Phase 1: L1 foundation - types, traits, smoothing, market data (largely complete)
-- Phase 2: L2 business logic - instruments, models (largely complete)
-- Phase 3: L3 Enzyme integration - AD infrastructure, MC kernel (complete)
+- Phase 1: L1 foundation - types, traits, smoothing, market data (complete)
+- Phase 2: L2 business logic - instruments, models (complete)
+- Phase 3: L3 Enzyme integration - AD infrastructure, MC kernel (largely complete; Phase 3.2 bump-and-revalue Greeks, Phase 4 will add `#[autodiff]` macros)
 - Phase 4: Advanced MC - checkpointing, path-dependent options (planned)
 - Phase 5: L4 XVA - CVA/DVA/FVA, exposure metrics, parallelization (complete)
-- Phase 6: Production hardening - docs, benchmarks, CI/CD (planned)
+- Phase 6: Production hardening - docs, benchmarks, CI/CD (in progress)
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-01_ — Phase 3 marked complete (MC kernel with Enzyme AD integration)
+_Updated: 2026-01-01_ — Phase 3 status clarified (3.2 complete, autodiff integration Phase 4), Phase 6 now in progress
 _Document patterns, not file trees. New files following patterns should not require updates_

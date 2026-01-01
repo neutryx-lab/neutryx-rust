@@ -2,29 +2,29 @@
 
 ## Tasks
 
-- [ ] 1. ドキュメント品質設定の強化
-- [ ] 1.1 (P) pricer_coreのドキュメントlint設定を強化する
+- [x] 1. ドキュメント品質設定の強化
+- [x] 1.1 (P) pricer_coreのドキュメントlint設定を強化する
   - 既存の`#![warn(missing_docs)]`を`#![deny(missing_docs)]`に変更
   - `#![deny(rustdoc::broken_intra_doc_links)]`を追加
   - 欠落しているdocコメントを補完し、コンパイルエラーを解消
   - 主要なパブリック関数に`# Examples`セクションを追加
   - _Requirements: 1.1, 1.5, 1.6_
 
-- [ ] 1.2 (P) pricer_modelsのドキュメントlint設定を強化する
+- [x] 1.2 (P) pricer_modelsのドキュメントlint設定を強化する
   - 既存の`#![warn(missing_docs)]`を`#![deny(missing_docs)]`に変更
   - `#![deny(rustdoc::broken_intra_doc_links)]`を追加
   - 欠落しているdocコメントを補完し、コンパイルエラーを解消
   - 主要なパブリック関数に`# Examples`セクションを追加
   - _Requirements: 1.2, 1.5, 1.6_
 
-- [ ] 1.3 (P) pricer_kernelのドキュメントlint設定を強化する
+- [x] 1.3 (P) pricer_kernelのドキュメントlint設定を強化する
   - 既存の`#![warn(missing_docs)]`を`#![deny(missing_docs)]`に変更
   - `#![deny(rustdoc::broken_intra_doc_links)]`を追加
   - 欠落しているdocコメントを補完し、コンパイルエラーを解消
   - モンテカルロ関連の関数に`# Examples`セクションを追加
   - _Requirements: 1.3, 1.5, 1.6_
 
-- [ ] 1.4 (P) pricer_xvaのドキュメントlint設定を強化する
+- [x] 1.4 (P) pricer_xvaのドキュメントlint設定を強化する
   - 既存の`#![warn(missing_docs)]`を`#![deny(missing_docs)]`に変更
   - `#![deny(rustdoc::broken_intra_doc_links)]`を追加
   - 欠落しているdocコメントを補完し、コンパイルエラーを解消
