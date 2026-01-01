@@ -37,16 +37,14 @@ use std::hint::black_box;
 // RNG Benchmarks
 // =============================================================================
 
-/// Benchmark single normal random number generation.
 #[library_benchmark]
-fn bench_rng_single_normal() -> f64 {
+fn rng_single_normal() -> f64 {
     let mut rng = PricerRng::from_seed(42);
     black_box(rng.gen_normal())
 }
 
-/// Benchmark batch normal random number generation (1000 samples).
 #[library_benchmark]
-fn bench_rng_batch_normal_1k() -> f64 {
+fn rng_batch_normal_1k() -> f64 {
     let mut rng = PricerRng::from_seed(42);
     let mut buffer = vec![0.0; 1_000];
     rng.fill_normal(&mut buffer);
@@ -57,7 +55,6 @@ fn bench_rng_batch_normal_1k() -> f64 {
 // Monte Carlo Pricing Benchmarks
 // =============================================================================
 
-/// Setup function for pricer with specific configuration.
 fn setup_pricer(n_paths: usize, n_steps: usize) -> MonteCarloPricer {
     let config = MonteCarloConfig::builder()
         .n_paths(n_paths)
@@ -68,9 +65,8 @@ fn setup_pricer(n_paths: usize, n_steps: usize) -> MonteCarloPricer {
     MonteCarloPricer::new(config).unwrap()
 }
 
-/// Benchmark European call pricing with 1K paths (fast baseline).
 #[library_benchmark]
-fn bench_mc_european_call_1k() -> f64 {
+fn mc_european_call_1k() -> f64 {
     let mut pricer = setup_pricer(1_000, 50);
     let gbm = GbmParams::default();
     let payoff = PayoffParams::call(100.0);
@@ -78,9 +74,8 @@ fn bench_mc_european_call_1k() -> f64 {
     black_box(result.price)
 }
 
-/// Benchmark European call pricing with 10K paths (standard).
 #[library_benchmark]
-fn bench_mc_european_call_10k() -> f64 {
+fn mc_european_call_10k() -> f64 {
     let mut pricer = setup_pricer(10_000, 50);
     let gbm = GbmParams::default();
     let payoff = PayoffParams::call(100.0);
@@ -88,9 +83,8 @@ fn bench_mc_european_call_10k() -> f64 {
     black_box(result.price)
 }
 
-/// Benchmark European put pricing with 10K paths.
 #[library_benchmark]
-fn bench_mc_european_put_10k() -> f64 {
+fn mc_european_put_10k() -> f64 {
     let mut pricer = setup_pricer(10_000, 50);
     let gbm = GbmParams::default();
     let payoff = PayoffParams::put(100.0);
@@ -102,9 +96,8 @@ fn bench_mc_european_put_10k() -> f64 {
 // Greeks Benchmarks
 // =============================================================================
 
-/// Benchmark Delta computation via forward-mode AD (1K paths).
 #[library_benchmark]
-fn bench_greeks_delta_ad_1k() -> (f64, f64) {
+fn greeks_delta_ad_1k() -> (f64, f64) {
     let mut pricer = setup_pricer(1_000, 50);
     let gbm = GbmParams::default();
     let payoff = PayoffParams::call(100.0);
@@ -112,9 +105,8 @@ fn bench_greeks_delta_ad_1k() -> (f64, f64) {
     black_box(result)
 }
 
-/// Benchmark Delta computation via forward-mode AD (10K paths).
 #[library_benchmark]
-fn bench_greeks_delta_ad_10k() -> (f64, f64) {
+fn greeks_delta_ad_10k() -> (f64, f64) {
     let mut pricer = setup_pricer(10_000, 50);
     let gbm = GbmParams::default();
     let payoff = PayoffParams::call(100.0);
@@ -126,15 +118,13 @@ fn bench_greeks_delta_ad_10k() -> (f64, f64) {
 // Workspace Benchmarks
 // =============================================================================
 
-/// Benchmark pricer creation (includes workspace allocation).
 #[library_benchmark]
-fn bench_workspace_creation_10k() -> MonteCarloPricer {
+fn workspace_creation_10k() -> MonteCarloPricer {
     black_box(setup_pricer(10_000, 50))
 }
 
-/// Benchmark workspace reuse across multiple pricing calls.
 #[library_benchmark]
-fn bench_workspace_reuse() -> f64 {
+fn workspace_reuse() -> f64 {
     let mut pricer = setup_pricer(10_000, 50);
     let gbm = GbmParams::default();
     let payoff = PayoffParams::call(100.0);
@@ -153,9 +143,8 @@ fn bench_workspace_reuse() -> f64 {
 // Time Steps Scaling Benchmarks
 // =============================================================================
 
-/// Benchmark pricing with 10 time steps.
 #[library_benchmark]
-fn bench_mc_steps_10() -> f64 {
+fn mc_steps_10() -> f64 {
     let mut pricer = setup_pricer(10_000, 10);
     let gbm = GbmParams::default();
     let payoff = PayoffParams::call(100.0);
@@ -163,9 +152,8 @@ fn bench_mc_steps_10() -> f64 {
     black_box(result.price)
 }
 
-/// Benchmark pricing with 252 time steps (daily for 1 year).
 #[library_benchmark]
-fn bench_mc_steps_252() -> f64 {
+fn mc_steps_252() -> f64 {
     let mut pricer = setup_pricer(10_000, 252);
     let gbm = GbmParams::default();
     let payoff = PayoffParams::call(100.0);
@@ -179,27 +167,27 @@ fn bench_mc_steps_252() -> f64 {
 
 library_benchmark_group!(
     name = rng_benchmarks;
-    benchmarks = bench_rng_single_normal, bench_rng_batch_normal_1k
+    benchmarks = rng_single_normal, rng_batch_normal_1k
 );
 
 library_benchmark_group!(
     name = mc_pricing_benchmarks;
-    benchmarks = bench_mc_european_call_1k, bench_mc_european_call_10k, bench_mc_european_put_10k
+    benchmarks = mc_european_call_1k, mc_european_call_10k, mc_european_put_10k
 );
 
 library_benchmark_group!(
     name = greeks_benchmarks;
-    benchmarks = bench_greeks_delta_ad_1k, bench_greeks_delta_ad_10k
+    benchmarks = greeks_delta_ad_1k, greeks_delta_ad_10k
 );
 
 library_benchmark_group!(
     name = workspace_benchmarks;
-    benchmarks = bench_workspace_creation_10k, bench_workspace_reuse
+    benchmarks = workspace_creation_10k, workspace_reuse
 );
 
 library_benchmark_group!(
     name = steps_scaling_benchmarks;
-    benchmarks = bench_mc_steps_10, bench_mc_steps_252
+    benchmarks = mc_steps_10, mc_steps_252
 );
 
 main!(

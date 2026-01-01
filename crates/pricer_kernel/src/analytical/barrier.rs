@@ -1,6 +1,6 @@
 //! Barrier option analytical pricing.
 //!
-//! Implements closed-form solutions for European barrier options.
+//! Implements Rubinstein-Reiner (1991) closed-form solutions for European barrier options.
 //!
 //! # Barrier Types
 //!
@@ -160,7 +160,7 @@ pub struct BarrierResult<T: Float> {
     pub y1: T,
 }
 
-/// Standard normal CDF.
+/// Standard normal CDF using Abramowitz-Stegun approximation.
 #[inline]
 fn norm_cdf<T: Float>(x: T) -> T {
     let one = T::one();
@@ -190,36 +190,75 @@ fn norm_cdf<T: Float>(x: T) -> T {
     half * erfc_val
 }
 
-/// Vanilla European call (Black-Scholes).
-#[inline]
-fn vanilla_call<T: Float>(s: T, k: T, r: T, q: T, vol: T, t: T) -> T {
-    let zero = T::zero();
-    let two = T::from(2.0).unwrap();
-    if t <= zero || vol <= zero {
-        return zero;
-    }
-
-    let sqrt_t = t.sqrt();
-    let d1 = ((s / k).ln() + (r - q + vol * vol / two) * t) / (vol * sqrt_t);
-    let d2 = d1 - vol * sqrt_t;
-
-    s * ((-q) * t).exp() * norm_cdf(d1) - k * (-r * t).exp() * norm_cdf(d2)
+/// Rubinstein-Reiner building block terms.
+/// A, B, C, D terms for computing barrier option prices.
+struct RRTerms<T: Float> {
+    a: T,
+    b: T,
+    c: T,
+    d: T,
 }
 
-/// Vanilla European put (Black-Scholes).
-#[inline]
-fn vanilla_put<T: Float>(s: T, k: T, r: T, q: T, vol: T, t: T) -> T {
-    let zero = T::zero();
-    let two = T::from(2.0).unwrap();
-    if t <= zero || vol <= zero {
-        return zero;
+impl<T: Float> RRTerms<T> {
+    /// Compute Rubinstein-Reiner terms for barrier options.
+    /// phi = +1 for calls, -1 for puts
+    /// eta = +1 for down barriers, -1 for up barriers
+    #[allow(clippy::too_many_arguments)]
+    fn compute(s: T, k: T, h: T, r: T, q: T, vol: T, t: T, phi: T, eta: T) -> Self {
+        let zero = T::zero();
+        let two = T::from(2.0).unwrap();
+
+        if t <= zero || vol <= zero {
+            return Self {
+                a: zero,
+                b: zero,
+                c: zero,
+                d: zero,
+            };
+        }
+
+        let sqrt_t = t.sqrt();
+        let vol_sqrt_t = vol * sqrt_t;
+        let vol_sq = vol * vol;
+
+        // Lambda = (r - q + σ²/2) / σ²
+        let lambda = (r - q + vol_sq / two) / vol_sq;
+
+        // x1 = ln(S/K)/(σ√T) + λσ√T
+        let x1 = (s / k).ln() / vol_sqrt_t + lambda * vol_sqrt_t;
+        // x2 = ln(S/H)/(σ√T) + λσ√T
+        let x2 = (s / h).ln() / vol_sqrt_t + lambda * vol_sqrt_t;
+        // y1 = ln(H²/(SK))/(σ√T) + λσ√T
+        let y1 = (h * h / (s * k)).ln() / vol_sqrt_t + lambda * vol_sqrt_t;
+        // y2 = ln(H/S)/(σ√T) + λσ√T
+        let y2 = (h / s).ln() / vol_sqrt_t + lambda * vol_sqrt_t;
+
+        let discount = (-r * t).exp();
+        let fwd_factor = ((-q) * t).exp();
+
+        // (H/S)^(2λ)
+        let h_s_2l = (h / s).powf(two * lambda);
+        // (H/S)^(2λ-2)
+        let h_s_2l_m2 = (h / s).powf(two * lambda - two);
+
+        // Term A: phi controls call vs put sign
+        let a = phi * s * fwd_factor * norm_cdf(phi * x1)
+            - phi * k * discount * norm_cdf(phi * x1 - phi * vol_sqrt_t);
+
+        // Term B
+        let b = phi * s * fwd_factor * norm_cdf(phi * x2)
+            - phi * k * discount * norm_cdf(phi * x2 - phi * vol_sqrt_t);
+
+        // Term C: eta controls up vs down
+        let c = phi * s * fwd_factor * h_s_2l * norm_cdf(eta * y1)
+            - phi * k * discount * h_s_2l_m2 * norm_cdf(eta * y1 - eta * vol_sqrt_t);
+
+        // Term D
+        let d = phi * s * fwd_factor * h_s_2l * norm_cdf(eta * y2)
+            - phi * k * discount * h_s_2l_m2 * norm_cdf(eta * y2 - eta * vol_sqrt_t);
+
+        Self { a, b, c, d }
     }
-
-    let sqrt_t = t.sqrt();
-    let d1 = ((s / k).ln() + (r - q + vol * vol / two) * t) / (vol * sqrt_t);
-    let d2 = d1 - vol * sqrt_t;
-
-    k * (-r * t).exp() * norm_cdf(-d2) - s * ((-q) * t).exp() * norm_cdf(-d1)
 }
 
 /// Price a barrier option.
@@ -230,6 +269,7 @@ pub fn barrier_price<T: Float>(params: &BarrierParams<T>) -> T {
 /// Price a barrier option with detailed output.
 pub fn barrier_price_with_details<T: Float>(params: &BarrierParams<T>) -> BarrierResult<T> {
     let zero = T::zero();
+    let one = T::one();
     let two = T::from(2.0).unwrap();
 
     let s = params.spot;
@@ -250,49 +290,38 @@ pub fn barrier_price_with_details<T: Float>(params: &BarrierParams<T>) -> Barrie
         };
     }
 
-    let vol_sqrt_t = vol * t.sqrt();
+    let sqrt_t = t.sqrt();
+    let vol_sqrt_t = vol * sqrt_t;
     let vol_sq = vol * vol;
 
     let lambda = (r - q + vol_sq / two) / vol_sq;
     let y = (h * h / (s * k)).ln() / vol_sqrt_t + lambda * vol_sqrt_t;
-    let x1 = (s / h).ln() / vol_sqrt_t + lambda * vol_sqrt_t;
+    let x1 = (s / k).ln() / vol_sqrt_t + lambda * vol_sqrt_t;
     let y1 = (h / s).ln() / vol_sqrt_t + lambda * vol_sqrt_t;
 
+    // phi: +1 for call, -1 for put
+    let phi = match params.barrier_type.option_type {
+        OptionType::Call => one,
+        OptionType::Put => -one,
+    };
+
+    // eta: +1 for down, -1 for up
+    let eta = match params.barrier_type.direction {
+        BarrierDirection::Down => one,
+        BarrierDirection::Up => -one,
+    };
+
     let price = match params.barrier_type.direction {
-        BarrierDirection::Down => compute_down(
-            s,
-            k,
-            h,
-            r,
-            q,
-            vol,
-            t,
-            lambda,
-            y,
-            x1,
-            y1,
-            params.barrier_type.knock,
-            params.barrier_type.option_type,
-        ),
-        BarrierDirection::Up => compute_up(
-            s,
-            k,
-            h,
-            r,
-            q,
-            vol,
-            t,
-            lambda,
-            y,
-            x1,
-            y1,
-            params.barrier_type.knock,
-            params.barrier_type.option_type,
-        ),
+        BarrierDirection::Down => {
+            compute_down_price(s, k, h, r, q, vol, t, phi, eta, params.barrier_type)
+        }
+        BarrierDirection::Up => {
+            compute_up_price(s, k, h, r, q, vol, t, phi, eta, params.barrier_type)
+        }
     };
 
     BarrierResult {
-        price,
+        price: price.max(zero),
         lambda,
         y,
         x1,
@@ -300,8 +329,9 @@ pub fn barrier_price_with_details<T: Float>(params: &BarrierParams<T>) -> Barrie
     }
 }
 
+/// Compute down barrier option price.
 #[allow(clippy::too_many_arguments)]
-fn compute_down<T: Float>(
+fn compute_down_price<T: Float>(
     s: T,
     k: T,
     h: T,
@@ -309,39 +339,67 @@ fn compute_down<T: Float>(
     q: T,
     vol: T,
     t: T,
-    lambda: T,
-    y: T,
-    x1: T,
-    y1: T,
-    knock: KnockType,
-    opt: OptionType,
+    phi: T,
+    eta: T,
+    bt: BarrierType,
 ) -> T {
     let zero = T::zero();
+    let one = T::one();
+
+    // If already knocked in/out
     if s <= h {
-        return match knock {
-            KnockType::In => match opt {
-                OptionType::Call => vanilla_call(s, k, r, q, vol, t),
-                OptionType::Put => vanilla_put(s, k, r, q, vol, t),
-            },
+        return match bt.knock {
+            KnockType::In => {
+                // Already knocked in, return vanilla
+                let terms = RRTerms::compute(s, k, h, r, q, vol, t, phi, eta);
+                terms.a
+            }
             KnockType::Out => zero,
         };
     }
 
-    let knock_in = down_knock_in(s, k, h, r, q, vol, t, lambda, y, x1, y1, opt);
-    match knock {
-        KnockType::In => knock_in,
-        KnockType::Out => {
-            let vanilla = match opt {
-                OptionType::Call => vanilla_call(s, k, r, q, vol, t),
-                OptionType::Put => vanilla_put(s, k, r, q, vol, t),
-            };
-            (vanilla - knock_in).max(zero)
+    let terms = RRTerms::compute(s, k, h, r, q, vol, t, phi, one);
+
+    // Rubinstein-Reiner formulas depend on K vs H relationship
+    match bt.option_type {
+        OptionType::Call => {
+            if k > h {
+                // Down barrier call, K > H
+                match bt.knock {
+                    KnockType::In => terms.c,
+                    KnockType::Out => terms.a - terms.c,
+                }
+            } else {
+                // Down barrier call, K <= H
+                match bt.knock {
+                    KnockType::In => terms.a - terms.b + terms.d,
+                    KnockType::Out => terms.b - terms.d,
+                }
+            }
+        }
+        OptionType::Put => {
+            // For puts, we need phi = -1
+            let terms_put = RRTerms::compute(s, k, h, r, q, vol, t, -one, one);
+            if k > h {
+                // Down barrier put, K > H
+                match bt.knock {
+                    KnockType::In => terms_put.b - terms_put.c + terms_put.d,
+                    KnockType::Out => terms_put.a - terms_put.b + terms_put.c - terms_put.d,
+                }
+            } else {
+                // Down barrier put, K <= H
+                match bt.knock {
+                    KnockType::In => terms_put.a,
+                    KnockType::Out => zero,
+                }
+            }
         }
     }
 }
 
+/// Compute up barrier option price.
 #[allow(clippy::too_many_arguments)]
-fn compute_up<T: Float>(
+fn compute_up_price<T: Float>(
     s: T,
     k: T,
     h: T,
@@ -349,109 +407,59 @@ fn compute_up<T: Float>(
     q: T,
     vol: T,
     t: T,
-    lambda: T,
-    y: T,
-    x1: T,
-    y1: T,
-    knock: KnockType,
-    opt: OptionType,
+    phi: T,
+    eta: T,
+    bt: BarrierType,
 ) -> T {
     let zero = T::zero();
+    let one = T::one();
+
+    // If already knocked in/out
     if s >= h {
-        return match knock {
-            KnockType::In => match opt {
-                OptionType::Call => vanilla_call(s, k, r, q, vol, t),
-                OptionType::Put => vanilla_put(s, k, r, q, vol, t),
-            },
+        return match bt.knock {
+            KnockType::In => {
+                // Already knocked in, return vanilla
+                let terms = RRTerms::compute(s, k, h, r, q, vol, t, phi, eta);
+                terms.a
+            }
             KnockType::Out => zero,
         };
     }
 
-    let knock_in = up_knock_in(s, k, h, r, q, vol, t, lambda, y, x1, y1, opt);
-    match knock {
-        KnockType::In => knock_in,
-        KnockType::Out => {
-            let vanilla = match opt {
-                OptionType::Call => vanilla_call(s, k, r, q, vol, t),
-                OptionType::Put => vanilla_put(s, k, r, q, vol, t),
-            };
-            (vanilla - knock_in).max(zero)
-        }
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn down_knock_in<T: Float>(
-    s: T,
-    k: T,
-    h: T,
-    r: T,
-    q: T,
-    vol: T,
-    t: T,
-    lambda: T,
-    y: T,
-    _x1: T,
-    _y1: T,
-    opt: OptionType,
-) -> T {
-    let zero = T::zero();
-    let two = T::from(2.0).unwrap();
-    let vol_sqrt_t = vol * t.sqrt();
-    let discount = (-r * t).exp();
-    let fwd_factor = ((-q) * t).exp();
-    let ratio = h / s;
-    let h_s_2l = ratio.powf(two * lambda);
-    let h_s_2l_m2 = ratio.powf(two * lambda - two);
-
-    match opt {
+    match bt.option_type {
         OptionType::Call => {
-            let t1 = h_s_2l * s * fwd_factor * norm_cdf(y);
-            let t2 = k * discount * h_s_2l_m2 * norm_cdf(y - vol_sqrt_t);
-            (t1 - t2).max(zero)
+            // For up barrier calls, use phi = +1, eta = -1
+            let terms = RRTerms::compute(s, k, h, r, q, vol, t, one, -one);
+            if k > h {
+                // Up barrier call, K > H
+                match bt.knock {
+                    KnockType::In => terms.a,
+                    KnockType::Out => zero,
+                }
+            } else {
+                // Up barrier call, K <= H
+                match bt.knock {
+                    KnockType::In => terms.b - terms.c + terms.d,
+                    KnockType::Out => terms.a - terms.b + terms.c - terms.d,
+                }
+            }
         }
         OptionType::Put => {
-            let t1 = k * discount * h_s_2l_m2 * norm_cdf(-y + vol_sqrt_t);
-            let t2 = h_s_2l * s * fwd_factor * norm_cdf(-y);
-            (t1 - t2).max(zero)
-        }
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn up_knock_in<T: Float>(
-    s: T,
-    k: T,
-    h: T,
-    r: T,
-    q: T,
-    vol: T,
-    t: T,
-    lambda: T,
-    y: T,
-    _x1: T,
-    _y1: T,
-    opt: OptionType,
-) -> T {
-    let zero = T::zero();
-    let two = T::from(2.0).unwrap();
-    let vol_sqrt_t = vol * t.sqrt();
-    let discount = (-r * t).exp();
-    let fwd_factor = ((-q) * t).exp();
-    let ratio = h / s;
-    let h_s_2l = ratio.powf(two * lambda);
-    let h_s_2l_m2 = ratio.powf(two * lambda - two);
-
-    match opt {
-        OptionType::Call => {
-            let t1 = h_s_2l * s * fwd_factor * norm_cdf(y);
-            let t2 = k * discount * h_s_2l_m2 * norm_cdf(y - vol_sqrt_t);
-            (t1 - t2).max(zero)
-        }
-        OptionType::Put => {
-            let t1 = k * discount * h_s_2l_m2 * norm_cdf(-y + vol_sqrt_t);
-            let t2 = h_s_2l * s * fwd_factor * norm_cdf(-y);
-            (t1 - t2).max(zero)
+            // For up barrier puts, use phi = -1, eta = -1
+            let terms = RRTerms::compute(s, k, h, r, q, vol, t, -one, -one);
+            if k > h {
+                // Up barrier put, K > H
+                match bt.knock {
+                    KnockType::In => terms.a - terms.b + terms.d,
+                    KnockType::Out => terms.b - terms.d,
+                }
+            } else {
+                // Up barrier put, K <= H
+                match bt.knock {
+                    KnockType::In => terms.c,
+                    KnockType::Out => terms.a - terms.c,
+                }
+            }
         }
     }
 }
@@ -639,6 +647,30 @@ pub fn up_in_put<T: Float>(
         maturity,
         BarrierType::up_in_put(),
     ))
+}
+
+/// Vanilla European call (Black-Scholes) for testing.
+#[cfg(test)]
+fn vanilla_call<T: Float>(s: T, k: T, r: T, q: T, vol: T, t: T) -> T {
+    let zero = T::zero();
+    let one = T::one();
+    let terms = RRTerms::compute(s, k, s, r, q, vol, t, one, one);
+    if t <= zero || vol <= zero {
+        return zero;
+    }
+    terms.a
+}
+
+/// Vanilla European put (Black-Scholes) for testing.
+#[cfg(test)]
+fn vanilla_put<T: Float>(s: T, k: T, r: T, q: T, vol: T, t: T) -> T {
+    let zero = T::zero();
+    let one = T::one();
+    let terms = RRTerms::compute(s, k, s, r, q, vol, t, -one, one);
+    if t <= zero || vol <= zero {
+        return zero;
+    }
+    terms.a
 }
 
 #[cfg(test)]

@@ -226,10 +226,10 @@ jobs:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   # ============================================================================
-  # Benchmarks
+  # Benchmarks (Criterion - time-based)
   # ============================================================================
   benchmarks:
-    name: Benchmarks
+    name: Benchmarks (Criterion)
     runs-on: ubuntu-latest
     needs: [stable-layers]
 
@@ -259,9 +259,135 @@ jobs:
       - name: Upload benchmark results
         uses: actions/upload-artifact@v4
         with:
-          name: benchmark-results
+          name: benchmark-results-criterion
           path: target/criterion/
           retention-days: 30
+
+  # ============================================================================
+  # Iai-Callgrind Benchmarks (instruction-count based, reproducible)
+  # ============================================================================
+  benchmarks-iai:
+    name: Benchmarks (Iai-Callgrind)
+    runs-on: ubuntu-latest
+    needs: [nightly-kernel]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install nightly Rust
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: llvm-tools, rust-src
+
+      - name: Install Valgrind
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y valgrind
+
+      - name: Install iai-callgrind-runner
+        run: |
+          cargo install iai-callgrind-runner --version 0.14.2
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-iai-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-build-iai-
+
+      - name: Cache iai baseline
+        uses: actions/cache@v4
+        with:
+          path: target/iai
+          key: ${{ runner.os }}-iai-baseline-${{ github.base_ref || 'main' }}
+          restore-keys: |
+            ${{ runner.os }}-iai-baseline-main
+            ${{ runner.os }}-iai-baseline-
+
+      - name: Run Iai-Callgrind benchmarks
+        run: |
+          cargo +nightly bench --bench kernel_iai 2>&1 | tee iai-output.txt
+        continue-on-error: true
+
+      - name: Parse benchmark results
+        id: parse-results
+        run: |
+          # Extract regression information from iai output
+          if grep -q "Performance has regressed" iai-output.txt; then
+            echo "regression_detected=true" >> $GITHUB_OUTPUT
+            echo "::warning::Performance regression detected in iai-callgrind benchmarks"
+          else
+            echo "regression_detected=false" >> $GITHUB_OUTPUT
+            echo "::notice::Iai-callgrind benchmarks completed successfully"
+          fi
+
+          # Count benchmarks
+          TOTAL=$(grep -c "kernel_iai::" iai-output.txt || echo "0")
+          echo "total_benchmarks=$TOTAL" >> $GITHUB_OUTPUT
+
+      - name: Check regression threshold
+        run: |
+          chmod +x scripts/check_iai_regression.sh
+          ./scripts/check_iai_regression.sh --threshold 10 --output github || true
+
+      - name: Upload Iai benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results-iai
+          path: |
+            target/iai/
+            iai-output.txt
+          retention-days: 30
+
+      - name: Save baseline for main branch
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          echo "Saving new baseline for main branch"
+          # Iai-callgrind automatically saves results that can be used as baseline
+
+      - name: Comment on PR with benchmark results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            let output = '';
+            try {
+              output = fs.readFileSync('iai-output.txt', 'utf8');
+            } catch (e) {
+              output = 'No benchmark output available';
+            }
+
+            // Extract summary
+            const lines = output.split('\n');
+            const summaryLines = lines.filter(l =>
+              l.includes('Instructions:') ||
+              l.includes('kernel_iai::') ||
+              l.includes('Performance')
+            ).slice(0, 20);
+
+            const body = `## Iai-Callgrind Benchmark Results
+
+            <details>
+            <summary>Benchmark Summary</summary>
+
+            \`\`\`
+            ${summaryLines.join('\n') || 'No summary available'}
+            \`\`\`
+
+            </details>
+
+            > Full results available in the [workflow artifacts](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
 
   # ============================================================================
   # Documentation

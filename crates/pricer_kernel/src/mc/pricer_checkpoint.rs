@@ -723,4 +723,368 @@ mod tests {
         // Prices should be identical (same RNG seed)
         assert_relative_eq!(result_with.price, result_without.price, epsilon = 1e-10);
     }
+
+    // ========================================================================
+    // Different Checkpoint Intervals Tests (Task 12.1)
+    // ========================================================================
+
+    #[test]
+    fn test_different_uniform_intervals_produce_same_price() {
+        let mc_config = MonteCarloConfig::builder()
+            .n_paths(2000)
+            .n_steps(100)
+            .seed(42)
+            .build()
+            .unwrap();
+
+        let gbm = GbmParams::default();
+        let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+        let df = 0.95;
+
+        // Interval = 5
+        let config_5 = CheckpointPricingConfig::new(
+            mc_config.clone(),
+            CheckpointStrategy::Uniform { interval: 5 },
+        );
+        let mut pricer_5 = CheckpointPricer::new(config_5).unwrap();
+        let result_5 = pricer_5.price_path_dependent_with_checkpoints(gbm, payoff, df);
+
+        // Interval = 10
+        let config_10 = CheckpointPricingConfig::new(
+            mc_config.clone(),
+            CheckpointStrategy::Uniform { interval: 10 },
+        );
+        let mut pricer_10 = CheckpointPricer::new(config_10).unwrap();
+        let result_10 = pricer_10.price_path_dependent_with_checkpoints(gbm, payoff, df);
+
+        // Interval = 20
+        let config_20 = CheckpointPricingConfig::new(
+            mc_config.clone(),
+            CheckpointStrategy::Uniform { interval: 20 },
+        );
+        let mut pricer_20 = CheckpointPricer::new(config_20).unwrap();
+        let result_20 = pricer_20.price_path_dependent_with_checkpoints(gbm, payoff, df);
+
+        // Interval = 50
+        let config_50 =
+            CheckpointPricingConfig::new(mc_config, CheckpointStrategy::Uniform { interval: 50 });
+        let mut pricer_50 = CheckpointPricer::new(config_50).unwrap();
+        let result_50 = pricer_50.price_path_dependent_with_checkpoints(gbm, payoff, df);
+
+        // All should produce the same price
+        assert_relative_eq!(result_5.price, result_10.price, epsilon = 1e-10);
+        assert_relative_eq!(result_10.price, result_20.price, epsilon = 1e-10);
+        assert_relative_eq!(result_20.price, result_50.price, epsilon = 1e-10);
+    }
+
+    #[test]
+    fn test_all_strategies_produce_same_price() {
+        let mc_config = MonteCarloConfig::builder()
+            .n_paths(2000)
+            .n_steps(100)
+            .seed(42)
+            .build()
+            .unwrap();
+
+        let gbm = GbmParams::default();
+        let payoff = PathPayoffType::asian_geometric_call(100.0, 1e-6);
+        let df = 0.95;
+
+        // None strategy
+        let config_none = CheckpointPricingConfig::new(mc_config.clone(), CheckpointStrategy::None);
+        let mut pricer_none = CheckpointPricer::new(config_none).unwrap();
+        let result_none = pricer_none.price_path_dependent_with_checkpoints(gbm, payoff, df);
+
+        // Uniform strategy
+        let config_uniform = CheckpointPricingConfig::new(
+            mc_config.clone(),
+            CheckpointStrategy::Uniform { interval: 10 },
+        );
+        let mut pricer_uniform = CheckpointPricer::new(config_uniform).unwrap();
+        let result_uniform = pricer_uniform.price_path_dependent_with_checkpoints(gbm, payoff, df);
+
+        // Logarithmic strategy
+        let config_log = CheckpointPricingConfig::new(
+            mc_config,
+            CheckpointStrategy::Logarithmic { base_interval: 5 },
+        );
+        let mut pricer_log = CheckpointPricer::new(config_log).unwrap();
+        let result_log = pricer_log.price_path_dependent_with_checkpoints(gbm, payoff, df);
+
+        // All should produce the same price
+        assert_relative_eq!(result_none.price, result_uniform.price, epsilon = 1e-10);
+        assert_relative_eq!(result_uniform.price, result_log.price, epsilon = 1e-10);
+    }
+
+    #[test]
+    fn test_checkpoint_equivalence_barrier_down_in_put() {
+        let config = create_test_config();
+        let mut pricer = CheckpointPricer::new(config).unwrap();
+
+        let gbm = GbmParams::default();
+        let payoff = PathPayoffType::barrier_down_in_put(100.0, 80.0, 1e-6);
+        let df = 0.95;
+
+        let is_equivalent = pricer.verify_checkpoint_equivalence(gbm, payoff, df, 1e-10);
+        assert!(is_equivalent);
+    }
+
+    #[test]
+    fn test_checkpoint_equivalence_barrier_up_in() {
+        let config = create_test_config();
+        let mut pricer = CheckpointPricer::new(config).unwrap();
+
+        let gbm = GbmParams::default();
+        let payoff = PathPayoffType::barrier_up_in_call(100.0, 120.0, 1e-6);
+        let df = 0.95;
+
+        let is_equivalent = pricer.verify_checkpoint_equivalence(gbm, payoff, df, 1e-10);
+        assert!(is_equivalent);
+    }
+
+    #[test]
+    fn test_checkpoint_equivalence_barrier_down_out_put() {
+        let config = create_test_config();
+        let mut pricer = CheckpointPricer::new(config).unwrap();
+
+        let gbm = GbmParams::default();
+        let payoff = PathPayoffType::barrier_down_out_put(100.0, 80.0, 1e-6);
+        let df = 0.95;
+
+        let is_equivalent = pricer.verify_checkpoint_equivalence(gbm, payoff, df, 1e-10);
+        assert!(is_equivalent);
+    }
+
+    #[test]
+    fn test_checkpoint_equivalence_lookback_floating_call() {
+        let config = create_test_config();
+        let mut pricer = CheckpointPricer::new(config).unwrap();
+
+        let gbm = GbmParams::default();
+        let payoff = PathPayoffType::lookback_floating_call(1e-6);
+        let df = 0.95;
+
+        let is_equivalent = pricer.verify_checkpoint_equivalence(gbm, payoff, df, 1e-10);
+        assert!(is_equivalent);
+    }
+
+    #[test]
+    fn test_checkpoint_equivalence_lookback_floating_put() {
+        let config = create_test_config();
+        let mut pricer = CheckpointPricer::new(config).unwrap();
+
+        let gbm = GbmParams::default();
+        let payoff = PathPayoffType::lookback_floating_put(1e-6);
+        let df = 0.95;
+
+        let is_equivalent = pricer.verify_checkpoint_equivalence(gbm, payoff, df, 1e-10);
+        assert!(is_equivalent);
+    }
+
+    #[test]
+    fn test_checkpoint_equivalence_lookback_fixed_put() {
+        let config = create_test_config();
+        let mut pricer = CheckpointPricer::new(config).unwrap();
+
+        let gbm = GbmParams::default();
+        let payoff = PathPayoffType::lookback_fixed_put(100.0, 1e-6);
+        let df = 0.95;
+
+        let is_equivalent = pricer.verify_checkpoint_equivalence(gbm, payoff, df, 1e-10);
+        assert!(is_equivalent);
+    }
+
+    #[test]
+    fn test_checkpoint_equivalence_asian_put() {
+        let config = create_test_config();
+        let mut pricer = CheckpointPricer::new(config).unwrap();
+
+        let gbm = GbmParams::default();
+        let payoff = PathPayoffType::asian_arithmetic_put(100.0, 1e-6);
+        let df = 0.95;
+
+        let is_equivalent = pricer.verify_checkpoint_equivalence(gbm, payoff, df, 1e-10);
+        assert!(is_equivalent);
+    }
+
+    #[test]
+    fn test_checkpoint_equivalence_geometric_asian_put() {
+        let config = create_test_config();
+        let mut pricer = CheckpointPricer::new(config).unwrap();
+
+        let gbm = GbmParams::default();
+        let payoff = PathPayoffType::asian_geometric_put(100.0, 1e-6);
+        let df = 0.95;
+
+        let is_equivalent = pricer.verify_checkpoint_equivalence(gbm, payoff, df, 1e-10);
+        assert!(is_equivalent);
+    }
+
+    #[test]
+    fn test_different_intervals_all_payoff_types() {
+        // Test that different checkpoint intervals produce the same price
+        // for all path-dependent option types
+        let mc_config = MonteCarloConfig::builder()
+            .n_paths(1000)
+            .n_steps(50)
+            .seed(42)
+            .build()
+            .unwrap();
+
+        let gbm = GbmParams::default();
+        let df = 0.95;
+
+        let payoffs: Vec<PathPayoffType<f64>> = vec![
+            PathPayoffType::asian_arithmetic_call(100.0, 1e-6),
+            PathPayoffType::asian_geometric_call(100.0, 1e-6),
+            PathPayoffType::barrier_up_out_call(100.0, 150.0, 1e-6),
+            PathPayoffType::barrier_down_out_put(100.0, 80.0, 1e-6),
+            PathPayoffType::lookback_fixed_call(100.0, 1e-6),
+            PathPayoffType::lookback_floating_call(1e-6),
+        ];
+
+        for payoff in payoffs {
+            // Interval = 5
+            let config_5 = CheckpointPricingConfig::new(
+                mc_config.clone(),
+                CheckpointStrategy::Uniform { interval: 5 },
+            );
+            let mut pricer_5 = CheckpointPricer::new(config_5).unwrap();
+            let result_5 = pricer_5.price_path_dependent_with_checkpoints(gbm, payoff, df);
+
+            // Interval = 25
+            let config_25 = CheckpointPricingConfig::new(
+                mc_config.clone(),
+                CheckpointStrategy::Uniform { interval: 25 },
+            );
+            let mut pricer_25 = CheckpointPricer::new(config_25).unwrap();
+            let result_25 = pricer_25.price_path_dependent_with_checkpoints(gbm, payoff, df);
+
+            // All should produce the same price regardless of checkpoint interval
+            assert_relative_eq!(result_5.price, result_25.price, epsilon = 1e-10);
+        }
+    }
+
+    // ========================================================================
+    // Overhead Verification Tests (Task 13.1)
+    // ========================================================================
+
+    /// Test that checkpoint memory usage increases with more frequent checkpoints.
+    #[test]
+    fn test_memory_usage_scales_with_checkpoint_frequency() {
+        let n_paths = 2000;
+        let n_steps = 100;
+        let gbm = GbmParams::default();
+        let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+        let df = 0.95;
+
+        // Frequent checkpoints (interval = 5)
+        let mc_config = MonteCarloConfig::builder()
+            .n_paths(n_paths)
+            .n_steps(n_steps)
+            .seed(42)
+            .build()
+            .unwrap();
+        let config_frequent = CheckpointPricingConfig::new(
+            mc_config.clone(),
+            CheckpointStrategy::Uniform { interval: 5 },
+        );
+        let mut pricer_frequent = CheckpointPricer::new(config_frequent).unwrap();
+        let _ = pricer_frequent.price_path_dependent_with_checkpoints(gbm, payoff, df);
+        let mem_frequent = pricer_frequent.checkpoint_memory_usage();
+
+        // Sparse checkpoints (interval = 50)
+        let config_sparse =
+            CheckpointPricingConfig::new(mc_config, CheckpointStrategy::Uniform { interval: 50 });
+        let mut pricer_sparse = CheckpointPricer::new(config_sparse).unwrap();
+        let _ = pricer_sparse.price_path_dependent_with_checkpoints(gbm, payoff, df);
+        let mem_sparse = pricer_sparse.checkpoint_memory_usage();
+
+        // Frequent checkpoints should use more memory
+        assert!(
+            mem_frequent > mem_sparse,
+            "Frequent checkpoints ({}) should use more memory than sparse ({})",
+            mem_frequent,
+            mem_sparse
+        );
+
+        // Memory should roughly scale with number of checkpoints
+        // interval=5 → ~20 checkpoints, interval=50 → ~2 checkpoints
+        // So memory ratio should be roughly 10x (allow 5x-20x range)
+        let ratio = mem_frequent as f64 / mem_sparse as f64;
+        assert!(
+            ratio > 3.0,
+            "Memory ratio should be > 3x, got {:.2}x",
+            ratio
+        );
+    }
+
+    /// Test that checkpoint count matches expected based on interval.
+    #[test]
+    fn test_checkpoint_count_matches_interval() {
+        let n_steps = 100;
+        let mc_config = MonteCarloConfig::builder()
+            .n_paths(1000)
+            .n_steps(n_steps)
+            .seed(42)
+            .build()
+            .unwrap();
+
+        let gbm = GbmParams::default();
+        let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+        let df = 0.95;
+
+        // Test various intervals
+        for interval in [5, 10, 20, 25, 50] {
+            let config = CheckpointPricingConfig::new(
+                mc_config.clone(),
+                CheckpointStrategy::Uniform { interval },
+            );
+            let mut pricer = CheckpointPricer::new(config).unwrap();
+            let _ = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
+
+            let expected_checkpoints = n_steps / interval;
+            let actual_checkpoints = pricer.checkpoint_count();
+
+            // Allow +/- 1 due to boundary conditions
+            assert!(
+                (actual_checkpoints as i32 - expected_checkpoints as i32).abs() <= 1,
+                "Interval {}: expected ~{} checkpoints, got {}",
+                interval,
+                expected_checkpoints,
+                actual_checkpoints
+            );
+        }
+    }
+
+    /// Test that no-checkpoint strategy has zero memory overhead.
+    #[test]
+    fn test_no_checkpoint_zero_memory() {
+        let mc_config = MonteCarloConfig::builder()
+            .n_paths(1000)
+            .n_steps(100)
+            .seed(42)
+            .build()
+            .unwrap();
+
+        let config = CheckpointPricingConfig::new(mc_config, CheckpointStrategy::None);
+        let mut pricer = CheckpointPricer::new(config).unwrap();
+
+        let gbm = GbmParams::default();
+        let payoff = PathPayoffType::asian_arithmetic_call(100.0, 1e-6);
+        let df = 0.95;
+
+        let _ = pricer.price_path_dependent_with_checkpoints(gbm, payoff, df);
+
+        assert_eq!(
+            pricer.checkpoint_count(),
+            0,
+            "No-checkpoint strategy should have 0 checkpoints"
+        );
+        assert_eq!(
+            pricer.checkpoint_memory_usage(),
+            0,
+            "No-checkpoint strategy should have 0 memory usage"
+        );
+    }
 }

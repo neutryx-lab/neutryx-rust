@@ -65,7 +65,9 @@
       "Bash(gh run list:*)",
       "Bash(cat:*)",
       "Bash(cargo clean:*)",
-      "Bash(cargo +nightly check:*)"
+      "Bash(cargo +nightly check:*)",
+      "Bash(cargo +nightly test:*)",
+      "Bash(python:*)"
     ]
   }
 }
