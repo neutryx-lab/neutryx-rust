@@ -32,8 +32,8 @@ pub enum GreeksMode {
     ///
     /// Uses Enzyme's reverse-mode AD for efficient computation
     /// of multiple Greeks simultaneously.
-    /// Requires the `enzyme-mode` feature and nightly Rust.
-    #[cfg(feature = "enzyme-mode")]
+    /// Requires the `enzyme-ad` feature and nightly Rust.
+    #[cfg(feature = "enzyme-ad")]
     EnzymeAAD,
 }
 
@@ -279,6 +279,7 @@ impl GreeksConfigBuilder {
 
 /// Error type for [`GreeksConfig`] validation.
 #[derive(Debug, Clone, PartialEq)]
+#[allow(clippy::enum_variant_names)]
 pub enum GreeksConfigError {
     /// Invalid spot bump value.
     InvalidSpotBump(String),

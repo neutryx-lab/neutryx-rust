@@ -119,8 +119,8 @@ impl CheckpointPricer {
         let workspace = CheckpointWorkspace::new(n_paths, n_steps);
         let rng = PricerRng::from_seed(seed);
 
-        let mut checkpoint_manager = CheckpointManager::new(config.checkpoint_strategy)
-            .with_total_steps(n_steps);
+        let mut checkpoint_manager =
+            CheckpointManager::new(config.checkpoint_strategy).with_total_steps(n_steps);
 
         // Apply memory budget if set
         if let Some(budget) = config.memory_budget {
@@ -459,11 +459,9 @@ mod tests {
             .build()
             .unwrap();
 
-        let config = CheckpointPricingConfig::new(
-            mc_config,
-            CheckpointStrategy::Uniform { interval: 10 },
-        )
-        .with_memory_budget(MemoryBudget::from_mb(100));
+        let config =
+            CheckpointPricingConfig::new(mc_config, CheckpointStrategy::Uniform { interval: 10 })
+                .with_memory_budget(MemoryBudget::from_mb(100));
 
         let pricer = CheckpointPricer::new(config).unwrap();
         assert!(pricer.config().memory_budget.is_some());
@@ -534,7 +532,10 @@ mod tests {
         let df = 0.95;
 
         let is_equivalent = pricer.verify_checkpoint_equivalence(gbm, payoff, df, 1e-10);
-        assert!(is_equivalent, "Checkpoint and non-checkpoint results should match");
+        assert!(
+            is_equivalent,
+            "Checkpoint and non-checkpoint results should match"
+        );
     }
 
     #[test]
@@ -715,8 +716,7 @@ mod tests {
         let result_with = pricer_with.price_path_dependent_with_checkpoints(gbm, payoff, df);
 
         // Without checkpoints
-        let config_without =
-            CheckpointPricingConfig::new(mc_config, CheckpointStrategy::None);
+        let config_without = CheckpointPricingConfig::new(mc_config, CheckpointStrategy::None);
         let mut pricer_without = CheckpointPricer::new(config_without).unwrap();
         let result_without = pricer_without.price_path_dependent_with_checkpoints(gbm, payoff, df);
 

@@ -500,12 +500,7 @@ impl MonteCarloPricer {
     /// spot price and volatility. It measures how delta changes with volatility.
     ///
     /// Uses the formula: (V(S+h,σ+k) - V(S+h,σ-k) - V(S-h,σ+k) + V(S-h,σ-k)) / (4hk)
-    fn compute_vanna(
-        &mut self,
-        gbm: GbmParams,
-        payoff: PayoffParams,
-        discount_factor: f64,
-    ) -> f64 {
+    fn compute_vanna(&mut self, gbm: GbmParams, payoff: PayoffParams, discount_factor: f64) -> f64 {
         let spot_bump = (0.01 * gbm.spot).max(0.01);
         let vol_bump = 0.01;
         let seed = self.rng.seed();
@@ -517,7 +512,9 @@ impl MonteCarloPricer {
             volatility: gbm.volatility + vol_bump,
             ..gbm
         };
-        let price_up_up = self.price_european(gbm_up_up, payoff, discount_factor).price;
+        let price_up_up = self
+            .price_european(gbm_up_up, payoff, discount_factor)
+            .price;
 
         // V(S+h, σ-k)
         self.reset_with_seed(seed);
@@ -563,12 +560,7 @@ impl MonteCarloPricer {
     /// with respect to volatility. It measures the convexity of vega.
     ///
     /// Uses the formula: (V(σ+h) - 2V(σ) + V(σ-h)) / h²
-    fn compute_volga(
-        &mut self,
-        gbm: GbmParams,
-        payoff: PayoffParams,
-        discount_factor: f64,
-    ) -> f64 {
+    fn compute_volga(&mut self, gbm: GbmParams, payoff: PayoffParams, discount_factor: f64) -> f64 {
         let bump = 0.01;
         let seed = self.rng.seed();
 

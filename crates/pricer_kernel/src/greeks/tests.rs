@@ -304,20 +304,61 @@ mod greeks_mode_tests {
 mod greek_enum_tests {
     use crate::mc::Greek;
 
-    // Note: Vanna and Volga are planned for future implementation
-    // These tests are placeholders until the Greek enum is extended
+    #[test]
+    fn test_greek_vanna_exists() {
+        let greek = Greek::Vanna;
+        assert_eq!(greek, Greek::Vanna);
+    }
 
     #[test]
-    fn test_greek_all_current_variants() {
-        // Test all currently implemented variants
+    fn test_greek_volga_exists() {
+        let greek = Greek::Volga;
+        assert_eq!(greek, Greek::Volga);
+    }
+
+    #[test]
+    fn test_greek_all_variants() {
+        // Ensure all 7 variants exist (5 original + 2 new)
         let greeks = [
+            // First-order Greeks
             Greek::Delta,
-            Greek::Gamma,
             Greek::Vega,
             Greek::Theta,
             Greek::Rho,
+            // Second-order Greeks
+            Greek::Gamma,
+            Greek::Vanna,
+            Greek::Volga,
         ];
 
-        assert_eq!(greeks.len(), 5);
+        assert_eq!(greeks.len(), 7);
+    }
+
+    #[test]
+    fn test_greek_clone_and_copy() {
+        let greek = Greek::Vanna;
+        let cloned = greek.clone();
+        let copied: Greek = greek; // Copy
+        assert_eq!(greek, cloned);
+        assert_eq!(greek, copied);
+    }
+
+    #[test]
+    fn test_greek_debug() {
+        let debug_str = format!("{:?}", Greek::Vanna);
+        assert!(debug_str.contains("Vanna"));
+
+        let debug_str = format!("{:?}", Greek::Volga);
+        assert!(debug_str.contains("Volga"));
+    }
+
+    #[test]
+    fn test_greek_hash() {
+        use std::collections::HashSet;
+        let mut set = HashSet::new();
+        set.insert(Greek::Delta);
+        set.insert(Greek::Vanna);
+        set.insert(Greek::Volga);
+        assert_eq!(set.len(), 3);
     }
 }

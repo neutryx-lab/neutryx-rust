@@ -116,11 +116,7 @@ fn norm_cdf<T: Float>(x: T) -> T {
     let erfc_abs = t * poly * (-abs_arg * abs_arg).exp();
 
     let two = T::from(2.0).unwrap();
-    let erfc_val = if arg < zero {
-        two - erfc_abs
-    } else {
-        erfc_abs
-    };
+    let erfc_val = if arg < zero { two - erfc_abs } else { erfc_abs };
 
     half * erfc_val
 }
@@ -172,7 +168,8 @@ pub fn geometric_asian_call<T: Float>(
     volatility: T,
     maturity: T,
 ) -> T {
-    let result = geometric_asian_call_with_details(spot, strike, rate, dividend, volatility, maturity);
+    let result =
+        geometric_asian_call_with_details(spot, strike, rate, dividend, volatility, maturity);
     result.price
 }
 
@@ -270,7 +267,8 @@ pub fn geometric_asian_put<T: Float>(
     volatility: T,
     maturity: T,
 ) -> T {
-    let result = geometric_asian_put_with_details(spot, strike, rate, dividend, volatility, maturity);
+    let result =
+        geometric_asian_put_with_details(spot, strike, rate, dividend, volatility, maturity);
     result.price
 }
 

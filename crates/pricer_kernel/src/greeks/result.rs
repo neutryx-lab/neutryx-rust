@@ -217,10 +217,7 @@ impl<T: Float> GreeksResult<T> {
     /// Returns true if any first-order Greek is computed.
     #[inline]
     pub fn has_first_order_greeks(&self) -> bool {
-        self.delta.is_some()
-            || self.vega.is_some()
-            || self.theta.is_some()
-            || self.rho.is_some()
+        self.delta.is_some() || self.vega.is_some() || self.theta.is_some() || self.rho.is_some()
     }
 
     /// Returns true if any second-order Greek is computed.
@@ -296,7 +293,6 @@ mod serde_impl {
     }
 }
 
-/// Type alias for backward compatibility with existing code.
-///
-/// The original `PricingResult` type is now an alias for `GreeksResult<f64>`.
-pub type PricingResultGeneric = GreeksResult<f64>;
+// Note: The existing mc::PricingResult is kept for backward compatibility.
+// GreeksResult<T> is the new generic type that supports AD.
+// Migration from PricingResult to GreeksResult<f64> will be done in Task 3.x.

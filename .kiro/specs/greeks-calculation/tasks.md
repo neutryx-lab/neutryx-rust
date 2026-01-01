@@ -8,8 +8,8 @@
 
 ## Tasks
 
-- [ ] 1. 基盤型の定義
-- [ ] 1.1 (P) Greeks結果構造体の実装
+- [x] 1. 基盤型の定義
+- [x] 1.1 (P) Greeks結果構造体の実装
   - 一次Greeks（delta, vega, theta, rho）と二次Greeks（gamma, vanna, volga）を保持するジェネリック構造体を作成
   - 価格と標準誤差フィールドを含め、Option型で未計算Greeksを表現
   - T: Float トレイト境界を設定してAD互換性を確保
@@ -18,7 +18,7 @@
   - 既存PricingResultを新構造体のtype aliasとして再定義
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [ ] 1.2 (P) Greek enum拡張とGreeksConfig実装
+- [x] 1.2 (P) Greek enum拡張とGreeksConfig実装
   - 既存Greek enumにVanna、Volgaバリアントを追加
   - 計算モード（BumpRevalue、EnzymeAAD、NumDual）を表すenum作成
   - バンプ幅設定（spot相対、vol絶対、time、rate）を保持する構造体を作成
