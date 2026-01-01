@@ -27,7 +27,7 @@ L4: pricer_xva      → Application (Stable)
 - **Parallelization**: `rayon` (portfolio-level parallelism)
 - **Random**: `rand`, `rand_distr` (Monte Carlo, Ziggurat algorithm for normals)
 - **Time**: `chrono` (date arithmetic, day count conventions)
-- **LLVM Bindings**: `llvm-sys = "180"` (Enzyme integration in L3)
+- **LLVM Bindings**: `llvm-sys = "180"` (optional, `enzyme-ad` feature in L3)
 - **Serialization**: `serde` (optional, ISO 4217 currency support)
 - **Error Handling**: `thiserror` (structured error types)
 - **Testing**: `approx`, `proptest`, `criterion`
@@ -103,5 +103,5 @@ docker run -it neutryx-enzyme
 
 ---
 _Created: 2025-12-29_
-_Updated: 2025-12-30_ — Added StochasticModel trait to key technical decisions
+_Updated: 2025-12-31_ — llvm-sys now optional with enzyme-ad feature
 _Document standards and patterns, not every dependency_

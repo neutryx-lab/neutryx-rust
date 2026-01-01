@@ -166,10 +166,10 @@ Current roadmap (see README.md):
 - Phase 2: L2 business logic - instruments, models (largely complete)
 - Phase 3: L3 Enzyme integration - AD infrastructure, MC kernel (in progress)
 - Phase 4: Advanced MC - checkpointing, path-dependent options (planned)
-- Phase 5: L4 XVA - CVA/DVA/FVA, exposure metrics, parallelization (largely complete)
+- Phase 5: L4 XVA - CVA/DVA/FVA, exposure metrics, parallelization (complete)
 - Phase 6: Production hardening - docs, benchmarks, CI/CD (planned)
 
 ---
 _Created: 2025-12-29_
-_Updated: 2025-12-30_ — Added StochasticModel trait pattern and unified enum dispatch for L2 models
+_Updated: 2025-12-31_ — Phase 5 marked complete
 _Document patterns, not file trees. New files following patterns should not require updates_
