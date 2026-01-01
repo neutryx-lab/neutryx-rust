@@ -99,7 +99,7 @@ pub mod mc;
 pub mod path_dependent;
 
 // Phase 4: Checkpointing for memory-efficient AD
-// pub mod checkpoint;
+pub mod checkpoint;
 
 // Re-export commonly used items for convenience
 pub use enzyme::{gradient, gradient_with_step, Activity};

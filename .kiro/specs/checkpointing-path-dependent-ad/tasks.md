@@ -123,7 +123,7 @@
 
 - [ ] 7. チェックポイント戦略と状態管理
 
-- [ ] 7.1 CheckpointStrategy enumの実装
+- [x] 7.1 CheckpointStrategy enumの実装
   - 均等間隔戦略（デフォルト）
   - 対数間隔戦略（Griewank理論ベース）
   - 適応的戦略（メモリ圧力応答）
@@ -131,7 +131,7 @@
   - should_checkpoint判定ロジック
   - _Requirements: 1.5_
 
-- [ ] 7.2 SimulationStateとCheckpointStorageの実装
+- [x] 7.2 SimulationStateとCheckpointStorageの実装
   - シミュレーション状態の定義（ステップ、RNG状態、観測統計、価格値）
   - 状態のClone/Copy効率化
   - ストレージへの保存/復元機能
