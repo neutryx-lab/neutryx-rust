@@ -180,7 +180,7 @@ impl<T: Float + Default> StochasticState<T> for TwoFactorState<T> {
 /// // let model: Box<dyn StochasticModel<f64>> = ...
 /// ```
 pub trait StochasticModel<T: Float>: Differentiable {
-    /// Model-specific state type (GBM: SingleState<T>, Heston: TwoFactorState<T>)
+    /// Model-specific state type (GBM: `SingleState<T>`, Heston: `TwoFactorState<T>`)
     type State: StochasticState<T>;
 
     /// Model parameters type

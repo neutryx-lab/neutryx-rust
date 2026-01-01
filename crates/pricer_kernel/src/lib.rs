@@ -12,14 +12,13 @@
 //! This is the **only crate** that requires nightly Rust toolchain (`nightly-2025-01-15`).
 //! Enzyme operates at LLVM level and requires nightly features for optimal performance.
 //!
-//! ## Zero Dependency Principle (Phase 3.0)
+//! ## Layer Integration (Phase 4)
 //!
-//! Phase 3.0 focuses on infrastructure setup with **complete isolation**:
-//! - NO dependencies on Layer 1 (pricer_core)
-//! - NO dependencies on Layer 2 (pricer_models)
-//! - Only LLVM bindings (llvm-sys) and basic numeric traits
+//! Phase 4 adds optional L1/L2 integration via the `l1l2-integration` feature:
+//! - Layer 1 (pricer_core): smoothing functions, Float trait, YieldCurve
+//! - Layer 2 (pricer_models): StochasticModel trait, Instrument enum
 //!
-//! Layer 1/2 integration will be added in Phase 4.
+//! Without the feature flag, pricer_kernel remains fully isolated.
 //!
 //! ## Usage Example
 //!
@@ -68,11 +67,12 @@
 //! ## Known Constraints
 //!
 //! - **Nightly Rust Required**: This crate uses `rust-toolchain.toml` to enforce nightly-2025-01-15
-//! - **LLVM 18 Dependency**: llvm-sys requires LLVM 18 to be installed on the system
-//! - **Enzyme Status**: Phase 3.0 uses placeholder implementation; actual Enzyme integration in Phase 4
-//! - **Phase 3.0 Isolation**: No pricer_* crate dependencies; complete Layer 3 isolation
+//! - **LLVM 18 Dependency**: llvm-sys requires LLVM 18 to be installed on the system (enzyme-ad feature)
+//! - **Optional L1/L2**: Use `--features l1l2-integration` to enable pricer_core/pricer_models
 
-#![warn(missing_docs)]
+#![deny(missing_docs)]
+#![deny(rustdoc::broken_intra_doc_links)]
+#![deny(rustdoc::private_intra_doc_links)]
 // Enzyme-specific nightly features (commented until Enzyme is integrated in Phase 4)
 // #![feature(autodiff)]
 
@@ -84,6 +84,10 @@ pub mod enzyme;
 
 // Phase 3.0: Enzyme gradient verification tests
 mod verify_enzyme;
+
+// Phase 4: L1/L2 integration tests (conditional compilation)
+#[cfg(all(test, feature = "l1l2-integration"))]
+mod integration_tests;
 
 // Phase 3.1a: Random number generation infrastructure
 pub mod rng;

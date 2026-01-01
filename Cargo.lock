@@ -595,6 +595,8 @@ dependencies = [
  "approx",
  "llvm-sys",
  "num-traits",
+ "pricer_core",
+ "pricer_models",
  "proptest",
  "rand 0.8.5",
  "rand_distr",

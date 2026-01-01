@@ -23,7 +23,7 @@ impl ExposureCalculator {
     ///
     /// # Arguments
     ///
-    /// * `values` - Simulated values [scenario_idx][time_idx]
+    /// * `values` - Simulated values `[scenario_idx][time_idx]`
     ///
     /// # Returns
     ///
@@ -116,7 +116,7 @@ impl ExposureCalculator {
     ///
     /// # Arguments
     ///
-    /// * `values` - Simulated values [scenario_idx][time_idx]
+    /// * `values` - Simulated values `[scenario_idx][time_idx]`
     /// * `confidence` - Confidence level (e.g., 0.95 or 0.99)
     ///
     /// # Returns
@@ -295,7 +295,7 @@ impl ExposureCalculator {
     ///
     /// # Arguments
     ///
-    /// * `values` - Simulated values [scenario_idx][time_idx]
+    /// * `values` - Simulated values `[scenario_idx][time_idx]`
     ///
     /// # Returns
     ///

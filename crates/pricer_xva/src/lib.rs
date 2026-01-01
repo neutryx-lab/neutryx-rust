@@ -79,7 +79,9 @@
 //! assert_eq!(portfolio.trade_count(), 1);
 //! ```
 
-#![warn(missing_docs)]
+#![deny(missing_docs)]
+#![deny(rustdoc::broken_intra_doc_links)]
+#![deny(rustdoc::private_intra_doc_links)]
 
 pub mod exposure;
 pub mod parallel;

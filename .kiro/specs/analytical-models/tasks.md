@@ -24,8 +24,8 @@
 
 ### Phase 1: 基盤コンポーネント
 
-- [ ] 1. エラー型定義
-- [ ] 1.1 (P) AnalyticalError enum の作成
+- [x] 1. エラー型定義
+- [x] 1.1 (P) AnalyticalError enum の作成
   - analytical モジュール専用のエラー型を定義
   - InvalidVolatility, InvalidSpot, UnsupportedExerciseStyle, NumericalInstability バリアントを実装
   - thiserror を使用した Display 自動導出
@@ -33,8 +33,8 @@
   - エラーメッセージは British English で記述
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
-- [ ] 2. 累積正規分布関数
-- [ ] 2.1 (P) norm_cdf 関数の実装
+- [x] 2. 累積正規分布関数
+- [x] 2.1 (P) norm_cdf 関数の実装
   - erfc ベースの標準正規 CDF を実装
   - 数式: Φ(x) = 0.5 * erfc(-x / sqrt(2))
   - ジェネリック `T: Float` で f64/Dual64 対応
@@ -42,13 +42,13 @@
   - 極端な入力 (|x| > 8) でも安定した結果を返却
   - _Requirements: 4.1, 4.2, 4.4, 4.5_
 
-- [ ] 2.2 (P) norm_pdf 関数の実装
+- [x] 2.2 (P) norm_pdf 関数の実装
   - 標準正規 PDF を実装
   - 数式: φ(x) = (1 / sqrt(2π)) * exp(-x² / 2)
   - ジェネリック `T: Float` 対応
   - _Requirements: 4.3_
 
-- [ ] 2.3 分布関数のユニットテスト
+- [x] 2.3 分布関数のユニットテスト
   - norm_cdf の参照値比較テスト（精度 < 1e-7）
   - norm_pdf の参照値比較テスト
   - 対称性テスト: norm_cdf(-x) + norm_cdf(x) ≈ 1

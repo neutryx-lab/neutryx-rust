@@ -58,7 +58,8 @@
       "Bash(/c/Users/khosh/.rustup/toolchains/stable-x86_64-pc-windows-msvc/bin/cargo.exe test:*)",
       "Skill(kiro:spec-status)",
       "Skill(kiro:spec-status:*)",
-      "Bash(cargo build:*)"
+      "Bash(cargo build:*)",
+      "Bash(RUSTDOCFLAGS=\"-D warnings\" cargo doc:*)"
     ]
   }
 }

@@ -42,7 +42,7 @@ pub struct InterpolatedVolSurface<T: Float> {
     strikes: Vec<T>,
     /// Sorted expiry times
     expiries: Vec<T>,
-    /// Volatility grid: vols[expiry_idx][strike_idx]
+    /// Volatility grid: `vols[expiry_idx][strike_idx]`
     vols: Vec<Vec<T>>,
     /// Whether to allow flat extrapolation
     allow_extrapolation: bool,
@@ -55,7 +55,7 @@ impl<T: Float> InterpolatedVolSurface<T> {
     ///
     /// * `strikes` - Sorted strike prices (at least 2 points)
     /// * `expiries` - Sorted expiry times (at least 2 points)
-    /// * `vols` - Volatility grid: vols[expiry_idx][strike_idx]
+    /// * `vols` - Volatility grid: `vols[expiry_idx][strike_idx]`
     /// * `allow_extrapolation` - Whether to allow flat extrapolation beyond grid
     ///
     /// # Returns

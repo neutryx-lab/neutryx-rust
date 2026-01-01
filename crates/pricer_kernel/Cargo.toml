@@ -8,7 +8,11 @@ repository.workspace = true
 authors.workspace = true
 
 [dependencies]
-# Phase 3.0: NO dependencies on other pricer_* crates (complete isolation)
+# Phase 4: Optional L1/L2 integration
+# pricer_core with default-features=false to avoid num-dual (use enzyme-mode)
+pricer_core = { path = "../pricer_core", optional = true, default-features = false }
+pricer_models = { path = "../pricer_models", optional = true }
+
 # LLVM 18 bindings for Enzyme support
 llvm-sys = { version = "180", features = ["prefer-dynamic"], optional = true }
 
@@ -29,5 +33,7 @@ proptest.workspace = true
 
 [features]
 default = []
-# Future: enzyme-ad feature for actual Enzyme integration
+# Phase 4: L1/L2 integration for smoothing functions, YieldCurve, Instrument
+l1l2-integration = ["dep:pricer_core", "dep:pricer_models"]
+# Enzyme AD feature for actual Enzyme integration (works with or without l1l2-integration)
 enzyme-ad = ["dep:llvm-sys"]

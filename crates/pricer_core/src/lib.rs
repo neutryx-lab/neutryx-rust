@@ -50,7 +50,9 @@
 //! - `enzyme-mode`: Use f64 directly (Enzyme handles AD at LLVM level)
 //! - `serde` (default): Enable serialisation for Date, Currency, DayCountConvention
 
-#![warn(missing_docs)]
+#![deny(missing_docs)]
+#![deny(rustdoc::broken_intra_doc_links)]
+#![deny(rustdoc::private_intra_doc_links)]
 
 pub mod market_data;
 pub mod math;

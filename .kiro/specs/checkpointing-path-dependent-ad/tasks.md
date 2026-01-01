@@ -15,7 +15,7 @@
 
 - [ ] 1. L1/L2依存関係の追加と既存コードの統合
 
-- [ ] 1.1 pricer_kernel Cargo.tomlへの依存関係追加
+- [x] 1.1 pricer_kernel Cargo.tomlへの依存関係追加
   - pricer_coreとpricer_modelsをオプション依存として追加
   - featureフラグでの切り替え可能な設計（enzyme-ad feature時も動作）
   - nightly Rustでの互換性確認
