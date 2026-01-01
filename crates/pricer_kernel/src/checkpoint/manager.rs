@@ -216,6 +216,23 @@ impl<T: Float> CheckpointManager<T> {
         self.total_steps = total_steps;
     }
 
+    /// Sets the total number of simulation steps (builder pattern).
+    ///
+    /// # Arguments
+    ///
+    /// * `total_steps` - Total number of steps in the simulation
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let manager = CheckpointManager::new(CheckpointStrategy::Uniform { interval: 10 })
+    ///     .with_total_steps(500);
+    /// ```
+    pub fn with_total_steps(mut self, total_steps: usize) -> Self {
+        self.total_steps = total_steps;
+        self
+    }
+
     /// Returns the current checkpoint strategy.
     pub fn strategy(&self) -> &CheckpointStrategy {
         &self.strategy

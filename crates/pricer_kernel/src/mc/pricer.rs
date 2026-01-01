@@ -28,23 +28,56 @@ use crate::rng::PricerRng;
 /// Greek type for selection.
 ///
 /// Specifies which sensitivity to compute alongside the price.
+///
+/// # First-Order Greeks
+///
+/// - `Delta`: ∂V/∂S - Sensitivity to spot price
+/// - `Vega`: ∂V/∂σ - Sensitivity to volatility
+/// - `Theta`: ∂V/∂τ - Sensitivity to time (time decay)
+/// - `Rho`: ∂V/∂r - Sensitivity to interest rate
+///
+/// # Second-Order Greeks
+///
+/// - `Gamma`: ∂²V/∂S² - Convexity with respect to spot
+/// - `Vanna`: ∂²V/∂S∂σ - Cross sensitivity (delta-vol)
+/// - `Volga`: ∂²V/∂σ² - Volatility convexity (also known as vomma)
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Greek {
-    /// Delta: dPrice/dSpot
+    // First-order Greeks
+    /// Delta: ∂V/∂S (sensitivity to spot price)
     Delta,
-    /// Gamma: d²Price/dSpot²
-    Gamma,
-    /// Vega: dPrice/dVolatility
+    /// Vega: ∂V/∂σ (sensitivity to volatility)
     Vega,
-    /// Theta: dPrice/dTime
+    /// Theta: ∂V/∂τ (sensitivity to time, time decay)
     Theta,
-    /// Rho: dPrice/dRate
+    /// Rho: ∂V/∂r (sensitivity to interest rate)
     Rho,
+
+    // Second-order Greeks
+    /// Gamma: ∂²V/∂S² (convexity with respect to spot)
+    Gamma,
+    /// Vanna: ∂²V/∂S∂σ (cross sensitivity between spot and volatility)
+    Vanna,
+    /// Volga: ∂²V/∂σ² (volatility convexity, also known as vomma)
+    Volga,
 }
 
 /// Pricing result with optional Greeks.
 ///
 /// Contains the Monte Carlo price estimate and optionally computed sensitivities.
+///
+/// # First-Order Greeks
+///
+/// - `delta`: ∂V/∂S - Sensitivity to spot price
+/// - `vega`: ∂V/∂σ - Sensitivity to volatility
+/// - `theta`: ∂V/∂τ - Sensitivity to time (time decay)
+/// - `rho`: ∂V/∂r - Sensitivity to interest rate
+///
+/// # Second-Order Greeks
+///
+/// - `gamma`: ∂²V/∂S² - Convexity with respect to spot
+/// - `vanna`: ∂²V/∂S∂σ - Cross sensitivity (delta-vol)
+/// - `volga`: ∂²V/∂σ² - Volatility convexity
 ///
 /// # Examples
 ///
@@ -59,6 +92,8 @@ pub enum Greek {
 ///     vega: Some(25.0),
 ///     theta: None,
 ///     rho: None,
+///     vanna: None,
+///     volga: None,
 /// };
 ///
 /// println!("Price: {} +/- {}", result.price, result.std_error * 1.96);
@@ -69,16 +104,24 @@ pub struct PricingResult {
     pub price: f64,
     /// Standard error of the price estimate.
     pub std_error: f64,
-    /// Delta (dPrice/dSpot).
+
+    // First-order Greeks
+    /// Delta: ∂V/∂S (sensitivity to spot price).
     pub delta: Option<f64>,
-    /// Gamma (d²Price/dSpot²).
-    pub gamma: Option<f64>,
-    /// Vega (dPrice/dVolatility).
+    /// Vega: ∂V/∂σ (sensitivity to volatility).
     pub vega: Option<f64>,
-    /// Theta (dPrice/dTime).
+    /// Theta: ∂V/∂τ (sensitivity to time, time decay).
     pub theta: Option<f64>,
-    /// Rho (dPrice/dRate).
+    /// Rho: ∂V/∂r (sensitivity to interest rate).
     pub rho: Option<f64>,
+
+    // Second-order Greeks
+    /// Gamma: ∂²V/∂S² (convexity with respect to spot).
+    pub gamma: Option<f64>,
+    /// Vanna: ∂²V/∂S∂σ (cross sensitivity between spot and volatility).
+    pub vanna: Option<f64>,
+    /// Volga: ∂²V/∂σ² (volatility convexity, also known as vomma).
+    pub volga: Option<f64>,
 }
 
 impl PricingResult {
@@ -282,11 +325,9 @@ impl MonteCarloPricer {
         // Compute requested Greeks
         for greek in greeks {
             match greek {
+                // First-order Greeks
                 Greek::Delta => {
                     result.delta = Some(self.compute_delta(gbm, payoff, discount_factor));
-                }
-                Greek::Gamma => {
-                    result.gamma = Some(self.compute_gamma(gbm, payoff, discount_factor));
                 }
                 Greek::Vega => {
                     result.vega = Some(self.compute_vega(gbm, payoff, discount_factor));
@@ -296,6 +337,16 @@ impl MonteCarloPricer {
                 }
                 Greek::Rho => {
                     result.rho = Some(self.compute_rho(gbm, payoff, discount_factor));
+                }
+                // Second-order Greeks
+                Greek::Gamma => {
+                    result.gamma = Some(self.compute_gamma(gbm, payoff, discount_factor));
+                }
+                Greek::Vanna => {
+                    result.vanna = Some(self.compute_vanna(gbm, payoff, discount_factor));
+                }
+                Greek::Volga => {
+                    result.volga = Some(self.compute_volga(gbm, payoff, discount_factor));
                 }
             }
         }
@@ -441,6 +492,108 @@ impl MonteCarloPricer {
 
         // Central difference (scaled to 1% rate move)
         (price_up - price_down) / (2.0 * bump)
+    }
+
+    /// Computes Vanna (∂²V/∂S∂σ) using cross-differences.
+    ///
+    /// Vanna is the cross partial derivative of option value with respect to
+    /// spot price and volatility. It measures how delta changes with volatility.
+    ///
+    /// Uses the formula: (V(S+h,σ+k) - V(S+h,σ-k) - V(S-h,σ+k) + V(S-h,σ-k)) / (4hk)
+    fn compute_vanna(
+        &mut self,
+        gbm: GbmParams,
+        payoff: PayoffParams,
+        discount_factor: f64,
+    ) -> f64 {
+        let spot_bump = (0.01 * gbm.spot).max(0.01);
+        let vol_bump = 0.01;
+        let seed = self.rng.seed();
+
+        // V(S+h, σ+k)
+        self.reset_with_seed(seed);
+        let gbm_up_up = GbmParams {
+            spot: gbm.spot + spot_bump,
+            volatility: gbm.volatility + vol_bump,
+            ..gbm
+        };
+        let price_up_up = self.price_european(gbm_up_up, payoff, discount_factor).price;
+
+        // V(S+h, σ-k)
+        self.reset_with_seed(seed);
+        let gbm_up_down = GbmParams {
+            spot: gbm.spot + spot_bump,
+            volatility: (gbm.volatility - vol_bump).max(0.001),
+            ..gbm
+        };
+        let price_up_down = self
+            .price_european(gbm_up_down, payoff, discount_factor)
+            .price;
+
+        // V(S-h, σ+k)
+        self.reset_with_seed(seed);
+        let gbm_down_up = GbmParams {
+            spot: gbm.spot - spot_bump,
+            volatility: gbm.volatility + vol_bump,
+            ..gbm
+        };
+        let price_down_up = self
+            .price_european(gbm_down_up, payoff, discount_factor)
+            .price;
+
+        // V(S-h, σ-k)
+        self.reset_with_seed(seed);
+        let gbm_down_down = GbmParams {
+            spot: gbm.spot - spot_bump,
+            volatility: (gbm.volatility - vol_bump).max(0.001),
+            ..gbm
+        };
+        let price_down_down = self
+            .price_european(gbm_down_down, payoff, discount_factor)
+            .price;
+
+        // Cross-difference formula
+        (price_up_up - price_up_down - price_down_up + price_down_down)
+            / (4.0 * spot_bump * vol_bump)
+    }
+
+    /// Computes Volga (∂²V/∂σ²) using three-point formula.
+    ///
+    /// Volga (also known as vomma) is the second derivative of option value
+    /// with respect to volatility. It measures the convexity of vega.
+    ///
+    /// Uses the formula: (V(σ+h) - 2V(σ) + V(σ-h)) / h²
+    fn compute_volga(
+        &mut self,
+        gbm: GbmParams,
+        payoff: PayoffParams,
+        discount_factor: f64,
+    ) -> f64 {
+        let bump = 0.01;
+        let seed = self.rng.seed();
+
+        // V(σ)
+        self.reset_with_seed(seed);
+        let price_mid = self.price_european(gbm, payoff, discount_factor).price;
+
+        // V(σ+h)
+        self.reset_with_seed(seed);
+        let gbm_up = GbmParams {
+            volatility: gbm.volatility + bump,
+            ..gbm
+        };
+        let price_up = self.price_european(gbm_up, payoff, discount_factor).price;
+
+        // V(σ-h)
+        self.reset_with_seed(seed);
+        let gbm_down = GbmParams {
+            volatility: (gbm.volatility - bump).max(0.001),
+            ..gbm
+        };
+        let price_down = self.price_european(gbm_down, payoff, discount_factor).price;
+
+        // Three-point formula for second derivative
+        (price_up - 2.0 * price_mid + price_down) / (bump * bump)
     }
 
     // ========================================================================
@@ -784,6 +937,10 @@ impl MonteCarloPricer {
                 Greek::Rho => {
                     result.rho =
                         Some(self.compute_rho_path_dependent(gbm, payoff, discount_factor));
+                }
+                Greek::Vanna | Greek::Volga => {
+                    // Second-order cross Greeks for path-dependent not yet implemented
+                    // Will be added with Enzyme AD + checkpointing integration
                 }
             }
         }

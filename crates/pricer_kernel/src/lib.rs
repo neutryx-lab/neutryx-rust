@@ -101,6 +101,13 @@ pub mod path_dependent;
 // Phase 4: Checkpointing for memory-efficient AD
 pub mod checkpoint;
 
+// Phase 4: Analytical solutions for verification
+pub mod analytical;
+
+// Greeks calculation types and configuration
+pub mod greeks;
+
 // Re-export commonly used items for convenience
 pub use enzyme::{gradient, gradient_with_step, Activity};
+pub use greeks::{GreeksConfig, GreeksMode, GreeksResult};
 pub use mc::{GbmParams, Greek, MonteCarloConfig, MonteCarloPricer, PayoffParams, PricingResult};

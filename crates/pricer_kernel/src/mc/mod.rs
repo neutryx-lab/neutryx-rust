@@ -148,6 +148,7 @@ pub mod error;
 pub mod paths;
 pub mod payoff;
 pub mod pricer;
+pub mod pricer_checkpoint;
 pub mod thread_local;
 pub mod workspace;
 pub mod workspace_checkpoint;
