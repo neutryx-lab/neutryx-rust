@@ -807,7 +807,9 @@ impl MonteCarloPricer {
             spot: gbm.spot + bump,
             ..gbm
         };
-        let price_up = self.price_path_dependent(gbm_up, payoff, discount_factor).price;
+        let price_up = self
+            .price_path_dependent(gbm_up, payoff, discount_factor)
+            .price;
 
         // Price at S - bump
         self.reset_with_seed(seed);
@@ -834,7 +836,9 @@ impl MonteCarloPricer {
 
         // Price at S
         self.reset_with_seed(seed);
-        let price_mid = self.price_path_dependent(gbm, payoff, discount_factor).price;
+        let price_mid = self
+            .price_path_dependent(gbm, payoff, discount_factor)
+            .price;
 
         // Price at S + bump
         self.reset_with_seed(seed);
@@ -842,7 +846,9 @@ impl MonteCarloPricer {
             spot: gbm.spot + bump,
             ..gbm
         };
-        let price_up = self.price_path_dependent(gbm_up, payoff, discount_factor).price;
+        let price_up = self
+            .price_path_dependent(gbm_up, payoff, discount_factor)
+            .price;
 
         // Price at S - bump
         self.reset_with_seed(seed);
@@ -873,7 +879,9 @@ impl MonteCarloPricer {
             volatility: gbm.volatility + bump,
             ..gbm
         };
-        let price_up = self.price_path_dependent(gbm_up, payoff, discount_factor).price;
+        let price_up = self
+            .price_path_dependent(gbm_up, payoff, discount_factor)
+            .price;
 
         // Price at vol - bump
         self.reset_with_seed(seed);
@@ -910,7 +918,9 @@ impl MonteCarloPricer {
 
         // Price at T
         self.reset_with_seed(seed);
-        let price_orig = self.price_path_dependent(gbm, payoff, discount_factor).price;
+        let price_orig = self
+            .price_path_dependent(gbm, payoff, discount_factor)
+            .price;
 
         -(price_orig - price_short) / bump
     }

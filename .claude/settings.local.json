@@ -61,7 +61,8 @@
       "Bash(cargo build:*)",
       "Bash(RUSTDOCFLAGS=\"-D warnings\" cargo doc:*)",
       "Bash(cargo bench:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(gh run list:*)"
     ]
   }
 }
