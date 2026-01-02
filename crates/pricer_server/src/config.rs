@@ -81,9 +81,10 @@ pub enum Environment {
     Production,
 }
 
-impl Environment {
-    /// Parse environment from string
-    pub fn from_str(s: &str) -> Result<Self, ConfigError> {
+impl std::str::FromStr for Environment {
+    type Err = ConfigError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "development" | "dev" => Ok(Environment::Development),
             "staging" | "stage" => Ok(Environment::Staging),
@@ -91,7 +92,9 @@ impl Environment {
             _ => Err(ConfigError::InvalidEnvironment(s.to_string())),
         }
     }
+}
 
+impl Environment {
     /// Check if this is a production environment
     pub fn is_production(&self) -> bool {
         matches!(self, Environment::Production)
