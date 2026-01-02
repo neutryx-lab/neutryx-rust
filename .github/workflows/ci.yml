@@ -12,11 +12,11 @@ env:
 
 jobs:
   # ============================================================================
-  # Quick Check: Only for updates branch (test + clippy)
+  # Quick Check: Only for updates branch (fmt + clippy + test)
   # ============================================================================
   quick-check:
     name: Quick Check (fmt + clippy + test)
-    if: github.ref == 'refs/heads/updates'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/updates'
     runs-on: ubuntu-latest
 
     steps:
@@ -61,7 +61,7 @@ jobs:
   # ============================================================================
   stable-layers:
     name: Stable Rust - L1/L2/L4 (${{ matrix.os }})
-    if: github.ref != 'refs/heads/updates'
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/updates') }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -115,7 +115,7 @@ jobs:
   # ============================================================================
   nightly-kernel:
     name: Nightly Rust - L3 (pricer_kernel)
-    if: github.ref != 'refs/heads/updates'
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/updates') }}
     runs-on: ubuntu-latest
 
     steps:
@@ -202,7 +202,7 @@ jobs:
   # ============================================================================
   integration:
     name: Integration Tests
-    if: github.ref != 'refs/heads/updates'
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/updates') }}
     runs-on: ubuntu-latest
     needs: [stable-layers, nightly-kernel]
 
@@ -244,7 +244,7 @@ jobs:
   # ============================================================================
   coverage:
     name: Code Coverage
-    if: github.ref != 'refs/heads/updates'
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/updates') }}
     runs-on: ubuntu-latest
     needs: [stable-layers]
 
@@ -278,7 +278,7 @@ jobs:
   # ============================================================================
   benchmarks:
     name: Benchmarks (Criterion)
-    if: github.ref != 'refs/heads/updates'
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/updates') }}
     runs-on: ubuntu-latest
     needs: [stable-layers]
 
@@ -317,7 +317,7 @@ jobs:
   # ============================================================================
   benchmarks-iai:
     name: Benchmarks (Iai-Callgrind)
-    if: github.ref != 'refs/heads/updates'
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/updates') }}
     runs-on: ubuntu-latest
     needs: [nightly-kernel]
 
@@ -444,7 +444,7 @@ jobs:
   # ============================================================================
   docs:
     name: Documentation
-    if: github.ref != 'refs/heads/updates'
+    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/updates') }}
     runs-on: ubuntu-latest
 
     steps:

@@ -80,7 +80,12 @@
       "Bash(/c/Users/khosh/.rustup/toolchains/stable-x86_64-pc-windows-msvc/bin/cargo.exe build -p pricer_server)",
       "Bash(export PATH:*)",
       "Bash(cargo tree:*)",
-      "Bash(./target/debug/pricer_server.exe:*)"
+      "Bash(./target/debug/pricer_server.exe:*)",
+      "Bash(/c/Users/khosh/.cargo/bin/cargo test -p pricer_server --lib)",
+      "Bash(cmd /c \"cargo --version\")",
+      "Bash(cmd /c \"cargo test -p pricer_server --lib 2>&1\")",
+      "Bash(powershell -Command \"cd 'c:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust'; cargo test -p pricer_server --lib 2>&1\":*)",
+      "Bash(powershell:*)"
     ]
   }
 }

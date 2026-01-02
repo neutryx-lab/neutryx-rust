@@ -4,7 +4,9 @@
 
 use clap::Parser;
 use pricer_server::config::{build_config, CliArgs as ConfigCliArgs, ConfigError};
+use pricer_server::server::Server;
 use std::path::PathBuf;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 /// Neutryx Pricer Server - REST API for XVA pricing
 #[derive(Parser, Debug)]
@@ -39,23 +41,42 @@ impl From<Args> for ConfigCliArgs {
     }
 }
 
-fn main() -> Result<(), ConfigError> {
+fn init_tracing(log_level: &str) {
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(log_level)),
+        )
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     let cli_args: ConfigCliArgs = args.into();
     let config = build_config(&cli_args)?;
 
-    println!("Neutryx Pricer Server v{}", pricer_server::VERSION);
-    println!("Configuration:");
-    println!("  Host: {}", config.host);
-    println!("  Port: {}", config.port);
-    println!("  Log Level: {}", config.log_level);
-    println!("  Environment: {}", config.environment);
-    println!("  Kernel Integration: {}", config.kernel_enabled);
-    println!("  API Key Required: {}", config.api_key_required);
-    println!("  Rate Limit: {} rpm", config.rate_limit_rpm);
+    // Initialize tracing
+    init_tracing(config.log_level.as_filter_str());
 
-    // TODO: Start Axum server (Task 2.1)
-    println!("\nServer not yet implemented. Configuration loaded successfully.");
+    tracing::info!("Neutryx Pricer Server v{}", pricer_server::VERSION);
+    tracing::info!(
+        host = %config.host,
+        port = %config.port,
+        log_level = %config.log_level,
+        environment = %config.environment,
+        kernel_enabled = %config.kernel_enabled,
+        api_key_required = %config.api_key_required,
+        rate_limit_rpm = %config.rate_limit_rpm,
+        "Server configuration loaded"
+    );
+
+    // Create and start the server
+    let server = Server::new(config);
+    tracing::info!(address = %server.socket_addr(), "Starting server");
+
+    server.run().await?;
 
     Ok(())
 }
