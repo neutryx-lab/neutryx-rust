@@ -9,12 +9,12 @@ use axum::{
     routing::post,
     Router,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use super::AppState;
 
 /// Stub response for not-yet-implemented endpoints
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NotImplementedResponse {
     pub error: String,

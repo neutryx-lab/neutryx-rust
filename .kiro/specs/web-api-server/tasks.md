@@ -29,7 +29,7 @@
   - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.7_
 
 - [ ] 2. Axum HTTPサーバー基盤の構築
-- [ ] 2.1 Axumルーターの基本構造を構築する
+- [x] 2.1 Axumルーターの基本構造を構築する
   - Axum Routerを使用したHTTPルーティング基盤を作成
   - エンドポイントグループ別にルーターをモジュール分割 (pricing, greeks, xva, health)
   - Router::merge()で各モジュールを統合

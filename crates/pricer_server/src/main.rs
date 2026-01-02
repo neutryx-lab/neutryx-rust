@@ -3,7 +3,7 @@
 //! REST API server for XVA pricing library.
 
 use clap::Parser;
-use pricer_server::config::{build_config, CliArgs as ConfigCliArgs, ConfigError};
+use pricer_server::config::{build_config, CliArgs as ConfigCliArgs};
 use pricer_server::server::Server;
 use std::path::PathBuf;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};

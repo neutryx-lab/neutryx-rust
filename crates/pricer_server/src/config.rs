@@ -37,9 +37,10 @@ pub enum LogLevel {
     Error,
 }
 
-impl LogLevel {
-    /// Parse a log level from string
-    pub fn from_str(s: &str) -> Result<Self, ConfigError> {
+impl std::str::FromStr for LogLevel {
+    type Err = ConfigError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "trace" => Ok(LogLevel::Trace),
             "debug" => Ok(LogLevel::Debug),
@@ -49,7 +50,9 @@ impl LogLevel {
             _ => Err(ConfigError::InvalidLogLevel(s.to_string())),
         }
     }
+}
 
+impl LogLevel {
     /// Convert log level to tracing filter string
     pub fn as_filter_str(&self) -> &'static str {
         match self {
