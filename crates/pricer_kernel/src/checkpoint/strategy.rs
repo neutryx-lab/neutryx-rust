@@ -97,7 +97,7 @@ impl CheckpointStrategy {
                 if *interval == 0 {
                     return false;
                 }
-                step % interval == 0
+                step.is_multiple_of(*interval)
             }
             CheckpointStrategy::Logarithmic { base_interval } => {
                 if *base_interval == 0 || total_steps == 0 {
@@ -113,7 +113,7 @@ impl CheckpointStrategy {
                 }
                 // Check if step is exactly a power of 2 multiple of base_interval
                 // Step must be divisible by base_interval AND quotient must be power of 2
-                if step % base_interval != 0 {
+                if !step.is_multiple_of(*base_interval) {
                     return false;
                 }
                 let ratio = step / base_interval;
@@ -129,7 +129,7 @@ impl CheckpointStrategy {
                 }
                 // Default: ~10 checkpoints
                 let interval = (total_steps / 10).max(1);
-                step % interval == 0
+                step.is_multiple_of(interval)
             }
             CheckpointStrategy::None => false,
         }
