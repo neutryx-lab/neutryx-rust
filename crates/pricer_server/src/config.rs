@@ -4,6 +4,7 @@
 
 use serde::Deserialize;
 use std::path::PathBuf;
+use std::str::FromStr;
 use thiserror::Error;
 
 /// Configuration error types
