@@ -1,0 +1,65 @@
+[package]
+name = "pricer_server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "REST API server for Neutryx XVA pricing library"
+
+[dependencies]
+# Web framework
+axum = { version = "0.8", features = ["macros"] }
+tokio = { version = "1", features = ["full"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["trace", "cors", "compression-gzip"] }
+tower_governor = "0.5"
+
+# Serialization
+serde = { workspace = true }
+serde_json = "1.0"
+
+# OpenAPI
+utoipa = { version = "5", features = ["axum_extras"] }
+utoipa-swagger-ui = { version = "8", features = ["axum"] }
+
+# Observability
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
+metrics = "0.24"
+metrics-exporter-prometheus = { version = "0.16", default-features = false, features = ["http-listener"] }
+
+# Configuration
+config = "0.14"
+clap = { version = "4", features = ["derive", "env"] }
+toml = "0.8"
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Time
+chrono = { workspace = true }
+
+# UUID for request IDs
+uuid = { version = "1.0", features = ["v4"] }
+
+# Pricer dependencies
+pricer_core = { path = "../pricer_core" }
+pricer_models = { path = "../pricer_models" }
+pricer_xva = { path = "../pricer_xva" }
+pricer_kernel = { path = "../pricer_kernel", optional = true }
+
+[features]
+default = []
+kernel-integration = ["pricer_kernel"]
+
+[dev-dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["json", "native-tls"] }
+approx = { workspace = true }
+proptest = { workspace = true }
+tokio-test = "0.4"
+
+[[bin]]
+name = "pricer_server"
+path = "src/main.rs"

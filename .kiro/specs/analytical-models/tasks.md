@@ -58,8 +58,8 @@
 
 ### Phase 2: Black-Scholes 価格計算
 
-- [ ] 3. d1/d2 項計算
-- [ ] 3.1 BlackScholes 構造体と d1/d2 メソッドの実装
+- [x] 3. d1/d2 項計算
+- [x] 3.1 BlackScholes 構造体と d1/d2 メソッドの実装
   - BlackScholes<T: Float> 構造体を定義（spot, rate, volatility）
   - コンストラクタで spot > 0, volatility > 0 を検証
   - d1 項計算: (ln(S/K) + (r + σ²/2) * T) / (σ * sqrt(T))
@@ -68,20 +68,20 @@
   - expiry ≈ 0 のリミットケース処理
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
 
-- [ ] 4. Black-Scholes 価格計算
-- [ ] 4.1 price_call メソッドの実装
+- [x] 4. Black-Scholes 価格計算
+- [x] 4.1 price_call メソッドの実装
   - Black-Scholes コール価格公式を実装
   - C = S * N(d1) - K * exp(-r * T) * N(d2)
   - expiry = 0 の場合は intrinsic value を返却
   - _Requirements: 1.1, 1.2, 1.5_
 
-- [ ] 4.2 price_put メソッドの実装
+- [x] 4.2 price_put メソッドの実装
   - Black-Scholes プット価格公式を実装
   - P = K * exp(-r * T) * N(-d2) - S * N(-d1)
   - expiry = 0 の場合は intrinsic value を返却
   - _Requirements: 1.1, 1.3, 1.5_
 
-- [ ] 4.3 Put-call parity 検証テスト
+- [x] 4.3 Put-call parity 検証テスト
   - C - P = S - K * exp(-r * T) の検証
   - 複数パラメータセットでテスト
   - 許容誤差内での一致を確認
@@ -89,34 +89,34 @@
 
 ### Phase 3: 解析的グリークス
 
-- [ ] 5. グリークス計算
-- [ ] 5.1 (P) Delta 計算の実装
+- [x] 5. グリークス計算
+- [x] 5.1 (P) Delta 計算の実装
   - コール Delta = N(d1)
   - プット Delta = N(d1) - 1
   - is_call パラメータでコール/プット判定
   - _Requirements: 3.1_
 
-- [ ] 5.2 (P) Gamma 計算の実装
+- [x] 5.2 (P) Gamma 計算の実装
   - Gamma = φ(d1) / (S * σ * sqrt(T))
   - コール/プット共通
   - _Requirements: 3.2_
 
-- [ ] 5.3 (P) Vega 計算の実装
+- [x] 5.3 (P) Vega 計算の実装
   - Vega = S * sqrt(T) * φ(d1)
   - コール/プット共通
   - _Requirements: 3.3_
 
-- [ ] 5.4 (P) Theta 計算の実装
+- [x] 5.4 (P) Theta 計算の実装
   - コール Theta = -(S * σ * φ(d1)) / (2 * sqrt(T)) - r * K * exp(-r * T) * N(d2)
   - プット Theta = -(S * σ * φ(d1)) / (2 * sqrt(T)) + r * K * exp(-r * T) * N(-d2)
   - _Requirements: 3.4_
 
-- [ ] 5.5 (P) Rho 計算の実装
+- [x] 5.5 (P) Rho 計算の実装
   - コール Rho = K * T * exp(-r * T) * N(d2)
   - プット Rho = -K * T * exp(-r * T) * N(-d2)
   - _Requirements: 3.5_
 
-- [ ] 5.6 グリークス検証テスト
+- [x] 5.6 グリークス検証テスト
   - 解析的 Greeks vs 有限差分の比較
   - Delta 範囲: コール [0, 1], プット [-1, 0]
   - Gamma/Vega は非負
@@ -125,20 +125,20 @@
 
 ### Phase 4: Bachelier モデル
 
-- [ ] 6. Bachelier モデル実装
-- [ ] 6.1 Bachelier 構造体と price_call の実装
+- [x] 6. Bachelier モデル実装
+- [x] 6.1 Bachelier 構造体と price_call の実装
   - Bachelier<T: Float> 構造体を定義（forward, volatility）
   - コンストラクタで volatility > 0 を検証（forward は負を許容）
   - 正規モデル価格公式: C = (F - K) * N(d) + σ * sqrt(T) * φ(d)
   - d = (F - K) / (σ * sqrt(T))
   - _Requirements: 2.1, 2.2, 2.4_
 
-- [ ] 6.2 Bachelier price_put の実装
+- [x] 6.2 Bachelier price_put の実装
   - 正規モデルプット価格公式を実装
   - P = (K - F) * N(-d) + σ * sqrt(T) * φ(d)
   - _Requirements: 2.3_
 
-- [ ] 6.3 Bachelier テストと Clone/Debug 導出
+- [x] 6.3 Bachelier テストと Clone/Debug 導出
   - Clone, Debug derive を確認
   - Put-call parity: C - P = F - K の検証
   - 負のフォワード価格でのテスト
@@ -146,20 +146,20 @@
 
 ### Phase 5: 統合インターフェース
 
-- [ ] 7. VanillaOption 統合
-- [ ] 7.1 BlackScholes::price_option の実装
+- [x] 7. VanillaOption 統合
+- [x] 7.1 BlackScholes::price_option の実装
   - VanillaOption を引数に取る統合メソッド
   - strike, expiry, payoff_type を抽出して価格計算
   - notional スケーリングを適用
   - 非 European exercise_style の場合は UnsupportedExerciseStyle エラー
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [ ] 7.2 Bachelier::price_option の実装
+- [x] 7.2 Bachelier::price_option の実装
   - VanillaOption を引数に取る統合メソッド
   - BlackScholes と同様のロジック
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [ ] 7.3 統合テスト
+- [x] 7.3 統合テスト
   - price_option メソッドのエンドツーエンドテスト
   - American オプションでのエラー返却テスト
   - AnalyticalError → PricingError 変換テスト
@@ -167,14 +167,14 @@
 
 ### Phase 6: AD 互換性と最終検証
 
-- [ ] 8. ジェネリック型互換性検証
-- [ ] 8.1 f64 での全機能テスト
+- [x] 8. ジェネリック型互換性検証
+- [x] 8.1 f64 での全機能テスト
   - BlackScholes<f64> での価格・Greeks 計算
   - Bachelier<f64> での価格計算
   - 全メソッドの動作確認
   - _Requirements: 5.1_
 
-- [ ] 8.2* Dual64 での AD 互換性テスト
+- [x] 8.2* Dual64 での AD 互換性テスト
   - num-dual クレートの Dual64 型でインスタンス化
   - 価格計算を通じて導関数が伝播することを確認
   - AD 計算による Delta vs 解析的 Delta の比較
@@ -182,7 +182,7 @@
   - AD テープ一貫性の検証
   - _Requirements: 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 8.3 モジュールエクスポートと統合確認
+- [x] 8.3 モジュールエクスポートと統合確認
   - analytical/mod.rs でのパブリックエクスポート設定
   - lib.rs での analytical モジュール公開
   - cargo test --package pricer_models の全テスト通過

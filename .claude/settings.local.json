@@ -73,7 +73,14 @@
       "Bash(\"/c/Users/khosh/.cargo/bin/cargo\" +nightly clippy -p pricer_kernel -- -D warnings)",
       "Bash(powershell.exe -Command \"& { if \\(Test-Path ''$env:USERPROFILE\\\\.cargo\\\\bin\\\\cargo.exe''\\) { & ''$env:USERPROFILE\\\\.cargo\\\\bin\\\\cargo.exe'' +nightly clippy -p pricer_kernel -- -D warnings } else { Write-Output ''Cargo not found'' } }\")",
       "Bash(test:*)",
-      "Bash(dir nul)"
+      "Bash(dir nul)",
+      "Bash(/c/Users/khosh/.cargo/bin/cargo build -p pricer_server)",
+      "Bash(cmd.exe /c \"cargo --version\")",
+      "Bash(powershell.exe -Command \"cargo --version\")",
+      "Bash(/c/Users/khosh/.rustup/toolchains/stable-x86_64-pc-windows-msvc/bin/cargo.exe build -p pricer_server)",
+      "Bash(export PATH:*)",
+      "Bash(cargo tree:*)",
+      "Bash(./target/debug/pricer_server.exe:*)"
     ]
   }
 }

@@ -11,7 +11,7 @@
 ## Tasks
 
 - [ ] 1. pricer_serverクレートの初期セットアップ
-- [ ] 1.1 (P) Cargoワークスペースにpricer_serverクレートを追加し、依存関係を設定する
+- [x] 1.1 (P) Cargoワークスペースにpricer_serverクレートを追加し、依存関係を設定する
   - cratesディレクトリに新規pricer_serverクレートを作成
   - Cargo.tomlでAxum、tokio、tower、serde、utoipa、tracing等の依存関係を定義
   - pricer_core、pricer_models、pricer_xvaへの依存関係を設定
@@ -19,7 +19,7 @@
   - stable Rust (Edition 2021) で動作するよう設定
   - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 11.7, 11.8_
 
-- [ ] 1.2 (P) サーバー設定管理機能を実装する
+- [x] 1.2 (P) サーバー設定管理機能を実装する
   - 環境変数からサーバー設定を読み込む機能 (PRICER_SERVER_HOST, PRICER_SERVER_PORT, PRICER_LOG_LEVEL等)
   - TOML形式の設定ファイルからの読み込みをサポート
   - CLI引数による設定上書き機能
@@ -256,7 +256,7 @@
   - スキーマ整合性の検証
   - _Requirements: 12.4_
 
-- [ ]*12.8 ハンドラー関数のテストカバレッジ検証
+- [ ]* 12.8 ハンドラー関数のテストカバレッジ検証
   - テストカバレッジ80%以上の確認
   - カバレッジレポートの生成
   - _Requirements: 12.7_

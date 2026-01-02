@@ -11,9 +11,13 @@
 //! - **AD Compatibility**: Avoids branching for tape consistency
 //! - **Numerical Stability**: Uses erfc-based CDF for accuracy
 
+pub mod bachelier;
+pub mod black_scholes;
 pub mod distributions;
 pub mod error;
 
 // Re-export main types at module level
+pub use bachelier::Bachelier;
+pub use black_scholes::{BlackScholes, Greeks};
 pub use distributions::{norm_cdf, norm_pdf};
 pub use error::AnalyticalError;

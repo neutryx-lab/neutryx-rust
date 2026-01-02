@@ -4,6 +4,7 @@ members = [
     "crates/pricer_models",
     "crates/pricer_kernel",
     "crates/pricer_xva",
+    "crates/pricer_server",
 ]
 resolver = "2"
 

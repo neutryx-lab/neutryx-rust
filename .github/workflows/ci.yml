@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, develop, updates ]
   pull_request:
     branches: [ main, develop ]
 
@@ -12,11 +12,53 @@ env:
 
 jobs:
   # ============================================================================
+  # Quick Check: Only for updates branch (test + clippy)
+  # ============================================================================
+  quick-check:
+    name: Quick Check (test + clippy)
+    if: github.ref == 'refs/heads/updates'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-registry-
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-quick-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-build-quick-
+
+      - name: Clippy (stable crates)
+        run: cargo clippy --workspace --exclude pricer_kernel -- -D warnings
+
+      - name: Test (stable crates)
+        run: cargo test --workspace --exclude pricer_kernel
+
+  # ============================================================================
   # Stable Rust: L1, L2, L4 (pricer_core, pricer_models, pricer_xva)
   # Cross-platform: Linux, Windows, macOS
+  # Full tests run on main/develop branches and PRs
   # ============================================================================
   stable-layers:
     name: Stable Rust - L1/L2/L4 (${{ matrix.os }})
+    if: github.ref != 'refs/heads/updates'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -70,6 +112,7 @@ jobs:
   # ============================================================================
   nightly-kernel:
     name: Nightly Rust - L3 (pricer_kernel)
+    if: github.ref != 'refs/heads/updates'
     runs-on: ubuntu-latest
 
     steps:
@@ -156,6 +199,7 @@ jobs:
   # ============================================================================
   integration:
     name: Integration Tests
+    if: github.ref != 'refs/heads/updates'
     runs-on: ubuntu-latest
     needs: [stable-layers, nightly-kernel]
 
@@ -197,6 +241,7 @@ jobs:
   # ============================================================================
   coverage:
     name: Code Coverage
+    if: github.ref != 'refs/heads/updates'
     runs-on: ubuntu-latest
     needs: [stable-layers]
 
@@ -230,6 +275,7 @@ jobs:
   # ============================================================================
   benchmarks:
     name: Benchmarks (Criterion)
+    if: github.ref != 'refs/heads/updates'
     runs-on: ubuntu-latest
     needs: [stable-layers]
 
@@ -268,6 +314,7 @@ jobs:
   # ============================================================================
   benchmarks-iai:
     name: Benchmarks (Iai-Callgrind)
+    if: github.ref != 'refs/heads/updates'
     runs-on: ubuntu-latest
     needs: [nightly-kernel]
 
@@ -394,6 +441,7 @@ jobs:
   # ============================================================================
   docs:
     name: Documentation
+    if: github.ref != 'refs/heads/updates'
     runs-on: ubuntu-latest
 
     steps:
