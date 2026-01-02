@@ -105,7 +105,9 @@ impl<T: Float + ToPrimitive> BlackScholes<T> {
 
         if volatility <= zero {
             let vol_val = volatility.to_f64().unwrap_or(0.0);
-            return Err(AnalyticalError::InvalidVolatility { volatility: vol_val });
+            return Err(AnalyticalError::InvalidVolatility {
+                volatility: vol_val,
+            });
         }
 
         Ok(Self {
@@ -916,8 +918,8 @@ mod tests {
         let bs_up = BlackScholes::new(spot + h, 0.05, 0.2).unwrap();
         let bs_down = BlackScholes::new(spot - h, 0.05, 0.2).unwrap();
 
-        let fd_delta = (bs_up.price_call(strike, expiry) - bs_down.price_call(strike, expiry))
-            / (2.0 * h);
+        let fd_delta =
+            (bs_up.price_call(strike, expiry) - bs_down.price_call(strike, expiry)) / (2.0 * h);
 
         assert_relative_eq!(analytical_delta, fd_delta, epsilon = 1e-4);
     }
@@ -959,8 +961,8 @@ mod tests {
         let bs_up = BlackScholes::new(100.0, 0.05, vol + h).unwrap();
         let bs_down = BlackScholes::new(100.0, 0.05, vol - h).unwrap();
 
-        let fd_vega = (bs_up.price_call(strike, expiry) - bs_down.price_call(strike, expiry))
-            / (2.0 * h);
+        let fd_vega =
+            (bs_up.price_call(strike, expiry) - bs_down.price_call(strike, expiry)) / (2.0 * h);
 
         assert_relative_eq!(analytical_vega, fd_vega, epsilon = 1e-3);
     }

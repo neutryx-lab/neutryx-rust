@@ -79,10 +79,15 @@ impl<T: Float + ToPrimitive> Bachelier<T> {
 
         if volatility <= zero {
             let vol_val = volatility.to_f64().unwrap_or(0.0);
-            return Err(AnalyticalError::InvalidVolatility { volatility: vol_val });
+            return Err(AnalyticalError::InvalidVolatility {
+                volatility: vol_val,
+            });
         }
 
-        Ok(Self { forward, volatility })
+        Ok(Self {
+            forward,
+            volatility,
+        })
     }
 
     /// Returns the forward price.
@@ -352,10 +357,16 @@ mod tests {
     #[test]
     fn test_new_invalid_volatility() {
         let bach = Bachelier::new(100.0_f64, 0.0);
-        assert!(matches!(bach, Err(AnalyticalError::InvalidVolatility { .. })));
+        assert!(matches!(
+            bach,
+            Err(AnalyticalError::InvalidVolatility { .. })
+        ));
 
         let bach = Bachelier::new(100.0_f64, -10.0);
-        assert!(matches!(bach, Err(AnalyticalError::InvalidVolatility { .. })));
+        assert!(matches!(
+            bach,
+            Err(AnalyticalError::InvalidVolatility { .. })
+        ));
     }
 
     // ========================================================================

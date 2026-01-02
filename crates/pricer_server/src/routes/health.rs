@@ -10,12 +10,12 @@ use axum::{
     routing::get,
     Router,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use super::AppState;
 
 /// Health check response
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HealthResponse {
     /// Health status ("healthy" or "unhealthy")
@@ -29,7 +29,7 @@ pub struct HealthResponse {
 }
 
 /// Dependency status for health check
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DependencyStatus {
     /// pricer_core availability
@@ -43,7 +43,7 @@ pub struct DependencyStatus {
 }
 
 /// Readiness response
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReadyResponse {
     /// Ready status
@@ -104,7 +104,12 @@ mod tests {
         let router = routes().with_state(create_test_state());
 
         let response = router
-            .oneshot(Request::builder().uri("/health").body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri("/health")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
 
@@ -116,7 +121,12 @@ mod tests {
         let router = routes().with_state(create_test_state());
 
         let response = router
-            .oneshot(Request::builder().uri("/health").body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri("/health")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
 
@@ -140,7 +150,12 @@ mod tests {
         // First request
         let response = router
             .clone()
-            .oneshot(Request::builder().uri("/health").body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri("/health")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
 
@@ -154,7 +169,12 @@ mod tests {
 
         // Second request
         let response = router
-            .oneshot(Request::builder().uri("/health").body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri("/health")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
 
@@ -171,7 +191,12 @@ mod tests {
         let router = routes().with_state(create_test_state());
 
         let response = router
-            .oneshot(Request::builder().uri("/ready").body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri("/ready")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
 
@@ -183,7 +208,12 @@ mod tests {
         let router = routes().with_state(create_test_state());
 
         let response = router
-            .oneshot(Request::builder().uri("/ready").body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri("/ready")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
 
@@ -200,7 +230,12 @@ mod tests {
         let router = routes().with_state(create_test_state());
 
         let response = router
-            .oneshot(Request::builder().uri("/health").body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri("/health")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
 

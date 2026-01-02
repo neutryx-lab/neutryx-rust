@@ -69,7 +69,9 @@ impl Server {
     /// This binds to port 0 to get a random available port, starts the server
     /// in a background task, and returns the actual bound address.
     #[cfg(test)]
-    pub async fn spawn_test_server(config: ServerConfig) -> (SocketAddr, tokio::task::JoinHandle<()>) {
+    pub async fn spawn_test_server(
+        config: ServerConfig,
+    ) -> (SocketAddr, tokio::task::JoinHandle<()>) {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
 

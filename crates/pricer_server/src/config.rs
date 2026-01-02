@@ -182,9 +182,7 @@ impl ServerConfig {
 
         // Port
         if let Ok(port_str) = std::env::var("PRICER_SERVER_PORT") {
-            config.port = port_str
-                .parse()
-                .map_err(|_| ConfigError::InvalidPort(0))?;
+            config.port = port_str.parse().map_err(|_| ConfigError::InvalidPort(0))?;
         }
 
         // Log level
@@ -370,14 +368,26 @@ mod tests {
             Environment::from_str("development").unwrap(),
             Environment::Development
         );
-        assert_eq!(Environment::from_str("dev").unwrap(), Environment::Development);
-        assert_eq!(Environment::from_str("staging").unwrap(), Environment::Staging);
-        assert_eq!(Environment::from_str("stage").unwrap(), Environment::Staging);
+        assert_eq!(
+            Environment::from_str("dev").unwrap(),
+            Environment::Development
+        );
+        assert_eq!(
+            Environment::from_str("staging").unwrap(),
+            Environment::Staging
+        );
+        assert_eq!(
+            Environment::from_str("stage").unwrap(),
+            Environment::Staging
+        );
         assert_eq!(
             Environment::from_str("production").unwrap(),
             Environment::Production
         );
-        assert_eq!(Environment::from_str("prod").unwrap(), Environment::Production);
+        assert_eq!(
+            Environment::from_str("prod").unwrap(),
+            Environment::Production
+        );
 
         assert!(Environment::from_str("invalid").is_err());
     }
