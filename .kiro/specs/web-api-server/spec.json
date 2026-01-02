@@ -1,12 +1,12 @@
 {
   "feature_name": "web-api-server",
   "created_at": "2026-01-02T15:17:56+00:00",
-  "updated_at": "2026-01-02T15:17:56+00:00",
+  "updated_at": "2026-01-02T15:20:00+00:00",
   "language": "ja",
-  "phase": "initialized",
+  "phase": "requirements-generated",
   "approvals": {
     "requirements": {
-      "generated": false,
+      "generated": true,
       "approved": false
     },
     "design": {
