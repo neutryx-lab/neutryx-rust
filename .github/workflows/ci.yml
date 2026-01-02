@@ -15,7 +15,7 @@ jobs:
   # Quick Check: Only for updates branch (test + clippy)
   # ============================================================================
   quick-check:
-    name: Quick Check (test + clippy)
+    name: Quick Check (fmt + clippy + test)
     if: github.ref == 'refs/heads/updates'
     runs-on: ubuntu-latest
 
@@ -25,7 +25,7 @@ jobs:
       - name: Install stable Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy
+          components: rustfmt, clippy
 
       - name: Cache cargo registry
         uses: actions/cache@v4
@@ -44,6 +44,9 @@ jobs:
           key: ${{ runner.os }}-cargo-build-quick-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-build-quick-
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
 
       - name: Clippy (stable crates)
         run: cargo clippy --workspace --exclude pricer_kernel -- -D warnings
