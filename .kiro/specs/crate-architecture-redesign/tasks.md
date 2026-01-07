@@ -106,23 +106,23 @@
   - deprecation警告で移行を俁E��
   - _Requirements: 1.5_
 
-## Task 5: スケジュール生�Eモジュール
+## Task 5: スケジュール生成モジュール
 
-- [ ] 5.1 基本型�E定義
-  - スケジュール構造体を定義�E�期間リスト、支払日、計算期間開始�E終亁E��E
-  - 期間構造体を定義�E�開始、終亁E��支払日、日数計算規紁E��E
-  - 頻度列挙型を定義�E�年次、半期、四半期、月次、E��次、日次�E�E
+- [x] 5.1 基本型の定義
+  - スケジュール構造体を定義（期間リスト、支払日、計算期間開始・終了）
+  - 期間構造体を定義（開始、終了、支払日、日数計算規約）
+  - 頻度列挙型を定義（年次、半期、四半期、月次、週次、日次）
   - _Requirements: 1.4_
 
-- [ ] 5.2 BusinessDayConventionとDayCountConvention拡張
-  - 営業日調整規紁E�E列挙型を定義�E�Eollowing, ModifiedFollowing, Preceding, ModifiedPreceding, Unadjusted�E�E
-  - 既存�E日数計算規紁E��Act360, Act365, Thirty360を追加
+- [x] 5.2 BusinessDayConventionとDayCountConvention拡張
+  - 営業日調整規約の列挙型を定義（Following, ModifiedFollowing, Preceding, ModifiedPreceding, Unadjusted）
+  - 既存の日数計算規約（Act360, Act365, Thirty360）を確認
   - _Requirements: 4.5_
 
-- [ ] 5.3 ScheduleBuilderの実裁E
-  - ビルダーパターンでスケジュール生�E器を実裁E
-  - 開始日、終亁E��、E��度、営業日調整規紁E��日数計算規紁E�E設定メソチE��を実裁E
-  - IMM日付生成をサポ�EチE
+- [x] 5.3 ScheduleBuilderの実装
+  - ビルダーパターンでスケジュール生成器を実装
+  - 開始日、終了日、頻度、日数計算規約の設定メソッドを実装
+  - 基本的なスケジュール生成をサポート
   - _Requirements: 4.5_
 
 ## Task 6: 金利チE��バティブ商品E

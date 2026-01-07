@@ -22,6 +22,7 @@
 pub mod analytical;
 pub mod instruments;
 pub mod models;
+pub mod schedules;
 
 #[cfg(test)]
 mod tests {

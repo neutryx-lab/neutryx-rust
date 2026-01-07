@@ -24,6 +24,7 @@ all = ["equity", "rates", "credit", "fx", "commodity", "exotic"]
 [dependencies]
 pricer_core = { path = "../pricer_core" }
 num-traits.workspace = true
+chrono.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 

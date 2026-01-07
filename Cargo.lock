@@ -659,6 +659,7 @@ name = "pricer_models"
 version = "0.1.0"
 dependencies = [
  "approx",
+ "chrono",
  "criterion",
  "num-traits",
  "pricer_core",
