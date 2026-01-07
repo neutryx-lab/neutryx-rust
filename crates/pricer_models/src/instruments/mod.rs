@@ -50,6 +50,7 @@ mod error;
 mod exercise;
 mod params;
 mod payoff;
+mod traits;
 
 // Instrument implementations (always available for backward compatibility)
 mod forward;

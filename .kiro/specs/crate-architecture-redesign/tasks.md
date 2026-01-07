@@ -53,32 +53,32 @@
 
 ## Task 3: マルチカーブ市場チE�Eタ基盤
 
-- [ ] 3.1 CurveNameとCurveEnumの定義
+- [x] 3.1 CurveNameとCurveEnumの定義
   - カーブ名の列挙型を定義�E�EIS, SOFR, TONAR, Euribor, Forward, Discount, Custom�E�E
   - 既存�EFlatCurve, InterpolatedCurveを統合するenum型を定義
   - 全型をジェネリチE��Float型で維持しAD互換性を確俁E
   - _Requirements: 2.5_
 
-- [ ] 3.2 CurveSet構造体�E実裁E
+- [x] 3.2 CurveSet構造体�E実裁E
   - 褁E��カーブを名前付きで管琁E��るコンチE��を実裁E
   - カーブ�E登録・取得メソチE��を実裁E
   - チE��スカウントカーブとフォワードカーブ�E刁E��取得を実裁E
   - _Requirements: 2.1, 2.2_
 
-- [ ] 3.3 CreditCurveトレイトとHazardRateCurve実裁E
+- [x] 3.3 CreditCurveトレイトとHazardRateCurve実裁E
   - ハザードレート�E生存確玁E�EチE��ォルト確玁E�E計算インターフェースを定義
   - チE��ーとハザードレート�E期間構造を持つ実裁E��作�E
   - 生存確玁E�E積�E計算を実裁E
   - _Requirements: 2.3, 5.3_
 
-- [ ] 3.4 MarketDataError拡張
+- [x] 3.4 MarketDataError拡張
   - カーブ未検�Eエラーを追加
   - 無効な満期エラーを追加
   - 補間失敗エラーを追加
   - 欠損データの詳細を含むエラーメチE��ージを提侁E
   - _Requirements: 2.4_
 
-- [ ] 3.5 (P) FxVolatilitySurface実裁E
+- [x] 3.5 (P) FxVolatilitySurface実裁E
   - チE��タ×満期グリチE��でのボラチE��リチE��サーフェスを実裁E
   - VolatilitySurfaceトレイトを実裁E
   - ATMボラチE��リチE��取得メソチE��を追加
