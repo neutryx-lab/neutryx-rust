@@ -10,7 +10,7 @@
   - 全クレートの依存関係参照を更新
   - _Requirements: 7.1_
 
-- [ ] 1.2 (P) pricer_xvaからpricer_riskへのクレート名変更
+- [x] 1.2 (P) pricer_xvaからpricer_riskへのクレート名変更
   - Cargo.tomlのパッケージ名をpricer_riskに更新
   - crates/ディレクトリをpricer_xvaからpricer_riskにリネーム
   - ワークスペースCargo.tomlのmembersを更新
@@ -18,7 +18,7 @@
   - 全クレートの依存関係参照を更新
   - _Requirements: 7.1_
 
-- [ ] 1.3 依存関係グラフの検証とビルド確認
+- [x] 1.3 依存関係グラフの検証とビルド確認
   - cargo buildで全クレートのビルド成功を確認
   - cargo testで既存テストのパス確認
   - L1→L2→L3→L4の依存方向のみであることを検証

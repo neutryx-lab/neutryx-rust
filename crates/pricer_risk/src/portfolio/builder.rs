@@ -20,7 +20,7 @@ use super::Portfolio;
 /// # Examples
 ///
 /// ```
-/// use pricer_xva::portfolio::{
+/// use pricer_risk::portfolio::{
 ///     PortfolioBuilder, Trade, TradeId, Counterparty, CounterpartyId,
 ///     NettingSet, NettingSetId, CreditParams,
 /// };

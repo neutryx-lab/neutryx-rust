@@ -12,7 +12,7 @@ use super::error::XvaError;
 /// # Examples
 ///
 /// ```
-/// use pricer_xva::xva::FundingParams;
+/// use pricer_risk::xva::FundingParams;
 ///
 /// // Symmetric spreads of 50bp
 /// let params = FundingParams::symmetric(0.005);
@@ -106,7 +106,7 @@ impl Default for FundingParams {
 /// # Examples
 ///
 /// ```
-/// use pricer_xva::xva::OwnCreditParams;
+/// use pricer_risk::xva::OwnCreditParams;
 ///
 /// // 2% hazard rate, 40% LGD
 /// let params = OwnCreditParams::new(0.02, 0.4).unwrap();

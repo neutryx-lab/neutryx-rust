@@ -14,7 +14,7 @@ use rayon::prelude::*;
 /// # Examples
 ///
 /// ```ignore
-/// use pricer_xva::soa::TradeSoA;
+/// use pricer_risk::soa::TradeSoA;
 ///
 /// let trades: Vec<&Trade> = portfolio.trades().collect();
 /// let soa = TradeSoA::from_trades(&trades);

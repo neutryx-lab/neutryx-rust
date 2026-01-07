@@ -30,7 +30,7 @@ use super::params::OwnCreditParams;
 /// # Examples
 ///
 /// ```
-/// use pricer_xva::xva::{compute_dva, OwnCreditParams};
+/// use pricer_risk::xva::{compute_dva, OwnCreditParams};
 ///
 /// let ene = vec![0.0, 50.0, 80.0, 60.0, 30.0];
 /// let time_grid = vec![0.0, 0.25, 0.5, 0.75, 1.0];

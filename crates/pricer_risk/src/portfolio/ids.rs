@@ -11,7 +11,7 @@ use std::fmt;
 /// # Examples
 ///
 /// ```
-/// use pricer_xva::portfolio::TradeId;
+/// use pricer_risk::portfolio::TradeId;
 ///
 /// let id = TradeId::new("TRADE001");
 /// assert_eq!(id.as_str(), "TRADE001");
@@ -57,7 +57,7 @@ impl From<String> for TradeId {
 /// # Examples
 ///
 /// ```
-/// use pricer_xva::portfolio::CounterpartyId;
+/// use pricer_risk::portfolio::CounterpartyId;
 ///
 /// let id = CounterpartyId::new("CP001");
 /// assert_eq!(id.as_str(), "CP001");
@@ -103,7 +103,7 @@ impl From<String> for CounterpartyId {
 /// # Examples
 ///
 /// ```
-/// use pricer_xva::portfolio::NettingSetId;
+/// use pricer_risk::portfolio::NettingSetId;
 ///
 /// let id = NettingSetId::new("NS001");
 /// assert_eq!(id.as_str(), "NS001");

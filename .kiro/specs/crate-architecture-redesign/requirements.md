@@ -8,8 +8,12 @@
 
 - `pricer_core` → 基盤（数学・型・市場データ）
 - `pricer_models` → 商品定義・確率モデル
-- `pricer_engine` → MC・AD・評価エンジン（旧pricer_kernel）
+- `pricer_pricing` → MC・AD・評価エンジン（旧pricer_kernel）
 - `pricer_risk` → リスク計算・XVA・エクスポージャー（旧pricer_xva）
+
+**命名規則の設計原則**:
+アルファベット順（C < M < P < R）と依存順（L1 → L2 → L3 → L4）が一致するよう設計。
+`ls`やIDEでの表示順が自然に依存階層を反映する。
 
 **現状の課題**:
 
@@ -62,7 +66,7 @@
 2. When Hull-Whiteモデルを使用する場合, the pricer_models/models/rates module shall mean-reversion速度とボラティリティパラメータを受け取り、短期金利パスを生成する
 3. The StochasticModelEnum shall 静的ディスパッチを維持しつつ、新規モデル追加時にenum variantの追加のみで拡張可能である
 4. Where 相関を持つ複数ファクターモデルが必要な場合, the pricer_models/models/hybrid module shall 相関行列を受け取りコレスキー分解で相関ブラウン運動を生成する
-5. The pricer_engine crate shall モデルキャリブレーション用のインターフェース（Calibrator trait）を提供する
+5. The pricer_pricing crate shall モデルキャリブレーション用のインターフェース（Calibrator trait）を提供する
 
 ### Requirement 4: 金利デリバティブ対応
 
@@ -106,7 +110,7 @@
 
 #### Acceptance Criteria 7
 
-1. The workspace shall 以下の命名規則でクレートを構成する: pricer_core (L1), pricer_models (L2), pricer_engine (L3, 旧kernel), pricer_risk (L4, 旧xva)
+1. The workspace shall 以下の命名規則でクレートを構成する: pricer_core (L1), pricer_models (L2), pricer_pricing (L3, 旧kernel), pricer_risk (L4, 旧xva)
 2. The pricer_models/instruments module shall アセットクラス別サブモジュール構成（equity/, rates/, credit/, fx/, commodity/, exotic/）を採用する
 3. The pricer_models/models module shall モデルカテゴリ別サブモジュール構成（equity/, rates/, hybrid/）を採用する
 4. The pricer_models crate shall feature flagによりアセットクラス別の条件付きコンパイルをサポートする（例: `features = ["rates", "credit"]`）
@@ -119,7 +123,7 @@
 
 #### Acceptance Criteria 8
 
-1. The pricer_engine crate shall Calibratorトレイト（calibrate(), objective_function(), constraints()）を提供する
+1. The pricer_pricing crate shall Calibratorトレイト（calibrate(), objective_function(), constraints()）を提供する
 2. When ボラティリティサーフェスにキャリブレートする場合, the calibrator shall 市場のオプション価格とモデル価格の差を最小化する
 3. The pricer_core/math/solvers module shall Levenberg-Marquardtまたは他の非線形最小二乗法ソルバーを提供する
 4. If キャリブレーションが収束しない場合, the CalibrationError shall 残差、イテレーション数、収束判定基準を含む詳細情報を返す
@@ -145,7 +149,7 @@
 
 1. The architecture shall Structure of Arrays (SoA)レイアウトをL4（pricer_risk）で維持し、ベクトル化最適化を可能にする
 2. When 10,000件以上の取引を評価する場合, the parallel module shall Rayonによる自動並列化でCPUコアを効率的に使用する
-3. The pricer_engine crate shall メモリアロケーションを最小化するためのワークスペースバッファパターンを全評価パスで適用する
+3. The pricer_pricing crate shall メモリアロケーションを最小化するためのワークスペースバッファパターンを全評価パスで適用する
 4. If メモリ制約がある環境で実行する場合, the checkpointing module shall メモリ使用量と再計算のトレードオフを設定可能にする
 5. The benchmark suite shall 各アセットクラスの代表的な商品で`criterion`ベンチマークを提供し、パフォーマンス回帰を検出する
 
@@ -161,7 +165,7 @@
 4. The pricer_models/instruments/exotic module shall Autocallable構造体（観測日、早期償還バリア、クーポン条件、ノックインプット）を提供する
 5. Where 複数原資産オプション（Rainbow）が必要な場合, the pricer_models/instruments/exotic module shall BestOf/WorstOf構造体と相関パラメータを提供する
 6. The pricer_models/instruments/exotic module shall QuantoOption構造体（原資産通貨、決済通貨、quanto調整）を提供する
-7. When Bermudan Swaptionを評価する場合, the pricer_engine crate shall Longstaff-Schwartz法による早期行使境界の推定を提供する
+7. When Bermudan Swaptionを評価する場合, the pricer_pricing crate shall Longstaff-Schwartz法による早期行使境界の推定を提供する
 8. The pricer_models/instruments/exotic module shall VolatilitySwap構造体（実現ボラティリティのペイオフ）を提供し、バリアンススワップとの違いを明確化する
 
 ## Appendix: 推奨フォルダ構造
@@ -292,10 +296,10 @@ pricer_models/src/
     └── bachelier.rs       → Normal model
 ```
 
-### A.3 pricer_engine (L3: 評価エンジン、旧pricer_kernel)
+### A.3 pricer_pricing (L3: 評価エンジン、旧pricer_kernel)
 
 ```text
-pricer_engine/src/
+pricer_pricing/src/
 ├── lib.rs
 ├── mc/
 │   ├── mod.rs             → MonteCarloEngine
@@ -414,7 +418,7 @@ pricer_risk/src/
                                      ▼
                      ┌─────────────────────────────────────┐
                      │                                     │
-                     │   pricer_engine (L3)                │
+                     │   pricer_pricing (L3)               │
                      │   - Monte Carlo評価                 │
                      │   - キャリブレーション              │
                      │   - Greeks計算                      │

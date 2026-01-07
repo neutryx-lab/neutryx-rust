@@ -72,7 +72,7 @@ impl CreditRating {
 /// # Examples
 ///
 /// ```
-/// use pricer_xva::portfolio::CreditParams;
+/// use pricer_risk::portfolio::CreditParams;
 ///
 /// let params = CreditParams::new(0.02, 0.4).unwrap();
 /// assert_eq!(params.recovery_rate(), 0.6);
@@ -109,7 +109,7 @@ impl CreditParams {
     /// # Examples
     ///
     /// ```
-    /// use pricer_xva::portfolio::CreditParams;
+    /// use pricer_risk::portfolio::CreditParams;
     ///
     /// let params = CreditParams::new(0.02, 0.4).unwrap();
     /// ```
@@ -184,7 +184,7 @@ impl CreditParams {
     /// # Examples
     ///
     /// ```
-    /// use pricer_xva::portfolio::CreditParams;
+    /// use pricer_risk::portfolio::CreditParams;
     ///
     /// let params = CreditParams::new(0.02, 0.4).unwrap();
     /// let surv_1y = params.survival_prob(1.0);
@@ -226,7 +226,7 @@ impl CreditParams {
 /// # Examples
 ///
 /// ```
-/// use pricer_xva::portfolio::{Counterparty, CounterpartyId, CreditParams};
+/// use pricer_risk::portfolio::{Counterparty, CounterpartyId, CreditParams};
 ///
 /// let credit = CreditParams::new(0.02, 0.4).unwrap();
 /// let cp = Counterparty::new(

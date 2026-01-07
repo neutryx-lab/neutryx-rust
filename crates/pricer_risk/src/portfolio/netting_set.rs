@@ -16,7 +16,7 @@ use super::ids::{CounterpartyId, NettingSetId, TradeId};
 /// # Examples
 ///
 /// ```
-/// use pricer_xva::portfolio::CollateralAgreement;
+/// use pricer_risk::portfolio::CollateralAgreement;
 /// use pricer_core::types::Currency;
 ///
 /// let csa = CollateralAgreement::new(
@@ -179,7 +179,7 @@ impl CollateralAgreement {
 /// # Examples
 ///
 /// ```
-/// use pricer_xva::portfolio::{NettingSet, NettingSetId, CounterpartyId, TradeId};
+/// use pricer_risk::portfolio::{NettingSet, NettingSetId, CounterpartyId, TradeId};
 ///
 /// let mut ns = NettingSet::new(
 ///     NettingSetId::new("NS001"),

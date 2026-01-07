@@ -30,8 +30,8 @@ use crate::portfolio::CreditParams;
 /// # Examples
 ///
 /// ```
-/// use pricer_xva::xva::compute_cva;
-/// use pricer_xva::portfolio::CreditParams;
+/// use pricer_risk::xva::compute_cva;
+/// use pricer_risk::portfolio::CreditParams;
 ///
 /// let ee = vec![0.0, 100.0, 150.0, 100.0, 50.0];
 /// let time_grid = vec![0.0, 0.25, 0.5, 0.75, 1.0];

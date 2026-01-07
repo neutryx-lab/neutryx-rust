@@ -1,6 +1,10 @@
-//! # Pricer XVA (L4: Application)
+//! # Pricer Risk (L4: Application)
 //!
-//! Portfolio aggregation, XVA calculations, and parallelisation.
+//! Portfolio risk management, XVA calculations, and parallelisation.
+//!
+//! **Note**: This crate was renamed from `pricer_risk` to `pricer_risk` in version 0.7.0.
+//! The new name better reflects the broader risk management capabilities including
+//! risk factors, scenario analysis, and Greeks aggregation.
 //!
 //! This crate provides:
 //! - Portfolio and trade structures with netting sets
@@ -14,7 +18,7 @@
 //!
 //! ```text
 //! ┌─────────────────────────────────────────┐
-//! │            pricer_xva (L4)              │
+//! │            pricer_risk (L4)             │
 //! ├─────────────────────────────────────────┤
 //! │  portfolio/  - Trade, Counterparty,    │
 //! │               NettingSet, Portfolio     │
@@ -39,7 +43,7 @@
 //! ## Example
 //!
 //! ```
-//! use pricer_xva::portfolio::{
+//! use pricer_risk::portfolio::{
 //!     PortfolioBuilder, Trade, TradeId, Counterparty, CounterpartyId,
 //!     NettingSet, NettingSetId, CreditParams,
 //! };
@@ -102,3 +106,12 @@ pub use xva::{
     compute_fca, compute_fva, generate_flat_discount_factors, CounterpartyXva, FundingParams,
     NettingSetXva, OwnCreditParams, PortfolioXva, XvaCalculator, XvaConfig, XvaError,
 };
+
+// Backward compatibility: provide deprecated alias for migration
+/// Deprecated module alias for backward compatibility.
+/// Use `pricer_risk` directly instead.
+#[deprecated(since = "0.7.0", note = "Use pricer_risk instead of pricer_risk")]
+pub mod pricer_risk {
+    //! Deprecated: Use `pricer_risk` instead.
+    pub use crate::*;
+}

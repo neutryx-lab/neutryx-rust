@@ -16,7 +16,7 @@ use super::ids::{CounterpartyId, NettingSetId, TradeId};
 /// # Examples
 ///
 /// ```
-/// use pricer_xva::portfolio::{Trade, TradeId, CounterpartyId, NettingSetId};
+/// use pricer_risk::portfolio::{Trade, TradeId, CounterpartyId, NettingSetId};
 /// use pricer_core::types::Currency;
 /// use pricer_models::instruments::{
 ///     Instrument, VanillaOption, InstrumentParams, PayoffType, ExerciseStyle,

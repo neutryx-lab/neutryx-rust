@@ -1,4 +1,4 @@
-//! Criterion benchmarks for pricer_xva XVA calculations.
+//! Criterion benchmarks for pricer_risk XVA and risk calculations.
 //!
 //! Benchmarks cover:
 //! - Portfolio construction with varying trade counts
@@ -11,13 +11,13 @@ use pricer_core::types::Currency;
 use pricer_models::instruments::{
     ExerciseStyle, Instrument, InstrumentParams, PayoffType, VanillaOption,
 };
-use pricer_xva::exposure::ExposureCalculator;
-use pricer_xva::portfolio::{
+use pricer_risk::exposure::ExposureCalculator;
+use pricer_risk::portfolio::{
     Counterparty, CounterpartyId, CreditParams, NettingSet, NettingSetId, PortfolioBuilder, Trade,
     TradeId,
 };
-use pricer_xva::soa::TradeSoA;
-use pricer_xva::xva::{compute_cva, compute_dva, generate_flat_discount_factors, OwnCreditParams};
+use pricer_risk::soa::TradeSoA;
+use pricer_risk::xva::{compute_cva, compute_dva, generate_flat_discount_factors, OwnCreditParams};
 
 /// Generate synthetic exposure scenarios for benchmarking.
 fn generate_exposure_scenarios(n_scenarios: usize, n_times: usize) -> Vec<Vec<f64>> {

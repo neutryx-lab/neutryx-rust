@@ -17,7 +17,7 @@
 //! # Examples
 //!
 //! ```
-//! use pricer_xva::portfolio::{
+//! use pricer_risk::portfolio::{
 //!     PortfolioBuilder, Trade, TradeId, Counterparty, CounterpartyId,
 //!     NettingSet, NettingSetId, CreditParams,
 //! };
@@ -90,7 +90,7 @@ use rayon::prelude::*;
 /// # Examples
 ///
 /// ```
-/// use pricer_xva::portfolio::{
+/// use pricer_risk::portfolio::{
 ///     Portfolio, PortfolioBuilder, Trade, TradeId, Counterparty, CounterpartyId,
 ///     NettingSet, NettingSetId, CreditParams,
 /// };

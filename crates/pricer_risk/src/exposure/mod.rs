@@ -32,7 +32,7 @@ impl ExposureCalculator {
     /// # Examples
     ///
     /// ```
-    /// use pricer_xva::exposure::ExposureCalculator;
+    /// use pricer_risk::exposure::ExposureCalculator;
     ///
     /// let values = vec![
     ///     vec![10.0, 20.0, 15.0],   // Scenario 1
@@ -82,7 +82,7 @@ impl ExposureCalculator {
     /// # Examples
     ///
     /// ```
-    /// use pricer_xva::exposure::ExposureCalculator;
+    /// use pricer_risk::exposure::ExposureCalculator;
     ///
     /// let ee = vec![0.0, 10.0, 20.0, 15.0, 5.0];
     /// let time_grid = vec![0.0, 0.25, 0.5, 0.75, 1.0];
@@ -126,7 +126,7 @@ impl ExposureCalculator {
     /// # Examples
     ///
     /// ```
-    /// use pricer_xva::exposure::ExposureCalculator;
+    /// use pricer_risk::exposure::ExposureCalculator;
     ///
     /// let values = vec![
     ///     vec![10.0, 20.0],
@@ -194,7 +194,7 @@ impl ExposureCalculator {
     /// # Examples
     ///
     /// ```
-    /// use pricer_xva::exposure::ExposureCalculator;
+    /// use pricer_risk::exposure::ExposureCalculator;
     ///
     /// let trade_values = vec![10.0, -5.0, 3.0];
     /// let (gross, net) = ExposureCalculator::netting_benefit(&trade_values);

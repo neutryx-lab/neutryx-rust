@@ -33,7 +33,7 @@
 /// # Examples
 ///
 /// ```
-/// use pricer_xva::xva::compute_fca;
+/// use pricer_risk::xva::compute_fca;
 ///
 /// let ee = vec![0.0, 100.0, 150.0, 100.0, 50.0];
 /// let time_grid = vec![0.0, 0.25, 0.5, 0.75, 1.0];
