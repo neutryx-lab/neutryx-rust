@@ -87,7 +87,7 @@ rng/             → Random number generation (PRNG, QMC sequences)
 verify/          → Enzyme vs num-dual verification tests
 checkpoint/      → Memory management for checkpointing
 analytical/      → Closed-form solutions (geometric Asian, barrier options)
-greeks/          → Greeks calculation configuration and results
+greeks/          → Greeks calculation types (GreeksConfig, GreeksMode, GreeksResult<T>)
 ```
 
 **Key Principle**: **Only crate requiring nightly Rust and Enzyme**. Currently isolated (Phase 3.0) with zero pricer_* dependencies.
@@ -122,6 +122,12 @@ greeks/          → Greeks calculation configuration and results
 - `CheckpointStrategy`: Binomial checkpointing (Griewank/Walther algorithm)
 - `MemoryBudget`: Configurable memory limits for checkpointing
 - Integration: `MonteCarloPricer` with checkpointing support
+
+**Greeks Module** (Phase 4+, Implemented):
+
+- `GreeksConfig`: Configuration for bump widths and calculation modes (builder pattern)
+- `GreeksMode`: Calculation mode selection (BumpAndRevalue, AAD, NumDual)
+- `GreeksResult<T>`: Generic result type for Greeks calculations (AD-compatible)
 
 ### Layer 4: Application (pricer_xva)
 
@@ -205,5 +211,5 @@ Current roadmap (see README.md):
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-02_ — Phase 4 complete (checkpointing, path-dependent, analytical); added iai-callgrind benchmark
+_Updated: 2026-01-07_ — Added Greeks module documentation (GreeksConfig, GreeksMode, GreeksResult)
 _Document patterns, not file trees. New files following patterns should not require updates_
