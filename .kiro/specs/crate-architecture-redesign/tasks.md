@@ -1,434 +1,434 @@
 # Implementation Plan
 
-## Task 1: クレート名変更とワークスペース再構成
+## Task 1: クレート名変更とワークスペ�Eス再構�E
 
-- [x] 1.1 pricer_kernelからpricer_engineへのクレート名変更
-  - Cargo.tomlのパッケージ名をpricer_engineに更新
-  - crates/ディレクトリをpricer_kernelからpricer_engineにリネーム
-  - ワークスペースCargo.tomlのmembersを更新
-  - 旧名でのエイリアスを提供（deprecation警告付き）
-  - 全クレートの依存関係参照を更新
+- [x] 1.1 pricer_kernelからpricer_pricingへのクレート名変更
+  - Cargo.tomlのパッケージ名をpricer_pricingに更新
+  - crates/チE��レクトリをpricer_kernelからpricer_pricingにリネ�Eム
+  - ワークスペ�EスCargo.tomlのmembersを更新
+  - 旧名でのエイリアスを提供！Eeprecation警告付き�E�E
+  - 全クレート�E依存関係参照を更新
   - _Requirements: 7.1_
 
 - [x] 1.2 (P) pricer_xvaからpricer_riskへのクレート名変更
   - Cargo.tomlのパッケージ名をpricer_riskに更新
-  - crates/ディレクトリをpricer_xvaからpricer_riskにリネーム
-  - ワークスペースCargo.tomlのmembersを更新
-  - 旧名でのエイリアスを提供（deprecation警告付き）
-  - 全クレートの依存関係参照を更新
+  - crates/チE��レクトリをpricer_xvaからpricer_riskにリネ�Eム
+  - ワークスペ�EスCargo.tomlのmembersを更新
+  - 旧名でのエイリアスを提供！Eeprecation警告付き�E�E
+  - 全クレート�E依存関係参照を更新
   - _Requirements: 7.1_
 
-- [x] 1.3 依存関係グラフの検証とビルド確認
-  - cargo buildで全クレートのビルド成功を確認
-  - cargo testで既存テストのパス確認
-  - L1→L2→L3→L4の依存方向のみであることを検証
-  - 循環依存が発生していないことを確認
+- [x] 1.3 依存関係グラフ�E検証とビルド確誁E
+  - cargo buildで全クレート�Eビルド�E功を確誁E
+  - cargo testで既存テスト�Eパス確誁E
+  - L1→L2→L3→L4の依存方向�Eみであることを検証
+  - 循環依存が発生してぁE��ぁE��とを確誁E
   - _Requirements: 7.5_
 
-## Task 2: Feature Flag設定とアセットクラス別条件付きコンパイル
+## Task 2: Feature Flag設定とアセチE��クラス別条件付きコンパイル
 
-- [ ] 2.1 pricer_modelsへのfeature flag追加
+- [x] 2.1 pricer_modelsへのfeature flag追加
   - Cargo.tomlにequity, rates, credit, fx, commodity, exoticフィーチャーを定義
-  - default = ["equity"]を設定
-  - all = ["equity", "rates", "credit", "fx", "commodity", "exotic"]を設定
-  - 各フィーチャー間の依存関係を適切に設定
+  - default = ["equity"]を設宁E
+  - all = ["equity", "rates", "credit", "fx", "commodity", "exotic"]を設宁E
+  - 吁E��ィーチャー間�E依存関係を適刁E��設宁E
   - _Requirements: 7.4_
 
-- [ ] 2.2 instruments/配下のアセットクラス別サブモジュール作成
-  - equity/サブモジュールを作成し、既存のVanillaOption, Barrier, Asian, Lookbackを移動
-  - rates/サブモジュールを作成（スケルトン）
-  - credit/サブモジュールを作成（スケルトン）
-  - fx/サブモジュールを作成（スケルトン）
-  - commodity/サブモジュールを作成（スケルトン）
-  - exotic/サブモジュールを作成（スケルトン）
-  - 各サブモジュールを対応するfeature flagでゲート
+- [x] 2.2 instruments/配下�EアセチE��クラス別サブモジュール作�E
+  - equity/サブモジュールを作�Eし、既存�EVanillaOption, Barrier, Asian, Lookbackを移勁E
+  - rates/サブモジュールを作�E�E�スケルトン�E�E
+  - credit/サブモジュールを作�E�E�スケルトン�E�E
+  - fx/サブモジュールを作�E�E�スケルトン�E�E
+  - commodity/サブモジュールを作�E�E�スケルトン�E�E
+  - exotic/サブモジュールを作�E�E�スケルトン�E�E
+  - 吁E��ブモジュールを対応するfeature flagでゲーチE
   - _Requirements: 7.2, 1.1_
 
-- [ ] 2.3 models/配下のモデルカテゴリ別サブモジュール作成
-  - equity/サブモジュールを作成し、既存のGBMを移動
-  - rates/サブモジュールを作成（スケルトン）
-  - hybrid/サブモジュールを作成（スケルトン）
-  - 既存のStochasticModel traitとStochasticModelEnumを維持
+- [x] 2.3 models/配下�EモチE��カチE��リ別サブモジュール作�E
+  - equity/サブモジュールを作�Eし、既存�EGBMを移勁E
+  - rates/サブモジュールを作�E�E�スケルトン�E�E
+  - hybrid/サブモジュールを作�E�E�スケルトン�E�E
+  - 既存�EStochasticModel traitとStochasticModelEnumを維持E
   - _Requirements: 7.3_
 
-## Task 3: マルチカーブ市場データ基盤
+## Task 3: マルチカーブ市場チE�Eタ基盤
 
 - [ ] 3.1 CurveNameとCurveEnumの定義
-  - カーブ名の列挙型を定義（OIS, SOFR, TONAR, Euribor, Forward, Discount, Custom）
-  - 既存のFlatCurve, InterpolatedCurveを統合するenum型を定義
-  - 全型をジェネリックFloat型で維持しAD互換性を確保
+  - カーブ名の列挙型を定義�E�EIS, SOFR, TONAR, Euribor, Forward, Discount, Custom�E�E
+  - 既存�EFlatCurve, InterpolatedCurveを統合するenum型を定義
+  - 全型をジェネリチE��Float型で維持しAD互換性を確俁E
   - _Requirements: 2.5_
 
-- [ ] 3.2 CurveSet構造体の実装
-  - 複数カーブを名前付きで管理するコンテナを実装
-  - カーブの登録・取得メソッドを実装
-  - ディスカウントカーブとフォワードカーブの分離取得を実装
+- [ ] 3.2 CurveSet構造体�E実裁E
+  - 褁E��カーブを名前付きで管琁E��るコンチE��を実裁E
+  - カーブ�E登録・取得メソチE��を実裁E
+  - チE��スカウントカーブとフォワードカーブ�E刁E��取得を実裁E
   - _Requirements: 2.1, 2.2_
 
-- [ ] 3.3 CreditCurveトレイトとHazardRateCurve実装
-  - ハザードレート・生存確率・デフォルト確率の計算インターフェースを定義
-  - テナーとハザードレートの期間構造を持つ実装を作成
-  - 生存確率の積分計算を実装
+- [ ] 3.3 CreditCurveトレイトとHazardRateCurve実裁E
+  - ハザードレート�E生存確玁E�EチE��ォルト確玁E�E計算インターフェースを定義
+  - チE��ーとハザードレート�E期間構造を持つ実裁E��作�E
+  - 生存確玁E�E積�E計算を実裁E
   - _Requirements: 2.3, 5.3_
 
 - [ ] 3.4 MarketDataError拡張
-  - カーブ未検出エラーを追加
+  - カーブ未検�Eエラーを追加
   - 無効な満期エラーを追加
   - 補間失敗エラーを追加
-  - 欠損データの詳細を含むエラーメッセージを提供
+  - 欠損データの詳細を含むエラーメチE��ージを提侁E
   - _Requirements: 2.4_
 
-- [ ] 3.5 (P) FxVolatilitySurface実装
-  - デルタ×満期グリッドでのボラティリティサーフェスを実装
-  - VolatilitySurfaceトレイトを実装
-  - ATMボラティリティ取得メソッドを追加
+- [ ] 3.5 (P) FxVolatilitySurface実裁E
+  - チE��タ×満期グリチE��でのボラチE��リチE��サーフェスを実裁E
+  - VolatilitySurfaceトレイトを実裁E
+  - ATMボラチE��リチE��取得メソチE��を追加
   - _Requirements: 6.5_
 
-## Task 4: Instrumentトレイトと階層的Enum再構成
+## Task 4: Instrumentトレイトと階層的Enum再構�E
 
-- [ ] 4.1 Instrumentトレイトの定義
-  - 価格計算・Greeks計算・キャッシュフロー取得メソッドを定義
-  - 満期・通貨取得メソッドを追加
-  - 全商品が実装すべき共通インターフェースを確立
+- [ ] 4.1 Instrumentトレイト�E定義
+  - 価格計算�EGreeks計算�EキャチE��ュフロー取得メソチE��を定義
+  - 満期�E通貨取得メソチE��を追加
+  - 全啁E��が実裁E��べき�E通インターフェースを確竁E
   - _Requirements: 1.3_
 
-- [ ] 4.2 InstrumentEnumの階層的enum構造への再構成
-  - トップレベルのアセットクラス別enumを定義（Equity, Rates, Credit, Fx, Commodity, Exotic）
-  - 株式商品のサブenumを定義
-  - 既存の商品をEquityサブenumに統合
-  - トレイト実装をenumに委譲
-  - 静的ディスパッチを維持
+- [ ] 4.2 InstrumentEnumの階層皁Enum構造への再構�E
+  - トップレベルのアセチE��クラス別enumを定義�E�Equity, Rates, Credit, Fx, Commodity, Exotic�E�E
+  - 株式商品�Eサブenumを定義
+  - 既存�E啁E��をEquityサブenumに統吁E
+  - トレイト実裁E��enumに委譲
+  - 静的チE��スパッチを維持E
   - _Requirements: 1.2, 1.5_
 
-- [ ] 4.3 後方互換性の維持
-  - 既存のInstrument enum APIを維持
-  - 新旧両方のアクセスパターンをサポート
-  - deprecation警告で移行を促進
+- [ ] 4.3 後方互換性の維持E
+  - 既存�EInstrument enum APIを維持E
+  - 新旧両方のアクセスパターンをサポ�EチE
+  - deprecation警告で移行を俁E��
   - _Requirements: 1.5_
 
-## Task 5: スケジュール生成モジュール
+## Task 5: スケジュール生�Eモジュール
 
-- [ ] 5.1 基本型の定義
-  - スケジュール構造体を定義（期間リスト、支払日、計算期間開始・終了）
-  - 期間構造体を定義（開始、終了、支払日、日数計算規約）
-  - 頻度列挙型を定義（年次、半期、四半期、月次、週次、日次）
+- [ ] 5.1 基本型�E定義
+  - スケジュール構造体を定義�E�期間リスト、支払日、計算期間開始�E終亁E��E
+  - 期間構造体を定義�E�開始、終亁E��支払日、日数計算規紁E��E
+  - 頻度列挙型を定義�E�年次、半期、四半期、月次、E��次、日次�E�E
   - _Requirements: 1.4_
 
 - [ ] 5.2 BusinessDayConventionとDayCountConvention拡張
-  - 営業日調整規約の列挙型を定義（Following, ModifiedFollowing, Preceding, ModifiedPreceding, Unadjusted）
-  - 既存の日数計算規約にAct360, Act365, Thirty360を追加
+  - 営業日調整規紁E�E列挙型を定義�E�Eollowing, ModifiedFollowing, Preceding, ModifiedPreceding, Unadjusted�E�E
+  - 既存�E日数計算規紁E��Act360, Act365, Thirty360を追加
   - _Requirements: 4.5_
 
-- [ ] 5.3 ScheduleBuilderの実装
-  - ビルダーパターンでスケジュール生成器を実装
-  - 開始日、終了日、頻度、営業日調整規約、日数計算規約の設定メソッドを実装
-  - IMM日付生成をサポート
+- [ ] 5.3 ScheduleBuilderの実裁E
+  - ビルダーパターンでスケジュール生�E器を実裁E
+  - 開始日、終亁E��、E��度、営業日調整規紁E��日数計算規紁E�E設定メソチE��を実裁E
+  - IMM日付生成をサポ�EチE
   - _Requirements: 4.5_
 
-## Task 6: 金利デリバティブ商品
+## Task 6: 金利チE��バティブ商品E
 
-- [ ] 6.1 (P) InterestRateSwap構造体の実装
-  - IRS構造体を定義（ノーショナル、固定レグ、変動レグ、通貨）
-  - 固定レグ構造体を定義（スケジュール、固定レート、日数計算規約）
-  - 変動レグ構造体を定義（スケジュール、スプレッド、インデックス、日数計算規約）
-  - レートインデックス列挙型を定義（SOFR, TONAR, Euribor3M, Euribor6M）
-  - 金利商品サブenumにSwapバリアントを追加
+- [ ] 6.1 (P) InterestRateSwap構造体�E実裁E
+  - IRS構造体を定義�E�ノーショナル、固定レグ、変動レグ、E��貨�E�E
+  - 固定レグ構造体を定義�E�スケジュール、固定レート、日数計算規紁E��E
+  - 変動レグ構造体を定義�E�スケジュール、スプレチE��、インチE��クス、日数計算規紁E��E
+  - レートインチE��クス列挙型を定義�E�EOFR, TONAR, Euribor3M, Euribor6M�E�E
+  - 金利啁E��サブenumにSwapバリアントを追加
   - _Requirements: 4.1_
 
-- [ ] 6.2 (P) Swaption構造体の実装
-  - Swaption構造体を定義（原資産スワップ、満期、ストライク、オプションタイプ）
-  - Swaptionタイプ列挙型を定義（Payer, Receiver）
-  - 金利商品サブenumにSwaptionバリアントを追加
+- [ ] 6.2 (P) Swaption構造体�E実裁E
+  - Swaption構造体を定義�E�原賁E��スワチE�E、満期、ストライク、オプションタイプ！E
+  - Swaptionタイプ�E挙型を定義�E�Eayer, Receiver�E�E
+  - 金利啁E��サブenumにSwaptionバリアントを追加
   - _Requirements: 4.3_
 
-- [ ] 6.3 (P) Cap/Floor構造体の実装
-  - Cap構造体を定義（ノーショナル、スケジュール、ストライク、インデックス）
-  - Floor構造体を定義（同様）
-  - Collar構造体を定義（キャップストライク、フロアストライク）
-  - 金利商品サブenumにCap, Floorバリアントを追加
+- [ ] 6.3 (P) Cap/Floor構造体�E実裁E
+  - Cap構造体を定義�E�ノーショナル、スケジュール、ストライク、インチE��クス�E�E
+  - Floor構造体を定義�E�同様！E
+  - Collar構造体を定義�E�キャチE�Eストライク、フロアストライク�E�E
+  - 金利啁E��サブenumにCap, Floorバリアントを追加
   - _Requirements: 4.3_
 
-- [ ] 6.4 IRS評価ロジックの実装
-  - フォワードレート計算ロジックを実装
-  - 変動レグと固定レグのキャッシュフロー計算を実装
-  - CurveSetからディスカウント・フォワードカーブを取得して評価
+- [ ] 6.4 IRS評価ロジチE��の実裁E
+  - フォワードレート計算ロジチE��を実裁E
+  - 変動レグと固定レグのキャチE��ュフロー計算を実裁E
+  - CurveSetからチE��スカウント�Eフォワードカーブを取得して評価
   - _Requirements: 4.2_
 
-- [ ] 6.5 Swaption解析解の実装
-  - Black76モデルによるSwaption価格計算を実装
-  - Bachelierモデル（正規モデル）によるSwaption価格計算を実装
+- [ ] 6.5 Swaption解析解の実裁E
+  - Black76モチE��によるSwaption価格計算を実裁E
+  - BachelierモチE���E�正規モチE���E�によるSwaption価格計算を実裁E
   - 解析解モジュールに追加
   - _Requirements: 4.4_
 
-## Task 7: クレジットデリバティブ商品
+## Task 7: クレジチE��チE��バティブ商品E
 
-- [ ] 7.1 (P) CreditDefaultSwap構造体の実装
-  - CDS構造体を定義（参照エンティティ、ノーショナル、スプレッド、満期）
-  - クレジット商品サブenumにCdsバリアントを追加
-  - Instrumentトレイトを実装
+- [ ] 7.1 (P) CreditDefaultSwap構造体�E実裁E
+  - CDS構造体を定義�E�参照エンチE��チE��、ノーショナル、スプレチE��、満期！E
+  - クレジチE��啁E��サブenumにCdsバリアントを追加
+  - Instrumentトレイトを実裁E
   - _Requirements: 5.1_
 
-- [ ] 7.2 CDS評価ロジックの実装
-  - ハザードレートカーブから生存確率を計算
-  - プロテクションレグPV計算を実装
-  - プレミアムレグPV計算を実装
+- [ ] 7.2 CDS評価ロジチE��の実裁E
+  - ハザードレートカーブから生存確玁E��計箁E
+  - プロチE��ションレグPV計算を実裁E
+  - プレミアムレグPV計算を実裁E
   - _Requirements: 5.2_
 
-- [ ] 7.3 デフォルトシミュレーションのMC拡張
-  - 生存確率の逆関数でデフォルト時刻をサンプリング
-  - MCエンジンにデフォルトイベント処理を追加
+- [ ] 7.3 チE��ォルトシミュレーションのMC拡張
+  - 生存確玁E�E送E��数でチE��ォルト時刻をサンプリング
+  - MCエンジンにチE��ォルトイベント�E琁E��追加
   - _Requirements: 5.4_
 
-## Task 8: 為替デリバティブ商品
+## Task 8: 為替チE��バティブ商品E
 
-- [ ] 8.1 CurrencyPair構造体の実装
-  - 通貨ペア構造体を定義（ベース通貨、クォート通貨）
-  - スポットレート管理機能を追加
-  - 既存のCurrency列挙型を活用
+- [ ] 8.1 CurrencyPair構造体�E実裁E
+  - 通貨ペア構造体を定義�E��Eース通貨、クォート通貨�E�E
+  - スポットレート管琁E���Eを追加
+  - 既存�ECurrency列挙型を活用
   - _Requirements: 6.3_
 
-- [ ] 8.2 (P) FxOption構造体の実装
-  - FXオプション構造体を定義（通貨ペア、ストライク、満期、オプションタイプ）
-  - 為替商品サブenumにOptionバリアントを追加
-  - Instrumentトレイトを実装
+- [ ] 8.2 (P) FxOption構造体�E実裁E
+  - FXオプション構造体を定義�E�通貨ペア、ストライク、満期、オプションタイプ！E
+  - 為替啁E��サブenumにOptionバリアントを追加
+  - Instrumentトレイトを実裁E
   - _Requirements: 6.1_
 
-- [ ] 8.3 (P) FxForward構造体の実装
-  - FXフォワード構造体を定義（通貨ペア、フォワードレート、満期、ノーショナル）
-  - 為替商品サブenumにForwardバリアントを追加
+- [ ] 8.3 (P) FxForward構造体�E実裁E
+  - FXフォワード構造体を定義�E�通貨ペア、フォワードレート、満期、ノーショナル�E�E
+  - 為替啁E��サブenumにForwardバリアントを追加
   - _Requirements: 6.1_
 
-- [ ] 8.4 Garman-Kohlhagenモデルの実装
-  - GK公式によるFXオプション価格計算を実装
-  - 国内・外国金利カーブを使用したディスカウント
+- [ ] 8.4 Garman-KohlhagenモチE��の実裁E
+  - GK公式によるFXオプション価格計算を実裁E
+  - 国冁E�E外国金利カーブを使用したチE��スカウンチE
   - 解析解モジュールに追加
   - _Requirements: 6.2_
 
-## Task 9: 確率モデル拡張
+## Task 9: 確玁E��チE��拡張
 
 - [ ] 9.1 StochasticModelトレイトへのnum_factors追加
-  - ファクター数取得メソッドを追加
-  - 既存のGBMでnum_factors = 1を実装
-  - 1ファクター/2ファクター/マルチファクターモデルの統一的扱い
+  - ファクター数取得メソチE��を追加
+  - 既存�EGBMでnum_factors = 1を実裁E
+  - 1ファクター/2ファクター/マルチファクターモチE��の統一皁E��ぁE
   - _Requirements: 3.1_
 
-- [ ] 9.2 Hull-White 1Fモデルの実装
-  - Hull-White構造体を定義（平均回帰速度、ボラティリティ、初期カーブ）
-  - StochasticModelトレイトを実装
-  - 短期金利パス生成のevolve_stepを実装
-  - 金利モデルサブモジュールに追加
+- [ ] 9.2 Hull-White 1FモチE��の実裁E
+  - Hull-White構造体を定義�E�平坁E��帰速度、�EラチE��リチE��、�E期カーブ！E
+  - StochasticModelトレイトを実裁E
+  - 短期��利パス生�Eのevolve_stepを実裁E
+  - 金利モチE��サブモジュールに追加
   - _Requirements: 3.2_
 
-- [ ] 9.3 (P) CIRモデルの実装
+- [ ] 9.3 (P) CIRモチE��の実裁E
   - Cox-Ingersoll-Ross構造体を定義
-  - StochasticModelトレイトを実装
-  - Feller条件のバリデーションを追加
-  - 金利モデルサブモジュールに追加
+  - StochasticModelトレイトを実裁E
+  - Feller条件のバリチE�Eションを追加
+  - 金利モチE��サブモジュールに追加
   - _Requirements: 3.2_
 
-- [ ] 9.4 StochasticModelEnumへの新モデル追加
+- [ ] 9.4 StochasticModelEnumへの新モチE��追加
   - HullWhite, CIRバリアントをStochasticModelEnumに追加
-  - 静的ディスパッチを維持
-  - enumバリアント追加のみで拡張可能な構造を確認
+  - 静的チE��スパッチを維持E
+  - enumバリアント追加のみで拡張可能な構造を確誁E
   - _Requirements: 3.3_
 
-- [ ] 9.5 CorrelatedModels（Cholesky分解）の実装
-  - 相関モデル構造体を定義（モデルリスト、相関行列、Cholesky分解済み行列）
-  - 相関行列のCholesky分解を実装
-  - 相関ブラウン運動の生成を実装
-  - ハイブリッドモデルサブモジュールに追加
+- [ ] 9.5 CorrelatedModels�E�Eholesky刁E���E��E実裁E
+  - 相関モチE��構造体を定義�E�モチE��リスト、相関行�E、Cholesky刁E��済み行�E�E�E
+  - 相関行�EのCholesky刁E��を実裁E
+  - 相関ブラウン運動の生�Eを実裁E
+  - ハイブリチE��モチE��サブモジュールに追加
   - _Requirements: 3.4_
 
 ## Task 10: キャリブレーション基盤
 
-- [ ] 10.1 Levenberg-Marquardtソルバーの実装
-  - LMソルバー構造体を定義
-  - 非線形最小二乗法の反復計算を実装
-  - 収束判定とパラメータ更新ロジックを実装
-  - 数学ソルバーモジュールに追加
+- [ ] 10.1 Levenberg-Marquardtソルバ�Eの実裁E
+  - LMソルバ�E構造体を定義
+  - 非線形最小二乗法�E反復計算を実裁E
+  - 収束判定とパラメータ更新ロジチE��を実裁E
+  - 数学ソルバ�Eモジュールに追加
   - _Requirements: 8.3_
 
-- [ ] 10.2 Calibratorトレイトの定義
-  - キャリブレーション・目的関数・制約条件メソッドを定義
-  - キャリブレーション結果構造体を定義（収束フラグ、イテレーション数、残差、最終パラメータ）
-  - 制約条件構造体を定義
+- [ ] 10.2 Calibratorトレイト�E定義
+  - キャリブレーション・目皁E��数・制紁E��件メソチE��を定義
+  - キャリブレーション結果構造体を定義�E�収束フラグ、イチE��ーション数、残差、最終パラメータ�E�E
+  - 制紁E��件構造体を定義
   - _Requirements: 8.1_
 
-- [ ] 10.3 CalibrationError型の実装
-  - キャリブレーションエラー構造体を定義（種別、残差、イテレーション数、メッセージ）
-  - エラー種別列挙型を定義（NotConverged, InvalidConstraint, NumericalInstability, InsufficientData）
-  - 残差、イテレーション数、収束判定基準を含む詳細情報を提供
+- [ ] 10.3 CalibrationError型�E実裁E
+  - キャリブレーションエラー構造体を定義�E�種別、残差、イチE��ーション数、メチE��ージ�E�E
+  - エラー種別列挙型を定義�E�EotConverged, InvalidConstraint, NumericalInstability, InsufficientData�E�E
+  - 残差、イチE��ーション数、収束判定基準を含む詳細惁E��を提侁E
   - _Requirements: 8.4_
 
-- [ ] 10.4 SwaptionCalibratorの実装
+- [ ] 10.4 SwaptionCalibratorの実裁E
   - Swaptionキャリブレータ構造体を定義
-  - Swaptionボラティリティサーフェスへのキャリブレーションを実装
-  - Hull-Whiteモデルのパラメータ（平均回帰速度、ボラティリティ）を推定
+  - SwaptionボラチE��リチE��サーフェスへのキャリブレーションを実裁E
+  - Hull-WhiteモチE��のパラメータ�E�平坁E��帰速度、�EラチE��リチE���E�を推宁E
   - _Requirements: 8.2_
 
-- [ ] 10.5 Enzyme ADを活用した勾配計算
-  - キャリブレーション目的関数のAD対応
+- [ ] 10.5 Enzyme ADを活用した勾配計箁E
+  - キャリブレーション目皁E��数のAD対忁E
   - 勾配計算によるキャリブレーション高速化
-  - enzyme-modeでのテスト
+  - enzyme-modeでのチE��チE
   - _Requirements: 8.5_
 
-## Task 11: リスクファクター管理
+## Task 11: リスクファクター管琁E
 
-- [ ] 11.1 RiskFactorトレイトの定義
-  - リスクファクタートレイトを定義（ファクター種別、バンプ、シナリオ適用）
-  - リスクファクター種別列挙型を定義（InterestRate, Credit, Fx, Equity, Commodity, Volatility）
+- [ ] 11.1 RiskFactorトレイト�E定義
+  - リスクファクタートレイトを定義�E�ファクター種別、バンプ、シナリオ適用�E�E
+  - リスクファクター種別列挙型を定義�E�EnterestRate, Credit, Fx, Equity, Commodity, Volatility�E�E
   - トレイトモジュールに追加
   - _Requirements: 9.1_
 
-- [ ] 11.2 BumpScenarioとRiskFactorShiftの実装
-  - リスクファクターシフト構造体を定義（ファクター種別、シフト種別、値）
-  - シフト種別列挙型を定義（Absolute, Relative, Parallel, Twist, Butterfly）
-  - 各リスクファクターの独立・同時シフトをサポート
+- [ ] 11.2 BumpScenarioとRiskFactorShiftの実裁E
+  - リスクファクターシフト構造体を定義�E�ファクター種別、シフト種別、値�E�E
+  - シフト種別列挙型を定義�E�Ebsolute, Relative, Parallel, Twist, Butterfly�E�E
+  - 吁E��スクファクターの独立�E同時シフトをサポ�EチE
   - _Requirements: 9.2_
 
-- [ ] 11.3 GreeksAggregatorの実装
-  - Greeks集計構造体を定義
-  - 集計手法列挙型を定義（Simple, RiskWeighted, CorrelationAdjusted）
-  - ポートフォリオレベルDelta, Gamma, Vegaを計算するメソッドを実装
-  - ポートフォリオGreeks構造体を定義
+- [ ] 11.3 GreeksAggregatorの実裁E
+  - Greeks雁E��構造体を定義
+  - 雁E��手法�E挙型を定義�E�Eimple, RiskWeighted, CorrelationAdjusted�E�E
+  - ポ�EトフォリオレベルDelta, Gamma, Vegaを計算するメソチE��を実裁E
+  - ポ�EトフォリオGreeks構造体を定義
   - _Requirements: 9.3_
 
-- [ ] 11.4 ScenarioEngineの実装
+- [ ] 11.4 ScenarioEngineの実裁E
   - シナリオエンジン構造体を定義
-  - シナリオ構造体を定義（名前、シフトリスト）
-  - シナリオ実行・全シナリオ実行メソッドを実装
+  - シナリオ構造体を定義�E�名前、シフトリスト！E
+  - シナリオ実行�E全シナリオ実行メソチE��を実裁E
   - シナリオPnL構造体を定義
   - _Requirements: 9.4_
 
-- [ ] 11.5 プリセットシナリオの追加
-  - パラレルシフト（+1bp, +10bp, +100bp）を追加
-  - ツイストシナリオ（短期↑長期↓）を追加
-  - バタフライシナリオ（中期スパイク）を追加
-  - プリセットモジュールに追加
+- [ ] 11.5 プリセチE��シナリオの追加
+  - パラレルシフト�E�E1bp, +10bp, +100bp�E�を追加
+  - チE��ストシナリオ�E�短期�E長期�E�E�を追加
+  - バタフライシナリオ�E�中期スパイク�E�を追加
+  - プリセチE��モジュールに追加
   - _Requirements: 9.5_
 
-## Task 12: エキゾチックデリバティブ商品
+## Task 12: エキゾチックチE��バティブ商品E
 
-- [ ] 12.1 (P) VarianceSwap構造体の実装
-  - バリアンススワップ構造体を定義（ストライク、バリアンスノーショナル、観測日）
-  - ボラティリティスワップ構造体を定義（バリアンススワップとの違いを明確化）
-  - エキゾチック商品サブenumにVarianceSwap, VolatilitySwapバリアントを追加
+- [ ] 12.1 (P) VarianceSwap構造体�E実裁E
+  - バリアンススワチE�E構造体を定義�E�ストライク、バリアンスノ�Eショナル、観測日�E�E
+  - ボラチE��リチE��スワチE�E構造体を定義�E�バリアンススワチE�Eとの違いを�E確化！E
+  - エキゾチック啁E��サブenumにVarianceSwap, VolatilitySwapバリアントを追加
   - _Requirements: 11.1, 11.8_
 
-- [ ] 12.2 VarianceSwap評価ロジックの実装
-  - ログリターンの二乗和から実現バリアンスを計算
-  - レプリケーションまたはMCで公正バリアンスストライクを算出
+- [ ] 12.2 VarianceSwap評価ロジチE��の実裁E
+  - ログリターンの二乗和から実現バリアンスを計箁E
+  - レプリケーションまた�EMCで公正バリアンスストライクを算�E
   - _Requirements: 11.2_
 
-- [ ] 12.3 (P) Cliquet構造体の実装
-  - クリケット構造体を定義（リセット日、ローカルキャップ/フロア、グローバルキャップ/フロア）
-  - エキゾチック商品サブenumにCliquetバリアントを追加
+- [ ] 12.3 (P) Cliquet構造体�E実裁E
+  - クリケチE��構造体を定義�E�リセチE��日、ローカルキャチE�E/フロア、グローバルキャチE�E/フロア�E�E
+  - エキゾチック啁E��サブenumにCliquetバリアントを追加
   - _Requirements: 11.3_
 
-- [ ] 12.4 (P) Autocallable構造体の実装
-  - オートコーラブル構造体を定義（観測日、早期償還バリア、クーポン条件、ノックインプット）
-  - エキゾチック商品サブenumにAutocallableバリアントを追加
+- [ ] 12.4 (P) Autocallable構造体�E実裁E
+  - オートコーラブル構造体を定義�E�観測日、早期償邁E��リア、クーポン条件、ノチE��インプット！E
+  - エキゾチック啁E��サブenumにAutocallableバリアントを追加
   - _Requirements: 11.4_
 
-- [ ] 12.5 (P) Rainbow（BestOf/WorstOf）構造体の実装
-  - レインボー構造体を定義（原資産リスト、ペイオフタイプ、相関）
-  - ペイオフタイプ列挙型を定義（BestOf, WorstOf, Spread）
-  - エキゾチック商品サブenumにRainbowバリアントを追加
+- [ ] 12.5 (P) Rainbow�E�EestOf/WorstOf�E�構造体�E実裁E
+  - レインボ�E構造体を定義�E�原賁E��リスト、�Eイオフタイプ、相関�E�E
+  - ペイオフタイプ�E挙型を定義�E�EestOf, WorstOf, Spread�E�E
+  - エキゾチック啁E��サブenumにRainbowバリアントを追加
   - _Requirements: 11.5_
 
-- [ ] 12.6 (P) QuantoOption構造体の実装
-  - クオントオプション構造体を定義（原資産通貨、決済通貨、クオント調整）
-  - エキゾチック商品サブenumにQuantoバリアントを追加
+- [ ] 12.6 (P) QuantoOption構造体�E実裁E
+  - クオントオプション構造体を定義�E�原賁E��通貨、決済通貨、クオント調整�E�E
+  - エキゾチック啁E��サブenumにQuantoバリアントを追加
   - _Requirements: 11.6_
 
-- [ ] 12.7 Longstaff-Schwartz法の実装
-  - LSM構造体を定義（基底関数タイプ、基底関数数、two-pass使用フラグ）
-  - 基底関数タイプ列挙型を定義（Polynomial, Laguerre, Hermite）
-  - 継続価値計算メソッドを実装
-  - 行使境界探索メソッドを実装
+- [ ] 12.7 Longstaff-Schwartz法�E実裁E
+  - LSM構造体を定義�E�基底関数タイプ、基底関数数、two-pass使用フラグ�E�E
+  - 基底関数タイプ�E挙型を定義�E�Eolynomial, Laguerre, Hermite�E�E
+  - 継続価値計算メソチE��を実裁E
+  - 行使墁E��探索メソチE��を実裁E
   - アメリカンオプションモジュールに追加
   - _Requirements: 11.7_
 
-- [ ] 12.8 BermudanSwaption評価の実装
+- [ ] 12.8 BermudanSwaption評価の実裁E
   - バミューダンSwaption構造体を定義
-  - Longstaff-Schwartz法による早期行使境界推定
-  - エキゾチック商品サブenumにBermudanバリアントを追加
+  - Longstaff-Schwartz法による早期行使墁E��推宁E
+  - エキゾチック啁E��サブenumにBermudanバリアントを追加
   - _Requirements: 11.7_
 
 ## Task 13: XVA拡張
 
-- [ ] 13.1 Wrong-Way Riskモジュールの実装
+- [ ] 13.1 Wrong-Way Riskモジュールの実裁E
   - Wrong-Way Risk構造体を定義
-  - CVA計算でのWWR考慮オプションを追加
-  - 相関パラメータによるエクスポージャー調整
+  - CVA計算でのWWR老E�Eオプションを追加
+  - 相関パラメータによるエクスポ�Eジャー調整
   - XVAモジュールに追加
   - _Requirements: 5.5_
 
-- [ ] 13.2 (P) マルチカレンシーXVA対応
-  - 各取引の決済通貨と評価通貨の変換を自動処理
+- [ ] 13.2 (P) マルチカレンシーXVA対忁E
+  - 吁E��引�E決済通貨と評価通貨の変換を�E動�E琁E
   - CurrencyPairを使用した為替レート適用
   - _Requirements: 6.4_
 
-## Task 14: パフォーマンス最適化
+## Task 14: パフォーマンス最適匁E
 
-- [ ] 14.1 SoAレイアウトの維持確認
-  - pricer_riskでのSoA構造の維持を確認
-  - 新規構造体でもSoA対応を検討
+- [ ] 14.1 SoAレイアウト�E維持確誁E
+  - pricer_riskでのSoA構造の維持を確誁E
+  - 新規構造体でもSoA対応を検訁E
   - _Requirements: 10.1_
 
-- [ ] 14.2 (P) Rayon並列化の適用確認
-  - Portfolio評価の並列化が維持されていることを確認
-  - 新規アセットクラスでの並列評価テスト
+- [ ] 14.2 (P) Rayon並列化の適用確誁E
+  - Portfolio評価の並列化が維持されてぁE��ことを確誁E
+  - 新規アセチE��クラスでの並列評価チE��チE
   - _Requirements: 10.2_
 
-- [ ] 14.3 (P) ワークスペースバッファパターンの適用
-  - 新規評価パスでのバッファ再利用を確認
+- [ ] 14.3 (P) ワークスペ�Eスバッファパターンの適用
+  - 新規評価パスでのバッファ再利用を確誁E
   - メモリアロケーション最小化の検証
   - _Requirements: 10.3_
 
-- [ ] 14.4 (P) チェックポイント機能の統合確認
-  - 新規モデル・商品でのcheckpointing対応
-  - メモリ使用量と再計算のトレードオフ設定
+- [ ] 14.4 (P) チェチE��ポイント機�Eの統合確誁E
+  - 新規モチE��・啁E��でのcheckpointing対忁E
+  - メモリ使用量と再計算�Eトレードオフ設宁E
   - _Requirements: 10.4_
 
-- [ ] 14.5 criterionベンチマーク追加
-  - IRS評価ベンチマーク追加
-  - CDS評価ベンチマーク追加
-  - FXオプション評価ベンチマーク追加
-  - Swaption評価ベンチマーク追加
-  - パフォーマンス回帰検出の仕組み確認
+- [ ] 14.5 criterionベンチ�Eーク追加
+  - IRS評価ベンチ�Eーク追加
+  - CDS評価ベンチ�Eーク追加
+  - FXオプション評価ベンチ�Eーク追加
+  - Swaption評価ベンチ�Eーク追加
+  - パフォーマンス回帰検�Eの仕絁E��確誁E
   - _Requirements: 10.5_
 
-## Task 15: 統合テスト
+## Task 15: 統合テスチE
 
-- [ ] 15.1 IRS評価の統合テスト
-  - Schedule生成 → CurveSet構築 → price()呼び出し → 既知値との比較
-  - HullWhiteモデルでのMC評価テスト
+- [ ] 15.1 IRS評価の統合テスチE
+  - Schedule生�E ↁECurveSet構篁EↁEprice()呼び出ぁEↁE既知値との比輁E
+  - HullWhiteモチE��でのMC評価チE��チE
   - _Requirements: 4.1, 4.2_
 
-- [ ] 15.2 (P) Swaption評価の統合テスト
-  - HullWhiteキャリブレーション → MC価格 → Black76解析解との比較
-  - キャリブレーション収束確認
+- [ ] 15.2 (P) Swaption評価の統合テスチE
+  - HullWhiteキャリブレーション ↁEMC価格 ↁEBlack76解析解との比輁E
+  - キャリブレーション収束確誁E
   - _Requirements: 4.3, 4.4, 8.2_
 
-- [ ] 15.3 (P) CDS評価の統合テスト
-  - HazardRateCurve構築 → プロテクション/プレミアムレグPV計算
-  - 既知のCDSスプレッドとの整合性確認
+- [ ] 15.3 (P) CDS評価の統合テスチE
+  - HazardRateCurve構篁EↁEプロチE��ション/プレミアムレグPV計箁E
+  - 既知のCDSスプレチE��との整合性確誁E
   - _Requirements: 5.1, 5.2_
 
-- [ ] 15.4 (P) FXオプション評価の統合テスト
-  - Garman-Kohlhagenモデルでの価格計算
-  - マルチカレンシーポートフォリオでのXVA計算
+- [ ] 15.4 (P) FXオプション評価の統合テスチE
+  - Garman-KohlhagenモチE��での価格計箁E
+  - マルチカレンシーポ�EトフォリオでのXVA計箁E
   - _Requirements: 6.1, 6.2, 6.4_
 
-- [ ] 15.5 全アセットクラス横断のPortfolio XVAテスト
-  - Equity + Rates + Credit + FX商品の混合ポートフォリオ
-  - ExposureProfile生成 → CVA/DVA/FVA計算
-  - 各リスクファクターの感応度確認
+- [ ] 15.5 全アセチE��クラス横断のPortfolio XVAチE��チE
+  - Equity + Rates + Credit + FX啁E��の混合�Eートフォリオ
+  - ExposureProfile生�E ↁECVA/DVA/FVA計箁E
+  - 吁E��スクファクターの感応度確誁E
   - _Requirements: 9.3, 9.4, 5.5_
 
-- [ ] 15.6 (P) エキゾチック商品の統合テスト
-  - VarianceSwap評価とGreeks計算
-  - Autocallable/Cliquetの早期償還シミュレーション
+- [ ] 15.6 (P) エキゾチック啁E��の統合テスチE
+  - VarianceSwap評価とGreeks計箁E
+  - Autocallable/Cliquetの早期償邁E��ミュレーション
   - BermudanSwaptionのLSM評価
   - _Requirements: 11.1, 11.2, 11.7_

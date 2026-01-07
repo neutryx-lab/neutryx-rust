@@ -3,170 +3,170 @@
 ## Summary
 
 - **Feature**: `crate-architecture-redesign`
-- **Discovery Scope**: Complex Integration（既存システムの大規模再構成）
+- **Discovery Scope**: Complex Integration�E�既存シスチE��の大規模再構�E�E�E
 - **Key Findings**:
-  - Enum Dispatchパターンは静的ディスパッチで10倍のパフォーマンス向上、Enzyme AD互換性に必須
-  - SOFR/OISマルチカーブフレームワークが現代の金利デリバティブ評価の標準
-  - Hull-White 1Fモデルはxva計算の業界標準、mean-reversionパラメータの適切な選択が精度に重要
-  - Longstaff-Schwartz法は3-5個のLaguerre多項式基底関数で実用的な精度を達成
+  - Enum Dispatchパターンは静的チE��スパッチで10倍�Eパフォーマンス向上、Enzyme AD互換性に忁E��E
+  - SOFR/OISマルチカーブフレームワークが現代の金利チE��バティブ評価の標溁E
+  - Hull-White 1FモチE��はxva計算�E業界標準、mean-reversionパラメータの適刁E��選択が精度に重要E
+  - Longstaff-Schwartz法�E3-5個�ELaguerre多頁E��基底関数で実用皁E��精度を達戁E
 
 ## Research Log
 
 ### Enum Dispatch vs Trait Objects
 
-- **Context**: Enzyme ADとの互換性を維持しながら多様な金融商品・モデルを扱う多態性の実現方法
+- **Context**: Enzyme ADとの互換性を維持しながら多様な金融啁E��・モチE��を扱ぁE���E性の実現方況E
 - **Sources Consulted**:
   - [enum_dispatch crate](https://docs.rs/enum_dispatch/latest/enum_dispatch/)
   - [Rust Dispatch Explained](https://www.somethingsblog.com/2025/04/20/rust-dispatch-explained-when-enums-beat-dyn-trait/)
   - [Rust Polymorphism Guide](https://www.possiblerust.com/guide/enum-or-trait-object)
 - **Findings**:
-  - Enum dispatchはtrait objectsと比較して最大10倍のパフォーマンス向上
-  - コンパイラが最適化（インライン化）を適用可能、vtableルックアップ不要
-  - 「Closed World」前提: 全variant型がコンパイル時に既知である必要
-  - コード膨張のリスクあり（モノモーフィゼーション）
+  - Enum dispatchはtrait objectsと比輁E��て最大10倍�Eパフォーマンス向丁E
+  - コンパイラが最適化（インライン化）を適用可能、vtableルチE��アチE�E不要E
+  - 「Closed World」前揁E 全variant型がコンパイル時に既知である忁E��E
+  - コード�E張のリスクあり�E�モノモーフィゼーション�E�E
 - **Implications**:
-  - 現行の`Instrument<T>` enum、`StochasticModelEnum`パターンを継続
-  - アセットクラス別にサブenumを定義し、トップレベルenumでディスパッチ
-  - Enzyme互換性のため、全商品・モデルでenum dispatch維持必須
+  - 現行�E`Instrument<T>` enum、`StochasticModelEnum`パターンを継綁E
+  - アセチE��クラス別にサブenumを定義し、トチE�EレベルenumでチE��スパッチE
+  - Enzyme互換性のため、�E啁E��・モチE��でenum dispatch維持忁E��E
 
-### マルチカーブフレームワーク（SOFR/OIS）
+### マルチカーブフレームワーク�E�EOFR/OIS�E�E
 
-- **Context**: 金利デリバティブ評価に必要なマルチカーブ基盤の設計
+- **Context**: 金利チE��バティブ評価に忁E��なマルチカーブ基盤の設訁E
 - **Sources Consulted**:
   - [CME SOFR Derivatives Pricing](https://www.cmegroup.com/articles/2025/price-and-hedging-usd-sofr-interest-swaps-with-sofr-futures.html)
   - [SOFR Discount - ScienceDirect](https://www.sciencedirect.com/science/article/pii/S0304405X24002125)
   - [Quantifi Curve Construction](https://www.quantifisolutions.com/tackling-interest-rate-curve-construction-complexity/)
 - **Findings**:
-  - LIBOR廃止後、SOFR OISカーブがUSDデリバティブのディスカウント標準
-  - デュアルカーブディスカウント: フォワードレート予測用とディスカウント用で別カーブ
-  - SOFRカーブ構築の複雑性: 日次平均、遡及的支払い、幾何的複利
-  - 短期はデポジットレート、長期はスワップレートでブートストラップ
+  - LIBOR廁E��後、SOFR OISカーブがUSDチE��バティブ�EチE��スカウント標溁E
+  - チE��アルカーブディスカウンチE フォワードレート予測用とチE��スカウント用で別カーチE
+  - SOFRカーブ構築�E褁E��性: 日次平坁E��E��及的支払い、幾何的褁E��
+  - 短期�EチE�EジチE��レート、E��期�EスワチE�Eレートでブ�EトストラチE�E
 - **Implications**:
-  - `CurveSet`構造体で名前付きカーブ管理（"OIS", "SOFR", "TONAR"等）
-  - 各商品でディスカウントカーブとフォワードカーブを分離指定可能に
-  - ブートストラップアルゴリズムの実装（将来拡張）
+  - `CurveSet`構造体で名前付きカーブ管琁E��EOIS", "SOFR", "TONAR"等！E
+  - 吁E��品でチE��スカウントカーブとフォワードカーブを刁E��持E��可能に
+  - ブ�EトストラチE�Eアルゴリズムの実裁E��封E��拡張�E�E
 
-### Hull-White 1Fモデルとキャリブレーション
+### Hull-White 1FモチE��とキャリブレーション
 
-- **Context**: 金利モデルの実装とxva計算への適用
+- **Context**: 金利モチE��の実裁E��xva計算への適用
 - **Sources Consulted**:
   - [Hull-White Wikipedia](https://en.wikipedia.org/wiki/Hull%E2%80%93White_model)
   - [S&P Global Hull-White for xVA](https://www.spglobal.com/marketintelligence/en/mi/research-analysis/xva-modeling-squeezing-accuracy-from-the-industry-standard-hul.html)
   - [KTH Calibration Methods](https://people.kth.se/~aaurell/Teaching/SF2975_HT17/calibration-hull-white.pdf)
 - **Findings**:
-  - Hull-White 1FはxVA計算の業界標準モデル
-  - パラメータ: mean-reversion (α)、short rate volatility (σ)、θ(初期イールドカーブから計算)
-  - σはATM co-terminal swaptionにキャリブレーション
+  - Hull-White 1FはxVA計算�E業界標準モチE��
+  - パラメータ: mean-reversion (α)、short rate volatility (ρE、θ(初期イールドカーブから計箁E
+  - ρE�EATM co-terminal swaptionにキャリブレーション
   - mean-reversionパラメータはswaption volatility surfaceの形状に大きく影響
-  - xVAエクスポージャー計算にはChevron形状のswaption選択が有効
+  - xVAエクスポ�Eジャー計算にはChevron形状のswaption選択が有効
 - **Implications**:
-  - Hull-White 1Fを最初の金利モデルとして実装
+  - Hull-White 1Fを最初�E金利モチE��として実裁E
   - `Calibrator` traitでswaption volatility surfaceへのキャリブレーション
-  - mean-reversionは設定可能パラメータ、σは時間依存piece-wise constant
+  - mean-reversionは設定可能パラメータ、E�E�E時間依存piece-wise constant
 
-### Longstaff-Schwartz法（Bermudan/American Options）
+### Longstaff-Schwartz法！Eermudan/American Options�E�E
 
-- **Context**: Bermudan Swaptionの早期行使境界推定
+- **Context**: Bermudan Swaptionの早期行使墁E��推宁E
 - **Sources Consulted**:
   - [Original Paper](https://people.math.ethz.ch/~hjfurrer/teaching/LongstaffSchwartzAmericanOptionsLeastSquareMonteCarlo.pdf)
   - [Oxford Advanced MC](http://www2.maths.ox.ac.uk/~gilesm/mc/module_6/american.pdf)
   - [CRAN LSMRealOptions](https://cran.r-project.org/web/packages/LSMRealOptions/vignettes/LSMRealOptions.html)
 - **Findings**:
-  - 最小二乗法で継続価値の条件付き期待値を推定
-  - In-the-moneyパスのみを回帰に使用（効率向上）
-  - 基底関数: Laguerre多項式、3-5個で実用的精度
-  - バイアス考慮: 決定用パスと評価用パスを分離推奨
+  - 最小二乗法で継続価値の条件付き期征E��を推宁E
+  - In-the-moneyパスのみを回帰に使用�E�効玁E��上！E
+  - 基底関数: Laguerre多頁E��、E-5個で実用皁E��度
+  - バイアス老E�E: 決定用パスと評価用パスを�E離推奨
   - 50,000パス程度で収束
 - **Implications**:
-  - `pricer_engine/american/lsm.rs`でLongstaff-Schwartz実装
-  - 基底関数は`BasisFunction` enumで選択可能（Polynomial, Laguerre, Hermite）
-  - 2セットパス方式でバイアス低減オプション
+  - `pricer_pricing/american/lsm.rs`でLongstaff-Schwartz実裁E
+  - 基底関数は`BasisFunction` enumで選択可能�E�Eolynomial, Laguerre, Hermite�E�E
+  - 2セチE��パス方式でバイアス低減オプション
 
 ## Architecture Pattern Evaluation
 
 | Option | Description | Strengths | Risks / Limitations | Notes |
 |--------|-------------|-----------|---------------------|-------|
-| Enum Dispatch継続 | 既存パターン維持、アセットクラス別サブenum | 10x性能、Enzyme互換、コンパイル時検証 | variant数増加でコンパイル時間増 | **採用** - 既存パターン、AD必須要件 |
-| Trait Objects | `Box<dyn Instrument>`で拡張性 | オープン拡張、コード簡潔 | 10x性能低下、Enzyme非互換 | 却下 - AD互換性不可 |
-| Hybrid (enum + trait) | 基本はenum、拡張点でtrait | 柔軟性と性能のバランス | 複雑性増加、境界設計難 | 将来検討 - 現時点では不要 |
+| Enum Dispatch継綁E| 既存パターン維持、アセチE��クラス別サブenum | 10x性能、Enzyme互換、コンパイル時検証 | variant数増加でコンパイル時間墁E| **採用** - 既存パターン、AD忁E��要件 |
+| Trait Objects | `Box<dyn Instrument>`で拡張性 | オープン拡張、コード簡潁E| 10x性能低下、Enzyme非互換 | 却丁E- AD互換性不可 |
+| Hybrid (enum + trait) | 基本はenum、拡張点でtrait | 柔軟性と性能のバランス | 褁E��性増加、墁E��設計難 | 封E��検訁E- 現時点では不要E|
 
 ## Design Decisions
 
-### Decision: クレート名変更（kernel→engine, xva→risk）
+### Decision: クレート名変更�E�Eernel→engine, xva→risk�E�E
 
-- **Context**: 役割ベースの一貫した命名規則の確立
+- **Context**: 役割ベ�Eスの一貫した命名規則の確竁E
 - **Alternatives Considered**:
-  1. 現状維持（kernel, xva）— 変更コストゼロだが、xvaだけが製品名
-  2. 役割ベース（engine, risk）— 一貫性あり
-  3. 機能ベース（compute, analytics）— 抽象的すぎる
-- **Selected Approach**: Option 2 - `pricer_kernel` → `pricer_engine`、`pricer_xva` → `pricer_risk`
-- **Rationale**: core/models/engine/riskで責務が明確、xvaはriskの一部機能
-- **Trade-offs**: 全参照更新必要、既存ユーザーへの影響
-- **Follow-up**: Cargo.toml更新、`pub use`でエイリアス提供（deprecation警告付き）
+  1. 現状維持E��Eernel, xva�E� E変更コストゼロだが、xvaだけが製品名
+  2. 役割ベ�Eス�E�Engine, risk�E� E一貫性あり
+  3. 機�Eベ�Eス�E�Eompute, analytics�E� E抽象皁E��ぎる
+- **Selected Approach**: Option 2 - `pricer_kernel` ↁE`pricer_pricing`、`pricer_xva` ↁE`pricer_risk`
+- **Rationale**: core/models/engine/riskで責務が明確、xvaはriskの一部機�E
+- **Trade-offs**: 全参�E更新忁E��、既存ユーザーへの影響
+- **Follow-up**: Cargo.toml更新、`pub use`でエイリアス提供！Eeprecation警告付き�E�E
 
-### Decision: アセットクラス別サブモジュール構成
+### Decision: アセチE��クラス別サブモジュール構�E
 
-- **Context**: 商品とモデルの整理方法
+- **Context**: 啁E��とモチE��の整琁E��況E
 - **Alternatives Considered**:
-  1. Flat構造（現状）— シンプルだが探しにくい
-  2. アセットクラス別（equity/, rates/, credit/等）— 明確な分類
-  3. 商品タイプ別（options/, swaps/, forwards/）— アセット横断だが混在
-- **Selected Approach**: Option 2 - アセットクラス別サブモジュール
-- **Rationale**: 金融業界の標準分類、チーム分担に適合
-- **Trade-offs**: ファイル数増加、一部商品の分類が曖昧（Quantoは exotic? fx?）
+  1. Flat構造�E�現状�E� Eシンプルだが探しにくい
+  2. アセチE��クラス別�E�Equity/, rates/, credit/等） E明確な刁E��E
+  3. 啁E��タイプ別�E�Eptions/, swaps/, forwards/�E� EアセチE��横断だが混在
+- **Selected Approach**: Option 2 - アセチE��クラス別サブモジュール
+- **Rationale**: 金融業界�E標準�E類、チーム刁E��に適吁E
+- **Trade-offs**: ファイル数増加、一部啁E��の刁E��が曖昧�E�Euantoは exotic? fx?�E�E
 - **Follow-up**: Quantoはexotic配下、FX関連はfx配下でクロスリファレンス
 
 ### Decision: Instrument trait追加
 
-- **Context**: 共通インターフェースの必要性（Req 1.3）
+- **Context**: 共通インターフェースの忁E��性�E�Eeq 1.3�E�E
 - **Alternatives Considered**:
-  1. Enum methodsのみ（現状）— シンプルだがポリモーフィズム限定的
-  2. Instrument trait追加 — 共通契約定義、将来の拡張性
-  3. 複数trait（Priceable, Hedgeable等）— 細粒度だが複雑
+  1. Enum methodsのみ�E�現状�E� Eシンプルだが�Eリモーフィズム限定的
+  2. Instrument trait追加  E共通契紁E��義、封E��の拡張性
+  3. 褁E��trait�E�Ericeable, Hedgeable等） E細粒度だが褁E��
 - **Selected Approach**: Option 2 - 単一`Instrument` trait
-- **Rationale**: price(), greeks(), cashflows()の共通契約、enumでの実装
+- **Rationale**: price(), greeks(), cashflows()の共通契紁E��enumでの実裁E
 - **Trade-offs**: trait定義の追加作業
 - **Follow-up**: trait定義はpricer_models/instruments/traits.rsに配置
 
-### Decision: CurveSetの設計
+### Decision: CurveSetの設訁E
 
-- **Context**: マルチカーブ管理の実装方法（Req 2）
+- **Context**: マルチカーブ管琁E�E実裁E��法！Eeq 2�E�E
 - **Alternatives Considered**:
-  1. HashMap<String, Box<dyn YieldCurve>>— 動的だがAD非互換
-  2. CurveSet struct with named fields— 静的だが固定
-  3. CurveSet<T> with HashMap<CurveName, CurveEnum<T>>— 名前付き + enum dispatch
-- **Selected Approach**: Option 3 - `CurveSet<T: Float>`構造体 + `CurveName` enum + `CurveEnum<T>`
-- **Rationale**: AD互換性維持、名前付き管理、静的ディスパッチ
-- **Trade-offs**: 新カーブ追加時にCurveEnum更新必要
+  1. HashMap<String, Box<dyn YieldCurve>> E動的だがAD非互換
+  2. CurveSet struct with named fields E静的だが固宁E
+  3. CurveSet<T> with HashMap<CurveName, CurveEnum<T>> E名前付き + enum dispatch
+- **Selected Approach**: Option 3 - `CurveSet<T: Float>`構造佁E+ `CurveName` enum + `CurveEnum<T>`
+- **Rationale**: AD互換性維持、名前付き管琁E��E��皁E��ィスパッチE
+- **Trade-offs**: 新カーブ追加時にCurveEnum更新忁E��E
 - **Follow-up**: CurveName enumは"OIS", "SOFR", "Forward", "Discount"等を定義
 
 ### Decision: Feature Flag粒度
 
-- **Context**: 条件付きコンパイルの粒度（Req 7.4）
+- **Context**: 条件付きコンパイルの粒度�E�Eeq 7.4�E�E
 - **Alternatives Considered**:
-  1. クレート単位— 粗すぎる
-  2. アセットクラス単位（"rates", "credit", "fx"）— 適切な粒度
-  3. 商品単位（"irs", "cds", "fxoption"）— 細かすぎる
-- **Selected Approach**: Option 2 - アセットクラス単位feature flag
-- **Rationale**: 依存関係管理が容易、コンパイル時間の有意な削減可能
-- **Trade-offs**: 特定商品のみ除外は不可
+  1. クレート単位 E粗すぎる
+  2. アセチE��クラス単位！Erates", "credit", "fx"�E� E適刁E��粒度
+  3. 啁E��単位！Eirs", "cds", "fxoption"�E� E細かすぎる
+- **Selected Approach**: Option 2 - アセチE��クラス単位feature flag
+- **Rationale**: 依存関係管琁E��容易、コンパイル時間の有意な削減可能
+- **Trade-offs**: 特定商品�Eみ除外�E不可
 - **Follow-up**: default = ["equity"], optional = ["rates", "credit", "fx", "commodity", "exotic"]
 
 ## Risks & Mitigations
 
-| リスク | 影響度 | 発生確率 | 緩和策 |
+| リスク | 影響度 | 発生確玁E| 緩和筁E|
 |--------|--------|----------|--------|
-| クレート名変更による既存ユーザー影響 | High | Medium | `pub use`エイリアス + deprecation警告で移行期間提供 |
-| LMM実装の複雑性 | High | High | Phase 1ではHull-White 1Fのみ、LMMは将来拡張 |
-| Enzyme互換性の確認不足 | High | Medium | 各モデル・商品追加時にenzyme-modeでテスト |
-| スケジュール生成のエッジケース | Medium | Medium | chrono依存、IMM日付のみ初期実装、カレンダーは将来拡張 |
-| enum variant数増加によるコンパイル時間増 | Medium | High | feature flagでアセットクラス別分離、必要なもののみ有効化 |
-| 後方互換性の破壊 | High | Medium | 主要APIは維持、内部構造のみ変更、セマンティックバージョニング |
+| クレート名変更による既存ユーザー影響 | High | Medium | `pub use`エイリアス + deprecation警告で移行期間提侁E|
+| LMM実裁E�E褁E��性 | High | High | Phase 1ではHull-White 1Fのみ、LMMは封E��拡張 |
+| Enzyme互換性の確認不足 | High | Medium | 吁E��チE��・啁E��追加時にenzyme-modeでチE��チE|
+| スケジュール生�EのエチE��ケース | Medium | Medium | chrono依存、IMM日付�Eみ初期実裁E��カレンダーは封E��拡張 |
+| enum variant数増加によるコンパイル時間墁E| Medium | High | feature flagでアセチE��クラス別刁E��、忁E��なも�Eのみ有効匁E|
+| 後方互換性の破壁E| High | Medium | 主要APIは維持、�E部構造のみ変更、セマンチE��チE��バ�Eジョニング |
 
 ## References
 
-- [enum_dispatch - Rust](https://docs.rs/enum_dispatch/latest/enum_dispatch/) — Enum dispatch性能ベンチマーク
-- [CME SOFR Derivatives Pricing](https://www.cmegroup.com/articles/2025/price-and-hedging-usd-sofr-interest-swaps-with-sofr-futures.html) — SOFRスワップ評価
-- [S&P Global Hull-White for xVA](https://www.spglobal.com/marketintelligence/en/mi/research-analysis/xva-modeling-squeezing-accuracy-from-the-industry-standard-hul.html) — Hull-White xVA適用
-- [Longstaff-Schwartz Original Paper](https://people.math.ethz.ch/~hjfurrer/teaching/LongstaffSchwartzAmericanOptionsLeastSquareMonteCarlo.pdf) — LSM法の原論文
-- [Oxford Advanced MC Methods](http://www2.maths.ox.ac.uk/~gilesm/mc/module_6/american.pdf) — American option MC
+- [enum_dispatch - Rust](https://docs.rs/enum_dispatch/latest/enum_dispatch/)  EEnum dispatch性能ベンチ�Eーク
+- [CME SOFR Derivatives Pricing](https://www.cmegroup.com/articles/2025/price-and-hedging-usd-sofr-interest-swaps-with-sofr-futures.html)  ESOFRスワチE�E評価
+- [S&P Global Hull-White for xVA](https://www.spglobal.com/marketintelligence/en/mi/research-analysis/xva-modeling-squeezing-accuracy-from-the-industry-standard-hul.html)  EHull-White xVA適用
+- [Longstaff-Schwartz Original Paper](https://people.math.ethz.ch/~hjfurrer/teaching/LongstaffSchwartzAmericanOptionsLeastSquareMonteCarlo.pdf)  ELSM法�E原論文
+- [Oxford Advanced MC Methods](http://www2.maths.ox.ac.uk/~gilesm/mc/module_6/american.pdf)  EAmerican option MC

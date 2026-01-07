@@ -655,7 +655,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "pricer_engine"
+name = "pricer_models"
+version = "0.1.0"
+dependencies = [
+ "approx",
+ "criterion",
+ "num-traits",
+ "pricer_core",
+ "proptest",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "pricer_pricing"
 version = "0.1.0"
 dependencies = [
  "approx",
@@ -674,27 +687,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "pricer_models"
-version = "0.1.0"
-dependencies = [
- "approx",
- "criterion",
- "num-traits",
- "pricer_core",
- "proptest",
- "serde",
- "thiserror",
-]
-
-[[package]]
 name = "pricer_risk"
 version = "0.1.0"
 dependencies = [
  "approx",
  "criterion",
  "pricer_core",
- "pricer_engine",
  "pricer_models",
+ "pricer_pricing",
  "rayon",
  "serde",
  "thiserror",

@@ -10,6 +10,16 @@
 //! - All types generic over `T: Float` for AD compatibility
 //! - Smooth payoff approximations via `pricer_core::math::smoothing`
 //!
+//! # Asset Class Modules
+//!
+//! Instruments are organized by asset class (enabled via feature flags):
+//! - [`equity`]: Equity derivatives (VanillaOption, Forward) - default
+//! - [`rates`]: Interest rate derivatives (IRS, Swaption, Cap/Floor)
+//! - [`credit`]: Credit derivatives (CDS)
+//! - [`fx`]: FX derivatives (FxOption, FxForward)
+//! - [`commodity`]: Commodity derivatives
+//! - [`exotic`]: Exotic derivatives (VarianceSwap, Cliquet, etc.)
+//!
 //! # Instrument Types
 //!
 //! - [`VanillaOption`]: European/American/Asian options with Call/Put payoffs
@@ -35,13 +45,35 @@
 //! assert!(payoff > 0.0);
 //! ```
 
+// Core types (always available)
 mod error;
 mod exercise;
-mod forward;
 mod params;
 mod payoff;
+
+// Instrument implementations (always available for backward compatibility)
+mod forward;
 mod swap;
 mod vanilla;
+
+// Asset class submodules (feature-gated)
+#[cfg(feature = "equity")]
+pub mod equity;
+
+#[cfg(feature = "rates")]
+pub mod rates;
+
+#[cfg(feature = "credit")]
+pub mod credit;
+
+#[cfg(feature = "fx")]
+pub mod fx;
+
+#[cfg(feature = "commodity")]
+pub mod commodity;
+
+#[cfg(feature = "exotic")]
+pub mod exotic;
 
 // Re-export all public types
 pub use error::InstrumentError;

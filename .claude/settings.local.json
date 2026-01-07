@@ -73,7 +73,13 @@
       "Bash(\"/c/Users/khosh/.cargo/bin/cargo\" +nightly clippy -p pricer_kernel -- -D warnings)",
       "Bash(powershell.exe -Command \"& { if \\(Test-Path ''$env:USERPROFILE\\\\.cargo\\\\bin\\\\cargo.exe''\\) { & ''$env:USERPROFILE\\\\.cargo\\\\bin\\\\cargo.exe'' +nightly clippy -p pricer_kernel -- -D warnings } else { Write-Output ''Cargo not found'' } }\")",
       "Bash(test:*)",
-      "Bash(dir nul)"
+      "Bash(dir nul)",
+      "Bash(powershell -Command \"Rename-Item -Path ''f:\\\\Codes\\\\neutryx-rust\\\\neutryx-rust\\\\crates\\\\pricer_engine'' -NewName ''pricer_pricing''\")",
+      "Bash(powershell -Command:*)",
+      "Bash(powershell -ExecutionPolicy Bypass -File \"f:\\\\Codes\\\\neutryx-rust\\\\neutryx-rust\\\\replace_engine.ps1\")",
+      "Bash(powershell -ExecutionPolicy Bypass -File \"f:\\\\Codes\\\\neutryx-rust\\\\neutryx-rust\\\\replace_engine_md.ps1\")",
+      "Bash(git checkout:*)",
+      "Bash(powershell:*)"
     ]
   }
 }

@@ -2,7 +2,7 @@
 members = [
     "crates/pricer_core",
     "crates/pricer_models",
-    "crates/pricer_engine",
+    "crates/pricer_pricing",
     "crates/pricer_risk",
 ]
 resolver = "2"

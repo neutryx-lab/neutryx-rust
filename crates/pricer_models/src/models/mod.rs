@@ -5,6 +5,13 @@
 //! - `StochasticModelEnum`: Static dispatch enum for Enzyme compatibility
 //! - `GBMModel`: Geometric Brownian Motion model
 //!
+//! ## Model Categories
+//!
+//! Models are organized by category (enabled via feature flags):
+//! - [`equity`]: Equity models (GBM) - default
+//! - [`rates`]: Interest rate models (Hull-White, CIR)
+//! - [`hybrid`]: Multi-factor and correlated models
+//!
 //! ## Design Philosophy
 //!
 //! All models use:
@@ -30,9 +37,20 @@
 //! let path = model.generate_path(&params, n_steps, dt, &randoms);
 //! ```
 
+// Core model infrastructure (always available)
 pub mod gbm;
 pub mod model_enum;
 pub mod stochastic;
+
+// Model category submodules (feature-gated)
+#[cfg(feature = "equity")]
+pub mod equity;
+
+#[cfg(feature = "rates")]
+pub mod rates;
+
+#[cfg(feature = "exotic")]
+pub mod hybrid;
 
 // Re-export core trait types
 pub use stochastic::{SingleState, StochasticModel, StochasticState, TwoFactorState};

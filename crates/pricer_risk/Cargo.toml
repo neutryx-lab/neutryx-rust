@@ -14,7 +14,7 @@ serde = ["dep:serde"]
 [dependencies]
 pricer_core = { path = "../pricer_core" }
 pricer_models = { path = "../pricer_models" }
-pricer_engine = { path = "../pricer_engine" }
+pricer_pricing = { path = "../pricer_pricing" }
 rayon.workspace = true
 serde = { workspace = true, optional = true }
 thiserror.workspace = true
