@@ -630,7 +630,9 @@ mod tests {
         };
 
         let solver = LevenbergMarquardtSolver::with_defaults();
-        let result = solver.solve(residuals, vec![10.0, 10.0, 10.0, 10.0]).unwrap();
+        let result = solver
+            .solve(residuals, vec![10.0, 10.0, 10.0, 10.0])
+            .unwrap();
 
         assert!(result.converged);
         for (i, &p) in result.params.iter().enumerate() {
@@ -718,7 +720,10 @@ mod tests {
     fn test_solver_clone() {
         let solver1 = LevenbergMarquardtSolver::with_defaults();
         let solver2 = solver1.clone();
-        assert_eq!(solver1.config().max_iterations, solver2.config().max_iterations);
+        assert_eq!(
+            solver1.config().max_iterations,
+            solver2.config().max_iterations
+        );
     }
 
     #[test]

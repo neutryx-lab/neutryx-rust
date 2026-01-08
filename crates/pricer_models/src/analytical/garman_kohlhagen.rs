@@ -333,9 +333,14 @@ impl<T: Float> GarmanKohlhagen<T> {
             FxOptionType::Put => {
                 let nd1_neg = T::one() - nd1;
                 let nd2_neg = T::one() - nd2;
-                let term2 = -self.params.rate_foreign * self.params.spot * self.df_foreign * nd1_neg;
-                let term3 =
-                    self.params.rate_domestic * self.params.strike * self.df_domestic * nd2_neg;
+                let term2 = -self.params.rate_foreign
+                    * self.params.spot
+                    * self.df_foreign
+                    * nd1_neg;
+                let term3 = self.params.rate_domestic
+                    * self.params.strike
+                    * self.df_domestic
+                    * nd2_neg;
                 (term1 + term2 + term3) / days_per_year
             }
         }
@@ -480,12 +485,12 @@ mod tests {
 
     fn create_test_params() -> GarmanKohlhagenParams<f64> {
         GarmanKohlhagenParams::new(
-            1.10,  // spot
-            1.12,  // strike
-            0.03,  // domestic rate
-            0.01,  // foreign rate
-            0.15,  // volatility
-            1.0,   // expiry
+            1.10, // spot
+            1.12, // strike
+            0.03, // domestic rate
+            0.01, // foreign rate
+            0.15, // volatility
+            1.0,  // expiry
         )
         .unwrap()
     }
@@ -575,7 +580,11 @@ mod tests {
             - params.strike * (-params.rate_domestic * params.expiry).exp();
 
         let parity_error = (call - put - forward_diff).abs();
-        assert!(parity_error < 1e-10, "Put-call parity violated: error = {}", parity_error);
+        assert!(
+            parity_error < 1e-10,
+            "Put-call parity violated: error = {}",
+            parity_error
+        );
     }
 
     #[test]

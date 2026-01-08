@@ -254,7 +254,8 @@ impl<T: Float> CreditDefaultSwap<T> {
         let start_date = self.schedule.start_date();
         let end_date = self.schedule.end_date();
 
-        let year_frac = DayCountConvention::ActualActual365.year_fraction_dates(start_date, end_date);
+        let year_frac =
+            DayCountConvention::ActualActual365.year_fraction_dates(start_date, end_date);
         T::from(year_frac).unwrap_or_else(T::zero)
     }
 
@@ -349,8 +350,9 @@ impl<T: Float> CashflowInstrument<T> for CreditDefaultSwap<T> {
                 // Convert payment date to year fraction from start
                 let payment_time = T::from(
                     DayCountConvention::ActualActual365
-                        .year_fraction_dates(self.schedule.start_date(), period.payment())
-                ).unwrap_or_else(T::zero);
+                        .year_fraction_dates(self.schedule.start_date(), period.payment()),
+                )
+                .unwrap_or_else(T::zero);
 
                 Cashflow::new(payment_time, amount, self.currency)
             })
@@ -370,16 +372,34 @@ mod tests {
 
     #[test]
     fn test_cds_direction_multipliers() {
-        assert_eq!(CdsDirection::BuyProtection.premium_multiplier::<f64>(), -1.0);
-        assert_eq!(CdsDirection::BuyProtection.protection_multiplier::<f64>(), 1.0);
-        assert_eq!(CdsDirection::SellProtection.premium_multiplier::<f64>(), 1.0);
-        assert_eq!(CdsDirection::SellProtection.protection_multiplier::<f64>(), -1.0);
+        assert_eq!(
+            CdsDirection::BuyProtection.premium_multiplier::<f64>(),
+            -1.0
+        );
+        assert_eq!(
+            CdsDirection::BuyProtection.protection_multiplier::<f64>(),
+            1.0
+        );
+        assert_eq!(
+            CdsDirection::SellProtection.premium_multiplier::<f64>(),
+            1.0
+        );
+        assert_eq!(
+            CdsDirection::SellProtection.protection_multiplier::<f64>(),
+            -1.0
+        );
     }
 
     #[test]
     fn test_cds_direction_display() {
-        assert_eq!(format!("{}", CdsDirection::BuyProtection), "Buy Protection");
-        assert_eq!(format!("{}", CdsDirection::SellProtection), "Sell Protection");
+        assert_eq!(
+            format!("{}", CdsDirection::BuyProtection),
+            "Buy Protection"
+        );
+        assert_eq!(
+            format!("{}", CdsDirection::SellProtection),
+            "Sell Protection"
+        );
     }
 
     #[test]
@@ -551,7 +571,10 @@ mod tests {
 
         // All cashflows should be negative for protection buyer (paying premium)
         for cf in &cashflows {
-            assert!(cf.amount < 0.0, "Protection buyer should have negative premium cashflows");
+            assert!(
+                cf.amount < 0.0,
+                "Protection buyer should have negative premium cashflows"
+            );
             assert_eq!(cf.currency, Currency::USD);
         }
     }
@@ -573,7 +596,10 @@ mod tests {
 
         // All cashflows should be positive for protection seller (receiving premium)
         for cf in &cashflows {
-            assert!(cf.amount > 0.0, "Protection seller should have positive premium cashflows");
+            assert!(
+                cf.amount > 0.0,
+                "Protection seller should have positive premium cashflows"
+            );
         }
     }
 
@@ -590,7 +616,10 @@ mod tests {
 
         // Total premium over 5 years ≈ 10M × 0.01 × 5 = 500,000 (negative for buyer)
         // May differ slightly due to day count conventions
-        assert!(total < 0.0, "Protection buyer total cashflow should be negative");
+        assert!(
+            total < 0.0,
+            "Protection buyer total cashflow should be negative"
+        );
         assert!(total.abs() > 400_000.0 && total.abs() < 600_000.0);
     }
 
@@ -650,7 +679,7 @@ mod tests {
             "ACME Corp".to_string(),
             10_000_000.0,
             0.01,
-            0.0,  // zero recovery = 100% LGD
+            0.0, // zero recovery = 100% LGD
             schedule,
             Currency::USD,
             CdsDirection::BuyProtection,
@@ -667,7 +696,7 @@ mod tests {
             "ACME Corp".to_string(),
             10_000_000.0,
             0.01,
-            1.0,  // 100% recovery = 0% LGD
+            1.0, // 100% recovery = 0% LGD
             schedule,
             Currency::USD,
             CdsDirection::BuyProtection,

@@ -174,10 +174,10 @@ impl SwaptionCalibrator {
     /// Create a SABR calibrator.
     pub fn new_sabr() -> Self {
         let config = ModelCalibratorConfig::default().with_bounds(vec![
-            ParameterBounds::positive(),     // alpha > 0
-            ParameterBounds::unit_interval(), // beta in [0, 1]
+            ParameterBounds::positive(),         // alpha > 0
+            ParameterBounds::unit_interval(),    // beta in [0, 1]
             ParameterBounds::new(-0.999, 0.999), // rho in (-1, 1)
-            ParameterBounds::positive(),     // nu > 0
+            ParameterBounds::positive(),         // nu > 0
         ]);
 
         Self::new(config, SwaptionModelType::Sabr)
@@ -185,8 +185,8 @@ impl SwaptionCalibrator {
 
     /// Create a flat volatility calibrator (for testing).
     pub fn new_flat_vol() -> Self {
-        let config = ModelCalibratorConfig::default()
-            .with_bounds(vec![ParameterBounds::positive()]);
+        let config =
+            ModelCalibratorConfig::default().with_bounds(vec![ParameterBounds::positive()]);
 
         Self::new(config, SwaptionModelType::FlatVol)
     }
@@ -264,7 +264,8 @@ impl Calibrator for SwaptionCalibrator {
                 .collect()
         };
 
-        self.calibrator.calibrate_with_residuals(residuals, initial_params)
+        self.calibrator
+            .calibrate_with_residuals(residuals, initial_params)
     }
 
     fn objective_function(
@@ -290,10 +291,10 @@ impl Calibrator for SwaptionCalibrator {
                 vec![Constraint::positive(0), Constraint::positive(1)]
             }
             SwaptionModelType::Sabr => vec![
-                Constraint::positive(0), // alpha > 0
-                Constraint::bounds(1, 0.0, 1.0), // beta in [0, 1]
+                Constraint::positive(0),              // alpha > 0
+                Constraint::bounds(1, 0.0, 1.0),      // beta in [0, 1]
                 Constraint::bounds(2, -0.999, 0.999), // rho in (-1, 1)
-                Constraint::positive(3), // nu > 0
+                Constraint::positive(3),              // nu > 0
             ],
         }
     }
@@ -303,7 +304,15 @@ impl Calibrator for SwaptionCalibrator {
 ///
 /// This is a simplified implementation for demonstration.
 /// Production use would require more robust handling of edge cases.
-fn sabr_implied_vol(forward: f64, strike: f64, expiry: f64, alpha: f64, beta: f64, rho: f64, nu: f64) -> f64 {
+fn sabr_implied_vol(
+    forward: f64,
+    strike: f64,
+    expiry: f64,
+    alpha: f64,
+    beta: f64,
+    rho: f64,
+    nu: f64,
+) -> f64 {
     let eps = 1e-10;
 
     // Handle ATM case
@@ -324,7 +333,8 @@ fn sabr_implied_vol(forward: f64, strike: f64, expiry: f64, alpha: f64, beta: f6
     let f_mid = (forward * strike).powf((1.0 - beta) / 2.0);
 
     let z = (nu / alpha) * f_mid * log_fk;
-    let x_z = ((1.0 - 2.0 * rho * z + z.powi(2)).sqrt() + z - rho) / (1.0 - rho);
+    let x_z =
+        ((1.0 - 2.0 * rho * z + z.powi(2)).sqrt() + z - rho) / (1.0 - rho);
 
     let x_z_ratio = if x_z.abs() < eps {
         1.0
@@ -521,7 +531,8 @@ mod tests {
         // Initial SABR params: alpha, beta, rho, nu
         let initial = vec![0.05, 0.5, -0.2, 0.3];
 
-        let result = calibrator.calibrate(&data, initial, &CalibrationConfig::fast());
+        let result =
+            calibrator.calibrate(&data, initial, &CalibrationConfig::fast());
 
         // Just check that it runs and produces reasonable params
         assert!(result.params[0] > 0.0); // alpha > 0

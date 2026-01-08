@@ -199,8 +199,9 @@ impl<'a, T: Float, D: YieldCurve<T>, C: CreditCurve<T>> CdsPricer<'a, T, D, C> {
             // Time to payment date in years
             let t = T::from(
                 DayCountConvention::ActualActual365
-                    .year_fraction_dates(start_date, period.payment())
-            ).unwrap_or_else(T::zero);
+                    .year_fraction_dates(start_date, period.payment()),
+            )
+            .unwrap_or_else(T::zero);
 
             // Discount factor to mid-point of period (approximation)
             let df = self.discount_curve.discount_factor(t)?;
@@ -242,8 +243,9 @@ impl<'a, T: Float, D: YieldCurve<T>, C: CreditCurve<T>> CdsPricer<'a, T, D, C> {
             // Time to payment date in years
             let t = T::from(
                 DayCountConvention::ActualActual365
-                    .year_fraction_dates(start_date, period.payment())
-            ).unwrap_or_else(T::zero);
+                    .year_fraction_dates(start_date, period.payment()),
+            )
+            .unwrap_or_else(T::zero);
 
             // Year fraction for accrual
             let year_frac = T::from(period.year_fraction()).unwrap_or_else(T::zero);
@@ -280,8 +282,9 @@ impl<'a, T: Float, D: YieldCurve<T>, C: CreditCurve<T>> CdsPricer<'a, T, D, C> {
         for period in schedule.periods() {
             let t = T::from(
                 DayCountConvention::ActualActual365
-                    .year_fraction_dates(start_date, period.payment())
-            ).unwrap_or_else(T::zero);
+                    .year_fraction_dates(start_date, period.payment()),
+            )
+            .unwrap_or_else(T::zero);
 
             let year_frac = T::from(period.year_fraction()).unwrap_or_else(T::zero);
             let df = self.discount_curve.discount_factor(t)?;
@@ -312,8 +315,9 @@ impl<'a, T: Float, D: YieldCurve<T>, C: CreditCurve<T>> CdsPricer<'a, T, D, C> {
         for period in schedule.periods() {
             let t = T::from(
                 DayCountConvention::ActualActual365
-                    .year_fraction_dates(start_date, period.payment())
-            ).unwrap_or_else(T::zero);
+                    .year_fraction_dates(start_date, period.payment()),
+            )
+            .unwrap_or_else(T::zero);
 
             let year_frac = T::from(period.year_fraction()).unwrap_or_else(T::zero);
             let df = self.discount_curve.discount_factor(t)?;
@@ -406,12 +410,8 @@ mod tests {
 
     #[test]
     fn test_price_result_seller() {
-        let result = CdsPriceResult::new(
-            100_000.0,
-            80_000.0,
-            CdsDirection::SellProtection,
-            0.01,
-        );
+        let result =
+            CdsPriceResult::new(100_000.0, 80_000.0, CdsDirection::SellProtection, 0.01);
 
         // NPV = Premium - Protection for seller
         assert!((result.npv - (-20_000.0)).abs() < 1e-6);
@@ -419,12 +419,8 @@ mod tests {
 
     #[test]
     fn test_price_result_par_spread() {
-        let result = CdsPriceResult::new(
-            100_000.0,
-            100_000.0,
-            CdsDirection::BuyProtection,
-            0.01,
-        );
+        let result =
+            CdsPriceResult::new(100_000.0, 100_000.0, CdsDirection::BuyProtection, 0.01);
 
         // At par, par_spread should equal the contract spread
         assert!((result.par_spread - 0.01).abs() < 1e-10);

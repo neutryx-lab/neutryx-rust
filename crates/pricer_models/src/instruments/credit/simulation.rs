@@ -177,11 +177,7 @@ impl<'a, T: Float, C: CreditCurve<T>> DefaultTimeSimulator<'a, T, C> {
     /// # Returns
     ///
     /// `true` if default occurs before horizon, `false` otherwise
-    pub fn defaults_within(
-        &self,
-        uniform: T,
-        horizon: T,
-    ) -> Result<bool, MarketDataError> {
+    pub fn defaults_within(&self, uniform: T, horizon: T) -> Result<bool, MarketDataError> {
         let survival_at_horizon = self.credit_curve.survival_probability(horizon)?;
         // Default occurs if U < 1 - S(T), which is equivalent to U > S(T) for survival
         // When using U as survival target: default if target_survival > S(T)
@@ -197,11 +193,9 @@ impl<'a, T: Float, C: CreditCurve<T>> DefaultTimeSimulator<'a, T, C> {
     /// # Returns
     ///
     /// Vector of sampled default times
-    pub fn sample_default_times(
-        &self,
-        uniforms: &[T],
-    ) -> Result<Vec<T>, MarketDataError> {
-        uniforms.iter()
+    pub fn sample_default_times(&self, uniforms: &[T]) -> Result<Vec<T>, MarketDataError> {
+        uniforms
+            .iter()
             .map(|&u| self.sample_default_time(u))
             .collect()
     }
@@ -315,7 +309,8 @@ impl<'a, T: Float, C: CreditCurve<T>> CreditMonteCarloSimulator<'a, T, C> {
         &self,
         uniforms: &[T],
     ) -> Result<Vec<CreditPathResult<T>>, MarketDataError> {
-        uniforms.iter()
+        uniforms
+            .iter()
             .map(|&u| self.simulate_path(u))
             .collect()
     }
@@ -329,14 +324,9 @@ impl<'a, T: Float, C: CreditCurve<T>> CreditMonteCarloSimulator<'a, T, C> {
     /// # Returns
     ///
     /// Estimated default probability
-    pub fn default_probability(
-        &self,
-        uniforms: &[T],
-    ) -> Result<T, MarketDataError> {
+    pub fn default_probability(&self, uniforms: &[T]) -> Result<T, MarketDataError> {
         let paths = self.simulate_paths(uniforms)?;
-        let n_defaults = paths.iter()
-            .filter(|p| p.is_defaulted())
-            .count();
+        let n_defaults = paths.iter().filter(|p| p.is_defaulted()).count();
 
         let n_paths = T::from(uniforms.len()).unwrap();
         let n_def = T::from(n_defaults).unwrap();
@@ -359,9 +349,8 @@ impl<'a, T: Float, C: CreditCurve<T>> CreditMonteCarloSimulator<'a, T, C> {
     ) -> Result<Option<T>, MarketDataError> {
         let paths = self.simulate_paths(uniforms)?;
 
-        let default_times: Vec<T> = paths.iter()
-            .filter_map(|p| p.default_time)
-            .collect();
+        let default_times: Vec<T> =
+            paths.iter().filter_map(|p| p.default_time).collect();
 
         if default_times.is_empty() {
             return Ok(None);

@@ -512,7 +512,10 @@ impl From<SolverError> for CalibrationError {
             }
             SolverError::NumericalInstability(msg) => CalibrationError::numerical_instability(msg),
             SolverError::DerivativeNearZero { x } => {
-                CalibrationError::numerical_instability(format!("Derivative near zero at x = {}", x))
+                CalibrationError::numerical_instability(format!(
+                    "Derivative near zero at x = {}",
+                    x
+                ))
             }
             SolverError::NoBracket { a, b } => CalibrationError::numerical_instability(format!(
                 "No bracket found between {} and {}",
@@ -780,26 +783,33 @@ mod tests {
 
     #[test]
     fn test_calibration_error_invalid_parameter() {
-        let err = CalibrationError::invalid_parameter("volatility cannot be negative");
-        assert!(matches!(err.kind, CalibrationErrorKind::InvalidParameter(_)));
+        let err =
+            CalibrationError::invalid_parameter("volatility cannot be negative");
+        assert!(matches!(
+            err.kind,
+            CalibrationErrorKind::InvalidParameter(_)
+        ));
     }
 
     #[test]
     fn test_calibration_error_with_parameters() {
-        let err = CalibrationError::not_converged(10, 0.1).with_parameters(vec![0.5, 1.0]);
+        let err = CalibrationError::not_converged(10, 0.1)
+            .with_parameters(vec![0.5, 1.0]);
         assert!(err.parameter_values.is_some());
         assert_eq!(err.parameter_values.unwrap().len(), 2);
     }
 
     #[test]
     fn test_calibration_error_with_residual() {
-        let err = CalibrationError::new(CalibrationErrorKind::NotConverged).with_residual(0.005);
+        let err = CalibrationError::new(CalibrationErrorKind::NotConverged)
+            .with_residual(0.005);
         assert!((err.residual_ss - 0.005).abs() < 1e-15);
     }
 
     #[test]
     fn test_calibration_error_with_iterations() {
-        let err = CalibrationError::new(CalibrationErrorKind::NotConverged).with_iterations(50);
+        let err = CalibrationError::new(CalibrationErrorKind::NotConverged)
+            .with_iterations(50);
         assert_eq!(err.iterations, 50);
     }
 

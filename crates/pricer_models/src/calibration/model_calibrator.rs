@@ -194,12 +194,11 @@ impl ModelCalibrator {
         if result.converged {
             Ok(result)
         } else {
-            Err(CalibrationError::not_converged(
-                result.iterations,
-                result.residual_ss,
+            Err(
+                CalibrationError::not_converged(result.iterations, result.residual_ss)
+                    .with_parameters(result.params.clone())
+                    .with_message(result.message.unwrap_or_default()),
             )
-            .with_parameters(result.params.clone())
-            .with_message(result.message.unwrap_or_default()))
         }
     }
 
@@ -208,9 +207,7 @@ impl ModelCalibrator {
         params
             .iter()
             .enumerate()
-            .map(|(i, &p)| {
-                self.config.bounds.get(i).map_or(p, |b| b.clamp(p))
-            })
+            .map(|(i, &p)| self.config.bounds.get(i).map_or(p, |b| b.clamp(p)))
             .collect()
     }
 
@@ -272,7 +269,8 @@ where
         _config: &CalibrationConfig,
     ) -> CalibrationResult<Self::ModelParams> {
         let residuals = |params: &[f64]| (self.residual_fn)(params, market_data);
-        self.calibrator.calibrate_with_residuals(residuals, initial_params)
+        self.calibrator
+            .calibrate_with_residuals(residuals, initial_params)
     }
 
     fn objective_function(
@@ -358,7 +356,8 @@ mod tests {
     #[test]
     fn test_config_from_calibration_config() {
         let calib_config = CalibrationConfig::new(1e-8, 50);
-        let config = ModelCalibratorConfig::from_calibration_config(&calib_config);
+        let config =
+            ModelCalibratorConfig::from_calibration_config(&calib_config);
 
         assert!((config.lm_config.tolerance - 1e-8).abs() < 1e-15);
         assert_eq!(config.lm_config.max_iterations, 50);
@@ -376,7 +375,8 @@ mod tests {
         let market_data = vec![1.0, 2.0, 3.0];
         let initial = vec![0.0, 0.0, 0.0];
 
-        let result = calibrator.calibrate(&market_data, initial, &CalibrationConfig::default());
+        let result =
+            calibrator.calibrate(&market_data, initial, &CalibrationConfig::default());
 
         assert!(result.converged);
         for (p, t) in result.params.iter().zip(&market_data) {
@@ -396,7 +396,8 @@ mod tests {
         let market_data = vec![1.0, 2.0];
         let params = vec![1.5, 2.5];
 
-        let residuals = calibrator.objective_function(&params, &market_data);
+        let residuals =
+            calibrator.objective_function(&params, &market_data);
 
         assert_eq!(residuals.len(), 2);
         assert!((residuals[0] - 0.5).abs() < 1e-10);
