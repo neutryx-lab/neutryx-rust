@@ -480,14 +480,7 @@ mod tests {
     #[test]
     fn test_fx_option_pair_code() {
         let pair = create_test_pair();
-        let option = FxOption::new(
-            pair,
-            1.12,
-            1.0,
-            1_000_000.0,
-            FxOptionType::Call,
-            1e-6,
-        ).unwrap();
+        let option = FxOption::new(pair, 1.12, 1.0, 1_000_000.0, FxOptionType::Call, 1e-6).unwrap();
 
         assert_eq!(option.pair_code(), "EUR/USD");
     }
@@ -495,14 +488,7 @@ mod tests {
     #[test]
     fn test_fx_option_instrument_trait() {
         let pair = create_test_pair();
-        let option = FxOption::new(
-            pair,
-            1.12,
-            0.5,
-            1_000_000.0,
-            FxOptionType::Call,
-            1e-6,
-        ).unwrap();
+        let option = FxOption::new(pair, 1.12, 0.5, 1_000_000.0, FxOptionType::Call, 1e-6).unwrap();
 
         // Test InstrumentTrait methods
         assert!((option.expiry() - 0.5).abs() < 1e-10);
@@ -520,14 +506,8 @@ mod tests {
     #[test]
     fn test_fx_option_clone() {
         let pair = create_test_pair();
-        let option1 = FxOption::new(
-            pair,
-            1.12,
-            1.0,
-            1_000_000.0,
-            FxOptionType::Call,
-            1e-6,
-        ).unwrap();
+        let option1 =
+            FxOption::new(pair, 1.12, 1.0, 1_000_000.0, FxOptionType::Call, 1e-6).unwrap();
         let option2 = option1.clone();
 
         assert!((option1.strike() - option2.strike()).abs() < 1e-10);
@@ -537,14 +517,7 @@ mod tests {
     #[test]
     fn test_fx_option_debug() {
         let pair = create_test_pair();
-        let option = FxOption::new(
-            pair,
-            1.12,
-            1.0,
-            1_000_000.0,
-            FxOptionType::Call,
-            1e-6,
-        ).unwrap();
+        let option = FxOption::new(pair, 1.12, 1.0, 1_000_000.0, FxOptionType::Call, 1e-6).unwrap();
 
         let debug_str = format!("{:?}", option);
         assert!(debug_str.contains("FxOption"));
@@ -556,12 +529,13 @@ mod tests {
         let pair = CurrencyPair::new(Currency::USD, Currency::JPY, 150.0).unwrap();
         let call = FxOption::new(
             pair,
-            152.0,              // strike
-            0.25,               // 3 months
-            100_000.0,          // 100k USD notional
+            152.0,     // strike
+            0.25,      // 3 months
+            100_000.0, // 100k USD notional
             FxOptionType::Call,
             1e-6,
-        ).unwrap();
+        )
+        .unwrap();
 
         assert_eq!(call.base_currency(), Currency::USD);
         assert_eq!(call.quote_currency(), Currency::JPY);

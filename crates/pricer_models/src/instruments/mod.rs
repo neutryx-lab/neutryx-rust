@@ -13,12 +13,12 @@
 //! # Asset Class Modules
 //!
 //! Instruments are organized by asset class (enabled via feature flags):
-//! - [`equity`]: Equity derivatives (VanillaOption, Forward) - default
-//! - [`rates`]: Interest rate derivatives (IRS, Swaption, Cap/Floor)
-//! - [`credit`]: Credit derivatives (CDS)
-//! - [`fx`]: FX derivatives (FxOption, FxForward)
-//! - [`commodity`]: Commodity derivatives
-//! - [`exotic`]: Exotic derivatives (VarianceSwap, Cliquet, etc.)
+//! - `equity`: Equity derivatives (VanillaOption, Forward) - default
+//! - `rates`: Interest rate derivatives (IRS, Swaption, Cap/Floor)
+//! - `credit`: Credit derivatives (CDS)
+//! - `fx`: FX derivatives (FxOption, FxForward)
+//! - `commodity`: Commodity derivatives
+//! - `exotic`: Exotic derivatives (VarianceSwap, Cliquet, etc.)
 //!
 //! # Instrument Types
 //!

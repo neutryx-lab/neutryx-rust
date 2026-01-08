@@ -223,6 +223,24 @@ pub trait StochasticModel<T: Float>: Differentiable {
 
     /// Model name for logging and debugging.
     fn model_name() -> &'static str;
+
+    /// Number of stochastic factors in the model.
+    ///
+    /// This method returns the number of independent risk factors in the model:
+    /// - 1 for single-factor models (GBM, Hull-White 1F, CIR)
+    /// - 2 for two-factor models (G2++, Heston with separate volatility)
+    /// - n for multi-factor models (LMM, hybrid models)
+    ///
+    /// # Returns
+    ///
+    /// Number of stochastic factors (must be >= 1)
+    ///
+    /// # Note
+    ///
+    /// This is distinct from `brownian_dim()` which returns the number of
+    /// Brownian motion increments required. For correlated models, these
+    /// may differ (e.g., Heston has 2 factors but may use 2 correlated Brownians).
+    fn num_factors() -> usize;
 }
 
 #[cfg(test)]

@@ -132,7 +132,7 @@ impl<T: Float> FxVolatilitySurface<T> {
     ///
     /// * `deltas` - Delta points (must be sorted, at least 2 points)
     /// * `expiries` - Expiry tenors in years (must be sorted, at least 2 points)
-    /// * `volatilities` - Grid of volatilities [expiry][delta]
+    /// * `volatilities` - Grid of volatilities \[expiry\]\[delta\]
     /// * `allow_extrapolation` - Whether to allow flat extrapolation
     ///
     /// # Returns
