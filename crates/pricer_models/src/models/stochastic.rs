@@ -372,6 +372,10 @@ mod tests {
         fn model_name() -> &'static str {
             "MockGBM"
         }
+
+        fn num_factors() -> usize {
+            1
+        }
     }
 
     #[test]
@@ -394,6 +398,12 @@ mod tests {
     #[test]
     fn test_stochastic_model_trait_model_name() {
         assert_eq!(MockGBM::model_name(), "MockGBM");
+    }
+
+    #[test]
+    fn test_stochastic_model_trait_num_factors() {
+        // MockGBM is a single-factor model
+        assert_eq!(MockGBM::num_factors(), 1);
     }
 
     #[test]

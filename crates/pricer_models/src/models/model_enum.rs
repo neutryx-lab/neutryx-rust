@@ -190,6 +190,19 @@ impl<T: Float + Default> StochasticModelEnum<T> {
         }
     }
 
+    /// Get the number of stochastic factors in the model.
+    ///
+    /// # Returns
+    ///
+    /// - 1 for single-factor models (GBM, Hull-White, CIR)
+    /// - 2 for two-factor models (G2++, Heston)
+    /// - n for multi-factor models (correlated hybrid models)
+    pub fn num_factors(&self) -> usize {
+        match self {
+            StochasticModelEnum::GBM(_) => GBMModel::<T>::num_factors(),
+        }
+    }
+
     /// Get initial state for the model.
     pub fn initial_state(&self, params: &ModelParams<T>) -> ModelState<T> {
         match (self, params) {
@@ -298,6 +311,13 @@ mod tests {
     fn test_model_enum_is_two_factor() {
         let model = StochasticModelEnum::<f64>::gbm();
         assert!(!model.is_two_factor());
+    }
+
+    #[test]
+    fn test_model_enum_num_factors() {
+        let model = StochasticModelEnum::<f64>::gbm();
+        // GBM is a single-factor model
+        assert_eq!(model.num_factors(), 1);
     }
 
     #[test]

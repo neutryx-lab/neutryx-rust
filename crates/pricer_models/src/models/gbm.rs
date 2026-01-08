@@ -127,6 +127,10 @@ impl<T: Float + Default> StochasticModel<T> for GBMModel<T> {
     fn model_name() -> &'static str {
         "GBM"
     }
+
+    fn num_factors() -> usize {
+        1 // GBM is a single-factor model
+    }
 }
 
 #[cfg(test)]
@@ -183,6 +187,7 @@ mod tests {
         let model: GBMModel<f64> = GBMModel::new();
         assert_eq!(GBMModel::<f64>::model_name(), "GBM");
         assert_eq!(GBMModel::<f64>::brownian_dim(), 1);
+        assert_eq!(GBMModel::<f64>::num_factors(), 1);
         let _ = model; // Suppress unused warning
     }
 
