@@ -309,10 +309,7 @@ impl<'a, T: Float, C: CreditCurve<T>> CreditMonteCarloSimulator<'a, T, C> {
         &self,
         uniforms: &[T],
     ) -> Result<Vec<CreditPathResult<T>>, MarketDataError> {
-        uniforms
-            .iter()
-            .map(|&u| self.simulate_path(u))
-            .collect()
+        uniforms.iter().map(|&u| self.simulate_path(u)).collect()
     }
 
     /// Compute the default probability via Monte Carlo.
@@ -349,8 +346,7 @@ impl<'a, T: Float, C: CreditCurve<T>> CreditMonteCarloSimulator<'a, T, C> {
     ) -> Result<Option<T>, MarketDataError> {
         let paths = self.simulate_paths(uniforms)?;
 
-        let default_times: Vec<T> =
-            paths.iter().filter_map(|p| p.default_time).collect();
+        let default_times: Vec<T> = paths.iter().filter_map(|p| p.default_time).collect();
 
         if default_times.is_empty() {
             return Ok(None);
@@ -405,13 +401,21 @@ mod tests {
 
         // Very low uniform = very early default (high U = early default for survival target)
         let early_time = simulator.sample_default_time(0.999).unwrap();
-        assert!(early_time < 1.0, "Early default should happen quickly, got {}", early_time);
+        assert!(
+            early_time < 1.0,
+            "Early default should happen quickly, got {}",
+            early_time
+        );
 
         // Very high uniform = very late default (low U = late default)
         // Default time is capped at max_horizon (100 years)
         let late_time = simulator.sample_default_time(0.001).unwrap();
         // For λ=0.02: τ = -ln(0.001)/0.02 ≈ 345 years, but capped at 100
-        assert!(late_time >= 100.0 - 0.1, "Late default should be at max horizon, got {}", late_time);
+        assert!(
+            late_time >= 100.0 - 0.1,
+            "Late default should be at max horizon, got {}",
+            late_time
+        );
     }
 
     #[test]

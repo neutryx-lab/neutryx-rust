@@ -395,12 +395,8 @@ mod tests {
 
     #[test]
     fn test_price_result_buyer() {
-        let result = CdsPriceResult::new(
-            100_000.0,
-            80_000.0,
-            CdsDirection::BuyProtection,
-            0.01,
-        );
+        let result =
+            CdsPriceResult::new(100_000.0, 80_000.0, CdsDirection::BuyProtection, 0.01);
 
         // NPV = Protection - Premium for buyer
         assert!((result.npv - 20_000.0).abs() < 1e-6);

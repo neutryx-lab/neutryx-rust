@@ -53,10 +53,9 @@ mod pricing;
 pub mod simulation;
 
 pub use cds::{CdsDirection, CreditDefaultSwap};
-pub use pricing::{CdsPricer, CdsPriceResult};
+pub use pricing::{CdsPriceResult, CdsPricer};
 pub use simulation::{
-    CreditMonteCarloSimulator, CreditPathResult, DefaultStatus,
-    DefaultTimeSimulator,
+    CreditMonteCarloSimulator, CreditPathResult, DefaultStatus, DefaultTimeSimulator,
 };
 
 use num_traits::Float;

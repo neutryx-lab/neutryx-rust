@@ -392,14 +392,8 @@ mod tests {
 
     #[test]
     fn test_cds_direction_display() {
-        assert_eq!(
-            format!("{}", CdsDirection::BuyProtection),
-            "Buy Protection"
-        );
-        assert_eq!(
-            format!("{}", CdsDirection::SellProtection),
-            "Sell Protection"
-        );
+        assert_eq!(format!("{}", CdsDirection::BuyProtection), "Buy Protection");
+        assert_eq!(format!("{}", CdsDirection::SellProtection), "Sell Protection");
     }
 
     #[test]
@@ -431,8 +425,8 @@ mod tests {
         CreditDefaultSwap::new(
             "ACME Corp".to_string(),
             10_000_000.0,
-            0.01,  // 100bp
-            0.4,   // 40% recovery
+            0.01, // 100bp
+            0.4,  // 40% recovery
             schedule,
             Currency::USD,
             CdsDirection::BuyProtection,
@@ -658,7 +652,7 @@ mod tests {
         let cds = CreditDefaultSwap::new(
             "ACME Corp".to_string(),
             10_000_000.0,
-            0.0,  // zero spread
+            0.0, // zero spread
             0.4,
             schedule,
             Currency::USD,

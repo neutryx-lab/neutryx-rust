@@ -333,14 +333,10 @@ impl<T: Float> GarmanKohlhagen<T> {
             FxOptionType::Put => {
                 let nd1_neg = T::one() - nd1;
                 let nd2_neg = T::one() - nd2;
-                let term2 = -self.params.rate_foreign
-                    * self.params.spot
-                    * self.df_foreign
-                    * nd1_neg;
-                let term3 = self.params.rate_domestic
-                    * self.params.strike
-                    * self.df_domestic
-                    * nd2_neg;
+                let term2 =
+                    -self.params.rate_foreign * self.params.spot * self.df_foreign * nd1_neg;
+                let term3 =
+                    self.params.rate_domestic * self.params.strike * self.df_domestic * nd2_neg;
                 (term1 + term2 + term3) / days_per_year
             }
         }

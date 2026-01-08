@@ -339,13 +339,19 @@ impl Constraint {
                 .get(*param_index)
                 .map_or(false, |&v| bounds.contains(v)),
             Constraint::LinearInequality { coefficients, rhs } => {
-                let sum: f64 =
-                    coefficients.iter().zip(params).map(|(c, p)| c * p).sum();
+                let sum: f64 = coefficients
+                    .iter()
+                    .zip(params)
+                    .map(|(c, p)| c * p)
+                    .sum();
                 sum <= *rhs
             }
             Constraint::LinearEquality { coefficients, rhs } => {
-                let sum: f64 =
-                    coefficients.iter().zip(params).map(|(c, p)| c * p).sum();
+                let sum: f64 = coefficients
+                    .iter()
+                    .zip(params)
+                    .map(|(c, p)| c * p)
+                    .sum();
                 (sum - *rhs).abs() < 1e-10
             }
             Constraint::Custom { constraint_fn, .. } => constraint_fn(params) <= 0.0,
@@ -355,9 +361,8 @@ impl Constraint {
     /// Get the violation amount (0 = satisfied, positive = violated).
     pub fn violation(&self, params: &[f64]) -> f64 {
         match self {
-            Constraint::Bounds { param_index, bounds } => params
-                .get(*param_index)
-                .map_or(f64::INFINITY, |&v| {
+            Constraint::Bounds { param_index, bounds } => {
+                params.get(*param_index).map_or(f64::INFINITY, |&v| {
                     if v < bounds.min {
                         bounds.min - v
                     } else if v > bounds.max {
@@ -365,15 +370,22 @@ impl Constraint {
                     } else {
                         0.0
                     }
-                }),
+                })
+            }
             Constraint::LinearInequality { coefficients, rhs } => {
-                let sum: f64 =
-                    coefficients.iter().zip(params).map(|(c, p)| c * p).sum();
+                let sum: f64 = coefficients
+                    .iter()
+                    .zip(params)
+                    .map(|(c, p)| c * p)
+                    .sum();
                 (sum - *rhs).max(0.0)
             }
             Constraint::LinearEquality { coefficients, rhs } => {
-                let sum: f64 =
-                    coefficients.iter().zip(params).map(|(c, p)| c * p).sum();
+                let sum: f64 = coefficients
+                    .iter()
+                    .zip(params)
+                    .map(|(c, p)| c * p)
+                    .sum();
                 (sum - *rhs).abs()
             }
             Constraint::Custom { constraint_fn, .. } => constraint_fn(params).max(0.0),
@@ -769,8 +781,7 @@ mod tests {
         let market_data = vec![1.0, 2.0];
         let params = vec![1.1, 2.1];
 
-        let residuals =
-            calibrator.objective_function(&params, &market_data);
+        let residuals = calibrator.objective_function(&params, &market_data);
         assert_eq!(residuals.len(), 2);
         assert!((residuals[0] - 0.1).abs() < 1e-10);
         assert!((residuals[1] - 0.1).abs() < 1e-10);
@@ -785,9 +796,7 @@ mod tests {
 
     #[test]
     fn test_calibrator_calibrate_default() {
-        let calibrator = MockCalibrator {
-            target: vec![1.0],
-        };
+        let calibrator = MockCalibrator { target: vec![1.0] };
         let market_data = vec![1.0];
         let initial = vec![0.5];
 

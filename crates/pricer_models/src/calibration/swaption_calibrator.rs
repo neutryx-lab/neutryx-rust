@@ -333,8 +333,7 @@ fn sabr_implied_vol(
     let f_mid = (forward * strike).powf((1.0 - beta) / 2.0);
 
     let z = (nu / alpha) * f_mid * log_fk;
-    let x_z =
-        ((1.0 - 2.0 * rho * z + z.powi(2)).sqrt() + z - rho) / (1.0 - rho);
+    let x_z = ((1.0 - 2.0 * rho * z + z.powi(2)).sqrt() + z - rho) / (1.0 - rho);
 
     let x_z_ratio = if x_z.abs() < eps {
         1.0
@@ -436,11 +435,7 @@ mod tests {
         let calibrator = SwaptionCalibrator::new_flat_vol();
         let market_data = SwaptionMarketData::new(VolatilityType::LogNormal);
 
-        let result = calibrator.calibrate(
-            &market_data,
-            vec![0.15],
-            &CalibrationConfig::default(),
-        );
+        let result = calibrator.calibrate(&market_data, vec![0.15], &CalibrationConfig::default());
 
         assert!(!result.converged);
     }
@@ -522,8 +517,13 @@ mod tests {
         let expiry = 1.0;
 
         // Add points with a smile pattern
-        for (strike, vol) in [(0.02, 0.25), (0.025, 0.22), (0.03, 0.20), (0.035, 0.21), (0.04, 0.24)]
-        {
+        for (strike, vol) in [
+            (0.02, 0.25),
+            (0.025, 0.22),
+            (0.03, 0.20),
+            (0.035, 0.21),
+            (0.04, 0.24),
+        ] {
             let point = SwaptionMarketPoint::new(expiry, 5.0, strike, vol);
             data.add_point(point, forward, 1.0);
         }
@@ -531,8 +531,7 @@ mod tests {
         // Initial SABR params: alpha, beta, rho, nu
         let initial = vec![0.05, 0.5, -0.2, 0.3];
 
-        let result =
-            calibrator.calibrate(&data, initial, &CalibrationConfig::fast());
+        let result = calibrator.calibrate(&data, initial, &CalibrationConfig::fast());
 
         // Just check that it runs and produces reasonable params
         assert!(result.params[0] > 0.0); // alpha > 0

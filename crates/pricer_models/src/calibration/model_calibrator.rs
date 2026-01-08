@@ -322,7 +322,7 @@ mod tests {
     fn test_calibrate_with_bounds() {
         let config = ModelCalibratorConfig::default()
             .with_bounds(vec![
-                ParameterBounds::new(0.0, 1.0), // param 0 in [0, 1]
+                ParameterBounds::new(0.0, 1.0),  // param 0 in [0, 1]
                 ParameterBounds::new(0.0, 10.0), // param 1 in [0, 10]
             ])
             .with_enforce_bounds(true);
@@ -356,8 +356,7 @@ mod tests {
     #[test]
     fn test_config_from_calibration_config() {
         let calib_config = CalibrationConfig::new(1e-8, 50);
-        let config =
-            ModelCalibratorConfig::from_calibration_config(&calib_config);
+        let config = ModelCalibratorConfig::from_calibration_config(&calib_config);
 
         assert!((config.lm_config.tolerance - 1e-8).abs() < 1e-15);
         assert_eq!(config.lm_config.max_iterations, 50);
@@ -375,8 +374,7 @@ mod tests {
         let market_data = vec![1.0, 2.0, 3.0];
         let initial = vec![0.0, 0.0, 0.0];
 
-        let result =
-            calibrator.calibrate(&market_data, initial, &CalibrationConfig::default());
+        let result = calibrator.calibrate(&market_data, initial, &CalibrationConfig::default());
 
         assert!(result.converged);
         for (p, t) in result.params.iter().zip(&market_data) {
@@ -396,8 +394,7 @@ mod tests {
         let market_data = vec![1.0, 2.0];
         let params = vec![1.5, 2.5];
 
-        let residuals =
-            calibrator.objective_function(&params, &market_data);
+        let residuals = calibrator.objective_function(&params, &market_data);
 
         assert_eq!(residuals.len(), 2);
         assert!((residuals[0] - 0.5).abs() < 1e-10);
@@ -407,12 +404,11 @@ mod tests {
     #[test]
     fn test_generic_calibrator_constraints() {
         let config = ModelCalibratorConfig::default();
-        let residual_fn = |params: &[f64], _target: &Vec<f64>| {
-            params.iter().map(|p| *p).collect()
-        };
+        let residual_fn =
+            |params: &[f64], _target: &Vec<f64>| params.iter().map(|p| *p).collect();
 
-        let calibrator = GenericCalibrator::new(config, residual_fn)
-            .with_constraints(vec![Constraint::positive(0)]);
+        let calibrator =
+            GenericCalibrator::new(config, residual_fn).with_constraints(vec![Constraint::positive(0)]);
 
         let constraints = calibrator.constraints();
         assert_eq!(constraints.len(), 1);

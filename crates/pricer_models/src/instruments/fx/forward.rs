@@ -23,7 +23,7 @@
 //! ```
 
 use num_traits::Float;
-use pricer_core::types::{Currency, CurrencyPair, CurrencyError};
+use pricer_core::types::{Currency, CurrencyError, CurrencyPair};
 
 use crate::instruments::traits::InstrumentTrait;
 
@@ -327,13 +327,8 @@ mod tests {
     #[test]
     fn test_fx_forward_new_buy() {
         let pair = create_test_pair();
-        let forward = FxForward::new(
-            pair,
-            1.12,
-            1.0,
-            1_000_000.0,
-            FxForwardDirection::Buy,
-        ).unwrap();
+        let forward =
+            FxForward::new(pair, 1.12, 1.0, 1_000_000.0, FxForwardDirection::Buy).unwrap();
 
         assert_eq!(forward.base_currency(), Currency::EUR);
         assert_eq!(forward.quote_currency(), Currency::USD);
@@ -347,13 +342,8 @@ mod tests {
     #[test]
     fn test_fx_forward_new_sell() {
         let pair = create_test_pair();
-        let forward = FxForward::new(
-            pair,
-            1.12,
-            0.5,
-            500_000.0,
-            FxForwardDirection::Sell,
-        ).unwrap();
+        let forward =
+            FxForward::new(pair, 1.12, 0.5, 500_000.0, FxForwardDirection::Sell).unwrap();
 
         assert!(forward.is_sell());
         assert!(!forward.is_buy());
@@ -362,62 +352,33 @@ mod tests {
     #[test]
     fn test_fx_forward_invalid_forward_rate() {
         let pair = create_test_pair();
-        let result = FxForward::new(
-            pair,
-            0.0,
-            1.0,
-            1_000_000.0,
-            FxForwardDirection::Buy,
-        );
+        let result = FxForward::new(pair, 0.0, 1.0, 1_000_000.0, FxForwardDirection::Buy);
         assert!(matches!(result, Err(FxForwardError::InvalidForwardRate)));
 
         let pair = create_test_pair();
-        let result = FxForward::new(
-            pair,
-            -1.0,
-            1.0,
-            1_000_000.0,
-            FxForwardDirection::Buy,
-        );
+        let result = FxForward::new(pair, -1.0, 1.0, 1_000_000.0, FxForwardDirection::Buy);
         assert!(matches!(result, Err(FxForwardError::InvalidForwardRate)));
     }
 
     #[test]
     fn test_fx_forward_invalid_maturity() {
         let pair = create_test_pair();
-        let result = FxForward::new(
-            pair,
-            1.12,
-            0.0,
-            1_000_000.0,
-            FxForwardDirection::Buy,
-        );
+        let result = FxForward::new(pair, 1.12, 0.0, 1_000_000.0, FxForwardDirection::Buy);
         assert!(matches!(result, Err(FxForwardError::InvalidMaturity)));
     }
 
     #[test]
     fn test_fx_forward_invalid_notional() {
         let pair = create_test_pair();
-        let result = FxForward::new(
-            pair,
-            1.12,
-            1.0,
-            0.0,
-            FxForwardDirection::Buy,
-        );
+        let result = FxForward::new(pair, 1.12, 1.0, 0.0, FxForwardDirection::Buy);
         assert!(matches!(result, Err(FxForwardError::InvalidNotional)));
     }
 
     #[test]
     fn test_fx_forward_buy_payoff_positive() {
         let pair = create_test_pair();
-        let forward = FxForward::new(
-            pair,
-            1.10,              // forward rate
-            1.0,
-            1_000_000.0,       // notional
-            FxForwardDirection::Buy,
-        ).unwrap();
+        let forward =
+            FxForward::new(pair, 1.10, 1.0, 1_000_000.0, FxForwardDirection::Buy).unwrap();
 
         // Spot at 1.15, payoff = 1M * (1.15 - 1.10) = 50,000 USD
         let payoff = forward.payoff(1.15);
@@ -427,13 +388,8 @@ mod tests {
     #[test]
     fn test_fx_forward_buy_payoff_negative() {
         let pair = create_test_pair();
-        let forward = FxForward::new(
-            pair,
-            1.10,
-            1.0,
-            1_000_000.0,
-            FxForwardDirection::Buy,
-        ).unwrap();
+        let forward =
+            FxForward::new(pair, 1.10, 1.0, 1_000_000.0, FxForwardDirection::Buy).unwrap();
 
         // Spot at 1.05, payoff = 1M * (1.05 - 1.10) = -50,000 USD
         let payoff = forward.payoff(1.05);
@@ -443,13 +399,8 @@ mod tests {
     #[test]
     fn test_fx_forward_sell_payoff_positive() {
         let pair = create_test_pair();
-        let forward = FxForward::new(
-            pair,
-            1.10,
-            1.0,
-            1_000_000.0,
-            FxForwardDirection::Sell,
-        ).unwrap();
+        let forward =
+            FxForward::new(pair, 1.10, 1.0, 1_000_000.0, FxForwardDirection::Sell).unwrap();
 
         // Spot at 1.05, payoff = 1M * (1.10 - 1.05) = 50,000 USD
         let payoff = forward.payoff(1.05);
@@ -459,13 +410,8 @@ mod tests {
     #[test]
     fn test_fx_forward_sell_payoff_negative() {
         let pair = create_test_pair();
-        let forward = FxForward::new(
-            pair,
-            1.10,
-            1.0,
-            1_000_000.0,
-            FxForwardDirection::Sell,
-        ).unwrap();
+        let forward =
+            FxForward::new(pair, 1.10, 1.0, 1_000_000.0, FxForwardDirection::Sell).unwrap();
 
         // Spot at 1.15, payoff = 1M * (1.10 - 1.15) = -50,000 USD
         let payoff = forward.payoff(1.15);
@@ -475,13 +421,8 @@ mod tests {
     #[test]
     fn test_fx_forward_mark_to_market() {
         let pair = create_test_pair();
-        let forward = FxForward::new(
-            pair,
-            1.10,
-            1.0,
-            1_000_000.0,
-            FxForwardDirection::Buy,
-        ).unwrap();
+        let forward =
+            FxForward::new(pair, 1.10, 1.0, 1_000_000.0, FxForwardDirection::Buy).unwrap();
 
         // Current forward at 1.12, discount factor 0.95
         let mtm = forward.mark_to_market(1.12, 0.95);
@@ -492,13 +433,8 @@ mod tests {
     #[test]
     fn test_fx_forward_pair_code() {
         let pair = create_test_pair();
-        let forward = FxForward::new(
-            pair,
-            1.12,
-            1.0,
-            1_000_000.0,
-            FxForwardDirection::Buy,
-        ).unwrap();
+        let forward =
+            FxForward::new(pair, 1.12, 1.0, 1_000_000.0, FxForwardDirection::Buy).unwrap();
 
         assert_eq!(forward.pair_code(), "EUR/USD");
     }
@@ -506,13 +442,8 @@ mod tests {
     #[test]
     fn test_fx_forward_instrument_trait() {
         let pair = create_test_pair();
-        let forward = FxForward::new(
-            pair,
-            1.12,
-            0.5,
-            1_000_000.0,
-            FxForwardDirection::Buy,
-        ).unwrap();
+        let forward =
+            FxForward::new(pair, 1.12, 0.5, 1_000_000.0, FxForwardDirection::Buy).unwrap();
 
         // Test InstrumentTrait methods
         assert!((forward.expiry() - 0.5).abs() < 1e-10);
@@ -530,29 +461,19 @@ mod tests {
     #[test]
     fn test_fx_forward_clone() {
         let pair = create_test_pair();
-        let forward1 = FxForward::new(
-            pair,
-            1.12,
-            1.0,
-            1_000_000.0,
-            FxForwardDirection::Buy,
-        ).unwrap();
-        let forward2 = forward1.clone();
+        let forward =
+            FxForward::new(pair, 1.12, 1.0, 1_000_000.0, FxForwardDirection::Buy).unwrap();
+        let forward2 = forward.clone();
 
-        assert!((forward1.forward_rate() - forward2.forward_rate()).abs() < 1e-10);
-        assert_eq!(forward1.direction(), forward2.direction());
+        assert!((forward.forward_rate() - forward2.forward_rate()).abs() < 1e-10);
+        assert_eq!(forward.direction(), forward2.direction());
     }
 
     #[test]
     fn test_fx_forward_debug() {
         let pair = create_test_pair();
-        let forward = FxForward::new(
-            pair,
-            1.12,
-            1.0,
-            1_000_000.0,
-            FxForwardDirection::Buy,
-        ).unwrap();
+        let forward =
+            FxForward::new(pair, 1.12, 1.0, 1_000_000.0, FxForwardDirection::Buy).unwrap();
 
         let debug_str = format!("{:?}", forward);
         assert!(debug_str.contains("FxForward"));
@@ -562,13 +483,8 @@ mod tests {
     #[test]
     fn test_usdjpy_forward() {
         let pair = CurrencyPair::new(Currency::USD, Currency::JPY, 150.0).unwrap();
-        let forward = FxForward::new(
-            pair,
-            152.0,              // forward rate
-            0.5,                // 6 months
-            100_000.0,          // 100k USD notional
-            FxForwardDirection::Buy,
-        ).unwrap();
+        let forward =
+            FxForward::new(pair, 152.0, 0.5, 100_000.0, FxForwardDirection::Buy).unwrap();
 
         assert_eq!(forward.base_currency(), Currency::USD);
         assert_eq!(forward.quote_currency(), Currency::JPY);
