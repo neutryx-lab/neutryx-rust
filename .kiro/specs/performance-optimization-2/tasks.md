@@ -18,13 +18,13 @@
   - _Requirements: 6.2, 6.4, 6.5_
 
 - [ ] 2. ビルド最適化設定
-- [ ] 2.1 (P) target-cpu=native設定
+- [x] 2.1 (P) target-cpu=native設定
   - .cargo/config.tomlにx86_64向けRUSTFLAGS設定
   - 既存のLTO/codegen-units設定との整合性確認
   - クロスコンパイル時の考慮事項をドキュメント化
   - _Requirements: 5.1, 5.2, 5.3_
 
-- [ ] 2.2 (P) PGOビルドインフラ
+- [x] 2.2 (P) PGOビルドインフラ
   - cargo-pgoを使用したビルドスクリプト作成
   - プロファイル収集用ベンチマークワークロード定義
   - PGO最適化ビルド手順のドキュメント化
@@ -33,14 +33,14 @@
 ## Phase 2: メモリ効率 & 並列処理
 
 - [ ] 3. スレッドローカルバッファプール
-- [ ] 3.1 pool moduleの基本実装
+- [x] 3.1 pool moduleの基本実装
   - ThreadLocalPoolとPooledBuffer構造体の実装
   - thread_local!マクロを使用したスレッドごとのストレージ
   - RAII Drop実装による自動バッファ返却
   - プール統計情報の収集機能
   - _Requirements: 1.2, 3.3, 3.5_
 
-- [ ] 3.2 PathWorkspaceへのpool統合
+- [x] 3.2 PathWorkspaceへのpool統合
   - 既存のPathWorkspaceをpool moduleと統合
   - バッファ取得をプールから行うよう変更
   - ゼロアロケーション動作の検証テスト
@@ -48,7 +48,7 @@
   - _Requirements: 1.2, 1.5_
 
 - [ ] 4. チェックポイント最小化
-- [ ] 4.1 MinimalState実装
+- [x] 4.1 MinimalState実装
   - 勾配計算に必要な最小限の状態定義
   - RNG状態とPathObserverスナップショットの保存
   - メモリ使用量O(√n)を目指すBinomial戦略

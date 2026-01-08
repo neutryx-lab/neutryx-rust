@@ -1949,10 +1949,31 @@ dependencies = [
 ]
 
 [[package]]
-name = "pricer_kernel"
+name = "pricer_models"
 version = "0.1.0"
 dependencies = [
  "approx",
+ "chrono",
+ "criterion",
+ "iai-callgrind",
+ "llvm-sys",
+ "num-traits",
+ "num-traits",
+ "pricer_core",
+ "proptest",
+ "rand 0.8.5",
+ "rand_distr",
+ "rayon",
+ "serde",
+ "thiserror 2.0.17",
+]
+
+[[package]]
+name = "pricer_pricing"
+version = "0.1.0"
+dependencies = [
+ "approx",
+ "chrono",
  "criterion",
  "iai-callgrind",
  "llvm-sys",
@@ -1963,19 +1984,6 @@ dependencies = [
  "rand 0.8.5",
  "rand_distr",
  "rayon",
- "serde",
- "thiserror 2.0.17",
-]
-
-[[package]]
-name = "pricer_models"
-version = "0.1.0"
-dependencies = [
- "approx",
- "criterion",
- "num-traits",
- "pricer_core",
- "proptest",
  "serde",
  "thiserror 2.0.17",
 ]
@@ -2015,14 +2023,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "pricer_xva"
+name = "pricer_risk"
 version = "0.1.0"
 dependencies = [
  "approx",
  "criterion",
  "pricer_core",
- "pricer_kernel",
  "pricer_models",
+ "pricer_pricing",
  "rayon",
  "serde",
  "thiserror 2.0.17",

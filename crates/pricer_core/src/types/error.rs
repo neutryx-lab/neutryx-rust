@@ -6,6 +6,7 @@
 //! - `CurrencyError`: Errors from currency parsing
 //! - `InterpolationError`: Errors from interpolation operations
 //! - `SolverError`: Errors from root-finding solvers
+//! - `CalibrationError`: Errors from model calibration
 
 use std::fmt;
 use thiserror::Error;
@@ -113,6 +114,8 @@ impl std::error::Error for DateError {}
 /// # Variants
 /// - `UnknownCurrency`: Unknown currency code
 /// - `ParseError`: Failed to parse currency string
+/// - `SameCurrency`: Base and quote currencies are the same
+/// - `InvalidSpotRate`: Spot rate is not positive
 ///
 /// # Examples
 /// ```
@@ -128,6 +131,12 @@ pub enum CurrencyError {
 
     /// Failed to parse currency string.
     ParseError(String),
+
+    /// Base and quote currencies are the same.
+    SameCurrency(String),
+
+    /// Spot rate is not positive.
+    InvalidSpotRate,
 }
 
 impl fmt::Display for CurrencyError {
@@ -135,6 +144,10 @@ impl fmt::Display for CurrencyError {
         match self {
             CurrencyError::UnknownCurrency(code) => write!(f, "Unknown currency: {}", code),
             CurrencyError::ParseError(msg) => write!(f, "Currency parse error: {}", msg),
+            CurrencyError::SameCurrency(code) => {
+                write!(f, "Base and quote currencies are the same: {}", code)
+            }
+            CurrencyError::InvalidSpotRate => write!(f, "Invalid spot rate: must be positive"),
         }
     }
 }
@@ -241,6 +254,272 @@ pub enum SolverError {
     /// Numerical instability during computation.
     #[error("Numerical instability: {0}")]
     NumericalInstability(String),
+}
+
+/// Calibration error kind.
+///
+/// Categorises the type of calibration failure.
+///
+/// # Variants
+/// - `NotConverged`: Calibration failed to converge within iteration limit
+/// - `InvalidConstraint`: Parameter constraints were violated
+/// - `NumericalInstability`: Numerical issues during calibration
+/// - `InsufficientData`: Not enough market data for calibration
+/// - `InvalidParameter`: Invalid parameter value during calibration
+#[derive(Error, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum CalibrationErrorKind {
+    /// Calibration did not converge within iteration limit.
+    #[error("calibration did not converge")]
+    NotConverged,
+
+    /// Parameter constraint was violated.
+    #[error("constraint violation: {0}")]
+    InvalidConstraint(String),
+
+    /// Numerical instability during calibration.
+    #[error("numerical instability")]
+    NumericalInstability,
+
+    /// Insufficient market data for calibration.
+    #[error("insufficient data: need at least {need} points, got {got}")]
+    InsufficientData {
+        /// Number of data points provided.
+        got: usize,
+        /// Minimum required data points.
+        need: usize,
+    },
+
+    /// Invalid parameter value.
+    #[error("invalid parameter: {0}")]
+    InvalidParameter(String),
+}
+
+/// Calibration error with detailed diagnostics.
+///
+/// Provides comprehensive information about calibration failures including
+/// residuals, iteration count, and convergence metrics.
+///
+/// # Fields
+/// - `kind`: The type of calibration error
+/// - `residual_ss`: Final residual sum of squares
+/// - `iterations`: Number of iterations performed
+/// - `message`: Optional detailed error message
+/// - `parameter_values`: Optional final parameter values
+///
+/// # Examples
+/// ```
+/// use pricer_core::types::{CalibrationError, CalibrationErrorKind};
+///
+/// // Create a not-converged error
+/// let err = CalibrationError::not_converged(100, 0.01);
+/// assert_eq!(err.iterations, 100);
+///
+/// // Create a constraint violation error
+/// let err = CalibrationError::constraint_violation("alpha must be positive");
+/// assert!(format!("{}", err).contains("constraint violation"));
+/// ```
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct CalibrationError {
+    /// The type of calibration error.
+    pub kind: CalibrationErrorKind,
+
+    /// Final residual sum of squares.
+    pub residual_ss: f64,
+
+    /// Number of iterations performed.
+    pub iterations: usize,
+
+    /// Detailed error message.
+    pub message: Option<String>,
+
+    /// Final parameter values (if available).
+    pub parameter_values: Option<Vec<f64>>,
+}
+
+impl CalibrationError {
+    /// Create a new calibration error.
+    pub fn new(kind: CalibrationErrorKind) -> Self {
+        Self {
+            kind,
+            residual_ss: f64::NAN,
+            iterations: 0,
+            message: None,
+            parameter_values: None,
+        }
+    }
+
+    /// Create a not-converged error.
+    ///
+    /// # Arguments
+    /// * `iterations` - Number of iterations performed
+    /// * `residual_ss` - Final residual sum of squares
+    pub fn not_converged(iterations: usize, residual_ss: f64) -> Self {
+        Self {
+            kind: CalibrationErrorKind::NotConverged,
+            residual_ss,
+            iterations,
+            message: Some(format!(
+                "Failed to converge after {} iterations (residual_ss: {:.6e})",
+                iterations, residual_ss
+            )),
+            parameter_values: None,
+        }
+    }
+
+    /// Create a constraint violation error.
+    ///
+    /// # Arguments
+    /// * `constraint` - Description of violated constraint
+    pub fn constraint_violation(constraint: impl Into<String>) -> Self {
+        let msg = constraint.into();
+        Self {
+            kind: CalibrationErrorKind::InvalidConstraint(msg.clone()),
+            residual_ss: f64::NAN,
+            iterations: 0,
+            message: Some(msg),
+            parameter_values: None,
+        }
+    }
+
+    /// Create a numerical instability error.
+    ///
+    /// # Arguments
+    /// * `message` - Description of the numerical issue
+    pub fn numerical_instability(message: impl Into<String>) -> Self {
+        Self {
+            kind: CalibrationErrorKind::NumericalInstability,
+            residual_ss: f64::NAN,
+            iterations: 0,
+            message: Some(message.into()),
+            parameter_values: None,
+        }
+    }
+
+    /// Create an insufficient data error.
+    ///
+    /// # Arguments
+    /// * `got` - Number of data points provided
+    /// * `need` - Minimum required data points
+    pub fn insufficient_data(got: usize, need: usize) -> Self {
+        Self {
+            kind: CalibrationErrorKind::InsufficientData { got, need },
+            residual_ss: f64::NAN,
+            iterations: 0,
+            message: Some(format!(
+                "Insufficient data: got {} points, need at least {}",
+                got, need
+            )),
+            parameter_values: None,
+        }
+    }
+
+    /// Create an invalid parameter error.
+    ///
+    /// # Arguments
+    /// * `message` - Description of the invalid parameter
+    pub fn invalid_parameter(message: impl Into<String>) -> Self {
+        let msg = message.into();
+        Self {
+            kind: CalibrationErrorKind::InvalidParameter(msg.clone()),
+            residual_ss: f64::NAN,
+            iterations: 0,
+            message: Some(msg),
+            parameter_values: None,
+        }
+    }
+
+    /// Set the final parameter values.
+    pub fn with_parameters(mut self, params: Vec<f64>) -> Self {
+        self.parameter_values = Some(params);
+        self
+    }
+
+    /// Set the residual sum of squares.
+    pub fn with_residual(mut self, residual_ss: f64) -> Self {
+        self.residual_ss = residual_ss;
+        self
+    }
+
+    /// Set the iteration count.
+    pub fn with_iterations(mut self, iterations: usize) -> Self {
+        self.iterations = iterations;
+        self
+    }
+
+    /// Set a detailed message.
+    pub fn with_message(mut self, message: impl Into<String>) -> Self {
+        self.message = Some(message.into());
+        self
+    }
+
+    /// Get the root mean square error (if residual count is known).
+    pub fn rmse(&self, n_observations: usize) -> f64 {
+        if n_observations == 0 || self.residual_ss.is_nan() {
+            f64::NAN
+        } else {
+            (self.residual_ss / n_observations as f64).sqrt()
+        }
+    }
+
+    /// Check if the error is due to non-convergence.
+    pub fn is_not_converged(&self) -> bool {
+        matches!(self.kind, CalibrationErrorKind::NotConverged)
+    }
+
+    /// Check if the error is due to a constraint violation.
+    pub fn is_constraint_violation(&self) -> bool {
+        matches!(self.kind, CalibrationErrorKind::InvalidConstraint(_))
+    }
+
+    /// Check if the error is due to numerical instability.
+    pub fn is_numerical_instability(&self) -> bool {
+        matches!(self.kind, CalibrationErrorKind::NumericalInstability)
+    }
+
+    /// Check if the error is due to insufficient data.
+    pub fn is_insufficient_data(&self) -> bool {
+        matches!(self.kind, CalibrationErrorKind::InsufficientData { .. })
+    }
+}
+
+impl fmt::Display for CalibrationError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Calibration error: {}", self.kind)?;
+        if let Some(ref msg) = self.message {
+            if !matches!(self.kind, CalibrationErrorKind::NotConverged) {
+                write!(f, " - {}", msg)?;
+            }
+        }
+        if self.iterations > 0 {
+            write!(f, " (after {} iterations)", self.iterations)?;
+        }
+        if !self.residual_ss.is_nan() {
+            write!(f, " [residual_ss: {:.6e}]", self.residual_ss)?;
+        }
+        Ok(())
+    }
+}
+
+impl std::error::Error for CalibrationError {}
+
+impl From<SolverError> for CalibrationError {
+    fn from(err: SolverError) -> Self {
+        match err {
+            SolverError::MaxIterationsExceeded { iterations } => {
+                CalibrationError::not_converged(iterations, f64::NAN)
+            }
+            SolverError::NumericalInstability(msg) => CalibrationError::numerical_instability(msg),
+            SolverError::DerivativeNearZero { x } => {
+                CalibrationError::numerical_instability(format!("Derivative near zero at x = {}", x))
+            }
+            SolverError::NoBracket { a, b } => CalibrationError::numerical_instability(format!(
+                "No bracket found between {} and {}",
+                a, b
+            )),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -452,6 +731,167 @@ mod tests {
         let err1 = SolverError::NoBracket { a: 0.0, b: 1.0 };
         let err2 = err1.clone();
         assert_eq!(err1, err2);
+    }
+
+    // CalibrationError tests
+
+    #[test]
+    fn test_calibration_error_new() {
+        let err = CalibrationError::new(CalibrationErrorKind::NotConverged);
+        assert!(matches!(err.kind, CalibrationErrorKind::NotConverged));
+        assert_eq!(err.iterations, 0);
+        assert!(err.residual_ss.is_nan());
+    }
+
+    #[test]
+    fn test_calibration_error_not_converged() {
+        let err = CalibrationError::not_converged(100, 0.01);
+        assert!(err.is_not_converged());
+        assert_eq!(err.iterations, 100);
+        assert!((err.residual_ss - 0.01).abs() < 1e-15);
+        assert!(err.message.is_some());
+    }
+
+    #[test]
+    fn test_calibration_error_constraint_violation() {
+        let err = CalibrationError::constraint_violation("alpha must be positive");
+        assert!(err.is_constraint_violation());
+        assert!(format!("{}", err).contains("constraint violation"));
+    }
+
+    #[test]
+    fn test_calibration_error_numerical_instability() {
+        let err = CalibrationError::numerical_instability("NaN encountered");
+        assert!(err.is_numerical_instability());
+        assert!(err.message.as_ref().unwrap().contains("NaN"));
+    }
+
+    #[test]
+    fn test_calibration_error_insufficient_data() {
+        let err = CalibrationError::insufficient_data(3, 10);
+        assert!(err.is_insufficient_data());
+        if let CalibrationErrorKind::InsufficientData { got, need } = err.kind {
+            assert_eq!(got, 3);
+            assert_eq!(need, 10);
+        } else {
+            panic!("Expected InsufficientData");
+        }
+    }
+
+    #[test]
+    fn test_calibration_error_invalid_parameter() {
+        let err = CalibrationError::invalid_parameter("volatility cannot be negative");
+        assert!(matches!(err.kind, CalibrationErrorKind::InvalidParameter(_)));
+    }
+
+    #[test]
+    fn test_calibration_error_with_parameters() {
+        let err = CalibrationError::not_converged(10, 0.1).with_parameters(vec![0.5, 1.0]);
+        assert!(err.parameter_values.is_some());
+        assert_eq!(err.parameter_values.unwrap().len(), 2);
+    }
+
+    #[test]
+    fn test_calibration_error_with_residual() {
+        let err = CalibrationError::new(CalibrationErrorKind::NotConverged).with_residual(0.005);
+        assert!((err.residual_ss - 0.005).abs() < 1e-15);
+    }
+
+    #[test]
+    fn test_calibration_error_with_iterations() {
+        let err = CalibrationError::new(CalibrationErrorKind::NotConverged).with_iterations(50);
+        assert_eq!(err.iterations, 50);
+    }
+
+    #[test]
+    fn test_calibration_error_with_message() {
+        let err = CalibrationError::new(CalibrationErrorKind::NotConverged)
+            .with_message("Custom message");
+        assert_eq!(err.message, Some("Custom message".to_string()));
+    }
+
+    #[test]
+    fn test_calibration_error_rmse() {
+        let err = CalibrationError::not_converged(10, 4.0);
+        let rmse = err.rmse(4);
+        assert!((rmse - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_calibration_error_rmse_nan() {
+        let err = CalibrationError::new(CalibrationErrorKind::NumericalInstability);
+        assert!(err.rmse(10).is_nan());
+    }
+
+    #[test]
+    fn test_calibration_error_rmse_zero_observations() {
+        let err = CalibrationError::not_converged(10, 1.0);
+        assert!(err.rmse(0).is_nan());
+    }
+
+    #[test]
+    fn test_calibration_error_display() {
+        let err = CalibrationError::not_converged(100, 0.01);
+        let display = format!("{}", err);
+        assert!(display.contains("Calibration error"));
+        assert!(display.contains("100 iterations"));
+    }
+
+    #[test]
+    fn test_calibration_error_from_solver_error() {
+        let solver_err = SolverError::MaxIterationsExceeded { iterations: 50 };
+        let calib_err: CalibrationError = solver_err.into();
+        assert!(calib_err.is_not_converged());
+        assert_eq!(calib_err.iterations, 50);
+    }
+
+    #[test]
+    fn test_calibration_error_from_numerical_instability() {
+        let solver_err = SolverError::NumericalInstability("overflow".to_string());
+        let calib_err: CalibrationError = solver_err.into();
+        assert!(calib_err.is_numerical_instability());
+    }
+
+    #[test]
+    fn test_calibration_error_from_derivative_near_zero() {
+        let solver_err = SolverError::DerivativeNearZero { x: 1.5 };
+        let calib_err: CalibrationError = solver_err.into();
+        assert!(calib_err.is_numerical_instability());
+    }
+
+    #[test]
+    fn test_calibration_error_from_no_bracket() {
+        let solver_err = SolverError::NoBracket { a: 0.0, b: 1.0 };
+        let calib_err: CalibrationError = solver_err.into();
+        assert!(calib_err.is_numerical_instability());
+    }
+
+    #[test]
+    fn test_calibration_error_kind_display() {
+        let kind = CalibrationErrorKind::NotConverged;
+        assert_eq!(format!("{}", kind), "calibration did not converge");
+
+        let kind = CalibrationErrorKind::InvalidConstraint("test".to_string());
+        assert!(format!("{}", kind).contains("constraint violation"));
+
+        let kind = CalibrationErrorKind::NumericalInstability;
+        assert_eq!(format!("{}", kind), "numerical instability");
+
+        let kind = CalibrationErrorKind::InsufficientData { got: 3, need: 10 };
+        assert!(format!("{}", kind).contains("insufficient data"));
+    }
+
+    #[test]
+    fn test_calibration_error_clone_and_equality() {
+        let err1 = CalibrationError::not_converged(100, 0.01);
+        let err2 = err1.clone();
+        assert_eq!(err1, err2);
+    }
+
+    #[test]
+    fn test_calibration_error_trait_implementation() {
+        let err = CalibrationError::not_converged(100, 0.01);
+        let _: &dyn std::error::Error = &err;
     }
 
     // Serde tests (feature-gated)

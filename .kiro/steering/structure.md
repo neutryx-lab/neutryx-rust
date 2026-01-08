@@ -8,8 +8,8 @@ Strict bottom-up dependencies, isolating experimental technology (Enzyme) to Lay
 ```
 L1 (pricer_core)    → No dependencies, pure Rust traits/types
 L2 (pricer_models)  → Depends on L1 only
-L3 (pricer_kernel)  → Currently isolated (Phase 3.0), will integrate L1+L2 in Phase 4
-L4 (pricer_xva)     → Depends on L1+L2+L3, stable Rust
+L3 (pricer_pricing) → Currently isolated (Phase 3.0), will integrate L1+L2 in Phase 4
+L4 (pricer_risk)    → Depends on L1+L2+L3, stable Rust
 ```
 
 **Phase 3.0 Isolation**: L3 intentionally has zero pricer_* dependencies for complete Enzyme infrastructure isolation. L1/L2 integration planned for Phase 4.
@@ -73,9 +73,9 @@ analytical/   → Closed-form solutions (Black-Scholes, barrier formulas)
 - **State Types**: `SingleState<T>` (1-factor), `TwoFactorState<T>` (2-factor) via `StochasticState` trait
 - **ModelParams/ModelState**: Unified enums for type-safe parameter and state handling
 
-### Layer 3: AD Engine (pricer_kernel)
+### Layer 3: AD Engine (pricer_pricing)
 
-**Location**: `crates/pricer_kernel/src/`
+**Location**: `crates/pricer_pricing/src/`
 **Purpose**: Monte Carlo + Enzyme AD (nightly Rust, LLVM plugin)
 **Structure**:
 
@@ -87,10 +87,12 @@ rng/             → Random number generation (PRNG, QMC sequences)
 verify/          → Enzyme vs num-dual verification tests
 checkpoint/      → Memory management for checkpointing
 analytical/      → Closed-form solutions (geometric Asian, barrier options)
-greeks/          → Greeks calculation configuration and results
+greeks/          → Greeks calculation types (GreeksConfig, GreeksMode, GreeksResult<T>)
 ```
 
 **Key Principle**: **Only crate requiring nightly Rust and Enzyme**. Currently isolated (Phase 3.0) with zero pricer_* dependencies.
+
+> **Note**: This crate was renamed from `pricer_kernel` to `pricer_engine` in version 0.7.0, then to `pricer_pricing` for alphabetical ordering with dependency hierarchy.
 
 **RNG Design**: Zero-allocation batch operations, static dispatch only, Enzyme-compatible. Supports reproducible seeding for deterministic simulations.
 
@@ -123,9 +125,15 @@ greeks/          → Greeks calculation configuration and results
 - `MemoryBudget`: Configurable memory limits for checkpointing
 - Integration: `MonteCarloPricer` with checkpointing support
 
-### Layer 4: Application (pricer_xva)
+**Greeks Module** (Phase 4+, Implemented):
 
-**Location**: `crates/pricer_xva/src/`
+- `GreeksConfig`: Configuration for bump widths and calculation modes (builder pattern)
+- `GreeksMode`: Calculation mode selection (BumpAndRevalue, AAD, NumDual)
+- `GreeksResult<T>`: Generic result type for Greeks calculations (AD-compatible)
+
+### Layer 4: Application (pricer_risk)
+
+**Location**: `crates/pricer_risk/src/`
 **Purpose**: Portfolio analytics and XVA calculations (stable Rust)
 **Structure**:
 
@@ -159,7 +167,7 @@ parallel/   → Rayon-based parallelization config
 
 ## Naming Conventions
 
-- **Crates**: `pricer_*` prefix, snake_case (`pricer_core`, `pricer_kernel`)
+- **Crates**: `pricer_*` prefix, snake_case (`pricer_core`, `pricer_pricing`)
 - **Modules**: snake_case (`monte_carlo`, `smoothing`)
 - **Traits**: PascalCase (`Priceable`, `Differentiable`)
 - **Types**: PascalCase (`DualNumber`, `VanillaOption`)
@@ -172,6 +180,7 @@ parallel/   → Rayon-based parallelization config
 ```rust
 use pricer_core::traits::Priceable;
 use pricer_models::instruments::Instrument;
+use pricer_pricing::mc::MonteCarloPricer;
 ```
 
 **Relative imports** within same crate:
@@ -205,5 +214,5 @@ Current roadmap (see README.md):
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-02_ — Phase 4 complete (checkpointing, path-dependent, analytical); added iai-callgrind benchmark
+_Updated: 2026-01-07_ — Added Greeks module documentation (GreeksConfig, GreeksMode, GreeksResult)
 _Document patterns, not file trees. New files following patterns should not require updates_

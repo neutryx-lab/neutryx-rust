@@ -1,10 +1,77 @@
-# Cargo configuration for autodiff/Enzyme support
+# Cargo configuration for Neutryx XVA Pricing Library
+#
+# Build Optimization:
+# - target-cpu=native: Uses CPU-specific instructions (AVX2/AVX-512) for maximum performance
+# - Works with LTO and codegen-units=1 from Cargo.toml [profile.release]
+#
+# Cross-Compilation Notes:
+# - target-cpu=native generates binaries optimized for the build machine
+# - For portable binaries, comment out or remove target-cpu settings
+# - CI builds should NOT use target-cpu=native for artifact distribution
+#
+# Autodiff (Enzyme) Notes:
+# - -Z autodiff=Enable is set via RUSTFLAGS in CI/scripts, not here
+# - This keeps the config compatible with stable Rust for L1/L2/L4
 
-[build]
-# Autodiff (Enzyme) support for pricer_kernel crate
-# Uncomment for nightly builds with autodiff:
-# rustflags = ["-Z", "autodiff=Enable"]
-
+# ============================================================================
+# x86_64 Linux (Ubuntu, Debian, etc.)
+# ============================================================================
 [target.x86_64-unknown-linux-gnu]
-# Additional optimization flags for release builds
-# rustflags = ["-C", "target-cpu=native"]
+# Optimize for the build machine's CPU (enables AVX2/AVX-512 if available)
+rustflags = ["-C", "target-cpu=native"]
+
+# ============================================================================
+# x86_64 macOS
+# ============================================================================
+[target.x86_64-apple-darwin]
+# Optimize for the build machine's CPU
+rustflags = ["-C", "target-cpu=native"]
+
+# ============================================================================
+# x86_64 Windows MSVC
+# ============================================================================
+[target.x86_64-pc-windows-msvc]
+# Optimize for the build machine's CPU
+rustflags = ["-C", "target-cpu=native"]
+
+# ============================================================================
+# ARM64 macOS (Apple Silicon)
+# ============================================================================
+[target.aarch64-apple-darwin]
+# ARM64 Macs have consistent CPU features, native still beneficial
+rustflags = ["-C", "target-cpu=native"]
+
+# ============================================================================
+# ARM64 Linux (Raspberry Pi, AWS Graviton, etc.)
+# ============================================================================
+[target.aarch64-unknown-linux-gnu]
+# Optimize for the build machine's CPU
+rustflags = ["-C", "target-cpu=native"]
+
+# ============================================================================
+# Build Settings
+# ============================================================================
+[build]
+# Jobs: use all available cores
+# jobs = 8  # Uncomment and adjust if needed
+
+# Autodiff (Enzyme) support for pricer_pricing crate
+# Enable via RUSTFLAGS environment variable instead:
+# export RUSTFLAGS="-Z autodiff=Enable"
+# cargo +nightly build -p pricer_pricing
+
+# ============================================================================
+# Environment Configuration
+# ============================================================================
+[env]
+# Additional environment variables can be set here
+# RUSTFLAGS can be overridden on command line or in CI
+
+# ============================================================================
+# Profile Overrides (PGO builds use separate profile)
+# ============================================================================
+# For PGO builds, use:
+# 1. cargo pgo build (instrumented build)
+# 2. Run benchmarks to collect profile data
+# 3. cargo pgo optimize (optimized build)
+# See scripts/pgo_build.sh for details

@@ -98,24 +98,23 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Clippy (stable crates)
-        run: cargo clippy --workspace --exclude pricer_kernel -- -D warnings
+        run: cargo clippy --workspace --exclude pricer_pricing -- -D warnings
 
       - name: Build (stable crates)
-        run: cargo build --workspace --exclude pricer_kernel
+        run: cargo build --workspace --exclude pricer_pricing
 
       - name: Test (stable crates)
-        run: cargo test --workspace --exclude pricer_kernel
+        run: cargo test --workspace --exclude pricer_pricing
 
       - name: Test with num-dual feature
         run: cargo test -p pricer_core --features num-dual-mode
 
   # ============================================================================
-  # Nightly Rust: L3 (pricer_kernel with autodiff/Enzyme)
+  # Nightly Rust: L3 (pricer_pricing with autodiff/Enzyme)
   # Linux only (Enzyme requires LLVM infrastructure)
   # ============================================================================
   nightly-kernel:
     name: Nightly Rust - L3 (pricer_kernel)
-    if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/updates') }}
     runs-on: ubuntu-latest
 
     steps:
@@ -152,41 +151,41 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-build-nightly-
 
-      - name: Build pricer_kernel (with autodiff)
+      - name: Build pricer_pricing (with autodiff)
         if: steps.enzyme-check.outputs.enzyme_available == 'true'
         run: |
           export RUSTFLAGS="-Z autodiff=Enable"
-          cargo +nightly build -p pricer_kernel
+          cargo +nightly build -p pricer_pricing
 
-      - name: Test pricer_kernel (with autodiff)
+      - name: Test pricer_pricing (with autodiff)
         if: steps.enzyme-check.outputs.enzyme_available == 'true'
         run: |
           export RUSTFLAGS="-Z autodiff=Enable"
-          cargo +nightly test -p pricer_kernel
+          cargo +nightly test -p pricer_pricing
 
-      - name: Clippy pricer_kernel (with autodiff)
+      - name: Clippy pricer_pricing (with autodiff)
         if: steps.enzyme-check.outputs.enzyme_available == 'true'
         run: |
           export RUSTFLAGS="-Z autodiff=Enable"
-          cargo +nightly clippy -p pricer_kernel -- -D warnings
+          cargo +nightly clippy -p pricer_pricing -- -D warnings
 
-      - name: Build pricer_kernel (fallback without autodiff)
+      - name: Build pricer_pricing (fallback without autodiff)
         if: steps.enzyme-check.outputs.enzyme_available != 'true'
         run: |
           echo "⚠ Building without autodiff - Enzyme not available"
-          echo "  pricer_kernel will build but autodiff features are disabled"
-          cargo +nightly build -p pricer_kernel
+          echo "  pricer_pricing will build but autodiff features are disabled"
+          cargo +nightly build -p pricer_pricing
 
-      - name: Test pricer_kernel (fallback without autodiff)
+      - name: Test pricer_pricing (fallback without autodiff)
         if: steps.enzyme-check.outputs.enzyme_available != 'true'
         run: |
           echo "⚠ Testing without autodiff - Enzyme not available"
-          cargo +nightly test -p pricer_kernel
+          cargo +nightly test -p pricer_pricing
 
-      - name: Clippy pricer_kernel (fallback)
+      - name: Clippy pricer_pricing (fallback)
         if: steps.enzyme-check.outputs.enzyme_available != 'true'
         run: |
-          cargo +nightly clippy -p pricer_kernel -- -D warnings
+          cargo +nightly clippy -p pricer_pricing -- -D warnings
 
       - name: Report autodiff status
         run: |
@@ -261,7 +260,7 @@ jobs:
 
       - name: Generate coverage report
         run: |
-          cargo llvm-cov --workspace --exclude pricer_kernel \
+          cargo llvm-cov --workspace --exclude pricer_pricing \
             --lcov --output-path lcov.info
 
       - name: Upload coverage to Codecov
@@ -462,7 +461,7 @@ jobs:
             ${{ runner.os }}-cargo-docs-
 
       - name: Build documentation (stable crates)
-        run: cargo doc --workspace --exclude pricer_kernel --no-deps
+        run: cargo doc --workspace --exclude pricer_pricing --no-deps
         env:
           RUSTDOCFLAGS: "-D warnings"
 
@@ -470,7 +469,7 @@ jobs:
         run: |
           echo "Documentation built successfully for stable crates"
           echo "Checking for documentation completeness..."
-          cargo doc --workspace --exclude pricer_kernel --no-deps 2>&1 | \
+          cargo doc --workspace --exclude pricer_pricing --no-deps 2>&1 | \
             grep -c "warning:" || echo "No documentation warnings found"
 
       - name: Upload documentation

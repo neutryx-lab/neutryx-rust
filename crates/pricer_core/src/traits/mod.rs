@@ -1,9 +1,10 @@
-//! Core traits for priceable instruments and differentiation.
+//! Core traits for priceable instruments, differentiation, and calibration.
 //!
 //! This module defines fundamental abstractions for:
 //! - Generic floating-point operations (`Float` trait)
 //! - Price calculation (`Priceable` trait)
 //! - Gradient computation (`Differentiable` trait)
+//! - Model calibration (`Calibrator` trait)
 //!
 //! All traits are designed for static dispatch (enum-based) to ensure
 //! compatibility with Enzyme AD optimisation at LLVM level.
@@ -37,6 +38,7 @@
 /// ```
 pub use num_traits::Float;
 
+pub mod calibration;
 pub mod priceable;
 
 #[cfg(test)]

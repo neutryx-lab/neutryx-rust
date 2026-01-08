@@ -7,8 +7,8 @@
 ```text
 L1: pricer_core     → Foundation (Stable)
 L2: pricer_models   → Business Logic (Stable)
-L3: pricer_kernel   → AD Engine (Nightly + Enzyme, currently isolated)
-L4: pricer_xva      → Application (Stable)
+L3: pricer_pricing  → AD Engine (Nightly + Enzyme, currently isolated)
+L4: pricer_risk     → Application (Stable)
 ```
 
 **Phase 3.0 Note**: L3 currently has zero pricer_* dependencies (complete isolation). L1/L2 integration planned for Phase 4.
@@ -17,7 +17,7 @@ L4: pricer_xva      → Application (Stable)
 
 - **Language**: Rust Edition 2021
 - **Nightly Toolchain**: `nightly-2025-01-15` (workspace default, L3-first development)
-- **Stable Compatibility**: L1/L2/L4 (pricer_core, pricer_models, pricer_xva) can build on stable when excluding L3
+- **Stable Compatibility**: L1/L2/L4 (pricer_core, pricer_models, pricer_risk) can build on stable when excluding L3
 - **AD Backend**: Enzyme LLVM plugin (LLVM 18 required)
 - **Build System**: Cargo workspace with resolver = "2"
 
@@ -71,13 +71,13 @@ L4: pricer_xva      → Application (Stable)
 
 ```bash
 # Dev (stable crates only)
-cargo build --workspace --exclude pricer_kernel
-cargo test --workspace --exclude pricer_kernel
+cargo build --workspace --exclude pricer_pricing
+cargo test --workspace --exclude pricer_pricing
 
 # Dev (with Enzyme - L3)
 export RUSTFLAGS="-C llvm-args=-load=/usr/local/lib/LLVMEnzyme-18.so"
-cargo +nightly build -p pricer_kernel
-cargo +nightly test -p pricer_kernel
+cargo +nightly build -p pricer_pricing
+cargo +nightly test -p pricer_pricing
 
 # Docker (full Enzyme environment)
 docker build -f docker/Dockerfile.nightly -t neutryx-enzyme .

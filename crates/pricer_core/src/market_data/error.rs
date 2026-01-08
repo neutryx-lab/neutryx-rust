@@ -3,6 +3,7 @@
 //! This module provides structured error handling for market data operations
 //! including yield curve and volatility surface lookups.
 
+use crate::market_data::curves::CurveName;
 use crate::types::{InterpolationError, PricingError};
 use thiserror::Error;
 
@@ -19,6 +20,9 @@ use thiserror::Error;
 /// - `OutOfBounds`: Query outside valid domain
 /// - `Interpolation`: Wrapped interpolation error
 /// - `InsufficientData`: Not enough data points for construction
+/// - `CurveNotFound`: Requested curve does not exist in CurveSet
+/// - `InterpolationFailed`: Interpolation operation failed
+/// - `MissingData`: Required market data is missing
 ///
 /// # Examples
 ///
@@ -73,6 +77,27 @@ pub enum MarketDataError {
         got: usize,
         /// Minimum number of points required
         need: usize,
+    },
+
+    /// Curve not found in CurveSet.
+    #[error("Curve not found: {name}")]
+    CurveNotFound {
+        /// The name of the curve that was not found
+        name: CurveName,
+    },
+
+    /// Interpolation operation failed.
+    #[error("Interpolation failed: {reason}")]
+    InterpolationFailed {
+        /// Description of why interpolation failed
+        reason: String,
+    },
+
+    /// Required market data is missing.
+    #[error("Missing market data: {description}")]
+    MissingData {
+        /// Description of what data is missing
+        description: String,
     },
 }
 
@@ -157,5 +182,44 @@ mod tests {
         let err1 = MarketDataError::InvalidStrike { strike: 0.0 };
         let err2 = err1.clone();
         assert_eq!(err1, err2);
+    }
+
+    #[test]
+    fn test_curve_not_found_display() {
+        let err = MarketDataError::CurveNotFound {
+            name: CurveName::Sofr,
+        };
+        let display = format!("{}", err);
+        assert!(display.contains("Curve not found"));
+        assert!(display.contains("SOFR"));
+    }
+
+    #[test]
+    fn test_curve_not_found_custom() {
+        let err = MarketDataError::CurveNotFound {
+            name: CurveName::Custom("MY_CURVE"),
+        };
+        let display = format!("{}", err);
+        assert!(display.contains("MY_CURVE"));
+    }
+
+    #[test]
+    fn test_interpolation_failed_display() {
+        let err = MarketDataError::InterpolationFailed {
+            reason: "Negative volatility".to_string(),
+        };
+        let display = format!("{}", err);
+        assert!(display.contains("Interpolation failed"));
+        assert!(display.contains("Negative volatility"));
+    }
+
+    #[test]
+    fn test_missing_data_display() {
+        let err = MarketDataError::MissingData {
+            description: "SOFR curve required for floating leg".to_string(),
+        };
+        let display = format!("{}", err);
+        assert!(display.contains("Missing market data"));
+        assert!(display.contains("SOFR curve"));
     }
 }

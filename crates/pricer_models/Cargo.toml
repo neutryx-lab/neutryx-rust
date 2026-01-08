@@ -5,10 +5,26 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
+description = "Financial instrument definitions and stochastic models for neutryx-rust"
+
+[features]
+default = ["equity"]
+
+# Asset class features
+equity = []
+rates = []
+credit = []
+fx = []
+commodity = []
+exotic = ["equity"]  # Exotic products typically extend equity derivatives
+
+# Convenience feature for all asset classes
+all = ["equity", "rates", "credit", "fx", "commodity", "exotic"]
 
 [dependencies]
 pricer_core = { path = "../pricer_core" }
 num-traits.workspace = true
+chrono.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 
