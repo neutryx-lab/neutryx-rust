@@ -85,7 +85,13 @@
       "Bash(cmd /c \"cargo --version\")",
       "Bash(cmd /c \"cargo test -p pricer_server --lib 2>&1\")",
       "Bash(powershell -Command \"cd 'c:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust'; cargo test -p pricer_server --lib 2>&1\":*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(cmd /c \"cd /d c:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust && cargo test -p pricer_server server::tests --no-fail-fast 2>&1\")",
+      "Bash(cmd /c \"cd /d c:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust && C:\\\\Users\\\\khosh\\\\.cargo\\\\bin\\\\cargo test -p pricer_server server::tests --no-fail-fast 2>&1\")",
+      "Bash(cmd.exe /c \"cd /d c:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust && set PATH=%USERPROFILE%\\\\.cargo\\\\bin;%PATH% && cargo test -p pricer_server server::tests --no-fail-fast\")",
+      "Bash(cmd.exe /c \"C:\\\\Users\\\\khosh\\\\.cargo\\\\bin\\\\cargo.exe test:*)",
+      "Bash(C:/Users/khosh/.cargo/bin/cargo.exe check:*)",
+      "Bash(/mnt/c/Users/khosh/.cargo/bin/cargo.exe check:*)"
     ]
   }
 }
