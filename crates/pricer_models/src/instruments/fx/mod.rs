@@ -201,14 +201,7 @@ mod tests {
     #[test]
     fn test_fx_instrument_option() {
         let pair = create_test_pair();
-        let option = FxOption::new(
-            pair,
-            1.10,
-            1.0,
-            1_000_000.0,
-            FxOptionType::Call,
-            1e-6,
-        ).unwrap();
+        let option = FxOption::new(pair, 1.10, 1.0, 1_000_000.0, FxOptionType::Call, 1e-6).unwrap();
         let instrument = FxInstrument::Option(option);
 
         assert!(instrument.is_option());
@@ -220,13 +213,8 @@ mod tests {
     #[test]
     fn test_fx_instrument_forward() {
         let pair = create_test_pair();
-        let forward = FxForward::new(
-            pair,
-            1.12,
-            1.0,
-            1_000_000.0,
-            FxForwardDirection::Buy,
-        ).unwrap();
+        let forward =
+            FxForward::new(pair, 1.12, 1.0, 1_000_000.0, FxForwardDirection::Buy).unwrap();
         let instrument = FxInstrument::Forward(forward);
 
         assert!(!instrument.is_option());
@@ -238,14 +226,7 @@ mod tests {
     #[test]
     fn test_fx_instrument_payoff() {
         let pair = create_test_pair();
-        let option = FxOption::new(
-            pair,
-            1.10,
-            1.0,
-            1_000_000.0,
-            FxOptionType::Call,
-            1e-6,
-        ).unwrap();
+        let option = FxOption::new(pair, 1.10, 1.0, 1_000_000.0, FxOptionType::Call, 1e-6).unwrap();
         let instrument = FxInstrument::Option(option);
 
         // At spot 1.15, payoff = 1M * (1.15 - 1.10) = 50,000 USD
@@ -256,14 +237,7 @@ mod tests {
     #[test]
     fn test_fx_instrument_expiry() {
         let pair = create_test_pair();
-        let option = FxOption::new(
-            pair,
-            1.10,
-            0.5,
-            1_000_000.0,
-            FxOptionType::Call,
-            1e-6,
-        ).unwrap();
+        let option = FxOption::new(pair, 1.10, 0.5, 1_000_000.0, FxOptionType::Call, 1e-6).unwrap();
         let instrument = FxInstrument::Option(option);
 
         assert!((instrument.expiry() - 0.5).abs() < 1e-10);
@@ -272,14 +246,7 @@ mod tests {
     #[test]
     fn test_fx_instrument_currency() {
         let pair = create_test_pair();
-        let option = FxOption::new(
-            pair,
-            1.10,
-            1.0,
-            1_000_000.0,
-            FxOptionType::Call,
-            1e-6,
-        ).unwrap();
+        let option = FxOption::new(pair, 1.10, 1.0, 1_000_000.0, FxOptionType::Call, 1e-6).unwrap();
         let instrument = FxInstrument::Option(option);
 
         assert_eq!(instrument.currency(), Currency::USD);
@@ -288,13 +255,8 @@ mod tests {
     #[test]
     fn test_fx_instrument_notional() {
         let pair = create_test_pair();
-        let forward = FxForward::new(
-            pair,
-            1.12,
-            1.0,
-            500_000.0,
-            FxForwardDirection::Sell,
-        ).unwrap();
+        let forward =
+            FxForward::new(pair, 1.12, 1.0, 500_000.0, FxForwardDirection::Sell).unwrap();
         let instrument = FxInstrument::Forward(forward);
 
         assert!((instrument.notional() - 500_000.0).abs() < 1e-10);
@@ -322,14 +284,7 @@ mod tests {
     #[test]
     fn test_fx_instrument_from_option() {
         let pair = create_test_pair();
-        let option = FxOption::new(
-            pair,
-            1.10,
-            1.0,
-            1_000_000.0,
-            FxOptionType::Call,
-            1e-6,
-        ).unwrap();
+        let option = FxOption::new(pair, 1.10, 1.0, 1_000_000.0, FxOptionType::Call, 1e-6).unwrap();
         let instrument: FxInstrument<f64> = option.into();
 
         assert!(instrument.is_option());
@@ -338,13 +293,8 @@ mod tests {
     #[test]
     fn test_fx_instrument_from_forward() {
         let pair = create_test_pair();
-        let forward = FxForward::new(
-            pair,
-            1.12,
-            1.0,
-            1_000_000.0,
-            FxForwardDirection::Buy,
-        ).unwrap();
+        let forward =
+            FxForward::new(pair, 1.12, 1.0, 1_000_000.0, FxForwardDirection::Buy).unwrap();
         let instrument: FxInstrument<f64> = forward.into();
 
         assert!(instrument.is_forward());
@@ -353,14 +303,7 @@ mod tests {
     #[test]
     fn test_fx_instrument_clone() {
         let pair = create_test_pair();
-        let option = FxOption::new(
-            pair,
-            1.10,
-            1.0,
-            1_000_000.0,
-            FxOptionType::Call,
-            1e-6,
-        ).unwrap();
+        let option = FxOption::new(pair, 1.10, 1.0, 1_000_000.0, FxOptionType::Call, 1e-6).unwrap();
         let inst1 = FxInstrument::Option(option);
         let inst2 = inst1.clone();
 
@@ -370,14 +313,7 @@ mod tests {
     #[test]
     fn test_fx_instrument_debug() {
         let pair = create_test_pair();
-        let option = FxOption::new(
-            pair,
-            1.10,
-            1.0,
-            1_000_000.0,
-            FxOptionType::Call,
-            1e-6,
-        ).unwrap();
+        let option = FxOption::new(pair, 1.10, 1.0, 1_000_000.0, FxOptionType::Call, 1e-6).unwrap();
         let instrument = FxInstrument::Option(option);
 
         let debug_str = format!("{:?}", instrument);
@@ -387,14 +323,7 @@ mod tests {
     #[test]
     fn test_fx_instrument_trait() {
         let pair = create_test_pair();
-        let option = FxOption::new(
-            pair,
-            1.10,
-            0.5,
-            1_000_000.0,
-            FxOptionType::Call,
-            1e-6,
-        ).unwrap();
+        let option = FxOption::new(pair, 1.10, 0.5, 1_000_000.0, FxOptionType::Call, 1e-6).unwrap();
         let instrument = FxInstrument::Option(option);
 
         // Test InstrumentTrait methods via trait

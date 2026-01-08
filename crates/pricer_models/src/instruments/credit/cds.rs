@@ -372,22 +372,10 @@ mod tests {
 
     #[test]
     fn test_cds_direction_multipliers() {
-        assert_eq!(
-            CdsDirection::BuyProtection.premium_multiplier::<f64>(),
-            -1.0
-        );
-        assert_eq!(
-            CdsDirection::BuyProtection.protection_multiplier::<f64>(),
-            1.0
-        );
-        assert_eq!(
-            CdsDirection::SellProtection.premium_multiplier::<f64>(),
-            1.0
-        );
-        assert_eq!(
-            CdsDirection::SellProtection.protection_multiplier::<f64>(),
-            -1.0
-        );
+        assert_eq!(CdsDirection::BuyProtection.premium_multiplier::<f64>(), -1.0);
+        assert_eq!(CdsDirection::BuyProtection.protection_multiplier::<f64>(), 1.0);
+        assert_eq!(CdsDirection::SellProtection.premium_multiplier::<f64>(), 1.0);
+        assert_eq!(CdsDirection::SellProtection.protection_multiplier::<f64>(), -1.0);
     }
 
     #[test]

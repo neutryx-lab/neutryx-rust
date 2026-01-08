@@ -335,23 +335,20 @@ impl Constraint {
     /// Check if a parameter set satisfies this constraint.
     pub fn is_satisfied(&self, params: &[f64]) -> bool {
         match self {
-            Constraint::Bounds { param_index, bounds } => params
+            Constraint::Bounds {
+                param_index,
+                bounds,
+            } => params
                 .get(*param_index)
                 .map_or(false, |&v| bounds.contains(v)),
             Constraint::LinearInequality { coefficients, rhs } => {
-                let sum: f64 = coefficients
-                    .iter()
-                    .zip(params)
-                    .map(|(c, p)| c * p)
-                    .sum();
+                let sum: f64 =
+                    coefficients.iter().zip(params).map(|(c, p)| c * p).sum();
                 sum <= *rhs
             }
             Constraint::LinearEquality { coefficients, rhs } => {
-                let sum: f64 = coefficients
-                    .iter()
-                    .zip(params)
-                    .map(|(c, p)| c * p)
-                    .sum();
+                let sum: f64 =
+                    coefficients.iter().zip(params).map(|(c, p)| c * p).sum();
                 (sum - *rhs).abs() < 1e-10
             }
             Constraint::Custom { constraint_fn, .. } => constraint_fn(params) <= 0.0,
@@ -361,31 +358,26 @@ impl Constraint {
     /// Get the violation amount (0 = satisfied, positive = violated).
     pub fn violation(&self, params: &[f64]) -> f64 {
         match self {
-            Constraint::Bounds { param_index, bounds } => {
-                params.get(*param_index).map_or(f64::INFINITY, |&v| {
-                    if v < bounds.min {
-                        bounds.min - v
-                    } else if v > bounds.max {
-                        v - bounds.max
-                    } else {
-                        0.0
-                    }
-                })
-            }
+            Constraint::Bounds {
+                param_index,
+                bounds,
+            } => params.get(*param_index).map_or(f64::INFINITY, |&v| {
+                if v < bounds.min {
+                    bounds.min - v
+                } else if v > bounds.max {
+                    v - bounds.max
+                } else {
+                    0.0
+                }
+            }),
             Constraint::LinearInequality { coefficients, rhs } => {
-                let sum: f64 = coefficients
-                    .iter()
-                    .zip(params)
-                    .map(|(c, p)| c * p)
-                    .sum();
+                let sum: f64 =
+                    coefficients.iter().zip(params).map(|(c, p)| c * p).sum();
                 (sum - *rhs).max(0.0)
             }
             Constraint::LinearEquality { coefficients, rhs } => {
-                let sum: f64 = coefficients
-                    .iter()
-                    .zip(params)
-                    .map(|(c, p)| c * p)
-                    .sum();
+                let sum: f64 =
+                    coefficients.iter().zip(params).map(|(c, p)| c * p).sum();
                 (sum - *rhs).abs()
             }
             Constraint::Custom { constraint_fn, .. } => constraint_fn(params).max(0.0),
@@ -748,11 +740,7 @@ mod tests {
             params: &Self::ModelParams,
             market_data: &Self::MarketData,
         ) -> Vec<f64> {
-            params
-                .iter()
-                .zip(market_data)
-                .map(|(p, m)| p - m)
-                .collect()
+            params.iter().zip(market_data).map(|(p, m)| p - m).collect()
         }
 
         fn constraints(&self) -> Vec<Constraint> {
