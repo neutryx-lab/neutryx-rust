@@ -51,10 +51,10 @@
 //! assert!(parity_diff.abs() < 1e-10);
 //! ```
 
-use num_traits::Float;
 use super::distributions::norm_cdf;
 use super::error::AnalyticalError;
 use crate::instruments::fx::FxOptionType;
+use num_traits::Float;
 
 /// Parameters for the Garman-Kohlhagen model.
 ///

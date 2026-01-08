@@ -46,7 +46,7 @@ use num_traits::Float;
 /// assert_eq!(state.step, 100);
 /// assert!(state.memory_size() < 200); // Very compact
 /// ```
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct MinimalState {
     /// Current simulation step (0-indexed).
     pub step: usize,
@@ -106,17 +106,6 @@ impl MinimalState {
         // Step can be any value
         // Observer state is always valid by construction
         true
-    }
-}
-
-impl Default for MinimalState {
-    fn default() -> Self {
-        Self {
-            step: 0,
-            rng_state: 0,
-            rng_calls: 0,
-            observer_snapshot: PathObserverState::default(),
-        }
     }
 }
 
