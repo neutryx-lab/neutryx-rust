@@ -482,8 +482,7 @@ mod tests {
     #[test]
     fn test_usdjpy_forward() {
         let pair = CurrencyPair::new(Currency::USD, Currency::JPY, 150.0).unwrap();
-        let forward =
-            FxForward::new(pair, 152.0, 0.5, 100_000.0, FxForwardDirection::Buy).unwrap();
+        let forward = FxForward::new(pair, 152.0, 0.5, 100_000.0, FxForwardDirection::Buy).unwrap();
 
         assert_eq!(forward.base_currency(), Currency::USD);
         assert_eq!(forward.quote_currency(), Currency::JPY);

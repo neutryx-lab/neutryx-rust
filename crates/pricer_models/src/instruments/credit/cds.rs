@@ -393,7 +393,10 @@ mod tests {
     #[test]
     fn test_cds_direction_display() {
         assert_eq!(format!("{}", CdsDirection::BuyProtection), "Buy Protection");
-        assert_eq!(format!("{}", CdsDirection::SellProtection), "Sell Protection");
+        assert_eq!(
+            format!("{}", CdsDirection::SellProtection),
+            "Sell Protection"
+        );
     }
 
     #[test]
