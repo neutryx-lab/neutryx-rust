@@ -404,8 +404,7 @@ mod tests {
     #[test]
     fn test_generic_calibrator_constraints() {
         let config = ModelCalibratorConfig::default();
-        let residual_fn =
-            |params: &[f64], _target: &Vec<f64>| params.iter().map(|p| *p).collect();
+        let residual_fn = |params: &[f64], _target: &Vec<f64>| params.iter().map(|p| *p).collect();
 
         let calibrator = GenericCalibrator::new(config, residual_fn)
             .with_constraints(vec![Constraint::positive(0)]);

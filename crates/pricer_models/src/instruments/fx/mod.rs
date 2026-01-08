@@ -255,8 +255,7 @@ mod tests {
     #[test]
     fn test_fx_instrument_notional() {
         let pair = create_test_pair();
-        let forward =
-            FxForward::new(pair, 1.12, 1.0, 500_000.0, FxForwardDirection::Sell).unwrap();
+        let forward = FxForward::new(pair, 1.12, 1.0, 500_000.0, FxForwardDirection::Sell).unwrap();
         let instrument = FxInstrument::Forward(forward);
 
         assert!((instrument.notional() - 500_000.0).abs() < 1e-10);

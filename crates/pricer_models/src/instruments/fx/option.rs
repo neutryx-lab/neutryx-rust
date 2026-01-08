@@ -348,8 +348,7 @@ mod tests {
     #[test]
     fn test_fx_option_new_call() {
         let pair = create_test_pair();
-        let option =
-            FxOption::new(pair, 1.12, 1.0, 1_000_000.0, FxOptionType::Call, 1e-6).unwrap();
+        let option = FxOption::new(pair, 1.12, 1.0, 1_000_000.0, FxOptionType::Call, 1e-6).unwrap();
 
         assert_eq!(option.base_currency(), Currency::EUR);
         assert_eq!(option.quote_currency(), Currency::USD);
@@ -397,8 +396,7 @@ mod tests {
     #[test]
     fn test_fx_call_payoff_itm() {
         let pair = create_test_pair();
-        let call =
-            FxOption::new(pair, 1.10, 1.0, 1_000_000.0, FxOptionType::Call, 1e-6).unwrap();
+        let call = FxOption::new(pair, 1.10, 1.0, 1_000_000.0, FxOptionType::Call, 1e-6).unwrap();
 
         // Spot at 1.15, payoff = 1M * (1.15 - 1.10) = 50,000 USD
         let payoff = call.payoff(1.15);
@@ -408,8 +406,7 @@ mod tests {
     #[test]
     fn test_fx_call_payoff_otm() {
         let pair = create_test_pair();
-        let call =
-            FxOption::new(pair, 1.10, 1.0, 1_000_000.0, FxOptionType::Call, 1e-6).unwrap();
+        let call = FxOption::new(pair, 1.10, 1.0, 1_000_000.0, FxOptionType::Call, 1e-6).unwrap();
 
         // Spot at 1.05, call is OTM, payoff ≈ 0
         let payoff = call.payoff(1.05);
@@ -488,8 +485,7 @@ mod tests {
     #[test]
     fn test_usdjpy_option() {
         let pair = CurrencyPair::new(Currency::USD, Currency::JPY, 150.0).unwrap();
-        let call =
-            FxOption::new(pair, 152.0, 0.25, 100_000.0, FxOptionType::Call, 1e-6).unwrap();
+        let call = FxOption::new(pair, 152.0, 0.25, 100_000.0, FxOptionType::Call, 1e-6).unwrap();
 
         assert_eq!(call.base_currency(), Currency::USD);
         assert_eq!(call.quote_currency(), Currency::JPY);

@@ -342,13 +342,11 @@ impl Constraint {
                 .get(*param_index)
                 .map_or(false, |&v| bounds.contains(v)),
             Constraint::LinearInequality { coefficients, rhs } => {
-                let sum: f64 =
-                    coefficients.iter().zip(params).map(|(c, p)| c * p).sum();
+                let sum: f64 = coefficients.iter().zip(params).map(|(c, p)| c * p).sum();
                 sum <= *rhs
             }
             Constraint::LinearEquality { coefficients, rhs } => {
-                let sum: f64 =
-                    coefficients.iter().zip(params).map(|(c, p)| c * p).sum();
+                let sum: f64 = coefficients.iter().zip(params).map(|(c, p)| c * p).sum();
                 (sum - *rhs).abs() < 1e-10
             }
             Constraint::Custom { constraint_fn, .. } => constraint_fn(params) <= 0.0,
@@ -371,13 +369,11 @@ impl Constraint {
                 }
             }),
             Constraint::LinearInequality { coefficients, rhs } => {
-                let sum: f64 =
-                    coefficients.iter().zip(params).map(|(c, p)| c * p).sum();
+                let sum: f64 = coefficients.iter().zip(params).map(|(c, p)| c * p).sum();
                 (sum - *rhs).max(0.0)
             }
             Constraint::LinearEquality { coefficients, rhs } => {
-                let sum: f64 =
-                    coefficients.iter().zip(params).map(|(c, p)| c * p).sum();
+                let sum: f64 = coefficients.iter().zip(params).map(|(c, p)| c * p).sum();
                 (sum - *rhs).abs()
             }
             Constraint::Custom { constraint_fn, .. } => constraint_fn(params).max(0.0),
