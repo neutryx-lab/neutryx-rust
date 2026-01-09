@@ -239,6 +239,7 @@ where
     F: Fn(&[f64], &M) -> Vec<f64>,
 {
     /// Create a new generic calibrator.
+    #[allow(dead_code)]
     pub fn new(config: ModelCalibratorConfig, residual_fn: F) -> Self {
         Self {
             calibrator: ModelCalibrator::new(config),
@@ -249,6 +250,7 @@ where
     }
 
     /// Add constraints.
+    #[allow(dead_code)]
     pub fn with_constraints(mut self, constraints: Vec<Constraint>) -> Self {
         self.constraints = constraints;
         self
