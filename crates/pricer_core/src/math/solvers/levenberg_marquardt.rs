@@ -318,7 +318,7 @@ impl LevenbergMarquardtSolver {
         lambda: f64,
         n_params: usize,
     ) -> Option<Vec<f64>> {
-        let n_residuals = residuals.len();
+        let _n_residuals = residuals.len();
 
         // Compute J^T J
         let mut jtj = vec![vec![0.0; n_params]; n_params];
