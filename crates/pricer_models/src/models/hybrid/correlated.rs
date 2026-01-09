@@ -467,10 +467,7 @@ mod tests {
     fn test_correlation_matrix_not_symmetric() {
         let data = [1.0_f64, 0.5, 0.3, 1.0]; // 0.5 != 0.3
         let matrix = CorrelationMatrix::new(&data, 2);
-        assert!(matches!(
-            matrix,
-            Err(CorrelationError::NotSymmetric { .. })
-        ));
+        assert!(matches!(matrix, Err(CorrelationError::NotSymmetric { .. })));
     }
 
     #[test]
@@ -550,7 +547,10 @@ mod tests {
         let data = [1.0_f64, 1.0, 1.0, 1.0];
         let matrix = CorrelationMatrix::new(&data, 2).unwrap();
         let cholesky = matrix.cholesky();
-        assert!(matches!(cholesky, Err(CorrelationError::NotPositiveDefinite)));
+        assert!(matches!(
+            cholesky,
+            Err(CorrelationError::NotPositiveDefinite)
+        ));
     }
 
     // Test: CholeskyFactor transform

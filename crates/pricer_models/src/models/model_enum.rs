@@ -308,9 +308,11 @@ impl<T: Float + Default> StochasticModelEnum<T> {
                 ModelState::Single(GBMModel::evolve_step(*s, dt, dw, p))
             }
             #[cfg(feature = "rates")]
-            (StochasticModelEnum::HullWhite(_), ModelState::Single(s), ModelParams::HullWhite(p)) => {
-                ModelState::Single(HullWhiteModel::evolve_step(*s, dt, dw, p))
-            }
+            (
+                StochasticModelEnum::HullWhite(_),
+                ModelState::Single(s),
+                ModelParams::HullWhite(p),
+            ) => ModelState::Single(HullWhiteModel::evolve_step(*s, dt, dw, p)),
             #[cfg(feature = "rates")]
             (StochasticModelEnum::CIR(_), ModelState::Single(s), ModelParams::CIR(p)) => {
                 ModelState::Single(CIRModel::evolve_step(*s, dt, dw, p))
@@ -617,9 +619,7 @@ mod tests {
         #[test]
         fn test_model_enum_cir_initial_state() {
             let model = StochasticModelEnum::<f64>::cir();
-            let params = ModelParams::CIR(
-                CIRParams::new(0.1, 0.05, 0.05, 0.03).unwrap(),
-            );
+            let params = ModelParams::CIR(CIRParams::new(0.1, 0.05, 0.05, 0.03).unwrap());
 
             let state = model.initial_state(&params);
             assert_eq!(state.price(), 0.03);
@@ -645,9 +645,7 @@ mod tests {
         #[test]
         fn test_model_enum_cir_evolve_step() {
             let model = StochasticModelEnum::<f64>::cir();
-            let params = ModelParams::CIR(
-                CIRParams::new(0.1, 0.05, 0.05, 0.03).unwrap(),
-            );
+            let params = ModelParams::CIR(CIRParams::new(0.1, 0.05, 0.05, 0.03).unwrap());
 
             let state = model.initial_state(&params);
             let dt = 1.0 / 252.0;
