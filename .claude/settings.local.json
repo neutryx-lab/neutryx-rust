@@ -130,7 +130,24 @@
       "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust && cargo test -p pricer_models heston\")",
       "Bash(powershell.exe -Command \"cd C:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust; cargo test -p pricer_models heston 2>&1\")",
       "Bash(powershell.exe -Command \"cd C:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust; C:\\\\Users\\\\khosh\\\\.cargo\\\\bin\\\\cargo.exe test -p pricer_models heston 2>&1\":*)",
-      "Bash(cmd /c \"cd /d c:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust && cargo test -p pricer_models models::heston::tests::test_heston_stochastic_model -- --nocapture\")"
+      "Bash(cmd /c \"cd /d c:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust && cargo test -p pricer_models models::heston::tests::test_heston_stochastic_model -- --nocapture\")",
+      "Bash(C:Userskhosh.cargobincargo.exe test -p pricer_models --manifest-path \"c:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust\\\\Cargo.toml\" models::heston::tests::test_heston_stochastic_model -- --nocapture)",
+      "Bash(\"C:/Users/khosh/.cargo/bin/cargo.exe\" test:*)",
+      "Bash(cmd /c \"cd /d c:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust && cargo test -p pricer_models sabr --no-fail-fast 2>&1\")",
+      "Bash(C:Userskhosh.cargobincargo.exe test -p pricer_models sabr --no-fail-fast --manifest-path \"c:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust\\\\Cargo.toml\")",
+      "Bash(cmd /c \"C:\\\\Users\\\\khosh\\\\.cargo\\\\bin\\\\cargo.exe test -p pricer_models sabr --no-fail-fast --manifest-path c:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust\\\\Cargo.toml 2>&1\":*)",
+      "Bash(cmd /c:*)",
+      "Bash(cmd.exe /c \"echo test\")",
+      "Bash(cmd.exe /c echo test)",
+      "Bash(cmd.exe /c \"C:\\\\Users\\\\khosh\\\\.cargo\\\\bin\\\\cargo.exe check:*)",
+      "Bash(wsl ls:*)",
+      "Bash(powershell.exe -Command \"cd ''c:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust''; cargo test --package pricer_models --lib -- models::sabr::tests::test_sabr_negative_iv_floor_applied --no-run 2>&1\")",
+      "Bash(git -C \"c:/Users/khosh/neutryx-rust/neutryx-rust\" diff crates/pricer_models/src/models/mod.rs)",
+      "Bash(dir \"c:\\\\Users\\\\khosh\\\\.cargo\\\\bin\"\" 2>/dev/null || echo \"Cannot find cargo directory \")",
+      "Bash(git -C \"c:/Users/khosh/neutryx-rust/neutryx-rust\" add crates/pricer_models/src/models/sabr.rs)",
+      "Bash(git -C \"c:/Users/khosh/neutryx-rust/neutryx-rust\" status --short crates/pricer_models/src/models/)",
+      "Bash(git -C \"c:/Users/khosh/neutryx-rust/neutryx-rust\" add crates/pricer_models/src/models/mod.rs)",
+      "Bash(git -C \"c:/Users/khosh/neutryx-rust/neutryx-rust\" status)"
     ]
   }
 }

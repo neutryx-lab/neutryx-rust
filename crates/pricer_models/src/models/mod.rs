@@ -43,6 +43,7 @@
 pub mod gbm;
 pub mod heston;
 pub mod model_enum;
+pub mod sabr;
 pub mod stochastic;
 
 // Model category submodules (feature-gated)
@@ -63,6 +64,9 @@ pub use gbm::{GBMModel, GBMParams};
 
 // Re-export Heston model
 pub use heston::{HestonError, HestonModel, HestonParams};
+
+// Re-export SABR model
+pub use sabr::{SABRError, SABRModel, SABRParams};
 
 // Re-export enum types for static dispatch
 pub use model_enum::{ModelParams, ModelState, StochasticModelEnum};

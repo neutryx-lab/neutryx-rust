@@ -67,7 +67,7 @@
   - Task 1.1のsmooth_sqrt使用
   - _Requirements: 2.2, 2.3, 2.4_
 
-- [ ] 3.4 StochasticModelトレイト実装
+- [x] 3.4 StochasticModelトレイト実装
   - HestonModelにStochasticModelトレイトを実装
   - State型を(T, T)（価格、分散）として定義
   - evolve_step、initial_state、brownian_dimを実装
@@ -76,14 +76,14 @@
   - _Requirements: 2.6, 2.7, 1.5_
 
 - [ ] 4. SABRモデル実装（L2: pricer_models）
-- [ ] 4.1 (P) SABRParams構造体とエラー型の定義
+- [x] 4.1 (P) SABRParams構造体とエラー型の定義
   - フォワード価格、alpha、nu、rho、betaを含むパラメータ構造体
   - 満期、ATM近傍判定閾値、smoothing_epsilonパラメータ
   - SABRError列挙型（InvalidAlpha、InvalidBeta、InvalidRho等）を定義
   - thiserrorクレートによる構造化エラー
   - _Requirements: 3.1, 10.2, 10.5_
 
-- [ ] 4.2 Haganインプライドボラティリティ公式の実装
+- [x] 4.2 Haganインプライドボラティリティ公式の実装
   - 任意のストライクに対するインプライドボラティリティ計算
   - ATM近傍での展開公式による数値安定性確保
   - smooth_log、smooth_powを使用したAD互換性維持
