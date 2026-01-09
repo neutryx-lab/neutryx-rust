@@ -88,7 +88,19 @@
       "Bash(cmd.exe:*)",
       "Bash(powershell.exe -Command \"cd c:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust; cargo test --workspace --exclude pricer_pricing 2>&1 | Select-Object -First 100\")",
       "Bash(powershell.exe -Command:*)",
-      "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: resolve CI failures from broken doc links and rustfmt issues\n\n- Escape brackets in doc comment [expiry][delta] in fx.rs to prevent\n  intra-doc link resolution\n- Remove broken intra-doc links for feature-gated modules \\(rates,\n  credit, fx, commodity, exotic\\) in instruments/mod.rs\n- Fix rustfmt formatting in fx/option.rs tests\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: resolve CI failures from broken doc links and rustfmt issues\n\n- Escape brackets in doc comment [expiry][delta] in fx.rs to prevent\n  intra-doc link resolution\n- Remove broken intra-doc links for feature-gated modules \\(rates,\n  credit, fx, commodity, exotic\\) in instruments/mod.rs\n- Fix rustfmt formatting in fx/option.rs tests\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(gh api:*)",
+      "Bash(cmd /c \"cargo test -p pricer_models --features rates,exotic 2>&1\")",
+      "Bash(powershell -Command \"cd ''c:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust''; cargo test -p pricer_models --features ''rates,exotic''\")",
+      "Bash(C:/Users/khosh/.cargo/bin/cargo test -p pricer_models --features \"rates,exotic\" --manifest-path \"c:/Users/khosh/neutryx-rust/neutryx-rust/Cargo.toml\")",
+      "Bash(/mnt/c/Users/khosh/.cargo/bin/cargo.exe test:*)",
+      "Bash(where.exe:*)",
+      "Bash(powershell.exe -Command \"Test-Path ''C:\\\\Users\\\\khosh\\\\.cargo\\\\bin\\\\cargo.exe''\")",
+      "Bash(echo:*)",
+      "Bash(export PATH:*)",
+      "Bash(cmd.exe /c \"cargo fmt --check 2>&1\")",
+      "Bash(powershell -Command \"cd 'c:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust'; cargo clippy --all-targets --all-features -- -D warnings 2>&1 | Select-Object -First 100\":*)",
+      "Bash(gh run watch:*)"
     ]
   }
 }

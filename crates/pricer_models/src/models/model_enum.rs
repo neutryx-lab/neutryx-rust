@@ -1,7 +1,7 @@
 //! Static dispatch enum for stochastic models.
 //!
 //! This module provides `StochasticModelEnum` for zero-cost abstraction over
-//! different stochastic models (GBM, Heston, SABR). Using an enum instead of
+//! different stochastic models (GBM, Hull-White, CIR, etc.). Using an enum instead of
 //! trait objects ensures Enzyme LLVM compatibility and optimal performance.
 //!
 //! ## Design Philosophy
@@ -9,6 +9,7 @@
 //! - **Static dispatch**: All model dispatch via `match` expressions
 //! - **Zero-cost abstraction**: No vtable overhead
 //! - **Enzyme-friendly**: Concrete types allow LLVM-level AD optimization
+//! - **Feature-gated models**: Interest rate models require `rates` feature
 //!
 //! ## Example
 //!
@@ -29,6 +30,10 @@ use pricer_core::traits::Float;
 
 use super::gbm::{GBMModel, GBMParams};
 use super::stochastic::{SingleState, StochasticState, TwoFactorState};
+
+// Import rate models when rates feature is enabled
+#[cfg(feature = "rates")]
+use super::rates::{CIRModel, CIRParams, HullWhiteModel, HullWhiteParams};
 
 /// Unified state type for all models.
 ///
@@ -94,23 +99,38 @@ impl<T: Float + Default> ModelState<T> {
 pub enum ModelParams<T: Float> {
     /// GBM model parameters
     GBM(GBMParams<T>),
-    // Placeholder for future models:
-    // Heston(HestonParams<T>),
-    // SABR(SABRParams<T>),
+    /// Hull-White model parameters (requires `rates` feature)
+    #[cfg(feature = "rates")]
+    HullWhite(HullWhiteParams<T>),
+    /// CIR model parameters (requires `rates` feature)
+    #[cfg(feature = "rates")]
+    CIR(CIRParams<T>),
 }
 
 impl<T: Float> ModelParams<T> {
     /// Get the spot/initial price from parameters.
+    ///
+    /// For interest rate models, this returns the initial short rate.
     pub fn spot(&self) -> T {
         match self {
             ModelParams::GBM(p) => p.spot,
+            #[cfg(feature = "rates")]
+            ModelParams::HullWhite(p) => p.initial_short_rate,
+            #[cfg(feature = "rates")]
+            ModelParams::CIR(p) => p.initial_rate,
         }
     }
 
     /// Get the rate parameter.
+    ///
+    /// For interest rate models, this returns the mean reversion speed.
     pub fn rate(&self) -> T {
         match self {
             ModelParams::GBM(p) => p.rate,
+            #[cfg(feature = "rates")]
+            ModelParams::HullWhite(p) => p.mean_reversion,
+            #[cfg(feature = "rates")]
+            ModelParams::CIR(p) => p.mean_reversion,
         }
     }
 
@@ -118,6 +138,10 @@ impl<T: Float> ModelParams<T> {
     pub fn volatility(&self) -> T {
         match self {
             ModelParams::GBM(p) => p.volatility,
+            #[cfg(feature = "rates")]
+            ModelParams::HullWhite(p) => p.volatility,
+            #[cfg(feature = "rates")]
+            ModelParams::CIR(p) => p.volatility,
         }
     }
 }
@@ -129,9 +153,9 @@ impl<T: Float> ModelParams<T> {
 ///
 /// # Supported Models
 ///
-/// - `GBM`: Geometric Brownian Motion (1-factor)
-/// - `Heston`: Stochastic volatility model (2-factor) - placeholder
-/// - `SABR`: SABR volatility model - placeholder
+/// - `GBM`: Geometric Brownian Motion (1-factor) - always available
+/// - `HullWhite`: Hull-White 1F interest rate model - requires `rates` feature
+/// - `CIR`: Cox-Ingersoll-Ross interest rate model - requires `rates` feature
 ///
 /// # Example
 ///
@@ -142,15 +166,20 @@ impl<T: Float> ModelParams<T> {
 ///
 /// match &model {
 ///     StochasticModelEnum::GBM(_) => println!("Using GBM model"),
+///     #[cfg(feature = "rates")]
+///     _ => println!("Using rate model"),
 /// }
 /// ```
 #[derive(Clone, Debug)]
 pub enum StochasticModelEnum<T: Float> {
-    /// Geometric Brownian Motion model
+    /// Geometric Brownian Motion model (equity)
     GBM(GBMModel<T>),
-    // Placeholder for future models (Task 3 and 4):
-    // Heston(HestonModel<T>),
-    // SABR(SABRModel<T>),
+    /// Hull-White one-factor model (rates) - requires `rates` feature
+    #[cfg(feature = "rates")]
+    HullWhite(HullWhiteModel<T>),
+    /// Cox-Ingersoll-Ross model (rates) - requires `rates` feature
+    #[cfg(feature = "rates")]
+    CIR(CIRModel<T>),
 }
 
 impl<T: Float + Default> Default for StochasticModelEnum<T> {
@@ -165,14 +194,26 @@ impl<T: Float + Default> StochasticModelEnum<T> {
         StochasticModelEnum::GBM(GBMModel::new())
     }
 
-    // Placeholder constructors for future models:
-    // pub fn heston(params: HestonParams<T>) -> Result<Self, HestonError> { ... }
-    // pub fn sabr(params: SABRParams<T>) -> Result<Self, SABRError> { ... }
+    /// Create a new Hull-White model (requires `rates` feature).
+    #[cfg(feature = "rates")]
+    pub fn hull_white() -> Self {
+        StochasticModelEnum::HullWhite(HullWhiteModel::new())
+    }
+
+    /// Create a new CIR model (requires `rates` feature).
+    #[cfg(feature = "rates")]
+    pub fn cir() -> Self {
+        StochasticModelEnum::CIR(CIRModel::new())
+    }
 
     /// Get the model name.
     pub fn model_name(&self) -> &'static str {
         match self {
             StochasticModelEnum::GBM(_) => GBMModel::<T>::model_name(),
+            #[cfg(feature = "rates")]
+            StochasticModelEnum::HullWhite(_) => HullWhiteModel::<T>::model_name(),
+            #[cfg(feature = "rates")]
+            StochasticModelEnum::CIR(_) => CIRModel::<T>::model_name(),
         }
     }
 
@@ -180,6 +221,10 @@ impl<T: Float + Default> StochasticModelEnum<T> {
     pub fn brownian_dim(&self) -> usize {
         match self {
             StochasticModelEnum::GBM(_) => GBMModel::<T>::brownian_dim(),
+            #[cfg(feature = "rates")]
+            StochasticModelEnum::HullWhite(_) => HullWhiteModel::<T>::brownian_dim(),
+            #[cfg(feature = "rates")]
+            StochasticModelEnum::CIR(_) => CIRModel::<T>::brownian_dim(),
         }
     }
 
@@ -187,6 +232,21 @@ impl<T: Float + Default> StochasticModelEnum<T> {
     pub fn is_two_factor(&self) -> bool {
         match self {
             StochasticModelEnum::GBM(_) => false,
+            #[cfg(feature = "rates")]
+            StochasticModelEnum::HullWhite(_) => false,
+            #[cfg(feature = "rates")]
+            StochasticModelEnum::CIR(_) => false,
+        }
+    }
+
+    /// Check if this is an interest rate model.
+    pub fn is_rate_model(&self) -> bool {
+        match self {
+            StochasticModelEnum::GBM(_) => false,
+            #[cfg(feature = "rates")]
+            StochasticModelEnum::HullWhite(_) => true,
+            #[cfg(feature = "rates")]
+            StochasticModelEnum::CIR(_) => true,
         }
     }
 
@@ -200,6 +260,10 @@ impl<T: Float + Default> StochasticModelEnum<T> {
     pub fn num_factors(&self) -> usize {
         match self {
             StochasticModelEnum::GBM(_) => GBMModel::<T>::num_factors(),
+            #[cfg(feature = "rates")]
+            StochasticModelEnum::HullWhite(_) => HullWhiteModel::<T>::num_factors(),
+            #[cfg(feature = "rates")]
+            StochasticModelEnum::CIR(_) => CIRModel::<T>::num_factors(),
         }
     }
 
@@ -208,6 +272,14 @@ impl<T: Float + Default> StochasticModelEnum<T> {
         match (self, params) {
             (StochasticModelEnum::GBM(_), ModelParams::GBM(p)) => {
                 ModelState::Single(GBMModel::initial_state(p))
+            }
+            #[cfg(feature = "rates")]
+            (StochasticModelEnum::HullWhite(_), ModelParams::HullWhite(p)) => {
+                ModelState::Single(HullWhiteModel::initial_state(p))
+            }
+            #[cfg(feature = "rates")]
+            (StochasticModelEnum::CIR(_), ModelParams::CIR(p)) => {
+                ModelState::Single(CIRModel::initial_state(p))
             }
             #[allow(unreachable_patterns)]
             _ => ModelState::default(),
@@ -234,6 +306,14 @@ impl<T: Float + Default> StochasticModelEnum<T> {
         match (self, &state, params) {
             (StochasticModelEnum::GBM(_), ModelState::Single(s), ModelParams::GBM(p)) => {
                 ModelState::Single(GBMModel::evolve_step(*s, dt, dw, p))
+            }
+            #[cfg(feature = "rates")]
+            (StochasticModelEnum::HullWhite(_), ModelState::Single(s), ModelParams::HullWhite(p)) => {
+                ModelState::Single(HullWhiteModel::evolve_step(*s, dt, dw, p))
+            }
+            #[cfg(feature = "rates")]
+            (StochasticModelEnum::CIR(_), ModelState::Single(s), ModelParams::CIR(p)) => {
+                ModelState::Single(CIRModel::evolve_step(*s, dt, dw, p))
             }
             #[allow(unreachable_patterns)]
             _ => state, // Return unchanged state for mismatched types
@@ -457,6 +537,10 @@ mod tests {
                 // GBM variant matched
                 assert!(true);
             }
+            #[cfg(feature = "rates")]
+            _ => {
+                // Rate models
+            }
         }
     }
 
@@ -488,5 +572,157 @@ mod tests {
         let params = ModelParams::GBM(GBMParams::new(100.0_f32, 0.05, 0.2).unwrap());
         let state = model.initial_state(&params);
         assert_eq!(state.price(), 100.0_f32);
+    }
+
+    // ================================================================
+    // Task 9.4: Interest rate model integration tests (rates feature)
+    // ================================================================
+
+    #[cfg(feature = "rates")]
+    mod rates_tests {
+        use super::*;
+        use pricer_core::market_data::curves::FlatCurve;
+
+        #[test]
+        fn test_model_enum_hull_white_creation() {
+            let model = StochasticModelEnum::<f64>::hull_white();
+            assert_eq!(model.model_name(), "HullWhite1F");
+            assert_eq!(model.brownian_dim(), 1);
+            assert_eq!(model.num_factors(), 1);
+            assert!(!model.is_two_factor());
+            assert!(model.is_rate_model());
+        }
+
+        #[test]
+        fn test_model_enum_cir_creation() {
+            let model = StochasticModelEnum::<f64>::cir();
+            assert_eq!(model.model_name(), "CIR");
+            assert_eq!(model.brownian_dim(), 1);
+            assert_eq!(model.num_factors(), 1);
+            assert!(!model.is_two_factor());
+            assert!(model.is_rate_model());
+        }
+
+        #[test]
+        fn test_model_enum_hull_white_initial_state() {
+            let model = StochasticModelEnum::<f64>::hull_white();
+            let params = ModelParams::HullWhite(
+                HullWhiteParams::new(0.1, 0.01, FlatCurve::new(0.03)).unwrap(),
+            );
+
+            let state = model.initial_state(&params);
+            assert!((state.price() - 0.03).abs() < 1e-10);
+        }
+
+        #[test]
+        fn test_model_enum_cir_initial_state() {
+            let model = StochasticModelEnum::<f64>::cir();
+            let params = ModelParams::CIR(
+                CIRParams::new(0.1, 0.05, 0.05, 0.03).unwrap(),
+            );
+
+            let state = model.initial_state(&params);
+            assert_eq!(state.price(), 0.03);
+        }
+
+        #[test]
+        fn test_model_enum_hull_white_evolve_step() {
+            let model = StochasticModelEnum::<f64>::hull_white();
+            let params = ModelParams::HullWhite(
+                HullWhiteParams::new(0.1, 0.01, FlatCurve::new(0.03)).unwrap(),
+            );
+
+            let state = model.initial_state(&params);
+            let dt = 1.0 / 252.0;
+            let dw = [0.0];
+
+            let next_state = model.evolve_step(state, dt, &dw, &params);
+
+            // Rate should be close to initial (small drift)
+            assert!(next_state.price().is_finite());
+        }
+
+        #[test]
+        fn test_model_enum_cir_evolve_step() {
+            let model = StochasticModelEnum::<f64>::cir();
+            let params = ModelParams::CIR(
+                CIRParams::new(0.1, 0.05, 0.05, 0.03).unwrap(),
+            );
+
+            let state = model.initial_state(&params);
+            let dt = 1.0 / 252.0;
+            let dw = [0.0];
+
+            let next_state = model.evolve_step(state, dt, &dw, &params);
+
+            // Rate should be positive and finite
+            assert!(next_state.price() > 0.0);
+            assert!(next_state.price().is_finite());
+        }
+
+        #[test]
+        fn test_model_enum_hull_white_path() {
+            let model = StochasticModelEnum::<f64>::hull_white();
+            let params = ModelParams::HullWhite(
+                HullWhiteParams::new(0.1, 0.01, FlatCurve::new(0.03)).unwrap(),
+            );
+
+            let n_steps = 10;
+            let dt = 1.0 / 252.0;
+            let randoms = vec![0.0; n_steps];
+
+            let path = model.generate_path(&params, n_steps, dt, &randoms);
+
+            assert_eq!(path.len(), n_steps + 1);
+            for state in &path {
+                assert!(state.price().is_finite());
+            }
+        }
+
+        #[test]
+        fn test_model_enum_cir_path() {
+            let model = StochasticModelEnum::<f64>::cir();
+            let params = ModelParams::CIR(
+                CIRParams::new(0.1, 0.05, 0.03, 0.04).unwrap(),
+            );
+
+            let n_steps = 10;
+            let dt = 1.0 / 252.0;
+            let randoms = vec![0.0; n_steps];
+
+            let path = model.generate_path(&params, n_steps, dt, &randoms);
+
+            assert_eq!(path.len(), n_steps + 1);
+            for state in &path {
+                assert!(state.price() > 0.0);
+                assert!(state.price().is_finite());
+            }
+        }
+
+        #[test]
+        fn test_model_params_hull_white_accessors() {
+            let params = ModelParams::HullWhite(
+                HullWhiteParams::new(0.1, 0.02, FlatCurve::new(0.03)).unwrap(),
+            );
+            assert!((params.spot() - 0.03).abs() < 1e-10); // initial_short_rate
+            assert_eq!(params.rate(), 0.1); // mean_reversion
+            assert_eq!(params.volatility(), 0.02);
+        }
+
+        #[test]
+        fn test_model_params_cir_accessors() {
+            let params = ModelParams::CIR(
+                CIRParams::new(0.1, 0.05, 0.02, 0.03).unwrap(),
+            );
+            assert_eq!(params.spot(), 0.03); // initial_rate
+            assert_eq!(params.rate(), 0.1); // mean_reversion
+            assert_eq!(params.volatility(), 0.02);
+        }
+
+        #[test]
+        fn test_model_enum_gbm_is_not_rate_model() {
+            let model = StochasticModelEnum::<f64>::gbm();
+            assert!(!model.is_rate_model());
+        }
     }
 }

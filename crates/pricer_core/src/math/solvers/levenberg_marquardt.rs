@@ -325,7 +325,7 @@ impl LevenbergMarquardtSolver {
         for i in 0..n_params {
             for j in 0..n_params {
                 let mut sum = 0.0;
-                for row in &jacobian {
+                for row in jacobian {
                     sum += row[i] * row[j];
                 }
                 jtj[i][j] = sum;
