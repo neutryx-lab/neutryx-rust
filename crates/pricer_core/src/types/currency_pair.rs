@@ -182,12 +182,12 @@ impl<T: Float> CurrencyPair<T> {
     /// ```
     /// use pricer_core::types::{Currency, CurrencyPair};
     ///
-    /// let eurusd = CurrencyPair::new(Currency::EUR, Currency::USD, 1.10).unwrap();
+    /// let eurusd: CurrencyPair<f64> = CurrencyPair::new(Currency::EUR, Currency::USD, 1.10).unwrap();
     /// let usdeur = eurusd.invert();
     ///
     /// assert_eq!(usdeur.base(), Currency::USD);
     /// assert_eq!(usdeur.quote(), Currency::EUR);
-    /// assert!((usdeur.spot() - 1.0 / 1.10).abs() < 1e-10);
+    /// assert!((usdeur.spot() - 1.0_f64 / 1.10_f64).abs() < 1e-10);
     /// ```
     pub fn invert(&self) -> Self {
         Self {
@@ -213,11 +213,11 @@ impl<T: Float> CurrencyPair<T> {
     /// use pricer_core::types::{Currency, CurrencyPair};
     ///
     /// // EUR/USD = 1.10
-    /// let pair = CurrencyPair::new(Currency::EUR, Currency::USD, 1.10).unwrap();
+    /// let pair: CurrencyPair<f64> = CurrencyPair::new(Currency::EUR, Currency::USD, 1.10).unwrap();
     ///
     /// // 100 EUR = 110 USD
-    /// let usd_amount = pair.convert_to_quote(100.0);
-    /// assert!((usd_amount - 110.0).abs() < 1e-10);
+    /// let usd_amount = pair.convert_to_quote(100.0_f64);
+    /// assert!((usd_amount - 110.0_f64).abs() < 1e-10);
     /// ```
     #[inline]
     pub fn convert_to_quote(&self, base_amount: T) -> T {
@@ -240,11 +240,11 @@ impl<T: Float> CurrencyPair<T> {
     /// use pricer_core::types::{Currency, CurrencyPair};
     ///
     /// // EUR/USD = 1.10
-    /// let pair = CurrencyPair::new(Currency::EUR, Currency::USD, 1.10).unwrap();
+    /// let pair: CurrencyPair<f64> = CurrencyPair::new(Currency::EUR, Currency::USD, 1.10).unwrap();
     ///
     /// // 110 USD = 100 EUR
-    /// let eur_amount = pair.convert_to_base(110.0);
-    /// assert!((eur_amount - 100.0).abs() < 1e-10);
+    /// let eur_amount = pair.convert_to_base(110.0_f64);
+    /// assert!((eur_amount - 100.0_f64).abs() < 1e-10);
     /// ```
     #[inline]
     pub fn convert_to_base(&self, quote_amount: T) -> T {
