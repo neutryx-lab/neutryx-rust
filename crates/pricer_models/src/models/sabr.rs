@@ -37,6 +37,7 @@
 //! ```
 
 use pricer_core::math::smoothing::{smooth_log, smooth_pow};
+use pricer_core::traits::priceable::Differentiable;
 use pricer_core::traits::Float;
 use thiserror::Error;
 
@@ -274,9 +275,7 @@ impl<T: Float> SABRParams<T> {
 
         // vol-of-volは非負でなければならない
         if self.nu < T::zero() {
-            return Err(SABRError::InvalidNu(
-                self.nu.to_f64().unwrap_or(f64::NAN),
-            ));
+            return Err(SABRError::InvalidNu(self.nu.to_f64().unwrap_or(f64::NAN)));
         }
 
         // ベータは[0, 1]の範囲でなければならない
@@ -288,9 +287,7 @@ impl<T: Float> SABRParams<T> {
 
         // 相関は(-1, 1)の開区間でなければならない
         if self.rho <= -T::one() || self.rho >= T::one() {
-            return Err(SABRError::InvalidRho(
-                self.rho.to_f64().unwrap_or(f64::NAN),
-            ));
+            return Err(SABRError::InvalidRho(self.rho.to_f64().unwrap_or(f64::NAN)));
         }
 
         // 満期は正でなければならない
@@ -437,19 +434,44 @@ impl<T: Float> SABRModel<T> {
     /// σ_ATM = α / F^(1-β) * [1 + expansion_terms * T]
     /// ```
     ///
+    /// beta=0 (Normal SABR): σ_ATM = α * [1 + ((2-3ρ²)/24 * ν²)*T]
+    /// beta=1 (Lognormal SABR): σ_ATM = α * [1 + ((2-3ρ²)/24 * ν² + ρνα/4)*T]
+    ///
     /// # 戻り値
     ///
     /// ATMインプライドボラティリティ
     pub fn atm_vol(&self) -> T {
-        let f = self.params.forward;
         let alpha = self.params.alpha;
-        let beta = self.params.beta;
         let nu = self.params.nu;
         let rho = self.params.rho;
         let t = self.params.maturity;
         let eps = self.params.smoothing_epsilon;
 
         let one = T::one();
+        let two = T::from(2.0).unwrap();
+        let three = T::from(3.0).unwrap();
+        let four = T::from(4.0).unwrap();
+        let twenty_four = T::from(24.0).unwrap();
+
+        // Use specialized formulas for Normal and Lognormal cases
+        if self.params.is_normal() {
+            // Normal SABR (beta=0): ATM vol = α * [1 + ((2-3ρ²)/24 * ν²)*T]
+            let term3 = (two - three * rho * rho) / twenty_four * nu * nu;
+            let expansion = one + term3 * t;
+            return alpha * expansion;
+        }
+
+        if self.params.is_lognormal() {
+            // Lognormal SABR (beta=1): ATM vol = α * [1 + (ρνα/4 + (2-3ρ²)/24 * ν²)*T]
+            let term2 = rho * nu * alpha / four;
+            let term3 = (two - three * rho * rho) / twenty_four * nu * nu;
+            let expansion = one + (term2 + term3) * t;
+            return alpha * expansion;
+        }
+
+        // General case (0 < beta < 1)
+        let f = self.params.forward;
+        let beta = self.params.beta;
         let one_minus_beta = one - beta;
 
         // F^(1-β) using smooth_pow for AD compatibility
@@ -460,18 +482,13 @@ impl<T: Float> SABRModel<T> {
 
         // Higher order expansion terms
         // term1 = (1-β)² / 24 * α² / F^(2(1-β))
-        let two = T::from(2.0).unwrap();
-        let twenty_four = T::from(24.0).unwrap();
-
         let f_pow_2 = smooth_pow(f, two * one_minus_beta, eps);
         let term1 = one_minus_beta * one_minus_beta / twenty_four * alpha * alpha / f_pow_2;
 
         // term2 = ρ * β * ν * α / (4 * F^(1-β))
-        let four = T::from(4.0).unwrap();
         let term2 = rho * beta * nu * alpha / (four * f_pow);
 
         // term3 = (2 - 3ρ²) / 24 * ν²
-        let three = T::from(3.0).unwrap();
         let term3 = (two - three * rho * rho) / twenty_four * nu * nu;
 
         // Total expansion
@@ -545,10 +562,10 @@ impl<T: Float> SABRModel<T> {
     ///
     /// K ≈ F の場合、Hagan公式の特異点を回避するために
     /// Taylor展開を使用する。
+    ///
+    /// beta=0 (Normal SABR) とbeta=1 (Lognormal SABR) では特別な処理を使用。
     fn implied_vol_atm_expansion(&self, strike: T) -> T {
-        let f = self.params.forward;
         let alpha = self.params.alpha;
-        let beta = self.params.beta;
         let nu = self.params.nu;
         let rho = self.params.rho;
         let t = self.params.maturity;
@@ -560,6 +577,27 @@ impl<T: Float> SABRModel<T> {
         let four = T::from(4.0).unwrap();
         let twenty_four = T::from(24.0).unwrap();
 
+        // Use specialized formulas for Normal and Lognormal cases
+        if self.params.is_normal() {
+            // Normal SABR (beta=0): Near ATM, use simplified formula
+            // σ_N ≈ α * [1 + ((2-3ρ²)/24 * ν²)*T]
+            let term3 = (two - three * rho * rho) / twenty_four * nu * nu;
+            let expansion = one + term3 * t;
+            return alpha * expansion;
+        }
+
+        if self.params.is_lognormal() {
+            // Lognormal SABR (beta=1): Near ATM, (FK)^0 = 1
+            // σ_B ≈ α * [1 + (ρνα/4 + (2-3ρ²)/24 * ν²)*T]
+            let term2 = rho * nu * alpha / four;
+            let term3 = (two - three * rho * rho) / twenty_four * nu * nu;
+            let expansion = one + (term2 + term3) * t;
+            return alpha * expansion;
+        }
+
+        // General case (0 < beta < 1)
+        let f = self.params.forward;
+        let beta = self.params.beta;
         let one_minus_beta = one - beta;
 
         // 幾何平均 (F*K)^((1-β)/2)
@@ -900,6 +938,35 @@ impl<T: Float> SABRModel<T> {
         base * z_over_x * expansion
     }
 }
+
+// ================================================================
+// Task 4.4: Differentiableマーカートレイト実装
+// ================================================================
+
+/// DifferentiableマーカートレイトをSABRModelに実装
+///
+/// SABRModelは以下のsmooth approximationsを使用してAD互換性を保証:
+/// - `smooth_log`: ln(F/K)の計算で使用
+/// - `smooth_pow`: (FK)^((1-beta)/2)の計算で使用
+///
+/// これらの関数により、ゼロ近傍での特異点を滑らかに処理し、
+/// Enzyme ADおよびnum-dualとの互換性を維持する。
+///
+/// # 使用例
+///
+/// ```
+/// use pricer_models::models::sabr::{SABRModel, SABRParams};
+/// use pricer_core::traits::priceable::Differentiable;
+///
+/// let params = SABRParams::new(100.0, 0.2, 0.4, -0.3, 0.5, 1.0).unwrap();
+/// let model = SABRModel::new(params).unwrap();
+///
+/// // Differentiableマーカートレイトを実装しているため、
+/// // AD互換の関数で使用可能
+/// fn accepts_differentiable<D: Differentiable>(_: &D) {}
+/// accepts_differentiable(&model);
+/// ```
+impl<T: Float> Differentiable for SABRModel<T> {}
 
 #[cfg(test)]
 mod tests {
@@ -1293,7 +1360,8 @@ mod tests {
 
     #[test]
     fn test_sabr_params_f32_type() {
-        let params = SABRParams::<f32>::new(100.0_f32, 0.2_f32, 0.4_f32, -0.3_f32, 0.5_f32, 1.0_f32);
+        let params =
+            SABRParams::<f32>::new(100.0_f32, 0.2_f32, 0.4_f32, -0.3_f32, 0.5_f32, 1.0_f32);
         assert!(params.is_ok());
         let p = params.unwrap();
         assert_eq!(p.forward, 100.0_f32);
@@ -1321,12 +1389,12 @@ mod tests {
     fn test_sabr_params_typical_fx_values() {
         // Typical FX SABR parameters
         let params = SABRParams::new(
-            1.0850,  // EUR/USD forward
-            0.05,    // alpha (ATM vol ~ 5%)
-            0.30,    // nu
-            -0.20,   // rho (negative for FX)
-            0.5,     // beta (mixed model)
-            0.25,    // 3 months
+            1.0850, // EUR/USD forward
+            0.05,   // alpha (ATM vol ~ 5%)
+            0.30,   // nu
+            -0.20,  // rho (negative for FX)
+            0.5,    // beta (mixed model)
+            0.25,   // 3 months
         );
         assert!(params.is_ok());
     }
@@ -1335,12 +1403,12 @@ mod tests {
     fn test_sabr_params_typical_rates_values() {
         // Typical rates SABR parameters
         let params = SABRParams::new(
-            0.03,    // 3% forward rate
-            0.005,   // alpha (low for rates)
-            0.50,    // nu (high vol-of-vol for rates)
-            0.10,    // rho (positive for rates)
-            0.0,     // beta = 0 (Normal SABR for rates)
-            10.0,    // 10 years
+            0.03,  // 3% forward rate
+            0.005, // alpha (low for rates)
+            0.50,  // nu (high vol-of-vol for rates)
+            0.10,  // rho (positive for rates)
+            0.0,   // beta = 0 (Normal SABR for rates)
+            10.0,  // 10 years
         );
         assert!(params.is_ok());
     }
@@ -1859,7 +1927,10 @@ mod tests {
 
         // OTM call (higher strike)
         let iv_otm_call = model.implied_vol(0.04);
-        assert!(iv_otm_call.is_ok(), "Normal SABR should compute OTM call IV");
+        assert!(
+            iv_otm_call.is_ok(),
+            "Normal SABR should compute OTM call IV"
+        );
         assert!(
             iv_otm_call.unwrap() > 0.0,
             "Normal SABR OTM call IV should be positive"
@@ -1867,7 +1938,10 @@ mod tests {
 
         // OTM put (lower strike)
         let iv_otm_put = model.implied_vol(0.02);
-        assert!(iv_otm_put.is_ok(), "Normal SABR should compute OTM put IV");
+        assert!(
+            iv_otm_put.is_ok(),
+            "Normal SABR should compute OTM put IV"
+        );
         assert!(
             iv_otm_put.unwrap() > 0.0,
             "Normal SABR OTM put IV should be positive"
@@ -1929,12 +2003,12 @@ mod tests {
     fn test_sabr_normal_f32_support() {
         // Test Normal SABR with f32 type
         let params = SABRParams::<f32>::new(
-            0.03_f32, // forward
+            0.03_f32,  // forward
             0.005_f32, // alpha
-            0.4_f32,  // nu
-            -0.3_f32, // rho
-            0.0_f32,  // beta = 0
-            1.0_f32,  // maturity
+            0.4_f32,   // nu
+            -0.3_f32,  // rho
+            0.0_f32,   // beta = 0
+            1.0_f32,   // maturity
         )
         .unwrap();
         let model = SABRModel::new(params).unwrap();
@@ -2166,7 +2240,10 @@ mod tests {
 
         // Invalid maturity
         let invalid_maturity = SABRParams::new(100.0, 0.2, 0.4, -0.3, 0.5, 0.0);
-        assert!(matches!(invalid_maturity, Err(SABRError::InvalidMaturity(_))));
+        assert!(matches!(
+            invalid_maturity,
+            Err(SABRError::InvalidMaturity(_))
+        ));
     }
 
     // ----------------------------------------------------------------
@@ -2328,5 +2405,178 @@ mod tests {
             iv_near,
             relative_diff * 100.0
         );
+    }
+
+    // ================================================================
+    // Task 4.4: Differentiableマーカートレイト実装テスト (TDD - RED phase)
+    // ================================================================
+
+    #[test]
+    fn test_sabr_model_implements_differentiable() {
+        use pricer_core::traits::priceable::Differentiable;
+
+        // SABRModelがDifferentiableトレイトを実装していることを確認
+        let params = SABRParams::new(100.0, 0.2, 0.4, -0.3, 0.5, 1.0).unwrap();
+        let model = SABRModel::new(params).unwrap();
+
+        // マーカートレイトとして使用可能であることを確認
+        fn accepts_differentiable<D: Differentiable>(_: &D) {}
+        accepts_differentiable(&model);
+    }
+
+    #[test]
+    fn test_sabr_model_differentiable_with_f64() {
+        use pricer_core::traits::priceable::Differentiable;
+
+        // f64型のSABRModelがDifferentiableを実装
+        let params: SABRParams<f64> = SABRParams::new(100.0, 0.2, 0.4, -0.3, 0.5, 1.0).unwrap();
+        let model: SABRModel<f64> = SABRModel::new(params).unwrap();
+
+        // トレイトオブジェクトとしてキャスト可能
+        let _: &dyn Differentiable = &model;
+    }
+
+    #[test]
+    fn test_sabr_model_differentiable_with_f32() {
+        use pricer_core::traits::priceable::Differentiable;
+
+        // f32型のSABRModelがDifferentiableを実装
+        let params: SABRParams<f32> =
+            SABRParams::new(100.0_f32, 0.2_f32, 0.4_f32, -0.3_f32, 0.5_f32, 1.0_f32).unwrap();
+        let model: SABRModel<f32> = SABRModel::new(params).unwrap();
+
+        // トレイトオブジェクトとしてキャスト可能
+        let _: &dyn Differentiable = &model;
+    }
+
+    #[test]
+    fn test_sabr_model_differentiable_marker_trait() {
+        use pricer_core::traits::priceable::Differentiable;
+
+        // Differentiableはマーカートレイトなのでメソッドは不要
+        // コンパイル時の保証として機能することを確認
+        let params = SABRParams::new(100.0, 0.2, 0.4, -0.3, 0.5, 1.0).unwrap();
+        let model = SABRModel::new(params).unwrap();
+
+        // 複数回の参照でも問題なし
+        let r1: &dyn Differentiable = &model;
+        let r2: &dyn Differentiable = &model;
+
+        // マーカートレイトなので等価性比較は不要
+        // 存在確認のみ
+        let _ = r1;
+        let _ = r2;
+    }
+
+    #[test]
+    fn test_sabr_implied_vol_returns_result() {
+        // implied_volがResult型を返すことを確認
+        let params = SABRParams::new(100.0, 0.2, 0.4, -0.3, 0.5, 1.0).unwrap();
+        let model = SABRModel::new(params).unwrap();
+
+        // 有効なストライクでOkを返す
+        let vol: Result<f64, SABRError> = model.implied_vol(100.0);
+        assert!(vol.is_ok());
+        assert!(vol.unwrap() > 0.0);
+
+        // 無効なストライクでErrを返す
+        let vol_err: Result<f64, SABRError> = model.implied_vol(-50.0);
+        assert!(vol_err.is_err());
+        assert!(matches!(vol_err, Err(SABRError::InvalidStrike(_))));
+    }
+
+    #[test]
+    fn test_sabr_atm_vol_returns_positive() {
+        // atm_volが正の値を返すことを確認
+        let params = SABRParams::new(100.0, 0.2, 0.4, -0.3, 0.5, 1.0).unwrap();
+        let model = SABRModel::new(params).unwrap();
+
+        let atm: f64 = model.atm_vol();
+        assert!(atm > 0.0, "ATM vol should be positive: {}", atm);
+    }
+
+    #[test]
+    fn test_sabr_model_normal_beta_differentiable() {
+        use pricer_core::traits::priceable::Differentiable;
+
+        // Normal SABR (beta=0) もDifferentiableを実装
+        let params = SABRParams::new(100.0, 0.2, 0.4, -0.3, 0.0, 1.0).unwrap();
+        let model = SABRModel::new(params).unwrap();
+
+        fn check_differentiable<D: Differentiable>(_: &D) -> bool {
+            true
+        }
+        assert!(check_differentiable(&model));
+
+        // implied_volも正常動作
+        let vol = model.implied_vol(100.0);
+        assert!(vol.is_ok());
+    }
+
+    #[test]
+    fn test_sabr_model_lognormal_beta_differentiable() {
+        use pricer_core::traits::priceable::Differentiable;
+
+        // Lognormal SABR (beta=1) もDifferentiableを実装
+        let params = SABRParams::new(100.0, 0.2, 0.4, -0.3, 1.0, 1.0).unwrap();
+        let model = SABRModel::new(params).unwrap();
+
+        fn check_differentiable<D: Differentiable>(_: &D) -> bool {
+            true
+        }
+        assert!(check_differentiable(&model));
+
+        // implied_volも正常動作
+        let vol = model.implied_vol(100.0);
+        assert!(vol.is_ok());
+    }
+
+    #[test]
+    fn test_sabr_implied_vol_various_strikes() {
+        // 様々なストライクでResult型の戻り値を確認
+        let params = SABRParams::new(100.0, 0.2, 0.4, -0.3, 0.5, 1.0).unwrap();
+        let model = SABRModel::new(params).unwrap();
+
+        // ATM
+        let atm_vol = model.implied_vol(100.0);
+        assert!(atm_vol.is_ok());
+
+        // ITM
+        let itm_vol = model.implied_vol(90.0);
+        assert!(itm_vol.is_ok());
+
+        // OTM
+        let otm_vol = model.implied_vol(110.0);
+        assert!(otm_vol.is_ok());
+
+        // Deep ITM
+        let deep_itm_vol = model.implied_vol(70.0);
+        assert!(deep_itm_vol.is_ok());
+
+        // Deep OTM
+        let deep_otm_vol = model.implied_vol(130.0);
+        assert!(deep_otm_vol.is_ok());
+    }
+
+    #[test]
+    fn test_sabr_model_cloneable_while_differentiable() {
+        use pricer_core::traits::priceable::Differentiable;
+
+        // DifferentiableでありながらClone可能
+        let params = SABRParams::new(100.0, 0.2, 0.4, -0.3, 0.5, 1.0).unwrap();
+        let model = SABRModel::new(params).unwrap();
+
+        // Clone
+        let cloned_model = model.clone();
+
+        // 両方ともDifferentiable
+        fn check_differentiable<D: Differentiable>(_: &D) {}
+        check_differentiable(&model);
+        check_differentiable(&cloned_model);
+
+        // 同じ結果を返す
+        let vol1 = model.implied_vol(100.0).unwrap();
+        let vol2 = cloned_model.implied_vol(100.0).unwrap();
+        assert!((vol1 - vol2).abs() < 1e-10);
     }
 }

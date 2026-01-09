@@ -349,11 +349,9 @@ impl<T: Float + Default> StochasticModelEnum<T> {
             (StochasticModelEnum::GBM(_), ModelState::Single(s), ModelParams::GBM(p)) => {
                 ModelState::Single(GBMModel::evolve_step(*s, dt, dw, p))
             }
-            (
-                StochasticModelEnum::Heston(_),
-                ModelState::TwoFactor(s),
-                ModelParams::Heston(p),
-            ) => ModelState::TwoFactor(HestonModel::evolve_step(*s, dt, dw, p)),
+            (StochasticModelEnum::Heston(_), ModelState::TwoFactor(s), ModelParams::Heston(p)) => {
+                ModelState::TwoFactor(HestonModel::evolve_step(*s, dt, dw, p))
+            }
             #[cfg(feature = "rates")]
             (
                 StochasticModelEnum::HullWhite(_),

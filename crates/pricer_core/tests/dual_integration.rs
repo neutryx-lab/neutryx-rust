@@ -171,7 +171,6 @@ fn test_dual_number_complex_expression() {
 /// Test that DualNumber correctly handles derivative with respect to second variable.
 #[test]
 fn test_dual_number_derivative_wrt_second_var() {
-
     // f(x, y) = x * y^2, df/dy = 2xy
     let x = DualNumber::new(3.0, 0.0); // dx/dy = 0
     let y = DualNumber::new(2.0, 1.0); // dy/dy = 1

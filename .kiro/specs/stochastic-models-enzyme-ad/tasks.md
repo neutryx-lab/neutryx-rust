@@ -75,7 +75,7 @@
   - Task 2.1、3.2、3.3の完了が必要
   - _Requirements: 2.6, 2.7, 1.5_
 
-- [ ] 4. SABRモデル実装（L2: pricer_models）
+- [x] 4. SABRモデル実装（L2: pricer_models）
 - [x] 4.1 (P) SABRParams構造体とエラー型の定義
   - フォワード価格、alpha、nu、rho、betaを含むパラメータ構造体
   - 満期、ATM近傍判定閾値、smoothing_epsilonパラメータ
@@ -91,7 +91,7 @@
   - Task 1.2、1.3、4.1の完了が必要
   - _Requirements: 3.2, 3.3, 3.7_
 
-- [ ] 4.3 特殊ケース処理とパラメータ検証
+- [x] 4.3 特殊ケース処理とパラメータ検証
   - beta=0（Normal SABR）モードの実装
   - beta=1（Lognormal SABR）モードの実装
   - パラメータ検証（alpha > 0、0 <= beta <= 1、|rho| < 1）
@@ -99,7 +99,7 @@
   - ジェネリックFloat型で実装
   - _Requirements: 3.4, 3.5, 3.6, 10.2, 10.3, 10.4_
 
-- [ ] 4.4 Differentiableマーカートレイト実装
+- [x] 4.4 Differentiableマーカートレイト実装
   - SABRModelにDifferentiableマーカートレイトを実装
   - implied_vol、atm_volメソッドのResult型による戻り値
   - Task 4.2、4.3の完了が必要

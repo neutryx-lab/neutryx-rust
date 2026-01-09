@@ -249,9 +249,7 @@ impl<T: Float> HestonParams<T> {
     /// 更新されたパラメータ
     pub fn with_psi_c(mut self, psi_c: T) -> Result<Self, HestonError> {
         if psi_c <= T::zero() {
-            return Err(HestonError::InvalidPsiC(
-                psi_c.to_f64().unwrap_or(f64::NAN),
-            ));
+            return Err(HestonError::InvalidPsiC(psi_c.to_f64().unwrap_or(f64::NAN)));
         }
         self.psi_c = psi_c;
         Ok(self)
@@ -291,9 +289,7 @@ impl<T: Float> HestonParams<T> {
 
         // 初期分散は正でなければならない
         if self.v0 <= T::zero() {
-            return Err(HestonError::InvalidV0(
-                self.v0.to_f64().unwrap_or(f64::NAN),
-            ));
+            return Err(HestonError::InvalidV0(self.v0.to_f64().unwrap_or(f64::NAN)));
         }
 
         // 長期分散は正でなければならない
@@ -312,9 +308,7 @@ impl<T: Float> HestonParams<T> {
 
         // vol-of-volは正でなければならない
         if self.xi <= T::zero() {
-            return Err(HestonError::InvalidXi(
-                self.xi.to_f64().unwrap_or(f64::NAN),
-            ));
+            return Err(HestonError::InvalidXi(self.xi.to_f64().unwrap_or(f64::NAN)));
         }
 
         // 相関は[-1, 1]の範囲内でなければならない
@@ -471,7 +465,7 @@ pub struct HestonModel<T: Float> {
     variance_floor: T,
 }
 
-impl<T: Float> std::fmt::Debug for HestonModel<T> {
+impl<T: Float + std::fmt::Debug> std::fmt::Debug for HestonModel<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("HestonModel")
             .field("params", &self.params)
@@ -522,18 +516,15 @@ impl<T: Float> HestonModel<T> {
         if !model.check_feller_condition() {
             // Feller条件違反の警告をログ出力
             // NOTE: ログクレートが利用可能な場合はlog::warn!を使用
-            #[cfg(feature = "std")]
-            {
-                eprintln!(
-                    "警告: Feller条件 (2*kappa*theta > xi^2) が満たされていません。\
-                     分散フロア {} が適用されます。\
-                     kappa={}, theta={}, xi={}",
-                    model.variance_floor.to_f64().unwrap_or(0.0),
-                    model.params.kappa.to_f64().unwrap_or(0.0),
-                    model.params.theta.to_f64().unwrap_or(0.0),
-                    model.params.xi.to_f64().unwrap_or(0.0),
-                );
-            }
+            eprintln!(
+                "警告: Feller条件 (2*kappa*theta > xi^2) が満たされていません。\
+                 分散フロア {} が適用されます。\
+                 kappa={}, theta={}, xi={}",
+                model.variance_floor.to_f64().unwrap_or(0.0),
+                model.params.kappa.to_f64().unwrap_or(0.0),
+                model.params.theta.to_f64().unwrap_or(0.0),
+                model.params.xi.to_f64().unwrap_or(0.0),
+            );
         }
 
         Ok(model)
@@ -682,7 +673,7 @@ impl<T: Float> HestonModel<T> {
     /// For psi < psi_c, use moment-matched quadratic:
     /// V_{t+dt} = a * (b + Z_v)^2 where Z_v ~ N(0,1)
     /// with a, b chosen to match m and s2.
-    pub fn qe_quadratic_step(&self, m: T, s2: T, psi: T, uv: T) -> T {
+    pub fn qe_quadratic_step(&self, m: T, _s2: T, psi: T, uv: T) -> T {
         let eps = self.params.smoothing_epsilon;
         let one = T::one();
         let two = T::from(2.0).unwrap_or(one + one);
@@ -914,15 +905,7 @@ impl<T: Float> HestonModel<T> {
     /// assert!(s_next > 0.0);
     /// assert!(v_next >= 0.0);
     /// ```
-    pub fn qe_step(
-        &self,
-        s_current: T,
-        v_current: T,
-        dt: T,
-        z1: T,
-        z2: T,
-        uv: T,
-    ) -> (T, T) {
+    pub fn qe_step(&self, s_current: T, v_current: T, dt: T, z1: T, z2: T, uv: T) -> (T, T) {
         // Step 1: Update variance using QE scheme
         let v_next = self.qe_variance_step(v_current, dt, uv);
 
@@ -1085,7 +1068,10 @@ impl<T: Float + Default> StochasticModel<T> for HestonModel<T> {
         // dw[2] = uv (uniform for QE scheme)
         let z1 = dw.first().copied().unwrap_or(T::zero());
         let z2 = dw.get(1).copied().unwrap_or(T::zero());
-        let uv = dw.get(2).copied().unwrap_or(T::from(0.5).unwrap_or(T::zero()));
+        let uv = dw
+            .get(2)
+            .copied()
+            .unwrap_or(T::from(0.5).unwrap_or(T::zero()));
 
         // QEステップを実行
         let model = HestonModel {
@@ -1093,8 +1079,7 @@ impl<T: Float + Default> StochasticModel<T> for HestonModel<T> {
             variance_floor,
         };
 
-        let (next_price, next_variance) =
-            model.qe_step(state.first, state.second, dt, z1, z2, uv);
+        let (next_price, next_variance) = model.qe_step(state.first, state.second, dt, z1, z2, uv);
 
         TwoFactorState {
             first: next_price,
@@ -1147,69 +1132,44 @@ impl<T: Float + Default> StochasticModel<T> for HestonModel<T> {
 impl From<HestonError> for pricer_core::types::PricingError {
     fn from(err: HestonError) -> Self {
         match err {
-            HestonError::InvalidSpot(v) => {
-                pricer_core::types::PricingError::InvalidInput(format!(
-                    "無効なスポット価格: S0 = {}",
-                    v
-                ))
-            }
-            HestonError::InvalidV0(v) => {
-                pricer_core::types::PricingError::InvalidInput(format!(
-                    "無効な初期分散: v0 = {}",
-                    v
-                ))
-            }
-            HestonError::InvalidTheta(v) => {
-                pricer_core::types::PricingError::InvalidInput(format!(
-                    "無効な長期分散: theta = {}",
-                    v
-                ))
-            }
-            HestonError::InvalidKappa(v) => {
-                pricer_core::types::PricingError::InvalidInput(format!(
-                    "無効な平均回帰速度: kappa = {}",
-                    v
-                ))
-            }
-            HestonError::InvalidXi(v) => {
-                pricer_core::types::PricingError::InvalidInput(format!(
-                    "無効なvol-of-vol: xi = {}",
-                    v
-                ))
-            }
-            HestonError::InvalidRho(v) => {
-                pricer_core::types::PricingError::InvalidInput(format!(
-                    "無効な相関係数: rho = {}",
-                    v
-                ))
-            }
+            HestonError::InvalidSpot(v) => pricer_core::types::PricingError::InvalidInput(format!(
+                "無効なスポット価格: S0 = {}",
+                v
+            )),
+            HestonError::InvalidV0(v) => pricer_core::types::PricingError::InvalidInput(format!(
+                "無効な初期分散: v0 = {}",
+                v
+            )),
+            HestonError::InvalidTheta(v) => pricer_core::types::PricingError::InvalidInput(
+                format!("無効な長期分散: theta = {}", v),
+            ),
+            HestonError::InvalidKappa(v) => pricer_core::types::PricingError::InvalidInput(
+                format!("無効な平均回帰速度: kappa = {}", v),
+            ),
+            HestonError::InvalidXi(v) => pricer_core::types::PricingError::InvalidInput(format!(
+                "無効なvol-of-vol: xi = {}",
+                v
+            )),
+            HestonError::InvalidRho(v) => pricer_core::types::PricingError::InvalidInput(format!(
+                "無効な相関係数: rho = {}",
+                v
+            )),
             HestonError::InvalidMaturity(v) => {
-                pricer_core::types::PricingError::InvalidInput(format!(
-                    "無効な満期: T = {}",
-                    v
-                ))
+                pricer_core::types::PricingError::InvalidInput(format!("無効な満期: T = {}", v))
             }
-            HestonError::InvalidPsiC(v) => {
-                pricer_core::types::PricingError::InvalidInput(format!(
-                    "無効なQE閾値: psi_c = {}",
-                    v
-                ))
-            }
-            HestonError::InvalidEpsilon(v) => {
-                pricer_core::types::PricingError::InvalidInput(format!(
-                    "無効なsmoothing epsilon: {}",
-                    v
-                ))
-            }
+            HestonError::InvalidPsiC(v) => pricer_core::types::PricingError::InvalidInput(format!(
+                "無効なQE閾値: psi_c = {}",
+                v
+            )),
+            HestonError::InvalidEpsilon(v) => pricer_core::types::PricingError::InvalidInput(
+                format!("無効なsmoothing epsilon: {}", v),
+            ),
             HestonError::NumericalInstability(msg) => {
                 pricer_core::types::PricingError::NumericalInstability(msg)
             }
-            HestonError::NonFinite(msg) => {
-                pricer_core::types::PricingError::NumericalInstability(format!(
-                    "非有限値検出: {}",
-                    msg
-                ))
-            }
+            HestonError::NonFinite(msg) => pricer_core::types::PricingError::NumericalInstability(
+                format!("非有限値検出: {}", msg),
+            ),
         }
     }
 }
@@ -1677,11 +1637,7 @@ mod tests {
 
         for (params, expected_error) in test_cases {
             let result = params.validate();
-            assert!(
-                result.is_err(),
-                "Expected error for {}",
-                expected_error
-            );
+            assert!(result.is_err(), "Expected error for {}", expected_error);
         }
     }
 
@@ -1876,7 +1832,11 @@ mod tests {
             let v_next = model.qe_quadratic_step(m, s2, psi, uv);
 
             // Result should be positive
-            assert!(v_next >= 0.0, "QE quadratic v_next = {} should be non-negative", v_next);
+            assert!(
+                v_next >= 0.0,
+                "QE quadratic v_next = {} should be non-negative",
+                v_next
+            );
 
             // Result should be in reasonable range
             assert!(
@@ -1904,7 +1864,11 @@ mod tests {
         let v_next = model.qe_exponential_step(m, psi, uv);
 
         // Result should be non-negative
-        assert!(v_next >= 0.0, "QE exponential v_next = {} should be non-negative", v_next);
+        assert!(
+            v_next >= 0.0,
+            "QE exponential v_next = {} should be non-negative",
+            v_next
+        );
     }
 
     // テスト: smooth_indicatorによる滑らかなスキーム切り替え
@@ -1921,7 +1885,11 @@ mod tests {
         let v_next = model.qe_variance_step(v_current, dt, uv);
 
         // Should be positive due to smooth_max
-        assert!(v_next >= 0.0, "QE variance v_next = {} should be non-negative", v_next);
+        assert!(
+            v_next >= 0.0,
+            "QE variance v_next = {} should be non-negative",
+            v_next
+        );
 
         // Should be in reasonable range
         assert!(
@@ -2027,9 +1995,9 @@ mod tests {
         let s_current = 100.0_f64;
         let v_current = 0.04_f64;
         let dt = 1.0 / 252.0;
-        let z1 = 0.5_f64;  // normal for price
+        let z1 = 0.5_f64; // normal for price
         let z2 = -0.3_f64; // normal for variance
-        let uv = 0.5_f64;  // uniform for variance scheme
+        let uv = 0.5_f64; // uniform for variance scheme
 
         let (s_next, v_next) = model.qe_step(s_current, v_current, dt, z1, z2, uv);
 
@@ -2037,7 +2005,11 @@ mod tests {
         assert!(s_next > 0.0, "Price s_next = {} should be positive", s_next);
 
         // Variance should be non-negative
-        assert!(v_next >= 0.0, "Variance v_next = {} should be non-negative", v_next);
+        assert!(
+            v_next >= 0.0,
+            "Variance v_next = {} should be non-negative",
+            v_next
+        );
 
         // Price should be in reasonable range (within 50% of original for small dt)
         assert!(
@@ -2058,17 +2030,27 @@ mod tests {
 
         // Simulate multiple steps
         let test_cases = [
-            (0.5, 0.0, 0.5),    // neutral
-            (1.5, 0.5, 0.9),    // positive shock
-            (-1.5, -0.5, 0.1),  // negative shock
-            (0.0, 0.0, 0.5),    // zero shock
+            (0.5, 0.0, 0.5),   // neutral
+            (1.5, 0.5, 0.9),   // positive shock
+            (-1.5, -0.5, 0.1), // negative shock
+            (0.0, 0.0, 0.5),   // zero shock
         ];
 
         for (z1, z2, uv) in test_cases {
             let (s_next, v_next) = model.qe_step(s0, v0, dt, z1, z2, uv);
 
-            assert!(s_next > 0.0, "Price should be positive for z1={}, z2={}", z1, z2);
-            assert!(v_next >= 0.0, "Variance should be non-negative for z1={}, z2={}", z1, z2);
+            assert!(
+                s_next > 0.0,
+                "Price should be positive for z1={}, z2={}",
+                z1,
+                z2
+            );
+            assert!(
+                v_next >= 0.0,
+                "Variance should be non-negative for z1={}, z2={}",
+                z1,
+                z2
+            );
         }
     }
 
@@ -2306,14 +2288,8 @@ mod tests {
             // 各ステップで有効な値であること
             assert!(state.first > 0.0, "Price should remain positive");
             assert!(state.second >= 0.0, "Variance should remain non-negative");
-            assert!(
-                state.first.is_finite(),
-                "Price should be finite"
-            );
-            assert!(
-                state.second.is_finite(),
-                "Variance should be finite"
-            );
+            assert!(state.first.is_finite(), "Price should be finite");
+            assert!(state.second.is_finite(), "Variance should be finite");
         }
     }
 
@@ -2364,7 +2340,10 @@ mod tests {
         let next_state = HestonModel::evolve_step(state, dt, &dw, &params);
 
         assert!(next_state.first > 0.0_f32, "f32 price should be positive");
-        assert!(next_state.second >= 0.0_f32, "f32 variance should be non-negative");
+        assert!(
+            next_state.second >= 0.0_f32,
+            "f32 variance should be non-negative"
+        );
     }
 
     // テスト: TwoFactorStateがStochasticStateトレイトを実装している

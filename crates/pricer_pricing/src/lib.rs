@@ -123,7 +123,7 @@ pub mod greeks;
 pub mod pool;
 
 // Re-export commonly used items for convenience
-pub use enzyme::{gradient, gradient_with_step, Activity};
+pub use enzyme::{gradient, gradient_with_step, Activity, ADMode};
 pub use greeks::{GreeksConfig, GreeksMode, GreeksResult};
 pub use mc::{GbmParams, Greek, MonteCarloConfig, MonteCarloPricer, PayoffParams, PricingResult};
 

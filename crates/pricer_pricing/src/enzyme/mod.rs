@@ -27,7 +27,7 @@
 //! # Usage
 //!
 //! ```rust
-//! use pricer_pricing::enzyme::{Activity, gradient};
+//! use pricer_pricing::enzyme::{Activity, ADMode, gradient};
 //!
 //! // Define a function to differentiate
 //! fn square(x: f64) -> f64 {
@@ -37,7 +37,147 @@
 //! // Compute gradient (Phase 3.0: finite difference approximation)
 //! let grad = gradient(square, 3.0);
 //! assert!((grad - 6.0).abs() < 1e-6);
+//!
+//! // AD mode selection for EnzymeContext
+//! let mode = ADMode::Forward;
+//! assert!(mode.is_forward());
 //! ```
+
+// =============================================================================
+// ADMode - AD (自動微分) モード列挙型
+// =============================================================================
+
+/// ADモード（自動微分モード）
+///
+/// Enzymeコンテキストで使用される自動微分モードを表す。
+/// Forward mode（前進モード）とReverse mode（逆伝播モード）の
+/// 切り替えを一元管理するために使用する。
+///
+/// # バリアント
+///
+/// - `Inactive`: 微分無効。通常の関数評価のみ行う。
+/// - `Forward`: Forward mode AD。tangent（接線）値を入力から出力へ伝播する。
+///   単一パラメータに対するGreeks計算（Delta、Vega等）に効率的。
+/// - `Reverse`: Reverse mode AD。adjoint（随伴）値を出力から入力へ逆伝播する。
+///   多数のパラメータに対するGreeksを一括計算する場合に効率的。
+///
+/// # 使用例
+///
+/// ```rust
+/// use pricer_pricing::enzyme::ADMode;
+///
+/// // デフォルトはInactive（微分無効）
+/// let mode = ADMode::default();
+/// assert!(!mode.is_active());
+///
+/// // Forward modeでDelta計算
+/// let forward = ADMode::Forward;
+/// assert!(forward.is_forward());
+/// assert!(forward.is_active());
+///
+/// // Reverse modeで全Greeks一括計算
+/// let reverse = ADMode::Reverse;
+/// assert!(reverse.is_reverse());
+/// ```
+///
+/// # 要件
+///
+/// - Requirements 4.1, 4.3, 4.4, 4.6
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+pub enum ADMode {
+    /// 微分無効
+    ///
+    /// 自動微分を行わず、通常の関数評価のみ実行する。
+    /// EnzymeContextの初期状態。
+    #[default]
+    Inactive,
+
+    /// Forward mode（前進モード）AD
+    ///
+    /// tangent（接線）値を入力から出力へ伝播する。
+    /// 各入力変数に対するtangent seedを設定し、
+    /// 出力のtangent値として微分を取得する。
+    ///
+    /// - 計算量: O(n) where n = 入力次元
+    /// - 用途: Delta、Vega等の単一パラメータGreeks
+    Forward,
+
+    /// Reverse mode（逆伝播モード）AD
+    ///
+    /// adjoint（随伴）値を出力から入力へ逆伝播する。
+    /// 出力にadjoint seed（通常は1.0）を設定し、
+    /// 全入力パラメータに対する勾配を一度に取得する。
+    ///
+    /// - 計算量: O(m) where m = 出力次元
+    /// - 用途: 多数のパラメータに対する全Greeks一括計算
+    Reverse,
+}
+
+impl ADMode {
+    /// Forward modeか判定する
+    ///
+    /// # 戻り値
+    ///
+    /// `true` if `self == ADMode::Forward`, `false` otherwise
+    ///
+    /// # 使用例
+    ///
+    /// ```rust
+    /// use pricer_pricing::enzyme::ADMode;
+    ///
+    /// assert!(ADMode::Forward.is_forward());
+    /// assert!(!ADMode::Reverse.is_forward());
+    /// assert!(!ADMode::Inactive.is_forward());
+    /// ```
+    #[inline]
+    pub fn is_forward(&self) -> bool {
+        matches!(self, ADMode::Forward)
+    }
+
+    /// Reverse modeか判定する
+    ///
+    /// # 戻り値
+    ///
+    /// `true` if `self == ADMode::Reverse`, `false` otherwise
+    ///
+    /// # 使用例
+    ///
+    /// ```rust
+    /// use pricer_pricing::enzyme::ADMode;
+    ///
+    /// assert!(ADMode::Reverse.is_reverse());
+    /// assert!(!ADMode::Forward.is_reverse());
+    /// assert!(!ADMode::Inactive.is_reverse());
+    /// ```
+    #[inline]
+    pub fn is_reverse(&self) -> bool {
+        matches!(self, ADMode::Reverse)
+    }
+
+    /// ADが有効か判定する（Inactive以外）
+    ///
+    /// # 戻り値
+    ///
+    /// `true` if `self != ADMode::Inactive`, `false` otherwise
+    ///
+    /// # 使用例
+    ///
+    /// ```rust
+    /// use pricer_pricing::enzyme::ADMode;
+    ///
+    /// assert!(!ADMode::Inactive.is_active());
+    /// assert!(ADMode::Forward.is_active());
+    /// assert!(ADMode::Reverse.is_active());
+    /// ```
+    #[inline]
+    pub fn is_active(&self) -> bool {
+        !matches!(self, ADMode::Inactive)
+    }
+}
+
+// =============================================================================
+// Activity - Activity annotation列挙型
+// =============================================================================
 
 /// Activity annotations for autodiff parameters.
 ///
@@ -196,6 +336,154 @@ where
 mod tests {
     use super::*;
     use approx::assert_relative_eq;
+    use std::collections::HashSet;
+
+    // =============================================================================
+    // ADMode Tests (Task 5.1)
+    // =============================================================================
+
+    #[test]
+    fn test_admode_clone() {
+        let mode = ADMode::Forward;
+        let cloned = mode.clone();
+        assert_eq!(mode, cloned);
+    }
+
+    #[test]
+    fn test_admode_copy() {
+        let mode = ADMode::Reverse;
+        let copied = mode; // Copy trait allows this
+        assert_eq!(mode, copied);
+    }
+
+    #[test]
+    fn test_admode_debug() {
+        let mode = ADMode::Inactive;
+        let debug_str = format!("{:?}", mode);
+        assert!(debug_str.contains("Inactive"));
+    }
+
+    #[test]
+    fn test_admode_partial_eq() {
+        assert_eq!(ADMode::Forward, ADMode::Forward);
+        assert_ne!(ADMode::Forward, ADMode::Reverse);
+        assert_ne!(ADMode::Inactive, ADMode::Forward);
+    }
+
+    #[test]
+    fn test_admode_eq() {
+        // Eq trait allows use in HashSet
+        let mut set = HashSet::new();
+        set.insert(ADMode::Forward);
+        set.insert(ADMode::Reverse);
+        set.insert(ADMode::Inactive);
+        assert_eq!(set.len(), 3);
+    }
+
+    #[test]
+    fn test_admode_hash() {
+        use std::hash::{Hash, Hasher};
+        use std::collections::hash_map::DefaultHasher;
+
+        fn hash_value<T: Hash>(t: &T) -> u64 {
+            let mut s = DefaultHasher::new();
+            t.hash(&mut s);
+            s.finish()
+        }
+
+        // Same values should hash the same
+        assert_eq!(hash_value(&ADMode::Forward), hash_value(&ADMode::Forward));
+        // Different values should (likely) hash differently
+        assert_ne!(hash_value(&ADMode::Forward), hash_value(&ADMode::Reverse));
+    }
+
+    #[test]
+    fn test_admode_is_forward() {
+        assert!(!ADMode::Inactive.is_forward());
+        assert!(ADMode::Forward.is_forward());
+        assert!(!ADMode::Reverse.is_forward());
+    }
+
+    #[test]
+    fn test_admode_is_reverse() {
+        assert!(!ADMode::Inactive.is_reverse());
+        assert!(!ADMode::Forward.is_reverse());
+        assert!(ADMode::Reverse.is_reverse());
+    }
+
+    #[test]
+    fn test_admode_is_active() {
+        assert!(!ADMode::Inactive.is_active());
+        assert!(ADMode::Forward.is_active());
+        assert!(ADMode::Reverse.is_active());
+    }
+
+    #[test]
+    fn test_admode_default() {
+        // Default should be Inactive (no differentiation)
+        assert_eq!(ADMode::default(), ADMode::Inactive);
+    }
+
+    // =============================================================================
+    // Activity Tests (Task 5.1 - verify existing + ensure Copy)
+    // =============================================================================
+
+    #[test]
+    fn test_activity_clone() {
+        let activity = Activity::Dual;
+        let cloned = activity.clone();
+        assert_eq!(activity, cloned);
+    }
+
+    #[test]
+    fn test_activity_copy() {
+        let activity = Activity::Active;
+        let copied = activity; // Copy trait allows this
+        assert_eq!(activity, copied);
+    }
+
+    #[test]
+    fn test_activity_debug() {
+        let activity = Activity::Duplicated;
+        let debug_str = format!("{:?}", activity);
+        assert!(debug_str.contains("Duplicated"));
+    }
+
+    #[test]
+    fn test_activity_partial_eq() {
+        assert_eq!(Activity::Const, Activity::Const);
+        assert_ne!(Activity::Const, Activity::Dual);
+        assert_ne!(Activity::Active, Activity::Duplicated);
+    }
+
+    #[test]
+    fn test_activity_eq() {
+        // Eq trait allows use in HashSet
+        let mut set = HashSet::new();
+        set.insert(Activity::Const);
+        set.insert(Activity::Dual);
+        set.insert(Activity::Active);
+        set.insert(Activity::Duplicated);
+        set.insert(Activity::DuplicatedOnly);
+        assert_eq!(set.len(), 5);
+    }
+
+    #[test]
+    fn test_activity_hash() {
+        use std::hash::{Hash, Hasher};
+        use std::collections::hash_map::DefaultHasher;
+
+        fn hash_value<T: Hash>(t: &T) -> u64 {
+            let mut s = DefaultHasher::new();
+            t.hash(&mut s);
+            s.finish()
+        }
+
+        // Same values should hash the same
+        assert_eq!(hash_value(&Activity::Dual), hash_value(&Activity::Dual));
+        // Different values should (likely) hash differently
+        assert_ne!(hash_value(&Activity::Const), hash_value(&Activity::Active));
+    }
 
     #[test]
     fn test_activity_is_active() {
@@ -217,6 +505,10 @@ mod tests {
         assert!(Activity::Duplicated.is_reverse_mode());
         assert!(Activity::DuplicatedOnly.is_reverse_mode());
     }
+
+    // =============================================================================
+    // Gradient Tests (existing tests)
+    // =============================================================================
 
     #[test]
     fn test_gradient_square() {
