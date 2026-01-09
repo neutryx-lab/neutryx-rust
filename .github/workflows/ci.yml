@@ -12,7 +12,7 @@ env:
 
 jobs:
   # ============================================================================
-  # Stable Rust: L1, L2, L4 (pricer_core, pricer_models, pricer_xva)
+  # Stable Rust: L1, L2, L4 (pricer_core, pricer_models, pricer_risk)
   # Cross-platform: Linux, Windows, macOS
   # ============================================================================
   stable-layers:
@@ -253,8 +253,8 @@ jobs:
       - name: Run pricer_models benchmarks
         run: cargo bench -p pricer_models --bench models_benchmarks -- --noplot
 
-      - name: Run pricer_xva benchmarks
-        run: cargo bench -p pricer_xva --bench xva_benchmarks -- --noplot
+      - name: Run pricer_risk benchmarks
+        run: cargo bench -p pricer_risk --bench risk_benchmarks -- --noplot
 
       - name: Upload benchmark results
         uses: actions/upload-artifact@v4

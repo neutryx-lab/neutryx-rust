@@ -6,7 +6,7 @@ Phase 1の実装タスク: Layer 1 (pricer_core) の数学的基盤を構築し�
 
 ## Tasks
 
-- [ ] 1. プロジェクト構造とCargo設定を構築する
+- [x] 1. プロジェクト構造とCargo設定を構築する
 - [x] 1.1 (P) pricer_coreクレートのCargo.toml設定を作成する
   - Rust Edition 2021を指定し、ワークスペースメンバーとして登録
   - 依存関係としてnum-traits 0.2、num-dual 0.9、chrono 0.4を追加
@@ -29,8 +29,8 @@ Phase 1の実装タスク: Layer 1 (pricer_core) の数学的基盤を構築し�
   - 使用例 (f64とDualNumberでsmooth_maxを呼び出す例) を含める
   - _Requirements: 5, 7_
 
-- [ ] 2. スムージング関数を実装する
-- [ ] 2.1 smooth_max関数を実装する
+- [x] 2. スムージング関数を実装する
+- [x] 2.1 smooth_max関数を実装する
   - LogSumExp公式を使用: `smooth_max(a, b, ε) = ε * log(exp(a/ε) + exp(b/ε))`
   - ジェネリック型パラメータ`T: num_traits::Float`でf32/f64をサポート
   - `#[inline]`属性を適用してLLVM最適化を有効化
@@ -38,7 +38,7 @@ Phase 1の実装タスク: Layer 1 (pricer_core) の数学的基盤を構築し�
   - Rustdocコメントに数学的定義、収束性、推奨範囲 (1e-8 ~ 1e-3)、パニック条件を記載
   - _Requirements: 1, 7, 10_
 
-- [ ] 2.2 smooth_min関数を実装する
+- [x] 2.2 smooth_min関数を実装する
   - smooth_maxの双対として実装: `smooth_min(a, b, ε) = -smooth_max(-a, -b, ε)`
   - ジェネリック型パラメータ`T: num_traits::Float`を使用
   - `#[inline]`属性を適用
@@ -46,7 +46,7 @@ Phase 1の実装タスク: Layer 1 (pricer_core) の数学的基盤を構築し�
   - Rustdocコメントに数学的定義と収束性を記載
   - _Requirements: 1, 7, 10_
 
-- [ ] 2.3 smooth_indicator関数を実装する
+- [x] 2.3 smooth_indicator関数を実装する
   - Sigmoid公式を使用: `smooth_indicator(x, ε) = 1 / (1 + exp(-x/ε))`
   - ジェネリック型パラメータ`T: num_traits::Float`を使用
   - `#[inline]`属性を適用
@@ -54,7 +54,7 @@ Phase 1の実装タスク: Layer 1 (pricer_core) の数学的基盤を構築し�
   - Rustdocコメントに数学的定義、収束性 (x < 0 → 0, x = 0 → 0.5, x > 0 → 1) を記載
   - _Requirements: 1, 7, 10_
 
-- [ ] 2.4 smooth_abs関数を実装する
+- [x] 2.4 smooth_abs関数を実装する
   - Softplus公式を使用: `smooth_abs(x, ε) = ε * log(exp(x/ε) + exp(-x/ε))`
   - ジェネリック型パラメータ`T: num_traits::Float`を使用
   - `#[inline]`属性を適用
@@ -62,7 +62,7 @@ Phase 1の実装タスク: Layer 1 (pricer_core) の数学的基盤を構築し�
   - Rustdocコメントに数学的定義と収束性を記載
   - _Requirements: 1, 7, 10_
 
-- [ ] 2.5 スムージング関数のユニットテストを作成する
+- [x] 2.5 スムージング関数のユニットテストを作成する
   - `#[cfg(test)]`モジュールをsmoothing.rsに配置
   - smooth_max収束性: epsilon = [1e-2, 1e-4, 1e-6]で真のmax関数との誤差を検証
   - smooth_min双対性: `smooth_min(a, b, ε) == -smooth_max(-a, -b, ε)`を検証
@@ -71,22 +71,22 @@ Phase 1の実装タスク: Layer 1 (pricer_core) の数学的基盤を構築し�
   - epsilon <= 0でパニックすることを検証
   - _Requirements: 6, 7_
 
-- [ ] 3. Dual数型統合を実装する
-- [ ] 3.1 (P) types::dualモジュールを実装する
+- [x] 3. Dual数型統合を実装する
+- [x] 3.1 (P) types::dualモジュールを実装する
   - `pub type DualNumber = num_dual::Dual64;`型エイリアスを定義
   - Rustdocコメントに使用例 (DualNumberでsmooth_maxを呼び出す例) を記載
   - モジュールドキュメントにnum-dualクレート統合の目的を説明
   - _Requirements: 2, 7_
 
-- [ ] 3.2 (P) Dual数型とスムージング関数の統合テストを作成する
+- [x] 3.2 (P) Dual数型とスムージング関数の統合テストを作成する
   - 全てのスムージング関数 (smooth_max, smooth_min, smooth_indicator, smooth_abs) をDualNumberで呼び出し
   - 勾配情報が正しく伝播することを検証 (result.epsが有限値)
   - smooth_maxの解析的微分 (`∂smooth_max/∂a`) とDual数の勾配を比較 (approx使用)
   - num_traitsトレイト経由でDual数の基本演算 (加算、減算、乗算、除算、exp、log) が動作することを検証
   - _Requirements: 2, 6_
 
-- [ ] 4. 基本トレイトを定義する
-- [ ] 4.1 (P) Priceableトレイトを定義する
+- [x] 4. 基本トレイトを定義する
+- [x] 4.1 (P) Priceableトレイトを定義する
   - ジェネリック型パラメータ`T: num_traits::Float`を使用
   - `fn price(&self) -> T`メソッドを宣言
   - Rustdocコメントに使用例 (Layer 2のenum Instrumentでの実装例) を記載
@@ -94,27 +94,27 @@ Phase 1の実装タスク: Layer 1 (pricer_core) の数学的基盤を構築し�
   - Enzyme最適化との互換性を説明
   - _Requirements: 3, 7_
 
-- [ ] 4.2 (P) Differentiableトレイトを定義する
+- [x] 4.2 (P) Differentiableトレイトを定義する
   - ジェネリック型パラメータ`T: num_traits::Float`を使用
   - `fn gradient(&self) -> T`メソッドを宣言
   - Rustdocコメントに使用例 (Layer 3のADエンジンでの使用) を記載
   - 静的ディスパッチの要件とEnzyme/Dual数での実装パターンを説明
   - _Requirements: 3, 7_
 
-- [ ] 4.3 (P) トレイトのドキュメントテストを作成する
+- [x] 4.3 (P) トレイトのドキュメントテストを作成する
   - Priceableトレイトをf32、f64、DualNumberで実装するサンプルコードをdoctestで検証
   - 静的ディスパッチ (enum) のパターンが正しく動作することを確認
   - トレイトメソッドが副作用を持たないことを文書化
   - _Requirements: 3, 7_
 
-- [ ] 5. 時間型とDay Count Conventionを実装する
-- [ ] 5.1 (P) DayCountConvention列挙型を定義する
+- [x] 5. 時間型とDay Count Conventionを実装する
+- [x] 5.1 (P) DayCountConvention列挙型を定義する
   - `#[non_exhaustive]`、`#[derive(Debug, Clone, Copy, PartialEq, Eq)]`を適用
   - バリアント: ActualActual365、ActualActual360、Thirty360を定義
   - Rustdocコメントに各規約の用途 (デリバティブ、マネーマーケット、米国社債) を記載
   - _Requirements: 4, 7_
 
-- [ ] 5.2 (P) DayCountConvention::year_fraction関数を実装する
+- [x] 5.2 (P) DayCountConvention::year_fraction関数を実装する
   - `fn year_fraction(&self, start: NaiveDate, end: NaiveDate) -> f64`メソッドを実装
   - ActualActual365: `(end - start).num_days() / 365.0`
   - ActualActual360: `(end - start).num_days() / 360.0`
@@ -122,13 +122,13 @@ Phase 1の実装タスク: Layer 1 (pricer_core) の数学的基盤を構築し�
   - start > endの場合にパニックまたは負の値を返す (ドキュメントで明記)
   - _Requirements: 4, 7_
 
-- [ ] 5.3 (P) time_to_maturity関数を実装する
+- [x] 5.3 (P) time_to_maturity関数を実装する
   - `pub fn time_to_maturity(start: NaiveDate, end: NaiveDate) -> f64`関数を実装
   - デフォルト規約 (Act/365) を使用: `DayCountConvention::ActualActual365.year_fraction(start, end)`
   - Rustdocコメントにデフォルト規約と使用例を記載
   - _Requirements: 4, 7_
 
-- [ ] 5.4 (P) Day Count Conventionのユニットテストを作成する
+- [x] 5.4 (P) Day Count Conventionのユニットテストを作成する
   - 既知の日付ペア (2024-01-01 → 2024-07-01) で各規約の結果を手計算と比較
   - Act/365: 182 / 365.0 ≈ 0.4986
   - Act/360: 182 / 360.0 ≈ 0.5056
@@ -137,8 +137,8 @@ Phase 1の実装タスク: Layer 1 (pricer_core) の数学的基盤を構築し�
   - start > endで適切なエラー処理が行われることを検証
   - _Requirements: 4, 6_
 
-- [ ] 6. プロパティテストを実装する
-- [ ] 6.1 (P) スムージング関数のプロパティテストを作成する
+- [x] 6. プロパティテストを実装する
+- [x] 6.1 (P) スムージング関数のプロパティテストを作成する
   - proptestを使用してランダムな入力 (a, b, epsilon) を生成
   - epsilonの範囲を1e-8 ~ 1e-3に制限
   - smooth_max不等式: `smooth_max(a, b, ε) >= max(a, b) - tolerance`を検証
@@ -148,49 +148,49 @@ Phase 1の実装タスク: Layer 1 (pricer_core) の数学的基盤を構築し�
   - cases = 1000で十分な試行回数を確保
   - _Requirements: 6_
 
-- [ ] 6.2 (P) Day Count Conventionのプロパティテストを作成する
+- [x] 6.2 (P) Day Count Conventionのプロパティテストを作成する
   - proptestでランダムな日付ペア (start, end) を生成 (start <= end)
   - 全ての規約でyear_fractionが非負であることを検証
   - Act/365とAct/360の結果がおおよそ360/365の比率になることを検証
   - time_to_maturityがAct/365と常に一致することを検証
   - _Requirements: 6_
 
-- [ ] 7. コード品質チェックとビルド検証を実施する
-- [ ] 7.1 cargo fmtとcargo clippyを実行する
+- [x] 7. コード品質チェックとビルド検証を実施する
+- [x] 7.1 cargo fmtとcargo clippyを実行する
   - `cargo fmt --all -- --check`で全てのコードがフォーマット済みであることを確認
   - `cargo clippy --all-targets -- -D warnings`で全てのlint警告を解消
   - 警告が出た場合は修正し、再度検証
   - _Requirements: 7_
 
-- [ ] 7.2 安定版Rustツールチェインでビルドを検証する
+- [x] 7.2 安定版Rustツールチェインでビルドを検証する
   - `cargo build -p pricer_core`でビルドが成功することを確認 (ナイトリー不要)
   - `cargo test -p pricer_core`で全てのテストが成功することを確認
   - `cargo doc --no-deps -p pricer_core`でドキュメント生成が成功し、リンク切れがないことを確認
   - `cargo test --doc -p pricer_core`でドキュメント内のコード例が動作することを確認
   - _Requirements: 7, 8_
 
-- [ ] 7.3 依存関係ツリーを検証する
+- [x] 7.3 依存関係ツリーを検証する
   - `cargo tree -p pricer_core`で依存関係ツリーを確認
   - 他のpricer_*クレートへの依存がないことを確認
   - 外部依存がnum-traits、num-dual、chrono、テストクレートのみであることを確認
   - 不要な推移的依存が含まれていないことを確認
   - _Requirements: 9_
 
-- [ ] 8. 統合テストとドキュメント最終化を実施する
-- [ ] 8.1 (P) モジュールエクスポートの統合テストを作成する
+- [x] 8. 統合テストとドキュメント最終化を実施する
+- [x] 8.1 (P) モジュールエクスポートの統合テストを作成する
   - lib.rsからの絶対パスインポート (`use pricer_core::math::smoothing::smooth_max`) が動作することを検証
   - 各モジュール (math, traits, types) が正しく公開されていることを確認
   - chronoとの統合 (NaiveDateからtime_to_maturity) が動作することを検証
   - _Requirements: 5, 6_
 
-- [ ] 8.2 (P) 全体的なドキュメント品質を確認する
+- [x] 8.2 (P) 全体的なドキュメント品質を確認する
   - 全てのpublic関数とトレイトにRustdocコメント (///) が含まれていることを確認
   - 各モジュールに`//!`形式のモジュールドキュメントが含まれていることを確認
   - lib.rsのクレートレベルドキュメントが完全であることを確認
   - ドキュメント内の使用例が正しく動作することを確認 (cargo test --doc)
   - _Requirements: 7_
 
-- [ ] 8.3 最終的なビルドとテストの実行
+- [x] 8.3 最終的なビルドとテストの実行
   - `cargo build --workspace --exclude pricer_kernel`で安定版クレートのみがビルドされることを確認
   - `cargo test --workspace --exclude pricer_kernel`で全てのテストが成功することを確認
   - テスト失敗時にproptestが失敗ケースの入力値を報告することを確認

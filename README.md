@@ -18,16 +18,16 @@ neutryx-rust/
 ├── crates/
 │   ├── pricer_core/      # L1: Foundation (Stable Rust)
 │   ├── pricer_models/    # L2: Business Logic (Stable Rust)
-│   ├── pricer_kernel/    # L3: AD Engine (Nightly Rust + Enzyme)
-│   └── pricer_xva/       # L4: Application (Stable Rust)
+│   ├── pricer_pricing/    # L3: AD Engine (Nightly Rust + Enzyme)
+│   └── pricer_risk/       # L4: Application (Stable Rust)
 ```
 
 | Layer | Purpose | Rust | Enzyme | Status |
 |-------|---------|------|--------|--------|
 | L1: pricer_core | Math types, traits, smoothing | Stable | No | ✅ Complete |
 | L2: pricer_models | Instruments, models, analytical | Stable | No | ✅ Complete |
-| L3: pricer_kernel | Monte Carlo, Enzyme AD | **Nightly** | **Yes** | 🚧 In Progress |
-| L4: pricer_xva | Portfolio, XVA, parallelization | Stable | No | ✅ Complete |
+| L3: pricer_pricing | Monte Carlo, Enzyme AD | **Nightly** | **Yes** | 🚧 In Progress |
+| L4: pricer_risk | Portfolio, XVA, parallelization | Stable | No | ✅ Complete |
 
 ### Design Principles
 
@@ -56,10 +56,10 @@ rustup component add --toolchain nightly-2025-01-15 rustfmt clippy
 
 ```bash
 # Build L1, L2, L4 (no Enzyme required)
-cargo build --workspace --exclude pricer_kernel
+cargo build --workspace --exclude pricer_pricing
 
 # Run tests
-cargo test --workspace --exclude pricer_kernel
+cargo test --workspace --exclude pricer_pricing
 ```
 
 ### Build with Enzyme (L3)
@@ -83,12 +83,12 @@ docker run -it neutryx-enzyme
 # Verify installation
 ./scripts/verify_enzyme.sh
 
-# Build pricer_kernel with Enzyme
+# Build pricer_pricing with Enzyme
 export RUSTFLAGS="-C llvm-args=-load=/usr/local/lib/LLVMEnzyme-18.so"
-cargo +nightly build -p pricer_kernel
+cargo +nightly build -p pricer_pricing
 
 # Run tests
-cargo +nightly test -p pricer_kernel
+cargo +nightly test -p pricer_pricing
 ```
 
 ## 📚 Documentation
@@ -102,17 +102,17 @@ cargo +nightly test -p pricer_kernel
 
 ```bash
 # Stable crates
-cargo test --workspace --exclude pricer_kernel
+cargo test --workspace --exclude pricer_pricing
 
 # Pricer kernel (requires Enzyme)
-cargo +nightly test -p pricer_kernel
+cargo +nightly test -p pricer_pricing
 ```
 
 ### Verification Tests
 
 ```bash
 # Dual-mode: Enzyme vs num-dual
-cargo +nightly test -p pricer_kernel --test verification
+cargo +nightly test -p pricer_pricing --test verification
 ```
 
 ### Benchmarks
@@ -135,13 +135,16 @@ neutryx-rust/
 │   ├── pricer_models/src/
 │   │   ├── analytical/        # Black-Scholes, barriers
 │   │   ├── instruments/       # Options, swaps
-│   │   └── models/            # GBM, Heston
-│   ├── pricer_kernel/src/
+│   │   └── models/            # Stochastic models
+│   │       ├── equity/        # GBM (feature-gated)
+│   │       ├── rates/         # Hull-White, CIR (feature-gated)
+│   │       └── hybrid/        # Correlated multi-factor (feature-gated)
+│   ├── pricer_pricing/src/
 │   │   ├── enzyme/            # Enzyme bindings
 │   │   ├── mc/                # Monte Carlo kernel
 │   │   ├── checkpoint/        # Memory management
 │   │   └── verify/            # Verification tests
-│   └── pricer_xva/src/
+│   └── pricer_risk/src/
 │       ├── portfolio/         # Trade structures
 │       ├── xva/               # CVA, DVA, FVA
 │       ├── soa/               # Structure of Arrays
@@ -168,6 +171,14 @@ neutryx-rust/
 - **pricer_core**:
   - `num-dual-mode` (default): Verification with dual numbers
   - `enzyme-mode`: Production mode (f64 only)
+- **Asset Classes** (pricer_models):
+  - `equity` (default): Equity models (GBM)
+  - `rates`: Interest rate models (Hull-White, CIR)
+  - `credit`: Credit models
+  - `fx`: FX models
+  - `commodity`: Commodity models
+  - `exotic`: Exotic derivatives
+  - `all`: Enable all asset classes
 
 ## 🎯 Roadmap
 
@@ -206,10 +217,10 @@ Contributions welcome! Please:
 Ensure all tests pass:
 ```bash
 # Stable crates
-cargo test --workspace --exclude pricer_kernel
+cargo test --workspace --exclude pricer_pricing
 
 # Pricer kernel (requires Enzyme)
-cargo +nightly test -p pricer_kernel
+cargo +nightly test -p pricer_pricing
 
 # Formatting and linting
 cargo fmt --all -- --check

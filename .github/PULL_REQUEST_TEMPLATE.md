@@ -27,8 +27,8 @@
 
 - [ ] pricer_core (L1)
 - [ ] pricer_models (L2)
-- [ ] pricer_kernel (L3)
-- [ ] pricer_xva (L4)
+- [ ] pricer_pricing (L3)
+- [ ] pricer_risk (L4)
 
 ## Changes Made
 

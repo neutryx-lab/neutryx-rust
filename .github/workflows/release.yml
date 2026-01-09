@@ -79,17 +79,17 @@ jobs:
         run: |
           cargo build --release -p pricer_core
           cargo build --release -p pricer_models
-          cargo build --release -p pricer_xva
+          cargo build --release -p pricer_risk
 
       - name: Run tests
         run: |
           cargo test --release -p pricer_core
           cargo test --release -p pricer_models
-          cargo test --release -p pricer_xva
+          cargo test --release -p pricer_risk
 
       - name: Run Clippy
         run: |
-          cargo clippy --release -p pricer_core -p pricer_models -p pricer_xva -- -D warnings
+          cargo clippy --release -p pricer_core -p pricer_models -p pricer_risk -- -D warnings
 
   # Generate documentation
   docs:
@@ -117,7 +117,7 @@ jobs:
       - name: Build documentation
         env:
           RUSTDOCFLAGS: "-D warnings"
-        run: cargo doc --no-deps -p pricer_core -p pricer_models -p pricer_xva
+        run: cargo doc --no-deps -p pricer_core -p pricer_models -p pricer_risk
 
       - name: Upload documentation artifact
         uses: actions/upload-artifact@v4
@@ -193,6 +193,6 @@ jobs:
   #     - name: Wait for crates.io index update
   #       run: sleep 30
   #
-  #     - name: Publish pricer_xva
-  #       run: cargo publish -p pricer_xva --no-verify
+  #     - name: Publish pricer_risk
+  #       run: cargo publish -p pricer_risk --no-verify
   #       continue-on-error: true

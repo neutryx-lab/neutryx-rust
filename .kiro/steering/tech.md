@@ -93,7 +93,7 @@ docker run -it neutryx-enzyme
 | **StochasticModel Trait** | Unified interface for stochastic processes with enum-based dispatch |
 | **Dual-Mode Verification** | Enzyme (performance) + num-dual (correctness) for validation |
 | **Smooth Approximations** | Replace all discontinuities (if/max) with differentiable functions |
-| **Feature Flags** | `num-dual-mode` (default), `enzyme-mode`, `serde` for serialization; Asset classes: `equity` (default), `rates`, `credit`, `fx` |
+| **Feature Flags** | `num-dual-mode` (default), `enzyme-mode`, `serde` for serialization; Asset classes: `equity` (default), `rates`, `credit`, `fx`, `commodity`, `exotic`; Convenience: `all` |
 
 ## Performance Optimization
 
@@ -104,5 +104,5 @@ docker run -it neutryx-enzyme
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-08_ — Added asset-class feature flags (equity, rates, credit, fx)
+_Updated: 2026-01-09_ — Updated feature flags (added commodity, exotic, all)
 _Document standards and patterns, not every dependency_

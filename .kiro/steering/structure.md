@@ -69,6 +69,9 @@ instruments/
 └── traits.rs  → InstrumentTrait, CashflowInstrument
 
 models/       → Stochastic models with unified trait interface
+  ├── equity/   → Equity models (feature-gated)
+  ├── rates/    → Interest rate models: Hull-White, CIR (feature-gated)
+  └── hybrid/   → Correlated multi-factor models (feature-gated)
 analytical/   → Closed-form solutions (Black-Scholes, Garman-Kohlhagen)
 calibration/  → Model calibration (Levenberg-Marquardt, swaption vol surface)
 schedules/    → Payment schedule generation (Frequency, Period, ScheduleBuilder)
@@ -83,7 +86,7 @@ schedules/    → Payment schedule generation (Frequency, Period, ScheduleBuilde
 - **Static Dispatch**: Enum-based dispatch at both top and sub-enum levels for Enzyme compatibility
 - **Schedule Generation**: `ScheduleBuilder` pattern for IRS/CDS payment schedules
 - **StochasticModel Trait**: Unified interface for stochastic processes (`evolve_step`, `initial_state`, `brownian_dim`)
-- **StochasticModelEnum**: Static dispatch enum wrapping concrete models (GBM, future: Heston, SABR)
+- **StochasticModelEnum**: Static dispatch enum wrapping concrete models (GBM, Hull-White, CIR; future: Heston, SABR)
 
 ### Layer 3: AD Engine (pricer_pricing)
 
@@ -229,5 +232,5 @@ Current roadmap (see README.md):
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-08_ — Added hierarchical instrument architecture (multi-asset class), thread-local buffer pool, calibration/schedules modules
+_Updated: 2026-01-09_ — Added rates models (Hull-White, CIR) and hybrid/correlated model structure
 _Document patterns, not file trees. New files following patterns should not require updates_

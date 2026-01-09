@@ -1,4 +1,4 @@
-# Nightly Rust Dockerfile with Enzyme for L3 (pricer_kernel)
+# Nightly Rust Dockerfile with Enzyme for L3 (pricer_pricing)
 # This is the ONLY crate that requires Enzyme and nightly Rust
 
 FROM rustlang/rust:nightly-2025-01-15 as builder
@@ -43,16 +43,16 @@ COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
 COPY .cargo .cargo
 COPY crates/pricer_core/Cargo.toml crates/pricer_core/
 COPY crates/pricer_models/Cargo.toml crates/pricer_models/
-COPY crates/pricer_kernel/Cargo.toml crates/pricer_kernel/
+COPY crates/pricer_pricing/Cargo.toml crates/pricer_pricing/
 
 # Create dummy sources for dependency caching
-RUN mkdir -p crates/pricer_core/src crates/pricer_models/src crates/pricer_kernel/src \
+RUN mkdir -p crates/pricer_core/src crates/pricer_models/src crates/pricer_pricing/src \
     && echo "fn main() {}" > crates/pricer_core/src/lib.rs \
     && echo "fn main() {}" > crates/pricer_models/src/lib.rs \
-    && echo "fn main() {}" > crates/pricer_kernel/src/lib.rs
+    && echo "fn main() {}" > crates/pricer_pricing/src/lib.rs
 
 # Build dependencies
-RUN cargo +nightly build --release -p pricer_kernel
+RUN cargo +nightly build --release -p pricer_pricing
 
 # Remove dummy sources
 RUN rm -rf crates/*/src
@@ -60,14 +60,14 @@ RUN rm -rf crates/*/src
 # Copy actual source code
 COPY crates/pricer_core crates/pricer_core
 COPY crates/pricer_models crates/pricer_models
-COPY crates/pricer_kernel crates/pricer_kernel
+COPY crates/pricer_pricing crates/pricer_pricing
 
 # Build with Enzyme
 ENV RUSTFLAGS="-C llvm-args=-load=/usr/local/lib/LLVMEnzyme-18.so"
-RUN cargo +nightly build --release -p pricer_kernel
+RUN cargo +nightly build --release -p pricer_pricing
 
 # Test
-RUN cargo +nightly test --release -p pricer_kernel
+RUN cargo +nightly test --release -p pricer_pricing
 
 # Runtime stage
 FROM debian:bookworm-slim

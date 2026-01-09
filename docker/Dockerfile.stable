@@ -1,4 +1,4 @@
-# Stable Rust Dockerfile for L1, L2, L4 (pricer_core, pricer_models, pricer_xva)
+# Stable Rust Dockerfile for L1, L2, L4 (pricer_core, pricer_models, pricer_risk)
 # These crates do NOT require Enzyme and compile with stable Rust
 
 FROM rust:1.84 as builder
@@ -14,16 +14,16 @@ RUN apt-get update && apt-get install -y \
 COPY Cargo.toml Cargo.lock ./
 COPY crates/pricer_core/Cargo.toml crates/pricer_core/
 COPY crates/pricer_models/Cargo.toml crates/pricer_models/
-COPY crates/pricer_xva/Cargo.toml crates/pricer_xva/
+COPY crates/pricer_risk/Cargo.toml crates/pricer_risk/
 
 # Create dummy source files for dependency caching
-RUN mkdir -p crates/pricer_core/src crates/pricer_models/src crates/pricer_xva/src \
+RUN mkdir -p crates/pricer_core/src crates/pricer_models/src crates/pricer_risk/src \
     && echo "fn main() {}" > crates/pricer_core/src/lib.rs \
     && echo "fn main() {}" > crates/pricer_models/src/lib.rs \
-    && echo "fn main() {}" > crates/pricer_xva/src/lib.rs
+    && echo "fn main() {}" > crates/pricer_risk/src/lib.rs
 
 # Build dependencies (this layer will be cached)
-RUN cargo build --release --workspace --exclude pricer_kernel
+RUN cargo build --release --workspace --exclude pricer_pricing
 
 # Remove dummy sources
 RUN rm -rf crates/*/src
@@ -31,13 +31,13 @@ RUN rm -rf crates/*/src
 # Copy actual source code
 COPY crates/pricer_core crates/pricer_core
 COPY crates/pricer_models crates/pricer_models
-COPY crates/pricer_xva crates/pricer_xva
+COPY crates/pricer_risk crates/pricer_risk
 
 # Build actual code
-RUN cargo build --release --workspace --exclude pricer_kernel
+RUN cargo build --release --workspace --exclude pricer_pricing
 
 # Test
-RUN cargo test --release --workspace --exclude pricer_kernel
+RUN cargo test --release --workspace --exclude pricer_pricing
 
 # Runtime stage
 FROM debian:bookworm-slim

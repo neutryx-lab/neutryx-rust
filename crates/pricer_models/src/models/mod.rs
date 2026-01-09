@@ -4,12 +4,14 @@
 //! - `StochasticModel` trait: Unified interface for all models
 //! - `StochasticModelEnum`: Static dispatch enum for Enzyme compatibility
 //! - `GBMModel`: Geometric Brownian Motion model
+//! - `HestonModel`: Heston stochastic volatility model
 //!
 //! ## Model Categories
 //!
 //! Models are organized by category (enabled via feature flags):
 //! - `equity`: Equity models (GBM) - default
 //! - `rates`: Interest rate models (Hull-White, CIR)
+//! - `exotic`: Advanced models (Heston, SABR)
 //! - `hybrid`: Multi-factor and correlated models
 //!
 //! ## Design Philosophy
@@ -39,6 +41,7 @@
 
 // Core model infrastructure (always available)
 pub mod gbm;
+pub mod heston;
 pub mod model_enum;
 pub mod stochastic;
 
@@ -57,6 +60,9 @@ pub use stochastic::{SingleState, StochasticModel, StochasticState, TwoFactorSta
 
 // Re-export GBM model
 pub use gbm::{GBMModel, GBMParams};
+
+// Re-export Heston model
+pub use heston::{HestonError, HestonModel, HestonParams};
 
 // Re-export enum types for static dispatch
 pub use model_enum::{ModelParams, ModelState, StochasticModelEnum};

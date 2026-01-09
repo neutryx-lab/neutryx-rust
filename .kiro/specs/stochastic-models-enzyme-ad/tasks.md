@@ -42,14 +42,14 @@
   - _Requirements: 1.6, 7.1, 7.2_
 
 - [ ] 3. Hestonモデル実装（L2: pricer_models）
-- [ ] 3.1 HestonParams構造体とエラー型の定義
+- [x] 3.1 HestonParams構造体とエラー型の定義
   - スポット価格、初期分散、長期分散、平均回帰速度、xi、rho、リスクフリーレート、満期を含むパラメータ構造体
   - QE切り替え閾値psi_cとsmoothing_epsilonパラメータ
   - HestonError列挙型（InvalidSpot、InvalidV0、InvalidRho等）を定義
   - thiserrorクレートによる構造化エラー
   - _Requirements: 2.1, 10.1, 10.3, 10.4, 10.5_
 
-- [ ] 3.2 HestonModelの基本実装
+- [x] 3.2 HestonModelの基本実装
   - HestonParams構造体を内包するHestonModel構造体を作成
   - new、validateメソッドを実装
   - Feller条件チェック（2*kappa*theta > xi^2）を実装
@@ -58,7 +58,7 @@
   - Task 3.1のエラー型を使用
   - _Requirements: 2.2, 2.5, 2.6, 10.1, 10.6_
 
-- [ ] 3.3 QE離散化スキームの実装
+- [x] 3.3 QE離散化スキームの実装
   - Andersen (2008) QE離散化スキームを実装
   - psi値に基づく二次スキームと指数スキームの切り替え
   - smooth_indicatorによる滑らかなスキーム切り替え

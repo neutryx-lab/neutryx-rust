@@ -29,6 +29,7 @@
 use pricer_core::traits::Float;
 
 use super::gbm::{GBMModel, GBMParams};
+use super::heston::{HestonModel, HestonParams};
 use super::stochastic::{SingleState, StochasticState, TwoFactorState};
 
 // Import rate models when rates feature is enabled
@@ -99,6 +100,8 @@ impl<T: Float + Default> ModelState<T> {
 pub enum ModelParams<T: Float> {
     /// GBM model parameters
     GBM(GBMParams<T>),
+    /// Heston stochastic volatility model parameters
+    Heston(HestonParams<T>),
     /// Hull-White model parameters (requires `rates` feature)
     #[cfg(feature = "rates")]
     HullWhite(HullWhiteParams<T>),
@@ -114,6 +117,7 @@ impl<T: Float> ModelParams<T> {
     pub fn spot(&self) -> T {
         match self {
             ModelParams::GBM(p) => p.spot,
+            ModelParams::Heston(p) => p.spot,
             #[cfg(feature = "rates")]
             ModelParams::HullWhite(p) => p.initial_short_rate,
             #[cfg(feature = "rates")]
@@ -124,9 +128,11 @@ impl<T: Float> ModelParams<T> {
     /// Get the rate parameter.
     ///
     /// For interest rate models, this returns the mean reversion speed.
+    /// For Heston, this returns the risk-free rate.
     pub fn rate(&self) -> T {
         match self {
             ModelParams::GBM(p) => p.rate,
+            ModelParams::Heston(p) => p.rate,
             #[cfg(feature = "rates")]
             ModelParams::HullWhite(p) => p.mean_reversion,
             #[cfg(feature = "rates")]
@@ -135,13 +141,24 @@ impl<T: Float> ModelParams<T> {
     }
 
     /// Get the volatility parameter (primary volatility for all models).
+    ///
+    /// For Heston, this returns the initial volatility (sqrt of v0).
     pub fn volatility(&self) -> T {
         match self {
             ModelParams::GBM(p) => p.volatility,
+            ModelParams::Heston(p) => p.v0.sqrt(),
             #[cfg(feature = "rates")]
             ModelParams::HullWhite(p) => p.volatility,
             #[cfg(feature = "rates")]
             ModelParams::CIR(p) => p.volatility,
+        }
+    }
+
+    /// Get initial variance for Heston model (returns None for other models).
+    pub fn initial_variance(&self) -> Option<T> {
+        match self {
+            ModelParams::Heston(p) => Some(p.v0),
+            _ => None,
         }
     }
 }
@@ -154,6 +171,7 @@ impl<T: Float> ModelParams<T> {
 /// # Supported Models
 ///
 /// - `GBM`: Geometric Brownian Motion (1-factor) - always available
+/// - `Heston`: Heston stochastic volatility model (2-factor) - always available
 /// - `HullWhite`: Hull-White 1F interest rate model - requires `rates` feature
 /// - `CIR`: Cox-Ingersoll-Ross interest rate model - requires `rates` feature
 ///
@@ -166,6 +184,7 @@ impl<T: Float> ModelParams<T> {
 ///
 /// match &model {
 ///     StochasticModelEnum::GBM(_) => println!("Using GBM model"),
+///     StochasticModelEnum::Heston(_) => println!("Using Heston model"),
 ///     #[cfg(feature = "rates")]
 ///     _ => println!("Using rate model"),
 /// }
@@ -174,6 +193,8 @@ impl<T: Float> ModelParams<T> {
 pub enum StochasticModelEnum<T: Float> {
     /// Geometric Brownian Motion model (equity)
     GBM(GBMModel<T>),
+    /// Heston stochastic volatility model (equity, 2-factor)
+    Heston(HestonModel<T>),
     /// Hull-White one-factor model (rates) - requires `rates` feature
     #[cfg(feature = "rates")]
     HullWhite(HullWhiteModel<T>),
@@ -194,6 +215,19 @@ impl<T: Float + Default> StochasticModelEnum<T> {
         StochasticModelEnum::GBM(GBMModel::new())
     }
 
+    /// Create a new Heston model with given parameters.
+    ///
+    /// # Arguments
+    /// * `params` - Heston model parameters
+    ///
+    /// # Returns
+    /// `Some(StochasticModelEnum::Heston)` if parameters are valid, `None` otherwise
+    pub fn heston(params: HestonParams<T>) -> Option<Self> {
+        HestonModel::new(params)
+            .ok()
+            .map(StochasticModelEnum::Heston)
+    }
+
     /// Create a new Hull-White model (requires `rates` feature).
     #[cfg(feature = "rates")]
     pub fn hull_white() -> Self {
@@ -210,6 +244,7 @@ impl<T: Float + Default> StochasticModelEnum<T> {
     pub fn model_name(&self) -> &'static str {
         match self {
             StochasticModelEnum::GBM(_) => GBMModel::<T>::model_name(),
+            StochasticModelEnum::Heston(_) => HestonModel::<T>::model_name(),
             #[cfg(feature = "rates")]
             StochasticModelEnum::HullWhite(_) => HullWhiteModel::<T>::model_name(),
             #[cfg(feature = "rates")]
@@ -221,6 +256,7 @@ impl<T: Float + Default> StochasticModelEnum<T> {
     pub fn brownian_dim(&self) -> usize {
         match self {
             StochasticModelEnum::GBM(_) => GBMModel::<T>::brownian_dim(),
+            StochasticModelEnum::Heston(_) => HestonModel::<T>::brownian_dim(),
             #[cfg(feature = "rates")]
             StochasticModelEnum::HullWhite(_) => HullWhiteModel::<T>::brownian_dim(),
             #[cfg(feature = "rates")]
@@ -232,6 +268,7 @@ impl<T: Float + Default> StochasticModelEnum<T> {
     pub fn is_two_factor(&self) -> bool {
         match self {
             StochasticModelEnum::GBM(_) => false,
+            StochasticModelEnum::Heston(_) => true, // Heston is a 2-factor model
             #[cfg(feature = "rates")]
             StochasticModelEnum::HullWhite(_) => false,
             #[cfg(feature = "rates")]
@@ -243,6 +280,7 @@ impl<T: Float + Default> StochasticModelEnum<T> {
     pub fn is_rate_model(&self) -> bool {
         match self {
             StochasticModelEnum::GBM(_) => false,
+            StochasticModelEnum::Heston(_) => false,
             #[cfg(feature = "rates")]
             StochasticModelEnum::HullWhite(_) => true,
             #[cfg(feature = "rates")]
@@ -260,6 +298,7 @@ impl<T: Float + Default> StochasticModelEnum<T> {
     pub fn num_factors(&self) -> usize {
         match self {
             StochasticModelEnum::GBM(_) => GBMModel::<T>::num_factors(),
+            StochasticModelEnum::Heston(_) => HestonModel::<T>::num_factors(),
             #[cfg(feature = "rates")]
             StochasticModelEnum::HullWhite(_) => HullWhiteModel::<T>::num_factors(),
             #[cfg(feature = "rates")]
@@ -272,6 +311,9 @@ impl<T: Float + Default> StochasticModelEnum<T> {
         match (self, params) {
             (StochasticModelEnum::GBM(_), ModelParams::GBM(p)) => {
                 ModelState::Single(GBMModel::initial_state(p))
+            }
+            (StochasticModelEnum::Heston(_), ModelParams::Heston(p)) => {
+                ModelState::TwoFactor(HestonModel::initial_state(p))
             }
             #[cfg(feature = "rates")]
             (StochasticModelEnum::HullWhite(_), ModelParams::HullWhite(p)) => {
@@ -307,6 +349,11 @@ impl<T: Float + Default> StochasticModelEnum<T> {
             (StochasticModelEnum::GBM(_), ModelState::Single(s), ModelParams::GBM(p)) => {
                 ModelState::Single(GBMModel::evolve_step(*s, dt, dw, p))
             }
+            (
+                StochasticModelEnum::Heston(_),
+                ModelState::TwoFactor(s),
+                ModelParams::Heston(p),
+            ) => ModelState::TwoFactor(HestonModel::evolve_step(*s, dt, dw, p)),
             #[cfg(feature = "rates")]
             (
                 StochasticModelEnum::HullWhite(_),
@@ -539,6 +586,9 @@ mod tests {
                 // GBM variant matched
                 assert!(true);
             }
+            StochasticModelEnum::Heston(_) => {
+                panic!("Expected GBM variant");
+            }
             #[cfg(feature = "rates")]
             _ => {
                 // Rate models
@@ -574,6 +624,118 @@ mod tests {
         let params = ModelParams::GBM(GBMParams::new(100.0_f32, 0.05, 0.2).unwrap());
         let state = model.initial_state(&params);
         assert_eq!(state.price(), 100.0_f32);
+    }
+
+    // ================================================================
+    // Task 3.4: Heston model integration tests
+    // ================================================================
+
+    #[test]
+    fn test_model_enum_heston_creation() {
+        let heston_params =
+            HestonParams::new(100.0_f64, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0).unwrap();
+        let model = StochasticModelEnum::<f64>::heston(heston_params);
+        assert!(model.is_some());
+
+        let model = model.unwrap();
+        assert_eq!(model.model_name(), "Heston");
+        assert_eq!(model.brownian_dim(), 2);
+        assert_eq!(model.num_factors(), 2);
+        assert!(model.is_two_factor());
+        assert!(!model.is_rate_model());
+    }
+
+    #[test]
+    fn test_model_enum_heston_initial_state() {
+        let heston_params =
+            HestonParams::new(100.0_f64, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0).unwrap();
+        let model = StochasticModelEnum::<f64>::heston(heston_params).unwrap();
+        let params = ModelParams::Heston(heston_params);
+
+        let state = model.initial_state(&params);
+
+        assert_eq!(state.price(), 100.0);
+        assert_eq!(state.variance(), Some(0.04));
+        assert_eq!(state.dimension(), 2);
+    }
+
+    #[test]
+    fn test_model_enum_heston_evolve_step() {
+        let heston_params =
+            HestonParams::new(100.0_f64, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0).unwrap();
+        let model = StochasticModelEnum::<f64>::heston(heston_params).unwrap();
+        let params = ModelParams::Heston(heston_params);
+
+        let state = model.initial_state(&params);
+        let dt = 1.0 / 252.0;
+        // Heston requires 3 random numbers: z1, z2, uv
+        let dw = [0.5, 0.0, 0.5];
+
+        let next_state = model.evolve_step(state, dt, &dw, &params);
+
+        assert!(next_state.price() > 0.0, "Price should be positive");
+        assert!(
+            next_state.variance().unwrap() >= 0.0,
+            "Variance should be non-negative"
+        );
+    }
+
+    #[test]
+    fn test_model_enum_heston_path_generation() {
+        let heston_params =
+            HestonParams::new(100.0_f64, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0).unwrap();
+        let model = StochasticModelEnum::<f64>::heston(heston_params).unwrap();
+        let params = ModelParams::Heston(heston_params);
+
+        let n_steps = 10;
+        let dt = 1.0 / 252.0;
+        // Heston needs 2 random numbers per step (brownian_dim=2)
+        // Plus 1 uniform for QE scheme = 3 total per step
+        // But generate_path uses brownian_dim, so we need 2 * n_steps
+        // The evolve_step internally handles the 3rd element
+        let randoms = vec![0.0_f64; n_steps * 2];
+
+        let path = model.generate_path(&params, n_steps, dt, &randoms);
+
+        assert_eq!(path.len(), n_steps + 1);
+
+        // First state should be initial
+        assert_eq!(path[0].price(), 100.0);
+        assert_eq!(path[0].variance(), Some(0.04));
+
+        // All states should be valid
+        for state in &path {
+            assert!(state.price() > 0.0, "Price should be positive");
+            assert!(state.price().is_finite(), "Price should be finite");
+            if let Some(v) = state.variance() {
+                assert!(v >= 0.0, "Variance should be non-negative");
+                assert!(v.is_finite(), "Variance should be finite");
+            }
+        }
+    }
+
+    #[test]
+    fn test_model_params_heston_accessors() {
+        let heston_params =
+            HestonParams::new(100.0_f64, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0).unwrap();
+        let params = ModelParams::Heston(heston_params);
+
+        assert_eq!(params.spot(), 100.0);
+        assert_eq!(params.rate(), 0.05);
+        assert!((params.volatility() - 0.2).abs() < 1e-10); // sqrt(0.04) = 0.2
+        assert_eq!(params.initial_variance(), Some(0.04));
+    }
+
+    #[test]
+    fn test_model_enum_heston_pattern_matching() {
+        let heston_params =
+            HestonParams::new(100.0_f64, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0).unwrap();
+        let model = StochasticModelEnum::<f64>::heston(heston_params).unwrap();
+
+        match model {
+            StochasticModelEnum::Heston(_) => assert!(true),
+            _ => panic!("Expected Heston variant"),
+        }
     }
 
     // ================================================================

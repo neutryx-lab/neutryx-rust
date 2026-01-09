@@ -16,6 +16,8 @@ A production-grade **XVA (Credit Valuation Adjustment) pricing library** for der
 - **Portfolio Analytics**: Parallelized portfolio-level XVA computations with SoA optimization
 - **Market Data Infrastructure**: AD-compatible yield curves and volatility surfaces with interpolation
 - **Model Calibration**: Swaption volatility surface calibration with Levenberg-Marquardt
+- **Interest Rate Models**: Hull-White, Cox-Ingersoll-Ross (CIR) with mean reversion
+- **Correlated Processes**: Multi-factor correlation via Cholesky decomposition
 
 ## Target Use Cases
 
@@ -33,5 +35,5 @@ A production-grade **XVA (Credit Valuation Adjustment) pricing library** for der
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-08_ — Added multi-asset class instruments (IRS, CDS, Swaption), thread-local buffer pool, model calibration
+_Updated: 2026-01-09_ — Added interest rate models (Hull-White, CIR) and correlated processes
 _Focus on patterns and purpose, not exhaustive feature lists_

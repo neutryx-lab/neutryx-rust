@@ -37,17 +37,17 @@ cargo clippy -- -D warnings
 | Layer | Crate | Toolchain | Purpose |
 |-------|-------|-----------|---------|
 | L1 | pricer_core | stable | Core utilities, interpolation, types |
-| L2 | pricer_models | stable | Financial models, Black-Scholes |
-| L3 | pricer_kernel | nightly | Enzyme AD, Monte Carlo |
-| L4 | pricer_xva | stable | XVA calculations, portfolio |
+| L2 | pricer_models | stable | Financial models (Black-Scholes, Hull-White, CIR) |
+| L3 | pricer_pricing | nightly | Enzyme AD, Monte Carlo |
+| L4 | pricer_risk | stable | XVA calculations, portfolio |
 
-**Note:** L3 (pricer_kernel) requires nightly for Enzyme AD features. For most contributions, stable toolchain is sufficient.
+**Note:** L3 (pricer_pricing) requires nightly for Enzyme AD features. For most contributions, stable toolchain is sufficient.
 
 ## Running Tests
 
 ```bash
 # Run all tests (stable layers)
-cargo test -p pricer_core -p pricer_models -p pricer_xva
+cargo test -p pricer_core -p pricer_models -p pricer_risk
 
 # Run specific crate tests
 cargo test -p pricer_core
@@ -58,7 +58,7 @@ cargo test -- --nocapture
 # Run benchmarks (requires criterion)
 cargo bench -p pricer_core
 cargo bench -p pricer_models
-cargo bench -p pricer_xva
+cargo bench -p pricer_risk
 ```
 
 ## Code Quality Checks
@@ -95,7 +95,7 @@ cargo doc --no-deps
 5. **Commit**: Use [Conventional Commits](https://www.conventionalcommits.org/) format.
    ```
    feat(pricer_core): add new interpolation method
-   fix(pricer_xva): correct CVA calculation edge case
+   fix(pricer_risk): correct CVA calculation edge case
    docs(readme): update installation instructions
    ```
 
