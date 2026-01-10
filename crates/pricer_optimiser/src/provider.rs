@@ -234,7 +234,10 @@ mod tests {
         let jpy = provider.get_curve(Currency::JPY);
 
         // Should be different objects
-        assert!(!Arc::ptr_eq(&usd, &jpy), "Different currencies should have different curves");
+        assert!(
+            !Arc::ptr_eq(&usd, &jpy),
+            "Different currencies should have different curves"
+        );
 
         // Verify different rates
         match (usd.as_ref(), jpy.as_ref()) {
@@ -291,7 +294,10 @@ mod tests {
         let eur = provider.get_vol(Currency::EUR);
 
         // Should be different objects
-        assert!(!Arc::ptr_eq(&usd, &eur), "Different currencies should have different vol surfaces");
+        assert!(
+            !Arc::ptr_eq(&usd, &eur),
+            "Different currencies should have different vol surfaces"
+        );
 
         // Verify different alphas
         match (usd.as_ref(), eur.as_ref()) {
@@ -387,7 +393,9 @@ mod tests {
         // Spawn multiple threads accessing the same currency
         for _ in 0..4 {
             let provider_clone = Arc::clone(&provider);
-            handles.push(thread::spawn(move || provider_clone.get_curve(Currency::USD)));
+            handles.push(thread::spawn(move || {
+                provider_clone.get_curve(Currency::USD)
+            }));
         }
 
         // Collect results
@@ -395,7 +403,10 @@ mod tests {
 
         // All should point to the same Arc
         for curve in curves.iter().skip(1) {
-            assert!(Arc::ptr_eq(&curves[0], curve), "All threads should get same Arc");
+            assert!(
+                Arc::ptr_eq(&curves[0], curve),
+                "All threads should get same Arc"
+            );
         }
     }
 }

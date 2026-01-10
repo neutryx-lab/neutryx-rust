@@ -62,7 +62,10 @@ impl GreeksMode {
     /// Returns whether this mode requires Enzyme AD.
     #[inline]
     pub fn requires_enzyme(&self) -> bool {
-        matches!(self, Self::EnzymeOnly | Self::ForwardMode | Self::ReverseMode)
+        matches!(
+            self,
+            Self::EnzymeOnly | Self::ForwardMode | Self::ReverseMode
+        )
     }
 
     /// Returns whether Enzyme AD is available.
@@ -250,23 +253,40 @@ pub trait GreeksEnzyme {
     ///
     /// This is more efficient than computing all Greeks when only
     /// Delta is needed.
-    fn compute_delta_ad(&mut self, gbm: GbmParams, payoff: PayoffParams, discount_factor: f64)
-        -> f64;
+    fn compute_delta_ad(
+        &mut self,
+        gbm: GbmParams,
+        payoff: PayoffParams,
+        discount_factor: f64,
+    ) -> f64;
 
     /// Computes only Gamma using nested AD or finite differences.
-    fn compute_gamma_ad(&mut self, gbm: GbmParams, payoff: PayoffParams, discount_factor: f64)
-        -> f64;
+    fn compute_gamma_ad(
+        &mut self,
+        gbm: GbmParams,
+        payoff: PayoffParams,
+        discount_factor: f64,
+    ) -> f64;
 
     /// Computes only Vega using AD.
-    fn compute_vega_ad(&mut self, gbm: GbmParams, payoff: PayoffParams, discount_factor: f64)
-        -> f64;
+    fn compute_vega_ad(
+        &mut self,
+        gbm: GbmParams,
+        payoff: PayoffParams,
+        discount_factor: f64,
+    ) -> f64;
 
     /// Computes only Theta using AD.
-    fn compute_theta_ad(&mut self, gbm: GbmParams, payoff: PayoffParams, discount_factor: f64)
-        -> f64;
+    fn compute_theta_ad(
+        &mut self,
+        gbm: GbmParams,
+        payoff: PayoffParams,
+        discount_factor: f64,
+    ) -> f64;
 
     /// Computes only Rho using AD.
-    fn compute_rho_ad(&mut self, gbm: GbmParams, payoff: PayoffParams, discount_factor: f64) -> f64;
+    fn compute_rho_ad(&mut self, gbm: GbmParams, payoff: PayoffParams, discount_factor: f64)
+        -> f64;
 }
 
 /// Implementation of GreeksEnzyme for MonteCarloPricer.
@@ -567,7 +587,9 @@ impl MonteCarloPricer {
             maturity: (gbm.maturity - bump).max(0.001),
             ..gbm
         };
-        let price_short = self.price_european(gbm_short, payoff, discount_factor).price;
+        let price_short = self
+            .price_european(gbm_short, payoff, discount_factor)
+            .price;
 
         // Theta is typically negative (time decay)
         // Convention: dV/dT where T decreases
@@ -726,8 +748,7 @@ mod tests {
         let mut pricer = create_pricer();
         let (gbm, payoff, df) = standard_params();
 
-        let result =
-            pricer.price_with_enzyme_greeks(gbm, payoff, df, GreeksMode::FiniteDifference);
+        let result = pricer.price_with_enzyme_greeks(gbm, payoff, df, GreeksMode::FiniteDifference);
 
         assert!(result.price > 0.0);
         assert!(result.delta > 0.0);

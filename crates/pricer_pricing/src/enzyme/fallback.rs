@@ -461,7 +461,10 @@ mod tests {
         let fallback = ComputationMethod::Fallback(CoreGreeksMode::BumpRevalue);
 
         assert_ne!(enzyme, fallback);
-        assert_eq!(enzyme, ComputationMethod::Enzyme(EnzymeGreeksMode::ReverseMode));
+        assert_eq!(
+            enzyme,
+            ComputationMethod::Enzyme(EnzymeGreeksMode::ReverseMode)
+        );
     }
 
     #[test]

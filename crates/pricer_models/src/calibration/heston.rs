@@ -137,8 +137,9 @@ impl HestonCalibrationData {
 
     /// Add a call option from implied volatility.
     pub fn add_call_vol(&mut self, strike: f64, expiry: f64, vol: f64) {
-        self.points
-            .push(HestonMarketPoint::from_implied_vol(strike, expiry, vol, true));
+        self.points.push(HestonMarketPoint::from_implied_vol(
+            strike, expiry, vol, true,
+        ));
     }
 
     /// Number of points.
@@ -244,11 +245,11 @@ impl HestonCalibrator {
     /// Create a new Heston calibrator with default settings.
     pub fn new() -> Self {
         let config = ModelCalibratorConfig::default().with_bounds(vec![
-            ParameterBounds::new(1e-6, 1.0),      // v0: (0, 1]
-            ParameterBounds::new(1e-6, 1.0),      // theta: (0, 1]
-            ParameterBounds::new(0.01, 20.0),     // kappa: [0.01, 20]
-            ParameterBounds::new(0.01, 2.0),      // xi: [0.01, 2]
-            ParameterBounds::new(-0.999, 0.999),  // rho: (-1, 1)
+            ParameterBounds::new(1e-6, 1.0),     // v0: (0, 1]
+            ParameterBounds::new(1e-6, 1.0),     // theta: (0, 1]
+            ParameterBounds::new(0.01, 20.0),    // kappa: [0.01, 20]
+            ParameterBounds::new(0.01, 2.0),     // xi: [0.01, 2]
+            ParameterBounds::new(-0.999, 0.999), // rho: (-1, 1)
         ]);
 
         Self {
@@ -320,6 +321,7 @@ impl HestonCalibrator {
     /// Price a European option using Heston characteristic function.
     ///
     /// Uses Gauss-Legendre quadrature for numerical integration.
+    #[allow(clippy::too_many_arguments)]
     pub fn price_option(
         &self,
         spot: f64,
@@ -386,6 +388,7 @@ impl HestonCalibrator {
     /// Heston characteristic function.
     ///
     /// Uses the formulation from Gatheral (2006) for numerical stability.
+    #[allow(clippy::too_many_arguments)]
     fn characteristic_function(
         &self,
         u: Complex64,
@@ -452,9 +455,8 @@ impl HestonCalibrator {
 
         // Newton-Raphson iteration
         for _ in 0..50 {
-            let (bs_price, vega) = black_scholes_with_vega(
-                spot, strike, expiry, rate, sigma, is_call,
-            );
+            let (bs_price, vega) =
+                black_scholes_with_vega(spot, strike, expiry, rate, sigma, is_call);
 
             if vega.abs() < 1e-15 {
                 break;
@@ -484,12 +486,7 @@ impl Calibrator for HestonCalibrator {
         _config: &CalibrationConfig,
     ) -> CalibrationResult<Self::ModelParams> {
         if let Err(e) = market_data.validate() {
-            return CalibrationResult::not_converged(
-                initial_params,
-                0,
-                f64::INFINITY,
-                e,
-            );
+            return CalibrationResult::not_converged(initial_params, 0, f64::INFINITY, e);
         }
 
         let spot = market_data.spot;
@@ -589,10 +586,10 @@ impl Calibrator for HestonCalibrator {
 
     fn constraints(&self) -> Vec<Constraint> {
         vec![
-            Constraint::positive(HestonParamIndex::V0),     // v0 > 0
-            Constraint::positive(HestonParamIndex::THETA),  // theta > 0
-            Constraint::positive(HestonParamIndex::KAPPA),  // kappa > 0
-            Constraint::positive(HestonParamIndex::XI),     // xi > 0
+            Constraint::positive(HestonParamIndex::V0),    // v0 > 0
+            Constraint::positive(HestonParamIndex::THETA), // theta > 0
+            Constraint::positive(HestonParamIndex::KAPPA), // kappa > 0
+            Constraint::positive(HestonParamIndex::XI),    // xi > 0
             Constraint::bounds(HestonParamIndex::RHO, -0.999, 0.999), // |rho| < 1
         ]
     }
@@ -790,6 +787,7 @@ impl std::ops::Neg for Complex64 {
 }
 
 /// Heston option price using numerical integration.
+#[allow(clippy::too_many_arguments)]
 fn heston_price_numerical(
     spot: f64,
     strike: f64,
@@ -854,6 +852,7 @@ fn heston_price_numerical(
 }
 
 /// Heston characteristic function (Gatheral formulation).
+#[allow(clippy::too_many_arguments)]
 fn heston_cf(
     u: Complex64,
     t: f64,
@@ -892,8 +891,7 @@ fn heston_cf(
     let c = Complex64::new(c_coeff, 0.0)
         * ((beta - d_safe) * t - Complex64::new(2.0, 0.0) * ((one - g * exp_dt) / (one - g)).ln());
 
-    let d_fn =
-        ((beta - d_safe) / Complex64::new(xi2, 0.0)) * ((one - exp_dt) / (one - g * exp_dt));
+    let d_fn = ((beta - d_safe) / Complex64::new(xi2, 0.0)) * ((one - exp_dt) / (one - g * exp_dt));
 
     // Full characteristic function: exp(i*u*ln(F) + C + D*v0)
     let log_fwd_term = u_i * Complex64::new(log_fwd, 0.0);
@@ -947,7 +945,8 @@ fn norm_cdf(x: f64) -> f64 {
     let x_abs = x.abs();
 
     let t = 1.0 / (1.0 + p * x_abs);
-    let y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * (-x_abs * x_abs / 2.0).exp();
+    let y =
+        1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * (-x_abs * x_abs / 2.0).exp();
 
     0.5 * (1.0 + sign * y)
 }
@@ -1085,8 +1084,7 @@ mod tests {
             1.0,   // expiry
             0.05,  // rate
             0.0,   // dividend
-            &params,
-            true,  // call
+            &params, true, // call
         );
 
         // Should produce reasonable option price
@@ -1129,9 +1127,7 @@ mod tests {
 
         // Generate prices for various strikes
         for strike in [90.0, 95.0, 100.0, 105.0, 110.0] {
-            let price = calibrator.price_option(
-                spot, strike, 1.0, rate, 0.0, &true_params, true,
-            );
+            let price = calibrator.price_option(spot, strike, 1.0, rate, 0.0, &true_params, true);
             data.add_call(strike, 1.0, price);
         }
 
@@ -1145,7 +1141,7 @@ mod tests {
         // reasonable error bounds
         if result.converged {
             assert!((result.params[0] - true_params[0]).abs() < 0.02); // v0
-            assert!((result.params[4] - true_params[4]).abs() < 0.3);  // rho
+            assert!((result.params[4] - true_params[4]).abs() < 0.3); // rho
         }
     }
 

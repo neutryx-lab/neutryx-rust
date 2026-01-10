@@ -85,7 +85,6 @@
 // Requirement 1.1: #![feature(autodiff)] を有効化する仕組み
 // Requirement 1.2: enzyme-ad feature が無効時は stable Rust でコンパイル可能
 #![cfg_attr(feature = "enzyme-ad", feature(autodiff))]
-
 #![deny(missing_docs)]
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(rustdoc::private_intra_doc_links)]

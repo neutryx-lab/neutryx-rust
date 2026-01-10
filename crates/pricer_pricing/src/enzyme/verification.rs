@@ -30,7 +30,7 @@
 //! println!("All passed: {}", result.all_passed());
 //! ```
 
-use crate::mc::{GbmParams, MonteCarloPricer, MonteCarloConfig, PayoffParams};
+use crate::mc::{GbmParams, MonteCarloConfig, MonteCarloPricer, PayoffParams};
 
 use super::greeks::{EnzymeGreeksResult, GreeksEnzyme, GreeksMode};
 
@@ -134,9 +134,8 @@ impl GreekVerification {
     ) -> Self {
         let enzyme_fd_passed = relative_error(enzyme_value, fd_value) < enzyme_fd_tolerance;
 
-        let analytical_passed = analytical_value.map(|av| {
-            relative_error(enzyme_value, av) < analytical_tolerance
-        });
+        let analytical_passed =
+            analytical_value.map(|av| relative_error(enzyme_value, av) < analytical_tolerance);
 
         Self {
             name,
@@ -274,7 +273,8 @@ pub mod analytical {
         let abs_x = x.abs();
 
         let t = 1.0 / (1.0 + P * abs_x);
-        let y = 1.0 - (((((A5 * t + A4) * t + A3) * t + A2) * t + A1) * t) * (-abs_x * abs_x / 2.0).exp();
+        let y = 1.0
+            - (((((A5 * t + A4) * t + A3) * t + A2) * t + A1) * t) * (-abs_x * abs_x / 2.0).exp();
 
         0.5 * (1.0 + sign * y)
     }
@@ -416,8 +416,7 @@ pub fn verify_european_greeks(
 
     // Compute FD Greeks (force finite difference mode)
     pricer.reset_with_seed(config.seed);
-    let fd_result =
-        pricer.price_with_enzyme_greeks(gbm, payoff, df, GreeksMode::FiniteDifference);
+    let fd_result = pricer.price_with_enzyme_greeks(gbm, payoff, df, GreeksMode::FiniteDifference);
 
     // Compute analytical Greeks
     let (ana_delta, ana_gamma, ana_vega, ana_theta, ana_rho) = if is_call {
@@ -625,8 +624,7 @@ mod tests {
         assert!(
             result.delta.enzyme_fd_passed,
             "Delta enzyme vs FD failed: {} vs {}",
-            result.delta.enzyme_value,
-            result.delta.fd_value
+            result.delta.enzyme_value, result.delta.fd_value
         );
 
         // Price should be reasonable

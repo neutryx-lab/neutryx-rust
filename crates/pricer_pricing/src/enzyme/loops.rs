@@ -562,8 +562,8 @@ impl<T: Float> EnzymeGbmGenerator<T> {
         let mut log_spot = self.spot.ln();
 
         // Fixed-size for loop - Enzyme compatible
-        for step_idx in 0..self.n_steps {
-            log_spot = log_spot + self.drift + self.vol_sqrt_dt * randoms[step_idx];
+        for random in randoms.iter().take(self.n_steps) {
+            log_spot = log_spot + self.drift + self.vol_sqrt_dt * *random;
         }
 
         log_spot.exp()
@@ -593,8 +593,8 @@ impl<T: Float> EnzymeGbmGenerator<T> {
         path.push(self.spot);
 
         // Fixed-size for loop - Enzyme compatible
-        for step_idx in 0..self.n_steps {
-            log_spot = log_spot + self.drift + self.vol_sqrt_dt * randoms[step_idx];
+        for random in randoms.iter().take(self.n_steps) {
+            log_spot = log_spot + self.drift + self.vol_sqrt_dt * *random;
             path.push(log_spot.exp());
         }
 
@@ -628,8 +628,8 @@ impl<T: Float> EnzymeGbmGenerator<T> {
         path_buffer.push(self.spot);
 
         // Fixed-size for loop - Enzyme compatible
-        for step_idx in 0..self.n_steps {
-            log_spot = log_spot + self.drift + self.vol_sqrt_dt * randoms[step_idx];
+        for random in randoms.iter().take(self.n_steps) {
+            log_spot = log_spot + self.drift + self.vol_sqrt_dt * *random;
             path_buffer.push(log_spot.exp());
         }
 

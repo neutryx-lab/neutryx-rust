@@ -79,9 +79,7 @@ pub fn run() -> Result<()> {
     for (trade, result) in trades.iter().zip(results.iter()) {
         println!(
             "{:<10} {:<10} {:<15.6}",
-            result.trade_id,
-            trade.ccy,
-            result.pv
+            result.trade_id, trade.ccy, result.pv
         );
     }
     println!("----------------------------------------");

@@ -46,9 +46,7 @@ pub enum CalibrationError {
     /// Insufficient market data
     ///
     /// Not enough data points for reliable calibration.
-    #[error(
-        "市場データが不足しています (required: {required}, provided: {provided})"
-    )]
+    #[error("市場データが不足しています (required: {required}, provided: {provided})")]
     InsufficientData {
         /// Minimum required data points
         required: usize,

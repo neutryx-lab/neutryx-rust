@@ -120,7 +120,7 @@ impl ParallelGreeksConfig {
         } else {
             // Auto: divide evenly across threads
             let n_threads = rayon::current_num_threads();
-            (n_paths + n_threads - 1) / n_threads
+            n_paths.div_ceil(n_threads)
         }
     }
 }
@@ -204,15 +204,12 @@ impl ParallelGreeksComputer {
         // Parallel computation with fold-reduce pattern
         let result = (0..n_paths)
             .into_par_iter()
-            .fold(
-                || AdjointAccumulator::new(),
-                |mut acc, path_idx| {
-                    let contribution = path_fn(path_idx);
-                    acc.merge(&contribution);
-                    acc
-                },
-            )
-            .reduce(|| AdjointAccumulator::new(), |mut a, b| {
+            .fold(AdjointAccumulator::new, |mut acc, path_idx| {
+                let contribution = path_fn(path_idx);
+                acc.merge(&contribution);
+                acc
+            })
+            .reduce(AdjointAccumulator::new, |mut a, b| {
                 a.merge(&b);
                 a
             });
@@ -241,11 +238,7 @@ impl ParallelGreeksComputer {
     ///
     /// This is more efficient for very large path counts as it reduces
     /// the overhead of creating many small tasks.
-    pub fn compute_parallel_chunked<F>(
-        &self,
-        n_paths: usize,
-        path_fn: F,
-    ) -> AdjointAccumulator<f64>
+    pub fn compute_parallel_chunked<F>(&self, n_paths: usize, path_fn: F) -> AdjointAccumulator<f64>
     where
         F: Fn(usize) -> AdjointAccumulator<f64> + Send + Sync,
     {
@@ -256,15 +249,12 @@ impl ParallelGreeksComputer {
         let result = (0..n_paths)
             .into_par_iter()
             .with_min_len(chunk_size)
-            .fold(
-                || AdjointAccumulator::new(),
-                |mut acc, path_idx| {
-                    let contribution = path_fn(path_idx);
-                    acc.merge(&contribution);
-                    acc
-                },
-            )
-            .reduce(|| AdjointAccumulator::new(), |mut a, b| {
+            .fold(AdjointAccumulator::new, |mut acc, path_idx| {
+                let contribution = path_fn(path_idx);
+                acc.merge(&contribution);
+                acc
+            })
+            .reduce(AdjointAccumulator::new, |mut a, b| {
                 a.merge(&b);
                 a
             });

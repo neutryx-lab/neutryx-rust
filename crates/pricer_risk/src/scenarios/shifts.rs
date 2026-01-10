@@ -325,8 +325,8 @@ mod tests {
 
     #[test]
     fn test_bump_scenario_has_shifts_for() {
-        let scenario = BumpScenario::new()
-            .with_shift(RiskFactorShift::rate_parallel("USD.*", 0.0001_f64));
+        let scenario =
+            BumpScenario::new().with_shift(RiskFactorShift::rate_parallel("USD.*", 0.0001_f64));
 
         assert!(scenario.has_shifts_for(RiskFactorType::InterestRate));
         assert!(!scenario.has_shifts_for(RiskFactorType::Credit));
@@ -334,8 +334,7 @@ mod tests {
 
     #[test]
     fn test_scenario_new() {
-        let bumps = BumpScenario::new()
-            .with_shift(RiskFactorShift::rate_parallel("*", 0.0001_f64));
+        let bumps = BumpScenario::new().with_shift(RiskFactorShift::rate_parallel("*", 0.0001_f64));
 
         let scenario = Scenario::new("IR +1bp", "Interest rate parallel up 1bp", bumps);
 
@@ -346,8 +345,7 @@ mod tests {
 
     #[test]
     fn test_scenario_named() {
-        let bumps = BumpScenario::new()
-            .with_shift(RiskFactorShift::rate_parallel("*", 0.01_f64));
+        let bumps = BumpScenario::new().with_shift(RiskFactorShift::rate_parallel("*", 0.01_f64));
 
         let scenario = Scenario::named("IR +100bp", bumps);
 
@@ -357,8 +355,8 @@ mod tests {
 
     #[test]
     fn test_bump_scenario_clone() {
-        let scenario = BumpScenario::new()
-            .with_shift(RiskFactorShift::rate_parallel("*", 0.0001_f64));
+        let scenario =
+            BumpScenario::new().with_shift(RiskFactorShift::rate_parallel("*", 0.0001_f64));
 
         let cloned = scenario.clone();
         assert_eq!(cloned.len(), scenario.len());

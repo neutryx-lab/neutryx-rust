@@ -33,9 +33,7 @@
 //! ```
 
 use pricer_core::types::Currency;
-use pricer_models::demo::{
-    BlackScholes, CmsSwap, InstrumentEnum, ModelEnum, VanillaSwap,
-};
+use pricer_models::demo::{BlackScholes, CmsSwap, InstrumentEnum, ModelEnum, VanillaSwap};
 use pricer_optimiser::provider::MarketProvider;
 use pricer_pricing::context::{price_single_trade, PricingContext};
 use rayon::prelude::*;
@@ -68,7 +66,12 @@ impl DemoTrade {
     /// * `ccy` - Trade currency.
     /// * `model` - Stochastic model.
     /// * `instrument` - Instrument definition.
-    pub fn new(id: impl Into<String>, ccy: Currency, model: ModelEnum, instrument: InstrumentEnum) -> Self {
+    pub fn new(
+        id: impl Into<String>,
+        ccy: Currency,
+        model: ModelEnum,
+        instrument: InstrumentEnum,
+    ) -> Self {
         Self {
             id: id.into(),
             ccy,
@@ -150,7 +153,10 @@ pub struct PricingResultDemo {
 /// Cache misses in `MarketProvider` will produce log output:
 /// - `[Optimiser] Bootstrapping Yield Curve for {currency}...`
 /// - `[Optimiser] Calibrating SABR Surface for {currency}...`
-pub fn run_portfolio_pricing(trades: &[DemoTrade], market: &MarketProvider) -> Vec<PricingResultDemo> {
+pub fn run_portfolio_pricing(
+    trades: &[DemoTrade],
+    market: &MarketProvider,
+) -> Vec<PricingResultDemo> {
     trades
         .par_iter()
         .map(|trade| {
@@ -173,10 +179,8 @@ pub fn run_portfolio_pricing(trades: &[DemoTrade], market: &MarketProvider) -> V
             // =================================================================
 
             // Borrow references from Arcs for zero-copy context
-            let ctx = PricingContext::new(
-                curve_arc.as_ref(),
-                vol_arc.as_ref().map(|arc| arc.as_ref()),
-            );
+            let ctx =
+                PricingContext::new(curve_arc.as_ref(), vol_arc.as_ref().map(|arc| arc.as_ref()));
 
             // Invoke the pricing kernel
             let pv = price_single_trade(&trade.model, &trade.instrument, &ctx);
@@ -192,7 +196,10 @@ pub fn run_portfolio_pricing(trades: &[DemoTrade], market: &MarketProvider) -> V
 /// Executes portfolio pricing sequentially (for testing/debugging).
 ///
 /// Same logic as `run_portfolio_pricing` but without parallelism.
-pub fn run_portfolio_pricing_sequential(trades: &[DemoTrade], market: &MarketProvider) -> Vec<PricingResultDemo> {
+pub fn run_portfolio_pricing_sequential(
+    trades: &[DemoTrade],
+    market: &MarketProvider,
+) -> Vec<PricingResultDemo> {
     trades
         .iter()
         .map(|trade| {
@@ -203,10 +210,8 @@ pub fn run_portfolio_pricing_sequential(trades: &[DemoTrade], market: &MarketPro
                 None
             };
 
-            let ctx = PricingContext::new(
-                curve_arc.as_ref(),
-                vol_arc.as_ref().map(|arc| arc.as_ref()),
-            );
+            let ctx =
+                PricingContext::new(curve_arc.as_ref(), vol_arc.as_ref().map(|arc| arc.as_ref()));
 
             let pv = price_single_trade(&trade.model, &trade.instrument, &ctx);
 
@@ -263,7 +268,10 @@ mod tests {
         let trade = DemoTrade::new(
             "T003",
             Currency::JPY,
-            ModelEnum::HullWhite(HullWhite { mean_rev: 0.1, vol: 0.01 }),
+            ModelEnum::HullWhite(HullWhite {
+                mean_rev: 0.1,
+                vol: 0.01,
+            }),
             InstrumentEnum::VanillaSwap(VanillaSwap { fixed_rate: 0.01 }),
         );
 

@@ -116,6 +116,11 @@ impl SABRCalibrationData {
         1 + self.smile_points.len()
     }
 
+    /// Check if the data set is empty (never true since ATM is always present).
+    pub fn is_empty(&self) -> bool {
+        false
+    }
+
     /// Check if there's only ATM data.
     pub fn is_atm_only(&self) -> bool {
         self.smile_points.is_empty()
@@ -133,7 +138,7 @@ impl SABRCalibrationData {
             return Err("ATM volatility must be positive".to_string());
         }
         if let Some(beta) = self.fixed_beta {
-            if beta < 0.0 || beta > 1.0 {
+            if !(0.0..=1.0).contains(&beta) {
                 return Err("Beta must be in [0, 1]".to_string());
             }
         }
@@ -171,15 +176,27 @@ impl SABRParamIndex {
     pub const BETA: usize = 1;
     /// Rho index (depends on beta mode).
     pub fn rho(fixed_beta: bool) -> usize {
-        if fixed_beta { 1 } else { 2 }
+        if fixed_beta {
+            1
+        } else {
+            2
+        }
     }
     /// Nu index (depends on beta mode).
     pub fn nu(fixed_beta: bool) -> usize {
-        if fixed_beta { 2 } else { 3 }
+        if fixed_beta {
+            2
+        } else {
+            3
+        }
     }
     /// Number of parameters.
     pub fn count(fixed_beta: bool) -> usize {
-        if fixed_beta { 3 } else { 4 }
+        if fixed_beta {
+            3
+        } else {
+            4
+        }
     }
 }
 
@@ -215,10 +232,10 @@ impl SABRCalibrator {
     /// Create a new SABR calibrator (calibrates all params including beta).
     pub fn new() -> Self {
         let config = ModelCalibratorConfig::default().with_bounds(vec![
-            ParameterBounds::new(0.001, 2.0),     // alpha: (0, 2]
-            ParameterBounds::unit_interval(),     // beta: [0, 1]
-            ParameterBounds::new(-0.999, 0.999),  // rho: (-1, 1)
-            ParameterBounds::new(0.001, 2.0),     // nu: (0, 2]
+            ParameterBounds::new(0.001, 2.0),    // alpha: (0, 2]
+            ParameterBounds::unit_interval(),    // beta: [0, 1]
+            ParameterBounds::new(-0.999, 0.999), // rho: (-1, 1)
+            ParameterBounds::new(0.001, 2.0),    // nu: (0, 2]
         ]);
 
         Self {
@@ -230,9 +247,9 @@ impl SABRCalibrator {
     /// Create a calibrator with fixed beta.
     pub fn with_fixed_beta(beta: f64) -> Self {
         let config = ModelCalibratorConfig::default().with_bounds(vec![
-            ParameterBounds::new(0.001, 2.0),     // alpha: (0, 2]
-            ParameterBounds::new(-0.999, 0.999),  // rho: (-1, 1)
-            ParameterBounds::new(0.001, 2.0),     // nu: (0, 2]
+            ParameterBounds::new(0.001, 2.0),    // alpha: (0, 2]
+            ParameterBounds::new(-0.999, 0.999), // rho: (-1, 1)
+            ParameterBounds::new(0.001, 2.0),    // nu: (0, 2]
         ]);
 
         Self {
@@ -269,7 +286,10 @@ impl SABRCalibrator {
 
     /// Extract full parameters from calibration vector.
     fn extract_params(&self, params: &[f64], data: &SABRCalibrationData) -> (f64, f64, f64, f64) {
-        let beta = self.fixed_beta.or(data.fixed_beta).unwrap_or(params[SABRParamIndex::BETA]);
+        let beta = self
+            .fixed_beta
+            .or(data.fixed_beta)
+            .unwrap_or(params[SABRParamIndex::BETA]);
         let fixed = self.fixed_beta.is_some() || data.fixed_beta.is_some();
 
         let alpha = params[SABRParamIndex::ALPHA];
@@ -291,12 +311,7 @@ impl Calibrator for SABRCalibrator {
         _config: &CalibrationConfig,
     ) -> CalibrationResult<Self::ModelParams> {
         if let Err(e) = market_data.validate() {
-            return CalibrationResult::not_converged(
-                initial_params,
-                0,
-                f64::INFINITY,
-                e,
-            );
+            return CalibrationResult::not_converged(initial_params, 0, f64::INFINITY, e);
         }
 
         let forward = market_data.forward;
@@ -469,11 +484,7 @@ fn sabr_hagan_vol(
     let chi_z = ((sqrt_term + z - rho) / (1.0 - rho)).ln();
 
     // Handle chi(z) near zero
-    let z_over_chi = if chi_z.abs() < eps {
-        1.0
-    } else {
-        z / chi_z
-    };
+    let z_over_chi = if chi_z.abs() < eps { 1.0 } else { z / chi_z };
 
     // Denominator from log-moneyness expansion
     let log_fk_2 = log_fk * log_fk;
@@ -481,9 +492,7 @@ fn sabr_hagan_vol(
     let one_minus_beta_2 = one_minus_beta * one_minus_beta;
     let one_minus_beta_4 = one_minus_beta_2 * one_minus_beta_2;
 
-    let denom = 1.0
-        + one_minus_beta_2 * log_fk_2 / 24.0
-        + one_minus_beta_4 * log_fk_4 / 1920.0;
+    let denom = 1.0 + one_minus_beta_2 * log_fk_2 / 24.0 + one_minus_beta_4 * log_fk_4 / 1920.0;
 
     // Higher-order corrections
     let term1 = one_minus_beta_2 * alpha * alpha / (24.0 * fk_mid * fk_mid);
@@ -497,14 +506,7 @@ fn sabr_hagan_vol(
 }
 
 /// SABR ATM volatility approximation.
-fn sabr_atm_vol(
-    forward: f64,
-    expiry: f64,
-    alpha: f64,
-    beta: f64,
-    rho: f64,
-    nu: f64,
-) -> f64 {
+fn sabr_atm_vol(forward: f64, expiry: f64, alpha: f64, beta: f64, rho: f64, nu: f64) -> f64 {
     let one_minus_beta = 1.0 - beta;
     let f_pow = forward.powf(one_minus_beta);
 
@@ -639,14 +641,18 @@ mod tests {
         let forward = 0.03;
         let expiry = 1.0;
 
-        let atm_vol = sabr_hagan_vol(forward, forward, expiry, true_alpha, true_beta, true_rho, true_nu);
+        let atm_vol = sabr_hagan_vol(
+            forward, forward, expiry, true_alpha, true_beta, true_rho, true_nu,
+        );
 
-        let mut data = SABRCalibrationData::new(forward, expiry, atm_vol)
-            .with_fixed_beta(true_beta);
+        let mut data =
+            SABRCalibrationData::new(forward, expiry, atm_vol).with_fixed_beta(true_beta);
 
         // Add smile points
         for strike in [0.02, 0.025, 0.035, 0.04] {
-            let vol = sabr_hagan_vol(forward, strike, expiry, true_alpha, true_beta, true_rho, true_nu);
+            let vol = sabr_hagan_vol(
+                forward, strike, expiry, true_alpha, true_beta, true_rho, true_nu,
+            );
             data.add_smile_point(strike, vol);
         }
 
@@ -657,7 +663,10 @@ mod tests {
 
         // Should converge and recover approximately correct parameters
         assert!(result.converged, "Calibration did not converge");
-        assert!((result.params[0] - true_alpha).abs() < 0.01, "Alpha mismatch");
+        assert!(
+            (result.params[0] - true_alpha).abs() < 0.01,
+            "Alpha mismatch"
+        );
         assert!((result.params[1] - true_rho).abs() < 0.1, "Rho mismatch");
         assert!((result.params[2] - true_nu).abs() < 0.1, "Nu mismatch");
     }
@@ -672,13 +681,17 @@ mod tests {
         let forward = 0.03;
         let expiry = 1.0;
 
-        let atm_vol = sabr_hagan_vol(forward, forward, expiry, true_alpha, true_beta, true_rho, true_nu);
+        let atm_vol = sabr_hagan_vol(
+            forward, forward, expiry, true_alpha, true_beta, true_rho, true_nu,
+        );
 
         let mut data = SABRCalibrationData::new(forward, expiry, atm_vol);
 
         // Add more smile points for full calibration
         for strike in [0.015, 0.02, 0.025, 0.035, 0.04, 0.045] {
-            let vol = sabr_hagan_vol(forward, strike, expiry, true_alpha, true_beta, true_rho, true_nu);
+            let vol = sabr_hagan_vol(
+                forward, strike, expiry, true_alpha, true_beta, true_rho, true_nu,
+            );
             data.add_smile_point(strike, vol);
         }
 

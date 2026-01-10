@@ -18,7 +18,7 @@ use num_traits::Float;
 
 use super::distributions::{norm_cdf, norm_pdf};
 use super::error::AnalyticalError;
-use crate::instruments::{ExerciseStyle, PayoffType, VanillaOption};
+use crate::instruments::{PayoffType, VanillaOption};
 
 /// Bachelier (normal) model for European option pricing.
 ///
@@ -81,7 +81,10 @@ impl<T: Float> Bachelier<T> {
             });
         }
 
-        Ok(Self { forward, volatility })
+        Ok(Self {
+            forward,
+            volatility,
+        })
     }
 
     /// Returns the forward price.
@@ -271,6 +274,7 @@ impl<T: Float> Bachelier<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::instruments::ExerciseStyle;
     use approx::assert_relative_eq;
 
     // ==========================================================

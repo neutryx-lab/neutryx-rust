@@ -186,8 +186,9 @@ mod tests {
 
     #[test]
     fn test_calibration_target_weight() {
-        let opt_target: CalibrationTarget<f64> =
-            CalibrationTarget::Option(OptionTarget::from_implied_vol(100.0, 1.0, 0.2).with_weight(2.0));
+        let opt_target: CalibrationTarget<f64> = CalibrationTarget::Option(
+            OptionTarget::from_implied_vol(100.0, 1.0, 0.2).with_weight(2.0),
+        );
         assert_eq!(opt_target.weight(), 2.0);
     }
 }

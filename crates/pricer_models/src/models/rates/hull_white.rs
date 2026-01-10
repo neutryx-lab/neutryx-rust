@@ -709,8 +709,7 @@ mod tests {
     #[test]
     fn test_hull_white_params_with_theta_function_constant() {
         let theta = ThetaFunction::constant(0.005_f64);
-        let params =
-            HullWhiteParams::with_theta_function(0.1, 0.01, 0.03, theta).unwrap();
+        let params = HullWhiteParams::with_theta_function(0.1, 0.01, 0.03, theta).unwrap();
 
         assert_eq!(params.mean_reversion, 0.1);
         assert_eq!(params.volatility, 0.01);
@@ -724,8 +723,7 @@ mod tests {
         let times = vec![0.0_f64, 1.0, 2.0];
         let values = vec![0.003_f64, 0.004, 0.005];
         let theta = ThetaFunction::from_table(times, values).unwrap();
-        let params =
-            HullWhiteParams::with_theta_function(0.1, 0.01, 0.03, theta).unwrap();
+        let params = HullWhiteParams::with_theta_function(0.1, 0.01, 0.03, theta).unwrap();
 
         assert!((params.theta(0.5) - 0.0035).abs() < 1e-10);
     }
@@ -782,8 +780,7 @@ mod tests {
     fn test_hull_white_custom_theta_in_evolve_step() {
         // Use constant theta that differs from what the curve would give
         let theta = ThetaFunction::constant(0.01_f64); // Much higher than a * r* = 0.003
-        let params =
-            HullWhiteParams::with_theta_function(0.1, 0.01, 0.03, theta).unwrap();
+        let params = HullWhiteParams::with_theta_function(0.1, 0.01, 0.03, theta).unwrap();
         let state = HullWhiteModel::initial_state(&params);
         let dt = 1.0;
         let dw = [0.0];

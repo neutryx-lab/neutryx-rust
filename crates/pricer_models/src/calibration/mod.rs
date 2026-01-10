@@ -52,14 +52,14 @@ pub use heston::{
     calibrate_heston, HestonCalibrationData, HestonCalibrator, HestonMarketPoint, HestonParamIndex,
 };
 pub use hull_white::{
-    calibrate_hull_white, HullWhiteCalibrationData, HullWhiteCalibrator, HWParamIndex,
-    HWSwaptionPoint,
+    calibrate_hull_white, HWParamIndex, HWSwaptionPoint, HullWhiteCalibrationData,
+    HullWhiteCalibrator,
 };
 pub use model_calibrator::{ModelCalibrator, ModelCalibratorConfig};
 pub use result::{CalibrationDiagnostics, CalibrationResult};
 pub use sabr::{
-    calibrate_sabr, calibrate_sabr_fixed_beta, SABRCalibrationData, SABRCalibrator,
-    SABRParamIndex, SABRSmilePoint,
+    calibrate_sabr, calibrate_sabr_fixed_beta, SABRCalibrationData, SABRCalibrator, SABRParamIndex,
+    SABRSmilePoint,
 };
 pub use swaption_calibrator::{
     SwaptionCalibrator, SwaptionMarketData, SwaptionMarketPoint, VolatilityType,

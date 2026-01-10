@@ -251,9 +251,7 @@ impl<T: Float + Default> StochasticModelEnum<T> {
     /// # Returns
     /// `Some(StochasticModelEnum::SABR)` if parameters are valid, `None` otherwise
     pub fn sabr(params: SABRParams<T>) -> Option<Self> {
-        SABRModel::new(params)
-            .ok()
-            .map(StochasticModelEnum::SABR)
+        SABRModel::new(params).ok().map(StochasticModelEnum::SABR)
     }
 
     /// Create a new Hull-White model (requires `rates` feature).

@@ -215,12 +215,7 @@ impl HullWhiteCalibrator {
     /// σ_Black ≈ σ * sqrt(B(T_opt, T_opt + τ)) * sqrt(V(T_opt))
     ///
     /// where B is the zero-coupon bond volatility factor.
-    pub fn swaption_vol(
-        expiry: f64,
-        tenor: f64,
-        mean_reversion: f64,
-        sigma: f64,
-    ) -> f64 {
+    pub fn swaption_vol(expiry: f64, tenor: f64, mean_reversion: f64, sigma: f64) -> f64 {
         // B(t, T) = (1 - exp(-a*(T-t))) / a
         let b_factor = |t: f64, t_end: f64, a: f64| -> f64 {
             if a.abs() < 1e-10 {
@@ -265,12 +260,7 @@ impl Calibrator for HullWhiteCalibrator {
         _config: &CalibrationConfig,
     ) -> CalibrationResult<Self::ModelParams> {
         if let Err(e) = market_data.validate() {
-            return CalibrationResult::not_converged(
-                initial_params,
-                0,
-                f64::INFINITY,
-                e,
-            );
+            return CalibrationResult::not_converged(initial_params, 0, f64::INFINITY, e);
         }
 
         let swaptions = market_data.swaptions.clone();
@@ -309,12 +299,8 @@ impl Calibrator for HullWhiteCalibrator {
             .swaptions
             .iter()
             .map(|swp| {
-                let model_vol = HullWhiteCalibrator::swaption_vol(
-                    swp.expiry,
-                    swp.tenor,
-                    mean_reversion,
-                    sigma,
-                );
+                let model_vol =
+                    HullWhiteCalibrator::swaption_vol(swp.expiry, swp.tenor, mean_reversion, sigma);
                 swp.weight * (model_vol - swp.market_vol)
             })
             .collect()
@@ -505,8 +491,7 @@ mod tests {
 
     #[test]
     fn test_hw_with_payment_frequency() {
-        let data = HullWhiteCalibrationData::new(0.03)
-            .with_payment_frequency(0.25); // Quarterly
+        let data = HullWhiteCalibrationData::new(0.03).with_payment_frequency(0.25); // Quarterly
 
         assert_eq!(data.payment_frequency, 0.25);
     }
@@ -521,8 +506,7 @@ mod tests {
 
     #[test]
     fn test_hw_swaption_weight() {
-        let point = HWSwaptionPoint::from_lognormal(1.0, 5.0, 0.20)
-            .with_weight(2.0);
+        let point = HWSwaptionPoint::from_lognormal(1.0, 5.0, 0.20).with_weight(2.0);
         assert_eq!(point.weight, 2.0);
     }
 }

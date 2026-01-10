@@ -190,6 +190,7 @@ impl<T: Float> ADCheckpointState<T> {
 #[derive(Debug)]
 pub struct CheckpointedAD<T: Float> {
     config: CheckpointADConfig,
+    #[allow(dead_code)]
     manager: CheckpointManager<T>,
     adjoint_accumulator: AdjointAccumulator<T>,
     checkpoints: Vec<ADCheckpointState<T>>,
@@ -199,7 +200,7 @@ pub struct CheckpointedAD<T: Float> {
 impl<T: Float> CheckpointedAD<T> {
     /// Creates a new checkpointed AD coordinator.
     pub fn new(config: CheckpointADConfig) -> Self {
-        let manager = CheckpointManager::new(config.strategy.clone());
+        let manager = CheckpointManager::new(config.strategy);
         Self {
             config,
             manager,
@@ -230,10 +231,7 @@ impl<T: Float> CheckpointedAD<T> {
 
     /// Finds the nearest checkpoint before or at the given step.
     pub fn nearest_checkpoint(&self, step: usize) -> Option<&ADCheckpointState<T>> {
-        self.checkpoints
-            .iter()
-            .rev()
-            .find(|cp| cp.step <= step)
+        self.checkpoints.iter().rev().find(|cp| cp.step <= step)
     }
 
     /// Clears all saved checkpoints.

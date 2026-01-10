@@ -157,7 +157,12 @@ impl<T: Float> ScenarioEngine<T> {
     /// # Returns
     ///
     /// The scenario result with P&L.
-    pub fn execute_scenario<F>(&mut self, scenario: &Scenario<T>, base_value: T, pricer: F) -> ScenarioResult<T>
+    pub fn execute_scenario<F>(
+        &mut self,
+        scenario: &Scenario<T>,
+        base_value: T,
+        pricer: F,
+    ) -> ScenarioResult<T>
     where
         F: Fn(&str) -> T,
     {
@@ -289,8 +294,7 @@ mod tests {
     #[test]
     fn test_scenario_engine_add_scenario() {
         let mut engine = ScenarioEngine::<f64>::new();
-        let bumps =
-            BumpScenario::new().with_shift(RiskFactorShift::rate_parallel("*", 0.0001_f64));
+        let bumps = BumpScenario::new().with_shift(RiskFactorShift::rate_parallel("*", 0.0001_f64));
         let scenario = Scenario::named("IR +1bp", bumps);
 
         engine.add_scenario(scenario);
@@ -300,8 +304,7 @@ mod tests {
     #[test]
     fn test_scenario_engine_execute() {
         let mut engine = ScenarioEngine::<f64>::new();
-        let bumps =
-            BumpScenario::new().with_shift(RiskFactorShift::rate_parallel("*", 0.0001_f64));
+        let bumps = BumpScenario::new().with_shift(RiskFactorShift::rate_parallel("*", 0.0001_f64));
         let scenario = Scenario::named("IR +1bp", bumps);
 
         // Simple pricer that returns base - 1000 for any scenario

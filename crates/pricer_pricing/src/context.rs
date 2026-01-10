@@ -64,10 +64,7 @@ impl<'a> PricingContext<'a> {
     ///
     /// * `discount_curve` - Reference to the discount curve.
     /// * `adjustment_vol` - Optional reference to volatility surface.
-    pub fn new(
-        discount_curve: &'a CurveEnum,
-        adjustment_vol: Option<&'a VolSurfaceEnum>,
-    ) -> Self {
+    pub fn new(discount_curve: &'a CurveEnum, adjustment_vol: Option<&'a VolSurfaceEnum>) -> Self {
         Self {
             discount_curve,
             adjustment_vol,
@@ -185,7 +182,7 @@ mod tests {
         let curve = CurveEnum::Flat(FlatCurve { rate: 0.05 });
         let ctx1 = PricingContext::new(&curve, None);
         let ctx2 = ctx1; // Copy
-        // Both should be valid
+                         // Both should be valid
         assert!(ctx1.adjustment_vol.is_none());
         assert!(ctx2.adjustment_vol.is_none());
     }

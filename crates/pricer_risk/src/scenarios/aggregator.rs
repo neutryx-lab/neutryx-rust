@@ -95,7 +95,11 @@ impl<T: Float> PortfolioGreeks<T> {
     /// Add a Greek value for a specific factor.
     pub fn add_factor_greek(&mut self, factor_key: impl Into<String>, value: T) {
         let key = factor_key.into();
-        let current = self.greeks_by_factor.get(&key).copied().unwrap_or(T::zero());
+        let current = self
+            .greeks_by_factor
+            .get(&key)
+            .copied()
+            .unwrap_or(T::zero());
         self.greeks_by_factor.insert(key, current + value);
     }
 
@@ -242,16 +246,20 @@ impl<T: Float> GreeksAggregator<T> {
 
     /// Notional-weighted aggregation.
     fn aggregate_notional_weighted(&self) -> PortfolioGreeks<T> {
-        let total_notional: T = self.instruments.iter().map(|i| i.notional.abs()).fold(
-            T::zero(),
-            |acc, n| {
-                if n.is_finite() {
-                    acc + n
-                } else {
-                    acc
-                }
-            },
-        );
+        let total_notional: T =
+            self.instruments
+                .iter()
+                .map(|i| i.notional.abs())
+                .fold(
+                    T::zero(),
+                    |acc, n| {
+                        if n.is_finite() {
+                            acc + n
+                        } else {
+                            acc
+                        }
+                    },
+                );
 
         if total_notional == T::zero() {
             return PortfolioGreeks::new();
@@ -283,7 +291,10 @@ mod tests {
     #[test]
     fn test_aggregation_method_name() {
         assert_eq!(AggregationMethod::Simple.name(), "Simple");
-        assert_eq!(AggregationMethod::NotionalWeighted.name(), "NotionalWeighted");
+        assert_eq!(
+            AggregationMethod::NotionalWeighted.name(),
+            "NotionalWeighted"
+        );
         assert_eq!(
             AggregationMethod::CorrelationAdjusted.name(),
             "CorrelationAdjusted"

@@ -2396,8 +2396,7 @@ mod tests {
     #[test]
     fn test_heston_variance_mean_reversion_moment() {
         // Parameters with strong mean reversion
-        let params =
-            HestonParams::new(100.0_f64, 0.04, 0.06, 2.0, 0.3, -0.7, 0.05, 1.0).unwrap();
+        let params = HestonParams::new(100.0_f64, 0.04, 0.06, 2.0, 0.3, -0.7, 0.05, 1.0).unwrap();
         let model = HestonModel::new(params).unwrap();
 
         let v0 = 0.04_f64;
@@ -2442,8 +2441,7 @@ mod tests {
     #[test]
     fn test_heston_feller_violation_variance_floor() {
         // Feller condition violated: 2 * 0.5 * 0.04 = 0.04 < 0.5^2 = 0.25
-        let params =
-            HestonParams::new(100.0_f64, 0.04, 0.04, 0.5, 0.5, -0.7, 0.05, 1.0).unwrap();
+        let params = HestonParams::new(100.0_f64, 0.04, 0.04, 0.5, 0.5, -0.7, 0.05, 1.0).unwrap();
         let model = HestonModel::new(params).unwrap();
 
         assert!(
@@ -2460,11 +2458,7 @@ mod tests {
         for _ in 0..100 {
             // Very low uniform → tends toward low variance outcomes
             v = model.qe_variance_step(v, dt, 0.01);
-            assert!(
-                v >= 0.0,
-                "Variance must never go negative, got {}",
-                v
-            );
+            assert!(v >= 0.0, "Variance must never go negative, got {}", v);
         }
 
         // Apply extreme positive shocks
@@ -2483,8 +2477,7 @@ mod tests {
     #[test]
     fn test_heston_evolve_step_feller_violation_robustness() {
         // Strong Feller violation
-        let params =
-            HestonParams::new(100.0_f64, 0.01, 0.01, 0.1, 0.8, -0.9, 0.05, 1.0).unwrap();
+        let params = HestonParams::new(100.0_f64, 0.01, 0.01, 0.1, 0.8, -0.9, 0.05, 1.0).unwrap();
 
         assert!(!params.satisfies_feller());
 
@@ -2557,8 +2550,7 @@ mod tests {
     #[test]
     fn test_heston_extreme_mean_reversion_moments() {
         // Very fast mean reversion
-        let params =
-            HestonParams::new(100.0_f64, 0.04, 0.08, 10.0, 0.2, -0.7, 0.05, 1.0).unwrap();
+        let params = HestonParams::new(100.0_f64, 0.04, 0.08, 10.0, 0.2, -0.7, 0.05, 1.0).unwrap();
         let model = HestonModel::new(params).unwrap();
 
         // With kappa=10, variance should quickly approach theta
@@ -2584,8 +2576,7 @@ mod tests {
     /// Test boundary variance values
     #[test]
     fn test_heston_boundary_variance_values() {
-        let params =
-            HestonParams::new(100.0_f64, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0).unwrap();
+        let params = HestonParams::new(100.0_f64, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0).unwrap();
         let model = HestonModel::new(params).unwrap();
         let dt = 1.0 / 252.0;
 
@@ -2611,8 +2602,7 @@ mod tests {
     /// Test QE scheme psi calculation doesn't produce NaN/Inf
     #[test]
     fn test_heston_qe_psi_numerical_stability() {
-        let params =
-            HestonParams::new(100.0_f64, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0).unwrap();
+        let params = HestonParams::new(100.0_f64, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0).unwrap();
         let model = HestonModel::new(params).unwrap();
         let dt = 1.0 / 252.0;
 
@@ -2644,8 +2634,7 @@ mod tests {
     /// Test that long simulation maintains valid state
     #[test]
     fn test_heston_long_simulation_stability() {
-        let params =
-            HestonParams::new(100.0_f64, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 5.0).unwrap();
+        let params = HestonParams::new(100.0_f64, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 5.0).unwrap();
         let mut state = HestonModel::initial_state(&params);
         let dt = 1.0 / 252.0;
         let n_steps = 252 * 5; // 5 years
