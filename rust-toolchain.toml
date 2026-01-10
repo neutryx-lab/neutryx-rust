@@ -1,6 +1,7 @@
 [toolchain]
-# Pin nightly version for Enzyme stability
+# Pin nightly version for Enzyme stability (Requirement 1.3)
 # This ensures reproducible builds across development and CI
 channel = "nightly-2025-01-15"
 components = ["rustfmt", "clippy", "rust-src"]
-targets = ["x86_64-unknown-linux-gnu"]
+# Support both Linux (CI/Docker) and Windows (local dev)
+targets = ["x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]

@@ -2386,4 +2386,299 @@ mod tests {
         assert!(next_state.first.is_finite());
         assert!(next_state.second.is_finite());
     }
+
+    // ================================================================
+    // Task 6.3: Heston モデルテスト拡張
+    // モーメントマッチング、Feller 条件違反挙動、境界パラメータ
+    // ================================================================
+
+    /// Test variance mean-reversion moment calculation accuracy
+    #[test]
+    fn test_heston_variance_mean_reversion_moment() {
+        // Parameters with strong mean reversion
+        let params =
+            HestonParams::new(100.0_f64, 0.04, 0.06, 2.0, 0.3, -0.7, 0.05, 1.0).unwrap();
+        let model = HestonModel::new(params).unwrap();
+
+        let v0 = 0.04_f64;
+        let dt = 0.1; // 10% of a year for significant mean reversion effect
+
+        // Test that compute_qe_moments calculates mean correctly
+        let (mean, _, _) = model.compute_qe_moments(v0, dt);
+
+        // Expected mean: E[v(dt)] = theta + (v0 - theta) * exp(-kappa * dt)
+        // = 0.06 + (0.04 - 0.06) * exp(-2.0 * 0.1) = 0.06 - 0.02 * 0.8187 ≈ 0.0436
+        let kappa = 2.0_f64;
+        let theta = 0.06_f64;
+        let expected_mean = theta + (v0 - theta) * (-kappa * dt).exp();
+
+        assert!(
+            (mean - expected_mean).abs() < 1e-10,
+            "QE mean should match analytical: got {}, expected {}",
+            mean,
+            expected_mean
+        );
+
+        // Test over multiple time steps - mean should converge to theta
+        let dt_small = 0.01;
+        let n_steps = 100;
+        let mut current_mean = v0;
+        for _ in 0..n_steps {
+            let (m, _, _) = model.compute_qe_moments(current_mean, dt_small);
+            current_mean = m;
+        }
+
+        // After 1 year with kappa=2.0, mean should be close to theta
+        let expected_final = theta + (v0 - theta) * (-kappa * 1.0_f64).exp();
+        assert!(
+            (current_mean - expected_final).abs() < 1e-6,
+            "Mean should converge towards theta: got {}, expected {}",
+            current_mean,
+            expected_final
+        );
+    }
+
+    /// Test that variance stays non-negative under Feller violation
+    #[test]
+    fn test_heston_feller_violation_variance_floor() {
+        // Feller condition violated: 2 * 0.5 * 0.04 = 0.04 < 0.5^2 = 0.25
+        let params =
+            HestonParams::new(100.0_f64, 0.04, 0.04, 0.5, 0.5, -0.7, 0.05, 1.0).unwrap();
+        let model = HestonModel::new(params).unwrap();
+
+        assert!(
+            !params.satisfies_feller(),
+            "Params should violate Feller condition"
+        );
+
+        // Start with low variance
+        let v0 = 0.001_f64;
+        let dt = 1.0 / 252.0;
+
+        // Apply many steps with extreme negative shocks
+        let mut v = v0;
+        for _ in 0..100 {
+            // Very low uniform → tends toward low variance outcomes
+            v = model.qe_variance_step(v, dt, 0.01);
+            assert!(
+                v >= 0.0,
+                "Variance must never go negative, got {}",
+                v
+            );
+        }
+
+        // Apply extreme positive shocks
+        v = v0;
+        for _ in 0..100 {
+            v = model.qe_variance_step(v, dt, 0.99);
+            assert!(
+                v >= 0.0,
+                "Variance must stay non-negative with high uniform, got {}",
+                v
+            );
+        }
+    }
+
+    /// Test evolve_step maintains variance non-negativity under Feller violation
+    #[test]
+    fn test_heston_evolve_step_feller_violation_robustness() {
+        // Strong Feller violation
+        let params =
+            HestonParams::new(100.0_f64, 0.01, 0.01, 0.1, 0.8, -0.9, 0.05, 1.0).unwrap();
+
+        assert!(!params.satisfies_feller());
+
+        let mut state = HestonModel::initial_state(&params);
+        let dt = 1.0 / 252.0;
+
+        // Simulate path with random-like shocks
+        for i in 0..500 {
+            let z1 = (i as f64 * 0.1).sin(); // Pseudo-random between -1 and 1
+            let z2 = (i as f64 * 0.17).cos();
+            let uv = (i as f64 * 0.07).sin().abs(); // Uniform-like [0, 1]
+            let dw = [z1, z2, uv];
+
+            state = HestonModel::evolve_step(state, dt, &dw, &params);
+
+            assert!(
+                state.first > 0.0,
+                "Price must stay positive at step {}: {}",
+                i,
+                state.first
+            );
+            assert!(
+                state.second >= 0.0,
+                "Variance must stay non-negative at step {}: {}",
+                i,
+                state.second
+            );
+            assert!(
+                state.first.is_finite() && state.second.is_finite(),
+                "State must be finite at step {}: ({}, {})",
+                i,
+                state.first,
+                state.second
+            );
+        }
+    }
+
+    /// Test extreme rho values in path simulation
+    #[test]
+    fn test_heston_extreme_rho_path_stability() {
+        for rho in [-0.99_f64, -0.5, 0.0, 0.5, 0.99] {
+            let params =
+                HestonParams::new(100.0_f64, 0.04, 0.04, 1.5, 0.3, rho, 0.05, 1.0).unwrap();
+            let mut state = HestonModel::initial_state(&params);
+            let dt = 1.0 / 252.0;
+
+            for i in 0..252 {
+                let dw = [0.1_f64, 0.1, 0.5];
+                state = HestonModel::evolve_step(state, dt, &dw, &params);
+
+                assert!(
+                    state.first > 0.0 && state.first.is_finite(),
+                    "Price unstable for rho={} at step {}: {}",
+                    rho,
+                    i,
+                    state.first
+                );
+                assert!(
+                    state.second >= 0.0 && state.second.is_finite(),
+                    "Variance unstable for rho={} at step {}: {}",
+                    rho,
+                    i,
+                    state.second
+                );
+            }
+        }
+    }
+
+    /// Test variance moments under extreme mean-reversion
+    #[test]
+    fn test_heston_extreme_mean_reversion_moments() {
+        // Very fast mean reversion
+        let params =
+            HestonParams::new(100.0_f64, 0.04, 0.08, 10.0, 0.2, -0.7, 0.05, 1.0).unwrap();
+        let model = HestonModel::new(params).unwrap();
+
+        // With kappa=10, variance should quickly approach theta
+        let v0 = 0.01_f64; // Start far from theta=0.08
+        let dt = 0.1;
+        let (mean, var, _) = model.compute_qe_moments(v0, dt);
+
+        // Expected mean after dt with high kappa
+        // E[v(dt)] = theta + (v0 - theta) * exp(-kappa * dt)
+        // = 0.08 + (0.01 - 0.08) * exp(-1.0) = 0.08 - 0.07 * 0.368 ≈ 0.054
+        let expected_mean = 0.08 + (0.01 - 0.08) * (-10.0 * 0.1_f64).exp();
+        assert!(
+            (mean - expected_mean).abs() < 0.01,
+            "Mean should match analytical: got {}, expected {}",
+            mean,
+            expected_mean
+        );
+
+        // Variance should be positive
+        assert!(var > 0.0, "Variance of v should be positive: {}", var);
+    }
+
+    /// Test boundary variance values
+    #[test]
+    fn test_heston_boundary_variance_values() {
+        let params =
+            HestonParams::new(100.0_f64, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0).unwrap();
+        let model = HestonModel::new(params).unwrap();
+        let dt = 1.0 / 252.0;
+
+        // Very small variance
+        let v_small = 1e-8_f64;
+        let v_next_small = model.qe_variance_step(v_small, dt, 0.5);
+        assert!(
+            v_next_small >= 0.0 && v_next_small.is_finite(),
+            "Small variance should produce valid result: {}",
+            v_next_small
+        );
+
+        // Very large variance
+        let v_large = 1.0_f64;
+        let v_next_large = model.qe_variance_step(v_large, dt, 0.5);
+        assert!(
+            v_next_large >= 0.0 && v_next_large.is_finite(),
+            "Large variance should produce valid result: {}",
+            v_next_large
+        );
+    }
+
+    /// Test QE scheme psi calculation doesn't produce NaN/Inf
+    #[test]
+    fn test_heston_qe_psi_numerical_stability() {
+        let params =
+            HestonParams::new(100.0_f64, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0).unwrap();
+        let model = HestonModel::new(params).unwrap();
+        let dt = 1.0 / 252.0;
+
+        // Test across range of variances
+        for v in [1e-10, 1e-8, 1e-6, 1e-4, 0.01, 0.04, 0.1, 0.5, 1.0] {
+            let (mean, var, psi) = model.compute_qe_moments(v, dt);
+
+            assert!(
+                mean.is_finite(),
+                "Mean should be finite for v={}: {}",
+                v,
+                mean
+            );
+            assert!(
+                var.is_finite() && var >= 0.0,
+                "Var should be non-negative finite for v={}: {}",
+                v,
+                var
+            );
+            assert!(
+                psi.is_finite() && psi >= 0.0,
+                "Psi should be non-negative finite for v={}: {}",
+                v,
+                psi
+            );
+        }
+    }
+
+    /// Test that long simulation maintains valid state
+    #[test]
+    fn test_heston_long_simulation_stability() {
+        let params =
+            HestonParams::new(100.0_f64, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 5.0).unwrap();
+        let mut state = HestonModel::initial_state(&params);
+        let dt = 1.0 / 252.0;
+        let n_steps = 252 * 5; // 5 years
+
+        for i in 0..n_steps {
+            // Varied shocks - use moderate values
+            let phase = i as f64 * 0.1;
+            let dw = [
+                0.1 * phase.sin(),
+                0.1 * phase.cos(),
+                (phase * 0.7).sin().abs(),
+            ];
+            state = HestonModel::evolve_step(state, dt, &dw, &params);
+
+            // Periodic checks - values should remain finite and non-negative
+            if i % 100 == 0 {
+                assert!(
+                    state.first > 0.0 && state.first.is_finite(),
+                    "Price invalid at step {}: {}",
+                    i,
+                    state.first
+                );
+                assert!(
+                    state.second >= 0.0 && state.second.is_finite(),
+                    "Variance invalid at step {}: {}",
+                    i,
+                    state.second
+                );
+            }
+        }
+
+        // Final state should be reasonable
+        assert!(state.first > 0.0 && state.first.is_finite());
+        assert!(state.second >= 0.0 && state.second.is_finite());
+    }
 }

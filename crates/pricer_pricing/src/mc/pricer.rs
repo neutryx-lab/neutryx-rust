@@ -174,7 +174,8 @@ impl PricingResult {
 pub struct MonteCarloPricer {
     config: MonteCarloConfig,
     workspace: PathWorkspace,
-    rng: PricerRng,
+    /// Random number generator (pub(crate) for Enzyme AD access).
+    pub(crate) rng: PricerRng,
 }
 
 impl MonteCarloPricer {

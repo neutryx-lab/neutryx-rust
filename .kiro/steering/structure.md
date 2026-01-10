@@ -146,7 +146,14 @@ instruments/
 models/       → Stochastic models with unified trait interface
   ├── equity/   → Equity models (feature-gated)
   ├── rates/    → Interest rate models: Hull-White, CIR (feature-gated)
-  └── hybrid/   → Correlated multi-factor models (feature-gated)
+  ├── hybrid/   → Correlated multi-factor models (feature-gated)
+  ├── heston.rs → Heston stochastic volatility model
+  └── sabr.rs   → SABR stochastic volatility model
+calibration/  → Model calibration infrastructure
+  ├── heston.rs      → Heston calibration (characteristic function pricing)
+  ├── sabr.rs        → SABR calibration (Hagan formula)
+  ├── hull_white.rs  → Hull-White swaption calibration
+  └── swaption_calibrator.rs → Generic swaption calibrator
 analytical/   → Closed-form solutions (Black-Scholes, Garman-Kohlhagen)
 schedules/    → Payment schedule generation (Frequency, Period, ScheduleBuilder)
 demo.rs       → Demo types for 3-stage rocket: ModelEnum, InstrumentEnum, CurveEnum, VolSurfaceEnum

@@ -30,6 +30,7 @@ use pricer_core::traits::Float;
 
 use super::gbm::{GBMModel, GBMParams};
 use super::heston::{HestonModel, HestonParams};
+use super::sabr::{SABRModel, SABRParams};
 use super::stochastic::{SingleState, StochasticState, TwoFactorState};
 
 // Import rate models when rates feature is enabled
@@ -102,6 +103,8 @@ pub enum ModelParams<T: Float> {
     GBM(GBMParams<T>),
     /// Heston stochastic volatility model parameters
     Heston(HestonParams<T>),
+    /// SABR stochastic volatility model parameters
+    SABR(SABRParams<T>),
     /// Hull-White model parameters (requires `rates` feature)
     #[cfg(feature = "rates")]
     HullWhite(HullWhiteParams<T>),
@@ -114,10 +117,12 @@ impl<T: Float> ModelParams<T> {
     /// Get the spot/initial price from parameters.
     ///
     /// For interest rate models, this returns the initial short rate.
+    /// For SABR, this returns the forward price.
     pub fn spot(&self) -> T {
         match self {
             ModelParams::GBM(p) => p.spot,
             ModelParams::Heston(p) => p.spot,
+            ModelParams::SABR(p) => p.forward,
             #[cfg(feature = "rates")]
             ModelParams::HullWhite(p) => p.initial_short_rate,
             #[cfg(feature = "rates")]
@@ -129,10 +134,12 @@ impl<T: Float> ModelParams<T> {
     ///
     /// For interest rate models, this returns the mean reversion speed.
     /// For Heston, this returns the risk-free rate.
+    /// For SABR, returns zero (no drift term).
     pub fn rate(&self) -> T {
         match self {
             ModelParams::GBM(p) => p.rate,
             ModelParams::Heston(p) => p.rate,
+            ModelParams::SABR(_) => T::zero(), // SABR is driftless
             #[cfg(feature = "rates")]
             ModelParams::HullWhite(p) => p.mean_reversion,
             #[cfg(feature = "rates")]
@@ -143,10 +150,12 @@ impl<T: Float> ModelParams<T> {
     /// Get the volatility parameter (primary volatility for all models).
     ///
     /// For Heston, this returns the initial volatility (sqrt of v0).
+    /// For SABR, this returns alpha (instantaneous volatility).
     pub fn volatility(&self) -> T {
         match self {
             ModelParams::GBM(p) => p.volatility,
             ModelParams::Heston(p) => p.v0.sqrt(),
+            ModelParams::SABR(p) => p.alpha,
             #[cfg(feature = "rates")]
             ModelParams::HullWhite(p) => p.volatility,
             #[cfg(feature = "rates")]
@@ -155,9 +164,11 @@ impl<T: Float> ModelParams<T> {
     }
 
     /// Get initial variance for Heston model (returns None for other models).
+    /// For SABR, returns alpha squared as an approximate variance.
     pub fn initial_variance(&self) -> Option<T> {
         match self {
             ModelParams::Heston(p) => Some(p.v0),
+            ModelParams::SABR(p) => Some(p.alpha * p.alpha),
             _ => None,
         }
     }
@@ -172,6 +183,7 @@ impl<T: Float> ModelParams<T> {
 ///
 /// - `GBM`: Geometric Brownian Motion (1-factor) - always available
 /// - `Heston`: Heston stochastic volatility model (2-factor) - always available
+/// - `SABR`: SABR stochastic volatility model (2-factor) - always available
 /// - `HullWhite`: Hull-White 1F interest rate model - requires `rates` feature
 /// - `CIR`: Cox-Ingersoll-Ross interest rate model - requires `rates` feature
 ///
@@ -185,6 +197,7 @@ impl<T: Float> ModelParams<T> {
 /// match &model {
 ///     StochasticModelEnum::GBM(_) => println!("Using GBM model"),
 ///     StochasticModelEnum::Heston(_) => println!("Using Heston model"),
+///     StochasticModelEnum::SABR(_) => println!("Using SABR model"),
 ///     #[cfg(feature = "rates")]
 ///     _ => println!("Using rate model"),
 /// }
@@ -195,6 +208,8 @@ pub enum StochasticModelEnum<T: Float> {
     GBM(GBMModel<T>),
     /// Heston stochastic volatility model (equity, 2-factor)
     Heston(HestonModel<T>),
+    /// SABR stochastic volatility model (2-factor)
+    SABR(SABRModel<T>),
     /// Hull-White one-factor model (rates) - requires `rates` feature
     #[cfg(feature = "rates")]
     HullWhite(HullWhiteModel<T>),
@@ -228,6 +243,19 @@ impl<T: Float + Default> StochasticModelEnum<T> {
             .map(StochasticModelEnum::Heston)
     }
 
+    /// Create a new SABR model with given parameters.
+    ///
+    /// # Arguments
+    /// * `params` - SABR model parameters
+    ///
+    /// # Returns
+    /// `Some(StochasticModelEnum::SABR)` if parameters are valid, `None` otherwise
+    pub fn sabr(params: SABRParams<T>) -> Option<Self> {
+        SABRModel::new(params)
+            .ok()
+            .map(StochasticModelEnum::SABR)
+    }
+
     /// Create a new Hull-White model (requires `rates` feature).
     #[cfg(feature = "rates")]
     pub fn hull_white() -> Self {
@@ -245,6 +273,7 @@ impl<T: Float + Default> StochasticModelEnum<T> {
         match self {
             StochasticModelEnum::GBM(_) => GBMModel::<T>::model_name(),
             StochasticModelEnum::Heston(_) => HestonModel::<T>::model_name(),
+            StochasticModelEnum::SABR(_) => SABRModel::<T>::model_name(),
             #[cfg(feature = "rates")]
             StochasticModelEnum::HullWhite(_) => HullWhiteModel::<T>::model_name(),
             #[cfg(feature = "rates")]
@@ -257,6 +286,7 @@ impl<T: Float + Default> StochasticModelEnum<T> {
         match self {
             StochasticModelEnum::GBM(_) => GBMModel::<T>::brownian_dim(),
             StochasticModelEnum::Heston(_) => HestonModel::<T>::brownian_dim(),
+            StochasticModelEnum::SABR(_) => SABRModel::<T>::brownian_dim(),
             #[cfg(feature = "rates")]
             StochasticModelEnum::HullWhite(_) => HullWhiteModel::<T>::brownian_dim(),
             #[cfg(feature = "rates")]
@@ -269,6 +299,7 @@ impl<T: Float + Default> StochasticModelEnum<T> {
         match self {
             StochasticModelEnum::GBM(_) => false,
             StochasticModelEnum::Heston(_) => true, // Heston is a 2-factor model
+            StochasticModelEnum::SABR(_) => true,   // SABR is a 2-factor model
             #[cfg(feature = "rates")]
             StochasticModelEnum::HullWhite(_) => false,
             #[cfg(feature = "rates")]
@@ -281,6 +312,7 @@ impl<T: Float + Default> StochasticModelEnum<T> {
         match self {
             StochasticModelEnum::GBM(_) => false,
             StochasticModelEnum::Heston(_) => false,
+            StochasticModelEnum::SABR(_) => false, // SABR is not a rate model
             #[cfg(feature = "rates")]
             StochasticModelEnum::HullWhite(_) => true,
             #[cfg(feature = "rates")]
@@ -293,12 +325,13 @@ impl<T: Float + Default> StochasticModelEnum<T> {
     /// # Returns
     ///
     /// - 1 for single-factor models (GBM, Hull-White, CIR)
-    /// - 2 for two-factor models (G2++, Heston)
+    /// - 2 for two-factor models (G2++, Heston, SABR)
     /// - n for multi-factor models (correlated hybrid models)
     pub fn num_factors(&self) -> usize {
         match self {
             StochasticModelEnum::GBM(_) => GBMModel::<T>::num_factors(),
             StochasticModelEnum::Heston(_) => HestonModel::<T>::num_factors(),
+            StochasticModelEnum::SABR(_) => SABRModel::<T>::num_factors(),
             #[cfg(feature = "rates")]
             StochasticModelEnum::HullWhite(_) => HullWhiteModel::<T>::num_factors(),
             #[cfg(feature = "rates")]
@@ -314,6 +347,9 @@ impl<T: Float + Default> StochasticModelEnum<T> {
             }
             (StochasticModelEnum::Heston(_), ModelParams::Heston(p)) => {
                 ModelState::TwoFactor(HestonModel::initial_state(p))
+            }
+            (StochasticModelEnum::SABR(_), ModelParams::SABR(p)) => {
+                ModelState::TwoFactor(SABRModel::initial_state(p))
             }
             #[cfg(feature = "rates")]
             (StochasticModelEnum::HullWhite(_), ModelParams::HullWhite(p)) => {
@@ -351,6 +387,9 @@ impl<T: Float + Default> StochasticModelEnum<T> {
             }
             (StochasticModelEnum::Heston(_), ModelState::TwoFactor(s), ModelParams::Heston(p)) => {
                 ModelState::TwoFactor(HestonModel::evolve_step(*s, dt, dw, p))
+            }
+            (StochasticModelEnum::SABR(_), ModelState::TwoFactor(s), ModelParams::SABR(p)) => {
+                ModelState::TwoFactor(SABRModel::evolve_step(*s, dt, dw, p))
             }
             #[cfg(feature = "rates")]
             (
@@ -584,12 +623,8 @@ mod tests {
                 // GBM variant matched
                 assert!(true);
             }
-            StochasticModelEnum::Heston(_) => {
-                panic!("Expected GBM variant");
-            }
-            #[cfg(feature = "rates")]
             _ => {
-                // Rate models
+                panic!("Expected GBM variant");
             }
         }
     }

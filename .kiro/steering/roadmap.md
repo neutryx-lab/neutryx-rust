@@ -8,7 +8,7 @@ _Updated: 2026-01-10_
 
 ## Current State Summary
 
-### Completed Specifications (8)
+### Completed Specifications (10)
 
 | Spec | Description | Completed |
 |------|-------------|-----------|
@@ -20,6 +20,8 @@ _Updated: 2026-01-10_
 | instrument-definitions | Financial instrument definitions | 2025-12 |
 | monte-carlo-kernel-enzyme | Monte Carlo pricing kernel | 2026-01 |
 | service-layer-rename | Crate renaming (kernel→pricing, xva→risk) | 2026-01 |
+| stochastic-models | Heston, SABR, Hull-White stochastic models | 2026-01 |
+| enzyme-autodiff-integration | Enzyme #[autodiff] macro integration | 2026-01 |
 
 ### Layer Implementation Status
 
@@ -61,14 +63,15 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 
 ## Future Development Items
 
-### Phase 1: Enzyme AD Full Integration (Priority: High)
+### Phase 1: Enzyme AD Full Integration (Priority: High) ✅
 
 | Item | Description | Status |
 |------|-------------|--------|
-| enzyme-full-integration | Full `#[autodiff]` macro integration (currently placeholder) | ❌ |
-| greeks-enzyme-ad | Delta/Gamma/Vega computation via Enzyme AD | ❌ |
+| enzyme-full-integration | Full `#[autodiff]` macro integration | ✅ |
+| greeks-enzyme-ad | Delta/Gamma/Vega computation via Enzyme AD | ✅ |
+| enzyme-benchmarks | Criterion benchmarks (requires LLVM 18 runtime) | ⏳ Deferred |
 
-**Rationale**: Enzyme AD is the core differentiator. Full integration unlocks C++-competitive Greeks performance.
+**Note**: Core implementation complete (18/20 tasks). Benchmarks deferred pending LLVM 18 environment.
 
 ### Phase 2: Additional Products & Models (Priority: Medium)
 
@@ -76,7 +79,7 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 |------|-------------|--------|
 | exotic-options | Barriers, Asians, Lookbacks, Digitals | ❌ |
 | rates-instruments | Swaption, Cap/Floor pricing completion | ❌ |
-| stochastic-models | Heston, SABR, Hull-White completion | ❌ |
+| stochastic-models | Heston, SABR, Hull-White completion | ✅ |
 | volatility-surface | Implied vol surface construction & interpolation | ❌ |
 
 ### Phase 3: Service Layer Enhancement (Priority: Medium)
@@ -108,9 +111,9 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 
 ## Recommended Next Steps
 
-1. **enzyme-full-integration** - Largest gap; enables high-performance Greeks
-2. **stochastic-models** - Completes Rates/Equity product support
-3. **python-bindings-expansion** - Enables Jupyter research workflows
+1. **exotic-options** - Barriers, Asians, Lookbacks, Digitals for product coverage
+2. **python-bindings-expansion** - Enables Jupyter research workflows
+3. **rates-instruments** - Swaption, Cap/Floor pricing completion
 
 ---
 
@@ -118,5 +121,8 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 
 | Date | Change |
 |------|--------|
+| 2026-01-10 | enzyme-autodiff-integration: Complete (18/20 tasks, benchmarks deferred) |
+| 2026-01-10 | stochastic-models: Implementation complete (17/17 tasks) |
+| 2026-01-10 | stochastic-models: Calibration complete (Heston, SABR, Hull-White calibrators) |
 | 2026-01-10 | Steering sync: Added scenarios, demo, context, provider modules to layer status |
 | 2026-01-10 | Initial creation; cleaned 20 incomplete specs, documented current state |
