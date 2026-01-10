@@ -149,6 +149,7 @@ models/       → Stochastic models with unified trait interface
   └── hybrid/   → Correlated multi-factor models (feature-gated)
 analytical/   → Closed-form solutions (Black-Scholes, Garman-Kohlhagen)
 schedules/    → Payment schedule generation (Frequency, Period, ScheduleBuilder)
+demo.rs       → Demo types for 3-stage rocket: ModelEnum, InstrumentEnum, CurveEnum, VolSurfaceEnum
 ```
 
 **Key Principles**:
@@ -174,6 +175,7 @@ schedules/    → Payment schedule generation (Frequency, Period, ScheduleBuilde
 bootstrapping/  → Yield Curve stripping from OIS/Swap rates (multi-curve)
 calibration/    → Stochastic model calibration (Hull-White α/σ from swaptions)
 solvers/        → Levenberg-Marquardt, BFGS algorithms
+provider.rs     → MarketProvider for lazy market data resolution (Arc-cached curves/vols)
 ```
 
 **Integration**: Calls `pricer_pricing` to obtain gradients (via Enzyme) for efficient parameter search.
@@ -194,6 +196,7 @@ checkpoint/      → Memory management for checkpointing
 analytical/      → Closed-form solutions (geometric Asian, barrier options)
 greeks/          → Greeks calculation types (GreeksConfig, GreeksMode, GreeksResult<T>)
 pool/            → Thread-local buffer pool (ThreadLocalPool, PooledBuffer, PoolStats)
+context.rs       → [l1l2-integration] 3-stage rocket: PricingContext, price_single_trade
 ```
 
 **Key Principle**: **Only crate requiring nightly Rust and Enzyme**. Currently isolated (Phase 3.0) with zero pricer_* dependencies.
@@ -249,9 +252,11 @@ pool/            → Thread-local buffer pool (ThreadLocalPool, PooledBuffer, Po
 portfolio/  → Trade, Counterparty, NettingSet, PortfolioBuilder
 exposure/   → EE, EPE, PFE, EEPE, ENE calculators
 xva/        → CVA, DVA, FVA calculators with XvaCalculator
+scenarios/  → Scenario analysis: ScenarioEngine, RiskFactorShift, PresetScenario, GreeksAggregator
 regulatory/ → SA-CCR, FRTB, SIMM (planned)
 soa/        → Structure of Arrays (TradeSoA, ExposureSoA)
 parallel/   → Rayon-based parallelisation config
+demo.rs     → Portfolio orchestration demo (DemoTrade, Pull-then-Push pattern)
 ```
 
 **Key Principle**: Consumer of L1+L2+L3, orchestrates portfolio-level computations with parallel processing.
@@ -362,5 +367,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-09_ — Heston and SABR models now implemented (removed from "future")
+_Updated: 2026-01-10_ — Added scenarios/, demo, context, provider modules; 3-stage rocket pattern
 _Document patterns, not file trees. New files following patterns should not require updates_

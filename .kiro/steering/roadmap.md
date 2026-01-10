@@ -31,10 +31,10 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 | Crate | Layer | Status | Notes |
 |-------|-------|--------|-------|
 | pricer_core | L1 | ✅ | math, market_data, types, traits |
-| pricer_models | L2 | ✅ | instruments, analytical, calibration, schedules |
-| pricer_optimiser | L2.5 | ✅ | bootstrapping, calibration, solvers |
-| pricer_pricing | L3 | ✅ | mc, rng, enzyme, greeks, path_dependent, checkpoint |
-| pricer_risk | L4 | ✅ | portfolio, exposure, xva, scenarios, soa |
+| pricer_models | L2 | ✅ | instruments, analytical, calibration, schedules, demo |
+| pricer_optimiser | L2.5 | ✅ | bootstrapping, calibration, solvers, provider |
+| pricer_pricing | L3 | ✅ | mc, rng, enzyme, greeks, path_dependent, checkpoint, context (l1l2-integration) |
+| pricer_risk | L4 | ✅ | portfolio, exposure, xva, scenarios (engine/shifts/aggregator/presets), soa, demo |
 
 #### Infra Layer (I) - Foundation
 | Crate | Status | Notes |
@@ -118,4 +118,5 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 
 | Date | Change |
 |------|--------|
+| 2026-01-10 | Steering sync: Added scenarios, demo, context, provider modules to layer status |
 | 2026-01-10 | Initial creation; cleaned 20 incomplete specs, documented current state |

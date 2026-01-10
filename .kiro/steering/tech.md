@@ -115,6 +115,7 @@ docker run -it neutryx-enzyme
 | **StochasticModel Trait** | Unified interface for stochastic processes with enum-based dispatch |
 | **Dual-Mode Verification** | Enzyme (performance) + num-dual (correctness) for validation |
 | **Smooth Approximations** | Replace all discontinuities (if/max) with differentiable functions |
+| **3-Stage Rocket Pattern** | Definition (L2) → Linking (PricingContext) → Execution (pure kernel); zero HashMap lookups in hot path |
 | **Feature Flags** | `num-dual-mode` (default), `enzyme-mode`, `serde` for serialisation; Asset classes: `equity` (default), `rates`, `credit`, `fx`, `commodity`, `exotic`; Convenience: `all` |
 
 ## Performance Optimisation
@@ -126,5 +127,5 @@ docker run -it neutryx-enzyme
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-09_ — Pivoted from XVA-focused to comprehensive bank derivatives pricer
+_Updated: 2026-01-10_ — Added 3-stage rocket pattern for zero-lookup pricing kernel
 _Document standards and patterns, not every dependency_
