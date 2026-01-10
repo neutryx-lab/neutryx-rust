@@ -50,7 +50,7 @@ FrictionalBankは、Neutryxライブラリの全機能を活用した仮想銀�
 neutryx-rust/
 ├── demo/
 │   │
-│   ├── upstream_systems/              # ⬆️ 上流システム（Adapterへの入力元）
+│   ├── inputs/                        # ⬆️ 入力システム（Adapterへの入力元）
 │   │   ├── Cargo.toml
 │   │   └── src/
 │   │       ├── lib.rs
@@ -68,7 +68,7 @@ neutryx-rust/
 │   │           ├── csv_generator.rs   # CSV生成
 │   │           └── parquet_writer.rs  # Parquet生成
 │   │
-│   ├── downstream_systems/            # ⬇️ 下流システム（Serviceからの出力先）
+│   ├── outputs/                       # ⬇️ 出力システム（Serviceからの出力先）
 │   │   ├── Cargo.toml
 │   │   └── src/
 │   │       ├── lib.rs
@@ -121,7 +121,7 @@ neutryx-rust/
 │   │           ├── mod.rs
 │   │           └── demo_config.toml
 │   │
-│   ├── data/                          # 📊 サンプルデータ（upstream_systemsが使用）
+│   ├── data/                          # 📊 サンプルデータ（inputsが使用）
 │   │   ├── input/                     # 入力データ（Adapter向け）
 │   │   │   ├── trades/
 │   │   │   │   ├── equity_book.csv
@@ -169,7 +169,7 @@ neutryx-rust/
 ### 1️⃣ EODバッチ処理シナリオ
 
 ```text
-[upstream_systems]                    [Neutryx A-I-P-S]                    [downstream_systems]
+[inputs]                              [Neutryx A-I-P-S]                    [outputs]
        │                                     │                                     │
        │  ① 取引データ生成                    │                                     │
        │  (fpml_generator)                   │                                     │
@@ -205,7 +205,7 @@ neutryx-rust/
 ### 2️⃣ リアルタイムトレーディングシナリオ
 
 ```text
-[upstream_systems]                    [Neutryx A-I-P-S]                    [downstream_systems]
+[inputs]                              [Neutryx A-I-P-S]                    [outputs]
        │                                     │                                     │
        │  ① ティッカーストリーム               │                                     │
        │  (reuters_sim)                      │                                     │
@@ -237,12 +237,12 @@ neutryx-rust/
 
 | レイヤー | 役割 | デモでの使用 |
 |----------|------|--------------|
-| **upstream_systems** | 外部入力元シミュレーション | Adapterにデータを供給 |
-| **A: Adapter** | 外部データ受信・正規化 | upstream_systemsからデータ受信 |
+| **inputs** | 外部入力元シミュレーション | Adapterにデータを供給 |
+| **A: Adapter** | 外部データ受信・正規化 | inputsからデータ受信 |
 | **I: Infra** | 設定・マスタ・永続化 | 横断的に利用 |
 | **P: Pricer** | 計算処理 | コアロジック実行 |
-| **S: Service** | 結果出力・API公開 | downstream_systemsへ配信 |
-| **downstream_systems** | 外部出力先シミュレーション | Serviceから結果受信 |
+| **S: Service** | 結果出力・API公開 | outputsへ配信 |
+| **outputs** | 外部出力先シミュレーション | Serviceから結果受信 |
 | **GUI** | 可視化 | service_gatewayのREST/WebSocket経由 |
 
 ## Cargo.toml設定
@@ -255,8 +255,8 @@ members = [
     # ... existing members ...
     
     # --- Demo ---
-    "demo/upstream_systems",
-    "demo/downstream_systems",
+    "demo/inputs",
+    "demo/outputs",
     "demo/frictional_bank",
     "demo/gui",
 ]
@@ -285,8 +285,8 @@ pricer_optimiser = { path = "../../crates/pricer_optimiser" }
 pricer_risk = { path = "../../crates/pricer_risk" }
 
 # デモ固有依存
-upstream_systems = { path = "../upstream_systems" }
-downstream_systems = { path = "../downstream_systems" }
+demo_inputs = { path = "../inputs" }
+demo_outputs = { path = "../outputs" }
 
 # 共通依存
 tokio = { workspace = true }
@@ -296,14 +296,14 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 ```
 
-### demo/upstream_systems/Cargo.toml
+### demo/inputs/Cargo.toml
 
 ```toml
 [package]
-name = "upstream_systems"
+name = "demo_inputs"
 version = "0.1.0"
 edition = "2021"
-description = "Mock upstream systems for FrictionalBank demo"
+description = "Mock input systems for FrictionalBank demo"
 
 [dependencies]
 # Adapterが受け取る型を生成するため
@@ -317,14 +317,14 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 ```
 
-### demo/downstream_systems/Cargo.toml
+### demo/outputs/Cargo.toml
 
 ```toml
 [package]
-name = "downstream_systems"
+name = "demo_outputs"
 version = "0.1.0"
 edition = "2021"
-description = "Mock downstream systems for FrictionalBank demo"
+description = "Mock output systems for FrictionalBank demo"
 
 [dependencies]
 # Serviceが出力する型を受け取るため
@@ -367,8 +367,8 @@ web = []
 ## 推奨実装順序
 
 1. **Phase 1**: `demo/data/` サンプルデータ整備
-2. **Phase 2**: `demo/upstream_systems/` 仮想上流システム実装
-3. **Phase 3**: `demo/downstream_systems/` 仮想下流システム実装
+2. **Phase 2**: `demo/inputs/` 仮想入力システム実装
+3. **Phase 3**: `demo/outputs/` 仮想出力システム実装
 4. **Phase 4**: `demo/frictional_bank/` オーケストレーター実装
 5. **Phase 5**: `demo/gui/tui/` ターミナルダッシュボード
 6. **Phase 6**: `demo/notebooks/` Python連携デモ
@@ -377,6 +377,6 @@ web = []
 ## 設計原則
 
 1. **A-I-P-S順序厳守**: データは必ずAdapter→Infra→Pricer→Serviceの順で流れる
-2. **外部システム分離**: upstream/downstreamは完全に独立したクレート
+2. **外部システム分離**: inputs/outputsは完全に独立したクレート
 3. **Serviceが唯一の出口**: 外部への出力はすべてServiceレイヤー経由
 4. **GUIはServiceのクライアント**: GUIはservice_gatewayのREST/WebSocket APIを利用

@@ -1,9 +1,9 @@
 [package]
-name = "upstream_systems"
+name = "demo_inputs"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Mock upstream systems for FrictionalBank demo"
+description = "Mock input systems for FrictionalBank demo"
 
 [dependencies]
 # Adapter types to generate

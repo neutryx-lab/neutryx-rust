@@ -1,9 +1,9 @@
 [package]
-name = "downstream_systems"
+name = "demo_outputs"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Mock downstream systems for FrictionalBank demo"
+description = "Mock output systems for FrictionalBank demo"
 
 [dependencies]
 # Service output types
