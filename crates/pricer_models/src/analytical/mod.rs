@@ -15,10 +15,15 @@
 pub mod distributions;
 pub mod error;
 
+mod bachelier;
+mod black_scholes;
+
 #[cfg(feature = "fx")]
 pub mod garman_kohlhagen;
 
 // Re-export main types at module level
+pub use bachelier::Bachelier;
+pub use black_scholes::BlackScholes;
 pub use distributions::{norm_cdf, norm_pdf};
 pub use error::AnalyticalError;
 

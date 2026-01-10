@@ -1,20 +1,28 @@
-//! Enzyme autodiff bindings for pricer_kernel.
+//! Enzyme autodiff bindings for pricer_pricing.
 //!
 //! This module provides the interface for Enzyme LLVM-level automatic differentiation.
 //! Enzyme operates at the LLVM IR level, enabling high-performance gradient computation
 //! for financial derivative pricing.
 //!
-//! # Phase 3.0 Status
+//! # Module Structure
 //!
-//! This is the **Phase 3.0 placeholder implementation**. The module structure and API
-//! are defined, but actual Enzyme integration will be completed in Phase 4.
+//! - [`wrappers`]: Enzyme `#[autodiff_*]` macro wrappers for option pricing
+//! - [`forward`]: Forward mode AD types (`ForwardAD<T>`)
+//! - [`reverse`]: Reverse mode AD types (`ReverseAD<T>`, `GammaAD<T>`)
+//! - [`smooth`]: Enzyme-compatible smooth approximation functions
+//! - [`loops`]: Enzyme-compatible loop patterns and iterators
+//! - [`greeks`]: Enzyme-based Greeks calculation for Monte Carlo pricing
+//! - [`parallel`]: Parallel adjoint aggregation for Monte Carlo Greeks
+//! - [`checkpoint_ad`]: Checkpointing integration for path-dependent AD
+//! - [`fallback`]: Fallback to finite differences when Enzyme is disabled
+//! - [`verification`]: Verification tests against analytical and FD methods
 //!
-//! Current implementation uses finite difference approximation for gradient computation.
-//! Phase 4 will replace this with actual Enzyme `#[autodiff]` macros.
+//! # Enzyme Integration
 //!
-//! # Phase 4 Integration
+//! When the `enzyme-ad` feature is enabled, this module uses actual LLVM-level
+//! automatic differentiation via Enzyme. When disabled, it falls back to
+//! finite difference approximations.
 //!
-//! Phase 4 will enable:
 //! ```rust,ignore
 //! #![feature(autodiff)]
 //!
@@ -29,19 +37,26 @@
 //! ```rust
 //! use pricer_pricing::enzyme::{Activity, ADMode, gradient};
 //!
-//! // Define a function to differentiate
-//! fn square(x: f64) -> f64 {
-//!     x * x
-//! }
-//!
-//! // Compute gradient (Phase 3.0: finite difference approximation)
-//! let grad = gradient(square, 3.0);
+//! // Simple gradient computation
+//! let grad = gradient(|x| x * x, 3.0);
 //! assert!((grad - 6.0).abs() < 1e-6);
 //!
 //! // AD mode selection for EnzymeContext
 //! let mode = ADMode::Forward;
 //! assert!(mode.is_forward());
 //! ```
+
+// Submodules
+pub mod checkpoint_ad;
+pub mod fallback;
+pub mod forward;
+pub mod greeks;
+pub mod loops;
+pub mod parallel;
+pub mod reverse;
+pub mod smooth;
+pub mod verification;
+pub mod wrappers;
 
 // =============================================================================
 // ADMode - AD (自動微分) モード列挙型

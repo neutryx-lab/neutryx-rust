@@ -80,13 +80,17 @@
 //! pricer_kernel = { package = "pricer_pricing", version = "0.7" }
 //! ```
 
+// Enzyme AD: Enable autodiff feature when enzyme-ad feature is active
+// This requires nightly Rust (nightly-2025-01-15) with Enzyme LLVM plugin
+// Requirement 1.1: #![feature(autodiff)] を有効化する仕組み
+// Requirement 1.2: enzyme-ad feature が無効時は stable Rust でコンパイル可能
+#![cfg_attr(feature = "enzyme-ad", feature(autodiff))]
+
 #![deny(missing_docs)]
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(rustdoc::private_intra_doc_links)]
 // Allow unknown lints for clippy compatibility across versions
 #![allow(unknown_lints)]
-// Enzyme-specific nightly features (commented until Enzyme is integrated in Phase 4)
-// #![feature(autodiff)]
 
 // Phase 3.0: Core modules
 pub mod verify;
@@ -100,6 +104,10 @@ mod verify_enzyme;
 // Phase 4: L1/L2 integration tests (conditional compilation)
 #[cfg(all(test, feature = "l1l2-integration"))]
 mod integration_tests;
+
+// Demo: Pricing context for lazy-arc-pricing-kernel demonstration
+#[cfg(feature = "l1l2-integration")]
+pub mod context;
 
 // Phase 3.1a: Random number generation infrastructure
 pub mod rng;

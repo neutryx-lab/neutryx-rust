@@ -1,0 +1,33 @@
+[package]
+name = "demo_outputs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Mock output systems for FrictionalBank demo"
+
+[dependencies]
+# Service output types
+pricer_core = { path = "../../crates/pricer_core" }
+pricer_risk = { path = "../../crates/pricer_risk" }
+
+# Async runtime
+tokio = { workspace = true }
+tokio-stream = "0.1"
+
+# Web framework
+axum = { workspace = true }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors"] }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Date/time
+chrono = { workspace = true }
+
+# Tracing
+tracing = { workspace = true }
+
+# Async channels
+async-channel = "2.3"

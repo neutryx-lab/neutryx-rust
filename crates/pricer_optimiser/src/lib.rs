@@ -29,6 +29,7 @@
 
 pub mod bootstrapping;
 pub mod calibration;
+pub mod provider;
 pub mod solvers;
 
 mod error;

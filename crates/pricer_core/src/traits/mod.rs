@@ -40,6 +40,7 @@ pub use num_traits::Float;
 
 pub mod calibration;
 pub mod priceable;
+pub mod risk;
 
 #[cfg(test)]
 mod tests {

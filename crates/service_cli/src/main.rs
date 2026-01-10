@@ -93,6 +93,9 @@ enum Commands {
 
     /// Check system configuration and dependencies
     Check,
+
+    /// Run lazy-arc-pricing-kernel architecture demonstration
+    Demo,
 }
 
 fn main() -> Result<()> {
@@ -126,5 +129,6 @@ fn main() -> Result<()> {
             output_dir,
         } => commands::report::run(&report_type, &portfolio, &output_dir),
         Commands::Check => commands::check::run(),
+        Commands::Demo => commands::demo::run(),
     }
 }

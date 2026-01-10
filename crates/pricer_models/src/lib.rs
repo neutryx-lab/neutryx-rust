@@ -22,6 +22,7 @@
 
 pub mod analytical;
 pub mod calibration;
+pub mod demo;
 pub mod instruments;
 pub mod models;
 pub mod schedules;

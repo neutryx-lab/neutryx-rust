@@ -29,7 +29,7 @@
 //! ], 2).unwrap();
 //!
 //! // Get Cholesky factor
-//! let cholesky = corr.cholesky();
+//! let cholesky = corr.cholesky().unwrap();
 //!
 //! // Transform independent normals to correlated
 //! let z = [0.5_f64, 0.8];
@@ -45,13 +45,35 @@ pub enum CorrelationError {
     /// Matrix is not positive definite
     NotPositiveDefinite,
     /// Matrix dimensions are invalid
-    InvalidDimensions { expected: usize, got: usize },
+    InvalidDimensions {
+        /// Expected number of elements
+        expected: usize,
+        /// Actual number of elements
+        got: usize,
+    },
     /// Diagonal elements are not 1.0
-    InvalidDiagonal { index: usize, value: f64 },
+    InvalidDiagonal {
+        /// Index of the invalid diagonal element
+        index: usize,
+        /// Value of the diagonal element
+        value: f64,
+    },
     /// Matrix is not symmetric
-    NotSymmetric { i: usize, j: usize },
+    NotSymmetric {
+        /// Row index
+        i: usize,
+        /// Column index
+        j: usize,
+    },
     /// Correlation value out of range [-1, 1]
-    OutOfRange { i: usize, j: usize, value: f64 },
+    OutOfRange {
+        /// Row index
+        i: usize,
+        /// Column index
+        j: usize,
+        /// Invalid value
+        value: f64,
+    },
 }
 
 impl std::fmt::Display for CorrelationError {

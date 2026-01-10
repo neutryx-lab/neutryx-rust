@@ -720,6 +720,258 @@ mod tests {
         smooth_pow(4.0_f64, 0.5, -1e-6);
     }
 
+    // ================================================================
+    // Task 5.2: Gradient verification tests
+    // Verify AD compatibility via finite difference comparison
+    // ================================================================
+
+    /// Compute numerical gradient using central difference
+    fn finite_diff<F>(f: F, x: f64, h: f64) -> f64
+    where
+        F: Fn(f64) -> f64,
+    {
+        (f(x + h) - f(x - h)) / (2.0 * h)
+    }
+
+    #[test]
+    fn test_smooth_max_gradient_finite_diff() {
+        let eps = 1e-6_f64;
+        let h = 1e-8_f64;
+
+        // Test gradient at various points
+        for a in [0.5, 1.0, 2.0, 5.0] {
+            for b in [0.3, 1.0, 2.5, 4.0] {
+                // Gradient w.r.t. a: d/da smooth_max(a, b, eps)
+                let grad_a = finite_diff(|x| smooth_max(x, b, eps), a, h);
+
+                // Gradient w.r.t. b: d/db smooth_max(a, b, eps)
+                let grad_b = finite_diff(|x| smooth_max(a, x, eps), b, h);
+
+                // Gradients should be in [0, 1] for smooth_max (convex combination)
+                assert!(
+                    grad_a >= -1e-6 && grad_a <= 1.0 + 1e-6,
+                    "smooth_max grad_a out of range: {} at a={}, b={}",
+                    grad_a,
+                    a,
+                    b
+                );
+                assert!(
+                    grad_b >= -1e-6 && grad_b <= 1.0 + 1e-6,
+                    "smooth_max grad_b out of range: {} at a={}, b={}",
+                    grad_b,
+                    a,
+                    b
+                );
+
+                // Sum of gradients should be approximately 1 (convex combination)
+                assert!(
+                    (grad_a + grad_b - 1.0).abs() < 1e-4,
+                    "smooth_max gradients should sum to 1: {} + {} at a={}, b={}",
+                    grad_a,
+                    grad_b,
+                    a,
+                    b
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_smooth_sqrt_gradient_finite_diff() {
+        let eps = 1e-6_f64;
+        let h = 1e-8_f64;
+
+        // Test gradient at various points
+        for x in [0.01, 0.1, 1.0, 4.0, 9.0] {
+            let numerical_grad = finite_diff(|t| smooth_sqrt(t, eps), x, h);
+
+            // Analytical gradient of sqrt: 1 / (2 * sqrt(x))
+            // For smooth_sqrt with small eps, should be close
+            let analytical_grad = 1.0 / (2.0 * x.sqrt());
+
+            let rel_err = if analytical_grad.abs() > 1e-10 {
+                (numerical_grad - analytical_grad).abs() / analytical_grad.abs()
+            } else {
+                (numerical_grad - analytical_grad).abs()
+            };
+
+            assert!(
+                rel_err < 1e-4, // Allow some tolerance due to smoothing
+                "smooth_sqrt gradient mismatch at x={}: numerical={}, analytical={}, rel_err={}",
+                x,
+                numerical_grad,
+                analytical_grad,
+                rel_err
+            );
+        }
+    }
+
+    #[test]
+    fn test_smooth_indicator_gradient_finite_diff() {
+        let eps = 1e-6_f64;
+        let h = 1e-8_f64;
+
+        // Test gradient at various points
+        for x in [-1.0, -0.5, 0.0, 0.5, 1.0] {
+            let numerical_grad = finite_diff(|t| smooth_indicator(t, eps), x, h);
+
+            // Analytical gradient of sigmoid: sigmoid(x) * (1 - sigmoid(x)) / eps
+            let sig = 1.0 / (1.0 + (-x / eps).exp());
+            let analytical_grad = sig * (1.0 - sig) / eps;
+
+            let rel_err = if analytical_grad.abs() > 1e-10 {
+                (numerical_grad - analytical_grad).abs() / analytical_grad.abs()
+            } else {
+                (numerical_grad - analytical_grad).abs()
+            };
+
+            assert!(
+                rel_err < 1e-4,
+                "smooth_indicator gradient mismatch at x={}: numerical={}, analytical={}, rel_err={}",
+                x,
+                numerical_grad,
+                analytical_grad,
+                rel_err
+            );
+        }
+    }
+
+    #[test]
+    fn test_smooth_abs_gradient_finite_diff() {
+        let eps = 1e-6_f64;
+        let h = 1e-8_f64;
+
+        // Test gradient at various points (away from 0 where gradient transitions)
+        for x in [-2.0, -1.0, 1.0, 2.0] {
+            let numerical_grad = finite_diff(|t| smooth_abs(t, eps), x, h);
+
+            // For |x| >> eps, gradient should be sign(x)
+            let expected_grad = if x > 0.0 { 1.0 } else { -1.0 };
+
+            let diff = (numerical_grad - expected_grad).abs();
+            assert!(
+                diff < 1e-4,
+                "smooth_abs gradient mismatch at x={}: numerical={}, expected={}, diff={}",
+                x,
+                numerical_grad,
+                expected_grad,
+                diff
+            );
+        }
+
+        // At x=0, gradient should be approximately 0 (smooth transition)
+        let grad_at_zero = finite_diff(|t| smooth_abs(t, eps), 0.0, h);
+        assert!(
+            grad_at_zero.abs() < 1e-3,
+            "smooth_abs gradient at 0 should be ~0: {}",
+            grad_at_zero
+        );
+    }
+
+    #[test]
+    fn test_smooth_pow_gradient_finite_diff() {
+        let eps = 1e-6_f64;
+        let h = 1e-8_f64;
+
+        // Test gradient w.r.t. x at various points
+        for x in [0.5, 1.0, 2.0, 4.0] {
+            for p in [0.5, 1.0, 2.0] {
+                let numerical_grad = finite_diff(|t| smooth_pow(t, p, eps), x, h);
+
+                // Analytical gradient: p * x^(p-1)
+                let analytical_grad = p * x.powf(p - 1.0);
+
+                let rel_err = if analytical_grad.abs() > 1e-10 {
+                    (numerical_grad - analytical_grad).abs() / analytical_grad.abs()
+                } else {
+                    (numerical_grad - analytical_grad).abs()
+                };
+
+                assert!(
+                    rel_err < 1e-3, // smooth_pow has some approximation error
+                    "smooth_pow gradient mismatch at x={}, p={}: numerical={}, analytical={}, rel_err={}",
+                    x,
+                    p,
+                    numerical_grad,
+                    analytical_grad,
+                    rel_err
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_smooth_log_gradient_finite_diff() {
+        let eps = 1e-6_f64;
+        let h = 1e-8_f64;
+
+        // Test gradient at various points
+        for x in [0.1, 0.5, 1.0, 2.0, 10.0] {
+            let numerical_grad = finite_diff(|t| smooth_log(t, eps), x, h);
+
+            // Analytical gradient of ln(x + eps): 1 / (x + eps)
+            let analytical_grad = 1.0 / (x + eps);
+
+            let rel_err = if analytical_grad.abs() > 1e-10 {
+                (numerical_grad - analytical_grad).abs() / analytical_grad.abs()
+            } else {
+                (numerical_grad - analytical_grad).abs()
+            };
+
+            assert!(
+                rel_err < 1e-6,
+                "smooth_log gradient mismatch at x={}: numerical={}, analytical={}, rel_err={}",
+                x,
+                numerical_grad,
+                analytical_grad,
+                rel_err
+            );
+        }
+    }
+
+    #[test]
+    fn test_smooth_min_gradient_finite_diff() {
+        let eps = 1e-6_f64;
+        let h = 1e-8_f64;
+
+        // Test gradient at various points
+        for a in [0.5, 1.0, 2.0] {
+            for b in [0.3, 1.0, 2.5] {
+                // Gradient w.r.t. a
+                let grad_a = finite_diff(|x| smooth_min(x, b, eps), a, h);
+
+                // Gradient w.r.t. b
+                let grad_b = finite_diff(|x| smooth_min(a, x, eps), b, h);
+
+                // Gradients should be in [0, 1] for smooth_min (convex combination)
+                assert!(
+                    grad_a >= -1e-6 && grad_a <= 1.0 + 1e-6,
+                    "smooth_min grad_a out of range: {} at a={}, b={}",
+                    grad_a,
+                    a,
+                    b
+                );
+                assert!(
+                    grad_b >= -1e-6 && grad_b <= 1.0 + 1e-6,
+                    "smooth_min grad_b out of range: {} at a={}, b={}",
+                    grad_b,
+                    a,
+                    b
+                );
+
+                // Sum of gradients should be approximately 1
+                assert!(
+                    (grad_a + grad_b - 1.0).abs() < 1e-4,
+                    "smooth_min gradients should sum to 1: {} + {} at a={}, b={}",
+                    grad_a,
+                    grad_b,
+                    a,
+                    b
+                );
+            }
+        }
+    }
+
     // Task 6.1: Property-based tests for smoothing functions
     #[cfg(test)]
     mod property_tests {

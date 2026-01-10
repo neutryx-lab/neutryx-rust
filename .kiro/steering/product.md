@@ -20,7 +20,7 @@ The workspace enforces a strict unidirectional data flow that mirrors alphabetic
 - **Analytical Solutions**: Black-Scholes, Garman-Kohlhagen, Kemna-Vorst, barrier formulas
 - **XVA & Risk Analytics**: CVA, DVA, FVA calculations with exposure metrics (EE, EPE, PFE, EEPE, ENE)
 - **Market Data Infrastructure**: AD-compatible yield curves and volatility surfaces with interpolation
-- **Model Calibration**: Swaption volatility surface calibration with Levenberg-Marquardt
+- **Model Calibration**: Heston, SABR, Hull-White calibration with Levenberg-Marquardt optimisation
 - **Interest Rate Models**: Hull-White, Cox-Ingersoll-Ross (CIR) with mean reversion
 - **Portfolio Analytics**: Parallelised portfolio-level computations with SoA optimisation
 

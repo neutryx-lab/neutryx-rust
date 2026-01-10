@@ -29,4 +29,4 @@ pub mod hull_white;
 
 // Re-export main types
 pub use cir::{CIRModel, CIRParams};
-pub use hull_white::{HullWhiteModel, HullWhiteParams};
+pub use hull_white::{HullWhiteModel, HullWhiteParams, ThetaFunction};

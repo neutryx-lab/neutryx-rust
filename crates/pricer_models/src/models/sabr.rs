@@ -36,10 +36,12 @@
 //! assert!(params.is_ok());
 //! ```
 
-use pricer_core::math::smoothing::{smooth_log, smooth_pow};
+use pricer_core::math::smoothing::{smooth_log, smooth_max, smooth_pow, smooth_sqrt};
 use pricer_core::traits::priceable::Differentiable;
 use pricer_core::traits::Float;
 use thiserror::Error;
+
+use crate::models::stochastic::{StochasticModel, TwoFactorState};
 
 /// SABRモデルエラー型
 ///
@@ -967,6 +969,139 @@ impl<T: Float> SABRModel<T> {
 /// accepts_differentiable(&model);
 /// ```
 impl<T: Float> Differentiable for SABRModel<T> {}
+
+// ================================================================
+// Task 1.1-1.3: StochasticModel トレイト実装
+// ================================================================
+
+/// StochasticModel トレイトを SABRModel に実装
+///
+/// SABR モデルの確率過程:
+/// ```text
+/// dF = alpha * F^beta * dW_F
+/// d(alpha) = nu * alpha * dW_alpha
+/// E[dW_F * dW_alpha] = rho * dt
+/// ```
+///
+/// # 状態ベクトル
+///
+/// TwoFactorState を使用:
+/// - first: forward price (F)
+/// - second: volatility (alpha)
+///
+/// # 離散化スキーム
+///
+/// Euler-Maruyama 離散化を使用:
+/// - F(t+dt) = F(t) + alpha(t) * F(t)^beta * sqrt(dt) * dW_F
+/// - alpha(t+dt) = alpha(t) + nu * alpha(t) * sqrt(dt) * dW_alpha
+///
+/// dW_F と dW_alpha は相関 rho を持つ:
+/// - dW_F = dW1
+/// - dW_alpha = rho * dW1 + sqrt(1 - rho^2) * dW2
+///
+/// # beta 特殊ケース
+///
+/// - beta = 0: Normal SABR (F^0 = 1)
+/// - beta = 1: Lognormal SABR (F^1 = F)
+impl<T: Float + Default> StochasticModel<T> for SABRModel<T> {
+    type State = TwoFactorState<T>;
+    type Params = SABRParams<T>;
+
+    /// 1ステップ時間発展
+    ///
+    /// # Requirements: 3.2, 3.3, 3.5, 3.6, 5.1, 5.2
+    fn evolve_step(state: Self::State, dt: T, dw: &[T], params: &Self::Params) -> Self::State {
+        let f = state.first;
+        let alpha = state.second;
+
+        let beta = params.beta;
+        let nu = params.nu;
+        let rho = params.rho;
+        let eps = params.smoothing_epsilon;
+
+        let one = T::one();
+        let sqrt_dt = dt.sqrt();
+
+        // 相関ブラウン運動の分解
+        // dW_F = dW1
+        // dW_alpha = rho * dW1 + sqrt(1 - rho^2) * dW2
+        let dw1 = dw[0];
+        let dw2 = dw[1];
+
+        // sqrt(1 - rho^2) を smooth_sqrt で計算（AD 互換）
+        let one_minus_rho_sq = smooth_max(one - rho * rho, eps, eps);
+        let sqrt_one_minus_rho_sq = smooth_sqrt(one_minus_rho_sq, eps);
+
+        let dw_f = dw1;
+        let dw_alpha = rho * dw1 + sqrt_one_minus_rho_sq * dw2;
+
+        // F^beta の計算（beta 特殊ケース処理含む）
+        // Requirement 3.5, 3.6: beta=0 で Normal、beta=1 で Lognormal
+        let f_pow_beta = if params.is_normal() {
+            // beta = 0: F^0 = 1 (Normal SABR)
+            one
+        } else if params.is_lognormal() {
+            // beta = 1: F^1 = F (Lognormal SABR)
+            smooth_max(f, eps, eps)
+        } else {
+            // 一般の beta: F^beta を smooth_pow で計算
+            smooth_pow(smooth_max(f, eps, eps), beta, eps)
+        };
+
+        // Forward の更新
+        // F(t+dt) = F(t) + alpha(t) * F(t)^beta * sqrt(dt) * dW_F
+        let f_diffusion = alpha * f_pow_beta * sqrt_dt * dw_f;
+        let f_next = f + f_diffusion;
+
+        // Alpha の更新
+        // alpha(t+dt) = alpha(t) + nu * alpha(t) * sqrt(dt) * dW_alpha
+        let alpha_diffusion = nu * alpha * sqrt_dt * dw_alpha;
+        let alpha_next_raw = alpha + alpha_diffusion;
+
+        // Volatility の非負制約を absorption scheme で維持
+        // Requirement 3.3: volatility >= 0
+        let alpha_next = smooth_max(alpha_next_raw, eps, eps);
+
+        // Forward の非負制約（beta > 0 の場合のみ必要）
+        let f_next_safe = if params.is_normal() {
+            // Normal SABR では負の forward が許容される場合もあるが、
+            // 一般的には absorption を適用
+            f_next
+        } else {
+            smooth_max(f_next, eps, eps)
+        };
+
+        TwoFactorState {
+            first: f_next_safe,
+            second: alpha_next,
+        }
+    }
+
+    /// 初期状態を取得
+    ///
+    /// # Requirement: 3.1
+    fn initial_state(params: &Self::Params) -> Self::State {
+        TwoFactorState {
+            first: params.forward,
+            second: params.alpha,
+        }
+    }
+
+    /// ブラウン運動の次元を返す
+    ///
+    /// # Requirement: 3.4
+    fn brownian_dim() -> usize {
+        2
+    }
+
+    fn model_name() -> &'static str {
+        "SABR"
+    }
+
+    fn num_factors() -> usize {
+        2
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -2579,5 +2714,206 @@ mod tests {
         let vol1 = model.implied_vol(100.0).unwrap();
         let vol2 = cloned_model.implied_vol(100.0).unwrap();
         assert!((vol1 - vol2).abs() < 1e-10);
+    }
+
+    // ================================================================
+    // Task 6.1: SABR StochasticModel テスト
+    // ================================================================
+
+    #[test]
+    fn test_sabr_stochastic_model_brownian_dim() {
+        use crate::models::stochastic::StochasticModel;
+
+        // SABR は 2 因子モデル
+        assert_eq!(SABRModel::<f64>::brownian_dim(), 2);
+    }
+
+    #[test]
+    fn test_sabr_stochastic_model_num_factors() {
+        use crate::models::stochastic::StochasticModel;
+
+        // SABR は 2 因子モデル
+        assert_eq!(SABRModel::<f64>::num_factors(), 2);
+    }
+
+    #[test]
+    fn test_sabr_stochastic_model_name() {
+        use crate::models::stochastic::StochasticModel;
+
+        assert_eq!(SABRModel::<f64>::model_name(), "SABR");
+    }
+
+    #[test]
+    fn test_sabr_stochastic_model_initial_state() {
+        use crate::models::stochastic::StochasticModel;
+
+        let params = SABRParams::new(100.0, 0.2, 0.4, -0.3, 0.5, 1.0).unwrap();
+        let state = SABRModel::initial_state(&params);
+
+        // 初期状態は forward と alpha
+        assert_eq!(state.first, 100.0);
+        assert_eq!(state.second, 0.2);
+    }
+
+    #[test]
+    fn test_sabr_stochastic_model_evolve_step_zero_shock() {
+        use crate::models::stochastic::StochasticModel;
+        use crate::models::stochastic::TwoFactorState;
+
+        let params = SABRParams::new(100.0, 0.2, 0.4, -0.3, 0.5, 1.0).unwrap();
+        let state = TwoFactorState {
+            first: 100.0,
+            second: 0.2,
+        };
+
+        // ゼロショックでは拡散項が消える
+        let dw = [0.0, 0.0];
+        let dt = 1.0 / 252.0;
+
+        let next = SABRModel::evolve_step(state, dt, &dw, &params);
+
+        // 拡散項なしなので状態はほぼ同じ
+        assert!((next.first - 100.0).abs() < 1e-6);
+        assert!((next.second - 0.2).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_sabr_stochastic_model_evolve_step_positive_shock() {
+        use crate::models::stochastic::StochasticModel;
+        use crate::models::stochastic::TwoFactorState;
+
+        let params = SABRParams::new(100.0, 0.2, 0.4, -0.3, 0.5, 1.0).unwrap();
+        let state = TwoFactorState {
+            first: 100.0,
+            second: 0.2,
+        };
+
+        // 正のショック
+        let dw = [1.0, 1.0];
+        let dt = 1.0 / 252.0;
+
+        let next = SABRModel::evolve_step(state, dt, &dw, &params);
+
+        // 状態は有限で非負
+        assert!(next.first.is_finite());
+        assert!(next.second.is_finite());
+        assert!(next.second > 0.0); // volatility は正
+    }
+
+    #[test]
+    fn test_sabr_stochastic_model_evolve_step_negative_shock() {
+        use crate::models::stochastic::StochasticModel;
+        use crate::models::stochastic::TwoFactorState;
+
+        let params = SABRParams::new(100.0, 0.2, 0.4, -0.3, 0.5, 1.0).unwrap();
+        let state = TwoFactorState {
+            first: 100.0,
+            second: 0.2,
+        };
+
+        // 負のショック
+        let dw = [-1.0, -1.0];
+        let dt = 1.0 / 252.0;
+
+        let next = SABRModel::evolve_step(state, dt, &dw, &params);
+
+        // 状態は有限で非負
+        assert!(next.first.is_finite());
+        assert!(next.second.is_finite());
+        assert!(next.second > 0.0); // absorption により volatility は正
+    }
+
+    #[test]
+    fn test_sabr_stochastic_model_beta_zero_normal() {
+        use crate::models::stochastic::StochasticModel;
+        use crate::models::stochastic::TwoFactorState;
+
+        // beta=0 (Normal SABR)
+        let params = SABRParams::new(100.0, 0.2, 0.4, -0.3, 0.0, 1.0).unwrap();
+        let state = TwoFactorState {
+            first: 100.0,
+            second: 0.2,
+        };
+
+        let dw = [1.0, 0.5];
+        let dt = 1.0 / 252.0;
+
+        let next = SABRModel::evolve_step(state, dt, &dw, &params);
+
+        // Normal SABR では forward は負になることがある
+        assert!(next.first.is_finite());
+        assert!(next.second.is_finite());
+        assert!(next.second > 0.0);
+    }
+
+    #[test]
+    fn test_sabr_stochastic_model_beta_one_lognormal() {
+        use crate::models::stochastic::StochasticModel;
+        use crate::models::stochastic::TwoFactorState;
+
+        // beta=1 (Lognormal SABR)
+        let params = SABRParams::new(100.0, 0.2, 0.4, -0.3, 1.0, 1.0).unwrap();
+        let state = TwoFactorState {
+            first: 100.0,
+            second: 0.2,
+        };
+
+        let dw = [1.0, 0.5];
+        let dt = 1.0 / 252.0;
+
+        let next = SABRModel::evolve_step(state, dt, &dw, &params);
+
+        // Lognormal SABR では forward は常に正
+        assert!(next.first > 0.0);
+        assert!(next.first.is_finite());
+        assert!(next.second > 0.0);
+    }
+
+    #[test]
+    fn test_sabr_stochastic_model_path_simulation() {
+        use crate::models::stochastic::StochasticModel;
+
+        let params = SABRParams::new(100.0, 0.2, 0.4, -0.3, 0.5, 1.0).unwrap();
+        let dt = 1.0 / 252.0;
+        let n_steps = 252;
+
+        let mut state = SABRModel::initial_state(&params);
+
+        // シンプルなパスシミュレーション（ゼロショック）
+        for _ in 0..n_steps {
+            let dw = [0.0, 0.0];
+            state = SABRModel::evolve_step(state, dt, &dw, &params);
+        }
+
+        // 1年後も有限で正
+        assert!(state.first.is_finite());
+        assert!(state.second.is_finite());
+        assert!(state.second > 0.0);
+    }
+
+    #[test]
+    fn test_sabr_stochastic_model_correlation_effect() {
+        use crate::models::stochastic::StochasticModel;
+        use crate::models::stochastic::TwoFactorState;
+
+        let state = TwoFactorState {
+            first: 100.0,
+            second: 0.2,
+        };
+
+        // 正の相関
+        let params_pos_rho = SABRParams::new(100.0, 0.2, 0.4, 0.5, 0.5, 1.0).unwrap();
+
+        // 負の相関
+        let params_neg_rho = SABRParams::new(100.0, 0.2, 0.4, -0.5, 0.5, 1.0).unwrap();
+
+        let dw = [1.0, 0.0]; // dW1 only
+        let dt = 1.0 / 252.0;
+
+        let next_pos = SABRModel::evolve_step(state, dt, &dw, &params_pos_rho);
+        let next_neg = SABRModel::evolve_step(state, dt, &dw, &params_neg_rho);
+
+        // 相関が異なるので volatility の変化も異なる
+        assert!((next_pos.second - next_neg.second).abs() > 1e-10);
     }
 }

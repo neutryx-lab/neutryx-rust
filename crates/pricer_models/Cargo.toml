@@ -24,6 +24,9 @@ all = ["equity", "rates", "credit", "fx", "commodity", "exotic"]
 # Serialisation support
 serde = ["dep:serde", "pricer_core/serde"]
 
+# AD (Automatic Differentiation) support - forwards to pricer_core
+num-dual-mode = ["pricer_core/num-dual-mode"]
+
 [dependencies]
 pricer_core = { path = "../pricer_core" }
 num-traits.workspace = true

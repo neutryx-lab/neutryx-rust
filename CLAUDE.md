@@ -61,5 +61,12 @@ S: Service   → service_cli, service_gateway, service_python
 
 ## Steering Configuration
 - Load entire `.kiro/steering/` as project memory
-- Default files: `product.md`, `tech.md`, `structure.md`
+- Default files: `product.md`, `tech.md`, `structure.md`, `roadmap.md`
 - Custom files are supported (managed via `/kiro:steering-custom`)
+
+### Roadmap Maintenance
+
+- `roadmap.md` tracks implementation status and future development items
+- **Reference** when: planning new features, checking current state, prioritising work
+- **Update** when: completing specs, changing priorities, adding/removing development items
+- Run `/kiro:spec-status` to verify alignment between specs and roadmap

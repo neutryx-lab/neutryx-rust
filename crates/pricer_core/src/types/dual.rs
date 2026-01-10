@@ -30,8 +30,11 @@
 ///
 /// # Integration with Smoothing Functions
 ///
-/// All smoothing functions in `math::smoothing` are generic over `T: num_traits::Float`,
-/// which `DualNumber` implements. This allows seamless AD:
+/// NOTE: `DualNumber` (`Dual64`) does NOT implement `num_traits::Float`.
+/// To use smoothing functions with AD, they need to be refactored to use
+/// a more permissive trait bound (e.g., `DualNum<f64>` or a custom `Scalar` trait).
+///
+/// Example of intended usage (requires trait bound refactoring):
 ///
 /// ```ignore
 /// # #[cfg(feature = "num-dual-mode")]

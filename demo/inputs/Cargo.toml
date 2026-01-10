@@ -1,0 +1,33 @@
+[package]
+name = "demo_inputs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Mock input systems for FrictionalBank demo"
+
+[dependencies]
+# Adapter types to generate
+pricer_core = { path = "../../crates/pricer_core" }
+pricer_models = { path = "../../crates/pricer_models", features = ["equity", "rates", "credit", "fx"] }
+adapter_feeds = { path = "../../crates/adapter_feeds" }
+
+# Async runtime
+tokio = { workspace = true }
+tokio-stream = "0.1"
+
+# Random generation
+rand = { workspace = true }
+rand_distr = { workspace = true }
+
+# Date/time
+chrono = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Tracing
+tracing = { workspace = true }
+
+# Async channels
+async-channel = "2.3"
