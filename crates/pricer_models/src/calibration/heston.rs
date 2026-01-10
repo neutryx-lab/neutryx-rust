@@ -178,11 +178,11 @@ impl HestonCalibrationData {
 /// Heston model parameter indices for calibration.
 ///
 /// Maps parameter vector positions to Heston parameters:
-/// - params[0] = v0 (initial variance)
-/// - params[1] = theta (long-term variance)
-/// - params[2] = kappa (mean reversion speed)
-/// - params[3] = xi (vol-of-vol)
-/// - params[4] = rho (correlation)
+/// - `params[0]` = v0 (initial variance)
+/// - `params[1]` = theta (long-term variance)
+/// - `params[2]` = kappa (mean reversion speed)
+/// - `params[3]` = xi (vol-of-vol)
+/// - `params[4]` = rho (correlation)
 #[derive(Debug, Clone, Copy)]
 pub struct HestonParamIndex;
 

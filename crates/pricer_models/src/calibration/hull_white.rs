@@ -151,8 +151,8 @@ impl HullWhiteCalibrationData {
 
 /// Hull-White parameter indices.
 ///
-/// - params[0] = a (mean reversion)
-/// - params[1] = sigma (volatility)
+/// - `params[0]` = a (mean reversion)
+/// - `params[1]` = sigma (volatility)
 #[derive(Debug, Clone, Copy)]
 pub struct HWParamIndex;
 

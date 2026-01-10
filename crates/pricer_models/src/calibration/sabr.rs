@@ -157,15 +157,15 @@ impl SABRCalibrationData {
 /// SABR parameter indices for calibration.
 ///
 /// When beta is fixed:
-/// - params[0] = alpha
-/// - params[1] = rho
-/// - params[2] = nu
+/// - `params[0]` = alpha
+/// - `params[1]` = rho
+/// - `params[2]` = nu
 ///
 /// When beta is calibrated:
-/// - params[0] = alpha
-/// - params[1] = beta
-/// - params[2] = rho
-/// - params[3] = nu
+/// - `params[0]` = alpha
+/// - `params[1]` = beta
+/// - `params[2]` = rho
+/// - `params[3]` = nu
 #[derive(Debug, Clone, Copy)]
 pub struct SABRParamIndex;
 
@@ -425,8 +425,8 @@ pub fn calibrate_sabr(
     market_data: &SABRCalibrationData,
     initial_params: Vec<f64>,
 ) -> CalibrationResult<Vec<f64>> {
-    let calibrator = if market_data.fixed_beta.is_some() {
-        SABRCalibrator::with_fixed_beta(market_data.fixed_beta.unwrap())
+    let calibrator = if let Some(beta) = market_data.fixed_beta {
+        SABRCalibrator::with_fixed_beta(beta)
     } else {
         SABRCalibrator::new()
     };
