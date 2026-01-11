@@ -152,7 +152,8 @@
       "Bash(dir \"C:\\\\Users\\\\khosh\\\\.cargo\\\\bin\"\")",
       "Bash(/c/Users/khosh/.cargo/bin/cargo test -p pricer_pricing enzyme::tests::test_admode)",
       "Bash(rustfmt --check \"c:/Users/khosh/neutryx-rust/neutryx-rust/crates/pricer_pricing/src/enzyme/mod.rs\")",
-      "Bash(cargo run:*)"
+      "Bash(cargo run:*)",
+      "Bash(dir:*)"
     ]
   }
 }

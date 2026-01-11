@@ -1,6 +1,8 @@
 //! Netting engine for payment consolidation.
 
-use super::{PaymentInstruction, PaymentType};
+use super::PaymentInstruction;
+#[cfg(test)]
+use super::PaymentType;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

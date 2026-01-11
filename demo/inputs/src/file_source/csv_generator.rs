@@ -4,9 +4,150 @@
 
 use super::FileGenerator;
 use crate::trade_source::{InstrumentType, TradeParams, TradeRecord};
+use std::fs;
+use std::io::{self, Write};
+use std::path::Path;
 
 /// CSV file generator
 pub struct CsvGenerator;
+
+/// Bulk data generator for creating complete sample datasets.
+pub struct BulkDataGenerator {
+    /// Output directory path
+    output_dir: std::path::PathBuf,
+}
+
+impl BulkDataGenerator {
+    /// Create a new bulk data generator with specified output directory.
+    pub fn new(output_dir: impl AsRef<Path>) -> Self {
+        Self {
+            output_dir: output_dir.as_ref().to_path_buf(),
+        }
+    }
+
+    /// Generate all sample data files.
+    ///
+    /// Creates the following directory structure:
+    /// ```text
+    /// output_dir/
+    /// ├── counterparties/
+    /// │   ├── counterparties.csv
+    /// │   └── netting_sets.csv
+    /// ├── market_data/
+    /// │   ├── spot_rates.csv
+    /// │   ├── credit_spreads.csv
+    /// │   └── currencies.csv
+    /// ├── trades/
+    /// │   └── trades.csv
+    /// └── config/
+    ///     ├── csa_agreements.csv
+    ///     └── holidays.csv
+    /// ```
+    pub fn generate_all(&self, trades: &[TradeRecord]) -> io::Result<GenerationSummary> {
+        let mut summary = GenerationSummary::default();
+
+        // Create directories
+        let cp_dir = self.output_dir.join("counterparties");
+        let md_dir = self.output_dir.join("market_data");
+        let trade_dir = self.output_dir.join("trades");
+        let config_dir = self.output_dir.join("config");
+
+        fs::create_dir_all(&cp_dir)?;
+        fs::create_dir_all(&md_dir)?;
+        fs::create_dir_all(&trade_dir)?;
+        fs::create_dir_all(&config_dir)?;
+
+        // Counterparty data
+        Self::write_file(&cp_dir.join("counterparties.csv"), &CsvGenerator::counterparties_csv())?;
+        summary.files_created += 1;
+
+        Self::write_file(&cp_dir.join("netting_sets.csv"), &CsvGenerator::netting_sets_csv())?;
+        summary.files_created += 1;
+
+        // Market data
+        Self::write_file(&md_dir.join("spot_rates.csv"), &CsvGenerator::spot_rates_csv())?;
+        summary.files_created += 1;
+
+        Self::write_file(&md_dir.join("credit_spreads.csv"), &CsvGenerator::credit_spreads_csv())?;
+        summary.files_created += 1;
+
+        Self::write_file(&md_dir.join("currencies.csv"), &CsvGenerator::currencies_csv())?;
+        summary.files_created += 1;
+
+        // Trades
+        if !trades.is_empty() {
+            Self::write_file(&trade_dir.join("trades.csv"), &CsvGenerator::trades_to_csv(trades))?;
+            summary.files_created += 1;
+            summary.trades_written = trades.len();
+        }
+
+        // Config
+        Self::write_file(&config_dir.join("csa_agreements.csv"), &CsvGenerator::csa_agreements_csv())?;
+        summary.files_created += 1;
+
+        Self::write_file(&config_dir.join("holidays.csv"), &CsvGenerator::holidays_csv())?;
+        summary.files_created += 1;
+
+        Ok(summary)
+    }
+
+    /// Generate counterparty files only.
+    pub fn generate_counterparty_files(&self) -> io::Result<usize> {
+        let cp_dir = self.output_dir.join("counterparties");
+        fs::create_dir_all(&cp_dir)?;
+
+        Self::write_file(&cp_dir.join("counterparties.csv"), &CsvGenerator::counterparties_csv())?;
+        Self::write_file(&cp_dir.join("netting_sets.csv"), &CsvGenerator::netting_sets_csv())?;
+
+        Ok(2)
+    }
+
+    /// Generate market data files only.
+    pub fn generate_market_data_files(&self, yield_curves: &[(&str, Vec<(f64, f64)>)]) -> io::Result<usize> {
+        let md_dir = self.output_dir.join("market_data");
+        fs::create_dir_all(&md_dir)?;
+
+        Self::write_file(&md_dir.join("spot_rates.csv"), &CsvGenerator::spot_rates_csv())?;
+        Self::write_file(&md_dir.join("credit_spreads.csv"), &CsvGenerator::credit_spreads_csv())?;
+        Self::write_file(&md_dir.join("currencies.csv"), &CsvGenerator::currencies_csv())?;
+
+        let mut count = 3;
+
+        // Write yield curves
+        for (currency, rates) in yield_curves {
+            let filename = format!("yield_curve_{}.csv", currency.to_lowercase());
+            Self::write_file(&md_dir.join(&filename), &CsvGenerator::yield_curve_csv(currency, rates))?;
+            count += 1;
+        }
+
+        Ok(count)
+    }
+
+    /// Generate trade files only.
+    pub fn generate_trade_files(&self, trades: &[TradeRecord]) -> io::Result<usize> {
+        let trade_dir = self.output_dir.join("trades");
+        fs::create_dir_all(&trade_dir)?;
+
+        Self::write_file(&trade_dir.join("trades.csv"), &CsvGenerator::trades_to_csv(trades))?;
+
+        Ok(1)
+    }
+
+    fn write_file(path: &Path, content: &str) -> io::Result<()> {
+        let mut file = fs::File::create(path)?;
+        file.write_all(content.as_bytes())?;
+        Ok(())
+    }
+}
+
+/// Summary of bulk generation operation.
+#[derive(Debug, Default)]
+pub struct GenerationSummary {
+    /// Number of files created
+    pub files_created: usize,
+    /// Number of trades written
+    pub trades_written: usize,
+}
 
 impl CsvGenerator {
     /// Generate trades CSV from trade records
@@ -211,11 +352,120 @@ impl FileGenerator for CsvGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::trade_source::{FrontOffice, TradeSource};
+    use tempfile::TempDir;
 
     #[test]
     fn test_counterparties_csv() {
         let csv = CsvGenerator::counterparties_csv();
         assert!(csv.contains("CP001"));
         assert!(csv.contains("Goldman Sachs"));
+    }
+
+    #[test]
+    fn test_netting_sets_csv() {
+        let csv = CsvGenerator::netting_sets_csv();
+        assert!(csv.contains("NS001"));
+        assert!(csv.contains("threshold"));
+    }
+
+    #[test]
+    fn test_trades_to_csv() {
+        let fo = FrontOffice::new();
+        let trades = fo.generate_trades(10);
+        let csv = CsvGenerator::trades_to_csv(&trades);
+
+        assert!(csv.starts_with("trade_id,"));
+        let lines: Vec<_> = csv.lines().collect();
+        assert_eq!(lines.len(), 11); // Header + 10 trades
+    }
+
+    #[test]
+    fn test_yield_curve_csv() {
+        let rates = vec![(0.25, 4.5), (0.5, 4.6), (1.0, 4.7)];
+        let csv = CsvGenerator::yield_curve_csv("USD", &rates);
+
+        assert!(csv.contains("USD"));
+        assert!(csv.contains("0.2500"));
+        let lines: Vec<_> = csv.lines().collect();
+        assert_eq!(lines.len(), 4); // Header + 3 rates
+    }
+
+    #[test]
+    fn test_spot_rates_csv() {
+        let csv = CsvGenerator::spot_rates_csv();
+        assert!(csv.contains("AAPL"));
+        assert!(csv.contains("ticker,spot_price"));
+    }
+
+    #[test]
+    fn test_bulk_data_generator() {
+        let temp_dir = TempDir::new().unwrap();
+        let generator = BulkDataGenerator::new(temp_dir.path());
+
+        let fo = FrontOffice::new();
+        let trades = fo.generate_trades(50);
+
+        let summary = generator.generate_all(&trades).unwrap();
+
+        assert_eq!(summary.files_created, 8);
+        assert_eq!(summary.trades_written, 50);
+
+        // Verify directory structure
+        assert!(temp_dir.path().join("counterparties/counterparties.csv").exists());
+        assert!(temp_dir.path().join("counterparties/netting_sets.csv").exists());
+        assert!(temp_dir.path().join("market_data/spot_rates.csv").exists());
+        assert!(temp_dir.path().join("market_data/credit_spreads.csv").exists());
+        assert!(temp_dir.path().join("trades/trades.csv").exists());
+        assert!(temp_dir.path().join("config/csa_agreements.csv").exists());
+        assert!(temp_dir.path().join("config/holidays.csv").exists());
+    }
+
+    #[test]
+    fn test_bulk_counterparty_files() {
+        let temp_dir = TempDir::new().unwrap();
+        let generator = BulkDataGenerator::new(temp_dir.path());
+
+        let count = generator.generate_counterparty_files().unwrap();
+
+        assert_eq!(count, 2);
+        assert!(temp_dir.path().join("counterparties/counterparties.csv").exists());
+        assert!(temp_dir.path().join("counterparties/netting_sets.csv").exists());
+    }
+
+    #[test]
+    fn test_bulk_market_data_files() {
+        let temp_dir = TempDir::new().unwrap();
+        let generator = BulkDataGenerator::new(temp_dir.path());
+
+        let yield_curves = vec![
+            ("USD", vec![(1.0, 4.5), (5.0, 4.7)]),
+            ("EUR", vec![(1.0, 3.0), (5.0, 3.2)]),
+        ];
+        let count = generator.generate_market_data_files(&yield_curves).unwrap();
+
+        assert_eq!(count, 5); // 3 base files + 2 yield curves
+        assert!(temp_dir.path().join("market_data/spot_rates.csv").exists());
+        assert!(temp_dir.path().join("market_data/yield_curve_usd.csv").exists());
+        assert!(temp_dir.path().join("market_data/yield_curve_eur.csv").exists());
+    }
+
+    #[test]
+    fn test_bulk_trade_files() {
+        let temp_dir = TempDir::new().unwrap();
+        let generator = BulkDataGenerator::new(temp_dir.path());
+
+        let fo = FrontOffice::new();
+        let trades = fo.generate_trades(20);
+
+        let count = generator.generate_trade_files(&trades).unwrap();
+
+        assert_eq!(count, 1);
+        assert!(temp_dir.path().join("trades/trades.csv").exists());
+
+        // Verify content
+        let content = std::fs::read_to_string(temp_dir.path().join("trades/trades.csv")).unwrap();
+        let lines: Vec<_> = content.lines().collect();
+        assert_eq!(lines.len(), 21); // Header + 20 trades
     }
 }

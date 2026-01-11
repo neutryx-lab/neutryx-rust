@@ -6,8 +6,8 @@
 mod audit_store;
 mod regulator_api;
 
-pub use audit_store::AuditStore;
-pub use regulator_api::RegulatorApi;
+pub use audit_store::{AuditEvent, AuditEventType, AuditStore};
+pub use regulator_api::{RegulatorApi, SubmissionLog, SubmissionRequest, SubmissionResponse};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

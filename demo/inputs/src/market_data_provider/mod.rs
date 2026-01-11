@@ -9,7 +9,10 @@ mod synthetic;
 
 pub use bloomberg_sim::BloombergSim;
 pub use reuters_sim::ReutersSim;
-pub use synthetic::SyntheticGenerator;
+pub use synthetic::{
+    MeanReversionModel, PriceEvolutionModel, RandomWalkModel, StreamingPriceGenerator,
+    SyntheticGenerator,
+};
 
 use adapter_feeds::MarketQuote;
 use async_channel::Receiver;

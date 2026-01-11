@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FpML xmlns="http://www.fpml.org/FpML-5/confirmation" version="5-12">
+  <trade>
+    <tradeHeader>
+      <partyTradeIdentifier>
+        <partyReference href="party1"/>
+        <tradeId tradeIdScheme="http://www.example.com/trade-id">IRS-FPML-000001</tradeId>
+      </partyTradeIdentifier>
+      <tradeDate>2026-01-10</tradeDate>
+    </tradeHeader>
+    <swap>
+      <productType>InterestRateSwap</productType>
+      <swapStream id="fixedLeg">
+        <payerPartyReference href="party1"/>
+        <receiverPartyReference href="party2"/>
+        <calculationPeriodDates id="fixedCalcPeriodDates">
+          <effectiveDate>
+            <unadjustedDate>2026-01-12</unadjustedDate>
+          </effectiveDate>
+          <terminationDate>
+            <unadjustedDate>2031-01-12</unadjustedDate>
+          </terminationDate>
+          <calculationPeriodFrequency>
+            <periodMultiplier>6</periodMultiplier>
+            <period>M</period>
+          </calculationPeriodFrequency>
+        </calculationPeriodDates>
+        <paymentDates>
+          <calculationPeriodDatesReference href="fixedCalcPeriodDates"/>
+          <paymentFrequency>
+            <periodMultiplier>6</periodMultiplier>
+            <period>M</period>
+          </paymentFrequency>
+        </paymentDates>
+        <calculationPeriodAmount>
+          <calculation>
+            <notionalSchedule>
+              <notionalStepSchedule>
+                <initialValue>100000000.00</initialValue>
+                <currency>USD</currency>
+              </notionalStepSchedule>
+            </notionalSchedule>
+            <fixedRateSchedule>
+              <initialValue>0.0425</initialValue>
+            </fixedRateSchedule>
+            <dayCountFraction>30/360</dayCountFraction>
+          </calculation>
+        </calculationPeriodAmount>
+      </swapStream>
+      <swapStream id="floatingLeg">
+        <payerPartyReference href="party2"/>
+        <receiverPartyReference href="party1"/>
+        <calculationPeriodDates id="floatCalcPeriodDates">
+          <effectiveDate>
+            <unadjustedDate>2026-01-12</unadjustedDate>
+          </effectiveDate>
+          <terminationDate>
+            <unadjustedDate>2031-01-12</unadjustedDate>
+          </terminationDate>
+          <calculationPeriodFrequency>
+            <periodMultiplier>3</periodMultiplier>
+            <period>M</period>
+          </calculationPeriodFrequency>
+        </calculationPeriodDates>
+        <paymentDates>
+          <calculationPeriodDatesReference href="floatCalcPeriodDates"/>
+          <paymentFrequency>
+            <periodMultiplier>3</periodMultiplier>
+            <period>M</period>
+          </paymentFrequency>
+        </paymentDates>
+        <calculationPeriodAmount>
+          <calculation>
+            <notionalSchedule>
+              <notionalStepSchedule>
+                <initialValue>100000000.00</initialValue>
+                <currency>USD</currency>
+              </notionalStepSchedule>
+            </notionalSchedule>
+            <floatingRateCalculation>
+              <floatingRateIndex>USD-SOFR-COMPOUND</floatingRateIndex>
+              <indexTenor>
+                <periodMultiplier>3</periodMultiplier>
+                <period>M</period>
+              </indexTenor>
+              <spreadSchedule>
+                <initialValue>0.0010</initialValue>
+              </spreadSchedule>
+            </floatingRateCalculation>
+            <dayCountFraction>ACT/360</dayCountFraction>
+          </calculation>
+        </calculationPeriodAmount>
+      </swapStream>
+    </swap>
+  </trade>
+  <party id="party1">
+    <partyId partyIdScheme="http://www.example.com/party-id">CP001</partyId>
+    <partyName>FrictionalBank</partyName>
+  </party>
+  <party id="party2">
+    <partyId partyIdScheme="http://www.example.com/party-id">CP002</partyId>
+    <partyName>Alpha Bank</partyName>
+  </party>
+</FpML>

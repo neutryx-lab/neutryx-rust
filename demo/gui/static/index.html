@@ -1,0 +1,1843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FrictionalBank Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Three.js for 3D charts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- D3.js for Sankey diagrams -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
+    <!-- jsPDF for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <!-- SheetJS for Excel export -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+    <!-- Skip Link for Accessibility -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <!-- Animated Background -->
+    <div class="animated-bg">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+        <div class="gradient-orb orb-3"></div>
+    </div>
+
+    <!-- Particle Canvas -->
+    <canvas id="particle-canvas" aria-hidden="true"></canvas>
+
+    <!-- Notification Toast Container -->
+    <div class="toast-container" id="toast-container" role="alert" aria-live="polite"></div>
+
+    <!-- Alert Panel (Slide-in) -->
+    <div class="alert-panel glass" id="alert-panel">
+        <div class="alert-panel-header">
+            <h3><i class="fas fa-bell"></i> Alerts</h3>
+            <div class="alert-actions">
+                <button class="icon-btn" id="mark-all-read" title="Mark all as read"><i class="fas fa-check-double"></i></button>
+                <button class="icon-btn" id="close-alerts" title="Close"><i class="fas fa-times"></i></button>
+            </div>
+        </div>
+        <div class="alert-filters">
+            <button class="alert-filter active" data-filter="all">All</button>
+            <button class="alert-filter" data-filter="critical">Critical</button>
+            <button class="alert-filter" data-filter="warning">Warning</button>
+            <button class="alert-filter" data-filter="info">Info</button>
+        </div>
+        <div class="alert-list" id="alert-list">
+            <!-- Dynamically filled -->
+        </div>
+        <div class="alert-settings">
+            <button class="text-btn" id="open-alert-settings"><i class="fas fa-cog"></i> Settings</button>
+        </div>
+    </div>
+
+    <!-- Theme Customizer Panel -->
+    <div class="theme-panel glass" id="theme-panel">
+        <div class="theme-panel-header">
+            <h3><i class="fas fa-palette"></i> Theme</h3>
+            <button class="icon-btn" id="close-theme"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="theme-options">
+            <div class="theme-section">
+                <h4>Mode</h4>
+                <div class="theme-mode-grid">
+                    <button class="theme-mode-btn active" data-mode="dark">
+                        <i class="fas fa-moon"></i>
+                        <span>Dark</span>
+                    </button>
+                    <button class="theme-mode-btn" data-mode="light">
+                        <i class="fas fa-sun"></i>
+                        <span>Light</span>
+                    </button>
+                    <button class="theme-mode-btn" data-mode="oled">
+                        <i class="fas fa-adjust"></i>
+                        <span>OLED</span>
+                    </button>
+                    <button class="theme-mode-btn" data-mode="auto">
+                        <i class="fas fa-clock"></i>
+                        <span>Auto</span>
+                    </button>
+                </div>
+            </div>
+            <div class="theme-section">
+                <h4>Accent Color</h4>
+                <div class="color-picker-grid">
+                    <button class="color-swatch active" data-color="indigo" style="--swatch-color: #6366f1"></button>
+                    <button class="color-swatch" data-color="cyan" style="--swatch-color: #06b6d4"></button>
+                    <button class="color-swatch" data-color="emerald" style="--swatch-color: #10b981"></button>
+                    <button class="color-swatch" data-color="amber" style="--swatch-color: #f59e0b"></button>
+                    <button class="color-swatch" data-color="rose" style="--swatch-color: #f43f5e"></button>
+                    <button class="color-swatch" data-color="violet" style="--swatch-color: #8b5cf6"></button>
+                </div>
+            </div>
+            <div class="theme-section">
+                <h4>Contrast</h4>
+                <div class="contrast-toggle">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="high-contrast">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span>High Contrast Mode</span>
+                </div>
+            </div>
+            <div class="theme-section">
+                <h4>Reduce Motion</h4>
+                <div class="contrast-toggle">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="reduce-motion">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span>Reduce Animations</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- What-If Simulator Modal -->
+    <div class="modal-overlay" id="whatif-modal">
+        <div class="modal glass-heavy whatif-modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-flask"></i> What-If Simulator</h2>
+                <button class="icon-btn" id="close-whatif"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="whatif-layout">
+                    <div class="whatif-trades-panel">
+                        <h4>Trade Modifications</h4>
+                        <div class="trade-modifications" id="trade-modifications">
+                            <div class="modification-empty">
+                                <i class="fas fa-hand-pointer"></i>
+                                <p>Drag trades here or click to add</p>
+                            </div>
+                        </div>
+                        <button class="add-trade-btn" id="add-whatif-trade">
+                            <i class="fas fa-plus"></i> Add Trade
+                        </button>
+                    </div>
+                    <div class="whatif-results-panel">
+                        <h4>Impact Analysis</h4>
+                        <div class="whatif-impact-grid">
+                            <div class="impact-card">
+                                <span class="impact-label">ΔPV</span>
+                                <span class="impact-value" id="whatif-delta-pv">$0</span>
+                            </div>
+                            <div class="impact-card">
+                                <span class="impact-label">ΔCVA</span>
+                                <span class="impact-value" id="whatif-delta-cva">$0</span>
+                            </div>
+                            <div class="impact-card">
+                                <span class="impact-label">ΔDVA</span>
+                                <span class="impact-value" id="whatif-delta-dva">$0</span>
+                            </div>
+                            <div class="impact-card">
+                                <span class="impact-label">ΔExposure</span>
+                                <span class="impact-value" id="whatif-delta-exp">$0</span>
+                            </div>
+                        </div>
+                        <div class="whatif-chart">
+                            <canvas id="whatif-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="secondary-btn" id="reset-whatif">Reset</button>
+                <button class="primary-btn" id="apply-whatif">Apply to Portfolio</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Generator Modal -->
+    <div class="modal-overlay" id="report-modal">
+        <div class="modal glass-heavy report-modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-file-alt"></i> Generate Report</h2>
+                <button class="icon-btn" id="close-report"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="report-options">
+                    <div class="report-section">
+                        <h4>Report Type</h4>
+                        <div class="report-type-grid">
+                            <button class="report-type-btn active" data-type="summary">
+                                <i class="fas fa-chart-pie"></i>
+                                <span>Executive Summary</span>
+                            </button>
+                            <button class="report-type-btn" data-type="detailed">
+                                <i class="fas fa-table"></i>
+                                <span>Detailed Report</span>
+                            </button>
+                            <button class="report-type-btn" data-type="regulatory">
+                                <i class="fas fa-balance-scale"></i>
+                                <span>Regulatory</span>
+                            </button>
+                            <button class="report-type-btn" data-type="custom">
+                                <i class="fas fa-cogs"></i>
+                                <span>Custom</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="report-section">
+                        <h4>Format</h4>
+                        <div class="format-grid">
+                            <label class="format-option">
+                                <input type="radio" name="format" value="pdf" checked>
+                                <i class="fas fa-file-pdf"></i>
+                                <span>PDF</span>
+                            </label>
+                            <label class="format-option">
+                                <input type="radio" name="format" value="excel">
+                                <i class="fas fa-file-excel"></i>
+                                <span>Excel</span>
+                            </label>
+                            <label class="format-option">
+                                <input type="radio" name="format" value="csv">
+                                <i class="fas fa-file-csv"></i>
+                                <span>CSV</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="report-section">
+                        <h4>Include Sections</h4>
+                        <div class="section-checklist">
+                            <label><input type="checkbox" checked> Portfolio Summary</label>
+                            <label><input type="checkbox" checked> XVA Metrics</label>
+                            <label><input type="checkbox" checked> Exposure Profile</label>
+                            <label><input type="checkbox"> Counterparty Breakdown</label>
+                            <label><input type="checkbox"> Scenario Analysis</label>
+                            <label><input type="checkbox"> Risk Limits</label>
+                        </div>
+                    </div>
+                    <div class="report-section">
+                        <h4>Schedule (Optional)</h4>
+                        <div class="schedule-options">
+                            <select id="report-schedule">
+                                <option value="none">No schedule</option>
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly">Monthly</option>
+                            </select>
+                            <input type="email" id="report-email" placeholder="Email address">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="secondary-btn" id="preview-report">Preview</button>
+                <button class="primary-btn" id="generate-report"><i class="fas fa-download"></i> Generate</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Assistant Panel -->
+    <div class="ai-panel glass" id="ai-panel">
+        <div class="ai-panel-header">
+            <h3><i class="fas fa-robot"></i> AI Assistant</h3>
+            <button class="icon-btn" id="close-ai"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="ai-chat" id="ai-chat">
+            <div class="ai-message assistant">
+                <div class="ai-avatar"><i class="fas fa-robot"></i></div>
+                <div class="ai-bubble">
+                    <p>Hello! I can help you analyze your portfolio. Try asking:</p>
+                    <ul class="ai-suggestions">
+                        <li data-query="What is my largest CVA exposure?">What is my largest CVA exposure?</li>
+                        <li data-query="Show trades expiring this month">Show trades expiring this month</li>
+                        <li data-query="Identify concentration risks">Identify concentration risks</li>
+                        <li data-query="Recommend hedge strategies">Recommend hedge strategies</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="ai-input-wrapper">
+            <input type="text" id="ai-input" placeholder="Ask anything about your portfolio...">
+            <button class="ai-send-btn" id="ai-send"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <!-- Command Palette -->
+    <div class="command-palette-overlay" id="command-overlay">
+        <div class="command-palette glass-heavy">
+            <div class="command-input-wrapper">
+                <i class="fas fa-search"></i>
+                <input type="text" id="command-input" placeholder="Type a command or search..." autocomplete="off" aria-label="Command palette search">
+                <kbd>ESC</kbd>
+            </div>
+            <div class="command-results" id="command-results" role="listbox">
+                <div class="command-group">
+                    <div class="command-group-title">Quick Actions</div>
+                    <div class="command-item" data-action="recalculate" role="option" tabindex="0">
+                        <i class="fas fa-calculator"></i>
+                        <span>Recalculate All Positions</span>
+                        <kbd>⌘R</kbd>
+                    </div>
+                    <div class="command-item" data-action="refresh" role="option" tabindex="0">
+                        <i class="fas fa-sync-alt"></i>
+                        <span>Refresh Data</span>
+                        <kbd>⌘⇧R</kbd>
+                    </div>
+                    <div class="command-item" data-action="export" role="option" tabindex="0">
+                        <i class="fas fa-file-export"></i>
+                        <span>Export Report</span>
+                        <kbd>⌘E</kbd>
+                    </div>
+                    <div class="command-item" data-action="whatif" role="option" tabindex="0">
+                        <i class="fas fa-flask"></i>
+                        <span>What-If Simulator</span>
+                        <kbd>⌘W</kbd>
+                    </div>
+                    <div class="command-item" data-action="ai-assistant" role="option" tabindex="0">
+                        <i class="fas fa-robot"></i>
+                        <span>AI Assistant</span>
+                        <kbd>⌘I</kbd>
+                    </div>
+                </div>
+                <div class="command-group">
+                    <div class="command-group-title">Navigation</div>
+                    <div class="command-item" data-action="goto-dashboard" role="option" tabindex="0">
+                        <i class="fas fa-th-large"></i>
+                        <span>Go to Dashboard</span>
+                        <kbd>G D</kbd>
+                    </div>
+                    <div class="command-item" data-action="goto-portfolio" role="option" tabindex="0">
+                        <i class="fas fa-briefcase"></i>
+                        <span>Go to Portfolio</span>
+                        <kbd>G P</kbd>
+                    </div>
+                    <div class="command-item" data-action="goto-risk" role="option" tabindex="0">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>Go to Risk Analysis</span>
+                        <kbd>G R</kbd>
+                    </div>
+                    <div class="command-item" data-action="goto-scenarios" role="option" tabindex="0">
+                        <i class="fas fa-flask"></i>
+                        <span>Go to Scenarios</span>
+                        <kbd>G S</kbd>
+                    </div>
+                </div>
+                <div class="command-group">
+                    <div class="command-group-title">Scenarios</div>
+                    <div class="command-item" data-action="scenario-stress" role="option" tabindex="0">
+                        <i class="fas fa-bolt"></i>
+                        <span>Run Stress Test</span>
+                    </div>
+                    <div class="command-item" data-action="scenario-crisis" role="option" tabindex="0">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>Run Crisis Scenario</span>
+                    </div>
+                </div>
+                <div class="command-group">
+                    <div class="command-group-title">Settings</div>
+                    <div class="command-item" data-action="toggle-theme">
+                        <i class="fas fa-moon"></i>
+                        <span>Toggle Dark/Light Theme</span>
+                        <kbd>⌘T</kbd>
+                    </div>
+                </div>
+            </div>
+            <div class="command-footer">
+                <span><kbd>↑↓</kbd> Navigate</span>
+                <span><kbd>↵</kbd> Select</span>
+                <span><kbd>ESC</kbd> Close</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Layout -->
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar glass">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon-wrapper">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="logo-text">
+                        <span class="logo-title">FrictionalBank</span>
+                        <span class="logo-subtitle">Risk Platform</span>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-view="dashboard">
+                    <div class="nav-icon"><i class="fas fa-th-large"></i></div>
+                    <span>Dashboard</span>
+                    <div class="nav-indicator"></div>
+                </a>
+                <a href="#" class="nav-item" data-view="portfolio">
+                    <div class="nav-icon"><i class="fas fa-briefcase"></i></div>
+                    <span>Portfolio</span>
+                    <div class="nav-indicator"></div>
+                </a>
+                <a href="#" class="nav-item" data-view="risk">
+                    <div class="nav-icon"><i class="fas fa-shield-alt"></i></div>
+                    <span>Risk</span>
+                    <div class="nav-indicator"></div>
+                </a>
+                <a href="#" class="nav-item" data-view="exposure">
+                    <div class="nav-icon"><i class="fas fa-chart-area"></i></div>
+                    <span>Exposure</span>
+                    <div class="nav-indicator"></div>
+                </a>
+                <a href="#" class="nav-item" data-view="scenarios">
+                    <div class="nav-icon"><i class="fas fa-flask"></i></div>
+                    <span>Scenarios</span>
+                    <div class="nav-indicator"></div>
+                </a>
+                <a href="#" class="nav-item" data-view="analytics">
+                    <div class="nav-icon"><i class="fas fa-cube"></i></div>
+                    <span>3D Analytics</span>
+                    <div class="nav-indicator"></div>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="sidebar-quick-actions">
+                    <button class="sidebar-action-btn" id="open-alerts" title="Alerts">
+                        <i class="fas fa-bell"></i>
+                        <span class="alert-badge" id="alert-count">3</span>
+                    </button>
+                    <button class="sidebar-action-btn" id="open-theme-panel" title="Theme">
+                        <i class="fas fa-palette"></i>
+                    </button>
+                    <button class="sidebar-action-btn" id="open-ai-panel" title="AI Assistant">
+                        <i class="fas fa-robot"></i>
+                    </button>
+                </div>
+                <button class="command-trigger" id="open-command">
+                    <i class="fas fa-terminal"></i>
+                    <span>Command</span>
+                    <kbd>⌘K</kbd>
+                </button>
+                <div class="connection-status" id="connection-status">
+                    <div class="status-dot"></div>
+                    <span>Connecting...</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <header class="top-bar">
+                <div class="top-bar-left">
+                    <h1 class="page-title" id="page-title">Dashboard</h1>
+                    <div class="breadcrumb">
+                        <span>FrictionalBank</span>
+                        <i class="fas fa-chevron-right"></i>
+                        <span id="breadcrumb-current">Overview</span>
+                    </div>
+                </div>
+                <div class="top-bar-right">
+                    <!-- Live Indicator -->
+                    <div class="live-indicator" id="live-indicator">
+                        <span class="live-dot"></span>
+                        <span>LIVE</span>
+                    </div>
+                    <div class="last-update" id="last-update">
+                        <i class="fas fa-clock"></i>
+                        <span>--:--:--</span>
+                    </div>
+                    <div class="top-bar-divider"></div>
+                    <button class="icon-btn" id="open-whatif-btn" title="What-If Simulator">
+                        <i class="fas fa-flask"></i>
+                    </button>
+                    <button class="icon-btn" id="open-report-btn" title="Generate Report">
+                        <i class="fas fa-file-alt"></i>
+                    </button>
+                    <button class="icon-btn" id="refresh-btn" title="Refresh">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <button class="icon-btn" id="theme-toggle" title="Toggle Theme">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                    <button class="primary-btn" id="run-pricing-btn">
+                        <i class="fas fa-play"></i>
+                        <span>Run Pricing</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Dashboard View -->
+            <section id="dashboard-view" class="view active">
+                <div class="bento-grid">
+                    <!-- Large PV Card -->
+                    <div class="bento-item bento-wide glass-card" data-tilt>
+                        <div class="card-glow"></div>
+                        <div class="bento-content">
+                            <div class="metric-header">
+                                <div class="metric-icon gradient-blue">
+                                    <i class="fas fa-dollar-sign"></i>
+                                </div>
+                                <div class="metric-badge positive">
+                                    <i class="fas fa-arrow-up"></i>
+                                    <span id="pv-change">+2.3%</span>
+                                </div>
+                            </div>
+                            <div class="metric-body">
+                                <span class="metric-label">Total Portfolio Value</span>
+                                <div class="metric-value-wrapper">
+                                    <span class="metric-value counting" id="total-pv" data-value="0">$0</span>
+                                    <div class="sparkline" id="pv-sparkline"></div>
+                                </div>
+                            </div>
+                            <div class="metric-footer">
+                                <span class="metric-sub">Across <span id="trade-count">0</span> active positions</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CVA Card -->
+                    <div class="bento-item glass-card" data-tilt>
+                        <div class="card-glow red"></div>
+                        <div class="bento-content">
+                            <div class="metric-header">
+                                <div class="metric-icon gradient-red">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </div>
+                            </div>
+                            <div class="metric-body compact">
+                                <span class="metric-label">CVA</span>
+                                <span class="metric-value counting negative" id="cva" data-value="0">$0</span>
+                            </div>
+                            <div class="mini-chart" id="cva-chart"></div>
+                        </div>
+                    </div>
+
+                    <!-- DVA Card -->
+                    <div class="bento-item glass-card" data-tilt>
+                        <div class="card-glow green"></div>
+                        <div class="bento-content">
+                            <div class="metric-header">
+                                <div class="metric-icon gradient-green">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                            </div>
+                            <div class="metric-body compact">
+                                <span class="metric-label">DVA</span>
+                                <span class="metric-value counting positive" id="dva" data-value="0">$0</span>
+                            </div>
+                            <div class="mini-chart" id="dva-chart"></div>
+                        </div>
+                    </div>
+
+                    <!-- Exposure Chart -->
+                    <div class="bento-item bento-large glass-card" data-tilt>
+                        <div class="bento-header">
+                            <h3><i class="fas fa-chart-area"></i> Exposure Profile</h3>
+                            <div class="bento-actions">
+                                <button class="chip-btn active" data-range="1y">1Y</button>
+                                <button class="chip-btn" data-range="5y">5Y</button>
+                                <button class="chip-btn" data-range="10y">10Y</button>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="exposure-chart"></canvas>
+                        </div>
+                        <div class="chart-legend">
+                            <div class="legend-item active" data-series="pfe">
+                                <span class="legend-dot pfe"></span>
+                                <span>PFE</span>
+                                <span class="legend-value" id="legend-pfe">$0</span>
+                            </div>
+                            <div class="legend-item active" data-series="ee">
+                                <span class="legend-dot ee"></span>
+                                <span>EE</span>
+                                <span class="legend-value" id="legend-ee">$0</span>
+                            </div>
+                            <div class="legend-item active" data-series="epe">
+                                <span class="legend-dot epe"></span>
+                                <span>EPE</span>
+                                <span class="legend-value" id="legend-epe">$0</span>
+                            </div>
+                            <div class="legend-item active" data-series="ene">
+                                <span class="legend-dot ene"></span>
+                                <span>ENE</span>
+                                <span class="legend-value" id="legend-ene">$0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- FVA Card -->
+                    <div class="bento-item glass-card" data-tilt>
+                        <div class="card-glow orange"></div>
+                        <div class="bento-content">
+                            <div class="metric-header">
+                                <div class="metric-icon gradient-orange">
+                                    <i class="fas fa-coins"></i>
+                                </div>
+                            </div>
+                            <div class="metric-body compact">
+                                <span class="metric-label">FVA</span>
+                                <span class="metric-value counting negative" id="fva" data-value="0">$0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Total XVA -->
+                    <div class="bento-item glass-card" data-tilt>
+                        <div class="card-glow purple"></div>
+                        <div class="bento-content">
+                            <div class="metric-header">
+                                <div class="metric-icon gradient-purple">
+                                    <i class="fas fa-sigma"></i>
+                                </div>
+                            </div>
+                            <div class="metric-body compact">
+                                <span class="metric-label">Total XVA</span>
+                                <span class="metric-value counting" id="total-xva" data-value="0">$0</span>
+                            </div>
+                            <div class="xva-breakdown">
+                                <div class="xva-bar">
+                                    <div class="xva-segment cva" id="xva-cva-bar"></div>
+                                    <div class="xva-segment dva" id="xva-dva-bar"></div>
+                                    <div class="xva-segment fva" id="xva-fva-bar"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="bento-item bento-tall glass-card">
+                        <div class="bento-header">
+                            <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
+                        </div>
+                        <div class="quick-actions-grid">
+                            <button class="action-tile" data-action="recalculate">
+                                <div class="action-icon">
+                                    <i class="fas fa-calculator"></i>
+                                </div>
+                                <span>Recalculate</span>
+                            </button>
+                            <button class="action-tile" data-action="stress-test">
+                                <div class="action-icon">
+                                    <i class="fas fa-compress-arrows-alt"></i>
+                                </div>
+                                <span>Stress Test</span>
+                            </button>
+                            <button class="action-tile" data-action="export">
+                                <div class="action-icon">
+                                    <i class="fas fa-file-export"></i>
+                                </div>
+                                <span>Export</span>
+                            </button>
+                            <button class="action-tile" data-action="what-if">
+                                <div class="action-icon">
+                                    <i class="fas fa-question-circle"></i>
+                                </div>
+                                <span>What-If</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Risk Breakdown -->
+                    <div class="bento-item glass-card" data-tilt>
+                        <div class="bento-header">
+                            <h3><i class="fas fa-pie-chart"></i> Risk Breakdown</h3>
+                        </div>
+                        <div class="donut-container">
+                            <canvas id="risk-donut"></canvas>
+                            <div class="donut-center">
+                                <span class="donut-value" id="risk-total">$0</span>
+                                <span class="donut-label">Total</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Portfolio View -->
+            <section id="portfolio-view" class="view">
+                <!-- Summary Stats Bar -->
+                <div class="portfolio-summary glass">
+                    <div class="summary-stat">
+                        <span class="summary-label">Total PV</span>
+                        <span class="summary-value positive" id="portfolio-total-pv">$0</span>
+                    </div>
+                    <div class="summary-stat">
+                        <span class="summary-label">Positions</span>
+                        <span class="summary-value" id="portfolio-count">0</span>
+                    </div>
+                    <div class="summary-stat">
+                        <span class="summary-label">Avg Delta</span>
+                        <span class="summary-value" id="portfolio-avg-delta">0.00</span>
+                    </div>
+                    <div class="summary-stat">
+                        <span class="summary-label">Total Vega</span>
+                        <span class="summary-value" id="portfolio-total-vega">$0</span>
+                    </div>
+                    <div class="summary-stat highlight">
+                        <span class="summary-label">Selected</span>
+                        <span class="summary-value" id="selected-count">0</span>
+                    </div>
+                </div>
+
+                <!-- Toolbar -->
+                <div class="view-toolbar glass">
+                    <!-- Search -->
+                    <div class="search-wrapper">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="portfolio-search" placeholder="Search ID, instrument, counterparty...">
+                        <kbd>⌘F</kbd>
+                    </div>
+
+                    <!-- Filter Chips -->
+                    <div class="filter-chips">
+                        <button class="chip-btn active" data-filter="all">
+                            <span class="chip-count" id="count-all">0</span> All
+                        </button>
+                        <button class="chip-btn" data-filter="swap">
+                            <span class="chip-count" id="count-swap">0</span> Swaps
+                        </button>
+                        <button class="chip-btn" data-filter="swaption">
+                            <span class="chip-count" id="count-swaption">0</span> Swaptions
+                        </button>
+                        <button class="chip-btn" data-filter="cap">
+                            <span class="chip-count" id="count-cap">0</span> Caps
+                        </button>
+                    </div>
+
+                    <!-- Advanced Filters -->
+                    <button class="icon-btn" id="toggle-filters" title="Advanced Filters">
+                        <i class="fas fa-filter"></i>
+                    </button>
+
+                    <!-- View Toggle -->
+                    <div class="view-toggle">
+                        <button class="icon-btn active" data-view-mode="table" title="Table View">
+                            <i class="fas fa-list"></i>
+                        </button>
+                        <button class="icon-btn" data-view-mode="grid" title="Card View">
+                            <i class="fas fa-th"></i>
+                        </button>
+                        <button class="icon-btn" data-view-mode="heatmap" title="Heatmap View">
+                            <i class="fas fa-fire"></i>
+                        </button>
+                    </div>
+
+                    <!-- Column Selector -->
+                    <div class="column-selector-wrapper">
+                        <button class="icon-btn" id="column-toggle" title="Column Visibility">
+                            <i class="fas fa-columns"></i>
+                        </button>
+                        <div class="column-dropdown glass" id="column-dropdown">
+                            <div class="column-dropdown-header">
+                                <span>Visible Columns</span>
+                                <button class="text-btn" id="reset-columns">Reset</button>
+                            </div>
+                            <label class="column-option"><input type="checkbox" data-col="id" checked> ID</label>
+                            <label class="column-option"><input type="checkbox" data-col="instrument" checked> Instrument</label>
+                            <label class="column-option"><input type="checkbox" data-col="counterparty" checked> Counterparty</label>
+                            <label class="column-option"><input type="checkbox" data-col="maturity" checked> Maturity</label>
+                            <label class="column-option"><input type="checkbox" data-col="notional" checked> Notional</label>
+                            <label class="column-option"><input type="checkbox" data-col="pv" checked> PV</label>
+                            <label class="column-option"><input type="checkbox" data-col="delta" checked> Delta</label>
+                            <label class="column-option"><input type="checkbox" data-col="gamma"> Gamma</label>
+                            <label class="column-option"><input type="checkbox" data-col="vega" checked> Vega</label>
+                            <label class="column-option"><input type="checkbox" data-col="theta"> Theta</label>
+                            <label class="column-option"><input type="checkbox" data-col="rho"> Rho</label>
+                            <label class="column-option"><input type="checkbox" data-col="cva"> CVA</label>
+                            <label class="column-option"><input type="checkbox" data-col="pfe"> PFE</label>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="toolbar-actions">
+                        <button class="icon-btn" id="export-csv" title="Export CSV">
+                            <i class="fas fa-file-csv"></i>
+                        </button>
+                        <button class="icon-btn" id="export-excel" title="Export Excel">
+                            <i class="fas fa-file-excel"></i>
+                        </button>
+                        <button class="icon-btn" id="print-portfolio" title="Print">
+                            <i class="fas fa-print"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Advanced Filters Panel -->
+                <div class="advanced-filters glass" id="advanced-filters" style="display: none;">
+                    <div class="filter-group">
+                        <label>PV Range</label>
+                        <div class="range-inputs">
+                            <input type="number" id="pv-min" placeholder="Min">
+                            <span>to</span>
+                            <input type="number" id="pv-max" placeholder="Max">
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <label>Notional Range</label>
+                        <div class="range-inputs">
+                            <input type="number" id="notional-min" placeholder="Min">
+                            <span>to</span>
+                            <input type="number" id="notional-max" placeholder="Max">
+                        </div>
+                    </div>
+                    <div class="filter-group">
+                        <label>Maturity</label>
+                        <select id="maturity-filter">
+                            <option value="">All Maturities</option>
+                            <option value="0-1">0-1 Year</option>
+                            <option value="1-5">1-5 Years</option>
+                            <option value="5-10">5-10 Years</option>
+                            <option value="10+">10+ Years</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Counterparty</label>
+                        <select id="counterparty-filter">
+                            <option value="">All Counterparties</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Risk Level</label>
+                        <div class="risk-level-chips">
+                            <button class="risk-chip all active" data-risk="all">All</button>
+                            <button class="risk-chip low" data-risk="low">Low</button>
+                            <button class="risk-chip medium" data-risk="medium">Medium</button>
+                            <button class="risk-chip high" data-risk="high">High</button>
+                        </div>
+                    </div>
+                    <div class="filter-actions">
+                        <button class="text-btn" id="clear-filters">Clear All</button>
+                        <button class="primary-btn" id="apply-filters">Apply Filters</button>
+                    </div>
+                </div>
+
+                <!-- Bulk Actions Bar -->
+                <div class="bulk-actions glass" id="bulk-actions" style="display: none;">
+                    <span class="bulk-info"><span id="bulk-count">0</span> items selected</span>
+                    <div class="bulk-buttons">
+                        <button class="action-btn"><i class="fas fa-calculator"></i> Recalculate</button>
+                        <button class="action-btn"><i class="fas fa-chart-line"></i> Analyze</button>
+                        <button class="action-btn"><i class="fas fa-file-export"></i> Export</button>
+                        <button class="action-btn danger"><i class="fas fa-times"></i> Clear Selection</button>
+                    </div>
+                </div>
+
+                <!-- Table View -->
+                <div class="portfolio-table-wrapper glass-card" id="table-view">
+                    <table class="portfolio-table" id="portfolio-table">
+                        <thead>
+                            <tr>
+                                <th class="checkbox-col">
+                                    <input type="checkbox" id="select-all" title="Select All">
+                                </th>
+                                <th class="sortable" data-sort="id">
+                                    <div class="th-content">
+                                        <span>ID</span>
+                                        <i class="fas fa-sort sort-icon"></i>
+                                    </div>
+                                </th>
+                                <th class="sortable" data-sort="instrument" data-col="instrument">
+                                    <div class="th-content">
+                                        <span>Instrument</span>
+                                        <i class="fas fa-sort sort-icon"></i>
+                                    </div>
+                                </th>
+                                <th class="sortable" data-sort="counterparty" data-col="counterparty">
+                                    <div class="th-content">
+                                        <span>Counterparty</span>
+                                        <i class="fas fa-sort sort-icon"></i>
+                                    </div>
+                                </th>
+                                <th class="sortable" data-sort="maturity" data-col="maturity">
+                                    <div class="th-content">
+                                        <span>Maturity</span>
+                                        <i class="fas fa-sort sort-icon"></i>
+                                    </div>
+                                </th>
+                                <th class="sortable" data-sort="notional" data-col="notional">
+                                    <div class="th-content">
+                                        <span>Notional</span>
+                                        <i class="fas fa-sort sort-icon"></i>
+                                    </div>
+                                </th>
+                                <th class="sortable" data-sort="pv" data-col="pv">
+                                    <div class="th-content">
+                                        <span>PV</span>
+                                        <i class="fas fa-sort sort-icon"></i>
+                                    </div>
+                                </th>
+                                <th class="sortable" data-sort="delta" data-col="delta">
+                                    <div class="th-content">
+                                        <span>Delta</span>
+                                        <i class="fas fa-sort sort-icon"></i>
+                                    </div>
+                                </th>
+                                <th data-col="gamma" style="display: none;">Gamma</th>
+                                <th class="sortable" data-sort="vega" data-col="vega">
+                                    <div class="th-content">
+                                        <span>Vega</span>
+                                        <i class="fas fa-sort sort-icon"></i>
+                                    </div>
+                                </th>
+                                <th data-col="theta" style="display: none;">Theta</th>
+                                <th data-col="rho" style="display: none;">Rho</th>
+                                <th data-col="cva" style="display: none;">CVA</th>
+                                <th data-col="pfe" style="display: none;">PFE</th>
+                                <th class="risk-col">Risk</th>
+                                <th class="actions-col">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="portfolio-body">
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Card/Grid View -->
+                <div class="portfolio-grid" id="grid-view" style="display: none;">
+                </div>
+
+                <!-- Heatmap View -->
+                <div class="portfolio-heatmap glass-card" id="heatmap-view" style="display: none;">
+                    <div class="heatmap-legend">
+                        <span>Risk Level:</span>
+                        <div class="heatmap-scale">
+                            <span class="scale-label">Low</span>
+                            <div class="scale-gradient"></div>
+                            <span class="scale-label">High</span>
+                        </div>
+                    </div>
+                    <div class="heatmap-container" id="heatmap-container">
+                    </div>
+                </div>
+
+                <!-- Pagination -->
+                <div class="pagination-bar glass">
+                    <div class="pagination-left">
+                        <span class="page-info">
+                            Showing <span id="showing-start">1</span>-<span id="showing-end">10</span> of <span id="total-items">0</span>
+                        </span>
+                        <div class="page-size-selector">
+                            <span>Show:</span>
+                            <select id="page-size">
+                                <option value="10">10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="pagination-controls">
+                        <button class="icon-btn" id="first-page" title="First"><i class="fas fa-angle-double-left"></i></button>
+                        <button class="icon-btn" id="prev-page" title="Previous"><i class="fas fa-chevron-left"></i></button>
+                        <div class="page-numbers" id="page-numbers">
+                            <button class="page-btn active">1</button>
+                        </div>
+                        <button class="icon-btn" id="next-page" title="Next"><i class="fas fa-chevron-right"></i></button>
+                        <button class="icon-btn" id="last-page" title="Last"><i class="fas fa-angle-double-right"></i></button>
+                    </div>
+                    <div class="pagination-right">
+                        <span class="pagination-jump">
+                            Go to: <input type="number" id="page-jump" min="1" placeholder="#">
+                        </span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Trade Detail Drawer -->
+            <div class="trade-drawer" id="trade-drawer">
+                <div class="drawer-overlay" id="drawer-overlay"></div>
+                <div class="drawer-content glass">
+                    <div class="drawer-header">
+                        <h3><i class="fas fa-briefcase"></i> Trade Details</h3>
+                        <button class="icon-btn" id="close-drawer"><i class="fas fa-times"></i></button>
+                    </div>
+                    <div class="drawer-body" id="drawer-body">
+                        <!-- Filled dynamically -->
+                    </div>
+                    <div class="drawer-footer">
+                        <button class="secondary-btn" id="drawer-recalc">
+                            <i class="fas fa-calculator"></i> Recalculate
+                        </button>
+                        <button class="primary-btn" id="drawer-analyze">
+                            <i class="fas fa-chart-line"></i> Full Analysis
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Risk View -->
+            <section id="risk-view" class="view">
+                <!-- Risk Summary Bar -->
+                <div class="risk-summary-bar glass">
+                    <div class="risk-health-indicator">
+                        <div class="health-circle" id="risk-health">
+                            <svg viewBox="0 0 100 100">
+                                <circle class="health-bg" cx="50" cy="50" r="45"/>
+                                <circle class="health-fill" cx="50" cy="50" r="45" id="health-circle"/>
+                            </svg>
+                            <div class="health-score">
+                                <span class="score-value" id="risk-score">85</span>
+                                <span class="score-label">Health</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="risk-summary-stats">
+                        <div class="summary-stat">
+                            <span class="stat-icon danger"><i class="fas fa-shield-virus"></i></span>
+                            <div class="stat-info">
+                                <span class="stat-label">Total Risk Exposure</span>
+                                <span class="stat-value" id="total-risk-exposure">$0</span>
+                            </div>
+                        </div>
+                        <div class="summary-stat">
+                            <span class="stat-icon warning"><i class="fas fa-exclamation-circle"></i></span>
+                            <div class="stat-info">
+                                <span class="stat-label">Limit Utilization</span>
+                                <span class="stat-value" id="limit-util">0%</span>
+                            </div>
+                        </div>
+                        <div class="summary-stat">
+                            <span class="stat-icon success"><i class="fas fa-check-double"></i></span>
+                            <div class="stat-info">
+                                <span class="stat-label">Compliant Trades</span>
+                                <span class="stat-value" id="compliant-trades">0/0</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="risk-alerts">
+                        <button class="alert-btn" id="risk-alerts-btn">
+                            <i class="fas fa-bell"></i>
+                            <span class="alert-badge" id="alert-count">3</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bento-grid risk-grid">
+                    <!-- XVA Metrics -->
+                    <div class="bento-item bento-wide glass-card">
+                        <div class="bento-header">
+                            <h3><i class="fas fa-shield-alt"></i> XVA Metrics</h3>
+                            <div class="bento-actions">
+                                <button class="chip-btn active" data-xva-view="live">Live</button>
+                                <button class="chip-btn" data-xva-view="1d">1D Δ</button>
+                                <button class="chip-btn" data-xva-view="mtd">MTD</button>
+                            </div>
+                        </div>
+                        <div class="xva-cards-grid">
+                            <div class="xva-metric-card cva">
+                                <div class="xva-card-header">
+                                    <div class="xva-icon"><i class="fas fa-user-shield"></i></div>
+                                    <div class="xva-trend negative" id="cva-trend">
+                                        <i class="fas fa-arrow-down"></i>
+                                        <span>-2.4%</span>
+                                    </div>
+                                </div>
+                                <span class="xva-label">CVA</span>
+                                <span class="xva-value negative" id="risk-cva">$0</span>
+                                <div class="xva-bar-container">
+                                    <div class="xva-bar-track">
+                                        <div class="xva-bar-fill" id="cva-bar"></div>
+                                    </div>
+                                </div>
+                                <span class="xva-desc">Counterparty credit risk</span>
+                            </div>
+                            <div class="xva-metric-card dva">
+                                <div class="xva-card-header">
+                                    <div class="xva-icon"><i class="fas fa-hand-holding-usd"></i></div>
+                                    <div class="xva-trend positive" id="dva-trend">
+                                        <i class="fas fa-arrow-up"></i>
+                                        <span>+1.2%</span>
+                                    </div>
+                                </div>
+                                <span class="xva-label">DVA</span>
+                                <span class="xva-value positive" id="risk-dva">$0</span>
+                                <div class="xva-bar-container">
+                                    <div class="xva-bar-track">
+                                        <div class="xva-bar-fill green" id="dva-bar"></div>
+                                    </div>
+                                </div>
+                                <span class="xva-desc">Own credit benefit</span>
+                            </div>
+                            <div class="xva-metric-card fva">
+                                <div class="xva-card-header">
+                                    <div class="xva-icon"><i class="fas fa-coins"></i></div>
+                                    <div class="xva-trend negative" id="fva-trend">
+                                        <i class="fas fa-arrow-down"></i>
+                                        <span>-0.8%</span>
+                                    </div>
+                                </div>
+                                <span class="xva-label">FVA</span>
+                                <span class="xva-value negative" id="risk-fva">$0</span>
+                                <div class="xva-bar-container">
+                                    <div class="xva-bar-track">
+                                        <div class="xva-bar-fill orange" id="fva-bar"></div>
+                                    </div>
+                                </div>
+                                <span class="xva-desc">Funding cost</span>
+                            </div>
+                            <div class="xva-metric-card total">
+                                <div class="xva-card-header">
+                                    <div class="xva-icon"><i class="fas fa-sigma"></i></div>
+                                </div>
+                                <span class="xva-label">Total XVA</span>
+                                <span class="xva-value" id="risk-total-xva">$0</span>
+                                <div class="xva-composition">
+                                    <div class="comp-item cva"><span>CVA</span></div>
+                                    <div class="comp-item dva"><span>DVA</span></div>
+                                    <div class="comp-item fva"><span>FVA</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Exposure Gauges -->
+                    <div class="bento-item bento-wide glass-card">
+                        <div class="bento-header">
+                            <h3><i class="fas fa-tachometer-alt"></i> Exposure Gauges</h3>
+                        </div>
+                        <div class="gauges-grid">
+                            <div class="gauge-widget">
+                                <div class="gauge-svg">
+                                    <svg viewBox="0 0 120 60">
+                                        <path class="gauge-track" d="M10,55 A45,45 0 0,1 110,55"/>
+                                        <path class="gauge-value" id="ee-gauge-path" d="M10,55 A45,45 0 0,1 110,55"/>
+                                    </svg>
+                                    <div class="gauge-needle" id="ee-needle"></div>
+                                </div>
+                                <div class="gauge-info">
+                                    <span class="gauge-label">Expected Exposure</span>
+                                    <span class="gauge-number" id="risk-ee">$0</span>
+                                </div>
+                            </div>
+                            <div class="gauge-widget">
+                                <div class="gauge-svg">
+                                    <svg viewBox="0 0 120 60">
+                                        <path class="gauge-track" d="M10,55 A45,45 0 0,1 110,55"/>
+                                        <path class="gauge-value epe" id="epe-gauge-path" d="M10,55 A45,45 0 0,1 110,55"/>
+                                    </svg>
+                                    <div class="gauge-needle" id="epe-needle"></div>
+                                </div>
+                                <div class="gauge-info">
+                                    <span class="gauge-label">Expected Positive Exp</span>
+                                    <span class="gauge-number" id="risk-epe">$0</span>
+                                </div>
+                            </div>
+                            <div class="gauge-widget">
+                                <div class="gauge-svg">
+                                    <svg viewBox="0 0 120 60">
+                                        <path class="gauge-track" d="M10,55 A45,45 0 0,1 110,55"/>
+                                        <path class="gauge-value pfe" id="pfe-gauge-path" d="M10,55 A45,45 0 0,1 110,55"/>
+                                    </svg>
+                                    <div class="gauge-needle" id="pfe-needle"></div>
+                                </div>
+                                <div class="gauge-info">
+                                    <span class="gauge-label">Potential Future Exp</span>
+                                    <span class="gauge-number" id="risk-pfe">$0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Counterparty Risk Table -->
+                    <div class="bento-item bento-large glass-card">
+                        <div class="bento-header">
+                            <h3><i class="fas fa-users"></i> Counterparty Exposure</h3>
+                            <div class="bento-actions">
+                                <button class="icon-btn" id="export-cp-data"><i class="fas fa-download"></i></button>
+                            </div>
+                        </div>
+                        <div class="counterparty-table-wrapper">
+                            <table class="counterparty-table">
+                                <thead>
+                                    <tr>
+                                        <th>Counterparty</th>
+                                        <th>Rating</th>
+                                        <th>Exposure</th>
+                                        <th>Limit</th>
+                                        <th>Utilization</th>
+                                        <th>CVA</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="counterparty-table-body">
+                                    <!-- Dynamically filled -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Risk Distribution -->
+                    <div class="bento-item glass-card">
+                        <div class="bento-header">
+                            <h3><i class="fas fa-chart-pie"></i> Risk by Asset Class</h3>
+                        </div>
+                        <div class="chart-container small">
+                            <canvas id="risk-asset-pie"></canvas>
+                        </div>
+                        <div class="pie-legend" id="asset-legend">
+                            <!-- Dynamically filled -->
+                        </div>
+                    </div>
+
+                    <!-- XVA Time Series -->
+                    <div class="bento-item bento-wide glass-card">
+                        <div class="bento-header">
+                            <h3><i class="fas fa-chart-line"></i> XVA History</h3>
+                            <div class="bento-actions">
+                                <button class="chip-btn active" data-period="1w">1W</button>
+                                <button class="chip-btn" data-period="1m">1M</button>
+                                <button class="chip-btn" data-period="3m">3M</button>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="xva-history-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Risk Limits -->
+                    <div class="bento-item glass-card">
+                        <div class="bento-header">
+                            <h3><i class="fas fa-tachometer-alt"></i> Limit Utilization</h3>
+                        </div>
+                        <div class="limits-list">
+                            <div class="limit-item">
+                                <div class="limit-info">
+                                    <span class="limit-name">Gross Exposure</span>
+                                    <span class="limit-values">$245M / $500M</span>
+                                </div>
+                                <div class="limit-bar">
+                                    <div class="limit-fill" style="width: 49%"></div>
+                                </div>
+                                <span class="limit-percent">49%</span>
+                            </div>
+                            <div class="limit-item">
+                                <div class="limit-info">
+                                    <span class="limit-name">CVA Limit</span>
+                                    <span class="limit-values">$12M / $20M</span>
+                                </div>
+                                <div class="limit-bar warning">
+                                    <div class="limit-fill" style="width: 60%"></div>
+                                </div>
+                                <span class="limit-percent warning">60%</span>
+                            </div>
+                            <div class="limit-item">
+                                <div class="limit-info">
+                                    <span class="limit-name">Single Name</span>
+                                    <span class="limit-values">$35M / $50M</span>
+                                </div>
+                                <div class="limit-bar danger">
+                                    <div class="limit-fill" style="width: 70%"></div>
+                                </div>
+                                <span class="limit-percent danger">70%</span>
+                            </div>
+                            <div class="limit-item">
+                                <div class="limit-info">
+                                    <span class="limit-name">Tenor > 10Y</span>
+                                    <span class="limit-values">$80M / $200M</span>
+                                </div>
+                                <div class="limit-bar">
+                                    <div class="limit-fill" style="width: 40%"></div>
+                                </div>
+                                <span class="limit-percent">40%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Exposure View -->
+            <section id="exposure-view" class="view">
+                <!-- Exposure Summary -->
+                <div class="exposure-summary glass">
+                    <div class="summary-metric">
+                        <div class="metric-icon-sm pfe"><i class="fas fa-arrow-up"></i></div>
+                        <div class="metric-details">
+                            <span class="metric-label">Peak PFE</span>
+                            <span class="metric-value" id="summary-peak-pfe">$0</span>
+                        </div>
+                    </div>
+                    <div class="summary-metric">
+                        <div class="metric-icon-sm epe"><i class="fas fa-chart-line"></i></div>
+                        <div class="metric-details">
+                            <span class="metric-label">Average EPE</span>
+                            <span class="metric-value" id="summary-avg-epe">$0</span>
+                        </div>
+                    </div>
+                    <div class="summary-metric">
+                        <div class="metric-icon-sm ee"><i class="fas fa-clock"></i></div>
+                        <div class="metric-details">
+                            <span class="metric-label">Time to Peak</span>
+                            <span class="metric-value" id="summary-time-peak">0Y</span>
+                        </div>
+                    </div>
+                    <div class="summary-metric">
+                        <div class="metric-icon-sm ene"><i class="fas fa-calendar-alt"></i></div>
+                        <div class="metric-details">
+                            <span class="metric-label">Max Maturity</span>
+                            <span class="metric-value" id="summary-max-mat">0Y</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bento-grid exposure-grid">
+                    <!-- Main Exposure Chart -->
+                    <div class="bento-item bento-large glass-card">
+                        <div class="bento-header">
+                            <h3><i class="fas fa-chart-area"></i> Exposure Time Series</h3>
+                            <div class="bento-actions">
+                                <div class="toggle-group">
+                                    <button class="toggle-btn active" data-metric="all">All</button>
+                                    <button class="toggle-btn" data-metric="pfe">PFE</button>
+                                    <button class="toggle-btn" data-metric="ee">EE</button>
+                                    <button class="toggle-btn" data-metric="epe">EPE</button>
+                                    <button class="toggle-btn" data-metric="ene">ENE</button>
+                                </div>
+                                <div class="chart-actions">
+                                    <button class="icon-btn" id="zoom-in-chart" title="Zoom In"><i class="fas fa-search-plus"></i></button>
+                                    <button class="icon-btn" id="zoom-out-chart" title="Zoom Out"><i class="fas fa-search-minus"></i></button>
+                                    <button class="icon-btn" id="reset-zoom" title="Reset"><i class="fas fa-expand"></i></button>
+                                    <button class="icon-btn" id="download-chart" title="Download"><i class="fas fa-download"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chart-container large">
+                            <canvas id="main-exposure-chart"></canvas>
+                        </div>
+                        <div class="chart-legend interactive">
+                            <div class="legend-item active" data-series="pfe">
+                                <span class="legend-dot pfe"></span>
+                                <span class="legend-name">PFE</span>
+                                <span class="legend-value" id="exp-legend-pfe">$0</span>
+                            </div>
+                            <div class="legend-item active" data-series="ee">
+                                <span class="legend-dot ee"></span>
+                                <span class="legend-name">EE</span>
+                                <span class="legend-value" id="exp-legend-ee">$0</span>
+                            </div>
+                            <div class="legend-item active" data-series="epe">
+                                <span class="legend-dot epe"></span>
+                                <span class="legend-name">EPE</span>
+                                <span class="legend-value" id="exp-legend-epe">$0</span>
+                            </div>
+                            <div class="legend-item active" data-series="ene">
+                                <span class="legend-dot ene"></span>
+                                <span class="legend-name">ENE</span>
+                                <span class="legend-value" id="exp-legend-ene">$0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Exposure Stats Cards -->
+                    <div class="bento-item glass-card">
+                        <div class="bento-header">
+                            <h3><i class="fas fa-info-circle"></i> Key Statistics</h3>
+                        </div>
+                        <div class="exposure-stats-list">
+                            <div class="stat-row">
+                                <span class="stat-label">Peak PFE</span>
+                                <span class="stat-value pfe" id="peak-pfe">$0</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">Time to Peak</span>
+                                <span class="stat-value" id="time-to-peak">0Y</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">Average EPE</span>
+                                <span class="stat-value epe" id="avg-epe">$0</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">Max Maturity</span>
+                                <span class="stat-value" id="max-maturity">0Y</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">EE at 1Y</span>
+                                <span class="stat-value" id="ee-1y">$0</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">EE at 5Y</span>
+                                <span class="stat-value" id="ee-5y">$0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Exposure by Bucket -->
+                    <div class="bento-item bento-wide glass-card">
+                        <div class="bento-header">
+                            <h3><i class="fas fa-layer-group"></i> Exposure by Tenor Bucket</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="tenor-bucket-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Exposure Distribution -->
+                    <div class="bento-item glass-card">
+                        <div class="bento-header">
+                            <h3><i class="fas fa-chart-bar"></i> Distribution</h3>
+                        </div>
+                        <div class="chart-container small">
+                            <canvas id="exposure-dist-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Netting Set Breakdown -->
+                    <div class="bento-item bento-wide glass-card">
+                        <div class="bento-header">
+                            <h3><i class="fas fa-object-group"></i> Netting Set Analysis</h3>
+                            <div class="bento-actions">
+                                <button class="chip-btn active" data-ns-view="table">Table</button>
+                                <button class="chip-btn" data-ns-view="chart">Chart</button>
+                            </div>
+                        </div>
+                        <div class="netting-set-table-wrapper" id="ns-table-view">
+                            <table class="netting-set-table">
+                                <thead>
+                                    <tr>
+                                        <th>Netting Set</th>
+                                        <th>Trades</th>
+                                        <th>Gross Exp</th>
+                                        <th>Net Exp</th>
+                                        <th>Netting Benefit</th>
+                                        <th>Collateral</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="netting-set-body">
+                                    <!-- Dynamically filled -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="netting-set-chart" id="ns-chart-view" style="display: none;">
+                            <canvas id="netting-set-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Collateral Timeline -->
+                    <div class="bento-item bento-wide glass-card">
+                        <div class="bento-header">
+                            <h3><i class="fas fa-coins"></i> Collateral vs Exposure</h3>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="collateral-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Monte Carlo Paths -->
+                    <div class="bento-item glass-card">
+                        <div class="bento-header">
+                            <h3><i class="fas fa-random"></i> MC Paths</h3>
+                            <span class="path-count" id="mc-path-count">1000 paths</span>
+                        </div>
+                        <div class="chart-container small">
+                            <canvas id="mc-paths-chart"></canvas>
+                        </div>
+                        <div class="mc-stats">
+                            <div class="mc-stat">
+                                <span class="mc-label">Mean</span>
+                                <span class="mc-value" id="mc-mean">$0</span>
+                            </div>
+                            <div class="mc-stat">
+                                <span class="mc-label">95% CI</span>
+                                <span class="mc-value" id="mc-95ci">$0 - $0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Scenarios View -->
+            <section id="scenarios-view" class="view">
+                <!-- Scenario Type Selector -->
+                <div class="scenario-type-bar glass">
+                    <div class="scenario-types">
+                        <button class="scenario-type-btn active" data-type="parametric">
+                            <i class="fas fa-sliders-h"></i>
+                            <span>Parametric</span>
+                        </button>
+                        <button class="scenario-type-btn" data-type="historical">
+                            <i class="fas fa-history"></i>
+                            <span>Historical</span>
+                        </button>
+                        <button class="scenario-type-btn" data-type="hypothetical">
+                            <i class="fas fa-flask"></i>
+                            <span>Hypothetical</span>
+                        </button>
+                        <button class="scenario-type-btn" data-type="reverse">
+                            <i class="fas fa-undo"></i>
+                            <span>Reverse Stress</span>
+                        </button>
+                    </div>
+                    <div class="scenario-actions">
+                        <button class="icon-btn" id="save-scenario" title="Save Scenario"><i class="fas fa-save"></i></button>
+                        <button class="icon-btn" id="load-scenario" title="Load Scenario"><i class="fas fa-folder-open"></i></button>
+                        <button class="icon-btn" id="compare-scenarios" title="Compare"><i class="fas fa-columns"></i></button>
+                    </div>
+                </div>
+
+                <div class="scenarios-layout advanced">
+                    <!-- Parameters Panel -->
+                    <div class="scenario-panel glass-card">
+                        <div class="bento-header">
+                            <h3><i class="fas fa-sliders-h"></i> Parameters</h3>
+                            <button class="text-btn" id="reset-params">Reset</button>
+                        </div>
+
+                        <!-- Parametric View -->
+                        <div class="scenario-controls" id="parametric-controls">
+                            <div class="param-section">
+                                <h4 class="param-section-title"><i class="fas fa-percentage"></i> Interest Rates</h4>
+                                <div class="slider-group">
+                                    <label>
+                                        <span>Parallel Shift</span>
+                                        <span class="slider-val" id="rate-shock-val">0 bps</span>
+                                    </label>
+                                    <input type="range" id="rate-shock" min="-200" max="200" value="0" class="fancy-slider">
+                                </div>
+                                <div class="slider-group">
+                                    <label>
+                                        <span>Curve Steepening</span>
+                                        <span class="slider-val" id="curve-steep-val">0 bps</span>
+                                    </label>
+                                    <input type="range" id="curve-steep" min="-100" max="100" value="0" class="fancy-slider blue">
+                                </div>
+                            </div>
+
+                            <div class="param-section">
+                                <h4 class="param-section-title"><i class="fas fa-chart-line"></i> Volatility</h4>
+                                <div class="slider-group">
+                                    <label>
+                                        <span>Vol Shift</span>
+                                        <span class="slider-val" id="vol-shift-val">0%</span>
+                                    </label>
+                                    <input type="range" id="vol-shift" min="-50" max="100" value="0" class="fancy-slider orange">
+                                </div>
+                                <div class="slider-group">
+                                    <label>
+                                        <span>Vol Skew</span>
+                                        <span class="slider-val" id="vol-skew-val">0%</span>
+                                    </label>
+                                    <input type="range" id="vol-skew" min="-50" max="50" value="0" class="fancy-slider orange">
+                                </div>
+                            </div>
+
+                            <div class="param-section">
+                                <h4 class="param-section-title"><i class="fas fa-credit-card"></i> Credit</h4>
+                                <div class="slider-group">
+                                    <label>
+                                        <span>Spread Shock</span>
+                                        <span class="slider-val" id="spread-shock-val">0 bps</span>
+                                    </label>
+                                    <input type="range" id="spread-shock" min="0" max="500" value="0" class="fancy-slider red">
+                                </div>
+                                <div class="slider-group">
+                                    <label>
+                                        <span>Default Prob ×</span>
+                                        <span class="slider-val" id="pd-mult-val">1.0×</span>
+                                    </label>
+                                    <input type="range" id="pd-mult" min="50" max="300" value="100" class="fancy-slider red">
+                                </div>
+                            </div>
+
+                            <div class="param-section">
+                                <h4 class="param-section-title"><i class="fas fa-project-diagram"></i> Correlation</h4>
+                                <div class="slider-group">
+                                    <label>
+                                        <span>Correlation Shift</span>
+                                        <span class="slider-val" id="corr-shift-val">0%</span>
+                                    </label>
+                                    <input type="range" id="corr-shift" min="-100" max="100" value="0" class="fancy-slider purple">
+                                </div>
+                            </div>
+
+                            <div class="preset-section">
+                                <span class="preset-label">Quick Presets</span>
+                                <div class="preset-grid">
+                                    <button class="preset-btn active" data-preset="base">
+                                        <i class="fas fa-home"></i>
+                                        <span>Base</span>
+                                    </button>
+                                    <button class="preset-btn warning" data-preset="stress">
+                                        <i class="fas fa-bolt"></i>
+                                        <span>Stress</span>
+                                    </button>
+                                    <button class="preset-btn danger" data-preset="crisis">
+                                        <i class="fas fa-skull"></i>
+                                        <span>Crisis</span>
+                                    </button>
+                                    <button class="preset-btn success" data-preset="recovery">
+                                        <i class="fas fa-leaf"></i>
+                                        <span>Recovery</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Historical View -->
+                        <div class="scenario-controls" id="historical-controls" style="display: none;">
+                            <div class="historical-events">
+                                <div class="event-card" data-event="2008-gfc">
+                                    <div class="event-icon"><i class="fas fa-chart-line"></i></div>
+                                    <div class="event-info">
+                                        <span class="event-name">2008 GFC</span>
+                                        <span class="event-date">Sep 2008</span>
+                                    </div>
+                                </div>
+                                <div class="event-card" data-event="2020-covid">
+                                    <div class="event-icon"><i class="fas fa-virus"></i></div>
+                                    <div class="event-info">
+                                        <span class="event-name">COVID-19</span>
+                                        <span class="event-date">Mar 2020</span>
+                                    </div>
+                                </div>
+                                <div class="event-card" data-event="2022-rate-hike">
+                                    <div class="event-icon"><i class="fas fa-arrow-up"></i></div>
+                                    <div class="event-info">
+                                        <span class="event-name">Rate Hike Cycle</span>
+                                        <span class="event-date">2022-2023</span>
+                                    </div>
+                                </div>
+                                <div class="event-card" data-event="2011-euro">
+                                    <div class="event-icon"><i class="fas fa-euro-sign"></i></div>
+                                    <div class="event-info">
+                                        <span class="event-name">Euro Crisis</span>
+                                        <span class="event-date">2011</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="run-scenario-btn" id="run-scenario">
+                            <i class="fas fa-play"></i>
+                            <span>Run Scenario</span>
+                            <div class="btn-loader" id="scenario-loader"></div>
+                        </button>
+                    </div>
+
+                    <!-- Results Panel -->
+                    <div class="scenario-results-panel glass-card">
+                        <div class="bento-header">
+                            <h3><i class="fas fa-chart-bar"></i> Results</h3>
+                            <div class="scenario-status" id="scenario-status">
+                                <span class="status-indicator"></span>
+                                <span>Ready</span>
+                            </div>
+                        </div>
+                        <div class="scenario-results" id="scenario-results">
+                            <div class="results-placeholder">
+                                <div class="placeholder-icon">
+                                    <i class="fas fa-flask"></i>
+                                </div>
+                                <p>Configure parameters and run a scenario</p>
+                                <span>Results will appear here</span>
+                            </div>
+                        </div>
+
+                        <!-- Impact Chart (shown after run) -->
+                        <div class="impact-section" id="impact-section" style="display: none;">
+                            <h4>Impact Analysis</h4>
+                            <div class="chart-container">
+                                <canvas id="impact-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Panel -->
+                    <div class="scenario-side-panel">
+                        <!-- History -->
+                        <div class="scenario-history-panel glass-card">
+                            <div class="bento-header">
+                                <h3><i class="fas fa-history"></i> History</h3>
+                                <button class="text-btn" id="clear-history">Clear</button>
+                            </div>
+                            <div class="scenario-history" id="scenario-history">
+                                <div class="history-empty">
+                                    <i class="fas fa-inbox"></i>
+                                    <span>No scenarios yet</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Comparison Chart -->
+                        <div class="scenario-compare-panel glass-card">
+                            <div class="bento-header">
+                                <h3><i class="fas fa-balance-scale"></i> Compare</h3>
+                            </div>
+                            <div class="chart-container small">
+                                <canvas id="compare-chart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Sensitivity -->
+                        <div class="scenario-sensitivity-panel glass-card">
+                            <div class="bento-header">
+                                <h3><i class="fas fa-wave-square"></i> Sensitivity</h3>
+                            </div>
+                            <div class="sensitivity-bars">
+                                <div class="sens-bar-row">
+                                    <span class="sens-label">Rates</span>
+                                    <div class="sens-bar">
+                                        <div class="sens-fill negative" id="sens-rates" style="width: 60%"></div>
+                                    </div>
+                                    <span class="sens-value" id="sens-rates-val">-$1.2M</span>
+                                </div>
+                                <div class="sens-bar-row">
+                                    <span class="sens-label">Vol</span>
+                                    <div class="sens-bar">
+                                        <div class="sens-fill positive" id="sens-vol" style="width: 30%"></div>
+                                    </div>
+                                    <span class="sens-value" id="sens-vol-val">+$0.5M</span>
+                                </div>
+                                <div class="sens-bar-row">
+                                    <span class="sens-label">Credit</span>
+                                    <div class="sens-bar">
+                                        <div class="sens-fill negative" id="sens-credit" style="width: 80%"></div>
+                                    </div>
+                                    <span class="sens-value" id="sens-credit-val">-$2.1M</span>
+                                </div>
+                                <div class="sens-bar-row">
+                                    <span class="sens-label">FX</span>
+                                    <div class="sens-bar">
+                                        <div class="sens-fill positive" id="sens-fx" style="width: 20%"></div>
+                                    </div>
+                                    <span class="sens-value" id="sens-fx-val">+$0.3M</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3D Analytics View -->
+            <section id="analytics-view" class="view">
+                <div class="analytics-header glass">
+                    <div class="analytics-title">
+                        <h2><i class="fas fa-cube"></i> 3D Analytics</h2>
+                        <p>Interactive 3D visualization of risk surfaces and distributions</p>
+                    </div>
+                    <div class="analytics-controls">
+                        <select id="surface-type" class="fancy-select">
+                            <option value="vol-surface">Volatility Surface</option>
+                            <option value="pfe-surface">PFE Surface</option>
+                            <option value="correlation">Correlation Matrix</option>
+                            <option value="exposure-time">Exposure × Time</option>
+                        </select>
+                        <button class="icon-btn" id="reset-camera" title="Reset Camera"><i class="fas fa-crosshairs"></i></button>
+                        <button class="icon-btn" id="toggle-wireframe" title="Toggle Wireframe"><i class="fas fa-border-all"></i></button>
+                        <button class="icon-btn" id="toggle-autorotate" title="Auto Rotate"><i class="fas fa-sync"></i></button>
+                    </div>
+                </div>
+                
+                <div class="analytics-layout">
+                    <!-- 3D Viewer -->
+                    <div class="analytics-viewer glass-card">
+                        <div id="three-container" class="three-container"></div>
+                        <div class="viewer-overlay">
+                            <div class="viewer-legend" id="viewer-legend">
+                                <div class="legend-scale">
+                                    <div class="scale-bar"></div>
+                                    <div class="scale-labels">
+                                        <span id="scale-min">0%</span>
+                                        <span id="scale-max">100%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="viewer-info" id="viewer-info">
+                                <span>Click and drag to rotate</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Side Panel -->
+                    <div class="analytics-side-panel">
+                        <!-- Heatmap -->
+                        <div class="heatmap-card glass-card">
+                            <div class="bento-header">
+                                <h3><i class="fas fa-th"></i> Correlation Heatmap</h3>
+                                <button class="icon-btn" id="expand-heatmap"><i class="fas fa-expand"></i></button>
+                            </div>
+                            <div class="heatmap-container">
+                                <div id="correlation-heatmap" class="heatmap"></div>
+                            </div>
+                        </div>
+
+                        <!-- Sankey Diagram -->
+                        <div class="sankey-card glass-card">
+                            <div class="bento-header">
+                                <h3><i class="fas fa-random"></i> Cash Flow Sankey</h3>
+                                <select id="sankey-type" class="small-select">
+                                    <option value="cashflow">Cash Flows</option>
+                                    <option value="collateral">Collateral</option>
+                                    <option value="xva">XVA Breakdown</option>
+                                </select>
+                            </div>
+                            <div class="sankey-container">
+                                <div id="sankey-diagram"></div>
+                            </div>
+                        </div>
+
+                        <!-- Distribution -->
+                        <div class="distribution-card glass-card">
+                            <div class="bento-header">
+                                <h3><i class="fas fa-chart-bar"></i> PnL Distribution</h3>
+                            </div>
+                            <div class="chart-container small">
+                                <canvas id="pnl-distribution-chart"></canvas>
+                            </div>
+                            <div class="distribution-stats">
+                                <div class="dist-stat">
+                                    <span class="dist-label">VaR 95%</span>
+                                    <span class="dist-value negative" id="var-95">-$2.5M</span>
+                                </div>
+                                <div class="dist-stat">
+                                    <span class="dist-label">VaR 99%</span>
+                                    <span class="dist-value negative" id="var-99">-$4.2M</span>
+                                </div>
+                                <div class="dist-stat">
+                                    <span class="dist-label">ES 95%</span>
+                                    <span class="dist-value negative" id="es-95">-$3.8M</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Loading Overlay - Disabled -->
+    <!--
+    <div class="loading-overlay" id="loading-overlay" style="display: none !important;">
+        <div class="loader">
+            <div class="loader-spinner"></div>
+            <span>Processing...</span>
+        </div>
+    </div>
+    -->
+
+    <!-- Celebration Particles -->
+    <div class="celebration-container" id="celebration"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

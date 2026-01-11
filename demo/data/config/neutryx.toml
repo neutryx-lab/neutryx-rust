@@ -1,0 +1,62 @@
+# Neutryx Sample Configuration
+# This file demonstrates the configuration structure for Neutryx pricing library
+
+[engine]
+# Thread pool size for parallel computation (0 = auto-detect CPU cores)
+thread_pool_size = 0
+# Memory limit for AD engine (in MB)
+memory_limit_mb = 2048
+# Default Monte Carlo simulation paths
+mc_paths = 100000
+# Enable checkpointing for long simulations
+checkpointing_enabled = true
+
+[database]
+# Database connection URL (leave empty for in-memory mode)
+url = ""
+# Maximum connection pool size
+max_connections = 10
+# Connection timeout in seconds
+connection_timeout_secs = 30
+
+[pricing]
+# Default pricing date (ISO 8601 format, empty = today)
+pricing_date = ""
+# Base currency for reporting
+base_currency = "USD"
+# Spot lag for FX (in business days)
+fx_spot_lag = 2
+
+[risk]
+# Value-at-Risk confidence level
+var_confidence = 0.99
+# Historical simulation window (in days)
+historical_window = 250
+# Margin period of risk (in days)
+margin_period_of_risk = 10
+
+[xva]
+# CVA calculation method: "analytical" or "simulation"
+cva_method = "simulation"
+# Number of simulation paths for XVA
+xva_paths = 50000
+# Time grid points for exposure calculation
+time_grid_points = 100
+# Include wrong-way risk
+include_wrong_way_risk = false
+
+[calibration]
+# Maximum iterations for optimiser
+max_iterations = 1000
+# Convergence tolerance
+tolerance = 1e-8
+# Levenberg-Marquardt damping parameter
+lm_damping = 0.001
+
+[logging]
+# Log level: "trace", "debug", "info", "warn", "error"
+level = "info"
+# Log output format: "json" or "text"
+format = "text"
+# Log file path (empty = stdout only)
+file = ""

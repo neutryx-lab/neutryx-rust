@@ -5,7 +5,8 @@ A production-grade **derivatives pricing library** for Tier-1 banks in Rust, pow
 ## 🎯 Project Goals
 
 - **Multi-Asset Class Pricing**: Comprehensive coverage of Rates, FX, Equity, Credit, and Commodity derivatives
-- **Cutting-edge AD**: Enzyme (LLVM-level AD) for C++-competitive performance
+- **Cutting-edge AD**: Enzyme (LLVM-level AD) with `#[autodiff]` macro for C++-competitive performance
+- **Stochastic Models**: Heston, SABR, Hull-White with integrated calibration
 - **Production stability**: A-I-P-S architecture isolating experimental code
 - **Dual-mode verification**: Enzyme vs num-dual for correctness validation
 - **XVA & Risk Analytics**: CVA, DVA, FVA calculations with exposure metrics (EE, EPE, PFE)
@@ -72,7 +73,7 @@ neutryx-rust/
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 rustup toolchain install nightly-2025-01-15
-rustup component add --toolchain nightly-2025-01-15 rustfmt clippy
+rustup component add --toolchain nightly-2025-01-15 rustfmt clippy llvm-tools-preview
 ```
 
 ### Build (Stable Crates Only)
@@ -202,7 +203,7 @@ cargo bench
 - **pricer_core**:
   - `num-dual-mode` (default): Verification with dual numbers
   - `enzyme-mode`: Production mode (f64 only)
-- **Asset Classes** (pricer_models):
+- **pricer_models**:
   - `equity` (default): Equity models (GBM)
   - `rates`: Interest rate models (Hull-White, CIR)
   - `credit`: Credit models
@@ -210,17 +211,36 @@ cargo bench
   - `commodity`: Commodity models
   - `exotic`: Exotic derivatives
   - `all`: Enable all asset classes
+- **pricer_pricing**:
+  - `enzyme-ad`: Enable Enzyme automatic differentiation
+  - `num-dual-fallback`: Fallback to num-dual for verification
 
 ## 🎯 Roadmap
 
 - [x] **Phase 0**: Workspace scaffolding (Completed)
 - [x] **Phase 1**: Foundation (L1) - types, traits, smoothing
-- [x] **Phase 2**: Business logic (L2) - instruments, models
-- [ ] **Phase 3**: Enzyme integration (L3) - AD bindings, verification
-- [ ] **Phase 4**: Advanced MC - checkpointing, path-dependent options
-- [x] **Phase 5**: Risk Analytics (L4) - XVA (CVA, DVA, FVA), exposure metrics
+- [x] **Phase 2**: Business logic (L2) - instruments, stochastic models (Heston, SABR, Hull-White)
+- [x] **Phase 3**: Enzyme integration (L3) - AD bindings, `#[autodiff]` macro, Greeks computation
+- [x] **Phase 4**: Monte Carlo kernel - path-dependent options, checkpointing
+- [x] **Phase 5**: Risk Analytics (L4) - XVA (CVA, DVA, FVA), exposure metrics, scenarios
 - [x] **Phase 6**: A-I-P-S Architecture - adapters, infra, service layers
-- [ ] **Phase 7**: Production hardening - docs, benchmarks, CI/CD
+- [ ] **Phase 7**: Exotic Options - Barriers, Asians, Lookbacks, Digitals
+- [ ] **Phase 8**: Service Layer Enhancement - gRPC, Python bindings expansion
+- [ ] **Phase 9**: Production hardening - docs, benchmarks, CI/CD
+
+## 📊 Completed Specifications
+
+| Specification | Description | Date |
+|---------------|-------------|------|
+| core-traits-types-2 | Core traits and type definitions | 2025-12 |
+| rng-infrastructure | Random number generation (PRNG/QMC) | 2025-12 |
+| enzyme-infrastructure-setup | Enzyme AD infrastructure | 2025-12 |
+| interpolation-solvers | Interpolation and numerical solvers | 2025-12 |
+| market-data-structures | Yield curves and volatility surfaces | 2025-12 |
+| instrument-definitions | Financial instrument definitions | 2025-12 |
+| monte-carlo-kernel-enzyme | Monte Carlo pricing kernel | 2026-01 |
+| stochastic-models | Heston, SABR, Hull-White stochastic models | 2026-01 |
+| enzyme-autodiff-integration | Enzyme `#[autodiff]` macro integration | 2026-01 |
 
 ## 📊 Performance Targets
 
@@ -255,4 +275,4 @@ cargo test --workspace --exclude pricer_pricing
 
 ---
 
-**Status**: ✅ A-I-P-S architecture implemented | 🚧 Multi-asset class expansion in progress
+**Status**: ✅ A-I-P-S architecture complete | ✅ Enzyme AD integration complete | ✅ Stochastic models (Heston, SABR, Hull-White) | 🚧 Exotic options in progress

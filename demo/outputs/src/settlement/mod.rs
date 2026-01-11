@@ -9,7 +9,6 @@ mod swift_receiver;
 pub use netting_engine::NettingEngine;
 pub use swift_receiver::SwiftReceiver;
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 /// Payment instruction

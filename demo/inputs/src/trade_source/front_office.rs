@@ -288,6 +288,110 @@ impl FrontOffice {
 
         trades
     }
+
+    /// Generate FX option trades
+    pub fn generate_fx_options(&self, count: usize) -> Vec<TradeRecord> {
+        let mut rng = rand::thread_rng();
+        let mut trades = Vec::with_capacity(count);
+
+        let fx_pairs = vec![
+            ("USDJPY", "USD", 150.25),
+            ("EURUSD", "EUR", 1.085),
+            ("GBPUSD", "GBP", 1.265),
+            ("USDCHF", "USD", 0.882),
+            ("EURJPY", "EUR", 163.0),
+        ];
+
+        for i in 0..count {
+            let cp = &self.counterparties[rng.gen_range(0..self.counterparties.len())];
+            let ns = &cp.netting_sets[rng.gen_range(0..cp.netting_sets.len())];
+            let (pair, base_ccy, spot) = &fx_pairs[rng.gen_range(0..fx_pairs.len())];
+
+            // Maturity 1-12 months
+            let months: u64 = rng.gen_range(1..13);
+            let maturity = self.trade_date.checked_add_days(Days::new(months * 30)).unwrap();
+
+            // Strike around spot
+            let strike_pct: f64 = rng.gen_range(0.90..1.10);
+            let strike = spot * strike_pct;
+
+            // Notional
+            let notional: f64 = rng.gen_range(1_000_000.0..50_000_000.0);
+
+            trades.push(TradeRecord {
+                trade_id: format!("FX-OPT-{:06}", i + 1),
+                instrument_type: InstrumentType::FxOption,
+                counterparty_id: cp.id.clone(),
+                netting_set_id: ns.clone(),
+                notional,
+                currency: base_ccy.to_string(),
+                trade_date: self.trade_date.to_string(),
+                maturity_date: maturity.to_string(),
+                params: TradeParams::FxOption {
+                    currency_pair: pair.to_string(),
+                    strike,
+                    is_call: rng.gen_bool(0.5),
+                },
+            });
+        }
+
+        trades
+    }
+
+    /// Generate equity forward trades
+    pub fn generate_equity_forwards(&self, count: usize) -> Vec<TradeRecord> {
+        let mut rng = rand::thread_rng();
+        let mut trades = Vec::with_capacity(count);
+
+        for i in 0..count {
+            let cp = &self.counterparties[rng.gen_range(0..self.counterparties.len())];
+            let underlying = &self.underlyings[rng.gen_range(0..self.underlyings.len())];
+            let ns = &cp.netting_sets[rng.gen_range(0..cp.netting_sets.len())];
+
+            // Forward price with cost of carry
+            let fwd_adj: f64 = rng.gen_range(0.98..1.05);
+            let forward_price = underlying.spot_price * fwd_adj;
+
+            // Maturity 1-12 months
+            let months: u64 = rng.gen_range(1..13);
+            let maturity = self.trade_date.checked_add_days(Days::new(months * 30)).unwrap();
+
+            // Notional
+            let notional: f64 = rng.gen_range(1_000_000.0..20_000_000.0);
+
+            trades.push(TradeRecord {
+                trade_id: format!("EQ-FWD-{:06}", i + 1),
+                instrument_type: InstrumentType::EquityForward,
+                counterparty_id: cp.id.clone(),
+                netting_set_id: ns.clone(),
+                notional,
+                currency: underlying.currency.clone(),
+                trade_date: self.trade_date.to_string(),
+                maturity_date: maturity.to_string(),
+                params: TradeParams::Forward {
+                    underlying: underlying.ticker.clone(),
+                    forward_price,
+                },
+            });
+        }
+
+        trades
+    }
+
+    /// Generate a single random trade (for streaming scenarios)
+    pub fn generate_single_trade(&self) -> TradeRecord {
+        let mut rng = rand::thread_rng();
+        let trade_type = rng.gen_range(0..6);
+
+        match trade_type {
+            0 => self.generate_equity_options(1).pop().unwrap(),
+            1 => self.generate_irs_trades(1).pop().unwrap(),
+            2 => self.generate_fx_forwards(1).pop().unwrap(),
+            3 => self.generate_cds_trades(1).pop().unwrap(),
+            4 => self.generate_fx_options(1).pop().unwrap(),
+            _ => self.generate_equity_forwards(1).pop().unwrap(),
+        }
+    }
 }
 
 impl Default for FrontOffice {
@@ -301,16 +405,20 @@ impl TradeSource for FrontOffice {
         let mut rng = rand::thread_rng();
         let mut trades = Vec::new();
 
-        // Distribute trades across instrument types
-        let eq_opt_count = count * 30 / 100;
-        let irs_count = count * 30 / 100;
-        let fx_count = count * 25 / 100;
-        let cds_count = count - eq_opt_count - irs_count - fx_count;
+        // Distribute trades across instrument types (6 types now)
+        let eq_opt_count = count * 20 / 100;
+        let irs_count = count * 20 / 100;
+        let fx_fwd_count = count * 15 / 100;
+        let cds_count = count * 15 / 100;
+        let fx_opt_count = count * 15 / 100;
+        let eq_fwd_count = count - eq_opt_count - irs_count - fx_fwd_count - cds_count - fx_opt_count;
 
         trades.extend(self.generate_equity_options(eq_opt_count));
         trades.extend(self.generate_irs_trades(irs_count));
-        trades.extend(self.generate_fx_forwards(fx_count));
+        trades.extend(self.generate_fx_forwards(fx_fwd_count));
         trades.extend(self.generate_cds_trades(cds_count));
+        trades.extend(self.generate_fx_options(fx_opt_count));
+        trades.extend(self.generate_equity_forwards(eq_fwd_count));
 
         // Shuffle
         use rand::seq::SliceRandom;
@@ -329,5 +437,71 @@ mod tests {
         let fo = FrontOffice::new();
         let trades = fo.generate_trades(100);
         assert_eq!(trades.len(), 100);
+    }
+
+    #[test]
+    fn test_generate_all_trade_types() {
+        let fo = FrontOffice::new();
+
+        let eq_options = fo.generate_equity_options(5);
+        assert_eq!(eq_options.len(), 5);
+        assert!(eq_options.iter().all(|t| t.instrument_type == InstrumentType::EquityOption));
+
+        let irs = fo.generate_irs_trades(5);
+        assert_eq!(irs.len(), 5);
+        assert!(irs.iter().all(|t| t.instrument_type == InstrumentType::InterestRateSwap));
+
+        let fx_fwd = fo.generate_fx_forwards(5);
+        assert_eq!(fx_fwd.len(), 5);
+        assert!(fx_fwd.iter().all(|t| t.instrument_type == InstrumentType::FxForward));
+
+        let cds = fo.generate_cds_trades(5);
+        assert_eq!(cds.len(), 5);
+        assert!(cds.iter().all(|t| t.instrument_type == InstrumentType::CreditDefaultSwap));
+
+        let fx_opt = fo.generate_fx_options(5);
+        assert_eq!(fx_opt.len(), 5);
+        assert!(fx_opt.iter().all(|t| t.instrument_type == InstrumentType::FxOption));
+
+        let eq_fwd = fo.generate_equity_forwards(5);
+        assert_eq!(eq_fwd.len(), 5);
+        assert!(eq_fwd.iter().all(|t| t.instrument_type == InstrumentType::EquityForward));
+    }
+
+    #[test]
+    fn test_generate_single_trade() {
+        let fo = FrontOffice::new();
+
+        // Generate multiple single trades to cover all types
+        for _ in 0..20 {
+            let trade = fo.generate_single_trade();
+            assert!(!trade.trade_id.is_empty());
+            assert!(!trade.counterparty_id.is_empty());
+            assert!(trade.notional > 0.0);
+        }
+    }
+
+    #[test]
+    fn test_trade_distribution() {
+        let fo = FrontOffice::new();
+        let trades = fo.generate_trades(100);
+
+        let eq_opt = trades.iter().filter(|t| t.instrument_type == InstrumentType::EquityOption).count();
+        let irs = trades.iter().filter(|t| t.instrument_type == InstrumentType::InterestRateSwap).count();
+        let fx_fwd = trades.iter().filter(|t| t.instrument_type == InstrumentType::FxForward).count();
+        let cds = trades.iter().filter(|t| t.instrument_type == InstrumentType::CreditDefaultSwap).count();
+        let fx_opt = trades.iter().filter(|t| t.instrument_type == InstrumentType::FxOption).count();
+        let eq_fwd = trades.iter().filter(|t| t.instrument_type == InstrumentType::EquityForward).count();
+
+        // Verify all 6 types are present
+        assert!(eq_opt > 0, "Should have equity options");
+        assert!(irs > 0, "Should have IRS");
+        assert!(fx_fwd > 0, "Should have FX forwards");
+        assert!(cds > 0, "Should have CDS");
+        assert!(fx_opt > 0, "Should have FX options");
+        assert!(eq_fwd > 0, "Should have equity forwards");
+
+        // Total should match
+        assert_eq!(eq_opt + irs + fx_fwd + cds + fx_opt + eq_fwd, 100);
     }
 }

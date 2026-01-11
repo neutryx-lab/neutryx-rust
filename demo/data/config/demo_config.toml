@@ -1,0 +1,70 @@
+# FrictionalBank Demo Configuration
+
+[demo]
+# Demo mode: "full", "quick", "custom"
+mode = "full"
+# Data directory path (relative to demo root)
+data_dir = "demo/data"
+# Maximum trades for quick mode (ignored in full mode)
+max_trades = 100
+# Random seed for reproducible demos (0 = random)
+random_seed = 42
+
+[gateway]
+# service_gateway URL
+url = "http://localhost:8080"
+# API request timeout in seconds
+timeout_secs = 30
+# Enable response caching
+cache_enabled = true
+# Cache TTL in seconds
+cache_ttl_secs = 60
+
+[tui]
+# Refresh interval in milliseconds
+refresh_interval_ms = 1000
+# Enable colour output
+colour_enabled = true
+# Default screen on startup: "dashboard", "portfolio", "risk", "blotter"
+default_screen = "dashboard"
+
+[workflows]
+# EOD batch settings
+[workflows.eod_batch]
+enabled = true
+# Processing steps to include
+include_calibration = true
+include_pricing = true
+include_xva = true
+include_regulatory_reports = true
+include_settlement = true
+
+# Intraday workflow settings
+[workflows.intraday]
+enabled = true
+# Ticker update throttle in milliseconds
+throttle_ms = 100
+# Maximum queue depth for market data
+queue_depth = 1000
+
+# Stress test workflow settings
+[workflows.stress_test]
+enabled = true
+# Default scenarios to run
+default_scenarios = ["InterestRateUp100bp", "InterestRateDown100bp", "VolatilityUp20Pct"]
+
+[logging]
+# Log level: "trace", "debug", "info", "warn", "error"
+level = "info"
+# Enable structured logging
+structured = true
+# Log file path (empty = stdout only)
+file = ""
+
+[market_data]
+# Market data provider: "synthetic", "file", "bloomberg_sim", "reuters_sim"
+provider = "synthetic"
+# Update frequency for synthetic data (in milliseconds)
+synthetic_update_ms = 500
+# Volatility for synthetic price generation
+synthetic_volatility = 0.01

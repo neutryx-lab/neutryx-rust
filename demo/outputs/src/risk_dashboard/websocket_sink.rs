@@ -1,7 +1,6 @@
 //! WebSocket sink for real-time risk updates.
 
 use super::MetricUpdate;
-use async_channel::{Receiver, Sender};
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;

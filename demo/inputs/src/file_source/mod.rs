@@ -5,7 +5,7 @@
 
 mod csv_generator;
 
-pub use csv_generator::CsvGenerator;
+pub use csv_generator::{BulkDataGenerator, CsvGenerator, GenerationSummary};
 
 /// Trait for file generators
 pub trait FileGenerator: Send + Sync {

@@ -21,6 +21,12 @@ members = [
     "crates/service_cli",
     "crates/service_gateway",
     "crates/service_python",
+
+    # --- Demo Layer (FrictionalBank) ---
+    "demo/inputs",
+    "demo/outputs",
+    "demo/frictional_bank",
+    "demo/gui",
 ]
 resolver = "2"
 

@@ -1,0 +1,49 @@
+[package]
+name = "frictional_bank"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "FrictionalBank demo orchestrator - A-I-P-S architecture demonstration"
+
+[[bin]]
+name = "frictional-bank"
+path = "src/main.rs"
+
+[dependencies]
+# Demo layer
+demo_inputs = { path = "../inputs" }
+demo_outputs = { path = "../outputs" }
+
+# Pricer layer (excluding pricer_pricing for Enzyme isolation)
+pricer_core = { path = "../../crates/pricer_core" }
+pricer_models = { path = "../../crates/pricer_models", features = ["equity", "rates", "credit", "fx"] }
+pricer_risk = { path = "../../crates/pricer_risk" }
+pricer_optimiser = { path = "../../crates/pricer_optimiser" }
+
+# Async runtime
+tokio = { workspace = true }
+
+# Configuration
+toml = { workspace = true }
+serde = { workspace = true }
+
+# Date/time
+chrono = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# Async channels
+async-channel = "2.3"
+
+# Async traits
+async-trait = "0.1"
+
+[dev-dependencies]
+tokio-test = "0.4"
+tempfile = "3"

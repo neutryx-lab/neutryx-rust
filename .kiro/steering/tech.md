@@ -54,6 +54,11 @@ S: Service   → service_cli, service_gateway, service_python
 - **gRPC**: `tonic` (service_gateway)
 - **REST**: `axum` (service_gateway)
 
+### Demo Layer
+
+- **TUI**: `ratatui`, `crossterm` (FrictionalBank TUI)
+- **WebSocket**: `tokio-tungstenite` (real-time dashboard)
+
 ## Development Standards
 
 ### Type Safety
@@ -127,5 +132,5 @@ docker run -it neutryx-enzyme
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-10_ — Added 3-stage rocket pattern for zero-lookup pricing kernel
+_Updated: 2026-01-11_ — Added Demo Layer technologies (ratatui, tokio-tungstenite)
 _Document standards and patterns, not every dependency_

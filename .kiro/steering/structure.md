@@ -318,6 +318,59 @@ lib.rs      → Module registration and Python module definition
 
 ---
 
+## D: Demo Layer (Reference Implementations)
+
+**Responsibility**: Reference implementations and showcases demonstrating A-I-P-S integration. External to the core architecture.
+
+**Location**: `demo/`
+
+### FrictionalBank Demo
+
+**Location**: `demo/frictional_bank/`
+**Purpose**: Full A-I-P-S workflow orchestration (TUI + Web interfaces)
+**Structure**:
+
+```text
+workflow/     → Business workflows (eod_batch, intraday, stress_test)
+config.rs     → Demo configuration
+error.rs      → Demo-specific errors
+main.rs       → TUI entry point
+```
+
+**Supported Modes**: EOD Batch, Intraday Monitoring, Stress Testing
+
+### Demo Inputs
+
+**Location**: `demo/inputs/`
+**Purpose**: Simulated market data providers and trade sources
+**Pattern**: Mirrors Adapter layer interfaces for demonstration
+
+### Demo Outputs
+
+**Location**: `demo/outputs/`
+**Purpose**: Report sinks, risk dashboards, regulatory outputs
+**Pattern**: Mirrors Service layer outputs for demonstration
+
+### Demo GUI
+
+**Location**: `demo/gui/`
+**Purpose**: TUI (ratatui) and Web dashboard (axum + WebSocket)
+**Structure**:
+
+```text
+app.rs        → TUI application state
+screens.rs    → TUI screen definitions
+web/          → Web server (handlers, websocket)
+static/       → Web assets (HTML, CSS, JS)
+```
+
+### Demo Data & Notebooks
+
+- `demo/data/` - Sample trades, market data, configuration files
+- `demo/notebooks/` - Jupyter notebooks for pricing, calibration, XVA demos
+
+---
+
 ## Infrastructure
 
 **Docker**: `docker/`
@@ -374,5 +427,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-10_ — Added scenarios/, demo, context, provider modules; 3-stage rocket pattern
+_Updated: 2026-01-11_ — Added Demo Layer (D) documentation for FrictionalBank reference implementation
 _Document patterns, not file trees. New files following patterns should not require updates_

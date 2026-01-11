@@ -1,0 +1,54 @@
+[package]
+name = "demo_gui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "TUI and Web dashboard for FrictionalBank demo"
+
+[[bin]]
+name = "demo-tui"
+path = "src/main.rs"
+
+[[bin]]
+name = "demo-web"
+path = "src/web/main.rs"
+required-features = ["web"]
+
+[features]
+default = []
+web = ["axum", "tower-http", "futures", "chrono"]
+
+[dependencies]
+# TUI framework
+ratatui = "0.26"
+crossterm = "0.27"
+
+# Demo crates
+frictional_bank = { path = "../frictional_bank" }
+
+# Async runtime
+tokio = { workspace = true }
+
+# HTTP client
+reqwest = { version = "0.12", features = ["json"] }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Error handling
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# Web server (optional)
+axum = { workspace = true, features = ["ws"], optional = true }
+tower-http = { version = "0.5", features = ["fs", "cors"], optional = true }
+futures = { version = "0.3", optional = true }
+chrono = { workspace = true, optional = true }
+
+[dev-dependencies]
+tokio-test = "0.4"

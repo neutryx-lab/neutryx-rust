@@ -1,0 +1,36 @@
+date,calendar,name,type
+2026-01-01,TARGET,New Year's Day,fixed
+2026-01-01,NY,New Year's Day,fixed
+2026-01-01,JP,New Year's Day,fixed
+2026-01-02,JP,Bank Holiday,fixed
+2026-01-03,JP,Bank Holiday,fixed
+2026-01-12,JP,Coming of Age Day,floating
+2026-01-19,US,Martin Luther King Jr Day,floating
+2026-02-11,JP,National Foundation Day,fixed
+2026-02-16,US,Presidents Day,floating
+2026-02-23,JP,Emperor's Birthday,fixed
+2026-03-20,JP,Vernal Equinox Day,floating
+2026-04-03,TARGET,Good Friday,floating
+2026-04-06,TARGET,Easter Monday,floating
+2026-04-10,NY,Good Friday,floating
+2026-04-29,JP,Showa Day,fixed
+2026-05-01,TARGET,Labour Day,fixed
+2026-05-03,JP,Constitution Memorial Day,fixed
+2026-05-04,JP,Greenery Day,fixed
+2026-05-05,JP,Children's Day,fixed
+2026-05-25,US,Memorial Day,floating
+2026-07-03,US,Independence Day (observed),floating
+2026-07-04,US,Independence Day,fixed
+2026-07-20,JP,Marine Day,floating
+2026-08-11,JP,Mountain Day,fixed
+2026-09-07,US,Labor Day,floating
+2026-09-21,JP,Respect for the Aged Day,floating
+2026-09-22,JP,Autumnal Equinox Day,floating
+2026-10-12,US,Columbus Day,floating
+2026-11-03,JP,Culture Day,fixed
+2026-11-11,US,Veterans Day,fixed
+2026-11-23,JP,Labour Thanksgiving Day,fixed
+2026-11-26,US,Thanksgiving Day,floating
+2026-12-25,TARGET,Christmas Day,fixed
+2026-12-25,NY,Christmas Day,fixed
+2026-12-26,TARGET,Boxing Day,fixed

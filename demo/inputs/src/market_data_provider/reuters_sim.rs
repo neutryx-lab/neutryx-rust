@@ -7,7 +7,8 @@ use adapter_feeds::MarketQuote;
 use async_channel::{Receiver, Sender};
 use chrono::Utc;
 use pricer_core::types::Currency;
-use rand::Rng;
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 use rand_distr::{Distribution, Normal};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -147,7 +148,7 @@ impl ReutersSim {
         tx: Sender<MarketQuote>,
         running: Arc<AtomicBool>,
     ) {
-        let mut rng = rand::thread_rng();
+        let mut rng = StdRng::from_entropy();
         let mut prices: Vec<f64> = instruments.iter().map(|i| i.initial_price).collect();
         let mut tick_interval = interval(Duration::from_millis(interval_ms));
 

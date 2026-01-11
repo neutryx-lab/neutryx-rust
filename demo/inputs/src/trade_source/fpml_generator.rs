@@ -24,8 +24,131 @@ impl FpmlGenerator {
             TradeParams::EquityOption { underlying, strike, is_call } => {
                 Self::generate_equity_option_fpml(trade, underlying, *strike, *is_call)
             }
-            _ => Self::generate_generic_fpml(trade),
+            TradeParams::FxOption { currency_pair, strike, is_call } => {
+                Self::generate_fx_option_fpml(trade, currency_pair, *strike, *is_call)
+            }
+            TradeParams::Forward { underlying, forward_price } => {
+                Self::generate_equity_forward_fpml(trade, underlying, *forward_price)
+            }
         }
+    }
+
+    /// Generate FX Option FpML
+    fn generate_fx_option_fpml(
+        trade: &TradeRecord,
+        currency_pair: &str,
+        strike: f64,
+        is_call: bool,
+    ) -> String {
+        // Parse currency pair (e.g., "USDJPY" -> "USD", "JPY")
+        let (ccy1, ccy2) = if currency_pair.len() >= 6 {
+            (&currency_pair[0..3], &currency_pair[3..6])
+        } else {
+            (trade.currency.as_str(), "USD")
+        };
+
+        format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<FpML xmlns="http://www.fpml.org/FpML-5/confirmation" version="5-12">
+  <trade>
+    <tradeHeader>
+      <partyTradeIdentifier>
+        <tradeId>{}</tradeId>
+      </partyTradeIdentifier>
+      <tradeDate>{}</tradeDate>
+    </tradeHeader>
+    <fxOption>
+      <buyerPartyReference href="{}"/>
+      <sellerPartyReference href="SELF"/>
+      <optionType>{}</optionType>
+      <putCurrencyAmount>
+        <currency>{}</currency>
+        <amount>{:.2}</amount>
+      </putCurrencyAmount>
+      <callCurrencyAmount>
+        <currency>{}</currency>
+        <amount>{:.2}</amount>
+      </callCurrencyAmount>
+      <strike>
+        <rate>{:.6}</rate>
+        <strikeQuoteBasis>CallCurrencyPerPutCurrency</strikeQuoteBasis>
+      </strike>
+      <europeanExercise>
+        <expirationDate>{}</expirationDate>
+        <expirationTime>10:00:00</expirationTime>
+      </europeanExercise>
+      <premium>
+        <payerPartyReference href="{}"/>
+        <receiverPartyReference href="SELF"/>
+        <paymentDate>{}</paymentDate>
+        <paymentAmount>
+          <currency>{}</currency>
+          <amount>0</amount>
+        </paymentAmount>
+      </premium>
+    </fxOption>
+  </trade>
+</FpML>"#,
+            trade.trade_id,
+            trade.trade_date,
+            trade.counterparty_id,
+            if is_call { "Call" } else { "Put" },
+            ccy2,
+            trade.notional * strike,
+            ccy1,
+            trade.notional,
+            strike,
+            trade.maturity_date,
+            trade.counterparty_id,
+            trade.trade_date,
+            trade.currency
+        )
+    }
+
+    /// Generate Equity Forward FpML
+    fn generate_equity_forward_fpml(
+        trade: &TradeRecord,
+        underlying: &str,
+        forward_price: f64,
+    ) -> String {
+        format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<FpML xmlns="http://www.fpml.org/FpML-5/confirmation" version="5-12">
+  <trade>
+    <tradeHeader>
+      <partyTradeIdentifier>
+        <tradeId>{}</tradeId>
+      </partyTradeIdentifier>
+      <tradeDate>{}</tradeDate>
+    </tradeHeader>
+    <equityForward>
+      <buyerPartyReference href="{}"/>
+      <sellerPartyReference href="SELF"/>
+      <underlyer>
+        <singleUnderlyer>
+          <equity>
+            <instrumentId instrumentIdScheme="http://www.fpml.org/spec/2002/instrument-id-RIC">{}</instrumentId>
+          </equity>
+          <openUnits>{:.0}</openUnits>
+        </singleUnderlyer>
+      </underlyer>
+      <forwardPrice>
+        <currency>{}</currency>
+        <amount>{:.4}</amount>
+      </forwardPrice>
+      <valuationDate>{}</valuationDate>
+    </equityForward>
+  </trade>
+</FpML>"#,
+            trade.trade_id,
+            trade.trade_date,
+            trade.counterparty_id,
+            underlying,
+            trade.notional / forward_price,
+            trade.currency,
+            forward_price,
+            trade.maturity_date
+        )
     }
 
     /// Generate IRS FpML
@@ -338,14 +461,75 @@ impl FpmlGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::trade_source::FrontOffice;
+    use crate::trade_source::{FrontOffice, TradeSource};
 
     #[test]
-    fn test_fpml_generation() {
+    fn test_fpml_irs_generation() {
         let fo = FrontOffice::new();
         let trades = fo.generate_irs_trades(1);
         let fpml = FpmlGenerator::to_fpml(&trades[0]);
         assert!(fpml.contains("<swap>"));
         assert!(fpml.contains(&trades[0].trade_id));
+        assert!(fpml.contains("FpML"));
+    }
+
+    #[test]
+    fn test_fpml_equity_option_generation() {
+        let fo = FrontOffice::new();
+        let trades = fo.generate_equity_options(1);
+        let fpml = FpmlGenerator::to_fpml(&trades[0]);
+        assert!(fpml.contains("<equityOption>"));
+        assert!(fpml.contains(&trades[0].trade_id));
+    }
+
+    #[test]
+    fn test_fpml_fx_forward_generation() {
+        let fo = FrontOffice::new();
+        let trades = fo.generate_fx_forwards(1);
+        let fpml = FpmlGenerator::to_fpml(&trades[0]);
+        assert!(fpml.contains("<fxSingleLeg>"));
+        assert!(fpml.contains(&trades[0].trade_id));
+    }
+
+    #[test]
+    fn test_fpml_cds_generation() {
+        let fo = FrontOffice::new();
+        let trades = fo.generate_cds_trades(1);
+        let fpml = FpmlGenerator::to_fpml(&trades[0]);
+        assert!(fpml.contains("<creditDefaultSwap>"));
+        assert!(fpml.contains(&trades[0].trade_id));
+    }
+
+    #[test]
+    fn test_fpml_fx_option_generation() {
+        let fo = FrontOffice::new();
+        let trades = fo.generate_fx_options(1);
+        let fpml = FpmlGenerator::to_fpml(&trades[0]);
+        assert!(fpml.contains("<fxOption>"));
+        assert!(fpml.contains(&trades[0].trade_id));
+    }
+
+    #[test]
+    fn test_fpml_equity_forward_generation() {
+        let fo = FrontOffice::new();
+        let trades = fo.generate_equity_forwards(1);
+        let fpml = FpmlGenerator::to_fpml(&trades[0]);
+        assert!(fpml.contains("<equityForward>"));
+        assert!(fpml.contains(&trades[0].trade_id));
+    }
+
+    #[test]
+    fn test_fpml_batch_generation() {
+        let fo = FrontOffice::new();
+        let trades = fo.generate_trades(10);
+        let fpml_docs = FpmlGenerator::to_fpml_batch(&trades);
+        assert_eq!(fpml_docs.len(), 10);
+
+        // All docs should be valid XML-ish
+        for doc in &fpml_docs {
+            assert!(doc.starts_with("<?xml"));
+            assert!(doc.contains("<FpML"));
+            assert!(doc.contains("</FpML>"));
+        }
     }
 }
