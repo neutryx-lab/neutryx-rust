@@ -16,7 +16,7 @@
   - 検証結果に基づき後続タスクの実装方針を決定する
   - _Requirements: 2.1, 2.5_
 
-- [ ] 2. IRS Greeks計算器
+- [x] 2. IRS Greeks計算器
 - [x] 2.1 IRS NPV計算機能の実装
   - IRSパラメータ(想定元本、固定レート、期間、通貨)からInterestRateSwapオブジェクトを生成する
   - 固定レグと変動レグの現在価値を計算する
@@ -45,7 +45,7 @@
   - 精度検証結果(各テナーの相対誤差)を記録する
   - _Requirements: 2.3_
 
-- [ ] 3. LazyValuation機能
+- [x] 3. LazyValuation機能
 - [x] 3.1 依存関係グラフの構築
   - カーブテナーポイントとIRS計算の依存関係を追跡するグラフ構造を実装する
   - 各IRSがどのカーブポイントに依存するかをマッピングする
@@ -113,7 +113,7 @@
   - AADモードとの性能比較結果を表示する
   - _Requirements: 4.5_
 
-- [ ] 6. FrictionalBank統合
+- [x] 6. FrictionalBank統合
 - [x] 6.1 IrsAadWorkflowの実装
   - DemoWorkflowトレイトを実装し、FrictionalBankデモシステムに統合する
   - IRSパラメータ入力の処理機能を実装する
@@ -121,42 +121,42 @@
   - 単一計算とベンチマーク実行の両モードをサポートする
   - _Requirements: 6.1, 6.2, 6.5_
 
-- [ ] 6.2 TUI画面の実装
+- [x] 6.2 TUI画面の実装
   - IRS AAD Demo用のTUI画面(IrsAadScreen)を実装する
   - IRSパラメータ入力フォームを実装する
   - PV、Greeks、計算時間の結果表示を実装する
   - パラメータ変更時の即時再計算と結果更新を実装する
   - _Requirements: 6.2, 6.3, 6.6_
 
-- [ ] 6.3 (P) WebSocket配信の実装
+- [x] 6.3 (P) WebSocket配信の実装
   - ベンチマーク結果をWebSocket経由でリアルタイム配信する機能を実装する
   - 既存のWeb dashboardインフラストラクチャを拡張する
   - _Requirements: 6.4_
 
-- [ ] 7. 教育的可視化
-- [ ] 7.1 (P) 計算フロー概念図の実装
+- [x] 7. 教育的可視化
+- [x] 7.1 (P) 計算フロー概念図の実装
   - AADとBump-and-Revalueの計算フローの概念図をTUI/Webで表示する
   - 両手法の違いを視覚的に説明する図を実装する
   - _Requirements: 7.1_
 
-- [ ] 7.2 速度比較チャートの実装
+- [x] 7.2 速度比較チャートの実装
   - ベンチマーク結果を速度比較バーチャートとして表示する
   - TUIモードではratatuiのChartウィジェットを使用する
   - Webモードではchart.js互換JSONデータを出力する
   - _Requirements: 7.2, 7.4, 7.5_
 
-- [ ] 7.3 スケーラビリティグラフの実装
+- [x] 7.3 スケーラビリティグラフの実装
   - テナー数増加に伴う計算時間の比較折れ線グラフを表示する
   - AAD vs Bump-and-Revalueのスケーリング特性を可視化する
   - TUI/Web両モードに対応する
   - _Requirements: 7.3, 7.4, 7.5_
 
-- [ ] 7.4 (P) 精度検証結果表示の実装
+- [x] 7.4 (P) 精度検証結果表示の実装
   - AAD vs Bump-and-Revalue差分の数値精度検証結果をテーブル表示する
   - 各テナーポイントの相対誤差を一覧表示する
   - _Requirements: 7.6_
 
-- [ ] 8. 統合テストの実装
+- [x] 8. 統合テストの実装
   - IrsAadWorkflowとIrsGreeksCalculatorの完全なワークフロー実行テストを実装する
   - 5年ATMスワップの完全なベンチマークサイクルをE2Eテストとして実装する
   - パラメータ変更による即時再計算のテストを実装する

@@ -17,6 +17,9 @@
 //! - 要件 6.3: PV、Greeks、計算時間の結果表示
 //! - 要件 6.6: パラメータ変更時の即時再計算
 
+// enzyme-ad feature is defined in pricer_pricing, not in this crate
+#![allow(unexpected_cfgs)]
+
 use ratatui::{
     prelude::*,
     symbols,
@@ -24,6 +27,7 @@ use ratatui::{
 };
 
 use pricer_pricing::greeks::GreeksMode;
+#[allow(unused_imports)]
 use pricer_pricing::irs_greeks::{DeltaBenchmarkResult, TimingStats};
 
 // =============================================================================
@@ -240,14 +244,14 @@ fn draw_parameters_section(
     // 選択されたフィールドをハイライト
     let mut content = vec![Line::from("")];
     for (i, field) in fields.into_iter().enumerate() {
+        // フィールドのスパンを取得して先頭にマーカーを追加
+        let mut spans: Vec<Span> = field.spans;
         if i == selected_field {
-            content.push(Line::from(vec![
-                Span::styled("> ", Style::default().fg(Color::Cyan)),
-                Span::from(field),
-            ]));
+            spans.insert(0, Span::styled("> ", Style::default().fg(Color::Cyan)));
         } else {
-            content.push(Line::from(vec![Span::raw("  "), Span::from(field)]));
+            spans.insert(0, Span::raw("  "));
         }
+        content.push(Line::from(spans));
     }
 
     let paragraph = Paragraph::new(content).block(
@@ -799,7 +803,7 @@ mod tests {
 
             terminal
                 .draw(|frame| {
-                    let area = frame.area();
+                    let area = frame.size();
                     draw_irs_aad_screen(frame, area, &data);
                 })
                 .unwrap();
@@ -822,7 +826,7 @@ mod tests {
 
             terminal
                 .draw(|frame| {
-                    let area = frame.area();
+                    let area = frame.size();
                     draw_irs_aad_screen(frame, area, &data);
                 })
                 .unwrap();
@@ -855,7 +859,7 @@ mod tests {
 
             terminal
                 .draw(|frame| {
-                    let area = frame.area();
+                    let area = frame.size();
                     draw_irs_aad_screen(frame, area, &data);
                 })
                 .unwrap();
@@ -869,7 +873,7 @@ mod tests {
 
             terminal
                 .draw(|frame| {
-                    let area = frame.area();
+                    let area = frame.size();
                     draw_irs_benchmark_chart(frame, area, None);
                 })
                 .unwrap();
@@ -901,7 +905,7 @@ mod tests {
 
             terminal
                 .draw(|frame| {
-                    let area = frame.area();
+                    let area = frame.size();
                     draw_irs_benchmark_chart(frame, area, Some(&benchmark));
                 })
                 .unwrap();
@@ -924,7 +928,7 @@ mod tests {
 
             terminal
                 .draw(|frame| {
-                    let area = frame.area();
+                    let area = frame.size();
                     draw_irs_aad_screen(frame, area, &data);
                 })
                 .unwrap();
@@ -947,7 +951,7 @@ mod tests {
 
             terminal
                 .draw(|frame| {
-                    let area = frame.area();
+                    let area = frame.size();
                     draw_irs_aad_screen(frame, area, &data);
                 })
                 .unwrap();

@@ -6636,6 +6636,86 @@ kbd {
     font-size: 0.875rem;
 }
 
+/* Task 7.2: Node Type Chart Panel */
+.node-type-chart-panel {
+    padding: 16px;
+    border-radius: var(--radius-lg);
+}
+
+.node-type-chart-panel h3 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+}
+
+.node-type-chart-panel h3 i {
+    color: var(--accent-primary);
+}
+
+.node-type-chart-panel .chart-container {
+    position: relative;
+}
+
+/* Task 6.3: Sensitivity Path Panel */
+.sensitivity-path-panel {
+    padding: 16px;
+    border-radius: var(--radius-lg);
+}
+
+.sensitivity-path-panel h3 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+}
+
+.sensitivity-path-panel h3 i {
+    color: var(--accent-primary);
+}
+
+.sensitivity-path-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sensitivity-path-controls .btn {
+    width: 100%;
+    justify-content: center;
+}
+
+.sensitivity-path-controls .btn.active {
+    background: var(--accent-primary);
+    color: white;
+}
+
+.sensitivity-path-controls .btn.active i {
+    color: white;
+}
+
+.sensitivity-path-controls .form-select {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    color: var(--text-primary);
+}
+
+.sensitivity-path-panel .panel-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 8px;
+    margin-bottom: 0;
+}
+
 /* Node Info Panel */
 .node-info-panel {
     padding: 16px;

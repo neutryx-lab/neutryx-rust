@@ -26,8 +26,11 @@ pub mod prelude {
     pub use crate::config::{DemoConfig, DemoMode};
     pub use crate::error::DemoError;
     pub use crate::workflow::{
-        DemoWorkflow, EodBatchWorkflow, IntradayWorkflow, IrsAadConfig, IrsAadWorkflow,
-        IrsComputeResult, IrsParams, ProgressCallback, StressTestWorkflow, WorkflowResult,
-        WorkflowStep, XvaDemoResult,
+        DemoWorkflow, EodBatchWorkflow, IntradayWorkflow, ProgressCallback, StressTestWorkflow,
+        WorkflowResult, WorkflowStep,
+    };
+    #[cfg(feature = "l1l2-integration")]
+    pub use crate::workflow::{
+        IrsAadConfig, IrsAadWorkflow, IrsComputeResult, IrsParams, XvaDemoResult,
     };
 }

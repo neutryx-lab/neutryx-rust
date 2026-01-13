@@ -1115,7 +1115,8 @@ mod tests {
 
             // Verify response can be serialised to JSON
             let json = serde_json::to_string(&response.0).unwrap();
-            assert!(json.contains("\"type\": \"bar\""));
+            // serde_json compact format doesn't add spaces after colons
+            assert!(json.contains("\"type\":\"bar\""));
             assert!(json.contains("\"labels\""));
             assert!(json.contains("\"datasets\""));
             assert!(json.contains("\"backgroundColor\"")); // camelCase

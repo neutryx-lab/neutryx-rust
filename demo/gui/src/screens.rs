@@ -7,7 +7,7 @@ pub use irs_aad::{
     IrsDisplayResult,
 };
 
-use crate::app::{ExposureTimeSeries, RiskMetrics, TradeRow};
+use crate::app::{ExposureTimeSeries, IrsAadDemoState, RiskMetrics, TradeRow};
 use ratatui::{
     prelude::*,
     symbols,
@@ -442,4 +442,427 @@ fn format_k(n: f64) -> String {
     } else {
         format!("{:.0}", n)
     }
+}
+
+// =============================================================================
+// Task 6.2: IRS AAD Demo Screen (using IrsAadDemoState from app.rs)
+// =============================================================================
+
+/// Draw the IRS AAD Demo screen (Task 6.2)
+///
+/// This function renders the IRS AAD Demo screen using the state
+/// from the TUI application. It displays:
+/// - Parameter input form (notional, fixed rate, tenor, num tenors)
+/// - Calculation mode selector (Bump/AAD/Both)
+/// - Results (NPV, DV01, tenor deltas)
+/// - Benchmark timing comparison
+///
+/// # Requirements Coverage
+///
+/// - Requirement 6.2: IRS parameter input processing
+/// - Requirement 6.3: PV, Greeks, calculation time display
+/// - Requirement 6.6: Immediate recalculation on parameter change
+pub fn draw_irs_aad_demo(frame: &mut Frame, area: Rect, state: &IrsAadDemoState) {
+    // Main layout: 3 rows
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(12), // Top: params + mode
+            Constraint::Length(10), // Middle: results
+            Constraint::Min(0),     // Bottom: benchmark/deltas
+        ])
+        .split(area);
+
+    // Top section: left = params, right = mode
+    let top_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .split(chunks[0]);
+
+    draw_irs_demo_params(frame, top_chunks[0], state);
+    draw_irs_demo_mode(frame, top_chunks[1], state);
+
+    // Middle section: results
+    draw_irs_demo_results(frame, chunks[1], state);
+
+    // Bottom section: benchmark + deltas chart
+    if state.benchmark.is_some() {
+        let bottom_chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+            .split(chunks[2]);
+
+        draw_irs_demo_benchmark(frame, bottom_chunks[0], state);
+        draw_irs_demo_delta_chart(frame, bottom_chunks[1], state);
+    } else {
+        draw_irs_demo_help(frame, chunks[2]);
+    }
+}
+
+/// Draw IRS parameters section
+fn draw_irs_demo_params(frame: &mut Frame, area: Rect, state: &IrsAadDemoState) {
+    let params = &state.params;
+    let selected = state.selected_field;
+
+    let field_labels = [
+        ("Notional:", format_k(params.notional)),
+        ("Fixed Rate:", format!("{:.2}%", params.fixed_rate * 100.0)),
+        ("Tenor:", format!("{} years", params.tenor_years)),
+        ("Tenor Points:", format!("{}", params.num_tenors)),
+    ];
+
+    let mut lines = vec![Line::from("")];
+
+    for (i, (label, value)) in field_labels.iter().enumerate() {
+        let prefix = if i == selected { "> " } else { "  " };
+        let style = if i == selected {
+            Style::default().fg(Color::Cyan)
+        } else {
+            Style::default()
+        };
+
+        lines.push(Line::from(vec![
+            Span::styled(prefix, style),
+            Span::styled(format!("{:<14}", label), Style::default().fg(Color::Yellow)),
+            Span::styled(value.clone(), style),
+        ]));
+    }
+
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled(
+        "  [Left/Right] Adjust  [Up/Down] Select",
+        Style::default().fg(Color::DarkGray),
+    )));
+
+    let paragraph = Paragraph::new(lines).block(
+        Block::default()
+            .title(" IRS Parameters ")
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Blue)),
+    );
+
+    frame.render_widget(paragraph, area);
+}
+
+/// Draw calculation mode section
+fn draw_irs_demo_mode(frame: &mut Frame, area: Rect, state: &IrsAadDemoState) {
+    let mode_names = ["Bump-and-Revalue", "AAD (Enzyme)", "Both (Compare)"];
+    let mode_str = mode_names.get(state.calc_mode).unwrap_or(&"Unknown");
+
+    let mut lines = vec![
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("Mode: ", Style::default().fg(Color::Yellow)),
+            Span::styled(
+                *mode_str,
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        ]),
+        Line::from(""),
+        Line::from(Span::styled(
+            "  [Tab] Cycle mode",
+            Style::default().fg(Color::DarkGray),
+        )),
+    ];
+
+    if state.is_calculating {
+        lines.push(Line::from(""));
+        lines.push(Line::from(Span::styled(
+            "  Calculating...",
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::SLOW_BLINK),
+        )));
+    }
+
+    if let Some(ref err) = state.error_message {
+        lines.push(Line::from(""));
+        lines.push(Line::from(Span::styled(
+            format!("  Error: {}", err),
+            Style::default().fg(Color::Red),
+        )));
+    }
+
+    let paragraph = Paragraph::new(lines).block(
+        Block::default()
+            .title(" Calculation Mode ")
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Blue)),
+    );
+
+    frame.render_widget(paragraph, area);
+}
+
+/// Draw results section
+fn draw_irs_demo_results(frame: &mut Frame, area: Rect, state: &IrsAadDemoState) {
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .split(area);
+
+    // Valuation results
+    let val_content = if let Some(ref result) = state.result {
+        let npv_color = if result.npv >= 0.0 {
+            Color::Green
+        } else {
+            Color::Red
+        };
+
+        vec![
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("NPV:      ", Style::default().fg(Color::Yellow)),
+                Span::styled(format_k(result.npv), Style::default().fg(npv_color)),
+            ]),
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("DV01:     ", Style::default().fg(Color::Yellow)),
+                Span::styled(
+                    format!("{:.4}", result.dv01),
+                    Style::default().fg(Color::Cyan),
+                ),
+            ]),
+            Line::from(vec![
+                Span::styled("DV01/MM:  ", Style::default().fg(Color::Yellow)),
+                Span::styled(
+                    format!("{:.2}", result.dv01 * 10_000.0),
+                    Style::default().fg(Color::Cyan),
+                ),
+            ]),
+        ]
+    } else {
+        vec![
+            Line::from(""),
+            Line::from(Span::styled(
+                "  Press [Enter] to calculate",
+                Style::default().fg(Color::DarkGray),
+            )),
+        ]
+    };
+
+    let valuation = Paragraph::new(val_content).block(
+        Block::default()
+            .title(" Valuation ")
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Blue)),
+    );
+    frame.render_widget(valuation, chunks[0]);
+
+    // Timing results
+    let time_content = if let Some(ref result) = state.result {
+        let time_us = result.compute_time_ns as f64 / 1000.0;
+        let time_str = if time_us >= 1000.0 {
+            format!("{:.2} ms", time_us / 1000.0)
+        } else {
+            format!("{:.1} us", time_us)
+        };
+
+        vec![
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("Mode:     ", Style::default().fg(Color::Yellow)),
+                Span::raw(&result.mode),
+            ]),
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("Time:     ", Style::default().fg(Color::Yellow)),
+                Span::styled(time_str, Style::default().fg(Color::Green)),
+            ]),
+            Line::from(vec![
+                Span::styled("Tenors:   ", Style::default().fg(Color::Yellow)),
+                Span::raw(format!("{}", result.tenors.len())),
+            ]),
+        ]
+    } else {
+        vec![
+            Line::from(""),
+            Line::from(Span::styled(
+                "  No timing data",
+                Style::default().fg(Color::DarkGray),
+            )),
+        ]
+    };
+
+    let timing = Paragraph::new(time_content).block(
+        Block::default()
+            .title(" Computation Time ")
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Blue)),
+    );
+    frame.render_widget(timing, chunks[1]);
+}
+
+/// Draw benchmark comparison section
+fn draw_irs_demo_benchmark(frame: &mut Frame, area: Rect, state: &IrsAadDemoState) {
+    let content = if let Some(ref bench) = state.benchmark {
+        let aad_us = bench.aad_mean_ns / 1000.0;
+        let bump_us = bench.bump_mean_ns / 1000.0;
+
+        vec![
+            Line::from(""),
+            Line::from(Span::styled(
+                "--- Speed Comparison ---",
+                Style::default().fg(Color::Cyan),
+            )),
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("AAD Time:   ", Style::default().fg(Color::Yellow)),
+                Span::styled(format!("{:.1} us", aad_us), Style::default().fg(Color::Green)),
+            ]),
+            Line::from(vec![
+                Span::styled("Bump Time:  ", Style::default().fg(Color::Yellow)),
+                Span::styled(format!("{:.1} us", bump_us), Style::default().fg(Color::Red)),
+            ]),
+            Line::from(""),
+            Line::from(vec![
+                Span::styled("Speedup:    ", Style::default().fg(Color::Yellow)),
+                Span::styled(
+                    format!("{:.1}x", bench.speedup_ratio),
+                    Style::default()
+                        .fg(Color::Green)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(" faster", Style::default().fg(Color::DarkGray)),
+            ]),
+            Line::from(vec![
+                Span::styled("Tenors:     ", Style::default().fg(Color::Yellow)),
+                Span::raw(format!("{}", bench.tenor_count)),
+            ]),
+        ]
+    } else {
+        vec![
+            Line::from(""),
+            Line::from(Span::styled(
+                "  No benchmark data",
+                Style::default().fg(Color::DarkGray),
+            )),
+        ]
+    };
+
+    let paragraph = Paragraph::new(content).block(
+        Block::default()
+            .title(" Benchmark Results ")
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Blue)),
+    );
+
+    frame.render_widget(paragraph, area);
+}
+
+/// Draw delta comparison chart
+fn draw_irs_demo_delta_chart(frame: &mut Frame, area: Rect, state: &IrsAadDemoState) {
+    if let Some(ref result) = state.result {
+        if !result.tenors.is_empty() && !result.deltas.is_empty() {
+            // Create chart data
+            let data: Vec<(f64, f64)> = result
+                .tenors
+                .iter()
+                .zip(result.deltas.iter())
+                .map(|(t, d)| (*t, *d))
+                .collect();
+
+            let max_tenor = result.tenors.iter().fold(0.0_f64, |a, &b| a.max(b));
+            let max_delta = result.deltas.iter().fold(0.0_f64, |a, &b| a.max(b.abs()));
+            let min_delta = result.deltas.iter().fold(0.0_f64, |a, &b| a.min(b));
+
+            let y_max = max_delta * 1.2;
+            let y_min = if min_delta < 0.0 { min_delta * 1.2 } else { 0.0 };
+
+            let datasets = vec![Dataset::default()
+                .name("Delta")
+                .marker(symbols::Marker::Braille)
+                .graph_type(GraphType::Line)
+                .style(Style::default().fg(Color::Cyan))
+                .data(&data)];
+
+            let x_labels: Vec<Span> = (0..=max_tenor as u32)
+                .step_by(((max_tenor / 4.0).max(1.0)) as usize)
+                .map(|i| Span::raw(format!("{}Y", i)))
+                .collect();
+
+            let y_labels = vec![
+                Span::raw(format_k(y_min)),
+                Span::raw(format_k((y_min + y_max) / 2.0)),
+                Span::raw(format_k(y_max)),
+            ];
+
+            let chart = Chart::new(datasets)
+                .block(
+                    Block::default()
+                        .title(" Tenor Deltas ")
+                        .borders(Borders::ALL)
+                        .border_style(Style::default().fg(Color::Blue)),
+                )
+                .x_axis(
+                    Axis::default()
+                        .title("Tenor")
+                        .style(Style::default().fg(Color::Gray))
+                        .bounds([0.0, max_tenor * 1.1])
+                        .labels(x_labels),
+                )
+                .y_axis(
+                    Axis::default()
+                        .title("Delta")
+                        .style(Style::default().fg(Color::Gray))
+                        .bounds([y_min, y_max])
+                        .labels(y_labels),
+                );
+
+            frame.render_widget(chart, area);
+            return;
+        }
+    }
+
+    // Fallback: no data
+    let paragraph = Paragraph::new(vec![
+        Line::from(""),
+        Line::from(Span::styled(
+            "  No delta data available",
+            Style::default().fg(Color::DarkGray),
+        )),
+    ])
+    .block(
+        Block::default()
+            .title(" Tenor Deltas ")
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Blue)),
+    );
+
+    frame.render_widget(paragraph, area);
+}
+
+/// Draw help section when no benchmark data
+fn draw_irs_demo_help(frame: &mut Frame, area: Rect) {
+    let help_text = vec![
+        Line::from(""),
+        Line::from(Span::styled(
+            "--- IRS AAD Demo Help ---",
+            Style::default().fg(Color::Cyan),
+        )),
+        Line::from(""),
+        Line::from("  This demo compares AAD (Adjoint Algorithmic Differentiation)"),
+        Line::from("  with traditional Bump-and-Revalue for IRS Greeks calculation."),
+        Line::from(""),
+        Line::from(Span::styled("  Controls:", Style::default().fg(Color::Yellow))),
+        Line::from("  [Up/Down]    Select parameter"),
+        Line::from("  [Left/Right] Adjust parameter value"),
+        Line::from("  [Tab]        Cycle calculation mode"),
+        Line::from("  [Enter]      Run calculation"),
+        Line::from(""),
+        Line::from(Span::styled(
+            "  Press [Enter] to run the calculation",
+            Style::default().fg(Color::Green),
+        )),
+    ];
+
+    let paragraph = Paragraph::new(help_text).block(
+        Block::default()
+            .title(" IRS AAD Demo ")
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Blue)),
+    );
+
+    frame.render_widget(paragraph, area);
 }

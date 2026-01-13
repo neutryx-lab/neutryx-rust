@@ -8,11 +8,13 @@
 
 mod eod_batch;
 mod intraday;
+#[cfg(feature = "l1l2-integration")]
 mod irs_aad;
 mod stress_test;
 
 pub use eod_batch::EodBatchWorkflow;
 pub use intraday::IntradayWorkflow;
+#[cfg(feature = "l1l2-integration")]
 pub use irs_aad::{IrsAadConfig, IrsAadWorkflow, IrsComputeResult, IrsParams, XvaDemoResult};
 pub use stress_test::{PresetScenarioType, ScenarioResult, StressTestResult, StressTestWorkflow};
 

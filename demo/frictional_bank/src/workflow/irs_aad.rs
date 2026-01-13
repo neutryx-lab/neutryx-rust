@@ -56,12 +56,119 @@ use pricer_models::instruments::rates::{
 #[cfg(feature = "l1l2-integration")]
 use pricer_models::schedules::{Frequency, ScheduleBuilder};
 
+#[cfg(feature = "l1l2-integration")]
 use pricer_pricing::greeks::GreeksMode;
+#[cfg(feature = "l1l2-integration")]
 use pricer_pricing::irs_greeks::xva_demo::{CreditParams, XvaDemoConfig, XvaDemoRunner};
+#[cfg(feature = "l1l2-integration")]
 use pricer_pricing::irs_greeks::{
     BenchmarkConfig, BenchmarkRunner, DeltaBenchmarkResult, IrsGreeksCalculator, IrsGreeksConfig,
     IrsLazyEvaluator,
 };
+
+// =============================================================================
+// Stub types for non-l1l2-integration builds
+// =============================================================================
+
+#[cfg(not(feature = "l1l2-integration"))]
+mod stub_types {
+    //! Stub types when pricer_pricing is not available.
+
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+    pub enum GreeksMode {
+        #[default]
+        BumpRevalue,
+        EnzymeAAD,
+    }
+
+    #[derive(Clone, Debug, Default)]
+    pub struct BenchmarkConfig {
+        pub iterations: usize,
+        pub warmup: usize,
+    }
+
+    #[derive(Clone, Debug)]
+    pub struct IrsGreeksConfig {
+        pub bump_size: f64,
+    }
+
+    impl Default for IrsGreeksConfig {
+        fn default() -> Self {
+            Self { bump_size: 0.0001 }
+        }
+    }
+
+    #[derive(Clone, Debug, Default)]
+    pub struct TimingStats {
+        pub mean_ns: f64,
+    }
+
+    #[derive(Clone, Debug, Default)]
+    pub struct DeltaBenchmarkResult {
+        pub speedup_ratio: f64,
+        pub aad_stats: TimingStats,
+        pub bump_stats: TimingStats,
+    }
+
+    pub struct IrsGreeksCalculator<T>(std::marker::PhantomData<T>);
+
+    impl<T> IrsGreeksCalculator<T> {
+        pub fn new(_config: IrsGreeksConfig) -> Self {
+            Self(std::marker::PhantomData)
+        }
+    }
+
+    pub struct IrsLazyEvaluator<T>(std::marker::PhantomData<T>);
+
+    impl<T> IrsLazyEvaluator<T> {
+        pub fn new() -> Self {
+            Self(std::marker::PhantomData)
+        }
+    }
+
+    impl<T> Default for IrsLazyEvaluator<T> {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
+    pub struct BenchmarkRunner;
+
+    impl BenchmarkRunner {
+        pub fn new(_config: BenchmarkConfig) -> Self {
+            Self
+        }
+    }
+
+    #[derive(Clone, Debug, Default)]
+    pub struct XvaDemoConfig;
+
+    impl XvaDemoConfig {
+        pub fn new() -> Self {
+            Self
+        }
+        pub fn with_num_time_points(self, _n: usize) -> Self {
+            self
+        }
+        pub fn with_benchmark_iterations(self, _n: usize) -> Self {
+            self
+        }
+    }
+
+    #[derive(Clone, Debug, Default)]
+    pub struct CreditParams;
+
+    pub struct XvaDemoRunner;
+
+    impl XvaDemoRunner {
+        pub fn new(_config: XvaDemoConfig) -> Self {
+            Self
+        }
+    }
+}
+
+#[cfg(not(feature = "l1l2-integration"))]
+use stub_types::*;
 
 // =============================================================================
 // IRS AAD Configuration

@@ -46,6 +46,8 @@ Tier-1銀行向けデリバティブ・プライシング・ライブラリと�
 4. While AAD計算中, the Bootstrapper shall 不連続点のないスムース近似関数を使用する
 5. The Bootstrapper shall num-dualモードとEnzymeモードの両方をフィーチャーフラグで切り替え可能とする
 6. When 100個の入力レートがある場合, the Bootstrapper shall AADによりO(1)倍のコストで全感応度を計算する（バンプ方式のO(N)倍と比較）
+7. The Bootstrapper shall Newton-Raphsonソルバーに陰関数定理（Implicit Function Theorem）を適用し、逆伝播時に $\bar{\theta} += \bar{x} \times (-\frac{\partial f / \partial \theta}{\partial f / \partial x})$ を計算する
+8. The Bootstrapper shall ソルバーの反復ステップをADテープに記録せず、最終的な陰関数関係のみを記録する
 
 ### Requirement 4: 補間方式
 
