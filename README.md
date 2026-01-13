@@ -158,6 +158,22 @@ maturin develop
 python -c "import neutryx; print(neutryx.version())"
 ```
 
+### Frictional Bank Demo
+
+The Frictional Bank demo showcases the A-I-P-S architecture with a complete end-to-end workflow.
+
+```bash
+# From workspace root
+cargo run --bin frictional-bank
+
+# Release build (recommended for performance)
+cargo run --release --bin frictional-bank
+
+# Or from demo/frictional_bank directory
+cd demo/frictional_bank
+cargo run
+```
+
 ## 📚 Documentation
 
 - **[System Design Document](docs/design/SDD.md)**: Architecture details
