@@ -8,12 +8,18 @@
 //! - `risk`: Risk metrics update (PV, CVA, DVA, FVA)
 //! - `exposure`: Exposure metrics update (EE, EPE, PFE)
 //! - `graph_update`: Computation graph node updates (Task 4.1)
+//! - `irs_benchmark`: IRS AAD ベンチマーク結果の配信 (Task 6.3)
 //!
 //! ## Subscription Support (Task 4.3)
 //!
 //! Clients can subscribe to specific trade graph updates:
 //! - Send: `{"type":"subscribe_graph","trade_id":"T001"}`
 //! - Send: `{"type":"unsubscribe_graph","trade_id":"T001"}`
+//!
+//! ## IRS AAD Benchmark Updates (Task 6.3)
+//!
+//! ベンチマーク結果をリアルタイムで配信:
+//! - `irs_benchmark`: AAD vs Bump&Reval の性能比較結果
 
 use axum::{
     extract::{
@@ -81,7 +87,10 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                     match request.request_type.as_str() {
                         "subscribe_graph" => {
                             state_clone.subscribe_graph(&request.trade_id).await;
-                            info!("Client subscribed to graph updates for trade: {}", request.trade_id);
+                            info!(
+                                "Client subscribed to graph updates for trade: {}",
+                                request.trade_id
+                            );
 
                             // Send confirmation
                             let confirmation = serde_json::json!({
@@ -93,7 +102,10 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                         }
                         "unsubscribe_graph" => {
                             state_clone.unsubscribe_graph(&request.trade_id).await;
-                            info!("Client unsubscribed from graph updates for trade: {}", request.trade_id);
+                            info!(
+                                "Client unsubscribed from graph updates for trade: {}",
+                                request.trade_id
+                            );
 
                             // Send confirmation
                             let confirmation = serde_json::json!({
@@ -104,7 +116,10 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                             let _ = state_clone.tx.send(confirmation.to_string());
                         }
                         _ => {
-                            warn!("Unknown subscription request type: {}", request.request_type);
+                            warn!(
+                                "Unknown subscription request type: {}",
+                                request.request_type
+                            );
                         }
                     }
                 }
@@ -239,6 +254,141 @@ impl RealTimeUpdate {
 }
 
 // =============================================================================
+// Task 6.3: IRS AAD Benchmark Message Types
+// =============================================================================
+
+/// ベンチマーク統計情報を表す構造体。
+///
+/// AADまたはBump&Revalの実行時間統計を保持する。
+///
+/// # Example
+///
+/// ```rust
+/// use demo_gui::web::websocket::BenchmarkStats;
+///
+/// let stats = BenchmarkStats {
+///     mean_ns: 15000.0,
+///     std_dev_ns: 500.0,
+///     min_ns: 14000.0,
+///     max_ns: 16000.0,
+/// };
+/// ```
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BenchmarkStats {
+    /// 平均実行時間（ナノ秒）
+    pub mean_ns: f64,
+
+    /// 標準偏差（ナノ秒）
+    pub std_dev_ns: f64,
+
+    /// 最小実行時間（ナノ秒）
+    pub min_ns: f64,
+
+    /// 最大実行時間（ナノ秒）
+    pub max_ns: f64,
+}
+
+/// IRS AADベンチマーク結果を表す構造体。
+///
+/// AADとBump&Revalの性能比較結果を保持し、
+/// WebSocket経由でリアルタイム配信される。
+///
+/// # Example
+///
+/// ```rust
+/// use demo_gui::web::websocket::{IrsBenchmarkUpdate, BenchmarkStats};
+///
+/// let update = IrsBenchmarkUpdate {
+///     aad_stats: BenchmarkStats {
+///         mean_ns: 15000.0,
+///         std_dev_ns: 500.0,
+///         min_ns: 14000.0,
+///         max_ns: 16000.0,
+///     },
+///     bump_stats: BenchmarkStats {
+///         mean_ns: 300000.0,
+///         std_dev_ns: 5000.0,
+///         min_ns: 290000.0,
+///         max_ns: 310000.0,
+///     },
+///     speedup_ratio: 20.0,
+///     tenor_count: 20,
+/// };
+/// ```
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IrsBenchmarkUpdate {
+    /// AAD実行時間の統計情報
+    pub aad_stats: BenchmarkStats,
+
+    /// Bump&Reval実行時間の統計情報
+    pub bump_stats: BenchmarkStats,
+
+    /// 高速化倍率（bump_mean / aad_mean）
+    pub speedup_ratio: f64,
+
+    /// テナー数（計算に使用したテナーの数）
+    pub tenor_count: usize,
+}
+
+impl RealTimeUpdate {
+    /// IRS AADベンチマーク結果の更新イベントを生成する。
+    ///
+    /// このメッセージタイプは、AADとBump&Revalの性能比較結果を
+    /// クライアントにリアルタイムで通知するために使用される。
+    ///
+    /// # Arguments
+    ///
+    /// * `benchmark` - ベンチマーク結果を含む構造体
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use demo_gui::web::websocket::{RealTimeUpdate, IrsBenchmarkUpdate, BenchmarkStats};
+    ///
+    /// let benchmark = IrsBenchmarkUpdate {
+    ///     aad_stats: BenchmarkStats {
+    ///         mean_ns: 15000.0,
+    ///         std_dev_ns: 500.0,
+    ///         min_ns: 14000.0,
+    ///         max_ns: 16000.0,
+    ///     },
+    ///     bump_stats: BenchmarkStats {
+    ///         mean_ns: 300000.0,
+    ///         std_dev_ns: 5000.0,
+    ///         min_ns: 290000.0,
+    ///         max_ns: 310000.0,
+    ///     },
+    ///     speedup_ratio: 20.0,
+    ///     tenor_count: 20,
+    /// };
+    ///
+    /// let update = RealTimeUpdate::irs_benchmark_update(benchmark);
+    /// ```
+    pub fn irs_benchmark_update(benchmark: IrsBenchmarkUpdate) -> Self {
+        Self {
+            update_type: "irs_benchmark".to_string(),
+            timestamp: chrono::Utc::now().timestamp_millis(),
+            data: serde_json::json!({
+                "aad_stats": {
+                    "mean_ns": benchmark.aad_stats.mean_ns,
+                    "std_dev_ns": benchmark.aad_stats.std_dev_ns,
+                    "min_ns": benchmark.aad_stats.min_ns,
+                    "max_ns": benchmark.aad_stats.max_ns,
+                },
+                "bump_stats": {
+                    "mean_ns": benchmark.bump_stats.mean_ns,
+                    "std_dev_ns": benchmark.bump_stats.std_dev_ns,
+                    "min_ns": benchmark.bump_stats.min_ns,
+                    "max_ns": benchmark.bump_stats.max_ns,
+                },
+                "speedup_ratio": benchmark.speedup_ratio,
+                "tenor_count": benchmark.tenor_count
+            }),
+        }
+    }
+}
+
+// =============================================================================
 // Task 4.2: Graph Update Broadcast
 // =============================================================================
 
@@ -269,8 +419,56 @@ impl RealTimeUpdate {
 ///
 /// broadcast_graph_update(&state, "T001", updated_nodes);
 /// ```
-pub fn broadcast_graph_update(state: &AppState, trade_id: &str, updated_nodes: Vec<GraphNodeUpdate>) {
+pub fn broadcast_graph_update(
+    state: &AppState,
+    trade_id: &str,
+    updated_nodes: Vec<GraphNodeUpdate>,
+) {
     let update = RealTimeUpdate::graph_update(trade_id, updated_nodes);
+    let _ = state.tx.send(update.to_json());
+}
+
+// =============================================================================
+// Task 6.3: IRS Benchmark Broadcast
+// =============================================================================
+
+/// IRS AADベンチマーク結果を全接続クライアントに配信する。
+///
+/// この関数は`irs_benchmark`メッセージを生成し、
+/// 既存のブロードキャストチャネル経由で配信する。
+///
+/// # Arguments
+///
+/// * `state` - ブロードキャストチャネルを含むアプリケーション状態
+/// * `benchmark` - ベンチマーク結果を含む構造体
+///
+/// # Example
+///
+/// ```rust
+/// use demo_gui::web::{AppState, websocket::{broadcast_irs_benchmark, IrsBenchmarkUpdate, BenchmarkStats}};
+///
+/// let state = AppState::new();
+/// let benchmark = IrsBenchmarkUpdate {
+///     aad_stats: BenchmarkStats {
+///         mean_ns: 15000.0,
+///         std_dev_ns: 500.0,
+///         min_ns: 14000.0,
+///         max_ns: 16000.0,
+///     },
+///     bump_stats: BenchmarkStats {
+///         mean_ns: 300000.0,
+///         std_dev_ns: 5000.0,
+///         min_ns: 290000.0,
+///         max_ns: 310000.0,
+///     },
+///     speedup_ratio: 20.0,
+///     tenor_count: 20,
+/// };
+///
+/// broadcast_irs_benchmark(&state, benchmark);
+/// ```
+pub fn broadcast_irs_benchmark(state: &AppState, benchmark: IrsBenchmarkUpdate) {
+    let update = RealTimeUpdate::irs_benchmark_update(benchmark);
     let _ = state.tx.send(update.to_json());
 }
 
@@ -356,13 +554,11 @@ mod tests {
 
         #[test]
         fn test_graph_update_contains_updated_nodes() {
-            let updated_nodes = vec![
-                GraphNodeUpdate {
-                    id: "N1".to_string(),
-                    value: 101.5,
-                    delta: Some(1.5),
-                },
-            ];
+            let updated_nodes = vec![GraphNodeUpdate {
+                id: "N1".to_string(),
+                value: 101.5,
+                delta: Some(1.5),
+            }];
 
             let update = RealTimeUpdate::graph_update("T001", updated_nodes);
             let json = update.to_json();
@@ -588,6 +784,248 @@ mod tests {
 
             assert_eq!(parsed["type"], "unsubscribe_graph");
             assert_eq!(parsed["trade_id"], "T001");
+        }
+    }
+
+    // =========================================================================
+    // Task 6.3: IRS AAD Benchmark Tests
+    // =========================================================================
+
+    mod irs_benchmark_tests {
+        use super::*;
+
+        /// テスト用のベンチマーク統計情報を生成するヘルパー関数
+        fn create_test_stats(mean: f64, std_dev: f64, min: f64, max: f64) -> BenchmarkStats {
+            BenchmarkStats {
+                mean_ns: mean,
+                std_dev_ns: std_dev,
+                min_ns: min,
+                max_ns: max,
+            }
+        }
+
+        /// テスト用のベンチマーク結果を生成するヘルパー関数
+        fn create_test_benchmark() -> IrsBenchmarkUpdate {
+            IrsBenchmarkUpdate {
+                aad_stats: create_test_stats(15000.0, 500.0, 14000.0, 16000.0),
+                bump_stats: create_test_stats(300000.0, 5000.0, 290000.0, 310000.0),
+                speedup_ratio: 20.0,
+                tenor_count: 20,
+            }
+        }
+
+        #[test]
+        fn test_benchmark_stats_creation() {
+            let stats = create_test_stats(15000.0, 500.0, 14000.0, 16000.0);
+
+            assert_eq!(stats.mean_ns, 15000.0);
+            assert_eq!(stats.std_dev_ns, 500.0);
+            assert_eq!(stats.min_ns, 14000.0);
+            assert_eq!(stats.max_ns, 16000.0);
+        }
+
+        #[test]
+        fn test_benchmark_stats_serialisation() {
+            let stats = create_test_stats(15000.0, 500.0, 14000.0, 16000.0);
+
+            let json = serde_json::to_string(&stats).unwrap();
+            assert!(json.contains("\"mean_ns\":15000"));
+            assert!(json.contains("\"std_dev_ns\":500"));
+            assert!(json.contains("\"min_ns\":14000"));
+            assert!(json.contains("\"max_ns\":16000"));
+        }
+
+        #[test]
+        fn test_irs_benchmark_update_creation() {
+            let benchmark = create_test_benchmark();
+
+            assert_eq!(benchmark.aad_stats.mean_ns, 15000.0);
+            assert_eq!(benchmark.bump_stats.mean_ns, 300000.0);
+            assert_eq!(benchmark.speedup_ratio, 20.0);
+            assert_eq!(benchmark.tenor_count, 20);
+        }
+
+        #[test]
+        fn test_irs_benchmark_update_serialisation() {
+            let benchmark = create_test_benchmark();
+
+            let json = serde_json::to_string(&benchmark).unwrap();
+            assert!(json.contains("aad_stats"));
+            assert!(json.contains("bump_stats"));
+            assert!(json.contains("speedup_ratio"));
+            assert!(json.contains("tenor_count"));
+        }
+
+        #[test]
+        fn test_realtime_update_irs_benchmark() {
+            let benchmark = create_test_benchmark();
+            let update = RealTimeUpdate::irs_benchmark_update(benchmark);
+
+            assert_eq!(update.update_type, "irs_benchmark");
+            assert!(update.timestamp > 0);
+        }
+
+        #[test]
+        fn test_irs_benchmark_update_json_structure() {
+            let benchmark = create_test_benchmark();
+            let update = RealTimeUpdate::irs_benchmark_update(benchmark);
+            let json = update.to_json();
+
+            // JSONとしてパースできることを確認
+            let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+            // 基本構造を確認
+            assert_eq!(parsed["update_type"], "irs_benchmark");
+            assert!(parsed["timestamp"].is_number());
+            assert!(parsed["data"].is_object());
+        }
+
+        #[test]
+        fn test_irs_benchmark_update_contains_aad_stats() {
+            let benchmark = create_test_benchmark();
+            let update = RealTimeUpdate::irs_benchmark_update(benchmark);
+            let json = update.to_json();
+
+            let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+            let aad_stats = &parsed["data"]["aad_stats"];
+
+            assert_eq!(aad_stats["mean_ns"], 15000.0);
+            assert_eq!(aad_stats["std_dev_ns"], 500.0);
+            assert_eq!(aad_stats["min_ns"], 14000.0);
+            assert_eq!(aad_stats["max_ns"], 16000.0);
+        }
+
+        #[test]
+        fn test_irs_benchmark_update_contains_bump_stats() {
+            let benchmark = create_test_benchmark();
+            let update = RealTimeUpdate::irs_benchmark_update(benchmark);
+            let json = update.to_json();
+
+            let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+            let bump_stats = &parsed["data"]["bump_stats"];
+
+            assert_eq!(bump_stats["mean_ns"], 300000.0);
+            assert_eq!(bump_stats["std_dev_ns"], 5000.0);
+            assert_eq!(bump_stats["min_ns"], 290000.0);
+            assert_eq!(bump_stats["max_ns"], 310000.0);
+        }
+
+        #[test]
+        fn test_irs_benchmark_update_contains_speedup_and_tenor() {
+            let benchmark = create_test_benchmark();
+            let update = RealTimeUpdate::irs_benchmark_update(benchmark);
+            let json = update.to_json();
+
+            let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+            assert_eq!(parsed["data"]["speedup_ratio"], 20.0);
+            assert_eq!(parsed["data"]["tenor_count"], 20);
+        }
+
+        #[test]
+        fn test_irs_benchmark_update_matches_expected_format() {
+            // Task 6.3で指定されたJSONフォーマットと一致することを確認
+            let benchmark = create_test_benchmark();
+            let update = RealTimeUpdate::irs_benchmark_update(benchmark);
+            let json = update.to_json();
+
+            let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+            // 期待されるフィールドがすべて存在することを確認
+            assert!(parsed["update_type"].is_string());
+            assert!(parsed["timestamp"].is_number());
+            assert!(parsed["data"]["aad_stats"]["mean_ns"].is_number());
+            assert!(parsed["data"]["aad_stats"]["std_dev_ns"].is_number());
+            assert!(parsed["data"]["bump_stats"]["mean_ns"].is_number());
+            assert!(parsed["data"]["bump_stats"]["std_dev_ns"].is_number());
+            assert!(parsed["data"]["speedup_ratio"].is_number());
+            assert!(parsed["data"]["tenor_count"].is_number());
+        }
+
+        #[tokio::test]
+        async fn test_broadcast_irs_benchmark() {
+            let state = AppState::new();
+            let mut rx = state.tx.subscribe();
+
+            let benchmark = create_test_benchmark();
+            broadcast_irs_benchmark(&state, benchmark);
+
+            // ブロードキャストメッセージを受信
+            let received = rx.try_recv();
+            assert!(received.is_ok());
+
+            let msg = received.unwrap();
+            assert!(msg.contains("irs_benchmark"));
+            assert!(msg.contains("aad_stats"));
+            assert!(msg.contains("bump_stats"));
+        }
+
+        #[tokio::test]
+        async fn test_broadcast_irs_benchmark_multiple_times() {
+            let state = AppState::new();
+            let mut rx = state.tx.subscribe();
+
+            // 複数回ブロードキャスト
+            for i in 0..3 {
+                let benchmark = IrsBenchmarkUpdate {
+                    aad_stats: create_test_stats(
+                        15000.0 + (i as f64) * 100.0,
+                        500.0,
+                        14000.0,
+                        16000.0,
+                    ),
+                    bump_stats: create_test_stats(300000.0, 5000.0, 290000.0, 310000.0),
+                    speedup_ratio: 20.0,
+                    tenor_count: 20,
+                };
+                broadcast_irs_benchmark(&state, benchmark);
+            }
+
+            // 3つのメッセージが受信できることを確認
+            for _ in 0..3 {
+                let received = rx.try_recv();
+                assert!(received.is_ok());
+            }
+        }
+
+        #[test]
+        fn test_benchmark_with_different_tenor_counts() {
+            // 異なるテナー数でのベンチマーク
+            for tenor_count in [5, 10, 20, 40] {
+                let benchmark = IrsBenchmarkUpdate {
+                    aad_stats: create_test_stats(15000.0, 500.0, 14000.0, 16000.0),
+                    bump_stats: create_test_stats(300000.0, 5000.0, 290000.0, 310000.0),
+                    speedup_ratio: 20.0,
+                    tenor_count,
+                };
+
+                let update = RealTimeUpdate::irs_benchmark_update(benchmark);
+                let json = update.to_json();
+                let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+                assert_eq!(parsed["data"]["tenor_count"], tenor_count);
+            }
+        }
+
+        #[test]
+        fn test_benchmark_speedup_calculation_values() {
+            // さまざまなスピードアップ値をテスト
+            let speedup_values = [1.0, 5.0, 10.0, 20.0, 50.0, 100.0];
+
+            for speedup in speedup_values {
+                let benchmark = IrsBenchmarkUpdate {
+                    aad_stats: create_test_stats(15000.0, 500.0, 14000.0, 16000.0),
+                    bump_stats: create_test_stats(15000.0 * speedup, 5000.0, 290000.0, 310000.0),
+                    speedup_ratio: speedup,
+                    tenor_count: 20,
+                };
+
+                let update = RealTimeUpdate::irs_benchmark_update(benchmark);
+                let json = update.to_json();
+                let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+                assert_eq!(parsed["data"]["speedup_ratio"], speedup);
+            }
         }
     }
 }

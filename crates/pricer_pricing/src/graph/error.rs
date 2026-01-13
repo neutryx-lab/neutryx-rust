@@ -96,9 +96,7 @@ impl GraphError {
             GraphError::ExtractionFailed(reason) => {
                 format!("Graph extraction failed: {}", reason)
             }
-            GraphError::Timeout => {
-                "Graph extraction timed out (exceeded 500ms limit)".to_string()
-            }
+            GraphError::Timeout => "Graph extraction timed out (exceeded 500ms limit)".to_string(),
         }
     }
 }

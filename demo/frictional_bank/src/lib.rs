@@ -26,7 +26,8 @@ pub mod prelude {
     pub use crate::config::{DemoConfig, DemoMode};
     pub use crate::error::DemoError;
     pub use crate::workflow::{
-        DemoWorkflow, EodBatchWorkflow, IntradayWorkflow, ProgressCallback, StressTestWorkflow,
-        WorkflowResult, WorkflowStep,
+        DemoWorkflow, EodBatchWorkflow, IntradayWorkflow, IrsAadConfig, IrsAadWorkflow,
+        IrsComputeResult, IrsParams, ProgressCallback, StressTestWorkflow, WorkflowResult,
+        WorkflowStep, XvaDemoResult,
     };
 }

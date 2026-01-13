@@ -25,6 +25,7 @@
 pub mod api_client;
 pub mod app;
 pub mod screens;
+pub mod visualisation;
 
 #[cfg(feature = "web")]
 pub mod web;
@@ -33,4 +34,5 @@ pub mod web;
 pub mod prelude {
     pub use crate::api_client::ApiClient;
     pub use crate::app::{ExposureTimeSeries, Screen, TuiApp};
+    pub use crate::visualisation::{BenchmarkVisualiser, SpeedComparisonData};
 }

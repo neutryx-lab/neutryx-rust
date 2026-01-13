@@ -6411,6 +6411,104 @@ kbd {
     border-radius: var(--radius-md);
 }
 
+/* Task 6.2: Graph Search */
+.graph-search-wrapper {
+    position: relative;
+}
+
+.graph-search-input-container {
+    display: flex;
+    align-items: center;
+    position: relative;
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    transition: all 0.2s ease;
+}
+
+.graph-search-input-container:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-alpha);
+}
+
+.graph-search-icon {
+    position: absolute;
+    left: 10px;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    pointer-events: none;
+}
+
+.graph-search-input {
+    width: 180px;
+    padding: 8px 32px 8px 32px;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    outline: none;
+}
+
+.graph-search-input::placeholder {
+    color: var(--text-muted);
+}
+
+.graph-search-clear {
+    position: absolute;
+    right: 4px;
+    padding: 4px;
+    min-width: auto;
+    width: 24px;
+    height: 24px;
+}
+
+.graph-search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 4px;
+    padding: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    z-index: 100;
+}
+
+.search-results-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.search-nav-buttons {
+    display: flex;
+    gap: 2px;
+}
+
+.search-nav-buttons .icon-btn {
+    padding: 4px;
+    min-width: auto;
+    width: 24px;
+    height: 24px;
+}
+
+/* Search highlight on nodes */
+.node-highlight-search {
+    filter: drop-shadow(0 0 8px var(--accent)) drop-shadow(0 0 16px var(--accent));
+}
+
+.node-dimmed {
+    opacity: 0.3;
+}
+
+.link-dimmed {
+    stroke-opacity: 0.1 !important;
+}
+
 /* Graph Layout */
 .graph-layout {
     display: grid;

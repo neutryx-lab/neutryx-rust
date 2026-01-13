@@ -597,6 +597,166 @@ pub async fn get_graph(
     Ok(Json(graph))
 }
 
+// =============================================================================
+// Task 7.2: Speed Comparison Chart API
+// =============================================================================
+
+use crate::visualisation::{BenchmarkVisualiser, SpeedComparisonData};
+
+/// Query parameters for speed comparison endpoint
+#[derive(Debug, Clone, Deserialize)]
+pub struct SpeedComparisonQueryParams {
+    /// AAD mean time in nanoseconds (optional, uses sample data if not provided)
+    pub aad_mean_ns: Option<f64>,
+    /// Bump mean time in nanoseconds (optional, uses sample data if not provided)
+    pub bump_mean_ns: Option<f64>,
+    /// Number of tenor points (optional, defaults to 20)
+    pub tenor_count: Option<usize>,
+}
+
+/// Speed comparison chart response (Chart.js compatible)
+///
+/// # Task Coverage
+///
+/// - Task 7.2: 速度比較チャートの実装
+///   - Webモードではchart.js互換JSONデータを出力
+///
+/// # Requirements Coverage
+///
+/// - Requirement 7.2: 速度比較のバーチャートを表示
+/// - Requirement 7.5: Webモードではchart.js互換のJSONデータを出力
+#[derive(Debug, Clone, Serialize)]
+pub struct SpeedComparisonResponse {
+    /// Chart type (always "bar")
+    #[serde(rename = "type")]
+    pub chart_type: String,
+    /// Chart data
+    pub data: SpeedComparisonChartData,
+    /// Chart options
+    pub options: SpeedComparisonChartOptions,
+    /// Raw benchmark data for additional processing
+    pub benchmark: SpeedComparisonBenchmarkData,
+}
+
+/// Chart.js compatible data structure
+#[derive(Debug, Clone, Serialize)]
+pub struct SpeedComparisonChartData {
+    /// X-axis labels
+    pub labels: Vec<String>,
+    /// Chart datasets
+    pub datasets: Vec<SpeedComparisonDataset>,
+}
+
+/// Chart.js compatible dataset
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SpeedComparisonDataset {
+    /// Dataset label
+    pub label: String,
+    /// Data values
+    pub data: Vec<f64>,
+    /// Background colours
+    pub background_color: Vec<String>,
+}
+
+/// Chart.js options
+#[derive(Debug, Clone, Serialize)]
+pub struct SpeedComparisonChartOptions {
+    /// Title configuration
+    pub title: SpeedComparisonTitleOptions,
+}
+
+/// Chart.js title options
+#[derive(Debug, Clone, Serialize)]
+pub struct SpeedComparisonTitleOptions {
+    /// Whether to display the title
+    pub display: bool,
+    /// Title text
+    pub text: String,
+}
+
+/// Raw benchmark data for client-side processing
+#[derive(Debug, Clone, Serialize)]
+pub struct SpeedComparisonBenchmarkData {
+    /// AAD mean time in microseconds
+    pub aad_mean_us: f64,
+    /// Bump mean time in microseconds
+    pub bump_mean_us: f64,
+    /// Speedup ratio (bump / aad)
+    pub speedup_ratio: f64,
+    /// Number of tenor points
+    pub tenor_count: usize,
+}
+
+/// Get speed comparison chart data endpoint
+///
+/// # Endpoint
+///
+/// `GET /api/benchmark/speed-comparison`
+///
+/// # Query Parameters
+///
+/// - `aad_mean_ns` (optional): AAD mean time in nanoseconds
+/// - `bump_mean_ns` (optional): Bump mean time in nanoseconds
+/// - `tenor_count` (optional): Number of tenor points (default: 20)
+///
+/// # Response
+///
+/// Returns Chart.js compatible JSON data for rendering a speed comparison bar chart.
+///
+/// # Task Coverage
+///
+/// - Task 7.2: 速度比較チャートの実装
+///
+/// # Requirements Coverage
+///
+/// - Requirement 7.2: 速度比較のバーチャートを表示
+/// - Requirement 7.5: Webモードではchart.js互換のJSONデータを出力
+pub async fn get_speed_comparison(
+    Query(params): Query<SpeedComparisonQueryParams>,
+) -> Json<SpeedComparisonResponse> {
+    // Use provided data or sample data
+    let data = if let (Some(aad_ns), Some(bump_ns)) = (params.aad_mean_ns, params.bump_mean_ns) {
+        let tenor_count = params.tenor_count.unwrap_or(20);
+        SpeedComparisonData::new(aad_ns, bump_ns, tenor_count)
+    } else {
+        SpeedComparisonData::sample()
+    };
+
+    // Generate Chart.js compatible response
+    let visualiser = BenchmarkVisualiser::new();
+    let chartjs = visualiser.to_chartjs_json(&data);
+
+    Json(SpeedComparisonResponse {
+        chart_type: chartjs.chart_type,
+        data: SpeedComparisonChartData {
+            labels: chartjs.data.labels,
+            datasets: chartjs
+                .data
+                .datasets
+                .into_iter()
+                .map(|ds| SpeedComparisonDataset {
+                    label: ds.label,
+                    data: ds.data,
+                    background_color: ds.background_color,
+                })
+                .collect(),
+        },
+        options: SpeedComparisonChartOptions {
+            title: SpeedComparisonTitleOptions {
+                display: chartjs.options.title.display,
+                text: chartjs.options.title.text,
+            },
+        },
+        benchmark: SpeedComparisonBenchmarkData {
+            aad_mean_us: data.aad_mean_us(),
+            bump_mean_us: data.bump_mean_us(),
+            speedup_ratio: data.speedup_ratio,
+            tenor_count: data.tenor_count,
+        },
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -877,6 +1037,105 @@ mod tests {
                 "Response took {:?}, expected < 500ms",
                 elapsed
             );
+        }
+    }
+
+    // =========================================================================
+    // Task 7.2: Speed Comparison API Tests
+    // =========================================================================
+
+    mod speed_comparison_tests {
+        use super::*;
+
+        #[tokio::test]
+        async fn test_get_speed_comparison_default() {
+            let params = SpeedComparisonQueryParams {
+                aad_mean_ns: None,
+                bump_mean_ns: None,
+                tenor_count: None,
+            };
+
+            let response = get_speed_comparison(Query(params)).await;
+
+            assert_eq!(response.chart_type, "bar");
+            assert_eq!(response.data.labels.len(), 2);
+            assert_eq!(response.data.labels[0], "AAD");
+            assert_eq!(response.data.labels[1], "Bump-and-Revalue");
+        }
+
+        #[tokio::test]
+        async fn test_get_speed_comparison_with_custom_data() {
+            let params = SpeedComparisonQueryParams {
+                aad_mean_ns: Some(10_000.0),
+                bump_mean_ns: Some(200_000.0),
+                tenor_count: Some(10),
+            };
+
+            let response = get_speed_comparison(Query(params)).await;
+
+            assert!((response.benchmark.aad_mean_us - 10.0).abs() < 1e-10);
+            assert!((response.benchmark.bump_mean_us - 200.0).abs() < 1e-10);
+            assert!((response.benchmark.speedup_ratio - 20.0).abs() < 1e-10);
+            assert_eq!(response.benchmark.tenor_count, 10);
+        }
+
+        #[tokio::test]
+        async fn test_get_speed_comparison_chartjs_structure() {
+            let params = SpeedComparisonQueryParams {
+                aad_mean_ns: Some(15_000.0),
+                bump_mean_ns: Some(300_000.0),
+                tenor_count: Some(20),
+            };
+
+            let response = get_speed_comparison(Query(params)).await;
+
+            // Verify Chart.js structure
+            assert_eq!(response.chart_type, "bar");
+            assert!(response.options.title.display);
+            assert!(response.options.title.text.contains("speedup"));
+
+            // Verify datasets
+            assert_eq!(response.data.datasets.len(), 1);
+            let dataset = &response.data.datasets[0];
+            assert_eq!(dataset.data.len(), 2);
+            assert_eq!(dataset.background_color.len(), 2);
+            assert_eq!(dataset.background_color[0], "#4CAF50"); // AAD green
+            assert_eq!(dataset.background_color[1], "#FF5722"); // Bump orange
+        }
+
+        #[tokio::test]
+        async fn test_get_speed_comparison_serialisation() {
+            let params = SpeedComparisonQueryParams {
+                aad_mean_ns: None,
+                bump_mean_ns: None,
+                tenor_count: None,
+            };
+
+            let response = get_speed_comparison(Query(params)).await;
+
+            // Verify response can be serialised to JSON
+            let json = serde_json::to_string(&response.0).unwrap();
+            assert!(json.contains("\"type\": \"bar\""));
+            assert!(json.contains("\"labels\""));
+            assert!(json.contains("\"datasets\""));
+            assert!(json.contains("\"backgroundColor\"")); // camelCase
+        }
+
+        #[tokio::test]
+        async fn test_get_speed_comparison_benchmark_data() {
+            let params = SpeedComparisonQueryParams {
+                aad_mean_ns: None,
+                bump_mean_ns: None,
+                tenor_count: None,
+            };
+
+            let response = get_speed_comparison(Query(params)).await;
+
+            // Verify benchmark data is present
+            assert!(response.benchmark.aad_mean_us > 0.0);
+            assert!(response.benchmark.bump_mean_us > 0.0);
+            assert!(response.benchmark.speedup_ratio > 0.0);
+            assert!(response.benchmark.tenor_count > 0);
         }
     }
 }

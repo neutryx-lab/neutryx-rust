@@ -573,14 +573,16 @@ impl BenchmarkRunner {
 
         // Warmup phase for AAD
         for _ in 0..self.config.warmup {
-            let _ = calculator.compute_tenor_deltas_aad(swap, curves, valuation_date, tenor_points)?;
+            let _ =
+                calculator.compute_tenor_deltas_aad(swap, curves, valuation_date, tenor_points)?;
         }
 
         // Timed iterations for AAD
         let mut aad_samples = Vec::with_capacity(self.config.iterations);
         for _ in 0..self.config.iterations {
             let start = Instant::now();
-            let _ = calculator.compute_tenor_deltas_aad(swap, curves, valuation_date, tenor_points)?;
+            let _ =
+                calculator.compute_tenor_deltas_aad(swap, curves, valuation_date, tenor_points)?;
             aad_samples.push(start.elapsed().as_nanos() as u64);
         }
 
@@ -654,7 +656,8 @@ impl BenchmarkRunner {
                 .map(|i| 0.25 + (i as f64) * 0.25) // 3M, 6M, 9M, 1Y, ...
                 .collect();
 
-            let benchmark_result = self.benchmark_deltas(swap, curves, valuation_date, &tenor_points)?;
+            let benchmark_result =
+                self.benchmark_deltas(swap, curves, valuation_date, &tenor_points)?;
             result.add_result(count, benchmark_result);
         }
 
@@ -724,7 +727,12 @@ fn chrono_timestamp() -> String {
 
     format!(
         "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
-        years, month.min(12), day.min(31), hours, mins, secs_in_min
+        years,
+        month.min(12),
+        day.min(31),
+        hours,
+        mins,
+        secs_in_min
     )
 }
 
@@ -844,7 +852,10 @@ impl BenchmarkRunner {
         md.push_str("## Swap Parameters\n\n");
         md.push_str("| Parameter | Value |\n");
         md.push_str("|-----------|-------|\n");
-        md.push_str(&format!("| Notional | {:.0} |\n", result.swap_params.notional));
+        md.push_str(&format!(
+            "| Notional | {:.0} |\n",
+            result.swap_params.notional
+        ));
         md.push_str(&format!(
             "| Fixed Rate | {:.4}% |\n",
             result.swap_params.fixed_rate * 100.0
@@ -868,23 +879,19 @@ impl BenchmarkRunner {
         md.push_str("|--------|-----|------------------|\n");
         md.push_str(&format!(
             "| Mean (ns) | {:.2} | {:.2} |\n",
-            result.delta_results.aad_stats.mean_ns,
-            result.delta_results.bump_stats.mean_ns
+            result.delta_results.aad_stats.mean_ns, result.delta_results.bump_stats.mean_ns
         ));
         md.push_str(&format!(
             "| Std Dev (ns) | {:.2} | {:.2} |\n",
-            result.delta_results.aad_stats.std_dev_ns,
-            result.delta_results.bump_stats.std_dev_ns
+            result.delta_results.aad_stats.std_dev_ns, result.delta_results.bump_stats.std_dev_ns
         ));
         md.push_str(&format!(
             "| Min (ns) | {} | {} |\n",
-            result.delta_results.aad_stats.min_ns,
-            result.delta_results.bump_stats.min_ns
+            result.delta_results.aad_stats.min_ns, result.delta_results.bump_stats.min_ns
         ));
         md.push_str(&format!(
             "| Max (ns) | {} | {} |\n",
-            result.delta_results.aad_stats.max_ns,
-            result.delta_results.bump_stats.max_ns
+            result.delta_results.aad_stats.max_ns, result.delta_results.bump_stats.max_ns
         ));
         md.push_str("\n");
 
@@ -926,8 +933,16 @@ impl BenchmarkRunner {
     /// JSON string compatible with Chart.js data format.
     pub fn scalability_to_chartjs_json(&self, result: &ScalabilityResult) -> String {
         let labels: Vec<String> = result.results.iter().map(|(c, _)| c.to_string()).collect();
-        let aad_data: Vec<f64> = result.results.iter().map(|(_, r)| r.aad_stats.mean_us()).collect();
-        let bump_data: Vec<f64> = result.results.iter().map(|(_, r)| r.bump_stats.mean_us()).collect();
+        let aad_data: Vec<f64> = result
+            .results
+            .iter()
+            .map(|(_, r)| r.aad_stats.mean_us())
+            .collect();
+        let bump_data: Vec<f64> = result
+            .results
+            .iter()
+            .map(|(_, r)| r.bump_stats.mean_us())
+            .collect();
 
         format!(
             r#"{{
@@ -976,9 +991,7 @@ mod tests {
 
         #[test]
         fn test_config_builder() {
-            let config = BenchmarkConfig::new()
-                .with_iterations(50)
-                .with_warmup(5);
+            let config = BenchmarkConfig::new().with_iterations(50).with_warmup(5);
 
             assert_eq!(config.iterations, 50);
             assert_eq!(config.warmup, 5);
@@ -1391,7 +1404,8 @@ mod integration_tests {
     fn test_benchmark_pv() {
         // Requirement 5.1: PV計算時間
         // Requirement 5.2: ウォームアップ実行、複数回反復による統計値算出
-        let runner = BenchmarkRunner::new(BenchmarkConfig::new().with_iterations(10).with_warmup(2));
+        let runner =
+            BenchmarkRunner::new(BenchmarkConfig::new().with_iterations(10).with_warmup(2));
         let swap = create_test_swap();
         let curves = create_test_curves();
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
@@ -1409,7 +1423,8 @@ mod integration_tests {
     #[test]
     fn test_benchmark_single_delta() {
         // Requirement 5.1: 単一Delta計算時間
-        let runner = BenchmarkRunner::new(BenchmarkConfig::new().with_iterations(10).with_warmup(2));
+        let runner =
+            BenchmarkRunner::new(BenchmarkConfig::new().with_iterations(10).with_warmup(2));
         let swap = create_test_swap();
         let curves = create_test_curves();
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
@@ -1427,7 +1442,8 @@ mod integration_tests {
     fn test_benchmark_deltas() {
         // Requirement 5.1: 全テナーDelta計算時間
         // Requirement 5.3: 速度比を計算
-        let runner = BenchmarkRunner::new(BenchmarkConfig::new().with_iterations(10).with_warmup(2));
+        let runner =
+            BenchmarkRunner::new(BenchmarkConfig::new().with_iterations(10).with_warmup(2));
         let swap = create_test_swap();
         let curves = create_test_curves();
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
@@ -1483,7 +1499,8 @@ mod integration_tests {
     #[test]
     fn test_scalability_bump_time_increases_with_tenor_count() {
         // Requirement 5.4: AAD O(1)逆伝播 vs Bump O(n)のスケーリング特性
-        let runner = BenchmarkRunner::new(BenchmarkConfig::new().with_iterations(10).with_warmup(2));
+        let runner =
+            BenchmarkRunner::new(BenchmarkConfig::new().with_iterations(10).with_warmup(2));
         let swap = create_test_swap();
         let curves = create_test_curves();
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
@@ -1497,8 +1514,14 @@ mod integration_tests {
 
         // Bump time should generally increase with tenor count
         // Note: Due to timing variance, we use a relaxed check
-        assert!(bump_data[0].1 > 0.0, "Bump time should be positive for 4 tenors");
-        assert!(bump_data[2].1 > 0.0, "Bump time should be positive for 12 tenors");
+        assert!(
+            bump_data[0].1 > 0.0,
+            "Bump time should be positive for 4 tenors"
+        );
+        assert!(
+            bump_data[2].1 > 0.0,
+            "Bump time should be positive for 12 tenors"
+        );
 
         // The ratio of times should be roughly proportional to tenor ratio
         // 12 tenors / 4 tenors = 3x, so time ratio should be > 1.5x (relaxed)
@@ -1606,12 +1629,14 @@ mod integration_tests {
             .unwrap();
 
         // Create full result
-        let full_result = runner.create_full_result(&swap, delta_results, Some(scalability_results));
+        let full_result =
+            runner.create_full_result(&swap, delta_results, Some(scalability_results));
 
         // Generate outputs
         let json = runner.to_json(&full_result);
         let md = runner.to_markdown(&full_result);
-        let chartjs = runner.scalability_to_chartjs_json(full_result.scalability_results.as_ref().unwrap());
+        let chartjs =
+            runner.scalability_to_chartjs_json(full_result.scalability_results.as_ref().unwrap());
 
         // Verify all outputs are non-empty
         assert!(!json.is_empty());

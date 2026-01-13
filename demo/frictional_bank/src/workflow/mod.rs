@@ -4,13 +4,16 @@
 //! - EOD Batch Processing
 //! - Intraday Real-time Processing
 //! - Stress Testing
+//! - IRS AAD Demo
 
 mod eod_batch;
 mod intraday;
+mod irs_aad;
 mod stress_test;
 
 pub use eod_batch::EodBatchWorkflow;
 pub use intraday::IntradayWorkflow;
+pub use irs_aad::{IrsAadConfig, IrsAadWorkflow, IrsComputeResult, IrsParams, XvaDemoResult};
 pub use stress_test::{PresetScenarioType, ScenarioResult, StressTestResult, StressTestWorkflow};
 
 use crate::config::DemoConfig;

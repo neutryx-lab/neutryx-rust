@@ -975,26 +975,22 @@ fn bench_graph_builder(c: &mut Criterion) {
 
     // Benchmark node addition
     for n_nodes in [100, 1_000, 10_000] {
-        group.bench_with_input(
-            BenchmarkId::new("add_nodes", n_nodes),
-            &n_nodes,
-            |b, &n| {
-                b.iter(|| {
-                    let mut builder = GraphBuilder::with_capacity(n, n * 2);
-                    for i in 0..n {
-                        builder.add_node(GraphNode {
-                            id: format!("N{}", i),
-                            node_type: NodeType::Add,
-                            label: format!("node_{}", i),
-                            value: Some(i as f64),
-                            is_sensitivity_target: i < 10,
-                            group: NodeGroup::Intermediate,
-                        });
-                    }
-                    black_box(builder.node_count())
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("add_nodes", n_nodes), &n_nodes, |b, &n| {
+            b.iter(|| {
+                let mut builder = GraphBuilder::with_capacity(n, n * 2);
+                for i in 0..n {
+                    builder.add_node(GraphNode {
+                        id: format!("N{}", i),
+                        node_type: NodeType::Add,
+                        label: format!("node_{}", i),
+                        value: Some(i as f64),
+                        is_sensitivity_target: i < 10,
+                        group: NodeGroup::Intermediate,
+                    });
+                }
+                black_box(builder.node_count())
+            });
+        });
     }
 
     // Benchmark edge addition and depth calculation

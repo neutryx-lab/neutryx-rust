@@ -324,10 +324,8 @@ impl ComputationGraph {
         }
 
         // Build adjacency list for efficient traversal
-        let adjacency: HashMap<&str, Vec<&str>> = self
-            .edges
-            .iter()
-            .fold(HashMap::new(), |mut acc, edge| {
+        let adjacency: HashMap<&str, Vec<&str>> =
+            self.edges.iter().fold(HashMap::new(), |mut acc, edge| {
                 acc.entry(edge.source.as_str())
                     .or_default()
                     .push(edge.target.as_str());

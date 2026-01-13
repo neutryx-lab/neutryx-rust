@@ -114,7 +114,7 @@
   - _Requirements: 4.5_
 
 - [ ] 6. FrictionalBank統合
-- [ ] 6.1 IrsAadWorkflowの実装
+- [x] 6.1 IrsAadWorkflowの実装
   - DemoWorkflowトレイトを実装し、FrictionalBankデモシステムに統合する
   - IRSパラメータ入力の処理機能を実装する
   - 計算モード選択(AAD/Bump-and-Revalue)機能を実装する
