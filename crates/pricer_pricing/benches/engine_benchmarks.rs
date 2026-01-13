@@ -911,6 +911,143 @@ fn bench_thread_scalability(c: &mut Criterion) {
     group.finish();
 }
 
+// ============================================================================
+// Graph Extraction Benchmarks (Task 2.3)
+// ============================================================================
+
+use pricer_pricing::graph::{GraphExtractable, SimpleGraphExtractor};
+
+/// Benchmark graph extraction with varying trade counts.
+///
+/// Measures time to extract computation graphs from pricing contexts.
+/// Target: 10,000 nodes in < 1 second.
+fn bench_graph_extraction(c: &mut Criterion) {
+    let mut group = c.benchmark_group("graph_extraction");
+    group.sample_size(50);
+
+    // Benchmark single trade extraction
+    for n_params in [3, 5, 10, 20] {
+        group.bench_with_input(
+            BenchmarkId::new("single_trade_params", n_params),
+            &n_params,
+            |b, &n| {
+                let mut extractor = SimpleGraphExtractor::new();
+                let params: Vec<String> = (0..n).map(|i| format!("param_{}", i)).collect();
+                extractor.register_trade("T001", params);
+
+                b.iter(|| black_box(extractor.extract_graph(Some("T001")).unwrap()));
+            },
+        );
+    }
+
+    // Benchmark multi-trade extraction
+    for n_trades in [10, 50, 100] {
+        group.bench_with_input(
+            BenchmarkId::new("multi_trade", n_trades),
+            &n_trades,
+            |b, &n| {
+                let mut extractor = SimpleGraphExtractor::new()
+                    .with_timeout(5000)
+                    .with_capacity(10_000, 20_000);
+
+                for i in 0..n {
+                    let trade_id = format!("T{:04}", i);
+                    let params: Vec<String> = (0..5).map(|j| format!("param_{}", j)).collect();
+                    extractor.register_trade(&trade_id, params);
+                }
+
+                b.iter(|| black_box(extractor.extract_graph(None).unwrap()));
+            },
+        );
+    }
+
+    group.finish();
+}
+
+/// Benchmark GraphBuilder construction.
+///
+/// Measures graph building overhead with pre-allocated buffers.
+fn bench_graph_builder(c: &mut Criterion) {
+    use pricer_pricing::graph::{GraphBuilder, GraphEdge, GraphNode, NodeGroup, NodeType};
+
+    let mut group = c.benchmark_group("graph_builder");
+    group.sample_size(50);
+
+    // Benchmark node addition
+    for n_nodes in [100, 1_000, 10_000] {
+        group.bench_with_input(
+            BenchmarkId::new("add_nodes", n_nodes),
+            &n_nodes,
+            |b, &n| {
+                b.iter(|| {
+                    let mut builder = GraphBuilder::with_capacity(n, n * 2);
+                    for i in 0..n {
+                        builder.add_node(GraphNode {
+                            id: format!("N{}", i),
+                            node_type: NodeType::Add,
+                            label: format!("node_{}", i),
+                            value: Some(i as f64),
+                            is_sensitivity_target: i < 10,
+                            group: NodeGroup::Intermediate,
+                        });
+                    }
+                    black_box(builder.node_count())
+                });
+            },
+        );
+    }
+
+    // Benchmark edge addition and depth calculation
+    for n_nodes in [100, 1_000, 10_000] {
+        group.bench_with_input(
+            BenchmarkId::new("build_graph", n_nodes),
+            &n_nodes,
+            |b, &n| {
+                b.iter(|| {
+                    let mut builder = GraphBuilder::with_capacity(n, n);
+
+                    // Create a linear chain graph
+                    for i in 0..n {
+                        builder.add_node(GraphNode {
+                            id: format!("N{}", i),
+                            node_type: if i == 0 {
+                                NodeType::Input
+                            } else if i == n - 1 {
+                                NodeType::Output
+                            } else {
+                                NodeType::Add
+                            },
+                            label: format!("n{}", i),
+                            value: Some(i as f64),
+                            is_sensitivity_target: i == 0,
+                            group: if i == 0 {
+                                NodeGroup::Input
+                            } else if i == n - 1 {
+                                NodeGroup::Output
+                            } else {
+                                NodeGroup::Intermediate
+                            },
+                        });
+
+                        if i > 0 {
+                            builder.add_edge(GraphEdge {
+                                source: format!("N{}", i - 1),
+                                target: format!("N{}", i),
+                                weight: None,
+                            });
+                        }
+                    }
+
+                    let graph = builder.build(Some("T001".to_string()));
+                    black_box(graph.metadata.depth)
+                });
+            },
+        );
+    }
+
+    group.finish();
+}
+
 criterion_group!(
     benches,
     bench_rng_generation,
@@ -926,6 +1063,8 @@ criterion_group!(
     bench_payoff_type_comparison,
     bench_parallel_workspace_access,
     bench_parallel_path_simulation,
-    bench_thread_scalability
+    bench_thread_scalability,
+    bench_graph_extraction,
+    bench_graph_builder
 );
 criterion_main!(benches);

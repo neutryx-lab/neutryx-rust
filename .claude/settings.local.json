@@ -153,7 +153,20 @@
       "Bash(/c/Users/khosh/.cargo/bin/cargo test -p pricer_pricing enzyme::tests::test_admode)",
       "Bash(rustfmt --check \"c:/Users/khosh/neutryx-rust/neutryx-rust/crates/pricer_pricing/src/enzyme/mod.rs\")",
       "Bash(cargo run:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(cmd /c \"cargo test -p pricer_pricing --features l1l2-integration irs_greeks --no-fail-fast 2>&1\")",
+      "Bash(powershell -Command \"cd 'c:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust'; cargo test -p pricer_pricing --features l1l2-integration irs_greeks --no-fail-fast 2>&1\":*)",
+      "Bash(\"C:\\\\Users\\\\khosh\\\\.cargo\\\\bin\\\\cargo.exe\" test -p pricer_pricing --features l1l2-integration irs_greeks --no-fail-fast --manifest-path \"c:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust\\\\Cargo.toml\")",
+      "Bash(dir \"C:\\\\Users\\\\khosh\\\\.rustup\\\\toolchains\\\\*\\\\bin\\\\cargo.exe\")",
+      "Bash(/c/Users/khosh/.cargo/bin/cargo test -p pricer_pricing --lib graph::)",
+      "Bash(C:Userskhosh.cargobincargo.exe test -p pricer_pricing --features l1l2-integration -- lazy_evaluator)",
+      "Bash(export PATH=\"/c/Users/khosh/.cargo/bin:/c/Users/khosh/.rustup/toolchains/stable-x86_64-pc-windows-msvc/bin:$PATH\":*)",
+      "Bash(rustc:*)",
+      "Bash(cargo --version:*)",
+      "Bash(powershell.exe -NoProfile -Command \"$env:Path = ''C:\\\\Users\\\\khosh\\\\.rustup\\\\toolchains\\\\stable-x86_64-pc-windows-msvc\\\\bin;'' + $env:Path; cd ''c:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust''; cargo test -p pricer_pricing --features l1l2-integration -- lazy_evaluator 2>&1\")",
+      "Bash(\"/mnt/c/Users/khosh/.cargo/bin/cargo.exe\" test -p pricer_pricing --features l1l2-integration --manifest-path \"/mnt/c/Users/khosh/neutryx-rust/neutryx-rust/Cargo.toml\" -- irs_greeks::benchmark::tests)",
+      "Bash(powershell.exe -Command \"Set-Location ''c:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust''; & ''C:\\\\Users\\\\khosh\\\\.cargo\\\\bin\\\\cargo.exe'' test -p demo_gui --lib 2>&1\")",
+      "Bash(C:Userskhosh.cargobincargo test --package pricer_pricing --lib irs_greeks::xva_demo::tests -- --test-threads=1)"
     ]
   }
 }

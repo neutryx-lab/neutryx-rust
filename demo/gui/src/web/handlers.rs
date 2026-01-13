@@ -1,8 +1,15 @@
 //! HTTP handlers for the web API.
 
-use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
+use axum::{
+    extract::{Query, State},
+    http::StatusCode,
+    response::IntoResponse,
+    Json,
+};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Instant;
 
 use super::AppState;
 
@@ -221,6 +228,375 @@ pub async fn get_risk_metrics(State(_state): State<Arc<AppState>>) -> Json<RiskM
     })
 }
 
+// =============================================================================
+// Task 3.1: Graph API Types and Handler
+// =============================================================================
+
+/// Query parameters for graph endpoint
+#[derive(Debug, Clone, Deserialize)]
+pub struct GraphQueryParams {
+    /// Optional trade ID to filter graph extraction
+    pub trade_id: Option<String>,
+}
+
+/// Graph node for API response (D3.js compatible)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GraphNodeResponse {
+    /// Unique identifier for the node
+    pub id: String,
+    /// Operation type (D3.js compatible: "type" field)
+    #[serde(rename = "type")]
+    pub node_type: String,
+    /// Human-readable label
+    pub label: String,
+    /// Current computed value
+    pub value: Option<f64>,
+    /// Whether this node is a sensitivity calculation target
+    pub is_sensitivity_target: bool,
+    /// Visual grouping for colour coding
+    pub group: String,
+}
+
+/// Graph edge for API response (D3.js compatible: "links")
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GraphEdgeResponse {
+    /// Source node ID
+    pub source: String,
+    /// Target node ID
+    pub target: String,
+    /// Optional edge weight
+    pub weight: Option<f64>,
+}
+
+/// Graph metadata for API response
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GraphMetadataResponse {
+    /// Trade ID (None for aggregate graphs)
+    pub trade_id: Option<String>,
+    /// Total number of nodes
+    pub node_count: usize,
+    /// Total number of edges
+    pub edge_count: usize,
+    /// Graph depth (longest path)
+    pub depth: usize,
+    /// Generation timestamp (ISO 8601)
+    pub generated_at: String,
+}
+
+/// Graph API response (D3.js compatible)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GraphResponse {
+    /// All nodes in the computation graph
+    pub nodes: Vec<GraphNodeResponse>,
+    /// All edges (D3.js compatible: "links")
+    pub links: Vec<GraphEdgeResponse>,
+    /// Graph metadata
+    pub metadata: GraphMetadataResponse,
+}
+
+/// Error response for graph API
+#[derive(Debug, Serialize)]
+pub struct GraphErrorResponse {
+    /// Error type
+    pub error_type: String,
+    /// Error message
+    pub message: String,
+}
+
+// =============================================================================
+// Task 3.3: Graph Cache for Performance Optimisation
+// =============================================================================
+
+/// Cached graph entry with timestamp
+#[derive(Debug, Clone)]
+pub struct CachedGraph {
+    /// The cached graph response
+    pub graph: GraphResponse,
+    /// When the cache entry was created
+    pub created_at: Instant,
+}
+
+/// Graph cache with TTL support
+#[derive(Debug, Default)]
+pub struct GraphCache {
+    /// Cache entries by trade_id (None key = all trades)
+    entries: HashMap<Option<String>, CachedGraph>,
+}
+
+impl GraphCache {
+    /// Cache TTL in seconds
+    const TTL_SECONDS: u64 = 5;
+
+    /// Create a new empty cache
+    pub fn new() -> Self {
+        Self {
+            entries: HashMap::new(),
+        }
+    }
+
+    /// Get a cached graph if it exists and is not expired
+    pub fn get(&self, trade_id: &Option<String>) -> Option<&GraphResponse> {
+        self.entries.get(trade_id).and_then(|entry| {
+            if entry.created_at.elapsed().as_secs() < Self::TTL_SECONDS {
+                Some(&entry.graph)
+            } else {
+                None
+            }
+        })
+    }
+
+    /// Insert a graph into the cache
+    pub fn insert(&mut self, trade_id: Option<String>, graph: GraphResponse) {
+        self.entries.insert(
+            trade_id,
+            CachedGraph {
+                graph,
+                created_at: Instant::now(),
+            },
+        );
+    }
+
+    /// Remove expired entries from the cache
+    pub fn cleanup(&mut self) {
+        self.entries
+            .retain(|_, entry| entry.created_at.elapsed().as_secs() < Self::TTL_SECONDS);
+    }
+
+    /// Clear the entire cache
+    pub fn clear(&mut self) {
+        self.entries.clear();
+    }
+}
+
+/// Generate a sample computation graph for a trade
+///
+/// In production, this would call the GraphExtractor from pricer_pricing.
+/// For the demo, we generate a representative graph structure.
+fn generate_sample_graph(trade_id: Option<&str>) -> GraphResponse {
+    // Generate nodes based on trade
+    let mut nodes = Vec::new();
+    let mut links = Vec::new();
+
+    // Sample trades and their parameters
+    let trades_data = if let Some(tid) = trade_id {
+        vec![(tid.to_string(), get_trade_params(tid))]
+    } else {
+        vec![
+            ("T001".to_string(), get_trade_params("T001")),
+            ("T002".to_string(), get_trade_params("T002")),
+            ("T003".to_string(), get_trade_params("T003")),
+        ]
+    };
+
+    for (tid, params) in &trades_data {
+        let mut intermediate_ids = Vec::new();
+
+        // Create input nodes for each parameter
+        for (i, param) in params.iter().enumerate() {
+            let node_id = format!("{}_{}", tid, param);
+            nodes.push(GraphNodeResponse {
+                id: node_id.clone(),
+                node_type: "input".to_string(),
+                label: param.clone(),
+                value: Some(100.0 + (i as f64) * 10.0),
+                is_sensitivity_target: true,
+                group: "sensitivity".to_string(),
+            });
+        }
+
+        // Create intermediate computation nodes
+        for (i, chunk) in params.chunks(2).enumerate() {
+            let node_id = format!("{}_op_{}", tid, i);
+            let label = if chunk.len() == 2 {
+                format!("{} * {}", chunk[0], chunk[1])
+            } else {
+                format!("exp({})", chunk[0])
+            };
+            let node_type = if chunk.len() == 2 { "mul" } else { "exp" };
+
+            nodes.push(GraphNodeResponse {
+                id: node_id.clone(),
+                node_type: node_type.to_string(),
+                label,
+                value: Some(25.0 + (i as f64) * 5.0),
+                is_sensitivity_target: false,
+                group: "intermediate".to_string(),
+            });
+
+            // Add edges from inputs to operation
+            for param in chunk {
+                links.push(GraphEdgeResponse {
+                    source: format!("{}_{}", tid, param),
+                    target: node_id.clone(),
+                    weight: None,
+                });
+            }
+
+            intermediate_ids.push(node_id);
+        }
+
+        // Create second level combination nodes
+        let mut second_level_ids = Vec::new();
+        for (i, chunk) in intermediate_ids.chunks(2).enumerate() {
+            let node_id = format!("{}_combine_{}", tid, i);
+            let label = if chunk.len() == 2 {
+                format!("{} + {}", chunk[0], chunk[1])
+            } else {
+                format!("sqrt({})", chunk[0])
+            };
+            let node_type = if chunk.len() == 2 { "add" } else { "sqrt" };
+
+            nodes.push(GraphNodeResponse {
+                id: node_id.clone(),
+                node_type: node_type.to_string(),
+                label,
+                value: Some(50.0 + (i as f64) * 10.0),
+                is_sensitivity_target: false,
+                group: "intermediate".to_string(),
+            });
+
+            for source in chunk {
+                links.push(GraphEdgeResponse {
+                    source: source.clone(),
+                    target: node_id.clone(),
+                    weight: None,
+                });
+            }
+
+            second_level_ids.push(node_id);
+        }
+
+        // Create output node
+        let output_id = format!("{}_price", tid);
+        nodes.push(GraphNodeResponse {
+            id: output_id.clone(),
+            node_type: "output".to_string(),
+            label: "price".to_string(),
+            value: Some(125.5),
+            is_sensitivity_target: false,
+            group: "output".to_string(),
+        });
+
+        // Connect final nodes to output
+        let final_sources = if second_level_ids.is_empty() {
+            &intermediate_ids
+        } else {
+            &second_level_ids
+        };
+        for source in final_sources {
+            links.push(GraphEdgeResponse {
+                source: source.clone(),
+                target: output_id.clone(),
+                weight: None,
+            });
+        }
+    }
+
+    // Calculate depth (simplified: count layers)
+    let depth = if nodes.is_empty() { 0 } else { 4 };
+
+    let generated_at = chrono::Utc::now().to_rfc3339();
+
+    GraphResponse {
+        metadata: GraphMetadataResponse {
+            trade_id: trade_id.map(String::from),
+            node_count: nodes.len(),
+            edge_count: links.len(),
+            depth,
+            generated_at,
+        },
+        nodes,
+        links,
+    }
+}
+
+/// Get parameters for a specific trade
+fn get_trade_params(trade_id: &str) -> Vec<String> {
+    match trade_id {
+        "T001" => vec![
+            "spot".to_string(),
+            "vol".to_string(),
+            "rate".to_string(),
+            "time".to_string(),
+        ],
+        "T002" => vec![
+            "fx_spot".to_string(),
+            "dom_rate".to_string(),
+            "for_rate".to_string(),
+        ],
+        "T003" => vec![
+            "swap_rate".to_string(),
+            "discount".to_string(),
+            "notional".to_string(),
+            "tenor".to_string(),
+        ],
+        "T004" => vec!["eur_usd".to_string(), "vol".to_string(), "rate".to_string()],
+        "T005" => vec![
+            "spread".to_string(),
+            "recovery".to_string(),
+            "hazard".to_string(),
+        ],
+        _ => vec!["param1".to_string(), "param2".to_string()],
+    }
+}
+
+/// Check if a trade exists
+fn trade_exists(trade_id: &str) -> bool {
+    matches!(trade_id, "T001" | "T002" | "T003" | "T004" | "T005")
+}
+
+/// Get computation graph endpoint
+///
+/// # Endpoint
+///
+/// `GET /api/graph` - Get computation graph for all trades
+/// `GET /api/graph?trade_id=T001` - Get computation graph for specific trade
+///
+/// # Response
+///
+/// Returns a D3.js compatible graph structure with nodes, links, and metadata.
+///
+/// # Errors
+///
+/// - 404 Not Found: If the specified trade_id does not exist
+/// - 500 Internal Server Error: If graph extraction fails
+pub async fn get_graph(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<GraphQueryParams>,
+) -> Result<Json<GraphResponse>, (StatusCode, Json<GraphErrorResponse>)> {
+    // Check if trade exists (if specified)
+    if let Some(ref trade_id) = params.trade_id {
+        if !trade_exists(trade_id) {
+            return Err((
+                StatusCode::NOT_FOUND,
+                Json(GraphErrorResponse {
+                    error_type: "TradeNotFound".to_string(),
+                    message: format!("Trade '{}' not found", trade_id),
+                }),
+            ));
+        }
+    }
+
+    // Check cache first (Task 3.3: Performance optimisation)
+    {
+        let cache = state.graph_cache.read().await;
+        if let Some(cached) = cache.get(&params.trade_id) {
+            return Ok(Json(cached.clone()));
+        }
+    }
+
+    // Generate graph (in production, call GraphExtractor)
+    let graph = generate_sample_graph(params.trade_id.as_deref());
+
+    // Update cache
+    {
+        let mut cache = state.graph_cache.write().await;
+        cache.insert(params.trade_id.clone(), graph.clone());
+    }
+
+    Ok(Json(graph))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -252,5 +628,255 @@ mod tests {
         let state = Arc::new(AppState::new());
         let response = get_risk_metrics(State(state)).await;
         assert!(response.total_pv != 0.0);
+    }
+
+    // =========================================================================
+    // Task 3.1: Graph API Tests
+    // =========================================================================
+
+    mod graph_api_tests {
+        use super::*;
+
+        #[tokio::test]
+        async fn test_get_graph_all_trades() {
+            let state = Arc::new(AppState::new());
+            let params = GraphQueryParams { trade_id: None };
+
+            let result = get_graph(State(state), Query(params)).await;
+
+            assert!(result.is_ok());
+            let response = result.unwrap();
+            assert!(!response.nodes.is_empty());
+            assert!(!response.links.is_empty());
+            assert!(response.metadata.node_count > 0);
+            assert!(response.metadata.edge_count > 0);
+        }
+
+        #[tokio::test]
+        async fn test_get_graph_specific_trade() {
+            let state = Arc::new(AppState::new());
+            let params = GraphQueryParams {
+                trade_id: Some("T001".to_string()),
+            };
+
+            let result = get_graph(State(state), Query(params)).await;
+
+            assert!(result.is_ok());
+            let response = result.unwrap();
+            assert_eq!(response.metadata.trade_id, Some("T001".to_string()));
+            assert!(!response.nodes.is_empty());
+            assert!(!response.links.is_empty());
+        }
+
+        #[tokio::test]
+        async fn test_get_graph_trade_not_found() {
+            let state = Arc::new(AppState::new());
+            let params = GraphQueryParams {
+                trade_id: Some("NONEXISTENT".to_string()),
+            };
+
+            let result = get_graph(State(state), Query(params)).await;
+
+            assert!(result.is_err());
+            let (status, error) = result.unwrap_err();
+            assert_eq!(status, StatusCode::NOT_FOUND);
+            assert_eq!(error.error_type, "TradeNotFound");
+        }
+
+        #[tokio::test]
+        async fn test_graph_response_d3js_compatible() {
+            let state = Arc::new(AppState::new());
+            let params = GraphQueryParams {
+                trade_id: Some("T001".to_string()),
+            };
+
+            let result = get_graph(State(state), Query(params)).await;
+            let response = result.unwrap();
+
+            // Verify D3.js compatible structure
+            // - Has "nodes" array
+            // - Has "links" array (not "edges")
+            // - Each node has "type" field (not "node_type" in JSON)
+            let json = serde_json::to_string(&response.0).unwrap();
+            assert!(json.contains("\"nodes\":"));
+            assert!(json.contains("\"links\":"));
+            assert!(json.contains("\"type\":"));
+            assert!(!json.contains("\"edges\":"));
+        }
+
+        #[tokio::test]
+        async fn test_graph_contains_input_nodes() {
+            let state = Arc::new(AppState::new());
+            let params = GraphQueryParams {
+                trade_id: Some("T001".to_string()),
+            };
+
+            let result = get_graph(State(state), Query(params)).await;
+            let response = result.unwrap();
+
+            let input_nodes: Vec<_> = response
+                .nodes
+                .iter()
+                .filter(|n| n.node_type == "input")
+                .collect();
+            assert!(
+                !input_nodes.is_empty(),
+                "Graph should contain input nodes"
+            );
+        }
+
+        #[tokio::test]
+        async fn test_graph_contains_output_node() {
+            let state = Arc::new(AppState::new());
+            let params = GraphQueryParams {
+                trade_id: Some("T001".to_string()),
+            };
+
+            let result = get_graph(State(state), Query(params)).await;
+            let response = result.unwrap();
+
+            let output_nodes: Vec<_> = response
+                .nodes
+                .iter()
+                .filter(|n| n.node_type == "output")
+                .collect();
+            assert!(
+                !output_nodes.is_empty(),
+                "Graph should contain output node"
+            );
+        }
+
+        #[tokio::test]
+        async fn test_graph_contains_sensitivity_targets() {
+            let state = Arc::new(AppState::new());
+            let params = GraphQueryParams {
+                trade_id: Some("T001".to_string()),
+            };
+
+            let result = get_graph(State(state), Query(params)).await;
+            let response = result.unwrap();
+
+            let sensitivity_nodes: Vec<_> = response
+                .nodes
+                .iter()
+                .filter(|n| n.is_sensitivity_target)
+                .collect();
+            assert!(
+                !sensitivity_nodes.is_empty(),
+                "Graph should contain sensitivity target nodes"
+            );
+        }
+
+        #[tokio::test]
+        async fn test_graph_metadata_has_required_fields() {
+            let state = Arc::new(AppState::new());
+            let params = GraphQueryParams {
+                trade_id: Some("T001".to_string()),
+            };
+
+            let result = get_graph(State(state), Query(params)).await;
+            let response = result.unwrap();
+
+            // Verify metadata fields
+            assert!(response.metadata.node_count > 0);
+            assert!(response.metadata.edge_count > 0);
+            assert!(response.metadata.depth > 0);
+            assert!(!response.metadata.generated_at.is_empty());
+            // generated_at should be ISO 8601 format
+            assert!(response.metadata.generated_at.contains("T"));
+        }
+    }
+
+    // =========================================================================
+    // Task 3.3: Graph Cache Tests
+    // =========================================================================
+
+    mod graph_cache_tests {
+        use super::*;
+        use std::time::Duration;
+
+        #[test]
+        fn test_cache_new() {
+            let cache = GraphCache::new();
+            assert!(cache.get(&None).is_none());
+        }
+
+        #[test]
+        fn test_cache_insert_and_get() {
+            let mut cache = GraphCache::new();
+            let graph = generate_sample_graph(Some("T001"));
+
+            cache.insert(Some("T001".to_string()), graph.clone());
+
+            let cached = cache.get(&Some("T001".to_string()));
+            assert!(cached.is_some());
+            assert_eq!(cached.unwrap().metadata.trade_id, Some("T001".to_string()));
+        }
+
+        #[test]
+        fn test_cache_miss_for_different_key() {
+            let mut cache = GraphCache::new();
+            let graph = generate_sample_graph(Some("T001"));
+
+            cache.insert(Some("T001".to_string()), graph);
+
+            // Different trade_id should miss
+            let cached = cache.get(&Some("T002".to_string()));
+            assert!(cached.is_none());
+        }
+
+        #[test]
+        fn test_cache_clear() {
+            let mut cache = GraphCache::new();
+            let graph = generate_sample_graph(Some("T001"));
+
+            cache.insert(Some("T001".to_string()), graph);
+            assert!(cache.get(&Some("T001".to_string())).is_some());
+
+            cache.clear();
+            assert!(cache.get(&Some("T001".to_string())).is_none());
+        }
+
+        #[tokio::test]
+        async fn test_handler_uses_cache() {
+            let state = Arc::new(AppState::new());
+            let params = GraphQueryParams {
+                trade_id: Some("T001".to_string()),
+            };
+
+            // First call - cache miss, generates graph
+            let result1 = get_graph(State(Arc::clone(&state)), Query(params.clone())).await;
+            assert!(result1.is_ok());
+            let response1 = result1.unwrap();
+            let timestamp1 = response1.metadata.generated_at.clone();
+
+            // Second call - should use cache (same timestamp)
+            let result2 = get_graph(State(Arc::clone(&state)), Query(params)).await;
+            assert!(result2.is_ok());
+            let response2 = result2.unwrap();
+            let timestamp2 = response2.metadata.generated_at.clone();
+
+            // Both should have same timestamp (from cache)
+            assert_eq!(timestamp1, timestamp2);
+        }
+
+        #[tokio::test]
+        async fn test_response_time_under_500ms() {
+            let state = Arc::new(AppState::new());
+            let params = GraphQueryParams {
+                trade_id: Some("T001".to_string()),
+            };
+
+            let start = std::time::Instant::now();
+            let result = get_graph(State(state), Query(params)).await;
+            let elapsed = start.elapsed();
+
+            assert!(result.is_ok());
+            assert!(
+                elapsed < Duration::from_millis(500),
+                "Response took {:?}, expected < 500ms",
+                elapsed
+            );
+        }
     }
 }
