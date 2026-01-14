@@ -18,8 +18,14 @@ async fn main() -> anyhow::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    // Server address
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    // Server address - support PORT env var for Cloud Run
+    let port: u16 = std::env::var("PORT")
+        .ok()
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(3000);
+    let host = std::env::var("HOST")
+        .unwrap_or_else(|_| "0.0.0.0".to_string());
+    let addr: SocketAddr = format!("{}:{}", host, port).parse()?;
     let url = format!("http://{}", addr);
 
     println!();
