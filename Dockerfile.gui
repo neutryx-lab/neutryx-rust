@@ -20,7 +20,8 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/target/release/demo-web ./demo-web
-COPY --from=builder /app/demo/gui/static ./static
+# Copy static files to the path expected by the code
+COPY --from=builder /app/demo/gui/static ./demo/gui/static
 
 ENV RUST_LOG=info
 ENV FB_OPEN_BROWSER=false
