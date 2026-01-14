@@ -49,7 +49,7 @@ tracing-subscriber = { workspace = true }
 
 # Web server (optional)
 axum = { workspace = true, features = ["ws"], optional = true }
-tower-http = { version = "0.5", features = ["fs", "cors"], optional = true }
+tower-http = { version = "0.5", features = ["fs", "cors", "set-header"], optional = true }
 futures = { version = "0.3", optional = true }
 chrono = { workspace = true, optional = true }
 

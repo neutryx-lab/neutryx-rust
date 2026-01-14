@@ -207,32 +207,32 @@
                     <div class="report-section">
                         <h4>Format</h4>
                         <div class="format-grid">
-                            <label class="format-option">
-                                <input type="radio" name="format" value="pdf" checked>
+                            <label class="format-option" for="format-pdf">
+                                <input type="radio" id="format-pdf" name="format" value="pdf" checked aria-labelledby="label-format-pdf">
                                 <i class="fas fa-file-pdf"></i>
-                                <span>PDF</span>
+                                <span id="label-format-pdf">PDF</span>
                             </label>
-                            <label class="format-option">
-                                <input type="radio" name="format" value="excel">
+                            <label class="format-option" for="format-excel">
+                                <input type="radio" id="format-excel" name="format" value="excel" aria-labelledby="label-format-excel">
                                 <i class="fas fa-file-excel"></i>
-                                <span>Excel</span>
+                                <span id="label-format-excel">Excel</span>
                             </label>
-                            <label class="format-option">
-                                <input type="radio" name="format" value="csv">
+                            <label class="format-option" for="format-csv">
+                                <input type="radio" id="format-csv" name="format" value="csv" aria-labelledby="label-format-csv">
                                 <i class="fas fa-file-csv"></i>
-                                <span>CSV</span>
+                                <span id="label-format-csv">CSV</span>
                             </label>
                         </div>
                     </div>
                     <div class="report-section">
                         <h4>Include Sections</h4>
                         <div class="section-checklist">
-                            <label><input type="checkbox" checked> Portfolio Summary</label>
-                            <label><input type="checkbox" checked> XVA Metrics</label>
-                            <label><input type="checkbox" checked> Exposure Profile</label>
-                            <label><input type="checkbox"> Counterparty Breakdown</label>
-                            <label><input type="checkbox"> Scenario Analysis</label>
-                            <label><input type="checkbox"> Risk Limits</label>
+                            <label for="section-portfolio-summary"><input type="checkbox" id="section-portfolio-summary" name="section-portfolio-summary" checked> <span id="label-section-portfolio-summary">Portfolio Summary</span></label>
+                            <label for="section-xva-metrics"><input type="checkbox" id="section-xva-metrics" name="section-xva-metrics" checked> <span id="label-section-xva-metrics">XVA Metrics</span></label>
+                            <label for="section-exposure-profile"><input type="checkbox" id="section-exposure-profile" name="section-exposure-profile" checked> <span id="label-section-exposure-profile">Exposure Profile</span></label>
+                            <label for="section-counterparty-breakdown"><input type="checkbox" id="section-counterparty-breakdown" name="section-counterparty-breakdown"> <span id="label-section-counterparty-breakdown">Counterparty Breakdown</span></label>
+                            <label for="section-scenario-analysis"><input type="checkbox" id="section-scenario-analysis" name="section-scenario-analysis"> <span id="label-section-scenario-analysis">Scenario Analysis</span></label>
+                            <label for="section-risk-limits"><input type="checkbox" id="section-risk-limits" name="section-risk-limits"> <span id="label-section-risk-limits">Risk Limits</span></label>
                         </div>
                     </div>
                     <div class="report-section">
@@ -244,7 +244,8 @@
                                 <option value="weekly">Weekly</option>
                                 <option value="monthly">Monthly</option>
                             </select>
-                            <input type="email" id="report-email" placeholder="Email address">
+                            <label for="report-email" class="visually-hidden">Email address</label>
+                            <input type="email" id="report-email" name="report-email" placeholder="Email address" aria-label="Email address">
                         </div>
                     </div>
                 </div>
@@ -277,7 +278,8 @@
             </div>
         </div>
         <div class="ai-input-wrapper">
-            <input type="text" id="ai-input" placeholder="Ask anything about your portfolio...">
+            <label for="ai-input" class="visually-hidden">Ask anything about your portfolio</label>
+            <input type="text" id="ai-input" name="ai-input" placeholder="Ask anything about your portfolio..." aria-label="Ask anything about your portfolio">
             <button class="ai-send-btn" id="ai-send"><i class="fas fa-paper-plane"></i></button>
         </div>
     </div>
@@ -287,7 +289,8 @@
         <div class="command-palette glass-heavy">
             <div class="command-input-wrapper">
                 <i class="fas fa-search"></i>
-                <input type="text" id="command-input" placeholder="Type a command or search..." autocomplete="off" aria-label="Command palette search">
+                <label for="command-input" class="visually-hidden">Command palette search</label>
+                <input type="text" id="command-input" name="command-input" placeholder="Type a command or search..." autocomplete="off" aria-label="Command palette search">
                 <kbd>ESC</kbd>
             </div>
             <div class="command-results" id="command-results" role="listbox">
@@ -715,7 +718,7 @@
                     <!-- Search -->
                     <div class="search-wrapper">
                         <i class="fas fa-search"></i>
-                        <input type="text" id="portfolio-search" placeholder="Search ID, instrument, counterparty...">
+                        <input type="text" id="portfolio-search" name="portfolio-search" placeholder="Search ID, instrument, counterparty..." aria-label="Portfolio search">
                         <kbd>⌘F</kbd>
                     </div>
 
@@ -799,22 +802,23 @@
                     <div class="filter-group">
                         <label>PV Range</label>
                         <div class="range-inputs">
-                            <input type="number" id="pv-min" placeholder="Min">
+                            <input type="number" id="pv-min" name="pv-min" placeholder="Min" aria-label="PV minimum">
                             <span>to</span>
-                            <input type="number" id="pv-max" placeholder="Max">
+                            <input type="number" id="pv-max" name="pv-max" placeholder="Max" aria-label="PV maximum">
                         </div>
                     </div>
                     <div class="filter-group">
                         <label>Notional Range</label>
                         <div class="range-inputs">
-                            <input type="number" id="notional-min" placeholder="Min">
+                            <input type="number" id="notional-min" name="notional-min" placeholder="Min" aria-label="Notional minimum">
                             <span>to</span>
-                            <input type="number" id="notional-max" placeholder="Max">
+                            <input type="number" id="notional-max" name="notional-max" placeholder="Max" aria-label="Notional maximum">
                         </div>
                     </div>
                     <div class="filter-group">
                         <label>Maturity</label>
-                        <select id="maturity-filter">
+                            <label for="maturity-filter" class="visually-hidden">Maturity</label>
+                            <select id="maturity-filter" name="maturity-filter">
                             <option value="">All Maturities</option>
                             <option value="0-1">0-1 Year</option>
                             <option value="1-5">1-5 Years</option>
@@ -824,7 +828,8 @@
                     </div>
                     <div class="filter-group">
                         <label>Counterparty</label>
-                        <select id="counterparty-filter">
+                            <label for="counterparty-filter" class="visually-hidden">Counterparty</label>
+                            <select id="counterparty-filter" name="counterparty-filter">
                             <option value="">All Counterparties</option>
                         </select>
                     </div>
@@ -860,7 +865,7 @@
                         <thead>
                             <tr>
                                 <th class="checkbox-col">
-                                    <input type="checkbox" id="select-all" title="Select All">
+                                    <input type="checkbox" id="select-all" name="select-all" title="Select All" aria-label="Select All">
                                 </th>
                                 <th class="sortable" data-sort="id">
                                     <div class="th-content">
@@ -975,7 +980,7 @@
                     </div>
                     <div class="pagination-right">
                         <span class="pagination-jump">
-                            Go to: <input type="number" id="page-jump" min="1" placeholder="#">
+                            Go to: <input type="number" id="page-jump" name="page-jump" min="1" placeholder="#" aria-label="Go to page">
                         </span>
                     </div>
                 </div>
@@ -1528,14 +1533,14 @@
                                         <span>Parallel Shift</span>
                                         <span class="slider-val" id="rate-shock-val">0 bps</span>
                                     </label>
-                                    <input type="range" id="rate-shock" min="-200" max="200" value="0" class="fancy-slider">
+                                    <input type="range" id="rate-shock" name="rate-shock" min="-200" max="200" value="0" class="fancy-slider" aria-label="Parallel Shift">
                                 </div>
                                 <div class="slider-group">
                                     <label>
                                         <span>Curve Steepening</span>
                                         <span class="slider-val" id="curve-steep-val">0 bps</span>
                                     </label>
-                                    <input type="range" id="curve-steep" min="-100" max="100" value="0" class="fancy-slider blue">
+                                    <input type="range" id="curve-steep" name="curve-steep" min="-100" max="100" value="0" class="fancy-slider blue" aria-label="Curve Steepening">
                                 </div>
                             </div>
 
@@ -1546,14 +1551,14 @@
                                         <span>Vol Shift</span>
                                         <span class="slider-val" id="vol-shift-val">0%</span>
                                     </label>
-                                    <input type="range" id="vol-shift" min="-50" max="100" value="0" class="fancy-slider orange">
+                                    <input type="range" id="vol-shift" name="vol-shift" min="-50" max="100" value="0" class="fancy-slider orange" aria-label="Vol Shift">
                                 </div>
                                 <div class="slider-group">
                                     <label>
                                         <span>Vol Skew</span>
                                         <span class="slider-val" id="vol-skew-val">0%</span>
                                     </label>
-                                    <input type="range" id="vol-skew" min="-50" max="50" value="0" class="fancy-slider orange">
+                                    <input type="range" id="vol-skew" name="vol-skew" min="-50" max="50" value="0" class="fancy-slider orange" aria-label="Vol Skew">
                                 </div>
                             </div>
 
@@ -1564,14 +1569,14 @@
                                         <span>Spread Shock</span>
                                         <span class="slider-val" id="spread-shock-val">0 bps</span>
                                     </label>
-                                    <input type="range" id="spread-shock" min="0" max="500" value="0" class="fancy-slider red">
+                                    <input type="range" id="spread-shock" name="spread-shock" min="0" max="500" value="0" class="fancy-slider red" aria-label="Spread Shock">
                                 </div>
                                 <div class="slider-group">
                                     <label>
                                         <span>Default Prob ×</span>
                                         <span class="slider-val" id="pd-mult-val">1.0×</span>
                                     </label>
-                                    <input type="range" id="pd-mult" min="50" max="300" value="100" class="fancy-slider red">
+                                    <input type="range" id="pd-mult" name="pd-mult" min="50" max="300" value="100" class="fancy-slider red" aria-label="Default Probability Multiplier">
                                 </div>
                             </div>
 
@@ -1582,7 +1587,7 @@
                                         <span>Correlation Shift</span>
                                         <span class="slider-val" id="corr-shift-val">0%</span>
                                     </label>
-                                    <input type="range" id="corr-shift" min="-100" max="100" value="0" class="fancy-slider purple">
+                                    <input type="range" id="corr-shift" name="corr-shift" min="-100" max="100" value="0" class="fancy-slider purple" aria-label="Correlation Shift">
                                 </div>
                             </div>
 
@@ -1752,7 +1757,8 @@
                         <p>Interactive 3D visualization of risk surfaces and distributions</p>
                     </div>
                     <div class="analytics-controls">
-                        <select id="surface-type" class="fancy-select">
+                        <label for="surface-type" class="visually-hidden">Surface Type</label>
+                        <select id="surface-type" name="surface-type" class="fancy-select">
                             <option value="vol-surface">Volatility Surface</option>
                             <option value="pfe-surface">PFE Surface</option>
                             <option value="correlation">Correlation Matrix</option>
@@ -1801,7 +1807,8 @@
                         <div class="sankey-card glass-card">
                             <div class="bento-header">
                                 <h3><i class="fas fa-random"></i> Cash Flow Sankey</h3>
-                                <select id="sankey-type" class="small-select">
+                                <label for="sankey-type" class="visually-hidden">Sankey Type</label>
+                                <select id="sankey-type" name="sankey-type" class="small-select">
                                     <option value="cashflow">Cash Flows</option>
                                     <option value="collateral">Collateral</option>
                                     <option value="xva">XVA Breakdown</option>
@@ -1848,7 +1855,8 @@
                         <p>Interactive visualisation of the AD computation graph</p>
                     </div>
                     <div class="graph-controls">
-                        <select id="graph-trade-selector" class="fancy-select">
+                        <label for="graph-trade-selector" class="visually-hidden">Graph Trade Selector</label>
+                        <select id="graph-trade-selector" name="graph-trade-selector" class="fancy-select">
                             <option value="">All Trades</option>
                             <option value="T001">T001 - AAPL Call 200</option>
                             <option value="T002">T002 - USD/JPY Forward</option>

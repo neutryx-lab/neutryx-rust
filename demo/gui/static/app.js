@@ -4,6 +4,8 @@
  * ========================================================
  */
 
+console.log('[DEBUG] app.js loading...');
+
 // ============================================
 // Constants & State
 // ============================================
@@ -517,9 +519,13 @@ function updateChartsTheme() {
 // ============================================
 
 async function fetchPortfolio() {
+    console.log('[DEBUG] fetchPortfolio() called');
     try {
+        console.log('[DEBUG] Fetching from', `${API_BASE}/portfolio`);
         const response = await fetch(`${API_BASE}/portfolio`);
+        console.log('[DEBUG] Response status:', response.status);
         const data = await response.json();
+        console.log('[DEBUG] Portfolio data received:', data);
         
         updateValue('total-pv', data.total_pv);
         document.getElementById('trade-count').textContent = data.trade_count;
@@ -534,6 +540,7 @@ async function fetchPortfolio() {
         renderCurrentView();
         
         updateLastUpdated();
+        console.log('[DEBUG] fetchPortfolio() complete');
         return data;
     } catch (error) {
         console.error('Failed to fetch portfolio:', error);
@@ -4366,9 +4373,12 @@ function initVisualEffects() {
 // ============================================
 
 async function init() {
+    console.log('[DEBUG] init() called');
     try {
         // Initialize systems
+        console.log('[DEBUG] Creating ParticleSystem...');
         new ParticleSystem(document.getElementById('particle-canvas'));
+        console.log('[DEBUG] Creating CommandPalette...');
         new CommandPalette();
         
         // Initialize advanced features (with error handling for each)
@@ -4383,6 +4393,7 @@ async function init() {
         try { initVisualEffects(); } catch(e) { console.error('initVisualEffects error:', e); }
         
         // Initialize UI
+        console.log('[DEBUG] Initializing UI...');
         initTheme();
         initNavigation();
         initPortfolioControls();
@@ -4399,10 +4410,13 @@ async function init() {
         try { initGraphTab(); } catch(e) { console.error('initGraphTab error:', e); }
         
         // Load data
+        console.log('[DEBUG] Loading data...');
         showLoading('Loading dashboard...');
         
         try {
+            console.log('[DEBUG] Fetching portfolio, risk, exposure...');
             await Promise.all([fetchPortfolio(), fetchRiskMetrics(), fetchExposure()]);
+            console.log('[DEBUG] Data fetch complete!');
         } catch (e) {
             console.error('Initial load failed:', e);
         }
@@ -4411,6 +4425,7 @@ async function init() {
         console.error('Init error:', e);
     } finally {
         // Always hide loading
+        console.log('[DEBUG] Hiding loading...');
         hideLoading();
     }
     
@@ -9158,12 +9173,16 @@ function displayStressComparisonPanel() {
             ${scenarioRows}
         </div>
         <div class="stress-actions">
-            <button onclick="addStressScenario()" class="btn-secondary btn-sm">Add Scenario</button>
-            <button onclick="clearStressComparison()" class="btn-secondary btn-sm">Clear</button>
+            <button id="btn-add-stress-scenario" class="btn-secondary btn-sm">Add Scenario</button>
+            <button id="btn-clear-stress-comparison" class="btn-secondary btn-sm">Clear</button>
         </div>
     `;
 
     statsPanel.appendChild(panelDiv);
+
+    // Attach event listeners (CSP-compliant - no inline handlers)
+    document.getElementById('btn-add-stress-scenario')?.addEventListener('click', addStressScenario);
+    document.getElementById('btn-clear-stress-comparison')?.addEventListener('click', clearStressComparison);
 }
 
 /**

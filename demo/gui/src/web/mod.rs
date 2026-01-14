@@ -15,6 +15,7 @@ pub mod handlers;
 pub mod websocket;
 
 use axum::{
+    http::HeaderValue,
     routing::{get, post},
     Router,
 };
@@ -24,6 +25,7 @@ use std::sync::Arc;
 use tokio::sync::{broadcast, RwLock};
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::ServeDir;
+use tower_http::set_header::SetResponseHeaderLayer;
 use tracing::info;
 
 use handlers::GraphCache;
@@ -137,9 +139,26 @@ pub fn build_router(state: Arc<AppState>) -> Router {
     // Static file serving for the dashboard
     let static_files = ServeDir::new("demo/gui/static");
 
+    // CSP header: balanced security for development
+    // - Removed 'unsafe-eval' (no eval/new Function usage)
+    // - Allows CDN scripts (three.js, d3.js, jspdf, xlsx)
+    // - 'unsafe-inline' for styles (required for inline style attributes)
+    let csp_header = SetResponseHeaderLayer::overriding(
+        axum::http::header::CONTENT_SECURITY_POLICY,
+        HeaderValue::from_static(
+            "default-src 'self'; \
+             script-src 'self' https://cdnjs.cloudflare.com https://d3js.org https://cdn.jsdelivr.net https://cdn.sheetjs.com; \
+             style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; \
+             font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; \
+             img-src 'self' data: blob:; \
+             connect-src 'self' ws: wss:;"
+        ),
+    );
+
     Router::new()
         .nest("/api", api_routes)
         .fallback_service(static_files)
+        .layer(csp_header)
         .layer(cors)
         .with_state(state)
 }
