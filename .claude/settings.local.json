@@ -168,7 +168,8 @@
       "Bash(powershell.exe -Command \"Set-Location ''c:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust''; & ''C:\\\\Users\\\\khosh\\\\.cargo\\\\bin\\\\cargo.exe'' test -p demo_gui --lib 2>&1\")",
       "Bash(C:Userskhosh.cargobincargo test --package pricer_pricing --lib irs_greeks::xva_demo::tests -- --test-threads=1)",
       "Bash(awk:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat\\(frictional_bank\\): Add HTTP server for Cloud Run deployment\n\n- Add axum, tower-http dependencies for HTTP server\n- Convert CLI to HTTP server listening on PORT env var\n- Add /health endpoint for Cloud Run health checks\n- Add /api/v1/workflow/{eod,intraday,stress} endpoints\n- Create Dockerfile for Cloud Run deployment\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }
