@@ -12,6 +12,7 @@
 //! - Subscription: Clients can subscribe to specific trade graph updates (Task 4.3)
 
 pub mod handlers;
+pub mod pricer_types;
 pub mod websocket;
 
 use axum::{
@@ -21,7 +22,9 @@ use axum::{
 };
 use std::collections::HashSet;
 use std::net::SocketAddr;
+use std::sync::atomic::AtomicU32;
 use std::sync::Arc;
+use std::time::Instant;
 use tokio::sync::{broadcast, RwLock};
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 use tower_http::services::ServeDir;
@@ -29,6 +32,178 @@ use tower_http::set_header::SetResponseHeaderLayer;
 use tracing::info;
 
 use handlers::GraphCache;
+
+// =========================================================================
+// Task 6.1: PerformanceMetrics State (Requirement 9.5)
+// =========================================================================
+
+/// Performance metrics for API response times and WebSocket connections.
+///
+/// Tracks response times for each API endpoint and WebSocket statistics.
+/// Uses RwLock for thread-safe access and AtomicU32 for connection count.
+pub struct PerformanceMetrics {
+    /// Portfolio API response times in microseconds (limited to 1000 entries)
+    pub portfolio_times: RwLock<Vec<u64>>,
+    /// Exposure API response times in microseconds
+    pub exposure_times: RwLock<Vec<u64>>,
+    /// Risk API response times in microseconds
+    pub risk_times: RwLock<Vec<u64>>,
+    /// Graph API response times in microseconds
+    pub graph_times: RwLock<Vec<u64>>,
+    /// Number of active WebSocket connections
+    pub ws_connections: AtomicU32,
+    /// WebSocket message latencies in microseconds
+    pub ws_message_latencies: RwLock<Vec<u64>>,
+    /// Server start time for uptime calculation
+    pub start_time: Instant,
+}
+
+impl PerformanceMetrics {
+    /// Maximum number of timing entries to keep (Requirement 9.5: limit to 1000)
+    const MAX_ENTRIES: usize = 1000;
+
+    /// Create new performance metrics instance
+    pub fn new() -> Self {
+        Self {
+            portfolio_times: RwLock::new(Vec::with_capacity(Self::MAX_ENTRIES)),
+            exposure_times: RwLock::new(Vec::with_capacity(Self::MAX_ENTRIES)),
+            risk_times: RwLock::new(Vec::with_capacity(Self::MAX_ENTRIES)),
+            graph_times: RwLock::new(Vec::with_capacity(Self::MAX_ENTRIES)),
+            ws_connections: AtomicU32::new(0),
+            ws_message_latencies: RwLock::new(Vec::with_capacity(Self::MAX_ENTRIES)),
+            start_time: Instant::now(),
+        }
+    }
+
+    /// Record a timing value, maintaining the size limit
+    async fn record_time(times: &RwLock<Vec<u64>>, duration_us: u64) {
+        let mut times = times.write().await;
+        if times.len() >= Self::MAX_ENTRIES {
+            times.remove(0);
+        }
+        times.push(duration_us);
+    }
+
+    /// Record portfolio API response time
+    pub async fn record_portfolio_time(&self, duration_us: u64) {
+        Self::record_time(&self.portfolio_times, duration_us).await;
+    }
+
+    /// Record exposure API response time
+    pub async fn record_exposure_time(&self, duration_us: u64) {
+        Self::record_time(&self.exposure_times, duration_us).await;
+    }
+
+    /// Record risk API response time
+    pub async fn record_risk_time(&self, duration_us: u64) {
+        Self::record_time(&self.risk_times, duration_us).await;
+    }
+
+    /// Record graph API response time
+    pub async fn record_graph_time(&self, duration_us: u64) {
+        Self::record_time(&self.graph_times, duration_us).await;
+    }
+
+    /// Record WebSocket message latency
+    pub async fn record_ws_latency(&self, latency_us: u64) {
+        Self::record_time(&self.ws_message_latencies, latency_us).await;
+    }
+
+    /// Calculate average from a timing vector
+    async fn calculate_avg(times: &RwLock<Vec<u64>>) -> f64 {
+        let times = times.read().await;
+        if times.is_empty() {
+            return 0.0;
+        }
+        let sum: u64 = times.iter().sum();
+        (sum as f64) / (times.len() as f64) / 1000.0 // Convert to milliseconds
+    }
+
+    /// Get average portfolio response time in milliseconds
+    pub async fn portfolio_avg_ms(&self) -> f64 {
+        Self::calculate_avg(&self.portfolio_times).await
+    }
+
+    /// Get average exposure response time in milliseconds
+    pub async fn exposure_avg_ms(&self) -> f64 {
+        Self::calculate_avg(&self.exposure_times).await
+    }
+
+    /// Get average risk response time in milliseconds
+    pub async fn risk_avg_ms(&self) -> f64 {
+        Self::calculate_avg(&self.risk_times).await
+    }
+
+    /// Get average graph response time in milliseconds
+    pub async fn graph_avg_ms(&self) -> f64 {
+        Self::calculate_avg(&self.graph_times).await
+    }
+
+    /// Get average WebSocket message latency in milliseconds
+    pub async fn ws_latency_avg_ms(&self) -> f64 {
+        Self::calculate_avg(&self.ws_message_latencies).await
+    }
+
+    /// Get server uptime in seconds
+    pub fn uptime_seconds(&self) -> u64 {
+        self.start_time.elapsed().as_secs()
+    }
+
+    /// Get current WebSocket connection count
+    pub fn ws_connection_count(&self) -> u32 {
+        self.ws_connections.load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    /// Increment WebSocket connection count
+    pub fn increment_ws_connections(&self) {
+        self.ws_connections
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    }
+
+    /// Decrement WebSocket connection count
+    pub fn decrement_ws_connections(&self) {
+        self.ws_connections
+            .fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
+impl Default for PerformanceMetrics {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+// =========================================================================
+// Task 1.1: Debug Configuration
+// =========================================================================
+
+/// Debug configuration read from environment variables
+pub struct DebugConfig {
+    /// Whether debug mode is enabled (FB_DEBUG_MODE)
+    pub debug_mode: bool,
+    /// Log level (FB_LOG_LEVEL)
+    pub log_level: String,
+}
+
+impl DebugConfig {
+    /// Read configuration from environment variables
+    pub fn from_env() -> Self {
+        let debug_mode = std::env::var("FB_DEBUG_MODE")
+            .map(|v| v.to_lowercase() == "true" || v == "1")
+            .unwrap_or(false);
+
+        let log_level = std::env::var("FB_LOG_LEVEL")
+            .ok()
+            .map(|v| v.to_uppercase())
+            .filter(|v| ["DEBUG", "INFO", "WARN", "ERROR"].contains(&v.as_str()))
+            .unwrap_or_else(|| "INFO".to_string());
+
+        Self {
+            debug_mode,
+            log_level,
+        }
+    }
+}
 
 /// Application state shared across handlers
 pub struct AppState {
@@ -38,6 +213,10 @@ pub struct AppState {
     pub graph_cache: RwLock<GraphCache>,
     /// Set of trade IDs that clients have subscribed to for graph updates (Task 4.3)
     pub graph_subscriptions: RwLock<HashSet<String>>,
+    /// Performance metrics (Task 6.1)
+    pub metrics: PerformanceMetrics,
+    /// Debug configuration (Task 1.1)
+    pub debug_config: DebugConfig,
 }
 
 impl AppState {
@@ -48,6 +227,8 @@ impl AppState {
             tx,
             graph_cache: RwLock::new(GraphCache::new()),
             graph_subscriptions: RwLock::new(HashSet::new()),
+            metrics: PerformanceMetrics::new(),
+            debug_config: DebugConfig::from_env(),
         }
     }
 
@@ -178,10 +359,15 @@ pub fn build_router(state: Arc<AppState>) -> Router {
             "/benchmark/speed-comparison",
             get(handlers::get_speed_comparison),
         )
+        // Task 6.3: Add /api/metrics endpoint for performance statistics
+        .route("/metrics", get(handlers::get_metrics))
+        // Task 2.2: Add /api/price endpoint for instrument pricing
+        .route("/price", post(handlers::price_instrument))
         .route("/ws", get(websocket::ws_handler));
 
     // Static file serving for the dashboard
-    let static_files = ServeDir::new("demo/gui/static");
+    let static_files = ServeDir::new("demo/gui/static")
+        .not_found_service(handlers::serve_index_with_config());
 
     // CSP header: default policy for local static assets.
     // - Script sources limited to self (vendor assets).
@@ -190,6 +376,8 @@ pub fn build_router(state: Arc<AppState>) -> Router {
     let csp_header = build_csp_header();
 
     Router::new()
+        // Task 13.2: Serve index.html with config injection at root
+        .route("/", get(handlers::get_index))
         .nest("/api", api_routes)
         .fallback_service(static_files)
         .layer(csp_header)

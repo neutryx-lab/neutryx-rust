@@ -420,6 +420,11 @@
                     <span>Graph</span>
                     <div class="nav-indicator"></div>
                 </a>
+                <a href="#" class="nav-item" data-view="pricer">
+                    <div class="nav-icon"><i class="fas fa-calculator"></i></div>
+                    <span>Pricer</span>
+                    <div class="nav-indicator"></div>
+                </a>
             </nav>
 
             <div class="sidebar-footer">
@@ -440,8 +445,9 @@
                     <span>Command</span>
                     <kbd>⌘K</kbd>
                 </button>
-                <div class="connection-status" id="connection-status">
-                    <div class="status-dot"></div>
+                <!-- Task 9.2: ARIA live region for connection status -->
+                <div class="connection-status" id="connection-status" role="status" aria-live="polite" aria-atomic="true">
+                    <div class="status-dot" aria-hidden="true"></div>
                     <span>Connecting...</span>
                 </div>
             </div>
@@ -553,17 +559,19 @@
                     </div>
 
                     <!-- Exposure Chart -->
-                    <div class="bento-item bento-large glass-card" data-tilt>
+                    <!-- Task 9.4: Chart accessibility with aria-describedby -->
+                    <div class="bento-item bento-large glass-card" data-tilt role="figure" aria-labelledby="exposure-chart-title" aria-describedby="exposure-chart-desc">
                         <div class="bento-header">
-                            <h3><i class="fas fa-chart-area"></i> Exposure Profile</h3>
+                            <h3 id="exposure-chart-title"><i class="fas fa-chart-area" aria-hidden="true"></i> Exposure Profile</h3>
                             <div class="bento-actions">
-                                <button class="chip-btn active" data-range="1y">1Y</button>
-                                <button class="chip-btn" data-range="5y">5Y</button>
-                                <button class="chip-btn" data-range="10y">10Y</button>
+                                <button class="chip-btn active" data-range="1y" aria-pressed="true">1Y</button>
+                                <button class="chip-btn" data-range="5y" aria-pressed="false">5Y</button>
+                                <button class="chip-btn" data-range="10y" aria-pressed="false">10Y</button>
                             </div>
                         </div>
                         <div class="chart-container">
-                            <canvas id="exposure-chart"></canvas>
+                            <canvas id="exposure-chart" role="img" aria-label="Exposure profile chart showing PFE, EPE, ENE over time"></canvas>
+                            <p id="exposure-chart-desc" class="visually-hidden">Line chart displaying Potential Future Exposure (PFE), Expected Positive Exposure (EPE), and Expected Negative Exposure (ENE) profiles over the selected time horizon.</p>
                         </div>
                         <div class="chart-legend">
                             <div class="legend-item active" data-series="pfe">
@@ -850,74 +858,77 @@
                 </div>
 
                 <!-- Table View -->
+                <!-- Task 7.4: Horizontal scroll wrapper -->
                 <div class="portfolio-table-wrapper glass-card" id="table-view">
-                    <table class="portfolio-table" id="portfolio-table">
+                    <!-- Task 9.5: Table accessibility with caption and scope attributes -->
+                    <table class="portfolio-table" id="portfolio-table" aria-label="Portfolio trades table">
+                        <caption class="visually-hidden">Portfolio trades with risk metrics and actions</caption>
                         <thead>
                             <tr>
-                                <th class="checkbox-col">
+                                <th scope="col" class="checkbox-col">
                                     <input type="checkbox" id="select-all" name="select-all" title="Select All" aria-label="Select All">
                                 </th>
-                                <th class="sortable" data-sort="id">
+                                <th scope="col" class="sortable" data-sort="id">
                                     <div class="th-content">
                                         <span>ID</span>
-                                        <i class="fas fa-sort sort-icon"></i>
+                                        <i class="fas fa-sort sort-icon" aria-hidden="true"></i>
                                     </div>
                                 </th>
-                                <th class="sortable" data-sort="instrument" data-col="instrument">
+                                <th scope="col" class="sortable" data-sort="instrument" data-col="instrument">
                                     <div class="th-content">
                                         <span>Instrument</span>
-                                        <i class="fas fa-sort sort-icon"></i>
+                                        <i class="fas fa-sort sort-icon" aria-hidden="true"></i>
                                     </div>
                                 </th>
-                                <th class="sortable" data-sort="product" data-col="product">
+                                <th scope="col" class="sortable" data-sort="product" data-col="product">
                                     <div class="th-content">
                                         <span>Product</span>
-                                        <i class="fas fa-sort sort-icon"></i>
+                                        <i class="fas fa-sort sort-icon" aria-hidden="true"></i>
                                     </div>
                                 </th>
-                                <th class="sortable" data-sort="counterparty" data-col="counterparty">
+                                <th scope="col" class="sortable" data-sort="counterparty" data-col="counterparty">
                                     <div class="th-content">
                                         <span>Counterparty</span>
-                                        <i class="fas fa-sort sort-icon"></i>
+                                        <i class="fas fa-sort sort-icon" aria-hidden="true"></i>
                                     </div>
                                 </th>
-                                <th class="sortable" data-sort="maturity" data-col="maturity">
+                                <th scope="col" class="sortable" data-sort="maturity" data-col="maturity">
                                     <div class="th-content">
                                         <span>Maturity</span>
-                                        <i class="fas fa-sort sort-icon"></i>
+                                        <i class="fas fa-sort sort-icon" aria-hidden="true"></i>
                                     </div>
                                 </th>
-                                <th class="sortable" data-sort="notional" data-col="notional">
+                                <th scope="col" class="sortable" data-sort="notional" data-col="notional">
                                     <div class="th-content">
                                         <span>Notional</span>
-                                        <i class="fas fa-sort sort-icon"></i>
+                                        <i class="fas fa-sort sort-icon" aria-hidden="true"></i>
                                     </div>
                                 </th>
-                                <th class="sortable" data-sort="pv" data-col="pv">
+                                <th scope="col" class="sortable" data-sort="pv" data-col="pv">
                                     <div class="th-content">
                                         <span>PV</span>
-                                        <i class="fas fa-sort sort-icon"></i>
+                                        <i class="fas fa-sort sort-icon" aria-hidden="true"></i>
                                     </div>
                                 </th>
-                                <th class="sortable" data-sort="delta" data-col="delta">
+                                <th scope="col" class="sortable" data-sort="delta" data-col="delta">
                                     <div class="th-content">
                                         <span>Delta</span>
-                                        <i class="fas fa-sort sort-icon"></i>
+                                        <i class="fas fa-sort sort-icon" aria-hidden="true"></i>
                                     </div>
                                 </th>
-                                <th data-col="gamma" style="display: none;">Gamma</th>
-                                <th class="sortable" data-sort="vega" data-col="vega">
+                                <th scope="col" data-col="gamma" style="display: none;">Gamma</th>
+                                <th scope="col" class="sortable" data-sort="vega" data-col="vega">
                                     <div class="th-content">
                                         <span>Vega</span>
-                                        <i class="fas fa-sort sort-icon"></i>
+                                        <i class="fas fa-sort sort-icon" aria-hidden="true"></i>
                                     </div>
                                 </th>
-                                <th data-col="theta" style="display: none;">Theta</th>
-                                <th data-col="rho" style="display: none;">Rho</th>
-                                <th data-col="cva" style="display: none;">CVA</th>
-                                <th data-col="pfe" style="display: none;">PFE</th>
-                                <th class="risk-col">Risk</th>
-                                <th class="actions-col">Actions</th>
+                                <th scope="col" data-col="theta" style="display: none;">Theta</th>
+                                <th scope="col" data-col="rho" style="display: none;">Rho</th>
+                                <th scope="col" data-col="cva" style="display: none;">CVA</th>
+                                <th scope="col" data-col="pfe" style="display: none;">PFE</th>
+                                <th scope="col" class="risk-col">Risk</th>
+                                <th scope="col" class="actions-col">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="portfolio-body">
@@ -2022,6 +2033,218 @@
                     </div>
                 </div>
             </section>
+
+            <!-- Pricer View (Task 4.1-4.8) -->
+            <section id="pricer-view" class="view">
+                <div class="pricer-container">
+                    <!-- Pricer Header -->
+                    <div class="pricer-header glass">
+                        <div class="pricer-title">
+                            <h2><i class="fas fa-calculator"></i> Interactive Pricer</h2>
+                            <p>Price derivatives with real-time Greeks calculation</p>
+                        </div>
+                    </div>
+
+                    <!-- Pricer Main Layout -->
+                    <div class="pricer-layout">
+                        <!-- Pricer Form Panel -->
+                        <div class="pricer-form-panel glass">
+                            <h3><i class="fas fa-sliders-h"></i> Parameters</h3>
+
+                            <!-- Instrument Type Selector -->
+                            <div class="form-group">
+                                <label for="pricer-instrument-type">Instrument Type</label>
+                                <select id="pricer-instrument-type" class="fancy-select">
+                                    <option value="equity_vanilla_option">Equity Vanilla Option</option>
+                                    <option value="fx_option">FX Option</option>
+                                    <option value="irs">Interest Rate Swap</option>
+                                </select>
+                            </div>
+
+                            <!-- Dynamic Form Container -->
+                            <div id="pricer-params-container">
+                                <!-- Equity Option Form (default) -->
+                                <div id="equity-option-form" class="pricer-form active">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="equity-spot">Spot Price</label>
+                                            <input type="number" id="equity-spot" value="100" step="0.01" min="0.01">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="equity-strike">Strike</label>
+                                            <input type="number" id="equity-strike" value="100" step="0.01" min="0.01">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="equity-expiry">Expiry (Years)</label>
+                                            <input type="number" id="equity-expiry" value="1" step="0.01" min="0">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="equity-vol">Volatility (%)</label>
+                                            <input type="number" id="equity-vol" value="20" step="0.1" min="0.1" max="500">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="equity-rate">Risk-Free Rate (%)</label>
+                                            <input type="number" id="equity-rate" value="5" step="0.01">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="equity-option-type">Option Type</label>
+                                            <select id="equity-option-type" class="fancy-select">
+                                                <option value="call">Call</option>
+                                                <option value="put">Put</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- FX Option Form -->
+                                <div id="fx-option-form" class="pricer-form">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="fx-spot">Spot Rate</label>
+                                            <input type="number" id="fx-spot" value="1.10" step="0.0001" min="0.0001">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="fx-strike">Strike</label>
+                                            <input type="number" id="fx-strike" value="1.10" step="0.0001" min="0.0001">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="fx-expiry">Expiry (Years)</label>
+                                            <input type="number" id="fx-expiry" value="1" step="0.01" min="0">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="fx-vol">Volatility (%)</label>
+                                            <input type="number" id="fx-vol" value="10" step="0.1" min="0.1" max="500">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="fx-dom-rate">Domestic Rate (%)</label>
+                                            <input type="number" id="fx-dom-rate" value="5" step="0.01">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="fx-for-rate">Foreign Rate (%)</label>
+                                            <input type="number" id="fx-for-rate" value="2" step="0.01">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="fx-option-type">Option Type</label>
+                                            <select id="fx-option-type" class="fancy-select">
+                                                <option value="call">Call</option>
+                                                <option value="put">Put</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- IRS Form -->
+                                <div id="irs-form" class="pricer-form">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="irs-notional">Notional</label>
+                                            <input type="number" id="irs-notional" value="1000000" step="1000" min="1">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="irs-fixed-rate">Fixed Rate (%)</label>
+                                            <input type="number" id="irs-fixed-rate" value="2.5" step="0.01">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="irs-tenor">Tenor (Years)</label>
+                                            <input type="number" id="irs-tenor" value="5" step="0.5" min="0.5">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Greeks Toggle -->
+                            <div class="form-group greeks-toggle">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="pricer-compute-greeks" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <span>Compute Greeks</span>
+                            </div>
+
+                            <!-- Calculate Button -->
+                            <button id="pricer-calculate-btn" class="primary-btn calculate-btn">
+                                <i class="fas fa-play"></i>
+                                <span>Calculate</span>
+                            </button>
+
+                            <!-- Error Message -->
+                            <div id="pricer-error" class="pricer-error" style="display: none;"></div>
+                        </div>
+
+                        <!-- Results Panel -->
+                        <div class="pricer-results-panel glass">
+                            <h3><i class="fas fa-chart-bar"></i> Results</h3>
+
+                            <!-- PV Display -->
+                            <div class="pv-display" id="pricer-pv-container">
+                                <div class="pv-label">Present Value</div>
+                                <div class="pv-value" id="pricer-pv">--</div>
+                            </div>
+
+                            <!-- Greeks Grid -->
+                            <div class="greeks-grid" id="pricer-greeks-container">
+                                <div class="greek-card">
+                                    <span class="greek-symbol">Δ</span>
+                                    <span class="greek-name">Delta</span>
+                                    <span class="greek-value" id="pricer-delta">--</span>
+                                </div>
+                                <div class="greek-card">
+                                    <span class="greek-symbol">Γ</span>
+                                    <span class="greek-name">Gamma</span>
+                                    <span class="greek-value" id="pricer-gamma">--</span>
+                                </div>
+                                <div class="greek-card">
+                                    <span class="greek-symbol">ν</span>
+                                    <span class="greek-name">Vega</span>
+                                    <span class="greek-value" id="pricer-vega">--</span>
+                                </div>
+                                <div class="greek-card">
+                                    <span class="greek-symbol">Θ</span>
+                                    <span class="greek-name">Theta</span>
+                                    <span class="greek-value" id="pricer-theta">--</span>
+                                </div>
+                                <div class="greek-card">
+                                    <span class="greek-symbol">ρ</span>
+                                    <span class="greek-name">Rho</span>
+                                    <span class="greek-value" id="pricer-rho">--</span>
+                                </div>
+                            </div>
+
+                            <!-- Calculation Info -->
+                            <div class="calc-info" id="pricer-calc-info" style="display: none;">
+                                <span class="calc-id"></span>
+                                <span class="calc-time"></span>
+                            </div>
+                        </div>
+
+                        <!-- History Panel -->
+                        <div class="pricer-history-panel glass">
+                            <h3><i class="fas fa-history"></i> History</h3>
+                            <div class="history-list" id="pricer-history">
+                                <div class="history-empty">
+                                    <i class="fas fa-clock"></i>
+                                    <p>No calculations yet</p>
+                                </div>
+                            </div>
+                            <button id="pricer-clear-history" class="secondary-btn" style="display: none;">
+                                <i class="fas fa-trash"></i> Clear History
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
 
@@ -2036,6 +2259,16 @@
     <!-- Celebration Particles -->
     <div class="celebration-container" id="celebration"></div>
 
+    <!-- Configuration Injection (values replaced by server) -->
+    <script id="fb-config">
+        window.__FB_CONFIG__ = {
+            debugMode: false,
+            logLevel: 'INFO'
+        };
+    </script>
+
+    <!-- Libraries -->
+    <script src="vendor/logger.js"></script>
     <script src="vendor/chart.umd.min.js" defer></script>
     <script src="app.js" defer></script>
 </body>

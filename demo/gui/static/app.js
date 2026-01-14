@@ -4,7 +4,24 @@
  * ========================================================
  */
 
-console.log('[DEBUG] app.js loading...');
+// ============================================
+// Logger Integration (Task 1.4)
+// ============================================
+
+// Use FB_Logger if available, fallback to console
+const Logger = window.FB_Logger || {
+    debug: (component, message, data) => {
+        if (window.__FB_CONFIG__?.debugMode) {
+            console.debug(`[DEBUG] [${component}] ${message}`, data || '');
+        }
+    },
+    info: (component, message, data) => console.info(`[INFO] [${component}] ${message}`, data || ''),
+    warn: (component, message, data) => console.warn(`[WARN] [${component}] ${message}`, data || ''),
+    error: (component, message, data) => console.error(`[ERROR] [${component}] ${message}`, data || ''),
+    isDebugEnabled: () => window.__FB_CONFIG__?.debugMode || false
+};
+
+Logger.debug('App', 'app.js loading...');
 
 const CSP_DEBUG = (() => {
     if (typeof window === 'undefined') return false;
@@ -17,9 +34,10 @@ const CSP_DEBUG = (() => {
     }
 })();
 
+// Task 11.2: CSP violation logging integration with Logger
 if (CSP_DEBUG && window.addEventListener) {
     window.addEventListener('securitypolicyviolation', (event) => {
-        console.warn('[CSP] violation', {
+        Logger.warn('CSP', 'Security policy violation', {
             blockedURI: event.blockedURI,
             violatedDirective: event.violatedDirective,
             effectiveDirective: event.effectiveDirective,
@@ -73,8 +91,136 @@ const state = {
         items: []
     },
     exposureData: [],
-    exposureRange: '1y'
+    exposureRange: '1y',
+    // Task 5: Loading state management
+    loading: {
+        portfolio: false,
+        risk: false,
+        exposure: false,
+        graph: false,
+        timeout: false
+    },
+    loadingTimers: {}
 };
+
+// ============================================
+// Task 5: Loading State Management
+// ============================================
+
+const LOADING_TIMEOUT_MS = 3000;
+
+/**
+ * Set loading state for a panel
+ * @param {string} panel - Panel name ('portfolio', 'risk', 'exposure', 'graph')
+ * @param {boolean} isLoading - Loading state
+ */
+function setLoadingState(panel, isLoading) {
+    state.loading[panel] = isLoading;
+
+    const overlayId = `${panel}-loading-overlay`;
+    let overlay = document.getElementById(overlayId);
+
+    if (isLoading) {
+        // Create overlay if it doesn't exist
+        if (!overlay) {
+            overlay = createLoadingOverlay(panel);
+        }
+        overlay.classList.add('active');
+        overlay.classList.remove('timeout');
+
+        // Set timeout for slow loading message
+        if (state.loadingTimers[panel]) {
+            clearTimeout(state.loadingTimers[panel]);
+        }
+        state.loadingTimers[panel] = setTimeout(() => {
+            if (state.loading[panel]) {
+                state.loading.timeout = true;
+                overlay.classList.add('timeout');
+                if (typeof FB_Logger !== 'undefined') {
+                    FB_Logger.warn('UI', `Loading ${panel} taking longer than expected`);
+                }
+            }
+        }, LOADING_TIMEOUT_MS);
+    } else {
+        // Clear timeout
+        if (state.loadingTimers[panel]) {
+            clearTimeout(state.loadingTimers[panel]);
+            delete state.loadingTimers[panel];
+        }
+
+        // Fade out overlay
+        if (overlay) {
+            overlay.classList.remove('active', 'timeout');
+        }
+
+        // Reset global timeout if all panels are loaded
+        const anyLoading = Object.keys(state.loading)
+            .filter(k => k !== 'timeout')
+            .some(k => state.loading[k]);
+        if (!anyLoading) {
+            state.loading.timeout = false;
+        }
+    }
+
+    updateGlobalLoadingIndicator();
+}
+
+/**
+ * Create loading overlay for a panel
+ * @param {string} panel - Panel name
+ * @returns {HTMLElement} Created overlay element
+ */
+function createLoadingOverlay(panel) {
+    const panelContainers = {
+        portfolio: '.portfolio-table-wrapper, #portfolio-table',
+        risk: '#dashboard-view .bento-grid',
+        exposure: '#exposure-chart',
+        graph: '#graph-container'
+    };
+
+    const containerSelector = panelContainers[panel];
+    const container = document.querySelector(containerSelector);
+    if (!container) return null;
+
+    // Ensure parent has position relative for absolute positioning
+    if (getComputedStyle(container.parentElement).position === 'static') {
+        container.parentElement.style.position = 'relative';
+    }
+
+    const overlay = document.createElement('div');
+    overlay.id = `${panel}-loading-overlay`;
+    overlay.className = 'loading-state-overlay';
+    overlay.innerHTML = `
+        <div class="loading-state-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-message">読み込み中...</div>
+            <div class="loading-timeout-message">${ERROR_MESSAGES.LOADING_SLOW}</div>
+        </div>
+    `;
+
+    container.parentElement.appendChild(overlay);
+    return overlay;
+}
+
+/**
+ * Update global loading indicator in top bar
+ */
+function updateGlobalLoadingIndicator() {
+    const refreshBtn = document.getElementById('refresh-btn');
+    if (!refreshBtn) return;
+
+    const anyLoading = Object.keys(state.loading)
+        .filter(k => k !== 'timeout')
+        .some(k => state.loading[k]);
+
+    if (anyLoading) {
+        refreshBtn.classList.add('loading');
+        refreshBtn.querySelector('i')?.classList.add('fa-spin');
+    } else {
+        refreshBtn.classList.remove('loading');
+        refreshBtn.querySelector('i')?.classList.remove('fa-spin');
+    }
+}
 
 // ============================================
 // Utility Functions
@@ -204,6 +350,120 @@ async function fetchJsonWithTimeout(url, options = {}, timeoutMs = 0, errorMessa
     } finally {
         clearTimeout(timeoutId);
     }
+}
+
+// ============================================
+// Task 3.3: FetchWrapper with Retry
+// ============================================
+
+/**
+ * Fetch JSON with exponential backoff retry
+ * @param {string} url - URL to fetch
+ * @param {Object} [options] - Fetch options
+ * @param {Object} [config] - Retry configuration
+ * @param {number} [config.maxRetries=3] - Maximum retry attempts
+ * @param {number} [config.retryDelay=1000] - Initial retry delay in ms
+ * @param {number} [config.timeout=30000] - Request timeout in ms
+ * @param {boolean} [config.showToast=true] - Show error toast
+ * @param {Function} [config.onRetry] - Callback on each retry
+ * @returns {Promise<any>} Parsed JSON response
+ */
+async function fetchWithRetry(url, options = {}, config = {}) {
+    const {
+        maxRetries = 3,
+        retryDelay = 1000,
+        timeout = 30000,
+        showToast: shouldShowToast = true,
+        onRetry
+    } = config;
+
+    let lastError = null;
+    let toastInstance = null;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+            const startTime = performance.now();
+            const response = await fetch(url, {
+                ...options,
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+
+            // Log response time for performance monitoring
+            const elapsed = performance.now() - startTime;
+            if (typeof FB_Logger !== 'undefined') {
+                if (elapsed > 1000) {
+                    FB_Logger.warn('API', `Slow API response: ${url}`, { elapsed: Math.round(elapsed) });
+                } else {
+                    FB_Logger.debug('API', `API request completed: ${url}`, { elapsed: Math.round(elapsed) });
+                }
+            }
+
+            if (!response.ok) {
+                const error = new Error(`HTTP ${response.status}`);
+                error.status = response.status;
+                throw error;
+            }
+
+            // Dismiss any retry toast on success
+            if (toastInstance) {
+                toastInstance.dismiss();
+            }
+
+            return await response.json();
+        } catch (error) {
+            lastError = error;
+
+            if (typeof FB_Logger !== 'undefined') {
+                FB_Logger.warn('API', `Request failed (attempt ${attempt + 1}/${maxRetries + 1})`, {
+                    url,
+                    error: error.message
+                });
+            }
+
+            // Don't retry on 4xx errors (client errors)
+            if (error.status && error.status >= 400 && error.status < 500) {
+                break;
+            }
+
+            // Retry with exponential backoff
+            if (attempt < maxRetries) {
+                const delay = retryDelay * Math.pow(2, attempt);
+
+                if (onRetry) {
+                    onRetry(attempt + 1);
+                }
+
+                // Show/update toast for retry
+                if (shouldShowToast && typeof showToast === 'function') {
+                    if (!toastInstance) {
+                        toastInstance = showToast('warning', '再試行中', `${attempt + 1}/${maxRetries}回目の再試行...`, 0, { showLoading: true });
+                    } else {
+                        toastInstance.updateMessage(`${attempt + 1}/${maxRetries}回目の再試行...`);
+                    }
+                }
+
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+    }
+
+    // All retries exhausted
+    if (toastInstance) {
+        toastInstance.dismiss();
+    }
+
+    if (shouldShowToast && typeof showErrorToast === 'function') {
+        showErrorToast(lastError, () => {
+            // Provide retry callback in toast
+            fetchWithRetry(url, options, config);
+        });
+    }
+
+    throw lastError;
 }
 
 function getFocusableElements(container) {
@@ -808,30 +1068,33 @@ function updateChartsTheme() {
 // ============================================
 
 async function fetchPortfolio() {
-    console.log('[DEBUG] fetchPortfolio() called');
+    Logger.debug('API', 'fetchPortfolio() called');
+    setLoadingState('portfolio', true);
     try {
-        console.log('[DEBUG] Fetching from', `${API_BASE}/portfolio`);
+        Logger.debug('API', 'Fetching from', { url: `${API_BASE}/portfolio` });
         const data = await fetchJson(`${API_BASE}/portfolio`, {}, 'Failed to fetch portfolio');
-        console.log('[DEBUG] Portfolio data received:', data);
-        
+        Logger.debug('API', 'Portfolio data received', { tradeCount: data.trade_count });
+
         updateValue('total-pv', data.total_pv);
         document.getElementById('trade-count').textContent = data.trade_count;
-        
+
         // Enrich data with additional fields for demo
         state.portfolio.data = enrichPortfolioData(data.trades);
         state.portfolio.filteredData = [...state.portfolio.data];
-        
+
         // Populate counterparty filter dropdown
         populateCounterpartyFilter();
-        
+
         renderCurrentView();
-        
+
         updateLastUpdated();
-        console.log('[DEBUG] fetchPortfolio() complete');
+        Logger.debug('API', 'fetchPortfolio() complete');
         return data;
     } catch (error) {
-        console.error('Failed to fetch portfolio:', error);
+        Logger.error('API', 'Failed to fetch portfolio', { error: error.message });
         showToast('Failed to fetch portfolio', 'error');
+    } finally {
+        setLoadingState('portfolio', false);
     }
 }
 
@@ -845,32 +1108,33 @@ function populateCounterpartyFilter() {
 }
 
 async function fetchRiskMetrics() {
+    setLoadingState('risk', true);
     try {
         const data = await fetchJson(`${API_BASE}/risk`, {}, 'Failed to fetch risk metrics');
-        
+
         // Dashboard updates
         updateValue('cva', data.cva);
         updateValue('dva', data.dva);
         updateValue('fva', data.fva);
         updateValue('total-xva', data.total_xva);
-        
+
         // Risk view updates
         document.getElementById('risk-cva').textContent = formatCurrency(data.cva);
         document.getElementById('risk-dva').textContent = formatCurrency(data.dva);
         document.getElementById('risk-fva').textContent = formatCurrency(data.fva);
         document.getElementById('risk-total-xva').textContent = formatCurrency(data.total_xva);
-        
+
         // Exposure metrics
         document.getElementById('risk-ee').textContent = formatCurrency(data.ee);
         document.getElementById('risk-epe').textContent = formatCurrency(data.epe);
         document.getElementById('risk-pfe').textContent = formatCurrency(data.pfe);
-        
+
         // Update bars
         const maxXva = Math.max(Math.abs(data.cva), Math.abs(data.dva), Math.abs(data.fva)) * 1.2;
         updateBar('cva-bar', Math.abs(data.cva), maxXva);
         updateBar('dva-bar', Math.abs(data.dva), maxXva);
         updateBar('fva-bar', Math.abs(data.fva), maxXva);
-        
+
         // Update XVA breakdown bar
         const totalAbs = Math.abs(data.cva) + Math.abs(data.dva) + Math.abs(data.fva);
         if (totalAbs > 0) {
@@ -878,43 +1142,46 @@ async function fetchRiskMetrics() {
             document.getElementById('xva-dva-bar').style.width = (Math.abs(data.dva) / totalAbs * 100) + '%';
             document.getElementById('xva-fva-bar').style.width = (Math.abs(data.fva) / totalAbs * 100) + '%';
         }
-        
+
         // Update ring
         updateRing('fva-ring', Math.abs(data.fva), maxXva);
-        
+
         // Update gauges
         updateGauge('ee', data.ee, data.pfe);
         updateGauge('epe', data.epe, data.pfe);
         updateGauge('pfe', data.pfe, data.pfe);
-        
+
         // Update donut charts
         updateRiskDonut(data);
         updateXvaPie(data);
-        
+
         // Update risk total in donut center
         document.getElementById('risk-total').textContent = formatCurrency(data.total_xva);
-        
+
         updateLastUpdated();
         return data;
     } catch (error) {
         console.error('Failed to fetch risk metrics:', error);
         showToast('Failed to fetch risk metrics', 'error');
+    } finally {
+        setLoadingState('risk', false);
     }
 }
 
 async function fetchExposure() {
+    setLoadingState('exposure', true);
     try {
         const data = await fetchJson(`${API_BASE}/exposure`, {}, 'Failed to fetch exposure');
-        
+
         // Store raw data for range filtering
         state.exposureData = data.time_series || [];
-        
+
         // Apply range filter
         const filteredData = filterExposureByRange(state.exposureData, state.exposureRange);
-        
+
         updateExposureChart(filteredData);
         updateMainExposureChart(filteredData);
-        
+
         // Update legend values with filtered data
         if (filteredData.length > 0) {
             const latest = filteredData[filteredData.length - 1];
@@ -922,23 +1189,25 @@ async function fetchExposure() {
             document.getElementById('legend-ee').textContent = formatCurrency(latest.ee);
             document.getElementById('legend-epe').textContent = formatCurrency(latest.epe);
             document.getElementById('legend-ene').textContent = formatCurrency(latest.ene);
-            
+
             // Update exposure stats with filtered data
             const peakPfe = Math.max(...filteredData.map(d => d.pfe));
             const avgEpe = filteredData.reduce((sum, d) => sum + d.epe, 0) / filteredData.length;
             const peakIndex = filteredData.findIndex(d => d.pfe === peakPfe);
-            
+
             document.getElementById('peak-pfe').textContent = formatCurrency(peakPfe);
             document.getElementById('avg-epe').textContent = formatCurrency(avgEpe);
             document.getElementById('time-to-peak').textContent = filteredData[peakIndex]?.time.toFixed(1) + 'Y';
             document.getElementById('max-maturity').textContent = filteredData[filteredData.length - 1]?.time.toFixed(1) + 'Y';
         }
-        
+
         updateLastUpdated();
         return data;
     } catch (error) {
         console.error('Failed to fetch exposure:', error);
         showToast('Failed to fetch exposure', 'error');
+    } finally {
+        setLoadingState('exposure', false);
     }
 }
 
@@ -1347,10 +1616,11 @@ function renderPortfolioTable() {
         const productLabel = t.product ? t.product.charAt(0).toUpperCase() + t.product.slice(1) : '-';
         const productClass = t.product || 'other';
         
+        // Task 8.2: Add tabindex and aria-label for keyboard navigation
         return `
-        <tr class="${isSelected ? 'selected' : ''}" data-id="${t.id}">
+        <tr class="${isSelected ? 'selected' : ''}" data-id="${t.id}" tabindex="0" role="row" aria-label="Trade ${t.id}: ${t.instrument}, PV ${formatCurrency(t.pv)}">
             <td class="checkbox-col">
-                <input type="checkbox" class="row-checkbox" data-id="${t.id}" ${isSelected ? 'checked' : ''}>
+                <input type="checkbox" class="row-checkbox" data-id="${t.id}" ${isSelected ? 'checked' : ''} aria-label="Select trade ${t.id}">
             </td>
             <td><code>${t.id}</code></td>
             ${cols.includes('instrument') ? `<td>${t.instrument}</td>` : ''}
@@ -1607,6 +1877,25 @@ function attachRowEvents() {
         row.addEventListener('click', (e) => {
             if (e.target.closest('input, button')) return;
             openTradeDrawer(row.dataset.id);
+        });
+
+        // Task 8.2: Enter key opens trade detail view
+        row.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.target.closest('input, button')) {
+                e.preventDefault();
+                openTradeDrawer(row.dataset.id);
+            }
+            // Arrow key navigation between rows
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                const nextRow = row.nextElementSibling;
+                if (nextRow) nextRow.focus();
+            }
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                const prevRow = row.previousElementSibling;
+                if (prevRow) prevRow.focus();
+            }
         });
     });
 }
@@ -2306,47 +2595,236 @@ function initChartControls() {
 }
 
 // ============================================
-// WebSocket
+// Task 2: WebSocket with Stability Enhancements
 // ============================================
 
-function connectWebSocket() {
+// WebSocket connection state (Task 2.1)
+const wsState = {
+    reconnectAttempts: 0,
+    maxReconnectAttempts: 10,
+    baseReconnectDelay: 1000,    // 1 second
+    maxReconnectDelay: 30000,    // 30 seconds (Requirement 3.2)
+    heartbeatInterval: null,
+    heartbeatTimeout: null,
+    heartbeatIntervalMs: 30000,  // 30 seconds (Requirement 3.4)
+    pongTimeoutMs: 5000,         // 5 seconds for pong response
+    isReconnecting: false
+};
+
+/**
+ * Calculate exponential backoff delay (Task 2.1, Requirement 3.3)
+ * @param {number} attempt - Current reconnection attempt number
+ * @returns {number} Delay in milliseconds
+ */
+function calculateBackoffDelay(attempt) {
+    // Exponential backoff with jitter
+    const exponentialDelay = wsState.baseReconnectDelay * Math.pow(2, attempt);
+    const jitter = Math.random() * 1000; // Add 0-1s random jitter
+    return Math.min(exponentialDelay + jitter, wsState.maxReconnectDelay);
+}
+
+/**
+ * Update connection status indicator (Task 2.2, 3.4, Requirement 3.1, 4.4, 4.5)
+ * @param {'connecting'|'connected'|'disconnected'|'error'|'reconnecting'} status
+ * @param {string} [message] - Optional status message
+ */
+let previousConnectionStatus = null;
+let reconnectingToast = null;
+
+function updateConnectionStatus(status, message) {
     const statusEl = document.getElementById('connection-status');
+    if (!statusEl) return;
+
+    // Remove all status classes
+    statusEl.classList.remove('connected', 'error', 'connecting', 'reconnecting', 'disconnected');
+
+    const spanEl = statusEl.querySelector('span');
+
+    // Task 3.4: Show Japanese messages
+    switch (status) {
+        case 'connected':
+            statusEl.classList.add('connected');
+            spanEl.textContent = message || '接続済み';
+            // Show reconnected toast if previously disconnected/reconnecting
+            if (previousConnectionStatus === 'reconnecting' || previousConnectionStatus === 'disconnected') {
+                if (reconnectingToast) {
+                    reconnectingToast.dismiss();
+                    reconnectingToast = null;
+                }
+                showReconnectedToast();
+            }
+            break;
+        case 'connecting':
+            statusEl.classList.add('connecting');
+            spanEl.textContent = message || '接続中...';
+            break;
+        case 'reconnecting':
+            statusEl.classList.add('reconnecting');
+            const retryMsg = `再接続中 (${wsState.reconnectAttempts}/${wsState.maxReconnectAttempts})...`;
+            spanEl.textContent = message || retryMsg;
+            // Show reconnecting toast with retry info
+            if (!reconnectingToast) {
+                const delay = calculateBackoffDelay(wsState.reconnectAttempts - 1) / 1000;
+                reconnectingToast = showToast('warning', ERROR_MESSAGES.WS_RECONNECTING,
+                    `${Math.round(delay)}秒後に再試行します`, 0, { showLoading: true });
+            } else {
+                const delay = calculateBackoffDelay(wsState.reconnectAttempts - 1) / 1000;
+                reconnectingToast.updateMessage(`${Math.round(delay)}秒後に再試行します`);
+            }
+            break;
+        case 'disconnected':
+            statusEl.classList.add('disconnected');
+            spanEl.textContent = message || ERROR_MESSAGES.WS_DISCONNECTED;
+            break;
+        case 'error':
+            statusEl.classList.add('error');
+            spanEl.textContent = message || '接続エラー';
+            if (reconnectingToast) {
+                reconnectingToast.dismiss();
+                reconnectingToast = null;
+            }
+            break;
+    }
+
+    previousConnectionStatus = status;
+}
+
+/**
+ * Start heartbeat mechanism (Task 2.3, Requirement 3.4)
+ */
+function startHeartbeat() {
+    stopHeartbeat(); // Clear any existing heartbeat
+
+    wsState.heartbeatInterval = setInterval(() => {
+        if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+            // Send ping message
+            try {
+                state.ws.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
+                Logger.debug('WebSocket', 'Heartbeat ping sent');
+
+                // Set timeout for pong response
+                wsState.heartbeatTimeout = setTimeout(() => {
+                    Logger.warn('WebSocket', 'Heartbeat pong timeout, reconnecting...');
+                    state.ws.close();
+                }, wsState.pongTimeoutMs);
+            } catch (e) {
+                Logger.error('WebSocket', 'Failed to send heartbeat', { error: e.message });
+            }
+        }
+    }, wsState.heartbeatIntervalMs);
+}
+
+/**
+ * Stop heartbeat mechanism
+ */
+function stopHeartbeat() {
+    if (wsState.heartbeatInterval) {
+        clearInterval(wsState.heartbeatInterval);
+        wsState.heartbeatInterval = null;
+    }
+    if (wsState.heartbeatTimeout) {
+        clearTimeout(wsState.heartbeatTimeout);
+        wsState.heartbeatTimeout = null;
+    }
+}
+
+/**
+ * Handle pong response from server
+ */
+function handlePong() {
+    if (wsState.heartbeatTimeout) {
+        clearTimeout(wsState.heartbeatTimeout);
+        wsState.heartbeatTimeout = null;
+    }
+    Logger.debug('WebSocket', 'Heartbeat pong received');
+}
+
+/**
+ * Connect to WebSocket with stability enhancements
+ */
+function connectWebSocket() {
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    
-    state.ws = new WebSocket(`${protocol}//${location.host}${API_BASE}/ws`);
-    
+    const wsUrl = `${protocol}//${location.host}${API_BASE}/ws`;
+
+    updateConnectionStatus(wsState.isReconnecting ? 'reconnecting' : 'connecting');
+
+    try {
+        state.ws = new WebSocket(wsUrl);
+    } catch (e) {
+        Logger.error('WebSocket', 'Failed to create WebSocket', { error: e.message });
+        scheduleReconnect();
+        return;
+    }
+
     state.ws.onopen = () => {
-        statusEl.classList.remove('error');
-        statusEl.classList.add('connected');
-        statusEl.querySelector('span').textContent = 'Connected';
+        Logger.info('WebSocket', 'Connection established');
+        wsState.reconnectAttempts = 0;
+        wsState.isReconnecting = false;
+        updateConnectionStatus('connected');
         showToast('Connected to server', 'success');
+        startHeartbeat();
     };
-    
-    state.ws.onclose = () => {
-        statusEl.classList.remove('connected');
-        statusEl.classList.add('error');
-        statusEl.querySelector('span').textContent = 'Disconnected';
-        setTimeout(connectWebSocket, 3000);
+
+    state.ws.onclose = (event) => {
+        Logger.info('WebSocket', 'Connection closed', { code: event.code, reason: event.reason });
+        stopHeartbeat();
+        updateConnectionStatus('disconnected');
+
+        // Only reconnect if not a normal closure
+        if (event.code !== 1000) {
+            scheduleReconnect();
+        }
     };
-    
-    state.ws.onerror = () => {
-        statusEl.classList.remove('connected');
-        statusEl.classList.add('error');
-        statusEl.querySelector('span').textContent = 'Error';
+
+    state.ws.onerror = (event) => {
+        Logger.error('WebSocket', 'Connection error');
+        updateConnectionStatus('error');
     };
-    
+
     state.ws.onmessage = (event) => {
         try {
             const data = JSON.parse(event.data);
             handleWsMessage(data);
         } catch (e) {
-            console.error('WS parse error:', e);
+            Logger.error('WebSocket', 'Failed to parse message', { error: e.message });
         }
     };
 }
 
+/**
+ * Schedule reconnection with exponential backoff (Task 2.1)
+ */
+function scheduleReconnect() {
+    if (wsState.reconnectAttempts >= wsState.maxReconnectAttempts) {
+        Logger.error('WebSocket', 'Max reconnection attempts reached');
+        updateConnectionStatus('error', 'Connection failed');
+        showToast('Unable to connect to server. Please refresh the page.', 'error');
+        return;
+    }
+
+    wsState.isReconnecting = true;
+    wsState.reconnectAttempts++;
+    const delay = calculateBackoffDelay(wsState.reconnectAttempts - 1);
+
+    Logger.info('WebSocket', `Scheduling reconnect in ${Math.round(delay / 1000)}s`, {
+        attempt: wsState.reconnectAttempts,
+        maxAttempts: wsState.maxReconnectAttempts
+    });
+
+    updateConnectionStatus('reconnecting');
+
+    setTimeout(connectWebSocket, delay);
+}
+
 function handleWsMessage(data) {
     const messageType = data.type || data.update_type;
+
+    // Handle pong messages for heartbeat
+    if (messageType === 'pong') {
+        handlePong();
+        return;
+    }
+
     if (messageType === 'risk' && data.data) {
         updateValue('total-pv', data.data.total_pv);
         updateValue('cva', data.data.cva);
@@ -3015,17 +3493,135 @@ function initMCPathsChart() {
     });
 }
 
+// ============================================
+// Task 4: Exposure Chart Zoom Controls (Requirement 2)
+// ============================================
+
+// Zoom state for Exposure Chart
+const zoomState = {
+    level: 1.0,        // Current zoom level (1.0 = 100%)
+    minLevel: 0.5,     // Minimum zoom (50%)
+    maxLevel: 2.0,     // Maximum zoom (200%)
+    step: 0.2          // Zoom step (20%)
+};
+
+/**
+ * Update zoom indicator display
+ * @param {number} level - Current zoom level (0.5 to 2.0)
+ */
+function updateZoomIndicator(level) {
+    const indicator = document.getElementById('zoom-indicator');
+    if (indicator) {
+        indicator.textContent = `${Math.round(level * 100)}%`;
+    }
+}
+
+/**
+ * Apply zoom to the exposure chart by adjusting axis scales
+ * @param {number} level - Zoom level (0.5 to 2.0)
+ */
+function applyChartZoom(level) {
+    const chart = state.charts.exposure;
+    if (!chart) {
+        Logger.warn('Zoom', 'Exposure chart not available');
+        return;
+    }
+
+    try {
+        // Store original min/max values if not already stored
+        if (!zoomState.originalXMin) {
+            const xScale = chart.scales.x;
+            const yScale = chart.scales.y;
+            zoomState.originalXMin = xScale.min;
+            zoomState.originalXMax = xScale.max;
+            zoomState.originalYMin = yScale.min || 0;
+            zoomState.originalYMax = yScale.max;
+        }
+
+        // Calculate visible range based on zoom level
+        const xRange = zoomState.originalXMax - zoomState.originalXMin;
+        const yRange = zoomState.originalYMax - zoomState.originalYMin;
+
+        // Calculate new ranges (smaller range = more zoom)
+        const newXRange = xRange / level;
+        const newYRange = yRange / level;
+
+        // Center the view (Requirement 2.4: maintain center point)
+        const xCenter = (zoomState.originalXMin + zoomState.originalXMax) / 2;
+        const yCenter = (zoomState.originalYMin + zoomState.originalYMax) / 2;
+
+        // Apply new scales
+        chart.options.scales.x.min = xCenter - newXRange / 2;
+        chart.options.scales.x.max = xCenter + newXRange / 2;
+        chart.options.scales.y.min = Math.max(0, yCenter - newYRange / 2);
+        chart.options.scales.y.max = yCenter + newYRange / 2;
+
+        chart.update('none');
+        updateZoomIndicator(level);
+        Logger.debug('Zoom', 'Applied zoom', { level: `${Math.round(level * 100)}%` });
+    } catch (e) {
+        Logger.error('Zoom', 'Failed to apply zoom', { error: e.message });
+    }
+}
+
+/**
+ * Zoom in by 20% (Requirement 2.1)
+ */
+function zoomIn() {
+    const newLevel = Math.min(zoomState.level + zoomState.step, zoomState.maxLevel);
+    if (newLevel !== zoomState.level) {
+        zoomState.level = newLevel;
+        applyChartZoom(zoomState.level);
+    }
+}
+
+/**
+ * Zoom out by 20% (Requirement 2.2)
+ */
+function zoomOut() {
+    const newLevel = Math.max(zoomState.level - zoomState.step, zoomState.minLevel);
+    if (newLevel !== zoomState.level) {
+        zoomState.level = newLevel;
+        applyChartZoom(zoomState.level);
+    }
+}
+
+/**
+ * Reset zoom to 100% and center position (Requirement 2.3)
+ */
+function zoomReset() {
+    zoomState.level = 1.0;
+
+    const chart = state.charts.exposure;
+    if (chart && zoomState.originalXMin !== undefined) {
+        // Restore original scales
+        chart.options.scales.x.min = zoomState.originalXMin;
+        chart.options.scales.x.max = zoomState.originalXMax;
+        chart.options.scales.y.min = zoomState.originalYMin;
+        chart.options.scales.y.max = zoomState.originalYMax;
+        chart.update('none');
+    }
+
+    updateZoomIndicator(1.0);
+    Logger.debug('Zoom', 'Reset to 100%');
+}
+
 function initZoomControls() {
-    const zoomIn = document.getElementById('zoom-in');
-    const zoomOut = document.getElementById('zoom-out');
-    const zoomReset = document.getElementById('zoom-reset');
-    
-    if (!zoomIn || !zoomOut || !zoomReset) return;
-    
-    // Placeholder - would integrate with chart zoom plugin
-    zoomIn.addEventListener('click', () => console.log('Zoom in'));
-    zoomOut.addEventListener('click', () => console.log('Zoom out'));
-    zoomReset.addEventListener('click', () => console.log('Reset zoom'));
+    const zoomInBtn = document.getElementById('zoom-in');
+    const zoomOutBtn = document.getElementById('zoom-out');
+    const zoomResetBtn = document.getElementById('zoom-reset');
+
+    if (!zoomInBtn || !zoomOutBtn || !zoomResetBtn) return;
+
+    // Task 4.1: Zoom in/out/reset event handlers
+    zoomInBtn.addEventListener('click', zoomIn);
+    zoomOutBtn.addEventListener('click', zoomOut);
+    zoomResetBtn.addEventListener('click', zoomReset);
+
+    // Initialise zoom indicator
+    updateZoomIndicator(zoomState.level);
+
+    Logger.debug('UI', 'Zoom controls initialised');
 }
 
 function initExposureLegend() {
@@ -3399,14 +3995,80 @@ function addScenarioToHistory(params, result) {
 // Toast Notifications
 // ============================================
 
-function showToast(typeOrMessage, titleOrType = 'info', message = '', duration = 5000) {
+// ============================================
+// Task 3.2: Japanese Error Messages
+// ============================================
+
+const ERROR_MESSAGES = {
+    NETWORK: 'ネットワークエラー: サーバーに接続できません',
+    SERVER_5XX: 'サーバーエラー: しばらく経ってから再試行してください',
+    NOT_FOUND: 'データが見つかりません',
+    BAD_REQUEST: 'リクエストが不正です',
+    UNAUTHORIZED: '認証が必要です',
+    TIMEOUT: 'リクエストがタイムアウトしました',
+    WS_DISCONNECTED: 'オフライン',
+    WS_RECONNECTED: '接続が復旧しました',
+    WS_RECONNECTING: '再接続中...',
+    LOADING_SLOW: '読み込みに時間がかかっています...'
+};
+
+/**
+ * Get appropriate error message based on error type
+ * @param {Error|Response} error - Error object or Response
+ * @returns {{ title: string, message: string }}
+ */
+function getErrorMessage(error) {
+    if (error instanceof TypeError || error.message?.includes('fetch')) {
+        return { title: 'エラー', message: ERROR_MESSAGES.NETWORK };
+    }
+
+    if (error.name === 'AbortError') {
+        return { title: 'タイムアウト', message: ERROR_MESSAGES.TIMEOUT };
+    }
+
+    if (error.status) {
+        const status = error.status;
+        if (status >= 500) {
+            return { title: 'サーバーエラー', message: ERROR_MESSAGES.SERVER_5XX };
+        }
+        if (status === 404) {
+            return { title: '404', message: ERROR_MESSAGES.NOT_FOUND };
+        }
+        if (status === 400) {
+            return { title: '400', message: ERROR_MESSAGES.BAD_REQUEST };
+        }
+        if (status === 401 || status === 403) {
+            return { title: '認証エラー', message: ERROR_MESSAGES.UNAUTHORIZED };
+        }
+        return { title: `エラー ${status}`, message: `HTTPエラーが発生しました (${status})` };
+    }
+
+    return { title: 'エラー', message: error.message || 'エラーが発生しました' };
+}
+
+// ============================================
+// Task 3.1: Enhanced Toast Notifications
+// ============================================
+
+/**
+ * Show toast notification with optional action button
+ * @param {string|Object} typeOrMessage - Toast type or legacy message
+ * @param {string} [titleOrType] - Title or legacy type
+ * @param {string} [message] - Message content
+ * @param {number} [duration] - Auto-dismiss duration (0 for no auto-dismiss)
+ * @param {Object} [options] - Extended options
+ * @param {Object} [options.action] - Action button config { label: string, onClick: () => void }
+ * @param {boolean} [options.showLoading] - Show loading spinner
+ * @returns {Object} ToastInstance with dismiss() and setLoading() methods
+ */
+function showToast(typeOrMessage, titleOrType = 'info', message = '', duration = 5000, options = {}) {
     const container = document.getElementById('toast-container');
-    if (!container) return;
-    
-    // Support both old format: showToast('message', 'type') 
+    if (!container) return null;
+
+    // Support both old format: showToast('message', 'type')
     // and new format: showToast('type', 'title', 'message')
     let type, title, msg;
-    
+
     if (message === '' && typeof titleOrType === 'string' && ['success', 'error', 'warning', 'info'].includes(titleOrType)) {
         // Old format: showToast('message', 'type')
         msg = typeOrMessage;
@@ -3418,35 +4080,122 @@ function showToast(typeOrMessage, titleOrType = 'info', message = '', duration =
         title = titleOrType;
         msg = message;
     }
-    
+
     const icons = {
         success: 'fa-check',
         warning: 'fa-exclamation-triangle',
         error: 'fa-times-circle',
         info: 'fa-info-circle'
     };
-    
+
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
+    toast.setAttribute('role', 'alert');
+    toast.setAttribute('aria-live', 'polite');
+
+    // Build HTML with optional action button and loading indicator
+    let actionsHtml = '';
+    if (options.action) {
+        actionsHtml = `
+            <div class="toast-actions">
+                <button class="toast-action-btn" type="button">${options.action.label}</button>
+            </div>
+        `;
+    }
+
+    let loadingHtml = options.showLoading ? '<span class="toast-loading"><i class="fas fa-spinner fa-spin"></i></span>' : '';
+
     toast.innerHTML = `
         <div class="toast-icon"><i class="fas ${icons[type] || icons.info}"></i></div>
         <div class="toast-content">
             <div class="toast-title">${title}</div>
             <div class="toast-message">${msg}</div>
+            ${actionsHtml}
         </div>
-        <button class="toast-close"><i class="fas fa-times"></i></button>
+        ${loadingHtml}
+        <button class="toast-close" aria-label="閉じる"><i class="fas fa-times"></i></button>
     `;
-    
+
     container.appendChild(toast);
-    
+
     const closeBtn = toast.querySelector('.toast-close');
     closeBtn.addEventListener('click', () => removeToast(toast));
-    
-    if (duration > 0) {
-        setTimeout(() => removeToast(toast), duration);
+
+    // Attach action button handler
+    if (options.action) {
+        const actionBtn = toast.querySelector('.toast-action-btn');
+        if (actionBtn) {
+            actionBtn.addEventListener('click', () => {
+                options.action.onClick?.();
+            });
+        }
     }
-    
-    return toast;
+
+    let timeoutId = null;
+    if (duration > 0) {
+        timeoutId = setTimeout(() => removeToast(toast), duration);
+    }
+
+    // Return ToastInstance for programmatic control
+    return {
+        element: toast,
+        dismiss: function() {
+            if (timeoutId) clearTimeout(timeoutId);
+            removeToast(toast);
+        },
+        setLoading: function(loading) {
+            let spinner = toast.querySelector('.toast-loading');
+            if (loading && !spinner) {
+                spinner = document.createElement('span');
+                spinner.className = 'toast-loading';
+                spinner.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                toast.insertBefore(spinner, toast.querySelector('.toast-close'));
+            } else if (!loading && spinner) {
+                spinner.remove();
+            }
+        },
+        updateMessage: function(newMsg) {
+            const msgEl = toast.querySelector('.toast-message');
+            if (msgEl) msgEl.textContent = newMsg;
+        }
+    };
+}
+
+/**
+ * Show error toast with optional retry action
+ * @param {Error} error - Error object
+ * @param {Function} [onRetry] - Retry callback
+ * @returns {Object} ToastInstance
+ */
+function showErrorToast(error, onRetry) {
+    const { title, message } = getErrorMessage(error);
+    const options = {};
+
+    if (typeof onRetry === 'function') {
+        options.action = {
+            label: '再試行',
+            onClick: onRetry
+        };
+    }
+
+    return showToast('error', title, message, onRetry ? 0 : 5000, options);
+}
+
+/**
+ * Show success toast
+ * @param {string} message - Success message
+ * @returns {Object} ToastInstance
+ */
+function showSuccessToast(message) {
+    return showToast('success', '成功', message, 3000);
+}
+
+/**
+ * Show reconnection toast
+ * @returns {Object} ToastInstance
+ */
+function showReconnectedToast() {
+    return showToast('success', '接続復旧', ERROR_MESSAGES.WS_RECONNECTED, 3000);
 }
 
 function removeToast(toast) {
@@ -3705,6 +4454,22 @@ const themeCustomizer = {
                 const toggle = document.getElementById('reduce-motion');
                 if (toggle) toggle.checked = event.matches;
                 applyMotionPreference();
+            });
+        }
+
+        // Task 10.2: Listen for system color scheme changes when in Auto mode
+        const colorSchemeMedia = window.matchMedia('(prefers-color-scheme: dark)');
+        if (colorSchemeMedia) {
+            colorSchemeMedia.addEventListener('change', (event) => {
+                const currentMode = localStorage.getItem('themeMode');
+                if (currentMode === 'auto') {
+                    document.body.classList.remove('light-theme', 'oled-theme');
+                    if (!event.matches) {
+                        document.body.classList.add('light-theme');
+                    }
+                    updateChartsTheme();
+                    Logger.debug('Theme', 'System color scheme changed', { prefersDark: event.matches });
+                }
             });
         }
     }
@@ -4759,60 +5524,61 @@ function initVisualEffects() {
 // ============================================
 
 async function init() {
-    console.log('[DEBUG] init() called');
+    Logger.debug('App', 'init() called');
     try {
         // Initialize systems
-        console.log('[DEBUG] Creating CommandPalette...');
+        Logger.debug('App', 'Creating CommandPalette...');
         new CommandPalette();
-        
+
         // Initialize advanced features (with error handling for each)
-        try { alertSystem.init(); } catch(e) { console.error('alertSystem init error:', e); }
-        try { themeCustomizer.init(); } catch(e) { console.error('themeCustomizer init error:', e); }
-        try { whatIfSimulator.init(); } catch(e) { console.error('whatIfSimulator init error:', e); }
-        try { reportGenerator.init(); } catch(e) { console.error('reportGenerator init error:', e); }
-        try { aiAssistant.init(); } catch(e) { console.error('aiAssistant init error:', e); }
-        try { analytics3D.init(); } catch(e) { console.error('analytics3D init error:', e); }
-        try { initKeyboardShortcuts(); } catch(e) { console.error('initKeyboardShortcuts error:', e); }
-        try { applyIconButtonLabels(); } catch(e) { console.error('applyIconButtonLabels error:', e); }
-        try { applyMotionPreference(); } catch(e) { console.error('applyMotionPreference error:', e); }
-        
+        try { alertSystem.init(); } catch(e) { Logger.error('App', 'alertSystem init error', { error: e.message }); }
+        try { themeCustomizer.init(); } catch(e) { Logger.error('App', 'themeCustomizer init error', { error: e.message }); }
+        try { whatIfSimulator.init(); } catch(e) { Logger.error('App', 'whatIfSimulator init error', { error: e.message }); }
+        try { reportGenerator.init(); } catch(e) { Logger.error('App', 'reportGenerator init error', { error: e.message }); }
+        try { aiAssistant.init(); } catch(e) { Logger.error('App', 'aiAssistant init error', { error: e.message }); }
+        try { analytics3D.init(); } catch(e) { Logger.error('App', 'analytics3D init error', { error: e.message }); }
+        try { initKeyboardShortcuts(); } catch(e) { Logger.error('App', 'initKeyboardShortcuts error', { error: e.message }); }
+        try { applyIconButtonLabels(); } catch(e) { Logger.error('App', 'applyIconButtonLabels error', { error: e.message }); }
+        try { applyMotionPreference(); } catch(e) { Logger.error('App', 'applyMotionPreference error', { error: e.message }); }
+
         // Initialize UI
-        console.log('[DEBUG] Initializing UI...');
+        Logger.debug('App', 'Initializing UI...');
         initTheme();
         initNavigation();
         initPortfolioControls();
         initScenarioControls();
-        try { initEnhancedScenarioControls(); } catch(e) { console.error('initEnhancedScenarioControls error:', e); }
+        try { initEnhancedScenarioControls(); } catch(e) { Logger.error('App', 'initEnhancedScenarioControls error', { error: e.message }); }
         initQuickActions();
         initChartControls();
-        
+
         // Initialize enhanced views
-        try { initRiskView(); } catch(e) { console.error('initRiskView error:', e); }
-        try { initExposureView(); } catch(e) { console.error('initExposureView error:', e); }
-        try { initImpactChart(); } catch(e) { console.error('initImpactChart error:', e); }
-        
+        try { initRiskView(); } catch(e) { Logger.error('App', 'initRiskView error', { error: e.message }); }
+        try { initExposureView(); } catch(e) { Logger.error('App', 'initExposureView error', { error: e.message }); }
+        try { initImpactChart(); } catch(e) { Logger.error('App', 'initImpactChart error', { error: e.message }); }
+        try { initPricer(); } catch(e) { Logger.error('App', 'initPricer error', { error: e.message }); }
+
         // Load data
-        console.log('[DEBUG] Loading data...');
+        Logger.debug('App', 'Loading data...');
         showLoading('Loading dashboard...');
-        
+
         try {
-            console.log('[DEBUG] Fetching portfolio, risk, exposure...');
+            Logger.debug('API', 'Fetching portfolio, risk, exposure...');
             await Promise.all([fetchPortfolio(), fetchRiskMetrics(), fetchExposure()]);
-            console.log('[DEBUG] Data fetch complete!');
+            Logger.debug('API', 'Data fetch complete!');
         } catch (e) {
-            console.error('Initial load failed:', e);
+            Logger.error('App', 'Initial load failed', { error: e.message });
         }
-        
+
     } catch (e) {
-        console.error('Init error:', e);
+        Logger.error('App', 'Init error', { error: e.message });
     } finally {
         // Always hide loading
-        console.log('[DEBUG] Hiding loading...');
+        Logger.debug('App', 'Hiding loading...');
         hideLoading();
     }
-    
+
     // Connect WebSocket
-    try { connectWebSocket(); } catch(e) { console.error('WebSocket error:', e); }
+    try { connectWebSocket(); } catch(e) { Logger.error('WebSocket', 'Connection error', { error: e.message }); }
     
     // Periodic refresh
     startRefreshTimer();
@@ -4835,6 +5601,454 @@ async function init() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+// ============================================
+// Task 4.1-4.8: Pricer Module
+// ============================================
+
+const pricerState = {
+    history: [],
+    maxHistoryItems: 10,
+    storageKey: 'fb.pricerHistory'
+};
+
+/**
+ * Initialize the Pricer view and its event handlers.
+ */
+function initPricer() {
+    Logger.debug('Pricer', 'Initializing pricer module');
+
+    // Load history from LocalStorage
+    loadPricerHistory();
+
+    // Instrument type selector
+    const typeSelector = document.getElementById('pricer-instrument-type');
+    if (typeSelector) {
+        typeSelector.addEventListener('change', handleInstrumentTypeChange);
+    }
+
+    // Calculate button
+    const calculateBtn = document.getElementById('pricer-calculate-btn');
+    if (calculateBtn) {
+        calculateBtn.addEventListener('click', handlePricerCalculate);
+    }
+
+    // Clear history button
+    const clearHistoryBtn = document.getElementById('pricer-clear-history');
+    if (clearHistoryBtn) {
+        clearHistoryBtn.addEventListener('click', clearPricerHistory);
+    }
+
+    Logger.info('Pricer', 'Pricer module initialized');
+}
+
+/**
+ * Handle instrument type change - show/hide appropriate form.
+ */
+function handleInstrumentTypeChange(event) {
+    const selectedType = event.target.value;
+    Logger.debug('Pricer', 'Instrument type changed', { type: selectedType });
+
+    // Hide all forms
+    document.querySelectorAll('.pricer-form').forEach(form => {
+        form.classList.remove('active');
+    });
+
+    // Show selected form
+    const formMap = {
+        'equity_vanilla_option': 'equity-option-form',
+        'fx_option': 'fx-option-form',
+        'irs': 'irs-form'
+    };
+
+    const formId = formMap[selectedType];
+    if (formId) {
+        const form = document.getElementById(formId);
+        if (form) {
+            form.classList.add('active');
+        }
+    }
+
+    // Clear previous results
+    clearPricerResults();
+}
+
+/**
+ * Handle calculate button click.
+ */
+async function handlePricerCalculate() {
+    const calculateBtn = document.getElementById('pricer-calculate-btn');
+    const errorDiv = document.getElementById('pricer-error');
+
+    try {
+        // Show loading state
+        if (calculateBtn) {
+            calculateBtn.disabled = true;
+            calculateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Calculating...</span>';
+        }
+        if (errorDiv) {
+            errorDiv.style.display = 'none';
+        }
+
+        // Get instrument type
+        const instrumentType = document.getElementById('pricer-instrument-type')?.value;
+        const computeGreeks = document.getElementById('pricer-compute-greeks')?.checked ?? true;
+
+        // Build request based on instrument type
+        const request = buildPricerRequest(instrumentType, computeGreeks);
+        if (!request) {
+            throw new Error('Failed to build request');
+        }
+
+        Logger.debug('Pricer', 'Sending price request', { request });
+
+        // Call API
+        const response = await fetchJson(`${API_BASE}/price`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(request)
+        }, 'Pricing failed');
+
+        Logger.info('Pricer', 'Pricing complete', { calculationId: response.calculationId });
+
+        // Display results
+        displayPricerResults(response);
+
+        // Add to history
+        addToHistory(request, response);
+
+    } catch (error) {
+        Logger.error('Pricer', 'Calculation error', { error: error.message });
+        if (errorDiv) {
+            errorDiv.textContent = error.message || 'An error occurred';
+            errorDiv.style.display = 'block';
+        }
+    } finally {
+        // Reset button
+        if (calculateBtn) {
+            calculateBtn.disabled = false;
+            calculateBtn.innerHTML = '<i class="fas fa-play"></i> <span>Calculate</span>';
+        }
+    }
+}
+
+/**
+ * Build pricing request from form values.
+ */
+function buildPricerRequest(instrumentType, computeGreeks) {
+    let params;
+
+    switch (instrumentType) {
+        case 'equity_vanilla_option':
+            params = {
+                spot: parseFloat(document.getElementById('equity-spot')?.value) || 100,
+                strike: parseFloat(document.getElementById('equity-strike')?.value) || 100,
+                expiryYears: parseFloat(document.getElementById('equity-expiry')?.value) || 1,
+                volatility: (parseFloat(document.getElementById('equity-vol')?.value) || 20) / 100,
+                rate: (parseFloat(document.getElementById('equity-rate')?.value) || 5) / 100,
+                optionType: document.getElementById('equity-option-type')?.value || 'call'
+            };
+            break;
+
+        case 'fx_option':
+            params = {
+                spot: parseFloat(document.getElementById('fx-spot')?.value) || 1.10,
+                strike: parseFloat(document.getElementById('fx-strike')?.value) || 1.10,
+                expiryYears: parseFloat(document.getElementById('fx-expiry')?.value) || 1,
+                volatility: (parseFloat(document.getElementById('fx-vol')?.value) || 10) / 100,
+                domesticRate: (parseFloat(document.getElementById('fx-dom-rate')?.value) || 5) / 100,
+                foreignRate: (parseFloat(document.getElementById('fx-for-rate')?.value) || 2) / 100,
+                optionType: document.getElementById('fx-option-type')?.value || 'call'
+            };
+            break;
+
+        case 'irs':
+            params = {
+                notional: parseFloat(document.getElementById('irs-notional')?.value) || 1000000,
+                fixedRate: (parseFloat(document.getElementById('irs-fixed-rate')?.value) || 2.5) / 100,
+                tenorYears: parseFloat(document.getElementById('irs-tenor')?.value) || 5
+            };
+            break;
+
+        default:
+            return null;
+    }
+
+    return {
+        instrumentType,
+        params,
+        computeGreeks
+    };
+}
+
+/**
+ * Display pricing results.
+ */
+function displayPricerResults(response) {
+    // PV
+    const pvElement = document.getElementById('pricer-pv');
+    if (pvElement) {
+        const pvValue = response.pv;
+        pvElement.textContent = formatPricerNumber(pvValue);
+        pvElement.className = 'pv-value ' + (pvValue >= 0 ? 'positive' : 'negative');
+    }
+
+    // Greeks
+    if (response.greeks) {
+        displayGreek('pricer-delta', response.greeks.delta, 4);
+        displayGreek('pricer-gamma', response.greeks.gamma, 6);
+        displayGreek('pricer-vega', response.greeks.vega, 4);
+        displayGreek('pricer-theta', response.greeks.theta, 4);
+        displayGreek('pricer-rho', response.greeks.rho, 4);
+    } else {
+        ['pricer-delta', 'pricer-gamma', 'pricer-vega', 'pricer-theta', 'pricer-rho'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.textContent = '--';
+                el.className = 'greek-value';
+            }
+        });
+    }
+
+    // Calculation info
+    const calcInfo = document.getElementById('pricer-calc-info');
+    if (calcInfo) {
+        const calcId = calcInfo.querySelector('.calc-id');
+        const calcTime = calcInfo.querySelector('.calc-time');
+        if (calcId) calcId.textContent = response.calculationId;
+        if (calcTime) calcTime.textContent = new Date(response.timestamp).toLocaleTimeString();
+        calcInfo.style.display = 'flex';
+    }
+}
+
+/**
+ * Display a single Greek value with formatting.
+ */
+function displayGreek(elementId, value, decimals) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+
+    element.textContent = value.toFixed(decimals);
+    element.className = 'greek-value ' + (value >= 0 ? 'positive' : 'negative');
+}
+
+/**
+ * Format number for pricer display.
+ */
+function formatPricerNumber(value) {
+    const abs = Math.abs(value);
+    if (abs >= 1000000) {
+        return (value / 1000000).toFixed(2) + 'M';
+    } else if (abs >= 1000) {
+        return (value / 1000).toFixed(2) + 'K';
+    } else if (abs >= 1) {
+        return value.toFixed(2);
+    } else {
+        return value.toFixed(4);
+    }
+}
+
+/**
+ * Clear pricer results.
+ */
+function clearPricerResults() {
+    const pvElement = document.getElementById('pricer-pv');
+    if (pvElement) {
+        pvElement.textContent = '--';
+        pvElement.className = 'pv-value';
+    }
+
+    ['pricer-delta', 'pricer-gamma', 'pricer-vega', 'pricer-theta', 'pricer-rho'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.textContent = '--';
+            el.className = 'greek-value';
+        }
+    });
+
+    const calcInfo = document.getElementById('pricer-calc-info');
+    if (calcInfo) {
+        calcInfo.style.display = 'none';
+    }
+}
+
+/**
+ * Add calculation to history.
+ */
+function addToHistory(request, response) {
+    const historyItem = {
+        id: response.calculationId,
+        timestamp: response.timestamp,
+        instrumentType: request.instrumentType,
+        params: request.params,
+        pv: response.pv,
+        greeks: response.greeks
+    };
+
+    // Add to beginning of array
+    pricerState.history.unshift(historyItem);
+
+    // Keep only maxHistoryItems
+    if (pricerState.history.length > pricerState.maxHistoryItems) {
+        pricerState.history = pricerState.history.slice(0, pricerState.maxHistoryItems);
+    }
+
+    // Save to LocalStorage
+    savePricerHistory();
+
+    // Render history
+    renderPricerHistory();
+}
+
+/**
+ * Render history list.
+ */
+function renderPricerHistory() {
+    const historyList = document.getElementById('pricer-history');
+    const clearBtn = document.getElementById('pricer-clear-history');
+    if (!historyList) return;
+
+    if (pricerState.history.length === 0) {
+        historyList.innerHTML = `
+            <div class="history-empty">
+                <i class="fas fa-clock"></i>
+                <p>No calculations yet</p>
+            </div>
+        `;
+        if (clearBtn) clearBtn.style.display = 'none';
+        return;
+    }
+
+    if (clearBtn) clearBtn.style.display = 'block';
+
+    const typeLabels = {
+        'equity_vanilla_option': 'Equity Option',
+        'fx_option': 'FX Option',
+        'irs': 'IRS'
+    };
+
+    historyList.innerHTML = pricerState.history.map(item => `
+        <div class="history-item" data-id="${item.id}" onclick="restoreHistoryItem('${item.id}')">
+            <div class="history-item-header">
+                <span class="history-type">${typeLabels[item.instrumentType] || item.instrumentType}</span>
+                <span class="history-time">${new Date(item.timestamp).toLocaleTimeString()}</span>
+            </div>
+            <div class="history-item-value ${item.pv >= 0 ? 'positive' : 'negative'}">
+                PV: ${formatPricerNumber(item.pv)}
+            </div>
+        </div>
+    `).join('');
+}
+
+/**
+ * Restore a history item to the form.
+ */
+function restoreHistoryItem(historyId) {
+    const item = pricerState.history.find(h => h.id === historyId);
+    if (!item) return;
+
+    Logger.debug('Pricer', 'Restoring history item', { id: historyId });
+
+    // Set instrument type
+    const typeSelector = document.getElementById('pricer-instrument-type');
+    if (typeSelector) {
+        typeSelector.value = item.instrumentType;
+        handleInstrumentTypeChange({ target: typeSelector });
+    }
+
+    // Restore parameters
+    const params = item.params;
+    switch (item.instrumentType) {
+        case 'equity_vanilla_option':
+            setInputValue('equity-spot', params.spot);
+            setInputValue('equity-strike', params.strike);
+            setInputValue('equity-expiry', params.expiryYears);
+            setInputValue('equity-vol', params.volatility * 100);
+            setInputValue('equity-rate', params.rate * 100);
+            setSelectValue('equity-option-type', params.optionType);
+            break;
+
+        case 'fx_option':
+            setInputValue('fx-spot', params.spot);
+            setInputValue('fx-strike', params.strike);
+            setInputValue('fx-expiry', params.expiryYears);
+            setInputValue('fx-vol', params.volatility * 100);
+            setInputValue('fx-dom-rate', params.domesticRate * 100);
+            setInputValue('fx-for-rate', params.foreignRate * 100);
+            setSelectValue('fx-option-type', params.optionType);
+            break;
+
+        case 'irs':
+            setInputValue('irs-notional', params.notional);
+            setInputValue('irs-fixed-rate', params.fixedRate * 100);
+            setInputValue('irs-tenor', params.tenorYears);
+            break;
+    }
+
+    // Display stored results
+    displayPricerResults({
+        calculationId: item.id,
+        pv: item.pv,
+        greeks: item.greeks,
+        timestamp: item.timestamp
+    });
+}
+
+/**
+ * Helper to set input value.
+ */
+function setInputValue(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.value = value;
+}
+
+/**
+ * Helper to set select value.
+ */
+function setSelectValue(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.value = value;
+}
+
+/**
+ * Save history to LocalStorage.
+ */
+function savePricerHistory() {
+    try {
+        localStorage.setItem(pricerState.storageKey, JSON.stringify(pricerState.history));
+    } catch (e) {
+        Logger.warn('Pricer', 'Failed to save history', { error: e.message });
+    }
+}
+
+/**
+ * Load history from LocalStorage.
+ */
+function loadPricerHistory() {
+    try {
+        const stored = localStorage.getItem(pricerState.storageKey);
+        if (stored) {
+            pricerState.history = JSON.parse(stored);
+            renderPricerHistory();
+        }
+    } catch (e) {
+        Logger.warn('Pricer', 'Failed to load history', { error: e.message });
+        pricerState.history = [];
+    }
+}
+
+/**
+ * Clear all history.
+ */
+function clearPricerHistory() {
+    pricerState.history = [];
+    savePricerHistory();
+    renderPricerHistory();
+    Logger.info('Pricer', 'History cleared');
+}
+
+// Make restoreHistoryItem available globally
+window.restoreHistoryItem = restoreHistoryItem;
 
 // ============================================
 // Task 5.1: GraphManager Class

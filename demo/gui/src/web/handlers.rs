@@ -11,6 +11,11 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
+use super::pricer_types::{
+    DemoMarketData, EquityOptionParams, FxOptionParams, GreeksData, InstrumentParams,
+    InstrumentType, IrsParams, OptionType, PricingErrorResponse, PricingRequest, PricingResponse,
+};
+use super::websocket::broadcast_pricing_complete;
 use super::AppState;
 
 /// Health check response
@@ -175,12 +180,21 @@ fn sample_trades() -> Vec<TradeData> {
 }
 
 /// Get portfolio data
-pub async fn get_portfolio(State(_state): State<Arc<AppState>>) -> Json<PortfolioResponse> {
+pub async fn get_portfolio(State(state): State<Arc<AppState>>) -> Json<PortfolioResponse> {
+    let start = Instant::now();
+
     // Sample portfolio data (in production, fetch from service_gateway)
     let trades = sample_trades();
 
     let total_pv: f64 = trades.iter().map(|t| t.pv).sum();
     let trade_count = trades.len();
+
+    // Task 6.2: Record response time and warn if > 1s
+    let elapsed_us = start.elapsed().as_micros() as u64;
+    state.metrics.record_portfolio_time(elapsed_us).await;
+    if elapsed_us > 1_000_000 {
+        tracing::warn!("Portfolio API response slow: {}ms", elapsed_us / 1000);
+    }
 
     Json(PortfolioResponse {
         trades,
@@ -263,7 +277,9 @@ pub struct ExposurePoint {
 }
 
 /// Get exposure metrics
-pub async fn get_exposure(State(_state): State<Arc<AppState>>) -> Json<ExposureResponse> {
+pub async fn get_exposure(State(state): State<Arc<AppState>>) -> Json<ExposureResponse> {
+    let start = Instant::now();
+
     // Generate sample exposure profile
     let time_series: Vec<ExposurePoint> = (0..=40)
         .map(|i| {
@@ -287,6 +303,13 @@ pub async fn get_exposure(State(_state): State<Arc<AppState>>) -> Json<ExposureR
         .iter()
         .max_by(|a, b| a.ee.partial_cmp(&b.ee).unwrap())
         .unwrap();
+
+    // Task 6.2: Record response time and warn if > 1s
+    let elapsed_us = start.elapsed().as_micros() as u64;
+    state.metrics.record_exposure_time(elapsed_us).await;
+    if elapsed_us > 1_000_000 {
+        tracing::warn!("Exposure API response slow: {}ms", elapsed_us / 1000);
+    }
 
     Json(ExposureResponse {
         ee: peak.ee,
@@ -312,10 +335,19 @@ pub struct RiskMetricsResponse {
 }
 
 /// Get risk metrics
-pub async fn get_risk_metrics(State(_state): State<Arc<AppState>>) -> Json<RiskMetricsResponse> {
+pub async fn get_risk_metrics(State(state): State<Arc<AppState>>) -> Json<RiskMetricsResponse> {
+    let start = Instant::now();
+
     let cva = -15_000.0;
     let dva = 5_000.0;
     let fva = -8_000.0;
+
+    // Task 6.2: Record response time and warn if > 1s
+    let elapsed_us = start.elapsed().as_micros() as u64;
+    state.metrics.record_risk_time(elapsed_us).await;
+    if elapsed_us > 1_000_000 {
+        tracing::warn!("Risk API response slow: {}ms", elapsed_us / 1000);
+    }
 
     Json(RiskMetricsResponse {
         total_pv: 353_000.0,
@@ -327,6 +359,411 @@ pub async fn get_risk_metrics(State(_state): State<Arc<AppState>>) -> Json<RiskM
         epe: 450_000.0,
         pfe: 800_000.0,
     })
+}
+
+// =============================================================================
+// Task 2.1: Pricing Handler Implementation
+// =============================================================================
+
+/// Standard normal cumulative distribution function (CDF).
+fn norm_cdf(x: f64) -> f64 {
+    let a1 = 0.254829592;
+    let a2 = -0.284496736;
+    let a3 = 1.421413741;
+    let a4 = -1.453152027;
+    let a5 = 1.061405429;
+    let p = 0.3275911;
+
+    let sign = if x < 0.0 { -1.0 } else { 1.0 };
+    let x = x.abs() / std::f64::consts::SQRT_2;
+
+    let t = 1.0 / (1.0 + p * x);
+    let y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * (-x * x).exp();
+
+    0.5 * (1.0 + sign * y)
+}
+
+/// Standard normal probability density function (PDF).
+fn norm_pdf(x: f64) -> f64 {
+    (-0.5 * x * x).exp() / (2.0 * std::f64::consts::PI).sqrt()
+}
+
+/// Black-Scholes pricing for European options.
+fn black_scholes_price(
+    spot: f64,
+    strike: f64,
+    time: f64,
+    rate: f64,
+    vol: f64,
+    is_call: bool,
+) -> f64 {
+    if time <= 0.0 {
+        let intrinsic = if is_call {
+            (spot - strike).max(0.0)
+        } else {
+            (strike - spot).max(0.0)
+        };
+        return intrinsic;
+    }
+
+    let sqrt_t = time.sqrt();
+    let d1 = ((spot / strike).ln() + (rate + 0.5 * vol * vol) * time) / (vol * sqrt_t);
+    let d2 = d1 - vol * sqrt_t;
+    let discount = (-rate * time).exp();
+
+    if is_call {
+        spot * norm_cdf(d1) - strike * discount * norm_cdf(d2)
+    } else {
+        strike * discount * norm_cdf(-d2) - spot * norm_cdf(-d1)
+    }
+}
+
+/// Black-Scholes Greeks calculation.
+fn black_scholes_greeks(
+    spot: f64,
+    strike: f64,
+    time: f64,
+    rate: f64,
+    vol: f64,
+    is_call: bool,
+) -> GreeksData {
+    if time <= 0.0 {
+        return GreeksData {
+            delta: if is_call {
+                if spot > strike { 1.0 } else { 0.0 }
+            } else if spot < strike {
+                -1.0
+            } else {
+                0.0
+            },
+            gamma: 0.0,
+            vega: 0.0,
+            theta: 0.0,
+            rho: 0.0,
+        };
+    }
+
+    let sqrt_t = time.sqrt();
+    let d1 = ((spot / strike).ln() + (rate + 0.5 * vol * vol) * time) / (vol * sqrt_t);
+    let d2 = d1 - vol * sqrt_t;
+    let discount = (-rate * time).exp();
+    let pdf_d1 = norm_pdf(d1);
+
+    let delta = if is_call { norm_cdf(d1) } else { norm_cdf(d1) - 1.0 };
+    let gamma = pdf_d1 / (spot * vol * sqrt_t);
+    let vega = spot * pdf_d1 * sqrt_t / 100.0;
+    let theta_part1 = -(spot * pdf_d1 * vol) / (2.0 * sqrt_t);
+    let theta = if is_call {
+        (theta_part1 - rate * strike * discount * norm_cdf(d2)) / 365.0
+    } else {
+        (theta_part1 + rate * strike * discount * norm_cdf(-d2)) / 365.0
+    };
+    let rho = if is_call {
+        strike * time * discount * norm_cdf(d2) / 100.0
+    } else {
+        -strike * time * discount * norm_cdf(-d2) / 100.0
+    };
+
+    GreeksData { delta, gamma, vega, theta, rho }
+}
+
+/// Garman-Kohlhagen pricing for FX options.
+fn garman_kohlhagen_price(
+    spot: f64,
+    strike: f64,
+    time: f64,
+    dom_rate: f64,
+    for_rate: f64,
+    vol: f64,
+    is_call: bool,
+) -> f64 {
+    if time <= 0.0 {
+        return if is_call {
+            (spot - strike).max(0.0)
+        } else {
+            (strike - spot).max(0.0)
+        };
+    }
+
+    let sqrt_t = time.sqrt();
+    let d1 = ((spot / strike).ln() + (dom_rate - for_rate + 0.5 * vol * vol) * time) / (vol * sqrt_t);
+    let d2 = d1 - vol * sqrt_t;
+    let dom_discount = (-dom_rate * time).exp();
+    let for_discount = (-for_rate * time).exp();
+
+    if is_call {
+        spot * for_discount * norm_cdf(d1) - strike * dom_discount * norm_cdf(d2)
+    } else {
+        strike * dom_discount * norm_cdf(-d2) - spot * for_discount * norm_cdf(-d1)
+    }
+}
+
+/// Garman-Kohlhagen Greeks calculation.
+fn garman_kohlhagen_greeks(
+    spot: f64,
+    strike: f64,
+    time: f64,
+    dom_rate: f64,
+    for_rate: f64,
+    vol: f64,
+    is_call: bool,
+) -> GreeksData {
+    if time <= 0.0 {
+        return GreeksData {
+            delta: if is_call {
+                if spot > strike { 1.0 } else { 0.0 }
+            } else if spot < strike {
+                -1.0
+            } else {
+                0.0
+            },
+            gamma: 0.0,
+            vega: 0.0,
+            theta: 0.0,
+            rho: 0.0,
+        };
+    }
+
+    let sqrt_t = time.sqrt();
+    let d1 = ((spot / strike).ln() + (dom_rate - for_rate + 0.5 * vol * vol) * time) / (vol * sqrt_t);
+    let d2 = d1 - vol * sqrt_t;
+    let dom_discount = (-dom_rate * time).exp();
+    let for_discount = (-for_rate * time).exp();
+    let pdf_d1 = norm_pdf(d1);
+
+    let delta = if is_call {
+        for_discount * norm_cdf(d1)
+    } else {
+        for_discount * (norm_cdf(d1) - 1.0)
+    };
+    let gamma = for_discount * pdf_d1 / (spot * vol * sqrt_t);
+    let vega = spot * for_discount * pdf_d1 * sqrt_t / 100.0;
+    let theta_part1 = -(spot * for_discount * pdf_d1 * vol) / (2.0 * sqrt_t);
+    let theta = if is_call {
+        (theta_part1 + for_rate * spot * for_discount * norm_cdf(d1)
+            - dom_rate * strike * dom_discount * norm_cdf(d2)) / 365.0
+    } else {
+        (theta_part1 - for_rate * spot * for_discount * norm_cdf(-d1)
+            + dom_rate * strike * dom_discount * norm_cdf(-d2)) / 365.0
+    };
+    let rho = if is_call {
+        strike * time * dom_discount * norm_cdf(d2) / 100.0
+    } else {
+        -strike * time * dom_discount * norm_cdf(-d2) / 100.0
+    };
+
+    GreeksData { delta, gamma, vega, theta, rho }
+}
+
+/// Simple IRS pricing (demo approximation).
+fn irs_price(notional: f64, fixed_rate: f64, tenor: f64, market_rate: f64) -> f64 {
+    let pv01 = tenor * 0.9;
+    notional * (fixed_rate - market_rate) * pv01
+}
+
+/// IRS Greeks (simplified for demo).
+fn irs_greeks(notional: f64, tenor: f64) -> GreeksData {
+    let dv01 = notional * tenor * 0.0001 * 0.9;
+    GreeksData {
+        delta: dv01,
+        gamma: 0.0,
+        vega: 0.0,
+        theta: 0.0,
+        rho: dv01,
+    }
+}
+
+/// Validate equity option parameters.
+fn validate_equity_params(params: &EquityOptionParams) -> Result<(), (String, String)> {
+    if params.spot <= 0.0 {
+        return Err(("spot".to_string(), "Spot price must be positive".to_string()));
+    }
+    if params.strike <= 0.0 {
+        return Err(("strike".to_string(), "Strike price must be positive".to_string()));
+    }
+    if params.expiry_years < 0.0 {
+        return Err(("expiryYears".to_string(), "Expiry must be non-negative".to_string()));
+    }
+    if params.volatility <= 0.0 {
+        return Err(("volatility".to_string(), "Volatility must be positive".to_string()));
+    }
+    if params.volatility > 5.0 {
+        return Err(("volatility".to_string(), "Volatility seems too high (>500%)".to_string()));
+    }
+    Ok(())
+}
+
+/// Validate FX option parameters.
+fn validate_fx_params(params: &FxOptionParams) -> Result<(), (String, String)> {
+    if params.spot <= 0.0 {
+        return Err(("spot".to_string(), "Spot rate must be positive".to_string()));
+    }
+    if params.strike <= 0.0 {
+        return Err(("strike".to_string(), "Strike rate must be positive".to_string()));
+    }
+    if params.expiry_years < 0.0 {
+        return Err(("expiryYears".to_string(), "Expiry must be non-negative".to_string()));
+    }
+    if params.volatility <= 0.0 {
+        return Err(("volatility".to_string(), "Volatility must be positive".to_string()));
+    }
+    if params.volatility > 5.0 {
+        return Err(("volatility".to_string(), "Volatility seems too high (>500%)".to_string()));
+    }
+    Ok(())
+}
+
+/// Validate IRS parameters.
+fn validate_irs_params(params: &IrsParams) -> Result<(), (String, String)> {
+    if params.notional <= 0.0 {
+        return Err(("notional".to_string(), "Notional must be positive".to_string()));
+    }
+    if params.tenor_years <= 0.0 {
+        return Err(("tenorYears".to_string(), "Tenor must be positive".to_string()));
+    }
+    Ok(())
+}
+
+/// Price an instrument and optionally compute Greeks.
+///
+/// POST /api/price
+pub async fn price_instrument(
+    State(state): State<Arc<AppState>>,
+    Json(request): Json<PricingRequest>,
+) -> Result<Json<PricingResponse>, (StatusCode, Json<PricingErrorResponse>)> {
+    // Generate unique calculation ID using timestamp and nanoseconds
+    let now = chrono::Utc::now();
+    let calculation_id = format!(
+        "calc-{}-{}",
+        now.timestamp_millis(),
+        now.timestamp_subsec_nanos() % 10000
+    );
+
+    let market_rate = DemoMarketData::get_curve_rate(request.market_data.as_ref());
+
+    let (pv, greeks) = match (&request.instrument_type, &request.params) {
+        (InstrumentType::EquityVanillaOption, InstrumentParams::EquityOption(params)) => {
+            if let Err((field, message)) = validate_equity_params(params) {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(PricingErrorResponse {
+                        error_type: "ValidationError".to_string(),
+                        message,
+                        field: Some(field),
+                    }),
+                ));
+            }
+
+            let is_call = params.option_type == OptionType::Call;
+            let pv = black_scholes_price(
+                params.spot, params.strike, params.expiry_years, params.rate, params.volatility, is_call,
+            );
+            let greeks = if request.compute_greeks {
+                Some(black_scholes_greeks(
+                    params.spot, params.strike, params.expiry_years, params.rate, params.volatility, is_call,
+                ))
+            } else {
+                None
+            };
+            (pv, greeks)
+        }
+
+        (InstrumentType::FxOption, InstrumentParams::FxOption(params)) => {
+            if let Err((field, message)) = validate_fx_params(params) {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(PricingErrorResponse {
+                        error_type: "ValidationError".to_string(),
+                        message,
+                        field: Some(field),
+                    }),
+                ));
+            }
+
+            let is_call = params.option_type == OptionType::Call;
+            let pv = garman_kohlhagen_price(
+                params.spot, params.strike, params.expiry_years,
+                params.domestic_rate, params.foreign_rate, params.volatility, is_call,
+            );
+            let greeks = if request.compute_greeks {
+                Some(garman_kohlhagen_greeks(
+                    params.spot, params.strike, params.expiry_years,
+                    params.domestic_rate, params.foreign_rate, params.volatility, is_call,
+                ))
+            } else {
+                None
+            };
+            (pv, greeks)
+        }
+
+        (InstrumentType::Irs, InstrumentParams::Irs(params)) => {
+            if let Err((field, message)) = validate_irs_params(params) {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(PricingErrorResponse {
+                        error_type: "ValidationError".to_string(),
+                        message,
+                        field: Some(field),
+                    }),
+                ));
+            }
+
+            let pv = irs_price(params.notional, params.fixed_rate, params.tenor_years, market_rate);
+            let greeks = if request.compute_greeks {
+                Some(irs_greeks(params.notional, params.tenor_years))
+            } else {
+                None
+            };
+            (pv, greeks)
+        }
+
+        _ => {
+            return Err((
+                StatusCode::UNPROCESSABLE_ENTITY,
+                Json(PricingErrorResponse {
+                    error_type: "PricingError".to_string(),
+                    message: "Instrument type does not match provided parameters".to_string(),
+                    field: None,
+                }),
+            ));
+        }
+    };
+
+    if !pv.is_finite() {
+        return Err((
+            StatusCode::UNPROCESSABLE_ENTITY,
+            Json(PricingErrorResponse {
+                error_type: "PricingError".to_string(),
+                message: "Numerical instability in pricing calculation".to_string(),
+                field: None,
+            }),
+        ));
+    }
+
+    // Task 3.1: Broadcast pricing complete notification via WebSocket
+    let greeks_json = greeks.as_ref().map(|g| {
+        serde_json::json!({
+            "delta": g.delta,
+            "gamma": g.gamma,
+            "vega": g.vega,
+            "theta": g.theta,
+            "rho": g.rho
+        })
+    });
+    let instrument_type_str = match &request.instrument_type {
+        InstrumentType::EquityVanillaOption => "equity_vanilla_option",
+        InstrumentType::FxOption => "fx_option",
+        InstrumentType::Irs => "irs",
+    };
+    broadcast_pricing_complete(&state, &calculation_id, instrument_type_str, pv, greeks_json);
+
+    Ok(Json(PricingResponse {
+        calculation_id,
+        instrument_type: request.instrument_type,
+        pv,
+        greeks,
+        timestamp: chrono::Utc::now().timestamp_millis(),
+    }))
 }
 
 // =============================================================================
@@ -665,6 +1102,8 @@ pub async fn get_graph(
     State(state): State<Arc<AppState>>,
     Query(params): Query<GraphQueryParams>,
 ) -> Result<Json<GraphResponse>, (StatusCode, Json<GraphErrorResponse>)> {
+    let start = Instant::now();
+
     // Check if trade exists (if specified)
     if let Some(ref trade_id) = params.trade_id {
         if !trade_exists(trade_id) {
@@ -682,6 +1121,9 @@ pub async fn get_graph(
     {
         let cache = state.graph_cache.read().await;
         if let Some(cached) = cache.get(&params.trade_id) {
+            // Task 6.2: Record cache hit time
+            let elapsed_us = start.elapsed().as_micros() as u64;
+            state.metrics.record_graph_time(elapsed_us).await;
             return Ok(Json(cached.clone()));
         }
     }
@@ -693,6 +1135,13 @@ pub async fn get_graph(
     {
         let mut cache = state.graph_cache.write().await;
         cache.insert(params.trade_id.clone(), graph.clone());
+    }
+
+    // Task 6.2: Record response time and warn if > 1s
+    let elapsed_us = start.elapsed().as_micros() as u64;
+    state.metrics.record_graph_time(elapsed_us).await;
+    if elapsed_us > 1_000_000 {
+        tracing::warn!("Graph API response slow: {}ms", elapsed_us / 1000);
     }
 
     Ok(Json(graph))
@@ -856,6 +1305,99 @@ pub async fn get_speed_comparison(
             tenor_count: data.tenor_count,
         },
     })
+}
+
+// =========================================================================
+// Task 6.3: Performance Metrics Endpoint (Requirement 9.4)
+// =========================================================================
+
+/// API response times statistics
+#[derive(Debug, Serialize)]
+pub struct ApiResponseTimes {
+    pub portfolio_avg_ms: f64,
+    pub exposure_avg_ms: f64,
+    pub risk_avg_ms: f64,
+    pub graph_avg_ms: f64,
+}
+
+/// Performance metrics response
+#[derive(Debug, Serialize)]
+pub struct MetricsResponse {
+    pub api_response_times: ApiResponseTimes,
+    pub websocket_connections: u32,
+    pub websocket_message_latency_ms: f64,
+    pub uptime_seconds: u64,
+}
+
+/// Get performance metrics endpoint
+///
+/// Returns JSON with API response times, WebSocket statistics, and uptime.
+pub async fn get_metrics(State(state): State<Arc<AppState>>) -> Json<MetricsResponse> {
+    let metrics = &state.metrics;
+
+    Json(MetricsResponse {
+        api_response_times: ApiResponseTimes {
+            portfolio_avg_ms: metrics.portfolio_avg_ms().await,
+            exposure_avg_ms: metrics.exposure_avg_ms().await,
+            risk_avg_ms: metrics.risk_avg_ms().await,
+            graph_avg_ms: metrics.graph_avg_ms().await,
+        },
+        websocket_connections: metrics.ws_connection_count(),
+        websocket_message_latency_ms: metrics.ws_latency_avg_ms().await,
+        uptime_seconds: metrics.uptime_seconds(),
+    })
+}
+
+// =========================================================================
+// Task 13.2: Index HTML with Config Injection (Requirement 1.1)
+// =========================================================================
+
+use axum::response::Html;
+use tower_http::services::ServeFile;
+
+/// Serve index.html with injected configuration
+///
+/// Reads the index.html template and replaces the placeholder config
+/// with values from environment variables (FB_DEBUG_MODE, FB_LOG_LEVEL).
+pub async fn get_index(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    let index_path = "demo/gui/static/index.html";
+
+    match tokio::fs::read_to_string(index_path).await {
+        Ok(content) => {
+            // Replace the config placeholder with actual values
+            let config_script = format!(
+                r#"<script id="fb-config">
+        window.__FB_CONFIG__ = {{
+            debugMode: {},
+            logLevel: '{}'
+        }};
+    </script>"#,
+                state.debug_config.debug_mode, state.debug_config.log_level
+            );
+
+            // Replace the placeholder config in the HTML
+            let modified = content.replace(
+                r#"<script id="fb-config">
+        window.__FB_CONFIG__ = {
+            debugMode: false,
+            logLevel: 'INFO'
+        };
+    </script>"#,
+                &config_script,
+            );
+
+            Html(modified).into_response()
+        }
+        Err(_) => {
+            // Fallback if file cannot be read
+            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to load index.html").into_response()
+        }
+    }
+}
+
+/// Create a service that serves index.html with config injection for fallback
+pub fn serve_index_with_config() -> ServeFile {
+    ServeFile::new("demo/gui/static/index.html")
 }
 
 #[cfg(test)]
@@ -1232,6 +1774,361 @@ mod tests {
             assert!(response.benchmark.bump_mean_us > 0.0);
             assert!(response.benchmark.speedup_ratio > 0.0);
             assert!(response.benchmark.tenor_count > 0);
+        }
+    }
+
+    // =========================================================================
+    // Task 2.1: Pricing Handler Tests
+    // =========================================================================
+
+    mod pricing_tests {
+        use super::*;
+        use crate::web::pricer_types::{EquityOptionParams, FxOptionParams, IrsParams, OptionType};
+
+        #[test]
+        fn test_norm_cdf_at_zero() {
+            let result = norm_cdf(0.0);
+            assert!((result - 0.5).abs() < 1e-6);
+        }
+
+        #[test]
+        fn test_norm_cdf_positive() {
+            let result = norm_cdf(1.0);
+            assert!(result > 0.8 && result < 0.9);
+        }
+
+        #[test]
+        fn test_norm_cdf_negative() {
+            let result = norm_cdf(-1.0);
+            assert!(result > 0.1 && result < 0.2);
+        }
+
+        #[test]
+        fn test_norm_pdf_at_zero() {
+            let result = norm_pdf(0.0);
+            let expected = 1.0 / (2.0 * std::f64::consts::PI).sqrt();
+            assert!((result - expected).abs() < 1e-10);
+        }
+
+        #[test]
+        fn test_black_scholes_call_price() {
+            // ATM call with 1y, 5% rate, 20% vol
+            let price = black_scholes_price(100.0, 100.0, 1.0, 0.05, 0.20, true);
+            // Expected around 10.45 for these parameters
+            assert!(price > 10.0 && price < 11.0);
+        }
+
+        #[test]
+        fn test_black_scholes_put_price() {
+            let price = black_scholes_price(100.0, 100.0, 1.0, 0.05, 0.20, false);
+            // Put price should be lower than call for ATM due to interest rate
+            assert!(price > 5.0 && price < 7.0);
+        }
+
+        #[test]
+        fn test_black_scholes_call_put_parity() {
+            let spot = 100.0;
+            let strike = 100.0;
+            let time = 1.0;
+            let rate = 0.05;
+            let vol = 0.20;
+
+            let call = black_scholes_price(spot, strike, time, rate, vol, true);
+            let put = black_scholes_price(spot, strike, time, rate, vol, false);
+            let discount = (-rate * time).exp();
+
+            // Put-Call Parity: C - P = S - K * exp(-rT)
+            let lhs = call - put;
+            let rhs = spot - strike * discount;
+            assert!((lhs - rhs).abs() < 1e-10);
+        }
+
+        #[test]
+        fn test_black_scholes_expired_call_itm() {
+            let price = black_scholes_price(110.0, 100.0, 0.0, 0.05, 0.20, true);
+            assert!((price - 10.0).abs() < 1e-10);
+        }
+
+        #[test]
+        fn test_black_scholes_expired_call_otm() {
+            let price = black_scholes_price(90.0, 100.0, 0.0, 0.05, 0.20, true);
+            assert!((price - 0.0).abs() < 1e-10);
+        }
+
+        #[test]
+        fn test_black_scholes_greeks_delta_call() {
+            let greeks = black_scholes_greeks(100.0, 100.0, 1.0, 0.05, 0.20, true);
+            // ATM call delta should be around 0.5-0.6
+            assert!(greeks.delta > 0.5 && greeks.delta < 0.7);
+        }
+
+        #[test]
+        fn test_black_scholes_greeks_delta_put() {
+            let greeks = black_scholes_greeks(100.0, 100.0, 1.0, 0.05, 0.20, false);
+            // Put delta is negative
+            assert!(greeks.delta < 0.0);
+            assert!(greeks.delta > -0.6 && greeks.delta < -0.3);
+        }
+
+        #[test]
+        fn test_black_scholes_greeks_gamma_positive() {
+            let greeks = black_scholes_greeks(100.0, 100.0, 1.0, 0.05, 0.20, true);
+            assert!(greeks.gamma > 0.0);
+        }
+
+        #[test]
+        fn test_black_scholes_greeks_vega_positive() {
+            let greeks = black_scholes_greeks(100.0, 100.0, 1.0, 0.05, 0.20, true);
+            assert!(greeks.vega > 0.0);
+        }
+
+        #[test]
+        fn test_garman_kohlhagen_call_price() {
+            let price = garman_kohlhagen_price(1.10, 1.10, 1.0, 0.05, 0.02, 0.10, true);
+            assert!(price > 0.0);
+        }
+
+        #[test]
+        fn test_garman_kohlhagen_put_price() {
+            let price = garman_kohlhagen_price(1.10, 1.10, 1.0, 0.05, 0.02, 0.10, false);
+            assert!(price > 0.0);
+        }
+
+        #[test]
+        fn test_irs_price_positive_fixed() {
+            // Fixed rate higher than market rate should be positive
+            let pv = irs_price(1_000_000.0, 0.05, 5.0, 0.03);
+            assert!(pv > 0.0);
+        }
+
+        #[test]
+        fn test_irs_price_negative_fixed() {
+            // Fixed rate lower than market rate should be negative
+            let pv = irs_price(1_000_000.0, 0.03, 5.0, 0.05);
+            assert!(pv < 0.0);
+        }
+
+        #[test]
+        fn test_irs_greeks() {
+            let greeks = irs_greeks(1_000_000.0, 5.0);
+            // DV01 should be positive
+            assert!(greeks.delta > 0.0);
+            assert_eq!(greeks.gamma, 0.0);
+            assert_eq!(greeks.vega, 0.0);
+        }
+
+        #[test]
+        fn test_validate_equity_params_valid() {
+            let params = EquityOptionParams {
+                spot: 100.0,
+                strike: 100.0,
+                expiry_years: 1.0,
+                volatility: 0.20,
+                rate: 0.05,
+                option_type: OptionType::Call,
+            };
+            assert!(validate_equity_params(&params).is_ok());
+        }
+
+        #[test]
+        fn test_validate_equity_params_negative_spot() {
+            let params = EquityOptionParams {
+                spot: -100.0,
+                strike: 100.0,
+                expiry_years: 1.0,
+                volatility: 0.20,
+                rate: 0.05,
+                option_type: OptionType::Call,
+            };
+            let err = validate_equity_params(&params).unwrap_err();
+            assert_eq!(err.0, "spot");
+        }
+
+        #[test]
+        fn test_validate_equity_params_high_volatility() {
+            let params = EquityOptionParams {
+                spot: 100.0,
+                strike: 100.0,
+                expiry_years: 1.0,
+                volatility: 6.0, // 600%
+                rate: 0.05,
+                option_type: OptionType::Call,
+            };
+            let err = validate_equity_params(&params).unwrap_err();
+            assert_eq!(err.0, "volatility");
+        }
+
+        #[test]
+        fn test_validate_fx_params_valid() {
+            let params = FxOptionParams {
+                spot: 1.10,
+                strike: 1.12,
+                expiry_years: 0.5,
+                volatility: 0.10,
+                domestic_rate: 0.05,
+                foreign_rate: 0.02,
+                option_type: OptionType::Put,
+            };
+            assert!(validate_fx_params(&params).is_ok());
+        }
+
+        #[test]
+        fn test_validate_irs_params_valid() {
+            let params = IrsParams {
+                notional: 1_000_000.0,
+                fixed_rate: 0.025,
+                tenor_years: 5.0,
+            };
+            assert!(validate_irs_params(&params).is_ok());
+        }
+
+        #[test]
+        fn test_validate_irs_params_zero_notional() {
+            let params = IrsParams {
+                notional: 0.0,
+                fixed_rate: 0.025,
+                tenor_years: 5.0,
+            };
+            let err = validate_irs_params(&params).unwrap_err();
+            assert_eq!(err.0, "notional");
+        }
+    }
+
+    // =========================================================================
+    // Task 12.2: Error Path Tests
+    // =========================================================================
+
+    mod error_path_tests {
+        use super::*;
+        use crate::web::pricer_types::{EquityOptionParams, InstrumentParams, InstrumentType, OptionType, PricingRequest};
+
+        #[tokio::test]
+        async fn test_pricing_with_invalid_instrument_type() {
+            let state = Arc::new(AppState::new());
+
+            // Invalid params should return validation error
+            let params = EquityOptionParams {
+                spot: -100.0, // Invalid negative spot
+                strike: 100.0,
+                expiry_years: 1.0,
+                volatility: 0.20,
+                rate: 0.05,
+                option_type: OptionType::Call,
+            };
+
+            let request = PricingRequest {
+                instrument_type: InstrumentType::EquityVanillaOption,
+                params: InstrumentParams::EquityOption(params),
+                market_data: None,
+                compute_greeks: false,
+            };
+
+            let result = price_instrument(State(state), axum::Json(request)).await;
+            let (status, _) = result.into_response().into_parts();
+            assert_eq!(status.status, StatusCode::BAD_REQUEST);
+        }
+
+        #[tokio::test]
+        async fn test_pricing_with_extreme_volatility() {
+            let state = Arc::new(AppState::new());
+
+            let params = EquityOptionParams {
+                spot: 100.0,
+                strike: 100.0,
+                expiry_years: 1.0,
+                volatility: 10.0, // 1000% volatility - should be rejected
+                rate: 0.05,
+                option_type: OptionType::Call,
+            };
+
+            let request = PricingRequest {
+                instrument_type: InstrumentType::EquityVanillaOption,
+                params: InstrumentParams::EquityOption(params),
+                market_data: None,
+                compute_greeks: false,
+            };
+
+            let result = price_instrument(State(state), axum::Json(request)).await;
+            let (status, _) = result.into_response().into_parts();
+            assert_eq!(status.status, StatusCode::BAD_REQUEST);
+        }
+
+        #[tokio::test]
+        async fn test_graph_with_empty_trade_id() {
+            let state = Arc::new(AppState::new());
+            let params = GraphQueryParams {
+                trade_id: Some("".to_string()),
+            };
+
+            let result = get_graph(State(state), Query(params)).await;
+
+            // Empty trade ID should be treated as a not-found error
+            assert!(result.is_err());
+        }
+    }
+
+    // =========================================================================
+    // Task 12.1: Performance Metrics Tests
+    // =========================================================================
+
+    mod performance_metrics_tests {
+        use crate::web::PerformanceMetrics;
+
+        #[tokio::test]
+        async fn test_metrics_record_portfolio_time() {
+            let metrics = PerformanceMetrics::new();
+
+            metrics.record_portfolio_time(1000).await;
+            metrics.record_portfolio_time(2000).await;
+            metrics.record_portfolio_time(3000).await;
+
+            let avg = metrics.portfolio_avg_ms().await;
+            assert!((avg - 2.0).abs() < 0.01); // 2000us average = 2ms
+        }
+
+        #[tokio::test]
+        async fn test_metrics_record_exposure_time() {
+            let metrics = PerformanceMetrics::new();
+
+            metrics.record_exposure_time(500).await;
+            let avg = metrics.exposure_avg_ms().await;
+
+            assert!((avg - 0.5).abs() < 0.01); // 500us = 0.5ms
+        }
+
+        #[tokio::test]
+        async fn test_metrics_ws_connection_count() {
+            let metrics = PerformanceMetrics::new();
+
+            assert_eq!(metrics.ws_connection_count(), 0);
+
+            metrics.increment_ws_connections();
+            metrics.increment_ws_connections();
+            assert_eq!(metrics.ws_connection_count(), 2);
+
+            metrics.decrement_ws_connections();
+            assert_eq!(metrics.ws_connection_count(), 1);
+        }
+
+        #[tokio::test]
+        async fn test_metrics_max_entries_limit() {
+            let metrics = PerformanceMetrics::new();
+
+            // Record more than MAX_ENTRIES
+            for i in 0..1100 {
+                metrics.record_portfolio_time(i as u64).await;
+            }
+
+            // Should only keep last 1000 entries
+            let times = metrics.portfolio_times.read().await;
+            assert_eq!(times.len(), 1000);
+        }
+
+        #[test]
+        fn test_metrics_uptime() {
+            let metrics = PerformanceMetrics::new();
+            let uptime = metrics.uptime_seconds();
+            assert!(uptime >= 0);
         }
     }
 }
