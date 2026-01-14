@@ -18,9 +18,9 @@
 //! assert!((yf - 0.4986).abs() < 0.001);
 //! ```
 
-use chrono::{Datelike, Local, NaiveDate};
+use chrono::{Datelike, Days, Local, NaiveDate};
 use std::fmt;
-use std::ops::Sub;
+use std::ops::{Add, Sub};
 use std::str::FromStr;
 
 use super::error::DateError;
@@ -208,6 +208,33 @@ impl Sub for Date {
     /// ```
     fn sub(self, other: Self) -> i64 {
         (self.0 - other.0).num_days()
+    }
+}
+
+impl Add<i64> for Date {
+    type Output = Date;
+
+    /// Adds a number of days to a date.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pricer_core::types::time::Date;
+    ///
+    /// let start = Date::from_ymd(2024, 1, 1).unwrap();
+    /// let end = start + 10;
+    /// assert_eq!(end, Date::from_ymd(2024, 1, 11).unwrap());
+    ///
+    /// // Negative days subtract
+    /// let before = start + (-5);
+    /// assert_eq!(before, Date::from_ymd(2023, 12, 27).unwrap());
+    /// ```
+    fn add(self, days: i64) -> Date {
+        if days >= 0 {
+            Date(self.0 + Days::new(days as u64))
+        } else {
+            Date(self.0 - Days::new((-days) as u64))
+        }
     }
 }
 

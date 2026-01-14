@@ -126,13 +126,35 @@ pub mod analytical;
 // Greeks calculation types and configuration
 pub mod greeks;
 
+// IRS-specific Greeks calculation (AAD demo)
+#[cfg(feature = "l1l2-integration")]
+pub mod irs_greeks;
+
 // Thread-local buffer pool for allocation-free simulation
 pub mod pool;
 
+// Computation graph visualisation data structures
+pub mod graph;
+
 // Re-export commonly used items for convenience
 pub use enzyme::{gradient, gradient_with_step, ADMode, Activity};
+pub use graph::{
+    ComputationGraph, GraphBuilder, GraphEdge, GraphError, GraphExtractable, GraphMetadata,
+    GraphNode, GraphNodeUpdate, NodeGroup, NodeType, SimpleGraphExtractor,
+};
 pub use greeks::{GreeksConfig, GreeksMode, GreeksResult};
 pub use mc::{GbmParams, Greek, MonteCarloConfig, MonteCarloPricer, PayoffParams, PricingResult};
+
+// Re-export IRS Greeks types when l1l2-integration is enabled
+#[cfg(feature = "l1l2-integration")]
+pub use irs_greeks::{
+    BenchmarkConfig, BenchmarkError, BenchmarkRunner, CacheKey, CacheState, CacheStats,
+    CachedResult, DeltaBenchmarkResult, DependencyGraph, ExposureProfile, FullBenchmarkResult,
+    IrsDeltaResult, IrsGreeksCalculator, IrsGreeksConfig, IrsGreeksError, IrsGreeksResult,
+    IrsLazyEvaluator, PvBenchmarkResult, ScalabilityResult, SingleDeltaBenchmarkResult, SwapId,
+    SwapParams, TenorPoint, TimingStats, XvaCreditParams, XvaDemoConfig, XvaDemoError,
+    XvaDemoRunner, XvaResult, XvaSensitivityBenchmark,
+};
 
 // =============================================================================
 // Backward Compatibility Alias (deprecated)

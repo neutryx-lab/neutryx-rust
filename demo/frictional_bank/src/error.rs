@@ -24,6 +24,18 @@ pub enum DemoError {
     /// IO error
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
+
+    /// Validation error
+    #[error("Validation error: {0}")]
+    Validation(String),
+
+    /// Computation error
+    #[error("Computation error: {0}")]
+    Computation(String),
+
+    /// Workflow cancelled
+    #[error("Workflow cancelled")]
+    Cancelled,
 }
 
 impl DemoError {
@@ -40,6 +52,16 @@ impl DemoError {
     /// Create an API error
     pub fn api(msg: impl Into<String>) -> Self {
         Self::Api(msg.into())
+    }
+
+    /// Create a validation error
+    pub fn validation(msg: impl Into<String>) -> Self {
+        Self::Validation(msg.into())
+    }
+
+    /// Create a computation error
+    pub fn computation(msg: impl Into<String>) -> Self {
+        Self::Computation(msg.into())
     }
 }
 

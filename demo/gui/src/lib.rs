@@ -25,6 +25,7 @@
 pub mod api_client;
 pub mod app;
 pub mod screens;
+pub mod visualisation;
 
 #[cfg(feature = "web")]
 pub mod web;
@@ -32,5 +33,12 @@ pub mod web;
 /// Prelude module for convenient imports
 pub mod prelude {
     pub use crate::api_client::ApiClient;
-    pub use crate::app::{ExposureTimeSeries, Screen, TuiApp};
+    pub use crate::app::{
+        ExposureTimeSeries, IrsAadBenchmark, IrsAadDemoState, IrsAadParams, IrsAadResult, Screen,
+        TuiApp,
+    };
+    pub use crate::visualisation::{
+        AccuracyVerificationData, AccuracyVisualiser, BenchmarkVisualiser, ComputationFlowDiagram,
+        ScalabilityData, ScalabilityVisualiser, SpeedComparisonData,
+    };
 }

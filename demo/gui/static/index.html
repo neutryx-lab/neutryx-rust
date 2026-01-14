@@ -341,6 +341,11 @@
                         <span>Go to Scenarios</span>
                         <kbd>G S</kbd>
                     </div>
+                    <div class="command-item" data-action="goto-graph" role="option" tabindex="0">
+                        <i class="fas fa-project-diagram"></i>
+                        <span>Go to Computation Graph</span>
+                        <kbd>G G</kbd>
+                    </div>
                 </div>
                 <div class="command-group">
                     <div class="command-group-title">Scenarios</div>
@@ -415,6 +420,11 @@
                 <a href="#" class="nav-item" data-view="analytics">
                     <div class="nav-icon"><i class="fas fa-cube"></i></div>
                     <span>3D Analytics</span>
+                    <div class="nav-indicator"></div>
+                </a>
+                <a href="#" class="nav-item" data-view="graph">
+                    <div class="nav-icon"><i class="fas fa-project-diagram"></i></div>
+                    <span>Graph</span>
                     <div class="nav-indicator"></div>
                 </a>
             </nav>
@@ -755,6 +765,7 @@
                             </div>
                             <label class="column-option"><input type="checkbox" data-col="id" checked> ID</label>
                             <label class="column-option"><input type="checkbox" data-col="instrument" checked> Instrument</label>
+                            <label class="column-option"><input type="checkbox" data-col="product" checked> Product</label>
                             <label class="column-option"><input type="checkbox" data-col="counterparty" checked> Counterparty</label>
                             <label class="column-option"><input type="checkbox" data-col="maturity" checked> Maturity</label>
                             <label class="column-option"><input type="checkbox" data-col="notional" checked> Notional</label>
@@ -863,6 +874,12 @@
                                         <i class="fas fa-sort sort-icon"></i>
                                     </div>
                                 </th>
+                                <th class="sortable" data-sort="product" data-col="product">
+                                    <div class="th-content">
+                                        <span>Product</span>
+                                        <i class="fas fa-sort sort-icon"></i>
+                                    </div>
+                                </th>
                                 <th class="sortable" data-sort="counterparty" data-col="counterparty">
                                     <div class="th-content">
                                         <span>Counterparty</span>
@@ -942,7 +959,7 @@
                             <select id="page-size">
                                 <option value="10">10</option>
                                 <option value="25">25</option>
-                                <option value="50">50</option>
+                                <option value="50" selected>50</option>
                                 <option value="100">100</option>
                             </select>
                         </div>
@@ -1815,6 +1832,165 @@
                                 <div class="dist-stat">
                                     <span class="dist-label">ES 95%</span>
                                     <span class="dist-value negative" id="es-95">-$3.8M</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Graph View (Task 5.1) -->
+            <section id="graph-view" class="view">
+                <!-- Graph Header Bar -->
+                <div class="graph-header-bar glass">
+                    <div class="graph-title">
+                        <h2><i class="fas fa-project-diagram"></i> Computation Graph</h2>
+                        <p>Interactive visualisation of the AD computation graph</p>
+                    </div>
+                    <div class="graph-controls">
+                        <select id="graph-trade-selector" class="fancy-select">
+                            <option value="">All Trades</option>
+                            <option value="T001">T001 - AAPL Call 200</option>
+                            <option value="T002">T002 - USD/JPY Forward</option>
+                            <option value="T003">T003 - 5Y IRS Pay</option>
+                            <option value="T004">T004 - EUR/USD Option</option>
+                            <option value="T005">T005 - CDS Protection</option>
+                        </select>
+                        <!-- Task 6.2: Node Search -->
+                        <div class="graph-search-wrapper">
+                            <div class="graph-search-input-container">
+                                <i class="fas fa-search graph-search-icon"></i>
+                                <input type="text"
+                                       id="graph-search-input"
+                                       class="graph-search-input"
+                                       placeholder="Search nodes..."
+                                       autocomplete="off">
+                                <button class="icon-btn graph-search-clear" id="graph-search-clear" title="Clear Search" style="display: none;">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div id="graph-search-results" class="graph-search-results" style="display: none;">
+                                <div class="search-results-header">
+                                    <span id="search-results-count">0 results</span>
+                                    <div class="search-nav-buttons">
+                                        <button class="icon-btn" id="search-prev" title="Previous Result" disabled>
+                                            <i class="fas fa-chevron-up"></i>
+                                        </button>
+                                        <button class="icon-btn" id="search-next" title="Next Result" disabled>
+                                            <i class="fas fa-chevron-down"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="zoom-controls">
+                            <button class="icon-btn" id="graph-zoom-in" title="Zoom In">
+                                <i class="fas fa-search-plus"></i>
+                            </button>
+                            <button class="icon-btn" id="graph-zoom-out" title="Zoom Out">
+                                <i class="fas fa-search-minus"></i>
+                            </button>
+                            <button class="icon-btn" id="graph-zoom-reset" title="Reset Zoom">
+                                <i class="fas fa-compress-arrows-alt"></i>
+                            </button>
+                            <button class="icon-btn" id="graph-zoom-fit" title="Fit to View">
+                                <i class="fas fa-expand"></i>
+                            </button>
+                        </div>
+                        <button class="icon-btn" id="graph-clear-selection" title="Clear Selection">
+                            <i class="fas fa-times-circle"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Graph Layout -->
+                <div class="graph-layout">
+                    <!-- Main Graph Container -->
+                    <div class="graph-main glass-card">
+                        <div id="graph-loading" class="graph-loading" style="display: none;">
+                            <div class="loader">
+                                <div class="loader-spinner"></div>
+                                <span>Loading graph...</span>
+                            </div>
+                        </div>
+                        <div id="graph-content" class="graph-content">
+                            <div id="graph-container" class="graph-container"></div>
+                        </div>
+                    </div>
+
+                    <!-- Graph Sidebar -->
+                    <div class="graph-sidebar">
+                        <!-- Graph Stats Panel -->
+                        <div class="graph-stats-panel glass-card">
+                            <h3><i class="fas fa-chart-bar"></i> Graph Statistics</h3>
+                            <div class="stats-grid">
+                                <div class="stat-item">
+                                    <span class="stat-label">Nodes</span>
+                                    <span class="stat-value" id="graph-node-count">0</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Edges</span>
+                                    <span class="stat-value" id="graph-edge-count">0</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Depth</span>
+                                    <span class="stat-value" id="graph-depth">0</span>
+                                </div>
+                                <div class="stat-item stat-wide">
+                                    <span class="stat-label">Generated</span>
+                                    <span class="stat-value" id="graph-generated-at">N/A</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Task 7.2: Node Type Statistics Chart -->
+                        <div class="node-type-chart-panel glass-card">
+                            <h3><i class="fas fa-chart-pie"></i> Node Types</h3>
+                            <div class="chart-container" style="height: 160px;">
+                                <canvas id="node-type-chart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Task 6.3: Sensitivity Path Panel -->
+                        <div class="sensitivity-path-panel glass-card">
+                            <h3><i class="fas fa-route"></i> Sensitivity Path</h3>
+                            <div class="sensitivity-path-controls">
+                                <button id="sensitivity-path-toggle" class="btn btn-secondary btn-sm">
+                                    <i class="fas fa-eye"></i> Show Paths
+                                </button>
+                                <select id="sensitivity-path-selector" class="form-select form-select-sm" style="display: none;">
+                                </select>
+                            </div>
+                            <p class="panel-hint">Highlight paths from sensitivity targets to outputs</p>
+                        </div>
+
+                        <!-- Node Info Panel -->
+                        <div class="node-info-panel glass-card">
+                            <h3><i class="fas fa-info-circle"></i> Node Details</h3>
+                            <div id="node-info-panel" class="node-info-content">
+                                <div class="no-selection">Click a node to see details</div>
+                            </div>
+                        </div>
+
+                        <!-- Legend Panel -->
+                        <div class="graph-legend-panel glass-card">
+                            <h3><i class="fas fa-palette"></i> Legend</h3>
+                            <div class="legend-items">
+                                <div class="legend-item">
+                                    <span class="legend-dot" style="background: #3b82f6;"></span>
+                                    <span>Input</span>
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-dot" style="background: #6b7280;"></span>
+                                    <span>Intermediate</span>
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-dot" style="background: #22c55e;"></span>
+                                    <span>Output</span>
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-dot" style="background: #f97316;"></span>
+                                    <span>Sensitivity</span>
                                 </div>
                             </div>
                         </div>

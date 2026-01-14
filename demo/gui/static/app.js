@@ -18,13 +18,13 @@ const state = {
         data: [],
         filteredData: [],
         page: 1,
-        pageSize: 10,
+        pageSize: 50,
         sort: { field: 'id', order: 'asc' },
         filter: '',
         instrumentFilter: '',
         selectedIds: new Set(),
         viewMode: 'table',
-        visibleColumns: ['id', 'instrument', 'counterparty', 'maturity', 'notional', 'pv', 'delta', 'vega'],
+        visibleColumns: ['id', 'instrument', 'product', 'counterparty', 'maturity', 'notional', 'pv', 'delta', 'vega'],
         advancedFilters: {
             pvMin: null,
             pvMax: null,
@@ -44,7 +44,9 @@ const state = {
         open: false,
         selectedIndex: 0,
         items: []
-    }
+    },
+    exposureData: [],
+    exposureRange: '1y'
 };
 
 // ============================================
@@ -396,6 +398,9 @@ class CommandPalette {
             case 'goto-scenarios':
                 navigateTo('scenarios');
                 break;
+            case 'goto-graph':
+                navigateToGraph();
+                break;
             case 'scenario-stress':
                 navigateTo('scenarios');
                 setTimeout(() => applyPreset('stress'), 300);
@@ -433,16 +438,27 @@ function navigateTo(viewName) {
         risk: 'Risk Analysis',
         exposure: 'Exposure Profile',
         scenarios: 'Scenario Analysis',
-        analytics: '3D Analytics'
+        analytics: '3D Analytics',
+        graph: 'Computation Graph'
     };
-    
+
     document.getElementById('page-title').textContent = titles[viewName] || viewName;
     document.getElementById('breadcrumb-current').textContent = titles[viewName] || viewName;
-    
+
     // View-specific actions
     if (viewName === 'exposure') fetchExposure();
     if (viewName === 'risk') fetchRiskMetrics();
     if (viewName === 'analytics') analytics3D.initViewer();
+    if (viewName === 'graph') {
+        // Initialise graph view and load data
+        if (!graphState.svg) {
+            initGraphView();
+        }
+        // Load default graph if not already loaded
+        if (!graphManager.getGraph()) {
+            graphManager.fetchGraph().catch(e => console.error('Failed to load graph:', e));
+        }
+    }
 }
 
 function initNavigation() {
@@ -598,26 +614,32 @@ async function fetchExposure() {
         const response = await fetch(`${API_BASE}/exposure`);
         const data = await response.json();
         
-        updateExposureChart(data.time_series);
-        updateMainExposureChart(data.time_series);
+        // Store raw data for range filtering
+        state.exposureData = data.time_series || [];
         
-        // Update legend values
-        if (data.time_series.length > 0) {
-            const latest = data.time_series[data.time_series.length - 1];
+        // Apply range filter
+        const filteredData = filterExposureByRange(state.exposureData, state.exposureRange);
+        
+        updateExposureChart(filteredData);
+        updateMainExposureChart(filteredData);
+        
+        // Update legend values with filtered data
+        if (filteredData.length > 0) {
+            const latest = filteredData[filteredData.length - 1];
             document.getElementById('legend-pfe').textContent = formatCurrency(latest.pfe);
             document.getElementById('legend-ee').textContent = formatCurrency(latest.ee);
             document.getElementById('legend-epe').textContent = formatCurrency(latest.epe);
             document.getElementById('legend-ene').textContent = formatCurrency(latest.ene);
             
-            // Update exposure stats
-            const peakPfe = Math.max(...data.time_series.map(d => d.pfe));
-            const avgEpe = data.time_series.reduce((sum, d) => sum + d.epe, 0) / data.time_series.length;
-            const peakIndex = data.time_series.findIndex(d => d.pfe === peakPfe);
+            // Update exposure stats with filtered data
+            const peakPfe = Math.max(...filteredData.map(d => d.pfe));
+            const avgEpe = filteredData.reduce((sum, d) => sum + d.epe, 0) / filteredData.length;
+            const peakIndex = filteredData.findIndex(d => d.pfe === peakPfe);
             
             document.getElementById('peak-pfe').textContent = formatCurrency(peakPfe);
             document.getElementById('avg-epe').textContent = formatCurrency(avgEpe);
-            document.getElementById('time-to-peak').textContent = data.time_series[peakIndex]?.time.toFixed(1) + 'Y';
-            document.getElementById('max-maturity').textContent = data.time_series[data.time_series.length - 1]?.time.toFixed(1) + 'Y';
+            document.getElementById('time-to-peak').textContent = filteredData[peakIndex]?.time.toFixed(1) + 'Y';
+            document.getElementById('max-maturity').textContent = filteredData[filteredData.length - 1]?.time.toFixed(1) + 'Y';
         }
         
         updateLastUpdated();
@@ -920,9 +942,9 @@ function applyAllFilters() {
         );
     }
     
-    // Instrument filter
+    // Product filter (swap, swaption, cap)
     if (state.portfolio.instrumentFilter) {
-        data = data.filter(t => t.instrument.toLowerCase().includes(state.portfolio.instrumentFilter));
+        data = data.filter(t => t.product && t.product.toLowerCase() === state.portfolio.instrumentFilter);
     }
     
     // PV range
@@ -1013,6 +1035,8 @@ function renderPortfolioTable() {
         const isSelected = state.portfolio.selectedIds.has(t.id);
         const ttm = t.maturityDate ? ((t.maturityDate - new Date()) / (365 * 24 * 60 * 60 * 1000)).toFixed(1) + 'Y' : '-';
         const initials = t.counterparty ? t.counterparty.split(' ').map(w => w[0]).join('').substring(0, 2) : 'XX';
+        const productLabel = t.product ? t.product.charAt(0).toUpperCase() + t.product.slice(1) : '-';
+        const productClass = t.product || 'other';
         
         return `
         <tr class="${isSelected ? 'selected' : ''}" data-id="${t.id}">
@@ -1021,6 +1045,7 @@ function renderPortfolioTable() {
             </td>
             <td><code>${t.id}</code></td>
             ${cols.includes('instrument') ? `<td>${t.instrument}</td>` : ''}
+            ${cols.includes('product') ? `<td><span class="product-badge ${productClass}">${productLabel}</span></td>` : ''}
             ${cols.includes('counterparty') ? `
                 <td>
                     <div class="counterparty-cell">
@@ -1187,9 +1212,9 @@ function updatePortfolioSummary(data) {
 function updateFilterCounts() {
     const data = state.portfolio.data;
     document.getElementById('count-all').textContent = data.length;
-    document.getElementById('count-swap').textContent = data.filter(t => t.instrument.toLowerCase().includes('swap') && !t.instrument.toLowerCase().includes('swaption')).length;
-    document.getElementById('count-swaption').textContent = data.filter(t => t.instrument.toLowerCase().includes('swaption')).length;
-    document.getElementById('count-cap').textContent = data.filter(t => t.instrument.toLowerCase().includes('cap')).length;
+    document.getElementById('count-swap').textContent = data.filter(t => t.product === 'swap').length;
+    document.getElementById('count-swaption').textContent = data.filter(t => t.product === 'swaption').length;
+    document.getElementById('count-cap').textContent = data.filter(t => t.product === 'cap').length;
 }
 
 function renderPaginationButtons(totalPages) {
@@ -1878,7 +1903,52 @@ function initQuickActions() {
 // Chart Interactivity
 // ============================================
 
+// Filter exposure data by time range
+function filterExposureByRange(data, range) {
+    if (!data || data.length === 0) return data;
+    
+    let maxTime;
+    switch (range) {
+        case '1y': maxTime = 1; break;
+        case '5y': maxTime = 5; break;
+        case '10y':
+        default: maxTime = 10; break;
+    }
+    
+    return data.filter(d => d.time <= maxTime);
+}
+
+// Update exposure charts with current range
+function updateExposureWithRange(range) {
+    state.exposureRange = range;
+    const filteredData = filterExposureByRange(state.exposureData, range);
+    updateExposureChart(filteredData);
+    updateMainExposureChart(filteredData);
+    
+    // Update legend values with filtered data
+    if (filteredData.length > 0) {
+        const latest = filteredData[filteredData.length - 1];
+        document.getElementById('legend-pfe').textContent = formatCurrency(latest.pfe);
+        document.getElementById('legend-ee').textContent = formatCurrency(latest.ee);
+        document.getElementById('legend-epe').textContent = formatCurrency(latest.epe);
+        document.getElementById('legend-ene').textContent = formatCurrency(latest.ene);
+    }
+}
+
 function initChartControls() {
+    // Range toggle (1Y/5Y/10Y)
+    document.querySelectorAll('[data-range]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            // Update active state
+            btn.closest('.bento-actions').querySelectorAll('[data-range]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            // Update chart with new range
+            const range = btn.dataset.range;
+            updateExposureWithRange(range);
+        });
+    });
+    
     // Legend toggle
     document.querySelectorAll('.legend-item').forEach(item => {
         item.addEventListener('click', () => {
@@ -1972,6 +2042,9 @@ function handleWsMessage(data) {
         updateValue('cva', data.data.cva);
         updateValue('dva', data.data.dva);
         updateValue('fva', data.data.fva);
+    } else if (data.type === 'graph_update') {
+        // Task 5.1: Handle graph_update messages via GraphManager
+        graphManager.handleGraphUpdate(data);
     }
 }
 
@@ -4323,6 +4396,7 @@ async function init() {
         try { initRiskView(); } catch(e) { console.error('initRiskView error:', e); }
         try { initExposureView(); } catch(e) { console.error('initExposureView error:', e); }
         try { initImpactChart(); } catch(e) { console.error('initImpactChart error:', e); }
+        try { initGraphTab(); } catch(e) { console.error('initGraphTab error:', e); }
         
         // Load data
         showLoading('Loading dashboard...');
@@ -4358,3 +4432,1938 @@ async function init() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+// ============================================
+// Task 5.1: GraphManager Class
+// ============================================
+
+/**
+ * GraphManager handles graph data fetching, state management,
+ * and WebSocket update processing for computation graph visualisation.
+ */
+class GraphManager {
+    constructor() {
+        this.graphs = {};           // trade_id -> ComputationGraph
+        this.subscriptions = new Set();  // subscribed trade IDs
+        this.currentTradeId = null;
+        this.listeners = new Map(); // event listeners
+    }
+
+    /**
+     * Fetch computation graph from REST API
+     * @param {string|null} tradeId - Trade ID to fetch, or null for all trades
+     * @returns {Promise<object>} Graph data with nodes, links, and metadata
+     */
+    async fetchGraph(tradeId = null) {
+        const url = tradeId
+            ? `${API_BASE}/graph?trade_id=${tradeId}`
+            : `${API_BASE}/graph`;
+
+        const response = await fetch(url);
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ message: 'Unknown error' }));
+            throw new Error(error.message || `HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        this.graphs[tradeId || 'all'] = data;
+        this.currentTradeId = tradeId;
+
+        // Notify listeners
+        this.notifyListeners('graph_loaded', { tradeId, data });
+
+        return data;
+    }
+
+    /**
+     * Handle WebSocket graph_update message
+     * @param {object} message - WebSocket message with type and data
+     */
+    handleGraphUpdate(message) {
+        if (message.type !== 'graph_update') return;
+
+        const { trade_id, updated_nodes } = message.data;
+
+        // Only process if subscribed
+        if (!this.subscriptions.has(trade_id)) return;
+
+        // Apply differential update
+        const graph = this.graphs[trade_id];
+        if (graph) {
+            updated_nodes.forEach(update => {
+                const node = graph.nodes.find(n => n.id === update.id);
+                if (node) {
+                    node.value = update.value;
+                }
+            });
+        }
+
+        // Notify listeners
+        this.notifyListeners('graph_update', { tradeId: trade_id, updatedNodes: updated_nodes });
+    }
+
+    /**
+     * Subscribe to graph updates for a specific trade
+     * @param {string} tradeId - Trade ID to subscribe to
+     */
+    subscribe(tradeId) {
+        this.subscriptions.add(tradeId);
+    }
+
+    /**
+     * Unsubscribe from graph updates for a specific trade
+     * @param {string} tradeId - Trade ID to unsubscribe from
+     */
+    unsubscribe(tradeId) {
+        this.subscriptions.delete(tradeId);
+    }
+
+    /**
+     * Check if a trade is subscribed
+     * @param {string} tradeId - Trade ID to check
+     * @returns {boolean} True if subscribed
+     */
+    isSubscribed(tradeId) {
+        return this.subscriptions.has(tradeId);
+    }
+
+    /**
+     * Add event listener
+     * @param {string} event - Event name
+     * @param {function} callback - Callback function
+     */
+    addListener(event, callback) {
+        if (!this.listeners.has(event)) {
+            this.listeners.set(event, []);
+        }
+        this.listeners.get(event).push(callback);
+    }
+
+    /**
+     * Remove event listener
+     * @param {string} event - Event name
+     * @param {function} callback - Callback function to remove
+     */
+    removeListener(event, callback) {
+        if (this.listeners.has(event)) {
+            const callbacks = this.listeners.get(event);
+            const index = callbacks.indexOf(callback);
+            if (index > -1) {
+                callbacks.splice(index, 1);
+            }
+        }
+    }
+
+    /**
+     * Notify all listeners for an event
+     * @param {string} event - Event name
+     * @param {object} data - Event data
+     */
+    notifyListeners(event, data) {
+        if (this.listeners.has(event)) {
+            this.listeners.get(event).forEach(callback => {
+                try {
+                    callback(data);
+                } catch (e) {
+                    console.error(`GraphManager listener error (${event}):`, e);
+                }
+            });
+        }
+    }
+
+    /**
+     * Get current graph data
+     * @param {string|null} tradeId - Trade ID or null for all
+     * @returns {object|null} Graph data or null
+     */
+    getGraph(tradeId = null) {
+        return this.graphs[tradeId || 'all'] || null;
+    }
+
+    /**
+     * Clear all cached graphs
+     */
+    clearCache() {
+        this.graphs = {};
+    }
+}
+
+// Global GraphManager instance
+const graphManager = new GraphManager();
+
+// ============================================
+// Task 5.1: Graph State
+// ============================================
+
+/**
+ * Graph visualisation state
+ */
+const graphState = {
+    nodes: [],           // GraphNode array
+    links: [],           // GraphEdge array
+    metadata: {},        // GraphMetadata
+    simulation: null,    // D3 force simulation
+    svg: null,           // SVG element
+    g: null,             // Main group (for zoom transform)
+    zoom: null,          // D3 zoom behavior
+    selectedNode: null,  // Currently selected node
+    searchQuery: '',     // Search query
+    highlightPath: [],   // Highlighted path nodes
+    lodEnabled: false,   // Level of Detail enabled
+    renderMode: 'svg',   // 'svg' | 'canvas'
+};
+
+/**
+ * Node type colour mapping
+ * - input: blue (#3b82f6)
+ * - intermediate: grey (#6b7280)
+ * - output: green (#22c55e)
+ * - sensitivity: orange (#f97316)
+ */
+const nodeColors = {
+    input: '#3b82f6',
+    intermediate: '#6b7280',
+    output: '#22c55e',
+    sensitivity: '#f97316',
+};
+
+/**
+ * Get colour for a node based on its group
+ * @param {object} node - Graph node
+ * @returns {string} Colour hex code
+ */
+function getNodeColor(node) {
+    if (node.is_sensitivity_target) return nodeColors.sensitivity;
+    return nodeColors[node.group] || nodeColors.intermediate;
+}
+
+// ============================================
+// Task 5.2: D3.js Graph Rendering
+// ============================================
+
+/**
+ * Initialise the graph view with SVG and D3 force simulation
+ */
+function initGraphView() {
+    const container = document.getElementById('graph-container');
+    if (!container) return;
+
+    // Clear any existing content
+    container.innerHTML = '';
+
+    // Get container dimensions
+    const width = container.clientWidth || 800;
+    const height = container.clientHeight || 600;
+
+    // Create SVG element
+    graphState.svg = d3.select(container)
+        .append('svg')
+        .attr('width', '100%')
+        .attr('height', '100%')
+        .attr('viewBox', `0 0 ${width} ${height}`)
+        .attr('class', 'graph-svg');
+
+    // Create main group for zoom/pan transforms
+    graphState.g = graphState.svg.append('g')
+        .attr('class', 'graph-main-group');
+
+    // Add arrow marker for directed edges
+    graphState.svg.append('defs').append('marker')
+        .attr('id', 'arrowhead')
+        .attr('viewBox', '-0 -5 10 10')
+        .attr('refX', 20)
+        .attr('refY', 0)
+        .attr('orient', 'auto')
+        .attr('markerWidth', 6)
+        .attr('markerHeight', 6)
+        .append('path')
+        .attr('d', 'M0,-5L10,0L0,5')
+        .attr('fill', '#64748b');
+
+    // Initialise force simulation
+    graphState.simulation = d3.forceSimulation()
+        .force('link', d3.forceLink()
+            .id(d => d.id)
+            .distance(80))
+        .force('charge', d3.forceManyBody()
+            .strength(-300))
+        .force('center', d3.forceCenter(width / 2, height / 2))
+        .force('collision', d3.forceCollide().radius(30));
+
+    // Task 5.3: Setup zoom behaviour
+    setupZoomBehavior();
+
+    // Listen for graph loaded events
+    graphManager.addListener('graph_loaded', ({ data }) => {
+        renderGraph(data);
+    });
+
+    // Listen for graph update events
+    graphManager.addListener('graph_update', ({ updatedNodes }) => {
+        updateGraphNodes(updatedNodes);
+    });
+}
+
+/**
+ * Render the computation graph with D3.js force-directed layout
+ * @param {object} data - Graph data with nodes, links, and metadata
+ */
+function renderGraph(data) {
+    if (!graphState.g || !graphState.simulation) {
+        console.warn('Graph view not initialised');
+        return;
+    }
+
+    // Store state
+    graphState.nodes = data.nodes || [];
+    graphState.links = data.links || [];
+    graphState.metadata = data.metadata || {};
+
+    // Clear existing elements
+    graphState.g.selectAll('.link').remove();
+    graphState.g.selectAll('.node').remove();
+    graphState.g.selectAll('.node-label').remove();
+
+    // Create links (edges)
+    const links = graphState.g.append('g')
+        .attr('class', 'links')
+        .selectAll('line')
+        .data(graphState.links)
+        .enter()
+        .append('line')
+        .attr('class', 'link')
+        .attr('stroke', '#64748b')
+        .attr('stroke-opacity', 0.6)
+        .attr('stroke-width', 1.5)
+        .attr('marker-end', 'url(#arrowhead)');
+
+    // Create node groups
+    const nodeGroups = graphState.g.append('g')
+        .attr('class', 'nodes')
+        .selectAll('g')
+        .data(graphState.nodes)
+        .enter()
+        .append('g')
+        .attr('class', 'node-group');
+
+    // Add circles for nodes
+    const nodes = nodeGroups.append('circle')
+        .attr('class', 'node')
+        .attr('r', d => d.is_sensitivity_target ? 12 : 8)
+        .attr('fill', d => getNodeColor(d))
+        .attr('stroke', '#fff')
+        .attr('stroke-width', 2)
+        .style('cursor', 'pointer');
+
+    // Add labels for nodes
+    const labels = nodeGroups.append('text')
+        .attr('class', 'node-label')
+        .attr('dx', 15)
+        .attr('dy', 4)
+        .attr('font-size', '10px')
+        .attr('fill', 'var(--text-secondary, #94a3b8)')
+        .text(d => d.label);
+
+    // Task 5.3: Setup node drag behaviour
+    nodeGroups.call(d3.drag()
+        .on('start', dragStarted)
+        .on('drag', dragged)
+        .on('end', dragEnded));
+
+    // Add hover tooltip
+    nodeGroups
+        .on('mouseover', (event, d) => {
+            showNodeTooltip(event, d);
+        })
+        .on('mouseout', () => {
+            hideNodeTooltip();
+        })
+        .on('click', (event, d) => {
+            selectNode(d);
+        });
+
+    // Update simulation
+    graphState.simulation
+        .nodes(graphState.nodes)
+        .on('tick', () => {
+            links
+                .attr('x1', d => d.source.x)
+                .attr('y1', d => d.source.y)
+                .attr('x2', d => d.target.x)
+                .attr('y2', d => d.target.y);
+
+            nodeGroups
+                .attr('transform', d => `translate(${d.x},${d.y})`);
+        });
+
+    graphState.simulation.force('link')
+        .links(graphState.links);
+
+    // Restart simulation
+    graphState.simulation.alpha(1).restart();
+
+    // Update stats panel (using extended version for Task 6.3, 7.2)
+    updateGraphStatsPanelExtended();
+}
+
+/**
+ * Update specific nodes after WebSocket update
+ * @param {Array} updatedNodes - Array of node updates with id and value
+ */
+function updateGraphNodes(updatedNodes) {
+    if (!graphState.g) return;
+
+    updatedNodes.forEach(update => {
+        // Update state
+        const node = graphState.nodes.find(n => n.id === update.id);
+        if (node) {
+            node.value = update.value;
+        }
+
+        // Flash animation for updated nodes
+        graphState.g.selectAll('.node-group')
+            .filter(d => d.id === update.id)
+            .select('circle')
+            .transition()
+            .duration(200)
+            .attr('stroke', '#f97316')
+            .attr('stroke-width', 4)
+            .transition()
+            .duration(300)
+            .attr('stroke', '#fff')
+            .attr('stroke-width', 2);
+    });
+}
+
+// ============================================
+// Task 5.3: Zoom, Pan, and Drag
+// ============================================
+
+/**
+ * Setup D3.js zoom behaviour for pan and zoom
+ */
+function setupZoomBehavior() {
+    if (!graphState.svg || !graphState.g) return;
+
+    graphState.zoom = d3.zoom()
+        .scaleExtent([0.1, 4])  // Min 10%, Max 400% zoom
+        .on('zoom', (event) => {
+            graphState.g.attr('transform', event.transform);
+
+            // Adjust label visibility based on zoom level
+            adjustLabelsForZoom(event.transform.k);
+        });
+
+    graphState.svg.call(graphState.zoom);
+}
+
+/**
+ * Adjust label visibility based on zoom level
+ * @param {number} scale - Current zoom scale
+ */
+function adjustLabelsForZoom(scale) {
+    if (!graphState.g) return;
+
+    // Hide labels when zoomed out, show when zoomed in
+    const opacity = scale < 0.5 ? 0 : scale < 1 ? (scale - 0.5) * 2 : 1;
+
+    graphState.g.selectAll('.node-label')
+        .attr('opacity', opacity);
+}
+
+/**
+ * Drag started handler
+ */
+function dragStarted(event, d) {
+    if (!event.active) {
+        graphState.simulation.alphaTarget(0.3).restart();
+    }
+    d.fx = d.x;
+    d.fy = d.y;
+}
+
+/**
+ * Dragging handler
+ */
+function dragged(event, d) {
+    d.fx = event.x;
+    d.fy = event.y;
+}
+
+/**
+ * Drag ended handler
+ */
+function dragEnded(event, d) {
+    if (!event.active) {
+        graphState.simulation.alphaTarget(0);
+    }
+    // Optionally release the fixed position
+    // d.fx = null;
+    // d.fy = null;
+}
+
+/**
+ * Reset zoom to default view
+ */
+function resetGraphZoom() {
+    if (!graphState.svg || !graphState.zoom) return;
+
+    graphState.svg.transition()
+        .duration(500)
+        .call(graphState.zoom.transform, d3.zoomIdentity);
+}
+
+/**
+ * Zoom to fit all nodes
+ */
+function zoomToFit() {
+    if (!graphState.svg || !graphState.zoom || !graphState.nodes.length) return;
+
+    const bounds = graphState.g.node().getBBox();
+    const parent = graphState.svg.node().getBoundingClientRect();
+    const width = parent.width || 800;
+    const height = parent.height || 600;
+
+    const scale = Math.min(
+        0.9 * width / bounds.width,
+        0.9 * height / bounds.height,
+        2  // Max scale
+    );
+
+    const translateX = (width - scale * bounds.width) / 2 - scale * bounds.x;
+    const translateY = (height - scale * bounds.height) / 2 - scale * bounds.y;
+
+    graphState.svg.transition()
+        .duration(500)
+        .call(
+            graphState.zoom.transform,
+            d3.zoomIdentity.translate(translateX, translateY).scale(scale)
+        );
+}
+
+// ============================================
+// Task 5.1: Graph Tab Navigation
+// ============================================
+
+/**
+ * Navigate to graph view and optionally load a specific trade
+ * @param {string|null} tradeId - Trade ID to load, or null for all
+ */
+async function navigateToGraph(tradeId = null) {
+    navigateTo('graph');
+
+    // Initialise graph view if needed
+    if (!graphState.svg) {
+        initGraphView();
+    }
+
+    // Show loading state
+    const graphContent = document.getElementById('graph-content');
+    const graphLoading = document.getElementById('graph-loading');
+    if (graphContent) graphContent.style.display = 'none';
+    if (graphLoading) graphLoading.style.display = 'flex';
+
+    try {
+        await graphManager.fetchGraph(tradeId);
+        if (tradeId) {
+            graphManager.subscribe(tradeId);
+        }
+    } catch (error) {
+        console.error('Failed to load graph:', error);
+        showToast('Failed to load computation graph', 'error');
+    } finally {
+        if (graphContent) graphContent.style.display = 'block';
+        if (graphLoading) graphLoading.style.display = 'none';
+    }
+}
+
+// ============================================
+// Graph UI Helpers
+// ============================================
+
+/**
+ * Show tooltip for a node
+ * @param {Event} event - Mouse event
+ * @param {object} node - Node data
+ */
+function showNodeTooltip(event, node) {
+    let tooltip = document.getElementById('graph-tooltip');
+    if (!tooltip) {
+        tooltip = document.createElement('div');
+        tooltip.id = 'graph-tooltip';
+        tooltip.className = 'graph-tooltip glass';
+        document.body.appendChild(tooltip);
+    }
+
+    const valueStr = node.value !== null && node.value !== undefined
+        ? node.value.toFixed(4)
+        : 'N/A';
+
+    tooltip.innerHTML = `
+        <div class="tooltip-header">
+            <span class="tooltip-label">${node.label}</span>
+            <span class="tooltip-type">${node.type}</span>
+        </div>
+        <div class="tooltip-body">
+            <div class="tooltip-row">
+                <span>Value:</span>
+                <span>${valueStr}</span>
+            </div>
+            <div class="tooltip-row">
+                <span>Group:</span>
+                <span>${node.group}</span>
+            </div>
+            ${node.is_sensitivity_target ? '<div class="tooltip-badge">Sensitivity Target</div>' : ''}
+        </div>
+    `;
+
+    tooltip.style.left = `${event.pageX + 15}px`;
+    tooltip.style.top = `${event.pageY - 10}px`;
+    tooltip.style.display = 'block';
+}
+
+/**
+ * Hide node tooltip
+ */
+function hideNodeTooltip() {
+    const tooltip = document.getElementById('graph-tooltip');
+    if (tooltip) {
+        tooltip.style.display = 'none';
+    }
+}
+
+/**
+ * Select a node and highlight its connections
+ * @param {object} node - Node to select
+ */
+function selectNode(node) {
+    graphState.selectedNode = node;
+
+    // Reset all nodes/links to default opacity
+    graphState.g.selectAll('.node').attr('opacity', 0.3);
+    graphState.g.selectAll('.link').attr('opacity', 0.1);
+
+    // Highlight selected node
+    graphState.g.selectAll('.node-group')
+        .filter(d => d.id === node.id)
+        .select('.node')
+        .attr('opacity', 1);
+
+    // Highlight connected nodes and links
+    const connectedIds = new Set([node.id]);
+    graphState.links.forEach(link => {
+        const sourceId = link.source.id || link.source;
+        const targetId = link.target.id || link.target;
+
+        if (sourceId === node.id || targetId === node.id) {
+            connectedIds.add(sourceId);
+            connectedIds.add(targetId);
+        }
+    });
+
+    graphState.g.selectAll('.node-group')
+        .filter(d => connectedIds.has(d.id))
+        .select('.node')
+        .attr('opacity', 1);
+
+    graphState.g.selectAll('.link')
+        .filter(d => {
+            const sourceId = d.source.id || d.source;
+            const targetId = d.target.id || d.target;
+            return sourceId === node.id || targetId === node.id;
+        })
+        .attr('opacity', 0.8);
+
+    // Update info panel
+    updateNodeInfoPanel(node);
+}
+
+/**
+ * Clear node selection
+ */
+function clearNodeSelection() {
+    graphState.selectedNode = null;
+
+    graphState.g.selectAll('.node').attr('opacity', 1);
+    graphState.g.selectAll('.link').attr('opacity', 0.6);
+
+    updateNodeInfoPanel(null);
+}
+
+/**
+ * Update node info panel
+ * @param {object|null} node - Selected node or null
+ */
+function updateNodeInfoPanel(node) {
+    const panel = document.getElementById('node-info-panel');
+    if (!panel) return;
+
+    if (!node) {
+        panel.innerHTML = '<div class="no-selection">Click a node to see details</div>';
+        return;
+    }
+
+    const valueStr = node.value !== null && node.value !== undefined
+        ? node.value.toFixed(6)
+        : 'N/A';
+
+    panel.innerHTML = `
+        <div class="node-info-header">
+            <span class="node-info-id">${node.id}</span>
+            <span class="node-info-type" style="background: ${getNodeColor(node)}">${node.type}</span>
+        </div>
+        <div class="node-info-body">
+            <div class="info-row">
+                <span class="info-label">Label</span>
+                <span class="info-value">${node.label}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Value</span>
+                <span class="info-value">${valueStr}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Group</span>
+                <span class="info-value">${node.group}</span>
+            </div>
+            ${node.is_sensitivity_target ? '<div class="sensitivity-badge"><i class="fas fa-bullseye"></i> Sensitivity Target</div>' : ''}
+        </div>
+    `;
+}
+
+/**
+ * Update graph statistics panel
+ */
+function updateGraphStatsPanel() {
+    const nodeCountEl = document.getElementById('graph-node-count');
+    const edgeCountEl = document.getElementById('graph-edge-count');
+    const depthEl = document.getElementById('graph-depth');
+    const generatedAtEl = document.getElementById('graph-generated-at');
+
+    if (nodeCountEl) nodeCountEl.textContent = graphState.metadata.node_count || 0;
+    if (edgeCountEl) edgeCountEl.textContent = graphState.metadata.edge_count || 0;
+    if (depthEl) depthEl.textContent = graphState.metadata.depth || 0;
+    if (generatedAtEl) {
+        const date = graphState.metadata.generated_at
+            ? new Date(graphState.metadata.generated_at).toLocaleString()
+            : 'N/A';
+        generatedAtEl.textContent = date;
+    }
+}
+
+/**
+ * Initialise graph view controls
+ */
+function initGraphControls() {
+    // Trade selector
+    const tradeSelector = document.getElementById('graph-trade-selector');
+    if (tradeSelector) {
+        tradeSelector.addEventListener('change', async (e) => {
+            const tradeId = e.target.value || null;
+            try {
+                await graphManager.fetchGraph(tradeId);
+            } catch (error) {
+                console.error('Failed to load graph:', error);
+                showToast('Failed to load graph', 'error');
+            }
+        });
+    }
+
+    // Zoom controls
+    document.getElementById('graph-zoom-in')?.addEventListener('click', () => {
+        if (graphState.svg && graphState.zoom) {
+            graphState.svg.transition()
+                .duration(300)
+                .call(graphState.zoom.scaleBy, 1.3);
+        }
+    });
+
+    document.getElementById('graph-zoom-out')?.addEventListener('click', () => {
+        if (graphState.svg && graphState.zoom) {
+            graphState.svg.transition()
+                .duration(300)
+                .call(graphState.zoom.scaleBy, 0.7);
+        }
+    });
+
+    document.getElementById('graph-zoom-reset')?.addEventListener('click', resetGraphZoom);
+    document.getElementById('graph-zoom-fit')?.addEventListener('click', zoomToFit);
+
+    // Clear selection
+    document.getElementById('graph-clear-selection')?.addEventListener('click', clearNodeSelection);
+
+    // Task 6.2: Initialise search controls
+    initSearchControls();
+
+    // Task 6.3: Initialise sensitivity path controls
+    initSensitivityPathControls();
+}
+
+// ============================================
+// Graph View Initialisation (Task 5.1)
+// ============================================
+
+/**
+ * Initialise the graph view tab
+ * Called from main init() function
+ */
+function initGraphTab() {
+    initGraphView();
+    initGraphControls();
+
+    // Integrate with WebSocket handler for graph_update messages
+    // This is handled in handleWsMessage but we add the GraphManager callback
+}
+
+// ============================================
+// Task 6.3: Sensitivity Path Highlight
+// ============================================
+
+/**
+ * Sensitivity path state
+ */
+const sensitivityPathState = {
+    paths: [],              // All computed sensitivity paths
+    highlightedPath: null,  // Currently highlighted path
+    isEnabled: false,       // Whether sensitivity path highlighting is enabled
+};
+
+/**
+ * Find all sensitivity target nodes
+ * @param {Array} nodes - Array of graph nodes
+ * @returns {Array} Array of sensitivity target node IDs
+ */
+function findSensitivityTargets(nodes) {
+    return nodes
+        .filter(n => n.is_sensitivity_target)
+        .map(n => n.id);
+}
+
+/**
+ * Find all output nodes
+ * @param {Array} nodes - Array of graph nodes
+ * @returns {Array} Array of output node IDs
+ */
+function findOutputNodes(nodes) {
+    return nodes
+        .filter(n => n.group === 'output' || n.type === 'output')
+        .map(n => n.id);
+}
+
+/**
+ * Build adjacency list from links
+ * @param {Array} links - Array of graph links/edges
+ * @returns {Object} Adjacency list { nodeId: [connectedNodeIds] }
+ */
+function buildAdjacencyList(links) {
+    const adjacency = {};
+    links.forEach(link => {
+        const source = link.source.id || link.source;
+        const target = link.target.id || link.target;
+        if (!adjacency[source]) adjacency[source] = [];
+        adjacency[source].push(target);
+    });
+    return adjacency;
+}
+
+/**
+ * Find path from source to target using BFS
+ * @param {string} source - Source node ID
+ * @param {string} target - Target node ID
+ * @param {Object} adjacency - Adjacency list
+ * @returns {Array|null} Array of node IDs in path, or null if no path
+ */
+function findPathBFS(source, target, adjacency) {
+    if (source === target) return [source];
+
+    const visited = new Set();
+    const queue = [[source, [source]]];
+
+    while (queue.length > 0) {
+        const [current, path] = queue.shift();
+
+        if (visited.has(current)) continue;
+        visited.add(current);
+
+        const neighbours = adjacency[current] || [];
+        for (const neighbour of neighbours) {
+            const newPath = [...path, neighbour];
+            if (neighbour === target) {
+                return newPath;
+            }
+            if (!visited.has(neighbour)) {
+                queue.push([neighbour, newPath]);
+            }
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Find all sensitivity paths (from sensitivity targets to outputs)
+ * @param {Array} nodes - Array of graph nodes
+ * @param {Array} links - Array of graph links
+ * @returns {Array} Array of path objects { from, to, path }
+ */
+function findAllSensitivityPaths(nodes, links) {
+    const sensitivityTargets = findSensitivityTargets(nodes);
+    const outputs = findOutputNodes(nodes);
+    const adjacency = buildAdjacencyList(links);
+
+    const paths = [];
+    for (const source of sensitivityTargets) {
+        for (const target of outputs) {
+            const path = findPathBFS(source, target, adjacency);
+            if (path) {
+                paths.push({ from: source, to: target, path });
+            }
+        }
+    }
+
+    return paths;
+}
+
+/**
+ * Get edges that are part of a path
+ * @param {Array} path - Array of node IDs in path
+ * @param {Array} links - Array of graph links
+ * @returns {Array} Array of link objects that form the path
+ */
+function getEdgesForPath(path, links) {
+    const edges = [];
+    for (let i = 0; i < path.length - 1; i++) {
+        const source = path[i];
+        const target = path[i + 1];
+        const edge = links.find(l => {
+            const lSource = l.source.id || l.source;
+            const lTarget = l.target.id || l.target;
+            return lSource === source && lTarget === target;
+        });
+        if (edge) edges.push(edge);
+    }
+    return edges;
+}
+
+/**
+ * Highlight a sensitivity path on the graph
+ * @param {Object} pathObj - Path object { from, to, path }
+ */
+function highlightSensitivityPath(pathObj) {
+    if (!graphState.g || !pathObj) return;
+
+    const pathNodeIds = new Set(pathObj.path);
+
+    // Dim all nodes and links
+    graphState.g.selectAll('.node').attr('opacity', 0.2);
+    graphState.g.selectAll('.link').attr('opacity', 0.1).attr('stroke', '#64748b');
+
+    // Highlight path nodes
+    graphState.g.selectAll('.node-group')
+        .filter(d => pathNodeIds.has(d.id))
+        .select('.node')
+        .attr('opacity', 1)
+        .attr('stroke', '#f97316')
+        .attr('stroke-width', 3);
+
+    // Highlight path edges
+    const pathEdges = getEdgesForPath(pathObj.path, graphState.links);
+    pathEdges.forEach(edge => {
+        graphState.g.selectAll('.link')
+            .filter(d => {
+                const dSource = d.source.id || d.source;
+                const dTarget = d.target.id || d.target;
+                const eSource = edge.source.id || edge.source;
+                const eTarget = edge.target.id || edge.target;
+                return dSource === eSource && dTarget === eTarget;
+            })
+            .attr('opacity', 1)
+            .attr('stroke', '#f97316')
+            .attr('stroke-width', 3);
+    });
+
+    sensitivityPathState.highlightedPath = pathObj;
+}
+
+/**
+ * Clear sensitivity path highlighting
+ */
+function clearSensitivityPathHighlight() {
+    if (!graphState.g) return;
+
+    // Restore all nodes
+    graphState.g.selectAll('.node')
+        .attr('opacity', 1)
+        .attr('stroke', '#fff')
+        .attr('stroke-width', 2);
+
+    // Restore all links
+    graphState.g.selectAll('.link')
+        .attr('opacity', 0.6)
+        .attr('stroke', '#64748b')
+        .attr('stroke-width', 1.5);
+
+    sensitivityPathState.highlightedPath = null;
+}
+
+/**
+ * Toggle sensitivity path highlighting
+ */
+function toggleSensitivityPathHighlight() {
+    sensitivityPathState.isEnabled = !sensitivityPathState.isEnabled;
+
+    if (sensitivityPathState.isEnabled) {
+        // Compute paths if not already done
+        if (sensitivityPathState.paths.length === 0 && graphState.nodes.length > 0) {
+            sensitivityPathState.paths = findAllSensitivityPaths(graphState.nodes, graphState.links);
+        }
+
+        // Highlight first path if available
+        if (sensitivityPathState.paths.length > 0) {
+            highlightSensitivityPath(sensitivityPathState.paths[0]);
+        }
+
+        // Update UI
+        updateSensitivityPathSelector();
+    } else {
+        clearSensitivityPathHighlight();
+    }
+
+    // Update button state
+    const btn = document.getElementById('sensitivity-path-toggle');
+    if (btn) {
+        btn.classList.toggle('active', sensitivityPathState.isEnabled);
+    }
+}
+
+/**
+ * Update sensitivity path selector dropdown
+ */
+function updateSensitivityPathSelector() {
+    const selector = document.getElementById('sensitivity-path-selector');
+    if (!selector) return;
+
+    selector.innerHTML = '';
+
+    sensitivityPathState.paths.forEach((pathObj, index) => {
+        const option = document.createElement('option');
+        option.value = index;
+        option.textContent = `${pathObj.from} → ${pathObj.to} (${pathObj.path.length} nodes)`;
+        selector.appendChild(option);
+    });
+
+    selector.style.display = sensitivityPathState.paths.length > 0 ? 'block' : 'none';
+}
+
+/**
+ * Select a specific sensitivity path
+ * @param {number} index - Index of path to select
+ */
+function selectSensitivityPath(index) {
+    if (index >= 0 && index < sensitivityPathState.paths.length) {
+        highlightSensitivityPath(sensitivityPathState.paths[index]);
+    }
+}
+
+/**
+ * Initialise sensitivity path controls
+ */
+function initSensitivityPathControls() {
+    // Toggle button
+    const toggleBtn = document.getElementById('sensitivity-path-toggle');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', toggleSensitivityPathHighlight);
+    }
+
+    // Path selector
+    const selector = document.getElementById('sensitivity-path-selector');
+    if (selector) {
+        selector.addEventListener('change', (e) => {
+            selectSensitivityPath(parseInt(e.target.value, 10));
+        });
+    }
+}
+
+// ============================================
+// Task 7.2: Node Type Statistics Chart
+// ============================================
+
+/**
+ * Node type chart state
+ */
+const nodeTypeChartState = {
+    chartInstance: null,
+    typeCounts: {},
+};
+
+/**
+ * Colour palette for node types
+ */
+const nodeTypeColors = {
+    input: '#3b82f6',     // Blue
+    output: '#22c55e',    // Green
+    add: '#f59e0b',       // Amber
+    mul: '#8b5cf6',       // Violet
+    exp: '#ec4899',       // Pink
+    log: '#14b8a6',       // Teal
+    sqrt: '#06b6d4',      // Cyan
+    div: '#f97316',       // Orange
+    default: '#6b7280',   // Grey
+};
+
+/**
+ * Count nodes by type
+ * @param {Array} nodes - Array of graph nodes
+ * @returns {Object} Object with type keys and count values
+ */
+function countNodesByType(nodes) {
+    const counts = {};
+    nodes.forEach(node => {
+        const type = node.type || 'unknown';
+        counts[type] = (counts[type] || 0) + 1;
+    });
+    return counts;
+}
+
+/**
+ * Sort type counts in descending order
+ * @param {Object} typeCounts - Object with type keys and count values
+ * @returns {Array} Array of [type, count] pairs sorted descending
+ */
+function sortTypeCountsDescending(typeCounts) {
+    return Object.entries(typeCounts)
+        .sort((a, b) => b[1] - a[1]);
+}
+
+/**
+ * Get chart colour for a node type
+ * @param {string} type - Node type
+ * @returns {string} Colour hex code
+ */
+function getChartColorForType(type) {
+    return nodeTypeColors[type] || nodeTypeColors.default;
+}
+
+/**
+ * Render the node type statistics chart
+ * @param {Object} typeCounts - Object with type keys and count values
+ */
+function renderNodeTypeChart(typeCounts) {
+    const canvas = document.getElementById('node-type-chart');
+    if (!canvas) return;
+
+    // Destroy existing chart
+    if (nodeTypeChartState.chartInstance) {
+        nodeTypeChartState.chartInstance.destroy();
+    }
+
+    const sortedTypes = sortTypeCountsDescending(typeCounts);
+    const labels = sortedTypes.map(([type]) => type);
+    const data = sortedTypes.map(([, count]) => count);
+    const colors = labels.map(type => getChartColorForType(type));
+
+    // Create chart
+    nodeTypeChartState.chartInstance = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Node Count',
+                data,
+                backgroundColor: colors,
+                borderColor: colors.map(c => c),
+                borderWidth: 1,
+                borderRadius: 4,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',  // Horizontal bar chart
+            plugins: {
+                legend: {
+                    display: false,
+                },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => `${context.parsed.x} nodes`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(100, 116, 139, 0.2)',
+                    },
+                    ticks: {
+                        color: 'var(--text-secondary, #94a3b8)',
+                        stepSize: 1,
+                    }
+                },
+                y: {
+                    grid: {
+                        display: false,
+                    },
+                    ticks: {
+                        color: 'var(--text-secondary, #94a3b8)',
+                    }
+                }
+            }
+        }
+    });
+
+    nodeTypeChartState.typeCounts = typeCounts;
+}
+
+/**
+ * Update node type statistics chart with current graph data
+ */
+function updateNodeTypeChart() {
+    if (!graphState.nodes || graphState.nodes.length === 0) return;
+
+    const typeCounts = countNodesByType(graphState.nodes);
+    renderNodeTypeChart(typeCounts);
+}
+
+// ============================================
+// Update Stats Panel Integration
+// ============================================
+
+/**
+ * Update full graph statistics panel (extended for Task 7.2)
+ * Overrides/extends updateGraphStatsPanel
+ */
+const originalUpdateGraphStatsPanel = typeof updateGraphStatsPanel !== 'undefined'
+    ? updateGraphStatsPanel
+    : function() {};
+
+// Override updateGraphStatsPanel to include node type chart
+function updateGraphStatsPanelExtended() {
+    // Call original function for basic stats
+    const nodeCountEl = document.getElementById('graph-node-count');
+    const edgeCountEl = document.getElementById('graph-edge-count');
+    const depthEl = document.getElementById('graph-depth');
+    const generatedAtEl = document.getElementById('graph-generated-at');
+
+    if (nodeCountEl) nodeCountEl.textContent = graphState.metadata.node_count || 0;
+    if (edgeCountEl) edgeCountEl.textContent = graphState.metadata.edge_count || 0;
+    if (depthEl) depthEl.textContent = graphState.metadata.depth || 0;
+    if (generatedAtEl) {
+        const date = graphState.metadata.generated_at
+            ? new Date(graphState.metadata.generated_at).toLocaleString()
+            : 'N/A';
+        generatedAtEl.textContent = date;
+    }
+
+    // Task 7.2: Update node type chart
+    updateNodeTypeChart();
+
+    // Task 6.3: Recompute sensitivity paths
+    if (graphState.nodes.length > 0) {
+        sensitivityPathState.paths = findAllSensitivityPaths(graphState.nodes, graphState.links);
+        if (sensitivityPathState.isEnabled) {
+            updateSensitivityPathSelector();
+            if (sensitivityPathState.paths.length > 0 && !sensitivityPathState.highlightedPath) {
+                highlightSensitivityPath(sensitivityPathState.paths[0]);
+            }
+        }
+    }
+}
+
+// Apply extended stats panel update
+// Note: This is called from renderGraph()
+
+// ============================================
+// Unit Tests for Graph Functionality
+// ============================================
+
+/**
+ * Run unit tests for GraphManager and Graph visualisation
+ * Can be triggered from browser console: runGraphTests()
+ */
+function runGraphTests() {
+    const results = [];
+    const assert = (condition, message) => {
+        results.push({ passed: condition, message });
+        if (!condition) {
+            console.error(`FAIL: ${message}`);
+        } else {
+            console.log(`PASS: ${message}`);
+        }
+    };
+
+    console.log('=== GraphManager Tests ===');
+
+    // Test 1: GraphManager instantiation
+    const gm = new GraphManager();
+    assert(gm !== null, 'GraphManager instantiation');
+    assert(Object.keys(gm.graphs).length === 0, 'GraphManager has empty graphs initially');
+    assert(gm.subscriptions.size === 0, 'GraphManager has empty subscriptions initially');
+
+    // Test 2: Subscribe/Unsubscribe
+    gm.subscribe('T001');
+    assert(gm.isSubscribed('T001'), 'Subscribe adds trade to subscriptions');
+    assert(!gm.isSubscribed('T002'), 'Non-subscribed trade returns false');
+
+    gm.unsubscribe('T001');
+    assert(!gm.isSubscribed('T001'), 'Unsubscribe removes trade from subscriptions');
+
+    // Test 3: Duplicate subscription is idempotent
+    gm.subscribe('T001');
+    gm.subscribe('T001');
+    gm.subscribe('T001');
+    assert(gm.subscriptions.size === 1, 'Duplicate subscriptions are idempotent');
+
+    // Test 4: Listener management
+    let callbackCalled = false;
+    const testCallback = () => { callbackCalled = true; };
+    gm.addListener('test_event', testCallback);
+    gm.notifyListeners('test_event', {});
+    assert(callbackCalled, 'Listener callback is called');
+
+    // Test 5: handleGraphUpdate only processes subscribed trades
+    gm.clearCache();
+    gm.subscriptions.clear();
+    gm.graphs['T001'] = {
+        nodes: [{ id: 'N1', value: 100 }],
+        links: [],
+        metadata: {}
+    };
+
+    gm.subscribe('T001');
+    gm.handleGraphUpdate({
+        type: 'graph_update',
+        data: {
+            trade_id: 'T001',
+            updated_nodes: [{ id: 'N1', value: 150 }]
+        }
+    });
+    assert(gm.graphs['T001'].nodes[0].value === 150, 'handleGraphUpdate updates node values');
+
+    // Test 6: handleGraphUpdate ignores non-subscribed trades
+    gm.handleGraphUpdate({
+        type: 'graph_update',
+        data: {
+            trade_id: 'T002',
+            updated_nodes: [{ id: 'N1', value: 200 }]
+        }
+    });
+    assert(gm.graphs['T001'].nodes[0].value === 150, 'handleGraphUpdate ignores non-subscribed trades');
+
+    // Test 7: Node colour mapping
+    assert(getNodeColor({ group: 'input', is_sensitivity_target: false }) === '#3b82f6', 'Input nodes are blue');
+    assert(getNodeColor({ group: 'intermediate', is_sensitivity_target: false }) === '#6b7280', 'Intermediate nodes are grey');
+    assert(getNodeColor({ group: 'output', is_sensitivity_target: false }) === '#22c55e', 'Output nodes are green');
+    assert(getNodeColor({ group: 'input', is_sensitivity_target: true }) === '#f97316', 'Sensitivity targets are orange');
+
+    // Test 8: navigateToGraph function exists and is callable
+    assert(typeof navigateToGraph === 'function', 'navigateToGraph function exists');
+
+    // Test 9: graphState has required properties
+    assert(graphState.hasOwnProperty('nodes'), 'graphState has nodes property');
+    assert(graphState.hasOwnProperty('links'), 'graphState has links property');
+    assert(graphState.hasOwnProperty('metadata'), 'graphState has metadata property');
+    assert(graphState.hasOwnProperty('simulation'), 'graphState has simulation property');
+    assert(graphState.hasOwnProperty('svg'), 'graphState has svg property');
+    assert(graphState.hasOwnProperty('zoom'), 'graphState has zoom property');
+    assert(graphState.hasOwnProperty('renderMode'), 'graphState has renderMode property');
+
+    // Test 10: nodeColors has all required colours
+    assert(nodeColors.input === '#3b82f6', 'nodeColors.input is blue');
+    assert(nodeColors.intermediate === '#6b7280', 'nodeColors.intermediate is grey');
+    assert(nodeColors.output === '#22c55e', 'nodeColors.output is green');
+    assert(nodeColors.sensitivity === '#f97316', 'nodeColors.sensitivity is orange');
+
+    // Test 11: GraphManager listener removal
+    let removalTestPassed = false;
+    const removalCallback = () => { removalTestPassed = true; };
+    gm.addListener('removal_test', removalCallback);
+    gm.removeListener('removal_test', removalCallback);
+    gm.notifyListeners('removal_test', {});
+    assert(!removalTestPassed, 'Removed listener should not be called');
+
+    // Test 12: GraphManager clearCache
+    gm.graphs['test'] = { nodes: [], links: [] };
+    gm.clearCache();
+    assert(Object.keys(gm.graphs).length === 0, 'clearCache empties the graphs object');
+
+    // Test 13: GraphManager getGraph returns null for non-existent graph
+    assert(gm.getGraph('nonexistent') === null, 'getGraph returns null for non-existent graph');
+
+    // ============================================
+    // Task 5.2 Tests: D3.js Force-Directed Graph Rendering
+    // ============================================
+    console.log('=== Task 5.2: D3.js Graph Rendering Tests ===');
+
+    // Test 14: initGraphView function exists and is callable
+    assert(typeof initGraphView === 'function', 'initGraphView function exists');
+
+    // Test 15: renderGraph function exists and is callable
+    assert(typeof renderGraph === 'function', 'renderGraph function exists');
+
+    // Test 16: updateGraphNodes function exists and is callable
+    assert(typeof updateGraphNodes === 'function', 'updateGraphNodes function exists');
+
+    // Test 17: getNodeColor function returns correct colours for all node groups
+    assert(getNodeColor({ group: 'input', is_sensitivity_target: false }) === '#3b82f6',
+        'Task 5.2: Input nodes (group: input) return blue (#3b82f6)');
+    assert(getNodeColor({ group: 'intermediate', is_sensitivity_target: false }) === '#6b7280',
+        'Task 5.2: Intermediate nodes return grey (#6b7280)');
+    assert(getNodeColor({ group: 'output', is_sensitivity_target: false }) === '#22c55e',
+        'Task 5.2: Output nodes return green (#22c55e)');
+    assert(getNodeColor({ group: 'sensitivity', is_sensitivity_target: false }) === '#f97316',
+        'Task 5.2: Sensitivity group nodes return orange (#f97316)');
+
+    // Test 18: Sensitivity target flag overrides group colour
+    assert(getNodeColor({ group: 'input', is_sensitivity_target: true }) === '#f97316',
+        'Task 5.2: Sensitivity targets override input group to orange');
+    assert(getNodeColor({ group: 'output', is_sensitivity_target: true }) === '#f97316',
+        'Task 5.2: Sensitivity targets override output group to orange');
+    assert(getNodeColor({ group: 'intermediate', is_sensitivity_target: true }) === '#f97316',
+        'Task 5.2: Sensitivity targets override intermediate group to orange');
+
+    // Test 19: Unknown group defaults to intermediate colour
+    assert(getNodeColor({ group: 'unknown', is_sensitivity_target: false }) === '#6b7280',
+        'Task 5.2: Unknown node group defaults to intermediate grey');
+    assert(getNodeColor({ group: undefined, is_sensitivity_target: false }) === '#6b7280',
+        'Task 5.2: Undefined node group defaults to intermediate grey');
+
+    // Test 20: nodeColors object contains all required colour definitions
+    assert(typeof nodeColors === 'object', 'Task 5.2: nodeColors object exists');
+    assert(nodeColors.hasOwnProperty('input'), 'Task 5.2: nodeColors has input property');
+    assert(nodeColors.hasOwnProperty('intermediate'), 'Task 5.2: nodeColors has intermediate property');
+    assert(nodeColors.hasOwnProperty('output'), 'Task 5.2: nodeColors has output property');
+    assert(nodeColors.hasOwnProperty('sensitivity'), 'Task 5.2: nodeColors has sensitivity property');
+
+    // Test 21: graphState has D3-specific properties for Task 5.2
+    assert(graphState.hasOwnProperty('simulation'), 'Task 5.2: graphState has simulation property');
+    assert(graphState.hasOwnProperty('svg'), 'Task 5.2: graphState has svg property');
+    assert(graphState.hasOwnProperty('g'), 'Task 5.2: graphState has g (main group) property');
+    assert(graphState.hasOwnProperty('renderMode'), 'Task 5.2: graphState has renderMode property');
+
+    // Test 22: renderGraph handles empty data gracefully
+    const originalWarn = console.warn;
+    let warnCalled = false;
+    console.warn = () => { warnCalled = true; };
+    renderGraph({ nodes: [], links: [], metadata: {} });
+    console.warn = originalWarn;
+    // If graph is not initialised, it should warn but not throw
+    assert(true, 'Task 5.2: renderGraph handles empty data without throwing');
+
+    // Test 23: graphState.nodes and links are arrays
+    assert(Array.isArray(graphState.nodes), 'Task 5.2: graphState.nodes is an array');
+    assert(Array.isArray(graphState.links), 'Task 5.2: graphState.links is an array');
+
+    // Test 24: Force simulation configuration constants
+    // Verify the expected D3 force layout parameters exist in the design
+    assert(typeof d3 !== 'undefined', 'Task 5.2: D3.js library is loaded');
+    assert(typeof d3.forceSimulation === 'function', 'Task 5.2: D3 forceSimulation is available');
+    assert(typeof d3.forceLink === 'function', 'Task 5.2: D3 forceLink is available');
+    assert(typeof d3.forceManyBody === 'function', 'Task 5.2: D3 forceManyBody is available');
+    assert(typeof d3.forceCenter === 'function', 'Task 5.2: D3 forceCenter is available');
+    assert(typeof d3.forceCollide === 'function', 'Task 5.2: D3 forceCollide is available');
+
+    console.log('=== Test Results ===');
+    const passed = results.filter(r => r.passed).length;
+    const total = results.length;
+    console.log(`${passed}/${total} tests passed`);
+
+    return { passed, total, results };
+}
+
+// ============================================
+// Task 6.2: Node Search and Highlight
+// ============================================
+
+/**
+ * Search state for graph node search functionality
+ */
+const graphSearchState = {
+    query: '',
+    results: [],
+    currentIndex: -1,
+    debounceTimer: null,
+};
+
+/**
+ * Search nodes by label, id, or type
+ * @param {string} query - Search query
+ * @returns {Array} Array of matching nodes
+ */
+function searchNodes(query) {
+    if (!query || query.trim() === '') {
+        return [];
+    }
+
+    const normalizedQuery = query.toLowerCase().trim();
+
+    return graphState.nodes.filter(node => {
+        // Search by label
+        if (node.label && node.label.toLowerCase().includes(normalizedQuery)) {
+            return true;
+        }
+        // Search by id
+        if (node.id && node.id.toLowerCase().includes(normalizedQuery)) {
+            return true;
+        }
+        // Search by node type
+        if (node.node_type && node.node_type.toLowerCase().includes(normalizedQuery)) {
+            return true;
+        }
+        // Search by group
+        if (node.group && node.group.toLowerCase().includes(normalizedQuery)) {
+            return true;
+        }
+        return false;
+    });
+}
+
+/**
+ * Highlight search results on the graph
+ * @param {Array} matchingNodes - Array of matching node objects
+ */
+function highlightSearchResults(matchingNodes) {
+    if (!graphState.g) return;
+
+    const matchingIds = new Set(matchingNodes.map(n => n.id));
+
+    if (matchingNodes.length === 0) {
+        // Clear all highlights - restore normal state
+        graphState.g.selectAll('.node-group')
+            .classed('node-dimmed', false)
+            .select('circle')
+            .classed('node-highlight-search', false);
+
+        graphState.g.selectAll('.link')
+            .classed('link-dimmed', false);
+
+        return;
+    }
+
+    // Dim non-matching nodes
+    graphState.g.selectAll('.node-group')
+        .classed('node-dimmed', d => !matchingIds.has(d.id))
+        .select('circle')
+        .classed('node-highlight-search', d => matchingIds.has(d.id));
+
+    // Dim non-matching links
+    graphState.g.selectAll('.link')
+        .classed('link-dimmed', d => {
+            const sourceId = typeof d.source === 'object' ? d.source.id : d.source;
+            const targetId = typeof d.target === 'object' ? d.target.id : d.target;
+            return !matchingIds.has(sourceId) && !matchingIds.has(targetId);
+        });
+}
+
+/**
+ * Focus the graph view on a specific node
+ * @param {string} nodeId - The ID of the node to focus on
+ */
+function focusOnNode(nodeId) {
+    if (!graphState.svg || !graphState.zoom || !graphState.g) return;
+
+    const node = graphState.nodes.find(n => n.id === nodeId);
+    if (!node || node.x === undefined || node.y === undefined) return;
+
+    // Get the SVG dimensions
+    const svg = graphState.svg.node();
+    const svgRect = svg.getBoundingClientRect();
+    const width = svgRect.width || 800;
+    const height = svgRect.height || 600;
+
+    // Calculate the transform to center on the node
+    const scale = 1.5; // Zoom in slightly
+    const x = width / 2 - node.x * scale;
+    const y = height / 2 - node.y * scale;
+
+    // Apply transform with animation
+    graphState.svg.transition()
+        .duration(500)
+        .call(
+            graphState.zoom.transform,
+            d3.zoomIdentity.translate(x, y).scale(scale)
+        );
+
+    // Briefly highlight the focused node
+    graphState.g.selectAll('.node-group')
+        .filter(d => d.id === nodeId)
+        .select('circle')
+        .transition()
+        .duration(200)
+        .attr('r', d => (d.is_sensitivity_target ? 16 : 12))
+        .transition()
+        .duration(300)
+        .attr('r', d => (d.is_sensitivity_target ? 12 : 8));
+}
+
+/**
+ * Perform search and update UI
+ * @param {string} query - Search query
+ */
+function performGraphSearch(query) {
+    graphSearchState.query = query;
+    graphSearchState.results = searchNodes(query);
+    graphSearchState.currentIndex = graphSearchState.results.length > 0 ? 0 : -1;
+
+    // Update UI elements
+    const clearBtn = document.getElementById('graph-search-clear');
+    const resultsPanel = document.getElementById('graph-search-results');
+    const resultsCount = document.getElementById('search-results-count');
+    const prevBtn = document.getElementById('search-prev');
+    const nextBtn = document.getElementById('search-next');
+
+    // Show/hide clear button
+    if (clearBtn) {
+        clearBtn.style.display = query ? 'flex' : 'none';
+    }
+
+    // Update results panel
+    if (resultsPanel && resultsCount) {
+        if (query && graphSearchState.results.length > 0) {
+            resultsPanel.style.display = 'block';
+            resultsCount.textContent = `${graphSearchState.results.length} result${graphSearchState.results.length !== 1 ? 's' : ''}`;
+
+            // Enable/disable navigation buttons
+            if (prevBtn) prevBtn.disabled = graphSearchState.results.length <= 1;
+            if (nextBtn) nextBtn.disabled = graphSearchState.results.length <= 1;
+        } else if (query) {
+            resultsPanel.style.display = 'block';
+            resultsCount.textContent = 'No results';
+            if (prevBtn) prevBtn.disabled = true;
+            if (nextBtn) nextBtn.disabled = true;
+        } else {
+            resultsPanel.style.display = 'none';
+        }
+    }
+
+    // Highlight matching nodes
+    highlightSearchResults(graphSearchState.results);
+
+    // Focus on first result if any
+    if (graphSearchState.currentIndex >= 0) {
+        focusOnNode(graphSearchState.results[graphSearchState.currentIndex].id);
+    }
+}
+
+/**
+ * Navigate to next search result
+ */
+function nextSearchResult() {
+    if (graphSearchState.results.length === 0) return;
+
+    graphSearchState.currentIndex =
+        (graphSearchState.currentIndex + 1) % graphSearchState.results.length;
+    focusOnNode(graphSearchState.results[graphSearchState.currentIndex].id);
+}
+
+/**
+ * Navigate to previous search result
+ */
+function prevSearchResult() {
+    if (graphSearchState.results.length === 0) return;
+
+    graphSearchState.currentIndex =
+        (graphSearchState.currentIndex - 1 + graphSearchState.results.length) %
+        graphSearchState.results.length;
+    focusOnNode(graphSearchState.results[graphSearchState.currentIndex].id);
+}
+
+/**
+ * Clear search and reset UI
+ */
+function clearGraphSearch() {
+    graphSearchState.query = '';
+    graphSearchState.results = [];
+    graphSearchState.currentIndex = -1;
+
+    const searchInput = document.getElementById('graph-search-input');
+    const clearBtn = document.getElementById('graph-search-clear');
+    const resultsPanel = document.getElementById('graph-search-results');
+
+    if (searchInput) searchInput.value = '';
+    if (clearBtn) clearBtn.style.display = 'none';
+    if (resultsPanel) resultsPanel.style.display = 'none';
+
+    // Clear highlights
+    highlightSearchResults([]);
+}
+
+/**
+ * Initialise search controls event listeners
+ */
+function initSearchControls() {
+    const searchInput = document.getElementById('graph-search-input');
+    const clearBtn = document.getElementById('graph-search-clear');
+    const prevBtn = document.getElementById('search-prev');
+    const nextBtn = document.getElementById('search-next');
+
+    // Search input with debounce
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value;
+
+            // Clear existing debounce timer
+            if (graphSearchState.debounceTimer) {
+                clearTimeout(graphSearchState.debounceTimer);
+            }
+
+            // Debounce search for 200ms
+            graphSearchState.debounceTimer = setTimeout(() => {
+                performGraphSearch(query);
+            }, 200);
+        });
+
+        // Handle Enter key to navigate to next result
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (e.shiftKey) {
+                    prevSearchResult();
+                } else {
+                    nextSearchResult();
+                }
+            } else if (e.key === 'Escape') {
+                clearGraphSearch();
+                searchInput.blur();
+            }
+        });
+    }
+
+    // Clear button
+    if (clearBtn) {
+        clearBtn.addEventListener('click', clearGraphSearch);
+    }
+
+    // Navigation buttons
+    if (prevBtn) {
+        prevBtn.addEventListener('click', prevSearchResult);
+    }
+    if (nextBtn) {
+        nextBtn.addEventListener('click', nextSearchResult);
+    }
+}
+
+/**
+ * Run unit tests for search functionality
+ * Can be triggered from browser console: runSearchTests()
+ */
+function runSearchTests() {
+    const results = [];
+    const assert = (condition, message) => {
+        results.push({ passed: condition, message });
+        if (!condition) {
+            console.error(`FAIL: ${message}`);
+        } else {
+            console.log(`PASS: ${message}`);
+        }
+    };
+
+    console.log('=== Graph Search Tests ===');
+
+    // Setup test data
+    const testNodes = [
+        { id: 'N1', label: 'spot', node_type: 'input', group: 'input' },
+        { id: 'N2', label: 'volatility', node_type: 'input', group: 'input' },
+        { id: 'N3', label: 'spot * vol', node_type: 'mul', group: 'intermediate' },
+        { id: 'N4', label: 'price', node_type: 'output', group: 'output' },
+        { id: 'N5', label: 'delta', node_type: 'output', group: 'sensitivity' },
+    ];
+
+    // Backup original state
+    const originalNodes = graphState.nodes;
+    graphState.nodes = testNodes;
+
+    // Test 1: Search by label
+    let found = searchNodes('spot');
+    assert(found.length === 2, 'Search "spot" finds 2 nodes (spot, spot * vol)');
+    assert(found.some(n => n.id === 'N1'), 'Search "spot" includes N1');
+    assert(found.some(n => n.id === 'N3'), 'Search "spot" includes N3');
+
+    // Test 2: Search by id
+    found = searchNodes('N2');
+    assert(found.length === 1, 'Search "N2" finds 1 node');
+    assert(found[0].id === 'N2', 'Search "N2" finds correct node');
+
+    // Test 3: Search by node type
+    found = searchNodes('input');
+    assert(found.length === 2, 'Search "input" finds 2 nodes');
+
+    // Test 4: Search by group
+    found = searchNodes('output');
+    assert(found.length === 2, 'Search "output" finds 2 nodes (output group)');
+
+    // Test 5: Case insensitive search
+    found = searchNodes('SPOT');
+    assert(found.length === 2, 'Search is case insensitive');
+
+    // Test 6: Empty query
+    found = searchNodes('');
+    assert(found.length === 0, 'Empty query returns no results');
+
+    // Test 7: No matches
+    found = searchNodes('nonexistent');
+    assert(found.length === 0, 'Non-matching query returns no results');
+
+    // Test 8: Whitespace handling
+    found = searchNodes('  spot  ');
+    assert(found.length === 2, 'Whitespace is trimmed from query');
+
+    // Restore original state
+    graphState.nodes = originalNodes;
+
+    console.log('=== Search Test Results ===');
+    const passed = results.filter(r => r.passed).length;
+    const total = results.length;
+    console.log(`${passed}/${total} tests passed`);
+
+    return { passed, total, results };
+}
+
+// ============================================
+// Task 6.3: Sensitivity Path Tests
+// ============================================
+
+/**
+ * Run unit tests for Sensitivity Path functionality
+ * Can be triggered from browser console: runSensitivityPathTests()
+ */
+function runSensitivityPathTests() {
+    const results = [];
+    const assert = (condition, message) => {
+        results.push({ passed: condition, message });
+        if (!condition) {
+            console.error(`FAIL: ${message}`);
+        } else {
+            console.log(`PASS: ${message}`);
+        }
+    };
+
+    console.log('=== Sensitivity Path Tests ===');
+
+    // Test graph data
+    const testNodes = [
+        { id: 'N1', type: 'input', label: 'spot', group: 'input', is_sensitivity_target: true },
+        { id: 'N2', type: 'input', label: 'vol', group: 'input', is_sensitivity_target: true },
+        { id: 'N3', type: 'mul', label: 'spot * vol', group: 'intermediate', is_sensitivity_target: false },
+        { id: 'N4', type: 'add', label: 'sum', group: 'intermediate', is_sensitivity_target: false },
+        { id: 'N5', type: 'output', label: 'price', group: 'output', is_sensitivity_target: false },
+    ];
+    const testLinks = [
+        { source: 'N1', target: 'N3' },
+        { source: 'N2', target: 'N3' },
+        { source: 'N3', target: 'N4' },
+        { source: 'N4', target: 'N5' },
+    ];
+
+    // Test 1: Find sensitivity target nodes
+    const sensitivityTargets = findSensitivityTargets(testNodes);
+    assert(sensitivityTargets.length === 2, 'findSensitivityTargets finds all targets');
+    assert(sensitivityTargets.includes('N1'), 'findSensitivityTargets includes N1');
+    assert(sensitivityTargets.includes('N2'), 'findSensitivityTargets includes N2');
+
+    // Test 2: Find output nodes
+    const outputNodes = findOutputNodes(testNodes);
+    assert(outputNodes.length === 1, 'findOutputNodes finds output node');
+    assert(outputNodes[0] === 'N5', 'findOutputNodes returns N5');
+
+    // Test 3: Build adjacency list
+    const adjacency = buildAdjacencyList(testLinks);
+    assert(adjacency['N1'].includes('N3'), 'Adjacency list has N1->N3');
+    assert(adjacency['N3'].includes('N4'), 'Adjacency list has N3->N4');
+    assert(adjacency['N4'].includes('N5'), 'Adjacency list has N4->N5');
+
+    // Test 4: Find path from sensitivity target to output
+    const path = findPathBFS('N1', 'N5', adjacency);
+    assert(path !== null, 'findPathBFS finds path from N1 to N5');
+    assert(path.length === 4, 'Path length is 4 (N1->N3->N4->N5)');
+    assert(path[0] === 'N1', 'Path starts with N1');
+    assert(path[path.length - 1] === 'N5', 'Path ends with N5');
+
+    // Test 5: Find all sensitivity paths
+    const allPaths = findAllSensitivityPaths(testNodes, testLinks);
+    assert(allPaths.length === 2, 'findAllSensitivityPaths returns 2 paths');
+    assert(allPaths[0].from === 'N1' || allPaths[0].from === 'N2', 'First path starts from sensitivity target');
+
+    // Test 6: No path when disconnected
+    const disconnectedNodes = [
+        { id: 'D1', type: 'input', group: 'input', is_sensitivity_target: true },
+        { id: 'D2', type: 'output', group: 'output', is_sensitivity_target: false },
+    ];
+    const disconnectedPaths = findAllSensitivityPaths(disconnectedNodes, []);
+    assert(disconnectedPaths.length === 0, 'No paths when graph is disconnected');
+
+    // Test 7: Get edges for path
+    const pathEdges = getEdgesForPath(path, testLinks);
+    assert(pathEdges.length === 3, 'getEdgesForPath returns 3 edges for 4-node path');
+
+    console.log('=== Sensitivity Path Test Results ===');
+    const passed = results.filter(r => r.passed).length;
+    const total = results.length;
+    console.log(`${passed}/${total} tests passed`);
+
+    return { passed, total, results };
+}
+
+// ============================================
+// Task 7.2: Node Type Statistics Tests
+// ============================================
+
+/**
+ * Run unit tests for Node Type Statistics Chart functionality
+ * Can be triggered from browser console: runNodeTypeChartTests()
+ */
+function runNodeTypeChartTests() {
+    const results = [];
+    const assert = (condition, message) => {
+        results.push({ passed: condition, message });
+        if (!condition) {
+            console.error(`FAIL: ${message}`);
+        } else {
+            console.log(`PASS: ${message}`);
+        }
+    };
+
+    console.log('=== Node Type Statistics Tests ===');
+
+    // Test nodes
+    const testNodes = [
+        { id: 'N1', type: 'input' },
+        { id: 'N2', type: 'input' },
+        { id: 'N3', type: 'mul' },
+        { id: 'N4', type: 'mul' },
+        { id: 'N5', type: 'mul' },
+        { id: 'N6', type: 'add' },
+        { id: 'N7', type: 'exp' },
+        { id: 'N8', type: 'output' },
+    ];
+
+    // Test 1: Count nodes by type
+    const typeCounts = countNodesByType(testNodes);
+    assert(typeCounts.input === 2, 'countNodesByType counts input nodes');
+    assert(typeCounts.mul === 3, 'countNodesByType counts mul nodes');
+    assert(typeCounts.add === 1, 'countNodesByType counts add nodes');
+    assert(typeCounts.exp === 1, 'countNodesByType counts exp nodes');
+    assert(typeCounts.output === 1, 'countNodesByType counts output nodes');
+
+    // Test 2: Empty nodes
+    const emptyTypeCounts = countNodesByType([]);
+    assert(Object.keys(emptyTypeCounts).length === 0, 'countNodesByType handles empty array');
+
+    // Test 3: Sort type counts descending
+    const sortedTypes = sortTypeCountsDescending(typeCounts);
+    assert(sortedTypes[0][0] === 'mul', 'sortTypeCountsDescending puts mul first');
+    assert(sortedTypes[0][1] === 3, 'sortTypeCountsDescending mul count is 3');
+    assert(sortedTypes.length === 5, 'sortTypeCountsDescending returns all types');
+
+    // Test 4: Get chart colour for type
+    assert(getChartColorForType('input') !== undefined, 'getChartColorForType returns colour for input');
+    assert(getChartColorForType('add') !== undefined, 'getChartColorForType returns colour for add');
+    assert(getChartColorForType('unknown') !== undefined, 'getChartColorForType returns default for unknown');
+
+    console.log('=== Node Type Statistics Test Results ===');
+    const passed = results.filter(r => r.passed).length;
+    const total = results.length;
+    console.log(`${passed}/${total} tests passed`);
+
+    return { passed, total, results };
+}

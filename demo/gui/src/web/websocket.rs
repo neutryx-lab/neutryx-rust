@@ -1,4 +1,25 @@
 //! WebSocket handler for real-time updates.
+//!
+//! This module provides WebSocket functionality for the FrictionalBank Web Dashboard,
+//! including real-time updates for risk metrics, exposure, and computation graph changes.
+//!
+//! ## Message Types
+//!
+//! - `risk`: Risk metrics update (PV, CVA, DVA, FVA)
+//! - `exposure`: Exposure metrics update (EE, EPE, PFE)
+//! - `graph_update`: Computation graph node updates (Task 4.1)
+//! - `irs_benchmark`: IRS AAD ベンチマーク結果の配信 (Task 6.3)
+//!
+//! ## Subscription Support (Task 4.3)
+//!
+//! Clients can subscribe to specific trade graph updates:
+//! - Send: `{"type":"subscribe_graph","trade_id":"T001"}`
+//! - Send: `{"type":"unsubscribe_graph","trade_id":"T001"}`
+//!
+//! ## IRS AAD Benchmark Updates (Task 6.3)
+//!
+//! ベンチマーク結果をリアルタイムで配信:
+//! - `irs_benchmark`: AAD vs Bump&Reval の性能比較結果
 
 use axum::{
     extract::{
@@ -8,7 +29,7 @@ use axum::{
     response::IntoResponse,
 };
 use futures::{sink::SinkExt, stream::StreamExt};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tracing::{info, warn};
 
@@ -48,14 +69,59 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
         }
     });
 
-    // Handle incoming messages from client
-    let tx = state.tx.clone();
+    // Handle incoming messages from client (Task 4.3: subscription support)
+    let state_clone = Arc::clone(&state);
     let mut recv_task = tokio::spawn(async move {
         while let Some(Ok(msg)) = receiver.next().await {
             if let Message::Text(text) = msg {
-                // Echo or handle client messages
-                if text.as_str() == "ping" {
-                    let _ = tx.send(r#"{"type":"pong"}"#.to_string());
+                let text_str = text.as_str();
+
+                // Handle ping/pong
+                if text_str == "ping" {
+                    let _ = state_clone.tx.send(r#"{"type":"pong"}"#.to_string());
+                    continue;
+                }
+
+                // Task 4.3: Handle graph subscription requests
+                if let Ok(request) = serde_json::from_str::<GraphSubscriptionRequest>(text_str) {
+                    match request.request_type.as_str() {
+                        "subscribe_graph" => {
+                            state_clone.subscribe_graph(&request.trade_id).await;
+                            info!(
+                                "Client subscribed to graph updates for trade: {}",
+                                request.trade_id
+                            );
+
+                            // Send confirmation
+                            let confirmation = serde_json::json!({
+                                "type": "subscription_confirmed",
+                                "trade_id": request.trade_id,
+                                "action": "subscribe_graph"
+                            });
+                            let _ = state_clone.tx.send(confirmation.to_string());
+                        }
+                        "unsubscribe_graph" => {
+                            state_clone.unsubscribe_graph(&request.trade_id).await;
+                            info!(
+                                "Client unsubscribed from graph updates for trade: {}",
+                                request.trade_id
+                            );
+
+                            // Send confirmation
+                            let confirmation = serde_json::json!({
+                                "type": "subscription_confirmed",
+                                "trade_id": request.trade_id,
+                                "action": "unsubscribe_graph"
+                            });
+                            let _ = state_clone.tx.send(confirmation.to_string());
+                        }
+                        _ => {
+                            warn!(
+                                "Unknown subscription request type: {}",
+                                request.request_type
+                            );
+                        }
+                    }
                 }
             }
         }
@@ -117,6 +183,313 @@ pub fn broadcast_update(state: &AppState, update: RealTimeUpdate) {
     let _ = state.tx.send(update.to_json());
 }
 
+// =============================================================================
+// Task 4.1: Graph Update Message Types
+// =============================================================================
+
+/// Update information for a single graph node.
+///
+/// Used for WebSocket real-time updates to send only the changed
+/// nodes rather than the entire graph.
+///
+/// # Example
+///
+/// ```rust
+/// use demo_gui::web::websocket::GraphNodeUpdate;
+///
+/// let update = GraphNodeUpdate {
+///     id: "N1".to_string(),
+///     value: 101.5,
+///     delta: Some(1.5),
+/// };
+/// ```
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GraphNodeUpdate {
+    /// Node ID being updated
+    pub id: String,
+
+    /// New computed value
+    pub value: f64,
+
+    /// Change from previous value (for animation)
+    pub delta: Option<f64>,
+}
+
+impl RealTimeUpdate {
+    /// Create a graph update event.
+    ///
+    /// This message type is used to notify clients about changes to
+    /// computation graph nodes, typically triggered by market data updates.
+    ///
+    /// # Arguments
+    ///
+    /// * `trade_id` - The trade ID whose graph has been updated
+    /// * `updated_nodes` - Vector of node updates with new values and deltas
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use demo_gui::web::websocket::{RealTimeUpdate, GraphNodeUpdate};
+    ///
+    /// let updated_nodes = vec![
+    ///     GraphNodeUpdate {
+    ///         id: "N1".to_string(),
+    ///         value: 101.5,
+    ///         delta: Some(1.5),
+    ///     },
+    /// ];
+    ///
+    /// let update = RealTimeUpdate::graph_update("T001", updated_nodes);
+    /// ```
+    pub fn graph_update(trade_id: &str, updated_nodes: Vec<GraphNodeUpdate>) -> Self {
+        Self {
+            update_type: "graph_update".to_string(),
+            timestamp: chrono::Utc::now().timestamp_millis(),
+            data: serde_json::json!({
+                "trade_id": trade_id,
+                "updated_nodes": updated_nodes
+            }),
+        }
+    }
+}
+
+// =============================================================================
+// Task 6.3: IRS AAD Benchmark Message Types
+// =============================================================================
+
+/// ベンチマーク統計情報を表す構造体。
+///
+/// AADまたはBump&Revalの実行時間統計を保持する。
+///
+/// # Example
+///
+/// ```rust
+/// use demo_gui::web::websocket::BenchmarkStats;
+///
+/// let stats = BenchmarkStats {
+///     mean_ns: 15000.0,
+///     std_dev_ns: 500.0,
+///     min_ns: 14000.0,
+///     max_ns: 16000.0,
+/// };
+/// ```
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BenchmarkStats {
+    /// 平均実行時間（ナノ秒）
+    pub mean_ns: f64,
+
+    /// 標準偏差（ナノ秒）
+    pub std_dev_ns: f64,
+
+    /// 最小実行時間（ナノ秒）
+    pub min_ns: f64,
+
+    /// 最大実行時間（ナノ秒）
+    pub max_ns: f64,
+}
+
+/// IRS AADベンチマーク結果を表す構造体。
+///
+/// AADとBump&Revalの性能比較結果を保持し、
+/// WebSocket経由でリアルタイム配信される。
+///
+/// # Example
+///
+/// ```rust
+/// use demo_gui::web::websocket::{IrsBenchmarkUpdate, BenchmarkStats};
+///
+/// let update = IrsBenchmarkUpdate {
+///     aad_stats: BenchmarkStats {
+///         mean_ns: 15000.0,
+///         std_dev_ns: 500.0,
+///         min_ns: 14000.0,
+///         max_ns: 16000.0,
+///     },
+///     bump_stats: BenchmarkStats {
+///         mean_ns: 300000.0,
+///         std_dev_ns: 5000.0,
+///         min_ns: 290000.0,
+///         max_ns: 310000.0,
+///     },
+///     speedup_ratio: 20.0,
+///     tenor_count: 20,
+/// };
+/// ```
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IrsBenchmarkUpdate {
+    /// AAD実行時間の統計情報
+    pub aad_stats: BenchmarkStats,
+
+    /// Bump&Reval実行時間の統計情報
+    pub bump_stats: BenchmarkStats,
+
+    /// 高速化倍率（bump_mean / aad_mean）
+    pub speedup_ratio: f64,
+
+    /// テナー数（計算に使用したテナーの数）
+    pub tenor_count: usize,
+}
+
+impl RealTimeUpdate {
+    /// IRS AADベンチマーク結果の更新イベントを生成する。
+    ///
+    /// このメッセージタイプは、AADとBump&Revalの性能比較結果を
+    /// クライアントにリアルタイムで通知するために使用される。
+    ///
+    /// # Arguments
+    ///
+    /// * `benchmark` - ベンチマーク結果を含む構造体
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use demo_gui::web::websocket::{RealTimeUpdate, IrsBenchmarkUpdate, BenchmarkStats};
+    ///
+    /// let benchmark = IrsBenchmarkUpdate {
+    ///     aad_stats: BenchmarkStats {
+    ///         mean_ns: 15000.0,
+    ///         std_dev_ns: 500.0,
+    ///         min_ns: 14000.0,
+    ///         max_ns: 16000.0,
+    ///     },
+    ///     bump_stats: BenchmarkStats {
+    ///         mean_ns: 300000.0,
+    ///         std_dev_ns: 5000.0,
+    ///         min_ns: 290000.0,
+    ///         max_ns: 310000.0,
+    ///     },
+    ///     speedup_ratio: 20.0,
+    ///     tenor_count: 20,
+    /// };
+    ///
+    /// let update = RealTimeUpdate::irs_benchmark_update(benchmark);
+    /// ```
+    pub fn irs_benchmark_update(benchmark: IrsBenchmarkUpdate) -> Self {
+        Self {
+            update_type: "irs_benchmark".to_string(),
+            timestamp: chrono::Utc::now().timestamp_millis(),
+            data: serde_json::json!({
+                "aad_stats": {
+                    "mean_ns": benchmark.aad_stats.mean_ns,
+                    "std_dev_ns": benchmark.aad_stats.std_dev_ns,
+                    "min_ns": benchmark.aad_stats.min_ns,
+                    "max_ns": benchmark.aad_stats.max_ns,
+                },
+                "bump_stats": {
+                    "mean_ns": benchmark.bump_stats.mean_ns,
+                    "std_dev_ns": benchmark.bump_stats.std_dev_ns,
+                    "min_ns": benchmark.bump_stats.min_ns,
+                    "max_ns": benchmark.bump_stats.max_ns,
+                },
+                "speedup_ratio": benchmark.speedup_ratio,
+                "tenor_count": benchmark.tenor_count
+            }),
+        }
+    }
+}
+
+// =============================================================================
+// Task 4.2: Graph Update Broadcast
+// =============================================================================
+
+/// Broadcast a graph update to all connected clients.
+///
+/// This function creates a `graph_update` message and broadcasts it
+/// through the existing broadcast channel.
+///
+/// # Arguments
+///
+/// * `state` - Application state containing the broadcast channel
+/// * `trade_id` - The trade ID whose graph has been updated
+/// * `updated_nodes` - Vector of node updates with new values and deltas
+///
+/// # Example
+///
+/// ```rust
+/// use demo_gui::web::{AppState, websocket::{broadcast_graph_update, GraphNodeUpdate}};
+///
+/// let state = AppState::new();
+/// let updated_nodes = vec![
+///     GraphNodeUpdate {
+///         id: "N1".to_string(),
+///         value: 101.5,
+///         delta: Some(1.5),
+///     },
+/// ];
+///
+/// broadcast_graph_update(&state, "T001", updated_nodes);
+/// ```
+pub fn broadcast_graph_update(
+    state: &AppState,
+    trade_id: &str,
+    updated_nodes: Vec<GraphNodeUpdate>,
+) {
+    let update = RealTimeUpdate::graph_update(trade_id, updated_nodes);
+    let _ = state.tx.send(update.to_json());
+}
+
+// =============================================================================
+// Task 6.3: IRS Benchmark Broadcast
+// =============================================================================
+
+/// IRS AADベンチマーク結果を全接続クライアントに配信する。
+///
+/// この関数は`irs_benchmark`メッセージを生成し、
+/// 既存のブロードキャストチャネル経由で配信する。
+///
+/// # Arguments
+///
+/// * `state` - ブロードキャストチャネルを含むアプリケーション状態
+/// * `benchmark` - ベンチマーク結果を含む構造体
+///
+/// # Example
+///
+/// ```rust
+/// use demo_gui::web::{AppState, websocket::{broadcast_irs_benchmark, IrsBenchmarkUpdate, BenchmarkStats}};
+///
+/// let state = AppState::new();
+/// let benchmark = IrsBenchmarkUpdate {
+///     aad_stats: BenchmarkStats {
+///         mean_ns: 15000.0,
+///         std_dev_ns: 500.0,
+///         min_ns: 14000.0,
+///         max_ns: 16000.0,
+///     },
+///     bump_stats: BenchmarkStats {
+///         mean_ns: 300000.0,
+///         std_dev_ns: 5000.0,
+///         min_ns: 290000.0,
+///         max_ns: 310000.0,
+///     },
+///     speedup_ratio: 20.0,
+///     tenor_count: 20,
+/// };
+///
+/// broadcast_irs_benchmark(&state, benchmark);
+/// ```
+pub fn broadcast_irs_benchmark(state: &AppState, benchmark: IrsBenchmarkUpdate) {
+    let update = RealTimeUpdate::irs_benchmark_update(benchmark);
+    let _ = state.tx.send(update.to_json());
+}
+
+// =============================================================================
+// Task 4.3: Subscription Message Types
+// =============================================================================
+
+/// Client request to subscribe/unsubscribe from graph updates.
+///
+/// Clients send this message type to indicate which trade graphs
+/// they want to receive updates for.
+#[derive(Debug, Clone, Deserialize)]
+pub struct GraphSubscriptionRequest {
+    /// Message type: "subscribe_graph" or "unsubscribe_graph"
+    #[serde(rename = "type")]
+    pub request_type: String,
+
+    /// Trade ID to subscribe/unsubscribe
+    pub trade_id: String,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -135,5 +508,524 @@ mod tests {
         assert_eq!(update.update_type, "exposure");
         let json = update.to_json();
         assert!(json.contains("ee"));
+    }
+
+    // =========================================================================
+    // Task 4.1: graph_update Message Type Tests
+    // =========================================================================
+
+    mod graph_update_tests {
+        use super::*;
+
+        #[test]
+        fn test_graph_update_creation() {
+            let updated_nodes = vec![
+                GraphNodeUpdate {
+                    id: "N1".to_string(),
+                    value: 101.5,
+                    delta: Some(1.5),
+                },
+                GraphNodeUpdate {
+                    id: "N2".to_string(),
+                    value: 25.375,
+                    delta: Some(0.375),
+                },
+            ];
+
+            let update = RealTimeUpdate::graph_update("T001", updated_nodes);
+
+            assert_eq!(update.update_type, "graph_update");
+            assert!(update.timestamp > 0);
+        }
+
+        #[test]
+        fn test_graph_update_contains_trade_id() {
+            let updated_nodes = vec![GraphNodeUpdate {
+                id: "N1".to_string(),
+                value: 100.0,
+                delta: None,
+            }];
+
+            let update = RealTimeUpdate::graph_update("T001", updated_nodes);
+            let json = update.to_json();
+
+            assert!(json.contains("\"trade_id\":\"T001\""));
+        }
+
+        #[test]
+        fn test_graph_update_contains_updated_nodes() {
+            let updated_nodes = vec![GraphNodeUpdate {
+                id: "N1".to_string(),
+                value: 101.5,
+                delta: Some(1.5),
+            }];
+
+            let update = RealTimeUpdate::graph_update("T001", updated_nodes);
+            let json = update.to_json();
+
+            assert!(json.contains("\"updated_nodes\":"));
+            assert!(json.contains("\"id\":\"N1\""));
+            assert!(json.contains("\"value\":101.5"));
+            assert!(json.contains("\"delta\":1.5"));
+        }
+
+        #[test]
+        fn test_graph_update_empty_nodes() {
+            let updated_nodes: Vec<GraphNodeUpdate> = vec![];
+            let update = RealTimeUpdate::graph_update("T001", updated_nodes);
+            let json = update.to_json();
+
+            assert!(json.contains("\"updated_nodes\":[]"));
+        }
+
+        #[test]
+        fn test_graph_update_json_structure() {
+            let updated_nodes = vec![GraphNodeUpdate {
+                id: "N1".to_string(),
+                value: 100.0,
+                delta: Some(5.0),
+            }];
+
+            let update = RealTimeUpdate::graph_update("T001", updated_nodes);
+            let json = update.to_json();
+
+            // Verify JSON structure matches WebSocket message format
+            let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+            assert_eq!(parsed["update_type"], "graph_update");
+            assert!(parsed["timestamp"].is_number());
+            assert!(parsed["data"]["trade_id"].is_string());
+            assert!(parsed["data"]["updated_nodes"].is_array());
+        }
+
+        #[test]
+        fn test_graph_node_update_serialisation() {
+            let node_update = GraphNodeUpdate {
+                id: "N1".to_string(),
+                value: 101.5,
+                delta: Some(1.5),
+            };
+
+            let json = serde_json::to_string(&node_update).unwrap();
+            assert!(json.contains("\"id\":\"N1\""));
+            assert!(json.contains("\"value\":101.5"));
+            assert!(json.contains("\"delta\":1.5"));
+        }
+
+        #[test]
+        fn test_graph_node_update_without_delta() {
+            let node_update = GraphNodeUpdate {
+                id: "N1".to_string(),
+                value: 100.0,
+                delta: None,
+            };
+
+            let json = serde_json::to_string(&node_update).unwrap();
+            assert!(json.contains("\"id\":\"N1\""));
+            assert!(json.contains("\"value\":100"));
+            assert!(json.contains("\"delta\":null"));
+        }
+    }
+
+    // =========================================================================
+    // Task 4.2: Graph Update Broadcast Tests
+    // =========================================================================
+
+    mod graph_broadcast_tests {
+        use super::*;
+
+        #[tokio::test]
+        async fn test_broadcast_graph_update() {
+            let state = AppState::new();
+            let mut rx = state.tx.subscribe();
+
+            let updated_nodes = vec![GraphNodeUpdate {
+                id: "N1".to_string(),
+                value: 101.5,
+                delta: Some(1.5),
+            }];
+
+            broadcast_graph_update(&state, "T001", updated_nodes);
+
+            // Receive the broadcast message
+            let received = rx.try_recv();
+            assert!(received.is_ok());
+
+            let msg = received.unwrap();
+            assert!(msg.contains("graph_update"));
+            assert!(msg.contains("T001"));
+        }
+
+        #[tokio::test]
+        async fn test_broadcast_graph_update_multiple_nodes() {
+            let state = AppState::new();
+            let mut rx = state.tx.subscribe();
+
+            let updated_nodes = vec![
+                GraphNodeUpdate {
+                    id: "N1".to_string(),
+                    value: 101.5,
+                    delta: Some(1.5),
+                },
+                GraphNodeUpdate {
+                    id: "N2".to_string(),
+                    value: 25.5,
+                    delta: Some(0.5),
+                },
+                GraphNodeUpdate {
+                    id: "N3".to_string(),
+                    value: 50.0,
+                    delta: None,
+                },
+            ];
+
+            broadcast_graph_update(&state, "T001", updated_nodes);
+
+            let received = rx.try_recv().unwrap();
+            assert!(received.contains("N1"));
+            assert!(received.contains("N2"));
+            assert!(received.contains("N3"));
+        }
+    }
+
+    // =========================================================================
+    // Task 4.3: Subscription Tests
+    // =========================================================================
+
+    mod subscription_tests {
+        use super::*;
+
+        #[tokio::test]
+        async fn test_subscribe_to_trade() {
+            let state = AppState::new();
+
+            // Subscribe to T001
+            state.subscribe_graph("T001").await;
+
+            let subscriptions = state.graph_subscriptions.read().await;
+            assert!(subscriptions.contains("T001"));
+        }
+
+        #[tokio::test]
+        async fn test_unsubscribe_from_trade() {
+            let state = AppState::new();
+
+            // Subscribe then unsubscribe
+            state.subscribe_graph("T001").await;
+            state.unsubscribe_graph("T001").await;
+
+            let subscriptions = state.graph_subscriptions.read().await;
+            assert!(!subscriptions.contains("T001"));
+        }
+
+        #[tokio::test]
+        async fn test_multiple_subscriptions() {
+            let state = AppState::new();
+
+            state.subscribe_graph("T001").await;
+            state.subscribe_graph("T002").await;
+            state.subscribe_graph("T003").await;
+
+            let subscriptions = state.graph_subscriptions.read().await;
+            assert_eq!(subscriptions.len(), 3);
+            assert!(subscriptions.contains("T001"));
+            assert!(subscriptions.contains("T002"));
+            assert!(subscriptions.contains("T003"));
+        }
+
+        #[tokio::test]
+        async fn test_is_subscribed() {
+            let state = AppState::new();
+
+            state.subscribe_graph("T001").await;
+
+            assert!(state.is_graph_subscribed("T001").await);
+            assert!(!state.is_graph_subscribed("T002").await);
+        }
+
+        #[tokio::test]
+        async fn test_get_graph_subscriptions() {
+            let state = AppState::new();
+
+            state.subscribe_graph("T001").await;
+            state.subscribe_graph("T002").await;
+
+            let subs = state.get_graph_subscriptions().await;
+            assert_eq!(subs.len(), 2);
+            assert!(subs.contains(&"T001".to_string()));
+            assert!(subs.contains(&"T002".to_string()));
+        }
+
+        #[tokio::test]
+        async fn test_clear_graph_subscriptions() {
+            let state = AppState::new();
+
+            state.subscribe_graph("T001").await;
+            state.subscribe_graph("T002").await;
+            state.clear_graph_subscriptions().await;
+
+            let subscriptions = state.graph_subscriptions.read().await;
+            assert!(subscriptions.is_empty());
+        }
+
+        #[tokio::test]
+        async fn test_subscription_message_handling() {
+            // Test that subscription request messages are properly parsed
+            let msg = r#"{"type":"subscribe_graph","trade_id":"T001"}"#;
+            let parsed: serde_json::Value = serde_json::from_str(msg).unwrap();
+
+            assert_eq!(parsed["type"], "subscribe_graph");
+            assert_eq!(parsed["trade_id"], "T001");
+        }
+
+        #[tokio::test]
+        async fn test_unsubscription_message_handling() {
+            let msg = r#"{"type":"unsubscribe_graph","trade_id":"T001"}"#;
+            let parsed: serde_json::Value = serde_json::from_str(msg).unwrap();
+
+            assert_eq!(parsed["type"], "unsubscribe_graph");
+            assert_eq!(parsed["trade_id"], "T001");
+        }
+    }
+
+    // =========================================================================
+    // Task 6.3: IRS AAD Benchmark Tests
+    // =========================================================================
+
+    mod irs_benchmark_tests {
+        use super::*;
+
+        /// テスト用のベンチマーク統計情報を生成するヘルパー関数
+        fn create_test_stats(mean: f64, std_dev: f64, min: f64, max: f64) -> BenchmarkStats {
+            BenchmarkStats {
+                mean_ns: mean,
+                std_dev_ns: std_dev,
+                min_ns: min,
+                max_ns: max,
+            }
+        }
+
+        /// テスト用のベンチマーク結果を生成するヘルパー関数
+        fn create_test_benchmark() -> IrsBenchmarkUpdate {
+            IrsBenchmarkUpdate {
+                aad_stats: create_test_stats(15000.0, 500.0, 14000.0, 16000.0),
+                bump_stats: create_test_stats(300000.0, 5000.0, 290000.0, 310000.0),
+                speedup_ratio: 20.0,
+                tenor_count: 20,
+            }
+        }
+
+        #[test]
+        fn test_benchmark_stats_creation() {
+            let stats = create_test_stats(15000.0, 500.0, 14000.0, 16000.0);
+
+            assert_eq!(stats.mean_ns, 15000.0);
+            assert_eq!(stats.std_dev_ns, 500.0);
+            assert_eq!(stats.min_ns, 14000.0);
+            assert_eq!(stats.max_ns, 16000.0);
+        }
+
+        #[test]
+        fn test_benchmark_stats_serialisation() {
+            let stats = create_test_stats(15000.0, 500.0, 14000.0, 16000.0);
+
+            let json = serde_json::to_string(&stats).unwrap();
+            assert!(json.contains("\"mean_ns\":15000"));
+            assert!(json.contains("\"std_dev_ns\":500"));
+            assert!(json.contains("\"min_ns\":14000"));
+            assert!(json.contains("\"max_ns\":16000"));
+        }
+
+        #[test]
+        fn test_irs_benchmark_update_creation() {
+            let benchmark = create_test_benchmark();
+
+            assert_eq!(benchmark.aad_stats.mean_ns, 15000.0);
+            assert_eq!(benchmark.bump_stats.mean_ns, 300000.0);
+            assert_eq!(benchmark.speedup_ratio, 20.0);
+            assert_eq!(benchmark.tenor_count, 20);
+        }
+
+        #[test]
+        fn test_irs_benchmark_update_serialisation() {
+            let benchmark = create_test_benchmark();
+
+            let json = serde_json::to_string(&benchmark).unwrap();
+            assert!(json.contains("aad_stats"));
+            assert!(json.contains("bump_stats"));
+            assert!(json.contains("speedup_ratio"));
+            assert!(json.contains("tenor_count"));
+        }
+
+        #[test]
+        fn test_realtime_update_irs_benchmark() {
+            let benchmark = create_test_benchmark();
+            let update = RealTimeUpdate::irs_benchmark_update(benchmark);
+
+            assert_eq!(update.update_type, "irs_benchmark");
+            assert!(update.timestamp > 0);
+        }
+
+        #[test]
+        fn test_irs_benchmark_update_json_structure() {
+            let benchmark = create_test_benchmark();
+            let update = RealTimeUpdate::irs_benchmark_update(benchmark);
+            let json = update.to_json();
+
+            // JSONとしてパースできることを確認
+            let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+            // 基本構造を確認
+            assert_eq!(parsed["update_type"], "irs_benchmark");
+            assert!(parsed["timestamp"].is_number());
+            assert!(parsed["data"].is_object());
+        }
+
+        #[test]
+        fn test_irs_benchmark_update_contains_aad_stats() {
+            let benchmark = create_test_benchmark();
+            let update = RealTimeUpdate::irs_benchmark_update(benchmark);
+            let json = update.to_json();
+
+            let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+            let aad_stats = &parsed["data"]["aad_stats"];
+
+            assert_eq!(aad_stats["mean_ns"], 15000.0);
+            assert_eq!(aad_stats["std_dev_ns"], 500.0);
+            assert_eq!(aad_stats["min_ns"], 14000.0);
+            assert_eq!(aad_stats["max_ns"], 16000.0);
+        }
+
+        #[test]
+        fn test_irs_benchmark_update_contains_bump_stats() {
+            let benchmark = create_test_benchmark();
+            let update = RealTimeUpdate::irs_benchmark_update(benchmark);
+            let json = update.to_json();
+
+            let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+            let bump_stats = &parsed["data"]["bump_stats"];
+
+            assert_eq!(bump_stats["mean_ns"], 300000.0);
+            assert_eq!(bump_stats["std_dev_ns"], 5000.0);
+            assert_eq!(bump_stats["min_ns"], 290000.0);
+            assert_eq!(bump_stats["max_ns"], 310000.0);
+        }
+
+        #[test]
+        fn test_irs_benchmark_update_contains_speedup_and_tenor() {
+            let benchmark = create_test_benchmark();
+            let update = RealTimeUpdate::irs_benchmark_update(benchmark);
+            let json = update.to_json();
+
+            let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+            assert_eq!(parsed["data"]["speedup_ratio"], 20.0);
+            assert_eq!(parsed["data"]["tenor_count"], 20);
+        }
+
+        #[test]
+        fn test_irs_benchmark_update_matches_expected_format() {
+            // Task 6.3で指定されたJSONフォーマットと一致することを確認
+            let benchmark = create_test_benchmark();
+            let update = RealTimeUpdate::irs_benchmark_update(benchmark);
+            let json = update.to_json();
+
+            let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+            // 期待されるフィールドがすべて存在することを確認
+            assert!(parsed["update_type"].is_string());
+            assert!(parsed["timestamp"].is_number());
+            assert!(parsed["data"]["aad_stats"]["mean_ns"].is_number());
+            assert!(parsed["data"]["aad_stats"]["std_dev_ns"].is_number());
+            assert!(parsed["data"]["bump_stats"]["mean_ns"].is_number());
+            assert!(parsed["data"]["bump_stats"]["std_dev_ns"].is_number());
+            assert!(parsed["data"]["speedup_ratio"].is_number());
+            assert!(parsed["data"]["tenor_count"].is_number());
+        }
+
+        #[tokio::test]
+        async fn test_broadcast_irs_benchmark() {
+            let state = AppState::new();
+            let mut rx = state.tx.subscribe();
+
+            let benchmark = create_test_benchmark();
+            broadcast_irs_benchmark(&state, benchmark);
+
+            // ブロードキャストメッセージを受信
+            let received = rx.try_recv();
+            assert!(received.is_ok());
+
+            let msg = received.unwrap();
+            assert!(msg.contains("irs_benchmark"));
+            assert!(msg.contains("aad_stats"));
+            assert!(msg.contains("bump_stats"));
+        }
+
+        #[tokio::test]
+        async fn test_broadcast_irs_benchmark_multiple_times() {
+            let state = AppState::new();
+            let mut rx = state.tx.subscribe();
+
+            // 複数回ブロードキャスト
+            for i in 0..3 {
+                let benchmark = IrsBenchmarkUpdate {
+                    aad_stats: create_test_stats(
+                        15000.0 + (i as f64) * 100.0,
+                        500.0,
+                        14000.0,
+                        16000.0,
+                    ),
+                    bump_stats: create_test_stats(300000.0, 5000.0, 290000.0, 310000.0),
+                    speedup_ratio: 20.0,
+                    tenor_count: 20,
+                };
+                broadcast_irs_benchmark(&state, benchmark);
+            }
+
+            // 3つのメッセージが受信できることを確認
+            for _ in 0..3 {
+                let received = rx.try_recv();
+                assert!(received.is_ok());
+            }
+        }
+
+        #[test]
+        fn test_benchmark_with_different_tenor_counts() {
+            // 異なるテナー数でのベンチマーク
+            for tenor_count in [5, 10, 20, 40] {
+                let benchmark = IrsBenchmarkUpdate {
+                    aad_stats: create_test_stats(15000.0, 500.0, 14000.0, 16000.0),
+                    bump_stats: create_test_stats(300000.0, 5000.0, 290000.0, 310000.0),
+                    speedup_ratio: 20.0,
+                    tenor_count,
+                };
+
+                let update = RealTimeUpdate::irs_benchmark_update(benchmark);
+                let json = update.to_json();
+                let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+                assert_eq!(parsed["data"]["tenor_count"], tenor_count);
+            }
+        }
+
+        #[test]
+        fn test_benchmark_speedup_calculation_values() {
+            // さまざまなスピードアップ値をテスト
+            let speedup_values = [1.0, 5.0, 10.0, 20.0, 50.0, 100.0];
+
+            for speedup in speedup_values {
+                let benchmark = IrsBenchmarkUpdate {
+                    aad_stats: create_test_stats(15000.0, 500.0, 14000.0, 16000.0),
+                    bump_stats: create_test_stats(15000.0 * speedup, 5000.0, 290000.0, 310000.0),
+                    speedup_ratio: speedup,
+                    tenor_count: 20,
+                };
+
+                let update = RealTimeUpdate::irs_benchmark_update(benchmark);
+                let json = update.to_json();
+                let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+                assert_eq!(parsed["data"]["speedup_ratio"], speedup);
+            }
+        }
     }
 }

@@ -14,11 +14,12 @@ path = "src/main.rs"
 demo_inputs = { path = "../inputs" }
 demo_outputs = { path = "../outputs" }
 
-# Pricer layer (excluding pricer_pricing for Enzyme isolation)
+# Pricer layer
 pricer_core = { path = "../../crates/pricer_core" }
 pricer_models = { path = "../../crates/pricer_models", features = ["equity", "rates", "credit", "fx"] }
 pricer_risk = { path = "../../crates/pricer_risk" }
 pricer_optimiser = { path = "../../crates/pricer_optimiser" }
+pricer_pricing = { path = "../../crates/pricer_pricing", optional = true }
 
 # Async runtime
 tokio = { workspace = true }
@@ -47,3 +48,10 @@ async-trait = "0.1"
 [dev-dependencies]
 tokio-test = "0.4"
 tempfile = "3"
+
+[features]
+default = []
+# Enable full L1/L2 integration with pricer_pricing for IRS AAD workflow
+l1l2-integration = ["pricer_pricing", "pricer_pricing/l1l2-integration"]
+# Enable Enzyme AD support (requires nightly)
+enzyme-ad = ["pricer_pricing", "pricer_pricing/enzyme-ad"]
