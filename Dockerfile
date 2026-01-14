@@ -1,5 +1,5 @@
 # --- Stage 1: Build ---
-FROM rust:1.83-slim-bookworm as builder
+FROM rust:1.84-slim-bookworm as builder
 
 WORKDIR /app
 
@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY . .
 
-RUN cargo build --release -p demo_gui --features web --bin demo-web
+RUN cargo build --release -p frictional_bank --bin frictional-bank
 
 # --- Stage 2: Runtime ---
 FROM debian:bookworm-slim
@@ -19,15 +19,15 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app/target/release/demo-web ./demo-web
+COPY --from=builder /app/target/release/frictional-bank ./frictional-bank
 
-COPY --from=builder /app/demo/gui/static ./static
+# Create data directory for demo config
+RUN mkdir -p demo/data/output
 
-ENV FB_PORT=8080
-ENV FB_HOST=0.0.0.0
 ENV RUST_LOG=info
 
 RUN useradd -m appuser
 USER appuser
 
-CMD ["./demo-web"]
+# Cloud Run sets PORT env var
+CMD ["./frictional-bank"]
