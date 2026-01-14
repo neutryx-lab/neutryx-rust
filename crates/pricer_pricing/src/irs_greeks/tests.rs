@@ -111,7 +111,10 @@ fn test_compute_npv_basic() {
 
     let npv = result.unwrap();
     // Pay fixed at 3%, receive floating at 3.5% => positive NPV
-    assert!(npv > 0.0, "Payer swap should have positive NPV when forward > fixed");
+    assert!(
+        npv > 0.0,
+        "Payer swap should have positive NPV when forward > fixed"
+    );
 }
 
 #[test]
@@ -124,7 +127,9 @@ fn test_compute_npv_atm_near_zero() {
     let config = IrsGreeksConfig::default();
     let calculator = IrsGreeksCalculator::<f64>::new(config);
 
-    let npv = calculator.compute_npv(&swap, &curves, valuation_date).unwrap();
+    let npv = calculator
+        .compute_npv(&swap, &curves, valuation_date)
+        .unwrap();
     // ATM swap should have NPV close to zero (within a few thousand due to day count differences)
     assert!(
         npv.abs() < 50_000.0,
@@ -176,7 +181,9 @@ fn test_compute_npv_receiver_swap() {
     let config = IrsGreeksConfig::default();
     let calculator = IrsGreeksCalculator::<f64>::new(config);
 
-    let payer_npv = calculator.compute_npv(&payer_swap, &curves, valuation_date).unwrap();
+    let payer_npv = calculator
+        .compute_npv(&payer_swap, &curves, valuation_date)
+        .unwrap();
     let receiver_npv = calculator
         .compute_npv(&receiver_swap, &curves, valuation_date)
         .unwrap();
@@ -318,8 +325,12 @@ fn test_compute_dv01_proportional_to_notional() {
         SwapDirection::PayFixed,
     );
 
-    let dv01_1m = calculator.compute_dv01(&swap_1m, &curves, valuation_date).unwrap();
-    let dv01_2m = calculator.compute_dv01(&swap_2m, &curves, valuation_date).unwrap();
+    let dv01_1m = calculator
+        .compute_dv01(&swap_1m, &curves, valuation_date)
+        .unwrap();
+    let dv01_2m = calculator
+        .compute_dv01(&swap_2m, &curves, valuation_date)
+        .unwrap();
 
     // DV01 should approximately double
     let ratio = dv01_2m / dv01_1m;
@@ -694,7 +705,8 @@ fn test_bump_mode_scalability_with_tenor_count() {
     let actual_ratio = result_large.compute_time_ns as f64 / result_small.compute_time_ns as f64;
 
     assert!(
-        actual_ratio >= expected_min_ratio || result_large.compute_time_ns > result_small.compute_time_ns,
+        actual_ratio >= expected_min_ratio
+            || result_large.compute_time_ns > result_small.compute_time_ns,
         "Bump mode should scale with tenor count. Ratio: {}",
         actual_ratio
     );
@@ -762,11 +774,7 @@ fn test_verify_accuracy_returns_relative_errors() {
 
     // Accuracy check should contain errors for each tenor
     let errors = result.accuracy_check.unwrap();
-    assert_eq!(
-        errors.len(),
-        4,
-        "Should have error for each tenor point"
-    );
+    assert_eq!(errors.len(), 4, "Should have error for each tenor point");
 
     // Each error should be a valid relative error (0 <= error <= 1 typically)
     for error in &errors {
@@ -816,15 +824,17 @@ fn test_verify_accuracy_strict_tolerance() {
     let tenor_points = vec![1.0, 2.0, 5.0];
 
     // Very strict tolerance
-    let config = IrsGreeksConfig::new()
-        .with_tolerance(1e-10);
+    let config = IrsGreeksConfig::new().with_tolerance(1e-10);
     let calculator = IrsGreeksCalculator::<f64>::new(config);
 
     let result = calculator.verify_accuracy(&swap, &curves, valuation_date, &tenor_points);
 
     // Since AAD falls back to bump, results should be identical
     // So even very strict tolerance should pass
-    assert!(result.is_ok(), "Should pass with strict tolerance when AAD uses bump fallback");
+    assert!(
+        result.is_ok(),
+        "Should pass with strict tolerance when AAD uses bump fallback"
+    );
 }
 
 #[test]
@@ -968,11 +978,15 @@ fn test_integration_full_greeks_workflow() {
     let calculator = IrsGreeksCalculator::<f64>::new(config);
 
     // Step 1: Compute NPV
-    let npv = calculator.compute_npv(&swap, &curves, valuation_date).unwrap();
+    let npv = calculator
+        .compute_npv(&swap, &curves, valuation_date)
+        .unwrap();
     assert!(npv.is_finite());
 
     // Step 2: Compute DV01
-    let dv01 = calculator.compute_dv01(&swap, &curves, valuation_date).unwrap();
+    let dv01 = calculator
+        .compute_dv01(&swap, &curves, valuation_date)
+        .unwrap();
     assert!(dv01 > 0.0);
 
     // Step 3: Compute tenor deltas

@@ -6828,6 +6828,104 @@ kbd {
     border-radius: var(--radius-md);
 }
 
+/* Task 6.2: Graph Search */
+.graph-search-wrapper {
+    position: relative;
+}
+
+.graph-search-input-container {
+    display: flex;
+    align-items: center;
+    position: relative;
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    transition: all 0.2s ease;
+}
+
+.graph-search-input-container:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-alpha);
+}
+
+.graph-search-icon {
+    position: absolute;
+    left: 10px;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    pointer-events: none;
+}
+
+.graph-search-input {
+    width: 180px;
+    padding: 8px 32px 8px 32px;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    outline: none;
+}
+
+.graph-search-input::placeholder {
+    color: var(--text-muted);
+}
+
+.graph-search-clear {
+    position: absolute;
+    right: 4px;
+    padding: 4px;
+    min-width: auto;
+    width: 24px;
+    height: 24px;
+}
+
+.graph-search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 4px;
+    padding: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    z-index: 100;
+}
+
+.search-results-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.search-nav-buttons {
+    display: flex;
+    gap: 2px;
+}
+
+.search-nav-buttons .icon-btn {
+    padding: 4px;
+    min-width: auto;
+    width: 24px;
+    height: 24px;
+}
+
+/* Search highlight on nodes */
+.node-highlight-search {
+    filter: drop-shadow(0 0 8px var(--accent)) drop-shadow(0 0 16px var(--accent));
+}
+
+.node-dimmed {
+    opacity: 0.3;
+}
+
+.link-dimmed {
+    stroke-opacity: 0.1 !important;
+}
+
 /* Graph Layout */
 .graph-layout {
     display: grid;
@@ -6953,6 +7051,86 @@ kbd {
 
 .stat-item.stat-wide .stat-value {
     font-size: 0.875rem;
+}
+
+/* Task 7.2: Node Type Chart Panel */
+.node-type-chart-panel {
+    padding: 16px;
+    border-radius: var(--radius-lg);
+}
+
+.node-type-chart-panel h3 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+}
+
+.node-type-chart-panel h3 i {
+    color: var(--accent-primary);
+}
+
+.node-type-chart-panel .chart-container {
+    position: relative;
+}
+
+/* Task 6.3: Sensitivity Path Panel */
+.sensitivity-path-panel {
+    padding: 16px;
+    border-radius: var(--radius-lg);
+}
+
+.sensitivity-path-panel h3 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+}
+
+.sensitivity-path-panel h3 i {
+    color: var(--accent-primary);
+}
+
+.sensitivity-path-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sensitivity-path-controls .btn {
+    width: 100%;
+    justify-content: center;
+}
+
+.sensitivity-path-controls .btn.active {
+    background: var(--accent-primary);
+    color: white;
+}
+
+.sensitivity-path-controls .btn.active i {
+    color: white;
+}
+
+.sensitivity-path-controls .form-select {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    color: var(--text-primary);
+}
+
+.sensitivity-path-panel .panel-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 8px;
+    margin-bottom: 0;
 }
 
 /* Node Info Panel */

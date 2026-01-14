@@ -28,6 +28,8 @@ pub enum Screen {
     TradeBlotter,
     /// Exposure time series chart
     Chart,
+    /// IRS AAD Demo screen (Task 6.2)
+    IrsAadDemo,
 }
 
 impl Screen {
@@ -39,6 +41,7 @@ impl Screen {
             Self::Risk => "Risk",
             Self::TradeBlotter => "Trade Blotter",
             Self::Chart => "Exposure Chart",
+            Self::IrsAadDemo => "IRS AAD Demo",
         }
     }
 }
@@ -161,6 +164,131 @@ pub struct RiskMetrics {
     pub pfe: f64,
 }
 
+// =============================================================================
+// Task 6.2: IRS AAD Demo Data Structures
+// =============================================================================
+
+/// IRS AAD Demo state (Task 6.2)
+///
+/// Holds all data needed for the IRS AAD Demo screen, including
+/// input parameters, calculation results, and benchmark data.
+#[derive(Debug, Clone)]
+pub struct IrsAadDemoState {
+    /// Current IRS parameters
+    pub params: IrsAadParams,
+    /// Latest calculation result
+    pub result: Option<IrsAadResult>,
+    /// Latest benchmark result
+    pub benchmark: Option<IrsAadBenchmark>,
+    /// Currently selected input field (for editing)
+    pub selected_field: usize,
+    /// Whether the demo is currently calculating
+    pub is_calculating: bool,
+    /// Error message if any
+    pub error_message: Option<String>,
+    /// Selected calculation mode (0=Bump, 1=AAD, 2=Both)
+    pub calc_mode: usize,
+}
+
+impl Default for IrsAadDemoState {
+    fn default() -> Self {
+        Self {
+            params: IrsAadParams::default(),
+            result: None,
+            benchmark: None,
+            selected_field: 0,
+            is_calculating: false,
+            error_message: None,
+            calc_mode: 2, // Default to "Both" mode
+        }
+    }
+}
+
+/// IRS input parameters for the demo (Task 6.2)
+#[derive(Debug, Clone)]
+pub struct IrsAadParams {
+    /// Notional amount
+    pub notional: f64,
+    /// Fixed rate (annualised)
+    pub fixed_rate: f64,
+    /// Tenor in years
+    pub tenor_years: u32,
+    /// Number of tenor points for delta calculation
+    pub num_tenors: usize,
+}
+
+impl Default for IrsAadParams {
+    fn default() -> Self {
+        Self {
+            notional: 1_000_000.0,
+            fixed_rate: 0.03,
+            tenor_years: 5,
+            num_tenors: 8,
+        }
+    }
+}
+
+/// IRS calculation result (Task 6.2)
+#[derive(Debug, Clone)]
+pub struct IrsAadResult {
+    /// Net Present Value
+    pub npv: f64,
+    /// DV01 (1bp parallel shift sensitivity)
+    pub dv01: f64,
+    /// Tenor points
+    pub tenors: Vec<f64>,
+    /// Delta values at each tenor
+    pub deltas: Vec<f64>,
+    /// Computation time in nanoseconds
+    pub compute_time_ns: u64,
+    /// Mode used for calculation
+    pub mode: String,
+}
+
+impl Default for IrsAadResult {
+    fn default() -> Self {
+        Self {
+            npv: 0.0,
+            dv01: 0.0,
+            tenors: Vec::new(),
+            deltas: Vec::new(),
+            compute_time_ns: 0,
+            mode: "Bump".to_string(),
+        }
+    }
+}
+
+/// IRS AAD vs Bump benchmark result (Task 6.2)
+#[derive(Debug, Clone)]
+pub struct IrsAadBenchmark {
+    /// AAD timing stats
+    pub aad_mean_ns: f64,
+    pub aad_std_ns: f64,
+    /// Bump timing stats
+    pub bump_mean_ns: f64,
+    pub bump_std_ns: f64,
+    /// Speedup ratio
+    pub speedup_ratio: f64,
+    /// Number of tenors used
+    pub tenor_count: usize,
+    /// Accuracy check results (relative errors)
+    pub accuracy_errors: Vec<f64>,
+}
+
+impl Default for IrsAadBenchmark {
+    fn default() -> Self {
+        Self {
+            aad_mean_ns: 0.0,
+            aad_std_ns: 0.0,
+            bump_mean_ns: 0.0,
+            bump_std_ns: 0.0,
+            speedup_ratio: 1.0,
+            tenor_count: 0,
+            accuracy_errors: Vec::new(),
+        }
+    }
+}
+
 /// Rendering state snapshot
 struct RenderState {
     current_screen: Screen,
@@ -168,6 +296,8 @@ struct RenderState {
     selected_trade: usize,
     risk_metrics: RiskMetrics,
     exposure_series: ExposureTimeSeries,
+    /// IRS AAD Demo state (Task 6.2)
+    irs_aad_state: IrsAadDemoState,
 }
 
 /// TUI Application state
@@ -182,6 +312,8 @@ pub struct TuiApp {
     risk_metrics: RiskMetrics,
     /// Exposure time series for charting
     exposure_series: ExposureTimeSeries,
+    /// IRS AAD Demo state (Task 6.2)
+    irs_aad_state: IrsAadDemoState,
     /// Exit flag
     should_quit: bool,
     /// API client
@@ -207,6 +339,7 @@ impl TuiApp {
             selected_trade: 0,
             risk_metrics: Self::sample_risk_metrics(),
             exposure_series: ExposureTimeSeries::default(),
+            irs_aad_state: IrsAadDemoState::default(),
             should_quit: false,
             api_client: ApiClient::new("http://localhost:8080".to_string()),
             terminal,
@@ -267,6 +400,7 @@ impl TuiApp {
             selected_trade: self.selected_trade,
             risk_metrics: self.risk_metrics.clone(),
             exposure_series: self.exposure_series.clone(),
+            irs_aad_state: self.irs_aad_state.clone(),
         }
     }
 
@@ -307,18 +441,130 @@ impl TuiApp {
             KeyCode::Char('3') => self.current_screen = Screen::Risk,
             KeyCode::Char('4') => self.current_screen = Screen::TradeBlotter,
             KeyCode::Char('5') => self.current_screen = Screen::Chart,
+            KeyCode::Char('6') => self.current_screen = Screen::IrsAadDemo,
             KeyCode::Up | KeyCode::Char('k') => {
-                if self.selected_trade > 0 {
+                if self.current_screen == Screen::IrsAadDemo {
+                    // Navigate IRS AAD Demo fields (Task 6.2)
+                    if self.irs_aad_state.selected_field > 0 {
+                        self.irs_aad_state.selected_field -= 1;
+                    }
+                } else if self.selected_trade > 0 {
                     self.selected_trade -= 1;
                 }
             }
             KeyCode::Down | KeyCode::Char('j') => {
-                if self.selected_trade < self.trades.len().saturating_sub(1) {
+                if self.current_screen == Screen::IrsAadDemo {
+                    // Navigate IRS AAD Demo fields (Task 6.2)
+                    if self.irs_aad_state.selected_field < 3 {
+                        self.irs_aad_state.selected_field += 1;
+                    }
+                } else if self.selected_trade < self.trades.len().saturating_sub(1) {
                     self.selected_trade += 1;
+                }
+            }
+            // IRS AAD Demo specific keys (Task 6.2)
+            KeyCode::Tab => {
+                if self.current_screen == Screen::IrsAadDemo {
+                    // Cycle calculation mode: Bump -> AAD -> Both
+                    self.irs_aad_state.calc_mode = (self.irs_aad_state.calc_mode + 1) % 3;
+                }
+            }
+            KeyCode::Enter => {
+                if self.current_screen == Screen::IrsAadDemo {
+                    // Trigger calculation (mark as calculating)
+                    self.irs_aad_state.is_calculating = true;
+                    // Note: Actual calculation would be done in async context
+                    self.trigger_irs_calculation();
+                }
+            }
+            KeyCode::Left => {
+                if self.current_screen == Screen::IrsAadDemo {
+                    self.adjust_irs_param(-1);
+                }
+            }
+            KeyCode::Right => {
+                if self.current_screen == Screen::IrsAadDemo {
+                    self.adjust_irs_param(1);
                 }
             }
             _ => {}
         }
+    }
+
+    /// Adjust IRS parameter based on selected field (Task 6.2)
+    fn adjust_irs_param(&mut self, direction: i32) {
+        match self.irs_aad_state.selected_field {
+            0 => {
+                // Notional: adjust by 100,000
+                let delta = 100_000.0 * direction as f64;
+                self.irs_aad_state.params.notional =
+                    (self.irs_aad_state.params.notional + delta).max(100_000.0);
+            }
+            1 => {
+                // Fixed rate: adjust by 0.25%
+                let delta = 0.0025 * direction as f64;
+                self.irs_aad_state.params.fixed_rate =
+                    (self.irs_aad_state.params.fixed_rate + delta).clamp(0.001, 0.2);
+            }
+            2 => {
+                // Tenor years: adjust by 1
+                self.irs_aad_state.params.tenor_years =
+                    ((self.irs_aad_state.params.tenor_years as i32 + direction).max(1) as u32).min(30);
+            }
+            3 => {
+                // Num tenors: adjust by 1
+                self.irs_aad_state.params.num_tenors =
+                    ((self.irs_aad_state.params.num_tenors as i32 + direction).max(2) as usize).min(20);
+            }
+            _ => {}
+        }
+    }
+
+    /// Trigger IRS calculation with demo data (Task 6.2)
+    fn trigger_irs_calculation(&mut self) {
+        // Generate demo result (in production, this would call the actual workflow)
+        let params = &self.irs_aad_state.params;
+
+        // Demo: Generate realistic-looking results
+        let tenors: Vec<f64> = (0..params.num_tenors)
+            .map(|i| (i + 1) as f64 * params.tenor_years as f64 / params.num_tenors as f64)
+            .collect();
+
+        let deltas: Vec<f64> = tenors.iter()
+            .map(|t| params.notional * 0.0001 * t.sqrt() * (-0.1 * t).exp())
+            .collect();
+
+        let npv = params.notional * (params.fixed_rate - 0.035) * params.tenor_years as f64 * 0.95;
+        let dv01 = params.notional * params.tenor_years as f64 * 0.0001 * 0.98;
+
+        let mode = match self.irs_aad_state.calc_mode {
+            0 => "Bump",
+            1 => "AAD",
+            _ => "Both",
+        };
+
+        self.irs_aad_state.result = Some(IrsAadResult {
+            npv,
+            dv01,
+            tenors: tenors.clone(),
+            deltas: deltas.clone(),
+            compute_time_ns: if self.irs_aad_state.calc_mode == 1 { 15_000 } else { 300_000 },
+            mode: mode.to_string(),
+        });
+
+        // Generate benchmark result
+        self.irs_aad_state.benchmark = Some(IrsAadBenchmark {
+            aad_mean_ns: 15_000.0 + 500.0 * params.num_tenors as f64,
+            aad_std_ns: 500.0,
+            bump_mean_ns: 15_000.0 * params.num_tenors as f64,
+            bump_std_ns: 2000.0,
+            speedup_ratio: params.num_tenors as f64 * 0.95,
+            tenor_count: params.num_tenors,
+            accuracy_errors: tenors.iter().map(|_| 1e-8).collect(),
+        });
+
+        self.irs_aad_state.is_calculating = false;
+        self.irs_aad_state.error_message = None;
     }
 
     /// Draw the current screen
@@ -350,6 +596,7 @@ impl TuiApp {
                 screens::draw_trade_blotter(frame, chunks[1], trade);
             }
             Screen::Chart => screens::draw_exposure_chart(frame, chunks[1], &state.exposure_series),
+            Screen::IrsAadDemo => screens::draw_irs_aad_demo(frame, chunks[1], &state.irs_aad_state),
         }
 
         // Draw footer
@@ -372,7 +619,7 @@ impl TuiApp {
     /// Draw footer with keybindings
     fn draw_footer(frame: &mut Frame, area: Rect) {
         let footer_text =
-            " [1]Dashboard [2]Portfolio [3]Risk [4]Blotter [5]Chart | [Up/Down]Navigate | [q]Quit ";
+            " [1]Dashboard [2]Portfolio [3]Risk [4]Blotter [5]Chart [6]IRS AAD | [Up/Down]Nav | [q]Quit ";
         let footer = Paragraph::new(footer_text)
             .style(Style::default().fg(Color::DarkGray))
             .block(Block::default().borders(Borders::ALL));
@@ -435,5 +682,88 @@ mod tests {
 
         assert_eq!(ee_data.len(), series.data_points.len());
         assert_eq!(pfe_data.len(), series.data_points.len());
+    }
+
+    // =========================================================================
+    // Task 6.2: IRS AAD Demo Screen Tests
+    // =========================================================================
+
+    mod irs_aad_demo_tests {
+        use super::*;
+
+        #[test]
+        fn test_irs_aad_screen_title() {
+            assert_eq!(Screen::IrsAadDemo.title(), "IRS AAD Demo");
+        }
+
+        #[test]
+        fn test_irs_aad_demo_state_default() {
+            let state = IrsAadDemoState::default();
+            assert!((state.params.notional - 1_000_000.0).abs() < 1e-10);
+            assert!((state.params.fixed_rate - 0.03).abs() < 1e-10);
+            assert_eq!(state.params.tenor_years, 5);
+            assert_eq!(state.params.num_tenors, 8);
+            assert_eq!(state.calc_mode, 2); // Default to "Both"
+            assert!(!state.is_calculating);
+            assert!(state.result.is_none());
+            assert!(state.benchmark.is_none());
+        }
+
+        #[test]
+        fn test_irs_aad_params_default() {
+            let params = IrsAadParams::default();
+            assert!((params.notional - 1_000_000.0).abs() < 1e-10);
+            assert!((params.fixed_rate - 0.03).abs() < 1e-10);
+            assert_eq!(params.tenor_years, 5);
+            assert_eq!(params.num_tenors, 8);
+        }
+
+        #[test]
+        fn test_irs_aad_result_default() {
+            let result = IrsAadResult::default();
+            assert!((result.npv - 0.0).abs() < 1e-10);
+            assert!((result.dv01 - 0.0).abs() < 1e-10);
+            assert!(result.tenors.is_empty());
+            assert!(result.deltas.is_empty());
+            assert_eq!(result.compute_time_ns, 0);
+            assert_eq!(result.mode, "Bump");
+        }
+
+        #[test]
+        fn test_irs_aad_benchmark_default() {
+            let benchmark = IrsAadBenchmark::default();
+            assert!((benchmark.aad_mean_ns - 0.0).abs() < 1e-10);
+            assert!((benchmark.bump_mean_ns - 0.0).abs() < 1e-10);
+            assert!((benchmark.speedup_ratio - 1.0).abs() < 1e-10);
+            assert_eq!(benchmark.tenor_count, 0);
+            assert!(benchmark.accuracy_errors.is_empty());
+        }
+
+        #[test]
+        fn test_irs_aad_state_field_navigation() {
+            let mut state = IrsAadDemoState::default();
+            assert_eq!(state.selected_field, 0);
+
+            state.selected_field = 1;
+            assert_eq!(state.selected_field, 1);
+
+            state.selected_field = 3;
+            assert_eq!(state.selected_field, 3);
+        }
+
+        #[test]
+        fn test_irs_aad_calc_mode_cycle() {
+            let mut state = IrsAadDemoState::default();
+            assert_eq!(state.calc_mode, 2);
+
+            state.calc_mode = (state.calc_mode + 1) % 3;
+            assert_eq!(state.calc_mode, 0); // Bump
+
+            state.calc_mode = (state.calc_mode + 1) % 3;
+            assert_eq!(state.calc_mode, 1); // AAD
+
+            state.calc_mode = (state.calc_mode + 1) % 3;
+            assert_eq!(state.calc_mode, 2); // Both
+        }
     }
 }

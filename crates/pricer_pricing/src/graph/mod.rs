@@ -230,7 +230,11 @@ mod tests {
 
             for (node_type, expected) in types {
                 let json = serde_json::to_string(&node_type).unwrap();
-                assert_eq!(json, expected, "NodeType {:?} should serialise to {}", node_type, expected);
+                assert_eq!(
+                    json, expected,
+                    "NodeType {:?} should serialise to {}",
+                    node_type, expected
+                );
             }
         }
 
@@ -245,7 +249,11 @@ mod tests {
 
             for (group, expected) in groups {
                 let json = serde_json::to_string(&group).unwrap();
-                assert_eq!(json, expected, "NodeGroup {:?} should serialise to {}", group, expected);
+                assert_eq!(
+                    json, expected,
+                    "NodeGroup {:?} should serialise to {}",
+                    group, expected
+                );
             }
         }
     }

@@ -26,6 +26,9 @@ crossterm = "0.27"
 # Demo crates
 frictional_bank = { path = "../frictional_bank" }
 
+# Pricer layer (for IRS AAD screen types)
+pricer_pricing = { path = "../../crates/pricer_pricing" }
+
 # Async runtime
 tokio = { workspace = true }
 

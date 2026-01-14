@@ -50,7 +50,6 @@ use num_traits::Float;
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 
-
 // =============================================================================
 // Task 3.1: Dependency Graph Types
 // =============================================================================
@@ -524,7 +523,8 @@ impl<T: Float> IrsLazyEvaluator<T> {
         swap_id: SwapId,
         tenor_points: impl IntoIterator<Item = TenorPoint>,
     ) {
-        self.dependency_graph.add_dependencies(swap_id, tenor_points);
+        self.dependency_graph
+            .add_dependencies(swap_id, tenor_points);
     }
 
     /// Notify of a curve update and invalidate affected cache entries.
@@ -552,7 +552,8 @@ impl<T: Float> IrsLazyEvaluator<T> {
         for swap_id in affected_swaps {
             if let Some(cache_key) = self.swap_to_cache_key.get(&swap_id) {
                 if self.cache_state.contains_key(cache_key) {
-                    self.cache_state.insert(cache_key.clone(), CacheState::Dirty);
+                    self.cache_state
+                        .insert(cache_key.clone(), CacheState::Dirty);
                     self.stats.record_invalidation();
                 }
             }
@@ -688,7 +689,9 @@ impl<T: Float> IrsLazyEvaluator<T> {
             .unwrap_or(0);
 
         // Store the tape
-        let tape_id = self.tape_cache.store_tape(structure_hash, tenor_count, timestamp);
+        let tape_id = self
+            .tape_cache
+            .store_tape(structure_hash, tenor_count, timestamp);
 
         // Map swap to structure hash
         self.swap_to_structure_hash.insert(swap_id, structure_hash);
@@ -1465,15 +1468,11 @@ mod tests {
             graph.add_dependency(SwapId::new("SWAP003"), TenorPoint::new(1, 2.0));
 
             // Query tenor 1.0 -> should return SWAP001 and SWAP003
-            let affected_1y: Vec<_> = graph
-                .get_affected_swaps(&TenorPoint::new(1, 1.0))
-                .collect();
+            let affected_1y: Vec<_> = graph.get_affected_swaps(&TenorPoint::new(1, 1.0)).collect();
             assert_eq!(affected_1y.len(), 2);
 
             // Query tenor 2.0 -> should return SWAP002 and SWAP003
-            let affected_2y: Vec<_> = graph
-                .get_affected_swaps(&TenorPoint::new(1, 2.0))
-                .collect();
+            let affected_2y: Vec<_> = graph.get_affected_swaps(&TenorPoint::new(1, 2.0)).collect();
             assert_eq!(affected_2y.len(), 2);
         }
 
@@ -1728,13 +1727,21 @@ mod tests {
             // Swap 1 depends on tenor 1.0
             let key1 = CacheKey::new(123, 1, 19000);
             let swap_id1 = SwapId::new("SWAP001");
-            evaluator.store(key1.clone(), CachedResult::new(1000.0, 12345), swap_id1.clone());
+            evaluator.store(
+                key1.clone(),
+                CachedResult::new(1000.0, 12345),
+                swap_id1.clone(),
+            );
             evaluator.register_dependencies(swap_id1, vec![TenorPoint::new(1, 1.0)]);
 
             // Swap 2 depends on tenor 2.0
             let key2 = CacheKey::new(456, 1, 19000);
             let swap_id2 = SwapId::new("SWAP002");
-            evaluator.store(key2.clone(), CachedResult::new(2000.0, 12345), swap_id2.clone());
+            evaluator.store(
+                key2.clone(),
+                CachedResult::new(2000.0, 12345),
+                swap_id2.clone(),
+            );
             evaluator.register_dependencies(swap_id2, vec![TenorPoint::new(1, 2.0)]);
 
             // Update tenor 1.0 -> should only invalidate SWAP001
@@ -1798,7 +1805,11 @@ mod tests {
             let structure_hash = 12345u64;
 
             // Store result and register tape
-            evaluator.store(key.clone(), CachedResult::new(1000.0, 12345), swap_id.clone());
+            evaluator.store(
+                key.clone(),
+                CachedResult::new(1000.0, 12345),
+                swap_id.clone(),
+            );
             evaluator.register_dependencies(swap_id.clone(), vec![TenorPoint::new(1, 1.0)]);
             evaluator.register_tape(swap_id.clone(), structure_hash, 5);
 
@@ -1917,7 +1928,11 @@ mod tests {
             let structure_hash = 12345u64;
 
             // Store result and register tape
-            evaluator.store(key.clone(), CachedResult::new(1000.0, 12345), swap_id.clone());
+            evaluator.store(
+                key.clone(),
+                CachedResult::new(1000.0, 12345),
+                swap_id.clone(),
+            );
             evaluator.register_tape(swap_id.clone(), structure_hash, 5);
 
             assert!(evaluator.can_reuse_tape(&swap_id));
@@ -2029,7 +2044,11 @@ mod tests {
             let swap_id = SwapId::new("SWAP001");
             let key = CacheKey::new(123, 1, 19000);
 
-            evaluator.store(key.clone(), CachedResult::new(1000.0, 12345), swap_id.clone());
+            evaluator.store(
+                key.clone(),
+                CachedResult::new(1000.0, 12345),
+                swap_id.clone(),
+            );
             evaluator.register_dependencies(swap_id.clone(), vec![TenorPoint::new(1, 1.0)]);
 
             evaluator.remove_swap(&swap_id);
@@ -2059,7 +2078,11 @@ mod tests {
             let key = CacheKey::new(123, 1, 19000);
             let swap_id = SwapId::new("SWAP001");
 
-            evaluator.store(key.clone(), CachedResult::new(1000.0, 12345), swap_id.clone());
+            evaluator.store(
+                key.clone(),
+                CachedResult::new(1000.0, 12345),
+                swap_id.clone(),
+            );
             evaluator.register_dependencies(swap_id, vec![TenorPoint::new(1, 1.0)]);
             evaluator.notify_curve_update(1, 1.0);
 

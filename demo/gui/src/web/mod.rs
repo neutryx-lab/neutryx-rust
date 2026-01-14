@@ -127,6 +127,11 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/risk", get(handlers::get_risk_metrics))
         // Task 3.2: Add /api/graph route for computation graph visualisation
         .route("/graph", get(handlers::get_graph))
+        // Task 7.2: Add /api/benchmark/speed-comparison route for speed comparison chart
+        .route(
+            "/benchmark/speed-comparison",
+            get(handlers::get_speed_comparison),
+        )
         .route("/ws", get(websocket::ws_handler));
 
     // Static file serving for the dashboard

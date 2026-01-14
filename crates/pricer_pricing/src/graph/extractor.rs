@@ -504,11 +504,7 @@ impl SimpleGraphExtractor {
     /// let mut extractor = SimpleGraphExtractor::new();
     /// extractor.register_trade("T001", vec!["spot", "vol", "rate"]);
     /// ```
-    pub fn register_trade<S: Into<String>>(
-        &mut self,
-        trade_id: &str,
-        sensitivity_params: Vec<S>,
-    ) {
+    pub fn register_trade<S: Into<String>>(&mut self, trade_id: &str, sensitivity_params: Vec<S>) {
         let info = TradeGraphInfo {
             sensitivity_params: sensitivity_params.into_iter().map(|s| s.into()).collect(),
             param_values: HashMap::new(),
@@ -1068,8 +1064,16 @@ mod tests {
             let graph = extractor.extract_graph(None).unwrap();
 
             // Should contain nodes from both trades
-            let t001_nodes: Vec<_> = graph.nodes.iter().filter(|n| n.id.starts_with("T001")).collect();
-            let t002_nodes: Vec<_> = graph.nodes.iter().filter(|n| n.id.starts_with("T002")).collect();
+            let t001_nodes: Vec<_> = graph
+                .nodes
+                .iter()
+                .filter(|n| n.id.starts_with("T001"))
+                .collect();
+            let t002_nodes: Vec<_> = graph
+                .nodes
+                .iter()
+                .filter(|n| n.id.starts_with("T002"))
+                .collect();
 
             assert!(!t001_nodes.is_empty());
             assert!(!t002_nodes.is_empty());

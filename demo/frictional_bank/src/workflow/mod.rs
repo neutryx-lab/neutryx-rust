@@ -4,7 +4,7 @@
 //! - EOD Batch Processing
 //! - Intraday Real-time Processing
 //! - Stress Testing
-//! - IRS AAD Demo (Task 6.1)
+//! - IRS AAD Demo
 
 mod eod_batch;
 mod intraday;

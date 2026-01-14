@@ -30,4 +30,8 @@ pub mod prelude {
         DemoWorkflow, EodBatchWorkflow, IntradayWorkflow, IrsAadWorkflow, IrsParams,
         ProgressCallback, StressTestWorkflow, WorkflowResult, WorkflowStep,
     };
+    #[cfg(feature = "l1l2-integration")]
+    pub use crate::workflow::{
+        IrsAadConfig, IrsAadWorkflow, IrsComputeResult, IrsParams, XvaDemoResult,
+    };
 }

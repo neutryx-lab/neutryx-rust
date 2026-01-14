@@ -433,11 +433,11 @@ pub struct XvaDemoConfig {
 impl Default for XvaDemoConfig {
     fn default() -> Self {
         Self {
-            bump_size: 0.0001,          // 1bp
-            num_time_points: 20,        // 20 time points
-            time_horizon: 5.0,          // 5 years
-            benchmark_iterations: 100,  // 100 iterations
-            benchmark_warmup: 10,       // 10 warmup
+            bump_size: 0.0001,         // 1bp
+            num_time_points: 20,       // 20 time points
+            time_horizon: 5.0,         // 5 years
+            benchmark_iterations: 100, // 100 iterations
+            benchmark_warmup: 10,      // 10 warmup
         }
     }
 }
@@ -562,12 +562,7 @@ impl XvaDemoRunner {
     /// # Requirements Coverage
     ///
     /// - Requirement 4.2: CVA計算
-    pub fn compute_cva(
-        &self,
-        ee: &[f64],
-        time_grid: &[f64],
-        credit_params: &CreditParams,
-    ) -> f64 {
+    pub fn compute_cva(&self, ee: &[f64], time_grid: &[f64], credit_params: &CreditParams) -> f64 {
         if time_grid.len() < 2 || ee.len() != time_grid.len() {
             return 0.0;
         }
@@ -597,12 +592,7 @@ impl XvaDemoRunner {
     /// # Requirements Coverage
     ///
     /// - Requirement 4.3: DVA計算
-    pub fn compute_dva(
-        &self,
-        ene: &[f64],
-        time_grid: &[f64],
-        own_credit: &CreditParams,
-    ) -> f64 {
+    pub fn compute_dva(&self, ene: &[f64], time_grid: &[f64], own_credit: &CreditParams) -> f64 {
         if time_grid.len() < 2 || ene.len() != time_grid.len() {
             return 0.0;
         }
@@ -643,10 +633,8 @@ impl XvaDemoRunner {
         curves: &CurveSet<f64>,
         valuation_date: Date,
     ) -> Result<ExposureProfile, XvaDemoError> {
-        let time_grid = self.generate_time_grid(
-            self.config.num_time_points,
-            self.config.time_horizon,
-        );
+        let time_grid =
+            self.generate_time_grid(self.config.num_time_points, self.config.time_horizon);
 
         if time_grid.is_empty() {
             return Err(XvaDemoError::EmptyTimeGrid);
@@ -726,7 +714,8 @@ impl XvaDemoRunner {
         let start_time = Instant::now();
 
         // Base XVA
-        let base_result = self.run_xva_demo(swap, curves, valuation_date, counterparty_credit, None)?;
+        let base_result =
+            self.run_xva_demo(swap, curves, valuation_date, counterparty_credit, None)?;
         let base_cva = base_result.cva;
 
         let mut cva_deltas = Vec::with_capacity(tenor_points.len());
@@ -736,7 +725,13 @@ impl XvaDemoRunner {
             let bumped_curves = self.create_bumped_curves(curves, self.config.bump_size);
 
             // Compute bumped CVA
-            let bumped_result = self.run_xva_demo(swap, &bumped_curves, valuation_date, counterparty_credit, None)?;
+            let bumped_result = self.run_xva_demo(
+                swap,
+                &bumped_curves,
+                valuation_date,
+                counterparty_credit,
+                None,
+            )?;
             let bumped_cva = bumped_result.cva;
 
             // Delta = (bumped - base) / bump_size
@@ -770,13 +765,25 @@ impl XvaDemoRunner {
         #[cfg(feature = "enzyme-ad")]
         {
             // TODO: Implement Enzyme-based AAD for XVA sensitivities
-            self.compute_xva_sensitivities_bump(swap, curves, valuation_date, counterparty_credit, tenor_points)
+            self.compute_xva_sensitivities_bump(
+                swap,
+                curves,
+                valuation_date,
+                counterparty_credit,
+                tenor_points,
+            )
         }
 
         #[cfg(not(feature = "enzyme-ad"))]
         {
             // Fallback to bump-and-revalue with smaller bump
-            self.compute_xva_sensitivities_bump(swap, curves, valuation_date, counterparty_credit, tenor_points)
+            self.compute_xva_sensitivities_bump(
+                swap,
+                curves,
+                valuation_date,
+                counterparty_credit,
+                tenor_points,
+            )
         }
     }
 
@@ -796,7 +803,11 @@ impl XvaDemoRunner {
         // Warmup for AAD
         for _ in 0..self.config.benchmark_warmup {
             let _ = self.compute_xva_sensitivities_aad(
-                swap, curves, valuation_date, counterparty_credit, tenor_points,
+                swap,
+                curves,
+                valuation_date,
+                counterparty_credit,
+                tenor_points,
             )?;
         }
 
@@ -806,7 +817,11 @@ impl XvaDemoRunner {
         for i in 0..self.config.benchmark_iterations {
             let start = Instant::now();
             let (deltas, _) = self.compute_xva_sensitivities_aad(
-                swap, curves, valuation_date, counterparty_credit, tenor_points,
+                swap,
+                curves,
+                valuation_date,
+                counterparty_credit,
+                tenor_points,
             )?;
             aad_samples.push(start.elapsed().as_nanos() as u64);
             if i == 0 {
@@ -817,7 +832,11 @@ impl XvaDemoRunner {
         // Warmup for Bump-and-Revalue
         for _ in 0..self.config.benchmark_warmup {
             let _ = self.compute_xva_sensitivities_bump(
-                swap, curves, valuation_date, counterparty_credit, tenor_points,
+                swap,
+                curves,
+                valuation_date,
+                counterparty_credit,
+                tenor_points,
             )?;
         }
 
@@ -827,7 +846,11 @@ impl XvaDemoRunner {
         for i in 0..self.config.benchmark_iterations {
             let start = Instant::now();
             let (deltas, _) = self.compute_xva_sensitivities_bump(
-                swap, curves, valuation_date, counterparty_credit, tenor_points,
+                swap,
+                curves,
+                valuation_date,
+                counterparty_credit,
+                tenor_points,
             )?;
             bump_samples.push(start.elapsed().as_nanos() as u64);
             if i == 0 {
@@ -838,7 +861,12 @@ impl XvaDemoRunner {
         let aad_stats = TimingStats::from_samples(&aad_samples);
         let bump_stats = TimingStats::from_samples(&bump_samples);
 
-        Ok(XvaSensitivityBenchmark::new(aad_stats, bump_stats, aad_deltas, bump_deltas))
+        Ok(XvaSensitivityBenchmark::new(
+            aad_stats,
+            bump_stats,
+            aad_deltas,
+            bump_deltas,
+        ))
     }
 
     /// Creates parallel-bumped curves.
@@ -1052,12 +1080,8 @@ mod tests {
             let aad_deltas = vec![10.0, 20.0];
             let bump_deltas = vec![10.5, 19.8]; // Slightly different
 
-            let benchmark = XvaSensitivityBenchmark::new(
-                aad_stats,
-                bump_stats,
-                aad_deltas,
-                bump_deltas,
-            );
+            let benchmark =
+                XvaSensitivityBenchmark::new(aad_stats, bump_stats, aad_deltas, bump_deltas);
 
             assert!(benchmark.max_relative_error > 0.0);
             // Max error should be about max(|10-10.5|/10.5, |20-19.8|/19.8) ≈ 0.048
@@ -1284,7 +1308,8 @@ mod integration_tests {
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
         let counterparty_credit = CreditParams::new(0.02, 0.4).unwrap();
 
-        let result = runner.run_xva_demo(&swap, &curves, valuation_date, &counterparty_credit, None);
+        let result =
+            runner.run_xva_demo(&swap, &curves, valuation_date, &counterparty_credit, None);
         assert!(result.is_ok());
 
         let result = result.unwrap();
@@ -1309,7 +1334,11 @@ mod integration_tests {
         let own_credit = CreditParams::new(0.03, 0.4).unwrap();
 
         let result = runner.run_xva_demo(
-            &swap, &curves, valuation_date, &counterparty_credit, Some(&own_credit),
+            &swap,
+            &curves,
+            valuation_date,
+            &counterparty_credit,
+            Some(&own_credit),
         );
         assert!(result.is_ok());
 
@@ -1337,7 +1366,11 @@ mod integration_tests {
         let tenor_points = vec![1.0, 2.0, 5.0];
 
         let result = runner.compute_xva_sensitivities_aad(
-            &swap, &curves, valuation_date, &counterparty_credit, &tenor_points,
+            &swap,
+            &curves,
+            valuation_date,
+            &counterparty_credit,
+            &tenor_points,
         );
         assert!(result.is_ok());
 
@@ -1360,7 +1393,11 @@ mod integration_tests {
         let tenor_points = vec![1.0, 2.0, 5.0];
 
         let result = runner.compute_xva_sensitivities_bump(
-            &swap, &curves, valuation_date, &counterparty_credit, &tenor_points,
+            &swap,
+            &curves,
+            valuation_date,
+            &counterparty_credit,
+            &tenor_points,
         );
         assert!(result.is_ok());
 
@@ -1389,7 +1426,11 @@ mod integration_tests {
         let tenor_points = vec![1.0, 2.0];
 
         let result = runner.benchmark_xva_sensitivities(
-            &swap, &curves, valuation_date, &counterparty_credit, &tenor_points,
+            &swap,
+            &curves,
+            valuation_date,
+            &counterparty_credit,
+            &tenor_points,
         );
         assert!(result.is_ok());
 
@@ -1415,24 +1456,44 @@ mod integration_tests {
         let own_credit = CreditParams::new(0.03, 0.4).unwrap();
 
         // Step 1: Compute exposure profile
-        let profile = runner.compute_exposure_profile(&swap, &curves, valuation_date).unwrap();
+        let profile = runner
+            .compute_exposure_profile(&swap, &curves, valuation_date)
+            .unwrap();
         assert!(!profile.is_empty());
 
         // Step 2: Run XVA demo
-        let xva_result = runner.run_xva_demo(
-            &swap, &curves, valuation_date, &counterparty_credit, Some(&own_credit),
-        ).unwrap();
+        let xva_result = runner
+            .run_xva_demo(
+                &swap,
+                &curves,
+                valuation_date,
+                &counterparty_credit,
+                Some(&own_credit),
+            )
+            .unwrap();
         assert!(xva_result.cva >= 0.0);
         assert!(xva_result.dva >= 0.0);
 
         // Step 3: Compute sensitivities
         let tenor_points = vec![1.0, 2.0, 5.0];
-        let (aad_deltas, _) = runner.compute_xva_sensitivities_aad(
-            &swap, &curves, valuation_date, &counterparty_credit, &tenor_points,
-        ).unwrap();
-        let (bump_deltas, _) = runner.compute_xva_sensitivities_bump(
-            &swap, &curves, valuation_date, &counterparty_credit, &tenor_points,
-        ).unwrap();
+        let (aad_deltas, _) = runner
+            .compute_xva_sensitivities_aad(
+                &swap,
+                &curves,
+                valuation_date,
+                &counterparty_credit,
+                &tenor_points,
+            )
+            .unwrap();
+        let (bump_deltas, _) = runner
+            .compute_xva_sensitivities_bump(
+                &swap,
+                &curves,
+                valuation_date,
+                &counterparty_credit,
+                &tenor_points,
+            )
+            .unwrap();
 
         assert_eq!(aad_deltas.len(), 3);
         assert_eq!(bump_deltas.len(), 3);
