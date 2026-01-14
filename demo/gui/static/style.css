@@ -6955,6 +6955,38 @@ kbd {
     border-radius: var(--radius-md);
 }
 
+/* Task 8.1: Canvas rendering mode */
+.graph-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+}
+
+.graph-content {
+    position: relative;
+}
+
+.render-mode-indicator {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 4px 8px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    z-index: 5;
+}
+
+.render-mode-indicator.canvas-mode {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+}
+
 .graph-loading {
     position: absolute;
     inset: 0;
@@ -7075,6 +7107,168 @@ kbd {
 
 .node-type-chart-panel .chart-container {
     position: relative;
+}
+
+/* Task 7.3: Sensitivity Dependencies Panel */
+.sensitivity-deps-panel {
+    padding: 16px;
+    border-radius: var(--radius-lg);
+}
+
+.sensitivity-deps-panel h3 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+}
+
+.sensitivity-deps-panel h3 i {
+    color: var(--accent-primary);
+}
+
+.sensitivity-deps-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.sensitivity-deps-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s;
+}
+
+.sensitivity-deps-item:hover {
+    background: var(--bg-hover);
+    transform: translateX(2px);
+}
+
+.sensitivity-deps-item.active {
+    background: rgba(249, 115, 22, 0.15);
+    border-left: 3px solid #f97316;
+}
+
+.sensitivity-deps-item .param-name {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.sensitivity-deps-item .dep-count {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #f97316;
+    background: rgba(249, 115, 22, 0.15);
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+/* Task 7.4: Critical Path Panel */
+.critical-path-panel {
+    padding: 16px;
+    border-radius: var(--radius-lg);
+}
+
+.critical-path-panel h3 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+}
+
+.critical-path-panel h3 i {
+    color: var(--accent-primary);
+}
+
+.critical-path-info {
+    margin-bottom: 12px;
+}
+
+.critical-path-length {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+}
+
+.critical-path-length .stat-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.critical-path-length .stat-value {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--accent-primary);
+}
+
+.critical-path-nodes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+.critical-path-nodes .no-data {
+    width: 100%;
+    text-align: center;
+    padding: 16px;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+.critical-path-node {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.critical-path-node:hover {
+    background: var(--bg-hover);
+}
+
+.critical-path-node.highlighted {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+}
+
+.critical-path-arrow {
+    color: var(--text-muted);
+    font-size: 0.6rem;
+}
+
+.critical-path-panel .btn {
+    width: 100%;
+    justify-content: center;
+}
+
+.critical-path-panel .btn.active {
+    background: #3b82f6;
+    color: white;
 }
 
 /* Task 6.3: Sensitivity Path Panel */

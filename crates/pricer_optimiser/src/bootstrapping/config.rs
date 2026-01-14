@@ -406,8 +406,8 @@ mod tests {
 
     #[test]
     fn test_with_interpolation() {
-        let config: GenericBootstrapConfig<f64> =
-            GenericBootstrapConfig::default().with_interpolation(BootstrapInterpolation::FlatForward);
+        let config: GenericBootstrapConfig<f64> = GenericBootstrapConfig::default()
+            .with_interpolation(BootstrapInterpolation::FlatForward);
         assert_eq!(config.interpolation, BootstrapInterpolation::FlatForward);
     }
 

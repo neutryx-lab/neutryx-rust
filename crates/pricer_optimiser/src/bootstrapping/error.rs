@@ -74,7 +74,9 @@ pub enum BootstrapError {
     },
 
     /// Arbitrage detected (discount factors not monotonically decreasing).
-    #[error("Arbitrage detected: discount factor not monotonically decreasing at maturity {maturity}")]
+    #[error(
+        "Arbitrage detected: discount factor not monotonically decreasing at maturity {maturity}"
+    )]
     ArbitrageDetected {
         /// Maturity where arbitrage was detected
         maturity: f64,

@@ -709,11 +709,17 @@ fn draw_irs_demo_benchmark(frame: &mut Frame, area: Rect, state: &IrsAadDemoStat
             Line::from(""),
             Line::from(vec![
                 Span::styled("AAD Time:   ", Style::default().fg(Color::Yellow)),
-                Span::styled(format!("{:.1} us", aad_us), Style::default().fg(Color::Green)),
+                Span::styled(
+                    format!("{:.1} us", aad_us),
+                    Style::default().fg(Color::Green),
+                ),
             ]),
             Line::from(vec![
                 Span::styled("Bump Time:  ", Style::default().fg(Color::Yellow)),
-                Span::styled(format!("{:.1} us", bump_us), Style::default().fg(Color::Red)),
+                Span::styled(
+                    format!("{:.1} us", bump_us),
+                    Style::default().fg(Color::Red),
+                ),
             ]),
             Line::from(""),
             Line::from(vec![
@@ -768,7 +774,11 @@ fn draw_irs_demo_delta_chart(frame: &mut Frame, area: Rect, state: &IrsAadDemoSt
             let min_delta = result.deltas.iter().fold(0.0_f64, |a, &b| a.min(b));
 
             let y_max = max_delta * 1.2;
-            let y_min = if min_delta < 0.0 { min_delta * 1.2 } else { 0.0 };
+            let y_min = if min_delta < 0.0 {
+                min_delta * 1.2
+            } else {
+                0.0
+            };
 
             let datasets = vec![Dataset::default()
                 .name("Delta")
@@ -845,7 +855,10 @@ fn draw_irs_demo_help(frame: &mut Frame, area: Rect) {
         Line::from("  This demo compares AAD (Adjoint Algorithmic Differentiation)"),
         Line::from("  with traditional Bump-and-Revalue for IRS Greeks calculation."),
         Line::from(""),
-        Line::from(Span::styled("  Controls:", Style::default().fg(Color::Yellow))),
+        Line::from(Span::styled(
+            "  Controls:",
+            Style::default().fg(Color::Yellow),
+        )),
         Line::from("  [Up/Down]    Select parameter"),
         Line::from("  [Left/Right] Adjust parameter value"),
         Line::from("  [Tab]        Cycle calculation mode"),

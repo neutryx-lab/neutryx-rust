@@ -301,10 +301,12 @@ impl SensitivityBootstrapper {
             // Bootstrap with bumped instruments
             if let Ok(bumped_result) = self.bootstrapper.bootstrap(&bumped_instruments) {
                 // Compute finite difference sensitivities
-                for pillar_idx in 0..n_pillars {
+                for (pillar_idx, sensitivity_row) in
+                    sensitivities.iter_mut().enumerate().take(n_pillars)
+                {
                     let df_base = base_result.discount_factors[pillar_idx];
                     let df_bumped = bumped_result.discount_factors[pillar_idx];
-                    sensitivities[pillar_idx][input_idx] = (df_bumped - df_base) / self.bump_size;
+                    sensitivity_row[input_idx] = (df_bumped - df_base) / self.bump_size;
                 }
             }
         }
@@ -384,10 +386,7 @@ pub struct SensitivityVerification {
 }
 
 /// Bump an instrument's rate by the given amount.
-fn bump_instrument(
-    instrument: &BootstrapInstrument<f64>,
-    bump: f64,
-) -> BootstrapInstrument<f64> {
+fn bump_instrument(instrument: &BootstrapInstrument<f64>, bump: f64) -> BootstrapInstrument<f64> {
     match instrument {
         BootstrapInstrument::Ois {
             maturity,
@@ -439,8 +438,7 @@ mod tests {
 
     #[test]
     fn test_bump_and_revalue_single_ois() {
-        let instruments: Vec<BootstrapInstrument<f64>> =
-            vec![BootstrapInstrument::ois(1.0, 0.03)];
+        let instruments: Vec<BootstrapInstrument<f64>> = vec![BootstrapInstrument::ois(1.0, 0.03)];
 
         let bootstrapper = SensitivityBootstrapper::with_defaults();
         let result = bootstrapper
@@ -539,8 +537,7 @@ mod tests {
     #[cfg(feature = "num-dual-mode")]
     #[test]
     fn test_aad_single_ois() {
-        let instruments: Vec<BootstrapInstrument<f64>> =
-            vec![BootstrapInstrument::ois(1.0, 0.03)];
+        let instruments: Vec<BootstrapInstrument<f64>> = vec![BootstrapInstrument::ois(1.0, 0.03)];
 
         let bootstrapper = SensitivityBootstrapper::with_defaults();
         let result = bootstrapper
@@ -590,8 +587,7 @@ mod tests {
     #[cfg(feature = "num-dual-mode")]
     #[test]
     fn test_verify_sensitivities_single_ois() {
-        let instruments: Vec<BootstrapInstrument<f64>> =
-            vec![BootstrapInstrument::ois(1.0, 0.03)];
+        let instruments: Vec<BootstrapInstrument<f64>> = vec![BootstrapInstrument::ois(1.0, 0.03)];
 
         let bootstrapper = SensitivityBootstrapper::with_defaults();
         let verification = bootstrapper
@@ -602,8 +598,7 @@ mod tests {
         assert!(
             verification.within_tolerance,
             "AAD should match bump-and-revalue. Max abs diff: {}, max rel diff: {}",
-            verification.max_absolute_difference,
-            verification.max_relative_difference
+            verification.max_absolute_difference, verification.max_relative_difference
         );
     }
 
@@ -616,8 +611,7 @@ mod tests {
             BootstrapInstrument::ois(3.0, 0.034),
         ];
 
-        let bootstrapper = SensitivityBootstrapper::with_defaults()
-            .with_bump_size(0.00001); // Use smaller bump for more accuracy
+        let bootstrapper = SensitivityBootstrapper::with_defaults().with_bump_size(0.00001); // Use smaller bump for more accuracy
 
         let verification = bootstrapper
             .verify_sensitivities(&instruments, 0.05) // 5% tolerance
@@ -702,8 +696,7 @@ mod tests {
 
     #[test]
     fn test_result_clone() {
-        let instruments: Vec<BootstrapInstrument<f64>> =
-            vec![BootstrapInstrument::ois(1.0, 0.03)];
+        let instruments: Vec<BootstrapInstrument<f64>> = vec![BootstrapInstrument::ois(1.0, 0.03)];
 
         let bootstrapper = SensitivityBootstrapper::with_defaults();
         let result1 = bootstrapper

@@ -284,7 +284,12 @@ fn draw_mode_section(
         Line::from(""),
         Line::from(vec![
             Span::styled("Mode: ", Style::default().fg(Color::Yellow)),
-            Span::styled(mode_str, Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                mode_str,
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            ),
         ]),
     ];
 
@@ -346,10 +351,7 @@ fn draw_results_section(frame: &mut Frame, area: Rect, result: Option<&IrsDispla
             Line::from(""),
             Line::from(vec![
                 Span::styled("DV01:        ", Style::default().fg(Color::Yellow)),
-                Span::styled(
-                    format!("{:.4}", r.dv01),
-                    Style::default().fg(Color::Cyan),
-                ),
+                Span::styled(format!("{:.4}", r.dv01), Style::default().fg(Color::Cyan)),
             ]),
             Line::from(vec![
                 Span::styled("DV01 (1MM):  ", Style::default().fg(Color::Yellow)),

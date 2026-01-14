@@ -955,10 +955,7 @@ mod tests {
                 .iter()
                 .filter(|n| n.node_type == "input")
                 .collect();
-            assert!(
-                !input_nodes.is_empty(),
-                "Graph should contain input nodes"
-            );
+            assert!(!input_nodes.is_empty(), "Graph should contain input nodes");
         }
 
         #[tokio::test]
@@ -976,10 +973,7 @@ mod tests {
                 .iter()
                 .filter(|n| n.node_type == "output")
                 .collect();
-            assert!(
-                !output_nodes.is_empty(),
-                "Graph should contain output node"
-            );
+            assert!(!output_nodes.is_empty(), "Graph should contain output node");
         }
 
         #[tokio::test]

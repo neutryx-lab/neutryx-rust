@@ -43,8 +43,6 @@ use pricer_core::types::time::Date;
 use pricer_models::instruments::rates::{price_irs, InterestRateSwap};
 
 use super::benchmark::TimingStats;
-use super::IrsGreeksCalculator;
-use super::IrsGreeksConfig;
 use super::IrsGreeksError;
 
 // =============================================================================

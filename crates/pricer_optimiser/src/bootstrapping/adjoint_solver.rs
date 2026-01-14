@@ -129,7 +129,7 @@ impl<T: Float> AdjointSolver<T> {
         };
 
         Self {
-            newton: NewtonRaphsonSolver::new(solver_config.clone()),
+            newton: NewtonRaphsonSolver::new(solver_config),
             brent: BrentSolver::new(solver_config),
             config,
         }
@@ -360,7 +360,10 @@ mod tests {
 
         let result = solver.solve(f, f_prime, 0.0).unwrap();
 
-        assert!((result.solution - 3.0).abs() < 1e-10, "Solution should be 3");
+        assert!(
+            (result.solution - 3.0).abs() < 1e-10,
+            "Solution should be 3"
+        );
     }
 
     #[test]
@@ -461,7 +464,7 @@ mod tests {
         let f_prime_x = |x: f64| 2.0 * x - a;
         let f_prime_theta = |x: f64, i: usize| {
             match i {
-                0 => -x, // ∂f/∂a = -x
+                0 => -x,   // ∂f/∂a = -x
                 1 => -1.0, // ∂f/∂b = -1
                 _ => 0.0,
             }

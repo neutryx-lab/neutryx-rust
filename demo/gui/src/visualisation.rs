@@ -207,7 +207,11 @@ impl BenchmarkVisualiser {
             .bar_gap(3)
             .group_gap(2)
             .bar_style(Style::default().fg(Color::Green))
-            .value_style(Style::default().fg(Color::White).add_modifier(Modifier::BOLD))
+            .value_style(
+                Style::default()
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD),
+            )
             .label_style(Style::default().fg(Color::Yellow))
             .data(&bar_data);
 
@@ -342,7 +346,9 @@ impl ComputationFlowDiagram {
             Line::from(""),
             Line::from(Span::styled(
                 "  AAD (Adjoint Algorithmic Differentiation)",
-                Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
             )),
             Line::from(""),
             Line::from("  ┌─────────────────────────────────┐"),
@@ -423,7 +429,9 @@ impl ComputationFlowDiagram {
             Line::from(""),
             Line::from(Span::styled(
                 "  計算量のスケーリング比較",
-                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
             )),
             Line::from(""),
             Line::from("  n = パラメータ数（テナーポイント数）"),
@@ -553,11 +561,7 @@ impl ScalabilityData {
 
     /// 最大テナー数を取得
     pub fn max_tenor_count(&self) -> f64 {
-        self.points
-            .iter()
-            .map(|p| p.tenor_count)
-            .max()
-            .unwrap_or(1) as f64
+        self.points.iter().map(|p| p.tenor_count).max().unwrap_or(1) as f64
     }
 
     /// 最大計算時間（マイクロ秒）を取得
@@ -695,7 +699,11 @@ impl ScalabilityVisualiser {
 
         let aad_times: Vec<f64> = data.points.iter().map(|p| p.aad_time_ns / 1000.0).collect();
 
-        let bump_times: Vec<f64> = data.points.iter().map(|p| p.bump_time_ns / 1000.0).collect();
+        let bump_times: Vec<f64> = data
+            .points
+            .iter()
+            .map(|p| p.bump_time_ns / 1000.0)
+            .collect();
 
         serde_json::json!({
             "type": "line",
@@ -796,7 +804,14 @@ impl AccuracyVerificationData {
     pub fn sample() -> Self {
         let tenors = vec![1.0, 2.0, 3.0, 5.0, 7.0, 10.0];
         let bump_deltas = vec![100.5, 195.2, 280.8, 420.3, 550.1, 680.9];
-        let aad_deltas = vec![100.5000001, 195.2000002, 280.8000001, 420.3000003, 550.1000002, 680.9000001];
+        let aad_deltas = vec![
+            100.5000001,
+            195.2000002,
+            280.8000001,
+            420.3000003,
+            550.1000002,
+            680.9000001,
+        ];
         Self::new(tenors, aad_deltas, bump_deltas)
     }
 }
@@ -858,17 +873,15 @@ impl AccuracyVisualiser {
             Constraint::Length(15),
         ];
 
-        let table = Table::new(rows, widths)
-            .header(header)
-            .block(
-                Block::default()
-                    .title(format!(
-                        " Accuracy Verification (Max Error: {:.2e}) ",
-                        data.max_relative_error()
-                    ))
-                    .borders(Borders::ALL)
-                    .border_style(Style::default().fg(Color::Blue)),
-            );
+        let table = Table::new(rows, widths).header(header).block(
+            Block::default()
+                .title(format!(
+                    " Accuracy Verification (Max Error: {:.2e}) ",
+                    data.max_relative_error()
+                ))
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::Blue)),
+        );
 
         frame.render_widget(table, area);
     }
@@ -908,11 +921,17 @@ impl AccuracyVisualiser {
             Line::from(""),
             Line::from(vec![
                 Span::styled("Max Relative Error:  ", Style::default().fg(Color::Yellow)),
-                Span::styled(format!("{:.2e}", max_error), Style::default().fg(status_color)),
+                Span::styled(
+                    format!("{:.2e}", max_error),
+                    Style::default().fg(status_color),
+                ),
             ]),
             Line::from(vec![
                 Span::styled("Mean Relative Error: ", Style::default().fg(Color::Yellow)),
-                Span::styled(format!("{:.2e}", mean_error), Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    format!("{:.2e}", mean_error),
+                    Style::default().fg(Color::Cyan),
+                ),
             ]),
             Line::from(vec![
                 Span::styled("Tenor Points:        ", Style::default().fg(Color::Yellow)),
@@ -997,10 +1016,7 @@ fn format_ratio(ratio: f64) -> String {
 ///
 /// ratatuiのChartウィジェット用のデータポイント形式に変換
 pub fn to_chart_data_points(data: &SpeedComparisonData) -> Vec<(f64, f64)> {
-    vec![
-        (0.0, data.aad_mean_us()),
-        (1.0, data.bump_mean_us()),
-    ]
+    vec![(0.0, data.aad_mean_us()), (1.0, data.bump_mean_us())]
 }
 
 /// チャート用のY軸境界を計算

@@ -21,21 +21,29 @@ pricer_models = { path = "../pricer_models" }
 num-traits.workspace = true
 num-dual = { workspace = true, optional = true }
 
+# Date/time
+chrono.workspace = true
+
 # Error handling
 thiserror.workspace = true
 anyhow.workspace = true
+
+# Parallelism
+rayon = { workspace = true, optional = true }
 
 # Serialisation
 serde = { workspace = true, optional = true }
 
 [features]
-default = ["num-dual-mode"]
+default = ["num-dual-mode", "parallel"]
 num-dual-mode = ["dep:num-dual", "pricer_core/num-dual-mode"]
+parallel = ["dep:rayon"]
 serde = ["dep:serde", "pricer_core/serde", "pricer_models/serde"]
 # enzyme = ["pricer_pricing"]
 
 [dev-dependencies]
 approx.workspace = true
+criterion.workspace = true
 proptest.workspace = true
 
 [[bench]]

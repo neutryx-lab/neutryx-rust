@@ -509,12 +509,14 @@ impl TuiApp {
             2 => {
                 // Tenor years: adjust by 1
                 self.irs_aad_state.params.tenor_years =
-                    ((self.irs_aad_state.params.tenor_years as i32 + direction).max(1) as u32).min(30);
+                    ((self.irs_aad_state.params.tenor_years as i32 + direction).max(1) as u32)
+                        .min(30);
             }
             3 => {
                 // Num tenors: adjust by 1
                 self.irs_aad_state.params.num_tenors =
-                    ((self.irs_aad_state.params.num_tenors as i32 + direction).max(2) as usize).min(20);
+                    ((self.irs_aad_state.params.num_tenors as i32 + direction).max(2) as usize)
+                        .min(20);
             }
             _ => {}
         }
@@ -530,7 +532,8 @@ impl TuiApp {
             .map(|i| (i + 1) as f64 * params.tenor_years as f64 / params.num_tenors as f64)
             .collect();
 
-        let deltas: Vec<f64> = tenors.iter()
+        let deltas: Vec<f64> = tenors
+            .iter()
             .map(|t| params.notional * 0.0001 * t.sqrt() * (-0.1 * t).exp())
             .collect();
 
@@ -548,7 +551,11 @@ impl TuiApp {
             dv01,
             tenors: tenors.clone(),
             deltas: deltas.clone(),
-            compute_time_ns: if self.irs_aad_state.calc_mode == 1 { 15_000 } else { 300_000 },
+            compute_time_ns: if self.irs_aad_state.calc_mode == 1 {
+                15_000
+            } else {
+                300_000
+            },
             mode: mode.to_string(),
         });
 
@@ -596,7 +603,9 @@ impl TuiApp {
                 screens::draw_trade_blotter(frame, chunks[1], trade);
             }
             Screen::Chart => screens::draw_exposure_chart(frame, chunks[1], &state.exposure_series),
-            Screen::IrsAadDemo => screens::draw_irs_aad_demo(frame, chunks[1], &state.irs_aad_state),
+            Screen::IrsAadDemo => {
+                screens::draw_irs_aad_demo(frame, chunks[1], &state.irs_aad_state)
+            }
         }
 
         // Draw footer

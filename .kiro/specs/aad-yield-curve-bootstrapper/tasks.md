@@ -137,63 +137,73 @@ AAD対応イールドカーブ・ブートストラッパーの実装タスク�
   - `bootstrap_with_bump_and_revalue()`と`verify_sensitivities()`を実装
   - _Requirements: 3.3_
 
-- [ ] 6. マルチカーブ・フレームワーク
-- [ ] 6.1 MultiCurveBuilder構造体の実装
+- [x] 6. マルチカーブ・フレームワーク
+- [x] 6.1 MultiCurveBuilder構造体の実装
   - 内部でCurveBootstrapperを使用したカーブ構築オーケストレーション
   - OIS割引カーブとテナーカーブの依存順序を管理
   - 単一カーブモードと割引カーブ参照モードの切り替え
+  - `multi_curve.rs`に`MultiCurveBuilder<T>`として実装完了
   - _Requirements: 5.3, 5.5_
 
-- [ ] 6.2 CurveSetとTenor定義の実装
+- [x] 6.2 CurveSetとTenor定義の実装
   - 割引カーブとテナー別フォワードカーブを保持するCurveSet
   - Overnight、1M、3M、6M、12Mなどのテナー定義
   - テナーカーブ構築時に割引カーブを参照する依存関係処理
+  - `multi_curve.rs`に`CurveSet<T>`と`Tenor`として実装完了
   - _Requirements: 5.1, 5.2, 5.4_
 
-- [ ] 6.3 日付計算ヘルパーの実装
+- [x] 6.3 日付計算ヘルパーの実装
   - ACT/360、ACT/365、30/360などデイカウント慣行の適用
   - Following、Modified Following、Precedingの営業日調整
   - スポット日（T+2等）の計算
   - `infra_master`カレンダー機能との統合
+  - `date_utils.rs`に`DateCalculator`として実装完了
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [ ] 7. パフォーマンス最適化
-- [ ] 7.1 並列ブートストラップの実装
+- [x] 7. パフォーマンス最適化
+- [x] 7.1 並列ブートストラップの実装
   - 複数カーブセットを同時構築するRayon並列処理
   - ワークスティーリングによる負荷分散
   - スレッドセーフなカーブ構築
+  - `multi_curve.rs`に`ParallelCurveSetBuilder`と`build_parallel()`として実装完了
   - _Requirements: 8.4_
 
-- [ ] 7.2 メモリ効率最適化
+- [x] 7.2 メモリ効率最適化
   - 動的メモリアロケーションの最小化
   - 中間計算結果のキャッシュ機能
   - 100ポイントカーブを10ms以内で構築する性能目標
+  - `cache.rs`に`CurveCache`、`BufferPool`、`BootstrapCache`を実装
+  - `engine.rs`に`CachedBootstrapper`と`bootstrap_cached()`を実装
   - _Requirements: 8.1, 8.2, 8.5_
 
-- [ ] 8. 統合テストと検証
-- [ ] 8.1 単体テストの実装
+- [x] 8. 統合テストと検証
+- [x] 8.1 単体テストの実装
   - 各商品タイプの残差計算テスト
   - 各補間方式の精度テスト
   - エラーケースのテスト
+  - 250個のユニットテストを実装完了
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 4.1, 4.2, 4.3, 4.4, 7.1, 7.2, 7.3, 7.4, 7.5, 7.6_
 
-- [ ] 8.2 統合テストの実装
+- [x] 8.2 統合テストの実装
   - 完全なブートストラップフローのエンドツーエンドテスト
   - マルチカーブ構築フローのテスト
   - 入力レート再現精度テスト（1bp以内）
   - PricingContextとの統合テスト
+  - `tests/integration_tests.rs`に12個の統合テストを実装完了
   - _Requirements: 2.2, 5.1, 5.2, 5.3, 5.4, 5.5, 9.1, 9.3, 9.4_
 
-- [ ] 8.3 AAD検証テストの実装
+- [x] 8.3 AAD検証テストの実装
   - バンプ・アンド・リバリュー方式との感応度比較
   - O(1)コストの検証（100入力でのスケーラビリティ）
   - num-dualモードとEnzymeモードの結果一致確認
+  - `test_aad_vs_bump_and_revalue`と`test_aad_scalability`を実装完了
   - _Requirements: 3.1, 3.2, 3.3, 3.6_
 
-- [ ] 8.4* パフォーマンスベンチマークの実装
+- [x] 8.4* パフォーマンスベンチマークの実装
   - 100ポイントカーブの構築時間計測
   - AAD感応度計算のスケーラビリティ測定
   - 並列ブートストラップのスループット測定
+  - `benches/optimiser_benchmarks.rs`にCriterionベンチマークを実装完了
   - _Requirements: 8.1, 8.3_
 
 ---

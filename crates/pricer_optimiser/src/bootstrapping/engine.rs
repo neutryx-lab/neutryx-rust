@@ -4,6 +4,7 @@
 //! engine that constructs yield curves from market instruments using
 //! Newton-Raphson with Brent fallback.
 
+use super::cache::{BootstrapCache, CurveCache};
 use super::config::GenericBootstrapConfig;
 use super::curve::BootstrappedCurve;
 use super::error::BootstrapError;
@@ -117,9 +118,10 @@ impl<T: Float> SequentialBootstrapper<T> {
             let maturity = instrument.maturity();
 
             // Check for duplicate maturity
-            if pillars.last().map_or(false, |&last| {
-                (last - maturity).abs() < T::from(1e-10).unwrap()
-            }) {
+            if pillars
+                .last()
+                .is_some_and(|&last| (last - maturity).abs() < T::from(1e-10).unwrap())
+            {
                 return Err(BootstrapError::duplicate_maturity(
                     maturity.to_f64().unwrap_or(0.0),
                 ));
@@ -216,7 +218,7 @@ impl<T: Float> SequentialBootstrapper<T> {
             self.config.interpolation,
             self.config.allow_extrapolation,
         )
-        .map_err(|e| BootstrapError::invalid_input(e))?;
+        .map_err(BootstrapError::invalid_input)?;
 
         Ok(GenericBootstrapResult {
             curve,
@@ -238,7 +240,7 @@ impl<T: Float> SequentialBootstrapper<T> {
 
         for inst in instruments {
             inst.validate(self.config.max_maturity)
-                .map_err(|e| BootstrapError::invalid_input(e))?;
+                .map_err(BootstrapError::invalid_input)?;
         }
 
         Ok(())
@@ -328,7 +330,10 @@ impl<T: Float> SequentialBootstrapper<T> {
 
         Err(BootstrapError::convergence_failure(
             instrument.maturity().to_f64().unwrap_or(0.0),
-            instrument.residual(df, partial_curve_df).to_f64().unwrap_or(0.0),
+            instrument
+                .residual(df, partial_curve_df)
+                .to_f64()
+                .unwrap_or(0.0),
             self.config.max_iterations,
         ))
     }
@@ -428,8 +433,9 @@ impl<T: Float> SequentialBootstrapper<T> {
                     // Inverse quadratic interpolation
                     let q_temp = fa / fc;
                     let r = fb / fc;
-                    p = s * (T::from(2.0).unwrap() * m * q_temp * (q_temp - r)
-                        - (b - a) * (r - T::one()));
+                    p = s
+                        * (T::from(2.0).unwrap() * m * q_temp * (q_temp - r)
+                            - (b - a) * (r - T::one()));
                     q = (q_temp - T::one()) * (r - T::one()) * (s - T::one());
                 }
 
@@ -437,8 +443,7 @@ impl<T: Float> SequentialBootstrapper<T> {
                 let q = q.abs();
 
                 // Check if interpolation is acceptable
-                if T::from(2.0).unwrap() * p
-                    < T::from(3.0).unwrap() * m * q - (tol * q).abs()
+                if T::from(2.0).unwrap() * p < T::from(3.0).unwrap() * m * q - (tol * q).abs()
                     && p < (e * q).abs() / T::from(2.0).unwrap()
                 {
                     e = d;
@@ -475,6 +480,207 @@ impl<T: Float> SequentialBootstrapper<T> {
             self.config.max_iterations,
         ))
     }
+
+    /// Bootstrap using a pre-allocated cache for reduced memory allocations.
+    ///
+    /// This method is optimized for scenarios where multiple bootstraps
+    /// are performed sequentially. The cache is reused across calls.
+    ///
+    /// # Arguments
+    ///
+    /// * `instruments` - Market instruments to bootstrap
+    /// * `cache` - Pre-allocated cache for intermediate results
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(result)` - Successfully bootstrapped curve
+    /// * `Err(e)` - If bootstrapping fails
+    pub fn bootstrap_cached(
+        &self,
+        instruments: &[BootstrapInstrument<T>],
+        cache: &mut BootstrapCache<T>,
+    ) -> Result<GenericBootstrapResult<T>, BootstrapError> {
+        // Validate inputs
+        self.validate_instruments(instruments)?;
+
+        // Prepare cache
+        cache.prepare(instruments.len());
+
+        // Sort instruments by maturity (reuse sorted_indices buffer)
+        cache.sorted_indices_mut().sort_by(|&a, &b| {
+            instruments[a]
+                .maturity()
+                .partial_cmp(&instruments[b].maturity())
+                .unwrap()
+        });
+
+        // Bootstrap each instrument sequentially using cached curve
+        let sorted_indices: Vec<usize> = cache.sorted_indices.clone();
+        for &idx in &sorted_indices {
+            let instrument = &instruments[idx];
+            let maturity = instrument.maturity();
+
+            // Check for duplicate maturity
+            if cache
+                .curve
+                .last_pillar()
+                .is_some_and(|last| (last - maturity).abs() < T::from(1e-10).unwrap())
+            {
+                return Err(BootstrapError::duplicate_maturity(
+                    maturity.to_f64().unwrap_or(0.0),
+                ));
+            }
+
+            // Solve for discount factor using cached partial curve
+            let (df, iter_count, final_residual) =
+                self.solve_for_df_cached(instrument, &cache.curve)?;
+
+            // Validate result
+            if !self.config.allow_negative_rates {
+                let implied_rate = -df.ln() / maturity;
+                if implied_rate < T::zero() {
+                    return Err(BootstrapError::negative_rate(
+                        maturity.to_f64().unwrap_or(0.0),
+                        implied_rate.to_f64().unwrap_or(0.0),
+                    ));
+                }
+            }
+
+            // Check for arbitrage (DF should be decreasing)
+            if let Some(last_df) = cache.curve.last_df() {
+                if df >= last_df {
+                    return Err(BootstrapError::arbitrage_detected(
+                        maturity.to_f64().unwrap_or(0.0),
+                    ));
+                }
+            }
+
+            // Store results in cache
+            cache.add_result(maturity, df, final_residual, iter_count);
+        }
+
+        // Build final curve from cache (avoiding clone)
+        let pillars = cache.curve.take_pillars();
+        let discount_factors = cache.curve.take_discount_factors();
+        let residuals = std::mem::take(&mut cache.residuals);
+        let iterations = std::mem::take(&mut cache.iterations);
+
+        let curve = BootstrappedCurve::new(
+            pillars.clone(),
+            discount_factors.clone(),
+            self.config.interpolation,
+            self.config.allow_extrapolation,
+        )
+        .map_err(BootstrapError::invalid_input)?;
+
+        Ok(GenericBootstrapResult {
+            curve,
+            pillars,
+            discount_factors,
+            residuals,
+            iterations,
+        })
+    }
+
+    /// Solve for discount factor using cached partial curve.
+    fn solve_for_df_cached(
+        &self,
+        instrument: &BootstrapInstrument<T>,
+        partial_curve: &CurveCache<T>,
+    ) -> Result<(T, usize, T), BootstrapError> {
+        let maturity = instrument.maturity();
+
+        // Initial guess: use simple discounting approximation
+        let rate = instrument.rate();
+        let initial_df = T::one() / (T::one() + rate * maturity);
+
+        // Closure using cached interpolation
+        let partial_curve_df = |t: T| partial_curve.interpolate_df(t);
+
+        // Try Newton-Raphson first
+        let result = self.newton_raphson_solve(instrument, &partial_curve_df, initial_df);
+
+        match result {
+            Ok((df, iterations)) => {
+                let residual = instrument.residual(df, &partial_curve_df);
+                Ok((df, iterations, residual))
+            }
+            Err(_) => self.brent_solve(instrument, &partial_curve_df),
+        }
+    }
+}
+
+/// Optimized bootstrapper with built-in caching.
+///
+/// This struct wraps `SequentialBootstrapper` with an internal cache,
+/// providing a convenient interface for scenarios where the cache
+/// doesn't need to be shared across multiple bootstrappers.
+///
+/// # Type Parameters
+///
+/// * `T` - Floating-point type for AD compatibility
+///
+/// # Performance
+///
+/// This bootstrapper pre-allocates memory for up to 100 pillars by default.
+/// For larger curves, use `CachedBootstrapper::with_capacity`.
+#[derive(Debug)]
+pub struct CachedBootstrapper<T: Float> {
+    /// Inner bootstrapper
+    bootstrapper: SequentialBootstrapper<T>,
+    /// Internal cache
+    cache: BootstrapCache<T>,
+}
+
+impl<T: Float> CachedBootstrapper<T> {
+    /// Create a new cached bootstrapper.
+    pub fn new(config: GenericBootstrapConfig<T>) -> Self {
+        Self {
+            bootstrapper: SequentialBootstrapper::new(config),
+            cache: BootstrapCache::new(),
+        }
+    }
+
+    /// Create with default configuration.
+    pub fn with_defaults() -> Self {
+        Self::new(GenericBootstrapConfig::default())
+    }
+
+    /// Create with specified capacity.
+    pub fn with_capacity(config: GenericBootstrapConfig<T>, capacity: usize) -> Self {
+        Self {
+            bootstrapper: SequentialBootstrapper::new(config),
+            cache: BootstrapCache::with_capacity(capacity),
+        }
+    }
+
+    /// Get the configuration.
+    pub fn config(&self) -> &GenericBootstrapConfig<T> {
+        self.bootstrapper.config()
+    }
+
+    /// Bootstrap a yield curve, reusing internal cache.
+    pub fn bootstrap(
+        &mut self,
+        instruments: &[BootstrapInstrument<T>],
+    ) -> Result<GenericBootstrapResult<T>, BootstrapError> {
+        self.bootstrapper
+            .bootstrap_cached(instruments, &mut self.cache)
+    }
+
+    /// Clear the internal cache.
+    pub fn clear_cache(&mut self) {
+        self.cache.clear();
+    }
+}
+
+impl<T: Float> Clone for CachedBootstrapper<T> {
+    fn clone(&self) -> Self {
+        Self {
+            bootstrapper: self.bootstrapper.clone(),
+            cache: BootstrapCache::new(), // Create fresh cache on clone
+        }
+    }
 }
 
 #[cfg(test)]
@@ -488,8 +694,7 @@ mod tests {
 
     #[test]
     fn test_bootstrap_single_ois() {
-        let instruments: Vec<BootstrapInstrument<f64>> =
-            vec![BootstrapInstrument::ois(1.0, 0.03)];
+        let instruments: Vec<BootstrapInstrument<f64>> = vec![BootstrapInstrument::ois(1.0, 0.03)];
 
         let bootstrapper = SequentialBootstrapper::<f64>::with_defaults();
         let result = bootstrapper.bootstrap(&instruments).unwrap();
@@ -661,5 +866,165 @@ mod tests {
             bootstrapper1.config().max_iterations,
             bootstrapper2.config().max_iterations
         );
+    }
+
+    // ========================================
+    // Cached Bootstrap Tests
+    // ========================================
+
+    #[test]
+    fn test_bootstrap_cached_basic() {
+        let instruments: Vec<BootstrapInstrument<f64>> = vec![
+            BootstrapInstrument::ois(1.0, 0.03),
+            BootstrapInstrument::ois(2.0, 0.032),
+            BootstrapInstrument::ois(3.0, 0.034),
+        ];
+
+        let bootstrapper = SequentialBootstrapper::<f64>::with_defaults();
+        let mut cache = BootstrapCache::new();
+
+        let result = bootstrapper
+            .bootstrap_cached(&instruments, &mut cache)
+            .unwrap();
+
+        assert_eq!(result.pillars.len(), 3);
+        assert!(result.discount_factors[0] > result.discount_factors[1]);
+        assert!(result.discount_factors[1] > result.discount_factors[2]);
+    }
+
+    #[test]
+    fn test_bootstrap_cached_equals_regular() {
+        let instruments: Vec<BootstrapInstrument<f64>> = vec![
+            BootstrapInstrument::ois(1.0, 0.03),
+            BootstrapInstrument::ois(2.0, 0.032),
+            BootstrapInstrument::ois(3.0, 0.034),
+        ];
+
+        let bootstrapper = SequentialBootstrapper::<f64>::with_defaults();
+
+        let regular_result = bootstrapper.bootstrap(&instruments).unwrap();
+
+        let mut cache = BootstrapCache::new();
+        let cached_result = bootstrapper
+            .bootstrap_cached(&instruments, &mut cache)
+            .unwrap();
+
+        // Results should be identical
+        for i in 0..3 {
+            assert!(
+                (regular_result.pillars[i] - cached_result.pillars[i]).abs() < 1e-12,
+                "Pillar {} mismatch",
+                i
+            );
+            assert!(
+                (regular_result.discount_factors[i] - cached_result.discount_factors[i]).abs()
+                    < 1e-12,
+                "DF {} mismatch",
+                i
+            );
+        }
+    }
+
+    #[test]
+    fn test_bootstrap_cached_reuse() {
+        let instruments1: Vec<BootstrapInstrument<f64>> = vec![
+            BootstrapInstrument::ois(1.0, 0.03),
+            BootstrapInstrument::ois(2.0, 0.032),
+        ];
+
+        let instruments2: Vec<BootstrapInstrument<f64>> = vec![
+            BootstrapInstrument::ois(1.0, 0.025),
+            BootstrapInstrument::ois(2.0, 0.028),
+            BootstrapInstrument::ois(3.0, 0.030),
+        ];
+
+        let bootstrapper = SequentialBootstrapper::<f64>::with_defaults();
+        let mut cache = BootstrapCache::new();
+
+        // First bootstrap
+        let result1 = bootstrapper
+            .bootstrap_cached(&instruments1, &mut cache)
+            .unwrap();
+        assert_eq!(result1.pillars.len(), 2);
+
+        // Second bootstrap with same cache
+        let result2 = bootstrapper
+            .bootstrap_cached(&instruments2, &mut cache)
+            .unwrap();
+        assert_eq!(result2.pillars.len(), 3);
+
+        // Results should be independent
+        assert!((result1.discount_factors[0] - result2.discount_factors[0]).abs() > 1e-6);
+    }
+
+    // ========================================
+    // CachedBootstrapper Tests
+    // ========================================
+
+    #[test]
+    fn test_cached_bootstrapper_basic() {
+        let instruments: Vec<BootstrapInstrument<f64>> = vec![
+            BootstrapInstrument::ois(1.0, 0.03),
+            BootstrapInstrument::ois(2.0, 0.032),
+        ];
+
+        let mut bootstrapper = CachedBootstrapper::<f64>::with_defaults();
+        let result = bootstrapper.bootstrap(&instruments).unwrap();
+
+        assert_eq!(result.pillars.len(), 2);
+    }
+
+    #[test]
+    fn test_cached_bootstrapper_with_capacity() {
+        let instruments: Vec<BootstrapInstrument<f64>> = vec![
+            BootstrapInstrument::ois(1.0, 0.03),
+            BootstrapInstrument::ois(2.0, 0.032),
+        ];
+
+        let config = GenericBootstrapConfig::default();
+        let mut bootstrapper = CachedBootstrapper::<f64>::with_capacity(config, 50);
+        let result = bootstrapper.bootstrap(&instruments).unwrap();
+
+        assert_eq!(result.pillars.len(), 2);
+    }
+
+    #[test]
+    fn test_cached_bootstrapper_multiple_calls() {
+        let mut bootstrapper = CachedBootstrapper::<f64>::with_defaults();
+
+        for rate in [0.03, 0.025, 0.035] {
+            let instruments: Vec<BootstrapInstrument<f64>> = vec![
+                BootstrapInstrument::ois(1.0, rate),
+                BootstrapInstrument::ois(2.0, rate + 0.002),
+            ];
+
+            let result = bootstrapper.bootstrap(&instruments).unwrap();
+            assert_eq!(result.pillars.len(), 2);
+        }
+    }
+
+    #[test]
+    fn test_cached_bootstrapper_clone() {
+        let bootstrapper1 = CachedBootstrapper::<f64>::with_defaults();
+        let bootstrapper2 = bootstrapper1.clone();
+
+        assert_eq!(
+            bootstrapper1.config().max_iterations,
+            bootstrapper2.config().max_iterations
+        );
+    }
+
+    #[test]
+    fn test_cached_bootstrapper_clear_cache() {
+        let mut bootstrapper = CachedBootstrapper::<f64>::with_defaults();
+
+        let instruments: Vec<BootstrapInstrument<f64>> = vec![BootstrapInstrument::ois(1.0, 0.03)];
+
+        let _ = bootstrapper.bootstrap(&instruments).unwrap();
+        bootstrapper.clear_cache();
+
+        // Should still work after clearing
+        let result = bootstrapper.bootstrap(&instruments).unwrap();
+        assert_eq!(result.pillars.len(), 1);
     }
 }

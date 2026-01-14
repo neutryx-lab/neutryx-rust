@@ -9,9 +9,10 @@
 use num_traits::Float;
 
 /// Payment frequency for fixed-income instruments.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum Frequency {
     /// Annual payments (1 per year)
+    #[default]
     Annual,
     /// Semi-annual payments (2 per year)
     SemiAnnual,
@@ -38,12 +39,6 @@ impl Frequency {
     /// Get the period length in years.
     pub fn period_years<T: Float>(&self) -> T {
         T::from(1.0).unwrap() / T::from(self.payments_per_year()).unwrap()
-    }
-}
-
-impl Default for Frequency {
-    fn default() -> Self {
-        Frequency::Annual
     }
 }
 
@@ -329,11 +324,12 @@ impl<T: Float> BootstrapInstrument<T> {
                 // d(implied_rate)/d(df) = -1 / (df^2 * T)
                 //
                 // For multi-period OIS, we use simplified approach
-                let num_periods = (*maturity * T::from(payment_frequency.payments_per_year()).unwrap())
-                    .ceil()
-                    .to_usize()
-                    .unwrap_or(1)
-                    .max(1);
+                let num_periods = (*maturity
+                    * T::from(payment_frequency.payments_per_year()).unwrap())
+                .ceil()
+                .to_usize()
+                .unwrap_or(1)
+                .max(1);
 
                 if num_periods == 1 {
                     let neg_one = -T::one();
@@ -517,7 +513,10 @@ impl<T: Float> BootstrapInstrument<T> {
                     ));
                 }
                 if *start < T::zero() {
-                    return Err(format!("FRA start must be non-negative, got {:?}", start.to_f64()));
+                    return Err(format!(
+                        "FRA start must be non-negative, got {:?}",
+                        start.to_f64()
+                    ));
                 }
             }
             Self::Future { price, .. } => {

@@ -864,7 +864,7 @@ impl BenchmarkRunner {
             "| Tenor | {:.1} years |\n",
             result.swap_params.tenor_years
         ));
-        md.push_str("\n");
+        md.push('\n');
 
         // Benchmark Results
         md.push_str("## Benchmark Results\n\n");
@@ -893,7 +893,7 @@ impl BenchmarkRunner {
             "| Max (ns) | {} | {} |\n",
             result.delta_results.aad_stats.max_ns, result.delta_results.bump_stats.max_ns
         ));
-        md.push_str("\n");
+        md.push('\n');
 
         // Speedup Ratio
         md.push_str("### Performance Summary\n\n");
@@ -916,7 +916,7 @@ impl BenchmarkRunner {
                     delta_result.speedup_ratio
                 ));
             }
-            md.push_str("\n");
+            md.push('\n');
         }
 
         md

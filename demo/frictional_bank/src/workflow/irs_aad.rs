@@ -71,6 +71,7 @@ use pricer_pricing::irs_greeks::{
 // =============================================================================
 
 #[cfg(not(feature = "l1l2-integration"))]
+#[allow(dead_code)]
 mod stub_types {
     //! Stub types when pricer_pricing is not available.
 
@@ -81,10 +82,19 @@ mod stub_types {
         EnzymeAAD,
     }
 
-    #[derive(Clone, Debug, Default)]
+    #[derive(Clone, Debug)]
     pub struct BenchmarkConfig {
         pub iterations: usize,
         pub warmup: usize,
+    }
+
+    impl Default for BenchmarkConfig {
+        fn default() -> Self {
+            Self {
+                iterations: 100,
+                warmup: 10,
+            }
+        }
     }
 
     #[derive(Clone, Debug)]
@@ -175,24 +185,15 @@ use stub_types::*;
 // =============================================================================
 
 /// Configuration for IRS AAD workflow.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct IrsAadConfig {
     /// Greeks calculator configuration.
     pub greeks_config: IrsGreeksConfig,
     /// Benchmark runner configuration.
     pub benchmark_config: BenchmarkConfig,
     /// XVA demo configuration.
+    #[allow(clippy::default_constructed_unit_structs)]
     pub xva_config: XvaDemoConfig,
-}
-
-impl Default for IrsAadConfig {
-    fn default() -> Self {
-        Self {
-            greeks_config: IrsGreeksConfig::default(),
-            benchmark_config: BenchmarkConfig::default(),
-            xva_config: XvaDemoConfig::default(),
-        }
-    }
 }
 
 impl IrsAadConfig {
@@ -423,6 +424,7 @@ pub struct IrsAadWorkflow {
     /// Benchmark runner for performance comparison.
     benchmark_runner: BenchmarkRunner,
     /// XVA demo runner.
+    #[allow(dead_code)]
     xva_runner: XvaDemoRunner,
     /// Cancellation flag.
     cancelled: Arc<AtomicBool>,

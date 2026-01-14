@@ -827,7 +827,7 @@ impl GraphExtractable for SimpleGraphExtractor {
                 .and_then(|prev| prev.get(param))
                 .map(|&old| value - old);
 
-            if delta.map_or(false, |d| d.abs() > 1e-10) || previous.is_none() {
+            if delta.is_some_and(|d| d.abs() > 1e-10) || previous.is_none() {
                 updates.push(GraphNodeUpdate {
                     id: node_id,
                     value,
@@ -842,7 +842,7 @@ impl GraphExtractable for SimpleGraphExtractor {
                 .and_then(|prev| prev.get(node_id))
                 .map(|&old| value - old);
 
-            if delta.map_or(false, |d| d.abs() > 1e-10) {
+            if delta.is_some_and(|d| d.abs() > 1e-10) {
                 updates.push(GraphNodeUpdate {
                     id: node_id.clone(),
                     value,

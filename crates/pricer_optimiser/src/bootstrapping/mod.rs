@@ -19,24 +19,32 @@
 //! avoiding recording solver iterations in the AD tape.
 
 mod adjoint_solver;
+mod cache;
 mod config;
 mod curve;
 mod curve_builder;
+mod date_utils;
 mod engine;
 mod error;
 mod instrument;
+mod multi_curve;
 mod sensitivity;
 
 pub use adjoint_solver::{
     compute_adjoint_contribution, AdjointSolver, AdjointSolverConfig, SolveResult,
     SolveResultWithSensitivities, SolverType,
 };
+pub use cache::{BootstrapCache, BufferPool, CurveCache, InterpolationIndices};
 pub use config::{BootstrapInterpolation, GenericBootstrapConfig, GenericBootstrapConfigBuilder};
 pub use curve::{BootstrappedCurve, BootstrappedCurveBuilder};
 pub use curve_builder::{BootstrapConfig, CurveBootstrapper, InterpolationMethod};
-pub use engine::{GenericBootstrapResult, SequentialBootstrapper};
+pub use date_utils::{
+    BusinessDayAdjustment, DateCalculator, DateCalculatorBuilder, DayCount, SpotDateConvention,
+};
+pub use engine::{CachedBootstrapper, GenericBootstrapResult, SequentialBootstrapper};
 pub use error::BootstrapError;
 pub use instrument::{BootstrapInstrument, Frequency};
+pub use multi_curve::{CurveSet, MultiCurveBuilder, ParallelCurveSetBuilder, Tenor};
 pub use sensitivity::{
     BootstrapResultWithSensitivities, SensitivityBootstrapper, SensitivityVerification,
 };

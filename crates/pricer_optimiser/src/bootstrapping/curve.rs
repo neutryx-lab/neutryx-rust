@@ -96,10 +96,7 @@ impl<T: Float> BootstrappedCurve<T> {
         // Check discount factors are positive
         for (i, df) in discount_factors.iter().enumerate() {
             if *df <= T::zero() {
-                return Err(format!(
-                    "Discount factor at index {} must be positive",
-                    i
-                ));
+                return Err(format!("Discount factor at index {} must be positive", i));
             }
         }
 
@@ -281,7 +278,10 @@ impl<T: Float> BootstrappedCurve<T> {
             .iter()
             .map(|x| x.to_f64().unwrap_or(0.0))
             .collect();
-        let rates_f64: Vec<f64> = zero_rates.iter().map(|x| x.to_f64().unwrap_or(0.0)).collect();
+        let rates_f64: Vec<f64> = zero_rates
+            .iter()
+            .map(|x| x.to_f64().unwrap_or(0.0))
+            .collect();
 
         match CubicSplineInterpolator::new(&pillars_f64, &rates_f64) {
             Ok(interp) => {
@@ -306,11 +306,7 @@ impl<T: Float> BootstrappedCurve<T> {
     /// to guarantee monotonicity of the interpolated curve.
     fn monotonic_cubic_interpolate(&self, t: T, _idx: usize) -> Result<T, MarketDataError> {
         // Build interpolator on log(DF) - this is monotonically decreasing
-        let log_dfs: Vec<T> = self
-            .discount_factors
-            .iter()
-            .map(|&dfi| dfi.ln())
-            .collect();
+        let log_dfs: Vec<T> = self.discount_factors.iter().map(|&dfi| dfi.ln()).collect();
 
         // Convert to f64 for the interpolator
         let pillars_f64: Vec<f64> = self
@@ -586,7 +582,10 @@ mod tests {
             BootstrappedCurve::new(pillars, dfs, BootstrapInterpolation::LogLinear, true).unwrap();
 
         let df = curve.discount_factor(0.5).unwrap();
-        assert!(df > 0.97 && df < 1.0, "Left extrapolated DF should be > 0.97");
+        assert!(
+            df > 0.97 && df < 1.0,
+            "Left extrapolated DF should be > 0.97"
+        );
     }
 
     #[test]
@@ -598,7 +597,10 @@ mod tests {
             BootstrappedCurve::new(pillars, dfs, BootstrapInterpolation::LogLinear, true).unwrap();
 
         let df = curve.discount_factor(4.0).unwrap();
-        assert!(df > 0.0 && df < 0.91, "Right extrapolated DF should be < 0.91");
+        assert!(
+            df > 0.0 && df < 0.91,
+            "Right extrapolated DF should be < 0.91"
+        );
     }
 
     #[test]
@@ -723,13 +725,9 @@ mod tests {
         let pillars = vec![1.0, 2.0, 3.0];
         let dfs = vec![0.97, 0.94, 0.91];
 
-        let curve: BootstrappedCurve<f64> = BootstrappedCurve::new(
-            pillars,
-            dfs,
-            BootstrapInterpolation::LinearZeroRate,
-            true,
-        )
-        .unwrap();
+        let curve: BootstrappedCurve<f64> =
+            BootstrappedCurve::new(pillars, dfs, BootstrapInterpolation::LinearZeroRate, true)
+                .unwrap();
 
         let df = curve.discount_factor(1.5).unwrap();
         assert!(df > 0.94 && df < 0.97);
@@ -885,9 +883,13 @@ mod tests {
         let pillars = vec![1.0, 2.0];
         let dfs = vec![0.97, 0.94];
 
-        let curve_ll: BootstrappedCurve<f64> =
-            BootstrappedCurve::new(pillars.clone(), dfs.clone(), BootstrapInterpolation::LogLinear, true)
-                .unwrap();
+        let curve_ll: BootstrappedCurve<f64> = BootstrappedCurve::new(
+            pillars.clone(),
+            dfs.clone(),
+            BootstrapInterpolation::LogLinear,
+            true,
+        )
+        .unwrap();
 
         let curve_ff: BootstrappedCurve<f64> =
             BootstrappedCurve::new(pillars, dfs, BootstrapInterpolation::FlatForward, true)

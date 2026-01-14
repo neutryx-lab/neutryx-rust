@@ -1915,6 +1915,8 @@
                         </div>
                         <div id="graph-content" class="graph-content">
                             <div id="graph-container" class="graph-container"></div>
+                            <!-- Task 8.1: Canvas for large graph rendering -->
+                            <canvas id="graph-canvas" class="graph-canvas" style="display: none;"></canvas>
                         </div>
                     </div>
 
@@ -1949,6 +1951,31 @@
                             <div class="chart-container" style="height: 160px;">
                                 <canvas id="node-type-chart"></canvas>
                             </div>
+                        </div>
+
+                        <!-- Task 7.3: Sensitivity Dependencies Panel -->
+                        <div class="sensitivity-deps-panel glass-card">
+                            <h3><i class="fas fa-project-diagram"></i> Sensitivity Dependencies</h3>
+                            <div id="sensitivity-deps-list" class="sensitivity-deps-list">
+                                <div class="no-data">No sensitivity targets found</div>
+                            </div>
+                        </div>
+
+                        <!-- Task 7.4: Critical Path Panel -->
+                        <div class="critical-path-panel glass-card">
+                            <h3><i class="fas fa-road"></i> Critical Path</h3>
+                            <div class="critical-path-info">
+                                <div class="critical-path-length">
+                                    <span class="stat-label">Path Length</span>
+                                    <span class="stat-value" id="critical-path-length">0</span>
+                                </div>
+                            </div>
+                            <div id="critical-path-nodes" class="critical-path-nodes">
+                                <div class="no-data">No path computed</div>
+                            </div>
+                            <button id="critical-path-highlight" class="btn btn-secondary btn-sm" disabled>
+                                <i class="fas fa-highlighter"></i> Highlight Path
+                            </button>
                         </div>
 
                         <!-- Task 6.3: Sensitivity Path Panel -->

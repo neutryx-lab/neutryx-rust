@@ -54,7 +54,10 @@ async fn test_complete_irs_aad_workflow() {
     // Run workflow
     let result = workflow.run(&demo_config, None).await;
 
-    assert!(result.is_ok(), "IRS AAD workflow should complete successfully");
+    assert!(
+        result.is_ok(),
+        "IRS AAD workflow should complete successfully"
+    );
 
     let workflow_result = result.unwrap();
     assert!(workflow_result.success, "Workflow should report success");
@@ -121,8 +124,14 @@ async fn test_single_calculation_bump_mode() {
     let compute_result = result.unwrap();
     assert_eq!(compute_result.mode, GreeksMode::BumpRevalue);
     assert!(compute_result.compute_time_ns > 0);
-    assert!(!compute_result.tenors.is_empty(), "Should have tenor points");
-    assert!(!compute_result.tenor_deltas.is_empty(), "Should have deltas");
+    assert!(
+        !compute_result.tenors.is_empty(),
+        "Should have tenor points"
+    );
+    assert!(
+        !compute_result.tenor_deltas.is_empty(),
+        "Should have deltas"
+    );
 }
 
 /// Test benchmark comparison between AAD and bump-and-revalue.
@@ -143,7 +152,10 @@ async fn test_benchmark_comparison() {
     assert!(result.is_ok(), "Benchmark should complete successfully");
 
     let benchmark = result.unwrap();
-    assert!(benchmark.speedup_ratio > 0.0, "Speedup ratio should be positive");
+    assert!(
+        benchmark.speedup_ratio > 0.0,
+        "Speedup ratio should be positive"
+    );
     assert!(
         benchmark.aad_stats.mean_ns > 0.0,
         "AAD timing should be recorded"
@@ -212,7 +224,10 @@ async fn test_custom_irs_parameters() {
         .compute_single(&params, GreeksMode::BumpRevalue)
         .await;
 
-    assert!(result.is_ok(), "Custom parameter calculation should succeed");
+    assert!(
+        result.is_ok(),
+        "Custom parameter calculation should succeed"
+    );
 
     let compute_result = result.unwrap();
     // For a 10-year swap, we expect significant DV01
@@ -349,10 +364,16 @@ async fn test_benchmark_json_output() {
 
     // Verify JSON output
     let json = runner.to_json(&full_result);
-    assert!(json.contains("benchmark_type"), "JSON should contain benchmark_type");
+    assert!(
+        json.contains("benchmark_type"),
+        "JSON should contain benchmark_type"
+    );
     assert!(json.contains("timestamp"), "JSON should contain timestamp");
     assert!(json.contains("notional"), "JSON should contain notional");
-    assert!(json.contains("speedup_ratio"), "JSON should contain speedup_ratio");
+    assert!(
+        json.contains("speedup_ratio"),
+        "JSON should contain speedup_ratio"
+    );
 }
 
 /// Test benchmark result Markdown output.
@@ -379,9 +400,18 @@ async fn test_benchmark_markdown_output() {
 
     // Verify Markdown output
     let md = runner.to_markdown(&full_result);
-    assert!(md.contains("# IRS AAD Benchmark Results"), "MD should have title");
-    assert!(md.contains("## Swap Parameters"), "MD should have swap params section");
-    assert!(md.contains("## Benchmark Results"), "MD should have results section");
+    assert!(
+        md.contains("# IRS AAD Benchmark Results"),
+        "MD should have title"
+    );
+    assert!(
+        md.contains("## Swap Parameters"),
+        "MD should have swap params section"
+    );
+    assert!(
+        md.contains("## Benchmark Results"),
+        "MD should have results section"
+    );
     assert!(md.contains("Speedup Ratio"), "MD should have speedup ratio");
 }
 
@@ -435,11 +465,7 @@ async fn test_sequential_calculations() {
         let result = workflow
             .compute_single(params, GreeksMode::BumpRevalue)
             .await;
-        assert!(
-            result.is_ok(),
-            "Calculation {} should succeed",
-            i + 1
-        );
+        assert!(result.is_ok(), "Calculation {} should succeed", i + 1);
     }
 }
 
@@ -465,7 +491,10 @@ async fn test_error_handling_invalid_swap() {
         .compute_single(&params, GreeksMode::BumpRevalue)
         .await;
 
-    assert!(result.is_err(), "Zero notional should cause validation error");
+    assert!(
+        result.is_err(),
+        "Zero notional should cause validation error"
+    );
 }
 
 /// Test error handling when workflow is cancelled.
@@ -649,8 +678,7 @@ async fn test_parameter_change_triggers_recalculation() {
     let initial_dv01 = initial_result.dv01;
 
     // Change notional (2x)
-    let doubled_notional_params =
-        IrsParams::new(2_000_000.0, 0.03, (2024, 1, 15), (2029, 1, 15));
+    let doubled_notional_params = IrsParams::new(2_000_000.0, 0.03, (2024, 1, 15), (2029, 1, 15));
 
     let doubled_result = workflow
         .compute_single(&doubled_notional_params, GreeksMode::BumpRevalue)
