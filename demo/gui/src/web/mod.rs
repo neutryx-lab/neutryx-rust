@@ -32,6 +32,7 @@ use tower_http::set_header::SetResponseHeaderLayer;
 use tracing::info;
 
 use handlers::GraphCache;
+use pricer_types::BootstrapCurveCache;
 
 // =========================================================================
 // Task 6.1: PerformanceMetrics State (Requirement 9.5)
@@ -217,6 +218,8 @@ pub struct AppState {
     pub metrics: PerformanceMetrics,
     /// Debug configuration (Task 1.1)
     pub debug_config: DebugConfig,
+    /// Bootstrapped curve cache for IRS pricing (Task 1.5)
+    pub curve_cache: BootstrapCurveCache,
 }
 
 impl AppState {
@@ -229,6 +232,7 @@ impl AppState {
             graph_subscriptions: RwLock::new(HashSet::new()),
             metrics: PerformanceMetrics::new(),
             debug_config: DebugConfig::from_env(),
+            curve_cache: BootstrapCurveCache::new(),
         }
     }
 
@@ -363,6 +367,16 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/metrics", get(handlers::get_metrics))
         // Task 2.2: Add /api/price endpoint for instrument pricing
         .route("/price", post(handlers::price_instrument))
+        // Task 2.1: Add /api/bootstrap endpoint for yield curve construction
+        .route("/bootstrap", post(handlers::bootstrap_curve))
+        // Task 3.1: Add /api/price-irs endpoint for IRS pricing
+        .route("/price-irs", post(handlers::price_irs))
+        // Task 4.1: Add /api/risk/bump endpoint for Bump-and-Revalue Delta calculation
+        .route("/risk/bump", post(handlers::risk_bump))
+        // Task 5.1: Add /api/risk/aad endpoint for AAD Delta calculation
+        .route("/risk/aad", post(handlers::risk_aad))
+        // Task 6.1: Add /api/risk/compare endpoint for comparison
+        .route("/risk/compare", post(handlers::risk_compare))
         .route("/ws", get(websocket::ws_handler));
 
     // Static file serving for the dashboard
@@ -499,6 +513,28 @@ mod tests {
 
             let subscriptions = state.graph_subscriptions.read().await;
             assert!(subscriptions.is_empty());
+        }
+    }
+
+    // =========================================================================
+    // Task 1.5: AppState CurveCache Tests
+    // =========================================================================
+
+    mod app_state_curve_cache_tests {
+        use super::*;
+
+        #[test]
+        fn test_app_state_has_curve_cache() {
+            let state = AppState::new();
+            // Verify curve_cache field exists and is empty initially
+            assert!(state.curve_cache.is_empty());
+        }
+
+        #[test]
+        fn test_curve_cache_is_accessible() {
+            let state = AppState::new();
+            // Should be able to access curve_cache methods
+            assert_eq!(state.curve_cache.len(), 0);
         }
     }
 }
