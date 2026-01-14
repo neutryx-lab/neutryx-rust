@@ -2662,9 +2662,13 @@ body.light-theme .glass-heavy {
     .theme-panel {
         width: 100%;
         max-width: none;
-        right: 0;
-        left: 0;
+        right: -100%;
+        left: auto;
         border-radius: 0;
+    }
+
+    .theme-panel.active {
+        right: 0;
     }
 
     .theme-mode-grid {
