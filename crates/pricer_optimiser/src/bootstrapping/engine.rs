@@ -157,7 +157,7 @@ impl<T: Float> SequentialBootstrapper<T> {
                 let mut lo = 0;
                 let mut hi = pillars.len() - 1;
                 while lo < hi {
-                    let mid = (lo + hi + 1) / 2;
+                    let mid = (lo + hi).div_ceil(2);
                     if pillars[mid] <= t {
                         lo = mid;
                     } else {

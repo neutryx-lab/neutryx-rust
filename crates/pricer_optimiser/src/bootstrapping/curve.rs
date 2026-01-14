@@ -205,7 +205,7 @@ impl<T: Float> BootstrappedCurve<T> {
         let mut hi = self.pillars.len() - 1;
 
         while lo < hi {
-            let mid = (lo + hi + 1) / 2;
+            let mid = (lo + hi).div_ceil(2);
             if self.pillars[mid] <= t {
                 lo = mid;
             } else {

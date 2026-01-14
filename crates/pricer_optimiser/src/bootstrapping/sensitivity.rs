@@ -148,7 +148,7 @@ impl SensitivityBootstrapper {
                 let mut lo = 0;
                 let mut hi = partial_pillars.len() - 1;
                 while lo < hi {
-                    let mid = (lo + hi + 1) / 2;
+                    let mid = (lo + hi).div_ceil(2);
                     if partial_pillars[mid] <= t {
                         lo = mid;
                     } else {
@@ -216,7 +216,7 @@ impl SensitivityBootstrapper {
                         let mut lo = 0;
                         let mut hi = partial_pillars.len() - 1;
                         while lo < hi {
-                            let mid = (lo + hi + 1) / 2;
+                            let mid = (lo + hi).div_ceil(2);
                             if partial_pillars[mid] <= t {
                                 lo = mid;
                             } else {
