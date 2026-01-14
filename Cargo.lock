@@ -1306,6 +1306,7 @@ dependencies = [
  "anyhow",
  "async-channel",
  "async-trait",
+ "axum",
  "chrono",
  "demo_inputs",
  "demo_outputs",
@@ -1315,11 +1316,13 @@ dependencies = [
  "pricer_pricing",
  "pricer_risk",
  "serde",
+ "serde_json",
  "tempfile",
  "thiserror 2.0.17",
  "tokio",
  "tokio-test",
  "toml",
+ "tower-http 0.6.8",
  "tracing",
  "tracing-subscriber",
 ]
@@ -4574,6 +4577,7 @@ dependencies = [
  "tower 0.5.2",
  "tower-layer",
  "tower-service",
+ "tracing",
 ]
 
 [[package]]
