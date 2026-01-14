@@ -23,7 +23,7 @@ use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::{broadcast, RwLock};
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 use tower_http::services::ServeDir;
 use tower_http::set_header::SetResponseHeaderLayer;
 use tracing::info;
@@ -113,12 +113,56 @@ impl Default for AppState {
 }
 
 /// Build the web application router
+fn build_cors() -> CorsLayer {
+    let origins = std::env::var("FB_CORS_ORIGINS")
+        .ok()
+        .and_then(|value| {
+            let origins: Vec<HeaderValue> = value
+                .split(',')
+                .map(|origin| origin.trim())
+                .filter(|origin| !origin.is_empty())
+                .filter_map(|origin| HeaderValue::from_str(origin).ok())
+                .collect();
+            if origins.is_empty() {
+                None
+            } else {
+                Some(origins)
+            }
+        })
+        .unwrap_or_else(|| {
+            vec![
+                HeaderValue::from_static("http://127.0.0.1:3000"),
+                HeaderValue::from_static("http://localhost:3000"),
+            ]
+        });
+
+    CorsLayer::new()
+        .allow_origin(AllowOrigin::list(origins))
+        .allow_methods(Any)
+        .allow_headers(Any)
+}
+
+fn build_csp_header() -> SetResponseHeaderLayer<HeaderValue> {
+    const DEFAULT_CSP: &str = "default-src 'self'; \
+        script-src 'self'; \
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; \
+        font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; \
+        img-src 'self' data: blob:; \
+        connect-src 'self' ws: wss:;";
+
+    let csp_value = std::env::var("FB_CSP").unwrap_or_else(|_| DEFAULT_CSP.to_string());
+    let header_value = HeaderValue::from_str(&csp_value)
+        .unwrap_or_else(|_| HeaderValue::from_static(DEFAULT_CSP));
+
+    SetResponseHeaderLayer::overriding(
+        axum::http::header::CONTENT_SECURITY_POLICY,
+        header_value,
+    )
+}
+
 pub fn build_router(state: Arc<AppState>) -> Router {
     // CORS configuration for development
-    let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(Any)
-        .allow_headers(Any);
+    let cors = build_cors();
 
     // API routes
     let api_routes = Router::new()
@@ -139,22 +183,11 @@ pub fn build_router(state: Arc<AppState>) -> Router {
     // Static file serving for the dashboard
     let static_files = ServeDir::new("demo/gui/static");
 
-    // CSP header: balanced security for development
-    // - Removed 'unsafe-eval' (no eval/new Function usage)
-    // - Allows CDN scripts (three.js, d3.js, jspdf, xlsx, chart.js)
-    // - 'unsafe-inline' for styles (required for inline style attributes)
-    // - connect-src includes CDNs for source map downloads
-    let csp_header = SetResponseHeaderLayer::overriding(
-        axum::http::header::CONTENT_SECURITY_POLICY,
-        HeaderValue::from_static(
-            "default-src 'self'; \
-             script-src 'self' https://cdnjs.cloudflare.com https://d3js.org https://cdn.jsdelivr.net https://cdn.sheetjs.com; \
-             style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; \
-             font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; \
-             img-src 'self' data: blob:; \
-             connect-src 'self' ws: wss: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;"
-        ),
-    );
+    // CSP header: default policy for local static assets.
+    // - Script sources limited to self (vendor assets).
+    // - 'unsafe-inline' required for inline style attributes in the demo.
+    // - Override via FB_CSP for stricter policies.
+    let csp_header = build_csp_header();
 
     Router::new()
         .nest("/api", api_routes)

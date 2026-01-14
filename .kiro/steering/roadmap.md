@@ -2,7 +2,7 @@
 
 実装状況と今後の開発項目を追跡するドキュメント。
 
-_Updated: 2026-01-11_
+_Updated: 2026-01-14_
 
 ---
 
@@ -122,6 +122,7 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 
 | Date | Change |
 |------|--------|
+| 2026-01-14 | frictional-bank: Added IRS AAD workflow and benchmark visualisation module |
 | 2026-01-11 | frictional-bank: Complete (all tasks including optional Chart and Web dashboard) |
 | 2026-01-10 | enzyme-autodiff-integration: Complete (18/20 tasks, benchmarks deferred) |
 | 2026-01-10 | stochastic-models: Implementation complete (17/17 tasks) |

@@ -7,16 +7,6 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Three.js for 3D charts -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- D3.js for Sankey diagrams -->
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
-    <!-- jsPDF for PDF export -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-    <!-- SheetJS for Excel export -->
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
     <!-- Skip Link for Accessibility -->
@@ -36,9 +26,9 @@
     <div class="toast-container" id="toast-container" role="alert" aria-live="polite"></div>
 
     <!-- Alert Panel (Slide-in) -->
-    <div class="alert-panel glass" id="alert-panel">
+    <div class="alert-panel glass" id="alert-panel" role="dialog" aria-labelledby="alert-panel-title" aria-hidden="true" tabindex="-1">
         <div class="alert-panel-header">
-            <h3><i class="fas fa-bell"></i> Alerts</h3>
+            <h3 id="alert-panel-title"><i class="fas fa-bell"></i> Alerts</h3>
             <div class="alert-actions">
                 <button class="icon-btn" id="mark-all-read" title="Mark all as read"><i class="fas fa-check-double"></i></button>
                 <button class="icon-btn" id="close-alerts" title="Close"><i class="fas fa-times"></i></button>
@@ -59,9 +49,9 @@
     </div>
 
     <!-- Theme Customizer Panel -->
-    <div class="theme-panel glass" id="theme-panel">
+    <div class="theme-panel glass" id="theme-panel" role="dialog" aria-labelledby="theme-panel-title" aria-hidden="true" tabindex="-1">
         <div class="theme-panel-header">
-            <h3><i class="fas fa-palette"></i> Theme</h3>
+            <h3 id="theme-panel-title"><i class="fas fa-palette"></i> Theme</h3>
             <button class="icon-btn" id="close-theme"><i class="fas fa-times"></i></button>
         </div>
         <div class="theme-options">
@@ -121,10 +111,10 @@
     </div>
 
     <!-- What-If Simulator Modal -->
-    <div class="modal-overlay" id="whatif-modal">
-        <div class="modal glass-heavy whatif-modal">
+    <div class="modal-overlay" id="whatif-modal" aria-hidden="true">
+        <div class="modal glass-heavy whatif-modal" role="dialog" aria-modal="true" aria-labelledby="whatif-title" tabindex="-1">
             <div class="modal-header">
-                <h2><i class="fas fa-flask"></i> What-If Simulator</h2>
+                <h2 id="whatif-title"><i class="fas fa-flask"></i> What-If Simulator</h2>
                 <button class="icon-btn" id="close-whatif"><i class="fas fa-times"></i></button>
             </div>
             <div class="modal-body">
@@ -175,10 +165,10 @@
     </div>
 
     <!-- Report Generator Modal -->
-    <div class="modal-overlay" id="report-modal">
-        <div class="modal glass-heavy report-modal">
+    <div class="modal-overlay" id="report-modal" aria-hidden="true">
+        <div class="modal glass-heavy report-modal" role="dialog" aria-modal="true" aria-labelledby="report-title" tabindex="-1">
             <div class="modal-header">
-                <h2><i class="fas fa-file-alt"></i> Generate Report</h2>
+                <h2 id="report-title"><i class="fas fa-file-alt"></i> Generate Report</h2>
                 <button class="icon-btn" id="close-report"><i class="fas fa-times"></i></button>
             </div>
             <div class="modal-body">
@@ -258,9 +248,9 @@
     </div>
 
     <!-- AI Assistant Panel -->
-    <div class="ai-panel glass" id="ai-panel">
+    <div class="ai-panel glass" id="ai-panel" role="dialog" aria-labelledby="ai-panel-title" aria-hidden="true" tabindex="-1">
         <div class="ai-panel-header">
-            <h3><i class="fas fa-robot"></i> AI Assistant</h3>
+            <h3 id="ai-panel-title"><i class="fas fa-robot"></i> AI Assistant</h3>
             <button class="icon-btn" id="close-ai"><i class="fas fa-times"></i></button>
         </div>
         <div class="ai-chat" id="ai-chat">
@@ -285,8 +275,8 @@
     </div>
 
     <!-- Command Palette -->
-    <div class="command-palette-overlay" id="command-overlay">
-        <div class="command-palette glass-heavy">
+    <div class="command-palette-overlay" id="command-overlay" aria-hidden="true">
+        <div class="command-palette glass-heavy" role="dialog" aria-modal="true" aria-label="Command palette" tabindex="-1">
             <div class="command-input-wrapper">
                 <i class="fas fa-search"></i>
                 <label for="command-input" class="visually-hidden">Command palette search</label>
@@ -458,7 +448,7 @@
         </aside>
 
         <!-- Main Content -->
-        <main class="main-content">
+        <main class="main-content" id="main-content" tabindex="-1">
             <!-- Top Bar -->
             <header class="top-bar">
                 <div class="top-bar-left">
@@ -2046,7 +2036,7 @@
     <!-- Celebration Particles -->
     <div class="celebration-container" id="celebration"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="app.js"></script>
+    <script src="vendor/chart.umd.min.js" defer></script>
+    <script src="app.js" defer></script>
 </body>
 </html>

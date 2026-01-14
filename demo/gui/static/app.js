@@ -6,6 +6,31 @@
 
 console.log('[DEBUG] app.js loading...');
 
+const CSP_DEBUG = (() => {
+    if (typeof window === 'undefined') return false;
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('cspDebug')) return true;
+    try {
+        return window.localStorage && window.localStorage.getItem('fb.cspDebug') === '1';
+    } catch (err) {
+        return false;
+    }
+})();
+
+if (CSP_DEBUG && window.addEventListener) {
+    window.addEventListener('securitypolicyviolation', (event) => {
+        console.warn('[CSP] violation', {
+            blockedURI: event.blockedURI,
+            violatedDirective: event.violatedDirective,
+            effectiveDirective: event.effectiveDirective,
+            sourceFile: event.sourceFile,
+            lineNumber: event.lineNumber,
+            columnNumber: event.columnNumber,
+            sample: event.sample
+        });
+    });
+}
+
 // ============================================
 // Constants & State
 // ============================================
@@ -80,6 +105,245 @@ const debounce = (fn, wait) => {
 
 const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
 
+const LIB_PATHS = {
+    three: 'vendor/three.min.js',
+    jspdf: 'vendor/jspdf.umd.min.js',
+    jspdfAutotable: 'vendor/jspdf.plugin.autotable.min.js',
+    xlsx: 'vendor/xlsx.full.min.js'
+};
+
+const D3_BASE_LIBS = [
+    'vendor/d3-dispatch.min.js',
+    'vendor/d3-timer.min.js',
+    'vendor/d3-quadtree.min.js',
+    'vendor/d3-array.min.js',
+    'vendor/d3-color.min.js',
+    'vendor/d3-interpolate.min.js',
+    'vendor/d3-ease.min.js',
+    'vendor/d3-selection.min.js',
+    'vendor/d3-drag.min.js',
+    'vendor/d3-zoom.min.js',
+    'vendor/d3-force.min.js',
+    'vendor/d3-path.min.js',
+    'vendor/d3-shape.min.js'
+];
+
+const D3_SANKEY_LIBS = ['vendor/d3-sankey.min.js'];
+
+const scriptLoaders = new Map();
+const dialogFocusState = new Map();
+const reduceMotionMedia = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+
+function loadScript(src) {
+    if (scriptLoaders.has(src)) return scriptLoaders.get(src);
+    const promise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.async = true;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error(`Failed to load ${src}`));
+        document.head.appendChild(script);
+    });
+    scriptLoaders.set(src, promise);
+    return promise;
+}
+
+async function ensureD3Loaded() {
+    if (typeof d3 !== 'undefined' && typeof d3.select === 'function') return;
+    for (const src of D3_BASE_LIBS) {
+        await loadScript(src);
+    }
+}
+
+async function ensureD3SankeyLoaded() {
+    await ensureD3Loaded();
+    if (d3?.sankey) return;
+    for (const src of D3_SANKEY_LIBS) {
+        await loadScript(src);
+    }
+}
+
+async function ensureThreeLoaded() {
+    if (typeof THREE !== 'undefined') return;
+    await loadScript(LIB_PATHS.three);
+}
+
+async function ensurePdfLoaded() {
+    if (typeof jspdf !== 'undefined' && jspdf.jsPDF) return;
+    await loadScript(LIB_PATHS.jspdf);
+    await loadScript(LIB_PATHS.jspdfAutotable);
+}
+
+async function ensureXlsxLoaded() {
+    if (typeof XLSX !== 'undefined') return;
+    await loadScript(LIB_PATHS.xlsx);
+}
+
+function fetchJson(url, options = {}, errorMessage = 'Request failed') {
+    return fetch(url, options).then(async response => {
+        if (!response.ok) {
+            let details = '';
+            try {
+                details = await response.text();
+            } catch (_) {
+                details = '';
+            }
+            const suffix = details ? `: ${details}` : '';
+            throw new Error(`${errorMessage} (${response.status})${suffix}`);
+        }
+        return response.json();
+    });
+}
+
+async function fetchJsonWithTimeout(url, options = {}, timeoutMs = 0, errorMessage = 'Request failed') {
+    if (!timeoutMs) return fetchJson(url, options, errorMessage);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        return await fetchJson(url, { ...options, signal: controller.signal }, errorMessage);
+    } finally {
+        clearTimeout(timeoutId);
+    }
+}
+
+function getFocusableElements(container) {
+    if (!container) return [];
+    return Array.from(container.querySelectorAll(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )).filter(el => !el.hasAttribute('aria-hidden'));
+}
+
+function trapFocus(container) {
+    const handler = (event) => {
+        if (event.key !== 'Tab') return;
+        const focusable = getFocusableElements(container);
+        if (focusable.length === 0) {
+            event.preventDefault();
+            return;
+        }
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    };
+    container.addEventListener('keydown', handler);
+    return () => container.removeEventListener('keydown', handler);
+}
+
+function openDialog(dialogEl, overlayEl = null) {
+    if (!dialogEl) return;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    if (overlayEl) overlayEl.setAttribute('aria-hidden', 'false');
+    dialogEl.setAttribute('aria-hidden', 'false');
+    const cleanup = trapFocus(dialogEl);
+    dialogFocusState.set(dialogEl, { previousFocus, cleanup });
+    const focusTarget = getFocusableElements(dialogEl)[0] || dialogEl;
+    if (focusTarget && focusTarget.focus) {
+        focusTarget.focus({ preventScroll: true });
+    }
+}
+
+function closeDialog(dialogEl, overlayEl = null) {
+    if (!dialogEl) return;
+    if (overlayEl) overlayEl.setAttribute('aria-hidden', 'true');
+    dialogEl.setAttribute('aria-hidden', 'true');
+    const state = dialogFocusState.get(dialogEl);
+    if (state?.cleanup) state.cleanup();
+    if (state?.previousFocus?.focus) {
+        state.previousFocus.focus({ preventScroll: true });
+    }
+    dialogFocusState.delete(dialogEl);
+}
+
+function applyIconButtonLabels() {
+    document.querySelectorAll('button[title]:not([aria-label])').forEach(btn => {
+        btn.setAttribute('aria-label', btn.getAttribute('title'));
+    });
+    const fallbackLabels = {
+        'close-whatif': 'Close',
+        'close-report': 'Close',
+        'close-theme': 'Close',
+        'close-ai': 'Close',
+        'close-alerts': 'Close',
+        'mark-all-read': 'Mark all as read',
+        'ai-send': 'Send message'
+    };
+    Object.entries(fallbackLabels).forEach(([id, label]) => {
+        const button = document.getElementById(id);
+        if (button && !button.hasAttribute('aria-label')) {
+            button.setAttribute('aria-label', label);
+        }
+    });
+}
+
+const motionState = {
+    particleSystem: null,
+    tiltCleanup: null,
+    realtimeInterval: null,
+    visualEffectsInitialized: false
+};
+
+function shouldReduceMotion() {
+    return document.body.classList.contains('reduce-motion') || !!reduceMotionMedia?.matches;
+}
+
+function enableMotionEffects() {
+    if (!motionState.particleSystem) {
+        const canvas = document.getElementById('particle-canvas');
+        if (canvas) motionState.particleSystem = new ParticleSystem(canvas);
+    } else {
+        motionState.particleSystem.start();
+    }
+
+    if (!motionState.visualEffectsInitialized) {
+        initVisualEffects();
+        motionState.visualEffectsInitialized = true;
+    }
+
+    if (!motionState.tiltCleanup) {
+        motionState.tiltCleanup = initTiltEffect();
+    }
+
+    if (!motionState.realtimeInterval) {
+        motionState.realtimeInterval = initRealtimeEffects();
+    }
+}
+
+function disableMotionEffects() {
+    motionState.particleSystem?.stop();
+    if (motionState.tiltCleanup) {
+        motionState.tiltCleanup();
+        motionState.tiltCleanup = null;
+    }
+    if (motionState.realtimeInterval) {
+        clearInterval(motionState.realtimeInterval);
+        motionState.realtimeInterval = null;
+    }
+}
+
+function applyMotionPreference() {
+    if (shouldReduceMotion()) {
+        disableMotionEffects();
+    } else {
+        enableMotionEffects();
+    }
+}
+
+function buildChart(ctx, config, stateKey = null) {
+    if (!ctx || typeof Chart === 'undefined') return null;
+    const canvas = ctx.canvas || ctx;
+    const existing = Chart.getChart(canvas);
+    if (existing) existing.destroy();
+    const chart = new Chart(ctx, config);
+    if (stateKey) state.charts[stateKey] = chart;
+    return chart;
+}
+
 // ============================================
 // Particle System
 // ============================================
@@ -90,9 +354,11 @@ class ParticleSystem {
         this.ctx = canvas.getContext('2d');
         this.particles = [];
         this.mouse = { x: 0, y: 0 };
+        this.running = false;
+        this.animationId = null;
         this.resize();
         this.init();
-        this.animate();
+        this.start();
         
         window.addEventListener('resize', () => this.resize());
         window.addEventListener('mousemove', (e) => {
@@ -123,6 +389,7 @@ class ParticleSystem {
     }
     
     animate() {
+        if (!this.running) return;
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
         const isDark = !document.body.classList.contains('light-theme');
@@ -172,7 +439,21 @@ class ParticleSystem {
             }
         });
         
-        requestAnimationFrame(() => this.animate());
+        this.animationId = requestAnimationFrame(() => this.animate());
+    }
+
+    start() {
+        if (this.running) return;
+        this.running = true;
+        this.animate();
+    }
+
+    stop() {
+        this.running = false;
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+            this.animationId = null;
+        }
     }
 }
 
@@ -328,6 +609,7 @@ class CommandPalette {
         this.isOpen = true;
         this.overlay.classList.add('active');
         this.input.value = '';
+        openDialog(this.overlay.querySelector('.command-palette'), this.overlay);
         this.input.focus();
         this.filter();
     }
@@ -335,6 +617,7 @@ class CommandPalette {
     close() {
         this.isOpen = false;
         this.overlay.classList.remove('active');
+        closeDialog(this.overlay.querySelector('.command-palette'), this.overlay);
     }
     
     toggle() {
@@ -450,16 +733,15 @@ function navigateTo(viewName) {
     // View-specific actions
     if (viewName === 'exposure') fetchExposure();
     if (viewName === 'risk') fetchRiskMetrics();
-    if (viewName === 'analytics') analytics3D.initViewer();
+    if (viewName === 'analytics') {
+        analytics3D.initViewer();
+    }
     if (viewName === 'graph') {
-        // Initialise graph view and load data
-        if (!graphState.svg) {
-            initGraphView();
-        }
-        // Load default graph if not already loaded
-        if (!graphManager.getGraph()) {
-            graphManager.fetchGraph().catch(e => console.error('Failed to load graph:', e));
-        }
+        ensureGraphTabReady().then(() => {
+            if (!graphManager.getGraph()) {
+                graphManager.fetchGraph().catch(e => console.error('Failed to load graph:', e));
+            }
+        });
     }
 }
 
@@ -498,8 +780,15 @@ function initTheme() {
 function updateChartsTheme() {
     const textColor = getComputedStyle(document.body).getPropertyValue('--text-secondary').trim();
     const gridColor = getComputedStyle(document.body).getPropertyValue('--glass-border').trim();
-    
-    Object.values(state.charts).forEach(chart => {
+
+    let charts = Object.values(state.charts);
+    if (typeof Chart !== 'undefined' && Chart.instances) {
+        charts = Chart.instances instanceof Map
+            ? Array.from(Chart.instances.values())
+            : Object.values(Chart.instances);
+    }
+
+    charts.forEach(chart => {
         if (chart && chart.options) {
             if (chart.options.scales) {
                 ['x', 'y'].forEach(axis => {
@@ -522,9 +811,7 @@ async function fetchPortfolio() {
     console.log('[DEBUG] fetchPortfolio() called');
     try {
         console.log('[DEBUG] Fetching from', `${API_BASE}/portfolio`);
-        const response = await fetch(`${API_BASE}/portfolio`);
-        console.log('[DEBUG] Response status:', response.status);
-        const data = await response.json();
+        const data = await fetchJson(`${API_BASE}/portfolio`, {}, 'Failed to fetch portfolio');
         console.log('[DEBUG] Portfolio data received:', data);
         
         updateValue('total-pv', data.total_pv);
@@ -559,8 +846,7 @@ function populateCounterpartyFilter() {
 
 async function fetchRiskMetrics() {
     try {
-        const response = await fetch(`${API_BASE}/risk`);
-        const data = await response.json();
+        const data = await fetchJson(`${API_BASE}/risk`, {}, 'Failed to fetch risk metrics');
         
         // Dashboard updates
         updateValue('cva', data.cva);
@@ -618,8 +904,7 @@ async function fetchRiskMetrics() {
 
 async function fetchExposure() {
     try {
-        const response = await fetch(`${API_BASE}/exposure`);
-        const data = await response.json();
+        const data = await fetchJson(`${API_BASE}/exposure`, {}, 'Failed to fetch exposure');
         
         // Store raw data for range filtering
         state.exposureData = data.time_series || [];
@@ -664,6 +949,23 @@ async function fetchExposure() {
 function updateLastUpdated() {
     const now = new Date();
     document.getElementById('last-update').querySelector('span').textContent = now.toLocaleTimeString();
+}
+
+let refreshTimer = null;
+
+function startRefreshTimer() {
+    if (refreshTimer) return;
+    refreshTimer = setInterval(() => {
+        if (document.hidden) return;
+        fetchPortfolio();
+        fetchRiskMetrics();
+    }, REFRESH_INTERVAL);
+}
+
+function stopRefreshTimer() {
+    if (!refreshTimer) return;
+    clearInterval(refreshTimer);
+    refreshTimer = null;
 }
 
 function updateBar(id, value, max) {
@@ -815,7 +1117,7 @@ function updateExposureChart(data) {
         state.charts.exposure.data = config.data;
         state.charts.exposure.update('none');
     } else {
-        state.charts.exposure = new Chart(ctx, createLineChartConfig(data, { compact: true }));
+        state.charts.exposure = buildChart(ctx, createLineChartConfig(data, { compact: true }));
     }
 }
 
@@ -828,7 +1130,7 @@ function updateMainExposureChart(data) {
         state.charts.mainExposure.data = config.data;
         state.charts.mainExposure.update('none');
     } else {
-        state.charts.mainExposure = new Chart(ctx, createLineChartConfig(data, { showPoints: true }));
+        state.charts.mainExposure = buildChart(ctx, createLineChartConfig(data, { showPoints: true }));
     }
 }
 
@@ -851,7 +1153,7 @@ function updateRiskDonut(data) {
         state.charts.riskDonut.data = chartData;
         state.charts.riskDonut.update('none');
     } else {
-        state.charts.riskDonut = new Chart(ctx, {
+        state.charts.riskDonut = buildChart(ctx, {
             type: 'doughnut',
             data: chartData,
             options: {
@@ -890,7 +1192,7 @@ function updateXvaPie(data) {
         state.charts.xvaPie.data = chartData;
         state.charts.xvaPie.update('none');
     } else {
-        state.charts.xvaPie = new Chart(ctx, {
+        state.charts.xvaPie = buildChart(ctx, {
             type: 'pie',
             data: chartData,
             options: {
@@ -2044,14 +2346,15 @@ function connectWebSocket() {
 }
 
 function handleWsMessage(data) {
-    if (data.type === 'risk') {
+    const messageType = data.type || data.update_type;
+    if (messageType === 'risk' && data.data) {
         updateValue('total-pv', data.data.total_pv);
         updateValue('cva', data.data.cva);
         updateValue('dva', data.data.dva);
         updateValue('fva', data.data.fva);
-    } else if (data.type === 'graph_update') {
+    } else if (messageType === 'graph_update') {
         // Task 5.1: Handle graph_update messages via GraphManager
-        graphManager.handleGraphUpdate(data);
+        graphManager.handleGraphUpdate({ ...data, type: messageType });
     }
 }
 
@@ -2062,25 +2365,38 @@ function handleWsMessage(data) {
 function initTiltEffect() {
     const TILT_INTENSITY = 50; // Higher = more subtle (was 20)
     const TILT_SCALE = 1.01;
-    
+
+    const handlers = [];
     document.querySelectorAll('[data-tilt]').forEach(card => {
-        card.addEventListener('mousemove', (e) => {
+        const onMove = (e) => {
             const rect = card.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
             const centerX = rect.width / 2;
             const centerY = rect.height / 2;
-            
+
             const rotateX = (y - centerY) / TILT_INTENSITY;
             const rotateY = (centerX - x) / TILT_INTENSITY;
-            
+
             card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(${TILT_SCALE})`;
-        });
-        
-        card.addEventListener('mouseleave', () => {
+        };
+
+        const onLeave = () => {
             card.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) scale(1)';
-        });
+        };
+
+        card.addEventListener('mousemove', onMove);
+        card.addEventListener('mouseleave', onLeave);
+        handlers.push({ card, onMove, onLeave });
     });
+
+    return () => {
+        handlers.forEach(({ card, onMove, onLeave }) => {
+            card.removeEventListener('mousemove', onMove);
+            card.removeEventListener('mouseleave', onLeave);
+            card.style.transform = '';
+        });
+    };
 }
 
 // ============================================
@@ -2146,7 +2462,7 @@ function initRiskAssetChart() {
     const ctx = document.getElementById('risk-asset-pie');
     if (!ctx) return;
     
-    new Chart(ctx, {
+    buildChart(ctx, {
         type: 'doughnut',
         data: {
             labels: ['Interest Rate', 'FX', 'Credit', 'Equity', 'Commodity'],
@@ -2186,7 +2502,7 @@ function initXvaHistoryChart() {
     
     const labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
     
-    new Chart(ctx, {
+    buildChart(ctx, {
         type: 'line',
         data: {
             labels,
@@ -2285,7 +2601,7 @@ function initMainExposureChart() {
     
     const labels = Array.from({length: 60}, (_, i) => `${(i/12).toFixed(1)}Y`);
     
-    state.mainExposureChart = new Chart(ctx, {
+    state.mainExposureChart = buildChart(ctx, {
         type: 'line',
         data: {
             labels,
@@ -2362,7 +2678,7 @@ function initExposureDistChart() {
     const ctx = document.getElementById('exposure-dist-chart');
     if (!ctx) return;
     
-    new Chart(ctx, {
+    buildChart(ctx, {
         type: 'bar',
         data: {
             labels: ['<-5M', '-5M to 0', '0 to 5M', '5M to 10M', '10M to 15M', '>15M'],
@@ -2451,9 +2767,9 @@ function initNettingSetViewToggle() {
 
 function initNettingSetChart() {
     const ctx = document.getElementById('netting-set-chart');
-    if (!ctx || ctx.chart) return;
+    if (!ctx) return;
     
-    ctx.chart = new Chart(ctx, {
+    ctx.chart = buildChart(ctx, {
         type: 'bar',
         data: {
             labels: ['NS-001', 'NS-002', 'NS-003', 'NS-004', 'NS-005'],
@@ -2521,7 +2837,7 @@ function initTenorBucketChart() {
     const ctx = document.getElementById('tenor-bucket-chart');
     if (!ctx) return;
     
-    new Chart(ctx, {
+    buildChart(ctx, {
         type: 'bar',
         data: {
             labels: ['0-1M', '1-3M', '3-6M', '6-12M', '1-2Y', '2-5Y', '5Y+'],
@@ -2589,7 +2905,7 @@ function initCollateralChart() {
     const ctx = document.getElementById('collateral-chart');
     if (!ctx) return;
     
-    new Chart(ctx, {
+    buildChart(ctx, {
         type: 'line',
         data: {
             labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
@@ -2670,7 +2986,7 @@ function initMCPathsChart() {
         tension: 0.4
     });
     
-    new Chart(ctx, {
+    buildChart(ctx, {
         type: 'line',
         data: {
             labels: Array.from({length: numPoints}, (_, i) => `T+${i}`),
@@ -2828,7 +3144,7 @@ function initCompareChart() {
     const ctx = document.getElementById('compare-chart');
     if (!ctx) return;
     
-    new Chart(ctx, {
+    buildChart(ctx, {
         type: 'radar',
         data: {
             labels: ['CVA', 'DVA', 'FVA', 'KVA', 'MVA'],
@@ -2868,7 +3184,7 @@ function initImpactChart() {
     const ctx = document.getElementById('impact-chart');
     if (!ctx) return;
     
-    state.impactChart = new Chart(ctx, {
+    state.impactChart = buildChart(ctx, {
         type: 'bar',
         data: {
             labels: ['CVA', 'DVA', 'FVA', 'KVA', 'MVA', 'Total XVA'],
@@ -2983,15 +3299,11 @@ async function runEnhancedScenario() {
     };
     
     try {
-        const response = await fetch('/api/scenario', {
+        const data = await fetchJson('/api/scenario', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(params)
-        });
-        
-        if (!response.ok) throw new Error('Scenario failed');
-        
-        const data = await response.json();
+        }, 'Scenario failed');
         
         // Update results
         resultsEl.innerHTML = `
@@ -3172,12 +3484,20 @@ const alertSystem = {
     
     toggle() {
         const panel = document.getElementById('alert-panel');
-        panel?.classList.toggle('active');
+        if (!panel) return;
+        const isActive = panel.classList.toggle('active');
+        if (isActive) {
+            openDialog(panel);
+        } else {
+            closeDialog(panel);
+        }
     },
     
     close() {
         const panel = document.getElementById('alert-panel');
-        panel?.classList.remove('active');
+        if (!panel) return;
+        panel.classList.remove('active');
+        closeDialog(panel);
     },
     
     add(alert) {
@@ -3288,14 +3608,15 @@ const themeCustomizer = {
         });
         
         // Toggles
-        document.getElementById('high-contrast-toggle')?.addEventListener('change', (e) => {
+        document.getElementById('high-contrast')?.addEventListener('change', (e) => {
             document.body.classList.toggle('high-contrast', e.target.checked);
             localStorage.setItem('highContrast', e.target.checked);
         });
         
-        document.getElementById('reduce-motion-toggle')?.addEventListener('change', (e) => {
+        document.getElementById('reduce-motion')?.addEventListener('change', (e) => {
             document.body.classList.toggle('reduce-motion', e.target.checked);
             localStorage.setItem('reduceMotion', e.target.checked);
+            applyMotionPreference();
         });
         
         // Load saved preferences
@@ -3304,12 +3625,20 @@ const themeCustomizer = {
     
     toggle() {
         const panel = document.getElementById('theme-panel');
-        panel?.classList.toggle('active');
+        if (!panel) return;
+        const isActive = panel.classList.toggle('active');
+        if (isActive) {
+            openDialog(panel);
+        } else {
+            closeDialog(panel);
+        }
     },
     
     close() {
         const panel = document.getElementById('theme-panel');
-        panel?.classList.remove('active');
+        if (!panel) return;
+        panel.classList.remove('active');
+        closeDialog(panel);
     },
     
     setMode(mode) {
@@ -3349,21 +3678,34 @@ const themeCustomizer = {
         const mode = localStorage.getItem('themeMode') || 'dark';
         const accent = localStorage.getItem('accentColor') || 'default';
         const highContrast = localStorage.getItem('highContrast') === 'true';
-        const reduceMotion = localStorage.getItem('reduceMotion') === 'true';
+        const storedReduceMotion = localStorage.getItem('reduceMotion');
+        const reduceMotion = storedReduceMotion === null
+            ? !!reduceMotionMedia?.matches
+            : storedReduceMotion === 'true';
         
         this.setMode(mode);
         this.setAccent(accent);
         
         if (highContrast) {
             document.body.classList.add('high-contrast');
-            const toggle = document.getElementById('high-contrast-toggle');
+            const toggle = document.getElementById('high-contrast');
             if (toggle) toggle.checked = true;
         }
         
         if (reduceMotion) {
             document.body.classList.add('reduce-motion');
-            const toggle = document.getElementById('reduce-motion-toggle');
+            const toggle = document.getElementById('reduce-motion');
             if (toggle) toggle.checked = true;
+        }
+        
+        if (reduceMotionMedia) {
+            reduceMotionMedia.addEventListener('change', (event) => {
+                if (localStorage.getItem('reduceMotion') !== null) return;
+                document.body.classList.toggle('reduce-motion', event.matches);
+                const toggle = document.getElementById('reduce-motion');
+                if (toggle) toggle.checked = event.matches;
+                applyMotionPreference();
+            });
         }
     }
 };
@@ -3403,20 +3745,24 @@ const whatIfSimulator = {
     
     open() {
         const modal = document.getElementById('whatif-modal');
+        const dialog = modal?.querySelector('.modal');
         modal?.classList.add('active');
+        if (dialog) openDialog(dialog, modal);
         this.initChart();
     },
     
     close() {
         const modal = document.getElementById('whatif-modal');
+        const dialog = modal?.querySelector('.modal');
         modal?.classList.remove('active');
+        if (dialog) closeDialog(dialog, modal);
     },
     
     initChart() {
         const ctx = document.getElementById('whatif-chart')?.getContext('2d');
         if (!ctx || this.chart) return;
         
-        this.chart = new Chart(ctx, {
+        this.chart = buildChart(ctx, {
             type: 'bar',
             data: {
                 labels: ['Current', 'Simulated'],
@@ -3513,12 +3859,16 @@ const reportGenerator = {
     
     open() {
         const modal = document.getElementById('report-modal');
+        const dialog = modal?.querySelector('.modal');
         modal?.classList.add('active');
+        if (dialog) openDialog(dialog, modal);
     },
     
     close() {
         const modal = document.getElementById('report-modal');
+        const dialog = modal?.querySelector('.modal');
         modal?.classList.remove('active');
+        if (dialog) closeDialog(dialog, modal);
     },
     
     async generate() {
@@ -3530,16 +3880,18 @@ const reportGenerator = {
         await new Promise(resolve => setTimeout(resolve, 2000));
         
         if (format === 'pdf') {
-            this.generatePDF(type);
+            await this.generatePDF(type);
         } else {
-            this.generateExcel(type);
+            await this.generateExcel(type);
         }
         
         this.close();
     },
     
-    generatePDF(type) {
-        if (typeof jspdf === 'undefined' || !jspdf.jsPDF) {
+    async generatePDF(type) {
+        try {
+            await ensurePdfLoaded();
+        } catch (error) {
             showToast('warning', 'PDF Generation', 'PDF library not loaded. Feature available in production.');
             return;
         }
@@ -3558,8 +3910,10 @@ const reportGenerator = {
         showToast('success', 'Report Generated', 'PDF downloaded successfully');
     },
     
-    generateExcel(type) {
-        if (typeof XLSX === 'undefined') {
+    async generateExcel(type) {
+        try {
+            await ensureXlsxLoaded();
+        } catch (error) {
             showToast('warning', 'Excel Generation', 'Excel library not loaded. Feature available in production.');
             return;
         }
@@ -3622,12 +3976,20 @@ const aiAssistant = {
     
     toggle() {
         const panel = document.getElementById('ai-panel');
-        panel?.classList.toggle('active');
+        if (!panel) return;
+        const isActive = panel.classList.toggle('active');
+        if (isActive) {
+            openDialog(panel);
+        } else {
+            closeDialog(panel);
+        }
     },
     
     close() {
         const panel = document.getElementById('ai-panel');
-        panel?.classList.remove('active');
+        if (!panel) return;
+        panel.classList.remove('active');
+        closeDialog(panel);
     },
     
     async send() {
@@ -3727,19 +4089,29 @@ const analytics3D = {
     camera: null,
     renderer: null,
     controls: null,
+    initialized: false,
     
     init() {
-        if (typeof THREE === 'undefined') {
-            console.log('Three.js not loaded, 3D analytics disabled');
-            return;
-        }
-        
+        this.initialized = false;
+    },
+
+    async ensureReady() {
+        if (this.initialized) return;
+        await ensureThreeLoaded();
+        await ensureD3SankeyLoaded();
+        this.initialized = true;
         this.initCorrelationHeatmap();
         this.initSankeyDiagram();
         this.initDistributionChart();
     },
     
-    initViewer() {
+    async initViewer() {
+        try {
+            await this.ensureReady();
+        } catch (error) {
+            console.error('Failed to load analytics libraries:', error);
+            return;
+        }
         const container = document.getElementById('three-container');
         if (!container || this.renderer) return;
         
@@ -3921,7 +4293,7 @@ const analytics3D = {
             });
         }
         
-        new Chart(ctx, {
+        buildChart(ctx, {
             type: 'line',
             data: {
                 datasets: [{
@@ -3959,7 +4331,7 @@ const analytics3D = {
 
 function initRealtimeEffects() {
     // Simulate real-time value updates
-    setInterval(() => {
+    return setInterval(() => {
         const values = document.querySelectorAll('.stat-value, .metric-value');
         const randomIndex = Math.floor(Math.random() * values.length);
         const el = values[randomIndex];
@@ -3979,9 +4351,23 @@ function initKeyboardShortcuts() {
     document.addEventListener('keydown', (e) => {
         // Escape closes all panels/modals
         if (e.key === 'Escape') {
-            document.querySelectorAll('.modal-overlay.active, .alert-panel.active, .theme-panel.active, .ai-panel.active').forEach(el => {
-                el.classList.remove('active');
+            document.querySelectorAll('.modal-overlay.active').forEach(overlay => {
+                overlay.classList.remove('active');
+                const dialog = overlay.querySelector('.modal');
+                if (dialog) closeDialog(dialog, overlay);
             });
+            ['alert-panel', 'theme-panel', 'ai-panel'].forEach(id => {
+                const panel = document.getElementById(id);
+                if (panel?.classList.contains('active')) {
+                    panel.classList.remove('active');
+                    closeDialog(panel);
+                }
+            });
+            const commandOverlay = document.getElementById('command-overlay');
+            if (commandOverlay?.classList.contains('active')) {
+                commandOverlay.classList.remove('active');
+                closeDialog(commandOverlay.querySelector('.command-palette'), commandOverlay);
+            }
         }
         
         // Ctrl+Shift+A - Toggle Alerts
@@ -4376,8 +4762,6 @@ async function init() {
     console.log('[DEBUG] init() called');
     try {
         // Initialize systems
-        console.log('[DEBUG] Creating ParticleSystem...');
-        new ParticleSystem(document.getElementById('particle-canvas'));
         console.log('[DEBUG] Creating CommandPalette...');
         new CommandPalette();
         
@@ -4388,9 +4772,9 @@ async function init() {
         try { reportGenerator.init(); } catch(e) { console.error('reportGenerator init error:', e); }
         try { aiAssistant.init(); } catch(e) { console.error('aiAssistant init error:', e); }
         try { analytics3D.init(); } catch(e) { console.error('analytics3D init error:', e); }
-        try { initRealtimeEffects(); } catch(e) { console.error('initRealtimeEffects error:', e); }
         try { initKeyboardShortcuts(); } catch(e) { console.error('initKeyboardShortcuts error:', e); }
-        try { initVisualEffects(); } catch(e) { console.error('initVisualEffects error:', e); }
+        try { applyIconButtonLabels(); } catch(e) { console.error('applyIconButtonLabels error:', e); }
+        try { applyMotionPreference(); } catch(e) { console.error('applyMotionPreference error:', e); }
         
         // Initialize UI
         console.log('[DEBUG] Initializing UI...');
@@ -4401,13 +4785,11 @@ async function init() {
         try { initEnhancedScenarioControls(); } catch(e) { console.error('initEnhancedScenarioControls error:', e); }
         initQuickActions();
         initChartControls();
-        initTiltEffect();
         
         // Initialize enhanced views
         try { initRiskView(); } catch(e) { console.error('initRiskView error:', e); }
         try { initExposureView(); } catch(e) { console.error('initExposureView error:', e); }
         try { initImpactChart(); } catch(e) { console.error('initImpactChart error:', e); }
-        try { initGraphTab(); } catch(e) { console.error('initGraphTab error:', e); }
         
         // Load data
         console.log('[DEBUG] Loading data...');
@@ -4433,10 +4815,16 @@ async function init() {
     try { connectWebSocket(); } catch(e) { console.error('WebSocket error:', e); }
     
     // Periodic refresh
-    setInterval(() => {
-        fetchPortfolio();
-        fetchRiskMetrics();
-    }, REFRESH_INTERVAL);
+    startRefreshTimer();
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            stopRefreshTimer();
+        } else {
+            startRefreshTimer();
+            fetchPortfolio();
+            fetchRiskMetrics();
+        }
+    });
     
     // Override run scenario button
     const runBtn = document.getElementById('run-scenario');
@@ -4474,13 +4862,7 @@ class GraphManager {
             ? `${API_BASE}/graph?trade_id=${tradeId}`
             : `${API_BASE}/graph`;
 
-        const response = await fetch(url);
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-            throw new Error(error.message || `HTTP ${response.status}`);
-        }
-
-        const data = await response.json();
+        const data = await fetchJson(url, {}, 'Failed to fetch graph');
         this.graphs[tradeId || 'all'] = data;
         this.currentTradeId = tradeId;
 
@@ -4495,9 +4877,12 @@ class GraphManager {
      * @param {object} message - WebSocket message with type and data
      */
     handleGraphUpdate(message) {
-        if (message.type !== 'graph_update') return;
+        const messageType = message.type || message.update_type;
+        if (messageType !== 'graph_update') return;
 
+        if (!message.data) return;
         const { trade_id, updated_nodes } = message.data;
+        if (!trade_id || !Array.isArray(updated_nodes)) return;
 
         // Only process if subscribed
         if (!this.subscriptions.has(trade_id)) return;
@@ -5223,7 +5608,22 @@ function initGraphControls() {
  * Initialise the graph view tab
  * Called from main init() function
  */
+let graphTabInitialized = false;
+
+async function ensureGraphTabReady() {
+    if (graphTabInitialized) return;
+    try {
+        await ensureD3Loaded();
+    } catch (error) {
+        console.error('Failed to load D3 for graph view:', error);
+        return;
+    }
+    initGraphTab();
+    graphTabInitialized = true;
+}
+
 function initGraphTab() {
+    if (typeof d3 === 'undefined') return;
     initGraphView();
     initGraphControls();
     initCriticalPathControls(); // Task 7.4
@@ -5569,18 +5969,13 @@ function renderNodeTypeChart(typeCounts) {
     const canvas = document.getElementById('node-type-chart');
     if (!canvas) return;
 
-    // Destroy existing chart
-    if (nodeTypeChartState.chartInstance) {
-        nodeTypeChartState.chartInstance.destroy();
-    }
-
     const sortedTypes = sortTypeCountsDescending(typeCounts);
     const labels = sortedTypes.map(([type]) => type);
     const data = sortedTypes.map(([, count]) => count);
     const colors = labels.map(type => getChartColorForType(type));
 
     // Create chart
-    nodeTypeChartState.chartInstance = new Chart(canvas, {
+    nodeTypeChartState.chartInstance = buildChart(canvas, {
         type: 'bar',
         data: {
             labels,
@@ -8091,6 +8486,39 @@ function runLODTests() {
 
     console.log('=== Task 8.2: LOD (Level of Detail) Tests ===');
 
+    // Test 1: LOD threshold logic
+    assert(shouldEnableLOD(lodConfig.nodeCountThreshold + 1) === true, 'shouldEnableLOD returns true above threshold');
+    assert(shouldEnableLOD(lodConfig.nodeCountThreshold) === false, 'shouldEnableLOD returns false at threshold');
+
+    // Test 2: Cluster computation on small grouped dataset
+    const sampleNodes = [
+        { id: 'in1', group: 'input', x: 0, y: 0 },
+        { id: 'in2', group: 'input', x: 5, y: 5 },
+        { id: 'in3', group: 'input', x: 10, y: 10 },
+        { id: 'in4', group: 'input', x: 15, y: 15 },
+        { id: 'in5', group: 'input', x: 20, y: 20 },
+        { id: 'out1', group: 'output', x: 200, y: 200 },
+        { id: 'out2', group: 'output', x: 210, y: 210 },
+        { id: 'out3', group: 'output', x: 220, y: 220 },
+        { id: 'out4', group: 'output', x: 230, y: 230 },
+        { id: 'out5', group: 'output', x: 240, y: 240 }
+    ];
+    const sampleLinks = [{ source: 'in1', target: 'out1' }];
+    const clusters = computeClusters(sampleNodes, sampleLinks);
+    assert(Array.isArray(clusters) && clusters.length === 2, 'computeClusters groups nodes into two clusters');
+
+    // Test 3: Cluster link aggregation
+    const clusterLinks = computeClusterLinks(clusters, sampleLinks);
+    assert(Array.isArray(clusterLinks) && clusterLinks.length === 1, 'computeClusterLinks aggregates inter-cluster links');
+
+    console.log('=== Task 8.2 Test Results ===');
+    const passed = results.filter(r => r.passed).length;
+    const total = results.length;
+    console.log(`${passed}/${total} tests passed`);
+
+    return { passed, total, results };
+}
+
 // ============================================
 // Task 8.3: WebSocket Differential Rendering
 // ============================================
@@ -8548,15 +8976,12 @@ async function loadEodBatchGraph(batchId = null) {
             ? `${API_BASE}${eodConfig.endpoint}?batch_id=${batchId}`
             : `${API_BASE}${eodConfig.endpoint}`;
 
-        const response = await fetch(url, {
-            timeout: eodConfig.timeout
-        });
-
-        if (!response.ok) {
-            throw new Error(`EOD batch load failed: ${response.status}`);
-        }
-
-        const data = await response.json();
+        const data = await fetchJsonWithTimeout(
+            url,
+            {},
+            eodConfig.timeout,
+            'EOD batch load failed'
+        );
         workflowState.eodData = data;
         workflowState.currentMode = 'eod';
 
@@ -9008,12 +9433,11 @@ async function loadStressComparison(scenarioIds = ['base']) {
 
         // Load each scenario's data
         const loadPromises = selectedIds.map(async scenarioId => {
-            const response = await fetch(`${API_BASE}/stress/${scenarioId}`);
-            if (!response.ok) {
-                // Return mock data if endpoint not available
+            try {
+                return await fetchJson(`${API_BASE}/stress/${scenarioId}`, {}, 'Stress scenario load failed');
+            } catch (error) {
                 return generateMockStressData(scenarioId);
             }
-            return response.json();
         });
 
         const results = await Promise.all(loadPromises);

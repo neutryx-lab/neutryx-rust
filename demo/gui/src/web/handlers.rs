@@ -49,10 +49,8 @@ pub struct PortfolioResponse {
     pub trade_count: usize,
 }
 
-/// Get portfolio data
-pub async fn get_portfolio(State(_state): State<Arc<AppState>>) -> Json<PortfolioResponse> {
-    // Sample portfolio data (in production, fetch from service_gateway)
-    let trades = vec![
+fn sample_trades() -> Vec<TradeData> {
+    vec![
         TradeData {
             id: "T001".to_string(),
             instrument: "5Y IRS Pay Fixed".to_string(),
@@ -173,7 +171,13 @@ pub async fn get_portfolio(State(_state): State<Arc<AppState>>) -> Json<Portfoli
             gamma: 0.018,
             vega: 0.75,
         },
-    ];
+    ]
+}
+
+/// Get portfolio data
+pub async fn get_portfolio(State(_state): State<Arc<AppState>>) -> Json<PortfolioResponse> {
+    // Sample portfolio data (in production, fetch from service_gateway)
+    let trades = sample_trades();
 
     let total_pv: f64 = trades.iter().map(|t| t.pv).sum();
     let trade_count = trades.len();
@@ -207,10 +211,31 @@ pub async fn price_portfolio(
     Json(request): Json<PriceRequest>,
 ) -> impl IntoResponse {
     // In production, forward to service_gateway
+    let mut trades: Vec<TradeData> = request
+        .instruments
+        .iter()
+        .map(|item| TradeData {
+            id: item.instrument_id.clone(),
+            instrument: item.instrument_id.clone(),
+            product: "swap".to_string(),
+            notional: 10_000_000.0,
+            pv: (item.spot - item.rate) * 1_000_000.0,
+            delta: item.rate * 0.1,
+            gamma: 0.0,
+            vega: item.vol,
+        })
+        .collect();
+
+    if trades.is_empty() {
+        trades = sample_trades();
+    }
+
+    let total_pv: f64 = trades.iter().map(|t| t.pv).sum();
+    let trade_count = trades.len();
     let response = PortfolioResponse {
-        trades: vec![],
-        total_pv: 0.0,
-        trade_count: request.instruments.len(),
+        trades,
+        total_pv,
+        trade_count,
     };
 
     (StatusCode::OK, Json(response))
