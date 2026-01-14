@@ -46,7 +46,7 @@ pub trait GraphExtractable {
     /// # Arguments
     ///
     /// * `trade_id` - Optional trade ID to filter extraction. If None, extracts
-    ///                the combined graph for all trades.
+    ///   the combined graph for all trades.
     ///
     /// # Returns
     ///

@@ -31,7 +31,7 @@ pub struct BootstrapResultWithSensitivities {
     pub pillars: Vec<f64>,
     /// Discount factors at each pillar
     pub discount_factors: Vec<f64>,
-    /// Sensitivity matrix: sensitivities[i][j] = d(DF_i) / d(rate_j)
+    /// Sensitivity matrix: `sensitivities[i][j]` = d(DF_i) / d(rate_j)
     /// Row i corresponds to pillar i, column j corresponds to input j
     pub sensitivities: Vec<Vec<f64>>,
 }
