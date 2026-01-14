@@ -99,7 +99,7 @@
   - _Requirements: 5.4, 5.5, 6.2, 9.5_
   - _Contracts: risk_compare_handler API_
 
-- [ ] 6.2 WebSocket ブロードキャストイベントを実装する
+- [x] 6.2 WebSocket ブロードキャストイベントを実装する
   - BroadcastMessage enum に bootstrap_complete、risk_complete、calculation_error を追加
   - BootstrapCompleteEvent（curveId、tenorCount、processingTimeMs）
   - RiskCompleteEvent（curveId、method、dv01、speedupRatio）
@@ -109,81 +109,81 @@
   - _Contracts: WebSocket Event_
 
 - [ ] 7. フロントエンド UI 基盤
-- [ ] 7.1 (P) IRS Bootstrap & Risk サブビューの HTML 構造を作成する
+- [x] 7.1 (P) IRS Bootstrap & Risk サブビューの HTML 構造を作成する
   - Pricerタブ内に「IRS Bootstrap & Risk」サブビュー追加
   - 3ステップワークフロー構造（Step 1: Market Data、Step 2: Bootstrap、Step 3: Pricing & Risk）
   - 各ステップのコンテナとインジケーター要素
   - ライト/ダークテーマ対応のクラス適用
   - _Requirements: 7.1, 7.2, 7.3, 7.6_
 
-- [ ] 7.2 (P) Par Rate 入力フォームを作成する
+- [x] 7.2 (P) Par Rate 入力フォームを作成する
   - 9テナーポイント（1Y, 2Y, 3Y, 5Y, 7Y, 10Y, 15Y, 20Y, 30Y）の入力フィールド
   - 数値バリデーション（クライアントサイド）
   - 不正入力時のエラーメッセージ表示
   - 小数形式とパーセント形式の両方をサポート
   - _Requirements: 1.1, 1.2, 1.3, 1.6_
 
-- [ ] 7.3 (P) プリセットデータとサンプル値機能を実装する
+- [x] 7.3 (P) プリセットデータとサンプル値機能を実装する
   - 現実的なサンプルPar Rate値の定義
   - プリセット選択ボタンの作成
   - ボタンクリック時のフォーム自動入力
   - _Requirements: 1.4, 1.5_
 
-- [ ] 7.4 IRS パラメータ入力フォームを作成する
+- [x] 7.4 IRS パラメータ入力フォームを作成する
   - 想定元本、固定レート、期間、支払頻度の入力フィールド
   - Bootstrap未実行時のボタン無効化とメッセージ表示
   - _Requirements: 3.1, 3.6_
 
-- [ ] 7.5 (P) ローディングスピナーとステップインジケーターを実装する
+- [x] 7.5 (P) ローディングスピナーとステップインジケーターを実装する
   - 計算中のローディングスピナー表示
   - 各ステップの完了状態インジケーター更新
   - _Requirements: 7.3, 7.4_
 
-- [ ] 7.6 (P) レスポンシブレイアウトを実装する
+- [x] 7.6 (P) レスポンシブレイアウトを実装する
   - モバイル向けスタックレイアウト
   - タブレット向け2カラムレイアウト
   - デスクトップ向け3カラムレイアウト
   - _Requirements: 7.5_
 
-- [ ] 8. カーブ可視化とプライシング UI
-- [ ] 8.1 Bootstrap 結果のカーブ可視化を実装する
+- [x] 8. カーブ可視化とプライシング UI
+- [x] 8.1 Bootstrap 結果のカーブ可視化を実装する
   - Bootstrap API 呼び出しとレスポンス処理
   - テーブル形式でのDF、ゼロレート表示
   - Chart.js を使用したカーブグラフ描画
   - 処理時間の表示
   - _Requirements: 2.6_
 
-- [ ] 8.2 IRS プライシング結果表示を実装する
+- [x] 8.2 IRS プライシング結果表示を実装する
   - Price IRS API 呼び出しとレスポンス処理
   - NPV結果の3桁区切りフォーマット表示
   - 固定レグPV、変動レグPVの個別表示
   - 計算時間（マイクロ秒）の表示
   - _Requirements: 3.5_
 
-- [ ] 9. リスク計算結果と比較表示 UI
-- [ ] 9.1 Delta テーブル表示を実装する
+- [x] 9. リスク計算結果と比較表示 UI
+- [x] 9.1 Delta テーブル表示を実装する
   - 各テナーのDelta値を表形式で表示
   - Bump法とAAD法の結果を並列表示
   - DV01の計算と表示
   - 各テナーの計算時間（マイクロ秒）表示
   - _Requirements: 4.4, 4.5, 4.6, 5.4_
 
-- [ ] 9.2 計算時間比較バーチャートを実装する
+- [x] 9.2 計算時間比較バーチャートを実装する
   - Chart.js を使用した比較バーチャート描画
   - Bump法とAAD法の総計算時間並列表示
   - Speedup Ratio の計算と表示
   - 速度比に応じた色分け（10倍以上=緑、5倍以上=黄、それ以下=赤）
   - _Requirements: 6.1, 6.2, 6.3, 6.4_
 
-- [ ] 9.3 AAD/Bump 差分警告とベンチマーク機能を実装する
+- [x] 9.3 AAD/Bump 差分警告とベンチマーク機能を実装する
   - AADとBumpの差分が許容誤差（1e-6）超過時の警告表示
   - 統計情報（平均、最小、最大時間）の表示オプション
   - 「Run Benchmark」ボタンで10回繰り返し実行
   - 繰り返し実行結果の統計集計と表示
   - _Requirements: 5.6, 6.5, 6.6_
 
-- [ ] 10. 統合テストと E2E 検証
-- [ ] 10.1 バックエンド統合テストを実装する
+- [x] 10. 統合テストと E2E 検証
+- [x] 10.1 バックエンド統合テストを実装する
   - Bootstrap → Pricing フローの正常系テスト
   - Bootstrap → Risk Compare フローの正常系テスト
   - 不正 curve_id での 404 エラーテスト
@@ -191,7 +191,7 @@
   - WebSocket イベント送信のテスト
   - _Requirements: 2.1, 3.2, 4.1, 5.1, 8.1, 8.2_
 
-- [ ] 10.2 E2E ワークフローテストを実行する
+- [x] 10.2 E2E ワークフローテストを実行する
   - Par Rate 入力 → Bootstrap → カーブ可視化の動作確認
   - IRS パラメータ入力 → Pricing → NPV 表示の動作確認
   - Risk Compare → Delta テーブル + 速度比較チャート表示の動作確認

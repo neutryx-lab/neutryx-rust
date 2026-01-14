@@ -17,6 +17,7 @@ required-features = ["web"]
 [features]
 default = []
 web = ["axum", "tower-http", "futures", "chrono", "open"]
+enzyme-ad = ["frictional_bank/enzyme-ad", "pricer_pricing/enzyme-ad"]
 
 [dependencies]
 # TUI framework

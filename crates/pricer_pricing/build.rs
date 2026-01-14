@@ -12,8 +12,8 @@
 //! This build script provides validation and guidance but does not block builds
 //! when LLVM/Enzyme are not available. Phase 4 will require full Enzyme integration.
 
-use std::env;
-use std::process::Command;
+#[cfg(feature = "enzyme-ad")]
+use std::{env, process::Command};
 
 fn main() {
     // Emit rerun directives for environment variable changes
@@ -21,12 +21,12 @@ fn main() {
     println!("cargo:rerun-if-env-changed=ENZYME_LIB");
     println!("cargo:rerun-if-env-changed=LLVM_SYS_180_PREFIX");
 
-    // Validate LLVM version
-    validate_llvm_version();
-
-    // Configure Enzyme plugin if enzyme-ad feature is enabled
+    // Validate LLVM version and configure Enzyme plugin when enzyme-ad is enabled.
     #[cfg(feature = "enzyme-ad")]
-    configure_enzyme_plugin();
+    {
+        validate_llvm_version();
+        configure_enzyme_plugin();
+    }
 }
 
 /// Validates that LLVM 18 is available in the build environment.
@@ -37,6 +37,7 @@ fn main() {
 /// 3. llvm-config command
 ///
 /// Emits cargo:warning with installation guidance if LLVM 18 is not found.
+#[cfg(feature = "enzyme-ad")]
 fn validate_llvm_version() {
     let llvm_config = env::var("LLVM_CONFIG").ok().or_else(find_llvm_config);
 
@@ -65,6 +66,7 @@ fn validate_llvm_version() {
 }
 
 /// Attempts to find llvm-config in common locations.
+#[cfg(feature = "enzyme-ad")]
 fn find_llvm_config() -> Option<String> {
     // Try version-specific command first
     for cmd in &["llvm-config-18", "llvm-config"] {
@@ -93,6 +95,7 @@ fn find_llvm_config() -> Option<String> {
 }
 
 /// Emits a cargo warning with LLVM installation guidance.
+#[cfg(feature = "enzyme-ad")]
 fn emit_llvm_version_warning(message: &str) {
     println!("cargo:warning={}", message);
     println!("cargo:warning=");

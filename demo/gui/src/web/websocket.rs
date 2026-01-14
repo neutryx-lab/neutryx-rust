@@ -547,6 +547,181 @@ pub fn broadcast_irs_benchmark(state: &AppState, benchmark: IrsBenchmarkUpdate) 
 }
 
 // =============================================================================
+// Task 6.2: IRS Bootstrap & Risk WebSocket Events
+// =============================================================================
+
+/// Bootstrap complete event data.
+///
+/// Sent when a yield curve bootstrap operation completes successfully.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BootstrapCompleteEvent {
+    /// Unique curve identifier (UUID)
+    pub curve_id: String,
+    /// Number of tenor points in the curve
+    pub tenor_count: usize,
+    /// Processing time in milliseconds
+    pub processing_time_ms: f64,
+}
+
+/// Risk calculation complete event data.
+///
+/// Sent when a risk calculation (Bump, AAD, or Compare) completes.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RiskCompleteEvent {
+    /// Curve identifier used for the calculation
+    pub curve_id: String,
+    /// Method used: "bump", "aad", or "compare"
+    pub method: String,
+    /// DV01 result (sum of all deltas)
+    pub dv01: f64,
+    /// Speedup ratio (Bump time / AAD time), null if AAD unavailable
+    pub speedup_ratio: Option<f64>,
+}
+
+/// Calculation error event data.
+///
+/// Sent when a calculation (bootstrap, pricing, or risk) fails.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CalculationErrorEvent {
+    /// Operation that failed: "bootstrap", "pricing", "risk_bump", "risk_aad", "risk_compare"
+    pub operation: String,
+    /// Error message
+    pub error: String,
+    /// Tenor that failed (for bootstrap failures)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub failed_tenor: Option<String>,
+}
+
+impl RealTimeUpdate {
+    /// Create a bootstrap complete event.
+    ///
+    /// # Arguments
+    ///
+    /// * `event` - Bootstrap complete event data
+    pub fn bootstrap_complete(event: BootstrapCompleteEvent) -> Self {
+        Self {
+            update_type: "bootstrap_complete".to_string(),
+            timestamp: chrono::Utc::now().timestamp_millis(),
+            data: serde_json::json!({
+                "curveId": event.curve_id,
+                "tenorCount": event.tenor_count,
+                "processingTimeMs": event.processing_time_ms
+            }),
+        }
+    }
+
+    /// Create a risk calculation complete event.
+    ///
+    /// # Arguments
+    ///
+    /// * `event` - Risk complete event data
+    pub fn risk_complete(event: RiskCompleteEvent) -> Self {
+        Self {
+            update_type: "risk_complete".to_string(),
+            timestamp: chrono::Utc::now().timestamp_millis(),
+            data: serde_json::json!({
+                "curveId": event.curve_id,
+                "method": event.method,
+                "dv01": event.dv01,
+                "speedupRatio": event.speedup_ratio
+            }),
+        }
+    }
+
+    /// Create a calculation error event.
+    ///
+    /// # Arguments
+    ///
+    /// * `event` - Calculation error event data
+    pub fn calculation_error(event: CalculationErrorEvent) -> Self {
+        Self {
+            update_type: "calculation_error".to_string(),
+            timestamp: chrono::Utc::now().timestamp_millis(),
+            data: serde_json::json!({
+                "operation": event.operation,
+                "error": event.error,
+                "failedTenor": event.failed_tenor
+            }),
+        }
+    }
+}
+
+/// Broadcast a bootstrap complete event to all connected clients.
+///
+/// # Arguments
+///
+/// * `state` - Application state containing the broadcast channel
+/// * `curve_id` - UUID of the constructed curve
+/// * `tenor_count` - Number of tenor points
+/// * `processing_time_ms` - Processing time in milliseconds
+pub fn broadcast_bootstrap_complete(
+    state: &AppState,
+    curve_id: &str,
+    tenor_count: usize,
+    processing_time_ms: f64,
+) {
+    let event = BootstrapCompleteEvent {
+        curve_id: curve_id.to_string(),
+        tenor_count,
+        processing_time_ms,
+    };
+    let update = RealTimeUpdate::bootstrap_complete(event);
+    let _ = state.tx.send(update.to_json());
+}
+
+/// Broadcast a risk calculation complete event to all connected clients.
+///
+/// # Arguments
+///
+/// * `state` - Application state containing the broadcast channel
+/// * `curve_id` - UUID of the curve used
+/// * `method` - Method used: "bump", "aad", or "compare"
+/// * `dv01` - DV01 result
+/// * `speedup_ratio` - Speedup ratio (optional)
+pub fn broadcast_risk_complete(
+    state: &AppState,
+    curve_id: &str,
+    method: &str,
+    dv01: f64,
+    speedup_ratio: Option<f64>,
+) {
+    let event = RiskCompleteEvent {
+        curve_id: curve_id.to_string(),
+        method: method.to_string(),
+        dv01,
+        speedup_ratio,
+    };
+    let update = RealTimeUpdate::risk_complete(event);
+    let _ = state.tx.send(update.to_json());
+}
+
+/// Broadcast a calculation error event to all connected clients.
+///
+/// # Arguments
+///
+/// * `state` - Application state containing the broadcast channel
+/// * `operation` - Operation that failed
+/// * `error` - Error message
+/// * `failed_tenor` - Tenor that failed (for bootstrap failures)
+pub fn broadcast_calculation_error(
+    state: &AppState,
+    operation: &str,
+    error: &str,
+    failed_tenor: Option<&str>,
+) {
+    let event = CalculationErrorEvent {
+        operation: operation.to_string(),
+        error: error.to_string(),
+        failed_tenor: failed_tenor.map(|s| s.to_string()),
+    };
+    let update = RealTimeUpdate::calculation_error(event);
+    let _ = state.tx.send(update.to_json());
+}
+
+// =============================================================================
 // Task 4.3: Subscription Message Types
 // =============================================================================
 
@@ -1247,6 +1422,182 @@ mod tests {
             let msg = received.unwrap();
             assert!(msg.contains("delta"));
             assert!(msg.contains("rho"));
+        }
+    }
+
+    // =========================================================================
+    // Task 6.2: Bootstrap & Risk Event Tests
+    // =========================================================================
+
+    mod bootstrap_risk_event_tests {
+        use super::*;
+
+        #[test]
+        fn test_bootstrap_complete_event_creation() {
+            let event = BootstrapCompleteEvent {
+                curve_id: "test-curve-123".to_string(),
+                tenor_count: 9,
+                processing_time_ms: 45.5,
+            };
+            let update = RealTimeUpdate::bootstrap_complete(event);
+
+            assert_eq!(update.update_type, "bootstrap_complete");
+            assert!(update.timestamp > 0);
+        }
+
+        #[test]
+        fn test_bootstrap_complete_json_structure() {
+            let event = BootstrapCompleteEvent {
+                curve_id: "curve-abc-123".to_string(),
+                tenor_count: 9,
+                processing_time_ms: 42.5,
+            };
+            let update = RealTimeUpdate::bootstrap_complete(event);
+            let json = update.to_json();
+
+            let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+            assert_eq!(parsed["update_type"], "bootstrap_complete");
+            assert_eq!(parsed["data"]["curveId"], "curve-abc-123");
+            assert_eq!(parsed["data"]["tenorCount"], 9);
+            assert_eq!(parsed["data"]["processingTimeMs"], 42.5);
+        }
+
+        #[test]
+        fn test_risk_complete_event_creation() {
+            let event = RiskCompleteEvent {
+                curve_id: "test-curve-123".to_string(),
+                method: "compare".to_string(),
+                dv01: 1234.56,
+                speedup_ratio: Some(15.5),
+            };
+            let update = RealTimeUpdate::risk_complete(event);
+
+            assert_eq!(update.update_type, "risk_complete");
+            assert!(update.timestamp > 0);
+        }
+
+        #[test]
+        fn test_risk_complete_with_speedup() {
+            let event = RiskCompleteEvent {
+                curve_id: "curve-xyz".to_string(),
+                method: "compare".to_string(),
+                dv01: 5000.0,
+                speedup_ratio: Some(20.5),
+            };
+            let update = RealTimeUpdate::risk_complete(event);
+            let json = update.to_json();
+
+            let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+            assert_eq!(parsed["data"]["method"], "compare");
+            assert_eq!(parsed["data"]["dv01"], 5000.0);
+            assert_eq!(parsed["data"]["speedupRatio"], 20.5);
+        }
+
+        #[test]
+        fn test_risk_complete_without_speedup() {
+            let event = RiskCompleteEvent {
+                curve_id: "curve-xyz".to_string(),
+                method: "bump".to_string(),
+                dv01: 3000.0,
+                speedup_ratio: None,
+            };
+            let update = RealTimeUpdate::risk_complete(event);
+            let json = update.to_json();
+
+            let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+            assert_eq!(parsed["data"]["method"], "bump");
+            assert!(parsed["data"]["speedupRatio"].is_null());
+        }
+
+        #[test]
+        fn test_calculation_error_event_creation() {
+            let event = CalculationErrorEvent {
+                operation: "bootstrap".to_string(),
+                error: "Convergence failure at 10Y".to_string(),
+                failed_tenor: Some("10Y".to_string()),
+            };
+            let update = RealTimeUpdate::calculation_error(event);
+
+            assert_eq!(update.update_type, "calculation_error");
+            assert!(update.timestamp > 0);
+        }
+
+        #[test]
+        fn test_calculation_error_with_tenor() {
+            let event = CalculationErrorEvent {
+                operation: "bootstrap".to_string(),
+                error: "Failed to converge".to_string(),
+                failed_tenor: Some("5Y".to_string()),
+            };
+            let update = RealTimeUpdate::calculation_error(event);
+            let json = update.to_json();
+
+            let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+            assert_eq!(parsed["data"]["operation"], "bootstrap");
+            assert_eq!(parsed["data"]["failedTenor"], "5Y");
+        }
+
+        #[test]
+        fn test_calculation_error_without_tenor() {
+            let event = CalculationErrorEvent {
+                operation: "pricing".to_string(),
+                error: "Invalid curve ID".to_string(),
+                failed_tenor: None,
+            };
+            let update = RealTimeUpdate::calculation_error(event);
+            let json = update.to_json();
+
+            let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+            assert_eq!(parsed["data"]["operation"], "pricing");
+            assert!(parsed["data"]["failedTenor"].is_null());
+        }
+
+        #[tokio::test]
+        async fn test_broadcast_bootstrap_complete() {
+            let state = AppState::new();
+            let mut rx = state.tx.subscribe();
+
+            broadcast_bootstrap_complete(&state, "curve-123", 9, 50.0);
+
+            let received = rx.try_recv();
+            assert!(received.is_ok());
+
+            let msg = received.unwrap();
+            assert!(msg.contains("bootstrap_complete"));
+            assert!(msg.contains("curve-123"));
+            assert!(msg.contains("tenorCount"));
+        }
+
+        #[tokio::test]
+        async fn test_broadcast_risk_complete() {
+            let state = AppState::new();
+            let mut rx = state.tx.subscribe();
+
+            broadcast_risk_complete(&state, "curve-456", "compare", 1500.0, Some(18.5));
+
+            let received = rx.try_recv();
+            assert!(received.is_ok());
+
+            let msg = received.unwrap();
+            assert!(msg.contains("risk_complete"));
+            assert!(msg.contains("compare"));
+            assert!(msg.contains("dv01"));
+        }
+
+        #[tokio::test]
+        async fn test_broadcast_calculation_error() {
+            let state = AppState::new();
+            let mut rx = state.tx.subscribe();
+
+            broadcast_calculation_error(&state, "bootstrap", "Convergence failure", Some("10Y"));
+
+            let received = rx.try_recv();
+            assert!(received.is_ok());
+
+            let msg = received.unwrap();
+            assert!(msg.contains("calculation_error"));
+            assert!(msg.contains("bootstrap"));
+            assert!(msg.contains("Convergence failure"));
         }
     }
 }

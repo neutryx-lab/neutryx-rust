@@ -8661,3 +8661,795 @@ body.light-theme .history-item {
     border-color: #e2e8f0;
 }
 
+/* =============================================================================
+   IRS Bootstrap & Risk View (Task 7.1-7.6, 8.1-9.3)
+   ============================================================================= */
+
+.irs-bootstrap-container {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    position: relative;
+    min-height: calc(100vh - 140px);
+}
+
+/* Header with Step Indicator */
+.irs-bootstrap-header {
+    padding: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.irs-header-title h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.irs-header-title h2 i {
+    color: var(--primary);
+}
+
+.irs-header-title p {
+    margin: 0.25rem 0 0;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+/* Step Indicator (Task 7.5) */
+.step-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    cursor: pointer;
+    opacity: 0.5;
+    transition: var(--transition-normal);
+}
+
+.step.active {
+    opacity: 1;
+}
+
+.step.completed {
+    opacity: 1;
+}
+
+.step.completed .step-number {
+    background: var(--success);
+}
+
+.step-number {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--bg-tertiary);
+    border: 2px solid var(--glass-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.875rem;
+    transition: var(--transition-normal);
+}
+
+.step.active .step-number {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+}
+
+.step-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.step.active .step-label {
+    color: var(--primary);
+}
+
+.step-connector {
+    width: 40px;
+    height: 2px;
+    background: var(--glass-border);
+    position: relative;
+}
+
+.step-connector::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 0;
+    background: var(--primary);
+    transition: width 0.3s ease;
+}
+
+.step-connector.active::after {
+    width: 100%;
+}
+
+/* Main Layout */
+.irs-bootstrap-layout {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 1.5rem;
+    flex: 1;
+}
+
+/* Input Panel */
+.irs-input-panel {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    max-height: calc(100vh - 300px);
+    overflow-y: auto;
+}
+
+.irs-section {
+    border-bottom: 1px solid var(--glass-border);
+    padding-bottom: 1.5rem;
+}
+
+.irs-section:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.irs-section.collapsed .section-header ~ * {
+    display: none;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.section-header h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.section-header h3 i {
+    color: var(--primary);
+    font-size: 0.875rem;
+}
+
+.section-status {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.section-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Preset Buttons (Task 7.3) */
+.preset-btn {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+    border-radius: 6px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--glass-border);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition-normal);
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.preset-btn:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.preset-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+/* Par Rate Grid (Task 7.2) */
+.par-rate-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.par-rate-input {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.par-rate-input label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.par-rate-input input {
+    padding: 0.5rem;
+    font-size: 0.875rem;
+    border-radius: 6px;
+    background: var(--bg-primary);
+    border: 1px solid var(--glass-border);
+    color: var(--text-primary);
+    transition: var(--transition-normal);
+}
+
+.par-rate-input input:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* IRS Parameters Form (Task 7.4) */
+.irs-params-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.input-hint {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+
+.button-row {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.button-row .primary-btn,
+.button-row .secondary-btn {
+    flex: 1;
+}
+
+/* Error Display */
+.irs-error {
+    padding: 1rem;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 8px;
+    color: #ef4444;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.875rem;
+}
+
+/* Results Panel */
+.irs-results-panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 1.5rem;
+}
+
+.irs-result-card {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.irs-result-card.wide {
+    grid-column: span 2;
+}
+
+.result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.result-header h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.result-header h3 i {
+    color: var(--primary);
+    font-size: 0.875rem;
+}
+
+.result-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.result-status .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-secondary);
+}
+
+.result-status.success .status-dot {
+    background: var(--success);
+}
+
+.result-status.loading .status-dot {
+    background: var(--warning);
+    animation: pulse 1s infinite;
+}
+
+.result-actions {
+    display: flex;
+    gap: 0.25rem;
+}
+
+/* Curve Chart Container (Task 8.1) */
+.curve-chart-container {
+    position: relative;
+    height: 200px;
+    background: var(--bg-primary);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.curve-chart-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.chart-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.chart-placeholder i {
+    font-size: 2rem;
+    opacity: 0.5;
+}
+
+.chart-placeholder p {
+    margin: 0;
+    font-size: 0.875rem;
+}
+
+.curve-info {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--glass-border);
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.info-label {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.info-value {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* IRS Pricing Results (Task 8.2) */
+.pricing-results {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.npv-display {
+    text-align: center;
+    padding: 1rem;
+    background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-secondary));
+    border-radius: 8px;
+}
+
+.npv-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 0.25rem;
+}
+
+.npv-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.npv-value.positive {
+    color: var(--success);
+}
+
+.npv-value.negative {
+    color: var(--danger);
+}
+
+.leg-breakdown {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.leg-item {
+    padding: 0.75rem;
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+    text-align: center;
+}
+
+.leg-label {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+}
+
+.leg-value {
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-primary);
+}
+
+.pricing-time {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-align: right;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.375rem;
+}
+
+.pricing-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 2rem;
+    color: var(--text-secondary);
+}
+
+.pricing-placeholder i {
+    font-size: 2rem;
+    opacity: 0.5;
+}
+
+/* Delta Table (Task 9.1) */
+.delta-table-container {
+    overflow-x: auto;
+}
+
+.delta-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.delta-table th,
+.delta-table td {
+    padding: 0.75rem;
+    text-align: right;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.delta-table th {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: var(--bg-tertiary);
+}
+
+.delta-table th:first-child,
+.delta-table td:first-child {
+    text-align: left;
+}
+
+.delta-table td {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-primary);
+}
+
+.delta-table tbody tr:hover {
+    background: var(--bg-tertiary);
+}
+
+.delta-table .dv01-row {
+    font-weight: 700;
+    background: var(--bg-tertiary);
+}
+
+.delta-table .dv01-row td {
+    border-top: 2px solid var(--primary);
+}
+
+.delta-diff {
+    font-size: 0.75rem;
+}
+
+.delta-diff.warning {
+    color: var(--warning);
+}
+
+.delta-diff.success {
+    color: var(--success);
+}
+
+/* Timing Chart (Task 9.2) */
+.timing-chart-container {
+    padding: 1rem;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+}
+
+.timing-chart-container h4 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.timing-chart-container h4 i {
+    color: var(--primary);
+}
+
+.timing-chart-container canvas {
+    max-height: 150px;
+}
+
+.speedup-display {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--glass-border);
+}
+
+.speedup-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.speedup-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--success);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* Benchmark Warning (Task 9.3) */
+.benchmark-warning {
+    padding: 1rem;
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 8px;
+    color: var(--warning);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.875rem;
+}
+
+.risk-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 3rem;
+    color: var(--text-secondary);
+}
+
+.risk-placeholder i {
+    font-size: 2.5rem;
+    opacity: 0.5;
+}
+
+/* Loading Overlay (Task 7.5) */
+.irs-loading-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 10, 15, 0.8);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    border-radius: inherit;
+}
+
+.irs-spinner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.spinner-ring {
+    width: 48px;
+    height: 48px;
+    border: 3px solid var(--glass-border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+#irs-loading-text {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+/* Responsive Layout (Task 7.6) */
+@media (max-width: 1200px) {
+    .irs-bootstrap-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .irs-input-panel {
+        max-height: none;
+    }
+
+    .irs-results-panel {
+        grid-template-columns: 1fr;
+    }
+
+    .irs-result-card.wide {
+        grid-column: span 1;
+    }
+}
+
+@media (max-width: 768px) {
+    .irs-bootstrap-container {
+        padding: 1rem;
+    }
+
+    .irs-bootstrap-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .step-indicator {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .par-rate-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .curve-info {
+        grid-template-columns: 1fr;
+    }
+
+    .delta-table {
+        font-size: 0.75rem;
+    }
+
+    .delta-table th,
+    .delta-table td {
+        padding: 0.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .par-rate-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .section-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .preset-btn {
+        flex: 1;
+        justify-content: center;
+    }
+
+    .leg-breakdown {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Light theme adjustments */
+body.light-theme .irs-input-panel input,
+body.light-theme .irs-input-panel select {
+    background: white;
+    border-color: #e2e8f0;
+}
+
+body.light-theme .npv-display {
+    background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+}
+
+body.light-theme .leg-item {
+    background: #f1f5f9;
+}
+
+body.light-theme .timing-chart-container {
+    background: #f1f5f9;
+}
+
+body.light-theme .delta-table th {
+    background: #f1f5f9;
+}
+
+body.light-theme .delta-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+body.light-theme .irs-loading-overlay {
+    background: rgba(248, 250, 252, 0.9);
+}
+
