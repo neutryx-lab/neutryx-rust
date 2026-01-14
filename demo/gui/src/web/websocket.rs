@@ -76,10 +76,31 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
             if let Message::Text(text) = msg {
                 let text_str = text.as_str();
 
-                // Handle ping/pong
+                // Task 2.3: Handle ping/pong for heartbeat mechanism
+                // Support both simple "ping" and JSON format {"type":"ping",...}
                 if text_str == "ping" {
                     let _ = state_clone.tx.send(r#"{"type":"pong"}"#.to_string());
                     continue;
+                }
+                if let Ok(ping_msg) = serde_json::from_str::<serde_json::Value>(text_str) {
+                    if ping_msg.get("type").and_then(|v| v.as_str()) == Some("ping") {
+                        let now = chrono::Utc::now().timestamp_millis();
+
+                        // Task 6.4: Calculate round-trip latency from client timestamp
+                        if let Some(client_ts) = ping_msg.get("timestamp").and_then(|v| v.as_i64())
+                        {
+                            let latency_ms = (now - client_ts).max(0) as u64;
+                            // Record latency in microseconds
+                            state_clone.metrics.record_ws_latency(latency_ms * 1000).await;
+                        }
+
+                        let pong = serde_json::json!({
+                            "type": "pong",
+                            "timestamp": now
+                        });
+                        let _ = state_clone.tx.send(pong.to_string());
+                        continue;
+                    }
                 }
 
                 // Task 4.3: Handle graph subscription requests
@@ -251,6 +272,59 @@ impl RealTimeUpdate {
             }),
         }
     }
+
+    // =========================================================================
+    // Task 3.1: Pricing Complete Message Type
+    // =========================================================================
+
+    /// Create a pricing complete event.
+    ///
+    /// This message type is used to notify clients when a pricing
+    /// calculation has completed.
+    ///
+    /// # Arguments
+    ///
+    /// * `calculation_id` - Unique ID for the calculation
+    /// * `instrument_type` - Type of instrument priced
+    /// * `pv` - Present value result
+    /// * `greeks` - Optional Greeks data
+    pub fn pricing_complete(
+        calculation_id: &str,
+        instrument_type: &str,
+        pv: f64,
+        greeks: Option<serde_json::Value>,
+    ) -> Self {
+        Self {
+            update_type: "pricing_complete".to_string(),
+            timestamp: chrono::Utc::now().timestamp_millis(),
+            data: serde_json::json!({
+                "calculationId": calculation_id,
+                "instrumentType": instrument_type,
+                "pv": pv,
+                "greeks": greeks
+            }),
+        }
+    }
+}
+
+/// Broadcast a pricing complete notification to all connected clients.
+///
+/// # Arguments
+///
+/// * `state` - Application state containing the broadcast channel
+/// * `calculation_id` - Unique ID for the calculation
+/// * `instrument_type` - Type of instrument priced
+/// * `pv` - Present value result
+/// * `greeks` - Optional Greeks data
+pub fn broadcast_pricing_complete(
+    state: &AppState,
+    calculation_id: &str,
+    instrument_type: &str,
+    pv: f64,
+    greeks: Option<serde_json::Value>,
+) {
+    let update = RealTimeUpdate::pricing_complete(calculation_id, instrument_type, pv, greeks);
+    let _ = state.tx.send(update.to_json());
 }
 
 // =============================================================================
@@ -1026,6 +1100,153 @@ mod tests {
 
                 assert_eq!(parsed["data"]["speedup_ratio"], speedup);
             }
+        }
+    }
+
+    // =========================================================================
+    // Task 3.1: Pricing Complete Tests
+    // =========================================================================
+
+    mod pricing_complete_tests {
+        use super::*;
+
+        #[test]
+        fn test_pricing_complete_creation() {
+            let update = RealTimeUpdate::pricing_complete(
+                "calc-123",
+                "equity_vanilla_option",
+                10.45,
+                None,
+            );
+
+            assert_eq!(update.update_type, "pricing_complete");
+            assert!(update.timestamp > 0);
+        }
+
+        #[test]
+        fn test_pricing_complete_contains_calculation_id() {
+            let update = RealTimeUpdate::pricing_complete(
+                "calc-123",
+                "equity_vanilla_option",
+                10.45,
+                None,
+            );
+            let json = update.to_json();
+
+            assert!(json.contains("\"calculationId\":\"calc-123\""));
+        }
+
+        #[test]
+        fn test_pricing_complete_contains_instrument_type() {
+            let update = RealTimeUpdate::pricing_complete(
+                "calc-123",
+                "equity_vanilla_option",
+                10.45,
+                None,
+            );
+            let json = update.to_json();
+
+            assert!(json.contains("\"instrumentType\":\"equity_vanilla_option\""));
+        }
+
+        #[test]
+        fn test_pricing_complete_contains_pv() {
+            let update = RealTimeUpdate::pricing_complete(
+                "calc-123",
+                "equity_vanilla_option",
+                10.45,
+                None,
+            );
+            let json = update.to_json();
+
+            assert!(json.contains("\"pv\":10.45"));
+        }
+
+        #[test]
+        fn test_pricing_complete_with_greeks() {
+            let greeks = serde_json::json!({
+                "delta": 0.55,
+                "gamma": 0.02,
+                "vega": 0.38,
+                "theta": -0.05,
+                "rho": 0.42
+            });
+
+            let update = RealTimeUpdate::pricing_complete(
+                "calc-123",
+                "equity_vanilla_option",
+                10.45,
+                Some(greeks),
+            );
+            let json = update.to_json();
+
+            assert!(json.contains("\"delta\":0.55"));
+            assert!(json.contains("\"gamma\":0.02"));
+        }
+
+        #[test]
+        fn test_pricing_complete_json_structure() {
+            let update = RealTimeUpdate::pricing_complete(
+                "calc-123",
+                "fx_option",
+                0.045,
+                None,
+            );
+            let json = update.to_json();
+
+            let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+            assert_eq!(parsed["update_type"], "pricing_complete");
+            assert!(parsed["timestamp"].is_number());
+            assert!(parsed["data"]["calculationId"].is_string());
+            assert!(parsed["data"]["instrumentType"].is_string());
+            assert!(parsed["data"]["pv"].is_number());
+        }
+
+        #[tokio::test]
+        async fn test_broadcast_pricing_complete() {
+            let state = AppState::new();
+            let mut rx = state.tx.subscribe();
+
+            broadcast_pricing_complete(
+                &state,
+                "calc-456",
+                "irs",
+                45000.0,
+                None,
+            );
+
+            let received = rx.try_recv();
+            assert!(received.is_ok());
+
+            let msg = received.unwrap();
+            assert!(msg.contains("pricing_complete"));
+            assert!(msg.contains("calc-456"));
+        }
+
+        #[tokio::test]
+        async fn test_broadcast_pricing_complete_with_greeks() {
+            let state = AppState::new();
+            let mut rx = state.tx.subscribe();
+
+            let greeks = serde_json::json!({
+                "delta": 450.0,
+                "rho": 450.0
+            });
+
+            broadcast_pricing_complete(
+                &state,
+                "calc-789",
+                "irs",
+                90000.0,
+                Some(greeks),
+            );
+
+            let received = rx.try_recv();
+            assert!(received.is_ok());
+
+            let msg = received.unwrap();
+            assert!(msg.contains("delta"));
+            assert!(msg.contains("rho"));
         }
     }
 }

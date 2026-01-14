@@ -331,13 +331,13 @@ lib.rs      → Module registration and Python module definition
 **Structure**:
 
 ```text
-workflow/     → Business workflows (eod_batch, intraday, stress_test)
+workflow/     → Business workflows (eod_batch, intraday, stress_test, irs_aad)
 config.rs     → Demo configuration
 error.rs      → Demo-specific errors
 main.rs       → TUI entry point
 ```
 
-**Supported Modes**: EOD Batch, Intraday Monitoring, Stress Testing
+**Supported Modes**: EOD Batch, Intraday Monitoring, Stress Testing, IRS AAD Demo
 
 ### Demo Inputs
 
@@ -358,10 +358,11 @@ main.rs       → TUI entry point
 **Structure**:
 
 ```text
-app.rs        → TUI application state
-screens.rs    → TUI screen definitions
-web/          → Web server (handlers, websocket)
-static/       → Web assets (HTML, CSS, JS)
+app.rs           → TUI application state
+screens.rs       → TUI screen definitions (dashboard, trades, exposure, IRS AAD)
+visualisation.rs → Benchmark visualisation (speed comparison charts, AAD vs Bump-and-Revalue)
+web/             → Web server (handlers, websocket)
+static/          → Web assets (HTML, CSS, JS)
 ```
 
 ### Demo Data & Notebooks
@@ -427,5 +428,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-11_ — Added Demo Layer (D) documentation for FrictionalBank reference implementation
+_Updated: 2026-01-14_ — Added IRS AAD workflow and visualisation module to Demo Layer
 _Document patterns, not file trees. New files following patterns should not require updates_

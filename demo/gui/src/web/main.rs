@@ -40,13 +40,21 @@ async fn main() -> anyhow::Result<()> {
     println!();
 
     // Open browser after a short delay to allow server to start
-    let browser_url = url.clone();
-    tokio::spawn(async move {
-        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-        if let Err(e) = open::that(&browser_url) {
-            eprintln!("  Failed to open browser: {}", e);
-        }
-    });
+    let open_browser = std::env::var("FB_OPEN_BROWSER")
+        .map(|value| {
+            let value = value.to_ascii_lowercase();
+            value != "0" && value != "false" && value != "no"
+        })
+        .unwrap_or(true);
+    if open_browser {
+        let browser_url = url.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+            if let Err(e) = open::that(&browser_url) {
+                eprintln!("  Failed to open browser: {}", e);
+            }
+        });
+    }
 
     web::run_server(addr).await
 }

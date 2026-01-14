@@ -29,6 +29,9 @@ frictional_bank = { path = "../frictional_bank" }
 # Pricer layer (for IRS AAD screen types)
 pricer_pricing = { path = "../../crates/pricer_pricing" }
 
+# Optimiser layer (for bootstrapping)
+pricer_optimiser = { path = "../../crates/pricer_optimiser" }
+
 # Async runtime
 tokio = { workspace = true }
 
@@ -38,6 +41,9 @@ reqwest = { version = "0.12", features = ["json"] }
 # Serialization
 serde = { workspace = true }
 serde_json = { workspace = true }
+
+# UUID for curve cache
+uuid = { version = "1.0", features = ["v4"] }
 
 # Error handling
 anyhow = { workspace = true }
