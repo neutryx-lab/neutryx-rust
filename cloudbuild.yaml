@@ -1,0 +1,42 @@
+steps:
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/frictional-bank:$COMMIT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/frictional-bank:latest'
+      - '.'
+
+  # Push to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/frictional-bank:$COMMIT_SHA'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/frictional-bank:latest'
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
+    args:
+      - 'gcloud'
+      - 'run'
+      - 'deploy'
+      - 'frictional-bank'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/frictional-bank:$COMMIT_SHA'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+
+substitutions:
+  _REGION: 'asia-northeast1'
+
+options:
+  logging: CLOUD_LOGGING_ONLY

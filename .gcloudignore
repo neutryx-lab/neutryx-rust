@@ -1,0 +1,28 @@
+# Ignore target directory (build artifacts)
+target/
+
+# Ignore debug directory
+debug/
+
+# Ignore backup files
+**/*.rs.bk
+*.pdb
+
+# Ignore mutation testing output
+**/mutants.out*/
+
+# Ignore IDE files
+.idea/
+.vscode/
+
+# Ignore git directory
+.git/
+
+# Ignore temporary files
+tmp*/
+
+# DO NOT ignore source files - we need them for the build
+# !crates/
+# !demo/
+# !Cargo.toml
+# !Cargo.lock

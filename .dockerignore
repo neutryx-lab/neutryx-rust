@@ -1,0 +1,37 @@
+# Ignore build artifacts
+target/
+debug/
+
+# Ignore IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Ignore git
+.git/
+.gitignore
+
+# Ignore backup files
+**/*.rs.bk
+*.pdb
+
+# Ignore mutation testing
+**/mutants.out*/
+
+# Ignore temporary files
+tmp*/
+tmpclaude*/
+
+# Ignore CI config (not needed for build)
+.github/
+
+# Ignore documentation (not needed for runtime)
+*.md
+!README.md
+
+# DO NOT ignore these - required for build:
+# - Cargo.toml
+# - Cargo.lock
+# - crates/
+# - demo/
