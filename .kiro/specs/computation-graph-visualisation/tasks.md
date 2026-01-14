@@ -94,7 +94,7 @@
   - _Requirements: 3.5_
 
 - [ ] 5. フロントエンド Graph タブの基盤実装
-- [ ] 5.1 Graph タブと GraphManager クラスを実装する
+- [x] 5.1 Graph タブと GraphManager クラスを実装する
   - 新規「Graph」タブを Bento Grid レイアウトに追加する
   - `navigateTo('graph')` でグラフ画面に遷移できるようにする
   - `GraphManager` クラスを作成し、グラフデータの取得と状態管理を行う
@@ -104,7 +104,7 @@
   - 既存のライト/ダークテーマに準拠する
   - _Requirements: 4.1, 3.4, 6.5_
 
-- [ ] 5.2 D3.js force-directed グラフレンダリングを実装する
+- [x] 5.2 D3.js force-directed グラフレンダリングを実装する
   - `initGraphView()` 関数を作成し、SVG 要素と D3 force simulation を初期化する
   - `renderGraph(data)` 関数を作成し、ノードとエッジを描画する
   - D3.js force-directed layout（forceSimulation, forceLink, forceManyBody, forceCenter）を設定する

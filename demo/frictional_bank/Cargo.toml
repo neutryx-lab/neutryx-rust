@@ -14,9 +14,10 @@ path = "src/main.rs"
 demo_inputs = { path = "../inputs" }
 demo_outputs = { path = "../outputs" }
 
-# Pricer layer (excluding pricer_pricing for Enzyme isolation)
+# Pricer layer (pricer_pricing included with l1l2-integration for IRS AAD Demo)
 pricer_core = { path = "../../crates/pricer_core" }
 pricer_models = { path = "../../crates/pricer_models", features = ["equity", "rates", "credit", "fx"] }
+pricer_pricing = { path = "../../crates/pricer_pricing", features = ["l1l2-integration"] }
 pricer_risk = { path = "../../crates/pricer_risk" }
 pricer_optimiser = { path = "../../crates/pricer_optimiser" }
 

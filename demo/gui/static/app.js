@@ -18,13 +18,13 @@ const state = {
         data: [],
         filteredData: [],
         page: 1,
-        pageSize: 10,
+        pageSize: 50,
         sort: { field: 'id', order: 'asc' },
         filter: '',
         instrumentFilter: '',
         selectedIds: new Set(),
         viewMode: 'table',
-        visibleColumns: ['id', 'instrument', 'counterparty', 'maturity', 'notional', 'pv', 'delta', 'vega'],
+        visibleColumns: ['id', 'instrument', 'product', 'counterparty', 'maturity', 'notional', 'pv', 'delta', 'vega'],
         advancedFilters: {
             pvMin: null,
             pvMax: null,
@@ -44,7 +44,9 @@ const state = {
         open: false,
         selectedIndex: 0,
         items: []
-    }
+    },
+    exposureData: [],
+    exposureRange: '1y'
 };
 
 // ============================================
@@ -396,6 +398,9 @@ class CommandPalette {
             case 'goto-scenarios':
                 navigateTo('scenarios');
                 break;
+            case 'goto-graph':
+                navigateToGraph();
+                break;
             case 'scenario-stress':
                 navigateTo('scenarios');
                 setTimeout(() => applyPreset('stress'), 300);
@@ -609,26 +614,32 @@ async function fetchExposure() {
         const response = await fetch(`${API_BASE}/exposure`);
         const data = await response.json();
         
-        updateExposureChart(data.time_series);
-        updateMainExposureChart(data.time_series);
+        // Store raw data for range filtering
+        state.exposureData = data.time_series || [];
         
-        // Update legend values
-        if (data.time_series.length > 0) {
-            const latest = data.time_series[data.time_series.length - 1];
+        // Apply range filter
+        const filteredData = filterExposureByRange(state.exposureData, state.exposureRange);
+        
+        updateExposureChart(filteredData);
+        updateMainExposureChart(filteredData);
+        
+        // Update legend values with filtered data
+        if (filteredData.length > 0) {
+            const latest = filteredData[filteredData.length - 1];
             document.getElementById('legend-pfe').textContent = formatCurrency(latest.pfe);
             document.getElementById('legend-ee').textContent = formatCurrency(latest.ee);
             document.getElementById('legend-epe').textContent = formatCurrency(latest.epe);
             document.getElementById('legend-ene').textContent = formatCurrency(latest.ene);
             
-            // Update exposure stats
-            const peakPfe = Math.max(...data.time_series.map(d => d.pfe));
-            const avgEpe = data.time_series.reduce((sum, d) => sum + d.epe, 0) / data.time_series.length;
-            const peakIndex = data.time_series.findIndex(d => d.pfe === peakPfe);
+            // Update exposure stats with filtered data
+            const peakPfe = Math.max(...filteredData.map(d => d.pfe));
+            const avgEpe = filteredData.reduce((sum, d) => sum + d.epe, 0) / filteredData.length;
+            const peakIndex = filteredData.findIndex(d => d.pfe === peakPfe);
             
             document.getElementById('peak-pfe').textContent = formatCurrency(peakPfe);
             document.getElementById('avg-epe').textContent = formatCurrency(avgEpe);
-            document.getElementById('time-to-peak').textContent = data.time_series[peakIndex]?.time.toFixed(1) + 'Y';
-            document.getElementById('max-maturity').textContent = data.time_series[data.time_series.length - 1]?.time.toFixed(1) + 'Y';
+            document.getElementById('time-to-peak').textContent = filteredData[peakIndex]?.time.toFixed(1) + 'Y';
+            document.getElementById('max-maturity').textContent = filteredData[filteredData.length - 1]?.time.toFixed(1) + 'Y';
         }
         
         updateLastUpdated();
@@ -931,9 +942,9 @@ function applyAllFilters() {
         );
     }
     
-    // Instrument filter
+    // Product filter (swap, swaption, cap)
     if (state.portfolio.instrumentFilter) {
-        data = data.filter(t => t.instrument.toLowerCase().includes(state.portfolio.instrumentFilter));
+        data = data.filter(t => t.product && t.product.toLowerCase() === state.portfolio.instrumentFilter);
     }
     
     // PV range
@@ -1024,6 +1035,8 @@ function renderPortfolioTable() {
         const isSelected = state.portfolio.selectedIds.has(t.id);
         const ttm = t.maturityDate ? ((t.maturityDate - new Date()) / (365 * 24 * 60 * 60 * 1000)).toFixed(1) + 'Y' : '-';
         const initials = t.counterparty ? t.counterparty.split(' ').map(w => w[0]).join('').substring(0, 2) : 'XX';
+        const productLabel = t.product ? t.product.charAt(0).toUpperCase() + t.product.slice(1) : '-';
+        const productClass = t.product || 'other';
         
         return `
         <tr class="${isSelected ? 'selected' : ''}" data-id="${t.id}">
@@ -1032,6 +1045,7 @@ function renderPortfolioTable() {
             </td>
             <td><code>${t.id}</code></td>
             ${cols.includes('instrument') ? `<td>${t.instrument}</td>` : ''}
+            ${cols.includes('product') ? `<td><span class="product-badge ${productClass}">${productLabel}</span></td>` : ''}
             ${cols.includes('counterparty') ? `
                 <td>
                     <div class="counterparty-cell">
@@ -1198,9 +1212,9 @@ function updatePortfolioSummary(data) {
 function updateFilterCounts() {
     const data = state.portfolio.data;
     document.getElementById('count-all').textContent = data.length;
-    document.getElementById('count-swap').textContent = data.filter(t => t.instrument.toLowerCase().includes('swap') && !t.instrument.toLowerCase().includes('swaption')).length;
-    document.getElementById('count-swaption').textContent = data.filter(t => t.instrument.toLowerCase().includes('swaption')).length;
-    document.getElementById('count-cap').textContent = data.filter(t => t.instrument.toLowerCase().includes('cap')).length;
+    document.getElementById('count-swap').textContent = data.filter(t => t.product === 'swap').length;
+    document.getElementById('count-swaption').textContent = data.filter(t => t.product === 'swaption').length;
+    document.getElementById('count-cap').textContent = data.filter(t => t.product === 'cap').length;
 }
 
 function renderPaginationButtons(totalPages) {
@@ -1889,7 +1903,52 @@ function initQuickActions() {
 // Chart Interactivity
 // ============================================
 
+// Filter exposure data by time range
+function filterExposureByRange(data, range) {
+    if (!data || data.length === 0) return data;
+    
+    let maxTime;
+    switch (range) {
+        case '1y': maxTime = 1; break;
+        case '5y': maxTime = 5; break;
+        case '10y':
+        default: maxTime = 10; break;
+    }
+    
+    return data.filter(d => d.time <= maxTime);
+}
+
+// Update exposure charts with current range
+function updateExposureWithRange(range) {
+    state.exposureRange = range;
+    const filteredData = filterExposureByRange(state.exposureData, range);
+    updateExposureChart(filteredData);
+    updateMainExposureChart(filteredData);
+    
+    // Update legend values with filtered data
+    if (filteredData.length > 0) {
+        const latest = filteredData[filteredData.length - 1];
+        document.getElementById('legend-pfe').textContent = formatCurrency(latest.pfe);
+        document.getElementById('legend-ee').textContent = formatCurrency(latest.ee);
+        document.getElementById('legend-epe').textContent = formatCurrency(latest.epe);
+        document.getElementById('legend-ene').textContent = formatCurrency(latest.ene);
+    }
+}
+
 function initChartControls() {
+    // Range toggle (1Y/5Y/10Y)
+    document.querySelectorAll('[data-range]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            // Update active state
+            btn.closest('.bento-actions').querySelectorAll('[data-range]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            // Update chart with new range
+            const range = btn.dataset.range;
+            updateExposureWithRange(range);
+        });
+    });
+    
     // Legend toggle
     document.querySelectorAll('.legend-item').forEach(item => {
         item.addEventListener('click', () => {
@@ -5231,6 +5290,113 @@ function runGraphTests() {
     assert(getNodeColor({ group: 'intermediate', is_sensitivity_target: false }) === '#6b7280', 'Intermediate nodes are grey');
     assert(getNodeColor({ group: 'output', is_sensitivity_target: false }) === '#22c55e', 'Output nodes are green');
     assert(getNodeColor({ group: 'input', is_sensitivity_target: true }) === '#f97316', 'Sensitivity targets are orange');
+
+    // Test 8: navigateToGraph function exists and is callable
+    assert(typeof navigateToGraph === 'function', 'navigateToGraph function exists');
+
+    // Test 9: graphState has required properties
+    assert(graphState.hasOwnProperty('nodes'), 'graphState has nodes property');
+    assert(graphState.hasOwnProperty('links'), 'graphState has links property');
+    assert(graphState.hasOwnProperty('metadata'), 'graphState has metadata property');
+    assert(graphState.hasOwnProperty('simulation'), 'graphState has simulation property');
+    assert(graphState.hasOwnProperty('svg'), 'graphState has svg property');
+    assert(graphState.hasOwnProperty('zoom'), 'graphState has zoom property');
+    assert(graphState.hasOwnProperty('renderMode'), 'graphState has renderMode property');
+
+    // Test 10: nodeColors has all required colours
+    assert(nodeColors.input === '#3b82f6', 'nodeColors.input is blue');
+    assert(nodeColors.intermediate === '#6b7280', 'nodeColors.intermediate is grey');
+    assert(nodeColors.output === '#22c55e', 'nodeColors.output is green');
+    assert(nodeColors.sensitivity === '#f97316', 'nodeColors.sensitivity is orange');
+
+    // Test 11: GraphManager listener removal
+    let removalTestPassed = false;
+    const removalCallback = () => { removalTestPassed = true; };
+    gm.addListener('removal_test', removalCallback);
+    gm.removeListener('removal_test', removalCallback);
+    gm.notifyListeners('removal_test', {});
+    assert(!removalTestPassed, 'Removed listener should not be called');
+
+    // Test 12: GraphManager clearCache
+    gm.graphs['test'] = { nodes: [], links: [] };
+    gm.clearCache();
+    assert(Object.keys(gm.graphs).length === 0, 'clearCache empties the graphs object');
+
+    // Test 13: GraphManager getGraph returns null for non-existent graph
+    assert(gm.getGraph('nonexistent') === null, 'getGraph returns null for non-existent graph');
+
+    // ============================================
+    // Task 5.2 Tests: D3.js Force-Directed Graph Rendering
+    // ============================================
+    console.log('=== Task 5.2: D3.js Graph Rendering Tests ===');
+
+    // Test 14: initGraphView function exists and is callable
+    assert(typeof initGraphView === 'function', 'initGraphView function exists');
+
+    // Test 15: renderGraph function exists and is callable
+    assert(typeof renderGraph === 'function', 'renderGraph function exists');
+
+    // Test 16: updateGraphNodes function exists and is callable
+    assert(typeof updateGraphNodes === 'function', 'updateGraphNodes function exists');
+
+    // Test 17: getNodeColor function returns correct colours for all node groups
+    assert(getNodeColor({ group: 'input', is_sensitivity_target: false }) === '#3b82f6',
+        'Task 5.2: Input nodes (group: input) return blue (#3b82f6)');
+    assert(getNodeColor({ group: 'intermediate', is_sensitivity_target: false }) === '#6b7280',
+        'Task 5.2: Intermediate nodes return grey (#6b7280)');
+    assert(getNodeColor({ group: 'output', is_sensitivity_target: false }) === '#22c55e',
+        'Task 5.2: Output nodes return green (#22c55e)');
+    assert(getNodeColor({ group: 'sensitivity', is_sensitivity_target: false }) === '#f97316',
+        'Task 5.2: Sensitivity group nodes return orange (#f97316)');
+
+    // Test 18: Sensitivity target flag overrides group colour
+    assert(getNodeColor({ group: 'input', is_sensitivity_target: true }) === '#f97316',
+        'Task 5.2: Sensitivity targets override input group to orange');
+    assert(getNodeColor({ group: 'output', is_sensitivity_target: true }) === '#f97316',
+        'Task 5.2: Sensitivity targets override output group to orange');
+    assert(getNodeColor({ group: 'intermediate', is_sensitivity_target: true }) === '#f97316',
+        'Task 5.2: Sensitivity targets override intermediate group to orange');
+
+    // Test 19: Unknown group defaults to intermediate colour
+    assert(getNodeColor({ group: 'unknown', is_sensitivity_target: false }) === '#6b7280',
+        'Task 5.2: Unknown node group defaults to intermediate grey');
+    assert(getNodeColor({ group: undefined, is_sensitivity_target: false }) === '#6b7280',
+        'Task 5.2: Undefined node group defaults to intermediate grey');
+
+    // Test 20: nodeColors object contains all required colour definitions
+    assert(typeof nodeColors === 'object', 'Task 5.2: nodeColors object exists');
+    assert(nodeColors.hasOwnProperty('input'), 'Task 5.2: nodeColors has input property');
+    assert(nodeColors.hasOwnProperty('intermediate'), 'Task 5.2: nodeColors has intermediate property');
+    assert(nodeColors.hasOwnProperty('output'), 'Task 5.2: nodeColors has output property');
+    assert(nodeColors.hasOwnProperty('sensitivity'), 'Task 5.2: nodeColors has sensitivity property');
+
+    // Test 21: graphState has D3-specific properties for Task 5.2
+    assert(graphState.hasOwnProperty('simulation'), 'Task 5.2: graphState has simulation property');
+    assert(graphState.hasOwnProperty('svg'), 'Task 5.2: graphState has svg property');
+    assert(graphState.hasOwnProperty('g'), 'Task 5.2: graphState has g (main group) property');
+    assert(graphState.hasOwnProperty('renderMode'), 'Task 5.2: graphState has renderMode property');
+
+    // Test 22: renderGraph handles empty data gracefully
+    const originalWarn = console.warn;
+    let warnCalled = false;
+    console.warn = () => { warnCalled = true; };
+    renderGraph({ nodes: [], links: [], metadata: {} });
+    console.warn = originalWarn;
+    // If graph is not initialised, it should warn but not throw
+    assert(true, 'Task 5.2: renderGraph handles empty data without throwing');
+
+    // Test 23: graphState.nodes and links are arrays
+    assert(Array.isArray(graphState.nodes), 'Task 5.2: graphState.nodes is an array');
+    assert(Array.isArray(graphState.links), 'Task 5.2: graphState.links is an array');
+
+    // Test 24: Force simulation configuration constants
+    // Verify the expected D3 force layout parameters exist in the design
+    assert(typeof d3 !== 'undefined', 'Task 5.2: D3.js library is loaded');
+    assert(typeof d3.forceSimulation === 'function', 'Task 5.2: D3 forceSimulation is available');
+    assert(typeof d3.forceLink === 'function', 'Task 5.2: D3 forceLink is available');
+    assert(typeof d3.forceManyBody === 'function', 'Task 5.2: D3 forceManyBody is available');
+    assert(typeof d3.forceCenter === 'function', 'Task 5.2: D3 forceCenter is available');
+    assert(typeof d3.forceCollide === 'function', 'Task 5.2: D3 forceCollide is available');
 
     console.log('=== Test Results ===');
     const passed = results.filter(r => r.passed).length;

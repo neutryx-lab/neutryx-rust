@@ -1308,6 +1308,7 @@ dependencies = [
  "pricer_core",
  "pricer_models",
  "pricer_optimiser",
+ "pricer_pricing",
  "pricer_risk",
  "serde",
  "tempfile",

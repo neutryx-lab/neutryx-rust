@@ -765,6 +765,7 @@
                             </div>
                             <label class="column-option"><input type="checkbox" data-col="id" checked> ID</label>
                             <label class="column-option"><input type="checkbox" data-col="instrument" checked> Instrument</label>
+                            <label class="column-option"><input type="checkbox" data-col="product" checked> Product</label>
                             <label class="column-option"><input type="checkbox" data-col="counterparty" checked> Counterparty</label>
                             <label class="column-option"><input type="checkbox" data-col="maturity" checked> Maturity</label>
                             <label class="column-option"><input type="checkbox" data-col="notional" checked> Notional</label>
@@ -873,6 +874,12 @@
                                         <i class="fas fa-sort sort-icon"></i>
                                     </div>
                                 </th>
+                                <th class="sortable" data-sort="product" data-col="product">
+                                    <div class="th-content">
+                                        <span>Product</span>
+                                        <i class="fas fa-sort sort-icon"></i>
+                                    </div>
+                                </th>
                                 <th class="sortable" data-sort="counterparty" data-col="counterparty">
                                     <div class="th-content">
                                         <span>Counterparty</span>
@@ -952,7 +959,7 @@
                             <select id="page-size">
                                 <option value="10">10</option>
                                 <option value="25">25</option>
-                                <option value="50">50</option>
+                                <option value="50" selected>50</option>
                                 <option value="100">100</option>
                             </select>
                         </div>
