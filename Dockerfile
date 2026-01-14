@@ -3,6 +3,11 @@ FROM rust:1.83-slim-bookworm as builder
 
 WORKDIR /app
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    pkg-config \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY . .
 
 RUN cargo build --release -p demo_gui --features web --bin demo-web

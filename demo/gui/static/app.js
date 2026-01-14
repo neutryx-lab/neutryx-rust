@@ -984,7 +984,9 @@ function navigateTo(viewName) {
         exposure: 'Exposure Profile',
         scenarios: 'Scenario Analysis',
         analytics: '3D Analytics',
-        graph: 'Computation Graph'
+        graph: 'Computation Graph',
+        pricer: 'Interactive Pricer',
+        'irs-bootstrap': 'IRS Bootstrap & Risk'
     };
 
     document.getElementById('page-title').textContent = titles[viewName] || viewName;
@@ -11034,6 +11036,862 @@ function runWorkflowIntegrationTests() {
     console.log(`${passed}/${total} tests passed`);
 
     return { passed, total, results };
+}
+
+// ============================================
+// IRS Bootstrap & Risk Module (Task 7.2-9.3)
+// ============================================
+
+/**
+ * IRS Bootstrap & Risk Analysis Module
+ * Implements yield curve construction and risk sensitivity analysis
+ */
+const irsBootstrap = (function() {
+    'use strict';
+
+    // ===========================================
+    // State Management
+    // ===========================================
+
+    const state = {
+        currentStep: 1,
+        curveId: null,
+        curveData: null,
+        pricingResult: null,
+        riskResult: null,
+        curveChart: null,
+        timingChart: null,
+        isLoading: false
+    };
+
+    // ===========================================
+    // Constants (Task 7.2, 7.3)
+    // ===========================================
+
+    const VALID_TENORS = ['1Y', '2Y', '3Y', '5Y', '7Y', '10Y', '15Y', '20Y', '30Y'];
+
+    // Preset data (Task 7.3)
+    const PRESETS = {
+        normal: {
+            name: 'Normal Curve',
+            rates: {
+                '1Y': 2.50, '2Y': 2.75, '3Y': 3.00, '5Y': 3.25,
+                '7Y': 3.40, '10Y': 3.50, '15Y': 3.60, '20Y': 3.65, '30Y': 3.70
+            }
+        },
+        inverted: {
+            name: 'Inverted Curve',
+            rates: {
+                '1Y': 4.50, '2Y': 4.25, '3Y': 4.00, '5Y': 3.75,
+                '7Y': 3.50, '10Y': 3.25, '15Y': 3.10, '20Y': 3.00, '30Y': 2.90
+            }
+        },
+        flat: {
+            name: 'Flat Curve',
+            rates: {
+                '1Y': 3.00, '2Y': 3.00, '3Y': 3.00, '5Y': 3.00,
+                '7Y': 3.00, '10Y': 3.00, '15Y': 3.00, '20Y': 3.00, '30Y': 3.00
+            }
+        }
+    };
+
+    // ===========================================
+    // Initialisation
+    // ===========================================
+
+    function init() {
+        if (typeof FB_Logger !== 'undefined') {
+            FB_Logger.info('IRS Bootstrap module initialising');
+        }
+
+        createParRateInputs();
+        bindEventListeners();
+        loadPreset('normal');
+    }
+
+    // ===========================================
+    // Par Rate Input Form (Task 7.2)
+    // ===========================================
+
+    function createParRateInputs() {
+        const container = document.querySelector('.par-rate-grid');
+        if (!container) return;
+
+        container.innerHTML = VALID_TENORS.map(tenor => `
+            <div class="par-rate-input">
+                <label for="par-rate-${tenor}">${tenor}</label>
+                <input type="number"
+                       id="par-rate-${tenor}"
+                       data-tenor="${tenor}"
+                       step="0.01"
+                       min="-10"
+                       max="100"
+                       placeholder="0.00"
+                       aria-label="Par rate for ${tenor}">
+            </div>
+        `).join('');
+
+        // Add validation listeners
+        container.querySelectorAll('input').forEach(input => {
+            input.addEventListener('input', validateParRateInput);
+            input.addEventListener('blur', formatParRateInput);
+        });
+    }
+
+    function validateParRateInput(e) {
+        const input = e.target;
+        const value = parseFloat(input.value);
+
+        input.classList.remove('error', 'warning');
+
+        if (isNaN(value)) {
+            return;
+        }
+
+        if (value < -10 || value > 100) {
+            input.classList.add('error');
+            showError(`${input.dataset.tenor}: Rate must be between -10% and 100%`);
+        } else if (value < 0) {
+            input.classList.add('warning');
+        }
+    }
+
+    function formatParRateInput(e) {
+        const input = e.target;
+        const value = parseFloat(input.value);
+        if (!isNaN(value)) {
+            input.value = value.toFixed(2);
+        }
+    }
+
+    function getParRates() {
+        const parRates = [];
+        VALID_TENORS.forEach(tenor => {
+            const input = document.getElementById(`par-rate-${tenor}`);
+            if (input && input.value) {
+                const rate = parseFloat(input.value);
+                if (!isNaN(rate)) {
+                    parRates.push({
+                        tenor: tenor,
+                        rate: rate / 100 // Convert from percentage to decimal
+                    });
+                }
+            }
+        });
+        return parRates;
+    }
+
+    // ===========================================
+    // Preset Data (Task 7.3)
+    // ===========================================
+
+    function loadPreset(presetName) {
+        const preset = PRESETS[presetName];
+        if (!preset) return;
+
+        // Update active button
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.preset === presetName);
+        });
+
+        // Fill in rates
+        Object.entries(preset.rates).forEach(([tenor, rate]) => {
+            const input = document.getElementById(`par-rate-${tenor}`);
+            if (input) {
+                input.value = rate.toFixed(2);
+                input.classList.remove('error', 'warning');
+            }
+        });
+
+        hideError();
+
+        if (typeof FB_Logger !== 'undefined') {
+            FB_Logger.debug(`Loaded preset: ${preset.name}`);
+        }
+    }
+
+    // ===========================================
+    // Event Listeners
+    // ===========================================
+
+    function bindEventListeners() {
+        // Preset buttons (Task 7.3)
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => loadPreset(btn.dataset.preset));
+        });
+
+        // Bootstrap button
+        const bootstrapBtn = document.getElementById('bootstrap-btn');
+        if (bootstrapBtn) {
+            bootstrapBtn.addEventListener('click', handleBootstrap);
+        }
+
+        // Price IRS button
+        const priceBtn = document.getElementById('price-irs-btn');
+        if (priceBtn) {
+            priceBtn.addEventListener('click', handlePriceIRS);
+        }
+
+        // Risk compare button
+        const riskBtn = document.getElementById('risk-compare-btn');
+        if (riskBtn) {
+            riskBtn.addEventListener('click', handleRiskCompare);
+        }
+
+        // Risk method toggle
+        document.querySelectorAll('[data-risk-method]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('[data-risk-method]').forEach(b => {
+                    b.classList.remove('active');
+                    b.setAttribute('aria-pressed', 'false');
+                });
+                btn.classList.add('active');
+                btn.setAttribute('aria-pressed', 'true');
+            });
+        });
+    }
+
+    // ===========================================
+    // Loading & Step Indicator (Task 7.5)
+    // ===========================================
+
+    function showLoading(message = 'Processing...') {
+        state.isLoading = true;
+        const overlay = document.getElementById('irs-loading');
+        const text = document.getElementById('irs-loading-text');
+        if (overlay) overlay.style.display = 'flex';
+        if (text) text.textContent = message;
+    }
+
+    function hideLoading() {
+        state.isLoading = false;
+        const overlay = document.getElementById('irs-loading');
+        if (overlay) overlay.style.display = 'none';
+    }
+
+    function updateStep(stepNumber) {
+        state.currentStep = stepNumber;
+
+        document.querySelectorAll('.step').forEach((step, index) => {
+            const stepNum = index + 1;
+            step.classList.remove('active', 'completed');
+
+            if (stepNum < stepNumber) {
+                step.classList.add('completed');
+            } else if (stepNum === stepNumber) {
+                step.classList.add('active');
+            }
+        });
+
+        // Update step connectors
+        document.querySelectorAll('.step-connector').forEach((connector, index) => {
+            connector.classList.toggle('active', index < stepNumber - 1);
+        });
+
+        // Update section states
+        const irsParamsSection = document.getElementById('irs-params-section');
+        if (irsParamsSection) {
+            irsParamsSection.classList.toggle('collapsed', stepNumber < 2);
+        }
+
+        // Update button states
+        const priceBtn = document.getElementById('price-irs-btn');
+        const riskBtn = document.getElementById('risk-compare-btn');
+        if (priceBtn) priceBtn.disabled = !state.curveId;
+        if (riskBtn) riskBtn.disabled = !state.curveId;
+
+        // Update status text
+        const statusEl = document.getElementById('irs-params-status');
+        if (statusEl) {
+            statusEl.textContent = state.curveId ? 'Ready to price' : 'Waiting for curve...';
+        }
+    }
+
+    // ===========================================
+    // Error Display
+    // ===========================================
+
+    function showError(message) {
+        const errorEl = document.getElementById('irs-error');
+        const messageEl = document.getElementById('irs-error-message');
+        if (errorEl && messageEl) {
+            messageEl.textContent = message;
+            errorEl.style.display = 'flex';
+        }
+    }
+
+    function hideError() {
+        const errorEl = document.getElementById('irs-error');
+        if (errorEl) {
+            errorEl.style.display = 'none';
+        }
+    }
+
+    // ===========================================
+    // Bootstrap Handler
+    // ===========================================
+
+    async function handleBootstrap() {
+        const parRates = getParRates();
+
+        if (parRates.length === 0) {
+            showError('Please enter at least one par rate');
+            return;
+        }
+
+        hideError();
+        showLoading('Bootstrapping curve...');
+
+        try {
+            const interpolation = document.getElementById('interpolation-method')?.value || 'log_linear';
+
+            const response = await fetch('/api/bootstrap', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    parRates: parRates,
+                    interpolation: interpolation
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Bootstrap failed');
+            }
+
+            const result = await response.json();
+            state.curveId = result.curveId;
+            state.curveData = result;
+
+            displayCurveResult(result);
+            updateStep(2);
+
+            showToast('Curve bootstrapped successfully', 'success');
+
+            if (typeof FB_Logger !== 'undefined') {
+                FB_Logger.info(`Bootstrap complete: ${result.curveId}, ${result.pillars.length} points`);
+            }
+
+        } catch (error) {
+            showError(error.message);
+            showToast('Bootstrap failed: ' + error.message, 'error');
+            if (typeof FB_Logger !== 'undefined') {
+                FB_Logger.error('Bootstrap error:', error);
+            }
+        } finally {
+            hideLoading();
+        }
+    }
+
+    // ===========================================
+    // Curve Visualisation (Task 8.1)
+    // ===========================================
+
+    function displayCurveResult(result) {
+        // Update status
+        const statusEl = document.getElementById('curve-status');
+        if (statusEl) {
+            statusEl.classList.add('success');
+            statusEl.innerHTML = '<span class="status-dot"></span><span>Constructed</span>';
+        }
+
+        // Hide placeholder
+        const placeholder = document.getElementById('curve-placeholder');
+        if (placeholder) placeholder.style.display = 'none';
+
+        // Show info
+        const infoEl = document.getElementById('curve-info');
+        if (infoEl) infoEl.style.display = 'grid';
+
+        // Update info values
+        document.getElementById('curve-id-display').textContent = result.curveId.substring(0, 8) + '...';
+        document.getElementById('tenor-count-display').textContent = result.pillars.length;
+        document.getElementById('bootstrap-time-display').textContent = result.processingTimeMs.toFixed(2) + ' ms';
+
+        // Create chart
+        createCurveChart(result);
+    }
+
+    function createCurveChart(result) {
+        const canvas = document.getElementById('curve-chart');
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d');
+
+        // Destroy existing chart
+        if (state.curveChart) {
+            state.curveChart.destroy();
+        }
+
+        // Prepare data - convert zero rates to percentage
+        const labels = result.pillars.map(p => p.toFixed(1) + 'Y');
+        const zeroRates = result.zeroRates.map(r => r * 100);
+        const discountFactors = result.discountFactors;
+
+        state.curveChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Zero Rate (%)',
+                        data: zeroRates,
+                        borderColor: '#6366f1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Discount Factor',
+                        data: discountFactors,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        fill: false,
+                        tension: 0.4,
+                        yAxisID: 'y1',
+                        hidden: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            color: getComputedStyle(document.body).getPropertyValue('--text-secondary').trim(),
+                            usePointStyle: true
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(15, 15, 25, 0.9)',
+                        titleColor: '#fff',
+                        bodyColor: '#94a3b8',
+                        borderColor: 'rgba(99, 102, 241, 0.3)',
+                        borderWidth: 1
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            color: getComputedStyle(document.body).getPropertyValue('--glass-border').trim()
+                        },
+                        ticks: {
+                            color: getComputedStyle(document.body).getPropertyValue('--text-secondary').trim()
+                        }
+                    },
+                    y: {
+                        type: 'linear',
+                        position: 'left',
+                        title: {
+                            display: true,
+                            text: 'Zero Rate (%)',
+                            color: getComputedStyle(document.body).getPropertyValue('--text-secondary').trim()
+                        },
+                        grid: {
+                            color: getComputedStyle(document.body).getPropertyValue('--glass-border').trim()
+                        },
+                        ticks: {
+                            color: getComputedStyle(document.body).getPropertyValue('--text-secondary').trim()
+                        }
+                    },
+                    y1: {
+                        type: 'linear',
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Discount Factor',
+                            color: getComputedStyle(document.body).getPropertyValue('--text-secondary').trim()
+                        },
+                        grid: {
+                            drawOnChartArea: false
+                        },
+                        ticks: {
+                            color: getComputedStyle(document.body).getPropertyValue('--text-secondary').trim()
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // ===========================================
+    // IRS Pricing (Task 8.2)
+    // ===========================================
+
+    async function handlePriceIRS() {
+        if (!state.curveId) {
+            showError('Please bootstrap a curve first');
+            return;
+        }
+
+        hideError();
+        showLoading('Pricing IRS...');
+
+        try {
+            const notional = parseFloat(document.getElementById('irs-notional-input')?.value) || 10000000;
+            const fixedRate = (parseFloat(document.getElementById('irs-fixed-rate-input')?.value) || 3.0) / 100;
+            const tenorYears = parseFloat(document.getElementById('irs-tenor-input')?.value) || 5;
+            const frequency = document.getElementById('irs-frequency-input')?.value || 'annual';
+
+            const response = await fetch('/api/price/irs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    curveId: state.curveId,
+                    notional: notional,
+                    fixedRate: fixedRate,
+                    tenorYears: tenorYears,
+                    paymentFrequency: frequency
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Pricing failed');
+            }
+
+            const result = await response.json();
+            state.pricingResult = result;
+
+            displayPricingResult(result);
+            updateStep(3);
+
+            showToast('IRS priced successfully', 'success');
+
+        } catch (error) {
+            showError(error.message);
+            showToast('Pricing failed: ' + error.message, 'error');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    function displayPricingResult(result) {
+        // Update status
+        const statusEl = document.getElementById('pricing-status');
+        if (statusEl) {
+            statusEl.classList.add('success');
+            statusEl.innerHTML = '<span class="status-dot"></span><span>Priced</span>';
+        }
+
+        // Hide placeholder, show results
+        const placeholder = document.getElementById('pricing-placeholder');
+        const results = document.getElementById('pricing-results');
+        if (placeholder) placeholder.style.display = 'none';
+        if (results) results.style.display = 'flex';
+
+        // Update values
+        const npvEl = document.getElementById('irs-npv');
+        if (npvEl) {
+            const npv = result.npv;
+            npvEl.textContent = formatCurrency(npv);
+            npvEl.classList.remove('positive', 'negative');
+            npvEl.classList.add(npv >= 0 ? 'positive' : 'negative');
+        }
+
+        document.getElementById('fixed-leg-pv').textContent = formatCurrency(result.fixedLegPv);
+        document.getElementById('float-leg-pv').textContent = formatCurrency(result.floatLegPv);
+
+        const timeEl = document.getElementById('pricing-time');
+        if (timeEl) {
+            timeEl.innerHTML = `<i class="fas fa-clock"></i><span>${result.processingTimeUs.toFixed(0)} μs</span>`;
+        }
+    }
+
+    // ===========================================
+    // Risk Analysis (Task 9.1-9.3)
+    // ===========================================
+
+    async function handleRiskCompare() {
+        if (!state.curveId) {
+            showError('Please bootstrap a curve first');
+            return;
+        }
+
+        hideError();
+        showLoading('Running risk analysis...');
+
+        try {
+            const notional = parseFloat(document.getElementById('irs-notional-input')?.value) || 10000000;
+            const fixedRate = (parseFloat(document.getElementById('irs-fixed-rate-input')?.value) || 3.0) / 100;
+            const tenorYears = parseFloat(document.getElementById('irs-tenor-input')?.value) || 5;
+            const frequency = document.getElementById('irs-frequency-input')?.value || 'annual';
+
+            const response = await fetch('/api/risk/compare', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    curveId: state.curveId,
+                    notional: notional,
+                    fixedRate: fixedRate,
+                    tenorYears: tenorYears,
+                    paymentFrequency: frequency,
+                    bumpSizeBps: 1
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Risk calculation failed');
+            }
+
+            const result = await response.json();
+            state.riskResult = result;
+
+            displayRiskResult(result);
+
+            showToast(`Risk analysis complete - ${result.speedupRatio?.toFixed(1) || 'N/A'}x AAD speedup`, 'success');
+
+        } catch (error) {
+            showError(error.message);
+            showToast('Risk analysis failed: ' + error.message, 'error');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    // Task 9.1: Delta Table Display
+    function displayRiskResult(result) {
+        // Hide placeholder
+        const placeholder = document.getElementById('risk-placeholder');
+        if (placeholder) placeholder.style.display = 'none';
+
+        // Show delta table (Task 9.1)
+        displayDeltaTable(result);
+
+        // Show timing chart (Task 9.2)
+        displayTimingChart(result);
+
+        // Check for warnings (Task 9.3)
+        checkBenchmarkWarning(result);
+    }
+
+    function displayDeltaTable(result) {
+        const container = document.getElementById('delta-table-container');
+        const tbody = document.getElementById('delta-table-body');
+        if (!container || !tbody) return;
+
+        container.style.display = 'block';
+
+        const bumpDeltas = result.bump?.deltas || [];
+        const aadDeltas = result.aad?.deltas || [];
+
+        // Create map for easier lookup
+        const aadMap = new Map(aadDeltas.map(d => [d.tenor, d]));
+
+        tbody.innerHTML = bumpDeltas.map(bumpDelta => {
+            const aadDelta = aadMap.get(bumpDelta.tenor);
+            const aadValue = aadDelta ? aadDelta.delta : null;
+            const diff = aadValue !== null ? Math.abs(bumpDelta.delta - aadValue) : null;
+            const diffPct = diff !== null && bumpDelta.delta !== 0
+                ? (diff / Math.abs(bumpDelta.delta) * 100)
+                : null;
+
+            const diffClass = diffPct !== null && diffPct > 1 ? 'warning' : 'success';
+
+            return `
+                <tr>
+                    <td>${bumpDelta.tenor}</td>
+                    <td>${formatNumber(bumpDelta.delta, 2)}</td>
+                    <td>${aadValue !== null ? formatNumber(aadValue, 2) : '--'}</td>
+                    <td class="delta-diff ${diffClass}">
+                        ${diffPct !== null ? diffPct.toFixed(4) + '%' : '--'}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        // Update DV01 row
+        document.getElementById('bump-dv01').textContent = formatNumber(result.bump?.dv01 || 0, 2);
+        document.getElementById('aad-dv01').textContent = formatNumber(result.aad?.dv01 || 0, 2);
+
+        const dv01Diff = result.bump && result.aad
+            ? Math.abs(result.bump.dv01 - result.aad.dv01)
+            : null;
+        document.getElementById('dv01-diff').textContent = dv01Diff !== null
+            ? formatNumber(dv01Diff, 4)
+            : '--';
+    }
+
+    // Task 9.2: Timing Comparison Chart
+    function displayTimingChart(result) {
+        const container = document.getElementById('timing-chart-container');
+        const canvas = document.getElementById('timing-chart');
+        if (!container || !canvas) return;
+
+        container.style.display = 'block';
+
+        const ctx = canvas.getContext('2d');
+
+        // Destroy existing chart
+        if (state.timingChart) {
+            state.timingChart.destroy();
+        }
+
+        const bumpTime = result.comparison?.bumpTotalMs || result.bump?.timing?.totalMs || 0;
+        const aadTime = result.comparison?.aadTotalMs || result.aad?.timing?.totalMs || 0;
+
+        state.timingChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Bump-and-Revalue', 'AAD'],
+                datasets: [{
+                    label: 'Time (ms)',
+                    data: [bumpTime, aadTime],
+                    backgroundColor: ['#ef4444', '#10b981'],
+                    borderColor: ['#ef4444', '#10b981'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `${context.parsed.x.toFixed(2)} ms`
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Time (ms)',
+                            color: getComputedStyle(document.body).getPropertyValue('--text-secondary').trim()
+                        },
+                        grid: {
+                            color: getComputedStyle(document.body).getPropertyValue('--glass-border').trim()
+                        },
+                        ticks: {
+                            color: getComputedStyle(document.body).getPropertyValue('--text-secondary').trim()
+                        }
+                    },
+                    y: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            color: getComputedStyle(document.body).getPropertyValue('--text-secondary').trim()
+                        }
+                    }
+                }
+            }
+        });
+
+        // Update speedup display
+        const speedupEl = document.getElementById('speedup-ratio');
+        if (speedupEl) {
+            const speedup = result.speedupRatio || (aadTime > 0 ? bumpTime / aadTime : 0);
+            speedupEl.textContent = speedup > 0 ? speedup.toFixed(1) + 'x' : '--';
+        }
+    }
+
+    // Task 9.3: Benchmark Warning
+    function checkBenchmarkWarning(result) {
+        const warningEl = document.getElementById('benchmark-warning');
+        const warningText = document.getElementById('benchmark-warning-text');
+        if (!warningEl) return;
+
+        const bumpDv01 = result.bump?.dv01 || 0;
+        const aadDv01 = result.aad?.dv01 || 0;
+
+        if (bumpDv01 === 0 || aadDv01 === 0) {
+            warningEl.style.display = 'none';
+            return;
+        }
+
+        const diffPct = Math.abs(bumpDv01 - aadDv01) / Math.abs(bumpDv01) * 100;
+        const threshold = 1.0; // 1% threshold
+
+        if (diffPct > threshold) {
+            warningEl.style.display = 'flex';
+            warningText.textContent = `DV01 difference (${diffPct.toFixed(2)}%) exceeds ${threshold}% threshold`;
+        } else {
+            warningEl.style.display = 'none';
+        }
+    }
+
+    // ===========================================
+    // Utility Functions
+    // ===========================================
+
+    function formatCurrency(value) {
+        const absValue = Math.abs(value);
+        const sign = value < 0 ? '-' : '';
+
+        if (absValue >= 1e9) {
+            return sign + '$' + (absValue / 1e9).toFixed(2) + 'B';
+        } else if (absValue >= 1e6) {
+            return sign + '$' + (absValue / 1e6).toFixed(2) + 'M';
+        } else if (absValue >= 1e3) {
+            return sign + '$' + (absValue / 1e3).toFixed(2) + 'K';
+        } else {
+            return sign + '$' + absValue.toFixed(2);
+        }
+    }
+
+    function formatNumber(value, decimals = 2) {
+        return value.toLocaleString('en-US', {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals
+        });
+    }
+
+    // ===========================================
+    // Public API
+    // ===========================================
+
+    return {
+        init,
+        loadPreset,
+        getState: () => ({ ...state }),
+        reset: () => {
+            state.curveId = null;
+            state.curveData = null;
+            state.pricingResult = null;
+            state.riskResult = null;
+            updateStep(1);
+        }
+    };
+})();
+
+// Initialise IRS Bootstrap module when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    // Only initialise if the view exists
+    if (document.getElementById('irs-bootstrap-view')) {
+        irsBootstrap.init();
+    }
+});
+
+// ===========================================
+// IRS Bootstrap View Navigation Handler
+// ===========================================
+
+// Add to navigateTo function for IRS Bootstrap view
+const originalNavigateTo = typeof navigateTo === 'function' ? navigateTo : null;
+if (originalNavigateTo) {
+    window.navigateTo = function(viewName) {
+        originalNavigateTo(viewName);
+        if (viewName === 'irs-bootstrap' && typeof irsBootstrap !== 'undefined') {
+            // Reinitialise charts if needed
+            if (irsBootstrap.getState().curveData && !irsBootstrap.getState().curveChart) {
+                // Chart needs to be recreated after view switch
+            }
+        }
+    };
 }
 
 // ============================================

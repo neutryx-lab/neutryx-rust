@@ -24,7 +24,9 @@ use super::pricer_types::{
     TimingComparison, TimingStats, parse_tenor_to_years, validate_par_rates,
     validate_irs_pricing_request, validate_risk_request,
 };
-use super::websocket::broadcast_pricing_complete;
+use super::websocket::{
+    broadcast_bootstrap_complete, broadcast_pricing_complete, broadcast_risk_complete,
+};
 use super::AppState;
 
 /// Health check response
@@ -1492,9 +1494,14 @@ pub async fn bootstrap_curve(
 
     // Calculate processing time
     let processing_time_ms = start.elapsed().as_secs_f64() * 1000.0;
+    let tenor_count = result.pillars.len();
+    let curve_id_str = curve_id.to_string();
+
+    // Task 6.2: Broadcast bootstrap complete event
+    broadcast_bootstrap_complete(&state, &curve_id_str, tenor_count, processing_time_ms);
 
     Ok(Json(BootstrapResponse {
-        curve_id: curve_id.to_string(),
+        curve_id: curve_id_str,
         pillars: result.pillars,
         discount_factors: result.discount_factors,
         zero_rates,
@@ -1958,6 +1965,9 @@ pub async fn risk_bump(
     // Calculate timing statistics
     let timing = calculate_timing_stats(&timing_samples, total_start.elapsed().as_micros() as u64);
 
+    // Task 6.2: Broadcast risk complete event
+    broadcast_risk_complete(&state, &request.curve_id, "bump", dv01, None);
+
     Ok(Json(RiskBumpResponse {
         deltas,
         dv01,
@@ -2100,6 +2110,9 @@ pub async fn risk_aad(
 
     // Calculate timing statistics
     let timing = calculate_timing_stats(&timing_samples, total_start.elapsed().as_micros() as u64);
+
+    // Task 6.2: Broadcast risk complete event
+    broadcast_risk_complete(&state, &request.curve_id, "aad", dv01, None);
 
     Ok(Json(RiskAadResponse {
         deltas,
@@ -2405,6 +2418,16 @@ pub async fn risk_compare(
         aad_total_ms,
         speedup_ratio,
     };
+
+    // Task 6.2: Broadcast risk complete event
+    let dv01_for_broadcast = aad_result.as_ref().map(|r| r.dv01).unwrap_or(bump_result.dv01);
+    broadcast_risk_complete(
+        &state,
+        &request.curve_id,
+        "compare",
+        dv01_for_broadcast,
+        speedup_ratio,
+    );
 
     Ok(Json(RiskCompareResponse {
         bump: bump_result,
@@ -4030,6 +4053,270 @@ mod tests {
                 aad_dv01,
                 bump_dv01
             );
+        }
+    }
+
+    // =========================================================================
+    // Task 10.1: Integration Tests - Complete Workflow
+    // =========================================================================
+
+    mod integration_tests {
+        use super::*;
+
+        /// Helper to create a standard par rate set for testing
+        fn create_standard_par_rates() -> Vec<ParRateInput> {
+            vec![
+                ParRateInput { tenor: "1Y".to_string(), rate: 0.025 },
+                ParRateInput { tenor: "2Y".to_string(), rate: 0.0275 },
+                ParRateInput { tenor: "3Y".to_string(), rate: 0.03 },
+                ParRateInput { tenor: "5Y".to_string(), rate: 0.0325 },
+                ParRateInput { tenor: "7Y".to_string(), rate: 0.034 },
+                ParRateInput { tenor: "10Y".to_string(), rate: 0.035 },
+            ]
+        }
+
+        #[tokio::test]
+        async fn test_bootstrap_then_pricing_flow() {
+            // Task 10.1: Bootstrap → Pricing flow test
+            let state = Arc::new(AppState::new());
+
+            // Step 1: Bootstrap curve
+            let bootstrap_request = BootstrapRequest {
+                par_rates: create_standard_par_rates(),
+                interpolation: crate::web::pricer_types::InterpolationMethod::LogLinear,
+            };
+
+            let bootstrap_result = bootstrap_curve(State(state.clone()), Json(bootstrap_request)).await;
+            assert!(bootstrap_result.is_ok(), "Bootstrap should succeed");
+
+            let curve = bootstrap_result.unwrap();
+            assert!(!curve.curve_id.is_empty(), "Curve ID should be assigned");
+            assert_eq!(curve.pillars.len(), 6, "Should have 6 tenor points");
+
+            // Step 2: Price IRS using the bootstrapped curve
+            let pricing_request = IrsPricingRequest {
+                curve_id: curve.curve_id.clone(),
+                notional: 10_000_000.0,
+                fixed_rate: 0.03,
+                tenor_years: 5.0,
+                payment_frequency: PaymentFrequency::Annual,
+            };
+
+            let pricing_result = price_irs(State(state.clone()), Json(pricing_request)).await;
+            assert!(pricing_result.is_ok(), "Pricing should succeed");
+
+            let pricing = pricing_result.unwrap();
+            // NPV should be a valid finite number
+            assert!(pricing.npv.is_finite(), "NPV should be finite");
+            assert!(pricing.fixed_leg_pv > 0.0, "Fixed leg PV should be positive");
+            assert!(pricing.float_leg_pv > 0.0, "Float leg PV should be positive");
+        }
+
+        #[tokio::test]
+        async fn test_bootstrap_then_risk_compare_flow() {
+            // Task 10.1: Bootstrap → Risk Compare flow test
+            let state = Arc::new(AppState::new());
+
+            // Step 1: Bootstrap curve
+            let bootstrap_request = BootstrapRequest {
+                par_rates: create_standard_par_rates(),
+                interpolation: crate::web::pricer_types::InterpolationMethod::LogLinear,
+            };
+
+            let bootstrap_result = bootstrap_curve(State(state.clone()), Json(bootstrap_request)).await;
+            assert!(bootstrap_result.is_ok(), "Bootstrap should succeed");
+            let curve = bootstrap_result.unwrap();
+
+            // Step 2: Run risk comparison
+            let risk_request = RiskRequest {
+                curve_id: curve.curve_id.clone(),
+                notional: 10_000_000.0,
+                fixed_rate: 0.03,
+                tenor_years: 5.0,
+                payment_frequency: PaymentFrequency::Annual,
+                bump_size_bps: 1.0,
+            };
+
+            let risk_result = risk_compare(State(state.clone()), Json(risk_request)).await;
+            assert!(risk_result.is_ok(), "Risk compare should succeed");
+
+            let risk = risk_result.unwrap();
+
+            // Verify bump results
+            assert_eq!(risk.bump.deltas.len(), 6, "Should have delta for each tenor");
+            assert!(risk.bump.dv01 != 0.0, "DV01 should be non-zero");
+
+            // Verify AAD results (simulated in demo mode)
+            assert!(risk.aad.is_some(), "AAD result should exist");
+            let aad = risk.aad.as_ref().unwrap();
+            assert_eq!(aad.deltas.len(), 6, "AAD should have same number of deltas");
+
+            // Verify speedup ratio
+            assert!(risk.speedup_ratio.is_some(), "Speedup ratio should be calculated");
+            let speedup = risk.speedup_ratio.unwrap();
+            assert!(speedup > 1.0, "AAD should be faster than Bump (simulated 10x)");
+        }
+
+        #[tokio::test]
+        async fn test_invalid_curve_id_returns_404() {
+            // Task 10.1: Error handling test
+            let state = Arc::new(AppState::new());
+
+            let pricing_request = IrsPricingRequest {
+                curve_id: "00000000-0000-0000-0000-000000000000".to_string(),
+                notional: 10_000_000.0,
+                fixed_rate: 0.03,
+                tenor_years: 5.0,
+                payment_frequency: PaymentFrequency::Annual,
+            };
+
+            let result = price_irs(State(state), Json(pricing_request)).await;
+            assert!(result.is_err(), "Should return error for non-existent curve");
+
+            let (status, _) = result.unwrap_err();
+            assert_eq!(status, StatusCode::NOT_FOUND);
+        }
+
+        #[tokio::test]
+        async fn test_empty_par_rates_returns_400() {
+            // Task 10.1: Validation error test
+            let state = Arc::new(AppState::new());
+
+            let bootstrap_request = BootstrapRequest {
+                par_rates: vec![],
+                interpolation: crate::web::pricer_types::InterpolationMethod::LogLinear,
+            };
+
+            let result = bootstrap_curve(State(state), Json(bootstrap_request)).await;
+            assert!(result.is_err(), "Should return error for empty par rates");
+
+            let (status, _) = result.unwrap_err();
+            assert_eq!(status, StatusCode::BAD_REQUEST);
+        }
+
+        #[tokio::test]
+        async fn test_negative_notional_returns_400() {
+            // Task 10.1: Validation error test
+            let state = Arc::new(AppState::new());
+
+            // First bootstrap a valid curve
+            let bootstrap_request = BootstrapRequest {
+                par_rates: create_standard_par_rates(),
+                interpolation: crate::web::pricer_types::InterpolationMethod::LogLinear,
+            };
+            let curve = bootstrap_curve(State(state.clone()), Json(bootstrap_request))
+                .await
+                .unwrap();
+
+            // Try to price with negative notional
+            let pricing_request = IrsPricingRequest {
+                curve_id: curve.curve_id.clone(),
+                notional: -10_000_000.0,
+                fixed_rate: 0.03,
+                tenor_years: 5.0,
+                payment_frequency: PaymentFrequency::Annual,
+            };
+
+            let result = price_irs(State(state), Json(pricing_request)).await;
+            assert!(result.is_err(), "Should return error for negative notional");
+
+            let (status, _) = result.unwrap_err();
+            assert_eq!(status, StatusCode::BAD_REQUEST);
+        }
+
+        #[tokio::test]
+        async fn test_full_workflow_bootstrap_price_risk() {
+            // Task 10.1: Complete E2E workflow test
+            let state = Arc::new(AppState::new());
+
+            // Step 1: Bootstrap
+            let par_rates = vec![
+                ParRateInput { tenor: "1Y".to_string(), rate: 0.025 },
+                ParRateInput { tenor: "5Y".to_string(), rate: 0.035 },
+                ParRateInput { tenor: "10Y".to_string(), rate: 0.04 },
+            ];
+
+            let bootstrap_request = BootstrapRequest {
+                par_rates,
+                interpolation: crate::web::pricer_types::InterpolationMethod::LogLinear,
+            };
+
+            let curve = bootstrap_curve(State(state.clone()), Json(bootstrap_request))
+                .await
+                .expect("Bootstrap should succeed");
+
+            // Step 2: Price IRS
+            let pricing_request = IrsPricingRequest {
+                curve_id: curve.curve_id.clone(),
+                notional: 50_000_000.0,
+                fixed_rate: 0.035,
+                tenor_years: 5.0,
+                payment_frequency: PaymentFrequency::SemiAnnual,
+            };
+
+            let pricing = price_irs(State(state.clone()), Json(pricing_request))
+                .await
+                .expect("Pricing should succeed");
+
+            // Step 3: Calculate Risk
+            let risk_request = RiskRequest {
+                curve_id: curve.curve_id.clone(),
+                notional: 50_000_000.0,
+                fixed_rate: 0.035,
+                tenor_years: 5.0,
+                payment_frequency: PaymentFrequency::SemiAnnual,
+                bump_size_bps: 1.0,
+            };
+
+            let risk = risk_compare(State(state.clone()), Json(risk_request))
+                .await
+                .expect("Risk compare should succeed");
+
+            // Verify complete workflow results
+            assert!(curve.pillars.len() == 3, "Curve should have 3 points");
+            assert!(curve.processing_time_ms > 0.0, "Processing time should be recorded");
+
+            assert!(pricing.processing_time_us > 0.0, "Pricing time should be recorded");
+
+            assert!(risk.bump.timing.total_ms > 0.0, "Bump timing should be recorded");
+            assert!(risk.speedup_ratio.unwrap_or(0.0) > 1.0, "AAD should show speedup");
+
+            // Log workflow completion
+            println!("Full workflow completed:");
+            println!("  - Bootstrap: {} points in {:.2}ms", curve.pillars.len(), curve.processing_time_ms);
+            println!("  - Pricing: NPV = {:.2}", pricing.npv);
+            println!("  - Risk: DV01 = {:.2}, Speedup = {:.1}x",
+                     risk.bump.dv01, risk.speedup_ratio.unwrap_or(0.0));
+        }
+
+        #[tokio::test]
+        async fn test_curve_cache_persistence() {
+            // Task 10.1: Verify curve is cached and reusable
+            let state = Arc::new(AppState::new());
+
+            // Bootstrap curve
+            let bootstrap_request = BootstrapRequest {
+                par_rates: create_standard_par_rates(),
+                interpolation: crate::web::pricer_types::InterpolationMethod::LogLinear,
+            };
+
+            let curve = bootstrap_curve(State(state.clone()), Json(bootstrap_request))
+                .await
+                .expect("Bootstrap should succeed");
+
+            // Price multiple times with same curve
+            for i in 0..3 {
+                let pricing_request = IrsPricingRequest {
+                    curve_id: curve.curve_id.clone(),
+                    notional: 10_000_000.0 * (i as f64 + 1.0),
+                    fixed_rate: 0.03,
+                    tenor_years: 5.0,
+                    payment_frequency: PaymentFrequency::Annual,
+                };
+
+                let result = price_irs(State(state.clone()), Json(pricing_request)).await;
+                assert!(result.is_ok(), "Pricing {} should succeed with cached curve", i);
+            }
         }
     }
 }
