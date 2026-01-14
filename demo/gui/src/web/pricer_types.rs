@@ -700,11 +700,7 @@ impl IrsBootstrapErrorResponse {
         Self {
             error: "CalculationError".to_string(),
             message: format!("Bootstrap failed to converge at tenor {}", tenor),
-            details: Some(
-                ErrorDetails::new()
-                    .tenor(tenor)
-                    .suggestion(suggestion),
-            ),
+            details: Some(ErrorDetails::new().tenor(tenor).suggestion(suggestion)),
         }
     }
 
@@ -1536,10 +1532,7 @@ mod tests {
             assert_eq!(request.instrument_type, InstrumentType::FxOption);
             assert!(!request.compute_greeks);
             assert!(request.market_data.is_some());
-            assert_eq!(
-                request.market_data.unwrap().source,
-                MarketDataSource::Demo
-            );
+            assert_eq!(request.market_data.unwrap().source, MarketDataSource::Demo);
         }
 
         #[test]
@@ -2730,7 +2723,10 @@ mod tests {
             assert!(!details.is_empty());
             assert_eq!(details.field, Some("parRates[5Y].rate".to_string()));
             assert_eq!(details.tenor, Some("5Y".to_string()));
-            assert_eq!(details.suggestion, Some("Ensure rate is positive".to_string()));
+            assert_eq!(
+                details.suggestion,
+                Some("Ensure rate is positive".to_string())
+            );
         }
 
         #[test]

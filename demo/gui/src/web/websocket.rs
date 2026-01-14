@@ -91,7 +91,10 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                         {
                             let latency_ms = (now - client_ts).max(0) as u64;
                             // Record latency in microseconds
-                            state_clone.metrics.record_ws_latency(latency_ms * 1000).await;
+                            state_clone
+                                .metrics
+                                .record_ws_latency(latency_ms * 1000)
+                                .await;
                         }
 
                         let pong = serde_json::json!({
@@ -1287,12 +1290,8 @@ mod tests {
 
         #[test]
         fn test_pricing_complete_creation() {
-            let update = RealTimeUpdate::pricing_complete(
-                "calc-123",
-                "equity_vanilla_option",
-                10.45,
-                None,
-            );
+            let update =
+                RealTimeUpdate::pricing_complete("calc-123", "equity_vanilla_option", 10.45, None);
 
             assert_eq!(update.update_type, "pricing_complete");
             assert!(update.timestamp > 0);
@@ -1300,12 +1299,8 @@ mod tests {
 
         #[test]
         fn test_pricing_complete_contains_calculation_id() {
-            let update = RealTimeUpdate::pricing_complete(
-                "calc-123",
-                "equity_vanilla_option",
-                10.45,
-                None,
-            );
+            let update =
+                RealTimeUpdate::pricing_complete("calc-123", "equity_vanilla_option", 10.45, None);
             let json = update.to_json();
 
             assert!(json.contains("\"calculationId\":\"calc-123\""));
@@ -1313,12 +1308,8 @@ mod tests {
 
         #[test]
         fn test_pricing_complete_contains_instrument_type() {
-            let update = RealTimeUpdate::pricing_complete(
-                "calc-123",
-                "equity_vanilla_option",
-                10.45,
-                None,
-            );
+            let update =
+                RealTimeUpdate::pricing_complete("calc-123", "equity_vanilla_option", 10.45, None);
             let json = update.to_json();
 
             assert!(json.contains("\"instrumentType\":\"equity_vanilla_option\""));
@@ -1326,12 +1317,8 @@ mod tests {
 
         #[test]
         fn test_pricing_complete_contains_pv() {
-            let update = RealTimeUpdate::pricing_complete(
-                "calc-123",
-                "equity_vanilla_option",
-                10.45,
-                None,
-            );
+            let update =
+                RealTimeUpdate::pricing_complete("calc-123", "equity_vanilla_option", 10.45, None);
             let json = update.to_json();
 
             assert!(json.contains("\"pv\":10.45"));
@@ -1361,12 +1348,7 @@ mod tests {
 
         #[test]
         fn test_pricing_complete_json_structure() {
-            let update = RealTimeUpdate::pricing_complete(
-                "calc-123",
-                "fx_option",
-                0.045,
-                None,
-            );
+            let update = RealTimeUpdate::pricing_complete("calc-123", "fx_option", 0.045, None);
             let json = update.to_json();
 
             let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
@@ -1382,13 +1364,7 @@ mod tests {
             let state = AppState::new();
             let mut rx = state.tx.subscribe();
 
-            broadcast_pricing_complete(
-                &state,
-                "calc-456",
-                "irs",
-                45000.0,
-                None,
-            );
+            broadcast_pricing_complete(&state, "calc-456", "irs", 45000.0, None);
 
             let received = rx.try_recv();
             assert!(received.is_ok());
@@ -1408,13 +1384,7 @@ mod tests {
                 "rho": 450.0
             });
 
-            broadcast_pricing_complete(
-                &state,
-                "calc-789",
-                "irs",
-                90000.0,
-                Some(greeks),
-            );
+            broadcast_pricing_complete(&state, "calc-789", "irs", 90000.0, Some(greeks));
 
             let received = rx.try_recv();
             assert!(received.is_ok());

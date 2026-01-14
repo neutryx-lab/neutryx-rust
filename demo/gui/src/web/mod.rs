@@ -152,7 +152,8 @@ impl PerformanceMetrics {
 
     /// Get current WebSocket connection count
     pub fn ws_connection_count(&self) -> u32 {
-        self.ws_connections.load(std::sync::atomic::Ordering::Relaxed)
+        self.ws_connections
+            .load(std::sync::atomic::Ordering::Relaxed)
     }
 
     /// Increment WebSocket connection count
@@ -336,13 +337,10 @@ fn build_csp_header() -> SetResponseHeaderLayer<HeaderValue> {
         connect-src 'self' ws: wss:;";
 
     let csp_value = std::env::var("FB_CSP").unwrap_or_else(|_| DEFAULT_CSP.to_string());
-    let header_value = HeaderValue::from_str(&csp_value)
-        .unwrap_or_else(|_| HeaderValue::from_static(DEFAULT_CSP));
+    let header_value =
+        HeaderValue::from_str(&csp_value).unwrap_or_else(|_| HeaderValue::from_static(DEFAULT_CSP));
 
-    SetResponseHeaderLayer::overriding(
-        axum::http::header::CONTENT_SECURITY_POLICY,
-        header_value,
-    )
+    SetResponseHeaderLayer::overriding(axum::http::header::CONTENT_SECURITY_POLICY, header_value)
 }
 
 pub fn build_router(state: Arc<AppState>) -> Router {
@@ -380,8 +378,8 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/ws", get(websocket::ws_handler));
 
     // Static file serving for the dashboard
-    let static_files = ServeDir::new("demo/gui/static")
-        .not_found_service(handlers::serve_index_with_config());
+    let static_files =
+        ServeDir::new("demo/gui/static").not_found_service(handlers::serve_index_with_config());
 
     // CSP header: default policy for local static assets.
     // - Script sources limited to self (vendor assets).

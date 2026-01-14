@@ -16,13 +16,13 @@ use std::time::Instant;
 use uuid::Uuid;
 
 use super::pricer_types::{
+    parse_tenor_to_years, validate_irs_pricing_request, validate_par_rates, validate_risk_request,
     BootstrapRequest, BootstrapResponse, CachedCurve, DeltaResult, DemoMarketData,
     EquityOptionParams, FxOptionParams, GreeksData, InstrumentParams, InstrumentType,
     IrsBootstrapErrorResponse, IrsParams, IrsPricingRequest, IrsPricingResponse, OptionType,
     ParRateInput, PaymentFrequency, PricingErrorResponse, PricingRequest, PricingResponse,
     RiskAadResponse, RiskBumpResponse, RiskCompareResponse, RiskMethodResult, RiskRequest,
-    TimingComparison, TimingStats, parse_tenor_to_years, validate_par_rates,
-    validate_irs_pricing_request, validate_risk_request,
+    TimingComparison, TimingStats,
 };
 use super::websocket::{
     broadcast_bootstrap_complete, broadcast_pricing_complete, broadcast_risk_complete,
@@ -441,7 +441,11 @@ fn black_scholes_greeks(
     if time <= 0.0 {
         return GreeksData {
             delta: if is_call {
-                if spot > strike { 1.0 } else { 0.0 }
+                if spot > strike {
+                    1.0
+                } else {
+                    0.0
+                }
             } else if spot < strike {
                 -1.0
             } else {
@@ -460,7 +464,11 @@ fn black_scholes_greeks(
     let discount = (-rate * time).exp();
     let pdf_d1 = norm_pdf(d1);
 
-    let delta = if is_call { norm_cdf(d1) } else { norm_cdf(d1) - 1.0 };
+    let delta = if is_call {
+        norm_cdf(d1)
+    } else {
+        norm_cdf(d1) - 1.0
+    };
     let gamma = pdf_d1 / (spot * vol * sqrt_t);
     let vega = spot * pdf_d1 * sqrt_t / 100.0;
     let theta_part1 = -(spot * pdf_d1 * vol) / (2.0 * sqrt_t);
@@ -475,7 +483,13 @@ fn black_scholes_greeks(
         -strike * time * discount * norm_cdf(-d2) / 100.0
     };
 
-    GreeksData { delta, gamma, vega, theta, rho }
+    GreeksData {
+        delta,
+        gamma,
+        vega,
+        theta,
+        rho,
+    }
 }
 
 /// Garman-Kohlhagen pricing for FX options.
@@ -497,7 +511,8 @@ fn garman_kohlhagen_price(
     }
 
     let sqrt_t = time.sqrt();
-    let d1 = ((spot / strike).ln() + (dom_rate - for_rate + 0.5 * vol * vol) * time) / (vol * sqrt_t);
+    let d1 =
+        ((spot / strike).ln() + (dom_rate - for_rate + 0.5 * vol * vol) * time) / (vol * sqrt_t);
     let d2 = d1 - vol * sqrt_t;
     let dom_discount = (-dom_rate * time).exp();
     let for_discount = (-for_rate * time).exp();
@@ -522,7 +537,11 @@ fn garman_kohlhagen_greeks(
     if time <= 0.0 {
         return GreeksData {
             delta: if is_call {
-                if spot > strike { 1.0 } else { 0.0 }
+                if spot > strike {
+                    1.0
+                } else {
+                    0.0
+                }
             } else if spot < strike {
                 -1.0
             } else {
@@ -536,7 +555,8 @@ fn garman_kohlhagen_greeks(
     }
 
     let sqrt_t = time.sqrt();
-    let d1 = ((spot / strike).ln() + (dom_rate - for_rate + 0.5 * vol * vol) * time) / (vol * sqrt_t);
+    let d1 =
+        ((spot / strike).ln() + (dom_rate - for_rate + 0.5 * vol * vol) * time) / (vol * sqrt_t);
     let d2 = d1 - vol * sqrt_t;
     let dom_discount = (-dom_rate * time).exp();
     let for_discount = (-for_rate * time).exp();
@@ -552,10 +572,12 @@ fn garman_kohlhagen_greeks(
     let theta_part1 = -(spot * for_discount * pdf_d1 * vol) / (2.0 * sqrt_t);
     let theta = if is_call {
         (theta_part1 + for_rate * spot * for_discount * norm_cdf(d1)
-            - dom_rate * strike * dom_discount * norm_cdf(d2)) / 365.0
+            - dom_rate * strike * dom_discount * norm_cdf(d2))
+            / 365.0
     } else {
         (theta_part1 - for_rate * spot * for_discount * norm_cdf(-d1)
-            + dom_rate * strike * dom_discount * norm_cdf(-d2)) / 365.0
+            + dom_rate * strike * dom_discount * norm_cdf(-d2))
+            / 365.0
     };
     let rho = if is_call {
         strike * time * dom_discount * norm_cdf(d2) / 100.0
@@ -563,7 +585,13 @@ fn garman_kohlhagen_greeks(
         -strike * time * dom_discount * norm_cdf(-d2) / 100.0
     };
 
-    GreeksData { delta, gamma, vega, theta, rho }
+    GreeksData {
+        delta,
+        gamma,
+        vega,
+        theta,
+        rho,
+    }
 }
 
 /// Simple IRS pricing (demo approximation).
@@ -587,19 +615,34 @@ fn irs_greeks(notional: f64, tenor: f64) -> GreeksData {
 /// Validate equity option parameters.
 fn validate_equity_params(params: &EquityOptionParams) -> Result<(), (String, String)> {
     if params.spot <= 0.0 {
-        return Err(("spot".to_string(), "Spot price must be positive".to_string()));
+        return Err((
+            "spot".to_string(),
+            "Spot price must be positive".to_string(),
+        ));
     }
     if params.strike <= 0.0 {
-        return Err(("strike".to_string(), "Strike price must be positive".to_string()));
+        return Err((
+            "strike".to_string(),
+            "Strike price must be positive".to_string(),
+        ));
     }
     if params.expiry_years < 0.0 {
-        return Err(("expiryYears".to_string(), "Expiry must be non-negative".to_string()));
+        return Err((
+            "expiryYears".to_string(),
+            "Expiry must be non-negative".to_string(),
+        ));
     }
     if params.volatility <= 0.0 {
-        return Err(("volatility".to_string(), "Volatility must be positive".to_string()));
+        return Err((
+            "volatility".to_string(),
+            "Volatility must be positive".to_string(),
+        ));
     }
     if params.volatility > 5.0 {
-        return Err(("volatility".to_string(), "Volatility seems too high (>500%)".to_string()));
+        return Err((
+            "volatility".to_string(),
+            "Volatility seems too high (>500%)".to_string(),
+        ));
     }
     Ok(())
 }
@@ -610,16 +653,28 @@ fn validate_fx_params(params: &FxOptionParams) -> Result<(), (String, String)> {
         return Err(("spot".to_string(), "Spot rate must be positive".to_string()));
     }
     if params.strike <= 0.0 {
-        return Err(("strike".to_string(), "Strike rate must be positive".to_string()));
+        return Err((
+            "strike".to_string(),
+            "Strike rate must be positive".to_string(),
+        ));
     }
     if params.expiry_years < 0.0 {
-        return Err(("expiryYears".to_string(), "Expiry must be non-negative".to_string()));
+        return Err((
+            "expiryYears".to_string(),
+            "Expiry must be non-negative".to_string(),
+        ));
     }
     if params.volatility <= 0.0 {
-        return Err(("volatility".to_string(), "Volatility must be positive".to_string()));
+        return Err((
+            "volatility".to_string(),
+            "Volatility must be positive".to_string(),
+        ));
     }
     if params.volatility > 5.0 {
-        return Err(("volatility".to_string(), "Volatility seems too high (>500%)".to_string()));
+        return Err((
+            "volatility".to_string(),
+            "Volatility seems too high (>500%)".to_string(),
+        ));
     }
     Ok(())
 }
@@ -627,10 +682,16 @@ fn validate_fx_params(params: &FxOptionParams) -> Result<(), (String, String)> {
 /// Validate IRS parameters.
 fn validate_irs_params(params: &IrsParams) -> Result<(), (String, String)> {
     if params.notional <= 0.0 {
-        return Err(("notional".to_string(), "Notional must be positive".to_string()));
+        return Err((
+            "notional".to_string(),
+            "Notional must be positive".to_string(),
+        ));
     }
     if params.tenor_years <= 0.0 {
-        return Err(("tenorYears".to_string(), "Tenor must be positive".to_string()));
+        return Err((
+            "tenorYears".to_string(),
+            "Tenor must be positive".to_string(),
+        ));
     }
     Ok(())
 }
@@ -667,11 +728,21 @@ pub async fn price_instrument(
 
             let is_call = params.option_type == OptionType::Call;
             let pv = black_scholes_price(
-                params.spot, params.strike, params.expiry_years, params.rate, params.volatility, is_call,
+                params.spot,
+                params.strike,
+                params.expiry_years,
+                params.rate,
+                params.volatility,
+                is_call,
             );
             let greeks = if request.compute_greeks {
                 Some(black_scholes_greeks(
-                    params.spot, params.strike, params.expiry_years, params.rate, params.volatility, is_call,
+                    params.spot,
+                    params.strike,
+                    params.expiry_years,
+                    params.rate,
+                    params.volatility,
+                    is_call,
                 ))
             } else {
                 None
@@ -693,13 +764,23 @@ pub async fn price_instrument(
 
             let is_call = params.option_type == OptionType::Call;
             let pv = garman_kohlhagen_price(
-                params.spot, params.strike, params.expiry_years,
-                params.domestic_rate, params.foreign_rate, params.volatility, is_call,
+                params.spot,
+                params.strike,
+                params.expiry_years,
+                params.domestic_rate,
+                params.foreign_rate,
+                params.volatility,
+                is_call,
             );
             let greeks = if request.compute_greeks {
                 Some(garman_kohlhagen_greeks(
-                    params.spot, params.strike, params.expiry_years,
-                    params.domestic_rate, params.foreign_rate, params.volatility, is_call,
+                    params.spot,
+                    params.strike,
+                    params.expiry_years,
+                    params.domestic_rate,
+                    params.foreign_rate,
+                    params.volatility,
+                    is_call,
                 ))
             } else {
                 None
@@ -719,7 +800,12 @@ pub async fn price_instrument(
                 ));
             }
 
-            let pv = irs_price(params.notional, params.fixed_rate, params.tenor_years, market_rate);
+            let pv = irs_price(
+                params.notional,
+                params.fixed_rate,
+                params.tenor_years,
+                market_rate,
+            );
             let greeks = if request.compute_greeks {
                 Some(irs_greeks(params.notional, params.tenor_years))
             } else {
@@ -766,7 +852,13 @@ pub async fn price_instrument(
         InstrumentType::FxOption => "fx_option",
         InstrumentType::Irs => "irs",
     };
-    broadcast_pricing_complete(&state, &calculation_id, instrument_type_str, pv, greeks_json);
+    broadcast_pricing_complete(
+        &state,
+        &calculation_id,
+        instrument_type_str,
+        pv,
+        greeks_json,
+    );
 
     Ok(Json(PricingResponse {
         calculation_id,
@@ -1401,7 +1493,11 @@ pub async fn get_index(State(state): State<Arc<AppState>>) -> impl IntoResponse 
         }
         Err(_) => {
             // Fallback if file cannot be read
-            (StatusCode::INTERNAL_SERVER_ERROR, "Failed to load index.html").into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to load index.html",
+            )
+                .into_response()
         }
     }
 }
@@ -1531,12 +1627,10 @@ fn convert_bootstrap_error(error: BootstrapError) -> (StatusCode, Json<IrsBootst
             let tenor = format!("{}Y", maturity as i32);
             (
                 StatusCode::BAD_REQUEST,
-                Json(
-                    IrsBootstrapErrorResponse::validation_error(
-                        &format!("Duplicate tenor: {}", tenor),
-                        &format!("parRates[{}]", tenor),
-                    ),
-                ),
+                Json(IrsBootstrapErrorResponse::validation_error(
+                    &format!("Duplicate tenor: {}", tenor),
+                    &format!("parRates[{}]", tenor),
+                )),
             )
         }
         BootstrapError::InsufficientData { required, provided } => (
@@ -1571,7 +1665,9 @@ fn convert_bootstrap_error(error: BootstrapError) -> (StatusCode, Json<IrsBootst
         }
         BootstrapError::InvalidInput(msg) => (
             StatusCode::BAD_REQUEST,
-            Json(IrsBootstrapErrorResponse::validation_error(&msg, "parRates")),
+            Json(IrsBootstrapErrorResponse::validation_error(
+                &msg, "parRates",
+            )),
         ),
         BootstrapError::InvalidMaturity {
             maturity,
@@ -1663,7 +1759,9 @@ pub async fn price_irs(
         None => {
             return Err((
                 StatusCode::NOT_FOUND,
-                Json(IrsBootstrapErrorResponse::curve_not_found(&request.curve_id)),
+                Json(IrsBootstrapErrorResponse::curve_not_found(
+                    &request.curve_id,
+                )),
             ));
         }
     };
@@ -1891,7 +1989,9 @@ pub async fn risk_bump(
         None => {
             return Err((
                 StatusCode::NOT_FOUND,
-                Json(IrsBootstrapErrorResponse::curve_not_found(&request.curve_id)),
+                Json(IrsBootstrapErrorResponse::curve_not_found(
+                    &request.curve_id,
+                )),
             ));
         }
     };
@@ -1988,9 +2088,8 @@ fn bootstrap_from_par_rates(par_rates: &[ParRateInput]) -> Result<CachedCurve, B
         })
         .collect();
 
-    let instruments = instruments.map_err(|_| {
-        BootstrapError::InvalidInput("Failed to parse tenor".to_string())
-    })?;
+    let instruments = instruments
+        .map_err(|_| BootstrapError::InvalidInput("Failed to parse tenor".to_string()))?;
 
     // Bootstrap the curve
     let config: GenericBootstrapConfig<f64> = GenericBootstrapConfig::default();
@@ -2082,7 +2181,9 @@ pub async fn risk_aad(
         None => {
             return Err((
                 StatusCode::NOT_FOUND,
-                Json(IrsBootstrapErrorResponse::curve_not_found(&request.curve_id)),
+                Json(IrsBootstrapErrorResponse::curve_not_found(
+                    &request.curve_id,
+                )),
             ));
         }
     };
@@ -2332,7 +2433,9 @@ pub async fn risk_compare(
         None => {
             return Err((
                 StatusCode::NOT_FOUND,
-                Json(IrsBootstrapErrorResponse::curve_not_found(&request.curve_id)),
+                Json(IrsBootstrapErrorResponse::curve_not_found(
+                    &request.curve_id,
+                )),
             ));
         }
     };
@@ -2420,7 +2523,10 @@ pub async fn risk_compare(
     };
 
     // Task 6.2: Broadcast risk complete event
-    let dv01_for_broadcast = aad_result.as_ref().map(|r| r.dv01).unwrap_or(bump_result.dv01);
+    let dv01_for_broadcast = aad_result
+        .as_ref()
+        .map(|r| r.dv01)
+        .unwrap_or(bump_result.dv01);
     broadcast_risk_complete(
         &state,
         &request.curve_id,
@@ -3076,7 +3182,9 @@ mod tests {
 
     mod error_path_tests {
         use super::*;
-        use crate::web::pricer_types::{EquityOptionParams, InstrumentParams, InstrumentType, OptionType, PricingRequest};
+        use crate::web::pricer_types::{
+            EquityOptionParams, InstrumentParams, InstrumentType, OptionType, PricingRequest,
+        };
 
         #[tokio::test]
         async fn test_pricing_with_invalid_instrument_type() {
@@ -3286,12 +3394,10 @@ mod tests {
             let state = Arc::new(AppState::new());
 
             let request = BootstrapRequest {
-                par_rates: vec![
-                    ParRateInput {
-                        tenor: "1Y".to_string(),
-                        rate: -0.01, // Invalid negative rate
-                    },
-                ],
+                par_rates: vec![ParRateInput {
+                    tenor: "1Y".to_string(),
+                    rate: -0.01, // Invalid negative rate
+                }],
                 interpolation: InterpolationMethod::LogLinear,
             };
 
@@ -4066,12 +4172,30 @@ mod tests {
         /// Helper to create a standard par rate set for testing
         fn create_standard_par_rates() -> Vec<ParRateInput> {
             vec![
-                ParRateInput { tenor: "1Y".to_string(), rate: 0.025 },
-                ParRateInput { tenor: "2Y".to_string(), rate: 0.0275 },
-                ParRateInput { tenor: "3Y".to_string(), rate: 0.03 },
-                ParRateInput { tenor: "5Y".to_string(), rate: 0.0325 },
-                ParRateInput { tenor: "7Y".to_string(), rate: 0.034 },
-                ParRateInput { tenor: "10Y".to_string(), rate: 0.035 },
+                ParRateInput {
+                    tenor: "1Y".to_string(),
+                    rate: 0.025,
+                },
+                ParRateInput {
+                    tenor: "2Y".to_string(),
+                    rate: 0.0275,
+                },
+                ParRateInput {
+                    tenor: "3Y".to_string(),
+                    rate: 0.03,
+                },
+                ParRateInput {
+                    tenor: "5Y".to_string(),
+                    rate: 0.0325,
+                },
+                ParRateInput {
+                    tenor: "7Y".to_string(),
+                    rate: 0.034,
+                },
+                ParRateInput {
+                    tenor: "10Y".to_string(),
+                    rate: 0.035,
+                },
             ]
         }
 
@@ -4086,7 +4210,8 @@ mod tests {
                 interpolation: crate::web::pricer_types::InterpolationMethod::LogLinear,
             };
 
-            let bootstrap_result = bootstrap_curve(State(state.clone()), Json(bootstrap_request)).await;
+            let bootstrap_result =
+                bootstrap_curve(State(state.clone()), Json(bootstrap_request)).await;
             assert!(bootstrap_result.is_ok(), "Bootstrap should succeed");
 
             let curve = bootstrap_result.unwrap();
@@ -4108,8 +4233,14 @@ mod tests {
             let pricing = pricing_result.unwrap();
             // NPV should be a valid finite number
             assert!(pricing.npv.is_finite(), "NPV should be finite");
-            assert!(pricing.fixed_leg_pv > 0.0, "Fixed leg PV should be positive");
-            assert!(pricing.float_leg_pv > 0.0, "Float leg PV should be positive");
+            assert!(
+                pricing.fixed_leg_pv > 0.0,
+                "Fixed leg PV should be positive"
+            );
+            assert!(
+                pricing.float_leg_pv > 0.0,
+                "Float leg PV should be positive"
+            );
         }
 
         #[tokio::test]
@@ -4123,7 +4254,8 @@ mod tests {
                 interpolation: crate::web::pricer_types::InterpolationMethod::LogLinear,
             };
 
-            let bootstrap_result = bootstrap_curve(State(state.clone()), Json(bootstrap_request)).await;
+            let bootstrap_result =
+                bootstrap_curve(State(state.clone()), Json(bootstrap_request)).await;
             assert!(bootstrap_result.is_ok(), "Bootstrap should succeed");
             let curve = bootstrap_result.unwrap();
 
@@ -4143,7 +4275,11 @@ mod tests {
             let risk = risk_result.unwrap();
 
             // Verify bump results
-            assert_eq!(risk.bump.deltas.len(), 6, "Should have delta for each tenor");
+            assert_eq!(
+                risk.bump.deltas.len(),
+                6,
+                "Should have delta for each tenor"
+            );
             assert!(risk.bump.dv01 != 0.0, "DV01 should be non-zero");
 
             // Verify AAD results (simulated in demo mode)
@@ -4152,9 +4288,15 @@ mod tests {
             assert_eq!(aad.deltas.len(), 6, "AAD should have same number of deltas");
 
             // Verify speedup ratio
-            assert!(risk.speedup_ratio.is_some(), "Speedup ratio should be calculated");
+            assert!(
+                risk.speedup_ratio.is_some(),
+                "Speedup ratio should be calculated"
+            );
             let speedup = risk.speedup_ratio.unwrap();
-            assert!(speedup > 1.0, "AAD should be faster than Bump (simulated 10x)");
+            assert!(
+                speedup > 1.0,
+                "AAD should be faster than Bump (simulated 10x)"
+            );
         }
 
         #[tokio::test]
@@ -4171,7 +4313,10 @@ mod tests {
             };
 
             let result = price_irs(State(state), Json(pricing_request)).await;
-            assert!(result.is_err(), "Should return error for non-existent curve");
+            assert!(
+                result.is_err(),
+                "Should return error for non-existent curve"
+            );
 
             let (status, _) = result.unwrap_err();
             assert_eq!(status, StatusCode::NOT_FOUND);
@@ -4231,9 +4376,18 @@ mod tests {
 
             // Step 1: Bootstrap
             let par_rates = vec![
-                ParRateInput { tenor: "1Y".to_string(), rate: 0.025 },
-                ParRateInput { tenor: "5Y".to_string(), rate: 0.035 },
-                ParRateInput { tenor: "10Y".to_string(), rate: 0.04 },
+                ParRateInput {
+                    tenor: "1Y".to_string(),
+                    rate: 0.025,
+                },
+                ParRateInput {
+                    tenor: "5Y".to_string(),
+                    rate: 0.035,
+                },
+                ParRateInput {
+                    tenor: "10Y".to_string(),
+                    rate: 0.04,
+                },
             ];
 
             let bootstrap_request = BootstrapRequest {
@@ -4274,19 +4428,38 @@ mod tests {
 
             // Verify complete workflow results
             assert!(curve.pillars.len() == 3, "Curve should have 3 points");
-            assert!(curve.processing_time_ms > 0.0, "Processing time should be recorded");
+            assert!(
+                curve.processing_time_ms > 0.0,
+                "Processing time should be recorded"
+            );
 
-            assert!(pricing.processing_time_us > 0.0, "Pricing time should be recorded");
+            assert!(
+                pricing.processing_time_us > 0.0,
+                "Pricing time should be recorded"
+            );
 
-            assert!(risk.bump.timing.total_ms > 0.0, "Bump timing should be recorded");
-            assert!(risk.speedup_ratio.unwrap_or(0.0) > 1.0, "AAD should show speedup");
+            assert!(
+                risk.bump.timing.total_ms > 0.0,
+                "Bump timing should be recorded"
+            );
+            assert!(
+                risk.speedup_ratio.unwrap_or(0.0) > 1.0,
+                "AAD should show speedup"
+            );
 
             // Log workflow completion
             println!("Full workflow completed:");
-            println!("  - Bootstrap: {} points in {:.2}ms", curve.pillars.len(), curve.processing_time_ms);
+            println!(
+                "  - Bootstrap: {} points in {:.2}ms",
+                curve.pillars.len(),
+                curve.processing_time_ms
+            );
             println!("  - Pricing: NPV = {:.2}", pricing.npv);
-            println!("  - Risk: DV01 = {:.2}, Speedup = {:.1}x",
-                     risk.bump.dv01, risk.speedup_ratio.unwrap_or(0.0));
+            println!(
+                "  - Risk: DV01 = {:.2}, Speedup = {:.1}x",
+                risk.bump.dv01,
+                risk.speedup_ratio.unwrap_or(0.0)
+            );
         }
 
         #[tokio::test]
@@ -4315,7 +4488,11 @@ mod tests {
                 };
 
                 let result = price_irs(State(state.clone()), Json(pricing_request)).await;
-                assert!(result.is_ok(), "Pricing {} should succeed with cached curve", i);
+                assert!(
+                    result.is_ok(),
+                    "Pricing {} should succeed with cached curve",
+                    i
+                );
             }
         }
     }
