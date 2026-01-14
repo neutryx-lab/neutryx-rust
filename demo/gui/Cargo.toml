@@ -16,7 +16,7 @@ required-features = ["web"]
 
 [features]
 default = []
-web = ["axum", "tower-http", "futures", "chrono"]
+web = ["axum", "tower-http", "futures", "chrono", "open"]
 
 [dependencies]
 # TUI framework
@@ -52,6 +52,7 @@ axum = { workspace = true, features = ["ws"], optional = true }
 tower-http = { version = "0.5", features = ["fs", "cors", "set-header"], optional = true }
 futures = { version = "0.3", optional = true }
 chrono = { workspace = true, optional = true }
+open = { version = "5", optional = true }
 
 [dev-dependencies]
 tokio-test = "0.4"

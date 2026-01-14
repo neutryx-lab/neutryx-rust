@@ -166,7 +166,9 @@
       "Bash(powershell.exe -NoProfile -Command \"$env:Path = ''C:\\\\Users\\\\khosh\\\\.rustup\\\\toolchains\\\\stable-x86_64-pc-windows-msvc\\\\bin;'' + $env:Path; cd ''c:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust''; cargo test -p pricer_pricing --features l1l2-integration -- lazy_evaluator 2>&1\")",
       "Bash(\"/mnt/c/Users/khosh/.cargo/bin/cargo.exe\" test -p pricer_pricing --features l1l2-integration --manifest-path \"/mnt/c/Users/khosh/neutryx-rust/neutryx-rust/Cargo.toml\" -- irs_greeks::benchmark::tests)",
       "Bash(powershell.exe -Command \"Set-Location ''c:\\\\Users\\\\khosh\\\\neutryx-rust\\\\neutryx-rust''; & ''C:\\\\Users\\\\khosh\\\\.cargo\\\\bin\\\\cargo.exe'' test -p demo_gui --lib 2>&1\")",
-      "Bash(C:Userskhosh.cargobincargo test --package pricer_pricing --lib irs_greeks::xva_demo::tests -- --test-threads=1)"
+      "Bash(C:Userskhosh.cargobincargo test --package pricer_pricing --lib irs_greeks::xva_demo::tests -- --test-threads=1)",
+      "Bash(awk:*)",
+      "Bash(node:*)"
     ]
   }
 }

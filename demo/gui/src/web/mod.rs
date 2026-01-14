@@ -141,8 +141,9 @@ pub fn build_router(state: Arc<AppState>) -> Router {
 
     // CSP header: balanced security for development
     // - Removed 'unsafe-eval' (no eval/new Function usage)
-    // - Allows CDN scripts (three.js, d3.js, jspdf, xlsx)
+    // - Allows CDN scripts (three.js, d3.js, jspdf, xlsx, chart.js)
     // - 'unsafe-inline' for styles (required for inline style attributes)
+    // - connect-src includes CDNs for source map downloads
     let csp_header = SetResponseHeaderLayer::overriding(
         axum::http::header::CONTENT_SECURITY_POLICY,
         HeaderValue::from_static(
@@ -151,7 +152,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
              style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; \
              font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; \
              img-src 'self' data: blob:; \
-             connect-src 'self' ws: wss:;"
+             connect-src 'self' ws: wss: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;"
         ),
     );
 

@@ -1,6 +1,7 @@
 //! Web dashboard entry point.
 //!
 //! Usage: cargo run -p demo_gui --features web --bin demo-web
+//!        cargo web  (alias)
 
 use demo_gui::web;
 use std::net::SocketAddr;
@@ -19,12 +20,13 @@ async fn main() -> anyhow::Result<()> {
 
     // Server address
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let url = format!("http://{}", addr);
 
     println!();
     println!("  FrictionalBank Web Dashboard");
     println!("  ============================");
     println!();
-    println!("  Starting server at http://{}", addr);
+    println!("  Starting server at {}", url);
     println!();
     println!("  API Endpoints:");
     println!("    GET  /api/health     - Health check");
@@ -36,6 +38,15 @@ async fn main() -> anyhow::Result<()> {
     println!();
     println!("  Press Ctrl+C to stop the server");
     println!();
+
+    // Open browser after a short delay to allow server to start
+    let browser_url = url.clone();
+    tokio::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+        if let Err(e) = open::that(&browser_url) {
+            eprintln!("  Failed to open browser: {}", e);
+        }
+    });
 
     web::run_server(addr).await
 }

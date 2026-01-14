@@ -1,4 +1,13 @@
 # Cargo configuration for Neutryx XVA Pricing Library
+
+# ============================================================================
+# Command Aliases
+# ============================================================================
+[alias]
+# Launch FrictionalBank Web Dashboard: cargo web
+web = "run -p demo_gui --features web --bin demo-web"
+# Launch TUI Dashboard: cargo tui
+tui = "run -p demo_gui --bin demo-tui"
 #
 # Build Optimization:
 # - target-cpu=native: Uses CPU-specific instructions (AVX2/AVX-512) for maximum performance
