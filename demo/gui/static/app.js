@@ -337,7 +337,18 @@ function fetchJson(url, options = {}, errorMessage = 'Request failed') {
             const suffix = details ? `: ${details}` : '';
             throw new Error(`${errorMessage} (${response.status})${suffix}`);
         }
-        return response.json();
+
+        // Check if response has content before parsing JSON
+        const text = await response.text();
+        if (!text || text.trim() === '') {
+            throw new Error(`${errorMessage}: Empty response from server`);
+        }
+
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            throw new Error(`${errorMessage}: Invalid JSON response - ${e.message}`);
+        }
     });
 }
 
@@ -413,7 +424,17 @@ async function fetchWithRetry(url, options = {}, config = {}) {
                 toastInstance.dismiss();
             }
 
-            return await response.json();
+            // Check if response has content before parsing JSON
+            const text = await response.text();
+            if (!text || text.trim() === '') {
+                throw new Error('Empty response from server');
+            }
+
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                throw new Error(`Invalid JSON response: ${e.message}`);
+            }
         } catch (error) {
             lastError = error;
 
@@ -798,7 +819,7 @@ function hideLoading() {
 class CommandPalette {
     constructor() {
         this.overlay = document.getElementById('command-overlay');
-        this.input = document.getElementById('command-input');
+        this.input = document.getElementById('command-input') || {};
         this.results = document.getElementById('command-results');
         this.items = [];
         this.selectedIndex = 0;
@@ -888,7 +909,7 @@ class CommandPalette {
         const query = this.input.value.toLowerCase();
         
         this.allItems.forEach(item => {
-            const text = item.querySelector('span').textContent.toLowerCase();
+            const text = item.querySelector('span') ? item.querySelector('span').textContent.toLowerCase() : '';
             const match = text.includes(query);
             item.style.display = match ? 'flex' : 'none';
         });
@@ -916,7 +937,7 @@ class CommandPalette {
         if (!item) return;
         
         const action = item.dataset.action;
-        this.close();
+        if (this.isOpen) this.close();
         this.executeAction(action);
     }
     
@@ -1016,53 +1037,34 @@ function initNavigation() {
     });
 }
 
-// ============================================
-// Theme
-// ============================================
 
-function toggleTheme() {
+// ============================================
+// Simple DarkMode Toggle
+// ============================================
+function toggleDarkMode() {
     document.body.classList.toggle('light-theme');
-    const isLight = document.body.classList.contains('light-theme');
-    document.getElementById('theme-toggle').innerHTML = 
-        `<i class="fas fa-${isLight ? 'sun' : 'moon'}"></i>`;
-    localStorage.setItem('theme', isLight ? 'light' : 'dark');
-    updateChartsTheme();
+    // Optionally, persist mode
+    localStorage.setItem('theme', document.body.classList.contains('light-theme') ? 'light' : 'dark');
 }
 
-function initTheme() {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') {
+
+function attachDarkModeButton() {
+    // Restore theme
+    if (localStorage.getItem('theme') === 'light') {
         document.body.classList.add('light-theme');
-        document.getElementById('theme-toggle').innerHTML = '<i class="fas fa-sun"></i>';
     }
-    
-    document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+    // Remove any duplicate listeners
+    const btn = document.getElementById('darkmode-btn');
+    if (btn) {
+        btn.removeEventListener('click', toggleDarkMode);
+        btn.addEventListener('click', toggleDarkMode);
+    }
 }
 
-function updateChartsTheme() {
-    const textColor = getComputedStyle(document.body).getPropertyValue('--text-secondary').trim();
-    const gridColor = getComputedStyle(document.body).getPropertyValue('--glass-border').trim();
-
-    let charts = Object.values(state.charts);
-    if (typeof Chart !== 'undefined' && Chart.instances) {
-        charts = Chart.instances instanceof Map
-            ? Array.from(Chart.instances.values())
-            : Object.values(Chart.instances);
-    }
-
-    charts.forEach(chart => {
-        if (chart && chart.options) {
-            if (chart.options.scales) {
-                ['x', 'y'].forEach(axis => {
-                    if (chart.options.scales[axis]) {
-                        chart.options.scales[axis].ticks.color = textColor;
-                        chart.options.scales[axis].grid.color = gridColor;
-                    }
-                });
-            }
-            chart.update('none');
-        }
-    });
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', attachDarkModeButton);
+} else {
+    attachDarkModeButton();
 }
 
 // ============================================
@@ -5545,9 +5547,9 @@ async function init() {
 
         // Initialize UI
         Logger.debug('App', 'Initializing UI...');
-        initTheme();
-        initNavigation();
-        initPortfolioControls();
+        try { initTheme(); } catch(e) { Logger.error('App', 'initTheme error', { error: e.message }); }
+        try { initNavigation(); } catch(e) { Logger.error('App', 'initNavigation error', { error: e.message }); }
+        try { initPortfolioControls(); } catch(e) { Logger.error('App', 'initPortfolioControls error', { error: e.message }); }
         initScenarioControls();
         try { initEnhancedScenarioControls(); } catch(e) { Logger.error('App', 'initEnhancedScenarioControls error', { error: e.message }); }
         initQuickActions();
@@ -11355,11 +11357,31 @@ const irsBootstrap = (function() {
             });
 
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Bootstrap failed');
+                let errorMsg = 'Bootstrap failed';
+                try {
+                    const text = await response.text();
+                    if (text && text.trim() !== '') {
+                        const error = JSON.parse(text);
+                        errorMsg = error.message || errorMsg;
+                    }
+                } catch (e) {
+                    errorMsg = `Bootstrap failed (${response.status})`;
+                }
+                throw new Error(errorMsg);
             }
 
-            const result = await response.json();
+            const text = await response.text();
+            if (!text || text.trim() === '') {
+                throw new Error('Bootstrap failed: Empty response from server');
+            }
+
+            let result;
+            try {
+                result = JSON.parse(text);
+            } catch (e) {
+                throw new Error(`Bootstrap failed: Invalid JSON response - ${e.message}`);
+            }
+
             state.curveId = result.curveId;
             state.curveData = result;
 
@@ -11540,7 +11562,7 @@ const irsBootstrap = (function() {
             const tenorYears = parseFloat(document.getElementById('irs-tenor-input')?.value) || 5;
             const frequency = document.getElementById('irs-frequency-input')?.value || 'annual';
 
-            const response = await fetch('/api/price/irs', {
+            const response = await fetch('/api/price-irs', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -11553,11 +11575,32 @@ const irsBootstrap = (function() {
             });
 
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Pricing failed');
+                let errorMsg = 'Pricing failed';
+                try {
+                    const text = await response.text();
+                    if (text && text.trim() !== '') {
+                        const error = JSON.parse(text);
+                        errorMsg = error.message || errorMsg;
+                    }
+                } catch (e) {
+                    // If JSON parsing fails, use default error message
+                    errorMsg = `Pricing failed (${response.status})`;
+                }
+                throw new Error(errorMsg);
             }
 
-            const result = await response.json();
+            const text = await response.text();
+            if (!text || text.trim() === '') {
+                throw new Error('Pricing failed: Empty response from server');
+            }
+
+            let result;
+            try {
+                result = JSON.parse(text);
+            } catch (e) {
+                throw new Error(`Pricing failed: Invalid JSON response - ${e.message}`);
+            }
+
             state.pricingResult = result;
 
             displayPricingResult(result);
@@ -11638,11 +11681,31 @@ const irsBootstrap = (function() {
             });
 
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Risk calculation failed');
+                let errorMsg = 'Risk calculation failed';
+                try {
+                    const text = await response.text();
+                    if (text && text.trim() !== '') {
+                        const error = JSON.parse(text);
+                        errorMsg = error.message || errorMsg;
+                    }
+                } catch (e) {
+                    errorMsg = `Risk calculation failed (${response.status})`;
+                }
+                throw new Error(errorMsg);
             }
 
-            const result = await response.json();
+            const text = await response.text();
+            if (!text || text.trim() === '') {
+                throw new Error('Risk calculation failed: Empty response from server');
+            }
+
+            let result;
+            try {
+                result = JSON.parse(text);
+            } catch (e) {
+                throw new Error(`Risk calculation failed: Invalid JSON response - ${e.message}`);
+            }
+
             state.riskResult = result;
 
             displayRiskResult(result);

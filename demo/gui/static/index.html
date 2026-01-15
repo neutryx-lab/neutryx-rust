@@ -48,121 +48,9 @@
         </div>
     </div>
 
-    <!-- Theme Customizer Panel -->
-    <div class="theme-panel glass" id="theme-panel" role="dialog" aria-labelledby="theme-panel-title" aria-hidden="true" tabindex="-1">
-        <div class="theme-panel-header">
-            <h3 id="theme-panel-title"><i class="fas fa-palette"></i> Theme</h3>
-            <button class="icon-btn" id="close-theme"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="theme-options">
-            <div class="theme-section">
-                <h4>Mode</h4>
-                <div class="theme-mode-grid">
-                    <button class="theme-mode-btn active" data-mode="dark">
-                        <i class="fas fa-moon"></i>
-                        <span>Dark</span>
-                    </button>
-                    <button class="theme-mode-btn" data-mode="light">
-                        <i class="fas fa-sun"></i>
-                        <span>Light</span>
-                    </button>
-                    <button class="theme-mode-btn" data-mode="oled">
-                        <i class="fas fa-adjust"></i>
-                        <span>OLED</span>
-                    </button>
-                    <button class="theme-mode-btn" data-mode="auto">
-                        <i class="fas fa-clock"></i>
-                        <span>Auto</span>
-                    </button>
-                </div>
-            </div>
-            <div class="theme-section">
-                <h4>Accent Color</h4>
-                <div class="color-picker-grid">
-                    <button class="color-swatch active" data-color="indigo" style="--swatch-color: #6366f1"></button>
-                    <button class="color-swatch" data-color="cyan" style="--swatch-color: #06b6d4"></button>
-                    <button class="color-swatch" data-color="emerald" style="--swatch-color: #10b981"></button>
-                    <button class="color-swatch" data-color="amber" style="--swatch-color: #f59e0b"></button>
-                    <button class="color-swatch" data-color="rose" style="--swatch-color: #f43f5e"></button>
-                    <button class="color-swatch" data-color="violet" style="--swatch-color: #8b5cf6"></button>
-                </div>
-            </div>
-            <div class="theme-section">
-                <h4>Contrast</h4>
-                <div class="contrast-toggle">
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="high-contrast">
-                        <span class="toggle-slider"></span>
-                    </label>
-                    <span>High Contrast Mode</span>
-                </div>
-            </div>
-            <div class="theme-section">
-                <h4>Reduce Motion</h4>
-                <div class="contrast-toggle">
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="reduce-motion">
-                        <span class="toggle-slider"></span>
-                    </label>
-                    <span>Reduce Animations</span>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- What-If Simulator Modal -->
-    <div class="modal-overlay" id="whatif-modal" aria-hidden="true">
-        <div class="modal glass-heavy whatif-modal" role="dialog" aria-modal="true" aria-labelledby="whatif-title" tabindex="-1">
-            <div class="modal-header">
-                <h2 id="whatif-title"><i class="fas fa-flask"></i> What-If Simulator</h2>
-                <button class="icon-btn" id="close-whatif"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="modal-body">
-                <div class="whatif-layout">
-                    <div class="whatif-trades-panel">
-                        <h4>Trade Modifications</h4>
-                        <div class="trade-modifications" id="trade-modifications">
-                            <div class="modification-empty">
-                                <i class="fas fa-hand-pointer"></i>
-                                <p>Drag trades here or click to add</p>
-                            </div>
-                        </div>
-                        <button class="add-trade-btn" id="add-whatif-trade">
-                            <i class="fas fa-plus"></i> Add Trade
-                        </button>
-                    </div>
-                    <div class="whatif-results-panel">
-                        <h4>Impact Analysis</h4>
-                        <div class="whatif-impact-grid">
-                            <div class="impact-card">
-                                <span class="impact-label">ΔPV</span>
-                                <span class="impact-value" id="whatif-delta-pv">$0</span>
-                            </div>
-                            <div class="impact-card">
-                                <span class="impact-label">ΔCVA</span>
-                                <span class="impact-value" id="whatif-delta-cva">$0</span>
-                            </div>
-                            <div class="impact-card">
-                                <span class="impact-label">ΔDVA</span>
-                                <span class="impact-value" id="whatif-delta-dva">$0</span>
-                            </div>
-                            <div class="impact-card">
-                                <span class="impact-label">ΔExposure</span>
-                                <span class="impact-value" id="whatif-delta-exp">$0</span>
-                            </div>
-                        </div>
-                        <div class="whatif-chart">
-                            <canvas id="whatif-chart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="secondary-btn" id="reset-whatif">Reset</button>
-                <button class="primary-btn" id="apply-whatif">Apply to Portfolio</button>
-            </div>
-        </div>
-    </div>
+
+
 
     <!-- Report Generator Modal -->
     <div class="modal-overlay" id="report-modal" aria-hidden="true">
@@ -301,11 +189,7 @@
                         <span>Export Report</span>
                         <kbd>⌘E</kbd>
                     </div>
-                    <div class="command-item" data-action="whatif" role="option" tabindex="0">
-                        <i class="fas fa-flask"></i>
-                        <span>What-If Simulator</span>
-                        <kbd>⌘W</kbd>
-                    </div>
+
                     <div class="command-item" data-action="ai-assistant" role="option" tabindex="0">
                         <i class="fas fa-robot"></i>
                         <span>AI Assistant</span>
@@ -434,13 +318,16 @@
 
             <div class="sidebar-footer">
                 <div class="sidebar-quick-actions">
+
+
                     <button class="sidebar-action-btn" id="open-alerts" title="Alerts">
                         <i class="fas fa-bell"></i>
                         <span class="alert-badge" id="alert-count">3</span>
                     </button>
-                    <button class="sidebar-action-btn" id="open-theme-panel" title="Theme">
-                        <i class="fas fa-palette"></i>
+                    <button class="sidebar-action-btn" id="darkmode-btn" title="Dark Mode" aria-label="Dark Mode">
+                        <i class="fas fa-moon"></i>
                     </button>
+
                     <button class="sidebar-action-btn" id="open-ai-panel" title="AI Assistant">
                         <i class="fas fa-robot"></i>
                     </button>
@@ -481,22 +368,14 @@
                         <span>--:--:--</span>
                     </div>
                     <div class="top-bar-divider"></div>
-                    <button class="icon-btn" id="open-whatif-btn" title="What-If Simulator">
-                        <i class="fas fa-flask"></i>
-                    </button>
+
                     <button class="icon-btn" id="open-report-btn" title="Generate Report">
                         <i class="fas fa-file-alt"></i>
                     </button>
                     <button class="icon-btn" id="refresh-btn" title="Refresh">
                         <i class="fas fa-sync-alt"></i>
                     </button>
-                    <button class="icon-btn" id="theme-toggle" title="Toggle Theme">
-                        <i class="fas fa-moon"></i>
-                    </button>
-                    <button class="primary-btn" id="run-pricing-btn">
-                        <i class="fas fa-play"></i>
-                        <span>Run Pricing</span>
-                    </button>
+
                 </div>
             </header>
 
@@ -2015,7 +1894,7 @@
 
                         <!-- Legend Panel -->
                         <div class="graph-legend-panel glass-card">
-                            <h3><i class="fas fa-palette"></i> Legend</h3>
+                            <h3>Legend</h3>
                             <div class="legend-items">
                                 <div class="legend-item">
                                     <span class="legend-dot" style="background: #3b82f6;"></span>
@@ -2449,9 +2328,7 @@
                                 <div class="result-header">
                                     <h3><i class="fas fa-shield-alt"></i> Risk Analysis</h3>
                                     <div class="result-actions">
-                                        <button class="chip-btn active" data-risk-method="compare" aria-pressed="true">Compare</button>
-                                        <button class="chip-btn" data-risk-method="bump" aria-pressed="false">Bump Only</button>
-                                        <button class="chip-btn" data-risk-method="aad" aria-pressed="false">AAD Only</button>
+
                                     </div>
                                 </div>
 
@@ -2539,6 +2416,6 @@
     <!-- Libraries -->
     <script src="vendor/logger.js"></script>
     <script src="vendor/chart.umd.min.js" defer></script>
-    <script src="app.js" defer></script>
+    <script src="app.js?v=3" defer></script>
 </body>
 </html>

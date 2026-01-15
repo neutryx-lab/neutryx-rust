@@ -1,3 +1,26 @@
+/* DarkMode Button Fixed Bottom-Right */
+.darkmode-fixed {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 9999;
+    background: var(--surface);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-md);
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
+}
+.darkmode-fixed:hover {
+    background: var(--surface-hover);
+    color: var(--primary);
+}
 /* ============================================
    FrictionalBank - Modern Bento Dashboard
    ============================================ */
@@ -55,17 +78,17 @@
 
 /* Light Theme */
 body.light-theme {
-    --bg-primary: #f8fafc;
-    --bg-secondary: #ffffff;
-    --bg-tertiary: #f1f5f9;
-    --surface: rgba(0, 0, 0, 0.02);
-    --surface-hover: rgba(0, 0, 0, 0.04);
-    --glass-bg: rgba(255, 255, 255, 0.9);
-    --glass-border: rgba(0, 0, 0, 0.08);
-    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    --text-primary: #1e293b;
-    --text-secondary: #475569;
-    --text-muted: #94a3b8;
+    --bg-primary: #f4f6fa;
+    --bg-secondary: #f8fafc;
+    --bg-tertiary: #e9eef3;
+    --surface: rgba(30, 41, 59, 0.04);
+    --surface-hover: rgba(30, 41, 59, 0.08);
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(30, 41, 59, 0.08);
+    --glass-shadow: 0 8px 32px rgba(30, 41, 59, 0.08);
+    --text-primary: #27364a;
+    --text-secondary: #5c6a7d;
+    --text-muted: #a0aec0;
 }
 
 /* OLED Theme - True Black */
@@ -2485,7 +2508,6 @@ body.light-theme .glass-heavy {
     }
 
     /* Modal adjustments */
-    .whatif-modal,
     .report-modal {
         max-width: 95%;
     }
@@ -5612,99 +5634,7 @@ kbd {
     border-top: 1px solid var(--glass-border);
 }
 
-/* What-If Modal */
-.whatif-modal {
-    max-width: 1000px;
-}
 
-.whatif-layout {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 24px;
-}
-
-.whatif-trades-panel,
-.whatif-results-panel {
-    display: flex;
-    flex-direction: column;
-}
-
-.whatif-trades-panel h4,
-.whatif-results-panel h4 {
-    font-size: 0.85rem;
-    margin-bottom: 16px;
-}
-
-.trade-modifications {
-    flex: 1;
-    min-height: 200px;
-    background: var(--surface);
-    border: 2px dashed var(--glass-border);
-    border-radius: var(--radius-md);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.modification-empty {
-    text-align: center;
-    color: var(--text-muted);
-}
-
-.modification-empty i {
-    font-size: 2rem;
-    margin-bottom: 8px;
-}
-
-.modification-empty p {
-    font-size: 0.85rem;
-}
-
-.add-trade-btn {
-    margin-top: 12px;
-    padding: 12px;
-    background: var(--surface);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius-md);
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: all var(--transition-fast);
-}
-
-.add-trade-btn:hover {
-    border-color: var(--primary);
-    color: var(--primary);
-}
-
-.whatif-impact-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    margin-bottom: 16px;
-}
-
-.impact-card {
-    padding: 16px;
-    background: var(--surface);
-    border-radius: var(--radius-md);
-    text-align: center;
-}
-
-.impact-label {
-    display: block;
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    margin-bottom: 4px;
-}
-
-.impact-value {
-    font-size: 1.25rem;
-    font-weight: 700;
-}
-
-.whatif-chart {
-    height: 200px;
-}
 
 /* Report Modal */
 .report-modal {
@@ -7896,7 +7826,7 @@ body.reduce-motion #particle-canvas {
     .exposure-chart-container,
     .mini-chart,
     .sparkline,
-    .whatif-chart,
+    
     #graph-container {
         display: none;
     }
