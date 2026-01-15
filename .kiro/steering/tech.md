@@ -57,7 +57,9 @@ S: Service   → service_cli, service_gateway, service_python
 ### Demo Layer
 
 - **TUI**: `ratatui`, `crossterm` (FrictionalBank TUI)
+- **Web**: `axum`, `tower-http` (REST API and HTTP server)
 - **WebSocket**: `tokio-tungstenite` (real-time dashboard)
+- **Visualisation**: D3.js-compatible JSON graph export (computation DAG)
 
 ## Development Standards
 
@@ -92,6 +94,7 @@ S: Service   → service_cli, service_gateway, service_python
 - Rust nightly-2025-01-15 (workspace default)
 - LLVM 18 (for Enzyme in pricer_pricing)
 - Docker (recommended for reproducible Enzyme builds)
+- Google Cloud SDK (`gcloud`) for Cloud Run deployments (optional)
 
 ### Common Commands
 
@@ -121,7 +124,8 @@ docker run -it neutryx-enzyme
 | **Dual-Mode Verification** | Enzyme (performance) + num-dual (correctness) for validation |
 | **Smooth Approximations** | Replace all discontinuities (if/max) with differentiable functions |
 | **3-Stage Rocket Pattern** | Definition (L2) → Linking (PricingContext) → Execution (pure kernel); zero HashMap lookups in hot path |
-| **Feature Flags** | `num-dual-mode` (default), `enzyme-mode`, `serde` for serialisation; Asset classes: `equity` (default), `rates`, `credit`, `fx`, `commodity`, `exotic`; Convenience: `all` |
+| **Feature Flag Coordination** | Features propagate through dependency chain (demo→frictional_bank→pricer_pricing) enabling modular compilation for different deployment scenarios |
+| **Feature Flags** | `num-dual-mode` (default), `enzyme-mode`, `serde` for serialisation; Asset classes: `equity` (default), `rates`, `credit`, `fx`, `commodity`, `exotic`; Convenience: `all`; Integration: `l1l2-integration` |
 
 ## Performance Optimisation
 
@@ -130,7 +134,23 @@ docker run -it neutryx-enzyme
 - **Structure of Arrays (SoA)**: Memory layout for vectorisation (pricer_risk)
 - **Rayon Parallelism**: Portfolio-level parallel processing
 
+## Deployment Infrastructure
+
+### Containerisation
+
+- **Multi-stage Docker builds**: Separate Dockerfiles for stable, nightly, and web dashboard
+- **Cloud Run support**: Environment-based port binding (`PORT` env var), health endpoints (`/health`)
+- **CI/CD**: Google Cloud Build pipeline (`cloudbuild.yaml`) for automated build→push→deploy
+- **Container registry**: GCR (Google Container Registry)
+- **Target region**: Configurable via `cloudbuild.yaml` substitutions (default: `asia-northeast1`)
+
+### Observability
+
+- **Performance Metrics**: Built-in metrics collection (API response times, WebSocket latency, server uptime)
+- **Request Tracing**: `tower-http::TraceLayer` for HTTP request logging
+- **Health Checks**: Kubernetes/Cloud Run-compatible readiness probes
+
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-11_ — Added Demo Layer technologies (ratatui, tokio-tungstenite)
+_Updated: 2026-01-15_ — Added Cloud Run deployment, observability patterns, feature coordination
 _Document standards and patterns, not every dependency_

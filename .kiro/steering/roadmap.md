@@ -70,9 +70,11 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 |------|-------------|--------|
 | enzyme-full-integration | Full `#[autodiff]` macro integration | ✅ |
 | greeks-enzyme-ad | Delta/Gamma/Vega computation via Enzyme AD | ✅ |
+| irs-greeks-workflow | IRS Greeks with AAD vs Bump-and-Revalue | ✅ |
+| computation-graph | DAG visualisation for debugging | ✅ |
 | enzyme-benchmarks | Criterion benchmarks (requires LLVM 18 runtime) | ⏳ Deferred |
 
-**Note**: Core implementation complete (18/20 tasks). Benchmarks deferred pending LLVM 18 environment.
+**Note**: Core implementation complete including IRS Greeks workflow (lazy evaluation, benchmarks, XVA demo). Benchmarks deferred pending LLVM 18 environment.
 
 ### Phase 2: Additional Products & Models (Priority: Medium)
 
@@ -90,6 +92,9 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 | grpc-implementation | gRPC service with streaming support | ❌ |
 | python-bindings-expansion | Expand PyO3 bindings (MC Pricer, Greeks, etc.) | ❌ |
 | cli-commands-completion | Complete CLI commands implementation | ❌ |
+| cloud-deployment | Cloud Run deployment infrastructure | ✅ |
+| dual-mode-ui | TUI + Web dashboard | ✅ |
+| rest-orchestration | REST API for workflow orchestration | ✅ |
 
 ### Phase 4: Adapter Layer Enhancement (Priority: Low)
 
@@ -122,6 +127,7 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 
 | Date | Change |
 |------|--------|
+| 2026-01-15 | Steering sync: Cloud Run deployment, dual-mode UI, REST orchestration, computation graph, IRS Greeks workflow |
 | 2026-01-14 | frictional-bank: Added IRS AAD workflow and benchmark visualisation module |
 | 2026-01-11 | frictional-bank: Complete (all tasks including optional Chart and Web dashboard) |
 | 2026-01-10 | enzyme-autodiff-integration: Complete (18/20 tasks, benchmarks deferred) |

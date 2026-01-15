@@ -14,7 +14,8 @@ The workspace enforces a strict unidirectional data flow that mirrors alphabetic
 ## Core Capabilities
 
 - **Multi-Asset Class Instruments**: Rates (IRS, Swaption, Cap/Floor), FX (options, barriers, forwards), Equity (vanilla, exotic), Credit (CDS), Commodity
-- **High-Performance Greeks**: Enzyme LLVM-level AD for C++-competitive differentiation
+- **High-Performance Greeks**: Enzyme LLVM-level AD for C++-competitive differentiation with AAD vs Bump-and-Revalue comparison
+- **IRS Greeks Workflow**: Complete interest rate swap Greeks calculation with lazy evaluation and performance benchmarking
 - **Dual-Mode Verification**: Parallel Enzyme and num-dual backends for correctness validation
 - **Monte Carlo Pricing**: Path-dependent options with workspace buffers and checkpointing
 - **Analytical Solutions**: Black-Scholes, Garman-Kohlhagen, Kemna-Vorst, barrier formulas
@@ -23,6 +24,8 @@ The workspace enforces a strict unidirectional data flow that mirrors alphabetic
 - **Model Calibration**: Heston, SABR, Hull-White calibration with Levenberg-Marquardt optimisation
 - **Interest Rate Models**: Hull-White, Cox-Ingersoll-Ross (CIR) with mean reversion
 - **Portfolio Analytics**: Parallelised portfolio-level computations with SoA optimisation
+- **Computation Graph Visualisation**: D3.js-compatible DAG export for debugging and understanding pricing workflows
+- **Cloud Deployment**: Cloud Run-compatible containerisation with REST API orchestration
 
 ## Target Use Cases
 
@@ -42,5 +45,5 @@ The workspace enforces a strict unidirectional data flow that mirrors alphabetic
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-09_ — Pivoted from XVA-focused to comprehensive bank derivatives pricer
+_Updated: 2026-01-15_ — Added IRS Greeks workflow, computation graph visualisation, cloud deployment
 _Focus on patterns and purpose, not exhaustive feature lists_

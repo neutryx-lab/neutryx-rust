@@ -204,6 +204,8 @@ analytical/      → Closed-form solutions (geometric Asian, barrier options)
 greeks/          → Greeks calculation types (GreeksConfig, GreeksMode, GreeksResult<T>)
 pool/            → Thread-local buffer pool (ThreadLocalPool, PooledBuffer, PoolStats)
 context.rs       → [l1l2-integration] 3-stage rocket: PricingContext, price_single_trade
+irs_greeks/      → IRS Greeks workflow (AAD vs Bump-and-Revalue, lazy evaluation, benchmarks)
+graph/           → Computation graph extraction (D3.js-compatible JSON for DAG visualisation)
 ```
 
 **Key Principle**: **Only crate requiring nightly Rust and Enzyme**. Currently isolated (Phase 3.0) with zero pricer_* dependencies.
@@ -248,6 +250,21 @@ context.rs       → [l1l2-integration] 3-stage rocket: PricingContext, price_si
 - `GreeksConfig`: Configuration for bump widths and calculation modes (builder pattern)
 - `GreeksMode`: Calculation mode selection (BumpAndRevalue, AAD, NumDual)
 - `GreeksResult<T>`: Generic result type for Greeks calculations (AD-compatible)
+
+**IRS Greeks Workflow** (Phase 5+, Implemented):
+
+- `irs_greeks/calculator.rs`: IRS Greeks calculator with AAD support
+- `irs_greeks/lazy_evaluator.rs`: Lazy evaluation with caching for repeated calculations
+- `irs_greeks/benchmark.rs`: Performance comparison harness (AAD vs Bump-and-Revalue)
+- `irs_greeks/xva_demo.rs`: XVA demo integration with IRS pricing
+- Feature-gated (`l1l2-integration`) for full L1/L2 access
+
+**Computation Graph Module** (Phase 5+, Implemented):
+
+- `graph/types.rs`: `GraphNode`, `GraphEdge`, `ComputationGraph` types for D3.js visualisation
+- `graph/extractor.rs`: `GraphExtractable` trait with `SimpleGraphExtractor` implementation
+- Serialises to JSON format for browser-based DAG visualisation
+- Integrated into demo web dashboard (`/api/graph` endpoint)
 
 ### pricer_risk (L4)
 
@@ -327,17 +344,25 @@ lib.rs      → Module registration and Python module definition
 ### FrictionalBank Demo
 
 **Location**: `demo/frictional_bank/`
-**Purpose**: Full A-I-P-S workflow orchestration (TUI + Web interfaces)
+**Purpose**: Full A-I-P-S workflow orchestration (TUI + REST API)
 **Structure**:
 
 ```text
 workflow/     → Business workflows (eod_batch, intraday, stress_test, irs_aad)
 config.rs     → Demo configuration
 error.rs      → Demo-specific errors
-main.rs       → TUI entry point
+main.rs       → REST API entry point (HTTP server for workflow orchestration)
 ```
 
 **Supported Modes**: EOD Batch, Intraday Monitoring, Stress Testing, IRS AAD Demo
+
+**REST API Endpoints**:
+- `/health` - Health check (Kubernetes/Cloud Run readiness probe)
+- `/api/v1/workflow/eod` - EOD batch processing
+- `/api/v1/workflow/intraday` - Intraday monitoring
+- `/api/v1/workflow/stress` - Stress testing
+
+**Deployment**: Cloud Run-compatible with environment-based configuration (`PORT`, `FB_DEBUG_MODE`, `FB_LOG_LEVEL`)
 
 ### Demo Inputs
 
@@ -354,16 +379,35 @@ main.rs       → TUI entry point
 ### Demo GUI
 
 **Location**: `demo/gui/`
-**Purpose**: TUI (ratatui) and Web dashboard (axum + WebSocket)
+**Purpose**: Dual-interface dashboard (TUI + Web)
 **Structure**:
 
 ```text
 app.rs           → TUI application state
 screens.rs       → TUI screen definitions (dashboard, trades, exposure, IRS AAD)
 visualisation.rs → Benchmark visualisation (speed comparison charts, AAD vs Bump-and-Revalue)
-web/             → Web server (handlers, websocket)
+api_client.rs    → HTTP client for service communication
+web/             → Web server module (feature-gated)
+  ├── main.rs    → Web dashboard entry point
+  ├── handlers.rs → REST API handlers (pricing, portfolio, XVA)
+  ├── websocket.rs → WebSocket real-time updates
+  └── pricer_types.rs → Shared type definitions
 static/          → Web assets (HTML, CSS, JS)
 ```
+
+**Dual-Mode Architecture**:
+- **TUI Mode**: `demo/gui/bin/demo-tui` (traditional terminal interface)
+- **Web Mode**: `demo/gui/bin/demo-web` (browser-based dashboard, `feature = "web"`)
+- Both share underlying application logic
+- WebSocket for real-time chart updates
+- Feature-gated compilation (default TUI, optional web)
+
+**Web Features**:
+- REST API handlers (2000+ LOC)
+- Computation graph visualisation (`/api/graph` endpoint)
+- Performance metrics collection (API response times, WebSocket latency)
+- CORS and Content Security Policy headers
+- Environment-based configuration (`FB_CORS_ORIGINS`, `FB_CSP`)
 
 ### Demo Data & Notebooks
 
@@ -378,6 +422,14 @@ static/          → Web assets (HTML, CSS, JS)
 
 - `Dockerfile.stable` - A/I/P/S builds (no Enzyme)
 - `Dockerfile.nightly` - pricer_pricing with Enzyme LLVM plugin
+- `Dockerfile.gui` - Multi-stage build for demo web dashboard
+
+**Cloud Deployment**: Root directory
+
+- `cloudbuild.yaml` - Google Cloud Build CI/CD pipeline (build→push→deploy)
+- `.dockerignore` - Build optimisation (exclude unnecessary files)
+- `.gcloudignore` - Cloud deployment optimisation
+- `demo/frictional_bank/Dockerfile` - Cloud Run deployment container
 
 **Scripts**: `scripts/`
 
@@ -428,5 +480,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-14_ — Added IRS AAD workflow and visualisation module to Demo Layer
+_Updated: 2026-01-15_ — Added IRS Greeks workflow, computation graph, dual-mode UI, REST orchestration, Cloud Run deployment
 _Document patterns, not file trees. New files following patterns should not require updates_
