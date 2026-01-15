@@ -108,7 +108,7 @@
   - _Requirements: 8.1, 8.2, 8.3, 8.4_
   - _Contracts: WebSocket Event_
 
-- [ ] 7. フロントエンド UI 基盤
+- [x] 7. フロントエンド UI 基盤
 - [x] 7.1 (P) IRS Bootstrap & Risk サブビューの HTML 構造を作成する
   - Pricerタブ内に「IRS Bootstrap & Risk」サブビュー追加
   - 3ステップワークフロー構造（Step 1: Market Data、Step 2: Bootstrap、Step 3: Pricing & Risk）
