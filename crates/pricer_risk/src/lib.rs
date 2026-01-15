@@ -97,14 +97,23 @@ pub mod xva;
 
 // Re-export commonly used types
 pub use exposure::ExposureCalculator;
-pub use parallel::{ParallelConfig, DEFAULT_BATCH_SIZE};
+pub use parallel::{
+    create_shared_monitor, MemoryMonitor, MemoryMonitorConfig, MemoryStats, ParallelConfig,
+    ParallelGreeksConfig, ParallelGreeksError, ParallelGreeksStats,
+    ParallelPortfolioGreeksCalculator, PortfolioGreeksResult, SharedMemoryMonitor,
+    DEFAULT_BATCH_SIZE,
+};
 pub use portfolio::{
     CollateralAgreement, Counterparty, CounterpartyId, CreditParams, CreditRating, NettingSet,
     NettingSetId, Portfolio, PortfolioBuilder, PortfolioError, Trade, TradeBuilder, TradeId,
 };
 pub use scenarios::{
-    AggregationMethod, BumpScenario, GreeksAggregator, PortfolioGreeks, PresetScenario,
-    PresetScenarioType, RiskFactorShift, Scenario, ScenarioEngine, ScenarioPnL, ScenarioResult,
+    AggregationMethod, BucketDv01Calculator, BucketDv01Config, BucketDv01Entry, BucketDv01Error,
+    BucketDv01Result, BumpScenario, CurveShiftError, CurveShiftSpec, CurveShiftType, CurveShifter,
+    GreeksAggregator, GreeksByFactorConfig, GreeksByFactorError, GreeksResultByFactor,
+    IrsGreeksByFactorCalculator, KeyRateDurationEntry, KeyRateDurationResult, PortfolioGreeks,
+    PresetScenario, PresetScenarioType, RiskFactorId, RiskFactorShift, Scenario, ScenarioEngine,
+    ScenarioPnL, ScenarioResult, STANDARD_TENOR_LABELS, STANDARD_TENOR_POINTS,
 };
 pub use soa::{ExposureSoA, TradeSoA};
 pub use xva::{

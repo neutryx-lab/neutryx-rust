@@ -12,7 +12,11 @@
 //! - Subscription: Clients can subscribe to specific trade graph updates (Task 4.3)
 
 pub mod handlers;
+pub mod jobs;
+pub mod metrics;
+pub mod openapi;
 pub mod pricer_types;
+pub mod scenario_handlers;
 pub mod websocket;
 
 use axum::{
@@ -32,6 +36,8 @@ use tower_http::set_header::SetResponseHeaderLayer;
 use tracing::info;
 
 use handlers::GraphCache;
+use jobs::JobManager;
+use metrics::PrometheusMetrics;
 use pricer_types::BootstrapCurveCache;
 
 // =========================================================================
@@ -221,6 +227,8 @@ pub struct AppState {
     pub debug_config: DebugConfig,
     /// Bootstrapped curve cache for IRS pricing (Task 1.5)
     pub curve_cache: BootstrapCurveCache,
+    /// Async job manager (Task 7.1)
+    pub job_manager: JobManager,
 }
 
 impl AppState {
@@ -234,6 +242,7 @@ impl AppState {
             metrics: PerformanceMetrics::new(),
             debug_config: DebugConfig::from_env(),
             curve_cache: BootstrapCurveCache::new(),
+            job_manager: JobManager::new(),
         }
     }
 
@@ -375,6 +384,27 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/risk/aad", post(handlers::risk_aad))
         // Task 6.1: Add /api/risk/compare endpoint for comparison
         .route("/risk/compare", post(handlers::risk_compare))
+        // Task 4.1: Add /api/greeks/compare endpoint for Greeks comparison (Bump vs AAD)
+        .route("/greeks/compare", post(handlers::greeks_compare))
+        // Task 4.2: Add /api/greeks/first-order endpoint for first-order Greeks (Delta, Vega, Rho, Theta)
+        .route("/greeks/first-order", post(handlers::greeks_first_order))
+        // Task 4.2: Add /api/greeks/second-order endpoint for second-order Greeks (Gamma, Vanna, Volga)
+        .route("/greeks/second-order", post(handlers::greeks_second_order))
+        // Task 4.3: Add /api/greeks/bucket-dv01 endpoint for tenor-specific DV01 sensitivities
+        .route("/greeks/bucket-dv01", post(handlers::greeks_bucket_dv01))
+        // Task 5.1: Add /api/greeks/heatmap endpoint for Greeks heatmap visualisation
+        .route("/greeks/heatmap", get(handlers::get_greeks_heatmap))
+        // Task 5.2: Add /api/greeks/timeseries endpoint for Greeks time decay visualisation
+        .route("/greeks/timeseries", get(handlers::get_greeks_timeseries))
+        // Task 6.1: Add /api/scenarios/presets endpoint for preset scenario list
+        .route("/scenarios/presets", get(scenario_handlers::get_scenario_presets))
+        // Task 6.2: Add /api/scenarios/run endpoint for scenario execution
+        .route("/scenarios/run", post(scenario_handlers::run_scenario))
+        // Task 6.4: Add /api/scenarios/compare endpoint for scenario comparison
+        .route("/scenarios/compare", post(scenario_handlers::compare_scenarios))
+        // Task 7.2: Add /api/v1/jobs endpoints for async job management
+        .route("/v1/jobs", get(handlers::list_jobs))
+        .route("/v1/jobs/:id", get(handlers::get_job_status))
         .route("/ws", get(websocket::ws_handler));
 
     // Static file serving for the dashboard
@@ -387,14 +417,21 @@ pub fn build_router(state: Arc<AppState>) -> Router {
     // - Override via FB_CSP for stricter policies.
     let csp_header = build_csp_header();
 
-    Router::new()
+    // Task 8.1: Build router with optional OpenAPI/Swagger UI support
+    let router = Router::new()
         // Task 13.2: Serve index.html with config injection at root
         .route("/", get(handlers::get_index))
         .nest("/api", api_routes)
         .fallback_service(static_files)
         .layer(csp_header)
         .layer(cors)
-        .with_state(state)
+        .with_state(state);
+
+    // Merge Swagger UI router if openapi feature is enabled
+    #[cfg(feature = "openapi")]
+    let router = router.merge(openapi::swagger_ui_router());
+
+    router
 }
 
 /// Run the web server

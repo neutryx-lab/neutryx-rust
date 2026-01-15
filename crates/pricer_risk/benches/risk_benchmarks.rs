@@ -5,17 +5,34 @@
 //! - Exposure calculation (EE, EPE, PFE)
 //! - CVA/DVA computation
 //! - SoA data structure operations
+//! - IRS Greeks calculation (AAD vs Bump-and-Revalue comparison)
+//! - Parallel portfolio Greeks calculation
+//!
+//! # Requirements Coverage
+//!
+//! - Requirement 3.1: Rayon parallel processing for 1000+ trades
+//! - Requirement 3.2: AAD vs Bump-and-Revalue speedup (5x target)
+//! - Requirement 3.4: Criterion format benchmark output
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use pricer_core::market_data::curves::{CurveEnum, CurveName, CurveSet};
+use pricer_core::types::time::{Date, DayCountConvention};
 use pricer_core::types::Currency;
+use pricer_models::instruments::rates::{
+    FixedLeg, FloatingLeg, InterestRateSwap, RateIndex, SwapDirection,
+};
 use pricer_models::instruments::{
     ExerciseStyle, Instrument, InstrumentParams, PayoffType, VanillaOption,
 };
+use pricer_models::schedules::{Frequency, ScheduleBuilder};
+use pricer_pricing::greeks::GreeksMode;
 use pricer_risk::exposure::ExposureCalculator;
+use pricer_risk::parallel::{ParallelGreeksConfig, ParallelPortfolioGreeksCalculator};
 use pricer_risk::portfolio::{
     Counterparty, CounterpartyId, CreditParams, NettingSet, NettingSetId, PortfolioBuilder, Trade,
     TradeId,
 };
+use pricer_risk::scenarios::{GreeksByFactorConfig, IrsGreeksByFactorCalculator};
 use pricer_risk::soa::TradeSoA;
 use pricer_risk::xva::{compute_cva, compute_dva, generate_flat_discount_factors, OwnCreditParams};
 
@@ -287,6 +304,312 @@ fn bench_discount_factors(c: &mut Criterion) {
     group.finish();
 }
 
+// =============================================================================
+// IRS Greeks Benchmarks (Task 3.2)
+// =============================================================================
+
+/// Helper function to create a test IRS swap with given notional and tenor
+fn create_benchmark_swap(notional: f64, tenor_years: u32) -> InterestRateSwap<f64> {
+    let start_date = Date::from_ymd(2025, 1, 15).unwrap();
+    let end_date = Date::from_ymd(2025 + tenor_years as i32, 1, 15).unwrap();
+
+    let fixed_schedule = ScheduleBuilder::new()
+        .start(start_date)
+        .end(end_date)
+        .frequency(Frequency::SemiAnnual)
+        .day_count(DayCountConvention::Thirty360)
+        .build()
+        .unwrap();
+
+    let floating_schedule = ScheduleBuilder::new()
+        .start(start_date)
+        .end(end_date)
+        .frequency(Frequency::Quarterly)
+        .day_count(DayCountConvention::ActualActual360)
+        .build()
+        .unwrap();
+
+    let fixed_leg = FixedLeg::new(fixed_schedule, 0.02, DayCountConvention::Thirty360);
+    let floating_leg = FloatingLeg::new(
+        floating_schedule,
+        0.0,
+        RateIndex::Sofr,
+        DayCountConvention::ActualActual360,
+    );
+
+    InterestRateSwap::new(
+        notional,
+        fixed_leg,
+        floating_leg,
+        Currency::USD,
+        SwapDirection::PayFixed,
+    )
+}
+
+/// Helper function to create test curves
+fn create_benchmark_curves() -> CurveSet<f64> {
+    let mut curves = CurveSet::new();
+    curves.insert(CurveName::Discount, CurveEnum::flat(0.03));
+    curves.insert(CurveName::Forward, CurveEnum::flat(0.035));
+    curves.set_discount_curve(CurveName::Discount);
+    curves
+}
+
+/// Helper function to create multiple test swaps with varying notionals
+fn create_benchmark_swaps(n: usize) -> Vec<InterestRateSwap<f64>> {
+    (0..n)
+        .map(|i| {
+            let notional = 10_000_000.0 * (1.0 + (i % 10) as f64 * 0.1);
+            let tenor = 5 + (i % 5) as u32; // Tenors from 5Y to 9Y
+            create_benchmark_swap(notional, tenor)
+        })
+        .collect()
+}
+
+/// Benchmark IRS Greeks calculation - Bump-and-Revalue method.
+///
+/// # Requirements Coverage
+///
+/// - Requirement 3.2: Bump-and-Revalue baseline measurement
+fn bench_irs_greeks_bump(c: &mut Criterion) {
+    let mut group = c.benchmark_group("irs_greeks_bump");
+    group.sample_size(30); // Reduce sample size for expensive operations
+
+    let config = GreeksByFactorConfig::new()
+        .with_second_order(false)
+        .with_validation(true);
+    let calculator = IrsGreeksByFactorCalculator::new(config);
+    let curves = create_benchmark_curves();
+    let valuation_date = Date::from_ymd(2025, 1, 15).unwrap();
+
+    // Benchmark different swap tenors
+    for tenor in [5, 10, 15, 20] {
+        let swap = create_benchmark_swap(10_000_000.0, tenor);
+        group.bench_with_input(
+            BenchmarkId::new("first_order", format!("{}Y", tenor)),
+            &swap,
+            |b, swap| {
+                b.iter(|| {
+                    calculator.compute_first_order_greeks(
+                        black_box(swap),
+                        black_box(&curves),
+                        black_box(valuation_date),
+                    )
+                });
+            },
+        );
+    }
+
+    // Benchmark with second-order Greeks
+    let config_gamma = GreeksByFactorConfig::new()
+        .with_second_order(true)
+        .with_validation(true);
+    let calculator_gamma = IrsGreeksByFactorCalculator::new(config_gamma);
+    let swap_5y = create_benchmark_swap(10_000_000.0, 5);
+
+    group.bench_function("second_order_5Y", |b| {
+        b.iter(|| {
+            calculator_gamma.compute_second_order_greeks(
+                black_box(&swap_5y),
+                black_box(&curves),
+                black_box(valuation_date),
+            )
+        });
+    });
+
+    group.finish();
+}
+
+/// Benchmark AAD vs Bump-and-Revalue comparison.
+///
+/// Note: AAD mode currently falls back to bump-and-revalue when
+/// enzyme-ad feature is not enabled. This benchmark documents
+/// the baseline for comparison when AAD becomes available.
+///
+/// # Requirements Coverage
+///
+/// - Requirement 3.2: AAD vs Bump speedup comparison (target: 5x)
+fn bench_aad_vs_bump_comparison(c: &mut Criterion) {
+    let mut group = c.benchmark_group("aad_vs_bump");
+    group.sample_size(30);
+
+    let config = GreeksByFactorConfig::new()
+        .with_second_order(false)
+        .with_validation(true);
+    let calculator = IrsGreeksByFactorCalculator::new(config);
+    let curves = create_benchmark_curves();
+    let valuation_date = Date::from_ymd(2025, 1, 15).unwrap();
+    let swap = create_benchmark_swap(10_000_000.0, 10);
+
+    // Bump-and-Revalue baseline
+    group.bench_function("bump_10Y", |b| {
+        b.iter(|| {
+            calculator.compute_greeks_by_factor(
+                black_box(&swap),
+                black_box(&curves),
+                black_box(valuation_date),
+                black_box(GreeksMode::BumpRevalue),
+            )
+        });
+    });
+
+    // NumDual mode (analytical when available)
+    group.bench_function("numdual_10Y", |b| {
+        b.iter(|| {
+            calculator.compute_greeks_by_factor(
+                black_box(&swap),
+                black_box(&curves),
+                black_box(valuation_date),
+                black_box(GreeksMode::NumDual),
+            )
+        });
+    });
+
+    group.finish();
+}
+
+/// Benchmark parallel portfolio Greeks calculation.
+///
+/// # Requirements Coverage
+///
+/// - Requirement 3.1: Rayon parallel processing for 1000+ trades
+fn bench_parallel_portfolio_greeks(c: &mut Criterion) {
+    let mut group = c.benchmark_group("parallel_portfolio_greeks");
+    group.sample_size(20); // Portfolio computations are expensive
+
+    let curves = create_benchmark_curves();
+    let valuation_date = Date::from_ymd(2025, 1, 15).unwrap();
+
+    // Benchmark different portfolio sizes
+    for n_trades in [10, 50, 100, 200] {
+        let swaps = create_benchmark_swaps(n_trades);
+
+        // Sequential processing
+        let config_seq = ParallelGreeksConfig::new()
+            .with_batch_size(64)
+            .with_parallel_threshold(10000); // Force sequential
+
+        let calculator_seq = ParallelPortfolioGreeksCalculator::new(config_seq);
+
+        group.bench_with_input(
+            BenchmarkId::new("sequential", n_trades),
+            &swaps,
+            |b, swaps| {
+                b.iter(|| {
+                    calculator_seq.compute_portfolio_greeks_sequential(
+                        black_box(swaps),
+                        black_box(&curves),
+                        black_box(valuation_date),
+                    )
+                });
+            },
+        );
+
+        // Parallel processing
+        let config_par = ParallelGreeksConfig::new()
+            .with_batch_size(32)
+            .with_parallel_threshold(10); // Force parallel
+
+        let calculator_par = ParallelPortfolioGreeksCalculator::new(config_par);
+
+        group.bench_with_input(
+            BenchmarkId::new("parallel", n_trades),
+            &swaps,
+            |b, swaps| {
+                b.iter(|| {
+                    calculator_par.compute_portfolio_greeks_parallel(
+                        black_box(swaps),
+                        black_box(&curves),
+                        black_box(valuation_date),
+                    )
+                });
+            },
+        );
+    }
+
+    group.finish();
+}
+
+/// Benchmark batch size impact on parallel performance.
+///
+/// # Requirements Coverage
+///
+/// - Requirement 3.1: Optimal batch size tuning
+fn bench_batch_size_tuning(c: &mut Criterion) {
+    let mut group = c.benchmark_group("batch_size_tuning");
+    group.sample_size(20);
+
+    let swaps = create_benchmark_swaps(200);
+    let curves = create_benchmark_curves();
+    let valuation_date = Date::from_ymd(2025, 1, 15).unwrap();
+
+    // Test different batch sizes
+    for batch_size in [16, 32, 64, 128] {
+        let config = ParallelGreeksConfig::new()
+            .with_batch_size(batch_size)
+            .with_parallel_threshold(10);
+
+        let calculator = ParallelPortfolioGreeksCalculator::new(config);
+
+        group.bench_with_input(
+            BenchmarkId::new("batch", batch_size),
+            &swaps,
+            |b, swaps| {
+                b.iter(|| {
+                    calculator.compute_portfolio_greeks_parallel(
+                        black_box(swaps),
+                        black_box(&curves),
+                        black_box(valuation_date),
+                    )
+                });
+            },
+        );
+    }
+
+    group.finish();
+}
+
+/// Benchmark portfolio scalability (1000+ trades).
+///
+/// # Requirements Coverage
+///
+/// - Requirement 3.1: Large portfolio (1000+ trades) performance
+fn bench_large_portfolio_scalability(c: &mut Criterion) {
+    let mut group = c.benchmark_group("large_portfolio_scalability");
+    group.sample_size(10); // Very expensive benchmarks
+
+    let curves = create_benchmark_curves();
+    let valuation_date = Date::from_ymd(2025, 1, 15).unwrap();
+
+    // Large portfolio benchmarks
+    for n_trades in [500, 1000] {
+        let swaps = create_benchmark_swaps(n_trades);
+
+        let config = ParallelGreeksConfig::new()
+            .with_batch_size(64)
+            .with_parallel_threshold(100)
+            .with_second_order(false);
+
+        let calculator = ParallelPortfolioGreeksCalculator::new(config);
+
+        group.bench_with_input(
+            BenchmarkId::new("trades", n_trades),
+            &swaps,
+            |b, swaps| {
+                b.iter(|| {
+                    calculator.compute_portfolio_greeks(
+                        black_box(swaps),
+                        black_box(&curves),
+                        black_box(valuation_date),
+                    )
+                });
+            },
+        );
+    }
+
+    group.finish();
+}
+
 criterion_group!(
     benches,
     bench_expected_exposure,
@@ -296,6 +619,12 @@ criterion_group!(
     bench_dva_calculation,
     bench_portfolio_construction,
     bench_trade_soa,
-    bench_discount_factors
+    bench_discount_factors,
+    // Task 3.2: IRS Greeks benchmarks
+    bench_irs_greeks_bump,
+    bench_aad_vs_bump_comparison,
+    bench_parallel_portfolio_greeks,
+    bench_batch_size_tuning,
+    bench_large_portfolio_scalability,
 );
 criterion_main!(benches);

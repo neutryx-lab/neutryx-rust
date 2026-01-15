@@ -43,10 +43,11 @@ pub enum InstrumentType {
 // =============================================================================
 
 /// Option type (Call or Put).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum OptionType {
     /// Call option (right to buy)
+    #[default]
     Call,
     /// Put option (right to sell)
     Put,
@@ -385,6 +386,7 @@ pub struct BootstrapResponse {
 ///
 /// Determines how often payments are made on the swap.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
 #[serde(rename_all = "snake_case")]
 pub enum PaymentFrequency {
     /// Annual payments (once per year)
@@ -394,6 +396,8 @@ pub enum PaymentFrequency {
     SemiAnnual,
     /// Quarterly payments (four times per year)
     Quarterly,
+    /// Monthly payments (twelve times per year)
+    Monthly,
 }
 
 /// IRS pricing request using a bootstrapped curve.
@@ -1187,6 +1191,1189 @@ impl BootstrapCurveCache {
         curves.retain(|_, curve| curve.age_seconds() < max_age_seconds);
         initial_len - curves.len()
     }
+}
+
+// =============================================================================
+// Greeks Compare Types (Task 4.1: IRS Greeks WebApp Integration)
+// =============================================================================
+
+/// Greeks calculation mode for API requests.
+///
+/// Specifies whether to use Bump-and-Revalue or AAD for Greeks calculation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum GreeksCalculationMode {
+    /// Bump-and-Revalue method (finite differences)
+    #[default]
+    Bump,
+    /// Adjoint Algorithmic Differentiation
+    Aad,
+    /// Both methods for comparison
+    Compare,
+}
+
+/// Greeks compare request for Bump vs AAD comparison.
+///
+/// Sent by the client to calculate Greeks using both methods and compare results.
+///
+/// # Requirements Coverage
+///
+/// - Requirement 4.2: Bump 法と AAD 法の両方で計算を実行
+/// - Requirement 4.6: `/api/greeks/compare` エンドポイント
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GreeksCompareRequest {
+    /// Curve identifier from bootstrap response
+    pub curve_id: String,
+    /// Notional principal amount
+    pub notional: f64,
+    /// Fixed leg rate (e.g., 0.03 for 3%)
+    pub fixed_rate: f64,
+    /// Swap tenor in years
+    pub tenor_years: f64,
+    /// Payment frequency for both legs
+    pub payment_frequency: PaymentFrequency,
+    /// Bump size in basis points (default: 1)
+    #[serde(default = "default_bump_size_bps")]
+    pub bump_size_bps: f64,
+    /// Include second-order Greeks (Gamma, Vanna, Volga)
+    #[serde(default)]
+    pub include_second_order: bool,
+}
+
+/// Individual Greek value with optional components.
+///
+/// Represents a single Greek sensitivity value for API responses.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct GreekValue {
+    /// Delta (first-order sensitivity to underlying)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub delta: Option<f64>,
+    /// Gamma (second-order sensitivity to underlying)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gamma: Option<f64>,
+    /// Vega (sensitivity to volatility)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vega: Option<f64>,
+    /// Theta (sensitivity to time)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub theta: Option<f64>,
+    /// Rho (sensitivity to interest rate)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rho: Option<f64>,
+    /// Vanna (cross-gamma: delta-vol sensitivity)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vanna: Option<f64>,
+    /// Volga (second-order vol sensitivity)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub volga: Option<f64>,
+}
+
+impl GreekValue {
+    /// Create a new GreekValue with delta only.
+    pub fn with_delta(delta: f64) -> Self {
+        Self {
+            delta: Some(delta),
+            ..Default::default()
+        }
+    }
+
+    /// Create a new GreekValue with rho (for IRS).
+    pub fn with_rho(rho: f64) -> Self {
+        Self {
+            rho: Some(rho),
+            ..Default::default()
+        }
+    }
+
+    /// Add gamma to this GreekValue.
+    pub fn and_gamma(mut self, gamma: f64) -> Self {
+        self.gamma = Some(gamma);
+        self
+    }
+
+    /// Add vega to this GreekValue.
+    pub fn and_vega(mut self, vega: f64) -> Self {
+        self.vega = Some(vega);
+        self
+    }
+}
+
+/// Greeks result for a single calculation method.
+///
+/// Contains NPV, DV01, tenor deltas, and timing information.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GreeksMethodResult {
+    /// Net present value
+    pub npv: f64,
+    /// DV01 (total delta per basis point)
+    pub dv01: f64,
+    /// Delta results for each tenor
+    pub tenor_deltas: Vec<DeltaResult>,
+    /// Aggregated Greek values
+    pub greeks: GreekValue,
+    /// Calculation mode used
+    pub mode: String,
+    /// Timing statistics
+    pub timing: TimingStats,
+}
+
+/// Difference between Bump and AAD results.
+///
+/// Contains absolute and relative errors for each Greek.
+///
+/// # Requirements Coverage
+///
+/// - Requirement 4.5: 相対誤差・絶対誤差を表形式で表示
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GreeksDiff {
+    /// Absolute error in NPV
+    pub npv_abs_error: f64,
+    /// Relative error in NPV (as percentage)
+    pub npv_rel_error_pct: f64,
+    /// Absolute error in DV01
+    pub dv01_abs_error: f64,
+    /// Relative error in DV01 (as percentage)
+    pub dv01_rel_error_pct: f64,
+    /// Per-tenor delta differences
+    pub tenor_diffs: Vec<TenorDiff>,
+    /// Maximum absolute error across all tenors
+    pub max_abs_error: f64,
+    /// Maximum relative error across all tenors (as percentage)
+    pub max_rel_error_pct: f64,
+}
+
+/// Difference for a single tenor point.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TenorDiff {
+    /// Tenor string (e.g., "1Y", "5Y")
+    pub tenor: String,
+    /// Bump method delta
+    pub bump_delta: f64,
+    /// AAD method delta
+    pub aad_delta: f64,
+    /// Absolute difference
+    pub abs_diff: f64,
+    /// Relative difference (as percentage)
+    pub rel_diff_pct: f64,
+}
+
+/// Greeks comparison response with both methods' results.
+///
+/// Returned by the `/api/greeks/compare` endpoint.
+///
+/// # Requirements Coverage
+///
+/// - Requirement 4.3: Bump vs AAD の計算結果の差分を並列表示
+/// - Requirement 4.4: パフォーマンス比較をチャートで可視化
+/// - Requirement 4.6: `/api/greeks/compare` エンドポイント
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GreeksCompareResponse {
+    /// Bump method results
+    pub bump: GreeksMethodResult,
+    /// AAD method results
+    pub aad: GreeksMethodResult,
+    /// Differences between methods
+    pub diff: GreeksDiff,
+    /// Timing comparison
+    pub timing_comparison: TimingComparison,
+    /// Whether results are within acceptable tolerance
+    pub within_tolerance: bool,
+    /// Tolerance threshold used (relative error percentage)
+    pub tolerance_pct: f64,
+}
+
+// =============================================================================
+// First/Second Order Greeks Types (Task 4.2: IRS Greeks WebApp Integration)
+// =============================================================================
+
+/// First-order Greeks request for IRS.
+///
+/// Sent by the client to calculate first-order Greeks (Delta, Vega, Rho, Theta).
+///
+/// # Requirements Coverage
+///
+/// - Requirement 4.1: 一次 Greeks の計算
+/// - Requirement 7.1: `/api/greeks/first-order` エンドポイント
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FirstOrderGreeksRequest {
+    /// Curve identifier from bootstrap response
+    pub curve_id: String,
+    /// Notional principal amount
+    pub notional: f64,
+    /// Fixed leg rate (e.g., 0.03 for 3%)
+    pub fixed_rate: f64,
+    /// Swap tenor in years
+    pub tenor_years: f64,
+    /// Payment frequency for both legs
+    pub payment_frequency: PaymentFrequency,
+    /// Calculation mode (bump or aad)
+    #[serde(default)]
+    pub mode: GreeksCalculationMode,
+}
+
+/// First-order Greeks response.
+///
+/// Returns Delta, Vega, Rho, and Theta for the IRS.
+///
+/// # Requirements Coverage
+///
+/// - Requirement 4.1: 一次 Greeks の計算
+/// - Requirement 7.1: `/api/greeks/first-order` エンドポイント
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FirstOrderGreeksResponse {
+    /// Net present value
+    pub npv: f64,
+    /// DV01 (delta per basis point)
+    pub dv01: f64,
+    /// Delta (rate sensitivity)
+    pub delta: f64,
+    /// Vega (volatility sensitivity, may be 0 for IRS)
+    pub vega: f64,
+    /// Rho (interest rate sensitivity)
+    pub rho: f64,
+    /// Theta (time decay)
+    pub theta: f64,
+    /// Tenor deltas for each curve point
+    pub tenor_deltas: Vec<DeltaResult>,
+    /// Calculation mode used
+    pub mode: String,
+    /// Timing statistics
+    pub timing: TimingStats,
+}
+
+/// Second-order Greeks request for IRS.
+///
+/// Sent by the client to calculate second-order Greeks (Gamma, Vanna, Volga).
+///
+/// # Requirements Coverage
+///
+/// - Requirement 4.1: 二次 Greeks の計算
+/// - Requirement 7.2: `/api/greeks/second-order` エンドポイント
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SecondOrderGreeksRequest {
+    /// Curve identifier from bootstrap response
+    pub curve_id: String,
+    /// Notional principal amount
+    pub notional: f64,
+    /// Fixed leg rate (e.g., 0.03 for 3%)
+    pub fixed_rate: f64,
+    /// Swap tenor in years
+    pub tenor_years: f64,
+    /// Payment frequency for both legs
+    pub payment_frequency: PaymentFrequency,
+    /// Calculation mode (bump or aad)
+    #[serde(default)]
+    pub mode: GreeksCalculationMode,
+}
+
+/// Second-order Greeks response.
+///
+/// Returns Gamma, Vanna, and Volga for the IRS.
+///
+/// # Requirements Coverage
+///
+/// - Requirement 4.1: 二次 Greeks の計算
+/// - Requirement 7.2: `/api/greeks/second-order` エンドポイント
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SecondOrderGreeksResponse {
+    /// Net present value
+    pub npv: f64,
+    /// Gamma (second derivative to rate)
+    pub gamma: f64,
+    /// Vanna (cross derivative: delta-vol)
+    pub vanna: f64,
+    /// Volga (second derivative to volatility)
+    pub volga: f64,
+    /// Convexity (second derivative of price to yield)
+    pub convexity: f64,
+    /// Calculation mode used
+    pub mode: String,
+    /// Timing statistics
+    pub timing: TimingStats,
+}
+
+/// Validate first-order Greeks request parameters.
+pub fn validate_first_order_greeks_request(
+    request: &FirstOrderGreeksRequest,
+) -> Result<(), ValidationError> {
+    if request.notional <= 0.0 || request.notional.is_nan() || request.notional.is_infinite() {
+        return Err(ValidationError::NotionalNotPositive {
+            notional: request.notional,
+        });
+    }
+
+    if request.fixed_rate.is_nan()
+        || request.fixed_rate.is_infinite()
+        || request.fixed_rate < -1.0
+        || request.fixed_rate > 1.0
+    {
+        return Err(ValidationError::FixedRateOutOfRange {
+            fixed_rate: request.fixed_rate,
+        });
+    }
+
+    if request.tenor_years <= 0.0
+        || request.tenor_years.is_nan()
+        || request.tenor_years.is_infinite()
+    {
+        return Err(ValidationError::TenorYearsNotPositive {
+            tenor_years: request.tenor_years,
+        });
+    }
+
+    if request.tenor_years > MAX_TENOR_YEARS {
+        return Err(ValidationError::TenorYearsExceedsMax {
+            tenor_years: request.tenor_years,
+            max: MAX_TENOR_YEARS,
+        });
+    }
+
+    Ok(())
+}
+
+/// Validate second-order Greeks request parameters.
+pub fn validate_second_order_greeks_request(
+    request: &SecondOrderGreeksRequest,
+) -> Result<(), ValidationError> {
+    if request.notional <= 0.0 || request.notional.is_nan() || request.notional.is_infinite() {
+        return Err(ValidationError::NotionalNotPositive {
+            notional: request.notional,
+        });
+    }
+
+    if request.fixed_rate.is_nan()
+        || request.fixed_rate.is_infinite()
+        || request.fixed_rate < -1.0
+        || request.fixed_rate > 1.0
+    {
+        return Err(ValidationError::FixedRateOutOfRange {
+            fixed_rate: request.fixed_rate,
+        });
+    }
+
+    if request.tenor_years <= 0.0
+        || request.tenor_years.is_nan()
+        || request.tenor_years.is_infinite()
+    {
+        return Err(ValidationError::TenorYearsNotPositive {
+            tenor_years: request.tenor_years,
+        });
+    }
+
+    if request.tenor_years > MAX_TENOR_YEARS {
+        return Err(ValidationError::TenorYearsExceedsMax {
+            tenor_years: request.tenor_years,
+            max: MAX_TENOR_YEARS,
+        });
+    }
+
+    Ok(())
+}
+
+// =============================================================================
+// Bucket DV01 Types (Task 4.3: IRS Greeks WebApp Integration)
+// =============================================================================
+
+/// Standard tenor buckets for Bucket DV01 calculation.
+pub const BUCKET_TENORS: [&str; 9] = ["1M", "3M", "6M", "1Y", "2Y", "5Y", "10Y", "20Y", "30Y"];
+
+/// Bucket DV01 request for IRS.
+///
+/// Sent by the client to calculate tenor-specific DV01 sensitivities.
+///
+/// # Requirements Coverage
+///
+/// - Requirement 7.3: `/api/greeks/bucket-dv01` エンドポイント
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BucketDv01Request {
+    /// Curve identifier from bootstrap response
+    pub curve_id: String,
+    /// Notional principal amount
+    pub notional: f64,
+    /// Fixed leg rate (e.g., 0.03 for 3%)
+    pub fixed_rate: f64,
+    /// Swap tenor in years
+    pub tenor_years: f64,
+    /// Payment frequency for both legs
+    pub payment_frequency: PaymentFrequency,
+    /// Custom tenor buckets (optional, defaults to BUCKET_TENORS)
+    #[serde(default)]
+    pub custom_tenors: Option<Vec<String>>,
+    /// Include key rate duration calculation
+    #[serde(default)]
+    pub include_key_rate_duration: bool,
+}
+
+/// Individual bucket DV01 result.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BucketDv01Result {
+    /// Tenor string (e.g., "1Y", "5Y")
+    pub tenor: String,
+    /// DV01 for this bucket
+    pub dv01: f64,
+    /// Key rate duration (if requested)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub key_rate_duration: Option<f64>,
+    /// Percentage of total DV01
+    pub pct_of_total: f64,
+}
+
+/// Bucket DV01 response.
+///
+/// Returns tenor-specific DV01 sensitivities for the IRS.
+///
+/// # Requirements Coverage
+///
+/// - Requirement 7.3: `/api/greeks/bucket-dv01` エンドポイント
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BucketDv01Response {
+    /// NPV
+    pub npv: f64,
+    /// Total DV01 (sum of all buckets)
+    pub total_dv01: f64,
+    /// Per-bucket DV01 results
+    pub buckets: Vec<BucketDv01Result>,
+    /// Whether buckets sum correctly (consistency check)
+    pub buckets_consistent: bool,
+    /// Timing statistics
+    pub timing: TimingStats,
+}
+
+/// Validate Bucket DV01 request parameters.
+pub fn validate_bucket_dv01_request(request: &BucketDv01Request) -> Result<(), ValidationError> {
+    if request.notional <= 0.0 || request.notional.is_nan() || request.notional.is_infinite() {
+        return Err(ValidationError::NotionalNotPositive {
+            notional: request.notional,
+        });
+    }
+
+    if request.fixed_rate.is_nan()
+        || request.fixed_rate.is_infinite()
+        || request.fixed_rate < -1.0
+        || request.fixed_rate > 1.0
+    {
+        return Err(ValidationError::FixedRateOutOfRange {
+            fixed_rate: request.fixed_rate,
+        });
+    }
+
+    if request.tenor_years <= 0.0
+        || request.tenor_years.is_nan()
+        || request.tenor_years.is_infinite()
+    {
+        return Err(ValidationError::TenorYearsNotPositive {
+            tenor_years: request.tenor_years,
+        });
+    }
+
+    if request.tenor_years > MAX_TENOR_YEARS {
+        return Err(ValidationError::TenorYearsExceedsMax {
+            tenor_years: request.tenor_years,
+            max: MAX_TENOR_YEARS,
+        });
+    }
+
+    Ok(())
+}
+
+/// Validate Greeks compare request parameters.
+///
+/// Returns an error if any parameter is out of valid range.
+pub fn validate_greeks_compare_request(
+    request: &GreeksCompareRequest,
+) -> Result<(), ValidationError> {
+    // Validate notional
+    if request.notional <= 0.0 || request.notional.is_nan() || request.notional.is_infinite() {
+        return Err(ValidationError::NotionalNotPositive {
+            notional: request.notional,
+        });
+    }
+
+    // Validate fixed rate
+    if request.fixed_rate.is_nan()
+        || request.fixed_rate.is_infinite()
+        || request.fixed_rate < -1.0
+        || request.fixed_rate > 1.0
+    {
+        return Err(ValidationError::FixedRateOutOfRange {
+            fixed_rate: request.fixed_rate,
+        });
+    }
+
+    // Validate tenor years
+    if request.tenor_years <= 0.0
+        || request.tenor_years.is_nan()
+        || request.tenor_years.is_infinite()
+    {
+        return Err(ValidationError::TenorYearsNotPositive {
+            tenor_years: request.tenor_years,
+        });
+    }
+
+    if request.tenor_years > MAX_TENOR_YEARS {
+        return Err(ValidationError::TenorYearsExceedsMax {
+            tenor_years: request.tenor_years,
+            max: MAX_TENOR_YEARS,
+        });
+    }
+
+    // Validate bump size
+    if request.bump_size_bps <= 0.0
+        || request.bump_size_bps.is_nan()
+        || request.bump_size_bps.is_infinite()
+    {
+        return Err(ValidationError::BumpSizeNotPositive {
+            bump_size_bps: request.bump_size_bps,
+        });
+    }
+
+    Ok(())
+}
+
+// =============================================================================
+// Greeks Visualisation Types (Task 5.1, 5.2: Greeks Heatmap & Timeseries)
+// =============================================================================
+
+/// Greek type selector for visualisation APIs.
+///
+/// Specifies which Greek to visualise in heatmaps or timeseries.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum GreekType {
+    /// Delta: first-order sensitivity to underlying
+    #[default]
+    Delta,
+    /// Gamma: second-order sensitivity to underlying
+    Gamma,
+    /// Vega: sensitivity to volatility
+    Vega,
+    /// Theta: time decay
+    Theta,
+    /// Rho: sensitivity to interest rate
+    Rho,
+    /// Vanna: cross-gamma (delta-vol sensitivity)
+    Vanna,
+    /// Volga: second-order vol sensitivity
+    Volga,
+}
+
+impl std::fmt::Display for GreekType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GreekType::Delta => write!(f, "delta"),
+            GreekType::Gamma => write!(f, "gamma"),
+            GreekType::Vega => write!(f, "vega"),
+            GreekType::Theta => write!(f, "theta"),
+            GreekType::Rho => write!(f, "rho"),
+            GreekType::Vanna => write!(f, "vanna"),
+            GreekType::Volga => write!(f, "volga"),
+        }
+    }
+}
+
+/// Greeks heatmap request parameters.
+///
+/// Query parameters for the `/api/greeks/heatmap` endpoint.
+///
+/// # Requirements Coverage
+///
+/// - Requirement 5.1: テナー × ストライクの二次元ヒートマップ
+/// - Requirement 5.3: `/api/greeks/heatmap` エンドポイント
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GreeksHeatmapRequest {
+    /// Greek type to visualise (default: delta)
+    #[serde(default)]
+    pub greek_type: GreekType,
+    /// Spot price (default: 100.0)
+    #[serde(default = "default_spot")]
+    pub spot: f64,
+    /// Risk-free rate (default: 0.05)
+    #[serde(default = "default_rate")]
+    pub rate: f64,
+    /// Volatility (default: 0.20)
+    #[serde(default = "default_volatility")]
+    pub volatility: f64,
+    /// Option type: "call" or "put" (default: "call")
+    #[serde(default)]
+    pub option_type: OptionType,
+}
+
+fn default_spot() -> f64 {
+    100.0
+}
+
+fn default_rate() -> f64 {
+    0.05
+}
+
+fn default_volatility() -> f64 {
+    0.20
+}
+
+impl Default for GreeksHeatmapRequest {
+    fn default() -> Self {
+        Self {
+            greek_type: GreekType::default(),
+            spot: default_spot(),
+            rate: default_rate(),
+            volatility: default_volatility(),
+            option_type: OptionType::Call,
+        }
+    }
+}
+
+/// Greeks heatmap response (D3.js compatible).
+///
+/// Returns a 2D matrix of Greek values across tenor and strike dimensions.
+///
+/// # Requirements Coverage
+///
+/// - Requirement 5.1: D3.js 互換 JSON フォーマット
+/// - Requirement 5.3: `/api/greeks/heatmap` エンドポイント
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GreeksHeatmapResponse {
+    /// X-axis labels (tenors in years, e.g., ["0.25", "0.5", "1.0", "2.0"])
+    pub x_axis: Vec<String>,
+    /// Y-axis labels (strikes as percentages of spot, e.g., ["80%", "90%", "100%", "110%", "120%"])
+    pub y_axis: Vec<String>,
+    /// 2D matrix of values: values[y][x] corresponds to y_axis[y] and x_axis[x]
+    pub values: Vec<Vec<f64>>,
+    /// Greek type being visualised
+    pub greek_type: String,
+    /// Spot price used
+    pub spot: f64,
+    /// Risk-free rate used
+    pub rate: f64,
+    /// Volatility used
+    pub volatility: f64,
+    /// Option type used
+    pub option_type: String,
+    /// Minimum value in the matrix (for colour scale)
+    pub min_value: f64,
+    /// Maximum value in the matrix (for colour scale)
+    pub max_value: f64,
+}
+
+/// Greeks timeseries request parameters.
+///
+/// Query parameters for the `/api/greeks/timeseries` endpoint.
+///
+/// # Requirements Coverage
+///
+/// - Requirement 5.2: Greeks の時間推移を折れ線グラフで表示
+/// - Requirement 5.3: `/api/greeks/timeseries` エンドポイント
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GreeksTimeseriesRequest {
+    /// Greek types to include in the timeseries
+    #[serde(default = "default_greek_types")]
+    pub greek_types: Vec<GreekType>,
+    /// Spot price (default: 100.0)
+    #[serde(default = "default_spot")]
+    pub spot: f64,
+    /// Strike price (default: 100.0)
+    #[serde(default = "default_strike")]
+    pub strike: f64,
+    /// Risk-free rate (default: 0.05)
+    #[serde(default = "default_rate")]
+    pub rate: f64,
+    /// Volatility (default: 0.20)
+    #[serde(default = "default_volatility")]
+    pub volatility: f64,
+    /// Option type: "call" or "put" (default: "call")
+    #[serde(default)]
+    pub option_type: OptionType,
+    /// Time horizon in years (default: 1.0)
+    #[serde(default = "default_time_horizon")]
+    pub time_horizon: f64,
+    /// Number of time points (default: 50)
+    #[serde(default = "default_num_points")]
+    pub num_points: usize,
+}
+
+fn default_greek_types() -> Vec<GreekType> {
+    vec![GreekType::Delta, GreekType::Gamma, GreekType::Theta]
+}
+
+fn default_strike() -> f64 {
+    100.0
+}
+
+fn default_time_horizon() -> f64 {
+    1.0
+}
+
+fn default_num_points() -> usize {
+    50
+}
+
+impl Default for GreeksTimeseriesRequest {
+    fn default() -> Self {
+        Self {
+            greek_types: default_greek_types(),
+            spot: default_spot(),
+            strike: default_strike(),
+            rate: default_rate(),
+            volatility: default_volatility(),
+            option_type: OptionType::Call,
+            time_horizon: default_time_horizon(),
+            num_points: default_num_points(),
+        }
+    }
+}
+
+/// Single timeseries data series.
+///
+/// Contains timestamps and values for one Greek.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TimeseriesSeries {
+    /// Greek type for this series
+    pub greek_type: String,
+    /// Values at each timestamp
+    pub values: Vec<f64>,
+}
+
+/// Greeks timeseries response.
+///
+/// Returns time-series data for multiple Greeks.
+///
+/// # Requirements Coverage
+///
+/// - Requirement 5.2: 複数 Greeks の重ね合わせ表示
+/// - Requirement 5.3: `/api/greeks/timeseries` エンドポイント
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GreeksTimeseriesResponse {
+    /// Timestamps (time to expiry in days)
+    pub timestamps: Vec<f64>,
+    /// Series data for each Greek
+    pub series: Vec<TimeseriesSeries>,
+    /// Spot price used
+    pub spot: f64,
+    /// Strike price used
+    pub strike: f64,
+    /// Risk-free rate used
+    pub rate: f64,
+    /// Volatility used
+    pub volatility: f64,
+    /// Option type used
+    pub option_type: String,
+}
+
+// =============================================================================
+// Scenario Analysis Types (Task 6: Scenario Analysis UI)
+// =============================================================================
+
+/// Preset scenario type for stress testing.
+///
+/// Represents predefined market scenarios for risk analysis.
+///
+/// # Requirements Coverage
+///
+/// - Requirement 6.2: プリセットシナリオ（Rate Shock, Vol Spike, FX Crisis 等）
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PresetScenarioTypeApi {
+    /// Interest rate +1bp parallel shift
+    RateUp1bp,
+    /// Interest rate +10bp parallel shift
+    RateUp10bp,
+    /// Interest rate +100bp parallel shift
+    RateUp100bp,
+    /// Interest rate -1bp parallel shift
+    RateDown1bp,
+    /// Interest rate -10bp parallel shift
+    RateDown10bp,
+    /// Interest rate -100bp parallel shift
+    RateDown100bp,
+    /// Curve steepening (short rates down, long rates up)
+    CurveSteepen,
+    /// Curve flattening (short rates up, long rates down)
+    CurveFlatten,
+    /// Butterfly (middle rates spike)
+    Butterfly,
+    /// Credit spread +50bp
+    CreditWiden50bp,
+    /// Credit spread +100bp
+    CreditWiden100bp,
+    /// Equity -10%
+    EquityDown10Pct,
+    /// Equity -20%
+    EquityDown20Pct,
+    /// FX -10% (base currency weakens)
+    FxDown10Pct,
+    /// Volatility +5 vega points
+    VolUp5Pts,
+}
+
+impl PresetScenarioTypeApi {
+    /// Get human-readable name.
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::RateUp1bp => "IR +1bp",
+            Self::RateUp10bp => "IR +10bp",
+            Self::RateUp100bp => "IR +100bp",
+            Self::RateDown1bp => "IR -1bp",
+            Self::RateDown10bp => "IR -10bp",
+            Self::RateDown100bp => "IR -100bp",
+            Self::CurveSteepen => "Curve Steepen",
+            Self::CurveFlatten => "Curve Flatten",
+            Self::Butterfly => "Butterfly",
+            Self::CreditWiden50bp => "Credit +50bp",
+            Self::CreditWiden100bp => "Credit +100bp",
+            Self::EquityDown10Pct => "Equity -10%",
+            Self::EquityDown20Pct => "Equity -20%",
+            Self::FxDown10Pct => "FX -10%",
+            Self::VolUp5Pts => "Vol +5pts",
+        }
+    }
+
+    /// Get description.
+    pub fn description(&self) -> &'static str {
+        match self {
+            Self::RateUp1bp => "Parallel interest rate shift +1 basis point",
+            Self::RateUp10bp => "Parallel interest rate shift +10 basis points",
+            Self::RateUp100bp => "Parallel interest rate shift +100 basis points",
+            Self::RateDown1bp => "Parallel interest rate shift -1 basis point",
+            Self::RateDown10bp => "Parallel interest rate shift -10 basis points",
+            Self::RateDown100bp => "Parallel interest rate shift -100 basis points",
+            Self::CurveSteepen => "Short rates -25bp, long rates +25bp",
+            Self::CurveFlatten => "Short rates +25bp, long rates -25bp",
+            Self::Butterfly => "Wings -10bp, belly +20bp",
+            Self::CreditWiden50bp => "Credit spread widening +50 basis points",
+            Self::CreditWiden100bp => "Credit spread widening +100 basis points",
+            Self::EquityDown10Pct => "Equity prices decline 10%",
+            Self::EquityDown20Pct => "Equity prices decline 20%",
+            Self::FxDown10Pct => "Base currency weakens 10%",
+            Self::VolUp5Pts => "Implied volatility increases 5 percentage points",
+        }
+    }
+
+    /// Get category.
+    pub fn category(&self) -> &'static str {
+        match self {
+            Self::RateUp1bp
+            | Self::RateUp10bp
+            | Self::RateUp100bp
+            | Self::RateDown1bp
+            | Self::RateDown10bp
+            | Self::RateDown100bp => "rate",
+            Self::CurveSteepen | Self::CurveFlatten | Self::Butterfly => "curve",
+            Self::CreditWiden50bp | Self::CreditWiden100bp => "credit",
+            Self::EquityDown10Pct | Self::EquityDown20Pct => "equity",
+            Self::FxDown10Pct => "fx",
+            Self::VolUp5Pts => "volatility",
+        }
+    }
+
+    /// Get all available preset scenario types.
+    pub fn all() -> Vec<Self> {
+        vec![
+            Self::RateUp1bp,
+            Self::RateUp10bp,
+            Self::RateUp100bp,
+            Self::RateDown1bp,
+            Self::RateDown10bp,
+            Self::RateDown100bp,
+            Self::CurveSteepen,
+            Self::CurveFlatten,
+            Self::Butterfly,
+            Self::CreditWiden50bp,
+            Self::CreditWiden100bp,
+            Self::EquityDown10Pct,
+            Self::EquityDown20Pct,
+            Self::FxDown10Pct,
+            Self::VolUp5Pts,
+        ]
+    }
+}
+
+/// Preset scenario information for API response.
+///
+/// Contains all information about a preset scenario including its
+/// identifier, name, description, and parameters.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PresetScenarioInfo {
+    /// Scenario type identifier
+    pub scenario_type: PresetScenarioTypeApi,
+    /// Human-readable name
+    pub name: String,
+    /// Description of what the scenario does
+    pub description: String,
+    /// Category (rate, curve, credit, equity, fx, volatility)
+    pub category: String,
+    /// Shift amount in basis points (for rate scenarios) or percentage (for others)
+    pub shift_amount: f64,
+    /// Unit of the shift amount
+    pub shift_unit: String,
+}
+
+impl PresetScenarioInfo {
+    /// Create a new preset scenario info from a scenario type.
+    pub fn from_type(scenario_type: PresetScenarioTypeApi) -> Self {
+        let (shift_amount, shift_unit) = match scenario_type {
+            PresetScenarioTypeApi::RateUp1bp => (1.0, "bp"),
+            PresetScenarioTypeApi::RateUp10bp => (10.0, "bp"),
+            PresetScenarioTypeApi::RateUp100bp => (100.0, "bp"),
+            PresetScenarioTypeApi::RateDown1bp => (-1.0, "bp"),
+            PresetScenarioTypeApi::RateDown10bp => (-10.0, "bp"),
+            PresetScenarioTypeApi::RateDown100bp => (-100.0, "bp"),
+            PresetScenarioTypeApi::CurveSteepen => (25.0, "bp"),
+            PresetScenarioTypeApi::CurveFlatten => (25.0, "bp"),
+            PresetScenarioTypeApi::Butterfly => (20.0, "bp"),
+            PresetScenarioTypeApi::CreditWiden50bp => (50.0, "bp"),
+            PresetScenarioTypeApi::CreditWiden100bp => (100.0, "bp"),
+            PresetScenarioTypeApi::EquityDown10Pct => (-10.0, "%"),
+            PresetScenarioTypeApi::EquityDown20Pct => (-20.0, "%"),
+            PresetScenarioTypeApi::FxDown10Pct => (-10.0, "%"),
+            PresetScenarioTypeApi::VolUp5Pts => (5.0, "pts"),
+        };
+
+        Self {
+            scenario_type,
+            name: scenario_type.name().to_string(),
+            description: scenario_type.description().to_string(),
+            category: scenario_type.category().to_string(),
+            shift_amount,
+            shift_unit: shift_unit.to_string(),
+        }
+    }
+}
+
+/// Response for GET /api/scenarios/presets endpoint.
+///
+/// Returns all available preset scenarios.
+///
+/// # Requirements Coverage
+///
+/// - Requirement 6.2: プリセットシナリオの選択機能
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScenarioPresetsResponse {
+    /// List of all available preset scenarios
+    pub presets: Vec<PresetScenarioInfo>,
+    /// Total number of presets
+    pub count: usize,
+    /// Grouped presets by category
+    pub by_category: HashMap<String, Vec<PresetScenarioInfo>>,
+}
+
+impl ScenarioPresetsResponse {
+    /// Create response with all preset scenarios.
+    pub fn new() -> Self {
+        let all_types = PresetScenarioTypeApi::all();
+        let presets: Vec<PresetScenarioInfo> = all_types
+            .into_iter()
+            .map(PresetScenarioInfo::from_type)
+            .collect();
+
+        let mut by_category: HashMap<String, Vec<PresetScenarioInfo>> = HashMap::new();
+        for preset in &presets {
+            by_category
+                .entry(preset.category.clone())
+                .or_default()
+                .push(preset.clone());
+        }
+
+        let count = presets.len();
+
+        Self {
+            presets,
+            count,
+            by_category,
+        }
+    }
+}
+
+impl Default for ScenarioPresetsResponse {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Risk factor shift specification for custom scenarios.
+///
+/// Allows users to define custom shifts for scenario analysis.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RiskFactorShiftApi {
+    /// Type of risk factor (rate, credit, equity, fx, volatility)
+    pub factor_type: String,
+    /// Identifier pattern (e.g., "*" for all, "USD.*" for USD factors)
+    #[serde(default = "default_pattern")]
+    pub pattern: String,
+    /// Shift amount
+    pub shift_amount: f64,
+    /// Shift type (parallel, relative, absolute)
+    #[serde(default = "default_shift_type")]
+    pub shift_type: String,
+}
+
+fn default_pattern() -> String {
+    "*".to_string()
+}
+
+fn default_shift_type() -> String {
+    "parallel".to_string()
+}
+
+/// Request for POST /api/scenarios/run endpoint.
+///
+/// Execute a scenario and calculate P&L impact.
+///
+/// # Requirements Coverage
+///
+/// - Requirement 6.1: リスクファクターシフト量を変更して再計算
+/// - Requirement 6.3: カスタムシナリオを定義
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScenarioRunRequest {
+    /// Curve ID for pricing (from bootstrap)
+    pub curve_id: String,
+    /// Notional amount
+    pub notional: f64,
+    /// Fixed rate for IRS
+    pub fixed_rate: f64,
+    /// Tenor in years
+    pub tenor_years: f64,
+    /// Payment frequency
+    pub payment_frequency: PaymentFrequency,
+    /// Preset scenario type (if using preset)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub preset_scenario: Option<PresetScenarioTypeApi>,
+    /// Custom risk factor shifts (if using custom scenario)
+    #[serde(default)]
+    pub custom_shifts: Vec<RiskFactorShiftApi>,
+    /// Scenario name (for custom scenarios)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scenario_name: Option<String>,
+}
+
+/// P&L result for a single scenario.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScenarioPnlResult {
+    /// Scenario name
+    pub scenario_name: String,
+    /// Base value before scenario
+    pub base_value: f64,
+    /// Stressed value after scenario
+    pub stressed_value: f64,
+    /// P&L (stressed - base)
+    pub pnl: f64,
+    /// P&L as percentage of base
+    pub pnl_pct: f64,
+    /// Whether this is a loss
+    pub is_loss: bool,
+}
+
+impl ScenarioPnlResult {
+    /// Create a new P&L result.
+    pub fn new(scenario_name: impl Into<String>, base_value: f64, stressed_value: f64) -> Self {
+        let pnl = stressed_value - base_value;
+        let pnl_pct = if base_value.abs() > 1e-10 {
+            (pnl / base_value.abs()) * 100.0
+        } else {
+            0.0
+        };
+        Self {
+            scenario_name: scenario_name.into(),
+            base_value,
+            stressed_value,
+            pnl,
+            pnl_pct,
+            is_loss: pnl < 0.0,
+        }
+    }
+}
+
+/// Response for POST /api/scenarios/run endpoint.
+///
+/// Contains the P&L result and timing information.
+///
+/// # Requirements Coverage
+///
+/// - Requirement 6.4: シナリオ間の PnL 比較
+/// - Requirement 6.5: プログレスインジケータ（非同期ジョブ用）
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScenarioRunResponse {
+    /// Scenario result
+    pub result: ScenarioPnlResult,
+    /// Applied shifts summary
+    pub applied_shifts: Vec<AppliedShiftInfo>,
+    /// Processing time in milliseconds
+    pub processing_time_ms: f64,
+    /// Job ID (for long-running calculations)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub job_id: Option<String>,
+}
+
+/// Information about an applied shift.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppliedShiftInfo {
+    /// Factor type
+    pub factor_type: String,
+    /// Pattern
+    pub pattern: String,
+    /// Shift amount
+    pub shift_amount: f64,
+    /// Shift type
+    pub shift_type: String,
+}
+
+/// Request for scenario comparison.
+///
+/// Run multiple scenarios and compare P&L results.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScenarioCompareRequest {
+    /// Curve ID for pricing
+    pub curve_id: String,
+    /// Notional amount
+    pub notional: f64,
+    /// Fixed rate for IRS
+    pub fixed_rate: f64,
+    /// Tenor in years
+    pub tenor_years: f64,
+    /// Payment frequency
+    pub payment_frequency: PaymentFrequency,
+    /// List of preset scenarios to compare
+    pub scenarios: Vec<PresetScenarioTypeApi>,
+}
+
+/// Response for scenario comparison.
+///
+/// Contains P&L results for all compared scenarios.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScenarioCompareResponse {
+    /// Results for each scenario
+    pub results: Vec<ScenarioPnlResult>,
+    /// Worst case scenario
+    pub worst_case: Option<ScenarioPnlResult>,
+    /// Best case scenario
+    pub best_case: Option<ScenarioPnlResult>,
+    /// Total processing time in milliseconds
+    pub total_processing_time_ms: f64,
 }
 
 // =============================================================================
@@ -3599,6 +4786,886 @@ mod tests {
         fn test_cache_default() {
             let cache = BootstrapCurveCache::default();
             assert!(cache.is_empty());
+        }
+    }
+
+    // =========================================================================
+    // Greeks Compare Types Tests (Task 4.1)
+    // =========================================================================
+
+    mod greeks_compare_tests {
+        use super::*;
+
+        fn valid_greeks_compare_request() -> GreeksCompareRequest {
+            GreeksCompareRequest {
+                curve_id: "curve-001".to_string(),
+                notional: 10_000_000.0,
+                fixed_rate: 0.03,
+                tenor_years: 5.0,
+                payment_frequency: PaymentFrequency::Annual,
+                bump_size_bps: 1.0,
+                include_second_order: false,
+            }
+        }
+
+        #[test]
+        fn test_greeks_calculation_mode_serialization() {
+            let bump_mode = GreeksCalculationMode::Bump;
+            let json = serde_json::to_string(&bump_mode).unwrap();
+            assert_eq!(json, "\"bump\"");
+
+            let aad_mode = GreeksCalculationMode::Aad;
+            let json = serde_json::to_string(&aad_mode).unwrap();
+            assert_eq!(json, "\"aad\"");
+
+            let compare_mode = GreeksCalculationMode::Compare;
+            let json = serde_json::to_string(&compare_mode).unwrap();
+            assert_eq!(json, "\"compare\"");
+        }
+
+        #[test]
+        fn test_greeks_calculation_mode_default() {
+            let mode = GreeksCalculationMode::default();
+            assert_eq!(mode, GreeksCalculationMode::Bump);
+        }
+
+        #[test]
+        fn test_greeks_compare_request_deserialize() {
+            let json = r#"{
+                "curveId": "curve-001",
+                "notional": 10000000,
+                "fixedRate": 0.03,
+                "tenorYears": 5.0,
+                "paymentFrequency": "annual",
+                "bumpSizeBps": 1.0,
+                "includeSecondOrder": true
+            }"#;
+
+            let request: GreeksCompareRequest = serde_json::from_str(json).unwrap();
+            assert_eq!(request.curve_id, "curve-001");
+            assert!((request.notional - 10_000_000.0).abs() < 1e-10);
+            assert!((request.fixed_rate - 0.03).abs() < 1e-10);
+            assert!((request.tenor_years - 5.0).abs() < 1e-10);
+            assert_eq!(request.payment_frequency, PaymentFrequency::Annual);
+            assert!((request.bump_size_bps - 1.0).abs() < 1e-10);
+            assert!(request.include_second_order);
+        }
+
+        #[test]
+        fn test_greeks_compare_request_default_bump_size() {
+            let json = r#"{
+                "curveId": "curve-001",
+                "notional": 10000000,
+                "fixedRate": 0.03,
+                "tenorYears": 5.0,
+                "paymentFrequency": "annual"
+            }"#;
+
+            let request: GreeksCompareRequest = serde_json::from_str(json).unwrap();
+            assert!((request.bump_size_bps - 1.0).abs() < 1e-10);
+            assert!(!request.include_second_order);
+        }
+
+        #[test]
+        fn test_greek_value_with_delta() {
+            let greeks = GreekValue::with_delta(0.5);
+            assert!((greeks.delta.unwrap() - 0.5).abs() < 1e-10);
+            assert!(greeks.gamma.is_none());
+            assert!(greeks.vega.is_none());
+            assert!(greeks.theta.is_none());
+            assert!(greeks.rho.is_none());
+        }
+
+        #[test]
+        fn test_greek_value_with_rho() {
+            let greeks = GreekValue::with_rho(15.0);
+            assert!(greeks.delta.is_none());
+            assert!((greeks.rho.unwrap() - 15.0).abs() < 1e-10);
+        }
+
+        #[test]
+        fn test_greek_value_builder_chain() {
+            let greeks = GreekValue::with_delta(0.5)
+                .and_gamma(0.02)
+                .and_vega(25.0);
+
+            assert!((greeks.delta.unwrap() - 0.5).abs() < 1e-10);
+            assert!((greeks.gamma.unwrap() - 0.02).abs() < 1e-10);
+            assert!((greeks.vega.unwrap() - 25.0).abs() < 1e-10);
+        }
+
+        #[test]
+        fn test_greeks_method_result_serialize() {
+            let result = GreeksMethodResult {
+                npv: 125000.0,
+                dv01: 4500.0,
+                tenor_deltas: vec![
+                    DeltaResult {
+                        tenor: "1Y".to_string(),
+                        delta: -1000.0,
+                        processing_time_us: 100.0,
+                    },
+                    DeltaResult {
+                        tenor: "5Y".to_string(),
+                        delta: -3500.0,
+                        processing_time_us: 120.0,
+                    },
+                ],
+                greeks: GreekValue::with_rho(4500.0),
+                mode: "bump".to_string(),
+                timing: TimingStats {
+                    mean_us: 110.0,
+                    std_dev_us: 10.0,
+                    min_us: 100.0,
+                    max_us: 120.0,
+                    total_ms: 0.22,
+                },
+            };
+
+            let json = serde_json::to_string(&result).unwrap();
+            assert!(json.contains("\"npv\":125000"));
+            assert!(json.contains("\"dv01\":4500"));
+            assert!(json.contains("\"mode\":\"bump\""));
+        }
+
+        #[test]
+        fn test_greeks_diff_serialize() {
+            let diff = GreeksDiff {
+                npv_abs_error: 0.01,
+                npv_rel_error_pct: 0.00008,
+                dv01_abs_error: 0.001,
+                dv01_rel_error_pct: 0.00002,
+                tenor_diffs: vec![TenorDiff {
+                    tenor: "5Y".to_string(),
+                    bump_delta: -3500.0,
+                    aad_delta: -3500.01,
+                    abs_diff: 0.01,
+                    rel_diff_pct: 0.00029,
+                }],
+                max_abs_error: 0.01,
+                max_rel_error_pct: 0.00029,
+            };
+
+            let json = serde_json::to_string(&diff).unwrap();
+            assert!(json.contains("\"npvAbsError\":"));
+            assert!(json.contains("\"npvRelErrorPct\":"));
+            assert!(json.contains("\"tenorDiffs\":"));
+        }
+
+        #[test]
+        fn test_greeks_compare_response_serialize() {
+            let bump_result = GreeksMethodResult {
+                npv: 125000.0,
+                dv01: 4500.0,
+                tenor_deltas: vec![],
+                greeks: GreekValue::default(),
+                mode: "bump".to_string(),
+                timing: TimingStats {
+                    mean_us: 1000.0,
+                    std_dev_us: 50.0,
+                    min_us: 950.0,
+                    max_us: 1050.0,
+                    total_ms: 5.0,
+                },
+            };
+
+            let aad_result = GreeksMethodResult {
+                npv: 125000.0,
+                dv01: 4500.0,
+                tenor_deltas: vec![],
+                greeks: GreekValue::default(),
+                mode: "aad".to_string(),
+                timing: TimingStats {
+                    mean_us: 100.0,
+                    std_dev_us: 5.0,
+                    min_us: 95.0,
+                    max_us: 105.0,
+                    total_ms: 0.5,
+                },
+            };
+
+            let response = GreeksCompareResponse {
+                bump: bump_result,
+                aad: aad_result,
+                diff: GreeksDiff {
+                    npv_abs_error: 0.0,
+                    npv_rel_error_pct: 0.0,
+                    dv01_abs_error: 0.0,
+                    dv01_rel_error_pct: 0.0,
+                    tenor_diffs: vec![],
+                    max_abs_error: 0.0,
+                    max_rel_error_pct: 0.0,
+                },
+                timing_comparison: TimingComparison {
+                    bump_total_ms: 5.0,
+                    aad_total_ms: Some(0.5),
+                    speedup_ratio: Some(10.0),
+                },
+                within_tolerance: true,
+                tolerance_pct: 0.01,
+            };
+
+            let json = serde_json::to_string(&response).unwrap();
+            assert!(json.contains("\"bump\":{"));
+            assert!(json.contains("\"aad\":{"));
+            assert!(json.contains("\"withinTolerance\":true"));
+            assert!(json.contains("\"speedupRatio\":10"));
+        }
+
+        #[test]
+        fn test_validate_greeks_compare_request_valid() {
+            let request = valid_greeks_compare_request();
+            assert!(validate_greeks_compare_request(&request).is_ok());
+        }
+
+        #[test]
+        fn test_validate_greeks_compare_request_invalid_notional() {
+            let mut request = valid_greeks_compare_request();
+            request.notional = -10_000_000.0;
+
+            let result = validate_greeks_compare_request(&request);
+            assert!(result.is_err());
+            match result.unwrap_err() {
+                ValidationError::NotionalNotPositive { .. } => {}
+                _ => panic!("Expected NotionalNotPositive error"),
+            }
+        }
+
+        #[test]
+        fn test_validate_greeks_compare_request_invalid_fixed_rate() {
+            let mut request = valid_greeks_compare_request();
+            request.fixed_rate = 1.5;
+
+            let result = validate_greeks_compare_request(&request);
+            assert!(result.is_err());
+            match result.unwrap_err() {
+                ValidationError::FixedRateOutOfRange { .. } => {}
+                _ => panic!("Expected FixedRateOutOfRange error"),
+            }
+        }
+
+        #[test]
+        fn test_validate_greeks_compare_request_invalid_tenor() {
+            let mut request = valid_greeks_compare_request();
+            request.tenor_years = -5.0;
+
+            let result = validate_greeks_compare_request(&request);
+            assert!(result.is_err());
+            match result.unwrap_err() {
+                ValidationError::TenorYearsNotPositive { .. } => {}
+                _ => panic!("Expected TenorYearsNotPositive error"),
+            }
+        }
+
+        #[test]
+        fn test_validate_greeks_compare_request_invalid_bump_size() {
+            let mut request = valid_greeks_compare_request();
+            request.bump_size_bps = -1.0;
+
+            let result = validate_greeks_compare_request(&request);
+            assert!(result.is_err());
+            match result.unwrap_err() {
+                ValidationError::BumpSizeNotPositive { .. } => {}
+                _ => panic!("Expected BumpSizeNotPositive error"),
+            }
+        }
+    }
+
+    // =========================================================================
+    // Task 4.2: First/Second Order Greeks Types Tests
+    // =========================================================================
+
+    mod first_second_order_greeks_tests {
+        use super::*;
+
+        fn valid_first_order_request() -> FirstOrderGreeksRequest {
+            FirstOrderGreeksRequest {
+                curve_id: "curve-001".to_string(),
+                notional: 10_000_000.0,
+                fixed_rate: 0.03,
+                tenor_years: 5.0,
+                payment_frequency: PaymentFrequency::Annual,
+                mode: GreeksCalculationMode::Bump,
+            }
+        }
+
+        fn valid_second_order_request() -> SecondOrderGreeksRequest {
+            SecondOrderGreeksRequest {
+                curve_id: "curve-001".to_string(),
+                notional: 10_000_000.0,
+                fixed_rate: 0.03,
+                tenor_years: 5.0,
+                payment_frequency: PaymentFrequency::Annual,
+                mode: GreeksCalculationMode::Bump,
+            }
+        }
+
+        #[test]
+        fn test_first_order_request_deserialize() {
+            let json = r#"{
+                "curveId": "curve-001",
+                "notional": 10000000,
+                "fixedRate": 0.03,
+                "tenorYears": 5.0,
+                "paymentFrequency": "annual",
+                "mode": "bump"
+            }"#;
+
+            let request: FirstOrderGreeksRequest = serde_json::from_str(json).unwrap();
+            assert_eq!(request.curve_id, "curve-001");
+            assert!((request.notional - 10_000_000.0).abs() < 1e-10);
+            assert_eq!(request.mode, GreeksCalculationMode::Bump);
+        }
+
+        #[test]
+        fn test_first_order_request_default_mode() {
+            let json = r#"{
+                "curveId": "curve-001",
+                "notional": 10000000,
+                "fixedRate": 0.03,
+                "tenorYears": 5.0,
+                "paymentFrequency": "annual"
+            }"#;
+
+            let request: FirstOrderGreeksRequest = serde_json::from_str(json).unwrap();
+            assert_eq!(request.mode, GreeksCalculationMode::Bump);
+        }
+
+        #[test]
+        fn test_first_order_response_serialize() {
+            let response = FirstOrderGreeksResponse {
+                npv: 125000.0,
+                dv01: 4500.0,
+                delta: 4500.0,
+                vega: 0.0,
+                rho: 4500.0,
+                theta: -10.0,
+                tenor_deltas: vec![DeltaResult {
+                    tenor: "1Y".to_string(),
+                    delta: -1000.0,
+                    processing_time_us: 100.0,
+                }],
+                mode: "bump".to_string(),
+                timing: TimingStats {
+                    mean_us: 100.0,
+                    std_dev_us: 10.0,
+                    min_us: 90.0,
+                    max_us: 110.0,
+                    total_ms: 0.1,
+                },
+            };
+
+            let json = serde_json::to_string(&response).unwrap();
+            assert!(json.contains("\"npv\":125000"));
+            assert!(json.contains("\"dv01\":4500"));
+            assert!(json.contains("\"delta\":4500"));
+            assert!(json.contains("\"rho\":4500"));
+            assert!(json.contains("\"theta\":-10"));
+        }
+
+        #[test]
+        fn test_second_order_request_deserialize() {
+            let json = r#"{
+                "curveId": "curve-001",
+                "notional": 10000000,
+                "fixedRate": 0.03,
+                "tenorYears": 5.0,
+                "paymentFrequency": "annual",
+                "mode": "aad"
+            }"#;
+
+            let request: SecondOrderGreeksRequest = serde_json::from_str(json).unwrap();
+            assert_eq!(request.curve_id, "curve-001");
+            assert_eq!(request.mode, GreeksCalculationMode::Aad);
+        }
+
+        #[test]
+        fn test_second_order_response_serialize() {
+            let response = SecondOrderGreeksResponse {
+                npv: 125000.0,
+                gamma: 50.0,
+                vanna: 0.0,
+                volga: 0.0,
+                convexity: 0.0004,
+                mode: "bump".to_string(),
+                timing: TimingStats {
+                    mean_us: 200.0,
+                    std_dev_us: 20.0,
+                    min_us: 180.0,
+                    max_us: 220.0,
+                    total_ms: 0.2,
+                },
+            };
+
+            let json = serde_json::to_string(&response).unwrap();
+            assert!(json.contains("\"npv\":125000"));
+            assert!(json.contains("\"gamma\":50"));
+            assert!(json.contains("\"convexity\":0.0004"));
+        }
+
+        #[test]
+        fn test_validate_first_order_request_valid() {
+            let request = valid_first_order_request();
+            assert!(validate_first_order_greeks_request(&request).is_ok());
+        }
+
+        #[test]
+        fn test_validate_first_order_request_invalid_notional() {
+            let mut request = valid_first_order_request();
+            request.notional = -10_000_000.0;
+
+            let result = validate_first_order_greeks_request(&request);
+            assert!(result.is_err());
+            match result.unwrap_err() {
+                ValidationError::NotionalNotPositive { .. } => {}
+                _ => panic!("Expected NotionalNotPositive error"),
+            }
+        }
+
+        #[test]
+        fn test_validate_first_order_request_invalid_tenor() {
+            let mut request = valid_first_order_request();
+            request.tenor_years = -5.0;
+
+            let result = validate_first_order_greeks_request(&request);
+            assert!(result.is_err());
+            match result.unwrap_err() {
+                ValidationError::TenorYearsNotPositive { .. } => {}
+                _ => panic!("Expected TenorYearsNotPositive error"),
+            }
+        }
+
+        #[test]
+        fn test_validate_second_order_request_valid() {
+            let request = valid_second_order_request();
+            assert!(validate_second_order_greeks_request(&request).is_ok());
+        }
+
+        #[test]
+        fn test_validate_second_order_request_invalid_fixed_rate() {
+            let mut request = valid_second_order_request();
+            request.fixed_rate = 1.5;
+
+            let result = validate_second_order_greeks_request(&request);
+            assert!(result.is_err());
+            match result.unwrap_err() {
+                ValidationError::FixedRateOutOfRange { .. } => {}
+                _ => panic!("Expected FixedRateOutOfRange error"),
+            }
+        }
+    }
+
+    // =========================================================================
+    // Task 4.3: Bucket DV01 Types Tests
+    // =========================================================================
+
+    mod bucket_dv01_tests {
+        use super::*;
+
+        fn valid_bucket_dv01_request() -> BucketDv01Request {
+            BucketDv01Request {
+                curve_id: "curve-001".to_string(),
+                notional: 10_000_000.0,
+                fixed_rate: 0.03,
+                tenor_years: 5.0,
+                payment_frequency: PaymentFrequency::Annual,
+                custom_tenors: None,
+                include_key_rate_duration: false,
+            }
+        }
+
+        #[test]
+        fn test_bucket_dv01_request_deserialize() {
+            let json = r#"{
+                "curveId": "curve-001",
+                "notional": 10000000,
+                "fixedRate": 0.03,
+                "tenorYears": 5.0,
+                "paymentFrequency": "annual"
+            }"#;
+
+            let request: BucketDv01Request = serde_json::from_str(json).unwrap();
+            assert_eq!(request.curve_id, "curve-001");
+            assert!((request.notional - 10_000_000.0).abs() < 1e-10);
+            assert!(request.custom_tenors.is_none());
+            assert!(!request.include_key_rate_duration);
+        }
+
+        #[test]
+        fn test_bucket_dv01_request_with_custom_tenors() {
+            let json = r#"{
+                "curveId": "curve-001",
+                "notional": 10000000,
+                "fixedRate": 0.03,
+                "tenorYears": 5.0,
+                "paymentFrequency": "annual",
+                "customTenors": ["1Y", "2Y", "5Y"],
+                "includeKeyRateDuration": true
+            }"#;
+
+            let request: BucketDv01Request = serde_json::from_str(json).unwrap();
+            assert!(request.custom_tenors.is_some());
+            let tenors = request.custom_tenors.unwrap();
+            assert_eq!(tenors.len(), 3);
+            assert!(request.include_key_rate_duration);
+        }
+
+        #[test]
+        fn test_bucket_dv01_result_serialize() {
+            let result = BucketDv01Result {
+                tenor: "5Y".to_string(),
+                dv01: 450.0,
+                key_rate_duration: Some(0.9),
+                pct_of_total: 50.0,
+            };
+
+            let json = serde_json::to_string(&result).unwrap();
+            assert!(json.contains("\"tenor\":\"5Y\""));
+            assert!(json.contains("\"dv01\":450"));
+            assert!(json.contains("\"keyRateDuration\":0.9"));
+            assert!(json.contains("\"pctOfTotal\":50"));
+        }
+
+        #[test]
+        fn test_bucket_dv01_result_serialize_without_krd() {
+            let result = BucketDv01Result {
+                tenor: "5Y".to_string(),
+                dv01: 450.0,
+                key_rate_duration: None,
+                pct_of_total: 50.0,
+            };
+
+            let json = serde_json::to_string(&result).unwrap();
+            assert!(json.contains("\"dv01\":450"));
+            assert!(!json.contains("keyRateDuration"));
+        }
+
+        #[test]
+        fn test_bucket_dv01_response_serialize() {
+            let response = BucketDv01Response {
+                npv: 125000.0,
+                total_dv01: 900.0,
+                buckets: vec![
+                    BucketDv01Result {
+                        tenor: "1Y".to_string(),
+                        dv01: 200.0,
+                        key_rate_duration: None,
+                        pct_of_total: 22.22,
+                    },
+                    BucketDv01Result {
+                        tenor: "5Y".to_string(),
+                        dv01: 700.0,
+                        key_rate_duration: None,
+                        pct_of_total: 77.78,
+                    },
+                ],
+                buckets_consistent: true,
+                timing: TimingStats {
+                    mean_us: 50.0,
+                    std_dev_us: 5.0,
+                    min_us: 0.0,
+                    max_us: 100.0,
+                    total_ms: 0.1,
+                },
+            };
+
+            let json = serde_json::to_string(&response).unwrap();
+            assert!(json.contains("\"npv\":125000"));
+            assert!(json.contains("\"totalDv01\":900"));
+            assert!(json.contains("\"bucketsConsistent\":true"));
+        }
+
+        #[test]
+        fn test_bucket_tenors_constant() {
+            assert_eq!(BUCKET_TENORS.len(), 9);
+            assert_eq!(BUCKET_TENORS[0], "1M");
+            assert_eq!(BUCKET_TENORS[8], "30Y");
+        }
+
+        #[test]
+        fn test_validate_bucket_dv01_request_valid() {
+            let request = valid_bucket_dv01_request();
+            assert!(validate_bucket_dv01_request(&request).is_ok());
+        }
+
+        #[test]
+        fn test_validate_bucket_dv01_request_invalid_notional() {
+            let mut request = valid_bucket_dv01_request();
+            request.notional = -10_000_000.0;
+
+            let result = validate_bucket_dv01_request(&request);
+            assert!(result.is_err());
+            match result.unwrap_err() {
+                ValidationError::NotionalNotPositive { .. } => {}
+                _ => panic!("Expected NotionalNotPositive error"),
+            }
+        }
+
+        #[test]
+        fn test_validate_bucket_dv01_request_invalid_tenor() {
+            let mut request = valid_bucket_dv01_request();
+            request.tenor_years = 100.0;
+
+            let result = validate_bucket_dv01_request(&request);
+            assert!(result.is_err());
+            match result.unwrap_err() {
+                ValidationError::TenorYearsExceedsMax { .. } => {}
+                _ => panic!("Expected TenorYearsExceedsMax error"),
+            }
+        }
+    }
+
+    // =========================================================================
+    // Task 5.1: Greeks Heatmap Types Tests
+    // =========================================================================
+
+    mod greeks_heatmap_tests {
+        use super::*;
+
+        #[test]
+        fn test_greek_type_default_is_delta() {
+            let greek_type = GreekType::default();
+            assert_eq!(greek_type, GreekType::Delta);
+        }
+
+        #[test]
+        fn test_greek_type_display() {
+            assert_eq!(GreekType::Delta.to_string(), "delta");
+            assert_eq!(GreekType::Gamma.to_string(), "gamma");
+            assert_eq!(GreekType::Vega.to_string(), "vega");
+            assert_eq!(GreekType::Theta.to_string(), "theta");
+            assert_eq!(GreekType::Rho.to_string(), "rho");
+            assert_eq!(GreekType::Vanna.to_string(), "vanna");
+            assert_eq!(GreekType::Volga.to_string(), "volga");
+        }
+
+        #[test]
+        fn test_greek_type_serialisation() {
+            let json = serde_json::to_string(&GreekType::Delta).unwrap();
+            assert_eq!(json, "\"delta\"");
+
+            let json = serde_json::to_string(&GreekType::Gamma).unwrap();
+            assert_eq!(json, "\"gamma\"");
+        }
+
+        #[test]
+        fn test_greek_type_deserialisation() {
+            let greek: GreekType = serde_json::from_str("\"delta\"").unwrap();
+            assert_eq!(greek, GreekType::Delta);
+
+            let greek: GreekType = serde_json::from_str("\"vega\"").unwrap();
+            assert_eq!(greek, GreekType::Vega);
+        }
+
+        #[test]
+        fn test_heatmap_request_default() {
+            let request = GreeksHeatmapRequest::default();
+            assert_eq!(request.greek_type, GreekType::Delta);
+            assert!((request.spot - 100.0).abs() < 1e-10);
+            assert!((request.rate - 0.05).abs() < 1e-10);
+            assert!((request.volatility - 0.20).abs() < 1e-10);
+            assert_eq!(request.option_type, OptionType::Call);
+        }
+
+        #[test]
+        fn test_heatmap_request_deserialisation() {
+            let json = r#"{
+                "greekType": "gamma",
+                "spot": 110.0,
+                "rate": 0.03,
+                "volatility": 0.25,
+                "optionType": "put"
+            }"#;
+
+            let request: GreeksHeatmapRequest = serde_json::from_str(json).unwrap();
+            assert_eq!(request.greek_type, GreekType::Gamma);
+            assert!((request.spot - 110.0).abs() < 1e-10);
+            assert!((request.rate - 0.03).abs() < 1e-10);
+            assert!((request.volatility - 0.25).abs() < 1e-10);
+            assert_eq!(request.option_type, OptionType::Put);
+        }
+
+        #[test]
+        fn test_heatmap_request_deserialisation_with_defaults() {
+            let json = r#"{}"#;
+
+            let request: GreeksHeatmapRequest = serde_json::from_str(json).unwrap();
+            assert_eq!(request.greek_type, GreekType::Delta);
+            assert!((request.spot - 100.0).abs() < 1e-10);
+        }
+
+        #[test]
+        fn test_heatmap_response_serialisation() {
+            let response = GreeksHeatmapResponse {
+                x_axis: vec!["0.25".to_string(), "0.5".to_string(), "1.0".to_string()],
+                y_axis: vec!["80%".to_string(), "100%".to_string(), "120%".to_string()],
+                values: vec![
+                    vec![0.3, 0.4, 0.5],
+                    vec![0.5, 0.55, 0.6],
+                    vec![0.7, 0.75, 0.8],
+                ],
+                greek_type: "delta".to_string(),
+                spot: 100.0,
+                rate: 0.05,
+                volatility: 0.20,
+                option_type: "call".to_string(),
+                min_value: 0.3,
+                max_value: 0.8,
+            };
+
+            let json = serde_json::to_string(&response).unwrap();
+            assert!(json.contains("\"xAxis\""));
+            assert!(json.contains("\"yAxis\""));
+            assert!(json.contains("\"values\""));
+            assert!(json.contains("\"greekType\":\"delta\""));
+            assert!(json.contains("\"minValue\":0.3"));
+            assert!(json.contains("\"maxValue\":0.8"));
+        }
+
+        #[test]
+        fn test_heatmap_response_d3_compatible_structure() {
+            // D3.js heatmap expects: x_axis (columns), y_axis (rows), values[row][col]
+            let response = GreeksHeatmapResponse {
+                x_axis: vec!["0.25".to_string(), "0.5".to_string()],
+                y_axis: vec!["80%".to_string(), "100%".to_string()],
+                values: vec![
+                    vec![0.3, 0.4],  // row 0 (80%)
+                    vec![0.5, 0.55], // row 1 (100%)
+                ],
+                greek_type: "delta".to_string(),
+                spot: 100.0,
+                rate: 0.05,
+                volatility: 0.20,
+                option_type: "call".to_string(),
+                min_value: 0.3,
+                max_value: 0.55,
+            };
+
+            // Verify structure matches D3.js expectations
+            assert_eq!(response.x_axis.len(), 2); // columns
+            assert_eq!(response.y_axis.len(), 2); // rows
+            assert_eq!(response.values.len(), response.y_axis.len());
+            for row in &response.values {
+                assert_eq!(row.len(), response.x_axis.len());
+            }
+        }
+    }
+
+    // =========================================================================
+    // Task 5.2: Greeks Timeseries Types Tests
+    // =========================================================================
+
+    mod greeks_timeseries_tests {
+        use super::*;
+
+        #[test]
+        fn test_timeseries_request_default() {
+            let request = GreeksTimeseriesRequest::default();
+            assert_eq!(
+                request.greek_types,
+                vec![GreekType::Delta, GreekType::Gamma, GreekType::Theta]
+            );
+            assert!((request.spot - 100.0).abs() < 1e-10);
+            assert!((request.strike - 100.0).abs() < 1e-10);
+            assert!((request.rate - 0.05).abs() < 1e-10);
+            assert!((request.volatility - 0.20).abs() < 1e-10);
+            assert_eq!(request.option_type, OptionType::Call);
+            assert!((request.time_horizon - 1.0).abs() < 1e-10);
+            assert_eq!(request.num_points, 50);
+        }
+
+        #[test]
+        fn test_timeseries_request_deserialisation() {
+            let json = r#"{
+                "greekTypes": ["delta", "vega"],
+                "spot": 105.0,
+                "strike": 100.0,
+                "rate": 0.04,
+                "volatility": 0.30,
+                "optionType": "call",
+                "timeHorizon": 2.0,
+                "numPoints": 100
+            }"#;
+
+            let request: GreeksTimeseriesRequest = serde_json::from_str(json).unwrap();
+            assert_eq!(request.greek_types, vec![GreekType::Delta, GreekType::Vega]);
+            assert!((request.spot - 105.0).abs() < 1e-10);
+            assert!((request.strike - 100.0).abs() < 1e-10);
+            assert!((request.time_horizon - 2.0).abs() < 1e-10);
+            assert_eq!(request.num_points, 100);
+        }
+
+        #[test]
+        fn test_timeseries_request_deserialisation_with_defaults() {
+            let json = r#"{}"#;
+
+            let request: GreeksTimeseriesRequest = serde_json::from_str(json).unwrap();
+            assert_eq!(
+                request.greek_types,
+                vec![GreekType::Delta, GreekType::Gamma, GreekType::Theta]
+            );
+            assert_eq!(request.num_points, 50);
+        }
+
+        #[test]
+        fn test_timeseries_series_serialisation() {
+            let series = TimeseriesSeries {
+                greek_type: "delta".to_string(),
+                values: vec![0.5, 0.52, 0.54, 0.56],
+            };
+
+            let json = serde_json::to_string(&series).unwrap();
+            assert!(json.contains("\"greekType\":\"delta\""));
+            assert!(json.contains("\"values\":[0.5,0.52,0.54,0.56]"));
+        }
+
+        #[test]
+        fn test_timeseries_response_serialisation() {
+            let response = GreeksTimeseriesResponse {
+                timestamps: vec![365.0, 180.0, 90.0, 30.0, 1.0],
+                series: vec![
+                    TimeseriesSeries {
+                        greek_type: "delta".to_string(),
+                        values: vec![0.5, 0.52, 0.55, 0.6, 0.9],
+                    },
+                    TimeseriesSeries {
+                        greek_type: "gamma".to_string(),
+                        values: vec![0.02, 0.025, 0.03, 0.04, 0.1],
+                    },
+                ],
+                spot: 100.0,
+                strike: 100.0,
+                rate: 0.05,
+                volatility: 0.20,
+                option_type: "call".to_string(),
+            };
+
+            let json = serde_json::to_string(&response).unwrap();
+            assert!(json.contains("\"timestamps\""));
+            assert!(json.contains("\"series\""));
+            assert!(json.contains("\"greekType\":\"delta\""));
+            assert!(json.contains("\"greekType\":\"gamma\""));
+        }
+
+        #[test]
+        fn test_timeseries_response_structure() {
+            let response = GreeksTimeseriesResponse {
+                timestamps: vec![365.0, 180.0, 90.0],
+                series: vec![TimeseriesSeries {
+                    greek_type: "delta".to_string(),
+                    values: vec![0.5, 0.52, 0.55],
+                }],
+                spot: 100.0,
+                strike: 100.0,
+                rate: 0.05,
+                volatility: 0.20,
+                option_type: "call".to_string(),
+            };
+
+            // Each series should have same length as timestamps
+            for series in &response.series {
+                assert_eq!(series.values.len(), response.timestamps.len());
+            }
         }
     }
 }

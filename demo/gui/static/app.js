@@ -12417,3 +12417,613 @@ async function runAllTests() {
         suites: allResults
     };
 }
+
+// ============================================
+// Task 6: Scenario Analysis API Integration
+// ============================================
+
+/**
+ * Scenario Analysis Module
+ *
+ * Integrates with backend scenario APIs:
+ * - GET /api/scenarios/presets - Load preset scenarios
+ * - POST /api/scenarios/run - Execute a scenario
+ * - POST /api/scenarios/compare - Compare multiple scenarios
+ *
+ * Requirements Coverage:
+ * - Task 6.1: プリセットシナリオ一覧 API
+ * - Task 6.2: シナリオ実行 API
+ * - Task 6.3: シナリオパラメータ調整 UI
+ * - Task 6.4: シナリオ比較結果 UI
+ */
+const scenarioAnalysis = (function() {
+    'use strict';
+
+    // State
+    const state = {
+        presets: [],
+        selectedPresets: [],
+        curveId: null,
+        lastResults: null,
+        isLoading: false
+    };
+
+    // Default IRS parameters for scenario analysis
+    const DEFAULT_IRS_PARAMS = {
+        notional: 10000000, // 10M
+        fixedRate: 0.035,   // 3.5%
+        tenorYears: 5,      // 5Y
+        paymentFrequency: 'SemiAnnual'
+    };
+
+    // ===========================================
+    // Initialisation
+    // ===========================================
+
+    async function init() {
+        Logger.info('ScenarioAnalysis', 'Initialising scenario analysis module');
+
+        // Load presets from API
+        await loadPresets();
+
+        // Bind event listeners
+        bindEventListeners();
+
+        // Update UI with loaded presets
+        updatePresetUI();
+
+        Logger.info('ScenarioAnalysis', 'Scenario analysis module initialised');
+    }
+
+    // ===========================================
+    // Task 6.1: Preset Scenarios API
+    // ===========================================
+
+    async function loadPresets() {
+        try {
+            Logger.debug('ScenarioAnalysis', 'Loading preset scenarios from API');
+
+            const response = await fetch('/api/scenarios/presets');
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+            state.presets = data.presets || [];
+
+            Logger.info('ScenarioAnalysis', `Loaded ${state.presets.length} preset scenarios`);
+            return state.presets;
+        } catch (error) {
+            Logger.warn('ScenarioAnalysis', 'Failed to load presets, using defaults', error);
+            // Use fallback presets if API fails
+            state.presets = getDefaultPresets();
+            return state.presets;
+        }
+    }
+
+    function getDefaultPresets() {
+        return [
+            { scenario_type: 'RateUp1bp', name: 'IR +1bp', description: '金利 +1bp', category: 'rate', shift_amount: 1, shift_unit: 'bp' },
+            { scenario_type: 'RateUp10bp', name: 'IR +10bp', description: '金利 +10bp', category: 'rate', shift_amount: 10, shift_unit: 'bp' },
+            { scenario_type: 'RateUp100bp', name: 'IR +100bp', description: '金利 +100bp ストレス', category: 'rate', shift_amount: 100, shift_unit: 'bp' },
+            { scenario_type: 'RateDown1bp', name: 'IR -1bp', description: '金利 -1bp', category: 'rate', shift_amount: -1, shift_unit: 'bp' },
+            { scenario_type: 'RateDown10bp', name: 'IR -10bp', description: '金利 -10bp', category: 'rate', shift_amount: -10, shift_unit: 'bp' },
+            { scenario_type: 'RateDown100bp', name: 'IR -100bp', description: '金利 -100bp ストレス', category: 'rate', shift_amount: -100, shift_unit: 'bp' },
+            { scenario_type: 'CurveSteepen', name: 'Steepening', description: 'カーブスティープ化', category: 'curve', shift_amount: 25, shift_unit: 'bp' },
+            { scenario_type: 'CurveFlatten', name: 'Flattening', description: 'カーブフラット化', category: 'curve', shift_amount: -25, shift_unit: 'bp' }
+        ];
+    }
+
+    // ===========================================
+    // Task 6.3: Scenario Parameter UI
+    // ===========================================
+
+    function updatePresetUI() {
+        const presetGrid = document.querySelector('.scenarios-view .preset-grid');
+        if (!presetGrid) {
+            // Create preset buttons in the scenario controls area
+            createPresetButtons();
+            return;
+        }
+
+        // Update existing preset grid with API presets
+        const ratePresets = state.presets.filter(p => p.category === 'rate');
+
+        presetGrid.innerHTML = ratePresets.slice(0, 4).map((preset, index) => `
+            <button class="preset-btn ${index === 0 ? 'active' : ''}"
+                    data-preset="${preset.scenario_type}"
+                    data-shift="${preset.shift_amount}"
+                    title="${preset.description}">
+                <i class="fas fa-${preset.shift_amount > 0 ? 'arrow-up' : 'arrow-down'}"></i>
+                <span>${preset.name}</span>
+            </button>
+        `).join('');
+
+        // Bind click handlers
+        presetGrid.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', handlePresetClick);
+        });
+    }
+
+    function createPresetButtons() {
+        // Find the parametric controls section
+        const parametricControls = document.getElementById('parametric-controls');
+        if (!parametricControls) return;
+
+        // Find or create the preset section
+        let presetSection = parametricControls.querySelector('.preset-section');
+        if (!presetSection) return;
+
+        const presetGrid = presetSection.querySelector('.preset-grid');
+        if (!presetGrid) return;
+
+        // Get rate category presets
+        const ratePresets = state.presets.filter(p => p.category === 'rate').slice(0, 4);
+
+        if (ratePresets.length > 0) {
+            presetGrid.innerHTML = ratePresets.map((preset, index) => `
+                <button class="preset-btn ${preset.scenario_type === 'RateUp1bp' ? 'active' : ''}"
+                        data-preset="${preset.scenario_type}"
+                        data-shift="${preset.shift_amount}"
+                        title="${preset.description}">
+                    <i class="fas fa-${getPresetIcon(preset)}"></i>
+                    <span>${preset.name}</span>
+                </button>
+            `).join('');
+
+            presetGrid.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.addEventListener('click', handlePresetClick);
+            });
+        }
+    }
+
+    function getPresetIcon(preset) {
+        if (preset.shift_amount > 50) return 'bolt';
+        if (preset.shift_amount > 0) return 'arrow-up';
+        if (preset.shift_amount < -50) return 'skull';
+        if (preset.shift_amount < 0) return 'arrow-down';
+        return 'home';
+    }
+
+    function handlePresetClick(e) {
+        const btn = e.currentTarget;
+        const presetType = btn.dataset.preset;
+        const shiftAmount = parseFloat(btn.dataset.shift) || 0;
+
+        // Update active state
+        document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        // Update the rate-shock slider to match preset
+        const rateSlider = document.getElementById('rate-shock');
+        const rateVal = document.getElementById('rate-shock-val');
+        if (rateSlider && rateVal) {
+            rateSlider.value = Math.min(200, Math.max(-200, shiftAmount));
+            rateVal.textContent = `${shiftAmount} bps`;
+        }
+
+        Logger.debug('ScenarioAnalysis', `Selected preset: ${presetType} (${shiftAmount}bp)`);
+    }
+
+    // ===========================================
+    // Task 6.2: Scenario Execution API
+    // ===========================================
+
+    async function runScenarioWithAPI() {
+        if (state.isLoading) return;
+
+        state.isLoading = true;
+        const statusEl = document.getElementById('scenario-status');
+        const resultsEl = document.getElementById('scenario-results');
+        const runBtn = document.getElementById('run-scenario');
+
+        // Update UI to loading state
+        if (runBtn) runBtn.classList.add('loading');
+        if (statusEl) {
+            const indicator = statusEl.querySelector('.status-indicator');
+            if (indicator) indicator.style.background = 'var(--warning)';
+            const span = statusEl.querySelector('span');
+            if (span) span.textContent = 'Running...';
+        }
+
+        try {
+            // Get curve ID from IRS Bootstrap module
+            const curveId = getCurveId();
+            if (!curveId) {
+                throw new Error('No curve available. Please bootstrap a curve first.');
+            }
+
+            // Get parameters from UI
+            const params = getScenarioParams();
+
+            // Build request
+            const request = {
+                curve_id: curveId,
+                notional: params.notional,
+                fixed_rate: params.fixedRate,
+                tenor_years: params.tenorYears,
+                payment_frequency: params.paymentFrequency,
+                custom_shifts: [{
+                    factor_type: 'rate',
+                    pattern: '*',
+                    shift_amount: params.rateShock,
+                    shift_type: 'parallel'
+                }],
+                scenario_name: `Custom: Rate ${params.rateShock > 0 ? '+' : ''}${params.rateShock}bp`
+            };
+
+            Logger.debug('ScenarioAnalysis', 'Running scenario', request);
+
+            const response = await fetch('/api/scenarios/run', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(request)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `HTTP ${response.status}`);
+            }
+
+            const result = await response.json();
+            state.lastResults = result;
+
+            // Display results
+            displayScenarioResults(result);
+
+            // Update status
+            if (statusEl) {
+                const indicator = statusEl.querySelector('.status-indicator');
+                if (indicator) indicator.style.background = 'var(--success)';
+                const span = statusEl.querySelector('span');
+                if (span) span.textContent = 'Complete';
+            }
+
+            // Add to history
+            addToScenarioHistory(params, result);
+
+            showToast('Scenario analysis completed', 'success');
+
+        } catch (error) {
+            Logger.error('ScenarioAnalysis', 'Scenario execution failed', error);
+
+            if (resultsEl) {
+                resultsEl.innerHTML = `
+                    <div class="results-placeholder error">
+                        <div class="placeholder-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                        <p>Scenario failed</p>
+                        <span>${error.message}</span>
+                    </div>
+                `;
+            }
+
+            if (statusEl) {
+                const indicator = statusEl.querySelector('.status-indicator');
+                if (indicator) indicator.style.background = 'var(--danger)';
+                const span = statusEl.querySelector('span');
+                if (span) span.textContent = 'Failed';
+            }
+
+            showToast(`Scenario failed: ${error.message}`, 'error');
+        } finally {
+            state.isLoading = false;
+            if (runBtn) runBtn.classList.remove('loading');
+        }
+    }
+
+    function getCurveId() {
+        // Try to get from IRS Bootstrap module
+        if (typeof irsBootstrap !== 'undefined') {
+            const irsState = irsBootstrap.getState();
+            if (irsState && irsState.curveId) {
+                return irsState.curveId;
+            }
+        }
+        return state.curveId;
+    }
+
+    function getScenarioParams() {
+        const rateShock = parseFloat(document.getElementById('rate-shock')?.value) || 0;
+        const volShift = parseFloat(document.getElementById('vol-shift')?.value) || 0;
+        const spreadShock = parseFloat(document.getElementById('spread-shock')?.value) || 0;
+
+        return {
+            rateShock,
+            volShift,
+            spreadShock,
+            notional: DEFAULT_IRS_PARAMS.notional,
+            fixedRate: DEFAULT_IRS_PARAMS.fixedRate,
+            tenorYears: DEFAULT_IRS_PARAMS.tenorYears,
+            paymentFrequency: DEFAULT_IRS_PARAMS.paymentFrequency
+        };
+    }
+
+    function displayScenarioResults(result) {
+        const resultsEl = document.getElementById('scenario-results');
+        if (!resultsEl) return;
+
+        const pnlResult = result.result;
+        const isLoss = pnlResult.is_loss;
+        const pnlClass = isLoss ? 'negative' : 'positive';
+
+        resultsEl.innerHTML = `
+            <div class="results-grid">
+                <div class="result-card">
+                    <span class="result-label">Scenario</span>
+                    <span class="result-value">${pnlResult.scenario_name}</span>
+                </div>
+                <div class="result-card">
+                    <span class="result-label">Base Value</span>
+                    <span class="result-value">${formatCurrency(pnlResult.base_value)}</span>
+                </div>
+                <div class="result-card">
+                    <span class="result-label">Stressed Value</span>
+                    <span class="result-value">${formatCurrency(pnlResult.stressed_value)}</span>
+                </div>
+                <div class="result-card highlight">
+                    <span class="result-label">P&L Impact</span>
+                    <span class="result-value ${pnlClass}">
+                        <i class="fas fa-arrow-${isLoss ? 'down' : 'up'}"></i>
+                        ${formatCurrency(pnlResult.pnl)}
+                    </span>
+                    <span class="result-delta ${pnlClass}">
+                        ${pnlResult.pnl_pct.toFixed(2)}%
+                    </span>
+                </div>
+            </div>
+            <div class="result-meta">
+                <span><i class="fas fa-clock"></i> ${result.processing_time_ms.toFixed(2)}ms</span>
+            </div>
+        `;
+    }
+
+    function addToScenarioHistory(params, result) {
+        const historyEl = document.getElementById('scenario-history');
+        if (!historyEl) return;
+
+        // Remove empty state
+        const emptyState = historyEl.querySelector('.history-empty');
+        if (emptyState) emptyState.remove();
+
+        const pnlResult = result.result;
+        const entry = document.createElement('div');
+        entry.className = 'history-entry';
+        entry.innerHTML = `
+            <div class="history-time">${new Date().toLocaleTimeString()}</div>
+            <div class="history-params">Rate: ${params.rateShock}bp</div>
+            <div class="history-result ${pnlResult.is_loss ? 'negative' : 'positive'}">
+                ${formatCurrency(pnlResult.pnl)}
+            </div>
+        `;
+
+        historyEl.insertBefore(entry, historyEl.firstChild);
+
+        // Limit history
+        while (historyEl.children.length > 10) {
+            historyEl.removeChild(historyEl.lastChild);
+        }
+    }
+
+    // ===========================================
+    // Task 6.4: Scenario Comparison
+    // ===========================================
+
+    async function compareScenarios() {
+        const curveId = getCurveId();
+        if (!curveId) {
+            showToast('Please bootstrap a curve first', 'warning');
+            return;
+        }
+
+        const params = getScenarioParams();
+
+        // Compare standard rate scenarios
+        const request = {
+            curve_id: curveId,
+            notional: params.notional,
+            fixed_rate: params.fixedRate,
+            tenor_years: params.tenorYears,
+            payment_frequency: params.paymentFrequency,
+            scenarios: ['RateUp1bp', 'RateUp10bp', 'RateUp100bp', 'RateDown1bp', 'RateDown10bp', 'RateDown100bp']
+        };
+
+        try {
+            const response = await fetch('/api/scenarios/compare', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(request)
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const result = await response.json();
+            displayComparisonResults(result);
+            updateCompareChart(result);
+
+            showToast('Scenario comparison completed', 'success');
+
+        } catch (error) {
+            Logger.error('ScenarioAnalysis', 'Comparison failed', error);
+            showToast(`Comparison failed: ${error.message}`, 'error');
+        }
+    }
+
+    function displayComparisonResults(result) {
+        const comparePanel = document.querySelector('.scenario-compare-panel');
+        if (!comparePanel) return;
+
+        const chartContainer = comparePanel.querySelector('.chart-container');
+        if (!chartContainer) return;
+
+        // Add summary below chart
+        let summaryEl = comparePanel.querySelector('.compare-summary');
+        if (!summaryEl) {
+            summaryEl = document.createElement('div');
+            summaryEl.className = 'compare-summary';
+            comparePanel.appendChild(summaryEl);
+        }
+
+        const worstCase = result.worst_case;
+        const bestCase = result.best_case;
+
+        summaryEl.innerHTML = `
+            <div class="summary-row worst">
+                <span class="summary-label"><i class="fas fa-exclamation-triangle"></i> Worst Case</span>
+                <span class="summary-value negative">${worstCase ? worstCase.scenario_name + ': ' + formatCurrency(worstCase.pnl) : 'N/A'}</span>
+            </div>
+            <div class="summary-row best">
+                <span class="summary-label"><i class="fas fa-check-circle"></i> Best Case</span>
+                <span class="summary-value positive">${bestCase ? bestCase.scenario_name + ': ' + formatCurrency(bestCase.pnl) : 'N/A'}</span>
+            </div>
+        `;
+    }
+
+    function updateCompareChart(result) {
+        const canvas = document.getElementById('compare-chart');
+        if (!canvas || typeof Chart === 'undefined') return;
+
+        const ctx = canvas.getContext('2d');
+
+        // Destroy existing chart
+        if (state.compareChart) {
+            state.compareChart.destroy();
+        }
+
+        const labels = result.results.map(r => r.scenario_name);
+        const data = result.results.map(r => r.pnl);
+        const colors = result.results.map(r => r.is_loss ? 'rgba(239, 68, 68, 0.8)' : 'rgba(34, 197, 94, 0.8)');
+
+        state.compareChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'P&L Impact',
+                    data,
+                    backgroundColor: colors,
+                    borderColor: colors.map(c => c.replace('0.8', '1')),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => `P&L: ${formatCurrency(ctx.raw)}`
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: (value) => formatCompactCurrency(value)
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function formatCompactCurrency(value) {
+        const abs = Math.abs(value);
+        const sign = value < 0 ? '-' : '';
+        if (abs >= 1e6) return sign + '$' + (abs / 1e6).toFixed(1) + 'M';
+        if (abs >= 1e3) return sign + '$' + (abs / 1e3).toFixed(1) + 'K';
+        return sign + '$' + abs.toFixed(0);
+    }
+
+    // ===========================================
+    // Event Listeners
+    // ===========================================
+
+    function bindEventListeners() {
+        // Override run scenario button
+        const runBtn = document.getElementById('run-scenario');
+        if (runBtn) {
+            // Remove existing listeners
+            const newRunBtn = runBtn.cloneNode(true);
+            runBtn.parentNode.replaceChild(newRunBtn, runBtn);
+            newRunBtn.addEventListener('click', runScenarioWithAPI);
+        }
+
+        // Compare button
+        const compareBtn = document.getElementById('compare-scenarios');
+        if (compareBtn) {
+            compareBtn.addEventListener('click', compareScenarios);
+        }
+
+        // Slider change handlers for real-time value display
+        const sliders = ['rate-shock', 'vol-shift', 'spread-shock', 'corr-shift', 'vol-skew', 'pd-mult'];
+        sliders.forEach(sliderId => {
+            const slider = document.getElementById(sliderId);
+            if (slider) {
+                slider.addEventListener('input', handleSliderChange);
+            }
+        });
+    }
+
+    function handleSliderChange(e) {
+        const slider = e.target;
+        const valueEl = document.getElementById(`${slider.id}-val`);
+        if (!valueEl) return;
+
+        const value = parseFloat(slider.value);
+
+        // Format based on slider type
+        if (slider.id.includes('shock') || slider.id.includes('steep')) {
+            valueEl.textContent = `${value} bps`;
+        } else if (slider.id === 'pd-mult') {
+            valueEl.textContent = `${(value / 100).toFixed(1)}×`;
+        } else {
+            valueEl.textContent = `${value}%`;
+        }
+    }
+
+    // ===========================================
+    // Public API
+    // ===========================================
+
+    return {
+        init,
+        loadPresets,
+        runScenario: runScenarioWithAPI,
+        compareScenarios,
+        getPresets: () => [...state.presets],
+        getState: () => ({ ...state }),
+        setCurveId: (id) => { state.curveId = id; }
+    };
+})();
+
+// Initialise scenario analysis module when navigating to scenarios view
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialise immediately if scenarios view exists
+    if (document.getElementById('scenarios-view')) {
+        scenarioAnalysis.init();
+    }
+});
+
+// Hook into navigation to reinitialise when switching to scenarios view
+const originalNavForScenarios = window.navigateTo;
+if (originalNavForScenarios) {
+    window.navigateTo = function(viewName) {
+        originalNavForScenarios(viewName);
+        if (viewName === 'scenarios' && typeof scenarioAnalysis !== 'undefined') {
+            // Ensure presets are loaded
+            if (scenarioAnalysis.getPresets().length === 0) {
+                scenarioAnalysis.loadPresets();
+            }
+        }
+    };
+}
