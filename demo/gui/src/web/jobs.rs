@@ -607,9 +607,7 @@ mod tests {
         let job_id = manager.create_job(None).await;
 
         // Complete the job
-        manager
-            .complete_job(job_id, serde_json::json!({}))
-            .await;
+        manager.complete_job(job_id, serde_json::json!({})).await;
 
         // Cannot update progress after completion
         let updated = manager.update_progress(job_id, 50).await;
@@ -684,9 +682,7 @@ mod tests {
         let manager = JobManager::with_config(config);
 
         let job_id = manager.create_job(None).await;
-        manager
-            .complete_job(job_id, serde_json::json!({}))
-            .await;
+        manager.complete_job(job_id, serde_json::json!({})).await;
 
         // Wait for TTL to expire
         tokio::time::sleep(Duration::from_millis(20)).await;

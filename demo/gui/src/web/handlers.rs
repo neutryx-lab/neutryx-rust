@@ -15,6 +15,7 @@ use std::sync::Arc;
 use std::time::Instant;
 use uuid::Uuid;
 
+use super::jobs::{JobCreatedResponse, JobResponse, JobStatus};
 use super::pricer_types::{
     parse_tenor_to_years, validate_bucket_dv01_request, validate_first_order_greeks_request,
     validate_greeks_compare_request, validate_irs_pricing_request, validate_par_rates,
@@ -22,7 +23,7 @@ use super::pricer_types::{
     BootstrapResponse, BucketDv01Request, BucketDv01Response, BucketDv01Result, CachedCurve,
     DeltaResult, DemoMarketData, EquityOptionParams, FirstOrderGreeksRequest,
     FirstOrderGreeksResponse, FxOptionParams, GreekType, GreekValue, GreeksCalculationMode,
-    GreeksCompareRequest, GreeksCompareResponse, GreeksDiff, GreeksData, GreeksHeatmapRequest,
+    GreeksCompareRequest, GreeksCompareResponse, GreeksData, GreeksDiff, GreeksHeatmapRequest,
     GreeksHeatmapResponse, GreeksMethodResult, GreeksTimeseriesRequest, GreeksTimeseriesResponse,
     InstrumentParams, InstrumentType, IrsBootstrapErrorResponse, IrsParams, IrsPricingRequest,
     IrsPricingResponse, OptionType, ParRateInput, PaymentFrequency, PricingErrorResponse,
@@ -30,7 +31,6 @@ use super::pricer_types::{
     RiskMethodResult, RiskRequest, SecondOrderGreeksRequest, SecondOrderGreeksResponse, TenorDiff,
     TimeseriesSeries, TimingComparison, TimingStats, BUCKET_TENORS,
 };
-use super::jobs::{JobCreatedResponse, JobResponse, JobStatus};
 use super::websocket::{
     broadcast_bootstrap_complete, broadcast_pricing_complete, broadcast_risk_complete,
 };
@@ -2654,8 +2654,7 @@ pub async fn greeks_compare(
 
     // Run Bump-and-Revalue method
     let bump_start = Instant::now();
-    let (bump_deltas, bump_timing_samples) =
-        compute_greeks_bump_mode(&cached_curve, &request);
+    let (bump_deltas, bump_timing_samples) = compute_greeks_bump_mode(&cached_curve, &request);
     let bump_total_us = bump_start.elapsed().as_micros() as u64;
     let bump_dv01: f64 = bump_deltas.iter().map(|d| d.delta).sum::<f64>().abs();
     let bump_timing = calculate_timing_stats(&bump_timing_samples, bump_total_us);
@@ -2674,8 +2673,7 @@ pub async fn greeks_compare(
 
     // Run AAD method (simulated for demo, actual AAD when enzyme-ad feature is enabled)
     let aad_start = Instant::now();
-    let (aad_deltas, aad_timing_samples) =
-        compute_greeks_aad_mode(&cached_curve, &request);
+    let (aad_deltas, aad_timing_samples) = compute_greeks_aad_mode(&cached_curve, &request);
     let aad_total_us = aad_start.elapsed().as_micros() as u64;
     let aad_dv01: f64 = aad_deltas.iter().map(|d| d.delta).sum::<f64>().abs();
     let aad_timing = calculate_timing_stats(&aad_timing_samples, aad_total_us);
@@ -2949,7 +2947,7 @@ pub async fn greeks_first_order(
     // Calculate aggregate Greeks
     let dv01: f64 = deltas.iter().map(|d| d.delta).sum::<f64>().abs();
     let delta = dv01; // For IRS, Delta = DV01
-    let rho = dv01;   // For IRS, Rho = DV01 (rate sensitivity)
+    let rho = dv01; // For IRS, Rho = DV01 (rate sensitivity)
 
     // Theta calculation (simplified: -NPV * rate per day)
     let discount_rate = cached_curve.zero_rates.last().copied().unwrap_or(0.03);
@@ -3251,8 +3249,8 @@ pub async fn greeks_bucket_dv01(
     }
 
     // Check consistency (bucket sum should approximately equal total DV01)
-    let buckets_consistent = (total_dv01 - buckets.iter().map(|b| b.dv01).sum::<f64>()).abs()
-        < total_dv01.abs() * 0.01;
+    let buckets_consistent =
+        (total_dv01 - buckets.iter().map(|b| b.dv01).sum::<f64>()).abs() < total_dv01.abs() * 0.01;
 
     let total_us = start_time.elapsed().as_micros() as u64;
     let timing = TimingStats {
@@ -3350,7 +3348,10 @@ pub async fn get_greeks_heatmap(
 
     // Define strike percentages (relative to spot)
     let strike_pcts = vec![0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20];
-    let y_axis: Vec<String> = strike_pcts.iter().map(|p| format!("{}%", (p * 100.0) as i32)).collect();
+    let y_axis: Vec<String> = strike_pcts
+        .iter()
+        .map(|p| format!("{}%", (p * 100.0) as i32))
+        .collect();
 
     let is_call = request.option_type == OptionType::Call;
     let spot = request.spot;
@@ -3495,7 +3496,8 @@ pub async fn get_greeks_timeseries(
 
         for &days in &timestamps {
             let time = days / 365.0; // Convert days to years
-            let value = calculate_greek_for_heatmap(*greek_type, spot, strike, time, rate, vol, is_call);
+            let value =
+                calculate_greek_for_heatmap(*greek_type, spot, strike, time, rate, vol, is_call);
             values.push(value);
         }
 
@@ -5668,7 +5670,10 @@ mod tests {
             let response = get_greeks_timeseries(Query(request)).await;
 
             // Verify response structure
-            assert!(!response.timestamps.is_empty(), "Timestamps should not be empty");
+            assert!(
+                !response.timestamps.is_empty(),
+                "Timestamps should not be empty"
+            );
             assert!(!response.series.is_empty(), "Series should not be empty");
 
             // Verify each series has same length as timestamps
@@ -5681,7 +5686,11 @@ mod tests {
             }
 
             // Default request should have delta, gamma, theta
-            let greek_types: Vec<&str> = response.series.iter().map(|s| s.greek_type.as_str()).collect();
+            let greek_types: Vec<&str> = response
+                .series
+                .iter()
+                .map(|s| s.greek_type.as_str())
+                .collect();
             assert!(greek_types.contains(&"delta"));
             assert!(greek_types.contains(&"gamma"));
             assert!(greek_types.contains(&"theta"));
@@ -5736,7 +5745,11 @@ mod tests {
             };
             let response = get_greeks_timeseries(Query(request)).await;
 
-            assert_eq!(response.timestamps.len(), 10, "num_points should be clamped to minimum 10");
+            assert_eq!(
+                response.timestamps.len(),
+                10,
+                "num_points should be clamped to minimum 10"
+            );
         }
 
         #[tokio::test]
@@ -5798,7 +5811,10 @@ mod tests {
             let job2 = state.job_manager.create_job(Some("Job 2")).await;
 
             // Complete one job
-            state.job_manager.complete_job(job1, serde_json::json!({"result": "ok"})).await;
+            state
+                .job_manager
+                .complete_job(job1, serde_json::json!({"result": "ok"}))
+                .await;
 
             let response = list_jobs(State(state)).await;
 
@@ -5815,12 +5831,9 @@ mod tests {
                 id: job_id.to_string(),
             };
 
-            let response = get_job_status(
-                State(state.clone()),
-                axum::extract::Path(params),
-            )
-            .await
-            .into_response();
+            let response = get_job_status(State(state.clone()), axum::extract::Path(params))
+                .await
+                .into_response();
 
             assert_eq!(response.status(), StatusCode::OK);
         }
@@ -5834,12 +5847,9 @@ mod tests {
                 id: fake_id.to_string(),
             };
 
-            let response = get_job_status(
-                State(state.clone()),
-                axum::extract::Path(params),
-            )
-            .await
-            .into_response();
+            let response = get_job_status(State(state.clone()), axum::extract::Path(params))
+                .await
+                .into_response();
 
             assert_eq!(response.status(), StatusCode::NOT_FOUND);
         }
@@ -5852,12 +5862,9 @@ mod tests {
                 id: "not-a-uuid".to_string(),
             };
 
-            let response = get_job_status(
-                State(state.clone()),
-                axum::extract::Path(params),
-            )
-            .await
-            .into_response();
+            let response = get_job_status(State(state.clone()), axum::extract::Path(params))
+                .await
+                .into_response();
 
             assert_eq!(response.status(), StatusCode::BAD_REQUEST);
         }
@@ -5875,12 +5882,9 @@ mod tests {
                 id: job_id.to_string(),
             };
 
-            let response = get_job_status(
-                State(state.clone()),
-                axum::extract::Path(params),
-            )
-            .await
-            .into_response();
+            let response = get_job_status(State(state.clone()), axum::extract::Path(params))
+                .await
+                .into_response();
 
             assert_eq!(response.status(), StatusCode::OK);
         }
@@ -5897,12 +5901,9 @@ mod tests {
                 id: job_id.to_string(),
             };
 
-            let response = get_job_status(
-                State(state.clone()),
-                axum::extract::Path(params),
-            )
-            .await
-            .into_response();
+            let response = get_job_status(State(state.clone()), axum::extract::Path(params))
+                .await
+                .into_response();
 
             assert_eq!(response.status(), StatusCode::OK);
         }
@@ -5913,18 +5914,18 @@ mod tests {
             let job_id = state.job_manager.create_job(Some("Test job")).await;
 
             // Fail the job
-            state.job_manager.fail_job(job_id, "Computation error").await;
+            state
+                .job_manager
+                .fail_job(job_id, "Computation error")
+                .await;
 
             let params = JobPathParams {
                 id: job_id.to_string(),
             };
 
-            let response = get_job_status(
-                State(state.clone()),
-                axum::extract::Path(params),
-            )
-            .await
-            .into_response();
+            let response = get_job_status(State(state.clone()), axum::extract::Path(params))
+                .await
+                .into_response();
 
             assert_eq!(response.status(), StatusCode::OK);
         }

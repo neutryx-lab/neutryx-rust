@@ -313,10 +313,7 @@ mod tests {
 
         assert_eq!(map.get(&RiskFactorId::underlying("SPX")), Some(&0.5));
         assert_eq!(map.get(&RiskFactorId::curve("USD-OIS")), Some(&0.01));
-        assert_eq!(
-            map.get(&RiskFactorId::vol_surface("SPX-Vol")),
-            Some(&0.2)
-        );
+        assert_eq!(map.get(&RiskFactorId::vol_surface("SPX-Vol")), Some(&0.2));
         assert_eq!(map.get(&RiskFactorId::underlying("AAPL")), None);
     }
 

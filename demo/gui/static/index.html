@@ -1672,59 +1672,6 @@
                         </div>
                     </div>
 
-                    <!-- Side Panel -->
-                    <div class="analytics-side-panel">
-                        <!-- Heatmap -->
-                        <div class="heatmap-card glass-card">
-                            <div class="bento-header">
-                                <h3><i class="fas fa-th"></i> Correlation Heatmap</h3>
-                                <button class="icon-btn" id="expand-heatmap"><i class="fas fa-expand"></i></button>
-                            </div>
-                            <div class="heatmap-container">
-                                <div id="correlation-heatmap" class="heatmap"></div>
-                            </div>
-                        </div>
-
-                        <!-- Sankey Diagram -->
-                        <div class="sankey-card glass-card">
-                            <div class="bento-header">
-                                <h3><i class="fas fa-random"></i> Cash Flow Sankey</h3>
-                                <label for="sankey-type" class="visually-hidden">Sankey Type</label>
-                                <select id="sankey-type" name="sankey-type" class="small-select">
-                                    <option value="cashflow">Cash Flows</option>
-                                    <option value="collateral">Collateral</option>
-                                    <option value="xva">XVA Breakdown</option>
-                                </select>
-                            </div>
-                            <div class="sankey-container">
-                                <div id="sankey-diagram"></div>
-                            </div>
-                        </div>
-
-                        <!-- Distribution -->
-                        <div class="distribution-card glass-card">
-                            <div class="bento-header">
-                                <h3><i class="fas fa-chart-bar"></i> PnL Distribution</h3>
-                            </div>
-                            <div class="chart-container small">
-                                <canvas id="pnl-distribution-chart"></canvas>
-                            </div>
-                            <div class="distribution-stats">
-                                <div class="dist-stat">
-                                    <span class="dist-label">VaR 95%</span>
-                                    <span class="dist-value negative" id="var-95">-$2.5M</span>
-                                </div>
-                                <div class="dist-stat">
-                                    <span class="dist-label">VaR 99%</span>
-                                    <span class="dist-value negative" id="var-99">-$4.2M</span>
-                                </div>
-                                <div class="dist-stat">
-                                    <span class="dist-label">ES 95%</span>
-                                    <span class="dist-value negative" id="es-95">-$3.8M</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </section>
 

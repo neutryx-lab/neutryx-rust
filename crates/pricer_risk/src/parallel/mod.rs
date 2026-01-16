@@ -9,10 +9,10 @@
 //! - Minimal memory allocation in hot paths
 //! - Batch processing for optimal cache utilisation
 //!
-//! # Modules
+//! # Components
 //!
-//! - [`portfolio_greeks`] - Parallel portfolio Greeks calculation for 1000+ trades
-//! - [`memory_monitor`] - Memory monitoring and auto-checkpoint mechanism
+//! - [`ParallelPortfolioGreeksCalculator`] - Parallel portfolio Greeks calculation for 1000+ trades
+//! - [`MemoryMonitor`] - Memory monitoring and auto-checkpoint mechanism
 
 mod memory_monitor;
 mod portfolio_greeks;

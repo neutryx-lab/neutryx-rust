@@ -90,7 +90,9 @@ pub async fn run_scenario(
         None => {
             return Err((
                 StatusCode::NOT_FOUND,
-                Json(IrsBootstrapErrorResponse::curve_not_found(&request.curve_id)),
+                Json(IrsBootstrapErrorResponse::curve_not_found(
+                    &request.curve_id,
+                )),
             ));
         }
     };
@@ -209,7 +211,9 @@ pub async fn compare_scenarios(
         None => {
             return Err((
                 StatusCode::NOT_FOUND,
-                Json(IrsBootstrapErrorResponse::curve_not_found(&request.curve_id)),
+                Json(IrsBootstrapErrorResponse::curve_not_found(
+                    &request.curve_id,
+                )),
             ));
         }
     };
@@ -261,12 +265,20 @@ pub async fn compare_scenarios(
     // Find worst and best cases
     let worst_case = results
         .iter()
-        .min_by(|a, b| a.pnl.partial_cmp(&b.pnl).unwrap_or(std::cmp::Ordering::Equal))
+        .min_by(|a, b| {
+            a.pnl
+                .partial_cmp(&b.pnl)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
         .cloned();
 
     let best_case = results
         .iter()
-        .max_by(|a, b| a.pnl.partial_cmp(&b.pnl).unwrap_or(std::cmp::Ordering::Equal))
+        .max_by(|a, b| {
+            a.pnl
+                .partial_cmp(&b.pnl)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
         .cloned();
 
     let total_processing_time_ms = start.elapsed().as_micros() as f64 / 1000.0;

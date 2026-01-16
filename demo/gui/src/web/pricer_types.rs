@@ -4885,9 +4885,7 @@ mod tests {
 
         #[test]
         fn test_greek_value_builder_chain() {
-            let greeks = GreekValue::with_delta(0.5)
-                .and_gamma(0.02)
-                .and_vega(25.0);
+            let greeks = GreekValue::with_delta(0.5).and_gamma(0.02).and_vega(25.0);
 
             assert!((greeks.delta.unwrap() - 0.5).abs() < 1e-10);
             assert!((greeks.gamma.unwrap() - 0.02).abs() < 1e-10);

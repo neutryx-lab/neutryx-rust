@@ -8,7 +8,7 @@
 //! - Requirement 3.1: Large portfolio Rayon parallel processing (1000+ trades)
 //! - Requirement 3.3: ThreadLocalWorkspacePool for memory efficiency
 
-use super::{ParallelConfig, DEFAULT_BATCH_SIZE};
+use super::ParallelConfig;
 use crate::scenarios::{
     GreeksByFactorConfig, GreeksByFactorError, GreeksResultByFactor, IrsGreeksByFactorCalculator,
 };
@@ -20,6 +20,12 @@ use rayon::prelude::*;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
+
+/// Type alias for batch processing results to reduce complexity.
+type BatchResult = (
+    Vec<Option<GreeksResultByFactor<f64>>>,
+    Vec<GreeksResultByFactor<f64>>,
+);
 
 /// Error types for parallel Greeks calculation.
 #[derive(Debug, thiserror::Error)]
@@ -277,67 +283,60 @@ impl ParallelPortfolioGreeksCalculator {
                 if let Some(existing) = aggregated.get_mut(factor) {
                     // Sum the Greeks values
                     let new_price = existing.price + greeks.price;
-                    let variance_sum: f64 =
-                        existing.std_error * existing.std_error + greeks.std_error * greeks.std_error;
+                    let variance_sum: f64 = existing.std_error * existing.std_error
+                        + greeks.std_error * greeks.std_error;
                     let new_std_error = variance_sum.sqrt();
 
                     let mut merged = GreeksResult::new(new_price, new_std_error);
 
                     // Sum optional Greeks
-                    if let (Some(e), Some(g)) = (existing.delta, greeks.delta) {
-                        merged = merged.with_delta(e + g);
-                    } else if existing.delta.is_some() {
-                        merged = merged.with_delta(existing.delta.unwrap());
-                    } else if greeks.delta.is_some() {
-                        merged = merged.with_delta(greeks.delta.unwrap());
+                    match (existing.delta, greeks.delta) {
+                        (Some(e), Some(g)) => merged = merged.with_delta(e + g),
+                        (Some(e), None) => merged = merged.with_delta(e),
+                        (None, Some(g)) => merged = merged.with_delta(g),
+                        (None, None) => {}
                     }
 
-                    if let (Some(e), Some(g)) = (existing.gamma, greeks.gamma) {
-                        merged = merged.with_gamma(e + g);
-                    } else if existing.gamma.is_some() {
-                        merged = merged.with_gamma(existing.gamma.unwrap());
-                    } else if greeks.gamma.is_some() {
-                        merged = merged.with_gamma(greeks.gamma.unwrap());
+                    match (existing.gamma, greeks.gamma) {
+                        (Some(e), Some(g)) => merged = merged.with_gamma(e + g),
+                        (Some(e), None) => merged = merged.with_gamma(e),
+                        (None, Some(g)) => merged = merged.with_gamma(g),
+                        (None, None) => {}
                     }
 
-                    if let (Some(e), Some(g)) = (existing.vega, greeks.vega) {
-                        merged = merged.with_vega(e + g);
-                    } else if existing.vega.is_some() {
-                        merged = merged.with_vega(existing.vega.unwrap());
-                    } else if greeks.vega.is_some() {
-                        merged = merged.with_vega(greeks.vega.unwrap());
+                    match (existing.vega, greeks.vega) {
+                        (Some(e), Some(g)) => merged = merged.with_vega(e + g),
+                        (Some(e), None) => merged = merged.with_vega(e),
+                        (None, Some(g)) => merged = merged.with_vega(g),
+                        (None, None) => {}
                     }
 
-                    if let (Some(e), Some(g)) = (existing.theta, greeks.theta) {
-                        merged = merged.with_theta(e + g);
-                    } else if existing.theta.is_some() {
-                        merged = merged.with_theta(existing.theta.unwrap());
-                    } else if greeks.theta.is_some() {
-                        merged = merged.with_theta(greeks.theta.unwrap());
+                    match (existing.theta, greeks.theta) {
+                        (Some(e), Some(g)) => merged = merged.with_theta(e + g),
+                        (Some(e), None) => merged = merged.with_theta(e),
+                        (None, Some(g)) => merged = merged.with_theta(g),
+                        (None, None) => {}
                     }
 
-                    if let (Some(e), Some(g)) = (existing.rho, greeks.rho) {
-                        merged = merged.with_rho(e + g);
-                    } else if existing.rho.is_some() {
-                        merged = merged.with_rho(existing.rho.unwrap());
-                    } else if greeks.rho.is_some() {
-                        merged = merged.with_rho(greeks.rho.unwrap());
+                    match (existing.rho, greeks.rho) {
+                        (Some(e), Some(g)) => merged = merged.with_rho(e + g),
+                        (Some(e), None) => merged = merged.with_rho(e),
+                        (None, Some(g)) => merged = merged.with_rho(g),
+                        (None, None) => {}
                     }
 
-                    if let (Some(e), Some(g)) = (existing.vanna, greeks.vanna) {
-                        merged = merged.with_vanna(e + g);
-                    } else if existing.vanna.is_some() {
-                        merged = merged.with_vanna(existing.vanna.unwrap());
-                    } else if greeks.vanna.is_some() {
-                        merged = merged.with_vanna(greeks.vanna.unwrap());
+                    match (existing.vanna, greeks.vanna) {
+                        (Some(e), Some(g)) => merged = merged.with_vanna(e + g),
+                        (Some(e), None) => merged = merged.with_vanna(e),
+                        (None, Some(g)) => merged = merged.with_vanna(g),
+                        (None, None) => {}
                     }
 
-                    if let (Some(e), Some(g)) = (existing.volga, greeks.volga) {
-                        merged = merged.with_volga(e + g);
-                    } else if existing.volga.is_some() {
-                        merged = merged.with_volga(existing.volga.unwrap());
-                    } else if greeks.volga.is_some() {
-                        merged = merged.with_volga(greeks.volga.unwrap());
+                    match (existing.volga, greeks.volga) {
+                        (Some(e), Some(g)) => merged = merged.with_volga(e + g),
+                        (Some(e), None) => merged = merged.with_volga(e),
+                        (None, Some(g)) => merged = merged.with_volga(g),
+                        (None, None) => {}
                     }
 
                     *existing = merged;
@@ -419,31 +418,31 @@ impl ParallelPortfolioGreeksCalculator {
         let failed_count = Arc::new(AtomicU64::new(0));
 
         // Process trades in parallel batches
-        let batch_results: Vec<(Vec<Option<GreeksResultByFactor<f64>>>, Vec<GreeksResultByFactor<f64>>)> =
-            swaps
-                .par_chunks(batch_size)
-                .map(|batch| {
-                    let mut per_trade: Vec<Option<GreeksResultByFactor<f64>>> = Vec::with_capacity(batch.len());
-                    let mut successful: Vec<GreeksResultByFactor<f64>> = Vec::new();
+        let batch_results: Vec<BatchResult> = swaps
+            .par_chunks(batch_size)
+            .map(|batch| {
+                let mut per_trade: Vec<Option<GreeksResultByFactor<f64>>> =
+                    Vec::with_capacity(batch.len());
+                let mut successful: Vec<GreeksResultByFactor<f64>> = Vec::new();
 
-                    for swap in batch {
-                        match self.compute_trade_greeks(swap, curves, valuation_date) {
-                            Ok(result) => {
-                                successful.push(result.clone());
-                                per_trade.push(Some(result));
-                            }
-                            Err(_) => {
-                                if self.config.continue_on_error {
-                                    per_trade.push(None);
-                                    failed_count.fetch_add(1, Ordering::Relaxed);
-                                }
+                for swap in batch {
+                    match self.compute_trade_greeks(swap, curves, valuation_date) {
+                        Ok(result) => {
+                            successful.push(result.clone());
+                            per_trade.push(Some(result));
+                        }
+                        Err(_) => {
+                            if self.config.continue_on_error {
+                                per_trade.push(None);
+                                failed_count.fetch_add(1, Ordering::Relaxed);
                             }
                         }
                     }
+                }
 
-                    (per_trade, successful)
-                })
-                .collect();
+                (per_trade, successful)
+            })
+            .collect();
 
         // Merge batch results
         let mut per_trade: Vec<Option<GreeksResultByFactor<f64>>> = Vec::with_capacity(swaps.len());
@@ -457,7 +456,7 @@ impl ParallelPortfolioGreeksCalculator {
         let total_time_ns = start.elapsed().as_nanos() as u64;
         let aggregated = self.aggregate_results(&all_successful, total_time_ns);
         let failed = failed_count.load(Ordering::Relaxed) as usize;
-        let batches = (swaps.len() + batch_size - 1) / batch_size;
+        let batches = swaps.len().div_ceil(batch_size);
 
         let stats = ParallelGreeksStats {
             trades_processed: swaps.len(),
@@ -534,6 +533,7 @@ impl ParallelPortfolioGreeksCalculator {
 
 #[cfg(test)]
 mod tests {
+    use super::super::DEFAULT_BATCH_SIZE;
     use super::*;
     use pricer_core::market_data::curves::{CurveEnum, CurveName};
     use pricer_core::types::time::DayCountConvention;
@@ -851,10 +851,7 @@ mod tests {
         assert!((seq_total.price - par_total.price).abs() < 1e-6);
 
         // Verify same number of factors
-        assert_eq!(
-            seq_result.aggregated.len(),
-            par_result.aggregated.len()
-        );
+        assert_eq!(seq_result.aggregated.len(), par_result.aggregated.len());
     }
 
     #[test]

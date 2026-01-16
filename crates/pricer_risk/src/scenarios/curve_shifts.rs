@@ -288,11 +288,7 @@ impl CurveShifter {
     /// # Requirements Coverage
     ///
     /// - Requirement 2.4: ツイストシフト実装
-    pub fn apply_twist(
-        curves: &CurveSet<f64>,
-        short_shift: f64,
-        long_shift: f64,
-    ) -> CurveSet<f64> {
+    pub fn apply_twist(curves: &CurveSet<f64>, short_shift: f64, long_shift: f64) -> CurveSet<f64> {
         Self::apply_shift(curves, CurveShiftType::twist(short_shift, long_shift))
     }
 
@@ -588,8 +584,11 @@ mod tests {
     #[test]
     fn test_curve_shifter_apply_to_specific_curve() {
         let curves = create_test_curves();
-        let shifted =
-            CurveShifter::apply_shift_to_curve(&curves, CurveName::Discount, CurveShiftType::parallel(0.001));
+        let shifted = CurveShifter::apply_shift_to_curve(
+            &curves,
+            CurveName::Discount,
+            CurveShiftType::parallel(0.001),
+        );
 
         // Discount curve should be shifted
         let original_discount = curves
