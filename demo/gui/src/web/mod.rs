@@ -37,7 +37,6 @@ use tracing::info;
 
 use handlers::GraphCache;
 use jobs::JobManager;
-use metrics::PrometheusMetrics;
 use pricer_types::BootstrapCurveCache;
 
 // =========================================================================
@@ -397,11 +396,17 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         // Task 5.2: Add /api/greeks/timeseries endpoint for Greeks time decay visualisation
         .route("/greeks/timeseries", get(handlers::get_greeks_timeseries))
         // Task 6.1: Add /api/scenarios/presets endpoint for preset scenario list
-        .route("/scenarios/presets", get(scenario_handlers::get_scenario_presets))
+        .route(
+            "/scenarios/presets",
+            get(scenario_handlers::get_scenario_presets),
+        )
         // Task 6.2: Add /api/scenarios/run endpoint for scenario execution
         .route("/scenarios/run", post(scenario_handlers::run_scenario))
         // Task 6.4: Add /api/scenarios/compare endpoint for scenario comparison
-        .route("/scenarios/compare", post(scenario_handlers::compare_scenarios))
+        .route(
+            "/scenarios/compare",
+            post(scenario_handlers::compare_scenarios),
+        )
         // Task 7.2: Add /api/v1/jobs endpoints for async job management
         .route("/v1/jobs", get(handlers::list_jobs))
         .route("/v1/jobs/:id", get(handlers::get_job_status))

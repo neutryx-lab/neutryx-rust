@@ -567,8 +567,7 @@ mod tests {
             GreeksResult::new(100.0, 0.1),
         );
 
-        let results =
-            GreeksResultByFactor::from_map(map, GreeksMode::NumDual, 2_000_000);
+        let results = GreeksResultByFactor::from_map(map, GreeksMode::NumDual, 2_000_000);
 
         assert_eq!(results.len(), 1);
         assert_eq!(results.mode(), GreeksMode::NumDual);
@@ -682,7 +681,9 @@ mod tests {
         let filtered = results.filter_vol_surfaces();
 
         assert_eq!(filtered.len(), 2);
-        assert!(filtered.get(&RiskFactorId::vol_surface("SPX-Vol")).is_some());
+        assert!(filtered
+            .get(&RiskFactorId::vol_surface("SPX-Vol"))
+            .is_some());
         assert!(filtered
             .get(&RiskFactorId::vol_surface("USDJPY-Vol"))
             .is_some());

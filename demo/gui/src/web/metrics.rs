@@ -13,7 +13,6 @@
 //! - Requirement 8.4: API レスポンスタイム閾値超過時の警告ログ出力
 
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::RwLock;
 use tracing::warn;
@@ -355,7 +354,10 @@ impl PrometheusMetrics {
                 "Total number of API requests",
             ),
             api_requests_by_endpoint: RwLock::new(Vec::new()),
-            api_errors_total: Counter::new("neutryx_api_errors_total", "Total number of API errors"),
+            api_errors_total: Counter::new(
+                "neutryx_api_errors_total",
+                "Total number of API errors",
+            ),
             api_errors_by_type: RwLock::new(Vec::new()),
             response_time_threshold_exceeded: Counter::new(
                 "neutryx_response_time_threshold_exceeded_total",
@@ -396,7 +398,10 @@ impl PrometheusMetrics {
     /// Ensure endpoint counter exists and increment it
     async fn ensure_endpoint_counter(&self, endpoint: &str) {
         let mut counters = self.api_requests_by_endpoint.write().await;
-        let endpoint_clean = endpoint.replace('/', "_").trim_start_matches('_').to_string();
+        let endpoint_clean = endpoint
+            .replace('/', "_")
+            .trim_start_matches('_')
+            .to_string();
         let counter_name = format!("neutryx_api_requests_{}", endpoint_clean);
 
         // Find existing or create new
@@ -703,8 +708,11 @@ mod tests {
 
     #[test]
     fn test_counter_with_labels() {
-        let counter =
-            Counter::with_labels("test_counter", "A test counter", vec![("endpoint", "/api/test")]);
+        let counter = Counter::with_labels(
+            "test_counter",
+            "A test counter",
+            vec![("endpoint", "/api/test")],
+        );
         counter.inc();
         assert_eq!(counter.get(), 1);
         assert_eq!(counter.labels.len(), 1);

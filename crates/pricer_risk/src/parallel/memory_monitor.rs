@@ -185,7 +185,12 @@ impl MemoryMonitor {
             }
             if self
                 .peak_bytes
-                .compare_exchange_weak(current_peak, new_current, Ordering::Relaxed, Ordering::Relaxed)
+                .compare_exchange_weak(
+                    current_peak,
+                    new_current,
+                    Ordering::Relaxed,
+                    Ordering::Relaxed,
+                )
                 .is_ok()
             {
                 break;
@@ -200,7 +205,10 @@ impl MemoryMonitor {
 
     /// Records a memory deallocation.
     pub fn record_deallocation(&self, bytes: usize) {
-        self.current_bytes.fetch_sub(bytes.min(self.current_bytes.load(Ordering::Relaxed)), Ordering::Relaxed);
+        self.current_bytes.fetch_sub(
+            bytes.min(self.current_bytes.load(Ordering::Relaxed)),
+            Ordering::Relaxed,
+        );
     }
 
     /// Returns current memory usage statistics.
@@ -223,7 +231,8 @@ impl MemoryMonitor {
 
         let current = self.current_bytes.load(Ordering::Relaxed);
         let threshold_bytes = (self.config.budget.max_bytes() as f64
-            * (self.config.checkpoint_threshold_pct / 100.0)) as usize;
+            * (self.config.checkpoint_threshold_pct / 100.0))
+            as usize;
 
         current > threshold_bytes
     }
@@ -274,7 +283,8 @@ impl MemoryMonitor {
 
         let estimated_bytes = n_trades * self.config.bytes_per_trade;
         let threshold_bytes = (self.config.budget.max_bytes() as f64
-            * (self.config.checkpoint_threshold_pct / 100.0)) as usize;
+            * (self.config.checkpoint_threshold_pct / 100.0))
+            as usize;
 
         estimated_bytes > threshold_bytes
     }
@@ -585,8 +595,7 @@ mod tests {
 
     #[test]
     fn test_should_enable_checkpoint_disabled() {
-        let config = MemoryMonitorConfig::new()
-            .with_auto_checkpoint(false);
+        let config = MemoryMonitorConfig::new().with_auto_checkpoint(false);
 
         let monitor = MemoryMonitor::new(config);
         assert!(!monitor.should_enable_checkpoint(100000));
@@ -681,7 +690,10 @@ mod tests {
         let cloned = monitor.clone();
 
         assert_eq!(cloned.stats().current_bytes, 1024);
-        assert_eq!(cloned.config().budget.max_bytes(), monitor.config().budget.max_bytes());
+        assert_eq!(
+            cloned.config().budget.max_bytes(),
+            monitor.config().budget.max_bytes()
+        );
     }
 
     // -----------------------------------------------------------------

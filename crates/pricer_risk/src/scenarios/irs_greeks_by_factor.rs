@@ -216,7 +216,8 @@ impl IrsGreeksByFactorCalculator {
         let down_npv = price_irs(swap, &down_curves, valuation_date);
 
         // Gamma = d²NPV / dr², scaled to (1bp)²
-        let gamma = (up_npv - 2.0 * base_npv + down_npv) / (bump_size * bump_size) * 0.0001 * 0.0001;
+        let gamma =
+            (up_npv - 2.0 * base_npv + down_npv) / (bump_size * bump_size) * 0.0001 * 0.0001;
 
         Ok(gamma)
     }
@@ -560,7 +561,10 @@ mod tests {
         let result = calculator.validate_value(f64::NAN, "delta", &factor);
 
         assert!(result.is_err());
-        assert!(matches!(result, Err(GreeksByFactorError::NaNDetected(_, _))));
+        assert!(matches!(
+            result,
+            Err(GreeksByFactorError::NaNDetected(_, _))
+        ));
     }
 
     #[test]

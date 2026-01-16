@@ -19,14 +19,11 @@ use utoipa_swagger_ui::SwaggerUi;
 #[cfg(feature = "openapi")]
 use axum::Router;
 
+#[cfg(feature = "openapi")]
 use crate::web::pricer_types::{
-    BucketDv01Request, BucketDv01Response, DeltaResult, FirstOrderGreeksRequest,
-    FirstOrderGreeksResponse, GreeksCalculationMode, GreeksCompareRequest, GreeksCompareResponse,
-    GreeksDiff, GreeksMethodResult, GreekValue, PaymentFrequency, SecondOrderGreeksRequest,
-    SecondOrderGreeksResponse, TenorDiff, TimingComparison, TimingStats,
+    FirstOrderGreeksRequest, FirstOrderGreeksResponse, SecondOrderGreeksRequest,
+    SecondOrderGreeksResponse,
 };
-
-use crate::web::jobs::{JobEntry, JobStatus};
 
 // =============================================================================
 // OpenAPI Schema Implementation
@@ -282,7 +279,9 @@ pub fn swagger_ui_router() -> Router {
 /// Returns the raw OpenAPI JSON for programmatic access.
 #[cfg(feature = "openapi")]
 pub fn openapi_json() -> String {
-    ApiDoc::openapi().to_json().expect("Failed to generate OpenAPI JSON")
+    ApiDoc::openapi()
+        .to_json()
+        .expect("Failed to generate OpenAPI JSON")
 }
 
 /// Get the OpenAPI YAML specification.
@@ -290,7 +289,9 @@ pub fn openapi_json() -> String {
 /// Returns the raw OpenAPI YAML for programmatic access.
 #[cfg(feature = "openapi")]
 pub fn openapi_yaml() -> String {
-    ApiDoc::openapi().to_yaml().expect("Failed to generate OpenAPI YAML")
+    ApiDoc::openapi()
+        .to_yaml()
+        .expect("Failed to generate OpenAPI YAML")
 }
 
 // =============================================================================
@@ -396,7 +397,10 @@ mod tests {
             "must be positive",
             serde_json::json!(-100.0),
         );
-        assert_eq!(error.errors[0].rejected_value, Some(serde_json::json!(-100.0)));
+        assert_eq!(
+            error.errors[0].rejected_value,
+            Some(serde_json::json!(-100.0))
+        );
     }
 
     #[test]

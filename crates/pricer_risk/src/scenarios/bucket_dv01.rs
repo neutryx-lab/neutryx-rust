@@ -34,9 +34,8 @@ pub const STANDARD_TENOR_POINTS: &[f64] = &[
 ];
 
 /// Standard tenor labels for display.
-pub const STANDARD_TENOR_LABELS: &[&str] = &[
-    "1M", "3M", "6M", "1Y", "2Y", "5Y", "10Y", "20Y", "30Y",
-];
+pub const STANDARD_TENOR_LABELS: &[&str] =
+    &["1M", "3M", "6M", "1Y", "2Y", "5Y", "10Y", "20Y", "30Y"];
 
 /// Error types for bucket DV01 calculation.
 #[derive(Debug, thiserror::Error)]
@@ -250,7 +249,10 @@ impl Default for BucketDv01Config {
     fn default() -> Self {
         Self {
             tenor_points: STANDARD_TENOR_POINTS.to_vec(),
-            tenor_labels: STANDARD_TENOR_LABELS.iter().map(|s| s.to_string()).collect(),
+            tenor_labels: STANDARD_TENOR_LABELS
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
             bump_size: 0.0001, // 1bp
             verify_consistency: true,
             consistency_tolerance: 0.01, // 1%
@@ -332,7 +334,7 @@ impl BucketDv01Calculator {
         }
 
         // Preserve discount curve setting
-        if let Some(_) = curves.discount_curve() {
+        if curves.discount_curve().is_some() {
             bumped_curves.set_discount_curve(CurveName::Discount);
         }
 
@@ -365,7 +367,7 @@ impl BucketDv01Calculator {
             bumped_curves.insert(*name, CurveEnum::flat(bumped_rate));
         }
 
-        if let Some(_) = curves.discount_curve() {
+        if curves.discount_curve().is_some() {
             bumped_curves.set_discount_curve(CurveName::Discount);
         }
 
@@ -417,7 +419,8 @@ impl BucketDv01Calculator {
         let result = BucketDv01Result::new(buckets, total_dv01, computation_time_ns);
 
         // Verify consistency if configured
-        if self.config.verify_consistency && !result.is_consistent(self.config.consistency_tolerance)
+        if self.config.verify_consistency
+            && !result.is_consistent(self.config.consistency_tolerance)
         {
             return Err(BucketDv01Error::ConsistencyCheckFailed(
                 result.bucket_sum,
@@ -478,7 +481,7 @@ impl BucketDv01Calculator {
                 bumped_curves.insert(*name, CurveEnum::flat(bumped_rate));
             }
 
-            if let Some(_) = curves.discount_curve() {
+            if curves.discount_curve().is_some() {
                 bumped_curves.set_discount_curve(CurveName::Discount);
             }
 
@@ -588,7 +591,10 @@ mod tests {
     #[test]
     fn test_bucket_dv01_config_custom() {
         let config = BucketDv01Config::new()
-            .with_tenors(vec![1.0, 5.0, 10.0], vec!["1Y".into(), "5Y".into(), "10Y".into()])
+            .with_tenors(
+                vec![1.0, 5.0, 10.0],
+                vec!["1Y".into(), "5Y".into(), "10Y".into()],
+            )
             .with_bump_size(0.0005)
             .with_consistency_check(false, 0.05);
 
@@ -698,7 +704,10 @@ mod tests {
     #[test]
     fn test_bucket_dv01_custom_tenors() {
         let config = BucketDv01Config::new()
-            .with_tenors(vec![1.0, 5.0, 10.0], vec!["1Y".into(), "5Y".into(), "10Y".into()])
+            .with_tenors(
+                vec![1.0, 5.0, 10.0],
+                vec!["1Y".into(), "5Y".into(), "10Y".into()],
+            )
             .with_consistency_check(false, 1.0);
         let calculator = BucketDv01Calculator::new(config);
         let swap = create_test_swap();
@@ -715,8 +724,10 @@ mod tests {
     // Key Rate Duration tests
     #[test]
     fn test_key_rate_duration_calculation() {
-        let config = BucketDv01Config::new()
-            .with_tenors(vec![1.0, 5.0, 10.0], vec!["1Y".into(), "5Y".into(), "10Y".into()]);
+        let config = BucketDv01Config::new().with_tenors(
+            vec![1.0, 5.0, 10.0],
+            vec!["1Y".into(), "5Y".into(), "10Y".into()],
+        );
         let calculator = BucketDv01Calculator::new(config);
         let swap = create_test_swap();
         let curves = create_test_curves();

@@ -551,19 +551,15 @@ fn bench_batch_size_tuning(c: &mut Criterion) {
 
         let calculator = ParallelPortfolioGreeksCalculator::new(config);
 
-        group.bench_with_input(
-            BenchmarkId::new("batch", batch_size),
-            &swaps,
-            |b, swaps| {
-                b.iter(|| {
-                    calculator.compute_portfolio_greeks_parallel(
-                        black_box(swaps),
-                        black_box(&curves),
-                        black_box(valuation_date),
-                    )
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("batch", batch_size), &swaps, |b, swaps| {
+            b.iter(|| {
+                calculator.compute_portfolio_greeks_parallel(
+                    black_box(swaps),
+                    black_box(&curves),
+                    black_box(valuation_date),
+                )
+            });
+        });
     }
 
     group.finish();
@@ -592,19 +588,15 @@ fn bench_large_portfolio_scalability(c: &mut Criterion) {
 
         let calculator = ParallelPortfolioGreeksCalculator::new(config);
 
-        group.bench_with_input(
-            BenchmarkId::new("trades", n_trades),
-            &swaps,
-            |b, swaps| {
-                b.iter(|| {
-                    calculator.compute_portfolio_greeks(
-                        black_box(swaps),
-                        black_box(&curves),
-                        black_box(valuation_date),
-                    )
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("trades", n_trades), &swaps, |b, swaps| {
+            b.iter(|| {
+                calculator.compute_portfolio_greeks(
+                    black_box(swaps),
+                    black_box(&curves),
+                    black_box(valuation_date),
+                )
+            });
+        });
     }
 
     group.finish();
