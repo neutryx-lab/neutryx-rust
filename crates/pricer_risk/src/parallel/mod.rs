@@ -8,6 +8,22 @@
 //! - >80% parallel efficiency on 8+ cores
 //! - Minimal memory allocation in hot paths
 //! - Batch processing for optimal cache utilisation
+//!
+//! # Modules
+//!
+//! - [`portfolio_greeks`] - Parallel portfolio Greeks calculation for 1000+ trades
+//! - [`memory_monitor`] - Memory monitoring and auto-checkpoint mechanism
+
+mod memory_monitor;
+mod portfolio_greeks;
+
+pub use memory_monitor::{
+    create_shared_monitor, MemoryMonitor, MemoryMonitorConfig, MemoryStats, SharedMemoryMonitor,
+};
+pub use portfolio_greeks::{
+    ParallelGreeksConfig, ParallelGreeksError, ParallelGreeksStats,
+    ParallelPortfolioGreeksCalculator, PortfolioGreeksResult,
+};
 
 use rayon::prelude::*;
 

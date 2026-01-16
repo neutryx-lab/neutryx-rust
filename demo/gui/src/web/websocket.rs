@@ -725,6 +725,140 @@ pub fn broadcast_calculation_error(
 }
 
 // =============================================================================
+// Task 5.3: Greeks Update WebSocket Events
+// =============================================================================
+
+/// Greeks update event data.
+///
+/// Sent when Greeks values are updated (e.g., due to market data changes).
+///
+/// # Requirements Coverage
+///
+/// - Requirement 5.5: WebSocket でリアルタイム更新を配信
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GreeksUpdateEvent {
+    /// Greek type being updated (delta, gamma, vega, theta, rho)
+    pub greek_type: String,
+    /// Spot price used for calculation
+    pub spot: f64,
+    /// Strike price (for timeseries updates)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub strike: Option<f64>,
+    /// Tenor (time to expiry) in years (for heatmap updates)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tenor: Option<f64>,
+    /// Updated Greek value
+    pub value: f64,
+    /// Previous value (for delta change calculation)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub previous_value: Option<f64>,
+    /// Volatility used
+    pub volatility: f64,
+    /// Update source: "heatmap" or "timeseries"
+    pub source: String,
+}
+
+impl RealTimeUpdate {
+    /// Create a Greeks update event.
+    ///
+    /// This message type is used to notify clients when Greeks values
+    /// are updated in real-time.
+    ///
+    /// # Arguments
+    ///
+    /// * `event` - Greeks update event data
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use demo_gui::web::websocket::{RealTimeUpdate, GreeksUpdateEvent};
+    ///
+    /// let event = GreeksUpdateEvent {
+    ///     greek_type: "delta".to_string(),
+    ///     spot: 100.0,
+    ///     strike: Some(100.0),
+    ///     tenor: None,
+    ///     value: 0.55,
+    ///     previous_value: Some(0.52),
+    ///     volatility: 0.20,
+    ///     source: "timeseries".to_string(),
+    /// };
+    /// let update = RealTimeUpdate::greeks_update(event);
+    /// ```
+    pub fn greeks_update(event: GreeksUpdateEvent) -> Self {
+        Self {
+            update_type: "greeks_update".to_string(),
+            timestamp: chrono::Utc::now().timestamp_millis(),
+            data: serde_json::json!({
+                "greekType": event.greek_type,
+                "spot": event.spot,
+                "strike": event.strike,
+                "tenor": event.tenor,
+                "value": event.value,
+                "previousValue": event.previous_value,
+                "volatility": event.volatility,
+                "source": event.source
+            }),
+        }
+    }
+}
+
+/// Broadcast a Greeks update event to all connected clients.
+///
+/// # Arguments
+///
+/// * `state` - Application state containing the broadcast channel
+/// * `event` - Greeks update event data
+///
+/// # Requirements Coverage
+///
+/// - Requirement 5.5: WebSocket でリアルタイム更新を配信
+pub fn broadcast_greeks_update(state: &AppState, event: GreeksUpdateEvent) {
+    let update = RealTimeUpdate::greeks_update(event);
+    let _ = state.tx.send(update.to_json());
+}
+
+/// Broadcast a batch of Greeks updates to all connected clients.
+///
+/// This is useful when updating multiple Greek values at once,
+/// such as when market data changes.
+///
+/// # Arguments
+///
+/// * `state` - Application state containing the broadcast channel
+/// * `greek_type` - Type of Greek being updated
+/// * `spot` - Current spot price
+/// * `values` - Vector of (strike_or_tenor, value) pairs
+/// * `volatility` - Current volatility
+/// * `source` - Update source: "heatmap" or "timeseries"
+pub fn broadcast_greeks_batch_update(
+    state: &AppState,
+    greek_type: &str,
+    spot: f64,
+    values: Vec<(f64, f64)>,
+    volatility: f64,
+    source: &str,
+) {
+    let is_heatmap = source == "heatmap";
+
+    for (key, value) in values {
+        let event = GreeksUpdateEvent {
+            greek_type: greek_type.to_string(),
+            spot,
+            strike: if is_heatmap { None } else { Some(key) },
+            tenor: if is_heatmap { Some(key) } else { None },
+            value,
+            previous_value: None,
+            volatility,
+            source: source.to_string(),
+        };
+        let update = RealTimeUpdate::greeks_update(event);
+        let _ = state.tx.send(update.to_json());
+    }
+}
+
+// =============================================================================
 // Task 4.3: Subscription Message Types
 // =============================================================================
 
@@ -1568,6 +1702,96 @@ mod tests {
             assert!(msg.contains("calculation_error"));
             assert!(msg.contains("bootstrap"));
             assert!(msg.contains("Convergence failure"));
+        }
+
+        // Task 5.3: Greeks Update Tests
+
+        #[test]
+        fn test_greeks_update_event_serialisation() {
+            let event = GreeksUpdateEvent {
+                greek_type: "delta".to_string(),
+                spot: 100.0,
+                strike: Some(100.0),
+                tenor: None,
+                value: 0.55,
+                previous_value: Some(0.52),
+                volatility: 0.20,
+                source: "timeseries".to_string(),
+            };
+
+            let update = RealTimeUpdate::greeks_update(event);
+            let json = update.to_json();
+
+            assert!(json.contains("greeks_update"));
+            assert!(json.contains("delta"));
+            assert!(json.contains("0.55"));
+            assert!(json.contains("previousValue"));
+        }
+
+        #[test]
+        fn test_greeks_update_event_heatmap_source() {
+            let event = GreeksUpdateEvent {
+                greek_type: "gamma".to_string(),
+                spot: 110.0,
+                strike: None,
+                tenor: Some(1.0),
+                value: 0.025,
+                previous_value: None,
+                volatility: 0.25,
+                source: "heatmap".to_string(),
+            };
+
+            let update = RealTimeUpdate::greeks_update(event);
+            let json = update.to_json();
+
+            assert!(json.contains("heatmap"));
+            assert!(json.contains("gamma"));
+            assert!(json.contains("tenor"));
+        }
+
+        #[tokio::test]
+        async fn test_broadcast_greeks_update() {
+            let state = AppState::new();
+            let mut rx = state.tx.subscribe();
+
+            let event = GreeksUpdateEvent {
+                greek_type: "vega".to_string(),
+                spot: 100.0,
+                strike: Some(105.0),
+                tenor: None,
+                value: 0.35,
+                previous_value: None,
+                volatility: 0.20,
+                source: "timeseries".to_string(),
+            };
+
+            broadcast_greeks_update(&state, event);
+
+            let received = rx.try_recv();
+            assert!(received.is_ok());
+
+            let msg = received.unwrap();
+            assert!(msg.contains("greeks_update"));
+            assert!(msg.contains("vega"));
+            assert!(msg.contains("0.35"));
+        }
+
+        #[tokio::test]
+        async fn test_broadcast_greeks_batch_update() {
+            let state = AppState::new();
+            let mut rx = state.tx.subscribe();
+
+            let values = vec![(0.25, 0.52), (0.5, 0.53), (1.0, 0.55)];
+            broadcast_greeks_batch_update(&state, "delta", 100.0, values, 0.20, "heatmap");
+
+            // Should receive 3 messages
+            for _ in 0..3 {
+                let received = rx.try_recv();
+                assert!(received.is_ok());
+                let msg = received.unwrap();
+                assert!(msg.contains("greeks_update"));
+                assert!(msg.contains("delta"));
+            }
         }
     }
 }
