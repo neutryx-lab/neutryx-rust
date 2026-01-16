@@ -1,7 +1,7 @@
 //! Criterion benchmarks for pricer_core interpolation methods.
 //!
 //! Measures performance of linear, cubic spline, and bilinear interpolation
-//! across different data sizes to characterize scaling behavior.
+//! across different data sizes to characterise scaling behaviour.
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use pricer_core::math::interpolators::{

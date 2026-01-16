@@ -521,7 +521,7 @@ mod tests {
     }
 
     // ========================================================================
-    // Sensitivity Tests (Greeks-like behavior)
+    // Sensitivity Tests (Greeks-like behaviour)
     // ========================================================================
 
     #[test]

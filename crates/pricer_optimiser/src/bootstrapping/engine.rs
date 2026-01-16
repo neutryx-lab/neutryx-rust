@@ -483,7 +483,7 @@ impl<T: Float> SequentialBootstrapper<T> {
 
     /// Bootstrap using a pre-allocated cache for reduced memory allocations.
     ///
-    /// This method is optimized for scenarios where multiple bootstraps
+    /// This method is optimised for scenarios where multiple bootstraps
     /// are performed sequentially. The cache is reused across calls.
     ///
     /// # Arguments

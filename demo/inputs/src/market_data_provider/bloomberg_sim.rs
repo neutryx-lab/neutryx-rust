@@ -50,12 +50,12 @@ impl BloombergSim {
             yield_curves: HashMap::new(),
             vol_surfaces: HashMap::new(),
         };
-        sim.initialize_default_data();
+        sim.initialise_default_data();
         sim
     }
 
-    /// Initialize default market data
-    fn initialize_default_data(&mut self) {
+    /// Initialise default market data
+    fn initialise_default_data(&mut self) {
         // Equity quotes
         self.equity_quotes.insert(
             "AAPL".to_string(),

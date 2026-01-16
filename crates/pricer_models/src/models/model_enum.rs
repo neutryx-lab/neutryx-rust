@@ -8,7 +8,7 @@
 //!
 //! - **Static dispatch**: All model dispatch via `match` expressions
 //! - **Zero-cost abstraction**: No vtable overhead
-//! - **Enzyme-friendly**: Concrete types allow LLVM-level AD optimization
+//! - **Enzyme-friendly**: Concrete types allow LLVM-level AD optimisation
 //! - **Feature-gated models**: Interest rate models require `rates` feature
 //!
 //! ## Example

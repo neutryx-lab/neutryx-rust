@@ -9,7 +9,7 @@ use num_traits::Float;
 /// Observation type flags for path-dependent payoffs.
 ///
 /// Specifies which path statistics are required for payoff computation.
-/// This allows the simulation engine to optimize by only computing
+/// This allows the simulation engine to optimise by only computing
 /// the necessary statistics.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ObservationType {
@@ -143,7 +143,7 @@ pub trait PathDependentPayoff<T: Float>: Send + Sync {
 
     /// Returns the observation types required for this payoff.
     ///
-    /// This allows the simulation engine to optimize by only computing
+    /// This allows the simulation engine to optimise by only computing
     /// the necessary statistics.
     fn required_observations(&self) -> ObservationType;
 

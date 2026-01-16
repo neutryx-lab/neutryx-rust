@@ -17,7 +17,7 @@ use num_traits::Float;
 /// # Enzyme AD Compatibility
 ///
 /// By using an enum instead of trait objects (`Box<dyn PathDependentPayoff>`),
-/// we enable LLVM-level optimization and Enzyme autodifferentiation.
+/// we enable LLVM-level optimisation and Enzyme autodifferentiation.
 ///
 /// # Example
 ///

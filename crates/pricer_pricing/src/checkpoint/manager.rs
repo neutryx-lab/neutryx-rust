@@ -193,7 +193,7 @@ impl<T: Float> CheckpointManager<T> {
                 budget.recommended_interval(n_paths, self.total_steps, state_size_per_path)
             }
             None => {
-                // Use strategy's default behavior
+                // Use strategy's default behaviour
                 match self.strategy {
                     CheckpointStrategy::Uniform { interval } => interval,
                     CheckpointStrategy::Logarithmic { base_interval } => base_interval,

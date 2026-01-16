@@ -40,7 +40,7 @@ use crate::greeks::{GreeksConfig, GreeksMode as CoreGreeksMode};
 
 use super::greeks::GreeksMode as EnzymeGreeksMode;
 
-/// Configuration for fallback behavior.
+/// Configuration for fallback behaviour.
 #[derive(Clone, Debug)]
 pub struct FallbackConfig {
     /// Whether to warn when falling back from Enzyme to FD.

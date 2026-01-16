@@ -15,7 +15,7 @@
 //! # Enzyme AD Compatibility
 //!
 //! All buffer operations are designed for buffer hoisting, enabling Enzyme
-//! to optimize the inner simulation loop.
+//! to optimise the inner simulation loop.
 
 use num_traits::Float;
 
@@ -424,7 +424,7 @@ mod tests {
     }
 
     #[test]
-    fn test_workspace_observers_initialized() {
+    fn test_workspace_observers_initialised() {
         let ws: CheckpointWorkspace<f64> = CheckpointWorkspace::new(100, 10);
         assert_eq!(ws.observers().len(), 100);
 

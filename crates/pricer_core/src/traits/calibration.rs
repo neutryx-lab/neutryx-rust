@@ -438,7 +438,7 @@ pub trait Calibrator {
     /// # Arguments
     ///
     /// * `market_data` - Market observations to fit
-    /// * `initial_params` - Starting point for optimization
+    /// * `initial_params` - Starting point for optimisation
     /// * `config` - Calibration configuration
     ///
     /// # Returns

@@ -159,7 +159,7 @@ impl ThreadLocalPool {
     /// If a suitable buffer is available in the pool, it is reused.
     /// Otherwise, a new buffer is allocated.
     ///
-    /// The returned buffer is initialized to zeros and has at least
+    /// The returned buffer is initialised to zeros and has at least
     /// `min_capacity` elements.
     ///
     /// # Arguments

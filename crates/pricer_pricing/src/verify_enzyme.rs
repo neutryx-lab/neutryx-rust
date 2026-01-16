@@ -267,7 +267,7 @@ mod tests {
         assert!(delta <= discount + 0.01, "Delta should be <= df: {}", delta);
     }
 
-    /// Test barrier option gradient behavior at barrier.
+    /// Test barrier option gradient behaviour at barrier.
     #[test]
     fn test_barrier_option_gradient_at_barrier() {
         // Near barrier, the gradient of a knock-out option changes rapidly

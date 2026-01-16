@@ -2416,7 +2416,7 @@ mod tests {
     }
 
     #[test]
-    fn test_sabr_iv_floor_default_behavior() {
+    fn test_sabr_iv_floor_default_behaviour() {
         // Default implied_vol should error on negative IV
         let params = SABRParams::new(100.0, 0.2, 0.4, -0.3, 0.5, 1.0).unwrap();
         let model = SABRModel::new(params).unwrap();

@@ -16,7 +16,7 @@
 //! - **Enzyme AD compatible**: All computations use smooth approximations and
 //!   avoid branches on floating-point values
 //! - **Static dispatch**: Enum-based dispatch for payoff types ensures
-//!   LLVM-level optimization
+//!   LLVM-level optimisation
 
 mod asian;
 mod barrier;

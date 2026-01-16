@@ -30,7 +30,7 @@ use std::sync::Arc;
 /// Test complete IRS AAD demo workflow execution.
 ///
 /// Verifies:
-/// - Workflow initialization
+/// - Workflow initialisation
 /// - Parameter validation
 /// - IRS construction
 /// - NPV and DV01 calculation
@@ -748,21 +748,21 @@ async fn test_parameter_change_triggers_recalculation() {
 }
 
 // =============================================================================
-// Task 8: LazyEvaluator Cache Behavior Tests
+// Task 8: LazyEvaluator Cache Behaviour Tests
 // =============================================================================
 
-/// Test LazyEvaluator cache behavior.
+/// Test LazyEvaluator cache behaviour.
 ///
 /// Requirements Coverage:
 /// - LazyEvaluatorキャッシュ動作のテストを実装する
 ///
 /// This test verifies:
-/// - Cache initialization
+/// - Cache initialisation
 /// - Cache access patterns
 /// - Cache statistics tracking
 #[tokio::test]
 #[cfg(feature = "l1l2-integration")]
-async fn test_lazy_evaluator_cache_behavior() {
+async fn test_lazy_evaluator_cache_behaviour() {
     use pricer_pricing::greeks::GreeksMode;
 
     let workflow = IrsAadWorkflow::with_defaults();
