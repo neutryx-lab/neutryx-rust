@@ -638,9 +638,7 @@ impl TuiApp {
     /// Refresh data from API
     #[allow(dead_code)]
     pub async fn refresh_data(&mut self) -> Result<()> {
-        // TODO: Fetch data from service_gateway
-        // let portfolio = self.api_client.get_portfolio().await?;
-        // self.trades = portfolio.to_trade_rows();
+        // Stub: service_gateway API integration pending.
         Ok(())
     }
 }

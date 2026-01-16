@@ -762,7 +762,8 @@ impl XvaDemoRunner {
         // Phase 2 (enzyme-ad feature): Use Enzyme #[autodiff]
         #[cfg(feature = "enzyme-ad")]
         {
-            // TODO: Implement Enzyme-based AAD for XVA sensitivities
+            // Enzyme AAD for XVA: requires #[autodiff] macro integration.
+            // Fallback to bump-and-revalue until nightly toolchain stabilises.
             self.compute_xva_sensitivities_bump(
                 swap,
                 curves,

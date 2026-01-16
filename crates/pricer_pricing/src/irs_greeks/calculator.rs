@@ -335,9 +335,8 @@ impl IrsGreeksCalculator<f64> {
         // Phase 2 (enzyme-ad feature): Use Enzyme #[autodiff] macro
         #[cfg(feature = "enzyme-ad")]
         {
-            // TODO: Implement Enzyme-based AAD computation
-            // This would use #[autodiff_reverse] on the pricing function
-            // to compute all tenor Deltas in a single reverse pass
+            // Enzyme AAD: #[autodiff_reverse] on pricing function computes all
+            // tenor Deltas in a single reverse pass. Fallback until integration complete.
             self.compute_tenor_deltas_bump(swap, curves, valuation_date, tenor_points, 0.0001)
         }
 

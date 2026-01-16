@@ -19,10 +19,8 @@ pub fn run(portfolio: &str, date: Option<&str>, num_paths: usize, format: &str) 
         return Err(CliError::FileNotFound(portfolio.to_string()));
     }
 
-    // TODO: Load portfolio using adapter_loader
-    // TODO: Load market data
-    // TODO: Run pricing using pricer_pricing
-    // TODO: Output results in requested format
+    // Stub: portfolio loading, market data, and pricing integration pending.
+    // Current implementation outputs format template only.
 
     match format {
         "json" => {
