@@ -132,7 +132,9 @@ docker run -it neutryx-enzyme
 - **LTO**: Link-time optimisation enabled in release profile
 - **Single Codegen Unit**: `codegen-units = 1` for maximum optimisation
 - **Structure of Arrays (SoA)**: Memory layout for vectorisation (pricer_risk)
-- **Rayon Parallelism**: Portfolio-level parallel processing
+- **Rayon Parallelism**: Portfolio-level parallel processing (>80% efficiency on 8+ cores)
+- **Parallel Portfolio Greeks**: Batch processing for 1000+ trades with memory monitoring
+- **Thread-local Buffers**: RAII buffer pools for zero-allocation hot paths
 
 ## Deployment Infrastructure
 
@@ -149,8 +151,10 @@ docker run -it neutryx-enzyme
 - **Performance Metrics**: Built-in metrics collection (API response times, WebSocket latency, server uptime)
 - **Request Tracing**: `tower-http::TraceLayer` for HTTP request logging
 - **Health Checks**: Kubernetes/Cloud Run-compatible readiness probes
+- **OpenAPI/Swagger**: API documentation with `utoipa` (feature-gated `openapi`)
+- **Prometheus Export**: Prometheus-style metrics endpoint (`/api/metrics`)
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-15_ — Added Cloud Run deployment, observability patterns, feature coordination
+_Updated: 2026-01-16_ — Added OpenAPI/Swagger, Prometheus metrics, parallel portfolio Greeks
 _Document standards and patterns, not every dependency_

@@ -2,7 +2,7 @@
 
 実装状況と今後の開発項目を追跡するドキュメント。
 
-_Updated: 2026-01-14_
+_Updated: 2026-01-16_
 
 ---
 
@@ -95,6 +95,10 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 | cloud-deployment | Cloud Run deployment infrastructure | ✅ |
 | dual-mode-ui | TUI + Web dashboard | ✅ |
 | rest-orchestration | REST API for workflow orchestration | ✅ |
+| openapi-documentation | OpenAPI/Swagger documentation | ✅ |
+| scenario-analysis-api | Scenario analysis REST endpoints | ✅ |
+| async-job-management | Background job processing infrastructure | ✅ |
+| prometheus-metrics | Prometheus-style metrics export | ✅ |
 
 ### Phase 4: Adapter Layer Enhancement (Priority: Low)
 
@@ -127,6 +131,7 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 
 | Date | Change |
 |------|--------|
+| 2026-01-16 | Steering sync: OpenAPI/Swagger documentation, scenario analysis handlers, async job manager, Prometheus metrics, parallel portfolio Greeks |
 | 2026-01-15 | Steering sync: Cloud Run deployment, dual-mode UI, REST orchestration, computation graph, IRS Greeks workflow |
 | 2026-01-14 | frictional-bank: Added IRS AAD workflow and benchmark visualisation module |
 | 2026-01-11 | frictional-bank: Complete (all tasks including optional Chart and Web dashboard) |
