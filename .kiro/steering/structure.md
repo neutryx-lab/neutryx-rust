@@ -277,9 +277,13 @@ portfolio/  → Trade, Counterparty, NettingSet, PortfolioBuilder
 exposure/   → EE, EPE, PFE, EEPE, ENE calculators
 xva/        → CVA, DVA, FVA calculators with XvaCalculator
 scenarios/  → Scenario analysis: ScenarioEngine, RiskFactorShift, PresetScenario, GreeksAggregator
+            → bucket_dv01.rs (tenor-specific DV01), greeks_by_factor.rs, curve_shifts.rs
 regulatory/ → SA-CCR, FRTB, SIMM (planned)
 soa/        → Structure of Arrays (TradeSoA, ExposureSoA)
-parallel/   → Rayon-based parallelisation config
+parallel/   → Rayon-based parallelisation utilities
+            → portfolio_greeks.rs (parallel Greeks for 1000+ trades, >80% efficiency on 8+ cores)
+            → memory_monitor.rs (memory monitoring and auto-checkpoint mechanism)
+            → Batch processing helpers (process_in_batches, parallel_map, parallel_reduce)
 demo.rs     → Portfolio orchestration demo (DemoTrade, Pull-then-Push pattern)
 ```
 
@@ -389,8 +393,12 @@ visualisation.rs → Benchmark visualisation (speed comparison charts, AAD vs Bu
 api_client.rs    → HTTP client for service communication
 web/             → Web server module (feature-gated)
   ├── main.rs    → Web dashboard entry point
-  ├── handlers.rs → REST API handlers (pricing, portfolio, XVA)
+  ├── handlers.rs → REST API handlers (pricing, portfolio, XVA, Greeks)
+  ├── scenario_handlers.rs → Scenario analysis endpoints (presets, run, compare)
   ├── websocket.rs → WebSocket real-time updates
+  ├── jobs.rs    → Async job manager for background processing
+  ├── metrics.rs → Prometheus-style metrics collection
+  ├── openapi.rs → OpenAPI/Swagger UI (feature = "openapi")
   └── pricer_types.rs → Shared type definitions
 static/          → Web assets (HTML, CSS, JS)
 ```
@@ -408,6 +416,10 @@ static/          → Web assets (HTML, CSS, JS)
 - Performance metrics collection (API response times, WebSocket latency)
 - CORS and Content Security Policy headers
 - Environment-based configuration (`FB_CORS_ORIGINS`, `FB_CSP`)
+- OpenAPI/Swagger documentation (`feature = "openapi"`, `web/openapi.rs`)
+- Scenario analysis handlers (`web/scenario_handlers.rs`) - preset scenarios, comparison
+- Async job management (`web/jobs.rs`) - background processing for long-running tasks
+- Prometheus-style metrics export (`web/metrics.rs`)
 
 ### Demo Data & Notebooks
 
@@ -480,5 +492,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-15_ — Added IRS Greeks workflow, computation graph, dual-mode UI, REST orchestration, Cloud Run deployment
+_Updated: 2026-01-16_ — Added parallel portfolio Greeks, scenario analysis handlers, OpenAPI/Swagger, async jobs, Prometheus metrics
 _Document patterns, not file trees. New files following patterns should not require updates_
