@@ -562,6 +562,12 @@ body.light-theme .glass-heavy {
     height: 24px;
 }
 
+.nav-divider {
+    height: 1px;
+    background: var(--glass-border);
+    margin: 8px 16px;
+}
+
 .sidebar-footer {
     padding: 16px;
     border-top: 1px solid var(--glass-border);
@@ -647,6 +653,8 @@ body.light-theme .glass-heavy {
     margin-left: var(--sidebar-width);
     display: flex;
     flex-direction: column;
+    overflow-x: hidden;
+    max-width: calc(100vw - var(--sidebar-width));
 }
 
 /* Top Bar */
@@ -787,6 +795,8 @@ body.light-theme .glass-heavy {
     padding: 24px;
     flex: 1;
     animation: fadeIn 0.3s ease;
+    overflow-x: hidden;
+    max-width: 100%;
 }
 
 .view.active {
@@ -796,6 +806,43 @@ body.light-theme .glass-heavy {
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
+}
+
+/* Celebration Overlay */
+.celebration-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(99, 102, 241, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    pointer-events: none;
+    animation: celebrationPulse 0.5s ease-out;
+}
+
+.celebration-text {
+    font-size: 5rem;
+    animation: celebrationBounce 0.5s ease-out;
+}
+
+.celebration-overlay.fade-out {
+    opacity: 0;
+    transition: opacity 0.5s ease-out;
+}
+
+@keyframes celebrationPulse {
+    0% { background: rgba(99, 102, 241, 0.3); }
+    100% { background: rgba(99, 102, 241, 0.1); }
+}
+
+@keyframes celebrationBounce {
+    0% { transform: scale(0.5); opacity: 0; }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); opacity: 1; }
 }
 
 /* ============================================
@@ -1031,6 +1078,67 @@ body.light-theme .glass-heavy {
 .xva-segment.dva { background: var(--success); }
 .xva-segment.fva { background: var(--warning); }
 
+/* XVA Components (CVA, DVA, FVA in Total XVA card) */
+.xva-components {
+    display: flex;
+    gap: 1.5rem;
+    margin: 1rem 0;
+    padding: 0.75rem 0;
+    border-top: 1px solid var(--glass-border);
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.xva-component {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.5rem;
+    border-radius: var(--radius-sm);
+    background: var(--glass-bg);
+    transition: transform var(--transition-fast), background var(--transition-fast);
+}
+
+.xva-component:hover {
+    transform: translateY(-2px);
+    background: var(--surface-hover);
+}
+
+.xva-component.cva {
+    border-left: 3px solid var(--danger);
+}
+
+.xva-component.dva {
+    border-left: 3px solid var(--success);
+}
+
+.xva-component.fva {
+    border-left: 3px solid var(--warning);
+}
+
+.xva-comp-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.xva-comp-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    font-family: var(--font-mono);
+}
+
+.xva-comp-value.positive {
+    color: var(--success);
+}
+
+.xva-comp-value.negative {
+    color: var(--danger);
+}
+
 /* ============================================
    Charts
    ============================================ */
@@ -1252,18 +1360,20 @@ body.light-theme .glass-heavy {
 }
 
 .portfolio-table-wrapper {
-    overflow-x: scroll !important;
-    overflow-y: hidden !important;
+    overflow-x: auto;
+    overflow-y: hidden;
     margin-bottom: 16px;
-    -webkit-overflow-scrolling: auto;
-    overscroll-behavior-x: none;
-    scroll-behavior: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scroll-behavior: smooth;
+    max-width: 100%;
 }
 
 .portfolio-table-wrapper.glass-card {
-    overflow-x: scroll !important;
-    overflow-y: hidden !important;
-    overscroll-behavior-x: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    max-width: 100%;
 }
 
 .portfolio-table {
@@ -1899,6 +2009,385 @@ body.light-theme .glass-heavy {
     color: var(--danger);
 }
 
+/* ============================================
+   Risk Attribution Grid
+   ============================================ */
+
+.risk-grid-select {
+    padding: 8px 16px;
+    background: var(--surface);
+    border: 2px solid var(--primary);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    transition: all var(--transition-fast);
+    min-width: 120px;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%236366f1' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 36px;
+}
+
+.risk-grid-select:hover,
+.risk-grid-select:focus {
+    border-color: var(--primary);
+    background-color: var(--surface-hover);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.risk-grid-select option {
+    background: var(--background);
+    color: var(--text-primary);
+    padding: 8px;
+}
+
+/* Risk Attribution Panel - Primary Grid Display */
+.risk-attribution-panel {
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    border-radius: var(--radius-lg);
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.risk-attribution-panel .bento-header {
+    margin-bottom: 1rem;
+}
+
+.risk-attribution-panel .bento-header h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.risk-attribution-panel .bento-header h3 i {
+    color: var(--primary);
+}
+
+.risk-attribution-summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+/* Dashboard variant - more compact */
+.risk-attribution-summary.dashboard-variant {
+    padding: 0.75rem;
+    margin-bottom: 0;
+    gap: 0.75rem;
+}
+
+.risk-attribution-summary.dashboard-variant .risk-summary-card {
+    padding: 0.75rem;
+}
+
+.risk-attribution-summary.dashboard-variant .risk-summary-value {
+    font-size: 1.25rem;
+}
+
+.risk-summary-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+    background: var(--glass-bg);
+    border-radius: var(--radius-md);
+    border-left: 4px solid var(--primary);
+    transition: transform var(--transition-fast);
+}
+
+.risk-summary-card:hover {
+    transform: translateY(-2px);
+}
+
+.risk-summary-card.dv01 {
+    border-left-color: var(--primary);
+}
+
+.risk-summary-card.gamma {
+    border-left-color: var(--warning);
+}
+
+.risk-summary-card.vega {
+    border-left-color: var(--info);
+}
+
+.risk-summary-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.risk-summary-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    margin: 0.25rem 0;
+}
+
+.risk-summary-change {
+    font-size: 0.75rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.risk-summary-change.positive {
+    color: var(--success);
+}
+
+.risk-summary-change.negative {
+    color: var(--danger);
+}
+
+.risk-grid-wrapper {
+    overflow-x: auto;
+    margin: 0 -1rem;
+    padding: 0 1rem;
+}
+
+.risk-grid-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+    min-width: 900px;
+}
+
+.risk-grid-table th,
+.risk-grid-table td {
+    padding: 10px 8px;
+    text-align: right;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.risk-grid-table th {
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.03em;
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.risk-grid-table th.index-header {
+    text-align: left;
+    min-width: 120px;
+}
+
+.risk-grid-table th.tenor-header {
+    min-width: 65px;
+}
+
+.risk-grid-table th.total-header {
+    background: var(--surface-hover);
+    min-width: 80px;
+}
+
+.risk-grid-table .index-cell {
+    text-align: left;
+    font-weight: 500;
+}
+
+.index-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-family: var(--font-mono);
+}
+
+.index-badge.usd {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+}
+
+.index-badge.eur {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+}
+
+.index-badge.gbp {
+    background: rgba(168, 85, 247, 0.15);
+    color: #a855f7;
+}
+
+.index-badge.jpy {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+.index-badge.chf {
+    background: rgba(251, 191, 36, 0.15);
+    color: #fbbf24;
+}
+
+.index-badge.aud {
+    background: rgba(20, 184, 166, 0.15);
+    color: #14b8a6;
+}
+
+.risk-cell {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    transition: background var(--transition-fast);
+}
+
+.risk-cell:hover {
+    background: var(--surface-hover);
+}
+
+.risk-cell.positive {
+    color: var(--success);
+}
+
+.risk-cell.negative {
+    color: var(--danger);
+}
+
+.risk-cell.total {
+    font-weight: 600;
+    background: var(--surface);
+}
+
+.risk-cell.total.grand {
+    font-size: 0.9rem;
+    background: var(--surface-hover);
+}
+
+.risk-grid-table .total-row {
+    background: var(--surface);
+}
+
+.risk-grid-table .total-row td {
+    font-weight: 600;
+    border-top: 2px solid var(--glass-border);
+}
+
+/* Risk Heatmap */
+.risk-heatmap-container {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--glass-border);
+    max-width: 320px;
+}
+
+.heatmap-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.heatmap-header h4 {
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.heatmap-header h4 i {
+    color: var(--warning);
+}
+
+.heatmap-legend {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+}
+
+.legend-gradient {
+    width: 60px;
+    height: 8px;
+    border-radius: 4px;
+    background: linear-gradient(to right,
+        rgba(34, 197, 94, 0.3),
+        rgba(251, 191, 36, 0.5),
+        rgba(239, 68, 68, 0.7)
+    );
+}
+
+.heatmap-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 3px;
+}
+
+.heatmap-cell {
+    aspect-ratio: 1;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.55rem;
+    font-weight: 500;
+    font-family: var(--font-mono);
+    cursor: pointer;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.heatmap-cell:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 1;
+}
+
+.heatmap-cell.low {
+    background: rgba(34, 197, 94, 0.3);
+    color: var(--success);
+}
+
+.heatmap-cell.medium {
+    background: rgba(251, 191, 36, 0.4);
+    color: var(--warning);
+}
+
+.heatmap-cell.high {
+    background: rgba(239, 68, 68, 0.5);
+    color: var(--danger);
+}
+
+/* Responsive Risk Attribution */
+@media (max-width: 1200px) {
+    .risk-attribution-summary {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .risk-attribution-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .risk-summary-card {
+        flex-direction: row;
+        justify-content: space-between;
+    }
+
+    .heatmap-grid {
+        grid-template-columns: repeat(6, 1fr);
+    }
+}
+
 /* Pie Legend */
 .pie-legend {
     display: flex;
@@ -2524,8 +3013,9 @@ body.light-theme .glass-heavy {
     
     .main-content {
         margin-left: 0;
+        max-width: 100vw;
     }
-    
+
     .bento-grid {
         grid-template-columns: 1fr;
     }
@@ -4047,6 +4537,67 @@ kbd {
     color: var(--text-muted);
     margin-top: auto;
 }
+
+/* XVA Compact Grid (for Risk View) */
+.xva-compact-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    padding: 8px;
+}
+
+.xva-compact-item {
+    padding: 12px;
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--primary);
+}
+
+.xva-compact-item.cva { border-left-color: var(--danger); }
+.xva-compact-item.dva { border-left-color: var(--success); }
+.xva-compact-item.fva { border-left-color: var(--warning); }
+.xva-compact-item.total { border-left-color: var(--primary); }
+
+.xva-compact-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.xva-compact-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.xva-compact-trend {
+    font-size: 0.65rem;
+    font-weight: 500;
+    padding: 1px 6px;
+    border-radius: 8px;
+}
+
+.xva-compact-trend.positive {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success);
+}
+
+.xva-compact-trend.negative {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger);
+}
+
+.xva-compact-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    font-family: var(--font-mono);
+}
+
+.xva-compact-value.positive { color: var(--success); }
+.xva-compact-value.negative { color: var(--danger); }
 
 /* XVA Composition for Total Card */
 .xva-composition {
