@@ -37,7 +37,6 @@ use tracing::info;
 
 use handlers::GraphCache;
 use jobs::JobManager;
-use metrics::PrometheusMetrics;
 use pricer_types::BootstrapCurveCache;
 
 // =========================================================================

@@ -953,14 +953,19 @@ class CommandPalette {
     
     executeAction(action) {
         switch (action) {
-            case 'recalculate':
-                runRecalculation();
-                break;
             case 'refresh':
                 refreshAllData();
                 break;
             case 'export':
                 exportReport();
+                break;
+            case 'ai-assistant':
+                if (typeof aiAssistant !== 'undefined') {
+                    aiAssistant.toggle();
+                }
+                break;
+            case 'clear-cache':
+                document.getElementById('clear-all-cache')?.click();
                 break;
             case 'goto-dashboard':
                 navigateTo('dashboard');
@@ -971,19 +976,23 @@ class CommandPalette {
             case 'goto-risk':
                 navigateTo('risk');
                 break;
+            case 'goto-exposure':
+                navigateTo('exposure');
+                break;
             case 'goto-scenarios':
                 navigateTo('scenarios');
+                break;
+            case 'goto-pricer':
+                navigateTo('pricer');
+                break;
+            case 'goto-irs-bootstrap':
+                navigateTo('irs-bootstrap');
                 break;
             case 'goto-graph':
                 navigateToGraph();
                 break;
-            case 'scenario-stress':
-                navigateTo('scenarios');
-                setTimeout(() => applyPreset('stress'), 300);
-                break;
-            case 'scenario-crisis':
-                navigateTo('scenarios');
-                setTimeout(() => applyPreset('crisis'), 300);
+            case 'goto-analytics':
+                navigateTo('analytics');
                 break;
             case 'toggle-theme':
                 toggleTheme();
@@ -1024,7 +1033,17 @@ function navigateTo(viewName) {
     document.getElementById('breadcrumb-current').textContent = titles[viewName] || viewName;
 
     // View-specific actions
-    if (viewName === 'exposure') fetchExposure();
+    if (viewName === 'exposure') {
+        fetchExposure();
+        // Initialize or resize charts after view becomes visible
+        setTimeout(() => {
+            if (!state.mainExposureChart) {
+                initMainExposureChart();
+            } else {
+                state.mainExposureChart.resize();
+            }
+        }, 50);
+    }
     if (viewName === 'risk') {
         fetchRiskMetrics();
         initRiskAttributionGrid();
@@ -2419,38 +2438,70 @@ function initScenarioControls() {
     ['rate-shock', 'vol-shift', 'spread-shock', 'corr-shift'].forEach(id => {
         document.getElementById(id)?.addEventListener('input', updateSliderDisplays);
     });
-    
+
     // Presets
     document.querySelectorAll('.preset-btn').forEach(btn => {
         btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
     });
-    
+
     // Run scenario
     document.getElementById('run-scenario')?.addEventListener('click', runScenario);
+
+    // Show initial baseline results
+    showBaselineResults();
+}
+
+function showBaselineResults() {
+    const resultsEl = document.getElementById('scenario-results');
+    if (!resultsEl) return;
+
+    const base = DEMO_RISK_DATA;
+    resultsEl.innerHTML = `
+        <div class="results-grid">
+            <div class="result-card">
+                <span class="result-label">Base PV</span>
+                <span class="result-value ${base.total_pv >= 0 ? 'positive' : 'negative'}">${formatCurrency(base.total_pv)}</span>
+                <span class="result-delta muted">Baseline</span>
+            </div>
+            <div class="result-card">
+                <span class="result-label">Base CVA</span>
+                <span class="result-value negative">${formatCurrency(base.cva)}</span>
+            </div>
+            <div class="result-card">
+                <span class="result-label">Base DVA</span>
+                <span class="result-value positive">${formatCurrency(base.dva)}</span>
+            </div>
+            <div class="result-card">
+                <span class="result-label">Base FVA</span>
+                <span class="result-value negative">${formatCurrency(base.fva)}</span>
+            </div>
+        </div>
+    `;
 }
 
 async function runScenario() {
     if (state.scenarios.running) return;
-    
+
     state.scenarios.running = true;
     const statusEl = document.getElementById('scenario-status');
     const resultsEl = document.getElementById('scenario-results');
-    
+
     statusEl.classList.add('running');
     statusEl.querySelector('span:last-child').textContent = 'Running...';
-    
+
     const params = {
-        rateShock: parseInt(document.getElementById('rate-shock').value),
-        volShift: parseInt(document.getElementById('vol-shift').value),
-        spreadShock: parseInt(document.getElementById('spread-shock').value),
-        corrShift: parseInt(document.getElementById('corr-shift').value)
+        rateShock: parseInt(document.getElementById('rate-shock').value) || 0,
+        volShift: parseInt(document.getElementById('vol-shift').value) || 0,
+        spreadShock: parseInt(document.getElementById('spread-shock').value) || 0,
+        corrShift: parseInt(document.getElementById('corr-shift').value) || 0
     };
-    
+
     try {
-        // Simulate
-        await new Promise(r => setTimeout(r, 2000));
-        
-        const base = await fetchRiskMetrics();
+        // Simulate calculation time
+        await new Promise(r => setTimeout(r, 1500));
+
+        // Use demo data directly for scenario calculation (no API dependency)
+        const base = DEMO_RISK_DATA;
         const results = {
             pv: base.total_pv * (1 + params.rateShock / 10000),
             cva: base.cva * (1 + params.spreadShock / 10000),
@@ -2560,14 +2611,17 @@ function initQuickActions() {
         tile.addEventListener('click', () => {
             const action = tile.dataset.action;
             switch (action) {
-                case 'recalculate': runRecalculation(); break;
-                case 'stress-test':
-                    navigateTo('scenarios');
-                    setTimeout(() => applyPreset('stress'), 300);
+                case 'pricer':
+                    navigateTo('pricer');
                     break;
-                case 'export': exportReport(); break;
-                case 'what-if':
-                    navigateTo('scenarios');
+                case 'irs-bootstrap':
+                    navigateTo('irs-bootstrap');
+                    break;
+                case 'exposure':
+                    navigateTo('exposure');
+                    break;
+                case 'analytics-3d':
+                    navigateTo('analytics');
                     break;
             }
         });
@@ -4538,11 +4592,15 @@ const alertSystem = {
     
     init() {
         const alertBtn = document.getElementById('open-alerts');
+        const topAlertBtn = document.getElementById('top-alerts-btn');
         const alertPanel = document.getElementById('alert-panel');
         const closeBtn = document.getElementById('close-alerts');
-        
+
         if (alertBtn && alertPanel) {
             alertBtn.addEventListener('click', () => this.toggle());
+        }
+        if (topAlertBtn && alertPanel) {
+            topAlertBtn.addEventListener('click', () => this.toggle());
         }
         if (closeBtn) {
             closeBtn.addEventListener('click', () => this.close());
@@ -4625,12 +4683,12 @@ const alertSystem = {
     },
     
     updateBadge() {
-        const badge = document.querySelector('.alert-badge');
+        const badges = document.querySelectorAll('.alert-badge');
         const unread = this.alerts.filter(a => !a.read).length;
-        if (badge) {
+        badges.forEach(badge => {
             badge.textContent = unread;
             badge.style.display = unread > 0 ? 'flex' : 'none';
-        }
+        });
     },
     
     formatTime(date) {
@@ -5172,6 +5230,61 @@ const aiAssistant = {
 };
 
 // ============================================
+// Clear All Cache
+// ============================================
+
+/**
+ * Initialise the clear all cache button.
+ */
+function initClearAllCache() {
+    const btn = document.getElementById('clear-all-cache');
+    if (!btn) return;
+
+    btn.addEventListener('click', async () => {
+        // Confirm before clearing
+        if (!confirm('Are you sure you want to clear all cached data?\n\nThis will reset:\n• LocalStorage data\n• Session data\n• Chart caches')) {
+            return;
+        }
+
+        try {
+            // Clear LocalStorage
+            localStorage.clear();
+
+            // Clear SessionStorage
+            sessionStorage.clear();
+
+            // Clear any in-memory caches
+            if (typeof chartInstances !== 'undefined') {
+                Object.values(chartInstances).forEach(chart => {
+                    if (chart && typeof chart.destroy === 'function') {
+                        chart.destroy();
+                    }
+                });
+            }
+
+            // Call server-side cache clear endpoint if available
+            try {
+                await fetch('/api/cache/clear', { method: 'POST' });
+            } catch (e) {
+                // Endpoint may not exist, ignore
+            }
+
+            showToast('success', 'Cache Cleared', 'All cached data has been cleared');
+            Logger.info('Cache', 'All caches cleared');
+
+            // Reload the page to reset state
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+
+        } catch (e) {
+            Logger.error('Cache', 'Failed to clear cache', { error: e.message });
+            showToast('error', 'Error', 'Failed to clear cache');
+        }
+    });
+}
+
+// ============================================
 // 3D Analytics (Three.js)
 // ============================================
 
@@ -5179,9 +5292,32 @@ const analytics3D = {
     scene: null,
     camera: null,
     renderer: null,
-    controls: null,
     initialized: false,
-    
+    surfaceMesh: null,
+    wireframe: false,
+    autoRotate: false,
+    isDragging: false,
+    previousMousePosition: { x: 0, y: 0 },
+    cameraAngle: { theta: Math.PI / 4, phi: Math.PI / 4 },
+    cameraDistance: 8,
+    axisLabels: [],
+
+    // Volatility surface data (Strike moneyness vs Expiry)
+    volData: {
+        strikes: [0.8, 0.85, 0.9, 0.95, 1.0, 1.05, 1.1, 1.15, 1.2],  // Moneyness (K/S)
+        expiries: [0.08, 0.25, 0.5, 1.0, 2.0, 3.0, 5.0],  // Years
+        // Implied vol matrix (expiry x strike) - typical equity smile/skew
+        vols: [
+            [0.35, 0.30, 0.26, 0.23, 0.22, 0.23, 0.25, 0.28, 0.32],  // 1M
+            [0.32, 0.28, 0.25, 0.22, 0.21, 0.22, 0.24, 0.27, 0.30],  // 3M
+            [0.30, 0.27, 0.24, 0.22, 0.20, 0.21, 0.23, 0.26, 0.29],  // 6M
+            [0.28, 0.25, 0.23, 0.21, 0.19, 0.20, 0.22, 0.24, 0.27],  // 1Y
+            [0.26, 0.24, 0.22, 0.20, 0.18, 0.19, 0.21, 0.23, 0.25],  // 2Y
+            [0.25, 0.23, 0.21, 0.19, 0.18, 0.18, 0.20, 0.22, 0.24],  // 3Y
+            [0.24, 0.22, 0.20, 0.19, 0.17, 0.18, 0.19, 0.21, 0.23],  // 5Y
+        ]
+    },
+
     init() {
         this.initialized = false;
     },
@@ -5195,7 +5331,7 @@ const analytics3D = {
         this.initSankeyDiagram();
         this.initDistributionChart();
     },
-    
+
     async initViewer() {
         try {
             await this.ensureReady();
@@ -5205,80 +5341,322 @@ const analytics3D = {
         }
         const container = document.getElementById('three-container');
         if (!container || this.renderer) return;
-        
+
         // Scene
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x0a0a12);
-        
+
         // Camera
         this.camera = new THREE.PerspectiveCamera(
-            60, container.clientWidth / container.clientHeight, 0.1, 1000
+            50, container.clientWidth / container.clientHeight, 0.1, 1000
         );
-        this.camera.position.set(5, 5, 5);
-        
+        this.updateCameraPosition();
+
         // Renderer
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.renderer.setSize(container.clientWidth, container.clientHeight);
+        this.renderer.setPixelRatio(window.devicePixelRatio);
         container.appendChild(this.renderer.domElement);
-        
+
         // Lights
-        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
         this.scene.add(ambientLight);
-        
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-        directionalLight.position.set(5, 10, 5);
-        this.scene.add(directionalLight);
-        
+
+        const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight1.position.set(5, 10, 5);
+        this.scene.add(directionalLight1);
+
+        const directionalLight2 = new THREE.DirectionalLight(0x6366f1, 0.3);
+        directionalLight2.position.set(-5, 5, -5);
+        this.scene.add(directionalLight2);
+
         // Create vol surface
         this.createVolatilitySurface();
-        
+
+        // Add axes
+        this.createAxes();
+
+        // Mouse controls
+        this.initMouseControls(container);
+
+        // Button controls
+        this.initButtonControls();
+
+        // Update legend
+        this.updateLegend();
+
         // Animation
         const animate = () => {
             requestAnimationFrame(animate);
+            if (this.autoRotate) {
+                this.cameraAngle.theta += 0.005;
+                this.updateCameraPosition();
+            }
             this.renderer.render(this.scene, this.camera);
         };
         animate();
-        
+
         // Resize handler
-        window.addEventListener('resize', () => {
+        const resizeObserver = new ResizeObserver(() => {
             if (!container) return;
             this.camera.aspect = container.clientWidth / container.clientHeight;
             this.camera.updateProjectionMatrix();
             this.renderer.setSize(container.clientWidth, container.clientHeight);
         });
+        resizeObserver.observe(container);
     },
-    
-    createVolatilitySurface() {
-        const geometry = new THREE.PlaneGeometry(4, 4, 32, 32);
-        const positions = geometry.attributes.position;
-        
-        // Modify vertices to create surface
-        for (let i = 0; i < positions.count; i++) {
-            const x = positions.getX(i);
-            const y = positions.getY(i);
-            const z = Math.sin(x * 2) * Math.cos(y * 2) * 0.5 + 
-                      Math.exp(-0.5 * (x * x + y * y)) * 0.3;
-            positions.setZ(i, z);
-        }
-        
-        geometry.computeVertexNormals();
-        
-        const material = new THREE.MeshPhongMaterial({
-            color: 0x6366f1,
-            side: THREE.DoubleSide,
-            flatShading: true,
-            transparent: true,
-            opacity: 0.9
+
+    updateCameraPosition() {
+        const x = this.cameraDistance * Math.sin(this.cameraAngle.theta) * Math.cos(this.cameraAngle.phi);
+        const y = this.cameraDistance * Math.sin(this.cameraAngle.phi);
+        const z = this.cameraDistance * Math.cos(this.cameraAngle.theta) * Math.cos(this.cameraAngle.phi);
+        this.camera.position.set(x, y, z);
+        this.camera.lookAt(0, 1, 0);
+    },
+
+    initMouseControls(container) {
+        container.addEventListener('mousedown', (e) => {
+            this.isDragging = true;
+            this.previousMousePosition = { x: e.clientX, y: e.clientY };
         });
-        
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.rotation.x = -Math.PI / 2;
-        this.scene.add(mesh);
-        
-        // Grid helper
-        const gridHelper = new THREE.GridHelper(4, 10, 0x444444, 0x222222);
-        gridHelper.position.y = -0.5;
+
+        container.addEventListener('mousemove', (e) => {
+            if (!this.isDragging) return;
+
+            const deltaX = e.clientX - this.previousMousePosition.x;
+            const deltaY = e.clientY - this.previousMousePosition.y;
+
+            this.cameraAngle.theta -= deltaX * 0.01;
+            this.cameraAngle.phi = Math.max(0.1, Math.min(Math.PI / 2 - 0.1, this.cameraAngle.phi + deltaY * 0.01));
+
+            this.updateCameraPosition();
+            this.previousMousePosition = { x: e.clientX, y: e.clientY };
+        });
+
+        container.addEventListener('mouseup', () => { this.isDragging = false; });
+        container.addEventListener('mouseleave', () => { this.isDragging = false; });
+
+        container.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            this.cameraDistance = Math.max(4, Math.min(20, this.cameraDistance + e.deltaY * 0.01));
+            this.updateCameraPosition();
+        }, { passive: false });
+    },
+
+    initButtonControls() {
+        document.getElementById('reset-camera')?.addEventListener('click', () => {
+            this.cameraAngle = { theta: Math.PI / 4, phi: Math.PI / 4 };
+            this.cameraDistance = 8;
+            this.updateCameraPosition();
+        });
+
+        document.getElementById('toggle-wireframe')?.addEventListener('click', () => {
+            this.wireframe = !this.wireframe;
+            if (this.surfaceMesh) {
+                this.surfaceMesh.material.wireframe = this.wireframe;
+            }
+        });
+
+        document.getElementById('toggle-autorotate')?.addEventListener('click', () => {
+            this.autoRotate = !this.autoRotate;
+            document.getElementById('toggle-autorotate')?.classList.toggle('active', this.autoRotate);
+        });
+
+        document.getElementById('surface-type')?.addEventListener('change', (e) => {
+            this.switchSurface(e.target.value);
+        });
+    },
+
+    switchSurface(type) {
+        // Remove existing surface
+        if (this.surfaceMesh) {
+            this.scene.remove(this.surfaceMesh);
+            this.surfaceMesh.geometry.dispose();
+            this.surfaceMesh.material.dispose();
+        }
+
+        // Remove axis labels
+        this.axisLabels.forEach(label => this.scene.remove(label));
+        this.axisLabels = [];
+
+        switch (type) {
+            case 'vol-surface':
+                this.createVolatilitySurface();
+                break;
+            case 'pfe-surface':
+                this.createPFESurface();
+                break;
+            default:
+                this.createVolatilitySurface();
+        }
+
+        this.createAxes();
+        this.updateLegend();
+    },
+
+    createVolatilitySurface() {
+        const { strikes, expiries, vols } = this.volData;
+        const gridX = strikes.length;
+        const gridY = expiries.length;
+
+        const geometry = new THREE.PlaneGeometry(6, 4, gridX - 1, gridY - 1);
+        const positions = geometry.attributes.position;
+        const colors = [];
+
+        // Color gradient for volatility
+        const colorLow = new THREE.Color(0x10b981);   // Green (low vol)
+        const colorMid = new THREE.Color(0xf59e0b);   // Yellow (mid vol)
+        const colorHigh = new THREE.Color(0xef4444);  // Red (high vol)
+
+        const minVol = 0.15;
+        const maxVol = 0.40;
+
+        for (let j = 0; j < gridY; j++) {
+            for (let i = 0; i < gridX; i++) {
+                const idx = j * gridX + i;
+                const vol = vols[j][i];
+
+                // Scale vol to Z height (0 to 3)
+                const z = ((vol - minVol) / (maxVol - minVol)) * 3;
+                positions.setZ(idx, z);
+
+                // Interpolate color
+                const t = (vol - minVol) / (maxVol - minVol);
+                const color = new THREE.Color();
+                if (t < 0.5) {
+                    color.lerpColors(colorLow, colorMid, t * 2);
+                } else {
+                    color.lerpColors(colorMid, colorHigh, (t - 0.5) * 2);
+                }
+                colors.push(color.r, color.g, color.b);
+            }
+        }
+
+        geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+        geometry.computeVertexNormals();
+
+        const material = new THREE.MeshPhongMaterial({
+            vertexColors: true,
+            side: THREE.DoubleSide,
+            flatShading: false,
+            transparent: true,
+            opacity: 0.95,
+            shininess: 50,
+            wireframe: this.wireframe
+        });
+
+        this.surfaceMesh = new THREE.Mesh(geometry, material);
+        this.surfaceMesh.rotation.x = -Math.PI / 2;
+        this.surfaceMesh.position.y = 0;
+        this.scene.add(this.surfaceMesh);
+
+        // Grid on the floor
+        const gridHelper = new THREE.GridHelper(6, 12, 0x333333, 0x222222);
+        gridHelper.position.y = -0.01;
         this.scene.add(gridHelper);
+    },
+
+    createPFESurface() {
+        // PFE surface: Confidence level vs Time
+        const gridX = 10;  // Time points
+        const gridY = 8;   // Confidence levels
+
+        const geometry = new THREE.PlaneGeometry(6, 4, gridX - 1, gridY - 1);
+        const positions = geometry.attributes.position;
+        const colors = [];
+
+        const colorLow = new THREE.Color(0x6366f1);
+        const colorHigh = new THREE.Color(0xef4444);
+
+        for (let j = 0; j < gridY; j++) {
+            for (let i = 0; i < gridX; i++) {
+                const idx = j * gridX + i;
+                const t = i / (gridX - 1);  // Time (0 to 1)
+                const c = j / (gridY - 1);  // Confidence (0 to 1)
+
+                // PFE profile: peaks in middle, higher for higher confidence
+                const pfe = (1 + c) * Math.sin(t * Math.PI) * Math.exp(-t * 0.5) * 2;
+                positions.setZ(idx, pfe);
+
+                const color = new THREE.Color();
+                color.lerpColors(colorLow, colorHigh, c);
+                colors.push(color.r, color.g, color.b);
+            }
+        }
+
+        geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+        geometry.computeVertexNormals();
+
+        const material = new THREE.MeshPhongMaterial({
+            vertexColors: true,
+            side: THREE.DoubleSide,
+            flatShading: false,
+            transparent: true,
+            opacity: 0.95,
+            shininess: 50,
+            wireframe: this.wireframe
+        });
+
+        this.surfaceMesh = new THREE.Mesh(geometry, material);
+        this.surfaceMesh.rotation.x = -Math.PI / 2;
+        this.surfaceMesh.position.y = 0;
+        this.scene.add(this.surfaceMesh);
+
+        const gridHelper = new THREE.GridHelper(6, 12, 0x333333, 0x222222);
+        gridHelper.position.y = -0.01;
+        this.scene.add(gridHelper);
+    },
+
+    createAxes() {
+        // Simple axis indicators
+        const axisLength = 3.5;
+
+        // X axis (Strike/Time)
+        const xAxis = new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(-3, 0, 2.5),
+                new THREE.Vector3(3, 0, 2.5)
+            ]),
+            new THREE.LineBasicMaterial({ color: 0x888888 })
+        );
+        this.scene.add(xAxis);
+        this.axisLabels.push(xAxis);
+
+        // Z axis (Expiry/Confidence)
+        const zAxis = new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(-3.5, 0, -2),
+                new THREE.Vector3(-3.5, 0, 2)
+            ]),
+            new THREE.LineBasicMaterial({ color: 0x888888 })
+        );
+        this.scene.add(zAxis);
+        this.axisLabels.push(zAxis);
+
+        // Y axis (Vol/Value)
+        const yAxis = new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(-3.5, 0, 2.5),
+                new THREE.Vector3(-3.5, 3, 2.5)
+            ]),
+            new THREE.LineBasicMaterial({ color: 0x888888 })
+        );
+        this.scene.add(yAxis);
+        this.axisLabels.push(yAxis);
+    },
+
+    updateLegend() {
+        const surfaceType = document.getElementById('surface-type')?.value || 'vol-surface';
+        const scaleMin = document.getElementById('scale-min');
+        const scaleMax = document.getElementById('scale-max');
+
+        if (surfaceType === 'vol-surface') {
+            if (scaleMin) scaleMin.textContent = '15%';
+            if (scaleMax) scaleMax.textContent = '40%';
+        } else if (surfaceType === 'pfe-surface') {
+            if (scaleMin) scaleMin.textContent = '$0M';
+            if (scaleMax) scaleMax.textContent = '$50M';
+        }
     },
     
     initCorrelationHeatmap() {
@@ -5862,6 +6240,7 @@ async function init() {
         try { whatIfSimulator.init(); } catch(e) { Logger.error('App', 'whatIfSimulator init error', { error: e.message }); }
         try { reportGenerator.init(); } catch(e) { Logger.error('App', 'reportGenerator init error', { error: e.message }); }
         try { aiAssistant.init(); } catch(e) { Logger.error('App', 'aiAssistant init error', { error: e.message }); }
+        try { initClearAllCache(); } catch(e) { Logger.error('App', 'initClearAllCache error', { error: e.message }); }
         try { analytics3D.init(); } catch(e) { Logger.error('App', 'analytics3D init error', { error: e.message }); }
         try { initKeyboardShortcuts(); } catch(e) { Logger.error('App', 'initKeyboardShortcuts error', { error: e.message }); }
         try { applyIconButtonLabels(); } catch(e) { Logger.error('App', 'applyIconButtonLabels error', { error: e.message }); }
@@ -6797,6 +7176,14 @@ function setupZoomBehavior() {
         });
 
     graphState.svg.call(graphState.zoom);
+
+    // Prevent page scroll when wheeling over the SVG
+    const svgNode = graphState.svg.node();
+    if (svgNode) {
+        svgNode.addEventListener('wheel', (e) => {
+            e.preventDefault();
+        }, { passive: false });
+    }
 }
 
 /**
@@ -7167,9 +7554,46 @@ function initGraphTab() {
     initGraphView();
     initGraphControls();
     initCriticalPathControls(); // Task 7.4
+    initGraphAccordion(); // Accordion for sidebar panels
 
     // Integrate with WebSocket handler for graph_update messages
     // This is handled in handleWsMessage but we add the GraphManager callback
+}
+
+/**
+ * Initialise the graph sidebar accordion behaviour
+ * Only one section can be open at a time
+ */
+function initGraphAccordion() {
+    const accordion = document.querySelector('.graph-accordion');
+    if (!accordion) return;
+
+    const headers = accordion.querySelectorAll('.accordion-header');
+
+    headers.forEach(header => {
+        header.addEventListener('click', () => {
+            const section = header.parentElement;
+            const content = section.querySelector('.accordion-content');
+            const isExpanded = header.getAttribute('aria-expanded') === 'true';
+
+            // Close all other sections first
+            headers.forEach(otherHeader => {
+                if (otherHeader !== header) {
+                    otherHeader.setAttribute('aria-expanded', 'false');
+                    otherHeader.parentElement.querySelector('.accordion-content').classList.remove('expanded');
+                }
+            });
+
+            // Toggle current section
+            header.setAttribute('aria-expanded', !isExpanded);
+
+            if (isExpanded) {
+                content.classList.remove('expanded');
+            } else {
+                content.classList.add('expanded');
+            }
+        });
+    });
 }
 
 // ============================================
@@ -12841,62 +13265,17 @@ const scenarioAnalysis = (function() {
     // ===========================================
 
     function updatePresetUI() {
-        const presetGrid = document.querySelector('.scenarios-view .preset-grid');
-        if (!presetGrid) {
-            // Create preset buttons in the scenario controls area
-            createPresetButtons();
+        // Keep the original HTML presets (Base, Stress, Crisis, Recovery)
+        // Only update if we have valid API presets, otherwise skip
+        if (!state.presets || state.presets.length === 0) {
+            Logger.debug('ScenarioAnalysis', 'No API presets, keeping original HTML presets');
             return;
         }
-
-        // Update existing preset grid with API presets
-        const ratePresets = state.presets.filter(p => p.category === 'rate');
-
-        presetGrid.innerHTML = ratePresets.slice(0, 4).map((preset, index) => `
-            <button class="preset-btn ${index === 0 ? 'active' : ''}"
-                    data-preset="${preset.scenario_type}"
-                    data-shift="${preset.shift_amount}"
-                    title="${preset.description}">
-                <i class="fas fa-${preset.shift_amount > 0 ? 'arrow-up' : 'arrow-down'}"></i>
-                <span>${preset.name}</span>
-            </button>
-        `).join('');
-
-        // Bind click handlers
-        presetGrid.querySelectorAll('.preset-btn').forEach(btn => {
-            btn.addEventListener('click', handlePresetClick);
-        });
     }
 
     function createPresetButtons() {
-        // Find the parametric controls section
-        const parametricControls = document.getElementById('parametric-controls');
-        if (!parametricControls) return;
-
-        // Find or create the preset section
-        let presetSection = parametricControls.querySelector('.preset-section');
-        if (!presetSection) return;
-
-        const presetGrid = presetSection.querySelector('.preset-grid');
-        if (!presetGrid) return;
-
-        // Get rate category presets
-        const ratePresets = state.presets.filter(p => p.category === 'rate').slice(0, 4);
-
-        if (ratePresets.length > 0) {
-            presetGrid.innerHTML = ratePresets.map((preset, index) => `
-                <button class="preset-btn ${preset.scenario_type === 'RateUp1bp' ? 'active' : ''}"
-                        data-preset="${preset.scenario_type}"
-                        data-shift="${preset.shift_amount}"
-                        title="${preset.description}">
-                    <i class="fas fa-${getPresetIcon(preset)}"></i>
-                    <span>${preset.name}</span>
-                </button>
-            `).join('');
-
-            presetGrid.querySelectorAll('.preset-btn').forEach(btn => {
-                btn.addEventListener('click', handlePresetClick);
-            });
-        }
+        // Skip - keep the original HTML presets (Base, Stress, Crisis, Recovery)
+        Logger.debug('ScenarioAnalysis', 'Keeping original HTML preset buttons');
     }
 
     function getPresetIcon(preset) {
@@ -12944,15 +13323,18 @@ const scenarioAnalysis = (function() {
         if (statusEl) {
             const indicator = statusEl.querySelector('.status-indicator');
             if (indicator) indicator.style.background = 'var(--warning)';
-            const span = statusEl.querySelector('span');
-            if (span) span.textContent = 'Running...';
+            const statusText = statusEl.querySelector('span:last-child');
+            if (statusText) statusText.textContent = 'Running...';
         }
 
         try {
             // Get curve ID from IRS Bootstrap module
             const curveId = getCurveId();
             if (!curveId) {
-                throw new Error('No curve available. Please bootstrap a curve first.');
+                // Fall back to demo mode when no curve is available
+                Logger.info('ScenarioAnalysis', 'No curve available, running in demo mode');
+                await runScenarioDemoMode(statusEl, resultsEl, runBtn);
+                return;
             }
 
             // Get parameters from UI
@@ -12997,8 +13379,8 @@ const scenarioAnalysis = (function() {
             if (statusEl) {
                 const indicator = statusEl.querySelector('.status-indicator');
                 if (indicator) indicator.style.background = 'var(--success)';
-                const span = statusEl.querySelector('span');
-                if (span) span.textContent = 'Complete';
+                const statusText = statusEl.querySelector('span:last-child');
+                if (statusText) statusText.textContent = 'Complete';
             }
 
             // Add to history
@@ -13022,10 +13404,77 @@ const scenarioAnalysis = (function() {
             if (statusEl) {
                 const indicator = statusEl.querySelector('.status-indicator');
                 if (indicator) indicator.style.background = 'var(--danger)';
-                const span = statusEl.querySelector('span');
-                if (span) span.textContent = 'Failed';
+                const statusText = statusEl.querySelector('span:last-child');
+                if (statusText) statusText.textContent = 'Failed';
             }
 
+            showToast(`Scenario failed: ${error.message}`, 'error');
+        } finally {
+            state.isLoading = false;
+            if (runBtn) runBtn.classList.remove('loading');
+        }
+    }
+
+    async function runScenarioDemoMode(statusEl, resultsEl, runBtn) {
+        try {
+            // Simulate calculation time
+            await new Promise(r => setTimeout(r, 1500));
+
+            // Get parameters from UI
+            const params = getScenarioParams();
+
+            // Use demo data for calculation
+            const base = DEMO_RISK_DATA;
+            const results = {
+                pv: base.total_pv * (1 + params.rateShock / 10000),
+                cva: base.cva * (1 + params.spreadShock / 10000),
+                dva: base.dva,
+                fva: base.fva * (1 + params.volShift / 100)
+            };
+
+            const pvChange = ((results.pv - base.total_pv) / Math.abs(base.total_pv)) * 100;
+
+            if (resultsEl) {
+                resultsEl.innerHTML = `
+                    <div class="results-grid">
+                        <div class="result-card">
+                            <span class="result-label">Scenario PV</span>
+                            <span class="result-value ${results.pv >= 0 ? 'positive' : 'negative'}">${formatCurrency(results.pv)}</span>
+                            <span class="result-delta ${pvChange >= 0 ? 'positive' : 'negative'}">
+                                <i class="fas fa-arrow-${pvChange >= 0 ? 'up' : 'down'}"></i> ${formatPercent(pvChange)}
+                            </span>
+                        </div>
+                        <div class="result-card">
+                            <span class="result-label">Scenario CVA</span>
+                            <span class="result-value negative">${formatCurrency(results.cva)}</span>
+                        </div>
+                        <div class="result-card">
+                            <span class="result-label">Scenario DVA</span>
+                            <span class="result-value positive">${formatCurrency(results.dva)}</span>
+                        </div>
+                        <div class="result-card">
+                            <span class="result-label">Scenario FVA</span>
+                            <span class="result-value negative">${formatCurrency(results.fva)}</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Update status
+            if (statusEl) {
+                statusEl.classList.remove('running');
+                statusEl.classList.add('complete');
+                const indicator = statusEl.querySelector('.status-indicator');
+                if (indicator) indicator.style.background = 'var(--success)';
+                const statusText = statusEl.querySelector('span:last-child');
+                if (statusText) statusText.textContent = 'Complete (Demo)';
+            }
+
+            showToast('Scenario analysis completed (Demo Mode)', 'success');
+            triggerCelebration();
+
+        } catch (error) {
+            Logger.error('ScenarioAnalysis', 'Demo mode failed', { error: error.message });
             showToast(`Scenario failed: ${error.message}`, 'error');
         } finally {
             state.isLoading = false;

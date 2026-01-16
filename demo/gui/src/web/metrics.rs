@@ -13,7 +13,6 @@
 //! - Requirement 8.4: API レスポンスタイム閾値超過時の警告ログ出力
 
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::RwLock;
 use tracing::warn;

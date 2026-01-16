@@ -174,26 +174,24 @@
             <div class="command-results" id="command-results" role="listbox">
                 <div class="command-group">
                     <div class="command-group-title">Quick Actions</div>
-                    <div class="command-item" data-action="recalculate" role="option" tabindex="0">
-                        <i class="fas fa-calculator"></i>
-                        <span>Recalculate All Positions</span>
-                        <kbd>⌘R</kbd>
-                    </div>
                     <div class="command-item" data-action="refresh" role="option" tabindex="0">
                         <i class="fas fa-sync-alt"></i>
                         <span>Refresh Data</span>
-                        <kbd>⌘⇧R</kbd>
+                        <kbd>⌘R</kbd>
                     </div>
                     <div class="command-item" data-action="export" role="option" tabindex="0">
                         <i class="fas fa-file-export"></i>
                         <span>Export Report</span>
                         <kbd>⌘E</kbd>
                     </div>
-
                     <div class="command-item" data-action="ai-assistant" role="option" tabindex="0">
                         <i class="fas fa-robot"></i>
                         <span>AI Assistant</span>
                         <kbd>⌘I</kbd>
+                    </div>
+                    <div class="command-item" data-action="clear-cache" role="option" tabindex="0">
+                        <i class="fas fa-trash-alt"></i>
+                        <span>Clear All Cache</span>
                     </div>
                 </div>
                 <div class="command-group">
@@ -210,34 +208,43 @@
                     </div>
                     <div class="command-item" data-action="goto-risk" role="option" tabindex="0">
                         <i class="fas fa-shield-alt"></i>
-                        <span>Go to Risk Analysis</span>
+                        <span>Go to Risk</span>
                         <kbd>G R</kbd>
+                    </div>
+                    <div class="command-item" data-action="goto-exposure" role="option" tabindex="0">
+                        <i class="fas fa-chart-area"></i>
+                        <span>Go to Exposure</span>
+                        <kbd>G E</kbd>
                     </div>
                     <div class="command-item" data-action="goto-scenarios" role="option" tabindex="0">
                         <i class="fas fa-flask"></i>
                         <span>Go to Scenarios</span>
                         <kbd>G S</kbd>
                     </div>
+                    <div class="command-item" data-action="goto-pricer" role="option" tabindex="0">
+                        <i class="fas fa-calculator"></i>
+                        <span>Go to Pricer</span>
+                        <kbd>G C</kbd>
+                    </div>
+                    <div class="command-item" data-action="goto-irs-bootstrap" role="option" tabindex="0">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Go to IRS Bootstrap</span>
+                        <kbd>G I</kbd>
+                    </div>
                     <div class="command-item" data-action="goto-graph" role="option" tabindex="0">
                         <i class="fas fa-project-diagram"></i>
-                        <span>Go to Computation Graph</span>
+                        <span>Go to Graph</span>
                         <kbd>G G</kbd>
                     </div>
-                </div>
-                <div class="command-group">
-                    <div class="command-group-title">Scenarios</div>
-                    <div class="command-item" data-action="scenario-stress" role="option" tabindex="0">
-                        <i class="fas fa-bolt"></i>
-                        <span>Run Stress Test</span>
-                    </div>
-                    <div class="command-item" data-action="scenario-crisis" role="option" tabindex="0">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <span>Run Crisis Scenario</span>
+                    <div class="command-item" data-action="goto-analytics" role="option" tabindex="0">
+                        <i class="fas fa-cube"></i>
+                        <span>Go to 3D Analytics</span>
+                        <kbd>G A</kbd>
                     </div>
                 </div>
                 <div class="command-group">
                     <div class="command-group-title">Settings</div>
-                    <div class="command-item" data-action="toggle-theme">
+                    <div class="command-item" data-action="toggle-theme" role="option" tabindex="0">
                         <i class="fas fa-moon"></i>
                         <span>Toggle Dark/Light Theme</span>
                         <kbd>⌘T</kbd>
@@ -319,18 +326,16 @@
 
             <div class="sidebar-footer">
                 <div class="sidebar-quick-actions">
-
-
-                    <button class="sidebar-action-btn" id="open-alerts" title="Alerts">
-                        <i class="fas fa-bell"></i>
-                        <span class="alert-badge" id="alert-count">3</span>
-                    </button>
                     <button class="sidebar-action-btn" id="darkmode-btn" title="Dark Mode" aria-label="Dark Mode">
                         <i class="fas fa-moon"></i>
                     </button>
 
                     <button class="sidebar-action-btn" id="open-ai-panel" title="AI Assistant">
                         <i class="fas fa-robot"></i>
+                    </button>
+
+                    <button class="sidebar-action-btn danger" id="clear-all-cache" title="Clear All Cache">
+                        <i class="fas fa-trash-alt"></i>
                     </button>
                 </div>
                 <button class="command-trigger" id="open-command">
@@ -372,6 +377,10 @@
 
                     <button class="icon-btn" id="open-report-btn" title="Generate Report">
                         <i class="fas fa-file-alt"></i>
+                    </button>
+                    <button class="icon-btn" id="top-alerts-btn" title="Alerts">
+                        <i class="fas fa-bell"></i>
+                        <span class="alert-badge" id="top-alert-count">3</span>
                     </button>
                     <button class="icon-btn" id="refresh-btn" title="Refresh">
                         <i class="fas fa-sync-alt"></i>
@@ -478,29 +487,29 @@
                             <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
                         </div>
                         <div class="quick-actions-grid">
-                            <button class="action-tile" data-action="recalculate">
+                            <button class="action-tile" data-action="pricer">
                                 <div class="action-icon">
                                     <i class="fas fa-calculator"></i>
                                 </div>
-                                <span>Recalculate</span>
+                                <span>Pricer</span>
                             </button>
-                            <button class="action-tile" data-action="stress-test">
+                            <button class="action-tile" data-action="irs-bootstrap">
                                 <div class="action-icon">
-                                    <i class="fas fa-compress-arrows-alt"></i>
+                                    <i class="fas fa-chart-line"></i>
                                 </div>
-                                <span>Stress Test</span>
+                                <span>IRS Curve</span>
                             </button>
-                            <button class="action-tile" data-action="export">
+                            <button class="action-tile" data-action="exposure">
                                 <div class="action-icon">
-                                    <i class="fas fa-file-export"></i>
+                                    <i class="fas fa-chart-area"></i>
                                 </div>
-                                <span>Export</span>
+                                <span>Exposure</span>
                             </button>
-                            <button class="action-tile" data-action="what-if">
+                            <button class="action-tile" data-action="analytics-3d">
                                 <div class="action-icon">
-                                    <i class="fas fa-question-circle"></i>
+                                    <i class="fas fa-cube"></i>
                                 </div>
-                                <span>What-If</span>
+                                <span>3D Surface</span>
                             </button>
                         </div>
                     </div>
@@ -1091,57 +1100,60 @@
 
                 </div>
 
-                <div class="bento-grid risk-grid">
-                    <!-- Risk Distribution -->
-                    <div class="bento-item glass-card">
-                        <div class="bento-header">
-                            <h3><i class="fas fa-chart-pie"></i> Risk by Asset Class</h3>
+                <div class="risk-bottom-row">
+                    <!-- Left Column: Risk by Asset Class + XVA Metrics stacked -->
+                    <div class="risk-left-stack">
+                        <!-- Risk Distribution -->
+                        <div class="bento-item glass-card">
+                            <div class="bento-header">
+                                <h3><i class="fas fa-chart-pie"></i> Risk by Asset Class</h3>
+                            </div>
+                            <div class="chart-container small">
+                                <canvas id="risk-asset-pie"></canvas>
+                            </div>
+                            <div class="pie-legend" id="asset-legend">
+                                <!-- Dynamically filled -->
+                            </div>
                         </div>
-                        <div class="chart-container small">
-                            <canvas id="risk-asset-pie"></canvas>
-                        </div>
-                        <div class="pie-legend" id="asset-legend">
-                            <!-- Dynamically filled -->
+
+                        <!-- XVA Metrics (Compact) -->
+                        <div class="bento-item glass-card">
+                            <div class="bento-header">
+                                <h3><i class="fas fa-shield-alt"></i> XVA Metrics</h3>
+                            </div>
+                            <div class="xva-compact-grid">
+                                <div class="xva-compact-item cva">
+                                    <div class="xva-compact-header">
+                                        <span class="xva-compact-label">CVA</span>
+                                        <span class="xva-compact-trend negative" id="cva-trend">-2.4%</span>
+                                    </div>
+                                    <span class="xva-compact-value negative" id="risk-cva">$0</span>
+                                </div>
+                                <div class="xva-compact-item dva">
+                                    <div class="xva-compact-header">
+                                        <span class="xva-compact-label">DVA</span>
+                                        <span class="xva-compact-trend positive" id="dva-trend">+1.2%</span>
+                                    </div>
+                                    <span class="xva-compact-value positive" id="risk-dva">$0</span>
+                                </div>
+                                <div class="xva-compact-item fva">
+                                    <div class="xva-compact-header">
+                                        <span class="xva-compact-label">FVA</span>
+                                        <span class="xva-compact-trend negative" id="fva-trend">-0.8%</span>
+                                    </div>
+                                    <span class="xva-compact-value negative" id="risk-fva">$0</span>
+                                </div>
+                                <div class="xva-compact-item total">
+                                    <div class="xva-compact-header">
+                                        <span class="xva-compact-label">Total</span>
+                                    </div>
+                                    <span class="xva-compact-value" id="risk-total-xva">$0</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- XVA Metrics (Compact) -->
-                    <div class="bento-item glass-card">
-                        <div class="bento-header">
-                            <h3><i class="fas fa-shield-alt"></i> XVA Metrics</h3>
-                        </div>
-                        <div class="xva-compact-grid">
-                            <div class="xva-compact-item cva">
-                                <div class="xva-compact-header">
-                                    <span class="xva-compact-label">CVA</span>
-                                    <span class="xva-compact-trend negative" id="cva-trend">-2.4%</span>
-                                </div>
-                                <span class="xva-compact-value negative" id="risk-cva">$0</span>
-                            </div>
-                            <div class="xva-compact-item dva">
-                                <div class="xva-compact-header">
-                                    <span class="xva-compact-label">DVA</span>
-                                    <span class="xva-compact-trend positive" id="dva-trend">+1.2%</span>
-                                </div>
-                                <span class="xva-compact-value positive" id="risk-dva">$0</span>
-                            </div>
-                            <div class="xva-compact-item fva">
-                                <div class="xva-compact-header">
-                                    <span class="xva-compact-label">FVA</span>
-                                    <span class="xva-compact-trend negative" id="fva-trend">-0.8%</span>
-                                </div>
-                                <span class="xva-compact-value negative" id="risk-fva">$0</span>
-                            </div>
-                            <div class="xva-compact-item total">
-                                <div class="xva-compact-header">
-                                    <span class="xva-compact-label">Total</span>
-                                </div>
-                                <span class="xva-compact-value" id="risk-total-xva">$0</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Risk Limits -->
+                    <!-- Right Column: Limit Utilization -->
                     <div class="bento-item glass-card">
                         <div class="bento-header">
                             <h3><i class="fas fa-tachometer-alt"></i> Limit Utilization</h3>
@@ -1189,7 +1201,6 @@
                             </div>
                         </div>
                     </div>
-
                 </div>
             </section>
 
@@ -1336,16 +1347,10 @@
                         </div>
                     </div>
 
-                    <!-- Collateral Timeline -->
-                    <div class="bento-item bento-wide glass-card">
-                        <div class="bento-header">
-                            <h3><i class="fas fa-coins"></i> Collateral vs Exposure</h3>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="collateral-chart"></canvas>
-                        </div>
-                    </div>
+                </div>
 
+                <!-- Bottom Row: MC Paths and Collateral -->
+                <div class="exposure-bottom-row">
                     <!-- Monte Carlo Paths -->
                     <div class="bento-item glass-card">
                         <div class="bento-header">
@@ -1366,6 +1371,16 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Collateral Timeline -->
+                    <div class="bento-item glass-card">
+                        <div class="bento-header">
+                            <h3><i class="fas fa-coins"></i> Collateral vs Exposure</h3>
+                        </div>
+                        <div class="chart-container small">
+                            <canvas id="collateral-chart"></canvas>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -1381,10 +1396,6 @@
                         <button class="scenario-type-btn" data-type="historical">
                             <i class="fas fa-history"></i>
                             <span>Historical</span>
-                        </button>
-                        <button class="scenario-type-btn" data-type="hypothetical">
-                            <i class="fas fa-flask"></i>
-                            <span>Hypothetical</span>
                         </button>
                         <button class="scenario-type-btn" data-type="reverse">
                             <i class="fas fa-undo"></i>
@@ -1565,66 +1576,67 @@
                         </div>
                     </div>
 
-                    <!-- Right Panel -->
-                    <div class="scenario-side-panel">
-                        <!-- History -->
-                        <div class="scenario-history-panel glass-card">
-                            <div class="bento-header">
-                                <h3><i class="fas fa-history"></i> History</h3>
-                                <button class="text-btn" id="clear-history">Clear</button>
-                            </div>
-                            <div class="scenario-history" id="scenario-history">
-                                <div class="history-empty">
-                                    <i class="fas fa-inbox"></i>
-                                    <span>No scenarios yet</span>
-                                </div>
+                </div>
+
+                <!-- Bottom Panel: History, Compare, Sensitivity -->
+                <div class="scenario-bottom-panel">
+                    <!-- History -->
+                    <div class="scenario-history-panel glass-card">
+                        <div class="bento-header">
+                            <h3><i class="fas fa-history"></i> History</h3>
+                            <button class="text-btn" id="clear-history">Clear</button>
+                        </div>
+                        <div class="scenario-history" id="scenario-history">
+                            <div class="history-empty">
+                                <i class="fas fa-inbox"></i>
+                                <span>No scenarios yet</span>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Comparison Chart -->
-                        <div class="scenario-compare-panel glass-card">
-                            <div class="bento-header">
-                                <h3><i class="fas fa-balance-scale"></i> Compare</h3>
-                            </div>
-                            <div class="chart-container small">
-                                <canvas id="compare-chart"></canvas>
-                            </div>
+                    <!-- Comparison Chart -->
+                    <div class="scenario-compare-panel glass-card">
+                        <div class="bento-header">
+                            <h3><i class="fas fa-balance-scale"></i> Compare</h3>
                         </div>
+                        <div class="chart-container small">
+                            <canvas id="compare-chart"></canvas>
+                        </div>
+                    </div>
 
-                        <!-- Sensitivity -->
-                        <div class="scenario-sensitivity-panel glass-card">
-                            <div class="bento-header">
-                                <h3><i class="fas fa-wave-square"></i> Sensitivity</h3>
+                    <!-- Sensitivity -->
+                    <div class="scenario-sensitivity-panel glass-card">
+                        <div class="bento-header">
+                            <h3><i class="fas fa-wave-square"></i> Sensitivity</h3>
+                        </div>
+                        <div class="sensitivity-bars">
+                            <div class="sens-bar-row">
+                                <span class="sens-label">Rates</span>
+                                <div class="sens-bar">
+                                    <div class="sens-fill negative" id="sens-rates" style="width: 60%"></div>
+                                </div>
+                                <span class="sens-value" id="sens-rates-val">-$1.2M</span>
                             </div>
-                            <div class="sensitivity-bars">
-                                <div class="sens-bar-row">
-                                    <span class="sens-label">Rates</span>
-                                    <div class="sens-bar">
-                                        <div class="sens-fill negative" id="sens-rates" style="width: 60%"></div>
-                                    </div>
-                                    <span class="sens-value" id="sens-rates-val">-$1.2M</span>
+                            <div class="sens-bar-row">
+                                <span class="sens-label">Vol</span>
+                                <div class="sens-bar">
+                                    <div class="sens-fill positive" id="sens-vol" style="width: 30%"></div>
                                 </div>
-                                <div class="sens-bar-row">
-                                    <span class="sens-label">Vol</span>
-                                    <div class="sens-bar">
-                                        <div class="sens-fill positive" id="sens-vol" style="width: 30%"></div>
-                                    </div>
-                                    <span class="sens-value" id="sens-vol-val">+$0.5M</span>
+                                <span class="sens-value" id="sens-vol-val">+$0.5M</span>
+                            </div>
+                            <div class="sens-bar-row">
+                                <span class="sens-label">Credit</span>
+                                <div class="sens-bar">
+                                    <div class="sens-fill negative" id="sens-credit" style="width: 80%"></div>
                                 </div>
-                                <div class="sens-bar-row">
-                                    <span class="sens-label">Credit</span>
-                                    <div class="sens-bar">
-                                        <div class="sens-fill negative" id="sens-credit" style="width: 80%"></div>
-                                    </div>
-                                    <span class="sens-value" id="sens-credit-val">-$2.1M</span>
+                                <span class="sens-value" id="sens-credit-val">-$2.1M</span>
+                            </div>
+                            <div class="sens-bar-row">
+                                <span class="sens-label">FX</span>
+                                <div class="sens-bar">
+                                    <div class="sens-fill positive" id="sens-fx" style="width: 20%"></div>
                                 </div>
-                                <div class="sens-bar-row">
-                                    <span class="sens-label">FX</span>
-                                    <div class="sens-bar">
-                                        <div class="sens-fill positive" id="sens-fx" style="width: 20%"></div>
-                                    </div>
-                                    <span class="sens-value" id="sens-fx-val">+$0.3M</span>
-                                </div>
+                                <span class="sens-value" id="sens-fx-val">+$0.3M</span>
                             </div>
                         </div>
                     </div>
@@ -1759,102 +1771,114 @@
 
                     <!-- Graph Sidebar -->
                     <div class="graph-sidebar">
-                        <!-- Graph Stats Panel -->
-                        <div class="graph-stats-panel glass-card">
-                            <h3><i class="fas fa-chart-bar"></i> Graph Statistics</h3>
-                            <div class="stats-grid">
-                                <div class="stat-item">
-                                    <span class="stat-label">Nodes</span>
-                                    <span class="stat-value" id="graph-node-count">0</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Edges</span>
-                                    <span class="stat-value" id="graph-edge-count">0</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Depth</span>
-                                    <span class="stat-value" id="graph-depth">0</span>
-                                </div>
-                                <div class="stat-item stat-wide">
-                                    <span class="stat-label">Generated</span>
-                                    <span class="stat-value" id="graph-generated-at">N/A</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Task 7.2: Node Type Statistics Chart -->
-                        <div class="node-type-chart-panel glass-card">
-                            <h3><i class="fas fa-chart-pie"></i> Node Types</h3>
-                            <div class="chart-container" style="height: 160px;">
-                                <canvas id="node-type-chart"></canvas>
-                            </div>
-                        </div>
-
-                        <!-- Task 7.3: Sensitivity Dependencies Panel -->
-                        <div class="sensitivity-deps-panel glass-card">
-                            <h3><i class="fas fa-project-diagram"></i> Sensitivity Dependencies</h3>
-                            <div id="sensitivity-deps-list" class="sensitivity-deps-list">
-                                <div class="no-data">No sensitivity targets found</div>
-                            </div>
-                        </div>
-
-                        <!-- Task 7.4: Critical Path Panel -->
-                        <div class="critical-path-panel glass-card">
-                            <h3><i class="fas fa-road"></i> Critical Path</h3>
-                            <div class="critical-path-info">
-                                <div class="critical-path-length">
-                                    <span class="stat-label">Path Length</span>
-                                    <span class="stat-value" id="critical-path-length">0</span>
-                                </div>
-                            </div>
-                            <div id="critical-path-nodes" class="critical-path-nodes">
-                                <div class="no-data">No path computed</div>
-                            </div>
-                            <button id="critical-path-highlight" class="btn btn-secondary btn-sm" disabled>
-                                <i class="fas fa-highlighter"></i> Highlight Path
-                            </button>
-                        </div>
-
-                        <!-- Task 6.3: Sensitivity Path Panel -->
-                        <div class="sensitivity-path-panel glass-card">
-                            <h3><i class="fas fa-route"></i> Sensitivity Path</h3>
-                            <div class="sensitivity-path-controls">
-                                <button id="sensitivity-path-toggle" class="btn btn-secondary btn-sm">
-                                    <i class="fas fa-eye"></i> Show Paths
+                        <div class="graph-accordion glass-card">
+                            <!-- Graph Statistics -->
+                            <div class="accordion-section" data-section="statistics">
+                                <button class="accordion-header" aria-expanded="true">
+                                    <span class="accordion-title"><i class="fas fa-chart-bar"></i> Statistics</span>
+                                    <i class="fas fa-chevron-down accordion-icon"></i>
                                 </button>
-                                <select id="sensitivity-path-selector" class="form-select form-select-sm" style="display: none;">
-                                </select>
+                                <div class="accordion-content expanded">
+                                    <div class="stats-row-compact">
+                                        <div class="stat-compact"><span class="stat-label">Nodes</span><span class="stat-value" id="graph-node-count">0</span></div>
+                                        <div class="stat-compact"><span class="stat-label">Edges</span><span class="stat-value" id="graph-edge-count">0</span></div>
+                                        <div class="stat-compact"><span class="stat-label">Depth</span><span class="stat-value" id="graph-depth">0</span></div>
+                                    </div>
+                                    <div class="stat-generated"><span class="stat-label">Generated</span><span class="stat-value" id="graph-generated-at">N/A</span></div>
+                                </div>
                             </div>
-                            <p class="panel-hint">Highlight paths from sensitivity targets to outputs</p>
-                        </div>
 
-                        <!-- Node Info Panel -->
-                        <div class="node-info-panel glass-card">
-                            <h3><i class="fas fa-info-circle"></i> Node Details</h3>
-                            <div id="node-info-panel" class="node-info-content">
-                                <div class="no-selection">Click a node to see details</div>
+                            <!-- Sensitivity Dependencies -->
+                            <div class="accordion-section" data-section="sensitivity-deps">
+                                <button class="accordion-header" aria-expanded="false">
+                                    <span class="accordion-title"><i class="fas fa-project-diagram"></i> Sensitivity Dependencies</span>
+                                    <i class="fas fa-chevron-down accordion-icon"></i>
+                                </button>
+                                <div class="accordion-content">
+                                    <div id="sensitivity-deps-list" class="sensitivity-deps-list">
+                                        <div class="no-data">No sensitivity targets found</div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
 
-                        <!-- Legend Panel -->
-                        <div class="graph-legend-panel glass-card">
-                            <h3>Legend</h3>
-                            <div class="legend-items">
-                                <div class="legend-item">
-                                    <span class="legend-dot" style="background: #3b82f6;"></span>
-                                    <span>Input</span>
+                            <!-- Critical Path -->
+                            <div class="accordion-section" data-section="critical-path">
+                                <button class="accordion-header" aria-expanded="false">
+                                    <span class="accordion-title"><i class="fas fa-road"></i> Critical Path</span>
+                                    <i class="fas fa-chevron-down accordion-icon"></i>
+                                </button>
+                                <div class="accordion-content">
+                                    <div class="critical-path-info">
+                                        <div class="critical-path-length">
+                                            <span class="stat-label">Path Length</span>
+                                            <span class="stat-value" id="critical-path-length">0</span>
+                                        </div>
+                                    </div>
+                                    <div id="critical-path-nodes" class="critical-path-nodes">
+                                        <div class="no-data">No path computed</div>
+                                    </div>
+                                    <button id="critical-path-highlight" class="btn btn-secondary btn-sm" disabled>
+                                        <i class="fas fa-highlighter"></i> Highlight Path
+                                    </button>
                                 </div>
-                                <div class="legend-item">
-                                    <span class="legend-dot" style="background: #6b7280;"></span>
-                                    <span>Intermediate</span>
+                            </div>
+
+                            <!-- Sensitivity Path -->
+                            <div class="accordion-section" data-section="sensitivity-path">
+                                <button class="accordion-header" aria-expanded="false">
+                                    <span class="accordion-title"><i class="fas fa-route"></i> Sensitivity Path</span>
+                                    <i class="fas fa-chevron-down accordion-icon"></i>
+                                </button>
+                                <div class="accordion-content">
+                                    <div class="sensitivity-path-controls">
+                                        <button id="sensitivity-path-toggle" class="btn btn-secondary btn-sm">
+                                            <i class="fas fa-eye"></i> Show Paths
+                                        </button>
+                                        <select id="sensitivity-path-selector" class="form-select form-select-sm" style="display: none;">
+                                        </select>
+                                    </div>
+                                    <p class="panel-hint">Highlight paths from sensitivity targets to outputs</p>
                                 </div>
-                                <div class="legend-item">
-                                    <span class="legend-dot" style="background: #22c55e;"></span>
-                                    <span>Output</span>
+                            </div>
+
+                            <!-- Node Details -->
+                            <div class="accordion-section" data-section="node-details">
+                                <button class="accordion-header" aria-expanded="false">
+                                    <span class="accordion-title"><i class="fas fa-info-circle"></i> Node Details</span>
+                                    <i class="fas fa-chevron-down accordion-icon"></i>
+                                </button>
+                                <div class="accordion-content">
+                                    <div id="node-info-panel" class="node-info-content">
+                                        <div class="no-selection">Click a node to see details</div>
+                                    </div>
                                 </div>
-                                <div class="legend-item">
-                                    <span class="legend-dot" style="background: #f97316;"></span>
-                                    <span>Sensitivity</span>
+                            </div>
+
+                            <!-- Legend -->
+                            <div class="accordion-section" data-section="legend">
+                                <button class="accordion-header" aria-expanded="false">
+                                    <span class="accordion-title"><i class="fas fa-palette"></i> Legend</span>
+                                    <i class="fas fa-chevron-down accordion-icon"></i>
+                                </button>
+                                <div class="accordion-content">
+                                    <div class="legend-items">
+                                        <div class="legend-item">
+                                            <span class="legend-dot" style="background: #3b82f6;"></span>
+                                            <span>Input</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <span class="legend-dot" style="background: #6b7280;"></span>
+                                            <span>Intermediate</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <span class="legend-dot" style="background: #22c55e;"></span>
+                                            <span>Output</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <span class="legend-dot" style="background: #f97316;"></span>
+                                            <span>Sensitivity</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -2024,27 +2048,22 @@
                             <!-- Greeks Grid -->
                             <div class="greeks-grid" id="pricer-greeks-container">
                                 <div class="greek-card">
-                                    <span class="greek-symbol">Δ</span>
                                     <span class="greek-name">Delta</span>
                                     <span class="greek-value" id="pricer-delta">--</span>
                                 </div>
                                 <div class="greek-card">
-                                    <span class="greek-symbol">Γ</span>
                                     <span class="greek-name">Gamma</span>
                                     <span class="greek-value" id="pricer-gamma">--</span>
                                 </div>
                                 <div class="greek-card">
-                                    <span class="greek-symbol">ν</span>
                                     <span class="greek-name">Vega</span>
                                     <span class="greek-value" id="pricer-vega">--</span>
                                 </div>
                                 <div class="greek-card">
-                                    <span class="greek-symbol">Θ</span>
                                     <span class="greek-name">Theta</span>
                                     <span class="greek-value" id="pricer-theta">--</span>
                                 </div>
                                 <div class="greek-card">
-                                    <span class="greek-symbol">ρ</span>
                                     <span class="greek-name">Rho</span>
                                     <span class="greek-value" id="pricer-rho">--</span>
                                 </div>
@@ -2056,19 +2075,21 @@
                                 <span class="calc-time"></span>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- History Panel -->
-                        <div class="pricer-history-panel glass">
+                    <!-- History Panel (Bottom) -->
+                    <div class="pricer-history-panel glass">
+                        <div class="pricer-history-header">
                             <h3><i class="fas fa-history"></i> History</h3>
-                            <div class="history-list" id="pricer-history">
-                                <div class="history-empty">
-                                    <i class="fas fa-clock"></i>
-                                    <p>No calculations yet</p>
-                                </div>
-                            </div>
                             <button id="pricer-clear-history" class="secondary-btn" style="display: none;">
-                                <i class="fas fa-trash"></i> Clear History
+                                <i class="fas fa-trash"></i> Clear
                             </button>
+                        </div>
+                        <div class="history-list horizontal" id="pricer-history">
+                            <div class="history-empty">
+                                <i class="fas fa-clock"></i>
+                                <p>No calculations yet</p>
+                            </div>
                         </div>
                     </div>
                 </div>

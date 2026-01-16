@@ -15,7 +15,7 @@ use std::sync::Arc;
 use std::time::Instant;
 use uuid::Uuid;
 
-use super::jobs::{JobCreatedResponse, JobResponse, JobStatus};
+use super::jobs::JobResponse;
 use super::pricer_types::{
     parse_tenor_to_years, validate_bucket_dv01_request, validate_first_order_greeks_request,
     validate_greeks_compare_request, validate_irs_pricing_request, validate_par_rates,

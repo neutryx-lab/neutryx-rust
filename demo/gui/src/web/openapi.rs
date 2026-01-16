@@ -19,14 +19,11 @@ use utoipa_swagger_ui::SwaggerUi;
 #[cfg(feature = "openapi")]
 use axum::Router;
 
+#[cfg(feature = "openapi")]
 use crate::web::pricer_types::{
-    BucketDv01Request, BucketDv01Response, DeltaResult, FirstOrderGreeksRequest,
-    FirstOrderGreeksResponse, GreekValue, GreeksCalculationMode, GreeksCompareRequest,
-    GreeksCompareResponse, GreeksDiff, GreeksMethodResult, PaymentFrequency,
-    SecondOrderGreeksRequest, SecondOrderGreeksResponse, TenorDiff, TimingComparison, TimingStats,
+    FirstOrderGreeksRequest, FirstOrderGreeksResponse, SecondOrderGreeksRequest,
+    SecondOrderGreeksResponse,
 };
-
-use crate::web::jobs::{JobEntry, JobStatus};
 
 // =============================================================================
 // OpenAPI Schema Implementation

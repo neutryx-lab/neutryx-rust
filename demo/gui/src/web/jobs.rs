@@ -89,23 +89,16 @@ impl JobStatus {
 struct JobEntry {
     /// Current job status.
     status: JobStatus,
-    /// Job creation time.
-    created_at: Instant,
     /// Last update time.
     updated_at: Instant,
-    /// Optional job description.
-    description: Option<String>,
 }
 
 impl JobEntry {
     /// Create a new pending job entry.
-    fn new(description: Option<String>) -> Self {
-        let now = Instant::now();
+    fn new(_description: Option<String>) -> Self {
         Self {
             status: JobStatus::Pending,
-            created_at: now,
-            updated_at: now,
-            description,
+            updated_at: Instant::now(),
         }
     }
 
