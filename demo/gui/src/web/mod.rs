@@ -405,6 +405,8 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         // Task 7.2: Add /api/v1/jobs endpoints for async job management
         .route("/v1/jobs", get(handlers::list_jobs))
         .route("/v1/jobs/:id", get(handlers::get_job_status))
+        // Scenario analysis endpoint
+        .route("/scenario", post(handlers::run_scenario))
         .route("/ws", get(websocket::ws_handler));
 
     // Static file serving for the dashboard

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FrictionalBank Dashboard</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=4">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -294,16 +294,7 @@
                     <span>Scenarios</span>
                     <div class="nav-indicator"></div>
                 </a>
-                <a href="#" class="nav-item" data-view="analytics">
-                    <div class="nav-icon"><i class="fas fa-cube"></i></div>
-                    <span>3D Analytics</span>
-                    <div class="nav-indicator"></div>
-                </a>
-                <a href="#" class="nav-item" data-view="graph">
-                    <div class="nav-icon"><i class="fas fa-project-diagram"></i></div>
-                    <span>Graph</span>
-                    <div class="nav-indicator"></div>
-                </a>
+                <div class="nav-divider"></div>
                 <a href="#" class="nav-item" data-view="pricer">
                     <div class="nav-icon"><i class="fas fa-calculator"></i></div>
                     <span>Pricer</span>
@@ -312,6 +303,16 @@
                 <a href="#" class="nav-item" data-view="irs-bootstrap">
                     <div class="nav-icon"><i class="fas fa-chart-line"></i></div>
                     <span>IRS Bootstrap</span>
+                    <div class="nav-indicator"></div>
+                </a>
+                <a href="#" class="nav-item" data-view="graph">
+                    <div class="nav-icon"><i class="fas fa-project-diagram"></i></div>
+                    <span>Graph</span>
+                    <div class="nav-indicator"></div>
+                </a>
+                <a href="#" class="nav-item" data-view="analytics">
+                    <div class="nav-icon"><i class="fas fa-cube"></i></div>
+                    <span>3D Analytics</span>
                     <div class="nav-indicator"></div>
                 </a>
             </nav>
@@ -408,37 +409,27 @@
                         </div>
                     </div>
 
-                    <!-- CVA Card -->
-                    <div class="bento-item glass-card" data-tilt>
-                        <div class="card-glow red"></div>
-                        <div class="bento-content">
-                            <div class="metric-header">
-                                <div class="metric-icon gradient-red">
-                                    <i class="fas fa-exclamation-triangle"></i>
-                                </div>
-                            </div>
-                            <div class="metric-body compact">
-                                <span class="metric-label">CVA</span>
-                                <span class="metric-value counting negative" id="cva" data-value="0">$0</span>
-                            </div>
-                            <div class="mini-chart" id="cva-chart"></div>
+                    <!-- Risk Breakdown (DV01/Gamma/Vega) -->
+                    <div class="bento-item bento-wide glass-card" data-tilt>
+                        <div class="bento-header">
+                            <h3><i class="fas fa-th"></i> Risk Attribution</h3>
                         </div>
-                    </div>
-
-                    <!-- DVA Card -->
-                    <div class="bento-item glass-card" data-tilt>
-                        <div class="card-glow green"></div>
-                        <div class="bento-content">
-                            <div class="metric-header">
-                                <div class="metric-icon gradient-green">
-                                    <i class="fas fa-check-circle"></i>
-                                </div>
+                        <div class="risk-attribution-summary dashboard-variant">
+                            <div class="risk-summary-card dv01">
+                                <span class="risk-summary-label">Total DV01</span>
+                                <span class="risk-summary-value" id="dash-total-dv01">$125,430</span>
+                                <span class="risk-summary-change negative"><i class="fas fa-arrow-down"></i> -2.3%</span>
                             </div>
-                            <div class="metric-body compact">
-                                <span class="metric-label">DVA</span>
-                                <span class="metric-value counting positive" id="dva" data-value="0">$0</span>
+                            <div class="risk-summary-card gamma">
+                                <span class="risk-summary-label">Total Gamma</span>
+                                <span class="risk-summary-value" id="dash-total-gamma">$8,250</span>
+                                <span class="risk-summary-change positive"><i class="fas fa-arrow-up"></i> +1.1%</span>
                             </div>
-                            <div class="mini-chart" id="dva-chart"></div>
+                            <div class="risk-summary-card vega">
+                                <span class="risk-summary-label">Total Vega</span>
+                                <span class="risk-summary-value" id="dash-total-vega">$42,180</span>
+                                <span class="risk-summary-change negative"><i class="fas fa-arrow-down"></i> -0.5%</span>
+                            </div>
                         </div>
                     </div>
 
@@ -448,9 +439,9 @@
                         <div class="bento-header">
                             <h3 id="exposure-chart-title"><i class="fas fa-chart-area" aria-hidden="true"></i> Exposure Profile</h3>
                             <div class="bento-actions">
-                                <button class="chip-btn active" data-range="1y" aria-pressed="true">1Y</button>
+                                <button class="chip-btn" data-range="1y" aria-pressed="false">1Y</button>
                                 <button class="chip-btn" data-range="5y" aria-pressed="false">5Y</button>
-                                <button class="chip-btn" data-range="10y" aria-pressed="false">10Y</button>
+                                <button class="chip-btn active" data-range="10y" aria-pressed="true">10Y</button>
                             </div>
                         </div>
                         <div class="chart-container">
@@ -477,45 +468,6 @@
                                 <span class="legend-dot ene"></span>
                                 <span>ENE</span>
                                 <span class="legend-value" id="legend-ene">$0</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- FVA Card -->
-                    <div class="bento-item glass-card" data-tilt>
-                        <div class="card-glow orange"></div>
-                        <div class="bento-content">
-                            <div class="metric-header">
-                                <div class="metric-icon gradient-orange">
-                                    <i class="fas fa-coins"></i>
-                                </div>
-                            </div>
-                            <div class="metric-body compact">
-                                <span class="metric-label">FVA</span>
-                                <span class="metric-value counting negative" id="fva" data-value="0">$0</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Total XVA -->
-                    <div class="bento-item glass-card" data-tilt>
-                        <div class="card-glow purple"></div>
-                        <div class="bento-content">
-                            <div class="metric-header">
-                                <div class="metric-icon gradient-purple">
-                                    <i class="fas fa-sigma"></i>
-                                </div>
-                            </div>
-                            <div class="metric-body compact">
-                                <span class="metric-label">Total XVA</span>
-                                <span class="metric-value counting" id="total-xva" data-value="0">$0</span>
-                            </div>
-                            <div class="xva-breakdown">
-                                <div class="xva-bar">
-                                    <div class="xva-segment cva" id="xva-cva-bar"></div>
-                                    <div class="xva-segment dva" id="xva-dva-bar"></div>
-                                    <div class="xva-segment fva" id="xva-fva-bar"></div>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -553,16 +505,38 @@
                         </div>
                     </div>
 
-                    <!-- Risk Breakdown -->
+                    <!-- XVA Metrics -->
                     <div class="bento-item glass-card" data-tilt>
                         <div class="bento-header">
-                            <h3><i class="fas fa-pie-chart"></i> Risk Breakdown</h3>
+                            <h3><i class="fas fa-shield-alt"></i> XVA Metrics</h3>
                         </div>
-                        <div class="donut-container">
-                            <canvas id="risk-donut"></canvas>
-                            <div class="donut-center">
-                                <span class="donut-value" id="risk-total">$0</span>
-                                <span class="donut-label">Total</span>
+                        <div class="xva-compact-grid">
+                            <div class="xva-compact-item cva">
+                                <div class="xva-compact-header">
+                                    <span class="xva-compact-label">CVA</span>
+                                    <span class="xva-compact-trend negative" id="dash-cva-trend">-2.4%</span>
+                                </div>
+                                <span class="xva-compact-value negative" id="cva" data-value="0">$0</span>
+                            </div>
+                            <div class="xva-compact-item dva">
+                                <div class="xva-compact-header">
+                                    <span class="xva-compact-label">DVA</span>
+                                    <span class="xva-compact-trend positive" id="dash-dva-trend">+1.2%</span>
+                                </div>
+                                <span class="xva-compact-value positive" id="dva" data-value="0">$0</span>
+                            </div>
+                            <div class="xva-compact-item fva">
+                                <div class="xva-compact-header">
+                                    <span class="xva-compact-label">FVA</span>
+                                    <span class="xva-compact-trend negative" id="dash-fva-trend">-0.8%</span>
+                                </div>
+                                <span class="xva-compact-value negative" id="fva" data-value="0">$0</span>
+                            </div>
+                            <div class="xva-compact-item total">
+                                <div class="xva-compact-header">
+                                    <span class="xva-compact-label">Total</span>
+                                </div>
+                                <span class="xva-compact-value" id="total-xva" data-value="0">$0</span>
                             </div>
                         </div>
                     </div>
@@ -940,160 +914,184 @@
                     </div>
                 </div>
 
+                <!-- Risk Attribution Grid (Primary) -->
+                <div class="risk-attribution-panel glass-card">
+                    <div class="bento-header">
+                        <h3><i class="fas fa-th"></i> Risk Attribution Grid</h3>
+                        <div class="bento-actions">
+                            <select class="risk-grid-select" id="risk-metric-select">
+                                <option value="dv01" selected>DV01</option>
+                                <option value="gamma">Gamma</option>
+                                <option value="vega">Vega</option>
+                            </select>
+                            <button class="chip-btn active" data-risk-unit="absolute">Absolute</button>
+                            <button class="chip-btn" data-risk-unit="percent">% of Total</button>
+                            <button class="icon-btn" id="export-risk-grid" title="Export Grid">
+                                <i class="fas fa-download"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Summary Totals -->
+                    <div class="risk-attribution-summary">
+                        <div class="risk-summary-card dv01">
+                            <span class="risk-summary-label">Total DV01</span>
+                            <span class="risk-summary-value" id="total-dv01">$125,430</span>
+                            <span class="risk-summary-change negative"><i class="fas fa-arrow-down"></i> -2.3%</span>
+                        </div>
+                        <div class="risk-summary-card gamma">
+                            <span class="risk-summary-label">Total Gamma</span>
+                            <span class="risk-summary-value" id="total-gamma">$8,250</span>
+                            <span class="risk-summary-change positive"><i class="fas fa-arrow-up"></i> +1.1%</span>
+                        </div>
+                        <div class="risk-summary-card vega">
+                            <span class="risk-summary-label">Total Vega</span>
+                            <span class="risk-summary-value" id="total-vega">$42,180</span>
+                            <span class="risk-summary-change negative"><i class="fas fa-arrow-down"></i> -0.5%</span>
+                        </div>
+                    </div>
+
+                    <!-- Risk Grid Table -->
+                    <div class="risk-grid-wrapper">
+                        <table class="risk-grid-table" id="risk-attribution-table">
+                            <thead>
+                                <tr>
+                                    <th class="index-header">Index / Tenor</th>
+                                    <th class="tenor-header">1M</th>
+                                    <th class="tenor-header">3M</th>
+                                    <th class="tenor-header">6M</th>
+                                    <th class="tenor-header">1Y</th>
+                                    <th class="tenor-header">2Y</th>
+                                    <th class="tenor-header">3Y</th>
+                                    <th class="tenor-header">5Y</th>
+                                    <th class="tenor-header">7Y</th>
+                                    <th class="tenor-header">10Y</th>
+                                    <th class="tenor-header">15Y</th>
+                                    <th class="tenor-header">20Y</th>
+                                    <th class="tenor-header">30Y</th>
+                                    <th class="total-header">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="risk-grid-body">
+                                <tr data-index="USD-SOFR">
+                                    <td class="index-cell"><span class="index-badge usd">USD-SOFR</span></td>
+                                    <td class="risk-cell positive">2,150</td>
+                                    <td class="risk-cell positive">3,420</td>
+                                    <td class="risk-cell negative">-1,850</td>
+                                    <td class="risk-cell positive">8,230</td>
+                                    <td class="risk-cell positive">12,450</td>
+                                    <td class="risk-cell negative">-4,320</td>
+                                    <td class="risk-cell positive">18,650</td>
+                                    <td class="risk-cell positive">9,870</td>
+                                    <td class="risk-cell negative">-6,540</td>
+                                    <td class="risk-cell positive">4,210</td>
+                                    <td class="risk-cell positive">2,180</td>
+                                    <td class="risk-cell negative">-890</td>
+                                    <td class="risk-cell total positive">47,560</td>
+                                </tr>
+                                <tr data-index="EUR-ESTR">
+                                    <td class="index-cell"><span class="index-badge eur">EUR-ESTR</span></td>
+                                    <td class="risk-cell positive">1,820</td>
+                                    <td class="risk-cell negative">-2,140</td>
+                                    <td class="risk-cell positive">3,650</td>
+                                    <td class="risk-cell positive">6,780</td>
+                                    <td class="risk-cell negative">-8,920</td>
+                                    <td class="risk-cell positive">11,340</td>
+                                    <td class="risk-cell positive">15,280</td>
+                                    <td class="risk-cell negative">-3,450</td>
+                                    <td class="risk-cell positive">7,890</td>
+                                    <td class="risk-cell positive">2,340</td>
+                                    <td class="risk-cell negative">-1,560</td>
+                                    <td class="risk-cell positive">980</td>
+                                    <td class="risk-cell total positive">34,010</td>
+                                </tr>
+                                <tr data-index="GBP-SONIA">
+                                    <td class="index-cell"><span class="index-badge gbp">GBP-SONIA</span></td>
+                                    <td class="risk-cell negative">-920</td>
+                                    <td class="risk-cell positive">1,540</td>
+                                    <td class="risk-cell positive">2,180</td>
+                                    <td class="risk-cell negative">-3,450</td>
+                                    <td class="risk-cell positive">5,670</td>
+                                    <td class="risk-cell positive">7,890</td>
+                                    <td class="risk-cell negative">-2,340</td>
+                                    <td class="risk-cell positive">4,560</td>
+                                    <td class="risk-cell positive">3,210</td>
+                                    <td class="risk-cell negative">-1,890</td>
+                                    <td class="risk-cell positive">1,120</td>
+                                    <td class="risk-cell positive">650</td>
+                                    <td class="risk-cell total positive">18,220</td>
+                                </tr>
+                                <tr data-index="JPY-TONA">
+                                    <td class="index-cell"><span class="index-badge jpy">JPY-TONA</span></td>
+                                    <td class="risk-cell positive">680</td>
+                                    <td class="risk-cell positive">1,120</td>
+                                    <td class="risk-cell negative">-780</td>
+                                    <td class="risk-cell positive">2,340</td>
+                                    <td class="risk-cell negative">-1,560</td>
+                                    <td class="risk-cell positive">3,890</td>
+                                    <td class="risk-cell positive">6,540</td>
+                                    <td class="risk-cell negative">-2,180</td>
+                                    <td class="risk-cell positive">4,320</td>
+                                    <td class="risk-cell positive">1,890</td>
+                                    <td class="risk-cell negative">-920</td>
+                                    <td class="risk-cell positive">540</td>
+                                    <td class="risk-cell total positive">15,880</td>
+                                </tr>
+                                <tr data-index="CHF-SARON">
+                                    <td class="index-cell"><span class="index-badge chf">CHF-SARON</span></td>
+                                    <td class="risk-cell positive">340</td>
+                                    <td class="risk-cell negative">-560</td>
+                                    <td class="risk-cell positive">890</td>
+                                    <td class="risk-cell positive">1,450</td>
+                                    <td class="risk-cell negative">-980</td>
+                                    <td class="risk-cell positive">2,120</td>
+                                    <td class="risk-cell positive">3,670</td>
+                                    <td class="risk-cell negative">-1,230</td>
+                                    <td class="risk-cell positive">2,540</td>
+                                    <td class="risk-cell positive">890</td>
+                                    <td class="risk-cell negative">-450</td>
+                                    <td class="risk-cell positive">280</td>
+                                    <td class="risk-cell total positive">8,960</td>
+                                </tr>
+                                <tr data-index="AUD-AONIA">
+                                    <td class="index-cell"><span class="index-badge aud">AUD-AONIA</span></td>
+                                    <td class="risk-cell negative">-120</td>
+                                    <td class="risk-cell positive">280</td>
+                                    <td class="risk-cell positive">450</td>
+                                    <td class="risk-cell negative">-670</td>
+                                    <td class="risk-cell positive">1,120</td>
+                                    <td class="risk-cell positive">1,890</td>
+                                    <td class="risk-cell negative">-540</td>
+                                    <td class="risk-cell positive">980</td>
+                                    <td class="risk-cell positive">760</td>
+                                    <td class="risk-cell negative">-320</td>
+                                    <td class="risk-cell positive">180</td>
+                                    <td class="risk-cell positive">90</td>
+                                    <td class="risk-cell total positive">4,100</td>
+                                </tr>
+                                <tr class="total-row">
+                                    <td class="index-cell"><strong>Total</strong></td>
+                                    <td class="risk-cell total">3,950</td>
+                                    <td class="risk-cell total">3,660</td>
+                                    <td class="risk-cell total">4,540</td>
+                                    <td class="risk-cell total">14,680</td>
+                                    <td class="risk-cell total">7,780</td>
+                                    <td class="risk-cell total">22,810</td>
+                                    <td class="risk-cell total">41,260</td>
+                                    <td class="risk-cell total">8,550</td>
+                                    <td class="risk-cell total">12,180</td>
+                                    <td class="risk-cell total">7,120</td>
+                                    <td class="risk-cell total">550</td>
+                                    <td class="risk-cell total">1,650</td>
+                                    <td class="risk-cell total grand">128,730</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+
                 <div class="bento-grid risk-grid">
-                    <!-- XVA Metrics -->
-                    <div class="bento-item bento-wide glass-card">
-                        <div class="bento-header">
-                            <h3><i class="fas fa-shield-alt"></i> XVA Metrics</h3>
-                            <div class="bento-actions">
-                                <button class="chip-btn active" data-xva-view="live">Live</button>
-                                <button class="chip-btn" data-xva-view="1d">1D Δ</button>
-                                <button class="chip-btn" data-xva-view="mtd">MTD</button>
-                            </div>
-                        </div>
-                        <div class="xva-cards-grid">
-                            <div class="xva-metric-card cva">
-                                <div class="xva-card-header">
-                                    <div class="xva-icon"><i class="fas fa-user-shield"></i></div>
-                                    <div class="xva-trend negative" id="cva-trend">
-                                        <i class="fas fa-arrow-down"></i>
-                                        <span>-2.4%</span>
-                                    </div>
-                                </div>
-                                <span class="xva-label">CVA</span>
-                                <span class="xva-value negative" id="risk-cva">$0</span>
-                                <div class="xva-bar-container">
-                                    <div class="xva-bar-track">
-                                        <div class="xva-bar-fill" id="cva-bar"></div>
-                                    </div>
-                                </div>
-                                <span class="xva-desc">Counterparty credit risk</span>
-                            </div>
-                            <div class="xva-metric-card dva">
-                                <div class="xva-card-header">
-                                    <div class="xva-icon"><i class="fas fa-hand-holding-usd"></i></div>
-                                    <div class="xva-trend positive" id="dva-trend">
-                                        <i class="fas fa-arrow-up"></i>
-                                        <span>+1.2%</span>
-                                    </div>
-                                </div>
-                                <span class="xva-label">DVA</span>
-                                <span class="xva-value positive" id="risk-dva">$0</span>
-                                <div class="xva-bar-container">
-                                    <div class="xva-bar-track">
-                                        <div class="xva-bar-fill green" id="dva-bar"></div>
-                                    </div>
-                                </div>
-                                <span class="xva-desc">Own credit benefit</span>
-                            </div>
-                            <div class="xva-metric-card fva">
-                                <div class="xva-card-header">
-                                    <div class="xva-icon"><i class="fas fa-coins"></i></div>
-                                    <div class="xva-trend negative" id="fva-trend">
-                                        <i class="fas fa-arrow-down"></i>
-                                        <span>-0.8%</span>
-                                    </div>
-                                </div>
-                                <span class="xva-label">FVA</span>
-                                <span class="xva-value negative" id="risk-fva">$0</span>
-                                <div class="xva-bar-container">
-                                    <div class="xva-bar-track">
-                                        <div class="xva-bar-fill orange" id="fva-bar"></div>
-                                    </div>
-                                </div>
-                                <span class="xva-desc">Funding cost</span>
-                            </div>
-                            <div class="xva-metric-card total">
-                                <div class="xva-card-header">
-                                    <div class="xva-icon"><i class="fas fa-sigma"></i></div>
-                                </div>
-                                <span class="xva-label">Total XVA</span>
-                                <span class="xva-value" id="risk-total-xva">$0</span>
-                                <div class="xva-composition">
-                                    <div class="comp-item cva"><span>CVA</span></div>
-                                    <div class="comp-item dva"><span>DVA</span></div>
-                                    <div class="comp-item fva"><span>FVA</span></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Exposure Gauges -->
-                    <div class="bento-item bento-wide glass-card">
-                        <div class="bento-header">
-                            <h3><i class="fas fa-tachometer-alt"></i> Exposure Gauges</h3>
-                        </div>
-                        <div class="gauges-grid">
-                            <div class="gauge-widget">
-                                <div class="gauge-svg">
-                                    <svg viewBox="0 0 120 60">
-                                        <path class="gauge-track" d="M10,55 A45,45 0 0,1 110,55"/>
-                                        <path class="gauge-value" id="ee-gauge-path" d="M10,55 A45,45 0 0,1 110,55"/>
-                                    </svg>
-                                    <div class="gauge-needle" id="ee-needle"></div>
-                                </div>
-                                <div class="gauge-info">
-                                    <span class="gauge-label">Expected Exposure</span>
-                                    <span class="gauge-number" id="risk-ee">$0</span>
-                                </div>
-                            </div>
-                            <div class="gauge-widget">
-                                <div class="gauge-svg">
-                                    <svg viewBox="0 0 120 60">
-                                        <path class="gauge-track" d="M10,55 A45,45 0 0,1 110,55"/>
-                                        <path class="gauge-value epe" id="epe-gauge-path" d="M10,55 A45,45 0 0,1 110,55"/>
-                                    </svg>
-                                    <div class="gauge-needle" id="epe-needle"></div>
-                                </div>
-                                <div class="gauge-info">
-                                    <span class="gauge-label">Expected Positive Exp</span>
-                                    <span class="gauge-number" id="risk-epe">$0</span>
-                                </div>
-                            </div>
-                            <div class="gauge-widget">
-                                <div class="gauge-svg">
-                                    <svg viewBox="0 0 120 60">
-                                        <path class="gauge-track" d="M10,55 A45,45 0 0,1 110,55"/>
-                                        <path class="gauge-value pfe" id="pfe-gauge-path" d="M10,55 A45,45 0 0,1 110,55"/>
-                                    </svg>
-                                    <div class="gauge-needle" id="pfe-needle"></div>
-                                </div>
-                                <div class="gauge-info">
-                                    <span class="gauge-label">Potential Future Exp</span>
-                                    <span class="gauge-number" id="risk-pfe">$0</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Counterparty Risk Table -->
-                    <div class="bento-item bento-large glass-card">
-                        <div class="bento-header">
-                            <h3><i class="fas fa-users"></i> Counterparty Exposure</h3>
-                            <div class="bento-actions">
-                                <button class="icon-btn" id="export-cp-data"><i class="fas fa-download"></i></button>
-                            </div>
-                        </div>
-                        <div class="counterparty-table-wrapper">
-                            <table class="counterparty-table">
-                                <thead>
-                                    <tr>
-                                        <th>Counterparty</th>
-                                        <th>Rating</th>
-                                        <th>Exposure</th>
-                                        <th>Limit</th>
-                                        <th>Utilization</th>
-                                        <th>CVA</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="counterparty-table-body">
-                                    <!-- Dynamically filled -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
                     <!-- Risk Distribution -->
                     <div class="bento-item glass-card">
                         <div class="bento-header">
@@ -1107,18 +1105,39 @@
                         </div>
                     </div>
 
-                    <!-- XVA Time Series -->
-                    <div class="bento-item bento-wide glass-card">
+                    <!-- XVA Metrics (Compact) -->
+                    <div class="bento-item glass-card">
                         <div class="bento-header">
-                            <h3><i class="fas fa-chart-line"></i> XVA History</h3>
-                            <div class="bento-actions">
-                                <button class="chip-btn active" data-period="1w">1W</button>
-                                <button class="chip-btn" data-period="1m">1M</button>
-                                <button class="chip-btn" data-period="3m">3M</button>
-                            </div>
+                            <h3><i class="fas fa-shield-alt"></i> XVA Metrics</h3>
                         </div>
-                        <div class="chart-container">
-                            <canvas id="xva-history-chart"></canvas>
+                        <div class="xva-compact-grid">
+                            <div class="xva-compact-item cva">
+                                <div class="xva-compact-header">
+                                    <span class="xva-compact-label">CVA</span>
+                                    <span class="xva-compact-trend negative" id="cva-trend">-2.4%</span>
+                                </div>
+                                <span class="xva-compact-value negative" id="risk-cva">$0</span>
+                            </div>
+                            <div class="xva-compact-item dva">
+                                <div class="xva-compact-header">
+                                    <span class="xva-compact-label">DVA</span>
+                                    <span class="xva-compact-trend positive" id="dva-trend">+1.2%</span>
+                                </div>
+                                <span class="xva-compact-value positive" id="risk-dva">$0</span>
+                            </div>
+                            <div class="xva-compact-item fva">
+                                <div class="xva-compact-header">
+                                    <span class="xva-compact-label">FVA</span>
+                                    <span class="xva-compact-trend negative" id="fva-trend">-0.8%</span>
+                                </div>
+                                <span class="xva-compact-value negative" id="risk-fva">$0</span>
+                            </div>
+                            <div class="xva-compact-item total">
+                                <div class="xva-compact-header">
+                                    <span class="xva-compact-label">Total</span>
+                                </div>
+                                <span class="xva-compact-value" id="risk-total-xva">$0</span>
+                            </div>
                         </div>
                     </div>
 
@@ -1170,6 +1189,7 @@
                             </div>
                         </div>
                     </div>
+
                 </div>
             </section>
 
@@ -1208,6 +1228,34 @@
                 </div>
 
                 <div class="bento-grid exposure-grid">
+                    <!-- Counterparty Exposure Table -->
+                    <div class="bento-item bento-full glass-card">
+                        <div class="bento-header">
+                            <h3><i class="fas fa-users"></i> Counterparty Exposure</h3>
+                            <div class="bento-actions">
+                                <button class="icon-btn" id="export-cp-data"><i class="fas fa-download"></i></button>
+                            </div>
+                        </div>
+                        <div class="counterparty-table-wrapper">
+                            <table class="counterparty-table">
+                                <thead>
+                                    <tr>
+                                        <th>Counterparty</th>
+                                        <th>Rating</th>
+                                        <th>Exposure</th>
+                                        <th>Limit</th>
+                                        <th>Utilization</th>
+                                        <th>CVA</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="counterparty-table-body">
+                                    <!-- Dynamically filled -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
                     <!-- Main Exposure Chart -->
                     <div class="bento-item bento-large glass-card">
                         <div class="bento-header">
@@ -1285,57 +1333,6 @@
                                 <span class="stat-label">EE at 5Y</span>
                                 <span class="stat-value" id="ee-5y">$0</span>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- Exposure by Bucket -->
-                    <div class="bento-item bento-wide glass-card">
-                        <div class="bento-header">
-                            <h3><i class="fas fa-layer-group"></i> Exposure by Tenor Bucket</h3>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="tenor-bucket-chart"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- Exposure Distribution -->
-                    <div class="bento-item glass-card">
-                        <div class="bento-header">
-                            <h3><i class="fas fa-chart-bar"></i> Distribution</h3>
-                        </div>
-                        <div class="chart-container small">
-                            <canvas id="exposure-dist-chart"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- Netting Set Breakdown -->
-                    <div class="bento-item bento-wide glass-card">
-                        <div class="bento-header">
-                            <h3><i class="fas fa-object-group"></i> Netting Set Analysis</h3>
-                            <div class="bento-actions">
-                                <button class="chip-btn active" data-ns-view="table">Table</button>
-                                <button class="chip-btn" data-ns-view="chart">Chart</button>
-                            </div>
-                        </div>
-                        <div class="netting-set-table-wrapper" id="ns-table-view">
-                            <table class="netting-set-table">
-                                <thead>
-                                    <tr>
-                                        <th>Netting Set</th>
-                                        <th>Trades</th>
-                                        <th>Gross Exp</th>
-                                        <th>Net Exp</th>
-                                        <th>Netting Benefit</th>
-                                        <th>Collateral</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="netting-set-body">
-                                    <!-- Dynamically filled -->
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="netting-set-chart" id="ns-chart-view" style="display: none;">
-                            <canvas id="netting-set-chart"></canvas>
                         </div>
                     </div>
 
@@ -2416,6 +2413,6 @@
     <!-- Libraries -->
     <script src="vendor/logger.js"></script>
     <script src="vendor/chart.umd.min.js" defer></script>
-    <script src="app.js?v=3" defer></script>
+    <script src="app.js?v=4" defer></script>
 </body>
 </html>

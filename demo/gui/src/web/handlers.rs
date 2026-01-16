@@ -5930,3 +5930,74 @@ mod tests {
         }
     }
 }
+
+// ============================================================================
+// Scenario Analysis Endpoint
+// ============================================================================
+
+/// Request for scenario analysis
+#[derive(Debug, Deserialize)]
+pub struct ScenarioRequest {
+    pub rate_shock: f64,   // basis points
+    pub vol_shift: f64,    // percentage
+    pub spread_shock: f64, // basis points
+    pub corr_shift: f64,   // percentage
+}
+
+/// Response for scenario analysis
+#[derive(Debug, Serialize)]
+pub struct ScenarioResponse {
+    pub stressed_pv: f64,
+    pub pv_change: f64,
+    pub stressed_cva: f64,
+    pub stressed_dva: f64,
+    pub stressed_fva: f64,
+    pub scenario_id: String,
+}
+
+/// POST /api/scenario
+///
+/// Performs scenario analysis with given market shocks.
+/// Returns stressed portfolio values and XVA impacts.
+pub async fn run_scenario(
+    State(_state): State<Arc<AppState>>,
+    Json(request): Json<ScenarioRequest>,
+) -> Result<Json<ScenarioResponse>, (StatusCode, Json<PricingErrorResponse>)> {
+    // Base portfolio values (from sample data)
+    let base_pv = 353_000.0; // Sum of sample trades PVs
+    let base_cva = -45_000.0;
+    let base_dva = 12_000.0;
+    let base_fva = -8_000.0;
+
+    // Apply shocks to calculate stressed values
+    // Rate shock: 1bp = 0.01% impact on PV (simplified DV01 approximation)
+    let rate_impact = base_pv * (request.rate_shock / 10000.0) * 4.5; // ~4.5 duration
+
+    // Vol shift: affects option values and XVA
+    let vol_impact = base_pv * (request.vol_shift / 100.0) * 0.15;
+
+    // Spread shock: primarily affects CVA/DVA
+    let spread_impact_cva = base_cva * (request.spread_shock / 100.0) * 0.8;
+    let spread_impact_dva = base_dva * (request.spread_shock / 100.0) * 0.6;
+
+    // Correlation shift: affects portfolio-level risk
+    let corr_impact = base_pv * (request.corr_shift / 100.0) * 0.05;
+
+    // Calculate stressed values
+    let stressed_pv = base_pv - rate_impact - vol_impact - corr_impact;
+    let pv_change = stressed_pv - base_pv;
+    let stressed_cva = base_cva + spread_impact_cva;
+    let stressed_dva = base_dva + spread_impact_dva;
+    let stressed_fva = base_fva * (1.0 + request.rate_shock / 200.0);
+
+    let scenario_id = Uuid::new_v4().to_string();
+
+    Ok(Json(ScenarioResponse {
+        stressed_pv,
+        pv_change,
+        stressed_cva,
+        stressed_dva,
+        stressed_fva,
+        scenario_id,
+    }))
+}
