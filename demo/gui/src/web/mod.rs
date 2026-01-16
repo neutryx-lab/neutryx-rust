@@ -375,6 +375,8 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/risk/aad", post(handlers::risk_aad))
         // Task 6.1: Add /api/risk/compare endpoint for comparison
         .route("/risk/compare", post(handlers::risk_compare))
+        // Scenario analysis endpoint
+        .route("/scenario", post(handlers::run_scenario))
         .route("/ws", get(websocket::ws_handler));
 
     // Static file serving for the dashboard
