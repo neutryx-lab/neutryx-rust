@@ -1,5 +1,7 @@
 //! Benchmarks for pricer_optimiser.
 
+#![allow(missing_docs)]
+
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use pricer_optimiser::{
     bootstrapping::{

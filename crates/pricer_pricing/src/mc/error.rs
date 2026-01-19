@@ -39,13 +39,13 @@ mod tests {
 
     #[test]
     fn test_config_error_display() {
-        let err = ConfigError::InvalidPathCount(0);
+        let err = MonteCarloConfigError::InvalidPathCount(0);
         assert!(err.to_string().contains("Invalid path count 0"));
 
-        let err = ConfigError::InvalidStepCount(20_000);
+        let err = MonteCarloConfigError::InvalidStepCount(20_000);
         assert!(err.to_string().contains("Invalid step count 20000"));
 
-        let err = ConfigError::InvalidParameter {
+        let err = MonteCarloConfigError::InvalidParameter {
             name: "volatility",
             value: "must be positive".to_string(),
         };

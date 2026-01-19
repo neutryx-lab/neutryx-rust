@@ -1,6 +1,12 @@
 // Clippy configuration for infra_master
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::missing_errors_doc)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::if_not_else)]
+#![allow(clippy::match_same_arms)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::unnecessary_map_or)]
+#![cfg_attr(test, allow(clippy::unwrap_used))]
 
 //! # `infra_master`
 //!

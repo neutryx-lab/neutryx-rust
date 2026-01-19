@@ -8,7 +8,7 @@ repository.workspace = true
 authors.workspace = true
 
 [lib]
-name = "neutryx"
+name = "neutryx_py"
 crate-type = ["cdylib"]
 
 [dependencies]

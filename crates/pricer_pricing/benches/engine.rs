@@ -6,6 +6,8 @@
 //! - Greeks computation (Delta via bump-and-revalue / forward AD)
 //! - RNG performance
 
+#![allow(missing_docs)]
+
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use pricer_pricing::{
     checkpoint::CheckpointStrategy,

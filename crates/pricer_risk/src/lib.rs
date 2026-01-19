@@ -24,6 +24,10 @@
 #![allow(clippy::match_same_arms)]
 #![allow(clippy::cast_lossless)]
 #![allow(clippy::map_unwrap_or)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::needless_borrows_for_generic_args)]
+#![allow(clippy::no_effect_underscore_binding)]
+#![allow(clippy::cast_possible_wrap)]
 
 //! # Pricer Risk (L4: Application)
 //!
