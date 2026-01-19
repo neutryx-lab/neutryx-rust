@@ -40,10 +40,11 @@ pub struct PriceResponse {
 
 /// Portfolio pricing request
 #[derive(Deserialize)]
-#[allow(dead_code)]
 pub struct PortfolioRequest {
     pub instruments: Vec<PriceRequest>,
-    pub compute_greeks: Option<bool>,
+    /// Whether to compute Greeks (reserved for future use)
+    #[serde(default)]
+    pub _compute_greeks: Option<bool>,
 }
 
 /// Portfolio pricing response
@@ -55,10 +56,11 @@ pub struct PortfolioResponse {
 
 /// Calibration request
 #[derive(Deserialize)]
-#[allow(dead_code)]
 pub struct CalibrateRequest {
     pub model_type: String,
-    pub market_data: serde_json::Value,
+    /// Market data for calibration (reserved for future use)
+    #[serde(default)]
+    pub _market_data: Option<serde_json::Value>,
 }
 
 /// Calibration response
@@ -71,11 +73,14 @@ pub struct CalibrateResponse {
 
 /// Exposure request
 #[derive(Deserialize)]
-#[allow(dead_code)]
 pub struct ExposureRequest {
-    pub portfolio: Vec<PriceRequest>,
+    /// Portfolio instruments (reserved for future use)
+    #[serde(default)]
+    pub _portfolio: Option<Vec<PriceRequest>>,
     pub time_grid: Vec<f64>,
-    pub num_paths: Option<usize>,
+    /// Number of Monte Carlo paths (reserved for future use)
+    #[serde(default)]
+    pub _num_paths: Option<usize>,
 }
 
 /// Exposure response

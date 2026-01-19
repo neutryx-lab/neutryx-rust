@@ -7,7 +7,12 @@ use thiserror::Error;
 pub enum OptimiserError {
     /// Convergence failure
     #[error("Failed to converge after {iterations} iterations (residual: {residual})")]
-    ConvergenceFailure { iterations: usize, residual: f64 },
+    ConvergenceFailure {
+        /// Number of iterations performed
+        iterations: usize,
+        /// Final residual value
+        residual: f64,
+    },
 
     /// Singular matrix encountered
     #[error("Singular matrix encountered during optimisation")]
@@ -27,5 +32,10 @@ pub enum OptimiserError {
 
     /// Insufficient data points
     #[error("Insufficient data points: need {required}, got {provided}")]
-    InsufficientData { required: usize, provided: usize },
+    InsufficientData {
+        /// Minimum required data points
+        required: usize,
+        /// Actual data points provided
+        provided: usize,
+    },
 }

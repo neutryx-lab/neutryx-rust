@@ -2100,7 +2100,7 @@ mod tests {
 
         let iv_low = model.implied_vol(0.02).unwrap();
         let iv_atm = model.implied_vol(0.03).unwrap();
-        let iv_high = model.implied_vol(0.04).unwrap();
+        let _iv_high = model.implied_vol(0.04).unwrap();
 
         // With negative rho in Normal SABR, lower strikes should have higher vol
         assert!(
@@ -2243,7 +2243,7 @@ mod tests {
 
         let iv_80 = model.implied_vol(80.0).unwrap();
         let iv_100 = model.implied_vol(100.0).unwrap();
-        let iv_120 = model.implied_vol(120.0).unwrap();
+        let _iv_120 = model.implied_vol(120.0).unwrap();
 
         // With negative rho, smile should be skewed
         assert!(

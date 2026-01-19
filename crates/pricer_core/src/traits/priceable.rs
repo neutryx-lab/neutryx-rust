@@ -204,6 +204,7 @@ mod tests {
     fn test_differentiable_marker_trait() {
         // Verify that Differentiable is a marker trait with no methods
         struct SmoothCallPayoff {
+            #[allow(dead_code)]
             smoothing_epsilon: f64,
         }
 

@@ -276,7 +276,7 @@ proptest! {
     #[test]
     fn prop_different_seeds_different_sequences(
         seed1 in any::<u64>(),
-        seed2 in any::<u64>().prop_filter("different seeds", |&s2| true)
+        seed2 in any::<u64>().prop_filter("different seeds", |&_s2| true)
     ) {
         // Skip if seeds happen to be equal
         prop_assume!(seed1 != seed2);
@@ -315,6 +315,7 @@ fn test_public_api_accessibility() {
     rng.fill_normal(&mut buffer);
 
     // Test that QMC types are accessible
+    #[allow(dead_code)]
     fn accepts_trait<T: LowDiscrepancySequence>(_: &T) {}
     // SobolPlaceholder type exists (construction panics but type is accessible)
     let _type_check: fn(usize) -> SobolPlaceholder = SobolPlaceholder::new;

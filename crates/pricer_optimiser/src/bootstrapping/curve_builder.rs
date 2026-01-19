@@ -36,7 +36,6 @@ pub enum InterpolationMethod {
 
 /// Curve bootstrapper for yield curve construction.
 pub struct CurveBootstrapper {
-    #[allow(dead_code)] // Will be used when bootstrap implementation is completed
     config: BootstrapConfig,
 }
 
@@ -50,6 +49,9 @@ impl CurveBootstrapper {
 
     /// Create a new curve bootstrapper with custom configuration.
     pub fn with_config(config: BootstrapConfig) -> Self { Self { config } }
+
+    /// Returns the configuration.
+    pub fn config(&self) -> &BootstrapConfig { &self.config }
 
     /// Bootstrap a discount curve from swap rates.
     ///
@@ -81,6 +83,7 @@ impl CurveBootstrapper {
 
         // Simple bootstrapping (iterative stripping)
         let mut discount_factors = Vec::with_capacity(pillars.len());
+        let mut iterations = 0;
 
         for (i, (&t, &rate)) in pillars.iter().zip(swap_rates.iter()).enumerate() {
             let df = if i == 0 {
@@ -102,6 +105,11 @@ impl CurveBootstrapper {
             };
 
             discount_factors.push(df);
+            iterations += 1;
+
+            if iterations >= self.config.max_iterations {
+                break;
+            }
         }
 
         Ok(BootstrapResult {

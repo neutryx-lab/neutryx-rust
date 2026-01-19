@@ -1,4 +1,4 @@
-//! Caching and memory optimization utilities for bootstrapping.
+//! Caching and memory optimisation utilities for bootstrapping.
 //!
 //! This module provides memory-efficient data structures and caching
 //! mechanisms for yield curve bootstrapping operations.

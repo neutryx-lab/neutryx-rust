@@ -471,8 +471,8 @@ mod tests {
         for run in 0..10 {
             // Get buffers from pool (like PathWorkspace internals)
             let mut randoms = pool.get_buffer(1000);
-            let mut paths = pool.get_buffer(1100);
-            let mut payoffs = pool.get_buffer(100);
+            let paths = pool.get_buffer(1100);
+            let payoffs = pool.get_buffer(100);
 
             // Simulate filling buffers
             for i in 0..randoms.len() {

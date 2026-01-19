@@ -94,7 +94,7 @@ pub enum CalibrationError {
 
     /// Gradient computation failed
     ///
-    /// Failed to compute gradients for optimization.
+    /// Failed to compute gradients for optimisation.
     #[error("勾配計算失敗: {message}")]
     GradientError {
         /// Description of the gradient computation failure

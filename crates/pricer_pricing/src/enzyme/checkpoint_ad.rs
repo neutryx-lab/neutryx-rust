@@ -180,8 +180,8 @@ impl<T: Float> ADCheckpointState<T> {
 #[derive(Debug)]
 pub struct CheckpointedAD<T: Float> {
     config: CheckpointADConfig,
-    #[allow(dead_code)]
-    manager: CheckpointManager<T>,
+    /// Checkpoint manager for future Enzyme integration.
+    _manager: CheckpointManager<T>,
     adjoint_accumulator: AdjointAccumulator<T>,
     checkpoints: Vec<ADCheckpointState<T>>,
     current_step: usize,
@@ -193,7 +193,7 @@ impl<T: Float> CheckpointedAD<T> {
         let manager = CheckpointManager::new(config.strategy);
         Self {
             config,
-            manager,
+            _manager: manager,
             adjoint_accumulator: AdjointAccumulator::new(),
             checkpoints: Vec::new(),
             current_step: 0,

@@ -458,7 +458,7 @@ mod tests {
         let df2 = curve.discount_factor(2.0).unwrap();
 
         // Forward rate from 1 to 2
-        let fwd = -(df2 / df1).ln();
+        let _fwd = -(df2 / df1).ln();
         let fwd_at_1_5 = curve.forward_rate(1.0, 1.5).unwrap();
         let fwd_at_1_5_to_2 = curve.forward_rate(1.5, 2.0).unwrap();
 

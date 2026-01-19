@@ -125,7 +125,7 @@ impl LMConfig {
     }
 }
 
-/// Result of Levenberg-Marquardt optimization.
+/// Result of Levenberg-Marquardt optimisation.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LMResult {
     /// Final optimized parameters.
@@ -169,7 +169,7 @@ impl LMResult {
 
 /// Levenberg-Marquardt nonlinear least-squares solver.
 ///
-/// Solves optimization problems of the form:
+/// Solves optimisation problems of the form:
 /// ```text
 /// min_p ||f(p)||^2
 /// ```
@@ -228,7 +228,7 @@ impl LevenbergMarquardtSolver {
     /// # Returns
     ///
     /// * `Ok(LMResult)` - Optimization result with final parameters
-    /// * `Err(SolverError)` - If optimization fails
+    /// * `Err(SolverError)` - If optimisation fails
     pub fn solve<F>(&self, residuals: F, initial_params: Vec<f64>) -> Result<LMResult, SolverError>
     where
         F: Fn(&[f64]) -> Vec<f64>,

@@ -14,10 +14,11 @@
 //! ## Feller Condition
 //!
 //! For the CIR process to remain strictly positive, the Feller condition must
-//! hold: ```text
+//! hold:
+//! ```text
 //! 2 * a * b >= sigma^2
 //! ```
-//! 
+//!
 //! If this condition is violated, the process can touch zero.
 //!
 //! ## Key Properties

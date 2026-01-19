@@ -327,7 +327,7 @@ mod tests {
         let f = |x: f64| x * x - 2.0;
         let f_prime = |x: f64| 2.0 * x;
 
-        let result = solver.find_root(f, f_prime, 100.0); // Far initial guess
+        let _result = solver.find_root(f, f_prime, 100.0); // Far initial guess
 
         // May succeed or fail depending on convergence rate
         // Let's use a case that definitely won't converge in 5 iterations

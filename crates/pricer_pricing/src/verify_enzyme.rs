@@ -275,7 +275,7 @@ mod tests {
     fn test_barrier_option_gradient_at_barrier() {
         // Near barrier, the gradient of a knock-out option changes rapidly
         let barrier = 80.0;
-        let strike = 100.0;
+        let _strike = 100.0;
 
         // Simplified barrier payoff indicator: 1 if min >= barrier, 0 otherwise
         fn barrier_indicator(min_price: f64, barrier: f64, epsilon: f64) -> f64 {

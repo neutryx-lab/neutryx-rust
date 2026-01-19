@@ -64,6 +64,7 @@ mod pricer_models_tests {
     #[test]
     fn test_stochastic_model_trait_integration() {
         // Verify the trait is importable and usable
+        #[allow(dead_code)]
         fn accepts_stochastic_model<M: StochasticModel<f64>>(_model: &M) {
             // Just verify the trait bound compiles
         }

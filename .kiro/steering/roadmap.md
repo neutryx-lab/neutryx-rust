@@ -126,14 +126,15 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 
 | Spec | Description | Status |
 |------|-------------|--------|
+| codebase-cleanup-optimisation | Codebase cleanup: remove unnecessary comments, optimise structure, eliminate duplication | Ready |
 | advanced-sensitivity-webapp | Advanced sensitivity analysis for web dashboard | Ready |
 
 ## Recommended Next Steps
 
-1. **advanced-sensitivity-webapp** - Complete sensitivity analysis UI (ready for implementation)
-2. **exotic-options** - Barriers, Asians, Lookbacks, Digitals for product coverage
-3. **python-bindings-expansion** - Enables Jupyter research workflows
-4. **rates-instruments** - Swaption, Cap/Floor pricing completion
+1. **codebase-cleanup-optimisation** - Remove unnecessary comments, optimise code structure, eliminate duplication
+2. **advanced-sensitivity-webapp** - Complete sensitivity analysis UI (ready for implementation)
+3. **exotic-options** - Barriers, Asians, Lookbacks, Digitals for product coverage
+4. **python-bindings-expansion** - Enables Jupyter research workflows
 
 ---
 
@@ -141,6 +142,7 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 
 | Date | Change |
 |------|--------|
+| 2026-01-19 | Steering sync: Added codebase-cleanup-optimisation spec (ready for implementation), enhanced scenarios module documentation |
 | 2026-01-19 | Steering sync: Added 3 completed specs (webapp-polish, webapp-pricer, irs-bootstrap-risk), added advanced-sensitivity-webapp to active specs |
 | 2026-01-16 | Steering sync: OpenAPI/Swagger documentation, scenario analysis handlers, async job manager, Prometheus metrics, parallel portfolio Greeks |
 | 2026-01-15 | Steering sync: Cloud Run deployment, dual-mode UI, REST orchestration, computation graph, IRS Greeks workflow |

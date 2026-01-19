@@ -431,7 +431,7 @@ mod tests {
 
         // Survival at 5 years with 2% hazard: exp(-0.02 * 5) ≈ 0.9048
         let horizon = 5.0_f64;
-        let survival_at_horizon = (-0.02_f64 * horizon).exp();
+        let _survival_at_horizon = (-0.02_f64 * horizon).exp();
 
         // U > S(T) means default within horizon
         assert!(simulator.defaults_within(0.95, horizon).unwrap()); // 0.95 > 0.9048

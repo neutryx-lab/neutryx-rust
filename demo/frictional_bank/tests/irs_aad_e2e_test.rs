@@ -15,6 +15,7 @@
 #[cfg(feature = "l1l2-integration")]
 use std::sync::Arc;
 
+#[cfg(feature = "l1l2-integration")]
 use frictional_bank::config::DemoConfig;
 #[cfg(feature = "l1l2-integration")]
 use frictional_bank::workflow::DemoWorkflow;

@@ -9,6 +9,7 @@
 //! 2. **Barrier Options**: MC vs Rubinstein-Reiner (1991) formula
 //! 3. **Convergence Tests**: Price error decreases with path count
 
+#[allow(unused_imports)]
 use approx::assert_relative_eq;
 use pricer_pricing::{
     analytical::{down_out_call, geometric_asian_call, geometric_asian_put, up_out_call},
@@ -204,8 +205,9 @@ fn test_down_out_call_mc_vs_analytical() {
     let (spot, strike, rate, div, vol, maturity) = standard_params();
     let barrier = 80.0; // Down barrier below spot
 
-    // Analytical price
-    let analytical_price = down_out_call(spot, strike, barrier, rate, div, vol, maturity);
+    // Analytical price (used for reference - MC discrete monitoring differs from
+    // continuous)
+    let _analytical_price = down_out_call(spot, strike, barrier, rate, div, vol, maturity);
 
     // Monte Carlo - barrier options need high-frequency monitoring
     let mc_config = MonteCarloConfig::builder()
@@ -324,7 +326,7 @@ fn test_geometric_asian_convergence() {
 
 #[test]
 fn test_std_error_decreases_with_paths() {
-    let (spot, strike, rate, _div, vol, maturity) = standard_params();
+    let (_spot, strike, rate, _div, _vol, maturity) = standard_params();
 
     let gbm = standard_gbm();
     let payoff = PathPayoffType::asian_geometric_call(strike, 0.0);

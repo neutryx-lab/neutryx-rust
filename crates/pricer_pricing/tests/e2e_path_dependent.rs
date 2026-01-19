@@ -353,7 +353,7 @@ fn e2e_delta_asian_call_finite_difference() {
 
     // Price at spot
     let mut pricer = CheckpointPricer::new(config.clone()).unwrap();
-    let price_base = pricer.price_path_dependent_with_checkpoints(base_gbm, payoff, df);
+    let _price_base = pricer.price_path_dependent_with_checkpoints(base_gbm, payoff, df);
 
     // Price at spot + bump
     let bump = 0.01;

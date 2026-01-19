@@ -146,24 +146,38 @@ impl ExposureTimeSeries {
 /// Trade row for display
 #[derive(Debug, Clone)]
 pub struct TradeRow {
+    /// Trade identifier
     pub id: String,
+    /// Instrument type
     pub instrument: String,
+    /// Notional amount
     pub notional: f64,
+    /// Present value
     pub pv: f64,
+    /// Delta (sensitivity to underlying)
     pub delta: f64,
+    /// Gamma (sensitivity of delta)
     pub gamma: f64,
+    /// Vega (sensitivity to volatility)
     pub vega: f64,
 }
 
 /// Risk metrics for display
 #[derive(Debug, Clone, Default)]
 pub struct RiskMetrics {
+    /// Total present value
     pub total_pv: f64,
+    /// Credit Valuation Adjustment
     pub cva: f64,
+    /// Debt Valuation Adjustment
     pub dva: f64,
+    /// Funding Valuation Adjustment
     pub fva: f64,
+    /// Expected Exposure
     pub ee: f64,
+    /// Expected Positive Exposure
     pub epe: f64,
+    /// Potential Future Exposure
     pub pfe: f64,
 }
 
@@ -264,11 +278,13 @@ impl Default for IrsAadResult {
 /// IRS AAD vs Bump benchmark result (Task 6.2)
 #[derive(Debug, Clone)]
 pub struct IrsAadBenchmark {
-    /// AAD timing stats
+    /// AAD mean timing in nanoseconds
     pub aad_mean_ns: f64,
+    /// AAD standard deviation in nanoseconds
     pub aad_std_ns: f64,
-    /// Bump timing stats
+    /// Bump mean timing in nanoseconds
     pub bump_mean_ns: f64,
+    /// Bump standard deviation in nanoseconds
     pub bump_std_ns: f64,
     /// Speedup ratio
     pub speedup_ratio: f64,

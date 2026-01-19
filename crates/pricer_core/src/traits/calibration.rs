@@ -428,7 +428,7 @@ pub trait Calibrator {
     /// # Arguments
     ///
     /// * `market_data` - Market observations to fit
-    /// * `initial_params` - Starting point for optimization
+    /// * `initial_params` - Starting point for optimisation
     /// * `config` - Calibration configuration
     ///
     /// # Returns
@@ -704,6 +704,7 @@ mod tests {
     // ========================================
 
     struct MockCalibrator {
+        #[allow(dead_code)]
         target: Vec<f64>,
     }
 
@@ -714,7 +715,7 @@ mod tests {
         fn calibrate(
             &self,
             market_data: &Self::MarketData,
-            initial_params: Self::ModelParams,
+            _initial_params: Self::ModelParams,
             _config: &CalibrationConfig,
         ) -> CalibrationResult<Self::ModelParams> {
             // Mock: just return market data as params

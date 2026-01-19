@@ -153,7 +153,7 @@ impl PathWorkspace {
     ///
     /// Unlike [`reset`](Self::reset), this method does not modify sizes.
     /// It only ensures the workspace is ready for immediate reuse by
-    /// avoiding any initialization overhead.
+    /// avoiding any initialisation overhead.
     ///
     /// This is the fastest reset option when dimensions remain constant
     /// across simulation runs, achieving true zero-allocation behavior.
