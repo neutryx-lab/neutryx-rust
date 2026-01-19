@@ -343,6 +343,7 @@ fn build_csp_header() -> SetResponseHeaderLayer<HeaderValue> {
     SetResponseHeaderLayer::overriding(axum::http::header::CONTENT_SECURITY_POLICY, header_value)
 }
 
+/// Builds the main router with all API routes and middleware.
 pub fn build_router(state: Arc<AppState>) -> Router {
     // CORS configuration for development
     let cors = build_cors();

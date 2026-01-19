@@ -179,8 +179,11 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
 /// Real-time update message
 #[derive(Debug, Serialize)]
 pub struct RealTimeUpdate {
+    /// Type of update (e.g. "risk", "exposure").
     pub update_type: String,
+    /// Unix timestamp in milliseconds.
     pub timestamp: i64,
+    /// Update payload.
     pub data: serde_json::Value,
 }
 

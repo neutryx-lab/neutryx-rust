@@ -284,6 +284,7 @@ pub enum ErrorType {
 }
 
 impl ErrorType {
+    /// Returns the string representation of the error type.
     pub fn as_str(&self) -> &'static str {
         match self {
             ErrorType::Client => "client",
@@ -552,7 +553,9 @@ pub struct ComputationMetrics {
 /// Error count by type
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ErrorTypeCount {
+    /// Type of error.
     pub error_type: String,
+    /// Number of occurrences.
     pub count: u64,
 }
 

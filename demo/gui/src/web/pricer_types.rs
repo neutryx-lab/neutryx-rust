@@ -738,24 +738,54 @@ impl IrsBootstrapErrorResponse {
 /// Validation error for Par Rate and IRS parameter validation.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ValidationError {
-    /// Par rate is negative
-    NegativeParRate { tenor: String, rate: f64 },
-    /// Par rate is not a valid number (NaN or infinite)
-    InvalidParRateValue { tenor: String, rate: f64 },
-    /// Empty par rates list
+    /// Par rate is negative.
+    NegativeParRate {
+        /// Tenor at which the error occurred.
+        tenor: String,
+        /// The invalid rate value.
+        rate: f64,
+    },
+    /// Par rate is not a valid number (NaN or infinite).
+    InvalidParRateValue {
+        /// Tenor at which the error occurred.
+        tenor: String,
+        /// The invalid rate value.
+        rate: f64,
+    },
+    /// Empty par rates list.
     EmptyParRates,
-    /// Notional is not positive
-    NotionalNotPositive { notional: f64 },
-    /// Fixed rate is out of valid range
-    FixedRateOutOfRange { fixed_rate: f64 },
-    /// Tenor years is not positive
-    TenorYearsNotPositive { tenor_years: f64 },
-    /// Tenor years exceeds maximum
-    TenorYearsExceedsMax { tenor_years: f64, max: f64 },
-    /// Invalid tenor string format
-    InvalidTenorFormat { tenor: String },
-    /// Bump size is not positive
-    BumpSizeNotPositive { bump_size_bps: f64 },
+    /// Notional is not positive.
+    NotionalNotPositive {
+        /// The invalid notional value.
+        notional: f64,
+    },
+    /// Fixed rate is out of valid range.
+    FixedRateOutOfRange {
+        /// The invalid fixed rate value.
+        fixed_rate: f64,
+    },
+    /// Tenor years is not positive.
+    TenorYearsNotPositive {
+        /// The invalid tenor years value.
+        tenor_years: f64,
+    },
+    /// Tenor years exceeds maximum.
+    TenorYearsExceedsMax {
+        /// The invalid tenor years value.
+        tenor_years: f64,
+        /// Maximum allowed tenor years.
+        max: f64,
+    },
+    /// Invalid tenor string format.
+    InvalidTenorFormat {
+        /// The invalid tenor string.
+        tenor: String,
+    },
+    /// Bump size is not positive.
+    BumpSizeNotPositive {
+        /// The invalid bump size in basis points.
+        bump_size_bps: f64,
+    },
 }
 
 impl ValidationError {
