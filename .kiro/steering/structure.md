@@ -280,7 +280,8 @@ scenarios/  → Scenario analysis and risk factor management
             → engine.rs (ScenarioEngine, ScenarioPnL), shifts.rs (RiskFactorShift, BumpScenario)
             → presets.rs (PresetScenario), aggregator.rs (GreeksAggregator, PortfolioGreeks)
             → bucket_dv01.rs (BucketDv01Calculator, KeyRateDuration), curve_shifts.rs (CurveShifter)
-            → risk_factor.rs (RiskFactorId), irs_greeks_by_factor.rs (IrsGreeksByFactorCalculator)
+            → risk_factor.rs (RiskFactorId), greeks_by_factor.rs (GreeksResultByFactor)
+            → irs_greeks_by_factor.rs (IrsGreeksByFactorCalculator)
 regulatory/ → SA-CCR, FRTB, SIMM (planned)
 soa/        → Structure of Arrays (TradeSoA, ExposureSoA)
 parallel/   → Rayon-based parallelisation utilities (>80% efficiency on 8+ cores)
@@ -495,5 +496,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-19_ — Enhanced scenarios module (RiskFactorId, BucketDv01Calculator, CurveShifter, IrsGreeksByFactorCalculator); refined parallel module structure
+_Updated: 2026-01-19_ — Added GreeksResultByFactor to scenarios module documentation
 _Document patterns, not file trees. New files following patterns should not require updates_

@@ -8,7 +8,7 @@ _Updated: 2026-01-19_
 
 ## Current State Summary
 
-### Completed Specifications (14)
+### Completed Specifications (15)
 
 | Spec | Description | Completed |
 |------|-------------|-----------|
@@ -26,6 +26,7 @@ _Updated: 2026-01-19_
 | frictionalbank-irs-bootstrap-risk | IRS bootstrapping and risk workflows | 2026-01-14 |
 | frictional-bank-webapp-polish | Web dashboard UX improvements (78 tasks) | 2026-01-15 |
 | frictionalbank-webapp-pricer | Web dashboard pricer integration (19 tasks) | 2026-01-16 |
+| advanced-sensitivity-webapp | Advanced sensitivity analysis for web dashboard | 2026-01-19 |
 
 ### Layer Implementation Status
 
@@ -127,14 +128,12 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 | Spec | Description | Status |
 |------|-------------|--------|
 | codebase-cleanup-optimisation | Codebase cleanup: remove unnecessary comments, optimise structure, eliminate duplication | Ready |
-| advanced-sensitivity-webapp | Advanced sensitivity analysis for web dashboard | Ready |
 
 ## Recommended Next Steps
 
 1. **codebase-cleanup-optimisation** - Remove unnecessary comments, optimise code structure, eliminate duplication
-2. **advanced-sensitivity-webapp** - Complete sensitivity analysis UI (ready for implementation)
-3. **exotic-options** - Barriers, Asians, Lookbacks, Digitals for product coverage
-4. **python-bindings-expansion** - Enables Jupyter research workflows
+2. **exotic-options** - Barriers, Asians, Lookbacks, Digitals for product coverage
+3. **python-bindings-expansion** - Enables Jupyter research workflows
 
 ---
 
@@ -142,7 +141,7 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 
 | Date | Change |
 |------|--------|
-| 2026-01-19 | Steering sync: Added codebase-cleanup-optimisation spec (ready for implementation), enhanced scenarios module documentation |
+| 2026-01-19 | Steering sync: Moved advanced-sensitivity-webapp to completed (15 total), codebase-cleanup-optimisation ready for implementation |
 | 2026-01-19 | Steering sync: Added 3 completed specs (webapp-polish, webapp-pricer, irs-bootstrap-risk), added advanced-sensitivity-webapp to active specs |
 | 2026-01-16 | Steering sync: OpenAPI/Swagger documentation, scenario analysis handlers, async job manager, Prometheus metrics, parallel portfolio Greeks |
 | 2026-01-15 | Steering sync: Cloud Run deployment, dual-mode UI, REST orchestration, computation graph, IRS Greeks workflow |
