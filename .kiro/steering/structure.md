@@ -113,7 +113,6 @@ error.rs           → Error types (DateError, CurrencyError, MasterDataError)
 ```text
 L1: pricer_core      → Foundation (Stable)
 L2: pricer_models    → Business Logic (Stable)
-L2.5: pricer_optimiser → Calibration & Solvers (Stable)
 L3: pricer_pricing   → AD Engine (Nightly + Enzyme)
 L4: pricer_risk      → Application (Stable)
 ```
@@ -121,13 +120,13 @@ L4: pricer_risk      → Application (Stable)
 ### pricer_core (L1)
 
 **Location**: `crates/pricer_core/src/`
-**Purpose**: Math types, traits, smoothing functions, market data abstractions (stable Rust)
+**Purpose**: Math types, traits, smoothing functions, market data abstractions, trades (stable Rust)
 **Structure**:
 ```text
 math/
 ├── smoothing.rs    → Smooth approximations (smooth_max, smooth_indicator)
 ├── interpolators/  → Interpolation methods (linear, bilinear, cubic_spline, monotonic, smooth_interp)
-└── solvers/        → Root-finding algorithms (Newton-Raphson, Brent)
+└── solvers/        → Root-finding and optimisation algorithms (Newton-Raphson, Brent, Levenberg-Marquardt)
 
 traits/     → Priceable, Differentiable, core abstractions
 types/
@@ -137,9 +136,15 @@ types/
 └── error.rs     → Structured error types (PricingError, DateError, etc.)
 
 market_data/
-├── curves/     → Yield curve abstractions (YieldCurve trait, FlatCurve, InterpolatedCurve)
-├── surfaces/   → Volatility surface abstractions (VolatilitySurface trait, FlatVol, InterpolatedVolSurface)
-└── error.rs    → MarketDataError for curve/surface validation
+├── curves/        → Yield curve abstractions (YieldCurve trait, FlatCurve, InterpolatedCurve)
+├── surfaces/      → Volatility surface abstractions (VolatilitySurface trait, FlatVol, InterpolatedVolSurface)
+├── bootstrapping/ → Yield curve construction from OIS/Swap rates (multi-curve framework)
+├── provider.rs    → MarketProvider for lazy market data resolution (Arc-cached curves/vols)
+└── error.rs       → MarketDataError for curve/surface validation
+
+trades/
+├── instruments/   → Financial instrument definitions (equity, rates, credit, fx)
+└── schedules/     → Payment schedule generation (Frequency, Period, ScheduleBuilder)
 ```
 
 **Key Principles**:
@@ -150,60 +155,32 @@ market_data/
 ### pricer_models (L2)
 
 **Location**: `crates/pricer_models/src/`
-**Purpose**: Financial instruments and pricing models (stable Rust)
+**Purpose**: Stochastic models and calibration (stable Rust)
 **Structure**:
 
 ```text
-instruments/
-├── equity/    → Equity derivatives (VanillaOption, Forward)
-├── rates/     → Interest rate derivatives (IRS, Swaption, Cap/Floor)
-├── credit/    → Credit derivatives (CDS with simulation)
-├── fx/        → FX derivatives (FxOption, FxForward)
-└── traits.rs  → InstrumentTrait, CashflowInstrument
-
 models/       → Stochastic models with unified trait interface
-  ├── equity/   → Equity models (feature-gated)
+  ├── equity/   → Equity models: GBM, Heston, SABR (feature-gated)
   ├── rates/    → Interest rate models: Hull-White, CIR (feature-gated)
-  ├── hybrid/   → Correlated multi-factor models (feature-gated)
-  ├── heston.rs → Heston stochastic volatility model
-  └── sabr.rs   → SABR stochastic volatility model
+  └── hybrid/   → Correlated multi-factor models (feature-gated)
 calibration/  → Model calibration infrastructure
+  ├── engine.rs      → CalibrationEngine (generic calibration driver)
   ├── heston.rs      → Heston calibration (characteristic function pricing)
   ├── sabr.rs        → SABR calibration (Hagan formula)
   ├── hull_white.rs  → Hull-White swaption calibration
   └── swaption_calibrator.rs → Generic swaption calibrator
 analytical/   → Closed-form solutions (Black-Scholes, Garman-Kohlhagen)
-schedules/    → Payment schedule generation (Frequency, Period, ScheduleBuilder)
 demo.rs       → Demo types for 3-stage rocket: ModelEnum, InstrumentEnum, CurveEnum, VolSurfaceEnum
 ```
 
 **Key Principles**:
 
-- **Hierarchical Instrument Architecture**: `InstrumentEnum<T>` wraps asset-class sub-enums (EquityInstrument, RatesInstrument, CreditInstrument, FxInstrument)
-- **Feature-Flag Asset Classes**: Each asset class gated by feature (equity, rates, credit, fx)
-- **InstrumentTrait**: Unified interface for all instruments (payoff, expiry, currency, notional)
-- **CashflowInstrument**: Extended trait for instruments with scheduled payments (swaps, bonds)
-- **Static Dispatch**: Enum-based dispatch at both top and sub-enum levels for Enzyme compatibility
-- **Schedule Generation**: `ScheduleBuilder` pattern for IRS/CDS payment schedules
+- **Re-exports from pricer_core**: `instruments` and `schedules` are re-exported from `pricer_core::trades` for backward compatibility
 - **StochasticModel Trait**: Unified interface for stochastic processes (`evolve_step`, `initial_state`, `brownian_dim`)
 - **StochasticModelEnum**: Static dispatch enum wrapping concrete models (GBM, Heston, SABR, Hull-White, CIR)
-
-### pricer_optimiser (L2.5) [NEW]
-
-**Location**: `crates/pricer_optimiser/src/`
-**Purpose**: Calibration, Bootstrapping & Solvers
-**Position**: Logically sits between Models (Definition) and Pricing (Calculation).
-**Function**: Solves inverse problems to construct valid model objects.
-**Structure**:
-
-```text
-bootstrapping/  → Yield Curve stripping from OIS/Swap rates (multi-curve)
-calibration/    → Stochastic model calibration (Hull-White α/σ from swaptions)
-solvers/        → Levenberg-Marquardt, BFGS algorithms
-provider.rs     → MarketProvider for lazy market data resolution (Arc-cached curves/vols)
-```
-
-**Integration**: Calls `pricer_pricing` to obtain gradients (via Enzyme) for efficient parameter search.
+- **CalibrationEngine**: Uses `pricer_core::math::solvers::LevenbergMarquardtSolver` for parameter optimisation
+- **Feature-Flag Models**: Each model category gated by feature (equity, rates)
+- **Static Dispatch**: Enum-based dispatch for Enzyme compatibility
 
 ### pricer_pricing (L3)
 

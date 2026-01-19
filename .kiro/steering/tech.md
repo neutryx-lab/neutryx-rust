@@ -7,7 +7,7 @@
 ```text
 A: Adapter   → adapter_feeds, adapter_fpml, adapter_loader
 I: Infra     → infra_config, infra_master, infra_store
-P: Pricer    → pricer_core (L1), pricer_models (L2), pricer_optimiser (L2.5), pricer_pricing (L3), pricer_risk (L4)
+P: Pricer    → pricer_core (L1), pricer_models (L2), pricer_pricing (L3), pricer_risk (L4)
 S: Service   → service_cli, service_gateway, service_python
 ```
 
@@ -119,7 +119,7 @@ docker run -it neutryx-enzyme
 | Decision | Rationale |
 |----------|-----------|
 | **A-I-P-S Architecture** | Unidirectional data flow from Adapters through Infrastructure and Pricing to Services |
-| **Pricer Layer Hierarchy** | L1→L2→L2.5→L3→L4 isolates experimental Enzyme code |
+| **Pricer Layer Hierarchy** | L1→L2→L3→L4 isolates experimental Enzyme code |
 | **Static Dispatch (enum)** | Enzyme performs better with concrete types than trait objects |
 | **StochasticModel Trait** | Unified interface for stochastic processes with enum-based dispatch |
 | **Dual-Mode Verification** | Enzyme (performance) + num-dual (correctness) for validation |

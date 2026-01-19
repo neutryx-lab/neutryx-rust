@@ -20,8 +20,7 @@
 //! - No SABR calibration for VanillaSwap trades
 
 use pricer_core::types::Currency;
-use pricer_core::market_data::provider::MarketProvider;
-use pricer_risk::demo::{run_portfolio_pricing, DemoTrade};
+use pricer_risk::demo::{run_portfolio_pricing, DemoTrade, MarketProvider};
 
 use crate::Result;
 

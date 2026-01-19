@@ -27,8 +27,7 @@ use demo_outputs::{
 };
 use pricer_core::types::Currency;
 use pricer_models::demo::{BlackScholes, InstrumentEnum, ModelEnum, VanillaSwap};
-use pricer_core::market_data::provider::MarketProvider;
-use pricer_risk::demo::{run_portfolio_pricing, DemoTrade, PricingResultDemo};
+use pricer_risk::demo::{run_portfolio_pricing, DemoTrade, MarketProvider, PricingResultDemo};
 
 use super::{DemoWorkflow, ProgressCallback, WorkflowResult, WorkflowStep};
 use crate::{config::DemoConfig, error::DemoError};

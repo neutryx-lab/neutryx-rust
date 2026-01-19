@@ -115,41 +115,41 @@
 
 ## Phase 5: pricer_optimiser 削除と依存関係整理
 
-- [ ] 5. pricer_optimiser を廃止し、依存関係を整理する
+- [x] 5. pricer_optimiser を廃止し、依存関係を整理する
 
-- [ ] 5.1 依存クレートの Cargo.toml を更新する
-  - pricer_risk の Cargo.toml から pricer_optimiser 依存を削除する
-  - pricer_risk に pricer_core（bootstrapping 用）への依存を追加/更新する
-  - service_cli, service_gateway, service_python の依存を更新する
-  - pricer_pricing から pricer_optimiser 依存を削除する（存在する場合）
+- [x] 5.1 依存クレートの Cargo.toml を更新する
+  - pricer_risk の Cargo.toml から pricer_optimiser 依存を削除する ✓ (既に完了)
+  - pricer_risk に pricer_core（bootstrapping 用）への依存を追加/更新する ✓
+  - service_cli, service_gateway, service_python の依存を更新する ✓ (既に完了)
+  - pricer_pricing から pricer_optimiser 依存を削除する（存在する場合）✓ (既に完了)
   - _Requirements: 1.6, 5.2, 5.3_
 
-- [ ] 5.2 pricer_optimiser を workspace から削除する
-  - ルートの Cargo.toml から pricer_optimiser を workspace members から削除する
-  - crates/pricer_optimiser/ ディレクトリを削除する
+- [x] 5.2 pricer_optimiser を workspace から削除する
+  - ルートの Cargo.toml から pricer_optimiser を workspace members から削除する ✓ (既に完了)
+  - crates/pricer_optimiser/ ディレクトリを削除する ✓
   - _Requirements: 1.2, 1.3, 1.5_
 
-- [ ] 5.3 依存関係整理後の検証を行う
-  - `cargo build --workspace` を実行し、警告なしで成功することを確認する
-  - `cargo tree` で循環依存がないことを確認する
-  - 依存グラフが L1 ← L2 ← L3 ← L4 を維持していることを確認する
+- [x] 5.3 依存関係整理後の検証を行う
+  - `cargo build --workspace` を実行し、警告なしで成功することを確認する ✓
+  - `cargo tree` で循環依存がないことを確認する ✓
+  - 依存グラフが L1 ← L2 ← L3 ← L4 を維持していることを確認する ✓
   - _Requirements: 5.1, 5.4, 5.5_
 
 ---
 
 ## Phase 6: ドキュメントとテスト更新
 
-- [ ] 6. ドキュメントを更新し、全体テストを実行する
+- [x] 6. ドキュメントを更新し、全体テストを実行する
 
-- [ ] 6.1 (P) steering ドキュメントを更新する
-  - .kiro/steering/structure.md から pricer_optimiser セクションを削除する
-  - pricer_core セクションに trades, bootstrapping, provider を追加する
-  - pricer_models セクションを更新する（instruments, schedules の削除を反映）
-  - .kiro/steering/tech.md のレイヤー図から L2.5 を削除する
+- [x] 6.1 (P) steering ドキュメントを更新する
+  - .kiro/steering/structure.md から pricer_optimiser セクションを削除する ✓
+  - pricer_core セクションに trades, bootstrapping, provider を追加する ✓
+  - pricer_models セクションを更新する（instruments, schedules の削除を反映）✓
+  - .kiro/steering/tech.md のレイヤー図から L2.5 を削除する ✓
   - _Requirements: 6.1, 6.2_
 
-- [ ] 6.2 全体テストと最終検証を実行する
-  - `cargo test --workspace --all-features` を実行する
-  - 全 feature flag 組み合わせでのビルドを確認する
-  - 各モジュールの doc comments が新しい配置を反映していることを確認する
+- [x] 6.2 全体テストと最終検証を実行する
+  - `cargo test --workspace --all-features` を実行する ✓ (enzyme-ad を除く)
+  - 全 feature flag 組み合わせでのビルドを確認する ✓
+  - 各モジュールの doc comments が新しい配置を反映していることを確認する ✓
   - _Requirements: 6.3, 6.4_

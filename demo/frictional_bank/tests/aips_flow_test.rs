@@ -10,8 +10,7 @@ use demo_outputs::{
 };
 use pricer_core::types::Currency;
 use pricer_models::demo::{BlackScholes, InstrumentEnum, ModelEnum, VanillaSwap};
-use pricer_core::market_data::provider::MarketProvider;
-use pricer_risk::demo::{run_portfolio_pricing, DemoTrade};
+use pricer_risk::demo::{run_portfolio_pricing, DemoTrade, MarketProvider};
 
 /// Test the complete A-I-P-S data flow
 #[test]
