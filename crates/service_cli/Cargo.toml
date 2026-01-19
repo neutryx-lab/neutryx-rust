@@ -16,10 +16,6 @@ serde.workspace = true
 # CLI argument parsing
 clap = { version = "4.4", features = ["derive"] }
 
-# Configuration
-config = "0.14"
-toml = "0.8"
-
 # Logging
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
@@ -28,7 +24,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 num_cpus = "1.16"
 rayon.workspace = true
 
-# Internal dependencies (following A-I-P-S: S depends on P, I, A)
+# Internal dependencies (following A-I-P-S: S depends on P, I)
+# Note: Adapter dependencies should be added when data loading is implemented
 pricer_core = { path = "../pricer_core" }
 pricer_models = { path = "../pricer_models" }
 pricer_optimiser = { path = "../pricer_optimiser" }
@@ -37,9 +34,6 @@ pricer_risk = { path = "../pricer_risk" }
 infra_config = { path = "../infra_config" }
 infra_master = { path = "../infra_master" }
 infra_store = { path = "../infra_store" }
-adapter_feeds = { path = "../adapter_feeds" }
-adapter_fpml = { path = "../adapter_fpml" }
-adapter_loader = { path = "../adapter_loader" }
 
 [[bin]]
 name = "neutryx"

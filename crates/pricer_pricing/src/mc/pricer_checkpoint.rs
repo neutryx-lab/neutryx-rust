@@ -112,7 +112,7 @@ impl CheckpointPricer {
     /// # Errors
     ///
     /// Returns error if configuration is invalid.
-    pub fn new(config: CheckpointPricingConfig) -> Result<Self, crate::mc::ConfigError> {
+    pub fn new(config: CheckpointPricingConfig) -> Result<Self, crate::mc::MonteCarloConfigError> {
         config.mc_config.validate()?;
 
         let n_paths = config.mc_config.n_paths();

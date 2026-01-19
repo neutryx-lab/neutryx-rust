@@ -10,7 +10,7 @@ pub type Result<T> = std::result::Result<T, CliError>;
 pub enum CliError {
     /// Configuration error
     #[error("Configuration error: {0}")]
-    Config(#[from] config::ConfigError),
+    Config(#[from] infra_config::ConfigError),
 
     /// I/O error
     #[error("I/O error: {0}")]

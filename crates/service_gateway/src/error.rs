@@ -27,6 +27,10 @@ pub enum ServerError {
     #[error("Not found: {0}")]
     NotFound(String),
 
+    /// Request timeout (504 Gateway Timeout)
+    #[error("Request timeout: {0}")]
+    Timeout(String),
+
     /// Internal error
     #[error("Internal error: {0}")]
     Internal(String),
@@ -39,6 +43,7 @@ impl IntoResponse for ServerError {
             ServerError::Calibration(msg) => (StatusCode::UNPROCESSABLE_ENTITY, msg.clone()),
             ServerError::InvalidRequest(msg) => (StatusCode::BAD_REQUEST, msg.clone()),
             ServerError::NotFound(msg) => (StatusCode::NOT_FOUND, msg.clone()),
+            ServerError::Timeout(msg) => (StatusCode::GATEWAY_TIMEOUT, msg.clone()),
             ServerError::Internal(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg.clone()),
         };
 

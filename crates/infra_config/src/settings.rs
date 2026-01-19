@@ -6,14 +6,23 @@ use serde::Deserialize;
 use crate::error::ConfigError;
 
 /// Main application settings.
+///
+/// This is the single source of truth for all Neutryx configuration.
+/// Services should use this struct instead of defining their own config types.
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct Settings {
-    /// Engine configuration
+    /// Engine configuration (thread pools, memory limits, Monte Carlo)
     #[serde(default)]
     pub engine: EngineConfig,
     /// Database configuration
     #[serde(default)]
     pub database: DatabaseConfig,
+    /// Service-specific configuration (CLI, Gateway)
+    #[serde(default)]
+    pub service: ServiceConfig,
+    /// Logging and output configuration
+    #[serde(default)]
+    pub logging: LoggingConfig,
 }
 
 impl Settings {
@@ -101,6 +110,89 @@ impl Default for DatabaseConfig {
 fn default_max_connections() -> u32 { 10 }
 
 fn default_connection_timeout() -> u64 { 30 }
+
+/// Service-specific configuration.
+///
+/// Consolidates settings for CLI, Gateway, and other services.
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct ServiceConfig {
+    /// REST API configuration
+    #[serde(default)]
+    pub rest: RestConfig,
+    /// gRPC API configuration
+    #[serde(default)]
+    pub grpc: GrpcConfig,
+}
+
+/// REST API configuration.
+#[derive(Debug, Deserialize, Clone)]
+pub struct RestConfig {
+    /// Enable REST API
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    /// REST API bind address
+    #[serde(default = "default_rest_addr")]
+    pub addr: String,
+}
+
+impl Default for RestConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            addr: default_rest_addr(),
+        }
+    }
+}
+
+fn default_true() -> bool { true }
+
+fn default_rest_addr() -> String { "0.0.0.0:8080".to_string() }
+
+/// gRPC API configuration.
+#[derive(Debug, Deserialize, Clone)]
+pub struct GrpcConfig {
+    /// Enable gRPC API
+    #[serde(default)]
+    pub enabled: bool,
+    /// gRPC bind address
+    #[serde(default = "default_grpc_addr")]
+    pub addr: String,
+}
+
+impl Default for GrpcConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            addr: default_grpc_addr(),
+        }
+    }
+}
+
+fn default_grpc_addr() -> String { "0.0.0.0:50051".to_string() }
+
+/// Logging and output configuration.
+#[derive(Debug, Deserialize, Clone)]
+pub struct LoggingConfig {
+    /// Log level (trace, debug, info, warn, error)
+    #[serde(default = "default_log_level")]
+    pub level: String,
+    /// Output directory for reports and results
+    #[serde(default = "default_output_dir")]
+    pub output_dir: String,
+}
+
+impl Default for LoggingConfig {
+    fn default() -> Self {
+        Self {
+            level: default_log_level(),
+            output_dir: default_output_dir(),
+        }
+    }
+}
+
+fn default_log_level() -> String { "info".to_string() }
+
+fn default_output_dir() -> String { "./output".to_string() }
 
 #[cfg(test)]
 mod tests {

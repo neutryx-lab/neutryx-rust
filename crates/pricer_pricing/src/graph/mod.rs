@@ -36,7 +36,10 @@ mod extractor;
 mod types;
 
 pub use error::GraphError;
-pub use extractor::{GraphBuilder, GraphExtractable, SimpleGraphExtractor};
+pub use extractor::{
+    GraphBuilder, GraphExtractable, PortfolioGraphExtractable, PortfolioGraphExtractor,
+    SimpleGraphExtractor,
+};
 pub use types::{
     ComputationGraph, GraphEdge, GraphMetadata, GraphNode, GraphNodeUpdate, NodeGroup, NodeType,
     PortfolioComputationGraph, PortfolioGraphMetadata,

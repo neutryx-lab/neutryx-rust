@@ -14,14 +14,19 @@
 //! - `POST /api/v1/price` - Price a single instrument
 //! - `POST /api/v1/price/batch` - Price a portfolio
 //! - `POST /api/v1/calibrate` - Calibrate model parameters
-//! - `GET /api/v1/health` - Health check
+//! - `GET /api/v1/portfolio/graph` - Get Portfolio computation graph
+//! - `GET /api/v1/portfolio/trades` - List Portfolio trades
+//! - `GET /health` - Health check
+//!
+//! ## WebSocket
+//! - `GET /ws` - Real-time graph updates (select_trades, subgraph_update)
 //!
 //! ## gRPC (Tonic)
 //! - `PricingService.PriceInstrument` - Price a single instrument
 //! - `PricingService.PricePortfolio` - Price a portfolio (streaming)
 //! - `CalibrationService.Calibrate` - Calibrate model parameters
 
-use std::net::SocketAddr;
+use std::{net::SocketAddr, sync::Arc};
 
 use anyhow::Result;
 use tracing::info;
@@ -32,6 +37,7 @@ mod error;
 mod rest;
 
 pub use error::ServerError;
+pub use rest::{GraphAppState, WsAppState};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -43,8 +49,8 @@ async fn main() -> Result<()> {
 
     info!("Starting Neutryx Server...");
 
-    // Load configuration
-    let config = config::ServerConfig::from_env()?;
+    // Load configuration from unified settings
+    let config = config::ServerConfig::load()?;
 
     info!("Configuration loaded");
     info!("  REST enabled: {}", config.rest_enabled);
@@ -56,7 +62,30 @@ async fn main() -> Result<()> {
         let addr: SocketAddr = config.rest_addr.parse()?;
         info!("Starting REST server on {}", addr);
 
-        let app = rest::create_router();
+        // Initialise graph state with sample portfolio
+        let graph_state = match GraphAppState::new_with_sample(50, 5) {
+            Ok(state) => {
+                info!(
+                    "Sample portfolio created with {} trades",
+                    state.portfolio.trade_count()
+                );
+                Arc::new(state)
+            }
+            Err(e) => {
+                tracing::warn!("Failed to create graph state: {}. Using basic router.", e);
+                // Fall back to basic router without graph endpoints
+                let app = rest::create_router();
+                let listener = tokio::net::TcpListener::bind(addr).await?;
+                axum::serve(listener, app).await?;
+                return Ok(());
+            }
+        };
+
+        // Create WebSocket state wrapping graph state
+        let ws_state = Arc::new(WsAppState::new(graph_state));
+        info!("WebSocket endpoint enabled at /ws");
+
+        let app = rest::create_router_with_ws_state(ws_state);
 
         let listener = tokio::net::TcpListener::bind(addr).await?;
         axum::serve(listener, app).await?;

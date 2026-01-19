@@ -22,7 +22,7 @@
 
 use super::{
     config::MonteCarloConfig,
-    error::ConfigError,
+    error::MonteCarloConfigError,
     paths::{generate_gbm_paths, generate_gbm_paths_tangent_spot, GbmParams},
     payoff::{compute_payoff, compute_payoffs, PayoffParams},
     workspace::PathWorkspace,
@@ -191,8 +191,8 @@ impl MonteCarloPricer {
     ///
     /// # Errors
     ///
-    /// Returns `ConfigError` if configuration is invalid.
-    pub fn new(config: MonteCarloConfig) -> Result<Self, ConfigError> {
+    /// Returns `MonteCarloConfigError` if configuration is invalid.
+    pub fn new(config: MonteCarloConfig) -> Result<Self, MonteCarloConfigError> {
         config.validate()?;
 
         let seed = config.seed().unwrap_or(0);
@@ -217,8 +217,8 @@ impl MonteCarloPricer {
     ///
     /// # Errors
     ///
-    /// Returns `ConfigError` if configuration is invalid.
-    pub fn with_seed(config: MonteCarloConfig, seed: u64) -> Result<Self, ConfigError> {
+    /// Returns `MonteCarloConfigError` if configuration is invalid.
+    pub fn with_seed(config: MonteCarloConfig, seed: u64) -> Result<Self, MonteCarloConfigError> {
         config.validate()?;
 
         let workspace = PathWorkspace::new(config.n_paths(), config.n_steps());

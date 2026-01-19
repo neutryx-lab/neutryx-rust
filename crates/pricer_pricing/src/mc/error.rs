@@ -8,8 +8,11 @@ use thiserror::Error;
 /// Configuration error for Monte Carlo pricer.
 ///
 /// These errors occur during construction when invalid parameters are provided.
+///
+/// Note: Named `MonteCarloConfigError` to avoid collision with
+/// `infra_config::ConfigError` which handles system-wide configuration errors.
 #[derive(Error, Clone, Debug, PartialEq, Eq)]
-pub enum ConfigError {
+pub enum MonteCarloConfigError {
     /// Path count outside valid range [1, 10_000_000].
     #[error("Invalid path count {0}: must be in range [1, 10_000_000]")]
     InvalidPathCount(usize),
@@ -25,6 +28,10 @@ pub enum ConfigError {
         value: String,
     },
 }
+
+/// Backward-compatible alias for `MonteCarloConfigError`.
+#[deprecated(since = "0.2.0", note = "Use MonteCarloConfigError instead")]
+pub type ConfigError = MonteCarloConfigError;
 
 #[cfg(test)]
 mod tests {

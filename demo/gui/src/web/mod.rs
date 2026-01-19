@@ -32,7 +32,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use handlers::GraphCache;
+use handlers::{GraphCache, PortfolioGraphCache};
 use jobs::JobManager;
 use pricer_types::BootstrapCurveCache;
 use tokio::sync::{broadcast, RwLock};
@@ -211,6 +211,8 @@ pub struct AppState {
     pub tx: broadcast::Sender<String>,
     /// Graph cache for performance optimisation (Task 3.3)
     pub graph_cache: RwLock<GraphCache>,
+    /// Portfolio graph cache for performance optimisation (Task 4.4)
+    pub portfolio_graph_cache: RwLock<PortfolioGraphCache>,
     /// Set of trade IDs that clients have subscribed to for graph updates (Task
     /// 4.3)
     pub graph_subscriptions: RwLock<HashSet<String>>,
@@ -231,6 +233,7 @@ impl AppState {
         Self {
             tx,
             graph_cache: RwLock::new(GraphCache::new()),
+            portfolio_graph_cache: RwLock::new(PortfolioGraphCache::new()),
             graph_subscriptions: RwLock::new(HashSet::new()),
             metrics: PerformanceMetrics::new(),
             debug_config: DebugConfig::from_env(),
@@ -405,7 +408,11 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/v1/jobs/:id", get(handlers::get_job_status))
         // Scenario analysis endpoint
         .route("/scenario", post(handlers::run_scenario))
-        .route("/ws", get(websocket::ws_handler));
+        .route("/ws", get(websocket::ws_handler))
+        // Task 4.1: Portfolio Graph API (portfolio-graph-optimisation)
+        .route("/v1/portfolio/graph", get(handlers::get_portfolio_graph))
+        // Task 4.3: Portfolio Trades List API (portfolio-graph-optimisation)
+        .route("/v1/portfolio/trades", get(handlers::get_portfolio_trades));
 
     // Static file serving for the dashboard
     let static_files =
