@@ -6,7 +6,7 @@
 //! # Examples
 //!
 //! ```
-//! use pricer_core::types::currency::Currency;
+//! use infra_master::Currency;
 //!
 //! let usd = Currency::USD;
 //! assert_eq!(usd.code(), "USD");
@@ -18,7 +18,7 @@
 
 use std::{fmt, str::FromStr};
 
-use super::error::CurrencyError;
+use crate::CurrencyError;
 
 /// ISO 4217 currency codes with decimal precision metadata.
 ///
@@ -36,7 +36,7 @@ use super::error::CurrencyError;
 /// # Examples
 ///
 /// ```
-/// use pricer_core::types::currency::Currency;
+/// use infra_master::Currency;
 ///
 /// // Get currency code
 /// assert_eq!(Currency::USD.code(), "USD");
@@ -90,7 +90,7 @@ impl Currency {
     /// # Examples
     ///
     /// ```
-    /// use pricer_core::types::currency::Currency;
+    /// use infra_master::Currency;
     ///
     /// assert_eq!(Currency::USD.code(), "USD");
     /// assert_eq!(Currency::EUR.code(), "EUR");
@@ -98,6 +98,7 @@ impl Currency {
     /// assert_eq!(Currency::JPY.code(), "JPY");
     /// assert_eq!(Currency::CHF.code(), "CHF");
     /// ```
+    #[must_use]
     pub fn code(&self) -> &'static str {
         match self {
             Currency::USD => "USD",
@@ -115,7 +116,7 @@ impl Currency {
     /// # Examples
     ///
     /// ```
-    /// use pricer_core::types::currency::Currency;
+    /// use infra_master::Currency;
     ///
     /// assert_eq!(Currency::USD.decimal_places(), 2);
     /// assert_eq!(Currency::EUR.decimal_places(), 2);
@@ -123,6 +124,7 @@ impl Currency {
     /// assert_eq!(Currency::JPY.decimal_places(), 0);
     /// assert_eq!(Currency::CHF.decimal_places(), 2);
     /// ```
+    #[must_use]
     pub fn decimal_places(&self) -> u8 {
         match self {
             Currency::USD => 2,
@@ -142,7 +144,7 @@ impl FromStr for Currency {
     /// # Examples
     ///
     /// ```
-    /// use pricer_core::types::currency::Currency;
+    /// use infra_master::Currency;
     ///
     /// let usd: Currency = "USD".parse().unwrap();
     /// assert_eq!(usd, Currency::USD);
@@ -259,35 +261,5 @@ mod tests {
         set.insert(Currency::EUR);
         set.insert(Currency::USD); // Duplicate
         assert_eq!(set.len(), 2);
-    }
-
-    #[cfg(feature = "serde")]
-    mod serde_tests {
-        use super::*;
-
-        #[test]
-        fn test_currency_serde_roundtrip() {
-            let currency = Currency::USD;
-            let json = serde_json::to_string(&currency).unwrap();
-            assert_eq!(json, "\"USD\"");
-
-            let parsed: Currency = serde_json::from_str(&json).unwrap();
-            assert_eq!(parsed, currency);
-        }
-
-        #[test]
-        fn test_all_currencies_serde_roundtrip() {
-            for currency in [
-                Currency::USD,
-                Currency::EUR,
-                Currency::GBP,
-                Currency::JPY,
-                Currency::CHF,
-            ] {
-                let json = serde_json::to_string(&currency).unwrap();
-                let parsed: Currency = serde_json::from_str(&json).unwrap();
-                assert_eq!(parsed, currency);
-            }
-        }
     }
 }

@@ -8,7 +8,7 @@ _Updated: 2026-01-19_
 
 ## Current State Summary
 
-### Completed Specifications (16)
+### Completed Specifications (17)
 
 | Spec | Description | Completed |
 |------|-------------|-----------|
@@ -28,6 +28,7 @@ _Updated: 2026-01-19_
 | frictionalbank-webapp-pricer | Web dashboard pricer integration (19 tasks) | 2026-01-16 |
 | advanced-sensitivity-webapp | Advanced sensitivity analysis for web dashboard | 2026-01-19 |
 | codebase-cleanup-optimisation | Codebase cleanup and optimisation (16 tasks) | 2026-01-19 |
+| portfolio-graph-optimisation | Portfolio Graph REST API and WebSocket handlers | 2026-01-19 |
 
 ### Layer Implementation Status
 
@@ -62,7 +63,7 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 | Crate | Status | Notes |
 |-------|--------|-------|
 | service_cli | 🔶 | Basic commands (calibrate/price/report/demo) |
-| service_gateway | 🔶 | REST skeleton only, gRPC not implemented |
+| service_gateway | ✅ | REST API (price, portfolio, graph), WebSocket, gRPC skeleton |
 | service_python | 🔶 | Basic bindings (VanillaOption, Forward, HullWhite) |
 
 ---
@@ -126,7 +127,9 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 
 ### Active Specifications (Ready for Implementation)
 
-_None currently_
+| Spec | Phase | Description |
+|------|-------|-------------|
+| infra-primitives-migration | tasks-generated | Financial primitives migration to infra_master |
 
 ## Recommended Next Steps
 
@@ -140,6 +143,7 @@ _None currently_
 
 | Date | Change |
 |------|--------|
+| 2026-01-19 | Steering sync: portfolio-graph-optimisation completed, service_gateway upgraded to ✅, infra-primitives-migration active |
 | 2026-01-19 | codebase-cleanup-optimisation: Complete (16 tasks, all phases verified). Total completed specs: 16 |
 | 2026-01-19 | Steering sync: Added 3 completed specs (webapp-polish, webapp-pricer, irs-bootstrap-risk), added advanced-sensitivity-webapp to active specs |
 | 2026-01-16 | Steering sync: OpenAPI/Swagger documentation, scenario analysis handlers, async job manager, Prometheus metrics, parallel portfolio Greeks |

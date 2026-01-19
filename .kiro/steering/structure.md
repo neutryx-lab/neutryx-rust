@@ -75,9 +75,27 @@ S: Service   → Execution environments and interfaces (The Outputs)
 ### infra_master
 
 **Location**: `crates/infra_master/src/`
-**Purpose**: Static master data (Calendars, Currencies, ISINs)
+**Purpose**: Static master data and financial primitives
 **Function**: The "Source of Truth" for static finance data.
-**Scope**: Holiday calendars (TARGET, NY, JP), Currency definitions (ISO 4217), and Day Count Convention lookups.
+**Scope**: Holiday calendars, Day count conventions, Counterparty/CSA data, Financial date and time primitives.
+**Structure**:
+
+```text
+calendar.rs        → Holiday calendars (Calendar, CalendarId: Target, NewYork, Tokyo, etc.)
+day_count.rs       → Day count conventions (DayCountConvention: Act360, Act365, Thirty360, etc.)
+counterparty.rs    → Counterparty master data (CsaTerms, NettingSetConfig)
+currency.rs        → ISO 4217 currency codes (Currency enum with metadata)
+date.rs            → Financial date wrapper (Date)
+business_day.rs    → Business day conventions (BusinessDayConvention)
+tenor.rs           → Tenor definitions (Tenor, EndOfMonthRule)
+frequency.rs       → Payment frequencies (Frequency: Annual, SemiAnnual, Quarterly, etc.)
+period.rs          → Period definitions (Period)
+direction.rs       → Trade/Swap directions (TradeDirection, SwapDirection)
+rate_index.rs      → Rate index definitions (RateIndex)
+error.rs           → Error types (DateError, CurrencyError, MasterDataError)
+```
+
+**Prelude**: `infra_master::prelude` exports all commonly used types.
 
 ### infra_store
 
@@ -318,15 +336,32 @@ main.rs     → Entry point with clap argument parsing
 **Location**: `crates/service_gateway/src/`
 **Purpose**: gRPC/REST API Gateway (Microservices)
 **Function**: Production integration point.
-**Scope**: gRPC (Tonic) and REST (Axum) endpoints for microservice deployment.
+**Scope**: REST (Axum) and gRPC (Tonic) endpoints for microservice deployment.
 **Structure**:
 
 ```text
-grpc/       → Tonic service implementations
-rest/       → Axum route handlers
-proto/      → Protocol buffer definitions
+rest/
+├── handlers.rs       → Core API handlers (price, batch, calibrate, exposure)
+├── graph_handlers.rs → Portfolio graph REST handlers (subgraph extraction, caching)
+├── ws_handlers.rs    → WebSocket handlers (real-time graph updates)
+└── mod.rs            → Router configuration (with/without WebSocket state)
+grpc/       → Tonic service implementations (skeleton)
+config.rs   → Server configuration
+error.rs    → Structured error types (ServerError)
 main.rs     → Server entry point
 ```
+
+**REST API Endpoints**:
+- `/health` - Health check
+- `/api/v1/price` - Single instrument pricing
+- `/api/v1/price/batch` - Portfolio batch pricing
+- `/api/v1/calibrate` - Model calibration
+- `/api/v1/exposure` - Exposure calculation
+- `/api/v1/portfolio/graph` - Portfolio computation graph (D3.js-compatible)
+- `/api/v1/portfolio/trades` - Portfolio trade listing with filters
+
+**WebSocket Endpoint**:
+- `/ws` - Real-time graph updates (select_trades, subgraph_update events)
 
 ### service_python
 
@@ -496,5 +531,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-19_ — Added GreeksResultByFactor to scenarios module documentation
+_Updated: 2026-01-19_ — Updated service_gateway (REST + WebSocket + Portfolio Graph API), expanded infra_master (financial primitives)
 _Document patterns, not file trees. New files following patterns should not require updates_

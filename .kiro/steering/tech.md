@@ -53,6 +53,7 @@ S: Service   → service_cli, service_gateway, service_python
 - **Python Bindings**: `pyo3` (service_python)
 - **gRPC**: `tonic` (service_gateway)
 - **REST**: `axum` (service_gateway)
+- **WebSocket**: `axum` WebSocket, `futures-util` (service_gateway real-time updates)
 
 ### Demo Layer
 
@@ -156,5 +157,5 @@ docker run -it neutryx-enzyme
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-16_ — Added OpenAPI/Swagger, Prometheus metrics, parallel portfolio Greeks
+_Updated: 2026-01-19_ — Added WebSocket support in service_gateway (axum, futures-util)
 _Document standards and patterns, not every dependency_

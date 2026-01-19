@@ -12,6 +12,7 @@ num-dual = { workspace = true, optional = true }
 chrono = { workspace = true, features = [] }
 thiserror.workspace = true
 serde = { workspace = true, features = ["derive"], optional = true }
+infra_master = { path = "../infra_master" }
 
 [dev-dependencies]
 approx.workspace = true
@@ -27,7 +28,7 @@ harness = false
 default = ["num-dual-mode", "serde"]
 num-dual-mode = ["dep:num-dual"]  # Verification mode with dual numbers
 enzyme-mode = []                   # Production mode (Enzyme AD)
-serde = ["dep:serde", "chrono/serde"]  # Serialisation support
+serde = ["dep:serde", "chrono/serde", "infra_master/serde"]  # Serialisation support
 
 [lints]
 workspace = true

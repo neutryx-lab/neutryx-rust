@@ -22,9 +22,10 @@
 
 use std::fmt;
 
+use infra_master::Currency;
 use num_traits::Float;
 
-use super::{currency::Currency, error::CurrencyError};
+use super::error::CurrencyError;
 
 /// A currency pair for foreign exchange calculations.
 ///

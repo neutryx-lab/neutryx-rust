@@ -47,9 +47,16 @@
 pub mod analytical;
 pub mod calibration;
 pub mod demo;
+mod direction_ext;
 pub mod instruments;
 pub mod models;
 pub mod schedules;
+
+// Re-export direction types from infra_master
+pub use infra_master::{SwapDirection, TradeDirection};
+
+// Re-export extension traits for direction types
+pub use direction_ext::{SwapDirectionExt, TradeDirectionExt};
 
 #[cfg(test)]
 mod tests {

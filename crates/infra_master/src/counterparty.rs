@@ -7,6 +7,8 @@
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::return_self_not_must_use)]
 
+use crate::Currency;
+
 /// Credit Support Annex terms.
 ///
 /// Defines the collateral agreement between counterparties. CSA terms govern
@@ -18,7 +20,7 @@
 /// * `threshold` - Exposure below which no collateral is required (in base currency)
 /// * `minimum_transfer_amount` - Minimum amount for margin calls
 /// * `independent_amount` - Initial margin amount (also known as initial amount)
-/// * `currency_code` - ISO 4217 currency code for collateral
+/// * `collateral_currency` - Currency for collateral (type-safe ISO 4217)
 /// * `margin_period_of_risk` - Risk period in days (typically 10 for cleared, 14+ for bilateral)
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -31,8 +33,8 @@ pub struct CsaTerms {
     pub minimum_transfer_amount: f64,
     /// Independent amount (initial margin)
     pub independent_amount: f64,
-    /// Collateral currency (ISO 4217 code)
-    pub currency_code: String,
+    /// Collateral currency (type-safe)
+    pub collateral_currency: Currency,
     /// Margin period of risk (in days)
     pub margin_period_of_risk: u32,
 }
@@ -44,7 +46,7 @@ impl Default for CsaTerms {
             threshold: 0.0,
             minimum_transfer_amount: 0.0,
             independent_amount: 0.0,
-            currency_code: "USD".to_string(),
+            collateral_currency: Currency::USD,
             margin_period_of_risk: 10,
         }
     }
@@ -77,9 +79,9 @@ impl CsaTerms {
         self
     }
 
-    /// Set currency code.
-    pub fn with_currency(mut self, currency_code: impl Into<String>) -> Self {
-        self.currency_code = currency_code.into();
+    /// Set collateral currency.
+    pub fn with_currency(mut self, currency: Currency) -> Self {
+        self.collateral_currency = currency;
         self
     }
 
@@ -148,7 +150,7 @@ mod tests {
         let csa = CsaTerms::default();
         assert_eq!(csa.csa_id, "");
         assert_eq!(csa.threshold, 0.0);
-        assert_eq!(csa.currency_code, "USD");
+        assert_eq!(csa.collateral_currency, Currency::USD);
         assert_eq!(csa.margin_period_of_risk, 10);
     }
 
@@ -158,14 +160,14 @@ mod tests {
             .with_threshold(1_000_000.0)
             .with_mta(50_000.0)
             .with_independent_amount(100_000.0)
-            .with_currency("EUR")
+            .with_currency(Currency::EUR)
             .with_mpor(14);
 
         assert_eq!(csa.csa_id, "CSA001");
         assert_eq!(csa.threshold, 1_000_000.0);
         assert_eq!(csa.minimum_transfer_amount, 50_000.0);
         assert_eq!(csa.independent_amount, 100_000.0);
-        assert_eq!(csa.currency_code, "EUR");
+        assert_eq!(csa.collateral_currency, Currency::EUR);
         assert_eq!(csa.margin_period_of_risk, 14);
     }
 
