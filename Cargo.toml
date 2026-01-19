@@ -117,3 +117,26 @@ inherits = "release"
 # Usage: cargo +nightly pgo optimize
 [profile.pgo-use]
 inherits = "release"
+
+# =============================================================================
+# Workspace-wide Lint Configuration
+# =============================================================================
+[workspace.lints.rust]
+# Require documentation for public items
+missing_docs = "warn"
+# Prohibit unsafe code by default (use #[allow(unsafe_code)] where necessary)
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+# Enable pedantic checks for production-quality code
+pedantic = { level = "warn", priority = -1 }
+# Prohibit panic-inducing methods in library code
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+# Prohibit direct floating-point equality comparisons
+float_cmp = "deny"
+# Warn about mathematically inefficient operations
+suboptimal_flops = "warn"
+# Ensure documentation follows markdown conventions
+doc_markdown = "warn"
