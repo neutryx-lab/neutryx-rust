@@ -31,3 +31,6 @@ redis = ["dep:tokio", "dep:async-trait"]
 
 [dev-dependencies]
 approx.workspace = true
+
+[lints]
+workspace = true

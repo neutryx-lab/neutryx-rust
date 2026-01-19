@@ -28,3 +28,6 @@ default = ["num-dual-mode", "serde"]
 num-dual-mode = ["dep:num-dual"]  # Verification mode with dual numbers
 enzyme-mode = []                   # Production mode (Enzyme AD)
 serde = ["dep:serde", "chrono/serde"]  # Serialisation support
+
+[lints]
+workspace = true

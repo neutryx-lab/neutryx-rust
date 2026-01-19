@@ -5,8 +5,10 @@
 //! - `BumpScenario`: Collection of coordinated shifts
 //! - `Scenario`: Named scenario with description
 
-use pricer_core::traits::risk::{RiskFactorType, ShiftType};
-use pricer_core::traits::Float;
+use pricer_core::traits::{
+    risk::{RiskFactorType, ShiftType},
+    Float,
+};
 
 /// Specification for shifting a single risk factor.
 ///
@@ -77,19 +79,13 @@ impl<T: Float> RiskFactorShift<T> {
     }
 
     /// Get the factor type.
-    pub fn factor_type(&self) -> RiskFactorType {
-        self.factor_type
-    }
+    pub fn factor_type(&self) -> RiskFactorType { self.factor_type }
 
     /// Get the identifier pattern.
-    pub fn identifier_pattern(&self) -> &str {
-        &self.identifier_pattern
-    }
+    pub fn identifier_pattern(&self) -> &str { &self.identifier_pattern }
 
     /// Get the shift.
-    pub fn shift(&self) -> &ShiftType<T> {
-        &self.shift
-    }
+    pub fn shift(&self) -> &ShiftType<T> { &self.shift }
 
     /// Check if an identifier matches the pattern.
     ///
@@ -121,9 +117,7 @@ pub struct BumpScenario<T: Float> {
 
 impl<T: Float> BumpScenario<T> {
     /// Create a new empty bump scenario.
-    pub fn new() -> Self {
-        Self { shifts: Vec::new() }
-    }
+    pub fn new() -> Self { Self { shifts: Vec::new() } }
 
     /// Add a shift to the scenario.
     pub fn with_shift(mut self, shift: RiskFactorShift<T>) -> Self {
@@ -138,9 +132,7 @@ impl<T: Float> BumpScenario<T> {
     }
 
     /// Get all shifts.
-    pub fn shifts(&self) -> &[RiskFactorShift<T>] {
-        &self.shifts
-    }
+    pub fn shifts(&self) -> &[RiskFactorShift<T>] { &self.shifts }
 
     /// Get shifts for a specific factor type.
     pub fn shifts_for_type(&self, factor_type: RiskFactorType) -> Vec<&RiskFactorShift<T>> {
@@ -156,20 +148,14 @@ impl<T: Float> BumpScenario<T> {
     }
 
     /// Get the number of shifts.
-    pub fn len(&self) -> usize {
-        self.shifts.len()
-    }
+    pub fn len(&self) -> usize { self.shifts.len() }
 
     /// Check if scenario is empty.
-    pub fn is_empty(&self) -> bool {
-        self.shifts.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.shifts.is_empty() }
 }
 
 impl<T: Float> Default for BumpScenario<T> {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 /// A named scenario with description and bump specification.
@@ -212,19 +198,13 @@ impl<T: Float> Scenario<T> {
     }
 
     /// Get scenario name.
-    pub fn name(&self) -> &str {
-        &self.name
-    }
+    pub fn name(&self) -> &str { &self.name }
 
     /// Get scenario description.
-    pub fn description(&self) -> &str {
-        &self.description
-    }
+    pub fn description(&self) -> &str { &self.description }
 
     /// Get the bump scenario.
-    pub fn bumps(&self) -> &BumpScenario<T> {
-        &self.bumps
-    }
+    pub fn bumps(&self) -> &BumpScenario<T> { &self.bumps }
 }
 
 #[cfg(test)]

@@ -2,10 +2,13 @@
 //!
 //! This module provides PostgreSQL-based persistence using sqlx.
 
-use crate::error::StoreError;
-use crate::traits::{Load, Save};
 use async_trait::async_trait;
 use sqlx::postgres::PgPool;
+
+use crate::{
+    error::StoreError,
+    traits::{Load, Save},
+};
 
 /// PostgreSQL-backed store implementation.
 pub struct PostgresStore {
@@ -31,7 +34,5 @@ impl PostgresStore {
     }
 
     /// Get a reference to the underlying connection pool.
-    pub fn pool(&self) -> &PgPool {
-        &self.pool
-    }
+    pub fn pool(&self) -> &PgPool { &self.pool }
 }

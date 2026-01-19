@@ -1,7 +1,10 @@
 //! TUI Application state and event handling.
 
-use crate::api_client::ApiClient;
-use crate::screens;
+use std::{
+    io::{self, Stdout},
+    time::Duration,
+};
+
 use anyhow::Result;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
@@ -12,8 +15,8 @@ use ratatui::{
     prelude::*,
     widgets::{Block, Borders, Paragraph},
 };
-use std::io::{self, Stdout};
-use std::time::Duration;
+
+use crate::{api_client::ApiClient, screens};
 
 /// Available screens in the TUI
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

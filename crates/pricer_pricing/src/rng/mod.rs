@@ -1,16 +1,18 @@
 //! # Random Number Generation Infrastructure
 //!
 //! This module provides random number generation facilities for Monte Carlo
-//! simulations in the pricer kernel. It includes pseudo-random number generators
-//! (PRNGs) and placeholders for quasi-Monte Carlo (QMC) sequences.
+//! simulations in the pricer kernel. It includes pseudo-random number
+//! generators (PRNGs) and placeholders for quasi-Monte Carlo (QMC) sequences.
 //!
 //! ## Design Rationale
 //!
 //! The RNG infrastructure is designed with the following principles:
 //!
-//! - **Reproducibility**: All generators support seeding for deterministic sequences
+//! - **Reproducibility**: All generators support seeding for deterministic
+//!   sequences
 //! - **Efficiency**: Zero-allocation batch operations via `&mut [f64]` slices
-//! - **Enzyme Compatibility**: Static dispatch only; no `Box<dyn Trait>` in hot paths
+//! - **Enzyme Compatibility**: Static dispatch only; no `Box<dyn Trait>` in hot
+//!   paths
 //! - **Independence**: No dependencies on `pricer_core` (Phase 3.0 isolation)
 //!
 //! ## British English Convention

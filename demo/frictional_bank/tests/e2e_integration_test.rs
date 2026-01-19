@@ -2,11 +2,12 @@
 //!
 //! Tests the complete FrictionalBank demo from start to finish.
 
-use frictional_bank::config::DemoConfig;
-use frictional_bank::workflow::{
-    DemoWorkflow, EodBatchWorkflow, IntradayWorkflow, StressTestWorkflow,
-};
 use std::path::PathBuf;
+
+use frictional_bank::{
+    config::DemoConfig,
+    workflow::{DemoWorkflow, EodBatchWorkflow, IntradayWorkflow, StressTestWorkflow},
+};
 
 fn test_config() -> DemoConfig {
     let mut config = DemoConfig::default();

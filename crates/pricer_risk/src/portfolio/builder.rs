@@ -5,12 +5,14 @@
 
 use std::collections::{HashMap, HashSet};
 
-use super::counterparty::Counterparty;
-use super::error::PortfolioError;
-use super::ids::{CounterpartyId, NettingSetId, TradeId};
-use super::netting_set::NettingSet;
-use super::trade::Trade;
-use super::Portfolio;
+use super::{
+    counterparty::Counterparty,
+    error::PortfolioError,
+    ids::{CounterpartyId, NettingSetId, TradeId},
+    netting_set::NettingSet,
+    trade::Trade,
+    Portfolio,
+};
 
 /// Builder for constructing portfolios with validation.
 ///
@@ -73,9 +75,7 @@ pub struct PortfolioBuilder {
 impl PortfolioBuilder {
     /// Creates a new portfolio builder.
     #[inline]
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Adds a trade to the portfolio.
     pub fn add_trade(mut self, trade: Trade) -> Self {
@@ -213,31 +213,26 @@ impl PortfolioBuilder {
 
     /// Returns the number of trades currently in the builder.
     #[inline]
-    pub fn trade_count(&self) -> usize {
-        self.trades.len()
-    }
+    pub fn trade_count(&self) -> usize { self.trades.len() }
 
     /// Returns the number of counterparties currently in the builder.
     #[inline]
-    pub fn counterparty_count(&self) -> usize {
-        self.counterparties.len()
-    }
+    pub fn counterparty_count(&self) -> usize { self.counterparties.len() }
 
     /// Returns the number of netting sets currently in the builder.
     #[inline]
-    pub fn netting_set_count(&self) -> usize {
-        self.netting_sets.len()
-    }
+    pub fn netting_set_count(&self) -> usize { self.netting_sets.len() }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::portfolio::counterparty::CreditParams;
     use pricer_core::types::Currency;
     use pricer_models::instruments::{
         ExerciseStyle, Instrument, InstrumentParams, PayoffType, VanillaOption,
     };
+
+    use super::*;
+    use crate::portfolio::counterparty::CreditParams;
 
     fn create_test_instrument() -> Instrument<f64> {
         let params = InstrumentParams::new(100.0, 1.0, 1.0).unwrap();

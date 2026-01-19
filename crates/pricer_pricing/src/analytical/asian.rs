@@ -20,7 +20,8 @@
 //! # References
 //!
 //! - Kemna, A.G.Z. and Vorst, A.C.F. (1990). "A Pricing Method for Options
-//!   Based on Average Asset Values." Journal of Banking and Finance, 14, 113-129.
+//!   Based on Average Asset Values." Journal of Banking and Finance, 14,
+//!   113-129.
 
 use num_traits::Float;
 
@@ -355,8 +356,9 @@ pub fn geometric_asian_prices<T: Float>(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     // ========================================================================
     // Basic Functionality Tests

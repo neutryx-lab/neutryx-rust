@@ -42,7 +42,6 @@ pub mod barrier;
 pub use asian::{
     geometric_asian_call, geometric_asian_put, GeometricAsianParams, GeometricAsianResult,
 };
-
 pub use barrier::{
     barrier_price, down_in_call, down_in_put, down_out_call, down_out_put, up_in_call, up_in_put,
     up_out_call, up_out_put, BarrierDirection, BarrierParams, BarrierResult, BarrierType,

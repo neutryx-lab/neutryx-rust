@@ -117,14 +117,10 @@ impl HullWhiteCalibrationData {
     }
 
     /// Number of swaptions.
-    pub fn len(&self) -> usize {
-        self.swaptions.len()
-    }
+    pub fn len(&self) -> usize { self.swaptions.len() }
 
     /// Check if empty.
-    pub fn is_empty(&self) -> bool {
-        self.swaptions.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.swaptions.is_empty() }
 
     /// Validate the data.
     pub fn validate(&self) -> Result<(), String> {
@@ -184,9 +180,7 @@ pub struct HullWhiteCalibrator {
 }
 
 impl Default for HullWhiteCalibrator {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl HullWhiteCalibrator {

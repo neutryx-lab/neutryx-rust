@@ -1,12 +1,14 @@
 //! Instrument trait definitions.
 //!
-//! This module provides the core [`InstrumentTrait`] that all financial instruments
-//! must implement, ensuring a unified interface across asset classes.
+//! This module provides the core [`InstrumentTrait`] that all financial
+//! instruments must implement, ensuring a unified interface across asset
+//! classes.
 //!
 //! # Design Philosophy
 //!
 //! The trait is designed for **static dispatch** using enum-based polymorphism
-//! to ensure Enzyme AD compatibility at LLVM level. Do NOT use `Box<dyn InstrumentTrait>`.
+//! to ensure Enzyme AD compatibility at LLVM level. Do NOT use `Box<dyn
+//! InstrumentTrait>`.
 //!
 //! # Layer Boundaries
 //!
@@ -38,7 +40,8 @@ use pricer_core::types::Currency;
 /// # Provided Methods
 ///
 /// - [`notional`](InstrumentTrait::notional) - Notional amount (default: 1.0)
-/// - [`is_path_dependent`](InstrumentTrait::is_path_dependent) - Requires MC simulation
+/// - [`is_path_dependent`](InstrumentTrait::is_path_dependent) - Requires MC
+///   simulation
 ///
 /// # Examples
 ///
@@ -98,9 +101,7 @@ pub trait InstrumentTrait<T: Float> {
     /// Default implementation returns 1.0 for options where notional
     /// is implicit in the number of contracts.
     #[inline]
-    fn notional(&self) -> T {
-        T::one()
-    }
+    fn notional(&self) -> T { T::one() }
 
     /// Return whether this instrument requires path-dependent pricing.
     ///
@@ -110,16 +111,12 @@ pub trait InstrumentTrait<T: Float> {
     ///
     /// Default implementation returns `false`.
     #[inline]
-    fn is_path_dependent(&self) -> bool {
-        false
-    }
+    fn is_path_dependent(&self) -> bool { false }
 
     /// Return a human-readable instrument type name.
     ///
     /// Used for logging and error messages.
-    fn type_name(&self) -> &'static str {
-        "Unknown"
-    }
+    fn type_name(&self) -> &'static str { "Unknown" }
 }
 
 /// Cashflow structure for instruments with scheduled payments.
@@ -163,9 +160,7 @@ impl<T: Float> Cashflow<T> {
     ///
     /// * `discount_factor` - Discount factor to payment date
     #[inline]
-    pub fn present_value(&self, discount_factor: T) -> T {
-        self.amount * discount_factor
-    }
+    pub fn present_value(&self, discount_factor: T) -> T { self.amount * discount_factor }
 }
 
 /// Trait for instruments with scheduled cashflows.
@@ -180,9 +175,7 @@ pub trait CashflowInstrument<T: Float>: InstrumentTrait<T> {
 
     /// Return the number of cashflows.
     #[inline]
-    fn num_cashflows(&self) -> usize {
-        self.cashflows().len()
-    }
+    fn num_cashflows(&self) -> usize { self.cashflows().len() }
 
     /// Return the total undiscounted cashflow amount.
     #[inline]
@@ -212,21 +205,13 @@ mod tests {
             (spot - self.strike).max(T::zero()) * self.notional_amount
         }
 
-        fn expiry(&self) -> T {
-            self.expiry_time
-        }
+        fn expiry(&self) -> T { self.expiry_time }
 
-        fn currency(&self) -> Currency {
-            Currency::USD
-        }
+        fn currency(&self) -> Currency { Currency::USD }
 
-        fn notional(&self) -> T {
-            self.notional_amount
-        }
+        fn notional(&self) -> T { self.notional_amount }
 
-        fn type_name(&self) -> &'static str {
-            "TestCall"
-        }
+        fn type_name(&self) -> &'static str { "TestCall" }
     }
 
     struct TestPut<T: Float> {
@@ -235,17 +220,11 @@ mod tests {
     }
 
     impl<T: Float> InstrumentTrait<T> for TestPut<T> {
-        fn payoff(&self, spot: T) -> T {
-            (self.strike - spot).max(T::zero())
-        }
+        fn payoff(&self, spot: T) -> T { (self.strike - spot).max(T::zero()) }
 
-        fn expiry(&self) -> T {
-            self.expiry_time
-        }
+        fn expiry(&self) -> T { self.expiry_time }
 
-        fn currency(&self) -> Currency {
-            Currency::EUR
-        }
+        fn currency(&self) -> Currency { Currency::EUR }
     }
 
     struct TestAsian<T: Float> {
@@ -259,21 +238,13 @@ mod tests {
             (spot - self.strike).max(T::zero())
         }
 
-        fn expiry(&self) -> T {
-            self.expiry_time
-        }
+        fn expiry(&self) -> T { self.expiry_time }
 
-        fn currency(&self) -> Currency {
-            Currency::USD
-        }
+        fn currency(&self) -> Currency { Currency::USD }
 
-        fn is_path_dependent(&self) -> bool {
-            true
-        }
+        fn is_path_dependent(&self) -> bool { true }
 
-        fn type_name(&self) -> &'static str {
-            "TestAsian"
-        }
+        fn type_name(&self) -> &'static str { "TestAsian" }
     }
 
     #[test]
@@ -481,21 +452,13 @@ mod tests {
             0.0
         }
 
-        fn expiry(&self) -> f64 {
-            *self.payment_times.last().unwrap_or(&0.0)
-        }
+        fn expiry(&self) -> f64 { *self.payment_times.last().unwrap_or(&0.0) }
 
-        fn currency(&self) -> Currency {
-            Currency::USD
-        }
+        fn currency(&self) -> Currency { Currency::USD }
 
-        fn notional(&self) -> f64 {
-            self.notional
-        }
+        fn notional(&self) -> f64 { self.notional }
 
-        fn type_name(&self) -> &'static str {
-            "TestSwap"
-        }
+        fn type_name(&self) -> &'static str { "TestSwap" }
     }
 
     impl CashflowInstrument<f64> for TestSwap {

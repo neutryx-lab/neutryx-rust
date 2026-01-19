@@ -1,7 +1,8 @@
 //! # Graph Extractor Trait and Implementation
 //!
 //! This module provides the `GraphExtractable` trait for extracting computation
-//! graphs from pricing contexts, and `SimpleGraphExtractor` as the default implementation.
+//! graphs from pricing contexts, and `SimpleGraphExtractor` as the default
+//! implementation.
 //!
 //! ## Performance Requirements
 //!
@@ -9,12 +10,16 @@
 //! - Impact on pricing calculation < 5%
 //! - Pre-allocated buffers for memory efficiency
 
-use std::collections::{HashMap, VecDeque};
-use std::time::Instant;
+use std::{
+    collections::{HashMap, VecDeque},
+    time::Instant,
+};
 
-use super::error::GraphError;
-use super::types::{
-    ComputationGraph, GraphEdge, GraphMetadata, GraphNode, GraphNodeUpdate, NodeGroup, NodeType,
+use super::{
+    error::GraphError,
+    types::{
+        ComputationGraph, GraphEdge, GraphMetadata, GraphNode, GraphNodeUpdate, NodeGroup, NodeType,
+    },
 };
 
 // =============================================================================
@@ -24,12 +29,14 @@ use super::types::{
 /// Trait for extracting computation graphs from pricing contexts.
 ///
 /// Implementors of this trait can extract the dependency graph of computations
-/// performed during pricing, enabling visualisation of the computation structure.
+/// performed during pricing, enabling visualisation of the computation
+/// structure.
 ///
 /// # Requirements
 ///
 /// - `extract_graph`: Extract the full graph for a trade (or all trades)
-/// - `extract_affected_nodes`: Extract only nodes affected by updates (for WebSocket)
+/// - `extract_affected_nodes`: Extract only nodes affected by updates (for
+///   WebSocket)
 ///
 /// # Example
 ///
@@ -50,9 +57,12 @@ pub trait GraphExtractable {
     ///
     /// # Returns
     ///
-    /// - `Ok(ComputationGraph)` - The extracted graph with nodes, edges, and metadata
-    /// - `Err(GraphError::TradeNotFound)` - If the specified trade does not exist
-    /// - `Err(GraphError::ExtractionFailed)` - If extraction fails for any reason
+    /// - `Ok(ComputationGraph)` - The extracted graph with nodes, edges, and
+    ///   metadata
+    /// - `Err(GraphError::TradeNotFound)` - If the specified trade does not
+    ///   exist
+    /// - `Err(GraphError::ExtractionFailed)` - If extraction fails for any
+    ///   reason
     /// - `Err(GraphError::Timeout)` - If extraction exceeds the time limit
     ///
     /// # Performance
@@ -60,7 +70,8 @@ pub trait GraphExtractable {
     /// Should complete within 1 second for graphs up to 10,000 nodes.
     fn extract_graph(&self, trade_id: Option<&str>) -> Result<ComputationGraph, GraphError>;
 
-    /// Extract nodes affected by recent updates (for differential WebSocket updates).
+    /// Extract nodes affected by recent updates (for differential WebSocket
+    /// updates).
     ///
     /// # Arguments
     ///
@@ -105,9 +116,7 @@ impl GraphBuilder {
     /// Create a new GraphBuilder with default capacity.
     ///
     /// Default capacity is 1,000 nodes and 2,000 edges.
-    pub fn new() -> Self {
-        Self::with_capacity(1_000, 2_000)
-    }
+    pub fn new() -> Self { Self::with_capacity(1_000, 2_000) }
 
     /// Create a new GraphBuilder with specified capacity.
     ///
@@ -149,18 +158,14 @@ impl GraphBuilder {
     /// # Arguments
     ///
     /// * `edge` - The edge to add
-    pub fn add_edge(&mut self, edge: GraphEdge) {
-        self.edges.push(edge);
-    }
+    pub fn add_edge(&mut self, edge: GraphEdge) { self.edges.push(edge); }
 
     /// Check if a node exists by ID.
     ///
     /// # Arguments
     ///
     /// * `id` - The node ID to check
-    pub fn has_node(&self, id: &str) -> bool {
-        self.node_index.contains_key(id)
-    }
+    pub fn has_node(&self, id: &str) -> bool { self.node_index.contains_key(id) }
 
     /// Get a node by ID.
     ///
@@ -184,14 +189,10 @@ impl GraphBuilder {
     }
 
     /// Get the number of nodes.
-    pub fn node_count(&self) -> usize {
-        self.nodes.len()
-    }
+    pub fn node_count(&self) -> usize { self.nodes.len() }
 
     /// Get the number of edges.
-    pub fn edge_count(&self) -> usize {
-        self.edges.len()
-    }
+    pub fn edge_count(&self) -> usize { self.edges.len() }
 
     /// Clear the builder for reuse.
     ///
@@ -396,9 +397,7 @@ impl GraphBuilder {
 }
 
 impl Default for GraphBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 // =============================================================================
@@ -574,14 +573,10 @@ impl SimpleGraphExtractor {
     }
 
     /// Check if a trade is registered.
-    pub fn has_trade(&self, trade_id: &str) -> bool {
-        self.trades.contains_key(trade_id)
-    }
+    pub fn has_trade(&self, trade_id: &str) -> bool { self.trades.contains_key(trade_id) }
 
     /// Get the number of registered trades.
-    pub fn trade_count(&self) -> usize {
-        self.trades.len()
-    }
+    pub fn trade_count(&self) -> usize { self.trades.len() }
 
     /// Build a sample graph for a trade.
     ///
@@ -758,9 +753,7 @@ impl SimpleGraphExtractor {
 }
 
 impl Default for SimpleGraphExtractor {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl GraphExtractable for SimpleGraphExtractor {
@@ -1345,8 +1338,9 @@ mod tests {
     }
 
     mod performance_tests {
-        use super::*;
         use std::time::Duration;
+
+        use super::*;
 
         #[test]
         fn test_extraction_within_timeout() {

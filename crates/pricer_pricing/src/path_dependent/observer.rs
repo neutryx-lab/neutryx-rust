@@ -1,8 +1,8 @@
 //! PathObserver: Streaming statistics accumulation for path-dependent options.
 //!
 //! This module provides efficient path observation with streaming statistics
-//! computation. Statistics are accumulated incrementally as prices are observed,
-//! avoiding the need to store the full path.
+//! computation. Statistics are accumulated incrementally as prices are
+//! observed, avoiding the need to store the full path.
 //!
 //! # Streaming Statistics
 //!
@@ -18,6 +18,7 @@
 //! automatic differentiation.
 
 use num_traits::Float;
+use pricer_core::math::numeric::from_usize;
 
 /// Streaming path observation statistics.
 ///
@@ -129,9 +130,7 @@ impl<T: Float> PathObserver<T> {
     ///
     /// * `price` - The terminal (final) price
     #[inline]
-    pub fn set_terminal(&mut self, price: T) {
-        self.terminal = price;
-    }
+    pub fn set_terminal(&mut self, price: T) { self.terminal = price; }
 
     /// Resets all statistics to initial state.
     ///
@@ -156,7 +155,7 @@ impl<T: Float> PathObserver<T> {
         if self.count == 0 {
             T::zero()
         } else {
-            self.running_sum / T::from(self.count).unwrap()
+            self.running_sum / from_usize::<T>(self.count)
         }
     }
 
@@ -176,7 +175,7 @@ impl<T: Float> PathObserver<T> {
         if self.count == 0 {
             T::zero()
         } else {
-            (self.running_product_log / T::from(self.count).unwrap()).exp()
+            (self.running_product_log / from_usize::<T>(self.count)).exp()
         }
     }
 
@@ -186,9 +185,7 @@ impl<T: Float> PathObserver<T> {
     ///
     /// Maximum price, or `-inf` if no observations.
     #[inline]
-    pub fn maximum(&self) -> T {
-        self.running_max
-    }
+    pub fn maximum(&self) -> T { self.running_max }
 
     /// Returns the minimum observed price.
     ///
@@ -196,21 +193,15 @@ impl<T: Float> PathObserver<T> {
     ///
     /// Minimum price, or `+inf` if no observations.
     #[inline]
-    pub fn minimum(&self) -> T {
-        self.running_min
-    }
+    pub fn minimum(&self) -> T { self.running_min }
 
     /// Returns the terminal price.
     #[inline]
-    pub fn terminal(&self) -> T {
-        self.terminal
-    }
+    pub fn terminal(&self) -> T { self.terminal }
 
     /// Returns the number of observations.
     #[inline]
-    pub fn count(&self) -> usize {
-        self.count
-    }
+    pub fn count(&self) -> usize { self.count }
 
     /// Creates a snapshot of the current state for checkpointing.
     ///
@@ -245,9 +236,7 @@ impl<T: Float> PathObserver<T> {
 }
 
 impl<T: Float> Default for PathObserver<T> {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 /// Checkpointable state of a PathObserver.
@@ -282,8 +271,9 @@ impl<T: Float> Default for PathObserverState<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     #[test]
     fn test_observer_default() {

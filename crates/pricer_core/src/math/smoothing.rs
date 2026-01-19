@@ -1,12 +1,16 @@
 //! Smooth approximations for discontinuous functions.
 //!
 //! This module provides differentiable smoothing functions that replace
-//! discontinuous operations (max, min, abs, indicator) with smooth approximations.
-//! Required for Enzyme AD: hard `if` conditions are non-differentiable.
+//! discontinuous operations (max, min, abs, indicator) with smooth
+//! approximations. Required for Enzyme AD: hard `if` conditions are
+//! non-differentiable.
 //!
-//! All functions use generic type parameter `T: num_traits::Float` for f32/f64 support.
+//! All functions use generic type parameter `T: num_traits::Float` for f32/f64
+//! support.
 
 use num_traits::Float;
+
+use crate::math::numeric::from_f64;
 
 /// Differentiable maximum function using LogSumExp.
 ///
@@ -136,7 +140,7 @@ pub fn smooth_abs<T: Float>(x: T, epsilon: T) -> T {
     // Using log-sum-exp trick for numerical stability
     // smooth_abs(x, ε) = |x| + ε * log(1 + exp(-2|x|/ε))
     let abs_x = x.abs();
-    let two = T::from(2.0).unwrap();
+    let two: T = from_f64(2.0);
     let term = (-two * abs_x / epsilon).exp();
 
     abs_x + epsilon * (T::one() + term).ln()
@@ -321,8 +325,9 @@ pub fn smooth_pow<T: Float>(x: T, p: T, epsilon: T) -> T {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     // Task 2.5: Smoothing function unit tests
 
@@ -431,33 +436,23 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "epsilon must be positive")]
-    fn test_smooth_max_panics_on_zero_epsilon() {
-        smooth_max(3.0_f64, 5.0_f64, 0.0);
-    }
+    fn test_smooth_max_panics_on_zero_epsilon() { smooth_max(3.0_f64, 5.0_f64, 0.0); }
 
     #[test]
     #[should_panic(expected = "epsilon must be positive")]
-    fn test_smooth_max_panics_on_negative_epsilon() {
-        smooth_max(3.0_f64, 5.0_f64, -1e-6);
-    }
+    fn test_smooth_max_panics_on_negative_epsilon() { smooth_max(3.0_f64, 5.0_f64, -1e-6); }
 
     #[test]
     #[should_panic(expected = "epsilon must be positive")]
-    fn test_smooth_min_panics_on_zero_epsilon() {
-        smooth_min(3.0_f64, 5.0_f64, 0.0);
-    }
+    fn test_smooth_min_panics_on_zero_epsilon() { smooth_min(3.0_f64, 5.0_f64, 0.0); }
 
     #[test]
     #[should_panic(expected = "epsilon must be positive")]
-    fn test_smooth_indicator_panics_on_zero_epsilon() {
-        smooth_indicator(0.0_f64, 0.0);
-    }
+    fn test_smooth_indicator_panics_on_zero_epsilon() { smooth_indicator(0.0_f64, 0.0); }
 
     #[test]
     #[should_panic(expected = "epsilon must be positive")]
-    fn test_smooth_abs_panics_on_zero_epsilon() {
-        smooth_abs(3.0_f64, 0.0);
-    }
+    fn test_smooth_abs_panics_on_zero_epsilon() { smooth_abs(3.0_f64, 0.0); }
 
     // Task 1.1: smooth_sqrt tests
     #[test]
@@ -527,15 +522,11 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "epsilon must be positive")]
-    fn test_smooth_sqrt_panics_on_zero_epsilon() {
-        smooth_sqrt(4.0_f64, 0.0);
-    }
+    fn test_smooth_sqrt_panics_on_zero_epsilon() { smooth_sqrt(4.0_f64, 0.0); }
 
     #[test]
     #[should_panic(expected = "epsilon must be positive")]
-    fn test_smooth_sqrt_panics_on_negative_epsilon() {
-        smooth_sqrt(4.0_f64, -1e-6);
-    }
+    fn test_smooth_sqrt_panics_on_negative_epsilon() { smooth_sqrt(4.0_f64, -1e-6); }
 
     // Task 1.2: smooth_log tests
     #[test]
@@ -604,15 +595,11 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "epsilon must be positive")]
-    fn test_smooth_log_panics_on_zero_epsilon() {
-        smooth_log(2.0_f64, 0.0);
-    }
+    fn test_smooth_log_panics_on_zero_epsilon() { smooth_log(2.0_f64, 0.0); }
 
     #[test]
     #[should_panic(expected = "epsilon must be positive")]
-    fn test_smooth_log_panics_on_negative_epsilon() {
-        smooth_log(2.0_f64, -1e-6);
-    }
+    fn test_smooth_log_panics_on_negative_epsilon() { smooth_log(2.0_f64, -1e-6); }
 
     // Task 1.3: smooth_pow tests
     #[test]
@@ -710,15 +697,11 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "epsilon must be positive")]
-    fn test_smooth_pow_panics_on_zero_epsilon() {
-        smooth_pow(4.0_f64, 0.5, 0.0);
-    }
+    fn test_smooth_pow_panics_on_zero_epsilon() { smooth_pow(4.0_f64, 0.5, 0.0); }
 
     #[test]
     #[should_panic(expected = "epsilon must be positive")]
-    fn test_smooth_pow_panics_on_negative_epsilon() {
-        smooth_pow(4.0_f64, 0.5, -1e-6);
-    }
+    fn test_smooth_pow_panics_on_negative_epsilon() { smooth_pow(4.0_f64, 0.5, -1e-6); }
 
     // ================================================================
     // Task 5.2: Gradient verification tests
@@ -975,18 +958,15 @@ mod tests {
     // Task 6.1: Property-based tests for smoothing functions
     #[cfg(test)]
     mod property_tests {
-        use super::*;
         use proptest::prelude::*;
 
+        use super::*;
+
         // Generate epsilon in practical range [1e-8, 1e-3]
-        fn epsilon_strategy() -> impl Strategy<Value = f64> {
-            1e-8..1e-3
-        }
+        fn epsilon_strategy() -> impl Strategy<Value = f64> { 1e-8..1e-3 }
 
         // Generate finite f64 values for testing
-        fn finite_f64_strategy() -> impl Strategy<Value = f64> {
-            prop::num::f64::NORMAL
-        }
+        fn finite_f64_strategy() -> impl Strategy<Value = f64> { prop::num::f64::NORMAL }
 
         proptest! {
             #![proptest_config(ProptestConfig::with_cases(1000))]

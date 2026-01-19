@@ -62,9 +62,14 @@
 //! ```
 
 use num_traits::Float;
-use pricer_core::market_data::curves::{CreditCurve, YieldCurve};
-use pricer_core::market_data::error::MarketDataError;
-use pricer_core::types::time::DayCountConvention;
+use pricer_core::{
+    market_data::{
+        curves::{CreditCurve, YieldCurve},
+        error::MarketDataError,
+    },
+    math::numeric::from_f64,
+    types::time::DayCountConvention,
+};
 
 use super::cds::{CdsDirection, CreditDefaultSwap};
 
@@ -99,7 +104,8 @@ impl<T: Float> CdsPriceResult<T> {
         // Par spread = (Protection PV) / (Risky Annuity)
         // Risky Annuity = Premium PV / Spread
         let risky_pv01 = if spread != T::zero() {
-            premium_leg_pv / spread / T::from(10000.0).unwrap()
+            let bp_factor: T = from_f64(10000.0);
+            premium_leg_pv / spread / bp_factor
         } else {
             T::zero()
         };
@@ -185,7 +191,8 @@ impl<'a, T: Float, D: YieldCurve<T>, C: CreditCurve<T>> CdsPricer<'a, T, D, C> {
     /// PV = LGD × Notional × Σ(DF(tᵢ) × (S(tᵢ₋₁) - S(tᵢ)))
     /// ```
     ///
-    /// where LGD = 1 - Recovery, DF is discount factor, S is survival probability.
+    /// where LGD = 1 - Recovery, DF is discount factor, S is survival
+    /// probability.
     pub fn protection_leg_pv(&self, cds: &CreditDefaultSwap<T>) -> Result<T, MarketDataError> {
         let lgd = cds.loss_given_default();
         let notional = cds.notional();
@@ -230,7 +237,8 @@ impl<'a, T: Float, D: YieldCurve<T>, C: CreditCurve<T>> CdsPricer<'a, T, D, C> {
     /// PV = Spread × Notional × Σ(DF(tᵢ) × S(tᵢ) × ΔTᵢ)
     /// ```
     ///
-    /// Note: This simplified version does not include accrued premium on default.
+    /// Note: This simplified version does not include accrued premium on
+    /// default.
     pub fn premium_leg_pv(&self, cds: &CreditDefaultSwap<T>) -> Result<T, MarketDataError> {
         let spread = cds.spread();
         let notional = cds.notional();
@@ -277,7 +285,7 @@ impl<'a, T: Float, D: YieldCurve<T>, C: CreditCurve<T>> CdsPricer<'a, T, D, C> {
 
         let mut pv = T::zero();
         let start_date = schedule.start_date();
-        let bp = T::from(0.0001).unwrap(); // 1 basis point
+        let bp: T = from_f64(0.0001); // 1 basis point
 
         for period in schedule.periods() {
             let t = T::from(
@@ -336,12 +344,16 @@ impl<'a, T: Float, D: YieldCurve<T>, C: CreditCurve<T>> CdsPricer<'a, T, D, C> {
 
 #[cfg(test)]
 mod tests {
+    use pricer_core::{
+        market_data::curves::{FlatCurve, FlatHazardRateCurve},
+        types::{time::Date, Currency},
+    };
+
     use super::*;
-    use crate::instruments::credit::CreditDefaultSwap;
-    use crate::schedules::{Frequency, ScheduleBuilder};
-    use pricer_core::market_data::curves::{FlatCurve, FlatHazardRateCurve};
-    use pricer_core::types::time::Date;
-    use pricer_core::types::Currency;
+    use crate::{
+        instruments::credit::CreditDefaultSwap,
+        schedules::{Frequency, ScheduleBuilder},
+    };
 
     fn create_test_cds() -> CreditDefaultSwap<f64> {
         let start = Date::from_ymd(2024, 3, 20).unwrap();

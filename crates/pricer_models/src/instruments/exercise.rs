@@ -56,20 +56,17 @@ pub enum ExerciseStyle<T: Float> {
 impl<T: Float> ExerciseStyle<T> {
     /// Creates a new European exercise style.
     #[inline]
-    pub fn european() -> Self {
-        ExerciseStyle::European
-    }
+    pub fn european() -> Self { ExerciseStyle::European }
 
     /// Creates a new American exercise style.
     #[inline]
-    pub fn american() -> Self {
-        ExerciseStyle::American
-    }
+    pub fn american() -> Self { ExerciseStyle::American }
 
     /// Creates a new Bermudan exercise style with specified exercise dates.
     ///
     /// # Arguments
-    /// * `exercise_dates` - Vector of times (in years) when option can be exercised
+    /// * `exercise_dates` - Vector of times (in years) when option can be
+    ///   exercised
     ///
     /// # Examples
     /// ```
@@ -78,9 +75,7 @@ impl<T: Float> ExerciseStyle<T> {
     /// let bermudan = ExerciseStyle::bermudan(vec![0.25, 0.5, 0.75, 1.0]);
     /// ```
     #[inline]
-    pub fn bermudan(exercise_dates: Vec<T>) -> Self {
-        ExerciseStyle::Bermudan { exercise_dates }
-    }
+    pub fn bermudan(exercise_dates: Vec<T>) -> Self { ExerciseStyle::Bermudan { exercise_dates } }
 
     /// Creates a new Asian exercise style with averaging parameters.
     ///
@@ -106,27 +101,19 @@ impl<T: Float> ExerciseStyle<T> {
 
     /// Returns whether this is a European exercise style.
     #[inline]
-    pub fn is_european(&self) -> bool {
-        matches!(self, ExerciseStyle::European)
-    }
+    pub fn is_european(&self) -> bool { matches!(self, ExerciseStyle::European) }
 
     /// Returns whether this is an American exercise style.
     #[inline]
-    pub fn is_american(&self) -> bool {
-        matches!(self, ExerciseStyle::American)
-    }
+    pub fn is_american(&self) -> bool { matches!(self, ExerciseStyle::American) }
 
     /// Returns whether this is a Bermudan exercise style.
     #[inline]
-    pub fn is_bermudan(&self) -> bool {
-        matches!(self, ExerciseStyle::Bermudan { .. })
-    }
+    pub fn is_bermudan(&self) -> bool { matches!(self, ExerciseStyle::Bermudan { .. }) }
 
     /// Returns whether this is an Asian exercise style.
     #[inline]
-    pub fn is_asian(&self) -> bool {
-        matches!(self, ExerciseStyle::Asian { .. })
-    }
+    pub fn is_asian(&self) -> bool { matches!(self, ExerciseStyle::Asian { .. }) }
 
     /// Returns whether this is an early-exercise style (American or Bermudan).
     #[inline]
@@ -139,9 +126,7 @@ impl<T: Float> ExerciseStyle<T> {
 
     /// Returns whether this is a path-dependent style (Asian).
     #[inline]
-    pub fn is_path_dependent(&self) -> bool {
-        matches!(self, ExerciseStyle::Asian { .. })
-    }
+    pub fn is_path_dependent(&self) -> bool { matches!(self, ExerciseStyle::Asian { .. }) }
 }
 
 #[cfg(test)]

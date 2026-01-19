@@ -23,3 +23,6 @@ serde = ["dep:serde"]
 
 [dev-dependencies]
 approx.workspace = true
+
+[lints]
+workspace = true

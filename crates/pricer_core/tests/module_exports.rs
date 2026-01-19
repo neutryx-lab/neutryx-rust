@@ -8,10 +8,7 @@ use chrono::NaiveDate;
 /// Test that smoothing functions are accessible via absolute path.
 #[test]
 fn test_smoothing_module_exports() {
-    use pricer_core::math::smoothing::smooth_abs;
-    use pricer_core::math::smoothing::smooth_indicator;
-    use pricer_core::math::smoothing::smooth_max;
-    use pricer_core::math::smoothing::smooth_min;
+    use pricer_core::math::smoothing::{smooth_abs, smooth_indicator, smooth_max, smooth_min};
 
     // Verify all functions are callable
     let _ = smooth_max(3.0_f64, 5.0, 1e-6);
@@ -23,10 +20,13 @@ fn test_smoothing_module_exports() {
 /// Test that trait module is accessible via absolute path.
 #[test]
 fn test_traits_module_exports() {
-    use pricer_core::traits::priceable::Differentiable;
-    use pricer_core::traits::priceable::Priceable;
-    use pricer_core::traits::Float;
-    use pricer_core::types::error::PricingError;
+    use pricer_core::{
+        traits::{
+            priceable::{Differentiable, Priceable},
+            Float,
+        },
+        types::error::PricingError,
+    };
 
     // Verify traits can be used
     struct TestInstrument {
@@ -34,9 +34,7 @@ fn test_traits_module_exports() {
     }
 
     impl Priceable<f64> for TestInstrument {
-        fn price(&self) -> Result<f64, PricingError> {
-            Ok(self.value)
-        }
+        fn price(&self) -> Result<f64, PricingError> { Ok(self.value) }
     }
 
     impl Differentiable for TestInstrument {}
@@ -45,19 +43,16 @@ fn test_traits_module_exports() {
     assert_eq!(instrument.price().unwrap(), 100.0);
 
     // Verify Float trait re-export works
-    fn generic_sqrt<T: Float>(x: T) -> T {
-        x.sqrt()
-    }
+    fn generic_sqrt<T: Float>(x: T) -> T { x.sqrt() }
     assert_eq!(generic_sqrt(4.0_f64), 2.0);
 }
 
 /// Test that types module is accessible via absolute path.
 #[test]
 fn test_types_module_exports() {
-    use pricer_core::types::time::time_to_maturity;
-    use pricer_core::types::time::time_to_maturity_dates;
-    use pricer_core::types::time::Date;
-    use pricer_core::types::time::DayCountConvention;
+    use pricer_core::types::time::{
+        time_to_maturity, time_to_maturity_dates, Date, DayCountConvention,
+    };
 
     // Test Date
     let start = Date::from_ymd(2024, 1, 1).unwrap();
@@ -85,11 +80,7 @@ fn test_types_module_exports() {
 /// Test that types re-exports work at module level.
 #[test]
 fn test_types_reexports() {
-    use pricer_core::types::Currency;
-    use pricer_core::types::CurrencyPair;
-    use pricer_core::types::Date;
-    use pricer_core::types::DayCountConvention;
-    use pricer_core::types::PricingError;
+    use pricer_core::types::{Currency, CurrencyPair, Date, DayCountConvention, PricingError};
 
     // Verify re-exports work
     let _usd = Currency::USD;
@@ -139,11 +130,9 @@ fn test_day_count_convention_variants() {
 /// Test that error types are accessible and work correctly.
 #[test]
 fn test_error_types_exports() {
-    use pricer_core::types::error::CurrencyError;
-    use pricer_core::types::error::DateError;
-    use pricer_core::types::error::InterpolationError;
-    use pricer_core::types::error::PricingError;
-    use pricer_core::types::error::SolverError;
+    use pricer_core::types::error::{
+        CurrencyError, DateError, InterpolationError, PricingError, SolverError,
+    };
 
     // Verify error types can be created
     let _pricing_err = PricingError::InvalidInput("test".to_string());
@@ -180,8 +169,7 @@ fn test_currency_exports() {
 #[test]
 fn test_chrono_integration() {
     use chrono::NaiveDate;
-    use pricer_core::types::time::time_to_maturity;
-    use pricer_core::types::time::DayCountConvention;
+    use pricer_core::types::time::{time_to_maturity, DayCountConvention};
 
     let start = NaiveDate::from_ymd_opt(2024, 1, 1).unwrap();
     let end = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();
@@ -219,10 +207,10 @@ fn test_business_day_convention_exports() {
 /// Test that market_data module is accessible.
 #[test]
 fn test_market_data_module_exports() {
-    use pricer_core::market_data::curves::FlatCurve;
-    use pricer_core::market_data::curves::YieldCurve;
-    use pricer_core::market_data::surfaces::FlatVol;
-    use pricer_core::market_data::surfaces::VolatilitySurface;
+    use pricer_core::market_data::{
+        curves::{FlatCurve, YieldCurve},
+        surfaces::{FlatVol, VolatilitySurface},
+    };
 
     // Test FlatCurve
     let curve: FlatCurve<f64> = FlatCurve::new(0.05);
@@ -238,8 +226,7 @@ fn test_market_data_module_exports() {
 /// Test interpolator module exports.
 #[test]
 fn test_interpolator_exports() {
-    use pricer_core::math::interpolators::Interpolator;
-    use pricer_core::math::interpolators::LinearInterpolator;
+    use pricer_core::math::interpolators::{Interpolator, LinearInterpolator};
 
     let xs = vec![0.0_f64, 1.0, 2.0];
     let ys = vec![0.0_f64, 2.0, 4.0];
@@ -252,8 +239,7 @@ fn test_interpolator_exports() {
 /// Test solver module exports.
 #[test]
 fn test_solver_exports() {
-    use pricer_core::math::solvers::NewtonRaphsonSolver;
-    use pricer_core::math::solvers::SolverConfig;
+    use pricer_core::math::solvers::{NewtonRaphsonSolver, SolverConfig};
 
     let config = SolverConfig::default();
     let solver = NewtonRaphsonSolver::new(config);
@@ -272,9 +258,7 @@ fn test_solver_exports() {
 #[test]
 fn test_main_module_structure() {
     // Verify main module paths
-    use pricer_core::market_data;
-    use pricer_core::math;
-    use pricer_core::types;
+    use pricer_core::{market_data, math, types};
 
     // These should compile if modules are properly exported
     let _ = math::smoothing::smooth_max(1.0_f64, 2.0, 1e-6);

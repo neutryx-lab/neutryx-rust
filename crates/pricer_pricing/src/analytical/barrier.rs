@@ -1,6 +1,7 @@
 //! Barrier option analytical pricing.
 //!
-//! Implements Rubinstein-Reiner (1991) closed-form solutions for European barrier options.
+//! Implements Rubinstein-Reiner (1991) closed-form solutions for European
+//! barrier options.
 //!
 //! # Barrier Types
 //!
@@ -81,21 +82,15 @@ impl BarrierType {
         Self::new(BarrierDirection::Down, KnockType::Out, OptionType::Put)
     }
     /// Up-and-In Call
-    pub fn up_in_call() -> Self {
-        Self::new(BarrierDirection::Up, KnockType::In, OptionType::Call)
-    }
+    pub fn up_in_call() -> Self { Self::new(BarrierDirection::Up, KnockType::In, OptionType::Call) }
     /// Up-and-Out Call
     pub fn up_out_call() -> Self {
         Self::new(BarrierDirection::Up, KnockType::Out, OptionType::Call)
     }
     /// Up-and-In Put
-    pub fn up_in_put() -> Self {
-        Self::new(BarrierDirection::Up, KnockType::In, OptionType::Put)
-    }
+    pub fn up_in_put() -> Self { Self::new(BarrierDirection::Up, KnockType::In, OptionType::Put) }
     /// Up-and-Out Put
-    pub fn up_out_put() -> Self {
-        Self::new(BarrierDirection::Up, KnockType::Out, OptionType::Put)
-    }
+    pub fn up_out_put() -> Self { Self::new(BarrierDirection::Up, KnockType::Out, OptionType::Put) }
 }
 
 /// Parameters for barrier option pricing.
@@ -675,8 +670,9 @@ fn vanilla_put<T: Float>(s: T, k: T, r: T, q: T, vol: T, t: T) -> T {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     #[test]
     fn test_barrier_type_constructors() {

@@ -9,14 +9,19 @@
 
 #![cfg(feature = "l1l2-integration")]
 
-use super::*;
-use pricer_core::market_data::curves::{CurveEnum, CurveName, CurveSet};
-use pricer_core::types::time::{Date, DayCountConvention};
-use pricer_core::types::Currency;
-use pricer_models::instruments::rates::{
-    FixedLeg, FloatingLeg, InterestRateSwap, RateIndex, SwapDirection,
+use pricer_core::{
+    market_data::curves::{CurveEnum, CurveName, CurveSet},
+    types::{
+        time::{Date, DayCountConvention},
+        Currency,
+    },
 };
-use pricer_models::schedules::{Frequency, ScheduleBuilder};
+use pricer_models::{
+    instruments::rates::{FixedLeg, FloatingLeg, InterestRateSwap, RateIndex, SwapDirection},
+    schedules::{Frequency, ScheduleBuilder},
+};
+
+use super::*;
 
 // ============================================================================
 // Test Fixtures
@@ -130,7 +135,8 @@ fn test_compute_npv_atm_near_zero() {
     let npv = calculator
         .compute_npv(&swap, &curves, valuation_date)
         .unwrap();
-    // ATM swap should have NPV close to zero (within a few thousand due to day count differences)
+    // ATM swap should have NPV close to zero (within a few thousand due to day
+    // count differences)
     assert!(
         npv.abs() < 50_000.0,
         "ATM swap NPV should be near zero, got {}",
@@ -817,7 +823,8 @@ fn test_verify_accuracy_compares_both_methods() {
 
 #[test]
 fn test_verify_accuracy_strict_tolerance() {
-    // Test with very strict tolerance - should still pass since AAD uses bump fallback
+    // Test with very strict tolerance - should still pass since AAD uses bump
+    // fallback
     let swap = create_test_swap();
     let curves = create_test_curves();
     let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();

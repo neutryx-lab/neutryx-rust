@@ -28,21 +28,13 @@ pub struct ServerConfig {
     pub workers: usize,
 }
 
-fn default_true() -> bool {
-    true
-}
+fn default_true() -> bool { true }
 
-fn default_rest_addr() -> String {
-    "0.0.0.0:8080".to_string()
-}
+fn default_rest_addr() -> String { "0.0.0.0:8080".to_string() }
 
-fn default_grpc_addr() -> String {
-    "0.0.0.0:50051".to_string()
-}
+fn default_grpc_addr() -> String { "0.0.0.0:50051".to_string() }
 
-fn default_workers() -> usize {
-    num_cpus::get()
-}
+fn default_workers() -> usize { num_cpus::get() }
 
 impl ServerConfig {
     /// Load configuration from environment variables

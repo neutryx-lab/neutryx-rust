@@ -2,7 +2,8 @@
 //!
 //! ## Layer 1 (Foundation) Role
 //!
-//! pricer_core serves as the bottom layer of the 4-layer architecture, providing:
+//! pricer_core serves as the bottom layer of the 4-layer architecture,
+//! providing:
 //! - Differentiable smoothing functions (`math::smoothing`)
 //! - Dual number type integration (`types::dual`)
 //! - Traits for pricing and differentiability (`traits`)
@@ -12,7 +13,8 @@
 //!
 //! ## Zero Dependency Principle
 //!
-//! Layer 1 has no dependencies on other pricer_* crates, with minimal external dependencies:
+//! Layer 1 has no dependencies on other pricer_* crates, with minimal external
+//! dependencies:
 //! - num-traits: Traits for generic numerical computation
 //! - num-dual: Dual number types and automatic differentiation (optional)
 //! - chrono: Date arithmetic
@@ -46,9 +48,11 @@
 //!
 //! ## Feature Flags
 //!
-//! - `num-dual-mode` (default): Use num-dual for automatic differentiation (verification mode)
+//! - `num-dual-mode` (default): Use num-dual for automatic differentiation
+//!   (verification mode)
 //! - `enzyme-mode`: Use f64 directly (Enzyme handles AD at LLVM level)
-//! - `serde` (default): Enable serialisation for Date, Currency, DayCountConvention
+//! - `serde` (default): Enable serialisation for Date, Currency,
+//!   DayCountConvention
 
 #![deny(missing_docs)]
 #![deny(rustdoc::broken_intra_doc_links)]

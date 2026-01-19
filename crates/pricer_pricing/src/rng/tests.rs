@@ -8,8 +8,9 @@
 //! - Large batch performance characteristics
 //! - Statistical properties via property-based testing
 
-use super::*;
 use std::time::Instant;
+
+use super::*;
 
 /// Verifies that the module structure is correctly set up and all
 /// public types are accessible.
@@ -86,9 +87,7 @@ fn test_empty_buffer() {
 /// Verifies that SobolPlaceholder::new panics with appropriate message.
 #[test]
 #[should_panic(expected = "Sobol sequence not implemented in Phase 3.1a")]
-fn test_sobol_placeholder_panics() {
-    let _ = SobolPlaceholder::new(10);
-}
+fn test_sobol_placeholder_panics() { let _ = SobolPlaceholder::new(10); }
 
 // ============================================================================
 // Task 3.2: Large Batch Performance Verification
@@ -126,7 +125,8 @@ fn test_large_batch_normal_performance() {
         sample_count
     );
 
-    // Log performance for informational purposes (visible in test output with --nocapture)
+    // Log performance for informational purposes (visible in test output with
+    // --nocapture)
     let samples_per_sec = sample_count as f64 / duration.as_secs_f64();
     eprintln!(
         "Performance: {:.2}M normal samples/sec ({} samples in {:.3}s)",
@@ -136,7 +136,8 @@ fn test_large_batch_normal_performance() {
     );
 }
 
-/// Verifies that large batch uniform generation maintains consistent performance.
+/// Verifies that large batch uniform generation maintains consistent
+/// performance.
 #[test]
 fn test_large_batch_uniform_performance() {
     let mut rng = PricerRng::from_seed(42);
@@ -152,7 +153,8 @@ fn test_large_batch_uniform_performance() {
         assert!(value >= 0.0 && value < 1.0);
     }
 
-    // Performance assertion: should complete within 10 seconds (increased for debug builds/CI)
+    // Performance assertion: should complete within 10 seconds (increased for debug
+    // builds/CI)
     assert!(
         duration.as_secs_f64() < 10.0,
         "Uniform generation took {:.3}s for {} samples, expected <10s",

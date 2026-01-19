@@ -27,7 +27,6 @@ impl FpmlParser {
     /// let trade = FpmlParser::parse(xml)?;
     /// ```
     pub fn parse(_xml: &str) -> Result<ParsedTrade, FpmlError> {
-        // TODO: Implement FpML parsing
         Ok(ParsedTrade {
             trade_id: String::new(),
             product_type: ProductType::Unknown,

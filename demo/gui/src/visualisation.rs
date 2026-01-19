@@ -22,7 +22,6 @@ use ratatui::{
     prelude::*,
     widgets::{BarChart, Block, Borders, Paragraph},
 };
-
 use serde::Serialize;
 
 // =============================================================================
@@ -64,19 +63,13 @@ impl SpeedComparisonData {
     }
 
     /// ナノ秒からマイクロ秒に変換したAAD時間を取得
-    pub fn aad_mean_us(&self) -> f64 {
-        self.aad_mean_ns / 1000.0
-    }
+    pub fn aad_mean_us(&self) -> f64 { self.aad_mean_ns / 1000.0 }
 
     /// ナノ秒からマイクロ秒に変換したBump時間を取得
-    pub fn bump_mean_us(&self) -> f64 {
-        self.bump_mean_ns / 1000.0
-    }
+    pub fn bump_mean_us(&self) -> f64 { self.bump_mean_ns / 1000.0 }
 
     /// サンプルデータを生成（デモ用）
-    pub fn sample() -> Self {
-        Self::new(15_000.0, 300_000.0, 20)
-    }
+    pub fn sample() -> Self { Self::new(15_000.0, 300_000.0, 20) }
 }
 
 // =============================================================================
@@ -155,9 +148,7 @@ pub struct BenchmarkVisualiser;
 
 impl BenchmarkVisualiser {
     /// 新しいBenchmarkVisualiserを生成
-    pub fn new() -> Self {
-        Self
-    }
+    pub fn new() -> Self { Self }
 
     /// TUI用の速度比較バーチャートを描画
     ///
@@ -294,9 +285,7 @@ impl BenchmarkVisualiser {
 }
 
 impl Default for BenchmarkVisualiser {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 // =============================================================================
@@ -319,9 +308,7 @@ pub struct ComputationFlowDiagram;
 
 impl ComputationFlowDiagram {
     /// 新しいComputationFlowDiagramを生成
-    pub fn new() -> Self {
-        Self
-    }
+    pub fn new() -> Self { Self }
 
     /// AADとBump-and-Revalueの比較図をTUI上に描画
     ///
@@ -497,9 +484,7 @@ impl ComputationFlowDiagram {
 }
 
 impl Default for ComputationFlowDiagram {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 // =============================================================================
@@ -530,9 +515,7 @@ pub struct ScalabilityData {
 
 impl ScalabilityData {
     /// 新しいScalabilityDataを生成
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// データポイントを追加
     pub fn add_point(&mut self, tenor_count: usize, aad_time_ns: f64, bump_time_ns: f64) {
@@ -604,9 +587,7 @@ pub struct ScalabilityVisualiser;
 
 impl ScalabilityVisualiser {
     /// 新しいScalabilityVisualiserを生成
-    pub fn new() -> Self {
-        Self
-    }
+    pub fn new() -> Self { Self }
 
     /// TUI用のスケーラビリティ折れ線グラフを描画
     ///
@@ -616,8 +597,10 @@ impl ScalabilityVisualiser {
     /// * `area` - 描画領域
     /// * `data` - スケーラビリティデータ
     pub fn draw_scalability_chart(frame: &mut Frame, area: Rect, data: &ScalabilityData) {
-        use ratatui::symbols;
-        use ratatui::widgets::{Axis, Chart, Dataset, GraphType};
+        use ratatui::{
+            symbols,
+            widgets::{Axis, Chart, Dataset, GraphType},
+        };
 
         if data.points.is_empty() {
             let empty = Paragraph::new("No scalability data available")
@@ -739,9 +722,7 @@ impl ScalabilityVisualiser {
 }
 
 impl Default for ScalabilityVisualiser {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 // =============================================================================
@@ -829,9 +810,7 @@ pub struct AccuracyVisualiser;
 
 impl AccuracyVisualiser {
     /// 新しいAccuracyVisualiserを生成
-    pub fn new() -> Self {
-        Self
-    }
+    pub fn new() -> Self { Self }
 
     /// TUI用の精度検証結果テーブルを描画
     pub fn draw_accuracy_table(frame: &mut Frame, area: Rect, data: &AccuracyVerificationData) {
@@ -979,9 +958,7 @@ impl AccuracyVisualiser {
 }
 
 impl Default for AccuracyVisualiser {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 // =============================================================================

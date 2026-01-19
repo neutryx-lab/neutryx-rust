@@ -12,16 +12,14 @@
 //! - Requirement 8.1: E2Eテストの実装
 //! - Requirement 8.2: 全機能の統合検証
 
-use frictional_bank::config::DemoConfig;
-
-#[cfg(feature = "l1l2-integration")]
-use frictional_bank::workflow::DemoWorkflow;
-
-#[cfg(feature = "l1l2-integration")]
-use frictional_bank::workflow::{IrsAadConfig, IrsAadWorkflow, IrsParams};
-
 #[cfg(feature = "l1l2-integration")]
 use std::sync::Arc;
+
+use frictional_bank::config::DemoConfig;
+#[cfg(feature = "l1l2-integration")]
+use frictional_bank::workflow::DemoWorkflow;
+#[cfg(feature = "l1l2-integration")]
+use frictional_bank::workflow::{IrsAadConfig, IrsAadWorkflow, IrsParams};
 
 // =============================================================================
 // Task 8: E2E Workflow Tests
@@ -71,9 +69,10 @@ async fn test_complete_irs_aad_workflow() {
 #[tokio::test]
 #[cfg(feature = "l1l2-integration")]
 async fn test_workflow_with_progress_callback() {
+    use std::sync::atomic::{AtomicU32, Ordering};
+
     use frictional_bank::workflow::WorkflowStep;
     use pricer_pricing::irs_greeks::BenchmarkConfig;
-    use std::sync::atomic::{AtomicU32, Ordering};
 
     let progress_count = Arc::new(AtomicU32::new(0));
     let progress_clone = progress_count.clone();
@@ -170,8 +169,9 @@ async fn test_benchmark_comparison() {
 #[tokio::test]
 #[cfg(feature = "l1l2-integration")]
 async fn test_workflow_cancellation() {
-    use frictional_bank::error::DemoError;
     use std::sync::Arc;
+
+    use frictional_bank::error::DemoError;
     use tokio::time::{sleep, Duration};
 
     let workflow = Arc::new(IrsAadWorkflow::with_defaults());
@@ -577,8 +577,7 @@ async fn test_aad_performance_advantage() {
 #[tokio::test]
 #[cfg(feature = "l1l2-integration")]
 async fn test_5y_atm_swap_complete_benchmark_cycle() {
-    use pricer_pricing::greeks::GreeksMode;
-    use pricer_pricing::irs_greeks::BenchmarkConfig;
+    use pricer_pricing::{greeks::GreeksMode, irs_greeks::BenchmarkConfig};
 
     // Create 5-year ATM swap parameters
     // ATM swap has fixed rate approximately equal to forward rate
@@ -603,7 +602,8 @@ async fn test_5y_atm_swap_complete_benchmark_cycle() {
     assert!(first_result.is_ok(), "First calculation should succeed");
     let first_compute = first_result.unwrap();
 
-    // Phase 2: Single calculation with Bump-and-Revalue (second run for consistency)
+    // Phase 2: Single calculation with Bump-and-Revalue (second run for
+    // consistency)
     let second_result = workflow
         .compute_single(&atm_params, GreeksMode::BumpRevalue)
         .await;
@@ -890,12 +890,14 @@ async fn test_cache_invalidation_on_curve_update() {
 #[tokio::test]
 #[cfg(feature = "l1l2-integration")]
 async fn test_irs_greeks_calculator_direct() {
-    use pricer_core::market_data::curves::{CurveEnum, CurveName, CurveSet};
-    use pricer_core::types::time::{Date, DayCountConvention};
-    use pricer_models::instruments::rates::{
-        FixedLeg, FloatingLeg, InterestRateSwap, RateIndex, SwapDirection,
+    use pricer_core::{
+        market_data::curves::{CurveEnum, CurveName, CurveSet},
+        types::time::{Date, DayCountConvention},
     };
-    use pricer_models::schedules::{Frequency, ScheduleBuilder};
+    use pricer_models::{
+        instruments::rates::{FixedLeg, FloatingLeg, InterestRateSwap, RateIndex, SwapDirection},
+        schedules::{Frequency, ScheduleBuilder},
+    };
     use pricer_pricing::irs_greeks::{IrsGreeksCalculator, IrsGreeksConfig};
 
     // Create calculator

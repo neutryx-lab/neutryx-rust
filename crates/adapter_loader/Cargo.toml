@@ -35,3 +35,6 @@ parquet = ["dep:parquet", "dep:arrow"]
 
 [dev-dependencies]
 approx.workspace = true
+
+[lints]
+workspace = true

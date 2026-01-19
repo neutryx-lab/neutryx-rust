@@ -53,13 +53,12 @@ mod pricing;
 pub mod simulation;
 
 pub use cds::{CdsDirection, CreditDefaultSwap};
+use num_traits::Float;
+use pricer_core::types::Currency;
 pub use pricing::{CdsPriceResult, CdsPricer};
 pub use simulation::{
     CreditMonteCarloSimulator, CreditPathResult, DefaultStatus, DefaultTimeSimulator,
 };
-
-use num_traits::Float;
-use pricer_core::types::Currency;
 
 use crate::instruments::traits::InstrumentTrait;
 
@@ -142,9 +141,7 @@ impl<T: Float> CreditInstrument<T> {
 
     /// Return whether this is a CDS.
     #[inline]
-    pub fn is_cds(&self) -> bool {
-        matches!(self, CreditInstrument::Cds(_))
-    }
+    pub fn is_cds(&self) -> bool { matches!(self, CreditInstrument::Cds(_)) }
 
     /// Return a reference to the CDS if this is a Cds variant.
     pub fn as_cds(&self) -> Option<&CreditDefaultSwap<T>> {
@@ -156,19 +153,13 @@ impl<T: Float> CreditInstrument<T> {
 
 impl<T: Float> InstrumentTrait<T> for CreditInstrument<T> {
     #[inline]
-    fn payoff(&self, spot: T) -> T {
-        self.payoff(spot)
-    }
+    fn payoff(&self, spot: T) -> T { self.payoff(spot) }
 
     #[inline]
-    fn expiry(&self) -> T {
-        self.expiry()
-    }
+    fn expiry(&self) -> T { self.expiry() }
 
     #[inline]
-    fn currency(&self) -> Currency {
-        self.currency()
-    }
+    fn currency(&self) -> Currency { self.currency() }
 
     fn type_name(&self) -> &'static str {
         match self {
@@ -184,16 +175,15 @@ impl<T: Float> InstrumentTrait<T> for CreditInstrument<T> {
 }
 
 impl<T: Float> From<CreditDefaultSwap<T>> for CreditInstrument<T> {
-    fn from(cds: CreditDefaultSwap<T>) -> Self {
-        CreditInstrument::Cds(cds)
-    }
+    fn from(cds: CreditDefaultSwap<T>) -> Self { CreditInstrument::Cds(cds) }
 }
 
 #[cfg(test)]
 mod tests {
+    use pricer_core::types::time::Date;
+
     use super::*;
     use crate::schedules::{Frequency, ScheduleBuilder};
-    use pricer_core::types::time::Date;
 
     fn create_test_cds() -> CreditDefaultSwap<f64> {
         let start = Date::from_ymd(2024, 3, 20).unwrap();

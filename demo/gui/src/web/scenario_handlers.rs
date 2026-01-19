@@ -12,20 +12,23 @@
 //! - Task 6.3: シナリオパラメータ調整 UI の実装
 //! - Task 6.4: シナリオ比較結果 UI の実装
 
+use std::{sync::Arc, time::Instant};
+
 use axum::{extract::State, http::StatusCode, Json};
 use pricer_optimiser::bootstrapping::{
     BootstrapInstrument, GenericBootstrapConfig, SequentialBootstrapper,
 };
-use std::sync::Arc;
-use std::time::Instant;
 use uuid::Uuid;
 
-use super::pricer_types::{
-    parse_tenor_to_years, AppliedShiftInfo, CachedCurve, IrsBootstrapErrorResponse, ParRateInput,
-    PaymentFrequency, PresetScenarioTypeApi, ScenarioCompareRequest, ScenarioCompareResponse,
-    ScenarioPnlResult, ScenarioPresetsResponse, ScenarioRunRequest, ScenarioRunResponse,
+use super::{
+    pricer_types::{
+        parse_tenor_to_years, AppliedShiftInfo, CachedCurve, IrsBootstrapErrorResponse,
+        ParRateInput, PaymentFrequency, PresetScenarioTypeApi, ScenarioCompareRequest,
+        ScenarioCompareResponse, ScenarioPnlResult, ScenarioPresetsResponse, ScenarioRunRequest,
+        ScenarioRunResponse,
+    },
+    AppState,
 };
-use super::AppState;
 
 // =============================================================================
 // Scenario Presets Handler (Task 6.1)

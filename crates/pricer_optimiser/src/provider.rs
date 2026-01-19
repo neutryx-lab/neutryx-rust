@@ -1,13 +1,15 @@
 //! Market data provider with lazy evaluation and Arc caching.
 //!
 //! This module provides `MarketProvider` - a thread-safe cache for market data
-//! objects that implements lazy evaluation (on-demand construction) and Arc-based
-//! sharing for zero-copy access across threads.
+//! objects that implements lazy evaluation (on-demand construction) and
+//! Arc-based sharing for zero-copy access across threads.
 //!
 //! # Architecture Role
 //!
-//! `MarketProvider` is the "Pull" mechanism in the Pull-then-Push execution pattern:
-//! - **Pull Phase**: Dependencies are resolved lazily via `get_curve()` / `get_vol()`
+//! `MarketProvider` is the "Pull" mechanism in the Pull-then-Push execution
+//! pattern:
+//! - **Pull Phase**: Dependencies are resolved lazily via `get_curve()` /
+//!   `get_vol()`
 //! - **Push Phase**: Resolved references are passed to pricing kernels
 //!
 //! # Caching Strategy
@@ -34,8 +36,10 @@
 //! assert!(std::sync::Arc::ptr_eq(&curve1, &curve2));
 //! ```
 
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 
 use pricer_core::types::Currency;
 use pricer_models::demo::{CurveEnum, FlatCurve, SabrVolSurface, VolSurfaceEnum};
@@ -68,7 +72,8 @@ impl MarketProvider {
     ///
     /// Implements double-check locking pattern:
     /// 1. Acquire read lock, check cache
-    /// 2. If miss, acquire write lock, check again (another thread may have populated)
+    /// 2. If miss, acquire write lock, check again (another thread may have
+    ///    populated)
     /// 3. If still miss, bootstrap curve, log, and cache
     ///
     /// # Arguments
@@ -81,7 +86,9 @@ impl MarketProvider {
     ///
     /// # Logging
     ///
-    /// On cache miss, prints: `[Optimiser] Bootstrapping Yield Curve for {currency}...`
+    /// On cache miss, prints: `[Optimiser] Bootstrapping Yield Curve for
+    /// {currency}...`
+    #[allow(clippy::unwrap_used)] // RwLock unwrap is safe: poisoned lock indicates unrecoverable prior panic
     pub fn get_curve(&self, ccy: Currency) -> Arc<CurveEnum> {
         // Fast path: read lock check
         {
@@ -131,7 +138,9 @@ impl MarketProvider {
     ///
     /// # Logging
     ///
-    /// On cache miss, prints: `[Optimiser] Calibrating SABR Surface for {currency}...`
+    /// On cache miss, prints: `[Optimiser] Calibrating SABR Surface for
+    /// {currency}...`
+    #[allow(clippy::unwrap_used)] // RwLock unwrap is safe: poisoned lock indicates unrecoverable prior panic
     pub fn get_vol(&self, ccy: Currency) -> Arc<VolSurfaceEnum> {
         // Fast path: read lock check
         {
@@ -169,12 +178,11 @@ impl MarketProvider {
 }
 
 impl Default for MarketProvider {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

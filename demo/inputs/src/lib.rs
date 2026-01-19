@@ -7,7 +7,8 @@
 //!
 //! ## Modules
 //!
-//! - [`market_data_provider`]: Simulates market data feeds (Reuters, Bloomberg style)
+//! - [`market_data_provider`]: Simulates market data feeds (Reuters, Bloomberg
+//!   style)
 //! - [`trade_source`]: Simulates front office trade booking
 //! - [`file_source`]: Generates CSV/Parquet files for batch processing
 
@@ -17,12 +18,12 @@ pub mod trade_source;
 
 /// Prelude module for convenient imports
 pub mod prelude {
-    pub use crate::file_source::{
-        BulkDataGenerator, CsvGenerator, FileGenerator, GenerationSummary,
+    pub use crate::{
+        file_source::{BulkDataGenerator, CsvGenerator, FileGenerator, GenerationSummary},
+        market_data_provider::{
+            BloombergSim, MarketDataProvider, MeanReversionModel, PriceEvolutionModel,
+            RandomWalkModel, ReutersSim, StreamingPriceGenerator, SyntheticGenerator,
+        },
+        trade_source::{FpmlGenerator, FrontOffice, TradeSource},
     };
-    pub use crate::market_data_provider::{
-        BloombergSim, MarketDataProvider, MeanReversionModel, PriceEvolutionModel, RandomWalkModel,
-        ReutersSim, StreamingPriceGenerator, SyntheticGenerator,
-    };
-    pub use crate::trade_source::{FpmlGenerator, FrontOffice, TradeSource};
 }

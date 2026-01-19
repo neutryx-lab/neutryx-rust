@@ -10,10 +10,14 @@
 //! - Greeks computation (Delta via finite difference)
 //! - L1/L2 crate integration (pricer_core, pricer_models)
 
-use pricer_pricing::checkpoint::CheckpointStrategy;
-use pricer_pricing::mc::pricer_checkpoint::{CheckpointPricer, CheckpointPricingConfig};
-use pricer_pricing::mc::{GbmParams, MonteCarloConfig};
-use pricer_pricing::path_dependent::PathPayoffType;
+use pricer_pricing::{
+    checkpoint::CheckpointStrategy,
+    mc::{
+        pricer_checkpoint::{CheckpointPricer, CheckpointPricingConfig},
+        GbmParams, MonteCarloConfig,
+    },
+    path_dependent::PathPayoffType,
+};
 
 /// Standard test GBM parameters.
 fn standard_gbm() -> GbmParams {
@@ -282,7 +286,8 @@ fn e2e_all_checkpoint_strategies() {
         prices.push(result.price);
     }
 
-    // All strategies should produce the same price (within floating point tolerance)
+    // All strategies should produce the same price (within floating point
+    // tolerance)
     let reference = prices[0];
     for (i, &price) in prices.iter().enumerate().skip(1) {
         assert!(

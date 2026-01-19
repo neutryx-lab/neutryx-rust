@@ -16,8 +16,7 @@
 //! assert_eq!(jpy.decimal_places(), 0);  // Yen has no decimal places
 //! ```
 
-use std::fmt;
-use std::str::FromStr;
+use std::{fmt, str::FromStr};
 
 use super::error::CurrencyError;
 
@@ -170,9 +169,7 @@ impl FromStr for Currency {
 
 impl fmt::Display for Currency {
     /// Formats as ISO 4217 code.
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.code())
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.code()) }
 }
 
 #[cfg(test)]

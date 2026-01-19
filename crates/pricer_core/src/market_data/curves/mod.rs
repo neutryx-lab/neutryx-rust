@@ -6,9 +6,11 @@
 //! - [`InterpolatedCurve`]: Pillar-based interpolated yield curve
 //! - [`CurveInterpolation`]: Interpolation method selection
 //! - [`CurveName`]: Standard curve name enumeration for multi-curve framework
-//! - [`CurveEnum`]: Static dispatch enum wrapping concrete curve implementations
+//! - [`CurveEnum`]: Static dispatch enum wrapping concrete curve
+//!   implementations
 //! - [`CurveSet`]: Container for managing multiple named yield curves
-//! - [`CreditCurve`]: Generic trait for hazard rate and survival probability calculations
+//! - [`CreditCurve`]: Generic trait for hazard rate and survival probability
+//!   calculations
 //! - [`HazardRateCurve`]: Interpolated hazard rate curve implementation
 //! - [`FlatHazardRateCurve`]: Constant hazard rate curve implementation
 

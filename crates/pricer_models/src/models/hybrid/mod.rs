@@ -1,8 +1,10 @@
 //! Hybrid and correlated stochastic models.
 //!
 //! This module provides models for multi-factor processes:
-//! - [`CorrelatedModels`]: Correlate multiple stochastic models via Cholesky decomposition
-//! - [`CorrelationMatrix`]: Validated correlation matrix with Cholesky factorization
+//! - [`CorrelatedModels`]: Correlate multiple stochastic models via Cholesky
+//!   decomposition
+//! - [`CorrelationMatrix`]: Validated correlation matrix with Cholesky
+//!   factorization
 //!
 //! # Feature Flag
 //!

@@ -7,15 +7,14 @@ mod bloomberg_sim;
 mod reuters_sim;
 mod synthetic;
 
+use adapter_feeds::MarketQuote;
+use async_channel::Receiver;
 pub use bloomberg_sim::BloombergSim;
 pub use reuters_sim::ReutersSim;
 pub use synthetic::{
     MeanReversionModel, PriceEvolutionModel, RandomWalkModel, StreamingPriceGenerator,
     SyntheticGenerator,
 };
-
-use adapter_feeds::MarketQuote;
-use async_channel::Receiver;
 
 /// Trait for market data providers
 #[async_trait::async_trait]

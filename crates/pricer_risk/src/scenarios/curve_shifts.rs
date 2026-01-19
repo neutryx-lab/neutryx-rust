@@ -1,6 +1,7 @@
 //! Curve shift utilities for scenario analysis.
 //!
-//! This module provides utilities for applying various shift patterns to yield curves:
+//! This module provides utilities for applying various shift patterns to yield
+//! curves:
 //! - Parallel shifts (uniform across all tenors)
 //! - Twist shifts (steepening/flattening)
 //! - Butterfly shifts (curvature changes)
@@ -9,9 +10,10 @@
 //!
 //! - Requirement 2.4: カーブシフト機能の拡充
 
-use pricer_core::market_data::curves::{CurveEnum, CurveName, CurveSet, YieldCurve};
-use pricer_core::traits::risk::ShiftType;
-
+use pricer_core::{
+    market_data::curves::{CurveEnum, CurveName, CurveSet, YieldCurve},
+    traits::risk::ShiftType,
+};
 #[cfg(feature = "serde")]
 use serde::Serialize;
 
@@ -57,7 +59,8 @@ pub enum CurveShiftType {
     /// Linear twist (steepening/flattening).
     ///
     /// Short end moves opposite to long end.
-    /// `shifted_rate(t) = base_rate(t) + short_shift + (long_shift - short_shift) * t / max_tenor`
+    /// `shifted_rate(t) = base_rate(t) + short_shift + (long_shift -
+    /// short_shift) * t / max_tenor`
     Twist {
         /// Shift for short end (t=0).
         short_shift: f64,
@@ -68,7 +71,8 @@ pub enum CurveShiftType {
     /// Butterfly shift (curvature).
     ///
     /// Wings move opposite to belly.
-    /// `shifted_rate(t) = base_rate(t) + wing_shift + (belly_shift - wing_shift) * parabola(t)`
+    /// `shifted_rate(t) = base_rate(t) + wing_shift + (belly_shift -
+    /// wing_shift) * parabola(t)`
     Butterfly {
         /// Shift for short and long ends.
         wing_shift: f64,
@@ -91,9 +95,7 @@ pub enum CurveShiftType {
 
 impl CurveShiftType {
     /// Creates a parallel shift.
-    pub fn parallel(amount: f64) -> Self {
-        Self::Parallel(amount)
-    }
+    pub fn parallel(amount: f64) -> Self { Self::Parallel(amount) }
 
     /// Creates a twist shift (steepening).
     ///
@@ -145,14 +147,10 @@ impl CurveShiftType {
     }
 
     /// Creates a positive curvature shift (belly up, wings down).
-    pub fn positive_curvature(amount: f64) -> Self {
-        Self::butterfly(-amount / 2.0, amount)
-    }
+    pub fn positive_curvature(amount: f64) -> Self { Self::butterfly(-amount / 2.0, amount) }
 
     /// Creates a negative curvature shift (belly down, wings up).
-    pub fn negative_curvature(amount: f64) -> Self {
-        Self::butterfly(amount / 2.0, -amount)
-    }
+    pub fn negative_curvature(amount: f64) -> Self { Self::butterfly(amount / 2.0, -amount) }
 
     /// Computes the shift amount for a given tenor.
     pub fn shift_at_tenor(&self, tenor: f64, max_tenor: f64) -> f64 {
@@ -172,7 +170,8 @@ impl CurveShiftType {
                 belly_tenor,
             } => {
                 // Parabolic profile with peak at belly_tenor
-                // f(t) = wing_shift + (belly_shift - wing_shift) * (1 - ((t - belly_tenor) / belly_tenor)^2)
+                // f(t) = wing_shift + (belly_shift - wing_shift) * (1 - ((t - belly_tenor) /
+                // belly_tenor)^2)
                 let t_norm = ((tenor - belly_tenor) / belly_tenor).abs();
                 let parabola = (1.0 - t_norm * t_norm).max(0.0);
                 wing_shift + (belly_shift - wing_shift) * parabola
@@ -324,7 +323,8 @@ impl CurveShifter {
             let base_rate = curve.zero_rate(1.0).unwrap_or(0.0);
 
             // For flat curves, use shift at reference tenor
-            // For proper implementation with interpolated curves, would iterate over all tenors
+            // For proper implementation with interpolated curves, would iterate over all
+            // tenors
             let shift_amount = shift.shift_at_tenor(1.0, max_tenor);
             let shifted_rate = base_rate + shift_amount;
 

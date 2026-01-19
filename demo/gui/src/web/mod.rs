@@ -9,7 +9,8 @@
 //!
 //! - REST API: `GET /api/graph` for computation graph data
 //! - WebSocket: `graph_update` messages for real-time node updates (Task 4.1)
-//! - Subscription: Clients can subscribe to specific trade graph updates (Task 4.3)
+//! - Subscription: Clients can subscribe to specific trade graph updates (Task
+//!   4.3)
 
 pub mod handlers;
 pub mod jobs;
@@ -19,25 +20,28 @@ pub mod pricer_types;
 pub mod scenario_handlers;
 pub mod websocket;
 
+use std::{
+    collections::HashSet,
+    net::SocketAddr,
+    sync::{atomic::AtomicU32, Arc},
+    time::Instant,
+};
+
 use axum::{
     http::HeaderValue,
     routing::{get, post},
     Router,
 };
-use std::collections::HashSet;
-use std::net::SocketAddr;
-use std::sync::atomic::AtomicU32;
-use std::sync::Arc;
-use std::time::Instant;
-use tokio::sync::{broadcast, RwLock};
-use tower_http::cors::{AllowOrigin, Any, CorsLayer};
-use tower_http::services::ServeDir;
-use tower_http::set_header::SetResponseHeaderLayer;
-use tracing::info;
-
 use handlers::GraphCache;
 use jobs::JobManager;
 use pricer_types::BootstrapCurveCache;
+use tokio::sync::{broadcast, RwLock};
+use tower_http::{
+    cors::{AllowOrigin, Any, CorsLayer},
+    services::ServeDir,
+    set_header::SetResponseHeaderLayer,
+};
+use tracing::info;
 
 // =========================================================================
 // Task 6.1: PerformanceMetrics State (Requirement 9.5)
@@ -65,7 +69,8 @@ pub struct PerformanceMetrics {
 }
 
 impl PerformanceMetrics {
-    /// Maximum number of timing entries to keep (Requirement 9.5: limit to 1000)
+    /// Maximum number of timing entries to keep (Requirement 9.5: limit to
+    /// 1000)
     const MAX_ENTRIES: usize = 1000;
 
     /// Create new performance metrics instance
@@ -126,24 +131,16 @@ impl PerformanceMetrics {
     }
 
     /// Get average portfolio response time in milliseconds
-    pub async fn portfolio_avg_ms(&self) -> f64 {
-        Self::calculate_avg(&self.portfolio_times).await
-    }
+    pub async fn portfolio_avg_ms(&self) -> f64 { Self::calculate_avg(&self.portfolio_times).await }
 
     /// Get average exposure response time in milliseconds
-    pub async fn exposure_avg_ms(&self) -> f64 {
-        Self::calculate_avg(&self.exposure_times).await
-    }
+    pub async fn exposure_avg_ms(&self) -> f64 { Self::calculate_avg(&self.exposure_times).await }
 
     /// Get average risk response time in milliseconds
-    pub async fn risk_avg_ms(&self) -> f64 {
-        Self::calculate_avg(&self.risk_times).await
-    }
+    pub async fn risk_avg_ms(&self) -> f64 { Self::calculate_avg(&self.risk_times).await }
 
     /// Get average graph response time in milliseconds
-    pub async fn graph_avg_ms(&self) -> f64 {
-        Self::calculate_avg(&self.graph_times).await
-    }
+    pub async fn graph_avg_ms(&self) -> f64 { Self::calculate_avg(&self.graph_times).await }
 
     /// Get average WebSocket message latency in milliseconds
     pub async fn ws_latency_avg_ms(&self) -> f64 {
@@ -151,9 +148,7 @@ impl PerformanceMetrics {
     }
 
     /// Get server uptime in seconds
-    pub fn uptime_seconds(&self) -> u64 {
-        self.start_time.elapsed().as_secs()
-    }
+    pub fn uptime_seconds(&self) -> u64 { self.start_time.elapsed().as_secs() }
 
     /// Get current WebSocket connection count
     pub fn ws_connection_count(&self) -> u32 {
@@ -175,9 +170,7 @@ impl PerformanceMetrics {
 }
 
 impl Default for PerformanceMetrics {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 // =========================================================================
@@ -218,7 +211,8 @@ pub struct AppState {
     pub tx: broadcast::Sender<String>,
     /// Graph cache for performance optimisation (Task 3.3)
     pub graph_cache: RwLock<GraphCache>,
-    /// Set of trade IDs that clients have subscribed to for graph updates (Task 4.3)
+    /// Set of trade IDs that clients have subscribed to for graph updates (Task
+    /// 4.3)
     pub graph_subscriptions: RwLock<HashSet<String>>,
     /// Performance metrics (Task 6.1)
     pub metrics: PerformanceMetrics,
@@ -301,9 +295,7 @@ impl AppState {
 }
 
 impl Default for AppState {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 /// Build the web application router

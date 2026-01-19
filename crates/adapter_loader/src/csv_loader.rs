@@ -1,7 +1,8 @@
 //! CSV file loader.
 
-use crate::error::LoaderError;
 use std::path::Path;
+
+use crate::error::LoaderError;
 
 /// CSV file loader for trade and market data.
 pub struct CsvLoader;

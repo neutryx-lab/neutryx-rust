@@ -10,17 +10,20 @@
 //! 3. **Convergence Tests**: Price error decreases with path count
 
 use approx::assert_relative_eq;
-use pricer_pricing::analytical::{
-    down_out_call, geometric_asian_call, geometric_asian_put, up_out_call,
+use pricer_pricing::{
+    analytical::{down_out_call, geometric_asian_call, geometric_asian_put, up_out_call},
+    checkpoint::CheckpointStrategy,
+    mc::{
+        pricer_checkpoint::{CheckpointPricer, CheckpointPricingConfig},
+        GbmParams, MonteCarloConfig,
+    },
+    path_dependent::PathPayoffType,
 };
-use pricer_pricing::checkpoint::CheckpointStrategy;
-use pricer_pricing::mc::pricer_checkpoint::{CheckpointPricer, CheckpointPricingConfig};
-use pricer_pricing::mc::{GbmParams, MonteCarloConfig};
-use pricer_pricing::path_dependent::PathPayoffType;
 
 /// Standard test parameters for comparison tests.
 fn standard_params() -> (f64, f64, f64, f64, f64, f64) {
-    (100.0, 100.0, 0.05, 0.0, 0.2, 1.0) // spot, strike, rate, div, vol, maturity
+    (100.0, 100.0, 0.05, 0.0, 0.2, 1.0) // spot, strike, rate, div, vol,
+                                        // maturity
 }
 
 /// Standard GBM parameters matching analytical inputs.

@@ -32,8 +32,9 @@
 //! assert_eq!(diff.tangent(), 1.0); // d(spot - strike)/d(spot) = 1
 //! ```
 
-use num_traits::Float;
 use std::ops::{Add, Div, Mul, Neg, Sub};
+
+use num_traits::Float;
 
 /// Forward mode AD value carrying primal and tangent.
 ///
@@ -76,13 +77,12 @@ impl<T: Float> ForwardAD<T> {
     /// * `primal` - The value
     /// * `tangent` - The derivative (tangent) value
     #[inline]
-    pub fn new(primal: T, tangent: T) -> Self {
-        Self { primal, tangent }
-    }
+    pub fn new(primal: T, tangent: T) -> Self { Self { primal, tangent } }
 
     /// Creates a variable with tangent seed = 1.0.
     ///
-    /// Use this for the input variable you want to differentiate with respect to.
+    /// Use this for the input variable you want to differentiate with respect
+    /// to.
     ///
     /// # Arguments
     ///
@@ -90,7 +90,8 @@ impl<T: Float> ForwardAD<T> {
     ///
     /// # Returns
     ///
-    /// `ForwardAD` with `tangent = 1.0`, indicating this is the differentiation variable.
+    /// `ForwardAD` with `tangent = 1.0`, indicating this is the differentiation
+    /// variable.
     ///
     /// # Examples
     ///
@@ -152,21 +153,15 @@ impl<T: Float> ForwardAD<T> {
 
     /// Returns the primal (actual) value.
     #[inline]
-    pub fn primal(&self) -> T {
-        self.primal
-    }
+    pub fn primal(&self) -> T { self.primal }
 
     /// Returns the tangent (derivative) value.
     #[inline]
-    pub fn tangent(&self) -> T {
-        self.tangent
-    }
+    pub fn tangent(&self) -> T { self.tangent }
 
     /// Extracts both primal and tangent as a tuple.
     #[inline]
-    pub fn into_parts(self) -> (T, T) {
-        (self.primal, self.tangent)
-    }
+    pub fn into_parts(self) -> (T, T) { (self.primal, self.tangent) }
 }
 
 // =============================================================================
@@ -394,9 +389,7 @@ impl<T: Float> Div<T> for ForwardAD<T> {
 // =============================================================================
 
 impl<T: Float> Default for ForwardAD<T> {
-    fn default() -> Self {
-        Self::constant(T::zero())
-    }
+    fn default() -> Self { Self::constant(T::zero()) }
 }
 
 // =============================================================================
@@ -404,15 +397,14 @@ impl<T: Float> Default for ForwardAD<T> {
 // =============================================================================
 
 impl From<f64> for ForwardAD<f64> {
-    fn from(value: f64) -> Self {
-        Self::constant(value)
-    }
+    fn from(value: f64) -> Self { Self::constant(value) }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     #[test]
     fn test_variable_creation() {

@@ -1,6 +1,7 @@
 //! Neutryx Server - gRPC/REST API for XVA Pricing
 //!
-//! This is the production integration point for the Neutryx XVA pricing library.
+//! This is the production integration point for the Neutryx XVA pricing
+//! library.
 //!
 //! # Architecture
 //!
@@ -61,7 +62,6 @@ async fn main() -> Result<()> {
         axum::serve(listener, app).await?;
     }
 
-    // TODO: Start gRPC server when grpc feature is enabled
     #[cfg(feature = "grpc")]
     if config.grpc_enabled {
         info!("gRPC server not yet implemented");

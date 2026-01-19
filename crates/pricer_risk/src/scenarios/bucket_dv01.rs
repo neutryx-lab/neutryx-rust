@@ -11,12 +11,13 @@
 //! - Requirement 2.2: Key Rate Duration 計算
 //! - Requirement 2.3: バケット合計と総 DV01 の整合性検証
 
-use pricer_core::market_data::curves::{CurveEnum, CurveName, CurveSet, YieldCurve};
-use pricer_core::types::time::Date;
-use pricer_models::instruments::rates::{price_irs, InterestRateSwap};
-use std::collections::HashMap;
-use std::time::Instant;
+use std::{collections::HashMap, time::Instant};
 
+use pricer_core::{
+    market_data::curves::{CurveEnum, CurveName, CurveSet, YieldCurve},
+    types::time::Date,
+};
+use pricer_models::instruments::rates::{price_irs, InterestRateSwap};
 #[cfg(feature = "serde")]
 use serde::Serialize;
 
@@ -140,14 +141,10 @@ impl BucketDv01Result {
     }
 
     /// Returns the number of buckets.
-    pub fn num_buckets(&self) -> usize {
-        self.buckets.len()
-    }
+    pub fn num_buckets(&self) -> usize { self.buckets.len() }
 
     /// Returns computation time in milliseconds.
-    pub fn computation_time_ms(&self) -> f64 {
-        self.computation_time_ns as f64 / 1_000_000.0
-    }
+    pub fn computation_time_ms(&self) -> f64 { self.computation_time_ns as f64 / 1_000_000.0 }
 
     /// Checks if bucket sum is consistent with total DV01.
     ///
@@ -221,9 +218,7 @@ impl KeyRateDurationResult {
     }
 
     /// Returns computation time in milliseconds.
-    pub fn computation_time_ms(&self) -> f64 {
-        self.computation_time_ns as f64 / 1_000_000.0
-    }
+    pub fn computation_time_ms(&self) -> f64 { self.computation_time_ns as f64 / 1_000_000.0 }
 }
 
 /// Configuration for bucket DV01 calculation.
@@ -262,9 +257,7 @@ impl Default for BucketDv01Config {
 
 impl BucketDv01Config {
     /// Creates a new configuration with default settings.
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Sets custom tenor points.
     pub fn with_tenors(mut self, tenors: Vec<f64>, labels: Vec<String>) -> Self {
@@ -307,14 +300,10 @@ pub struct BucketDv01Calculator {
 
 impl BucketDv01Calculator {
     /// Creates a new calculator with the given configuration.
-    pub fn new(config: BucketDv01Config) -> Self {
-        Self { config }
-    }
+    pub fn new(config: BucketDv01Config) -> Self { Self { config } }
 
     /// Returns a reference to the configuration.
-    pub fn config(&self) -> &BucketDv01Config {
-        &self.config
-    }
+    pub fn config(&self) -> &BucketDv01Config { &self.config }
 
     /// Computes total DV01 using parallel shift.
     fn compute_total_dv01(
@@ -521,11 +510,13 @@ impl BucketDv01Calculator {
 
 #[cfg(test)]
 mod tests {
+    use pricer_core::types::{time::DayCountConvention, Currency};
+    use pricer_models::{
+        instruments::rates::{FixedLeg, FloatingLeg, RateIndex, SwapDirection},
+        schedules::{Frequency, ScheduleBuilder},
+    };
+
     use super::*;
-    use pricer_core::types::time::DayCountConvention;
-    use pricer_core::types::Currency;
-    use pricer_models::instruments::rates::{FixedLeg, FloatingLeg, RateIndex, SwapDirection};
-    use pricer_models::schedules::{Frequency, ScheduleBuilder};
 
     // ================================================================
     // Task 2.1, 2.2: Bucket DV01 and KRD tests (TDD)

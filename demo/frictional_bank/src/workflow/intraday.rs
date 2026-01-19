@@ -3,12 +3,19 @@
 //! Handles real-time portfolio re-evaluation on market data updates.
 //! Subscribes to MarketDataProvider stream and updates risk metrics.
 
-use super::{DemoWorkflow, ProgressCallback, WorkflowResult, WorkflowStep};
-use crate::config::DemoConfig;
-use crate::error::DemoError;
+use std::{
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    time::Instant,
+};
+
 use async_trait::async_trait;
-use demo_inputs::prelude::{FrontOffice, TradeSource};
-use demo_inputs::trade_source::{TradeParams, TradeRecord};
+use demo_inputs::{
+    prelude::{FrontOffice, TradeSource},
+    trade_source::{TradeParams, TradeRecord},
+};
 use demo_outputs::prelude::WebSocketSink;
 // MetricType and MetricUpdate are available for real-time dashboard updates
 #[allow(unused_imports)]
@@ -17,9 +24,9 @@ use pricer_core::types::Currency;
 use pricer_models::demo::{BlackScholes, InstrumentEnum, ModelEnum, VanillaSwap};
 use pricer_optimiser::provider::MarketProvider;
 use pricer_risk::demo::{run_portfolio_pricing_sequential, DemoTrade};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use std::time::Instant;
+
+use super::{DemoWorkflow, ProgressCallback, WorkflowResult, WorkflowStep};
+use crate::{config::DemoConfig, error::DemoError};
 
 /// Intraday Workflow
 pub struct IntradayWorkflow {
@@ -36,9 +43,7 @@ impl IntradayWorkflow {
     }
 
     /// Check if the workflow is currently running
-    pub fn is_running(&self) -> bool {
-        self.running.load(Ordering::SeqCst)
-    }
+    pub fn is_running(&self) -> bool { self.running.load(Ordering::SeqCst) }
 
     /// Convert TradeRecord to DemoTrade for pricing
     fn convert_trade_record(record: &TradeRecord) -> DemoTrade {
@@ -119,16 +124,12 @@ struct RiskMetrics {
 }
 
 impl Default for IntradayWorkflow {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 #[async_trait]
 impl DemoWorkflow for IntradayWorkflow {
-    fn name(&self) -> &str {
-        "Intraday"
-    }
+    fn name(&self) -> &str { "Intraday" }
 
     async fn run(
         &self,

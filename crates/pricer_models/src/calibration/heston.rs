@@ -25,10 +25,11 @@
 //! where C(u) and D(u) are complex-valued functions of the model
 //! parameters.
 
+use std::f64::consts::PI;
+
 use pricer_core::traits::calibration::{
     CalibrationConfig, CalibrationResult, Calibrator, Constraint, ParameterBounds,
 };
-use std::f64::consts::PI;
 
 use super::{ModelCalibrator, ModelCalibratorConfig};
 
@@ -119,9 +120,7 @@ impl HestonCalibrationData {
     }
 
     /// Add a market point.
-    pub fn add_point(&mut self, point: HestonMarketPoint) {
-        self.points.push(point);
-    }
+    pub fn add_point(&mut self, point: HestonMarketPoint) { self.points.push(point); }
 
     /// Add a call option price.
     pub fn add_call(&mut self, strike: f64, expiry: f64, price: f64) {
@@ -143,14 +142,10 @@ impl HestonCalibrationData {
     }
 
     /// Number of points.
-    pub fn len(&self) -> usize {
-        self.points.len()
-    }
+    pub fn len(&self) -> usize { self.points.len() }
 
     /// Check if empty.
-    pub fn is_empty(&self) -> bool {
-        self.points.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.points.is_empty() }
 
     /// Validate the data.
     pub fn validate(&self) -> Result<(), String> {
@@ -236,9 +231,7 @@ pub struct HestonCalibrator {
 }
 
 impl Default for HestonCalibrator {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl HestonCalibrator {
@@ -298,9 +291,7 @@ impl HestonCalibrator {
     }
 
     /// Get parameter names.
-    pub fn param_names(&self) -> &[String] {
-        &self.param_names
-    }
+    pub fn param_names(&self) -> &[String] { &self.param_names }
 
     /// Check if parameters satisfy Feller condition.
     pub fn satisfies_feller(params: &[f64]) -> bool {
@@ -427,7 +418,8 @@ impl HestonCalibrator {
         let one_minus_g = one - g;
 
         // C and D functions
-        // c = (kappa * theta / xi2) * ((beta - d) * t - 2 * ln((1 - g*exp(-d*t)) / (1 - g)))
+        // c = (kappa * theta / xi2) * ((beta - d) * t - 2 * ln((1 - g*exp(-d*t)) / (1 -
+        // g)))
         let ln_term = (one_minus_g_exp / one_minus_g).ln();
         let c = ((beta - d_safe) * t - two * ln_term) * (kappa * theta / xi2);
 
@@ -644,17 +636,11 @@ struct Complex64 {
 }
 
 impl Complex64 {
-    fn new(re: f64, im: f64) -> Self {
-        Self { re, im }
-    }
+    fn new(re: f64, im: f64) -> Self { Self { re, im } }
 
-    fn i() -> Self {
-        Self { re: 0.0, im: 1.0 }
-    }
+    fn i() -> Self { Self { re: 0.0, im: 1.0 } }
 
-    fn norm(&self) -> f64 {
-        (self.re * self.re + self.im * self.im).sqrt()
-    }
+    fn norm(&self) -> f64 { (self.re * self.re + self.im * self.im).sqrt() }
 
     fn exp(self) -> Self {
         let exp_re = self.re.exp();
@@ -1109,10 +1095,11 @@ mod tests {
         assert!(call > 0.0, "Call price should be positive: {}", call);
         assert!(call < spot, "Call price should be less than spot: {}", call);
 
-        // Note: The characteristic function integration is a basic implementation.
-        // For production, a more robust FFT-based approach would be used.
-        // The calibration still works because it compares model vs market prices
-        // computed consistently with the same method.
+        // Note: The characteristic function integration is a basic
+        // implementation. For production, a more robust FFT-based
+        // approach would be used. The calibration still works because
+        // it compares model vs market prices computed consistently with
+        // the same method.
     }
 
     #[test]

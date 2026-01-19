@@ -11,7 +11,8 @@
 //!
 //! # Requirements Coverage
 //!
-//! - Requirement 5.1: PV計算時間、単一Delta計算時間、全テナーDelta計算時間の計測
+//! - Requirement 5.1:
+//!   PV計算時間、単一Delta計算時間、全テナーDelta計算時間の計測
 //! - Requirement 5.2: 複数回(デフォルト100回)実行し、統計値を算出
 //! - Requirement 5.3: AADモードとBump-and-Revalueモードの速度比を計算
 //! - Requirement 5.4: テナー数増加に伴う計算時間のスケーラビリティを計測
@@ -43,9 +44,7 @@ use pricer_core::types::time::Date;
 #[cfg(feature = "l1l2-integration")]
 use pricer_models::instruments::rates::InterestRateSwap;
 
-use super::IrsGreeksCalculator;
-use super::IrsGreeksConfig;
-use super::IrsGreeksError;
+use super::{IrsGreeksCalculator, IrsGreeksConfig, IrsGreeksError};
 
 // =============================================================================
 // Task 4.1: Benchmark Configuration
@@ -83,9 +82,7 @@ impl Default for BenchmarkConfig {
 
 impl BenchmarkConfig {
     /// Creates a new benchmark configuration with default values.
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Sets the number of iterations.
     pub fn with_iterations(mut self, iterations: usize) -> Self {
@@ -182,14 +179,10 @@ impl TimingStats {
     }
 
     /// Returns the mean time in microseconds.
-    pub fn mean_us(&self) -> f64 {
-        self.mean_ns / 1000.0
-    }
+    pub fn mean_us(&self) -> f64 { self.mean_ns / 1000.0 }
 
     /// Returns the mean time in milliseconds.
-    pub fn mean_ms(&self) -> f64 {
-        self.mean_ns / 1_000_000.0
-    }
+    pub fn mean_ms(&self) -> f64 { self.mean_ns / 1_000_000.0 }
 
     /// Returns the coefficient of variation (CV) as a percentage.
     ///
@@ -299,14 +292,10 @@ impl ScalabilityResult {
     }
 
     /// Returns the number of data points.
-    pub fn len(&self) -> usize {
-        self.results.len()
-    }
+    pub fn len(&self) -> usize { self.results.len() }
 
     /// Returns true if there are no data points.
-    pub fn is_empty(&self) -> bool {
-        self.results.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.results.is_empty() }
 
     /// Extracts AAD timing data for plotting.
     ///
@@ -340,9 +329,7 @@ impl ScalabilityResult {
 }
 
 impl Default for ScalabilityResult {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 // =============================================================================
@@ -367,7 +354,8 @@ pub struct SwapParams {
 ///
 /// # Requirements Coverage
 ///
-/// - Requirement 5.5: タイムスタンプ、スワップパラメータ、計測結果を含むスキーマ
+/// - Requirement 5.5:
+///   タイムスタンプ、スワップパラメータ、計測結果を含むスキーマ
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FullBenchmarkResult {
@@ -423,19 +411,13 @@ pub struct BenchmarkRunner {
 
 impl BenchmarkRunner {
     /// Creates a new benchmark runner with the given configuration.
-    pub fn new(config: BenchmarkConfig) -> Self {
-        Self { config }
-    }
+    pub fn new(config: BenchmarkConfig) -> Self { Self { config } }
 
     /// Creates a new benchmark runner with default configuration.
-    pub fn with_defaults() -> Self {
-        Self::new(BenchmarkConfig::default())
-    }
+    pub fn with_defaults() -> Self { Self::new(BenchmarkConfig::default()) }
 
     /// Returns a reference to the configuration.
-    pub fn config(&self) -> &BenchmarkConfig {
-        &self.config
-    }
+    pub fn config(&self) -> &BenchmarkConfig { &self.config }
 }
 
 #[cfg(feature = "l1l2-integration")]
@@ -1350,14 +1332,19 @@ mod tests {
 
 #[cfg(all(test, feature = "l1l2-integration"))]
 mod integration_tests {
-    use super::*;
-    use pricer_core::market_data::curves::{CurveEnum, CurveName, CurveSet};
-    use pricer_core::types::time::{Date, DayCountConvention};
-    use pricer_core::types::Currency;
-    use pricer_models::instruments::rates::{
-        FixedLeg, FloatingLeg, InterestRateSwap, RateIndex, SwapDirection,
+    use pricer_core::{
+        market_data::curves::{CurveEnum, CurveName, CurveSet},
+        types::{
+            time::{Date, DayCountConvention},
+            Currency,
+        },
     };
-    use pricer_models::schedules::{Frequency, ScheduleBuilder};
+    use pricer_models::{
+        instruments::rates::{FixedLeg, FloatingLeg, InterestRateSwap, RateIndex, SwapDirection},
+        schedules::{Frequency, ScheduleBuilder},
+    };
+
+    use super::*;
 
     fn create_test_swap() -> InterestRateSwap<f64> {
         let start = Date::from_ymd(2024, 1, 15).unwrap();
@@ -1458,7 +1445,8 @@ mod integration_tests {
         assert_eq!(result.bump_stats.sample_count, 10);
         assert!(result.aad_stats.mean_ns > 0.0);
         assert!(result.bump_stats.mean_ns > 0.0);
-        // Speedup ratio should be calculated (currently ~1 since AAD falls back to bump)
+        // Speedup ratio should be calculated (currently ~1 since AAD falls back to
+        // bump)
         assert!(result.speedup_ratio > 0.0);
     }
 

@@ -1,7 +1,8 @@
 //! Checkpoint-integrated Monte Carlo pricing engine.
 //!
 //! This module extends the Monte Carlo pricer with checkpoint support for
-//! memory-efficient automatic differentiation during path-dependent option pricing.
+//! memory-efficient automatic differentiation during path-dependent option
+//! pricing.
 //!
 //! # Checkpoint Integration
 //!
@@ -21,17 +22,19 @@
 //!
 //! Optimal checkpoint interval for √n checkpoints gives O(√n) memory.
 
-use crate::checkpoint::{
-    CheckpointManager, CheckpointResult, CheckpointStrategy, MemoryBudget, SimulationState,
+use crate::{
+    checkpoint::{
+        CheckpointManager, CheckpointResult, CheckpointStrategy, MemoryBudget, SimulationState,
+    },
+    mc::{workspace_checkpoint::CheckpointWorkspace, GbmParams, MonteCarloConfig, PricingResult},
+    path_dependent::{PathObserverState, PathPayoffType},
+    rng::PricerRng,
 };
-use crate::mc::workspace_checkpoint::CheckpointWorkspace;
-use crate::mc::{GbmParams, MonteCarloConfig, PricingResult};
-use crate::path_dependent::{PathObserverState, PathPayoffType};
-use crate::rng::PricerRng;
 
 /// Configuration for checkpoint-enabled pricing.
 ///
-/// Extends the basic Monte Carlo config with checkpoint strategy and memory budget.
+/// Extends the basic Monte Carlo config with checkpoint strategy and memory
+/// budget.
 #[derive(Clone, Debug)]
 pub struct CheckpointPricingConfig {
     /// Base Monte Carlo configuration.
@@ -137,21 +140,15 @@ impl CheckpointPricer {
 
     /// Returns a reference to the configuration.
     #[inline]
-    pub fn config(&self) -> &CheckpointPricingConfig {
-        &self.config
-    }
+    pub fn config(&self) -> &CheckpointPricingConfig { &self.config }
 
     /// Returns the number of checkpoints currently stored.
     #[inline]
-    pub fn checkpoint_count(&self) -> usize {
-        self.checkpoint_manager.checkpoint_count()
-    }
+    pub fn checkpoint_count(&self) -> usize { self.checkpoint_manager.checkpoint_count() }
 
     /// Returns the total memory usage of checkpoints in bytes.
     #[inline]
-    pub fn checkpoint_memory_usage(&self) -> usize {
-        self.checkpoint_manager.memory_usage()
-    }
+    pub fn checkpoint_memory_usage(&self) -> usize { self.checkpoint_manager.memory_usage() }
 
     /// Resets the pricer state for a new simulation.
     pub fn reset(&mut self) {
@@ -363,7 +360,8 @@ impl CheckpointPricer {
         (result_with.price - result_without.price).abs() < tolerance
     }
 
-    /// Forward pass for gradient computation (placeholder for Enzyme integration).
+    /// Forward pass for gradient computation (placeholder for Enzyme
+    /// integration).
     ///
     /// In Phase 5+, this will be the entry point for Enzyme's reverse-mode AD.
     /// The checkpoints saved during forward pass will be used to replay
@@ -405,25 +403,18 @@ impl CheckpointPricer {
     /// Placeholder gradient (0.0 until Enzyme integration).
     pub fn reverse_pass_placeholder(&self) -> f64 {
         // Placeholder: actual implementation requires Enzyme #[autodiff]
-        // This demonstrates the checkpoint restoration pattern:
-        //
-        // for step in (0..n_steps).rev() {
-        //     if let Some(checkpoint_step) = self.checkpoint_manager.nearest_checkpoint(step) {
-        //         let state = self.checkpoint_manager.restore_state(checkpoint_step)?;
-        //         // Replay forward from checkpoint_step to step
-        //         // Accumulate adjoints
-        //     }
-        // }
-
-        0.0 // Placeholder return
+        // Reverse pass will restore checkpoints, replay forward, and accumulate
+        // adjoints
+        0.0
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use approx::assert_relative_eq;
+
     use super::*;
     use crate::checkpoint::{CheckpointStrategy, MemoryBudget};
-    use approx::assert_relative_eq;
 
     fn create_test_config() -> CheckpointPricingConfig {
         let mc_config = MonteCarloConfig::builder()
@@ -969,7 +960,8 @@ mod tests {
     // Overhead Verification Tests (Task 13.1)
     // ========================================================================
 
-    /// Test that checkpoint memory usage increases with more frequent checkpoints.
+    /// Test that checkpoint memory usage increases with more frequent
+    /// checkpoints.
     #[test]
     fn test_memory_usage_scales_with_checkpoint_frequency() {
         let n_paths = 2000;

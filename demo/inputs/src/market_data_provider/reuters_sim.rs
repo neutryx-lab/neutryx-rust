@@ -3,15 +3,17 @@
 //! Simulates high-frequency market data streaming with realistic
 //! price movements and spread dynamics.
 
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
+
 use adapter_feeds::MarketQuote;
 use async_channel::{Receiver, Sender};
 use chrono::Utc;
 use pricer_core::types::Currency;
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use rand::{rngs::StdRng, Rng, SeedableRng};
 use rand_distr::{Distribution, Normal};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 use tokio::time::{interval, Duration};
 use tracing::info;
 
@@ -206,9 +208,7 @@ impl ReutersSim {
 }
 
 impl Default for ReutersSim {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 #[cfg(test)]

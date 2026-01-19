@@ -31,8 +31,10 @@
 //! ```
 
 use num_traits::Float;
-use pricer_core::market_data::curves::CreditCurve;
-use pricer_core::market_data::error::MarketDataError;
+use pricer_core::{
+    market_data::{curves::CreditCurve, error::MarketDataError},
+    math::numeric::{from_f64, from_usize},
+};
 
 /// Default time simulator using a credit curve.
 ///
@@ -58,9 +60,7 @@ impl<'a, T: Float, C: CreditCurve<T>> DefaultTimeSimulator<'a, T, C> {
     /// # Arguments
     ///
     /// * `credit_curve` - Credit curve for survival probabilities
-    pub fn new(credit_curve: &'a C) -> Self {
-        Self::with_horizon(credit_curve, T::from(100.0).unwrap())
-    }
+    pub fn new(credit_curve: &'a C) -> Self { Self::with_horizon(credit_curve, from_f64(100.0)) }
 
     /// Create a new default time simulator with custom horizon.
     ///
@@ -107,8 +107,8 @@ impl<'a, T: Float, C: CreditCurve<T>> DefaultTimeSimulator<'a, T, C> {
     /// S(t) = exp(-λt)  →  τ = -ln(U) / λ
     /// ```
     ///
-    /// Note: We use U directly as the survival probability for numerical stability:
-    /// ```text
+    /// Note: We use U directly as the survival probability for numerical
+    /// stability: ```text
     /// S(τ) = U  →  τ = S⁻¹(U) = -ln(U) / λ  (for flat curve)
     /// ```
     pub fn sample_default_time(&self, uniform: T) -> Result<T, MarketDataError> {
@@ -130,7 +130,7 @@ impl<'a, T: Float, C: CreditCurve<T>> DefaultTimeSimulator<'a, T, C> {
     ///
     /// Finds τ such that S(τ) = target_survival using bisection search.
     fn find_default_time_bisection(&self, target_survival: T) -> Result<T, MarketDataError> {
-        let tol = T::from(1e-6).unwrap();
+        let tol: T = from_f64(1e-6);
         let max_iter = 100;
 
         let mut lo = T::zero();
@@ -242,15 +242,11 @@ impl<T: Float> CreditPathResult<T> {
 
     /// Check if default occurred.
     #[inline]
-    pub fn is_defaulted(&self) -> bool {
-        self.status == DefaultStatus::Defaulted
-    }
+    pub fn is_defaulted(&self) -> bool { self.status == DefaultStatus::Defaulted }
 
     /// Check if entity survived.
     #[inline]
-    pub fn is_survived(&self) -> bool {
-        self.status == DefaultStatus::Survived
-    }
+    pub fn is_survived(&self) -> bool { self.status == DefaultStatus::Survived }
 }
 
 /// Monte Carlo simulator for credit default events.
@@ -325,8 +321,8 @@ impl<'a, T: Float, C: CreditCurve<T>> CreditMonteCarloSimulator<'a, T, C> {
         let paths = self.simulate_paths(uniforms)?;
         let n_defaults = paths.iter().filter(|p| p.is_defaulted()).count();
 
-        let n_paths = T::from(uniforms.len()).unwrap();
-        let n_def = T::from(n_defaults).unwrap();
+        let n_paths: T = from_usize(uniforms.len());
+        let n_def: T = from_usize(n_defaults);
 
         Ok(n_def / n_paths)
     }
@@ -350,7 +346,7 @@ impl<'a, T: Float, C: CreditCurve<T>> CreditMonteCarloSimulator<'a, T, C> {
         }
 
         let sum: T = default_times.iter().copied().fold(T::zero(), |a, b| a + b);
-        let n = T::from(default_times.len()).unwrap();
+        let n: T = from_usize(default_times.len());
 
         Ok(Some(sum / n))
     }
@@ -358,8 +354,9 @@ impl<'a, T: Float, C: CreditCurve<T>> CreditMonteCarloSimulator<'a, T, C> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use pricer_core::market_data::curves::FlatHazardRateCurve;
+
+    use super::*;
 
     // ========================================
     // DefaultTimeSimulator Tests
@@ -396,7 +393,8 @@ mod tests {
         let credit_curve = FlatHazardRateCurve::new(0.02_f64);
         let simulator = DefaultTimeSimulator::new(&credit_curve);
 
-        // Very low uniform = very early default (high U = early default for survival target)
+        // Very low uniform = very early default (high U = early default for survival
+        // target)
         let early_time = simulator.sample_default_time(0.999).unwrap();
         assert!(
             early_time < 1.0,

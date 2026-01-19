@@ -2,9 +2,10 @@
 //!
 //! Portfolio risk management, XVA calculations, and parallelisation.
 //!
-//! **Note**: This crate was renamed from `pricer_risk` to `pricer_risk` in version 0.7.0.
-//! The new name better reflects the broader risk management capabilities including
-//! risk factors, scenario analysis, and Greeks aggregation.
+//! **Note**: This crate was renamed from `pricer_risk` to `pricer_risk` in
+//! version 0.7.0. The new name better reflects the broader risk management
+//! capabilities including risk factors, scenario analysis, and Greeks
+//! aggregation.
 //!
 //! This crate provides:
 //! - Portfolio and trade structures with netting sets

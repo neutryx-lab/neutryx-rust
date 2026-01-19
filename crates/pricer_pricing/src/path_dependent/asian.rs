@@ -12,8 +12,9 @@
 //! When the `l1l2-integration` feature is enabled, payoffs use
 //! `pricer_core::math::smoothing::smooth_max`.
 
-use super::{ObservationType, PathDependentPayoff, PathObserver};
 use num_traits::Float;
+
+use super::{ObservationType, PathDependentPayoff, PathObserver};
 
 /// Parameters for Asian option payoffs.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -77,21 +78,15 @@ pub struct AsianArithmeticPayoff<T: Float> {
 impl<T: Float> AsianArithmeticPayoff<T> {
     /// Creates a new arithmetic Asian payoff.
     #[inline]
-    pub fn new(params: AsianParams<T>) -> Self {
-        Self { params }
-    }
+    pub fn new(params: AsianParams<T>) -> Self { Self { params } }
 
     /// Creates a call option payoff.
     #[inline]
-    pub fn call(strike: T, epsilon: T) -> Self {
-        Self::new(AsianParams::call(strike, epsilon))
-    }
+    pub fn call(strike: T, epsilon: T) -> Self { Self::new(AsianParams::call(strike, epsilon)) }
 
     /// Creates a put option payoff.
     #[inline]
-    pub fn put(strike: T, epsilon: T) -> Self {
-        Self::new(AsianParams::put(strike, epsilon))
-    }
+    pub fn put(strike: T, epsilon: T) -> Self { Self::new(AsianParams::put(strike, epsilon)) }
 }
 
 impl<T: Float + Send + Sync> PathDependentPayoff<T> for AsianArithmeticPayoff<T> {
@@ -105,13 +100,9 @@ impl<T: Float + Send + Sync> PathDependentPayoff<T> for AsianArithmeticPayoff<T>
         soft_plus(intrinsic, self.params.smoothing_epsilon)
     }
 
-    fn required_observations(&self) -> ObservationType {
-        ObservationType::arithmetic_asian()
-    }
+    fn required_observations(&self) -> ObservationType { ObservationType::arithmetic_asian() }
 
-    fn smoothing_epsilon(&self) -> T {
-        self.params.smoothing_epsilon
-    }
+    fn smoothing_epsilon(&self) -> T { self.params.smoothing_epsilon }
 }
 
 /// Geometric average Asian option payoff.
@@ -130,21 +121,15 @@ pub struct AsianGeometricPayoff<T: Float> {
 impl<T: Float> AsianGeometricPayoff<T> {
     /// Creates a new geometric Asian payoff.
     #[inline]
-    pub fn new(params: AsianParams<T>) -> Self {
-        Self { params }
-    }
+    pub fn new(params: AsianParams<T>) -> Self { Self { params } }
 
     /// Creates a call option payoff.
     #[inline]
-    pub fn call(strike: T, epsilon: T) -> Self {
-        Self::new(AsianParams::call(strike, epsilon))
-    }
+    pub fn call(strike: T, epsilon: T) -> Self { Self::new(AsianParams::call(strike, epsilon)) }
 
     /// Creates a put option payoff.
     #[inline]
-    pub fn put(strike: T, epsilon: T) -> Self {
-        Self::new(AsianParams::put(strike, epsilon))
-    }
+    pub fn put(strike: T, epsilon: T) -> Self { Self::new(AsianParams::put(strike, epsilon)) }
 }
 
 impl<T: Float + Send + Sync> PathDependentPayoff<T> for AsianGeometricPayoff<T> {
@@ -158,19 +143,16 @@ impl<T: Float + Send + Sync> PathDependentPayoff<T> for AsianGeometricPayoff<T> 
         soft_plus(intrinsic, self.params.smoothing_epsilon)
     }
 
-    fn required_observations(&self) -> ObservationType {
-        ObservationType::geometric_asian()
-    }
+    fn required_observations(&self) -> ObservationType { ObservationType::geometric_asian() }
 
-    fn smoothing_epsilon(&self) -> T {
-        self.params.smoothing_epsilon
-    }
+    fn smoothing_epsilon(&self) -> T { self.params.smoothing_epsilon }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     // ========================================================================
     // AsianParams Tests

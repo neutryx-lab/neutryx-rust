@@ -3,11 +3,13 @@
 //! This module provides a generic calibrator that wraps the LM solver
 //! and integrates with the Calibrator trait from pricer_core.
 
-use pricer_core::math::solvers::{LMConfig, LMResult, LevenbergMarquardtSolver};
-use pricer_core::traits::calibration::{
-    CalibrationConfig, CalibrationResult, Calibrator, Constraint, ParameterBounds,
+use pricer_core::{
+    math::solvers::{LMConfig, LMResult, LevenbergMarquardtSolver},
+    traits::calibration::{
+        CalibrationConfig, CalibrationResult, Calibrator, Constraint, ParameterBounds,
+    },
+    types::CalibrationError,
 };
-use pricer_core::types::CalibrationError;
 
 /// Configuration for the model calibrator.
 #[derive(Debug, Clone)]
@@ -96,9 +98,7 @@ pub struct ModelCalibrator {
 
 impl ModelCalibrator {
     /// Create a new model calibrator.
-    pub fn new(config: ModelCalibratorConfig) -> Self {
-        Self { config }
-    }
+    pub fn new(config: ModelCalibratorConfig) -> Self { Self { config } }
 
     /// Create with default configuration.
     pub fn with_defaults() -> Self {
@@ -108,9 +108,7 @@ impl ModelCalibrator {
     }
 
     /// Get the configuration.
-    pub fn config(&self) -> &ModelCalibratorConfig {
-        &self.config
-    }
+    pub fn config(&self) -> &ModelCalibratorConfig { &self.config }
 
     /// Calibrate using a residual function.
     ///
@@ -283,15 +281,14 @@ where
         (self.residual_fn)(params, market_data)
     }
 
-    fn constraints(&self) -> Vec<Constraint> {
-        self.constraints.clone()
-    }
+    fn constraints(&self) -> Vec<Constraint> { self.constraints.clone() }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use pricer_core::math::solvers::LMConfig;
+
+    use super::*;
 
     #[test]
     fn test_model_calibrator_new() {

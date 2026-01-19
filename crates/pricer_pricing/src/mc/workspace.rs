@@ -195,27 +195,19 @@ impl PathWorkspace {
 
     /// Returns current path capacity.
     #[inline]
-    pub fn capacity_paths(&self) -> usize {
-        self.capacity_paths
-    }
+    pub fn capacity_paths(&self) -> usize { self.capacity_paths }
 
     /// Returns current step capacity.
     #[inline]
-    pub fn capacity_steps(&self) -> usize {
-        self.capacity_steps
-    }
+    pub fn capacity_steps(&self) -> usize { self.capacity_steps }
 
     /// Returns logical path size.
     #[inline]
-    pub fn size_paths(&self) -> usize {
-        self.size_paths
-    }
+    pub fn size_paths(&self) -> usize { self.size_paths }
 
     /// Returns logical step size.
     #[inline]
-    pub fn size_steps(&self) -> usize {
-        self.size_steps
-    }
+    pub fn size_steps(&self) -> usize { self.size_steps }
 
     /// Returns mutable slice of random buffer for filling.
     ///
@@ -240,7 +232,8 @@ impl PathWorkspace {
 
     /// Returns slice of price paths.
     ///
-    /// Returns slice of size `n_paths × (n_steps + 1)` based on current logical size.
+    /// Returns slice of size `n_paths × (n_steps + 1)` based on current logical
+    /// size.
     #[inline]
     pub fn paths(&self) -> &[f64] {
         let len = self.size_paths * (self.size_steps + 1);
@@ -256,15 +249,11 @@ impl PathWorkspace {
 
     /// Returns slice of payoff values.
     #[inline]
-    pub fn payoffs(&self) -> &[f64] {
-        &self.payoffs[..self.size_paths]
-    }
+    pub fn payoffs(&self) -> &[f64] { &self.payoffs[..self.size_paths] }
 
     /// Returns mutable slice of payoff values.
     #[inline]
-    pub fn payoffs_mut(&mut self) -> &mut [f64] {
-        &mut self.payoffs[..self.size_paths]
-    }
+    pub fn payoffs_mut(&mut self) -> &mut [f64] { &mut self.payoffs[..self.size_paths] }
 
     /// Returns immutable slice of paths and mutable slice of payoffs.
     #[inline]
@@ -316,9 +305,7 @@ impl PathWorkspace {
 }
 
 impl Default for PathWorkspace {
-    fn default() -> Self {
-        Self::new(0, 0)
-    }
+    fn default() -> Self { Self::new(0, 0) }
 }
 
 #[cfg(test)]

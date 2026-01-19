@@ -3,13 +3,17 @@
 //! This module provides the core abstractions for risk factor management:
 //! - `RiskFactorType`: Classification of risk factors (rates, credit, FX, etc.)
 //! - `RiskFactor`: Trait for bumpable risk factors
-//! - `ShiftType`: Types of market data shifts (absolute, relative, parallel, etc.)
+//! - `ShiftType`: Types of market data shifts (absolute, relative, parallel,
+//!   etc.)
 //!
 //! ## Design Philosophy
 //!
-//! - **Static dispatch**: All types designed for enum-based dispatch (Enzyme compatible)
-//! - **Flexible bumping**: Support for absolute, relative, and structured shifts
-//! - **Type safety**: Strong typing prevents misuse of incompatible factor types
+//! - **Static dispatch**: All types designed for enum-based dispatch (Enzyme
+//!   compatible)
+//! - **Flexible bumping**: Support for absolute, relative, and structured
+//!   shifts
+//! - **Type safety**: Strong typing prevents misuse of incompatible factor
+//!   types
 //!
 //! ## Example
 //!
@@ -78,9 +82,7 @@ impl RiskFactorType {
 
     /// Returns true if this factor typically requires surface shifts.
     #[inline]
-    pub fn is_surface_factor(&self) -> bool {
-        matches!(self, RiskFactorType::Volatility)
-    }
+    pub fn is_surface_factor(&self) -> bool { matches!(self, RiskFactorType::Volatility) }
 
     /// Get the name of this factor type.
     pub fn name(&self) -> &'static str {
@@ -144,19 +146,13 @@ pub enum ShiftType<T: Float> {
 
 impl<T: Float> ShiftType<T> {
     /// Create a new absolute shift.
-    pub fn absolute(amount: T) -> Self {
-        ShiftType::Absolute(amount)
-    }
+    pub fn absolute(amount: T) -> Self { ShiftType::Absolute(amount) }
 
     /// Create a new relative shift.
-    pub fn relative(percentage: T) -> Self {
-        ShiftType::Relative(percentage)
-    }
+    pub fn relative(percentage: T) -> Self { ShiftType::Relative(percentage) }
 
     /// Create a new parallel shift.
-    pub fn parallel(amount: T) -> Self {
-        ShiftType::Parallel(amount)
-    }
+    pub fn parallel(amount: T) -> Self { ShiftType::Parallel(amount) }
 
     /// Create a new twist shift.
     pub fn twist(short_shift: T, long_shift: T) -> Self {
@@ -174,7 +170,8 @@ impl<T: Float> ShiftType<T> {
         }
     }
 
-    /// Returns true if this is a curve-level shift (parallel, twist, butterfly).
+    /// Returns true if this is a curve-level shift (parallel, twist,
+    /// butterfly).
     pub fn is_curve_shift(&self) -> bool {
         matches!(
             self,
@@ -184,7 +181,8 @@ impl<T: Float> ShiftType<T> {
 
     /// Apply this shift to a value.
     ///
-    /// For curve shifts (Parallel, Twist, Butterfly), applies the parallel component.
+    /// For curve shifts (Parallel, Twist, Butterfly), applies the parallel
+    /// component.
     pub fn apply(&self, value: T) -> T {
         match *self {
             ShiftType::Absolute(amount) => value + amount,
@@ -276,13 +274,9 @@ impl<T: Float> SimpleRiskFactor<T> {
 }
 
 impl<T: Float> RiskFactor<T> for SimpleRiskFactor<T> {
-    fn factor_type(&self) -> RiskFactorType {
-        self.factor_type
-    }
+    fn factor_type(&self) -> RiskFactorType { self.factor_type }
 
-    fn value(&self) -> T {
-        self.value
-    }
+    fn value(&self) -> T { self.value }
 
     fn with_shift(&self, shift: ShiftType<T>) -> Self {
         Self {
@@ -292,9 +286,7 @@ impl<T: Float> RiskFactor<T> for SimpleRiskFactor<T> {
         }
     }
 
-    fn identifier(&self) -> &str {
-        &self.identifier
-    }
+    fn identifier(&self) -> &str { &self.identifier }
 }
 
 #[cfg(test)]

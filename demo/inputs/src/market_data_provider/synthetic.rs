@@ -7,8 +7,10 @@
 //!
 //! This module supports two primary price evolution models:
 //!
-//! - **Random Walk (GBM)**: Geometric Brownian Motion for equity-like price dynamics
-//! - **Mean Reversion (OU)**: Ornstein-Uhlenbeck process for interest rate-like dynamics
+//! - **Random Walk (GBM)**: Geometric Brownian Motion for equity-like price
+//!   dynamics
+//! - **Mean Reversion (OU)**: Ornstein-Uhlenbeck process for interest rate-like
+//!   dynamics
 
 use adapter_feeds::MarketQuote;
 use chrono::Utc;
@@ -34,7 +36,8 @@ pub trait PriceEvolutionModel: Send + Sync {
 ///
 /// dS = μ*S*dt + σ*S*dW
 ///
-/// Used for equity-like price dynamics where prices follow log-normal distribution.
+/// Used for equity-like price dynamics where prices follow log-normal
+/// distribution.
 #[derive(Debug, Clone)]
 pub struct RandomWalkModel {
     /// Annual drift rate (μ)
@@ -45,14 +48,10 @@ pub struct RandomWalkModel {
 
 impl RandomWalkModel {
     /// Create a new Random Walk model.
-    pub fn new(drift: f64, volatility: f64) -> Self {
-        Self { drift, volatility }
-    }
+    pub fn new(drift: f64, volatility: f64) -> Self { Self { drift, volatility } }
 
     /// Create with zero drift (martingale).
-    pub fn zero_drift(volatility: f64) -> Self {
-        Self::new(0.0, volatility)
-    }
+    pub fn zero_drift(volatility: f64) -> Self { Self::new(0.0, volatility) }
 }
 
 impl Default for RandomWalkModel {
@@ -63,22 +62,22 @@ impl Default for RandomWalkModel {
 
 impl PriceEvolutionModel for RandomWalkModel {
     fn evolve(&self, current_price: f64, dt: f64, random_draw: f64) -> f64 {
-        // GBM discrete approximation: S(t+dt) = S(t) * exp((μ - σ²/2)*dt + σ*sqrt(dt)*Z)
+        // GBM discrete approximation: S(t+dt) = S(t) * exp((μ - σ²/2)*dt +
+        // σ*sqrt(dt)*Z)
         let drift_term = (self.drift - 0.5 * self.volatility * self.volatility) * dt;
         let diffusion_term = self.volatility * dt.sqrt() * random_draw;
         (current_price * (drift_term + diffusion_term).exp()).max(0.0001)
     }
 
-    fn name(&self) -> &'static str {
-        "RandomWalk"
-    }
+    fn name(&self) -> &'static str { "RandomWalk" }
 }
 
 /// Mean Reversion (Ornstein-Uhlenbeck) model.
 ///
 /// dX = κ*(θ - X)*dt + σ*dW
 ///
-/// Used for interest rate-like dynamics where prices revert to a long-term mean.
+/// Used for interest rate-like dynamics where prices revert to a long-term
+/// mean.
 #[derive(Debug, Clone)]
 pub struct MeanReversionModel {
     /// Mean reversion speed (κ)
@@ -126,9 +125,7 @@ impl PriceEvolutionModel for MeanReversionModel {
         (mean + std_dev * random_draw).max(0.0)
     }
 
-    fn name(&self) -> &'static str {
-        "MeanReversion"
-    }
+    fn name(&self) -> &'static str { "MeanReversion" }
 }
 
 /// Streaming price generator that produces a series of quotes.
@@ -210,9 +207,7 @@ impl StreamingPriceGenerator {
     }
 
     /// Get the current price.
-    pub fn current_price(&self) -> f64 {
-        self.current_price
-    }
+    pub fn current_price(&self) -> f64 { self.current_price }
 }
 
 /// Synthetic data generator
@@ -363,9 +358,7 @@ impl SyntheticGenerator {
 }
 
 impl Default for SyntheticGenerator {
-    fn default() -> Self {
-        Self::new(10)
-    }
+    fn default() -> Self { Self::new(10) }
 }
 
 #[cfg(test)]

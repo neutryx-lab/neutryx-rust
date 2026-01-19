@@ -1,8 +1,8 @@
 //! Mathematical utilities and smooth approximations.
 //!
 //! This module provides differentiable smoothing functions that replace
-//! discontinuous operations (max, min, abs, indicator) with smooth approximations
-//! compatible with Enzyme automatic differentiation.
+//! discontinuous operations (max, min, abs, indicator) with smooth
+//! approximations compatible with Enzyme automatic differentiation.
 //!
 //! ## Submodules
 //! - `smoothing`: Smooth approximations using LogSumExp and sigmoid functions
@@ -10,5 +10,6 @@
 //! - `solvers`: Root-finding algorithms for numerical solving
 
 pub mod interpolators;
+pub mod numeric;
 pub mod smoothing;
 pub mod solvers;

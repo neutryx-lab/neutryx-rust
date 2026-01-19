@@ -50,9 +50,13 @@
 //! assert!(p.satisfies_feller()); // Feller条件をチェック
 //! ```
 
-use pricer_core::math::smoothing::{smooth_indicator, smooth_max, smooth_sqrt};
-use pricer_core::traits::priceable::Differentiable;
-use pricer_core::traits::Float;
+use pricer_core::{
+    math::{
+        numeric::from_f64,
+        smoothing::{smooth_indicator, smooth_max, smooth_sqrt},
+    },
+    traits::{priceable::Differentiable, Float},
+};
 use thiserror::Error;
 
 /// Hestonモデルエラー型
@@ -196,7 +200,8 @@ impl<T: Float> HestonParams<T> {
     ///
     /// # 戻り値
     ///
-    /// パラメータが有効な場合は`Ok(HestonParams)`、無効な場合は`Err(HestonError)`
+    /// パラメータが有効な場合は`Ok(HestonParams)`、
+    /// 無効な場合は`Err(HestonError)`
     ///
     /// # 例
     ///
@@ -489,7 +494,8 @@ impl<T: Float> HestonModel<T> {
     ///
     /// # 戻り値
     ///
-    /// パラメータが有効な場合は`Ok(HestonModel)`、無効な場合は`Err(HestonError)`
+    /// パラメータが有効な場合は`Ok(HestonModel)`、
+    /// 無効な場合は`Err(HestonError)`
     ///
     /// # 例
     ///
@@ -535,18 +541,14 @@ impl<T: Float> HestonModel<T> {
     /// # 戻り値
     ///
     /// パラメータが有効な場合は`Ok(())`、無効な場合は`Err(HestonError)`
-    pub fn validate(&self) -> Result<(), HestonError> {
-        self.params.validate()
-    }
+    pub fn validate(&self) -> Result<(), HestonError> { self.params.validate() }
 
     /// モデルパラメータへの参照を取得
     ///
     /// # 戻り値
     ///
     /// HestonParamsへの参照
-    pub fn params(&self) -> &HestonParams<T> {
-        &self.params
-    }
+    pub fn params(&self) -> &HestonParams<T> { &self.params }
 
     /// Feller条件をチェック (2 * kappa * theta > xi^2)
     ///
@@ -566,9 +568,7 @@ impl<T: Float> HestonModel<T> {
     /// let model = HestonModel::new(params).unwrap();
     /// assert!(model.check_feller_condition());
     /// ```
-    pub fn check_feller_condition(&self) -> bool {
-        self.params.satisfies_feller()
-    }
+    pub fn check_feller_condition(&self) -> bool { self.params.satisfies_feller() }
 
     /// 分散フロアを取得
     ///
@@ -577,9 +577,7 @@ impl<T: Float> HestonModel<T> {
     /// # 戻り値
     ///
     /// 分散フロア値
-    pub fn variance_floor(&self) -> T {
-        self.variance_floor
-    }
+    pub fn variance_floor(&self) -> T { self.variance_floor }
 
     /// 分散フロアを設定
     ///
@@ -622,7 +620,8 @@ impl<T: Float> HestonModel<T> {
     /// The conditional distribution is non-central chi-squared.
     /// QE scheme matches the first two moments:
     /// - E[V_{t+dt}|V_t] = theta + (V_t - theta) * exp(-kappa * dt)
-    /// - Var[V_{t+dt}|V_t] = (V_t * xi^2 * exp(-kappa*dt) / kappa) * (1 - exp(-kappa*dt))
+    /// - Var[V_{t+dt}|V_t] = (V_t * xi^2 * exp(-kappa*dt) / kappa) * (1 -
+    ///   exp(-kappa*dt))
     ///   + (theta * xi^2 / (2*kappa)) * (1 - exp(-kappa*dt))^2
     pub fn compute_qe_moments(&self, v_current: T, dt: T) -> (T, T, T) {
         let kappa = self.params.kappa;
@@ -633,7 +632,8 @@ impl<T: Float> HestonModel<T> {
         let exp_neg_kappa_dt = (-kappa * dt).exp();
         let one_minus_exp = T::one() - exp_neg_kappa_dt;
 
-        // Conditional mean: E[V_{t+dt} | V_t] = theta + (v_current - theta) * exp(-kappa * dt)
+        // Conditional mean: E[V_{t+dt} | V_t] = theta + (v_current - theta) *
+        // exp(-kappa * dt)
         let m = theta + (v_current - theta) * exp_neg_kappa_dt;
 
         // Conditional variance (Andersen 2008, Eq. 17)
@@ -727,8 +727,8 @@ impl<T: Float> HestonModel<T> {
     /// 次の分散値 V_{t+dt}
     ///
     /// # Mathematical Background
-    /// For psi >= psi_c, use exponential martingale with probability mass at zero:
-    /// V_{t+dt} = psi^{-1}(U_v; p, beta) where
+    /// For psi >= psi_c, use exponential martingale with probability mass at
+    /// zero: V_{t+dt} = psi^{-1}(U_v; p, beta) where
     /// - p = (psi - 1) / (psi + 1)
     /// - beta = (1 - p) / m = 2 / (m * (psi + 1))
     pub fn qe_exponential_step(&self, m: T, psi: T, uv: T) -> T {
@@ -929,31 +929,31 @@ impl<T: Float> HestonModel<T> {
     /// Z ~ N(0, 1)
     fn inverse_normal_cdf(&self, u: T) -> T {
         // Beasley-Springer-Moro algorithm coefficients
-        let a = [
-            T::from(2.50662823884).unwrap_or(T::zero()),
-            T::from(-18.61500062529).unwrap_or(T::zero()),
-            T::from(41.39119773534).unwrap_or(T::zero()),
-            T::from(-25.44106049637).unwrap_or(T::zero()),
+        let a: [T; 4] = [
+            from_f64(2.506_628_238_84),
+            from_f64(-18.615_000_625_29),
+            from_f64(41.391_197_735_34),
+            from_f64(-25.441_060_496_37),
         ];
-        let b = [
-            T::from(-8.47351093090).unwrap_or(T::zero()),
-            T::from(23.08336743743).unwrap_or(T::zero()),
-            T::from(-21.06224101826).unwrap_or(T::zero()),
-            T::from(3.13082909833).unwrap_or(T::zero()),
+        let b: [T; 4] = [
+            from_f64(-8.473_510_930_90),
+            from_f64(23.083_367_437_43),
+            from_f64(-21.062_241_018_26),
+            from_f64(3.130_829_098_33),
         ];
-        let c = [
-            T::from(0.3374754822726147).unwrap_or(T::zero()),
-            T::from(0.9761690190917186).unwrap_or(T::zero()),
-            T::from(0.1607979714918209).unwrap_or(T::zero()),
-            T::from(0.0276438810333863).unwrap_or(T::zero()),
-            T::from(0.0038405729373609).unwrap_or(T::zero()),
-            T::from(0.0003951896511919).unwrap_or(T::zero()),
-            T::from(0.0000321767881768).unwrap_or(T::zero()),
-            T::from(0.0000002888167364).unwrap_or(T::zero()),
-            T::from(0.0000003960315187).unwrap_or(T::zero()),
+        let c: [T; 9] = [
+            from_f64(0.337_475_482_272_614_7),
+            from_f64(0.976_169_019_091_718_6),
+            from_f64(0.160_797_971_491_820_9),
+            from_f64(0.027_643_881_033_386_3),
+            from_f64(0.003_840_572_937_360_9),
+            from_f64(0.000_395_189_651_191_9),
+            from_f64(0.000_032_176_788_176_8),
+            from_f64(0.000_000_288_816_736_4),
+            from_f64(0.000_000_396_031_518_7),
         ];
 
-        let half = T::from(0.5).unwrap_or(T::zero());
+        let half: T = from_f64(0.5);
         let eps = self.params.smoothing_epsilon;
 
         // Clamp u to (eps, 1-eps) to avoid infinities
@@ -970,7 +970,7 @@ impl<T: Float> HestonModel<T> {
         let y = u_safe - half;
 
         // Central region: |y| <= 0.42
-        let threshold = T::from(0.42).unwrap_or(half);
+        let threshold: T = from_f64(0.42);
         let y_abs = if y < T::zero() { -y } else { y };
 
         if y_abs <= threshold {
@@ -1109,23 +1109,17 @@ impl<T: Float + Default> StochasticModel<T> for HestonModel<T> {
     ///
     /// 実際の`dw`スライスは3要素（z1, z2, uv）を期待するが、
     /// brownian_dimは独立なブラウン運動の数を返す。
-    fn brownian_dim() -> usize {
-        2
-    }
+    fn brownian_dim() -> usize { 2 }
 
     /// モデル名
-    fn model_name() -> &'static str {
-        "Heston"
-    }
+    fn model_name() -> &'static str { "Heston" }
 
     /// 確率ファクター数
     ///
     /// Hestonモデルは2ファクターモデル:
     /// - 1: 資産価格過程
     /// - 2: 分散過程
-    fn num_factors() -> usize {
-        2
-    }
+    fn num_factors() -> usize { 2 }
 }
 
 // PricingErrorへの変換を実装
@@ -2092,7 +2086,8 @@ mod tests {
         let dt = 1.0 / 252.0;
         let v_current = 0.04_f64;
 
-        // Analytical conditional mean: E[V_{t+dt} | V_t] = theta + (v_t - theta) * exp(-kappa * dt)
+        // Analytical conditional mean: E[V_{t+dt} | V_t] = theta + (v_t - theta) *
+        // exp(-kappa * dt)
         let kappa = 1.5_f64;
         let theta = 0.04_f64;
         let exp_factor = (-kappa * dt).exp();
@@ -2126,7 +2121,8 @@ mod tests {
                 let v_next1 = model.qe_variance_step(v, dt, uv);
                 let v_next2 = model.qe_variance_step(v * 1.01, dt, uv);
 
-                // Results should be continuous (small change in input -> small change in output)
+                // Results should be continuous (small change in input -> small change in
+                // output)
                 let diff = (v_next2 - v_next1).abs();
                 assert!(diff < 0.01, "QE should be smooth: v={}, diff={}", v, diff);
             }
@@ -2473,7 +2469,8 @@ mod tests {
         }
     }
 
-    /// Test evolve_step maintains variance non-negativity under Feller violation
+    /// Test evolve_step maintains variance non-negativity under Feller
+    /// violation
     #[test]
     fn test_heston_evolve_step_feller_violation_robustness() {
         // Strong Feller violation

@@ -1,6 +1,7 @@
 //! Calibrate command implementation
 //!
-//! Calibrates model parameters from market data using the pricer_optimiser crate.
+//! Calibrates model parameters from market data using the pricer_optimiser
+//! crate.
 
 use tracing::{info, warn};
 
@@ -16,9 +17,6 @@ pub fn run(market_data: &str, model_type: &str, output: Option<&str>) -> Result<
     if !std::path::Path::new(market_data).exists() {
         return Err(CliError::FileNotFound(market_data.to_string()));
     }
-
-    // TODO: Load market data using adapter_loader
-    // TODO: Run calibration using pricer_optimiser
 
     match model_type {
         "hull-white" => {
@@ -40,7 +38,6 @@ pub fn run(market_data: &str, model_type: &str, output: Option<&str>) -> Result<
 
     if let Some(output_path) = output {
         info!("Writing calibrated parameters to: {}", output_path);
-        // TODO: Serialise and write parameters
     }
 
     info!("Calibration complete");

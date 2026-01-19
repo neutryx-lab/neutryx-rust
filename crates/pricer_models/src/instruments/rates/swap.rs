@@ -49,11 +49,10 @@
 //! assert_eq!(swap.direction(), SwapDirection::PayFixed);
 //! ```
 
+use std::{fmt, str::FromStr};
+
 use num_traits::Float;
-use pricer_core::types::time::DayCountConvention;
-use pricer_core::types::Currency;
-use std::fmt;
-use std::str::FromStr;
+use pricer_core::types::{time::DayCountConvention, Currency};
 
 use crate::schedules::Schedule;
 
@@ -123,9 +122,7 @@ impl RateIndex {
 
     /// Returns whether this is an overnight rate.
     #[inline]
-    pub fn is_overnight(&self) -> bool {
-        self.tenor_months() == 0
-    }
+    pub fn is_overnight(&self) -> bool { self.tenor_months() == 0 }
 
     /// Returns the default currency for this index.
     #[inline]
@@ -153,9 +150,7 @@ impl RateIndex {
 }
 
 impl fmt::Display for RateIndex {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.name())
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.name()) }
 }
 
 impl FromStr for RateIndex {
@@ -261,27 +256,19 @@ impl<T: Float> FixedLeg<T> {
 
     /// Returns the payment schedule.
     #[inline]
-    pub fn schedule(&self) -> &Schedule {
-        &self.schedule
-    }
+    pub fn schedule(&self) -> &Schedule { &self.schedule }
 
     /// Returns the fixed rate.
     #[inline]
-    pub fn fixed_rate(&self) -> T {
-        self.fixed_rate
-    }
+    pub fn fixed_rate(&self) -> T { self.fixed_rate }
 
     /// Returns the day count convention.
     #[inline]
-    pub fn day_count(&self) -> DayCountConvention {
-        self.day_count
-    }
+    pub fn day_count(&self) -> DayCountConvention { self.day_count }
 
     /// Returns the number of payment periods.
     #[inline]
-    pub fn num_periods(&self) -> usize {
-        self.schedule.periods().len()
-    }
+    pub fn num_periods(&self) -> usize { self.schedule.periods().len() }
 }
 
 /// Floating leg of an interest rate swap.
@@ -332,33 +319,23 @@ impl<T: Float> FloatingLeg<T> {
 
     /// Returns the payment schedule.
     #[inline]
-    pub fn schedule(&self) -> &Schedule {
-        &self.schedule
-    }
+    pub fn schedule(&self) -> &Schedule { &self.schedule }
 
     /// Returns the spread over the index rate.
     #[inline]
-    pub fn spread(&self) -> T {
-        self.spread
-    }
+    pub fn spread(&self) -> T { self.spread }
 
     /// Returns the reference rate index.
     #[inline]
-    pub fn index(&self) -> RateIndex {
-        self.index
-    }
+    pub fn index(&self) -> RateIndex { self.index }
 
     /// Returns the day count convention.
     #[inline]
-    pub fn day_count(&self) -> DayCountConvention {
-        self.day_count
-    }
+    pub fn day_count(&self) -> DayCountConvention { self.day_count }
 
     /// Returns the number of payment periods.
     #[inline]
-    pub fn num_periods(&self) -> usize {
-        self.schedule.periods().len()
-    }
+    pub fn num_periods(&self) -> usize { self.schedule.periods().len() }
 }
 
 /// Plain vanilla Interest Rate Swap (IRS).
@@ -460,51 +437,35 @@ impl<T: Float> InterestRateSwap<T> {
 
     /// Returns the notional principal amount.
     #[inline]
-    pub fn notional(&self) -> T {
-        self.notional
-    }
+    pub fn notional(&self) -> T { self.notional }
 
     /// Returns the fixed leg.
     #[inline]
-    pub fn fixed_leg(&self) -> &FixedLeg<T> {
-        &self.fixed_leg
-    }
+    pub fn fixed_leg(&self) -> &FixedLeg<T> { &self.fixed_leg }
 
     /// Returns the floating leg.
     #[inline]
-    pub fn floating_leg(&self) -> &FloatingLeg<T> {
-        &self.floating_leg
-    }
+    pub fn floating_leg(&self) -> &FloatingLeg<T> { &self.floating_leg }
 
     /// Returns the settlement currency.
     #[inline]
-    pub fn currency(&self) -> Currency {
-        self.currency
-    }
+    pub fn currency(&self) -> Currency { self.currency }
 
     /// Returns the swap direction.
     #[inline]
-    pub fn direction(&self) -> SwapDirection {
-        self.direction
-    }
+    pub fn direction(&self) -> SwapDirection { self.direction }
 
     /// Returns the fixed rate.
     #[inline]
-    pub fn fixed_rate(&self) -> T {
-        self.fixed_leg.fixed_rate()
-    }
+    pub fn fixed_rate(&self) -> T { self.fixed_leg.fixed_rate() }
 
     /// Returns the floating leg spread.
     #[inline]
-    pub fn spread(&self) -> T {
-        self.floating_leg.spread()
-    }
+    pub fn spread(&self) -> T { self.floating_leg.spread() }
 
     /// Returns the rate index for the floating leg.
     #[inline]
-    pub fn index(&self) -> RateIndex {
-        self.floating_leg.index()
-    }
+    pub fn index(&self) -> RateIndex { self.floating_leg.index() }
 
     /// Returns the maturity time in years (end of final period).
     ///
@@ -552,22 +513,19 @@ impl<T: Float> InterestRateSwap<T> {
 
     /// Returns whether this is a payer swap (pay fixed, receive floating).
     #[inline]
-    pub fn is_payer(&self) -> bool {
-        self.direction == SwapDirection::PayFixed
-    }
+    pub fn is_payer(&self) -> bool { self.direction == SwapDirection::PayFixed }
 
     /// Returns whether this is a receiver swap (receive fixed, pay floating).
     #[inline]
-    pub fn is_receiver(&self) -> bool {
-        self.direction == SwapDirection::ReceiveFixed
-    }
+    pub fn is_receiver(&self) -> bool { self.direction == SwapDirection::ReceiveFixed }
 }
 
 #[cfg(test)]
 mod tests {
+    use pricer_core::types::time::Date;
+
     use super::*;
     use crate::schedules::{Frequency, ScheduleBuilder};
-    use pricer_core::types::time::Date;
 
     // ========================================
     // RateIndex Tests
@@ -697,7 +655,8 @@ mod tests {
 
         assert!((fixed_leg.fixed_rate() - 0.03).abs() < 1e-10);
         assert_eq!(fixed_leg.day_count(), DayCountConvention::Thirty360);
-        assert_eq!(fixed_leg.num_periods(), 4); // 2 years, semi-annual = 4 periods
+        assert_eq!(fixed_leg.num_periods(), 4); // 2 years, semi-annual = 4
+                                                // periods
     }
 
     #[test]

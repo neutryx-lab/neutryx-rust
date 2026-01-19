@@ -8,6 +8,7 @@
 //! for automatic differentiation.
 
 use num_traits::Float;
+use pricer_core::math::numeric::from_f64;
 
 /// Square root of 2.
 const SQRT_2: f64 = std::f64::consts::SQRT_2;
@@ -34,12 +35,12 @@ fn erfc_approx<T: Float>(x: T) -> T {
     let abs_x = x.abs();
 
     // Abramowitz and Stegun constants (7.1.26)
-    let a1 = T::from(0.254829592).unwrap();
-    let a2 = T::from(-0.284496736).unwrap();
-    let a3 = T::from(1.421413741).unwrap();
-    let a4 = T::from(-1.453152027).unwrap();
-    let a5 = T::from(1.061405429).unwrap();
-    let p = T::from(0.3275911).unwrap();
+    let a1: T = from_f64(0.254829592);
+    let a2: T = from_f64(-0.284496736);
+    let a3: T = from_f64(1.421413741);
+    let a4: T = from_f64(-1.453152027);
+    let a5: T = from_f64(1.061405429);
+    let p: T = from_f64(0.3275911);
 
     // t = 1 / (1 + p * |x|)
     let t = one / (one + p * abs_x);
@@ -51,7 +52,7 @@ fn erfc_approx<T: Float>(x: T) -> T {
     let erfc_abs = t * poly * (-abs_x * abs_x).exp();
 
     // Handle sign: erfc(-x) = 2 - erfc(x)
-    let two = T::from(2.0).unwrap();
+    let two: T = from_f64(2.0);
     if x < zero {
         two - erfc_abs
     } else {
@@ -73,8 +74,9 @@ fn erfc_approx<T: Float>(x: T) -> T {
 /// The probability P(X <= x) for standard normal X, in range [0, 1].
 ///
 /// # AD Compatibility
-/// This implementation avoids branching operations to maintain AD tape consistency.
-/// Uses a polynomial approximation for erfc which is differentiable.
+/// This implementation avoids branching operations to maintain AD tape
+/// consistency. Uses a polynomial approximation for erfc which is
+/// differentiable.
 ///
 /// # Accuracy
 /// Accurate to at least 1e-7 for all finite x values.
@@ -95,8 +97,8 @@ fn erfc_approx<T: Float>(x: T) -> T {
 #[inline]
 pub fn norm_cdf<T: Float>(x: T) -> T {
     // Φ(x) = 0.5 * erfc(-x / sqrt(2))
-    let sqrt_2 = T::from(SQRT_2).unwrap();
-    let half = T::from(0.5).unwrap();
+    let sqrt_2: T = from_f64(SQRT_2);
+    let half: T = from_f64(0.5);
 
     // -x / sqrt(2)
     let arg = -x / sqrt_2;
@@ -136,8 +138,8 @@ pub fn norm_cdf<T: Float>(x: T) -> T {
 #[inline]
 pub fn norm_pdf<T: Float>(x: T) -> T {
     // φ(x) = (1 / sqrt(2π)) * exp(-x² / 2)
-    let frac_1_sqrt_2pi = T::from(FRAC_1_SQRT_2PI).unwrap();
-    let half = T::from(0.5).unwrap();
+    let frac_1_sqrt_2pi: T = from_f64(FRAC_1_SQRT_2PI);
+    let half: T = from_f64(0.5);
 
     // -x² / 2
     let exponent = -half * x * x;
@@ -147,8 +149,9 @@ pub fn norm_pdf<T: Float>(x: T) -> T {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     // ==========================================================
     // norm_cdf tests
@@ -320,7 +323,8 @@ mod tests {
     #[test]
     fn test_cdf_pdf_relationship() {
         // Numerical derivative of CDF should approximate PDF
-        // Note: Using larger h due to erfc approximation error compounding in numerical derivative
+        // Note: Using larger h due to erfc approximation error compounding in numerical
+        // derivative
         let h = 1e-4;
         let test_values = [-2.0, -1.0, 0.0, 1.0, 2.0];
         for x in test_values {

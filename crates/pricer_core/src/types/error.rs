@@ -9,6 +9,7 @@
 //! - `CalibrationError`: Errors from model calibration
 
 use std::fmt;
+
 use thiserror::Error;
 
 /// Categorised pricing errors.
@@ -556,7 +557,8 @@ mod tests {
     #[test]
     fn test_error_trait_implementation() {
         let err = PricingError::InvalidInput("Test".to_string());
-        let _: &dyn std::error::Error = &err; // Verify Error trait is implemented
+        let _: &dyn std::error::Error = &err; // Verify Error trait is
+                                              // implemented
     }
 
     #[test]

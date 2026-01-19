@@ -27,3 +27,6 @@ criterion = { workspace = true, features = ["html_reports"] }
 [[bench]]
 name = "risk_benchmarks"
 harness = false
+
+[lints]
+workspace = true

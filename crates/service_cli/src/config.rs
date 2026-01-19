@@ -2,8 +2,9 @@
 //!
 //! Loads configuration from TOML files and environment variables.
 
-use serde::Deserialize;
 use std::path::Path;
+
+use serde::Deserialize;
 
 use crate::{CliError, Result};
 
@@ -67,25 +68,15 @@ pub struct DatabaseConfig {
     pub pool_size: u32,
 }
 
-fn default_log_level() -> String {
-    "info".to_string()
-}
+fn default_log_level() -> String { "info".to_string() }
 
-fn default_output_dir() -> String {
-    "./output".to_string()
-}
+fn default_output_dir() -> String { "./output".to_string() }
 
-fn default_num_paths() -> usize {
-    10_000
-}
+fn default_num_paths() -> usize { 10_000 }
 
-fn default_num_threads() -> usize {
-    num_cpus::get()
-}
+fn default_num_threads() -> usize { num_cpus::get() }
 
-fn default_pool_size() -> u32 {
-    5
-}
+fn default_pool_size() -> u32 { 5 }
 
 impl CliConfig {
     /// Load configuration from a TOML file

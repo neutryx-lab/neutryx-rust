@@ -47,8 +47,7 @@
 //! ```
 
 use num_traits::Float;
-use pricer_core::types::time::DayCountConvention;
-use pricer_core::types::Currency;
+use pricer_core::types::{time::DayCountConvention, Currency};
 
 use super::RateIndex;
 use crate::schedules::Schedule;
@@ -125,39 +124,27 @@ impl<T: Float> Cap<T> {
 
     /// Returns the notional amount.
     #[inline]
-    pub fn notional(&self) -> T {
-        self.notional
-    }
+    pub fn notional(&self) -> T { self.notional }
 
     /// Returns the payment schedule.
     #[inline]
-    pub fn schedule(&self) -> &Schedule {
-        &self.schedule
-    }
+    pub fn schedule(&self) -> &Schedule { &self.schedule }
 
     /// Returns the strike rate.
     #[inline]
-    pub fn strike(&self) -> T {
-        self.strike
-    }
+    pub fn strike(&self) -> T { self.strike }
 
     /// Returns the reference rate index.
     #[inline]
-    pub fn index(&self) -> RateIndex {
-        self.index
-    }
+    pub fn index(&self) -> RateIndex { self.index }
 
     /// Returns the day count convention.
     #[inline]
-    pub fn day_count(&self) -> DayCountConvention {
-        self.day_count
-    }
+    pub fn day_count(&self) -> DayCountConvention { self.day_count }
 
     /// Returns the settlement currency.
     #[inline]
-    pub fn currency(&self) -> Currency {
-        self.currency
-    }
+    pub fn currency(&self) -> Currency { self.currency }
 
     /// Returns the maturity time in years (from start to end of last period).
     pub fn maturity(&self) -> T {
@@ -174,9 +161,7 @@ impl<T: Float> Cap<T> {
 
     /// Returns the number of caplets.
     #[inline]
-    pub fn num_caplets(&self) -> usize {
-        self.schedule.periods().len()
-    }
+    pub fn num_caplets(&self) -> usize { self.schedule.periods().len() }
 }
 
 /// Interest rate floor.
@@ -251,39 +236,27 @@ impl<T: Float> Floor<T> {
 
     /// Returns the notional amount.
     #[inline]
-    pub fn notional(&self) -> T {
-        self.notional
-    }
+    pub fn notional(&self) -> T { self.notional }
 
     /// Returns the payment schedule.
     #[inline]
-    pub fn schedule(&self) -> &Schedule {
-        &self.schedule
-    }
+    pub fn schedule(&self) -> &Schedule { &self.schedule }
 
     /// Returns the strike rate.
     #[inline]
-    pub fn strike(&self) -> T {
-        self.strike
-    }
+    pub fn strike(&self) -> T { self.strike }
 
     /// Returns the reference rate index.
     #[inline]
-    pub fn index(&self) -> RateIndex {
-        self.index
-    }
+    pub fn index(&self) -> RateIndex { self.index }
 
     /// Returns the day count convention.
     #[inline]
-    pub fn day_count(&self) -> DayCountConvention {
-        self.day_count
-    }
+    pub fn day_count(&self) -> DayCountConvention { self.day_count }
 
     /// Returns the settlement currency.
     #[inline]
-    pub fn currency(&self) -> Currency {
-        self.currency
-    }
+    pub fn currency(&self) -> Currency { self.currency }
 
     /// Returns the maturity time in years (from start to end of last period).
     pub fn maturity(&self) -> T {
@@ -300,9 +273,7 @@ impl<T: Float> Floor<T> {
 
     /// Returns the number of floorlets.
     #[inline]
-    pub fn num_floorlets(&self) -> usize {
-        self.schedule.periods().len()
-    }
+    pub fn num_floorlets(&self) -> usize { self.schedule.periods().len() }
 }
 
 /// Interest rate collar.
@@ -358,58 +329,43 @@ impl<T: Float> Collar<T> {
 
     /// Returns the cap component.
     #[inline]
-    pub fn cap(&self) -> &Cap<T> {
-        &self.cap
-    }
+    pub fn cap(&self) -> &Cap<T> { &self.cap }
 
     /// Returns the floor component.
     #[inline]
-    pub fn floor(&self) -> &Floor<T> {
-        &self.floor
-    }
+    pub fn floor(&self) -> &Floor<T> { &self.floor }
 
     /// Returns the cap strike rate.
     #[inline]
-    pub fn cap_strike(&self) -> T {
-        self.cap.strike()
-    }
+    pub fn cap_strike(&self) -> T { self.cap.strike() }
 
     /// Returns the floor strike rate.
     #[inline]
-    pub fn floor_strike(&self) -> T {
-        self.floor.strike()
-    }
+    pub fn floor_strike(&self) -> T { self.floor.strike() }
 
     /// Returns the notional amount.
     #[inline]
-    pub fn notional(&self) -> T {
-        self.cap.notional()
-    }
+    pub fn notional(&self) -> T { self.cap.notional() }
 
     /// Returns the reference rate index.
     #[inline]
-    pub fn index(&self) -> RateIndex {
-        self.cap.index()
-    }
+    pub fn index(&self) -> RateIndex { self.cap.index() }
 
     /// Returns the settlement currency.
     #[inline]
-    pub fn currency(&self) -> Currency {
-        self.cap.currency()
-    }
+    pub fn currency(&self) -> Currency { self.cap.currency() }
 
     /// Returns the maturity.
     #[inline]
-    pub fn maturity(&self) -> T {
-        self.cap.maturity()
-    }
+    pub fn maturity(&self) -> T { self.cap.maturity() }
 }
 
 #[cfg(test)]
 mod tests {
+    use pricer_core::types::time::Date;
+
     use super::*;
     use crate::schedules::{Frequency, ScheduleBuilder};
-    use pricer_core::types::time::Date;
 
     fn create_test_schedule() -> Schedule {
         let start = Date::from_ymd(2024, 1, 15).unwrap();

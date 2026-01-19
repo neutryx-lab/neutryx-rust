@@ -4,12 +4,16 @@
 //! engine that constructs yield curves from market instruments using
 //! Newton-Raphson with Brent fallback.
 
-use super::cache::{BootstrapCache, CurveCache};
-use super::config::GenericBootstrapConfig;
-use super::curve::BootstrappedCurve;
-use super::error::BootstrapError;
-use super::instrument::BootstrapInstrument;
 use num_traits::Float;
+use pricer_core::math::numeric::from_f64;
+
+use super::{
+    cache::{BootstrapCache, CurveCache},
+    config::GenericBootstrapConfig,
+    curve::BootstrappedCurve,
+    error::BootstrapError,
+    instrument::BootstrapInstrument,
+};
 
 /// Result of a bootstrap operation.
 #[derive(Debug, Clone)]
@@ -66,19 +70,13 @@ pub struct SequentialBootstrapper<T: Float> {
 
 impl<T: Float> SequentialBootstrapper<T> {
     /// Create a new sequential bootstrapper.
-    pub fn new(config: GenericBootstrapConfig<T>) -> Self {
-        Self { config }
-    }
+    pub fn new(config: GenericBootstrapConfig<T>) -> Self { Self { config } }
 
     /// Create a bootstrapper with default configuration.
-    pub fn with_defaults() -> Self {
-        Self::new(GenericBootstrapConfig::default())
-    }
+    pub fn with_defaults() -> Self { Self::new(GenericBootstrapConfig::default()) }
 
     /// Get the configuration.
-    pub fn config(&self) -> &GenericBootstrapConfig<T> {
-        &self.config
-    }
+    pub fn config(&self) -> &GenericBootstrapConfig<T> { &self.config }
 
     /// Bootstrap a yield curve from instruments.
     ///
@@ -103,7 +101,8 @@ impl<T: Float> SequentialBootstrapper<T> {
             instruments[a]
                 .maturity()
                 .partial_cmp(&instruments[b].maturity())
-                .unwrap()
+                // Safe: maturities are validated to be finite in validate_instruments
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
 
         // Initialize partial curve
@@ -120,7 +119,7 @@ impl<T: Float> SequentialBootstrapper<T> {
             // Check for duplicate maturity
             if pillars
                 .last()
-                .is_some_and(|&last| (last - maturity).abs() < T::from(1e-10).unwrap())
+                .is_some_and(|&last| (last - maturity).abs() < from_f64(1e-10))
             {
                 return Err(BootstrapError::duplicate_maturity(
                     maturity.to_f64().unwrap_or(0.0),
@@ -147,6 +146,8 @@ impl<T: Float> SequentialBootstrapper<T> {
                 }
 
                 // Check if t is after last pillar
+                // Safe: pillars.is_empty() check above ensures last() exists
+                #[allow(clippy::unwrap_used)]
                 if t > *pillars.last().unwrap() {
                     let n = pillars.len();
                     let r = -discount_factors[n - 1].ln() / pillars[n - 1];
@@ -287,7 +288,7 @@ impl<T: Float> SequentialBootstrapper<T> {
         F: Fn(T) -> T,
     {
         let mut df = initial_df;
-        let epsilon = T::from(1e-30).unwrap();
+        let epsilon: T = from_f64(1e-30);
 
         for iteration in 0..self.config.max_iterations {
             let residual = instrument.residual(df, partial_curve_df);
@@ -315,7 +316,7 @@ impl<T: Float> SequentialBootstrapper<T> {
             df = if new_df > T::zero() {
                 new_df
             } else {
-                df / T::from(2.0).unwrap()
+                df / from_f64(2.0)
             };
 
             // Check for non-finite
@@ -348,8 +349,8 @@ impl<T: Float> SequentialBootstrapper<T> {
         F: Fn(T) -> T,
     {
         // Bracket for DF: typically between 0.001 and 1.0
-        let mut a = T::from(0.001).unwrap();
-        let mut b = T::from(1.0).unwrap();
+        let mut a: T = from_f64(0.001);
+        let mut b: T = from_f64(1.0);
 
         // Ensure bracket is valid
         let fa = instrument.residual(a, partial_curve_df);
@@ -361,7 +362,7 @@ impl<T: Float> SequentialBootstrapper<T> {
             let mut found_bracket = false;
 
             for &r in &rates {
-                let df_test = T::from(r).unwrap();
+                let df_test: T = from_f64(r);
                 let f_test = instrument.residual(df_test, partial_curve_df);
 
                 if f_test * fb <= T::zero() {
@@ -409,7 +410,7 @@ impl<T: Float> SequentialBootstrapper<T> {
             }
 
             let tol = self.config.tolerance;
-            let m = (c - b) / T::from(2.0).unwrap();
+            let m = (c - b) / from_f64(2.0);
 
             if m.abs() <= tol {
                 return Ok((b, iteration, fb));
@@ -425,16 +426,16 @@ impl<T: Float> SequentialBootstrapper<T> {
                 let s = fb / fa;
                 let (p, q);
 
-                if (a - c).abs() < T::from(1e-12).unwrap() {
+                if (a - c).abs() < from_f64(1e-12) {
                     // Secant method
-                    p = T::from(2.0).unwrap() * m * s;
+                    p = from_f64::<T>(2.0) * m * s;
                     q = T::one() - s;
                 } else {
                     // Inverse quadratic interpolation
                     let q_temp = fa / fc;
                     let r = fb / fc;
                     p = s
-                        * (T::from(2.0).unwrap() * m * q_temp * (q_temp - r)
+                        * (from_f64::<T>(2.0) * m * q_temp * (q_temp - r)
                             - (b - a) * (r - T::one()));
                     q = (q_temp - T::one()) * (r - T::one()) * (s - T::one());
                 }
@@ -443,8 +444,8 @@ impl<T: Float> SequentialBootstrapper<T> {
                 let q = q.abs();
 
                 // Check if interpolation is acceptable
-                if T::from(2.0).unwrap() * p < T::from(3.0).unwrap() * m * q - (tol * q).abs()
-                    && p < (e * q).abs() / T::from(2.0).unwrap()
+                if from_f64::<T>(2.0) * p < from_f64::<T>(3.0) * m * q - (tol * q).abs()
+                    && p < (e * q).abs() / from_f64::<T>(2.0)
                 {
                     e = d;
                     d = p / q;
@@ -511,7 +512,8 @@ impl<T: Float> SequentialBootstrapper<T> {
             instruments[a]
                 .maturity()
                 .partial_cmp(&instruments[b].maturity())
-                .unwrap()
+                // Safe: maturities are validated to be finite in validate_instruments
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
 
         // Bootstrap each instrument sequentially using cached curve
@@ -524,7 +526,7 @@ impl<T: Float> SequentialBootstrapper<T> {
             if cache
                 .curve
                 .last_pillar()
-                .is_some_and(|last| (last - maturity).abs() < T::from(1e-10).unwrap())
+                .is_some_and(|last| (last - maturity).abs() < from_f64(1e-10))
             {
                 return Err(BootstrapError::duplicate_maturity(
                     maturity.to_f64().unwrap_or(0.0),
@@ -642,9 +644,7 @@ impl<T: Float> CachedBootstrapper<T> {
     }
 
     /// Create with default configuration.
-    pub fn with_defaults() -> Self {
-        Self::new(GenericBootstrapConfig::default())
-    }
+    pub fn with_defaults() -> Self { Self::new(GenericBootstrapConfig::default()) }
 
     /// Create with specified capacity.
     pub fn with_capacity(config: GenericBootstrapConfig<T>, capacity: usize) -> Self {
@@ -655,9 +655,7 @@ impl<T: Float> CachedBootstrapper<T> {
     }
 
     /// Get the configuration.
-    pub fn config(&self) -> &GenericBootstrapConfig<T> {
-        self.bootstrapper.config()
-    }
+    pub fn config(&self) -> &GenericBootstrapConfig<T> { self.bootstrapper.config() }
 
     /// Bootstrap a yield curve, reusing internal cache.
     pub fn bootstrap(
@@ -669,9 +667,7 @@ impl<T: Float> CachedBootstrapper<T> {
     }
 
     /// Clear the internal cache.
-    pub fn clear_cache(&mut self) {
-        self.cache.clear();
-    }
+    pub fn clear_cache(&mut self) { self.cache.clear(); }
 }
 
 impl<T: Float> Clone for CachedBootstrapper<T> {
@@ -685,8 +681,9 @@ impl<T: Float> Clone for CachedBootstrapper<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use pricer_core::market_data::curves::YieldCurve;
+
+    use super::*;
 
     // ========================================
     // Basic Bootstrap Tests

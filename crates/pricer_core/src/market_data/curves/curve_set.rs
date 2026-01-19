@@ -3,10 +3,12 @@
 //! This module provides:
 //! - [`CurveSet`]: Container for managing multiple named yield curves
 
+use std::collections::HashMap;
+
+use num_traits::Float;
+
 use super::{CurveEnum, CurveName};
 use crate::market_data::error::MarketDataError;
-use num_traits::Float;
-use std::collections::HashMap;
 
 /// Container for managing multiple named yield curves.
 ///
@@ -20,9 +22,11 @@ use std::collections::HashMap;
 ///
 /// # Multi-Curve Framework
 ///
-/// In modern derivatives pricing, different curves are used for different purposes:
+/// In modern derivatives pricing, different curves are used for different
+/// purposes:
 /// - **Discount curves**: Used to compute present values (typically OIS curves)
-/// - **Forward curves**: Used to project future cash flows (e.g., SOFR, EURIBOR)
+/// - **Forward curves**: Used to project future cash flows (e.g., SOFR,
+///   EURIBOR)
 ///
 /// # Example
 ///
@@ -54,9 +58,7 @@ pub struct CurveSet<T: Float> {
 }
 
 impl<T: Float> Default for CurveSet<T> {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl<T: Float> CurveSet<T> {
@@ -151,9 +153,7 @@ impl<T: Float> CurveSet<T> {
     /// assert!((rate - 0.035).abs() < 1e-10);
     /// ```
     #[inline]
-    pub fn get(&self, name: &CurveName) -> Option<&CurveEnum<T>> {
-        self.curves.get(name)
-    }
+    pub fn get(&self, name: &CurveName) -> Option<&CurveEnum<T>> { self.curves.get(name) }
 
     /// Get a curve by name, returning an error if not found.
     ///
@@ -164,7 +164,8 @@ impl<T: Float> CurveSet<T> {
     /// # Returns
     ///
     /// * `Ok(&CurveEnum)` - Reference to the curve
-    /// * `Err(MarketDataError::CurveNotFound)` - If no curve with that name exists
+    /// * `Err(MarketDataError::CurveNotFound)` - If no curve with that name
+    ///   exists
     ///
     /// # Example
     ///
@@ -193,9 +194,7 @@ impl<T: Float> CurveSet<T> {
     ///
     /// `true` if the curve exists, `false` otherwise
     #[inline]
-    pub fn contains(&self, name: &CurveName) -> bool {
-        self.curves.contains_key(name)
-    }
+    pub fn contains(&self, name: &CurveName) -> bool { self.curves.contains_key(name) }
 
     /// Remove a curve by name.
     ///
@@ -218,15 +217,11 @@ impl<T: Float> CurveSet<T> {
 
     /// Return the number of curves in the set.
     #[inline]
-    pub fn len(&self) -> usize {
-        self.curves.len()
-    }
+    pub fn len(&self) -> usize { self.curves.len() }
 
     /// Check if the curve set is empty.
     #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.curves.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.curves.is_empty() }
 
     /// Set the default discount curve name.
     ///
@@ -252,9 +247,7 @@ impl<T: Float> CurveSet<T> {
     /// curves.set_discount_curve(CurveName::Ois);
     /// ```
     #[inline]
-    pub fn set_discount_curve(&mut self, name: CurveName) {
-        self.discount_curve_name = Some(name);
-    }
+    pub fn set_discount_curve(&mut self, name: CurveName) { self.discount_curve_name = Some(name); }
 
     /// Get the default discount curve.
     ///
@@ -293,7 +286,8 @@ impl<T: Float> CurveSet<T> {
     /// # Returns
     ///
     /// * `Ok(&CurveEnum)` - The discount curve
-    /// * `Err(MarketDataError::CurveNotFound)` - If no discount curve is configured
+    /// * `Err(MarketDataError::CurveNotFound)` - If no discount curve is
+    ///   configured
     pub fn discount_curve_or_err(&self) -> Result<&CurveEnum<T>, MarketDataError> {
         self.discount_curve().ok_or(MarketDataError::CurveNotFound {
             name: CurveName::Discount,
@@ -307,7 +301,8 @@ impl<T: Float> CurveSet<T> {
     ///
     /// # Arguments
     ///
-    /// * `name` - The curve name (e.g., `CurveName::Sofr`, `CurveName::Euribor`)
+    /// * `name` - The curve name (e.g., `CurveName::Sofr`,
+    ///   `CurveName::Euribor`)
     ///
     /// # Returns
     ///
@@ -326,9 +321,7 @@ impl<T: Float> CurveSet<T> {
     /// let fwd_rate = forward.forward_rate(1.0, 2.0).unwrap();
     /// ```
     #[inline]
-    pub fn forward_curve(&self, name: &CurveName) -> Option<&CurveEnum<T>> {
-        self.curves.get(name)
-    }
+    pub fn forward_curve(&self, name: &CurveName) -> Option<&CurveEnum<T>> { self.curves.get(name) }
 
     /// Get a forward curve by name, returning an error if not found.
     ///
@@ -339,7 +332,8 @@ impl<T: Float> CurveSet<T> {
     /// # Returns
     ///
     /// * `Ok(&CurveEnum)` - The forward curve
-    /// * `Err(MarketDataError::CurveNotFound)` - If no curve with that name exists
+    /// * `Err(MarketDataError::CurveNotFound)` - If no curve with that name
+    ///   exists
     pub fn forward_curve_or_err(&self, name: &CurveName) -> Result<&CurveEnum<T>, MarketDataError> {
         self.curves
             .get(name)
@@ -362,9 +356,7 @@ impl<T: Float> CurveSet<T> {
     /// }
     /// ```
     #[inline]
-    pub fn iter(&self) -> impl Iterator<Item = (&CurveName, &CurveEnum<T>)> {
-        self.curves.iter()
-    }
+    pub fn iter(&self) -> impl Iterator<Item = (&CurveName, &CurveEnum<T>)> { self.curves.iter() }
 
     /// Get all curve names in the set.
     ///
@@ -381,9 +373,7 @@ impl<T: Float> CurveSet<T> {
     /// assert_eq!(names.len(), 2);
     /// ```
     #[inline]
-    pub fn curve_names(&self) -> impl Iterator<Item = &CurveName> {
-        self.curves.keys()
-    }
+    pub fn curve_names(&self) -> impl Iterator<Item = &CurveName> { self.curves.keys() }
 }
 
 #[cfg(test)]

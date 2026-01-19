@@ -1,7 +1,8 @@
 //! Period definition for scheduled instruments.
 
-use pricer_core::types::time::{Date, DayCountConvention};
 use std::fmt;
+
+use pricer_core::types::time::{Date, DayCountConvention};
 
 /// A single accrual period in a schedule.
 ///
@@ -107,27 +108,19 @@ impl Period {
 
     /// Returns the start date of the accrual period.
     #[inline]
-    pub fn start(&self) -> Date {
-        self.start
-    }
+    pub fn start(&self) -> Date { self.start }
 
     /// Returns the end date of the accrual period.
     #[inline]
-    pub fn end(&self) -> Date {
-        self.end
-    }
+    pub fn end(&self) -> Date { self.end }
 
     /// Returns the payment date.
     #[inline]
-    pub fn payment(&self) -> Date {
-        self.payment
-    }
+    pub fn payment(&self) -> Date { self.payment }
 
     /// Returns the day count convention.
     #[inline]
-    pub fn day_count(&self) -> DayCountConvention {
-        self.day_count
-    }
+    pub fn day_count(&self) -> DayCountConvention { self.day_count }
 
     /// Calculates the year fraction for this period.
     ///
@@ -150,9 +143,7 @@ impl Period {
     /// assert!((period.year_fraction() - 0.5).abs() < 0.001);
     /// ```
     #[inline]
-    pub fn year_fraction(&self) -> f64 {
-        self.day_count.year_fraction_dates(self.start, self.end)
-    }
+    pub fn year_fraction(&self) -> f64 { self.day_count.year_fraction_dates(self.start, self.end) }
 
     /// Returns the number of days in this period.
     ///
@@ -171,9 +162,7 @@ impl Period {
     /// assert_eq!(period.days(), 30);
     /// ```
     #[inline]
-    pub fn days(&self) -> i64 {
-        self.end - self.start
-    }
+    pub fn days(&self) -> i64 { self.end - self.start }
 
     /// Returns whether this period is valid (end > start).
     ///
@@ -198,9 +187,7 @@ impl Period {
     /// assert!(!invalid.is_valid());
     /// ```
     #[inline]
-    pub fn is_valid(&self) -> bool {
-        self.end > self.start
-    }
+    pub fn is_valid(&self) -> bool { self.end > self.start }
 
     /// Returns whether this period contains the given date.
     ///
@@ -223,9 +210,7 @@ impl Period {
     /// assert!(!period.contains(Date::from_ymd(2024, 7, 1).unwrap())); // End is excluded
     /// ```
     #[inline]
-    pub fn contains(&self, date: Date) -> bool {
-        date >= self.start && date < self.end
-    }
+    pub fn contains(&self, date: Date) -> bool { date >= self.start && date < self.end }
 }
 
 impl fmt::Display for Period {

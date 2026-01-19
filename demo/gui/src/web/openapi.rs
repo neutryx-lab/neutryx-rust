@@ -11,13 +11,11 @@
 //! - Requirement 7.5: OpenAPI 3.0 形式の API ドキュメントを `/api/docs` で提供
 
 #[cfg(feature = "openapi")]
+use axum::Router;
+#[cfg(feature = "openapi")]
 use utoipa::OpenApi;
-
 #[cfg(feature = "openapi")]
 use utoipa_swagger_ui::SwaggerUi;
-
-#[cfg(feature = "openapi")]
-use axum::Router;
 
 #[cfg(feature = "openapi")]
 use crate::web::pricer_types::{
@@ -31,8 +29,8 @@ use crate::web::pricer_types::{
 
 /// OpenAPI documentation for the FrictionalBank WebApp API.
 ///
-/// This struct configures the OpenAPI specification with all available endpoints,
-/// request/response schemas, and documentation metadata.
+/// This struct configures the OpenAPI specification with all available
+/// endpoints, request/response schemas, and documentation metadata.
 #[cfg(feature = "openapi")]
 #[derive(OpenApi)]
 #[openapi(
@@ -300,9 +298,7 @@ pub fn openapi_yaml() -> String {
 
 /// Stub router when openapi feature is disabled.
 #[cfg(not(feature = "openapi"))]
-pub fn swagger_ui_router() -> axum::Router {
-    axum::Router::new()
-}
+pub fn swagger_ui_router() -> axum::Router { axum::Router::new() }
 
 // =============================================================================
 // Tests
@@ -485,8 +481,6 @@ mod tests {
         }
 
         #[test]
-        fn test_swagger_ui_router_builds() {
-            let _router = swagger_ui_router();
-        }
+        fn test_swagger_ui_router_builds() { let _router = swagger_ui_router(); }
     }
 }

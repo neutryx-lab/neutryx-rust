@@ -42,8 +42,7 @@ use pricer_core::types::time::Date;
 #[cfg(feature = "l1l2-integration")]
 use pricer_models::instruments::rates::{price_irs, InterestRateSwap};
 
-use super::benchmark::TimingStats;
-use super::IrsGreeksError;
+use super::{benchmark::TimingStats, IrsGreeksError};
 
 // =============================================================================
 // Task 5.1: Credit Parameters
@@ -95,17 +94,13 @@ impl CreditParams {
     ///
     /// Q(t) = exp(-lambda * t)
     #[inline]
-    pub fn survival_prob(&self, t: f64) -> f64 {
-        (-self.hazard_rate * t).exp()
-    }
+    pub fn survival_prob(&self, t: f64) -> f64 { (-self.hazard_rate * t).exp() }
 
     /// Returns the default probability to time t.
     ///
     /// PD(t) = 1 - Q(t)
     #[inline]
-    pub fn default_prob(&self, t: f64) -> f64 {
-        1.0 - self.survival_prob(t)
-    }
+    pub fn default_prob(&self, t: f64) -> f64 { 1.0 - self.survival_prob(t) }
 
     /// Returns the marginal default probability between t1 and t2.
     ///
@@ -176,15 +171,11 @@ impl ExposureProfile {
 
     /// Returns the number of time points.
     #[inline]
-    pub fn len(&self) -> usize {
-        self.time_grid.len()
-    }
+    pub fn len(&self) -> usize { self.time_grid.len() }
 
     /// Returns true if the profile is empty.
     #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.time_grid.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.time_grid.is_empty() }
 
     /// Returns the Expected Positive Exposure (EPE).
     ///
@@ -278,9 +269,7 @@ impl XvaResult {
 
     /// Returns the bilateral CVA (CVA - DVA).
     #[inline]
-    pub fn bilateral_cva(&self) -> f64 {
-        self.cva - self.dva
-    }
+    pub fn bilateral_cva(&self) -> f64 { self.cva - self.dva }
 
     /// Sets CVA sensitivities.
     pub fn with_cva_deltas(mut self, tenors: Vec<f64>, deltas: Vec<f64>) -> Self {
@@ -442,9 +431,7 @@ impl Default for XvaDemoConfig {
 
 impl XvaDemoConfig {
     /// Creates a new configuration with default values.
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Sets the bump size.
     pub fn with_bump_size(mut self, bump_size: f64) -> Self {
@@ -501,7 +488,8 @@ pub enum XvaDemoError {
 
 /// XVA demo runner.
 ///
-/// Provides XVA calculation with exposure profiles and sensitivity benchmarking.
+/// Provides XVA calculation with exposure profiles and sensitivity
+/// benchmarking.
 ///
 /// # Requirements Coverage
 ///
@@ -517,19 +505,13 @@ pub struct XvaDemoRunner {
 
 impl XvaDemoRunner {
     /// Creates a new XVA demo runner.
-    pub fn new(config: XvaDemoConfig) -> Self {
-        Self { config }
-    }
+    pub fn new(config: XvaDemoConfig) -> Self { Self { config } }
 
     /// Creates a runner with default configuration.
-    pub fn with_defaults() -> Self {
-        Self::new(XvaDemoConfig::default())
-    }
+    pub fn with_defaults() -> Self { Self::new(XvaDemoConfig::default()) }
 
     /// Returns the configuration.
-    pub fn config(&self) -> &XvaDemoConfig {
-        &self.config
-    }
+    pub fn config(&self) -> &XvaDemoConfig { &self.config }
 
     /// Generates a time grid for exposure calculation.
     ///
@@ -758,11 +740,8 @@ impl XvaDemoRunner {
         counterparty_credit: &CreditParams,
         tenor_points: &[f64],
     ) -> Result<(Vec<f64>, u64), XvaDemoError> {
-        // Phase 1: Fallback to bump-and-revalue
-        // Phase 2 (enzyme-ad feature): Use Enzyme #[autodiff]
         #[cfg(feature = "enzyme-ad")]
         {
-            // TODO: Implement Enzyme-based AAD for XVA sensitivities
             self.compute_xva_sensitivities_bump(
                 swap,
                 curves,
@@ -1209,14 +1188,19 @@ mod tests {
 
 #[cfg(all(test, feature = "l1l2-integration"))]
 mod integration_tests {
-    use super::*;
-    use pricer_core::market_data::curves::{CurveEnum, CurveName, CurveSet};
-    use pricer_core::types::time::{Date, DayCountConvention};
-    use pricer_core::types::Currency;
-    use pricer_models::instruments::rates::{
-        FixedLeg, FloatingLeg, InterestRateSwap, RateIndex, SwapDirection,
+    use pricer_core::{
+        market_data::curves::{CurveEnum, CurveName, CurveSet},
+        types::{
+            time::{Date, DayCountConvention},
+            Currency,
+        },
     };
-    use pricer_models::schedules::{Frequency, ScheduleBuilder};
+    use pricer_models::{
+        instruments::rates::{FixedLeg, FloatingLeg, InterestRateSwap, RateIndex, SwapDirection},
+        schedules::{Frequency, ScheduleBuilder},
+    };
+
+    use super::*;
 
     fn create_test_swap() -> InterestRateSwap<f64> {
         let start = Date::from_ymd(2024, 1, 15).unwrap();

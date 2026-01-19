@@ -60,3 +60,6 @@ default = []
 l1l2-integration = ["pricer_pricing", "pricer_pricing/l1l2-integration"]
 # Enable Enzyme AD support (requires nightly)
 enzyme-ad = ["pricer_pricing", "pricer_pricing/enzyme-ad"]
+
+[lints]
+workspace = true

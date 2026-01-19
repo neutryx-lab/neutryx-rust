@@ -1,10 +1,14 @@
 //! File writer for report output.
 
-use super::{Report, ReportSink};
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::sync::{Arc, RwLock};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    sync::{Arc, RwLock},
+};
+
 use tracing::info;
+
+use super::{Report, ReportSink};
 
 /// File writer for reports
 pub struct FileWriter {
@@ -85,9 +89,7 @@ impl FileWriter {
     }
 
     /// Get output directory
-    pub fn output_dir(&self) -> &Path {
-        &self.output_dir
-    }
+    pub fn output_dir(&self) -> &Path { &self.output_dir }
 
     /// Clean old files (older than days)
     pub fn clean_old_files(&self, days: u32) -> Result<usize, String> {
@@ -121,9 +123,10 @@ impl ReportSink for FileWriter {
 
 #[cfg(test)]
 mod tests {
+    use std::env;
+
     use super::*;
     use crate::report_sink::ReportFormat;
-    use std::env;
 
     #[test]
     fn test_file_writer() {

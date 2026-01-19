@@ -40,29 +40,19 @@ pub enum DemoError {
 
 impl DemoError {
     /// Create a data loading error
-    pub fn data_load(msg: impl Into<String>) -> Self {
-        Self::DataLoad(msg.into())
-    }
+    pub fn data_load(msg: impl Into<String>) -> Self { Self::DataLoad(msg.into()) }
 
     /// Create a workflow error
-    pub fn workflow(msg: impl Into<String>) -> Self {
-        Self::Workflow(msg.into())
-    }
+    pub fn workflow(msg: impl Into<String>) -> Self { Self::Workflow(msg.into()) }
 
     /// Create an API error
-    pub fn api(msg: impl Into<String>) -> Self {
-        Self::Api(msg.into())
-    }
+    pub fn api(msg: impl Into<String>) -> Self { Self::Api(msg.into()) }
 
     /// Create a validation error
-    pub fn validation(msg: impl Into<String>) -> Self {
-        Self::Validation(msg.into())
-    }
+    pub fn validation(msg: impl Into<String>) -> Self { Self::Validation(msg.into()) }
 
     /// Create a computation error
-    pub fn computation(msg: impl Into<String>) -> Self {
-        Self::Computation(msg.into())
-    }
+    pub fn computation(msg: impl Into<String>) -> Self { Self::Computation(msg.into()) }
 }
 
 #[cfg(test)]

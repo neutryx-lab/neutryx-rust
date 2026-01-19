@@ -7,8 +7,7 @@
 //! All traits are designed for static dispatch (enum-based) to ensure
 //! compatibility with Enzyme AD optimisation at LLVM level.
 
-use crate::traits::Float;
-use crate::types::error::PricingError;
+use crate::{traits::Float, types::error::PricingError};
 
 /// Trait for financial instruments that can be priced.
 ///

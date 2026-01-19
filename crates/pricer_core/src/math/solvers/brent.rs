@@ -1,8 +1,9 @@
 //! Brent's method root-finding solver.
 
-use super::SolverConfig;
-use crate::types::SolverError;
 use num_traits::Float;
+
+use super::SolverConfig;
+use crate::{math::numeric::from_f64, types::SolverError};
 
 /// Brent's method root finder.
 ///
@@ -56,9 +57,7 @@ impl<T: Float> BrentSolver<T> {
     ///
     /// let solver: BrentSolver<f64> = BrentSolver::new(SolverConfig::default());
     /// ```
-    pub fn new(config: SolverConfig<T>) -> Self {
-        Self { config }
-    }
+    pub fn new(config: SolverConfig<T>) -> Self { Self { config } }
 
     /// Create a solver with default configuration.
     pub fn with_defaults() -> Self {
@@ -124,8 +123,8 @@ impl<T: Float> BrentSolver<T> {
         let mut d = b - a;
         let mut e = d;
 
-        let two = T::from(2.0).unwrap();
-        let three = T::from(3.0).unwrap();
+        let two: T = from_f64(2.0);
+        let three: T = from_f64(3.0);
 
         for _iteration in 0..self.config.max_iterations {
             // Check for convergence
@@ -224,9 +223,7 @@ impl<T: Float> BrentSolver<T> {
     }
 
     /// Returns a reference to the solver configuration.
-    pub fn config(&self) -> &SolverConfig<T> {
-        &self.config
-    }
+    pub fn config(&self) -> &SolverConfig<T> { &self.config }
 }
 
 #[cfg(test)]

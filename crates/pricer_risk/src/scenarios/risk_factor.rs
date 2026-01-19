@@ -1,7 +1,8 @@
 //! Risk factor identification for sensitivity analysis.
 //!
 //! This module provides [`RiskFactorId`], an enum for uniquely identifying
-//! risk factors such as underlying assets, yield curves, and volatility surfaces.
+//! risk factors such as underlying assets, yield curves, and volatility
+//! surfaces.
 //!
 //! # Requirements
 //!
@@ -72,9 +73,7 @@ impl RiskFactorId {
     /// assert_eq!(factor, RiskFactorId::Underlying("SPX".to_string()));
     /// ```
     #[inline]
-    pub fn underlying(name: impl Into<String>) -> Self {
-        Self::Underlying(name.into())
-    }
+    pub fn underlying(name: impl Into<String>) -> Self { Self::Underlying(name.into()) }
 
     /// Creates a new curve risk factor.
     ///
@@ -91,9 +90,7 @@ impl RiskFactorId {
     /// assert_eq!(factor, RiskFactorId::Curve("USD-OIS".to_string()));
     /// ```
     #[inline]
-    pub fn curve(name: impl Into<String>) -> Self {
-        Self::Curve(name.into())
-    }
+    pub fn curve(name: impl Into<String>) -> Self { Self::Curve(name.into()) }
 
     /// Creates a new volatility surface risk factor.
     ///
@@ -110,9 +107,7 @@ impl RiskFactorId {
     /// assert_eq!(factor, RiskFactorId::VolSurface("SPX-Vol".to_string()));
     /// ```
     #[inline]
-    pub fn vol_surface(name: impl Into<String>) -> Self {
-        Self::VolSurface(name.into())
-    }
+    pub fn vol_surface(name: impl Into<String>) -> Self { Self::VolSurface(name.into()) }
 
     /// Returns the risk factor type as a string.
     ///
@@ -153,21 +148,15 @@ impl RiskFactorId {
 
     /// Returns true if this is an underlying risk factor.
     #[inline]
-    pub fn is_underlying(&self) -> bool {
-        matches!(self, Self::Underlying(_))
-    }
+    pub fn is_underlying(&self) -> bool { matches!(self, Self::Underlying(_)) }
 
     /// Returns true if this is a curve risk factor.
     #[inline]
-    pub fn is_curve(&self) -> bool {
-        matches!(self, Self::Curve(_))
-    }
+    pub fn is_curve(&self) -> bool { matches!(self, Self::Curve(_)) }
 
     /// Returns true if this is a volatility surface risk factor.
     #[inline]
-    pub fn is_vol_surface(&self) -> bool {
-        matches!(self, Self::VolSurface(_))
-    }
+    pub fn is_vol_surface(&self) -> bool { matches!(self, Self::VolSurface(_)) }
 }
 
 impl fmt::Display for RiskFactorId {
@@ -182,8 +171,9 @@ impl fmt::Display for RiskFactorId {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::collections::HashSet;
+
+    use super::*;
 
     // ================================================================
     // Task 1.1: RiskFactorId tests (TDD - RED phase first)

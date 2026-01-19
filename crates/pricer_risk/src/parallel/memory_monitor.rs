@@ -7,9 +7,12 @@
 //!
 //! - Requirement 3.3: Memory efficiency and checkpoint mechanism
 
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc,
+};
+
 use pricer_pricing::checkpoint::MemoryBudget;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
 
 /// Memory usage statistics.
 #[derive(Debug, Clone, Default)]
@@ -28,21 +31,15 @@ pub struct MemoryStats {
 
 impl MemoryStats {
     /// Creates new empty statistics.
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Returns current memory usage in megabytes.
     #[inline]
-    pub fn current_mb(&self) -> f64 {
-        self.current_bytes as f64 / (1024.0 * 1024.0)
-    }
+    pub fn current_mb(&self) -> f64 { self.current_bytes as f64 / (1024.0 * 1024.0) }
 
     /// Returns peak memory usage in megabytes.
     #[inline]
-    pub fn peak_mb(&self) -> f64 {
-        self.peak_bytes as f64 / (1024.0 * 1024.0)
-    }
+    pub fn peak_mb(&self) -> f64 { self.peak_bytes as f64 / (1024.0 * 1024.0) }
 }
 
 /// Configuration for memory monitoring.
@@ -71,9 +68,7 @@ impl Default for MemoryMonitorConfig {
 
 impl MemoryMonitorConfig {
     /// Creates a new configuration with defaults.
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Sets the memory budget in megabytes.
     pub fn with_budget_mb(mut self, mb: usize) -> Self {
@@ -161,14 +156,10 @@ impl MemoryMonitor {
     }
 
     /// Creates a monitor with default configuration.
-    pub fn with_defaults() -> Self {
-        Self::new(MemoryMonitorConfig::default())
-    }
+    pub fn with_defaults() -> Self { Self::new(MemoryMonitorConfig::default()) }
 
     /// Returns a reference to the configuration.
-    pub fn config(&self) -> &MemoryMonitorConfig {
-        &self.config
-    }
+    pub fn config(&self) -> &MemoryMonitorConfig { &self.config }
 
     /// Records a memory allocation.
     ///
@@ -245,9 +236,7 @@ impl MemoryMonitor {
     }
 
     /// Deactivates checkpointing.
-    pub fn deactivate_checkpoint(&self) {
-        self.checkpoint_active.store(false, Ordering::Relaxed);
-    }
+    pub fn deactivate_checkpoint(&self) { self.checkpoint_active.store(false, Ordering::Relaxed); }
 
     /// Resets all counters and statistics.
     pub fn reset(&self) {
@@ -260,9 +249,7 @@ impl MemoryMonitor {
 
     /// Returns whether checkpointing is currently active.
     #[inline]
-    pub fn is_checkpoint_active(&self) -> bool {
-        self.checkpoint_active.load(Ordering::Relaxed)
-    }
+    pub fn is_checkpoint_active(&self) -> bool { self.checkpoint_active.load(Ordering::Relaxed) }
 
     /// Determines if checkpointing should be enabled for a portfolio.
     ///
@@ -325,9 +312,7 @@ impl MemoryMonitor {
 
     /// Returns remaining memory budget in megabytes.
     #[inline]
-    pub fn remaining_mb(&self) -> f64 {
-        self.remaining_bytes() as f64 / (1024.0 * 1024.0)
-    }
+    pub fn remaining_mb(&self) -> f64 { self.remaining_bytes() as f64 / (1024.0 * 1024.0) }
 }
 
 impl Clone for MemoryMonitor {

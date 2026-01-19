@@ -1,8 +1,9 @@
 //! Newton-Raphson root-finding solver.
 
-use super::SolverConfig;
-use crate::types::SolverError;
 use num_traits::Float;
+
+use super::SolverConfig;
+use crate::{math::numeric::from_f64, types::SolverError};
 
 /// Newton-Raphson root finder with optional AD support.
 ///
@@ -56,9 +57,7 @@ impl<T: Float> NewtonRaphsonSolver<T> {
     ///
     /// let solver: NewtonRaphsonSolver<f64> = NewtonRaphsonSolver::new(SolverConfig::default());
     /// ```
-    pub fn new(config: SolverConfig<T>) -> Self {
-        Self { config }
-    }
+    pub fn new(config: SolverConfig<T>) -> Self { Self { config } }
 
     /// Create a solver with default configuration.
     pub fn with_defaults() -> Self {
@@ -103,7 +102,7 @@ impl<T: Float> NewtonRaphsonSolver<T> {
         G: Fn(T) -> T,
     {
         let mut x = x0;
-        let epsilon = T::from(1e-30).unwrap();
+        let epsilon: T = from_f64(1e-30);
 
         for _iteration in 0..self.config.max_iterations {
             let f_val = f(x);
@@ -142,9 +141,7 @@ impl<T: Float> NewtonRaphsonSolver<T> {
     }
 
     /// Returns a reference to the solver configuration.
-    pub fn config(&self) -> &SolverConfig<T> {
-        &self.config
-    }
+    pub fn config(&self) -> &SolverConfig<T> { &self.config }
 }
 
 /// AD-enabled Newton-Raphson solver for f64.
@@ -400,8 +397,9 @@ mod tests {
 
     #[cfg(feature = "num-dual-mode")]
     mod ad_tests {
-        use super::*;
         use num_dual::Dual64;
+
+        use super::*;
 
         #[test]
         fn test_find_root_ad_sqrt_2() {

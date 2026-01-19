@@ -6,13 +6,15 @@
 //! # Architecture
 //!
 //! All structures are generic over `T: Float` to support both standard
-//! floating-point types (f64, f32) and automatic differentiation types (Dual64).
-//! This design ensures compatibility with Enzyme AD at LLVM level.
+//! floating-point types (f64, f32) and automatic differentiation types
+//! (Dual64). This design ensures compatibility with Enzyme AD at LLVM level.
 //!
 //! # Components
 //!
-//! - [`curves`]: Yield curve trait and implementations (FlatCurve, InterpolatedCurve)
-//! - [`surfaces`]: Volatility surface trait and implementations (FlatVol, InterpolatedVolSurface)
+//! - [`curves`]: Yield curve trait and implementations (FlatCurve,
+//!   InterpolatedCurve)
+//! - [`surfaces`]: Volatility surface trait and implementations (FlatVol,
+//!   InterpolatedVolSurface)
 //! - [`error`]: Market data error types (MarketDataError)
 //!
 //! # Example

@@ -1,7 +1,8 @@
 //! Volatility surface trait definition.
 
-use crate::market_data::error::MarketDataError;
 use num_traits::Float;
+
+use crate::market_data::error::MarketDataError;
 
 /// Generic volatility surface trait for implied volatility lookup.
 ///
@@ -82,13 +83,9 @@ mod tests {
             Ok(self.sigma)
         }
 
-        fn strike_domain(&self) -> (f64, f64) {
-            (0.0, f64::INFINITY)
-        }
+        fn strike_domain(&self) -> (f64, f64) { (0.0, f64::INFINITY) }
 
-        fn expiry_domain(&self) -> (f64, f64) {
-            (0.0, f64::INFINITY)
-        }
+        fn expiry_domain(&self) -> (f64, f64) { (0.0, f64::INFINITY) }
     }
 
     #[test]

@@ -1,8 +1,9 @@
 //! Flat yield curve implementation.
 
+use num_traits::Float;
+
 use super::YieldCurve;
 use crate::market_data::error::MarketDataError;
-use num_traits::Float;
 
 /// Flat yield curve with constant interest rate.
 ///
@@ -50,9 +51,7 @@ impl<T: Float> FlatCurve<T> {
     /// assert_eq!(curve.rate(), 0.05);
     /// ```
     #[inline]
-    pub fn new(rate: T) -> Self {
-        Self { rate }
-    }
+    pub fn new(rate: T) -> Self { Self { rate } }
 
     /// Return the constant rate.
     ///
@@ -65,9 +64,7 @@ impl<T: Float> FlatCurve<T> {
     /// assert_eq!(curve.rate(), 0.03);
     /// ```
     #[inline]
-    pub fn rate(&self) -> T {
-        self.rate
-    }
+    pub fn rate(&self) -> T { self.rate }
 }
 
 impl<T: Float> YieldCurve<T> for FlatCurve<T> {

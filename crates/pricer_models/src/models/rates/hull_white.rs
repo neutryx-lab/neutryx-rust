@@ -37,9 +37,10 @@
 //! let next_state = HullWhiteModel::evolve_step(state, dt, &dw, &params);
 //! ```
 
-use pricer_core::market_data::curves::{FlatCurve, YieldCurve};
-use pricer_core::traits::priceable::Differentiable;
-use pricer_core::traits::Float;
+use pricer_core::{
+    market_data::curves::{FlatCurve, YieldCurve},
+    traits::{priceable::Differentiable, Float},
+};
 
 use crate::models::stochastic::{SingleState, StochasticModel};
 
@@ -99,9 +100,7 @@ pub enum ThetaFunction<T: Float> {
 
 impl<T: Float> ThetaFunction<T> {
     /// 定数 theta を作成
-    pub fn constant(value: T) -> Self {
-        ThetaFunction::Constant { value }
-    }
+    pub fn constant(value: T) -> Self { ThetaFunction::Constant { value } }
 
     /// フラットカーブからの時間依存 theta を作成
     ///
@@ -319,26 +318,18 @@ impl<T: Float> HullWhiteParams<T> {
     /// # Returns
     ///
     /// theta(t) value
-    pub fn theta(&self, t: T) -> T {
-        self.theta_function.evaluate(t)
-    }
+    pub fn theta(&self, t: T) -> T { self.theta_function.evaluate(t) }
 
     /// Advance the current simulation time by dt.
     ///
     /// Used internally for time-dependent theta evaluation.
-    pub fn advance_time(&mut self, dt: T) {
-        self.current_time = self.current_time + dt;
-    }
+    pub fn advance_time(&mut self, dt: T) { self.current_time = self.current_time + dt; }
 
     /// Reset the current simulation time to zero.
-    pub fn reset_time(&mut self) {
-        self.current_time = T::zero();
-    }
+    pub fn reset_time(&mut self) { self.current_time = T::zero(); }
 
     /// Get the current simulation time.
-    pub fn current_time(&self) -> T {
-        self.current_time
-    }
+    pub fn current_time(&self) -> T { self.current_time }
 }
 
 /// Hull-White one-factor model for short rate dynamics.
@@ -409,13 +400,9 @@ impl<T: Float + Default> StochasticModel<T> for HullWhiteModel<T> {
         SingleState(params.initial_short_rate)
     }
 
-    fn brownian_dim() -> usize {
-        1
-    }
+    fn brownian_dim() -> usize { 1 }
 
-    fn model_name() -> &'static str {
-        "HullWhite1F"
-    }
+    fn model_name() -> &'static str { "HullWhite1F" }
 
     fn num_factors() -> usize {
         1 // Hull-White 1F is a single-factor model
@@ -467,7 +454,8 @@ mod tests {
     fn test_hull_white_params_long_term_mean() {
         let params = HullWhiteParams::new(0.1_f64, 0.01, FlatCurve::new(0.03)).unwrap();
         let ltm = params.long_term_mean();
-        // Expected: 0.03 + (0.01^2) / (2 * 0.1^2) = 0.03 + 0.0001 / 0.02 = 0.03 + 0.005 = 0.035
+        // Expected: 0.03 + (0.01^2) / (2 * 0.1^2) = 0.03 + 0.0001 / 0.02 = 0.03 + 0.005
+        // = 0.035
         assert!((ltm - 0.035).abs() < 1e-10);
     }
 
@@ -785,8 +773,8 @@ mod tests {
         let dt = 1.0;
         let dw = [0.0];
 
-        // With theta = 0.01, drift = [0.01 - 0.1 * 0.03] * 1 = [0.01 - 0.003] * 1 = 0.007
-        // Expected: 0.03 + 0.007 = 0.037
+        // With theta = 0.01, drift = [0.01 - 0.1 * 0.03] * 1 = [0.01 - 0.003] * 1 =
+        // 0.007 Expected: 0.03 + 0.007 = 0.037
         let next_state = HullWhiteModel::evolve_step(state, dt, &dw, &params);
         assert!((next_state.0 - 0.037).abs() < 1e-10);
     }

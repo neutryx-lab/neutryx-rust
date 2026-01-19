@@ -11,7 +11,8 @@
 //!
 //! # Components
 //!
-//! - [`ParallelPortfolioGreeksCalculator`] - Parallel portfolio Greeks calculation for 1000+ trades
+//! - [`ParallelPortfolioGreeksCalculator`] - Parallel portfolio Greeks
+//!   calculation for 1000+ trades
 //! - [`MemoryMonitor`] - Memory monitoring and auto-checkpoint mechanism
 
 mod memory_monitor;
@@ -24,7 +25,6 @@ pub use portfolio_greeks::{
     ParallelGreeksConfig, ParallelGreeksError, ParallelGreeksStats,
     ParallelPortfolioGreeksCalculator, PortfolioGreeksResult,
 };
-
 use rayon::prelude::*;
 
 /// Batch size for parallel processing.
@@ -133,9 +133,7 @@ impl ParallelConfig {
 
     /// Returns whether to use parallel processing for the given item count.
     #[inline]
-    pub fn should_parallelize(&self, n_items: usize) -> bool {
-        n_items >= self.parallel_threshold
-    }
+    pub fn should_parallelize(&self, n_items: usize) -> bool { n_items >= self.parallel_threshold }
 }
 
 #[cfg(test)]

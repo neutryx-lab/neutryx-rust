@@ -1,7 +1,8 @@
 //! Multi-curve framework for yield curve bootstrapping.
 //!
 //! This module provides `MultiCurveBuilder<T>` for constructing OIS discount
-//! curves and tenor-specific forward curves (3M, 6M, etc.) in a single operation.
+//! curves and tenor-specific forward curves (3M, 6M, etc.) in a single
+//! operation.
 //!
 //! ## Architecture
 //!
@@ -36,15 +37,17 @@
 //! let curve_set = builder.build(&ois_instruments, &forward_instruments).unwrap();
 //! ```
 
-use super::config::GenericBootstrapConfig;
-use super::curve::BootstrappedCurve;
-use super::engine::SequentialBootstrapper;
-use super::error::BootstrapError;
-use super::instrument::BootstrapInstrument;
-use num_traits::Float;
 use std::collections::HashMap;
 #[cfg(feature = "parallel")]
 use std::sync::Arc;
+
+use num_traits::Float;
+use pricer_core::math::numeric::from_f64;
+
+use super::{
+    config::GenericBootstrapConfig, curve::BootstrappedCurve, engine::SequentialBootstrapper,
+    error::BootstrapError, instrument::BootstrapInstrument,
+};
 
 /// Tenor definitions for forward curves.
 ///
@@ -68,11 +71,11 @@ impl Tenor {
     /// Get the period length in years.
     pub fn period_years<T: Float>(&self) -> T {
         match self {
-            Tenor::Overnight => T::from(1.0 / 365.0).unwrap(),
-            Tenor::OneMonth => T::from(1.0 / 12.0).unwrap(),
-            Tenor::ThreeMonth => T::from(0.25).unwrap(),
-            Tenor::SixMonth => T::from(0.5).unwrap(),
-            Tenor::TwelveMonth => T::from(1.0).unwrap(),
+            Tenor::Overnight => from_f64(1.0 / 365.0),
+            Tenor::OneMonth => from_f64(1.0 / 12.0),
+            Tenor::ThreeMonth => from_f64(0.25),
+            Tenor::SixMonth => from_f64(0.5),
+            Tenor::TwelveMonth => from_f64(1.0),
         }
     }
 
@@ -149,9 +152,7 @@ impl<T: Float> CurveSet<T> {
     }
 
     /// Get the discount curve.
-    pub fn discount_curve(&self) -> &BootstrappedCurve<T> {
-        &self.discount_curve
-    }
+    pub fn discount_curve(&self) -> &BootstrappedCurve<T> { &self.discount_curve }
 
     /// Get a forward curve for a specific tenor.
     ///
@@ -168,19 +169,13 @@ impl<T: Float> CurveSet<T> {
     }
 
     /// Get all available tenors.
-    pub fn tenors(&self) -> Vec<Tenor> {
-        self.forward_curves.keys().copied().collect()
-    }
+    pub fn tenors(&self) -> Vec<Tenor> { self.forward_curves.keys().copied().collect() }
 
     /// Get the number of forward curves.
-    pub fn forward_curve_count(&self) -> usize {
-        self.forward_curves.len()
-    }
+    pub fn forward_curve_count(&self) -> usize { self.forward_curves.len() }
 
     /// Check if this is a single-curve setup.
-    pub fn is_single_curve(&self) -> bool {
-        self.forward_curves.is_empty()
-    }
+    pub fn is_single_curve(&self) -> bool { self.forward_curves.is_empty() }
 }
 
 /// Builder for multi-curve construction.
@@ -217,20 +212,17 @@ impl<T: Float> MultiCurveBuilder<T> {
     }
 
     /// Create with default configuration.
-    pub fn with_defaults() -> Self {
-        Self::new(GenericBootstrapConfig::default())
-    }
+    pub fn with_defaults() -> Self { Self::new(GenericBootstrapConfig::default()) }
 
     /// Get the configuration.
-    pub fn config(&self) -> &GenericBootstrapConfig<T> {
-        &self.config
-    }
+    pub fn config(&self) -> &GenericBootstrapConfig<T> { &self.config }
 
     /// Build a multi-curve set.
     ///
     /// # Arguments
     ///
-    /// * `discount_instruments` - Instruments for OIS discount curve (typically OIS swaps)
+    /// * `discount_instruments` - Instruments for OIS discount curve (typically
+    ///   OIS swaps)
     /// * `forward_instruments` - Tenor-specific instruments for forward curves
     ///
     /// # Returns
@@ -242,7 +234,8 @@ impl<T: Float> MultiCurveBuilder<T> {
     ///
     /// 1. First, bootstrap the OIS discount curve from `discount_instruments`
     /// 2. For each tenor in `forward_instruments`:
-    ///    - Bootstrap the forward curve using the OIS discount curve for discounting
+    ///    - Bootstrap the forward curve using the OIS discount curve for
+    ///      discounting
     pub fn build(
         &self,
         discount_instruments: &[BootstrapInstrument<T>],
@@ -376,19 +369,13 @@ pub struct ParallelCurveSetBuilder<T: Float> {
 
 impl<T: Float> ParallelCurveSetBuilder<T> {
     /// Create a new parallel curve set builder.
-    pub fn new(config: GenericBootstrapConfig<T>) -> Self {
-        Self { config }
-    }
+    pub fn new(config: GenericBootstrapConfig<T>) -> Self { Self { config } }
 
     /// Create with default configuration.
-    pub fn with_defaults() -> Self {
-        Self::new(GenericBootstrapConfig::default())
-    }
+    pub fn with_defaults() -> Self { Self::new(GenericBootstrapConfig::default()) }
 
     /// Get the configuration.
-    pub fn config(&self) -> &GenericBootstrapConfig<T> {
-        &self.config
-    }
+    pub fn config(&self) -> &GenericBootstrapConfig<T> { &self.config }
 
     /// Build multiple curve sets in parallel.
     ///
@@ -528,8 +515,9 @@ impl<T: Float> ParallelCurveSetBuilder<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use pricer_core::market_data::curves::YieldCurve;
+
+    use super::*;
 
     // ========================================
     // Tenor Tests

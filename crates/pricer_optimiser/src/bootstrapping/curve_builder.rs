@@ -1,7 +1,6 @@
 //! Curve bootstrapping implementation.
 
-use crate::bootstrapping::BootstrapResult;
-use crate::error::OptimiserError;
+use crate::{bootstrapping::BootstrapResult, error::OptimiserError};
 
 /// Configuration for curve bootstrapping.
 #[derive(Debug, Clone)]
@@ -50,9 +49,7 @@ impl CurveBootstrapper {
     }
 
     /// Create a new curve bootstrapper with custom configuration.
-    pub fn with_config(config: BootstrapConfig) -> Self {
-        Self { config }
-    }
+    pub fn with_config(config: BootstrapConfig) -> Self { Self { config } }
 
     /// Bootstrap a discount curve from swap rates.
     ///
@@ -116,9 +113,7 @@ impl CurveBootstrapper {
 }
 
 impl Default for CurveBootstrapper {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 #[cfg(test)]

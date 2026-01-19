@@ -112,19 +112,13 @@ impl SABRCalibrationData {
     }
 
     /// Total number of points (ATM + smile).
-    pub fn len(&self) -> usize {
-        1 + self.smile_points.len()
-    }
+    pub fn len(&self) -> usize { 1 + self.smile_points.len() }
 
     /// Check if the data set is empty (never true since ATM is always present).
-    pub fn is_empty(&self) -> bool {
-        false
-    }
+    pub fn is_empty(&self) -> bool { false }
 
     /// Check if there's only ATM data.
-    pub fn is_atm_only(&self) -> bool {
-        self.smile_points.is_empty()
-    }
+    pub fn is_atm_only(&self) -> bool { self.smile_points.is_empty() }
 
     /// Validate the data.
     pub fn validate(&self) -> Result<(), String> {
@@ -223,9 +217,7 @@ pub struct SABRCalibrator {
 }
 
 impl Default for SABRCalibrator {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl SABRCalibrator {
@@ -267,9 +259,7 @@ impl SABRCalibrator {
     }
 
     /// Get the fixed beta value if any.
-    pub fn fixed_beta(&self) -> Option<f64> {
-        self.fixed_beta
-    }
+    pub fn fixed_beta(&self) -> Option<f64> { self.fixed_beta }
 
     /// Compute SABR implied volatility using Hagan formula.
     pub fn implied_vol(

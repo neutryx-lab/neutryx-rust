@@ -1,13 +1,13 @@
 //! Checkpointing integration for path-dependent AD.
 //!
-//! This module provides the integration between Enzyme automatic differentiation
-//! and the checkpointing infrastructure for memory-efficient Greeks computation
-//! on path-dependent options (Asian, Barrier, etc.).
+//! This module provides the integration between Enzyme automatic
+//! differentiation and the checkpointing infrastructure for memory-efficient
+//! Greeks computation on path-dependent options (Asian, Barrier, etc.).
 //!
 //! # Memory Efficiency
 //!
-//! For path-dependent options with N steps, computing Greeks via reverse-mode AD
-//! would normally require O(N) memory to store all intermediate values.
+//! For path-dependent options with N steps, computing Greeks via reverse-mode
+//! AD would normally require O(N) memory to store all intermediate values.
 //! Checkpointing reduces this to O(√N) by:
 //!
 //! 1. Saving state at strategic checkpoints during forward pass
@@ -36,10 +36,8 @@
 
 use num_traits::Float;
 
+use super::{loops::AdjointAccumulator, reverse::ReverseAD};
 use crate::checkpoint::{CheckpointManager, CheckpointStrategy};
-
-use super::loops::AdjointAccumulator;
-use super::reverse::ReverseAD;
 
 /// Configuration for checkpointed AD.
 #[derive(Clone, Debug)]
@@ -106,27 +104,19 @@ impl CheckpointADConfig {
 
     /// Returns the number of steps.
     #[inline]
-    pub fn n_steps(&self) -> usize {
-        self.n_steps
-    }
+    pub fn n_steps(&self) -> usize { self.n_steps }
 
     /// Returns the checkpointing strategy.
     #[inline]
-    pub fn strategy(&self) -> &CheckpointStrategy {
-        &self.strategy
-    }
+    pub fn strategy(&self) -> &CheckpointStrategy { &self.strategy }
 
     /// Returns whether smooth payoffs are enabled.
     #[inline]
-    pub fn use_smooth_payoffs(&self) -> bool {
-        self.use_smooth_payoffs
-    }
+    pub fn use_smooth_payoffs(&self) -> bool { self.use_smooth_payoffs }
 
     /// Returns the smoothing epsilon.
     #[inline]
-    pub fn smooth_epsilon(&self) -> f64 {
-        self.smooth_epsilon
-    }
+    pub fn smooth_epsilon(&self) -> f64 { self.smooth_epsilon }
 }
 
 /// State saved at a checkpoint for AD reverse pass.
@@ -212,9 +202,7 @@ impl<T: Float> CheckpointedAD<T> {
 
     /// Returns the configuration.
     #[inline]
-    pub fn config(&self) -> &CheckpointADConfig {
-        &self.config
-    }
+    pub fn config(&self) -> &CheckpointADConfig { &self.config }
 
     /// Checks if a checkpoint should be saved at the given step.
     #[inline]
@@ -225,9 +213,7 @@ impl<T: Float> CheckpointedAD<T> {
     }
 
     /// Saves an AD checkpoint state.
-    pub fn save_checkpoint(&mut self, state: ADCheckpointState<T>) {
-        self.checkpoints.push(state);
-    }
+    pub fn save_checkpoint(&mut self, state: ADCheckpointState<T>) { self.checkpoints.push(state); }
 
     /// Finds the nearest checkpoint before or at the given step.
     pub fn nearest_checkpoint(&self, step: usize) -> Option<&ADCheckpointState<T>> {
@@ -235,21 +221,15 @@ impl<T: Float> CheckpointedAD<T> {
     }
 
     /// Clears all saved checkpoints.
-    pub fn clear_checkpoints(&mut self) {
-        self.checkpoints.clear();
-    }
+    pub fn clear_checkpoints(&mut self) { self.checkpoints.clear(); }
 
     /// Returns the number of saved checkpoints.
     #[inline]
-    pub fn checkpoint_count(&self) -> usize {
-        self.checkpoints.len()
-    }
+    pub fn checkpoint_count(&self) -> usize { self.checkpoints.len() }
 
     /// Returns the adjoint accumulator.
     #[inline]
-    pub fn accumulator(&self) -> &AdjointAccumulator<T> {
-        &self.adjoint_accumulator
-    }
+    pub fn accumulator(&self) -> &AdjointAccumulator<T> { &self.adjoint_accumulator }
 
     /// Returns a mutable reference to the adjoint accumulator.
     #[inline]
@@ -277,7 +257,8 @@ pub trait PathDependentAD<T: Float> {
 
     /// Computes the delta contribution from this path.
     ///
-    /// For forward-mode AD, this is the tangent of the payoff with respect to spot.
+    /// For forward-mode AD, this is the tangent of the payoff with respect to
+    /// spot.
     fn delta_contribution(&self, terminal_spot: T, path_data: &PathData<T>) -> T;
 
     /// Returns whether this payoff type requires path history.

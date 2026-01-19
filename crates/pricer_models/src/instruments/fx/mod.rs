@@ -40,9 +40,8 @@ mod forward;
 mod option;
 
 pub use forward::{FxForward, FxForwardDirection, FxForwardError};
-pub use option::{FxOption, FxOptionError, FxOptionType};
-
 use num_traits::Float;
+pub use option::{FxOption, FxOptionError, FxOptionType};
 use pricer_core::types::Currency;
 
 use crate::instruments::traits::InstrumentTrait;
@@ -121,15 +120,11 @@ impl<T: Float> FxInstrument<T> {
 
     /// Return whether this is an option.
     #[inline]
-    pub fn is_option(&self) -> bool {
-        matches!(self, FxInstrument::Option(_))
-    }
+    pub fn is_option(&self) -> bool { matches!(self, FxInstrument::Option(_)) }
 
     /// Return whether this is a forward.
     #[inline]
-    pub fn is_forward(&self) -> bool {
-        matches!(self, FxInstrument::Forward(_))
-    }
+    pub fn is_forward(&self) -> bool { matches!(self, FxInstrument::Forward(_)) }
 
     /// Return a reference to the option if this is an Option variant.
     pub fn as_option(&self) -> Option<&FxOption<T>> {
@@ -150,24 +145,16 @@ impl<T: Float> FxInstrument<T> {
 
 impl<T: Float> InstrumentTrait<T> for FxInstrument<T> {
     #[inline]
-    fn payoff(&self, spot: T) -> T {
-        self.payoff(spot)
-    }
+    fn payoff(&self, spot: T) -> T { self.payoff(spot) }
 
     #[inline]
-    fn expiry(&self) -> T {
-        self.expiry()
-    }
+    fn expiry(&self) -> T { self.expiry() }
 
     #[inline]
-    fn currency(&self) -> Currency {
-        self.currency()
-    }
+    fn currency(&self) -> Currency { self.currency() }
 
     #[inline]
-    fn notional(&self) -> T {
-        self.notional()
-    }
+    fn notional(&self) -> T { self.notional() }
 
     fn type_name(&self) -> &'static str {
         match self {
@@ -179,15 +166,11 @@ impl<T: Float> InstrumentTrait<T> for FxInstrument<T> {
 
 // Conversion from individual types to FxInstrument
 impl<T: Float> From<FxOption<T>> for FxInstrument<T> {
-    fn from(opt: FxOption<T>) -> Self {
-        FxInstrument::Option(opt)
-    }
+    fn from(opt: FxOption<T>) -> Self { FxInstrument::Option(opt) }
 }
 
 impl<T: Float> From<FxForward<T>> for FxInstrument<T> {
-    fn from(fwd: FxForward<T>) -> Self {
-        FxInstrument::Forward(fwd)
-    }
+    fn from(fwd: FxForward<T>) -> Self { FxInstrument::Forward(fwd) }
 }
 
 #[cfg(test)]

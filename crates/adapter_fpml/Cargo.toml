@@ -31,3 +31,6 @@ serde = ["dep:serde", "pricer_core/serde", "pricer_models/serde"]
 
 [dev-dependencies]
 approx.workspace = true
+
+[lints]
+workspace = true

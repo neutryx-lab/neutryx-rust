@@ -1,7 +1,8 @@
 //! Tests for Greeks types and configuration.
 
-use super::*;
 use approx::assert_relative_eq;
+
+use super::*;
 
 // =============================================================================
 // Task 1.1: GreeksResult<T> Tests

@@ -31,3 +31,6 @@ async = ["dep:tokio"]
 
 [dev-dependencies]
 approx.workspace = true
+
+[lints]
+workspace = true

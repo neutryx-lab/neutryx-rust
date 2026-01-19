@@ -1,9 +1,11 @@
 //! Greeks calculation types and configuration.
 //!
 //! This module provides:
-//! - [`GreeksResult<T>`]: Generic result type for Greeks calculations (AD-compatible)
+//! - [`GreeksResult<T>`]: Generic result type for Greeks calculations
+//!   (AD-compatible)
 //! - [`GreeksConfig`]: Configuration for bump widths and calculation modes
-//! - [`GreeksMode`]: Calculation mode selection (Bump-and-Revalue, AAD, num-dual)
+//! - [`GreeksMode`]: Calculation mode selection (Bump-and-Revalue, AAD,
+//!   num-dual)
 
 mod config;
 mod result;

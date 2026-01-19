@@ -1,8 +1,9 @@
 //! Monotonic interpolation using Fritsch-Carlson method.
 
-use super::Interpolator;
-use crate::types::InterpolationError;
 use num_traits::Float;
+
+use super::Interpolator;
+use crate::{math::numeric::from_f64, types::InterpolationError};
 
 /// Monotonicity-preserving interpolator using Fritsch-Carlson method.
 ///
@@ -47,8 +48,9 @@ pub struct MonotonicInterpolator<T: Float> {
 impl<T: Float> MonotonicInterpolator<T> {
     /// Construct a monotonic interpolator from x and y data points.
     ///
-    /// Data points are automatically sorted by x-coordinate if not already sorted.
-    /// Requires at least 2 data points. Input data must be monotonic.
+    /// Data points are automatically sorted by x-coordinate if not already
+    /// sorted. Requires at least 2 data points. Input data must be
+    /// monotonic.
     ///
     /// # Arguments
     ///
@@ -149,8 +151,8 @@ impl<T: Float> MonotonicInterpolator<T> {
     /// Compute Fritsch-Carlson monotonicity-preserving slopes.
     fn compute_slopes(xs: &[T], ys: &[T]) -> Vec<T> {
         let n = xs.len();
-        let two = T::from(2.0).unwrap();
-        let three = T::from(3.0).unwrap();
+        let two: T = from_f64(2.0);
+        let three: T = from_f64(3.0);
 
         if n == 2 {
             // Only two points: use secant slope for both
@@ -199,7 +201,7 @@ impl<T: Float> MonotonicInterpolator<T> {
                 // Check if (alpha, beta) is in valid region
                 // For monotonicity: alpha² + beta² <= 9
                 let r2 = alpha * alpha + beta * beta;
-                let nine = T::from(9.0).unwrap();
+                let nine: T = from_f64(9.0);
 
                 if r2 > nine {
                     // Scale slopes to satisfy constraint
@@ -228,33 +230,23 @@ impl<T: Float> MonotonicInterpolator<T> {
 
     /// Returns a reference to the sorted x-coordinates.
     #[inline]
-    pub fn xs(&self) -> &[T] {
-        &self.xs
-    }
+    pub fn xs(&self) -> &[T] { &self.xs }
 
     /// Returns a reference to the y-values.
     #[inline]
-    pub fn ys(&self) -> &[T] {
-        &self.ys
-    }
+    pub fn ys(&self) -> &[T] { &self.ys }
 
     /// Returns a reference to the computed slopes.
     #[inline]
-    pub fn slopes(&self) -> &[T] {
-        &self.slopes
-    }
+    pub fn slopes(&self) -> &[T] { &self.slopes }
 
     /// Returns the number of data points.
     #[inline]
-    pub fn len(&self) -> usize {
-        self.xs.len()
-    }
+    pub fn len(&self) -> usize { self.xs.len() }
 
     /// Returns true if the interpolator has no data points.
     #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.xs.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.xs.is_empty() }
 }
 
 impl<T: Float> Interpolator<T> for MonotonicInterpolator<T> {
@@ -307,8 +299,8 @@ impl<T: Float> Interpolator<T> for MonotonicInterpolator<T> {
         // h01(t) = -2t³ + 3t²
         // h11(t) = t³ - t²
 
-        let two = T::from(2.0).unwrap();
-        let three = T::from(3.0).unwrap();
+        let two: T = from_f64(2.0);
+        let three: T = from_f64(3.0);
 
         let h00 = two * t3 - three * t2 + T::one();
         let h10 = t3 - two * t2 + t;
@@ -321,9 +313,7 @@ impl<T: Float> Interpolator<T> for MonotonicInterpolator<T> {
 
     /// Return the valid interpolation domain.
     #[inline]
-    fn domain(&self) -> (T, T) {
-        (self.xs[0], self.xs[self.xs.len() - 1])
-    }
+    fn domain(&self) -> (T, T) { (self.xs[0], self.xs[self.xs.len() - 1]) }
 }
 
 #[cfg(test)]

@@ -1,7 +1,6 @@
 //! Payment frequency enumeration.
 
-use std::fmt;
-use std::str::FromStr;
+use std::{fmt, str::FromStr};
 
 /// Payment frequency for scheduled instruments.
 ///
@@ -62,7 +61,8 @@ impl Frequency {
 
     /// Returns the number of months between payment dates.
     ///
-    /// Returns 0 for Weekly and Daily frequencies (use `days_between_payments` instead).
+    /// Returns 0 for Weekly and Daily frequencies (use `days_between_payments`
+    /// instead).
     ///
     /// # Examples
     ///
@@ -138,9 +138,7 @@ impl Frequency {
 }
 
 impl fmt::Display for Frequency {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.name())
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.name()) }
 }
 
 impl FromStr for Frequency {
