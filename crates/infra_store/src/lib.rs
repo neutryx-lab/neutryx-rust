@@ -1,6 +1,10 @@
-//! # infra_store
+// Clippy configuration for infra_store
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::missing_errors_doc)]
+
+//! # `infra_store`
 //!
-//! Persistence and state management (SQLx, Redis, TimeScale) for Neutryx.
+//! Persistence and state management (`SQLx`, Redis, `TimeScale`) for Neutryx.
 //!
 //! This crate implements the Database Access Layer (DAL), providing `Save` and
 //! `Load` traits for Trades and Risk Reports using `sqlx` (Postgres) or other

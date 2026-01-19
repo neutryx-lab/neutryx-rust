@@ -1,11 +1,16 @@
-//! # infra_master
+// Clippy configuration for infra_master
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::missing_errors_doc)]
+
+//! # `infra_master`
 //!
 //! Static master data (Calendars, Currencies, ISINs) for Neutryx.
 //!
 //! This crate is the "Source of Truth" for static finance data including:
 //! - Holiday calendars (TARGET, NY, JP)
-//! - Currency definitions (ISO 4217)
 //! - Day Count Convention lookups
+//! - Counterparty and CSA (Credit Support Annex) master data
+//! - Netting set configurations
 //!
 //! ## Architecture Position
 //!
@@ -22,14 +27,18 @@
 //! ```
 
 mod calendar;
+mod counterparty;
 mod day_count;
 mod error;
 
 pub use calendar::{Calendar, CalendarId};
+pub use counterparty::{CsaTerms, NettingSetConfig};
 pub use day_count::DayCountConvention;
 pub use error::MasterDataError;
 
 /// Prelude module for convenient imports
 pub mod prelude {
-    pub use crate::{Calendar, CalendarId, DayCountConvention, MasterDataError};
+    pub use crate::{
+        Calendar, CalendarId, CsaTerms, DayCountConvention, MasterDataError, NettingSetConfig,
+    };
 }

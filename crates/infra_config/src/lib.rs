@@ -1,3 +1,7 @@
+// Clippy configuration for infra_config
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::missing_errors_doc)]
+
 //! # infra_config
 //!
 //! System configuration and environment management for Neutryx.
@@ -24,9 +28,14 @@ mod error;
 mod settings;
 
 pub use error::ConfigError;
-pub use settings::{DatabaseConfig, EngineConfig, Settings};
+pub use settings::{
+    DatabaseConfig, EngineConfig, GrpcConfig, LoggingConfig, RestConfig, ServiceConfig, Settings,
+};
 
 /// Prelude module for convenient imports
 pub mod prelude {
-    pub use crate::{ConfigError, DatabaseConfig, EngineConfig, Settings};
+    pub use crate::{
+        ConfigError, DatabaseConfig, EngineConfig, GrpcConfig, LoggingConfig, RestConfig,
+        ServiceConfig, Settings,
+    };
 }

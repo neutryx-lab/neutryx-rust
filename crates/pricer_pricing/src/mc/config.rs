@@ -3,7 +3,7 @@
 //! This module provides configuration types and builders for Monte Carlo
 //! pricing simulations with automatic differentiation support.
 
-use super::error::ConfigError;
+use super::error::MonteCarloConfigError;
 
 /// Maximum number of simulation paths allowed.
 pub const MAX_PATHS: usize = 10_000_000;
@@ -111,15 +111,15 @@ impl MonteCarloConfig {
     ///
     /// # Errors
     ///
-    /// Returns `ConfigError` if:
+    /// Returns `MonteCarloConfigError` if:
     /// - `n_paths` is 0 or greater than 10,000,000
     /// - `n_steps` is 0 or greater than 10,000
-    pub fn validate(&self) -> Result<(), ConfigError> {
+    pub fn validate(&self) -> Result<(), MonteCarloConfigError> {
         if self.n_paths == 0 || self.n_paths > MAX_PATHS {
-            return Err(ConfigError::InvalidPathCount(self.n_paths));
+            return Err(MonteCarloConfigError::InvalidPathCount(self.n_paths));
         }
         if self.n_steps == 0 || self.n_steps > MAX_STEPS {
-            return Err(ConfigError::InvalidStepCount(self.n_steps));
+            return Err(MonteCarloConfigError::InvalidStepCount(self.n_steps));
         }
         Ok(())
     }
@@ -199,16 +199,16 @@ impl MonteCarloConfigBuilder {
     ///
     /// # Errors
     ///
-    /// Returns `ConfigError` if:
+    /// Returns `MonteCarloConfigError` if:
     /// - `n_paths` not set or invalid
     /// - `n_steps` not set or invalid
-    pub fn build(self) -> Result<MonteCarloConfig, ConfigError> {
-        let n_paths = self.n_paths.ok_or(ConfigError::InvalidParameter {
+    pub fn build(self) -> Result<MonteCarloConfig, MonteCarloConfigError> {
+        let n_paths = self.n_paths.ok_or(MonteCarloConfigError::InvalidParameter {
             name: "n_paths",
             value: "must be specified".to_string(),
         })?;
 
-        let n_steps = self.n_steps.ok_or(ConfigError::InvalidParameter {
+        let n_steps = self.n_steps.ok_or(MonteCarloConfigError::InvalidParameter {
             name: "n_steps",
             value: "must be specified".to_string(),
         })?;
@@ -271,7 +271,7 @@ mod tests {
     fn test_config_invalid_zero_paths() {
         let result = MonteCarloConfig::builder().n_paths(0).n_steps(100).build();
 
-        assert!(matches!(result, Err(ConfigError::InvalidPathCount(0))));
+        assert!(matches!(result, Err(MonteCarloConfigError::InvalidPathCount(0))));
     }
 
     #[test]
@@ -281,14 +281,14 @@ mod tests {
             .n_steps(100)
             .build();
 
-        assert!(matches!(result, Err(ConfigError::InvalidPathCount(_))));
+        assert!(matches!(result, Err(MonteCarloConfigError::InvalidPathCount(_))));
     }
 
     #[test]
     fn test_config_invalid_zero_steps() {
         let result = MonteCarloConfig::builder().n_paths(1000).n_steps(0).build();
 
-        assert!(matches!(result, Err(ConfigError::InvalidStepCount(0))));
+        assert!(matches!(result, Err(MonteCarloConfigError::InvalidStepCount(0))));
     }
 
     #[test]
@@ -298,7 +298,7 @@ mod tests {
             .n_steps(MAX_STEPS + 1)
             .build();
 
-        assert!(matches!(result, Err(ConfigError::InvalidStepCount(_))));
+        assert!(matches!(result, Err(MonteCarloConfigError::InvalidStepCount(_))));
     }
 
     #[test]
@@ -307,7 +307,7 @@ mod tests {
 
         assert!(matches!(
             result,
-            Err(ConfigError::InvalidParameter {
+            Err(MonteCarloConfigError::InvalidParameter {
                 name: "n_paths",
                 ..
             })
@@ -320,7 +320,7 @@ mod tests {
 
         assert!(matches!(
             result,
-            Err(ConfigError::InvalidParameter {
+            Err(MonteCarloConfigError::InvalidParameter {
                 name: "n_steps",
                 ..
             })

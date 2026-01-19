@@ -5,15 +5,27 @@ use crate::error::StoreError;
 /// Trait for saving entities to storage.
 pub trait Save<T> {
     /// Save an entity.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError`] if the save operation fails.
     fn save(&self, entity: &T) -> Result<(), StoreError>;
 }
 
 /// Trait for loading entities from storage.
 pub trait Load<T, K> {
     /// Load an entity by key.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError`] if the load operation fails.
     fn load(&self, key: &K) -> Result<Option<T>, StoreError>;
 
     /// Load all entities.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StoreError`] if the load operation fails.
     fn load_all(&self) -> Result<Vec<T>, StoreError>;
 }
 

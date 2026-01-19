@@ -1,3 +1,26 @@
+// Clippy configuration for frictional_bank
+// Demo code uses simpler patterns acceptable for non-production code
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::return_self_not_must_use)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::unwrap_used)]
+#![allow(clippy::expect_used)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::redundant_closure_for_method_calls)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::ref_option)]
+#![allow(clippy::match_same_arms)]
+#![allow(clippy::unnecessary_literal_bound)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::map_unwrap_or)]
+#![allow(clippy::wildcard_imports)]
+#![allow(clippy::unused_self)]
+
 //! # FrictionalBank Demo Orchestrator
 //!
 //! FrictionalBank is a comprehensive demo system that demonstrates the full

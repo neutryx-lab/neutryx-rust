@@ -1,4 +1,4 @@
-//! Build script for pricer_pricing.
+//! Build script for `pricer_pricing`.
 //!
 //! Validates LLVM 18 availability and configures Enzyme plugin support.
 //!

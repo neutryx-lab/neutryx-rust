@@ -114,6 +114,12 @@ pub enum NodeGroup {
 ///
 /// The `node_type` field is serialised as `"type"` for D3.js compatibility.
 ///
+/// # Portfolio Support
+///
+/// The `trade_ids` field tracks which trades this node belongs to.
+/// For single-trade graphs, this is empty (and omitted from JSON).
+/// For portfolio graphs, shared nodes have multiple trade IDs.
+///
 /// # Example
 ///
 /// ```rust
@@ -126,6 +132,7 @@ pub enum NodeGroup {
 ///     value: Some(100.0),
 ///     is_sensitivity_target: true,
 ///     group: NodeGroup::Input,
+///     trade_ids: vec![],
 /// };
 /// ```
 #[derive(Debug, Clone)]
@@ -149,6 +156,30 @@ pub struct GraphNode {
 
     /// Visual grouping for colour coding
     pub group: NodeGroup,
+
+    /// Trade IDs this node belongs to (Portfolio support)
+    ///
+    /// - Single-trade graphs: Empty vector (omitted from JSON for backward compatibility)
+    /// - Portfolio graphs: One or more trade IDs (shared nodes have multiple)
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Vec::is_empty")
+    )]
+    pub trade_ids: Vec<String>,
+}
+
+impl Default for GraphNode {
+    fn default() -> Self {
+        Self {
+            id: String::new(),
+            node_type: NodeType::Input,
+            label: String::new(),
+            value: None,
+            is_sensitivity_target: false,
+            group: NodeGroup::Intermediate,
+            trade_ids: Vec::new(),
+        }
+    }
 }
 
 // =============================================================================
@@ -285,6 +316,7 @@ impl ComputationGraph {
     ///         value: Some(100.0),
     ///         is_sensitivity_target: true,
     ///         group: NodeGroup::Input,
+    ///         trade_ids: vec![],
     ///     }],
     ///     edges: vec![],
     ///     metadata: GraphMetadata {
@@ -489,4 +521,146 @@ pub struct GraphNodeUpdate {
 
     /// Change from previous value (for animation)
     pub delta: Option<f64>,
+}
+
+// =============================================================================
+// PortfolioGraphMetadata Structure (Portfolio extension)
+// =============================================================================
+
+/// Metadata for a Portfolio-level computation graph.
+///
+/// Extends the base `GraphMetadata` with Portfolio-specific statistics
+/// including trade count, shared node count, and optimisation ratio.
+///
+/// # Example
+///
+/// ```rust
+/// use pricer_pricing::graph::PortfolioGraphMetadata;
+///
+/// let metadata = PortfolioGraphMetadata {
+///     node_count: 150,
+///     edge_count: 200,
+///     depth: 12,
+///     generated_at: "2026-01-19T12:00:00Z".to_string(),
+///     trade_count: 10,
+///     shared_node_count: 25,
+///     optimisation_ratio: 0.83,
+/// };
+/// ```
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
+pub struct PortfolioGraphMetadata {
+    /// Total number of nodes in the graph
+    pub node_count: usize,
+
+    /// Total number of edges in the graph
+    pub edge_count: usize,
+
+    /// Maximum depth of the graph (longest path from input to output)
+    pub depth: usize,
+
+    /// ISO 8601 timestamp of graph generation
+    pub generated_at: String,
+
+    /// Number of trades in the Portfolio
+    pub trade_count: usize,
+
+    /// Number of nodes shared between multiple trades
+    pub shared_node_count: usize,
+
+    /// Optimisation ratio: nodes after deduplication / nodes before deduplication
+    ///
+    /// Value range: 0 < ratio <= 1.0
+    /// - 1.0 means no deduplication (no shared nodes)
+    /// - Lower values indicate more node sharing/deduplication
+    pub optimisation_ratio: f64,
+}
+
+// =============================================================================
+// PortfolioComputationGraph Structure (Portfolio extension)
+// =============================================================================
+
+/// Complete computation graph representation for a Portfolio.
+///
+/// Contains all nodes (with trade_ids populated), edges, and Portfolio-specific
+/// metadata for a computation graph extracted from multiple trades.
+///
+/// # D3.js Compatibility
+///
+/// The `edges` field is serialised as `"links"` for D3.js force-directed
+/// graph compatibility, matching the existing `ComputationGraph` format.
+///
+/// # Example JSON Output
+///
+/// ```json
+/// {
+///   "nodes": [
+///     {
+///       "id": "spot_USD",
+///       "type": "input",
+///       "label": "spot",
+///       "trade_ids": ["T001", "T002"]
+///     }
+///   ],
+///   "links": [...],
+///   "metadata": {
+///     "node_count": 150,
+///     "trade_count": 10,
+///     "shared_node_count": 25,
+///     "optimisation_ratio": 0.83
+///   }
+/// }
+/// ```
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
+pub struct PortfolioComputationGraph {
+    /// All nodes in the computation graph (with trade_ids populated)
+    pub nodes: Vec<GraphNode>,
+
+    /// All edges in the computation graph (serialised as "links" for D3.js)
+    #[cfg_attr(feature = "serde", serde(rename = "links"))]
+    pub edges: Vec<GraphEdge>,
+
+    /// Portfolio-specific metadata (statistics, timestamps)
+    pub metadata: PortfolioGraphMetadata,
+}
+
+impl PortfolioComputationGraph {
+    /// Find a node by its ID.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The node ID to search for
+    ///
+    /// # Returns
+    ///
+    /// Reference to the node if found, None otherwise.
+    pub fn find_node(&self, id: &str) -> Option<&GraphNode> {
+        self.nodes.iter().find(|n| n.id == id)
+    }
+
+    /// Get all nodes belonging to a specific trade.
+    ///
+    /// # Arguments
+    ///
+    /// * `trade_id` - The trade ID to filter by
+    ///
+    /// # Returns
+    ///
+    /// Vector of references to nodes belonging to the specified trade.
+    pub fn nodes_for_trade(&self, trade_id: &str) -> Vec<&GraphNode> {
+        self.nodes
+            .iter()
+            .filter(|n| n.trade_ids.contains(&trade_id.to_string()))
+            .collect()
+    }
+
+    /// Get all shared nodes (nodes belonging to multiple trades).
+    ///
+    /// # Returns
+    ///
+    /// Vector of references to nodes with more than one trade_id.
+    pub fn shared_nodes(&self) -> Vec<&GraphNode> {
+        self.nodes.iter().filter(|n| n.trade_ids.len() > 1).collect()
+    }
 }

@@ -3,18 +3,24 @@
 //! This module defines structured error types for configuration validation
 //! and runtime errors in the Monte Carlo simulation engine.
 
-use std::fmt;
+use thiserror::Error;
 
 /// Configuration error for Monte Carlo pricer.
 ///
 /// These errors occur during construction when invalid parameters are provided.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ConfigError {
+///
+/// Note: Named `MonteCarloConfigError` to avoid collision with
+/// `infra_config::ConfigError` which handles system-wide configuration errors.
+#[derive(Error, Clone, Debug, PartialEq, Eq)]
+pub enum MonteCarloConfigError {
     /// Path count outside valid range [1, 10_000_000].
+    #[error("Invalid path count {0}: must be in range [1, 10_000_000]")]
     InvalidPathCount(usize),
     /// Step count outside valid range [1, 10_000].
+    #[error("Invalid step count {0}: must be in range [1, 10_000]")]
     InvalidStepCount(usize),
     /// Invalid parameter value with name and description.
+    #[error("Invalid parameter '{name}': {value}")]
     InvalidParameter {
         /// Parameter name.
         name: &'static str,
@@ -23,31 +29,9 @@ pub enum ConfigError {
     },
 }
 
-impl fmt::Display for ConfigError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::InvalidPathCount(count) => {
-                write!(
-                    f,
-                    "Invalid path count {}: must be in range [1, 10_000_000]",
-                    count
-                )
-            }
-            Self::InvalidStepCount(count) => {
-                write!(
-                    f,
-                    "Invalid step count {}: must be in range [1, 10_000]",
-                    count
-                )
-            }
-            Self::InvalidParameter { name, value } => {
-                write!(f, "Invalid parameter '{}': {}", name, value)
-            }
-        }
-    }
-}
-
-impl std::error::Error for ConfigError {}
+/// Backward-compatible alias for `MonteCarloConfigError`.
+#[deprecated(since = "0.2.0", note = "Use MonteCarloConfigError instead")]
+pub type ConfigError = MonteCarloConfigError;
 
 #[cfg(test)]
 mod tests {

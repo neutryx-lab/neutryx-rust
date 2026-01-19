@@ -990,6 +990,7 @@ fn bench_graph_builder(c: &mut Criterion) {
                         value: Some(i as f64),
                         is_sensitivity_target: i < 10,
                         group: NodeGroup::Intermediate,
+                        trade_ids: vec![],
                     });
                 }
                 black_box(builder.node_count())
@@ -1027,6 +1028,7 @@ fn bench_graph_builder(c: &mut Criterion) {
                             } else {
                                 NodeGroup::Intermediate
                             },
+                            trade_ids: vec![],
                         });
 
                         if i > 0 {

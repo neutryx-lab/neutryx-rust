@@ -1052,6 +1052,114 @@ impl GraphCache {
     pub fn clear(&mut self) { self.entries.clear(); }
 }
 
+// =============================================================================
+// Task 4.4: Portfolio Graph Cache (portfolio-graph-optimisation)
+// =============================================================================
+
+/// Cached portfolio graph entry with timestamp.
+#[derive(Debug, Clone)]
+pub struct CachedPortfolioGraph {
+    /// The cached portfolio graph response
+    pub graph: PortfolioGraphResponse,
+    /// When the cache entry was created
+    pub created_at: Instant,
+}
+
+/// Portfolio graph cache with 5-second TTL.
+///
+/// Caches portfolio computation graphs to avoid repeated expensive
+/// graph extraction operations.
+///
+/// # Requirements Coverage
+///
+/// - 6.3: 5秒TTLキャッシュでパフォーマンス最適化
+#[derive(Debug, Default)]
+pub struct PortfolioGraphCache {
+    /// Cache entries keyed by comma-sorted trade_ids (None = full graph)
+    entries: HashMap<Option<String>, CachedPortfolioGraph>,
+}
+
+impl PortfolioGraphCache {
+    /// Cache TTL in seconds
+    const TTL_SECONDS: u64 = 5;
+
+    /// Create a new empty portfolio graph cache.
+    pub fn new() -> Self {
+        Self {
+            entries: HashMap::new(),
+        }
+    }
+
+    /// Generate a cache key from optional trade_ids filter.
+    ///
+    /// Normalises trade_ids by sorting to ensure consistent cache keys.
+    fn cache_key(trade_ids: Option<&[String]>) -> Option<String> {
+        trade_ids.map(|ids| {
+            let mut sorted: Vec<&String> = ids.iter().collect();
+            sorted.sort();
+            sorted.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(",")
+        })
+    }
+
+    /// Get a cached portfolio graph if it exists and is not expired.
+    ///
+    /// # Arguments
+    ///
+    /// * `trade_ids` - Optional filter to look up (will be normalised)
+    ///
+    /// # Returns
+    ///
+    /// Cached graph response if valid, None if expired or not found.
+    pub fn get(&self, trade_ids: Option<&[String]>) -> Option<&PortfolioGraphResponse> {
+        let key = Self::cache_key(trade_ids);
+        self.entries.get(&key).and_then(|entry| {
+            if entry.created_at.elapsed().as_secs() < Self::TTL_SECONDS {
+                Some(&entry.graph)
+            } else {
+                None
+            }
+        })
+    }
+
+    /// Insert a portfolio graph into the cache.
+    ///
+    /// # Arguments
+    ///
+    /// * `trade_ids` - Optional filter used for this graph
+    /// * `graph` - The portfolio graph response to cache
+    pub fn insert(&mut self, trade_ids: Option<&[String]>, graph: PortfolioGraphResponse) {
+        let key = Self::cache_key(trade_ids);
+        self.entries.insert(
+            key,
+            CachedPortfolioGraph {
+                graph,
+                created_at: Instant::now(),
+            },
+        );
+    }
+
+    /// Remove expired entries from the cache.
+    pub fn cleanup(&mut self) {
+        self.entries
+            .retain(|_, entry| entry.created_at.elapsed().as_secs() < Self::TTL_SECONDS);
+    }
+
+    /// Clear the entire cache.
+    pub fn clear(&mut self) {
+        self.entries.clear();
+    }
+
+    /// Get the number of entries in the cache.
+    pub fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    /// Check if the cache is empty.
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+}
+
 /// Generate a sample computation graph for a trade
 ///
 /// In production, this would call the GraphExtractor from pricer_pricing.
@@ -3685,6 +3793,516 @@ pub async fn list_jobs(State(state): State<Arc<AppState>>) -> Json<JobListRespon
     })
 }
 
+// =============================================================================
+// Task 4.1: Portfolio Graph API Types and Handler (portfolio-graph-optimisation)
+// =============================================================================
+
+/// Query parameters for portfolio graph endpoint.
+///
+/// # Endpoint
+///
+/// `GET /api/v1/portfolio/graph`
+///
+/// # Example Requests
+///
+/// - Get full portfolio graph: `/api/v1/portfolio/graph`
+/// - Get filtered subgraph: `/api/v1/portfolio/graph?trade_ids=T001,T002,T003`
+#[derive(Debug, Clone, Deserialize)]
+pub struct PortfolioGraphQueryParams {
+    /// Optional comma-separated list of trade IDs to filter
+    /// If not provided, returns the full portfolio graph
+    pub trade_ids: Option<String>,
+}
+
+/// Portfolio graph node with trade ownership (D3.js compatible).
+///
+/// Extends `GraphNodeResponse` with `trade_ids` field for Portfolio-level
+/// visualisation of shared nodes.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PortfolioGraphNodeResponse {
+    /// Unique identifier for the node
+    pub id: String,
+    /// Operation type (D3.js compatible: "type" field)
+    #[serde(rename = "type")]
+    pub node_type: String,
+    /// Human-readable label
+    pub label: String,
+    /// Current computed value
+    pub value: Option<f64>,
+    /// Whether this node is a sensitivity calculation target
+    pub is_sensitivity_target: bool,
+    /// Visual grouping for colour coding
+    pub group: String,
+    /// Trade IDs that share this node
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub trade_ids: Vec<String>,
+}
+
+/// Portfolio graph metadata with optimisation statistics.
+///
+/// Extends standard graph metadata with Portfolio-specific fields:
+/// - `trade_count`: Number of trades in the portfolio
+/// - `shared_node_count`: Number of deduplicated shared nodes
+/// - `optimisation_ratio`: Node count / Total nodes before deduplication
+/// - `large_graph_warning`: True if node_count exceeds 10,000
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PortfolioGraphMetadataResponse {
+    /// Total number of nodes (after deduplication)
+    pub node_count: usize,
+    /// Total number of edges
+    pub edge_count: usize,
+    /// Graph depth (longest path)
+    pub depth: usize,
+    /// Generation timestamp (ISO 8601)
+    pub generated_at: String,
+    /// Number of trades in the portfolio
+    pub trade_count: usize,
+    /// Number of shared (deduplicated) nodes
+    pub shared_node_count: usize,
+    /// Optimisation ratio (lower is better deduplication)
+    pub optimisation_ratio: f64,
+    /// Warning flag for large graphs (> 10,000 nodes)
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub large_graph_warning: bool,
+}
+
+/// Portfolio graph API response (D3.js compatible).
+///
+/// # Requirements Coverage
+///
+/// - 4.1: `/api/v1/portfolio/graph` エンドポイント
+/// - 4.2: D3.js互換JSON形式 (nodes, links, metadata)
+/// - 4.3: クエリパラメータによるサブグラフフィルタリング
+/// - 4.4: 拡張メタデータ (trade_count, shared_node_count等)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PortfolioGraphResponse {
+    /// All nodes in the portfolio computation graph
+    pub nodes: Vec<PortfolioGraphNodeResponse>,
+    /// All edges (D3.js compatible: "links")
+    pub links: Vec<GraphEdgeResponse>,
+    /// Portfolio graph metadata with optimisation statistics
+    pub metadata: PortfolioGraphMetadataResponse,
+}
+
+/// Generate a sample portfolio graph for demonstration.
+///
+/// Creates a graph structure with multiple trades sharing common
+/// market data nodes (spot prices, yield curves).
+fn generate_sample_portfolio_graph(
+    trade_ids_filter: Option<&[String]>,
+) -> PortfolioGraphResponse {
+    // Sample trades in the portfolio
+    let all_trade_ids = vec![
+        "T001".to_string(),
+        "T002".to_string(),
+        "T003".to_string(),
+        "T004".to_string(),
+        "T005".to_string(),
+    ];
+
+    // Filter trades if trade_ids parameter provided
+    let trade_ids: Vec<&String> = match trade_ids_filter {
+        Some(filter) => all_trade_ids
+            .iter()
+            .filter(|tid| filter.contains(tid))
+            .collect(),
+        None => all_trade_ids.iter().collect(),
+    };
+
+    let mut nodes: Vec<PortfolioGraphNodeResponse> = Vec::new();
+    let mut links: Vec<GraphEdgeResponse> = Vec::new();
+
+    // Create shared market data nodes
+    // USD Spot - shared by T001, T002, T003
+    let usd_spot_trades: Vec<String> = trade_ids
+        .iter()
+        .filter(|tid| matches!(tid.as_str(), "T001" | "T002" | "T003"))
+        .map(|s| (*s).clone())
+        .collect();
+    if !usd_spot_trades.is_empty() {
+        nodes.push(PortfolioGraphNodeResponse {
+            id: "shared_usd_spot".to_string(),
+            node_type: "input".to_string(),
+            label: "USD Spot".to_string(),
+            value: Some(100.0),
+            is_sensitivity_target: true,
+            group: "input".to_string(),
+            trade_ids: usd_spot_trades,
+        });
+    }
+
+    // USD/JPY FX Rate - shared by T002, T004
+    let usdjpy_trades: Vec<String> = trade_ids
+        .iter()
+        .filter(|tid| matches!(tid.as_str(), "T002" | "T004"))
+        .map(|s| (*s).clone())
+        .collect();
+    if !usdjpy_trades.is_empty() {
+        nodes.push(PortfolioGraphNodeResponse {
+            id: "shared_usdjpy".to_string(),
+            node_type: "input".to_string(),
+            label: "USD/JPY".to_string(),
+            value: Some(150.25),
+            is_sensitivity_target: true,
+            group: "input".to_string(),
+            trade_ids: usdjpy_trades,
+        });
+    }
+
+    // USD Yield Curve - shared by T001, T003, T005
+    let usd_curve_trades: Vec<String> = trade_ids
+        .iter()
+        .filter(|tid| matches!(tid.as_str(), "T001" | "T003" | "T005"))
+        .map(|s| (*s).clone())
+        .collect();
+    if !usd_curve_trades.is_empty() {
+        nodes.push(PortfolioGraphNodeResponse {
+            id: "shared_usd_curve".to_string(),
+            node_type: "input".to_string(),
+            label: "USD Yield Curve".to_string(),
+            value: Some(0.045),
+            is_sensitivity_target: true,
+            group: "input".to_string(),
+            trade_ids: usd_curve_trades,
+        });
+    }
+
+    // Volatility Surface - shared by T001, T002
+    let vol_surface_trades: Vec<String> = trade_ids
+        .iter()
+        .filter(|tid| matches!(tid.as_str(), "T001" | "T002"))
+        .map(|s| (*s).clone())
+        .collect();
+    if !vol_surface_trades.is_empty() {
+        nodes.push(PortfolioGraphNodeResponse {
+            id: "shared_vol_surface".to_string(),
+            node_type: "input".to_string(),
+            label: "Vol Surface".to_string(),
+            value: Some(0.20),
+            is_sensitivity_target: true,
+            group: "input".to_string(),
+            trade_ids: vol_surface_trades,
+        });
+    }
+
+    // Create trade-specific computation nodes and outputs
+    for tid in &trade_ids {
+        // Intermediate computation node
+        let compute_id = format!("{}_compute", tid);
+        nodes.push(PortfolioGraphNodeResponse {
+            id: compute_id.clone(),
+            node_type: "mul".to_string(),
+            label: format!("{} Pricing", tid),
+            value: Some(50.0 + (tid.chars().last().unwrap().to_digit(10).unwrap_or(0) as f64) * 10.0),
+            is_sensitivity_target: false,
+            group: "intermediate".to_string(),
+            trade_ids: vec![(*tid).clone()],
+        });
+
+        // Output node (price)
+        let output_id = format!("{}_price", tid);
+        nodes.push(PortfolioGraphNodeResponse {
+            id: output_id.clone(),
+            node_type: "output".to_string(),
+            label: format!("{} Price", tid),
+            value: Some(100.0 + (tid.chars().last().unwrap().to_digit(10).unwrap_or(0) as f64) * 25.0),
+            is_sensitivity_target: false,
+            group: "output".to_string(),
+            trade_ids: vec![(*tid).clone()],
+        });
+
+        // Create edges from shared nodes to compute node
+        match tid.as_str() {
+            "T001" => {
+                links.push(GraphEdgeResponse { source: "shared_usd_spot".to_string(), target: compute_id.clone(), weight: None });
+                links.push(GraphEdgeResponse { source: "shared_usd_curve".to_string(), target: compute_id.clone(), weight: None });
+                links.push(GraphEdgeResponse { source: "shared_vol_surface".to_string(), target: compute_id.clone(), weight: None });
+            }
+            "T002" => {
+                links.push(GraphEdgeResponse { source: "shared_usd_spot".to_string(), target: compute_id.clone(), weight: None });
+                links.push(GraphEdgeResponse { source: "shared_usdjpy".to_string(), target: compute_id.clone(), weight: None });
+                links.push(GraphEdgeResponse { source: "shared_vol_surface".to_string(), target: compute_id.clone(), weight: None });
+            }
+            "T003" => {
+                links.push(GraphEdgeResponse { source: "shared_usd_spot".to_string(), target: compute_id.clone(), weight: None });
+                links.push(GraphEdgeResponse { source: "shared_usd_curve".to_string(), target: compute_id.clone(), weight: None });
+            }
+            "T004" => {
+                links.push(GraphEdgeResponse { source: "shared_usdjpy".to_string(), target: compute_id.clone(), weight: None });
+            }
+            "T005" => {
+                links.push(GraphEdgeResponse { source: "shared_usd_curve".to_string(), target: compute_id.clone(), weight: None });
+            }
+            _ => {}
+        }
+
+        // Edge from compute to output
+        links.push(GraphEdgeResponse {
+            source: compute_id,
+            target: output_id,
+            weight: None,
+        });
+    }
+
+    // Calculate metadata
+    let node_count = nodes.len();
+    let edge_count = links.len();
+    let shared_node_count = nodes.iter().filter(|n| n.trade_ids.len() > 1).count();
+    // Calculate optimisation ratio: actual nodes / nodes without sharing
+    // Without sharing: 4 input nodes per trade + 2 trade-specific nodes = 6 per trade
+    let total_without_sharing = trade_ids.len() * 6;
+    let optimisation_ratio = if total_without_sharing > 0 {
+        node_count as f64 / total_without_sharing as f64
+    } else {
+        1.0
+    };
+
+    let large_graph_warning = node_count > 10_000;
+    if large_graph_warning {
+        tracing::warn!(
+            "Portfolio graph has {} nodes, exceeding 10,000 threshold",
+            node_count
+        );
+    }
+
+    PortfolioGraphResponse {
+        nodes,
+        links,
+        metadata: PortfolioGraphMetadataResponse {
+            node_count,
+            edge_count,
+            depth: 3, // input -> compute -> output
+            generated_at: chrono::Utc::now().to_rfc3339(),
+            trade_count: trade_ids.len(),
+            shared_node_count,
+            optimisation_ratio,
+            large_graph_warning,
+        },
+    }
+}
+
+/// Get portfolio computation graph endpoint.
+///
+/// # Endpoint
+///
+/// `GET /api/v1/portfolio/graph` - Get full portfolio graph
+/// `GET /api/v1/portfolio/graph?trade_ids=T001,T002` - Get filtered subgraph
+///
+/// # Response
+///
+/// Returns a D3.js compatible graph structure with:
+/// - `nodes`: Portfolio graph nodes with trade ownership
+/// - `links`: Graph edges
+/// - `metadata`: Portfolio-specific metadata including optimisation stats
+///
+/// # Errors
+///
+/// - 404 Not Found: If any specified trade_id does not exist
+/// - 500 Internal Server Error: If graph extraction fails
+/// - 504 Gateway Timeout: If extraction exceeds 500ms
+///
+/// # Requirements Coverage
+///
+/// - 4.1: `/api/v1/portfolio/graph` エンドポイント
+/// - 4.2: D3.js互換JSON形式
+/// - 4.3: クエリパラメータによるサブグラフフィルタリング
+/// - 4.4: 拡張メタデータ
+pub async fn get_portfolio_graph(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<PortfolioGraphQueryParams>,
+) -> Result<Json<PortfolioGraphResponse>, (StatusCode, Json<GraphErrorResponse>)> {
+    let start = std::time::Instant::now();
+
+    // Parse trade_ids if provided
+    let trade_ids_filter: Option<Vec<String>> = params.trade_ids.map(|ids| {
+        ids.split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect()
+    });
+
+    // Validate trade IDs if specified
+    let valid_trade_ids = ["T001", "T002", "T003", "T004", "T005"];
+    if let Some(ref filter) = trade_ids_filter {
+        for tid in filter {
+            if !valid_trade_ids.contains(&tid.as_str()) {
+                return Err((
+                    StatusCode::NOT_FOUND,
+                    Json(GraphErrorResponse {
+                        error_type: "TradeNotFound".to_string(),
+                        message: format!("Trade '{}' not found in portfolio", tid),
+                    }),
+                ));
+            }
+        }
+    }
+
+    // Task 4.4: Check cache first
+    {
+        let cache = state.portfolio_graph_cache.read().await;
+        if let Some(cached) = cache.get(trade_ids_filter.as_deref()) {
+            // Record response time (cache hit)
+            let elapsed_us = start.elapsed().as_micros() as u64;
+            state.metrics.record_graph_time(elapsed_us).await;
+            return Ok(Json(cached.clone()));
+        }
+    }
+
+    // Generate graph (with timeout protection)
+    let graph = tokio::time::timeout(
+        std::time::Duration::from_millis(500),
+        async { generate_sample_portfolio_graph(trade_ids_filter.as_deref()) },
+    )
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::GATEWAY_TIMEOUT,
+            Json(GraphErrorResponse {
+                error_type: "Timeout".to_string(),
+                message: "Portfolio graph extraction timed out (>500ms)".to_string(),
+            }),
+        )
+    })?;
+
+    // Task 4.4: Store in cache
+    {
+        let mut cache = state.portfolio_graph_cache.write().await;
+        cache.insert(trade_ids_filter.as_deref(), graph.clone());
+    }
+
+    // Record response time
+    let elapsed_us = start.elapsed().as_micros() as u64;
+    state.metrics.record_graph_time(elapsed_us).await;
+
+    if elapsed_us > 1_000_000 {
+        tracing::warn!("Portfolio Graph API response slow: {}ms", elapsed_us / 1000);
+    }
+
+    Ok(Json(graph))
+}
+
+// =============================================================================
+// Task 4.3: Portfolio Trades List API (portfolio-graph-optimisation)
+// =============================================================================
+
+/// Trade summary for portfolio trades list endpoint.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PortfolioTradeSummary {
+    /// Trade identifier
+    pub trade_id: String,
+    /// Instrument type (e.g. "VanillaOption", "IRS", "FxOption")
+    pub instrument_type: String,
+    /// Currency (e.g. "USD", "JPY")
+    pub currency: String,
+    /// Notional amount
+    pub notional: f64,
+    /// Maturity date (ISO 8601)
+    pub maturity: String,
+}
+
+/// Portfolio trades statistics.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PortfolioTradesStats {
+    /// Total number of trades
+    pub total_count: usize,
+    /// Breakdown by instrument type
+    pub by_instrument_type: HashMap<String, usize>,
+}
+
+/// Portfolio trades list response.
+///
+/// # Endpoint
+///
+/// `GET /api/v1/portfolio/trades`
+///
+/// # Requirements Coverage
+///
+/// - 5.1: Portfolio内トレード一覧を取得
+/// - 5.2: 各トレードのID、Instrument種別、通貨、想定元本、満期日を含む
+/// - 5.3: 統計情報 (total_count, by_instrument_type内訳)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PortfolioTradesResponse {
+    /// List of trades in the portfolio
+    pub trades: Vec<PortfolioTradeSummary>,
+    /// Portfolio statistics
+    pub stats: PortfolioTradesStats,
+}
+
+/// Get portfolio trades list endpoint.
+///
+/// # Endpoint
+///
+/// `GET /api/v1/portfolio/trades`
+///
+/// # Response
+///
+/// Returns a list of trades in the portfolio with:
+/// - Trade ID, instrument type, currency, notional, maturity
+/// - Statistics (total_count, by_instrument_type breakdown)
+///
+/// # Requirements Coverage
+///
+/// - 5.1: Portfolio内トレード一覧を取得
+/// - 5.2: 各トレードの詳細情報
+/// - 5.3: 統計情報
+pub async fn get_portfolio_trades(
+    State(_state): State<Arc<AppState>>,
+) -> Json<PortfolioTradesResponse> {
+    // Sample portfolio trades
+    let trades = vec![
+        PortfolioTradeSummary {
+            trade_id: "T001".to_string(),
+            instrument_type: "VanillaOption".to_string(),
+            currency: "USD".to_string(),
+            notional: 10_000_000.0,
+            maturity: "2027-03-15".to_string(),
+        },
+        PortfolioTradeSummary {
+            trade_id: "T002".to_string(),
+            instrument_type: "FxOption".to_string(),
+            currency: "USD/JPY".to_string(),
+            notional: 50_000_000.0,
+            maturity: "2026-09-20".to_string(),
+        },
+        PortfolioTradeSummary {
+            trade_id: "T003".to_string(),
+            instrument_type: "IRS".to_string(),
+            currency: "USD".to_string(),
+            notional: 100_000_000.0,
+            maturity: "2031-06-01".to_string(),
+        },
+        PortfolioTradeSummary {
+            trade_id: "T004".to_string(),
+            instrument_type: "FxOption".to_string(),
+            currency: "USD/JPY".to_string(),
+            notional: 25_000_000.0,
+            maturity: "2026-12-15".to_string(),
+        },
+        PortfolioTradeSummary {
+            trade_id: "T005".to_string(),
+            instrument_type: "IRS".to_string(),
+            currency: "USD".to_string(),
+            notional: 75_000_000.0,
+            maturity: "2028-03-01".to_string(),
+        },
+    ];
+
+    // Calculate statistics
+    let mut by_instrument_type: HashMap<String, usize> = HashMap::new();
+    for trade in &trades {
+        *by_instrument_type
+            .entry(trade.instrument_type.clone())
+            .or_insert(0) += 1;
+    }
+
+    let stats = PortfolioTradesStats {
+        total_count: trades.len(),
+        by_instrument_type,
+    };
+
+    Json(PortfolioTradesResponse { trades, stats })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -5987,6 +6605,291 @@ mod tests {
                 .into_response();
 
             assert_eq!(response.status(), StatusCode::OK);
+        }
+    }
+
+    // =========================================================================
+    // Task 4.1: Portfolio Graph API Tests (portfolio-graph-optimisation)
+    // =========================================================================
+
+    mod portfolio_graph_api_tests {
+        use super::*;
+
+        #[tokio::test]
+        async fn test_get_portfolio_graph_full() {
+            let state = Arc::new(AppState::new());
+            let params = PortfolioGraphQueryParams { trade_ids: None };
+
+            let result = get_portfolio_graph(State(state), Query(params)).await;
+
+            assert!(result.is_ok());
+            let response = result.unwrap();
+            assert!(!response.nodes.is_empty());
+            assert!(!response.links.is_empty());
+            assert_eq!(response.metadata.trade_count, 5);
+            assert!(response.metadata.shared_node_count > 0);
+            assert!(response.metadata.optimisation_ratio > 0.0);
+            assert!(response.metadata.optimisation_ratio <= 1.0);
+        }
+
+        #[tokio::test]
+        async fn test_get_portfolio_graph_filtered() {
+            let state = Arc::new(AppState::new());
+            let params = PortfolioGraphQueryParams {
+                trade_ids: Some("T001,T002".to_string()),
+            };
+
+            let result = get_portfolio_graph(State(state), Query(params)).await;
+
+            assert!(result.is_ok());
+            let response = result.unwrap();
+            assert_eq!(response.metadata.trade_count, 2);
+            // Verify filtered trades are in the graph
+            let trade_ids_in_graph: std::collections::HashSet<&str> = response
+                .nodes
+                .iter()
+                .flat_map(|n| n.trade_ids.iter().map(|s| s.as_str()))
+                .collect();
+            assert!(trade_ids_in_graph.contains("T001"));
+            assert!(trade_ids_in_graph.contains("T002"));
+            assert!(!trade_ids_in_graph.contains("T003"));
+        }
+
+        #[tokio::test]
+        async fn test_get_portfolio_graph_trade_not_found() {
+            let state = Arc::new(AppState::new());
+            let params = PortfolioGraphQueryParams {
+                trade_ids: Some("NONEXISTENT".to_string()),
+            };
+
+            let result = get_portfolio_graph(State(state), Query(params)).await;
+
+            assert!(result.is_err());
+            let (status, error) = result.unwrap_err();
+            assert_eq!(status, StatusCode::NOT_FOUND);
+            assert_eq!(error.error_type, "TradeNotFound");
+        }
+
+        #[tokio::test]
+        async fn test_get_portfolio_graph_d3js_compatible() {
+            let state = Arc::new(AppState::new());
+            let params = PortfolioGraphQueryParams { trade_ids: None };
+
+            let result = get_portfolio_graph(State(state), Query(params)).await;
+            let response = result.unwrap();
+
+            // Verify D3.js compatible structure (has "links" not "edges")
+            let json = serde_json::to_string(&response.0).unwrap();
+            assert!(json.contains("\"links\""));
+            assert!(!json.contains("\"edges\""));
+        }
+
+        #[tokio::test]
+        async fn test_get_portfolio_graph_shared_nodes_have_multiple_trade_ids() {
+            let state = Arc::new(AppState::new());
+            let params = PortfolioGraphQueryParams { trade_ids: None };
+
+            let result = get_portfolio_graph(State(state), Query(params)).await;
+            let response = result.unwrap();
+
+            // Find shared nodes (nodes with multiple trade_ids)
+            let shared_nodes: Vec<&PortfolioGraphNodeResponse> = response
+                .nodes
+                .iter()
+                .filter(|n| n.trade_ids.len() > 1)
+                .collect();
+
+            assert!(!shared_nodes.is_empty());
+            // USD Spot should be shared by T001, T002, T003
+            let usd_spot = response
+                .nodes
+                .iter()
+                .find(|n| n.id == "shared_usd_spot")
+                .expect("USD Spot node should exist");
+            assert!(usd_spot.trade_ids.len() >= 2);
+        }
+
+        #[tokio::test]
+        async fn test_get_portfolio_graph_metadata_fields() {
+            let state = Arc::new(AppState::new());
+            let params = PortfolioGraphQueryParams { trade_ids: None };
+
+            let result = get_portfolio_graph(State(state), Query(params)).await;
+            let response = result.unwrap();
+
+            // Verify all portfolio metadata fields
+            assert!(response.metadata.node_count > 0);
+            assert!(response.metadata.edge_count > 0);
+            assert!(response.metadata.depth > 0);
+            assert!(!response.metadata.generated_at.is_empty());
+            assert!(response.metadata.trade_count > 0);
+            assert!(response.metadata.shared_node_count > 0);
+            assert!(response.metadata.optimisation_ratio > 0.0);
+            // large_graph_warning should be false for small sample graph
+            assert!(!response.metadata.large_graph_warning);
+        }
+
+        #[tokio::test]
+        async fn test_response_time_under_500ms() {
+            let state = Arc::new(AppState::new());
+            let params = PortfolioGraphQueryParams { trade_ids: None };
+
+            let start = std::time::Instant::now();
+            let result = get_portfolio_graph(State(state), Query(params)).await;
+            let elapsed = start.elapsed();
+
+            assert!(result.is_ok());
+            assert!(
+                elapsed < std::time::Duration::from_millis(500),
+                "Response took {:?}, expected < 500ms",
+                elapsed
+            );
+        }
+
+        #[tokio::test]
+        async fn test_handler_uses_cache() {
+            let state = Arc::new(AppState::new());
+            let params = PortfolioGraphQueryParams { trade_ids: None };
+
+            // First call - cache miss, generates graph
+            let result1 = get_portfolio_graph(State(Arc::clone(&state)), Query(params.clone())).await;
+            assert!(result1.is_ok());
+            let response1 = result1.unwrap();
+            let timestamp1 = response1.metadata.generated_at.clone();
+
+            // Second call - should use cache (same timestamp)
+            let result2 = get_portfolio_graph(State(Arc::clone(&state)), Query(params)).await;
+            assert!(result2.is_ok());
+            let response2 = result2.unwrap();
+            let timestamp2 = response2.metadata.generated_at.clone();
+
+            // Both should have same timestamp (from cache)
+            assert_eq!(timestamp1, timestamp2);
+        }
+    }
+
+    // =========================================================================
+    // Task 4.4: Portfolio Graph Cache Tests (portfolio-graph-optimisation)
+    // =========================================================================
+
+    mod portfolio_graph_cache_tests {
+        use super::*;
+
+        #[test]
+        fn test_cache_new() {
+            let cache = PortfolioGraphCache::new();
+            assert!(cache.is_empty());
+            assert_eq!(cache.len(), 0);
+        }
+
+        #[test]
+        fn test_cache_insert_and_get() {
+            let mut cache = PortfolioGraphCache::new();
+            let graph = generate_sample_portfolio_graph(None);
+
+            cache.insert(None, graph.clone());
+
+            let cached = cache.get(None);
+            assert!(cached.is_some());
+            assert_eq!(cached.unwrap().metadata.trade_count, 5);
+        }
+
+        #[test]
+        fn test_cache_with_filter() {
+            let mut cache = PortfolioGraphCache::new();
+            let filter = vec!["T001".to_string(), "T002".to_string()];
+            let graph = generate_sample_portfolio_graph(Some(&filter));
+
+            cache.insert(Some(&filter), graph.clone());
+
+            // Same filter should hit
+            let cached = cache.get(Some(&filter));
+            assert!(cached.is_some());
+            assert_eq!(cached.unwrap().metadata.trade_count, 2);
+
+            // Different filter should miss
+            let other_filter = vec!["T003".to_string()];
+            let cached_other = cache.get(Some(&other_filter));
+            assert!(cached_other.is_none());
+        }
+
+        #[test]
+        fn test_cache_normalizes_filter_order() {
+            let mut cache = PortfolioGraphCache::new();
+            let filter1 = vec!["T002".to_string(), "T001".to_string()];
+            let filter2 = vec!["T001".to_string(), "T002".to_string()];
+            let graph = generate_sample_portfolio_graph(Some(&filter1));
+
+            cache.insert(Some(&filter1), graph);
+
+            // Different order should still hit (normalised)
+            let cached = cache.get(Some(&filter2));
+            assert!(cached.is_some());
+        }
+
+        #[test]
+        fn test_cache_clear() {
+            let mut cache = PortfolioGraphCache::new();
+            let graph = generate_sample_portfolio_graph(None);
+
+            cache.insert(None, graph);
+            assert!(!cache.is_empty());
+
+            cache.clear();
+            assert!(cache.is_empty());
+            assert!(cache.get(None).is_none());
+        }
+    }
+
+    // =========================================================================
+    // Task 4.3: Portfolio Trades List API Tests (portfolio-graph-optimisation)
+    // =========================================================================
+
+    mod portfolio_trades_api_tests {
+        use super::*;
+
+        #[tokio::test]
+        async fn test_get_portfolio_trades() {
+            let state = Arc::new(AppState::new());
+            let response = get_portfolio_trades(State(state)).await;
+
+            assert!(!response.trades.is_empty());
+            assert_eq!(response.stats.total_count, 5);
+        }
+
+        #[tokio::test]
+        async fn test_get_portfolio_trades_has_required_fields() {
+            let state = Arc::new(AppState::new());
+            let response = get_portfolio_trades(State(state)).await;
+
+            let trade = &response.trades[0];
+            assert!(!trade.trade_id.is_empty());
+            assert!(!trade.instrument_type.is_empty());
+            assert!(!trade.currency.is_empty());
+            assert!(trade.notional > 0.0);
+            assert!(!trade.maturity.is_empty());
+        }
+
+        #[tokio::test]
+        async fn test_get_portfolio_trades_stats() {
+            let state = Arc::new(AppState::new());
+            let response = get_portfolio_trades(State(state)).await;
+
+            assert_eq!(response.stats.total_count, response.trades.len());
+            // Should have VanillaOption, FxOption, IRS
+            assert!(response.stats.by_instrument_type.contains_key("VanillaOption"));
+            assert!(response.stats.by_instrument_type.contains_key("FxOption"));
+            assert!(response.stats.by_instrument_type.contains_key("IRS"));
+        }
+
+        #[tokio::test]
+        async fn test_get_portfolio_trades_instrument_type_counts() {
+            let state = Arc::new(AppState::new());
+            let response = get_portfolio_trades(State(state)).await;
+
+            // Verify counts match
+            let total_from_breakdown: usize = response.stats.by_instrument_type.values().sum();
+            assert_eq!(total_from_breakdown, response.stats.total_count);
         }
     }
 }

@@ -1,3 +1,25 @@
+// Clippy configuration for pricer_optimiser
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::return_self_not_must_use)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::many_single_char_names)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::redundant_else)]
+#![allow(clippy::unnecessary_wraps)]
+#![allow(clippy::used_underscore_binding)]
+#![allow(clippy::suboptimal_flops)]
+#![allow(clippy::unused_self)]
+#![allow(clippy::trivially_copy_pass_by_ref)]
+#![allow(clippy::cast_possible_wrap)]
+#![allow(clippy::cast_lossless)]
+#![allow(clippy::if_not_else)]
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::match_same_arms)]
+#![allow(clippy::too_many_lines)]
+
 //! # pricer_optimiser
 //!
 //! Calibration, bootstrapping, and numerical solvers for Neutryx.

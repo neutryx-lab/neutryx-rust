@@ -299,25 +299,23 @@ impl<T: Float> HazardRateCurve<T> {
         if t < t_min {
             if self.allow_extrapolation {
                 return Ok(self.hazard_rates[0]);
-            } else {
-                return Err(MarketDataError::OutOfBounds {
-                    x: t.to_f64().unwrap_or(0.0),
-                    min: t_min.to_f64().unwrap_or(0.0),
-                    max: t_max.to_f64().unwrap_or(0.0),
-                });
             }
+            return Err(MarketDataError::OutOfBounds {
+                x: t.to_f64().unwrap_or(0.0),
+                min: t_min.to_f64().unwrap_or(0.0),
+                max: t_max.to_f64().unwrap_or(0.0),
+            });
         }
 
         if t > t_max {
             if self.allow_extrapolation {
                 return Ok(self.hazard_rates[self.hazard_rates.len() - 1]);
-            } else {
-                return Err(MarketDataError::OutOfBounds {
-                    x: t.to_f64().unwrap_or(0.0),
-                    min: t_min.to_f64().unwrap_or(0.0),
-                    max: t_max.to_f64().unwrap_or(0.0),
-                });
             }
+            return Err(MarketDataError::OutOfBounds {
+                x: t.to_f64().unwrap_or(0.0),
+                min: t_min.to_f64().unwrap_or(0.0),
+                max: t_max.to_f64().unwrap_or(0.0),
+            });
         }
 
         // Linear interpolation

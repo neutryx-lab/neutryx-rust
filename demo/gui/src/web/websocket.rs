@@ -163,6 +163,57 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                         }
                     }
                 }
+
+                // Task 5.1: Handle select_trades requests (portfolio-graph-optimisation)
+                if let Ok(request) = serde_json::from_str::<SelectTradesRequest>(text_str) {
+                    if request.request_type == "select_trades" {
+                        info!(
+                            "Received select_trades request for {} trades: {:?}",
+                            request.trade_ids.len(),
+                            request.trade_ids
+                        );
+
+                        // Validate trade IDs
+                        let valid_trade_ids = ["T001", "T002", "T003", "T004", "T005"];
+                        let invalid_ids: Vec<_> = request
+                            .trade_ids
+                            .iter()
+                            .filter(|tid| !valid_trade_ids.contains(&tid.as_str()))
+                            .collect();
+
+                        if !invalid_ids.is_empty() {
+                            // Task 5.2: Broadcast error for invalid trade IDs
+                            let error_msg =
+                                format!("Trade(s) not found: {}", invalid_ids.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(", "));
+                            warn!("{}", error_msg);
+                            broadcast_subgraph_error(
+                                &state_clone,
+                                request.trade_ids.clone(),
+                                &error_msg,
+                            );
+                            continue;
+                        }
+
+                        // Generate subgraph for selected trades
+                        // Calculate node/edge counts based on selected trades
+                        let (node_count, edge_count, shared_node_count) =
+                            calculate_subgraph_stats(&request.trade_ids);
+
+                        // Task 5.2: Broadcast subgraph_update
+                        let event = SubgraphUpdateEvent {
+                            trade_ids: request.trade_ids.clone(),
+                            node_count,
+                            edge_count,
+                            shared_node_count,
+                            is_incremental: false,
+                        };
+                        broadcast_subgraph_update(&state_clone, event);
+                        info!(
+                            "Broadcast subgraph_update for trades {:?}: {} nodes, {} edges, {} shared",
+                            request.trade_ids, node_count, edge_count, shared_node_count
+                        );
+                    }
+                }
             }
         }
     });
@@ -174,6 +225,107 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
     }
 
     info!("WebSocket client disconnected");
+}
+
+// =============================================================================
+// Task 5.1: Helper function for subgraph statistics (portfolio-graph-optimisation)
+// =============================================================================
+
+/// Calculate subgraph statistics for selected trade IDs.
+///
+/// Returns (node_count, edge_count, shared_node_count) based on the
+/// sample portfolio graph structure defined in handlers.rs.
+///
+/// # Arguments
+///
+/// * `trade_ids` - List of selected trade IDs
+///
+/// # Returns
+///
+/// Tuple of (node_count, edge_count, shared_node_count)
+fn calculate_subgraph_stats(trade_ids: &[String]) -> (usize, usize, usize) {
+    if trade_ids.is_empty() {
+        return (0, 0, 0);
+    }
+
+    // Shared node counts based on sample portfolio structure:
+    // - shared_usd_spot: T001, T002, T003
+    // - shared_usdjpy: T002, T004
+    // - shared_usd_curve: T001, T003, T005
+    // - shared_vol_surface: T001, T002
+    // Each trade has 2 private nodes (compute + output)
+
+    let mut shared_nodes = 0;
+
+    // Check each shared node
+    let usd_spot_count = trade_ids
+        .iter()
+        .filter(|tid| matches!(tid.as_str(), "T001" | "T002" | "T003"))
+        .count();
+    if usd_spot_count > 0 {
+        shared_nodes += 1;
+    }
+
+    let usdjpy_count = trade_ids
+        .iter()
+        .filter(|tid| matches!(tid.as_str(), "T002" | "T004"))
+        .count();
+    if usdjpy_count > 0 {
+        shared_nodes += 1;
+    }
+
+    let usd_curve_count = trade_ids
+        .iter()
+        .filter(|tid| matches!(tid.as_str(), "T001" | "T003" | "T005"))
+        .count();
+    if usd_curve_count > 0 {
+        shared_nodes += 1;
+    }
+
+    let vol_surface_count = trade_ids
+        .iter()
+        .filter(|tid| matches!(tid.as_str(), "T001" | "T002"))
+        .count();
+    if vol_surface_count > 0 {
+        shared_nodes += 1;
+    }
+
+    // Calculate actual shared node count (nodes with trade_ids.len() > 1)
+    let shared_node_count = [
+        usd_spot_count > 1,
+        usdjpy_count > 1,
+        usd_curve_count > 1,
+        vol_surface_count > 1,
+    ]
+    .iter()
+    .filter(|&&x| x)
+    .count();
+
+    // Private nodes: 2 per trade (compute + output)
+    let private_nodes = trade_ids.len() * 2;
+
+    // Total nodes = shared nodes + private nodes
+    let node_count = shared_nodes + private_nodes;
+
+    // Edges: each trade has edges from shared nodes to compute, and compute to output
+    // - T001: 3 shared inputs -> 3 edges to compute + 1 edge to output = 4
+    // - T002: 3 shared inputs -> 3 edges to compute + 1 edge to output = 4
+    // - T003: 2 shared inputs -> 2 edges to compute + 1 edge to output = 3
+    // - T004: 1 shared input -> 1 edge to compute + 1 edge to output = 2
+    // - T005: 1 shared input -> 1 edge to compute + 1 edge to output = 2
+    let mut edge_count = 0;
+    for tid in trade_ids {
+        edge_count += match tid.as_str() {
+            "T001" => 4, // 3 inputs + 1 output edge
+            "T002" => 4, // 3 inputs + 1 output edge
+            "T003" => 3, // 2 inputs + 1 output edge
+            "T004" => 2, // 1 input + 1 output edge
+            "T005" => 2, // 1 input + 1 output edge
+            _ => 0,
+        };
+    }
+
+    (node_count, edge_count, shared_node_count)
 }
 
 /// Real-time update message
@@ -892,6 +1044,149 @@ pub struct GraphSubscriptionRequest {
 
     /// Trade ID to subscribe/unsubscribe
     pub trade_id: String,
+}
+
+// =============================================================================
+// Task 5.1: select_trades Event Handler Types (portfolio-graph-optimisation)
+// =============================================================================
+
+/// Client request to select specific trades for subgraph extraction.
+///
+/// Clients send this message to get a filtered Portfolio subgraph
+/// containing only the specified trades.
+///
+/// # Example Request
+///
+/// ```json
+/// {
+///   "type": "select_trades",
+///   "trade_ids": ["T001", "T002", "T003"]
+/// }
+/// ```
+///
+/// # Requirements Coverage
+///
+/// - 5.4: select_trades イベントハンドラ実装
+#[derive(Debug, Clone, Deserialize)]
+pub struct SelectTradesRequest {
+    /// Message type: should be "select_trades"
+    #[serde(rename = "type")]
+    pub request_type: String,
+
+    /// List of trade IDs to include in the subgraph
+    pub trade_ids: Vec<String>,
+}
+
+// =============================================================================
+// Task 5.2: subgraph_update Broadcast Types (portfolio-graph-optimisation)
+// =============================================================================
+
+/// Portfolio subgraph update event.
+///
+/// Broadcast to connected clients after a `select_trades` request
+/// is processed and the subgraph is extracted.
+///
+/// # Requirements Coverage
+///
+/// - 5.5: subgraph_update ブロードキャスト実装
+#[derive(Debug, Clone, Serialize)]
+pub struct SubgraphUpdateEvent {
+    /// Selected trade IDs that this subgraph represents
+    pub trade_ids: Vec<String>,
+    /// Number of nodes in the subgraph
+    pub node_count: usize,
+    /// Number of edges in the subgraph
+    pub edge_count: usize,
+    /// Number of shared nodes among selected trades
+    pub shared_node_count: usize,
+    /// Whether this is a partial update or full refresh
+    pub is_incremental: bool,
+}
+
+impl RealTimeUpdate {
+    /// Create a subgraph update event.
+    ///
+    /// This message type is used to notify clients when a Portfolio
+    /// subgraph has been extracted based on trade selection.
+    ///
+    /// # Arguments
+    ///
+    /// * `event` - Subgraph update event data
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use demo_gui::web::websocket::{RealTimeUpdate, SubgraphUpdateEvent};
+    ///
+    /// let event = SubgraphUpdateEvent {
+    ///     trade_ids: vec!["T001".to_string(), "T002".to_string()],
+    ///     node_count: 12,
+    ///     edge_count: 15,
+    ///     shared_node_count: 3,
+    ///     is_incremental: false,
+    /// };
+    /// let update = RealTimeUpdate::subgraph_update(event);
+    /// ```
+    pub fn subgraph_update(event: SubgraphUpdateEvent) -> Self {
+        Self {
+            update_type: "subgraph_update".to_string(),
+            timestamp: chrono::Utc::now().timestamp_millis(),
+            data: serde_json::json!({
+                "trade_ids": event.trade_ids,
+                "node_count": event.node_count,
+                "edge_count": event.edge_count,
+                "shared_node_count": event.shared_node_count,
+                "is_incremental": event.is_incremental
+            }),
+        }
+    }
+
+    /// Create a subgraph error event.
+    ///
+    /// This message type is used to notify clients when a subgraph
+    /// extraction request fails.
+    ///
+    /// # Arguments
+    ///
+    /// * `trade_ids` - Trade IDs that were requested
+    /// * `error` - Error message
+    pub fn subgraph_error(trade_ids: Vec<String>, error: &str) -> Self {
+        Self {
+            update_type: "subgraph_error".to_string(),
+            timestamp: chrono::Utc::now().timestamp_millis(),
+            data: serde_json::json!({
+                "trade_ids": trade_ids,
+                "error": error
+            }),
+        }
+    }
+}
+
+/// Broadcast a subgraph update to all connected clients.
+///
+/// # Arguments
+///
+/// * `state` - Application state containing the broadcast channel
+/// * `event` - Subgraph update event data
+///
+/// # Requirements Coverage
+///
+/// - 5.5: subgraph_update ブロードキャスト実装
+pub fn broadcast_subgraph_update(state: &AppState, event: SubgraphUpdateEvent) {
+    let update = RealTimeUpdate::subgraph_update(event);
+    let _ = state.tx.send(update.to_json());
+}
+
+/// Broadcast a subgraph error to all connected clients.
+///
+/// # Arguments
+///
+/// * `state` - Application state containing the broadcast channel
+/// * `trade_ids` - Trade IDs that were requested
+/// * `error` - Error message
+pub fn broadcast_subgraph_error(state: &AppState, trade_ids: Vec<String>, error: &str) {
+    let update = RealTimeUpdate::subgraph_error(trade_ids, error);
+    let _ = state.tx.send(update.to_json());
 }
 
 #[cfg(test)]
@@ -1810,6 +2105,301 @@ mod tests {
                 assert!(msg.contains("greeks_update"));
                 assert!(msg.contains("delta"));
             }
+        }
+    }
+
+    // =========================================================================
+    // Task 5.1: select_trades Event Handler Tests (portfolio-graph-optimisation)
+    // =========================================================================
+
+    mod select_trades_tests {
+        use super::*;
+
+        #[test]
+        fn test_select_trades_request_deserialisation() {
+            let json = r#"{"type": "select_trades", "trade_ids": ["T001", "T002", "T003"]}"#;
+            let request: SelectTradesRequest = serde_json::from_str(json).unwrap();
+
+            assert_eq!(request.request_type, "select_trades");
+            assert_eq!(request.trade_ids.len(), 3);
+            assert!(request.trade_ids.contains(&"T001".to_string()));
+            assert!(request.trade_ids.contains(&"T002".to_string()));
+            assert!(request.trade_ids.contains(&"T003".to_string()));
+        }
+
+        #[test]
+        fn test_select_trades_request_empty_trade_ids() {
+            let json = r#"{"type": "select_trades", "trade_ids": []}"#;
+            let request: SelectTradesRequest = serde_json::from_str(json).unwrap();
+
+            assert_eq!(request.request_type, "select_trades");
+            assert!(request.trade_ids.is_empty());
+        }
+
+        #[test]
+        fn test_select_trades_request_single_trade() {
+            let json = r#"{"type": "select_trades", "trade_ids": ["T001"]}"#;
+            let request: SelectTradesRequest = serde_json::from_str(json).unwrap();
+
+            assert_eq!(request.trade_ids.len(), 1);
+            assert_eq!(request.trade_ids[0], "T001");
+        }
+
+        #[test]
+        fn test_select_trades_request_validates_type() {
+            // Valid type
+            let valid_json = r#"{"type": "select_trades", "trade_ids": ["T001"]}"#;
+            let request: SelectTradesRequest = serde_json::from_str(valid_json).unwrap();
+            assert_eq!(request.request_type, "select_trades");
+
+            // Different type value (still deserialises, validation happens in handler)
+            let other_json = r#"{"type": "other_type", "trade_ids": ["T001"]}"#;
+            let request: SelectTradesRequest = serde_json::from_str(other_json).unwrap();
+            assert_eq!(request.request_type, "other_type");
+        }
+
+        #[test]
+        fn test_select_trades_invalid_json_fails() {
+            // Missing required field
+            let invalid = r#"{"type": "select_trades"}"#;
+            let result: Result<SelectTradesRequest, _> = serde_json::from_str(invalid);
+            assert!(result.is_err());
+
+            // Invalid JSON format
+            let invalid2 = r#"not valid json"#;
+            let result2: Result<SelectTradesRequest, _> = serde_json::from_str(invalid2);
+            assert!(result2.is_err());
+        }
+
+        #[test]
+        fn test_calculate_subgraph_stats_empty() {
+            let trade_ids: Vec<String> = vec![];
+            let (nodes, edges, shared) = calculate_subgraph_stats(&trade_ids);
+            assert_eq!(nodes, 0);
+            assert_eq!(edges, 0);
+            assert_eq!(shared, 0);
+        }
+
+        #[test]
+        fn test_calculate_subgraph_stats_single_trade() {
+            // T001 uses: shared_usd_spot, shared_usd_curve, shared_vol_surface
+            // 3 shared nodes + 2 private = 5 nodes, 4 edges, 0 shared (single trade)
+            let trade_ids = vec!["T001".to_string()];
+            let (nodes, edges, shared) = calculate_subgraph_stats(&trade_ids);
+            assert_eq!(nodes, 5); // 3 shared inputs + 2 private
+            assert_eq!(edges, 4); // 3 input edges + 1 output edge
+            assert_eq!(shared, 0); // No sharing with single trade
+        }
+
+        #[test]
+        fn test_calculate_subgraph_stats_two_trades_with_shared() {
+            // T001 and T002 both use shared_usd_spot and shared_vol_surface
+            // T001: shared_usd_spot, shared_usd_curve, shared_vol_surface
+            // T002: shared_usd_spot, shared_usdjpy, shared_vol_surface
+            // Shared nodes: 4 (usd_spot, usdjpy, usd_curve, vol_surface)
+            // Private: 4 (2 per trade)
+            // Shared count: 2 (usd_spot and vol_surface have >1 trade)
+            let trade_ids = vec!["T001".to_string(), "T002".to_string()];
+            let (nodes, edges, shared) = calculate_subgraph_stats(&trade_ids);
+            assert_eq!(nodes, 8); // 4 shared + 4 private
+            assert_eq!(edges, 8); // T001:4 + T002:4
+            assert_eq!(shared, 2); // usd_spot and vol_surface
+        }
+
+        #[test]
+        fn test_calculate_subgraph_stats_all_trades() {
+            let trade_ids = vec![
+                "T001".to_string(),
+                "T002".to_string(),
+                "T003".to_string(),
+                "T004".to_string(),
+                "T005".to_string(),
+            ];
+            let (nodes, edges, shared) = calculate_subgraph_stats(&trade_ids);
+            // 4 shared nodes + 10 private (5 trades * 2) = 14 nodes
+            assert_eq!(nodes, 14);
+            // T001:4 + T002:4 + T003:3 + T004:2 + T005:2 = 15 edges
+            assert_eq!(edges, 15);
+            // usd_spot (3), usdjpy (2), usd_curve (3), vol_surface (2) - all have >1
+            assert_eq!(shared, 4);
+        }
+
+        #[test]
+        fn test_calculate_subgraph_stats_no_overlap() {
+            // T004 and T005 have no shared market data
+            // T004: shared_usdjpy
+            // T005: shared_usd_curve
+            let trade_ids = vec!["T004".to_string(), "T005".to_string()];
+            let (nodes, edges, shared) = calculate_subgraph_stats(&trade_ids);
+            assert_eq!(nodes, 6); // 2 shared + 4 private
+            assert_eq!(edges, 4); // T004:2 + T005:2
+            assert_eq!(shared, 0); // No overlap
+        }
+    }
+
+    // =========================================================================
+    // Task 5.2: subgraph_update Broadcast Tests (portfolio-graph-optimisation)
+    // =========================================================================
+
+    mod subgraph_update_tests {
+        use super::*;
+
+        #[test]
+        fn test_subgraph_update_event_creation() {
+            let event = SubgraphUpdateEvent {
+                trade_ids: vec!["T001".to_string(), "T002".to_string()],
+                node_count: 12,
+                edge_count: 15,
+                shared_node_count: 3,
+                is_incremental: false,
+            };
+
+            assert_eq!(event.trade_ids.len(), 2);
+            assert_eq!(event.node_count, 12);
+            assert_eq!(event.edge_count, 15);
+            assert_eq!(event.shared_node_count, 3);
+            assert!(!event.is_incremental);
+        }
+
+        #[test]
+        fn test_subgraph_update_realtime_update_creation() {
+            let event = SubgraphUpdateEvent {
+                trade_ids: vec!["T001".to_string()],
+                node_count: 6,
+                edge_count: 8,
+                shared_node_count: 0,
+                is_incremental: false,
+            };
+
+            let update = RealTimeUpdate::subgraph_update(event);
+
+            assert_eq!(update.update_type, "subgraph_update");
+            assert!(update.timestamp > 0);
+        }
+
+        #[test]
+        fn test_subgraph_update_json_structure() {
+            let event = SubgraphUpdateEvent {
+                trade_ids: vec!["T001".to_string(), "T002".to_string()],
+                node_count: 12,
+                edge_count: 15,
+                shared_node_count: 3,
+                is_incremental: false,
+            };
+
+            let update = RealTimeUpdate::subgraph_update(event);
+            let json = update.to_json();
+
+            // Parse and verify structure
+            let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+            assert_eq!(parsed["update_type"], "subgraph_update");
+            assert!(parsed["timestamp"].is_number());
+            assert!(parsed["data"]["trade_ids"].is_array());
+            assert_eq!(parsed["data"]["node_count"], 12);
+            assert_eq!(parsed["data"]["edge_count"], 15);
+            assert_eq!(parsed["data"]["shared_node_count"], 3);
+            assert_eq!(parsed["data"]["is_incremental"], false);
+        }
+
+        #[test]
+        fn test_subgraph_update_contains_trade_ids() {
+            let event = SubgraphUpdateEvent {
+                trade_ids: vec!["T001".to_string(), "T002".to_string(), "T003".to_string()],
+                node_count: 18,
+                edge_count: 22,
+                shared_node_count: 5,
+                is_incremental: false,
+            };
+
+            let update = RealTimeUpdate::subgraph_update(event);
+            let json = update.to_json();
+
+            assert!(json.contains("T001"));
+            assert!(json.contains("T002"));
+            assert!(json.contains("T003"));
+        }
+
+        #[test]
+        fn test_subgraph_error_creation() {
+            let trade_ids = vec!["T001".to_string(), "T999".to_string()];
+            let update = RealTimeUpdate::subgraph_error(trade_ids, "Trade 'T999' not found");
+
+            assert_eq!(update.update_type, "subgraph_error");
+            assert!(update.timestamp > 0);
+        }
+
+        #[test]
+        fn test_subgraph_error_json_structure() {
+            let trade_ids = vec!["T999".to_string()];
+            let update = RealTimeUpdate::subgraph_error(trade_ids, "Trade not found");
+            let json = update.to_json();
+
+            let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+            assert_eq!(parsed["update_type"], "subgraph_error");
+            assert!(parsed["data"]["trade_ids"].is_array());
+            assert_eq!(parsed["data"]["error"], "Trade not found");
+        }
+
+        #[tokio::test]
+        async fn test_broadcast_subgraph_update() {
+            let state = AppState::new();
+            let mut rx = state.tx.subscribe();
+
+            let event = SubgraphUpdateEvent {
+                trade_ids: vec!["T001".to_string(), "T002".to_string()],
+                node_count: 12,
+                edge_count: 15,
+                shared_node_count: 3,
+                is_incremental: false,
+            };
+
+            broadcast_subgraph_update(&state, event);
+
+            let received = rx.try_recv();
+            assert!(received.is_ok());
+
+            let msg = received.unwrap();
+            assert!(msg.contains("subgraph_update"));
+            assert!(msg.contains("T001"));
+            assert!(msg.contains("T002"));
+            assert!(msg.contains("node_count"));
+        }
+
+        #[tokio::test]
+        async fn test_broadcast_subgraph_error() {
+            let state = AppState::new();
+            let mut rx = state.tx.subscribe();
+
+            let trade_ids = vec!["T999".to_string()];
+            broadcast_subgraph_error(&state, trade_ids, "Trade 'T999' not found in portfolio");
+
+            let received = rx.try_recv();
+            assert!(received.is_ok());
+
+            let msg = received.unwrap();
+            assert!(msg.contains("subgraph_error"));
+            assert!(msg.contains("T999"));
+            assert!(msg.contains("not found"));
+        }
+
+        #[tokio::test]
+        async fn test_broadcast_subgraph_update_incremental() {
+            let state = AppState::new();
+            let mut rx = state.tx.subscribe();
+
+            let event = SubgraphUpdateEvent {
+                trade_ids: vec!["T001".to_string()],
+                node_count: 2,
+                edge_count: 1,
+                shared_node_count: 0,
+                is_incremental: true,
+            };
+
+            broadcast_subgraph_update(&state, event);
+
+            let received = rx.try_recv().unwrap();
+            let parsed: serde_json::Value = serde_json::from_str(&received).unwrap();
+            assert_eq!(parsed["data"]["is_incremental"], true);
         }
     }
 }

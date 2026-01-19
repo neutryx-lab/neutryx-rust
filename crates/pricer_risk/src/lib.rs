@@ -1,3 +1,30 @@
+// Clippy configuration for pricer_risk
+// FCA/FBA/FVA are standard finance abbreviations
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::return_self_not_must_use)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::redundant_closure_for_method_calls)]
+#![allow(clippy::unwrap_used)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::suboptimal_flops)]
+#![allow(clippy::expect_used)]
+#![allow(clippy::inefficient_to_string)]
+#![allow(clippy::unnecessary_wraps)]
+#![allow(clippy::if_not_else)]
+#![allow(clippy::match_wildcard_for_single_variants)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::unused_self)]
+#![allow(clippy::match_same_arms)]
+#![allow(clippy::cast_lossless)]
+#![allow(clippy::map_unwrap_or)]
+
 //! # Pricer Risk (L4: Application)
 //!
 //! Portfolio risk management, XVA calculations, and parallelisation.

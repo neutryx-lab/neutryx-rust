@@ -69,6 +69,7 @@ mod counterparty;
 mod error;
 mod ids;
 mod netting_set;
+mod sample_builder;
 mod trade;
 
 // Re-export public types
@@ -80,6 +81,7 @@ pub use error::PortfolioError;
 pub use ids::{CounterpartyId, NettingSetId, TradeId};
 pub use netting_set::{CollateralAgreement, NettingSet};
 use rayon::prelude::*;
+pub use sample_builder::{AssetMix, SamplePortfolioBuilder};
 pub use trade::{Trade, TradeBuilder};
 
 /// Portfolio container for trades, counterparties, and netting sets.

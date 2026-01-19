@@ -1,0 +1,13 @@
+# Clippy configuration for Neutryx workspace
+#
+# This configuration relaxes certain pedantic lints that are not appropriate
+# for a financial/mathematical library where:
+# - Single-letter variables (x, y, t, etc.) are conventional
+# - Type names in documentation are common (FlatCurve, InterpolatedCurve)
+# - Error documentation may be implicit from trait signatures
+
+# Maximum number of single-character bindings before triggering lint
+single-char-binding-names-threshold = 10
+
+# Allow more similar names (common in math: sorted_xs, sorted_ys)
+# This is handled at module level with #[allow] attributes

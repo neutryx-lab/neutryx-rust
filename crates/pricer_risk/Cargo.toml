@@ -25,7 +25,7 @@ approx.workspace = true
 criterion = { workspace = true, features = ["html_reports"] }
 
 [[bench]]
-name = "risk_benchmarks"
+name = "risk"
 harness = false
 
 [lints]

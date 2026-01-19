@@ -1,4 +1,4 @@
-//! Build script for service_gateway.
+//! Build script for `service_gateway`.
 
 /// Entry point for build script.
 fn main() {
