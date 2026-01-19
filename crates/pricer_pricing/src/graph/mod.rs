@@ -39,6 +39,7 @@ pub use error::GraphError;
 pub use extractor::{GraphBuilder, GraphExtractable, SimpleGraphExtractor};
 pub use types::{
     ComputationGraph, GraphEdge, GraphMetadata, GraphNode, GraphNodeUpdate, NodeGroup, NodeType,
+    PortfolioComputationGraph, PortfolioGraphMetadata,
 };
 
 #[cfg(test)]
@@ -61,6 +62,7 @@ mod tests {
                 value: Some(100.0),
                 is_sensitivity_target: true,
                 group: NodeGroup::Input,
+                trade_ids: vec![],
             };
 
             assert_eq!(node.id, "N1");
@@ -80,6 +82,7 @@ mod tests {
                 value: Some(42.0),
                 is_sensitivity_target: false,
                 group: NodeGroup::Intermediate,
+                trade_ids: vec![],
             };
 
             let cloned = node.clone();
@@ -186,6 +189,7 @@ mod tests {
                 value: Some(100.0),
                 is_sensitivity_target: true,
                 group: NodeGroup::Input,
+                trade_ids: vec![],
             };
 
             let json = serde_json::to_string(&node).unwrap();
@@ -274,6 +278,7 @@ mod tests {
                     value: Some(100.0),
                     is_sensitivity_target: true,
                     group: NodeGroup::Input,
+                    trade_ids: vec![],
                 },
                 GraphNode {
                     id: "N2".to_string(),
@@ -282,6 +287,7 @@ mod tests {
                     value: Some(0.25),
                     is_sensitivity_target: true,
                     group: NodeGroup::Input,
+                    trade_ids: vec![],
                 },
                 GraphNode {
                     id: "N3".to_string(),
@@ -290,6 +296,7 @@ mod tests {
                     value: Some(25.0),
                     is_sensitivity_target: false,
                     group: NodeGroup::Intermediate,
+                    trade_ids: vec![],
                 },
                 GraphNode {
                     id: "N4".to_string(),
@@ -298,6 +305,7 @@ mod tests {
                     value: Some(10.5),
                     is_sensitivity_target: false,
                     group: NodeGroup::Output,
+                    trade_ids: vec![],
                 },
             ];
 
@@ -438,6 +446,7 @@ mod tests {
                 value: Some(100.0),
                 is_sensitivity_target: true,
                 group: NodeGroup::Input,
+                trade_ids: vec![],
             }];
 
             let edges = vec![GraphEdge {
@@ -612,6 +621,325 @@ mod tests {
             };
 
             assert!(update.delta.is_none());
+        }
+    }
+
+    // =========================================================================
+    // Portfolio Graph Types Tests
+    // =========================================================================
+
+    mod portfolio_graph_tests {
+        use super::*;
+
+        #[test]
+        fn test_portfolio_graph_metadata_creation() {
+            let metadata = PortfolioGraphMetadata {
+                node_count: 150,
+                edge_count: 200,
+                depth: 12,
+                generated_at: "2026-01-19T12:00:00Z".to_string(),
+                trade_count: 10,
+                shared_node_count: 25,
+                optimisation_ratio: 0.83,
+            };
+
+            assert_eq!(metadata.node_count, 150);
+            assert_eq!(metadata.edge_count, 200);
+            assert_eq!(metadata.depth, 12);
+            assert_eq!(metadata.trade_count, 10);
+            assert_eq!(metadata.shared_node_count, 25);
+            assert!((metadata.optimisation_ratio - 0.83).abs() < 1e-10);
+        }
+
+        #[test]
+        fn test_portfolio_computation_graph_creation() {
+            let nodes = vec![
+                GraphNode {
+                    id: "spot_USD".to_string(),
+                    node_type: NodeType::Input,
+                    label: "spot".to_string(),
+                    value: Some(100.0),
+                    is_sensitivity_target: true,
+                    group: NodeGroup::Input,
+                    trade_ids: vec!["T001".to_string(), "T002".to_string()],
+                },
+                GraphNode {
+                    id: "T001_price".to_string(),
+                    node_type: NodeType::Output,
+                    label: "price".to_string(),
+                    value: Some(10.5),
+                    is_sensitivity_target: false,
+                    group: NodeGroup::Output,
+                    trade_ids: vec!["T001".to_string()],
+                },
+                GraphNode {
+                    id: "T002_price".to_string(),
+                    node_type: NodeType::Output,
+                    label: "price".to_string(),
+                    value: Some(15.0),
+                    is_sensitivity_target: false,
+                    group: NodeGroup::Output,
+                    trade_ids: vec!["T002".to_string()],
+                },
+            ];
+
+            let edges = vec![
+                GraphEdge {
+                    source: "spot_USD".to_string(),
+                    target: "T001_price".to_string(),
+                    weight: None,
+                },
+                GraphEdge {
+                    source: "spot_USD".to_string(),
+                    target: "T002_price".to_string(),
+                    weight: None,
+                },
+            ];
+
+            let metadata = PortfolioGraphMetadata {
+                node_count: 3,
+                edge_count: 2,
+                depth: 2,
+                generated_at: "2026-01-19T12:00:00Z".to_string(),
+                trade_count: 2,
+                shared_node_count: 1,
+                optimisation_ratio: 0.75,
+            };
+
+            let graph = PortfolioComputationGraph {
+                nodes,
+                edges,
+                metadata,
+            };
+
+            assert_eq!(graph.nodes.len(), 3);
+            assert_eq!(graph.edges.len(), 2);
+            assert_eq!(graph.metadata.trade_count, 2);
+        }
+
+        #[test]
+        fn test_portfolio_graph_find_node() {
+            let nodes = vec![GraphNode {
+                id: "spot_USD".to_string(),
+                node_type: NodeType::Input,
+                label: "spot".to_string(),
+                value: Some(100.0),
+                is_sensitivity_target: true,
+                group: NodeGroup::Input,
+                trade_ids: vec!["T001".to_string()],
+            }];
+
+            let graph = PortfolioComputationGraph {
+                nodes,
+                edges: vec![],
+                metadata: PortfolioGraphMetadata {
+                    node_count: 1,
+                    edge_count: 0,
+                    depth: 1,
+                    generated_at: "2026-01-19T12:00:00Z".to_string(),
+                    trade_count: 1,
+                    shared_node_count: 0,
+                    optimisation_ratio: 1.0,
+                },
+            };
+
+            let node = graph.find_node("spot_USD");
+            assert!(node.is_some());
+            assert_eq!(node.unwrap().label, "spot");
+
+            let not_found = graph.find_node("nonexistent");
+            assert!(not_found.is_none());
+        }
+
+        #[test]
+        fn test_portfolio_graph_nodes_for_trade() {
+            let nodes = vec![
+                GraphNode {
+                    id: "spot_USD".to_string(),
+                    node_type: NodeType::Input,
+                    label: "spot".to_string(),
+                    value: Some(100.0),
+                    is_sensitivity_target: true,
+                    group: NodeGroup::Input,
+                    trade_ids: vec!["T001".to_string(), "T002".to_string()],
+                },
+                GraphNode {
+                    id: "T001_price".to_string(),
+                    node_type: NodeType::Output,
+                    label: "price".to_string(),
+                    value: Some(10.5),
+                    is_sensitivity_target: false,
+                    group: NodeGroup::Output,
+                    trade_ids: vec!["T001".to_string()],
+                },
+                GraphNode {
+                    id: "T002_price".to_string(),
+                    node_type: NodeType::Output,
+                    label: "price".to_string(),
+                    value: Some(15.0),
+                    is_sensitivity_target: false,
+                    group: NodeGroup::Output,
+                    trade_ids: vec!["T002".to_string()],
+                },
+            ];
+
+            let graph = PortfolioComputationGraph {
+                nodes,
+                edges: vec![],
+                metadata: PortfolioGraphMetadata {
+                    node_count: 3,
+                    edge_count: 0,
+                    depth: 1,
+                    generated_at: "2026-01-19T12:00:00Z".to_string(),
+                    trade_count: 2,
+                    shared_node_count: 1,
+                    optimisation_ratio: 0.75,
+                },
+            };
+
+            // T001 should have 2 nodes (spot_USD shared + T001_price)
+            let t001_nodes = graph.nodes_for_trade("T001");
+            assert_eq!(t001_nodes.len(), 2);
+
+            // T002 should have 2 nodes (spot_USD shared + T002_price)
+            let t002_nodes = graph.nodes_for_trade("T002");
+            assert_eq!(t002_nodes.len(), 2);
+
+            // T003 should have 0 nodes
+            let t003_nodes = graph.nodes_for_trade("T003");
+            assert_eq!(t003_nodes.len(), 0);
+        }
+
+        #[test]
+        fn test_portfolio_graph_shared_nodes() {
+            let nodes = vec![
+                GraphNode {
+                    id: "spot_USD".to_string(),
+                    node_type: NodeType::Input,
+                    label: "spot".to_string(),
+                    value: Some(100.0),
+                    is_sensitivity_target: true,
+                    group: NodeGroup::Input,
+                    trade_ids: vec!["T001".to_string(), "T002".to_string()],
+                },
+                GraphNode {
+                    id: "T001_price".to_string(),
+                    node_type: NodeType::Output,
+                    label: "price".to_string(),
+                    value: Some(10.5),
+                    is_sensitivity_target: false,
+                    group: NodeGroup::Output,
+                    trade_ids: vec!["T001".to_string()],
+                },
+            ];
+
+            let graph = PortfolioComputationGraph {
+                nodes,
+                edges: vec![],
+                metadata: PortfolioGraphMetadata {
+                    node_count: 2,
+                    edge_count: 0,
+                    depth: 1,
+                    generated_at: "2026-01-19T12:00:00Z".to_string(),
+                    trade_count: 2,
+                    shared_node_count: 1,
+                    optimisation_ratio: 0.67,
+                },
+            };
+
+            let shared = graph.shared_nodes();
+            assert_eq!(shared.len(), 1);
+            assert_eq!(shared[0].id, "spot_USD");
+        }
+
+        #[test]
+        fn test_portfolio_graph_no_shared_nodes() {
+            let nodes = vec![
+                GraphNode {
+                    id: "T001_price".to_string(),
+                    node_type: NodeType::Output,
+                    label: "price".to_string(),
+                    value: Some(10.5),
+                    is_sensitivity_target: false,
+                    group: NodeGroup::Output,
+                    trade_ids: vec!["T001".to_string()],
+                },
+                GraphNode {
+                    id: "T002_price".to_string(),
+                    node_type: NodeType::Output,
+                    label: "price".to_string(),
+                    value: Some(15.0),
+                    is_sensitivity_target: false,
+                    group: NodeGroup::Output,
+                    trade_ids: vec!["T002".to_string()],
+                },
+            ];
+
+            let graph = PortfolioComputationGraph {
+                nodes,
+                edges: vec![],
+                metadata: PortfolioGraphMetadata {
+                    node_count: 2,
+                    edge_count: 0,
+                    depth: 1,
+                    generated_at: "2026-01-19T12:00:00Z".to_string(),
+                    trade_count: 2,
+                    shared_node_count: 0,
+                    optimisation_ratio: 1.0,
+                },
+            };
+
+            let shared = graph.shared_nodes();
+            assert_eq!(shared.len(), 0);
+        }
+    }
+
+    mod graph_node_trade_ids_tests {
+        use super::*;
+
+        #[test]
+        fn test_graph_node_with_trade_ids() {
+            let node = GraphNode {
+                id: "N1".to_string(),
+                node_type: NodeType::Input,
+                label: "spot".to_string(),
+                value: Some(100.0),
+                is_sensitivity_target: true,
+                group: NodeGroup::Input,
+                trade_ids: vec!["T001".to_string(), "T002".to_string()],
+            };
+
+            assert_eq!(node.trade_ids.len(), 2);
+            assert!(node.trade_ids.contains(&"T001".to_string()));
+            assert!(node.trade_ids.contains(&"T002".to_string()));
+        }
+
+        #[test]
+        fn test_graph_node_empty_trade_ids() {
+            let node = GraphNode {
+                id: "N1".to_string(),
+                node_type: NodeType::Input,
+                label: "spot".to_string(),
+                value: Some(100.0),
+                is_sensitivity_target: true,
+                group: NodeGroup::Input,
+                trade_ids: vec![],
+            };
+
+            assert!(node.trade_ids.is_empty());
+        }
+
+        #[test]
+        fn test_graph_node_default() {
+            let node = GraphNode::default();
+
+            assert!(node.id.is_empty());
+            assert_eq!(node.node_type, NodeType::Input);
+            assert!(node.label.is_empty());
+            assert!(node.value.is_none());
+            assert!(!node.is_sensitivity_target);
+            assert_eq!(node.group, NodeGroup::Intermediate);
+            assert!(node.trade_ids.is_empty());
         }
     }
 }

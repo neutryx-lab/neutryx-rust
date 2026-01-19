@@ -65,7 +65,7 @@ toml = "0.8"
 config = "0.14"
 
 # Async runtime
-tokio = { version = "1.42", features = ["full"] }
+tokio = { version = "1.42", features = ["rt-multi-thread", "macros", "sync", "time", "net", "io-util", "signal"] }
 
 # Logging
 tracing = "0.1"
@@ -76,6 +76,8 @@ clap = { version = "4.4", features = ["derive"] }
 
 # Web frameworks
 axum = { version = "0.7", features = ["json"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors", "trace"] }
 tonic = "0.12"
 prost = "0.13"
 
@@ -104,6 +106,7 @@ num_cpus = "1.16"
 lto = true
 codegen-units = 1
 opt-level = 3
+strip = "symbols"
 
 [profile.bench]
 inherits = "release"
@@ -117,6 +120,17 @@ inherits = "release"
 # Usage: cargo +nightly pgo optimize
 [profile.pgo-use]
 inherits = "release"
+
+# Development profile optimisation
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 2
+
+# Test profile optimisation
+[profile.test]
+opt-level = 1
 
 # =============================================================================
 # Workspace-wide Lint Configuration

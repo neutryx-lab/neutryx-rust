@@ -30,37 +30,24 @@ use thiserror::Error;
 /// let err = PricingError::InvalidInput("Negative spot price".to_string());
 /// assert_eq!(format!("{}", err), "Invalid input: Negative spot price");
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum PricingError {
     /// Invalid input data or parameters
+    #[error("Invalid input: {0}")]
     InvalidInput(String),
 
     /// Numerical instability during computation
+    #[error("Numerical instability: {0}")]
     NumericalInstability(String),
 
     /// Model failed to produce valid result
+    #[error("Model failure: {0}")]
     ModelFailure(String),
 
     /// Instrument type not supported
+    #[error("Unsupported instrument: {0}")]
     UnsupportedInstrument(String),
 }
-
-impl fmt::Display for PricingError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            PricingError::InvalidInput(msg) => write!(f, "Invalid input: {}", msg),
-            PricingError::NumericalInstability(msg) => {
-                write!(f, "Numerical instability: {}", msg)
-            }
-            PricingError::ModelFailure(msg) => write!(f, "Model failure: {}", msg),
-            PricingError::UnsupportedInstrument(msg) => {
-                write!(f, "Unsupported instrument: {}", msg)
-            }
-        }
-    }
-}
-
-impl std::error::Error for PricingError {}
 
 /// Date-related errors.
 ///
@@ -78,9 +65,10 @@ impl std::error::Error for PricingError {}
 /// let err = DateError::InvalidDate { year: 2024, month: 2, day: 30 };
 /// assert_eq!(format!("{}", err), "Invalid date: 2024-2-30");
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum DateError {
     /// Invalid date components (e.g., February 30th).
+    #[error("Invalid date: {year}-{month}-{day}")]
     InvalidDate {
         /// Year component
         year: i32,
@@ -91,21 +79,9 @@ pub enum DateError {
     },
 
     /// Failed to parse date string.
+    #[error("Date parse error: {0}")]
     ParseError(String),
 }
-
-impl fmt::Display for DateError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            DateError::InvalidDate { year, month, day } => {
-                write!(f, "Invalid date: {}-{}-{}", year, month, day)
-            }
-            DateError::ParseError(msg) => write!(f, "Date parse error: {}", msg),
-        }
-    }
-}
-
-impl std::error::Error for DateError {}
 
 /// Currency-related errors.
 ///
@@ -125,35 +101,24 @@ impl std::error::Error for DateError {}
 /// let err = CurrencyError::UnknownCurrency("XYZ".to_string());
 /// assert_eq!(format!("{}", err), "Unknown currency: XYZ");
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum CurrencyError {
     /// Unknown currency code.
+    #[error("Unknown currency: {0}")]
     UnknownCurrency(String),
 
     /// Failed to parse currency string.
+    #[error("Currency parse error: {0}")]
     ParseError(String),
 
     /// Base and quote currencies are the same.
+    #[error("Base and quote currencies are the same: {0}")]
     SameCurrency(String),
 
     /// Spot rate is not positive.
+    #[error("Invalid spot rate: must be positive")]
     InvalidSpotRate,
 }
-
-impl fmt::Display for CurrencyError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            CurrencyError::UnknownCurrency(code) => write!(f, "Unknown currency: {}", code),
-            CurrencyError::ParseError(msg) => write!(f, "Currency parse error: {}", msg),
-            CurrencyError::SameCurrency(code) => {
-                write!(f, "Base and quote currencies are the same: {}", code)
-            }
-            CurrencyError::InvalidSpotRate => write!(f, "Invalid spot rate: must be positive"),
-        }
-    }
-}
-
-impl std::error::Error for CurrencyError {}
 
 /// Interpolation-related errors.
 ///

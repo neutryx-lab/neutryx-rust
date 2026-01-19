@@ -194,6 +194,48 @@ impl GraphBuilder {
     /// Get the number of edges.
     pub fn edge_count(&self) -> usize { self.edges.len() }
 
+    /// Add a trade ID to a node's trade_ids list.
+    ///
+    /// This is used for Portfolio graph construction where nodes may belong
+    /// to multiple trades (shared market data nodes).
+    ///
+    /// # Arguments
+    ///
+    /// * `node_id` - The ID of the node to update
+    /// * `trade_id` - The trade ID to add
+    ///
+    /// # Returns
+    ///
+    /// `Some(())` if the node exists and was updated, `None` otherwise.
+    ///
+    /// # Deduplication
+    ///
+    /// The trade ID is only added if it doesn't already exist in the list.
+    pub fn add_trade_id(&mut self, node_id: &str, trade_id: &str) -> Option<()> {
+        let node = self.get_node_mut(node_id)?;
+        let trade_id_string = trade_id.to_string();
+        if !node.trade_ids.contains(&trade_id_string) {
+            node.trade_ids.push(trade_id_string);
+        }
+        Some(())
+    }
+
+    /// Set the trade IDs for a node, replacing any existing values.
+    ///
+    /// # Arguments
+    ///
+    /// * `node_id` - The ID of the node to update
+    /// * `trade_ids` - The list of trade IDs to set
+    ///
+    /// # Returns
+    ///
+    /// `Some(())` if the node exists and was updated, `None` otherwise.
+    pub fn set_trade_ids(&mut self, node_id: &str, trade_ids: Vec<String>) -> Option<()> {
+        let node = self.get_node_mut(node_id)?;
+        node.trade_ids = trade_ids;
+        Some(())
+    }
+
     /// Clear the builder for reuse.
     ///
     /// This clears all nodes and edges but retains the allocated capacity,
@@ -614,6 +656,7 @@ impl SimpleGraphExtractor {
                     value,
                     is_sensitivity_target: true,
                     group: NodeGroup::Sensitivity,
+                    trade_ids: vec![],
                 };
                 builder.add_node(node);
             }
@@ -654,6 +697,7 @@ impl SimpleGraphExtractor {
                     value,
                     is_sensitivity_target: false,
                     group: NodeGroup::Intermediate,
+                    trade_ids: vec![],
                 };
                 builder.add_node(node);
 
@@ -701,6 +745,7 @@ impl SimpleGraphExtractor {
                     value,
                     is_sensitivity_target: false,
                     group: NodeGroup::Intermediate,
+                    trade_ids: vec![],
                 };
                 builder.add_node(node);
 
@@ -728,6 +773,7 @@ impl SimpleGraphExtractor {
                 value,
                 is_sensitivity_target: false,
                 group: NodeGroup::Output,
+                trade_ids: vec![],
             };
             builder.add_node(node);
 
@@ -1132,6 +1178,7 @@ mod tests {
                 value: Some(100.0),
                 is_sensitivity_target: true,
                 group: NodeGroup::Input,
+                trade_ids: vec![],
             };
 
             let index = builder.add_node(node);
@@ -1165,6 +1212,7 @@ mod tests {
                 value: Some(100.0),
                 is_sensitivity_target: true,
                 group: NodeGroup::Input,
+                trade_ids: vec![],
             };
             builder.add_node(node);
 
@@ -1193,6 +1241,7 @@ mod tests {
                 value: None,
                 is_sensitivity_target: false,
                 group: NodeGroup::Input,
+                trade_ids: vec![],
             });
             builder.add_edge(GraphEdge {
                 source: "N1".to_string(),
@@ -1224,6 +1273,7 @@ mod tests {
                 value: None,
                 is_sensitivity_target: false,
                 group: NodeGroup::Input,
+                trade_ids: vec![],
             });
 
             assert_eq!(builder.calculate_depth(), 1);
@@ -1248,6 +1298,7 @@ mod tests {
                     value: None,
                     is_sensitivity_target: false,
                     group: NodeGroup::Intermediate,
+                    trade_ids: vec![],
                 });
             }
 
@@ -1283,6 +1334,7 @@ mod tests {
                 value: None,
                 is_sensitivity_target: false,
                 group: NodeGroup::Input,
+                trade_ids: vec![],
             });
             builder.add_node(GraphNode {
                 id: "N2".to_string(),
@@ -1291,6 +1343,7 @@ mod tests {
                 value: None,
                 is_sensitivity_target: false,
                 group: NodeGroup::Output,
+                trade_ids: vec![],
             });
             builder.add_edge(GraphEdge {
                 source: "N1".to_string(),
@@ -1311,6 +1364,7 @@ mod tests {
                 value: Some(1.0),
                 is_sensitivity_target: true,
                 group: NodeGroup::Input,
+                trade_ids: vec![],
             });
             builder.add_node(GraphNode {
                 id: "N2".to_string(),
@@ -1319,6 +1373,7 @@ mod tests {
                 value: Some(2.0),
                 is_sensitivity_target: false,
                 group: NodeGroup::Output,
+                trade_ids: vec![],
             });
             builder.add_edge(GraphEdge {
                 source: "N1".to_string(),
@@ -1401,6 +1456,7 @@ mod tests {
                     value: None,
                     is_sensitivity_target: false,
                     group: NodeGroup::Intermediate,
+                    trade_ids: vec![],
                 });
             }
 
@@ -1420,10 +1476,122 @@ mod tests {
                     value: None,
                     is_sensitivity_target: false,
                     group: NodeGroup::Intermediate,
+                    trade_ids: vec![],
                 });
             }
 
             assert_eq!(builder.node_count(), 50);
+        }
+
+        #[test]
+        fn test_builder_add_trade_id() {
+            let mut builder = GraphBuilder::new();
+            builder.add_node(GraphNode {
+                id: "N1".to_string(),
+                node_type: NodeType::Input,
+                label: "spot".to_string(),
+                value: Some(100.0),
+                is_sensitivity_target: true,
+                group: NodeGroup::Input,
+                trade_ids: vec![],
+            });
+
+            // Add first trade ID
+            let result = builder.add_trade_id("N1", "T001");
+            assert!(result.is_some());
+
+            let node = builder.get_node("N1").unwrap();
+            assert_eq!(node.trade_ids, vec!["T001".to_string()]);
+        }
+
+        #[test]
+        fn test_builder_add_trade_id_deduplication() {
+            let mut builder = GraphBuilder::new();
+            builder.add_node(GraphNode {
+                id: "N1".to_string(),
+                node_type: NodeType::Input,
+                label: "spot".to_string(),
+                value: None,
+                is_sensitivity_target: false,
+                group: NodeGroup::Input,
+                trade_ids: vec![],
+            });
+
+            // Add same trade ID twice
+            builder.add_trade_id("N1", "T001");
+            builder.add_trade_id("N1", "T001");
+
+            let node = builder.get_node("N1").unwrap();
+            assert_eq!(node.trade_ids.len(), 1);
+            assert_eq!(node.trade_ids[0], "T001");
+        }
+
+        #[test]
+        fn test_builder_add_trade_id_multiple_trades() {
+            let mut builder = GraphBuilder::new();
+            builder.add_node(GraphNode {
+                id: "N1".to_string(),
+                node_type: NodeType::Input,
+                label: "spot".to_string(),
+                value: None,
+                is_sensitivity_target: false,
+                group: NodeGroup::Input,
+                trade_ids: vec![],
+            });
+
+            // Add multiple trade IDs
+            builder.add_trade_id("N1", "T001");
+            builder.add_trade_id("N1", "T002");
+            builder.add_trade_id("N1", "T003");
+
+            let node = builder.get_node("N1").unwrap();
+            assert_eq!(node.trade_ids.len(), 3);
+            assert!(node.trade_ids.contains(&"T001".to_string()));
+            assert!(node.trade_ids.contains(&"T002".to_string()));
+            assert!(node.trade_ids.contains(&"T003".to_string()));
+        }
+
+        #[test]
+        fn test_builder_add_trade_id_nonexistent_node() {
+            let mut builder = GraphBuilder::new();
+
+            // Try to add trade ID to nonexistent node
+            let result = builder.add_trade_id("N999", "T001");
+            assert!(result.is_none());
+        }
+
+        #[test]
+        fn test_builder_set_trade_ids() {
+            let mut builder = GraphBuilder::new();
+            builder.add_node(GraphNode {
+                id: "N1".to_string(),
+                node_type: NodeType::Input,
+                label: "spot".to_string(),
+                value: None,
+                is_sensitivity_target: false,
+                group: NodeGroup::Input,
+                trade_ids: vec!["OLD".to_string()],
+            });
+
+            // Replace trade IDs
+            let trade_ids = vec!["T001".to_string(), "T002".to_string()];
+            let result = builder.set_trade_ids("N1", trade_ids);
+            assert!(result.is_some());
+
+            let node = builder.get_node("N1").unwrap();
+            assert_eq!(node.trade_ids.len(), 2);
+            assert!(node.trade_ids.contains(&"T001".to_string()));
+            assert!(node.trade_ids.contains(&"T002".to_string()));
+            assert!(!node.trade_ids.contains(&"OLD".to_string()));
+        }
+
+        #[test]
+        fn test_builder_set_trade_ids_nonexistent_node() {
+            let mut builder = GraphBuilder::new();
+
+            // Try to set trade IDs on nonexistent node
+            let result = builder.set_trade_ids("N999", vec!["T001".to_string()]);
+            assert!(result.is_none());
         }
     }
 }

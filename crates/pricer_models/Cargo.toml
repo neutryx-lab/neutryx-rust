@@ -40,7 +40,7 @@ proptest.workspace = true
 criterion = { workspace = true, features = ["html_reports"] }
 
 [[bench]]
-name = "models_benchmarks"
+name = "models"
 harness = false
 
 [lints]
