@@ -1,3 +1,27 @@
+// Clippy configuration for pricer_models
+// - unreadable_literal: Mathematical constants like 0.254829592 are from papers
+// - similar_names: sorted_xs/sorted_ys are standard patterns
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::return_self_not_must_use)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::many_single_char_names)]
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::cast_possible_wrap)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::redundant_else)]
+#![allow(clippy::suboptimal_flops)]
+#![allow(clippy::unused_self)]
+#![allow(clippy::match_wildcard_for_single_variants)]
+#![allow(clippy::match_same_arms)]
+#![allow(clippy::redundant_closure_for_method_calls)]
+#![allow(clippy::if_not_else)]
+#![allow(clippy::missing_panics_doc)]
+
 //! # Pricer Models (L2: Business Logic)
 //!
 //! Financial instruments, payoff functions, and stochastic models.

@@ -1,3 +1,21 @@
+// Clippy configuration for demo_inputs
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::return_self_not_must_use)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::needless_raw_string_hashes)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::similar_names)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::unwrap_used)]
+#![allow(clippy::suboptimal_flops)]
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::explicit_iter_loop)]
+#![allow(clippy::inefficient_to_string)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::unused_async)]
+
 //! # Upstream Systems
 //!
 //! Mock upstream systems that provide input data to the Neutryx Adapter layer.

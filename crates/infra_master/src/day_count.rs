@@ -23,43 +23,44 @@ pub enum DayCountConvention {
 
 impl DayCountConvention {
     /// Calculate the year fraction between two dates.
-    pub fn year_fraction(&self, start: chrono::NaiveDate, end: chrono::NaiveDate) -> f64 {
+    #[must_use]
+    #[allow(clippy::cast_precision_loss)] // Day counts fit in f64 mantissa
+    pub fn year_fraction(self, start: chrono::NaiveDate, end: chrono::NaiveDate) -> f64 {
         let days = (end - start).num_days() as f64;
 
         match self {
-            DayCountConvention::Actual360 => days / 360.0,
-            DayCountConvention::Actual365Fixed => days / 365.0,
-            DayCountConvention::Actual36525 => days / 365.25,
-            DayCountConvention::ActualActualIsda => {
+            Self::Actual360 => days / 360.0,
+            Self::Actual365Fixed => days / 365.0,
+            Self::Actual36525 => days / 365.25,
+            Self::ActualActualIsda => {
                 // Simplified: use 365.25 as average
                 days / 365.25
             }
-            DayCountConvention::Thirty360Bond
-            | DayCountConvention::Thirty360European
-            | DayCountConvention::ThirtyE360Isda => self.thirty_360_days(start, end) / 360.0,
+            Self::Thirty360Bond | Self::Thirty360European | Self::ThirtyE360Isda => {
+                Self::thirty_360_days(self, start, end) / 360.0
+            }
         }
     }
 
     /// Calculate 30/360 day count.
-    fn thirty_360_days(&self, start: chrono::NaiveDate, end: chrono::NaiveDate) -> f64 {
+    #[allow(clippy::cast_possible_wrap)] // Month/day values are always small
+    fn thirty_360_days(self, start: chrono::NaiveDate, end: chrono::NaiveDate) -> f64 {
         use chrono::Datelike;
 
         let (y1, m1, d1) = (start.year(), start.month() as i32, start.day() as i32);
         let (y2, m2, d2) = (end.year(), end.month() as i32, end.day() as i32);
 
         let (d1_adj, d2_adj) = match self {
-            DayCountConvention::Thirty360Bond => {
+            Self::Thirty360Bond => {
                 let d1_adj = d1.min(30);
                 let d2_adj = if d1_adj == 30 { d2.min(30) } else { d2 };
                 (d1_adj, d2_adj)
             }
-            DayCountConvention::Thirty360European | DayCountConvention::ThirtyE360Isda => {
-                (d1.min(30), d2.min(30))
-            }
+            Self::Thirty360European | Self::ThirtyE360Isda => (d1.min(30), d2.min(30)),
             _ => (d1, d2),
         };
 
-        (360 * (y2 - y1) + 30 * (m2 - m1) + (d2_adj - d1_adj)) as f64
+        f64::from(360 * (y2 - y1) + 30 * (m2 - m1) + (d2_adj - d1_adj))
     }
 }
 

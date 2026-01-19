@@ -29,7 +29,7 @@ impl Settings {
 
         let config = Config::builder()
             .add_source(File::with_name("config/default").required(false))
-            .add_source(File::with_name(&format!("config/{}", env)).required(false))
+            .add_source(File::with_name(&format!("config/{env}")).required(false))
             .add_source(Environment::with_prefix("NEUTRYX").separator("__"))
             .build()?;
 

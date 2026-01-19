@@ -1,9 +1,9 @@
 //! Root-finding and optimisation solvers for numerical computation.
 //!
-//! This module provides a collection of root-finding and optimisation algorithms
-//! designed for financial applications such as implied volatility calculation,
-//! curve calibration, and model parameter fitting, with support for automatic
-//! differentiation.
+//! This module provides a collection of root-finding and optimisation
+//! algorithms designed for financial applications such as implied volatility
+//! calculation, curve calibration, and model parameter fitting, with support
+//! for automatic differentiation.
 //!
 //! ## Available Solvers
 //!

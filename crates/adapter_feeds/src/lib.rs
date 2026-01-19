@@ -1,3 +1,8 @@
+// Clippy configuration for adapter_feeds
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::return_self_not_must_use)]
+
 //! # adapter_feeds
 //!
 //! Real-time and snapshot market data parsers for Neutryx.

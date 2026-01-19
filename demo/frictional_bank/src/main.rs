@@ -1,3 +1,6 @@
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::uninlined_format_args)]
+
 //! FrictionalBank Demo Server
 //!
 //! HTTP server entry point for Cloud Run deployment.

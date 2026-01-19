@@ -179,7 +179,10 @@
       "Bash(do echo \"=== Searching for: $var ===\")",
       "Bash(done)",
       "Bash(git merge:*)",
-      "Bash(git commit -m \"$\\(cat <<''EOF''\nMerge origin/updates-fmt into claude/fix-code-style-Vy4Vb\n\nResolve merge conflicts by preserving stub comments and British English\nspelling \\(optimisation, customise, serialisation\\) from the PR branch.\n\nConflicts resolved in:\n- adapter_fpml/src/parser.rs\n- pricer_core/src/math/solvers/levenberg_marquardt.rs\n- pricer_core/src/math/solvers/mod.rs\n- pricer_pricing/src/irs_greeks/calculator.rs\n- pricer_pricing/src/irs_greeks/xva_demo.rs\n- pricer_pricing/src/mc/thread_local.rs\n- service_cli/src/commands/calibrate.rs\n- service_cli/src/commands/price.rs\n- service_cli/src/commands/report.rs\n- service_gateway/src/main.rs\n- service_gateway/src/rest/handlers.rs\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nMerge origin/updates-fmt into claude/fix-code-style-Vy4Vb\n\nResolve merge conflicts by preserving stub comments and British English\nspelling \\(optimisation, customise, serialisation\\) from the PR branch.\n\nConflicts resolved in:\n- adapter_fpml/src/parser.rs\n- pricer_core/src/math/solvers/levenberg_marquardt.rs\n- pricer_core/src/math/solvers/mod.rs\n- pricer_pricing/src/irs_greeks/calculator.rs\n- pricer_pricing/src/irs_greeks/xva_demo.rs\n- pricer_pricing/src/mc/thread_local.rs\n- service_cli/src/commands/calibrate.rs\n- service_cli/src/commands/price.rs\n- service_cli/src/commands/report.rs\n- service_gateway/src/main.rs\n- service_gateway/src/rest/handlers.rs\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(wc:*)",
+      "Read(//c/Users/khosh/**)",
+      "Bash(du:*)"
     ]
   }
 }

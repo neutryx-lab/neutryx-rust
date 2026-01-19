@@ -27,7 +27,8 @@ impl FpmlParser {
     /// let trade = FpmlParser::parse(xml)?;
     /// ```
     pub fn parse(_xml: &str) -> Result<ParsedTrade, FpmlError> {
-        // Stub: returns empty trade. Full FpML 5.x parsing requires XML schema validation.
+        // Stub: returns empty trade. Full FpML 5.x parsing requires XML schema
+        // validation.
         Ok(ParsedTrade {
             trade_id: String::new(),
             product_type: ProductType::Unknown,

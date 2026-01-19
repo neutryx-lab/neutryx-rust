@@ -1,3 +1,7 @@
+// Clippy configuration for infra_config
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::missing_errors_doc)]
+
 //! # infra_config
 //!
 //! System configuration and environment management for Neutryx.

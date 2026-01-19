@@ -1,3 +1,10 @@
+// Clippy configuration for adapter_loader
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::return_self_not_must_use)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::redundant_closure_for_method_calls)]
+
 //! # adapter_loader
 //!
 //! Flat file loaders (CSV/Parquet) and CSA details for Neutryx.

@@ -167,16 +167,14 @@ impl<T: Float> InterpolatedCurve<T> {
                 // Flat extrapolation
                 if t < t_min {
                     return Ok(self.rates[0]);
-                } else {
-                    return Ok(self.rates[self.rates.len() - 1]);
                 }
-            } else {
-                return Err(MarketDataError::OutOfBounds {
-                    x: t.to_f64().unwrap_or(0.0),
-                    min: t_min.to_f64().unwrap_or(0.0),
-                    max: t_max.to_f64().unwrap_or(0.0),
-                });
+                return Ok(self.rates[self.rates.len() - 1]);
             }
+            return Err(MarketDataError::OutOfBounds {
+                x: t.to_f64().unwrap_or(0.0),
+                min: t_min.to_f64().unwrap_or(0.0),
+                max: t_max.to_f64().unwrap_or(0.0),
+            });
         }
 
         // Use LinearInterpolator for rate interpolation
@@ -192,20 +190,18 @@ impl<T: Float> InterpolatedCurve<T> {
         if t < t_min || t > t_max {
             if self.allow_extrapolation {
                 // Flat extrapolation using boundary rate
-                if t < t_min {
-                    let rate = self.rates[0];
-                    return Ok((-rate * t).exp());
+                let rate = if t < t_min {
+                    self.rates[0]
                 } else {
-                    let rate = self.rates[self.rates.len() - 1];
-                    return Ok((-rate * t).exp());
-                }
-            } else {
-                return Err(MarketDataError::OutOfBounds {
-                    x: t.to_f64().unwrap_or(0.0),
-                    min: t_min.to_f64().unwrap_or(0.0),
-                    max: t_max.to_f64().unwrap_or(0.0),
-                });
+                    self.rates[self.rates.len() - 1]
+                };
+                return Ok((-rate * t).exp());
             }
+            return Err(MarketDataError::OutOfBounds {
+                x: t.to_f64().unwrap_or(0.0),
+                min: t_min.to_f64().unwrap_or(0.0),
+                max: t_max.to_f64().unwrap_or(0.0),
+            });
         }
 
         // Compute log discount factors: ln(D(t)) = -r(t) * t

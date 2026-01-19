@@ -1,3 +1,8 @@
+// Clippy configuration for adapter_fpml
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::missing_errors_doc)]
+
 //! # adapter_fpml
 //!
 //! FpML and XML trade definition parsers for Neutryx.

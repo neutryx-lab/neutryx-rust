@@ -27,9 +27,11 @@ pub struct Calendar {
 
 impl Calendar {
     /// Get a calendar by identifier.
+    #[must_use]
     pub fn get(id: CalendarId) -> Self { Self { id } }
 
     /// Check if a date is a business day.
+    #[must_use]
     pub fn is_business_day(&self, date: NaiveDate) -> bool {
         // Check weekend
         if date.weekday() == Weekday::Sat || date.weekday() == Weekday::Sun {
@@ -41,17 +43,19 @@ impl Calendar {
     }
 
     /// Check if a date is a holiday (excluding weekends).
+    #[must_use]
     pub fn is_holiday(&self, date: NaiveDate) -> bool {
         match self.id {
             CalendarId::WeekendOnly => false,
-            CalendarId::Target => self.is_target_holiday(date),
-            CalendarId::NewYork => self.is_ny_holiday(date),
-            CalendarId::Tokyo => self.is_tokyo_holiday(date),
-            CalendarId::London => self.is_london_holiday(date),
+            CalendarId::Target => Self::is_target_holiday(date),
+            CalendarId::NewYork => Self::is_ny_holiday(date),
+            CalendarId::Tokyo => Self::is_tokyo_holiday(date),
+            CalendarId::London => Self::is_london_holiday(date),
         }
     }
 
     /// Get the next business day on or after the given date.
+    #[must_use]
     pub fn next_business_day(&self, mut date: NaiveDate) -> NaiveDate {
         while !self.is_business_day(date) {
             date = date.succ_opt().unwrap_or(date);
@@ -60,6 +64,7 @@ impl Calendar {
     }
 
     /// Get the previous business day on or before the given date.
+    #[must_use]
     pub fn prev_business_day(&self, mut date: NaiveDate) -> NaiveDate {
         while !self.is_business_day(date) {
             date = date.pred_opt().unwrap_or(date);
@@ -68,6 +73,7 @@ impl Calendar {
     }
 
     /// Add business days to a date.
+    #[must_use]
     pub fn add_business_days(&self, mut date: NaiveDate, days: i32) -> NaiveDate {
         let step = if days >= 0 { 1 } else { -1 };
         let mut remaining = days.abs();
@@ -87,57 +93,39 @@ impl Calendar {
     }
 
     // TARGET calendar holidays (simplified)
-    fn is_target_holiday(&self, date: NaiveDate) -> bool {
+    fn is_target_holiday(date: NaiveDate) -> bool {
         let month = date.month();
         let day = date.day();
 
-        // Fixed holidays
-        matches!(
-            (month, day),
-            (1, 1) |   // New Year's Day
-            (5, 1) |   // Labour Day
-            (12, 25) | // Christmas Day
-            (12, 26) // Boxing Day
-        )
+        // Fixed holidays: New Year's Day, Labour Day, Christmas Day, Boxing Day
+        matches!((month, day), (1 | 5, 1) | (12, 25 | 26))
     }
 
     // New York calendar holidays (simplified)
-    fn is_ny_holiday(&self, date: NaiveDate) -> bool {
+    fn is_ny_holiday(date: NaiveDate) -> bool {
         let month = date.month();
         let day = date.day();
 
-        matches!(
-            (month, day),
-            (1, 1) |   // New Year's Day
-            (7, 4) |   // Independence Day
-            (12, 25) // Christmas Day
-        )
+        // New Year's Day, Independence Day, Christmas Day
+        matches!((month, day), (1, 1) | (7, 4) | (12, 25))
     }
 
     // Tokyo calendar holidays (simplified)
-    fn is_tokyo_holiday(&self, date: NaiveDate) -> bool {
+    fn is_tokyo_holiday(date: NaiveDate) -> bool {
         let month = date.month();
         let day = date.day();
 
-        matches!(
-            (month, day),
-            (1, 1) |   // New Year's Day
-            (1, 2) |   // Bank Holiday
-            (1, 3) // Bank Holiday
-        )
+        // Fixed holidays: New Year's Day, Bank Holidays (days 1-3 of January)
+        matches!((month, day), (1, 1..=3))
     }
 
     // London calendar holidays (simplified)
-    fn is_london_holiday(&self, date: NaiveDate) -> bool {
+    fn is_london_holiday(date: NaiveDate) -> bool {
         let month = date.month();
         let day = date.day();
 
-        matches!(
-            (month, day),
-            (1, 1) |   // New Year's Day
-            (12, 25) | // Christmas Day
-            (12, 26) // Boxing Day
-        )
+        // Fixed holidays: New Year's Day, Christmas Day, Boxing Day
+        matches!((month, day), (1, 1) | (12, 25 | 26))
     }
 }
 

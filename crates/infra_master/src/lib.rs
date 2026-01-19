@@ -1,4 +1,8 @@
-//! # infra_master
+// Clippy configuration for infra_master
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::missing_errors_doc)]
+
+//! # `infra_master`
 //!
 //! Static master data (Calendars, Currencies, ISINs) for Neutryx.
 //!

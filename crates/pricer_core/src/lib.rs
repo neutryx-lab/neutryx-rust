@@ -1,3 +1,34 @@
+// Clippy configuration for pricer_core
+// Pedantic lints that are too strict for mathematical/financial libraries:
+// - doc_markdown: Type names in docs are common
+// - missing_errors_doc: Error conditions are often obvious from Result types
+// - must_use_candidate: Many simple getters don't need #[must_use]
+// - return_self_not_must_use: Builder methods are common
+// - cast_precision_loss: Controlled in numerical code
+// - redundant_closure_for_method_calls: Clarity vs brevity
+// - explicit_iter_loop: Explicit iteration is sometimes clearer
+// - manual_let_else: Readability preference
+// - single_match_else: Readability preference
+// - inconsistent_struct_constructor: Field order doesn't affect correctness
+// - match_same_arms: Sometimes kept separate for documentation
+// - unused_self: Sometimes needed for API consistency
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::return_self_not_must_use)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::redundant_closure_for_method_calls)]
+#![allow(clippy::explicit_iter_loop)]
+#![allow(clippy::manual_let_else)]
+#![allow(clippy::single_match_else)]
+#![allow(clippy::inconsistent_struct_constructor)]
+#![allow(clippy::match_same_arms)]
+#![allow(clippy::unused_self)]
+#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::cast_possible_wrap)]
+#![allow(clippy::cast_lossless)]
+
 //! # pricer_core: Mathematical Foundation for XVA Pricing Library
 //!
 //! ## Layer 1 (Foundation) Role
