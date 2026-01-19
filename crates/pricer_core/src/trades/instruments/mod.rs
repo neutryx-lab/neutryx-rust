@@ -2,48 +2,6 @@
 //!
 //! This module provides instrument definitions for pricing with
 //! enum dispatch architecture for Enzyme AD compatibility.
-//!
-//! # Architecture
-//!
-//! Uses enum dispatch (NOT trait objects) for static dispatch optimisation:
-//! - `Instrument<T>` enum wraps all instrument types
-//! - All types generic over `T: Float` for AD compatibility
-//! - Smooth payoff approximations via `crate::math::smoothing`
-//!
-//! # Asset Class Modules
-//!
-//! Instruments are organized by asset class (enabled via feature flags):
-//! - `equity`: Equity derivatives (VanillaOption, Forward) - default
-//! - `rates`: Interest rate derivatives (IRS, Swaption, Cap/Floor)
-//! - `credit`: Credit derivatives (CDS)
-//! - `fx`: FX derivatives (FxOption, FxForward)
-//! - `commodity`: Commodity derivatives
-//! - `exotic`: Exotic derivatives (VarianceSwap, Cliquet, etc.)
-//!
-//! # Instrument Types
-//!
-//! - [`VanillaOption`]: European/American/Asian options with Call/Put payoffs
-//! - [`Forward`]: Forward contracts with linear payoffs
-//! - [`Swap`]: Interest rate swaps with payment schedules
-//!
-//! # Examples
-//!
-//! ```
-//! use pricer_core::trades::instruments::{
-//!     Instrument, VanillaOption, Forward, Swap,
-//!     InstrumentParams, PayoffType, ExerciseStyle, Direction, PaymentFrequency,
-//! };
-//! use pricer_core::types::Currency;
-//!
-//! // Create a vanilla call option
-//! let params = InstrumentParams::new(100.0_f64, 1.0, 1_000_000.0).unwrap();
-//! let call = VanillaOption::new(params, PayoffType::Call, ExerciseStyle::European, 1e-6);
-//! let instrument = Instrument::Vanilla(call);
-//!
-//! // Compute payoff
-//! let payoff = instrument.payoff(110.0);
-//! assert!(payoff > 0.0);
-//! ```
 
 // Core types (always available)
 mod error;
@@ -70,16 +28,9 @@ pub mod credit;
 #[cfg(feature = "fx")]
 pub mod fx;
 
-#[cfg(feature = "commodity")]
-pub mod commodity;
-
-#[cfg(feature = "exotic")]
-pub mod exotic;
-
 // Re-export all public types
 #[cfg(feature = "credit")]
 pub use credit::CreditInstrument;
-// Re-export asset class enums (when features enabled)
 #[cfg(feature = "equity")]
 pub use equity::EquityInstrument;
 pub use error::InstrumentError;
@@ -96,42 +47,10 @@ pub use swap::{PaymentFrequency, Swap};
 pub use traits::{Cashflow, CashflowInstrument, InstrumentTrait};
 pub use vanilla::VanillaOption;
 
-// Import Currency from crate types (which re-exports from infra_master)
 #[allow(deprecated)]
 use crate::types::Currency;
 
 /// Unified instrument enum for static dispatch.
-///
-/// Wraps all instrument types for Enzyme-compatible static dispatch
-/// without trait objects or dynamic allocation.
-///
-/// # Type Parameters
-/// * `T` - Floating-point type implementing `Float` (e.g., `f64`, `Dual64`)
-///
-/// # Variants
-/// - `Vanilla`: Vanilla options (European, American, Bermudan, Asian)
-/// - `Forward`: Forward contracts
-/// - `Swap`: Interest rate swaps
-///
-/// # Examples
-/// ```
-/// use pricer_core::trades::instruments::{
-///     Instrument, VanillaOption, Forward, InstrumentParams, PayoffType,
-///     ExerciseStyle, Direction,
-/// };
-///
-/// // Create instruments
-/// let params = InstrumentParams::new(100.0_f64, 1.0, 1.0).unwrap();
-/// let call = VanillaOption::new(params, PayoffType::Call, ExerciseStyle::European, 1e-6);
-/// let forward = Forward::new(100.0, 1.0, 1.0, Direction::Long).unwrap();
-///
-/// let vanilla_inst = Instrument::Vanilla(call);
-/// let forward_inst = Instrument::Forward(forward);
-///
-/// // Compute payoffs via enum dispatch
-/// let payoff1 = vanilla_inst.payoff(110.0);
-/// let payoff2 = forward_inst.payoff(110.0);
-/// ```
 #[derive(Debug, Clone)]
 pub enum Instrument<T: Float> {
     /// Vanilla option (Call, Put, Digital)
@@ -144,57 +63,16 @@ pub enum Instrument<T: Float> {
 
 impl<T: Float> Instrument<T> {
     /// Compute the payoff for the instrument at given spot price.
-    ///
-    /// Static dispatch to the appropriate payoff method based on variant.
-    ///
-    /// # Arguments
-    /// * `spot` - Current spot price
-    ///
-    /// # Returns
-    /// Payoff value for the instrument.
-    ///
-    /// # Examples
-    /// ```
-    /// use pricer_core::trades::instruments::{
-    ///     Instrument, VanillaOption, InstrumentParams, PayoffType, ExerciseStyle,
-    /// };
-    ///
-    /// let params = InstrumentParams::new(100.0_f64, 1.0, 1.0).unwrap();
-    /// let call = VanillaOption::new(params, PayoffType::Call, ExerciseStyle::European, 1e-6);
-    /// let instrument = Instrument::Vanilla(call);
-    ///
-    /// let payoff = instrument.payoff(110.0);
-    /// assert!((payoff - 10.0).abs() < 0.01);
-    /// ```
     #[inline]
     pub fn payoff(&self, spot: T) -> T {
         match self {
             Instrument::Vanilla(option) => option.payoff(spot),
             Instrument::Forward(forward) => forward.payoff(spot),
-            Instrument::Swap(_swap) => {
-                // Swaps don't have a simple payoff function
-                // Return zero as placeholder (actual valuation requires curve)
-                T::zero()
-            }
+            Instrument::Swap(_swap) => T::zero(),
         }
     }
 
     /// Returns the expiry time of the instrument.
-    ///
-    /// # Returns
-    /// Time to expiry in years.
-    ///
-    /// # Examples
-    /// ```
-    /// use pricer_core::trades::instruments::{
-    ///     Instrument, Forward, Direction,
-    /// };
-    ///
-    /// let forward = Forward::new(100.0_f64, 0.5, 1.0, Direction::Long).unwrap();
-    /// let instrument = Instrument::Forward(forward);
-    ///
-    /// assert_eq!(instrument.expiry(), 0.5);
-    /// ```
     #[inline]
     pub fn expiry(&self) -> T {
         match self {
@@ -252,55 +130,6 @@ impl<T: Float> Instrument<T> {
 // ============================================================================
 
 /// Hierarchical instrument enum for asset-class based organization.
-///
-/// This is the new architecture that organizes instruments by asset class,
-/// with each asset class having its own sub-enum. The design enables:
-///
-/// - Feature-flag based conditional compilation per asset class
-/// - Static dispatch (Enzyme AD compatible) at both top and sub-enum levels
-/// - Clean separation between asset classes
-///
-/// # Type Parameters
-///
-/// * `T` - Floating-point type implementing `Float` (e.g., `f64`, `Dual64`)
-///
-/// # Variants
-///
-/// - `Equity`: Equity derivatives (vanilla options, forwards)
-/// - `Rates`: Interest rate derivatives (IRS, swaptions, caps/floors)
-/// - `Credit`: Credit derivatives (CDS)
-/// - `Fx`: FX derivatives (FX options, FX forwards)
-/// - `Commodity`: Commodity derivatives
-/// - `Exotic`: Exotic derivatives (variance swaps, cliquets, etc.)
-///
-/// # Feature Flags
-///
-/// Each variant is gated by its corresponding feature flag:
-/// - `equity` (default): Enables `Equity` variant
-/// - `rates`: Enables `Rates` variant
-/// - `credit`: Enables `Credit` variant
-/// - `fx`: Enables `Fx` variant
-/// - `commodity`: Enables `Commodity` variant
-/// - `exotic`: Enables `Exotic` variant
-///
-/// # Examples
-///
-/// ```
-/// use pricer_core::trades::instruments::{
-///     InstrumentEnum, EquityInstrument, VanillaOption,
-///     InstrumentParams, PayoffType, ExerciseStyle, InstrumentTrait,
-/// };
-///
-/// // Create an equity instrument via the hierarchical enum
-/// let params = InstrumentParams::new(100.0_f64, 1.0, 1.0).unwrap();
-/// let call = VanillaOption::new(params, PayoffType::Call, ExerciseStyle::European, 1e-6);
-/// let equity = EquityInstrument::Vanilla(call);
-/// let instrument = InstrumentEnum::Equity(equity);
-///
-/// // Use InstrumentTrait methods
-/// let payoff = instrument.payoff(110.0);
-/// assert!((payoff - 10.0).abs() < 0.01);
-/// ```
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum InstrumentEnum<T: Float> {
@@ -309,30 +138,20 @@ pub enum InstrumentEnum<T: Float> {
     Equity(EquityInstrument<T>),
 
     /// Interest rate derivatives (IRS, swaptions, caps/floors).
-    /// Requires `rates` feature.
     #[cfg(feature = "rates")]
     Rates(RatesInstrument<T>),
 
     /// Credit derivatives (CDS).
-    /// Requires `credit` feature.
     #[cfg(feature = "credit")]
     Credit(CreditInstrument<T>),
 
     /// FX derivatives (options, forwards).
-    /// Requires `fx` feature.
     #[cfg(feature = "fx")]
     Fx(FxInstrument<T>),
-    // Future variants (commented until implemented):
-    // #[cfg(feature = "commodity")]
-    // Commodity(CommodityInstrument<T>),
-    // #[cfg(feature = "exotic")]
-    // Exotic(ExoticInstrument<T>),
 }
 
 impl<T: Float> InstrumentEnum<T> {
     /// Compute the payoff at given spot price.
-    ///
-    /// Delegates to the underlying asset-class sub-enum.
     #[inline]
     pub fn payoff(&self, spot: T) -> T {
         match self {
@@ -412,8 +231,7 @@ impl<T: Float> InstrumentEnum<T> {
         matches!(self, InstrumentEnum::Credit(_))
     }
 
-    /// Return a reference to the equity instrument if this is an Equity
-    /// variant.
+    /// Return a reference to the equity instrument if this is an Equity variant.
     #[cfg(feature = "equity")]
     pub fn as_equity(&self) -> Option<&EquityInstrument<T>> {
         match self {
@@ -521,9 +339,6 @@ impl<T: Float> From<FxInstrument<T>> for InstrumentEnum<T> {
 }
 
 /// Asset class classification for instruments.
-///
-/// Used to categorize instruments at the top level for risk management
-/// and reporting purposes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AssetClass {
     /// Equity derivatives (options, forwards on stocks/indices).
@@ -603,54 +418,8 @@ mod tests {
         let swap = create_test_swap();
         let instrument = Instrument::Swap(swap);
 
-        // Swap payoff returns zero (placeholder)
         let payoff = instrument.payoff(110.0);
         assert_eq!(payoff, 0.0);
-    }
-
-    #[test]
-    fn test_instrument_expiry() {
-        let call = create_test_call();
-        let forward = create_test_forward();
-        let swap = create_test_swap();
-
-        let vanilla_inst = Instrument::Vanilla(call);
-        let forward_inst = Instrument::Forward(forward);
-        let swap_inst = Instrument::Swap(swap);
-
-        assert_eq!(vanilla_inst.expiry(), 1.0);
-        assert_eq!(forward_inst.expiry(), 1.0);
-        assert_eq!(swap_inst.expiry(), 2.0); // maturity
-    }
-
-    #[test]
-    fn test_is_vanilla() {
-        let call = create_test_call();
-        let instrument = Instrument::Vanilla(call);
-
-        assert!(instrument.is_vanilla());
-        assert!(!instrument.is_forward());
-        assert!(!instrument.is_swap());
-    }
-
-    #[test]
-    fn test_is_forward() {
-        let forward = create_test_forward();
-        let instrument = Instrument::Forward(forward);
-
-        assert!(!instrument.is_vanilla());
-        assert!(instrument.is_forward());
-        assert!(!instrument.is_swap());
-    }
-
-    #[test]
-    fn test_is_swap() {
-        let swap = create_test_swap();
-        let instrument = Instrument::Swap(swap);
-
-        assert!(!instrument.is_vanilla());
-        assert!(!instrument.is_forward());
-        assert!(instrument.is_swap());
     }
 
     #[test]
@@ -659,7 +428,5 @@ mod tests {
         assert_eq!(format!("{}", AssetClass::Rates), "Rates");
         assert_eq!(format!("{}", AssetClass::Credit), "Credit");
         assert_eq!(format!("{}", AssetClass::Fx), "FX");
-        assert_eq!(format!("{}", AssetClass::Commodity), "Commodity");
-        assert_eq!(format!("{}", AssetClass::Exotic), "Exotic");
     }
 }

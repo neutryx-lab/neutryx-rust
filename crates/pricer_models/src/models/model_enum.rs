@@ -16,7 +16,7 @@
 //!
 //! ```
 //! use pricer_models::models::model_enum::StochasticModelEnum;
-//! use pricer_models::models::gbm::{GBMModel, GBMParams};
+//! use pricer_models::models::{GBMModel, GBMParams};
 //!
 //! // Create a GBM model wrapped in the enum
 //! let model = StochasticModelEnum::<f64>::gbm();
@@ -32,12 +32,14 @@ use pricer_core::traits::Float;
 // Import rate models when rates feature is enabled
 #[cfg(feature = "rates")]
 use super::rates::{CIRModel, CIRParams, HullWhiteModel, HullWhiteParams};
-use super::{
+// Import equity models from equity/ submodule
+#[cfg(feature = "equity")]
+use super::equity::{
     gbm::{GBMModel, GBMParams},
     heston::{HestonModel, HestonParams},
     sabr::{SABRModel, SABRParams},
-    stochastic::{SingleState, StochasticState, TwoFactorState},
 };
+use super::stochastic::{SingleState, StochasticState, TwoFactorState};
 
 /// Unified state type for all models.
 ///

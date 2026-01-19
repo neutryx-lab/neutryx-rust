@@ -19,7 +19,7 @@
 
 use pricer_core::traits::{priceable::Differentiable, Float};
 
-use super::stochastic::{SingleState, StochasticModel};
+use crate::models::stochastic::{SingleState, StochasticModel};
 
 /// GBM model parameters.
 #[derive(Clone, Copy, Debug, PartialEq)]

@@ -31,6 +31,7 @@
 #![allow(clippy::manual_is_power_of_two)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::single_match_else)]
+#![allow(clippy::format_push_string)]
 
 //! # Pricer Engine (Layer 3: AD Engine)
 //!

@@ -21,6 +21,7 @@
 #![allow(clippy::redundant_closure_for_method_calls)]
 #![allow(clippy::if_not_else)]
 #![allow(clippy::missing_panics_doc)]
+#![allow(clippy::struct_field_names)]
 
 //! # Pricer Models (L2: Business Logic)
 //!

@@ -22,7 +22,7 @@
 //! ## 使用例
 //!
 //! ```
-//! use pricer_models::models::sabr::{SABRParams, SABRError};
+//! use pricer_models::models::{SABRParams, SABRError};
 //!
 //! // パラメータを作成
 //! let params = SABRParams::new(
@@ -68,7 +68,7 @@ use crate::models::stochastic::{StochasticModel, TwoFactorState};
 /// # 例
 ///
 /// ```
-/// use pricer_models::models::sabr::SABRError;
+/// use pricer_models::models::SABRError;
 ///
 /// let err = SABRError::InvalidAlpha(-0.1);
 /// assert!(format!("{}", err).contains("-0.1"));
@@ -144,7 +144,7 @@ pub enum SABRError {
 /// # 例
 ///
 /// ```
-/// use pricer_models::models::sabr::SABRParams;
+/// use pricer_models::models::SABRParams;
 ///
 /// let params = SABRParams::new(100.0, 0.2, 0.4, -0.3, 0.5, 1.0);
 /// assert!(params.is_ok());
@@ -188,7 +188,7 @@ impl<T: Float> SABRParams<T> {
     /// # 例
     ///
     /// ```
-    /// use pricer_models::models::sabr::SABRParams;
+    /// use pricer_models::models::SABRParams;
     ///
     /// // 有効なパラメータ
     /// let params = SABRParams::new(100.0, 0.2, 0.4, -0.3, 0.5, 1.0);
@@ -370,7 +370,7 @@ impl<T: Float> SABRParams<T> {
 /// # 例
 ///
 /// ```
-/// use pricer_models::models::sabr::{SABRModel, SABRParams};
+/// use pricer_models::models::{SABRModel, SABRParams};
 ///
 /// let params = SABRParams::new(100.0, 0.2, 0.4, -0.3, 0.5, 1.0).unwrap();
 /// let model = SABRModel::new(params).unwrap();
@@ -740,7 +740,7 @@ impl<T: Float> SABRModel<T> {
     /// # 例
     ///
     /// ```
-    /// use pricer_models::models::sabr::{SABRModel, SABRParams};
+    /// use pricer_models::models::{SABRModel, SABRParams};
     ///
     /// let params = SABRParams::new(100.0, 0.2, 0.4, -0.3, 0.5, 1.0).unwrap();
     /// let model = SABRModel::new(params).unwrap();
@@ -938,7 +938,7 @@ impl<T: Float> SABRModel<T> {
 /// # 使用例
 ///
 /// ```
-/// use pricer_models::models::sabr::{SABRModel, SABRParams};
+/// use pricer_models::models::{SABRModel, SABRParams};
 /// use pricer_core::traits::priceable::Differentiable;
 ///
 /// let params = SABRParams::new(100.0, 0.2, 0.4, -0.3, 0.5, 1.0).unwrap();

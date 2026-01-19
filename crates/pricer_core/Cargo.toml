@@ -25,10 +25,21 @@ name = "core"
 harness = false
 
 [features]
-default = ["num-dual-mode", "serde"]
+default = ["num-dual-mode", "serde", "equity"]
 num-dual-mode = ["dep:num-dual"]  # Verification mode with dual numbers
 enzyme-mode = []                   # Production mode (Enzyme AD)
 serde = ["dep:serde", "chrono/serde", "infra_master/serde"]  # Serialisation support
+
+# Asset class features (trades/instruments)
+equity = []      # Equity derivatives (VanillaOption, Forward) - default
+rates = []       # Interest rate derivatives (IRS, Swaption, Cap/Floor)
+credit = []      # Credit derivatives (CDS)
+fx = []          # FX derivatives (FxOption, FxForward)
+commodity = []   # Commodity derivatives
+exotic = ["equity"]  # Exotic products (typically extend equity)
+
+# Convenience feature for all asset classes
+all = ["equity", "rates", "credit", "fx", "commodity", "exotic"]
 
 [lints]
 workspace = true

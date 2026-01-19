@@ -31,7 +31,7 @@
 //! ## 使用例
 //!
 //! ```
-//! use pricer_models::models::heston::{HestonParams, HestonError};
+//! use pricer_models::models::{HestonParams, HestonError};
 //!
 //! // パラメータを作成
 //! let params = HestonParams::new(
@@ -79,7 +79,7 @@ use thiserror::Error;
 /// # 例
 ///
 /// ```
-/// use pricer_models::models::heston::HestonError;
+/// use pricer_models::models::HestonError;
 ///
 /// let err = HestonError::InvalidSpot(-100.0);
 /// assert!(format!("{}", err).contains("-100"));
@@ -153,7 +153,7 @@ pub enum HestonError {
 /// # 例
 ///
 /// ```
-/// use pricer_models::models::heston::HestonParams;
+/// use pricer_models::models::HestonParams;
 ///
 /// let params = HestonParams::new(
 ///     100.0, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0
@@ -206,7 +206,7 @@ impl<T: Float> HestonParams<T> {
     /// # 例
     ///
     /// ```
-    /// use pricer_models::models::heston::HestonParams;
+    /// use pricer_models::models::HestonParams;
     ///
     /// // 有効なパラメータ
     /// let params = HestonParams::new(100.0, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0);
@@ -359,7 +359,7 @@ impl<T: Float> HestonParams<T> {
     /// # 例
     ///
     /// ```
-    /// use pricer_models::models::heston::HestonParams;
+    /// use pricer_models::models::HestonParams;
     ///
     /// // Feller条件を満たすパラメータ: 2 * 1.5 * 0.04 = 0.12 > 0.3^2 = 0.09
     /// let params = HestonParams::new(100.0, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0).unwrap();
@@ -446,7 +446,7 @@ impl<T: Float> Default for HestonParams<T> {
 /// # 例
 ///
 /// ```
-/// use pricer_models::models::heston::{HestonModel, HestonParams};
+/// use pricer_models::models::{HestonModel, HestonParams};
 ///
 /// let params = HestonParams::new(
 ///     100.0,  // スポット価格
@@ -500,7 +500,7 @@ impl<T: Float> HestonModel<T> {
     /// # 例
     ///
     /// ```
-    /// use pricer_models::models::heston::{HestonModel, HestonParams};
+    /// use pricer_models::models::{HestonModel, HestonParams};
     ///
     /// let params = HestonParams::new(100.0, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0).unwrap();
     /// let model = HestonModel::new(params);
@@ -561,7 +561,7 @@ impl<T: Float> HestonModel<T> {
     /// # 例
     ///
     /// ```
-    /// use pricer_models::models::heston::{HestonModel, HestonParams};
+    /// use pricer_models::models::{HestonModel, HestonParams};
     ///
     /// // Feller条件を満たすパラメータ
     /// let params = HestonParams::new(100.0, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0).unwrap();
@@ -896,7 +896,7 @@ impl<T: Float> HestonModel<T> {
     ///
     /// # Example
     /// ```
-    /// use pricer_models::models::heston::{HestonModel, HestonParams};
+    /// use pricer_models::models::{HestonModel, HestonParams};
     ///
     /// let params = HestonParams::new(100.0, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0).unwrap();
     /// let model = HestonModel::new(params).unwrap();
@@ -1009,7 +1009,7 @@ impl<T: Float> Differentiable for HestonModel<T> {}
 // Task 3.4: StochasticModelトレイト実装
 // ================================================================
 
-use super::stochastic::{StochasticModel, TwoFactorState};
+use crate::models::stochastic::{StochasticModel, TwoFactorState};
 
 /// HestonModelのStochasticModelトレイト実装
 ///
@@ -1028,7 +1028,7 @@ use super::stochastic::{StochasticModel, TwoFactorState};
 /// # 使用例
 ///
 /// ```
-/// use pricer_models::models::heston::{HestonModel, HestonParams};
+/// use pricer_models::models::{HestonModel, HestonParams};
 /// use pricer_models::models::stochastic::StochasticModel;
 ///
 /// let params = HestonParams::new(100.0, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0).unwrap();
@@ -1171,6 +1171,7 @@ impl From<HestonError> for pricer_core::types::PricingError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::stochastic::StochasticState;
 
     // ================================================================
     // Task 3.1: HestonParams構造体とエラー型のテスト (TDD)
@@ -2182,7 +2183,7 @@ mod tests {
     // Task 3.4: StochasticModelトレイト実装のテスト (TDD - RED phase)
     // ================================================================
 
-    use super::super::stochastic::{StochasticModel, StochasticState, TwoFactorState};
+    use crate::models::stochastic::{StochasticModel, TwoFactorState};
 
     // テスト: State型が(T, T)として定義されている
     #[test]
