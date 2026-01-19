@@ -1051,7 +1051,7 @@ dependencies = [
  "frictional_bank",
  "futures",
  "open",
- "pricer_optimiser",
+ "pricer_core",
  "pricer_pricing",
  "ratatui",
  "reqwest",
@@ -1345,7 +1345,6 @@ dependencies = [
  "demo_outputs",
  "pricer_core",
  "pricer_models",
- "pricer_optimiser",
  "pricer_pricing",
  "pricer_risk",
  "serde",
@@ -2922,24 +2921,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pricer_optimiser"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "approx",
- "chrono",
- "criterion",
- "num-dual",
- "num-traits",
- "pricer_core",
- "pricer_models",
- "proptest",
- "rayon",
- "serde",
- "thiserror 2.0.17",
-]
-
-[[package]]
 name = "pricer_pricing"
 version = "0.1.0"
 dependencies = [
@@ -2967,7 +2948,6 @@ dependencies = [
  "criterion",
  "pricer_core",
  "pricer_models",
- "pricer_optimiser",
  "pricer_pricing",
  "rayon",
  "serde",
@@ -3791,7 +3771,6 @@ dependencies = [
  "num_cpus",
  "pricer_core",
  "pricer_models",
- "pricer_optimiser",
  "pricer_pricing",
  "pricer_risk",
  "rayon",
@@ -3814,7 +3793,6 @@ dependencies = [
  "infra_store",
  "pricer_core",
  "pricer_models",
- "pricer_optimiser",
  "pricer_pricing",
  "pricer_risk",
  "prost",
@@ -3840,7 +3818,6 @@ dependencies = [
  "num-traits",
  "pricer_core",
  "pricer_models",
- "pricer_optimiser",
  "pricer_pricing",
  "pricer_risk",
  "pyo3",

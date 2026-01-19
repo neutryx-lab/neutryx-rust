@@ -59,12 +59,12 @@
   - market_data/mod.rs に bootstrapping モジュールを追加する ✓
   - _Requirements: 1.1, 4.1, 4.2, 4.3_
 
-- [ ] 2.2 (P) provider を pricer_core/market_data に移動する
-  - pricer_optimiser/src/provider.rs を pricer_core/src/market_data/provider.rs にコピーする
-  - 内部の import を `crate::` に変更する
-  - MarketProvider が CurveEnum<T>, VolSurfaceEnum<T> を使用するよう調整する
-  - market_data/mod.rs に provider モジュールを追加する
-  - **Note**: provider.rs は pricer_models::demo に依存しているため、pricer_core の型を使うよう変更が必要
+- [x] 2.2 (P) provider を pricer_core/market_data に移動する
+  - pricer_optimiser/src/provider.rs を pricer_core/src/market_data/provider.rs にコピーする ✓
+  - 内部の import を `crate::` に変更する ✓
+  - MarketProvider が CurveEnum<f64>, VolSurfaceEnum<f64> を使用するよう調整する ✓
+  - market_data/mod.rs に provider モジュールを追加する ✓
+  - pricer_optimiser/provider.rs は pricer_core から re-export する形に変更 ✓
   - _Requirements: 1.4_
 
 - [x] 2.3 bootstrapping 移動後のビルドとテストを検証する

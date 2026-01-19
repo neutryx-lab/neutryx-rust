@@ -22,7 +22,7 @@
 //!
 //! ```rust,ignore
 //! use pricer_risk::demo::{DemoTrade, run_portfolio_pricing};
-//! use pricer_optimiser::provider::MarketProvider;
+//! use pricer_core::market_data::provider::MarketProvider;
 //!
 //! let market = MarketProvider::new();
 //! let trades = vec![
@@ -33,11 +33,114 @@
 //! run_portfolio_pricing(&trades, &market);
 //! ```
 
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
+
 use pricer_core::types::Currency;
-use pricer_models::demo::{BlackScholes, CmsSwap, InstrumentEnum, ModelEnum, VanillaSwap};
-use pricer_optimiser::provider::MarketProvider;
+use pricer_models::demo::{
+    BlackScholes, CmsSwap, CurveEnum, FlatCurve, InstrumentEnum, ModelEnum, SabrVolSurface,
+    VanillaSwap, VolSurfaceEnum,
+};
 use pricer_pricing::context::{price_single_trade, PricingContext};
 use rayon::prelude::*;
+
+/// Market data provider for demo purposes.
+///
+/// This provider returns `pricer_models::demo` types which are compatible
+/// with `PricingContext`. For the generic market data types, use
+/// `pricer_core::market_data::provider::MarketProvider` instead.
+pub struct MarketProvider {
+    /// Cache for yield curves, keyed by currency.
+    curve_cache: RwLock<HashMap<Currency, Arc<CurveEnum>>>,
+    /// Cache for volatility surfaces, keyed by currency.
+    vol_cache: RwLock<HashMap<Currency, Arc<VolSurfaceEnum>>>,
+}
+
+impl MarketProvider {
+    /// Creates a new `MarketProvider` with empty caches.
+    pub fn new() -> Self {
+        Self {
+            curve_cache: RwLock::new(HashMap::new()),
+            vol_cache: RwLock::new(HashMap::new()),
+        }
+    }
+
+    /// Retrieves or constructs the yield curve for the given currency.
+    #[allow(clippy::unwrap_used)]
+    pub fn get_curve(&self, ccy: Currency) -> Arc<CurveEnum> {
+        // Fast path: read lock check
+        {
+            let cache = self.curve_cache.read().unwrap();
+            if let Some(curve) = cache.get(&ccy) {
+                return Arc::clone(curve);
+            }
+        }
+
+        // Slow path: write lock with double-check
+        let mut cache = self.curve_cache.write().unwrap();
+
+        if let Some(curve) = cache.get(&ccy) {
+            return Arc::clone(curve);
+        }
+
+        println!("[Demo] Bootstrapping Yield Curve for {}...", ccy);
+
+        let rate = match ccy {
+            Currency::USD => 0.05,
+            Currency::EUR => 0.03,
+            Currency::GBP => 0.04,
+            Currency::JPY => 0.01,
+            Currency::CHF => 0.02,
+            _ => 0.03,
+        };
+
+        let curve = Arc::new(CurveEnum::Flat(FlatCurve { rate }));
+        cache.insert(ccy, Arc::clone(&curve));
+        curve
+    }
+
+    /// Retrieves or constructs the volatility surface for the given currency.
+    #[allow(clippy::unwrap_used)]
+    pub fn get_vol(&self, ccy: Currency) -> Arc<VolSurfaceEnum> {
+        // Fast path: read lock check
+        {
+            let cache = self.vol_cache.read().unwrap();
+            if let Some(vol) = cache.get(&ccy) {
+                return Arc::clone(vol);
+            }
+        }
+
+        // Slow path: write lock with double-check
+        let mut cache = self.vol_cache.write().unwrap();
+
+        if let Some(vol) = cache.get(&ccy) {
+            return Arc::clone(vol);
+        }
+
+        println!("[Demo] Calibrating SABR Surface for {}...", ccy);
+
+        let alpha = match ccy {
+            Currency::USD => 0.3,
+            Currency::EUR => 0.25,
+            Currency::GBP => 0.28,
+            Currency::JPY => 0.2,
+            Currency::CHF => 0.22,
+            _ => 0.25,
+        };
+
+        let vol = Arc::new(VolSurfaceEnum::Sabr(SabrVolSurface { alpha }));
+        cache.insert(ccy, Arc::clone(&vol));
+        vol
+    }
+}
+
+impl Default for MarketProvider {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 /// Simplified trade structure for demonstration.
 ///

@@ -22,7 +22,7 @@ use demo_outputs::prelude::WebSocketSink;
 use demo_outputs::risk_dashboard::{MetricType, MetricUpdate};
 use pricer_core::types::Currency;
 use pricer_models::demo::{BlackScholes, InstrumentEnum, ModelEnum, VanillaSwap};
-use pricer_optimiser::provider::MarketProvider;
+use pricer_core::market_data::provider::MarketProvider;
 use pricer_risk::demo::{run_portfolio_pricing_sequential, DemoTrade};
 
 use super::{DemoWorkflow, ProgressCallback, WorkflowResult, WorkflowStep};

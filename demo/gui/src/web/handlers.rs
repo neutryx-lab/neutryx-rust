@@ -8,7 +8,7 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use pricer_optimiser::bootstrapping::{
+use pricer_core::market_data::bootstrapping::{
     BootstrapError, BootstrapInstrument, GenericBootstrapConfig, SequentialBootstrapper,
 };
 use serde::{Deserialize, Serialize};
