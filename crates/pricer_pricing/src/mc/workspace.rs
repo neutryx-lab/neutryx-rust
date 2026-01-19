@@ -156,7 +156,7 @@ impl PathWorkspace {
     /// avoiding any initialisation overhead.
     ///
     /// This is the fastest reset option when dimensions remain constant
-    /// across simulation runs, achieving true zero-allocation behavior.
+    /// across simulation runs, achieving true zero-allocation behaviour.
     ///
     /// # Performance
     ///

@@ -21,6 +21,8 @@ pub fn run(report_type: &str, portfolio: &str, output_dir: &str) -> Result<()> {
     // Create output directory if it doesn't exist
     std::fs::create_dir_all(output_dir)?;
 
+    // Stub: portfolio loading and pricer_risk report generation pending.
+
     match report_type {
         "xva" => {
             info!("Generating XVA report...");

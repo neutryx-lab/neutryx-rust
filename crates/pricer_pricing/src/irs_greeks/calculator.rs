@@ -335,6 +335,8 @@ impl IrsGreeksCalculator<f64> {
     ) -> Result<IrsDeltaResult<f64>, IrsGreeksError> {
         #[cfg(feature = "enzyme-ad")]
         {
+            // Enzyme AAD: #[autodiff_reverse] on pricing function computes all
+            // tenor Deltas in a single reverse pass. Fallback until integration complete.
             self.compute_tenor_deltas_bump(swap, curves, valuation_date, tenor_points, 0.0001)
         }
 

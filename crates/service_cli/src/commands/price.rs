@@ -19,6 +19,9 @@ pub fn run(portfolio: &str, date: Option<&str>, num_paths: usize, format: &str) 
         return Err(CliError::FileNotFound(portfolio.to_string()));
     }
 
+    // Stub: portfolio loading, market data, and pricing integration pending.
+    // Current implementation outputs format template only.
+
     match format {
         "json" => {
             info!("Outputting results as JSON...");

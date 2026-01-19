@@ -742,6 +742,8 @@ impl XvaDemoRunner {
     ) -> Result<(Vec<f64>, u64), XvaDemoError> {
         #[cfg(feature = "enzyme-ad")]
         {
+            // Enzyme AAD for XVA: requires #[autodiff] macro integration.
+            // Fallback to bump-and-revalue until nightly toolchain stabilises.
             self.compute_xva_sensitivities_bump(
                 swap,
                 curves,

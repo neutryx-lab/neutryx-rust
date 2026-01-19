@@ -108,6 +108,9 @@ pub async fn health() -> Json<HealthResponse> {
 pub async fn price_instrument(
     Json(request): Json<PriceRequest>,
 ) -> Result<Json<PriceResponse>, ServerError> {
+    // Placeholder implementation using inline Black-Scholes.
+    // Production: integrate pricer_pricing for full model support.
+
     let price = match request.instrument_type.as_str() {
         "vanilla_option" | "european_option" => {
             // Black-Scholes placeholder
@@ -168,6 +171,9 @@ pub async fn price_portfolio(
 pub async fn calibrate(
     Json(request): Json<CalibrateRequest>,
 ) -> Result<Json<CalibrateResponse>, ServerError> {
+    // Placeholder returning hardcoded parameters.
+    // Production: integrate pricer_optimiser for market-data-driven calibration.
+
     match request.model_type.as_str() {
         "hull-white" => Ok(Json(CalibrateResponse {
             model_type: "hull-white".to_string(),
@@ -197,6 +203,9 @@ pub async fn calibrate(
 pub async fn calculate_exposure(
     Json(request): Json<ExposureRequest>,
 ) -> Result<Json<ExposureResponse>, ServerError> {
+    // Placeholder returning zero exposure profiles.
+    // Production: integrate pricer_risk for Monte Carlo simulation.
+
     let num_times = request.time_grid.len();
 
     Ok(Json(ExposureResponse {

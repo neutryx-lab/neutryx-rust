@@ -62,9 +62,10 @@ async fn main() -> Result<()> {
         axum::serve(listener, app).await?;
     }
 
+    // gRPC server requires tonic integration (feature-gated).
     #[cfg(feature = "grpc")]
     if config.grpc_enabled {
-        info!("gRPC server not yet implemented");
+        info!("gRPC server: feature enabled but implementation pending");
     }
 
     Ok(())

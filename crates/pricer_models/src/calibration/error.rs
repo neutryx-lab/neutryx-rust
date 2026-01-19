@@ -15,7 +15,7 @@ use thiserror::Error;
 /// Supports multiple error scenarios with diagnostic information.
 #[derive(Error, Debug, Clone)]
 pub enum CalibrationError {
-    /// Convergence failure - optimizer did not converge
+    /// Convergence failure - optimiser did not converge
     ///
     /// Contains iteration count and final residual for diagnostics.
     #[error(
@@ -165,7 +165,7 @@ impl CalibrationError {
     /// Check if this is a recoverable error.
     ///
     /// Recoverable errors might succeed with different initial parameters
-    /// or optimizer settings.
+    /// or optimiser settings.
     pub fn is_recoverable(&self) -> bool {
         matches!(
             self,

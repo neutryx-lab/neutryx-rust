@@ -211,7 +211,7 @@ unsafe impl<T: Float + Send + Sync> Sync for ThreadLocalWorkspacePool<T> {}
 
 /// Factory trait for creating workspaces.
 ///
-/// Implement this trait to customize workspace initialisation.
+/// Implement this trait to customise workspace initialisation.
 pub trait WorkspaceFactory<T: Float>: Send + Sync {
     /// Creates a new workspace with the given capacity.
     fn create(&self, n_paths: usize, n_steps: usize) -> CheckpointWorkspace<T>;

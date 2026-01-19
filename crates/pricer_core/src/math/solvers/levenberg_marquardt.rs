@@ -128,7 +128,7 @@ impl LMConfig {
 /// Result of Levenberg-Marquardt optimisation.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LMResult {
-    /// Final optimized parameters.
+    /// Final optimised parameters.
     pub params: Vec<f64>,
     /// Final residual sum of squares.
     pub residual_ss: f64,
@@ -227,7 +227,7 @@ impl LevenbergMarquardtSolver {
     ///
     /// # Returns
     ///
-    /// * `Ok(LMResult)` - Optimization result with final parameters
+    /// * `Ok(LMResult)` - Optimisation result with final parameters
     /// * `Err(SolverError)` - If optimisation fails
     pub fn solve<F>(&self, residuals: F, initial_params: Vec<f64>) -> Result<LMResult, SolverError>
     where

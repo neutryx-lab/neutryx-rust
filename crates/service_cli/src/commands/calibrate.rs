@@ -18,6 +18,8 @@ pub fn run(market_data: &str, model_type: &str, output: Option<&str>) -> Result<
         return Err(CliError::FileNotFound(market_data.to_string()));
     }
 
+    // Stub: market data loading and pricer_optimiser calibration pending.
+
     match model_type {
         "hull-white" => {
             info!("Calibrating Hull-White model...");
@@ -38,6 +40,7 @@ pub fn run(market_data: &str, model_type: &str, output: Option<&str>) -> Result<
 
     if let Some(output_path) = output {
         info!("Writing calibrated parameters to: {}", output_path);
+        // Stub: parameter serialisation pending.
     }
 
     info!("Calibration complete");
