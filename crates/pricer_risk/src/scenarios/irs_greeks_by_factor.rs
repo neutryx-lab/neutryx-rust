@@ -9,14 +9,19 @@
 //! - Requirement 1.3: Risk factor identification and classification.
 //! - Requirement 1.6: NaN/Inf detection and error handling.
 
-use super::{GreeksResultByFactor, RiskFactorId};
-use pricer_core::market_data::curves::{CurveEnum, CurveName, CurveSet, YieldCurve};
-use pricer_core::types::time::Date;
+use std::{collections::HashMap, time::Instant};
+
+use pricer_core::{
+    market_data::curves::{CurveEnum, CurveName, CurveSet, YieldCurve},
+    types::time::Date,
+};
 use pricer_models::instruments::rates::{price_irs, InterestRateSwap};
-use pricer_pricing::greeks::{GreeksMode, GreeksResult};
-use pricer_pricing::irs_greeks::{IrsGreeksCalculator, IrsGreeksConfig, IrsGreeksError};
-use std::collections::HashMap;
-use std::time::Instant;
+use pricer_pricing::{
+    greeks::{GreeksMode, GreeksResult},
+    irs_greeks::{IrsGreeksCalculator, IrsGreeksConfig, IrsGreeksError},
+};
+
+use super::{GreeksResultByFactor, RiskFactorId};
 
 /// Error types for factor-based Greeks calculation.
 #[derive(Debug, thiserror::Error)]
@@ -63,9 +68,7 @@ impl Default for GreeksByFactorConfig {
 
 impl GreeksByFactorConfig {
     /// Creates a new configuration with default settings.
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Sets whether to validate results for NaN/Inf.
     pub fn with_validation(mut self, validate: bool) -> Self {
@@ -114,9 +117,7 @@ impl IrsGreeksByFactorCalculator {
     }
 
     /// Returns a reference to the configuration.
-    pub fn config(&self) -> &GreeksByFactorConfig {
-        &self.config
-    }
+    pub fn config(&self) -> &GreeksByFactorConfig { &self.config }
 
     /// Validates a computed value for NaN/Inf.
     fn validate_value(
@@ -349,11 +350,13 @@ impl IrsGreeksByFactorCalculator {
 
 #[cfg(test)]
 mod tests {
+    use pricer_core::types::{time::DayCountConvention, Currency};
+    use pricer_models::{
+        instruments::rates::{FixedLeg, FloatingLeg, RateIndex, SwapDirection},
+        schedules::{Frequency, ScheduleBuilder},
+    };
+
     use super::*;
-    use pricer_core::types::time::DayCountConvention;
-    use pricer_core::types::Currency;
-    use pricer_models::instruments::rates::{FixedLeg, FloatingLeg, RateIndex, SwapDirection};
-    use pricer_models::schedules::{Frequency, ScheduleBuilder};
 
     // ================================================================
     // Task 1.3: IrsGreeksByFactorCalculator tests (TDD - RED phase)

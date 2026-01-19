@@ -3,8 +3,7 @@
 //! This module provides counterparty definitions with credit risk parameters
 //! for CVA/DVA calculations.
 
-use super::error::PortfolioError;
-use super::ids::CounterpartyId;
+use super::{error::PortfolioError, ids::CounterpartyId};
 
 /// Credit rating enum following standard rating agencies.
 ///
@@ -151,27 +150,19 @@ impl CreditParams {
 
     /// Returns the hazard rate.
     #[inline]
-    pub fn hazard_rate(&self) -> f64 {
-        self.hazard_rate
-    }
+    pub fn hazard_rate(&self) -> f64 { self.hazard_rate }
 
     /// Returns the Loss Given Default.
     #[inline]
-    pub fn lgd(&self) -> f64 {
-        self.lgd
-    }
+    pub fn lgd(&self) -> f64 { self.lgd }
 
     /// Returns the recovery rate (1 - LGD).
     #[inline]
-    pub fn recovery_rate(&self) -> f64 {
-        1.0 - self.lgd
-    }
+    pub fn recovery_rate(&self) -> f64 { 1.0 - self.lgd }
 
     /// Returns the credit rating if set.
     #[inline]
-    pub fn rating(&self) -> Option<CreditRating> {
-        self.rating
-    }
+    pub fn rating(&self) -> Option<CreditRating> { self.rating }
 
     /// Computes the survival probability to time t.
     ///
@@ -191,9 +182,7 @@ impl CreditParams {
     /// assert!((surv_1y - 0.9802).abs() < 0.001);
     /// ```
     #[inline]
-    pub fn survival_prob(&self, t: f64) -> f64 {
-        (-self.hazard_rate * t).exp()
-    }
+    pub fn survival_prob(&self, t: f64) -> f64 { (-self.hazard_rate * t).exp() }
 
     /// Computes the default probability to time t.
     ///
@@ -203,9 +192,7 @@ impl CreditParams {
     ///
     /// * `t` - Time in years
     #[inline]
-    pub fn default_prob(&self, t: f64) -> f64 {
-        1.0 - self.survival_prob(t)
-    }
+    pub fn default_prob(&self, t: f64) -> f64 { 1.0 - self.survival_prob(t) }
 
     /// Computes the marginal default probability between times t1 and t2.
     ///
@@ -264,51 +251,38 @@ impl Counterparty {
 
     /// Returns the counterparty ID.
     #[inline]
-    pub fn id(&self) -> &CounterpartyId {
-        &self.id
-    }
+    pub fn id(&self) -> &CounterpartyId { &self.id }
 
     /// Returns the counterparty name if set.
     #[inline]
-    pub fn name(&self) -> Option<&str> {
-        self.name.as_deref()
-    }
+    pub fn name(&self) -> Option<&str> { self.name.as_deref() }
 
     /// Returns the credit parameters.
     #[inline]
-    pub fn credit_params(&self) -> &CreditParams {
-        &self.credit_params
-    }
+    pub fn credit_params(&self) -> &CreditParams { &self.credit_params }
 
     /// Convenience method: survival probability to time t.
     #[inline]
-    pub fn survival_prob(&self, t: f64) -> f64 {
-        self.credit_params.survival_prob(t)
-    }
+    pub fn survival_prob(&self, t: f64) -> f64 { self.credit_params.survival_prob(t) }
 
     /// Convenience method: default probability to time t.
     #[inline]
-    pub fn default_prob(&self, t: f64) -> f64 {
-        self.credit_params.default_prob(t)
-    }
+    pub fn default_prob(&self, t: f64) -> f64 { self.credit_params.default_prob(t) }
 
     /// Convenience method: Loss Given Default.
     #[inline]
-    pub fn lgd(&self) -> f64 {
-        self.credit_params.lgd()
-    }
+    pub fn lgd(&self) -> f64 { self.credit_params.lgd() }
 
     /// Convenience method: recovery rate.
     #[inline]
-    pub fn recovery_rate(&self) -> f64 {
-        self.credit_params.recovery_rate()
-    }
+    pub fn recovery_rate(&self) -> f64 { self.credit_params.recovery_rate() }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     #[test]
     fn test_credit_rating_investment_grade() {

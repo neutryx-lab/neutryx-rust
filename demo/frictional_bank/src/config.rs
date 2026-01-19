@@ -3,8 +3,9 @@
 //! Handles loading and management of demo configuration from TOML files
 //! with environment variable override support.
 
-use serde::Deserialize;
 use std::path::{Path, PathBuf};
+
+use serde::Deserialize;
 
 /// Demo operation mode
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
@@ -19,9 +20,7 @@ pub enum DemoMode {
 }
 
 impl Default for DemoMode {
-    fn default() -> Self {
-        Self::Quick
-    }
+    fn default() -> Self { Self::Quick }
 }
 
 /// Demo configuration
@@ -47,17 +46,11 @@ pub struct DemoConfig {
     pub gateway_url: String,
 }
 
-fn default_data_dir() -> PathBuf {
-    PathBuf::from("demo/data")
-}
+fn default_data_dir() -> PathBuf { PathBuf::from("demo/data") }
 
-fn default_log_level() -> String {
-    "info".to_string()
-}
+fn default_log_level() -> String { "info".to_string() }
 
-fn default_gateway_url() -> String {
-    "http://localhost:8080".to_string()
-}
+fn default_gateway_url() -> String { "http://localhost:8080".to_string() }
 
 impl Default for DemoConfig {
     fn default() -> Self {

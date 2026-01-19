@@ -71,3 +71,6 @@ validator = { version = "0.19", features = ["derive"] }
 
 [dev-dependencies]
 tokio-test = "0.4"
+
+[lints]
+workspace = true

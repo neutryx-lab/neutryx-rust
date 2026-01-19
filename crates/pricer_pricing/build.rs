@@ -5,12 +5,14 @@
 //! # Environment Variables
 //!
 //! - `LLVM_CONFIG`: Path to llvm-config binary (optional, auto-detected)
-//! - `ENZYME_LIB`: Path to LLVMEnzyme-18.so plugin (required for enzyme-ad feature)
+//! - `ENZYME_LIB`: Path to LLVMEnzyme-18.so plugin (required for enzyme-ad
+//!   feature)
 //!
 //! # Phase 3.0
 //!
 //! This build script provides validation and guidance but does not block builds
-//! when LLVM/Enzyme are not available. Phase 4 will require full Enzyme integration.
+//! when LLVM/Enzyme are not available. Phase 4 will require full Enzyme
+//! integration.
 
 #[cfg(feature = "enzyme-ad")]
 use std::{env, process::Command};

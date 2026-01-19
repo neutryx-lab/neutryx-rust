@@ -1,7 +1,10 @@
 //! TUI Application state and event handling.
 
-use crate::api_client::ApiClient;
-use crate::screens;
+use std::{
+    io::{self, Stdout},
+    time::Duration,
+};
+
 use anyhow::Result;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind},
@@ -12,8 +15,8 @@ use ratatui::{
     prelude::*,
     widgets::{Block, Borders, Paragraph},
 };
-use std::io::{self, Stdout};
-use std::time::Duration;
+
+use crate::{api_client::ApiClient, screens};
 
 /// Available screens in the TUI
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -143,24 +146,38 @@ impl ExposureTimeSeries {
 /// Trade row for display
 #[derive(Debug, Clone)]
 pub struct TradeRow {
+    /// Trade identifier
     pub id: String,
+    /// Instrument type
     pub instrument: String,
+    /// Notional amount
     pub notional: f64,
+    /// Present value
     pub pv: f64,
+    /// Delta (sensitivity to underlying)
     pub delta: f64,
+    /// Gamma (sensitivity of delta)
     pub gamma: f64,
+    /// Vega (sensitivity to volatility)
     pub vega: f64,
 }
 
 /// Risk metrics for display
 #[derive(Debug, Clone, Default)]
 pub struct RiskMetrics {
+    /// Total present value
     pub total_pv: f64,
+    /// Credit Valuation Adjustment
     pub cva: f64,
+    /// Debt Valuation Adjustment
     pub dva: f64,
+    /// Funding Valuation Adjustment
     pub fva: f64,
+    /// Expected Exposure
     pub ee: f64,
+    /// Expected Positive Exposure
     pub epe: f64,
+    /// Potential Future Exposure
     pub pfe: f64,
 }
 
@@ -261,11 +278,13 @@ impl Default for IrsAadResult {
 /// IRS AAD vs Bump benchmark result (Task 6.2)
 #[derive(Debug, Clone)]
 pub struct IrsAadBenchmark {
-    /// AAD timing stats
+    /// AAD mean timing in nanoseconds
     pub aad_mean_ns: f64,
+    /// AAD standard deviation in nanoseconds
     pub aad_std_ns: f64,
-    /// Bump timing stats
+    /// Bump mean timing in nanoseconds
     pub bump_mean_ns: f64,
+    /// Bump standard deviation in nanoseconds
     pub bump_std_ns: f64,
     /// Speedup ratio
     pub speedup_ratio: f64,
@@ -638,9 +657,7 @@ impl TuiApp {
     /// Refresh data from API
     #[allow(dead_code)]
     pub async fn refresh_data(&mut self) -> Result<()> {
-        // TODO: Fetch data from service_gateway
-        // let portfolio = self.api_client.get_portfolio().await?;
-        // self.trades = portfolio.to_trade_rows();
+        // Stub: service_gateway API integration pending.
         Ok(())
     }
 }

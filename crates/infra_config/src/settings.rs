@@ -1,8 +1,9 @@
 //! Settings and configuration structures.
 
-use crate::error::ConfigError;
 use config::{Config, Environment, File};
 use serde::Deserialize;
+
+use crate::error::ConfigError;
 
 /// Main application settings.
 #[derive(Debug, Deserialize, Clone, Default)]
@@ -18,7 +19,8 @@ pub struct Settings {
 impl Settings {
     /// Load settings from configuration files and environment variables.
     ///
-    /// Configuration is loaded in the following order (later sources override earlier):
+    /// Configuration is loaded in the following order (later sources override
+    /// earlier):
     /// 1. `config/default.toml`
     /// 2. `config/{environment}.toml` (based on `NEUTRYX_ENV`)
     /// 3. Environment variables prefixed with `NEUTRYX_`
@@ -64,17 +66,13 @@ impl Default for EngineConfig {
     }
 }
 
-fn default_thread_pool_size() -> usize {
-    num_cpus::get()
-}
+fn default_thread_pool_size() -> usize { num_cpus::get() }
 
 fn default_memory_limit_mb() -> usize {
     1024 // 1 GB
 }
 
-fn default_mc_paths() -> usize {
-    10_000
-}
+fn default_mc_paths() -> usize { 10_000 }
 
 /// Database configuration.
 #[derive(Debug, Deserialize, Clone)]
@@ -100,13 +98,9 @@ impl Default for DatabaseConfig {
     }
 }
 
-fn default_max_connections() -> u32 {
-    10
-}
+fn default_max_connections() -> u32 { 10 }
 
-fn default_connection_timeout() -> u64 {
-    30
-}
+fn default_connection_timeout() -> u64 { 30 }
 
 #[cfg(test)]
 mod tests {

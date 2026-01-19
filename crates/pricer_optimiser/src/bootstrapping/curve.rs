@@ -3,10 +3,16 @@
 //! This module provides `BootstrappedCurve<T>`, a yield curve constructed
 //! from bootstrapped pillar points with interpolation between them.
 
-use super::config::BootstrapInterpolation;
 use num_traits::Float;
-use pricer_core::market_data::{curves::YieldCurve, MarketDataError};
-use pricer_core::math::interpolators::{CubicSplineInterpolator, MonotonicInterpolator};
+use pricer_core::{
+    market_data::{curves::YieldCurve, MarketDataError},
+    math::{
+        interpolators::{CubicSplineInterpolator, MonotonicInterpolator},
+        numeric::from_f64,
+    },
+};
+
+use super::config::BootstrapInterpolation;
 
 /// A yield curve constructed from bootstrapped pillar points.
 ///
@@ -109,39 +115,25 @@ impl<T: Float> BootstrappedCurve<T> {
     }
 
     /// Create an empty curve builder.
-    pub fn builder() -> BootstrappedCurveBuilder<T> {
-        BootstrappedCurveBuilder::new()
-    }
+    pub fn builder() -> BootstrappedCurveBuilder<T> { BootstrappedCurveBuilder::new() }
 
     /// Get the pillar maturities.
-    pub fn pillars(&self) -> &[T] {
-        &self.pillars
-    }
+    pub fn pillars(&self) -> &[T] { &self.pillars }
 
     /// Get the discount factors at pillars.
-    pub fn discount_factors_at_pillars(&self) -> &[T] {
-        &self.discount_factors
-    }
+    pub fn discount_factors_at_pillars(&self) -> &[T] { &self.discount_factors }
 
     /// Get the interpolation method.
-    pub fn interpolation(&self) -> BootstrapInterpolation {
-        self.interpolation
-    }
+    pub fn interpolation(&self) -> BootstrapInterpolation { self.interpolation }
 
     /// Get the minimum pillar maturity.
-    pub fn min_maturity(&self) -> T {
-        self.pillars.first().copied().unwrap_or_else(T::zero)
-    }
+    pub fn min_maturity(&self) -> T { self.pillars.first().copied().unwrap_or_else(T::zero) }
 
     /// Get the maximum pillar maturity.
-    pub fn max_maturity(&self) -> T {
-        self.pillars.last().copied().unwrap_or_else(T::zero)
-    }
+    pub fn max_maturity(&self) -> T { self.pillars.last().copied().unwrap_or_else(T::zero) }
 
     /// Get the number of pillars.
-    pub fn pillar_count(&self) -> usize {
-        self.pillars.len()
-    }
+    pub fn pillar_count(&self) -> usize { self.pillars.len() }
 
     /// Interpolate discount factor at time t.
     fn interpolate(&self, t: T) -> Result<T, MarketDataError> {
@@ -184,7 +176,7 @@ impl<T: Float> BootstrappedCurve<T> {
         let idx = self.find_bracket_index(t);
 
         // Exact match check
-        if (t - self.pillars[idx]).abs() < T::from(1e-12).unwrap() {
+        if (t - self.pillars[idx]).abs() < from_f64(1e-12) {
             return Ok(self.discount_factors[idx]);
         }
 
@@ -322,7 +314,7 @@ impl<T: Float> BootstrappedCurve<T> {
                 let t_f64 = t.to_f64().unwrap_or(0.0);
                 match interp.interpolate(t_f64) {
                     Ok(log_df_f64) => {
-                        let log_df = T::from(log_df_f64).unwrap_or_else(T::zero);
+                        let log_df: T = from_f64(log_df_f64);
                         Ok(log_df.exp())
                     }
                     Err(_) => self.log_linear_interpolate(t, _idx),
@@ -459,9 +451,7 @@ impl<T: Float> BootstrappedCurveBuilder<T> {
 }
 
 impl<T: Float> Default for BootstrappedCurveBuilder<T> {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 #[cfg(test)]
@@ -851,7 +841,8 @@ mod tests {
 
     #[test]
     fn test_flat_forward_constant_forward_rate() {
-        // Flat forward interpolation should produce constant forward rate between pillars
+        // Flat forward interpolation should produce constant forward rate between
+        // pillars
         let pillars = vec![1.0, 2.0, 3.0];
         let rate = 0.03;
         let dfs = vec![

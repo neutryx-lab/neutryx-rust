@@ -105,15 +105,11 @@ impl<T: Float> EquityInstrument<T> {
 
     /// Return whether this is a vanilla option.
     #[inline]
-    pub fn is_vanilla(&self) -> bool {
-        matches!(self, EquityInstrument::Vanilla(_))
-    }
+    pub fn is_vanilla(&self) -> bool { matches!(self, EquityInstrument::Vanilla(_)) }
 
     /// Return whether this is a forward contract.
     #[inline]
-    pub fn is_forward(&self) -> bool {
-        matches!(self, EquityInstrument::Forward(_))
-    }
+    pub fn is_forward(&self) -> bool { matches!(self, EquityInstrument::Forward(_)) }
 
     /// Return a reference to the vanilla option if this is a Vanilla variant.
     pub fn as_vanilla(&self) -> Option<&VanillaOption<T>> {
@@ -134,19 +130,13 @@ impl<T: Float> EquityInstrument<T> {
 
 impl<T: Float> InstrumentTrait<T> for EquityInstrument<T> {
     #[inline]
-    fn payoff(&self, spot: T) -> T {
-        self.payoff(spot)
-    }
+    fn payoff(&self, spot: T) -> T { self.payoff(spot) }
 
     #[inline]
-    fn expiry(&self) -> T {
-        self.expiry()
-    }
+    fn expiry(&self) -> T { self.expiry() }
 
     #[inline]
-    fn currency(&self) -> Currency {
-        self.currency()
-    }
+    fn currency(&self) -> Currency { self.currency() }
 
     fn type_name(&self) -> &'static str {
         match self {
@@ -158,15 +148,11 @@ impl<T: Float> InstrumentTrait<T> for EquityInstrument<T> {
 
 // Conversion from individual instruments to EquityInstrument
 impl<T: Float> From<VanillaOption<T>> for EquityInstrument<T> {
-    fn from(option: VanillaOption<T>) -> Self {
-        EquityInstrument::Vanilla(option)
-    }
+    fn from(option: VanillaOption<T>) -> Self { EquityInstrument::Vanilla(option) }
 }
 
 impl<T: Float> From<Forward<T>> for EquityInstrument<T> {
-    fn from(forward: Forward<T>) -> Self {
-        EquityInstrument::Forward(forward)
-    }
+    fn from(forward: Forward<T>) -> Self { EquityInstrument::Forward(forward) }
 }
 
 #[cfg(test)]

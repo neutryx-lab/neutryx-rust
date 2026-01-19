@@ -15,7 +15,12 @@ pub enum FpmlError {
 
     /// Invalid element value
     #[error("Invalid value for element '{element}': {message}")]
-    InvalidValue { element: String, message: String },
+    InvalidValue {
+        /// Name of the element with invalid value
+        element: String,
+        /// Description of the validation failure
+        message: String,
+    },
 
     /// Unsupported FpML product type
     #[error("Unsupported FpML product type: {0}")]

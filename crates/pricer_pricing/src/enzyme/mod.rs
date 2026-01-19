@@ -1,8 +1,8 @@
 //! Enzyme autodiff bindings for pricer_pricing.
 //!
-//! This module provides the interface for Enzyme LLVM-level automatic differentiation.
-//! Enzyme operates at the LLVM IR level, enabling high-performance gradient computation
-//! for financial derivative pricing.
+//! This module provides the interface for Enzyme LLVM-level automatic
+//! differentiation. Enzyme operates at the LLVM IR level, enabling
+//! high-performance gradient computation for financial derivative pricing.
 //!
 //! # Module Structure
 //!
@@ -145,9 +145,7 @@ impl ADMode {
     /// assert!(!ADMode::Inactive.is_forward());
     /// ```
     #[inline]
-    pub fn is_forward(&self) -> bool {
-        matches!(self, ADMode::Forward)
-    }
+    pub fn is_forward(&self) -> bool { matches!(self, ADMode::Forward) }
 
     /// Reverse modeか判定する
     ///
@@ -165,9 +163,7 @@ impl ADMode {
     /// assert!(!ADMode::Inactive.is_reverse());
     /// ```
     #[inline]
-    pub fn is_reverse(&self) -> bool {
-        matches!(self, ADMode::Reverse)
-    }
+    pub fn is_reverse(&self) -> bool { matches!(self, ADMode::Reverse) }
 
     /// ADが有効か判定する（Inactive以外）
     ///
@@ -185,9 +181,7 @@ impl ADMode {
     /// assert!(ADMode::Reverse.is_active());
     /// ```
     #[inline]
-    pub fn is_active(&self) -> bool {
-        !matches!(self, ADMode::Inactive)
-    }
+    pub fn is_active(&self) -> bool { !matches!(self, ADMode::Inactive) }
 }
 
 // =============================================================================
@@ -196,7 +190,8 @@ impl ADMode {
 
 /// Activity annotations for autodiff parameters.
 ///
-/// These annotations specify how each parameter participates in differentiation:
+/// These annotations specify how each parameter participates in
+/// differentiation:
 ///
 /// - `Const`: The parameter is not differentiated (treated as constant)
 /// - `Dual`: Forward mode - carries tangent value alongside primal
@@ -248,9 +243,7 @@ pub enum Activity {
 impl Activity {
     /// Returns true if this activity participates in differentiation.
     #[inline]
-    pub fn is_active(&self) -> bool {
-        !matches!(self, Activity::Const)
-    }
+    pub fn is_active(&self) -> bool { !matches!(self, Activity::Const) }
 
     /// Returns true if this is a reverse mode activity.
     #[inline]
@@ -263,9 +256,7 @@ impl Activity {
 
     /// Returns true if this is a forward mode activity.
     #[inline]
-    pub fn is_forward_mode(&self) -> bool {
-        matches!(self, Activity::Dual)
-    }
+    pub fn is_forward_mode(&self) -> bool { matches!(self, Activity::Dual) }
 }
 
 /// Compute gradient of function `f` at point `x` using Enzyme.
@@ -292,8 +283,8 @@ impl Activity {
 ///
 /// # Arguments
 ///
-/// * `f` - The function to differentiate. Must be a closure or function
-///   that takes `f64` and returns `f64`.
+/// * `f` - The function to differentiate. Must be a closure or function that
+///   takes `f64` and returns `f64`.
 /// * `x` - The point at which to evaluate the gradient.
 ///
 /// # Returns
@@ -326,8 +317,8 @@ where
 
 /// Compute gradient of function `f` at point `x` with custom step size.
 ///
-/// Similar to [`gradient`], but allows specifying the finite difference step size.
-/// This is useful for functions with very large or small values where the
+/// Similar to [`gradient`], but allows specifying the finite difference step
+/// size. This is useful for functions with very large or small values where the
 /// default step size may not be appropriate.
 ///
 /// # Arguments
@@ -349,9 +340,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use approx::assert_relative_eq;
     use std::collections::HashSet;
+
+    use approx::assert_relative_eq;
+
+    use super::*;
 
     // =============================================================================
     // ADMode Tests (Task 5.1)
@@ -397,8 +390,10 @@ mod tests {
 
     #[test]
     fn test_admode_hash() {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
+        use std::{
+            collections::hash_map::DefaultHasher,
+            hash::{Hash, Hasher},
+        };
 
         fn hash_value<T: Hash>(t: &T) -> u64 {
             let mut s = DefaultHasher::new();
@@ -485,8 +480,10 @@ mod tests {
 
     #[test]
     fn test_activity_hash() {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
+        use std::{
+            collections::hash_map::DefaultHasher,
+            hash::{Hash, Hasher},
+        };
 
         fn hash_value<T: Hash>(t: &T) -> u64 {
             let mut s = DefaultHasher::new();

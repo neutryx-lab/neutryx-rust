@@ -2,9 +2,11 @@
 //!
 //! Provides infrastructure for running scenarios and collecting results.
 
-use super::shifts::Scenario;
-use pricer_core::traits::Float;
 use std::collections::HashMap;
+
+use pricer_core::traits::Float;
+
+use super::shifts::Scenario;
 
 /// P&L result from a single scenario.
 ///
@@ -44,14 +46,10 @@ impl<T: Float> ScenarioPnL<T> {
     }
 
     /// Check if P&L is a loss (negative).
-    pub fn is_loss(&self) -> bool {
-        self.pnl < T::zero()
-    }
+    pub fn is_loss(&self) -> bool { self.pnl < T::zero() }
 
     /// Check if P&L is a gain (positive).
-    pub fn is_gain(&self) -> bool {
-        self.pnl > T::zero()
-    }
+    pub fn is_gain(&self) -> bool { self.pnl > T::zero() }
 }
 
 /// Complete result from scenario execution.
@@ -81,9 +79,7 @@ impl<T: Float> ScenarioResult<T> {
     }
 
     /// Get trade P&L count.
-    pub fn trade_count(&self) -> usize {
-        self.trade_pnls.len()
-    }
+    pub fn trade_count(&self) -> usize { self.trade_pnls.len() }
 
     /// Get worst trade P&L.
     pub fn worst_trade_pnl(&self) -> Option<&ScenarioPnL<T>> {
@@ -109,9 +105,7 @@ pub struct ScenarioEngine<T: Float> {
 }
 
 impl<T: Float> Default for ScenarioEngine<T> {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl<T: Float> ScenarioEngine<T> {
@@ -124,9 +118,7 @@ impl<T: Float> ScenarioEngine<T> {
     }
 
     /// Add a scenario.
-    pub fn add_scenario(&mut self, scenario: Scenario<T>) {
-        self.scenarios.push(scenario);
-    }
+    pub fn add_scenario(&mut self, scenario: Scenario<T>) { self.scenarios.push(scenario); }
 
     /// Add multiple scenarios.
     pub fn add_scenarios(&mut self, scenarios: impl IntoIterator<Item = Scenario<T>>) {
@@ -134,14 +126,10 @@ impl<T: Float> ScenarioEngine<T> {
     }
 
     /// Get registered scenarios.
-    pub fn scenarios(&self) -> &[Scenario<T>] {
-        &self.scenarios
-    }
+    pub fn scenarios(&self) -> &[Scenario<T>] { &self.scenarios }
 
     /// Get scenario count.
-    pub fn scenario_count(&self) -> usize {
-        self.scenarios.len()
-    }
+    pub fn scenario_count(&self) -> usize { self.scenarios.len() }
 
     /// Execute a single scenario.
     ///
@@ -196,9 +184,7 @@ impl<T: Float> ScenarioEngine<T> {
     }
 
     /// Get all results.
-    pub fn results(&self) -> &[ScenarioResult<T>] {
-        &self.results
-    }
+    pub fn results(&self) -> &[ScenarioResult<T>] { &self.results }
 
     /// Get the worst-case scenario (largest loss).
     pub fn worst_case(&self) -> Option<&ScenarioResult<T>> {
@@ -211,9 +197,7 @@ impl<T: Float> ScenarioEngine<T> {
     }
 
     /// Clear all results.
-    pub fn clear_results(&mut self) {
-        self.results.clear();
-    }
+    pub fn clear_results(&mut self) { self.results.clear(); }
 
     /// Clear scenarios and results.
     pub fn clear(&mut self) {
@@ -224,8 +208,10 @@ impl<T: Float> ScenarioEngine<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::super::shifts::{BumpScenario, RiskFactorShift};
-    use super::*;
+    use super::{
+        super::shifts::{BumpScenario, RiskFactorShift},
+        *,
+    };
 
     // ================================================================
     // Task 11.4: ScenarioEngine tests (TDD)

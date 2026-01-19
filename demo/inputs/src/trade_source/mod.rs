@@ -60,37 +60,54 @@ pub enum InstrumentType {
 pub enum TradeParams {
     /// Equity option parameters
     EquityOption {
+        /// Underlying asset identifier
         underlying: String,
+        /// Strike price
         strike: f64,
+        /// True for call option, false for put
         is_call: bool,
     },
     /// Forward parameters
     Forward {
+        /// Underlying asset identifier
         underlying: String,
+        /// Forward price
         forward_price: f64,
     },
     /// IRS parameters
     InterestRateSwap {
+        /// Fixed rate of the swap
         fixed_rate: f64,
+        /// Floating rate index (e.g., "LIBOR", "SOFR")
         float_index: String,
+        /// True if paying fixed rate
         pay_fixed: bool,
     },
     /// FX forward parameters
     FxForward {
+        /// Currency to buy
         buy_currency: String,
+        /// Currency to sell
         sell_currency: String,
+        /// Exchange rate
         rate: f64,
     },
     /// FX option parameters
     FxOption {
+        /// Currency pair (e.g., "EURUSD")
         currency_pair: String,
+        /// Strike price
         strike: f64,
+        /// True for call option, false for put
         is_call: bool,
     },
     /// CDS parameters
     CreditDefaultSwap {
+        /// Reference entity identifier
         reference_entity: String,
+        /// Credit spread in basis points
         spread_bps: f64,
+        /// True if buying protection
         is_protection_buyer: bool,
     },
 }

@@ -26,3 +26,6 @@ default = []
 
 [dev-dependencies]
 approx.workspace = true
+
+[lints]
+workspace = true

@@ -2,9 +2,10 @@
 //!
 //! Provides vectorised storage of trade parameters for batch processing.
 
-use crate::portfolio::{Trade, TradeId};
 use pricer_models::instruments::PayoffType;
 use rayon::prelude::*;
+
+use crate::portfolio::{Trade, TradeId};
 
 /// SoA representation of trade data for vectorised operations.
 ///
@@ -77,15 +78,11 @@ impl TradeSoA {
 
     /// Returns the number of trades in the SoA.
     #[inline]
-    pub fn len(&self) -> usize {
-        self.trade_ids.len()
-    }
+    pub fn len(&self) -> usize { self.trade_ids.len() }
 
     /// Returns whether the SoA is empty.
     #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.trade_ids.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.trade_ids.is_empty() }
 
     /// Computes payoffs for all trades at given spot prices.
     ///
@@ -164,36 +161,29 @@ impl TradeSoA {
 
     /// Returns slice of strikes.
     #[inline]
-    pub fn strikes(&self) -> &[f64] {
-        &self.strikes
-    }
+    pub fn strikes(&self) -> &[f64] { &self.strikes }
 
     /// Returns slice of maturities.
     #[inline]
-    pub fn maturities(&self) -> &[f64] {
-        &self.maturities
-    }
+    pub fn maturities(&self) -> &[f64] { &self.maturities }
 
     /// Returns slice of notionals.
     #[inline]
-    pub fn notionals(&self) -> &[f64] {
-        &self.notionals
-    }
+    pub fn notionals(&self) -> &[f64] { &self.notionals }
 
     /// Returns slice of payoff signs.
     #[inline]
-    pub fn payoff_signs(&self) -> &[i8] {
-        &self.payoff_signs
-    }
+    pub fn payoff_signs(&self) -> &[i8] { &self.payoff_signs }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::portfolio::{CounterpartyId, NettingSetId};
     use approx::assert_relative_eq;
     use pricer_core::types::Currency;
     use pricer_models::instruments::{ExerciseStyle, Instrument, InstrumentParams, VanillaOption};
+
+    use super::*;
+    use crate::portfolio::{CounterpartyId, NettingSetId};
 
     fn create_test_trade(id: &str, strike: f64, payoff: PayoffType, notional: f64) -> Trade {
         let params = InstrumentParams::new(strike, 1.0, 1.0).unwrap();

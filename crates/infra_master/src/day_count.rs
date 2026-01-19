@@ -65,8 +65,9 @@ impl DayCountConvention {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use chrono::NaiveDate;
+
+    use super::*;
 
     #[test]
     fn test_actual_360() {

@@ -34,8 +34,10 @@
 //! assert!(pool.stats().allocations_avoided >= 1);
 //! ```
 
-use std::cell::RefCell;
-use std::ops::{Deref, DerefMut};
+use std::{
+    cell::RefCell,
+    ops::{Deref, DerefMut},
+};
 
 /// Statistics about buffer pool usage.
 #[derive(Clone, Debug, Default)]
@@ -150,16 +152,14 @@ impl ThreadLocalPool {
     ///
     /// This is a zero-cost operation; the actual storage is thread-local.
     #[inline]
-    pub fn new() -> Self {
-        Self
-    }
+    pub fn new() -> Self { Self }
 
     /// Gets a buffer from the pool with at least `min_capacity` elements.
     ///
     /// If a suitable buffer is available in the pool, it is reused.
     /// Otherwise, a new buffer is allocated.
     ///
-    /// The returned buffer is initialized to zeros and has at least
+    /// The returned buffer is initialised to zeros and has at least
     /// `min_capacity` elements.
     ///
     /// # Arguments
@@ -217,9 +217,7 @@ impl ThreadLocalPool {
     /// Returns statistics about pool usage.
     ///
     /// Statistics are thread-local, reflecting only the current thread's usage.
-    pub fn stats(&self) -> PoolStats {
-        POOL_STATE.with(|state| state.borrow().stats.clone())
-    }
+    pub fn stats(&self) -> PoolStats { POOL_STATE.with(|state| state.borrow().stats.clone()) }
 }
 
 /// A buffer obtained from [`ThreadLocalPool`] that returns to the pool on drop.
@@ -257,22 +255,16 @@ impl PooledBuffer {
     ///
     /// This prevents the buffer from being returned to the pool.
     /// Use this when you need to transfer ownership of the buffer.
-    pub fn into_vec(mut self) -> Vec<f64> {
-        self.inner.take().unwrap()
-    }
+    pub fn into_vec(mut self) -> Vec<f64> { self.inner.take().unwrap() }
 
     /// Returns the capacity of the underlying buffer.
-    pub fn capacity(&self) -> usize {
-        self.inner.as_ref().map_or(0, |v| v.capacity())
-    }
+    pub fn capacity(&self) -> usize { self.inner.as_ref().map_or(0, |v| v.capacity()) }
 }
 
 impl Deref for PooledBuffer {
     type Target = [f64];
 
-    fn deref(&self) -> &Self::Target {
-        self.inner.as_ref().map_or(&[], |v| v.as_slice())
-    }
+    fn deref(&self) -> &Self::Target { self.inner.as_ref().map_or(&[], |v| v.as_slice()) }
 }
 
 impl DerefMut for PooledBuffer {
@@ -479,8 +471,8 @@ mod tests {
         for run in 0..10 {
             // Get buffers from pool (like PathWorkspace internals)
             let mut randoms = pool.get_buffer(1000);
-            let mut paths = pool.get_buffer(1100);
-            let mut payoffs = pool.get_buffer(100);
+            let paths = pool.get_buffer(1100);
+            let payoffs = pool.get_buffer(100);
 
             // Simulate filling buffers
             for i in 0..randoms.len() {

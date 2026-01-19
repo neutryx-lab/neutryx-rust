@@ -1,8 +1,9 @@
 //! Flat volatility surface implementation.
 
+use num_traits::Float;
+
 use super::VolatilitySurface;
 use crate::market_data::error::MarketDataError;
-use num_traits::Float;
 
 /// Flat volatility surface with constant implied volatility.
 ///
@@ -48,9 +49,7 @@ impl<T: Float> FlatVol<T> {
     /// assert_eq!(surface.sigma(), 0.25);
     /// ```
     #[inline]
-    pub fn new(sigma: T) -> Self {
-        Self { sigma }
-    }
+    pub fn new(sigma: T) -> Self { Self { sigma } }
 
     /// Return the constant volatility.
     ///
@@ -63,9 +62,7 @@ impl<T: Float> FlatVol<T> {
     /// assert_eq!(surface.sigma(), 0.30);
     /// ```
     #[inline]
-    pub fn sigma(&self) -> T {
-        self.sigma
-    }
+    pub fn sigma(&self) -> T { self.sigma }
 }
 
 impl<T: Float> VolatilitySurface<T> for FlatVol<T> {
@@ -102,17 +99,13 @@ impl<T: Float> VolatilitySurface<T> for FlatVol<T> {
     ///
     /// For a flat surface, any positive strike is valid.
     #[inline]
-    fn strike_domain(&self) -> (T, T) {
-        (T::zero(), T::infinity())
-    }
+    fn strike_domain(&self) -> (T, T) { (T::zero(), T::infinity()) }
 
     /// Return the valid expiry domain.
     ///
     /// For a flat surface, any positive expiry is valid.
     #[inline]
-    fn expiry_domain(&self) -> (T, T) {
-        (T::zero(), T::infinity())
-    }
+    fn expiry_domain(&self) -> (T, T) { (T::zero(), T::infinity()) }
 }
 
 #[cfg(test)]

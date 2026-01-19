@@ -11,8 +11,10 @@
 //! The `IrsLazyEvaluator` manages:
 //! - **Dependency Graph**: Tracks which curve tenor points affect each IRS
 //! - **Result Cache**: Caches computation results keyed by swap+curve+date
-//! - **Change Propagation**: Invalidates only affected cache entries on curve updates
-//! - **AAD Tape Cache**: Caches AAD tapes for efficient recomputation when only values change
+//! - **Change Propagation**: Invalidates only affected cache entries on curve
+//!   updates
+//! - **AAD Tape Cache**: Caches AAD tapes for efficient recomputation when only
+//!   values change
 //!
 //! # Requirements Coverage
 //!
@@ -28,7 +30,8 @@
 //! computational graph (tape) and reusing it when only input values change.
 //!
 //! Key concepts:
-//! - **Structure Hash**: Identifies swap structure (tenor count, schedule, etc.)
+//! - **Structure Hash**: Identifies swap structure (tenor count, schedule,
+//!   etc.)
 //! - **Tape Caching**: Stores tape metadata for future reuse
 //! - **LRU Eviction**: Removes least-used tapes when cache is full
 //!
@@ -46,9 +49,12 @@
 //! }
 //! ```
 
+use std::{
+    collections::{HashMap, HashSet},
+    hash::{Hash, Hasher},
+};
+
 use num_traits::Float;
-use std::collections::{HashMap, HashSet};
-use std::hash::{Hash, Hasher};
 
 // =============================================================================
 // Task 3.1: Dependency Graph Types
@@ -63,20 +69,14 @@ pub struct SwapId(String);
 
 impl SwapId {
     /// Create a new SwapId from a string.
-    pub fn new(id: impl Into<String>) -> Self {
-        Self(id.into())
-    }
+    pub fn new(id: impl Into<String>) -> Self { Self(id.into()) }
 
     /// Get the string representation.
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
+    pub fn as_str(&self) -> &str { &self.0 }
 }
 
 impl std::fmt::Display for SwapId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "{}", self.0) }
 }
 
 /// A curve tenor point identifier.
@@ -103,9 +103,7 @@ impl Hash for TenorPoint {
 
 impl TenorPoint {
     /// Create a new tenor point.
-    pub fn new(curve_id: u32, tenor: f64) -> Self {
-        Self { curve_id, tenor }
-    }
+    pub fn new(curve_id: u32, tenor: f64) -> Self { Self { curve_id, tenor } }
 }
 
 /// Dependency graph tracking curve tenor -> swap relationships.
@@ -132,9 +130,7 @@ pub struct DependencyGraph {
 
 impl DependencyGraph {
     /// Create an empty dependency graph.
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Register a dependency between a swap and a tenor point.
     ///
@@ -234,14 +230,10 @@ impl DependencyGraph {
     }
 
     /// Get the total number of swaps tracked.
-    pub fn swap_count(&self) -> usize {
-        self.swap_to_tenors.len()
-    }
+    pub fn swap_count(&self) -> usize { self.swap_to_tenors.len() }
 
     /// Get the total number of unique tenor points tracked.
-    pub fn tenor_count(&self) -> usize {
-        self.tenor_to_swaps.len()
-    }
+    pub fn tenor_count(&self) -> usize { self.tenor_to_swaps.len() }
 
     /// Clear all dependencies.
     pub fn clear(&mut self) {
@@ -339,9 +331,7 @@ pub struct CacheStats {
 
 impl CacheStats {
     /// Create new cache statistics.
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Calculate the cache hit rate.
     ///
@@ -356,24 +346,16 @@ impl CacheStats {
     }
 
     /// Record a cache hit.
-    pub fn record_hit(&mut self) {
-        self.hits += 1;
-    }
+    pub fn record_hit(&mut self) { self.hits += 1; }
 
     /// Record a cache miss.
-    pub fn record_miss(&mut self) {
-        self.misses += 1;
-    }
+    pub fn record_miss(&mut self) { self.misses += 1; }
 
     /// Record a cache invalidation.
-    pub fn record_invalidation(&mut self) {
-        self.invalidations += 1;
-    }
+    pub fn record_invalidation(&mut self) { self.invalidations += 1; }
 
     /// Record a tape reuse.
-    pub fn record_tape_reuse(&mut self) {
-        self.tape_reuses += 1;
-    }
+    pub fn record_tape_reuse(&mut self) { self.tape_reuses += 1; }
 
     /// Reset all statistics.
     pub fn reset(&mut self) {
@@ -436,9 +418,7 @@ pub struct IrsLazyEvaluator<T: Float> {
 }
 
 impl<T: Float> Default for IrsLazyEvaluator<T> {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl<T: Float> IrsLazyEvaluator<T> {
@@ -654,9 +634,7 @@ impl<T: Float> IrsLazyEvaluator<T> {
     }
 
     /// Mark that AAD tape was reused (for statistics).
-    pub fn record_tape_reuse(&mut self) {
-        self.stats.record_tape_reuse();
-    }
+    pub fn record_tape_reuse(&mut self) { self.stats.record_tape_reuse(); }
 
     /// Register an AAD tape for a swap.
     ///
@@ -771,44 +749,28 @@ impl<T: Float> IrsLazyEvaluator<T> {
     }
 
     /// Get the tape cache.
-    pub fn tape_cache(&self) -> &AadTapeCache {
-        &self.tape_cache
-    }
+    pub fn tape_cache(&self) -> &AadTapeCache { &self.tape_cache }
 
     /// Get mutable reference to the tape cache.
-    pub fn tape_cache_mut(&mut self) -> &mut AadTapeCache {
-        &mut self.tape_cache
-    }
+    pub fn tape_cache_mut(&mut self) -> &mut AadTapeCache { &mut self.tape_cache }
 
     /// Get cache statistics.
-    pub fn cache_stats(&self) -> &CacheStats {
-        &self.stats
-    }
+    pub fn cache_stats(&self) -> &CacheStats { &self.stats }
 
     /// Get mutable reference to cache statistics.
-    pub fn cache_stats_mut(&mut self) -> &mut CacheStats {
-        &mut self.stats
-    }
+    pub fn cache_stats_mut(&mut self) -> &mut CacheStats { &mut self.stats }
 
     /// Get the current curve version.
-    pub fn curve_version(&self) -> u64 {
-        self.curve_version
-    }
+    pub fn curve_version(&self) -> u64 { self.curve_version }
 
     /// Get the dependency graph.
-    pub fn dependency_graph(&self) -> &DependencyGraph {
-        &self.dependency_graph
-    }
+    pub fn dependency_graph(&self) -> &DependencyGraph { &self.dependency_graph }
 
     /// Get mutable reference to the dependency graph.
-    pub fn dependency_graph_mut(&mut self) -> &mut DependencyGraph {
-        &mut self.dependency_graph
-    }
+    pub fn dependency_graph_mut(&mut self) -> &mut DependencyGraph { &mut self.dependency_graph }
 
     /// Get the number of cached entries.
-    pub fn cache_size(&self) -> usize {
-        self.cache.len()
-    }
+    pub fn cache_size(&self) -> usize { self.cache.len() }
 
     /// Clear all cache entries and reset statistics.
     pub fn clear(&mut self) {
@@ -882,9 +844,7 @@ impl CachedTape {
     }
 
     /// Record a reuse of this tape.
-    pub fn record_reuse(&mut self) {
-        self.reuse_count += 1;
-    }
+    pub fn record_reuse(&mut self) { self.reuse_count += 1; }
 }
 
 /// AAD Tape Cache for managing reusable computation tapes.
@@ -953,9 +913,7 @@ impl TapeCacheStats {
 
 impl AadTapeCache {
     /// Create a new tape cache with default capacity.
-    pub fn new() -> Self {
-        Self::with_capacity(100)
-    }
+    pub fn new() -> Self { Self::with_capacity(100) }
 
     /// Create a new tape cache with specified capacity.
     pub fn with_capacity(max_tapes: usize) -> Self {
@@ -976,9 +934,7 @@ impl AadTapeCache {
     /// # Returns
     ///
     /// `true` if a cached tape exists for this structure.
-    pub fn has_tape(&self, structure_hash: u64) -> bool {
-        self.tapes.contains_key(&structure_hash)
-    }
+    pub fn has_tape(&self, structure_hash: u64) -> bool { self.tapes.contains_key(&structure_hash) }
 
     /// Get a cached tape if available.
     ///
@@ -1093,29 +1049,19 @@ impl AadTapeCache {
     }
 
     /// Invalidate all cached tapes.
-    pub fn invalidate_all(&mut self) {
-        self.tapes.clear();
-    }
+    pub fn invalidate_all(&mut self) { self.tapes.clear(); }
 
     /// Get the number of cached tapes.
-    pub fn tape_count(&self) -> usize {
-        self.tapes.len()
-    }
+    pub fn tape_count(&self) -> usize { self.tapes.len() }
 
     /// Get tape cache statistics.
-    pub fn stats(&self) -> &TapeCacheStats {
-        &self.stats
-    }
+    pub fn stats(&self) -> &TapeCacheStats { &self.stats }
 
     /// Reset statistics.
-    pub fn reset_stats(&mut self) {
-        self.stats.reset();
-    }
+    pub fn reset_stats(&mut self) { self.stats.reset(); }
 
     /// Get the maximum tape capacity.
-    pub fn capacity(&self) -> usize {
-        self.max_tapes
-    }
+    pub fn capacity(&self) -> usize { self.max_tapes }
 }
 
 // =============================================================================

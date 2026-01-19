@@ -4,6 +4,7 @@
 //! with generic type support for automatic differentiation compatibility.
 
 use num_traits::Float;
+use pricer_core::math::numeric::from_f64;
 
 /// Interpolation method for bootstrapped curves.
 ///
@@ -55,7 +56,8 @@ pub enum BootstrapInterpolation {
 /// Configuration for yield curve bootstrapping.
 ///
 /// Provides all parameters needed to control the bootstrapping process,
-/// including convergence criteria, interpolation method, and validation options.
+/// including convergence criteria, interpolation method, and validation
+/// options.
 ///
 /// # Type Parameters
 ///
@@ -121,33 +123,29 @@ pub struct GenericBootstrapConfig<T: Float> {
 impl<T: Float> Default for GenericBootstrapConfig<T> {
     fn default() -> Self {
         Self {
-            tolerance: T::from(1e-12).unwrap(),
+            tolerance: from_f64(1e-12),
             max_iterations: 100,
             interpolation: BootstrapInterpolation::LogLinear,
             allow_extrapolation: true,
             allow_negative_rates: false,
-            max_maturity: T::from(50.0).unwrap(),
+            max_maturity: from_f64(50.0),
         }
     }
 }
 
 impl<T: Float> GenericBootstrapConfig<T> {
     /// Create a new configuration with default values.
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Create a configuration builder for fluent construction.
-    pub fn builder() -> GenericBootstrapConfigBuilder<T> {
-        GenericBootstrapConfigBuilder::new()
-    }
+    pub fn builder() -> GenericBootstrapConfigBuilder<T> { GenericBootstrapConfigBuilder::new() }
 
     /// Create a high-precision configuration.
     ///
     /// Uses tighter tolerance (1e-14) and more iterations (500).
     pub fn high_precision() -> Self {
         Self {
-            tolerance: T::from(1e-14).unwrap(),
+            tolerance: from_f64(1e-14),
             max_iterations: 500,
             ..Self::default()
         }
@@ -158,7 +156,7 @@ impl<T: Float> GenericBootstrapConfig<T> {
     /// Uses relaxed tolerance (1e-8) and fewer iterations (50).
     pub fn fast() -> Self {
         Self {
-            tolerance: T::from(1e-8).unwrap(),
+            tolerance: from_f64(1e-8),
             max_iterations: 50,
             ..Self::default()
         }
@@ -254,15 +252,11 @@ impl<T: Float> GenericBootstrapConfigBuilder<T> {
     }
 
     /// Build the configuration.
-    pub fn build(self) -> GenericBootstrapConfig<T> {
-        self.config
-    }
+    pub fn build(self) -> GenericBootstrapConfig<T> { self.config }
 }
 
 impl<T: Float> Default for GenericBootstrapConfigBuilder<T> {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 #[cfg(test)]

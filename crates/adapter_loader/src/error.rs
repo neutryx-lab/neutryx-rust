@@ -19,7 +19,12 @@ pub enum LoaderError {
 
     /// Invalid data format
     #[error("Invalid data format in row {row}: {message}")]
-    InvalidFormat { row: usize, message: String },
+    InvalidFormat {
+        /// Row number where the error occurred
+        row: usize,
+        /// Description of the format error
+        message: String,
+    },
 
     /// File not found
     #[error("File not found: {0}")]

@@ -107,12 +107,11 @@ pub fn compute_cva_with_survival(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
 
-    fn create_test_credit_params() -> CreditParams {
-        CreditParams::new(0.02, 0.4).unwrap()
-    }
+    use super::*;
+
+    fn create_test_credit_params() -> CreditParams { CreditParams::new(0.02, 0.4).unwrap() }
 
     #[test]
     fn test_cva_basic() {

@@ -1,14 +1,15 @@
 //! Static dispatch enum for stochastic models.
 //!
 //! This module provides `StochasticModelEnum` for zero-cost abstraction over
-//! different stochastic models (GBM, Hull-White, CIR, etc.). Using an enum instead of
-//! trait objects ensures Enzyme LLVM compatibility and optimal performance.
+//! different stochastic models (GBM, Hull-White, CIR, etc.). Using an enum
+//! instead of trait objects ensures Enzyme LLVM compatibility and optimal
+//! performance.
 //!
 //! ## Design Philosophy
 //!
 //! - **Static dispatch**: All model dispatch via `match` expressions
 //! - **Zero-cost abstraction**: No vtable overhead
-//! - **Enzyme-friendly**: Concrete types allow LLVM-level AD optimization
+//! - **Enzyme-friendly**: Concrete types allow LLVM-level AD optimisation
 //! - **Feature-gated models**: Interest rate models require `rates` feature
 //!
 //! ## Example
@@ -28,14 +29,15 @@
 
 use pricer_core::traits::Float;
 
-use super::gbm::{GBMModel, GBMParams};
-use super::heston::{HestonModel, HestonParams};
-use super::sabr::{SABRModel, SABRParams};
-use super::stochastic::{SingleState, StochasticState, TwoFactorState};
-
 // Import rate models when rates feature is enabled
 #[cfg(feature = "rates")]
 use super::rates::{CIRModel, CIRParams, HullWhiteModel, HullWhiteParams};
+use super::{
+    gbm::{GBMModel, GBMParams},
+    heston::{HestonModel, HestonParams},
+    sabr::{SABRModel, SABRParams},
+    stochastic::{SingleState, StochasticState, TwoFactorState},
+};
 
 /// Unified state type for all models.
 ///
@@ -50,9 +52,7 @@ pub enum ModelState<T: Float> {
 }
 
 impl<T: Float + Default> Default for ModelState<T> {
-    fn default() -> Self {
-        ModelState::Single(SingleState::default())
-    }
+    fn default() -> Self { ModelState::Single(SingleState::default()) }
 }
 
 impl<T: Float + Default> ModelState<T> {
@@ -81,9 +81,7 @@ impl<T: Float + Default> ModelState<T> {
     }
 
     /// Get the price component (always first element).
-    pub fn price(&self) -> T {
-        self.get(0).unwrap_or(T::zero())
-    }
+    pub fn price(&self) -> T { self.get(0).unwrap_or(T::zero()) }
 
     /// Get variance component if available (second element for two-factor).
     pub fn variance(&self) -> Option<T> {
@@ -177,7 +175,8 @@ impl<T: Float> ModelParams<T> {
 /// Static dispatch enum for stochastic models.
 ///
 /// This enum enables zero-cost abstraction over different stochastic models.
-/// Use this instead of `Box<dyn StochasticModel>` for Enzyme LLVM compatibility.
+/// Use this instead of `Box<dyn StochasticModel>` for Enzyme LLVM
+/// compatibility.
 ///
 /// # Supported Models
 ///
@@ -219,16 +218,12 @@ pub enum StochasticModelEnum<T: Float> {
 }
 
 impl<T: Float + Default> Default for StochasticModelEnum<T> {
-    fn default() -> Self {
-        StochasticModelEnum::GBM(GBMModel::new())
-    }
+    fn default() -> Self { StochasticModelEnum::GBM(GBMModel::new()) }
 }
 
 impl<T: Float + Default> StochasticModelEnum<T> {
     /// Create a new GBM model.
-    pub fn gbm() -> Self {
-        StochasticModelEnum::GBM(GBMModel::new())
-    }
+    pub fn gbm() -> Self { StochasticModelEnum::GBM(GBMModel::new()) }
 
     /// Create a new Heston model with given parameters.
     ///
@@ -236,7 +231,8 @@ impl<T: Float + Default> StochasticModelEnum<T> {
     /// * `params` - Heston model parameters
     ///
     /// # Returns
-    /// `Some(StochasticModelEnum::Heston)` if parameters are valid, `None` otherwise
+    /// `Some(StochasticModelEnum::Heston)` if parameters are valid, `None`
+    /// otherwise
     pub fn heston(params: HestonParams<T>) -> Option<Self> {
         HestonModel::new(params)
             .ok()
@@ -249,22 +245,19 @@ impl<T: Float + Default> StochasticModelEnum<T> {
     /// * `params` - SABR model parameters
     ///
     /// # Returns
-    /// `Some(StochasticModelEnum::SABR)` if parameters are valid, `None` otherwise
+    /// `Some(StochasticModelEnum::SABR)` if parameters are valid, `None`
+    /// otherwise
     pub fn sabr(params: SABRParams<T>) -> Option<Self> {
         SABRModel::new(params).ok().map(StochasticModelEnum::SABR)
     }
 
     /// Create a new Hull-White model (requires `rates` feature).
     #[cfg(feature = "rates")]
-    pub fn hull_white() -> Self {
-        StochasticModelEnum::HullWhite(HullWhiteModel::new())
-    }
+    pub fn hull_white() -> Self { StochasticModelEnum::HullWhite(HullWhiteModel::new()) }
 
     /// Create a new CIR model (requires `rates` feature).
     #[cfg(feature = "rates")]
-    pub fn cir() -> Self {
-        StochasticModelEnum::CIR(CIRModel::new())
-    }
+    pub fn cir() -> Self { StochasticModelEnum::CIR(CIRModel::new()) }
 
     /// Get the model name.
     pub fn model_name(&self) -> &'static str {
@@ -775,8 +768,9 @@ mod tests {
 
     #[cfg(feature = "rates")]
     mod rates_tests {
-        use super::*;
         use pricer_core::market_data::curves::FlatCurve;
+
+        use super::*;
 
         #[test]
         fn test_model_enum_hull_white_creation() {

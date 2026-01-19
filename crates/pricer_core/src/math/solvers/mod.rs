@@ -1,6 +1,6 @@
-//! Root-finding and optimization solvers for numerical computation.
+//! Root-finding and optimisation solvers for numerical computation.
 //!
-//! This module provides a collection of root-finding and optimization algorithms
+//! This module provides a collection of root-finding and optimisation algorithms
 //! designed for financial applications such as implied volatility calculation,
 //! curve calibration, and model parameter fitting, with support for automatic
 //! differentiation.
@@ -12,9 +12,10 @@
 //! - [`NewtonRaphsonSolver`]: Fast quadratic convergence using derivatives
 //! - [`BrentSolver`]: Robust bracketing method without derivative requirement
 //!
-//! ### Optimization
+//! ### Optimisation
 //!
-//! - [`LevenbergMarquardtSolver`]: Nonlinear least-squares for model calibration
+//! - [`LevenbergMarquardtSolver`]: Nonlinear least-squares for model
+//!   calibration
 //!
 //! ## Configuration
 //!
@@ -22,7 +23,8 @@
 //! - `tolerance`: Convergence tolerance (default: 1e-10)
 //! - `max_iterations`: Maximum iteration count (default: 100)
 //!
-//! The LM solver uses [`LMConfig`] with additional parameters for damping control.
+//! The LM solver uses [`LMConfig`] with additional parameters for damping
+//! control.
 //!
 //! ## AD Compatibility
 //!

@@ -7,13 +7,18 @@
 //!
 //! ## Requirements Coverage
 //!
-//! - Requirement 8.1: 計算時間、メモリ使用量、キャッシュヒット率のメトリクス収集・表示
-//! - Requirement 8.2: `/metrics` エンドポイントで Prometheus 形式のメトリクス出力
+//! - Requirement 8.1:
+//!   計算時間、メモリ使用量、キャッシュヒット率のメトリクス収集・表示
+//! - Requirement 8.2: `/metrics` エンドポイントで Prometheus
+//!   形式のメトリクス出力
 //! - Requirement 8.3: エラー発生件数とエラータイプの統計表示
 //! - Requirement 8.4: API レスポンスタイム閾値超過時の警告ログ出力
 
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::Instant;
+use std::{
+    sync::atomic::{AtomicU64, Ordering},
+    time::Instant,
+};
+
 use tokio::sync::RwLock;
 use tracing::warn;
 
@@ -58,24 +63,16 @@ impl Counter {
     }
 
     /// Increment the counter by 1
-    pub fn inc(&self) {
-        self.value.fetch_add(1, Ordering::Relaxed);
-    }
+    pub fn inc(&self) { self.value.fetch_add(1, Ordering::Relaxed); }
 
     /// Increment the counter by a specific value
-    pub fn inc_by(&self, v: u64) {
-        self.value.fetch_add(v, Ordering::Relaxed);
-    }
+    pub fn inc_by(&self, v: u64) { self.value.fetch_add(v, Ordering::Relaxed); }
 
     /// Get the current value
-    pub fn get(&self) -> u64 {
-        self.value.load(Ordering::Relaxed)
-    }
+    pub fn get(&self) -> u64 { self.value.load(Ordering::Relaxed) }
 
     /// Reset the counter to 0
-    pub fn reset(&self) {
-        self.value.store(0, Ordering::Relaxed);
-    }
+    pub fn reset(&self) { self.value.store(0, Ordering::Relaxed); }
 
     /// Format as Prometheus text
     pub fn to_prometheus(&self) -> String {
@@ -135,24 +132,16 @@ impl Gauge {
     }
 
     /// Set the gauge value
-    pub fn set(&self, v: u64) {
-        self.value.store(v, Ordering::Relaxed);
-    }
+    pub fn set(&self, v: u64) { self.value.store(v, Ordering::Relaxed); }
 
     /// Increment the gauge
-    pub fn inc(&self) {
-        self.value.fetch_add(1, Ordering::Relaxed);
-    }
+    pub fn inc(&self) { self.value.fetch_add(1, Ordering::Relaxed); }
 
     /// Decrement the gauge
-    pub fn dec(&self) {
-        self.value.fetch_sub(1, Ordering::Relaxed);
-    }
+    pub fn dec(&self) { self.value.fetch_sub(1, Ordering::Relaxed); }
 
     /// Get the current value
-    pub fn get(&self) -> u64 {
-        self.value.load(Ordering::Relaxed)
-    }
+    pub fn get(&self) -> u64 { self.value.load(Ordering::Relaxed) }
 
     /// Format as Prometheus text
     pub fn to_prometheus(&self) -> String {
@@ -241,14 +230,10 @@ impl Histogram {
     }
 
     /// Get the sum of all observations (in milliseconds)
-    pub fn sum(&self) -> f64 {
-        self.sum.load(Ordering::Relaxed) as f64 / 1000.0
-    }
+    pub fn sum(&self) -> f64 { self.sum.load(Ordering::Relaxed) as f64 / 1000.0 }
 
     /// Get the total count of observations
-    pub fn count(&self) -> u64 {
-        self.count.load(Ordering::Relaxed)
-    }
+    pub fn count(&self) -> u64 { self.count.load(Ordering::Relaxed) }
 
     /// Format as Prometheus text
     pub fn to_prometheus(&self) -> String {
@@ -299,6 +284,7 @@ pub enum ErrorType {
 }
 
 impl ErrorType {
+    /// Returns the string representation of the error type.
     pub fn as_str(&self) -> &'static str {
         match self {
             ErrorType::Client => "client",
@@ -466,34 +452,22 @@ impl PrometheusMetrics {
     }
 
     /// Increment WebSocket connections
-    pub fn inc_websocket_connections(&self) {
-        self.websocket_connections.inc();
-    }
+    pub fn inc_websocket_connections(&self) { self.websocket_connections.inc(); }
 
     /// Decrement WebSocket connections
-    pub fn dec_websocket_connections(&self) {
-        self.websocket_connections.dec();
-    }
+    pub fn dec_websocket_connections(&self) { self.websocket_connections.dec(); }
 
     /// Update memory usage
-    pub fn set_memory_usage(&self, bytes: u64) {
-        self.memory_usage_bytes.set(bytes);
-    }
+    pub fn set_memory_usage(&self, bytes: u64) { self.memory_usage_bytes.set(bytes); }
 
     /// Update cache hit rate (0-100)
-    pub fn set_cache_hit_rate(&self, rate_percent: u64) {
-        self.cache_hit_rate.set(rate_percent);
-    }
+    pub fn set_cache_hit_rate(&self, rate_percent: u64) { self.cache_hit_rate.set(rate_percent); }
 
     /// Update uptime
-    pub fn update_uptime(&self) {
-        self.uptime_seconds.set(self.start_time.elapsed().as_secs());
-    }
+    pub fn update_uptime(&self) { self.uptime_seconds.set(self.start_time.elapsed().as_secs()); }
 
     /// Get uptime in seconds
-    pub fn get_uptime_seconds(&self) -> u64 {
-        self.start_time.elapsed().as_secs()
-    }
+    pub fn get_uptime_seconds(&self) -> u64 { self.start_time.elapsed().as_secs() }
 
     /// Export all metrics in Prometheus text format
     pub async fn to_prometheus_text(&self) -> String {
@@ -531,9 +505,7 @@ impl PrometheusMetrics {
 }
 
 impl Default for PrometheusMetrics {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 // =========================================================================
@@ -581,7 +553,9 @@ pub struct ComputationMetrics {
 /// Error count by type
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ErrorTypeCount {
+    /// Type of error.
     pub error_type: String,
+    /// Number of occurrences.
     pub count: u64,
 }
 

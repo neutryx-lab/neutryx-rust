@@ -1,8 +1,8 @@
 //! IRS AAD Demo Workflow implementation.
 //!
 //! This module provides the IRS AAD (Adjoint Algorithmic Differentiation) demo
-//! workflow for demonstrating the performance advantages of AAD over traditional
-//! Bump-and-Revalue methods.
+//! workflow for demonstrating the performance advantages of AAD over
+//! traditional Bump-and-Revalue methods.
 //!
 //! # Task Coverage
 //!
@@ -34,15 +34,15 @@
 //! let benchmark = workflow.run_benchmark(&params).await?;
 //! ```
 
+use std::{
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    time::Instant,
+};
+
 use async_trait::async_trait;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use std::time::Instant;
-
-use crate::config::DemoConfig;
-use crate::error::DemoError;
-use crate::workflow::{DemoWorkflow, ProgressCallback, WorkflowResult, WorkflowStep};
-
 #[cfg(feature = "l1l2-integration")]
 use pricer_core::market_data::curves::{CurveEnum, CurveName, CurveSet};
 #[cfg(feature = "l1l2-integration")]
@@ -55,7 +55,6 @@ use pricer_models::instruments::rates::{
 };
 #[cfg(feature = "l1l2-integration")]
 use pricer_models::schedules::{Frequency, ScheduleBuilder};
-
 #[cfg(feature = "l1l2-integration")]
 use pricer_pricing::greeks::GreeksMode;
 #[cfg(feature = "l1l2-integration")]
@@ -64,6 +63,12 @@ use pricer_pricing::irs_greeks::xva_demo::{CreditParams, XvaDemoConfig, XvaDemoR
 use pricer_pricing::irs_greeks::{
     BenchmarkConfig, BenchmarkRunner, DeltaBenchmarkResult, IrsGreeksCalculator, IrsGreeksConfig,
     IrsLazyEvaluator,
+};
+
+use crate::{
+    config::DemoConfig,
+    error::DemoError,
+    workflow::{DemoWorkflow, ProgressCallback, WorkflowResult, WorkflowStep},
 };
 
 // =============================================================================
@@ -103,9 +108,7 @@ mod stub_types {
     }
 
     impl Default for IrsGreeksConfig {
-        fn default() -> Self {
-            Self { bump_size: 0.0001 }
-        }
+        fn default() -> Self { Self { bump_size: 0.0001 } }
     }
 
     #[derive(Clone, Debug, Default)]
@@ -123,46 +126,32 @@ mod stub_types {
     pub struct IrsGreeksCalculator<T>(std::marker::PhantomData<T>);
 
     impl<T> IrsGreeksCalculator<T> {
-        pub fn new(_config: IrsGreeksConfig) -> Self {
-            Self(std::marker::PhantomData)
-        }
+        pub fn new(_config: IrsGreeksConfig) -> Self { Self(std::marker::PhantomData) }
     }
 
     pub struct IrsLazyEvaluator<T>(std::marker::PhantomData<T>);
 
     impl<T> IrsLazyEvaluator<T> {
-        pub fn new() -> Self {
-            Self(std::marker::PhantomData)
-        }
+        pub fn new() -> Self { Self(std::marker::PhantomData) }
     }
 
     impl<T> Default for IrsLazyEvaluator<T> {
-        fn default() -> Self {
-            Self::new()
-        }
+        fn default() -> Self { Self::new() }
     }
 
     pub struct BenchmarkRunner;
 
     impl BenchmarkRunner {
-        pub fn new(_config: BenchmarkConfig) -> Self {
-            Self
-        }
+        pub fn new(_config: BenchmarkConfig) -> Self { Self }
     }
 
     #[derive(Clone, Debug, Default)]
     pub struct XvaDemoConfig;
 
     impl XvaDemoConfig {
-        pub fn new() -> Self {
-            Self
-        }
-        pub fn with_num_time_points(self, _n: usize) -> Self {
-            self
-        }
-        pub fn with_benchmark_iterations(self, _n: usize) -> Self {
-            self
-        }
+        pub fn new() -> Self { Self }
+        pub fn with_num_time_points(self, _n: usize) -> Self { self }
+        pub fn with_benchmark_iterations(self, _n: usize) -> Self { self }
     }
 
     #[derive(Clone, Debug, Default)]
@@ -171,9 +160,7 @@ mod stub_types {
     pub struct XvaDemoRunner;
 
     impl XvaDemoRunner {
-        pub fn new(_config: XvaDemoConfig) -> Self {
-            Self
-        }
+        pub fn new(_config: XvaDemoConfig) -> Self { Self }
     }
 }
 
@@ -198,9 +185,7 @@ pub struct IrsAadConfig {
 
 impl IrsAadConfig {
     /// Creates a new configuration with default values.
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Sets the Greeks calculator configuration.
     pub fn with_greeks_config(mut self, config: IrsGreeksConfig) -> Self {
@@ -393,9 +378,9 @@ impl Default for XvaDemoResult {
 
 /// IRS AAD Demo Workflow.
 ///
-/// Implements the DemoWorkflow trait to integrate with FrictionalBank demo system.
-/// Provides IRS Greeks calculation using AAD and Bump-and-Revalue methods
-/// with performance benchmarking.
+/// Implements the DemoWorkflow trait to integrate with FrictionalBank demo
+/// system. Provides IRS Greeks calculation using AAD and Bump-and-Revalue
+/// methods with performance benchmarking.
 ///
 /// # Requirements Coverage
 ///
@@ -454,40 +439,26 @@ impl IrsAadWorkflow {
     }
 
     /// Creates a workflow with default configuration.
-    pub fn with_defaults() -> Self {
-        Self::new(IrsAadConfig::default())
-    }
+    pub fn with_defaults() -> Self { Self::new(IrsAadConfig::default()) }
 
     /// Returns the current configuration.
-    pub fn config(&self) -> &IrsAadConfig {
-        &self.config
-    }
+    pub fn config(&self) -> &IrsAadConfig { &self.config }
 
     /// Returns the calculator reference.
-    pub fn calculator(&self) -> &IrsGreeksCalculator<f64> {
-        &self.calculator
-    }
+    pub fn calculator(&self) -> &IrsGreeksCalculator<f64> { &self.calculator }
 
     /// Returns the benchmark runner reference.
-    pub fn benchmark_runner(&self) -> &BenchmarkRunner {
-        &self.benchmark_runner
-    }
+    pub fn benchmark_runner(&self) -> &BenchmarkRunner { &self.benchmark_runner }
 
     /// Returns the lazy evaluator reference.
-    pub fn lazy_evaluator(&self) -> &IrsLazyEvaluator<f64> {
-        &self.lazy_evaluator
-    }
+    pub fn lazy_evaluator(&self) -> &IrsLazyEvaluator<f64> { &self.lazy_evaluator }
 
     /// Checks if the workflow has been cancelled.
     #[inline]
-    pub fn is_cancelled(&self) -> bool {
-        self.cancelled.load(Ordering::SeqCst)
-    }
+    pub fn is_cancelled(&self) -> bool { self.cancelled.load(Ordering::SeqCst) }
 
     /// Resets the cancellation flag.
-    pub fn reset_cancellation(&self) {
-        self.cancelled.store(false, Ordering::SeqCst);
-    }
+    pub fn reset_cancellation(&self) { self.cancelled.store(false, Ordering::SeqCst); }
 }
 
 #[cfg(feature = "l1l2-integration")]
@@ -741,9 +712,7 @@ impl IrsAadWorkflow {
 #[async_trait]
 impl DemoWorkflow for IrsAadWorkflow {
     /// Returns the workflow name.
-    fn name(&self) -> &str {
-        "IRS AAD Demo"
-    }
+    fn name(&self) -> &str { "IRS AAD Demo" }
 
     /// Executes the workflow.
     ///
@@ -860,9 +829,7 @@ impl DemoWorkflow for IrsAadWorkflow {
     }
 
     /// Cancels the workflow.
-    async fn cancel(&self) {
-        self.cancelled.store(true, Ordering::SeqCst);
-    }
+    async fn cancel(&self) { self.cancelled.store(true, Ordering::SeqCst); }
 }
 
 // =============================================================================

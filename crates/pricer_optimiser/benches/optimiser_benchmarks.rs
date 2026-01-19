@@ -1,11 +1,13 @@
 //! Benchmarks for pricer_optimiser.
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use pricer_optimiser::bootstrapping::{
-    BootstrapCache, BootstrapInstrument, CachedBootstrapper, GenericBootstrapConfig,
-    MultiCurveBuilder, ParallelCurveSetBuilder, SequentialBootstrapper, Tenor,
+use pricer_optimiser::{
+    bootstrapping::{
+        BootstrapCache, BootstrapInstrument, CachedBootstrapper, GenericBootstrapConfig,
+        MultiCurveBuilder, ParallelCurveSetBuilder, SequentialBootstrapper, Tenor,
+    },
+    solvers::{Bfgs, LevenbergMarquardt},
 };
-use pricer_optimiser::solvers::{Bfgs, LevenbergMarquardt};
 
 fn benchmark_levenberg_marquardt(c: &mut Criterion) {
     let lm = LevenbergMarquardt::new();

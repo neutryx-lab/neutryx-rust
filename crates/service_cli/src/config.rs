@@ -2,14 +2,15 @@
 //!
 //! Loads configuration from TOML files and environment variables.
 
-use serde::Deserialize;
 use std::path::Path;
+
+use serde::Deserialize;
 
 use crate::{CliError, Result};
 
 /// CLI configuration
-#[derive(Debug, Default, Deserialize)]
 #[allow(dead_code)]
+#[derive(Debug, Default, Deserialize)]
 pub struct CliConfig {
     /// General settings
     #[serde(default)]
@@ -25,8 +26,8 @@ pub struct CliConfig {
 }
 
 /// General CLI settings
-#[derive(Debug, Deserialize, Default)]
 #[allow(dead_code)]
+#[derive(Debug, Deserialize, Default)]
 pub struct GeneralConfig {
     /// Log level
     #[serde(default = "default_log_level")]
@@ -38,8 +39,8 @@ pub struct GeneralConfig {
 }
 
 /// Pricing configuration
-#[derive(Debug, Deserialize, Default)]
 #[allow(dead_code)]
+#[derive(Debug, Deserialize, Default)]
 pub struct PricingConfig {
     /// Default number of Monte Carlo paths
     #[serde(default = "default_num_paths")]
@@ -55,8 +56,8 @@ pub struct PricingConfig {
 }
 
 /// Database configuration
-#[derive(Debug, Deserialize, Default)]
 #[allow(dead_code)]
+#[derive(Debug, Deserialize, Default)]
 pub struct DatabaseConfig {
     /// Database URL
     #[serde(default)]
@@ -67,29 +68,19 @@ pub struct DatabaseConfig {
     pub pool_size: u32,
 }
 
-fn default_log_level() -> String {
-    "info".to_string()
-}
+fn default_log_level() -> String { "info".to_string() }
 
-fn default_output_dir() -> String {
-    "./output".to_string()
-}
+fn default_output_dir() -> String { "./output".to_string() }
 
-fn default_num_paths() -> usize {
-    10_000
-}
+fn default_num_paths() -> usize { 10_000 }
 
-fn default_num_threads() -> usize {
-    num_cpus::get()
-}
+fn default_num_threads() -> usize { num_cpus::get() }
 
-fn default_pool_size() -> u32 {
-    5
-}
+fn default_pool_size() -> u32 { 5 }
 
+#[allow(dead_code)]
 impl CliConfig {
     /// Load configuration from a TOML file
-    #[allow(dead_code)]
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         let path = path.as_ref();
 

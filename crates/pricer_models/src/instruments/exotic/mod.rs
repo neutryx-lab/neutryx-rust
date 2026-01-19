@@ -11,7 +11,8 @@
 //! # Feature Flag
 //!
 //! This module is available when the `exotic` feature is enabled.
-//! Note: `exotic` implies `equity` as exotic products typically extend equity derivatives.
+//! Note: `exotic` implies `equity` as exotic products typically extend equity
+//! derivatives.
 //!
 //! # Future Implementation
 //!

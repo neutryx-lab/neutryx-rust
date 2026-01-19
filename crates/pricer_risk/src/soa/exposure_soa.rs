@@ -56,27 +56,19 @@ impl ExposureSoA {
 
     /// Returns the number of time points.
     #[inline]
-    pub fn n_times(&self) -> usize {
-        self.time_grid.len()
-    }
+    pub fn n_times(&self) -> usize { self.time_grid.len() }
 
     /// Returns the number of netting sets.
     #[inline]
-    pub fn n_netting_sets(&self) -> usize {
-        self.netting_set_ids.len()
-    }
+    pub fn n_netting_sets(&self) -> usize { self.netting_set_ids.len() }
 
     /// Returns the time grid.
     #[inline]
-    pub fn time_grid(&self) -> &[f64] {
-        &self.time_grid
-    }
+    pub fn time_grid(&self) -> &[f64] { &self.time_grid }
 
     /// Returns the netting set IDs.
     #[inline]
-    pub fn netting_set_ids(&self) -> &[NettingSetId] {
-        &self.netting_set_ids
-    }
+    pub fn netting_set_ids(&self) -> &[NettingSetId] { &self.netting_set_ids }
 
     /// Gets the exposure profile for a netting set by index.
     ///
@@ -88,9 +80,7 @@ impl ExposureSoA {
     ///
     /// Slice of exposure values across time.
     #[inline]
-    pub fn exposure_profile(&self, ns_idx: usize) -> &[f64] {
-        &self.exposures[ns_idx]
-    }
+    pub fn exposure_profile(&self, ns_idx: usize) -> &[f64] { &self.exposures[ns_idx] }
 
     /// Gets mutable exposure profile for a netting set by index.
     #[inline]

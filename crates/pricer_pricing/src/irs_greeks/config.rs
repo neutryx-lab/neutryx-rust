@@ -53,9 +53,7 @@ impl Default for IrsGreeksConfig {
 
 impl IrsGreeksConfig {
     /// Creates a new configuration with default values.
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Sets the bump size.
     pub fn with_bump_size(mut self, bump_size: f64) -> Self {

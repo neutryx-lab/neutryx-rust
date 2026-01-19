@@ -8,19 +8,23 @@
 //!
 //! - [`LinearInterpolator`]: Piecewise linear interpolation between data points
 //! - [`CubicSplineInterpolator`]: Natural cubic spline with C² continuity
-//! - [`MonotonicInterpolator`]: Fritsch-Carlson monotonicity-preserving interpolation
+//! - [`MonotonicInterpolator`]: Fritsch-Carlson monotonicity-preserving
+//!   interpolation
 //! - [`BilinearInterpolator`]: 2D grid interpolation for surfaces
-//! - [`smooth_interp`]: Branch-free smooth interpolation for Enzyme AD compatibility
+//! - [`smooth_interp`]: Branch-free smooth interpolation for Enzyme AD
+//!   compatibility
 //!
 //! ## Core Trait
 //!
 //! All 1D interpolators implement the [`Interpolator`] trait, which defines:
-//! - `interpolate(x: T) -> Result<T, InterpolationError>`: Compute interpolated value
+//! - `interpolate(x: T) -> Result<T, InterpolationError>`: Compute interpolated
+//!   value
 //! - `domain() -> (T, T)`: Return valid interpolation range
 //!
 //! ## AD Compatibility
 //!
-//! All interpolators are generic over `T: num_traits::Float`, enabling use with:
+//! All interpolators are generic over `T: num_traits::Float`, enabling use
+//! with:
 //! - `f64`: Standard floating-point computation
 //! - `Dual64`: Automatic differentiation via num-dual
 //!

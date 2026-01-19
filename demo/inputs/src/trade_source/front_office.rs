@@ -2,9 +2,10 @@
 //!
 //! Simulates a front office system that books trades throughout the day.
 
-use super::{InstrumentType, TradeParams, TradeRecord, TradeSource};
 use chrono::{Days, NaiveDate, Utc};
 use rand::Rng;
+
+use super::{InstrumentType, TradeParams, TradeRecord, TradeSource};
 
 /// Front office trade booking system
 pub struct FrontOffice {
@@ -415,9 +416,7 @@ impl FrontOffice {
 }
 
 impl Default for FrontOffice {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl TradeSource for FrontOffice {

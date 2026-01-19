@@ -1,7 +1,7 @@
 //! Integration tests for Dual number type and smoothing functions.
 //!
-//! Task 3.2: Verify that DualNumber type is accessible and basic operations work.
-//! Note: num_dual::Dual64 does not implement num_traits::Float directly,
+//! Task 3.2: Verify that DualNumber type is accessible and basic operations
+//! work. Note: num_dual::Dual64 does not implement num_traits::Float directly,
 //! so smoothing functions require a wrapper or different approach.
 //! This test file validates the DualNumber type alias and basic operations.
 
@@ -103,8 +103,9 @@ fn test_dual_number_powf() {
 /// Test DualNumber sine function.
 #[test]
 fn test_dual_number_sin() {
-    use num_dual::DualNum;
     use std::f64::consts::PI;
+
+    use num_dual::DualNum;
 
     let a = DualNumber::new(PI / 6.0, 1.0); // 30 degrees
     let sin_a = a.sin();
@@ -118,8 +119,9 @@ fn test_dual_number_sin() {
 /// Test DualNumber cosine function.
 #[test]
 fn test_dual_number_cos() {
-    use num_dual::DualNum;
     use std::f64::consts::PI;
+
+    use num_dual::DualNum;
 
     let a = DualNumber::new(PI / 3.0, 1.0); // 60 degrees
     let cos_a = a.cos();
@@ -168,7 +170,8 @@ fn test_dual_number_complex_expression() {
     assert_relative_eq!(result.eps, expected_deriv, epsilon = 1e-10);
 }
 
-/// Test that DualNumber correctly handles derivative with respect to second variable.
+/// Test that DualNumber correctly handles derivative with respect to second
+/// variable.
 #[test]
 fn test_dual_number_derivative_wrt_second_var() {
     // f(x, y) = x * y^2, df/dy = 2xy

@@ -5,7 +5,6 @@ use serde::Deserialize;
 
 /// Server configuration
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
 pub struct ServerConfig {
     /// Enable REST API
     #[serde(default = "default_true")]
@@ -19,30 +18,22 @@ pub struct ServerConfig {
     #[serde(default)]
     pub grpc_enabled: bool,
 
-    /// gRPC address
-    #[serde(default = "default_grpc_addr")]
-    pub grpc_addr: String,
+    /// gRPC address (reserved for future gRPC implementation)
+    #[serde(default = "default_grpc_addr", rename = "grpc_addr")]
+    pub _grpc_addr: String,
 
-    /// Number of worker threads
-    #[serde(default = "default_workers")]
-    pub workers: usize,
+    /// Number of worker threads (reserved for future thread pool configuration)
+    #[serde(default = "default_workers", rename = "workers")]
+    pub _workers: usize,
 }
 
-fn default_true() -> bool {
-    true
-}
+fn default_true() -> bool { true }
 
-fn default_rest_addr() -> String {
-    "0.0.0.0:8080".to_string()
-}
+fn default_rest_addr() -> String { "0.0.0.0:8080".to_string() }
 
-fn default_grpc_addr() -> String {
-    "0.0.0.0:50051".to_string()
-}
+fn default_grpc_addr() -> String { "0.0.0.0:50051".to_string() }
 
-fn default_workers() -> usize {
-    num_cpus::get()
-}
+fn default_workers() -> usize { num_cpus::get() }
 
 impl ServerConfig {
     /// Load configuration from environment variables
@@ -67,8 +58,8 @@ impl ServerConfig {
             rest_enabled,
             rest_addr,
             grpc_enabled,
-            grpc_addr,
-            workers,
+            _grpc_addr: grpc_addr,
+            _workers: workers,
         })
     }
 }
@@ -79,8 +70,8 @@ impl Default for ServerConfig {
             rest_enabled: true,
             rest_addr: default_rest_addr(),
             grpc_enabled: false,
-            grpc_addr: default_grpc_addr(),
-            workers: default_workers(),
+            _grpc_addr: default_grpc_addr(),
+            _workers: default_workers(),
         }
     }
 }

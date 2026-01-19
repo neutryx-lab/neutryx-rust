@@ -8,7 +8,8 @@
 //!
 //! - `ComputationGraph.edges` is serialised as `links` for D3.js
 //! - `GraphNode.node_type` is serialised as `type` for D3.js
-//! - All enum variants use lowercase serialisation (`#[serde(rename_all = "lowercase")]`)
+//! - All enum variants use lowercase serialisation (`#[serde(rename_all =
+//!   "lowercase")]`)
 
 use std::collections::{HashMap, HashSet, VecDeque};
 

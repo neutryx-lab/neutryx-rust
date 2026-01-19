@@ -6,7 +6,8 @@
 //!
 //! - **Fixed-size `for` loops**: Use `for i in 0..N` where N is known
 //! - **No `while` loops**: Enzyme cannot analyse dynamic loop bounds
-//! - **No iterator adaptors with dynamic termination**: Avoid `take_while`, `skip_while`
+//! - **No iterator adaptors with dynamic termination**: Avoid `take_while`,
+//!   `skip_while`
 //!
 //! # Enzyme Compatibility Guidelines
 //!
@@ -98,7 +99,8 @@ impl FixedSteps {
     ///
     /// # Arguments
     ///
-    /// * `n_steps` - Total number of steps (must be > 0 for meaningful iteration)
+    /// * `n_steps` - Total number of steps (must be > 0 for meaningful
+    ///   iteration)
     #[inline]
     pub fn new(n_steps: usize) -> Self {
         Self {
@@ -109,21 +111,15 @@ impl FixedSteps {
 
     /// Returns the total number of steps.
     #[inline]
-    pub fn len(&self) -> usize {
-        self.total
-    }
+    pub fn len(&self) -> usize { self.total }
 
     /// Returns true if the iterator is empty.
     #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.total == 0
-    }
+    pub fn is_empty(&self) -> bool { self.total == 0 }
 
     /// Returns the number of remaining steps.
     #[inline]
-    pub fn remaining(&self) -> usize {
-        self.total.saturating_sub(self.current)
-    }
+    pub fn remaining(&self) -> usize { self.total.saturating_sub(self.current) }
 }
 
 impl Iterator for FixedSteps {
@@ -178,7 +174,8 @@ impl FixedPaths {
     ///
     /// # Arguments
     ///
-    /// * `n_paths` - Total number of paths (must be > 0 for meaningful iteration)
+    /// * `n_paths` - Total number of paths (must be > 0 for meaningful
+    ///   iteration)
     #[inline]
     pub fn new(n_paths: usize) -> Self {
         Self {
@@ -189,21 +186,15 @@ impl FixedPaths {
 
     /// Returns the total number of paths.
     #[inline]
-    pub fn len(&self) -> usize {
-        self.total
-    }
+    pub fn len(&self) -> usize { self.total }
 
     /// Returns true if the iterator is empty.
     #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.total == 0
-    }
+    pub fn is_empty(&self) -> bool { self.total == 0 }
 
     /// Returns the number of remaining paths.
     #[inline]
-    pub fn remaining(&self) -> usize {
-        self.total.saturating_sub(self.current)
-    }
+    pub fn remaining(&self) -> usize { self.total.saturating_sub(self.current) }
 }
 
 impl Iterator for FixedPaths {
@@ -267,15 +258,11 @@ impl<I: ExactSizeIterator> EnzymeLoop<I> {
 
     /// Returns the total iteration count (fixed at construction).
     #[inline]
-    pub fn len(&self) -> usize {
-        self.total
-    }
+    pub fn len(&self) -> usize { self.total }
 
     /// Returns true if the iterator is empty.
     #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.total == 0
-    }
+    pub fn is_empty(&self) -> bool { self.total == 0 }
 }
 
 impl<T> EnzymeLoop<std::ops::Range<T>>
@@ -293,23 +280,17 @@ where
     /// assert_eq!(iter.len(), 10);
     /// ```
     #[inline]
-    pub fn from_range(range: std::ops::Range<T>) -> Self {
-        Self::new(range)
-    }
+    pub fn from_range(range: std::ops::Range<T>) -> Self { Self::new(range) }
 }
 
 impl<I: ExactSizeIterator> Iterator for EnzymeLoop<I> {
     type Item = I::Item;
 
     #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        self.inner.next()
-    }
+    fn next(&mut self) -> Option<Self::Item> { self.inner.next() }
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner.size_hint()
-    }
+    fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
 
 impl<I: ExactSizeIterator> ExactSizeIterator for EnzymeLoop<I> {}
@@ -385,27 +366,19 @@ impl<T: Float> AdjointAccumulator<T> {
 
     /// Adds a gamma contribution.
     #[inline]
-    pub fn add_gamma(&mut self, value: T) {
-        self.gamma = self.gamma + value;
-    }
+    pub fn add_gamma(&mut self, value: T) { self.gamma = self.gamma + value; }
 
     /// Adds a vega contribution.
     #[inline]
-    pub fn add_vega(&mut self, value: T) {
-        self.vega = self.vega + value;
-    }
+    pub fn add_vega(&mut self, value: T) { self.vega = self.vega + value; }
 
     /// Adds a theta contribution.
     #[inline]
-    pub fn add_theta(&mut self, value: T) {
-        self.theta = self.theta + value;
-    }
+    pub fn add_theta(&mut self, value: T) { self.theta = self.theta + value; }
 
     /// Adds a rho contribution.
     #[inline]
-    pub fn add_rho(&mut self, value: T) {
-        self.rho = self.rho + value;
-    }
+    pub fn add_rho(&mut self, value: T) { self.rho = self.rho + value; }
 
     /// Adds all Greeks from another accumulator.
     #[inline]
@@ -420,39 +393,27 @@ impl<T: Float> AdjointAccumulator<T> {
 
     /// Returns the accumulated delta.
     #[inline]
-    pub fn delta(&self) -> T {
-        self.delta
-    }
+    pub fn delta(&self) -> T { self.delta }
 
     /// Returns the accumulated gamma.
     #[inline]
-    pub fn gamma(&self) -> T {
-        self.gamma
-    }
+    pub fn gamma(&self) -> T { self.gamma }
 
     /// Returns the accumulated vega.
     #[inline]
-    pub fn vega(&self) -> T {
-        self.vega
-    }
+    pub fn vega(&self) -> T { self.vega }
 
     /// Returns the accumulated theta.
     #[inline]
-    pub fn theta(&self) -> T {
-        self.theta
-    }
+    pub fn theta(&self) -> T { self.theta }
 
     /// Returns the accumulated rho.
     #[inline]
-    pub fn rho(&self) -> T {
-        self.rho
-    }
+    pub fn rho(&self) -> T { self.rho }
 
     /// Returns the number of contributions.
     #[inline]
-    pub fn count(&self) -> usize {
-        self.count
-    }
+    pub fn count(&self) -> usize { self.count }
 
     /// Returns averaged Greeks (divided by count).
     #[inline]
@@ -535,9 +496,7 @@ impl<T: Float> EnzymeGbmGenerator<T> {
 
     /// Returns the number of steps (fixed at construction).
     #[inline]
-    pub fn n_steps(&self) -> usize {
-        self.n_steps
-    }
+    pub fn n_steps(&self) -> usize { self.n_steps }
 
     /// Generates a terminal spot price using provided random numbers.
     ///
@@ -546,7 +505,8 @@ impl<T: Float> EnzymeGbmGenerator<T> {
     ///
     /// # Arguments
     ///
-    /// * `randoms` - Slice of standard normal random numbers (length must equal n_steps)
+    /// * `randoms` - Slice of standard normal random numbers (length must equal
+    ///   n_steps)
     ///
     /// # Panics
     ///
@@ -575,7 +535,8 @@ impl<T: Float> EnzymeGbmGenerator<T> {
     ///
     /// # Arguments
     ///
-    /// * `randoms` - Slice of standard normal random numbers (length must equal n_steps)
+    /// * `randoms` - Slice of standard normal random numbers (length must equal
+    ///   n_steps)
     ///
     /// # Panics
     ///

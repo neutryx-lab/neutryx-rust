@@ -7,12 +7,17 @@
 //!
 //! Two patterns are provided:
 //!
-//! 1. **ThreadLocalWorkspacePool**: A pool that lazily creates workspaces
-//!    per thread using Rayon's thread-local storage.
+//! 1. **ThreadLocalWorkspacePool**: A pool that lazily creates workspaces per
+//!    thread using Rayon's thread-local storage.
 //!
 //! 2. **WorkspaceFactory**: A factory trait for creating workspaces on demand,
-//!    allowing custom initialization.
+//!    allowing custom initialisation.
 //!
+//! # Safety
+//!
+//! This module uses `unsafe impl Send + Sync` for workspace types that are
+//! safely shareable across threads due to their internal synchronization.
+#![allow(unsafe_code)]
 //! # Memory Contention Avoidance
 //!
 //! Each thread maintains its own workspace, eliminating false sharing and
@@ -39,9 +44,12 @@
 //!     .collect();
 //! ```
 
+use std::{
+    cell::RefCell,
+    sync::atomic::{AtomicUsize, Ordering},
+};
+
 use num_traits::Float;
-use std::cell::RefCell;
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 use super::workspace_checkpoint::CheckpointWorkspace;
 
@@ -108,23 +116,17 @@ impl<T: Float + Send + Sync + 'static> ThreadLocalWorkspacePool<T> {
 
     /// Returns the default path capacity.
     #[inline]
-    pub fn default_paths(&self) -> usize {
-        self.default_paths
-    }
+    pub fn default_paths(&self) -> usize { self.default_paths }
 
     /// Returns the default step capacity.
     #[inline]
-    pub fn default_steps(&self) -> usize {
-        self.default_steps
-    }
+    pub fn default_steps(&self) -> usize { self.default_steps }
 
     /// Returns the number of workspaces created so far.
     ///
     /// This is useful for monitoring thread utilization.
     #[inline]
-    pub fn workspace_count(&self) -> usize {
-        self.workspace_count.load(Ordering::Relaxed)
-    }
+    pub fn workspace_count(&self) -> usize { self.workspace_count.load(Ordering::Relaxed) }
 
     /// Executes a closure with access to the thread-local workspace.
     ///
@@ -199,18 +201,17 @@ impl<T: Float + Send + Sync + 'static> ThreadLocalWorkspacePool<T> {
     /// Note: This only resets the workspace count. Actual thread-local
     /// workspaces cannot be cleared from outside their owning threads.
     /// Use `with_workspace` with explicit `clear_all()` call instead.
-    pub fn reset_count(&self) {
-        self.workspace_count.store(0, Ordering::Relaxed);
-    }
+    pub fn reset_count(&self) { self.workspace_count.store(0, Ordering::Relaxed); }
 }
 
-// Safety: The pool itself contains no mutable state that requires synchronization
+// Safety: The pool itself contains no mutable state that requires
+// synchronization
 unsafe impl<T: Float + Send + Sync> Send for ThreadLocalWorkspacePool<T> {}
 unsafe impl<T: Float + Send + Sync> Sync for ThreadLocalWorkspacePool<T> {}
 
 /// Factory trait for creating workspaces.
 ///
-/// Implement this trait to customize workspace initialization.
+/// Implement this trait to customise workspace initialisation.
 pub trait WorkspaceFactory<T: Float>: Send + Sync {
     /// Creates a new workspace with the given capacity.
     fn create(&self, n_paths: usize, n_steps: usize) -> CheckpointWorkspace<T>;
@@ -253,7 +254,8 @@ impl<T: Float + Send> ParallelWorkspaces<T> {
     ///
     /// # Arguments
     ///
-    /// * `n_threads` - Number of workspaces to create (typically rayon::current_num_threads())
+    /// * `n_threads` - Number of workspaces to create (typically
+    ///   rayon::current_num_threads())
     /// * `n_paths` - Path capacity per workspace
     /// * `n_steps` - Step capacity per workspace
     pub fn new(n_threads: usize, n_paths: usize, n_steps: usize) -> Self {
@@ -266,15 +268,11 @@ impl<T: Float + Send> ParallelWorkspaces<T> {
 
     /// Returns the number of workspaces.
     #[inline]
-    pub fn len(&self) -> usize {
-        self.workspaces.len()
-    }
+    pub fn len(&self) -> usize { self.workspaces.len() }
 
     /// Returns true if no workspaces exist.
     #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.workspaces.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.workspaces.is_empty() }
 
     /// Executes a closure with exclusive access to a workspace.
     ///
@@ -326,15 +324,14 @@ unsafe impl<T: Float + Send + Sync> Sync for ParallelWorkspaces<T> {}
 ///
 /// Returns 0 if called from outside the Rayon thread pool.
 #[inline]
-pub fn current_thread_index() -> usize {
-    rayon::current_thread_index().unwrap_or(0)
-}
+pub fn current_thread_index() -> usize { rayon::current_thread_index().unwrap_or(0) }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
     use rayon::prelude::*;
+
+    use super::*;
 
     // ========================================================================
     // ThreadLocalWorkspacePool Tests

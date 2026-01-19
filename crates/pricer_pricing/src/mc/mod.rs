@@ -5,7 +5,8 @@
 //!
 //! # Phase 3.2 Status
 //!
-//! This is the **Phase 3.2 implementation** of the Monte Carlo kernel. Features include:
+//! This is the **Phase 3.2 implementation** of the Monte Carlo kernel. Features
+//! include:
 //!
 //! - GBM path generation with log-space formulation
 //! - Pre-allocated workspace buffers for allocation-free simulation

@@ -8,18 +8,23 @@
 //! - Requirement 3.1: Large portfolio Rayon parallel processing (1000+ trades)
 //! - Requirement 3.3: ThreadLocalWorkspacePool for memory efficiency
 
+use std::{
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
+    time::Instant,
+};
+
+use pricer_core::{market_data::curves::CurveSet, types::time::Date};
+use pricer_models::instruments::rates::InterestRateSwap;
+use pricer_pricing::greeks::{GreeksMode, GreeksResult};
+use rayon::prelude::*;
+
 use super::ParallelConfig;
 use crate::scenarios::{
     GreeksByFactorConfig, GreeksByFactorError, GreeksResultByFactor, IrsGreeksByFactorCalculator,
 };
-use pricer_core::market_data::curves::CurveSet;
-use pricer_core::types::time::Date;
-use pricer_models::instruments::rates::InterestRateSwap;
-use pricer_pricing::greeks::{GreeksMode, GreeksResult};
-use rayon::prelude::*;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
-use std::time::Instant;
 
 /// Type alias for batch processing results to reduce complexity.
 type BatchResult = (
@@ -69,21 +74,15 @@ pub struct ParallelGreeksStats {
 
 impl ParallelGreeksStats {
     /// Creates new statistics.
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Returns total computation time in milliseconds.
     #[inline]
-    pub fn total_time_ms(&self) -> f64 {
-        self.total_time_ns as f64 / 1_000_000.0
-    }
+    pub fn total_time_ms(&self) -> f64 { self.total_time_ns as f64 / 1_000_000.0 }
 
     /// Returns average time per trade in milliseconds.
     #[inline]
-    pub fn avg_time_per_trade_ms(&self) -> f64 {
-        self.avg_time_per_trade_ns as f64 / 1_000_000.0
-    }
+    pub fn avg_time_per_trade_ms(&self) -> f64 { self.avg_time_per_trade_ns as f64 / 1_000_000.0 }
 
     /// Returns the success rate as a percentage.
     #[inline]
@@ -122,9 +121,7 @@ impl Default for ParallelGreeksConfig {
 
 impl ParallelGreeksConfig {
     /// Creates a new configuration with defaults.
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Sets the batch size for parallel processing.
     pub fn with_batch_size(mut self, batch_size: usize) -> Self {
@@ -189,9 +186,7 @@ impl PortfolioGreeksResult {
     }
 
     /// Returns the total Greeks across all factors.
-    pub fn total(&self) -> GreeksResult<f64> {
-        self.aggregated.total()
-    }
+    pub fn total(&self) -> GreeksResult<f64> { self.aggregated.total() }
 
     /// Returns the number of successfully computed trades.
     pub fn successful_count(&self) -> usize {
@@ -199,9 +194,7 @@ impl PortfolioGreeksResult {
     }
 
     /// Returns the number of failed trades.
-    pub fn failed_count(&self) -> usize {
-        self.per_trade.iter().filter(|r| r.is_none()).count()
-    }
+    pub fn failed_count(&self) -> usize { self.per_trade.iter().filter(|r| r.is_none()).count() }
 }
 
 /// Parallel portfolio Greeks calculator.
@@ -239,19 +232,13 @@ pub struct ParallelPortfolioGreeksCalculator {
 
 impl ParallelPortfolioGreeksCalculator {
     /// Creates a new calculator with the given configuration.
-    pub fn new(config: ParallelGreeksConfig) -> Self {
-        Self { config }
-    }
+    pub fn new(config: ParallelGreeksConfig) -> Self { Self { config } }
 
     /// Creates a calculator with default configuration.
-    pub fn with_defaults() -> Self {
-        Self::new(ParallelGreeksConfig::default())
-    }
+    pub fn with_defaults() -> Self { Self::new(ParallelGreeksConfig::default()) }
 
     /// Returns a reference to the configuration.
-    pub fn config(&self) -> &ParallelGreeksConfig {
-        &self.config
-    }
+    pub fn config(&self) -> &ParallelGreeksConfig { &self.config }
 
     /// Determines whether to use parallel processing based on portfolio size.
     #[inline]
@@ -533,13 +520,16 @@ impl ParallelPortfolioGreeksCalculator {
 
 #[cfg(test)]
 mod tests {
-    use super::super::DEFAULT_BATCH_SIZE;
-    use super::*;
-    use pricer_core::market_data::curves::{CurveEnum, CurveName};
-    use pricer_core::types::time::DayCountConvention;
-    use pricer_core::types::Currency;
-    use pricer_models::instruments::rates::{FixedLeg, FloatingLeg, RateIndex, SwapDirection};
-    use pricer_models::schedules::{Frequency, ScheduleBuilder};
+    use pricer_core::{
+        market_data::curves::{CurveEnum, CurveName},
+        types::{time::DayCountConvention, Currency},
+    };
+    use pricer_models::{
+        instruments::rates::{FixedLeg, FloatingLeg, RateIndex, SwapDirection},
+        schedules::{Frequency, ScheduleBuilder},
+    };
+
+    use super::{super::DEFAULT_BATCH_SIZE, *};
 
     // ================================================================
     // Task 3.1: ParallelPortfolioGreeksCalculator tests (TDD)

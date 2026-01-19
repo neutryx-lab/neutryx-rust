@@ -36,11 +36,10 @@
 //! let resolved = resolver.resolve_mode(EnzymeMode::Auto);
 //! ```
 
+use super::greeks::GreeksMode as EnzymeGreeksMode;
 use crate::greeks::{GreeksConfig, GreeksMode as CoreGreeksMode};
 
-use super::greeks::GreeksMode as EnzymeGreeksMode;
-
-/// Configuration for fallback behavior.
+/// Configuration for fallback behaviour.
 #[derive(Clone, Debug)]
 pub struct FallbackConfig {
     /// Whether to warn when falling back from Enzyme to FD.
@@ -65,9 +64,7 @@ impl Default for FallbackConfig {
 
 impl FallbackConfig {
     /// Creates a new fallback configuration.
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Builder method: enable/disable fallback warnings.
     #[inline]
@@ -104,21 +101,15 @@ pub struct FallbackResolver {
 impl FallbackResolver {
     /// Creates a new fallback resolver with the given configuration.
     #[inline]
-    pub fn new(config: FallbackConfig) -> Self {
-        Self { config }
-    }
+    pub fn new(config: FallbackConfig) -> Self { Self { config } }
 
     /// Creates a resolver with default configuration.
     #[inline]
-    pub fn default_resolver() -> Self {
-        Self::new(FallbackConfig::default())
-    }
+    pub fn default_resolver() -> Self { Self::new(FallbackConfig::default()) }
 
     /// Returns whether Enzyme AD is available.
     #[inline]
-    pub fn enzyme_available(&self) -> bool {
-        cfg!(feature = "enzyme-ad")
-    }
+    pub fn enzyme_available(&self) -> bool { cfg!(feature = "enzyme-ad") }
 
     /// Resolves an Enzyme mode to a concrete implementation mode.
     ///
@@ -169,27 +160,19 @@ impl FallbackResolver {
 
     /// Returns the Greeks configuration for fallback.
     #[inline]
-    pub fn greeks_config(&self) -> &GreeksConfig {
-        &self.config.greeks_config
-    }
+    pub fn greeks_config(&self) -> &GreeksConfig { &self.config.greeks_config }
 
     /// Returns the fallback configuration.
     #[inline]
-    pub fn config(&self) -> &FallbackConfig {
-        &self.config
-    }
+    pub fn config(&self) -> &FallbackConfig { &self.config }
 
     /// Checks if warnings should be issued for fallback.
     #[inline]
-    pub fn should_warn(&self) -> bool {
-        self.config.warn_on_fallback && !self.enzyme_available()
-    }
+    pub fn should_warn(&self) -> bool { self.config.warn_on_fallback && !self.enzyme_available() }
 }
 
 impl Default for FallbackResolver {
-    fn default() -> Self {
-        Self::default_resolver()
-    }
+    fn default() -> Self { Self::default_resolver() }
 }
 
 /// Result of mode resolution.
@@ -235,21 +218,15 @@ impl ResolvedMode {
 
     /// Returns true if this is using Enzyme AD.
     #[inline]
-    pub fn uses_enzyme(&self) -> bool {
-        matches!(self.method, ComputationMethod::Enzyme(_))
-    }
+    pub fn uses_enzyme(&self) -> bool { matches!(self.method, ComputationMethod::Enzyme(_)) }
 
     /// Returns true if this is using fallback.
     #[inline]
-    pub fn uses_fallback(&self) -> bool {
-        matches!(self.method, ComputationMethod::Fallback(_))
-    }
+    pub fn uses_fallback(&self) -> bool { matches!(self.method, ComputationMethod::Fallback(_)) }
 
     /// Returns true if resolution failed.
     #[inline]
-    pub fn is_error(&self) -> bool {
-        self.error.is_some()
-    }
+    pub fn is_error(&self) -> bool { self.error.is_some() }
 
     /// Converts to Result, returning error if resolution failed.
     pub fn into_result(self) -> Result<ComputationMethod, FallbackError> {
@@ -319,9 +296,7 @@ pub trait FallbackAware {
 
 /// Utility function to check if Enzyme AD is available.
 #[inline]
-pub fn is_enzyme_available() -> bool {
-    cfg!(feature = "enzyme-ad")
-}
+pub fn is_enzyme_available() -> bool { cfg!(feature = "enzyme-ad") }
 
 /// Utility function to get the default computation method.
 #[inline]

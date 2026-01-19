@@ -1,8 +1,9 @@
 //! Natural cubic spline interpolation.
 
-use super::Interpolator;
-use crate::types::InterpolationError;
 use num_traits::Float;
+
+use super::Interpolator;
+use crate::{math::numeric::from_f64, types::InterpolationError};
 
 /// Polynomial coefficients for a cubic spline segment.
 ///
@@ -23,7 +24,8 @@ struct SplineCoeffs<T: Float> {
 ///
 /// Stores sorted (x, y) data points and computes natural cubic spline
 /// coefficients with zero second derivative at boundaries.
-/// Supports automatic differentiation through generic `T: Float` type parameter.
+/// Supports automatic differentiation through generic `T: Float` type
+/// parameter.
 ///
 /// # Type Parameters
 ///
@@ -57,9 +59,9 @@ pub struct CubicSplineInterpolator<T: Float> {
 impl<T: Float> CubicSplineInterpolator<T> {
     /// Construct a natural cubic spline from x and y data points.
     ///
-    /// Data points are automatically sorted by x-coordinate if not already sorted.
-    /// Requires at least 3 data points. Computes natural spline with zero
-    /// second derivative at boundaries.
+    /// Data points are automatically sorted by x-coordinate if not already
+    /// sorted. Requires at least 3 data points. Computes natural spline
+    /// with zero second derivative at boundaries.
     ///
     /// # Arguments
     ///
@@ -124,16 +126,16 @@ impl<T: Float> CubicSplineInterpolator<T> {
     /// then computes polynomial coefficients for each segment.
     fn compute_coefficients(xs: &[T], ys: &[T]) -> Vec<SplineCoeffs<T>> {
         let n = xs.len();
-        let two = T::from(2.0).unwrap();
-        let _three = T::from(3.0).unwrap();
-        let six = T::from(6.0).unwrap();
+        let two: T = from_f64(2.0);
+        let six: T = from_f64(6.0);
 
         // Compute intervals h[i] = x[i+1] - x[i]
         let h: Vec<T> = (0..n - 1).map(|i| xs[i + 1] - xs[i]).collect();
 
         // Build tridiagonal system for second derivatives M
         // Natural boundary: M[0] = M[n-1] = 0
-        // Interior equations: h[i-1]*M[i-1] + 2*(h[i-1]+h[i])*M[i] + h[i]*M[i+1] = 6*(...)
+        // Interior equations: h[i-1]*M[i-1] + 2*(h[i-1]+h[i])*M[i] + h[i]*M[i+1] =
+        // 6*(...)
 
         if n == 3 {
             // Special case: only one interior point
@@ -248,21 +250,15 @@ impl<T: Float> CubicSplineInterpolator<T> {
 
     /// Returns a reference to the sorted x-coordinates.
     #[inline]
-    pub fn xs(&self) -> &[T] {
-        &self.xs
-    }
+    pub fn xs(&self) -> &[T] { &self.xs }
 
     /// Returns the number of data points.
     #[inline]
-    pub fn len(&self) -> usize {
-        self.xs.len()
-    }
+    pub fn len(&self) -> usize { self.xs.len() }
 
     /// Returns true if the interpolator has no data points.
     #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.xs.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.xs.is_empty() }
 }
 
 impl<T: Float> Interpolator<T> for CubicSplineInterpolator<T> {
@@ -312,9 +308,7 @@ impl<T: Float> Interpolator<T> for CubicSplineInterpolator<T> {
 
     /// Return the valid interpolation domain.
     #[inline]
-    fn domain(&self) -> (T, T) {
-        (self.xs[0], self.xs[self.xs.len() - 1])
-    }
+    fn domain(&self) -> (T, T) { (self.xs[0], self.xs[self.xs.len() - 1]) }
 }
 
 #[cfg(test)]

@@ -49,9 +49,7 @@ mod tests {
     #[test]
     fn test_float_trait_with_f64() {
         // Test that f64 satisfies Float trait
-        fn generic_sqrt<T: Float>(x: T) -> T {
-            x.sqrt()
-        }
+        fn generic_sqrt<T: Float>(x: T) -> T { x.sqrt() }
 
         let result = generic_sqrt(4.0_f64);
         assert_eq!(result, 2.0);
@@ -60,9 +58,7 @@ mod tests {
     #[test]
     fn test_float_trait_arithmetic() {
         // Test arithmetic operations through Float trait
-        fn generic_quadratic<T: Float>(a: T, b: T, c: T, x: T) -> T {
-            a * x * x + b * x + c
-        }
+        fn generic_quadratic<T: Float>(a: T, b: T, c: T, x: T) -> T { a * x * x + b * x + c }
 
         let result = generic_quadratic(2.0_f64, 3.0, 1.0, 5.0);
         assert_eq!(result, 66.0); // 2*25 + 3*5 + 1 = 66
@@ -71,9 +67,7 @@ mod tests {
     #[test]
     fn test_float_trait_mathematical_functions() {
         // Test mathematical functions
-        fn generic_exp<T: Float>(x: T) -> T {
-            x.exp()
-        }
+        fn generic_exp<T: Float>(x: T) -> T { x.exp() }
 
         let result = generic_exp(0.0_f64);
         assert_eq!(result, 1.0);

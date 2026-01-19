@@ -11,12 +11,12 @@
 //!
 //! # Design Philosophy
 //!
-//! - **Streaming accumulation**: Statistics are computed incrementally as prices
-//!   are observed, avoiding full path storage when possible
+//! - **Streaming accumulation**: Statistics are computed incrementally as
+//!   prices are observed, avoiding full path storage when possible
 //! - **Enzyme AD compatible**: All computations use smooth approximations and
 //!   avoid branches on floating-point values
 //! - **Static dispatch**: Enum-based dispatch for payoff types ensures
-//!   LLVM-level optimization
+//!   LLVM-level optimisation
 
 mod asian;
 mod barrier;
@@ -34,8 +34,9 @@ pub use payoff_type::PathPayoffType;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     // ========================================================================
     // PathObserver Tests (TDD)

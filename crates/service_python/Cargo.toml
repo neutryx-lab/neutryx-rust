@@ -34,3 +34,6 @@ default = []
 enzyme-ad = ["pricer_pricing/enzyme-ad"]
 
 [dev-dependencies]
+
+[lints]
+workspace = true

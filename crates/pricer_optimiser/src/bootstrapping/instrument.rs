@@ -1,12 +1,14 @@
 //! Bootstrap instrument definitions.
 //!
 //! This module provides the `BootstrapInstrument<T>` enum representing
-//! market instruments used for yield curve bootstrapping: OIS, IRS, FRA, and Futures.
+//! market instruments used for yield curve bootstrapping: OIS, IRS, FRA, and
+//! Futures.
 //!
 //! All instrument types are generic over `T: Float` for AD compatibility
 //! and use static dispatch (enum-based) for Enzyme optimisation.
 
 use num_traits::Float;
+use pricer_core::math::numeric::{from_f64, from_usize};
 
 /// Payment frequency for fixed-income instruments.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -38,7 +40,7 @@ impl Frequency {
 
     /// Get the period length in years.
     pub fn period_years<T: Float>(&self) -> T {
-        T::from(1.0).unwrap() / T::from(self.payments_per_year()).unwrap()
+        from_f64::<T>(1.0) / from_usize(self.payments_per_year())
     }
 }
 
@@ -147,7 +149,8 @@ impl<T: Float> BootstrapInstrument<T> {
         }
     }
 
-    /// Create an IRS instrument with typical conventions (annual fixed, quarterly float).
+    /// Create an IRS instrument with typical conventions (annual fixed,
+    /// quarterly float).
     pub fn irs(maturity: T, rate: T) -> Self {
         Self::Irs {
             maturity,
@@ -173,9 +176,7 @@ impl<T: Float> BootstrapInstrument<T> {
     }
 
     /// Create a FRA instrument.
-    pub fn fra(start: T, end: T, rate: T) -> Self {
-        Self::Fra { start, end, rate }
-    }
+    pub fn fra(start: T, end: T, rate: T) -> Self { Self::Fra { start, end, rate } }
 
     /// Create a Future instrument from quoted price.
     ///
@@ -190,7 +191,8 @@ impl<T: Float> BootstrapInstrument<T> {
 
     /// Create a Future instrument from rate (converts to price internally).
     pub fn future_from_rate(maturity: T, rate: T, convexity_adjustment: T) -> Self {
-        let price = T::from(100.0).unwrap() - rate * T::from(100.0).unwrap();
+        let hundred: T = from_f64(100.0);
+        let price = hundred - rate * hundred;
         Self::Future {
             maturity,
             price,
@@ -216,7 +218,8 @@ impl<T: Float> BootstrapInstrument<T> {
 
     /// Get the rate of this instrument.
     ///
-    /// For Futures, returns the implied rate from price minus convexity adjustment.
+    /// For Futures, returns the implied rate from price minus convexity
+    /// adjustment.
     pub fn rate(&self) -> T {
         match self {
             Self::Ois { rate, .. } => *rate,
@@ -227,7 +230,7 @@ impl<T: Float> BootstrapInstrument<T> {
                 convexity_adjustment,
                 ..
             } => {
-                let hundred = T::from(100.0).unwrap();
+                let hundred: T = from_f64(100.0);
                 (hundred - *price) / hundred - *convexity_adjustment
             }
         }
@@ -244,24 +247,16 @@ impl<T: Float> BootstrapInstrument<T> {
     }
 
     /// Check if this is an OIS instrument.
-    pub fn is_ois(&self) -> bool {
-        matches!(self, Self::Ois { .. })
-    }
+    pub fn is_ois(&self) -> bool { matches!(self, Self::Ois { .. }) }
 
     /// Check if this is an IRS instrument.
-    pub fn is_irs(&self) -> bool {
-        matches!(self, Self::Irs { .. })
-    }
+    pub fn is_irs(&self) -> bool { matches!(self, Self::Irs { .. }) }
 
     /// Check if this is a FRA instrument.
-    pub fn is_fra(&self) -> bool {
-        matches!(self, Self::Fra { .. })
-    }
+    pub fn is_fra(&self) -> bool { matches!(self, Self::Fra { .. }) }
 
     /// Check if this is a Future instrument.
-    pub fn is_future(&self) -> bool {
-        matches!(self, Self::Future { .. })
-    }
+    pub fn is_future(&self) -> bool { matches!(self, Self::Future { .. }) }
 
     /// Get the start time for FRA, or 0 for other instruments.
     pub fn start(&self) -> T {
@@ -284,7 +279,8 @@ impl<T: Float> BootstrapInstrument<T> {
     /// # Arguments
     ///
     /// * `df_maturity` - Discount factor at the instrument's maturity
-    /// * `partial_curve_df` - Function to get discount factor from partial curve
+    /// * `partial_curve_df` - Function to get discount factor from partial
+    ///   curve
     ///
     /// # Returns
     ///
@@ -305,7 +301,8 @@ impl<T: Float> BootstrapInstrument<T> {
     /// # Arguments
     ///
     /// * `df_maturity` - Discount factor at the instrument's maturity
-    /// * `partial_curve_df` - Function to get discount factor from partial curve
+    /// * `partial_curve_df` - Function to get discount factor from partial
+    ///   curve
     ///
     /// # Returns
     ///
@@ -325,7 +322,7 @@ impl<T: Float> BootstrapInstrument<T> {
                 //
                 // For multi-period OIS, we use simplified approach
                 let num_periods = (*maturity
-                    * T::from(payment_frequency.payments_per_year()).unwrap())
+                    * from_usize::<T>(payment_frequency.payments_per_year()))
                 .ceil()
                 .to_usize()
                 .unwrap_or(1)
@@ -347,6 +344,7 @@ impl<T: Float> BootstrapInstrument<T> {
                 // For IRS: the residual derivative is more complex
                 // Use simplified form for annual payments
                 let dt = fixed_frequency.period_years::<T>();
+                // to_usize can fail for very large values, default to 1 as safe fallback
                 let num_periods = (*maturity / dt).ceil().to_usize().unwrap_or(1).max(1);
 
                 if num_periods == 1 {
@@ -389,6 +387,7 @@ impl<T: Float> BootstrapInstrument<T> {
             } => {
                 // For OIS, we compute the par swap rate
                 let dt = payment_frequency.period_years::<T>();
+                // to_usize can fail for very large values, default to 1 as safe fallback
                 let num_periods = (*maturity / dt).ceil().to_usize().unwrap_or(1).max(1);
 
                 if num_periods == 1 {
@@ -399,13 +398,13 @@ impl<T: Float> BootstrapInstrument<T> {
                     // rate = (1 - df_maturity) / sum(df_i * dt_i)
                     let mut annuity = T::zero();
                     for i in 1..=num_periods {
-                        let t_i = dt * T::from(i).unwrap();
+                        let t_i = dt * from_usize::<T>(i);
                         if t_i < *maturity {
                             annuity = annuity + partial_curve_df(t_i) * dt;
                         }
                     }
                     // Add final period
-                    let final_dt = *maturity - dt * T::from(num_periods - 1).unwrap();
+                    let final_dt = *maturity - dt * from_usize::<T>(num_periods - 1);
                     annuity = annuity + df_maturity * final_dt;
 
                     if annuity > T::zero() {
@@ -423,18 +422,19 @@ impl<T: Float> BootstrapInstrument<T> {
                 // For IRS, compute par swap rate
                 // rate = (1 - df_maturity) / annuity
                 let dt = fixed_frequency.period_years::<T>();
+                // to_usize can fail for very large values, default to 1 as safe fallback
                 let num_periods = (*maturity / dt).ceil().to_usize().unwrap_or(1).max(1);
 
                 let mut annuity = T::zero();
                 for i in 1..num_periods {
-                    let t_i = dt * T::from(i).unwrap();
+                    let t_i = dt * from_usize::<T>(i);
                     if t_i < *maturity {
                         annuity = annuity + partial_curve_df(t_i) * dt;
                     }
                 }
                 // Final period (may be shorter)
                 let final_dt = if num_periods > 1 {
-                    *maturity - dt * T::from(num_periods - 1).unwrap()
+                    *maturity - dt * from_usize::<T>(num_periods - 1)
                 } else {
                     *maturity
                 };
@@ -471,14 +471,14 @@ impl<T: Float> BootstrapInstrument<T> {
     where
         F: Fn(T) -> T,
     {
-        let epsilon = T::from(1e-8).unwrap();
+        let epsilon: T = from_f64(1e-8);
         let df_plus = df_maturity + epsilon;
         let df_minus = df_maturity - epsilon;
 
         let r_plus = self.residual(df_plus, &partial_curve_df);
         let r_minus = self.residual(df_minus, &partial_curve_df);
 
-        (r_plus - r_minus) / (T::from(2.0).unwrap() * epsilon)
+        (r_plus - r_minus) / (from_f64::<T>(2.0) * epsilon)
     }
 
     // ========================================
@@ -520,7 +520,7 @@ impl<T: Float> BootstrapInstrument<T> {
                 }
             }
             Self::Future { price, .. } => {
-                if *price <= T::zero() || *price >= T::from(200.0).unwrap() {
+                if *price <= T::zero() || *price >= from_f64(200.0) {
                     return Err(format!(
                         "Future price {:?} is unreasonable (expected 0-200)",
                         price.to_f64()
@@ -761,7 +761,8 @@ mod tests {
 
     #[test]
     fn test_ois_residual_zero_at_correct_df() {
-        // For a 1-year OIS at 3%, the correct DF is approximately 1 / (1 + 0.03) ≈ 0.9709
+        // For a 1-year OIS at 3%, the correct DF is approximately 1 / (1 + 0.03) ≈
+        // 0.9709
         let ois: BootstrapInstrument<f64> = BootstrapInstrument::ois(1.0, 0.03);
         let df_correct = 1.0 / (1.0 + 0.03 * 1.0);
 

@@ -118,9 +118,7 @@ impl GreeksConfig {
     ///     .build()
     ///     .unwrap();
     /// ```
-    pub fn builder() -> GreeksConfigBuilder {
-        GreeksConfigBuilder::default()
-    }
+    pub fn builder() -> GreeksConfigBuilder { GreeksConfigBuilder::default() }
 
     /// Validates the configuration.
     ///
@@ -196,9 +194,7 @@ impl GreeksConfig {
     /// assert!((bump - 1.0).abs() < 1e-10); // 1% of 100 = 1.0
     /// ```
     #[inline]
-    pub fn compute_spot_bump(&self, spot: f64) -> f64 {
-        (self.spot_bump_relative * spot).max(1e-8)
-    }
+    pub fn compute_spot_bump(&self, spot: f64) -> f64 { (self.spot_bump_relative * spot).max(1e-8) }
 }
 
 /// Builder for [`GreeksConfig`].

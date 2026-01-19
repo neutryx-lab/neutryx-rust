@@ -5,8 +5,10 @@
 //!
 //! # Types
 //!
-//! - **Payer Swaption**: Right to enter a payer swap (pay fixed, receive floating)
-//! - **Receiver Swaption**: Right to enter a receiver swap (receive fixed, pay floating)
+//! - **Payer Swaption**: Right to enter a payer swap (pay fixed, receive
+//!   floating)
+//! - **Receiver Swaption**: Right to enter a receiver swap (receive fixed, pay
+//!   floating)
 //!
 //! # Exercise Styles
 //!
@@ -61,9 +63,10 @@
 //! assert_eq!(swaption.swaption_type(), SwaptionType::Payer);
 //! ```
 
+use std::fmt;
+
 use num_traits::Float;
 use pricer_core::types::Currency;
-use std::fmt;
 
 use super::InterestRateSwap;
 
@@ -150,76 +153,57 @@ impl<T: Float> Swaption<T> {
 
     /// Returns the underlying swap.
     #[inline]
-    pub fn underlying(&self) -> &InterestRateSwap<T> {
-        &self.underlying
-    }
+    pub fn underlying(&self) -> &InterestRateSwap<T> { &self.underlying }
 
     /// Returns the time to expiry in years.
     #[inline]
-    pub fn expiry(&self) -> T {
-        self.expiry_time
-    }
+    pub fn expiry(&self) -> T { self.expiry_time }
 
     /// Returns the strike rate.
     #[inline]
-    pub fn strike(&self) -> T {
-        self.strike
-    }
+    pub fn strike(&self) -> T { self.strike }
 
     /// Returns the swaption type.
     #[inline]
-    pub fn swaption_type(&self) -> SwaptionType {
-        self.swaption_type
-    }
+    pub fn swaption_type(&self) -> SwaptionType { self.swaption_type }
 
     /// Returns the exercise style.
     #[inline]
-    pub fn style(&self) -> SwaptionStyle {
-        self.style
-    }
+    pub fn style(&self) -> SwaptionStyle { self.style }
 
     /// Returns the settlement currency.
     #[inline]
-    pub fn currency(&self) -> Currency {
-        self.underlying.currency()
-    }
+    pub fn currency(&self) -> Currency { self.underlying.currency() }
 
     /// Returns the notional amount.
     #[inline]
-    pub fn notional(&self) -> T {
-        self.underlying.notional()
-    }
+    pub fn notional(&self) -> T { self.underlying.notional() }
 
     /// Returns whether this is a payer swaption.
     #[inline]
-    pub fn is_payer(&self) -> bool {
-        self.swaption_type == SwaptionType::Payer
-    }
+    pub fn is_payer(&self) -> bool { self.swaption_type == SwaptionType::Payer }
 
     /// Returns whether this is a receiver swaption.
     #[inline]
-    pub fn is_receiver(&self) -> bool {
-        self.swaption_type == SwaptionType::Receiver
-    }
+    pub fn is_receiver(&self) -> bool { self.swaption_type == SwaptionType::Receiver }
 
     /// Returns whether this is a European swaption.
     #[inline]
-    pub fn is_european(&self) -> bool {
-        self.style == SwaptionStyle::European
-    }
+    pub fn is_european(&self) -> bool { self.style == SwaptionStyle::European }
 
     /// Returns the swap tenor (length of the underlying swap).
-    pub fn swap_tenor(&self) -> T {
-        self.underlying.maturity() - self.expiry_time
-    }
+    pub fn swap_tenor(&self) -> T { self.underlying.maturity() - self.expiry_time }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::instruments::rates::{FixedLeg, FloatingLeg, RateIndex, SwapDirection};
-    use crate::schedules::{Frequency, ScheduleBuilder};
     use pricer_core::types::time::{Date, DayCountConvention};
+
+    use super::*;
+    use crate::{
+        instruments::rates::{FixedLeg, FloatingLeg, RateIndex, SwapDirection},
+        schedules::{Frequency, ScheduleBuilder},
+    };
 
     fn create_test_swap() -> InterestRateSwap<f64> {
         let start = Date::from_ymd(2024, 1, 15).unwrap();

@@ -5,7 +5,8 @@
 //!
 //! # Algorithm
 //!
-//! The Levenberg-Marquardt algorithm combines Gauss-Newton and gradient descent:
+//! The Levenberg-Marquardt algorithm combines Gauss-Newton and gradient
+//! descent:
 //!
 //! ```text
 //! (J^T J + λI) δ = J^T r
@@ -124,10 +125,10 @@ impl LMConfig {
     }
 }
 
-/// Result of Levenberg-Marquardt optimization.
+/// Result of Levenberg-Marquardt optimisation.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LMResult {
-    /// Final optimized parameters.
+    /// Final optimised parameters.
     pub params: Vec<f64>,
     /// Final residual sum of squares.
     pub residual_ss: f64,
@@ -168,12 +169,13 @@ impl LMResult {
 
 /// Levenberg-Marquardt nonlinear least-squares solver.
 ///
-/// Solves optimization problems of the form:
+/// Solves optimisation problems of the form:
 /// ```text
 /// min_p ||f(p)||^2
 /// ```
 ///
-/// where `f(p)` is a vector-valued function (residuals) and `p` is a parameter vector.
+/// where `f(p)` is a vector-valued function (residuals) and `p` is a parameter
+/// vector.
 ///
 /// # Type Parameters
 ///
@@ -204,9 +206,7 @@ pub struct LevenbergMarquardtSolver {
 
 impl LevenbergMarquardtSolver {
     /// Create a new LM solver with the given configuration.
-    pub fn new(config: LMConfig) -> Self {
-        Self { config }
-    }
+    pub fn new(config: LMConfig) -> Self { Self { config } }
 
     /// Create a solver with default configuration.
     pub fn with_defaults() -> Self {
@@ -216,9 +216,7 @@ impl LevenbergMarquardtSolver {
     }
 
     /// Get the solver configuration.
-    pub fn config(&self) -> &LMConfig {
-        &self.config
-    }
+    pub fn config(&self) -> &LMConfig { &self.config }
 
     /// Solve the nonlinear least-squares problem.
     ///
@@ -229,8 +227,8 @@ impl LevenbergMarquardtSolver {
     ///
     /// # Returns
     ///
-    /// * `Ok(LMResult)` - Optimization result with final parameters
-    /// * `Err(SolverError)` - If optimization fails
+    /// * `Ok(LMResult)` - Optimisation result with final parameters
+    /// * `Err(SolverError)` - If optimisation fails
     pub fn solve<F>(&self, residuals: F, initial_params: Vec<f64>) -> Result<LMResult, SolverError>
     where
         F: Fn(&[f64]) -> Vec<f64>,
@@ -381,9 +379,7 @@ where
 
 /// Compute sum of squares of a vector.
 #[inline]
-fn sum_of_squares(v: &[f64]) -> f64 {
-    v.iter().map(|x| x * x).sum()
-}
+fn sum_of_squares(v: &[f64]) -> f64 { v.iter().map(|x| x * x).sum() }
 
 /// Solve Ax = b using Cholesky decomposition.
 fn solve_cholesky(a: &[Vec<f64>], b: &[f64]) -> Option<Vec<f64>> {
@@ -573,9 +569,7 @@ mod tests {
     fn test_solve_exponential_fit() {
         // Fit y = a * exp(-x) to data where a = 1
         // Using explicit f64 to avoid type inference issues
-        fn model(a: f64, x: f64) -> f64 {
-            a * (-x).exp()
-        }
+        fn model(a: f64, x: f64) -> f64 { a * (-x).exp() }
 
         let x_data: [f64; 3] = [0.0, 1.0, 2.0];
         let y_data: [f64; 3] = [1.0, (-1.0_f64).exp(), (-2.0_f64).exp()];

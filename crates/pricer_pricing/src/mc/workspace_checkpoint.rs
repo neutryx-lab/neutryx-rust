@@ -8,14 +8,14 @@
 //!
 //! # Design
 //!
-//! The workspace maintains per-path observers that accumulate streaming statistics
-//! during the forward pass. These can be snapshotted for checkpointing and
-//! restored during reverse-mode AD.
+//! The workspace maintains per-path observers that accumulate streaming
+//! statistics during the forward pass. These can be snapshotted for
+//! checkpointing and restored during reverse-mode AD.
 //!
 //! # Enzyme AD Compatibility
 //!
 //! All buffer operations are designed for buffer hoisting, enabling Enzyme
-//! to optimize the inner simulation loop.
+//! to optimise the inner simulation loop.
 
 use num_traits::Float;
 
@@ -80,7 +80,8 @@ pub struct CheckpointWorkspace<T: Float> {
 }
 
 impl<T: Float> CheckpointWorkspace<T> {
-    /// Creates a new checkpoint-enabled workspace with the specified initial capacity.
+    /// Creates a new checkpoint-enabled workspace with the specified initial
+    /// capacity.
     ///
     /// # Arguments
     ///
@@ -205,27 +206,19 @@ impl<T: Float> CheckpointWorkspace<T> {
 
     /// Returns current path capacity.
     #[inline]
-    pub fn capacity_paths(&self) -> usize {
-        self.capacity_paths
-    }
+    pub fn capacity_paths(&self) -> usize { self.capacity_paths }
 
     /// Returns current step capacity.
     #[inline]
-    pub fn capacity_steps(&self) -> usize {
-        self.capacity_steps
-    }
+    pub fn capacity_steps(&self) -> usize { self.capacity_steps }
 
     /// Returns logical path size.
     #[inline]
-    pub fn size_paths(&self) -> usize {
-        self.size_paths
-    }
+    pub fn size_paths(&self) -> usize { self.size_paths }
 
     /// Returns logical step size.
     #[inline]
-    pub fn size_steps(&self) -> usize {
-        self.size_steps
-    }
+    pub fn size_steps(&self) -> usize { self.size_steps }
 
     // ========================================================================
     // Buffer Accessors
@@ -261,15 +254,11 @@ impl<T: Float> CheckpointWorkspace<T> {
 
     /// Returns slice of payoff values.
     #[inline]
-    pub fn payoffs(&self) -> &[T] {
-        &self.payoffs[..self.size_paths]
-    }
+    pub fn payoffs(&self) -> &[T] { &self.payoffs[..self.size_paths] }
 
     /// Returns mutable slice of payoff values.
     #[inline]
-    pub fn payoffs_mut(&mut self) -> &mut [T] {
-        &mut self.payoffs[..self.size_paths]
-    }
+    pub fn payoffs_mut(&mut self) -> &mut [T] { &mut self.payoffs[..self.size_paths] }
 
     // ========================================================================
     // Observer Accessors
@@ -307,9 +296,7 @@ impl<T: Float> CheckpointWorkspace<T> {
 
     /// Returns a slice of all observers.
     #[inline]
-    pub fn observers(&self) -> &[PathObserver<T>] {
-        &self.observers[..self.size_paths]
-    }
+    pub fn observers(&self) -> &[PathObserver<T>] { &self.observers[..self.size_paths] }
 
     /// Returns a mutable slice of all observers.
     #[inline]
@@ -393,15 +380,14 @@ impl<T: Float> CheckpointWorkspace<T> {
 }
 
 impl<T: Float> Default for CheckpointWorkspace<T> {
-    fn default() -> Self {
-        Self::new(0, 0)
-    }
+    fn default() -> Self { Self::new(0, 0) }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     // ========================================================================
     // Construction Tests
@@ -424,7 +410,7 @@ mod tests {
     }
 
     #[test]
-    fn test_workspace_observers_initialized() {
+    fn test_workspace_observers_initialised() {
         let ws: CheckpointWorkspace<f64> = CheckpointWorkspace::new(100, 10);
         assert_eq!(ws.observers().len(), 100);
 
@@ -620,7 +606,8 @@ mod tests {
         // Should be positive and reasonable
         assert!(usage > 0);
 
-        // Rough estimate: randoms (100*10*8) + paths (100*11*8) + payoffs (100*8) + observers
+        // Rough estimate: randoms (100*10*8) + paths (100*11*8) + payoffs (100*8) +
+        // observers
         let expected_min = 100 * 10 * 8 + 100 * 11 * 8 + 100 * 8;
         assert!(usage >= expected_min);
     }

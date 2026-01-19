@@ -5,8 +5,10 @@
 //!
 //! # Components
 //!
-//! - `ModelEnum`: Stochastic models (BlackScholes, HullWhite) with evolve method
-//! - `InstrumentEnum`: Instruments (VanillaSwap, CmsSwap) with requires_vol() method
+//! - `ModelEnum`: Stochastic models (BlackScholes, HullWhite) with evolve
+//!   method
+//! - `InstrumentEnum`: Instruments (VanillaSwap, CmsSwap) with requires_vol()
+//!   method
 //! - `CurveEnum`: Yield curves with get_df() method
 //! - `VolSurfaceEnum`: Volatility surfaces for convexity adjustments
 //!

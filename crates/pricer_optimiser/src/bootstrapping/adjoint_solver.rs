@@ -19,11 +19,17 @@
 //! θ̄ += x̄ × (-∂f/∂θ / ∂f/∂x)
 //! ```
 //!
-//! This avoids recording the O(n) iterations, making sensitivity computation O(1).
+//! This avoids recording the O(n) iterations, making sensitivity computation
+//! O(1).
 
 use num_traits::Float;
-use pricer_core::math::solvers::{BrentSolver, NewtonRaphsonSolver, SolverConfig};
-use pricer_core::types::SolverError;
+use pricer_core::{
+    math::{
+        numeric::from_f64,
+        solvers::{BrentSolver, NewtonRaphsonSolver, SolverConfig},
+    },
+    types::SolverError,
+};
 
 /// Type of solver used for root-finding.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -79,9 +85,9 @@ pub struct AdjointSolverConfig<T: Float> {
 impl<T: Float> Default for AdjointSolverConfig<T> {
     fn default() -> Self {
         Self {
-            tolerance: T::from(1e-12).unwrap(),
+            tolerance: from_f64(1e-12),
             max_iterations: 100,
-            brent_bracket: (T::from(0.001).unwrap(), T::from(2.0).unwrap()),
+            brent_bracket: (from_f64(0.001), from_f64(2.0)),
             compute_adjoints: true,
         }
     }
@@ -136,14 +142,10 @@ impl<T: Float> AdjointSolver<T> {
     }
 
     /// Create a solver with default configuration.
-    pub fn with_defaults() -> Self {
-        Self::new(AdjointSolverConfig::default())
-    }
+    pub fn with_defaults() -> Self { Self::new(AdjointSolverConfig::default()) }
 
     /// Get the configuration.
-    pub fn config(&self) -> &AdjointSolverConfig<T> {
-        &self.config
-    }
+    pub fn config(&self) -> &AdjointSolverConfig<T> { &self.config }
 
     /// Solve f(x) = 0 using Newton-Raphson with Brent fallback.
     ///

@@ -13,11 +13,10 @@
 //! This avoids recording solver iterations in the AD tape, achieving O(1)
 //! cost for sensitivity computation regardless of iteration count.
 
-use super::config::GenericBootstrapConfig;
-use super::curve::BootstrappedCurve;
-use super::engine::SequentialBootstrapper;
-use super::error::BootstrapError;
-use super::instrument::BootstrapInstrument;
+use super::{
+    config::GenericBootstrapConfig, curve::BootstrappedCurve, engine::SequentialBootstrapper,
+    error::BootstrapError, instrument::BootstrapInstrument,
+};
 
 /// Result of bootstrap with sensitivities.
 ///
@@ -59,9 +58,7 @@ impl SensitivityBootstrapper {
     }
 
     /// Create with default configuration.
-    pub fn with_defaults() -> Self {
-        Self::new(GenericBootstrapConfig::default())
-    }
+    pub fn with_defaults() -> Self { Self::new(GenericBootstrapConfig::default()) }
 
     /// Set the bump size for finite difference calculations.
     pub fn with_bump_size(mut self, bump_size: f64) -> Self {
@@ -70,9 +67,7 @@ impl SensitivityBootstrapper {
     }
 
     /// Get the bump size.
-    pub fn bump_size(&self) -> f64 {
-        self.bump_size
-    }
+    pub fn bump_size(&self) -> f64 { self.bump_size }
 
     /// Bootstrap with sensitivity calculation using implicit function theorem.
     ///
@@ -108,7 +103,8 @@ impl SensitivityBootstrapper {
             instruments[a]
                 .maturity()
                 .partial_cmp(&instruments[b].maturity())
-                .unwrap()
+                // Safe: maturities are validated to be finite during instrument construction
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
 
         // For sequential bootstrap, sensitivity propagates forward
@@ -139,6 +135,8 @@ impl SensitivityBootstrapper {
                     let r = -partial_dfs[0].ln() / partial_pillars[0];
                     return (-r * t).exp();
                 }
+                // Safe: partial_pillars.is_empty() check above ensures last() exists
+                #[allow(clippy::unwrap_used)]
                 if t > *partial_pillars.last().unwrap() {
                     let n = partial_pillars.len();
                     let r = -partial_dfs[n - 1].ln() / partial_pillars[n - 1];
@@ -173,8 +171,9 @@ impl SensitivityBootstrapper {
 
             // For direct sensitivity using implicit function theorem:
             // f(DF, rate) = implied_rate(DF) - rate = 0
-            // dDF/drate = -(df/drate) / (df/dDF) = -(-1) / d_residual_d_df = 1 / d_residual_d_df
-            // Since d_residual_d_df is negative (higher DF -> lower rate), result is negative
+            // dDF/drate = -(df/drate) / (df/dDF) = -(-1) / d_residual_d_df = 1 /
+            // d_residual_d_df Since d_residual_d_df is negative (higher DF ->
+            // lower rate), result is negative
 
             if d_residual_d_df.abs() > 1e-30 {
                 // Direct sensitivity to own rate
@@ -208,6 +207,8 @@ impl SensitivityBootstrapper {
                             let r = -bumped_partial_dfs[0].ln() / partial_pillars[0];
                             return (-r * t).exp();
                         }
+                        // Safe: partial_pillars.is_empty() check above ensures last() exists
+                        #[allow(clippy::unwrap_used)]
                         if t > *partial_pillars.last().unwrap() {
                             let n = partial_pillars.len();
                             let r = -bumped_partial_dfs[n - 1].ln() / partial_pillars[n - 1];
@@ -322,7 +323,8 @@ impl SensitivityBootstrapper {
     /// Verify AAD sensitivities against bump-and-revalue.
     ///
     /// Returns the maximum absolute difference between AAD and bump-and-revalue
-    /// sensitivities. A small difference (< 1e-4) indicates correct AAD implementation.
+    /// sensitivities. A small difference (< 1e-4) indicates correct AAD
+    /// implementation.
     #[cfg(feature = "num-dual-mode")]
     pub fn verify_sensitivities(
         &self,

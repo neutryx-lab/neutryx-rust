@@ -8,21 +8,30 @@
 //! 5. Calculate XVA using pricer_risk
 //! 6. Generate reports to demo_outputs
 
-use super::{DemoWorkflow, ProgressCallback, WorkflowResult, WorkflowStep};
-use crate::config::DemoConfig;
-use crate::error::DemoError;
+use std::{
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    time::Instant,
+};
+
 use async_trait::async_trait;
-use demo_inputs::prelude::{FrontOffice, TradeSource};
-use demo_inputs::trade_source::{InstrumentType, TradeParams, TradeRecord};
-use demo_outputs::prelude::FileWriter;
-use demo_outputs::report_sink::{Report, ReportFormat, ReportSink};
+use demo_inputs::{
+    prelude::{FrontOffice, TradeSource},
+    trade_source::{InstrumentType, TradeParams, TradeRecord},
+};
+use demo_outputs::{
+    prelude::FileWriter,
+    report_sink::{Report, ReportFormat, ReportSink},
+};
 use pricer_core::types::Currency;
 use pricer_models::demo::{BlackScholes, InstrumentEnum, ModelEnum, VanillaSwap};
 use pricer_optimiser::provider::MarketProvider;
 use pricer_risk::demo::{run_portfolio_pricing, DemoTrade, PricingResultDemo};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use std::time::Instant;
+
+use super::{DemoWorkflow, ProgressCallback, WorkflowResult, WorkflowStep};
+use crate::{config::DemoConfig, error::DemoError};
 
 /// EOD Batch Workflow
 pub struct EodBatchWorkflow {
@@ -158,16 +167,12 @@ impl EodBatchWorkflow {
 }
 
 impl Default for EodBatchWorkflow {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 #[async_trait]
 impl DemoWorkflow for EodBatchWorkflow {
-    fn name(&self) -> &str {
-        "EOD Batch"
-    }
+    fn name(&self) -> &str { "EOD Batch" }
 
     async fn run(
         &self,

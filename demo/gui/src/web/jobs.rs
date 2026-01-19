@@ -15,10 +15,13 @@
 //! - Requirements: 7.6 (非同期ジョブ管理)
 //! - Requirements: 6.5 (5秒以上の計算の非同期化)
 
+use std::{
+    collections::HashMap,
+    sync::Arc,
+    time::{Duration, Instant},
+};
+
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
@@ -61,14 +64,10 @@ impl JobStatus {
     }
 
     /// Check if the job is pending.
-    pub fn is_pending(&self) -> bool {
-        matches!(self, JobStatus::Pending)
-    }
+    pub fn is_pending(&self) -> bool { matches!(self, JobStatus::Pending) }
 
     /// Check if the job is running.
-    pub fn is_running(&self) -> bool {
-        matches!(self, JobStatus::Running { .. })
-    }
+    pub fn is_running(&self) -> bool { matches!(self, JobStatus::Running { .. }) }
 
     /// Get the progress percentage if running.
     pub fn progress(&self) -> Option<u8> {
@@ -348,15 +347,11 @@ impl JobManager {
     }
 
     /// Get the configuration.
-    pub fn config(&self) -> &JobManagerConfig {
-        &self.config
-    }
+    pub fn config(&self) -> &JobManagerConfig { &self.config }
 }
 
 impl Default for JobManager {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl Clone for JobManager {

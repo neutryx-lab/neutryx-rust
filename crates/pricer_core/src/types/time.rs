@@ -18,10 +18,13 @@
 //! assert!((yf - 0.4986).abs() < 0.001);
 //! ```
 
+use std::{
+    fmt,
+    ops::{Add, Sub},
+    str::FromStr,
+};
+
 use chrono::{Datelike, Days, Local, NaiveDate};
-use std::fmt;
-use std::ops::{Add, Sub};
-use std::str::FromStr;
 
 use super::error::DateError;
 
@@ -65,7 +68,8 @@ impl Date {
     /// * `day` - Day (1-31, depending on month)
     ///
     /// # Returns
-    /// `Ok(Date)` if the date is valid, `Err(DateError::InvalidDate)` otherwise.
+    /// `Ok(Date)` if the date is valid, `Err(DateError::InvalidDate)`
+    /// otherwise.
     ///
     /// # Examples
     ///
@@ -98,9 +102,7 @@ impl Date {
     /// let today = Date::today();
     /// // today is the current local date
     /// ```
-    pub fn today() -> Self {
-        Date(Local::now().date_naive())
-    }
+    pub fn today() -> Self { Date(Local::now().date_naive()) }
 
     /// Parses a date from ISO 8601 format string (YYYY-MM-DD).
     ///
@@ -141,9 +143,7 @@ impl Date {
     /// let naive = date.into_inner();
     /// assert_eq!(naive.weekday(), chrono::Weekday::Sat);
     /// ```
-    pub fn into_inner(self) -> NaiveDate {
-        self.0
-    }
+    pub fn into_inner(self) -> NaiveDate { self.0 }
 
     /// Returns the year component.
     ///
@@ -155,9 +155,7 @@ impl Date {
     /// let date = Date::from_ymd(2024, 6, 15).unwrap();
     /// assert_eq!(date.year(), 2024);
     /// ```
-    pub fn year(&self) -> i32 {
-        self.0.year()
-    }
+    pub fn year(&self) -> i32 { self.0.year() }
 
     /// Returns the month component (1-12).
     ///
@@ -169,9 +167,7 @@ impl Date {
     /// let date = Date::from_ymd(2024, 6, 15).unwrap();
     /// assert_eq!(date.month(), 6);
     /// ```
-    pub fn month(&self) -> u32 {
-        self.0.month()
-    }
+    pub fn month(&self) -> u32 { self.0.month() }
 
     /// Returns the day component (1-31).
     ///
@@ -183,9 +179,7 @@ impl Date {
     /// let date = Date::from_ymd(2024, 6, 15).unwrap();
     /// assert_eq!(date.day(), 15);
     /// ```
-    pub fn day(&self) -> u32 {
-        self.0.day()
-    }
+    pub fn day(&self) -> u32 { self.0.day() }
 }
 
 impl Sub for Date {
@@ -206,9 +200,7 @@ impl Sub for Date {
     /// assert_eq!(end - start, 10);
     /// assert_eq!(start - end, -10);
     /// ```
-    fn sub(self, other: Self) -> i64 {
-        (self.0 - other.0).num_days()
-    }
+    fn sub(self, other: Self) -> i64 { (self.0 - other.0).num_days() }
 }
 
 impl Add<i64> for Date {
@@ -242,9 +234,7 @@ impl FromStr for Date {
     type Err = DateError;
 
     /// Parses a date from ISO 8601 format string (YYYY-MM-DD).
-    fn from_str(s: &str) -> Result<Self, DateError> {
-        Date::parse(s)
-    }
+    fn from_str(s: &str) -> Result<Self, DateError> { Date::parse(s) }
 }
 
 impl fmt::Display for Date {
@@ -257,9 +247,11 @@ impl fmt::Display for Date {
 /// Day Count Convention (year fraction convention).
 ///
 /// # Variants
-/// - `ActualActual365`: Actual days / 365 (standard for derivatives and UK bonds)
+/// - `ActualActual365`: Actual days / 365 (standard for derivatives and UK
+///   bonds)
 /// - `ActualActual360`: Actual days / 360 (common in money market instruments)
-/// - `Thirty360`: Each month treated as 30 days, year as 360 days (US corporate bonds)
+/// - `Thirty360`: Each month treated as 30 days, year as 360 days (US corporate
+///   bonds)
 ///
 /// # Usage
 ///
@@ -477,16 +469,16 @@ impl FromStr for DayCountConvention {
 }
 
 impl fmt::Display for DayCountConvention {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.name())
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.name()) }
 }
 
 #[cfg(feature = "serde")]
 mod serde_impl {
-    use super::DayCountConvention;
-    use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
     use std::str::FromStr;
+
+    use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+
+    use super::DayCountConvention;
 
     impl Serialize for DayCountConvention {
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -510,14 +502,17 @@ mod serde_impl {
 
 /// Business Day Convention for date adjustments.
 ///
-/// Defines how to adjust dates that fall on non-business days (weekends, holidays).
+/// Defines how to adjust dates that fall on non-business days (weekends,
+/// holidays).
 ///
 /// # Variants
 ///
 /// - `Following`: Move to the next business day
-/// - `ModifiedFollowing`: Move to the next business day, unless it crosses a month boundary
+/// - `ModifiedFollowing`: Move to the next business day, unless it crosses a
+///   month boundary
 /// - `Preceding`: Move to the previous business day
-/// - `ModifiedPreceding`: Move to the previous business day, unless it crosses a month boundary
+/// - `ModifiedPreceding`: Move to the previous business day, unless it crosses
+///   a month boundary
 /// - `Unadjusted`: Do not adjust the date
 ///
 /// # Examples
@@ -607,9 +602,7 @@ impl BusinessDayConvention {
 }
 
 impl fmt::Display for BusinessDayConvention {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.name())
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.name()) }
 }
 
 impl FromStr for BusinessDayConvention {
@@ -637,9 +630,11 @@ impl FromStr for BusinessDayConvention {
 
 #[cfg(feature = "serde")]
 mod serde_bdc_impl {
-    use super::BusinessDayConvention;
-    use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
     use std::str::FromStr;
+
+    use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+
+    use super::BusinessDayConvention;
 
     impl Serialize for BusinessDayConvention {
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -722,8 +717,9 @@ pub fn time_to_maturity_dates(start: Date, end: Date) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     // Task 5.4: Day Count Convention unit tests
 
@@ -1262,8 +1258,9 @@ mod tests {
     // Task 6.2: Property-based tests for Day Count Convention
     #[cfg(test)]
     mod property_tests {
-        use super::*;
         use proptest::prelude::*;
+
+        use super::*;
 
         // Generate valid NaiveDate values (avoiding edge cases)
         fn date_strategy() -> impl Strategy<Value = NaiveDate> {

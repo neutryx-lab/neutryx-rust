@@ -3,11 +3,12 @@
 //! Simulates Bloomberg terminal style data with comprehensive
 //! market data snapshots including yield curves and volatility surfaces.
 
+use std::collections::HashMap;
+
 use adapter_feeds::MarketQuote;
 use chrono::Utc;
 use pricer_core::types::Currency;
 use rand::Rng;
-use std::collections::HashMap;
 
 /// Bloomberg-style market data provider
 pub struct BloombergSim {
@@ -50,12 +51,12 @@ impl BloombergSim {
             yield_curves: HashMap::new(),
             vol_surfaces: HashMap::new(),
         };
-        sim.initialize_default_data();
+        sim.initialise_default_data();
         sim
     }
 
-    /// Initialize default market data
-    fn initialize_default_data(&mut self) {
+    /// Initialise default market data
+    fn initialise_default_data(&mut self) {
         // Equity quotes
         self.equity_quotes.insert(
             "AAPL".to_string(),
@@ -239,9 +240,7 @@ impl BloombergSim {
     }
 
     /// Get FX rates
-    pub fn get_fx_rates(&self) -> HashMap<String, f64> {
-        self.fx_rates.clone()
-    }
+    pub fn get_fx_rates(&self) -> HashMap<String, f64> { self.fx_rates.clone() }
 
     /// Get yield curve for a currency
     pub fn get_yield_curve(&self, currency: Currency) -> Option<Vec<(f64, f64)>> {
@@ -289,9 +288,7 @@ impl BloombergSim {
 }
 
 impl Default for BloombergSim {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 #[cfg(test)]

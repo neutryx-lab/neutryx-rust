@@ -7,8 +7,7 @@
 //! All traits are designed for static dispatch (enum-based) to ensure
 //! compatibility with Enzyme AD optimisation at LLVM level.
 
-use crate::traits::Float;
-use crate::types::error::PricingError;
+use crate::{traits::Float, types::error::PricingError};
 
 /// Trait for financial instruments that can be priced.
 ///
@@ -205,6 +204,7 @@ mod tests {
     fn test_differentiable_marker_trait() {
         // Verify that Differentiable is a marker trait with no methods
         struct SmoothCallPayoff {
+            #[allow(dead_code)]
             smoothing_epsilon: f64,
         }
 

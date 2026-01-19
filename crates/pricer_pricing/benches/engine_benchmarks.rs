@@ -7,12 +7,16 @@
 //! - RNG performance
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use pricer_pricing::checkpoint::CheckpointStrategy;
-use pricer_pricing::mc::pricer_checkpoint::{CheckpointPricer, CheckpointPricingConfig};
-use pricer_pricing::mc::thread_local::{current_thread_index, ParallelWorkspaces};
-use pricer_pricing::mc::{GbmParams, MonteCarloConfig, MonteCarloPricer, PayoffParams};
-use pricer_pricing::path_dependent::PathPayoffType;
-use pricer_pricing::rng::PricerRng;
+use pricer_pricing::{
+    checkpoint::CheckpointStrategy,
+    mc::{
+        pricer_checkpoint::{CheckpointPricer, CheckpointPricingConfig},
+        thread_local::{current_thread_index, ParallelWorkspaces},
+        GbmParams, MonteCarloConfig, MonteCarloPricer, PayoffParams,
+    },
+    path_dependent::PathPayoffType,
+    rng::PricerRng,
+};
 use rayon::prelude::*;
 
 /// Benchmark RNG generation (foundation for MC simulations).

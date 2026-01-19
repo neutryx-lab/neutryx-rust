@@ -1,9 +1,9 @@
 //! Interpolated volatility surface implementation.
 
-use super::VolatilitySurface;
-use crate::market_data::error::MarketDataError;
-use crate::math::interpolators::BilinearInterpolator;
 use num_traits::Float;
+
+use super::VolatilitySurface;
+use crate::{market_data::error::MarketDataError, math::interpolators::BilinearInterpolator};
 
 /// Interpolated volatility surface using grid data.
 ///
@@ -56,12 +56,14 @@ impl<T: Float> InterpolatedVolSurface<T> {
     /// * `strikes` - Sorted strike prices (at least 2 points)
     /// * `expiries` - Sorted expiry times (at least 2 points)
     /// * `vols` - Volatility grid: `vols[expiry_idx][strike_idx]`
-    /// * `allow_extrapolation` - Whether to allow flat extrapolation beyond grid
+    /// * `allow_extrapolation` - Whether to allow flat extrapolation beyond
+    ///   grid
     ///
     /// # Returns
     ///
     /// * `Ok(InterpolatedVolSurface)` - Successfully constructed surface
-    /// * `Err(MarketDataError::InsufficientData)` - Fewer than 2 points on an axis
+    /// * `Err(MarketDataError::InsufficientData)` - Fewer than 2 points on an
+    ///   axis
     /// * `Err(MarketDataError::Interpolation)` - Grid dimensions mismatch
     ///
     /// # Example
@@ -164,9 +166,7 @@ impl<T: Float> InterpolatedVolSurface<T> {
 
     /// Return whether extrapolation is allowed.
     #[inline]
-    pub fn allow_extrapolation(&self) -> bool {
-        self.allow_extrapolation
-    }
+    pub fn allow_extrapolation(&self) -> bool { self.allow_extrapolation }
 
     /// Perform bilinear interpolation with optional extrapolation.
     fn interpolate(&self, strike: T, expiry: T) -> Result<T, MarketDataError> {
@@ -213,7 +213,8 @@ impl<T: Float> InterpolatedVolSurface<T> {
         };
 
         // Build BilinearInterpolator
-        // Note: BilinearInterpolator expects xs (expiries), ys (strikes), zs[i][j] = vol(expiry_i, strike_j)
+        // Note: BilinearInterpolator expects xs (expiries), ys (strikes), zs[i][j] =
+        // vol(expiry_i, strike_j)
         let zs_refs: Vec<&[T]> = self.vols.iter().map(|v| v.as_slice()).collect();
         let interp = BilinearInterpolator::new(&self.expiries, &self.strikes, &zs_refs)?;
 
@@ -238,7 +239,8 @@ impl<T: Float> VolatilitySurface<T> for InterpolatedVolSurface<T> {
     /// * `Ok(sigma)` - Interpolated implied volatility
     /// * `Err(MarketDataError::InvalidStrike)` - If strike <= 0
     /// * `Err(MarketDataError::InvalidExpiry)` - If expiry <= 0
-    /// * `Err(MarketDataError::OutOfBounds)` - If outside domain and extrapolation disabled
+    /// * `Err(MarketDataError::OutOfBounds)` - If outside domain and
+    ///   extrapolation disabled
     fn volatility(&self, strike: T, expiry: T) -> Result<T, MarketDataError> {
         if strike <= T::zero() {
             return Err(MarketDataError::InvalidStrike {
@@ -256,15 +258,11 @@ impl<T: Float> VolatilitySurface<T> for InterpolatedVolSurface<T> {
 
     /// Return the valid strike domain.
     #[inline]
-    fn strike_domain(&self) -> (T, T) {
-        (self.strikes[0], self.strikes[self.strikes.len() - 1])
-    }
+    fn strike_domain(&self) -> (T, T) { (self.strikes[0], self.strikes[self.strikes.len() - 1]) }
 
     /// Return the valid expiry domain.
     #[inline]
-    fn expiry_domain(&self) -> (T, T) {
-        (self.expiries[0], self.expiries[self.expiries.len() - 1])
-    }
+    fn expiry_domain(&self) -> (T, T) { (self.expiries[0], self.expiries[self.expiries.len() - 1]) }
 }
 
 #[cfg(test)]

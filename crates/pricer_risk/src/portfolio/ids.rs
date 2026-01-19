@@ -23,33 +23,23 @@ pub struct TradeId(String);
 impl TradeId {
     /// Creates a new trade ID.
     #[inline]
-    pub fn new(id: impl Into<String>) -> Self {
-        Self(id.into())
-    }
+    pub fn new(id: impl Into<String>) -> Self { Self(id.into()) }
 
     /// Returns the ID as a string slice.
     #[inline]
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
+    pub fn as_str(&self) -> &str { &self.0 }
 }
 
 impl fmt::Display for TradeId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.0) }
 }
 
 impl From<&str> for TradeId {
-    fn from(s: &str) -> Self {
-        Self::new(s)
-    }
+    fn from(s: &str) -> Self { Self::new(s) }
 }
 
 impl From<String> for TradeId {
-    fn from(s: String) -> Self {
-        Self(s)
-    }
+    fn from(s: String) -> Self { Self(s) }
 }
 
 /// Unique identifier for a counterparty.
@@ -69,33 +59,23 @@ pub struct CounterpartyId(String);
 impl CounterpartyId {
     /// Creates a new counterparty ID.
     #[inline]
-    pub fn new(id: impl Into<String>) -> Self {
-        Self(id.into())
-    }
+    pub fn new(id: impl Into<String>) -> Self { Self(id.into()) }
 
     /// Returns the ID as a string slice.
     #[inline]
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
+    pub fn as_str(&self) -> &str { &self.0 }
 }
 
 impl fmt::Display for CounterpartyId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.0) }
 }
 
 impl From<&str> for CounterpartyId {
-    fn from(s: &str) -> Self {
-        Self::new(s)
-    }
+    fn from(s: &str) -> Self { Self::new(s) }
 }
 
 impl From<String> for CounterpartyId {
-    fn from(s: String) -> Self {
-        Self(s)
-    }
+    fn from(s: String) -> Self { Self(s) }
 }
 
 /// Unique identifier for a netting set.
@@ -115,39 +95,30 @@ pub struct NettingSetId(String);
 impl NettingSetId {
     /// Creates a new netting set ID.
     #[inline]
-    pub fn new(id: impl Into<String>) -> Self {
-        Self(id.into())
-    }
+    pub fn new(id: impl Into<String>) -> Self { Self(id.into()) }
 
     /// Returns the ID as a string slice.
     #[inline]
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
+    pub fn as_str(&self) -> &str { &self.0 }
 }
 
 impl fmt::Display for NettingSetId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.0) }
 }
 
 impl From<&str> for NettingSetId {
-    fn from(s: &str) -> Self {
-        Self::new(s)
-    }
+    fn from(s: &str) -> Self { Self::new(s) }
 }
 
 impl From<String> for NettingSetId {
-    fn from(s: String) -> Self {
-        Self(s)
-    }
+    fn from(s: String) -> Self { Self(s) }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::collections::HashSet;
+
+    use super::*;
 
     #[test]
     fn test_trade_id_creation() {

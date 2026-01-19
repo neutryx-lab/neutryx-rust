@@ -1,7 +1,8 @@
 //! Yield curve trait definition.
 
-use crate::market_data::error::MarketDataError;
 use num_traits::Float;
+
+use crate::market_data::error::MarketDataError;
 
 /// Generic yield curve trait for discount factor and rate calculations.
 ///

@@ -1,5 +1,7 @@
 //! HTTP handlers for the web API.
 
+use std::{collections::HashMap, sync::Arc, time::Instant};
+
 use axum::{
     extract::{Query, State},
     http::StatusCode,
@@ -10,36 +12,38 @@ use pricer_optimiser::bootstrapping::{
     BootstrapError, BootstrapInstrument, GenericBootstrapConfig, SequentialBootstrapper,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::time::Instant;
 use uuid::Uuid;
 
-use super::jobs::JobResponse;
-use super::pricer_types::{
-    parse_tenor_to_years, validate_bucket_dv01_request, validate_first_order_greeks_request,
-    validate_greeks_compare_request, validate_irs_pricing_request, validate_par_rates,
-    validate_risk_request, validate_second_order_greeks_request, BootstrapRequest,
-    BootstrapResponse, BucketDv01Request, BucketDv01Response, BucketDv01Result, CachedCurve,
-    DeltaResult, DemoMarketData, EquityOptionParams, FirstOrderGreeksRequest,
-    FirstOrderGreeksResponse, FxOptionParams, GreekType, GreekValue, GreeksCalculationMode,
-    GreeksCompareRequest, GreeksCompareResponse, GreeksData, GreeksDiff, GreeksHeatmapRequest,
-    GreeksHeatmapResponse, GreeksMethodResult, GreeksTimeseriesRequest, GreeksTimeseriesResponse,
-    InstrumentParams, InstrumentType, IrsBootstrapErrorResponse, IrsParams, IrsPricingRequest,
-    IrsPricingResponse, OptionType, ParRateInput, PaymentFrequency, PricingErrorResponse,
-    PricingRequest, PricingResponse, RiskAadResponse, RiskBumpResponse, RiskCompareResponse,
-    RiskMethodResult, RiskRequest, SecondOrderGreeksRequest, SecondOrderGreeksResponse, TenorDiff,
-    TimeseriesSeries, TimingComparison, TimingStats, BUCKET_TENORS,
+use super::{
+    jobs::JobResponse,
+    pricer_types::{
+        parse_tenor_to_years, validate_bucket_dv01_request, validate_first_order_greeks_request,
+        validate_greeks_compare_request, validate_irs_pricing_request, validate_par_rates,
+        validate_risk_request, validate_second_order_greeks_request, BootstrapRequest,
+        BootstrapResponse, BucketDv01Request, BucketDv01Response, BucketDv01Result, CachedCurve,
+        DeltaResult, DemoMarketData, EquityOptionParams, FirstOrderGreeksRequest,
+        FirstOrderGreeksResponse, FxOptionParams, GreekType, GreekValue, GreeksCalculationMode,
+        GreeksCompareRequest, GreeksCompareResponse, GreeksData, GreeksDiff, GreeksHeatmapRequest,
+        GreeksHeatmapResponse, GreeksMethodResult, GreeksTimeseriesRequest,
+        GreeksTimeseriesResponse, InstrumentParams, InstrumentType, IrsBootstrapErrorResponse,
+        IrsParams, IrsPricingRequest, IrsPricingResponse, OptionType, ParRateInput,
+        PaymentFrequency, PricingErrorResponse, PricingRequest, PricingResponse, RiskAadResponse,
+        RiskBumpResponse, RiskCompareResponse, RiskMethodResult, RiskRequest,
+        SecondOrderGreeksRequest, SecondOrderGreeksResponse, TenorDiff, TimeseriesSeries,
+        TimingComparison, TimingStats, BUCKET_TENORS,
+    },
+    websocket::{
+        broadcast_bootstrap_complete, broadcast_pricing_complete, broadcast_risk_complete,
+    },
+    AppState,
 };
-use super::websocket::{
-    broadcast_bootstrap_complete, broadcast_pricing_complete, broadcast_risk_complete,
-};
-use super::AppState;
 
 /// Health check response
 #[derive(Debug, Serialize)]
 pub struct HealthResponse {
+    /// Service status (e.g. "ok").
     pub status: String,
+    /// Application version.
     pub version: String,
 }
 
@@ -54,21 +58,32 @@ pub async fn health() -> Json<HealthResponse> {
 /// Trade data for portfolio
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TradeData {
+    /// Unique trade identifier.
     pub id: String,
+    /// Instrument identifier.
     pub instrument: String,
+    /// Product type (e.g. "IRS", "FRA").
     pub product: String,
+    /// Trade notional amount.
     pub notional: f64,
+    /// Present value.
     pub pv: f64,
+    /// Delta Greek.
     pub delta: f64,
+    /// Gamma Greek.
     pub gamma: f64,
+    /// Vega Greek.
     pub vega: f64,
 }
 
 /// Portfolio response
 #[derive(Debug, Serialize)]
 pub struct PortfolioResponse {
+    /// List of trades in the portfolio.
     pub trades: Vec<TradeData>,
+    /// Sum of all trade PVs.
     pub total_pv: f64,
+    /// Number of trades.
     pub trade_count: usize,
 }
 
@@ -224,16 +239,22 @@ pub async fn get_portfolio(State(state): State<Arc<AppState>>) -> Json<Portfolio
 /// Price request for portfolio
 #[derive(Debug, Deserialize)]
 pub struct PriceRequest {
+    /// List of instruments to price.
     pub instruments: Vec<PriceRequestItem>,
+    /// Whether to compute Greeks.
     pub compute_greeks: Option<bool>,
 }
 
 /// Single instrument price request
 #[derive(Debug, Deserialize)]
 pub struct PriceRequestItem {
+    /// Instrument identifier.
     pub instrument_id: String,
+    /// Spot price.
     pub spot: f64,
+    /// Interest rate.
     pub rate: f64,
+    /// Volatility.
     pub vol: f64,
 }
 
@@ -276,21 +297,32 @@ pub async fn price_portfolio(
 /// Exposure metrics response
 #[derive(Debug, Serialize)]
 pub struct ExposureResponse {
+    /// Expected Exposure.
     pub ee: f64,
+    /// Expected Positive Exposure.
     pub epe: f64,
+    /// Expected Negative Exposure.
     pub ene: f64,
+    /// Potential Future Exposure.
     pub pfe: f64,
+    /// Effective Expected Positive Exposure.
     pub eepe: f64,
+    /// Time series of exposure points.
     pub time_series: Vec<ExposurePoint>,
 }
 
 /// Single exposure data point
 #[derive(Debug, Serialize)]
 pub struct ExposurePoint {
+    /// Time in years.
     pub time: f64,
+    /// Expected Exposure at this time.
     pub ee: f64,
+    /// Expected Positive Exposure at this time.
     pub epe: f64,
+    /// Potential Future Exposure at this time.
     pub pfe: f64,
+    /// Expected Negative Exposure at this time.
     pub ene: f64,
 }
 
@@ -342,13 +374,21 @@ pub async fn get_exposure(State(state): State<Arc<AppState>>) -> Json<ExposureRe
 /// Risk metrics response
 #[derive(Debug, Serialize)]
 pub struct RiskMetricsResponse {
+    /// Total portfolio present value.
     pub total_pv: f64,
+    /// Credit Valuation Adjustment.
     pub cva: f64,
+    /// Debt Valuation Adjustment.
     pub dva: f64,
+    /// Funding Valuation Adjustment.
     pub fva: f64,
+    /// Total XVA (sum of CVA, DVA, FVA).
     pub total_xva: f64,
+    /// Expected Exposure.
     pub ee: f64,
+    /// Expected Positive Exposure.
     pub epe: f64,
+    /// Potential Future Exposure.
     pub pfe: f64,
 }
 
@@ -402,9 +442,7 @@ fn norm_cdf(x: f64) -> f64 {
 }
 
 /// Standard normal probability density function (PDF).
-fn norm_pdf(x: f64) -> f64 {
-    (-0.5 * x * x).exp() / (2.0 * std::f64::consts::PI).sqrt()
-}
+fn norm_pdf(x: f64) -> f64 { (-0.5 * x * x).exp() / (2.0 * std::f64::consts::PI).sqrt() }
 
 /// Black-Scholes pricing for European options.
 fn black_scholes_price(
@@ -1011,9 +1049,7 @@ impl GraphCache {
     }
 
     /// Clear the entire cache
-    pub fn clear(&mut self) {
-        self.entries.clear();
-    }
+    pub fn clear(&mut self) { self.entries.clear(); }
 }
 
 /// Generate a sample computation graph for a trade
@@ -1266,9 +1302,11 @@ use crate::visualisation::{BenchmarkVisualiser, SpeedComparisonData};
 /// Query parameters for speed comparison endpoint
 #[derive(Debug, Clone, Deserialize)]
 pub struct SpeedComparisonQueryParams {
-    /// AAD mean time in nanoseconds (optional, uses sample data if not provided)
+    /// AAD mean time in nanoseconds (optional, uses sample data if not
+    /// provided)
     pub aad_mean_ns: Option<f64>,
-    /// Bump mean time in nanoseconds (optional, uses sample data if not provided)
+    /// Bump mean time in nanoseconds (optional, uses sample data if not
+    /// provided)
     pub bump_mean_ns: Option<f64>,
     /// Number of tenor points (optional, defaults to 20)
     pub tenor_count: Option<usize>,
@@ -1362,7 +1400,8 @@ pub struct SpeedComparisonBenchmarkData {
 ///
 /// # Response
 ///
-/// Returns Chart.js compatible JSON data for rendering a speed comparison bar chart.
+/// Returns Chart.js compatible JSON data for rendering a speed comparison bar
+/// chart.
 ///
 /// # Task Coverage
 ///
@@ -1424,18 +1463,26 @@ pub async fn get_speed_comparison(
 /// API response times statistics
 #[derive(Debug, Serialize)]
 pub struct ApiResponseTimes {
+    /// Portfolio API average response time in milliseconds.
     pub portfolio_avg_ms: f64,
+    /// Exposure API average response time in milliseconds.
     pub exposure_avg_ms: f64,
+    /// Risk API average response time in milliseconds.
     pub risk_avg_ms: f64,
+    /// Graph API average response time in milliseconds.
     pub graph_avg_ms: f64,
 }
 
 /// Performance metrics response
 #[derive(Debug, Serialize)]
 pub struct MetricsResponse {
+    /// API endpoint response time statistics.
     pub api_response_times: ApiResponseTimes,
+    /// Number of active WebSocket connections.
     pub websocket_connections: u32,
+    /// Average WebSocket message latency in milliseconds.
     pub websocket_message_latency_ms: f64,
+    /// Server uptime in seconds.
     pub uptime_seconds: u64,
 }
 
@@ -1510,9 +1557,7 @@ pub async fn get_index(State(state): State<Arc<AppState>>) -> impl IntoResponse 
 }
 
 /// Create a service that serves index.html with config injection for fallback
-pub fn serve_index_with_config() -> ServeFile {
-    ServeFile::new("demo/gui/static/index.html")
-}
+pub fn serve_index_with_config() -> ServeFile { ServeFile::new("demo/gui/static/index.html") }
 
 // =============================================================================
 // IRS Bootstrap & Risk API Handlers (Task 2.1)
@@ -1585,7 +1630,8 @@ pub async fn bootstrap_curve(
     // Calculate zero rates from discount factors
     let zero_rates = CachedCurve::calculate_zero_rates(&result.pillars, &result.discount_factors);
 
-    // Create cached curve and store in cache (include par_rates for bump-and-revalue)
+    // Create cached curve and store in cache (include par_rates for
+    // bump-and-revalue)
     let cached_curve = CachedCurve::new(
         result.pillars.clone(),
         result.discount_factors.clone(),
@@ -2119,7 +2165,8 @@ fn bootstrap_from_par_rates(par_rates: &[ParRateInput]) -> Result<CachedCurve, B
 // Risk API Handlers (Task 5.1: AAD Delta Calculation)
 // =============================================================================
 
-/// Calculate risk sensitivities using the AAD (Adjoint Automatic Differentiation) method.
+/// Calculate risk sensitivities using the AAD (Adjoint Automatic
+/// Differentiation) method.
 ///
 /// POST /api/risk/aad
 ///
@@ -2138,7 +2185,8 @@ fn bootstrap_from_par_rates(par_rates: &[ParRateInput]) -> Result<CachedCurve, B
 ///
 /// # Response
 ///
-/// Returns Delta values for each tenor, DV01, timing statistics, and AAD availability.
+/// Returns Delta values for each tenor, DV01, timing statistics, and AAD
+/// availability.
 ///
 /// # Algorithm
 ///
@@ -2197,15 +2245,17 @@ pub async fn risk_aad(
     };
 
     // Check if AAD is available (enzyme-ad feature)
-    // In this demo, AAD is simulated but marked as unavailable unless enzyme-ad feature is enabled
+    // In this demo, AAD is simulated but marked as unavailable unless enzyme-ad
+    // feature is enabled
     #[cfg(feature = "enzyme-ad")]
     let aad_available = true;
     #[cfg(not(feature = "enzyme-ad"))]
     let aad_available = false;
 
     // Calculate Deltas
-    // Note: For the demo, we use bump-and-revalue as a fallback when AAD is not available
-    // When AAD is available, all Deltas would be computed in a single reverse pass
+    // Note: For the demo, we use bump-and-revalue as a fallback when AAD is not
+    // available When AAD is available, all Deltas would be computed in a single
+    // reverse pass
     let (deltas, timing_samples) = if aad_available {
         // AAD mode: Single reverse pass for all Deltas (simulated as batch calculation)
         compute_deltas_aad_mode(&cached_curve, &request)
@@ -2233,8 +2283,8 @@ pub async fn risk_aad(
 
 /// Compute Deltas using AAD mode (simulated for demo).
 ///
-/// In a real implementation with enzyme-ad, this would use automatic differentiation
-/// to compute all Deltas in a single reverse pass.
+/// In a real implementation with enzyme-ad, this would use automatic
+/// differentiation to compute all Deltas in a single reverse pass.
 fn compute_deltas_aad_mode(
     cached_curve: &CachedCurve,
     request: &RiskRequest,
@@ -2256,7 +2306,8 @@ fn compute_deltas_aad_mode(
     // Bump size in decimal (1 bp = 0.0001)
     let bump_size = request.bump_size_bps * 0.0001;
 
-    // Compute all Deltas (simulated AAD - in practice this would be a single reverse pass)
+    // Compute all Deltas (simulated AAD - in practice this would be a single
+    // reverse pass)
     let mut deltas = Vec::with_capacity(cached_curve.par_rates.len());
 
     for (i, par_rate) in cached_curve.par_rates.iter().enumerate() {
@@ -2297,7 +2348,8 @@ fn compute_deltas_aad_mode(
         });
     }
 
-    // AAD computes all Deltas in one pass, so total time is the single calculation time
+    // AAD computes all Deltas in one pass, so total time is the single calculation
+    // time
     let total_time_us = start.elapsed().as_micros() as f64;
     let per_tenor_time = total_time_us / deltas.len() as f64;
 
@@ -2671,7 +2723,8 @@ pub async fn greeks_compare(
         timing: bump_timing.clone(),
     };
 
-    // Run AAD method (simulated for demo, actual AAD when enzyme-ad feature is enabled)
+    // Run AAD method (simulated for demo, actual AAD when enzyme-ad feature is
+    // enabled)
     let aad_start = Instant::now();
     let (aad_deltas, aad_timing_samples) = compute_greeks_aad_mode(&cached_curve, &request);
     let aad_total_us = aad_start.elapsed().as_micros() as u64;
@@ -3330,10 +3383,12 @@ fn calculate_irs_npv_with_tenor_shift(
 
 /// Get Greeks heatmap data for tenor × strike visualisation.
 ///
-/// Returns a 2D matrix of Greek values across different tenors and strike percentages.
-/// The response format is compatible with D3.js heatmap visualisation.
+/// Returns a 2D matrix of Greek values across different tenors and strike
+/// percentages. The response format is compatible with D3.js heatmap
+/// visualisation.
 ///
-/// `GET /api/greeks/heatmap?greekType=delta&spot=100&rate=0.05&volatility=0.20&optionType=call`
+/// `GET /api/greeks/heatmap?greekType=delta&spot=100&rate=0.05&volatility=0.20&
+/// optionType=call`
 ///
 /// # Requirements Coverage
 ///
@@ -3461,9 +3516,11 @@ fn calculate_greek_for_heatmap(
 
 /// Get Greeks timeseries data for time decay visualisation.
 ///
-/// Returns time-series data showing how Greeks change as time to expiry decreases.
+/// Returns time-series data showing how Greeks change as time to expiry
+/// decreases.
 ///
-/// `GET /api/greeks/timeseries?greekTypes=delta,gamma,theta&spot=100&strike=100&...`
+/// `GET /api/greeks/timeseries?greekTypes=delta,gamma,theta&spot=100&
+/// strike=100&...`
 ///
 /// # Requirements Coverage
 ///
@@ -3609,6 +3666,7 @@ pub struct JobListResponse {
     pub jobs: Vec<JobResponse>,
 }
 
+/// Lists all jobs.
 pub async fn list_jobs(State(state): State<Arc<AppState>>) -> Json<JobListResponse> {
     let job_ids = state.job_manager.list_jobs().await;
     let active = state.job_manager.active_count().await;
@@ -3816,8 +3874,9 @@ mod tests {
     // =========================================================================
 
     mod graph_cache_tests {
-        use super::*;
         use std::time::Duration;
+
+        use super::*;
 
         #[test]
         fn test_cache_new() {
@@ -5939,20 +5998,30 @@ mod tests {
 /// Request for scenario analysis
 #[derive(Debug, Deserialize)]
 pub struct ScenarioRequest {
-    pub rate_shock: f64,   // basis points
-    pub vol_shift: f64,    // percentage
-    pub spread_shock: f64, // basis points
-    pub corr_shift: f64,   // percentage
+    /// Rate shock in basis points.
+    pub rate_shock: f64,
+    /// Volatility shift in percentage.
+    pub vol_shift: f64,
+    /// Spread shock in basis points.
+    pub spread_shock: f64,
+    /// Correlation shift in percentage.
+    pub corr_shift: f64,
 }
 
 /// Response for scenario analysis
 #[derive(Debug, Serialize)]
 pub struct ScenarioResponse {
+    /// Stressed present value.
     pub stressed_pv: f64,
+    /// Change in present value.
     pub pv_change: f64,
+    /// Stressed CVA.
     pub stressed_cva: f64,
+    /// Stressed DVA.
     pub stressed_dva: f64,
+    /// Stressed FVA.
     pub stressed_fva: f64,
+    /// Unique scenario identifier.
     pub scenario_id: String,
 }
 

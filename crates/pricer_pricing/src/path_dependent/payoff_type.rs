@@ -3,21 +3,23 @@
 //! This module provides a unified enum for all path-dependent option types,
 //! enabling static dispatch without trait objects for Enzyme AD compatibility.
 
+use num_traits::Float;
+
 use super::{
     AsianArithmeticPayoff, AsianGeometricPayoff, AsianParams, BarrierPayoff, LookbackPayoff,
     ObservationType, PathDependentPayoff, PathObserver,
 };
-use num_traits::Float;
 
 /// Enum encompassing all path-dependent option payoff types.
 ///
 /// This enum enables static dispatch for payoff computation, which is crucial
-/// for Enzyme AD compatibility. Each variant wraps the corresponding payoff struct.
+/// for Enzyme AD compatibility. Each variant wraps the corresponding payoff
+/// struct.
 ///
 /// # Enzyme AD Compatibility
 ///
 /// By using an enum instead of trait objects (`Box<dyn PathDependentPayoff>`),
-/// we enable LLVM-level optimization and Enzyme autodifferentiation.
+/// we enable LLVM-level optimisation and Enzyme autodifferentiation.
 ///
 /// # Example
 ///
@@ -187,21 +189,18 @@ impl<T: Float + Send + Sync> PathPayoffType<T> {
 
     /// Returns true if this is a barrier option.
     #[inline]
-    pub fn is_barrier(&self) -> bool {
-        matches!(self, PathPayoffType::Barrier(_))
-    }
+    pub fn is_barrier(&self) -> bool { matches!(self, PathPayoffType::Barrier(_)) }
 
     /// Returns true if this is a lookback option.
     #[inline]
-    pub fn is_lookback(&self) -> bool {
-        matches!(self, PathPayoffType::Lookback(_))
-    }
+    pub fn is_lookback(&self) -> bool { matches!(self, PathPayoffType::Lookback(_)) }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     // ========================================================================
     // Asian Option Tests via PathPayoffType

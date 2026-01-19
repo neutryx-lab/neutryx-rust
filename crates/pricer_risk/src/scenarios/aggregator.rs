@@ -3,8 +3,9 @@
 //! Provides infrastructure for aggregating instrument-level Greeks
 //! to portfolio level using various methodologies.
 
-use pricer_core::traits::Float;
 use std::collections::HashMap;
+
+use pricer_core::traits::Float;
 
 /// Aggregation methods for combining instrument Greeks.
 ///
@@ -76,9 +77,7 @@ impl<T: Float> Default for PortfolioGreeks<T> {
 
 impl<T: Float> PortfolioGreeks<T> {
     /// Create new portfolio Greeks with all zeros.
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Create portfolio Greeks with specified values.
     pub fn with_values(delta: T, gamma: T, vega: T, theta: T, rho: T) -> Self {
@@ -109,9 +108,7 @@ impl<T: Float> PortfolioGreeks<T> {
     }
 
     /// Get all factor Greeks.
-    pub fn factor_greeks(&self) -> &HashMap<String, T> {
-        &self.greeks_by_factor
-    }
+    pub fn factor_greeks(&self) -> &HashMap<String, T> { &self.greeks_by_factor }
 
     /// Scale all Greeks by a factor.
     pub fn scale(&self, factor: T) -> Self {
@@ -213,14 +210,10 @@ impl<T: Float> GreeksAggregator<T> {
     }
 
     /// Get the number of instruments.
-    pub fn len(&self) -> usize {
-        self.instruments.len()
-    }
+    pub fn len(&self) -> usize { self.instruments.len() }
 
     /// Check if empty.
-    pub fn is_empty(&self) -> bool {
-        self.instruments.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.instruments.is_empty() }
 
     /// Compute aggregated portfolio Greeks.
     pub fn aggregate(&self) -> PortfolioGreeks<T> {
@@ -275,9 +268,7 @@ impl<T: Float> GreeksAggregator<T> {
     }
 
     /// Clear all instruments.
-    pub fn clear(&mut self) {
-        self.instruments.clear();
-    }
+    pub fn clear(&mut self) { self.instruments.clear(); }
 }
 
 #[cfg(test)]

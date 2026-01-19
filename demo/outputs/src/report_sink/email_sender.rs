@@ -1,9 +1,11 @@
 //! Mock email sender for reports.
 
-use super::{Report, ReportSink};
-use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock};
+
+use serde::{Deserialize, Serialize};
 use tracing::info;
+
+use super::{Report, ReportSink};
 
 /// Mock email sender
 pub struct EmailSender {
@@ -45,9 +47,7 @@ impl EmailSender {
     }
 
     /// Create with default settings (mock)
-    pub fn mock() -> Self {
-        Self::new("smtp.frictionalbank.local", "reports@frictionalbank.local")
-    }
+    pub fn mock() -> Self { Self::new("smtp.frictionalbank.local", "reports@frictionalbank.local") }
 
     /// Send a report via email
     pub fn send_report(&self, report: &Report) -> Result<String, String> {
@@ -99,14 +99,10 @@ impl EmailSender {
     }
 
     /// Get SMTP server
-    pub fn smtp_server(&self) -> &str {
-        &self.smtp_server
-    }
+    pub fn smtp_server(&self) -> &str { &self.smtp_server }
 
     /// Get from address
-    pub fn from_address(&self) -> &str {
-        &self.from_address
-    }
+    pub fn from_address(&self) -> &str { &self.from_address }
 
     /// Get email count
     pub fn email_count(&self) -> usize {

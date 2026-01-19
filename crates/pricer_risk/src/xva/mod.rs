@@ -5,7 +5,8 @@
 //!
 //! # Supported Metrics
 //!
-//! - **CVA** (Credit Valuation Adjustment): Expected loss from counterparty default
+//! - **CVA** (Credit Valuation Adjustment): Expected loss from counterparty
+//!   default
 //! - **DVA** (Debit Valuation Adjustment): Benefit from own default risk
 //! - **FVA** (Funding Valuation Adjustment): Cost/benefit of funding exposures
 //!   - FCA (Funding Cost Adjustment): Cost of funding positive exposure
@@ -60,17 +61,20 @@ mod fva;
 mod params;
 mod result;
 
+use std::collections::HashMap;
+
 pub use cva::{compute_cva, compute_cva_with_survival};
 pub use dva::{compute_dva, compute_dva_with_survival};
 pub use error::XvaError;
 pub use fva::{compute_fba, compute_fca, compute_fva};
 pub use params::{FundingParams, OwnCreditParams};
+use rayon::prelude::*;
 pub use result::{CounterpartyXva, NettingSetXva, PortfolioXva};
 
-use crate::portfolio::{CounterpartyId, CreditParams, NettingSetId, Portfolio};
-use crate::soa::ExposureSoA;
-use rayon::prelude::*;
-use std::collections::HashMap;
+use crate::{
+    portfolio::{CounterpartyId, CreditParams, NettingSetId, Portfolio},
+    soa::ExposureSoA,
+};
 
 /// Configuration for XVA calculations.
 ///
@@ -87,9 +91,7 @@ pub struct XvaConfig {
 
 impl XvaConfig {
     /// Creates a new XVA configuration.
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Sets own credit parameters for DVA calculation.
     pub fn with_own_credit(mut self, own_credit: OwnCreditParams) -> Self {
@@ -126,9 +128,7 @@ pub struct XvaCalculator {
 }
 
 impl Default for XvaCalculator {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl XvaCalculator {
@@ -140,9 +140,7 @@ impl XvaCalculator {
     }
 
     /// Creates a calculator with the given configuration.
-    pub fn with_config(config: XvaConfig) -> Self {
-        Self { config }
-    }
+    pub fn with_config(config: XvaConfig) -> Self { Self { config } }
 
     /// Sets own credit parameters for DVA calculation.
     pub fn with_own_credit(mut self, own_credit: OwnCreditParams) -> Self {
@@ -163,9 +161,7 @@ impl XvaCalculator {
     }
 
     /// Returns the current configuration.
-    pub fn config(&self) -> &XvaConfig {
-        &self.config
-    }
+    pub fn config(&self) -> &XvaConfig { &self.config }
 
     /// Computes XVA for a single netting set.
     ///
@@ -467,9 +463,10 @@ pub fn generate_flat_discount_factors(rate: f64, time_grid: &[f64]) -> Vec<f64> 
 
 #[cfg(test)]
 mod tests {
+    use approx::assert_relative_eq;
+
     use super::*;
     use crate::portfolio::{Counterparty, NettingSet, PortfolioBuilder};
-    use approx::assert_relative_eq;
 
     fn create_test_portfolio() -> Portfolio {
         let credit1 = CreditParams::new(0.02, 0.4).unwrap();
@@ -492,9 +489,7 @@ mod tests {
             .unwrap()
     }
 
-    fn create_test_time_grid() -> Vec<f64> {
-        vec![0.0, 0.25, 0.5, 0.75, 1.0]
-    }
+    fn create_test_time_grid() -> Vec<f64> { vec![0.0, 0.25, 0.5, 0.75, 1.0] }
 
     fn create_test_ee_profiles() -> HashMap<NettingSetId, Vec<f64>> {
         let mut profiles = HashMap::new();

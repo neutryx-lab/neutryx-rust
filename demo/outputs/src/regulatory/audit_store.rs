@@ -1,11 +1,14 @@
 //! Audit trail storage for regulatory compliance.
 
+use std::{
+    collections::VecDeque,
+    io::{self, BufReader, BufWriter},
+    path::Path,
+    sync::{Arc, RwLock},
+};
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::collections::VecDeque;
-use std::io::{self, BufReader, BufWriter};
-use std::path::Path;
-use std::sync::{Arc, RwLock};
 
 /// Audit event types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -291,9 +294,7 @@ impl AuditStore {
 }
 
 impl Default for AuditStore {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 #[cfg(test)]

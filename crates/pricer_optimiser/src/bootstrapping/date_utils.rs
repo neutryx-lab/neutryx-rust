@@ -2,7 +2,8 @@
 //!
 //! This module provides helper functions and types for date calculations
 //! in the context of yield curve construction, integrating with the
-//! `infra_master` calendar functionality and `pricer_core` day count conventions.
+//! `infra_master` calendar functionality and `pricer_core` day count
+//! conventions.
 //!
 //! ## Features
 //!
@@ -190,14 +191,10 @@ impl Default for DateCalculator {
 
 impl DateCalculator {
     /// Create a new date calculator with default settings.
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Create a builder for customised configuration.
-    pub fn builder() -> DateCalculatorBuilder {
-        DateCalculatorBuilder::default()
-    }
+    pub fn builder() -> DateCalculatorBuilder { DateCalculatorBuilder::default() }
 
     /// Check if a date is a weekend.
     pub fn is_weekend(&self, date: NaiveDate) -> bool {
@@ -207,9 +204,7 @@ impl DateCalculator {
     /// Check if a date is a business day (weekends only check).
     ///
     /// For more comprehensive holiday checking, use `infra_master::Calendar`.
-    pub fn is_business_day(&self, date: NaiveDate) -> bool {
-        !self.is_weekend(date)
-    }
+    pub fn is_business_day(&self, date: NaiveDate) -> bool { !self.is_weekend(date) }
 
     /// Get the next business day on or after the given date.
     pub fn following(&self, mut date: NaiveDate) -> NaiveDate {
@@ -325,19 +320,13 @@ impl DateCalculator {
     }
 
     /// Get the configured spot date convention.
-    pub fn spot_convention(&self) -> SpotDateConvention {
-        self.spot_convention
-    }
+    pub fn spot_convention(&self) -> SpotDateConvention { self.spot_convention }
 
     /// Get the configured business day adjustment.
-    pub fn business_day_adjustment(&self) -> BusinessDayAdjustment {
-        self.business_day_adjustment
-    }
+    pub fn business_day_adjustment(&self) -> BusinessDayAdjustment { self.business_day_adjustment }
 
     /// Get the configured day count convention.
-    pub fn day_count(&self) -> DayCount {
-        self.day_count
-    }
+    pub fn day_count(&self) -> DayCount { self.day_count }
 }
 
 /// Builder for `DateCalculator`.
@@ -502,9 +491,7 @@ mod tests {
     // DateCalculator Tests
     // ========================================
 
-    fn calc() -> DateCalculator {
-        DateCalculator::new()
-    }
+    fn calc() -> DateCalculator { DateCalculator::new() }
 
     #[test]
     fn test_is_weekend() {

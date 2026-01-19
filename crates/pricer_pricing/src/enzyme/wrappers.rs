@@ -1,9 +1,9 @@
 //! Enzyme autodiff wrapper functions.
 //!
 //! This module provides wrapper functions for Enzyme `#[autodiff_*]` macros.
-//! When the `enzyme-ad` feature is enabled, these wrappers use actual LLVM-level
-//! automatic differentiation. When disabled, they fall back to finite difference
-//! approximations.
+//! When the `enzyme-ad` feature is enabled, these wrappers use actual
+//! LLVM-level automatic differentiation. When disabled, they fall back to
+//! finite difference approximations.
 //!
 //! # Requirements Coverage
 //!
@@ -227,7 +227,8 @@ pub struct AllGreeks {
 /// # Enzyme Implementation (enzyme-ad feature enabled)
 ///
 /// Uses `#[autodiff_reverse]` to compute all first-order Greeks in a single
-/// reverse pass. This is efficient when computing multiple Greeks simultaneously.
+/// reverse pass. This is efficient when computing multiple Greeks
+/// simultaneously.
 ///
 /// # Fallback Implementation (enzyme-ad feature disabled)
 ///
@@ -493,8 +494,9 @@ pub fn rho_analytical(spot: f64, strike: f64, rate: f64, vol: f64, time: f64) ->
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     // Test parameters: ATM call option
     const SPOT: f64 = 100.0;

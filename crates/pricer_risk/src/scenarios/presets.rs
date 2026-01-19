@@ -5,9 +5,9 @@
 //! - Twist scenarios (steepening/flattening)
 //! - Butterfly scenarios (curvature)
 
+use pricer_core::traits::{risk::ShiftType, Float};
+
 use super::shifts::{BumpScenario, RiskFactorShift, Scenario};
-use pricer_core::traits::risk::ShiftType;
-use pricer_core::traits::Float;
 
 /// Types of preset scenarios.
 ///

@@ -1,13 +1,17 @@
 //! FX volatility surface abstractions for FX option pricing.
 //!
 //! This module provides:
-//! - [`FxVolatilitySurface`]: Delta-expiry based volatility surface for FX options
+//! - [`FxVolatilitySurface`]: Delta-expiry based volatility surface for FX
+//!   options
 //! - [`FxDeltaPoint`]: Standard delta points used in FX markets
 
-use super::VolatilitySurface;
-use crate::market_data::error::MarketDataError;
-use crate::math::interpolators::BilinearInterpolator;
 use num_traits::Float;
+
+use super::VolatilitySurface;
+use crate::{
+    market_data::error::MarketDataError,
+    math::{interpolators::BilinearInterpolator, numeric::from_f64},
+};
 
 /// Standard delta points used in FX volatility quoting.
 ///
@@ -131,7 +135,8 @@ impl<T: Float> FxVolatilitySurface<T> {
     /// # Arguments
     ///
     /// * `deltas` - Delta points (must be sorted, at least 2 points)
-    /// * `expiries` - Expiry tenors in years (must be sorted, at least 2 points)
+    /// * `expiries` - Expiry tenors in years (must be sorted, at least 2
+    ///   points)
     /// * `volatilities` - Grid of volatilities \[expiry\]\[delta\]
     /// * `allow_extrapolation` - Whether to allow flat extrapolation
     ///
@@ -247,15 +252,11 @@ impl<T: Float> FxVolatilitySurface<T> {
 
     /// Return the delta domain.
     #[inline]
-    pub fn delta_domain(&self) -> (T, T) {
-        (self.deltas[0], self.deltas[self.deltas.len() - 1])
-    }
+    pub fn delta_domain(&self) -> (T, T) { (self.deltas[0], self.deltas[self.deltas.len() - 1]) }
 
     /// Return whether extrapolation is allowed.
     #[inline]
-    pub fn allow_extrapolation(&self) -> bool {
-        self.allow_extrapolation
-    }
+    pub fn allow_extrapolation(&self) -> bool { self.allow_extrapolation }
 
     /// Get the ATM (at-the-money) volatility for a given expiry.
     ///
@@ -288,7 +289,7 @@ impl<T: Float> FxVolatilitySurface<T> {
     /// assert!((atm_1y - 0.11).abs() < 1e-10);
     /// ```
     pub fn atm_volatility(&self, expiry: T) -> Result<T, MarketDataError> {
-        let atm_delta = T::from(0.5).unwrap();
+        let atm_delta: T = from_f64(0.5);
         self.volatility_by_delta(atm_delta, expiry)
     }
 
@@ -383,8 +384,8 @@ impl<T: Float> FxVolatilitySurface<T> {
     /// * `Ok(T)` - 25-delta risk reversal
     /// * `Err(MarketDataError)` - If calculation fails
     pub fn risk_reversal_25d(&self, expiry: T) -> Result<T, MarketDataError> {
-        let call_25d = T::from(0.75).unwrap();
-        let put_25d = T::from(0.25).unwrap();
+        let call_25d: T = from_f64(0.75);
+        let put_25d: T = from_f64(0.25);
 
         let vol_call = self.volatility_by_delta(call_25d, expiry)?;
         let vol_put = self.volatility_by_delta(put_25d, expiry)?;
@@ -407,36 +408,33 @@ impl<T: Float> FxVolatilitySurface<T> {
     /// * `Ok(T)` - 25-delta butterfly
     /// * `Err(MarketDataError)` - If calculation fails
     pub fn butterfly_25d(&self, expiry: T) -> Result<T, MarketDataError> {
-        let call_25d = T::from(0.75).unwrap();
-        let put_25d = T::from(0.25).unwrap();
-        let atm = T::from(0.5).unwrap();
+        let call_25d: T = from_f64(0.75);
+        let put_25d: T = from_f64(0.25);
+        let atm: T = from_f64(0.5);
 
         let vol_call = self.volatility_by_delta(call_25d, expiry)?;
         let vol_put = self.volatility_by_delta(put_25d, expiry)?;
         let vol_atm = self.volatility_by_delta(atm, expiry)?;
 
-        let two = T::one() + T::one();
+        let two: T = from_f64(2.0);
         Ok((vol_call + vol_put) / two - vol_atm)
     }
 }
 
 impl<T: Float> VolatilitySurface<T> for FxVolatilitySurface<T> {
-    /// Return the implied volatility for given strike (interpreted as delta) and expiry.
+    /// Return the implied volatility for given strike (interpreted as delta)
+    /// and expiry.
     ///
-    /// Note: For FxVolatilitySurface, the `strike` parameter is interpreted as delta.
-    /// For strike-based lookups, use a separate conversion method.
+    /// Note: For FxVolatilitySurface, the `strike` parameter is interpreted as
+    /// delta. For strike-based lookups, use a separate conversion method.
     fn volatility(&self, strike: T, expiry: T) -> Result<T, MarketDataError> {
         // Interpret strike as delta for consistency with FX convention
         self.volatility_by_delta(strike, expiry)
     }
 
-    fn strike_domain(&self) -> (T, T) {
-        self.delta_domain()
-    }
+    fn strike_domain(&self) -> (T, T) { self.delta_domain() }
 
-    fn expiry_domain(&self) -> (T, T) {
-        (self.expiries[0], self.expiries[self.expiries.len() - 1])
-    }
+    fn expiry_domain(&self) -> (T, T) { (self.expiries[0], self.expiries[self.expiries.len() - 1]) }
 }
 
 #[cfg(test)]
@@ -692,7 +690,8 @@ mod tests {
 
         let surface = FxVolatilitySurface::new(&deltas, &expiries, &vols, true).unwrap();
 
-        // BF = (σ(25D Call) + σ(25D Put)) / 2 - σ(ATM) = (0.12 + 0.12) / 2 - 0.10 = 0.02
+        // BF = (σ(25D Call) + σ(25D Put)) / 2 - σ(ATM) = (0.12 + 0.12) / 2 - 0.10 =
+        // 0.02
         let bf = surface.butterfly_25d(0.5).unwrap();
         assert!((bf - 0.02).abs() < 1e-10);
     }

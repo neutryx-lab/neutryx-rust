@@ -15,26 +15,32 @@
 //! - Requirement 3.4: Criterion format benchmark output
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use pricer_core::market_data::curves::{CurveEnum, CurveName, CurveSet};
-use pricer_core::types::time::{Date, DayCountConvention};
-use pricer_core::types::Currency;
-use pricer_models::instruments::rates::{
-    FixedLeg, FloatingLeg, InterestRateSwap, RateIndex, SwapDirection,
+use pricer_core::{
+    market_data::curves::{CurveEnum, CurveName, CurveSet},
+    types::{
+        time::{Date, DayCountConvention},
+        Currency,
+    },
 };
-use pricer_models::instruments::{
-    ExerciseStyle, Instrument, InstrumentParams, PayoffType, VanillaOption,
+use pricer_models::{
+    instruments::{
+        rates::{FixedLeg, FloatingLeg, InterestRateSwap, RateIndex, SwapDirection},
+        ExerciseStyle, Instrument, InstrumentParams, PayoffType, VanillaOption,
+    },
+    schedules::{Frequency, ScheduleBuilder},
 };
-use pricer_models::schedules::{Frequency, ScheduleBuilder};
 use pricer_pricing::greeks::GreeksMode;
-use pricer_risk::exposure::ExposureCalculator;
-use pricer_risk::parallel::{ParallelGreeksConfig, ParallelPortfolioGreeksCalculator};
-use pricer_risk::portfolio::{
-    Counterparty, CounterpartyId, CreditParams, NettingSet, NettingSetId, PortfolioBuilder, Trade,
-    TradeId,
+use pricer_risk::{
+    exposure::ExposureCalculator,
+    parallel::{ParallelGreeksConfig, ParallelPortfolioGreeksCalculator},
+    portfolio::{
+        Counterparty, CounterpartyId, CreditParams, NettingSet, NettingSetId, PortfolioBuilder,
+        Trade, TradeId,
+    },
+    scenarios::{GreeksByFactorConfig, IrsGreeksByFactorCalculator},
+    soa::TradeSoA,
+    xva::{compute_cva, compute_dva, generate_flat_discount_factors, OwnCreditParams},
 };
-use pricer_risk::scenarios::{GreeksByFactorConfig, IrsGreeksByFactorCalculator};
-use pricer_risk::soa::TradeSoA;
-use pricer_risk::xva::{compute_cva, compute_dva, generate_flat_discount_factors, OwnCreditParams};
 
 /// Generate synthetic exposure scenarios for benchmarking.
 fn generate_exposure_scenarios(n_scenarios: usize, n_times: usize) -> Vec<Vec<f64>> {
@@ -242,7 +248,8 @@ fn bench_trade_soa(c: &mut Criterion) {
     let mut group = c.benchmark_group("trade_soa");
 
     for n_trades in [100, 1000, 10000] {
-        // Create trades for SoA benchmark (counterparty/netting_set not needed for TradeSoA)
+        // Create trades for SoA benchmark (counterparty/netting_set not needed for
+        // TradeSoA)
         let _credit = CreditParams::new(0.02, 0.4).unwrap();
 
         let trades: Vec<Trade> = (0..n_trades)

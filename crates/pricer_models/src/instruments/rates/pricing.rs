@@ -62,8 +62,10 @@
 //! ```
 
 use num_traits::Float;
-use pricer_core::market_data::curves::{CurveName, CurveSet, YieldCurve};
-use pricer_core::types::time::{Date, DayCountConvention};
+use pricer_core::{
+    market_data::curves::{CurveName, CurveSet, YieldCurve},
+    types::time::{Date, DayCountConvention},
+};
 
 use super::{InterestRateSwap, RateIndex, SwapDirection};
 use crate::analytical::error::AnalyticalError;
@@ -91,6 +93,7 @@ use crate::analytical::error::AnalyticalError;
 /// # Panics
 ///
 /// Panics if required curves are not found in the curve set.
+#[allow(clippy::expect_used)]
 pub fn price_irs<T: Float>(
     swap: &InterestRateSwap<T>,
     curves: &CurveSet<T>,
@@ -119,6 +122,11 @@ pub fn price_irs<T: Float>(
 /// # Returns
 ///
 /// Present value of the fixed leg.
+///
+/// # Panics
+///
+/// Panics if discount curve is not found in the curve set.
+#[allow(clippy::expect_used)]
 pub fn price_fixed_leg<T: Float>(
     swap: &InterestRateSwap<T>,
     curves: &CurveSet<T>,
@@ -181,6 +189,11 @@ pub fn price_fixed_leg<T: Float>(
 /// # Returns
 ///
 /// Present value of the floating leg.
+///
+/// # Panics
+///
+/// Panics if discount or forward curve is not found in the curve set.
+#[allow(clippy::expect_used)]
 pub fn price_floating_leg<T: Float>(
     swap: &InterestRateSwap<T>,
     curves: &CurveSet<T>,
@@ -258,7 +271,8 @@ pub fn price_floating_leg<T: Float>(
 /// The par swap rate is the fixed rate that makes the swap have zero
 /// present value at inception.
 ///
-/// ParRate = Sum_i(DF_i × ForwardRate_i × YearFrac_i) / Sum_i(DF_i × YearFrac_i)
+/// ParRate = Sum_i(DF_i × ForwardRate_i × YearFrac_i) / Sum_i(DF_i ×
+/// YearFrac_i)
 ///
 /// # Arguments
 ///
@@ -269,6 +283,11 @@ pub fn price_floating_leg<T: Float>(
 /// # Returns
 ///
 /// The par swap rate.
+///
+/// # Panics
+///
+/// Panics if discount or forward curve is not found in the curve set.
+#[allow(clippy::expect_used)]
 pub fn par_swap_rate<T: Float>(
     swap: &InterestRateSwap<T>,
     curves: &CurveSet<T>,
@@ -515,6 +534,7 @@ pub fn price_swaption_bachelier<T: Float>(
 /// Calculate the annuity (PV01) of a swap.
 ///
 /// Annuity = Sum_i(DF_i × YearFrac_i)
+#[allow(clippy::expect_used)]
 fn calculate_annuity<T: Float>(
     swap: &InterestRateSwap<T>,
     curves: &CurveSet<T>,
@@ -553,11 +573,13 @@ fn calculate_annuity<T: Float>(
 
 #[cfg(test)]
 mod tests {
+    use pricer_core::{market_data::curves::CurveEnum, types::Currency};
+
     use super::*;
-    use crate::instruments::rates::{FixedLeg, FloatingLeg, Swaption, SwaptionStyle, SwaptionType};
-    use crate::schedules::{Frequency, ScheduleBuilder};
-    use pricer_core::market_data::curves::CurveEnum;
-    use pricer_core::types::Currency;
+    use crate::{
+        instruments::rates::{FixedLeg, FloatingLeg, Swaption, SwaptionStyle, SwaptionType},
+        schedules::{Frequency, ScheduleBuilder},
+    };
 
     fn create_test_swap() -> InterestRateSwap<f64> {
         let start = Date::from_ymd(2024, 1, 15).unwrap();

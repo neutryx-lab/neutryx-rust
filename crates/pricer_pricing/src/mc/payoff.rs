@@ -24,11 +24,11 @@
 //! smoothing functions from `pricer_core::math::smoothing` instead of
 //! local implementations. This ensures consistency across the crate hierarchy.
 
-use super::workspace::PathWorkspace;
-
 // Phase 4: Conditional import of pricer_core smoothing functions
 #[cfg(feature = "l1l2-integration")]
 use pricer_core::math::smoothing::{smooth_indicator, smooth_max};
+
+use super::workspace::PathWorkspace;
 
 /// Payoff type for option pricing.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -114,7 +114,8 @@ impl PayoffParams {
 /// # Numerical Stability
 ///
 /// For large positive `x/ε`, uses the approximation `x` to avoid overflow.
-/// For large negative `x/ε`, uses the approximation `ε × exp(x/ε)` for accuracy.
+/// For large negative `x/ε`, uses the approximation `ε × exp(x/ε)` for
+/// accuracy.
 ///
 /// # L1/L2 Integration
 ///
@@ -336,8 +337,9 @@ pub fn asian_arithmetic_put_smooth(path: &[f64], strike: f64, epsilon: f64) -> f
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     #[test]
     fn test_soft_plus_positive() {
@@ -496,11 +498,13 @@ mod tests {
     /// Tests for pricer_core integration (Phase 4, Task 1.2).
     ///
     /// These tests verify that the soft_plus function (which now delegates to
-    /// pricer_core when l1l2-integration is enabled) produces consistent results.
+    /// pricer_core when l1l2-integration is enabled) produces consistent
+    /// results.
     #[cfg(feature = "l1l2-integration")]
     mod core_integration_tests {
-        use super::*;
         use pricer_core::math::smoothing::{smooth_indicator, smooth_max};
+
+        use super::*;
 
         /// Verify soft_plus delegates to pricer_core smooth_max correctly.
         ///
@@ -568,7 +572,8 @@ mod tests {
                 let deriv_result = soft_plus_derivative(x, epsilon);
                 let indicator_result = smooth_indicator(x, epsilon);
 
-                // Results should be identical since soft_plus_derivative delegates to smooth_indicator
+                // Results should be identical since soft_plus_derivative delegates to
+                // smooth_indicator
                 assert_relative_eq!(deriv_result, indicator_result, epsilon = 1e-10);
             }
         }

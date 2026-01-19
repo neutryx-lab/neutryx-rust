@@ -1,10 +1,14 @@
 //! Metrics store for risk dashboard.
 
-use super::{CounterpartyRisk, MetricType, MetricUpdate, RiskSummary};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
+
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+
+use super::{CounterpartyRisk, MetricType, MetricUpdate, RiskSummary};
 
 /// In-memory metrics store for the risk dashboard
 #[allow(clippy::type_complexity)]
@@ -195,9 +199,7 @@ impl MetricsStore {
 }
 
 impl Default for MetricsStore {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 /// Store statistics

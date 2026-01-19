@@ -19,10 +19,11 @@
 //! - USD SABR calibration only for CMS trade (lazy evaluation working)
 //! - No SABR calibration for VanillaSwap trades
 
-use crate::Result;
 use pricer_core::types::Currency;
 use pricer_optimiser::provider::MarketProvider;
 use pricer_risk::demo::{run_portfolio_pricing, DemoTrade};
+
+use crate::Result;
 
 /// Runs the lazy-arc-pricing-kernel architecture demonstration.
 ///

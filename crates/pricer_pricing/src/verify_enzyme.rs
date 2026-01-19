@@ -1,13 +1,13 @@
 //! Enzyme gradient verification tests.
 //!
-//! This module provides dedicated tests for verifying Enzyme automatic differentiation
-//! infrastructure. These tests validate that gradient computation is correct for
-//! simple mathematical functions.
+//! This module provides dedicated tests for verifying Enzyme automatic
+//! differentiation infrastructure. These tests validate that gradient
+//! computation is correct for simple mathematical functions.
 //!
 //! # Phase 3.0 Status
 //!
-//! These tests use the placeholder implementation (finite difference approximation).
-//! Phase 4 will verify actual Enzyme AD integration.
+//! These tests use the placeholder implementation (finite difference
+//! approximation). Phase 4 will verify actual Enzyme AD integration.
 //!
 //! # Test Coverage
 //!
@@ -18,9 +18,12 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::enzyme::gradient;
-    use crate::verify::{square, square_gradient};
     use approx::{assert_relative_eq, relative_eq};
+
+    use crate::{
+        enzyme::gradient,
+        verify::{square, square_gradient},
+    };
 
     // Requirement 5.2: Gradient of f(x) = x * x shall return 2 * x
 
@@ -267,12 +270,12 @@ mod tests {
         assert!(delta <= discount + 0.01, "Delta should be <= df: {}", delta);
     }
 
-    /// Test barrier option gradient behavior at barrier.
+    /// Test barrier option gradient behaviour at barrier.
     #[test]
     fn test_barrier_option_gradient_at_barrier() {
         // Near barrier, the gradient of a knock-out option changes rapidly
         let barrier = 80.0;
-        let strike = 100.0;
+        let _strike = 100.0;
 
         // Simplified barrier payoff indicator: 1 if min >= barrier, 0 otherwise
         fn barrier_indicator(min_price: f64, barrier: f64, epsilon: f64) -> f64 {
@@ -333,7 +336,8 @@ mod tests {
         }
     }
 
-    /// Test gradient consistency: enzyme gradient should match finite difference.
+    /// Test gradient consistency: enzyme gradient should match finite
+    /// difference.
     #[test]
     fn test_gradient_consistency_path_dependent() {
         // Verify that our enzyme::gradient (finite difference) matches
@@ -374,15 +378,7 @@ mod tests {
     /// Currently verifies the test framework is in place.
     #[test]
     fn test_ad_comparison_framework_ready() {
-        // This test will be expanded in Phase 5 when Enzyme is fully integrated
-        //
-        // Future implementation:
-        // let spot = 100.0;
-        // let enzyme_delta = enzyme_delta_asian_call(spot, strike, ...);
-        // let numdual_delta = numdual_delta_asian_call(spot, strike, ...);
-        // assert_relative_eq!(enzyme_delta, numdual_delta, epsilon = 1e-6);
-
-        // For now, verify test infrastructure
+        // Verify test infrastructure for future Enzyme vs num-dual comparison
         let result = gradient(|x| x * x, 5.0);
         assert_relative_eq!(result, 10.0, epsilon = 1e-6);
     }

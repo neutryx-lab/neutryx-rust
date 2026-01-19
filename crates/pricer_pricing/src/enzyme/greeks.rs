@@ -27,8 +27,10 @@
 //! println!("Price: {:.4}, Delta: {:.4}", result.price, result.delta);
 //! ```
 
-use crate::greeks::GreeksResult;
-use crate::mc::{GbmParams, MonteCarloPricer, PayoffParams, PricingResult};
+use crate::{
+    greeks::GreeksResult,
+    mc::{GbmParams, MonteCarloPricer, PayoffParams, PricingResult},
+};
 
 /// Mode for Greeks computation.
 ///
@@ -70,9 +72,7 @@ impl GreeksMode {
 
     /// Returns whether Enzyme AD is available.
     #[inline]
-    pub fn enzyme_available() -> bool {
-        cfg!(feature = "enzyme-ad")
-    }
+    pub fn enzyme_available() -> bool { cfg!(feature = "enzyme-ad") }
 
     /// Resolves Auto mode to a concrete method.
     #[inline]
@@ -206,15 +206,11 @@ impl EnzymeGreeksResult {
 }
 
 impl From<EnzymeGreeksResult> for GreeksResult<f64> {
-    fn from(result: EnzymeGreeksResult) -> Self {
-        result.to_greeks_result()
-    }
+    fn from(result: EnzymeGreeksResult) -> Self { result.to_greeks_result() }
 }
 
 impl From<EnzymeGreeksResult> for PricingResult {
-    fn from(result: EnzymeGreeksResult) -> Self {
-        result.to_pricing_result()
-    }
+    fn from(result: EnzymeGreeksResult) -> Self { result.to_pricing_result() }
 }
 
 /// Trait for Enzyme-based Greeks computation on Monte Carlo pricers.

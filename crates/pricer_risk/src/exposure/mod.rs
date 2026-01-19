@@ -324,8 +324,9 @@ impl ExposureCalculator {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     #[test]
     fn test_expected_exposure() {
@@ -359,8 +360,8 @@ mod tests {
 
         let epe = ExposureCalculator::expected_positive_exposure(&ee, &time_grid);
 
-        // Trapezoidal: 0.25 * (0+10)/2 + 0.25 * (10+20)/2 + 0.25 * (20+15)/2 + 0.25 * (15+5)/2
-        //           = 1.25 + 3.75 + 4.375 + 2.5 = 11.875
+        // Trapezoidal: 0.25 * (0+10)/2 + 0.25 * (10+20)/2 + 0.25 * (20+15)/2 + 0.25 *
+        // (15+5)/2           = 1.25 + 3.75 + 4.375 + 2.5 = 11.875
         // EPE = 11.875 / 1.0 = 11.875
         assert_relative_eq!(epe, 11.875, epsilon = 1e-10);
     }

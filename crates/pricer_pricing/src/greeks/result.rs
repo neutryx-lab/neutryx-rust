@@ -1,9 +1,11 @@
 //! Greeks calculation result type.
 //!
-//! Provides [`GreeksResult<T>`], a generic struct for holding Greeks calculations
-//! that is compatible with automatic differentiation via the `Float` trait bound.
+//! Provides [`GreeksResult<T>`], a generic struct for holding Greeks
+//! calculations that is compatible with automatic differentiation via the
+//! `Float` trait bound.
 
 use num_traits::Float;
+use pricer_core::math::numeric::from_f64;
 
 /// Greeks calculation result with optional sensitivities.
 ///
@@ -115,9 +117,7 @@ impl<T: Float> GreeksResult<T> {
     /// println!("Price: {:.2} ± {:.4}", result.price, ci);
     /// ```
     #[inline]
-    pub fn confidence_95(&self) -> T {
-        T::from(1.96).unwrap() * self.std_error
-    }
+    pub fn confidence_95(&self) -> T { from_f64::<T>(1.96) * self.std_error }
 
     /// Returns the 99% confidence interval half-width.
     ///
@@ -139,9 +139,7 @@ impl<T: Float> GreeksResult<T> {
     /// println!("Price: {:.2} ± {:.4}", result.price, ci);
     /// ```
     #[inline]
-    pub fn confidence_99(&self) -> T {
-        T::from(2.576).unwrap() * self.std_error
-    }
+    pub fn confidence_99(&self) -> T { from_f64::<T>(2.576) * self.std_error }
 
     /// Creates a new result with only price and standard error.
     ///
@@ -230,8 +228,9 @@ impl<T: Float> GreeksResult<T> {
 // Serde support (optional feature)
 #[cfg(feature = "serde")]
 mod serde_impl {
-    use super::*;
     use serde::{Deserialize, Serialize};
+
+    use super::*;
 
     impl<T> Serialize for GreeksResult<T>
     where

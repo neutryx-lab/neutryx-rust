@@ -7,9 +7,8 @@ mod netting_engine;
 mod swift_receiver;
 
 pub use netting_engine::NettingEngine;
-pub use swift_receiver::SwiftReceiver;
-
 use serde::{Deserialize, Serialize};
+pub use swift_receiver::SwiftReceiver;
 
 /// Payment instruction
 #[derive(Debug, Clone, Serialize, Deserialize)]

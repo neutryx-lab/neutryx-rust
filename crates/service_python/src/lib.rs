@@ -31,8 +31,8 @@ mod bindings;
 
 /// Neutryx XVA Pricing Library for Python
 ///
-/// A high-performance derivatives pricing library with automatic differentiation
-/// for Greeks computation.
+/// A high-performance derivatives pricing library with automatic
+/// differentiation for Greeks computation.
 #[pymodule]
 fn neutryx(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Register instrument types
@@ -54,6 +54,4 @@ fn neutryx(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
 /// Get the Neutryx library version
 #[pyfunction]
-fn version() -> &'static str {
-    env!("CARGO_PKG_VERSION")
-}
+fn version() -> &'static str { env!("CARGO_PKG_VERSION") }

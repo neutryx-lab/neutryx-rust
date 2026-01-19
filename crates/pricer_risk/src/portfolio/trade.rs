@@ -80,39 +80,27 @@ impl Trade {
 
     /// Returns the trade ID.
     #[inline]
-    pub fn id(&self) -> &TradeId {
-        &self.id
-    }
+    pub fn id(&self) -> &TradeId { &self.id }
 
     /// Returns a reference to the underlying instrument.
     #[inline]
-    pub fn instrument(&self) -> &Instrument<f64> {
-        &self.instrument
-    }
+    pub fn instrument(&self) -> &Instrument<f64> { &self.instrument }
 
     /// Returns the trade currency.
     #[inline]
-    pub fn currency(&self) -> Currency {
-        self.currency
-    }
+    pub fn currency(&self) -> Currency { self.currency }
 
     /// Returns the counterparty ID.
     #[inline]
-    pub fn counterparty_id(&self) -> &CounterpartyId {
-        &self.counterparty_id
-    }
+    pub fn counterparty_id(&self) -> &CounterpartyId { &self.counterparty_id }
 
     /// Returns the netting set ID.
     #[inline]
-    pub fn netting_set_id(&self) -> &NettingSetId {
-        &self.netting_set_id
-    }
+    pub fn netting_set_id(&self) -> &NettingSetId { &self.netting_set_id }
 
     /// Returns the notional amount.
     #[inline]
-    pub fn notional(&self) -> f64 {
-        self.notional
-    }
+    pub fn notional(&self) -> f64 { self.notional }
 
     /// Computes the payoff at given spot price.
     ///
@@ -126,33 +114,23 @@ impl Trade {
     ///
     /// Notional-scaled payoff value.
     #[inline]
-    pub fn payoff(&self, spot: f64) -> f64 {
-        self.instrument.payoff(spot) * self.notional
-    }
+    pub fn payoff(&self, spot: f64) -> f64 { self.instrument.payoff(spot) * self.notional }
 
     /// Returns the instrument expiry in years.
     #[inline]
-    pub fn expiry(&self) -> f64 {
-        self.instrument.expiry()
-    }
+    pub fn expiry(&self) -> f64 { self.instrument.expiry() }
 
     /// Returns whether this is a vanilla option trade.
     #[inline]
-    pub fn is_vanilla(&self) -> bool {
-        self.instrument.is_vanilla()
-    }
+    pub fn is_vanilla(&self) -> bool { self.instrument.is_vanilla() }
 
     /// Returns whether this is a forward trade.
     #[inline]
-    pub fn is_forward(&self) -> bool {
-        self.instrument.is_forward()
-    }
+    pub fn is_forward(&self) -> bool { self.instrument.is_forward() }
 
     /// Returns whether this is a swap trade.
     #[inline]
-    pub fn is_swap(&self) -> bool {
-        self.instrument.is_swap()
-    }
+    pub fn is_swap(&self) -> bool { self.instrument.is_swap() }
 
     /// Returns the strike price if this is a vanilla option.
     pub fn strike(&self) -> Option<f64> {
@@ -177,9 +155,7 @@ pub struct TradeBuilder {
 }
 
 impl Default for TradeBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl TradeBuilder {
@@ -247,7 +223,8 @@ impl TradeBuilder {
         )
     }
 
-    /// Tries to build the trade, returning None if any required field is missing.
+    /// Tries to build the trade, returning None if any required field is
+    /// missing.
     pub fn try_build(self) -> Option<Trade> {
         Some(Trade::new(
             self.id?,
@@ -262,11 +239,12 @@ impl TradeBuilder {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
     use pricer_models::instruments::{
         Direction, ExerciseStyle, Forward, InstrumentParams, VanillaOption,
     };
+
+    use super::*;
 
     fn create_test_call() -> Instrument<f64> {
         let params = InstrumentParams::new(100.0, 1.0, 1.0).unwrap();

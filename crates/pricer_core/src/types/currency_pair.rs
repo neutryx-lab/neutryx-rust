@@ -20,11 +20,11 @@
 //! assert_eq!(inverted.quote(), Currency::USD);
 //! ```
 
-use num_traits::Float;
 use std::fmt;
 
-use super::currency::Currency;
-use super::error::CurrencyError;
+use num_traits::Float;
+
+use super::{currency::Currency, error::CurrencyError};
 
 /// A currency pair for foreign exchange calculations.
 ///
@@ -98,9 +98,7 @@ impl<T: Float> CurrencyPair<T> {
     /// assert_eq!(pair.base(), Currency::EUR);
     /// ```
     #[inline]
-    pub fn base(&self) -> Currency {
-        self.base
-    }
+    pub fn base(&self) -> Currency { self.base }
 
     /// Returns the quote currency.
     ///
@@ -113,9 +111,7 @@ impl<T: Float> CurrencyPair<T> {
     /// assert_eq!(pair.quote(), Currency::USD);
     /// ```
     #[inline]
-    pub fn quote(&self) -> Currency {
-        self.quote
-    }
+    pub fn quote(&self) -> Currency { self.quote }
 
     /// Returns the spot exchange rate.
     ///
@@ -128,9 +124,7 @@ impl<T: Float> CurrencyPair<T> {
     /// assert_eq!(pair.spot(), 1.10);
     /// ```
     #[inline]
-    pub fn spot(&self) -> T {
-        self.spot
-    }
+    pub fn spot(&self) -> T { self.spot }
 
     /// Returns the currency pair code in standard format (BASE/QUOTE).
     ///
@@ -142,9 +136,7 @@ impl<T: Float> CurrencyPair<T> {
     /// let pair = CurrencyPair::new(Currency::EUR, Currency::USD, 1.10).unwrap();
     /// assert_eq!(pair.code(), "EUR/USD");
     /// ```
-    pub fn code(&self) -> String {
-        format!("{}/{}", self.base.code(), self.quote.code())
-    }
+    pub fn code(&self) -> String { format!("{}/{}", self.base.code(), self.quote.code()) }
 
     /// Updates the spot rate.
     ///
@@ -220,9 +212,7 @@ impl<T: Float> CurrencyPair<T> {
     /// assert!((usd_amount - 110.0_f64).abs() < 1e-10);
     /// ```
     #[inline]
-    pub fn convert_to_quote(&self, base_amount: T) -> T {
-        base_amount * self.spot
-    }
+    pub fn convert_to_quote(&self, base_amount: T) -> T { base_amount * self.spot }
 
     /// Converts an amount from quote currency to base currency.
     ///
@@ -247,9 +237,7 @@ impl<T: Float> CurrencyPair<T> {
     /// assert!((eur_amount - 100.0_f64).abs() < 1e-10);
     /// ```
     #[inline]
-    pub fn convert_to_base(&self, quote_amount: T) -> T {
-        quote_amount / self.spot
-    }
+    pub fn convert_to_base(&self, quote_amount: T) -> T { quote_amount / self.spot }
 
     /// Checks if this pair contains the given currency.
     ///
@@ -276,9 +264,7 @@ impl<T: Float + std::fmt::Display> fmt::Display for CurrencyPair<T> {
 }
 
 impl<T: Float> PartialEq for CurrencyPair<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.base == other.base && self.quote == other.quote
-    }
+    fn eq(&self, other: &Self) -> bool { self.base == other.base && self.quote == other.quote }
 }
 
 impl<T: Float> Eq for CurrencyPair<T> {}

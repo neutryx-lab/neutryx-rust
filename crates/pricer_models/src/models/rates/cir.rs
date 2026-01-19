@@ -13,7 +13,8 @@
 //!
 //! ## Feller Condition
 //!
-//! For the CIR process to remain strictly positive, the Feller condition must hold:
+//! For the CIR process to remain strictly positive, the Feller condition must
+//! hold:
 //! ```text
 //! 2 * a * b >= sigma^2
 //! ```
@@ -27,7 +28,6 @@
 //! - **Square-root diffusion**: Volatility is proportional to sqrt(r)
 //!
 //! ## Usage
-//!
 //! ```
 //! use pricer_models::models::rates::cir::{CIRModel, CIRParams};
 //! use pricer_models::models::stochastic::StochasticModel;
@@ -47,8 +47,7 @@
 //! assert!(next_state.0 >= 0.0); // Non-negative with Feller condition
 //! ```
 
-use pricer_core::traits::priceable::Differentiable;
-use pricer_core::traits::Float;
+use pricer_core::traits::{priceable::Differentiable, Float};
 
 use crate::models::stochastic::{SingleState, StochasticModel};
 
@@ -203,7 +202,8 @@ impl<T: Float + Default> StochasticModel<T> for CIRModel<T> {
 
     fn evolve_step(state: Self::State, dt: T, dw: &[T], params: &Self::Params) -> Self::State {
         // Euler-Maruyama discretization:
-        // r(t+dt) = r(t) + a * (b - r(t)) * dt + sigma * sqrt(max(r(t), 0)) * sqrt(dt) * dW
+        // r(t+dt) = r(t) + a * (b - r(t)) * dt + sigma * sqrt(max(r(t), 0)) * sqrt(dt)
+        // * dW
         let r = state.0;
         let a = params.mean_reversion;
         let b = params.long_term_mean;
@@ -228,17 +228,11 @@ impl<T: Float + Default> StochasticModel<T> for CIRModel<T> {
         SingleState(floored)
     }
 
-    fn initial_state(params: &Self::Params) -> Self::State {
-        SingleState(params.initial_rate)
-    }
+    fn initial_state(params: &Self::Params) -> Self::State { SingleState(params.initial_rate) }
 
-    fn brownian_dim() -> usize {
-        1
-    }
+    fn brownian_dim() -> usize { 1 }
 
-    fn model_name() -> &'static str {
-        "CIR"
-    }
+    fn model_name() -> &'static str { "CIR" }
 
     fn num_factors() -> usize {
         1 // CIR is a single-factor model

@@ -3,13 +3,14 @@
 //! This module defines the core trait for path-dependent payoff calculations
 //! and the observation type flags that specify what statistics are needed.
 
-use super::PathObserver;
 use num_traits::Float;
+
+use super::PathObserver;
 
 /// Observation type flags for path-dependent payoffs.
 ///
 /// Specifies which path statistics are required for payoff computation.
-/// This allows the simulation engine to optimize by only computing
+/// This allows the simulation engine to optimise by only computing
 /// the necessary statistics.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ObservationType {
@@ -143,7 +144,7 @@ pub trait PathDependentPayoff<T: Float>: Send + Sync {
 
     /// Returns the observation types required for this payoff.
     ///
-    /// This allows the simulation engine to optimize by only computing
+    /// This allows the simulation engine to optimise by only computing
     /// the necessary statistics.
     fn required_observations(&self) -> ObservationType;
 
@@ -241,13 +242,9 @@ mod tests {
             }
         }
 
-        fn required_observations(&self) -> ObservationType {
-            ObservationType::arithmetic_asian()
-        }
+        fn required_observations(&self) -> ObservationType { ObservationType::arithmetic_asian() }
 
-        fn smoothing_epsilon(&self) -> f64 {
-            self.epsilon
-        }
+        fn smoothing_epsilon(&self) -> f64 { self.epsilon }
     }
 
     #[test]

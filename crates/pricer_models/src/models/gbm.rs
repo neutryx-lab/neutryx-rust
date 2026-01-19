@@ -17,8 +17,7 @@
 //! S(t+dt) = S(t) * exp((r - 0.5*sigma^2)*dt + sigma*sqrt(dt)*dW)
 //! ```
 
-use pricer_core::traits::priceable::Differentiable;
-use pricer_core::traits::Float;
+use pricer_core::traits::{priceable::Differentiable, Float};
 
 use super::stochastic::{SingleState, StochasticModel};
 
@@ -100,7 +99,8 @@ impl<T: Float + Default> StochasticModel<T> for GBMModel<T> {
     type Params = GBMParams<T>;
 
     fn evolve_step(state: Self::State, dt: T, dw: &[T], params: &Self::Params) -> Self::State {
-        // Log-space exact solution: S(t+dt) = S(t) * exp((r - 0.5*sigma^2)*dt + sigma*sqrt(dt)*dW)
+        // Log-space exact solution: S(t+dt) = S(t) * exp((r - 0.5*sigma^2)*dt +
+        // sigma*sqrt(dt)*dW)
         let s = state.0;
         let r = params.rate;
         let sigma = params.volatility;
@@ -116,17 +116,11 @@ impl<T: Float + Default> StochasticModel<T> for GBMModel<T> {
         SingleState(s * (drift + diffusion).exp())
     }
 
-    fn initial_state(params: &Self::Params) -> Self::State {
-        SingleState(params.spot)
-    }
+    fn initial_state(params: &Self::Params) -> Self::State { SingleState(params.spot) }
 
-    fn brownian_dim() -> usize {
-        1
-    }
+    fn brownian_dim() -> usize { 1 }
 
-    fn model_name() -> &'static str {
-        "GBM"
-    }
+    fn model_name() -> &'static str { "GBM" }
 
     fn num_factors() -> usize {
         1 // GBM is a single-factor model
@@ -254,7 +248,8 @@ mod tests {
             state = GBMModel::evolve_step(state, dt, &dw, &params);
         }
 
-        // After 1 year with zero volatility effect, S_T approx S_0 * exp((r - 0.5*sigma^2)*1)
+        // After 1 year with zero volatility effect, S_T approx S_0 * exp((r -
+        // 0.5*sigma^2)*1)
         let expected = 100.0 * ((0.05 - 0.5 * 0.04) * 1.0).exp();
         assert!((state.0 - expected).abs() < 0.01);
     }

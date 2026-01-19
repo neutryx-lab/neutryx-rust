@@ -1,11 +1,15 @@
 //! Mock regulator API for receiving regulatory reports.
 
-use super::{RegulatoryReport, ReportStatus, ReportType};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
+
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
 use tracing::info;
+
+use super::{RegulatoryReport, ReportStatus, ReportType};
 
 /// Submission log entry for audit trail
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -234,9 +238,7 @@ impl RegulatorApi {
 }
 
 impl Default for RegulatorApi {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 /// Report statistics

@@ -40,10 +40,11 @@ pub struct PriceResponse {
 
 /// Portfolio pricing request
 #[derive(Deserialize)]
-#[allow(dead_code)]
 pub struct PortfolioRequest {
     pub instruments: Vec<PriceRequest>,
-    pub compute_greeks: Option<bool>,
+    /// Whether to compute Greeks (reserved for future use)
+    #[serde(default)]
+    pub _compute_greeks: Option<bool>,
 }
 
 /// Portfolio pricing response
@@ -55,10 +56,11 @@ pub struct PortfolioResponse {
 
 /// Calibration request
 #[derive(Deserialize)]
-#[allow(dead_code)]
 pub struct CalibrateRequest {
     pub model_type: String,
-    pub market_data: serde_json::Value,
+    /// Market data for calibration (reserved for future use)
+    #[serde(default)]
+    pub _market_data: Option<serde_json::Value>,
 }
 
 /// Calibration response
@@ -71,11 +73,14 @@ pub struct CalibrateResponse {
 
 /// Exposure request
 #[derive(Deserialize)]
-#[allow(dead_code)]
 pub struct ExposureRequest {
-    pub portfolio: Vec<PriceRequest>,
+    /// Portfolio instruments (reserved for future use)
+    #[serde(default)]
+    pub _portfolio: Option<Vec<PriceRequest>>,
     pub time_grid: Vec<f64>,
-    pub num_paths: Option<usize>,
+    /// Number of Monte Carlo paths (reserved for future use)
+    #[serde(default)]
+    pub _num_paths: Option<usize>,
 }
 
 /// Exposure response
@@ -103,8 +108,8 @@ pub async fn health() -> Json<HealthResponse> {
 pub async fn price_instrument(
     Json(request): Json<PriceRequest>,
 ) -> Result<Json<PriceResponse>, ServerError> {
-    // TODO: Use pricer_pricing for actual pricing
-    // For now, return a placeholder
+    // Placeholder implementation using inline Black-Scholes.
+    // Production: integrate pricer_pricing for full model support.
 
     let price = match request.instrument_type.as_str() {
         "vanilla_option" | "european_option" => {
@@ -166,7 +171,8 @@ pub async fn price_portfolio(
 pub async fn calibrate(
     Json(request): Json<CalibrateRequest>,
 ) -> Result<Json<CalibrateResponse>, ServerError> {
-    // TODO: Use pricer_optimiser for actual calibration
+    // Placeholder returning hardcoded parameters.
+    // Production: integrate pricer_optimiser for market-data-driven calibration.
 
     match request.model_type.as_str() {
         "hull-white" => Ok(Json(CalibrateResponse {
@@ -197,7 +203,8 @@ pub async fn calibrate(
 pub async fn calculate_exposure(
     Json(request): Json<ExposureRequest>,
 ) -> Result<Json<ExposureResponse>, ServerError> {
-    // TODO: Use pricer_risk for actual exposure calculation
+    // Placeholder returning zero exposure profiles.
+    // Production: integrate pricer_risk for Monte Carlo simulation.
 
     let num_times = request.time_grid.len();
 

@@ -60,3 +60,6 @@ l1l2-integration = ["dep:pricer_core", "dep:pricer_models"]
 enzyme-ad = ["dep:llvm-sys"]
 # Serialization support for GreeksResult
 serde = ["dep:serde"]
+
+[lints]
+workspace = true

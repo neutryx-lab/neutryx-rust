@@ -1,8 +1,8 @@
 //! Enzyme gradient verification utilities.
 //!
-//! This module provides simple functions to verify that Enzyme automatic differentiation
-//! works correctly. Phase 3.0 uses placeholder implementations; actual Enzyme integration
-//! will be added in Phase 4.
+//! This module provides simple functions to verify that Enzyme automatic
+//! differentiation works correctly. Phase 3.0 uses placeholder implementations;
+//! actual Enzyme integration will be added in Phase 4.
 //!
 //! ## Purpose
 //!
@@ -49,9 +49,7 @@
 /// assert_eq!(square(0.0), 0.0);
 /// ```
 #[inline]
-pub fn square(x: f64) -> f64 {
-    x * x
-}
+pub fn square(x: f64) -> f64 { x * x }
 
 /// Calculate gradient of square function.
 ///
@@ -104,8 +102,9 @@ pub fn square_gradient(x: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     // Requirement 4: Enzyme gradient verification tests
 

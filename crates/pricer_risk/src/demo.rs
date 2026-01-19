@@ -8,7 +8,8 @@
 //!
 //! This module implements the Pull-then-Push execution pattern:
 //!
-//! 1. **Pull Phase**: Resolve market data dependencies lazily via `MarketProvider`
+//! 1. **Pull Phase**: Resolve market data dependencies lazily via
+//!    `MarketProvider`
 //! 2. **Push Phase**: Construct `PricingContext` and invoke pricing kernel
 //!
 //! # Design Principles
@@ -128,7 +129,8 @@ pub struct PricingResultDemo {
 ///
 /// 1. **Pull Phase** (per trade):
 ///    - Resolve curve via `market.get_curve(trade.ccy)`
-///    - If `trade.instrument.requires_vol()`, resolve vol via `market.get_vol(trade.ccy)`
+///    - If `trade.instrument.requires_vol()`, resolve vol via
+///      `market.get_vol(trade.ccy)`
 ///
 /// 2. **Push Phase** (per trade):
 ///    - Construct `PricingContext` with resolved references
@@ -225,8 +227,9 @@ pub fn run_portfolio_pricing_sequential(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use pricer_models::demo::HullWhite;
+
+    use super::*;
 
     // -------------------------------------------------------------------------
     // Task 4.1: DemoTrade Tests

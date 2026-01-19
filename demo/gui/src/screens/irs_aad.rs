@@ -20,15 +20,14 @@
 // enzyme-ad feature is defined in pricer_pricing, not in this crate
 #![allow(unexpected_cfgs)]
 
+use pricer_pricing::greeks::GreeksMode;
+#[allow(unused_imports)]
+use pricer_pricing::irs_greeks::{DeltaBenchmarkResult, TimingStats};
 use ratatui::{
     prelude::*,
     symbols,
     widgets::{Axis, Block, Borders, Cell, Chart, Dataset, GraphType, Paragraph, Row, Table},
 };
-
-use pricer_pricing::greeks::GreeksMode;
-#[allow(unused_imports)]
-use pricer_pricing::irs_greeks::{DeltaBenchmarkResult, TimingStats};
 
 // =============================================================================
 // データ構造
@@ -122,9 +121,7 @@ impl Default for IrsAadScreenData {
 
 impl IrsAadScreenData {
     /// 新しいIRS AAD画面データを作成する。
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// パラメータを設定する。
     pub fn with_params(mut self, params: IrsDisplayParams) -> Self {
@@ -789,9 +786,9 @@ mod tests {
     // =========================================================================
 
     mod draw_tests {
+        use ratatui::{backend::TestBackend, Terminal};
+
         use super::*;
-        use ratatui::backend::TestBackend;
-        use ratatui::Terminal;
 
         fn create_test_terminal() -> Terminal<TestBackend> {
             let backend = TestBackend::new(80, 40);

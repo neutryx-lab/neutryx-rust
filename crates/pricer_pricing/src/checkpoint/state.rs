@@ -10,8 +10,9 @@
 //! - [`MinimalState`]: Lightweight state for O(√n) memory checkpointing
 //! - [`SimulationState`]: Full state including current prices for all paths
 
-use crate::path_dependent::PathObserverState;
 use num_traits::Float;
+
+use crate::path_dependent::PathObserverState;
 
 /// Minimal simulation state for memory-efficient checkpointing.
 ///
@@ -94,9 +95,7 @@ impl MinimalState {
     /// Returns the memory size of this state in bytes (approximate).
     ///
     /// MinimalState is designed to be very compact, typically under 200 bytes.
-    pub fn memory_size(&self) -> usize {
-        std::mem::size_of::<Self>()
-    }
+    pub fn memory_size(&self) -> usize { std::mem::size_of::<Self>() }
 
     /// Validates that this state can be used to resume simulation.
     ///
@@ -301,19 +300,13 @@ impl<T: Float> CheckpointStorage<T> {
     }
 
     /// Returns the number of stored checkpoints.
-    pub fn len(&self) -> usize {
-        self.checkpoints.len()
-    }
+    pub fn len(&self) -> usize { self.checkpoints.len() }
 
     /// Returns true if no checkpoints are stored.
-    pub fn is_empty(&self) -> bool {
-        self.checkpoints.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.checkpoints.is_empty() }
 
     /// Clears all stored checkpoints.
-    pub fn clear(&mut self) {
-        self.checkpoints.clear();
-    }
+    pub fn clear(&mut self) { self.checkpoints.clear(); }
 
     /// Returns an iterator over all checkpoints.
     pub fn iter(&self) -> impl Iterator<Item = &(usize, SimulationState<T>)> {
@@ -329,15 +322,11 @@ impl<T: Float> CheckpointStorage<T> {
     }
 
     /// Returns the maximum capacity.
-    pub fn capacity(&self) -> usize {
-        self.max_checkpoints
-    }
+    pub fn capacity(&self) -> usize { self.max_checkpoints }
 }
 
 impl<T: Float> Default for CheckpointStorage<T> {
-    fn default() -> Self {
-        Self::new(100)
-    }
+    fn default() -> Self { Self::new(100) }
 }
 
 #[cfg(test)]

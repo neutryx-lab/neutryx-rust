@@ -5,8 +5,10 @@
 
 use pricer_core::types::Currency;
 
-use super::error::PortfolioError;
-use super::ids::{CounterpartyId, NettingSetId, TradeId};
+use super::{
+    error::PortfolioError,
+    ids::{CounterpartyId, NettingSetId, TradeId},
+};
 
 /// Collateral agreement parameters.
 ///
@@ -47,17 +49,13 @@ impl CollateralAgreement {
     ///
     /// Assumes 252 business days per year.
     #[inline]
-    pub fn bilateral_mpor() -> f64 {
-        10.0 / 252.0
-    }
+    pub fn bilateral_mpor() -> f64 { 10.0 / 252.0 }
 
     /// Standard cleared margin period of risk (5 business days).
     ///
     /// Assumes 252 business days per year.
     #[inline]
-    pub fn cleared_mpor() -> f64 {
-        5.0 / 252.0
-    }
+    pub fn cleared_mpor() -> f64 { 5.0 / 252.0 }
 
     /// Creates a new collateral agreement.
     ///
@@ -65,7 +63,8 @@ impl CollateralAgreement {
     ///
     /// * `threshold` - Threshold amount (must be non-negative)
     /// * `mta` - Minimum transfer amount (must be non-negative)
-    /// * `independent_amount` - Independent amount (can be positive or negative)
+    /// * `independent_amount` - Independent amount (can be positive or
+    ///   negative)
     /// * `currency` - Collateral currency
     /// * `mpor` - Margin period of risk in years (must be positive)
     ///
@@ -119,44 +118,33 @@ impl CollateralAgreement {
 
     /// Returns the threshold amount.
     #[inline]
-    pub fn threshold(&self) -> f64 {
-        self.threshold
-    }
+    pub fn threshold(&self) -> f64 { self.threshold }
 
     /// Returns the minimum transfer amount.
     #[inline]
-    pub fn mta(&self) -> f64 {
-        self.mta
-    }
+    pub fn mta(&self) -> f64 { self.mta }
 
     /// Returns the independent amount.
     #[inline]
-    pub fn independent_amount(&self) -> f64 {
-        self.independent_amount
-    }
+    pub fn independent_amount(&self) -> f64 { self.independent_amount }
 
     /// Returns the collateral currency.
     #[inline]
-    pub fn currency(&self) -> Currency {
-        self.currency
-    }
+    pub fn currency(&self) -> Currency { self.currency }
 
     /// Returns the margin period of risk in years.
     #[inline]
-    pub fn mpor(&self) -> f64 {
-        self.mpor
-    }
+    pub fn mpor(&self) -> f64 { self.mpor }
 
-    /// Returns the margin period of risk in business days (assuming 252 days/year).
+    /// Returns the margin period of risk in business days (assuming 252
+    /// days/year).
     #[inline]
-    pub fn mpor_days(&self) -> f64 {
-        self.mpor * 252.0
-    }
+    pub fn mpor_days(&self) -> f64 { self.mpor * 252.0 }
 
     /// Computes the collateralised exposure given an uncollateralised exposure.
     ///
-    /// The collateralised exposure accounts for threshold and independent amount:
-    /// CE = max(E - Threshold - IA, 0)
+    /// The collateralised exposure accounts for threshold and independent
+    /// amount: CE = max(E - Threshold - IA, 0)
     ///
     /// # Arguments
     ///
@@ -233,60 +221,42 @@ impl NettingSet {
     }
 
     /// Removes the collateral agreement.
-    pub fn remove_collateral(&mut self) {
-        self.collateral = None;
-    }
+    pub fn remove_collateral(&mut self) { self.collateral = None; }
 
     /// Returns the netting set ID.
     #[inline]
-    pub fn id(&self) -> &NettingSetId {
-        &self.id
-    }
+    pub fn id(&self) -> &NettingSetId { &self.id }
 
     /// Returns the counterparty ID.
     #[inline]
-    pub fn counterparty_id(&self) -> &CounterpartyId {
-        &self.counterparty_id
-    }
+    pub fn counterparty_id(&self) -> &CounterpartyId { &self.counterparty_id }
 
     /// Returns the trade IDs in this netting set.
     #[inline]
-    pub fn trade_ids(&self) -> &[TradeId] {
-        &self.trade_ids
-    }
+    pub fn trade_ids(&self) -> &[TradeId] { &self.trade_ids }
 
     /// Returns the collateral agreement if present.
     #[inline]
-    pub fn collateral(&self) -> Option<&CollateralAgreement> {
-        self.collateral.as_ref()
-    }
+    pub fn collateral(&self) -> Option<&CollateralAgreement> { self.collateral.as_ref() }
 
     /// Returns whether this netting set has a collateral agreement.
     #[inline]
-    pub fn is_collateralised(&self) -> bool {
-        self.collateral.is_some()
-    }
+    pub fn is_collateralised(&self) -> bool { self.collateral.is_some() }
 
     /// Returns the number of trades in this netting set.
     #[inline]
-    pub fn trade_count(&self) -> usize {
-        self.trade_ids.len()
-    }
+    pub fn trade_count(&self) -> usize { self.trade_ids.len() }
 
     /// Returns whether the netting set is empty (no trades).
     #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.trade_ids.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.trade_ids.is_empty() }
 
     /// Adds a trade to the netting set.
     ///
     /// # Arguments
     ///
     /// * `trade_id` - Trade ID to add
-    pub fn add_trade(&mut self, trade_id: TradeId) {
-        self.trade_ids.push(trade_id);
-    }
+    pub fn add_trade(&mut self, trade_id: TradeId) { self.trade_ids.push(trade_id); }
 
     /// Adds multiple trades to the netting set.
     ///
@@ -317,26 +287,21 @@ impl NettingSet {
 
     /// Checks if the netting set contains a specific trade.
     #[inline]
-    pub fn contains_trade(&self, trade_id: &TradeId) -> bool {
-        self.trade_ids.contains(trade_id)
-    }
+    pub fn contains_trade(&self, trade_id: &TradeId) -> bool { self.trade_ids.contains(trade_id) }
 
     /// Clears all trades from the netting set.
-    pub fn clear_trades(&mut self) {
-        self.trade_ids.clear();
-    }
+    pub fn clear_trades(&mut self) { self.trade_ids.clear(); }
 
     /// Returns an iterator over trade IDs.
     #[inline]
-    pub fn iter_trade_ids(&self) -> impl Iterator<Item = &TradeId> {
-        self.trade_ids.iter()
-    }
+    pub fn iter_trade_ids(&self) -> impl Iterator<Item = &TradeId> { self.trade_ids.iter() }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     #[test]
     fn test_collateral_agreement_valid() {

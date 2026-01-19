@@ -142,8 +142,9 @@ pub fn compute_fva(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     fn create_flat_df(rate: f64, times: &[f64]) -> Vec<f64> {
         times.iter().map(|&t| (-rate * t).exp()).collect()

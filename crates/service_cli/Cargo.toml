@@ -51,3 +51,6 @@ enzyme-ad = []
 
 [dev-dependencies]
 tempfile = "3.10"
+
+[lints]
+workspace = true

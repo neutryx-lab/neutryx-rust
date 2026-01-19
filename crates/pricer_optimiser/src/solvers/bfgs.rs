@@ -1,7 +1,6 @@
 //! BFGS algorithm for unconstrained optimisation.
 
-use crate::error::OptimiserError;
-use crate::solvers::OptimisationResult;
+use crate::{error::OptimiserError, solvers::OptimisationResult};
 
 /// Configuration for BFGS solver.
 #[derive(Debug, Clone)]
@@ -35,7 +34,8 @@ impl Default for BfgsConfig {
 
 /// BFGS quasi-Newton solver for unconstrained optimisation.
 ///
-/// Uses the Broyden-Fletcher-Goldfarb-Shanno update for the inverse Hessian approximation.
+/// Uses the Broyden-Fletcher-Goldfarb-Shanno update for the inverse Hessian
+/// approximation.
 pub struct Bfgs {
     config: BfgsConfig,
 }
@@ -49,9 +49,7 @@ impl Bfgs {
     }
 
     /// Create a new solver with custom configuration.
-    pub fn with_config(config: BfgsConfig) -> Self {
-        Self { config }
-    }
+    pub fn with_config(config: BfgsConfig) -> Self { Self { config } }
 
     /// Minimise an objective function.
     ///
@@ -208,9 +206,7 @@ impl Bfgs {
 }
 
 impl Default for Bfgs {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 #[cfg(test)]

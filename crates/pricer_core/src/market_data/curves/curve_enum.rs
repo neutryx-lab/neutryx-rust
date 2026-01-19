@@ -1,12 +1,15 @@
 //! Curve enumeration types for multi-curve framework.
 //!
 //! This module provides:
-//! - [`CurveName`]: Enumeration of standard curve names (OIS, SOFR, TONAR, etc.)
-//! - [`CurveEnum`]: Static dispatch enum wrapping FlatCurve and InterpolatedCurve
+//! - [`CurveName`]: Enumeration of standard curve names (OIS, SOFR, TONAR,
+//!   etc.)
+//! - [`CurveEnum`]: Static dispatch enum wrapping FlatCurve and
+//!   InterpolatedCurve
+
+use num_traits::Float;
 
 use super::{FlatCurve, InterpolatedCurve, YieldCurve};
 use crate::market_data::error::MarketDataError;
-use num_traits::Float;
 
 /// Standard curve names for the multi-curve framework.
 ///
@@ -135,9 +138,7 @@ impl<T: Float> CurveEnum<T> {
     /// let df = curve.discount_factor(1.0).unwrap();
     /// ```
     #[inline]
-    pub fn flat(rate: T) -> Self {
-        CurveEnum::Flat(FlatCurve::new(rate))
-    }
+    pub fn flat(rate: T) -> Self { CurveEnum::Flat(FlatCurve::new(rate)) }
 }
 
 impl<T: Float> YieldCurve<T> for CurveEnum<T> {
@@ -173,15 +174,11 @@ impl<T: Float> YieldCurve<T> for CurveEnum<T> {
 }
 
 impl<T: Float> From<FlatCurve<T>> for CurveEnum<T> {
-    fn from(curve: FlatCurve<T>) -> Self {
-        CurveEnum::Flat(curve)
-    }
+    fn from(curve: FlatCurve<T>) -> Self { CurveEnum::Flat(curve) }
 }
 
 impl<T: Float> From<InterpolatedCurve<T>> for CurveEnum<T> {
-    fn from(curve: InterpolatedCurve<T>) -> Self {
-        CurveEnum::Interpolated(curve)
-    }
+    fn from(curve: InterpolatedCurve<T>) -> Self { CurveEnum::Interpolated(curve) }
 }
 
 #[cfg(test)]

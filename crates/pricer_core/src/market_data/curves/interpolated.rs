@@ -1,9 +1,12 @@
 //! Interpolated yield curve implementation.
 
-use super::YieldCurve;
-use crate::market_data::error::MarketDataError;
-use crate::math::interpolators::{Interpolator, LinearInterpolator};
 use num_traits::Float;
+
+use super::YieldCurve;
+use crate::{
+    market_data::error::MarketDataError,
+    math::interpolators::{Interpolator, LinearInterpolator},
+};
 
 /// Interpolation method for yield curves.
 ///
@@ -76,7 +79,8 @@ impl<T: Float> InterpolatedCurve<T> {
     /// * `tenors` - Tenor points in years (must be sorted, at least 2 points)
     /// * `rates` - Corresponding zero rates
     /// * `method` - Interpolation method to use
-    /// * `allow_extrapolation` - Whether to allow flat extrapolation beyond pillars
+    /// * `allow_extrapolation` - Whether to allow flat extrapolation beyond
+    ///   pillars
     ///
     /// # Returns
     ///
@@ -144,21 +148,15 @@ impl<T: Float> InterpolatedCurve<T> {
     ///
     /// A tuple (t_min, t_max) representing the range of pillar tenors.
     #[inline]
-    pub fn domain(&self) -> (T, T) {
-        (self.tenors[0], self.tenors[self.tenors.len() - 1])
-    }
+    pub fn domain(&self) -> (T, T) { (self.tenors[0], self.tenors[self.tenors.len() - 1]) }
 
     /// Return the interpolation method.
     #[inline]
-    pub fn method(&self) -> CurveInterpolation {
-        self.method
-    }
+    pub fn method(&self) -> CurveInterpolation { self.method }
 
     /// Return whether extrapolation is allowed.
     #[inline]
-    pub fn allow_extrapolation(&self) -> bool {
-        self.allow_extrapolation
-    }
+    pub fn allow_extrapolation(&self) -> bool { self.allow_extrapolation }
 
     /// Interpolate zero rate at time t using Linear method.
     fn interpolate_linear(&self, t: T) -> Result<T, MarketDataError> {
@@ -240,7 +238,8 @@ impl<T: Float> YieldCurve<T> for InterpolatedCurve<T> {
     ///
     /// * `Ok(D(t))` - Discount factor at time t
     /// * `Err(MarketDataError::InvalidMaturity)` - If t < 0
-    /// * `Err(MarketDataError::OutOfBounds)` - If outside domain and extrapolation disabled
+    /// * `Err(MarketDataError::OutOfBounds)` - If outside domain and
+    ///   extrapolation disabled
     fn discount_factor(&self, t: T) -> Result<T, MarketDataError> {
         if t < T::zero() {
             return Err(MarketDataError::InvalidMaturity {
@@ -459,7 +458,7 @@ mod tests {
         let df2 = curve.discount_factor(2.0).unwrap();
 
         // Forward rate from 1 to 2
-        let fwd = -(df2 / df1).ln();
+        let _fwd = -(df2 / df1).ln();
         let fwd_at_1_5 = curve.forward_rate(1.0, 1.5).unwrap();
         let fwd_at_1_5_to_2 = curve.forward_rate(1.5, 2.0).unwrap();
 
