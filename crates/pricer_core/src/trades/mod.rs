@@ -7,7 +7,7 @@
 //!
 //! The trades module is part of L1 (pricer_core) and provides:
 //! - `instruments`: Financial instrument definitions (options, forwards, swaps)
-//! - `schedules`: Payment schedule generation (planned for Task 1.2)
+//! - `schedules`: Payment schedule generation for scheduled instruments
 //!
 //! # Design Philosophy
 //!
@@ -46,6 +46,7 @@
 //! ```
 
 pub mod instruments;
+pub mod schedules;
 
 // Re-export commonly used types at trades level
 pub use instruments::{
@@ -71,3 +72,6 @@ pub use instruments::{AssetClass, InstrumentEnum};
 
 // Traits
 pub use instruments::{Cashflow, CashflowInstrument, InstrumentTrait};
+
+// Schedules (for scheduled instruments like IRS)
+pub use schedules::{Frequency, Period, Schedule, ScheduleBuilder, ScheduleError};

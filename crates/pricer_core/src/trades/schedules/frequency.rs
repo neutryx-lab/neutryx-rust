@@ -10,7 +10,7 @@ use std::{fmt, str::FromStr};
 /// # Examples
 ///
 /// ```
-/// use pricer_models::schedules::Frequency;
+/// use pricer_core::trades::schedules::Frequency;
 ///
 /// let freq = Frequency::Quarterly;
 /// assert_eq!(freq.periods_per_year(), 4);
@@ -38,7 +38,7 @@ impl Frequency {
     /// # Examples
     ///
     /// ```
-    /// use pricer_models::schedules::Frequency;
+    /// use pricer_core::trades::schedules::Frequency;
     ///
     /// assert_eq!(Frequency::Annual.periods_per_year(), 1);
     /// assert_eq!(Frequency::SemiAnnual.periods_per_year(), 2);
@@ -67,7 +67,7 @@ impl Frequency {
     /// # Examples
     ///
     /// ```
-    /// use pricer_models::schedules::Frequency;
+    /// use pricer_core::trades::schedules::Frequency;
     ///
     /// assert_eq!(Frequency::Annual.months_between_payments(), 12);
     /// assert_eq!(Frequency::SemiAnnual.months_between_payments(), 6);
@@ -96,7 +96,7 @@ impl Frequency {
     /// # Examples
     ///
     /// ```
-    /// use pricer_models::schedules::Frequency;
+    /// use pricer_core::trades::schedules::Frequency;
     ///
     /// assert_eq!(Frequency::Annual.days_between_payments(), 360);
     /// assert_eq!(Frequency::Weekly.days_between_payments(), 7);
@@ -119,7 +119,7 @@ impl Frequency {
     /// # Examples
     ///
     /// ```
-    /// use pricer_models::schedules::Frequency;
+    /// use pricer_core::trades::schedules::Frequency;
     ///
     /// assert_eq!(Frequency::Annual.name(), "Annual");
     /// assert_eq!(Frequency::SemiAnnual.name(), "Semi-Annual");
@@ -138,7 +138,9 @@ impl Frequency {
 }
 
 impl fmt::Display for Frequency {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.name()) }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.name())
+    }
 }
 
 impl FromStr for Frequency {

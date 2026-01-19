@@ -1,6 +1,6 @@
 //! Schedule generation error types.
 
-use pricer_core::types::time::Date;
+use crate::types::time::Date;
 use thiserror::Error;
 
 /// Errors that can occur during schedule generation.

@@ -15,6 +15,7 @@
 //!   InterpolatedCurve)
 //! - [`surfaces`]: Volatility surface trait and implementations (FlatVol,
 //!   InterpolatedVolSurface)
+//! - [`bootstrapping`]: Yield curve bootstrapping from OIS/Swap rates
 //! - [`error`]: Market data error types (MarketDataError)
 //!
 //! # Example
@@ -34,8 +35,10 @@
 //! assert_eq!(sigma, 0.20);
 //! ```
 
+pub mod bootstrapping;
 pub mod curves;
 pub mod error;
+pub mod provider;
 pub mod surfaces;
 
 // Re-export commonly used types
@@ -45,5 +48,16 @@ pub use curves::{
 };
 pub use error::MarketDataError;
 pub use surfaces::{
-    FlatVol, FxDeltaPoint, FxVolatilitySurface, InterpolatedVolSurface, VolatilitySurface,
+    FlatVol, FxDeltaPoint, FxVolatilitySurface, InterpolatedVolSurface, VolSurfaceEnum,
+    VolatilitySurface,
 };
+
+// Re-export bootstrapping types
+pub use bootstrapping::{
+    BootstrapError, BootstrapInterpolation, BootstrappedCurve, BootstrappedCurveBuilder,
+    CachedBootstrapper, GenericBootstrapConfig, GenericBootstrapConfigBuilder,
+    GenericBootstrapResult, SequentialBootstrapper,
+};
+
+// Re-export provider
+pub use provider::MarketProvider;
