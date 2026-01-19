@@ -1,6 +1,6 @@
 //! Curve bootstrapping implementation.
 
-use crate::{bootstrapping::BootstrapResult, error::OptimiserError};
+use super::{BootstrapError, BootstrapResult};
 
 /// Configuration for curve bootstrapping.
 #[derive(Debug, Clone)]
@@ -67,15 +67,15 @@ impl CurveBootstrapper {
         &self,
         pillars: &[f64],
         swap_rates: &[f64],
-    ) -> Result<BootstrapResult, OptimiserError> {
+    ) -> Result<BootstrapResult, BootstrapError> {
         if pillars.len() != swap_rates.len() {
-            return Err(OptimiserError::InvalidMarketData(
+            return Err(BootstrapError::InvalidInput(
                 "Pillars and swap rates must have the same length".to_string(),
             ));
         }
 
         if pillars.is_empty() {
-            return Err(OptimiserError::InsufficientData {
+            return Err(BootstrapError::InsufficientData {
                 required: 1,
                 provided: 0,
             });

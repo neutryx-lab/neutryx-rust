@@ -1,61 +1,25 @@
 //! Yield curve bootstrapping from OIS/Swap rates.
 //!
-//! This module implements multi-curve stripping logic to construct
-//! yield curves from market-observed swap rates, with support for
-//! AAD (Adjoint Algorithmic Differentiation) sensitivity computation.
+//! This module re-exports types from `pricer_core::market_data::bootstrapping`.
+//! The bootstrapping functionality has been moved to pricer_core as part of
+//! the P0 market data layer.
 //!
-//! ## Architecture
+//! ## Usage
 //!
-//! The bootstrapping module provides:
-//! - `BootstrapInstrument<T>`: Market instruments (OIS, IRS, FRA, Futures)
-//! - `CurveBootstrapper<T>`: Sequential bootstrapping engine
-//! - `BootstrappedCurve<T>`: Result curve implementing `YieldCurve<T>`
-//! - `MultiCurveBuilder<T>`: OIS discount + tenor curve construction
+//! ```rust,ignore
+//! use pricer_optimiser::bootstrapping::{
+//!     SequentialBootstrapper, BootstrapInstrument, GenericBootstrapConfig,
+//! };
 //!
-//! ## AAD Support
+//! let instruments = vec![
+//!     BootstrapInstrument::ois(1.0, 0.03),
+//!     BootstrapInstrument::ois(2.0, 0.032),
+//! ];
 //!
-//! When the `num-dual-mode` feature is enabled, the bootstrapper
-//! computes sensitivities using the implicit function theorem,
-//! avoiding recording solver iterations in the AD tape.
+//! let config = GenericBootstrapConfig::default();
+//! let bootstrapper = SequentialBootstrapper::new(config);
+//! let result = bootstrapper.bootstrap(&instruments).unwrap();
+//! ```
 
-mod adjoint_solver;
-mod cache;
-mod config;
-mod curve;
-mod curve_builder;
-mod date_utils;
-mod engine;
-mod error;
-mod instrument;
-mod multi_curve;
-mod sensitivity;
-
-pub use adjoint_solver::{
-    compute_adjoint_contribution, AdjointSolver, AdjointSolverConfig, SolveResult,
-    SolveResultWithSensitivities, SolverType,
-};
-pub use cache::{BootstrapCache, BufferPool, CurveCache, InterpolationIndices};
-pub use config::{BootstrapInterpolation, GenericBootstrapConfig, GenericBootstrapConfigBuilder};
-pub use curve::{BootstrappedCurve, BootstrappedCurveBuilder};
-pub use curve_builder::{BootstrapConfig, CurveBootstrapper, InterpolationMethod};
-pub use date_utils::{
-    BusinessDayAdjustment, DateCalculator, DateCalculatorBuilder, DayCount, SpotDateConvention,
-};
-pub use engine::{CachedBootstrapper, GenericBootstrapResult, SequentialBootstrapper};
-pub use error::BootstrapError;
-pub use instrument::{BootstrapInstrument, Frequency};
-pub use multi_curve::{CurveSet, MultiCurveBuilder, ParallelCurveSetBuilder, Tenor};
-pub use sensitivity::{
-    BootstrapResultWithSensitivities, SensitivityBootstrapper, SensitivityVerification,
-};
-
-/// Result of curve bootstrapping.
-#[derive(Debug, Clone)]
-pub struct BootstrapResult {
-    /// Discount factors at each pillar
-    pub discount_factors: Vec<f64>,
-    /// Pillar dates (in years from today)
-    pub pillars: Vec<f64>,
-    /// Residual error
-    pub residual: f64,
-}
+// Re-export everything from pricer_core::market_data::bootstrapping
+pub use pricer_core::market_data::bootstrapping::*;

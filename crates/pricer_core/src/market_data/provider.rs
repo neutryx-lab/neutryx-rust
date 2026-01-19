@@ -43,7 +43,7 @@ use std::{
 
 use crate::market_data::{
     curves::{CurveEnum, FlatCurve},
-    surfaces::{FlatVol, VolSurfaceEnum},
+    surfaces::VolSurfaceEnum,
 };
 use crate::types::Currency;
 
