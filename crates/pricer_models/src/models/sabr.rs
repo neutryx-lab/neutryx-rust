@@ -36,9 +36,13 @@
 //! assert!(params.is_ok());
 //! ```
 
-use pricer_core::math::smoothing::{smooth_log, smooth_max, smooth_pow, smooth_sqrt};
-use pricer_core::traits::priceable::Differentiable;
-use pricer_core::traits::Float;
+use pricer_core::{
+    math::{
+        numeric::from_f64,
+        smoothing::{smooth_log, smooth_max, smooth_pow, smooth_sqrt},
+    },
+    traits::{priceable::Differentiable, Float},
+};
 use thiserror::Error;
 
 use crate::models::stochastic::{StochasticModel, TwoFactorState};
@@ -307,58 +311,38 @@ impl<T: Float> SABRParams<T> {
     /// # 戻り値
     ///
     /// beta = 0 の場合は true
-    pub fn is_normal(&self) -> bool {
-        self.beta.abs() < self.smoothing_epsilon
-    }
+    pub fn is_normal(&self) -> bool { self.beta.abs() < self.smoothing_epsilon }
 
     /// Lognormal SABRモード (beta = 1) かどうか
     ///
     /// # 戻り値
     ///
     /// beta = 1 の場合は true
-    pub fn is_lognormal(&self) -> bool {
-        (self.beta - T::one()).abs() < self.smoothing_epsilon
-    }
+    pub fn is_lognormal(&self) -> bool { (self.beta - T::one()).abs() < self.smoothing_epsilon }
 
     /// フォワード価格を取得
-    pub fn forward(&self) -> T {
-        self.forward
-    }
+    pub fn forward(&self) -> T { self.forward }
 
     /// 初期ボラティリティを取得
-    pub fn alpha(&self) -> T {
-        self.alpha
-    }
+    pub fn alpha(&self) -> T { self.alpha }
 
     /// vol-of-volを取得
-    pub fn nu(&self) -> T {
-        self.nu
-    }
+    pub fn nu(&self) -> T { self.nu }
 
     /// 相関係数を取得
-    pub fn rho(&self) -> T {
-        self.rho
-    }
+    pub fn rho(&self) -> T { self.rho }
 
     /// ベータを取得
-    pub fn beta(&self) -> T {
-        self.beta
-    }
+    pub fn beta(&self) -> T { self.beta }
 
     /// 満期を取得
-    pub fn maturity(&self) -> T {
-        self.maturity
-    }
+    pub fn maturity(&self) -> T { self.maturity }
 
     /// ATM閾値を取得
-    pub fn atm_threshold(&self) -> T {
-        self.atm_threshold
-    }
+    pub fn atm_threshold(&self) -> T { self.atm_threshold }
 
     /// smoothing epsilonを取得
-    pub fn smoothing_epsilon(&self) -> T {
-        self.smoothing_epsilon
-    }
+    pub fn smoothing_epsilon(&self) -> T { self.smoothing_epsilon }
 }
 
 /// SABRモデル（インプライドボラティリティ計算用）
@@ -425,9 +409,7 @@ impl<T: Float> SABRModel<T> {
     }
 
     /// パラメータへの参照を取得
-    pub fn params(&self) -> &SABRParams<T> {
-        &self.params
-    }
+    pub fn params(&self) -> &SABRParams<T> { &self.params }
 
     /// ATM（At-The-Money）インプライドボラティリティを計算
     ///
@@ -450,10 +432,10 @@ impl<T: Float> SABRModel<T> {
         let eps = self.params.smoothing_epsilon;
 
         let one = T::one();
-        let two = T::from(2.0).unwrap();
-        let three = T::from(3.0).unwrap();
-        let four = T::from(4.0).unwrap();
-        let twenty_four = T::from(24.0).unwrap();
+        let two: T = from_f64(2.0);
+        let three: T = from_f64(3.0);
+        let four: T = from_f64(4.0);
+        let twenty_four: T = from_f64(24.0);
 
         // Use specialized formulas for Normal and Lognormal cases
         if self.params.is_normal() {
@@ -574,10 +556,10 @@ impl<T: Float> SABRModel<T> {
         let eps = self.params.smoothing_epsilon;
 
         let one = T::one();
-        let two = T::from(2.0).unwrap();
-        let three = T::from(3.0).unwrap();
-        let four = T::from(4.0).unwrap();
-        let twenty_four = T::from(24.0).unwrap();
+        let two: T = from_f64(2.0);
+        let three: T = from_f64(3.0);
+        let four: T = from_f64(4.0);
+        let twenty_four: T = from_f64(24.0);
 
         // Use specialized formulas for Normal and Lognormal cases
         if self.params.is_normal() {
@@ -641,11 +623,11 @@ impl<T: Float> SABRModel<T> {
         let eps = self.params.smoothing_epsilon;
 
         let one = T::one();
-        let two = T::from(2.0).unwrap();
-        let three = T::from(3.0).unwrap();
-        let four = T::from(4.0).unwrap();
-        let twenty_four = T::from(24.0).unwrap();
-        let one_thousand_nine_twenty = T::from(1920.0).unwrap();
+        let two: T = from_f64(2.0);
+        let three: T = from_f64(3.0);
+        let four: T = from_f64(4.0);
+        let twenty_four: T = from_f64(24.0);
+        let one_thousand_nine_twenty: T = from_f64(1920.0);
 
         let one_minus_beta = one - beta;
 
@@ -709,7 +691,7 @@ impl<T: Float> SABRModel<T> {
     fn compute_x_of_z(&self, z: T, rho: T) -> T {
         let eps = self.params.smoothing_epsilon;
         let one = T::one();
-        let two = T::from(2.0).unwrap();
+        let two: T = from_f64(2.0);
 
         // √(1 - 2ρz + z²)
         let discriminant = one - two * rho * z + z * z;
@@ -733,13 +715,12 @@ impl<T: Float> SABRModel<T> {
     }
 
     /// パラメータを検証
-    pub fn validate(&self) -> Result<(), SABRError> {
-        self.params.validate()
-    }
+    pub fn validate(&self) -> Result<(), SABRError> { self.params.validate() }
 
     /// フロア付きインプライドボラティリティを計算
     ///
-    /// 負のインプライドボラティリティが計算された場合、指定されたフロア値を適用する。
+    /// 負のインプライドボラティリティが計算された場合、
+    /// 指定されたフロア値を適用する。
     /// これは極端なストライクやパラメータ組み合わせで発生しうる数値的問題を回避するため。
     ///
     /// # 引数
@@ -824,10 +805,10 @@ impl<T: Float> SABRModel<T> {
         let eps = self.params.smoothing_epsilon;
 
         let one = T::one();
-        let two = T::from(2.0).unwrap();
-        let three = T::from(3.0).unwrap();
-        let four = T::from(4.0).unwrap();
-        let twenty_four = T::from(24.0).unwrap();
+        let two: T = from_f64(2.0);
+        let three: T = from_f64(3.0);
+        let four: T = from_f64(4.0);
+        let twenty_four: T = from_f64(24.0);
 
         // z = ν/α * (F - K) for Normal SABR
         let f_minus_k = f - k;
@@ -852,8 +833,8 @@ impl<T: Float> SABRModel<T> {
         let base = alpha;
 
         // Higher order expansion terms for Normal SABR
-        // term1 = 0 when beta = 0 (since (1-beta)^2 * alpha^2 / (FK)^(1-beta) involves log terms)
-        // For Normal SABR, the expansion simplifies:
+        // term1 = 0 when beta = 0 (since (1-beta)^2 * alpha^2 / (FK)^(1-beta) involves
+        // log terms) For Normal SABR, the expansion simplifies:
         // term1 = 0 (no contribution from this term in Normal model)
         let term1 = T::zero();
 
@@ -894,10 +875,10 @@ impl<T: Float> SABRModel<T> {
         let eps = self.params.smoothing_epsilon;
 
         let one = T::one();
-        let two = T::from(2.0).unwrap();
-        let three = T::from(3.0).unwrap();
-        let four = T::from(4.0).unwrap();
-        let twenty_four = T::from(24.0).unwrap();
+        let two: T = from_f64(2.0);
+        let three: T = from_f64(3.0);
+        let four: T = from_f64(4.0);
+        let twenty_four: T = from_f64(24.0);
 
         // ln(F/K)
         let log_fk = smooth_log(f / k, eps);
@@ -1090,17 +1071,11 @@ impl<T: Float + Default> StochasticModel<T> for SABRModel<T> {
     /// ブラウン運動の次元を返す
     ///
     /// # Requirement: 3.4
-    fn brownian_dim() -> usize {
-        2
-    }
+    fn brownian_dim() -> usize { 2 }
 
-    fn model_name() -> &'static str {
-        "SABR"
-    }
+    fn model_name() -> &'static str { "SABR" }
 
-    fn num_factors() -> usize {
-        2
-    }
+    fn num_factors() -> usize { 2 }
 }
 
 #[cfg(test)]
@@ -1745,7 +1720,8 @@ mod tests {
     #[test]
     #[ignore = "SABR smile skew implementation needs review - see issue tracker"]
     fn test_sabr_model_smile_negative_rho_skew() {
-        // Negative rho should create a downward sloping skew (higher IV for lower strikes)
+        // Negative rho should create a downward sloping skew (higher IV for lower
+        // strikes)
         let params = SABRParams::new(100.0, 0.2, 0.4, -0.5, 0.5, 1.0).unwrap();
         let model = SABRModel::new(params).unwrap();
 
@@ -2031,7 +2007,8 @@ mod tests {
 
     #[test]
     fn test_sabr_normal_implied_vol_atm() {
-        // Normal SABR (beta=0): ATM vol formula is alpha * [1 + ((2-3rho^2)/24 * nu^2)*T]
+        // Normal SABR (beta=0): ATM vol formula is alpha * [1 + ((2-3rho^2)/24 *
+        // nu^2)*T]
         let params = SABRParams::new(
             0.03,  // 3% forward rate (typical for rates)
             0.005, // Normal vol alpha (in rate units, not %)
@@ -2123,7 +2100,7 @@ mod tests {
 
         let iv_low = model.implied_vol(0.02).unwrap();
         let iv_atm = model.implied_vol(0.03).unwrap();
-        let iv_high = model.implied_vol(0.04).unwrap();
+        let _iv_high = model.implied_vol(0.04).unwrap();
 
         // With negative rho in Normal SABR, lower strikes should have higher vol
         assert!(
@@ -2266,7 +2243,7 @@ mod tests {
 
         let iv_80 = model.implied_vol(80.0).unwrap();
         let iv_100 = model.implied_vol(100.0).unwrap();
-        let iv_120 = model.implied_vol(120.0).unwrap();
+        let _iv_120 = model.implied_vol(120.0).unwrap();
 
         // With negative rho, smile should be skewed
         assert!(
@@ -2639,9 +2616,7 @@ mod tests {
         let params = SABRParams::new(100.0, 0.2, 0.4, -0.3, 0.0, 1.0).unwrap();
         let model = SABRModel::new(params).unwrap();
 
-        fn check_differentiable<D: Differentiable>(_: &D) -> bool {
-            true
-        }
+        fn check_differentiable<D: Differentiable>(_: &D) -> bool { true }
         assert!(check_differentiable(&model));
 
         // implied_volも正常動作
@@ -2657,9 +2632,7 @@ mod tests {
         let params = SABRParams::new(100.0, 0.2, 0.4, -0.3, 1.0, 1.0).unwrap();
         let model = SABRModel::new(params).unwrap();
 
-        fn check_differentiable<D: Differentiable>(_: &D) -> bool {
-            true
-        }
+        fn check_differentiable<D: Differentiable>(_: &D) -> bool { true }
         assert!(check_differentiable(&model));
 
         // implied_volも正常動作
@@ -2757,8 +2730,7 @@ mod tests {
 
     #[test]
     fn test_sabr_stochastic_model_evolve_step_zero_shock() {
-        use crate::models::stochastic::StochasticModel;
-        use crate::models::stochastic::TwoFactorState;
+        use crate::models::stochastic::{StochasticModel, TwoFactorState};
 
         let params = SABRParams::new(100.0, 0.2, 0.4, -0.3, 0.5, 1.0).unwrap();
         let state = TwoFactorState {
@@ -2779,8 +2751,7 @@ mod tests {
 
     #[test]
     fn test_sabr_stochastic_model_evolve_step_positive_shock() {
-        use crate::models::stochastic::StochasticModel;
-        use crate::models::stochastic::TwoFactorState;
+        use crate::models::stochastic::{StochasticModel, TwoFactorState};
 
         let params = SABRParams::new(100.0, 0.2, 0.4, -0.3, 0.5, 1.0).unwrap();
         let state = TwoFactorState {
@@ -2802,8 +2773,7 @@ mod tests {
 
     #[test]
     fn test_sabr_stochastic_model_evolve_step_negative_shock() {
-        use crate::models::stochastic::StochasticModel;
-        use crate::models::stochastic::TwoFactorState;
+        use crate::models::stochastic::{StochasticModel, TwoFactorState};
 
         let params = SABRParams::new(100.0, 0.2, 0.4, -0.3, 0.5, 1.0).unwrap();
         let state = TwoFactorState {
@@ -2825,8 +2795,7 @@ mod tests {
 
     #[test]
     fn test_sabr_stochastic_model_beta_zero_normal() {
-        use crate::models::stochastic::StochasticModel;
-        use crate::models::stochastic::TwoFactorState;
+        use crate::models::stochastic::{StochasticModel, TwoFactorState};
 
         // beta=0 (Normal SABR)
         let params = SABRParams::new(100.0, 0.2, 0.4, -0.3, 0.0, 1.0).unwrap();
@@ -2848,8 +2817,7 @@ mod tests {
 
     #[test]
     fn test_sabr_stochastic_model_beta_one_lognormal() {
-        use crate::models::stochastic::StochasticModel;
-        use crate::models::stochastic::TwoFactorState;
+        use crate::models::stochastic::{StochasticModel, TwoFactorState};
 
         // beta=1 (Lognormal SABR)
         let params = SABRParams::new(100.0, 0.2, 0.4, -0.3, 1.0, 1.0).unwrap();
@@ -2893,8 +2861,7 @@ mod tests {
 
     #[test]
     fn test_sabr_stochastic_model_correlation_effect() {
-        use crate::models::stochastic::StochasticModel;
-        use crate::models::stochastic::TwoFactorState;
+        use crate::models::stochastic::{StochasticModel, TwoFactorState};
 
         let state = TwoFactorState {
             first: 100.0,

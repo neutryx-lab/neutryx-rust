@@ -85,14 +85,10 @@ impl SwaptionMarketData {
     }
 
     /// Number of points.
-    pub fn len(&self) -> usize {
-        self.points.len()
-    }
+    pub fn len(&self) -> usize { self.points.len() }
 
     /// Check if empty.
-    pub fn is_empty(&self) -> bool {
-        self.points.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.points.is_empty() }
 }
 
 /// Swaption calibrator for model parameters.
@@ -187,14 +183,10 @@ impl SwaptionCalibrator {
     }
 
     /// Get parameter names.
-    pub fn param_names(&self) -> &[String] {
-        &self.param_names
-    }
+    pub fn param_names(&self) -> &[String] { &self.param_names }
 
     /// Get model type.
-    pub fn model_type(&self) -> SwaptionModelType {
-        self.model_type
-    }
+    pub fn model_type(&self) -> SwaptionModelType { self.model_type }
 
     /// Compute model volatility for given parameters and market point.
     fn model_vol(&self, params: &[f64], point: &SwaptionMarketPoint, forward: f64) -> f64 {

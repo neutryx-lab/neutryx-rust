@@ -12,8 +12,9 @@
 //! Barrier conditions use smooth indicator functions for AD compatibility.
 //! The smooth indicator approximates the Heaviside step function.
 
-use super::{ObservationType, PathDependentPayoff, PathObserver};
 use num_traits::Float;
+
+use super::{ObservationType, PathDependentPayoff, PathObserver};
 
 /// Barrier type enumeration.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -31,15 +32,11 @@ pub enum BarrierType {
 impl BarrierType {
     /// Returns true if this is an "up" barrier (uses path maximum).
     #[inline]
-    pub fn is_up(&self) -> bool {
-        matches!(self, BarrierType::UpIn | BarrierType::UpOut)
-    }
+    pub fn is_up(&self) -> bool { matches!(self, BarrierType::UpIn | BarrierType::UpOut) }
 
     /// Returns true if this is an "in" barrier (knock-in).
     #[inline]
-    pub fn is_in(&self) -> bool {
-        matches!(self, BarrierType::UpIn | BarrierType::DownIn)
-    }
+    pub fn is_in(&self) -> bool { matches!(self, BarrierType::UpIn | BarrierType::DownIn) }
 }
 
 /// Parameters for barrier option payoffs.
@@ -147,9 +144,7 @@ pub struct BarrierPayoff<T: Float> {
 impl<T: Float> BarrierPayoff<T> {
     /// Creates a new barrier payoff.
     #[inline]
-    pub fn new(params: BarrierParams<T>) -> Self {
-        Self { params }
-    }
+    pub fn new(params: BarrierParams<T>) -> Self { Self { params } }
 
     /// Creates an Up-and-In call.
     #[inline]
@@ -229,15 +224,14 @@ impl<T: Float + Send + Sync> PathDependentPayoff<T> for BarrierPayoff<T> {
         ObservationType::barrier(self.params.barrier_type.is_up())
     }
 
-    fn smoothing_epsilon(&self) -> T {
-        self.params.smoothing_epsilon
-    }
+    fn smoothing_epsilon(&self) -> T { self.params.smoothing_epsilon }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     // ========================================================================
     // BarrierType Tests

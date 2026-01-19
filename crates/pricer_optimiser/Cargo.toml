@@ -49,3 +49,6 @@ proptest.workspace = true
 [[bench]]
 name = "optimiser_benchmarks"
 harness = false
+
+[lints]
+workspace = true

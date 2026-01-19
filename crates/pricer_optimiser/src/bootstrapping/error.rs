@@ -3,8 +3,7 @@
 //! This module provides structured error handling for yield curve bootstrapping
 //! operations with detailed diagnostic information for each failure mode.
 
-use pricer_core::market_data::MarketDataError;
-use pricer_core::types::SolverError;
+use pricer_core::{market_data::MarketDataError, types::SolverError};
 use thiserror::Error;
 
 /// Errors that can occur during yield curve bootstrapping.
@@ -115,9 +114,7 @@ impl BootstrapError {
     }
 
     /// Create a duplicate maturity error.
-    pub fn duplicate_maturity(maturity: f64) -> Self {
-        Self::DuplicateMaturity { maturity }
-    }
+    pub fn duplicate_maturity(maturity: f64) -> Self { Self::DuplicateMaturity { maturity } }
 
     /// Create an insufficient data error.
     pub fn insufficient_data(required: usize, provided: usize) -> Self {
@@ -125,19 +122,13 @@ impl BootstrapError {
     }
 
     /// Create a negative rate error.
-    pub fn negative_rate(maturity: f64, rate: f64) -> Self {
-        Self::NegativeRate { maturity, rate }
-    }
+    pub fn negative_rate(maturity: f64, rate: f64) -> Self { Self::NegativeRate { maturity, rate } }
 
     /// Create an arbitrage detected error.
-    pub fn arbitrage_detected(maturity: f64) -> Self {
-        Self::ArbitrageDetected { maturity }
-    }
+    pub fn arbitrage_detected(maturity: f64) -> Self { Self::ArbitrageDetected { maturity } }
 
     /// Create an invalid input error.
-    pub fn invalid_input(message: impl Into<String>) -> Self {
-        Self::InvalidInput(message.into())
-    }
+    pub fn invalid_input(message: impl Into<String>) -> Self { Self::InvalidInput(message.into()) }
 
     /// Create an invalid maturity error.
     pub fn invalid_maturity(maturity: f64, max_maturity: f64) -> Self {
@@ -148,29 +139,19 @@ impl BootstrapError {
     }
 
     /// Check if this is a convergence failure.
-    pub fn is_convergence_failure(&self) -> bool {
-        matches!(self, Self::ConvergenceFailure { .. })
-    }
+    pub fn is_convergence_failure(&self) -> bool { matches!(self, Self::ConvergenceFailure { .. }) }
 
     /// Check if this is a duplicate maturity error.
-    pub fn is_duplicate_maturity(&self) -> bool {
-        matches!(self, Self::DuplicateMaturity { .. })
-    }
+    pub fn is_duplicate_maturity(&self) -> bool { matches!(self, Self::DuplicateMaturity { .. }) }
 
     /// Check if this is an insufficient data error.
-    pub fn is_insufficient_data(&self) -> bool {
-        matches!(self, Self::InsufficientData { .. })
-    }
+    pub fn is_insufficient_data(&self) -> bool { matches!(self, Self::InsufficientData { .. }) }
 
     /// Check if this is a negative rate error.
-    pub fn is_negative_rate(&self) -> bool {
-        matches!(self, Self::NegativeRate { .. })
-    }
+    pub fn is_negative_rate(&self) -> bool { matches!(self, Self::NegativeRate { .. }) }
 
     /// Check if this is an arbitrage detected error.
-    pub fn is_arbitrage_detected(&self) -> bool {
-        matches!(self, Self::ArbitrageDetected { .. })
-    }
+    pub fn is_arbitrage_detected(&self) -> bool { matches!(self, Self::ArbitrageDetected { .. }) }
 }
 
 #[cfg(test)]

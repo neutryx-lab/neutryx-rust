@@ -1,14 +1,19 @@
 //! Credit curve abstractions for credit risk calculations.
 //!
 //! This module provides:
-//! - [`CreditCurve`]: Generic trait for hazard rate and survival probability calculations
+//! - [`CreditCurve`]: Generic trait for hazard rate and survival probability
+//!   calculations
 //! - [`HazardRateCurve`]: Interpolated hazard rate curve implementation
 
-use crate::market_data::error::MarketDataError;
-use crate::math::interpolators::{Interpolator, LinearInterpolator};
 use num_traits::Float;
 
-/// Generic credit curve trait for hazard rate and survival probability calculations.
+use crate::{
+    market_data::error::MarketDataError,
+    math::interpolators::{Interpolator, LinearInterpolator},
+};
+
+/// Generic credit curve trait for hazard rate and survival probability
+/// calculations.
 ///
 /// All implementations must be generic over `T: Float` for AD compatibility.
 /// This ensures the curve can be used with both standard floating-point types
@@ -158,7 +163,8 @@ pub trait CreditCurve<T: Float> {
 /// P(τ > t) = exp(-∫₀ᵗ λ(s)ds)
 /// ```
 ///
-/// For piecewise linear hazard rates, the integral is computed segment by segment.
+/// For piecewise linear hazard rates, the integral is computed segment by
+/// segment.
 ///
 /// # Example
 ///
@@ -193,7 +199,8 @@ impl<T: Float> HazardRateCurve<T> {
     ///
     /// * `tenors` - Tenor points in years (must be sorted, at least 2 points)
     /// * `hazard_rates` - Corresponding hazard rates (must be non-negative)
-    /// * `allow_extrapolation` - Whether to allow flat extrapolation beyond pillars
+    /// * `allow_extrapolation` - Whether to allow flat extrapolation beyond
+    ///   pillars
     ///
     /// # Returns
     ///
@@ -270,27 +277,19 @@ impl<T: Float> HazardRateCurve<T> {
     ///
     /// A tuple (t_min, t_max) representing the range of pillar tenors.
     #[inline]
-    pub fn domain(&self) -> (T, T) {
-        (self.tenors[0], self.tenors[self.tenors.len() - 1])
-    }
+    pub fn domain(&self) -> (T, T) { (self.tenors[0], self.tenors[self.tenors.len() - 1]) }
 
     /// Return the number of pillar points.
     #[inline]
-    pub fn len(&self) -> usize {
-        self.tenors.len()
-    }
+    pub fn len(&self) -> usize { self.tenors.len() }
 
     /// Check if the curve has no pillar points.
     #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.tenors.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.tenors.is_empty() }
 
     /// Return whether extrapolation is allowed.
     #[inline]
-    pub fn allow_extrapolation(&self) -> bool {
-        self.allow_extrapolation
-    }
+    pub fn allow_extrapolation(&self) -> bool { self.allow_extrapolation }
 
     /// Interpolate hazard rate at time t.
     fn interpolate_hazard_rate(&self, t: T) -> Result<T, MarketDataError> {
@@ -480,15 +479,11 @@ impl<T: Float> FlatHazardRateCurve<T> {
     /// assert_eq!(curve.rate(), 0.01);
     /// ```
     #[inline]
-    pub fn new(hazard_rate: T) -> Self {
-        Self { hazard_rate }
-    }
+    pub fn new(hazard_rate: T) -> Self { Self { hazard_rate } }
 
     /// Return the constant hazard rate.
     #[inline]
-    pub fn rate(&self) -> T {
-        self.hazard_rate
-    }
+    pub fn rate(&self) -> T { self.hazard_rate }
 }
 
 impl<T: Float> CreditCurve<T> for FlatHazardRateCurve<T> {

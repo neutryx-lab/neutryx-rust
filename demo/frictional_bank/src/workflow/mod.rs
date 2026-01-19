@@ -11,15 +11,15 @@ mod intraday;
 mod irs_aad;
 mod stress_test;
 
+use std::sync::Arc;
+
+use async_trait::async_trait;
 pub use eod_batch::EodBatchWorkflow;
 pub use intraday::IntradayWorkflow;
 pub use irs_aad::{IrsAadConfig, IrsAadWorkflow, IrsComputeResult, IrsParams, XvaDemoResult};
 pub use stress_test::{PresetScenarioType, ScenarioResult, StressTestResult, StressTestWorkflow};
 
-use crate::config::DemoConfig;
-use crate::error::DemoError;
-use async_trait::async_trait;
-use std::sync::Arc;
+use crate::{config::DemoConfig, error::DemoError};
 
 /// Workflow processing step
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

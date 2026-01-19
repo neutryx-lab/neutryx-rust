@@ -215,9 +215,7 @@ pub struct ParameterBounds {
 
 impl ParameterBounds {
     /// Create new bounds.
-    pub fn new(min: f64, max: f64) -> Self {
-        Self { min, max }
-    }
+    pub fn new(min: f64, max: f64) -> Self { Self { min, max } }
 
     /// Create bounds for a strictly positive parameter.
     pub fn positive() -> Self {
@@ -236,9 +234,7 @@ impl ParameterBounds {
     }
 
     /// Create bounds for a parameter in [0, 1].
-    pub fn unit_interval() -> Self {
-        Self { min: 0.0, max: 1.0 }
-    }
+    pub fn unit_interval() -> Self { Self { min: 0.0, max: 1.0 } }
 
     /// Create unbounded.
     pub fn unbounded() -> Self {
@@ -249,20 +245,14 @@ impl ParameterBounds {
     }
 
     /// Check if a value is within bounds.
-    pub fn contains(&self, value: f64) -> bool {
-        value >= self.min && value <= self.max
-    }
+    pub fn contains(&self, value: f64) -> bool { value >= self.min && value <= self.max }
 
     /// Clamp a value to bounds.
-    pub fn clamp(&self, value: f64) -> f64 {
-        value.clamp(self.min, self.max)
-    }
+    pub fn clamp(&self, value: f64) -> f64 { value.clamp(self.min, self.max) }
 }
 
 impl Default for ParameterBounds {
-    fn default() -> Self {
-        Self::unbounded()
-    }
+    fn default() -> Self { Self::unbounded() }
 }
 
 /// Constraint types for calibration.
@@ -714,6 +704,7 @@ mod tests {
     // ========================================
 
     struct MockCalibrator {
+        #[allow(dead_code)]
         target: Vec<f64>,
     }
 
@@ -724,7 +715,7 @@ mod tests {
         fn calibrate(
             &self,
             market_data: &Self::MarketData,
-            initial_params: Self::ModelParams,
+            _initial_params: Self::ModelParams,
             _config: &CalibrationConfig,
         ) -> CalibrationResult<Self::ModelParams> {
             // Mock: just return market data as params
@@ -739,9 +730,7 @@ mod tests {
             params.iter().zip(market_data).map(|(p, m)| p - m).collect()
         }
 
-        fn constraints(&self) -> Vec<Constraint> {
-            vec![Constraint::positive(0)]
-        }
+        fn constraints(&self) -> Vec<Constraint> { vec![Constraint::positive(0)] }
     }
 
     #[test]

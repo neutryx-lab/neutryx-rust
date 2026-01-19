@@ -59,9 +59,10 @@
 //! let (avg_delta, _, _, _, _) = total.averaged();
 //! ```
 
+use std::sync::atomic::{AtomicUsize, Ordering};
+
 use num_traits::Float;
 use rayon::prelude::*;
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 use super::loops::AdjointAccumulator;
 
@@ -158,34 +159,27 @@ impl ParallelGreeksComputer {
 
     /// Creates a new computer with default configuration.
     #[inline]
-    pub fn default_config() -> Self {
-        Self::new(ParallelGreeksConfig::default())
-    }
+    pub fn default_config() -> Self { Self::new(ParallelGreeksConfig::default()) }
 
     /// Returns the configuration.
     #[inline]
-    pub fn config(&self) -> &ParallelGreeksConfig {
-        &self.config
-    }
+    pub fn config(&self) -> &ParallelGreeksConfig { &self.config }
 
     /// Returns the number of paths processed.
     #[inline]
-    pub fn paths_processed(&self) -> usize {
-        self.paths_processed.load(Ordering::Relaxed)
-    }
+    pub fn paths_processed(&self) -> usize { self.paths_processed.load(Ordering::Relaxed) }
 
     /// Resets the paths processed counter.
     #[inline]
-    pub fn reset(&self) {
-        self.paths_processed.store(0, Ordering::Relaxed);
-    }
+    pub fn reset(&self) { self.paths_processed.store(0, Ordering::Relaxed); }
 
     /// Computes Greeks in parallel using the provided path function.
     ///
     /// # Arguments
     ///
     /// * `n_paths` - Total number of paths to simulate
-    /// * `path_fn` - Function that simulates a single path and returns Greeks contributions
+    /// * `path_fn` - Function that simulates a single path and returns Greeks
+    ///   contributions
     ///
     /// # Returns
     ///
@@ -319,9 +313,7 @@ pub struct AtomicGreeksAggregator {
 }
 
 impl Default for AtomicGreeksAggregator {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl AtomicGreeksAggregator {
@@ -344,14 +336,10 @@ impl AtomicGreeksAggregator {
     }
 
     /// Adds gamma contribution.
-    pub fn add_gamma(&self, value: f64) {
-        self.atomic_add(&self.gamma_bits, value);
-    }
+    pub fn add_gamma(&self, value: f64) { self.atomic_add(&self.gamma_bits, value); }
 
     /// Adds vega contribution.
-    pub fn add_vega(&self, value: f64) {
-        self.atomic_add(&self.vega_bits, value);
-    }
+    pub fn add_vega(&self, value: f64) { self.atomic_add(&self.vega_bits, value); }
 
     /// Adds all Greeks from an accumulator.
     pub fn add_from_accumulator(&self, acc: &AdjointAccumulator<f64>) {
@@ -364,24 +352,16 @@ impl AtomicGreeksAggregator {
     }
 
     /// Returns the accumulated delta.
-    pub fn delta(&self) -> f64 {
-        f64::from_bits(self.delta_bits.load(Ordering::Relaxed) as u64)
-    }
+    pub fn delta(&self) -> f64 { f64::from_bits(self.delta_bits.load(Ordering::Relaxed) as u64) }
 
     /// Returns the accumulated gamma.
-    pub fn gamma(&self) -> f64 {
-        f64::from_bits(self.gamma_bits.load(Ordering::Relaxed) as u64)
-    }
+    pub fn gamma(&self) -> f64 { f64::from_bits(self.gamma_bits.load(Ordering::Relaxed) as u64) }
 
     /// Returns the accumulated vega.
-    pub fn vega(&self) -> f64 {
-        f64::from_bits(self.vega_bits.load(Ordering::Relaxed) as u64)
-    }
+    pub fn vega(&self) -> f64 { f64::from_bits(self.vega_bits.load(Ordering::Relaxed) as u64) }
 
     /// Returns the count of contributions.
-    pub fn count(&self) -> usize {
-        self.count.load(Ordering::Relaxed)
-    }
+    pub fn count(&self) -> usize { self.count.load(Ordering::Relaxed) }
 
     /// Returns averaged Greeks.
     pub fn averaged(&self) -> (f64, f64, f64, f64, f64) {

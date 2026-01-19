@@ -1,6 +1,65 @@
 # Contributing to Neutryx
 
-Thank you for your interest in contributing to Neutryx! This guide will help you get started.
+Thank you for contributing to Neutryx. This project serves as a bridge between academic research in quantitative finance and production-grade implementation.
+
+To maintain the highest standards of numerical correctness and system robustness, we adhere to the following strict development guidelines.
+
+---
+
+## Core Philosophy: The Source of Truth
+
+* **Code is the "How":** The code itself is the only source of truth for the procedural logic.
+* **Comments are the "Why":** Comments must explain the *intent*, *mathematical derivation*, and *safety rationale*. They must not duplicate the code's logic.
+* **Types are the Documentation:** Use the type system (e.g., Newtypes) to enforce semantic constraints.
+
+---
+
+## Documentation Standards
+
+### Language
+* All code, comments, documentation, and commit messages must be written in **British English** (e.g., *optimisation*, *behaviour*, *modelling*, *centred*).
+
+### Public Interfaces (`///`)
+All public structs and functions must have documentation comments including:
+1.  **Summary:** A concise description of the functionality.
+2.  **Mathematics:** References to papers or LaTeX equations explaining the model (e.g., *Heston (1993), Eq. 2*).
+3.  **Contracts:** Explicit preconditions (e.g., "Volatility must be strictly positive") and panic conditions.
+
+### Implementation Comments (`//`)
+* **Allowed:** Explanations of numerical stability tricks (e.g., LogSumExp), hard-to-read hardware optimisations, and safety proofs for `unsafe` blocks.
+* **Prohibited:** Direct translation of syntax, "TODO" comments (use issue tracker), and commented-out code.
+
+---
+
+## Coding Standards (Rust)
+
+### Safety & Error Handling
+* **No Panics:** Library code must never panic. Usage of `.unwrap()`, `.expect()`, or `panic!()` is strictly forbidden in the core library. Use `Result<T, Error>` for all fallible operations.
+* **Arithmetic:** Use checked arithmetic or rigorous bounds checking where overflow is possible.
+
+### Type System
+* **Newtype Pattern:** Do not use raw `f64` for physically distinct quantities. Use semantic wrappers (e.g., `pub struct Strike(pub f64);`) to prevent unit errors.
+* **Immutability:** Prefer immutable data structures. Interior mutability (`RefCell`, `Mutex`) should be minimised.
+
+### Numerical Correctness
+* **Floating Point:** Never compare floating-point numbers using `==`. Use `approx_eq!` or explicit epsilon checks.
+* **NaN Propagation:** Ensure that `NaN`s are caught at the boundary.
+
+---
+
+## Testing Standards
+
+* **Property-Based Testing:** We use `proptest` to verify mathematical invariants (e.g., Put-Call Parity, Monotonicity) over a wide range of inputs.
+* **Regression Testing:** Numerical results must match reference implementations (C++ or Python prototypes) within a defined tolerance.
+
+---
+
+## Workflow for C++ Developers
+
+* **Tooling:** We rely exclusively on `cargo` for build and dependency management. Do not check in `Makefile` or shell scripts unless absolutely necessary.
+* **Linting:** Ensure `cargo clippy` passes without warnings before submitting a PR.
+
+---
 
 ## Quick Start (< 30 minutes)
 

@@ -7,9 +7,8 @@ mod audit_store;
 mod regulator_api;
 
 pub use audit_store::{AuditEvent, AuditEventType, AuditStore};
-pub use regulator_api::{RegulatorApi, SubmissionLog, SubmissionRequest, SubmissionResponse};
-
 use chrono::{DateTime, Utc};
+pub use regulator_api::{RegulatorApi, SubmissionLog, SubmissionRequest, SubmissionResponse};
 use serde::{Deserialize, Serialize};
 
 /// Regulatory report types

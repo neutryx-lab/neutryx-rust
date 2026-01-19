@@ -6,12 +6,11 @@
 //! - GBM model step evolution
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use pricer_models::analytical::distributions::{norm_cdf, norm_pdf};
-use pricer_models::instruments::{
-    ExerciseStyle, Instrument, InstrumentParams, PayoffType, VanillaOption,
+use pricer_models::{
+    analytical::distributions::{norm_cdf, norm_pdf},
+    instruments::{ExerciseStyle, Instrument, InstrumentParams, PayoffType, VanillaOption},
+    models::{stochastic::StochasticModel, GBMModel, GBMParams},
 };
-use pricer_models::models::stochastic::StochasticModel;
-use pricer_models::models::{GBMModel, GBMParams};
 
 /// Benchmark normal distribution CDF computation.
 fn bench_norm_cdf(c: &mut Criterion) {

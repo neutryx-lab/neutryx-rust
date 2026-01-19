@@ -9,13 +9,14 @@
 //! - Requirement 1.3: Risk factor identification for aggregation.
 //! - Requirement 1.5: AD compatibility with `GreeksResult<T>`.
 
-use super::RiskFactorId;
-use pricer_core::traits::Float;
-use pricer_pricing::greeks::{GreeksMode, GreeksResult};
 use std::collections::HashMap;
 
+use pricer_core::traits::Float;
+use pricer_pricing::greeks::{GreeksMode, GreeksResult};
 #[cfg(feature = "serde")]
 use serde::Serialize;
+
+use super::RiskFactorId;
 
 /// Greeks calculation results organised by risk factor.
 ///
@@ -25,7 +26,8 @@ use serde::Serialize;
 ///
 /// # Type Parameters
 ///
-/// * `T` - A floating-point type implementing `Float`. Enables AD compatibility.
+/// * `T` - A floating-point type implementing `Float`. Enables AD
+///   compatibility.
 ///
 /// # Examples
 ///
@@ -129,27 +131,19 @@ impl<T: Float> GreeksResultByFactor<T> {
 
     /// Returns the computation mode.
     #[inline]
-    pub fn mode(&self) -> GreeksMode {
-        self.mode
-    }
+    pub fn mode(&self) -> GreeksMode { self.mode }
 
     /// Returns the computation time in nanoseconds.
     #[inline]
-    pub fn computation_time_ns(&self) -> u64 {
-        self.computation_time_ns
-    }
+    pub fn computation_time_ns(&self) -> u64 { self.computation_time_ns }
 
     /// Returns the computation time in milliseconds.
     #[inline]
-    pub fn computation_time_ms(&self) -> f64 {
-        self.computation_time_ns as f64 / 1_000_000.0
-    }
+    pub fn computation_time_ms(&self) -> f64 { self.computation_time_ns as f64 / 1_000_000.0 }
 
     /// Sets the computation time in nanoseconds.
     #[inline]
-    pub fn set_computation_time_ns(&mut self, time_ns: u64) {
-        self.computation_time_ns = time_ns;
-    }
+    pub fn set_computation_time_ns(&mut self, time_ns: u64) { self.computation_time_ns = time_ns; }
 
     /// Inserts a Greeks result for a risk factor.
     ///
@@ -192,15 +186,11 @@ impl<T: Float> GreeksResultByFactor<T> {
 
     /// Returns the number of risk factors.
     #[inline]
-    pub fn len(&self) -> usize {
-        self.by_factor.len()
-    }
+    pub fn len(&self) -> usize { self.by_factor.len() }
 
     /// Returns true if no risk factors are stored.
     #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.by_factor.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.by_factor.is_empty() }
 
     /// Returns an iterator over risk factor and Greeks result pairs.
     #[inline]
@@ -210,27 +200,19 @@ impl<T: Float> GreeksResultByFactor<T> {
 
     /// Returns an iterator over risk factors.
     #[inline]
-    pub fn factors(&self) -> impl Iterator<Item = &RiskFactorId> {
-        self.by_factor.keys()
-    }
+    pub fn factors(&self) -> impl Iterator<Item = &RiskFactorId> { self.by_factor.keys() }
 
     /// Returns an iterator over Greeks results.
     #[inline]
-    pub fn results(&self) -> impl Iterator<Item = &GreeksResult<T>> {
-        self.by_factor.values()
-    }
+    pub fn results(&self) -> impl Iterator<Item = &GreeksResult<T>> { self.by_factor.values() }
 
     /// Returns the underlying HashMap.
     #[inline]
-    pub fn as_map(&self) -> &HashMap<RiskFactorId, GreeksResult<T>> {
-        &self.by_factor
-    }
+    pub fn as_map(&self) -> &HashMap<RiskFactorId, GreeksResult<T>> { &self.by_factor }
 
     /// Consumes self and returns the underlying HashMap.
     #[inline]
-    pub fn into_map(self) -> HashMap<RiskFactorId, GreeksResult<T>> {
-        self.by_factor
-    }
+    pub fn into_map(self) -> HashMap<RiskFactorId, GreeksResult<T>> { self.by_factor }
 
     /// Computes total Greeks by summing across all risk factors.
     ///
@@ -393,9 +375,7 @@ impl<T: Float> GreeksResultByFactor<T> {
 }
 
 impl<T: Float> Default for GreeksResultByFactor<T> {
-    fn default() -> Self {
-        Self::new(GreeksMode::default())
-    }
+    fn default() -> Self { Self::new(GreeksMode::default()) }
 }
 
 #[cfg(test)]

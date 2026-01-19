@@ -19,8 +19,10 @@ pub mod settlement;
 
 /// Prelude module for convenient imports
 pub mod prelude {
-    pub use crate::regulatory::{AuditStore, RegulatorApi};
-    pub use crate::report_sink::{EmailSender, FileWriter, ReportSink};
-    pub use crate::risk_dashboard::{MetricsStore, WebSocketSink};
-    pub use crate::settlement::{NettingEngine, SwiftReceiver};
+    pub use crate::{
+        regulatory::{AuditStore, RegulatorApi},
+        report_sink::{EmailSender, FileWriter, ReportSink},
+        risk_dashboard::{MetricsStore, WebSocketSink},
+        settlement::{NettingEngine, SwiftReceiver},
+    };
 }

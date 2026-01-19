@@ -1,7 +1,8 @@
 //! Bilinear 2D interpolation for surfaces.
 
-use crate::types::InterpolationError;
 use num_traits::Float;
+
+use crate::types::InterpolationError;
 
 /// Bilinear interpolator for 2D grid data.
 ///
@@ -57,8 +58,10 @@ impl<T: Float> BilinearInterpolator<T> {
     /// # Returns
     ///
     /// * `Ok(BilinearInterpolator)` - Successfully constructed interpolator
-    /// * `Err(InterpolationError::InsufficientData)` - Fewer than 2 points on an axis
-    /// * `Err(InterpolationError::InvalidInput)` - Grid dimensions don't match axis lengths
+    /// * `Err(InterpolationError::InsufficientData)` - Fewer than 2 points on
+    ///   an axis
+    /// * `Err(InterpolationError::InvalidInput)` - Grid dimensions don't match
+    ///   axis lengths
     ///
     /// # Example
     ///
@@ -189,15 +192,11 @@ impl<T: Float> BilinearInterpolator<T> {
 
     /// Return the valid interpolation domain for x.
     #[inline]
-    pub fn domain_x(&self) -> (T, T) {
-        (self.xs[0], self.xs[self.xs.len() - 1])
-    }
+    pub fn domain_x(&self) -> (T, T) { (self.xs[0], self.xs[self.xs.len() - 1]) }
 
     /// Return the valid interpolation domain for y.
     #[inline]
-    pub fn domain_y(&self) -> (T, T) {
-        (self.ys[0], self.ys[self.ys.len() - 1])
-    }
+    pub fn domain_y(&self) -> (T, T) { (self.ys[0], self.ys[self.ys.len() - 1]) }
 
     /// Find the x-axis grid index using binary search.
     #[inline]
@@ -227,21 +226,15 @@ impl<T: Float> BilinearInterpolator<T> {
 
     /// Returns a reference to the x-axis coordinates.
     #[inline]
-    pub fn xs(&self) -> &[T] {
-        &self.xs
-    }
+    pub fn xs(&self) -> &[T] { &self.xs }
 
     /// Returns a reference to the y-axis coordinates.
     #[inline]
-    pub fn ys(&self) -> &[T] {
-        &self.ys
-    }
+    pub fn ys(&self) -> &[T] { &self.ys }
 
     /// Returns a reference to the grid values.
     #[inline]
-    pub fn zs(&self) -> &[Vec<T>] {
-        &self.zs
-    }
+    pub fn zs(&self) -> &[Vec<T>] { &self.zs }
 }
 
 #[cfg(test)]

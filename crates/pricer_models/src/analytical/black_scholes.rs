@@ -13,9 +13,12 @@
 //! - d₂ = d₁ - σ√T
 
 use num_traits::Float;
+use pricer_core::math::numeric::from_f64;
 
-use super::distributions::{norm_cdf, norm_pdf};
-use super::error::AnalyticalError;
+use super::{
+    distributions::{norm_cdf, norm_pdf},
+    error::AnalyticalError,
+};
 use crate::instruments::{PayoffType, VanillaOption};
 
 /// Black-Scholes model for European option pricing.
@@ -96,21 +99,15 @@ impl<T: Float> BlackScholes<T> {
 
     /// Returns the spot price.
     #[inline]
-    pub fn spot(&self) -> T {
-        self.spot
-    }
+    pub fn spot(&self) -> T { self.spot }
 
     /// Returns the risk-free rate.
     #[inline]
-    pub fn rate(&self) -> T {
-        self.rate
-    }
+    pub fn rate(&self) -> T { self.rate }
 
     /// Returns the volatility.
     #[inline]
-    pub fn volatility(&self) -> T {
-        self.volatility
-    }
+    pub fn volatility(&self) -> T { self.volatility }
 
     /// Computes the d1 term of the Black-Scholes formula.
     ///
@@ -125,13 +122,13 @@ impl<T: Float> BlackScholes<T> {
     #[inline]
     pub fn d1(&self, strike: T, expiry: T) -> T {
         let zero = T::zero();
-        let half = T::from(0.5).unwrap();
-        let epsilon = T::from(1e-10).unwrap();
+        let half: T = from_f64(0.5);
+        let epsilon: T = from_f64(1e-10);
 
         // Handle expiry ≈ 0 case
         if expiry <= epsilon {
             // At expiry, if S > K, d1 → +∞, otherwise d1 → -∞
-            let large = T::from(100.0).unwrap();
+            let large: T = from_f64(100.0);
             if self.spot > strike {
                 return large;
             } else if self.spot < strike {
@@ -163,7 +160,7 @@ impl<T: Float> BlackScholes<T> {
     /// The d2 term.
     #[inline]
     pub fn d2(&self, strike: T, expiry: T) -> T {
-        let epsilon = T::from(1e-10).unwrap();
+        let epsilon: T = from_f64(1e-10);
 
         if expiry <= epsilon {
             return self.d1(strike, expiry);
@@ -197,7 +194,7 @@ impl<T: Float> BlackScholes<T> {
     #[inline]
     pub fn price_call(&self, strike: T, expiry: T) -> T {
         let zero = T::zero();
-        let epsilon = T::from(1e-10).unwrap();
+        let epsilon: T = from_f64(1e-10);
 
         // Handle expiry = 0: return intrinsic value
         if expiry <= epsilon {
@@ -238,7 +235,7 @@ impl<T: Float> BlackScholes<T> {
     #[inline]
     pub fn price_put(&self, strike: T, expiry: T) -> T {
         let zero = T::zero();
-        let epsilon = T::from(1e-10).unwrap();
+        let epsilon: T = from_f64(1e-10);
 
         // Handle expiry = 0: return intrinsic value
         if expiry <= epsilon {
@@ -269,7 +266,7 @@ impl<T: Float> BlackScholes<T> {
     /// The delta sensitivity.
     #[inline]
     pub fn delta(&self, strike: T, expiry: T, is_call: bool) -> T {
-        let epsilon = T::from(1e-10).unwrap();
+        let epsilon: T = from_f64(1e-10);
 
         if expiry <= epsilon {
             let one = T::one();
@@ -305,7 +302,7 @@ impl<T: Float> BlackScholes<T> {
     /// The gamma sensitivity (always non-negative).
     #[inline]
     pub fn gamma(&self, strike: T, expiry: T) -> T {
-        let epsilon = T::from(1e-10).unwrap();
+        let epsilon: T = from_f64(1e-10);
 
         if expiry <= epsilon {
             return T::zero();
@@ -332,7 +329,7 @@ impl<T: Float> BlackScholes<T> {
     /// The vega sensitivity (always non-negative).
     #[inline]
     pub fn vega(&self, strike: T, expiry: T) -> T {
-        let epsilon = T::from(1e-10).unwrap();
+        let epsilon: T = from_f64(1e-10);
 
         if expiry <= epsilon {
             return T::zero();
@@ -362,7 +359,7 @@ impl<T: Float> BlackScholes<T> {
     /// The theta sensitivity (usually negative).
     #[inline]
     pub fn theta(&self, strike: T, expiry: T, is_call: bool) -> T {
-        let epsilon = T::from(1e-10).unwrap();
+        let epsilon: T = from_f64(1e-10);
 
         if expiry <= epsilon {
             return T::zero();
@@ -372,7 +369,7 @@ impl<T: Float> BlackScholes<T> {
         let d2 = self.d2(strike, expiry);
         let sqrt_t = expiry.sqrt();
         let discount = (-self.rate * expiry).exp();
-        let two = T::from(2.0).unwrap();
+        let two: T = from_f64(2.0);
 
         // Common term: -(S·σ·φ(d₁))/(2√T)
         let term1 = -(self.spot * self.volatility * norm_pdf(d1)) / (two * sqrt_t);
@@ -400,7 +397,7 @@ impl<T: Float> BlackScholes<T> {
     /// The rho sensitivity.
     #[inline]
     pub fn rho(&self, strike: T, expiry: T, is_call: bool) -> T {
-        let epsilon = T::from(1e-10).unwrap();
+        let epsilon: T = from_f64(1e-10);
 
         if expiry <= epsilon {
             return T::zero();
@@ -481,9 +478,10 @@ impl<T: Float> BlackScholes<T> {
 
 #[cfg(test)]
 mod tests {
+    use approx::assert_relative_eq;
+
     use super::*;
     use crate::instruments::ExerciseStyle;
-    use approx::assert_relative_eq;
 
     // ==========================================================
     // Constructor Tests
@@ -975,11 +973,13 @@ mod tests {
     // ==========================================================
     //
     // NOTE: Dual64 (num_dual::Dual64) does not implement num_traits::Float,
-    // so BlackScholes<Dual64> cannot be instantiated with the current trait bounds.
-    // To enable AD compatibility, the trait bounds need to be refactored from
-    // `T: Float` to a more permissive combination of traits that both f64 and
-    // Dual64 satisfy (e.g., DualNum<f64> or a custom Scalar trait).
+    // so BlackScholes<Dual64> cannot be instantiated with the current trait
+    // bounds. To enable AD compatibility, the trait bounds need to be
+    // refactored from `T: Float` to a more permissive combination of traits
+    // that both f64 and Dual64 satisfy (e.g., DualNum<f64> or a custom
+    // Scalar trait).
     //
     // This is tracked as a future enhancement. For now, AD verification is done
-    // via finite difference comparisons against analytical Greeks (see test_*_vs_finite_diff tests).
+    // via finite difference comparisons against analytical Greeks (see
+    // test_*_vs_finite_diff tests).
 }

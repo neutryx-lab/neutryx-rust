@@ -13,9 +13,9 @@
 
 /// Trait for low-discrepancy sequences used in quasi-Monte Carlo methods.
 ///
-/// Low-discrepancy sequences provide more uniform coverage of the unit hypercube
-/// compared to pseudo-random sequences, often leading to faster convergence in
-/// numerical integration problems.
+/// Low-discrepancy sequences provide more uniform coverage of the unit
+/// hypercube compared to pseudo-random sequences, often leading to faster
+/// convergence in numerical integration problems.
 ///
 /// # Future Implementation
 ///
@@ -118,19 +118,13 @@ impl SobolPlaceholder {
 }
 
 impl LowDiscrepancySequence for SobolPlaceholder {
-    fn dimension(&self) -> usize {
-        unimplemented!("Sobol sequence not implemented in Phase 3.1a")
-    }
+    fn dimension(&self) -> usize { unimplemented!("Sobol sequence not implemented in Phase 3.1a") }
 
     fn next_point(&mut self) -> &[f64] {
         unimplemented!("Sobol sequence not implemented in Phase 3.1a")
     }
 
-    fn reset(&mut self) {
-        unimplemented!("Sobol sequence not implemented in Phase 3.1a")
-    }
+    fn reset(&mut self) { unimplemented!("Sobol sequence not implemented in Phase 3.1a") }
 
-    fn skip(&mut self, _n: usize) {
-        unimplemented!("Sobol sequence not implemented in Phase 3.1a")
-    }
+    fn skip(&mut self, _n: usize) { unimplemented!("Sobol sequence not implemented in Phase 3.1a") }
 }

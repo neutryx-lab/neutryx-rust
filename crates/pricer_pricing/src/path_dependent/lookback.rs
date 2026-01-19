@@ -9,8 +9,9 @@
 //!
 //! Lookback options have payoffs based on path extrema (maximum or minimum).
 
-use super::{ObservationType, PathDependentPayoff, PathObserver};
 use num_traits::Float;
+
+use super::{ObservationType, PathDependentPayoff, PathObserver};
 
 /// Lookback option type.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -19,7 +20,8 @@ pub enum LookbackType {
     FixedCall,
     /// Fixed strike put: max(K - S_min, 0)
     FixedPut,
-    /// Floating strike call: max(S_T - S_min, 0) = S_T - S_min (always positive)
+    /// Floating strike call: max(S_T - S_min, 0) = S_T - S_min (always
+    /// positive)
     FloatingCall,
     /// Floating strike put: max(S_max - S_T, 0) = S_max - S_T (always positive)
     FloatingPut,
@@ -111,9 +113,7 @@ pub struct LookbackPayoff<T: Float> {
 impl<T: Float> LookbackPayoff<T> {
     /// Creates a new lookback payoff.
     #[inline]
-    pub fn new(params: LookbackParams<T>) -> Self {
-        Self { params }
-    }
+    pub fn new(params: LookbackParams<T>) -> Self { Self { params } }
 
     /// Creates a fixed strike call.
     #[inline]
@@ -129,15 +129,11 @@ impl<T: Float> LookbackPayoff<T> {
 
     /// Creates a floating strike call.
     #[inline]
-    pub fn floating_call(epsilon: T) -> Self {
-        Self::new(LookbackParams::floating_call(epsilon))
-    }
+    pub fn floating_call(epsilon: T) -> Self { Self::new(LookbackParams::floating_call(epsilon)) }
 
     /// Creates a floating strike put.
     #[inline]
-    pub fn floating_put(epsilon: T) -> Self {
-        Self::new(LookbackParams::floating_put(epsilon))
-    }
+    pub fn floating_put(epsilon: T) -> Self { Self::new(LookbackParams::floating_put(epsilon)) }
 }
 
 impl<T: Float + Send + Sync> PathDependentPayoff<T> for LookbackPayoff<T> {
@@ -168,19 +164,16 @@ impl<T: Float + Send + Sync> PathDependentPayoff<T> for LookbackPayoff<T> {
         }
     }
 
-    fn required_observations(&self) -> ObservationType {
-        ObservationType::lookback()
-    }
+    fn required_observations(&self) -> ObservationType { ObservationType::lookback() }
 
-    fn smoothing_epsilon(&self) -> T {
-        self.params.smoothing_epsilon
-    }
+    fn smoothing_epsilon(&self) -> T { self.params.smoothing_epsilon }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     // ========================================================================
     // LookbackType Tests

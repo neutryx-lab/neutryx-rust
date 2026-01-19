@@ -16,8 +16,9 @@
 //! - Buffer pools enable reuse of vectors across multiple bootstrap operations
 //! - Pre-allocation avoids reallocations during curve construction
 
-use num_traits::Float;
 use std::cell::RefCell;
+
+use num_traits::Float;
 
 /// Cache for intermediate bootstrapping calculations.
 ///
@@ -51,9 +52,7 @@ impl<T: Float> CurveCache<T> {
     }
 
     /// Create a cache with default capacity (100 pillars).
-    pub fn new() -> Self {
-        Self::with_capacity(100)
-    }
+    pub fn new() -> Self { Self::with_capacity(100) }
 
     /// Clear the cache for reuse.
     pub fn clear(&mut self) {
@@ -70,59 +69,37 @@ impl<T: Float> CurveCache<T> {
     }
 
     /// Get the number of cached pillars.
-    pub fn len(&self) -> usize {
-        self.pillars.len()
-    }
+    pub fn len(&self) -> usize { self.pillars.len() }
 
     /// Check if the cache is empty.
-    pub fn is_empty(&self) -> bool {
-        self.pillars.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.pillars.is_empty() }
 
     /// Get the capacity.
-    pub fn capacity(&self) -> usize {
-        self.capacity
-    }
+    pub fn capacity(&self) -> usize { self.capacity }
 
     /// Get pillar at index.
-    pub fn pillar(&self, idx: usize) -> T {
-        self.pillars[idx]
-    }
+    pub fn pillar(&self, idx: usize) -> T { self.pillars[idx] }
 
     /// Get discount factor at index.
-    pub fn discount_factor(&self, idx: usize) -> T {
-        self.discount_factors[idx]
-    }
+    pub fn discount_factor(&self, idx: usize) -> T { self.discount_factors[idx] }
 
     /// Get log discount factor at index (cached).
-    pub fn log_discount_factor(&self, idx: usize) -> T {
-        self.log_discount_factors[idx]
-    }
+    pub fn log_discount_factor(&self, idx: usize) -> T { self.log_discount_factors[idx] }
 
     /// Get the last pillar.
-    pub fn last_pillar(&self) -> Option<T> {
-        self.pillars.last().copied()
-    }
+    pub fn last_pillar(&self) -> Option<T> { self.pillars.last().copied() }
 
     /// Get the last discount factor.
-    pub fn last_df(&self) -> Option<T> {
-        self.discount_factors.last().copied()
-    }
+    pub fn last_df(&self) -> Option<T> { self.discount_factors.last().copied() }
 
     /// Get pillars slice.
-    pub fn pillars(&self) -> &[T] {
-        &self.pillars
-    }
+    pub fn pillars(&self) -> &[T] { &self.pillars }
 
     /// Get discount factors slice.
-    pub fn discount_factors(&self) -> &[T] {
-        &self.discount_factors
-    }
+    pub fn discount_factors(&self) -> &[T] { &self.discount_factors }
 
     /// Get log discount factors slice (cached).
-    pub fn log_discount_factors(&self) -> &[T] {
-        &self.log_discount_factors
-    }
+    pub fn log_discount_factors(&self) -> &[T] { &self.log_discount_factors }
 
     /// Interpolate discount factor using cached log values.
     ///
@@ -175,20 +152,14 @@ impl<T: Float> CurveCache<T> {
     }
 
     /// Take ownership of the pillars vector.
-    pub fn take_pillars(&mut self) -> Vec<T> {
-        std::mem::take(&mut self.pillars)
-    }
+    pub fn take_pillars(&mut self) -> Vec<T> { std::mem::take(&mut self.pillars) }
 
     /// Take ownership of the discount factors vector.
-    pub fn take_discount_factors(&mut self) -> Vec<T> {
-        std::mem::take(&mut self.discount_factors)
-    }
+    pub fn take_discount_factors(&mut self) -> Vec<T> { std::mem::take(&mut self.discount_factors) }
 }
 
 impl<T: Float> Default for CurveCache<T> {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 /// Buffer pool for reusable vectors.
@@ -233,9 +204,7 @@ impl<T> BufferPool<T> {
     }
 
     /// Get the number of available buffers.
-    pub fn available(&self) -> usize {
-        self.buffers.borrow().len()
-    }
+    pub fn available(&self) -> usize { self.buffers.borrow().len() }
 
     /// Pre-allocate buffers in the pool.
     pub fn preallocate(&self, count: usize) {
@@ -247,9 +216,7 @@ impl<T> BufferPool<T> {
 }
 
 impl<T> Default for BufferPool<T> {
-    fn default() -> Self {
-        Self::new(100)
-    }
+    fn default() -> Self { Self::new(100) }
 }
 
 /// Pre-computed indices for efficient interpolation.
@@ -296,9 +263,7 @@ impl InterpolationIndices {
 }
 
 impl Default for InterpolationIndices {
-    fn default() -> Self {
-        Self::with_capacity(100)
-    }
+    fn default() -> Self { Self::with_capacity(100) }
 }
 
 /// Optimized bootstrapper cache that combines all caching mechanisms.
@@ -329,9 +294,7 @@ impl<T: Float> BootstrapCache<T> {
     }
 
     /// Create with default capacity.
-    pub fn new() -> Self {
-        Self::with_capacity(100)
-    }
+    pub fn new() -> Self { Self::with_capacity(100) }
 
     /// Clear all caches for reuse.
     pub fn clear(&mut self) {
@@ -355,9 +318,7 @@ impl<T: Float> BootstrapCache<T> {
     }
 
     /// Get the sorted indices buffer (mutable for sorting).
-    pub fn sorted_indices_mut(&mut self) -> &mut Vec<usize> {
-        &mut self.sorted_indices
-    }
+    pub fn sorted_indices_mut(&mut self) -> &mut Vec<usize> { &mut self.sorted_indices }
 
     /// Add a result to the cache.
     pub fn add_result(&mut self, maturity: T, df: T, residual: T, iterations: usize) {
@@ -368,9 +329,7 @@ impl<T: Float> BootstrapCache<T> {
 }
 
 impl<T: Float> Default for BootstrapCache<T> {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 #[cfg(test)]

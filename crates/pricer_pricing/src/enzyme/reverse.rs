@@ -34,8 +34,9 @@
 //! let gamma = GammaAD::new(0.0188);
 //! ```
 
-use crate::greeks::GreeksResult;
 use num_traits::Float;
+
+use crate::greeks::GreeksResult;
 
 /// Reverse mode AD result containing all first-order Greeks.
 ///
@@ -129,9 +130,7 @@ impl<T: Float> ReverseAD<T> {
 }
 
 impl<T: Float> Default for ReverseAD<T> {
-    fn default() -> Self {
-        Self::price_only(T::zero())
-    }
+    fn default() -> Self { Self::price_only(T::zero()) }
 }
 
 /// Second-order derivative container for Gamma computation.
@@ -211,9 +210,7 @@ impl<T: Float> GammaAD<T> {
 }
 
 impl<T: Float> Default for GammaAD<T> {
-    fn default() -> Self {
-        Self::new(T::zero())
-    }
+    fn default() -> Self { Self::new(T::zero()) }
 }
 
 /// Complete Greeks result combining first and second order sensitivities.
@@ -256,33 +253,26 @@ impl<T: Float> CompleteGreeks<T> {
 
     /// Convenience accessor for price.
     #[inline]
-    pub fn price(&self) -> T {
-        self.first_order.price
-    }
+    pub fn price(&self) -> T { self.first_order.price }
 
     /// Convenience accessor for Delta.
     #[inline]
-    pub fn delta(&self) -> T {
-        self.first_order.delta
-    }
+    pub fn delta(&self) -> T { self.first_order.delta }
 
     /// Convenience accessor for Gamma.
     #[inline]
-    pub fn gamma(&self) -> T {
-        self.second_order.gamma
-    }
+    pub fn gamma(&self) -> T { self.second_order.gamma }
 }
 
 impl<T: Float> Default for CompleteGreeks<T> {
-    fn default() -> Self {
-        Self::new(ReverseAD::default(), GammaAD::default())
-    }
+    fn default() -> Self { Self::new(ReverseAD::default(), GammaAD::default()) }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     #[test]
     fn test_reverse_ad_creation() {

@@ -3,9 +3,12 @@
 //! This module provides structured error handling for market data operations
 //! including yield curve and volatility surface lookups.
 
-use crate::market_data::curves::CurveName;
-use crate::types::{InterpolationError, PricingError};
 use thiserror::Error;
+
+use crate::{
+    market_data::curves::CurveName,
+    types::{InterpolationError, PricingError},
+};
 
 /// Market data operation errors.
 ///
@@ -102,9 +105,7 @@ pub enum MarketDataError {
 }
 
 impl From<MarketDataError> for PricingError {
-    fn from(err: MarketDataError) -> Self {
-        PricingError::InvalidInput(err.to_string())
-    }
+    fn from(err: MarketDataError) -> Self { PricingError::InvalidInput(err.to_string()) }
 }
 
 #[cfg(test)]

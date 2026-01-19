@@ -89,33 +89,23 @@ impl MonteCarloConfig {
     ///     .unwrap();
     /// ```
     #[inline]
-    pub fn builder() -> MonteCarloConfigBuilder {
-        MonteCarloConfigBuilder::default()
-    }
+    pub fn builder() -> MonteCarloConfigBuilder { MonteCarloConfigBuilder::default() }
 
     /// Returns the number of simulation paths.
     #[inline]
-    pub fn n_paths(&self) -> usize {
-        self.n_paths
-    }
+    pub fn n_paths(&self) -> usize { self.n_paths }
 
     /// Returns the number of time steps per path.
     #[inline]
-    pub fn n_steps(&self) -> usize {
-        self.n_steps
-    }
+    pub fn n_steps(&self) -> usize { self.n_steps }
 
     /// Returns the AD mode for gradient computation.
     #[inline]
-    pub fn ad_mode(&self) -> AdMode {
-        self.ad_mode
-    }
+    pub fn ad_mode(&self) -> AdMode { self.ad_mode }
 
     /// Returns the optional seed for reproducibility.
     #[inline]
-    pub fn seed(&self) -> Option<u64> {
-        self.seed
-    }
+    pub fn seed(&self) -> Option<u64> { self.seed }
 
     /// Validates the configuration.
     ///

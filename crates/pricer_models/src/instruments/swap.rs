@@ -4,7 +4,7 @@
 //! for fixed-for-floating rate exchanges.
 
 use num_traits::Float;
-use pricer_core::types::Currency;
+use pricer_core::{math::numeric::from_i32, types::Currency};
 
 use super::error::InstrumentError;
 
@@ -73,7 +73,8 @@ impl PaymentFrequency {
     /// ```
     #[inline]
     pub fn period_fraction<T: Float>(&self) -> T {
-        T::one() / T::from(self.periods_per_year()).unwrap()
+        let periods: T = from_i32(self.periods_per_year() as i32);
+        T::one() / periods
     }
 }
 
@@ -118,7 +119,8 @@ impl<T: Float> Swap<T> {
     /// # Arguments
     /// * `notional` - Notional principal amount (must be positive)
     /// * `fixed_rate` - Fixed interest rate (can be positive or negative)
-    /// * `payment_dates` - Vector of payment times in years (must be sorted ascending)
+    /// * `payment_dates` - Vector of payment times in years (must be sorted
+    ///   ascending)
     /// * `frequency` - Payment frequency
     /// * `currency` - Currency denomination
     ///
@@ -193,39 +195,27 @@ impl<T: Float> Swap<T> {
 
     /// Returns the notional principal amount.
     #[inline]
-    pub fn notional(&self) -> T {
-        self.notional
-    }
+    pub fn notional(&self) -> T { self.notional }
 
     /// Returns the fixed interest rate.
     #[inline]
-    pub fn fixed_rate(&self) -> T {
-        self.fixed_rate
-    }
+    pub fn fixed_rate(&self) -> T { self.fixed_rate }
 
     /// Returns a reference to the payment dates.
     #[inline]
-    pub fn payment_dates(&self) -> &[T] {
-        &self.payment_dates
-    }
+    pub fn payment_dates(&self) -> &[T] { &self.payment_dates }
 
     /// Returns the payment frequency.
     #[inline]
-    pub fn frequency(&self) -> PaymentFrequency {
-        self.frequency
-    }
+    pub fn frequency(&self) -> PaymentFrequency { self.frequency }
 
     /// Returns the currency denomination.
     #[inline]
-    pub fn currency(&self) -> Currency {
-        self.currency
-    }
+    pub fn currency(&self) -> Currency { self.currency }
 
     /// Returns the number of remaining payment periods.
     #[inline]
-    pub fn num_periods(&self) -> usize {
-        self.payment_dates.len()
-    }
+    pub fn num_periods(&self) -> usize { self.payment_dates.len() }
 
     /// Returns the maturity (last payment date).
     ///
@@ -233,6 +223,7 @@ impl<T: Float> Swap<T> {
     /// This method assumes payment_dates is non-empty, which is enforced
     /// by the constructor.
     #[inline]
+    #[allow(clippy::unwrap_used)] // Safe: constructor validates non-empty payment_dates
     pub fn maturity(&self) -> T {
         // Safe because constructor validates non-empty payment_dates
         *self.payment_dates.last().unwrap()
@@ -253,8 +244,9 @@ impl<T: Float> Swap<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     #[test]
     fn test_payment_frequency_periods_per_year() {

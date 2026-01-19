@@ -14,8 +14,8 @@
 //!
 //! # Memory Layout
 //!
-//! Paths are stored in row-major order: `paths[path_idx * (n_steps + 1) + step_idx]`
-//! where `step_idx = 0` contains the initial spot price.
+//! Paths are stored in row-major order: `paths[path_idx * (n_steps + 1) +
+//! step_idx]` where `step_idx = 0` contains the initial spot price.
 
 use super::workspace::PathWorkspace;
 
@@ -81,7 +81,8 @@ impl GbmParams {
     ///
     /// # Returns
     ///
-    /// `true` if all parameters are valid (finite, non-negative where required).
+    /// `true` if all parameters are valid (finite, non-negative where
+    /// required).
     #[inline]
     pub fn is_valid(&self) -> bool {
         self.spot > 0.0
@@ -265,9 +266,10 @@ pub fn terminal_prices(workspace: &PathWorkspace, n_paths: usize, n_steps: usize
 
 #[cfg(test)]
 mod tests {
+    use approx::assert_relative_eq;
+
     use super::*;
     use crate::rng::PricerRng;
-    use approx::assert_relative_eq;
 
     fn setup_workspace_with_randoms(n_paths: usize, n_steps: usize, seed: u64) -> PathWorkspace {
         let mut workspace = PathWorkspace::new(n_paths, n_steps);

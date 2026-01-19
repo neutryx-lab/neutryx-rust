@@ -1,11 +1,15 @@
 //! Mock SWIFT message receiver.
 
-use super::{PaymentInstruction, PaymentType, SettlementStatus};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
+
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
 use tracing::info;
+
+use super::{PaymentInstruction, PaymentType, SettlementStatus};
 
 /// Mock SWIFT message receiver
 pub struct SwiftReceiver {
@@ -184,9 +188,7 @@ impl SwiftReceiver {
 }
 
 impl Default for SwiftReceiver {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 /// Message statistics

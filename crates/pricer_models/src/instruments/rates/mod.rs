@@ -59,15 +59,14 @@ mod swap;
 mod swaption;
 
 pub use capfloor::{Cap, Collar, Floor};
+use num_traits::Float;
+use pricer_core::types::Currency;
 pub use pricing::{
     par_swap_rate, price_fixed_leg, price_floating_leg, price_irs, price_swaption_bachelier,
     price_swaption_black76,
 };
 pub use swap::{FixedLeg, FloatingLeg, InterestRateSwap, RateIndex, SwapDirection};
 pub use swaption::{Swaption, SwaptionStyle, SwaptionType};
-
-use num_traits::Float;
-use pricer_core::types::Currency;
 
 use super::InstrumentTrait;
 
@@ -184,27 +183,19 @@ impl<T: Float> RatesInstrument<T> {
 
     /// Check if this is a swap instrument.
     #[inline]
-    pub fn is_swap(&self) -> bool {
-        matches!(self, RatesInstrument::Swap(_))
-    }
+    pub fn is_swap(&self) -> bool { matches!(self, RatesInstrument::Swap(_)) }
 
     /// Check if this is a swaption instrument.
     #[inline]
-    pub fn is_swaption(&self) -> bool {
-        matches!(self, RatesInstrument::Swaption(_))
-    }
+    pub fn is_swaption(&self) -> bool { matches!(self, RatesInstrument::Swaption(_)) }
 
     /// Check if this is a cap instrument.
     #[inline]
-    pub fn is_cap(&self) -> bool {
-        matches!(self, RatesInstrument::Cap(_))
-    }
+    pub fn is_cap(&self) -> bool { matches!(self, RatesInstrument::Cap(_)) }
 
     /// Check if this is a floor instrument.
     #[inline]
-    pub fn is_floor(&self) -> bool {
-        matches!(self, RatesInstrument::Floor(_))
-    }
+    pub fn is_floor(&self) -> bool { matches!(self, RatesInstrument::Floor(_)) }
 
     /// Get reference to swap if this is a Swap variant.
     pub fn as_swap(&self) -> Option<&InterestRateSwap<T>> {
@@ -241,55 +232,40 @@ impl<T: Float> RatesInstrument<T> {
 
 impl<T: Float> InstrumentTrait<T> for RatesInstrument<T> {
     #[inline]
-    fn payoff(&self, spot: T) -> T {
-        self.payoff(spot)
-    }
+    fn payoff(&self, spot: T) -> T { self.payoff(spot) }
 
     #[inline]
-    fn expiry(&self) -> T {
-        self.expiry()
-    }
+    fn expiry(&self) -> T { self.expiry() }
 
     #[inline]
-    fn currency(&self) -> Currency {
-        self.currency()
-    }
+    fn currency(&self) -> Currency { self.currency() }
 
-    fn type_name(&self) -> &'static str {
-        self.type_name()
-    }
+    fn type_name(&self) -> &'static str { self.type_name() }
 }
 
 // Conversion from individual instruments to RatesInstrument
 impl<T: Float> From<InterestRateSwap<T>> for RatesInstrument<T> {
-    fn from(swap: InterestRateSwap<T>) -> Self {
-        RatesInstrument::Swap(swap)
-    }
+    fn from(swap: InterestRateSwap<T>) -> Self { RatesInstrument::Swap(swap) }
 }
 
 impl<T: Float> From<Swaption<T>> for RatesInstrument<T> {
-    fn from(swaption: Swaption<T>) -> Self {
-        RatesInstrument::Swaption(swaption)
-    }
+    fn from(swaption: Swaption<T>) -> Self { RatesInstrument::Swaption(swaption) }
 }
 
 impl<T: Float> From<Cap<T>> for RatesInstrument<T> {
-    fn from(cap: Cap<T>) -> Self {
-        RatesInstrument::Cap(cap)
-    }
+    fn from(cap: Cap<T>) -> Self { RatesInstrument::Cap(cap) }
 }
 
 impl<T: Float> From<Floor<T>> for RatesInstrument<T> {
-    fn from(floor: Floor<T>) -> Self {
-        RatesInstrument::Floor(floor)
-    }
+    fn from(floor: Floor<T>) -> Self { RatesInstrument::Floor(floor) }
 }
 
 #[cfg(test)]
 mod tests {
+    use pricer_core::types::time::{Date, DayCountConvention};
+
     use super::*;
     use crate::schedules::{Frequency, ScheduleBuilder};
-    use pricer_core::types::time::{Date, DayCountConvention};
 
     fn create_test_swap() -> InterestRateSwap<f64> {
         let start = Date::from_ymd(2024, 1, 15).unwrap();

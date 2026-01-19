@@ -1,10 +1,12 @@
 //! Netting engine for payment consolidation.
 
+use std::collections::HashMap;
+
+use serde::{Deserialize, Serialize};
+
 use super::PaymentInstruction;
 #[cfg(test)]
 use super::PaymentType;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// Netting engine for consolidating payments
 pub struct NettingEngine {
@@ -165,15 +167,11 @@ impl NettingEngine {
     }
 
     /// Clear all payments
-    pub fn clear(&mut self) {
-        self.payments.clear();
-    }
+    pub fn clear(&mut self) { self.payments.clear(); }
 }
 
 impl Default for NettingEngine {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 /// Netting statistics

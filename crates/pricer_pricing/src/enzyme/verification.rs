@@ -30,9 +30,8 @@
 //! println!("All passed: {}", result.all_passed());
 //! ```
 
-use crate::mc::{GbmParams, MonteCarloConfig, MonteCarloPricer, PayoffParams};
-
 use super::greeks::{EnzymeGreeksResult, GreeksEnzyme, GreeksMode};
+use crate::mc::{GbmParams, MonteCarloConfig, MonteCarloPricer, PayoffParams};
 
 /// Configuration for verification tests.
 #[derive(Clone, Debug)]
@@ -67,9 +66,7 @@ impl Default for VerificationConfig {
 
 impl VerificationConfig {
     /// Creates a new verification configuration.
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Sets the enzyme vs FD tolerance.
     #[inline]
@@ -536,15 +533,17 @@ pub fn run_verification_suite(config: VerificationConfig) -> Vec<VerificationRes
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     fn verification_config() -> VerificationConfig {
         VerificationConfig::new()
             .with_n_paths(50_000)
             .with_seed(12345)
             .with_enzyme_fd_tolerance(1e-4)
-            .with_analytical_tolerance(0.1) // MC variance requires wider tolerance
+            .with_analytical_tolerance(0.1) // MC variance requires wider
+                                            // tolerance
     }
 
     #[test]
@@ -557,7 +556,8 @@ mod tests {
     #[test]
     fn test_relative_error() {
         assert!(relative_error(1.0, 1.0) < 1e-10);
-        // relative_error(1.0, 1.01) = |1.0 - 1.01| / max(1.0, 1.01) = 0.01 / 1.01 ≈ 0.0099
+        // relative_error(1.0, 1.01) = |1.0 - 1.01| / max(1.0, 1.01) = 0.01 / 1.01 ≈
+        // 0.0099
         assert!(relative_error(1.0, 1.01) < 0.02);
         assert!(relative_error(0.0, 0.0) < 1e-10);
     }

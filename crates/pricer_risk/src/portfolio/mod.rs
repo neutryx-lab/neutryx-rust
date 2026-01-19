@@ -72,16 +72,15 @@ mod netting_set;
 mod trade;
 
 // Re-export public types
+use std::collections::HashMap;
+
 pub use builder::PortfolioBuilder;
 pub use counterparty::{Counterparty, CreditParams, CreditRating};
 pub use error::PortfolioError;
 pub use ids::{CounterpartyId, NettingSetId, TradeId};
 pub use netting_set::{CollateralAgreement, NettingSet};
-pub use trade::{Trade, TradeBuilder};
-
-use std::collections::HashMap;
-
 use rayon::prelude::*;
+pub use trade::{Trade, TradeBuilder};
 
 /// Portfolio container for trades, counterparties, and netting sets.
 ///
@@ -140,33 +139,23 @@ pub struct Portfolio {
 impl Portfolio {
     /// Returns the number of trades in the portfolio.
     #[inline]
-    pub fn trade_count(&self) -> usize {
-        self.trades.len()
-    }
+    pub fn trade_count(&self) -> usize { self.trades.len() }
 
     /// Returns the number of counterparties in the portfolio.
     #[inline]
-    pub fn counterparty_count(&self) -> usize {
-        self.counterparties.len()
-    }
+    pub fn counterparty_count(&self) -> usize { self.counterparties.len() }
 
     /// Returns the number of netting sets in the portfolio.
     #[inline]
-    pub fn netting_set_count(&self) -> usize {
-        self.netting_sets.len()
-    }
+    pub fn netting_set_count(&self) -> usize { self.netting_sets.len() }
 
     /// Returns whether the portfolio is empty.
     #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.trades.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.trades.is_empty() }
 
     /// Gets a trade by ID.
     #[inline]
-    pub fn trade(&self, id: &TradeId) -> Option<&Trade> {
-        self.trades.get(id)
-    }
+    pub fn trade(&self, id: &TradeId) -> Option<&Trade> { self.trades.get(id) }
 
     /// Gets a counterparty by ID.
     #[inline]
@@ -182,9 +171,7 @@ impl Portfolio {
 
     /// Returns an iterator over all trades.
     #[inline]
-    pub fn trades(&self) -> impl Iterator<Item = &Trade> {
-        self.trades.values()
-    }
+    pub fn trades(&self) -> impl Iterator<Item = &Trade> { self.trades.values() }
 
     /// Returns an iterator over all counterparties.
     #[inline]
@@ -194,15 +181,11 @@ impl Portfolio {
 
     /// Returns an iterator over all netting sets.
     #[inline]
-    pub fn netting_sets(&self) -> impl Iterator<Item = &NettingSet> {
-        self.netting_sets.values()
-    }
+    pub fn netting_sets(&self) -> impl Iterator<Item = &NettingSet> { self.netting_sets.values() }
 
     /// Returns an iterator over trade IDs.
     #[inline]
-    pub fn trade_ids(&self) -> impl Iterator<Item = &TradeId> {
-        self.trades.keys()
-    }
+    pub fn trade_ids(&self) -> impl Iterator<Item = &TradeId> { self.trades.keys() }
 
     /// Returns an iterator over counterparty IDs.
     #[inline]
@@ -289,7 +272,8 @@ impl Portfolio {
     ///
     /// # Arguments
     ///
-    /// * `pricer_fn` - Function that takes a trade reference and returns a price
+    /// * `pricer_fn` - Function that takes a trade reference and returns a
+    ///   price
     ///
     /// # Returns
     ///
@@ -317,7 +301,8 @@ impl Portfolio {
     ///
     /// # Arguments
     ///
-    /// * `agg_fn` - Function that takes a slice of trades and returns an aggregated value
+    /// * `agg_fn` - Function that takes a slice of trades and returns an
+    ///   aggregated value
     ///
     /// # Returns
     ///
@@ -350,18 +335,17 @@ impl Portfolio {
     }
 
     /// Computes total notional for the portfolio.
-    pub fn total_notional(&self) -> f64 {
-        self.trades.values().map(|t| t.notional()).sum()
-    }
+    pub fn total_notional(&self) -> f64 { self.trades.values().map(|t| t.notional()).sum() }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use pricer_core::types::Currency;
     use pricer_models::instruments::{
         ExerciseStyle, Instrument, InstrumentParams, PayoffType, VanillaOption,
     };
+
+    use super::*;
 
     fn create_test_instrument() -> Instrument<f64> {
         let params = InstrumentParams::new(100.0, 1.0, 1.0).unwrap();

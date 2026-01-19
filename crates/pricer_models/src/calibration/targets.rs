@@ -52,14 +52,10 @@ impl<T: Float> OptionTarget<T> {
     }
 
     /// Get the moneyness (strike / forward).
-    pub fn moneyness(&self, forward: T) -> T {
-        self.strike / forward
-    }
+    pub fn moneyness(&self, forward: T) -> T { self.strike / forward }
 
     /// Get the log-moneyness.
-    pub fn log_moneyness(&self, forward: T) -> T {
-        (self.strike / forward).ln()
-    }
+    pub fn log_moneyness(&self, forward: T) -> T { (self.strike / forward).ln() }
 }
 
 /// Swaption calibration target.

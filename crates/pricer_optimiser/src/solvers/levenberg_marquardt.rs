@@ -1,7 +1,6 @@
 //! Levenberg-Marquardt algorithm for nonlinear least squares.
 
-use crate::error::OptimiserError;
-use crate::solvers::OptimisationResult;
+use crate::{error::OptimiserError, solvers::OptimisationResult};
 
 /// Configuration for Levenberg-Marquardt solver.
 #[derive(Debug, Clone)]
@@ -55,9 +54,7 @@ impl LevenbergMarquardt {
     }
 
     /// Create a new solver with custom configuration.
-    pub fn with_config(config: LevenbergMarquardtConfig) -> Self {
-        Self { config }
-    }
+    pub fn with_config(config: LevenbergMarquardtConfig) -> Self { Self { config } }
 
     /// Solve a nonlinear least squares problem.
     ///
@@ -174,9 +171,7 @@ impl LevenbergMarquardt {
 }
 
 impl Default for LevenbergMarquardt {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 /// Simple linear system solver (Gaussian elimination with partial pivoting).

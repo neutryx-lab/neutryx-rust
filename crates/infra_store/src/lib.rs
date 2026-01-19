@@ -2,9 +2,9 @@
 //!
 //! Persistence and state management (SQLx, Redis, TimeScale) for Neutryx.
 //!
-//! This crate implements the Database Access Layer (DAL), providing `Save` and `Load`
-//! traits for Trades and Risk Reports using `sqlx` (Postgres) or other backends.
-//! It isolates I/O dependencies from the kernel.
+//! This crate implements the Database Access Layer (DAL), providing `Save` and
+//! `Load` traits for Trades and Risk Reports using `sqlx` (Postgres) or other
+//! backends. It isolates I/O dependencies from the kernel.
 //!
 //! ## Architecture Position
 //!
@@ -34,8 +34,7 @@ pub use postgres::PostgresStore;
 
 /// Prelude module for convenient imports
 pub mod prelude {
-    pub use crate::{Load, Save, StoreError};
-
     #[cfg(feature = "postgres")]
     pub use crate::PostgresStore;
+    pub use crate::{Load, Save, StoreError};
 }

@@ -6,9 +6,10 @@
 //! # Why Smoothing?
 //!
 //! Enzyme AD requires differentiable functions. Common financial functions
-//! like `max(0, x)` and `if x > 0 then 1 else 0` have discontinuous derivatives.
-//! These smooth approximations replace step functions with sigmoids and
-//! max functions with soft-plus, ensuring well-defined gradients everywhere.
+//! like `max(0, x)` and `if x > 0 then 1 else 0` have discontinuous
+//! derivatives. These smooth approximations replace step functions with
+//! sigmoids and max functions with soft-plus, ensuring well-defined gradients
+//! everywhere.
 //!
 //! # Requirements Coverage
 //!
@@ -81,9 +82,7 @@ pub fn smooth_max<T: Float>(a: T, b: T, epsilon: T) -> T {
 /// * `b` - Second value
 /// * `epsilon` - Smoothing parameter
 #[inline]
-pub fn smooth_min<T: Float>(a: T, b: T, epsilon: T) -> T {
-    -smooth_max(-a, -b, epsilon)
-}
+pub fn smooth_min<T: Float>(a: T, b: T, epsilon: T) -> T { -smooth_max(-a, -b, epsilon) }
 
 /// Smooth approximation of `max(x, 0)` (ReLU / soft-plus).
 ///
@@ -143,9 +142,7 @@ pub fn smooth_relu<T: Float>(x: T, epsilon: T) -> T {
 ///
 /// Value in (0, 1), approximating `1 if x > 0 else 0`.
 #[inline]
-pub fn smooth_relu_derivative<T: Float>(x: T, epsilon: T) -> T {
-    smooth_indicator(x, epsilon)
-}
+pub fn smooth_relu_derivative<T: Float>(x: T, epsilon: T) -> T { smooth_indicator(x, epsilon) }
 
 /// Smooth indicator function (sigmoid).
 ///
@@ -221,9 +218,7 @@ pub fn smooth_indicator_derivative<T: Float>(x: T, epsilon: T) -> T {
 /// * `x` - Input value
 /// * `epsilon` - Smoothing parameter
 #[inline]
-pub fn smooth_abs<T: Float>(x: T, epsilon: T) -> T {
-    (x * x + epsilon * epsilon).sqrt()
-}
+pub fn smooth_abs<T: Float>(x: T, epsilon: T) -> T { (x * x + epsilon * epsilon).sqrt() }
 
 /// Derivative of smooth_abs.
 ///
@@ -231,9 +226,7 @@ pub fn smooth_abs<T: Float>(x: T, epsilon: T) -> T {
 /// d/dx sqrt(x² + ε²) = x / sqrt(x² + ε²)
 /// ```
 #[inline]
-pub fn smooth_abs_derivative<T: Float>(x: T, epsilon: T) -> T {
-    x / smooth_abs(x, epsilon)
-}
+pub fn smooth_abs_derivative<T: Float>(x: T, epsilon: T) -> T { x / smooth_abs(x, epsilon) }
 
 // =============================================================================
 // Option Payoff Functions
@@ -395,8 +388,9 @@ pub fn smooth_down_barrier_alive<T: Float>(spot: T, barrier: T, epsilon: T) -> T
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     const EPS: f64 = 1e-6;
 

@@ -1,11 +1,15 @@
 //! WebSocket sink for real-time risk updates.
 
-use super::MetricUpdate;
+use std::sync::{
+    atomic::{AtomicBool, AtomicUsize, Ordering},
+    Arc,
+};
+
 use serde::{Deserialize, Serialize};
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::Arc;
 use tokio::sync::broadcast;
 use tracing::info;
+
+use super::MetricUpdate;
 
 /// WebSocket sink for receiving real-time updates
 pub struct WebSocketSink {
@@ -90,14 +94,10 @@ impl WebSocketSink {
     }
 
     /// Get subscriber count
-    pub fn subscriber_count(&self) -> usize {
-        self.tx.receiver_count()
-    }
+    pub fn subscriber_count(&self) -> usize { self.tx.receiver_count() }
 
     /// Get message count
-    pub fn message_count(&self) -> usize {
-        self.message_count.load(Ordering::SeqCst)
-    }
+    pub fn message_count(&self) -> usize { self.message_count.load(Ordering::SeqCst) }
 
     /// Stop the sink
     pub fn stop(&self) {
@@ -106,9 +106,7 @@ impl WebSocketSink {
     }
 
     /// Check if running
-    pub fn is_running(&self) -> bool {
-        self.running.load(Ordering::SeqCst)
-    }
+    pub fn is_running(&self) -> bool { self.running.load(Ordering::SeqCst) }
 
     /// Get statistics
     pub fn statistics(&self) -> SinkStatistics {
@@ -121,9 +119,7 @@ impl WebSocketSink {
 }
 
 impl Default for WebSocketSink {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 /// Sink statistics
@@ -139,9 +135,10 @@ pub struct SinkStatistics {
 
 #[cfg(test)]
 mod tests {
+    use chrono::Utc;
+
     use super::*;
     use crate::risk_dashboard::MetricType;
-    use chrono::Utc;
 
     #[tokio::test]
     async fn test_websocket_sink() {

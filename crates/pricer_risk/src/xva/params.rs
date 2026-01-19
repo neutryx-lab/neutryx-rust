@@ -72,9 +72,7 @@ impl FundingParams {
 
     /// Creates zero funding spreads (no FVA impact).
     #[inline]
-    pub fn zero() -> Self {
-        Self::symmetric(0.0)
-    }
+    pub fn zero() -> Self { Self::symmetric(0.0) }
 
     /// Validates the funding parameters.
     pub fn validate(&self) -> Result<(), XvaError> {
@@ -94,9 +92,7 @@ impl FundingParams {
 
 impl Default for FundingParams {
     /// Returns zero funding spreads.
-    fn default() -> Self {
-        Self::zero()
-    }
+    fn default() -> Self { Self::zero() }
 }
 
 /// Own credit parameters for DVA calculation.
@@ -150,37 +146,27 @@ impl OwnCreditParams {
 
     /// Returns the hazard rate.
     #[inline]
-    pub fn hazard_rate(&self) -> f64 {
-        self.hazard_rate
-    }
+    pub fn hazard_rate(&self) -> f64 { self.hazard_rate }
 
     /// Returns the Loss Given Default.
     #[inline]
-    pub fn lgd(&self) -> f64 {
-        self.lgd
-    }
+    pub fn lgd(&self) -> f64 { self.lgd }
 
     /// Returns the recovery rate (1 - LGD).
     #[inline]
-    pub fn recovery_rate(&self) -> f64 {
-        1.0 - self.lgd
-    }
+    pub fn recovery_rate(&self) -> f64 { 1.0 - self.lgd }
 
     /// Computes the survival probability to time t.
     ///
     /// Q(t) = exp(-λ * t)
     #[inline]
-    pub fn survival_prob(&self, t: f64) -> f64 {
-        (-self.hazard_rate * t).exp()
-    }
+    pub fn survival_prob(&self, t: f64) -> f64 { (-self.hazard_rate * t).exp() }
 
     /// Computes the default probability to time t.
     ///
     /// PD(t) = 1 - Q(t)
     #[inline]
-    pub fn default_prob(&self, t: f64) -> f64 {
-        1.0 - self.survival_prob(t)
-    }
+    pub fn default_prob(&self, t: f64) -> f64 { 1.0 - self.survival_prob(t) }
 
     /// Computes the marginal default probability between t1 and t2.
     ///
@@ -193,8 +179,9 @@ impl OwnCreditParams {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     #[test]
     fn test_funding_params_symmetric() {

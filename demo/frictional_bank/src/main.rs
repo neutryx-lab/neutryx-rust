@@ -77,9 +77,7 @@ async fn root_handler() -> impl IntoResponse {
 }
 
 /// Health check endpoint for Cloud Run
-async fn health_handler() -> impl IntoResponse {
-    StatusCode::OK
-}
+async fn health_handler() -> impl IntoResponse { StatusCode::OK }
 
 /// Status response
 #[derive(Serialize)]
@@ -139,9 +137,7 @@ struct IntradayRequest {
     iterations: usize,
 }
 
-fn default_iterations() -> usize {
-    5
-}
+fn default_iterations() -> usize { 5 }
 
 /// Intraday workflow handler
 async fn intraday_workflow_handler(

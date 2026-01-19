@@ -57,16 +57,12 @@ pub mod rates;
 pub mod hybrid;
 
 // Re-export core trait types
-pub use stochastic::{SingleState, StochasticModel, StochasticState, TwoFactorState};
-
 // Re-export GBM model
 pub use gbm::{GBMModel, GBMParams};
-
 // Re-export Heston model
 pub use heston::{HestonError, HestonModel, HestonParams};
-
-// Re-export SABR model
-pub use sabr::{SABRError, SABRModel, SABRParams};
-
 // Re-export enum types for static dispatch
 pub use model_enum::{ModelParams, ModelState, StochasticModelEnum};
+// Re-export SABR model
+pub use sabr::{SABRError, SABRModel, SABRParams};
+pub use stochastic::{SingleState, StochasticModel, StochasticState, TwoFactorState};

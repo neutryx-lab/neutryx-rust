@@ -8,7 +8,6 @@ mod file_writer;
 
 pub use email_sender::EmailSender;
 pub use file_writer::FileWriter;
-
 use serde::{Deserialize, Serialize};
 
 /// Report output destination trait

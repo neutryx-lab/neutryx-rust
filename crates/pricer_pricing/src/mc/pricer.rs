@@ -7,23 +7,30 @@
 //!
 //! The [`MonteCarloPricer`] coordinates:
 //! 1. Random number generation (via [`PricerRng`](crate::rng::PricerRng))
-//! 2. Path generation (via [`generate_gbm_paths`](super::paths::generate_gbm_paths))
-//! 3. Payoff computation (via [`compute_payoffs`](super::payoff::compute_payoffs))
+//! 2. Path generation (via
+//!    [`generate_gbm_paths`](super::paths::generate_gbm_paths))
+//! 3. Payoff computation (via
+//!    [`compute_payoffs`](super::payoff::compute_payoffs))
 //! 4. Discounting and aggregation
 //! 5. Greeks via AD (or bump-and-revalue as placeholder)
 //!
 //! # Workspace Reuse
 //!
-//! The pricer maintains an internal [`PathWorkspace`](super::workspace::PathWorkspace)
-//! that is reused across pricing calls, minimising memory allocations.
+//! The pricer maintains an internal
+//! [`PathWorkspace`](super::workspace::PathWorkspace) that is reused across
+//! pricing calls, minimising memory allocations.
 
-use super::config::MonteCarloConfig;
-use super::error::ConfigError;
-use super::paths::{generate_gbm_paths, generate_gbm_paths_tangent_spot, GbmParams};
-use super::payoff::{compute_payoff, compute_payoffs, PayoffParams};
-use super::workspace::PathWorkspace;
-use crate::path_dependent::{PathObserver, PathPayoffType};
-use crate::rng::PricerRng;
+use super::{
+    config::MonteCarloConfig,
+    error::ConfigError,
+    paths::{generate_gbm_paths, generate_gbm_paths_tangent_spot, GbmParams},
+    payoff::{compute_payoff, compute_payoffs, PayoffParams},
+    workspace::PathWorkspace,
+};
+use crate::{
+    path_dependent::{PathObserver, PathPayoffType},
+    rng::PricerRng,
+};
 
 /// Greek type for selection.
 ///
@@ -64,7 +71,8 @@ pub enum Greek {
 
 /// Pricing result with optional Greeks.
 ///
-/// Contains the Monte Carlo price estimate and optionally computed sensitivities.
+/// Contains the Monte Carlo price estimate and optionally computed
+/// sensitivities.
 ///
 /// # First-Order Greeks
 ///
@@ -127,15 +135,11 @@ pub struct PricingResult {
 impl PricingResult {
     /// Returns the 95% confidence interval half-width.
     #[inline]
-    pub fn confidence_95(&self) -> f64 {
-        1.96 * self.std_error
-    }
+    pub fn confidence_95(&self) -> f64 { 1.96 * self.std_error }
 
     /// Returns the 99% confidence interval half-width.
     #[inline]
-    pub fn confidence_99(&self) -> f64 {
-        2.576 * self.std_error
-    }
+    pub fn confidence_99(&self) -> f64 { 2.576 * self.std_error }
 }
 
 /// Monte Carlo pricing engine.
@@ -145,8 +149,8 @@ impl PricingResult {
 ///
 /// # Workspace Reuse
 ///
-/// The pricer maintains an internal workspace that is reused across pricing calls.
-/// This minimises memory allocations for repeated pricing operations.
+/// The pricer maintains an internal workspace that is reused across pricing
+/// calls. This minimises memory allocations for repeated pricing operations.
 ///
 /// # Examples
 ///
@@ -229,9 +233,7 @@ impl MonteCarloPricer {
 
     /// Returns a reference to the configuration.
     #[inline]
-    pub fn config(&self) -> &MonteCarloConfig {
-        &self.config
-    }
+    pub fn config(&self) -> &MonteCarloConfig { &self.config }
 
     /// Resets the pricer state for a new simulation.
     ///
@@ -498,9 +500,11 @@ impl MonteCarloPricer {
     /// Computes Vanna (∂²V/∂S∂σ) using cross-differences.
     ///
     /// Vanna is the cross partial derivative of option value with respect to
-    /// spot price and volatility. It measures how delta changes with volatility.
+    /// spot price and volatility. It measures how delta changes with
+    /// volatility.
     ///
-    /// Uses the formula: (V(S+h,σ+k) - V(S+h,σ-k) - V(S-h,σ+k) + V(S-h,σ-k)) / (4hk)
+    /// Uses the formula: (V(S+h,σ+k) - V(S+h,σ-k) - V(S-h,σ+k) + V(S-h,σ-k)) /
+    /// (4hk)
     fn compute_vanna(&mut self, gbm: GbmParams, payoff: PayoffParams, discount_factor: f64) -> f64 {
         let spot_bump = (0.01 * gbm.spot).max(0.01);
         let vol_bump = 0.01;
@@ -759,7 +763,8 @@ impl MonteCarloPricer {
             let payoff_value = compute_payoff(terminal_price, payoff);
             price_sum += payoff_value;
 
-            // Tangent payoff: d(payoff)/d(spot) = d(payoff)/d(terminal) × d(terminal)/d(spot)
+            // Tangent payoff: d(payoff)/d(spot) = d(payoff)/d(terminal) ×
+            // d(terminal)/d(spot)
             let payoff_deriv = super::payoff::soft_plus_derivative(
                 match payoff.payoff_type {
                     super::payoff::PayoffType::Call => terminal_price - payoff.strike,
@@ -932,8 +937,9 @@ impl MonteCarloPricer {
                         Some(self.compute_rho_path_dependent(gbm, payoff, discount_factor));
                 }
                 Greek::Vanna | Greek::Volga => {
-                    // Second-order cross Greeks for path-dependent not yet implemented
-                    // Will be added with Enzyme AD + checkpointing integration
+                    // Second-order cross Greeks for path-dependent not yet
+                    // implemented Will be added with Enzyme
+                    // AD + checkpointing integration
                 }
             }
         }
@@ -1109,8 +1115,9 @@ impl MonteCarloPricer {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     fn create_test_pricer() -> MonteCarloPricer {
         let config = MonteCarloConfig::builder()

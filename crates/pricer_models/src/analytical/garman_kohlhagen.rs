@@ -51,10 +51,11 @@
 //! assert!(parity_diff.abs() < 1e-10);
 //! ```
 
-use super::distributions::norm_cdf;
-use super::error::AnalyticalError;
-use crate::instruments::fx::FxOptionType;
 use num_traits::Float;
+use pricer_core::math::numeric::from_f64;
+
+use super::{distributions::norm_cdf, error::AnalyticalError};
+use crate::instruments::fx::FxOptionType;
 
 /// Parameters for the Garman-Kohlhagen model.
 ///
@@ -178,8 +179,9 @@ impl<T: Float> GarmanKohlhagen<T> {
 
         // d1 = [ln(S/K) + (rd - rf + σ²/2) * T] / (σ * √T)
         let log_sk = (params.spot / params.strike).ln();
+        let two: T = from_f64(2.0);
         let drift = params.rate_domestic - params.rate_foreign
-            + params.volatility * params.volatility / T::from(2.0).unwrap();
+            + params.volatility * params.volatility / two;
         let d1 = (log_sk + drift * params.expiry) / vol_sqrt_t;
 
         // d2 = d1 - σ * √T
@@ -201,21 +203,15 @@ impl<T: Float> GarmanKohlhagen<T> {
 
     /// Returns a reference to the parameters.
     #[inline]
-    pub fn params(&self) -> &GarmanKohlhagenParams<T> {
-        &self.params
-    }
+    pub fn params(&self) -> &GarmanKohlhagenParams<T> { &self.params }
 
     /// Returns d1.
     #[inline]
-    pub fn d1(&self) -> T {
-        self.d1
-    }
+    pub fn d1(&self) -> T { self.d1 }
 
     /// Returns d2.
     #[inline]
-    pub fn d2(&self) -> T {
-        self.d2
-    }
+    pub fn d2(&self) -> T { self.d2 }
 
     /// Computes the option price.
     ///
@@ -299,7 +295,8 @@ impl<T: Float> GarmanKohlhagen<T> {
         let pdf_d1 = norm_pdf(self.d1);
 
         // ν = S * e^(-rf*T) * N'(d1) * √T
-        self.params.spot * self.df_foreign * pdf_d1 * self.sqrt_t / T::from(100.0).unwrap()
+        let hundred: T = from_f64(100.0);
+        self.params.spot * self.df_foreign * pdf_d1 * self.sqrt_t / hundred
     }
 
     /// Computes Theta.
@@ -318,8 +315,8 @@ impl<T: Float> GarmanKohlhagen<T> {
         let nd1 = norm_cdf(self.d1);
         let nd2 = norm_cdf(self.d2);
 
-        let two = T::from(2.0).unwrap();
-        let days_per_year = T::from(365.0).unwrap();
+        let two: T = from_f64(2.0);
+        let days_per_year: T = from_f64(365.0);
 
         let term1 = -self.params.spot * self.df_foreign * pdf_d1 * self.params.volatility
             / (two * self.sqrt_t);
@@ -355,7 +352,7 @@ impl<T: Float> GarmanKohlhagen<T> {
     /// Rho value (per 1% rate change).
     pub fn rho_domestic(&self, option_type: FxOptionType) -> T {
         let nd2 = norm_cdf(self.d2);
-        let hundred = T::from(100.0).unwrap();
+        let hundred: T = from_f64(100.0);
 
         match option_type {
             FxOptionType::Call => {
@@ -383,7 +380,7 @@ impl<T: Float> GarmanKohlhagen<T> {
     /// Rho value (per 1% rate change).
     pub fn rho_foreign(&self, option_type: FxOptionType) -> T {
         let nd1 = norm_cdf(self.d1);
-        let hundred = T::from(100.0).unwrap();
+        let hundred: T = from_f64(100.0);
 
         match option_type {
             FxOptionType::Call => {
@@ -402,8 +399,8 @@ impl<T: Float> GarmanKohlhagen<T> {
 /// Standard normal PDF.
 #[inline]
 fn norm_pdf<T: Float>(x: T) -> T {
-    let frac_1_sqrt_2pi = T::from(0.398_942_280_401_432_7).unwrap();
-    let half = T::from(0.5).unwrap();
+    let frac_1_sqrt_2pi: T = from_f64(0.398_942_280_401_432_7);
+    let half: T = from_f64(0.5);
     frac_1_sqrt_2pi * (-half * x * x).exp()
 }
 
@@ -669,7 +666,8 @@ mod tests {
         let call_rho = model.rho_domestic(FxOptionType::Call);
         let put_rho = model.rho_domestic(FxOptionType::Put);
 
-        // Call rho_domestic should be positive (higher domestic rate increases call value)
+        // Call rho_domestic should be positive (higher domestic rate increases call
+        // value)
         assert!(call_rho > 0.0);
         // Put rho_domestic should be negative
         assert!(put_rho < 0.0);
@@ -683,7 +681,8 @@ mod tests {
         let call_rho = model.rho_foreign(FxOptionType::Call);
         let put_rho = model.rho_foreign(FxOptionType::Put);
 
-        // Call rho_foreign should be negative (higher foreign rate decreases call value)
+        // Call rho_foreign should be negative (higher foreign rate decreases call
+        // value)
         assert!(call_rho < 0.0);
         // Put rho_foreign should be positive
         assert!(put_rho > 0.0);

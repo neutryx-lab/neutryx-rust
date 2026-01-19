@@ -6,11 +6,10 @@
 mod metrics_store;
 mod websocket_sink;
 
-pub use metrics_store::MetricsStore;
-pub use websocket_sink::WebSocketSink;
-
 use chrono::{DateTime, Utc};
+pub use metrics_store::MetricsStore;
 use serde::{Deserialize, Serialize};
+pub use websocket_sink::WebSocketSink;
 
 /// Risk metric types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

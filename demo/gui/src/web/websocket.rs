@@ -1,7 +1,8 @@
 //! WebSocket handler for real-time updates.
 //!
-//! This module provides WebSocket functionality for the FrictionalBank Web Dashboard,
-//! including real-time updates for risk metrics, exposure, and computation graph changes.
+//! This module provides WebSocket functionality for the FrictionalBank Web
+//! Dashboard, including real-time updates for risk metrics, exposure, and
+//! computation graph changes.
 //!
 //! ## Message Types
 //!
@@ -21,6 +22,8 @@
 //! ベンチマーク結果をリアルタイムで配信:
 //! - `irs_benchmark`: AAD vs Bump&Reval の性能比較結果
 
+use std::sync::Arc;
+
 use axum::{
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
@@ -30,7 +33,6 @@ use axum::{
 };
 use futures::{sink::SinkExt, stream::StreamExt};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use tracing::{info, warn};
 
 use super::AppState;
@@ -211,9 +213,7 @@ impl RealTimeUpdate {
     }
 
     /// Convert to JSON string
-    pub fn to_json(&self) -> String {
-        serde_json::to_string(self).unwrap_or_default()
-    }
+    pub fn to_json(&self) -> String { serde_json::to_string(self).unwrap_or_default() }
 }
 
 /// Broadcast an update to all connected clients
@@ -603,7 +603,8 @@ pub struct RiskCompleteEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CalculationErrorEvent {
-    /// Operation that failed: "bootstrap", "pricing", "risk_bump", "risk_aad", "risk_compare"
+    /// Operation that failed: "bootstrap", "pricing", "risk_bump", "risk_aad",
+    /// "risk_compare"
     pub operation: String,
     /// Error message
     pub error: String,

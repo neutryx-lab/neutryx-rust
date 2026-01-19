@@ -31,3 +31,6 @@ tracing = { workspace = true }
 
 # Async channels
 async-channel = "2.3"
+
+[lints]
+workspace = true

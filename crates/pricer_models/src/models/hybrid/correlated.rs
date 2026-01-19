@@ -1,26 +1,26 @@
 //! Correlated stochastic models with Cholesky decomposition.
 //!
-//! This module provides infrastructure for correlating multiple stochastic models
-//! using Cholesky decomposition to generate correlated Brownian motions.
+//! This module provides infrastructure for correlating multiple stochastic
+//! models using Cholesky decomposition to generate correlated Brownian motions.
 //!
 //! ## Mathematical Background
 //!
-//! Given `n` independent standard normal random variables `Z = [Z1, Z2, ..., Zn]`,
-//! we can generate correlated normals `W = [W1, W2, ..., Wn]` using:
+//! Given `n` independent standard normal random variables `Z = [Z1, Z2, ...,
+//! Zn]`, we can generate correlated normals `W = [W1, W2, ..., Wn]` using:
 //!
 //! ```text
 //! W = L * Z
 //! ```
 //!
-//! where `L` is the lower triangular Cholesky factor of the correlation matrix `C`:
-//! ```text
+//! where `L` is the lower triangular Cholesky factor of the correlation matrix
+//! `C`: ```text
 //! C = L * L^T
 //! ```
-//!
+//! 
 //! ## Usage
-//!
 //! ```
-//! use pricer_models::models::hybrid::correlated::{CorrelatedModels, CorrelationMatrix};
+//! use pricer_models::models::hybrid::correlated::{CorrelatedModels,
+//! CorrelationMatrix};
 //!
 //! // Create a 2x2 correlation matrix with rho = 0.5
 //! let corr = CorrelationMatrix::new(&[
@@ -207,21 +207,17 @@ impl<T: Float> CorrelationMatrix<T> {
     }
 
     /// Get matrix dimension.
-    pub fn dim(&self) -> usize {
-        self.dim
-    }
+    pub fn dim(&self) -> usize { self.dim }
 
     /// Get element at (i, j).
-    pub fn get(&self, i: usize, j: usize) -> T {
-        self.data[i * self.dim + j]
-    }
+    pub fn get(&self, i: usize, j: usize) -> T { self.data[i * self.dim + j] }
 
     /// Compute Cholesky decomposition (lower triangular L where C = L * L^T).
     ///
     /// # Returns
     ///
-    /// `Ok(CholeskyFactor)` if decomposition succeeds (matrix is positive definite),
-    /// `Err(CorrelationError::NotPositiveDefinite)` otherwise.
+    /// `Ok(CholeskyFactor)` if decomposition succeeds (matrix is positive
+    /// definite), `Err(CorrelationError::NotPositiveDefinite)` otherwise.
     pub fn cholesky(&self) -> Result<CholeskyFactor<T>, CorrelationError> {
         let n = self.dim;
         let mut lower = vec![T::zero(); n * n];
@@ -275,9 +271,7 @@ pub struct CholeskyFactor<T: Float> {
 
 impl<T: Float> CholeskyFactor<T> {
     /// Get matrix dimension.
-    pub fn dim(&self) -> usize {
-        self.dim
-    }
+    pub fn dim(&self) -> usize { self.dim }
 
     /// Get element at (i, j).
     ///
@@ -292,8 +286,9 @@ impl<T: Float> CholeskyFactor<T> {
 
     /// Transform independent standard normals to correlated normals.
     ///
-    /// Given independent Z ~ N(0,1), computes W = L * Z where L is the Cholesky factor.
-    /// The resulting W has correlation structure matching the original matrix.
+    /// Given independent Z ~ N(0,1), computes W = L * Z where L is the Cholesky
+    /// factor. The resulting W has correlation structure matching the
+    /// original matrix.
     ///
     /// # Arguments
     ///
@@ -334,7 +329,8 @@ impl<T: Float> CholeskyFactor<T> {
     ///
     /// # Arguments
     ///
-    /// * `z` - Mutable slice of independent standard normals (transformed in place)
+    /// * `z` - Mutable slice of independent standard normals (transformed in
+    ///   place)
     pub fn transform_inplace(&self, z: &mut [T]) {
         assert!(
             z.len() >= self.dim,
@@ -417,14 +413,10 @@ impl<T: Float> CorrelatedModels<T> {
     }
 
     /// Get the number of factors.
-    pub fn num_factors(&self) -> usize {
-        self.num_factors
-    }
+    pub fn num_factors(&self) -> usize { self.num_factors }
 
     /// Get reference to the Cholesky factor.
-    pub fn cholesky(&self) -> &CholeskyFactor<T> {
-        &self.cholesky
-    }
+    pub fn cholesky(&self) -> &CholeskyFactor<T> { &self.cholesky }
 
     /// Generate correlated Brownian increments from independent increments.
     ///
@@ -440,9 +432,7 @@ impl<T: Float> CorrelatedModels<T> {
     }
 
     /// Generate correlated Brownian increments in place.
-    pub fn correlate_inplace(&self, dw: &mut [T]) {
-        self.cholesky.transform_inplace(dw);
-    }
+    pub fn correlate_inplace(&self, dw: &mut [T]) { self.cholesky.transform_inplace(dw); }
 }
 
 #[cfg(test)]

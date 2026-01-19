@@ -15,9 +15,12 @@
 //! - φ(·) is the standard normal PDF
 
 use num_traits::Float;
+use pricer_core::math::numeric::from_f64;
 
-use super::distributions::{norm_cdf, norm_pdf};
-use super::error::AnalyticalError;
+use super::{
+    distributions::{norm_cdf, norm_pdf},
+    error::AnalyticalError,
+};
 use crate::instruments::{PayoffType, VanillaOption};
 
 /// Bachelier (normal) model for European option pricing.
@@ -89,15 +92,11 @@ impl<T: Float> Bachelier<T> {
 
     /// Returns the forward price.
     #[inline]
-    pub fn forward(&self) -> T {
-        self.forward
-    }
+    pub fn forward(&self) -> T { self.forward }
 
     /// Returns the volatility.
     #[inline]
-    pub fn volatility(&self) -> T {
-        self.volatility
-    }
+    pub fn volatility(&self) -> T { self.volatility }
 
     /// Computes the d term of the Bachelier formula.
     ///
@@ -111,11 +110,11 @@ impl<T: Float> Bachelier<T> {
     /// The d term.
     #[inline]
     fn d(&self, strike: T, expiry: T) -> T {
-        let epsilon = T::from(1e-10).unwrap();
+        let epsilon: T = from_f64(1e-10);
 
         if expiry <= epsilon {
             let zero = T::zero();
-            let large = T::from(100.0).unwrap();
+            let large: T = from_f64(100.0);
             if self.forward > strike {
                 return large;
             } else if self.forward < strike {
@@ -155,7 +154,7 @@ impl<T: Float> Bachelier<T> {
     #[inline]
     pub fn price_call(&self, strike: T, expiry: T) -> T {
         let zero = T::zero();
-        let epsilon = T::from(1e-10).unwrap();
+        let epsilon: T = from_f64(1e-10);
 
         // Handle expiry = 0: return intrinsic value
         if expiry <= epsilon {
@@ -195,7 +194,7 @@ impl<T: Float> Bachelier<T> {
     #[inline]
     pub fn price_put(&self, strike: T, expiry: T) -> T {
         let zero = T::zero();
-        let epsilon = T::from(1e-10).unwrap();
+        let epsilon: T = from_f64(1e-10);
 
         // Handle expiry = 0: return intrinsic value
         if expiry <= epsilon {
@@ -273,9 +272,10 @@ impl<T: Float> Bachelier<T> {
 
 #[cfg(test)]
 mod tests {
+    use approx::assert_relative_eq;
+
     use super::*;
     use crate::instruments::ExerciseStyle;
-    use approx::assert_relative_eq;
 
     // ==========================================================
     // Constructor Tests
@@ -532,11 +532,12 @@ mod tests {
     // ==========================================================
     //
     // NOTE: Dual64 (num_dual::Dual64) does not implement num_traits::Float,
-    // so Bachelier<Dual64> cannot be instantiated with the current trait bounds.
-    // To enable AD compatibility, the trait bounds need to be refactored from
-    // `T: Float` to a more permissive combination of traits that both f64 and
-    // Dual64 satisfy (e.g., DualNum<f64> or a custom Scalar trait).
+    // so Bachelier<Dual64> cannot be instantiated with the current trait
+    // bounds. To enable AD compatibility, the trait bounds need to be
+    // refactored from `T: Float` to a more permissive combination of traits
+    // that both f64 and Dual64 satisfy (e.g., DualNum<f64> or a custom
+    // Scalar trait).
     //
-    // This is tracked as a future enhancement. For now, sensitivity verification
-    // is done via finite difference comparisons.
+    // This is tracked as a future enhancement. For now, sensitivity
+    // verification is done via finite difference comparisons.
 }

@@ -14,7 +14,8 @@
 //!
 //! ### Optimisation
 //!
-//! - [`LevenbergMarquardtSolver`]: Nonlinear least-squares for model calibration
+//! - [`LevenbergMarquardtSolver`]: Nonlinear least-squares for model
+//!   calibration
 //!
 //! ## Configuration
 //!
@@ -22,7 +23,8 @@
 //! - `tolerance`: Convergence tolerance (default: 1e-10)
 //! - `max_iterations`: Maximum iteration count (default: 100)
 //!
-//! The LM solver uses [`LMConfig`] with additional parameters for damping control.
+//! The LM solver uses [`LMConfig`] with additional parameters for damping
+//! control.
 //!
 //! ## AD Compatibility
 //!

@@ -23,15 +23,11 @@ pub enum Direction {
 impl Direction {
     /// Returns whether this is a long position.
     #[inline]
-    pub fn is_long(&self) -> bool {
-        matches!(self, Direction::Long)
-    }
+    pub fn is_long(&self) -> bool { matches!(self, Direction::Long) }
 
     /// Returns whether this is a short position.
     #[inline]
-    pub fn is_short(&self) -> bool {
-        matches!(self, Direction::Short)
-    }
+    pub fn is_short(&self) -> bool { matches!(self, Direction::Short) }
 }
 
 /// Forward contract instrument.
@@ -149,45 +145,34 @@ impl<T: Float> Forward<T> {
 
     /// Returns the strike (delivery) price.
     #[inline]
-    pub fn strike(&self) -> T {
-        self.strike
-    }
+    pub fn strike(&self) -> T { self.strike }
 
     /// Returns the time to expiry.
     #[inline]
-    pub fn expiry(&self) -> T {
-        self.expiry
-    }
+    pub fn expiry(&self) -> T { self.expiry }
 
     /// Returns the notional amount.
     #[inline]
-    pub fn notional(&self) -> T {
-        self.notional
-    }
+    pub fn notional(&self) -> T { self.notional }
 
     /// Returns the direction (Long or Short).
     #[inline]
-    pub fn direction(&self) -> Direction {
-        self.direction
-    }
+    pub fn direction(&self) -> Direction { self.direction }
 
     /// Returns whether this is a long forward.
     #[inline]
-    pub fn is_long(&self) -> bool {
-        self.direction.is_long()
-    }
+    pub fn is_long(&self) -> bool { self.direction.is_long() }
 
     /// Returns whether this is a short forward.
     #[inline]
-    pub fn is_short(&self) -> bool {
-        self.direction.is_short()
-    }
+    pub fn is_short(&self) -> bool { self.direction.is_short() }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     #[test]
     fn test_direction_is_long() {

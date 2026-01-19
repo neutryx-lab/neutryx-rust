@@ -1,13 +1,14 @@
 //! Core traits for interpolation.
 
-use crate::types::InterpolationError;
 use num_traits::Float;
+
+use crate::types::InterpolationError;
 
 /// Generic trait for 1D interpolation.
 ///
-/// Implementations of this trait provide interpolation over a set of data points,
-/// supporting both standard floating-point types and dual numbers for automatic
-/// differentiation.
+/// Implementations of this trait provide interpolation over a set of data
+/// points, supporting both standard floating-point types and dual numbers for
+/// automatic differentiation.
 ///
 /// # Type Parameters
 ///
@@ -39,7 +40,8 @@ pub trait Interpolator<T: Float> {
     /// # Returns
     ///
     /// * `Ok(y)` - The interpolated value at `x`
-    /// * `Err(InterpolationError::OutOfBounds)` - If `x` is outside the valid domain
+    /// * `Err(InterpolationError::OutOfBounds)` - If `x` is outside the valid
+    ///   domain
     ///
     /// # Example
     ///
@@ -98,9 +100,7 @@ mod tests {
             Ok(x * 2.0) // Simple linear mock
         }
 
-        fn domain(&self) -> (f64, f64) {
-            (self.x_min, self.x_max)
-        }
+        fn domain(&self) -> (f64, f64) { (self.x_min, self.x_max) }
     }
 
     #[test]

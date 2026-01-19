@@ -51,15 +51,11 @@ impl FxForwardDirection {
 
     /// Returns whether this is a buy (long) position.
     #[inline]
-    pub fn is_buy(&self) -> bool {
-        matches!(self, FxForwardDirection::Buy)
-    }
+    pub fn is_buy(&self) -> bool { matches!(self, FxForwardDirection::Buy) }
 
     /// Returns whether this is a sell (short) position.
     #[inline]
-    pub fn is_sell(&self) -> bool {
-        matches!(self, FxForwardDirection::Sell)
-    }
+    pub fn is_sell(&self) -> bool { matches!(self, FxForwardDirection::Sell) }
 }
 
 impl std::fmt::Display for FxForwardDirection {
@@ -98,9 +94,7 @@ impl std::fmt::Display for FxForwardError {
 impl std::error::Error for FxForwardError {}
 
 impl From<CurrencyError> for FxForwardError {
-    fn from(e: CurrencyError) -> Self {
-        FxForwardError::Currency(e)
-    }
+    fn from(e: CurrencyError) -> Self { FxForwardError::Currency(e) }
 }
 
 /// FX forward instrument.
@@ -115,7 +109,8 @@ impl From<CurrencyError> for FxForwardError {
 /// # Conventions
 ///
 /// - Notional is in base currency
-/// - Forward rate is quoted as units of quote currency per 1 unit of base currency
+/// - Forward rate is quoted as units of quote currency per 1 unit of base
+///   currency
 /// - Settlement is in quote currency
 ///
 /// # Examples
@@ -165,7 +160,8 @@ impl<T: Float> FxForward<T> {
     ///
     /// # Errors
     ///
-    /// Returns `FxForwardError` if forward_rate, maturity, or notional is not positive.
+    /// Returns `FxForwardError` if forward_rate, maturity, or notional is not
+    /// positive.
     pub fn new(
         currency_pair: CurrencyPair<T>,
         forward_rate: T,
@@ -194,57 +190,39 @@ impl<T: Float> FxForward<T> {
 
     /// Returns the currency pair.
     #[inline]
-    pub fn currency_pair(&self) -> &CurrencyPair<T> {
-        &self.currency_pair
-    }
+    pub fn currency_pair(&self) -> &CurrencyPair<T> { &self.currency_pair }
 
     /// Returns the base currency.
     #[inline]
-    pub fn base_currency(&self) -> Currency {
-        self.currency_pair.base()
-    }
+    pub fn base_currency(&self) -> Currency { self.currency_pair.base() }
 
     /// Returns the quote currency (settlement currency).
     #[inline]
-    pub fn quote_currency(&self) -> Currency {
-        self.currency_pair.quote()
-    }
+    pub fn quote_currency(&self) -> Currency { self.currency_pair.quote() }
 
     /// Returns the forward rate.
     #[inline]
-    pub fn forward_rate(&self) -> T {
-        self.forward_rate
-    }
+    pub fn forward_rate(&self) -> T { self.forward_rate }
 
     /// Returns the time to maturity in years.
     #[inline]
-    pub fn maturity(&self) -> T {
-        self.maturity
-    }
+    pub fn maturity(&self) -> T { self.maturity }
 
     /// Returns the notional amount in base currency.
     #[inline]
-    pub fn notional_amount(&self) -> T {
-        self.notional
-    }
+    pub fn notional_amount(&self) -> T { self.notional }
 
     /// Returns the direction.
     #[inline]
-    pub fn direction(&self) -> FxForwardDirection {
-        self.direction
-    }
+    pub fn direction(&self) -> FxForwardDirection { self.direction }
 
     /// Returns whether this is a buy (long) position.
     #[inline]
-    pub fn is_buy(&self) -> bool {
-        self.direction.is_buy()
-    }
+    pub fn is_buy(&self) -> bool { self.direction.is_buy() }
 
     /// Returns whether this is a sell (short) position.
     #[inline]
-    pub fn is_sell(&self) -> bool {
-        self.direction.is_sell()
-    }
+    pub fn is_sell(&self) -> bool { self.direction.is_sell() }
 
     /// Calculates the payoff at maturity for a given spot rate.
     ///
@@ -266,9 +244,7 @@ impl<T: Float> FxForward<T> {
     }
 
     /// Returns the currency pair code (e.g., "EUR/USD").
-    pub fn pair_code(&self) -> String {
-        self.currency_pair.code()
-    }
+    pub fn pair_code(&self) -> String { self.currency_pair.code() }
 
     /// Calculates the mark-to-market value given current forward rate.
     ///
@@ -288,14 +264,10 @@ impl<T: Float> FxForward<T> {
 
 impl<T: Float> InstrumentTrait<T> for FxForward<T> {
     #[inline]
-    fn payoff(&self, spot: T) -> T {
-        self.payoff(spot)
-    }
+    fn payoff(&self, spot: T) -> T { self.payoff(spot) }
 
     #[inline]
-    fn expiry(&self) -> T {
-        self.maturity
-    }
+    fn expiry(&self) -> T { self.maturity }
 
     #[inline]
     fn currency(&self) -> Currency {
@@ -304,9 +276,7 @@ impl<T: Float> InstrumentTrait<T> for FxForward<T> {
     }
 
     #[inline]
-    fn notional(&self) -> T {
-        self.notional
-    }
+    fn notional(&self) -> T { self.notional }
 
     fn type_name(&self) -> &'static str {
         match self.direction {

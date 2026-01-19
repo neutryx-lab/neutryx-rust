@@ -7,7 +7,8 @@
 /// Checkpoint interval strategy.
 ///
 /// Determines when to save simulation state during Monte Carlo forward pass.
-/// Different strategies offer trade-offs between memory usage and recomputation cost.
+/// Different strategies offer trade-offs between memory usage and recomputation
+/// cost.
 ///
 /// # Enzyme AD Integration
 ///
@@ -212,7 +213,8 @@ impl CheckpointStrategy {
         }
     }
 
-    /// Creates a Binomial strategy with optimal memory slots for the given step count.
+    /// Creates a Binomial strategy with optimal memory slots for the given step
+    /// count.
     ///
     /// This is a convenience constructor that calculates the optimal number of
     /// memory slots (approximately √n) for the given total steps.
@@ -244,9 +246,7 @@ impl Default for CheckpointStrategy {
     /// Default is `Uniform { interval: 100 }`, providing a good balance
     /// between memory usage and recomputation overhead for typical
     /// Monte Carlo simulations.
-    fn default() -> Self {
-        CheckpointStrategy::Uniform { interval: 100 }
-    }
+    fn default() -> Self { CheckpointStrategy::Uniform { interval: 100 } }
 }
 
 #[cfg(test)]

@@ -42,3 +42,6 @@ criterion = { workspace = true, features = ["html_reports"] }
 [[bench]]
 name = "models_benchmarks"
 harness = false
+
+[lints]
+workspace = true

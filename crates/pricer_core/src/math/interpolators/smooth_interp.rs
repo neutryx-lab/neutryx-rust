@@ -1,8 +1,11 @@
 //! Branch-free smooth interpolation for Enzyme AD compatibility.
 
-use crate::math::smoothing::smooth_indicator;
-use crate::types::InterpolationError;
 use num_traits::Float;
+
+use crate::{
+    math::{numeric::from_f64, smoothing::smooth_indicator},
+    types::InterpolationError,
+};
 
 /// Branch-free smooth linear interpolation.
 ///
@@ -25,7 +28,8 @@ use num_traits::Float;
 ///
 /// # Convergence
 ///
-/// As `epsilon → 0`, `smooth_interp` converges to standard linear interpolation.
+/// As `epsilon → 0`, `smooth_interp` converges to standard linear
+/// interpolation.
 ///
 /// # Branch-free Property
 ///
@@ -69,8 +73,9 @@ pub fn smooth_interp<T: Float>(
     let n = xs.len();
 
     // Compute segment weights using smooth_indicator
-    // Weight for segment i: w_i = smooth_indicator(x - x_i, ε) - smooth_indicator(x - x_{i+1}, ε)
-    // This gives w_i ≈ 1 when x is in segment [x_i, x_{i+1}], ≈ 0 otherwise
+    // Weight for segment i: w_i = smooth_indicator(x - x_i, ε) - smooth_indicator(x
+    // - x_{i+1}, ε) This gives w_i ≈ 1 when x is in segment [x_i, x_{i+1}], ≈ 0
+    // otherwise
 
     let mut weighted_sum = T::zero();
     let mut weight_sum = T::zero();
@@ -91,9 +96,10 @@ pub fn smooth_interp<T: Float>(
         weight_sum = weight_sum + weight;
     }
 
-    // Normalise by total weight (should be approximately 1 for points inside domain)
-    // Add small epsilon to avoid division by zero for points far outside domain
-    let tiny = T::from(1e-30).unwrap();
+    // Normalise by total weight (should be approximately 1 for points inside
+    // domain) Add small epsilon to avoid division by zero for points far
+    // outside domain
+    let tiny: T = from_f64(1e-30);
     let result = weighted_sum / (weight_sum + tiny);
 
     Ok(result)

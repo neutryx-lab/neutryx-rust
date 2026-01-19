@@ -41,18 +41,21 @@
 //! assert!((cds.spread() - 0.01).abs() < 1e-10);
 //! ```
 
-use num_traits::Float;
-use pricer_core::types::time::DayCountConvention;
-use pricer_core::types::Currency;
 use std::fmt;
 
-use crate::instruments::traits::{Cashflow, CashflowInstrument, InstrumentTrait};
-use crate::schedules::Schedule;
+use num_traits::Float;
+use pricer_core::types::{time::DayCountConvention, Currency};
+
+use crate::{
+    instruments::traits::{Cashflow, CashflowInstrument, InstrumentTrait},
+    schedules::Schedule,
+};
 
 /// CDS direction (buyer or seller of protection).
 ///
 /// In CDS market convention:
-/// - **BuyProtection**: Buy protection (pay premium, receive payment on default)
+/// - **BuyProtection**: Buy protection (pay premium, receive payment on
+///   default)
 /// - **SellProtection**: Sell protection (receive premium, pay on default)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CdsDirection {
@@ -105,7 +108,8 @@ impl fmt::Display for CdsDirection {
 ///
 /// # Structure
 ///
-/// - **Protection Leg**: Contingent payment of (1 - Recovery) × Notional on default
+/// - **Protection Leg**: Contingent payment of (1 - Recovery) × Notional on
+///   default
 /// - **Premium Leg**: Periodic payments of Spread × Notional × DayCountFraction
 ///
 /// # Valuation
@@ -199,51 +203,35 @@ impl<T: Float> CreditDefaultSwap<T> {
 
     /// Returns the reference entity name.
     #[inline]
-    pub fn reference_entity(&self) -> &str {
-        &self.reference_entity
-    }
+    pub fn reference_entity(&self) -> &str { &self.reference_entity }
 
     /// Returns the notional principal amount.
     #[inline]
-    pub fn notional(&self) -> T {
-        self.notional
-    }
+    pub fn notional(&self) -> T { self.notional }
 
     /// Returns the CDS spread (annual).
     #[inline]
-    pub fn spread(&self) -> T {
-        self.spread
-    }
+    pub fn spread(&self) -> T { self.spread }
 
     /// Returns the recovery rate assumption.
     #[inline]
-    pub fn recovery_rate(&self) -> T {
-        self.recovery_rate
-    }
+    pub fn recovery_rate(&self) -> T { self.recovery_rate }
 
     /// Returns the loss given default (1 - recovery_rate).
     #[inline]
-    pub fn loss_given_default(&self) -> T {
-        T::one() - self.recovery_rate
-    }
+    pub fn loss_given_default(&self) -> T { T::one() - self.recovery_rate }
 
     /// Returns the premium payment schedule.
     #[inline]
-    pub fn schedule(&self) -> &Schedule {
-        &self.schedule
-    }
+    pub fn schedule(&self) -> &Schedule { &self.schedule }
 
     /// Returns the settlement currency.
     #[inline]
-    pub fn currency(&self) -> Currency {
-        self.currency
-    }
+    pub fn currency(&self) -> Currency { self.currency }
 
     /// Returns the CDS direction.
     #[inline]
-    pub fn direction(&self) -> CdsDirection {
-        self.direction
-    }
+    pub fn direction(&self) -> CdsDirection { self.direction }
 
     /// Returns the maturity time in years (end of final period).
     ///
@@ -261,29 +249,21 @@ impl<T: Float> CreditDefaultSwap<T> {
 
     /// Returns whether this is a protection buyer position.
     #[inline]
-    pub fn is_protection_buyer(&self) -> bool {
-        self.direction == CdsDirection::BuyProtection
-    }
+    pub fn is_protection_buyer(&self) -> bool { self.direction == CdsDirection::BuyProtection }
 
     /// Returns whether this is a protection seller position.
     #[inline]
-    pub fn is_protection_seller(&self) -> bool {
-        self.direction == CdsDirection::SellProtection
-    }
+    pub fn is_protection_seller(&self) -> bool { self.direction == CdsDirection::SellProtection }
 
     /// Returns the number of premium payment periods.
     #[inline]
-    pub fn num_periods(&self) -> usize {
-        self.schedule.len()
-    }
+    pub fn num_periods(&self) -> usize { self.schedule.len() }
 
     /// Returns the protection payment amount on default.
     ///
     /// This is (1 - RecoveryRate) × Notional.
     #[inline]
-    pub fn protection_payment(&self) -> T {
-        self.loss_given_default() * self.notional
-    }
+    pub fn protection_payment(&self) -> T { self.loss_given_default() * self.notional }
 
     /// Computes the premium payment for a single period.
     ///
@@ -302,34 +282,22 @@ impl<T: Float> InstrumentTrait<T> for CreditDefaultSwap<T> {
     /// CDS payoff is not spot-based; returns zero.
     ///
     /// Actual CDS valuation requires credit curve and discount curve.
-    fn payoff(&self, _spot: T) -> T {
-        T::zero()
-    }
+    fn payoff(&self, _spot: T) -> T { T::zero() }
 
     /// Returns the maturity time in years.
-    fn expiry(&self) -> T {
-        self.maturity()
-    }
+    fn expiry(&self) -> T { self.maturity() }
 
     /// Returns the settlement currency.
-    fn currency(&self) -> Currency {
-        self.currency
-    }
+    fn currency(&self) -> Currency { self.currency }
 
     /// Returns the notional amount.
-    fn notional(&self) -> T {
-        self.notional
-    }
+    fn notional(&self) -> T { self.notional }
 
     /// CDS is not path-dependent in the traditional sense.
-    fn is_path_dependent(&self) -> bool {
-        false
-    }
+    fn is_path_dependent(&self) -> bool { false }
 
     /// Returns the instrument type name.
-    fn type_name(&self) -> &'static str {
-        "CreditDefaultSwap"
-    }
+    fn type_name(&self) -> &'static str { "CreditDefaultSwap" }
 }
 
 impl<T: Float> CashflowInstrument<T> for CreditDefaultSwap<T> {
@@ -362,9 +330,10 @@ impl<T: Float> CashflowInstrument<T> for CreditDefaultSwap<T> {
 
 #[cfg(test)]
 mod tests {
+    use pricer_core::types::time::Date;
+
     use super::*;
     use crate::schedules::{Frequency, ScheduleBuilder};
-    use pricer_core::types::time::Date;
 
     // ========================================
     // CdsDirection Tests

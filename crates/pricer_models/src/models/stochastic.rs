@@ -8,7 +8,8 @@
 //!
 //! - **Static dispatch only**: Use enum-based dispatch, not `Box<dyn Trait>`
 //! - **Generic Float type**: Supports f64 and DualNumber for AD compatibility
-//! - **Differentiable marker**: All models must implement `Differentiable` trait
+//! - **Differentiable marker**: All models must implement `Differentiable`
+//!   trait
 //!
 //! ## Example
 //!
@@ -29,8 +30,7 @@
 //! // Model implementation would follow...
 //! ```
 
-use pricer_core::traits::priceable::Differentiable;
-use pricer_core::traits::Float;
+use pricer_core::traits::{priceable::Differentiable, Float};
 
 /// State representation for stochastic models.
 ///
@@ -62,9 +62,7 @@ pub trait StochasticState<T: Float>: Clone + Copy + Default {
 pub struct SingleState<T: Float>(pub T);
 
 impl<T: Float + Default> StochasticState<T> for SingleState<T> {
-    fn dimension() -> usize {
-        1
-    }
+    fn dimension() -> usize { 1 }
 
     fn get(&self, index: usize) -> Option<T> {
         if index == 0 {
@@ -91,9 +89,7 @@ impl<T: Float + Default> StochasticState<T> for SingleState<T> {
         }
     }
 
-    fn to_array(&self) -> Vec<T> {
-        vec![self.0]
-    }
+    fn to_array(&self) -> Vec<T> { vec![self.0] }
 }
 
 /// Two-factor state (e.g., Heston price and variance)
@@ -106,9 +102,7 @@ pub struct TwoFactorState<T: Float> {
 }
 
 impl<T: Float + Default> StochasticState<T> for TwoFactorState<T> {
-    fn dimension() -> usize {
-        2
-    }
+    fn dimension() -> usize { 2 }
 
     fn get(&self, index: usize) -> Option<T> {
         match index {
@@ -143,9 +137,7 @@ impl<T: Float + Default> StochasticState<T> for TwoFactorState<T> {
         }
     }
 
-    fn to_array(&self) -> Vec<T> {
-        vec![self.first, self.second]
-    }
+    fn to_array(&self) -> Vec<T> { vec![self.first, self.second] }
 }
 
 /// Unified trait interface for stochastic process models.
@@ -163,8 +155,8 @@ impl<T: Float + Default> StochasticState<T> for TwoFactorState<T> {
 /// - State type is model-specific (e.g., f64 for GBM, (f64, f64) for Heston)
 ///
 /// # Static Dispatch Only
-/// **IMPORTANT**: Do NOT use `Box<dyn StochasticModel>`. Use enum-based dispatch
-/// via `StochasticModelEnum` for Enzyme LLVM compatibility.
+/// **IMPORTANT**: Do NOT use `Box<dyn StochasticModel>`. Use enum-based
+/// dispatch via `StochasticModelEnum` for Enzyme LLVM compatibility.
 ///
 /// # Example
 /// ```ignore
@@ -180,7 +172,8 @@ impl<T: Float + Default> StochasticState<T> for TwoFactorState<T> {
 /// // let model: Box<dyn StochasticModel<f64>> = ...
 /// ```
 pub trait StochasticModel<T: Float>: Differentiable {
-    /// Model-specific state type (GBM: `SingleState<T>`, Heston: `TwoFactorState<T>`)
+    /// Model-specific state type (GBM: `SingleState<T>`, Heston:
+    /// `TwoFactorState<T>`)
     type State: StochasticState<T>;
 
     /// Model parameters type
@@ -239,7 +232,8 @@ pub trait StochasticModel<T: Float>: Differentiable {
     ///
     /// This is distinct from `brownian_dim()` which returns the number of
     /// Brownian motion increments required. For correlated models, these
-    /// may differ (e.g., Heston has 2 factors but may use 2 correlated Brownians).
+    /// may differ (e.g., Heston has 2 factors but may use 2 correlated
+    /// Brownians).
     fn num_factors() -> usize;
 }
 
@@ -354,28 +348,21 @@ mod tests {
             dw: &[f64],
             params: &Self::Params,
         ) -> Self::State {
-            // Simple Euler discretization: S_t+dt = S_t * exp((r - 0.5*vol^2)*dt + vol*sqrt(dt)*dW)
+            // Simple Euler discretization: S_t+dt = S_t * exp((r - 0.5*vol^2)*dt +
+            // vol*sqrt(dt)*dW)
             let s = state.0;
             let drift = (params.rate - 0.5 * params.volatility * params.volatility) * dt;
             let diffusion = params.volatility * dt.sqrt() * dw[0];
             SingleState(s * (drift + diffusion).exp())
         }
 
-        fn initial_state(params: &Self::Params) -> Self::State {
-            SingleState(params.spot)
-        }
+        fn initial_state(params: &Self::Params) -> Self::State { SingleState(params.spot) }
 
-        fn brownian_dim() -> usize {
-            1
-        }
+        fn brownian_dim() -> usize { 1 }
 
-        fn model_name() -> &'static str {
-            "MockGBM"
-        }
+        fn model_name() -> &'static str { "MockGBM" }
 
-        fn num_factors() -> usize {
-            1
-        }
+        fn num_factors() -> usize { 1 }
     }
 
     #[test]
@@ -464,7 +451,8 @@ mod tests {
     // Test: Differentiable marker trait requirement
     #[test]
     fn test_stochastic_model_requires_differentiable() {
-        // This test verifies at compile time that StochasticModel requires Differentiable
+        // This test verifies at compile time that StochasticModel requires
+        // Differentiable
         let _mock = MockGBM {
             _smoothing_epsilon: 1e-6,
         };

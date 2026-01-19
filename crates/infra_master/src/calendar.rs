@@ -6,7 +6,8 @@ use chrono::{Datelike, NaiveDate, Weekday};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum CalendarId {
-    /// TARGET (Trans-European Automated Real-time Gross Settlement Express Transfer)
+    /// TARGET (Trans-European Automated Real-time Gross Settlement Express
+    /// Transfer)
     Target,
     /// New York
     NewYork,
@@ -26,9 +27,7 @@ pub struct Calendar {
 
 impl Calendar {
     /// Get a calendar by identifier.
-    pub fn get(id: CalendarId) -> Self {
-        Self { id }
-    }
+    pub fn get(id: CalendarId) -> Self { Self { id } }
 
     /// Check if a date is a business day.
     pub fn is_business_day(&self, date: NaiveDate) -> bool {

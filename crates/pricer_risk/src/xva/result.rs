@@ -51,9 +51,7 @@ impl NettingSetXva {
     ///
     /// Positive FVA represents a cost, negative represents a benefit.
     #[inline]
-    pub fn fva(&self) -> f64 {
-        self.fca - self.fba
-    }
+    pub fn fva(&self) -> f64 { self.fca - self.fba }
 
     /// Returns the total XVA impact.
     ///
@@ -62,15 +60,11 @@ impl NettingSetXva {
     /// This represents the total valuation adjustment to apply
     /// to the risk-free price.
     #[inline]
-    pub fn total_xva(&self) -> f64 {
-        self.cva - self.dva + self.fva()
-    }
+    pub fn total_xva(&self) -> f64 { self.cva - self.dva + self.fva() }
 
     /// Returns bilateral CVA (CVA - DVA).
     #[inline]
-    pub fn bilateral_cva(&self) -> f64 {
-        self.cva - self.dva
-    }
+    pub fn bilateral_cva(&self) -> f64 { self.cva - self.dva }
 }
 
 /// Aggregated XVA results for a counterparty.
@@ -117,27 +111,19 @@ impl CounterpartyXva {
 
     /// Returns the net FVA.
     #[inline]
-    pub fn fva(&self) -> f64 {
-        self.fca - self.fba
-    }
+    pub fn fva(&self) -> f64 { self.fca - self.fba }
 
     /// Returns the total XVA.
     #[inline]
-    pub fn total_xva(&self) -> f64 {
-        self.cva - self.dva + self.fva()
-    }
+    pub fn total_xva(&self) -> f64 { self.cva - self.dva + self.fva() }
 
     /// Returns bilateral CVA.
     #[inline]
-    pub fn bilateral_cva(&self) -> f64 {
-        self.cva - self.dva
-    }
+    pub fn bilateral_cva(&self) -> f64 { self.cva - self.dva }
 
     /// Returns the number of netting sets.
     #[inline]
-    pub fn netting_set_count(&self) -> usize {
-        self.netting_set_xvas.len()
-    }
+    pub fn netting_set_count(&self) -> usize { self.netting_set_xvas.len() }
 }
 
 /// Portfolio-level XVA results.
@@ -178,27 +164,19 @@ impl PortfolioXva {
 
     /// Returns the net FVA.
     #[inline]
-    pub fn fva(&self) -> f64 {
-        self.fca - self.fba
-    }
+    pub fn fva(&self) -> f64 { self.fca - self.fba }
 
     /// Returns the total XVA.
     #[inline]
-    pub fn total_xva(&self) -> f64 {
-        self.cva - self.dva + self.fva()
-    }
+    pub fn total_xva(&self) -> f64 { self.cva - self.dva + self.fva() }
 
     /// Returns bilateral CVA.
     #[inline]
-    pub fn bilateral_cva(&self) -> f64 {
-        self.cva - self.dva
-    }
+    pub fn bilateral_cva(&self) -> f64 { self.cva - self.dva }
 
     /// Returns the number of counterparties.
     #[inline]
-    pub fn counterparty_count(&self) -> usize {
-        self.by_counterparty.len()
-    }
+    pub fn counterparty_count(&self) -> usize { self.by_counterparty.len() }
 
     /// Returns the total number of netting sets.
     pub fn netting_set_count(&self) -> usize {

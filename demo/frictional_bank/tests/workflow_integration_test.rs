@@ -2,11 +2,14 @@
 //!
 //! Tests the workflow orchestration and execution.
 
-use frictional_bank::config::DemoConfig;
-use frictional_bank::workflow::{
-    DemoWorkflow, EodBatchWorkflow, IntradayWorkflow, StressTestWorkflow, WorkflowStep,
-};
 use std::sync::Arc;
+
+use frictional_bank::{
+    config::DemoConfig,
+    workflow::{
+        DemoWorkflow, EodBatchWorkflow, IntradayWorkflow, StressTestWorkflow, WorkflowStep,
+    },
+};
 
 fn test_config() -> DemoConfig {
     let mut config = DemoConfig::default();
@@ -25,7 +28,9 @@ async fn test_eod_batch_workflow_execution() {
 
     assert!(result.success);
     assert!(result.trades_processed > 0);
-    assert!(result.duration_ms > 0 || result.duration_ms == 0); // Duration can be 0 for fast runs
+    assert!(result.duration_ms > 0 || result.duration_ms == 0); // Duration can
+                                                                // be 0 for fast
+                                                                // runs
 }
 
 /// Test EOD batch workflow with progress callback

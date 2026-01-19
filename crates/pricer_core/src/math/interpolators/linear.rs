@@ -1,8 +1,9 @@
 //! Linear interpolation implementation.
 
+use num_traits::Float;
+
 use super::Interpolator;
 use crate::types::InterpolationError;
-use num_traits::Float;
 
 /// Piecewise linear interpolator.
 ///
@@ -41,8 +42,8 @@ pub struct LinearInterpolator<T: Float> {
 impl<T: Float> LinearInterpolator<T> {
     /// Construct a linear interpolator from x and y data points.
     ///
-    /// Data points are automatically sorted by x-coordinate if not already sorted.
-    /// Requires at least 2 data points.
+    /// Data points are automatically sorted by x-coordinate if not already
+    /// sorted. Requires at least 2 data points.
     ///
     /// # Arguments
     ///
@@ -100,28 +101,20 @@ impl<T: Float> LinearInterpolator<T> {
 
     /// Returns a reference to the sorted x-coordinates.
     #[inline]
-    pub fn xs(&self) -> &[T] {
-        &self.xs
-    }
+    pub fn xs(&self) -> &[T] { &self.xs }
 
     /// Returns a reference to the y-values (in sorted x order).
     #[inline]
-    pub fn ys(&self) -> &[T] {
-        &self.ys
-    }
+    pub fn ys(&self) -> &[T] { &self.ys }
 
     /// Returns the number of data points.
     #[inline]
-    pub fn len(&self) -> usize {
-        self.xs.len()
-    }
+    pub fn len(&self) -> usize { self.xs.len() }
 
     /// Returns true if the interpolator has no data points.
     /// Note: This should never be true for a valid interpolator.
     #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.xs.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.xs.is_empty() }
 
     /// Find the segment index for interpolation using binary search.
     ///
@@ -225,9 +218,7 @@ impl<T: Float> Interpolator<T> for LinearInterpolator<T> {
     /// assert_eq!(interp.domain(), (1.0, 3.0));
     /// ```
     #[inline]
-    fn domain(&self) -> (T, T) {
-        (self.xs[0], self.xs[self.xs.len() - 1])
-    }
+    fn domain(&self) -> (T, T) { (self.xs[0], self.xs[self.xs.len() - 1]) }
 }
 
 #[cfg(test)]

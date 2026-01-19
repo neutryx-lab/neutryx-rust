@@ -4,7 +4,8 @@
 //! - [`VolatilitySurface`]: Generic trait for implied volatility lookup
 //! - [`FlatVol`]: Constant volatility surface implementation
 //! - [`InterpolatedVolSurface`]: Grid-based interpolated volatility surface
-//! - [`FxVolatilitySurface`]: Delta-expiry based volatility surface for FX options
+//! - [`FxVolatilitySurface`]: Delta-expiry based volatility surface for FX
+//!   options
 //! - [`FxDeltaPoint`]: Standard delta points used in FX markets
 
 mod flat;

@@ -2,6 +2,8 @@
 
 use num_traits::Float;
 
+use crate::math::numeric::from_f64;
+
 /// Configuration for root-finding algorithms.
 ///
 /// Provides common settings shared across all solver implementations,
@@ -50,7 +52,7 @@ impl<T: Float> Default for SolverConfig<T> {
     /// - `max_iterations`: 100
     fn default() -> Self {
         Self {
-            tolerance: T::from(1e-10).unwrap(),
+            tolerance: from_f64(1e-10),
             max_iterations: 100,
         }
     }
@@ -91,7 +93,7 @@ impl<T: Float> SolverConfig<T> {
     /// for cases requiring extreme precision.
     pub fn high_precision() -> Self {
         Self {
-            tolerance: T::from(1e-14).unwrap(),
+            tolerance: from_f64(1e-14),
             max_iterations: 500,
         }
     }
@@ -102,7 +104,7 @@ impl<T: Float> SolverConfig<T> {
     /// for cases where speed is more important than precision.
     pub fn fast() -> Self {
         Self {
-            tolerance: T::from(1e-6).unwrap(),
+            tolerance: from_f64(1e-6),
             max_iterations: 50,
         }
     }

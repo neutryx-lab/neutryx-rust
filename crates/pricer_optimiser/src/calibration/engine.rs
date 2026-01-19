@@ -53,9 +53,7 @@ impl CalibrationEngine {
     }
 
     /// Create a new calibration engine with custom configuration.
-    pub fn with_config(config: CalibrationConfig) -> Self {
-        Self { config }
-    }
+    pub fn with_config(config: CalibrationConfig) -> Self { Self { config } }
 
     /// Calibrate a model to market data.
     ///
@@ -151,9 +149,7 @@ impl CalibrationEngine {
 }
 
 impl Default for CalibrationEngine {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 #[cfg(test)]

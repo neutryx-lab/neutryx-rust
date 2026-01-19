@@ -1,6 +1,7 @@
 //! Calibrate command implementation
 //!
-//! Calibrates model parameters from market data using the pricer_optimiser crate.
+//! Calibrates model parameters from market data using the pricer_optimiser
+//! crate.
 
 use tracing::{info, warn};
 

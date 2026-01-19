@@ -3,8 +3,9 @@
 //! Usage: cargo run -p demo_gui --features web --bin demo-web
 //!        cargo web  (alias)
 
-use demo_gui::web;
 use std::net::SocketAddr;
+
+use demo_gui::web;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]

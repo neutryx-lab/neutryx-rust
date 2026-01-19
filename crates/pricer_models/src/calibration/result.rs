@@ -97,9 +97,7 @@ impl CalibrationDiagnostics {
     /// # Arguments
     ///
     /// * `tolerance` - Maximum acceptable RMSE
-    pub fn is_quality_acceptable(&self, tolerance: f64) -> bool {
-        self.rmse <= tolerance
-    }
+    pub fn is_quality_acceptable(&self, tolerance: f64) -> bool { self.rmse <= tolerance }
 }
 
 /// Calibration result.
@@ -130,7 +128,8 @@ impl<P> CalibrationResult<P> {
 
     /// Create a failed calibration result.
     ///
-    /// Used when calibration did not converge but still returns best-effort parameters.
+    /// Used when calibration did not converge but still returns best-effort
+    /// parameters.
     pub fn failure(parameters: P, diagnostics: CalibrationDiagnostics) -> Self {
         Self {
             parameters,
@@ -140,24 +139,16 @@ impl<P> CalibrationResult<P> {
     }
 
     /// Get the calibrated parameters.
-    pub fn params(&self) -> &P {
-        &self.parameters
-    }
+    pub fn params(&self) -> &P { &self.parameters }
 
     /// Get the calibration diagnostics.
-    pub fn diagnostics(&self) -> &CalibrationDiagnostics {
-        &self.diagnostics
-    }
+    pub fn diagnostics(&self) -> &CalibrationDiagnostics { &self.diagnostics }
 
     /// Check if calibration was successful.
-    pub fn is_success(&self) -> bool {
-        self.converged
-    }
+    pub fn is_success(&self) -> bool { self.converged }
 
     /// Get the RMSE of the calibration.
-    pub fn rmse(&self) -> f64 {
-        self.diagnostics.rmse
-    }
+    pub fn rmse(&self) -> f64 { self.diagnostics.rmse }
 
     /// Map the parameter type to a different type.
     pub fn map<Q, F>(self, f: F) -> CalibrationResult<Q>

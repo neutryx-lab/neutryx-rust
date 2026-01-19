@@ -107,12 +107,11 @@ pub fn compute_dva_with_survival(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
 
-    fn create_test_own_credit() -> OwnCreditParams {
-        OwnCreditParams::new(0.03, 0.4).unwrap()
-    }
+    use super::*;
+
+    fn create_test_own_credit() -> OwnCreditParams { OwnCreditParams::new(0.03, 0.4).unwrap() }
 
     #[test]
     fn test_dva_basic() {

@@ -2,11 +2,14 @@
 //!
 //! Generates CSV files for trades, market data, and counterparty information.
 
+use std::{
+    fs,
+    io::{self, Write},
+    path::Path,
+};
+
 use super::FileGenerator;
 use crate::trade_source::{TradeParams, TradeRecord};
-use std::fs;
-use std::io::{self, Write};
-use std::path::Path;
 
 /// CSV file generator
 pub struct CsvGenerator;
@@ -444,9 +447,10 @@ impl FileGenerator for CsvGenerator {
 
 #[cfg(test)]
 mod tests {
+    use tempfile::TempDir;
+
     use super::*;
     use crate::trade_source::{FrontOffice, TradeSource};
-    use tempfile::TempDir;
 
     #[test]
     fn test_counterparties_csv() {

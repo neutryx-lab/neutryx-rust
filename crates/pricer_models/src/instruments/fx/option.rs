@@ -20,7 +20,10 @@
 //! ```
 
 use num_traits::Float;
-use pricer_core::types::{Currency, CurrencyError, CurrencyPair};
+use pricer_core::{
+    math::numeric::from_f64,
+    types::{Currency, CurrencyError, CurrencyPair},
+};
 
 use crate::instruments::traits::InstrumentTrait;
 
@@ -39,15 +42,11 @@ pub enum FxOptionType {
 impl FxOptionType {
     /// Returns whether this is a call option.
     #[inline]
-    pub fn is_call(&self) -> bool {
-        matches!(self, FxOptionType::Call)
-    }
+    pub fn is_call(&self) -> bool { matches!(self, FxOptionType::Call) }
 
     /// Returns whether this is a put option.
     #[inline]
-    pub fn is_put(&self) -> bool {
-        matches!(self, FxOptionType::Put)
-    }
+    pub fn is_put(&self) -> bool { matches!(self, FxOptionType::Put) }
 }
 
 impl std::fmt::Display for FxOptionType {
@@ -86,9 +85,7 @@ impl std::fmt::Display for FxOptionError {
 impl std::error::Error for FxOptionError {}
 
 impl From<CurrencyError> for FxOptionError {
-    fn from(e: CurrencyError) -> Self {
-        FxOptionError::Currency(e)
-    }
+    fn from(e: CurrencyError) -> Self { FxOptionError::Currency(e) }
 }
 
 /// FX option instrument.
@@ -189,63 +186,43 @@ impl<T: Float> FxOption<T> {
 
     /// Returns the currency pair.
     #[inline]
-    pub fn currency_pair(&self) -> &CurrencyPair<T> {
-        &self.currency_pair
-    }
+    pub fn currency_pair(&self) -> &CurrencyPair<T> { &self.currency_pair }
 
     /// Returns the base currency.
     #[inline]
-    pub fn base_currency(&self) -> Currency {
-        self.currency_pair.base()
-    }
+    pub fn base_currency(&self) -> Currency { self.currency_pair.base() }
 
     /// Returns the quote currency (settlement currency).
     #[inline]
-    pub fn quote_currency(&self) -> Currency {
-        self.currency_pair.quote()
-    }
+    pub fn quote_currency(&self) -> Currency { self.currency_pair.quote() }
 
     /// Returns the strike price.
     #[inline]
-    pub fn strike(&self) -> T {
-        self.strike
-    }
+    pub fn strike(&self) -> T { self.strike }
 
     /// Returns the time to expiry in years.
     #[inline]
-    pub fn expiry_time(&self) -> T {
-        self.expiry
-    }
+    pub fn expiry_time(&self) -> T { self.expiry }
 
     /// Returns the notional amount in base currency.
     #[inline]
-    pub fn notional_amount(&self) -> T {
-        self.notional
-    }
+    pub fn notional_amount(&self) -> T { self.notional }
 
     /// Returns the option type.
     #[inline]
-    pub fn option_type(&self) -> FxOptionType {
-        self.option_type
-    }
+    pub fn option_type(&self) -> FxOptionType { self.option_type }
 
     /// Returns the smoothing epsilon.
     #[inline]
-    pub fn epsilon(&self) -> T {
-        self.epsilon
-    }
+    pub fn epsilon(&self) -> T { self.epsilon }
 
     /// Returns whether this is a call option.
     #[inline]
-    pub fn is_call(&self) -> bool {
-        self.option_type.is_call()
-    }
+    pub fn is_call(&self) -> bool { self.option_type.is_call() }
 
     /// Returns whether this is a put option.
     #[inline]
-    pub fn is_put(&self) -> bool {
-        self.option_type.is_put()
-    }
+    pub fn is_put(&self) -> bool { self.option_type.is_put() }
 
     /// Calculates the payoff at expiry for a given spot rate.
     ///
@@ -275,9 +252,7 @@ impl<T: Float> FxOption<T> {
     }
 
     /// Returns the currency pair code (e.g., "EUR/USD").
-    pub fn pair_code(&self) -> String {
-        self.currency_pair.code()
-    }
+    pub fn pair_code(&self) -> String { self.currency_pair.code() }
 }
 
 /// Smooth approximation of max(x, y) for AD compatibility.
@@ -298,7 +273,7 @@ fn smooth_max<T: Float>(x: T, y: T, epsilon: T) -> T {
         let diff = (max_val - min_val) / epsilon;
 
         // For large diff, the correction term is negligible
-        let threshold = T::from(30.0).unwrap();
+        let threshold: T = from_f64(30.0);
         if diff > threshold {
             max_val
         } else {
@@ -309,14 +284,10 @@ fn smooth_max<T: Float>(x: T, y: T, epsilon: T) -> T {
 
 impl<T: Float> InstrumentTrait<T> for FxOption<T> {
     #[inline]
-    fn payoff(&self, spot: T) -> T {
-        self.payoff(spot)
-    }
+    fn payoff(&self, spot: T) -> T { self.payoff(spot) }
 
     #[inline]
-    fn expiry(&self) -> T {
-        self.expiry
-    }
+    fn expiry(&self) -> T { self.expiry }
 
     #[inline]
     fn currency(&self) -> Currency {
@@ -325,9 +296,7 @@ impl<T: Float> InstrumentTrait<T> for FxOption<T> {
     }
 
     #[inline]
-    fn notional(&self) -> T {
-        self.notional
-    }
+    fn notional(&self) -> T { self.notional }
 
     fn type_name(&self) -> &'static str {
         match self.option_type {

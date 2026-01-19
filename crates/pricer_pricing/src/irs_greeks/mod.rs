@@ -7,7 +7,8 @@
 //! - [`IrsGreeksResult`]: Combined Greeks results for mode comparison
 //! - [`IrsLazyEvaluator`]: Lazy evaluation with caching and dependency tracking
 //! - [`BenchmarkRunner`]: Performance benchmarking for AAD vs Bump-and-Revalue
-//! - [`XvaDemoRunner`]: XVA demo with exposure profiles and sensitivity benchmarking
+//! - [`XvaDemoRunner`]: XVA demo with exposure profiles and sensitivity
+//!   benchmarking
 //!
 //! # AAD Integration
 //!

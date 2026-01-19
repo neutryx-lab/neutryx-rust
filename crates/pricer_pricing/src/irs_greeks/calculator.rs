@@ -1,11 +1,11 @@
 //! IRS Greeks calculator implementation.
 //!
-//! Provides AAD and bump-and-revalue Greeks calculation for Interest Rate Swaps.
+//! Provides AAD and bump-and-revalue Greeks calculation for Interest Rate
+//! Swaps.
+
+use std::{marker::PhantomData, time::Instant};
 
 use num_traits::Float;
-use std::marker::PhantomData;
-use std::time::Instant;
-
 #[cfg(feature = "l1l2-integration")]
 use pricer_core::market_data::curves::{CurveEnum, CurveName, CurveSet, YieldCurve};
 #[cfg(feature = "l1l2-integration")]
@@ -13,16 +13,18 @@ use pricer_core::types::time::Date;
 #[cfg(feature = "l1l2-integration")]
 use pricer_models::instruments::rates::{price_irs, InterestRateSwap};
 
+use super::{
+    config::IrsGreeksConfig,
+    error::IrsGreeksError,
+    result::{IrsDeltaResult, IrsGreeksResult},
+};
 use crate::greeks::GreeksMode;
-
-use super::config::IrsGreeksConfig;
-use super::error::IrsGreeksError;
-use super::result::{IrsDeltaResult, IrsGreeksResult};
 
 /// IRS Greeks calculator.
 ///
 /// Computes NPV, DV01, and tenor Deltas for Interest Rate Swaps using
-/// either AAD (Adjoint Algorithmic Differentiation) or bump-and-revalue methods.
+/// either AAD (Adjoint Algorithmic Differentiation) or bump-and-revalue
+/// methods.
 ///
 /// # Type Parameters
 ///
@@ -53,9 +55,7 @@ impl<T: Float> IrsGreeksCalculator<T> {
     }
 
     /// Returns a reference to the configuration.
-    pub fn config(&self) -> &IrsGreeksConfig {
-        &self.config
-    }
+    pub fn config(&self) -> &IrsGreeksConfig { &self.config }
 }
 
 #[cfg(feature = "l1l2-integration")]
@@ -148,8 +148,8 @@ impl IrsGreeksCalculator<f64> {
     ///
     /// # Returns
     ///
-    /// The DV01 value (positive for receiver swaps, typically negative for payer swaps
-    /// when rates rise).
+    /// The DV01 value (positive for receiver swaps, typically negative for
+    /// payer swaps when rates rise).
     ///
     /// # Requirements Coverage
     ///
@@ -281,7 +281,8 @@ impl IrsGreeksCalculator<f64> {
         // DV01: Compute using a 1-year reference tenor sensitivity.
         // Since deltas are tenor-weighted, we normalise by extracting the
         // underlying d(NPV)/d(rate) and scaling to 1bp.
-        // For a proper parallel DV01, use compute_dv01() which does a true parallel shift.
+        // For a proper parallel DV01, use compute_dv01() which does a true parallel
+        // shift.
         let reference_delta = if !deltas.is_empty() {
             // Find delta closest to 1Y tenor, or use the average
             let one_year_idx = tenor_points
@@ -307,7 +308,8 @@ impl IrsGreeksCalculator<f64> {
     /// Computes tenor Deltas using AAD (placeholder implementation).
     ///
     /// When `enzyme-ad` feature is enabled, this uses Enzyme for
-    /// single-pass reverse-mode AD. Otherwise, it falls back to bump-and-revalue.
+    /// single-pass reverse-mode AD. Otherwise, it falls back to
+    /// bump-and-revalue.
     ///
     /// # Arguments
     ///
@@ -331,8 +333,6 @@ impl IrsGreeksCalculator<f64> {
         valuation_date: Date,
         tenor_points: &[f64],
     ) -> Result<IrsDeltaResult<f64>, IrsGreeksError> {
-        // Phase 1: Fallback to bump-and-revalue
-        // Phase 2 (enzyme-ad feature): Use Enzyme #[autodiff] macro
         #[cfg(feature = "enzyme-ad")]
         {
             // Enzyme AAD: #[autodiff_reverse] on pricing function computes all
@@ -434,7 +434,8 @@ impl IrsGreeksCalculator<f64> {
     ///
     /// # Requirements Coverage
     ///
-    /// - Requirement 2.3: 計算結果の差分が許容誤差(1e-6相対誤差)以内であることを検証
+    /// - Requirement 2.3:
+    ///   計算結果の差分が許容誤差(1e-6相対誤差)以内であることを検証
     pub fn verify_accuracy(
         &self,
         swap: &InterestRateSwap<f64>,

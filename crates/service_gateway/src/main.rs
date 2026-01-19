@@ -1,6 +1,7 @@
 //! Neutryx Server - gRPC/REST API for XVA Pricing
 //!
-//! This is the production integration point for the Neutryx XVA pricing library.
+//! This is the production integration point for the Neutryx XVA pricing
+//! library.
 //!
 //! # Architecture
 //!

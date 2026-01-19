@@ -4,8 +4,10 @@
 //! A (Adapter) -> I (Infra) -> P (Pricer) -> S (Service)
 
 use demo_inputs::prelude::{FrontOffice, TradeSource};
-use demo_outputs::prelude::FileWriter;
-use demo_outputs::report_sink::{Report, ReportFormat, ReportSink};
+use demo_outputs::{
+    prelude::FileWriter,
+    report_sink::{Report, ReportFormat, ReportSink},
+};
 use pricer_core::types::Currency;
 use pricer_models::demo::{BlackScholes, InstrumentEnum, ModelEnum, VanillaSwap};
 use pricer_optimiser::provider::MarketProvider;

@@ -6,13 +6,13 @@ pub use irs_aad::{
     draw_irs_aad_screen, draw_irs_benchmark_chart, IrsAadScreenData, IrsDisplayParams,
     IrsDisplayResult,
 };
-
-use crate::app::{ExposureTimeSeries, IrsAadDemoState, RiskMetrics, TradeRow};
 use ratatui::{
     prelude::*,
     symbols,
     widgets::{Axis, Block, Borders, Cell, Chart, Dataset, GraphType, Paragraph, Row, Table},
 };
+
+use crate::app::{ExposureTimeSeries, IrsAadDemoState, RiskMetrics, TradeRow};
 
 /// Format a number with thousands separators
 fn format_number(n: f64, decimals: usize) -> String {

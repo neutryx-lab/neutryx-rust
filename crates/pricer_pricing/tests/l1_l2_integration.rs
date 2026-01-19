@@ -19,9 +19,7 @@ fn test_float_trait_import() {
     use pricer_core::traits::Float;
 
     // Verify Float trait works with f64
-    fn generic_compute<T: Float>(x: T, y: T) -> T {
-        x * y + x.exp()
-    }
+    fn generic_compute<T: Float>(x: T, y: T) -> T { x * y + x.exp() }
 
     let result = generic_compute(2.0_f64, 3.0_f64);
     assert!(result > 0.0);

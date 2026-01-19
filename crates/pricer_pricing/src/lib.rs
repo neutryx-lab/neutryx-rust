@@ -2,15 +2,17 @@
 //!
 //! ## Layer 3 Role
 //!
-//! pricer_pricing serves as the AD (Automatic Differentiation) engine in the 4-layer architecture:
+//! pricer_pricing serves as the AD (Automatic Differentiation) engine in the
+//! 4-layer architecture:
 //! - Enzyme LLVM-level automatic differentiation
 //! - Monte Carlo pricing kernels with AD integration (Phase 3.2)
 //! - Gradient verification utilities
 //!
 //! ## Nightly Rust Requirement
 //!
-//! This is the **only crate** that requires nightly Rust toolchain (`nightly-2025-01-15`).
-//! Enzyme operates at LLVM level and requires nightly features for optimal performance.
+//! This is the **only crate** that requires nightly Rust toolchain
+//! (`nightly-2025-01-15`). Enzyme operates at LLVM level and requires nightly
+//! features for optimal performance.
 //!
 //! ## Layer Integration (Phase 4)
 //!
@@ -45,35 +47,29 @@
 //!
 //! ### Manual Installation
 //!
-//! 1. Install LLVM 18:
-//!    ```bash
-//!    # Ubuntu/Debian
-//!    wget https://apt.llvm.org/llvm.sh
-//!    chmod +x llvm.sh
-//!    sudo ./llvm.sh 18
+//! 1. Install LLVM 18: ```bash # Ubuntu/Debian wget https://apt.llvm.org/llvm.sh
+//!    chmod +x llvm.sh sudo ./llvm.sh 18 ```
+//!
+//! 2. Install nightly Rust: ```bash rustup toolchain install nightly-2025-01-15
 //!    ```
 //!
-//! 2. Install nightly Rust:
-//!    ```bash
-//!    rustup toolchain install nightly-2025-01-15
-//!    ```
-//!
-//! 3. Build pricer_pricing:
-//!    ```bash
-//!    cargo +nightly build -p pricer_pricing
-//!    cargo +nightly test -p pricer_pricing
-//!    ```
+//! 3. Build pricer_pricing: ```bash cargo +nightly build -p pricer_pricing
+//!    cargo +nightly test -p pricer_pricing ```
 //!
 //! ## Known Constraints
 //!
-//! - **Nightly Rust Required**: This crate uses `rust-toolchain.toml` to enforce nightly-2025-01-15
-//! - **LLVM 18 Dependency**: llvm-sys requires LLVM 18 to be installed on the system (enzyme-ad feature)
-//! - **Optional L1/L2**: Use `--features l1l2-integration` to enable pricer_core/pricer_models
+//! - **Nightly Rust Required**: This crate uses `rust-toolchain.toml` to
+//!   enforce nightly-2025-01-15
+//! - **LLVM 18 Dependency**: llvm-sys requires LLVM 18 to be installed on the
+//!   system (enzyme-ad feature)
+//! - **Optional L1/L2**: Use `--features l1l2-integration` to enable
+//!   pricer_core/pricer_models
 //!
 //! ## Migration from pricer_kernel
 //!
-//! This crate was renamed from `pricer_kernel` to `pricer_pricing` in version 0.7.0.
-//! For backward compatibility, you can still import the crate as `pricer_kernel`:
+//! This crate was renamed from `pricer_kernel` to `pricer_pricing` in version
+//! 0.7.0. For backward compatibility, you can still import the crate as
+//! `pricer_kernel`:
 //!
 //! ```toml
 //! # Cargo.toml
@@ -143,8 +139,6 @@ pub use graph::{
     GraphNode, GraphNodeUpdate, NodeGroup, NodeType, SimpleGraphExtractor,
 };
 pub use greeks::{GreeksConfig, GreeksMode, GreeksResult};
-pub use mc::{GbmParams, Greek, MonteCarloConfig, MonteCarloPricer, PayoffParams, PricingResult};
-
 // Re-export IRS Greeks types when l1l2-integration is enabled
 #[cfg(feature = "l1l2-integration")]
 pub use irs_greeks::{
@@ -155,6 +149,7 @@ pub use irs_greeks::{
     SwapParams, TenorPoint, TimingStats, XvaCreditParams, XvaDemoConfig, XvaDemoError,
     XvaDemoRunner, XvaResult, XvaSensitivityBenchmark,
 };
+pub use mc::{GbmParams, Greek, MonteCarloConfig, MonteCarloPricer, PayoffParams, PricingResult};
 
 // =============================================================================
 // Backward Compatibility Alias (deprecated)
@@ -181,12 +176,5 @@ pub use irs_greeks::{
     note = "pricer_kernel has been renamed to pricer_pricing. Please update your imports."
 )]
 pub mod pricer_kernel {
-    pub use crate::analytical;
-    pub use crate::checkpoint;
-    pub use crate::enzyme;
-    pub use crate::greeks;
-    pub use crate::mc;
-    pub use crate::path_dependent;
-    pub use crate::rng;
-    pub use crate::verify;
+    pub use crate::{analytical, checkpoint, enzyme, greeks, mc, path_dependent, rng, verify};
 }

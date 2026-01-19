@@ -2,22 +2,33 @@
 //!
 //! Executes scenario-based stress testing using pricer_risk::scenarios.
 
-use super::{DemoWorkflow, ProgressCallback, WorkflowResult, WorkflowStep};
-use crate::config::DemoConfig;
-use crate::error::DemoError;
+use std::{
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    time::Instant,
+};
+
 use async_trait::async_trait;
-use demo_inputs::prelude::{FrontOffice, TradeSource};
-use demo_inputs::trade_source::{TradeParams, TradeRecord};
-use demo_outputs::prelude::FileWriter;
-use demo_outputs::report_sink::{Report, ReportFormat, ReportSink};
+use demo_inputs::{
+    prelude::{FrontOffice, TradeSource},
+    trade_source::{TradeParams, TradeRecord},
+};
+use demo_outputs::{
+    prelude::FileWriter,
+    report_sink::{Report, ReportFormat, ReportSink},
+};
 use pricer_core::types::Currency;
 use pricer_models::demo::{BlackScholes, InstrumentEnum, ModelEnum, VanillaSwap};
 use pricer_optimiser::provider::MarketProvider;
-use pricer_risk::demo::{run_portfolio_pricing, DemoTrade};
-use pricer_risk::scenarios::PresetScenarioType as PricerPresetScenarioType;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use std::time::Instant;
+use pricer_risk::{
+    demo::{run_portfolio_pricing, DemoTrade},
+    scenarios::PresetScenarioType as PricerPresetScenarioType,
+};
+
+use super::{DemoWorkflow, ProgressCallback, WorkflowResult, WorkflowStep};
+use crate::{config::DemoConfig, error::DemoError};
 
 /// Preset scenario types for stress testing (demo layer)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -231,16 +242,12 @@ impl StressTestWorkflow {
 }
 
 impl Default for StressTestWorkflow {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 #[async_trait]
 impl DemoWorkflow for StressTestWorkflow {
-    fn name(&self) -> &str {
-        "Stress Test"
-    }
+    fn name(&self) -> &str { "Stress Test" }
 
     async fn run(
         &self,

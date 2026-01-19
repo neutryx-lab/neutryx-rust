@@ -3,11 +3,14 @@
 //! This module provides the main interface for managing simulation
 //! checkpoints during Monte Carlo forward and reverse passes.
 
-use super::budget::MemoryBudget;
-use super::state::{CheckpointStorage, SimulationState};
-use super::strategy::CheckpointStrategy;
 use num_traits::Float;
 use thiserror::Error;
+
+use super::{
+    budget::MemoryBudget,
+    state::{CheckpointStorage, SimulationState},
+    strategy::CheckpointStrategy,
+};
 
 /// Errors that can occur during checkpoint operations.
 #[derive(Debug, Error)]
@@ -155,9 +158,7 @@ impl<T: Float> CheckpointManager<T> {
     }
 
     /// Returns the memory budget if set.
-    pub fn memory_budget(&self) -> Option<&MemoryBudget> {
-        self.memory_budget.as_ref()
-    }
+    pub fn memory_budget(&self) -> Option<&MemoryBudget> { self.memory_budget.as_ref() }
 
     /// Checks if current memory usage is within the budget.
     ///
@@ -222,9 +223,7 @@ impl<T: Float> CheckpointManager<T> {
     /// # Arguments
     ///
     /// * `total_steps` - Total number of steps in the simulation
-    pub fn set_total_steps(&mut self, total_steps: usize) {
-        self.total_steps = total_steps;
-    }
+    pub fn set_total_steps(&mut self, total_steps: usize) { self.total_steps = total_steps; }
 
     /// Sets the total number of simulation steps (builder pattern).
     ///
@@ -244,9 +243,7 @@ impl<T: Float> CheckpointManager<T> {
     }
 
     /// Returns the current checkpoint strategy.
-    pub fn strategy(&self) -> &CheckpointStrategy {
-        &self.strategy
-    }
+    pub fn strategy(&self) -> &CheckpointStrategy { &self.strategy }
 
     /// Determines if a checkpoint should be saved at the given step.
     ///
@@ -301,7 +298,8 @@ impl<T: Float> CheckpointManager<T> {
     ///
     /// # Errors
     ///
-    /// Returns `CheckpointError::NotFound` if no checkpoint exists at this step.
+    /// Returns `CheckpointError::NotFound` if no checkpoint exists at this
+    /// step.
     pub fn restore_state(&self, step: usize) -> CheckpointResult<SimulationState<T>> {
         self.storage
             .get(step)
@@ -320,44 +318,33 @@ impl<T: Float> CheckpointManager<T> {
     ///
     /// # Returns
     ///
-    /// Step number of the nearest checkpoint, or `None` if no checkpoints exist.
+    /// Step number of the nearest checkpoint, or `None` if no checkpoints
+    /// exist.
     pub fn nearest_checkpoint(&self, step: usize) -> Option<usize> {
         self.storage.nearest_before(step)
     }
 
     /// Returns the number of stored checkpoints.
-    pub fn checkpoint_count(&self) -> usize {
-        self.storage.len()
-    }
+    pub fn checkpoint_count(&self) -> usize { self.storage.len() }
 
     /// Returns true if no checkpoints are stored.
-    pub fn is_empty(&self) -> bool {
-        self.storage.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.storage.is_empty() }
 
     /// Clears all stored checkpoints.
     ///
     /// Call this when starting a new simulation or when checkpoints
     /// are no longer needed.
-    pub fn clear(&mut self) {
-        self.storage.clear();
-    }
+    pub fn clear(&mut self) { self.storage.clear(); }
 
     /// Returns the total memory usage of stored checkpoints in bytes.
-    pub fn memory_usage(&self) -> usize {
-        self.storage.memory_usage()
-    }
+    pub fn memory_usage(&self) -> usize { self.storage.memory_usage() }
 
     /// Returns the storage capacity.
-    pub fn capacity(&self) -> usize {
-        self.storage.capacity()
-    }
+    pub fn capacity(&self) -> usize { self.storage.capacity() }
 }
 
 impl<T: Float> Default for CheckpointManager<T> {
-    fn default() -> Self {
-        Self::new(CheckpointStrategy::default())
-    }
+    fn default() -> Self { Self::new(CheckpointStrategy::default()) }
 }
 
 #[cfg(test)]

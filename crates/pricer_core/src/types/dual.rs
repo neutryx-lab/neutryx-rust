@@ -32,7 +32,8 @@
 ///
 /// NOTE: `DualNumber` (`Dual64`) does NOT implement `num_traits::Float`.
 /// To use smoothing functions with AD, they need to be refactored to use
-/// a more permissive trait bound (e.g., `DualNum<f64>` or a custom `Scalar` trait).
+/// a more permissive trait bound (e.g., `DualNum<f64>` or a custom `Scalar`
+/// trait).
 ///
 /// Example of intended usage (requires trait bound refactoring):
 ///

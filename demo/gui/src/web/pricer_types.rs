@@ -14,10 +14,9 @@
 //! - Requirement 3.2, 3.5: 価格計算レスポンス型
 //! - Requirement 4.1, 4.2: Greeks結果型
 
+use std::{collections::HashMap, sync::RwLock, time::Instant};
+
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::sync::RwLock;
-use std::time::Instant;
 use uuid::Uuid;
 
 // =============================================================================
@@ -172,9 +171,7 @@ pub struct DemoMarketData {
 }
 
 impl Default for DemoMarketData {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl DemoMarketData {
@@ -460,13 +457,12 @@ pub struct RiskRequest {
 }
 
 /// Default bump size of 1 basis point.
-fn default_bump_size_bps() -> f64 {
-    1.0
-}
+fn default_bump_size_bps() -> f64 { 1.0 }
 
 /// Delta result for a single tenor point.
 ///
-/// Represents the sensitivity of NPV to a 1bp change in the par rate at this tenor.
+/// Represents the sensitivity of NPV to a 1bp change in the par rate at this
+/// tenor.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DeltaResult {
@@ -596,9 +592,7 @@ pub struct ErrorDetails {
 
 impl ErrorDetails {
     /// Create new empty error details.
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Create error details with a field.
     pub fn with_field(field: impl Into<String>) -> Self {
@@ -650,14 +644,17 @@ impl ErrorDetails {
 
 /// Error response for IRS Bootstrap & Risk API.
 ///
-/// Follows the design document schema for error responses with HTTP status mapping:
+/// Follows the design document schema for error responses with HTTP status
+/// mapping:
 /// - 400 Bad Request: Validation errors (negative values, invalid fields)
 /// - 404 Not Found: Curve ID not found
-/// - 422 Unprocessable Entity: Bootstrap convergence failure, calculation errors
+/// - 422 Unprocessable Entity: Bootstrap convergence failure, calculation
+///   errors
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IrsBootstrapErrorResponse {
-    /// Error type identifier (e.g., "ValidationError", "NotFoundError", "CalculationError")
+    /// Error type identifier (e.g., "ValidationError", "NotFoundError",
+    /// "CalculationError")
     pub error: String,
     /// Human-readable error message
     pub message: String,
@@ -1014,7 +1011,8 @@ pub struct CachedCurve {
     pub discount_factors: Vec<f64>,
     /// Zero rates at each pillar
     pub zero_rates: Vec<f64>,
-    /// Original par rates used to bootstrap this curve (Task 4.1: Required for bump-and-revalue)
+    /// Original par rates used to bootstrap this curve (Task 4.1: Required for
+    /// bump-and-revalue)
     pub par_rates: Vec<ParRateInput>,
     /// Creation timestamp
     pub created_at: Instant,
@@ -1062,14 +1060,10 @@ impl CachedCurve {
     }
 
     /// Get the number of pillars.
-    pub fn pillar_count(&self) -> usize {
-        self.pillars.len()
-    }
+    pub fn pillar_count(&self) -> usize { self.pillars.len() }
 
     /// Get the age of this cache entry in seconds.
-    pub fn age_seconds(&self) -> u64 {
-        self.created_at.elapsed().as_secs()
-    }
+    pub fn age_seconds(&self) -> u64 { self.created_at.elapsed().as_secs() }
 }
 
 /// In-memory cache for bootstrapped curves.
@@ -1214,7 +1208,8 @@ pub enum GreeksCalculationMode {
 
 /// Greeks compare request for Bump vs AAD comparison.
 ///
-/// Sent by the client to calculate Greeks using both methods and compare results.
+/// Sent by the client to calculate Greeks using both methods and compare
+/// results.
 ///
 /// # Requirements Coverage
 ///
@@ -1394,7 +1389,8 @@ pub struct GreeksCompareResponse {
 
 /// First-order Greeks request for IRS.
 ///
-/// Sent by the client to calculate first-order Greeks (Delta, Vega, Rho, Theta).
+/// Sent by the client to calculate first-order Greeks (Delta, Vega, Rho,
+/// Theta).
 ///
 /// # Requirements Coverage
 ///
@@ -1812,17 +1808,11 @@ pub struct GreeksHeatmapRequest {
     pub option_type: OptionType,
 }
 
-fn default_spot() -> f64 {
-    100.0
-}
+fn default_spot() -> f64 { 100.0 }
 
-fn default_rate() -> f64 {
-    0.05
-}
+fn default_rate() -> f64 { 0.05 }
 
-fn default_volatility() -> f64 {
-    0.20
-}
+fn default_volatility() -> f64 { 0.20 }
 
 impl Default for GreeksHeatmapRequest {
     fn default() -> Self {
@@ -1849,7 +1839,8 @@ impl Default for GreeksHeatmapRequest {
 pub struct GreeksHeatmapResponse {
     /// X-axis labels (tenors in years, e.g., ["0.25", "0.5", "1.0", "2.0"])
     pub x_axis: Vec<String>,
-    /// Y-axis labels (strikes as percentages of spot, e.g., ["80%", "90%", "100%", "110%", "120%"])
+    /// Y-axis labels (strikes as percentages of spot, e.g., ["80%", "90%",
+    /// "100%", "110%", "120%"])
     pub y_axis: Vec<String>,
     /// 2D matrix of values: values[y][x] corresponds to y_axis[y] and x_axis[x]
     pub values: Vec<Vec<f64>>,
@@ -1910,17 +1901,11 @@ fn default_greek_types() -> Vec<GreekType> {
     vec![GreekType::Delta, GreekType::Gamma, GreekType::Theta]
 }
 
-fn default_strike() -> f64 {
-    100.0
-}
+fn default_strike() -> f64 { 100.0 }
 
-fn default_time_horizon() -> f64 {
-    1.0
-}
+fn default_time_horizon() -> f64 { 1.0 }
 
-fn default_num_points() -> usize {
-    50
-}
+fn default_num_points() -> usize { 50 }
 
 impl Default for GreeksTimeseriesRequest {
     fn default() -> Self {
@@ -2119,7 +2104,8 @@ pub struct PresetScenarioInfo {
     pub description: String,
     /// Category (rate, curve, credit, equity, fx, volatility)
     pub category: String,
-    /// Shift amount in basis points (for rate scenarios) or percentage (for others)
+    /// Shift amount in basis points (for rate scenarios) or percentage (for
+    /// others)
     pub shift_amount: f64,
     /// Unit of the shift amount
     pub shift_unit: String,
@@ -2203,9 +2189,7 @@ impl ScenarioPresetsResponse {
 }
 
 impl Default for ScenarioPresetsResponse {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 /// Risk factor shift specification for custom scenarios.
@@ -2226,13 +2210,9 @@ pub struct RiskFactorShiftApi {
     pub shift_type: String,
 }
 
-fn default_pattern() -> String {
-    "*".to_string()
-}
+fn default_pattern() -> String { "*".to_string() }
 
-fn default_shift_type() -> String {
-    "parallel".to_string()
-}
+fn default_shift_type() -> String { "parallel".to_string() }
 
 /// Request for POST /api/scenarios/run endpoint.
 ///

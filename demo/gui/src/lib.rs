@@ -32,13 +32,15 @@ pub mod web;
 
 /// Prelude module for convenient imports
 pub mod prelude {
-    pub use crate::api_client::ApiClient;
-    pub use crate::app::{
-        ExposureTimeSeries, IrsAadBenchmark, IrsAadDemoState, IrsAadParams, IrsAadResult, Screen,
-        TuiApp,
-    };
-    pub use crate::visualisation::{
-        AccuracyVerificationData, AccuracyVisualiser, BenchmarkVisualiser, ComputationFlowDiagram,
-        ScalabilityData, ScalabilityVisualiser, SpeedComparisonData,
+    pub use crate::{
+        api_client::ApiClient,
+        app::{
+            ExposureTimeSeries, IrsAadBenchmark, IrsAadDemoState, IrsAadParams, IrsAadResult,
+            Screen, TuiApp,
+        },
+        visualisation::{
+            AccuracyVerificationData, AccuracyVisualiser, BenchmarkVisualiser,
+            ComputationFlowDiagram, ScalabilityData, ScalabilityVisualiser, SpeedComparisonData,
+        },
     };
 }

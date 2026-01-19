@@ -37,15 +37,11 @@ impl<T: Float> IrsDeltaResult<T> {
 
     /// Returns the number of tenor points.
     #[inline]
-    pub fn num_tenors(&self) -> usize {
-        self.tenors.len()
-    }
+    pub fn num_tenors(&self) -> usize { self.tenors.len() }
 
     /// Returns true if the result is empty.
     #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.tenors.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.tenors.is_empty() }
 }
 
 impl<T: Float> Default for IrsDeltaResult<T> {
@@ -109,17 +105,14 @@ impl<T: Float> IrsGreeksResult<T> {
 
     /// Returns true if AAD result is available.
     #[inline]
-    pub fn has_aad_result(&self) -> bool {
-        self.aad_result.is_some()
-    }
+    pub fn has_aad_result(&self) -> bool { self.aad_result.is_some() }
 
     /// Returns true if bump result is available.
     #[inline]
-    pub fn has_bump_result(&self) -> bool {
-        self.bump_result.is_some()
-    }
+    pub fn has_bump_result(&self) -> bool { self.bump_result.is_some() }
 
-    /// Returns the DV01 from the preferred result (AAD if available, else bump).
+    /// Returns the DV01 from the preferred result (AAD if available, else
+    /// bump).
     pub fn dv01(&self) -> Option<T> {
         self.aad_result
             .as_ref()

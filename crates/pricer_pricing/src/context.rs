@@ -1,8 +1,10 @@
 //! Pricing context and kernel for the 3-stage rocket pattern.
 //!
 //! This module provides:
-//! - `PricingContext`: Lightweight reference-based context for pricing (Stage 2)
-//! - `price_single_trade`: Pure pricing kernel with no HashMap lookups (Stage 3)
+//! - `PricingContext`: Lightweight reference-based context for pricing (Stage
+//!   2)
+//! - `price_single_trade`: Pure pricing kernel with no HashMap lookups (Stage
+//!   3)
 //!
 //! # Architecture Role
 //!
@@ -15,7 +17,8 @@
 //! # Design Principles
 //!
 //! - **Zero HashMap Lookups**: All market data resolved before kernel entry
-//! - **Reference-Based**: Uses `&'a CurveEnum` not `Arc` for zero-cost abstraction
+//! - **Reference-Based**: Uses `&'a CurveEnum` not `Arc` for zero-cost
+//!   abstraction
 //! - **Static Dispatch**: All enum matching resolved at compile time
 //!
 //! # Example
@@ -139,10 +142,11 @@ pub fn price_single_trade(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use pricer_models::demo::{
         BlackScholes, CmsSwap, FlatCurve, HullWhite, SabrVolSurface, VanillaSwap,
     };
+
+    use super::*;
 
     // -------------------------------------------------------------------------
     // Task 3.1: PricingContext Tests

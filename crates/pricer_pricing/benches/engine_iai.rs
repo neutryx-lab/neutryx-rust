@@ -1,8 +1,8 @@
 //! Iai-callgrind benchmarks for pricer_pricing Monte Carlo pricing.
 //!
-//! These benchmarks measure instruction counts for deterministic CI regression detection.
-//! Unlike Criterion (wall-clock time), iai-callgrind provides reproducible metrics
-//! independent of system load.
+//! These benchmarks measure instruction counts for deterministic CI regression
+//! detection. Unlike Criterion (wall-clock time), iai-callgrind provides
+//! reproducible metrics independent of system load.
 //!
 //! # Requirements
 //!
@@ -28,10 +28,13 @@
 //! - RNG generation
 //! - Workspace operations
 
-use iai_callgrind::{library_benchmark, library_benchmark_group, main};
-use pricer_pricing::mc::{GbmParams, MonteCarloConfig, MonteCarloPricer, PayoffParams};
-use pricer_pricing::rng::PricerRng;
 use std::hint::black_box;
+
+use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+use pricer_pricing::{
+    mc::{GbmParams, MonteCarloConfig, MonteCarloPricer, PayoffParams},
+    rng::PricerRng,
+};
 
 // =============================================================================
 // RNG Benchmarks
@@ -119,9 +122,7 @@ fn greeks_delta_ad_10k() -> (f64, f64) {
 // =============================================================================
 
 #[library_benchmark]
-fn workspace_creation_10k() -> MonteCarloPricer {
-    black_box(setup_pricer(10_000, 50))
-}
+fn workspace_creation_10k() -> MonteCarloPricer { black_box(setup_pricer(10_000, 50)) }
 
 #[library_benchmark]
 fn workspace_reuse() -> f64 {

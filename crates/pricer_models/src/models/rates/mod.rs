@@ -2,7 +2,8 @@
 //!
 //! This module provides stochastic models for interest rate processes:
 //! - [`HullWhiteModel`]: Hull-White one-factor model for short rate dynamics
-//! - [`CIRModel`]: Cox-Ingersoll-Ross model with mean reversion (future implementation)
+//! - [`CIRModel`]: Cox-Ingersoll-Ross model with mean reversion (future
+//!   implementation)
 //!
 //! # Feature Flag
 //!

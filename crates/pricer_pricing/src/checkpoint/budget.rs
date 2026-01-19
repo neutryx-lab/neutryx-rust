@@ -72,9 +72,7 @@ impl MemoryBudget {
     /// assert_eq!(budget.max_bytes(), 100 * 1024 * 1024);
     /// ```
     #[inline]
-    pub fn from_mb(mb: usize) -> Self {
-        Self::new(mb * 1024 * 1024)
-    }
+    pub fn from_mb(mb: usize) -> Self { Self::new(mb * 1024 * 1024) }
 
     /// Creates a memory budget from gigabytes.
     ///
@@ -82,9 +80,7 @@ impl MemoryBudget {
     ///
     /// * `gb` - Maximum memory usage in gigabytes
     #[inline]
-    pub fn from_gb(gb: usize) -> Self {
-        Self::new(gb * 1024 * 1024 * 1024)
-    }
+    pub fn from_gb(gb: usize) -> Self { Self::new(gb * 1024 * 1024 * 1024) }
 
     /// Sets the warning threshold as a fraction of maximum.
     ///
@@ -109,15 +105,11 @@ impl MemoryBudget {
 
     /// Returns the maximum memory in bytes.
     #[inline]
-    pub fn max_bytes(&self) -> usize {
-        self.max_bytes
-    }
+    pub fn max_bytes(&self) -> usize { self.max_bytes }
 
     /// Returns the warning threshold.
     #[inline]
-    pub fn warning_threshold(&self) -> f64 {
-        self.warning_threshold
-    }
+    pub fn warning_threshold(&self) -> f64 { self.warning_threshold }
 
     /// Checks if the current usage is within budget.
     ///
@@ -129,9 +121,7 @@ impl MemoryBudget {
     ///
     /// `true` if usage is within budget.
     #[inline]
-    pub fn is_within_budget(&self, current_usage: usize) -> bool {
-        current_usage <= self.max_bytes
-    }
+    pub fn is_within_budget(&self, current_usage: usize) -> bool { current_usage <= self.max_bytes }
 
     /// Checks if the current usage exceeds the warning threshold.
     ///
@@ -185,7 +175,8 @@ impl MemoryBudget {
         }
 
         // Calculate total size of one checkpoint state
-        // Overhead for SimulationState struct (step, rng_seed, rng_calls, observer_state)
+        // Overhead for SimulationState struct (step, rng_seed, rng_calls,
+        // observer_state)
         let overhead = 128; // Approximate overhead in bytes
         let checkpoint_size = n_paths * state_size_per_path + overhead;
 
@@ -240,9 +231,7 @@ impl MemoryBudget {
 
 impl Default for MemoryBudget {
     /// Creates a default memory budget of 1 GB.
-    fn default() -> Self {
-        Self::from_gb(1)
-    }
+    fn default() -> Self { Self::from_gb(1) }
 }
 
 #[cfg(test)]
@@ -285,9 +274,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "between 0.0 and 1.0")]
-    fn test_invalid_warning_threshold() {
-        MemoryBudget::new(1000).with_warning_threshold(1.5);
-    }
+    fn test_invalid_warning_threshold() { MemoryBudget::new(1000).with_warning_threshold(1.5); }
 
     // ========================================================================
     // Budget Checking Tests
