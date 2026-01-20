@@ -19,7 +19,7 @@
 
 use pricer_core::traits::{priceable::Differentiable, Float};
 
-use crate::models::stochastic::{SingleState, StochasticModel};
+use crate::models::stochastic::{EquityModel, SingleState, StochasticModel};
 
 /// GBM model parameters.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -126,6 +126,8 @@ impl<T: Float + Default> StochasticModel<T> for GBMModel<T> {
         1 // GBM is a single-factor model
     }
 }
+
+impl<T: Float + Default> EquityModel<T> for GBMModel<T> {}
 
 #[cfg(test)]
 mod tests {

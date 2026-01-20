@@ -45,7 +45,7 @@ use pricer_core::{
 };
 use thiserror::Error;
 
-use crate::models::stochastic::{StochasticModel, TwoFactorState};
+use crate::models::stochastic::{EquityModel, FxModel, RatesModel, StochasticModel, TwoFactorState};
 
 /// SABRモデルエラー型
 ///
@@ -1077,6 +1077,11 @@ impl<T: Float + Default> StochasticModel<T> for SABRModel<T> {
 
     fn num_factors() -> usize { 2 }
 }
+
+// SABR is applicable to multiple asset classes
+impl<T: Float + Default> EquityModel<T> for SABRModel<T> {}
+impl<T: Float + Default> RatesModel<T> for SABRModel<T> {}
+impl<T: Float + Default> FxModel<T> for SABRModel<T> {}
 
 #[cfg(test)]
 mod tests {

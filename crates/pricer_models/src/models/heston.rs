@@ -1009,7 +1009,7 @@ impl<T: Float> Differentiable for HestonModel<T> {}
 // Task 3.4: StochasticModelトレイト実装
 // ================================================================
 
-use crate::models::stochastic::{StochasticModel, TwoFactorState};
+use crate::models::stochastic::{EquityModel, StochasticModel, TwoFactorState};
 
 /// HestonModelのStochasticModelトレイト実装
 ///
@@ -1121,6 +1121,8 @@ impl<T: Float + Default> StochasticModel<T> for HestonModel<T> {
     /// - 2: 分散過程
     fn num_factors() -> usize { 2 }
 }
+
+impl<T: Float + Default> EquityModel<T> for HestonModel<T> {}
 
 // PricingErrorへの変換を実装
 impl From<HestonError> for pricer_core::types::PricingError {

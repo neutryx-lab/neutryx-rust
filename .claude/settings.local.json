@@ -184,7 +184,9 @@
       "Read(//c/Users/khosh/**)",
       "Bash(du:*)",
       "Bash(ls -la \"c:\\\\Users\\\\khosh\\\\Codes\\\\neutryx-rust\\\\crates\\\\pricer_pricing\\\\benches\"\" 2>&1 || echo \"Directory does not exist \")",
-      "Bash(cargo tree:*)"
+      "Bash(cargo tree:*)",
+      "Bash(git mv:*)",
+      "Bash(git rm:*)"
     ]
   }
 }

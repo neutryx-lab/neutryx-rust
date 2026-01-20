@@ -41,7 +41,7 @@ use pricer_core::traits::{priceable::Differentiable, Float};
 
 use crate::market::curves::{FlatCurve, YieldCurve};
 
-use crate::models::stochastic::{SingleState, StochasticModel};
+use crate::models::stochastic::{RatesModel, SingleState, StochasticModel};
 
 // ================================================================
 // Task 2.1: ThetaFunction 型の実装
@@ -407,6 +407,8 @@ impl<T: Float + Default> StochasticModel<T> for HullWhiteModel<T> {
         1 // Hull-White 1F is a single-factor model
     }
 }
+
+impl<T: Float + Default> RatesModel<T> for HullWhiteModel<T> {}
 
 #[cfg(test)]
 mod tests {
