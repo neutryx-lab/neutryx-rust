@@ -4,6 +4,7 @@
 //! with generic type support for automatic differentiation compatibility.
 
 use num_traits::Float;
+
 use crate::math::numeric::from_f64;
 
 /// Interpolation method for bootstrapped curves.

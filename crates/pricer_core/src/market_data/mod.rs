@@ -42,22 +42,20 @@ pub mod provider;
 pub mod surfaces;
 
 // Re-export commonly used types
-pub use curves::{
-    CreditCurve, CurveEnum, CurveInterpolation, CurveName, CurveSet, FlatCurve,
-    FlatHazardRateCurve, HazardRateCurve, InterpolatedCurve, YieldCurve,
-};
-pub use error::MarketDataError;
-pub use surfaces::{
-    FlatVol, FxDeltaPoint, FxVolatilitySurface, InterpolatedVolSurface, VolSurfaceEnum,
-    VolatilitySurface,
-};
-
 // Re-export bootstrapping types
 pub use bootstrapping::{
     BootstrapError, BootstrapInterpolation, BootstrappedCurve, BootstrappedCurveBuilder,
     CachedBootstrapper, GenericBootstrapConfig, GenericBootstrapConfigBuilder,
     GenericBootstrapResult, SequentialBootstrapper,
 };
-
+pub use curves::{
+    CreditCurve, CurveEnum, CurveInterpolation, CurveName, CurveSet, FlatCurve,
+    FlatHazardRateCurve, HazardRateCurve, InterpolatedCurve, YieldCurve,
+};
+pub use error::MarketDataError;
 // Re-export provider
 pub use provider::MarketProvider;
+pub use surfaces::{
+    FlatVol, FxDeltaPoint, FxVolatilitySurface, InterpolatedVolSurface, VolSurfaceEnum,
+    VolatilitySurface,
+};

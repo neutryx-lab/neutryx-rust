@@ -1,7 +1,8 @@
 //! Instrument error types.
 
-use crate::types::PricingError;
 use thiserror::Error;
+
+use crate::types::PricingError;
 
 /// Instrument-related errors.
 #[derive(Error, Debug, Clone, PartialEq)]

@@ -88,7 +88,7 @@ impl CurveBootstrapper {
         for (i, (&t, &rate)) in pillars.iter().zip(swap_rates.iter()).enumerate() {
             let df = if i == 0 {
                 // First pillar: df = 1 / (1 + r * t)
-                1.0 / (1.0 + rate * t)
+                1.0 / rate.mul_add(t, 1.0)
             } else {
                 // Subsequent pillars: solve for df using previous discount factors
                 let mut sum = 0.0;
@@ -101,7 +101,7 @@ impl CurveBootstrapper {
                     sum += rate * dt * discount_factors[j];
                 }
                 let dt_last = t - pillars[i - 1];
-                (1.0 - sum) / (1.0 + rate * dt_last)
+                (1.0 - sum) / rate.mul_add(dt_last, 1.0)
             };
 
             discount_factors.push(df);

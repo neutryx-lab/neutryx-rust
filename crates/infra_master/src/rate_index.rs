@@ -17,7 +17,8 @@ use crate::{Currency, DayCountConvention, Tenor};
 
 /// Benchmark rate index.
 ///
-/// Represents standard benchmark interest rate indices used in financial markets.
+/// Represents standard benchmark interest rate indices used in financial
+/// markets.
 ///
 /// # Examples
 ///

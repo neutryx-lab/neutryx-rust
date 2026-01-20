@@ -1,7 +1,8 @@
 //! Schedule generation error types.
 
-use crate::types::time::Date;
 use thiserror::Error;
+
+use crate::types::time::Date;
 
 /// Errors that can occur during schedule generation.
 #[derive(Debug, Error, Clone, PartialEq, Eq)]

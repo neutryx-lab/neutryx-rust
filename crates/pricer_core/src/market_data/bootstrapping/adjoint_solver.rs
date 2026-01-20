@@ -23,6 +23,7 @@
 //! O(1).
 
 use num_traits::Float;
+
 use crate::{
     math::{
         numeric::from_f64,

@@ -49,29 +49,22 @@ pub mod instruments;
 pub mod schedules;
 
 // Re-export commonly used types at trades level
+#[cfg(feature = "credit")]
+pub use instruments::CreditInstrument;
+// Asset class sub-enums (feature-gated)
+#[cfg(feature = "equity")]
+pub use instruments::EquityInstrument;
+#[cfg(feature = "fx")]
+pub use instruments::FxInstrument;
+#[cfg(feature = "rates")]
+pub use instruments::RatesInstrument;
+// Hierarchical enum
+pub use instruments::{AssetClass, InstrumentEnum};
+// Traits
+pub use instruments::{Cashflow, CashflowInstrument, InstrumentTrait};
 pub use instruments::{
     Direction, ExerciseStyle, Forward, Instrument, InstrumentError, InstrumentParams,
     PaymentFrequency, PayoffType, Swap, VanillaOption,
 };
-
-// Asset class sub-enums (feature-gated)
-#[cfg(feature = "equity")]
-pub use instruments::EquityInstrument;
-
-#[cfg(feature = "rates")]
-pub use instruments::RatesInstrument;
-
-#[cfg(feature = "credit")]
-pub use instruments::CreditInstrument;
-
-#[cfg(feature = "fx")]
-pub use instruments::FxInstrument;
-
-// Hierarchical enum
-pub use instruments::{AssetClass, InstrumentEnum};
-
-// Traits
-pub use instruments::{Cashflow, CashflowInstrument, InstrumentTrait};
-
 // Schedules (for scheduled instruments like IRS)
 pub use schedules::{Frequency, Period, Schedule, ScheduleBuilder, ScheduleError};

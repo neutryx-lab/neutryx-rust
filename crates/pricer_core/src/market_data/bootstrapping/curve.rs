@@ -4,6 +4,8 @@
 //! from bootstrapped pillar points with interpolation between them.
 
 use num_traits::Float;
+
+use super::config::BootstrapInterpolation;
 use crate::{
     market_data::{curves::YieldCurve, MarketDataError},
     math::{
@@ -11,8 +13,6 @@ use crate::{
         numeric::from_f64,
     },
 };
-
-use super::config::BootstrapInterpolation;
 
 /// A yield curve constructed from bootstrapped pillar points.
 ///
@@ -150,26 +150,24 @@ impl<T: Float> BootstrappedCurve<T> {
             if self.allow_extrapolation {
                 // Flat extrapolation using first pillar's rate
                 return self.extrapolate_left(t);
-            } else {
-                return Err(MarketDataError::OutOfBounds {
-                    x: t.to_f64().unwrap_or(0.0),
-                    min: 0.0,
-                    max: self.pillars[0].to_f64().unwrap_or(0.0),
-                });
             }
+            return Err(MarketDataError::OutOfBounds {
+                x: t.to_f64().unwrap_or(0.0),
+                min: 0.0,
+                max: self.pillars[0].to_f64().unwrap_or(0.0),
+            });
         }
 
         // Check if t is after last pillar
         if t > self.pillars[n - 1] {
             if self.allow_extrapolation {
                 return self.extrapolate_right(t);
-            } else {
-                return Err(MarketDataError::OutOfBounds {
-                    x: t.to_f64().unwrap_or(0.0),
-                    min: self.pillars[0].to_f64().unwrap_or(0.0),
-                    max: self.pillars[n - 1].to_f64().unwrap_or(0.0),
-                });
             }
+            return Err(MarketDataError::OutOfBounds {
+                x: t.to_f64().unwrap_or(0.0),
+                min: self.pillars[0].to_f64().unwrap_or(0.0),
+                max: self.pillars[n - 1].to_f64().unwrap_or(0.0),
+            });
         }
 
         // Find bracketing index
@@ -209,6 +207,7 @@ impl<T: Float> BootstrappedCurve<T> {
     }
 
     /// Log-linear interpolation (default).
+    #[allow(clippy::unnecessary_wraps)]
     fn log_linear_interpolate(&self, t: T, idx: usize) -> Result<T, MarketDataError> {
         let t1 = self.pillars[idx];
         let t2 = self.pillars[idx + 1];
@@ -226,6 +225,7 @@ impl<T: Float> BootstrappedCurve<T> {
     }
 
     /// Linear interpolation on zero rates.
+    #[allow(clippy::unnecessary_wraps)]
     fn linear_zero_rate_interpolate(&self, t: T, idx: usize) -> Result<T, MarketDataError> {
         let t1 = self.pillars[idx];
         let t2 = self.pillars[idx + 1];
@@ -248,7 +248,8 @@ impl<T: Float> BootstrappedCurve<T> {
     /// Uses natural cubic spline with C² continuity on zero rates,
     /// then converts back to discount factors. This provides smooth
     /// forward rates at the cost of potential minor arbitrage.
-    fn cubic_spline_interpolate(&self, t: T, _idx: usize) -> Result<T, MarketDataError> {
+    #[allow(clippy::similar_names)]
+    fn cubic_spline_interpolate(&self, t: T, idx: usize) -> Result<T, MarketDataError> {
         // Build interpolator on zero rates
         let zero_rates: Vec<T> = self
             .pillars
@@ -284,10 +285,10 @@ impl<T: Float> BootstrappedCurve<T> {
                         let rate = T::from(rate_f64).unwrap_or_else(T::zero);
                         Ok((-rate * t).exp())
                     }
-                    Err(_) => self.log_linear_interpolate(t, _idx),
+                    Err(_) => self.log_linear_interpolate(t, idx),
                 }
             }
-            Err(_) => self.log_linear_interpolate(t, _idx),
+            Err(_) => self.log_linear_interpolate(t, idx),
         }
     }
 
@@ -296,7 +297,8 @@ impl<T: Float> BootstrappedCurve<T> {
     /// Interpolates on log(DF) to preserve discount factor monotonicity
     /// (DFs must be decreasing over time). Uses Fritsch-Carlson slopes
     /// to guarantee monotonicity of the interpolated curve.
-    fn monotonic_cubic_interpolate(&self, t: T, _idx: usize) -> Result<T, MarketDataError> {
+    #[allow(clippy::similar_names)]
+    fn monotonic_cubic_interpolate(&self, t: T, idx: usize) -> Result<T, MarketDataError> {
         // Build interpolator on log(DF) - this is monotonically decreasing
         let log_dfs: Vec<T> = self.discount_factors.iter().map(|&dfi| dfi.ln()).collect();
 
@@ -317,14 +319,15 @@ impl<T: Float> BootstrappedCurve<T> {
                         let log_df: T = from_f64(log_df_f64);
                         Ok(log_df.exp())
                     }
-                    Err(_) => self.log_linear_interpolate(t, _idx),
+                    Err(_) => self.log_linear_interpolate(t, idx),
                 }
             }
-            Err(_) => self.log_linear_interpolate(t, _idx),
+            Err(_) => self.log_linear_interpolate(t, idx),
         }
     }
 
     /// Flat forward interpolation.
+    #[allow(clippy::unnecessary_wraps)]
     fn flat_forward_interpolate(&self, t: T, idx: usize) -> Result<T, MarketDataError> {
         let t1 = self.pillars[idx];
         let df1 = self.discount_factors[idx];
@@ -340,6 +343,7 @@ impl<T: Float> BootstrappedCurve<T> {
     }
 
     /// Extrapolate left (before first pillar).
+    #[allow(clippy::unnecessary_wraps)]
     fn extrapolate_left(&self, t: T) -> Result<T, MarketDataError> {
         // Use flat rate extrapolation from first pillar
         let t1 = self.pillars[0];
@@ -350,6 +354,7 @@ impl<T: Float> BootstrappedCurve<T> {
     }
 
     /// Extrapolate right (after last pillar).
+    #[allow(clippy::unnecessary_wraps)]
     fn extrapolate_right(&self, t: T) -> Result<T, MarketDataError> {
         // Use flat rate extrapolation from last pillar
         let n = self.pillars.len();

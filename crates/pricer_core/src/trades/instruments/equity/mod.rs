@@ -2,12 +2,13 @@
 
 use num_traits::Float;
 
+use super::InstrumentTrait;
+pub use super::{
+    forward::{Direction, Forward},
+    vanilla::VanillaOption,
+};
 #[allow(deprecated)]
 use crate::types::Currency;
-
-pub use super::forward::{Direction, Forward};
-pub use super::vanilla::VanillaOption;
-use super::InstrumentTrait;
 
 /// Equity derivative instruments.
 #[derive(Debug, Clone)]
@@ -39,27 +40,21 @@ impl<T: Float> EquityInstrument<T> {
 
     /// Return the underlying instrument's currency.
     #[inline]
-    pub fn currency(&self) -> Currency {
-        Currency::USD
-    }
+    pub fn currency(&self) -> Currency { Currency::USD }
 
     /// Return whether this is a vanilla option.
     #[inline]
-    pub fn is_vanilla(&self) -> bool {
-        matches!(self, EquityInstrument::Vanilla(_))
-    }
+    pub fn is_vanilla(&self) -> bool { matches!(self, EquityInstrument::Vanilla(_)) }
 
     /// Return whether this is a forward contract.
     #[inline]
-    pub fn is_forward(&self) -> bool {
-        matches!(self, EquityInstrument::Forward(_))
-    }
+    pub fn is_forward(&self) -> bool { matches!(self, EquityInstrument::Forward(_)) }
 
     /// Return a reference to the vanilla option if this is a Vanilla variant.
     pub fn as_vanilla(&self) -> Option<&VanillaOption<T>> {
         match self {
             EquityInstrument::Vanilla(option) => Some(option),
-            _ => None,
+            EquityInstrument::Forward(_) => None,
         }
     }
 
@@ -67,26 +62,20 @@ impl<T: Float> EquityInstrument<T> {
     pub fn as_forward(&self) -> Option<&Forward<T>> {
         match self {
             EquityInstrument::Forward(forward) => Some(forward),
-            _ => None,
+            EquityInstrument::Vanilla(_) => None,
         }
     }
 }
 
 impl<T: Float> InstrumentTrait<T> for EquityInstrument<T> {
     #[inline]
-    fn payoff(&self, spot: T) -> T {
-        self.payoff(spot)
-    }
+    fn payoff(&self, spot: T) -> T { self.payoff(spot) }
 
     #[inline]
-    fn expiry(&self) -> T {
-        self.expiry()
-    }
+    fn expiry(&self) -> T { self.expiry() }
 
     #[inline]
-    fn currency(&self) -> Currency {
-        self.currency()
-    }
+    fn currency(&self) -> Currency { self.currency() }
 
     fn type_name(&self) -> &'static str {
         match self {
@@ -97,13 +86,9 @@ impl<T: Float> InstrumentTrait<T> for EquityInstrument<T> {
 }
 
 impl<T: Float> From<VanillaOption<T>> for EquityInstrument<T> {
-    fn from(option: VanillaOption<T>) -> Self {
-        EquityInstrument::Vanilla(option)
-    }
+    fn from(option: VanillaOption<T>) -> Self { EquityInstrument::Vanilla(option) }
 }
 
 impl<T: Float> From<Forward<T>> for EquityInstrument<T> {
-    fn from(forward: Forward<T>) -> Self {
-        EquityInstrument::Forward(forward)
-    }
+    fn from(forward: Forward<T>) -> Self { EquityInstrument::Forward(forward) }
 }

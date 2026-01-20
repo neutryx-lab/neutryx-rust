@@ -132,7 +132,8 @@ impl Calendar {
         Date::from_naive(self.next_business_day(date.into_inner()))
     }
 
-    /// Get the previous business day on or before the given date (using Date type).
+    /// Get the previous business day on or before the given date (using Date
+    /// type).
     #[must_use]
     pub fn prev_business_day_date(&self, date: Date) -> Date {
         Date::from_naive(self.prev_business_day(date.into_inner()))

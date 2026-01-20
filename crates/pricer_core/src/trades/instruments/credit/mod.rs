@@ -2,10 +2,9 @@
 
 use num_traits::Float;
 
+use super::InstrumentTrait;
 #[allow(deprecated)]
 use crate::types::Currency;
-
-use super::InstrumentTrait;
 
 /// Credit derivative instruments.
 #[derive(Debug, Clone)]
@@ -51,26 +50,18 @@ impl<T: Float> CreditInstrument<T> {
 
     /// Return whether this is a CDS.
     #[inline]
-    pub fn is_cds(&self) -> bool {
-        matches!(self, CreditInstrument::Cds { .. })
-    }
+    pub fn is_cds(&self) -> bool { matches!(self, CreditInstrument::Cds { .. }) }
 }
 
 impl<T: Float> InstrumentTrait<T> for CreditInstrument<T> {
     #[inline]
-    fn payoff(&self, spot: T) -> T {
-        self.payoff(spot)
-    }
+    fn payoff(&self, spot: T) -> T { self.payoff(spot) }
 
     #[inline]
-    fn expiry(&self) -> T {
-        self.expiry()
-    }
+    fn expiry(&self) -> T { self.expiry() }
 
     #[inline]
-    fn currency(&self) -> Currency {
-        self.currency()
-    }
+    fn currency(&self) -> Currency { self.currency() }
 
     fn type_name(&self) -> &'static str {
         match self {

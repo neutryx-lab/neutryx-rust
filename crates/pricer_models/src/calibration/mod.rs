@@ -52,6 +52,7 @@ mod error;
 pub mod heston;
 pub mod hull_white;
 // Legacy module kept for internal use - use engine.rs for new code
+#[allow(dead_code)]
 mod model_calibrator;
 mod result;
 pub mod sabr;
@@ -60,9 +61,13 @@ mod targets;
 
 // Primary exports (new API)
 pub use engine::{
-    CalibrationEngine, CalibrationEngineConfig, CalibrationScope, GenericCalibrator,
+    CalibrationEngine,
+    CalibrationEngineConfig,
+    CalibrationScope,
+    GenericCalibrator,
     // Backward compatibility aliases
-    ModelCalibrator, ModelCalibratorConfig,
+    ModelCalibrator,
+    ModelCalibratorConfig,
 };
 pub use error::CalibrationError;
 pub use heston::{

@@ -41,11 +41,13 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use crate::market_data::{
-    curves::{CurveEnum, FlatCurve},
-    surfaces::VolSurfaceEnum,
+use crate::{
+    market_data::{
+        curves::{CurveEnum, FlatCurve},
+        surfaces::VolSurfaceEnum,
+    },
+    types::Currency,
 };
-use crate::types::Currency;
 
 /// Thread-safe market data provider with lazy evaluation and Arc caching.
 ///
@@ -91,7 +93,7 @@ impl MarketProvider {
     ///
     /// On cache miss, prints: `[MarketData] Bootstrapping Yield Curve for
     /// {currency}...`
-    #[allow(clippy::unwrap_used)] // RwLock unwrap is safe: poisoned lock indicates unrecoverable prior panic
+    #[allow(clippy::unwrap_used, clippy::missing_panics_doc)] // RwLock unwrap is safe: poisoned lock indicates unrecoverable prior panic
     pub fn get_curve(&self, ccy: Currency) -> Arc<CurveEnum<f64>> {
         // Fast path: read lock check
         {
@@ -143,7 +145,7 @@ impl MarketProvider {
     ///
     /// On cache miss, prints: `[MarketData] Calibrating Vol Surface for
     /// {currency}...`
-    #[allow(clippy::unwrap_used)] // RwLock unwrap is safe: poisoned lock indicates unrecoverable prior panic
+    #[allow(clippy::unwrap_used, clippy::missing_panics_doc)] // RwLock unwrap is safe: poisoned lock indicates unrecoverable prior panic
     pub fn get_vol(&self, ccy: Currency) -> Arc<VolSurfaceEnum<f64>> {
         // Fast path: read lock check
         {
@@ -188,8 +190,7 @@ impl Default for MarketProvider {
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
-    use crate::market_data::curves::YieldCurve;
-    use crate::market_data::surfaces::VolatilitySurface;
+    use crate::market_data::{curves::YieldCurve, surfaces::VolatilitySurface};
 
     // -------------------------------------------------------------------------
     // MarketProvider Structure Tests

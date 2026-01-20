@@ -2,12 +2,10 @@
 
 use num_traits::Float;
 
+use super::error::InstrumentError;
 use crate::math::numeric::from_i32;
-
 #[allow(deprecated)]
 use crate::types::Currency;
-
-use super::error::InstrumentError;
 
 /// Payment frequency for swap contracts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -100,46 +98,32 @@ impl<T: Float> Swap<T> {
 
     /// Returns the notional principal amount.
     #[inline]
-    pub fn notional(&self) -> T {
-        self.notional
-    }
+    pub fn notional(&self) -> T { self.notional }
 
     /// Returns the fixed interest rate.
     #[inline]
-    pub fn fixed_rate(&self) -> T {
-        self.fixed_rate
-    }
+    pub fn fixed_rate(&self) -> T { self.fixed_rate }
 
     /// Returns a reference to the payment dates.
     #[inline]
-    pub fn payment_dates(&self) -> &[T] {
-        &self.payment_dates
-    }
+    pub fn payment_dates(&self) -> &[T] { &self.payment_dates }
 
     /// Returns the payment frequency.
     #[inline]
-    pub fn frequency(&self) -> PaymentFrequency {
-        self.frequency
-    }
+    pub fn frequency(&self) -> PaymentFrequency { self.frequency }
 
     /// Returns the currency denomination.
     #[inline]
-    pub fn currency(&self) -> Currency {
-        self.currency
-    }
+    pub fn currency(&self) -> Currency { self.currency }
 
     /// Returns the number of remaining payment periods.
     #[inline]
-    pub fn num_periods(&self) -> usize {
-        self.payment_dates.len()
-    }
+    pub fn num_periods(&self) -> usize { self.payment_dates.len() }
 
     /// Returns the maturity (last payment date).
     #[inline]
-    #[allow(clippy::unwrap_used)]
-    pub fn maturity(&self) -> T {
-        *self.payment_dates.last().unwrap()
-    }
+    #[allow(clippy::unwrap_used, clippy::missing_panics_doc)]
+    pub fn maturity(&self) -> T { *self.payment_dates.last().unwrap() }
 
     /// Calculates the fixed leg cash flow for a single period.
     #[inline]

@@ -53,9 +53,6 @@ pub mod rates;
 pub mod hybrid;
 
 // Re-export core trait types
-pub use model_enum::{ModelParams, ModelState, StochasticModelEnum};
-pub use stochastic::{SingleState, StochasticModel, StochasticState, TwoFactorState};
-
 // Re-export equity models from equity/ submodule for backward compatibility
 #[cfg(feature = "equity")]
 pub use equity::{
@@ -63,3 +60,5 @@ pub use equity::{
     heston::{HestonError, HestonModel, HestonParams},
     sabr::{SABRError, SABRModel, SABRParams},
 };
+pub use model_enum::{ModelParams, ModelState, StochasticModelEnum};
+pub use stochastic::{SingleState, StochasticModel, StochasticState, TwoFactorState};

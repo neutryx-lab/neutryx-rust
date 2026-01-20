@@ -8,6 +8,7 @@
 //! and use static dispatch (enum-based) for Enzyme optimisation.
 
 use num_traits::Float;
+
 use crate::math::numeric::{from_f64, from_usize};
 
 /// Payment frequency for fixed-income instruments.

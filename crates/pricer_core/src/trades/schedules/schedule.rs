@@ -2,9 +2,8 @@
 
 use chrono::{Datelike, Months};
 
-use crate::types::time::{Date, DayCountConvention};
-
 use super::{error::ScheduleError, frequency::Frequency, period::Period};
+use crate::types::time::{Date, DayCountConvention};
 
 /// A collection of payment periods for financial instruments.
 ///
@@ -72,70 +71,48 @@ impl Schedule {
 
     /// Returns the periods in the schedule.
     #[inline]
-    pub fn periods(&self) -> &[Period] {
-        &self.periods
-    }
+    pub fn periods(&self) -> &[Period] { &self.periods }
 
     /// Returns the payment dates.
     #[inline]
-    pub fn payment_dates(&self) -> &[Date] {
-        &self.payment_dates
-    }
+    pub fn payment_dates(&self) -> &[Date] { &self.payment_dates }
 
     /// Returns the accrual start dates.
     #[inline]
-    pub fn accrual_start_dates(&self) -> &[Date] {
-        &self.accrual_start
-    }
+    pub fn accrual_start_dates(&self) -> &[Date] { &self.accrual_start }
 
     /// Returns the accrual end dates.
     #[inline]
-    pub fn accrual_end_dates(&self) -> &[Date] {
-        &self.accrual_end
-    }
+    pub fn accrual_end_dates(&self) -> &[Date] { &self.accrual_end }
 
     /// Returns the number of periods.
     #[inline]
-    pub fn len(&self) -> usize {
-        self.periods.len()
-    }
+    pub fn len(&self) -> usize { self.periods.len() }
 
     /// Returns whether the schedule is empty.
     #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.periods.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.periods.is_empty() }
 
     /// Returns the start date of the schedule.
     #[inline]
-    pub fn start_date(&self) -> Date {
-        self.periods[0].start()
-    }
+    pub fn start_date(&self) -> Date { self.periods[0].start() }
 
     /// Returns the end date of the schedule.
     #[inline]
-    #[allow(clippy::unwrap_used)] // Safe: Schedule::new validates non-empty periods
-    pub fn end_date(&self) -> Date {
-        self.periods.last().unwrap().end()
-    }
+    #[allow(clippy::unwrap_used, clippy::missing_panics_doc)] // Safe: Schedule::new validates non-empty periods
+    pub fn end_date(&self) -> Date { self.periods.last().unwrap().end() }
 
     /// Returns the first payment date.
     #[inline]
-    pub fn first_payment_date(&self) -> Date {
-        self.payment_dates[0]
-    }
+    pub fn first_payment_date(&self) -> Date { self.payment_dates[0] }
 
     /// Returns the last payment date.
     #[inline]
-    #[allow(clippy::unwrap_used)] // Safe: Schedule::new validates non-empty payment_dates
-    pub fn last_payment_date(&self) -> Date {
-        *self.payment_dates.last().unwrap()
-    }
+    #[allow(clippy::unwrap_used, clippy::missing_panics_doc)] // Safe: Schedule::new validates non-empty payment_dates
+    pub fn last_payment_date(&self) -> Date { *self.payment_dates.last().unwrap() }
 
     /// Returns an iterator over the periods.
-    pub fn iter(&self) -> impl Iterator<Item = &Period> {
-        self.periods.iter()
-    }
+    pub fn iter(&self) -> impl Iterator<Item = &Period> { self.periods.iter() }
 
     /// Calculates the total year fraction of all periods.
     ///
@@ -223,9 +200,7 @@ pub struct ScheduleBuilder {
 }
 
 impl Default for ScheduleBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl ScheduleBuilder {
@@ -707,7 +682,5 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "Schedule must have at least one period")]
-    fn test_schedule_new_empty_panics() {
-        Schedule::new(vec![]);
-    }
+    fn test_schedule_new_empty_panics() { Schedule::new(vec![]); }
 }

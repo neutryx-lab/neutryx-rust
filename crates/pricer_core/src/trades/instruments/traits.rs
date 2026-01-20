@@ -18,20 +18,14 @@ pub trait InstrumentTrait<T: Float> {
 
     /// Return the notional amount.
     #[inline]
-    fn notional(&self) -> T {
-        T::one()
-    }
+    fn notional(&self) -> T { T::one() }
 
     /// Return whether this instrument requires path-dependent pricing.
     #[inline]
-    fn is_path_dependent(&self) -> bool {
-        false
-    }
+    fn is_path_dependent(&self) -> bool { false }
 
     /// Return a human-readable instrument type name.
-    fn type_name(&self) -> &'static str {
-        "Unknown"
-    }
+    fn type_name(&self) -> &'static str { "Unknown" }
 }
 
 /// Cashflow structure for instruments with scheduled payments.
@@ -58,9 +52,7 @@ impl<T: Float> Cashflow<T> {
 
     /// Return the present value of this cashflow given a discount factor.
     #[inline]
-    pub fn present_value(&self, discount_factor: T) -> T {
-        self.amount * discount_factor
-    }
+    pub fn present_value(&self, discount_factor: T) -> T { self.amount * discount_factor }
 }
 
 /// Trait for instruments with scheduled cashflows.
@@ -70,9 +62,7 @@ pub trait CashflowInstrument<T: Float>: InstrumentTrait<T> {
 
     /// Return the number of cashflows.
     #[inline]
-    fn num_cashflows(&self) -> usize {
-        self.cashflows().len()
-    }
+    fn num_cashflows(&self) -> usize { self.cashflows().len() }
 
     /// Return the total undiscounted cashflow amount.
     #[inline]

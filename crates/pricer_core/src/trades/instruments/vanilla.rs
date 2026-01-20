@@ -40,43 +40,29 @@ impl<T: Float> VanillaOption<T> {
 
     /// Returns a reference to the instrument parameters.
     #[inline]
-    pub fn params(&self) -> &InstrumentParams<T> {
-        &self.params
-    }
+    pub fn params(&self) -> &InstrumentParams<T> { &self.params }
 
     /// Returns the payoff type.
     #[inline]
-    pub fn payoff_type(&self) -> PayoffType {
-        self.payoff_type
-    }
+    pub fn payoff_type(&self) -> PayoffType { self.payoff_type }
 
     /// Returns a reference to the exercise style.
     #[inline]
-    pub fn exercise_style(&self) -> &ExerciseStyle<T> {
-        &self.exercise_style
-    }
+    pub fn exercise_style(&self) -> &ExerciseStyle<T> { &self.exercise_style }
 
     /// Returns the smoothing epsilon.
     #[inline]
-    pub fn epsilon(&self) -> T {
-        self.epsilon
-    }
+    pub fn epsilon(&self) -> T { self.epsilon }
 
     /// Returns the strike price.
     #[inline]
-    pub fn strike(&self) -> T {
-        self.params.strike()
-    }
+    pub fn strike(&self) -> T { self.params.strike() }
 
     /// Returns the time to expiry.
     #[inline]
-    pub fn expiry(&self) -> T {
-        self.params.expiry()
-    }
+    pub fn expiry(&self) -> T { self.params.expiry() }
 
     /// Returns the notional amount.
     #[inline]
-    pub fn notional(&self) -> T {
-        self.params.notional()
-    }
+    pub fn notional(&self) -> T { self.params.notional() }
 }

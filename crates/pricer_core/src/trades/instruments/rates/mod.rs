@@ -2,10 +2,9 @@
 
 use num_traits::Float;
 
+use super::InstrumentTrait;
 #[allow(deprecated)]
 use crate::types::Currency;
-
-use super::InstrumentTrait;
 
 /// Interest rate derivative instruments.
 #[derive(Debug, Clone)]
@@ -42,26 +41,18 @@ impl<T: Float> RatesInstrument<T> {
 
     /// Return whether this is a swap.
     #[inline]
-    pub fn is_swap(&self) -> bool {
-        matches!(self, RatesInstrument::Swap(_))
-    }
+    pub fn is_swap(&self) -> bool { matches!(self, RatesInstrument::Swap(_)) }
 }
 
 impl<T: Float> InstrumentTrait<T> for RatesInstrument<T> {
     #[inline]
-    fn payoff(&self, spot: T) -> T {
-        self.payoff(spot)
-    }
+    fn payoff(&self, spot: T) -> T { self.payoff(spot) }
 
     #[inline]
-    fn expiry(&self) -> T {
-        self.expiry()
-    }
+    fn expiry(&self) -> T { self.expiry() }
 
     #[inline]
-    fn currency(&self) -> Currency {
-        self.currency()
-    }
+    fn currency(&self) -> Currency { self.currency() }
 
     fn type_name(&self) -> &'static str {
         match self {
@@ -71,7 +62,5 @@ impl<T: Float> InstrumentTrait<T> for RatesInstrument<T> {
 }
 
 impl<T: Float> From<super::Swap<T>> for RatesInstrument<T> {
-    fn from(swap: super::Swap<T>) -> Self {
-        RatesInstrument::Swap(swap)
-    }
+    fn from(swap: super::Swap<T>) -> Self { RatesInstrument::Swap(swap) }
 }

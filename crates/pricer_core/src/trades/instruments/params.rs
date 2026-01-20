@@ -44,19 +44,13 @@ impl<T: Float> InstrumentParams<T> {
 
     /// Returns the strike price.
     #[inline]
-    pub fn strike(&self) -> T {
-        self.strike
-    }
+    pub fn strike(&self) -> T { self.strike }
 
     /// Returns the time to expiry.
     #[inline]
-    pub fn expiry(&self) -> T {
-        self.expiry
-    }
+    pub fn expiry(&self) -> T { self.expiry }
 
     /// Returns the notional amount.
     #[inline]
-    pub fn notional(&self) -> T {
-        self.notional
-    }
+    pub fn notional(&self) -> T { self.notional }
 }

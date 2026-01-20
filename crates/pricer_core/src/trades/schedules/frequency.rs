@@ -138,9 +138,7 @@ impl Frequency {
 }
 
 impl fmt::Display for Frequency {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.name())
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.name()) }
 }
 
 impl FromStr for Frequency {

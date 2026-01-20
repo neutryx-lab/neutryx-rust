@@ -270,9 +270,7 @@ fn add_months_with_eom(date: NaiveDate, months: u32, eom_rule: EndOfMonthRule) -
     let is_eom = is_end_of_month(date);
 
     // Add months
-    let result = date
-        .checked_add_months(Months::new(months))
-        .unwrap_or(date);
+    let result = date.checked_add_months(Months::new(months)).unwrap_or(date);
 
     match eom_rule {
         EndOfMonthRule::Adjust if is_eom => {

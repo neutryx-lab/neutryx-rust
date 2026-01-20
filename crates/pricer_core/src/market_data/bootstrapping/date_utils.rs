@@ -147,7 +147,7 @@ impl DayCount {
         }
     }
 
-    fn thirty_360_fraction(&self, start: NaiveDate, end: NaiveDate) -> f64 {
+    fn thirty_360_fraction(self, start: NaiveDate, end: NaiveDate) -> f64 {
         let (y1, m1, d1) = (start.year(), start.month() as i32, start.day() as i32);
         let (y2, m2, d2) = (end.year(), end.month() as i32, end.day() as i32);
 
@@ -228,10 +228,10 @@ impl DateCalculator {
     /// moves to the previous business day instead.
     pub fn modified_following(&self, date: NaiveDate) -> NaiveDate {
         let following = self.following(date);
-        if following.month() != date.month() {
-            self.preceding(date)
-        } else {
+        if following.month() == date.month() {
             following
+        } else {
+            self.preceding(date)
         }
     }
 
@@ -241,10 +241,10 @@ impl DateCalculator {
     /// moves to the next business day instead.
     pub fn modified_preceding(&self, date: NaiveDate) -> NaiveDate {
         let preceding = self.preceding(date);
-        if preceding.month() != date.month() {
-            self.following(date)
-        } else {
+        if preceding.month() == date.month() {
             preceding
+        } else {
+            self.following(date)
         }
     }
 

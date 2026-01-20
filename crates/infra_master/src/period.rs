@@ -69,7 +69,11 @@ impl Period {
     /// ```
     #[must_use]
     pub fn new(start: Date, end: Date, payment: Date) -> Self {
-        Self { start, end, payment }
+        Self {
+            start,
+            end,
+            payment,
+        }
     }
 
     /// Returns the number of days in the accrual period.

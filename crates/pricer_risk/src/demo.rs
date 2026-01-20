@@ -137,9 +137,7 @@ impl MarketProvider {
 }
 
 impl Default for MarketProvider {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 /// Simplified trade structure for demonstration.

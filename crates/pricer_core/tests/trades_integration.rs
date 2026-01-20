@@ -3,11 +3,13 @@
 //! These tests verify that the trades module (instruments + schedules)
 //! is correctly integrated into pricer_core.
 
-use pricer_core::trades::instruments::{
-    Direction, ExerciseStyle, Forward, Instrument, InstrumentError, InstrumentParams,
-    PaymentFrequency, PayoffType, Swap, VanillaOption,
+use pricer_core::{
+    trades::instruments::{
+        Direction, ExerciseStyle, Forward, Instrument, InstrumentError, InstrumentParams,
+        PaymentFrequency, PayoffType, Swap, VanillaOption,
+    },
+    types::Currency,
 };
-use pricer_core::types::Currency;
 
 // ============================================================================
 // VanillaOption Tests

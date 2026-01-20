@@ -62,7 +62,7 @@ pub use tenor::{EndOfMonthRule, Tenor};
 pub mod prelude {
     pub use crate::{
         BusinessDayConvention, Calendar, CalendarId, CsaTerms, Currency, CurrencyError, Date,
-        DateError, DayCountConvention, EndOfMonthRule, Frequency, MasterDataError, NettingSetConfig,
-        Period, RateIndex, SwapDirection, Tenor, TradeDirection,
+        DateError, DayCountConvention, EndOfMonthRule, Frequency, MasterDataError,
+        NettingSetConfig, Period, RateIndex, SwapDirection, Tenor, TradeDirection,
     };
 }

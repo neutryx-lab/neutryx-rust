@@ -203,15 +203,19 @@ impl MonteCarloConfigBuilder {
     /// - `n_paths` not set or invalid
     /// - `n_steps` not set or invalid
     pub fn build(self) -> Result<MonteCarloConfig, MonteCarloConfigError> {
-        let n_paths = self.n_paths.ok_or(MonteCarloConfigError::InvalidParameter {
-            name: "n_paths",
-            value: "must be specified".to_string(),
-        })?;
+        let n_paths = self
+            .n_paths
+            .ok_or(MonteCarloConfigError::InvalidParameter {
+                name: "n_paths",
+                value: "must be specified".to_string(),
+            })?;
 
-        let n_steps = self.n_steps.ok_or(MonteCarloConfigError::InvalidParameter {
-            name: "n_steps",
-            value: "must be specified".to_string(),
-        })?;
+        let n_steps = self
+            .n_steps
+            .ok_or(MonteCarloConfigError::InvalidParameter {
+                name: "n_steps",
+                value: "must be specified".to_string(),
+            })?;
 
         let config = MonteCarloConfig {
             n_paths,
@@ -271,7 +275,10 @@ mod tests {
     fn test_config_invalid_zero_paths() {
         let result = MonteCarloConfig::builder().n_paths(0).n_steps(100).build();
 
-        assert!(matches!(result, Err(MonteCarloConfigError::InvalidPathCount(0))));
+        assert!(matches!(
+            result,
+            Err(MonteCarloConfigError::InvalidPathCount(0))
+        ));
     }
 
     #[test]
@@ -281,14 +288,20 @@ mod tests {
             .n_steps(100)
             .build();
 
-        assert!(matches!(result, Err(MonteCarloConfigError::InvalidPathCount(_))));
+        assert!(matches!(
+            result,
+            Err(MonteCarloConfigError::InvalidPathCount(_))
+        ));
     }
 
     #[test]
     fn test_config_invalid_zero_steps() {
         let result = MonteCarloConfig::builder().n_paths(1000).n_steps(0).build();
 
-        assert!(matches!(result, Err(MonteCarloConfigError::InvalidStepCount(0))));
+        assert!(matches!(
+            result,
+            Err(MonteCarloConfigError::InvalidStepCount(0))
+        ));
     }
 
     #[test]
@@ -298,7 +311,10 @@ mod tests {
             .n_steps(MAX_STEPS + 1)
             .build();
 
-        assert!(matches!(result, Err(MonteCarloConfigError::InvalidStepCount(_))));
+        assert!(matches!(
+            result,
+            Err(MonteCarloConfigError::InvalidStepCount(_))
+        ));
     }
 
     #[test]

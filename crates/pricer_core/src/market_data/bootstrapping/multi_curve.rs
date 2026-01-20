@@ -42,12 +42,12 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use num_traits::Float;
-use crate::math::numeric::from_f64;
 
 use super::{
     config::GenericBootstrapConfig, curve::BootstrappedCurve, engine::SequentialBootstrapper,
     error::BootstrapError, instrument::BootstrapInstrument,
 };
+use crate::math::numeric::from_f64;
 
 /// Tenor definitions for forward curves.
 ///
@@ -515,9 +515,8 @@ impl<T: Float> ParallelCurveSetBuilder<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::market_data::curves::YieldCurve;
-
     use super::*;
+    use crate::market_data::curves::YieldCurve;
 
     // ========================================
     // Tenor Tests

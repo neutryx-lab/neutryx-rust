@@ -83,6 +83,7 @@ impl SensitivityBootstrapper {
     /// * `Ok(result)` - Bootstrap result with sensitivity matrix
     /// * `Err(e)` - If bootstrapping fails
     #[cfg(feature = "num-dual-mode")]
+    #[allow(clippy::missing_panics_doc, clippy::too_many_lines)]
     pub fn bootstrap_with_sensitivities(
         &self,
         instruments: &[BootstrapInstrument<f64>],
@@ -159,7 +160,7 @@ impl SensitivityBootstrapper {
                     let df1 = partial_dfs[lo];
                     let df2 = partial_dfs[lo + 1];
                     let w = (t - t1) / (t2 - t1);
-                    let log_df = df1.ln() * (1.0 - w) + df2.ln() * w;
+                    let log_df = df1.ln().mul_add(1.0 - w, df2.ln() * w);
                     log_df.exp()
                 } else {
                     partial_dfs[lo]
@@ -230,7 +231,7 @@ impl SensitivityBootstrapper {
                             let df1 = bumped_partial_dfs[lo];
                             let df2 = bumped_partial_dfs[lo + 1];
                             let w = (t - t1) / (t2 - t1);
-                            let log_df = df1.ln() * (1.0 - w) + df2.ln() * w;
+                            let log_df = df1.ln().mul_add(1.0 - w, df2.ln() * w);
                             log_df.exp()
                         } else {
                             bumped_partial_dfs[lo]
@@ -423,7 +424,7 @@ fn bump_instrument(instrument: &BootstrapInstrument<f64>, bump: f64) -> Bootstra
             // For futures, bumping rate means adjusting price (price = 100 - rate)
             BootstrapInstrument::Future {
                 maturity: *maturity,
-                price: *price - bump * 100.0, // Rate up -> price down
+                price: bump.mul_add(-100.0, *price), // Rate up -> price down
                 convexity_adjustment: *convexity_adjustment,
             }
         }

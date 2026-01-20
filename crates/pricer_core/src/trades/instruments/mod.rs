@@ -84,21 +84,15 @@ impl<T: Float> Instrument<T> {
 
     /// Returns whether this is a vanilla option.
     #[inline]
-    pub fn is_vanilla(&self) -> bool {
-        matches!(self, Instrument::Vanilla(_))
-    }
+    pub fn is_vanilla(&self) -> bool { matches!(self, Instrument::Vanilla(_)) }
 
     /// Returns whether this is a forward contract.
     #[inline]
-    pub fn is_forward(&self) -> bool {
-        matches!(self, Instrument::Forward(_))
-    }
+    pub fn is_forward(&self) -> bool { matches!(self, Instrument::Forward(_)) }
 
     /// Returns whether this is a swap.
     #[inline]
-    pub fn is_swap(&self) -> bool {
-        matches!(self, Instrument::Swap(_))
-    }
+    pub fn is_swap(&self) -> bool { matches!(self, Instrument::Swap(_)) }
 
     /// Returns a reference to the vanilla option if this is a Vanilla variant.
     pub fn as_vanilla(&self) -> Option<&VanillaOption<T>> {
@@ -213,25 +207,20 @@ impl<T: Float> InstrumentEnum<T> {
     /// Return whether this is an equity instrument.
     #[cfg(feature = "equity")]
     #[inline]
-    pub fn is_equity(&self) -> bool {
-        matches!(self, InstrumentEnum::Equity(_))
-    }
+    pub fn is_equity(&self) -> bool { matches!(self, InstrumentEnum::Equity(_)) }
 
     /// Return whether this is a rates instrument.
     #[cfg(feature = "rates")]
     #[inline]
-    pub fn is_rates(&self) -> bool {
-        matches!(self, InstrumentEnum::Rates(_))
-    }
+    pub fn is_rates(&self) -> bool { matches!(self, InstrumentEnum::Rates(_)) }
 
     /// Return whether this is a credit instrument.
     #[cfg(feature = "credit")]
     #[inline]
-    pub fn is_credit(&self) -> bool {
-        matches!(self, InstrumentEnum::Credit(_))
-    }
+    pub fn is_credit(&self) -> bool { matches!(self, InstrumentEnum::Credit(_)) }
 
-    /// Return a reference to the equity instrument if this is an Equity variant.
+    /// Return a reference to the equity instrument if this is an Equity
+    /// variant.
     #[cfg(feature = "equity")]
     pub fn as_equity(&self) -> Option<&EquityInstrument<T>> {
         match self {
@@ -264,9 +253,7 @@ impl<T: Float> InstrumentEnum<T> {
     /// Return whether this is an FX instrument.
     #[cfg(feature = "fx")]
     #[inline]
-    pub fn is_fx(&self) -> bool {
-        matches!(self, InstrumentEnum::Fx(_))
-    }
+    pub fn is_fx(&self) -> bool { matches!(self, InstrumentEnum::Fx(_)) }
 
     /// Return a reference to the FX instrument if this is an Fx variant.
     #[cfg(feature = "fx")]
@@ -281,19 +268,13 @@ impl<T: Float> InstrumentEnum<T> {
 
 impl<T: Float> InstrumentTrait<T> for InstrumentEnum<T> {
     #[inline]
-    fn payoff(&self, spot: T) -> T {
-        self.payoff(spot)
-    }
+    fn payoff(&self, spot: T) -> T { self.payoff(spot) }
 
     #[inline]
-    fn expiry(&self) -> T {
-        self.expiry()
-    }
+    fn expiry(&self) -> T { self.expiry() }
 
     #[inline]
-    fn currency(&self) -> Currency {
-        self.currency()
-    }
+    fn currency(&self) -> Currency { self.currency() }
 
     fn type_name(&self) -> &'static str {
         match self {
@@ -312,30 +293,22 @@ impl<T: Float> InstrumentTrait<T> for InstrumentEnum<T> {
 // Conversion from asset class sub-enums to InstrumentEnum
 #[cfg(feature = "equity")]
 impl<T: Float> From<EquityInstrument<T>> for InstrumentEnum<T> {
-    fn from(equity: EquityInstrument<T>) -> Self {
-        InstrumentEnum::Equity(equity)
-    }
+    fn from(equity: EquityInstrument<T>) -> Self { InstrumentEnum::Equity(equity) }
 }
 
 #[cfg(feature = "rates")]
 impl<T: Float> From<RatesInstrument<T>> for InstrumentEnum<T> {
-    fn from(rates: RatesInstrument<T>) -> Self {
-        InstrumentEnum::Rates(rates)
-    }
+    fn from(rates: RatesInstrument<T>) -> Self { InstrumentEnum::Rates(rates) }
 }
 
 #[cfg(feature = "credit")]
 impl<T: Float> From<CreditInstrument<T>> for InstrumentEnum<T> {
-    fn from(credit: CreditInstrument<T>) -> Self {
-        InstrumentEnum::Credit(credit)
-    }
+    fn from(credit: CreditInstrument<T>) -> Self { InstrumentEnum::Credit(credit) }
 }
 
 #[cfg(feature = "fx")]
 impl<T: Float> From<FxInstrument<T>> for InstrumentEnum<T> {
-    fn from(fx: FxInstrument<T>) -> Self {
-        InstrumentEnum::Fx(fx)
-    }
+    fn from(fx: FxInstrument<T>) -> Self { InstrumentEnum::Fx(fx) }
 }
 
 /// Asset class classification for instruments.

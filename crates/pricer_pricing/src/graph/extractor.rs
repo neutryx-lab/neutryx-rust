@@ -24,8 +24,8 @@ use std::{
 use super::{
     error::GraphError,
     types::{
-        ComputationGraph, GraphEdge, GraphMetadata, GraphNode, GraphNodeUpdate, NodeGroup, NodeType,
-        PortfolioComputationGraph, PortfolioGraphMetadata,
+        ComputationGraph, GraphEdge, GraphMetadata, GraphNode, GraphNodeUpdate, NodeGroup,
+        NodeType, PortfolioComputationGraph, PortfolioGraphMetadata,
     },
 };
 
@@ -436,9 +436,9 @@ impl GraphBuilder {
 
     /// Get the current timestamp in ISO 8601 format.
     ///
-    /// Returns a timestamp string suitable for metadata. Uses Unix epoch seconds
-    /// with 'Z' suffix for simplicity. In production, this could use chrono
-    /// for full RFC 3339 formatting.
+    /// Returns a timestamp string suitable for metadata. Uses Unix epoch
+    /// seconds with 'Z' suffix for simplicity. In production, this could
+    /// use chrono for full RFC 3339 formatting.
     pub fn current_timestamp() -> String {
         // Use a simple format since we don't want to add chrono dependency
         // In production, this would use chrono::Utc::now().to_rfc3339()
@@ -911,8 +911,8 @@ impl GraphExtractable for SimpleGraphExtractor {
 
 /// Trait for extracting computation graphs from Portfolios.
 ///
-/// This trait extends the single-trade graph extraction capability to Portfolio-level
-/// operations, enabling:
+/// This trait extends the single-trade graph extraction capability to
+/// Portfolio-level operations, enabling:
 /// - Extraction of integrated graphs from all trades in a Portfolio
 /// - Shared node deduplication for optimised graph size
 /// - Subgraph extraction based on selected trade IDs
@@ -944,11 +944,13 @@ pub trait PortfolioGraphExtractable {
     /// # Arguments
     ///
     /// * `trade_ids` - List of trade IDs to extract graphs for
-    /// * `trade_graphs` - Pre-extracted graphs for each trade (trade_id -> graph)
+    /// * `trade_graphs` - Pre-extracted graphs for each trade (trade_id ->
+    ///   graph)
     ///
     /// # Returns
     ///
-    /// - `Ok(PortfolioComputationGraph)` - The integrated graph with deduplication
+    /// - `Ok(PortfolioComputationGraph)` - The integrated graph with
+    ///   deduplication
     /// - `Err(GraphError::ExtractionFailed)` - If extraction fails
     /// - `Err(GraphError::Timeout)` - If extraction exceeds time limit
     ///
@@ -974,7 +976,8 @@ pub trait PortfolioGraphExtractable {
     /// # Returns
     ///
     /// - `Ok(PortfolioComputationGraph)` - The filtered subgraph
-    /// - `Err(GraphError::TradeNotFound)` - If any selected trade ID doesn't exist
+    /// - `Err(GraphError::TradeNotFound)` - If any selected trade ID doesn't
+    ///   exist
     ///
     /// # Shared Node Handling
     ///
@@ -1087,34 +1090,27 @@ impl PortfolioGraphExtractor {
     }
 
     /// Get reference to the inner SimpleGraphExtractor.
-    pub fn inner(&self) -> &SimpleGraphExtractor {
-        &self.inner
-    }
+    pub fn inner(&self) -> &SimpleGraphExtractor { &self.inner }
 
     /// Get mutable reference to the inner SimpleGraphExtractor.
-    pub fn inner_mut(&mut self) -> &mut SimpleGraphExtractor {
-        &mut self.inner
-    }
+    pub fn inner_mut(&mut self) -> &mut SimpleGraphExtractor { &mut self.inner }
 
     /// Get current timeout setting.
-    pub fn timeout_ms(&self) -> u64 {
-        self.timeout_ms
-    }
+    pub fn timeout_ms(&self) -> u64 { self.timeout_ms }
 
     /// Get current capacity setting.
-    pub fn capacity(&self) -> (usize, usize) {
-        self.builder_capacity
-    }
+    pub fn capacity(&self) -> (usize, usize) { self.builder_capacity }
 
-    /// Merge trade graphs into a single Portfolio graph with shared node deduplication.
+    /// Merge trade graphs into a single Portfolio graph with shared node
+    /// deduplication.
     ///
     /// # Algorithm (Task 2.3)
     ///
-    /// 1. Build HashMap of (label, node_type) -> node_id for shared node detection
-    /// 2. For each trade graph:
-    ///    a. Check if node exists (same label + type) in merged graph
-    ///    b. If exists: add trade_id to existing node
-    ///    c. If not: add new node with trade_id
+    /// 1. Build HashMap of (label, node_type) -> node_id for shared node
+    ///    detection
+    /// 2. For each trade graph: a. Check if node exists (same label + type) in
+    ///    merged graph b. If exists: add trade_id to existing node c. If not:
+    ///    add new node with trade_id
     /// 3. Redirect edges to use deduplicated node IDs
     /// 4. Calculate optimisation ratio
     fn merge_trade_graphs(
@@ -1150,10 +1146,8 @@ impl PortfolioGraphExtractor {
                 let key = (node.label.clone(), node.node_type);
 
                 // Check if this is a shareable node (Input type with common labels)
-                let is_shareable = matches!(
-                    node.node_type,
-                    NodeType::Input
-                ) && !node.label.starts_with(trade_id);
+                let is_shareable =
+                    matches!(node.node_type, NodeType::Input) && !node.label.starts_with(trade_id);
 
                 if is_shareable {
                     if let Some(existing_id) = shared_node_map.get(&key) {
@@ -1253,9 +1247,7 @@ impl PortfolioGraphExtractor {
 }
 
 impl Default for PortfolioGraphExtractor {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl PortfolioGraphExtractable for PortfolioGraphExtractor {
@@ -1306,7 +1298,11 @@ impl PortfolioGraphExtractable for PortfolioGraphExtractor {
         let filtered_nodes: Vec<GraphNode> = full_graph
             .nodes
             .iter()
-            .filter(|n| n.trade_ids.iter().any(|tid| selected_set.contains(tid.as_str())))
+            .filter(|n| {
+                n.trade_ids
+                    .iter()
+                    .any(|tid| selected_set.contains(tid.as_str()))
+            })
             .cloned()
             .collect();
 
@@ -1318,7 +1314,9 @@ impl PortfolioGraphExtractable for PortfolioGraphExtractor {
         let filtered_edges: Vec<GraphEdge> = full_graph
             .edges
             .iter()
-            .filter(|e| retained_ids.contains(e.source.as_str()) && retained_ids.contains(e.target.as_str()))
+            .filter(|e| {
+                retained_ids.contains(e.source.as_str()) && retained_ids.contains(e.target.as_str())
+            })
             .cloned()
             .collect();
 
@@ -2416,7 +2414,10 @@ mod tests {
 
             // Should only have T001 nodes
             assert_eq!(subgraph.nodes.len(), 2);
-            assert!(subgraph.nodes.iter().all(|n| n.trade_ids.contains(&"T001".to_string())));
+            assert!(subgraph
+                .nodes
+                .iter()
+                .all(|n| n.trade_ids.contains(&"T001".to_string())));
             assert_eq!(subgraph.metadata.trade_count, 1);
         }
 
@@ -2555,17 +2556,15 @@ mod tests {
             let extractor = PortfolioGraphExtractor::new();
 
             let current = PortfolioComputationGraph {
-                nodes: vec![
-                    GraphNode {
-                        id: "N1".to_string(),
-                        node_type: NodeType::Input,
-                        label: "spot".to_string(),
-                        value: Some(100.0),
-                        is_sensitivity_target: true,
-                        group: NodeGroup::Input,
-                        trade_ids: vec!["T001".to_string()],
-                    },
-                ],
+                nodes: vec![GraphNode {
+                    id: "N1".to_string(),
+                    node_type: NodeType::Input,
+                    label: "spot".to_string(),
+                    value: Some(100.0),
+                    is_sensitivity_target: true,
+                    group: NodeGroup::Input,
+                    trade_ids: vec!["T001".to_string()],
+                }],
                 edges: vec![],
                 metadata: PortfolioGraphMetadata {
                     node_count: 1,
@@ -2578,11 +2577,7 @@ mod tests {
                 },
             };
 
-            let result = extractor.extract_portfolio_updates(
-                &["T001".to_string()],
-                None,
-                &current,
-            );
+            let result = extractor.extract_portfolio_updates(&["T001".to_string()], None, &current);
 
             assert!(result.is_ok());
             let updates = result.unwrap();
@@ -2597,17 +2592,15 @@ mod tests {
             let extractor = PortfolioGraphExtractor::new();
 
             let previous = PortfolioComputationGraph {
-                nodes: vec![
-                    GraphNode {
-                        id: "N1".to_string(),
-                        node_type: NodeType::Input,
-                        label: "spot".to_string(),
-                        value: Some(100.0),
-                        is_sensitivity_target: true,
-                        group: NodeGroup::Input,
-                        trade_ids: vec!["T001".to_string()],
-                    },
-                ],
+                nodes: vec![GraphNode {
+                    id: "N1".to_string(),
+                    node_type: NodeType::Input,
+                    label: "spot".to_string(),
+                    value: Some(100.0),
+                    is_sensitivity_target: true,
+                    group: NodeGroup::Input,
+                    trade_ids: vec!["T001".to_string()],
+                }],
                 edges: vec![],
                 metadata: PortfolioGraphMetadata {
                     node_count: 1,
@@ -2621,17 +2614,15 @@ mod tests {
             };
 
             let current = PortfolioComputationGraph {
-                nodes: vec![
-                    GraphNode {
-                        id: "N1".to_string(),
-                        node_type: NodeType::Input,
-                        label: "spot".to_string(),
-                        value: Some(105.0), // Changed from 100 to 105
-                        is_sensitivity_target: true,
-                        group: NodeGroup::Input,
-                        trade_ids: vec!["T001".to_string()],
-                    },
-                ],
+                nodes: vec![GraphNode {
+                    id: "N1".to_string(),
+                    node_type: NodeType::Input,
+                    label: "spot".to_string(),
+                    value: Some(105.0), // Changed from 100 to 105
+                    is_sensitivity_target: true,
+                    group: NodeGroup::Input,
+                    trade_ids: vec!["T001".to_string()],
+                }],
                 edges: vec![],
                 metadata: PortfolioGraphMetadata {
                     node_count: 1,
@@ -2664,17 +2655,15 @@ mod tests {
             let extractor = PortfolioGraphExtractor::new();
 
             let graph = PortfolioComputationGraph {
-                nodes: vec![
-                    GraphNode {
-                        id: "N1".to_string(),
-                        node_type: NodeType::Input,
-                        label: "spot".to_string(),
-                        value: Some(100.0),
-                        is_sensitivity_target: true,
-                        group: NodeGroup::Input,
-                        trade_ids: vec!["T001".to_string()],
-                    },
-                ],
+                nodes: vec![GraphNode {
+                    id: "N1".to_string(),
+                    node_type: NodeType::Input,
+                    label: "spot".to_string(),
+                    value: Some(100.0),
+                    is_sensitivity_target: true,
+                    group: NodeGroup::Input,
+                    trade_ids: vec!["T001".to_string()],
+                }],
                 edges: vec![],
                 metadata: PortfolioGraphMetadata {
                     node_count: 1,
@@ -2687,11 +2676,8 @@ mod tests {
                 },
             };
 
-            let result = extractor.extract_portfolio_updates(
-                &["T001".to_string()],
-                Some(&graph),
-                &graph,
-            );
+            let result =
+                extractor.extract_portfolio_updates(&["T001".to_string()], Some(&graph), &graph);
 
             assert!(result.is_ok());
             let updates = result.unwrap();

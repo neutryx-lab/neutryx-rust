@@ -32,15 +32,11 @@ impl PayoffType {
 
     /// Returns whether this payoff is a call-type (Call or DigitalCall).
     #[inline]
-    pub fn is_call(&self) -> bool {
-        matches!(self, PayoffType::Call | PayoffType::DigitalCall)
-    }
+    pub fn is_call(&self) -> bool { matches!(self, PayoffType::Call | PayoffType::DigitalCall) }
 
     /// Returns whether this payoff is a put-type (Put or DigitalPut).
     #[inline]
-    pub fn is_put(&self) -> bool {
-        matches!(self, PayoffType::Put | PayoffType::DigitalPut)
-    }
+    pub fn is_put(&self) -> bool { matches!(self, PayoffType::Put | PayoffType::DigitalPut) }
 
     /// Returns whether this payoff is digital (DigitalCall or DigitalPut).
     #[inline]

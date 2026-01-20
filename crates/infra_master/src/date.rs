@@ -63,7 +63,8 @@ impl Date {
     /// * `day` - Day (1-31, depending on month)
     ///
     /// # Returns
-    /// `Ok(Date)` if the date is valid, `Err(DateError::InvalidDate)` otherwise.
+    /// `Ok(Date)` if the date is valid, `Err(DateError::InvalidDate)`
+    /// otherwise.
     ///
     /// # Examples
     ///

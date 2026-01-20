@@ -1,7 +1,8 @@
 //! Extension traits for direction types.
 //!
-//! This module provides extension methods for direction types defined in `infra_master`.
-//! The `sign()` method is provided here to avoid adding num_traits dependency to infra_master.
+//! This module provides extension methods for direction types defined in
+//! `infra_master`. The `sign()` method is provided here to avoid adding
+//! num_traits dependency to infra_master.
 //!
 //! # Examples
 //!

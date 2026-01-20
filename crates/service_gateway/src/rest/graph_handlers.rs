@@ -25,14 +25,12 @@ use axum::{
     extract::{Query, State},
     Json,
 };
-use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
-
 use pricer_pricing::graph::{
-    ComputationGraph, PortfolioComputationGraph, PortfolioGraphExtractable,
-    PortfolioGraphExtractor,
+    ComputationGraph, PortfolioComputationGraph, PortfolioGraphExtractable, PortfolioGraphExtractor,
 };
 use pricer_risk::portfolio::{Portfolio, SamplePortfolioBuilder, TradeId};
+use serde::{Deserialize, Serialize};
+use tokio::sync::RwLock;
 
 use crate::error::ServerError;
 
@@ -232,7 +230,9 @@ impl GraphAppState {
         let portfolio = SamplePortfolioBuilder::new()
             .with_trade_count(trade_count)
             .build()
-            .map_err(|e| ServerError::Internal(format!("Failed to create sample portfolio: {}", e)))?;
+            .map_err(|e| {
+                ServerError::Internal(format!("Failed to create sample portfolio: {}", e))
+            })?;
 
         Ok(Self {
             portfolio,
@@ -242,9 +242,7 @@ impl GraphAppState {
     }
 
     /// Create with default settings (50 trades, 5 second cache)
-    pub fn default_sample() -> Result<Self, ServerError> {
-        Self::new_with_sample(50, 5)
-    }
+    pub fn default_sample() -> Result<Self, ServerError> { Self::new_with_sample(50, 5) }
 }
 
 // ============================================================================
@@ -278,13 +276,11 @@ pub async fn get_portfolio_graph(
         .map(|s| s.split(',').map(|s| s.trim().to_string()).collect());
 
     // Check if we need a subgraph
-    let cache_key = trade_ids
-        .as_ref()
-        .map(|ids| {
-            let mut sorted = ids.clone();
-            sorted.sort();
-            sorted.join(",")
-        });
+    let cache_key = trade_ids.as_ref().map(|ids| {
+        let mut sorted = ids.clone();
+        sorted.sort();
+        sorted.join(",")
+    });
 
     // Try to get from cache first
     {
@@ -389,7 +385,9 @@ pub async fn get_portfolio_trades(
         if let Some(ref filter_type) = params.instrument_type {
             if instrument_type != *filter_type {
                 // Still count for statistics
-                *by_instrument_type.entry(instrument_type.clone()).or_insert(0) += 1;
+                *by_instrument_type
+                    .entry(instrument_type.clone())
+                    .or_insert(0) += 1;
                 *by_currency.entry(currency.clone()).or_insert(0) += 1;
                 total_notional += trade.notional();
                 continue;
@@ -397,7 +395,9 @@ pub async fn get_portfolio_trades(
         }
         if let Some(ref filter_currency) = params.currency {
             if currency != *filter_currency {
-                *by_instrument_type.entry(instrument_type.clone()).or_insert(0) += 1;
+                *by_instrument_type
+                    .entry(instrument_type.clone())
+                    .or_insert(0) += 1;
                 *by_currency.entry(currency.clone()).or_insert(0) += 1;
                 total_notional += trade.notional();
                 continue;
@@ -405,7 +405,9 @@ pub async fn get_portfolio_trades(
         }
 
         // Update statistics
-        *by_instrument_type.entry(instrument_type.clone()).or_insert(0) += 1;
+        *by_instrument_type
+            .entry(instrument_type.clone())
+            .or_insert(0) += 1;
         *by_currency.entry(currency.clone()).or_insert(0) += 1;
         total_notional += trade.notional();
 
@@ -446,13 +448,10 @@ async fn extract_portfolio_graph(
     let mut trade_graphs: HashMap<String, ComputationGraph> = HashMap::new();
 
     // Get all trade IDs
-    let all_trade_ids: Vec<String> = portfolio
-        .trade_ids()
-        .map(|id| id.to_string())
-        .collect();
+    let all_trade_ids: Vec<String> = portfolio.trade_ids().map(|id| id.to_string()).collect();
 
-    // For each trade, create a mock graph (since we don't have real pricing context)
-    // In production, this would come from the actual pricing engine
+    // For each trade, create a mock graph (since we don't have real pricing
+    // context) In production, this would come from the actual pricing engine
     for trade_id in &all_trade_ids {
         let trade = portfolio.trade(&TradeId::new(trade_id));
         if let Some(trade) = trade {
@@ -474,10 +473,11 @@ async fn extract_portfolio_graph(
 }
 
 /// Create a simplified computation graph for a trade
-pub(crate) fn create_trade_graph(trade_id: &str, trade: &pricer_risk::portfolio::Trade) -> ComputationGraph {
-    use pricer_pricing::graph::{
-        GraphBuilder, GraphEdge, GraphNode, NodeGroup, NodeType,
-    };
+pub(crate) fn create_trade_graph(
+    trade_id: &str,
+    trade: &pricer_risk::portfolio::Trade,
+) -> ComputationGraph {
+    use pricer_pricing::graph::{GraphBuilder, GraphEdge, GraphNode, NodeGroup, NodeType};
 
     let mut builder = GraphBuilder::with_capacity(10, 15);
 

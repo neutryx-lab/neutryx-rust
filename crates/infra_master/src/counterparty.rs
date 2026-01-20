@@ -17,11 +17,14 @@ use crate::Currency;
 /// # Fields
 ///
 /// * `csa_id` - Unique identifier for this CSA agreement
-/// * `threshold` - Exposure below which no collateral is required (in base currency)
+/// * `threshold` - Exposure below which no collateral is required (in base
+///   currency)
 /// * `minimum_transfer_amount` - Minimum amount for margin calls
-/// * `independent_amount` - Initial margin amount (also known as initial amount)
+/// * `independent_amount` - Initial margin amount (also known as initial
+///   amount)
 /// * `collateral_currency` - Currency for collateral (type-safe ISO 4217)
-/// * `margin_period_of_risk` - Risk period in days (typically 10 for cleared, 14+ for bilateral)
+/// * `margin_period_of_risk` - Risk period in days (typically 10 for cleared,
+///   14+ for bilateral)
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CsaTerms {
@@ -103,7 +106,8 @@ impl CsaTerms {
 /// * `netting_set_id` - Unique identifier for this netting set
 /// * `counterparty_id` - Identifier of the counterparty
 /// * `csa_terms` - Optional CSA terms governing collateral exchange
-/// * `closeout_netting` - Whether close-out netting applies (typically true for ISDA agreements)
+/// * `closeout_netting` - Whether close-out netting applies (typically true for
+///   ISDA agreements)
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct NettingSetConfig {

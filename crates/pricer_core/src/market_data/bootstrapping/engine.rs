@@ -5,7 +5,6 @@
 //! Newton-Raphson with Brent fallback.
 
 use num_traits::Float;
-use crate::math::numeric::from_f64;
 
 use super::{
     cache::{BootstrapCache, CurveCache},
@@ -14,6 +13,7 @@ use super::{
     error::BootstrapError,
     instrument::BootstrapInstrument,
 };
+use crate::math::numeric::from_f64;
 
 /// Result of a bootstrap operation.
 #[derive(Debug, Clone)]
@@ -88,6 +88,7 @@ impl<T: Float> SequentialBootstrapper<T> {
     ///
     /// * `Ok(result)` - Successfully bootstrapped curve with diagnostics
     /// * `Err(BootstrapError)` - If bootstrapping fails
+    #[allow(clippy::missing_panics_doc)]
     pub fn bootstrap(
         &self,
         instruments: &[BootstrapInstrument<T>],
@@ -681,9 +682,8 @@ impl<T: Float> Clone for CachedBootstrapper<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::market_data::curves::YieldCurve;
-
     use super::*;
+    use crate::market_data::curves::YieldCurve;
 
     // ========================================
     // Basic Bootstrap Tests
