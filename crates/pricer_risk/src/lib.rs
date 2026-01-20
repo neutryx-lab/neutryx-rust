@@ -153,11 +153,3 @@ pub use xva::{
     compute_fca, compute_fva, generate_flat_discount_factors, CounterpartyXva, FundingParams,
     NettingSetXva, OwnCreditParams, PortfolioXva, XvaCalculator, XvaConfig, XvaError,
 };
-
-// Backward compatibility: provide deprecated alias for migration
-/// Deprecated module alias for backward compatibility.
-/// Use `pricer_risk` directly instead.
-#[deprecated(since = "0.7.0", note = "Use pricer_risk instead of pricer_risk")]
-pub mod pricer_risk {
-    pub use crate::*;
-}

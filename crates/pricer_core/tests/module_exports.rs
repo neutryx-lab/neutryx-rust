@@ -80,17 +80,11 @@ fn test_types_module_exports() {
 /// Test that types re-exports work at module level.
 #[test]
 fn test_types_reexports() {
-    #[allow(deprecated)]
-    use pricer_core::types::{Currency, CurrencyPair, Date, DayCountConvention, PricingError};
+    use pricer_core::types::{Currency, CurrencyPair, Date, PricingError};
 
     // Verify re-exports work (using infra_master types)
-    #[allow(deprecated)]
     let _usd = Currency::USD;
-    #[allow(deprecated)]
     let _date = Date::from_ymd(2024, 6, 15).unwrap();
-    #[allow(deprecated)]
-    let _dcc = DayCountConvention::Actual365Fixed;
-    #[allow(deprecated)]
     let _pair: CurrencyPair<f64> = CurrencyPair::new(Currency::EUR, Currency::USD, 1.10).unwrap();
     let _err = PricingError::InvalidInput("test".to_string());
 }

@@ -2,14 +2,14 @@
 //!
 //! This module provides types for bond conventions.
 
-use crate::{BusinessDayConvention, CalendarId, DayCountConvention, Frequency};
+use crate::{BusinessDayConvention, CalendarId, DayCounter, Frequency};
 
 /// Convention for a bond.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BondConvention {
     /// Day count convention.
-    pub day_count: DayCountConvention,
+    pub day_count: DayCounter,
     /// Coupon payment frequency.
     pub coupon_frequency: Frequency,
     /// Calendar for business day adjustments.
@@ -24,7 +24,7 @@ impl BondConvention {
     /// Creates a new bond convention.
     #[must_use]
     pub fn new(
-        day_count: DayCountConvention,
+        day_count: DayCounter,
         coupon_frequency: Frequency,
         calendar: CalendarId,
         business_day_convention: BusinessDayConvention,
@@ -43,7 +43,7 @@ impl BondConvention {
     #[must_use]
     pub fn us_treasury() -> Self {
         Self {
-            day_count: DayCountConvention::ActualActualIsda,
+            day_count: DayCounter::ActualActualIsda,
             coupon_frequency: Frequency::SemiAnnual,
             calendar: CalendarId::NewYork,
             business_day_convention: BusinessDayConvention::Following,
@@ -55,7 +55,7 @@ impl BondConvention {
     #[must_use]
     pub fn uk_gilt() -> Self {
         Self {
-            day_count: DayCountConvention::ActualActualIsda,
+            day_count: DayCounter::ActualActualIsda,
             coupon_frequency: Frequency::SemiAnnual,
             calendar: CalendarId::London,
             business_day_convention: BusinessDayConvention::Following,
@@ -67,7 +67,7 @@ impl BondConvention {
     #[must_use]
     pub fn german_bund() -> Self {
         Self {
-            day_count: DayCountConvention::ActualActualIsda,
+            day_count: DayCounter::ActualActualIsda,
             coupon_frequency: Frequency::Annual,
             calendar: CalendarId::Target,
             business_day_convention: BusinessDayConvention::Following,
@@ -79,7 +79,7 @@ impl BondConvention {
     #[must_use]
     pub fn jgb() -> Self {
         Self {
-            day_count: DayCountConvention::Actual365Fixed,
+            day_count: DayCounter::Actual365Fixed,
             coupon_frequency: Frequency::SemiAnnual,
             calendar: CalendarId::Tokyo,
             business_day_convention: BusinessDayConvention::Following,
@@ -95,7 +95,7 @@ mod tests {
     #[test]
     fn test_bond_convention_new() {
         let conv = BondConvention::new(
-            DayCountConvention::Thirty360Bond,
+            DayCounter::Thirty360Bond,
             Frequency::SemiAnnual,
             CalendarId::NewYork,
             BusinessDayConvention::Following,

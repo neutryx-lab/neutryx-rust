@@ -62,10 +62,6 @@ pub enum TimeError {
     CalendarError(String),
 }
 
-/// Backward compatibility alias for DateError.
-#[deprecated(since = "0.3.0", note = "Use TimeError instead")]
-pub type DateError = TimeError;
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -131,16 +127,5 @@ mod tests {
         let err = TimeError::CalculationError("test".to_string());
         let debug_str = format!("{:?}", err);
         assert!(debug_str.contains("CalculationError"));
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn test_deprecated_alias() {
-        let err: DateError = TimeError::InvalidDate {
-            year: 2024,
-            month: 1,
-            day: 1,
-        };
-        assert_eq!(format!("{}", err), "Invalid date: 2024-01-01");
     }
 }

@@ -70,16 +70,16 @@ pub use time::{
     TimeError, TimeUnit,
 };
 
+/// Type alias for backward compatibility.
+/// Use `DayCounter` instead.
+#[deprecated(since = "0.8.0", note = "Use time::DayCounter instead")]
+pub type DayCountConvention = DayCounter;
+
 // Market module types
 pub use market::{Currency, RateIndex};
 
 // Trade module types
 pub use trade::{SwapDirection, TradeDirection};
-
-// Backward compatibility aliases
-#[allow(deprecated)]
-#[deprecated(since = "0.4.0", note = "Use time::DayCounter instead")]
-pub type DayCountConvention = time::DayCounter;
 
 /// Prelude module for convenient imports
 pub mod prelude {

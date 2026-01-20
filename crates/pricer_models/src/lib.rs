@@ -50,7 +50,6 @@ pub mod demo;
 mod direction_ext;
 pub mod market;
 pub mod models;
-pub mod schedules;
 
 // Re-export direction types from infra_master
 // Re-export extension traits for direction types

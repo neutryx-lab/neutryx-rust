@@ -2,14 +2,14 @@
 //!
 //! This module provides types for credit default swap conventions.
 
-use crate::{BusinessDayConvention, CalendarId, DayCountConvention, Frequency};
+use crate::{BusinessDayConvention, CalendarId, DayCounter, Frequency};
 
 /// Convention for a credit default swap.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CdsConvention {
     /// Day count convention.
-    pub day_count: DayCountConvention,
+    pub day_count: DayCounter,
     /// Premium payment frequency.
     pub payment_frequency: Frequency,
     /// Calendar for business day adjustments.
@@ -24,7 +24,7 @@ impl CdsConvention {
     /// Creates a new CDS convention.
     #[must_use]
     pub fn new(
-        day_count: DayCountConvention,
+        day_count: DayCounter,
         payment_frequency: Frequency,
         calendar: CalendarId,
         business_day_convention: BusinessDayConvention,
@@ -43,7 +43,7 @@ impl CdsConvention {
     #[must_use]
     pub fn isda_na() -> Self {
         Self {
-            day_count: DayCountConvention::Actual360,
+            day_count: DayCounter::Actual360,
             payment_frequency: Frequency::Quarterly,
             calendar: CalendarId::NewYork,
             business_day_convention: BusinessDayConvention::Following,
@@ -55,7 +55,7 @@ impl CdsConvention {
     #[must_use]
     pub fn isda_eu() -> Self {
         Self {
-            day_count: DayCountConvention::Actual360,
+            day_count: DayCounter::Actual360,
             payment_frequency: Frequency::Quarterly,
             calendar: CalendarId::Target,
             business_day_convention: BusinessDayConvention::Following,
@@ -71,7 +71,7 @@ mod tests {
     #[test]
     fn test_cds_convention_new() {
         let conv = CdsConvention::new(
-            DayCountConvention::Actual360,
+            DayCounter::Actual360,
             Frequency::Quarterly,
             CalendarId::NewYork,
             BusinessDayConvention::Following,
@@ -83,7 +83,7 @@ mod tests {
     #[test]
     fn test_isda_na_convention() {
         let conv = CdsConvention::isda_na();
-        assert_eq!(conv.day_count, DayCountConvention::Actual360);
+        assert_eq!(conv.day_count, DayCounter::Actual360);
         assert_eq!(conv.payment_frequency, Frequency::Quarterly);
         assert_eq!(conv.recovery_rate, 0.40);
     }

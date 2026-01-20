@@ -2,14 +2,14 @@
 //!
 //! This module provides types for representing interest rate swap conventions.
 
-use crate::{BusinessDayConvention, CalendarId, DayCountConvention, Frequency, RateIndex};
+use crate::{BusinessDayConvention, CalendarId, DayCounter, Frequency, RateIndex};
 
 /// Convention for a single leg of a swap.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SwapLegConvention {
     /// Day count convention for this leg.
-    pub day_count: DayCountConvention,
+    pub day_count: DayCounter,
     /// Payment frequency.
     pub payment_frequency: Frequency,
     /// Calendar for business day adjustments.
@@ -24,7 +24,7 @@ impl SwapLegConvention {
     /// Creates a new swap leg convention.
     #[must_use]
     pub fn new(
-        day_count: DayCountConvention,
+        day_count: DayCounter,
         payment_frequency: Frequency,
         calendar: CalendarId,
         business_day_convention: BusinessDayConvention,
@@ -80,14 +80,14 @@ impl SwapConvention {
     pub fn usd_sofr() -> Self {
         Self {
             fixed_leg: SwapLegConvention {
-                day_count: DayCountConvention::Actual360,
+                day_count: DayCounter::Actual360,
                 payment_frequency: Frequency::Annual,
                 calendar: CalendarId::NewYork,
                 business_day_convention: BusinessDayConvention::ModifiedFollowing,
                 payment_lag: 2,
             },
             float_leg: SwapLegConvention {
-                day_count: DayCountConvention::Actual360,
+                day_count: DayCounter::Actual360,
                 payment_frequency: Frequency::Annual,
                 calendar: CalendarId::NewYork,
                 business_day_convention: BusinessDayConvention::ModifiedFollowing,
@@ -107,14 +107,14 @@ impl SwapConvention {
     pub fn eur_euribor_6m() -> Self {
         Self {
             fixed_leg: SwapLegConvention {
-                day_count: DayCountConvention::Thirty360Bond,
+                day_count: DayCounter::Thirty360Bond,
                 payment_frequency: Frequency::Annual,
                 calendar: CalendarId::Target,
                 business_day_convention: BusinessDayConvention::ModifiedFollowing,
                 payment_lag: 2,
             },
             float_leg: SwapLegConvention {
-                day_count: DayCountConvention::Actual360,
+                day_count: DayCounter::Actual360,
                 payment_frequency: Frequency::SemiAnnual,
                 calendar: CalendarId::Target,
                 business_day_convention: BusinessDayConvention::ModifiedFollowing,
@@ -134,14 +134,14 @@ impl SwapConvention {
     pub fn jpy_tonar() -> Self {
         Self {
             fixed_leg: SwapLegConvention {
-                day_count: DayCountConvention::Actual365Fixed,
+                day_count: DayCounter::Actual365Fixed,
                 payment_frequency: Frequency::Annual,
                 calendar: CalendarId::Tokyo,
                 business_day_convention: BusinessDayConvention::ModifiedFollowing,
                 payment_lag: 2,
             },
             float_leg: SwapLegConvention {
-                day_count: DayCountConvention::Actual365Fixed,
+                day_count: DayCounter::Actual365Fixed,
                 payment_frequency: Frequency::Annual,
                 calendar: CalendarId::Tokyo,
                 business_day_convention: BusinessDayConvention::ModifiedFollowing,
@@ -161,14 +161,14 @@ impl SwapConvention {
     pub fn gbp_sonia() -> Self {
         Self {
             fixed_leg: SwapLegConvention {
-                day_count: DayCountConvention::Actual365Fixed,
+                day_count: DayCounter::Actual365Fixed,
                 payment_frequency: Frequency::Annual,
                 calendar: CalendarId::London,
                 business_day_convention: BusinessDayConvention::ModifiedFollowing,
                 payment_lag: 0,
             },
             float_leg: SwapLegConvention {
-                day_count: DayCountConvention::Actual365Fixed,
+                day_count: DayCounter::Actual365Fixed,
                 payment_frequency: Frequency::Annual,
                 calendar: CalendarId::London,
                 business_day_convention: BusinessDayConvention::ModifiedFollowing,
@@ -187,14 +187,14 @@ mod tests {
     #[test]
     fn test_swap_leg_convention_new() {
         let leg = SwapLegConvention::new(
-            DayCountConvention::Actual360,
+            DayCounter::Actual360,
             Frequency::Annual,
             CalendarId::NewYork,
             BusinessDayConvention::ModifiedFollowing,
             2,
         );
 
-        assert_eq!(leg.day_count, DayCountConvention::Actual360);
+        assert_eq!(leg.day_count, DayCounter::Actual360);
         assert_eq!(leg.payment_frequency, Frequency::Annual);
         assert_eq!(leg.calendar, CalendarId::NewYork);
         assert_eq!(
@@ -207,14 +207,14 @@ mod tests {
     #[test]
     fn test_swap_convention_new() {
         let fixed_leg = SwapLegConvention::new(
-            DayCountConvention::Thirty360Bond,
+            DayCounter::Thirty360Bond,
             Frequency::SemiAnnual,
             CalendarId::Target,
             BusinessDayConvention::ModifiedFollowing,
             2,
         );
         let float_leg = SwapLegConvention::new(
-            DayCountConvention::Actual360,
+            DayCounter::Actual360,
             Frequency::Quarterly,
             CalendarId::Target,
             BusinessDayConvention::ModifiedFollowing,
@@ -232,7 +232,7 @@ mod tests {
 
         assert_eq!(conv.float_index, RateIndex::Sofr);
         assert_eq!(conv.spot_lag, 2);
-        assert_eq!(conv.fixed_leg.day_count, DayCountConvention::Actual360);
+        assert_eq!(conv.fixed_leg.day_count, DayCounter::Actual360);
         assert_eq!(conv.fixed_leg.payment_frequency, Frequency::Annual);
         assert_eq!(conv.fixed_leg.calendar, CalendarId::NewYork);
     }
@@ -243,7 +243,7 @@ mod tests {
 
         assert_eq!(conv.float_index, RateIndex::Euribor6M);
         assert_eq!(conv.spot_lag, 2);
-        assert_eq!(conv.fixed_leg.day_count, DayCountConvention::Thirty360Bond);
+        assert_eq!(conv.fixed_leg.day_count, DayCounter::Thirty360Bond);
         assert_eq!(conv.fixed_leg.payment_frequency, Frequency::Annual);
         assert_eq!(conv.fixed_leg.calendar, CalendarId::Target);
         assert_eq!(conv.float_leg.payment_frequency, Frequency::SemiAnnual);
@@ -255,7 +255,7 @@ mod tests {
 
         assert_eq!(conv.float_index, RateIndex::Tonar);
         assert_eq!(conv.spot_lag, 2);
-        assert_eq!(conv.fixed_leg.day_count, DayCountConvention::Actual365Fixed);
+        assert_eq!(conv.fixed_leg.day_count, DayCounter::Actual365Fixed);
         assert_eq!(conv.fixed_leg.calendar, CalendarId::Tokyo);
     }
 
@@ -265,7 +265,7 @@ mod tests {
 
         assert_eq!(conv.float_index, RateIndex::Sonia);
         assert_eq!(conv.spot_lag, 0); // SONIA swaps start same day
-        assert_eq!(conv.fixed_leg.day_count, DayCountConvention::Actual365Fixed);
+        assert_eq!(conv.fixed_leg.day_count, DayCounter::Actual365Fixed);
         assert_eq!(conv.fixed_leg.calendar, CalendarId::London);
     }
 

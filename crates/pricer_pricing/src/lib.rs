@@ -100,17 +100,6 @@
 //! - **Optional L1/L2**: Use `--features l1l2-integration` to enable
 //!   pricer_core/pricer_models
 //!
-//! ## Migration from pricer_kernel
-//!
-//! This crate was renamed from `pricer_kernel` to `pricer_pricing` in version
-//! 0.7.0. For backward compatibility, you can still import the crate as
-//! `pricer_kernel`:
-//!
-//! ```toml
-//! # Cargo.toml
-//! pricer_kernel = { package = "pricer_pricing", version = "0.7" }
-//! ```
-
 // Enzyme AD: Enable autodiff feature when enzyme-ad feature is active
 // This requires nightly Rust (nightly-2025-01-15) with Enzyme LLVM plugin
 // Requirement 1.1: #![feature(autodiff)] を有効化する仕組み
@@ -188,31 +177,3 @@ pub use irs_greeks::{
     XvaDemoRunner, XvaResult, XvaSensitivityBenchmark,
 };
 pub use mc::{GbmParams, Greek, MonteCarloConfig, MonteCarloPricer, PayoffParams, PricingResult};
-
-// =============================================================================
-// Backward Compatibility Alias (deprecated)
-// =============================================================================
-
-/// Deprecated: This module is provided for backward compatibility.
-/// Please use `pricer_pricing` directly instead of `pricer_kernel`.
-///
-/// # Migration
-///
-/// Replace `pricer_kernel` with `pricer_pricing` in your imports:
-///
-/// ```rust,ignore
-/// // Before
-/// use pricer_pricing::mc::MonteCarloPricer;
-///
-/// // After
-/// use pricer_pricing::mc::MonteCarloPricer;
-/// ```
-///
-/// This module is deprecated and will be removed in a future version.
-#[deprecated(
-    since = "0.7.0",
-    note = "pricer_kernel has been renamed to pricer_pricing. Please update your imports."
-)]
-pub mod pricer_kernel {
-    pub use crate::{analytical, checkpoint, enzyme, greeks, mc, path_dependent, rng, verify};
-}

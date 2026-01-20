@@ -215,10 +215,6 @@ impl fmt::Display for DayCounter {
     }
 }
 
-/// Backward compatibility alias for DayCountConvention.
-#[deprecated(since = "0.3.0", note = "Use DayCounter instead")]
-pub type DayCountConvention = DayCounter;
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -380,12 +376,5 @@ mod tests {
         set.insert(DayCounter::Actual360);
         set.insert(DayCounter::Actual365Fixed); // Duplicate
         assert_eq!(set.len(), 2);
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn test_deprecated_alias() {
-        let dcc: DayCountConvention = DayCounter::Actual365Fixed;
-        assert_eq!(dcc.name(), "ACT/365");
     }
 }

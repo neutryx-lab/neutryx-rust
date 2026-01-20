@@ -80,11 +80,3 @@ pub use error::TimeError;
 pub use frequency::Frequency;
 pub use period::{AccrualPeriod, EndOfMonthRule, Period, Tenor, TimeUnit};
 pub use types::Date;
-
-// Backward compatibility aliases
-#[allow(deprecated)]
-#[deprecated(since = "0.3.0", note = "Use TimeError instead")]
-pub use error::DateError;
-#[allow(deprecated)]
-#[deprecated(since = "0.3.0", note = "Use DayCounter instead")]
-pub use day_counters::DayCountConvention;

@@ -2,14 +2,14 @@
 //!
 //! This module provides types for interest rate cap and floor conventions.
 
-use crate::{BusinessDayConvention, CalendarId, DayCountConvention, Frequency, RateIndex};
+use crate::{BusinessDayConvention, CalendarId, DayCounter, Frequency, RateIndex};
 
 /// Convention for an interest rate cap or floor.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CapFloorConvention {
     /// Day count convention.
-    pub day_count: DayCountConvention,
+    pub day_count: DayCounter,
     /// Payment frequency.
     pub payment_frequency: Frequency,
     /// Calendar for business day adjustments.
@@ -24,7 +24,7 @@ impl CapFloorConvention {
     /// Creates a new cap/floor convention.
     #[must_use]
     pub fn new(
-        day_count: DayCountConvention,
+        day_count: DayCounter,
         payment_frequency: Frequency,
         calendar: CalendarId,
         business_day_convention: BusinessDayConvention,
@@ -43,7 +43,7 @@ impl CapFloorConvention {
     #[must_use]
     pub fn usd_sofr() -> Self {
         Self {
-            day_count: DayCountConvention::Actual360,
+            day_count: DayCounter::Actual360,
             payment_frequency: Frequency::Quarterly,
             calendar: CalendarId::NewYork,
             business_day_convention: BusinessDayConvention::ModifiedFollowing,
@@ -55,7 +55,7 @@ impl CapFloorConvention {
     #[must_use]
     pub fn eur_euribor_3m() -> Self {
         Self {
-            day_count: DayCountConvention::Actual360,
+            day_count: DayCounter::Actual360,
             payment_frequency: Frequency::Quarterly,
             calendar: CalendarId::Target,
             business_day_convention: BusinessDayConvention::ModifiedFollowing,
@@ -71,7 +71,7 @@ mod tests {
     #[test]
     fn test_capfloor_convention_new() {
         let conv = CapFloorConvention::new(
-            DayCountConvention::Actual360,
+            DayCounter::Actual360,
             Frequency::Quarterly,
             CalendarId::NewYork,
             BusinessDayConvention::ModifiedFollowing,

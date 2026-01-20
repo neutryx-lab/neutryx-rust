@@ -156,8 +156,6 @@ pub mod workspace_checkpoint;
 
 // Re-exports for convenient access
 pub use config::{AdMode, MonteCarloConfig, MonteCarloConfigBuilder};
-#[allow(deprecated)]
-pub use error::ConfigError;
 pub use error::MonteCarloConfigError;
 pub use paths::{generate_gbm_paths, GbmParams};
 pub use payoff::{

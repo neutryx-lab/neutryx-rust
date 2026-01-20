@@ -29,10 +29,6 @@ pub enum MonteCarloConfigError {
     },
 }
 
-/// Backward-compatible alias for `MonteCarloConfigError`.
-#[deprecated(since = "0.2.0", note = "Use MonteCarloConfigError instead")]
-pub type ConfigError = MonteCarloConfigError;
-
 #[cfg(test)]
 mod tests {
     use super::*;

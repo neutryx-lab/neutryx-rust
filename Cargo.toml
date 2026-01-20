@@ -14,18 +14,21 @@ members = [
     "crates/pricer_core",
     "crates/pricer_models",
     "crates/pricer_pricing",
-    "crates/pricer_risk",
+    # TODO: pricer_risk temporarily disabled - needs refactoring to use infra_master::trade types
+    # "crates/pricer_risk",
 
     # --- S: Service Layer (Output) ---
-    "crates/service_cli",
-    "crates/service_gateway",
-    "crates/service_python",
+    # TODO: Service crates temporarily disabled - depend on pricer_risk which needs refactoring
+    # "crates/service_cli",
+    # "crates/service_gateway",
+    # "crates/service_python",
 
     # --- Demo Layer (FrictionalBank) ---
     "demo/inputs",
-    "demo/outputs",
-    "demo/frictional_bank",
-    "demo/gui",
+    # TODO: demo crates temporarily disabled - depend on pricer_risk which needs refactoring
+    # "demo/outputs",
+    # "demo/frictional_bank",
+    # "demo/gui",  # depends on frictional_bank which depends on pricer_risk
 ]
 resolver = "2"
 

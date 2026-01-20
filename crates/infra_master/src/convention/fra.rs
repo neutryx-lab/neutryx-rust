@@ -2,14 +2,14 @@
 //!
 //! This module provides types for Forward Rate Agreement conventions.
 
-use crate::{BusinessDayConvention, CalendarId, DayCountConvention, RateIndex};
+use crate::{BusinessDayConvention, CalendarId, DayCounter, RateIndex};
 
 /// Convention for a Forward Rate Agreement.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FraConvention {
     /// Day count convention.
-    pub day_count: DayCountConvention,
+    pub day_count: DayCounter,
     /// Calendar for business day adjustments.
     pub calendar: CalendarId,
     /// Business day convention.
@@ -22,7 +22,7 @@ impl FraConvention {
     /// Creates a new FRA convention.
     #[must_use]
     pub fn new(
-        day_count: DayCountConvention,
+        day_count: DayCounter,
         calendar: CalendarId,
         business_day_convention: BusinessDayConvention,
         index: RateIndex,
@@ -39,7 +39,7 @@ impl FraConvention {
     #[must_use]
     pub fn usd_sofr() -> Self {
         Self {
-            day_count: DayCountConvention::Actual360,
+            day_count: DayCounter::Actual360,
             calendar: CalendarId::NewYork,
             business_day_convention: BusinessDayConvention::ModifiedFollowing,
             index: RateIndex::Sofr,
@@ -50,7 +50,7 @@ impl FraConvention {
     #[must_use]
     pub fn eur_euribor_3m() -> Self {
         Self {
-            day_count: DayCountConvention::Actual360,
+            day_count: DayCounter::Actual360,
             calendar: CalendarId::Target,
             business_day_convention: BusinessDayConvention::ModifiedFollowing,
             index: RateIndex::Euribor3M,
@@ -65,13 +65,13 @@ mod tests {
     #[test]
     fn test_fra_convention_new() {
         let conv = FraConvention::new(
-            DayCountConvention::Actual360,
+            DayCounter::Actual360,
             CalendarId::NewYork,
             BusinessDayConvention::ModifiedFollowing,
             RateIndex::Sofr,
         );
 
-        assert_eq!(conv.day_count, DayCountConvention::Actual360);
+        assert_eq!(conv.day_count, DayCounter::Actual360);
         assert_eq!(conv.calendar, CalendarId::NewYork);
         assert_eq!(conv.index, RateIndex::Sofr);
     }

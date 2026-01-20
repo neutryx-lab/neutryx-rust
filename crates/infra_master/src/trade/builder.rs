@@ -26,7 +26,7 @@
 //!     .build();
 //! ```
 
-use crate::{Currency, Date, DayCountConvention, RateIndex};
+use crate::{Currency, Date, DayCounter, RateIndex};
 
 use super::cashflow::{Cashflow, CashflowType};
 use super::error::TradeError;
@@ -45,7 +45,7 @@ pub struct LegBuilder {
     notional: f64,
     currency: Currency,
     direction: Direction,
-    day_count: DayCountConvention,
+    day_count: DayCounter,
 }
 
 impl LegBuilder {
@@ -80,7 +80,7 @@ impl LegBuilder {
             notional,
             currency,
             direction: Direction::Receiver,
-            day_count: DayCountConvention::Actual365Fixed,
+            day_count: DayCounter::Actual365Fixed,
         })
     }
 
@@ -93,7 +93,7 @@ impl LegBuilder {
 
     /// Sets the day count convention.
     #[must_use]
-    pub fn day_count(mut self, day_count: DayCountConvention) -> Self {
+    pub fn day_count(mut self, day_count: DayCounter) -> Self {
         self.day_count = day_count;
         self
     }
@@ -248,7 +248,7 @@ mod tests {
         let leg = LegBuilder::new(sample_schedule(), 1_000_000.0, Currency::USD)
             .unwrap()
             .direction(Direction::Payer)
-            .day_count(DayCountConvention::Actual360)
+            .day_count(DayCounter::Actual360)
             .build_fixed(0.05);
 
         assert_eq!(leg.direction, Direction::Payer);
@@ -274,7 +274,7 @@ mod tests {
     fn test_leg_builder_cashflow_properties() {
         let leg = LegBuilder::new(sample_schedule(), 1_000_000.0, Currency::USD)
             .unwrap()
-            .day_count(DayCountConvention::Actual365Fixed)
+            .day_count(DayCounter::Actual365Fixed)
             .build_fixed(0.05);
 
         let cf = leg.cashflows().next().unwrap();

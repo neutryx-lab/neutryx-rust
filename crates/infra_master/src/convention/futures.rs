@@ -2,7 +2,7 @@
 //!
 //! This module provides types for interest rate futures conventions.
 
-use crate::{CalendarId, DayCountConvention};
+use crate::{CalendarId, DayCounter};
 
 /// Convention for an interest rate future.
 #[derive(Debug, Clone, PartialEq)]
@@ -13,7 +13,7 @@ pub struct FuturesConvention {
     /// Tick size (minimum price movement).
     pub tick_size: f64,
     /// Day count convention.
-    pub day_count: DayCountConvention,
+    pub day_count: DayCounter,
     /// Calendar for settlement.
     pub calendar: CalendarId,
 }
@@ -24,7 +24,7 @@ impl FuturesConvention {
     pub fn new(
         contract_size: f64,
         tick_size: f64,
-        day_count: DayCountConvention,
+        day_count: DayCounter,
         calendar: CalendarId,
     ) -> Self {
         Self {
@@ -41,7 +41,7 @@ impl FuturesConvention {
         Self {
             contract_size: 1_000_000.0,
             tick_size: 0.0025, // 0.25 basis points
-            day_count: DayCountConvention::Actual360,
+            day_count: DayCounter::Actual360,
             calendar: CalendarId::NewYork,
         }
     }
@@ -52,7 +52,7 @@ impl FuturesConvention {
         Self {
             contract_size: 1_000_000.0,
             tick_size: 0.0025,
-            day_count: DayCountConvention::Actual360,
+            day_count: DayCounter::Actual360,
             calendar: CalendarId::NewYork,
         }
     }
@@ -63,7 +63,7 @@ impl FuturesConvention {
         Self {
             contract_size: 1_000_000.0,
             tick_size: 0.005, // 0.5 basis points
-            day_count: DayCountConvention::Actual360,
+            day_count: DayCounter::Actual360,
             calendar: CalendarId::Target,
         }
     }
@@ -78,7 +78,7 @@ mod tests {
         let conv = FuturesConvention::new(
             1_000_000.0,
             0.0025,
-            DayCountConvention::Actual360,
+            DayCounter::Actual360,
             CalendarId::NewYork,
         );
 
@@ -97,7 +97,7 @@ mod tests {
     fn test_cme_sofr_convention() {
         let conv = FuturesConvention::cme_sofr();
         assert_eq!(conv.contract_size, 1_000_000.0);
-        assert_eq!(conv.day_count, DayCountConvention::Actual360);
+        assert_eq!(conv.day_count, DayCounter::Actual360);
     }
 
     #[test]
