@@ -49,7 +49,7 @@
 
 use pricer_core::traits::{priceable::Differentiable, Float};
 
-use crate::models::stochastic::{SingleState, StochasticModel};
+use crate::models::stochastic::{RatesModel, SingleState, StochasticModel};
 
 /// CIR model parameters.
 ///
@@ -238,6 +238,8 @@ impl<T: Float + Default> StochasticModel<T> for CIRModel<T> {
         1 // CIR is a single-factor model
     }
 }
+
+impl<T: Float + Default> RatesModel<T> for CIRModel<T> {}
 
 #[cfg(test)]
 mod tests {

@@ -29,16 +29,16 @@
 
 use pricer_core::traits::Float;
 
-// Import equity models from equity/ submodule
 #[cfg(feature = "equity")]
-use super::equity::{
-    gbm::{GBMModel, GBMParams},
-    heston::{HestonModel, HestonParams},
-    sabr::{SABRModel, SABRParams},
-};
-// Import rate models when rates feature is enabled
+use super::gbm::{GBMModel, GBMParams};
+#[cfg(feature = "equity")]
+use super::heston::{HestonModel, HestonParams};
+#[cfg(feature = "equity")]
+use super::sabr::{SABRModel, SABRParams};
 #[cfg(feature = "rates")]
-use super::rates::{CIRModel, CIRParams, HullWhiteModel, HullWhiteParams};
+use super::cir::{CIRModel, CIRParams};
+#[cfg(feature = "rates")]
+use super::hull_white::{HullWhiteModel, HullWhiteParams};
 use super::stochastic::{SingleState, StochasticState, TwoFactorState};
 
 /// Unified state type for all models.

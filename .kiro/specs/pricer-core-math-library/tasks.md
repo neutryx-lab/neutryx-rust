@@ -20,10 +20,10 @@
 - `pricer_models::analytical::distributions`からの移行パスを確認
 
 **サブタスク**:
-- 1.1: `distributions/error.rs`を作成し`DistributionError`を定義
-- 1.2: `distributions/normal.rs`を作成し`norm_cdf`、`norm_pdf`を実装
-- 1.3: `norm_inv_cdf`をAcklam近似で実装
-- 1.4: 単体テストとプロパティベーステストを追加
+- [x] 1.1: `distributions/error.rs`を作成し`DistributionError`を定義
+- [x] 1.2: `distributions/normal.rs`を作成し`norm_cdf`、`norm_pdf`を実装
+- [x] 1.3: `norm_inv_cdf`をAcklam近似で実装
+- [x] 1.4: 単体テストとプロパティベーステストを追加
 
 ---
 
@@ -80,11 +80,11 @@
 - `partial_diff<T, F>`を実装
 
 **サブタスク**:
-- 4.1: `calculus/mod.rs`と`finite_difference.rs`を作成
-- 4.2: 1階導関数（前方/後方/中心差分）を実装
-- 4.3: 2階導関数を実装
-- 4.4: 偏微分を実装
-- 4.5: 精度検証テストを追加
+- [x] 4.1: `calculus/mod.rs`と`finite_difference.rs`を作成
+- [x] 4.2: 1階導関数（前方/後方/中心差分）を実装
+- [x] 4.3: 2階導関数を実装
+- [x] 4.4: 偏微分を実装
+- [x] 4.5: 精度検証テストを追加
 
 ---
 
@@ -100,9 +100,9 @@
 - 中心差分用の最適bump幅計算を実装
 
 **サブタスク**:
-- 5.1: `bump_selection.rs`を作成
-- 5.2: 1階導関数用の最適bump幅を実装
-- 5.3: 2階導関数用の最適bump幅を実装
+- [x] 5.1: `bump_selection.rs`を作成
+- [x] 5.2: 1階導関数用の最適bump幅を実装
+- [x] 5.3: 2階導関数用の最適bump幅を実装
 
 ---
 
@@ -120,9 +120,9 @@
 - 単体テストを追加
 
 **サブタスク**:
-- 6.1: `utilities/mod.rs`と`basic.rs`を作成
-- 6.2: 基本関数を実装
-- 6.3: テストを追加
+- [x] 6.1: `utilities/mod.rs`と`basic.rs`を作成
+- [x] 6.2: 基本関数を実装
+- [x] 6.3: テストを追加
 
 ---
 
@@ -138,10 +138,10 @@
 - `binomial<T: Float>`を実装
 
 **サブタスク**:
-- 7.1: `combinatorics.rs`を作成
-- 7.2: `factorial`を実装
-- 7.3: `binomial`を実装
-- 7.4: オーバーフロー対策のテストを追加
+- [x] 7.1: `combinatorics.rs`を作成
+- [x] 7.2: `factorial`を実装
+- [x] 7.3: `binomial`を実装
+- [x] 7.4: オーバーフロー対策のテストを追加
 
 ---
 
@@ -157,10 +157,10 @@
 - `beta<T: Float>`を実装
 
 **サブタスク**:
-- 8.1: `special.rs`を作成
-- 8.2: `log_gamma`をLanczos近似で実装
-- 8.3: `beta`を実装
-- 8.4: 精度検証テストを追加
+- [x] 8.1: `special.rs`を作成
+- [x] 8.2: `log_gamma`をLanczos近似で実装
+- [x] 8.3: `beta`を実装
+- [x] 8.4: 精度検証テストを追加
 
 ---
 

@@ -53,7 +53,6 @@ pub fn norm_cdf<T: Float>(x: T) -> T {
     // Φ(x) = 1 - φ(x) * (b1*t + b2*t² + b3*t³ + b4*t⁴ + b5*t⁵)
     // where t = 1/(1 + p*|x|)
     let one = T::one();
-    let half = T::from(0.5).unwrap();
 
     let x_f64 = x.to_f64().unwrap();
 
