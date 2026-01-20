@@ -22,9 +22,8 @@ use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
 
-use crate::error::ServerError;
-
 use super::graph_handlers::GraphAppState;
+use crate::error::ServerError;
 
 // ============================================================================
 // WebSocket Message Types
@@ -143,10 +142,7 @@ impl WsAppState {
 /// {"update_type": "error", "message": "...", "code": 404}
 /// {"update_type": "pong"}
 /// ```
-pub async fn ws_handler(
-    ws: WebSocketUpgrade,
-    State(state): State<Arc<WsAppState>>,
-) -> Response {
+pub async fn ws_handler(ws: WebSocketUpgrade, State(state): State<Arc<WsAppState>>) -> Response {
     ws.on_upgrade(|socket| handle_socket(socket, state))
 }
 
@@ -187,25 +183,18 @@ async fn handle_socket(socket: WebSocket, state: Arc<WsAppState>) {
     let mut recv_task = tokio::spawn(async move {
         while let Some(Ok(msg)) = receiver.next().await {
             match msg {
-                Message::Text(text) => {
-                    match serde_json::from_str::<ClientMessage>(&text) {
-                        Ok(client_msg) => {
-                            handle_client_message(
-                                client_msg,
-                                &state_clone,
-                                &mut selected_trades,
-                            )
-                            .await;
-                        }
-                        Err(e) => {
-                            let error_msg = ServerMessage::Error {
-                                message: format!("Invalid message format: {}", e),
-                                code: 400,
-                            };
-                            let _ = state_clone.broadcast_tx.send(error_msg);
-                        }
+                Message::Text(text) => match serde_json::from_str::<ClientMessage>(&text) {
+                    Ok(client_msg) => {
+                        handle_client_message(client_msg, &state_clone, &mut selected_trades).await;
                     }
-                }
+                    Err(e) => {
+                        let error_msg = ServerMessage::Error {
+                            message: format!("Invalid message format: {}", e),
+                            code: 400,
+                        };
+                        let _ = state_clone.broadcast_tx.send(error_msg);
+                    }
+                },
                 Message::Close(_) => {
                     tracing::debug!("Client {} disconnected", session_id);
                     break;
@@ -278,9 +267,10 @@ async fn extract_subgraph_for_ws(
     state: &Arc<GraphAppState>,
     trade_ids: &[String],
 ) -> Result<SubgraphData, ServerError> {
+    use std::collections::HashMap;
+
     use pricer_pricing::graph::{PortfolioGraphExtractable, PortfolioGraphExtractor};
     use pricer_risk::portfolio::TradeId;
-    use std::collections::HashMap;
 
     let portfolio = &state.portfolio;
     let extractor = PortfolioGraphExtractor::new()
@@ -288,13 +278,9 @@ async fn extract_subgraph_for_ws(
         .with_capacity(5_000, 10_000);
 
     // Build trade graphs
-    let all_trade_ids: Vec<String> = portfolio
-        .trade_ids()
-        .map(|id| id.to_string())
-        .collect();
+    let all_trade_ids: Vec<String> = portfolio.trade_ids().map(|id| id.to_string()).collect();
 
-    let mut trade_graphs: HashMap<String, pricer_pricing::graph::ComputationGraph> =
-        HashMap::new();
+    let mut trade_graphs: HashMap<String, pricer_pricing::graph::ComputationGraph> = HashMap::new();
 
     for trade_id in &all_trade_ids {
         if let Some(trade) = portfolio.trade(&TradeId::new(trade_id)) {

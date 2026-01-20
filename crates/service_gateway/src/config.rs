@@ -1,11 +1,10 @@
 //! Server configuration
 //!
 //! Re-exports configuration from `infra_config` for gateway use.
-//! This module provides a unified configuration interface, eliminating duplicate
-//! config definitions across service crates.
+//! This module provides a unified configuration interface, eliminating
+//! duplicate config definitions across service crates.
 
 use anyhow::Result;
-
 pub use infra_config::Settings;
 
 /// Server configuration wrapper.
@@ -30,7 +29,8 @@ pub struct ServerConfig {
 impl ServerConfig {
     /// Load configuration from the unified settings system.
     ///
-    /// This loads from config files and environment variables via `infra_config`.
+    /// This loads from config files and environment variables via
+    /// `infra_config`.
     pub fn load() -> Result<Self> {
         let settings = Settings::load()?;
         Ok(Self::from_settings(&settings))
@@ -49,7 +49,5 @@ impl ServerConfig {
 }
 
 impl Default for ServerConfig {
-    fn default() -> Self {
-        Self::from_settings(&Settings::default())
-    }
+    fn default() -> Self { Self::from_settings(&Settings::default()) }
 }

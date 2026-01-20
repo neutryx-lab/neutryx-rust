@@ -8,7 +8,7 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use pricer_optimiser::bootstrapping::{
+use pricer_core::market_data::bootstrapping::{
     BootstrapError, BootstrapInstrument, GenericBootstrapConfig, SequentialBootstrapper,
 };
 use serde::{Deserialize, Serialize};
@@ -1097,7 +1097,11 @@ impl PortfolioGraphCache {
         trade_ids.map(|ids| {
             let mut sorted: Vec<&String> = ids.iter().collect();
             sorted.sort();
-            sorted.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(",")
+            sorted
+                .iter()
+                .map(|s| s.as_str())
+                .collect::<Vec<_>>()
+                .join(",")
         })
     }
 
@@ -1145,19 +1149,13 @@ impl PortfolioGraphCache {
     }
 
     /// Clear the entire cache.
-    pub fn clear(&mut self) {
-        self.entries.clear();
-    }
+    pub fn clear(&mut self) { self.entries.clear(); }
 
     /// Get the number of entries in the cache.
-    pub fn len(&self) -> usize {
-        self.entries.len()
-    }
+    pub fn len(&self) -> usize { self.entries.len() }
 
     /// Check if the cache is empty.
-    pub fn is_empty(&self) -> bool {
-        self.entries.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.entries.is_empty() }
 }
 
 /// Generate a sample computation graph for a trade
@@ -3794,7 +3792,8 @@ pub async fn list_jobs(State(state): State<Arc<AppState>>) -> Json<JobListRespon
 }
 
 // =============================================================================
-// Task 4.1: Portfolio Graph API Types and Handler (portfolio-graph-optimisation)
+// Task 4.1: Portfolio Graph API Types and Handler
+// (portfolio-graph-optimisation)
 // =============================================================================
 
 /// Query parameters for portfolio graph endpoint.
@@ -3888,9 +3887,7 @@ pub struct PortfolioGraphResponse {
 ///
 /// Creates a graph structure with multiple trades sharing common
 /// market data nodes (spot prices, yield curves).
-fn generate_sample_portfolio_graph(
-    trade_ids_filter: Option<&[String]>,
-) -> PortfolioGraphResponse {
+fn generate_sample_portfolio_graph(trade_ids_filter: Option<&[String]>) -> PortfolioGraphResponse {
     // Sample trades in the portfolio
     let all_trade_ids = vec![
         "T001".to_string(),
@@ -3993,7 +3990,9 @@ fn generate_sample_portfolio_graph(
             id: compute_id.clone(),
             node_type: "mul".to_string(),
             label: format!("{} Pricing", tid),
-            value: Some(50.0 + (tid.chars().last().unwrap().to_digit(10).unwrap_or(0) as f64) * 10.0),
+            value: Some(
+                50.0 + (tid.chars().last().unwrap().to_digit(10).unwrap_or(0) as f64) * 10.0,
+            ),
             is_sensitivity_target: false,
             group: "intermediate".to_string(),
             trade_ids: vec![(*tid).clone()],
@@ -4005,7 +4004,9 @@ fn generate_sample_portfolio_graph(
             id: output_id.clone(),
             node_type: "output".to_string(),
             label: format!("{} Price", tid),
-            value: Some(100.0 + (tid.chars().last().unwrap().to_digit(10).unwrap_or(0) as f64) * 25.0),
+            value: Some(
+                100.0 + (tid.chars().last().unwrap().to_digit(10).unwrap_or(0) as f64) * 25.0,
+            ),
             is_sensitivity_target: false,
             group: "output".to_string(),
             trade_ids: vec![(*tid).clone()],
@@ -4014,24 +4015,64 @@ fn generate_sample_portfolio_graph(
         // Create edges from shared nodes to compute node
         match tid.as_str() {
             "T001" => {
-                links.push(GraphEdgeResponse { source: "shared_usd_spot".to_string(), target: compute_id.clone(), weight: None });
-                links.push(GraphEdgeResponse { source: "shared_usd_curve".to_string(), target: compute_id.clone(), weight: None });
-                links.push(GraphEdgeResponse { source: "shared_vol_surface".to_string(), target: compute_id.clone(), weight: None });
+                links.push(GraphEdgeResponse {
+                    source: "shared_usd_spot".to_string(),
+                    target: compute_id.clone(),
+                    weight: None,
+                });
+                links.push(GraphEdgeResponse {
+                    source: "shared_usd_curve".to_string(),
+                    target: compute_id.clone(),
+                    weight: None,
+                });
+                links.push(GraphEdgeResponse {
+                    source: "shared_vol_surface".to_string(),
+                    target: compute_id.clone(),
+                    weight: None,
+                });
             }
             "T002" => {
-                links.push(GraphEdgeResponse { source: "shared_usd_spot".to_string(), target: compute_id.clone(), weight: None });
-                links.push(GraphEdgeResponse { source: "shared_usdjpy".to_string(), target: compute_id.clone(), weight: None });
-                links.push(GraphEdgeResponse { source: "shared_vol_surface".to_string(), target: compute_id.clone(), weight: None });
+                links.push(GraphEdgeResponse {
+                    source: "shared_usd_spot".to_string(),
+                    target: compute_id.clone(),
+                    weight: None,
+                });
+                links.push(GraphEdgeResponse {
+                    source: "shared_usdjpy".to_string(),
+                    target: compute_id.clone(),
+                    weight: None,
+                });
+                links.push(GraphEdgeResponse {
+                    source: "shared_vol_surface".to_string(),
+                    target: compute_id.clone(),
+                    weight: None,
+                });
             }
             "T003" => {
-                links.push(GraphEdgeResponse { source: "shared_usd_spot".to_string(), target: compute_id.clone(), weight: None });
-                links.push(GraphEdgeResponse { source: "shared_usd_curve".to_string(), target: compute_id.clone(), weight: None });
+                links.push(GraphEdgeResponse {
+                    source: "shared_usd_spot".to_string(),
+                    target: compute_id.clone(),
+                    weight: None,
+                });
+                links.push(GraphEdgeResponse {
+                    source: "shared_usd_curve".to_string(),
+                    target: compute_id.clone(),
+                    weight: None,
+                });
             }
             "T004" => {
-                links.push(GraphEdgeResponse { source: "shared_usdjpy".to_string(), target: compute_id.clone(), weight: None });
+                links.push(GraphEdgeResponse {
+                    source: "shared_usdjpy".to_string(),
+                    target: compute_id.clone(),
+                    weight: None,
+                });
             }
             "T005" => {
-                links.push(GraphEdgeResponse { source: "shared_usd_curve".to_string(), target: compute_id.clone(), weight: None });
+                links.push(GraphEdgeResponse {
+                    source: "shared_usd_curve".to_string(),
+                    target: compute_id.clone(),
+                    weight: None,
+                });
             }
             _ => {}
         }
@@ -4049,7 +4090,8 @@ fn generate_sample_portfolio_graph(
     let edge_count = links.len();
     let shared_node_count = nodes.iter().filter(|n| n.trade_ids.len() > 1).count();
     // Calculate optimisation ratio: actual nodes / nodes without sharing
-    // Without sharing: 4 input nodes per trade + 2 trade-specific nodes = 6 per trade
+    // Without sharing: 4 input nodes per trade + 2 trade-specific nodes = 6 per
+    // trade
     let total_without_sharing = trade_ids.len() * 6;
     let optimisation_ratio = if total_without_sharing > 0 {
         node_count as f64 / total_without_sharing as f64
@@ -4149,10 +4191,9 @@ pub async fn get_portfolio_graph(
     }
 
     // Generate graph (with timeout protection)
-    let graph = tokio::time::timeout(
-        std::time::Duration::from_millis(500),
-        async { generate_sample_portfolio_graph(trade_ids_filter.as_deref()) },
-    )
+    let graph = tokio::time::timeout(std::time::Duration::from_millis(500), async {
+        generate_sample_portfolio_graph(trade_ids_filter.as_deref())
+    })
     .await
     .map_err(|_| {
         (
@@ -6752,7 +6793,8 @@ mod tests {
             let params = PortfolioGraphQueryParams { trade_ids: None };
 
             // First call - cache miss, generates graph
-            let result1 = get_portfolio_graph(State(Arc::clone(&state)), Query(params.clone())).await;
+            let result1 =
+                get_portfolio_graph(State(Arc::clone(&state)), Query(params.clone())).await;
             assert!(result1.is_ok());
             let response1 = result1.unwrap();
             let timestamp1 = response1.metadata.generated_at.clone();
@@ -6877,7 +6919,10 @@ mod tests {
 
             assert_eq!(response.stats.total_count, response.trades.len());
             // Should have VanillaOption, FxOption, IRS
-            assert!(response.stats.by_instrument_type.contains_key("VanillaOption"));
+            assert!(response
+                .stats
+                .by_instrument_type
+                .contains_key("VanillaOption"));
             assert!(response.stats.by_instrument_type.contains_key("FxOption"));
             assert!(response.stats.by_instrument_type.contains_key("IRS"));
         }

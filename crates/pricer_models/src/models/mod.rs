@@ -8,11 +8,10 @@
 //!
 //! ## Model Categories
 //!
-//! Models are organized by category (enabled via feature flags):
-//! - `equity`: Equity models (GBM) - default
+//! Models are organised by category (enabled via feature flags):
+//! - `equity`: Equity models (GBM, Heston, SABR) - default
 //! - `rates`: Interest rate models (Hull-White, CIR)
-//! - `exotic`: Advanced models (Heston, SABR)
-//! - `hybrid`: Multi-factor and correlated models
+//! - `exotic`: Advanced models including hybrid multi-factor models
 //!
 //! ## Design Philosophy
 //!
@@ -40,10 +39,7 @@
 //! ```
 
 // Core model infrastructure (always available)
-pub mod gbm;
-pub mod heston;
 pub mod model_enum;
-pub mod sabr;
 pub mod stochastic;
 
 // Model category submodules (feature-gated)
@@ -57,12 +53,12 @@ pub mod rates;
 pub mod hybrid;
 
 // Re-export core trait types
-// Re-export GBM model
-pub use gbm::{GBMModel, GBMParams};
-// Re-export Heston model
-pub use heston::{HestonError, HestonModel, HestonParams};
-// Re-export enum types for static dispatch
+// Re-export equity models from equity/ submodule for backward compatibility
+#[cfg(feature = "equity")]
+pub use equity::{
+    gbm::{GBMModel, GBMParams},
+    heston::{HestonError, HestonModel, HestonParams},
+    sabr::{SABRError, SABRModel, SABRParams},
+};
 pub use model_enum::{ModelParams, ModelState, StochasticModelEnum};
-// Re-export SABR model
-pub use sabr::{SABRError, SABRModel, SABRParams};
 pub use stochastic::{SingleState, StochasticModel, StochasticState, TwoFactorState};

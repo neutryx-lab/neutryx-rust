@@ -62,7 +62,7 @@ fn test_types_module_exports() {
     assert_eq!(start.month(), 1);
     assert_eq!(start.day(), 1);
 
-    // Test DayCountConvention
+    // Test DayCountConvention (using local pricer_core definition)
     let act_365 = DayCountConvention::ActualActual365;
     let yf = act_365.year_fraction_dates(start, end);
     assert!((yf - 0.4986).abs() < 0.001);
@@ -80,12 +80,17 @@ fn test_types_module_exports() {
 /// Test that types re-exports work at module level.
 #[test]
 fn test_types_reexports() {
+    #[allow(deprecated)]
     use pricer_core::types::{Currency, CurrencyPair, Date, DayCountConvention, PricingError};
 
-    // Verify re-exports work
+    // Verify re-exports work (using infra_master types)
+    #[allow(deprecated)]
     let _usd = Currency::USD;
+    #[allow(deprecated)]
     let _date = Date::from_ymd(2024, 6, 15).unwrap();
-    let _dcc = DayCountConvention::ActualActual365;
+    #[allow(deprecated)]
+    let _dcc = DayCountConvention::Actual365Fixed;
+    #[allow(deprecated)]
     let _pair: CurrencyPair<f64> = CurrencyPair::new(Currency::EUR, Currency::USD, 1.10).unwrap();
     let _err = PricingError::InvalidInput("test".to_string());
 }
@@ -113,6 +118,7 @@ fn test_math_module_structure() {
 /// Test that all DayCountConvention variants are accessible.
 #[test]
 fn test_day_count_convention_variants() {
+    // Test local pricer_core DayCountConvention variants
     use pricer_core::types::time::DayCountConvention;
 
     let conventions = [

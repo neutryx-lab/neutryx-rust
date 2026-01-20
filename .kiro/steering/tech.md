@@ -7,7 +7,7 @@
 ```text
 A: Adapter   → adapter_feeds, adapter_fpml, adapter_loader
 I: Infra     → infra_config, infra_master, infra_store
-P: Pricer    → pricer_core (L1), pricer_models (L2), pricer_optimiser (L2.5), pricer_pricing (L3), pricer_risk (L4)
+P: Pricer    → pricer_core (L1), pricer_models (L2), pricer_pricing (L3), pricer_risk (L4)
 S: Service   → service_cli, service_gateway, service_python
 ```
 
@@ -53,6 +53,7 @@ S: Service   → service_cli, service_gateway, service_python
 - **Python Bindings**: `pyo3` (service_python)
 - **gRPC**: `tonic` (service_gateway)
 - **REST**: `axum` (service_gateway)
+- **WebSocket**: `axum` WebSocket, `futures-util` (service_gateway real-time updates)
 
 ### Demo Layer
 
@@ -118,7 +119,7 @@ docker run -it neutryx-enzyme
 | Decision | Rationale |
 |----------|-----------|
 | **A-I-P-S Architecture** | Unidirectional data flow from Adapters through Infrastructure and Pricing to Services |
-| **Pricer Layer Hierarchy** | L1→L2→L2.5→L3→L4 isolates experimental Enzyme code |
+| **Pricer Layer Hierarchy** | L1→L2→L3→L4 isolates experimental Enzyme code |
 | **Static Dispatch (enum)** | Enzyme performs better with concrete types than trait objects |
 | **StochasticModel Trait** | Unified interface for stochastic processes with enum-based dispatch |
 | **Dual-Mode Verification** | Enzyme (performance) + num-dual (correctness) for validation |
@@ -156,5 +157,5 @@ docker run -it neutryx-enzyme
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-16_ — Added OpenAPI/Swagger, Prometheus metrics, parallel portfolio Greeks
+_Updated: 2026-01-19_ — Added WebSocket support in service_gateway (axum, futures-util)
 _Document standards and patterns, not every dependency_

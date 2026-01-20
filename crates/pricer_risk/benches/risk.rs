@@ -14,6 +14,8 @@
 //! - Requirement 3.2: AAD vs Bump-and-Revalue speedup (5x target)
 //! - Requirement 3.4: Criterion format benchmark output
 
+#![allow(missing_docs)]
+
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use pricer_core::{
     market_data::curves::{CurveEnum, CurveName, CurveSet},

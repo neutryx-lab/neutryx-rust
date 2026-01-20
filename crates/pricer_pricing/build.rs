@@ -34,7 +34,7 @@ fn main() {
 /// Validates that LLVM 18 is available in the build environment.
 ///
 /// Attempts to detect LLVM version via:
-/// 1. LLVM_CONFIG environment variable
+/// 1. `LLVM_CONFIG` environment variable
 /// 2. llvm-config-18 command
 /// 3. llvm-config command
 ///
@@ -50,11 +50,10 @@ fn validate_llvm_version() {
                 let version = version.trim();
 
                 if version.starts_with("18.") {
-                    println!("cargo:warning=LLVM 18 detected: {}", version);
+                    println!("cargo:warning=LLVM 18 detected: {version}");
                 } else {
                     emit_llvm_version_warning(&format!(
-                        "Found LLVM {} but LLVM 18 is required for Enzyme support",
-                        version
+                        "Found LLVM {version} but LLVM 18 is required for Enzyme support"
                     ));
                 }
             } else {
@@ -73,7 +72,7 @@ fn find_llvm_config() -> Option<String> {
     // Try version-specific command first
     for cmd in &["llvm-config-18", "llvm-config"] {
         if Command::new(cmd).arg("--version").output().is_ok() {
-            return Some(cmd.to_string());
+            return Some((*cmd).to_string());
         }
     }
 

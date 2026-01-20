@@ -1,10 +1,7 @@
 //! Schedule generation for interest rate derivatives.
 //!
-//! This module provides:
-//! - [`Schedule`]: A collection of payment periods for financial instruments
-//! - [`Period`]: A single accrual period with start, end, and payment dates
-//! - [`Frequency`]: Payment frequency enumeration (Annual, SemiAnnual, etc.)
-//! - [`ScheduleBuilder`]: Builder pattern for constructing schedules
+//! This module re-exports schedules from `pricer_core::trades::schedules`
+//! for backward compatibility.
 //!
 //! # Examples
 //!
@@ -24,12 +21,7 @@
 //! assert_eq!(schedule.periods().len(), 4); // 4 semi-annual periods over 2 years
 //! ```
 
-mod error;
-mod frequency;
-mod period;
-mod schedule;
-
-pub use error::ScheduleError;
-pub use frequency::Frequency;
-pub use period::Period;
-pub use schedule::{Schedule, ScheduleBuilder};
+// Re-export from pricer_core for backward compatibility
+pub use pricer_core::trades::schedules::{
+    Frequency, Period, Schedule, ScheduleBuilder, ScheduleError,
+};

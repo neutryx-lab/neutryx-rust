@@ -3,6 +3,8 @@
 //! Measures performance of linear, cubic spline, and bilinear interpolation
 //! across different data sizes to characterise scaling behaviour.
 
+#![allow(missing_docs)]
+
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use pricer_core::math::interpolators::{
     BilinearInterpolator, CubicSplineInterpolator, Interpolator, LinearInterpolator,

@@ -15,7 +15,7 @@
 use std::{sync::Arc, time::Instant};
 
 use axum::{extract::State, http::StatusCode, Json};
-use pricer_optimiser::bootstrapping::{
+use pricer_core::market_data::bootstrapping::{
     BootstrapInstrument, GenericBootstrapConfig, SequentialBootstrapper,
 };
 use uuid::Uuid;

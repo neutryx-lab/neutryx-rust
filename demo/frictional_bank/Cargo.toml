@@ -18,7 +18,6 @@ demo_outputs = { path = "../outputs" }
 pricer_core = { path = "../../crates/pricer_core" }
 pricer_models = { path = "../../crates/pricer_models", features = ["equity", "rates", "credit", "fx"] }
 pricer_risk = { path = "../../crates/pricer_risk" }
-pricer_optimiser = { path = "../../crates/pricer_optimiser" }
 pricer_pricing = { path = "../../crates/pricer_pricing", optional = true }
 
 # Async runtime

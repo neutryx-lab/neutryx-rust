@@ -24,6 +24,7 @@ pub fn create_router() -> Router {
 }
 
 /// Create the REST API router with graph state
+#[allow(dead_code)]
 pub fn create_router_with_graph_state(graph_state: Arc<GraphAppState>) -> Router {
     Router::new()
         // Health check

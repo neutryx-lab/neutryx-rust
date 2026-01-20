@@ -21,6 +21,7 @@
 #![allow(clippy::redundant_closure_for_method_calls)]
 #![allow(clippy::if_not_else)]
 #![allow(clippy::missing_panics_doc)]
+#![allow(clippy::struct_field_names)]
 
 //! # Pricer Models (L2: Business Logic)
 //!
@@ -47,9 +48,15 @@
 pub mod analytical;
 pub mod calibration;
 pub mod demo;
+mod direction_ext;
 pub mod instruments;
 pub mod models;
 pub mod schedules;
+
+// Re-export direction types from infra_master
+// Re-export extension traits for direction types
+pub use direction_ext::{SwapDirectionExt, TradeDirectionExt};
+pub use infra_master::{SwapDirection, TradeDirection};
 
 #[cfg(test)]
 mod tests {

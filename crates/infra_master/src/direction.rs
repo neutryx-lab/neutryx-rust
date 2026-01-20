@@ -1,0 +1,143 @@
+//! Trade direction definitions.
+//!
+//! This module provides trade direction types for financial instruments.
+//! Note: The `sign()` method is NOT provided here to avoid num_traits
+//! dependency. Use the extension trait in pricer_models instead.
+//!
+//! # Examples
+//!
+//! ```
+//! use infra_master::{TradeDirection, SwapDirection};
+//!
+//! let direction = TradeDirection::Long;
+//! let swap_dir: TradeDirection = SwapDirection::ReceiveFixed.into();
+//! assert_eq!(swap_dir, TradeDirection::Long);
+//! ```
+
+/// Generic trade direction.
+///
+/// Represents whether a position is long (buying) or short (selling).
+///
+/// # Note
+/// The `sign()` method is provided via the `TradeDirectionExt` trait
+/// in `pricer_models` to avoid adding num_traits dependency to infra_master.
+///
+/// # Examples
+///
+/// ```
+/// use infra_master::TradeDirection;
+///
+/// let long = TradeDirection::Long;
+/// let short = TradeDirection::Short;
+/// assert_ne!(long, short);
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum TradeDirection {
+    /// Long position (buying)
+    Long,
+    /// Short position (selling)
+    Short,
+}
+
+/// Swap trade direction.
+///
+/// Represents whether a swap position is paying or receiving fixed rate.
+///
+/// # Examples
+///
+/// ```
+/// use infra_master::{SwapDirection, TradeDirection};
+///
+/// let pay_fixed = SwapDirection::PayFixed;
+/// let trade_dir: TradeDirection = pay_fixed.into();
+/// assert_eq!(trade_dir, TradeDirection::Short);
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum SwapDirection {
+    /// Pay fixed rate, receive floating rate
+    PayFixed,
+    /// Receive fixed rate, pay floating rate
+    ReceiveFixed,
+}
+
+impl From<SwapDirection> for TradeDirection {
+    /// Converts SwapDirection to TradeDirection.
+    ///
+    /// - `PayFixed` -> `Short` (short fixed leg)
+    /// - `ReceiveFixed` -> `Long` (long fixed leg)
+    fn from(swap: SwapDirection) -> Self {
+        match swap {
+            SwapDirection::PayFixed => TradeDirection::Short,
+            SwapDirection::ReceiveFixed => TradeDirection::Long,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_trade_direction_eq() {
+        assert_eq!(TradeDirection::Long, TradeDirection::Long);
+        assert_ne!(TradeDirection::Long, TradeDirection::Short);
+    }
+
+    #[test]
+    fn test_swap_direction_eq() {
+        assert_eq!(SwapDirection::PayFixed, SwapDirection::PayFixed);
+        assert_ne!(SwapDirection::PayFixed, SwapDirection::ReceiveFixed);
+    }
+
+    #[test]
+    fn test_swap_to_trade_direction() {
+        let pay_fixed: TradeDirection = SwapDirection::PayFixed.into();
+        assert_eq!(pay_fixed, TradeDirection::Short);
+
+        let receive_fixed: TradeDirection = SwapDirection::ReceiveFixed.into();
+        assert_eq!(receive_fixed, TradeDirection::Long);
+    }
+
+    #[test]
+    fn test_hash() {
+        use std::collections::HashSet;
+
+        let mut trade_set = HashSet::new();
+        trade_set.insert(TradeDirection::Long);
+        trade_set.insert(TradeDirection::Short);
+        trade_set.insert(TradeDirection::Long); // Duplicate
+        assert_eq!(trade_set.len(), 2);
+
+        let mut swap_set = HashSet::new();
+        swap_set.insert(SwapDirection::PayFixed);
+        swap_set.insert(SwapDirection::ReceiveFixed);
+        swap_set.insert(SwapDirection::PayFixed); // Duplicate
+        assert_eq!(swap_set.len(), 2);
+    }
+
+    #[test]
+    fn test_clone_copy() {
+        let dir1 = TradeDirection::Long;
+        let dir2 = dir1; // Copy
+        let dir3 = dir1.clone(); // Clone
+        assert_eq!(dir1, dir2);
+        assert_eq!(dir1, dir3);
+
+        let swap1 = SwapDirection::PayFixed;
+        let swap2 = swap1; // Copy
+        let swap3 = swap1.clone(); // Clone
+        assert_eq!(swap1, swap2);
+        assert_eq!(swap1, swap3);
+    }
+
+    #[test]
+    fn test_debug() {
+        let debug = format!("{:?}", TradeDirection::Long);
+        assert!(debug.contains("Long"));
+
+        let debug = format!("{:?}", SwapDirection::PayFixed);
+        assert!(debug.contains("PayFixed"));
+    }
+}

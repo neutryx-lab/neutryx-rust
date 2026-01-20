@@ -183,8 +183,14 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
 
                         if !invalid_ids.is_empty() {
                             // Task 5.2: Broadcast error for invalid trade IDs
-                            let error_msg =
-                                format!("Trade(s) not found: {}", invalid_ids.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(", "));
+                            let error_msg = format!(
+                                "Trade(s) not found: {}",
+                                invalid_ids
+                                    .iter()
+                                    .map(|s| s.as_str())
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
+                            );
                             warn!("{}", error_msg);
                             broadcast_subgraph_error(
                                 &state_clone,
@@ -228,7 +234,8 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
 }
 
 // =============================================================================
-// Task 5.1: Helper function for subgraph statistics (portfolio-graph-optimisation)
+// Task 5.1: Helper function for subgraph statistics
+// (portfolio-graph-optimisation)
 // =============================================================================
 
 /// Calculate subgraph statistics for selected trade IDs.
@@ -307,7 +314,8 @@ fn calculate_subgraph_stats(trade_ids: &[String]) -> (usize, usize, usize) {
     // Total nodes = shared nodes + private nodes
     let node_count = shared_nodes + private_nodes;
 
-    // Edges: each trade has edges from shared nodes to compute, and compute to output
+    // Edges: each trade has edges from shared nodes to compute, and compute to
+    // output
     // - T001: 3 shared inputs -> 3 edges to compute + 1 edge to output = 4
     // - T002: 3 shared inputs -> 3 edges to compute + 1 edge to output = 4
     // - T003: 2 shared inputs -> 2 edges to compute + 1 edge to output = 3

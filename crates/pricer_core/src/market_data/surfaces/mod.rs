@@ -12,8 +12,10 @@ mod flat;
 mod fx;
 mod interpolated;
 mod traits;
+mod vol_surface_enum;
 
 pub use flat::FlatVol;
 pub use fx::{FxDeltaPoint, FxVolatilitySurface};
 pub use interpolated::InterpolatedVolSurface;
 pub use traits::VolatilitySurface;
+pub use vol_surface_enum::VolSurfaceEnum;

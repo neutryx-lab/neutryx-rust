@@ -159,7 +159,8 @@ pub struct GraphNode {
 
     /// Trade IDs this node belongs to (Portfolio support)
     ///
-    /// - Single-trade graphs: Empty vector (omitted from JSON for backward compatibility)
+    /// - Single-trade graphs: Empty vector (omitted from JSON for backward
+    ///   compatibility)
     /// - Portfolio graphs: One or more trade IDs (shared nodes have multiple)
     #[cfg_attr(
         feature = "serde",
@@ -568,7 +569,8 @@ pub struct PortfolioGraphMetadata {
     /// Number of nodes shared between multiple trades
     pub shared_node_count: usize,
 
-    /// Optimisation ratio: nodes after deduplication / nodes before deduplication
+    /// Optimisation ratio: nodes after deduplication / nodes before
+    /// deduplication
     ///
     /// Value range: 0 < ratio <= 1.0
     /// - 1.0 means no deduplication (no shared nodes)
@@ -661,6 +663,9 @@ impl PortfolioComputationGraph {
     ///
     /// Vector of references to nodes with more than one trade_id.
     pub fn shared_nodes(&self) -> Vec<&GraphNode> {
-        self.nodes.iter().filter(|n| n.trade_ids.len() > 1).collect()
+        self.nodes
+            .iter()
+            .filter(|n| n.trade_ids.len() > 1)
+            .collect()
     }
 }

@@ -5,6 +5,8 @@
 //! - Payoff evaluation with smooth approximations
 //! - GBM model step evolution
 
+#![allow(missing_docs)]
+
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use pricer_models::{
     analytical::distributions::{norm_cdf, norm_pdf},

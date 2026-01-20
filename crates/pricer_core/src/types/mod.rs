@@ -20,21 +20,43 @@
 //! - [`PricingError`], [`DateError`], [`CurrencyError`],
 //!   [`InterpolationError`], [`SolverError`], [`CalibrationError`],
 //!   [`CalibrationErrorKind`] from `error`
+//!
+//! # Migration Notice
+//!
+//! The following types are now re-exported from `infra_master`:
+//! - `Currency` - Use `infra_master::Currency` directly
+//! - `Date` - Use `infra_master::Date` directly
+//! - `DayCountConvention` - Use `infra_master::DayCountConvention` directly
+//! - `BusinessDayConvention` - Use `infra_master::BusinessDayConvention`
+//!   directly
+//! - `DateError` - Use `infra_master::DateError` directly
+//! - `CurrencyError` - Use `infra_master::CurrencyError` for simple cases
 
-pub mod currency;
 pub mod currency_pair;
 #[cfg(feature = "num-dual-mode")]
 pub mod dual;
 pub mod error;
 pub mod time;
 
-// Re-export commonly used types at module level
-pub use currency::Currency;
+// Re-export from infra_master (authoritative source)
 pub use currency_pair::CurrencyPair;
 pub use error::{
     CalibrationError, CalibrationErrorKind, CurrencyError, DateError, InterpolationError,
     PricingError, SolverError,
 };
-pub use time::{
-    time_to_maturity, time_to_maturity_dates, BusinessDayConvention, Date, DayCountConvention,
-};
+#[deprecated(
+    since = "0.2.0",
+    note = "Use infra_master::BusinessDayConvention directly"
+)]
+pub use infra_master::BusinessDayConvention;
+#[deprecated(since = "0.2.0", note = "Use infra_master::Currency directly")]
+pub use infra_master::Currency;
+// Re-export time types from infra_master
+#[deprecated(since = "0.2.0", note = "Use infra_master::Date directly")]
+pub use infra_master::Date;
+#[deprecated(
+    since = "0.2.0",
+    note = "Use infra_master::DayCountConvention directly"
+)]
+pub use infra_master::DayCountConvention;
+pub use time::{time_to_maturity, time_to_maturity_dates};

@@ -13,14 +13,16 @@
 //! ```
 //!
 //! where `L` is the lower triangular Cholesky factor of the correlation matrix
-//! `C`: ```text
+//! `C`:
+//!
+//! ```text
 //! C = L * L^T
 //! ```
-//! 
+//!
 //! ## Usage
+//!
 //! ```
-//! use pricer_models::models::hybrid::correlated::{CorrelatedModels,
-//! CorrelationMatrix};
+//! use pricer_models::models::hybrid::correlated::CorrelationMatrix;
 //!
 //! // Create a 2x2 correlation matrix with rho = 0.5
 //! let corr = CorrelationMatrix::new(&[

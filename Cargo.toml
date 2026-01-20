@@ -13,7 +13,6 @@ members = [
     # --- P: Pricer Layer (The Kernel) ---
     "crates/pricer_core",
     "crates/pricer_models",
-    "crates/pricer_optimiser",
     "crates/pricer_pricing",
     "crates/pricer_risk",
 

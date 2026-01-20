@@ -58,7 +58,8 @@ impl AssetMix {
     ///
     /// # Errors
     ///
-    /// Returns error if proportions are negative or don't sum to 1.0 (within tolerance).
+    /// Returns error if proportions are negative or don't sum to 1.0 (within
+    /// tolerance).
     pub fn new(equity: f64, rates: f64, fx: f64) -> Result<Self, PortfolioError> {
         // Validate non-negative
         if equity < 0.0 || rates < 0.0 || fx < 0.0 {
@@ -108,9 +109,7 @@ impl AssetMix {
 }
 
 impl Default for AssetMix {
-    fn default() -> Self {
-        Self::balanced()
-    }
+    fn default() -> Self { Self::balanced() }
 }
 
 /// Builder for creating sample portfolios with configurable parameters.
@@ -242,7 +241,8 @@ impl SamplePortfolioBuilder {
     ///
     /// - Trade count must be > 0
     /// - Asset mix proportions must be non-negative and sum to 1.0
-    /// - At least 3 different instrument types are guaranteed when trade_count >= 3
+    /// - At least 3 different instrument types are guaranteed when trade_count
+    ///   >= 3
     ///
     /// # Example
     ///
@@ -265,8 +265,11 @@ impl SamplePortfolioBuilder {
         }
 
         // Validate asset mix
-        let asset_mix =
-            AssetMix::new(self.asset_mix.equity, self.asset_mix.rates, self.asset_mix.fx)?;
+        let asset_mix = AssetMix::new(
+            self.asset_mix.equity,
+            self.asset_mix.rates,
+            self.asset_mix.fx,
+        )?;
 
         // Calculate counts per asset class
         let equity_count = (self.trade_count as f64 * asset_mix.equity).round() as usize;
@@ -288,8 +291,10 @@ impl SamplePortfolioBuilder {
         let counterparty = Counterparty::new(CounterpartyId::new("CP_SAMPLE"), credit)
             .with_name("Sample Counterparty");
 
-        let mut netting_set =
-            NettingSet::new(NettingSetId::new("NS_SAMPLE"), CounterpartyId::new("CP_SAMPLE"));
+        let mut netting_set = NettingSet::new(
+            NettingSetId::new("NS_SAMPLE"),
+            CounterpartyId::new("CP_SAMPLE"),
+        );
 
         let mut trades = Vec::with_capacity(self.trade_count);
 
@@ -441,20 +446,14 @@ impl SamplePortfolioBuilder {
     }
 
     /// Returns the configured trade count.
-    pub fn trade_count(&self) -> usize {
-        self.trade_count
-    }
+    pub fn trade_count(&self) -> usize { self.trade_count }
 
     /// Returns the configured asset mix.
-    pub fn asset_mix(&self) -> &AssetMix {
-        &self.asset_mix
-    }
+    pub fn asset_mix(&self) -> &AssetMix { &self.asset_mix }
 }
 
 impl Default for SamplePortfolioBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 /// Ensures at least 1 trade of each type when total >= 3.

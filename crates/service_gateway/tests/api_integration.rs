@@ -79,9 +79,10 @@ mod portfolio_tests {
 
 #[cfg(test)]
 mod simulated_http_tests {
-    use pricer_risk::portfolio::{SamplePortfolioBuilder, TradeId};
-    use pricer_pricing::graph::{PortfolioGraphExtractable, PortfolioGraphExtractor};
     use std::collections::HashMap;
+
+    use pricer_pricing::graph::{PortfolioGraphExtractable, PortfolioGraphExtractor};
+    use pricer_risk::portfolio::{SamplePortfolioBuilder, TradeId};
 
     // Test portfolio graph extraction (simulates GET /api/v1/portfolio/graph)
     #[test]
@@ -96,10 +97,7 @@ mod simulated_http_tests {
             .with_capacity(5_000, 10_000);
 
         // Build trade graphs
-        let trade_ids: Vec<String> = portfolio
-            .trade_ids()
-            .map(|id| id.to_string())
-            .collect();
+        let trade_ids: Vec<String> = portfolio.trade_ids().map(|id| id.to_string()).collect();
 
         let mut trade_graphs = HashMap::new();
         for trade_id in &trade_ids {
@@ -118,7 +116,8 @@ mod simulated_http_tests {
         assert_eq!(graph.metadata.trade_count, 20, "Should have 20 trades");
     }
 
-    // Test subgraph extraction (simulates GET /api/v1/portfolio/graph?trade_ids=...)
+    // Test subgraph extraction (simulates GET
+    // /api/v1/portfolio/graph?trade_ids=...)
     #[test]
     fn test_subgraph_extraction() {
         let portfolio = SamplePortfolioBuilder::new()
@@ -128,10 +127,7 @@ mod simulated_http_tests {
 
         let extractor = PortfolioGraphExtractor::new();
 
-        let all_trade_ids: Vec<String> = portfolio
-            .trade_ids()
-            .map(|id| id.to_string())
-            .collect();
+        let all_trade_ids: Vec<String> = portfolio.trade_ids().map(|id| id.to_string()).collect();
 
         let mut trade_graphs = HashMap::new();
         for trade_id in &all_trade_ids {
@@ -168,10 +164,7 @@ mod simulated_http_tests {
 
         let extractor = PortfolioGraphExtractor::new();
 
-        let all_trade_ids: Vec<String> = portfolio
-            .trade_ids()
-            .map(|id| id.to_string())
-            .collect();
+        let all_trade_ids: Vec<String> = portfolio.trade_ids().map(|id| id.to_string()).collect();
 
         let mut trade_graphs = HashMap::new();
         for trade_id in &all_trade_ids {
@@ -187,7 +180,10 @@ mod simulated_http_tests {
 
         // Try to extract with non-existent trade ID
         let result = extractor.extract_subgraph(&full_graph, &["NON_EXISTENT".to_string()]);
-        assert!(result.is_err(), "Should return error for non-existent trade");
+        assert!(
+            result.is_err(),
+            "Should return error for non-existent trade"
+        );
 
         match result {
             Err(pricer_pricing::graph::GraphError::TradeNotFound(id)) => {
@@ -207,10 +203,7 @@ mod simulated_http_tests {
 
         let extractor = PortfolioGraphExtractor::new();
 
-        let all_trade_ids: Vec<String> = portfolio
-            .trade_ids()
-            .map(|id| id.to_string())
-            .collect();
+        let all_trade_ids: Vec<String> = portfolio.trade_ids().map(|id| id.to_string()).collect();
 
         let mut trade_graphs = HashMap::new();
         for trade_id in &all_trade_ids {
@@ -236,9 +229,7 @@ mod simulated_http_tests {
         trade_id: &str,
         trade: &pricer_risk::portfolio::Trade,
     ) -> pricer_pricing::graph::ComputationGraph {
-        use pricer_pricing::graph::{
-            GraphBuilder, GraphEdge, GraphNode, NodeGroup, NodeType,
-        };
+        use pricer_pricing::graph::{GraphBuilder, GraphEdge, GraphNode, NodeGroup, NodeType};
 
         let mut builder = GraphBuilder::with_capacity(10, 15);
 
