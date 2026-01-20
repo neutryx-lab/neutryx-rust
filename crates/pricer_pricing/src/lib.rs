@@ -139,6 +139,9 @@ mod integration_tests;
 #[cfg(feature = "l1l2-integration")]
 pub mod context;
 
+// Numeric conversion utilities (standalone, no l1l2-integration dependency)
+pub mod numeric;
+
 // Phase 3.1a: Random number generation infrastructure
 pub mod rng;
 

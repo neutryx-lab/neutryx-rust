@@ -18,7 +18,8 @@
 //! automatic differentiation.
 
 use num_traits::Float;
-use pricer_core::math::numeric::from_usize;
+
+use crate::numeric::from_usize;
 
 /// Streaming path observation statistics.
 ///

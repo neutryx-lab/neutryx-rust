@@ -108,7 +108,9 @@ impl<'a, T: Float, C: CreditCurve<T>> DefaultTimeSimulator<'a, T, C> {
     /// ```
     ///
     /// Note: We use U directly as the survival probability for numerical
-    /// stability: ```text
+    /// stability:
+    ///
+    /// ```text
     /// S(τ) = U  →  τ = S⁻¹(U) = -ln(U) / λ  (for flat curve)
     /// ```
     pub fn sample_default_time(&self, uniform: T) -> Result<T, MarketDataError> {

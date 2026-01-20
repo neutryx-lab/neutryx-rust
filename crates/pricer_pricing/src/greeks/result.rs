@@ -5,7 +5,8 @@
 //! `Float` trait bound.
 
 use num_traits::Float;
-use pricer_core::math::numeric::from_f64;
+
+use crate::numeric::from_f64;
 
 /// Greeks calculation result with optional sensitivities.
 ///

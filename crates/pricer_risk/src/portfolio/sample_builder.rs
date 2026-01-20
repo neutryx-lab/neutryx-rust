@@ -242,7 +242,7 @@ impl SamplePortfolioBuilder {
     /// - Trade count must be > 0
     /// - Asset mix proportions must be non-negative and sum to 1.0
     /// - At least 3 different instrument types are guaranteed when trade_count
-    ///   >= 3
+    ///   \>= 3
     ///
     /// # Example
     ///
