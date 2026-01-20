@@ -770,7 +770,7 @@ mod tests {
 
     #[cfg(feature = "rates")]
     mod rates_tests {
-        use pricer_core::market_data::curves::FlatCurve;
+        use crate::market::curves::FlatCurve;
 
         use super::*;
 

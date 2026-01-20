@@ -21,9 +21,7 @@ use num_traits::Float;
 ///
 /// Panics if the conversion fails (e.g., if the value is out of range for `T`)
 #[inline]
-pub fn from_f64<T: Float>(value: f64) -> T {
-    T::from(value).unwrap()
-}
+pub fn from_f64<T: Float>(value: f64) -> T { T::from(value).unwrap() }
 
 /// Converts a `usize` value to a generic `Float` type.
 ///
@@ -39,9 +37,7 @@ pub fn from_f64<T: Float>(value: f64) -> T {
 ///
 /// Panics if the conversion fails (e.g., if the value is out of range for `T`)
 #[inline]
-pub fn from_usize<T: Float>(value: usize) -> T {
-    T::from(value).unwrap()
-}
+pub fn from_usize<T: Float>(value: usize) -> T { T::from(value).unwrap() }
 
 #[cfg(test)]
 mod tests {

@@ -36,7 +36,7 @@
 use std::time::Instant;
 
 #[cfg(feature = "l1l2-integration")]
-use pricer_core::market_data::curves::{CurveEnum, CurveName, CurveSet, YieldCurve};
+use pricer_models::market::curves::{CurveEnum, CurveName, CurveSet, YieldCurve};
 #[cfg(feature = "l1l2-integration")]
 use pricer_core::types::time::Date;
 #[cfg(feature = "l1l2-integration")]
@@ -1190,15 +1190,13 @@ mod tests {
 
 #[cfg(all(test, feature = "l1l2-integration"))]
 mod integration_tests {
-    use pricer_core::{
-        market_data::curves::{CurveEnum, CurveName, CurveSet},
-        types::{
-            time::{Date, DayCountConvention},
-            Currency,
-        },
+    use pricer_core::types::{
+        time::{Date, DayCountConvention},
+        Currency,
     };
     use pricer_models::{
         instruments::rates::{FixedLeg, FloatingLeg, InterestRateSwap, RateIndex, SwapDirection},
+        market::curves::{CurveEnum, CurveName, CurveSet},
         schedules::{Frequency, ScheduleBuilder},
     };
 

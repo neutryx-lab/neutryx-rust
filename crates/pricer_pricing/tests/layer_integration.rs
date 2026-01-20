@@ -46,7 +46,7 @@ fn test_smoothing_functions_import() {
 /// Requirement: 4.4
 #[test]
 fn test_yield_curve_import() {
-    use pricer_core::market_data::curves::{FlatCurve, YieldCurve};
+    use pricer_models::market::curves::{FlatCurve, YieldCurve};
 
     let curve = FlatCurve::new(0.05);
     let df = curve.discount_factor(1.0_f64).unwrap();

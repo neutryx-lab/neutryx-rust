@@ -18,7 +18,7 @@
 //!
 //! ```
 //! use pricer_models::instruments::credit::simulation::DefaultTimeSimulator;
-//! use pricer_core::market_data::curves::FlatHazardRateCurve;
+//! use pricer_models::market::curves::FlatHazardRateCurve;
 //!
 //! let credit_curve = FlatHazardRateCurve::new(0.02_f64); // 2% hazard rate
 //! let simulator = DefaultTimeSimulator::new(&credit_curve);
@@ -31,10 +31,9 @@
 //! ```
 
 use num_traits::Float;
-use pricer_core::{
-    market_data::{curves::CreditCurve, error::MarketDataError},
-    math::numeric::{from_f64, from_usize},
-};
+use pricer_core::math::numeric::{from_f64, from_usize};
+
+use crate::market::{curves::CreditCurve, MarketDataError};
 
 /// Default time simulator using a credit curve.
 ///
@@ -356,7 +355,7 @@ impl<'a, T: Float, C: CreditCurve<T>> CreditMonteCarloSimulator<'a, T, C> {
 
 #[cfg(test)]
 mod tests {
-    use pricer_core::market_data::curves::FlatHazardRateCurve;
+    use crate::market::curves::FlatHazardRateCurve;
 
     use super::*;
 

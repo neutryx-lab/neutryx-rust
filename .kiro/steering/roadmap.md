@@ -2,13 +2,13 @@
 
 実装状況と今後の開発項目を追跡するドキュメント。
 
-_Updated: 2026-01-19_ — infra-primitives-migration completed, 18 total specs
+_Updated: 2026-01-20_ — Steering sync: market_data moved from pricer_core to pricer_models::market
 
 ---
 
 ## Current State Summary
 
-### Completed Specifications (18)
+### Completed Specifications (19)
 
 | Spec | Description | Completed |
 |------|-------------|-----------|
@@ -30,6 +30,7 @@ _Updated: 2026-01-19_ — infra-primitives-migration completed, 18 total specs
 | codebase-cleanup-optimisation | Codebase cleanup and optimisation (16 tasks) | 2026-01-19 |
 | portfolio-graph-optimisation | Portfolio Graph REST API and WebSocket handlers | 2026-01-19 |
 | infra-primitives-migration | Financial primitives migration to infra_master | 2026-01-19 |
+| model-architecture-refactoring | pricer_optimiser removal, consolidation into pricer_core/pricer_models | 2026-01-19 |
 
 ### Layer Implementation Status
 
@@ -40,17 +41,18 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 #### Pricer Layer (P) - Core Engine
 | Crate | Layer | Status | Notes |
 |-------|-------|--------|-------|
-| pricer_core | L1 | ✅ | math, market_data, types, traits |
-| pricer_models | L2 | ✅ | instruments, analytical, calibration, schedules, demo |
-| pricer_optimiser | L2.5 | ✅ | bootstrapping, calibration, solvers, provider |
+| pricer_core | L1 | ✅ | math (smoothing, interpolators, solvers), types, traits |
+| pricer_models | L2 | ✅ | instruments, market (curves, surfaces, calibration, provider), models, schedules, analytical, demo |
 | pricer_pricing | L3 | ✅ | mc, rng, enzyme, greeks, path_dependent, checkpoint, context (l1l2-integration) |
 | pricer_risk | L4 | ✅ | portfolio, exposure, xva, scenarios (engine/shifts/aggregator/presets), soa, demo |
+
+> **Note**: `pricer_optimiser` (L2.5) was removed in 2026-01. All market data (curves, surfaces, bootstrapping, provider, calibration) consolidated into `pricer_models::market`.
 
 #### Infra Layer (I) - Foundation
 | Crate | Status | Notes |
 |-------|--------|-------|
 | infra_config | ✅ | Settings loading (TOML/YAML/Env) |
-| infra_master | ✅ | Calendars, day count conventions |
+| infra_master | ✅ | Financial primitives: Calendar, Date, DayCount, Currency, Tenor, Frequency, Period, Direction, RateIndex, BusinessDay, Counterparty |
 | infra_store | 🔶 | Basic traits only, postgres optional |
 
 #### Adapter Layer (A) - Input
@@ -142,6 +144,8 @@ _No active specifications. All pending specs have been implemented._
 
 | Date | Change |
 |------|--------|
+| 2026-01-20 | Steering sync: market_data moved from pricer_core to pricer_models::market (CI fix), layer status updated |
+| 2026-01-20 | Steering sync: documented pricer_optimiser removal (consolidated into pricer_core/pricer_models), model-architecture-refactoring spec added |
 | 2026-01-19 | Steering sync: infra-primitives-migration completed, total specs: 18, no active specs remaining |
 | 2026-01-19 | Steering sync: portfolio-graph-optimisation completed, service_gateway upgraded to ✅, infra-primitives-migration active |
 | 2026-01-19 | codebase-cleanup-optimisation: Complete (16 tasks, all phases verified). Total completed specs: 16 |

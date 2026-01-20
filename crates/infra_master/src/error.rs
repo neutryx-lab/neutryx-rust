@@ -16,6 +16,10 @@ pub enum MasterDataError {
     /// Invalid ISIN
     #[error("Invalid ISIN: {0}")]
     InvalidIsin(String),
+
+    /// CounterParty module error
+    #[error("CounterParty error: {0}")]
+    CounterParty(String),
 }
 
 /// Date-related errors.

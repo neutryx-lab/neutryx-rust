@@ -16,8 +16,11 @@ use std::{
     time::Instant,
 };
 
-use pricer_core::{market_data::curves::CurveSet, types::time::Date};
-use pricer_models::instruments::rates::InterestRateSwap;
+use pricer_core::types::time::Date;
+use pricer_models::{
+    instruments::rates::InterestRateSwap,
+    market::curves::CurveSet,
+};
 use pricer_pricing::greeks::{GreeksMode, GreeksResult};
 use rayon::prelude::*;
 
@@ -520,10 +523,8 @@ impl ParallelPortfolioGreeksCalculator {
 
 #[cfg(test)]
 mod tests {
-    use pricer_core::{
-        market_data::curves::{CurveEnum, CurveName},
-        types::{time::DayCountConvention, Currency},
-    };
+    use pricer_core::types::{time::DayCountConvention, Currency};
+    use pricer_models::market::curves::{CurveEnum, CurveName};
     use pricer_models::{
         instruments::rates::{FixedLeg, FloatingLeg, RateIndex, SwapDirection},
         schedules::{Frequency, ScheduleBuilder},

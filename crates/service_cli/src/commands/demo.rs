@@ -17,25 +17,19 @@
 //! - USD curve bootstrapped only once (Arc cache working)
 //! - JPY curve bootstrapped separately
 //! - USD SABR calibration only for CMS trade (lazy evaluation working)
-//! - No SABR calibration for VanillaSwap trades
+//! - No SABR calibration for `VanillaSwap` trades
 
 use pricer_core::types::Currency;
 use pricer_risk::demo::{run_portfolio_pricing, DemoTrade, MarketProvider};
 
-use crate::Result;
-
 /// Runs the lazy-arc-pricing-kernel architecture demonstration.
 ///
 /// Creates a portfolio of 4 trades:
-/// - T001: USD VanillaSwap (fixed_rate = 0.02)
-/// - T002: USD VanillaSwap (fixed_rate = 0.025)
-/// - T003: USD CmsSwap (fixed_rate = 0.02) - requires vol
-/// - T004: JPY VanillaSwap (fixed_rate = 0.01)
-///
-/// # Returns
-///
-/// `Ok(())` on success, `Err` on failure.
-pub fn run() -> Result<()> {
+/// - T001: USD `VanillaSwap` (`fixed_rate` = 0.02)
+/// - T002: USD `VanillaSwap` (`fixed_rate` = 0.025)
+/// - T003: USD `CmsSwap` (`fixed_rate` = 0.02) - requires vol
+/// - T004: JPY `VanillaSwap` (`fixed_rate` = 0.01)
+pub fn run() {
     println!("========================================");
     println!("Lazy-Arc-Pricing-Kernel Demo");
     println!("========================================");
@@ -95,8 +89,6 @@ pub fn run() -> Result<()> {
     println!("========================================");
     println!("Demo completed successfully!");
     println!("========================================");
-
-    Ok(())
 }
 
 #[cfg(test)]
@@ -106,7 +98,6 @@ mod tests {
     #[test]
     fn test_demo_run() {
         // Just verify the demo runs without error
-        let result = run();
-        assert!(result.is_ok());
+        run();
     }
 }

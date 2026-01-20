@@ -11,6 +11,8 @@ P: Pricer    → pricer_core (L1), pricer_models (L2), pricer_pricing (L3), pric
 S: Service   → service_cli, service_gateway, service_python
 ```
 
+> **Note**: `pricer_optimiser` (L2.5) was removed in 2026-01. Its functionality consolidated: market data (curves, surfaces, bootstrapping, provider) → `pricer_models::market`, calibration engine → `pricer_models::market::calibration`.
+
 **Dependency Rules**:
 1. **S**ervices may depend on any **P**, **I**, or **A** crate.
 2. **P**ricer crates must never depend on **S** or **A** crates.
@@ -157,5 +159,5 @@ docker run -it neutryx-enzyme
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-19_ — Added WebSocket support in service_gateway (axum, futures-util)
+_Updated: 2026-01-20_ — Documented pricer_optimiser removal (consolidated into pricer_core/pricer_models)
 _Document standards and patterns, not every dependency_

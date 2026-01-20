@@ -22,7 +22,7 @@
 //! ```
 //! use pricer_models::models::rates::hull_white::{HullWhiteModel, HullWhiteParams};
 //! use pricer_models::models::stochastic::StochasticModel;
-//! use pricer_core::market_data::curves::FlatCurve;
+//! use pricer_models::market::curves::FlatCurve;
 //!
 //! // Create parameters with flat initial curve
 //! let params = HullWhiteParams::new(0.05_f64, 0.01, FlatCurve::new(0.03)).unwrap();
@@ -37,10 +37,9 @@
 //! let next_state = HullWhiteModel::evolve_step(state, dt, &dw, &params);
 //! ```
 
-use pricer_core::{
-    market_data::curves::{FlatCurve, YieldCurve},
-    traits::{priceable::Differentiable, Float},
-};
+use pricer_core::traits::{priceable::Differentiable, Float};
+
+use crate::market::curves::{FlatCurve, YieldCurve};
 
 use crate::models::stochastic::{SingleState, StochasticModel};
 
@@ -232,7 +231,7 @@ impl<T: Float> HullWhiteParams<T> {
     ///
     /// ```
     /// use pricer_models::models::rates::hull_white::HullWhiteParams;
-    /// use pricer_core::market_data::curves::FlatCurve;
+    /// use crate::market::curves::FlatCurve;
     ///
     /// let params = HullWhiteParams::new(0.05, 0.01, FlatCurve::new(0.03));
     /// assert!(params.is_some());

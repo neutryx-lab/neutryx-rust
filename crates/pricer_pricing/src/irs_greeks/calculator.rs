@@ -7,7 +7,7 @@ use std::{marker::PhantomData, time::Instant};
 
 use num_traits::Float;
 #[cfg(feature = "l1l2-integration")]
-use pricer_core::market_data::curves::{CurveEnum, CurveName, CurveSet, YieldCurve};
+use pricer_models::market::curves::{CurveEnum, CurveName, CurveSet, YieldCurve};
 #[cfg(feature = "l1l2-integration")]
 use pricer_core::types::time::Date;
 #[cfg(feature = "l1l2-integration")]

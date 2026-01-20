@@ -27,6 +27,9 @@ serde = ["dep:serde", "pricer_core/serde", "infra_master/serde"]
 # AD (Automatic Differentiation) support - forwards to pricer_core
 num-dual-mode = ["pricer_core/num-dual-mode"]
 
+# Parallel processing for multi-curve bootstrapping
+parallel = ["dep:rayon"]
+
 [dependencies]
 pricer_core = { path = "../pricer_core" }
 infra_master = { path = "../infra_master" }
@@ -34,6 +37,7 @@ num-traits.workspace = true
 chrono.workspace = true
 serde = { workspace = true, optional = true }
 thiserror.workspace = true
+rayon = { workspace = true, optional = true }
 
 [dev-dependencies]
 approx.workspace = true

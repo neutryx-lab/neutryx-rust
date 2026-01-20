@@ -30,7 +30,7 @@
 //! use pricer_models::instruments::credit::{CreditDefaultSwap, CdsDirection, CdsPricer};
 //! use pricer_models::schedules::{ScheduleBuilder, Frequency};
 //! use pricer_core::types::{Currency, time::{Date, DayCountConvention}};
-//! use pricer_core::market_data::curves::{FlatCurve, FlatHazardRateCurve};
+//! use pricer_models::market::curves::{FlatCurve, FlatHazardRateCurve};
 //!
 //! let start = Date::from_ymd(2024, 3, 20).unwrap();
 //! let end = Date::from_ymd(2029, 3, 20).unwrap();
@@ -62,13 +62,11 @@
 //! ```
 
 use num_traits::Float;
-use pricer_core::{
-    market_data::{
-        curves::{CreditCurve, YieldCurve},
-        error::MarketDataError,
-    },
-    math::numeric::from_f64,
-    types::time::DayCountConvention,
+use pricer_core::{math::numeric::from_f64, types::time::DayCountConvention};
+
+use crate::market::{
+    curves::{CreditCurve, YieldCurve},
+    MarketDataError,
 };
 
 use super::cds::{CdsDirection, CreditDefaultSwap};
@@ -344,10 +342,9 @@ impl<'a, T: Float, D: YieldCurve<T>, C: CreditCurve<T>> CdsPricer<'a, T, D, C> {
 
 #[cfg(test)]
 mod tests {
-    use pricer_core::{
-        market_data::curves::{FlatCurve, FlatHazardRateCurve},
-        types::{time::Date, Currency},
-    };
+    use pricer_core::types::{time::Date, Currency};
+
+    use crate::market::curves::{FlatCurve, FlatHazardRateCurve};
 
     use super::*;
     use crate::{

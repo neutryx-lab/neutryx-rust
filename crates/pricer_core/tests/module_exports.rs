@@ -210,24 +210,8 @@ fn test_business_day_convention_exports() {
     }
 }
 
-/// Test that market_data module is accessible.
-#[test]
-fn test_market_data_module_exports() {
-    use pricer_core::market_data::{
-        curves::{FlatCurve, YieldCurve},
-        surfaces::{FlatVol, VolatilitySurface},
-    };
-
-    // Test FlatCurve
-    let curve: FlatCurve<f64> = FlatCurve::new(0.05);
-    let df = curve.discount_factor(1.0).unwrap();
-    assert!(df > 0.0 && df < 1.0);
-
-    // Test FlatVol
-    let vol_surface: FlatVol<f64> = FlatVol::new(0.2);
-    let vol = vol_surface.volatility(1.0, 100.0).unwrap();
-    assert!((vol - 0.2).abs() < 1e-10);
-}
+// NOTE: market_data module has been moved to pricer_models::market
+// Tests for market data should be in pricer_models crate
 
 /// Test interpolator module exports.
 #[test]
@@ -264,12 +248,9 @@ fn test_solver_exports() {
 #[test]
 fn test_main_module_structure() {
     // Verify main module paths
-    use pricer_core::{market_data, math, types};
+    use pricer_core::{math, types};
 
     // These should compile if modules are properly exported
     let _ = math::smoothing::smooth_max(1.0_f64, 2.0, 1e-6);
     let _ = types::Date::from_ymd(2024, 1, 1);
-    let _: FlatCurve<f64> = market_data::curves::FlatCurve::new(0.05);
 }
-
-use pricer_core::market_data::curves::FlatCurve;

@@ -1,6 +1,6 @@
 //! Report command implementation
 //!
-//! Generates risk reports using the pricer_risk crate.
+//! Generates risk reports using the `pricer_risk` crate.
 
 use tracing::info;
 
@@ -38,8 +38,7 @@ pub fn run(report_type: &str, portfolio: &str, output_dir: &str) -> Result<()> {
         }
         other => {
             return Err(CliError::InvalidArgument(format!(
-                "Unknown report type: {}. Supported: xva, exposure, greeks",
-                other
+                "Unknown report type: {other}. Supported: xva, exposure, greeks"
             )));
         }
     }

@@ -114,15 +114,18 @@ pub async fn price_instrument(
     let price = match request.instrument_type.as_str() {
         "vanilla_option" | "european_option" => {
             // Black-Scholes placeholder
+            #[allow(clippy::suboptimal_flops)]
             let d1 = ((request.spot / request.strike).ln()
                 + (request.rate + 0.5 * request.volatility.powi(2)) * request.expiry)
                 / (request.volatility * request.expiry.sqrt());
+            #[allow(clippy::suboptimal_flops)]
             let d2 = d1 - request.volatility * request.expiry.sqrt();
 
             let nd1 = normal_cdf(d1);
             let nd2 = normal_cdf(d2);
 
             let is_call = request.is_call.unwrap_or(true);
+            #[allow(clippy::suboptimal_flops)]
             if is_call {
                 request.spot * nd1 - request.strike * (-request.rate * request.expiry).exp() * nd2
             } else {
@@ -130,11 +133,11 @@ pub async fn price_instrument(
                     - request.spot * normal_cdf(-d1)
             }
         }
+        #[allow(clippy::suboptimal_flops)]
         "forward" => request.spot * (request.rate * request.expiry).exp() - request.strike,
         other => {
             return Err(ServerError::InvalidRequest(format!(
-                "Unknown instrument type: {}",
-                other
+                "Unknown instrument type: {other}"
             )));
         }
     };
@@ -193,8 +196,7 @@ pub async fn calibrate(
             error: 0.0002,
         })),
         other => Err(ServerError::InvalidRequest(format!(
-            "Unknown model type: {}",
-            other
+            "Unknown model type: {other}"
         ))),
     }
 }
@@ -221,18 +223,25 @@ pub async fn calculate_exposure(
 // ============================================================================
 
 /// Standard normal CDF approximation
+#[allow(clippy::unreadable_literal)]
 fn normal_cdf(x: f64) -> f64 {
-    let a1 = 0.254829592;
-    let a2 = -0.284496736;
-    let a3 = 1.421413741;
-    let a4 = -1.453152027;
-    let a5 = 1.061405429;
-    let p = 0.3275911;
+    let a1: f64 = 0.254829592;
+    let a2: f64 = -0.284496736;
+    let a3: f64 = 1.421413741;
+    let a4: f64 = -1.453152027;
+    let a5: f64 = 1.061405429;
+    let p: f64 = 0.3275911;
 
     let sign = if x < 0.0 { -1.0 } else { 1.0 };
     let x = x.abs() / std::f64::consts::SQRT_2;
-    let t = 1.0 / (1.0 + p * x);
-    let y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * (-x * x).exp();
+    let t = 1.0 / p.mul_add(x, 1.0);
+    let y = (a5
+        .mul_add(t, a4)
+        .mul_add(t, a3)
+        .mul_add(t, a2)
+        .mul_add(t, a1)
+        * t)
+        .mul_add(-(-x * x).exp(), 1.0);
 
     0.5 * (1.0 + sign * y)
 }

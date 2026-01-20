@@ -180,7 +180,7 @@ mod instrument_tests {
 /// from pricer_core for discount factor calculations.
 #[cfg(all(test, feature = "l1l2-integration"))]
 mod yield_curve_tests {
-    use pricer_core::market_data::curves::{FlatCurve, YieldCurve};
+    use pricer_models::market::curves::{FlatCurve, YieldCurve};
 
     use crate::mc::{GbmParams, MonteCarloConfig, MonteCarloPricer, PayoffParams};
 

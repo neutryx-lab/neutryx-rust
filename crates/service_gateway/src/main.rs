@@ -19,7 +19,7 @@
 //! - `GET /health` - Health check
 //!
 //! ## WebSocket
-//! - `GET /ws` - Real-time graph updates (select_trades, subgraph_update)
+//! - `GET /ws` - Real-time graph updates (`select_trades`, `subgraph_update`)
 //!
 //! ## gRPC (Tonic)
 //! - `PricingService.PriceInstrument` - Price a single instrument

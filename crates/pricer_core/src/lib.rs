@@ -90,9 +90,7 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(rustdoc::private_intra_doc_links)]
 
-pub mod market_data;
 pub mod math;
-pub mod trades;
 pub mod traits;
 pub mod types;
 

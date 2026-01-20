@@ -19,7 +19,7 @@
 //! };
 //! use pricer_models::schedules::{ScheduleBuilder, Frequency};
 //! use pricer_core::types::{Currency, time::{Date, DayCountConvention}};
-//! use pricer_core::market_data::curves::{CurveSet, CurveName, CurveEnum};
+//! use pricer_models::market::curves::{CurveSet, CurveName, CurveEnum};
 //!
 //! // Create a simple swap
 //! let start = Date::from_ymd(2024, 1, 15).unwrap();
@@ -62,10 +62,9 @@
 //! ```
 
 use num_traits::Float;
-use pricer_core::{
-    market_data::curves::{CurveName, CurveSet, YieldCurve},
-    types::time::{Date, DayCountConvention},
-};
+use pricer_core::types::time::{Date, DayCountConvention};
+
+use crate::market::curves::{CurveName, CurveSet, YieldCurve};
 
 use super::{InterestRateSwap, RateIndex, SwapDirection};
 use crate::analytical::error::AnalyticalError;
@@ -573,7 +572,9 @@ fn calculate_annuity<T: Float>(
 
 #[cfg(test)]
 mod tests {
-    use pricer_core::{market_data::curves::CurveEnum, types::Currency};
+    use pricer_core::types::Currency;
+
+    use crate::market::curves::CurveEnum;
 
     use super::*;
     use crate::{
