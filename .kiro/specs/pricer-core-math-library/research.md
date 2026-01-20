@@ -4,6 +4,71 @@
 
 本ドキュメントは、`pricer_core::math`モジュール拡張に必要な数値アルゴリズムと実装パターンの調査結果をまとめたものである。
 
+## 0. 外部クレート調査結果
+
+### 調査対象クレート
+
+| クレート | 用途 | AD互換性 | 採用判断 |
+|----------|------|---------|---------|
+| [statrs](https://docs.rs/statrs/) | 統計分布 | ❌ `f64`固定 | **不採用** |
+| [gauss-quad](https://docs.rs/gauss-quad) | 数値積分 | ❌ `f64`固定 | **不採用** |
+| [Peroxide](https://github.com/Axect/Peroxide) | 数値計算全般 | ❌ `f64`固定 | **不採用** |
+| [argmin](https://github.com/argmin-rs/argmin) | 最適化 | ⚠️ 部分的 | **採用** |
+| [nalgebra](https://github.com/dimforge/nalgebra) | 線形代数 | ✅ ジェネリック | **採用** |
+
+### argmin（採用）
+
+- **概要**: 純Rust実装の数値最適化ライブラリ
+- **アルゴリズム**: L-BFGS, Nelder-Mead, Backtracking, More-Thuente, Gauss-Newton等
+- **AD互換性**: `argmin-math`を通じて様々な数学バックエンドをサポート。`num-dual`との統合事例あり
+- **ライセンス**: MIT/Apache 2.0
+- **メンテナンス**: 活発（最終更新: 2024年）
+
+```rust
+// argmin使用例
+use argmin::solver::quasinewton::LBFGS;
+use argmin::core::{CostFunction, Gradient, Executor};
+
+let solver = LBFGS::new(linesearch, 10);
+let result = Executor::new(problem, solver)
+    .configure(|state| state.max_iters(100))
+    .run()?;
+```
+
+### nalgebra（採用）
+
+- **概要**: 汎用線形代数ライブラリ
+- **機能**: 行列演算、コレスキー/LU/QR/SVD分解、固有値計算等
+- **AD互換性**: `T: RealField`でジェネリック対応。`num-dual::Dual64`は`RealField`を実装
+- **ライセンス**: Apache 2.0
+- **メンテナンス**: 非常に活発（dimforge社が継続開発）
+
+```rust
+// nalgebra使用例
+use nalgebra::{DMatrix, Cholesky};
+
+let a = DMatrix::from_row_slice(2, 2, &[4.0, 2.0, 2.0, 3.0]);
+let chol = Cholesky::new(a).unwrap();
+let l = chol.l();  // 下三角行列
+```
+
+### statrs（不採用）
+
+- **問題点**: `f64`固定でジェネリック非対応
+- **代替**: 自前実装（Hart近似、Acklam近似等）
+
+```rust
+// statrsの問題点
+use statrs::distribution::{Normal, ContinuousCDF};
+let n = Normal::new(0.0, 1.0).unwrap();
+n.cdf(1.0)  // f64のみ、Dual64は使用不可
+```
+
+### gauss-quad / Peroxide（不採用）
+
+- **問題点**: `f64`固定でジェネリック非対応
+- **代替**: 自前実装（const配列で節点・重みを定義）
+
 ## 1. 既存コードベースパターン分析
 
 ### 1.1 ジェネリック型パターン

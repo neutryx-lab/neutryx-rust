@@ -5,15 +5,17 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::{RateIndex, Currency, Tenor, DayCountConvention};
+//! use infra_master::market::{RateIndex, Currency};
+//! use infra_master::time::{DayCounter, Tenor};
 //!
 //! let sofr = RateIndex::Sofr;
 //! assert_eq!(sofr.currency(), Currency::USD);
 //! assert_eq!(sofr.tenor(), Tenor::Overnight);
-//! assert_eq!(sofr.day_count_convention(), DayCountConvention::Actual360);
+//! assert_eq!(sofr.day_counter(), DayCounter::Actual360);
 //! ```
 
-use crate::{Currency, DayCountConvention, Tenor};
+use crate::market::Currency;
+use crate::time::{DayCounter, Tenor};
 
 /// Benchmark rate index.
 ///
@@ -23,7 +25,7 @@ use crate::{Currency, DayCountConvention, Tenor};
 /// # Examples
 ///
 /// ```
-/// use infra_master::{RateIndex, Currency};
+/// use infra_master::market::{RateIndex, Currency};
 ///
 /// let euribor = RateIndex::Euribor3M;
 /// assert_eq!(euribor.currency(), Currency::EUR);
@@ -53,7 +55,7 @@ impl RateIndex {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::{RateIndex, Currency};
+    /// use infra_master::market::{RateIndex, Currency};
     ///
     /// assert_eq!(RateIndex::Sofr.currency(), Currency::USD);
     /// assert_eq!(RateIndex::Tonar.currency(), Currency::JPY);
@@ -75,7 +77,8 @@ impl RateIndex {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::{RateIndex, Tenor};
+    /// use infra_master::market::RateIndex;
+    /// use infra_master::time::Tenor;
     ///
     /// assert_eq!(RateIndex::Sofr.tenor(), Tenor::Overnight);
     /// assert_eq!(RateIndex::Euribor3M.tenor(), Tenor::ThreeMonths);
@@ -95,22 +98,21 @@ impl RateIndex {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::{RateIndex, DayCountConvention};
+    /// use infra_master::market::RateIndex;
+    /// use infra_master::time::DayCounter;
     ///
-    /// assert_eq!(RateIndex::Sofr.day_count_convention(), DayCountConvention::Actual360);
-    /// assert_eq!(RateIndex::Sonia.day_count_convention(), DayCountConvention::Actual365Fixed);
+    /// assert_eq!(RateIndex::Sofr.day_counter(), DayCounter::Actual360);
+    /// assert_eq!(RateIndex::Sonia.day_counter(), DayCounter::Actual365Fixed);
     /// ```
     #[must_use]
-    pub const fn day_count_convention(&self) -> DayCountConvention {
+    pub const fn day_counter(&self) -> DayCounter {
         match self {
             // USD, EUR, CHF use ACT/360
-            Self::Sofr | Self::Euribor3M | Self::Euribor6M | Self::Saron => {
-                DayCountConvention::Actual360
-            }
+            Self::Sofr | Self::Euribor3M | Self::Euribor6M | Self::Saron => DayCounter::Actual360,
             // GBP uses ACT/365
-            Self::Sonia => DayCountConvention::Actual365Fixed,
+            Self::Sonia => DayCounter::Actual365Fixed,
             // JPY uses ACT/365
-            Self::Tonar => DayCountConvention::Actual365Fixed,
+            Self::Tonar => DayCounter::Actual365Fixed,
         }
     }
 
@@ -119,7 +121,7 @@ impl RateIndex {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::RateIndex;
+    /// use infra_master::market::RateIndex;
     ///
     /// assert_eq!(RateIndex::Sofr.name(), "SOFR");
     /// assert_eq!(RateIndex::Euribor3M.name(), "EURIBOR 3M");
@@ -141,7 +143,7 @@ impl RateIndex {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::RateIndex;
+    /// use infra_master::market::RateIndex;
     ///
     /// assert_eq!(RateIndex::Sofr.code(), "SOFR");
     /// assert_eq!(RateIndex::Euribor3M.code(), "EUR3M");
@@ -206,31 +208,13 @@ mod tests {
     }
 
     #[test]
-    fn test_day_count_convention() {
-        assert_eq!(
-            RateIndex::Sofr.day_count_convention(),
-            DayCountConvention::Actual360
-        );
-        assert_eq!(
-            RateIndex::Tonar.day_count_convention(),
-            DayCountConvention::Actual365Fixed
-        );
-        assert_eq!(
-            RateIndex::Euribor3M.day_count_convention(),
-            DayCountConvention::Actual360
-        );
-        assert_eq!(
-            RateIndex::Euribor6M.day_count_convention(),
-            DayCountConvention::Actual360
-        );
-        assert_eq!(
-            RateIndex::Sonia.day_count_convention(),
-            DayCountConvention::Actual365Fixed
-        );
-        assert_eq!(
-            RateIndex::Saron.day_count_convention(),
-            DayCountConvention::Actual360
-        );
+    fn test_day_counter() {
+        assert_eq!(RateIndex::Sofr.day_counter(), DayCounter::Actual360);
+        assert_eq!(RateIndex::Tonar.day_counter(), DayCounter::Actual365Fixed);
+        assert_eq!(RateIndex::Euribor3M.day_counter(), DayCounter::Actual360);
+        assert_eq!(RateIndex::Euribor6M.day_counter(), DayCounter::Actual360);
+        assert_eq!(RateIndex::Sonia.day_counter(), DayCounter::Actual365Fixed);
+        assert_eq!(RateIndex::Saron.day_counter(), DayCounter::Actual360);
     }
 
     #[test]

@@ -6,7 +6,7 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::Currency;
+//! use infra_master::market::Currency;
 //!
 //! let usd = Currency::USD;
 //! assert_eq!(usd.code(), "USD");
@@ -18,7 +18,7 @@
 
 use std::{fmt, str::FromStr};
 
-use crate::CurrencyError;
+use crate::error::CurrencyError;
 
 /// ISO 4217 currency codes with decimal precision metadata.
 ///
@@ -36,7 +36,7 @@ use crate::CurrencyError;
 /// # Examples
 ///
 /// ```
-/// use infra_master::Currency;
+/// use infra_master::market::Currency;
 ///
 /// // Get currency code
 /// assert_eq!(Currency::USD.code(), "USD");
@@ -90,7 +90,7 @@ impl Currency {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::Currency;
+    /// use infra_master::market::Currency;
     ///
     /// assert_eq!(Currency::USD.code(), "USD");
     /// assert_eq!(Currency::EUR.code(), "EUR");
@@ -116,7 +116,7 @@ impl Currency {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::Currency;
+    /// use infra_master::market::Currency;
     ///
     /// assert_eq!(Currency::USD.decimal_places(), 2);
     /// assert_eq!(Currency::EUR.decimal_places(), 2);
@@ -144,7 +144,7 @@ impl FromStr for Currency {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::Currency;
+    /// use infra_master::market::Currency;
     ///
     /// let usd: Currency = "USD".parse().unwrap();
     /// assert_eq!(usd, Currency::USD);
@@ -171,7 +171,9 @@ impl FromStr for Currency {
 
 impl fmt::Display for Currency {
     /// Formats as ISO 4217 code.
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.code()) }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.code())
+    }
 }
 
 #[cfg(test)]

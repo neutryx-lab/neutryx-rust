@@ -35,6 +35,7 @@
 
 mod builder;
 mod cashflow;
+mod direction;
 mod error;
 mod index;
 mod instrument;
@@ -44,6 +45,7 @@ mod trade;
 
 pub use builder::{LegBuilder, TradeBuilder};
 pub use cashflow::{Cashflow, CashflowType};
+pub use direction::{SwapDirection, TradeDirection};
 pub use error::TradeError;
 pub use index::{IndexObservation, IndexType};
 pub use instrument::Instrument;

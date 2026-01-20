@@ -30,11 +30,11 @@ mod csa;
 mod csv_loader;
 mod error;
 
-pub use csa::{CsaTerms, NettingSetConfig};
+pub use csa::{CsaTerms, NettingSet};
 pub use csv_loader::CsvLoader;
 pub use error::LoaderError;
 
 /// Prelude module for convenient imports
 pub mod prelude {
-    pub use crate::{CsaTerms, CsvLoader, LoaderError, NettingSetConfig};
+    pub use crate::{CsaTerms, CsvLoader, LoaderError, NettingSet};
 }

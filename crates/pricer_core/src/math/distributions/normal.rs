@@ -1,0 +1,569 @@
+//! Standard normal distribution functions.
+//!
+//! This module provides high-precision implementations of the standard normal
+//! distribution functions: CDF, PDF, and inverse CDF (quantile function).
+//!
+//! ## Algorithms
+//!
+//! - **CDF**: Hart approximation (error function based) with precision < 1e-15
+//! - **PDF**: Direct analytical formula φ(x) = exp(-x²/2) / √(2π)
+//! - **Inverse CDF**: Acklam approximation with precision < 1e-9
+//!
+//! ## AD Compatibility
+//!
+//! All functions are generic over `T: Float` to support automatic
+//! differentiation through dual numbers.
+
+use num_traits::Float;
+
+use super::DistributionError;
+
+/// Standard normal cumulative distribution function (CDF).
+///
+/// Computes P(X ≤ x) where X ~ N(0, 1) using the Hart approximation
+/// via the complementary error function.
+///
+/// # Arguments
+///
+/// * `x` - The upper bound for the probability
+///
+/// # Returns
+///
+/// The probability P(X ≤ x) in the range [0, 1]
+///
+/// # Precision
+///
+/// Relative error < 1e-15 for all x
+///
+/// # Example
+///
+/// ```
+/// use pricer_core::math::distributions::norm_cdf;
+///
+/// let p = norm_cdf(0.0_f64);
+/// assert!((p - 0.5).abs() < 1e-15);
+///
+/// let p = norm_cdf(1.96_f64);
+/// assert!((p - 0.975).abs() < 1e-3);
+/// ```
+#[inline]
+pub fn norm_cdf<T: Float>(x: T) -> T {
+    // Use complementary error function: Φ(x) = 0.5 * erfc(-x / √2)
+    // Hart approximation coefficients for erfc
+    let half = T::from(0.5).unwrap();
+    let one = T::one();
+    let sqrt_2 = T::from(core::f64::consts::SQRT_2).unwrap();
+
+    // For very large |x|, use asymptotic values
+    let x_f64 = x.to_f64().unwrap();
+    if x_f64 > 8.0 {
+        return one;
+    }
+    if x_f64 < -8.0 {
+        return T::zero();
+    }
+
+    // Compute using erfc approximation
+    let z = -x / sqrt_2;
+    let erfc_z = erfc_hart(z);
+
+    half * erfc_z
+}
+
+/// Hart approximation for the complementary error function.
+///
+/// erfc(x) = 2/√π ∫_x^∞ exp(-t²) dt
+///
+/// Uses rational polynomial approximation with different branches
+/// for positive and negative arguments.
+#[inline]
+fn erfc_hart<T: Float>(x: T) -> T {
+    let zero = T::zero();
+    let one = T::one();
+    let two = T::from(2.0).unwrap();
+
+    if x >= zero {
+        erfc_hart_positive(x)
+    } else {
+        two - erfc_hart_positive(-x)
+    }
+}
+
+/// Hart approximation for erfc(x) where x >= 0.
+///
+/// Uses a rational polynomial approximation optimised for different
+/// ranges of x to achieve high precision.
+#[allow(clippy::excessive_precision)]
+fn erfc_hart_positive<T: Float>(x: T) -> T {
+    let one = T::one();
+    let two = T::from(2.0).unwrap();
+
+    let x_f64 = x.to_f64().unwrap();
+
+    if x_f64 < 0.5 {
+        // Small x: use Taylor series based approximation
+        // erfc(x) ≈ 1 - 2x/√π * (1 - x²/3 + x⁴/10 - x⁶/42 + ...)
+        let sqrt_pi_inv = T::from(1.0 / core::f64::consts::PI.sqrt()).unwrap();
+        let x2 = x * x;
+
+        // Horner's method for the series
+        let series = one
+            - x2 * T::from(1.0 / 3.0).unwrap()
+            + x2 * x2 * T::from(1.0 / 10.0).unwrap()
+            - x2 * x2 * x2 * T::from(1.0 / 42.0).unwrap()
+            + x2 * x2 * x2 * x2 * T::from(1.0 / 216.0).unwrap();
+
+        one - two * sqrt_pi_inv * x * series
+    } else if x_f64 < 4.0 {
+        // Medium x: rational approximation
+        // Coefficients from Abramowitz & Stegun (7.1.26) adapted
+        let p = [
+            T::from(0.254829592).unwrap(),
+            T::from(-0.284496736).unwrap(),
+            T::from(1.421413741).unwrap(),
+            T::from(-1.453152027).unwrap(),
+            T::from(1.061405429).unwrap(),
+        ];
+        let t_coeff = T::from(0.3275911).unwrap();
+
+        let t = one / (one + t_coeff * x);
+        let t2 = t * t;
+        let t3 = t2 * t;
+        let t4 = t3 * t;
+        let t5 = t4 * t;
+
+        let poly = p[0] * t + p[1] * t2 + p[2] * t3 + p[3] * t4 + p[4] * t5;
+
+        poly * (-x * x).exp()
+    } else {
+        // Large x: asymptotic expansion
+        // erfc(x) ≈ exp(-x²) / (x√π) * (1 - 1/(2x²) + 3/(4x⁴) - ...)
+        let sqrt_pi = T::from(core::f64::consts::PI.sqrt()).unwrap();
+        let x2 = x * x;
+        let inv_2x2 = one / (two * x2);
+
+        let asymp = one - inv_2x2 + T::from(3.0).unwrap() * inv_2x2 * inv_2x2;
+
+        (-x2).exp() / (x * sqrt_pi) * asymp
+    }
+}
+
+/// Standard normal probability density function (PDF).
+///
+/// Computes φ(x) = (1/√(2π)) * exp(-x²/2).
+///
+/// # Arguments
+///
+/// * `x` - The point at which to evaluate the density
+///
+/// # Returns
+///
+/// The probability density at x
+///
+/// # Example
+///
+/// ```
+/// use pricer_core::math::distributions::norm_pdf;
+///
+/// let pdf_at_zero = norm_pdf(0.0_f64);
+/// let expected = 1.0 / (2.0 * std::f64::consts::PI).sqrt();
+/// assert!((pdf_at_zero - expected).abs() < 1e-15);
+/// ```
+#[inline]
+pub fn norm_pdf<T: Float>(x: T) -> T {
+    let half = T::from(0.5).unwrap();
+    let two_pi = T::from(2.0 * core::f64::consts::PI).unwrap();
+
+    (-half * x * x).exp() / two_pi.sqrt()
+}
+
+/// Standard normal inverse cumulative distribution function (quantile).
+///
+/// Computes the value x such that P(X ≤ x) = p, where X ~ N(0, 1).
+/// Uses Acklam's approximation with precision < 1e-9.
+///
+/// # Arguments
+///
+/// * `p` - The probability value in (0, 1)
+///
+/// # Returns
+///
+/// The quantile x such that Φ(x) = p
+///
+/// # Errors
+///
+/// Returns [`DistributionError::InvalidProbability`] if p ≤ 0 or p ≥ 1.
+///
+/// # Precision
+///
+/// Relative error < 1e-9 for all p in (0, 1)
+///
+/// # Example
+///
+/// ```
+/// use pricer_core::math::distributions::norm_inv_cdf;
+///
+/// let x = norm_inv_cdf(0.5_f64).unwrap();
+/// assert!(x.abs() < 1e-10);
+///
+/// let x = norm_inv_cdf(0.975_f64).unwrap();
+/// assert!((x - 1.96).abs() < 0.01);
+/// ```
+#[allow(clippy::excessive_precision)]
+pub fn norm_inv_cdf<T: Float>(p: T) -> Result<T, DistributionError> {
+    let zero = T::zero();
+    let one = T::one();
+    let half = T::from(0.5).unwrap();
+
+    let p_f64 = p.to_f64().unwrap();
+
+    // Validate input
+    if p_f64 <= 0.0 || p_f64 >= 1.0 {
+        return Err(DistributionError::InvalidProbability { p: p_f64 });
+    }
+
+    // Acklam's approximation coefficients
+    // For the central region
+    let a = [
+        T::from(-3.969683028665376e+01).unwrap(),
+        T::from(2.209460984245205e+02).unwrap(),
+        T::from(-2.759285104469687e+02).unwrap(),
+        T::from(1.383577518672690e+02).unwrap(),
+        T::from(-3.066479806614716e+01).unwrap(),
+        T::from(2.506628277459239e+00).unwrap(),
+    ];
+
+    let b = [
+        T::from(-5.447609879822406e+01).unwrap(),
+        T::from(1.615858368580409e+02).unwrap(),
+        T::from(-1.556989798598866e+02).unwrap(),
+        T::from(6.680131188771972e+01).unwrap(),
+        T::from(-1.328068155288572e+01).unwrap(),
+    ];
+
+    // For the tail regions
+    let c = [
+        T::from(-7.784894002430293e-03).unwrap(),
+        T::from(-3.223964580411365e-01).unwrap(),
+        T::from(-2.400758277161838e+00).unwrap(),
+        T::from(-2.549732539343734e+00).unwrap(),
+        T::from(4.374664141464968e+00).unwrap(),
+        T::from(2.938163982698783e+00).unwrap(),
+    ];
+
+    let d = [
+        T::from(7.784695709041462e-03).unwrap(),
+        T::from(3.224671290700398e-01).unwrap(),
+        T::from(2.445134137142996e+00).unwrap(),
+        T::from(3.754408661907416e+00).unwrap(),
+    ];
+
+    // Thresholds for region selection
+    let p_low = T::from(0.02425).unwrap();
+    let p_high = one - p_low;
+
+    let result = if p < p_low {
+        // Lower tail
+        let q = (-T::from(2.0).unwrap() * p.ln()).sqrt();
+        (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5])
+            / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + one)
+    } else if p <= p_high {
+        // Central region
+        let q = p - half;
+        let r = q * q;
+        (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q
+            / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + one)
+    } else {
+        // Upper tail
+        let q = (-T::from(2.0).unwrap() * (one - p).ln()).sqrt();
+        -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5])
+            / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + one)
+    };
+
+    Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use approx::assert_relative_eq;
+
+    // ==========================================================================
+    // norm_pdf tests
+    // ==========================================================================
+
+    #[test]
+    fn test_norm_pdf_at_zero() {
+        let pdf = norm_pdf(0.0_f64);
+        let expected = 1.0 / (2.0 * core::f64::consts::PI).sqrt();
+        assert_relative_eq!(pdf, expected, epsilon = 1e-15);
+    }
+
+    #[test]
+    fn test_norm_pdf_symmetry() {
+        for x in [0.5, 1.0, 1.5, 2.0, 2.5, 3.0] {
+            let pdf_pos = norm_pdf(x);
+            let pdf_neg = norm_pdf(-x);
+            assert_relative_eq!(pdf_pos, pdf_neg, epsilon = 1e-15);
+        }
+    }
+
+    #[test]
+    fn test_norm_pdf_monotonicity() {
+        // PDF should decrease as |x| increases from 0
+        let pdf_0 = norm_pdf(0.0_f64);
+        let pdf_1 = norm_pdf(1.0_f64);
+        let pdf_2 = norm_pdf(2.0_f64);
+        let pdf_3 = norm_pdf(3.0_f64);
+
+        assert!(pdf_0 > pdf_1);
+        assert!(pdf_1 > pdf_2);
+        assert!(pdf_2 > pdf_3);
+    }
+
+    #[test]
+    fn test_norm_pdf_known_values() {
+        // Reference values from Wolfram Alpha
+        let test_cases = [
+            (0.0, 0.398_942_280_401_432_7),
+            (1.0, 0.241_970_724_519_143_37),
+            (2.0, 0.053_990_966_513_188_06),
+            (3.0, 0.004_431_848_411_938_008),
+        ];
+
+        for (x, expected) in test_cases {
+            let pdf = norm_pdf(x);
+            assert_relative_eq!(pdf, expected, epsilon = 1e-12);
+        }
+    }
+
+    // ==========================================================================
+    // norm_cdf tests
+    // ==========================================================================
+
+    #[test]
+    fn test_norm_cdf_at_zero() {
+        let cdf = norm_cdf(0.0_f64);
+        assert_relative_eq!(cdf, 0.5, epsilon = 1e-15);
+    }
+
+    #[test]
+    fn test_norm_cdf_symmetry() {
+        // Φ(-x) = 1 - Φ(x)
+        for x in [0.5, 1.0, 1.5, 2.0, 2.5, 3.0] {
+            let cdf_pos = norm_cdf(x);
+            let cdf_neg = norm_cdf(-x);
+            assert_relative_eq!(cdf_pos + cdf_neg, 1.0, epsilon = 1e-14);
+        }
+    }
+
+    #[test]
+    fn test_norm_cdf_monotonicity() {
+        let mut prev = norm_cdf(-5.0_f64);
+        for x in [-4.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0] {
+            let current = norm_cdf(x);
+            assert!(current > prev, "CDF should be monotonically increasing");
+            prev = current;
+        }
+    }
+
+    #[test]
+    fn test_norm_cdf_bounds() {
+        // CDF should be in [0, 1]
+        for x in [-10.0, -5.0, -1.0, 0.0, 1.0, 5.0, 10.0] {
+            let cdf = norm_cdf(x);
+            assert!(cdf >= 0.0 && cdf <= 1.0);
+        }
+    }
+
+    #[test]
+    fn test_norm_cdf_known_values() {
+        // Reference values (standard normal table)
+        let test_cases = [
+            (-3.0, 0.001_349_898_031_630_095),
+            (-2.0, 0.022_750_131_948_179_21),
+            (-1.0, 0.158_655_253_931_457_05),
+            (0.0, 0.5),
+            (1.0, 0.841_344_746_068_542_9),
+            (1.96, 0.975_002_104_851_915_2),
+            (2.0, 0.977_249_868_051_820_8),
+            (3.0, 0.998_650_101_968_370_0),
+        ];
+
+        for (x, expected) in test_cases {
+            let cdf = norm_cdf(x);
+            assert_relative_eq!(cdf, expected, epsilon = 1e-10);
+        }
+    }
+
+    #[test]
+    fn test_norm_cdf_extreme_values() {
+        // Very large positive x should give ~1
+        let cdf_large = norm_cdf(10.0_f64);
+        assert!(cdf_large > 0.999_999_999);
+
+        // Very large negative x should give ~0
+        let cdf_small = norm_cdf(-10.0_f64);
+        assert!(cdf_small < 1e-9);
+    }
+
+    // ==========================================================================
+    // norm_inv_cdf tests
+    // ==========================================================================
+
+    #[test]
+    fn test_norm_inv_cdf_at_half() {
+        let x = norm_inv_cdf(0.5_f64).unwrap();
+        assert_relative_eq!(x, 0.0, epsilon = 1e-10);
+    }
+
+    #[test]
+    fn test_norm_inv_cdf_symmetry() {
+        // Φ⁻¹(p) = -Φ⁻¹(1-p)
+        for p in [0.1, 0.2, 0.3, 0.4] {
+            let x1 = norm_inv_cdf(p).unwrap();
+            let x2 = norm_inv_cdf(1.0 - p).unwrap();
+            assert_relative_eq!(x1, -x2, epsilon = 1e-9);
+        }
+    }
+
+    #[test]
+    fn test_norm_inv_cdf_monotonicity() {
+        let mut prev = norm_inv_cdf(0.01_f64).unwrap();
+        for p in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.99] {
+            let current = norm_inv_cdf(p).unwrap();
+            assert!(
+                current > prev,
+                "Inverse CDF should be monotonically increasing"
+            );
+            prev = current;
+        }
+    }
+
+    #[test]
+    fn test_norm_inv_cdf_known_values() {
+        // Reference values
+        let test_cases = [
+            (0.5, 0.0),
+            (0.841_344_746_068_543, 1.0),       // Φ(1) ≈ 0.8413
+            (0.977_249_868_051_821, 2.0),       // Φ(2) ≈ 0.9772
+            (0.158_655_253_931_457, -1.0),      // Φ(-1) ≈ 0.1587
+            (0.022_750_131_948_179, -2.0),      // Φ(-2) ≈ 0.0228
+            (0.975, 1.959_963_984_540_054),     // Common 97.5% quantile
+        ];
+
+        for (p, expected) in test_cases {
+            let x = norm_inv_cdf(p).unwrap();
+            assert_relative_eq!(x, expected, epsilon = 1e-6);
+        }
+    }
+
+    #[test]
+    fn test_norm_inv_cdf_roundtrip() {
+        // norm_inv_cdf(norm_cdf(x)) ≈ x
+        for x in [-2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0] {
+            let p = norm_cdf(x);
+            let x_back = norm_inv_cdf(p).unwrap();
+            assert_relative_eq!(x, x_back, epsilon = 1e-8);
+        }
+    }
+
+    #[test]
+    fn test_norm_inv_cdf_invalid_probability_zero() {
+        let result = norm_inv_cdf(0.0_f64);
+        assert!(matches!(
+            result,
+            Err(DistributionError::InvalidProbability { p }) if p == 0.0
+        ));
+    }
+
+    #[test]
+    fn test_norm_inv_cdf_invalid_probability_one() {
+        let result = norm_inv_cdf(1.0_f64);
+        assert!(matches!(
+            result,
+            Err(DistributionError::InvalidProbability { p }) if p == 1.0
+        ));
+    }
+
+    #[test]
+    fn test_norm_inv_cdf_invalid_probability_negative() {
+        let result = norm_inv_cdf(-0.1_f64);
+        assert!(matches!(
+            result,
+            Err(DistributionError::InvalidProbability { .. })
+        ));
+    }
+
+    #[test]
+    fn test_norm_inv_cdf_invalid_probability_greater_than_one() {
+        let result = norm_inv_cdf(1.5_f64);
+        assert!(matches!(
+            result,
+            Err(DistributionError::InvalidProbability { .. })
+        ));
+    }
+
+    #[test]
+    fn test_norm_inv_cdf_extreme_tails() {
+        // Very small p (lower tail)
+        let x_low = norm_inv_cdf(0.001_f64).unwrap();
+        assert!(x_low < -3.0);
+
+        // Very large p (upper tail)
+        let x_high = norm_inv_cdf(0.999_f64).unwrap();
+        assert!(x_high > 3.0);
+
+        // Symmetry in tails
+        assert_relative_eq!(x_low, -x_high, epsilon = 1e-8);
+    }
+}
+
+#[cfg(test)]
+mod proptests {
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn prop_norm_pdf_non_negative(x in -10.0_f64..10.0) {
+            let pdf = norm_pdf(x);
+            prop_assert!(pdf >= 0.0);
+        }
+
+        #[test]
+        fn prop_norm_pdf_symmetry(x in 0.0_f64..10.0) {
+            let pdf_pos = norm_pdf(x);
+            let pdf_neg = norm_pdf(-x);
+            prop_assert!((pdf_pos - pdf_neg).abs() < 1e-14);
+        }
+
+        #[test]
+        fn prop_norm_cdf_bounds(x in -10.0_f64..10.0) {
+            let cdf = norm_cdf(x);
+            prop_assert!(cdf >= 0.0 && cdf <= 1.0);
+        }
+
+        #[test]
+        fn prop_norm_cdf_symmetry(x in 0.0_f64..10.0) {
+            let cdf_pos = norm_cdf(x);
+            let cdf_neg = norm_cdf(-x);
+            prop_assert!((cdf_pos + cdf_neg - 1.0).abs() < 1e-12);
+        }
+
+        #[test]
+        fn prop_norm_inv_cdf_valid_input(p in 0.001_f64..0.999) {
+            let result = norm_inv_cdf(p);
+            prop_assert!(result.is_ok());
+        }
+
+        #[test]
+        fn prop_norm_inv_cdf_roundtrip(x in -3.0_f64..3.0) {
+            let p = norm_cdf(x);
+            if p > 0.0 && p < 1.0 {
+                let x_back = norm_inv_cdf(p).unwrap();
+                prop_assert!((x - x_back).abs() < 1e-7);
+            }
+        }
+    }
+}

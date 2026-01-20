@@ -6,7 +6,7 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::Frequency;
+//! use infra_master::time::Frequency;
 //!
 //! let freq = Frequency::Quarterly;
 //! assert_eq!(freq.periods_per_year(), 4);
@@ -22,7 +22,7 @@ use std::{fmt, str::FromStr};
 /// # Examples
 ///
 /// ```
-/// use infra_master::Frequency;
+/// use infra_master::time::Frequency;
 ///
 /// let freq = Frequency::SemiAnnual;
 /// assert_eq!(freq.periods_per_year(), 2);
@@ -51,7 +51,7 @@ impl Frequency {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::Frequency;
+    /// use infra_master::time::Frequency;
     ///
     /// assert_eq!(Frequency::Annual.months_per_period(), 12);
     /// assert_eq!(Frequency::SemiAnnual.months_per_period(), 6);
@@ -76,7 +76,7 @@ impl Frequency {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::Frequency;
+    /// use infra_master::time::Frequency;
     ///
     /// assert_eq!(Frequency::Annual.periods_per_year(), 1);
     /// assert_eq!(Frequency::SemiAnnual.periods_per_year(), 2);
@@ -129,7 +129,9 @@ impl FromStr for Frequency {
 }
 
 impl fmt::Display for Frequency {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.name()) }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.name())
+    }
 }
 
 #[cfg(test)]

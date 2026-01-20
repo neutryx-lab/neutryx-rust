@@ -231,7 +231,7 @@ impl<T: Float> HullWhiteParams<T> {
     ///
     /// ```
     /// use pricer_models::models::rates::hull_white::HullWhiteParams;
-    /// use crate::market::curves::FlatCurve;
+    /// use pricer_models::market::curves::FlatCurve;
     ///
     /// let params = HullWhiteParams::new(0.05, 0.01, FlatCurve::new(0.03));
     /// assert!(params.is_some());

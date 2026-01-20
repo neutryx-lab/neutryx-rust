@@ -10,6 +10,43 @@
 2. **一貫性**: 既存の`pricer_core`パターン（エラーハンドリング、ドキュメント、テスト）を踏襲
 3. **段階的実装**: Phase 1（基盤）→ Phase 2（数値計算）→ Phase 3（高度機能）の順で実装
 4. **層分離**: L1（pricer_core）は純粋数学、L2（pricer_models）は金融ロジックを維持
+5. **外部クレート活用**: AD互換性を損なわない範囲で成熟した外部クレートを活用し、メンテナンス負担を軽減
+
+## 外部クレート活用方針
+
+### 採用判断基準
+
+| 基準 | 重要度 | 説明 |
+|------|--------|------|
+| AD互換性 | 必須 | `T: Float`ジェネリック対応、またはラッパーで対応可能 |
+| 成熟度 | 高 | 十分なテスト、ドキュメント、メンテナンス |
+| 依存関係 | 中 | 依存ツリーが軽量 |
+| ライセンス | 必須 | MIT/Apache 2.0互換 |
+
+### 採用決定
+
+| モジュール | 方針 | クレート | 理由 |
+|-----------|------|---------|------|
+| `distributions` | **自前実装** | - | AD互換性必須、statrsは`f64`固定 |
+| `integrators` | **自前実装** | - | AD互換性必須、クロージャのジェネリック対応 |
+| `calculus` | **自前実装** | - | 単純、外部依存不要 |
+| `optimisers` | **argmin採用** | `argmin` | 成熟、豊富なアルゴリズム、AD統合事例あり |
+| `linalg` | **nalgebra採用** | `nalgebra` | 成熟、ジェネリック対応、メンテナンス負担軽減 |
+| `interpolators` | **自前実装** | - | 金融特化補間（SVI等）は外部になし |
+| `solvers` | **自前実装** | - | 既存コードベースに統合済み |
+| `fitting` | **nalgebra活用** | `nalgebra` | 最小二乗はnalgebraのSVDを活用 |
+| `mesh` | **自前実装** | - | 単純、外部依存不要 |
+| `utilities` | **自前実装** | - | 単純、外部依存不要 |
+
+### 参考：調査した外部クレート
+
+| クレート | 用途 | AD互換性 | 採用 |
+|----------|------|---------|------|
+| [statrs](https://docs.rs/statrs/) | 統計分布 | ❌ `f64`固定 | 不採用 |
+| [gauss-quad](https://docs.rs/gauss-quad) | 数値積分 | ❌ `f64`固定 | 不採用 |
+| [Peroxide](https://github.com/Axect/Peroxide) | 数値計算全般 | ❌ `f64`固定 | 不採用 |
+| [argmin](https://github.com/argmin-rs/argmin) | 最適化 | ⚠️ 部分的 | **採用** |
+| [nalgebra](https://github.com/dimforge/nalgebra) | 線形代数 | ✅ ジェネリック | **採用** |
 
 ## モジュール構造
 
@@ -57,20 +94,15 @@ crates/pricer_core/src/math/
 │   ├── mod.rs
 │   ├── finite_difference.rs # 有限差分法
 │   └── bump_selection.rs    # bump幅自動選択
-├── optimisers/               # 新規モジュール
-│   ├── mod.rs
-│   ├── error.rs             # OptimisationError
+├── optimisers/               # 新規モジュール（argminラッパー）
+│   ├── mod.rs               # argmin re-export + 統一インターフェース
+│   ├── error.rs             # OptimisationError（argminエラーからの変換）
 │   ├── config.rs            # 最適化設定
-│   ├── lbfgs.rs             # L-BFGS
-│   ├── nelder_mead.rs       # Nelder-Mead
-│   └── line_search.rs       # 直線探索アルゴリズム
-├── linalg/                   # 新規モジュール
-│   ├── mod.rs
+│   └── wrappers.rs          # argminアルゴリズムの薄いラッパー
+├── linalg/                   # 新規モジュール（nalgebraラッパー）
+│   ├── mod.rs               # nalgebra re-export + 統一インターフェース
 │   ├── error.rs             # LinearAlgebraError
-│   ├── matrix.rs            # Matrix<T>構造体
-│   ├── cholesky.rs          # コレスキー分解
-│   ├── lu.rs                # LU分解
-│   └── operations.rs        # 行列演算
+│   └── wrappers.rs          # nalgebra機能の薄いラッパー
 ├── fitting/                  # 新規モジュール
 │   ├── mod.rs
 │   ├── least_squares.rs     # 線形最小二乗
@@ -329,214 +361,313 @@ where
     F: Fn(&[T]) -> T;
 ```
 
-### 4. optimisers モジュール
+### 4. optimisers モジュール（argminラッパー）
 
-#### 4.1 最適化設定
+`argmin`クレートを活用し、薄いラッパーで統一インターフェースを提供する。
 
-```rust
-// optimisers/config.rs
+#### 4.1 設計方針
 
-/// 最適化の収束設定
-#[derive(Debug, Clone)]
-pub struct OptimisationConfig<T: Float> {
-    /// 勾配ノルムの収束閾値
-    pub gradient_tolerance: T,
-    /// 関数値変化の収束閾値
-    pub function_tolerance: T,
-    /// パラメータ変化の収束閾値
-    pub parameter_tolerance: T,
-    /// 最大反復回数
-    pub max_iterations: usize,
-}
-
-impl<T: Float> Default for OptimisationConfig<T> {
-    fn default() -> Self {
-        Self {
-            gradient_tolerance: from_f64(1e-8),
-            function_tolerance: from_f64(1e-10),
-            parameter_tolerance: from_f64(1e-8),
-            max_iterations: 1000,
-        }
-    }
-}
-```
-
-#### 4.2 最適化結果
+- `argmin`の豊富なアルゴリズム（L-BFGS、Nelder-Mead、直線探索等）をそのまま活用
+- `pricer_core`固有のエラー型への変換レイヤーを提供
+- 将来的なAD統合のためのトレイト定義
 
 ```rust
 // optimisers/mod.rs
 
-/// 最適化の結果
-#[derive(Debug, Clone)]
-pub struct OptimisationResult<T: Float> {
-    /// 最適パラメータ
-    pub params: Vec<T>,
-    /// 最終関数値
-    pub value: T,
-    /// 収束したか
-    pub converged: bool,
-    /// 反復回数
-    pub iterations: usize,
-    /// 最終勾配ノルム
-    pub gradient_norm: T,
-    /// 収束理由
-    pub termination_reason: TerminationReason,
+//! 最適化アルゴリズム（argminラッパー）
+//!
+//! このモジュールは`argmin`クレートの薄いラッパーを提供し、
+//! `pricer_core`の規約に沿った統一インターフェースを実現する。
+//!
+//! ## 提供アルゴリズム
+//!
+//! - **L-BFGS**: `argmin::solver::linesearch::LBFGS`
+//! - **Nelder-Mead**: `argmin::solver::neldermead::NelderMead`
+//! - **直線探索**: `argmin::solver::linesearch::{BacktrackingLineSearch, MoreThuenteLineSearch}`
+//!
+//! ## 使用例
+//!
+//! ```ignore
+//! use pricer_core::math::optimisers::{minimize_lbfgs, OptimisationConfig};
+//!
+//! let result = minimize_lbfgs(
+//!     |x| x[0].powi(2) + x[1].powi(2),  // 目的関数
+//!     |x| vec![2.0 * x[0], 2.0 * x[1]], // 勾配
+//!     vec![1.0, 1.0],                    // 初期値
+//!     OptimisationConfig::default(),
+//! )?;
+//! ```
+
+// argminの主要型をre-export
+pub use argmin::core::{CostFunction, Gradient, Executor, State};
+pub use argmin::solver::linesearch::condition::ArmijoCondition;
+pub use argmin::solver::linesearch::{BacktrackingLineSearch, MoreThuenteLineSearch};
+pub use argmin::solver::neldermead::NelderMead;
+pub use argmin::solver::quasinewton::LBFGS;
+
+mod config;
+mod error;
+mod wrappers;
+
+pub use config::OptimisationConfig;
+pub use error::OptimisationError;
+pub use wrappers::{minimize_lbfgs, minimize_nelder_mead};
+```
+
+#### 4.2 エラー型
+
+```rust
+// optimisers/error.rs
+
+use thiserror::Error;
+
+#[derive(Error, Debug, Clone)]
+pub enum OptimisationError {
+    #[error("Optimisation did not converge after {iterations} iterations")]
+    NotConverged { iterations: usize },
+
+    #[error("Invalid parameter: {0}")]
+    InvalidParameter(String),
+
+    #[error("Numerical error: {0}")]
+    NumericalError(String),
+
+    #[error("Argmin error: {0}")]
+    ArgminError(String),
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum TerminationReason {
-    GradientConverged,
-    FunctionConverged,
-    ParameterConverged,
-    MaxIterationsReached,
-    NumericalError,
+impl From<argmin::core::Error> for OptimisationError {
+    fn from(err: argmin::core::Error) -> Self {
+        OptimisationError::ArgminError(err.to_string())
+    }
 }
 ```
 
-#### 4.3 L-BFGSインターフェース
+#### 4.3 ラッパー関数
 
 ```rust
-// optimisers/lbfgs.rs
+// optimisers/wrappers.rs
 
-/// L-BFGS最適化器
-pub struct LBFGSOptimiser<T: Float> {
-    config: OptimisationConfig<T>,
-    memory_size: usize,  // 履歴数（デフォルト: 10）
-}
+use argmin::core::{CostFunction, Gradient, Executor};
+use argmin::solver::quasinewton::LBFGS;
+use argmin::solver::neldermead::NelderMead;
 
-impl<T: Float> LBFGSOptimiser<T> {
-    pub fn new(config: OptimisationConfig<T>) -> Self;
-
-    pub fn with_memory_size(self, m: usize) -> Self;
-
-    /// 最小化を実行
-    ///
-    /// # Arguments
-    /// * `f` - 目的関数
-    /// * `grad` - 勾配関数
-    /// * `x0` - 初期値
-    pub fn minimize<F, G>(
-        &self,
-        f: F,
-        grad: G,
-        x0: Vec<T>,
-    ) -> Result<OptimisationResult<T>, OptimisationError>
-    where
-        F: Fn(&[T]) -> T,
-        G: Fn(&[T]) -> Vec<T>;
-}
-```
-
-#### 4.4 Nelder-Meadインターフェース
-
-```rust
-// optimisers/nelder_mead.rs
-
-/// Nelder-Mead最適化器（導関数不要）
-pub struct NelderMeadOptimiser<T: Float> {
-    config: OptimisationConfig<T>,
-    alpha: T,  // 反射係数
-    gamma: T,  // 膨張係数
-    rho: T,    // 収縮係数
-    sigma: T,  // 縮小係数
-}
-
-impl<T: Float> NelderMeadOptimiser<T> {
-    pub fn new(config: OptimisationConfig<T>) -> Self;
-
-    /// 最小化を実行（導関数不要）
-    pub fn minimize<F>(
-        &self,
-        f: F,
-        x0: Vec<T>,
-    ) -> Result<OptimisationResult<T>, OptimisationError>
-    where
-        F: Fn(&[T]) -> T;
-}
-```
-
-### 5. linalg モジュール
-
-#### 5.1 行列型
-
-```rust
-// linalg/matrix.rs
-
-/// 汎用行列（行優先格納）
-#[derive(Debug, Clone)]
-pub struct Matrix<T: Float> {
-    data: Vec<T>,
-    rows: usize,
-    cols: usize,
-}
-
-impl<T: Float> Matrix<T> {
-    pub fn new(rows: usize, cols: usize) -> Self;
-    pub fn from_vec(rows: usize, cols: usize, data: Vec<T>) -> Result<Self, LinearAlgebraError>;
-    pub fn identity(n: usize) -> Self;
-    pub fn zeros(rows: usize, cols: usize) -> Self;
-
-    pub fn get(&self, i: usize, j: usize) -> Option<T>;
-    pub fn set(&mut self, i: usize, j: usize, value: T) -> Result<(), LinearAlgebraError>;
-
-    pub fn rows(&self) -> usize;
-    pub fn cols(&self) -> usize;
-
-    pub fn transpose(&self) -> Self;
-    pub fn add(&self, other: &Self) -> Result<Self, LinearAlgebraError>;
-    pub fn sub(&self, other: &Self) -> Result<Self, LinearAlgebraError>;
-    pub fn mul(&self, other: &Self) -> Result<Self, LinearAlgebraError>;
-    pub fn scale(&self, scalar: T) -> Self;
-}
-
-/// 正方行列（コレスキー分解等に使用）
-pub type SquareMatrix<T> = Matrix<T>;
-```
-
-#### 5.2 分解インターフェース
-
-```rust
-// linalg/cholesky.rs
-
-/// コレスキー分解（LL^T）
+/// L-BFGSによる最小化（簡易インターフェース）
 ///
 /// # Arguments
-/// * `a` - 正定値対称行列
+/// * `cost` - 目的関数
+/// * `gradient` - 勾配関数
+/// * `init` - 初期パラメータ
+/// * `config` - 最適化設定
+pub fn minimize_lbfgs<F, G>(
+    cost: F,
+    gradient: G,
+    init: Vec<f64>,
+    config: OptimisationConfig,
+) -> Result<OptimisationResult, OptimisationError>
+where
+    F: Fn(&[f64]) -> f64,
+    G: Fn(&[f64]) -> Vec<f64>;
+
+/// Nelder-Meadによる最小化（導関数不要）
 ///
-/// # Returns
-/// 下三角行列L such that A = L * L^T
-pub fn cholesky<T: Float>(a: &Matrix<T>) -> Result<Matrix<T>, LinearAlgebraError>;
+/// # Arguments
+/// * `cost` - 目的関数
+/// * `init` - 初期シンプレックス頂点
+/// * `config` - 最適化設定
+pub fn minimize_nelder_mead<F>(
+    cost: F,
+    init: Vec<Vec<f64>>,
+    config: OptimisationConfig,
+) -> Result<OptimisationResult, OptimisationError>
+where
+    F: Fn(&[f64]) -> f64;
+```
+
+#### 4.4 AD統合の将来計画
+
+`argmin`は`argmin-math`を通じて様々な数学バックエンドをサポート。
+将来的に`num-dual`との統合により、AD対応の最適化が可能：
+
+```rust
+// 将来的なAD対応（計画）
+// argmin-math-numdualフィーチャーを使用
+pub fn minimize_lbfgs_ad<F>(
+    cost: F,
+    init: Vec<Dual64>,
+    config: OptimisationConfig,
+) -> Result<OptimisationResult<Dual64>, OptimisationError>
+where
+    F: Fn(&[Dual64]) -> Dual64;
+```
+
+### 5. linalg モジュール（nalgebraラッパー）
+
+`nalgebra`クレートを活用し、薄いラッパーで統一インターフェースを提供する。
+
+#### 5.1 設計方針
+
+- `nalgebra`の成熟した行列演算・分解機能をそのまま活用
+- `nalgebra`は`T: RealField`でジェネリック対応しており、AD互換性あり
+- 型エイリアスとユーティリティ関数で使いやすさを向上
+
+```rust
+// linalg/mod.rs
+
+//! 線形代数演算（nalgebraラッパー）
+//!
+//! このモジュールは`nalgebra`クレートの薄いラッパーを提供し、
+//! `pricer_core`の規約に沿った統一インターフェースを実現する。
+//!
+//! ## 提供機能
+//!
+//! - **行列型**: `DMatrix<T>`, `DVector<T>`（動的サイズ）
+//! - **分解**: コレスキー、LU、QR、SVD
+//! - **演算**: 行列積、転置、逆行列、行列式
+//!
+//! ## 使用例
+//!
+//! ```ignore
+//! use pricer_core::math::linalg::{Matrix, cholesky_solve};
+//!
+//! let a = Matrix::from_row_slice(2, 2, &[4.0, 2.0, 2.0, 3.0]);
+//! let b = vec![1.0, 2.0];
+//! let x = cholesky_solve(&a, &b)?;
+//! ```
+
+// nalgebraの主要型をre-export
+pub use nalgebra::{DMatrix, DVector, Matrix as NMatrix, Vector as NVector};
+pub use nalgebra::{Cholesky, LU, QR, SVD};
+pub use nalgebra::RealField;
+
+mod error;
+mod wrappers;
+
+pub use error::LinearAlgebraError;
+pub use wrappers::*;
+
+/// 動的サイズ行列の型エイリアス
+pub type Matrix<T> = DMatrix<T>;
+
+/// 動的サイズベクトルの型エイリアス
+pub type Vector<T> = DVector<T>;
+```
+
+#### 5.2 エラー型
+
+```rust
+// linalg/error.rs
+
+use thiserror::Error;
+
+#[derive(Error, Debug, Clone, PartialEq)]
+pub enum LinearAlgebraError {
+    #[error("Matrix is not positive definite")]
+    NotPositiveDefinite,
+
+    #[error("Matrix is singular")]
+    SingularMatrix,
+
+    #[error("Dimension mismatch: expected {expected}, got {got}")]
+    DimensionMismatch { expected: String, got: String },
+
+    #[error("Matrix is not square: {rows}x{cols}")]
+    NotSquare { rows: usize, cols: usize },
+
+    #[error("Decomposition failed: {0}")]
+    DecompositionFailed(String),
+}
+```
+
+#### 5.3 ラッパー関数
+
+```rust
+// linalg/wrappers.rs
+
+use nalgebra::{DMatrix, DVector, Cholesky, LU, RealField};
 
 /// コレスキー分解を用いた線形方程式の解法
 ///
 /// A * x = b を解く（A は正定値対称）
-pub fn cholesky_solve<T: Float>(
-    a: &Matrix<T>,
+///
+/// # Arguments
+/// * `a` - 正定値対称行列
+/// * `b` - 右辺ベクトル
+///
+/// # Returns
+/// 解ベクトル x
+pub fn cholesky_solve<T: RealField + Copy>(
+    a: &DMatrix<T>,
     b: &[T],
-) -> Result<Vec<T>, LinearAlgebraError>;
-```
-
-```rust
-// linalg/lu.rs
-
-/// LU分解の結果
-pub struct LUDecomposition<T: Float> {
-    pub l: Matrix<T>,
-    pub u: Matrix<T>,
-    pub p: Vec<usize>,  // ピボット順列
+) -> Result<Vec<T>, LinearAlgebraError> {
+    let chol = Cholesky::new(a.clone())
+        .ok_or(LinearAlgebraError::NotPositiveDefinite)?;
+    let b_vec = DVector::from_column_slice(b);
+    let x = chol.solve(&b_vec);
+    Ok(x.iter().copied().collect())
 }
 
-/// LU分解（部分ピボット選択）
-pub fn lu_decompose<T: Float>(a: &Matrix<T>) -> Result<LUDecomposition<T>, LinearAlgebraError>;
-
 /// LU分解を用いた線形方程式の解法
-pub fn lu_solve<T: Float>(
-    lu: &LUDecomposition<T>,
+///
+/// A * x = b を解く
+pub fn lu_solve<T: RealField + Copy>(
+    a: &DMatrix<T>,
     b: &[T],
-) -> Result<Vec<T>, LinearAlgebraError>;
+) -> Result<Vec<T>, LinearAlgebraError> {
+    let lu = LU::new(a.clone());
+    let b_vec = DVector::from_column_slice(b);
+    let x = lu.solve(&b_vec)
+        .ok_or(LinearAlgebraError::SingularMatrix)?;
+    Ok(x.iter().copied().collect())
+}
 
 /// 行列式の計算
-pub fn determinant<T: Float>(a: &Matrix<T>) -> Result<T, LinearAlgebraError>;
+pub fn determinant<T: RealField + Copy>(a: &DMatrix<T>) -> Result<T, LinearAlgebraError> {
+    if a.nrows() != a.ncols() {
+        return Err(LinearAlgebraError::NotSquare {
+            rows: a.nrows(),
+            cols: a.ncols(),
+        });
+    }
+    Ok(a.determinant())
+}
+
+/// 逆行列の計算
+pub fn inverse<T: RealField + Copy>(a: &DMatrix<T>) -> Result<DMatrix<T>, LinearAlgebraError> {
+    a.clone()
+        .try_inverse()
+        .ok_or(LinearAlgebraError::SingularMatrix)
+}
+
+/// コレスキー分解（LL^T）
+///
+/// # Returns
+/// 下三角行列L such that A = L * L^T
+pub fn cholesky<T: RealField + Copy>(
+    a: &DMatrix<T>,
+) -> Result<DMatrix<T>, LinearAlgebraError> {
+    let chol = Cholesky::new(a.clone())
+        .ok_or(LinearAlgebraError::NotPositiveDefinite)?;
+    Ok(chol.l())
+}
+```
+
+#### 5.4 AD互換性
+
+`nalgebra`は`T: RealField`トレイト境界を使用しており、`num-dual`の`Dual64`型は
+`RealField`を実装している。これによりAD互換性が保証される：
+
+```rust
+// AD対応の使用例
+use num_dual::Dual64;
+use pricer_core::math::linalg::{Matrix, cholesky_solve};
+
+let a: Matrix<Dual64> = Matrix::from_row_slice(2, 2, &[
+    Dual64::from(4.0), Dual64::from(2.0),
+    Dual64::from(2.0), Dual64::from(3.0),
+]);
+let b = vec![Dual64::from(1.0), Dual64::from(2.0)];
+let x = cholesky_solve(&a, &b)?;  // Dual64でも動作
 ```
 
 ### 6. interpolators 拡張
@@ -664,11 +795,27 @@ pub fn beta<T: Float>(a: T, b: T) -> T;
 
 ## 依存関係更新
 
-### pricer_core/Cargo.toml 変更なし
+### pricer_core/Cargo.toml 追加
 
-既存の依存関係で実装可能:
-- `num-traits`: Float trait
-- `thiserror`: エラー型
+```toml
+[dependencies]
+# 既存
+num-traits = "0.2"
+thiserror = "1.0"
+
+# 新規追加
+nalgebra = "0.33"          # 線形代数
+argmin = "0.10"            # 最適化
+argmin-math = { version = "0.4", features = ["nalgebra_latest"] }
+```
+
+### 依存関係の理由
+
+| クレート | バージョン | 用途 |
+|----------|-----------|------|
+| `nalgebra` | 0.33 | 行列演算、コレスキー/LU分解 |
+| `argmin` | 0.10 | L-BFGS、Nelder-Mead等の最適化 |
+| `argmin-math` | 0.4 | argminとnalgebraの統合 |
 
 ### pricer_models の変更
 
@@ -743,14 +890,18 @@ use pricer_core::math::distributions::{norm_cdf, norm_pdf};
 1. Enzyme AD互換性の観点で、RNGは`pricer_pricing`のMCシミュレーションと密結合
 2. 他クレートでRNGが必要な場合は、トレイト定義のみ`pricer_core`に配置可能
 
-### DD-3: 線形代数の実装方針
+### DD-3: 線形代数の実装方針（更新）
 
-**決定**: 小規模行列（10x10以下）に特化した自前実装。
+**決定**: `nalgebra`クレートを採用し、薄いラッパーで統一インターフェースを提供。
 
 **理由**:
-1. Enzyme AD互換性を完全に保証
-2. 外部クレート（nalgebra等）の依存を回避
-3. 金融計算で使用される行列サイズは通常小規模
+1. `nalgebra`は`T: RealField`でジェネリック対応しており、`num-dual::Dual64`と互換
+2. 成熟したライブラリでテスト・ドキュメントが充実
+3. メンテナンス負担を大幅に軽減
+4. コレスキー、LU、QR、SVD等の分解が全て利用可能
+
+**以前の決定（却下）**: 自前実装
+- 却下理由: 工数が大きく、`nalgebra`で十分なAD互換性が得られるため
 
 ### DD-4: 外挿モード
 
@@ -760,3 +911,30 @@ use pricer_core::math::distributions::{norm_cdf, norm_pdf};
 1. 実務では定義域外クエリが発生することがある
 2. 既存の`OutOfBounds`エラーは厳格すぎる場合がある
 3. 外挿モードを設定可能にすることで柔軟性を確保
+
+### DD-5: 最適化の実装方針
+
+**決定**: `argmin`クレートを採用し、薄いラッパーで統一インターフェースを提供。
+
+**理由**:
+1. L-BFGS、Nelder-Mead、直線探索等の豊富なアルゴリズムが実装済み
+2. `argmin-math`を通じて`nalgebra`と統合可能
+3. `num-dual`との統合事例があり、AD対応の道筋がある
+4. 活発にメンテナンスされている
+
+**注意事項**:
+- 現時点では`f64`向けのラッパーを提供
+- 将来的にAD対応が必要な場合は`argmin-math`のnum-dual統合を検討
+
+### DD-6: 外部クレート不採用の判断
+
+**不採用クレート**:
+
+| クレート | 不採用理由 |
+|----------|-----------|
+| `statrs` | `f64`固定でジェネリック非対応、AD互換性なし |
+| `gauss-quad` | `f64`固定でジェネリック非対応 |
+| `Peroxide` | `f64`固定、依存関係が大きい |
+
+**教訓**: 数値計算ライブラリは`f64`固定のものが多く、AD互換性を重視する本プロジェクトでは
+分布関数・数値積分は自前実装が必要

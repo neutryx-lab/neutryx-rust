@@ -12,6 +12,7 @@
 //! - [`calendars`]: Calendar trait and implementations
 //! - [`day_counters`]: Day count conventions
 //! - [`period`]: Period, tenor, and accrual period types
+//! - [`frequency`]: Payment frequency definitions
 //!
 //! # Examples
 //!
@@ -65,6 +66,7 @@
 mod calendars;
 mod day_counters;
 mod error;
+mod frequency;
 mod period;
 mod types;
 
@@ -75,6 +77,7 @@ pub use calendars::{
 };
 pub use day_counters::DayCounter;
 pub use error::TimeError;
+pub use frequency::Frequency;
 pub use period::{AccrualPeriod, EndOfMonthRule, Period, Tenor, TimeUnit};
 pub use types::Date;
 

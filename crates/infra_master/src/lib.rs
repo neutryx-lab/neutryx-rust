@@ -23,102 +23,79 @@
 //! Part of the **I**nfra layer in the A-I-P-S architecture.
 //! Must not depend on **P**ricer or **S**ervice crates.
 //!
-//! ## Time Module
+//! ## Module Structure
 //!
-//! The new [`time`] module provides a reorganised structure for time-related
-//! types with additional features:
+//! - [`time`]: Date handling, calendars, day count conventions, periods, frequency
+//! - [`market`]: Currency definitions, rate indices
+//! - [`trade`]: Trade representation, legs, cashflows, directions
+//! - [`convention`]: Market conventions for various instruments
+//! - [`counterparty`]: Counterparty, CSA, netting set management
 //!
-//! - Excel serial date conversion
-//! - Calendar trait with `JointCalendar` support
-//! - Generic `Period` with `TimeUnit`
-//! - Unified `TimeError` type
-//!
-//! Legacy types are re-exported at crate root for backward compatibility.
-//!
-//! ## Example (New API)
+//! ## Example
 //!
 //! ```rust
-//! use infra_master::time::{ConcreteCalendar, CalendarId, Calendar, Date};
+//! use infra_master::time::{ConcreteCalendar, CalendarId, Calendar, Date, Frequency};
+//! use infra_master::market::{Currency, RateIndex};
 //!
 //! let calendar = ConcreteCalendar::get(CalendarId::Target);
 //! let date = Date::from_ymd(2026, 1, 5).unwrap();
 //! assert!(calendar.is_business_day(date));
-//! ```
 //!
-//! ## Example (Legacy API)
+//! let freq = Frequency::Quarterly;
+//! assert_eq!(freq.periods_per_year(), 4);
 //!
-//! The legacy API remains fully supported:
-//!
-//! ```rust
-//! use infra_master::{Calendar, CalendarId};
-//!
-//! let calendar = Calendar::get(CalendarId::Target);
-//! assert!(calendar.is_business_day(chrono::NaiveDate::from_ymd_opt(2026, 1, 5).unwrap()));
+//! let usd = Currency::USD;
+//! assert_eq!(usd.code(), "USD");
 //! ```
 
-// New time module
+// Core modules
+pub mod convention;
+pub mod counterparty;
+pub mod market;
 pub mod time;
-
-// Trade module (new)
 pub mod trade;
 
-// Convention module (new)
-pub mod convention;
-
-// CounterParty module (new comprehensive module)
-pub mod counterparty;
-
-// Legacy modules (kept for backward compatibility)
-mod business_day;
-mod calendar;
-mod counterparty_legacy;
-mod currency;
-mod date;
-mod day_count;
-mod direction;
+// Error types
 mod error;
-mod frequency;
-mod period;
-mod rate_index;
-mod tenor;
-
-// Legacy re-exports for backward compatibility
-pub use business_day::BusinessDayConvention;
-pub use calendar::{Calendar, CalendarId};
-// Legacy CsaTerms and NettingSetConfig - kept for backward compatibility
-pub use counterparty_legacy::{CsaTerms as LegacyCsaTerms, NettingSetConfig};
-// Alias the legacy CsaTerms at crate root for compatibility
-pub use counterparty_legacy::CsaTerms;
-pub use currency::Currency;
-pub use date::Date;
-pub use day_count::DayCountConvention;
-pub use direction::{SwapDirection, TradeDirection};
 pub use error::{CurrencyError, DateError, MasterDataError};
-pub use frequency::Frequency;
-pub use period::Period;
-pub use rate_index::RateIndex;
-pub use tenor::{EndOfMonthRule, Tenor};
 
-// Re-export new time module types at crate root for convenience
+// Counterparty module types (re-exported for convenience)
+pub use counterparty::{CsaTerms, NettingSet};
+
+// Re-export commonly used types at crate root for convenience
+// Time module types
 pub use time::{
-    AccrualPeriod, ConcreteCalendar, DayCounter, JointCalendar, JointCalendarRule, TimeError,
-    TimeUnit,
+    AccrualPeriod, BusinessDayConvention, Calendar, CalendarId, ConcreteCalendar, Date,
+    DayCounter, EndOfMonthRule, Frequency, JointCalendar, JointCalendarRule, Period, Tenor,
+    TimeError, TimeUnit,
 };
-// Note: time::Period is a generic period (length + TimeUnit)
-// The legacy Period (period.rs) is an AccrualPeriod (start, end, payment dates)
-// Both are available: use time::Period for generic periods, crate::Period for accrual periods
+
+// Market module types
+pub use market::{Currency, RateIndex};
+
+// Trade module types
+pub use trade::{SwapDirection, TradeDirection};
+
+// Backward compatibility aliases
+#[allow(deprecated)]
+#[deprecated(since = "0.4.0", note = "Use time::DayCounter instead")]
+pub type DayCountConvention = time::DayCounter;
 
 /// Prelude module for convenient imports
 pub mod prelude {
-    pub use crate::{
-        BusinessDayConvention, Calendar, CalendarId, CsaTerms, Currency, CurrencyError, Date,
-        DateError, DayCountConvention, EndOfMonthRule, Frequency, MasterDataError,
-        NettingSetConfig, Period, RateIndex, SwapDirection, Tenor, TradeDirection,
+    // Time types
+    pub use crate::time::{
+        AccrualPeriod, BusinessDayConvention, Calendar, CalendarId, ConcreteCalendar, Date,
+        DayCounter, EndOfMonthRule, Frequency, JointCalendar, JointCalendarRule, Period, Tenor,
+        TimeError, TimeUnit,
     };
 
-    // Also include new time module types
-    pub use crate::time::{
-        AccrualPeriod, ConcreteCalendar, DayCounter, JointCalendar, JointCalendarRule, TimeError,
-        TimeUnit,
-    };
+    // Market types
+    pub use crate::market::{Currency, RateIndex};
+
+    // Trade types
+    pub use crate::trade::{SwapDirection, TradeDirection};
+
+    // Error types
+    pub use crate::error::{CurrencyError, DateError, MasterDataError};
 }

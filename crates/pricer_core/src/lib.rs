@@ -61,12 +61,13 @@
 //!
 //! ```rust
 //! use pricer_core::math::smoothing::smooth_max;
-//! use pricer_core::types::{Date, DayCountConvention, Currency};
+//! use pricer_core::types::{Date, Currency};
+//! use infra_master::time::DayCounter;
 //!
 //! // Date operations
 //! let start = Date::from_ymd(2024, 1, 1).unwrap();
 //! let end = Date::from_ymd(2024, 7, 1).unwrap();
-//! let year_fraction = DayCountConvention::ActualActualIsda.year_fraction_dates(start, end);
+//! let year_fraction = DayCounter::ActualActualIsda.year_fraction(start, end);
 //!
 //! // Currency information
 //! let usd = Currency::USD;

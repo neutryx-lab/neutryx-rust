@@ -1,30 +1,40 @@
 //! CSA (Credit Support Annex) terms and netting set configuration.
 //!
-//! This module re-exports types from `infra_master` for backward compatibility.
-//! New code should import directly from `infra_master`.
+//! This module re-exports types from `infra_master::counterparty`.
 //!
-//! # Migration
+//! # Example
 //!
-//! ```rust,ignore
-//! // Old (deprecated):
-//! use adapter_loader::{CsaTerms, NettingSetConfig};
+//! ```rust
+//! use adapter_loader::{CsaTerms, NettingSet};
 //!
-//! // New (preferred):
-//! use infra_master::{CsaTerms, NettingSetConfig};
+//! let csa = CsaTerms::builder()
+//!     .threshold(1_000_000.0)
+//!     .build();
+//!
+//! let ns = NettingSet::builder("NS001", "CP001")
+//!     .csa_terms(csa)
+//!     .build()
+//!     .unwrap();
 //! ```
 
-// Re-export from infra_master for backward compatibility
-pub use infra_master::{CsaTerms, NettingSetConfig};
+// Re-export from infra_master::counterparty
+pub use infra_master::counterparty::{CsaTerms, NettingSet};
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_netting_set_config() {
-        let config = NettingSetConfig::new("NS001", "CP001");
-        assert_eq!(config.netting_set_id, "NS001");
-        assert_eq!(config.counterparty_id, "CP001");
-        assert!(config.closeout_netting);
+    fn test_netting_set() {
+        let ns = NettingSet::builder("NS001", "CP001").build().unwrap();
+        assert_eq!(ns.id().as_str(), "NS001");
+        assert_eq!(ns.counterparty_id().as_str(), "CP001");
+        assert!(ns.has_closeout_netting());
+    }
+
+    #[test]
+    fn test_csa_terms() {
+        let csa = CsaTerms::builder().threshold(1_000_000.0).build();
+        assert!((csa.threshold() - 1_000_000.0).abs() < f64::EPSILON);
     }
 }
