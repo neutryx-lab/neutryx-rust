@@ -2,15 +2,18 @@
 //!
 //! This module provides:
 //! - `PricingError`: Errors from pricing operations
-//! - `DateError`: Errors from date construction and parsing
-//! - `CurrencyError`: Errors from currency parsing
 //! - `InterpolationError`: Errors from interpolation operations
 //! - `SolverError`: Errors from root-finding solvers
 //! - `CalibrationError`: Errors from model calibration
+//!
+//! Note: `DateError` and `CurrencyError` are re-exported from `infra_master`.
 
 use std::fmt;
 
 use thiserror::Error;
+
+// Re-export from infra_master (authoritative source)
+pub use infra_master::{CurrencyError, DateError};
 
 /// Categorised pricing errors.
 ///
@@ -47,77 +50,6 @@ pub enum PricingError {
     /// Instrument type not supported
     #[error("Unsupported instrument: {0}")]
     UnsupportedInstrument(String),
-}
-
-/// Date-related errors.
-///
-/// Provides structured error handling for date construction and parsing
-/// with descriptive context for each failure mode.
-///
-/// # Variants
-/// - `InvalidDate`: Invalid date components (e.g., February 30th)
-/// - `ParseError`: Failed to parse date string
-///
-/// # Examples
-/// ```
-/// use pricer_core::types::DateError;
-///
-/// let err = DateError::InvalidDate { year: 2024, month: 2, day: 30 };
-/// assert_eq!(format!("{}", err), "Invalid date: 2024-2-30");
-/// ```
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
-pub enum DateError {
-    /// Invalid date components (e.g., February 30th).
-    #[error("Invalid date: {year}-{month}-{day}")]
-    InvalidDate {
-        /// Year component
-        year: i32,
-        /// Month component (1-12)
-        month: u32,
-        /// Day component (1-31)
-        day: u32,
-    },
-
-    /// Failed to parse date string.
-    #[error("Date parse error: {0}")]
-    ParseError(String),
-}
-
-/// Currency-related errors.
-///
-/// Provides structured error handling for currency parsing
-/// with descriptive context for each failure mode.
-///
-/// # Variants
-/// - `UnknownCurrency`: Unknown currency code
-/// - `ParseError`: Failed to parse currency string
-/// - `SameCurrency`: Base and quote currencies are the same
-/// - `InvalidSpotRate`: Spot rate is not positive
-///
-/// # Examples
-/// ```
-/// use pricer_core::types::CurrencyError;
-///
-/// let err = CurrencyError::UnknownCurrency("XYZ".to_string());
-/// assert_eq!(format!("{}", err), "Unknown currency: XYZ");
-/// ```
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
-pub enum CurrencyError {
-    /// Unknown currency code.
-    #[error("Unknown currency: {0}")]
-    UnknownCurrency(String),
-
-    /// Failed to parse currency string.
-    #[error("Currency parse error: {0}")]
-    ParseError(String),
-
-    /// Base and quote currencies are the same.
-    #[error("Base and quote currencies are the same: {0}")]
-    SameCurrency(String),
-
-    /// Spot rate is not positive.
-    #[error("Invalid spot rate: must be positive")]
-    InvalidSpotRate,
 }
 
 /// Interpolation-related errors.
@@ -533,71 +465,7 @@ mod tests {
         assert_eq!(err1, err2);
     }
 
-    // DateError tests
-
-    #[test]
-    fn test_date_error_invalid_date_display() {
-        let err = DateError::InvalidDate {
-            year: 2024,
-            month: 2,
-            day: 30,
-        };
-        assert_eq!(format!("{}", err), "Invalid date: 2024-2-30");
-    }
-
-    #[test]
-    fn test_date_error_parse_error_display() {
-        let err = DateError::ParseError("invalid format".to_string());
-        assert_eq!(format!("{}", err), "Date parse error: invalid format");
-    }
-
-    #[test]
-    fn test_date_error_trait_implementation() {
-        let err = DateError::InvalidDate {
-            year: 2024,
-            month: 2,
-            day: 30,
-        };
-        let _: &dyn std::error::Error = &err;
-    }
-
-    #[test]
-    fn test_date_error_clone_and_equality() {
-        let err1 = DateError::InvalidDate {
-            year: 2024,
-            month: 2,
-            day: 30,
-        };
-        let err2 = err1.clone();
-        assert_eq!(err1, err2);
-    }
-
-    // CurrencyError tests
-
-    #[test]
-    fn test_currency_error_unknown_currency_display() {
-        let err = CurrencyError::UnknownCurrency("XYZ".to_string());
-        assert_eq!(format!("{}", err), "Unknown currency: XYZ");
-    }
-
-    #[test]
-    fn test_currency_error_parse_error_display() {
-        let err = CurrencyError::ParseError("invalid input".to_string());
-        assert_eq!(format!("{}", err), "Currency parse error: invalid input");
-    }
-
-    #[test]
-    fn test_currency_error_trait_implementation() {
-        let err = CurrencyError::UnknownCurrency("XYZ".to_string());
-        let _: &dyn std::error::Error = &err;
-    }
-
-    #[test]
-    fn test_currency_error_clone_and_equality() {
-        let err1 = CurrencyError::UnknownCurrency("XYZ".to_string());
-        let err2 = err1.clone();
-        assert_eq!(err1, err2);
-    }
+    // Note: DateError and CurrencyError tests are in infra_master
 
     // InterpolationError tests
 

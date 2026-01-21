@@ -7,8 +7,8 @@
 //!   calculations
 //! - `currency`: ISO 4217 currency codes with metadata
 //! - `currency_pair`: Currency pair types for FX calculations
-//! - `error`: Structured error types for pricing, date, currency,
-//!   interpolation, solver, and calibration operations
+//! - `error`: Structured error types for pricing, interpolation, solver,
+//!   and calibration operations
 //!
 //! # Re-exports
 //!
@@ -17,9 +17,9 @@
 //!   [`time_to_maturity_dates`] from `time`
 //! - [`Currency`] from `currency`
 //! - [`CurrencyPair`] from `currency_pair`
-//! - [`PricingError`], [`DateError`], [`CurrencyError`],
-//!   [`InterpolationError`], [`SolverError`], [`CalibrationError`],
-//!   [`CalibrationErrorKind`] from `error`
+//! - [`PricingError`], [`InterpolationError`], [`SolverError`],
+//!   [`CalibrationError`], [`CalibrationErrorKind`] from `error`
+//! - [`DateError`], [`CurrencyError`] from `infra_master` (via `error`)
 
 pub mod currency_pair;
 #[cfg(feature = "num-dual-mode")]

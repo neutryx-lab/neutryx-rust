@@ -11,6 +11,7 @@
 //! assert_eq!(format!("{}", err), "Invalid date: 2024-02-30");
 //! ```
 
+use crate::DateError;
 use thiserror::Error;
 
 /// Unified error type for time-related operations.
@@ -60,6 +61,21 @@ pub enum TimeError {
     /// Calendar-related error.
     #[error("Calendar error: {0}")]
     CalendarError(String),
+}
+
+/// Convert DateError to TimeError.
+///
+/// This allows seamless interoperability between DateError (from error.rs)
+/// and TimeError (from time module).
+impl From<DateError> for TimeError {
+    fn from(err: DateError) -> Self {
+        match err {
+            DateError::InvalidDate { year, month, day } => {
+                TimeError::InvalidDate { year, month, day }
+            }
+            DateError::ParseError(msg) => TimeError::ParseError(msg),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -127,5 +143,30 @@ mod tests {
         let err = TimeError::CalculationError("test".to_string());
         let debug_str = format!("{:?}", err);
         assert!(debug_str.contains("CalculationError"));
+    }
+
+    #[test]
+    fn test_from_date_error_invalid_date() {
+        let date_err = DateError::InvalidDate {
+            year: 2024,
+            month: 2,
+            day: 30,
+        };
+        let time_err: TimeError = date_err.into();
+        assert!(matches!(
+            time_err,
+            TimeError::InvalidDate {
+                year: 2024,
+                month: 2,
+                day: 30
+            }
+        ));
+    }
+
+    #[test]
+    fn test_from_date_error_parse_error() {
+        let date_err = DateError::ParseError("invalid".to_string());
+        let time_err: TimeError = date_err.into();
+        assert!(matches!(time_err, TimeError::ParseError(msg) if msg == "invalid"));
     }
 }
