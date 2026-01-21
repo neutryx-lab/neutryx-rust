@@ -37,8 +37,14 @@
 //! assert!((quantile - 0.0).abs() < 1e-10);
 //! ```
 
+mod bivariate_normal;
+mod chi_squared;
+mod copula;
 mod error;
 mod normal;
 
+pub use bivariate_normal::bivariate_norm_cdf;
+pub use chi_squared::{central_chi_squared_cdf, noncentral_chi_squared_cdf};
+pub use copula::{gaussian_copula, CopulaTrait, GaussianCopula};
 pub use error::DistributionError;
 pub use normal::{norm_cdf, norm_inv_cdf, norm_pdf};

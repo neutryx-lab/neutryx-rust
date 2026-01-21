@@ -11,20 +11,20 @@
 //!
 //! # Components
 //!
-//! - [`ParallelPortfolioGreeksCalculator`] - Parallel portfolio Greeks
-//!   calculation for 1000+ trades
 //! - [`MemoryMonitor`] - Memory monitoring and auto-checkpoint mechanism
 
 mod memory_monitor;
-mod portfolio_greeks;
+// TODO: portfolio_greeks temporarily disabled - depends on removed InterestRateSwap types
+// mod portfolio_greeks;
 
 pub use memory_monitor::{
     create_shared_monitor, MemoryMonitor, MemoryMonitorConfig, MemoryStats, SharedMemoryMonitor,
 };
-pub use portfolio_greeks::{
-    ParallelGreeksConfig, ParallelGreeksError, ParallelGreeksStats,
-    ParallelPortfolioGreeksCalculator, PortfolioGreeksResult,
-};
+// TODO: Re-enable when rates instruments are restored
+// pub use portfolio_greeks::{
+//     ParallelGreeksConfig, ParallelGreeksError, ParallelGreeksStats,
+//     ParallelPortfolioGreeksCalculator, PortfolioGreeksResult,
+// };
 use rayon::prelude::*;
 
 /// Batch size for parallel processing.
@@ -146,7 +146,7 @@ mod tests {
         let sums: Vec<i32> = process_in_batches(&items, 10, |batch| batch.iter().sum());
 
         assert_eq!(sums.len(), 10);
-        assert_eq!(sums.iter().sum::<i32>(), (0..100).sum());
+        assert_eq!(sums.iter().sum::<i32>(), (0..100).sum::<i32>());
     }
 
     #[test]

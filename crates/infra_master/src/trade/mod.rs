@@ -41,6 +41,7 @@ mod index;
 mod instrument;
 mod leg;
 mod payoff;
+mod pricing_instrument;
 mod trade;
 
 pub use builder::{LegBuilder, TradeBuilder};
@@ -51,4 +52,8 @@ pub use index::{IndexObservation, IndexType};
 pub use instrument::Instrument;
 pub use leg::{Direction, Leg, LegType};
 pub use payoff::{OptionType, Payoff};
+pub use pricing_instrument::{
+    ExerciseStyle, Forward, ForwardDirection, InstrumentParams, PayoffType, PricingInstrument,
+    VanillaOption,
+};
 pub use trade::{ExerciseType, SettlementType, Trade, TradeId, TradeMetadata, TradeType};

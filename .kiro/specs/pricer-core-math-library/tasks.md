@@ -41,9 +41,9 @@
 - 参照値との比較テストを追加
 
 **サブタスク**:
-- 2.1: `bivariate_normal.rs`を作成しDrezner-Wesolowsky近似を実装
-- 2.2: `chi_squared.rs`を作成し非心カイ二乗CDFを実装
-- 2.3: テストを追加（R/SciPyの参照値と比較）
+- [x] 2.1: `bivariate_normal.rs`を作成しDrezner-Wesolowsky近似を実装
+- [x] 2.2: `chi_squared.rs`を作成し非心カイ二乗CDFを実装
+- [x] 2.3: テストを追加（R/SciPyの参照値と比較）
 
 ---
 
@@ -60,9 +60,9 @@
 - 正定値検証を含むコンストラクタを実装
 
 **サブタスク**:
-- 3.1: `copula.rs`を作成し`GaussianCopula`構造体を定義
-- 3.2: 2次元の場合の`joint_probability`を実装
-- 3.3: 多次元の場合の実装（オプション）
+- [x] 3.1: `copula.rs`を作成し`GaussianCopula`構造体を定義
+- [x] 3.2: 2次元の場合の`joint_probability`を実装
+- [ ] 3.3: 多次元の場合の実装（オプション）
 
 ---
 
@@ -180,10 +180,10 @@
 - 各次数の重みと節点を事前計算して定義
 
 **サブタスク**:
-- 9.1: `integrators/mod.rs`と`IntegrationResult`を作成
-- 9.2: Gauss-Legendre重みと節点を定義
-- 9.3: `integrate_gauss_legendre`を実装
-- 9.4: 多項式積分の精度テストを追加
+- [x] 9.1: `integrators/mod.rs`と`IntegrationResult`を作成
+- [x] 9.2: Gauss-Legendre重みと節点を定義
+- [x] 9.3: `integrate_gauss_legendre`を実装
+- [x] 9.4: 多項式積分の精度テストを追加
 
 ---
 
@@ -200,11 +200,11 @@
 - 誤差推定を`IntegrationResult.error_estimate`に格納
 
 **サブタスク**:
-- 10.1: `gauss_kronrod.rs`を作成
-- 10.2: G7-K15の重みと節点を定義
-- 10.3: G10-K21の重みと節点を定義
-- 10.4: 誤差推定付き積分を実装
-- 10.5: テストを追加
+- [x] 10.1: `gauss_kronrod.rs`を作成
+- [x] 10.2: G7-K15の重みと節点を定義
+- [x] 10.3: G10-K21の重みと節点を定義
+- [x] 10.4: 誤差推定付き積分を実装
+- [x] 10.5: テストを追加
 
 ---
 
@@ -221,10 +221,10 @@
 - 無限区間の変数変換（tanh-sinh）を実装
 
 **サブタスク**:
-- 11.1: `adaptive.rs`を作成
-- 11.2: 区間分割アルゴリズムを実装
-- 11.3: 無限区間変換を実装
-- 11.4: テストを追加
+- [x] 11.1: `adaptive.rs`を作成
+- [x] 11.2: 区間分割アルゴリズムを実装
+- [x] 11.3: 無限区間変換を実装
+- [x] 11.4: テストを追加
 
 ---
 
@@ -241,10 +241,10 @@
 - ODEの数値解が正しいことをテスト
 
 **サブタスク**:
-- 12.1: `runge_kutta.rs`を作成
-- 12.2: RK4の1ステップを実装
-- 12.3: RK45（Dormand-Prince）を実装
-- 12.4: テスト（指数関数のODEなど）を追加
+- [x] 12.1: `runge_kutta.rs`を作成
+- [x] 12.2: RK4の1ステップを実装
+- [x] 12.3: RK45（Dormand-Prince）を実装
+- [x] 12.4: テスト（指数関数のODEなど）を追加
 
 ---
 
@@ -261,9 +261,9 @@
 - `LogLinearInterpolator<T>`を実装
 
 **サブタスク**:
-- 13.1: `flat.rs`を作成し`FlatInterpolator`を実装
-- 13.2: `log_linear.rs`を作成し`LogLinearInterpolator`を実装
-- 13.3: テストを追加
+- [x] 13.1: `flat.rs`を作成し`FlatInterpolator`を実装
+- [x] 13.2: `log_linear.rs`を作成し`LogLinearInterpolator`を実装
+- [x] 13.3: テストを追加
 
 ---
 
@@ -280,9 +280,9 @@
 - `binary_search<T>`、`linear_search<T>`を実装
 
 **サブタスク**:
-- 14.1: `hermite.rs`を作成し`HermiteInterpolator`を実装
-- 14.2: `search.rs`を作成し検索関数を実装
-- 14.3: テストを追加
+- [x] 14.1: `hermite.rs`を作成し`HermiteInterpolator`を実装
+- [x] 14.2: `search.rs`を作成し検索関数を実装
+- [x] 14.3: テストを追加
 
 ---
 
@@ -299,9 +299,9 @@
 - `svi_implied_vol<T: Float>`を実装
 
 **サブタスク**:
-- 15.1: `svi.rs`を作成し`SviParams`を定義
-- 15.2: SVI total variance公式を実装
-- 15.3: テストを追加
+- [x] 15.1: `svi.rs`を作成し`SviParams`を定義
+- [x] 15.2: SVI total variance公式を実装
+- [x] 15.3: テストを追加
 
 ---
 
@@ -318,9 +318,9 @@
 - 収束保証と最大反復回数のチェック
 
 **サブタスク**:
-- 16.1: `bisection.rs`を作成し`BisectionSolver`を実装
-- 16.2: 異符号チェックを実装
-- 16.3: テストを追加
+- [x] 16.1: `bisection.rs`を作成し`BisectionSolver`を実装
+- [x] 16.2: 異符号チェックを実装
+- [x] 16.3: テストを追加
 
 ---
 
@@ -336,10 +336,10 @@
 - Armijo条件による直線探索を実装
 
 **サブタスク**:
-- 17.1: `backtracking_newton.rs`を作成
-- 17.2: Armijo条件を実装
-- 17.3: 直線探索付きNewton法を実装
-- 17.4: テストを追加
+- [x] 17.1: `backtracking_newton.rs`を作成
+- [x] 17.2: Armijo条件を実装
+- [x] 17.3: 直線探索付きNewton法を実装
+- [x] 17.4: テストを追加
 
 ---
 
@@ -358,9 +358,9 @@
 - argminの主要型をre-export
 
 **サブタスク**:
-- 18.1: `optimisers/mod.rs`を作成しargminをre-export
-- 18.2: `error.rs`を作成しエラー型を定義
-- 18.3: `config.rs`を作成し設定型を定義
+- [x] 18.1: `optimisers/mod.rs`を作成しargminをre-export
+- [x] 18.2: `error.rs`を作成しエラー型を定義
+- [x] 18.3: `config.rs`を作成し設定型を定義
 
 ---
 
@@ -376,9 +376,9 @@
 - 使用例をドキュメントに記載
 
 **サブタスク**:
-- 19.1: `wrappers.rs`を作成
-- 19.2: `minimize_lbfgs`を実装
-- 19.3: Rosenbrock関数でテスト
+- [x] 19.1: `lbfgs.rs`を作成
+- [x] 19.2: `minimize_lbfgs`を実装
+- [x] 19.3: Rosenbrock関数でテスト
 
 ---
 
@@ -393,8 +393,8 @@
 - 導関数不要の最適化テストを追加
 
 **サブタスク**:
-- 20.1: `minimize_nelder_mead`を実装
-- 20.2: テストを追加
+- [x] 20.1: `minimize_nelder_mead`を実装
+- [x] 20.2: テストを追加
 
 ---
 
@@ -411,9 +411,9 @@
 - `Matrix<T>`、`Vector<T>`型エイリアスを定義
 
 **サブタスク**:
-- 21.1: `linalg/mod.rs`を作成しnalgebraをre-export
-- 21.2: `error.rs`を作成しエラー型を定義
-- 21.3: 型エイリアスを定義
+- [x] 21.1: `linalg/mod.rs`を作成しnalgebraをre-export
+- [x] 21.2: `error.rs`を作成しエラー型を定義
+- [x] 21.3: 型エイリアスを定義
 
 ---
 
@@ -430,11 +430,11 @@
 - `cholesky<T>`を実装
 
 **サブタスク**:
-- 22.1: `wrappers.rs`を作成
-- 22.2: `cholesky_solve`を実装
-- 22.3: `lu_solve`を実装
-- 22.4: `cholesky`（分解のみ）を実装
-- 22.5: テストを追加
+- [x] 22.1: `wrappers.rs`を作成
+- [x] 22.2: `cholesky_solve`を実装
+- [x] 22.3: `lu_solve`を実装
+- [x] 22.4: `cholesky`（分解のみ）を実装
+- [x] 22.5: テストを追加
 
 ---
 
@@ -449,9 +449,9 @@
 - `inverse<T>`を実装
 
 **サブタスク**:
-- 23.1: `determinant`を実装
-- 23.2: `inverse`を実装
-- 23.3: テストを追加
+- [x] 23.1: `determinant`を実装
+- [x] 23.2: `inverse`を実装
+- [x] 23.3: テストを追加
 
 ---
 
@@ -467,10 +467,10 @@
 - `FittingResult<T>`構造体（解、残差、R²）を定義
 
 **サブタスク**:
-- 24.1: `fitting/mod.rs`と`least_squares.rs`を作成
-- 24.2: `FittingResult`を定義
-- 24.3: `linear_least_squares`を実装
-- 24.4: テストを追加
+- [x] 24.1: `fitting/mod.rs`と`least_squares.rs`を作成
+- [x] 24.2: `FittingResult`を定義
+- [x] 24.3: `linear_least_squares`を実装
+- [x] 24.4: テストを追加
 
 ---
 
@@ -485,9 +485,9 @@
 - `fit_gaussian<T>`を実装（平均、標準偏差の推定）
 
 **サブタスク**:
-- 25.1: `gaussian.rs`を作成
-- 25.2: `fit_gaussian`を実装
-- 25.3: テストを追加
+- [x] 25.1: `gaussian.rs`を作成
+- [x] 25.2: `fit_gaussian`を実装
+- [x] 25.3: テストを追加
 
 ---
 
@@ -504,11 +504,11 @@
 - `refine_grid<T>`を実装（細分化）
 
 **サブタスク**:
-- 26.1: `mesh/mod.rs`と`grid_1d.rs`を作成
-- 26.2: `uniform_grid`を実装
-- 26.3: `log_grid`を実装
-- 26.4: `refine_grid`を実装
-- 26.5: テストを追加
+- [x] 26.1: `mesh/mod.rs`と`grid_1d.rs`を作成
+- [x] 26.2: `uniform_grid`を実装
+- [x] 26.3: `log_grid`を実装
+- [x] 26.4: `refine_grid`を実装
+- [x] 26.5: テストを追加
 
 ---
 
@@ -524,10 +524,10 @@
 - `tensor_product_grid<T>`を実装
 
 **サブタスク**:
-- 27.1: `grid_2d.rs`を作成
-- 27.2: `Grid2D`を定義
-- 27.3: `tensor_product_grid`を実装
-- 27.4: テストを追加
+- [x] 27.1: `grid_2d.rs`を作成
+- [x] 27.2: `Grid2D`を定義
+- [x] 27.3: `tensor_product_grid`を実装
+- [x] 27.4: テストを追加
 
 ---
 

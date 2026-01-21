@@ -3,8 +3,8 @@
 //! This module provides the Trade structure that wraps instruments
 //! with metadata for portfolio management.
 
+use infra_master::trade::{PayoffType, PricingInstrument};
 use pricer_core::types::Currency;
-use pricer_models::instruments::{Instrument, PayoffType};
 
 use super::ids::{CounterpartyId, NettingSetId, TradeId};
 
@@ -18,13 +18,13 @@ use super::ids::{CounterpartyId, NettingSetId, TradeId};
 /// ```
 /// use pricer_risk::portfolio::{Trade, TradeId, CounterpartyId, NettingSetId};
 /// use pricer_core::types::Currency;
-/// use pricer_models::instruments::{
-///     Instrument, VanillaOption, InstrumentParams, PayoffType, ExerciseStyle,
+/// use infra_master::trade::{
+///     PricingInstrument, VanillaOption, InstrumentParams, PayoffType, ExerciseStyle,
 /// };
 ///
 /// let params = InstrumentParams::new(100.0, 1.0, 1.0).unwrap();
 /// let call = VanillaOption::new(params, PayoffType::Call, ExerciseStyle::European, 1e-6);
-/// let instrument = Instrument::Vanilla(call);
+/// let instrument = PricingInstrument::Vanilla(call);
 ///
 /// let trade = Trade::new(
 ///     TradeId::new("T001"),
@@ -41,7 +41,7 @@ use super::ids::{CounterpartyId, NettingSetId, TradeId};
 #[derive(Clone, Debug)]
 pub struct Trade {
     id: TradeId,
-    instrument: Instrument<f64>,
+    instrument: PricingInstrument<f64>,
     currency: Currency,
     counterparty_id: CounterpartyId,
     netting_set_id: NettingSetId,
@@ -62,7 +62,7 @@ impl Trade {
     #[inline]
     pub fn new(
         id: TradeId,
-        instrument: Instrument<f64>,
+        instrument: PricingInstrument<f64>,
         currency: Currency,
         counterparty_id: CounterpartyId,
         netting_set_id: NettingSetId,
@@ -84,7 +84,7 @@ impl Trade {
 
     /// Returns a reference to the underlying instrument.
     #[inline]
-    pub fn instrument(&self) -> &Instrument<f64> { &self.instrument }
+    pub fn instrument(&self) -> &PricingInstrument<f64> { &self.instrument }
 
     /// Returns the trade currency.
     #[inline]
@@ -147,7 +147,7 @@ impl Trade {
 #[derive(Debug)]
 pub struct TradeBuilder {
     id: Option<TradeId>,
-    instrument: Option<Instrument<f64>>,
+    instrument: Option<PricingInstrument<f64>>,
     currency: Option<Currency>,
     counterparty_id: Option<CounterpartyId>,
     netting_set_id: Option<NettingSetId>,
@@ -178,7 +178,7 @@ impl TradeBuilder {
     }
 
     /// Sets the instrument.
-    pub fn instrument(mut self, instrument: Instrument<f64>) -> Self {
+    pub fn instrument(mut self, instrument: PricingInstrument<f64>) -> Self {
         self.instrument = Some(instrument);
         self
     }
@@ -240,21 +240,21 @@ impl TradeBuilder {
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
-    use pricer_models::instruments::{
-        Direction, ExerciseStyle, Forward, InstrumentParams, VanillaOption,
+    use infra_master::trade::{
+        ExerciseStyle, Forward, ForwardDirection, InstrumentParams, VanillaOption,
     };
 
     use super::*;
 
-    fn create_test_call() -> Instrument<f64> {
+    fn create_test_call() -> PricingInstrument<f64> {
         let params = InstrumentParams::new(100.0, 1.0, 1.0).unwrap();
         let call = VanillaOption::new(params, PayoffType::Call, ExerciseStyle::European, 1e-6);
-        Instrument::Vanilla(call)
+        PricingInstrument::Vanilla(call)
     }
 
-    fn create_test_forward() -> Instrument<f64> {
-        let forward = Forward::new(100.0, 1.0, 1.0, Direction::Long).unwrap();
-        Instrument::Forward(forward)
+    fn create_test_forward() -> PricingInstrument<f64> {
+        let forward = Forward::new(100.0, 1.0, 1.0, ForwardDirection::Long).unwrap();
+        PricingInstrument::Forward(forward)
     }
 
     #[test]

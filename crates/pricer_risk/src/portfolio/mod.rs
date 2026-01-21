@@ -22,8 +22,8 @@
 //!     NettingSet, NettingSetId, CreditParams,
 //! };
 //! use pricer_core::types::Currency;
-//! use pricer_models::instruments::{
-//!     Instrument, VanillaOption, InstrumentParams, PayoffType, ExerciseStyle,
+//! use infra_master::trade::{
+//!     PricingInstrument, VanillaOption, InstrumentParams, PayoffType, ExerciseStyle,
 //! };
 //!
 //! // Create counterparty with credit parameters
@@ -40,7 +40,7 @@
 //! // Create trade
 //! let params = InstrumentParams::new(100.0, 1.0, 1_000_000.0).unwrap();
 //! let call = VanillaOption::new(params, PayoffType::Call, ExerciseStyle::European, 1e-6);
-//! let instrument = Instrument::Vanilla(call);
+//! let instrument = PricingInstrument::Vanilla(call);
 //!
 //! let trade = Trade::new(
 //!     TradeId::new("T001"),
@@ -96,8 +96,8 @@ pub use trade::{Trade, TradeBuilder};
 ///     NettingSet, NettingSetId, CreditParams,
 /// };
 /// use pricer_core::types::Currency;
-/// use pricer_models::instruments::{
-///     Instrument, VanillaOption, InstrumentParams, PayoffType, ExerciseStyle,
+/// use infra_master::trade::{
+///     PricingInstrument, VanillaOption, InstrumentParams, PayoffType, ExerciseStyle,
 /// };
 ///
 /// let credit = CreditParams::new(0.02, 0.4).unwrap();
@@ -113,7 +113,7 @@ pub use trade::{Trade, TradeBuilder};
 ///
 /// let trade = Trade::new(
 ///     TradeId::new("T001"),
-///     Instrument::Vanilla(call),
+///     PricingInstrument::Vanilla(call),
 ///     Currency::USD,
 ///     CounterpartyId::new("CP001"),
 ///     NettingSetId::new("NS001"),
@@ -342,17 +342,17 @@ impl Portfolio {
 
 #[cfg(test)]
 mod tests {
-    use pricer_core::types::Currency;
-    use pricer_models::instruments::{
-        ExerciseStyle, Instrument, InstrumentParams, PayoffType, VanillaOption,
+    use infra_master::trade::{
+        ExerciseStyle, InstrumentParams, PayoffType, PricingInstrument, VanillaOption,
     };
+    use pricer_core::types::Currency;
 
     use super::*;
 
-    fn create_test_instrument() -> Instrument<f64> {
+    fn create_test_instrument() -> PricingInstrument<f64> {
         let params = InstrumentParams::new(100.0, 1.0, 1.0).unwrap();
         let call = VanillaOption::new(params, PayoffType::Call, ExerciseStyle::European, 1e-6);
-        Instrument::Vanilla(call)
+        PricingInstrument::Vanilla(call)
     }
 
     fn create_test_portfolio() -> Portfolio {

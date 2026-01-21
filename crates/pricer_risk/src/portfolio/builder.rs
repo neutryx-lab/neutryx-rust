@@ -27,8 +27,8 @@ use super::{
 ///     NettingSet, NettingSetId, CreditParams,
 /// };
 /// use pricer_core::types::Currency;
-/// use pricer_models::instruments::{
-///     Instrument, VanillaOption, InstrumentParams, PayoffType, ExerciseStyle,
+/// use infra_master::trade::{
+///     PricingInstrument, VanillaOption, InstrumentParams, PayoffType, ExerciseStyle,
 /// };
 ///
 /// // Create entities
@@ -42,7 +42,7 @@ use super::{
 ///
 /// let params = InstrumentParams::new(100.0, 1.0, 1.0).unwrap();
 /// let call = VanillaOption::new(params, PayoffType::Call, ExerciseStyle::European, 1e-6);
-/// let instrument = Instrument::Vanilla(call);
+/// let instrument = PricingInstrument::Vanilla(call);
 ///
 /// let trade = Trade::new(
 ///     TradeId::new("T001"),
@@ -226,18 +226,18 @@ impl PortfolioBuilder {
 
 #[cfg(test)]
 mod tests {
-    use pricer_core::types::Currency;
-    use pricer_models::instruments::{
-        ExerciseStyle, Instrument, InstrumentParams, PayoffType, VanillaOption,
+    use infra_master::trade::{
+        ExerciseStyle, InstrumentParams, PayoffType, PricingInstrument, VanillaOption,
     };
+    use pricer_core::types::Currency;
 
     use super::*;
     use crate::portfolio::counterparty::CreditParams;
 
-    fn create_test_instrument() -> Instrument<f64> {
+    fn create_test_instrument() -> PricingInstrument<f64> {
         let params = InstrumentParams::new(100.0, 1.0, 1.0).unwrap();
         let call = VanillaOption::new(params, PayoffType::Call, ExerciseStyle::European, 1e-6);
-        Instrument::Vanilla(call)
+        PricingInstrument::Vanilla(call)
     }
 
     fn create_test_counterparty(id: &str) -> Counterparty {

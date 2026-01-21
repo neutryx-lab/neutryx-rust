@@ -26,10 +26,11 @@
 //! assert!(portfolio.trade_count() >= 50);
 //! ```
 
-use pricer_core::types::Currency;
-use pricer_models::instruments::{
-    Direction, ExerciseStyle, Forward, Instrument, InstrumentParams, PayoffType, VanillaOption,
+use infra_master::trade::{
+    ExerciseStyle, Forward, ForwardDirection, InstrumentParams, PayoffType, PricingInstrument,
+    VanillaOption,
 };
+use pricer_core::types::Currency;
 
 use super::{
     error::PortfolioError, Counterparty, CounterpartyId, CreditParams, NettingSet, NettingSetId,
@@ -329,7 +330,7 @@ impl SamplePortfolioBuilder {
 
             let option =
                 VanillaOption::new(params, payoff_type, ExerciseStyle::European, self.epsilon);
-            let instrument = Instrument::Vanilla(option);
+            let instrument = PricingInstrument::Vanilla(option);
 
             let trade = Trade::new(
                 trade_id.clone(),
@@ -354,9 +355,9 @@ impl SamplePortfolioBuilder {
             let maturity_idx = i % rates_maturities.len();
             let currency_idx = i % rates_currencies.len();
             let direction = if i % 2 == 0 {
-                Direction::Long
+                ForwardDirection::Long
             } else {
-                Direction::Short
+                ForwardDirection::Short
             };
 
             // Use Forward as a simplified IRS proxy (both have similar graph structure)
@@ -368,7 +369,7 @@ impl SamplePortfolioBuilder {
             )
             .map_err(|e| PortfolioError::BuilderError(format!("Invalid forward: {}", e)))?;
 
-            let instrument = Instrument::Forward(forward);
+            let instrument = PricingInstrument::Forward(forward);
 
             let trade = Trade::new(
                 trade_id.clone(),
@@ -420,7 +421,7 @@ impl SamplePortfolioBuilder {
 
             let option =
                 VanillaOption::new(params, payoff_type, ExerciseStyle::European, self.epsilon);
-            let instrument = Instrument::Vanilla(option);
+            let instrument = PricingInstrument::Vanilla(option);
 
             let (_base, quote) = fx_pairs[pair_idx];
 

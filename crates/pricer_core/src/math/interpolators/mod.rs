@@ -48,15 +48,25 @@
 
 mod bilinear;
 mod cubic_spline;
+mod flat;
+mod hermite;
 mod linear;
+mod log_linear;
 mod monotonic;
+mod search;
 mod smooth_interp;
+mod svi;
 mod traits;
 
 // Re-export public types at module level
 pub use bilinear::BilinearInterpolator;
 pub use cubic_spline::CubicSplineInterpolator;
+pub use flat::{FlatInterpolator, FlatMode};
+pub use hermite::HermiteInterpolator;
 pub use linear::LinearInterpolator;
+pub use log_linear::LogLinearInterpolator;
 pub use monotonic::MonotonicInterpolator;
+pub use search::{binary_search, hunt_search, linear_search};
 pub use smooth_interp::smooth_interp;
+pub use svi::{svi_d2w_dk2, svi_dw_dk, svi_implied_vol, svi_total_variance, SviParams};
 pub use traits::Interpolator;

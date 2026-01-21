@@ -14,8 +14,7 @@ members = [
     "crates/pricer_core",
     "crates/pricer_models",
     "crates/pricer_pricing",
-    # TODO: pricer_risk temporarily disabled - needs refactoring to use infra_master::trade types
-    # "crates/pricer_risk",
+    "crates/pricer_risk",
 
     # --- S: Service Layer (Output) ---
     # TODO: Service crates temporarily disabled - depend on pricer_risk which needs refactoring
@@ -43,6 +42,10 @@ authors = ["Neutryx Lab"]
 # Core numeric types
 num-traits = "0.2"
 num-dual = "0.9"
+
+# Linear algebra
+ndarray = "0.16"
+nalgebra = "0.33"
 
 # Random number generation
 rand = "0.8"
@@ -95,6 +98,10 @@ parquet = { version = "54.0", default-features = false }
 
 # Database
 sqlx = { version = "0.8", features = ["runtime-tokio", "postgres"] }
+
+# Optimisation
+argmin = "0.10"
+argmin-math = { version = "0.4", features = ["nalgebra_latest"] }
 
 # Testing
 approx = "0.5"

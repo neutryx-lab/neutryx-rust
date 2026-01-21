@@ -126,10 +126,18 @@ L4: pricer_risk      → Application (Stable) - portfolio, exposure, xva, scenar
 **Structure**:
 ```text
 math/
-├── smoothing.rs    → Smooth approximations (smooth_max, smooth_indicator)
-├── interpolators/  → Interpolation methods (linear, bilinear, cubic_spline, monotonic, smooth_interp)
-├── solvers/        → Root-finding and optimisation algorithms (Newton-Raphson, Brent)
-└── numeric.rs      → Numeric conversion utilities (from_f64, from_usize)
+├── smoothing.rs      → Smooth approximations (smooth_max, smooth_indicator)
+├── numeric.rs        → Numeric conversion utilities (from_f64, from_usize)
+├── distributions/    → Probability distributions (normal, bivariate_normal, chi_squared, copula)
+├── calculus/         → Numerical differentiation (finite_difference, bump_selection)
+├── utilities/        → Basic math functions (sign, clamp, lerp), combinatorics, special functions
+├── interpolators/    → Interpolation methods (linear, bilinear, cubic_spline, monotonic, smooth_interp, flat, log_linear, hermite, svi, search)
+├── solvers/          → Root-finding algorithms (Newton-Raphson, Brent, bisection, backtracking_newton)
+├── integrators/      → Numerical integration (Gauss-Legendre, Gauss-Kronrod, adaptive, Runge-Kutta)
+├── optimisers/       → Optimisation algorithms (Nelder-Mead, L-BFGS via argmin)
+├── fitting/          → Curve fitting (least_squares, gaussian)
+├── mesh/             → Grid generation (grid_1d, grid_2d)
+└── linalg/           → Linear algebra (feature-gated, nalgebra wrappers)
 
 traits/     → Priceable, Differentiable, Float, core abstractions
 types/

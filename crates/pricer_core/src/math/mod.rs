@@ -11,6 +11,11 @@
 //! - `distributions`: Probability distributions for financial calculations
 //! - `calculus`: Numerical differentiation using finite differences
 //! - `utilities`: Common mathematical utility functions
+//! - `integrators`: Numerical integration methods (quadrature, ODE solvers)
+//! - `optimisers`: Optimisation algorithms (Nelder-Mead, L-BFGS)
+//! - `fitting`: Curve fitting and regression analysis
+//! - `mesh`: Grid generation for numerical methods
+//! - `linalg`: Linear algebra operations (requires `linalg` feature)
 
 // Allow standard mathematical single-letter variable names (a, b, c, x, y, etc.)
 // which are conventional in numerical computing and interpolation algorithms.
@@ -19,8 +24,15 @@
 
 pub mod calculus;
 pub mod distributions;
+pub mod fitting;
+pub mod integrators;
 pub mod interpolators;
+pub mod mesh;
 pub mod numeric;
+pub mod optimisers;
 pub mod smoothing;
 pub mod solvers;
 pub mod utilities;
+
+#[cfg(feature = "linalg")]
+pub mod linalg;
