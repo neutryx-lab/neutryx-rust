@@ -382,7 +382,10 @@ pub struct FullBenchmarkResult {
 // =============================================================================
 
 /// Benchmark execution error.
-#[derive(Debug, thiserror::Error)]
+///
+/// This error type handles benchmark-specific failures. For a unified error
+/// type, see [`crate::greeks::GreeksError`].
+#[derive(Debug, Clone, PartialEq, thiserror::Error)]
 pub enum BenchmarkError {
     /// Invalid configuration.
     #[error("Invalid benchmark configuration: {0}")]
@@ -391,6 +394,15 @@ pub enum BenchmarkError {
     /// Greeks calculation error.
     #[error("Greeks calculation error: {0}")]
     GreeksError(#[from] IrsGreeksError),
+}
+
+impl From<BenchmarkError> for crate::greeks::GreeksError {
+    fn from(err: BenchmarkError) -> Self {
+        match err {
+            BenchmarkError::InvalidConfig(msg) => Self::InvalidBenchmarkConfig(msg),
+            BenchmarkError::GreeksError(e) => e.into(),
+        }
+    }
 }
 
 // =============================================================================
@@ -686,6 +698,8 @@ impl BenchmarkRunner {
 }
 
 /// Helper function to get current timestamp in ISO 8601 format.
+// TODO: l1l2-integration feature disabled pending refactoring
+#[cfg(all(feature = "l1l2-integration", feature = "__disabled__"))]
 fn chrono_timestamp() -> String {
     // Simple timestamp without chrono dependency
     // Format: YYYY-MM-DDTHH:MM:SSZ

@@ -32,6 +32,7 @@
 //! ```
 
 // Core infrastructure
+pub mod error;
 pub mod model_enum;
 pub mod stochastic;
 
@@ -57,6 +58,7 @@ pub mod correlated;
 
 // === Re-exports ===
 
+pub use error::ModelError;
 pub use model_enum::{ModelParams, ModelState, StochasticModelEnum};
 pub use stochastic::{
     EquityModel, FxModel, HybridModel, RatesModel, SingleState, StochasticModel, StochasticState,

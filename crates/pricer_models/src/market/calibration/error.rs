@@ -175,6 +175,88 @@ impl CalibrationError {
     }
 }
 
+/// Convert BootstrapError to CalibrationError for seamless error propagation.
+impl From<super::bootstrapping::BootstrapError> for CalibrationError {
+    fn from(err: super::bootstrapping::BootstrapError) -> Self {
+        use super::bootstrapping::BootstrapError;
+        match err {
+            BootstrapError::ConvergenceFailure {
+                maturity: _,
+                residual,
+                iterations,
+            } => CalibrationError::ConvergenceFailure {
+                iterations,
+                residual,
+            },
+            BootstrapError::InsufficientData { required, provided } => {
+                CalibrationError::InsufficientData { required, provided }
+            }
+            BootstrapError::NegativeRate { maturity, rate } => {
+                CalibrationError::numerical_instability(format!(
+                    "Negative rate {rate} at maturity {maturity}"
+                ))
+            }
+            BootstrapError::ArbitrageDetected { maturity } => {
+                CalibrationError::arbitrage_violation(format!(
+                    "Arbitrage detected at maturity {maturity}"
+                ))
+            }
+            BootstrapError::DuplicateMaturity { maturity } => {
+                CalibrationError::invalid_market_data(format!(
+                    "Duplicate maturity: {maturity}"
+                ))
+            }
+            BootstrapError::Solver(solver_err) => {
+                CalibrationError::numerical_instability(solver_err.to_string())
+            }
+            BootstrapError::MarketData(mkt_err) => {
+                CalibrationError::invalid_market_data(mkt_err.to_string())
+            }
+            BootstrapError::InvalidInput(msg) => CalibrationError::invalid_market_data(msg),
+            BootstrapError::InvalidMaturity { maturity, max_maturity } => {
+                CalibrationError::invalid_market_data(format!(
+                    "Invalid maturity {maturity} (max: {max_maturity})"
+                ))
+            }
+        }
+    }
+}
+
+/// Convert CalibrationError to PricingError for top-level error handling.
+impl From<CalibrationError> for pricer_core::types::PricingError {
+    fn from(err: CalibrationError) -> Self {
+        use pricer_core::types::PricingError;
+        match err {
+            CalibrationError::ConvergenceFailure { iterations, residual } => {
+                PricingError::NumericalInstability(format!(
+                    "Calibration failed after {iterations} iterations (residual: {residual:.6e})"
+                ))
+            }
+            CalibrationError::NumericalInstability { message } => {
+                PricingError::NumericalInstability(message)
+            }
+            CalibrationError::InvalidMarketData { message } => PricingError::InvalidInput(message),
+            CalibrationError::InsufficientData { required, provided } => {
+                PricingError::InvalidInput(format!(
+                    "Insufficient data: need {required}, got {provided}"
+                ))
+            }
+            CalibrationError::BoundsViolation {
+                param_name, value, ..
+            } => PricingError::InvalidInput(format!("Parameter {param_name} out of bounds: {value}")),
+            CalibrationError::ModelError { model_name, message } => {
+                PricingError::ModelFailure(format!("{model_name}: {message}"))
+            }
+            CalibrationError::ArbitrageViolation { message } => {
+                PricingError::ModelFailure(format!("Arbitrage violation: {message}"))
+            }
+            CalibrationError::GradientError { message } => {
+                PricingError::NumericalInstability(format!("Gradient error: {message}"))
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -208,5 +290,37 @@ mod tests {
         assert!(CalibrationError::convergence_failure(100, 0.1).is_recoverable());
         assert!(CalibrationError::numerical_instability("NaN").is_recoverable());
         assert!(!CalibrationError::insufficient_data(5, 3).is_recoverable());
+    }
+
+    #[test]
+    fn test_from_bootstrap_convergence() {
+        use super::super::bootstrapping::BootstrapError;
+        let bootstrap_err = BootstrapError::convergence_failure(5.0, 0.001, 100);
+        let calib_err: CalibrationError = bootstrap_err.into();
+        assert!(matches!(calib_err, CalibrationError::ConvergenceFailure { .. }));
+    }
+
+    #[test]
+    fn test_from_bootstrap_insufficient_data() {
+        use super::super::bootstrapping::BootstrapError;
+        let bootstrap_err = BootstrapError::insufficient_data(10, 3);
+        let calib_err: CalibrationError = bootstrap_err.into();
+        assert!(matches!(calib_err, CalibrationError::InsufficientData { .. }));
+    }
+
+    #[test]
+    fn test_calibration_to_pricing_error() {
+        use pricer_core::types::PricingError;
+        let calib_err = CalibrationError::convergence_failure(100, 0.01);
+        let pricing_err: PricingError = calib_err.into();
+        assert!(matches!(pricing_err, PricingError::NumericalInstability(_)));
+    }
+
+    #[test]
+    fn test_calibration_to_pricing_invalid_data() {
+        use pricer_core::types::PricingError;
+        let calib_err = CalibrationError::invalid_market_data("negative price");
+        let pricing_err: PricingError = calib_err.into();
+        assert!(matches!(pricing_err, PricingError::InvalidInput(_)));
     }
 }

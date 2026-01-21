@@ -297,3 +297,19 @@ impl std::fmt::Display for GreeksConfigError {
 }
 
 impl std::error::Error for GreeksConfigError {}
+
+// =============================================================================
+// Conversion to unified GreeksError
+// =============================================================================
+
+impl From<GreeksConfigError> for super::error::GreeksError {
+    fn from(err: GreeksConfigError) -> Self {
+        match err {
+            GreeksConfigError::InvalidSpotBump(msg) => Self::InvalidSpotBump(msg),
+            GreeksConfigError::InvalidVolBump(msg) => Self::InvalidVolBump(msg),
+            GreeksConfigError::InvalidTimeBump(msg) => Self::InvalidTimeBump(msg),
+            GreeksConfigError::InvalidRateBump(msg) => Self::InvalidRateBump(msg),
+            GreeksConfigError::InvalidTolerance(msg) => Self::InvalidTolerance(msg),
+        }
+    }
+}

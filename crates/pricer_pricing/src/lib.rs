@@ -165,7 +165,7 @@ pub use graph::{
     ComputationGraph, GraphBuilder, GraphEdge, GraphError, GraphExtractable, GraphMetadata,
     GraphNode, GraphNodeUpdate, NodeGroup, NodeType, SimpleGraphExtractor,
 };
-pub use greeks::{GreeksConfig, GreeksMode, GreeksResult};
+pub use greeks::{GreeksConfig, GreeksConfigError, GreeksError, GreeksMode, GreeksResult};
 // Re-export IRS Greeks types when l1l2-integration is enabled
 #[cfg(feature = "l1l2-integration")]
 pub use irs_greeks::{
