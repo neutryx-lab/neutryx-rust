@@ -20,7 +20,7 @@
 //! ## Usage
 //!
 //! ```
-//! use pricer_models::models::rates::hull_white::{HullWhiteModel, HullWhiteParams};
+//! use pricer_models::models::{HullWhiteModel, HullWhiteParams};
 //! use pricer_models::models::stochastic::StochasticModel;
 //! use pricer_models::market::curves::FlatCurve;
 //!
@@ -230,7 +230,7 @@ impl<T: Float> HullWhiteParams<T> {
     /// # Example
     ///
     /// ```
-    /// use pricer_models::models::rates::hull_white::HullWhiteParams;
+    /// use pricer_models::models::HullWhiteParams;
     /// use pricer_models::market::curves::FlatCurve;
     ///
     /// let params = HullWhiteParams::new(0.05, 0.01, FlatCurve::new(0.03));

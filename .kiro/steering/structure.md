@@ -77,24 +77,49 @@ S: Service   → Execution environments and interfaces (The Outputs)
 **Location**: `crates/infra_master/src/`
 **Purpose**: Static master data and financial primitives
 **Function**: The "Source of Truth" for static finance data.
-**Scope**: Holiday calendars, Day count conventions, Counterparty/CSA data, Financial date and time primitives.
+**Scope**: Holiday calendars, Day count conventions, Counterparty/CSA data, Financial date and time primitives, Trade structures, Market conventions.
 **Structure**:
 
 ```text
-calendar.rs        → Holiday calendars (Calendar, CalendarId: Target, NewYork, Tokyo, etc.)
-day_count.rs       → Day count conventions (DayCountConvention: Act360, Act365, Thirty360, etc.)
-counterparty.rs    → Counterparty master data (CsaTerms, NettingSetConfig)
-currency.rs        → ISO 4217 currency codes (Currency enum with metadata)
-date.rs            → Financial date wrapper (Date)
-business_day.rs    → Business day conventions (BusinessDayConvention)
-tenor.rs           → Tenor definitions (Tenor, EndOfMonthRule)
-frequency.rs       → Payment frequencies (Frequency: Annual, SemiAnnual, Quarterly, etc.)
-period.rs          → Period definitions (Period)
-direction.rs       → Trade/Swap directions (TradeDirection, SwapDirection)
-rate_index.rs      → Rate index definitions (RateIndex)
-error.rs           → Error types (DateError, CurrencyError, MasterDataError)
+time/              → Time-related primitives
+  ├── calendars.rs      → Holiday calendars (Calendar, CalendarId: Target, NewYork, Tokyo)
+  ├── day_counters.rs   → Day count conventions (DayCountConvention: Act360, Act365, Thirty360)
+  ├── frequency.rs      → Payment frequencies (Frequency: Annual, SemiAnnual, Quarterly)
+  ├── period.rs         → Period definitions (Period)
+  └── types.rs          → Date type and business day conventions
+
+market/            → Market data references
+  ├── currency.rs       → ISO 4217 currency codes (Currency enum with metadata)
+  └── rate_index.rs     → Rate index definitions (RateIndex)
+
+counterparty/      → Counterparty and credit data
+  ├── csa.rs            → CSA terms (CsaTerms)
+  ├── netting_set.rs    → Netting set configuration
+  ├── credit.rs         → Credit data (hazard rates)
+  └── margin.rs         → Margin requirements
+
+trade/             → Trade representation (CF-expanded format)
+  ├── error.rs          → Trade construction errors (TradeError)
+  ├── index.rs          → Market indices (IndexType, IndexObservation)
+  ├── payoff.rs         → Payoff definitions (Fixed, Linear, VanillaOption, Digital)
+  ├── cashflow.rs       → Cashflow representation (Cashflow, CashflowType)
+  ├── leg.rs            → Trade legs (Leg, Direction, LegType)
+  ├── trade.rs          → Trade structure (Trade, TradeId, TradeMetadata, TradeType)
+  ├── instrument.rs     → Market instruments (Deposit, FRA, Futures, ParSwap)
+  ├── pricing_instrument.rs → Pricing instrument types (VanillaOption, Forward)
+  └── builder.rs        → Builder API (TradeBuilder, LegBuilder)
+
+convention/        → Market conventions
+  ├── swap.rs           → Swap conventions (SwapConvention, SwapLegConvention)
+  ├── fra.rs            → FRA conventions
+  ├── futures.rs        → Futures conventions
+  ├── capfloor.rs       → Cap/Floor conventions
+  ├── fx.rs             → FX conventions (FxConvention)
+  ├── bond.rs           → Bond conventions
+  └── cds.rs            → CDS conventions
 ```
 
+**Trade Architecture**: `Trade` → `Vec<Leg>` → `Vec<Cashflow>` (CF-expanded common format)
 **Prelude**: `infra_master::prelude` exports all commonly used types.
 
 ### infra_store
@@ -520,5 +545,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-20_ — market_data moved from pricer_core to pricer_models::market; pricer_core now minimal (math, types, traits only)
+_Updated: 2026-01-21_ — pricer_core math expansion (distributions, calculus, utilities, integrators, optimisers, fitting, mesh, linalg); infra_master trade/convention modules
 _Document patterns, not file trees. New files following patterns should not require updates_

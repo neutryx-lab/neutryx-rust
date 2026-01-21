@@ -31,6 +31,8 @@ S: Service   → service_cli, service_gateway, service_python
 
 ### Core
 - **Numeric**: `num-traits`, `num-dual` (verification mode)
+- **Linear Algebra**: `nalgebra` (optional `linalg` feature, matrix operations, decompositions)
+- **Optimisation**: `argmin`, `argmin-math` (optional, L-BFGS, Nelder-Mead via feature-gated wrappers)
 - **Parallelisation**: `rayon` (portfolio-level parallelism)
 - **Random**: `rand`, `rand_distr` (Monte Carlo, Ziggurat algorithm for normals)
 - **Time**: `chrono` (date arithmetic, day count conventions)
@@ -159,5 +161,5 @@ docker run -it neutryx-enzyme
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-20_ — Documented pricer_optimiser removal (consolidated into pricer_core/pricer_models)
+_Updated: 2026-01-21_ — Added nalgebra (linalg feature) and argmin (optimisers) dependencies
 _Document standards and patterns, not every dependency_

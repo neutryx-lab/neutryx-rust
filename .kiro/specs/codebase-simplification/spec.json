@@ -1,9 +1,9 @@
 {
-  "feature_name": "pricer-core-math-library",
-  "created_at": "2026-01-20T00:00:00Z",
-  "updated_at": "2026-01-21T00:00:00Z",
+  "feature_name": "codebase-simplification",
+  "created_at": "2026-01-21T00:00:00Z",
+  "updated_at": "2026-01-21T17:00:00Z",
   "language": "ja",
-  "phase": "implementation-complete",
+  "phase": "implementation-ready",
   "approvals": {
     "requirements": {
       "generated": true,

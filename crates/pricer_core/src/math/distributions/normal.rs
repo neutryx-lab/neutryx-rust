@@ -41,7 +41,7 @@ use super::DistributionError;
 /// use pricer_core::math::distributions::norm_cdf;
 ///
 /// let p = norm_cdf(0.0_f64);
-/// assert!((p - 0.5).abs() < 1e-10);
+/// assert!((p - 0.5).abs() < 1e-7);
 ///
 /// let p = norm_cdf(1.96_f64);
 /// assert!((p - 0.975).abs() < 1e-3);

@@ -16,8 +16,8 @@
 //! use pricer_core::math::integrators::{integrate_gauss_legendre, GaussLegendreOrder};
 //!
 //! // Integrate x^2 from 0 to 1 (exact result = 1/3)
-//! let result = integrate_gauss_legendre(|x| x * x, 0.0, 1.0, GaussLegendreOrder::N7);
-//! assert!((result.value - 1.0/3.0).abs() < 1e-10);
+//! let result = integrate_gauss_legendre(|x: f64| x * x, 0.0_f64, 1.0_f64, GaussLegendreOrder::N7);
+//! assert!((result.value - 1.0_f64 / 3.0_f64).abs() < 1e-10);
 //! ```
 //!
 //! ## AD Compatibility

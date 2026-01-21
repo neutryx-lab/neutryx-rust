@@ -142,12 +142,12 @@ where
 /// use pricer_core::math::integrators::{rk45_integrate, Rk45Options};
 ///
 /// // Solve dy/dt = -y (exponential decay) from t=0 to t=1
-/// let options = Rk45Options::default();
-/// let trajectory = rk45_integrate(|_t, y| -y, 0.0, 1.0, 1.0, &options).unwrap();
+/// let options: Rk45Options<f64> = Rk45Options::default();
+/// let trajectory = rk45_integrate(|_t: f64, y: f64| -y, 0.0_f64, 1.0_f64, 1.0_f64, &options).unwrap();
 ///
 /// // Final value should be approximately exp(-1) ≈ 0.3679...
 /// let (t_final, y_final) = trajectory.last().unwrap();
-/// assert!((*t_final - 1.0).abs() < 1e-10);
+/// assert!((*t_final - 1.0_f64).abs() < 1e-10);
 /// assert!((*y_final - (-1.0_f64).exp()).abs() < 1e-5);
 /// ```
 pub fn rk45_integrate<T, F>(

@@ -54,7 +54,10 @@
 use num_traits::Float;
 use pricer_core::math::numeric::from_f64;
 
-use super::{distributions::norm_cdf, error::AnalyticalError};
+use super::{
+    distributions::{norm_cdf, norm_pdf},
+    error::AnalyticalError,
+};
 use crate::instruments::fx::FxOptionType;
 
 /// Parameters for the Garman-Kohlhagen model.
@@ -394,14 +397,6 @@ impl<T: Float> GarmanKohlhagen<T> {
             }
         }
     }
-}
-
-/// Standard normal PDF.
-#[inline]
-fn norm_pdf<T: Float>(x: T) -> T {
-    let frac_1_sqrt_2pi: T = from_f64(0.398_942_280_401_432_7);
-    let half: T = from_f64(0.5);
-    frac_1_sqrt_2pi * (-half * x * x).exp()
 }
 
 /// Convenience function to price an FX call option.

@@ -2,13 +2,13 @@
 
 実装状況と今後の開発項目を追跡するドキュメント。
 
-_Updated: 2026-01-20_ — Steering sync: market_data moved from pricer_core to pricer_models::market
+_Updated: 2026-01-21_ — Steering sync: codebase-simplification active, 23 completed specs
 
 ---
 
 ## Current State Summary
 
-### Completed Specifications (19)
+### Completed Specifications (23)
 
 | Spec | Description | Completed |
 |------|-------------|-----------|
@@ -31,6 +31,10 @@ _Updated: 2026-01-20_ — Steering sync: market_data moved from pricer_core to p
 | portfolio-graph-optimisation | Portfolio Graph REST API and WebSocket handlers | 2026-01-19 |
 | infra-primitives-migration | Financial primitives migration to infra_master | 2026-01-19 |
 | model-architecture-refactoring | pricer_optimiser removal, consolidation into pricer_core/pricer_models | 2026-01-19 |
+| counterparty-netting-module | Counterparty and netting set data structures | 2026-01-21 |
+| financial-time-module | Financial time primitives (calendars, frequencies, periods) | 2026-01-21 |
+| trade-instrument-module | Trade/Instrument module with CF-expanded architecture | 2026-01-21 |
+| pricer-core-math-library | Comprehensive math library (distributions, integrators, optimisers, linalg, fitting, mesh) | 2026-01-21 |
 
 ### Layer Implementation Status
 
@@ -41,7 +45,7 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 #### Pricer Layer (P) - Core Engine
 | Crate | Layer | Status | Notes |
 |-------|-------|--------|-------|
-| pricer_core | L1 | ✅ | math (smoothing, interpolators, solvers), types, traits |
+| pricer_core | L1 | ✅ | math (smoothing, distributions, calculus, utilities, interpolators, solvers, integrators, optimisers, fitting, mesh, linalg), types, traits |
 | pricer_models | L2 | ✅ | instruments, market (curves, surfaces, calibration, provider), models, schedules, analytical, demo |
 | pricer_pricing | L3 | ✅ | mc, rng, enzyme, greeks, path_dependent, checkpoint, context (l1l2-integration) |
 | pricer_risk | L4 | ✅ | portfolio, exposure, xva, scenarios (engine/shifts/aggregator/presets), soa, demo |
@@ -52,7 +56,7 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 | Crate | Status | Notes |
 |-------|--------|-------|
 | infra_config | ✅ | Settings loading (TOML/YAML/Env) |
-| infra_master | ✅ | Financial primitives: Calendar, Date, DayCount, Currency, Tenor, Frequency, Period, Direction, RateIndex, BusinessDay, Counterparty |
+| infra_master | ✅ | time/, market/, counterparty/, trade/ (CF-expanded), convention/ |
 | infra_store | 🔶 | Basic traits only, postgres optional |
 
 #### Adapter Layer (A) - Input
@@ -128,9 +132,11 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 
 ---
 
-### Active Specifications (Ready for Implementation)
+### Active Specifications (In Progress)
 
-_No active specifications. All pending specs have been implemented._
+| Spec | Description | Phase |
+|------|-------------|-------|
+| codebase-simplification | Code deduplication, API surface minimisation, module restructuring | Implementation ready |
 
 ## Recommended Next Steps
 
@@ -144,6 +150,9 @@ _No active specifications. All pending specs have been implemented._
 
 | Date | Change |
 |------|--------|
+| 2026-01-21 | Steering sync: Added codebase-simplification to active specs (tasks awaiting approval) |
+| 2026-01-21 | Steering sync: pricer-core-math-library completed (31/31 tasks), moved to completed specs. Total: 23 specs |
+| 2026-01-21 | Steering sync: pricer_core math expansion (distributions, calculus, utilities, integrators, optimisers, fitting, mesh, linalg), infra_master trade/convention modules, 3 new completed specs |
 | 2026-01-20 | Steering sync: market_data moved from pricer_core to pricer_models::market (CI fix), layer status updated |
 | 2026-01-20 | Steering sync: documented pricer_optimiser removal (consolidated into pricer_core/pricer_models), model-architecture-refactoring spec added |
 | 2026-01-19 | Steering sync: infra-primitives-migration completed, total specs: 18, no active specs remaining |

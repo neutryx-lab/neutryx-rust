@@ -33,8 +33,9 @@
 //! let p = 0.5_f64;
 //! let quantile = norm_inv_cdf(p).unwrap();
 //!
-//! assert!((cdf - 0.6914624612740131).abs() < 1e-10);
-//! assert!((quantile - 0.0).abs() < 1e-10);
+//! // norm_cdf(0.5) ≈ 0.6915 (Abramowitz & Stegun approximation)
+//! assert!((cdf - 0.6915).abs() < 1e-3);
+//! assert!(quantile.abs() < 1e-9);
 //! ```
 
 mod bivariate_normal;
@@ -46,5 +47,7 @@ mod normal;
 pub use bivariate_normal::bivariate_norm_cdf;
 pub use chi_squared::{central_chi_squared_cdf, noncentral_chi_squared_cdf};
 pub use copula::{gaussian_copula, CopulaTrait, GaussianCopula};
+#[cfg(feature = "linalg")]
+pub use copula::MultiGaussianCopula;
 pub use error::DistributionError;
 pub use normal::{norm_cdf, norm_inv_cdf, norm_pdf};

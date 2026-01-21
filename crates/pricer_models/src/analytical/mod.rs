@@ -24,7 +24,7 @@ pub mod error;
 // Re-export main types at module level
 // pub use bachelier::Bachelier;
 // pub use black_scholes::BlackScholes;
-pub use distributions::{norm_cdf, norm_pdf};
+pub use distributions::{norm_cdf, norm_inv_cdf, norm_pdf};
 pub use error::AnalyticalError;
 // #[cfg(feature = "fx")]
 // pub use garman_kohlhagen::{fx_call_price, fx_put_price, GarmanKohlhagen, GarmanKohlhagenParams};
