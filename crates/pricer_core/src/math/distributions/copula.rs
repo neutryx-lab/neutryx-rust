@@ -138,7 +138,7 @@ impl CopulaTrait for GaussianCopula {
         }
 
         // Validate each marginal is in (0, 1)
-        for (i, &ui) in u.iter().enumerate() {
+        for &ui in u.iter() {
             if ui <= 0.0 || ui >= 1.0 {
                 return Err(DistributionError::InvalidProbability { p: ui });
             }
@@ -422,7 +422,7 @@ impl MultiGaussianCopula {
         }
 
         // Validate each marginal is in (0, 1)
-        for (i, &ui) in u.iter().enumerate() {
+        for &ui in u.iter() {
             if ui <= 0.0 || ui >= 1.0 {
                 return Err(DistributionError::InvalidProbability { p: ui });
             }

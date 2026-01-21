@@ -151,7 +151,7 @@ pub fn norm_pdf<T: Float>(x: T) -> T {
 /// ```
 #[allow(clippy::excessive_precision)]
 pub fn norm_inv_cdf<T: Float>(p: T) -> Result<T, DistributionError> {
-    let zero = T::zero();
+    let _zero = T::zero();
     let one = T::one();
     let half = T::from(0.5).unwrap();
 

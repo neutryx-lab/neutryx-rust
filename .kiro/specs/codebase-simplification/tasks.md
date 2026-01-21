@@ -35,25 +35,25 @@
 ### Phase 2: Pricer Core Layer (L1)
 
 - [ ] 2. pricer_core エラー型の整理
-- [ ] 2.1 数学系エラー型の統合検討
+- [x] 2.1 数学系エラー型の統合検討
   - IntegrationError, OptimisationError, FittingError, DistributionError の関係を整理
   - 共通のエラーカテゴリ（InvalidInput, NumericalError）を特定
   - 必要に応じてエラー変換を簡略化
   - _Requirements: 1.2, 6.1, 6.2_
 
-- [ ] 2.2 (P) pricer_core の可視性調整
+- [x] 2.2 (P) pricer_core の可視性調整
   - 内部実装詳細を `pub(crate)` に変更
   - prelude 以外の型で外部から使用されていないものを特定
   - テストのみで使用される型を `#[cfg(test)]` でゲート
   - _Requirements: 2.1, 2.2, 2.3_
 
-- [ ] 2.3 (P) pricer_core の未使用コード除去
+- [x] 2.3 (P) pricer_core の未使用コード除去
   - `#[allow(dead_code)]` アノテーションの必要性を評価
   - traits/priceable.rs, traits/calibration.rs の dead_code を確認
   - 不要なコードを削除、将来必要なものには理由をコメント
   - _Requirements: 4.1, 4.3_
 
-- [ ] 2.4 Phase 2a の検証
+- [x] 2.4 Phase 2a の検証
   - `cargo test -p pricer_core` で全テストがパス
   - 依存クレート (pricer_models 等) のビルドが成功
   - _Requirements: 8.1, 9.3_

@@ -135,7 +135,7 @@ impl<T: Float> BisectionSolver<T> {
         let mut a = a;
         let mut b = b;
         let mut fa = f(a);
-        let mut fb = f(b);
+        let fb = f(b);
 
         // Check for valid bracket (opposite signs)
         if fa * fb > T::zero() {
@@ -181,7 +181,7 @@ impl<T: Float> BisectionSolver<T> {
             if fa * fm < T::zero() {
                 // Root is in [a, m]
                 b = m;
-                fb = fm;
+                // Note: fb value not needed as we check fa * fm
             } else {
                 // Root is in [m, b]
                 a = m;

@@ -133,7 +133,7 @@ pub fn fit_gaussian_curve<T: Float>(
     // So: a = ln(A) - mu²/(2*sigma²), b = mu/sigma², c = -1/(2*sigma²)
 
     let m = valid_x.len();
-    let n_params = 3;
+    let _n_params = 3;
 
     // Build normal equations for quadratic fit
     let mut sums = [T::zero(); 5]; // sum of x^0, x^1, x^2, x^3, x^4

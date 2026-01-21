@@ -56,7 +56,6 @@ pub fn log_gamma<T: Float>(x: T) -> T {
 
     let half = T::from(0.5).unwrap();
     let one = T::one();
-    let two = T::from(2.0).unwrap();
     let pi = T::from(core::f64::consts::PI).unwrap();
     let ln_sqrt_2pi = T::from(0.918_938_533_204_672_74).unwrap();
 

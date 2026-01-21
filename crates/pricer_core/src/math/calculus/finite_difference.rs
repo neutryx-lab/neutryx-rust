@@ -135,7 +135,7 @@ where
     F: Fn(&[T]) -> T,
 {
     let two = T::from(2.0).unwrap();
-    let n = x.len();
+    let _n = x.len();
 
     // Create working buffers
     let mut x_plus = x.to_vec();
