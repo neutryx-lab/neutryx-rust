@@ -44,6 +44,9 @@ mod payoff;
 mod pricing_instrument;
 mod trade;
 
+/// Market conventions for standardised financial instruments.
+pub mod convention;
+
 pub use builder::{LegBuilder, TradeBuilder};
 pub use cashflow::{Cashflow, CashflowType};
 pub use direction::{SwapDirection, TradeDirection};

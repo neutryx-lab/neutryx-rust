@@ -3,7 +3,7 @@
 ## Phase 1: Convention Migration
 
 - [ ] 1. Convention モジュール移動
-- [ ] 1.1 Convention ファイルを trade/ 配下に移動
+- [x] 1.1 Convention ファイルを trade/ 配下に移動
   - 既存の convention/ ディレクトリを trade/convention/ にコピー
   - trade/mod.rs に `pub mod convention;` を追加
   - convention/mod.rs の re-export を維持
