@@ -243,19 +243,18 @@ impl Histogram {
             self.name, self.help, self.name
         );
 
-        // Output bucket counts
-        let mut cumulative = 0u64;
+        // Output bucket counts (already cumulative from observe())
         for (i, &bound) in self.buckets.iter().enumerate() {
-            cumulative += self.bucket_counts[i].load(Ordering::Relaxed);
+            let count = self.bucket_counts[i].load(Ordering::Relaxed);
             let _ = writeln!(
                 output,
                 "{}_bucket{{le=\"{}\"}} {}",
-                self.name, bound, cumulative
+                self.name, bound, count
             );
         }
         // +Inf bucket
-        cumulative += self.bucket_counts.last().unwrap().load(Ordering::Relaxed);
-        let _ = writeln!(output, "{}_bucket{{le=\"+Inf\"}} {}", self.name, cumulative);
+        let inf_count = self.bucket_counts.last().unwrap().load(Ordering::Relaxed);
+        let _ = writeln!(output, "{}_bucket{{le=\"+Inf\"}} {}", self.name, inf_count);
 
         // Sum and count
         let _ = writeln!(output, "{}_sum {}", self.name, self.sum());
