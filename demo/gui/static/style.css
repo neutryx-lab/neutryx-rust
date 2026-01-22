@@ -11819,11 +11819,12 @@ body.light-theme .model-calib-3d-section {
     .mobile-menu-btn {
         display: flex;
         flex-shrink: 0;
-        margin-right: var(--space-sm);
+        margin-left: 0;
+        margin-right: 4px;
     }
 
     .top-bar {
-        padding-left: var(--space-sm);
+        padding-left: 0;
     }
 }
 
