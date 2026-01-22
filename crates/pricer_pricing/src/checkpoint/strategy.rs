@@ -73,7 +73,7 @@ pub enum CheckpointStrategy {
     /// usage. The `memory_slots` parameter specifies the maximum number
     /// of checkpoint states that can be stored simultaneously.
     ///
-    /// This is the recommended strategy when using [`MinimalState`] for
+    /// This is the recommended strategy when using `MinimalState` for
     /// memory-efficient reverse-mode AD.
     ///
     /// # Reference

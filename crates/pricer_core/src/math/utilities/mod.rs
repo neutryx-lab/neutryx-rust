@@ -6,9 +6,9 @@
 //!
 //! ## Submodules
 //!
-//! - [`basic`]: Sign, clamp, and linear interpolation functions
-//! - [`combinatorics`]: Factorial and binomial coefficient functions
-//! - [`special`]: Special functions like log-gamma and beta
+//! - `basic`: Sign, clamp, and linear interpolation functions
+//! - `combinatorics`: Factorial and binomial coefficient functions
+//! - `special`: Special functions like log-gamma and beta
 //!
 //! ## AD Compatibility
 //!

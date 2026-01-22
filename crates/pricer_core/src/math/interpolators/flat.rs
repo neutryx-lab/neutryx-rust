@@ -20,9 +20,9 @@ pub enum FlatMode {
 
 /// Piecewise constant (flat) interpolator.
 ///
-/// For a query point x between data points x[i] and x[i+1], returns:
-/// - `Left` mode: y[i] (the value at the left boundary)
-/// - `Right` mode: y[i+1] (the value at the right boundary)
+/// For a query point x between data points x\[i\] and x\[i+1\], returns:
+/// - `Left` mode: y\[i\] (the value at the left boundary)
+/// - `Right` mode: y\[i+1\] (the value at the right boundary)
 ///
 /// # Example
 ///

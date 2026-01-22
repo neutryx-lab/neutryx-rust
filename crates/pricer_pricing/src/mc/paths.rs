@@ -127,8 +127,8 @@ impl Default for GbmParams {
 /// # Algorithm
 ///
 /// 1. Precompute `drift_dt = (r - 0.5σ²)dt` and `vol_sqrt_dt = σ√dt`
-/// 2. For each path, set S[0] = spot
-/// 3. For each step, S[t+1] = S[t] × exp(drift_dt + vol_sqrt_dt × Z)
+/// 2. For each path, set S\[0\] = spot
+/// 3. For each step, S\[t+1\] = S\[t\] × exp(drift_dt + vol_sqrt_dt × Z)
 ///
 /// # Performance
 ///

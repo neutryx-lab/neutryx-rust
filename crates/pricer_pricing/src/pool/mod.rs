@@ -142,7 +142,7 @@ thread_local! {
 ///
 /// # Memory Management
 ///
-/// Pooled buffers grow as needed but never shrink automatically. Call [`clear`]
+/// Pooled buffers grow as needed but never shrink automatically. Call `clear`
 /// to release all pooled buffers when memory pressure is high.
 #[derive(Clone, Copy, Default)]
 pub struct ThreadLocalPool;

@@ -1872,7 +1872,7 @@ pub struct GreeksHeatmapResponse {
     /// Y-axis labels (strikes as percentages of spot, e.g., ["80%", "90%",
     /// "100%", "110%", "120%"])
     pub y_axis: Vec<String>,
-    /// 2D matrix of values: values[y][x] corresponds to y_axis[y] and x_axis[x]
+    /// 2D matrix of values: values\[y\]\[x\] corresponds to y_axis\[y\] and x_axis\[x\]
     pub values: Vec<Vec<f64>>,
     /// Greek type being visualised
     pub greek_type: String,

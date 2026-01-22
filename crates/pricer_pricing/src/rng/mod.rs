@@ -25,8 +25,8 @@
 //!
 //! ## Module Structure
 //!
-//! - [`prng`]: Pseudo-random number generator wrapper with seed management
-//! - [`qmc`]: Quasi-Monte Carlo sequence traits and placeholders
+//! - `prng`: Pseudo-random number generator wrapper with seed management
+//! - `qmc`: Quasi-Monte Carlo sequence traits and placeholders
 //!
 //! ## Usage Example
 //!

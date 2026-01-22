@@ -7,12 +7,12 @@
 //!
 //! The time module is organised into the following submodules:
 //!
-//! - [`error`]: Error types for time-related operations
-//! - [`types`]: Date wrapper with Excel serial conversion
-//! - [`calendars`]: Calendar trait and implementations
-//! - [`day_counters`]: Day count conventions
-//! - [`period`]: Period, tenor, and accrual period types
-//! - [`frequency`]: Payment frequency definitions
+//! - `error`: Error types for time-related operations
+//! - `types`: Date wrapper with Excel serial conversion
+//! - `calendars`: Calendar trait and implementations
+//! - `day_counters`: Day count conventions
+//! - `period`: Period, tenor, and accrual period types
+//! - `frequency`: Payment frequency definitions
 //!
 //! # Examples
 //!

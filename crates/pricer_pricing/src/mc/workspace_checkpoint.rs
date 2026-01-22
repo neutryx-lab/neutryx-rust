@@ -1,7 +1,7 @@
 //! Extended workspace with checkpoint and path-dependent option support.
 //!
-//! This module provides [`CheckpointWorkspace`], which extends the basic
-//! [`PathWorkspace`] with additional functionality for:
+//! This module provides `CheckpointWorkspace`, which extends the basic
+//! `PathWorkspace` with additional functionality for:
 //! - Path observers for path-dependent options (Asian, Barrier, Lookback)
 //! - Checkpoint state management references
 //! - Safe clearing of all state for reuse

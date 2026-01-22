@@ -47,7 +47,7 @@ impl<T: Float> Grid2D<T> {
     ///
     /// # Returns
     ///
-    /// Tuple (x[i], y[j])
+    /// Tuple (x\[i\], y\[j\])
     #[must_use]
     pub fn point(&self, i: usize, j: usize) -> (T, T) { (self.x[i], self.y[j]) }
 

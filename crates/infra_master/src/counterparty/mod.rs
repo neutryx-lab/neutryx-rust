@@ -6,13 +6,13 @@
 //!
 //! # Module Structure
 //!
-//! - [`error`]: Module-specific error types
-//! - [`csa`]: CSA terms and collateral settings
-//! - [`credit`]: Credit ratings and parameters
-//! - [`margin`]: VM/IM margin terms
-//! - [`netting_set`]: Netting set and exposure configuration
-//! - [`counterparty_entity`]: CounterParty entity
-//! - [`ccp`]: CCP entity
+//! - `error`: Module-specific error types
+//! - `csa`: CSA terms and collateral settings
+//! - `credit`: Credit ratings and parameters
+//! - `margin`: VM/IM margin terms
+//! - `netting_set`: Netting set and exposure configuration
+//! - `counterparty_entity`: CounterParty entity
+//! - `ccp`: CCP entity
 //!
 //! # Example
 //!
