@@ -1,9 +1,24 @@
 //! Convention module for market conventions.
 //!
-//! This module provides types for representing market conventions
-//! used in standardised financial instruments.
+//! **Deprecated**: This module is deprecated. Use [`crate::trade::convention`] instead.
 //!
-//! # Example
+//! This module re-exports types from [`crate::trade::convention`] for backward compatibility.
+//! All convention types are now part of the trade module to better reflect their relationship
+//! with trade structures.
+//!
+//! # Migration
+//!
+//! Update your imports from:
+//! ```rust,ignore
+//! use infra_master::convention::{SwapConvention, FxConvention};
+//! ```
+//!
+//! To:
+//! ```rust,ignore
+//! use infra_master::trade::convention::{SwapConvention, FxConvention};
+//! ```
+//!
+//! # Example (deprecated usage)
 //!
 //! ```rust,ignore
 //! use infra_master::convention::{SwapConvention, FxConvention};
@@ -15,18 +30,13 @@
 //! let eur_usd = FxConvention::eur_usd();
 //! ```
 
-mod swap;
-mod fra;
-mod futures;
-mod capfloor;
-mod fx;
-mod bond;
-mod cds;
+#![deprecated(
+    since = "0.8.0",
+    note = "Use `infra_master::trade::convention` instead. This module will be removed in 0.9.0."
+)]
 
-pub use swap::{SwapConvention, SwapLegConvention};
-pub use fra::FraConvention;
-pub use futures::FuturesConvention;
-pub use capfloor::CapFloorConvention;
-pub use fx::FxConvention;
-pub use bond::BondConvention;
-pub use cds::CdsConvention;
+// Re-export all types from trade::convention for backward compatibility
+pub use crate::trade::convention::{
+    BondConvention, CapFloorConvention, CdsConvention, FraConvention, FuturesConvention,
+    FxConvention, SwapConvention, SwapLegConvention,
+};

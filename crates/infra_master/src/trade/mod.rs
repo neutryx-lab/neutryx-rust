@@ -38,14 +38,19 @@ mod cashflow;
 mod direction;
 mod error;
 mod index;
-mod instrument;
 mod leg;
 mod payoff;
 mod pricing_instrument;
 mod trade;
 
+// Existing calibration instruments (for backward compatibility)
+mod instrument;
+
 /// Market conventions for standardised financial instruments.
 pub mod convention;
+
+/// Standard instrument definitions for all asset classes.
+pub mod instrument_def;
 
 pub use builder::{LegBuilder, TradeBuilder};
 pub use cashflow::{Cashflow, CashflowType};

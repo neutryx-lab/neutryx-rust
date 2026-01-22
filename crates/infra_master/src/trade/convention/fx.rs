@@ -60,6 +60,34 @@ impl FxConvention {
             business_day_convention: BusinessDayConvention::ModifiedFollowing,
         }
     }
+
+    /// Returns the default USD FX convention.
+    #[must_use]
+    pub fn usd_default() -> Self {
+        Self {
+            spot_days: 2,
+            calendar: CalendarId::NewYork,
+            business_day_convention: BusinessDayConvention::ModifiedFollowing,
+        }
+    }
+
+    /// Returns the default EUR FX convention.
+    #[must_use]
+    pub fn eur_default() -> Self {
+        Self::eur_usd()
+    }
+
+    /// Returns the default GBP FX convention.
+    #[must_use]
+    pub fn gbp_default() -> Self {
+        Self::gbp_usd()
+    }
+
+    /// Returns the default JPY FX convention.
+    #[must_use]
+    pub fn jpy_default() -> Self {
+        Self::usd_jpy()
+    }
 }
 
 #[cfg(test)]

@@ -18,6 +18,7 @@
 mod bond;
 mod capfloor;
 mod cds;
+mod convention_set;
 mod fra;
 mod futures;
 mod fx;
@@ -26,6 +27,7 @@ mod swap;
 pub use bond::BondConvention;
 pub use capfloor::CapFloorConvention;
 pub use cds::CdsConvention;
+pub use convention_set::ConventionSet;
 pub use fra::FraConvention;
 pub use futures::FuturesConvention;
 pub use fx::FxConvention;

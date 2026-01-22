@@ -9,7 +9,7 @@
   - convention/mod.rs の re-export を維持
   - _Requirements: 6.7_
 
-- [ ] 1.2 旧パス互換性のための re-export 設定
+- [x] 1.2 旧パス互換性のための re-export 設定
   - lib.rs に `pub use trade::convention;` を追加
   - 旧パス (`infra_master::convention`) からのアクセスを維持
   - deprecation 警告を追加（0.8.0 で deprecation 予定）
@@ -17,15 +17,15 @@
 
 ## Phase 2: Common Types & Infrastructure
 
-- [ ] 2. 共通型とエラー定義
-- [ ] 2.1 資産クラスと共通列挙型の定義
+- [x] 2. 共通型とエラー定義
+- [x] 2.1 資産クラスと共通列挙型の定義
   - AssetClass enum（Rates, Fx, Equity, Credit, Commodity）を定義
   - OptionType（Call/Put）、ExerciseStyle（European/American/Bermudan）を定義
   - SettlementType（Cash/Physical）、PayerReceiver を定義
   - serde feature-gating を適用
   - _Requirements: 7.1, 7.2, 7.3_
 
-- [ ] 2.2 InstrumentError 定義
+- [x] 2.2 InstrumentError 定義
   - InvalidParameter、MissingConvention、InvalidDate バリアントを追加
   - ValidationFailed、ExpansionFailed バリアントを追加
   - TradeError からの変換を実装
@@ -41,153 +41,153 @@
 
 ## Phase 3: Instrument Definitions
 
-- [ ] 3. 金利商品（Rates）定義
-- [ ] 3.1 (P) Swaption 構造体定義
+- [x] 3. 金利商品（Rates）定義
+- [x] 3.1 (P) Swaption 構造体定義
   - underlying_swap_tenor、expiry、exercise_type フィールドを定義
   - settlement_type、strike、notional、currency を追加
   - payer_receiver でロング/ショートを表現
   - serde feature-gating を適用
   - _Requirements: 1.1_
 
-- [ ] 3.2 (P) CapFloor 構造体定義
+- [x] 3.2 (P) CapFloor 構造体定義
   - cap_floor_type（Cap/Floor/Collar）を定義
   - strikes、index、notional_schedule を追加
   - payment_frequency、start_date、tenor を設定
   - _Requirements: 1.2_
 
-- [ ] 3.3 (P) FRN（変動金利債）構造体定義
+- [x] 3.3 (P) FRN（変動金利債）構造体定義
   - coupon_index、spread、reset_frequency を定義
   - principal_schedule で元本償還を表現
   - _Requirements: 1.3_
 
-- [ ] 3.4 (P) CmsSwap 構造体定義
+- [x] 3.4 (P) CmsSwap 構造体定義
   - cms_tenor（参照 CMS テナー）を定義
   - convexity_adjustment パラメータを追加
   - _Requirements: 1.4_
 
-- [ ] 3.5 (P) InflationSwap 構造体定義
+- [x] 3.5 (P) InflationSwap 構造体定義
   - inflation_index（CPI 等）を定義
   - lag_period、swap_type（ZeroCoupon/YearOnYear）を追加
   - _Requirements: 1.5_
 
-- [ ] 4. FX商品定義
-- [ ] 4.1 (P) FxSpot 構造体定義
+- [x] 4. FX商品定義
+- [x] 4.1 (P) FxSpot 構造体定義
   - currency_pair、spot_rate、settlement_date を定義
   - notional、notional_currency を追加
   - _Requirements: 2.1_
 
-- [ ] 4.2 (P) FxForward 構造体定義
+- [x] 4.2 (P) FxForward 構造体定義
   - currency_pair、forward_rate、settlement_date を定義
   - notional フィールドを追加
   - _Requirements: 2.2_
 
-- [ ] 4.3 (P) FxVanillaOption 構造体定義
+- [x] 4.3 (P) FxVanillaOption 構造体定義
   - currency_pair、strike、expiry、delivery_date を定義
   - option_type、exercise_style、notional を追加
   - _Requirements: 2.3_
 
-- [ ] 4.4 (P) FxBarrierOption 構造体定義
+- [x] 4.4 (P) FxBarrierOption 構造体定義
   - vanilla オプションをベースに barrier_level を追加
   - barrier_type（KnockIn/KnockOut）、barrier_direction（Up/Down）を定義
   - rebate オプションを追加
   - _Requirements: 2.4_
 
-- [ ] 4.5 (P) FxSwap（短期）構造体定義
+- [x] 4.5 (P) FxSwap（短期）構造体定義
   - near_leg_date、far_leg_date を定義
   - near_rate、far_rate を追加
   - _Requirements: 2.5_
 
-- [ ] 5. 株式商品（Equity）定義
-- [ ] 5.1 (P) EquityForward 構造体定義
+- [x] 5. 株式商品（Equity）定義
+- [x] 5.1 (P) EquityForward 構造体定義
   - underlying（単一株式/インデックス）を定義
   - forward_price、settlement_date を追加
   - _Requirements: 3.1_
 
-- [ ] 5.2 (P) EquityVanillaOption 構造体定義
+- [x] 5.2 (P) EquityVanillaOption 構造体定義
   - underlying、strike、expiry を定義
   - option_type、exercise_style を追加
   - _Requirements: 3.2_
 
-- [ ] 5.3 (P) EquityBarrierOption 構造体定義
+- [x] 5.3 (P) EquityBarrierOption 構造体定義
   - バニラオプションをベースにバリア情報を追加
   - monitoring_frequency（Continuous/Discrete）を定義
   - _Requirements: 3.3_
 
-- [ ] 5.4 (P) AsianOption 構造体定義
+- [x] 5.4 (P) AsianOption 構造体定義
   - averaging_type（Arithmetic/Geometric）を定義
   - observation_frequency、observed_values を追加
   - _Requirements: 3.4_
 
-- [ ] 5.5 (P) LookbackOption 構造体定義
+- [x] 5.5 (P) LookbackOption 構造体定義
   - lookback_type（FixedStrike/FloatingStrike）を定義
   - observation_period を追加
   - _Requirements: 3.5_
 
-- [ ] 5.6 (P) EquitySwap 構造体定義
+- [x] 5.6 (P) EquitySwap 構造体定義
   - equity_leg（return_type: Price/TotalReturn）を定義
   - funding_leg（金利レグ）を追加
   - _Requirements: 3.6_
 
-- [ ] 5.7 (P) BasketOption 構造体定義
+- [x] 5.7 (P) BasketOption 構造体定義
   - components（構成銘柄リスト）を定義
   - weights、correlation_matrix_ref を追加
   - _Requirements: 3.7_
 
-- [ ] 6. クレジット商品（Credit）定義
-- [ ] 6.1 (P) Cds 構造体定義
+- [x] 6. クレジット商品（Credit）定義
+- [x] 6.1 (P) Cds 構造体定義
   - reference_entity、notional、spread を定義
   - start_date、maturity、recovery_rate を追加
   - _Requirements: 4.1_
 
-- [ ] 6.2 (P) CdsIndex 構造体定義
+- [x] 6.2 (P) CdsIndex 構造体定義
   - index_name（CDX/iTraxx）、series、version を定義
   - constituent_count を追加
   - _Requirements: 4.2_
 
-- [ ] 6.3 (P) CdsOption 構造体定義
+- [x] 6.3 (P) CdsOption 構造体定義
   - underlying_cds への参照を定義
   - strike_spread、exercise_date を追加
   - _Requirements: 4.3_
 
-- [ ] 6.4 (P) NtdBasket 構造体定義
+- [x] 6.4 (P) NtdBasket 構造体定義
   - basket_constituents を定義
   - nth_to_default パラメータを追加
   - correlation_parameter を定義
   - _Requirements: 4.4_
 
-- [ ] 6.5 (P) CreditEvent 列挙型定義
+- [x] 6.5 (P) CreditEvent 列挙型定義
   - Bankruptcy、FailureToPay、Restructuring を定義
   - ObligationAcceleration、ObligationDefault を追加
   - ISDA 標準定義に準拠
   - _Requirements: 4.5_
 
-- [ ] 7. コモディティ商品（Commodity）定義
-- [ ] 7.1 (P) CommodityForward 構造体定義
+- [x] 7. コモディティ商品（Commodity）定義
+- [x] 7.1 (P) CommodityForward 構造体定義
   - commodity（CommodityType）、delivery_location を定義
   - delivery_date、quantity、unit を追加
   - forward_price を定義
   - _Requirements: 5.1_
 
-- [ ] 7.2 (P) CommoditySwap 構造体定義
+- [x] 7.2 (P) CommoditySwap 構造体定義
   - fixed_price_leg を定義
   - floating_price_leg（インデックス参照）を追加
   - _Requirements: 5.2_
 
-- [ ] 7.3 (P) CommodityVanillaOption 構造体定義
+- [x] 7.3 (P) CommodityVanillaOption 構造体定義
   - underlying_commodity、strike、expiry を定義
   - settlement_type（Cash/Physical）を追加
   - _Requirements: 5.3_
 
-- [ ] 7.4 (P) CommodityAsianOption 構造体定義
+- [x] 7.4 (P) CommodityAsianOption 構造体定義
   - averaging_period、observation_frequency を定義
   - _Requirements: 5.4_
 
-- [ ] 7.5 (P) SpreadOption 構造体定義
+- [x] 7.5 (P) SpreadOption 構造体定義
   - commodity_1、commodity_2 を定義
   - spread_strike を追加
   - _Requirements: 5.5_
 
-- [ ] 7.6 (P) CommodityType 列挙型定義
+- [x] 7.6 (P) CommodityType 列挙型定義
   - Energy（EnergyType）、Metals（MetalType）を定義
   - Agriculture（AgricultureType）を追加
   - サブタイプ列挙型も定義
