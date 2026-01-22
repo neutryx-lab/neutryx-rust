@@ -213,11 +213,6 @@ impl SimpleDate {
         format!("{:04}-{:02}-{:02}", self.year, self.month, self.day)
     }
 
-    /// Returns true if this is a leap year.
-    fn is_leap_year(&self) -> bool {
-        (self.year % 4 == 0 && self.year % 100 != 0) || (self.year % 400 == 0)
-    }
-
     /// Returns the number of days in the given month.
     fn days_in_month(year: i32, month: u32) -> u32 {
         match month {
