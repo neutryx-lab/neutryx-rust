@@ -8,9 +8,12 @@
 #![allow(missing_docs)]
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use infra_master::trade::{
+    ExerciseStyle, InstrumentParams, PayoffType, PricingInstrument, VanillaOption,
+};
+use pricer_core::math::smoothing::smooth_max;
 use pricer_models::{
     analytical::distributions::{norm_cdf, norm_pdf},
-    instruments::{ExerciseStyle, Instrument, InstrumentParams, PayoffType, VanillaOption},
     models::{stochastic::StochasticModel, GBMModel, GBMParams},
 };
 
@@ -62,6 +65,15 @@ fn bench_norm_pdf(c: &mut Criterion) {
     group.finish();
 }
 
+/// Evaluates a smooth payoff using smooth_max approximation.
+///
+/// Call: max(spot - strike, 0)
+/// Put: max(strike - spot, 0)
+#[inline]
+fn evaluate_payoff(payoff: PayoffType, spot: f64, strike: f64, epsilon: f64) -> f64 {
+    smooth_max(payoff.sign() * (spot - strike), 0.0, epsilon)
+}
+
 /// Benchmark payoff evaluation with smooth approximations.
 fn bench_payoff_evaluation(c: &mut Criterion) {
     let mut group = c.benchmark_group("payoff_evaluation");
@@ -69,13 +81,27 @@ fn bench_payoff_evaluation(c: &mut Criterion) {
     // Call payoff evaluation
     group.bench_function("call_single", |b| {
         let payoff = PayoffType::Call;
-        b.iter(|| payoff.evaluate(black_box(110.0_f64), black_box(100.0), black_box(1e-6)));
+        b.iter(|| {
+            evaluate_payoff(
+                payoff,
+                black_box(110.0_f64),
+                black_box(100.0),
+                black_box(1e-6),
+            )
+        });
     });
 
     // Put payoff evaluation
     group.bench_function("put_single", |b| {
         let payoff = PayoffType::Put;
-        b.iter(|| payoff.evaluate(black_box(90.0_f64), black_box(100.0), black_box(1e-6)));
+        b.iter(|| {
+            evaluate_payoff(
+                payoff,
+                black_box(90.0_f64),
+                black_box(100.0),
+                black_box(1e-6),
+            )
+        });
     });
 
     // Batch evaluation (typical portfolio scenario)
@@ -90,7 +116,12 @@ fn bench_payoff_evaluation(c: &mut Criterion) {
             b.iter(|| {
                 let mut sum = 0.0;
                 for &spot in &spots {
-                    sum += payoff.evaluate(black_box(spot), black_box(strike), black_box(epsilon));
+                    sum += evaluate_payoff(
+                        payoff,
+                        black_box(spot),
+                        black_box(strike),
+                        black_box(epsilon),
+                    );
                 }
                 sum
             });
@@ -107,7 +138,7 @@ fn bench_instrument_payoff(c: &mut Criterion) {
     // Create instruments
     let call_params = InstrumentParams::new(100.0_f64, 1.0, 1.0).unwrap();
     let call = VanillaOption::new(call_params, PayoffType::Call, ExerciseStyle::European, 1e-6);
-    let call_instrument = Instrument::Vanilla(call);
+    let call_instrument = PricingInstrument::Vanilla(call);
 
     // Single instrument payoff
     group.bench_function("vanilla_call", |b| {
@@ -117,7 +148,7 @@ fn bench_instrument_payoff(c: &mut Criterion) {
     // Portfolio of instruments
     for size in [10, 100, 1000] {
         group.bench_with_input(BenchmarkId::new("portfolio", size), &size, |b, &n| {
-            let instruments: Vec<Instrument<f64>> = (0..n)
+            let instruments: Vec<PricingInstrument<f64>> = (0..n)
                 .map(|i| {
                     let strike = 90.0 + (i as f64 / n as f64) * 20.0;
                     let params = InstrumentParams::new(strike, 1.0, 1.0).unwrap();
@@ -131,7 +162,7 @@ fn bench_instrument_payoff(c: &mut Criterion) {
                         ExerciseStyle::European,
                         1e-6,
                     );
-                    Instrument::Vanilla(option)
+                    PricingInstrument::Vanilla(option)
                 })
                 .collect();
             let spot = 100.0;
