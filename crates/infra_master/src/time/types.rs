@@ -243,6 +243,7 @@ impl Date {
     /// assert_eq!(epoch.to_serial(), 1);
     /// ```
     #[must_use]
+    #[allow(clippy::unwrap_used)] // Constant date (1899-12-31) is guaranteed valid
     pub fn to_serial(&self) -> i64 {
         // Excel epoch: 1899-12-31 (day 0), so 1900-01-01 = 1
         let epoch = NaiveDate::from_ymd_opt(1899, 12, 31).unwrap();
@@ -281,6 +282,7 @@ impl Date {
     /// assert!(Date::from_serial(-1).is_err());
     /// assert!(Date::from_serial(60).is_err()); // 1900-02-29 doesn't exist
     /// ```
+    #[allow(clippy::unwrap_used)] // Constant date (1899-12-31) is guaranteed valid
     pub fn from_serial(serial: i64) -> Result<Self, TimeError> {
         if serial < 1 {
             return Err(TimeError::CalculationError(format!(
