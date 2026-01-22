@@ -54,7 +54,48 @@ if (CSP_DEBUG && window.addEventListener) {
 // ============================================
 
 const API_BASE = '/api';
+const DATA_BASE = '/data/input';
 const REFRESH_INTERVAL = 30000;
+
+// External data cache (loaded from JSON files)
+const ExternalData = {
+    portfolio: null,
+    counterparties: null,
+    nettingSets: null,
+    loaded: false
+};
+
+// Load external JSON data
+async function loadExternalData() {
+    if (ExternalData.loaded) return;
+
+    try {
+        const [portfolioRes, counterpartiesRes, nettingSetsRes] = await Promise.all([
+            fetch(`${DATA_BASE}/demo_portfolio.json`),
+            fetch(`${DATA_BASE}/counterparties.json`),
+            fetch(`${DATA_BASE}/netting_sets.json`)
+        ]);
+
+        if (portfolioRes.ok) {
+            const data = await portfolioRes.json();
+            ExternalData.portfolio = data.portfolio;
+        }
+        if (counterpartiesRes.ok) {
+            const data = await counterpartiesRes.json();
+            ExternalData.counterparties = data.counterparties;
+            ExternalData.enrichmentPools = data.enrichment_pools;
+        }
+        if (nettingSetsRes.ok) {
+            const data = await nettingSetsRes.json();
+            ExternalData.nettingSets = data.netting_sets;
+        }
+
+        ExternalData.loaded = true;
+        Logger.debug('Data', 'External data loaded successfully');
+    } catch (error) {
+        Logger.warn('Data', 'Failed to load external data, using defaults', error);
+    }
+}
 
 const state = {
     ws: null,
@@ -1255,18 +1296,20 @@ if (document.readyState === 'loading') {
 // API Calls
 // ============================================
 
-// Demo fallback data for portfolio
-const DEMO_PORTFOLIO_DATA = {
-    total_pv: 353000.0,
-    trade_count: 5,
-    trades: [
-        { id: 'IRS-001', type: 'IRS', notional: 10000000, currency: 'USD', pv: 125000, counterparty: 'Bank A', maturity: '2029-01-15' },
-        { id: 'IRS-002', type: 'IRS', notional: 5000000, currency: 'EUR', pv: 78000, counterparty: 'Bank B', maturity: '2027-06-30' },
-        { id: 'FX-001', type: 'FX Forward', notional: 2000000, currency: 'GBP', pv: 45000, counterparty: 'Bank A', maturity: '2025-12-15' },
-        { id: 'IRS-003', type: 'IRS', notional: 8000000, currency: 'JPY', pv: 62000, counterparty: 'Bank C', maturity: '2028-03-20' },
-        { id: 'OPT-001', type: 'Swaption', notional: 15000000, currency: 'USD', pv: 43000, counterparty: 'Bank B', maturity: '2026-09-01' }
-    ]
-};
+// Get demo portfolio data from external JSON or fallback
+function getDemoPortfolioData() {
+    return ExternalData.portfolio || {
+        total_pv: 353000.0,
+        trade_count: 5,
+        trades: [
+            { id: 'IRS-001', type: 'IRS', notional: 10000000, currency: 'USD', pv: 125000, counterparty: 'Bank A', maturity: '2029-01-15' },
+            { id: 'IRS-002', type: 'IRS', notional: 5000000, currency: 'EUR', pv: 78000, counterparty: 'Bank B', maturity: '2027-06-30' },
+            { id: 'FX-001', type: 'FX Forward', notional: 2000000, currency: 'GBP', pv: 45000, counterparty: 'Bank A', maturity: '2025-12-15' },
+            { id: 'IRS-003', type: 'IRS', notional: 8000000, currency: 'JPY', pv: 62000, counterparty: 'Bank C', maturity: '2028-03-20' },
+            { id: 'OPT-001', type: 'Swaption', notional: 15000000, currency: 'USD', pv: 43000, counterparty: 'Bank B', maturity: '2026-09-01' }
+        ]
+    };
+}
 
 async function fetchPortfolio() {
     Logger.debug('API', 'fetchPortfolio() called');
@@ -1278,7 +1321,7 @@ async function fetchPortfolio() {
             data = await fetchJson(`${API_BASE}/portfolio`, {}, 'Failed to fetch portfolio');
         } catch (fetchError) {
             Logger.warn('API', 'Server unavailable, using demo data for portfolio');
-            data = DEMO_PORTFOLIO_DATA;
+            data = getDemoPortfolioData();
         }
         Logger.debug('API', 'Portfolio data received', { tradeCount: data.trade_count });
 
@@ -1746,11 +1789,21 @@ function updateXvaPie(data) {
 // Portfolio - Advanced Features
 // ============================================
 
+// Get enrichment pools from external data or fallback
+function getEnrichmentPools() {
+    const defaultPools = {
+        counterparty_names: ['Goldman Sachs', 'Morgan Stanley', 'JP Morgan', 'Citi', 'HSBC', 'Barclays', 'Deutsche Bank', 'BNP Paribas'],
+        ratings: ['AAA', 'AA+', 'AA', 'AA-', 'A+', 'A', 'A-', 'BBB+', 'BBB']
+    };
+    return ExternalData.enrichmentPools || defaultPools;
+}
+
 // Generate enriched mock data for demo
 function enrichPortfolioData(trades) {
-    const counterparties = ['Goldman Sachs', 'Morgan Stanley', 'JP Morgan', 'Citi', 'HSBC', 'Barclays', 'Deutsche Bank', 'BNP Paribas'];
-    const ratings = ['AAA', 'AA+', 'AA', 'AA-', 'A+', 'A', 'A-', 'BBB+', 'BBB'];
-    
+    const pools = getEnrichmentPools();
+    const counterparties = pools.counterparty_names;
+    const ratings = pools.ratings;
+
     return trades.map(t => ({
         ...t,
         counterparty: counterparties[Math.floor(Math.random() * counterparties.length)],
@@ -3197,18 +3250,22 @@ function initRiskView() {
     initRiskAttributionGrid();
 }
 
-function renderCounterpartyTable() {
-    const tbody = document.getElementById('counterparty-table-body');
-    if (!tbody) return;
-    
-    const counterparties = [
+// Get counterparty data from external JSON or fallback
+function getCounterpartyData() {
+    return ExternalData.counterparties || [
         { name: 'Goldman Sachs', rating: 'AA-', exposure: 12500000, limit: 50000000, cva: 125000, utilization: 25 },
         { name: 'JP Morgan', rating: 'A+', exposure: 9800000, limit: 40000000, cva: 98000, utilization: 24.5 },
         { name: 'Morgan Stanley', rating: 'A', exposure: 7500000, limit: 30000000, cva: 82500, utilization: 25 },
         { name: 'Barclays', rating: 'A-', exposure: 5200000, limit: 20000000, cva: 65000, utilization: 26 },
         { name: 'Deutsche Bank', rating: 'BBB+', exposure: 3100000, limit: 15000000, cva: 48000, utilization: 20.7 }
     ];
-    
+}
+
+function renderCounterpartyTable() {
+    const tbody = document.getElementById('counterparty-table-body');
+    if (!tbody) return;
+
+    const counterparties = getCounterpartyData();
     const colors = ['#6366f1', '#06b6d4', '#10b981', '#f59e0b', '#ec4899'];
     
     tbody.innerHTML = counterparties.map((cpty, i) => {
@@ -3892,18 +3949,22 @@ function initTenorBucketChart() {
     });
 }
 
-function renderNettingSetTable() {
-    const tbody = document.getElementById('netting-set-body');
-    if (!tbody) return;
-    
-    const nettingSets = [
+// Get netting set data from external JSON or fallback
+function getNettingSetData() {
+    return ExternalData.nettingSets || [
         { id: 'NS-001', trades: 45, gross: 8500000, net: 5200000, collateral: 2100000 },
         { id: 'NS-002', trades: 32, gross: 5200000, net: 2800000, collateral: 1500000 },
         { id: 'NS-003', trades: 28, gross: 3800000, net: 1500000, collateral: 800000 },
         { id: 'NS-004', trades: 18, gross: 2100000, net: 800000, collateral: 0 },
         { id: 'NS-005', trades: 12, gross: 1200000, net: 450000, collateral: 200000 }
     ];
-    
+}
+
+function renderNettingSetTable() {
+    const tbody = document.getElementById('netting-set-body');
+    if (!tbody) return;
+
+    const nettingSets = getNettingSetData();
     tbody.innerHTML = nettingSets.map(ns => {
         const benefit = ((ns.gross - ns.net) / ns.gross * 100).toFixed(0);
         return `
@@ -6390,6 +6451,9 @@ function initVisualEffects() {
 async function init() {
     Logger.debug('App', 'init() called');
     try {
+        // Load external data from JSON files
+        await loadExternalData();
+
         // Initialize systems
         Logger.debug('App', 'Creating CommandPalette...');
         new CommandPalette();

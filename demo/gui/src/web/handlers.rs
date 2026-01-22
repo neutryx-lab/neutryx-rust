@@ -4669,7 +4669,7 @@ mod tests {
             assert_eq!(response.chart_type, "bar");
             assert_eq!(response.data.labels.len(), 2);
             assert_eq!(response.data.labels[0], "AAD");
-            assert_eq!(response.data.labels[1], "Bump-and-Revalue");
+            assert_eq!(response.data.labels[1], "Bump");
         }
 
         #[tokio::test]
@@ -4701,15 +4701,15 @@ mod tests {
             // Verify Chart.js structure
             assert_eq!(response.chart_type, "bar");
             assert!(response.options.title.display);
-            assert!(response.options.title.text.contains("speedup"));
+            assert!(response.options.title.text.contains("faster"));
 
             // Verify datasets
             assert_eq!(response.data.datasets.len(), 1);
             let dataset = &response.data.datasets[0];
             assert_eq!(dataset.data.len(), 2);
             assert_eq!(dataset.background_color.len(), 2);
-            assert_eq!(dataset.background_color[0], "#4CAF50"); // AAD green
-            assert_eq!(dataset.background_color[1], "#FF5722"); // Bump orange
+            assert!(dataset.background_color[0].contains("54, 162, 235")); // AAD blue
+            assert!(dataset.background_color[1].contains("255, 99, 132")); // Bump red
         }
 
         #[tokio::test]

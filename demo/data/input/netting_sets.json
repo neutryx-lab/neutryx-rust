@@ -1,0 +1,44 @@
+{
+  "metadata": {
+    "description": "Netting set data for FrictionalBank webapp",
+    "last_updated": "2026-01-22T00:00:00Z",
+    "version": "1.0"
+  },
+  "netting_sets": [
+    {
+      "id": "NS-001",
+      "trades": 45,
+      "gross": 8500000,
+      "net": 5200000,
+      "collateral": 2100000
+    },
+    {
+      "id": "NS-002",
+      "trades": 32,
+      "gross": 5200000,
+      "net": 2800000,
+      "collateral": 1500000
+    },
+    {
+      "id": "NS-003",
+      "trades": 28,
+      "gross": 3800000,
+      "net": 1500000,
+      "collateral": 800000
+    },
+    {
+      "id": "NS-004",
+      "trades": 18,
+      "gross": 2100000,
+      "net": 800000,
+      "collateral": 0
+    },
+    {
+      "id": "NS-005",
+      "trades": 12,
+      "gross": 1200000,
+      "net": 450000,
+      "collateral": 200000
+    }
+  ]
+}
