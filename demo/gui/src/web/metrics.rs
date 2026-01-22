@@ -255,11 +255,7 @@ impl Histogram {
         }
         // +Inf bucket
         cumulative += self.bucket_counts.last().unwrap().load(Ordering::Relaxed);
-        let _ = writeln!(
-            output,
-            "{}_bucket{{le=\"+Inf\"}} {}",
-            self.name, cumulative
-        );
+        let _ = writeln!(output, "{}_bucket{{le=\"+Inf\"}} {}", self.name, cumulative);
 
         // Sum and count
         let _ = writeln!(output, "{}_sum {}", self.name, self.sum());

@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY . .
 
-RUN cargo build --release -p demo_gui --features web --bin demo-web
+RUN cargo build --release -p demo_gui --bin demo-web
 
 # --- Stage 2: Runtime ---
 FROM debian:bookworm-slim

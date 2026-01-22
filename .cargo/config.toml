@@ -5,7 +5,7 @@
 # ============================================================================
 [alias]
 # Launch FrictionalBank Web Dashboard: cargo web
-web = "run -p demo_gui --features web --bin demo-web"
+web = "run -p demo_gui --bin demo-web"
 # Launch TUI Dashboard: cargo tui
 tui = "run -p demo_gui --bin demo-tui"
 #

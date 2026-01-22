@@ -1845,9 +1845,7 @@ fn convert_bootstrap_error(error: BootstrapError) -> (StatusCode, Json<IrsBootst
         }
         BootstrapError::InvalidInput(msg) => (
             StatusCode::BAD_REQUEST,
-            Json(IrsBootstrapErrorResponse::validation_error(
-                msg, "parRates",
-            )),
+            Json(IrsBootstrapErrorResponse::validation_error(msg, "parRates")),
         ),
         BootstrapError::InvalidMaturity {
             maturity,

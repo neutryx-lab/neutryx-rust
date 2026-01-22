@@ -1,6 +1,6 @@
 //! Web dashboard entry point.
 //!
-//! Usage: `cargo run -p demo_gui --features web --bin demo-web`
+//! Usage: `cargo run -p demo_gui --bin demo-web`
 //!        `cargo web`  (alias)
 
 use std::net::SocketAddr;

@@ -191,7 +191,7 @@ cargo run --release --bin demo-tui
 Browser-based interface:
 
 ```bash
-cargo run --release --bin demo-web --features web
+cargo run --release -p demo_gui --bin demo-web
 ```
 
 After startup, open `http://localhost:8080` in your browser.
