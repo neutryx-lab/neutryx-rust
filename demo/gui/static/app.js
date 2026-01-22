@@ -1266,6 +1266,19 @@ function initSidebarAccordion() {
 // ============================================
 // Simple DarkMode Toggle
 // ============================================
+function initTheme() {
+    // Restore theme from localStorage
+    if (localStorage.getItem('theme') === 'light') {
+        document.body.classList.add('light-theme');
+    }
+    // Attach dark mode button listener
+    const btn = document.getElementById('darkmode-btn');
+    if (btn) {
+        btn.removeEventListener('click', toggleDarkMode);
+        btn.addEventListener('click', toggleDarkMode);
+    }
+}
+
 function toggleDarkMode() {
     document.body.classList.toggle('light-theme');
     // Optionally, persist mode
