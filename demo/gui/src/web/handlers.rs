@@ -1424,17 +1424,11 @@ impl SpeedComparisonData {
         }
     }
 
-    fn sample() -> Self {
-        Self::new(150_000.0, 2_500_000.0, 20)
-    }
+    fn sample() -> Self { Self::new(150_000.0, 2_500_000.0, 20) }
 
-    fn aad_mean_us(&self) -> f64 {
-        self.aad_mean_ns / 1000.0
-    }
+    fn aad_mean_us(&self) -> f64 { self.aad_mean_ns / 1000.0 }
 
-    fn bump_mean_us(&self) -> f64 {
-        self.bump_mean_ns / 1000.0
-    }
+    fn bump_mean_us(&self) -> f64 { self.bump_mean_ns / 1000.0 }
 }
 
 /// Query parameters for speed comparison endpoint

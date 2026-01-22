@@ -62,7 +62,10 @@ mod tests {
             expected: "3x3".to_string(),
             got: "2x3".to_string(),
         };
-        assert_eq!(format!("{err}"), "Dimension mismatch: expected 3x3, got 2x3");
+        assert_eq!(
+            format!("{err}"),
+            "Dimension mismatch: expected 3x3, got 2x3"
+        );
     }
 
     #[test]

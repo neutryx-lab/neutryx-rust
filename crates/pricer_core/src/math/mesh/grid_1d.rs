@@ -35,9 +35,7 @@ pub fn uniform_grid<T: Float>(start: T, end: T, n: usize) -> Vec<T> {
     assert!(n >= 2, "Need at least 2 points for a grid");
 
     let step = (end - start) / T::from(n - 1).unwrap();
-    (0..n)
-        .map(|i| start + T::from(i).unwrap() * step)
-        .collect()
+    (0..n).map(|i| start + T::from(i).unwrap() * step).collect()
 }
 
 /// Generate a logarithmically spaced grid.
@@ -92,7 +90,8 @@ pub fn log_grid<T: Float>(start: T, end: T, n: usize) -> Vec<T> {
 /// * `start` - Starting point
 /// * `end` - Ending point
 /// * `center` - Point around which to concentrate
-/// * `intensity` - Concentration intensity (higher = more concentration, 0 = uniform)
+/// * `intensity` - Concentration intensity (higher = more concentration, 0 =
+///   uniform)
 /// * `n` - Number of points (must be >= 2)
 ///
 /// # Example
@@ -112,8 +111,8 @@ pub fn concentrated_grid<T: Float>(start: T, end: T, center: T, intensity: T, n:
         return uniform_grid(start, end, n);
     }
 
-    // Transform: x = center + (end - start) / (2 * intensity) * sinh(intensity * (2*u - 1))
-    // where u goes from 0 to 1
+    // Transform: x = center + (end - start) / (2 * intensity) * sinh(intensity *
+    // (2*u - 1)) where u goes from 0 to 1
     let half_range = (end - start) / T::from(2.0).unwrap();
     let scale = half_range / intensity.sinh();
 
@@ -237,7 +236,10 @@ pub fn two_sided_geometric_grid<T: Float>(
     n: usize,
 ) -> Vec<T> {
     assert!(n >= 3, "Need at least 3 points");
-    assert!(center > start && center < end, "Center must be between start and end");
+    assert!(
+        center > start && center < end,
+        "Center must be between start and end"
+    );
 
     let n_left = n / 2;
     let n_right = n - n_left;
@@ -286,8 +288,9 @@ pub fn two_sided_geometric_grid<T: Float>(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     #[test]
     fn test_uniform_grid() {
@@ -322,7 +325,10 @@ mod tests {
     fn test_log_grid_monotonic() {
         let grid: Vec<f64> = log_grid(0.1, 10.0, 10);
         for i in 1..grid.len() {
-            assert!(grid[i] > grid[i - 1], "Grid must be monotonically increasing");
+            assert!(
+                grid[i] > grid[i - 1],
+                "Grid must be monotonically increasing"
+            );
         }
     }
 
@@ -399,19 +405,18 @@ mod tests {
 
         // Should be monotonic
         for i in 1..grid.len() {
-            assert!(grid[i] > grid[i - 1], "Grid must be monotonically increasing");
+            assert!(
+                grid[i] > grid[i - 1],
+                "Grid must be monotonically increasing"
+            );
         }
     }
 
     #[test]
     #[should_panic(expected = "Need at least 2 points")]
-    fn test_uniform_grid_single_point() {
-        uniform_grid(0.0, 1.0, 1);
-    }
+    fn test_uniform_grid_single_point() { uniform_grid(0.0, 1.0, 1); }
 
     #[test]
     #[should_panic(expected = "Start must be positive")]
-    fn test_log_grid_negative_start() {
-        log_grid(-1.0, 1.0, 5);
-    }
+    fn test_log_grid_negative_start() { log_grid(-1.0, 1.0, 5); }
 }

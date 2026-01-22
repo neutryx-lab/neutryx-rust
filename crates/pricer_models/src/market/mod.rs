@@ -3,7 +3,8 @@
 //! This module provides:
 //! - [`curves`]: Yield curve trait and implementations
 //! - [`surfaces`]: Volatility surface trait and implementations
-//! - [`calibration`]: Model and curve calibration (bootstrapping, SABR, Heston, Hull-White)
+//! - [`calibration`]: Model and curve calibration (bootstrapping, SABR, Heston,
+//!   Hull-White)
 //! - [`provider`]: Lazy market data resolution
 //!
 //! # Architecture
@@ -34,6 +35,16 @@ pub mod provider;
 pub mod surfaces;
 
 // Re-export commonly used types
+// Re-export calibration types
+pub use calibration::{
+    calibrate_heston, calibrate_hull_white, calibrate_sabr, calibrate_sabr_fixed_beta,
+    CalibrationDiagnostics, CalibrationEngine, CalibrationEngineConfig, CalibrationError,
+    CalibrationResult, CalibrationScope, CalibrationTarget, GenericCalibrator,
+    HestonCalibrationData, HestonCalibrator, HestonMarketPoint, HullWhiteCalibrationData,
+    HullWhiteCalibrator, ModelCalibrator, ModelCalibratorConfig, OptionTarget, SABRCalibrationData,
+    SABRCalibrator, SABRSmilePoint, SwaptionCalibrator, SwaptionMarketData, SwaptionMarketPoint,
+    SwaptionTarget, VolatilityType,
+};
 pub use curves::{
     CreditCurve, CurveEnum, CurveInterpolation, CurveName, CurveSet, FlatCurve,
     FlatHazardRateCurve, HazardRateCurve, InterpolatedCurve, YieldCurve,
@@ -43,14 +54,4 @@ pub use provider::MarketProvider;
 pub use surfaces::{
     FlatVol, FxDeltaPoint, FxVolatilitySurface, InterpolatedVolSurface, VolSurfaceEnum,
     VolatilitySurface,
-};
-
-// Re-export calibration types
-pub use calibration::{
-    CalibrationDiagnostics, CalibrationEngine, CalibrationEngineConfig, CalibrationError,
-    CalibrationResult, CalibrationScope, CalibrationTarget, GenericCalibrator, HestonCalibrationData,
-    HestonCalibrator, HestonMarketPoint, HullWhiteCalibrationData, HullWhiteCalibrator,
-    ModelCalibrator, ModelCalibratorConfig, OptionTarget, SABRCalibrationData, SABRCalibrator,
-    SABRSmilePoint, SwaptionCalibrator, SwaptionMarketData, SwaptionMarketPoint, SwaptionTarget,
-    VolatilityType, calibrate_heston, calibrate_hull_white, calibrate_sabr, calibrate_sabr_fixed_beta,
 };

@@ -73,21 +73,15 @@ impl FxConvention {
 
     /// Returns the default EUR FX convention.
     #[must_use]
-    pub fn eur_default() -> Self {
-        Self::eur_usd()
-    }
+    pub fn eur_default() -> Self { Self::eur_usd() }
 
     /// Returns the default GBP FX convention.
     #[must_use]
-    pub fn gbp_default() -> Self {
-        Self::gbp_usd()
-    }
+    pub fn gbp_default() -> Self { Self::gbp_usd() }
 
     /// Returns the default JPY FX convention.
     #[must_use]
-    pub fn jpy_default() -> Self {
-        Self::usd_jpy()
-    }
+    pub fn jpy_default() -> Self { Self::usd_jpy() }
 }
 
 #[cfg(test)]

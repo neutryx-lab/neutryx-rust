@@ -1,6 +1,7 @@
 //! Standard normal distribution functions.
 //!
-//! This module re-exports the high-precision implementations from `pricer_core::math::distributions`.
+//! This module re-exports the high-precision implementations from
+//! `pricer_core::math::distributions`.
 //!
 //! Available functions:
 //! - [`norm_cdf`]: Cumulative distribution function (CDF) - Φ(x)

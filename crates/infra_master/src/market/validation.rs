@@ -1,7 +1,7 @@
 //! Rate validation traits and implementations.
 //!
-//! This module provides the [`RateValidator`] trait and [`StandardRateValidator`]
-//! implementation for validating market rate values.
+//! This module provides the [`RateValidator`] trait and
+//! [`StandardRateValidator`] implementation for validating market rate values.
 //!
 //! # Examples
 //!
@@ -25,9 +25,7 @@
 //! assert!(validator.validate(&rate).is_ok());
 //! ```
 
-use super::error::MarketRateError;
-use super::rate::MarketRate;
-use super::rate_type::RateType;
+use super::{error::MarketRateError, rate::MarketRate, rate_type::RateType};
 
 /// Trait for validating market rates.
 ///
@@ -120,9 +118,7 @@ impl StandardRateValidator {
 
     /// Creates a new `StandardRateValidator`.
     #[must_use]
-    pub fn new() -> Self {
-        Self
-    }
+    pub fn new() -> Self { Self }
 
     /// Validates the basic properties of a rate value.
     ///
@@ -206,8 +202,10 @@ impl RateValidator for StandardRateValidator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::market::{Currency, DataSource, QuoteType, RateId};
-    use crate::time::Tenor;
+    use crate::{
+        market::{Currency, DataSource, QuoteType, RateId},
+        time::Tenor,
+    };
 
     fn create_rate(rate_type: RateType, value: f64) -> MarketRate {
         let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, rate_type);
@@ -263,7 +261,11 @@ mod tests {
             RateType::BasisSwap,
         ] {
             let rate = create_rate(rate_type, 0.05);
-            assert!(validator.validate(&rate).is_ok(), "Failed for {:?}", rate_type);
+            assert!(
+                validator.validate(&rate).is_ok(),
+                "Failed for {:?}",
+                rate_type
+            );
         }
     }
 
@@ -333,7 +335,11 @@ mod tests {
 
         for rate_type in [RateType::FxSpot, RateType::FxForward] {
             let rate = create_rate(rate_type, 1.2345);
-            assert!(validator.validate(&rate).is_ok(), "Failed for {:?}", rate_type);
+            assert!(
+                validator.validate(&rate).is_ok(),
+                "Failed for {:?}",
+                rate_type
+            );
         }
     }
 

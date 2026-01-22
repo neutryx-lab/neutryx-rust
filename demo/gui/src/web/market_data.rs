@@ -14,8 +14,10 @@
 //! - Market conventions
 //! - Instrument definitions
 
-use std::collections::HashMap;
-use std::sync::atomic::{AtomicI64, Ordering};
+use std::{
+    collections::HashMap,
+    sync::atomic::{AtomicI64, Ordering},
+};
 
 use serde::Deserialize;
 
@@ -104,9 +106,7 @@ pub struct MarketDataCache {
 }
 
 impl Default for MarketDataCache {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl MarketDataCache {
@@ -178,13 +178,17 @@ impl MarketDataCache {
         let now_ms = chrono::Utc::now().timestamp_millis();
         let threshold = now_ms - self.staleness_threshold_ms;
 
-        rates.iter().find(|r| r.id == rate_id).map(|r| MarketRateResponse {
-            is_stale: r.timestamp < threshold,
-            ..r.clone()
-        })
+        rates
+            .iter()
+            .find(|r| r.id == rate_id)
+            .map(|r| MarketRateResponse {
+                is_stale: r.timestamp < threshold,
+                ..r.clone()
+            })
     }
 
-    /// Gets detailed information for a rate including instrument and convention.
+    /// Gets detailed information for a rate including instrument and
+    /// convention.
     pub async fn get_rate_detail(&self, rate_id: &str) -> Option<MarketRateDetailResponse> {
         let rate = self.get_rate(rate_id).await?;
 
@@ -219,9 +223,7 @@ impl MarketDataCache {
     }
 
     /// Gets the last update timestamp.
-    pub fn last_updated(&self) -> i64 {
-        self.last_updated.load(Ordering::Relaxed)
-    }
+    pub fn last_updated(&self) -> i64 { self.last_updated.load(Ordering::Relaxed) }
 }
 
 // =============================================================================
@@ -229,7 +231,9 @@ impl MarketDataCache {
 // =============================================================================
 
 /// Loads market data from the JSON file.
-fn load_market_data_from_file(timestamp: i64) -> (Vec<MarketRateResponse>, HashMap<String, ConventionData>) {
+fn load_market_data_from_file(
+    timestamp: i64,
+) -> (Vec<MarketRateResponse>, HashMap<String, ConventionData>) {
     match std::fs::read_to_string(MARKET_DATA_FILE) {
         Ok(content) => match serde_json::from_str::<MarketDataFile>(&content) {
             Ok(data) => {
@@ -238,12 +242,18 @@ fn load_market_data_from_file(timestamp: i64) -> (Vec<MarketRateResponse>, HashM
             }
             Err(e) => {
                 eprintln!("[MarketDataCache] Failed to parse JSON: {e}");
-                (generate_fallback_rates(timestamp), generate_fallback_conventions())
+                (
+                    generate_fallback_rates(timestamp),
+                    generate_fallback_conventions(),
+                )
             }
         },
         Err(_) => {
             // File not found - use fallback data (common in tests)
-            (generate_fallback_rates(timestamp), generate_fallback_conventions())
+            (
+                generate_fallback_rates(timestamp),
+                generate_fallback_conventions(),
+            )
         }
     }
 }
@@ -283,7 +293,11 @@ fn convert_to_rates(data: &MarketDataFile, timestamp: i64) -> Vec<MarketRateResp
 }
 
 /// Converts rates for a single currency.
-fn convert_currency_rates(currency: &str, rates_by_type: &RatesByType, timestamp: i64) -> Vec<MarketRateResponse> {
+fn convert_currency_rates(
+    currency: &str,
+    rates_by_type: &RatesByType,
+    timestamp: i64,
+) -> Vec<MarketRateResponse> {
     let mut rates = Vec::new();
 
     // Deposit rates
@@ -424,7 +438,10 @@ fn generate_fallback_conventions() -> HashMap<String, ConventionData> {
             is_default: true,
             fields: {
                 let mut fields = HashMap::new();
-                fields.insert("fixed_leg_day_count".to_string(), serde_json::json!("ACT/360"));
+                fields.insert(
+                    "fixed_leg_day_count".to_string(),
+                    serde_json::json!("ACT/360"),
+                );
                 fields.insert("float_leg_index".to_string(), serde_json::json!("SOFR"));
                 fields
             },

@@ -1,7 +1,8 @@
 //! CounterParty and NettingSet management module.
 //!
-//! This module provides comprehensive types for managing counterparty relationships,
-//! netting sets, CSA (Credit Support Annex) terms, and credit parameters.
+//! This module provides comprehensive types for managing counterparty
+//! relationships, netting sets, CSA (Credit Support Annex) terms, and credit
+//! parameters.
 //!
 //! # Module Structure
 //!
@@ -55,20 +56,38 @@ pub use netting_set::*;
 /// ```
 pub mod prelude {
     pub use super::{
-        // IDs
-        CcpId, CounterPartyId, LegalEntityId, NettingSetId,
-        // Entities
-        Ccp, CounterParty, NettingSet,
-        // Credit
-        CreditParams, CreditRating,
         // CSA
-        CallFrequency, CollateralHaircut, CsaTerms, EligibleCollateral, SegregationType,
-        // Margin
-        ImModel, ImTerms, MarginTerms, MarginType, RoundingDirection, RoundingRule, SimmVersion,
-        VmTerms,
-        // Config
-        CounterPartySector, ExposureConfig, NettingType,
+        CallFrequency,
+        // Entities
+        Ccp,
+        // IDs
+        CcpId,
+        CollateralHaircut,
+        CounterParty,
         // Error
         CounterPartyError,
+        CounterPartyId,
+        // Config
+        CounterPartySector,
+        // Credit
+        CreditParams,
+        CreditRating,
+        CsaTerms,
+        EligibleCollateral,
+        ExposureConfig,
+        // Margin
+        ImModel,
+        ImTerms,
+        LegalEntityId,
+        MarginTerms,
+        MarginType,
+        NettingSet,
+        NettingSetId,
+        NettingType,
+        RoundingDirection,
+        RoundingRule,
+        SegregationType,
+        SimmVersion,
+        VmTerms,
     };
 }

@@ -108,9 +108,7 @@ impl Date {
     /// // today is the current local date
     /// ```
     #[must_use]
-    pub fn today() -> Self {
-        Date(Local::now().date_naive())
-    }
+    pub fn today() -> Self { Date(Local::now().date_naive()) }
 
     /// Parses a date from ISO 8601 format string (YYYY-MM-DD).
     ///
@@ -152,9 +150,7 @@ impl Date {
     /// assert_eq!(naive.weekday(), chrono::Weekday::Sat);
     /// ```
     #[must_use]
-    pub fn into_inner(self) -> NaiveDate {
-        self.0
-    }
+    pub fn into_inner(self) -> NaiveDate { self.0 }
 
     /// Returns the year component.
     ///
@@ -167,9 +163,7 @@ impl Date {
     /// assert_eq!(date.year(), 2024);
     /// ```
     #[must_use]
-    pub fn year(&self) -> i32 {
-        self.0.year()
-    }
+    pub fn year(&self) -> i32 { self.0.year() }
 
     /// Returns the month component (1-12).
     ///
@@ -182,9 +176,7 @@ impl Date {
     /// assert_eq!(date.month(), 6);
     /// ```
     #[must_use]
-    pub fn month(&self) -> u32 {
-        self.0.month()
-    }
+    pub fn month(&self) -> u32 { self.0.month() }
 
     /// Returns the day component (1-31).
     ///
@@ -197,9 +189,7 @@ impl Date {
     /// assert_eq!(date.day(), 15);
     /// ```
     #[must_use]
-    pub fn day(&self) -> u32 {
-        self.0.day()
-    }
+    pub fn day(&self) -> u32 { self.0.day() }
 
     /// Creates a Date from a NaiveDate.
     ///
@@ -214,9 +204,7 @@ impl Date {
     /// assert_eq!(date.year(), 2024);
     /// ```
     #[must_use]
-    pub fn from_naive(date: NaiveDate) -> Self {
-        Date(date)
-    }
+    pub fn from_naive(date: NaiveDate) -> Self { Date(date) }
 
     /// Convert to Excel serial date (1900-01-01 = 1).
     ///
@@ -330,9 +318,7 @@ impl Sub for Date {
     /// assert_eq!(end - start, 10);
     /// assert_eq!(start - end, -10);
     /// ```
-    fn sub(self, other: Self) -> i64 {
-        (self.0 - other.0).num_days()
-    }
+    fn sub(self, other: Self) -> i64 { (self.0 - other.0).num_days() }
 }
 
 impl Add<i64> for Date {
@@ -366,9 +352,7 @@ impl FromStr for Date {
     type Err = TimeError;
 
     /// Parses a date from ISO 8601 format string (YYYY-MM-DD).
-    fn from_str(s: &str) -> Result<Self, TimeError> {
-        Date::parse(s)
-    }
+    fn from_str(s: &str) -> Result<Self, TimeError> { Date::parse(s) }
 }
 
 impl fmt::Display for Date {
@@ -379,15 +363,11 @@ impl fmt::Display for Date {
 }
 
 impl From<NaiveDate> for Date {
-    fn from(date: NaiveDate) -> Self {
-        Date(date)
-    }
+    fn from(date: NaiveDate) -> Self { Date(date) }
 }
 
 impl From<Date> for NaiveDate {
-    fn from(date: Date) -> Self {
-        date.0
-    }
+    fn from(date: Date) -> Self { date.0 }
 }
 
 #[cfg(test)]

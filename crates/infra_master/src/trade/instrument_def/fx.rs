@@ -3,11 +3,11 @@
 //! This module provides definitions for FX derivatives including
 //! spots, forwards, vanilla options, barrier options, and FX swaps.
 
-use crate::{Currency, Date};
-
-use super::common::{BarrierDirection, BarrierType, ExerciseStyle};
-use super::error::InstrumentError;
-use crate::trade::OptionType;
+use super::{
+    common::{BarrierDirection, BarrierType, ExerciseStyle},
+    error::InstrumentError,
+};
+use crate::{trade::OptionType, Currency, Date};
 
 /// Currency pair representation.
 ///
@@ -25,9 +25,7 @@ pub struct CurrencyPair {
 impl CurrencyPair {
     /// Creates a new currency pair.
     #[must_use]
-    pub fn new(base: Currency, quote: Currency) -> Self {
-        Self { base, quote }
-    }
+    pub fn new(base: Currency, quote: Currency) -> Self { Self { base, quote } }
 
     /// Returns the inverse currency pair.
     #[must_use]
@@ -40,9 +38,7 @@ impl CurrencyPair {
 
     /// Returns the pair as a string (e.g., "EUR/USD").
     #[must_use]
-    pub fn to_string_pair(&self) -> String {
-        format!("{}/{}", self.base.code(), self.quote.code())
-    }
+    pub fn to_string_pair(&self) -> String { format!("{}/{}", self.base.code(), self.quote.code()) }
 }
 
 impl std::fmt::Display for CurrencyPair {
@@ -263,9 +259,7 @@ impl FxSwap {
             ));
         }
         if self.near_rate <= 0.0 || self.far_rate <= 0.0 {
-            return Err(InstrumentError::invalid_parameter(
-                "Rates must be positive",
-            ));
+            return Err(InstrumentError::invalid_parameter("Rates must be positive"));
         }
         if self.far_leg_date <= self.near_leg_date {
             return Err(InstrumentError::invalid_date(
@@ -277,18 +271,14 @@ impl FxSwap {
 
     /// Returns the swap points (far rate - near rate).
     #[must_use]
-    pub fn swap_points(&self) -> f64 {
-        self.far_rate - self.near_rate
-    }
+    pub fn swap_points(&self) -> f64 { self.far_rate - self.near_rate }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn make_test_currency_pair() -> CurrencyPair {
-        CurrencyPair::new(Currency::EUR, Currency::USD)
-    }
+    fn make_test_currency_pair() -> CurrencyPair { CurrencyPair::new(Currency::EUR, Currency::USD) }
 
     #[test]
     fn test_currency_pair_new() {

@@ -4,13 +4,13 @@
 //! from bootstrapped pillar points with interpolation between them.
 
 use num_traits::Float;
-
-use super::config::BootstrapInterpolation;
-use crate::market::{curves::YieldCurve, MarketDataError};
 use pricer_core::math::{
     interpolators::{CubicSplineInterpolator, MonotonicInterpolator},
     numeric::from_f64,
 };
+
+use super::config::BootstrapInterpolation;
+use crate::market::{curves::YieldCurve, MarketDataError};
 
 /// A yield curve constructed from bootstrapped pillar points.
 ///

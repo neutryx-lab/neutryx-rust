@@ -6,8 +6,9 @@
 //!
 //! ## Algorithm
 //!
-//! The implementation uses Gauss-Legendre quadrature based on the Drezner (1978)
-//! algorithm, which provides good accuracy with computational efficiency.
+//! The implementation uses Gauss-Legendre quadrature based on the Drezner
+//! (1978) algorithm, which provides good accuracy with computational
+//! efficiency.
 //!
 //! ## AD Compatibility
 //!
@@ -21,8 +22,7 @@
 
 use num_traits::Float;
 
-use super::normal::norm_cdf;
-use super::DistributionError;
+use super::{normal::norm_cdf, DistributionError};
 
 /// Bivariate normal cumulative distribution function.
 ///
@@ -171,7 +171,7 @@ fn bivariate_normal_core(dh: f64, dk: f64, r: f64) -> f64 {
 
     if r.abs() < 0.925 {
         // Standard case: use simple quadrature
-        let hs = (dh * dh + dk * dk) / 2.0;
+        let hs = f64::midpoint(dh * dh, dk * dk);
         let asr = r.asin();
 
         for i in 0..10 {
@@ -196,14 +196,19 @@ fn bivariate_normal_core(dh: f64, dk: f64, r: f64) -> f64 {
                 let asr = -(bs / ass + hk) / 2.0;
 
                 if asr > -100.0 {
-                    bvn = a * asr.exp() * (1.0 - c * (bs - ass) * (1.0 - d * bs / 5.0) / 3.0
-                        + c * d * ass * ass / 5.0);
+                    bvn = a
+                        * asr.exp()
+                        * (1.0 - c * (bs - ass) * (1.0 - d * bs / 5.0) / 3.0
+                            + c * d * ass * ass / 5.0);
                 }
 
                 if -hk < 100.0 {
                     let b = bs.sqrt();
-                    bvn -= (-hk / 2.0).exp() * twopi.sqrt() * norm_cdf(-b / a)
-                        * b * (1.0 - c * bs * (1.0 - d * bs / 5.0) / 3.0);
+                    bvn -= (-hk / 2.0).exp()
+                        * twopi.sqrt()
+                        * norm_cdf(-b / a)
+                        * b
+                        * (1.0 - c * bs * (1.0 - d * bs / 5.0) / 3.0);
                 }
 
                 let a = a / 2.0;
@@ -213,7 +218,9 @@ fn bivariate_normal_core(dh: f64, dk: f64, r: f64) -> f64 {
                     let asr = -(bs / xs + hk) / 2.0;
 
                     if asr > -100.0 {
-                        bvn += a * W[i] * asr.exp()
+                        bvn += a
+                            * W[i]
+                            * asr.exp()
                             * (rs.exp() / rs - (1.0 + c * xs * (1.0 + d * xs)));
                     }
                 }
@@ -238,14 +245,19 @@ fn bivariate_normal_core(dh: f64, dk: f64, r: f64) -> f64 {
                 let asr = -(bs / ass + hk) / 2.0;
 
                 if asr > -100.0 {
-                    bvn = a * asr.exp() * (1.0 - c * (bs - ass) * (1.0 - d * bs / 5.0) / 3.0
-                        + c * d * ass * ass / 5.0);
+                    bvn = a
+                        * asr.exp()
+                        * (1.0 - c * (bs - ass) * (1.0 - d * bs / 5.0) / 3.0
+                            + c * d * ass * ass / 5.0);
                 }
 
                 if -hk < 100.0 {
                     let b = bs.sqrt();
-                    bvn -= (-hk / 2.0).exp() * twopi.sqrt() * norm_cdf(-b / a)
-                        * b * (1.0 - c * bs * (1.0 - d * bs / 5.0) / 3.0);
+                    bvn -= (-hk / 2.0).exp()
+                        * twopi.sqrt()
+                        * norm_cdf(-b / a)
+                        * b
+                        * (1.0 - c * bs * (1.0 - d * bs / 5.0) / 3.0);
                 }
 
                 let a = a / 2.0;
@@ -255,7 +267,9 @@ fn bivariate_normal_core(dh: f64, dk: f64, r: f64) -> f64 {
                     let asr = -(bs / xs + hk) / 2.0;
 
                     if asr > -100.0 {
-                        bvn += a * W[i] * asr.exp()
+                        bvn += a
+                            * W[i]
+                            * asr.exp()
                             * (rs.exp() / rs - (1.0 + c * xs * (1.0 + d * xs)));
                     }
                 }
@@ -276,8 +290,9 @@ fn bivariate_normal_core(dh: f64, dk: f64, r: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     // ==========================================================================
     // Basic functionality tests
@@ -354,8 +369,14 @@ mod tests {
         // For a=0, b=0: positive correlation should increase probability
         let p_pos = bivariate_norm_cdf(0.0_f64, 0.0_f64, 0.5_f64).unwrap();
         let p_neg = bivariate_norm_cdf(0.0_f64, 0.0_f64, -0.5_f64).unwrap();
-        assert!(p_pos > 0.25, "Positive correlation should increase probability");
-        assert!(p_neg < 0.25, "Negative correlation should decrease probability");
+        assert!(
+            p_pos > 0.25,
+            "Positive correlation should increase probability"
+        );
+        assert!(
+            p_neg < 0.25,
+            "Negative correlation should decrease probability"
+        );
     }
 
     // ==========================================================================
@@ -388,18 +409,25 @@ mod tests {
     fn test_bivariate_norm_cdf_extreme_values() {
         // Very large positive values
         let p = bivariate_norm_cdf(10.0_f64, 10.0_f64, 0.5_f64).unwrap();
-        assert!(p > 0.99, "Large positive values should give p > 0.99, got {p}");
+        assert!(
+            p > 0.99,
+            "Large positive values should give p > 0.99, got {p}"
+        );
 
         // Very large negative values - should be close to 0
         let p = bivariate_norm_cdf(-10.0_f64, -10.0_f64, 0.5_f64).unwrap();
-        assert!(p < 0.01, "Large negative values should give p < 0.01, got {p}");
+        assert!(
+            p < 0.01,
+            "Large negative values should give p < 0.01, got {p}"
+        );
     }
 }
 
 #[cfg(test)]
 mod proptests {
-    use super::*;
     use proptest::prelude::*;
+
+    use super::*;
 
     proptest! {
         #[test]

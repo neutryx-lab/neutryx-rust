@@ -23,7 +23,6 @@
 //! O(1).
 
 use num_traits::Float;
-
 use pricer_core::{
     math::{
         numeric::from_f64,

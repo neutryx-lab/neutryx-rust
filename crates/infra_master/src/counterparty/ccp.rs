@@ -26,6 +26,7 @@ use super::CcpId;
 /// ```
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[allow(clippy::struct_field_names)]
 pub struct Ccp {
     ccp_id: CcpId,
     name: String,
@@ -36,8 +37,8 @@ pub struct Ccp {
 impl Ccp {
     /// Default cleared MPOR (Margin Period of Risk) in business days.
     ///
-    /// Under SA-CCR, the MPOR for cleared transactions is typically 5 business days,
-    /// compared to 10+ days for bilateral transactions.
+    /// Under SA-CCR, the MPOR for cleared transactions is typically 5 business
+    /// days, compared to 10+ days for bilateral transactions.
     pub const CLEARED_MPOR_DAYS: u32 = 5;
 
     /// Creates a new CCP.
@@ -63,48 +64,34 @@ impl Ccp {
     }
 
     /// Returns the CCP ID.
-    pub fn id(&self) -> &CcpId {
-        &self.ccp_id
-    }
+    pub fn id(&self) -> &CcpId { &self.ccp_id }
 
     /// Returns the CCP name.
-    pub fn name(&self) -> &str {
-        &self.name
-    }
+    pub fn name(&self) -> &str { &self.name }
 
     /// Returns the country code if set.
-    pub fn country(&self) -> Option<&str> {
-        self.country.as_deref()
-    }
+    pub fn country(&self) -> Option<&str> { self.country.as_deref() }
 
     /// Returns whether this is a qualifying CCP.
     ///
     /// Qualifying CCPs (QCCPs) receive preferential capital treatment under
     /// Basel III SA-CCR rules. A CCP must meet certain requirements to be
     /// considered qualifying.
-    pub fn is_qualifying(&self) -> bool {
-        self.qualifying
-    }
+    pub fn is_qualifying(&self) -> bool { self.qualifying }
 
     /// Returns the default MPOR for this CCP.
     ///
     /// Currently returns the standard 5 business days for all CCPs.
-    pub fn default_mpor_days(&self) -> u32 {
-        Self::CLEARED_MPOR_DAYS
-    }
+    pub fn default_mpor_days(&self) -> u32 { Self::CLEARED_MPOR_DAYS }
 }
 
 /// Well-known CCPs for convenience.
 impl Ccp {
     /// LCH Ltd (London Clearing House) - SwapClear
-    pub fn lch() -> Self {
-        Self::new("LCH", "LCH Ltd", true).with_country("GB")
-    }
+    pub fn lch() -> Self { Self::new("LCH", "LCH Ltd", true).with_country("GB") }
 
     /// CME Clearing - Interest Rate Swaps
-    pub fn cme() -> Self {
-        Self::new("CME", "CME Clearing", true).with_country("US")
-    }
+    pub fn cme() -> Self { Self::new("CME", "CME Clearing", true).with_country("US") }
 
     /// JSCC (Japan Securities Clearing Corporation)
     pub fn jscc() -> Self {
@@ -112,9 +99,7 @@ impl Ccp {
     }
 
     /// Eurex Clearing
-    pub fn eurex() -> Self {
-        Self::new("EUREX", "Eurex Clearing AG", true).with_country("DE")
-    }
+    pub fn eurex() -> Self { Self::new("EUREX", "Eurex Clearing AG", true).with_country("DE") }
 
     /// ICE Clear Credit
     pub fn ice_credit() -> Self {

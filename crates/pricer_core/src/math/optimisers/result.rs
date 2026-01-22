@@ -74,8 +74,7 @@ mod tests {
 
     #[test]
     fn test_with_message() {
-        let result =
-            OptimisationResult::new(vec![1.0], 0.0, 10, 20, true).with_message("Success!");
+        let result = OptimisationResult::new(vec![1.0], 0.0, 10, 20, true).with_message("Success!");
         assert_eq!(result.message, Some("Success!".to_string()));
     }
 

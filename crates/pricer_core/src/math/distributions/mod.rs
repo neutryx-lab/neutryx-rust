@@ -46,8 +46,8 @@ mod normal;
 
 pub use bivariate_normal::bivariate_norm_cdf;
 pub use chi_squared::{central_chi_squared_cdf, noncentral_chi_squared_cdf};
-pub use copula::{gaussian_copula, CopulaTrait, GaussianCopula};
 #[cfg(feature = "linalg")]
 pub use copula::MultiGaussianCopula;
+pub use copula::{gaussian_copula, CopulaTrait, GaussianCopula};
 pub use error::DistributionError;
 pub use normal::{norm_cdf, norm_inv_cdf, norm_pdf};

@@ -17,10 +17,11 @@
 
 use std::fmt;
 
-use crate::market::{Currency, RateIndex};
-use crate::time::Tenor;
-
 use super::rate_type::RateType;
+use crate::{
+    market::{Currency, RateIndex},
+    time::Tenor,
+};
 
 /// Unique identifier for a market rate.
 ///
@@ -156,8 +157,9 @@ impl fmt::Display for RateId {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::collections::{HashMap, HashSet};
+
+    use super::*;
 
     #[test]
     fn test_rate_id_new() {
@@ -171,8 +173,8 @@ mod tests {
 
     #[test]
     fn test_rate_id_with_index() {
-        let rate_id = RateId::new(Currency::USD, Tenor::OneYear, RateType::Ois)
-            .with_index(RateIndex::Sofr);
+        let rate_id =
+            RateId::new(Currency::USD, Tenor::OneYear, RateType::Ois).with_index(RateIndex::Sofr);
 
         assert_eq!(rate_id.currency, Currency::USD);
         assert_eq!(rate_id.tenor, Tenor::OneYear);
@@ -197,8 +199,8 @@ mod tests {
 
     #[test]
     fn test_rate_id_display_with_index() {
-        let rate_id = RateId::new(Currency::USD, Tenor::OneYear, RateType::Ois)
-            .with_index(RateIndex::Sofr);
+        let rate_id =
+            RateId::new(Currency::USD, Tenor::OneYear, RateType::Ois).with_index(RateIndex::Sofr);
         assert_eq!(format!("{}", rate_id), "USD 1Y OIS (SOFR)");
     }
 
@@ -222,10 +224,10 @@ mod tests {
 
     #[test]
     fn test_rate_id_eq_with_index() {
-        let id1 = RateId::new(Currency::USD, Tenor::OneYear, RateType::Ois)
-            .with_index(RateIndex::Sofr);
-        let id2 = RateId::new(Currency::USD, Tenor::OneYear, RateType::Ois)
-            .with_index(RateIndex::Sofr);
+        let id1 =
+            RateId::new(Currency::USD, Tenor::OneYear, RateType::Ois).with_index(RateIndex::Sofr);
+        let id2 =
+            RateId::new(Currency::USD, Tenor::OneYear, RateType::Ois).with_index(RateIndex::Sofr);
         let id3 = RateId::new(Currency::USD, Tenor::OneYear, RateType::Ois);
 
         assert_eq!(id1, id2);

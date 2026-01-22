@@ -27,4 +27,5 @@ pub mod error;
 pub use distributions::{norm_cdf, norm_inv_cdf, norm_pdf};
 pub use error::AnalyticalError;
 // #[cfg(feature = "fx")]
-// pub use garman_kohlhagen::{fx_call_price, fx_put_price, GarmanKohlhagen, GarmanKohlhagenParams};
+// pub use garman_kohlhagen::{fx_call_price, fx_put_price, GarmanKohlhagen,
+// GarmanKohlhagenParams};

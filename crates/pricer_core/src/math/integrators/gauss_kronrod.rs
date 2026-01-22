@@ -8,8 +8,9 @@
 //! - G7-K15: 7-point Gauss embedded in 15-point Kronrod
 //! - G10-K21: 10-point Gauss embedded in 21-point Kronrod
 
-use super::IntegrationResult;
 use num_traits::Float;
+
+use super::IntegrationResult;
 
 /// Gauss-Kronrod quadrature rule.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -31,8 +32,8 @@ impl GaussKronrodRule {
     }
 }
 
-// G7-K15 rule: 15 Kronrod nodes and weights, 7 Gauss weights (for embedded Gauss rule)
-// Nodes are symmetric around 0
+// G7-K15 rule: 15 Kronrod nodes and weights, 7 Gauss weights (for embedded
+// Gauss rule) Nodes are symmetric around 0
 
 /// K15 nodes (on [-1, 1]).
 const K15_NODES: [f64; 15] = [
@@ -72,7 +73,8 @@ const K15_WEIGHTS: [f64; 15] = [
     0.022_935_322_010_529_22,
 ];
 
-/// G7 weights for embedded Gauss rule (at K15 nodes with indices 1,3,5,7,9,11,13).
+/// G7 weights for embedded Gauss rule (at K15 nodes with indices
+/// 1,3,5,7,9,11,13).
 const G7_WEIGHTS_IN_K15: [f64; 7] = [
     0.129_484_966_168_869_69,
     0.279_705_391_489_276_67,
@@ -135,7 +137,8 @@ const K21_WEIGHTS: [f64; 21] = [
     0.011_694_638_867_371_874,
 ];
 
-/// G10 weights for embedded Gauss rule (at K21 nodes with indices 1,3,5,7,9,11,13,15,17,19).
+/// G10 weights for embedded Gauss rule (at K21 nodes with indices
+/// 1,3,5,7,9,11,13,15,17,19).
 const G10_WEIGHTS_IN_K21: [f64; 10] = [
     0.066_671_344_308_688_14,
     0.149_451_349_150_580_59,
@@ -149,10 +152,12 @@ const G10_WEIGHTS_IN_K21: [f64; 10] = [
     0.066_671_344_308_688_14,
 ];
 
-/// Computes the definite integral of f(x) from a to b using Gauss-Kronrod quadrature.
+/// Computes the definite integral of f(x) from a to b using Gauss-Kronrod
+/// quadrature.
 ///
-/// This method provides both an integral estimate and an error estimate by comparing
-/// the Gauss result (using a subset of nodes) with the Kronrod result (using all nodes).
+/// This method provides both an integral estimate and an error estimate by
+/// comparing the Gauss result (using a subset of nodes) with the Kronrod result
+/// (using all nodes).
 ///
 /// # Arguments
 ///
@@ -163,7 +168,8 @@ const G10_WEIGHTS_IN_K21: [f64; 10] = [
 ///
 /// # Returns
 ///
-/// An `IntegrationResult` containing the integral value, error estimate, and number of evaluations.
+/// An `IntegrationResult` containing the integral value, error estimate, and
+/// number of evaluations.
 ///
 /// # Example
 ///
@@ -174,7 +180,12 @@ const G10_WEIGHTS_IN_K21: [f64; 10] = [
 /// let result = integrate_gauss_kronrod(|x: f64| (-x * x).exp(), 0.0, 1.0, GaussKronrodRule::G7K15);
 /// assert!(result.error_estimate.unwrap() < 1e-10);
 /// ```
-pub fn integrate_gauss_kronrod<T, F>(f: F, a: T, b: T, rule: GaussKronrodRule) -> IntegrationResult<T>
+pub fn integrate_gauss_kronrod<T, F>(
+    f: F,
+    a: T,
+    b: T,
+    rule: GaussKronrodRule,
+) -> IntegrationResult<T>
 where
     T: Float,
     F: Fn(T) -> T,
@@ -256,8 +267,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::f64::consts::PI;
+
+    use super::*;
 
     #[test]
     fn test_rule_num_points() {
@@ -308,7 +320,8 @@ mod tests {
     #[test]
     fn test_gaussian_integral() {
         // Integral of exp(-x^2) from 0 to 1 ~ 0.7468241328124271
-        let result = integrate_gauss_kronrod(|x: f64| (-x * x).exp(), 0.0, 1.0, GaussKronrodRule::G7K15);
+        let result =
+            integrate_gauss_kronrod(|x: f64| (-x * x).exp(), 0.0, 1.0, GaussKronrodRule::G7K15);
         let expected = 0.746_824_132_812_427_1;
         assert!((result.value - expected).abs() < 1e-14);
         assert!(result.error_estimate.unwrap() < 1e-10);
@@ -330,18 +343,10 @@ mod tests {
     #[test]
     fn test_g10k21_higher_precision() {
         // For oscillatory functions, G10K21 should give better error estimates
-        let result7k15 = integrate_gauss_kronrod(
-            |x: f64| (10.0 * x).sin(),
-            0.0,
-            PI,
-            GaussKronrodRule::G7K15,
-        );
-        let result10k21 = integrate_gauss_kronrod(
-            |x: f64| (10.0 * x).sin(),
-            0.0,
-            PI,
-            GaussKronrodRule::G10K21,
-        );
+        let result7k15 =
+            integrate_gauss_kronrod(|x: f64| (10.0 * x).sin(), 0.0, PI, GaussKronrodRule::G7K15);
+        let result10k21 =
+            integrate_gauss_kronrod(|x: f64| (10.0 * x).sin(), 0.0, PI, GaussKronrodRule::G10K21);
 
         // Expected: integral of sin(10x) from 0 to pi = (1 - cos(10*pi)) / 10 = 0
         // (since cos(10*pi) = 1)

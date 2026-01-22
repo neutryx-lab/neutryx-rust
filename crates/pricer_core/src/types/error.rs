@@ -10,16 +10,15 @@
 
 use std::fmt;
 
-use thiserror::Error;
-
 // Re-export from infra_master (authoritative source)
 pub use infra_master::{CurrencyError, DateError};
+use thiserror::Error;
 
 // Import math errors for From implementations
 use crate::math::distributions::DistributionError;
-use crate::math::fitting::FittingError;
-use crate::math::integrators::IntegrationError;
-use crate::math::optimisers::OptimisationError;
+use crate::math::{
+    fitting::FittingError, integrators::IntegrationError, optimisers::OptimisationError,
+};
 
 /// Categorised pricing errors.
 ///
@@ -528,10 +527,10 @@ impl From<DistributionError> for PricingError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::math::distributions::DistributionError;
-    use crate::math::fitting::FittingError;
-    use crate::math::integrators::IntegrationError;
-    use crate::math::optimisers::OptimisationError;
+    use crate::math::{
+        distributions::DistributionError, fitting::FittingError, integrators::IntegrationError,
+        optimisers::OptimisationError,
+    };
 
     // ==========================================================================
     // Math Error Conversion Tests (Task 2.1)

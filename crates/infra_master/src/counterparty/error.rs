@@ -40,7 +40,8 @@ pub enum CounterPartyError {
     #[error("Invalid credit rating: {0}")]
     InvalidRating(String),
 
-    /// Invalid credit parameters (e.g., negative hazard rate, LGD out of range).
+    /// Invalid credit parameters (e.g., negative hazard rate, LGD out of
+    /// range).
     #[error("Invalid credit parameters: {0}")]
     InvalidCreditParams(String),
 

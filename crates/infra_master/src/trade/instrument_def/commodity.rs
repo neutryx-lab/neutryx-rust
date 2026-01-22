@@ -3,11 +3,11 @@
 //! This module provides definitions for commodity derivatives including
 //! forwards, swaps, vanilla options, Asian options, and spread options.
 
-use crate::{Currency, Date, Frequency};
-
-use super::common::ExerciseStyle;
-use super::error::InstrumentError;
-use crate::trade::{OptionType, SettlementType};
+use super::{common::ExerciseStyle, error::InstrumentError};
+use crate::{
+    trade::{OptionType, SettlementType},
+    Currency, Date, Frequency,
+};
 
 /// Energy commodity subtypes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -169,9 +169,7 @@ impl CommodityForward {
 
     /// Returns the total notional value.
     #[must_use]
-    pub fn notional_value(&self) -> f64 {
-        self.quantity * self.forward_price
-    }
+    pub fn notional_value(&self) -> f64 { self.quantity * self.forward_price }
 }
 
 /// Commodity swap.

@@ -3,7 +3,7 @@
 //! These functions provide a convenient interface to nalgebra's decomposition
 //! and solving capabilities, with proper error handling and AD compatibility.
 
-use nalgebra::{Cholesky, DMatrix, DVector, LU, QR, RealField};
+use nalgebra::{Cholesky, DMatrix, DVector, RealField, LU, QR};
 
 use super::error::LinearAlgebraError;
 
@@ -75,7 +75,10 @@ pub fn cholesky_solve<T: RealField + Copy>(
 ///
 /// Returns `SingularMatrix` if the matrix is singular.
 /// Returns `DimensionMismatch` if dimensions are incompatible.
-pub fn lu_solve<T: RealField + Copy>(a: &DMatrix<T>, b: &[T]) -> Result<Vec<T>, LinearAlgebraError> {
+pub fn lu_solve<T: RealField + Copy>(
+    a: &DMatrix<T>,
+    b: &[T],
+) -> Result<Vec<T>, LinearAlgebraError> {
     // Check dimensions
     if a.nrows() != a.ncols() {
         return Err(LinearAlgebraError::NotSquare {
@@ -134,9 +137,11 @@ pub fn qr_solve<T: RealField + Copy>(
     // For square systems, use direct QR solve
     if a.nrows() == a.ncols() {
         let qr = QR::new(a.clone());
-        let x = qr.solve(&b_vec).ok_or(LinearAlgebraError::DecompositionFailed(
-            "QR decomposition could not solve the system".to_string(),
-        ))?;
+        let x = qr
+            .solve(&b_vec)
+            .ok_or(LinearAlgebraError::DecompositionFailed(
+                "QR decomposition could not solve the system".to_string(),
+            ))?;
         return Ok(x.iter().copied().collect());
     }
 
@@ -146,13 +151,16 @@ pub fn qr_solve<T: RealField + Copy>(
     let atb = &at * b_vec;
 
     let lu = LU::new(ata);
-    let x = lu.solve(&atb).ok_or(LinearAlgebraError::DecompositionFailed(
-        "Normal equations could not be solved (system may be rank deficient)".to_string(),
-    ))?;
+    let x = lu
+        .solve(&atb)
+        .ok_or(LinearAlgebraError::DecompositionFailed(
+            "Normal equations could not be solved (system may be rank deficient)".to_string(),
+        ))?;
     Ok(x.iter().copied().collect())
 }
 
-/// Solve a least squares problem using SVD (more robust than QR for ill-conditioned systems).
+/// Solve a least squares problem using SVD (more robust than QR for
+/// ill-conditioned systems).
 ///
 /// Finds x that minimises ||A * x - b||².
 ///
@@ -160,7 +168,8 @@ pub fn qr_solve<T: RealField + Copy>(
 ///
 /// * `a` - Matrix (m x n)
 /// * `b` - Right-hand side vector (length m)
-/// * `epsilon` - Tolerance for singular value cutoff (values below epsilon * max_sv are treated as zero)
+/// * `epsilon` - Tolerance for singular value cutoff (values below epsilon *
+///   max_sv are treated as zero)
 ///
 /// # Returns
 ///
@@ -231,7 +240,9 @@ pub fn inverse<T: RealField + Copy>(a: &DMatrix<T>) -> Result<DMatrix<T>, Linear
             cols: a.ncols(),
         });
     }
-    a.clone().try_inverse().ok_or(LinearAlgebraError::SingularMatrix)
+    a.clone()
+        .try_inverse()
+        .ok_or(LinearAlgebraError::SingularMatrix)
 }
 
 /// Perform Cholesky decomposition.
@@ -338,9 +349,7 @@ pub fn trace<T: RealField + Copy>(a: &DMatrix<T>) -> Result<T, LinearAlgebraErro
 /// # Returns
 ///
 /// The Frobenius norm (sqrt of sum of squared elements)
-pub fn frobenius_norm<T: RealField + Copy>(a: &DMatrix<T>) -> T {
-    a.norm()
-}
+pub fn frobenius_norm<T: RealField + Copy>(a: &DMatrix<T>) -> T { a.norm() }
 
 /// Compute the matrix-vector product A * x.
 ///
@@ -400,8 +409,9 @@ pub fn mat_mat_mul<T: RealField + Copy>(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     fn create_positive_definite_2x2() -> DMatrix<f64> {
         // [4, 2; 2, 3] is positive definite
@@ -431,7 +441,10 @@ mod tests {
         let a = DMatrix::from_row_slice(2, 2, &[-1.0, 0.0, 0.0, -1.0]);
         let b = vec![1.0, 1.0];
         let result = cholesky_solve(&a, &b);
-        assert!(matches!(result, Err(LinearAlgebraError::NotPositiveDefinite)));
+        assert!(matches!(
+            result,
+            Err(LinearAlgebraError::NotPositiveDefinite)
+        ));
     }
 
     #[test]

@@ -6,8 +6,9 @@
 //!
 //! The N-point Gauss-Legendre rule is exact for polynomials up to degree 2N-1.
 
-use super::IntegrationResult;
 use num_traits::Float;
+
+use super::IntegrationResult;
 
 /// Order of the Gauss-Legendre quadrature rule.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -142,7 +143,8 @@ const GL21_WEIGHTS: [f64; 21] = [
     0.016_017_228_257_774_33,
 ];
 
-/// Computes the definite integral of f(x) from a to b using Gauss-Legendre quadrature.
+/// Computes the definite integral of f(x) from a to b using Gauss-Legendre
+/// quadrature.
 ///
 /// # Arguments
 ///
@@ -153,7 +155,8 @@ const GL21_WEIGHTS: [f64; 21] = [
 ///
 /// # Returns
 ///
-/// An `IntegrationResult` containing the integral value and number of evaluations.
+/// An `IntegrationResult` containing the integral value and number of
+/// evaluations.
 ///
 /// # Example
 ///
@@ -164,7 +167,12 @@ const GL21_WEIGHTS: [f64; 21] = [
 /// let result = integrate_gauss_legendre(|x: f64| x.sin(), 0.0, std::f64::consts::PI, GaussLegendreOrder::N15);
 /// assert!((result.value - 2.0).abs() < 1e-14);
 /// ```
-pub fn integrate_gauss_legendre<T, F>(f: F, a: T, b: T, order: GaussLegendreOrder) -> IntegrationResult<T>
+pub fn integrate_gauss_legendre<T, F>(
+    f: F,
+    a: T,
+    b: T,
+    order: GaussLegendreOrder,
+) -> IntegrationResult<T>
 where
     T: Float,
     F: Fn(T) -> T,
@@ -196,8 +204,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::f64::consts::PI;
+
+    use super::*;
 
     #[test]
     fn test_order_num_points() {
@@ -254,7 +263,8 @@ mod tests {
     fn test_higher_order_polynomial() {
         // Integral of x^10 from 0 to 1 = 1/11
         // N7 is exact for degree <= 13
-        let result = integrate_gauss_legendre(|x: f64| x.powi(10), 0.0, 1.0, GaussLegendreOrder::N7);
+        let result =
+            integrate_gauss_legendre(|x: f64| x.powi(10), 0.0, 1.0, GaussLegendreOrder::N7);
         assert!((result.value - 1.0 / 11.0).abs() < 1e-13);
     }
 
@@ -262,8 +272,10 @@ mod tests {
     fn test_n21_higher_precision() {
         // Integral of exp(-x^2) from 0 to 1
         // This is a non-polynomial function that benefits from higher order
-        let result7 = integrate_gauss_legendre(|x: f64| (-x * x).exp(), 0.0, 1.0, GaussLegendreOrder::N7);
-        let result21 = integrate_gauss_legendre(|x: f64| (-x * x).exp(), 0.0, 1.0, GaussLegendreOrder::N21);
+        let result7 =
+            integrate_gauss_legendre(|x: f64| (-x * x).exp(), 0.0, 1.0, GaussLegendreOrder::N7);
+        let result21 =
+            integrate_gauss_legendre(|x: f64| (-x * x).exp(), 0.0, 1.0, GaussLegendreOrder::N21);
 
         // Known value: approximately 0.7468241328124271
         let expected = 0.746_824_132_812_427_1;

@@ -7,9 +7,10 @@
 //! For y values representing discount factors, this ensures that
 //! interpolated values maintain the expected exponential structure.
 
+use num_traits::Float;
+
 use super::Interpolator;
 use crate::types::InterpolationError;
-use num_traits::Float;
 
 /// Log-linear interpolator for discount factors.
 ///
@@ -108,7 +109,7 @@ impl<T: Float> LogLinearInterpolator<T> {
         let mut hi = n - 1;
 
         while hi - lo > 1 {
-            let mid = (lo + hi) / 2;
+            let mid = usize::midpoint(lo, hi);
             if x >= self.xs[mid] {
                 lo = mid;
             } else {
@@ -154,9 +155,7 @@ impl<T: Float> Interpolator<T> for LogLinearInterpolator<T> {
         Ok(log_y.exp())
     }
 
-    fn domain(&self) -> (T, T) {
-        (self.xs[0], self.xs[self.xs.len() - 1])
-    }
+    fn domain(&self) -> (T, T) { (self.xs[0], self.xs[self.xs.len() - 1]) }
 }
 
 #[cfg(test)]

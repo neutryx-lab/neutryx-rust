@@ -1,7 +1,8 @@
 //! Mesh and grid generation utilities.
 //!
 //! This module provides functions for creating 1D and 2D computational grids
-//! commonly used in numerical methods such as finite differences and PDE solvers.
+//! commonly used in numerical methods such as finite differences and PDE
+//! solvers.
 //!
 //! ## 1D Grids
 //!

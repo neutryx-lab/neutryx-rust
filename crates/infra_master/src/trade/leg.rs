@@ -3,9 +3,8 @@
 //! This module provides types for representing legs (streams of cashflows)
 //! in financial instruments.
 
-use crate::{Currency, Date};
-
 use super::cashflow::Cashflow;
+use crate::{Currency, Date};
 
 /// Direction of a leg from the perspective of the trade holder.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -32,15 +31,11 @@ impl Direction {
 
     /// Returns true if this is a payer direction.
     #[must_use]
-    pub fn is_payer(&self) -> bool {
-        matches!(self, Direction::Payer)
-    }
+    pub fn is_payer(&self) -> bool { matches!(self, Direction::Payer) }
 
     /// Returns true if this is a receiver direction.
     #[must_use]
-    pub fn is_receiver(&self) -> bool {
-        matches!(self, Direction::Receiver)
-    }
+    pub fn is_receiver(&self) -> bool { matches!(self, Direction::Receiver) }
 
     /// Returns the opposite direction.
     #[must_use]
@@ -71,15 +66,11 @@ pub enum LegType {
 impl LegType {
     /// Returns true if this is a fixed leg.
     #[must_use]
-    pub fn is_fixed(&self) -> bool {
-        matches!(self, LegType::Fixed)
-    }
+    pub fn is_fixed(&self) -> bool { matches!(self, LegType::Fixed) }
 
     /// Returns true if this is a floating leg.
     #[must_use]
-    pub fn is_floating(&self) -> bool {
-        matches!(self, LegType::Floating)
-    }
+    pub fn is_floating(&self) -> bool { matches!(self, LegType::Floating) }
 }
 
 /// A leg (stream of cashflows) in a financial instrument.
@@ -119,34 +110,28 @@ impl Leg {
     }
 
     /// Returns an iterator over all cashflows in this leg.
-    pub fn cashflows(&self) -> impl Iterator<Item = &Cashflow> {
-        self.cashflows.iter()
-    }
+    pub fn cashflows(&self) -> impl Iterator<Item = &Cashflow> { self.cashflows.iter() }
 
     /// Returns an iterator over future cashflows (payment_date > ref_date).
     pub fn future_cashflows(&self, ref_date: Date) -> impl Iterator<Item = &Cashflow> {
-        self.cashflows.iter().filter(move |cf| cf.is_future(ref_date))
+        self.cashflows
+            .iter()
+            .filter(move |cf| cf.is_future(ref_date))
     }
 
     /// Returns the number of cashflows in this leg.
     #[must_use]
-    pub fn len(&self) -> usize {
-        self.cashflows.len()
-    }
+    pub fn len(&self) -> usize { self.cashflows.len() }
 
     /// Returns true if this leg has no cashflows.
     #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.cashflows.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.cashflows.is_empty() }
 
     /// Returns the total notional of the leg.
     ///
     /// If the leg has varying notionals, returns the first cashflow's notional.
     #[must_use]
-    pub fn notional(&self) -> f64 {
-        self.cashflows.first().map_or(0.0, |cf| cf.notional)
-    }
+    pub fn notional(&self) -> f64 { self.cashflows.first().map_or(0.0, |cf| cf.notional) }
 
     /// Returns the first payment date in this leg.
     #[must_use]
@@ -206,7 +191,12 @@ mod tests {
             ),
         ];
 
-        Leg::new(cashflows, Direction::Receiver, LegType::Fixed, Currency::USD)
+        Leg::new(
+            cashflows,
+            Direction::Receiver,
+            LegType::Fixed,
+            Currency::USD,
+        )
     }
 
     #[test]

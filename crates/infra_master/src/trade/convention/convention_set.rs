@@ -46,9 +46,7 @@ pub struct ConventionSet {
 impl ConventionSet {
     /// Creates a new empty convention set.
     #[must_use]
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     // ---- Builder methods ----
 
@@ -100,7 +98,8 @@ impl ConventionSet {
     ///
     /// # Errors
     ///
-    /// Returns `InstrumentError::MissingConvention` if swap convention is not set.
+    /// Returns `InstrumentError::MissingConvention` if swap convention is not
+    /// set.
     pub fn get_swap(&self) -> Result<&SwapConvention, InstrumentError> {
         self.swap
             .as_ref()
@@ -111,7 +110,8 @@ impl ConventionSet {
     ///
     /// # Errors
     ///
-    /// Returns `InstrumentError::MissingConvention` if FRA convention is not set.
+    /// Returns `InstrumentError::MissingConvention` if FRA convention is not
+    /// set.
     pub fn get_fra(&self) -> Result<&FraConvention, InstrumentError> {
         self.fra
             .as_ref()
@@ -122,7 +122,8 @@ impl ConventionSet {
     ///
     /// # Errors
     ///
-    /// Returns `InstrumentError::MissingConvention` if cap/floor convention is not set.
+    /// Returns `InstrumentError::MissingConvention` if cap/floor convention is
+    /// not set.
     pub fn get_cap_floor(&self) -> Result<&CapFloorConvention, InstrumentError> {
         self.cap_floor
             .as_ref()
@@ -133,7 +134,8 @@ impl ConventionSet {
     ///
     /// # Errors
     ///
-    /// Returns `InstrumentError::MissingConvention` if FX convention is not set.
+    /// Returns `InstrumentError::MissingConvention` if FX convention is not
+    /// set.
     pub fn get_fx(&self) -> Result<&FxConvention, InstrumentError> {
         self.fx
             .as_ref()
@@ -144,7 +146,8 @@ impl ConventionSet {
     ///
     /// # Errors
     ///
-    /// Returns `InstrumentError::MissingConvention` if CDS convention is not set.
+    /// Returns `InstrumentError::MissingConvention` if CDS convention is not
+    /// set.
     pub fn get_cds(&self) -> Result<&CdsConvention, InstrumentError> {
         self.cds
             .as_ref()
@@ -155,7 +158,8 @@ impl ConventionSet {
     ///
     /// # Errors
     ///
-    /// Returns `InstrumentError::MissingConvention` if bond convention is not set.
+    /// Returns `InstrumentError::MissingConvention` if bond convention is not
+    /// set.
     pub fn get_bond(&self) -> Result<&BondConvention, InstrumentError> {
         self.bond
             .as_ref()

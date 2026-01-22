@@ -1,8 +1,8 @@
 //! Standard instrument definitions for financial products.
 //!
-//! This module provides comprehensive definitions for standard financial instruments
-//! across all asset classes (Rates, FX, Equity, Credit, Commodity) as used by
-//! Tier-1 bank trading desks.
+//! This module provides comprehensive definitions for standard financial
+//! instruments across all asset classes (Rates, FX, Equity, Credit, Commodity)
+//! as used by Tier-1 bank trading desks.
 //!
 //! # Architecture
 //!
@@ -38,29 +38,24 @@ mod fx;
 mod rates;
 
 // Re-exports
-pub use common::{
-    AssetClass, BarrierDirection, BarrierType, ExerciseStyle, NotionalSchedule, PayerReceiver,
-};
-pub use error::InstrumentError;
-
-// Rates instruments
-pub use rates::{CapFloor, CapFloorType, CmsSwap, Frn, InflationSwap, SwapType, Swaption};
-
-// FX instruments
-pub use fx::{CurrencyPair, FxBarrierOption, FxForward, FxSpot, FxSwap, FxVanillaOption};
-
-// Equity instruments
-pub use equity::{
-    AsianOption, AveragingType, BasketComponent, BasketOption, EquityBarrierOption,
-    EquityForward, EquityReturnType, EquitySwap, EquityUnderlying, EquityVanillaOption,
-    LookbackOption, LookbackType, MonitoringFrequency,
-};
-
-// Credit instruments
-pub use credit::{Cds, CdsIndex, CdsOption, CreditEvent, NtdBasket};
-
 // Commodity instruments
 pub use commodity::{
     AgricultureType, CommodityAsianOption, CommodityForward, CommoditySwap, CommodityType,
     CommodityVanillaOption, EnergyType, MetalType, QuantityUnit, SpreadOption,
 };
+pub use common::{
+    AssetClass, BarrierDirection, BarrierType, ExerciseStyle, NotionalSchedule, PayerReceiver,
+};
+// Credit instruments
+pub use credit::{Cds, CdsIndex, CdsOption, CreditEvent, NtdBasket};
+// Equity instruments
+pub use equity::{
+    AsianOption, AveragingType, BasketComponent, BasketOption, EquityBarrierOption, EquityForward,
+    EquityReturnType, EquitySwap, EquityUnderlying, EquityVanillaOption, LookbackOption,
+    LookbackType, MonitoringFrequency,
+};
+pub use error::InstrumentError;
+// FX instruments
+pub use fx::{CurrencyPair, FxBarrierOption, FxForward, FxSpot, FxSwap, FxVanillaOption};
+// Rates instruments
+pub use rates::{CapFloor, CapFloorType, CmsSwap, Frn, InflationSwap, SwapType, Swaption};

@@ -1,5 +1,6 @@
 // Clippy configuration for pricer_pricing
 // Mathematical constants from academic papers are left as-is for traceability
+#![allow(unexpected_cfgs)]
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::return_self_not_must_use)]
@@ -99,7 +100,6 @@
 //!   system (enzyme-ad feature)
 //! - **Optional L1/L2**: Use `--features l1l2-integration` to enable
 //!   pricer_core/pricer_models
-//!
 // Enzyme AD: Enable autodiff feature when enzyme-ad feature is active
 // This requires nightly Rust (nightly-2025-01-15) with Enzyme LLVM plugin
 // Requirement 1.1: #![feature(autodiff)] を有効化する仕組み

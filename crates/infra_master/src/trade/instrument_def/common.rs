@@ -42,7 +42,8 @@ impl std::fmt::Display for AssetClass {
 /// Exercise style for option instruments.
 ///
 /// Note: This is distinct from `ExerciseType` in the trade module which is used
-/// for trade-level exercise specifications. This enum is for instrument definitions.
+/// for trade-level exercise specifications. This enum is for instrument
+/// definitions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ExerciseStyle {
@@ -123,9 +124,7 @@ impl NotionalSchedule {
 
     /// Creates a notional schedule from a vector of amounts.
     #[must_use]
-    pub fn from_schedule(notionals: Vec<f64>) -> Self {
-        Self { notionals }
-    }
+    pub fn from_schedule(notionals: Vec<f64>) -> Self { Self { notionals } }
 
     /// Returns the notional for a given period index.
     ///
@@ -144,7 +143,10 @@ impl NotionalSchedule {
     #[must_use]
     pub fn is_constant(&self) -> bool {
         self.notionals.len() <= 1
-            || self.notionals.windows(2).all(|w| (w[0] - w[1]).abs() < 1e-10)
+            || self
+                .notionals
+                .windows(2)
+                .all(|w| (w[0] - w[1]).abs() < 1e-10)
     }
 }
 

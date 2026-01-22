@@ -61,6 +61,16 @@ mod swaption_calibrator;
 mod targets;
 
 // Primary exports (new API)
+// Re-export bootstrapping types
+pub use bootstrapping::{
+    AdjointSolver, AdjointSolverConfig, BootstrapCache, BootstrapConfig, BootstrapError,
+    BootstrapInterpolation, BootstrapResult, BootstrappedCurve, BootstrappedCurveBuilder,
+    BufferPool, CachedBootstrapper, CurveBootstrapper, CurveCache, DateCalculator,
+    DateCalculatorBuilder, GenericBootstrapConfig, GenericBootstrapConfigBuilder,
+    GenericBootstrapResult, InterpolationIndices, InterpolationMethod, MultiCurveBuilder,
+    ParallelCurveSetBuilder, SensitivityBootstrapper, SequentialBootstrapper, SolveResult,
+    SolveResultWithSensitivities, SolverType,
+};
 pub use engine::{
     CalibrationEngine,
     CalibrationEngineConfig,
@@ -87,14 +97,3 @@ pub use swaption_calibrator::{
     SwaptionCalibrator, SwaptionMarketData, SwaptionMarketPoint, VolatilityType,
 };
 pub use targets::{CalibrationTarget, OptionTarget, SwaptionTarget};
-
-// Re-export bootstrapping types
-pub use bootstrapping::{
-    AdjointSolver, AdjointSolverConfig, BootstrapCache, BootstrapConfig, BootstrapError,
-    BootstrapInterpolation, BootstrapResult, BootstrappedCurve, BootstrappedCurveBuilder,
-    BufferPool, CachedBootstrapper, CurveBootstrapper, CurveCache, DateCalculator,
-    DateCalculatorBuilder, GenericBootstrapConfig, GenericBootstrapConfigBuilder,
-    GenericBootstrapResult, InterpolationIndices, InterpolationMethod, MultiCurveBuilder,
-    ParallelCurveSetBuilder, SensitivityBootstrapper, SequentialBootstrapper, SolveResult,
-    SolveResultWithSensitivities, SolverType,
-};

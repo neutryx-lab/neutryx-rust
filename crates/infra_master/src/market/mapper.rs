@@ -1,7 +1,8 @@
 //! Instrument mapping for market rates.
 //!
-//! This module provides the [`InstrumentMapper`] trait and [`StandardInstrumentMapper`]
-//! implementation for converting market rates to trading instruments.
+//! This module provides the [`InstrumentMapper`] trait and
+//! [`StandardInstrumentMapper`] implementation for converting market rates to
+//! trading instruments.
 //!
 //! # Examples
 //!
@@ -27,11 +28,11 @@
 //! assert!(instrument.is_ok());
 //! ```
 
-use super::error::MarketRateError;
-use super::rate::MarketRate;
-use super::rate_type::RateType;
-use crate::time::{Date, EndOfMonthRule};
-use crate::trade::Instrument;
+use super::{error::MarketRateError, rate::MarketRate, rate_type::RateType};
+use crate::{
+    time::{Date, EndOfMonthRule},
+    trade::Instrument,
+};
 
 /// Trait for mapping market rates to instruments.
 ///
@@ -70,7 +71,8 @@ pub trait InstrumentMapper {
     ///
     /// # Errors
     ///
-    /// Returns [`MarketRateError::MappingFailed`] if the rate type cannot be mapped.
+    /// Returns [`MarketRateError::MappingFailed`] if the rate type cannot be
+    /// mapped.
     fn map_to_instrument(
         &self,
         rate: &MarketRate,
@@ -122,9 +124,7 @@ pub struct StandardInstrumentMapper {
 }
 
 impl Default for StandardInstrumentMapper {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl StandardInstrumentMapper {
@@ -229,10 +229,10 @@ impl StandardInstrumentMapper {
     fn map_futures(&self, rate: &MarketRate, valuation_date: Date) -> Instrument {
         // For futures, the start date is typically the expiry date
         // which depends on IMM dates. Simplified: use spot + tenor.
-        let expiry = rate.id.tenor.add_to_date(
-            self.spot_date(valuation_date),
-            self.eom_rule,
-        );
+        let expiry = rate
+            .id
+            .tenor
+            .add_to_date(self.spot_date(valuation_date), self.eom_rule);
 
         // Convert rate to price: price = 100 - rate × 100
         // e.g., 5% rate → price = 95.0
@@ -305,8 +305,10 @@ impl InstrumentMapper for StandardInstrumentMapper {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::market::{Currency, DataSource, QuoteType, RateId};
-    use crate::time::Tenor;
+    use crate::{
+        market::{Currency, DataSource, QuoteType, RateId},
+        time::Tenor,
+    };
 
     fn test_rate(rate_type: RateType, tenor: Tenor, value: f64) -> MarketRate {
         let rate_id = RateId::new(Currency::USD, tenor, rate_type);
@@ -320,9 +322,7 @@ mod tests {
         .unwrap()
     }
 
-    fn valuation_date() -> Date {
-        Date::from_ymd(2024, 1, 15).unwrap()
-    }
+    fn valuation_date() -> Date { Date::from_ymd(2024, 1, 15).unwrap() }
 
     #[test]
     fn test_standard_mapper_new() {
@@ -582,10 +582,10 @@ mod tests {
 
         // Test various rates
         let test_cases = [
-            (0.0, 100.0),    // 0% → 100
-            (0.01, 99.0),    // 1% → 99
-            (0.05, 95.0),    // 5% → 95
-            (0.10, 90.0),    // 10% → 90
+            (0.0, 100.0), // 0% → 100
+            (0.01, 99.0), // 1% → 99
+            (0.05, 95.0), // 5% → 95
+            (0.10, 90.0), // 10% → 90
         ];
 
         for (rate_val, expected_price) in test_cases {

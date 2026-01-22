@@ -85,7 +85,10 @@ impl FromStr for PaymentFrequency {
             "semiannual" | "6m" => Ok(Self::SemiAnnual),
             "quarterly" | "3m" => Ok(Self::Quarterly),
             "monthly" | "1m" => Ok(Self::Monthly),
-            _ => Err(ScheduleError::new(format!("Invalid payment frequency: {}", s))),
+            _ => Err(ScheduleError::new(format!(
+                "Invalid payment frequency: {}",
+                s
+            ))),
         }
     }
 }
@@ -110,7 +113,10 @@ impl FromStr for DayCountConvention {
             "act360" | "actual360" => Ok(Self::Act360),
             "act365" | "actual365" | "act365fixed" => Ok(Self::Act365),
             "thirty360" | "30360" | "bond" => Ok(Self::Thirty360),
-            _ => Err(ScheduleError::new(format!("Invalid day count convention: {}", s))),
+            _ => Err(ScheduleError::new(format!(
+                "Invalid day count convention: {}",
+                s
+            ))),
         }
     }
 }
@@ -155,10 +161,7 @@ impl FromStr for Tenor {
             Ok(Self { months, code: s })
         } else if s == "ON" || s == "O/N" {
             // Overnight - special case
-            Ok(Self {
-                months: 0,
-                code: s,
-            })
+            Ok(Self { months: 0, code: s })
         } else {
             Err(ScheduleError::new(format!("Invalid tenor format: {}", s)))
         }
@@ -230,9 +233,7 @@ impl SimpleDate {
     }
 
     /// Returns true if this date is the last day of its month.
-    pub fn is_end_of_month(&self) -> bool {
-        self.day == Self::days_in_month(self.year, self.month)
-    }
+    pub fn is_end_of_month(&self) -> bool { self.day == Self::days_in_month(self.year, self.month) }
 
     /// Adds months to this date.
     pub fn add_months(&self, months: u32) -> Self {
@@ -271,16 +272,12 @@ impl SimpleDate {
     /// Returns the number of days between two dates (approximate).
     pub fn days_between(&self, other: &Self) -> i64 {
         // Simple approximation: days since year 0
-        let self_days = self.year as i64 * 365
-            + self.year as i64 / 4
-            - self.year as i64 / 100
+        let self_days = self.year as i64 * 365 + self.year as i64 / 4 - self.year as i64 / 100
             + self.year as i64 / 400
             + (self.month as i64 - 1) * 30
             + self.day as i64;
 
-        let other_days = other.year as i64 * 365
-            + other.year as i64 / 4
-            - other.year as i64 / 100
+        let other_days = other.year as i64 * 365 + other.year as i64 / 4 - other.year as i64 / 100
             + other.year as i64 / 400
             + (other.month as i64 - 1) * 30
             + other.day as i64;

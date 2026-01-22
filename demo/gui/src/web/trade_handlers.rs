@@ -20,12 +20,7 @@
 
 use std::{sync::Arc, time::Instant};
 
-use axum::{
-    extract::State,
-    http::StatusCode,
-    response::IntoResponse,
-    Json,
-};
+use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use serde_json::json;
 use uuid::Uuid;
 
@@ -85,7 +80,9 @@ pub async fn get_instruments() -> impl IntoResponse {
 // =============================================================================
 
 /// Expands an instrument into a Trade structure.
-fn expand_instrument(request: &TradeExpandRequest) -> Result<TradeExpandResponse, TradeExpandError> {
+fn expand_instrument(
+    request: &TradeExpandRequest,
+) -> Result<TradeExpandResponse, TradeExpandError> {
     // Validate parameters first
     validate_request(request)?;
 
@@ -110,9 +107,9 @@ fn expand_instrument(request: &TradeExpandRequest) -> Result<TradeExpandResponse
         TradeInstrumentType::EquityForward => expand_equity_forward(request),
 
         // Unsupported instruments (placeholders)
-        TradeInstrumentType::Cds | TradeInstrumentType::CommodityForward => {
-            Err(TradeExpandError::unsupported_instrument(request.instrument_type))
-        }
+        TradeInstrumentType::Cds | TradeInstrumentType::CommodityForward => Err(
+            TradeExpandError::unsupported_instrument(request.instrument_type),
+        ),
     }
 }
 
@@ -132,32 +129,50 @@ fn validate_request(request: &TradeExpandRequest) -> Result<(), TradeExpandError
 
 fn validate_rates_params(params: &RatesParams) -> Result<(), TradeExpandError> {
     if params.currency.is_empty() {
-        return Err(TradeExpandError::validation("currency", "Currency is required"));
+        return Err(TradeExpandError::validation(
+            "currency",
+            "Currency is required",
+        ));
     }
     if params.start_date.is_empty() {
-        return Err(TradeExpandError::validation("startDate", "Start date is required"));
+        return Err(TradeExpandError::validation(
+            "startDate",
+            "Start date is required",
+        ));
     }
     if params.tenor.is_empty() {
         return Err(TradeExpandError::validation("tenor", "Tenor is required"));
     }
     if params.notional <= 0.0 {
-        return Err(TradeExpandError::validation("notional", "Notional must be positive"));
+        return Err(TradeExpandError::validation(
+            "notional",
+            "Notional must be positive",
+        ));
     }
     Ok(())
 }
 
 fn validate_swap_params(params: &SwapParams) -> Result<(), TradeExpandError> {
     if params.currency.is_empty() {
-        return Err(TradeExpandError::validation("currency", "Currency is required"));
+        return Err(TradeExpandError::validation(
+            "currency",
+            "Currency is required",
+        ));
     }
     if params.start_date.is_empty() {
-        return Err(TradeExpandError::validation("startDate", "Start date is required"));
+        return Err(TradeExpandError::validation(
+            "startDate",
+            "Start date is required",
+        ));
     }
     if params.tenor.is_empty() {
         return Err(TradeExpandError::validation("tenor", "Tenor is required"));
     }
     if params.notional <= 0.0 {
-        return Err(TradeExpandError::validation("notional", "Notional must be positive"));
+        return Err(TradeExpandError::validation(
+            "notional",
+            "Notional must be positive",
+        ));
     }
     if params.payment_frequency.is_empty() {
         return Err(TradeExpandError::validation(
@@ -166,7 +181,10 @@ fn validate_swap_params(params: &SwapParams) -> Result<(), TradeExpandError> {
         ));
     }
     if params.day_count.is_empty() {
-        return Err(TradeExpandError::validation("dayCount", "Day count convention is required"));
+        return Err(TradeExpandError::validation(
+            "dayCount",
+            "Day count convention is required",
+        ));
     }
     Ok(())
 }
@@ -185,29 +203,50 @@ fn validate_fx_params(params: &FxParams) -> Result<(), TradeExpandError> {
         ));
     }
     if params.spot_rate <= 0.0 {
-        return Err(TradeExpandError::validation("spotRate", "Spot rate must be positive"));
+        return Err(TradeExpandError::validation(
+            "spotRate",
+            "Spot rate must be positive",
+        ));
     }
     if params.notional <= 0.0 {
-        return Err(TradeExpandError::validation("notional", "Notional must be positive"));
+        return Err(TradeExpandError::validation(
+            "notional",
+            "Notional must be positive",
+        ));
     }
     if params.expiry.is_empty() {
-        return Err(TradeExpandError::validation("expiry", "Expiry date is required"));
+        return Err(TradeExpandError::validation(
+            "expiry",
+            "Expiry date is required",
+        ));
     }
     Ok(())
 }
 
 fn validate_equity_params(params: &EquityParams) -> Result<(), TradeExpandError> {
     if params.underlying.is_empty() {
-        return Err(TradeExpandError::validation("underlying", "Underlying is required"));
+        return Err(TradeExpandError::validation(
+            "underlying",
+            "Underlying is required",
+        ));
     }
     if params.spot_price <= 0.0 {
-        return Err(TradeExpandError::validation("spotPrice", "Spot price must be positive"));
+        return Err(TradeExpandError::validation(
+            "spotPrice",
+            "Spot price must be positive",
+        ));
     }
     if params.strike <= 0.0 {
-        return Err(TradeExpandError::validation("strike", "Strike must be positive"));
+        return Err(TradeExpandError::validation(
+            "strike",
+            "Strike must be positive",
+        ));
     }
     if params.expiry.is_empty() {
-        return Err(TradeExpandError::validation("expiry", "Expiry date is required"));
+        return Err(TradeExpandError::validation(
+            "expiry",
+            "Expiry date is required",
+        ));
     }
     if params.volatility <= 0.0 {
         return Err(TradeExpandError::validation(
@@ -226,7 +265,12 @@ fn validate_equity_params(params: &EquityParams) -> Result<(), TradeExpandError>
 fn expand_deposit(request: &TradeExpandRequest) -> Result<TradeExpandResponse, TradeExpandError> {
     let params = match &request.params {
         InstrumentParamsUnion::Rates(p) => p,
-        _ => return Err(TradeExpandError::validation("params", "Expected Rates parameters")),
+        _ => {
+            return Err(TradeExpandError::validation(
+                "params",
+                "Expected Rates parameters",
+            ))
+        }
     };
 
     let trade_id = generate_trade_id("DEP");
@@ -261,7 +305,12 @@ fn expand_deposit(request: &TradeExpandRequest) -> Result<TradeExpandResponse, T
 fn expand_fra(request: &TradeExpandRequest) -> Result<TradeExpandResponse, TradeExpandError> {
     let params = match &request.params {
         InstrumentParamsUnion::Rates(p) => p,
-        _ => return Err(TradeExpandError::validation("params", "Expected Rates parameters")),
+        _ => {
+            return Err(TradeExpandError::validation(
+                "params",
+                "Expected Rates parameters",
+            ))
+        }
     };
 
     let trade_id = generate_trade_id("FRA");
@@ -271,7 +320,7 @@ fn expand_fra(request: &TradeExpandRequest) -> Result<TradeExpandResponse, Trade
         payment_date: params.start_date.clone(), // Settlement at start
         accrual_start: params.start_date.clone(),
         accrual_end: params.start_date.clone(), // Will be calculated
-        year_fraction: 0.25, // Typically 3M
+        year_fraction: 0.25,                    // Typically 3M
         notional: params.notional,
         payoff_type: "Linear".to_string(),
         rate: Some(params.rate),
@@ -302,7 +351,12 @@ fn expand_fra(request: &TradeExpandRequest) -> Result<TradeExpandResponse, Trade
 fn expand_futures(request: &TradeExpandRequest) -> Result<TradeExpandResponse, TradeExpandError> {
     let params = match &request.params {
         InstrumentParamsUnion::Rates(p) => p,
-        _ => return Err(TradeExpandError::validation("params", "Expected Rates parameters")),
+        _ => {
+            return Err(TradeExpandError::validation(
+                "params",
+                "Expected Rates parameters",
+            ))
+        }
     };
 
     let trade_id = generate_trade_id("FUT");
@@ -357,7 +411,12 @@ fn expand_ois(request: &TradeExpandRequest) -> Result<TradeExpandResponse, Trade
             // Convert SwapParams to RatesParams for OIS
             return expand_ois_from_swap(p);
         }
-        _ => return Err(TradeExpandError::validation("params", "Expected Rates or Swap parameters")),
+        _ => {
+            return Err(TradeExpandError::validation(
+                "params",
+                "Expected Rates or Swap parameters",
+            ))
+        }
     };
 
     let trade_id = generate_trade_id("OIS");
@@ -443,10 +502,17 @@ fn expand_ois_from_swap(params: &SwapParams) -> Result<TradeExpandResponse, Trad
 }
 
 /// Expands a BasisSwap instrument.
-fn expand_basis_swap(request: &TradeExpandRequest) -> Result<TradeExpandResponse, TradeExpandError> {
+fn expand_basis_swap(
+    request: &TradeExpandRequest,
+) -> Result<TradeExpandResponse, TradeExpandError> {
     let params = match &request.params {
         InstrumentParamsUnion::Swap(p) => p,
-        _ => return Err(TradeExpandError::validation("params", "Expected Swap parameters")),
+        _ => {
+            return Err(TradeExpandError::validation(
+                "params",
+                "Expected Swap parameters",
+            ))
+        }
     };
 
     let trade_id = generate_trade_id("BSW");
@@ -496,7 +562,12 @@ fn expand_basis_swap(request: &TradeExpandRequest) -> Result<TradeExpandResponse
 fn expand_irs(request: &TradeExpandRequest) -> Result<TradeExpandResponse, TradeExpandError> {
     let params = match &request.params {
         InstrumentParamsUnion::Swap(p) => p,
-        _ => return Err(TradeExpandError::validation("params", "Expected Swap parameters")),
+        _ => {
+            return Err(TradeExpandError::validation(
+                "params",
+                "Expected Swap parameters",
+            ))
+        }
     };
 
     let trade_id = generate_trade_id("IRS");
@@ -524,7 +595,12 @@ fn expand_irs(request: &TradeExpandRequest) -> Result<TradeExpandResponse, Trade
         direction: "Payer".to_string(),
         currency: params.currency.clone(),
         leg_type: "Floating".to_string(),
-        cashflows: schedule_to_cashflows(&schedule, params.notional, params.spread.unwrap_or(0.0), "Linear"),
+        cashflows: schedule_to_cashflows(
+            &schedule,
+            params.notional,
+            params.spread.unwrap_or(0.0),
+            "Linear",
+        ),
     };
 
     let total_cf = fixed_leg.cashflows.len() + floating_leg.cashflows.len();
@@ -546,10 +622,17 @@ fn expand_irs(request: &TradeExpandRequest) -> Result<TradeExpandResponse, Trade
 // =============================================================================
 
 /// Expands an FX Forward instrument.
-fn expand_fx_forward(request: &TradeExpandRequest) -> Result<TradeExpandResponse, TradeExpandError> {
+fn expand_fx_forward(
+    request: &TradeExpandRequest,
+) -> Result<TradeExpandResponse, TradeExpandError> {
     let params = match &request.params {
         InstrumentParamsUnion::Fx(p) => p,
-        _ => return Err(TradeExpandError::validation("params", "Expected FX parameters")),
+        _ => {
+            return Err(TradeExpandError::validation(
+                "params",
+                "Expected FX parameters",
+            ))
+        }
     };
 
     let trade_id = generate_trade_id("FXF");
@@ -606,7 +689,12 @@ fn expand_fx_forward(request: &TradeExpandRequest) -> Result<TradeExpandResponse
 fn expand_fx_option(request: &TradeExpandRequest) -> Result<TradeExpandResponse, TradeExpandError> {
     let params = match &request.params {
         InstrumentParamsUnion::Fx(p) => p,
-        _ => return Err(TradeExpandError::validation("params", "Expected FX parameters")),
+        _ => {
+            return Err(TradeExpandError::validation(
+                "params",
+                "Expected FX parameters",
+            ))
+        }
     };
 
     let trade_id = generate_trade_id("FXO");
@@ -648,7 +736,12 @@ fn expand_cross_currency_swap(
 ) -> Result<TradeExpandResponse, TradeExpandError> {
     let params = match &request.params {
         InstrumentParamsUnion::Fx(p) => p,
-        _ => return Err(TradeExpandError::validation("params", "Expected FX parameters")),
+        _ => {
+            return Err(TradeExpandError::validation(
+                "params",
+                "Expected FX parameters",
+            ))
+        }
     };
 
     let trade_id = generate_trade_id("CCS");
@@ -704,7 +797,12 @@ fn expand_equity_vanilla_option(
 ) -> Result<TradeExpandResponse, TradeExpandError> {
     let params = match &request.params {
         InstrumentParamsUnion::Equity(p) => p,
-        _ => return Err(TradeExpandError::validation("params", "Expected Equity parameters")),
+        _ => {
+            return Err(TradeExpandError::validation(
+                "params",
+                "Expected Equity parameters",
+            ))
+        }
     };
 
     let trade_id = generate_trade_id("EQO");
@@ -729,7 +827,10 @@ fn expand_equity_vanilla_option(
 
     Ok(TradeExpandResponse {
         trade_id,
-        trade_type: format!("EquityVanillaOption({} on {})", option_type, params.underlying),
+        trade_type: format!(
+            "EquityVanillaOption({} on {})",
+            option_type, params.underlying
+        ),
         legs: vec![leg],
         metadata: TradeMetadataDto {
             total_legs: 1,
@@ -745,7 +846,12 @@ fn expand_equity_forward(
 ) -> Result<TradeExpandResponse, TradeExpandError> {
     let params = match &request.params {
         InstrumentParamsUnion::Equity(p) => p,
-        _ => return Err(TradeExpandError::validation("params", "Expected Equity parameters")),
+        _ => {
+            return Err(TradeExpandError::validation(
+                "params",
+                "Expected Equity parameters",
+            ))
+        }
     };
 
     let trade_id = generate_trade_id("EQF");
@@ -843,10 +949,7 @@ fn build_instruments_metadata() -> Vec<InstrumentMeta> {
     }
 
     // Swap instruments
-    for instrument_type in [
-        TradeInstrumentType::BasisSwap,
-        TradeInstrumentType::Irs,
-    ] {
+    for instrument_type in [TradeInstrumentType::BasisSwap, TradeInstrumentType::Irs] {
         instruments.push(InstrumentMeta {
             instrument_type,
             display_name: instrument_type.display_name().to_string(),

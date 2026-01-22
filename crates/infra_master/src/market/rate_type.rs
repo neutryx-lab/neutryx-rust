@@ -130,9 +130,7 @@ impl RateType {
     /// assert!(!RateType::Swap.is_fx());
     /// ```
     #[must_use]
-    pub const fn is_fx(&self) -> bool {
-        matches!(self, RateType::FxSpot | RateType::FxForward)
-    }
+    pub const fn is_fx(&self) -> bool { matches!(self, RateType::FxSpot | RateType::FxForward) }
 
     /// Returns true if this is a volatility quote.
     ///
@@ -145,21 +143,18 @@ impl RateType {
     /// assert!(!RateType::Swap.is_volatility());
     /// ```
     #[must_use]
-    pub const fn is_volatility(&self) -> bool {
-        matches!(self, RateType::Vol)
-    }
+    pub const fn is_volatility(&self) -> bool { matches!(self, RateType::Vol) }
 }
 
 impl fmt::Display for RateType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.code())
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.code()) }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::collections::{HashMap, HashSet};
+
+    use super::*;
 
     #[test]
     fn test_rate_type_variants() {

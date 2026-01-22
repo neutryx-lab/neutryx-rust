@@ -91,8 +91,9 @@ pub fn suggest_bump_size_second<T: Float>(x: T) -> T {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     #[test]
     fn test_suggest_bump_size_typical() {

@@ -41,11 +41,12 @@ use std::{
     sync::{Arc, RwLock},
 };
 
+use pricer_core::types::Currency;
+
 use crate::market::{
     curves::{CurveEnum, FlatCurve},
     surfaces::VolSurfaceEnum,
 };
-use pricer_core::types::Currency;
 
 /// Thread-safe market data provider with lazy evaluation and Arc caching.
 ///

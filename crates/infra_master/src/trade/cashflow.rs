@@ -3,9 +3,8 @@
 //! This module provides the fundamental unit of financial calculations:
 //! the cashflow.
 
-use crate::{Currency, Date};
-
 use super::payoff::Payoff;
+use crate::{Currency, Date};
 
 /// Type of cashflow.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -24,15 +23,11 @@ pub enum CashflowType {
 impl CashflowType {
     /// Returns true if this is a coupon payment.
     #[must_use]
-    pub fn is_coupon(&self) -> bool {
-        matches!(self, CashflowType::Coupon)
-    }
+    pub fn is_coupon(&self) -> bool { matches!(self, CashflowType::Coupon) }
 
     /// Returns true if this is a principal payment.
     #[must_use]
-    pub fn is_principal(&self) -> bool {
-        matches!(self, CashflowType::Principal)
-    }
+    pub fn is_principal(&self) -> bool { matches!(self, CashflowType::Principal) }
 }
 
 /// A single cashflow in a financial instrument.
@@ -94,34 +89,28 @@ impl Cashflow {
 
     /// Returns true if this cashflow has a fixed rate (no index dependency).
     #[must_use]
-    pub fn is_fixed(&self) -> bool {
-        self.payoff.is_fixed()
-    }
+    pub fn is_fixed(&self) -> bool { self.payoff.is_fixed() }
 
     /// Returns true if this cashflow's payment date is in the future.
     #[must_use]
-    pub fn is_future(&self, ref_date: Date) -> bool {
-        self.payment_date > ref_date
-    }
+    pub fn is_future(&self, ref_date: Date) -> bool { self.payment_date > ref_date }
 
     /// Returns the number of accrual days.
     #[must_use]
-    pub fn accrual_days(&self) -> i64 {
-        self.accrual_end - self.accrual_start
-    }
+    pub fn accrual_days(&self) -> i64 { self.accrual_end - self.accrual_start }
 
     /// Returns the cashflow type.
     #[must_use]
-    pub fn cashflow_type(&self) -> CashflowType {
-        self.cf_type
-    }
+    pub fn cashflow_type(&self) -> CashflowType { self.cf_type }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::trade::{IndexType, Payoff};
-    use crate::RateIndex;
+    use crate::{
+        trade::{IndexType, Payoff},
+        RateIndex,
+    };
 
     fn make_fixed_cashflow() -> Cashflow {
         Cashflow::new(

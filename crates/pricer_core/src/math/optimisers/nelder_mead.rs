@@ -4,9 +4,7 @@
 //! uses a simplex (a polytope with n+1 vertices in n dimensions) to search
 //! for the minimum of an objective function.
 
-use super::config::NelderMeadConfig;
-use super::error::OptimisationError;
-use super::result::OptimisationResult;
+use super::{config::NelderMeadConfig, error::OptimisationError, result::OptimisationResult};
 
 /// Minimise a function using the Nelder-Mead simplex method.
 ///
@@ -96,7 +94,7 @@ where
 
         // Check convergence
         let range = f_worst - f_best;
-        let average = (f_worst + f_best) / 2.0;
+        let average = f64::midpoint(f_worst, f_best);
 
         if range < config.base.abs_tol || range < config.base.rel_tol * average.abs() {
             // Reorder simplex by function value
@@ -185,7 +183,8 @@ where
         // Shrink: move all vertices toward the best
         for &idx in &indices[1..] {
             for i in 0..n {
-                simplex[idx][i] = simplex[best_idx][i] + sigma * (simplex[idx][i] - simplex[best_idx][i]);
+                simplex[idx][i] =
+                    simplex[best_idx][i] + sigma * (simplex[idx][i] - simplex[best_idx][i]);
             }
             values[idx] = f(&simplex[idx]);
             func_evals += 1;
@@ -218,7 +217,11 @@ mod tests {
         let config = NelderMeadConfig::default();
         let result = minimize_nelder_mead(f, &[5.0], config).unwrap();
 
-        assert!(result.params[0].abs() < 1e-5, "Expected 0, got {}", result.params[0]);
+        assert!(
+            result.params[0].abs() < 1e-5,
+            "Expected 0, got {}",
+            result.params[0]
+        );
         assert!(result.value < 1e-10);
         assert!(result.converged);
     }
@@ -236,7 +239,11 @@ mod tests {
 
         // Nelder-Mead is derivative-free and converges slowly
         // Focus on function value rather than exact parameter match
-        assert!(result.value < 1e-4, "Expected value near 0, got {}", result.value);
+        assert!(
+            result.value < 1e-4,
+            "Expected value near 0, got {}",
+            result.value
+        );
     }
 
     #[test]

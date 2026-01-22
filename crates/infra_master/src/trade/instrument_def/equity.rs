@@ -4,11 +4,11 @@
 //! forwards, vanilla options, barrier options, Asian options,
 //! lookback options, equity swaps, and basket options.
 
-use crate::{Currency, Date, Frequency};
-
-use super::common::{BarrierDirection, BarrierType, ExerciseStyle};
-use super::error::InstrumentError;
-use crate::trade::OptionType;
+use super::{
+    common::{BarrierDirection, BarrierType, ExerciseStyle},
+    error::InstrumentError,
+};
+use crate::{trade::OptionType, Currency, Date, Frequency};
 
 /// Underlying asset for equity instruments.
 #[derive(Debug, Clone, PartialEq)]
@@ -49,9 +49,7 @@ impl EquityUnderlying {
 
     /// Creates an index underlying.
     #[must_use]
-    pub fn index(name: impl Into<String>) -> Self {
-        EquityUnderlying::Index { name: name.into() }
-    }
+    pub fn index(name: impl Into<String>) -> Self { EquityUnderlying::Index { name: name.into() } }
 }
 
 /// Equity forward contract.
@@ -445,9 +443,7 @@ impl BasketOption {
 mod tests {
     use super::*;
 
-    fn make_test_underlying() -> EquityUnderlying {
-        EquityUnderlying::stock("AAPL")
-    }
+    fn make_test_underlying() -> EquityUnderlying { EquityUnderlying::stock("AAPL") }
 
     #[test]
     fn test_equity_underlying_stock() {

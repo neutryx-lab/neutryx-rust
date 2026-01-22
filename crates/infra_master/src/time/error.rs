@@ -11,8 +11,9 @@
 //! assert_eq!(format!("{}", err), "Invalid date: 2024-02-30");
 //! ```
 
-use crate::DateError;
 use thiserror::Error;
+
+use crate::DateError;
 
 /// Unified error type for time-related operations.
 ///

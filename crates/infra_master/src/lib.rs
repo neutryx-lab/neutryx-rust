@@ -25,7 +25,8 @@
 //!
 //! ## Module Structure
 //!
-//! - [`time`]: Date handling, calendars, day count conventions, periods, frequency
+//! - [`time`]: Date handling, calendars, day count conventions, periods,
+//!   frequency
 //! - [`market`]: Currency definitions, rate indices
 //! - [`trade`]: Trade representation, legs, cashflows, directions
 //! - [`convention`]: Market conventions for various instruments
@@ -57,40 +58,31 @@ pub mod trade;
 
 // Error types
 mod error;
-pub use error::{CurrencyError, DateError, MasterDataError};
-
 // Counterparty module types (re-exported for convenience)
 pub use counterparty::{CsaTerms, NettingSet};
-
+pub use error::{CurrencyError, DateError, MasterDataError};
+// Market module types
+pub use market::{Currency, RateIndex};
 // Re-export commonly used types at crate root for convenience
 // Time module types
 pub use time::{
-    AccrualPeriod, BusinessDayConvention, Calendar, CalendarId, ConcreteCalendar, Date,
-    DayCounter, EndOfMonthRule, Frequency, JointCalendar, JointCalendarRule, Period, Tenor,
-    TimeError, TimeUnit,
+    AccrualPeriod, BusinessDayConvention, Calendar, CalendarId, ConcreteCalendar, Date, DayCounter,
+    EndOfMonthRule, Frequency, JointCalendar, JointCalendarRule, Period, Tenor, TimeError,
+    TimeUnit,
 };
-
-// Market module types
-pub use market::{Currency, RateIndex};
-
 // Trade module types
 pub use trade::{SwapDirection, TradeDirection};
 
 /// Prelude module for convenient imports
 pub mod prelude {
-    // Time types
-    pub use crate::time::{
-        AccrualPeriod, BusinessDayConvention, Calendar, CalendarId, ConcreteCalendar, Date,
-        DayCounter, EndOfMonthRule, Frequency, JointCalendar, JointCalendarRule, Period, Tenor,
-        TimeError, TimeUnit,
+    pub use crate::{
+        error::{CurrencyError, DateError, MasterDataError},
+        market::{Currency, RateIndex},
+        time::{
+            AccrualPeriod, BusinessDayConvention, Calendar, CalendarId, ConcreteCalendar, Date,
+            DayCounter, EndOfMonthRule, Frequency, JointCalendar, JointCalendarRule, Period, Tenor,
+            TimeError, TimeUnit,
+        },
+        trade::{SwapDirection, TradeDirection},
     };
-
-    // Market types
-    pub use crate::market::{Currency, RateIndex};
-
-    // Trade types
-    pub use crate::trade::{SwapDirection, TradeDirection};
-
-    // Error types
-    pub use crate::error::{CurrencyError, DateError, MasterDataError};
 }

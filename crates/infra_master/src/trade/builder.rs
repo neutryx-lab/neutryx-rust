@@ -26,14 +26,15 @@
 //!     .build();
 //! ```
 
+use super::{
+    cashflow::{Cashflow, CashflowType},
+    error::TradeError,
+    index::IndexType,
+    leg::{Direction, Leg, LegType},
+    payoff::Payoff,
+    trade::{Trade, TradeId, TradeMetadata, TradeType},
+};
 use crate::{Currency, Date, DayCounter, RateIndex};
-
-use super::cashflow::{Cashflow, CashflowType};
-use super::error::TradeError;
-use super::index::IndexType;
-use super::leg::{Direction, Leg, LegType};
-use super::payoff::Payoff;
-use super::trade::{Trade, TradeId, TradeMetadata, TradeType};
 
 /// Builder for constructing legs from a schedule.
 ///
@@ -61,11 +62,7 @@ impl LegBuilder {
     ///
     /// Returns `TradeError::InvalidSchedule` if schedule is too short.
     /// Returns `TradeError::InvalidNotional` if notional is negative.
-    pub fn new(
-        schedule: Vec<Date>,
-        notional: f64,
-        currency: Currency,
-    ) -> Result<Self, TradeError> {
+    pub fn new(schedule: Vec<Date>, notional: f64, currency: Currency) -> Result<Self, TradeError> {
         if schedule.len() < 2 {
             return Err(TradeError::InvalidSchedule(
                 "Schedule must have at least 2 dates".into(),
@@ -130,8 +127,9 @@ impl LegBuilder {
             .map(|window| {
                 let accrual_start = window[0];
                 let accrual_end = window[1];
-                let year_fraction =
-                    self.day_count.year_fraction(accrual_start.into(), accrual_end.into());
+                let year_fraction = self
+                    .day_count
+                    .year_fraction(accrual_start.into(), accrual_end.into());
 
                 Cashflow::new(
                     CashflowType::Coupon,
@@ -322,9 +320,7 @@ mod tests {
             .with_counterparty("BANK01")
             .with_portfolio("RATES");
 
-        let trade = TradeBuilder::new("TRADE002")
-            .metadata(metadata)
-            .build();
+        let trade = TradeBuilder::new("TRADE002").metadata(metadata).build();
 
         assert_eq!(trade.metadata.counterparty, Some("BANK01".to_string()));
         assert_eq!(trade.metadata.portfolio, Some("RATES".to_string()));

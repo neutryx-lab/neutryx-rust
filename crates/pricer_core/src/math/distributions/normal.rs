@@ -225,8 +225,9 @@ pub fn norm_inv_cdf<T: Float>(p: T) -> Result<T, DistributionError> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     // ==========================================================================
     // norm_pdf tests
@@ -386,11 +387,11 @@ mod tests {
         // Reference values
         let test_cases = [
             (0.5, 0.0),
-            (0.841_344_746_068_543, 1.0),       // Φ(1) ≈ 0.8413
-            (0.977_249_868_051_821, 2.0),       // Φ(2) ≈ 0.9772
-            (0.158_655_253_931_457, -1.0),      // Φ(-1) ≈ 0.1587
-            (0.022_750_131_948_179, -2.0),      // Φ(-2) ≈ 0.0228
-            (0.975, 1.959_963_984_540_054),     // Common 97.5% quantile
+            (0.841_344_746_068_543, 1.0),   // Φ(1) ≈ 0.8413
+            (0.977_249_868_051_821, 2.0),   // Φ(2) ≈ 0.9772
+            (0.158_655_253_931_457, -1.0),  // Φ(-1) ≈ 0.1587
+            (0.022_750_131_948_179, -2.0),  // Φ(-2) ≈ 0.0228
+            (0.975, 1.959_963_984_540_054), // Common 97.5% quantile
         ];
 
         for (p, expected) in test_cases {
@@ -463,8 +464,9 @@ mod tests {
 
 #[cfg(test)]
 mod proptests {
-    use super::*;
     use proptest::prelude::*;
+
+    use super::*;
 
     proptest! {
         #[test]

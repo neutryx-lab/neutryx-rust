@@ -35,16 +35,16 @@
 //! let md = runner.to_markdown(&result);
 //! ```
 
-use std::time::Instant;
-
-// TODO: l1l2-integration feature disabled pending refactoring to use infra_master::trade::Trade
-// #[cfg(feature = "l1l2-integration")]
+// TODO: l1l2-integration feature disabled pending refactoring to use
+// infra_master::trade::Trade #[cfg(feature = "l1l2-integration")]
 // use pricer_models::market::curves::CurveSet;
 // #[cfg(feature = "l1l2-integration")]
 // use pricer_core::types::time::Date;
 // #[cfg(feature = "l1l2-integration")]
 // use pricer_models::instruments::rates::InterestRateSwap;
-
+// #[cfg(feature = "l1l2-integration")]
+// use std::time::Instant;
+#[allow(unused_imports)]
 use super::{IrsGreeksCalculator, IrsGreeksConfig, IrsGreeksError};
 
 // =============================================================================

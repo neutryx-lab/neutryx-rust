@@ -33,16 +33,17 @@
 //! println!("Speedup ratio: {}", result.sensitivity_benchmark.speedup_ratio);
 //! ```
 
-use std::time::Instant;
+// #[cfg(feature = "l1l2-integration")]
+// use std::time::Instant;
 
-// TODO: l1l2-integration feature disabled pending refactoring to use infra_master::trade::Trade
-// #[cfg(feature = "l1l2-integration")]
-// use pricer_models::market::curves::{CurveEnum, CurveName, CurveSet, YieldCurve};
-// #[cfg(feature = "l1l2-integration")]
+// TODO: l1l2-integration feature disabled pending refactoring to use
+// infra_master::trade::Trade #[cfg(feature = "l1l2-integration")]
+// use pricer_models::market::curves::{CurveEnum, CurveName, CurveSet,
+// YieldCurve}; #[cfg(feature = "l1l2-integration")]
 // use pricer_core::types::time::Date;
 // #[cfg(feature = "l1l2-integration")]
 // use pricer_models::instruments::rates::{price_irs, InterestRateSwap};
-
+#[allow(unused_imports)]
 use super::{benchmark::TimingStats, IrsGreeksError};
 
 // =============================================================================

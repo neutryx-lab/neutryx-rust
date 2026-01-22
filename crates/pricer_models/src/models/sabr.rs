@@ -45,7 +45,9 @@ use pricer_core::{
 };
 use thiserror::Error;
 
-use crate::models::stochastic::{EquityModel, FxModel, RatesModel, StochasticModel, TwoFactorState};
+use crate::models::stochastic::{
+    EquityModel, FxModel, RatesModel, StochasticModel, TwoFactorState,
+};
 
 /// SABRモデルエラー型
 ///

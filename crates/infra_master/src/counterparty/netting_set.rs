@@ -6,9 +6,7 @@
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::return_self_not_must_use)]
 
-use super::{
-    Ccp, CcpId, CounterPartyError, CounterPartyId, CsaTerms, LegalEntityId, MarginTerms,
-};
+use super::{Ccp, CcpId, CounterPartyError, CounterPartyId, CsaTerms, LegalEntityId, MarginTerms};
 
 // ============================================================================
 // NettingType
@@ -84,9 +82,7 @@ pub struct ExposureConfig {
 
 impl ExposureConfig {
     /// Creates a new ExposureConfig with default values.
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Sets the time grid for exposure calculation.
     pub fn with_time_grid(mut self, grid: Vec<f64>) -> Self {
@@ -121,29 +117,19 @@ impl ExposureConfig {
     }
 
     /// Returns the time grid (in years).
-    pub fn time_grid(&self) -> &[f64] {
-        &self.time_grid_years
-    }
+    pub fn time_grid(&self) -> &[f64] { &self.time_grid_years }
 
     /// Returns the PFE confidence level.
-    pub fn pfe_confidence(&self) -> f64 {
-        self.pfe_confidence
-    }
+    pub fn pfe_confidence(&self) -> f64 { self.pfe_confidence }
 
     /// Returns the regulatory maturity (in years).
-    pub fn regulatory_maturity(&self) -> f64 {
-        self.regulatory_maturity
-    }
+    pub fn regulatory_maturity(&self) -> f64 { self.regulatory_maturity }
 
     /// Returns whether netting should be applied.
-    pub fn apply_netting(&self) -> bool {
-        self.apply_netting
-    }
+    pub fn apply_netting(&self) -> bool { self.apply_netting }
 
     /// Returns whether collateral effects should be applied.
-    pub fn apply_collateral(&self) -> bool {
-        self.apply_collateral
-    }
+    pub fn apply_collateral(&self) -> bool { self.apply_collateral }
 }
 
 impl Default for ExposureConfig {
@@ -185,6 +171,7 @@ impl Default for ExposureConfig {
 /// ```
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[allow(clippy::struct_field_names)]
 pub struct NettingSet {
     netting_set_id: NettingSetId,
     counterparty_id: CounterPartyId,
@@ -207,59 +194,37 @@ impl NettingSet {
     }
 
     /// Returns the netting set ID.
-    pub fn id(&self) -> &NettingSetId {
-        &self.netting_set_id
-    }
+    pub fn id(&self) -> &NettingSetId { &self.netting_set_id }
 
     /// Returns the counterparty ID.
-    pub fn counterparty_id(&self) -> &CounterPartyId {
-        &self.counterparty_id
-    }
+    pub fn counterparty_id(&self) -> &CounterPartyId { &self.counterparty_id }
 
     /// Returns the legal entity ID if set.
-    pub fn legal_entity_id(&self) -> Option<&LegalEntityId> {
-        self.legal_entity_id.as_ref()
-    }
+    pub fn legal_entity_id(&self) -> Option<&LegalEntityId> { self.legal_entity_id.as_ref() }
 
     /// Returns the netting type.
-    pub fn netting_type(&self) -> NettingType {
-        self.netting_type
-    }
+    pub fn netting_type(&self) -> NettingType { self.netting_type }
 
     /// Returns whether close-out netting applies.
-    pub fn has_closeout_netting(&self) -> bool {
-        self.closeout_netting
-    }
+    pub fn has_closeout_netting(&self) -> bool { self.closeout_netting }
 
     /// Returns the CSA terms if set.
-    pub fn csa_terms(&self) -> Option<&CsaTerms> {
-        self.csa_terms.as_ref()
-    }
+    pub fn csa_terms(&self) -> Option<&CsaTerms> { self.csa_terms.as_ref() }
 
     /// Returns the margin terms if set.
-    pub fn margin_terms(&self) -> Option<&MarginTerms> {
-        self.margin_terms.as_ref()
-    }
+    pub fn margin_terms(&self) -> Option<&MarginTerms> { self.margin_terms.as_ref() }
 
     /// Returns the CCP ID if this is a cleared transaction.
-    pub fn ccp_id(&self) -> Option<&CcpId> {
-        self.ccp_id.as_ref()
-    }
+    pub fn ccp_id(&self) -> Option<&CcpId> { self.ccp_id.as_ref() }
 
     /// Returns the exposure configuration if set.
-    pub fn exposure_config(&self) -> Option<&ExposureConfig> {
-        self.exposure_config.as_ref()
-    }
+    pub fn exposure_config(&self) -> Option<&ExposureConfig> { self.exposure_config.as_ref() }
 
     /// Returns whether this is a cleared transaction.
-    pub fn is_cleared(&self) -> bool {
-        self.netting_type.is_cleared()
-    }
+    pub fn is_cleared(&self) -> bool { self.netting_type.is_cleared() }
 
     /// Returns whether this has collateral (CSA terms set).
-    pub fn is_collateralised(&self) -> bool {
-        self.csa_terms.is_some()
-    }
+    pub fn is_collateralised(&self) -> bool { self.csa_terms.is_some() }
 
     /// Returns the MPOR (Margin Period of Risk) in business days.
     ///
@@ -268,11 +233,7 @@ impl NettingSet {
     pub fn mpor_days(&self) -> u32 {
         match self.netting_type {
             NettingType::ClearedCcp | NettingType::ClearedClient => Ccp::CLEARED_MPOR_DAYS,
-            NettingType::Bilateral => self
-                .csa_terms
-                .as_ref()
-                .map(|c| c.mpor_days())
-                .unwrap_or(10),
+            NettingType::Bilateral => self.csa_terms.as_ref().map(|c| c.mpor_days()).unwrap_or(10),
         }
     }
 }
@@ -305,10 +266,7 @@ pub struct NettingSetBuilder {
 
 impl NettingSetBuilder {
     /// Creates a new builder with required fields.
-    pub fn new(
-        id: impl Into<NettingSetId>,
-        counterparty_id: impl Into<CounterPartyId>,
-    ) -> Self {
+    pub fn new(id: impl Into<NettingSetId>, counterparty_id: impl Into<CounterPartyId>) -> Self {
         Self {
             netting_set_id: id.into(),
             counterparty_id: counterparty_id.into(),
@@ -412,7 +370,10 @@ mod tests {
     fn test_netting_type_display() {
         assert_eq!(format!("{}", NettingType::Bilateral), "Bilateral");
         assert_eq!(format!("{}", NettingType::ClearedCcp), "Cleared (CCP)");
-        assert_eq!(format!("{}", NettingType::ClearedClient), "Cleared (Client)");
+        assert_eq!(
+            format!("{}", NettingType::ClearedClient),
+            "Cleared (Client)"
+        );
     }
 
     // ========================================================================
@@ -432,7 +393,10 @@ mod tests {
     #[test]
     fn test_exposure_config_new() {
         let config = ExposureConfig::new();
-        assert_eq!(config.pfe_confidence(), ExposureConfig::default().pfe_confidence());
+        assert_eq!(
+            config.pfe_confidence(),
+            ExposureConfig::default().pfe_confidence()
+        );
     }
 
     #[test]

@@ -88,9 +88,7 @@ pub struct Period {
 impl Period {
     /// Create a new period.
     #[must_use]
-    pub fn new(length: i32, units: TimeUnit) -> Self {
-        Self { length, units }
-    }
+    pub fn new(length: i32, units: TimeUnit) -> Self { Self { length, units } }
 
     /// Create a period in days.
     ///
@@ -104,9 +102,7 @@ impl Period {
     /// assert_eq!(period.units, TimeUnit::Days);
     /// ```
     #[must_use]
-    pub fn days(n: i32) -> Self {
-        Self::new(n, TimeUnit::Days)
-    }
+    pub fn days(n: i32) -> Self { Self::new(n, TimeUnit::Days) }
 
     /// Create a period in weeks.
     ///
@@ -120,9 +116,7 @@ impl Period {
     /// assert_eq!(period.units, TimeUnit::Weeks);
     /// ```
     #[must_use]
-    pub fn weeks(n: i32) -> Self {
-        Self::new(n, TimeUnit::Weeks)
-    }
+    pub fn weeks(n: i32) -> Self { Self::new(n, TimeUnit::Weeks) }
 
     /// Create a period in months.
     ///
@@ -136,9 +130,7 @@ impl Period {
     /// assert_eq!(period.units, TimeUnit::Months);
     /// ```
     #[must_use]
-    pub fn months(n: i32) -> Self {
-        Self::new(n, TimeUnit::Months)
-    }
+    pub fn months(n: i32) -> Self { Self::new(n, TimeUnit::Months) }
 
     /// Create a period in years.
     ///
@@ -152,9 +144,7 @@ impl Period {
     /// assert_eq!(period.units, TimeUnit::Years);
     /// ```
     #[must_use]
-    pub fn years(n: i32) -> Self {
-        Self::new(n, TimeUnit::Years)
-    }
+    pub fn years(n: i32) -> Self { Self::new(n, TimeUnit::Years) }
 }
 
 impl fmt::Display for Period {
@@ -583,9 +573,7 @@ impl FromStr for Tenor {
 }
 
 impl fmt::Display for Tenor {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.code())
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.code()) }
 }
 
 /// A single accrual period for fixed income instruments.
@@ -660,9 +648,7 @@ impl AccrualPeriod {
     /// assert_eq!(period.accrual_days(), 10);
     /// ```
     #[must_use]
-    pub fn accrual_days(&self) -> i64 {
-        self.end - self.start
-    }
+    pub fn accrual_days(&self) -> i64 { self.end - self.start }
 
     /// Calculates the year fraction for this period.
     ///

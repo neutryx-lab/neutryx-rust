@@ -163,9 +163,7 @@ impl DayCounter {
     /// assert_eq!(DayCounter::Actual365Fixed.day_count(start, end), 10);
     /// ```
     #[must_use]
-    pub fn day_count(self, start: Date, end: Date) -> i64 {
-        end - start
-    }
+    pub fn day_count(self, start: Date, end: Date) -> i64 { end - start }
 
     /// Calculate 30/360 day count.
     #[allow(clippy::cast_possible_wrap)] // Month/day values are always small
@@ -210,9 +208,7 @@ impl FromStr for DayCounter {
 }
 
 impl fmt::Display for DayCounter {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.name())
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.name()) }
 }
 
 #[cfg(test)]

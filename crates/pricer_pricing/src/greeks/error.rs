@@ -95,29 +95,19 @@ pub enum GreeksError {
 
 impl GreeksError {
     /// Creates an invalid spot bump error.
-    pub fn invalid_spot_bump(msg: impl Into<String>) -> Self {
-        Self::InvalidSpotBump(msg.into())
-    }
+    pub fn invalid_spot_bump(msg: impl Into<String>) -> Self { Self::InvalidSpotBump(msg.into()) }
 
     /// Creates an invalid vol bump error.
-    pub fn invalid_vol_bump(msg: impl Into<String>) -> Self {
-        Self::InvalidVolBump(msg.into())
-    }
+    pub fn invalid_vol_bump(msg: impl Into<String>) -> Self { Self::InvalidVolBump(msg.into()) }
 
     /// Creates an invalid time bump error.
-    pub fn invalid_time_bump(msg: impl Into<String>) -> Self {
-        Self::InvalidTimeBump(msg.into())
-    }
+    pub fn invalid_time_bump(msg: impl Into<String>) -> Self { Self::InvalidTimeBump(msg.into()) }
 
     /// Creates an invalid rate bump error.
-    pub fn invalid_rate_bump(msg: impl Into<String>) -> Self {
-        Self::InvalidRateBump(msg.into())
-    }
+    pub fn invalid_rate_bump(msg: impl Into<String>) -> Self { Self::InvalidRateBump(msg.into()) }
 
     /// Creates an invalid tolerance error.
-    pub fn invalid_tolerance(msg: impl Into<String>) -> Self {
-        Self::InvalidTolerance(msg.into())
-    }
+    pub fn invalid_tolerance(msg: impl Into<String>) -> Self { Self::InvalidTolerance(msg.into()) }
 
     /// Creates an invalid swap error.
     pub fn invalid_swap(msg: impl Into<String>) -> Self { Self::InvalidSwap(msg.into()) }

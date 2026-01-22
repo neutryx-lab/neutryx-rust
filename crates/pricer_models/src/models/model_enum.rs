@@ -29,16 +29,16 @@
 
 use pricer_core::traits::Float;
 
+#[cfg(feature = "rates")]
+use super::cir::{CIRModel, CIRParams};
 #[cfg(feature = "equity")]
 use super::gbm::{GBMModel, GBMParams};
 #[cfg(feature = "equity")]
 use super::heston::{HestonModel, HestonParams};
-#[cfg(feature = "equity")]
-use super::sabr::{SABRModel, SABRParams};
-#[cfg(feature = "rates")]
-use super::cir::{CIRModel, CIRParams};
 #[cfg(feature = "rates")]
 use super::hull_white::{HullWhiteModel, HullWhiteParams};
+#[cfg(feature = "equity")]
+use super::sabr::{SABRModel, SABRParams};
 use super::stochastic::{SingleState, StochasticState, TwoFactorState};
 
 /// Unified state type for all models.
@@ -770,9 +770,8 @@ mod tests {
 
     #[cfg(feature = "rates")]
     mod rates_tests {
-        use crate::market::curves::FlatCurve;
-
         use super::*;
+        use crate::market::curves::FlatCurve;
 
         #[test]
         fn test_model_enum_hull_white_creation() {

@@ -143,9 +143,7 @@ impl Instrument {
 
     /// Returns true if this is a deposit instrument.
     #[must_use]
-    pub fn is_deposit(&self) -> bool {
-        matches!(self, Instrument::Deposit { .. })
-    }
+    pub fn is_deposit(&self) -> bool { matches!(self, Instrument::Deposit { .. }) }
 
     /// Returns true if this is a swap instrument.
     #[must_use]

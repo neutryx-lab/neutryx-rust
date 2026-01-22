@@ -14,8 +14,10 @@
 //! assert_eq!(sofr.day_counter(), DayCounter::Actual360);
 //! ```
 
-use crate::market::Currency;
-use crate::time::{DayCounter, Tenor};
+use crate::{
+    market::Currency,
+    time::{DayCounter, Tenor},
+};
 
 /// Benchmark rate index.
 ///

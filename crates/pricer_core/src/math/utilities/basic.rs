@@ -110,14 +110,13 @@ pub fn clamp<T: Float>(x: T, min: T, max: T) -> T {
 /// assert_eq!(lerp(2.0_f64, 8.0, 0.25), 3.5);
 /// ```
 #[inline]
-pub fn lerp<T: Float>(a: T, b: T, t: T) -> T {
-    a + t * (b - a)
-}
+pub fn lerp<T: Float>(a: T, b: T, t: T) -> T { a + t * (b - a) }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     // ==========================================================================
     // sign tests
@@ -224,8 +223,9 @@ mod tests {
 
 #[cfg(test)]
 mod proptests {
-    use super::*;
     use proptest::prelude::*;
+
+    use super::*;
 
     proptest! {
         #[test]

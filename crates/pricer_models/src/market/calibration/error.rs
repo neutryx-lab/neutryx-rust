@@ -202,9 +202,7 @@ impl From<super::bootstrapping::BootstrapError> for CalibrationError {
                 ))
             }
             BootstrapError::DuplicateMaturity { maturity } => {
-                CalibrationError::invalid_market_data(format!(
-                    "Duplicate maturity: {maturity}"
-                ))
+                CalibrationError::invalid_market_data(format!("Duplicate maturity: {maturity}"))
             }
             BootstrapError::Solver(solver_err) => {
                 CalibrationError::numerical_instability(solver_err.to_string())
@@ -213,11 +211,12 @@ impl From<super::bootstrapping::BootstrapError> for CalibrationError {
                 CalibrationError::invalid_market_data(mkt_err.to_string())
             }
             BootstrapError::InvalidInput(msg) => CalibrationError::invalid_market_data(msg),
-            BootstrapError::InvalidMaturity { maturity, max_maturity } => {
-                CalibrationError::invalid_market_data(format!(
-                    "Invalid maturity {maturity} (max: {max_maturity})"
-                ))
-            }
+            BootstrapError::InvalidMaturity {
+                maturity,
+                max_maturity,
+            } => CalibrationError::invalid_market_data(format!(
+                "Invalid maturity {maturity} (max: {max_maturity})"
+            )),
         }
     }
 }
@@ -227,11 +226,12 @@ impl From<CalibrationError> for pricer_core::types::PricingError {
     fn from(err: CalibrationError) -> Self {
         use pricer_core::types::PricingError;
         match err {
-            CalibrationError::ConvergenceFailure { iterations, residual } => {
-                PricingError::NumericalInstability(format!(
-                    "Calibration failed after {iterations} iterations (residual: {residual:.6e})"
-                ))
-            }
+            CalibrationError::ConvergenceFailure {
+                iterations,
+                residual,
+            } => PricingError::NumericalInstability(format!(
+                "Calibration failed after {iterations} iterations (residual: {residual:.6e})"
+            )),
             CalibrationError::NumericalInstability { message } => {
                 PricingError::NumericalInstability(message)
             }
@@ -243,10 +243,13 @@ impl From<CalibrationError> for pricer_core::types::PricingError {
             }
             CalibrationError::BoundsViolation {
                 param_name, value, ..
-            } => PricingError::InvalidInput(format!("Parameter {param_name} out of bounds: {value}")),
-            CalibrationError::ModelError { model_name, message } => {
-                PricingError::ModelFailure(format!("{model_name}: {message}"))
+            } => {
+                PricingError::InvalidInput(format!("Parameter {param_name} out of bounds: {value}"))
             }
+            CalibrationError::ModelError {
+                model_name,
+                message,
+            } => PricingError::ModelFailure(format!("{model_name}: {message}")),
             CalibrationError::ArbitrageViolation { message } => {
                 PricingError::ModelFailure(format!("Arbitrage violation: {message}"))
             }
@@ -297,7 +300,10 @@ mod tests {
         use super::super::bootstrapping::BootstrapError;
         let bootstrap_err = BootstrapError::convergence_failure(5.0, 0.001, 100);
         let calib_err: CalibrationError = bootstrap_err.into();
-        assert!(matches!(calib_err, CalibrationError::ConvergenceFailure { .. }));
+        assert!(matches!(
+            calib_err,
+            CalibrationError::ConvergenceFailure { .. }
+        ));
     }
 
     #[test]
@@ -305,7 +311,10 @@ mod tests {
         use super::super::bootstrapping::BootstrapError;
         let bootstrap_err = BootstrapError::insufficient_data(10, 3);
         let calib_err: CalibrationError = bootstrap_err.into();
-        assert!(matches!(calib_err, CalibrationError::InsufficientData { .. }));
+        assert!(matches!(
+            calib_err,
+            CalibrationError::InsufficientData { .. }
+        ));
     }
 
     #[test]

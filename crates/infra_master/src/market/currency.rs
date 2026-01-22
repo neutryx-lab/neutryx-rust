@@ -171,9 +171,7 @@ impl FromStr for Currency {
 
 impl fmt::Display for Currency {
     /// Formats as ISO 4217 code.
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.code())
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.code()) }
 }
 
 #[cfg(test)]

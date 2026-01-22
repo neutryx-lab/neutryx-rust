@@ -88,21 +88,15 @@ impl<T: Copy> InstrumentParams<T> {
 
     /// Returns the strike price.
     #[must_use]
-    pub fn strike(&self) -> T {
-        self.strike
-    }
+    pub fn strike(&self) -> T { self.strike }
 
     /// Returns the time to expiry.
     #[must_use]
-    pub fn expiry(&self) -> T {
-        self.expiry
-    }
+    pub fn expiry(&self) -> T { self.expiry }
 
     /// Returns the notional amount.
     #[must_use]
-    pub fn notional(&self) -> T {
-        self.notional
-    }
+    pub fn notional(&self) -> T { self.notional }
 }
 
 /// Vanilla option instrument.
@@ -141,27 +135,19 @@ impl<T: Copy> VanillaOption<T> {
 
     /// Returns the instrument parameters.
     #[must_use]
-    pub fn params(&self) -> &InstrumentParams<T> {
-        &self.params
-    }
+    pub fn params(&self) -> &InstrumentParams<T> { &self.params }
 
     /// Returns the payoff type.
     #[must_use]
-    pub fn payoff_type(&self) -> PayoffType {
-        self.payoff_type
-    }
+    pub fn payoff_type(&self) -> PayoffType { self.payoff_type }
 
     /// Returns the exercise style.
     #[must_use]
-    pub fn exercise_style(&self) -> ExerciseStyle {
-        self.exercise_style
-    }
+    pub fn exercise_style(&self) -> ExerciseStyle { self.exercise_style }
 
     /// Returns the smoothing epsilon.
     #[must_use]
-    pub fn epsilon(&self) -> T {
-        self.epsilon
-    }
+    pub fn epsilon(&self) -> T { self.epsilon }
 }
 
 impl VanillaOption<f64> {
@@ -210,27 +196,19 @@ impl<T: Copy> Forward<T> {
 
     /// Returns the strike price.
     #[must_use]
-    pub fn strike(&self) -> T {
-        self.strike
-    }
+    pub fn strike(&self) -> T { self.strike }
 
     /// Returns the time to expiry.
     #[must_use]
-    pub fn expiry(&self) -> T {
-        self.expiry
-    }
+    pub fn expiry(&self) -> T { self.expiry }
 
     /// Returns the notional amount.
     #[must_use]
-    pub fn notional(&self) -> T {
-        self.notional
-    }
+    pub fn notional(&self) -> T { self.notional }
 
     /// Returns the direction.
     #[must_use]
-    pub fn direction(&self) -> ForwardDirection {
-        self.direction
-    }
+    pub fn direction(&self) -> ForwardDirection { self.direction }
 }
 
 impl Forward<f64> {
@@ -266,21 +244,15 @@ impl<T: Copy> PricingInstrument<T> {
 
     /// Returns true if this is a vanilla option.
     #[must_use]
-    pub fn is_vanilla(&self) -> bool {
-        matches!(self, PricingInstrument::Vanilla(_))
-    }
+    pub fn is_vanilla(&self) -> bool { matches!(self, PricingInstrument::Vanilla(_)) }
 
     /// Returns true if this is a forward.
     #[must_use]
-    pub fn is_forward(&self) -> bool {
-        matches!(self, PricingInstrument::Forward(_))
-    }
+    pub fn is_forward(&self) -> bool { matches!(self, PricingInstrument::Forward(_)) }
 
     /// Returns true if this is a swap (currently always false).
     #[must_use]
-    pub fn is_swap(&self) -> bool {
-        false
-    }
+    pub fn is_swap(&self) -> bool { false }
 
     /// Returns a reference to the vanilla option if this is one.
     #[must_use]

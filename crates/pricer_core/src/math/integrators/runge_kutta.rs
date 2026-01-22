@@ -7,8 +7,9 @@
 //! - RK4: Classical 4th-order Runge-Kutta (fixed step)
 //! - RK45: Dormand-Prince method with adaptive step size control
 
-use super::IntegrationError;
 use num_traits::Float;
+
+use super::IntegrationError;
 
 /// Options for RK45 (Dormand-Prince) adaptive integration.
 #[derive(Debug, Clone, Copy)]
@@ -120,7 +121,8 @@ where
     y + sixth * h * (k1 + two * k2 + two * k3 + k4)
 }
 
-/// Integrates an ODE using the RK45 (Dormand-Prince) method with adaptive step size.
+/// Integrates an ODE using the RK45 (Dormand-Prince) method with adaptive step
+/// size.
 ///
 /// Solves dy/dt = f(t, y), y(t0) = y0 from t0 to t_end.
 ///
@@ -223,8 +225,14 @@ where
         let k2 = f(t + c2 * h, y + h * a21 * k1);
         let k3 = f(t + c3 * h, y + h * (a31 * k1 + a32 * k2));
         let k4 = f(t + c4 * h, y + h * (a41 * k1 + a42 * k2 + a43 * k3));
-        let k5 = f(t + c5 * h, y + h * (a51 * k1 + a52 * k2 + a53 * k3 + a54 * k4));
-        let k6 = f(t + h, y + h * (a61 * k1 + a62 * k2 + a63 * k3 + a64 * k4 + a65 * k5));
+        let k5 = f(
+            t + c5 * h,
+            y + h * (a51 * k1 + a52 * k2 + a53 * k3 + a54 * k4),
+        );
+        let k6 = f(
+            t + h,
+            y + h * (a61 * k1 + a62 * k2 + a63 * k3 + a64 * k4 + a65 * k5),
+        );
 
         // 5th order solution
         let y_new = y + h * (b1 * k1 + b3 * k3 + b4 * k4 + b5 * k5 + b6 * k6);

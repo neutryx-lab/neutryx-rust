@@ -3,11 +3,14 @@
 //! This module provides definitions for interest rate derivatives including
 //! swaptions, caps/floors, FRNs, CMS swaps, and inflation swaps.
 
-use crate::{Currency, Date, Frequency, RateIndex, Tenor};
-
-use super::common::{NotionalSchedule, PayerReceiver};
-use super::error::InstrumentError;
-use crate::trade::{ExerciseType, SettlementType};
+use super::{
+    common::{NotionalSchedule, PayerReceiver},
+    error::InstrumentError,
+};
+use crate::{
+    trade::{ExerciseType, SettlementType},
+    Currency, Date, Frequency, RateIndex, Tenor,
+};
 
 /// Swaption (option on an interest rate swap).
 ///
