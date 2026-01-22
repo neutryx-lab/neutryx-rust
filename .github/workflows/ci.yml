@@ -12,11 +12,11 @@ env:
 
 jobs:
   # ============================================================================
-  # Stable Rust: L1, L2, L4 (pricer_core, pricer_models, pricer_risk)
+  # Stable Rust: L1, L2 (pricer_core, pricer_models) + Adapters + Infra
   # Cross-platform: Linux, Windows, macOS
   # ============================================================================
   stable-layers:
-    name: Stable Rust - L1/L2/L4 (${{ matrix.os }})
+    name: Stable Rust - L1/L2 (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -53,23 +53,23 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Clippy (stable crates)
-        run: cargo clippy --workspace --exclude pricer_pricing --exclude service_cli --exclude service_python --exclude service_gateway -- -D warnings
+        run: cargo clippy --workspace --exclude pricer_pricing --exclude pricer_risk --exclude demo_gui -- -D warnings
 
       - name: Build (stable crates)
-        run: cargo build --workspace --exclude pricer_pricing --exclude service_cli --exclude service_python --exclude service_gateway
+        run: cargo build --workspace --exclude pricer_pricing --exclude pricer_risk --exclude demo_gui
 
       - name: Test (stable crates)
-        run: cargo test --workspace --exclude pricer_pricing --exclude service_cli --exclude service_python --exclude service_gateway
+        run: cargo test --workspace --exclude pricer_pricing --exclude pricer_risk --exclude demo_gui
 
       - name: Test with num-dual feature
         run: cargo test -p pricer_core --features num-dual-mode
 
   # ============================================================================
-  # Nightly Rust: L3 (pricer_pricing with autodiff/Enzyme)
+  # Nightly Rust: L3, L4 (pricer_pricing, pricer_risk, demo_gui)
   # Linux only (Enzyme requires LLVM infrastructure)
   # ============================================================================
   nightly-kernel:
-    name: Nightly Rust - L3 (pricer_pricing)
+    name: Nightly Rust - L3/L4
     runs-on: ubuntu-latest
 
     steps:
@@ -151,37 +151,28 @@ jobs:
             echo "  This is expected - Enzyme distribution is platform/version dependent"
           fi
 
-      # Runtime crates depend on pricer_pricing, so they need nightly too
-      - name: Build service crates (CLI and Server)
+      # pricer_risk depends on pricer_pricing, so it needs nightly too
+      - name: Build pricer_risk
         run: |
-          echo "Building service_cli and service_gateway (these depend on pricer_pricing)"
-          cargo +nightly build -p service_cli -p service_gateway
+          echo "Building pricer_risk (depends on pricer_pricing)"
+          cargo +nightly build -p pricer_risk
 
-      - name: Test service crates (CLI and Server)
+      - name: Test pricer_risk
         run: |
-          cargo +nightly test -p service_cli -p service_gateway
+          cargo +nightly test -p pricer_risk
 
-      - name: Clippy service crates (CLI and Server)
+      - name: Clippy pricer_risk
         run: |
-          cargo +nightly clippy -p service_cli -p service_gateway -- -D warnings
+          cargo +nightly clippy -p pricer_risk -- -D warnings
 
-      # service_python requires Python headers
-      - name: Setup Python for service_python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Build service_python (PyO3 bindings)
+      # demo_gui depends on pricer_risk
+      - name: Build demo_gui
         run: |
-          cargo +nightly build -p service_python
+          cargo +nightly build -p demo_gui
 
-      - name: Test service_python
+      - name: Clippy demo_gui
         run: |
-          cargo +nightly test -p service_python
-
-      - name: Clippy service_python
-        run: |
-          cargo +nightly clippy -p service_python -- -D warnings
+          cargo +nightly clippy -p demo_gui -- -D warnings
 
   # ============================================================================
   # Integration Tests (Full Stack)
@@ -246,7 +237,7 @@ jobs:
       - name: Generate coverage report
         run: |
           cargo llvm-cov --workspace --exclude pricer_pricing \
-            --exclude service_cli --exclude service_python --exclude service_gateway \
+            --exclude pricer_risk --exclude demo_gui \
             --lcov --output-path lcov.info
 
       - name: Upload coverage to Codecov
@@ -281,13 +272,10 @@ jobs:
             ${{ runner.os }}-cargo-build-bench-
 
       - name: Run pricer_core benchmarks
-        run: cargo bench -p pricer_core --bench core_benchmarks -- --noplot
+        run: cargo bench -p pricer_core --bench core -- --noplot
 
       - name: Run pricer_models benchmarks
-        run: cargo bench -p pricer_models --bench models_benchmarks -- --noplot
-
-      - name: Run pricer_risk benchmarks
-        run: cargo bench -p pricer_risk --bench risk_benchmarks -- --noplot
+        run: cargo bench -p pricer_models --bench models -- --noplot
 
       - name: Upload benchmark results
         uses: actions/upload-artifact@v4
@@ -444,7 +432,7 @@ jobs:
             ${{ runner.os }}-cargo-docs-
 
       - name: Build documentation (stable crates)
-        run: cargo doc --workspace --exclude pricer_pricing --exclude service_cli --exclude service_python --exclude service_gateway --no-deps
+        run: cargo doc --workspace --exclude pricer_pricing --exclude pricer_risk --exclude demo_gui --no-deps
         env:
           RUSTDOCFLAGS: "-D warnings"
 
@@ -452,7 +440,7 @@ jobs:
         run: |
           echo "Documentation built successfully for stable crates"
           echo "Checking for documentation completeness..."
-          cargo doc --workspace --exclude pricer_pricing --exclude service_cli --exclude service_python --exclude service_gateway --no-deps 2>&1 | \
+          cargo doc --workspace --exclude pricer_pricing --exclude pricer_risk --exclude demo_gui --no-deps 2>&1 | \
             grep -c "warning:" || echo "No documentation warnings found"
 
       - name: Upload documentation
