@@ -3,22 +3,26 @@
 //! Provides AAD and bump-and-revalue Greeks calculation for Interest Rate
 //! Swaps.
 
-use std::{marker::PhantomData, time::Instant};
+use std::marker::PhantomData;
 
-use num_traits::Float;
-// TODO: l1l2-integration feature disabled pending refactoring to use infra_master::trade::Trade
 // #[cfg(feature = "l1l2-integration")]
+// use std::time::Instant;
+use num_traits::Float;
+
+// TODO: l1l2-integration feature disabled pending refactoring to use
+// infra_master::trade::Trade #[cfg(feature = "l1l2-integration")]
 // use pricer_models::market::curves::{CurveEnum, CurveName, CurveSet, YieldCurve};
 // #[cfg(feature = "l1l2-integration")]
 // use pricer_core::types::time::Date;
 // #[cfg(feature = "l1l2-integration")]
 // use pricer_models::instruments::rates::{price_irs, InterestRateSwap};
-
+#[allow(unused_imports)]
 use super::{
     config::IrsGreeksConfig,
     error::IrsGreeksError,
     result::{IrsDeltaResult, IrsGreeksResult},
 };
+#[allow(unused_imports)]
 use crate::greeks::GreeksMode;
 
 /// IRS Greeks calculator.

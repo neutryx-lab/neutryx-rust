@@ -6,10 +6,10 @@
 //! - [`FxDeltaPoint`]: Standard delta points used in FX markets
 
 use num_traits::Float;
+use pricer_core::math::{interpolators::BilinearInterpolator, numeric::from_f64};
 
 use super::VolatilitySurface;
 use crate::market::error::MarketDataError;
-use pricer_core::math::{interpolators::BilinearInterpolator, numeric::from_f64};
 
 /// Standard delta points used in FX volatility quoting.
 ///

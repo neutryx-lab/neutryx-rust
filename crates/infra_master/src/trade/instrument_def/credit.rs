@@ -3,9 +3,8 @@
 //! This module provides definitions for credit derivatives including
 //! CDS, CDS indices, CDS options, and Nth-to-Default baskets.
 
-use crate::{Currency, Date};
-
 use super::error::InstrumentError;
+use crate::{Currency, Date};
 
 /// ISDA standard credit events.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -203,7 +202,8 @@ pub struct CdsOption {
     pub notional: f64,
     /// Currency.
     pub currency: Currency,
-    /// Payer option (right to buy protection) or receiver option (right to sell protection).
+    /// Payer option (right to buy protection) or receiver option (right to sell
+    /// protection).
     pub is_payer: bool,
 }
 
@@ -304,9 +304,7 @@ impl NtdBasket {
 
     /// Returns true if this is a first-to-default basket.
     #[must_use]
-    pub fn is_first_to_default(&self) -> bool {
-        self.nth_to_default == 1
-    }
+    pub fn is_first_to_default(&self) -> bool { self.nth_to_default == 1 }
 }
 
 #[cfg(test)]

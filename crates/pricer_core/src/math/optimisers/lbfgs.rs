@@ -4,9 +4,7 @@
 //! using a limited history of gradient evaluations. It is efficient for
 //! large-scale optimisation problems.
 
-use super::config::LbfgsConfig;
-use super::error::OptimisationError;
-use super::result::OptimisationResult;
+use super::{config::LbfgsConfig, error::OptimisationError, result::OptimisationResult};
 
 /// Minimise a function using L-BFGS.
 ///
@@ -68,8 +66,10 @@ where
         // Check gradient convergence
         let grad_norm: f64 = grad.iter().map(|g| g * g).sum::<f64>().sqrt();
         if grad_norm < config.base.abs_tol {
-            return Ok(OptimisationResult::new(x, f_val, iteration, func_evals, true)
-                .with_message("Converged: gradient norm within tolerance"));
+            return Ok(
+                OptimisationResult::new(x, f_val, iteration, func_evals, true)
+                    .with_message("Converged: gradient norm within tolerance"),
+            );
         }
 
         // Compute search direction using L-BFGS two-loop recursion
@@ -158,7 +158,11 @@ where
 
             // Update history
             let s: Vec<f64> = x.iter().zip(&x_old).map(|(&xi, &xo)| xi - xo).collect();
-            let y: Vec<f64> = grad.iter().zip(&grad_old).map(|(&gi, &go)| gi - go).collect();
+            let y: Vec<f64> = grad
+                .iter()
+                .zip(&grad_old)
+                .map(|(&gi, &go)| gi - go)
+                .collect();
             let ys = dot(&s, &y);
 
             if ys > 1e-10 {
@@ -231,13 +235,19 @@ where
         // Note: This is checked after the update
         let f_change = (f_val - f_new).abs();
         if f_change < config.base.abs_tol && iteration > 0 {
-            return Ok(OptimisationResult::new(x, f_val, iteration, func_evals, true)
-                .with_message("Converged: function value change within tolerance"));
+            return Ok(
+                OptimisationResult::new(x, f_val, iteration, func_evals, true)
+                    .with_message("Converged: function value change within tolerance"),
+            );
         }
 
         // Update history
         let s: Vec<f64> = x.iter().zip(&x_old).map(|(&xi, &xo)| xi - xo).collect();
-        let y: Vec<f64> = grad.iter().zip(&grad_old).map(|(&gi, &go)| gi - go).collect();
+        let y: Vec<f64> = grad
+            .iter()
+            .zip(&grad_old)
+            .map(|(&gi, &go)| gi - go)
+            .collect();
         let ys = dot(&s, &y);
 
         if ys > 1e-10 {
@@ -252,14 +262,10 @@ where
         }
     }
 
-    Ok(OptimisationResult::new(
-        x,
-        f_val,
-        config.base.max_iterations,
-        func_evals,
-        false,
+    Ok(
+        OptimisationResult::new(x, f_val, config.base.max_iterations, func_evals, false)
+            .with_message("Did not converge within maximum iterations"),
     )
-    .with_message("Did not converge within maximum iterations"))
 }
 
 /// Minimise a function using L-BFGS with numerical gradient.
@@ -321,7 +327,11 @@ mod tests {
         let config = LbfgsConfig::default();
         let result = minimize_lbfgs(f, &[5.0], config).unwrap();
 
-        assert!(result.params[0].abs() < 1e-5, "Expected 0, got {}", result.params[0]);
+        assert!(
+            result.params[0].abs() < 1e-5,
+            "Expected 0, got {}",
+            result.params[0]
+        );
         assert!(result.value < 1e-10);
         assert!(result.converged);
     }
@@ -351,10 +361,7 @@ mod tests {
             let a = 1.0 - x[0];
             let b = x[1] - x[0] * x[0];
             let val = a * a + 100.0 * b * b;
-            let grad = vec![
-                -2.0 * a - 400.0 * x[0] * b,
-                200.0 * b,
-            ];
+            let grad = vec![-2.0 * a - 400.0 * x[0] * b, 200.0 * b];
             (val, grad)
         };
 
@@ -411,10 +418,7 @@ mod tests {
         // A function that is hard to optimise precisely
         let f = |x: &[f64]| {
             let val = (x[0] - 1.0).powi(4) + (x[1] - 2.0).powi(4);
-            let grad = vec![
-                4.0 * (x[0] - 1.0).powi(3),
-                4.0 * (x[1] - 2.0).powi(3),
-            ];
+            let grad = vec![4.0 * (x[0] - 1.0).powi(3), 4.0 * (x[1] - 2.0).powi(3)];
             (val, grad)
         };
 

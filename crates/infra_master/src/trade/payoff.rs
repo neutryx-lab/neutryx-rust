@@ -55,8 +55,8 @@ pub enum Payoff {
 
     /// Vanilla option (Cap/Floor).
     ///
-    /// Amount = notional * max(0, omega * (index_rate - strike)) * year_fraction
-    /// where omega = +1 for Call (Cap), -1 for Put (Floor)
+    /// Amount = notional * max(0, omega * (index_rate - strike)) *
+    /// year_fraction where omega = +1 for Call (Cap), -1 for Put (Floor)
     VanillaOption {
         /// Index to observe.
         index: IndexType,
@@ -68,7 +68,8 @@ pub enum Payoff {
 
     /// Digital option.
     ///
-    /// Amount = notional * payout if index_rate > strike (Call) or < strike (Put)
+    /// Amount = notional * payout if index_rate > strike (Call) or < strike
+    /// (Put)
     Digital {
         /// Index to observe.
         index: IndexType,
@@ -84,9 +85,7 @@ pub enum Payoff {
 impl Payoff {
     /// Creates a fixed rate payoff.
     #[must_use]
-    pub fn fixed(rate: f64) -> Self {
-        Payoff::Fixed { rate }
-    }
+    pub fn fixed(rate: f64) -> Self { Payoff::Fixed { rate } }
 
     /// Creates a linear (floating) rate payoff with zero spread.
     #[must_use]
@@ -143,23 +142,16 @@ impl Payoff {
 
     /// Returns true if this is a fixed rate payoff.
     #[must_use]
-    pub fn is_fixed(&self) -> bool {
-        matches!(self, Payoff::Fixed { .. })
-    }
+    pub fn is_fixed(&self) -> bool { matches!(self, Payoff::Fixed { .. }) }
 
     /// Returns true if this is a linear (floating) rate payoff.
     #[must_use]
-    pub fn is_linear(&self) -> bool {
-        matches!(self, Payoff::Linear { .. })
-    }
+    pub fn is_linear(&self) -> bool { matches!(self, Payoff::Linear { .. }) }
 
     /// Returns true if this is an option payoff (cap/floor or digital).
     #[must_use]
     pub fn is_option(&self) -> bool {
-        matches!(
-            self,
-            Payoff::VanillaOption { .. } | Payoff::Digital { .. }
-        )
+        matches!(self, Payoff::VanillaOption { .. } | Payoff::Digital { .. })
     }
 }
 

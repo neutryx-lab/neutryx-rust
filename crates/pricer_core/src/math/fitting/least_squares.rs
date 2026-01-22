@@ -5,8 +5,7 @@
 
 use num_traits::Float;
 
-use super::error::FittingError;
-use super::result::FittingResult;
+use super::{error::FittingError, result::FittingResult};
 
 /// Perform linear least squares fit: y = a₀ + a₁x + a₂x² + ...
 ///
@@ -16,7 +15,8 @@ use super::result::FittingResult;
 ///
 /// * `x` - Independent variable values
 /// * `y` - Dependent variable values
-/// * `degree` - Polynomial degree (0 = constant, 1 = linear, 2 = quadratic, etc.)
+/// * `degree` - Polynomial degree (0 = constant, 1 = linear, 2 = quadratic,
+///   etc.)
 ///
 /// # Returns
 ///
@@ -186,7 +186,9 @@ pub fn weighted_polynomial_fit<T: Float>(
     // Check for negative weights
     for &w in weights {
         if w < T::zero() {
-            return Err(FittingError::InvalidData("negative weight found".to_string()));
+            return Err(FittingError::InvalidData(
+                "negative weight found".to_string(),
+            ));
         }
     }
 
@@ -332,8 +334,9 @@ fn solve_linear_system<T: Float>(a: &[T], b: &[T], n: usize) -> Result<Vec<T>, F
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     #[test]
     fn test_linear_regression() {
@@ -411,10 +414,7 @@ mod tests {
 
         // Trying to fit degree 2 with only 2 points
         let result = polynomial_fit(&x, &y, 2);
-        assert!(matches!(
-            result,
-            Err(FittingError::InsufficientData { .. })
-        ));
+        assert!(matches!(result, Err(FittingError::InsufficientData { .. })));
     }
 
     #[test]

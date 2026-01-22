@@ -72,8 +72,7 @@ mod types;
 
 // Primary exports
 pub use calendars::{
-    BusinessDayConvention, Calendar, CalendarId, ConcreteCalendar, JointCalendar,
-    JointCalendarRule,
+    BusinessDayConvention, Calendar, CalendarId, ConcreteCalendar, JointCalendar, JointCalendarRule,
 };
 pub use day_counters::DayCounter;
 pub use error::TimeError;

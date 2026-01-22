@@ -119,26 +119,20 @@ mod validation;
 
 // Core types
 pub use currency::Currency;
-pub use rate_index::RateIndex;
-
 // Quote and rate types
 pub use data_source::{DataSource, SourcePriority};
-pub use quote_type::QuoteType;
-pub use rate_type::RateType;
-
 // Error types
 pub use error::MarketRateError;
-
-// Rate identification and mapping
-pub use rate_id::RateId;
-pub use ticker::TickerMapping;
-
-// Market rate and collections
-pub use rate::MarketRate;
-pub use rate_set::MarketRateSet;
-
-// Validation
-pub use validation::{RateValidator, StandardRateValidator};
-
 // Instrument mapping
 pub use mapper::{InstrumentMapper, StandardInstrumentMapper};
+pub use quote_type::QuoteType;
+// Market rate and collections
+pub use rate::MarketRate;
+// Rate identification and mapping
+pub use rate_id::RateId;
+pub use rate_index::RateIndex;
+pub use rate_set::MarketRateSet;
+pub use rate_type::RateType;
+pub use ticker::TickerMapping;
+// Validation
+pub use validation::{RateValidator, StandardRateValidator};

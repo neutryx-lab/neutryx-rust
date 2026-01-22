@@ -15,7 +15,8 @@
 //! - Static dispatch via enum (not `Box<dyn Trait>`)
 //! - Generic `Float` type for AD compatibility
 //! - Smooth approximations for differentiability
-//! - Trait markers allow a single model (e.g., SABR) to serve multiple asset classes
+//! - Trait markers allow a single model (e.g., SABR) to serve multiple asset
+//!   classes
 //!
 //! ## Example
 //!
@@ -58,27 +59,21 @@ pub mod correlated;
 
 // === Re-exports ===
 
+#[cfg(feature = "rates")]
+pub use cir::{CIRModel, CIRParams};
+#[cfg(feature = "exotic")]
+pub use correlated::{CholeskyFactor, CorrelatedModels, CorrelationError, CorrelationMatrix};
 pub use error::ModelError;
+#[cfg(feature = "equity")]
+pub use gbm::{GBMModel, GBMParams};
+#[cfg(feature = "equity")]
+pub use heston::{HestonError, HestonModel, HestonParams};
+#[cfg(feature = "rates")]
+pub use hull_white::{HullWhiteModel, HullWhiteParams, ThetaFunction};
 pub use model_enum::{ModelParams, ModelState, StochasticModelEnum};
+#[cfg(feature = "equity")]
+pub use sabr::{SABRError, SABRModel, SABRParams};
 pub use stochastic::{
     EquityModel, FxModel, HybridModel, RatesModel, SingleState, StochasticModel, StochasticState,
     TwoFactorState,
 };
-
-#[cfg(feature = "equity")]
-pub use gbm::{GBMModel, GBMParams};
-
-#[cfg(feature = "equity")]
-pub use heston::{HestonError, HestonModel, HestonParams};
-
-#[cfg(feature = "equity")]
-pub use sabr::{SABRError, SABRModel, SABRParams};
-
-#[cfg(feature = "rates")]
-pub use hull_white::{HullWhiteModel, HullWhiteParams, ThetaFunction};
-
-#[cfg(feature = "rates")]
-pub use cir::{CIRModel, CIRParams};
-
-#[cfg(feature = "exotic")]
-pub use correlated::{CholeskyFactor, CorrelatedModels, CorrelationError, CorrelationMatrix};

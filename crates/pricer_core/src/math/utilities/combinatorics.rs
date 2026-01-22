@@ -137,8 +137,9 @@ pub fn binomial<T: Float>(n: usize, k: usize) -> T {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     // ==========================================================================
     // factorial tests
@@ -288,8 +289,9 @@ mod tests {
 
 #[cfg(test)]
 mod proptests {
-    use super::*;
     use proptest::prelude::*;
+
+    use super::*;
 
     proptest! {
         #[test]

@@ -7,8 +7,8 @@
 //!   calculations
 //! - `currency`: ISO 4217 currency codes with metadata
 //! - `currency_pair`: Currency pair types for FX calculations
-//! - `error`: Structured error types for pricing, interpolation, solver,
-//!   and calibration operations
+//! - `error`: Structured error types for pricing, interpolation, solver, and
+//!   calibration operations
 //!
 //! # Re-exports
 //!
@@ -33,7 +33,5 @@ pub use error::{
     CalibrationError, CalibrationErrorKind, CurrencyError, DateError, InterpolationError,
     PricingError, SolverError,
 };
-pub use infra_master::BusinessDayConvention;
-pub use infra_master::Currency;
-pub use infra_master::Date;
+pub use infra_master::{BusinessDayConvention, Currency, Date};
 pub use time::{time_to_maturity, time_to_maturity_dates};

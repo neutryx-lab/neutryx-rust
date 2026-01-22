@@ -31,10 +31,11 @@ pub enum MarginType {
 /// Initial Margin model type.
 ///
 /// Defines the methodology used to calculate Initial Margin.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ImModel {
     /// ISDA SIMM (Standard Initial Margin Model)
+    #[default]
     Simm,
     /// Regulatory schedule-based approach
     Schedule,
@@ -44,30 +45,19 @@ pub enum ImModel {
     Internal,
 }
 
-impl Default for ImModel {
-    fn default() -> Self {
-        Self::Simm
-    }
-}
-
 /// SIMM version.
 ///
 /// Defines which version of the ISDA SIMM methodology to use.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum SimmVersion {
     /// SIMM v2.5 (December 2021)
     V2_5,
     /// SIMM v2.6 (December 2023)
+    #[default]
     V2_6,
     /// SIMM v2.7 (December 2024)
     V2_7,
-}
-
-impl Default for SimmVersion {
-    fn default() -> Self {
-        Self::V2_6
-    }
 }
 
 impl std::fmt::Display for SimmVersion {
@@ -123,21 +113,16 @@ impl RoundingRule {
     ///
     /// # Arguments
     ///
-    /// * `amount` - The rounding increment (e.g., 1000 for rounding to thousands)
+    /// * `amount` - The rounding increment (e.g., 1000 for rounding to
+    ///   thousands)
     /// * `direction` - The rounding direction
-    pub fn new(amount: f64, direction: RoundingDirection) -> Self {
-        Self { amount, direction }
-    }
+    pub fn new(amount: f64, direction: RoundingDirection) -> Self { Self { amount, direction } }
 
     /// Returns the rounding amount.
-    pub fn amount(&self) -> f64 {
-        self.amount
-    }
+    pub fn amount(&self) -> f64 { self.amount }
 
     /// Returns the rounding direction.
-    pub fn direction(&self) -> RoundingDirection {
-        self.direction
-    }
+    pub fn direction(&self) -> RoundingDirection { self.direction }
 
     /// Applies the rounding rule to a value.
     pub fn apply(&self, value: f64) -> f64 {
@@ -207,19 +192,13 @@ impl VmTerms {
     }
 
     /// Returns the call frequency.
-    pub fn frequency(&self) -> CallFrequency {
-        self.frequency
-    }
+    pub fn frequency(&self) -> CallFrequency { self.frequency }
 
     /// Returns the settlement lag in days.
-    pub fn settlement_lag(&self) -> u32 {
-        self.settlement_lag
-    }
+    pub fn settlement_lag(&self) -> u32 { self.settlement_lag }
 
     /// Returns the rounding rule if set.
-    pub fn rounding(&self) -> Option<&RoundingRule> {
-        self.rounding.as_ref()
-    }
+    pub fn rounding(&self) -> Option<&RoundingRule> { self.rounding.as_ref() }
 
     /// Applies rounding to a margin amount if a rule is set.
     pub fn apply_rounding(&self, amount: f64) -> f64 {
@@ -231,9 +210,7 @@ impl VmTerms {
 }
 
 impl Default for VmTerms {
-    fn default() -> Self {
-        Self::new(CallFrequency::Daily, 1)
-    }
+    fn default() -> Self { Self::new(CallFrequency::Daily, 1) }
 }
 
 // ============================================================================
@@ -300,24 +277,16 @@ impl ImTerms {
     }
 
     /// Returns the IM model.
-    pub fn model(&self) -> ImModel {
-        self.model
-    }
+    pub fn model(&self) -> ImModel { self.model }
 
     /// Returns the SIMM version if applicable.
-    pub fn simm_version(&self) -> Option<SimmVersion> {
-        self.simm_version
-    }
+    pub fn simm_version(&self) -> Option<SimmVersion> { self.simm_version }
 
     /// Returns the calculation frequency.
-    pub fn calculation_frequency(&self) -> CallFrequency {
-        self.calculation_frequency
-    }
+    pub fn calculation_frequency(&self) -> CallFrequency { self.calculation_frequency }
 
     /// Returns the posting currency.
-    pub fn posting_currency(&self) -> Currency {
-        self.posting_currency
-    }
+    pub fn posting_currency(&self) -> Currency { self.posting_currency }
 }
 
 // ============================================================================
@@ -402,19 +371,13 @@ impl MarginTerms {
     }
 
     /// Returns the margin type.
-    pub fn margin_type(&self) -> MarginType {
-        self.margin_type
-    }
+    pub fn margin_type(&self) -> MarginType { self.margin_type }
 
     /// Returns the VM terms if applicable.
-    pub fn vm_terms(&self) -> Option<&VmTerms> {
-        self.vm_terms.as_ref()
-    }
+    pub fn vm_terms(&self) -> Option<&VmTerms> { self.vm_terms.as_ref() }
 
     /// Returns the IM terms if applicable.
-    pub fn im_terms(&self) -> Option<&ImTerms> {
-        self.im_terms.as_ref()
-    }
+    pub fn im_terms(&self) -> Option<&ImTerms> { self.im_terms.as_ref() }
 
     /// Returns whether this requires VM.
     pub fn requires_vm(&self) -> bool {
@@ -422,15 +385,11 @@ impl MarginTerms {
     }
 
     /// Returns whether this requires IM.
-    pub fn requires_im(&self) -> bool {
-        matches!(self.margin_type, MarginType::VmAndIm)
-    }
+    pub fn requires_im(&self) -> bool { matches!(self.margin_type, MarginType::VmAndIm) }
 }
 
 impl Default for MarginTerms {
-    fn default() -> Self {
-        Self::no_margin()
-    }
+    fn default() -> Self { Self::no_margin() }
 }
 
 #[cfg(test)]
@@ -584,7 +543,8 @@ mod tests {
 
     #[test]
     fn test_im_terms_simm_version_ignored_for_non_simm() {
-        let im = ImTerms::new(ImModel::Schedule, Currency::USD).with_simm_version(SimmVersion::V2_7);
+        let im =
+            ImTerms::new(ImModel::Schedule, Currency::USD).with_simm_version(SimmVersion::V2_7);
         // SIMM version should remain None for non-SIMM models
         assert!(im.simm_version().is_none());
     }

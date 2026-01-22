@@ -79,14 +79,8 @@ mod tests {
 
     #[test]
     fn test_fitting_result_creation() {
-        let result: FittingResult<f64> = FittingResult::new(
-            vec![1.0, 2.0],
-            vec![0.1, -0.1, 0.05],
-            0.95,
-            0.05,
-            1.0,
-            2,
-        );
+        let result: FittingResult<f64> =
+            FittingResult::new(vec![1.0, 2.0], vec![0.1, -0.1, 0.05], 0.95, 0.05, 1.0, 2);
         assert_eq!(result.params, vec![1.0, 2.0]);
         assert_eq!(result.n_points, 3);
         assert_eq!(result.n_params, 2);

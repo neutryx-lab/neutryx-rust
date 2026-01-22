@@ -98,9 +98,7 @@ pub enum CurrencyError {
 
 /// Convert DateError to MasterDataError.
 impl From<DateError> for MasterDataError {
-    fn from(err: DateError) -> Self {
-        MasterDataError::InvalidDate(err.to_string())
-    }
+    fn from(err: DateError) -> Self { MasterDataError::InvalidDate(err.to_string()) }
 }
 
 #[cfg(test)]

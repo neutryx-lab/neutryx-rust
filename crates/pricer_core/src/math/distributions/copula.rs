@@ -35,10 +35,7 @@
 //! Li, D. X. (2000). On Default Correlation: A Copula Function Approach.
 //! Journal of Fixed Income, 9(4), 43-54.
 
-use super::bivariate_normal::bivariate_norm_cdf;
-use super::normal::norm_inv_cdf;
-use super::DistributionError;
-
+use super::{bivariate_normal::bivariate_norm_cdf, normal::norm_inv_cdf, DistributionError};
 #[cfg(feature = "linalg")]
 use crate::math::linalg::{cholesky, matrix_from_rows, Matrix};
 
@@ -89,7 +86,8 @@ impl GaussianCopula {
     ///
     /// # Errors
     ///
-    /// Returns [`DistributionError::InvalidCorrelation`] if ρ is outside [-1, 1]
+    /// Returns [`DistributionError::InvalidCorrelation`] if ρ is outside [-1,
+    /// 1]
     ///
     /// # Example
     ///
@@ -121,9 +119,7 @@ impl GaussianCopula {
     /// assert!((copula.correlation() - 0.7).abs() < 1e-10);
     /// ```
     #[must_use]
-    pub fn correlation(&self) -> f64 {
-        self.correlation
-    }
+    pub fn correlation(&self) -> f64 { self.correlation }
 }
 
 impl CopulaTrait for GaussianCopula {
@@ -157,9 +153,7 @@ impl CopulaTrait for GaussianCopula {
         }
     }
 
-    fn dimension(&self) -> usize {
-        self.dim
-    }
+    fn dimension(&self) -> usize { self.dim }
 }
 
 /// Convenience function to compute bivariate Gaussian copula value.
@@ -271,7 +265,8 @@ impl MultiGaussianCopula {
     /// # Arguments
     ///
     /// * `dim` - Dimension of the copula (n ≥ 2)
-    /// * `corr_flat` - Flattened correlation matrix in row-major order (length = dim²)
+    /// * `corr_flat` - Flattened correlation matrix in row-major order (length
+    ///   = dim²)
     ///
     /// # Returns
     ///
@@ -279,10 +274,13 @@ impl MultiGaussianCopula {
     ///
     /// # Errors
     ///
-    /// * [`DistributionError::NumericalError`] if the correlation matrix has wrong size
-    /// * [`DistributionError::InvalidCorrelation`] if diagonal elements are not 1
+    /// * [`DistributionError::NumericalError`] if the correlation matrix has
+    ///   wrong size
+    /// * [`DistributionError::InvalidCorrelation`] if diagonal elements are not
+    ///   1
     /// * [`DistributionError::NumericalError`] if matrix is not symmetric
-    /// * [`DistributionError::NotPositiveDefinite`] if matrix is not positive definite
+    /// * [`DistributionError::NotPositiveDefinite`] if matrix is not positive
+    ///   definite
     ///
     /// # Example
     ///
@@ -299,13 +297,15 @@ impl MultiGaussianCopula {
         Self::with_samples(dim, corr_flat, Self::DEFAULT_NUM_SAMPLES)
     }
 
-    /// Creates a new multi-dimensional Gaussian copula with a specified number of samples.
+    /// Creates a new multi-dimensional Gaussian copula with a specified number
+    /// of samples.
     ///
     /// # Arguments
     ///
     /// * `dim` - Dimension of the copula (n ≥ 2)
     /// * `corr_flat` - Flattened correlation matrix in row-major order
-    /// * `num_samples` - Number of Monte Carlo samples for probability estimation
+    /// * `num_samples` - Number of Monte Carlo samples for probability
+    ///   estimation
     pub fn with_samples(
         dim: usize,
         corr_flat: &[f64],
@@ -365,7 +365,8 @@ impl MultiGaussianCopula {
         }
 
         // Compute Cholesky decomposition (validates positive definiteness)
-        let cholesky_l = cholesky(&corr_matrix).map_err(|_| DistributionError::NotPositiveDefinite)?;
+        let cholesky_l =
+            cholesky(&corr_matrix).map_err(|_| DistributionError::NotPositiveDefinite)?;
 
         Ok(Self {
             dim,
@@ -376,19 +377,18 @@ impl MultiGaussianCopula {
 
     /// Returns the dimension of the copula.
     #[must_use]
-    pub fn dim(&self) -> usize {
-        self.dim
-    }
+    pub fn dim(&self) -> usize { self.dim }
 
-    /// Returns the number of Monte Carlo samples used for probability estimation.
+    /// Returns the number of Monte Carlo samples used for probability
+    /// estimation.
     #[must_use]
-    pub fn num_samples(&self) -> usize {
-        self.num_samples
-    }
+    pub fn num_samples(&self) -> usize { self.num_samples }
 
-    /// Computes the joint probability using Monte Carlo simulation with a specific seed.
+    /// Computes the joint probability using Monte Carlo simulation with a
+    /// specific seed.
     ///
-    /// This method allows for reproducible results by specifying the random seed.
+    /// This method allows for reproducible results by specifying the random
+    /// seed.
     ///
     /// # Arguments
     ///
@@ -489,15 +489,14 @@ impl CopulaTrait for MultiGaussianCopula {
         self.joint_probability_internal(u, None)
     }
 
-    fn dimension(&self) -> usize {
-        self.dim
-    }
+    fn dimension(&self) -> usize { self.dim }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     // ==========================================================================
     // GaussianCopula construction tests
@@ -720,14 +719,8 @@ mod tests {
                 let upper = u.min(v);
 
                 // Use tolerant bounds check for numerical stability
-                assert!(
-                    c >= lower - 0.01,
-                    "C({u}, {v}) = {c} < lower bound {lower}"
-                );
-                assert!(
-                    c <= upper + 0.01,
-                    "C({u}, {v}) = {c} > upper bound {upper}"
-                );
+                assert!(c >= lower - 0.01, "C({u}, {v}) = {c} < lower bound {lower}");
+                assert!(c <= upper + 0.01, "C({u}, {v}) = {c} > upper bound {upper}");
             }
         }
     }
@@ -749,8 +742,9 @@ mod tests {
 
 #[cfg(test)]
 mod proptests {
-    use super::*;
     use proptest::prelude::*;
+
+    use super::*;
 
     proptest! {
         #[test]
@@ -802,8 +796,9 @@ mod proptests {
 
 #[cfg(all(test, feature = "linalg"))]
 mod multi_dimensional_tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     // ==========================================================================
     // MultiGaussianCopula construction tests
@@ -850,7 +845,10 @@ mod multi_dimensional_tests {
             0.9, -0.9, 1.0, // This combination is not PD
         ];
         let result = MultiGaussianCopula::new(3, &corr);
-        assert!(matches!(result, Err(DistributionError::NotPositiveDefinite)));
+        assert!(matches!(
+            result,
+            Err(DistributionError::NotPositiveDefinite)
+        ));
     }
 
     #[test]
@@ -861,7 +859,10 @@ mod multi_dimensional_tests {
             0.5, 1.0,
         ];
         let result = MultiGaussianCopula::new(2, &corr);
-        assert!(matches!(result, Err(DistributionError::InvalidCorrelation { .. })));
+        assert!(matches!(
+            result,
+            Err(DistributionError::InvalidCorrelation { .. })
+        ));
     }
 
     #[test]
@@ -967,8 +968,9 @@ mod multi_dimensional_tests {
         let c_bivariate = bivariate_copula.joint_probability(&u).unwrap();
 
         // Monte Carlo with 1M samples: std error ≈ sqrt(p*(1-p)/n) ≈ 0.0005
-        // However, there may be small systematic differences due to implementation details
-        // Use 5% relative tolerance which is acceptable for Monte Carlo estimation
+        // However, there may be small systematic differences due to implementation
+        // details Use 5% relative tolerance which is acceptable for Monte Carlo
+        // estimation
         let relative_error = (c_multi - c_bivariate).abs() / c_bivariate;
         assert!(
             relative_error < 0.10,
@@ -977,8 +979,14 @@ mod multi_dimensional_tests {
         );
 
         // Also verify both results are in valid range
-        assert!(c_multi > 0.0 && c_multi < 1.0, "c_multi out of range: {c_multi}");
-        assert!(c_bivariate > 0.0 && c_bivariate < 1.0, "c_bivariate out of range: {c_bivariate}");
+        assert!(
+            c_multi > 0.0 && c_multi < 1.0,
+            "c_multi out of range: {c_multi}"
+        );
+        assert!(
+            c_bivariate > 0.0 && c_bivariate < 1.0,
+            "c_bivariate out of range: {c_bivariate}"
+        );
     }
 
     // ==========================================================================
@@ -1004,10 +1012,7 @@ mod multi_dimensional_tests {
                     // Copula must be in [0, min(u)]
                     let upper = u1.min(u2).min(u3);
                     assert!(c >= -0.01, "C({u:?}) = {c} < 0");
-                    assert!(
-                        c <= upper + 0.02,
-                        "C({u:?}) = {c} > upper bound {upper}"
-                    );
+                    assert!(c <= upper + 0.02, "C({u:?}) = {c} > upper bound {upper}");
                 }
             }
         }

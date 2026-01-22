@@ -125,9 +125,7 @@ impl BusinessDayConvention {
 }
 
 impl fmt::Display for BusinessDayConvention {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.name())
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.name()) }
 }
 
 impl FromStr for BusinessDayConvention {
@@ -174,9 +172,7 @@ pub trait Calendar: Send + Sync {
     fn is_business_day(&self, date: Date) -> bool;
 
     /// Check if a date is a holiday (non-business day).
-    fn is_holiday(&self, date: Date) -> bool {
-        !self.is_business_day(date)
-    }
+    fn is_holiday(&self, date: Date) -> bool { !self.is_business_day(date) }
 
     /// Get the next business day on or after the given date.
     fn next_business_day(&self, mut date: Date) -> Date {
@@ -263,21 +259,15 @@ pub struct ConcreteCalendar {
 impl ConcreteCalendar {
     /// Create a calendar by identifier.
     #[must_use]
-    pub fn new(id: CalendarId) -> Self {
-        Self { id }
-    }
+    pub fn new(id: CalendarId) -> Self { Self { id } }
 
     /// Get a calendar by identifier (convenience method).
     #[must_use]
-    pub fn get(id: CalendarId) -> Self {
-        Self::new(id)
-    }
+    pub fn get(id: CalendarId) -> Self { Self::new(id) }
 
     /// Returns the calendar identifier.
     #[must_use]
-    pub fn id(&self) -> CalendarId {
-        self.id
-    }
+    pub fn id(&self) -> CalendarId { self.id }
 
     // Check if a NaiveDate is a holiday (excluding weekends)
     fn is_holiday_internal(&self, date: NaiveDate) -> bool {
@@ -386,9 +376,7 @@ impl JointCalendar {
 
     /// Returns the rule used for combining calendars.
     #[must_use]
-    pub fn rule(&self) -> JointCalendarRule {
-        self.rule
-    }
+    pub fn rule(&self) -> JointCalendarRule { self.rule }
 }
 
 impl Calendar for JointCalendar {
@@ -621,8 +609,7 @@ mod tests {
     #[test]
     fn test_joint_calendar_join_business_days() {
         let weekend = Box::new(ConcreteCalendar::get(CalendarId::WeekendOnly));
-        let joint =
-            JointCalendar::new(vec![weekend.clone()], JointCalendarRule::JoinBusinessDays);
+        let joint = JointCalendar::new(vec![weekend.clone()], JointCalendarRule::JoinBusinessDays);
 
         let monday = Date::from_ymd(2026, 1, 5).unwrap();
         assert!(joint.is_business_day(monday));
@@ -633,8 +620,7 @@ mod tests {
         // Create two calendars where one has a holiday the other doesn't
         let target = Box::new(ConcreteCalendar::get(CalendarId::Target));
         let weekend_only = Box::new(ConcreteCalendar::get(CalendarId::WeekendOnly));
-        let joint =
-            JointCalendar::new(vec![target, weekend_only], JointCalendarRule::JoinHolidays);
+        let joint = JointCalendar::new(vec![target, weekend_only], JointCalendarRule::JoinHolidays);
 
         // Labour Day (May 1) - Target holiday, but WeekendOnly doesn't have it
         // 2026-05-01 is Friday

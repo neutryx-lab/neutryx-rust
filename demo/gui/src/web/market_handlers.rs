@@ -6,8 +6,8 @@
 //!
 //! - Task 3.2: GET /api/market/rates - List market rates
 //! - Task 3.3: GET /api/market/rates/:id - Get rate detail
-//! - Task 3.4: GET /api/market/conventions - List conventions
-//!            GET /api/market/conventions/:id - Get convention detail
+//! - Task 3.4: GET /api/market/conventions - List conventions GET
+//!   /api/market/conventions/:id - Get convention detail
 //! - Task 3.5: Router integration
 //!
 //! # Endpoints
@@ -32,10 +32,12 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::market_data::{get_convention, get_conventions_list, MarketDataCache};
-use super::market_types::{
-    ConventionResponse, ConventionsListResponse, MarketDataApiError, MarketRateDetailResponse,
-    MarketRateQuery, MarketRatesListResponse,
+use super::{
+    market_data::{get_convention, get_conventions_list, MarketDataCache},
+    market_types::{
+        ConventionResponse, ConventionsListResponse, MarketDataApiError, MarketRateDetailResponse,
+        MarketRateQuery, MarketRatesListResponse,
+    },
 };
 
 // =============================================================================
@@ -189,7 +191,9 @@ pub async fn export_rates_csv(
     let response = cache.get_rates(&query).await;
 
     // Build CSV content
-    let mut csv = String::from("id,currency,tenor,rateType,value,quoteType,timestamp,source,isStale,rateIndex\n");
+    let mut csv = String::from(
+        "id,currency,tenor,rateType,value,quoteType,timestamp,source,isStale,rateIndex\n",
+    );
 
     for rate in &response.rates {
         csv.push_str(&format!(
@@ -291,11 +295,8 @@ mod tests {
         async fn test_get_market_rate_detail_found() {
             let cache = Arc::new(MarketDataCache::new());
 
-            let result = get_market_rate_detail(
-                State(cache),
-                Path("USD-5Y-SWAP".to_string()),
-            )
-            .await;
+            let result =
+                get_market_rate_detail(State(cache), Path("USD-5Y-SWAP".to_string())).await;
 
             assert!(result.is_ok());
             let Json(detail) = result.unwrap();
@@ -308,11 +309,8 @@ mod tests {
         async fn test_get_market_rate_detail_not_found() {
             let cache = Arc::new(MarketDataCache::new());
 
-            let result = get_market_rate_detail(
-                State(cache),
-                Path("INVALID-RATE".to_string()),
-            )
-            .await;
+            let result =
+                get_market_rate_detail(State(cache), Path("INVALID-RATE".to_string())).await;
 
             assert!(result.is_err());
             let (status, Json(error)) = result.unwrap_err();
@@ -343,10 +341,7 @@ mod tests {
 
         #[tokio::test]
         async fn test_get_market_convention_detail_found() {
-            let result = get_market_convention_detail(
-                Path("USD-SOFR-OIS".to_string()),
-            )
-            .await;
+            let result = get_market_convention_detail(Path("USD-SOFR-OIS".to_string())).await;
 
             assert!(result.is_ok());
             let Json(convention) = result.unwrap();
@@ -355,10 +350,7 @@ mod tests {
 
         #[tokio::test]
         async fn test_get_market_convention_detail_not_found() {
-            let result = get_market_convention_detail(
-                Path("INVALID-CONVENTION".to_string()),
-            )
-            .await;
+            let result = get_market_convention_detail(Path("INVALID-CONVENTION".to_string())).await;
 
             assert!(result.is_err());
             let (status, _) = result.unwrap_err();
@@ -374,7 +366,9 @@ mod tests {
                 index: None,
             };
 
-            let response = export_rates_csv(State(cache), Query(query)).await.into_response();
+            let response = export_rates_csv(State(cache), Query(query))
+                .await
+                .into_response();
 
             assert_eq!(response.status(), StatusCode::OK);
 
@@ -389,13 +383,19 @@ mod tests {
             let cache = Arc::new(MarketDataCache::new());
             let query = MarketRateQuery::default();
 
-            let response = export_rates_json(State(cache), Query(query)).await.into_response();
+            let response = export_rates_json(State(cache), Query(query))
+                .await
+                .into_response();
 
             assert_eq!(response.status(), StatusCode::OK);
 
             let content_type = response.headers().get("content-type");
             assert!(content_type.is_some());
-            assert!(content_type.unwrap().to_str().unwrap().contains("application/json"));
+            assert!(content_type
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .contains("application/json"));
         }
     }
 }

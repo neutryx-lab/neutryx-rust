@@ -6,9 +6,10 @@
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::return_self_not_must_use)]
 
+use std::collections::HashMap;
+
 use super::CounterPartyError;
 use crate::Currency;
-use std::collections::HashMap;
 
 // ============================================================================
 // Enums
@@ -92,7 +93,8 @@ impl CollateralHaircut {
     ///
     /// # Errors
     ///
-    /// Returns [`CounterPartyError::InvalidHaircut`] if haircut_rate is not in [0, 1].
+    /// Returns [`CounterPartyError::InvalidHaircut`] if haircut_rate is not in
+    /// [0, 1].
     pub fn new(
         collateral_type: EligibleCollateral,
         haircut_rate: f64,
@@ -114,24 +116,16 @@ impl CollateralHaircut {
     }
 
     /// Returns the collateral type.
-    pub fn collateral_type(&self) -> EligibleCollateral {
-        self.collateral_type
-    }
+    pub fn collateral_type(&self) -> EligibleCollateral { self.collateral_type }
 
     /// Returns the currency if set.
-    pub fn currency(&self) -> Option<Currency> {
-        self.currency
-    }
+    pub fn currency(&self) -> Option<Currency> { self.currency }
 
     /// Returns the haircut rate.
-    pub fn haircut_rate(&self) -> f64 {
-        self.haircut_rate
-    }
+    pub fn haircut_rate(&self) -> f64 { self.haircut_rate }
 
     /// Calculates the collateral value after applying haircut.
-    pub fn apply_haircut(&self, value: f64) -> f64 {
-        value * (1.0 - self.haircut_rate)
-    }
+    pub fn apply_haircut(&self, value: f64) -> f64 { value * (1.0 - self.haircut_rate) }
 }
 
 // ============================================================================
@@ -140,8 +134,9 @@ impl CollateralHaircut {
 
 /// CSA (Credit Support Annex) terms.
 ///
-/// Defines the collateral agreement between counterparties, including thresholds,
-/// minimum transfer amounts, margin period of risk, and eligible collateral.
+/// Defines the collateral agreement between counterparties, including
+/// thresholds, minimum transfer amounts, margin period of risk, and eligible
+/// collateral.
 ///
 /// # Examples
 ///
@@ -190,14 +185,10 @@ pub struct CsaTerms {
 
 impl CsaTerms {
     /// Creates a new CSA terms builder.
-    pub fn builder() -> CsaTermsBuilder {
-        CsaTermsBuilder::default()
-    }
+    pub fn builder() -> CsaTermsBuilder { CsaTermsBuilder::default() }
 
     /// Returns the base threshold amount.
-    pub fn threshold(&self) -> f64 {
-        self.threshold
-    }
+    pub fn threshold(&self) -> f64 { self.threshold }
 
     /// Returns the threshold for a specific currency.
     ///
@@ -211,59 +202,37 @@ impl CsaTerms {
     }
 
     /// Returns the Minimum Transfer Amount.
-    pub fn mta(&self) -> f64 {
-        self.mta
-    }
+    pub fn mta(&self) -> f64 { self.mta }
 
     /// Returns the Independent Amount.
-    pub fn independent_amount(&self) -> f64 {
-        self.independent_amount
-    }
+    pub fn independent_amount(&self) -> f64 { self.independent_amount }
 
     /// Returns the Margin Period of Risk in business days.
-    pub fn mpor_days(&self) -> u32 {
-        self.mpor_days
-    }
+    pub fn mpor_days(&self) -> u32 { self.mpor_days }
 
     /// Returns the margin currency.
-    pub fn margin_currency(&self) -> Currency {
-        self.margin_currency
-    }
+    pub fn margin_currency(&self) -> Currency { self.margin_currency }
 
     /// Returns the currency-specific thresholds.
-    pub fn currency_thresholds(&self) -> &HashMap<Currency, f64> {
-        &self.currency_thresholds
-    }
+    pub fn currency_thresholds(&self) -> &HashMap<Currency, f64> { &self.currency_thresholds }
 
     /// Returns the eligible collateral types.
-    pub fn eligible_collateral(&self) -> &[EligibleCollateral] {
-        &self.eligible_collateral
-    }
+    pub fn eligible_collateral(&self) -> &[EligibleCollateral] { &self.eligible_collateral }
 
     /// Returns the collateral haircuts.
-    pub fn haircuts(&self) -> &[CollateralHaircut] {
-        &self.haircuts
-    }
+    pub fn haircuts(&self) -> &[CollateralHaircut] { &self.haircuts }
 
     /// Returns whether rehypothecation is allowed.
-    pub fn is_rehypothecation_allowed(&self) -> bool {
-        self.rehypothecation
-    }
+    pub fn is_rehypothecation_allowed(&self) -> bool { self.rehypothecation }
 
     /// Returns the segregation type.
-    pub fn segregation(&self) -> SegregationType {
-        self.segregation
-    }
+    pub fn segregation(&self) -> SegregationType { self.segregation }
 
     /// Returns the margin call frequency.
-    pub fn call_frequency(&self) -> CallFrequency {
-        self.call_frequency
-    }
+    pub fn call_frequency(&self) -> CallFrequency { self.call_frequency }
 
     /// Returns the dispute threshold.
-    pub fn dispute_threshold(&self) -> f64 {
-        self.dispute_threshold
-    }
+    pub fn dispute_threshold(&self) -> f64 { self.dispute_threshold }
 
     /// Calculates the required margin amount given an exposure.
     ///
@@ -446,7 +415,10 @@ mod tests {
     #[test]
     fn test_collateral_haircut_valid() {
         let haircut = CollateralHaircut::new(EligibleCollateral::GovernmentBonds, 0.02).unwrap();
-        assert_eq!(haircut.collateral_type(), EligibleCollateral::GovernmentBonds);
+        assert_eq!(
+            haircut.collateral_type(),
+            EligibleCollateral::GovernmentBonds
+        );
         assert!((haircut.haircut_rate() - 0.02).abs() < f64::EPSILON);
         assert!(haircut.currency().is_none());
     }

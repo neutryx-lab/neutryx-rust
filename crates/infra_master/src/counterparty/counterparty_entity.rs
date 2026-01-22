@@ -97,47 +97,30 @@ pub struct CounterParty {
 
 impl CounterParty {
     /// Creates a new CounterParty builder.
-    pub fn builder(
-        id: impl Into<CounterPartyId>,
-        name: impl Into<String>,
-    ) -> CounterPartyBuilder {
+    pub fn builder(id: impl Into<CounterPartyId>, name: impl Into<String>) -> CounterPartyBuilder {
         CounterPartyBuilder::new(id, name)
     }
 
     /// Returns the counterparty ID.
-    pub fn id(&self) -> &CounterPartyId {
-        &self.counterparty_id
-    }
+    pub fn id(&self) -> &CounterPartyId { &self.counterparty_id }
 
     /// Returns the counterparty name.
-    pub fn name(&self) -> &str {
-        &self.name
-    }
+    pub fn name(&self) -> &str { &self.name }
 
     /// Returns the LEI if set.
-    pub fn lei(&self) -> Option<&LegalEntityId> {
-        self.lei.as_ref()
-    }
+    pub fn lei(&self) -> Option<&LegalEntityId> { self.lei.as_ref() }
 
     /// Returns the sector.
-    pub fn sector(&self) -> CounterPartySector {
-        self.sector
-    }
+    pub fn sector(&self) -> CounterPartySector { self.sector }
 
     /// Returns the country code if set.
-    pub fn country(&self) -> Option<&str> {
-        self.country.as_deref()
-    }
+    pub fn country(&self) -> Option<&str> { self.country.as_deref() }
 
     /// Returns the credit rating if set.
-    pub fn rating(&self) -> Option<CreditRating> {
-        self.rating
-    }
+    pub fn rating(&self) -> Option<CreditRating> { self.rating }
 
     /// Returns the credit parameters if set.
-    pub fn credit_params(&self) -> Option<&CreditParams> {
-        self.credit_params.as_ref()
-    }
+    pub fn credit_params(&self) -> Option<&CreditParams> { self.credit_params.as_ref() }
 
     /// Returns whether this counterparty is investment grade.
     ///
@@ -146,7 +129,8 @@ impl CounterParty {
         self.rating.map(|r| r.is_investment_grade())
     }
 
-    /// Returns the hazard rate from credit params, or from rating's indicative rate.
+    /// Returns the hazard rate from credit params, or from rating's indicative
+    /// rate.
     pub fn hazard_rate(&self) -> Option<f64> {
         self.credit_params
             .as_ref()

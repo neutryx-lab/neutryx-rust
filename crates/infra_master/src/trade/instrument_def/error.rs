@@ -58,9 +58,7 @@ impl InstrumentError {
 
     /// Creates an invalid date error.
     #[must_use]
-    pub fn invalid_date(msg: impl Into<String>) -> Self {
-        InstrumentError::InvalidDate(msg.into())
-    }
+    pub fn invalid_date(msg: impl Into<String>) -> Self { InstrumentError::InvalidDate(msg.into()) }
 
     /// Creates a validation error.
     #[must_use]
@@ -106,7 +104,10 @@ mod tests {
     #[test]
     fn test_validation_failed_display() {
         let err = InstrumentError::validation_failed("Strike must be positive");
-        assert_eq!(format!("{}", err), "Validation failed: Strike must be positive");
+        assert_eq!(
+            format!("{}", err),
+            "Validation failed: Strike must be positive"
+        );
     }
 
     #[test]

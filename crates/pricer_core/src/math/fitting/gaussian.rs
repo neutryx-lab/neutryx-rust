@@ -4,8 +4,7 @@
 
 use num_traits::Float;
 
-use super::error::FittingError;
-use super::result::GaussianFitResult;
+use super::{error::FittingError, result::GaussianFitResult};
 
 /// Fit a Gaussian distribution to sample data.
 ///
@@ -69,7 +68,8 @@ pub fn fit_gaussian<T: Float>(data: &[T]) -> Result<GaussianFitResult<T>, Fittin
 /// Fit a Gaussian to x-y data points representing a Gaussian curve.
 ///
 /// Given data points (x, y) where y is expected to follow a Gaussian shape,
-/// estimates the parameters (mean, std_dev, amplitude) by linearising the problem.
+/// estimates the parameters (mean, std_dev, amplitude) by linearising the
+/// problem.
 ///
 /// Uses the method: ln(y) = ln(A) - (x - mu)² / (2 * sigma²)
 ///
@@ -85,7 +85,8 @@ pub fn fit_gaussian<T: Float>(data: &[T]) -> Result<GaussianFitResult<T>, Fittin
 /// # Note
 ///
 /// This method works best when the data closely follows a Gaussian shape.
-/// For noisy data or data that doesn't follow a Gaussian, results may be unreliable.
+/// For noisy data or data that doesn't follow a Gaussian, results may be
+/// unreliable.
 pub fn fit_gaussian_curve<T: Float>(
     x: &[T],
     y: &[T],
@@ -238,8 +239,9 @@ fn solve_3x3<T: Float>(mat: &[T; 9], rhs: &[T; 3]) -> Result<[T; 3], FittingErro
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     #[test]
     fn test_fit_gaussian_sample() {
@@ -282,10 +284,7 @@ mod tests {
     fn test_fit_gaussian_insufficient_data() {
         let data = vec![1.0];
         let result = fit_gaussian(&data);
-        assert!(matches!(
-            result,
-            Err(FittingError::InsufficientData { .. })
-        ));
+        assert!(matches!(result, Err(FittingError::InsufficientData { .. })));
     }
 
     #[test]
@@ -322,10 +321,7 @@ mod tests {
         let y = vec![1.0, 2.0];
 
         let result = fit_gaussian_curve(&x, &y);
-        assert!(matches!(
-            result,
-            Err(FittingError::InsufficientData { .. })
-        ));
+        assert!(matches!(result, Err(FittingError::InsufficientData { .. })));
     }
 
     #[test]

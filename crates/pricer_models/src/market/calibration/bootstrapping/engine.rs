@@ -5,6 +5,7 @@
 //! Newton-Raphson with Brent fallback.
 
 use num_traits::Float;
+use pricer_core::math::numeric::from_f64;
 
 use super::{
     cache::{BootstrapCache, CurveCache},
@@ -13,7 +14,6 @@ use super::{
     error::BootstrapError,
     instrument::BootstrapInstrument,
 };
-use pricer_core::math::numeric::from_f64;
 
 /// Result of a bootstrap operation.
 #[derive(Debug, Clone)]

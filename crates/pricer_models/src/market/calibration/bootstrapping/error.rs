@@ -3,10 +3,10 @@
 //! This module provides structured error handling for yield curve bootstrapping
 //! operations with detailed diagnostic information for each failure mode.
 
+use pricer_core::types::SolverError;
 use thiserror::Error;
 
 use crate::market::MarketDataError;
-use pricer_core::types::SolverError;
 
 /// Errors that can occur during yield curve bootstrapping.
 ///

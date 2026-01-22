@@ -8,7 +8,6 @@
 //! and use static dispatch (enum-based) for Enzyme optimisation.
 
 use num_traits::Float;
-
 use pricer_core::math::numeric::{from_f64, from_usize};
 
 /// Payment frequency for fixed-income instruments.

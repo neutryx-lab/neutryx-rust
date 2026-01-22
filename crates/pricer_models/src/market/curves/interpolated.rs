@@ -1,10 +1,10 @@
 //! Interpolated yield curve implementation.
 
 use num_traits::Float;
+use pricer_core::math::interpolators::{Interpolator, LinearInterpolator};
 
 use super::YieldCurve;
 use crate::market::error::MarketDataError;
-use pricer_core::math::interpolators::{Interpolator, LinearInterpolator};
 
 /// Interpolation method for yield curves.
 ///

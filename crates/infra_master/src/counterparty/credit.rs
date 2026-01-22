@@ -26,7 +26,8 @@ use super::CounterPartyError;
 ///
 /// Each rating has an indicative hazard rate that can be used as a starting
 /// point for credit parameter calibration. Use
-/// [`indicative_hazard_rate`](CreditRating::indicative_hazard_rate) to retrieve.
+/// [`indicative_hazard_rate`](CreditRating::indicative_hazard_rate) to
+/// retrieve.
 ///
 /// # Examples
 ///
@@ -95,9 +96,7 @@ impl CreditRating {
     /// assert!(!CreditRating::BbPlus.is_investment_grade());
     /// ```
     #[inline]
-    pub fn is_investment_grade(&self) -> bool {
-        *self <= CreditRating::BbbMinus
-    }
+    pub fn is_investment_grade(&self) -> bool { *self <= CreditRating::BbbMinus }
 
     /// Returns indicative annual hazard rate for this rating.
     ///
@@ -276,7 +275,8 @@ impl CreditParams {
     ///
     /// # Errors
     ///
-    /// Returns [`CounterPartyError::InvalidCreditParams`] if `lgd` is not in [0, 1].
+    /// Returns [`CounterPartyError::InvalidCreditParams`] if `lgd` is not in
+    /// [0, 1].
     pub fn from_rating(rating: CreditRating, lgd: f64) -> Result<Self, CounterPartyError> {
         let mut params = Self::new(rating.indicative_hazard_rate(), lgd)?;
         params.rating = Some(rating);
@@ -317,35 +317,25 @@ impl CreditParams {
 
     /// Returns the annual hazard rate (λ).
     #[inline]
-    pub fn hazard_rate(&self) -> f64 {
-        self.hazard_rate
-    }
+    pub fn hazard_rate(&self) -> f64 { self.hazard_rate }
 
     /// Returns the loss given default (LGD).
     #[inline]
-    pub fn lgd(&self) -> f64 {
-        self.lgd
-    }
+    pub fn lgd(&self) -> f64 { self.lgd }
 
     /// Returns the recovery rate (1 - LGD).
     #[inline]
-    pub fn recovery_rate(&self) -> f64 {
-        1.0 - self.lgd
-    }
+    pub fn recovery_rate(&self) -> f64 { 1.0 - self.lgd }
 
     /// Returns the 1-year default probability.
     ///
     /// If not explicitly set, calculates from hazard rate.
     #[inline]
-    pub fn pd_1y(&self) -> f64 {
-        self.pd_1y.unwrap_or_else(|| self.default_prob(1.0))
-    }
+    pub fn pd_1y(&self) -> f64 { self.pd_1y.unwrap_or_else(|| self.default_prob(1.0)) }
 
     /// Returns the credit rating if set.
     #[inline]
-    pub fn rating(&self) -> Option<CreditRating> {
-        self.rating
-    }
+    pub fn rating(&self) -> Option<CreditRating> { self.rating }
 
     /// Calculates survival probability to time t: Q(t) = exp(-λt)
     ///
@@ -353,9 +343,7 @@ impl CreditParams {
     ///
     /// * `t` - Time in years
     #[inline]
-    pub fn survival_prob(&self, t: f64) -> f64 {
-        (-self.hazard_rate * t).exp()
-    }
+    pub fn survival_prob(&self, t: f64) -> f64 { (-self.hazard_rate * t).exp() }
 
     /// Calculates default probability to time t: PD(t) = 1 - Q(t)
     ///
@@ -363,9 +351,7 @@ impl CreditParams {
     ///
     /// * `t` - Time in years
     #[inline]
-    pub fn default_prob(&self, t: f64) -> f64 {
-        1.0 - self.survival_prob(t)
-    }
+    pub fn default_prob(&self, t: f64) -> f64 { 1.0 - self.survival_prob(t) }
 
     /// Calculates marginal default probability: PD(t1, t2) = Q(t1) - Q(t2)
     ///
@@ -383,9 +369,7 @@ impl CreditParams {
 
     /// Calculates expected loss at time t: EL(t) = LGD × PD(t)
     #[inline]
-    pub fn expected_loss(&self, t: f64) -> f64 {
-        self.lgd * self.default_prob(t)
-    }
+    pub fn expected_loss(&self, t: f64) -> f64 { self.lgd * self.default_prob(t) }
 }
 
 impl Default for CreditParams {

@@ -39,9 +39,10 @@
 
 use pricer_core::traits::{priceable::Differentiable, Float};
 
-use crate::market::curves::{FlatCurve, YieldCurve};
-
-use crate::models::stochastic::{RatesModel, SingleState, StochasticModel};
+use crate::{
+    market::curves::{FlatCurve, YieldCurve},
+    models::stochastic::{RatesModel, SingleState, StochasticModel},
+};
 
 // ================================================================
 // Task 2.1: ThetaFunction 型の実装

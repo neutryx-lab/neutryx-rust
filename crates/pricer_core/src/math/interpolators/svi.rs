@@ -54,7 +54,13 @@ impl<T: Float> SviParams<T> {
     /// Does not validate parameters. Use `validate()` to check.
     #[must_use]
     pub fn new(a: T, b: T, rho: T, m: T, sigma: T) -> Self {
-        Self { a, b, rho, m, sigma }
+        Self {
+            a,
+            b,
+            rho,
+            m,
+            sigma,
+        }
     }
 
     /// Validates SVI parameters for arbitrage-free conditions.
@@ -354,7 +360,12 @@ mod tests {
 
         for k in [-0.5, 0.0, 0.5] {
             let vol = svi_implied_vol(k, t, &params);
-            assert!(vol > 0.1 && vol < 1.0, "vol {} at k={} out of range", vol, k);
+            assert!(
+                vol > 0.1 && vol < 1.0,
+                "vol {} at k={} out of range",
+                vol,
+                k
+            );
         }
     }
 }

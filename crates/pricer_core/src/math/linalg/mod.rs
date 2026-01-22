@@ -28,8 +28,7 @@
 //! ```
 
 // Re-export nalgebra's main types
-pub use nalgebra::{DMatrix, DVector, RealField};
-pub use nalgebra::{Cholesky, LU, QR, SVD};
+pub use nalgebra::{Cholesky, DMatrix, DVector, RealField, LU, QR, SVD};
 
 mod error;
 mod wrappers;
@@ -105,9 +104,7 @@ pub fn vector_from_slice<T: RealField + Copy>(data: &[T]) -> Vector<T> {
 /// let i3: Matrix<f64> = identity(3);
 /// ```
 #[must_use]
-pub fn identity<T: RealField + Copy>(n: usize) -> Matrix<T> {
-    DMatrix::identity(n, n)
-}
+pub fn identity<T: RealField + Copy>(n: usize) -> Matrix<T> { DMatrix::identity(n, n) }
 
 /// Create a zero matrix.
 ///
@@ -153,8 +150,9 @@ pub fn diagonal<T: RealField + Copy>(diag: &[T]) -> Matrix<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     #[test]
     fn test_matrix_from_rows() {

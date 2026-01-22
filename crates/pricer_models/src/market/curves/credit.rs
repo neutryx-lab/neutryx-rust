@@ -6,9 +6,9 @@
 //! - [`HazardRateCurve`]: Interpolated hazard rate curve implementation
 
 use num_traits::Float;
+use pricer_core::math::interpolators::{Interpolator, LinearInterpolator};
 
 use crate::market::error::MarketDataError;
-use pricer_core::math::interpolators::{Interpolator, LinearInterpolator};
 
 /// Generic credit curve trait for hazard rate and survival probability
 /// calculations.

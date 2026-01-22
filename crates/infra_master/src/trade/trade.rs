@@ -2,10 +2,11 @@
 //!
 //! This module provides the main Trade struct and related types.
 
+use super::{
+    cashflow::Cashflow,
+    leg::{Leg, LegType},
+};
 use crate::Date;
-
-use super::cashflow::Cashflow;
-use super::leg::{Leg, LegType};
 
 /// Trade identifier type.
 pub type TradeId = String;
@@ -70,21 +71,15 @@ pub enum TradeType {
 impl TradeType {
     /// Returns true if this is a swap.
     #[must_use]
-    pub fn is_swap(&self) -> bool {
-        matches!(self, TradeType::Swap)
-    }
+    pub fn is_swap(&self) -> bool { matches!(self, TradeType::Swap) }
 
     /// Returns true if this is a swaption.
     #[must_use]
-    pub fn is_swaption(&self) -> bool {
-        matches!(self, TradeType::Swaption { .. })
-    }
+    pub fn is_swaption(&self) -> bool { matches!(self, TradeType::Swaption { .. }) }
 
     /// Returns true if this is a bond.
     #[must_use]
-    pub fn is_bond(&self) -> bool {
-        matches!(self, TradeType::Bond { .. })
-    }
+    pub fn is_bond(&self) -> bool { matches!(self, TradeType::Bond { .. }) }
 }
 
 /// Trade metadata.
@@ -104,9 +99,7 @@ pub struct TradeMetadata {
 impl TradeMetadata {
     /// Creates new empty metadata.
     #[must_use]
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Sets the trade date.
     #[must_use]
@@ -182,15 +175,11 @@ impl Trade {
     }
 
     /// Returns an iterator over all legs in this trade.
-    pub fn legs(&self) -> impl Iterator<Item = &Leg> {
-        self.legs.iter()
-    }
+    pub fn legs(&self) -> impl Iterator<Item = &Leg> { self.legs.iter() }
 
     /// Returns the number of legs in this trade.
     #[must_use]
-    pub fn num_legs(&self) -> usize {
-        self.legs.len()
-    }
+    pub fn num_legs(&self) -> usize { self.legs.len() }
 
     /// Returns an iterator over all cashflows in all legs.
     pub fn all_cashflows(&self) -> impl Iterator<Item = &Cashflow> {
@@ -206,11 +195,10 @@ impl Trade {
 
     /// Returns the total number of cashflows across all legs.
     #[must_use]
-    pub fn total_cashflows(&self) -> usize {
-        self.legs.iter().map(Leg::len).sum()
-    }
+    pub fn total_cashflows(&self) -> usize { self.legs.iter().map(Leg::len).sum() }
 
-    /// Returns true if this is a vanilla swap (exactly 2 legs: one fixed, one floating).
+    /// Returns true if this is a vanilla swap (exactly 2 legs: one fixed, one
+    /// floating).
     #[must_use]
     pub fn is_vanilla_swap(&self) -> bool {
         if !self.trade_type.is_swap() || self.legs.len() != 2 {
@@ -218,16 +206,17 @@ impl Trade {
         }
 
         let has_fixed = self.legs.iter().any(|leg| leg.leg_type == LegType::Fixed);
-        let has_floating = self.legs.iter().any(|leg| leg.leg_type == LegType::Floating);
+        let has_floating = self
+            .legs
+            .iter()
+            .any(|leg| leg.leg_type == LegType::Floating);
 
         has_fixed && has_floating
     }
 
     /// Returns the first leg if present.
     #[must_use]
-    pub fn first_leg(&self) -> Option<&Leg> {
-        self.legs.first()
-    }
+    pub fn first_leg(&self) -> Option<&Leg> { self.legs.first() }
 
     /// Returns the fixed leg if this is a swap with exactly one fixed leg.
     #[must_use]
@@ -235,7 +224,8 @@ impl Trade {
         self.legs.iter().find(|leg| leg.leg_type == LegType::Fixed)
     }
 
-    /// Returns the floating leg if this is a swap with exactly one floating leg.
+    /// Returns the floating leg if this is a swap with exactly one floating
+    /// leg.
     #[must_use]
     pub fn floating_leg(&self) -> Option<&Leg> {
         self.legs
@@ -247,8 +237,10 @@ impl Trade {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::trade::{CashflowType, Direction, Payoff};
-    use crate::Currency;
+    use crate::{
+        trade::{CashflowType, Direction, Payoff},
+        Currency,
+    };
 
     fn make_fixed_leg() -> Leg {
         let cashflows = vec![Cashflow::new(
@@ -262,12 +254,16 @@ mod tests {
             Currency::USD,
         )];
 
-        Leg::new(cashflows, Direction::Receiver, LegType::Fixed, Currency::USD)
+        Leg::new(
+            cashflows,
+            Direction::Receiver,
+            LegType::Fixed,
+            Currency::USD,
+        )
     }
 
     fn make_floating_leg() -> Leg {
-        use crate::trade::IndexType;
-        use crate::RateIndex;
+        use crate::{trade::IndexType, RateIndex};
 
         let cashflows = vec![Cashflow::new(
             CashflowType::Coupon,
@@ -280,7 +276,12 @@ mod tests {
             Currency::USD,
         )];
 
-        Leg::new(cashflows, Direction::Payer, LegType::Floating, Currency::USD)
+        Leg::new(
+            cashflows,
+            Direction::Payer,
+            LegType::Floating,
+            Currency::USD,
+        )
     }
 
     #[test]

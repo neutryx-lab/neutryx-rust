@@ -1,12 +1,15 @@
-//! Adaptive numerical integration with interval bisection and tanh-sinh transform.
+//! Adaptive numerical integration with interval bisection and tanh-sinh
+//! transform.
 //!
 //! Adaptive quadrature subdivides the integration interval until a desired
 //! tolerance is achieved, allowing efficient integration of functions with
 //! localised difficult regions.
 
-use super::{IntegrationError, IntegrationResult};
-use num_traits::Float;
 use std::f64::consts::PI;
+
+use num_traits::Float;
+
+use super::{IntegrationError, IntegrationResult};
 
 /// Options for tanh-sinh (double-exponential) quadrature.
 #[derive(Debug, Clone, Copy)]
@@ -106,17 +109,25 @@ where
     // Check if we exhausted iterations without converging well enough
     if total_error > options.abs_tol + options.rel_tol * total.abs() {
         // Still return result but note it may not meet tolerance
-        Ok(IntegrationResult::with_error(total, total_error, num_evaluations))
+        Ok(IntegrationResult::with_error(
+            total,
+            total_error,
+            num_evaluations,
+        ))
     } else {
-        Ok(IntegrationResult::with_error(total, total_error, num_evaluations))
+        Ok(IntegrationResult::with_error(
+            total,
+            total_error,
+            num_evaluations,
+        ))
     }
 }
 
 /// Performs tanh-sinh (double-exponential) quadrature.
 ///
-/// The tanh-sinh transform maps [−1, 1] to (−inf, inf) via x = tanh(pi/2 * sinh(t)),
-/// which clusters quadrature points near the endpoints. This is effective for
-/// integrands with endpoint singularities.
+/// The tanh-sinh transform maps [−1, 1] to (−inf, inf) via x = tanh(pi/2 *
+/// sinh(t)), which clusters quadrature points near the endpoints. This is
+/// effective for integrands with endpoint singularities.
 ///
 /// # Arguments
 ///
@@ -207,7 +218,11 @@ where
         let error = (result - prev_result).abs();
 
         if level > 0 && error < options.abs_tol + options.rel_tol * result.abs() {
-            return Ok(IntegrationResult::with_error(result, error, num_evaluations));
+            return Ok(IntegrationResult::with_error(
+                result,
+                error,
+                num_evaluations,
+            ));
         }
 
         prev_result = result;
@@ -215,7 +230,11 @@ where
     }
 
     let error = T::from(1e-10).unwrap();
-    Ok(IntegrationResult::with_error(prev_result, error, num_evaluations))
+    Ok(IntegrationResult::with_error(
+        prev_result,
+        error,
+        num_evaluations,
+    ))
 }
 
 /// Internal G7-K15 quadrature for adaptive integration.
@@ -305,8 +324,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::f64::consts::PI;
+
+    use super::*;
 
     #[test]
     fn test_tanh_sinh_options_default() {

@@ -1,10 +1,10 @@
 //! Interpolated volatility surface implementation.
 
 use num_traits::Float;
+use pricer_core::math::interpolators::BilinearInterpolator;
 
 use super::VolatilitySurface;
 use crate::market::error::MarketDataError;
-use pricer_core::math::interpolators::BilinearInterpolator;
 
 /// Interpolated volatility surface using grid data.
 ///

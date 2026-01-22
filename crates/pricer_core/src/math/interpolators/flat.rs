@@ -4,9 +4,10 @@
 //! either to the left (floor) or right (ceiling) of the query point.
 //! This is useful for step functions and certain financial conventions.
 
+use num_traits::Float;
+
 use super::Interpolator;
 use crate::types::InterpolationError;
-use num_traits::Float;
 
 /// Mode for flat interpolation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -57,8 +58,9 @@ impl<T: Float> FlatInterpolator<T> {
     ///
     /// # Errors
     ///
-    /// Returns `InterpolationError::InsufficientPoints` if fewer than 2 points provided.
-    /// Returns `InterpolationError::UnsortedInput` if xs are not sorted.
+    /// Returns `InterpolationError::InsufficientPoints` if fewer than 2 points
+    /// provided. Returns `InterpolationError::UnsortedInput` if xs are not
+    /// sorted.
     pub fn new(xs: &[T], ys: &[T], mode: FlatMode) -> Result<Self, InterpolationError> {
         if xs.len() < 2 {
             return Err(InterpolationError::InsufficientData {
@@ -90,9 +92,7 @@ impl<T: Float> FlatInterpolator<T> {
 
     /// Returns the interpolation mode.
     #[must_use]
-    pub const fn mode(&self) -> FlatMode {
-        self.mode
-    }
+    pub const fn mode(&self) -> FlatMode { self.mode }
 
     /// Finds the index i such that xs[i] <= x < xs[i+1].
     fn find_interval(&self, x: T) -> usize {
@@ -103,7 +103,7 @@ impl<T: Float> FlatInterpolator<T> {
         let mut hi = n - 1;
 
         while hi - lo > 1 {
-            let mid = (lo + hi) / 2;
+            let mid = usize::midpoint(lo, hi);
             if x >= self.xs[mid] {
                 lo = mid;
             } else {
@@ -143,9 +143,7 @@ impl<T: Float> Interpolator<T> for FlatInterpolator<T> {
         }
     }
 
-    fn domain(&self) -> (T, T) {
-        (self.xs[0], self.xs[self.xs.len() - 1])
-    }
+    fn domain(&self) -> (T, T) { (self.xs[0], self.xs[self.xs.len() - 1]) }
 }
 
 #[cfg(test)]

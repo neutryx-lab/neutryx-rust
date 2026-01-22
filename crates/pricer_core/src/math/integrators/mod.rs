@@ -1,12 +1,15 @@
 //! Numerical integration methods.
 //!
 //! This module provides various numerical integration (quadrature) methods
-//! commonly used in quantitative finance for option pricing and risk calculations.
+//! commonly used in quantitative finance for option pricing and risk
+//! calculations.
 //!
 //! ## Available Methods
 //!
-//! - **Gauss-Legendre**: High-accuracy fixed-point quadrature (7, 15, 21 points)
-//! - **Gauss-Kronrod**: Quadrature with embedded error estimation (G7-K15, G10-K21)
+//! - **Gauss-Legendre**: High-accuracy fixed-point quadrature (7, 15, 21
+//!   points)
+//! - **Gauss-Kronrod**: Quadrature with embedded error estimation (G7-K15,
+//!   G10-K21)
 //! - **Adaptive**: Interval bisection with tolerance-based convergence
 //! - **Runge-Kutta**: ODE solvers (RK4, RK45 Dormand-Prince)
 //!
@@ -33,8 +36,7 @@ mod runge_kutta;
 pub use adaptive::{integrate_adaptive, integrate_tanh_sinh, TanhSinhOptions};
 pub use gauss_kronrod::{integrate_gauss_kronrod, GaussKronrodRule};
 pub use gauss_legendre::{integrate_gauss_legendre, GaussLegendreOrder};
-pub use runge_kutta::{rk4_step, rk45_integrate, Rk45Options};
-
+pub use runge_kutta::{rk45_integrate, rk4_step, Rk45Options};
 use thiserror::Error;
 
 /// Result of a numerical integration.

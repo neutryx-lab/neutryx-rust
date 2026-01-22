@@ -3,9 +3,8 @@
 //! This module provides structured error handling for market data operations
 //! including yield curve and volatility surface lookups.
 
-use thiserror::Error;
-
 use pricer_core::types::{InterpolationError, PricingError};
+use thiserror::Error;
 
 use super::curves::CurveName;
 

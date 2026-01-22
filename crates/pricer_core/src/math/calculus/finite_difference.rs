@@ -206,8 +206,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     // ==========================================================================
     // First derivative tests
@@ -378,8 +379,8 @@ mod tests {
         let df_dz = partial_diff(&f, &point, 2, 1e-5, DifferenceType::Central);
 
         assert_relative_eq!(df_dx, 12.0, epsilon = 1e-6); // 3*4 = 12
-        assert_relative_eq!(df_dy, 8.0, epsilon = 1e-6);  // 2*4 = 8
-        assert_relative_eq!(df_dz, 6.0, epsilon = 1e-6);  // 2*3 = 6
+        assert_relative_eq!(df_dy, 8.0, epsilon = 1e-6); // 2*4 = 8
+        assert_relative_eq!(df_dz, 6.0, epsilon = 1e-6); // 2*3 = 6
     }
 
     // ==========================================================================
@@ -437,8 +438,9 @@ mod tests {
 
 #[cfg(test)]
 mod proptests {
-    use super::*;
     use proptest::prelude::*;
+
+    use super::*;
 
     proptest! {
         #[test]

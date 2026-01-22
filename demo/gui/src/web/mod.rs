@@ -358,7 +358,8 @@ fn build_csp_header() -> SetResponseHeaderLayer<HeaderValue> {
 
 fn build_cache_control_header() -> SetResponseHeaderLayer<HeaderValue> {
     // Disable caching for development - forces browser to always fetch fresh files
-    // For production, consider using: "public, max-age=3600" with versioned file names
+    // For production, consider using: "public, max-age=3600" with versioned file
+    // names
     let cache_control = std::env::var("FB_CACHE_CONTROL")
         .unwrap_or_else(|_| "no-cache, no-store, must-revalidate".to_string());
     let header_value = HeaderValue::from_str(&cache_control)
@@ -441,10 +442,16 @@ pub fn build_router(state: Arc<AppState>) -> Router {
     // Market Data API routes (market-data-viewer-webapp Task 3.5)
     let market_routes = Router::new()
         .route("/rates", get(market_handlers::get_market_rates))
-        .route("/rates/refresh", post(market_handlers::refresh_market_rates))
+        .route(
+            "/rates/refresh",
+            post(market_handlers::refresh_market_rates),
+        )
         .route("/rates/:id", get(market_handlers::get_market_rate_detail))
         .route("/conventions", get(market_handlers::get_market_conventions))
-        .route("/conventions/:id", get(market_handlers::get_market_convention_detail))
+        .route(
+            "/conventions/:id",
+            get(market_handlers::get_market_convention_detail),
+        )
         .route("/export/csv", get(market_handlers::export_rates_csv))
         .route("/export/json", get(market_handlers::export_rates_json))
         .with_state(state.market_data_cache.clone());

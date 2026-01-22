@@ -23,10 +23,9 @@
 //! assert_eq!(rate.value, 0.05);
 //! ```
 
-use super::data_source::DataSource;
-use super::error::MarketRateError;
-use super::quote_type::QuoteType;
-use super::rate_id::RateId;
+use super::{
+    data_source::DataSource, error::MarketRateError, quote_type::QuoteType, rate_id::RateId,
+};
 
 /// A single market rate quote with metadata.
 ///
@@ -101,7 +100,8 @@ impl MarketRate {
     ///
     /// # Errors
     ///
-    /// Returns [`MarketRateError::InvalidRate`] if the value is NaN or Infinite.
+    /// Returns [`MarketRateError::InvalidRate`] if the value is NaN or
+    /// Infinite.
     ///
     /// # Examples
     ///
@@ -212,8 +212,10 @@ impl MarketRate {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::market::{Currency, RateType};
-    use crate::time::Tenor;
+    use crate::{
+        market::{Currency, RateType},
+        time::Tenor,
+    };
 
     fn test_rate_id() -> RateId {
         RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit)
@@ -426,7 +428,12 @@ mod tests {
 
     #[test]
     fn test_market_rate_all_quote_types() {
-        for quote_type in [QuoteType::Bid, QuoteType::Ask, QuoteType::Mid, QuoteType::Last] {
+        for quote_type in [
+            QuoteType::Bid,
+            QuoteType::Ask,
+            QuoteType::Mid,
+            QuoteType::Last,
+        ] {
             let rate = MarketRate::new(
                 test_rate_id(),
                 quote_type,
@@ -447,13 +454,7 @@ mod tests {
             DataSource::Internal,
             DataSource::Manual,
         ] {
-            let rate = MarketRate::new(
-                test_rate_id(),
-                QuoteType::Mid,
-                0.05,
-                1700000000000,
-                source,
-            );
+            let rate = MarketRate::new(test_rate_id(), QuoteType::Mid, 0.05, 1700000000000, source);
             assert!(rate.is_ok());
             assert_eq!(rate.unwrap().source, source);
         }

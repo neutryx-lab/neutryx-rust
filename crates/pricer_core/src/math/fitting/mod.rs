@@ -3,7 +3,8 @@
 //! This module provides algorithms for fitting curves and distributions
 //! to data, including:
 //!
-//! - **Polynomial fitting**: Linear, quadratic, and higher-order polynomial fits
+//! - **Polynomial fitting**: Linear, quadratic, and higher-order polynomial
+//!   fits
 //! - **Weighted fitting**: Least squares with observation weights
 //! - **Gaussian fitting**: Estimate parameters of Gaussian distributions
 //!

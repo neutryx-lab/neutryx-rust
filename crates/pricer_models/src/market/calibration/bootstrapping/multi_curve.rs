@@ -42,12 +42,12 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use num_traits::Float;
+use pricer_core::math::numeric::from_f64;
 
 use super::{
     config::GenericBootstrapConfig, curve::BootstrappedCurve, engine::SequentialBootstrapper,
     error::BootstrapError, instrument::BootstrapInstrument,
 };
-use pricer_core::math::numeric::from_f64;
 
 /// Tenor definitions for forward curves.
 ///

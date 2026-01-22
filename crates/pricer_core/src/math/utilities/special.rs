@@ -119,8 +119,9 @@ pub fn beta<T: Float>(a: T, b: T) -> T {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     // ==========================================================================
     // log_gamma tests
@@ -204,10 +205,10 @@ mod tests {
     fn test_beta_integers() {
         // B(m, n) = (m-1)!(n-1)!/(m+n-1)! for positive integers
         let test_cases = [
-            (2.0, 3.0, 1.0 / 12.0),      // B(2,3) = 1!*2!/4! = 1*2/24 = 1/12
-            (3.0, 3.0, 1.0 / 30.0),      // B(3,3) = 2!*2!/5! = 4/120 = 1/30
-            (2.0, 2.0, 1.0 / 6.0),       // B(2,2) = 1!*1!/3! = 1/6
-            (1.0, 5.0, 1.0 / 5.0),       // B(1,5) = 0!*4!/5! = 24/120 = 1/5
+            (2.0, 3.0, 1.0 / 12.0), // B(2,3) = 1!*2!/4! = 1*2/24 = 1/12
+            (3.0, 3.0, 1.0 / 30.0), // B(3,3) = 2!*2!/5! = 4/120 = 1/30
+            (2.0, 2.0, 1.0 / 6.0),  // B(2,2) = 1!*1!/3! = 1/6
+            (1.0, 5.0, 1.0 / 5.0),  // B(1,5) = 0!*4!/5! = 24/120 = 1/5
         ];
 
         for (a, b, expected) in test_cases {
@@ -238,8 +239,9 @@ mod tests {
 
 #[cfg(test)]
 mod proptests {
-    use super::*;
     use proptest::prelude::*;
+
+    use super::*;
 
     proptest! {
         #[test]

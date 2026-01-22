@@ -11,8 +11,8 @@
 //!
 //! ## AD Compatibility
 //!
-//! All functions are generic over `T: Float` to support automatic differentiation
-//! through dual numbers.
+//! All functions are generic over `T: Float` to support automatic
+//! differentiation through dual numbers.
 //!
 //! ## Application
 //!
@@ -66,11 +66,7 @@ use crate::math::utilities::log_gamma;
 /// assert!(p > 0.0 && p < 1.0);
 /// ```
 #[allow(clippy::excessive_precision)]
-pub fn noncentral_chi_squared_cdf<T: Float>(
-    x: T,
-    df: T,
-    ncp: T,
-) -> Result<T, DistributionError> {
+pub fn noncentral_chi_squared_cdf<T: Float>(x: T, df: T, ncp: T) -> Result<T, DistributionError> {
     let df_f64 = df.to_f64().unwrap();
     let ncp_f64 = ncp.to_f64().unwrap();
     let x_f64 = x.to_f64().unwrap();
@@ -239,7 +235,8 @@ fn gamma_series<T: Float>(a: T, x: T) -> T {
     sum * log_term.exp()
 }
 
-/// Continued fraction for the regularised upper incomplete gamma function Q(a, x).
+/// Continued fraction for the regularised upper incomplete gamma function Q(a,
+/// x).
 ///
 /// Uses the modified Lentz algorithm.
 fn gamma_continued_fraction<T: Float>(a: T, x: T) -> T {
@@ -286,8 +283,9 @@ fn gamma_continued_fraction<T: Float>(a: T, x: T) -> T {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     // ==========================================================================
     // Central chi-squared tests
@@ -387,10 +385,16 @@ mod tests {
         for (x, df, ncp) in test_cases {
             let p = noncentral_chi_squared_cdf(x, df, ncp).unwrap();
             // Check bounds
-            assert!(p >= 0.0 && p <= 1.0, "CDF out of bounds for x={x}, df={df}, ncp={ncp}");
+            assert!(
+                p >= 0.0 && p <= 1.0,
+                "CDF out of bounds for x={x}, df={df}, ncp={ncp}"
+            );
             // Check monotonicity
             let p_smaller = noncentral_chi_squared_cdf(x - 1.0, df, ncp).unwrap();
-            assert!(p >= p_smaller, "CDF not monotonic for x={x}, df={df}, ncp={ncp}");
+            assert!(
+                p >= p_smaller,
+                "CDF not monotonic for x={x}, df={df}, ncp={ncp}"
+            );
         }
     }
 
@@ -478,8 +482,9 @@ mod tests {
 
 #[cfg(test)]
 mod proptests {
-    use super::*;
     use proptest::prelude::*;
+
+    use super::*;
 
     proptest! {
         #[test]

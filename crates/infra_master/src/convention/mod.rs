@@ -1,10 +1,11 @@
 //! Convention module for market conventions.
 //!
-//! **Deprecated**: This module is deprecated. Use [`crate::trade::convention`] instead.
+//! **Deprecated**: This module is deprecated. Use [`crate::trade::convention`]
+//! instead.
 //!
-//! This module re-exports types from [`crate::trade::convention`] for backward compatibility.
-//! All convention types are now part of the trade module to better reflect their relationship
-//! with trade structures.
+//! This module re-exports types from [`crate::trade::convention`] for backward
+//! compatibility. All convention types are now part of the trade module to
+//! better reflect their relationship with trade structures.
 //!
 //! # Migration
 //!

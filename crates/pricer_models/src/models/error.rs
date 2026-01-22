@@ -1,14 +1,14 @@
 //! Unified error types for stochastic models.
 
-use thiserror::Error;
 use pricer_core::types::PricingError;
+use thiserror::Error;
 
+#[cfg(feature = "exotic")]
+use super::correlated::CorrelationError;
 #[cfg(feature = "equity")]
 use super::heston::HestonError;
 #[cfg(feature = "equity")]
 use super::sabr::SABRError;
-#[cfg(feature = "exotic")]
-use super::correlated::CorrelationError;
 
 /// Unified error type for stochastic model operations.
 #[derive(Error, Debug, Clone, PartialEq)]
@@ -46,9 +46,10 @@ impl From<ModelError> for PricingError {
     fn from(err: ModelError) -> Self {
         match err {
             ModelError::NumericalInstability(msg) => PricingError::NumericalInstability(msg),
-            ModelError::Generic { model_name, message } => {
-                PricingError::ModelFailure(format!("{model_name}: {message}"))
-            }
+            ModelError::Generic {
+                model_name,
+                message,
+            } => PricingError::ModelFailure(format!("{model_name}: {message}")),
             #[cfg(feature = "equity")]
             ModelError::Heston(e) => PricingError::ModelFailure(e.to_string()),
             #[cfg(feature = "equity")]

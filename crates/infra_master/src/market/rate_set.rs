@@ -26,19 +26,13 @@
 //! assert!(rate_set.get_rate(&rate_id, QuoteType::Mid).is_some());
 //! ```
 
-use std::collections::HashMap;
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 
-use super::data_source::SourcePriority;
-use super::error::MarketRateError;
-use super::mapper::InstrumentMapper;
-use super::quote_type::QuoteType;
-use super::rate::MarketRate;
-use super::rate_id::RateId;
-use super::rate_type::RateType;
-use crate::market::Currency;
-use crate::time::Date;
-use crate::trade::Instrument;
+use super::{
+    data_source::SourcePriority, error::MarketRateError, mapper::InstrumentMapper,
+    quote_type::QuoteType, rate::MarketRate, rate_id::RateId, rate_type::RateType,
+};
+use crate::{market::Currency, time::Date, trade::Instrument};
 
 /// A collection of market rates with O(1) lookup.
 ///
@@ -205,7 +199,7 @@ impl MarketRateSet {
         let bid = self.get_rate(id, QuoteType::Bid)?;
         let ask = self.get_rate(id, QuoteType::Ask)?;
 
-        Some((bid.value + ask.value) / 2.0)
+        Some(f64::midpoint(bid.value, ask.value))
     }
 
     /// Removes a rate from the set.
@@ -340,9 +334,7 @@ impl MarketRateSet {
     /// assert_eq!(rate_set.len(), 0);
     /// ```
     #[must_use]
-    pub fn len(&self) -> usize {
-        self.rates.len()
-    }
+    pub fn len(&self) -> usize { self.rates.len() }
 
     /// Returns `true` if the set contains no rates.
     ///
@@ -355,11 +347,10 @@ impl MarketRateSet {
     /// assert!(rate_set.is_empty());
     /// ```
     #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.rates.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.rates.is_empty() }
 
-    /// Returns a new `MarketRateSet` containing only rates for the specified currency.
+    /// Returns a new `MarketRateSet` containing only rates for the specified
+    /// currency.
     ///
     /// # Arguments
     ///
@@ -402,7 +393,8 @@ impl MarketRateSet {
         result
     }
 
-    /// Returns a new `MarketRateSet` containing only rates valid at the given timestamp.
+    /// Returns a new `MarketRateSet` containing only rates valid at the given
+    /// timestamp.
     ///
     /// Filters to rates with timestamp <= the given timestamp in milliseconds.
     ///
@@ -508,9 +500,7 @@ impl MarketRateSet {
     }
 
     /// Returns an iterator over all rates in the set.
-    pub fn iter(&self) -> impl Iterator<Item = &MarketRate> {
-        self.rates.values()
-    }
+    pub fn iter(&self) -> impl Iterator<Item = &MarketRate> { self.rates.values() }
 
     /// Converts market rates to instruments using the provided mapper.
     ///
@@ -600,10 +590,12 @@ impl MarketRateSet {
         (instruments, errors)
     }
 
-    /// Converts market rates to instruments, returning only successful mappings.
+    /// Converts market rates to instruments, returning only successful
+    /// mappings.
     ///
     /// This is a convenience method that ignores mapping errors.
-    /// Use [`to_instruments`](Self::to_instruments) if you need to handle errors.
+    /// Use [`to_instruments`](Self::to_instruments) if you need to handle
+    /// errors.
     ///
     /// # Arguments
     ///
@@ -644,8 +636,10 @@ impl MarketRateSet {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::market::{DataSource, StandardInstrumentMapper};
-    use crate::time::Tenor;
+    use crate::{
+        market::{DataSource, StandardInstrumentMapper},
+        time::Tenor,
+    };
 
     fn create_rate(
         currency: Currency,

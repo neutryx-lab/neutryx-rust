@@ -47,7 +47,8 @@ mod distributions {
         }
     }
 
-    /// Test bivariate normal CDF with zero correlation equals product of marginals
+    /// Test bivariate normal CDF with zero correlation equals product of
+    /// marginals
     #[test]
     fn test_bivariate_zero_correlation() {
         let test_points = [(0.0_f64, 0.0_f64), (1.0, 1.0), (-1.0, 1.0), (0.5, -0.5)];
@@ -187,7 +188,11 @@ mod solvers {
             "Bisection: {}",
             root_bisection
         );
-        assert!((root_brent - expected).abs() < 1e-6, "Brent: {}", root_brent);
+        assert!(
+            (root_brent - expected).abs() < 1e-6,
+            "Brent: {}",
+            root_brent
+        );
         assert!(
             (root_newton - expected).abs() < 1e-6,
             "Newton: {}",
@@ -367,8 +372,12 @@ mod cross_module {
 
         // Integrate the interpolated function
         let interp_fn = |x: f64| interp.interpolate(x).unwrap();
-        let result =
-            integrate_gauss_kronrod(interp_fn, 0.0, std::f64::consts::PI, GaussKronrodRule::G10K21);
+        let result = integrate_gauss_kronrod(
+            interp_fn,
+            0.0,
+            std::f64::consts::PI,
+            GaussKronrodRule::G10K21,
+        );
 
         // Exact integral of sin(x) from 0 to pi is 2.0
         // Linear interpolation of sin will underestimate
@@ -429,8 +438,7 @@ mod utilities {
         assert!((binomial::<f64>(10, 10) - 1.0).abs() < 1e-10);
         // Pascal's triangle: C(n,k) = C(n-1,k-1) + C(n-1,k)
         assert!(
-            (binomial::<f64>(6, 3) - (binomial::<f64>(5, 2) + binomial::<f64>(5, 3))).abs()
-                < 1e-10
+            (binomial::<f64>(6, 3) - (binomial::<f64>(5, 2) + binomial::<f64>(5, 3))).abs() < 1e-10
         );
     }
 

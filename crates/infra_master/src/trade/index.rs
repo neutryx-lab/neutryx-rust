@@ -53,23 +53,17 @@ pub enum IndexType {
 }
 
 impl From<RateIndex> for IndexType {
-    fn from(rate_index: RateIndex) -> Self {
-        IndexType::Rate(rate_index)
-    }
+    fn from(rate_index: RateIndex) -> Self { IndexType::Rate(rate_index) }
 }
 
 impl IndexType {
     /// Returns true if this is an interest rate index.
     #[must_use]
-    pub fn is_rate(&self) -> bool {
-        matches!(self, IndexType::Rate(_))
-    }
+    pub fn is_rate(&self) -> bool { matches!(self, IndexType::Rate(_)) }
 
     /// Returns true if this is an FX index.
     #[must_use]
-    pub fn is_fx(&self) -> bool {
-        matches!(self, IndexType::Fx { .. })
-    }
+    pub fn is_fx(&self) -> bool { matches!(self, IndexType::Fx { .. }) }
 
     /// Returns the rate index if this is a Rate variant.
     #[must_use]
@@ -194,9 +188,7 @@ mod tests {
 
     #[test]
     fn test_commodity_index() {
-        let index = IndexType::Commodity {
-            name: "WTI".into(),
-        };
+        let index = IndexType::Commodity { name: "WTI".into() };
 
         assert!(!index.is_rate());
     }

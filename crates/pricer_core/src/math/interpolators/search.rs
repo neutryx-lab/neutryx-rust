@@ -59,7 +59,7 @@ pub fn binary_search<T: Float>(xs: &[T], x: T) -> usize {
     let mut hi = n - 1;
 
     while hi - lo > 1 {
-        let mid = (lo + hi) / 2;
+        let mid = usize::midpoint(lo, hi);
         if x >= xs[mid] {
             lo = mid;
         } else {
@@ -137,7 +137,8 @@ pub fn linear_search<T: Float>(xs: &[T], x: T) -> usize {
 ///
 /// # Time Complexity
 ///
-/// O(log d) where d is the distance from hint to the target, then O(log d) for binary search.
+/// O(log d) where d is the distance from hint to the target, then O(log d) for
+/// binary search.
 ///
 /// # Example
 ///
@@ -198,7 +199,7 @@ pub fn hunt_search<T: Float>(xs: &[T], x: T, hint: usize) -> usize {
 
     // Binary search in [lo, hi]
     while hi - lo > 1 {
-        let mid = (lo + hi) / 2;
+        let mid = usize::midpoint(lo, hi);
         if x >= xs[mid] {
             lo = mid;
         } else {

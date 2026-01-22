@@ -20,10 +20,8 @@
 
 use std::collections::HashMap;
 
-use super::rate_id::RateId;
-use super::rate_type::RateType;
-use crate::market::Currency;
-use crate::time::Tenor;
+use super::{rate_id::RateId, rate_type::RateType};
+use crate::{market::Currency, time::Tenor};
 
 /// Mapping from external tickers to internal rate identifiers.
 ///
@@ -256,9 +254,7 @@ impl TickerMapping {
     /// assert!(mapping.lookup("UNKNOWN").is_none());
     /// ```
     #[must_use]
-    pub fn lookup(&self, ticker: &str) -> Option<&RateId> {
-        self.mapping.get(ticker)
-    }
+    pub fn lookup(&self, ticker: &str) -> Option<&RateId> { self.mapping.get(ticker) }
 
     /// Checks if a ticker is registered.
     ///
@@ -277,9 +273,7 @@ impl TickerMapping {
     /// assert!(!mapping.contains("UNKNOWN"));
     /// ```
     #[must_use]
-    pub fn contains(&self, ticker: &str) -> bool {
-        self.mapping.contains_key(ticker)
-    }
+    pub fn contains(&self, ticker: &str) -> bool { self.mapping.contains_key(ticker) }
 
     /// Returns the number of registered tickers.
     ///
@@ -295,9 +289,7 @@ impl TickerMapping {
     /// assert!(defaults.len() > 0);
     /// ```
     #[must_use]
-    pub fn len(&self) -> usize {
-        self.mapping.len()
-    }
+    pub fn len(&self) -> usize { self.mapping.len() }
 
     /// Returns `true` if no tickers are registered.
     ///
@@ -310,9 +302,7 @@ impl TickerMapping {
     /// assert!(mapping.is_empty());
     /// ```
     #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.mapping.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.mapping.is_empty() }
 
     /// Returns an iterator over all registered tickers.
     ///
@@ -326,9 +316,7 @@ impl TickerMapping {
     ///     println!("{} -> {}", ticker, rate_id);
     /// }
     /// ```
-    pub fn iter(&self) -> impl Iterator<Item = (&String, &RateId)> {
-        self.mapping.iter()
-    }
+    pub fn iter(&self) -> impl Iterator<Item = (&String, &RateId)> { self.mapping.iter() }
 }
 
 #[cfg(test)]

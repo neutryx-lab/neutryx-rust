@@ -74,7 +74,8 @@ impl SwapConvention {
     /// Returns the USD SOFR swap convention.
     ///
     /// - Fixed leg: Annual, ACT/360, NY calendar, Modified Following
-    /// - Float leg: Annual, ACT/360, NY calendar, Modified Following (SOFR compounded)
+    /// - Float leg: Annual, ACT/360, NY calendar, Modified Following (SOFR
+    ///   compounded)
     /// - Spot lag: 2 days
     #[must_use]
     pub fn usd_sofr() -> Self {

@@ -95,9 +95,7 @@ impl DataSource {
 }
 
 impl fmt::Display for DataSource {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.name())
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.name()) }
 }
 
 /// Priority ordering for data sources.
@@ -149,9 +147,7 @@ impl SourcePriority {
     /// ]);
     /// ```
     #[must_use]
-    pub fn new(priorities: Vec<DataSource>) -> Self {
-        Self { priorities }
-    }
+    pub fn new(priorities: Vec<DataSource>) -> Self { Self { priorities } }
 
     /// Creates the default priority order.
     ///
@@ -237,21 +233,18 @@ impl SourcePriority {
 
     /// Returns the source list in priority order.
     #[must_use]
-    pub fn sources(&self) -> &[DataSource] {
-        &self.priorities
-    }
+    pub fn sources(&self) -> &[DataSource] { &self.priorities }
 }
 
 impl Default for SourcePriority {
-    fn default() -> Self {
-        Self::default_priority()
-    }
+    fn default() -> Self { Self::default_priority() }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::collections::{HashMap, HashSet};
+
+    use super::*;
 
     // DataSource tests
 

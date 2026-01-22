@@ -1,13 +1,14 @@
 //! Trade expansion API types for the FrictionalBank WebApp.
 //!
-//! This module defines request/response types for the trade expansion API endpoint.
-//! All types support JSON serialisation with camelCase field names for
-//! JavaScript interoperability.
+//! This module defines request/response types for the trade expansion API
+//! endpoint. All types support JSON serialisation with camelCase field names
+//! for JavaScript interoperability.
 //!
 //! # Task Coverage
 //!
 //! - Task 1.1: TradeInstrumentType enum
-//! - Task 1.2: Instrument parameter types (RatesParams, SwapParams, FxParams, EquityParams)
+//! - Task 1.2: Instrument parameter types (RatesParams, SwapParams, FxParams,
+//!   EquityParams)
 //! - Task 1.3: TradeExpandRequest/Response types
 //!
 //! # Requirements Coverage
@@ -97,21 +98,15 @@ impl TradeInstrumentType {
 
     /// Returns true if this is a Rates instrument.
     #[must_use]
-    pub fn is_rates(&self) -> bool {
-        matches!(self.asset_class(), AssetClass::Rates)
-    }
+    pub fn is_rates(&self) -> bool { matches!(self.asset_class(), AssetClass::Rates) }
 
     /// Returns true if this is an FX instrument.
     #[must_use]
-    pub fn is_fx(&self) -> bool {
-        matches!(self.asset_class(), AssetClass::Fx)
-    }
+    pub fn is_fx(&self) -> bool { matches!(self.asset_class(), AssetClass::Fx) }
 
     /// Returns true if this is an Equity instrument.
     #[must_use]
-    pub fn is_equity(&self) -> bool {
-        matches!(self.asset_class(), AssetClass::Equity)
-    }
+    pub fn is_equity(&self) -> bool { matches!(self.asset_class(), AssetClass::Equity) }
 
     /// Returns all supported instrument types.
     #[must_use]
@@ -481,7 +476,10 @@ impl TradeExpandError {
     pub fn unsupported_instrument(instrument_type: TradeInstrumentType) -> Self {
         Self {
             error: "unsupported_instrument".to_string(),
-            message: format!("Instrument type '{:?}' is not yet supported", instrument_type),
+            message: format!(
+                "Instrument type '{:?}' is not yet supported",
+                instrument_type
+            ),
             field: None,
         }
     }
@@ -552,7 +550,10 @@ mod tests {
         #[test]
         fn test_asset_class_categorisation() {
             // Rates instruments
-            assert_eq!(TradeInstrumentType::Deposit.asset_class(), AssetClass::Rates);
+            assert_eq!(
+                TradeInstrumentType::Deposit.asset_class(),
+                AssetClass::Rates
+            );
             assert_eq!(TradeInstrumentType::Fra.asset_class(), AssetClass::Rates);
             assert_eq!(TradeInstrumentType::Irs.asset_class(), AssetClass::Rates);
 

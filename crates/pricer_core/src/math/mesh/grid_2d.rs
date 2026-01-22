@@ -24,27 +24,19 @@ impl<T: Float> Grid2D<T> {
     /// * `x` - X-coordinates
     /// * `y` - Y-coordinates
     #[must_use]
-    pub fn new(x: Vec<T>, y: Vec<T>) -> Self {
-        Self { x, y }
-    }
+    pub fn new(x: Vec<T>, y: Vec<T>) -> Self { Self { x, y } }
 
     /// Get the number of x points.
     #[must_use]
-    pub fn nx(&self) -> usize {
-        self.x.len()
-    }
+    pub fn nx(&self) -> usize { self.x.len() }
 
     /// Get the number of y points.
     #[must_use]
-    pub fn ny(&self) -> usize {
-        self.y.len()
-    }
+    pub fn ny(&self) -> usize { self.y.len() }
 
     /// Get the total number of grid points.
     #[must_use]
-    pub fn total_points(&self) -> usize {
-        self.x.len() * self.y.len()
-    }
+    pub fn total_points(&self) -> usize { self.x.len() * self.y.len() }
 
     /// Get the coordinate at index (i, j).
     ///
@@ -57,15 +49,14 @@ impl<T: Float> Grid2D<T> {
     ///
     /// Tuple (x[i], y[j])
     #[must_use]
-    pub fn point(&self, i: usize, j: usize) -> (T, T) {
-        (self.x[i], self.y[j])
-    }
+    pub fn point(&self, i: usize, j: usize) -> (T, T) { (self.x[i], self.y[j]) }
 
     /// Iterate over all grid points in row-major order.
     ///
     /// Returns an iterator over ((i, j), (x, y)) tuples.
     pub fn iter(&self) -> impl Iterator<Item = ((usize, usize), (T, T))> + '_ {
-        (0..self.ny()).flat_map(move |j| (0..self.nx()).map(move |i| ((i, j), (self.x[i], self.y[j]))))
+        (0..self.ny())
+            .flat_map(move |j| (0..self.nx()).map(move |i| ((i, j), (self.x[i], self.y[j]))))
     }
 
     /// Get the x-spacing at index i (between i and i+1).
@@ -123,9 +114,7 @@ impl<T: Float> Grid2D<T> {
 /// assert_eq!(grid.total_points(), 15);
 /// ```
 #[must_use]
-pub fn tensor_product_grid<T: Float>(x: Vec<T>, y: Vec<T>) -> Grid2D<T> {
-    Grid2D::new(x, y)
-}
+pub fn tensor_product_grid<T: Float>(x: Vec<T>, y: Vec<T>) -> Grid2D<T> { Grid2D::new(x, y) }
 
 /// Create a uniform 2D grid.
 ///
@@ -161,9 +150,7 @@ pub fn uniform_grid_2d<T: Float>(
 ///
 /// Linear index `j * nx + i`
 #[must_use]
-pub const fn flatten_index(i: usize, j: usize, nx: usize) -> usize {
-    j * nx + i
-}
+pub const fn flatten_index(i: usize, j: usize, nx: usize) -> usize { j * nx + i }
 
 /// Unflatten a 1D index to 2D indices (row-major order).
 ///
@@ -176,14 +163,13 @@ pub const fn flatten_index(i: usize, j: usize, nx: usize) -> usize {
 ///
 /// Tuple (i, j)
 #[must_use]
-pub const fn unflatten_index(idx: usize, nx: usize) -> (usize, usize) {
-    (idx % nx, idx / nx)
-}
+pub const fn unflatten_index(idx: usize, nx: usize) -> (usize, usize) { (idx % nx, idx / nx) }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     #[test]
     fn test_grid2d_creation() {
