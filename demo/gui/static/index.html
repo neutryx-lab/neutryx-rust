@@ -361,10 +361,19 @@
             </div>
         </aside>
 
+        <!-- Mobile Overlay (for closing sidebar when clicking outside) -->
+        <div class="mobile-overlay" id="mobile-overlay"></div>
+
         <!-- Main Content -->
         <main class="main-content" id="main-content" tabindex="-1">
             <!-- Top Bar -->
             <header class="top-bar">
+                <!-- Mobile Menu Toggle -->
+                <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle navigation menu" aria-expanded="false">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </button>
                 <div class="top-bar-left">
                     <h1 class="page-title" id="page-title">Dashboard</h1>
                     <div class="breadcrumb">

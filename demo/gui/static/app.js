@@ -1264,6 +1264,73 @@ function initSidebarAccordion() {
 }
 
 // ============================================
+// Mobile Menu Toggle
+// ============================================
+function initMobileMenu() {
+    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('mobile-overlay');
+
+    if (!mobileMenuBtn || !sidebar) return;
+
+    function openMobileMenu() {
+        sidebar.classList.add('mobile-open');
+        mobileMenuBtn.classList.add('active');
+        mobileMenuBtn.setAttribute('aria-expanded', 'true');
+        if (overlay) overlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeMobileMenu() {
+        sidebar.classList.remove('mobile-open');
+        mobileMenuBtn.classList.remove('active');
+        mobileMenuBtn.setAttribute('aria-expanded', 'false');
+        if (overlay) overlay.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    function toggleMobileMenu() {
+        if (sidebar.classList.contains('mobile-open')) {
+            closeMobileMenu();
+        } else {
+            openMobileMenu();
+        }
+    }
+
+    // Toggle button click
+    mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+
+    // Close on overlay click
+    if (overlay) {
+        overlay.addEventListener('click', closeMobileMenu);
+    }
+
+    // Close on navigation item click (mobile)
+    sidebar.querySelectorAll('[data-view]').forEach(item => {
+        item.addEventListener('click', () => {
+            if (window.innerWidth <= 768) {
+                closeMobileMenu();
+            }
+        });
+    });
+
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && sidebar.classList.contains('mobile-open')) {
+            closeMobileMenu();
+            mobileMenuBtn.focus();
+        }
+    });
+
+    // Close menu on window resize if going to desktop
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 768 && sidebar.classList.contains('mobile-open')) {
+            closeMobileMenu();
+        }
+    });
+}
+
+// ============================================
 // Simple DarkMode Toggle
 // ============================================
 function initTheme() {
@@ -6487,6 +6554,7 @@ async function init() {
         Logger.debug('App', 'Initializing UI...');
         try { initTheme(); } catch(e) { Logger.error('App', 'initTheme error', { error: e.message }); }
         try { initNavigation(); } catch(e) { Logger.error('App', 'initNavigation error', { error: e.message }); }
+        try { initMobileMenu(); } catch(e) { Logger.error('App', 'initMobileMenu error', { error: e.message }); }
         try { initPortfolioControls(); } catch(e) { Logger.error('App', 'initPortfolioControls error', { error: e.message }); }
         initScenarioControls();
         try { initEnhancedScenarioControls(); } catch(e) { Logger.error('App', 'initEnhancedScenarioControls error', { error: e.message }); }
