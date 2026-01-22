@@ -1130,15 +1130,15 @@ function navigateTo(viewName) {
         risk: 'Risk Analysis',
         exposure: 'Exposure Profile',
         scenarios: 'Scenario Analysis',
-        analytics: '3D Analytics',
-        graph: 'Computation Graph',
+        graph: 'AD Graph',
         'trade-expansion': 'Trade Expansion',
-        'irs-bootstrap': 'IRS Bootstrap & Risk',
+        'irs-bootstrap': 'Curve Build',
+        'model-calib': 'Model Calibration',
         'market-data': 'Market Data'
     };
 
     // Auto-expand Analysis accordion if navigating to a sub-item
-    const analysisViews = ['trade-expansion', 'irs-bootstrap', 'graph', 'analytics', 'market-data'];
+    const analysisViews = ['trade-expansion', 'irs-bootstrap', 'model-calib', 'graph', 'market-data'];
     const accordion = document.getElementById('analysis-accordion');
     if (accordion && analysisViews.includes(viewName)) {
         accordion.classList.add('expanded');
@@ -1164,8 +1164,8 @@ function navigateTo(viewName) {
         fetchRiskMetrics();
         initRiskAttributionGrid();
     }
-    if (viewName === 'analytics') {
-        analytics3D.initViewer();
+    if (viewName === 'model-calib') {
+        initModelCalibMock();
     }
     if (viewName === 'graph') {
         ensureGraphTabReady().then(() => {
@@ -1175,8 +1175,11 @@ function navigateTo(viewName) {
         });
     }
     if (viewName === 'market-data') {
+        console.log('[navigateTo] market-data view, marketDataViewer defined:', typeof marketDataViewer !== 'undefined');
         if (typeof marketDataViewer !== 'undefined') {
             marketDataViewer.init();
+        } else {
+            console.error('[navigateTo] marketDataViewer is undefined!');
         }
     }
 }
@@ -14513,7 +14516,161 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('scenarios-view')) {
         scenarioAnalysis.init();
     }
+
 });
+
+// ============================================
+// Model Calibration Module
+// ============================================
+
+const modelCalibState = {
+    initialised: false,
+    calibrated: false
+};
+
+function initModelCalibMock() {
+    if (modelCalibState.initialised) return;
+
+    const calibBtn = document.getElementById('vol-calib-btn');
+    const placeholder = document.getElementById('vol-calib-placeholder');
+    const results = document.getElementById('vol-calib-results');
+    const dateInput = document.getElementById('vol-calib-date');
+    const surfacePlaceholder = document.getElementById('surface-viewer-placeholder');
+    const surfaceCanvas = document.getElementById('surface-3d-canvas');
+
+    // Set default date to today
+    if (dateInput && !dateInput.value) {
+        dateInput.value = new Date().toISOString().split('T')[0];
+    }
+
+    // Update mid values when bid/ask change
+    document.querySelectorAll('.vol-quote-row').forEach(row => {
+        const inputs = row.querySelectorAll('.vol-input');
+        const midSpan = row.querySelector('.vol-mid');
+        if (inputs.length === 2 && midSpan) {
+            inputs.forEach(input => {
+                input.addEventListener('input', () => {
+                    const bid = parseFloat(inputs[0].value) || 0;
+                    const ask = parseFloat(inputs[1].value) || 0;
+                    midSpan.textContent = ((bid + ask) / 2).toFixed(1) + '%';
+                });
+            });
+        }
+    });
+
+    // Surface type selector
+    const surfaceTypeSelect = document.getElementById('surface-type-select');
+    if (surfaceTypeSelect) {
+        surfaceTypeSelect.addEventListener('change', (e) => {
+            const zLabels = {
+                'vol-surface': 'Implied Volatility',
+                'local-vol': 'Local Volatility',
+                'pv-surface': 'Present Value',
+                'delta-surface': 'Delta',
+                'gamma-surface': 'Gamma',
+                'vega-surface': 'Vega'
+            };
+            const zLabelEl = document.getElementById('surface-z-label');
+            if (zLabelEl) zLabelEl.textContent = zLabels[e.target.value] || 'Value';
+
+            if (modelCalibState.calibrated) {
+                updateSurfaceStats(e.target.value);
+            }
+        });
+    }
+
+    // Surface control buttons
+    document.getElementById('surface-reset-view')?.addEventListener('click', () => {
+        showToast('View reset', 'info');
+    });
+
+    document.getElementById('surface-fullscreen')?.addEventListener('click', () => {
+        const container = document.getElementById('surface-viewer-container');
+        if (container && container.requestFullscreen) {
+            container.requestFullscreen();
+        }
+    });
+
+    document.getElementById('surface-screenshot')?.addEventListener('click', () => {
+        showToast('Screenshot saved', 'success');
+    });
+
+    if (calibBtn) {
+        calibBtn.addEventListener('click', () => {
+            // Simulate calibration
+            calibBtn.disabled = true;
+            calibBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Calibrating...';
+
+            setTimeout(() => {
+                // Show results
+                if (placeholder) placeholder.style.display = 'none';
+                if (results) results.style.display = 'block';
+
+                // Update with mock calibrated values (slight randomisation)
+                const alpha = (0.25 + Math.random() * 0.05).toFixed(4);
+                const beta = '0.5000';
+                const rho = (-0.15 - Math.random() * 0.1).toFixed(4);
+                const nu = (0.40 + Math.random() * 0.08).toFixed(4);
+                const rmse = (0.08 + Math.random() * 0.08).toFixed(2);
+                const maxErr = (0.25 + Math.random() * 0.2).toFixed(2);
+                const r2 = (0.995 + Math.random() * 0.004).toFixed(4);
+                const iters = Math.floor(15 + Math.random() * 20);
+
+                document.getElementById('sabr-alpha').textContent = alpha;
+                document.getElementById('sabr-beta').textContent = beta;
+                document.getElementById('sabr-rho').textContent = rho;
+                document.getElementById('sabr-nu').textContent = nu;
+
+                const rmseEl = document.querySelector('#vol-calib-results .metric-grid .metric-item:nth-child(1) .metric-value');
+                const maxErrEl = document.querySelector('#vol-calib-results .metric-grid .metric-item:nth-child(2) .metric-value');
+                const r2El = document.querySelector('#vol-calib-results .metric-grid .metric-item:nth-child(3) .metric-value');
+                const itersEl = document.querySelector('#vol-calib-results .metric-grid .metric-item:nth-child(4) .metric-value');
+
+                if (rmseEl) rmseEl.textContent = rmse + '%';
+                if (maxErrEl) maxErrEl.textContent = maxErr + '%';
+                if (r2El) r2El.textContent = r2;
+                if (itersEl) itersEl.textContent = iters;
+
+                // Show 3D surface placeholder as "loaded"
+                if (surfacePlaceholder) {
+                    surfacePlaceholder.innerHTML = `
+                        <i class="fas fa-cube" style="color: var(--success);"></i>
+                        <p>Surface Calibrated</p>
+                        <small>Drag to rotate, scroll to zoom</small>
+                    `;
+                }
+
+                // Update surface stats
+                modelCalibState.calibrated = true;
+                updateSurfaceStats('vol-surface');
+
+                // Reset button
+                calibBtn.disabled = false;
+                calibBtn.innerHTML = '<i class="fas fa-play"></i> Calibrate';
+
+                showToast('Calibration complete', 'success');
+            }, 1500);
+        });
+    }
+
+    modelCalibState.initialised = true;
+}
+
+function updateSurfaceStats(surfaceType) {
+    const statsMap = {
+        'vol-surface': { min: '18.5%', max: '35.2%', atm: '26.0%' },
+        'local-vol': { min: '16.2%', max: '42.8%', atm: '24.5%' },
+        'pv-surface': { min: '-$2.1M', max: '$4.5M', atm: '$1.2M' },
+        'delta-surface': { min: '0.02', max: '0.98', atm: '0.52' },
+        'gamma-surface': { min: '0.001', max: '0.045', atm: '0.023' },
+        'vega-surface': { min: '$12K', max: '$185K', atm: '$95K' }
+    };
+
+    const stats = statsMap[surfaceType] || { min: '--', max: '--', atm: '--' };
+    document.getElementById('surface-min').textContent = stats.min;
+    document.getElementById('surface-max').textContent = stats.max;
+    document.getElementById('surface-atm').textContent = stats.atm;
+}
 
 // Hook into navigation to reinitialise when switching to scenarios view
 const originalNavForScenarios = window.navigateTo;

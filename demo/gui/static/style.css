@@ -11194,3 +11194,525 @@ body.light-theme .export-menu {
     border-color: #e2e8f0;
 }
 
+/* ============================================
+   Volatility Calibration View
+   ============================================ */
+
+.vol-calib-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+    padding: var(--space-lg);
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+.vol-calib-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-lg);
+    flex-wrap: wrap;
+    gap: var(--space-md);
+}
+
+.vol-calib-title h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.vol-calib-title h2 i {
+    color: var(--primary);
+}
+
+.vol-calib-title p {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    margin-top: var(--space-xs);
+}
+
+.vol-calib-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.vol-calib-grid {
+    display: grid;
+    grid-template-columns: 400px 1fr;
+    gap: var(--space-lg);
+}
+
+@media (max-width: 1200px) {
+    .vol-calib-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.vol-calib-input-panel,
+.vol-calib-results-panel {
+    padding: var(--space-lg);
+}
+
+.vol-calib-input-panel h3,
+.vol-calib-results-panel h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--space-md);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.vol-calib-input-panel h3 i,
+.vol-calib-results-panel h3 i {
+    color: var(--primary);
+}
+
+.vol-calib-input-panel h4 {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin: var(--space-lg) 0 var(--space-sm);
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--border-color);
+}
+
+.vol-calib-input-section {
+    margin-bottom: var(--space-md);
+}
+
+.vol-calib-input-section label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: var(--space-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.vol-quote-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: var(--border-color);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.vol-quote-row {
+    display: grid;
+    grid-template-columns: 60px 1fr 1fr 70px;
+    gap: 2px;
+    background: var(--surface);
+    padding: var(--space-sm);
+    align-items: center;
+}
+
+.vol-quote-row.header {
+    background: var(--bg-tertiary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.vol-quote-row span:first-child {
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.vol-input {
+    width: 100%;
+    padding: var(--space-xs) var(--space-sm);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    text-align: right;
+}
+
+.vol-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+.vol-mid {
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    color: var(--accent);
+    font-weight: 500;
+    text-align: right;
+}
+
+/* Results Panel */
+.vol-calib-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-2xl);
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.vol-calib-placeholder i {
+    font-size: 3rem;
+    margin-bottom: var(--space-md);
+    opacity: 0.3;
+}
+
+.vol-calib-placeholder p {
+    font-size: 1rem;
+}
+
+.vol-calib-params,
+.vol-calib-metrics {
+    margin-bottom: var(--space-lg);
+}
+
+.vol-calib-params h4,
+.vol-calib-metrics h4,
+.vol-surface-chart h4,
+.vol-smile-chart h4 {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-sm);
+}
+
+.param-grid,
+.metric-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-sm);
+}
+
+@media (max-width: 900px) {
+    .param-grid,
+    .metric-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.param-item,
+.metric-item {
+    background: var(--surface);
+    padding: var(--space-md);
+    border-radius: var(--radius-md);
+    text-align: center;
+}
+
+.param-label,
+.metric-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: var(--space-xs);
+}
+
+.param-value,
+.metric-value {
+    display: block;
+    font-size: 1.25rem;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    color: var(--text-primary);
+}
+
+.metric-value.positive {
+    color: var(--success);
+}
+
+.metric-value.negative {
+    color: var(--danger);
+}
+
+.vol-surface-chart,
+.vol-smile-chart {
+    margin-top: var(--space-lg);
+}
+
+.chart-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 250px;
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    border: 1px dashed var(--border-color);
+    color: var(--text-muted);
+}
+
+.chart-placeholder i {
+    font-size: 2.5rem;
+    margin-bottom: var(--space-sm);
+    opacity: 0.4;
+}
+
+.chart-placeholder p {
+    font-size: 0.875rem;
+}
+
+.chart-placeholder small {
+    font-size: 0.75rem;
+    opacity: 0.7;
+    margin-top: var(--space-xs);
+}
+
+/* Light theme */
+body.light-theme .vol-calib-input-panel,
+body.light-theme .vol-calib-results-panel {
+    background: white;
+}
+
+body.light-theme .vol-input {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+}
+
+body.light-theme .vol-quote-row.header {
+    background: #f1f5f9;
+}
+
+body.light-theme .param-item,
+body.light-theme .metric-item {
+    background: #f8fafc;
+}
+
+body.light-theme .chart-placeholder {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+}
+
+/* ============================================
+   Model Calibration - Unified Card Styles
+   ============================================ */
+
+.model-calib-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+    padding: var(--space-lg);
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+/* Header Card */
+.model-calib-header.glass-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-lg);
+    flex-wrap: wrap;
+    gap: var(--space-md);
+}
+
+.model-calib-title h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin: 0;
+}
+
+.model-calib-title h2 i {
+    color: var(--primary);
+}
+
+.model-calib-title p {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    margin-top: var(--space-xs);
+    margin-bottom: 0;
+}
+
+/* Main Grid - Input & Results */
+.model-calib-grid {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: var(--space-lg);
+}
+
+@media (max-width: 1200px) {
+    .model-calib-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Input Panel Card */
+.model-calib-input-panel.glass-card,
+.vol-calib-input-panel.glass-card {
+    padding: var(--space-lg);
+}
+
+/* Results Panel Card */
+.model-calib-results-panel.glass-card,
+.vol-calib-results-panel.glass-card {
+    padding: var(--space-lg);
+}
+
+/* 3D Surface Viewer Card */
+.model-calib-3d-section.glass-card {
+    padding: var(--space-lg);
+}
+
+.surface-viewer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-md);
+    flex-wrap: wrap;
+    gap: var(--space-md);
+}
+
+.surface-viewer-header h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.surface-viewer-header h3 i {
+    color: var(--primary);
+}
+
+.surface-viewer-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.surface-view-btns {
+    display: flex;
+    gap: var(--space-xs);
+}
+
+.surface-view-btns .icon-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.surface-view-btns .icon-btn:hover {
+    background: var(--surface-hover);
+    color: var(--primary);
+    border-color: var(--primary);
+}
+
+.surface-viewer-canvas {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    min-height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.surface-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    text-align: center;
+    padding: var(--space-xl);
+}
+
+.surface-placeholder i {
+    font-size: 3rem;
+    margin-bottom: var(--space-md);
+    opacity: 0.3;
+}
+
+.surface-placeholder p {
+    font-size: 1rem;
+    margin-bottom: var(--space-xs);
+}
+
+.surface-placeholder small {
+    font-size: 0.75rem;
+    opacity: 0.7;
+}
+
+.surface-viewer-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: var(--space-md);
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--border-color);
+    flex-wrap: wrap;
+    gap: var(--space-md);
+}
+
+.surface-axis-labels {
+    display: flex;
+    gap: var(--space-lg);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.surface-axis-labels strong {
+    color: var(--text-secondary);
+}
+
+.surface-stats {
+    display: flex;
+    gap: var(--space-lg);
+    font-size: 0.875rem;
+}
+
+.surface-stats .stat-item {
+    display: flex;
+    gap: var(--space-xs);
+}
+
+.surface-stats .stat-item strong {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.surface-stats .stat-item span:last-child {
+    font-family: var(--font-mono);
+    color: var(--accent);
+}
+
+/* Light theme for surface viewer */
+body.light-theme .surface-viewer-canvas {
+    background: #f1f5f9;
+}
+
+body.light-theme .surface-view-btns .icon-btn {
+    background: white;
+    border-color: #e2e8f0;
+}
+
+body.light-theme .model-calib-3d-section {
+    background: white;
+}
+

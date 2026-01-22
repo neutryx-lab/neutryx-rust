@@ -322,17 +322,17 @@
                         </a>
                         <a href="#" class="nav-item nav-sub-item" data-view="irs-bootstrap">
                             <div class="nav-icon"><i class="fas fa-chart-line"></i></div>
-                            <span>IRS Bootstrap</span>
+                            <span>Curve Build</span>
+                            <div class="nav-indicator"></div>
+                        </a>
+                        <a href="#" class="nav-item nav-sub-item" data-view="model-calib">
+                            <div class="nav-icon"><i class="fas fa-wave-square"></i></div>
+                            <span>Model Calib</span>
                             <div class="nav-indicator"></div>
                         </a>
                         <a href="#" class="nav-item nav-sub-item" data-view="graph">
                             <div class="nav-icon"><i class="fas fa-project-diagram"></i></div>
-                            <span>Graph</span>
-                            <div class="nav-indicator"></div>
-                        </a>
-                        <a href="#" class="nav-item nav-sub-item" data-view="analytics">
-                            <div class="nav-icon"><i class="fas fa-cube"></i></div>
-                            <span>3D Analytics</span>
+                            <span>AD Graph</span>
                             <div class="nav-indicator"></div>
                         </a>
                     </div>
@@ -1699,6 +1699,264 @@
                         </div>
                     </div>
 
+                </div>
+            </section>
+
+            <!-- Model Calibration View -->
+            <section id="model-calib-view" class="view">
+                <div class="model-calib-container">
+                    <!-- Header -->
+                    <div class="model-calib-header glass-card">
+                        <div class="model-calib-title">
+                            <h2><i class="fas fa-wave-square"></i> Model Calibration</h2>
+                            <p>Calibrate volatility models and visualise surfaces</p>
+                        </div>
+                        <div class="vol-calib-actions">
+                            <select id="vol-calib-model" class="fancy-select">
+                                <option value="sabr">SABR</option>
+                                <option value="svi">SVI</option>
+                                <option value="heston">Heston</option>
+                                <option value="local-vol">Local Volatility</option>
+                            </select>
+                            <select id="vol-calib-asset-class" class="fancy-select">
+                                <option value="equity">Equity</option>
+                                <option value="fx">FX</option>
+                                <option value="rates">Rates (Swaption)</option>
+                            </select>
+                            <button id="vol-calib-btn" class="primary-btn">
+                                <i class="fas fa-play"></i> Calibrate
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Main Content Grid -->
+                    <div class="vol-calib-grid">
+                        <!-- Input Panel -->
+                        <div class="vol-calib-input-panel glass-card">
+                            <h3><i class="fas fa-edit"></i> Market Quotes</h3>
+                            <div class="vol-calib-input-section">
+                                <label>Underlying</label>
+                                <select id="vol-calib-underlying" class="fancy-select">
+                                    <option value="AAPL">AAPL - Apple Inc.</option>
+                                    <option value="GOOGL">GOOGL - Alphabet</option>
+                                    <option value="MSFT">MSFT - Microsoft</option>
+                                    <option value="EURUSD">EUR/USD</option>
+                                    <option value="USDJPY">USD/JPY</option>
+                                </select>
+                            </div>
+                            <div class="vol-calib-input-section">
+                                <label>Spot Price</label>
+                                <input type="number" id="vol-calib-spot" value="185.00" step="0.01" class="fancy-input">
+                            </div>
+                            <div class="vol-calib-input-section">
+                                <label>Reference Date</label>
+                                <input type="date" id="vol-calib-date" class="fancy-input">
+                            </div>
+
+                            <h4>Option Quotes (ATM)</h4>
+                            <div class="vol-quote-grid">
+                                <div class="vol-quote-row header">
+                                    <span>Expiry</span>
+                                    <span>Bid Vol</span>
+                                    <span>Ask Vol</span>
+                                    <span>Mid</span>
+                                </div>
+                                <div class="vol-quote-row">
+                                    <span>1M</span>
+                                    <input type="number" value="22.5" step="0.1" class="vol-input">
+                                    <input type="number" value="23.5" step="0.1" class="vol-input">
+                                    <span class="vol-mid">23.0%</span>
+                                </div>
+                                <div class="vol-quote-row">
+                                    <span>3M</span>
+                                    <input type="number" value="24.0" step="0.1" class="vol-input">
+                                    <input type="number" value="25.0" step="0.1" class="vol-input">
+                                    <span class="vol-mid">24.5%</span>
+                                </div>
+                                <div class="vol-quote-row">
+                                    <span>6M</span>
+                                    <input type="number" value="25.5" step="0.1" class="vol-input">
+                                    <input type="number" value="26.5" step="0.1" class="vol-input">
+                                    <span class="vol-mid">26.0%</span>
+                                </div>
+                                <div class="vol-quote-row">
+                                    <span>1Y</span>
+                                    <input type="number" value="27.0" step="0.1" class="vol-input">
+                                    <input type="number" value="28.0" step="0.1" class="vol-input">
+                                    <span class="vol-mid">27.5%</span>
+                                </div>
+                            </div>
+
+                            <h4>Smile Quotes (6M)</h4>
+                            <div class="vol-quote-grid">
+                                <div class="vol-quote-row header">
+                                    <span>Strike %</span>
+                                    <span>Bid Vol</span>
+                                    <span>Ask Vol</span>
+                                    <span>Mid</span>
+                                </div>
+                                <div class="vol-quote-row">
+                                    <span>80%</span>
+                                    <input type="number" value="32.0" step="0.1" class="vol-input">
+                                    <input type="number" value="33.0" step="0.1" class="vol-input">
+                                    <span class="vol-mid">32.5%</span>
+                                </div>
+                                <div class="vol-quote-row">
+                                    <span>90%</span>
+                                    <input type="number" value="28.0" step="0.1" class="vol-input">
+                                    <input type="number" value="29.0" step="0.1" class="vol-input">
+                                    <span class="vol-mid">28.5%</span>
+                                </div>
+                                <div class="vol-quote-row">
+                                    <span>100%</span>
+                                    <input type="number" value="25.5" step="0.1" class="vol-input">
+                                    <input type="number" value="26.5" step="0.1" class="vol-input">
+                                    <span class="vol-mid">26.0%</span>
+                                </div>
+                                <div class="vol-quote-row">
+                                    <span>110%</span>
+                                    <input type="number" value="24.5" step="0.1" class="vol-input">
+                                    <input type="number" value="25.5" step="0.1" class="vol-input">
+                                    <span class="vol-mid">25.0%</span>
+                                </div>
+                                <div class="vol-quote-row">
+                                    <span>120%</span>
+                                    <input type="number" value="26.0" step="0.1" class="vol-input">
+                                    <input type="number" value="27.0" step="0.1" class="vol-input">
+                                    <span class="vol-mid">26.5%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Results Panel -->
+                        <div class="vol-calib-results-panel glass-card">
+                            <h3><i class="fas fa-chart-area"></i> Calibration Results</h3>
+
+                            <!-- Placeholder for uncalibrated state -->
+                            <div id="vol-calib-placeholder" class="vol-calib-placeholder">
+                                <i class="fas fa-wave-square"></i>
+                                <p>Click "Calibrate" to fit the volatility model</p>
+                            </div>
+
+                            <!-- Results (hidden initially) -->
+                            <div id="vol-calib-results" style="display: none;">
+                                <div class="vol-calib-params">
+                                    <h4>SABR Parameters</h4>
+                                    <div class="param-grid">
+                                        <div class="param-item">
+                                            <span class="param-label">Alpha (α)</span>
+                                            <span class="param-value" id="sabr-alpha">0.2534</span>
+                                        </div>
+                                        <div class="param-item">
+                                            <span class="param-label">Beta (β)</span>
+                                            <span class="param-value" id="sabr-beta">0.5000</span>
+                                        </div>
+                                        <div class="param-item">
+                                            <span class="param-label">Rho (ρ)</span>
+                                            <span class="param-value" id="sabr-rho">-0.1823</span>
+                                        </div>
+                                        <div class="param-item">
+                                            <span class="param-label">Nu (ν)</span>
+                                            <span class="param-value" id="sabr-nu">0.4215</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="vol-calib-metrics">
+                                    <h4>Fit Quality</h4>
+                                    <div class="metric-grid">
+                                        <div class="metric-item">
+                                            <span class="metric-label">RMSE</span>
+                                            <span class="metric-value positive">0.12%</span>
+                                        </div>
+                                        <div class="metric-item">
+                                            <span class="metric-label">Max Error</span>
+                                            <span class="metric-value">0.35%</span>
+                                        </div>
+                                        <div class="metric-item">
+                                            <span class="metric-label">R²</span>
+                                            <span class="metric-value positive">0.9987</span>
+                                        </div>
+                                        <div class="metric-item">
+                                            <span class="metric-label">Iterations</span>
+                                            <span class="metric-value">24</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Vol Surface Chart Placeholder -->
+                                <div class="vol-surface-chart">
+                                    <h4>Implied Volatility Surface</h4>
+                                    <div id="vol-surface-3d" class="chart-placeholder">
+                                        <i class="fas fa-cube"></i>
+                                        <p>3D Surface Visualisation</p>
+                                        <small>Strike × Expiry × Implied Vol</small>
+                                    </div>
+                                </div>
+
+                                <!-- Smile Comparison -->
+                                <div class="vol-smile-chart">
+                                    <h4>Smile Fit (6M Expiry)</h4>
+                                    <div id="vol-smile-2d" class="chart-placeholder">
+                                        <i class="fas fa-chart-line"></i>
+                                        <p>Market vs Model Comparison</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3D Surface Viewer Section -->
+                    <div class="model-calib-3d-section glass-card">
+                        <div class="surface-viewer-header">
+                            <h3><i class="fas fa-cube"></i> 3D Surface Viewer</h3>
+                            <div class="surface-viewer-controls">
+                                <select id="surface-type-select" class="fancy-select">
+                                    <option value="vol-surface">Implied Vol Surface</option>
+                                    <option value="local-vol">Local Volatility</option>
+                                    <option value="pv-surface">PV Surface</option>
+                                    <option value="delta-surface">Delta Surface</option>
+                                    <option value="gamma-surface">Gamma Surface</option>
+                                    <option value="vega-surface">Vega Surface</option>
+                                </select>
+                                <div class="surface-view-btns">
+                                    <button class="icon-btn" id="surface-reset-view" title="Reset View">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
+                                    <button class="icon-btn" id="surface-fullscreen" title="Fullscreen">
+                                        <i class="fas fa-expand"></i>
+                                    </button>
+                                    <button class="icon-btn" id="surface-screenshot" title="Screenshot">
+                                        <i class="fas fa-camera"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3D Canvas Container -->
+                        <div id="surface-viewer-container" class="surface-viewer-canvas">
+                            <div id="surface-viewer-placeholder" class="surface-placeholder">
+                                <i class="fas fa-cube"></i>
+                                <p>Calibrate a model to view the 3D surface</p>
+                                <small>Strike × Expiry × Value</small>
+                            </div>
+                            <canvas id="surface-3d-canvas" style="display: none;"></canvas>
+                        </div>
+
+                        <!-- Surface Controls -->
+                        <div class="surface-viewer-footer">
+                            <div class="surface-axis-labels">
+                                <span><strong>X:</strong> Strike (% of Spot)</span>
+                                <span><strong>Y:</strong> Time to Expiry</span>
+                                <span><strong>Z:</strong> <span id="surface-z-label">Implied Volatility</span></span>
+                            </div>
+                            <div class="surface-stats">
+                                <span class="stat-item"><strong>Min:</strong> <span id="surface-min">--</span></span>
+                                <span class="stat-item"><strong>Max:</strong> <span id="surface-max">--</span></span>
+                                <span class="stat-item"><strong>ATM:</strong> <span id="surface-atm">--</span></span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 
