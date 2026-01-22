@@ -1808,15 +1808,15 @@ fn convert_bootstrap_error(error: BootstrapError) -> (StatusCode, Json<IrsBootst
             (
                 StatusCode::BAD_REQUEST,
                 Json(IrsBootstrapErrorResponse::validation_error(
-                    &format!("Duplicate tenor: {}", tenor),
-                    &format!("parRates[{}]", tenor),
+                    format!("Duplicate tenor: {}", tenor),
+                    format!("parRates[{}]", tenor),
                 )),
             )
         }
         BootstrapError::InsufficientData { required, provided } => (
             StatusCode::BAD_REQUEST,
             Json(IrsBootstrapErrorResponse::validation_error(
-                &format!(
+                format!(
                     "Insufficient par rates: need at least {}, got {}",
                     required, provided
                 ),
@@ -1827,7 +1827,7 @@ fn convert_bootstrap_error(error: BootstrapError) -> (StatusCode, Json<IrsBootst
             let tenor = format!("{}Y", maturity as i32);
             (
                 StatusCode::UNPROCESSABLE_ENTITY,
-                Json(IrsBootstrapErrorResponse::calculation_error(&format!(
+                Json(IrsBootstrapErrorResponse::calculation_error(format!(
                     "Negative rate {} at tenor {} is not allowed",
                     rate, tenor
                 ))),
@@ -1837,7 +1837,7 @@ fn convert_bootstrap_error(error: BootstrapError) -> (StatusCode, Json<IrsBootst
             let tenor = format!("{}Y", maturity as i32);
             (
                 StatusCode::UNPROCESSABLE_ENTITY,
-                Json(IrsBootstrapErrorResponse::calculation_error(&format!(
+                Json(IrsBootstrapErrorResponse::calculation_error(format!(
                     "Arbitrage detected at tenor {}: discount factors must be monotonically decreasing",
                     tenor
                 ))),
@@ -1846,7 +1846,7 @@ fn convert_bootstrap_error(error: BootstrapError) -> (StatusCode, Json<IrsBootst
         BootstrapError::InvalidInput(msg) => (
             StatusCode::BAD_REQUEST,
             Json(IrsBootstrapErrorResponse::validation_error(
-                &msg, "parRates",
+                msg, "parRates",
             )),
         ),
         BootstrapError::InvalidMaturity {
@@ -1857,24 +1857,24 @@ fn convert_bootstrap_error(error: BootstrapError) -> (StatusCode, Json<IrsBootst
             (
                 StatusCode::BAD_REQUEST,
                 Json(IrsBootstrapErrorResponse::validation_error(
-                    &format!(
+                    format!(
                         "Invalid maturity {}: must be between 0 and {} years",
                         tenor, max_maturity
                     ),
-                    &format!("parRates[{}].tenor", tenor),
+                    format!("parRates[{}].tenor", tenor),
                 )),
             )
         }
         BootstrapError::Solver(solver_err) => (
             StatusCode::UNPROCESSABLE_ENTITY,
-            Json(IrsBootstrapErrorResponse::calculation_error(&format!(
+            Json(IrsBootstrapErrorResponse::calculation_error(format!(
                 "Solver error: {}",
                 solver_err
             ))),
         ),
         BootstrapError::MarketData(mkt_err) => (
             StatusCode::UNPROCESSABLE_ENTITY,
-            Json(IrsBootstrapErrorResponse::calculation_error(&format!(
+            Json(IrsBootstrapErrorResponse::calculation_error(format!(
                 "Market data error: {}",
                 mkt_err
             ))),
@@ -2725,7 +2725,7 @@ pub async fn risk_compare(
     Ok(Json(RiskCompareResponse {
         bump: bump_result,
         aad: aad_result,
-        aad_available: aad_available || true, // Always show simulated AAD for demo
+        aad_available: true, // Always show simulated AAD for demo
         speedup_ratio,
         comparison,
     }))
@@ -3360,7 +3360,7 @@ pub async fn greeks_bucket_dv01(
     let tenors: Vec<String> = request
         .custom_tenors
         .clone()
-        .unwrap_or_else(|| BUCKET_TENORS.iter().map(|s| s.to_string()).collect());
+        .unwrap_or_else(|| BUCKET_TENORS.iter().map(|s| (*s).to_string()).collect());
 
     // Convert to GreeksCompareRequest for NPV calculation
     let compare_request = GreeksCompareRequest {
@@ -3910,7 +3910,7 @@ pub struct PortfolioGraphResponse {
 /// market data nodes (spot prices, yield curves).
 fn generate_sample_portfolio_graph(trade_ids_filter: Option<&[String]>) -> PortfolioGraphResponse {
     // Sample trades in the portfolio
-    let all_trade_ids = vec![
+    let all_trade_ids = [
         "T001".to_string(),
         "T002".to_string(),
         "T003".to_string(),

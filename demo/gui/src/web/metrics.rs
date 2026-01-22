@@ -15,6 +15,7 @@
 //! - Requirement 8.4: API レスポンスタイム閾値超過時の警告ログ出力
 
 use std::{
+    fmt::Write as _,
     sync::atomic::{AtomicU64, Ordering},
     time::Instant,
 };
@@ -246,21 +247,23 @@ impl Histogram {
         let mut cumulative = 0u64;
         for (i, &bound) in self.buckets.iter().enumerate() {
             cumulative += self.bucket_counts[i].load(Ordering::Relaxed);
-            output.push_str(&format!(
-                "{}_bucket{{le=\"{}\"}} {}\n",
+            let _ = writeln!(
+                output,
+                "{}_bucket{{le=\"{}\"}} {}",
                 self.name, bound, cumulative
-            ));
+            );
         }
         // +Inf bucket
         cumulative += self.bucket_counts.last().unwrap().load(Ordering::Relaxed);
-        output.push_str(&format!(
-            "{}_bucket{{le=\"+Inf\"}} {}\n",
+        let _ = writeln!(
+            output,
+            "{}_bucket{{le=\"+Inf\"}} {}",
             self.name, cumulative
-        ));
+        );
 
         // Sum and count
-        output.push_str(&format!("{}_sum {}\n", self.name, self.sum()));
-        output.push_str(&format!("{}_count {}\n", self.name, self.count()));
+        let _ = writeln!(output, "{}_sum {}", self.name, self.sum());
+        let _ = writeln!(output, "{}_count {}", self.name, self.count());
 
         output
     }

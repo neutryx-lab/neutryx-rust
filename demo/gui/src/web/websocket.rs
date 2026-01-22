@@ -75,7 +75,6 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                     // Client is slow, skip lagged messages and continue
                     // This prevents reconnection loops when broadcast traffic is high
                     warn!("WebSocket client lagged by {} messages, continuing", n);
-                    continue;
                 }
                 Err(tokio::sync::broadcast::error::RecvError::Closed) => {
                     // Channel closed, exit the task
