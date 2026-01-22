@@ -35,7 +35,7 @@ use serde::{Deserialize, Serialize};
 use super::market_data::{get_convention, get_conventions_list, MarketDataCache};
 use super::market_types::{
     ConventionResponse, ConventionsListResponse, MarketDataApiError, MarketRateDetailResponse,
-    MarketRateQuery, MarketRateResponse, MarketRatesListResponse,
+    MarketRateQuery, MarketRatesListResponse,
 };
 
 // =============================================================================

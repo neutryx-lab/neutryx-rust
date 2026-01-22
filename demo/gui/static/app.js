@@ -1175,17 +1175,15 @@ function navigateTo(viewName) {
         });
     }
     if (viewName === 'market-data') {
-        console.log('[navigateTo] market-data view, marketDataViewer defined:', typeof marketDataViewer !== 'undefined');
         if (typeof marketDataViewer !== 'undefined') {
             marketDataViewer.init();
-        } else {
-            console.error('[navigateTo] marketDataViewer is undefined!');
         }
     }
 }
 
 function initNavigation() {
-    document.querySelectorAll('.nav-item').forEach(item => {
+    // Handle all elements with data-view attribute (nav items and logo)
+    document.querySelectorAll('[data-view]').forEach(item => {
         item.addEventListener('click', (e) => {
             e.preventDefault();
             navigateTo(item.dataset.view);

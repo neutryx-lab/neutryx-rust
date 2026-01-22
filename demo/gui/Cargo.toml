@@ -3,41 +3,25 @@ name = "demo_gui"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "TUI and Web dashboard for FrictionalBank demo"
-
-[[bin]]
-name = "demo-tui"
-path = "src/main.rs"
+description = "Web dashboard for FrictionalBank demo"
 
 [[bin]]
 name = "demo-web"
 path = "src/web/main.rs"
-required-features = ["web"]
 
 [features]
 default = []
-web = ["axum", "tower-http", "futures", "chrono", "open"]
-enzyme-ad = ["frictional_bank/enzyme-ad", "pricer_pricing/enzyme-ad"]
+enzyme-ad = ["pricer_pricing/enzyme-ad"]
 openapi = ["utoipa", "utoipa-swagger-ui"]
 
 [dependencies]
-# TUI framework
-ratatui = "0.26"
-crossterm = "0.27"
-
-# Demo crates
-frictional_bank = { path = "../frictional_bank" }
-
-# Pricer layer (for IRS AAD screen types and bootstrapping)
+# Pricer layer
 pricer_core = { path = "../../crates/pricer_core" }
 pricer_models = { path = "../../crates/pricer_models" }
 pricer_pricing = { path = "../../crates/pricer_pricing" }
 
 # Async runtime
 tokio = { workspace = true }
-
-# HTTP client
-reqwest = { version = "0.12", features = ["json"] }
 
 # Serialization
 serde = { workspace = true }
@@ -54,12 +38,12 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 
-# Web server (optional)
-axum = { workspace = true, features = ["ws"], optional = true }
-tower-http = { workspace = true, features = ["fs", "set-header"], optional = true }
-futures = { version = "0.3", optional = true }
-chrono = { workspace = true, optional = true }
-open = { version = "5", optional = true }
+# Web server
+axum = { workspace = true, features = ["ws"] }
+tower-http = { workspace = true, features = ["fs", "set-header"] }
+futures = "0.3"
+chrono = { workspace = true }
+open = "5"
 
 # OpenAPI documentation (optional)
 utoipa = { version = "4", features = ["axum_extras"], optional = true }

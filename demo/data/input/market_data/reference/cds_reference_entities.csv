@@ -1,9 +1,0 @@
-entity_id,name,ticker,sector,base_spread_bps,currency
-REF001,Ford Motor Company,FORD,Automotive,150.0,USD
-REF002,General Motors Company,GM,Automotive,120.0,USD
-REF003,Boeing Company,BOEING,Aerospace,80.0,USD
-REF004,AT&T Inc.,ATT,Telecommunications,100.0,USD
-REF005,Verizon Communications,VERIZON,Telecommunications,75.0,USD
-REF006,Tesla Inc.,TSLA,Automotive,200.0,USD
-REF007,Amazon.com Inc.,AMZN,Technology,50.0,USD
-REF008,Meta Platforms Inc.,META,Technology,60.0,USD

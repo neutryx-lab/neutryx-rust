@@ -1,0 +1,235 @@
+{
+  "metadata": {
+    "description": "Consolidated market data for FrictionalBank demo webapp",
+    "last_updated": "2026-01-22T00:00:00Z",
+    "version": "1.0"
+  },
+  "rates": {
+    "USD": {
+      "deposit": [
+        { "tenor": "ON", "value": 0.0530, "index": "SOFR" },
+        { "tenor": "1W", "value": 0.0528, "index": "SOFR" },
+        { "tenor": "1M", "value": 0.0525, "index": "SOFR" },
+        { "tenor": "3M", "value": 0.0518, "index": "SOFR" }
+      ],
+      "ois": [
+        { "tenor": "1M", "value": 0.0525, "index": "SOFR" },
+        { "tenor": "3M", "value": 0.0520, "index": "SOFR" },
+        { "tenor": "6M", "value": 0.0510, "index": "SOFR" },
+        { "tenor": "1Y", "value": 0.0480, "index": "SOFR" }
+      ],
+      "swap": [
+        { "tenor": "2Y", "value": 0.0425, "index": "SOFR" },
+        { "tenor": "3Y", "value": 0.0415, "index": "SOFR" },
+        { "tenor": "5Y", "value": 0.0405, "index": "SOFR" },
+        { "tenor": "7Y", "value": 0.0400, "index": "SOFR" },
+        { "tenor": "10Y", "value": 0.0398, "index": "SOFR" },
+        { "tenor": "15Y", "value": 0.0402, "index": "SOFR" },
+        { "tenor": "20Y", "value": 0.0410, "index": "SOFR" },
+        { "tenor": "30Y", "value": 0.0415, "index": "SOFR" }
+      ]
+    },
+    "EUR": {
+      "deposit": [
+        { "tenor": "ON", "value": 0.0390, "index": "ESTR" },
+        { "tenor": "1W", "value": 0.0388, "index": "ESTR" },
+        { "tenor": "1M", "value": 0.0385, "index": "ESTR" },
+        { "tenor": "3M", "value": 0.0380, "index": "ESTR" }
+      ],
+      "ois": [
+        { "tenor": "1M", "value": 0.0385, "index": "ESTR" },
+        { "tenor": "3M", "value": 0.0378, "index": "ESTR" },
+        { "tenor": "6M", "value": 0.0365, "index": "ESTR" },
+        { "tenor": "1Y", "value": 0.0340, "index": "ESTR" }
+      ],
+      "swap": [
+        { "tenor": "2Y", "value": 0.0285, "index": "EURIBOR6M" },
+        { "tenor": "3Y", "value": 0.0275, "index": "EURIBOR6M" },
+        { "tenor": "5Y", "value": 0.0268, "index": "EURIBOR6M" },
+        { "tenor": "7Y", "value": 0.0272, "index": "EURIBOR6M" },
+        { "tenor": "10Y", "value": 0.0280, "index": "EURIBOR6M" },
+        { "tenor": "15Y", "value": 0.0295, "index": "EURIBOR6M" },
+        { "tenor": "20Y", "value": 0.0305, "index": "EURIBOR6M" },
+        { "tenor": "30Y", "value": 0.0310, "index": "EURIBOR6M" }
+      ]
+    },
+    "JPY": {
+      "deposit": [
+        { "tenor": "ON", "value": -0.0010, "index": "TONA" },
+        { "tenor": "1W", "value": -0.0008, "index": "TONA" },
+        { "tenor": "1M", "value": -0.0005, "index": "TONA" },
+        { "tenor": "3M", "value": 0.0000, "index": "TONA" }
+      ],
+      "ois": [
+        { "tenor": "1M", "value": -0.0005, "index": "TONA" },
+        { "tenor": "3M", "value": 0.0002, "index": "TONA" },
+        { "tenor": "6M", "value": 0.0015, "index": "TONA" },
+        { "tenor": "1Y", "value": 0.0035, "index": "TONA" }
+      ],
+      "swap": [
+        { "tenor": "2Y", "value": 0.0055, "index": "TIBOR3M" },
+        { "tenor": "3Y", "value": 0.0065, "index": "TIBOR3M" },
+        { "tenor": "5Y", "value": 0.0085, "index": "TIBOR3M" },
+        { "tenor": "7Y", "value": 0.0105, "index": "TIBOR3M" },
+        { "tenor": "10Y", "value": 0.0125, "index": "TIBOR3M" },
+        { "tenor": "15Y", "value": 0.0145, "index": "TIBOR3M" },
+        { "tenor": "20Y", "value": 0.0155, "index": "TIBOR3M" },
+        { "tenor": "30Y", "value": 0.0160, "index": "TIBOR3M" }
+      ]
+    }
+  },
+  "fx_spots": [
+    { "pair": "EURUSD", "value": 1.0850 },
+    { "pair": "USDJPY", "value": 149.50 },
+    { "pair": "GBPUSD", "value": 1.2650 },
+    { "pair": "EURGBP", "value": 0.8578 },
+    { "pair": "EURJPY", "value": 162.21 }
+  ],
+  "conventions": {
+    "USD-SOFR-OIS": {
+      "type": "OisConvention",
+      "currency": "USD",
+      "is_default": true,
+      "fields": {
+        "index": "SOFR",
+        "day_count": "ACT/360",
+        "payment_frequency": "Annual",
+        "business_day_convention": "Modified Following",
+        "settlement_days": 2,
+        "calendar": "New York"
+      }
+    },
+    "USD-SOFR-SWAP": {
+      "type": "SwapConvention",
+      "currency": "USD",
+      "is_default": true,
+      "fields": {
+        "fixed_leg_day_count": "ACT/360",
+        "fixed_leg_frequency": "Annual",
+        "float_leg_index": "SOFR",
+        "float_leg_day_count": "ACT/360",
+        "float_leg_frequency": "Annual",
+        "business_day_convention": "Modified Following",
+        "settlement_days": 2,
+        "calendar": "New York"
+      }
+    },
+    "USD-DEPO": {
+      "type": "DepositConvention",
+      "currency": "USD",
+      "is_default": true,
+      "fields": {
+        "day_count": "ACT/360",
+        "business_day_convention": "Modified Following",
+        "settlement_days": 2,
+        "calendar": "New York"
+      }
+    },
+    "EUR-ESTR-OIS": {
+      "type": "OisConvention",
+      "currency": "EUR",
+      "is_default": true,
+      "fields": {
+        "index": "ESTR",
+        "day_count": "ACT/360",
+        "payment_frequency": "Annual",
+        "business_day_convention": "Modified Following",
+        "settlement_days": 2,
+        "calendar": "TARGET"
+      }
+    },
+    "EUR-EURIBOR-SWAP": {
+      "type": "SwapConvention",
+      "currency": "EUR",
+      "is_default": true,
+      "fields": {
+        "fixed_leg_day_count": "30/360",
+        "fixed_leg_frequency": "Annual",
+        "float_leg_index": "EURIBOR6M",
+        "float_leg_day_count": "ACT/360",
+        "float_leg_frequency": "Semi-Annual",
+        "business_day_convention": "Modified Following",
+        "settlement_days": 2,
+        "calendar": "TARGET"
+      }
+    },
+    "EUR-DEPO": {
+      "type": "DepositConvention",
+      "currency": "EUR",
+      "is_default": true,
+      "fields": {
+        "day_count": "ACT/360",
+        "business_day_convention": "Modified Following",
+        "settlement_days": 2,
+        "calendar": "TARGET"
+      }
+    },
+    "JPY-TONA-OIS": {
+      "type": "OisConvention",
+      "currency": "JPY",
+      "is_default": true,
+      "fields": {
+        "index": "TONA",
+        "day_count": "ACT/365F",
+        "payment_frequency": "Annual",
+        "business_day_convention": "Modified Following",
+        "settlement_days": 2,
+        "calendar": "Tokyo"
+      }
+    },
+    "JPY-TIBOR-SWAP": {
+      "type": "SwapConvention",
+      "currency": "JPY",
+      "is_default": true,
+      "fields": {
+        "fixed_leg_day_count": "ACT/365F",
+        "fixed_leg_frequency": "Semi-Annual",
+        "float_leg_index": "TIBOR3M",
+        "float_leg_day_count": "ACT/365F",
+        "float_leg_frequency": "Quarterly",
+        "business_day_convention": "Modified Following",
+        "settlement_days": 2,
+        "calendar": "Tokyo"
+      }
+    },
+    "JPY-DEPO": {
+      "type": "DepositConvention",
+      "currency": "JPY",
+      "is_default": true,
+      "fields": {
+        "day_count": "ACT/365F",
+        "business_day_convention": "Modified Following",
+        "settlement_days": 2,
+        "calendar": "Tokyo"
+      }
+    },
+    "FX-SPOT": {
+      "type": "FxConvention",
+      "currency": "USD",
+      "is_default": true,
+      "fields": {
+        "settlement_days": 2,
+        "business_day_convention": "Following",
+        "calendar": "New York + London"
+      }
+    }
+  },
+  "instruments": {
+    "deposit": {
+      "description": "Money market deposit",
+      "fields": ["currency", "tenor", "rate", "start_date", "end_date", "notional"]
+    },
+    "ois": {
+      "description": "Overnight Index Swap",
+      "fields": ["currency", "tenor", "rate", "index", "start_date", "end_date", "notional", "fixed_leg_frequency", "float_leg_frequency"]
+    },
+    "swap": {
+      "description": "Interest Rate Swap",
+      "fields": ["currency", "tenor", "rate", "index", "start_date", "end_date", "notional", "fixed_leg_frequency", "float_leg_frequency", "fixed_leg_day_count", "float_leg_day_count"]
+    },
+    "fx_spot": {
+      "description": "FX Spot",
+      "fields": ["currency_pair", "rate", "settlement_date", "buy_amount", "sell_amount"]
+    }
+  }
+}

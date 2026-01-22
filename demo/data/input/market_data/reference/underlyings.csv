@@ -1,7 +1,0 @@
-ticker,spot_price,currency,name,exchange
-AAPL,185.00,USD,Apple Inc.,NASDAQ
-GOOGL,140.00,USD,Alphabet Inc.,NASDAQ
-MSFT,380.00,USD,Microsoft Corporation,NASDAQ
-7203.T,2800.00,JPY,Toyota Motor Corporation,TSE
-DBK.DE,15.50,EUR,Deutsche Bank AG,XETRA
-SAP.DE,180.00,EUR,SAP SE,XETRA

@@ -523,6 +523,22 @@ body.light-theme .glass-heavy {
     display: flex;
     align-items: center;
     gap: 12px;
+    text-decoration: none !important;
+    cursor: pointer;
+    transition: opacity var(--transition-fast);
+    color: inherit !important;
+}
+
+.logo:hover,
+.logo:visited,
+.logo:active,
+.logo:focus {
+    text-decoration: none !important;
+    color: inherit !important;
+}
+
+.logo:hover {
+    opacity: 0.85;
 }
 
 .logo-icon-wrapper {
@@ -11254,12 +11270,16 @@ body.light-theme .export-menu {
 }
 
 .vol-calib-input-panel,
-.vol-calib-results-panel {
+.vol-calib-results-panel,
+.model-calib-input-panel,
+.model-calib-results-panel {
     padding: var(--space-lg);
 }
 
 .vol-calib-input-panel h3,
-.vol-calib-results-panel h3 {
+.vol-calib-results-panel h3,
+.model-calib-input-panel h3,
+.model-calib-results-panel h3 {
     font-size: 1rem;
     font-weight: 600;
     color: var(--text-primary);
@@ -11270,11 +11290,14 @@ body.light-theme .export-menu {
 }
 
 .vol-calib-input-panel h3 i,
-.vol-calib-results-panel h3 i {
+.vol-calib-results-panel h3 i,
+.model-calib-input-panel h3 i,
+.model-calib-results-panel h3 i {
     color: var(--primary);
 }
 
-.vol-calib-input-panel h4 {
+.vol-calib-input-panel h4,
+.model-calib-input-panel h4 {
     font-size: 0.875rem;
     font-weight: 500;
     color: var(--text-secondary);
