@@ -1,9 +1,9 @@
 {
-  "feature_name": "pricer-trade-expansion-ui",
-  "created_at": "2026-01-22T00:00:00Z",
-  "updated_at": "2026-01-22T00:00:00Z",
+  "feature_name": "market-data-viewer-webapp",
+  "created_at": "2026-01-22T19:30:00Z",
+  "updated_at": "2026-01-22T21:30:00Z",
   "language": "ja",
-  "phase": "implementation-complete",
+  "phase": "implemented",
   "approvals": {
     "requirements": {
       "generated": true,

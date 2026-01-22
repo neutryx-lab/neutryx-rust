@@ -24,10 +24,9 @@ members = [
 
     # --- Demo Layer (FrictionalBank) ---
     "demo/inputs",
-    # TODO: demo crates temporarily disabled - depend on pricer_risk which needs refactoring
-    # "demo/outputs",
-    # "demo/frictional_bank",
-    # "demo/gui",  # depends on frictional_bank which depends on pricer_risk
+    "demo/outputs",
+    "demo/frictional_bank",
+    "demo/gui",
 ]
 resolver = "2"
 

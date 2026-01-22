@@ -1,9 +1,13 @@
 //! Front office trade booking simulation.
 //!
 //! Simulates a front office system that books trades throughout the day.
+//! Reference data is loaded from CSV files in the data directory.
+
+use std::path::{Path, PathBuf};
 
 use chrono::{Days, NaiveDate, Utc};
 use rand::Rng;
+use serde::Deserialize;
 
 use super::{InstrumentType, TradeParams, TradeRecord, TradeSource};
 
@@ -13,35 +17,110 @@ pub struct FrontOffice {
     counterparties: Vec<CounterpartyInfo>,
     /// List of underlyings
     underlyings: Vec<UnderlyingInfo>,
+    /// List of FX pairs
+    fx_pairs: Vec<FxPairInfo>,
+    /// List of CDS reference entities
+    cds_references: Vec<CdsReferenceInfo>,
+    /// Currency to index mapping
+    currency_indices: Vec<CurrencyIndexInfo>,
     /// Trade date
     trade_date: NaiveDate,
 }
 
 /// Counterparty information
-#[derive(Clone)]
-#[allow(dead_code)]
+#[derive(Clone, Debug, Deserialize)]
 struct CounterpartyInfo {
-    id: String,
+    counterparty_id: String,
+    #[allow(dead_code)]
     name: String,
+    #[serde(skip)]
     netting_sets: Vec<String>,
 }
 
+/// Netting set record from CSV
+#[derive(Clone, Debug, Deserialize)]
+struct NettingSetRecord {
+    netting_set_id: String,
+    counterparty_id: String,
+}
+
 /// Underlying information
-#[derive(Clone)]
+#[derive(Clone, Debug, Deserialize)]
 struct UnderlyingInfo {
     ticker: String,
     spot_price: f64,
     currency: String,
 }
 
+/// FX pair information
+#[derive(Clone, Debug, Deserialize)]
+struct FxPairInfo {
+    pair: String,
+    buy_currency: String,
+    sell_currency: String,
+    spot_rate: f64,
+}
+
+/// CDS reference entity information
+#[derive(Clone, Debug, Deserialize)]
+struct CdsReferenceInfo {
+    #[allow(dead_code)]
+    entity_id: String,
+    #[allow(dead_code)]
+    name: String,
+    ticker: String,
+    base_spread_bps: f64,
+}
+
+/// Currency to index mapping
+#[derive(Clone, Debug, Deserialize)]
+struct CurrencyIndexInfo {
+    currency: String,
+    index: String,
+}
+
+/// Error type for FrontOffice operations
+#[derive(Debug, thiserror::Error)]
+pub enum FrontOfficeError {
+    #[error("Failed to read CSV file: {0}")]
+    CsvError(#[from] csv::Error),
+    #[error("IO error: {0}")]
+    IoError(#[from] std::io::Error),
+    #[error("No data loaded for {0}")]
+    NoData(String),
+}
+
 impl FrontOffice {
-    /// Create a new front office with default data
+    /// Create a new front office with default embedded data (for backwards compatibility)
     pub fn new() -> Self {
         Self {
             counterparties: Self::default_counterparties(),
             underlyings: Self::default_underlyings(),
+            fx_pairs: Self::default_fx_pairs(),
+            cds_references: Self::default_cds_references(),
+            currency_indices: Self::default_currency_indices(),
             trade_date: Utc::now().date_naive(),
         }
+    }
+
+    /// Create a new front office loading data from the specified data directory
+    pub fn from_data_dir(data_dir: impl AsRef<Path>) -> Result<Self, FrontOfficeError> {
+        let data_dir = data_dir.as_ref();
+
+        let counterparties = Self::load_counterparties(data_dir)?;
+        let underlyings = Self::load_underlyings(data_dir)?;
+        let fx_pairs = Self::load_fx_pairs(data_dir)?;
+        let cds_references = Self::load_cds_references(data_dir)?;
+        let currency_indices = Self::load_currency_indices(data_dir)?;
+
+        Ok(Self {
+            counterparties,
+            underlyings,
+            fx_pairs,
+            cds_references,
+            currency_indices,
+            trade_date: Utc::now().date_naive(),
+        })
     }
 
     /// Set trade date
@@ -50,30 +129,121 @@ impl FrontOffice {
         self
     }
 
+    // === CSV Loading Functions ===
+
+    fn load_counterparties(data_dir: &Path) -> Result<Vec<CounterpartyInfo>, FrontOfficeError> {
+        let cp_path = data_dir.join("input/counterparties/counterparties.csv");
+        let ns_path = data_dir.join("input/counterparties/netting_sets.csv");
+
+        // Load counterparties
+        let mut counterparties: Vec<CounterpartyInfo> = if cp_path.exists() {
+            let mut rdr = csv::Reader::from_path(&cp_path)?;
+            rdr.deserialize().collect::<Result<Vec<_>, _>>()?
+        } else {
+            return Ok(Self::default_counterparties());
+        };
+
+        // Load netting sets and associate with counterparties
+        if ns_path.exists() {
+            let mut rdr = csv::Reader::from_path(&ns_path)?;
+            let netting_sets: Vec<NettingSetRecord> =
+                rdr.deserialize().collect::<Result<Vec<_>, _>>()?;
+
+            for cp in &mut counterparties {
+                cp.netting_sets = netting_sets
+                    .iter()
+                    .filter(|ns| ns.counterparty_id == cp.counterparty_id)
+                    .map(|ns| ns.netting_set_id.clone())
+                    .collect();
+            }
+        }
+
+        // Filter out counterparties without netting sets
+        counterparties.retain(|cp| !cp.netting_sets.is_empty());
+
+        if counterparties.is_empty() {
+            return Ok(Self::default_counterparties());
+        }
+
+        Ok(counterparties)
+    }
+
+    fn load_underlyings(data_dir: &Path) -> Result<Vec<UnderlyingInfo>, FrontOfficeError> {
+        let path = data_dir.join("input/market_data/reference/underlyings.csv");
+        if path.exists() {
+            let mut rdr = csv::Reader::from_path(&path)?;
+            let underlyings: Vec<UnderlyingInfo> =
+                rdr.deserialize().collect::<Result<Vec<_>, _>>()?;
+            if !underlyings.is_empty() {
+                return Ok(underlyings);
+            }
+        }
+        Ok(Self::default_underlyings())
+    }
+
+    fn load_fx_pairs(data_dir: &Path) -> Result<Vec<FxPairInfo>, FrontOfficeError> {
+        let path = data_dir.join("input/market_data/reference/fx_pairs.csv");
+        if path.exists() {
+            let mut rdr = csv::Reader::from_path(&path)?;
+            let fx_pairs: Vec<FxPairInfo> = rdr.deserialize().collect::<Result<Vec<_>, _>>()?;
+            if !fx_pairs.is_empty() {
+                return Ok(fx_pairs);
+            }
+        }
+        Ok(Self::default_fx_pairs())
+    }
+
+    fn load_cds_references(data_dir: &Path) -> Result<Vec<CdsReferenceInfo>, FrontOfficeError> {
+        let path = data_dir.join("input/market_data/reference/cds_reference_entities.csv");
+        if path.exists() {
+            let mut rdr = csv::Reader::from_path(&path)?;
+            let refs: Vec<CdsReferenceInfo> = rdr.deserialize().collect::<Result<Vec<_>, _>>()?;
+            if !refs.is_empty() {
+                return Ok(refs);
+            }
+        }
+        Ok(Self::default_cds_references())
+    }
+
+    fn load_currency_indices(data_dir: &Path) -> Result<Vec<CurrencyIndexInfo>, FrontOfficeError> {
+        let path = data_dir.join("input/market_data/reference/currency_indices.csv");
+        if path.exists() {
+            let mut rdr = csv::Reader::from_path(&path)?;
+            let indices: Vec<CurrencyIndexInfo> =
+                rdr.deserialize().collect::<Result<Vec<_>, _>>()?;
+            if !indices.is_empty() {
+                return Ok(indices);
+            }
+        }
+        Ok(Self::default_currency_indices())
+    }
+
+    // === Default Data (fallback when CSVs not available) ===
+
     fn default_counterparties() -> Vec<CounterpartyInfo> {
         vec![
             CounterpartyInfo {
-                id: "CP001".to_string(),
+                counterparty_id: "CP001".to_string(),
                 name: "Goldman Sachs".to_string(),
                 netting_sets: vec!["NS001".to_string(), "NS002".to_string()],
             },
             CounterpartyInfo {
-                id: "CP002".to_string(),
+                counterparty_id: "CP002".to_string(),
                 name: "JP Morgan".to_string(),
                 netting_sets: vec!["NS003".to_string()],
             },
             CounterpartyInfo {
-                id: "CP003".to_string(),
+                counterparty_id: "CP003".to_string(),
                 name: "Morgan Stanley".to_string(),
                 netting_sets: vec!["NS004".to_string(), "NS005".to_string()],
             },
             CounterpartyInfo {
-                id: "CP004".to_string(),
+                counterparty_id: "CP004".to_string(),
                 name: "Deutsche Bank".to_string(),
                 netting_sets: vec!["NS006".to_string()],
             },
             CounterpartyInfo {
-                id: "CP005".to_string(),
+                counterparty_id: "CP005".to_string(),
                 name: "BNP Paribas".to_string(),
                 netting_sets: vec!["NS007".to_string()],
             },
@@ -110,6 +280,114 @@ impl FrontOffice {
         ]
     }
 
+    fn default_fx_pairs() -> Vec<FxPairInfo> {
+        vec![
+            FxPairInfo {
+                pair: "USDJPY".to_string(),
+                buy_currency: "USD".to_string(),
+                sell_currency: "JPY".to_string(),
+                spot_rate: 150.25,
+            },
+            FxPairInfo {
+                pair: "EURUSD".to_string(),
+                buy_currency: "EUR".to_string(),
+                sell_currency: "USD".to_string(),
+                spot_rate: 1.085,
+            },
+            FxPairInfo {
+                pair: "GBPUSD".to_string(),
+                buy_currency: "GBP".to_string(),
+                sell_currency: "USD".to_string(),
+                spot_rate: 1.265,
+            },
+            FxPairInfo {
+                pair: "USDCHF".to_string(),
+                buy_currency: "USD".to_string(),
+                sell_currency: "CHF".to_string(),
+                spot_rate: 0.882,
+            },
+            FxPairInfo {
+                pair: "EURJPY".to_string(),
+                buy_currency: "EUR".to_string(),
+                sell_currency: "JPY".to_string(),
+                spot_rate: 163.0,
+            },
+        ]
+    }
+
+    fn default_cds_references() -> Vec<CdsReferenceInfo> {
+        vec![
+            CdsReferenceInfo {
+                entity_id: "REF001".to_string(),
+                name: "Ford Motor Company".to_string(),
+                ticker: "FORD".to_string(),
+                base_spread_bps: 150.0,
+            },
+            CdsReferenceInfo {
+                entity_id: "REF002".to_string(),
+                name: "General Motors Company".to_string(),
+                ticker: "GM".to_string(),
+                base_spread_bps: 120.0,
+            },
+            CdsReferenceInfo {
+                entity_id: "REF003".to_string(),
+                name: "Boeing Company".to_string(),
+                ticker: "BOEING".to_string(),
+                base_spread_bps: 80.0,
+            },
+            CdsReferenceInfo {
+                entity_id: "REF004".to_string(),
+                name: "AT&T Inc.".to_string(),
+                ticker: "ATT".to_string(),
+                base_spread_bps: 100.0,
+            },
+            CdsReferenceInfo {
+                entity_id: "REF005".to_string(),
+                name: "Verizon Communications".to_string(),
+                ticker: "VERIZON".to_string(),
+                base_spread_bps: 75.0,
+            },
+        ]
+    }
+
+    fn default_currency_indices() -> Vec<CurrencyIndexInfo> {
+        vec![
+            CurrencyIndexInfo {
+                currency: "USD".to_string(),
+                index: "SOFR".to_string(),
+            },
+            CurrencyIndexInfo {
+                currency: "EUR".to_string(),
+                index: "EURIBOR".to_string(),
+            },
+            CurrencyIndexInfo {
+                currency: "JPY".to_string(),
+                index: "TONAR".to_string(),
+            },
+            CurrencyIndexInfo {
+                currency: "GBP".to_string(),
+                index: "SONIA".to_string(),
+            },
+        ]
+    }
+
+    // === Helper Functions ===
+
+    fn get_index_for_currency(&self, currency: &str) -> String {
+        self.currency_indices
+            .iter()
+            .find(|ci| ci.currency == currency)
+            .map(|ci| ci.index.clone())
+            .unwrap_or_else(|| "SOFR".to_string())
+    }
+
+    /// Get data directory path
+    pub fn data_dir() -> PathBuf {
+        PathBuf::from("demo/data")
+    }
+
+    // === Trade Generation Functions ===
+
     /// Generate equity option trades
     pub fn generate_equity_options(&self, count: usize) -> Vec<TradeRecord> {
         let mut rng = rand::thread_rng();
@@ -137,7 +415,7 @@ impl FrontOffice {
             trades.push(TradeRecord {
                 trade_id: format!("EQ-OPT-{:06}", i + 1),
                 instrument_type: InstrumentType::EquityOption,
-                counterparty_id: cp.id.clone(),
+                counterparty_id: cp.counterparty_id.clone(),
                 netting_set_id: ns.clone(),
                 notional,
                 currency: underlying.currency.clone(),
@@ -159,13 +437,18 @@ impl FrontOffice {
         let mut rng = rand::thread_rng();
         let mut trades = Vec::with_capacity(count);
 
-        let currencies = ["USD", "EUR", "JPY", "GBP"];
-        let indices = ["SOFR", "EURIBOR", "TONAR", "SONIA"];
+        // Get unique currencies from currency_indices
+        let currencies: Vec<&str> = self
+            .currency_indices
+            .iter()
+            .map(|ci| ci.currency.as_str())
+            .collect();
 
         for i in 0..count {
             let cp = &self.counterparties[rng.gen_range(0..self.counterparties.len())];
             let ns = &cp.netting_sets[rng.gen_range(0..cp.netting_sets.len())];
-            let ccy_idx = rng.gen_range(0..currencies.len());
+            let currency = currencies[rng.gen_range(0..currencies.len())];
+            let float_index = self.get_index_for_currency(currency);
 
             // Maturity 1-30 years
             let years: u64 = rng.gen_range(1..31);
@@ -183,15 +466,15 @@ impl FrontOffice {
             trades.push(TradeRecord {
                 trade_id: format!("IRS-{:06}", i + 1),
                 instrument_type: InstrumentType::InterestRateSwap,
-                counterparty_id: cp.id.clone(),
+                counterparty_id: cp.counterparty_id.clone(),
                 netting_set_id: ns.clone(),
                 notional,
-                currency: currencies[ccy_idx].to_string(),
+                currency: currency.to_string(),
                 trade_date: self.trade_date.to_string(),
                 maturity_date: maturity.to_string(),
                 params: TradeParams::InterestRateSwap {
                     fixed_rate,
-                    float_index: indices[ccy_idx].to_string(),
+                    float_index,
                     pay_fixed: rng.gen_bool(0.5),
                 },
             });
@@ -205,18 +488,10 @@ impl FrontOffice {
         let mut rng = rand::thread_rng();
         let mut trades = Vec::with_capacity(count);
 
-        let fx_pairs = [
-            ("USD", "JPY", 150.25),
-            ("EUR", "USD", 1.085),
-            ("GBP", "USD", 1.265),
-            ("USD", "CHF", 0.882),
-            ("EUR", "JPY", 163.0),
-        ];
-
         for i in 0..count {
             let cp = &self.counterparties[rng.gen_range(0..self.counterparties.len())];
             let ns = &cp.netting_sets[rng.gen_range(0..cp.netting_sets.len())];
-            let (buy, sell, spot) = &fx_pairs[rng.gen_range(0..fx_pairs.len())];
+            let fx_pair = &self.fx_pairs[rng.gen_range(0..self.fx_pairs.len())];
 
             // Maturity 1-12 months
             let months: u64 = rng.gen_range(1..13);
@@ -227,7 +502,7 @@ impl FrontOffice {
 
             // Forward rate with small premium/discount
             let fwd_pts: f64 = rng.gen_range(-0.02..0.02);
-            let rate = spot * (1.0 + fwd_pts);
+            let rate = fx_pair.spot_rate * (1.0 + fwd_pts);
 
             // Notional
             let notional: f64 = rng.gen_range(1_000_000.0..100_000_000.0);
@@ -235,15 +510,15 @@ impl FrontOffice {
             trades.push(TradeRecord {
                 trade_id: format!("FX-FWD-{:06}", i + 1),
                 instrument_type: InstrumentType::FxForward,
-                counterparty_id: cp.id.clone(),
+                counterparty_id: cp.counterparty_id.clone(),
                 netting_set_id: ns.clone(),
                 notional,
-                currency: buy.to_string(),
+                currency: fx_pair.buy_currency.clone(),
                 trade_date: self.trade_date.to_string(),
                 maturity_date: maturity.to_string(),
                 params: TradeParams::FxForward {
-                    buy_currency: buy.to_string(),
-                    sell_currency: sell.to_string(),
+                    buy_currency: fx_pair.buy_currency.clone(),
+                    sell_currency: fx_pair.sell_currency.clone(),
                     rate,
                 },
             });
@@ -257,19 +532,10 @@ impl FrontOffice {
         let mut rng = rand::thread_rng();
         let mut trades = Vec::with_capacity(count);
 
-        let reference_entities = [
-            ("FORD", 150.0),
-            ("GM", 120.0),
-            ("BOEING", 80.0),
-            ("ATT", 100.0),
-            ("VERIZON", 75.0),
-        ];
-
         for i in 0..count {
             let cp = &self.counterparties[rng.gen_range(0..self.counterparties.len())];
             let ns = &cp.netting_sets[rng.gen_range(0..cp.netting_sets.len())];
-            let (entity, base_spread) =
-                &reference_entities[rng.gen_range(0..reference_entities.len())];
+            let cds_ref = &self.cds_references[rng.gen_range(0..self.cds_references.len())];
 
             // Standard CDS maturities
             let years: u64 = *[1, 2, 3, 5, 7, 10].iter().collect::<Vec<_>>()[rng.gen_range(0..6)];
@@ -279,7 +545,7 @@ impl FrontOffice {
                 .unwrap();
 
             // Spread with noise
-            let spread: f64 = base_spread * rng.gen_range(0.8..1.2);
+            let spread: f64 = cds_ref.base_spread_bps * rng.gen_range(0.8..1.2);
 
             // Notional
             let notional: f64 = rng.gen_range(5_000_000.0..100_000_000.0);
@@ -287,14 +553,14 @@ impl FrontOffice {
             trades.push(TradeRecord {
                 trade_id: format!("CDS-{:06}", i + 1),
                 instrument_type: InstrumentType::CreditDefaultSwap,
-                counterparty_id: cp.id.clone(),
+                counterparty_id: cp.counterparty_id.clone(),
                 netting_set_id: ns.clone(),
                 notional,
                 currency: "USD".to_string(),
                 trade_date: self.trade_date.to_string(),
                 maturity_date: maturity.to_string(),
                 params: TradeParams::CreditDefaultSwap {
-                    reference_entity: entity.to_string(),
+                    reference_entity: cds_ref.ticker.clone(),
                     spread_bps: spread,
                     is_protection_buyer: rng.gen_bool(0.5),
                 },
@@ -309,18 +575,10 @@ impl FrontOffice {
         let mut rng = rand::thread_rng();
         let mut trades = Vec::with_capacity(count);
 
-        let fx_pairs = [
-            ("USDJPY", "USD", 150.25),
-            ("EURUSD", "EUR", 1.085),
-            ("GBPUSD", "GBP", 1.265),
-            ("USDCHF", "USD", 0.882),
-            ("EURJPY", "EUR", 163.0),
-        ];
-
         for i in 0..count {
             let cp = &self.counterparties[rng.gen_range(0..self.counterparties.len())];
             let ns = &cp.netting_sets[rng.gen_range(0..cp.netting_sets.len())];
-            let (pair, base_ccy, spot) = &fx_pairs[rng.gen_range(0..fx_pairs.len())];
+            let fx_pair = &self.fx_pairs[rng.gen_range(0..self.fx_pairs.len())];
 
             // Maturity 1-12 months
             let months: u64 = rng.gen_range(1..13);
@@ -331,7 +589,7 @@ impl FrontOffice {
 
             // Strike around spot
             let strike_pct: f64 = rng.gen_range(0.90..1.10);
-            let strike = spot * strike_pct;
+            let strike = fx_pair.spot_rate * strike_pct;
 
             // Notional
             let notional: f64 = rng.gen_range(1_000_000.0..50_000_000.0);
@@ -339,14 +597,14 @@ impl FrontOffice {
             trades.push(TradeRecord {
                 trade_id: format!("FX-OPT-{:06}", i + 1),
                 instrument_type: InstrumentType::FxOption,
-                counterparty_id: cp.id.clone(),
+                counterparty_id: cp.counterparty_id.clone(),
                 netting_set_id: ns.clone(),
                 notional,
-                currency: base_ccy.to_string(),
+                currency: fx_pair.buy_currency.clone(),
                 trade_date: self.trade_date.to_string(),
                 maturity_date: maturity.to_string(),
                 params: TradeParams::FxOption {
-                    currency_pair: pair.to_string(),
+                    currency_pair: fx_pair.pair.clone(),
                     strike,
                     is_call: rng.gen_bool(0.5),
                 },
@@ -383,7 +641,7 @@ impl FrontOffice {
             trades.push(TradeRecord {
                 trade_id: format!("EQ-FWD-{:06}", i + 1),
                 instrument_type: InstrumentType::EquityForward,
-                counterparty_id: cp.id.clone(),
+                counterparty_id: cp.counterparty_id.clone(),
                 netting_set_id: ns.clone(),
                 notional,
                 currency: underlying.currency.clone(),
@@ -416,7 +674,9 @@ impl FrontOffice {
 }
 
 impl Default for FrontOffice {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TradeSource for FrontOffice {
@@ -553,5 +813,17 @@ mod tests {
 
         // Total should match
         assert_eq!(eq_opt + irs + fx_fwd + cds + fx_opt + eq_fwd, 100);
+    }
+
+    #[test]
+    fn test_from_data_dir() {
+        // Test that from_data_dir gracefully falls back to defaults
+        // when CSV files don't exist
+        let result = FrontOffice::from_data_dir("nonexistent/path");
+        assert!(result.is_ok());
+
+        let fo = result.unwrap();
+        let trades = fo.generate_trades(10);
+        assert_eq!(trades.len(), 10);
     }
 }

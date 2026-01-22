@@ -241,6 +241,113 @@ const formatCurrency = (n) => {
 
 const formatPercent = (n) => (n >= 0 ? '+' : '') + n.toFixed(1) + '%';
 
+// --- Form Input Helpers ---
+
+/** Parse a percentage input (e.g., "3.5" for 3.5%) and return as decimal (0.035). */
+const parsePercent = (el, fallback = 0) => (parseFloat(el?.value) || fallback) / 100;
+
+/** Parse a numeric input with optional fallback. */
+const parseNum = (el, fallback = 0) => parseFloat(el?.value) || fallback;
+
+/** Parse a string input with optional fallback. */
+const parseStr = (el, fallback = '') => el?.value || fallback;
+
+// --- Default Values (centralised for all modules) ---
+
+const DEFAULTS = {
+    // Trade Expansion defaults
+    expansion: {
+        rates: {
+            currency: 'USD',
+            tenor: '1Y',
+            rate: 3.5,              // percent
+            notional: 10_000_000
+        },
+        swap: {
+            currency: 'USD',
+            tenor: '5Y',
+            fixedRate: 3.0,         // percent
+            spread: 0,              // percent
+            notional: 10_000_000,
+            paymentFrequency: 'semi_annual',
+            dayCount: 'act_365'
+        },
+        fx: {
+            baseCurrency: 'EUR',
+            quoteCurrency: 'USD',
+            spotRate: 1.085,
+            forwardRate: 1.09,
+            notional: 1_000_000,
+            optionType: 'call',
+            volatility: 10          // percent
+        },
+        equity: {
+            underlying: 'AAPL',
+            spotPrice: 180,
+            strike: 185,
+            volatility: 25,         // percent
+            riskFreeRate: 5,        // percent
+            optionType: 'call',
+            direction: 'long'
+        }
+    },
+
+    // Pricer module defaults
+    pricer: {
+        equity: {
+            spot: 100,
+            strike: 100,
+            expiryYears: 1,
+            volatility: 20,         // percent
+            rate: 5,                // percent
+            optionType: 'call'
+        },
+        fx: {
+            spot: 1.10,
+            strike: 1.10,
+            expiryYears: 1,
+            volatility: 10,         // percent
+            domesticRate: 5,        // percent
+            foreignRate: 2,         // percent
+            optionType: 'call'
+        },
+        irs: {
+            notional: 1_000_000,
+            fixedRate: 2.5,         // percent
+            tenorYears: 5
+        }
+    },
+
+    // Curve Bootstrapping defaults
+    curve: {
+        irs: {
+            notional: 10_000_000,
+            fixedRate: 3.0,         // percent
+            tenorYears: 5,
+            frequency: 'annual'
+        },
+        interpolation: 'log_linear'
+    },
+
+    // Scenario Analysis defaults
+    scenario: {
+        rateShock: 0,               // bps
+        volShift: 0,                // percent
+        spreadShock: 0,             // bps
+        corrShift: 0,               // percent
+        // IRS parameters for scenario analysis
+        irs: {
+            notional: 10_000_000,
+            fixedRate: 0.035,       // decimal (3.5%)
+            tenorYears: 5,
+            paymentFrequency: 'SemiAnnual'
+        }
+    }
+};
+
+// Backward compatibility alias
+const EXPANSION_DEFAULTS = DEFAULTS.expansion;
+
 const debounce = (fn, wait) => {
     let timeout;
     return (...args) => {
@@ -1008,15 +1115,15 @@ class CommandPalette {
 function navigateTo(viewName) {
     const navItems = document.querySelectorAll('.nav-item');
     const views = document.querySelectorAll('.view');
-    
+
     navItems.forEach(item => {
         item.classList.toggle('active', item.dataset.view === viewName);
     });
-    
+
     views.forEach(view => {
         view.classList.toggle('active', view.id === `${viewName}-view`);
     });
-    
+
     const titles = {
         dashboard: 'Dashboard',
         portfolio: 'Portfolio',
@@ -1025,9 +1132,18 @@ function navigateTo(viewName) {
         scenarios: 'Scenario Analysis',
         analytics: '3D Analytics',
         graph: 'Computation Graph',
-        pricer: 'Interactive Pricer',
-        'irs-bootstrap': 'IRS Bootstrap & Risk'
+        'trade-expansion': 'Trade Expansion',
+        'irs-bootstrap': 'IRS Bootstrap & Risk',
+        'market-data': 'Market Data'
     };
+
+    // Auto-expand Analysis accordion if navigating to a sub-item
+    const analysisViews = ['trade-expansion', 'irs-bootstrap', 'graph', 'analytics', 'market-data'];
+    const accordion = document.getElementById('analysis-accordion');
+    if (accordion && analysisViews.includes(viewName)) {
+        accordion.classList.add('expanded');
+        localStorage.setItem('analysisAccordionExpanded', 'true');
+    }
 
     document.getElementById('page-title').textContent = titles[viewName] || viewName;
     document.getElementById('breadcrumb-current').textContent = titles[viewName] || viewName;
@@ -1058,6 +1174,11 @@ function navigateTo(viewName) {
             }
         });
     }
+    if (viewName === 'market-data') {
+        if (typeof marketDataViewer !== 'undefined') {
+            marketDataViewer.init();
+        }
+    }
 }
 
 function initNavigation() {
@@ -1067,8 +1188,38 @@ function initNavigation() {
             navigateTo(item.dataset.view);
         });
     });
+
+    // Initialize sidebar accordion
+    initSidebarAccordion();
 }
 
+function initSidebarAccordion() {
+    const accordionBtn = document.getElementById('analysis-accordion-btn');
+    const accordion = document.getElementById('analysis-accordion');
+
+    if (!accordionBtn || !accordion) return;
+
+    // Toggle accordion on header click
+    accordionBtn.addEventListener('click', () => {
+        accordion.classList.toggle('expanded');
+        // Save state to localStorage
+        localStorage.setItem('analysisAccordionExpanded', accordion.classList.contains('expanded'));
+    });
+
+    // Restore accordion state from localStorage
+    const savedState = localStorage.getItem('analysisAccordionExpanded');
+    if (savedState === 'true') {
+        accordion.classList.add('expanded');
+    }
+
+    // Auto-expand accordion when a sub-item is active
+    const subItems = accordion.querySelectorAll('.nav-sub-item');
+    subItems.forEach(item => {
+        if (item.classList.contains('active')) {
+            accordion.classList.add('expanded');
+        }
+    });
+}
 
 // ============================================
 // Simple DarkMode Toggle
@@ -2233,13 +2384,14 @@ function initPortfolioControls() {
     
     // Apply filters
     document.getElementById('apply-filters')?.addEventListener('click', () => {
+        const $ = id => document.getElementById(id);
         const f = state.portfolio.advancedFilters;
-        f.pvMin = parseFloat(document.getElementById('pv-min').value) || null;
-        f.pvMax = parseFloat(document.getElementById('pv-max').value) || null;
-        f.notionalMin = parseFloat(document.getElementById('notional-min').value) || null;
-        f.notionalMax = parseFloat(document.getElementById('notional-max').value) || null;
-        f.maturity = document.getElementById('maturity-filter').value;
-        f.counterparty = document.getElementById('counterparty-filter').value;
+        f.pvMin       = parseNum($('pv-min'), null);
+        f.pvMax       = parseNum($('pv-max'), null);
+        f.notionalMin = parseNum($('notional-min'), null);
+        f.notionalMax = parseNum($('notional-max'), null);
+        f.maturity    = parseStr($('maturity-filter'), '');
+        f.counterparty = parseStr($('counterparty-filter'), '');
         state.portfolio.page = 1;
         renderCurrentView();
         showToast('Filters applied', 'success');
@@ -2607,22 +2759,29 @@ function exportReport() {
 }
 
 function initQuickActions() {
-    document.querySelectorAll('.action-tile').forEach(tile => {
+    Logger.debug('QuickActions', 'initQuickActions called');
+    const tiles = document.querySelectorAll('.action-tile');
+    Logger.debug('QuickActions', `Found ${tiles.length} action tiles`);
+    tiles.forEach(tile => {
+        Logger.debug('QuickActions', `Adding listener to tile: ${tile.dataset.action}`);
         tile.addEventListener('click', () => {
             const action = tile.dataset.action;
+            Logger.debug('QuickActions', `Tile clicked: ${action}`);
             switch (action) {
-                case 'pricer':
-                    navigateTo('pricer');
-                    break;
                 case 'irs-bootstrap':
                     navigateTo('irs-bootstrap');
                     break;
                 case 'exposure':
                     navigateTo('exposure');
                     break;
+                case 'trade-expansion':
+                    navigateTo('trade-expansion');
+                    break;
                 case 'analytics-3d':
                     navigateTo('analytics');
                     break;
+                default:
+                    Logger.warn('QuickActions', `Unknown action: ${action}`);
             }
         });
     });
@@ -6261,6 +6420,7 @@ async function init() {
         try { initExposureView(); } catch(e) { Logger.error('App', 'initExposureView error', { error: e.message }); }
         try { initImpactChart(); } catch(e) { Logger.error('App', 'initImpactChart error', { error: e.message }); }
         try { initPricer(); } catch(e) { Logger.error('App', 'initPricer error', { error: e.message }); }
+        try { initTradeExpansion(); } catch(e) { Logger.error('App', 'initTradeExpansion error', { error: e.message }); }
 
         // Load data
         Logger.debug('App', 'Loading data...');
@@ -6439,39 +6599,42 @@ async function handlePricerCalculate() {
 
 /**
  * Build pricing request from form values.
+ * Uses DEFAULTS.pricer for fallback values.
  */
 function buildPricerRequest(instrumentType, computeGreeks) {
+    const $ = id => document.getElementById(id);
+    const D = DEFAULTS.pricer;
     let params;
 
     switch (instrumentType) {
         case 'equity_vanilla_option':
             params = {
-                spot: parseFloat(document.getElementById('equity-spot')?.value) || 100,
-                strike: parseFloat(document.getElementById('equity-strike')?.value) || 100,
-                expiryYears: parseFloat(document.getElementById('equity-expiry')?.value) || 1,
-                volatility: (parseFloat(document.getElementById('equity-vol')?.value) || 20) / 100,
-                rate: (parseFloat(document.getElementById('equity-rate')?.value) || 5) / 100,
-                optionType: document.getElementById('equity-option-type')?.value || 'call'
+                spot:       parseNum($('equity-spot'), D.equity.spot),
+                strike:     parseNum($('equity-strike'), D.equity.strike),
+                expiryYears: parseNum($('equity-expiry'), D.equity.expiryYears),
+                volatility: parsePercent($('equity-vol'), D.equity.volatility),
+                rate:       parsePercent($('equity-rate'), D.equity.rate),
+                optionType: parseStr($('equity-option-type'), D.equity.optionType)
             };
             break;
 
         case 'fx_option':
             params = {
-                spot: parseFloat(document.getElementById('fx-spot')?.value) || 1.10,
-                strike: parseFloat(document.getElementById('fx-strike')?.value) || 1.10,
-                expiryYears: parseFloat(document.getElementById('fx-expiry')?.value) || 1,
-                volatility: (parseFloat(document.getElementById('fx-vol')?.value) || 10) / 100,
-                domesticRate: (parseFloat(document.getElementById('fx-dom-rate')?.value) || 5) / 100,
-                foreignRate: (parseFloat(document.getElementById('fx-for-rate')?.value) || 2) / 100,
-                optionType: document.getElementById('fx-option-type')?.value || 'call'
+                spot:        parseNum($('fx-spot'), D.fx.spot),
+                strike:      parseNum($('fx-strike'), D.fx.strike),
+                expiryYears: parseNum($('fx-expiry'), D.fx.expiryYears),
+                volatility:  parsePercent($('fx-vol'), D.fx.volatility),
+                domesticRate: parsePercent($('fx-dom-rate'), D.fx.domesticRate),
+                foreignRate: parsePercent($('fx-for-rate'), D.fx.foreignRate),
+                optionType:  parseStr($('fx-option-type'), D.fx.optionType)
             };
             break;
 
         case 'irs':
             params = {
-                notional: parseFloat(document.getElementById('irs-notional')?.value) || 1000000,
-                fixedRate: (parseFloat(document.getElementById('irs-fixed-rate')?.value) || 2.5) / 100,
-                tenorYears: parseFloat(document.getElementById('irs-tenor')?.value) || 5
+                notional:   parseNum($('irs-notional'), D.irs.notional),
+                fixedRate:  parsePercent($('irs-fixed-rate'), D.irs.fixedRate),
+                tenorYears: parseNum($('irs-tenor'), D.irs.tenorYears)
             };
             break;
 
@@ -6479,11 +6642,7 @@ function buildPricerRequest(instrumentType, computeGreeks) {
             return null;
     }
 
-    return {
-        instrumentType,
-        params,
-        computeGreeks
-    };
+    return { instrumentType, params, computeGreeks };
 }
 
 /**
@@ -6633,7 +6792,7 @@ function renderPricerHistory() {
     };
 
     historyList.innerHTML = pricerState.history.map(item => `
-        <div class="history-item" data-id="${item.id}" onclick="restoreHistoryItem('${item.id}')">
+        <div class="history-item" data-history-id="${item.id}">
             <div class="history-item-header">
                 <span class="history-type">${typeLabels[item.instrumentType] || item.instrumentType}</span>
                 <span class="history-time">${new Date(item.timestamp).toLocaleTimeString()}</span>
@@ -6643,6 +6802,14 @@ function renderPricerHistory() {
             </div>
         </div>
     `).join('');
+
+    // Add click listeners to history items
+    historyList.querySelectorAll('.history-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const historyId = item.dataset.historyId;
+            if (historyId) restoreHistoryItem(historyId);
+        });
+    });
 }
 
 /**
@@ -6754,6 +6921,581 @@ function clearPricerHistory() {
 
 // Make restoreHistoryItem available globally
 window.restoreHistoryItem = restoreHistoryItem;
+
+// ============================================
+// Trade Expansion Module (pricer-trade-expansion-ui)
+// ============================================
+
+/**
+ * Trade expansion state and configuration.
+ */
+const tradeExpansionState = {
+    currentLegPage: {},  // legIndex -> currentPage
+    pageSize: 20,
+    sortColumn: {},      // legIndex -> { column, direction }
+    expandedLegs: new Set(),
+    lastResponse: null
+};
+
+/**
+ * Initialise the Trade Expansion view and its event handlers.
+ */
+function initTradeExpansion() {
+    Logger.debug('TradeExpansion', 'Initializing trade expansion module');
+
+    // Set default start date to today
+    const today = new Date().toISOString().split('T')[0];
+    ['rates-start-date', 'swap-start-date', 'fx-expiry', 'eq-expiry'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && !el.value) el.value = today;
+    });
+
+    // Instrument type selector
+    const typeSelector = document.getElementById('expansion-instrument-type');
+    if (typeSelector) {
+        typeSelector.addEventListener('change', handleExpansionInstrumentTypeChange);
+        // Trigger initial form display
+        handleExpansionInstrumentTypeChange({ target: typeSelector });
+    }
+
+    // Expand button
+    const expandBtn = document.getElementById('expansion-expand-btn');
+    if (expandBtn) {
+        expandBtn.addEventListener('click', handleExpandTrade);
+    }
+
+    // Event delegation for dynamically created elements
+    const resultsContainer = document.getElementById('expansion-results');
+    if (resultsContainer) {
+        // Delegate sort column clicks
+        resultsContainer.addEventListener('click', (e) => {
+            const sortTh = e.target.closest('th[data-sort-col]');
+            if (sortTh) {
+                const table = sortTh.closest('table[data-leg-index]');
+                if (table) {
+                    const legIndex = parseInt(table.dataset.legIndex, 10);
+                    const column = sortTh.dataset.sortCol;
+                    sortCashflows(legIndex, column);
+                }
+                return;
+            }
+
+            // Delegate pagination button clicks
+            const pageBtn = e.target.closest('button[data-page-action]');
+            if (pageBtn && !pageBtn.disabled) {
+                const pagination = pageBtn.closest('.cf-pagination[data-leg-index]');
+                if (pagination) {
+                    const legIndex = parseInt(pagination.dataset.legIndex, 10);
+                    const targetPage = parseInt(pageBtn.dataset.targetPage, 10);
+                    changeCfPage(legIndex, targetPage);
+                }
+            }
+        });
+    }
+
+    Logger.info('TradeExpansion', 'Trade expansion module initialized');
+}
+
+/**
+ * Handle instrument type change - show/hide appropriate form.
+ */
+function handleExpansionInstrumentTypeChange(event) {
+    const selectedType = event.target.value;
+    Logger.debug('TradeExpansion', 'Instrument type changed', { type: selectedType });
+
+    // Hide all forms
+    document.querySelectorAll('.expansion-form').forEach(form => {
+        form.classList.remove('active');
+    });
+
+    // Show appropriate form and toggle option-specific fields
+    const fxOptionOnly = document.querySelectorAll('.fx-option-only');
+    const equityOptionOnly = document.querySelectorAll('.equity-option-only');
+    const equityForwardOnly = document.querySelectorAll('.equity-forward-only');
+
+    // Reset visibility
+    fxOptionOnly.forEach(el => el.style.display = 'none');
+    equityOptionOnly.forEach(el => el.style.display = 'flex');
+    equityForwardOnly.forEach(el => el.style.display = 'none');
+
+    // Rates instruments (Deposit, FRA, Futures)
+    if (['deposit', 'fra', 'futures'].includes(selectedType)) {
+        document.getElementById('rates-base-form')?.classList.add('active');
+    }
+    // Swap instruments (ParSwap, OIS, BasisSwap, IRS)
+    else if (['par_swap', 'ois', 'basis_swap', 'irs'].includes(selectedType)) {
+        document.getElementById('swap-form')?.classList.add('active');
+    }
+    // FX instruments
+    else if (['fx_forward', 'fx_option', 'cross_currency_swap'].includes(selectedType)) {
+        document.getElementById('fx-form')?.classList.add('active');
+        if (selectedType === 'fx_option') {
+            fxOptionOnly.forEach(el => el.style.display = 'flex');
+        }
+    }
+    // Equity instruments
+    else if (['equity_vanilla_option', 'equity_forward'].includes(selectedType)) {
+        document.getElementById('equity-form')?.classList.add('active');
+        if (selectedType === 'equity_forward') {
+            equityOptionOnly.forEach(el => el.style.display = 'none');
+            equityForwardOnly.forEach(el => el.style.display = 'flex');
+        }
+    }
+
+    // Clear previous results
+    clearExpansionResults();
+}
+
+/**
+ * Handle expand trade button click.
+ */
+async function handleExpandTrade() {
+    const expandBtn = document.getElementById('expansion-expand-btn');
+    const errorDiv = document.getElementById('expansion-error');
+
+    try {
+        // Show loading state
+        if (expandBtn) {
+            expandBtn.disabled = true;
+            expandBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Expanding...</span>';
+        }
+        if (errorDiv) {
+            errorDiv.style.display = 'none';
+        }
+
+        // Get instrument type
+        const instrumentType = document.getElementById('expansion-instrument-type')?.value;
+
+        // Build request based on instrument type
+        const request = buildExpansionRequest(instrumentType);
+        if (!request) {
+            throw new Error('Failed to build request');
+        }
+
+        Logger.debug('TradeExpansion', 'Sending expand request', { request });
+
+        // Call API
+        const response = await fetchJson(`${API_BASE}/trade/expand`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(request)
+        }, 'Expansion failed');
+
+        Logger.info('TradeExpansion', 'Expansion complete', { tradeId: response.tradeId });
+
+        // Store response
+        tradeExpansionState.lastResponse = response;
+
+        // Display results
+        displayExpansionResults(response);
+
+    } catch (error) {
+        Logger.error('TradeExpansion', 'Expansion error', { error: error.message });
+        if (errorDiv) {
+            errorDiv.textContent = error.message || 'An error occurred';
+            errorDiv.style.display = 'block';
+        }
+    } finally {
+        // Reset button
+        if (expandBtn) {
+            expandBtn.disabled = false;
+            expandBtn.innerHTML = '<i class="fas fa-expand-arrows-alt"></i> <span>Expand Trade</span>';
+        }
+    }
+}
+
+/**
+ * Build expansion request from form values.
+ * Uses EXPANSION_DEFAULTS for fallback values and parsePercent/parseNum/parseStr helpers.
+ */
+function buildExpansionRequest(instrumentType) {
+    const $ = id => document.getElementById(id);
+    const D = EXPANSION_DEFAULTS;
+    let params;
+
+    // Rates base instruments
+    if (['deposit', 'fra', 'futures'].includes(instrumentType)) {
+        params = {
+            type: 'rates',
+            currency:  parseStr($('rates-currency'), D.rates.currency),
+            startDate: parseStr($('rates-start-date'), ''),
+            tenor:     parseStr($('rates-tenor'), D.rates.tenor),
+            rate:      parsePercent($('rates-rate'), D.rates.rate),
+            notional:  parseNum($('rates-notional'), D.rates.notional)
+        };
+    }
+    // Swap instruments
+    else if (['par_swap', 'ois', 'basis_swap', 'irs'].includes(instrumentType)) {
+        params = {
+            type: 'swap',
+            currency:         parseStr($('swap-currency'), D.swap.currency),
+            startDate:        parseStr($('swap-start-date'), ''),
+            tenor:            parseStr($('swap-tenor'), D.swap.tenor),
+            fixedRate:        parsePercent($('swap-fixed-rate'), D.swap.fixedRate),
+            spread:           parsePercent($('swap-spread'), D.swap.spread),
+            notional:         parseNum($('swap-notional'), D.swap.notional),
+            paymentFrequency: parseStr($('swap-frequency'), D.swap.paymentFrequency),
+            dayCount:         parseStr($('swap-day-count'), D.swap.dayCount)
+        };
+    }
+    // FX instruments
+    else if (['fx_forward', 'fx_option', 'cross_currency_swap'].includes(instrumentType)) {
+        params = {
+            type: 'fx',
+            baseCurrency:  parseStr($('fx-base-ccy'), D.fx.baseCurrency),
+            quoteCurrency: parseStr($('fx-quote-ccy'), D.fx.quoteCurrency),
+            spotRate:      parseNum($('fx-spot-rate'), D.fx.spotRate),
+            forwardRate:   parseNum($('fx-forward-rate'), D.fx.forwardRate),
+            expiry:        parseStr($('fx-expiry'), ''),
+            notional:      parseNum($('fx-notional'), D.fx.notional)
+        };
+        if (instrumentType === 'fx_option') {
+            params.optionType = parseStr($('fx-option-type'), D.fx.optionType);
+            params.volatility = parsePercent($('fx-volatility'), D.fx.volatility);
+        }
+    }
+    // Equity instruments
+    else if (['equity_vanilla_option', 'equity_forward'].includes(instrumentType)) {
+        params = {
+            type: 'equity',
+            underlying:   parseStr($('eq-underlying'), D.equity.underlying),
+            spotPrice:    parseNum($('eq-spot-price'), D.equity.spotPrice),
+            strike:       parseNum($('eq-strike'), D.equity.strike),
+            expiry:       parseStr($('eq-expiry'), ''),
+            volatility:   parsePercent($('eq-volatility'), D.equity.volatility),
+            riskFreeRate: parsePercent($('eq-risk-free-rate'), D.equity.riskFreeRate)
+        };
+        if (instrumentType === 'equity_vanilla_option') {
+            params.optionType = parseStr($('eq-option-type'), D.equity.optionType);
+        } else {
+            params.direction = parseStr($('eq-direction'), D.equity.direction);
+        }
+    }
+    else {
+        Logger.warn('TradeExpansion', 'Unknown instrument type', { type: instrumentType });
+        return null;
+    }
+
+    return { instrumentType, params };
+}
+
+/**
+ * Display expansion results.
+ */
+function displayExpansionResults(response) {
+    // Hide empty state
+    const emptyState = document.getElementById('trade-empty-state');
+    if (emptyState) emptyState.style.display = 'none';
+
+    // Show and populate summary card
+    const summaryCard = document.getElementById('trade-summary-card');
+    if (summaryCard) {
+        summaryCard.style.display = 'block';
+        document.getElementById('trade-id-value').textContent = response.tradeId || '--';
+        document.getElementById('trade-type-value').textContent = formatInstrumentType(response.tradeType);
+        document.getElementById('trade-leg-count').textContent = response.legs?.length || 0;
+
+        // Calculate total cashflows
+        const totalCfs = response.legs?.reduce((sum, leg) => sum + (leg.cashflows?.length || 0), 0) || 0;
+        document.getElementById('trade-cf-count').textContent = totalCfs;
+
+        // Processing time
+        const processingTime = response.metadata?.processingTimeMs;
+        document.getElementById('trade-processing-time').textContent =
+            processingTime ? `${processingTime.toFixed(2)}ms` : '--';
+    }
+
+    // Render legs
+    const legsContainer = document.getElementById('legs-container');
+    if (legsContainer && response.legs) {
+        legsContainer.style.display = 'flex';
+        legsContainer.innerHTML = '';
+
+        // Reset state
+        tradeExpansionState.currentLegPage = {};
+        tradeExpansionState.sortColumn = {};
+        tradeExpansionState.expandedLegs.clear();
+
+        response.legs.forEach((leg, index) => {
+            tradeExpansionState.currentLegPage[index] = 0;
+            tradeExpansionState.sortColumn[index] = { column: 'paymentDate', direction: 'asc' };
+
+            const legCard = createLegCard(leg, index);
+            legsContainer.appendChild(legCard);
+        });
+    }
+}
+
+/**
+ * Clear expansion results.
+ */
+function clearExpansionResults() {
+    const emptyState = document.getElementById('trade-empty-state');
+    const summaryCard = document.getElementById('trade-summary-card');
+    const legsContainer = document.getElementById('legs-container');
+
+    if (emptyState) emptyState.style.display = 'flex';
+    if (summaryCard) summaryCard.style.display = 'none';
+    if (legsContainer) {
+        legsContainer.style.display = 'none';
+        legsContainer.innerHTML = '';
+    }
+
+    tradeExpansionState.lastResponse = null;
+}
+
+/**
+ * Format instrument type for display.
+ */
+function formatInstrumentType(type) {
+    const mapping = {
+        'deposit': 'Deposit',
+        'fra': 'FRA',
+        'futures': 'Futures',
+        'par_swap': 'Par Swap',
+        'ois': 'OIS',
+        'basis_swap': 'Basis Swap',
+        'irs': 'IRS',
+        'fx_forward': 'FX Forward',
+        'fx_option': 'FX Option',
+        'cross_currency_swap': 'Cross Ccy Swap',
+        'equity_vanilla_option': 'Equity Option',
+        'equity_forward': 'Equity Forward',
+        'cds': 'CDS',
+        'commodity_forward': 'Commodity Fwd'
+    };
+    return mapping[type] || type;
+}
+
+/**
+ * Create a leg card element.
+ */
+function createLegCard(leg, index) {
+    const card = document.createElement('div');
+    card.className = 'leg-card';
+    card.id = `leg-card-${index}`;
+
+    const directionClass = leg.direction?.toLowerCase() === 'pay' ? 'pay' : 'receive';
+
+    card.innerHTML = `
+        <div class="leg-card-header" data-leg-index="${index}">
+            <div class="leg-number">${index + 1}</div>
+            <div class="leg-info">
+                <div class="leg-info-item">
+                    <span class="label">Direction</span>
+                    <span class="value ${directionClass}">${leg.direction || '--'}</span>
+                </div>
+                <div class="leg-info-item">
+                    <span class="label">Currency</span>
+                    <span class="value">${leg.currency || '--'}</span>
+                </div>
+                <div class="leg-info-item">
+                    <span class="label">Leg Type</span>
+                    <span class="value">${leg.legType || '--'}</span>
+                </div>
+            </div>
+            <div class="leg-cf-count">
+                <i class="fas fa-stream"></i>
+                <strong>${leg.cashflows?.length || 0}</strong> cashflows
+            </div>
+            <i class="fas fa-chevron-down leg-toggle-icon"></i>
+        </div>
+        <div class="leg-card-body">
+            <div class="cf-table-container">
+                ${createCashflowTable(leg.cashflows || [], index)}
+            </div>
+            ${createPagination(leg.cashflows?.length || 0, index)}
+        </div>
+    `;
+
+    // Add click event listener for header toggle
+    const header = card.querySelector('.leg-card-header');
+    header.addEventListener('click', () => toggleLegCard(index));
+
+    return card;
+}
+
+/**
+ * Toggle leg card expansion.
+ */
+function toggleLegCard(index) {
+    const card = document.getElementById(`leg-card-${index}`);
+    if (!card) return;
+
+    if (tradeExpansionState.expandedLegs.has(index)) {
+        card.classList.remove('expanded');
+        tradeExpansionState.expandedLegs.delete(index);
+    } else {
+        card.classList.add('expanded');
+        tradeExpansionState.expandedLegs.add(index);
+    }
+}
+
+/**
+ * Create cashflow table HTML.
+ */
+function createCashflowTable(cashflows, legIndex) {
+    const { column: sortColumn, direction } = tradeExpansionState.sortColumn[legIndex] || { column: 'paymentDate', direction: 'asc' };
+    const currentPage = tradeExpansionState.currentLegPage[legIndex] || 0;
+    const pageSize = tradeExpansionState.pageSize;
+
+    // Sort cashflows
+    const sortedCfs = [...cashflows].sort((a, b) => {
+        const aVal = a[sortColumn] || '';
+        const bVal = b[sortColumn] || '';
+        const cmp = aVal < bVal ? -1 : (aVal > bVal ? 1 : 0);
+        return direction === 'asc' ? cmp : -cmp;
+    });
+
+    // Paginate
+    const start = currentPage * pageSize;
+    const pageCfs = sortedCfs.slice(start, start + pageSize);
+
+    const sortIcon = (col) => {
+        if (col === sortColumn) {
+            return `<i class="fas fa-sort-${direction === 'asc' ? 'up' : 'down'} sort-icon"></i>`;
+        }
+        return '<i class="fas fa-sort sort-icon"></i>';
+    };
+
+    const sortedClass = (col) => col === sortColumn ? 'sorted' : '';
+
+    return `
+        <table class="cf-table" data-leg-index="${legIndex}">
+            <thead>
+                <tr>
+                    <th class="${sortedClass('paymentDate')}" data-sort-col="paymentDate">
+                        Payment Date ${sortIcon('paymentDate')}
+                    </th>
+                    <th class="${sortedClass('accrualStart')}" data-sort-col="accrualStart">
+                        Accrual Start ${sortIcon('accrualStart')}
+                    </th>
+                    <th class="${sortedClass('accrualEnd')}" data-sort-col="accrualEnd">
+                        Accrual End ${sortIcon('accrualEnd')}
+                    </th>
+                    <th class="${sortedClass('yearFraction')}" data-sort-col="yearFraction">
+                        Year Frac ${sortIcon('yearFraction')}
+                    </th>
+                    <th class="${sortedClass('notional')}" data-sort-col="notional">
+                        Notional ${sortIcon('notional')}
+                    </th>
+                    <th class="${sortedClass('payoffType')}" data-sort-col="payoffType">
+                        Payoff Type ${sortIcon('payoffType')}
+                    </th>
+                    <th class="${sortedClass('rate')}" data-sort-col="rate">
+                        Rate/Spread ${sortIcon('rate')}
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                ${pageCfs.map(cf => `
+                    <tr>
+                        <td class="mono">${cf.paymentDate || '--'}</td>
+                        <td class="mono">${cf.accrualStart || '--'}</td>
+                        <td class="mono">${cf.accrualEnd || '--'}</td>
+                        <td class="mono">${cf.yearFraction?.toFixed(6) || '--'}</td>
+                        <td class="mono ${cf.notional >= 0 ? 'positive' : 'negative'}">
+                            ${cf.notional ? formatNumber(cf.notional) : '--'}
+                        </td>
+                        <td>${cf.payoffType || '--'}</td>
+                        <td class="mono">${cf.rate != null ? (cf.rate * 100).toFixed(4) + '%' : '--'}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+/**
+ * Create pagination controls HTML.
+ */
+function createPagination(totalItems, legIndex) {
+    const pageSize = tradeExpansionState.pageSize;
+    const totalPages = Math.ceil(totalItems / pageSize);
+    const currentPage = tradeExpansionState.currentLegPage[legIndex] || 0;
+
+    if (totalPages <= 1) return '';
+
+    return `
+        <div class="cf-pagination" data-leg-index="${legIndex}">
+            <button data-page-action="prev" data-target-page="${currentPage - 1}" ${currentPage === 0 ? 'disabled' : ''}>
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <span class="page-info">Page ${currentPage + 1} of ${totalPages}</span>
+            <button data-page-action="next" data-target-page="${currentPage + 1}" ${currentPage >= totalPages - 1 ? 'disabled' : ''}>
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    `;
+}
+
+/**
+ * Sort cashflows by column.
+ */
+function sortCashflows(legIndex, column) {
+    const current = tradeExpansionState.sortColumn[legIndex];
+    if (current.column === column) {
+        current.direction = current.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+        tradeExpansionState.sortColumn[legIndex] = { column, direction: 'asc' };
+    }
+    tradeExpansionState.currentLegPage[legIndex] = 0;
+    refreshLegTable(legIndex);
+}
+
+/**
+ * Change cashflow pagination page.
+ */
+function changeCfPage(legIndex, newPage) {
+    const response = tradeExpansionState.lastResponse;
+    if (!response?.legs?.[legIndex]) return;
+
+    const totalCfs = response.legs[legIndex].cashflows?.length || 0;
+    const totalPages = Math.ceil(totalCfs / tradeExpansionState.pageSize);
+
+    if (newPage < 0 || newPage >= totalPages) return;
+
+    tradeExpansionState.currentLegPage[legIndex] = newPage;
+    refreshLegTable(legIndex);
+}
+
+/**
+ * Refresh leg table after sort/pagination change.
+ */
+function refreshLegTable(legIndex) {
+    const response = tradeExpansionState.lastResponse;
+    if (!response?.legs?.[legIndex]) return;
+
+    const leg = response.legs[legIndex];
+    const card = document.getElementById(`leg-card-${legIndex}`);
+    if (!card) return;
+
+    const tableContainer = card.querySelector('.cf-table-container');
+    const body = card.querySelector('.leg-card-body');
+
+    if (tableContainer) {
+        tableContainer.innerHTML = createCashflowTable(leg.cashflows || [], legIndex);
+    }
+
+    // Update pagination
+    const existingPagination = body?.querySelector('.cf-pagination');
+    const newPaginationHtml = createPagination(leg.cashflows?.length || 0, legIndex);
+
+    if (existingPagination) {
+        if (newPaginationHtml) {
+            existingPagination.outerHTML = newPaginationHtml;
+        } else {
+            existingPagination.remove();
+        }
+    } else if (newPaginationHtml && body) {
+        body.insertAdjacentHTML('beforeend', newPaginationHtml);
+    }
+}
+
+// Make functions available globally
+window.toggleLegCard = toggleLegCard;
+window.sortCashflows = sortCashflows;
+window.changeCfPage = changeCfPage;
 
 // ============================================
 // Task 5.1: GraphManager Class
@@ -11913,20 +12655,13 @@ const irsBootstrap = (function() {
     }
 
     function getParRates() {
-        const parRates = [];
-        VALID_TENORS.forEach(tenor => {
-            const input = document.getElementById(`par-rate-${tenor}`);
-            if (input && input.value) {
-                const rate = parseFloat(input.value);
-                if (!isNaN(rate)) {
-                    parRates.push({
-                        tenor: tenor,
-                        rate: rate / 100 // Convert from percentage to decimal
-                    });
-                }
-            }
-        });
-        return parRates;
+        return VALID_TENORS
+            .map(tenor => {
+                const input = document.getElementById(`par-rate-${tenor}`);
+                const rate = parsePercent(input, NaN);
+                return !isNaN(rate) ? { tenor, rate } : null;
+            })
+            .filter(Boolean);
     }
 
     // ===========================================
@@ -12303,19 +13038,21 @@ const irsBootstrap = (function() {
         showLoading('Pricing IRS...');
 
         try {
-            const notional = parseFloat(document.getElementById('irs-notional-input')?.value) || 10000000;
-            const fixedRate = (parseFloat(document.getElementById('irs-fixed-rate-input')?.value) || 3.0) / 100;
-            const tenorYears = parseFloat(document.getElementById('irs-tenor-input')?.value) || 5;
-            const frequency = document.getElementById('irs-frequency-input')?.value || 'annual';
+            const $ = id => document.getElementById(id);
+            const D = DEFAULTS.curve.irs;
+            const notional   = parseNum($('irs-notional-input'), D.notional);
+            const fixedRate  = parsePercent($('irs-fixed-rate-input'), D.fixedRate);
+            const tenorYears = parseNum($('irs-tenor-input'), D.tenorYears);
+            const frequency  = parseStr($('irs-frequency-input'), D.frequency);
 
             const response = await fetch('/api/price-irs', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     curveId: state.curveId,
-                    notional: notional,
-                    fixedRate: fixedRate,
-                    tenorYears: tenorYears,
+                    notional,
+                    fixedRate,
+                    tenorYears,
                     paymentFrequency: frequency
                 })
             });
@@ -12408,19 +13145,21 @@ const irsBootstrap = (function() {
         showLoading('Running risk analysis...');
 
         try {
-            const notional = parseFloat(document.getElementById('irs-notional-input')?.value) || 10000000;
-            const fixedRate = (parseFloat(document.getElementById('irs-fixed-rate-input')?.value) || 3.0) / 100;
-            const tenorYears = parseFloat(document.getElementById('irs-tenor-input')?.value) || 5;
-            const frequency = document.getElementById('irs-frequency-input')?.value || 'annual';
+            const $ = id => document.getElementById(id);
+            const D = DEFAULTS.curve.irs;
+            const notional   = parseNum($('irs-notional-input'), D.notional);
+            const fixedRate  = parsePercent($('irs-fixed-rate-input'), D.fixedRate);
+            const tenorYears = parseNum($('irs-tenor-input'), D.tenorYears);
+            const frequency  = parseStr($('irs-frequency-input'), D.frequency);
 
             const response = await fetch('/api/risk/compare', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     curveId: state.curveId,
-                    notional: notional,
-                    fixedRate: fixedRate,
-                    tenorYears: tenorYears,
+                    notional,
+                    fixedRate,
+                    tenorYears,
                     paymentFrequency: frequency,
                     bumpSizeBps: 1
                 })
@@ -13194,14 +13933,6 @@ const scenarioAnalysis = (function() {
         isLoading: false
     };
 
-    // Default IRS parameters for scenario analysis
-    const DEFAULT_IRS_PARAMS = {
-        notional: 10000000, // 10M
-        fixedRate: 0.035,   // 3.5%
-        tenorYears: 5,      // 5Y
-        paymentFrequency: 'SemiAnnual'
-    };
-
     // ===========================================
     // Initialisation
     // ===========================================
@@ -13494,18 +14225,17 @@ const scenarioAnalysis = (function() {
     }
 
     function getScenarioParams() {
-        const rateShock = parseFloat(document.getElementById('rate-shock')?.value) || 0;
-        const volShift = parseFloat(document.getElementById('vol-shift')?.value) || 0;
-        const spreadShock = parseFloat(document.getElementById('spread-shock')?.value) || 0;
+        const $ = id => document.getElementById(id);
+        const D = DEFAULTS.scenario;
 
         return {
-            rateShock,
-            volShift,
-            spreadShock,
-            notional: DEFAULT_IRS_PARAMS.notional,
-            fixedRate: DEFAULT_IRS_PARAMS.fixedRate,
-            tenorYears: DEFAULT_IRS_PARAMS.tenorYears,
-            paymentFrequency: DEFAULT_IRS_PARAMS.paymentFrequency
+            rateShock:        parseNum($('rate-shock'), D.rateShock),
+            volShift:         parseNum($('vol-shift'), D.volShift),
+            spreadShock:      parseNum($('spread-shock'), D.spreadShock),
+            notional:         D.irs.notional,
+            fixedRate:        D.irs.fixedRate,
+            tenorYears:       D.irs.tenorYears,
+            paymentFrequency: D.irs.paymentFrequency
         };
     }
 

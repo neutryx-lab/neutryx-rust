@@ -14,10 +14,16 @@
 
 pub mod handlers;
 pub mod jobs;
+pub mod market_data;
+pub mod market_handlers;
+pub mod market_types;
 pub mod metrics;
 pub mod openapi;
 pub mod pricer_types;
 pub mod scenario_handlers;
+pub mod schedule_utils;
+pub mod trade_handlers;
+pub mod trade_types;
 pub mod websocket;
 
 use std::{
@@ -34,6 +40,7 @@ use axum::{
 };
 use handlers::{GraphCache, PortfolioGraphCache};
 use jobs::JobManager;
+use market_data::MarketDataCache;
 use pricer_types::BootstrapCurveCache;
 use tokio::sync::{broadcast, RwLock};
 use tower_http::{
@@ -224,6 +231,8 @@ pub struct AppState {
     pub curve_cache: BootstrapCurveCache,
     /// Async job manager (Task 7.1)
     pub job_manager: JobManager,
+    /// Market data cache (market-data-viewer-webapp Task 3.1)
+    pub market_data_cache: Arc<MarketDataCache>,
 }
 
 impl AppState {
@@ -239,6 +248,7 @@ impl AppState {
             debug_config: DebugConfig::from_env(),
             curve_cache: BootstrapCurveCache::new(),
             job_manager: JobManager::new(),
+            market_data_cache: Arc::new(MarketDataCache::new()),
         }
     }
 
@@ -346,6 +356,17 @@ fn build_csp_header() -> SetResponseHeaderLayer<HeaderValue> {
     SetResponseHeaderLayer::overriding(axum::http::header::CONTENT_SECURITY_POLICY, header_value)
 }
 
+fn build_cache_control_header() -> SetResponseHeaderLayer<HeaderValue> {
+    // Disable caching for development - forces browser to always fetch fresh files
+    // For production, consider using: "public, max-age=3600" with versioned file names
+    let cache_control = std::env::var("FB_CACHE_CONTROL")
+        .unwrap_or_else(|_| "no-cache, no-store, must-revalidate".to_string());
+    let header_value = HeaderValue::from_str(&cache_control)
+        .unwrap_or_else(|_| HeaderValue::from_static("no-cache, no-store, must-revalidate"));
+
+    SetResponseHeaderLayer::overriding(axum::http::header::CACHE_CONTROL, header_value)
+}
+
 /// Builds the main router with all API routes and middleware.
 pub fn build_router(state: Arc<AppState>) -> Router {
     // CORS configuration for development
@@ -412,7 +433,23 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         // Task 4.1: Portfolio Graph API (portfolio-graph-optimisation)
         .route("/v1/portfolio/graph", get(handlers::get_portfolio_graph))
         // Task 4.3: Portfolio Trades List API (portfolio-graph-optimisation)
-        .route("/v1/portfolio/trades", get(handlers::get_portfolio_trades));
+        .route("/v1/portfolio/trades", get(handlers::get_portfolio_trades))
+        // Trade expansion API (pricer-trade-expansion-ui)
+        .route("/trade/expand", post(trade_handlers::expand_trade))
+        .route("/instruments", get(trade_handlers::get_instruments));
+
+    // Market Data API routes (market-data-viewer-webapp Task 3.5)
+    let market_routes = Router::new()
+        .route("/rates", get(market_handlers::get_market_rates))
+        .route("/rates/refresh", post(market_handlers::refresh_market_rates))
+        .route("/rates/:id", get(market_handlers::get_market_rate_detail))
+        .route("/conventions", get(market_handlers::get_market_conventions))
+        .route("/conventions/:id", get(market_handlers::get_market_convention_detail))
+        .route("/export/csv", get(market_handlers::export_rates_csv))
+        .route("/export/json", get(market_handlers::export_rates_json))
+        .with_state(state.market_data_cache.clone());
+
+    let api_routes = api_routes.nest("/market", market_routes);
 
     // Static file serving for the dashboard
     let static_files =
@@ -424,12 +461,17 @@ pub fn build_router(state: Arc<AppState>) -> Router {
     // - Override via FB_CSP for stricter policies.
     let csp_header = build_csp_header();
 
+    // Cache-Control header: disable caching for development
+    // Override via FB_CACHE_CONTROL for production caching
+    let cache_control_header = build_cache_control_header();
+
     // Task 8.1: Build router with optional OpenAPI/Swagger UI support
     let router = Router::new()
         // Task 13.2: Serve index.html with config injection at root
         .route("/", get(handlers::get_index))
         .nest("/api", api_routes)
         .fallback_service(static_files)
+        .layer(cache_control_header)
         .layer(csp_header)
         .layer(cors)
         .with_state(state);

@@ -119,8 +119,7 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(rustdoc::private_intra_doc_links)]
 
-// TODO: demo module temporarily disabled - depends on pricer_pricing::context (l1l2-integration feature)
-// pub mod demo;
+pub mod demo;
 pub mod exposure;
 pub mod parallel;
 pub mod portfolio;

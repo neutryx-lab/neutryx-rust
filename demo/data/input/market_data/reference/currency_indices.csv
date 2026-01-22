@@ -1,0 +1,8 @@
+currency,index,index_name
+USD,SOFR,Secured Overnight Financing Rate
+EUR,EURIBOR,Euro Interbank Offered Rate
+JPY,TONAR,Tokyo Overnight Average Rate
+GBP,SONIA,Sterling Overnight Index Average
+CHF,SARON,Swiss Average Rate Overnight
+AUD,AONIA,Australian Overnight Index Average
+CAD,CORRA,Canadian Overnight Repo Rate Average

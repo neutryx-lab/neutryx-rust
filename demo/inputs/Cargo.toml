@@ -29,6 +29,12 @@ serde_json = { workspace = true }
 # Tracing
 tracing = { workspace = true }
 
+# CSV parsing
+csv = "1.3"
+
+# Error handling
+thiserror = { workspace = true }
+
 # Async channels
 async-channel = "2.3"
 
