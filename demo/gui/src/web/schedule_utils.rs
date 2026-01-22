@@ -222,9 +222,7 @@ impl SimpleDate {
     }
 
     /// Returns true if this date's year is a leap year.
-    pub fn is_leap_year(&self) -> bool {
-        Self::is_leap_year_for(self.year)
-    }
+    pub fn is_leap_year(&self) -> bool { Self::is_leap_year_for(self.year) }
 
     /// Returns the number of days in the given month.
     fn days_in_month(year: i32, month: u32) -> u32 {
