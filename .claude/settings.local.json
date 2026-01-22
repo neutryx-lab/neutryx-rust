@@ -187,7 +187,10 @@
       "Bash(cargo tree:*)",
       "Bash(git mv:*)",
       "Bash(git rm:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(cargo web:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: remove non-existent --features web flag from build commands\n\nThe demo_gui crate does not have a ''web'' feature - the demo-web binary\nis unconditionally available. This was causing the Docker build to fail.\n\nChanges:\n- Dockerfile.gui: Remove --features web from cargo build\n- .cargo/config.toml: Update cargo web alias\n- README.md: Update build command documentation\n- demo/gui/src/web/main.rs: Update usage documentation\n- Apply cargo fmt to handlers.rs, metrics.rs, pricer_types.rs\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: use writeln! instead of push_str with format! in market_handlers\n\nFixes clippy::format_push_string warning by using writeln! macro\ninstead of push_str\\(&format!\\(...\\)\\) for CSV generation.\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }
