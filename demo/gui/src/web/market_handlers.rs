@@ -22,7 +22,7 @@
 //! | GET    | /api/market/export/csv    | Export rates as CSV            |
 //! | GET    | /api/market/export/json   | Export rates as JSON           |
 
-use std::sync::Arc;
+use std::{fmt::Write as _, sync::Arc};
 
 use axum::{
     extract::{Path, Query, State},
@@ -196,8 +196,9 @@ pub async fn export_rates_csv(
     );
 
     for rate in &response.rates {
-        csv.push_str(&format!(
-            "{},{},{},{},{:.6},{},{},{},{},{}\n",
+        let _ = writeln!(
+            csv,
+            "{},{},{},{},{:.6},{},{},{},{},{}",
             rate.id,
             rate.currency,
             rate.tenor,
@@ -208,7 +209,7 @@ pub async fn export_rates_csv(
             rate.source,
             rate.is_stale,
             rate.rate_index.as_deref().unwrap_or("")
-        ));
+        );
     }
 
     Response::builder()
