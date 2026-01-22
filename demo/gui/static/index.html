@@ -524,11 +524,11 @@
                                 </div>
                                 <span>Trade Expand</span>
                             </button>
-                            <button class="action-tile" data-action="analytics-3d">
+                            <button class="action-tile" data-action="model-calib">
                                 <div class="action-icon">
-                                    <i class="fas fa-cube"></i>
+                                    <i class="fas fa-wave-square"></i>
                                 </div>
-                                <span>3D Surface</span>
+                                <span>Model Calib</span>
                             </button>
                         </div>
                     </div>
@@ -1662,55 +1662,11 @@
                 </div>
             </section>
 
-            <!-- 3D Analytics View -->
-            <section id="analytics-view" class="view">
-                <div class="analytics-header glass">
-                    <div class="analytics-title">
-                        <h2><i class="fas fa-cube"></i> 3D Analytics</h2>
-                        <p>Interactive 3D visualization of risk surfaces and distributions</p>
-                    </div>
-                    <div class="analytics-controls">
-                        <label for="surface-type" class="visually-hidden">Surface Type</label>
-                        <select id="surface-type" name="surface-type" class="fancy-select">
-                            <option value="vol-surface">Volatility Surface</option>
-                            <option value="pfe-surface">PFE Surface</option>
-                            <option value="correlation">Correlation Matrix</option>
-                            <option value="exposure-time">Exposure × Time</option>
-                        </select>
-                        <button class="icon-btn" id="reset-camera" title="Reset Camera"><i class="fas fa-crosshairs"></i></button>
-                        <button class="icon-btn" id="toggle-wireframe" title="Toggle Wireframe"><i class="fas fa-border-all"></i></button>
-                        <button class="icon-btn" id="toggle-autorotate" title="Auto Rotate"><i class="fas fa-sync"></i></button>
-                    </div>
-                </div>
-                
-                <div class="analytics-layout">
-                    <!-- 3D Viewer -->
-                    <div class="analytics-viewer glass-card">
-                        <div id="three-container" class="three-container"></div>
-                        <div class="viewer-overlay">
-                            <div class="viewer-legend" id="viewer-legend">
-                                <div class="legend-scale">
-                                    <div class="scale-bar"></div>
-                                    <div class="scale-labels">
-                                        <span id="scale-min">0%</span>
-                                        <span id="scale-max">100%</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="viewer-info" id="viewer-info">
-                                <span>Click and drag to rotate</span>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </section>
-
             <!-- Model Calibration View -->
             <section id="model-calib-view" class="view">
                 <div class="model-calib-container">
                     <!-- Header -->
-                    <div class="model-calib-header glass-card">
+                    <div class="model-calib-header glass">
                         <div class="model-calib-title">
                             <h2><i class="fas fa-wave-square"></i> Model Calibration</h2>
                             <p>Calibrate volatility models and visualise surfaces</p>
@@ -1736,7 +1692,7 @@
                     <!-- Main Content Grid -->
                     <div class="model-calib-grid">
                         <!-- Input Panel -->
-                        <div class="model-calib-input-panel glass-card">
+                        <div class="model-calib-input-panel glass">
                             <h3><i class="fas fa-edit"></i> Market Quotes</h3>
                             <div class="vol-calib-input-section">
                                 <label>Underlying</label>
@@ -1833,7 +1789,7 @@
                         </div>
 
                         <!-- Results Panel -->
-                        <div class="model-calib-results-panel glass-card">
+                        <div class="model-calib-results-panel glass">
                             <h3><i class="fas fa-chart-area"></i> Calibration Results</h3>
 
                             <!-- Placeholder for uncalibrated state -->
@@ -1910,57 +1866,6 @@
                         </div>
                     </div>
 
-                    <!-- 3D Surface Viewer Section -->
-                    <div class="model-calib-3d-section glass-card">
-                        <div class="surface-viewer-header">
-                            <h3><i class="fas fa-cube"></i> 3D Surface Viewer</h3>
-                            <div class="surface-viewer-controls">
-                                <select id="surface-type-select" class="fancy-select">
-                                    <option value="vol-surface">Implied Vol Surface</option>
-                                    <option value="local-vol">Local Volatility</option>
-                                    <option value="pv-surface">PV Surface</option>
-                                    <option value="delta-surface">Delta Surface</option>
-                                    <option value="gamma-surface">Gamma Surface</option>
-                                    <option value="vega-surface">Vega Surface</option>
-                                </select>
-                                <div class="surface-view-btns">
-                                    <button class="icon-btn" id="surface-reset-view" title="Reset View">
-                                        <i class="fas fa-sync-alt"></i>
-                                    </button>
-                                    <button class="icon-btn" id="surface-fullscreen" title="Fullscreen">
-                                        <i class="fas fa-expand"></i>
-                                    </button>
-                                    <button class="icon-btn" id="surface-screenshot" title="Screenshot">
-                                        <i class="fas fa-camera"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 3D Canvas Container -->
-                        <div id="surface-viewer-container" class="surface-viewer-canvas">
-                            <div id="surface-viewer-placeholder" class="surface-placeholder">
-                                <i class="fas fa-cube"></i>
-                                <p>Calibrate a model to view the 3D surface</p>
-                                <small>Strike × Expiry × Value</small>
-                            </div>
-                            <canvas id="surface-3d-canvas" style="display: none;"></canvas>
-                        </div>
-
-                        <!-- Surface Controls -->
-                        <div class="surface-viewer-footer">
-                            <div class="surface-axis-labels">
-                                <span><strong>X:</strong> Strike (% of Spot)</span>
-                                <span><strong>Y:</strong> Time to Expiry</span>
-                                <span><strong>Z:</strong> <span id="surface-z-label">Implied Volatility</span></span>
-                            </div>
-                            <div class="surface-stats">
-                                <span class="stat-item"><strong>Min:</strong> <span id="surface-min">--</span></span>
-                                <span class="stat-item"><strong>Max:</strong> <span id="surface-max">--</span></span>
-                                <span class="stat-item"><strong>ATM:</strong> <span id="surface-atm">--</span></span>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </section>
 

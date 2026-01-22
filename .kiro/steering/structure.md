@@ -111,12 +111,28 @@ trade/             → Trade representation (CF-expanded format)
 
 convention/        → Market conventions
   ├── swap.rs           → Swap conventions (SwapConvention, SwapLegConvention)
+  ├── swaption.rs       → Swaption conventions (SwaptionConvention, SettlementConvention)
   ├── fra.rs            → FRA conventions
   ├── futures.rs        → Futures conventions
   ├── capfloor.rs       → Cap/Floor conventions
   ├── fx.rs             → FX conventions (FxConvention)
+  ├── fx_option.rs      → FX option conventions (FxOptionConvention, DeltaConvention, CutOffTime)
   ├── bond.rs           → Bond conventions
-  └── cds.rs            → CDS conventions
+  ├── cds.rs            → CDS conventions
+  ├── equity.rs         → Equity conventions (EquityConvention, DividendConvention)
+  ├── commodity.rs      → Commodity conventions (CommodityConvention, DeliveryConvention)
+  ├── inflation.rs      → Inflation conventions (InflationSwapConvention, InflationIndex)
+  └── convention_set.rs → ConventionSet for currency-specific convention bundles
+
+instrument_def/    → Standard instrument definitions (multi-asset catalogue)
+  ├── rates.rs          → Rates instruments (Swaption, CapFloor, Frn, CmsSwap, InflationSwap)
+  ├── fx.rs             → FX instruments (FxSpot, FxForward, FxVanillaOption, FxBarrierOption, FxSwap)
+  ├── equity.rs         → Equity instruments (EquityForward, EquityVanillaOption, AsianOption, etc.)
+  ├── credit.rs         → Credit instruments (Cds, CdsIndex, CdsOption, NtdBasket)
+  ├── commodity.rs      → Commodity instruments (CommodityForward, CommoditySwap, etc.)
+  ├── common.rs         → Shared types (AssetClass, ExerciseStyle, PayerReceiver)
+  ├── error.rs          → InstrumentError for validation failures
+  └── expander.rs       → InstrumentExpander for trade expansion
 ```
 
 **Trade Architecture**: `Trade` → `Vec<Leg>` → `Vec<Cashflow>` (CF-expanded common format)
@@ -545,5 +561,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-21_ — pricer_core math expansion (distributions, calculus, utilities, integrators, optimisers, fitting, mesh, linalg); infra_master trade/convention modules
+_Updated: 2026-01-22_ — infra_master convention expansion (swaption, fx_option, equity, commodity, inflation, convention_set); instrument_def multi-asset catalogue with InstrumentExpander
 _Document patterns, not file trees. New files following patterns should not require updates_

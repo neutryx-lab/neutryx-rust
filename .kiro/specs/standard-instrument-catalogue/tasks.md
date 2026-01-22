@@ -2,7 +2,7 @@
 
 ## Phase 1: Convention Migration
 
-- [ ] 1. Convention モジュール移動
+- [x] 1. Convention モジュール移動
 - [x] 1.1 Convention ファイルを trade/ 配下に移動
   - 既存の convention/ ディレクトリを trade/convention/ にコピー
   - trade/mod.rs に `pub mod convention;` を追加
@@ -32,7 +32,7 @@
   - thiserror を使用した構造化エラー
   - _Requirements: 6.5, 7.4_
 
-- [ ] 2.3 (P) ConventionSet コンテナ実装
+- [x] 2.3 (P) ConventionSet コンテナ実装
   - 各 Convention を Option<T> で保持する構造体を定義
   - get_*() メソッドで未設定時は MissingConvention エラー
   - with_*() builder パターンを実装
@@ -195,21 +195,21 @@
 
 ## Phase 4: InstrumentDefinition Integration
 
-- [ ] 8. InstrumentDefinition 統合
-- [ ] 8.1 InstrumentDefinition enum 定義
+- [x] 8. InstrumentDefinition 統合
+- [x] 8.1 InstrumentDefinition enum 定義
   - 全資産クラスのバリアントを統合
   - 既存キャリブレーション商品を re-export & extend
   - CrossCurrencySwap を Existing セクションに統合
   - serde feature-gating を適用
   - _Requirements: 7.1, 7.2, 7.3, 1.6_
 
-- [ ] 8.2 ヘルパーメソッド実装
+- [x] 8.2 ヘルパーメソッド実装
   - asset_class() で資産クラスを返却
   - is_option()、is_swap()、is_forward() 判定メソッド
   - 各商品バリアントのパターンマッチで実装
   - _Requirements: 7.5_
 
-- [ ] 8.3 バリデーション機能実装
+- [x] 8.3 バリデーション機能実装
   - validate() メソッドを InstrumentDefinition に実装
   - 各バリアントの個別バリデーションロジック
   - 不正パラメータ検出（負のノーショナル、無効な日付等）
@@ -217,102 +217,102 @@
 
 ## Phase 5: Convention Extensions
 
-- [ ] 9. 新規 Convention 定義
-- [ ] 9.1 (P) SwaptionConvention 定義
+- [x] 9. 新規 Convention 定義
+- [x] 9.1 (P) SwaptionConvention 定義
   - underlying_swap（SwapConvention）を参照
   - premium_settlement、exercise_settlement を追加
   - premium_currency を定義
   - _Requirements: 1.1, 6.7_
 
-- [ ] 9.2 (P) FxOptionConvention 定義
+- [x] 9.2 (P) FxOptionConvention 定義
   - premium_currency（Base/Quote/Custom）を定義
   - delta_convention（SpotDelta/ForwardDelta）を追加
   - cut_off_time、settlement_days を定義
   - _Requirements: 2.3, 2.4, 6.7_
 
-- [ ] 9.3 (P) EquityConvention 定義
+- [x] 9.3 (P) EquityConvention 定義
   - settlement_days、calendar を定義
   - dividend_convention を追加
   - _Requirements: 3.1, 3.2, 6.7_
 
-- [ ] 9.4 (P) CommodityConvention 定義
+- [x] 9.4 (P) CommodityConvention 定義
   - delivery_convention を定義
   - pricing_calendar、settlement_days を追加
   - _Requirements: 5.1, 5.2, 6.7_
 
-- [ ] 9.5 (P) InflationSwapConvention 定義
+- [x] 9.5 (P) InflationSwapConvention 定義
   - inflation_index_convention を定義
   - lag_convention、interpolation_method を追加
   - _Requirements: 1.5, 6.7_
 
 ## Phase 6: CF Expansion Implementation
 
-- [ ] 10. InstrumentExpander トレイト実装
-- [ ] 10.1 InstrumentExpander トレイト定義
+- [x] 10. InstrumentExpander トレイト実装
+- [x] 10.1 InstrumentExpander トレイト定義
   - expand_to_trade() メソッドシグネチャを定義
   - ConventionSet を引数として受け取る
   - Result<Trade, InstrumentError> を返却
   - _Requirements: 6.1_
 
-- [ ] 10.2 金利商品の CF 展開実装
+- [x] 10.2 金利商品の CF 展開実装
   - Swaption、CapFloor の展開ロジック
   - FRN、CmsSwap、InflationSwap の展開
   - 適切な Cashflow 生成
   - _Requirements: 6.1, 1.1, 1.2, 1.3, 1.4, 1.5_
 
-- [ ] 10.3 FX 商品の CF 展開実装
+- [x] 10.3 FX 商品の CF 展開実装
   - FxSpot、FxForward の元本交換 Cashflow
   - FxSwap の Near/Far leg 展開
   - FxVanillaOption、FxBarrierOption の条件付きペイオフ
   - _Requirements: 6.2, 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 10.4 株式商品の CF 展開実装
+- [x] 10.4 株式商品の CF 展開実装
   - EquityForward、EquityVanillaOption の展開
   - AsianOption、LookbackOption の経路依存ペイオフ
   - EquitySwap、BasketOption の展開
   - _Requirements: 6.3, 6.4, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7_
 
-- [ ] 10.5 クレジット商品の CF 展開実装
+- [x] 10.5 クレジット商品の CF 展開実装
   - Cds のプレミアムレグと保護レグ
   - CdsIndex、CdsOption の展開
   - NtdBasket の展開
   - _Requirements: 6.1, 4.1, 4.2, 4.3, 4.4_
 
-- [ ] 10.6 コモディティ商品の CF 展開実装
+- [x] 10.6 コモディティ商品の CF 展開実装
   - CommodityForward の受渡 Cashflow
   - CommoditySwap の固定/変動レグ
   - オプション商品の条件付きペイオフ
   - _Requirements: 6.1, 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 10.7 CF 展開結果の検証
+- [x] 10.7 CF 展開結果の検証
   - Trade::all_cashflows() との互換性確認
   - 展開結果の Cashflow 列が正しく列挙されることを検証
   - _Requirements: 6.6_
 
 ## Phase 7: Testing
 
-- [ ] 11. テスト実装
-- [ ] 11.1 単体テスト実装
+- [x] 11. テスト実装
+- [x] 11.1 単体テスト実装
   - 各商品タイプの構築テスト
   - validate() メソッドのテスト
   - is_option()、is_swap()、asset_class() のテスト
   - serde 往復変換テスト
   - _Requirements: 8.1_
 
-- [ ] 11.2 CF 展開統合テスト
+- [x] 11.2 CF 展開統合テスト
   - InstrumentExpander::expand_to_trade() のテスト
   - 展開結果の Cashflow 列検証
   - Convention との整合性テスト
   - _Requirements: 8.2_
 
-- [ ] 11.3 エッジケーステスト
+- [x] 11.3 エッジケーステスト
   - ゼロノーショナルの検証
   - 同一日の開始/終了日の検証
   - 空の観測値リスト（Asian）の検証
   - 負のストライクの検証
   - _Requirements: 8.3, 8.4_
 
-- [ ] 11.4 プロパティベーステスト
+- [x] 11.4 プロパティベーステスト
   - proptest による任意パラメータでの validate() テスト
   - 有効な商品の展開可能性検証
   - 展開後の Cashflow 数の一貫性検証
