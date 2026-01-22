@@ -2,15 +2,24 @@
 //!
 //! This module provides:
 //! - `PricingError`: Errors from pricing operations
-//! - `DateError`: Errors from date construction and parsing
-//! - `CurrencyError`: Errors from currency parsing
 //! - `InterpolationError`: Errors from interpolation operations
 //! - `SolverError`: Errors from root-finding solvers
 //! - `CalibrationError`: Errors from model calibration
+//!
+//! Note: `DateError` and `CurrencyError` are re-exported from `infra_master`.
 
 use std::fmt;
 
 use thiserror::Error;
+
+// Re-export from infra_master (authoritative source)
+pub use infra_master::{CurrencyError, DateError};
+
+// Import math errors for From implementations
+use crate::math::distributions::DistributionError;
+use crate::math::fitting::FittingError;
+use crate::math::integrators::IntegrationError;
+use crate::math::optimisers::OptimisationError;
 
 /// Categorised pricing errors.
 ///
@@ -47,77 +56,6 @@ pub enum PricingError {
     /// Instrument type not supported
     #[error("Unsupported instrument: {0}")]
     UnsupportedInstrument(String),
-}
-
-/// Date-related errors.
-///
-/// Provides structured error handling for date construction and parsing
-/// with descriptive context for each failure mode.
-///
-/// # Variants
-/// - `InvalidDate`: Invalid date components (e.g., February 30th)
-/// - `ParseError`: Failed to parse date string
-///
-/// # Examples
-/// ```
-/// use pricer_core::types::DateError;
-///
-/// let err = DateError::InvalidDate { year: 2024, month: 2, day: 30 };
-/// assert_eq!(format!("{}", err), "Invalid date: 2024-2-30");
-/// ```
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
-pub enum DateError {
-    /// Invalid date components (e.g., February 30th).
-    #[error("Invalid date: {year}-{month}-{day}")]
-    InvalidDate {
-        /// Year component
-        year: i32,
-        /// Month component (1-12)
-        month: u32,
-        /// Day component (1-31)
-        day: u32,
-    },
-
-    /// Failed to parse date string.
-    #[error("Date parse error: {0}")]
-    ParseError(String),
-}
-
-/// Currency-related errors.
-///
-/// Provides structured error handling for currency parsing
-/// with descriptive context for each failure mode.
-///
-/// # Variants
-/// - `UnknownCurrency`: Unknown currency code
-/// - `ParseError`: Failed to parse currency string
-/// - `SameCurrency`: Base and quote currencies are the same
-/// - `InvalidSpotRate`: Spot rate is not positive
-///
-/// # Examples
-/// ```
-/// use pricer_core::types::CurrencyError;
-///
-/// let err = CurrencyError::UnknownCurrency("XYZ".to_string());
-/// assert_eq!(format!("{}", err), "Unknown currency: XYZ");
-/// ```
-#[derive(Error, Debug, Clone, PartialEq, Eq)]
-pub enum CurrencyError {
-    /// Unknown currency code.
-    #[error("Unknown currency: {0}")]
-    UnknownCurrency(String),
-
-    /// Failed to parse currency string.
-    #[error("Currency parse error: {0}")]
-    ParseError(String),
-
-    /// Base and quote currencies are the same.
-    #[error("Base and quote currencies are the same: {0}")]
-    SameCurrency(String),
-
-    /// Spot rate is not positive.
-    #[error("Invalid spot rate: must be positive")]
-    InvalidSpotRate,
 }
 
 /// Interpolation-related errors.
@@ -488,9 +426,291 @@ impl From<SolverError> for CalibrationError {
     }
 }
 
+// =============================================================================
+// Error Conversions: Math Errors → Domain Errors
+// =============================================================================
+// These conversions enable seamless error propagation from mathematical
+// operations to domain-level error types (PricingError, CalibrationError).
+
+/// Convert optimisation errors to calibration errors.
+///
+/// Optimisation is commonly used in model calibration, so this conversion
+/// provides natural error propagation.
+impl From<OptimisationError> for CalibrationError {
+    fn from(err: OptimisationError) -> Self {
+        match err {
+            OptimisationError::NotConverged { iterations } => {
+                CalibrationError::not_converged(iterations, f64::NAN)
+            }
+            OptimisationError::InvalidInput(msg) => CalibrationError::invalid_parameter(msg),
+            OptimisationError::NumericalError(msg) => CalibrationError::numerical_instability(msg),
+            OptimisationError::DimensionMismatch { expected, got } => {
+                CalibrationError::invalid_parameter(format!(
+                    "Dimension mismatch: expected {expected}, got {got}"
+                ))
+            }
+            OptimisationError::BoundsError(msg) => CalibrationError::constraint_violation(msg),
+            OptimisationError::GradientError(msg) => CalibrationError::numerical_instability(
+                format!("Gradient computation failed: {msg}"),
+            ),
+            OptimisationError::LineSearchError(msg) => {
+                CalibrationError::numerical_instability(format!("Line search failed: {msg}"))
+            }
+        }
+    }
+}
+
+/// Convert fitting errors to calibration errors.
+///
+/// Curve fitting is a common calibration task, so this conversion enables
+/// natural error propagation from fitting algorithms to calibration workflows.
+impl From<FittingError> for CalibrationError {
+    fn from(err: FittingError) -> Self {
+        match err {
+            FittingError::InsufficientData { needed, got } => {
+                CalibrationError::insufficient_data(got, needed)
+            }
+            FittingError::DimensionMismatch(msg) => CalibrationError::invalid_parameter(msg),
+            FittingError::FittingFailed(msg) => CalibrationError::numerical_instability(msg),
+            FittingError::InvalidData(msg) => CalibrationError::invalid_parameter(msg),
+            FittingError::NumericalError(msg) => CalibrationError::numerical_instability(msg),
+        }
+    }
+}
+
+/// Convert integration errors to pricing errors.
+///
+/// Numerical integration is used in option pricing (e.g., integrating payoffs),
+/// so this conversion enables natural error propagation.
+impl From<IntegrationError> for PricingError {
+    fn from(err: IntegrationError) -> Self {
+        match err {
+            IntegrationError::NotConverged { max_iterations } => {
+                PricingError::NumericalInstability(format!(
+                    "Integration did not converge after {max_iterations} iterations"
+                ))
+            }
+            IntegrationError::InvalidBounds { a, b } => {
+                PricingError::InvalidInput(format!("Invalid integration bounds: [{a}, {b}]"))
+            }
+            IntegrationError::NumericalError(msg) => PricingError::NumericalInstability(msg),
+        }
+    }
+}
+
+/// Convert distribution errors to pricing errors.
+///
+/// Probability distributions are fundamental to option pricing, so this
+/// conversion enables natural error propagation.
+impl From<DistributionError> for PricingError {
+    fn from(err: DistributionError) -> Self {
+        match err {
+            DistributionError::InvalidProbability { p } => {
+                PricingError::InvalidInput(format!("Invalid probability: {p}"))
+            }
+            DistributionError::InvalidCorrelation { rho } => {
+                PricingError::InvalidInput(format!("Invalid correlation: {rho}"))
+            }
+            DistributionError::InvalidDegreesOfFreedom { df } => {
+                PricingError::InvalidInput(format!("Invalid degrees of freedom: {df}"))
+            }
+            DistributionError::InvalidNonCentrality { ncp } => {
+                PricingError::InvalidInput(format!("Invalid non-centrality parameter: {ncp}"))
+            }
+            DistributionError::NotPositiveDefinite => PricingError::NumericalInstability(
+                "Correlation matrix is not positive definite".to_string(),
+            ),
+            DistributionError::NumericalError(msg) => PricingError::NumericalInstability(msg),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::math::distributions::DistributionError;
+    use crate::math::fitting::FittingError;
+    use crate::math::integrators::IntegrationError;
+    use crate::math::optimisers::OptimisationError;
+
+    // ==========================================================================
+    // Math Error Conversion Tests (Task 2.1)
+    // ==========================================================================
+
+    #[test]
+    fn test_optimisation_error_to_calibration_not_converged() {
+        let opt_err = OptimisationError::NotConverged { iterations: 100 };
+        let calib_err: CalibrationError = opt_err.into();
+        assert!(calib_err.is_not_converged());
+        assert_eq!(calib_err.iterations, 100);
+    }
+
+    #[test]
+    fn test_optimisation_error_to_calibration_invalid_input() {
+        let opt_err = OptimisationError::InvalidInput("negative step size".to_string());
+        let calib_err: CalibrationError = opt_err.into();
+        assert!(matches!(
+            calib_err.kind,
+            CalibrationErrorKind::InvalidParameter(_)
+        ));
+    }
+
+    #[test]
+    fn test_optimisation_error_to_calibration_numerical() {
+        let opt_err = OptimisationError::NumericalError("overflow".to_string());
+        let calib_err: CalibrationError = opt_err.into();
+        assert!(calib_err.is_numerical_instability());
+    }
+
+    #[test]
+    fn test_optimisation_error_to_calibration_bounds() {
+        let opt_err = OptimisationError::BoundsError("parameter out of bounds".to_string());
+        let calib_err: CalibrationError = opt_err.into();
+        assert!(calib_err.is_constraint_violation());
+    }
+
+    #[test]
+    fn test_optimisation_error_to_calibration_dimension() {
+        let opt_err = OptimisationError::DimensionMismatch {
+            expected: 3,
+            got: 5,
+        };
+        let calib_err: CalibrationError = opt_err.into();
+        assert!(matches!(
+            calib_err.kind,
+            CalibrationErrorKind::InvalidParameter(_)
+        ));
+    }
+
+    #[test]
+    fn test_optimisation_error_to_calibration_gradient() {
+        let opt_err = OptimisationError::GradientError("NaN gradient".to_string());
+        let calib_err: CalibrationError = opt_err.into();
+        assert!(calib_err.is_numerical_instability());
+    }
+
+    #[test]
+    fn test_optimisation_error_to_calibration_line_search() {
+        let opt_err = OptimisationError::LineSearchError("backtrack failed".to_string());
+        let calib_err: CalibrationError = opt_err.into();
+        assert!(calib_err.is_numerical_instability());
+    }
+
+    #[test]
+    fn test_fitting_error_to_calibration_insufficient_data() {
+        let fit_err = FittingError::InsufficientData { needed: 10, got: 3 };
+        let calib_err: CalibrationError = fit_err.into();
+        assert!(calib_err.is_insufficient_data());
+        if let CalibrationErrorKind::InsufficientData { got, need } = calib_err.kind {
+            assert_eq!(got, 3);
+            assert_eq!(need, 10);
+        } else {
+            panic!("Expected InsufficientData");
+        }
+    }
+
+    #[test]
+    fn test_fitting_error_to_calibration_dimension_mismatch() {
+        let fit_err = FittingError::DimensionMismatch("x and y lengths differ".to_string());
+        let calib_err: CalibrationError = fit_err.into();
+        assert!(matches!(
+            calib_err.kind,
+            CalibrationErrorKind::InvalidParameter(_)
+        ));
+    }
+
+    #[test]
+    fn test_fitting_error_to_calibration_fitting_failed() {
+        let fit_err = FittingError::FittingFailed("singular matrix".to_string());
+        let calib_err: CalibrationError = fit_err.into();
+        assert!(calib_err.is_numerical_instability());
+    }
+
+    #[test]
+    fn test_fitting_error_to_calibration_invalid_data() {
+        let fit_err = FittingError::InvalidData("negative weights".to_string());
+        let calib_err: CalibrationError = fit_err.into();
+        assert!(matches!(
+            calib_err.kind,
+            CalibrationErrorKind::InvalidParameter(_)
+        ));
+    }
+
+    #[test]
+    fn test_fitting_error_to_calibration_numerical() {
+        let fit_err = FittingError::NumericalError("overflow".to_string());
+        let calib_err: CalibrationError = fit_err.into();
+        assert!(calib_err.is_numerical_instability());
+    }
+
+    #[test]
+    fn test_integration_error_to_pricing_not_converged() {
+        let int_err = IntegrationError::NotConverged { max_iterations: 50 };
+        let pricing_err: PricingError = int_err.into();
+        assert!(matches!(pricing_err, PricingError::NumericalInstability(_)));
+        assert!(format!("{pricing_err}").contains("50"));
+    }
+
+    #[test]
+    fn test_integration_error_to_pricing_invalid_bounds() {
+        let int_err = IntegrationError::InvalidBounds { a: 5.0, b: 2.0 };
+        let pricing_err: PricingError = int_err.into();
+        assert!(matches!(pricing_err, PricingError::InvalidInput(_)));
+    }
+
+    #[test]
+    fn test_integration_error_to_pricing_numerical() {
+        let int_err = IntegrationError::NumericalError("overflow".to_string());
+        let pricing_err: PricingError = int_err.into();
+        assert!(matches!(pricing_err, PricingError::NumericalInstability(_)));
+    }
+
+    #[test]
+    fn test_distribution_error_to_pricing_invalid_probability() {
+        let dist_err = DistributionError::InvalidProbability { p: 1.5 };
+        let pricing_err: PricingError = dist_err.into();
+        assert!(matches!(pricing_err, PricingError::InvalidInput(_)));
+        assert!(format!("{pricing_err}").contains("1.5"));
+    }
+
+    #[test]
+    fn test_distribution_error_to_pricing_invalid_correlation() {
+        let dist_err = DistributionError::InvalidCorrelation { rho: 1.5 };
+        let pricing_err: PricingError = dist_err.into();
+        assert!(matches!(pricing_err, PricingError::InvalidInput(_)));
+    }
+
+    #[test]
+    fn test_distribution_error_to_pricing_invalid_df() {
+        let dist_err = DistributionError::InvalidDegreesOfFreedom { df: -1.0 };
+        let pricing_err: PricingError = dist_err.into();
+        assert!(matches!(pricing_err, PricingError::InvalidInput(_)));
+    }
+
+    #[test]
+    fn test_distribution_error_to_pricing_invalid_ncp() {
+        let dist_err = DistributionError::InvalidNonCentrality { ncp: -0.5 };
+        let pricing_err: PricingError = dist_err.into();
+        assert!(matches!(pricing_err, PricingError::InvalidInput(_)));
+    }
+
+    #[test]
+    fn test_distribution_error_to_pricing_not_positive_definite() {
+        let dist_err = DistributionError::NotPositiveDefinite;
+        let pricing_err: PricingError = dist_err.into();
+        assert!(matches!(pricing_err, PricingError::NumericalInstability(_)));
+    }
+
+    #[test]
+    fn test_distribution_error_to_pricing_numerical() {
+        let dist_err = DistributionError::NumericalError("underflow".to_string());
+        let pricing_err: PricingError = dist_err.into();
+        assert!(matches!(pricing_err, PricingError::NumericalInstability(_)));
+    }
+
+    // ==========================================================================
+    // Original PricingError Tests
+    // ==========================================================================
 
     #[test]
     fn test_invalid_input_display() {
@@ -533,71 +753,7 @@ mod tests {
         assert_eq!(err1, err2);
     }
 
-    // DateError tests
-
-    #[test]
-    fn test_date_error_invalid_date_display() {
-        let err = DateError::InvalidDate {
-            year: 2024,
-            month: 2,
-            day: 30,
-        };
-        assert_eq!(format!("{}", err), "Invalid date: 2024-2-30");
-    }
-
-    #[test]
-    fn test_date_error_parse_error_display() {
-        let err = DateError::ParseError("invalid format".to_string());
-        assert_eq!(format!("{}", err), "Date parse error: invalid format");
-    }
-
-    #[test]
-    fn test_date_error_trait_implementation() {
-        let err = DateError::InvalidDate {
-            year: 2024,
-            month: 2,
-            day: 30,
-        };
-        let _: &dyn std::error::Error = &err;
-    }
-
-    #[test]
-    fn test_date_error_clone_and_equality() {
-        let err1 = DateError::InvalidDate {
-            year: 2024,
-            month: 2,
-            day: 30,
-        };
-        let err2 = err1.clone();
-        assert_eq!(err1, err2);
-    }
-
-    // CurrencyError tests
-
-    #[test]
-    fn test_currency_error_unknown_currency_display() {
-        let err = CurrencyError::UnknownCurrency("XYZ".to_string());
-        assert_eq!(format!("{}", err), "Unknown currency: XYZ");
-    }
-
-    #[test]
-    fn test_currency_error_parse_error_display() {
-        let err = CurrencyError::ParseError("invalid input".to_string());
-        assert_eq!(format!("{}", err), "Currency parse error: invalid input");
-    }
-
-    #[test]
-    fn test_currency_error_trait_implementation() {
-        let err = CurrencyError::UnknownCurrency("XYZ".to_string());
-        let _: &dyn std::error::Error = &err;
-    }
-
-    #[test]
-    fn test_currency_error_clone_and_equality() {
-        let err1 = CurrencyError::UnknownCurrency("XYZ".to_string());
-        let err2 = err1.clone();
-        assert_eq!(err1, err2);
-    }
+    // Note: DateError and CurrencyError tests are in infra_master
 
     // InterpolationError tests
 

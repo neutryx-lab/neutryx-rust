@@ -23,46 +23,74 @@
 //! Part of the **I**nfra layer in the A-I-P-S architecture.
 //! Must not depend on **P**ricer or **S**ervice crates.
 //!
+//! ## Module Structure
+//!
+//! - [`time`]: Date handling, calendars, day count conventions, periods, frequency
+//! - [`market`]: Currency definitions, rate indices
+//! - [`trade`]: Trade representation, legs, cashflows, directions
+//! - [`convention`]: Market conventions for various instruments
+//! - [`counterparty`]: Counterparty, CSA, netting set management
+//!
 //! ## Example
 //!
 //! ```rust
-//! use infra_master::{Calendar, CalendarId};
+//! use infra_master::time::{ConcreteCalendar, CalendarId, Calendar, Date, Frequency};
+//! use infra_master::market::{Currency, RateIndex};
 //!
-//! let calendar = Calendar::get(CalendarId::Target);
-//! assert!(calendar.is_business_day(chrono::NaiveDate::from_ymd_opt(2026, 1, 5).unwrap()));
+//! let calendar = ConcreteCalendar::get(CalendarId::Target);
+//! let date = Date::from_ymd(2026, 1, 5).unwrap();
+//! assert!(calendar.is_business_day(date));
+//!
+//! let freq = Frequency::Quarterly;
+//! assert_eq!(freq.periods_per_year(), 4);
+//!
+//! let usd = Currency::USD;
+//! assert_eq!(usd.code(), "USD");
 //! ```
 
-mod business_day;
-mod calendar;
-mod counterparty;
-mod currency;
-mod date;
-mod day_count;
-mod direction;
-mod error;
-mod frequency;
-mod period;
-mod rate_index;
-mod tenor;
+// Core modules
+pub mod convention;
+pub mod counterparty;
+pub mod market;
+pub mod time;
+pub mod trade;
 
-pub use business_day::BusinessDayConvention;
-pub use calendar::{Calendar, CalendarId};
-pub use counterparty::{CsaTerms, NettingSetConfig};
-pub use currency::Currency;
-pub use date::Date;
-pub use day_count::DayCountConvention;
-pub use direction::{SwapDirection, TradeDirection};
+// Error types
+mod error;
 pub use error::{CurrencyError, DateError, MasterDataError};
-pub use frequency::Frequency;
-pub use period::Period;
-pub use rate_index::RateIndex;
-pub use tenor::{EndOfMonthRule, Tenor};
+
+// Counterparty module types (re-exported for convenience)
+pub use counterparty::{CsaTerms, NettingSet};
+
+// Re-export commonly used types at crate root for convenience
+// Time module types
+pub use time::{
+    AccrualPeriod, BusinessDayConvention, Calendar, CalendarId, ConcreteCalendar, Date,
+    DayCounter, EndOfMonthRule, Frequency, JointCalendar, JointCalendarRule, Period, Tenor,
+    TimeError, TimeUnit,
+};
+
+// Market module types
+pub use market::{Currency, RateIndex};
+
+// Trade module types
+pub use trade::{SwapDirection, TradeDirection};
 
 /// Prelude module for convenient imports
 pub mod prelude {
-    pub use crate::{
-        BusinessDayConvention, Calendar, CalendarId, CsaTerms, Currency, CurrencyError, Date,
-        DateError, DayCountConvention, EndOfMonthRule, Frequency, MasterDataError,
-        NettingSetConfig, Period, RateIndex, SwapDirection, Tenor, TradeDirection,
+    // Time types
+    pub use crate::time::{
+        AccrualPeriod, BusinessDayConvention, Calendar, CalendarId, ConcreteCalendar, Date,
+        DayCounter, EndOfMonthRule, Frequency, JointCalendar, JointCalendarRule, Period, Tenor,
+        TimeError, TimeUnit,
     };
+
+    // Market types
+    pub use crate::market::{Currency, RateIndex};
+
+    // Trade types
+    pub use crate::trade::{SwapDirection, TradeDirection};
+
+    // Error types
+    pub use crate::error::{CurrencyError, DateError, MasterDataError};
 }

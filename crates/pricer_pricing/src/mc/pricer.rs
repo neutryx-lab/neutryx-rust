@@ -620,7 +620,7 @@ impl MonteCarloPricer {
     ///
     /// ```ignore
     /// use pricer_pricing::mc::{MonteCarloPricer, MonteCarloConfig, GbmParams, PayoffParams};
-    /// use pricer_core::market_data::curves::{FlatCurve, YieldCurve};
+    /// use pricer_models::market::curves::{FlatCurve, YieldCurve};
     ///
     /// let config = MonteCarloConfig::builder()
     ///     .n_paths(10_000)
@@ -644,7 +644,7 @@ impl MonteCarloPricer {
         curve: &C,
     ) -> PricingResult
     where
-        C: pricer_core::market_data::curves::YieldCurve<f64>,
+        C: pricer_models::market::curves::YieldCurve<f64>,
     {
         let discount_factor = curve
             .discount_factor(gbm.maturity)
@@ -672,7 +672,7 @@ impl MonteCarloPricer {
     ///
     /// ```ignore
     /// use pricer_pricing::mc::{MonteCarloPricer, MonteCarloConfig, GbmParams, PayoffParams, Greek};
-    /// use pricer_core::market_data::curves::{FlatCurve, YieldCurve};
+    /// use pricer_models::market::curves::{FlatCurve, YieldCurve};
     ///
     /// let config = MonteCarloConfig::builder()
     ///     .n_paths(10_000)
@@ -697,7 +697,7 @@ impl MonteCarloPricer {
         greeks: &[Greek],
     ) -> PricingResult
     where
-        C: pricer_core::market_data::curves::YieldCurve<f64>,
+        C: pricer_models::market::curves::YieldCurve<f64>,
     {
         let discount_factor = curve
             .discount_factor(gbm.maturity)

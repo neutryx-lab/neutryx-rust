@@ -22,7 +22,7 @@
 //!
 //! ```rust,ignore
 //! use pricer_risk::demo::{DemoTrade, run_portfolio_pricing};
-//! use pricer_core::market_data::provider::MarketProvider;
+//! use pricer_models::market::provider::MarketProvider;
 //!
 //! let market = MarketProvider::new();
 //! let trades = vec![
@@ -50,7 +50,7 @@ use rayon::prelude::*;
 ///
 /// This provider returns `pricer_models::demo` types which are compatible
 /// with `PricingContext`. For the generic market data types, use
-/// `pricer_core::market_data::provider::MarketProvider` instead.
+/// `pricer_models::market::provider::MarketProvider` instead.
 pub struct MarketProvider {
     /// Cache for yield curves, keyed by currency.
     curve_cache: RwLock<HashMap<Currency, Arc<CurveEnum>>>,

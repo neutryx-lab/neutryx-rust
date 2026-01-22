@@ -1,6 +1,6 @@
 //! Calibrate command implementation
 //!
-//! Calibrates model parameters from market data using the pricer_optimiser
+//! Calibrates model parameters from market data using the `pricer_optimiser`
 //! crate.
 
 use tracing::{info, warn};
@@ -32,8 +32,7 @@ pub fn run(market_data: &str, model_type: &str, output: Option<&str>) -> Result<
         other => {
             warn!("Unknown model type: {}", other);
             return Err(CliError::InvalidArgument(format!(
-                "Unknown model type: {}. Supported: hull-white, cir",
-                other
+                "Unknown model type: {other}. Supported: hull-white, cir"
             )));
         }
     }

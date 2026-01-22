@@ -13,7 +13,7 @@
 //! - 4.1: `/api/v1/portfolio/graph` endpoint
 //! - 4.2: Timeout and error handling
 //! - 4.3: `/api/v1/portfolio/trades` endpoint
-//! - 4.4: GraphCache implementation
+//! - 4.4: `GraphCache` implementation
 
 use std::{
     collections::HashMap,
@@ -155,7 +155,7 @@ struct CacheEntry {
 pub struct GraphCache {
     /// Full portfolio graph cache
     full_graph: Option<CacheEntry>,
-    /// Subgraph cache by trade_ids key
+    /// Subgraph cache by `trade_ids` key
     subgraphs: HashMap<String, CacheEntry>,
     /// TTL in seconds
     ttl_secs: u64,
@@ -226,12 +226,16 @@ impl GraphCache {
 
 impl GraphAppState {
     /// Create a new app state with a sample portfolio
+    ///
+    /// # Errors
+    ///
+    /// Returns `ServerError::Internal` if the sample portfolio fails to build.
     pub fn new_with_sample(trade_count: usize, cache_ttl_secs: u64) -> Result<Self, ServerError> {
         let portfolio = SamplePortfolioBuilder::new()
             .with_trade_count(trade_count)
             .build()
             .map_err(|e| {
-                ServerError::Internal(format!("Failed to create sample portfolio: {}", e))
+                ServerError::Internal(format!("Failed to create sample portfolio: {e}"))
             })?;
 
         Ok(Self {
@@ -242,6 +246,10 @@ impl GraphAppState {
     }
 
     /// Create with default settings (50 trades, 5 second cache)
+    ///
+    /// # Errors
+    ///
+    /// Returns `ServerError::Internal` if the sample portfolio fails to build.
     pub fn default_sample() -> Result<Self, ServerError> { Self::new_with_sample(50, 5) }
 }
 
@@ -260,7 +268,7 @@ impl GraphAppState {
 /// # Returns
 ///
 /// - 200 OK: Portfolio graph in D3.js-compatible JSON format
-/// - 404 Not Found: If any specified trade_id doesn't exist
+/// - 404 Not Found: If any specified `trade_id` doesn't exist
 /// - 500 Internal Server Error: If extraction fails
 /// - 504 Gateway Timeout: If extraction exceeds 500ms
 pub async fn get_portfolio_graph(
@@ -295,21 +303,20 @@ pub async fn get_portfolio_graph(
     }
 
     // Extract graph with timeout protection
-    let graph = tokio::time::timeout(
-        Duration::from_millis(timeout_ms),
-        extract_portfolio_graph(&state.portfolio, trade_ids.as_deref()),
-    )
+    let graph = tokio::time::timeout(Duration::from_millis(timeout_ms), async {
+        extract_portfolio_graph(&state.portfolio, trade_ids.as_deref())
+    })
     .await
     .map_err(|_| ServerError::Timeout("Graph extraction timed out (>500ms)".to_string()))?
     .map_err(|e| match &e {
         pricer_pricing::graph::GraphError::TradeNotFound(id) => {
-            ServerError::NotFound(format!("Trade not found: {}", id))
+            ServerError::NotFound(format!("Trade not found: {id}"))
         }
         pricer_pricing::graph::GraphError::Timeout => {
             ServerError::Timeout("Graph extraction timed out".to_string())
         }
         pricer_pricing::graph::GraphError::ExtractionFailed(msg) => {
-            ServerError::Internal(format!("Graph extraction failed: {}", msg))
+            ServerError::Internal(format!("Graph extraction failed: {msg}"))
         }
     })?;
 
@@ -436,7 +443,7 @@ pub async fn get_portfolio_trades(
 // ============================================================================
 
 /// Extract portfolio graph, optionally filtered to specific trades
-async fn extract_portfolio_graph(
+fn extract_portfolio_graph(
     portfolio: &Portfolio,
     trade_ids: Option<&[String]>,
 ) -> Result<PortfolioComputationGraph, pricer_pricing::graph::GraphError> {
@@ -448,7 +455,10 @@ async fn extract_portfolio_graph(
     let mut trade_graphs: HashMap<String, ComputationGraph> = HashMap::new();
 
     // Get all trade IDs
-    let all_trade_ids: Vec<String> = portfolio.trade_ids().map(|id| id.to_string()).collect();
+    let all_trade_ids: Vec<String> = portfolio
+        .trade_ids()
+        .map(std::string::ToString::to_string)
+        .collect();
 
     // For each trade, create a mock graph (since we don't have real pricing
     // context) In production, this would come from the actual pricing engine
@@ -484,16 +494,15 @@ pub(crate) fn create_trade_graph(
     // Determine sensitivity params based on trade type
     let params = if trade.is_vanilla() {
         vec!["spot", "vol", "rate", "strike"]
-    } else if trade.is_forward() {
-        vec!["spot", "rate"]
     } else {
+        // Forward and other trade types use spot and rate
         vec!["spot", "rate"]
     };
 
     // Create input nodes
     let mut input_ids = Vec::new();
     for param in &params {
-        let node_id = format!("{}_{}", trade_id, param);
+        let node_id = format!("{trade_id}_{param}");
         let node = GraphNode {
             id: node_id.clone(),
             node_type: NodeType::Input,
@@ -508,7 +517,7 @@ pub(crate) fn create_trade_graph(
     }
 
     // Create intermediate node
-    let intermediate_id = format!("{}_calc", trade_id);
+    let intermediate_id = format!("{trade_id}_calc");
     let intermediate_node = GraphNode {
         id: intermediate_id.clone(),
         node_type: NodeType::Mul,
@@ -530,7 +539,7 @@ pub(crate) fn create_trade_graph(
     }
 
     // Create output node
-    let output_id = format!("{}_price", trade_id);
+    let output_id = format!("{trade_id}_price");
     let output_node = GraphNode {
         id: output_id.clone(),
         node_type: NodeType::Output,
@@ -552,7 +561,7 @@ pub(crate) fn create_trade_graph(
     builder.build(Some(trade_id.to_string()))
 }
 
-/// Convert PortfolioComputationGraph to response DTO
+/// Convert `PortfolioComputationGraph` to response DTO
 fn convert_to_response(graph: &PortfolioComputationGraph) -> PortfolioGraphResponse {
     let nodes: Vec<GraphNodeDto> = graph
         .nodes

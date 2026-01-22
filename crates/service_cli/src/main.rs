@@ -128,7 +128,13 @@ fn main() -> Result<()> {
             portfolio,
             output_dir,
         } => commands::report::run(&report_type, &portfolio, &output_dir),
-        Commands::Check => commands::check::run(),
-        Commands::Demo => commands::demo::run(),
+        Commands::Check => {
+            commands::check::run();
+            Ok(())
+        }
+        Commands::Demo => {
+            commands::demo::run();
+            Ok(())
+        }
     }
 }

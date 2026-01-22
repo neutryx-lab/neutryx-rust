@@ -1,6 +1,6 @@
 //! Price command implementation
 //!
-//! Prices a portfolio of trades using the pricer_pricing engine.
+//! Prices a portfolio of trades using the `pricer_pricing` engine.
 
 use tracing::info;
 
@@ -39,8 +39,7 @@ pub fn run(portfolio: &str, date: Option<&str>, num_paths: usize, format: &str) 
         }
         other => {
             return Err(CliError::InvalidArgument(format!(
-                "Unknown format: {}. Supported: json, csv, table",
-                other
+                "Unknown format: {other}. Supported: json, csv, table"
             )));
         }
     }

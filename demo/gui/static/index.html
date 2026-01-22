@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FrictionalBank Dashboard</title>
-    <link rel="stylesheet" href="style.css?v=4">
+    <link rel="stylesheet" href="style.css?v=5">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -264,7 +264,7 @@
         <!-- Sidebar -->
         <aside class="sidebar glass">
             <div class="sidebar-header">
-                <div class="logo">
+                <a href="#" class="logo" data-view="dashboard">
                     <div class="logo-icon-wrapper">
                         <i class="fas fa-chart-line"></i>
                     </div>
@@ -272,15 +272,10 @@
                         <span class="logo-title">FrictionalBank</span>
                         <span class="logo-subtitle">Risk Platform</span>
                     </div>
-                </div>
-            </div>
-            
-            <nav class="sidebar-nav">
-                <a href="#" class="nav-item active" data-view="dashboard">
-                    <div class="nav-icon"><i class="fas fa-th-large"></i></div>
-                    <span>Dashboard</span>
-                    <div class="nav-indicator"></div>
                 </a>
+            </div>
+
+            <nav class="sidebar-nav">
                 <a href="#" class="nav-item" data-view="portfolio">
                     <div class="nav-icon"><i class="fas fa-briefcase"></i></div>
                     <span>Portfolio</span>
@@ -302,26 +297,41 @@
                     <div class="nav-indicator"></div>
                 </a>
                 <div class="nav-divider"></div>
-                <a href="#" class="nav-item" data-view="pricer">
-                    <div class="nav-icon"><i class="fas fa-calculator"></i></div>
-                    <span>Pricer</span>
-                    <div class="nav-indicator"></div>
-                </a>
-                <a href="#" class="nav-item" data-view="irs-bootstrap">
-                    <div class="nav-icon"><i class="fas fa-chart-line"></i></div>
-                    <span>IRS Bootstrap</span>
-                    <div class="nav-indicator"></div>
-                </a>
-                <a href="#" class="nav-item" data-view="graph">
-                    <div class="nav-icon"><i class="fas fa-project-diagram"></i></div>
-                    <span>Graph</span>
-                    <div class="nav-indicator"></div>
-                </a>
-                <a href="#" class="nav-item" data-view="analytics">
-                    <div class="nav-icon"><i class="fas fa-cube"></i></div>
-                    <span>3D Analytics</span>
-                    <div class="nav-indicator"></div>
-                </a>
+                <!-- Analysis Accordion -->
+                <div class="nav-accordion" id="analysis-accordion">
+                    <button class="nav-accordion-header" id="analysis-accordion-btn">
+                        <div class="nav-icon"><i class="fas fa-microscope"></i></div>
+                        <span>Analysis</span>
+                        <i class="fas fa-chevron-down accordion-arrow"></i>
+                    </button>
+                    <div class="nav-accordion-content">
+                        <a href="#" class="nav-item nav-sub-item" data-view="market-data">
+                            <div class="nav-icon"><i class="fas fa-database"></i></div>
+                            <span>Market Data</span>
+                            <div class="nav-indicator"></div>
+                        </a>
+                        <a href="#" class="nav-item nav-sub-item" data-view="trade-expansion">
+                            <div class="nav-icon"><i class="fas fa-expand-arrows-alt"></i></div>
+                            <span>Trade Expand</span>
+                            <div class="nav-indicator"></div>
+                        </a>
+                        <a href="#" class="nav-item nav-sub-item" data-view="irs-bootstrap">
+                            <div class="nav-icon"><i class="fas fa-chart-line"></i></div>
+                            <span>Curve Build</span>
+                            <div class="nav-indicator"></div>
+                        </a>
+                        <a href="#" class="nav-item nav-sub-item" data-view="model-calib">
+                            <div class="nav-icon"><i class="fas fa-wave-square"></i></div>
+                            <span>Model Calib</span>
+                            <div class="nav-indicator"></div>
+                        </a>
+                        <a href="#" class="nav-item nav-sub-item" data-view="graph">
+                            <div class="nav-icon"><i class="fas fa-project-diagram"></i></div>
+                            <span>AD Graph</span>
+                            <div class="nav-indicator"></div>
+                        </a>
+                    </div>
+                </div>
             </nav>
 
             <div class="sidebar-footer">
@@ -487,12 +497,6 @@
                             <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
                         </div>
                         <div class="quick-actions-grid">
-                            <button class="action-tile" data-action="pricer">
-                                <div class="action-icon">
-                                    <i class="fas fa-calculator"></i>
-                                </div>
-                                <span>Pricer</span>
-                            </button>
                             <button class="action-tile" data-action="irs-bootstrap">
                                 <div class="action-icon">
                                     <i class="fas fa-chart-line"></i>
@@ -504,6 +508,12 @@
                                     <i class="fas fa-chart-area"></i>
                                 </div>
                                 <span>Exposure</span>
+                            </button>
+                            <button class="action-tile" data-action="trade-expansion">
+                                <div class="action-icon">
+                                    <i class="fas fa-expand-arrows-alt"></i>
+                                </div>
+                                <span>Trade Expand</span>
                             </button>
                             <button class="action-tile" data-action="analytics-3d">
                                 <div class="action-icon">
@@ -1687,6 +1697,264 @@
                 </div>
             </section>
 
+            <!-- Model Calibration View -->
+            <section id="model-calib-view" class="view">
+                <div class="model-calib-container">
+                    <!-- Header -->
+                    <div class="model-calib-header glass-card">
+                        <div class="model-calib-title">
+                            <h2><i class="fas fa-wave-square"></i> Model Calibration</h2>
+                            <p>Calibrate volatility models and visualise surfaces</p>
+                        </div>
+                        <div class="vol-calib-actions">
+                            <select id="vol-calib-model" class="fancy-select">
+                                <option value="sabr">SABR</option>
+                                <option value="svi">SVI</option>
+                                <option value="heston">Heston</option>
+                                <option value="local-vol">Local Volatility</option>
+                            </select>
+                            <select id="vol-calib-asset-class" class="fancy-select">
+                                <option value="equity">Equity</option>
+                                <option value="fx">FX</option>
+                                <option value="rates">Rates (Swaption)</option>
+                            </select>
+                            <button id="vol-calib-btn" class="primary-btn">
+                                <i class="fas fa-play"></i> Calibrate
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Main Content Grid -->
+                    <div class="model-calib-grid">
+                        <!-- Input Panel -->
+                        <div class="model-calib-input-panel glass-card">
+                            <h3><i class="fas fa-edit"></i> Market Quotes</h3>
+                            <div class="vol-calib-input-section">
+                                <label>Underlying</label>
+                                <select id="vol-calib-underlying" class="fancy-select">
+                                    <option value="AAPL">AAPL - Apple Inc.</option>
+                                    <option value="GOOGL">GOOGL - Alphabet</option>
+                                    <option value="MSFT">MSFT - Microsoft</option>
+                                    <option value="EURUSD">EUR/USD</option>
+                                    <option value="USDJPY">USD/JPY</option>
+                                </select>
+                            </div>
+                            <div class="vol-calib-input-section">
+                                <label>Spot Price</label>
+                                <input type="number" id="vol-calib-spot" value="185.00" step="0.01" class="fancy-input">
+                            </div>
+                            <div class="vol-calib-input-section">
+                                <label>Reference Date</label>
+                                <input type="date" id="vol-calib-date" class="fancy-input">
+                            </div>
+
+                            <h4>Option Quotes (ATM)</h4>
+                            <div class="vol-quote-grid">
+                                <div class="vol-quote-row header">
+                                    <span>Expiry</span>
+                                    <span>Bid Vol</span>
+                                    <span>Ask Vol</span>
+                                    <span>Mid</span>
+                                </div>
+                                <div class="vol-quote-row">
+                                    <span>1M</span>
+                                    <input type="number" value="22.5" step="0.1" class="vol-input">
+                                    <input type="number" value="23.5" step="0.1" class="vol-input">
+                                    <span class="vol-mid">23.0%</span>
+                                </div>
+                                <div class="vol-quote-row">
+                                    <span>3M</span>
+                                    <input type="number" value="24.0" step="0.1" class="vol-input">
+                                    <input type="number" value="25.0" step="0.1" class="vol-input">
+                                    <span class="vol-mid">24.5%</span>
+                                </div>
+                                <div class="vol-quote-row">
+                                    <span>6M</span>
+                                    <input type="number" value="25.5" step="0.1" class="vol-input">
+                                    <input type="number" value="26.5" step="0.1" class="vol-input">
+                                    <span class="vol-mid">26.0%</span>
+                                </div>
+                                <div class="vol-quote-row">
+                                    <span>1Y</span>
+                                    <input type="number" value="27.0" step="0.1" class="vol-input">
+                                    <input type="number" value="28.0" step="0.1" class="vol-input">
+                                    <span class="vol-mid">27.5%</span>
+                                </div>
+                            </div>
+
+                            <h4>Smile Quotes (6M)</h4>
+                            <div class="vol-quote-grid">
+                                <div class="vol-quote-row header">
+                                    <span>Strike %</span>
+                                    <span>Bid Vol</span>
+                                    <span>Ask Vol</span>
+                                    <span>Mid</span>
+                                </div>
+                                <div class="vol-quote-row">
+                                    <span>80%</span>
+                                    <input type="number" value="32.0" step="0.1" class="vol-input">
+                                    <input type="number" value="33.0" step="0.1" class="vol-input">
+                                    <span class="vol-mid">32.5%</span>
+                                </div>
+                                <div class="vol-quote-row">
+                                    <span>90%</span>
+                                    <input type="number" value="28.0" step="0.1" class="vol-input">
+                                    <input type="number" value="29.0" step="0.1" class="vol-input">
+                                    <span class="vol-mid">28.5%</span>
+                                </div>
+                                <div class="vol-quote-row">
+                                    <span>100%</span>
+                                    <input type="number" value="25.5" step="0.1" class="vol-input">
+                                    <input type="number" value="26.5" step="0.1" class="vol-input">
+                                    <span class="vol-mid">26.0%</span>
+                                </div>
+                                <div class="vol-quote-row">
+                                    <span>110%</span>
+                                    <input type="number" value="24.5" step="0.1" class="vol-input">
+                                    <input type="number" value="25.5" step="0.1" class="vol-input">
+                                    <span class="vol-mid">25.0%</span>
+                                </div>
+                                <div class="vol-quote-row">
+                                    <span>120%</span>
+                                    <input type="number" value="26.0" step="0.1" class="vol-input">
+                                    <input type="number" value="27.0" step="0.1" class="vol-input">
+                                    <span class="vol-mid">26.5%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Results Panel -->
+                        <div class="model-calib-results-panel glass-card">
+                            <h3><i class="fas fa-chart-area"></i> Calibration Results</h3>
+
+                            <!-- Placeholder for uncalibrated state -->
+                            <div id="vol-calib-placeholder" class="vol-calib-placeholder">
+                                <i class="fas fa-wave-square"></i>
+                                <p>Click "Calibrate" to fit the volatility model</p>
+                            </div>
+
+                            <!-- Results (hidden initially) -->
+                            <div id="vol-calib-results" style="display: none;">
+                                <div class="vol-calib-params">
+                                    <h4>SABR Parameters</h4>
+                                    <div class="param-grid">
+                                        <div class="param-item">
+                                            <span class="param-label">Alpha (α)</span>
+                                            <span class="param-value" id="sabr-alpha">0.2534</span>
+                                        </div>
+                                        <div class="param-item">
+                                            <span class="param-label">Beta (β)</span>
+                                            <span class="param-value" id="sabr-beta">0.5000</span>
+                                        </div>
+                                        <div class="param-item">
+                                            <span class="param-label">Rho (ρ)</span>
+                                            <span class="param-value" id="sabr-rho">-0.1823</span>
+                                        </div>
+                                        <div class="param-item">
+                                            <span class="param-label">Nu (ν)</span>
+                                            <span class="param-value" id="sabr-nu">0.4215</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="vol-calib-metrics">
+                                    <h4>Fit Quality</h4>
+                                    <div class="metric-grid">
+                                        <div class="metric-item">
+                                            <span class="metric-label">RMSE</span>
+                                            <span class="metric-value positive">0.12%</span>
+                                        </div>
+                                        <div class="metric-item">
+                                            <span class="metric-label">Max Error</span>
+                                            <span class="metric-value">0.35%</span>
+                                        </div>
+                                        <div class="metric-item">
+                                            <span class="metric-label">R²</span>
+                                            <span class="metric-value positive">0.9987</span>
+                                        </div>
+                                        <div class="metric-item">
+                                            <span class="metric-label">Iterations</span>
+                                            <span class="metric-value">24</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Vol Surface Chart Placeholder -->
+                                <div class="vol-surface-chart">
+                                    <h4>Implied Volatility Surface</h4>
+                                    <div id="vol-surface-3d" class="chart-placeholder">
+                                        <i class="fas fa-cube"></i>
+                                        <p>3D Surface Visualisation</p>
+                                        <small>Strike × Expiry × Implied Vol</small>
+                                    </div>
+                                </div>
+
+                                <!-- Smile Comparison -->
+                                <div class="vol-smile-chart">
+                                    <h4>Smile Fit (6M Expiry)</h4>
+                                    <div id="vol-smile-2d" class="chart-placeholder">
+                                        <i class="fas fa-chart-line"></i>
+                                        <p>Market vs Model Comparison</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3D Surface Viewer Section -->
+                    <div class="model-calib-3d-section glass-card">
+                        <div class="surface-viewer-header">
+                            <h3><i class="fas fa-cube"></i> 3D Surface Viewer</h3>
+                            <div class="surface-viewer-controls">
+                                <select id="surface-type-select" class="fancy-select">
+                                    <option value="vol-surface">Implied Vol Surface</option>
+                                    <option value="local-vol">Local Volatility</option>
+                                    <option value="pv-surface">PV Surface</option>
+                                    <option value="delta-surface">Delta Surface</option>
+                                    <option value="gamma-surface">Gamma Surface</option>
+                                    <option value="vega-surface">Vega Surface</option>
+                                </select>
+                                <div class="surface-view-btns">
+                                    <button class="icon-btn" id="surface-reset-view" title="Reset View">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
+                                    <button class="icon-btn" id="surface-fullscreen" title="Fullscreen">
+                                        <i class="fas fa-expand"></i>
+                                    </button>
+                                    <button class="icon-btn" id="surface-screenshot" title="Screenshot">
+                                        <i class="fas fa-camera"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3D Canvas Container -->
+                        <div id="surface-viewer-container" class="surface-viewer-canvas">
+                            <div id="surface-viewer-placeholder" class="surface-placeholder">
+                                <i class="fas fa-cube"></i>
+                                <p>Calibrate a model to view the 3D surface</p>
+                                <small>Strike × Expiry × Value</small>
+                            </div>
+                            <canvas id="surface-3d-canvas" style="display: none;"></canvas>
+                        </div>
+
+                        <!-- Surface Controls -->
+                        <div class="surface-viewer-footer">
+                            <div class="surface-axis-labels">
+                                <span><strong>X:</strong> Strike (% of Spot)</span>
+                                <span><strong>Y:</strong> Time to Expiry</span>
+                                <span><strong>Z:</strong> <span id="surface-z-label">Implied Volatility</span></span>
+                            </div>
+                            <div class="surface-stats">
+                                <span class="stat-item"><strong>Min:</strong> <span id="surface-min">--</span></span>
+                                <span class="stat-item"><strong>Max:</strong> <span id="surface-max">--</span></span>
+                                <span class="stat-item"><strong>ATM:</strong> <span id="surface-atm">--</span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Graph View (Task 5.1) -->
             <section id="graph-view" class="view">
                 <!-- Graph Header Bar -->
@@ -1886,105 +2154,218 @@
                 </div>
             </section>
 
-            <!-- Pricer View (Task 4.1-4.8) -->
-            <section id="pricer-view" class="view">
-                <div class="pricer-container">
-                    <!-- Pricer Header -->
-                    <div class="pricer-header glass">
-                        <div class="pricer-title">
-                            <h2><i class="fas fa-calculator"></i> Interactive Pricer</h2>
-                            <p>Price derivatives with real-time Greeks calculation</p>
+            <!-- Trade Expansion View (pricer-trade-expansion-ui) -->
+            <section id="trade-expansion-view" class="view">
+                <div class="trade-expansion-container">
+                    <!-- Header -->
+                    <div class="trade-expansion-header glass">
+                        <div class="trade-expansion-title">
+                            <h2><i class="fas fa-project-diagram"></i> Trade Expansion</h2>
+                            <p>Expand instruments into cashflow-detailed trades</p>
                         </div>
                     </div>
 
-                    <!-- Pricer Main Layout -->
-                    <div class="pricer-layout">
-                        <!-- Pricer Form Panel -->
-                        <div class="pricer-form-panel glass">
-                            <h3><i class="fas fa-sliders-h"></i> Parameters</h3>
+                    <!-- Main Layout -->
+                    <div class="trade-expansion-layout">
+                        <!-- Form Panel -->
+                        <div class="trade-expansion-form-panel glass">
+                            <h3><i class="fas fa-sliders-h"></i> Instrument Parameters</h3>
 
-                            <!-- Instrument Type Selector -->
+                            <!-- Instrument Type Selector with optgroups -->
                             <div class="form-group">
-                                <label for="pricer-instrument-type">Instrument Type</label>
-                                <select id="pricer-instrument-type" class="fancy-select">
-                                    <option value="equity_vanilla_option">Equity Vanilla Option</option>
-                                    <option value="fx_option">FX Option</option>
-                                    <option value="irs">Interest Rate Swap</option>
+                                <label for="expansion-instrument-type">Instrument Type</label>
+                                <select id="expansion-instrument-type" class="fancy-select">
+                                    <optgroup label="Rates">
+                                        <option value="deposit">Deposit</option>
+                                        <option value="fra">FRA (Forward Rate Agreement)</option>
+                                        <option value="futures">Futures</option>
+                                        <option value="par_swap">Par Swap</option>
+                                        <option value="ois">OIS (Overnight Index Swap)</option>
+                                        <option value="basis_swap">Basis Swap</option>
+                                        <option value="irs" selected>IRS (Interest Rate Swap)</option>
+                                    </optgroup>
+                                    <optgroup label="FX">
+                                        <option value="fx_forward">FX Forward</option>
+                                        <option value="fx_option">FX Option</option>
+                                        <option value="cross_currency_swap">Cross Currency Swap</option>
+                                    </optgroup>
+                                    <optgroup label="Equity">
+                                        <option value="equity_vanilla_option">Equity Vanilla Option</option>
+                                        <option value="equity_forward">Equity Forward</option>
+                                    </optgroup>
+                                    <optgroup label="Credit" disabled>
+                                        <option value="cds" disabled>CDS (Coming Soon)</option>
+                                    </optgroup>
+                                    <optgroup label="Commodity" disabled>
+                                        <option value="commodity_forward" disabled>Commodity Forward (Coming Soon)</option>
+                                    </optgroup>
                                 </select>
                             </div>
 
                             <!-- Dynamic Form Container -->
-                            <div id="pricer-params-container">
-                                <!-- Equity Option Form (default) -->
-                                <div id="equity-option-form" class="pricer-form active">
+                            <div id="expansion-params-container">
+                                <!-- Rates Base Form (Deposit, FRA, Futures) -->
+                                <div id="rates-base-form" class="expansion-form">
                                     <div class="form-row">
                                         <div class="form-group">
-                                            <label for="equity-spot">Spot Price</label>
-                                            <input type="number" id="equity-spot" value="100" step="0.01" min="0.01">
+                                            <label for="rates-currency">Currency</label>
+                                            <select id="rates-currency" class="fancy-select">
+                                                <option value="USD">USD</option>
+                                                <option value="EUR">EUR</option>
+                                                <option value="GBP">GBP</option>
+                                                <option value="JPY">JPY</option>
+                                            </select>
                                         </div>
                                         <div class="form-group">
-                                            <label for="equity-strike">Strike</label>
-                                            <input type="number" id="equity-strike" value="100" step="0.01" min="0.01">
+                                            <label for="rates-start-date">Start Date</label>
+                                            <input type="date" id="rates-start-date" value="">
                                         </div>
                                     </div>
                                     <div class="form-row">
                                         <div class="form-group">
-                                            <label for="equity-expiry">Expiry (Years)</label>
-                                            <input type="number" id="equity-expiry" value="1" step="0.01" min="0">
+                                            <label for="rates-tenor">Tenor</label>
+                                            <select id="rates-tenor" class="fancy-select">
+                                                <option value="1M">1M</option>
+                                                <option value="3M">3M</option>
+                                                <option value="6M">6M</option>
+                                                <option value="1Y" selected>1Y</option>
+                                                <option value="2Y">2Y</option>
+                                                <option value="3Y">3Y</option>
+                                                <option value="5Y">5Y</option>
+                                                <option value="7Y">7Y</option>
+                                                <option value="10Y">10Y</option>
+                                                <option value="15Y">15Y</option>
+                                                <option value="20Y">20Y</option>
+                                                <option value="30Y">30Y</option>
+                                            </select>
                                         </div>
                                         <div class="form-group">
-                                            <label for="equity-vol">Volatility (%)</label>
-                                            <input type="number" id="equity-vol" value="20" step="0.1" min="0.1" max="500">
+                                            <label for="rates-rate">Rate (%)</label>
+                                            <input type="number" id="rates-rate" value="3.5" step="0.01" min="-10" max="50">
                                         </div>
                                     </div>
                                     <div class="form-row">
                                         <div class="form-group">
-                                            <label for="equity-rate">Risk-Free Rate (%)</label>
-                                            <input type="number" id="equity-rate" value="5" step="0.01">
+                                            <label for="rates-notional">Notional</label>
+                                            <input type="number" id="rates-notional" value="10000000" step="100000" min="1">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Swap Extended Form (ParSwap, OIS, BasisSwap, IRS) -->
+                                <div id="swap-form" class="expansion-form active">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="swap-currency">Currency</label>
+                                            <select id="swap-currency" class="fancy-select">
+                                                <option value="USD">USD</option>
+                                                <option value="EUR">EUR</option>
+                                                <option value="GBP">GBP</option>
+                                                <option value="JPY">JPY</option>
+                                            </select>
                                         </div>
                                         <div class="form-group">
-                                            <label for="equity-option-type">Option Type</label>
-                                            <select id="equity-option-type" class="fancy-select">
-                                                <option value="call">Call</option>
-                                                <option value="put">Put</option>
+                                            <label for="swap-start-date">Start Date</label>
+                                            <input type="date" id="swap-start-date" value="">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="swap-tenor">Tenor</label>
+                                            <select id="swap-tenor" class="fancy-select">
+                                                <option value="1Y">1Y</option>
+                                                <option value="2Y">2Y</option>
+                                                <option value="3Y">3Y</option>
+                                                <option value="5Y" selected>5Y</option>
+                                                <option value="7Y">7Y</option>
+                                                <option value="10Y">10Y</option>
+                                                <option value="15Y">15Y</option>
+                                                <option value="20Y">20Y</option>
+                                                <option value="30Y">30Y</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="swap-fixed-rate">Fixed Rate (%)</label>
+                                            <input type="number" id="swap-fixed-rate" value="3.0" step="0.01" min="-10" max="50">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="swap-spread">Spread (bps)</label>
+                                            <input type="number" id="swap-spread" value="0" step="0.1" min="-500" max="500">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="swap-notional">Notional</label>
+                                            <input type="number" id="swap-notional" value="10000000" step="100000" min="1">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="swap-frequency">Payment Frequency</label>
+                                            <select id="swap-frequency" class="fancy-select">
+                                                <option value="annual">Annual</option>
+                                                <option value="semi_annual" selected>Semi-Annual</option>
+                                                <option value="quarterly">Quarterly</option>
+                                                <option value="monthly">Monthly</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="swap-day-count">Day Count</label>
+                                            <select id="swap-day-count" class="fancy-select">
+                                                <option value="act_360">ACT/360</option>
+                                                <option value="act_365" selected>ACT/365</option>
+                                                <option value="30_360">30/360</option>
                                             </select>
                                         </div>
                                     </div>
                                 </div>
 
-                                <!-- FX Option Form -->
-                                <div id="fx-option-form" class="pricer-form">
+                                <!-- FX Form -->
+                                <div id="fx-form" class="expansion-form">
                                     <div class="form-row">
                                         <div class="form-group">
-                                            <label for="fx-spot">Spot Rate</label>
-                                            <input type="number" id="fx-spot" value="1.10" step="0.0001" min="0.0001">
+                                            <label for="fx-base-ccy">Base Currency</label>
+                                            <select id="fx-base-ccy" class="fancy-select">
+                                                <option value="EUR" selected>EUR</option>
+                                                <option value="GBP">GBP</option>
+                                                <option value="USD">USD</option>
+                                                <option value="JPY">JPY</option>
+                                                <option value="CHF">CHF</option>
+                                                <option value="AUD">AUD</option>
+                                            </select>
                                         </div>
                                         <div class="form-group">
-                                            <label for="fx-strike">Strike</label>
-                                            <input type="number" id="fx-strike" value="1.10" step="0.0001" min="0.0001">
+                                            <label for="fx-quote-ccy">Quote Currency</label>
+                                            <select id="fx-quote-ccy" class="fancy-select">
+                                                <option value="USD" selected>USD</option>
+                                                <option value="EUR">EUR</option>
+                                                <option value="GBP">GBP</option>
+                                                <option value="JPY">JPY</option>
+                                                <option value="CHF">CHF</option>
+                                            </select>
                                         </div>
                                     </div>
                                     <div class="form-row">
                                         <div class="form-group">
-                                            <label for="fx-expiry">Expiry (Years)</label>
-                                            <input type="number" id="fx-expiry" value="1" step="0.01" min="0">
+                                            <label for="fx-spot-rate">Spot Rate</label>
+                                            <input type="number" id="fx-spot-rate" value="1.0850" step="0.0001" min="0.0001">
                                         </div>
                                         <div class="form-group">
-                                            <label for="fx-vol">Volatility (%)</label>
-                                            <input type="number" id="fx-vol" value="10" step="0.1" min="0.1" max="500">
+                                            <label for="fx-forward-rate">Forward Rate / Strike</label>
+                                            <input type="number" id="fx-forward-rate" value="1.0900" step="0.0001" min="0.0001">
                                         </div>
                                     </div>
                                     <div class="form-row">
                                         <div class="form-group">
-                                            <label for="fx-dom-rate">Domestic Rate (%)</label>
-                                            <input type="number" id="fx-dom-rate" value="5" step="0.01">
+                                            <label for="fx-expiry">Expiry Date</label>
+                                            <input type="date" id="fx-expiry" value="">
                                         </div>
                                         <div class="form-group">
-                                            <label for="fx-for-rate">Foreign Rate (%)</label>
-                                            <input type="number" id="fx-for-rate" value="2" step="0.01">
+                                            <label for="fx-notional">Notional (Base Ccy)</label>
+                                            <input type="number" id="fx-notional" value="1000000" step="10000" min="1">
                                         </div>
                                     </div>
-                                    <div class="form-row">
+                                    <div class="form-row fx-option-only" style="display: none;">
                                         <div class="form-group">
                                             <label for="fx-option-type">Option Type</label>
                                             <select id="fx-option-type" class="fancy-select">
@@ -1992,103 +2373,121 @@
                                                 <option value="put">Put</option>
                                             </select>
                                         </div>
+                                        <div class="form-group">
+                                            <label for="fx-volatility">Volatility (%)</label>
+                                            <input type="number" id="fx-volatility" value="10" step="0.1" min="0.1" max="200">
+                                        </div>
                                     </div>
                                 </div>
 
-                                <!-- IRS Form -->
-                                <div id="irs-form" class="pricer-form">
+                                <!-- Equity Form -->
+                                <div id="equity-form" class="expansion-form">
                                     <div class="form-row">
                                         <div class="form-group">
-                                            <label for="irs-notional">Notional</label>
-                                            <input type="number" id="irs-notional" value="1000000" step="1000" min="1">
+                                            <label for="eq-underlying">Underlying</label>
+                                            <input type="text" id="eq-underlying" value="AAPL" placeholder="e.g., AAPL">
                                         </div>
                                         <div class="form-group">
-                                            <label for="irs-fixed-rate">Fixed Rate (%)</label>
-                                            <input type="number" id="irs-fixed-rate" value="2.5" step="0.01">
+                                            <label for="eq-spot-price">Spot Price</label>
+                                            <input type="number" id="eq-spot-price" value="180.00" step="0.01" min="0.01">
                                         </div>
                                     </div>
                                     <div class="form-row">
                                         <div class="form-group">
-                                            <label for="irs-tenor">Tenor (Years)</label>
-                                            <input type="number" id="irs-tenor" value="5" step="0.5" min="0.5">
+                                            <label for="eq-strike">Strike</label>
+                                            <input type="number" id="eq-strike" value="185.00" step="0.01" min="0.01">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="eq-expiry">Expiry Date</label>
+                                            <input type="date" id="eq-expiry" value="">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="eq-volatility">Volatility (%)</label>
+                                            <input type="number" id="eq-volatility" value="25" step="0.1" min="0.1" max="500">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="eq-risk-free-rate">Risk-Free Rate (%)</label>
+                                            <input type="number" id="eq-risk-free-rate" value="5" step="0.01" min="-10" max="50">
+                                        </div>
+                                    </div>
+                                    <div class="form-row equity-option-only">
+                                        <div class="form-group">
+                                            <label for="eq-option-type">Option Type</label>
+                                            <select id="eq-option-type" class="fancy-select">
+                                                <option value="call">Call</option>
+                                                <option value="put">Put</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="form-row equity-forward-only" style="display: none;">
+                                        <div class="form-group">
+                                            <label for="eq-direction">Direction</label>
+                                            <select id="eq-direction" class="fancy-select">
+                                                <option value="long">Long</option>
+                                                <option value="short">Short</option>
+                                            </select>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Greeks Toggle -->
-                            <div class="form-group greeks-toggle">
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="pricer-compute-greeks" checked>
-                                    <span class="toggle-slider"></span>
-                                </label>
-                                <span>Compute Greeks</span>
-                            </div>
-
-                            <!-- Calculate Button -->
-                            <button id="pricer-calculate-btn" class="primary-btn calculate-btn">
-                                <i class="fas fa-play"></i>
-                                <span>Calculate</span>
+                            <!-- Expand Button -->
+                            <button id="expansion-expand-btn" class="primary-btn calculate-btn">
+                                <i class="fas fa-expand-arrows-alt"></i>
+                                <span>Expand Trade</span>
                             </button>
 
                             <!-- Error Message -->
-                            <div id="pricer-error" class="pricer-error" style="display: none;"></div>
+                            <div id="expansion-error" class="pricer-error" style="display: none;"></div>
                         </div>
 
                         <!-- Results Panel -->
-                        <div class="pricer-results-panel glass">
-                            <h3><i class="fas fa-chart-bar"></i> Results</h3>
+                        <div class="trade-expansion-results-panel glass">
+                            <h3><i class="fas fa-stream"></i> Expanded Trade</h3>
 
-                            <!-- PV Display -->
-                            <div class="pv-display" id="pricer-pv-container">
-                                <div class="pv-label">Present Value</div>
-                                <div class="pv-value" id="pricer-pv">--</div>
+                            <!-- Trade Summary Card -->
+                            <div id="trade-summary-card" class="trade-summary-card" style="display: none;">
+                                <div class="trade-summary-header">
+                                    <div class="trade-summary-id">
+                                        <span class="label">Trade ID</span>
+                                        <span class="value" id="trade-id-value">--</span>
+                                    </div>
+                                    <div class="trade-summary-type">
+                                        <span class="label">Type</span>
+                                        <span class="value" id="trade-type-value">--</span>
+                                    </div>
+                                    <div class="trade-summary-status success">
+                                        <i class="fas fa-check-circle"></i>
+                                        <span>Expanded</span>
+                                    </div>
+                                </div>
+                                <div class="trade-summary-stats">
+                                    <div class="stat">
+                                        <span class="stat-label">Legs</span>
+                                        <span class="stat-value" id="trade-leg-count">0</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="stat-label">Total Cashflows</span>
+                                        <span class="stat-value" id="trade-cf-count">0</span>
+                                    </div>
+                                    <div class="stat">
+                                        <span class="stat-label">Processing Time</span>
+                                        <span class="stat-value" id="trade-processing-time">--</span>
+                                    </div>
+                                </div>
                             </div>
 
-                            <!-- Greeks Grid -->
-                            <div class="greeks-grid" id="pricer-greeks-container">
-                                <div class="greek-card">
-                                    <span class="greek-name">Delta</span>
-                                    <span class="greek-value" id="pricer-delta">--</span>
-                                </div>
-                                <div class="greek-card">
-                                    <span class="greek-name">Gamma</span>
-                                    <span class="greek-value" id="pricer-gamma">--</span>
-                                </div>
-                                <div class="greek-card">
-                                    <span class="greek-name">Vega</span>
-                                    <span class="greek-value" id="pricer-vega">--</span>
-                                </div>
-                                <div class="greek-card">
-                                    <span class="greek-name">Theta</span>
-                                    <span class="greek-value" id="pricer-theta">--</span>
-                                </div>
-                                <div class="greek-card">
-                                    <span class="greek-name">Rho</span>
-                                    <span class="greek-value" id="pricer-rho">--</span>
-                                </div>
+                            <!-- Empty State -->
+                            <div id="trade-empty-state" class="trade-empty-state">
+                                <i class="fas fa-cubes"></i>
+                                <p>Select instrument and click "Expand Trade" to see cashflows</p>
                             </div>
 
-                            <!-- Calculation Info -->
-                            <div class="calc-info" id="pricer-calc-info" style="display: none;">
-                                <span class="calc-id"></span>
-                                <span class="calc-time"></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- History Panel (Bottom) -->
-                    <div class="pricer-history-panel glass">
-                        <div class="pricer-history-header">
-                            <h3><i class="fas fa-history"></i> History</h3>
-                            <button id="pricer-clear-history" class="secondary-btn" style="display: none;">
-                                <i class="fas fa-trash"></i> Clear
-                            </button>
-                        </div>
-                        <div class="history-list horizontal" id="pricer-history">
-                            <div class="history-empty">
-                                <i class="fas fa-clock"></i>
-                                <p>No calculations yet</p>
+                            <!-- Legs Container -->
+                            <div id="legs-container" class="legs-container" style="display: none;">
+                                <!-- Leg cards will be dynamically inserted here -->
                             </div>
                         </div>
                     </div>
@@ -2356,6 +2755,151 @@
                     </div>
                 </div>
             </section>
+
+            <!-- Market Data View (market-data-viewer-webapp) -->
+            <section id="market-data-view" class="view">
+                <div class="market-data-container">
+                    <!-- Header with Controls -->
+                    <div class="market-data-header glass-card">
+                        <div class="market-data-title">
+                            <i class="fas fa-chart-area"></i>
+                            <h2>Market Data Viewer</h2>
+                            <span class="last-update-badge" id="market-last-updated">--</span>
+                        </div>
+                        <div class="market-data-actions">
+                            <!-- Currency Filter -->
+                            <div class="filter-group">
+                                <label for="market-currency-filter">Currency</label>
+                                <select id="market-currency-filter" class="filter-select">
+                                    <option value="">All</option>
+                                    <option value="USD">USD</option>
+                                    <option value="EUR">EUR</option>
+                                    <option value="JPY">JPY</option>
+                                    <option value="GBP">GBP</option>
+                                </select>
+                            </div>
+                            <!-- Rate Type Filter -->
+                            <div class="filter-group">
+                                <label for="market-type-filter">Rate Type</label>
+                                <select id="market-type-filter" class="filter-select">
+                                    <option value="">All</option>
+                                    <option value="Deposit">Deposit</option>
+                                    <option value="Swap">Swap</option>
+                                    <option value="Ois">OIS</option>
+                                    <option value="FxSpot">FX Spot</option>
+                                </select>
+                            </div>
+                            <!-- Index Filter -->
+                            <div class="filter-group">
+                                <label for="market-index-filter">Index</label>
+                                <select id="market-index-filter" class="filter-select">
+                                    <option value="">All</option>
+                                    <option value="SOFR">SOFR</option>
+                                    <option value="ESTR">ESTR</option>
+                                    <option value="TONA">TONA</option>
+                                    <option value="EURIBOR">EURIBOR</option>
+                                    <option value="TIBOR">TIBOR</option>
+                                </select>
+                            </div>
+                            <!-- Action Buttons -->
+                            <div class="action-buttons">
+                                <button class="action-btn primary" id="market-refresh-btn" title="Refresh Data">
+                                    <i class="fas fa-sync-alt"></i>
+                                    <span>Refresh</span>
+                                </button>
+                                <div class="export-dropdown">
+                                    <button class="action-btn" id="market-export-btn" title="Export Data">
+                                        <i class="fas fa-download"></i>
+                                        <span>Export</span>
+                                        <i class="fas fa-chevron-down"></i>
+                                    </button>
+                                    <div class="export-menu" id="market-export-menu">
+                                        <button class="export-option" data-format="csv">
+                                            <i class="fas fa-file-csv"></i> Export as CSV
+                                        </button>
+                                        <button class="export-option" data-format="json">
+                                            <i class="fas fa-file-code"></i> Export as JSON
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Main Content Grid -->
+                    <div class="market-data-grid">
+                        <!-- Rates Table -->
+                        <div class="rates-panel glass-card">
+                            <div class="panel-header">
+                                <h3><i class="fas fa-table"></i> Market Rates</h3>
+                                <div class="rate-stats">
+                                    <span class="stat-item">
+                                        <span class="stat-label">Total:</span>
+                                        <span class="stat-value" id="market-total-count">--</span>
+                                    </span>
+                                    <span class="stat-item">
+                                        <span class="stat-label">Stale:</span>
+                                        <span class="stat-value stale-count" id="market-stale-count">--</span>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="table-container">
+                                <table class="market-rates-table" id="market-rates-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="sortable" data-sort="id">ID <i class="fas fa-sort"></i></th>
+                                            <th class="sortable" data-sort="currency">Currency <i class="fas fa-sort"></i></th>
+                                            <th class="sortable" data-sort="tenor">Tenor <i class="fas fa-sort"></i></th>
+                                            <th class="sortable" data-sort="rateType">Type <i class="fas fa-sort"></i></th>
+                                            <th class="sortable numeric" data-sort="value">Value <i class="fas fa-sort"></i></th>
+                                            <th>Index</th>
+                                            <th>Source</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="market-rates-tbody">
+                                        <!-- Dynamically filled -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="table-placeholder" id="market-placeholder" style="display: none;">
+                                <i class="fas fa-chart-area"></i>
+                                <p>No market data available</p>
+                            </div>
+                            <div class="table-loading" id="market-loading">
+                                <div class="loading-spinner"></div>
+                                <p>Loading market data...</p>
+                            </div>
+                        </div>
+
+                        <!-- Rate Detail Panel -->
+                        <div class="detail-panel glass-card" id="market-detail-panel">
+                            <div class="panel-header">
+                                <h3><i class="fas fa-info-circle"></i> Rate Detail</h3>
+                                <button class="close-btn" id="close-detail-panel" title="Close">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div class="detail-content" id="market-detail-content">
+                                <div class="detail-placeholder">
+                                    <i class="fas fa-hand-pointer"></i>
+                                    <p>Select a rate to view details</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Conventions Section -->
+                    <div class="conventions-panel glass-card">
+                        <div class="panel-header">
+                            <h3><i class="fas fa-book"></i> Market Conventions</h3>
+                        </div>
+                        <div class="conventions-grid" id="conventions-grid">
+                            <!-- Dynamically filled -->
+                        </div>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
 
@@ -2370,17 +2914,13 @@
     <!-- Celebration Particles -->
     <div class="celebration-container" id="celebration"></div>
 
-    <!-- Configuration Injection (values replaced by server) -->
-    <script id="fb-config">
-        window.__FB_CONFIG__ = {
-            debugMode: false,
-            logLevel: 'INFO'
-        };
-    </script>
+    <!-- Configuration -->
+    <script src="config.js"></script>
 
     <!-- Libraries -->
     <script src="vendor/logger.js"></script>
     <script src="vendor/chart.umd.min.js" defer></script>
     <script src="app.js?v=4" defer></script>
+    <script src="market-data.js?v=1" defer></script>
 </body>
 </html>

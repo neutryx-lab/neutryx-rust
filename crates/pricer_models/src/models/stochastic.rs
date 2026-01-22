@@ -237,6 +237,36 @@ pub trait StochasticModel<T: Float>: Differentiable {
     fn num_factors() -> usize;
 }
 
+// ============================================================================
+// Asset Class Marker Traits
+// ============================================================================
+// These marker traits allow models to declare which asset classes they support.
+// A single model (e.g., SABR) can implement multiple markers.
+
+/// Marker trait for equity models.
+///
+/// Equity models typically simulate spot price dynamics with optional
+/// stochastic volatility. Examples: GBM, Heston, SABR.
+pub trait EquityModel<T: Float>: StochasticModel<T> {}
+
+/// Marker trait for interest rate models.
+///
+/// Rate models simulate short rate or forward rate dynamics.
+/// Examples: Hull-White, CIR, G2++, SABR (for swaption vol).
+pub trait RatesModel<T: Float>: StochasticModel<T> {}
+
+/// Marker trait for FX models.
+///
+/// FX models simulate currency pair dynamics, often with
+/// stochastic volatility. Examples: Garman-Kohlhagen, SABR.
+pub trait FxModel<T: Float>: StochasticModel<T> {}
+
+/// Marker trait for hybrid/exotic models.
+///
+/// Hybrid models combine multiple asset classes or use
+/// advanced correlation structures.
+pub trait HybridModel {}
+
 #[cfg(test)]
 mod tests {
     use super::*;

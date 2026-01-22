@@ -87,6 +87,7 @@ pub struct SubgraphEdge {
 
 /// Subgraph metadata
 #[derive(Debug, Clone, Serialize)]
+#[allow(clippy::struct_field_names)]
 pub struct SubgraphMetadata {
     pub node_count: usize,
     pub edge_count: usize,
@@ -185,11 +186,11 @@ async fn handle_socket(socket: WebSocket, state: Arc<WsAppState>) {
             match msg {
                 Message::Text(text) => match serde_json::from_str::<ClientMessage>(&text) {
                     Ok(client_msg) => {
-                        handle_client_message(client_msg, &state_clone, &mut selected_trades).await;
+                        handle_client_message(client_msg, &state_clone, &mut selected_trades);
                     }
                     Err(e) => {
                         let error_msg = ServerMessage::Error {
-                            message: format!("Invalid message format: {}", e),
+                            message: format!("Invalid message format: {e}"),
                             code: 400,
                         };
                         let _ = state_clone.broadcast_tx.send(error_msg);
@@ -212,7 +213,7 @@ async fn handle_socket(socket: WebSocket, state: Arc<WsAppState>) {
 }
 
 /// Handle client message
-async fn handle_client_message(
+fn handle_client_message(
     msg: ClientMessage,
     state: &Arc<WsAppState>,
     selected_trades: &mut HashSet<String>,
@@ -224,7 +225,7 @@ async fn handle_client_message(
             selected_trades.extend(trade_ids.iter().cloned());
 
             // Extract subgraph
-            match extract_subgraph_for_ws(&state.graph_state, &trade_ids).await {
+            match extract_subgraph_for_ws(&state.graph_state, &trade_ids) {
                 Ok(data) => {
                     let response = ServerMessage::SubgraphUpdate { data };
                     let _ = state.broadcast_tx.send(response);
@@ -242,7 +243,7 @@ async fn handle_client_message(
         }
         ClientMessage::GetFullGraph => {
             // Extract full graph
-            match extract_subgraph_for_ws(&state.graph_state, &[]).await {
+            match extract_subgraph_for_ws(&state.graph_state, &[]) {
                 Ok(data) => {
                     let response = ServerMessage::SubgraphUpdate { data };
                     let _ = state.broadcast_tx.send(response);
@@ -263,7 +264,7 @@ async fn handle_client_message(
 }
 
 /// Extract subgraph for WebSocket response
-async fn extract_subgraph_for_ws(
+fn extract_subgraph_for_ws(
     state: &Arc<GraphAppState>,
     trade_ids: &[String],
 ) -> Result<SubgraphData, ServerError> {
@@ -278,7 +279,10 @@ async fn extract_subgraph_for_ws(
         .with_capacity(5_000, 10_000);
 
     // Build trade graphs
-    let all_trade_ids: Vec<String> = portfolio.trade_ids().map(|id| id.to_string()).collect();
+    let all_trade_ids: Vec<String> = portfolio
+        .trade_ids()
+        .map(std::string::ToString::to_string)
+        .collect();
 
     let mut trade_graphs: HashMap<String, pricer_pricing::graph::ComputationGraph> = HashMap::new();
 
@@ -302,7 +306,7 @@ async fn extract_subgraph_for_ws(
             .extract_subgraph(&full_graph, trade_ids)
             .map_err(|e| match e {
                 pricer_pricing::graph::GraphError::TradeNotFound(id) => {
-                    ServerError::NotFound(format!("Trade not found: {}", id))
+                    ServerError::NotFound(format!("Trade not found: {id}"))
                 }
                 _ => ServerError::Internal(e.to_string()),
             })?
@@ -361,6 +365,7 @@ fn uuid_simple() -> String {
 }
 
 /// Simple random u16 using timing
+#[allow(clippy::cast_possible_truncation)]
 fn rand_u16() -> u16 {
     use std::time::{SystemTime, UNIX_EPOCH};
     let nanos = SystemTime::now()

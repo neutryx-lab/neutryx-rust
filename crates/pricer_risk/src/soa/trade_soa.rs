@@ -2,7 +2,7 @@
 //!
 //! Provides vectorised storage of trade parameters for batch processing.
 
-use pricer_models::instruments::PayoffType;
+use infra_master::trade::PayoffType;
 use rayon::prelude::*;
 
 use crate::portfolio::{Trade, TradeId};
@@ -179,8 +179,8 @@ impl TradeSoA {
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
+    use infra_master::trade::{ExerciseStyle, InstrumentParams, PricingInstrument, VanillaOption};
     use pricer_core::types::Currency;
-    use pricer_models::instruments::{ExerciseStyle, Instrument, InstrumentParams, VanillaOption};
 
     use super::*;
     use crate::portfolio::{CounterpartyId, NettingSetId};
@@ -190,7 +190,7 @@ mod tests {
         let option = VanillaOption::new(params, payoff, ExerciseStyle::European, 1e-6);
         Trade::new(
             TradeId::new(id),
-            Instrument::Vanilla(option),
+            PricingInstrument::Vanilla(option),
             Currency::USD,
             CounterpartyId::new("CP001"),
             NettingSetId::new("NS001"),

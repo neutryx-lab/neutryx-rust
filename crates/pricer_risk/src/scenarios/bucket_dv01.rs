@@ -13,11 +13,11 @@
 
 use std::{collections::HashMap, time::Instant};
 
-use pricer_core::{
-    market_data::curves::{CurveEnum, CurveName, CurveSet, YieldCurve},
-    types::time::Date,
+use pricer_core::types::time::Date;
+use pricer_models::{
+    instruments::rates::{price_irs, InterestRateSwap},
+    market::curves::{CurveEnum, CurveName, CurveSet, YieldCurve},
 };
-use pricer_models::instruments::rates::{price_irs, InterestRateSwap};
 #[cfg(feature = "serde")]
 use serde::Serialize;
 

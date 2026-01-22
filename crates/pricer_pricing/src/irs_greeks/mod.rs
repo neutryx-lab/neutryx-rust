@@ -48,7 +48,7 @@
 //! use pricer_pricing::irs_greeks::{BenchmarkRunner, BenchmarkConfig};
 //! use pricer_pricing::irs_greeks::xva_demo::{XvaDemoRunner, XvaDemoConfig, CreditParams};
 //! use pricer_models::instruments::rates::{InterestRateSwap, ...};
-//! use pricer_core::market_data::curves::CurveSet;
+//! use pricer_models::market::curves::CurveSet;
 //!
 //! let config = IrsGreeksConfig::default();
 //! let calculator = IrsGreeksCalculator::<f64>::new(config);

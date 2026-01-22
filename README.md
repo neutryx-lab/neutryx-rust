@@ -32,9 +32,8 @@ neutryx-rust/
 │   ├── infra_store/          # Persistence & State (SQLx, Redis, TimeScale)
 │   │
 │   │   # --- P: Pricer Layer (The Kernel) ---
-│   ├── pricer_core/          # L1: Math, Traits, Types (Stable)
-│   ├── pricer_models/        # L2: Instrument Definitions & Stochastic Models
-│   ├── pricer_optimiser/     # L2.5: Calibration, Bootstrapping & Solvers
+│   ├── pricer_core/          # L1: Math, Market Data, Bootstrapping (Stable)
+│   ├── pricer_models/        # L2: Instruments, Stochastic Models & Calibration
 │   ├── pricer_pricing/       # L3: AD Engine (Enzyme) & Monte Carlo Kernel
 │   ├── pricer_risk/          # L4: Risk Analytics, XVA & Portfolio Aggregation
 │   │
@@ -202,6 +201,8 @@ After startup, open `http://localhost:8080` in your browser.
 - **[System Design Document](docs/design/SDD.md)**: Architecture details
 - **API Docs**: `cargo doc --open` (stable crates)
 
+> **Note**: The `pricer_optimiser` crate (L2.5) was removed in 2026-01. Bootstrapping and market data provider functionality has been consolidated into `pricer_core::market_data`, and calibration engine into `pricer_models::calibration`.
+
 ## 🧪 Testing
 
 ### Unit Tests
@@ -263,9 +264,10 @@ cargo bench
 - [x] **Phase 4**: Monte Carlo kernel - path-dependent options, checkpointing
 - [x] **Phase 5**: Risk Analytics (L4) - XVA (CVA, DVA, FVA), exposure metrics, scenarios
 - [x] **Phase 6**: A-I-P-S Architecture - adapters, infra, service layers
-- [ ] **Phase 7**: Exotic Options - Barriers, Asians, Lookbacks, Digitals
-- [ ] **Phase 8**: Service Layer Enhancement - gRPC, Python bindings expansion
-- [ ] **Phase 9**: Production hardening - docs, benchmarks, CI/CD
+- [x] **Phase 7**: Architecture Refactoring - pricer_optimiser removal, infra_master consolidation
+- [ ] **Phase 8**: Exotic Options - Barriers, Asians, Lookbacks, Digitals
+- [ ] **Phase 9**: Service Layer Enhancement - gRPC, Python bindings expansion
+- [ ] **Phase 10**: Production hardening - docs, benchmarks, CI/CD
 
 ## 📊 Completed Specifications
 
@@ -278,8 +280,18 @@ cargo bench
 | market-data-structures | Yield curves and volatility surfaces | 2025-12 |
 | instrument-definitions | Financial instrument definitions | 2025-12 |
 | monte-carlo-kernel-enzyme | Monte Carlo pricing kernel | 2026-01 |
+| service-layer-rename | Crate renaming (kernel→pricing, xva→risk) | 2026-01 |
 | stochastic-models | Heston, SABR, Hull-White stochastic models | 2026-01 |
 | enzyme-autodiff-integration | Enzyme `#[autodiff]` macro integration | 2026-01 |
+| frictional-bank | FrictionalBank demo system (TUI, Web, Workflows) | 2026-01 |
+| frictionalbank-irs-bootstrap-risk | IRS bootstrapping and risk workflows | 2026-01 |
+| frictional-bank-webapp-polish | Web dashboard UX improvements | 2026-01 |
+| frictionalbank-webapp-pricer | Web dashboard pricer integration | 2026-01 |
+| advanced-sensitivity-webapp | Advanced sensitivity analysis for web dashboard | 2026-01 |
+| codebase-cleanup-optimisation | Codebase cleanup and optimisation | 2026-01 |
+| portfolio-graph-optimisation | Portfolio Graph REST API and WebSocket handlers | 2026-01 |
+| infra-primitives-migration | Financial primitives migration to infra_master | 2026-01 |
+| model-architecture-refactoring | pricer_optimiser removal, consolidation | 2026-01 |
 
 ## 📊 Performance Targets
 
@@ -314,4 +326,4 @@ cargo test --workspace --exclude pricer_pricing
 
 ---
 
-**Status**: ✅ A-I-P-S architecture complete | ✅ Enzyme AD integration complete | ✅ Stochastic models (Heston, SABR, Hull-White) | 🚧 Exotic options in progress
+**Status**: ✅ A-I-P-S architecture complete | ✅ Enzyme AD integration complete | ✅ Stochastic models (Heston, SABR, Hull-White) | ✅ 19 specifications complete | 🚧 Core module refactoring in progress

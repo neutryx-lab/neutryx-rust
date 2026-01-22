@@ -10,10 +10,8 @@
 //!
 //! - Requirement 2.4: カーブシフト機能の拡充
 
-use pricer_core::{
-    market_data::curves::{CurveEnum, CurveName, CurveSet, YieldCurve},
-    traits::risk::ShiftType,
-};
+use pricer_core::traits::risk::ShiftType;
+use pricer_models::market::curves::{CurveEnum, CurveName, CurveSet, YieldCurve};
 #[cfg(feature = "serde")]
 use serde::Serialize;
 

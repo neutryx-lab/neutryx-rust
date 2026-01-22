@@ -8,7 +8,7 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use pricer_core::market_data::bootstrapping::{
+use pricer_models::market::calibration::bootstrapping::{
     BootstrapError, BootstrapInstrument, GenericBootstrapConfig, SequentialBootstrapper,
 };
 use serde::{Deserialize, Serialize};
@@ -1403,7 +1403,39 @@ pub async fn get_graph(
 // Task 7.2: Speed Comparison Chart API
 // =============================================================================
 
-use crate::visualisation::{BenchmarkVisualiser, SpeedComparisonData};
+// Speed comparison types (inlined from removed visualisation module)
+
+/// Speed comparison benchmark data
+struct SpeedComparisonData {
+    aad_mean_ns: f64,
+    bump_mean_ns: f64,
+    speedup_ratio: f64,
+    tenor_count: usize,
+}
+
+impl SpeedComparisonData {
+    fn new(aad_ns: f64, bump_ns: f64, tenor_count: usize) -> Self {
+        let speedup = bump_ns / aad_ns.max(1.0);
+        Self {
+            aad_mean_ns: aad_ns,
+            bump_mean_ns: bump_ns,
+            speedup_ratio: speedup,
+            tenor_count,
+        }
+    }
+
+    fn sample() -> Self {
+        Self::new(150_000.0, 2_500_000.0, 20)
+    }
+
+    fn aad_mean_us(&self) -> f64 {
+        self.aad_mean_ns / 1000.0
+    }
+
+    fn bump_mean_us(&self) -> f64 {
+        self.bump_mean_ns / 1000.0
+    }
+}
 
 /// Query parameters for speed comparison endpoint
 #[derive(Debug, Clone, Deserialize)]
@@ -1528,29 +1560,24 @@ pub async fn get_speed_comparison(
         SpeedComparisonData::sample()
     };
 
-    // Generate Chart.js compatible response
-    let visualiser = BenchmarkVisualiser::new();
-    let chartjs = visualiser.to_chartjs_json(&data);
-
+    // Generate Chart.js compatible response directly
     Json(SpeedComparisonResponse {
-        chart_type: chartjs.chart_type,
+        chart_type: "bar".to_string(),
         data: SpeedComparisonChartData {
-            labels: chartjs.data.labels,
-            datasets: chartjs
-                .data
-                .datasets
-                .into_iter()
-                .map(|ds| SpeedComparisonDataset {
-                    label: ds.label,
-                    data: ds.data,
-                    background_color: ds.background_color,
-                })
-                .collect(),
+            labels: vec!["AAD".to_string(), "Bump".to_string()],
+            datasets: vec![SpeedComparisonDataset {
+                label: "Computation Time (μs)".to_string(),
+                data: vec![data.aad_mean_us(), data.bump_mean_us()],
+                background_color: vec![
+                    "rgba(54, 162, 235, 0.8)".to_string(),
+                    "rgba(255, 99, 132, 0.8)".to_string(),
+                ],
+            }],
         },
         options: SpeedComparisonChartOptions {
             title: SpeedComparisonTitleOptions {
-                display: chartjs.options.title.display,
-                text: chartjs.options.title.text,
+                display: true,
+                text: format!("AAD vs Bump: {:.1}x faster", data.speedup_ratio),
             },
         },
         benchmark: SpeedComparisonBenchmarkData {
@@ -4642,7 +4669,7 @@ mod tests {
             assert_eq!(response.chart_type, "bar");
             assert_eq!(response.data.labels.len(), 2);
             assert_eq!(response.data.labels[0], "AAD");
-            assert_eq!(response.data.labels[1], "Bump-and-Revalue");
+            assert_eq!(response.data.labels[1], "Bump");
         }
 
         #[tokio::test]
@@ -4674,15 +4701,15 @@ mod tests {
             // Verify Chart.js structure
             assert_eq!(response.chart_type, "bar");
             assert!(response.options.title.display);
-            assert!(response.options.title.text.contains("speedup"));
+            assert!(response.options.title.text.contains("faster"));
 
             // Verify datasets
             assert_eq!(response.data.datasets.len(), 1);
             let dataset = &response.data.datasets[0];
             assert_eq!(dataset.data.len(), 2);
             assert_eq!(dataset.background_color.len(), 2);
-            assert_eq!(dataset.background_color[0], "#4CAF50"); // AAD green
-            assert_eq!(dataset.background_color[1], "#FF5722"); // Bump orange
+            assert!(dataset.background_color[0].contains("54, 162, 235")); // AAD blue
+            assert!(dataset.background_color[1].contains("255, 99, 132")); // Bump red
         }
 
         #[tokio::test]

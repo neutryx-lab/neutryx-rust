@@ -11,10 +11,8 @@
 
 use std::{collections::HashMap, time::Instant};
 
-use pricer_core::{
-    market_data::curves::{CurveEnum, CurveName, CurveSet, YieldCurve},
-    types::time::Date,
-};
+use pricer_core::types::time::Date;
+use pricer_models::market::curves::{CurveEnum, CurveName, CurveSet, YieldCurve};
 use pricer_models::instruments::rates::{price_irs, InterestRateSwap};
 use pricer_pricing::{
     greeks::{GreeksMode, GreeksResult},

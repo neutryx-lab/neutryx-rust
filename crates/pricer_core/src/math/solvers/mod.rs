@@ -10,6 +10,10 @@
 //! ### Root-Finding
 //!
 //! - [`NewtonRaphsonSolver`]: Fast quadratic convergence using derivatives
+//! - [`BacktrackingNewtonSolver`]: Newton-Raphson with Armijo line search for
+//!   improved global convergence
+//! - [`BisectionSolver`]: Simple, robust bracketing method with linear
+//!   convergence
 //! - [`BrentSolver`]: Robust bracketing method without derivative requirement
 //!
 //! ### Optimisation
@@ -50,6 +54,35 @@
 //! assert!((root - std::f64::consts::SQRT_2).abs() < 1e-10);
 //! ```
 //!
+//! ### Bisection Method
+//!
+//! ```
+//! use pricer_core::math::solvers::{BisectionSolver, SolverConfig};
+//!
+//! // Solve x³ - x - 2 = 0 in bracket [1, 2]
+//! let solver = BisectionSolver::new(SolverConfig::default());
+//!
+//! let f = |x: f64| x * x * x - x - 2.0;
+//!
+//! let root = solver.find_root(f, 1.0, 2.0).unwrap();
+//! assert!((f(root)).abs() < 1e-10);
+//! ```
+//!
+//! ### Backtracking Newton
+//!
+//! ```
+//! use pricer_core::math::solvers::{BacktrackingNewtonSolver, SolverConfig};
+//!
+//! // Solve x² - 2 = 0 with backtracking for robust convergence
+//! let solver = BacktrackingNewtonSolver::new(SolverConfig::default());
+//!
+//! let f = |x: f64| x * x - 2.0;
+//! let f_prime = |x: f64| 2.0 * x;
+//!
+//! let root = solver.find_root(f, f_prime, 10.0).unwrap(); // Works even with far initial guess
+//! assert!((root - std::f64::consts::SQRT_2).abs() < 1e-10);
+//! ```
+//!
 //! ### Nonlinear Least-Squares
 //!
 //! ```
@@ -67,12 +100,16 @@
 //! assert!((result.params[0] - 2.0).abs() < 1e-6);
 //! ```
 
+mod backtracking_newton;
+mod bisection;
 mod brent;
 mod config;
 mod levenberg_marquardt;
 mod newton_raphson;
 
 // Re-export public types at module level
+pub use backtracking_newton::BacktrackingNewtonSolver;
+pub use bisection::BisectionSolver;
 pub use brent::BrentSolver;
 pub use config::SolverConfig;
 pub use levenberg_marquardt::{LMConfig, LMResult, LevenbergMarquardtSolver};

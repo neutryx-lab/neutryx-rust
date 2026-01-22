@@ -4,10 +4,8 @@
 
 use tracing::info;
 
-use crate::Result;
-
 /// Run the check command
-pub fn run() -> Result<()> {
+pub fn run() {
     info!("Checking system configuration...\n");
 
     println!("Neutryx System Check");
@@ -30,7 +28,7 @@ pub fn run() -> Result<()> {
     // Check thread pool
     let num_threads = rayon::current_num_threads();
     println!("Parallelisation:");
-    println!("  Rayon threads: {}", num_threads);
+    println!("  Rayon threads: {num_threads}");
     println!("  CPU cores: {}", num_cpus::get());
     println!();
 
@@ -61,6 +59,4 @@ pub fn run() -> Result<()> {
     println!();
 
     println!("All checks passed!");
-
-    Ok(())
 }

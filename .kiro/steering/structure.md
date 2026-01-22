@@ -77,24 +77,49 @@ S: Service   → Execution environments and interfaces (The Outputs)
 **Location**: `crates/infra_master/src/`
 **Purpose**: Static master data and financial primitives
 **Function**: The "Source of Truth" for static finance data.
-**Scope**: Holiday calendars, Day count conventions, Counterparty/CSA data, Financial date and time primitives.
+**Scope**: Holiday calendars, Day count conventions, Counterparty/CSA data, Financial date and time primitives, Trade structures, Market conventions.
 **Structure**:
 
 ```text
-calendar.rs        → Holiday calendars (Calendar, CalendarId: Target, NewYork, Tokyo, etc.)
-day_count.rs       → Day count conventions (DayCountConvention: Act360, Act365, Thirty360, etc.)
-counterparty.rs    → Counterparty master data (CsaTerms, NettingSetConfig)
-currency.rs        → ISO 4217 currency codes (Currency enum with metadata)
-date.rs            → Financial date wrapper (Date)
-business_day.rs    → Business day conventions (BusinessDayConvention)
-tenor.rs           → Tenor definitions (Tenor, EndOfMonthRule)
-frequency.rs       → Payment frequencies (Frequency: Annual, SemiAnnual, Quarterly, etc.)
-period.rs          → Period definitions (Period)
-direction.rs       → Trade/Swap directions (TradeDirection, SwapDirection)
-rate_index.rs      → Rate index definitions (RateIndex)
-error.rs           → Error types (DateError, CurrencyError, MasterDataError)
+time/              → Time-related primitives
+  ├── calendars.rs      → Holiday calendars (Calendar, CalendarId: Target, NewYork, Tokyo)
+  ├── day_counters.rs   → Day count conventions (DayCountConvention: Act360, Act365, Thirty360)
+  ├── frequency.rs      → Payment frequencies (Frequency: Annual, SemiAnnual, Quarterly)
+  ├── period.rs         → Period definitions (Period)
+  └── types.rs          → Date type and business day conventions
+
+market/            → Market data references
+  ├── currency.rs       → ISO 4217 currency codes (Currency enum with metadata)
+  └── rate_index.rs     → Rate index definitions (RateIndex)
+
+counterparty/      → Counterparty and credit data
+  ├── csa.rs            → CSA terms (CsaTerms)
+  ├── netting_set.rs    → Netting set configuration
+  ├── credit.rs         → Credit data (hazard rates)
+  └── margin.rs         → Margin requirements
+
+trade/             → Trade representation (CF-expanded format)
+  ├── error.rs          → Trade construction errors (TradeError)
+  ├── index.rs          → Market indices (IndexType, IndexObservation)
+  ├── payoff.rs         → Payoff definitions (Fixed, Linear, VanillaOption, Digital)
+  ├── cashflow.rs       → Cashflow representation (Cashflow, CashflowType)
+  ├── leg.rs            → Trade legs (Leg, Direction, LegType)
+  ├── trade.rs          → Trade structure (Trade, TradeId, TradeMetadata, TradeType)
+  ├── instrument.rs     → Market instruments (Deposit, FRA, Futures, ParSwap)
+  ├── pricing_instrument.rs → Pricing instrument types (VanillaOption, Forward)
+  └── builder.rs        → Builder API (TradeBuilder, LegBuilder)
+
+convention/        → Market conventions
+  ├── swap.rs           → Swap conventions (SwapConvention, SwapLegConvention)
+  ├── fra.rs            → FRA conventions
+  ├── futures.rs        → Futures conventions
+  ├── capfloor.rs       → Cap/Floor conventions
+  ├── fx.rs             → FX conventions (FxConvention)
+  ├── bond.rs           → Bond conventions
+  └── cds.rs            → CDS conventions
 ```
 
+**Trade Architecture**: `Trade` → `Vec<Leg>` → `Vec<Cashflow>` (CF-expanded common format)
 **Prelude**: `infra_master::prelude` exports all commonly used types.
 
 ### infra_store
@@ -111,75 +136,87 @@ error.rs           → Error types (DateError, CurrencyError, MasterDataError)
 **Responsibility**: Pure quantitative computation. Experimental AD technology (Enzyme) confined to pricer_pricing, keeping 75% of codebase production-stable.
 
 ```text
-L1: pricer_core      → Foundation (Stable)
-L2: pricer_models    → Business Logic (Stable)
-L3: pricer_pricing   → AD Engine (Nightly + Enzyme)
-L4: pricer_risk      → Application (Stable)
+L1: pricer_core      → Foundation (Stable) - math (smoothing, interpolators, solvers), types, traits
+L2: pricer_models    → Business Logic (Stable) - instruments, market (curves, surfaces, calibration), models, schedules
+L3: pricer_pricing   → AD Engine (Nightly + Enzyme) - mc, rng, enzyme, greeks, context
+L4: pricer_risk      → Application (Stable) - portfolio, exposure, xva, scenarios
 ```
+
+> **Note**: L2.5 (`pricer_optimiser`) was removed in 2026-01. Market data functionality (curves, surfaces, bootstrapping, provider) consolidated into `pricer_models::market`, calibration engine into `pricer_models::market::calibration`.
 
 ### pricer_core (L1)
 
 **Location**: `crates/pricer_core/src/`
-**Purpose**: Math types, traits, smoothing functions, market data abstractions, trades (stable Rust)
+**Purpose**: Math types, traits, smoothing functions (stable Rust, pure foundation)
 **Structure**:
 ```text
 math/
-├── smoothing.rs    → Smooth approximations (smooth_max, smooth_indicator)
-├── interpolators/  → Interpolation methods (linear, bilinear, cubic_spline, monotonic, smooth_interp)
-└── solvers/        → Root-finding and optimisation algorithms (Newton-Raphson, Brent, Levenberg-Marquardt)
+├── smoothing.rs      → Smooth approximations (smooth_max, smooth_indicator)
+├── numeric.rs        → Numeric conversion utilities (from_f64, from_usize)
+├── distributions/    → Probability distributions (normal, bivariate_normal, chi_squared, copula)
+├── calculus/         → Numerical differentiation (finite_difference, bump_selection)
+├── utilities/        → Basic math functions (sign, clamp, lerp), combinatorics, special functions
+├── interpolators/    → Interpolation methods (linear, bilinear, cubic_spline, monotonic, smooth_interp, flat, log_linear, hermite, svi, search)
+├── solvers/          → Root-finding algorithms (Newton-Raphson, Brent, bisection, backtracking_newton)
+├── integrators/      → Numerical integration (Gauss-Legendre, Gauss-Kronrod, adaptive, Runge-Kutta)
+├── optimisers/       → Optimisation algorithms (Nelder-Mead, L-BFGS via argmin)
+├── fitting/          → Curve fitting (least_squares, gaussian)
+├── mesh/             → Grid generation (grid_1d, grid_2d)
+└── linalg/           → Linear algebra (feature-gated, nalgebra wrappers)
 
-traits/     → Priceable, Differentiable, core abstractions
+traits/     → Priceable, Differentiable, Float, core abstractions
 types/
 ├── dual.rs      → Dual numbers (num-dual) for AD
 ├── time.rs      → Date, DayCountConvention for financial calculations
 ├── currency.rs  → ISO 4217 currency codes with metadata
-└── error.rs     → Structured error types (PricingError, DateError, etc.)
-
-market_data/
-├── curves/        → Yield curve abstractions (YieldCurve trait, FlatCurve, InterpolatedCurve)
-├── surfaces/      → Volatility surface abstractions (VolatilitySurface trait, FlatVol, InterpolatedVolSurface)
-├── bootstrapping/ → Yield curve construction from OIS/Swap rates (multi-curve framework)
-├── provider.rs    → MarketProvider for lazy market data resolution (Arc-cached curves/vols)
-└── error.rs       → MarketDataError for curve/surface validation
-
-trades/
-├── instruments/   → Financial instrument definitions (equity, rates, credit, fx)
-└── schedules/     → Payment schedule generation (Frequency, Period, ScheduleBuilder)
+└── error.rs     → Structured error types (PricingError, DateError, SolverError, etc.)
 ```
 
 **Key Principles**:
 
 - Zero dependencies on other pricer_* crates, pure foundation
-- All market data structures generic over `T: Float` for AD compatibility
+- Minimal scope: math utilities, core traits, basic types
+- All numeric types generic over `T: Float` for AD compatibility
 
 ### pricer_models (L2)
 
 **Location**: `crates/pricer_models/src/`
-**Purpose**: Stochastic models and calibration (stable Rust)
+**Purpose**: Financial instruments, market data, stochastic models, calibration (stable Rust)
 **Structure**:
 
 ```text
+instruments/  → Financial instrument definitions
+  ├── equity/   → Equity options (VanillaOption, Forward)
+  ├── rates/    → Interest rate instruments (IRS, Swaption, FixedLeg, FloatingLeg)
+  ├── credit/   → Credit instruments (CDS, CDX)
+  ├── fx/       → FX instruments (FxForward, FxOption)
+  └── mod.rs    → InstrumentEnum for static dispatch
+
+market/       → Market data structures and calibration
+  ├── curves/        → Yield curves (YieldCurve trait, FlatCurve, InterpolatedCurve, CurveSet, CurveEnum)
+  ├── surfaces/      → Volatility surfaces (VolatilitySurface trait, FlatVol, InterpolatedVolSurface, FxVolatilitySurface)
+  ├── calibration/   → Model and curve calibration (bootstrapping, Heston, SABR, Hull-White calibrators)
+  │   └── bootstrapping/ → Multi-curve yield curve construction
+  ├── provider.rs    → MarketProvider for lazy market data resolution (Arc-cached)
+  └── error.rs       → MarketDataError for curve/surface validation
+
 models/       → Stochastic models with unified trait interface
   ├── equity/   → Equity models: GBM, Heston, SABR (feature-gated)
   ├── rates/    → Interest rate models: Hull-White, CIR (feature-gated)
   └── hybrid/   → Correlated multi-factor models (feature-gated)
-calibration/  → Model calibration infrastructure
-  ├── engine.rs      → CalibrationEngine (generic calibration driver)
-  ├── heston.rs      → Heston calibration (characteristic function pricing)
-  ├── sabr.rs        → SABR calibration (Hagan formula)
-  ├── hull_white.rs  → Hull-White swaption calibration
-  └── swaption_calibrator.rs → Generic swaption calibrator
+
+schedules/    → Payment schedule generation (Frequency, Period, ScheduleBuilder)
 analytical/   → Closed-form solutions (Black-Scholes, Garman-Kohlhagen)
 demo.rs       → Demo types for 3-stage rocket: ModelEnum, InstrumentEnum, CurveEnum, VolSurfaceEnum
 ```
 
 **Key Principles**:
 
-- **Re-exports from pricer_core**: `instruments` and `schedules` are re-exported from `pricer_core::trades` for backward compatibility
+- **Market data consolidation**: All market data (curves, surfaces, calibration, provider) resides in `market/` module
 - **StochasticModel Trait**: Unified interface for stochastic processes (`evolve_step`, `initial_state`, `brownian_dim`)
 - **StochasticModelEnum**: Static dispatch enum wrapping concrete models (GBM, Heston, SABR, Hull-White, CIR)
-- **CalibrationEngine**: Uses `pricer_core::math::solvers::LevenbergMarquardtSolver` for parameter optimisation
-- **Feature-Flag Models**: Each model category gated by feature (equity, rates)
+- **CalibrationEngine**: Uses `pricer_core::math::solvers` for parameter optimisation
+- **Feature-Flag Models**: Each model category gated by feature (equity, rates, credit, fx)
 - **Static Dispatch**: Enum-based dispatch for Enzyme compatibility
 
 ### pricer_pricing (L3)
@@ -508,5 +545,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-19_ — Updated service_gateway (REST + WebSocket + Portfolio Graph API), expanded infra_master (financial primitives)
+_Updated: 2026-01-21_ — pricer_core math expansion (distributions, calculus, utilities, integrators, optimisers, fitting, mesh, linalg); infra_master trade/convention modules
 _Document patterns, not file trees. New files following patterns should not require updates_

@@ -39,8 +39,9 @@ pub enum ServerError {
 impl IntoResponse for ServerError {
     fn into_response(self) -> Response {
         let (status, message) = match &self {
-            ServerError::Pricing(msg) => (StatusCode::UNPROCESSABLE_ENTITY, msg.clone()),
-            ServerError::Calibration(msg) => (StatusCode::UNPROCESSABLE_ENTITY, msg.clone()),
+            ServerError::Pricing(msg) | ServerError::Calibration(msg) => {
+                (StatusCode::UNPROCESSABLE_ENTITY, msg.clone())
+            }
             ServerError::InvalidRequest(msg) => (StatusCode::BAD_REQUEST, msg.clone()),
             ServerError::NotFound(msg) => (StatusCode::NOT_FOUND, msg.clone()),
             ServerError::Timeout(msg) => (StatusCode::GATEWAY_TIMEOUT, msg.clone()),

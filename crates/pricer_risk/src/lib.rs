@@ -80,8 +80,8 @@
 //!     NettingSet, NettingSetId, CreditParams,
 //! };
 //! use pricer_core::types::Currency;
-//! use pricer_models::instruments::{
-//!     Instrument, VanillaOption, InstrumentParams, PayoffType, ExerciseStyle,
+//! use infra_master::trade::{
+//!     PricingInstrument, VanillaOption, InstrumentParams, PayoffType, ExerciseStyle,
 //! };
 //!
 //! // Build a portfolio
@@ -98,7 +98,7 @@
 //!
 //! let trade = Trade::new(
 //!     TradeId::new("T001"),
-//!     Instrument::Vanilla(call),
+//!     PricingInstrument::Vanilla(call),
 //!     Currency::USD,
 //!     CounterpartyId::new("CP001"),
 //!     NettingSetId::new("NS001"),
@@ -131,33 +131,32 @@ pub mod xva;
 pub use exposure::ExposureCalculator;
 pub use parallel::{
     create_shared_monitor, MemoryMonitor, MemoryMonitorConfig, MemoryStats, ParallelConfig,
-    ParallelGreeksConfig, ParallelGreeksError, ParallelGreeksStats,
-    ParallelPortfolioGreeksCalculator, PortfolioGreeksResult, SharedMemoryMonitor,
-    DEFAULT_BATCH_SIZE,
+    SharedMemoryMonitor, DEFAULT_BATCH_SIZE,
 };
+// TODO: Re-enable when rates instruments are restored
+// pub use parallel::{
+//     ParallelGreeksConfig, ParallelGreeksError, ParallelGreeksStats,
+//     ParallelPortfolioGreeksCalculator, PortfolioGreeksResult,
+// };
 pub use portfolio::{
     CollateralAgreement, Counterparty, CounterpartyId, CreditParams, CreditRating, NettingSet,
     NettingSetId, Portfolio, PortfolioBuilder, PortfolioError, Trade, TradeBuilder, TradeId,
 };
 pub use scenarios::{
-    AggregationMethod, BucketDv01Calculator, BucketDv01Config, BucketDv01Entry, BucketDv01Error,
-    BucketDv01Result, BumpScenario, CurveShiftError, CurveShiftSpec, CurveShiftType, CurveShifter,
-    GreeksAggregator, GreeksByFactorConfig, GreeksByFactorError, GreeksResultByFactor,
-    IrsGreeksByFactorCalculator, KeyRateDurationEntry, KeyRateDurationResult, PortfolioGreeks,
-    PresetScenario, PresetScenarioType, RiskFactorId, RiskFactorShift, Scenario, ScenarioEngine,
-    ScenarioPnL, ScenarioResult, STANDARD_TENOR_LABELS, STANDARD_TENOR_POINTS,
+    AggregationMethod, BumpScenario, CurveShiftError, CurveShiftSpec, CurveShiftType, CurveShifter,
+    GreeksAggregator, GreeksResultByFactor, PortfolioGreeks, PresetScenario, PresetScenarioType,
+    RiskFactorId, RiskFactorShift, Scenario, ScenarioEngine, ScenarioPnL, ScenarioResult,
 };
+// TODO: Re-enable when rates instruments are restored
+// pub use scenarios::{
+//     BucketDv01Calculator, BucketDv01Config, BucketDv01Entry, BucketDv01Error,
+//     BucketDv01Result, GreeksByFactorConfig, GreeksByFactorError,
+//     IrsGreeksByFactorCalculator, KeyRateDurationEntry, KeyRateDurationResult,
+//     STANDARD_TENOR_LABELS, STANDARD_TENOR_POINTS,
+// };
 pub use soa::{ExposureSoA, TradeSoA};
 pub use xva::{
     compute_cva, compute_cva_with_survival, compute_dva, compute_dva_with_survival, compute_fba,
     compute_fca, compute_fva, generate_flat_discount_factors, CounterpartyXva, FundingParams,
     NettingSetXva, OwnCreditParams, PortfolioXva, XvaCalculator, XvaConfig, XvaError,
 };
-
-// Backward compatibility: provide deprecated alias for migration
-/// Deprecated module alias for backward compatibility.
-/// Use `pricer_risk` directly instead.
-#[deprecated(since = "0.7.0", note = "Use pricer_risk instead of pricer_risk")]
-pub mod pricer_risk {
-    pub use crate::*;
-}
