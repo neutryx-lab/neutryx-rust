@@ -26,7 +26,7 @@ use super::CounterPartyError;
 /// let id = CounterPartyId::new("CP001");
 /// assert_eq!(id.as_str(), "CP001");
 /// ```
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct CounterPartyId(String);
@@ -142,7 +142,7 @@ impl AsRef<str> for LegalEntityId {
 /// let id = NettingSetId::new("NS001");
 /// assert_eq!(id.as_str(), "NS001");
 /// ```
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct NettingSetId(String);

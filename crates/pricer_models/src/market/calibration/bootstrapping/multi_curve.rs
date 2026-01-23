@@ -41,12 +41,13 @@ use std::collections::HashMap;
 #[cfg(feature = "parallel")]
 use std::sync::Arc;
 
+use infra_master::market::RateIndex;
 use num_traits::Float;
 use pricer_core::math::numeric::from_f64;
 
 use super::{
     config::GenericBootstrapConfig, curve::BootstrappedCurve, engine::SequentialBootstrapper,
-    error::BootstrapError, instrument::BootstrapInstrument,
+    engine_error::CurveEngineError, error::BootstrapError, instrument::BootstrapInstrument,
 };
 
 /// Tenor definitions for forward curves.
@@ -111,17 +112,32 @@ impl std::fmt::Display for Tenor {
 /// A set of curves for multi-curve discounting.
 ///
 /// Contains an OIS discount curve and optional tenor-specific forward curves.
-/// This structure is immutable once created.
+/// This structure is immutable once created. Supports both tenor-based and
+/// index-based lookups for flexible curve retrieval.
 ///
 /// # Type Parameters
 ///
 /// * `T` - Floating-point type (e.g., `f64`) for AD compatibility
+///
+/// # Examples
+///
+/// ```ignore
+/// // Tenor-based lookup
+/// let forward_3m = curve_set.forward_curve(Tenor::ThreeMonth);
+///
+/// // Index-based lookup
+/// let sofr_curve = curve_set.curve_by_index(RateIndex::Sofr);
+/// ```
 #[derive(Debug, Clone)]
 pub struct CurveSet<T: Float> {
     /// OIS discount curve for discounting cash flows
     discount_curve: BootstrappedCurve<T>,
     /// Tenor-specific forward curves for projection
     forward_curves: HashMap<Tenor, BootstrappedCurve<T>>,
+    /// Index-keyed curves for direct lookup
+    index_curves: HashMap<RateIndex, BootstrappedCurve<T>>,
+    /// The rate index of the discount curve
+    discount_index: Option<RateIndex>,
 }
 
 impl<T: Float> CurveSet<T> {
@@ -138,6 +154,30 @@ impl<T: Float> CurveSet<T> {
         Self {
             discount_curve,
             forward_curves,
+            index_curves: HashMap::new(),
+            discount_index: None,
+        }
+    }
+
+    /// Create a new curve set with index mapping.
+    ///
+    /// # Arguments
+    ///
+    /// * `discount_curve` - The OIS discount curve
+    /// * `discount_index` - The rate index of the discount curve
+    /// * `forward_curves` - Tenor-specific forward curves
+    /// * `index_curves` - Index-keyed curves for direct lookup
+    pub fn with_indices(
+        discount_curve: BootstrappedCurve<T>,
+        discount_index: RateIndex,
+        forward_curves: HashMap<Tenor, BootstrappedCurve<T>>,
+        index_curves: HashMap<RateIndex, BootstrappedCurve<T>>,
+    ) -> Self {
+        Self {
+            discount_curve,
+            forward_curves,
+            index_curves,
+            discount_index: Some(discount_index),
         }
     }
 
@@ -148,11 +188,28 @@ impl<T: Float> CurveSet<T> {
         Self {
             discount_curve: curve,
             forward_curves: HashMap::new(),
+            index_curves: HashMap::new(),
+            discount_index: None,
+        }
+    }
+
+    /// Create a single-curve set with index association.
+    pub fn single_curve_with_index(curve: BootstrappedCurve<T>, index: RateIndex) -> Self {
+        let mut index_curves = HashMap::new();
+        index_curves.insert(index, curve.clone());
+        Self {
+            discount_curve: curve,
+            forward_curves: HashMap::new(),
+            index_curves,
+            discount_index: Some(index),
         }
     }
 
     /// Get the discount curve.
     pub fn discount_curve(&self) -> &BootstrappedCurve<T> { &self.discount_curve }
+
+    /// Get the discount curve's rate index if set.
+    pub fn discount_index(&self) -> Option<RateIndex> { self.discount_index }
 
     /// Get a forward curve for a specific tenor.
     ///
@@ -168,20 +225,120 @@ impl<T: Float> CurveSet<T> {
         self.forward_curves.contains_key(&tenor)
     }
 
+    /// Get a curve by rate index.
+    ///
+    /// Searches in both the index_curves map and checks the discount curve.
+    /// Returns `None` if no curve is associated with the given index.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// let sofr_curve = curve_set.curve_by_index(RateIndex::Sofr);
+    /// if let Some(curve) = sofr_curve {
+    ///     let df = curve.discount_factor(1.0)?;
+    /// }
+    /// ```
+    pub fn curve_by_index(&self, index: RateIndex) -> Option<&BootstrappedCurve<T>> {
+        // First check the index_curves map
+        if let Some(curve) = self.index_curves.get(&index) {
+            return Some(curve);
+        }
+
+        // Check if the discount curve matches
+        if self.discount_index == Some(index) {
+            return Some(&self.discount_curve);
+        }
+
+        None
+    }
+
+    /// Check if a curve exists for a given index.
+    pub fn has_curve_for_index(&self, index: RateIndex) -> bool {
+        self.index_curves.contains_key(&index) || self.discount_index == Some(index)
+    }
+
+    /// Get all rate indices that have curves.
+    pub fn indices(&self) -> Vec<RateIndex> {
+        let mut indices: Vec<_> = self.index_curves.keys().copied().collect();
+        if let Some(discount_idx) = self.discount_index {
+            if !indices.contains(&discount_idx) {
+                indices.push(discount_idx);
+            }
+        }
+        indices
+    }
+
     /// Get all available tenors.
     pub fn tenors(&self) -> Vec<Tenor> { self.forward_curves.keys().copied().collect() }
 
     /// Get the number of forward curves.
     pub fn forward_curve_count(&self) -> usize { self.forward_curves.len() }
 
+    /// Get the total number of curves (discount + forward + index).
+    pub fn total_curve_count(&self) -> usize {
+        1 + self.forward_curves.len() + self.index_curves.len()
+    }
+
     /// Check if this is a single-curve setup.
-    pub fn is_single_curve(&self) -> bool { self.forward_curves.is_empty() }
+    pub fn is_single_curve(&self) -> bool {
+        self.forward_curves.is_empty() && self.index_curves.is_empty()
+    }
+
+    /// Add an index-curve association.
+    pub fn add_index_curve(&mut self, index: RateIndex, curve: BootstrappedCurve<T>) {
+        self.index_curves.insert(index, curve);
+    }
+}
+
+/// Curve dependency specification for ordered construction.
+///
+/// Defines what curve(s) another curve depends on for discounting.
+#[derive(Debug, Clone)]
+pub struct CurveDependency {
+    /// The index of the curve being built.
+    pub index: RateIndex,
+    /// The index of the discount curve to use (if different from self).
+    pub discount_index: Option<RateIndex>,
+    /// Instruments for this curve.
+    pub tenor: Option<Tenor>,
+}
+
+impl CurveDependency {
+    /// Create a new curve dependency.
+    pub fn new(index: RateIndex) -> Self {
+        Self {
+            index,
+            discount_index: None,
+            tenor: None,
+        }
+    }
+
+    /// Set the discount curve dependency.
+    pub fn with_discount(mut self, discount_index: RateIndex) -> Self {
+        self.discount_index = Some(discount_index);
+        self
+    }
+
+    /// Set the tenor for forward curves.
+    pub fn with_tenor(mut self, tenor: Tenor) -> Self {
+        self.tenor = Some(tenor);
+        self
+    }
+
+    /// Check if this is a self-discounting curve.
+    pub fn is_self_discounting(&self) -> bool {
+        self.discount_index.is_none() || self.discount_index == Some(self.index)
+    }
 }
 
 /// Builder for multi-curve construction.
 ///
 /// Orchestrates the construction of OIS discount curves and tenor-specific
-/// forward curves using sequential bootstrapping.
+/// forward curves using sequential bootstrapping. Supports:
+///
+/// - Dependency tracking between curves
+/// - Automatic build order determination
+/// - Circular dependency detection
 ///
 /// # Type Parameters
 ///
@@ -283,6 +440,221 @@ impl<T: Float> MultiCurveBuilder<T> {
     ) -> Result<BootstrappedCurve<T>, BootstrapError> {
         let result = self.bootstrapper.bootstrap(instruments)?;
         Ok(result.curve)
+    }
+
+    /// Build curves with explicit dependency specification.
+    ///
+    /// Determines the build order automatically based on dependencies and
+    /// detects circular dependencies.
+    ///
+    /// # Arguments
+    ///
+    /// * `curve_specs` - Vector of (dependency, instruments) pairs
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(curve_set)` - Successfully built curve set with index mappings
+    /// * `Err(CurveEngineError::CircularDependency)` - If circular dependency detected
+    /// * `Err(CurveEngineError::Bootstrap)` - If bootstrapping fails
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let specs = vec![
+    ///     (CurveDependency::new(RateIndex::Sofr), ois_instruments),
+    ///     (CurveDependency::new(RateIndex::Libor3m).with_discount(RateIndex::Sofr), irs_instruments),
+    /// ];
+    /// let curve_set = builder.build_with_dependencies(&specs)?;
+    /// ```
+    pub fn build_with_dependencies(
+        &self,
+        curve_specs: &[(CurveDependency, Vec<BootstrapInstrument<T>>)],
+    ) -> Result<CurveSet<T>, CurveEngineError> {
+        // Check for circular dependencies
+        Self::check_circular_dependencies(curve_specs)?;
+
+        // Determine build order (topological sort)
+        let build_order = Self::determine_build_order(curve_specs)?;
+
+        // Build curves in dependency order
+        let mut built_curves: HashMap<RateIndex, BootstrappedCurve<T>> = HashMap::new();
+        let mut forward_curves: HashMap<Tenor, BootstrappedCurve<T>> = HashMap::new();
+        let mut discount_curve: Option<BootstrappedCurve<T>> = None;
+        let mut discount_index: Option<RateIndex> = None;
+
+        for idx in build_order {
+            let (dep, instruments) = &curve_specs[idx];
+
+            if instruments.is_empty() {
+                continue;
+            }
+
+            // Build the curve
+            let result = self
+                .bootstrapper
+                .bootstrap(instruments)
+                .map_err(CurveEngineError::Bootstrap)?;
+
+            let curve = result.curve;
+
+            // Track the first self-discounting curve as the discount curve
+            if dep.is_self_discounting() && discount_curve.is_none() {
+                discount_curve = Some(curve.clone());
+                discount_index = Some(dep.index);
+            }
+
+            // Store in appropriate collections
+            built_curves.insert(dep.index, curve.clone());
+
+            if let Some(tenor) = dep.tenor {
+                forward_curves.insert(tenor, curve);
+            }
+        }
+
+        // Use the first built curve as discount if none was designated
+        let final_discount = discount_curve.unwrap_or_else(|| {
+            built_curves
+                .values()
+                .next()
+                .cloned()
+                .expect("At least one curve must be built")
+        });
+
+        Ok(CurveSet::with_indices(
+            final_discount,
+            discount_index.unwrap_or(RateIndex::Sofr),
+            forward_curves,
+            built_curves,
+        ))
+    }
+
+    /// Check for circular dependencies in curve specifications.
+    ///
+    /// Uses depth-first search to detect cycles in the dependency graph.
+    fn check_circular_dependencies(
+        curve_specs: &[(CurveDependency, Vec<BootstrapInstrument<T>>)],
+    ) -> Result<(), CurveEngineError> {
+        // Build adjacency list
+        let mut index_to_idx: HashMap<RateIndex, usize> = HashMap::new();
+        for (i, (dep, _)) in curve_specs.iter().enumerate() {
+            index_to_idx.insert(dep.index, i);
+        }
+
+        // For each node, check for cycles using DFS
+        let n = curve_specs.len();
+        let mut visited = vec![false; n];
+        let mut rec_stack = vec![false; n];
+
+        for i in 0..n {
+            if !visited[i]
+                && Self::has_cycle_dfs(i, curve_specs, &index_to_idx, &mut visited, &mut rec_stack)
+            {
+                return Err(CurveEngineError::CircularDependency);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// DFS helper for cycle detection.
+    fn has_cycle_dfs(
+        node: usize,
+        curve_specs: &[(CurveDependency, Vec<BootstrapInstrument<T>>)],
+        index_to_idx: &HashMap<RateIndex, usize>,
+        visited: &mut [bool],
+        rec_stack: &mut [bool],
+    ) -> bool {
+        visited[node] = true;
+        rec_stack[node] = true;
+
+        let (dep, _) = &curve_specs[node];
+
+        // Check dependency
+        if let Some(disc_idx) = dep.discount_index {
+            // Skip if self-discounting
+            if disc_idx != dep.index {
+                if let Some(&neighbor) = index_to_idx.get(&disc_idx) {
+                    if !visited[neighbor] {
+                        if Self::has_cycle_dfs(
+                            neighbor,
+                            curve_specs,
+                            index_to_idx,
+                            visited,
+                            rec_stack,
+                        ) {
+                            return true;
+                        }
+                    } else if rec_stack[neighbor] {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        rec_stack[node] = false;
+        false
+    }
+
+    /// Determine the build order using topological sort.
+    ///
+    /// Self-discounting curves are built first, then curves that depend on them.
+    fn determine_build_order(
+        curve_specs: &[(CurveDependency, Vec<BootstrapInstrument<T>>)],
+    ) -> Result<Vec<usize>, CurveEngineError> {
+        let n = curve_specs.len();
+
+        // Build index mapping
+        let mut index_to_idx: HashMap<RateIndex, usize> = HashMap::new();
+        for (i, (dep, _)) in curve_specs.iter().enumerate() {
+            index_to_idx.insert(dep.index, i);
+        }
+
+        // Calculate in-degrees
+        let mut in_degree = vec![0usize; n];
+        for (i, (dep, _)) in curve_specs.iter().enumerate() {
+            if let Some(disc_idx) = dep.discount_index {
+                if disc_idx != dep.index {
+                    // Only count if dependency exists in our specs
+                    if index_to_idx.contains_key(&disc_idx) {
+                        in_degree[i] += 1;
+                    }
+                }
+            }
+        }
+
+        // Kahn's algorithm for topological sort
+        let mut queue: Vec<usize> = in_degree
+            .iter()
+            .enumerate()
+            .filter_map(|(i, &deg)| if deg == 0 { Some(i) } else { None })
+            .collect();
+
+        let mut result = Vec::with_capacity(n);
+
+        while let Some(node) = queue.pop() {
+            result.push(node);
+
+            let (dep, _) = &curve_specs[node];
+
+            // Find nodes that depend on this one
+            for (i, (other_dep, _)) in curve_specs.iter().enumerate() {
+                if let Some(disc_idx) = other_dep.discount_index {
+                    if disc_idx == dep.index && disc_idx != other_dep.index {
+                        in_degree[i] -= 1;
+                        if in_degree[i] == 0 {
+                            queue.push(i);
+                        }
+                    }
+                }
+            }
+        }
+
+        if result.len() != n {
+            // This shouldn't happen if cycle check passed
+            return Err(CurveEngineError::CircularDependency);
+        }
+
+        Ok(result)
     }
 
     /// Build a multi-curve set with parallel forward curve construction.
@@ -1135,5 +1507,294 @@ mod tests {
             let df = curve_set.discount_curve().discount_factor(1.0).unwrap();
             assert!(df > 0.0 && df < 1.0);
         }
+    }
+
+    // ========================================
+    // CurveSet Index-Based Lookup Tests
+    // ========================================
+
+    #[test]
+    fn test_curve_set_single_curve_with_index() {
+        let curve = create_test_curve();
+        let curve_set = CurveSet::single_curve_with_index(curve, RateIndex::Sofr);
+
+        assert!(curve_set.has_curve_for_index(RateIndex::Sofr));
+        assert!(!curve_set.has_curve_for_index(RateIndex::Sonia));
+        assert_eq!(curve_set.discount_index(), Some(RateIndex::Sofr));
+    }
+
+    #[test]
+    fn test_curve_set_curve_by_index() {
+        let curve = create_test_curve();
+        let curve_set = CurveSet::single_curve_with_index(curve, RateIndex::Sofr);
+
+        let found = curve_set.curve_by_index(RateIndex::Sofr);
+        assert!(found.is_some());
+
+        let df = found.unwrap().discount_factor(1.0).unwrap();
+        assert!((df - 0.97).abs() < 1e-10);
+
+        // Should return None for non-existent index
+        assert!(curve_set.curve_by_index(RateIndex::Sonia).is_none());
+    }
+
+    #[test]
+    fn test_curve_set_with_indices() {
+        let discount_curve = create_test_curve();
+        let mut index_curves = HashMap::new();
+        index_curves.insert(RateIndex::Sonia, create_test_curve());
+
+        let curve_set = CurveSet::with_indices(
+            discount_curve,
+            RateIndex::Sofr,
+            HashMap::new(),
+            index_curves,
+        );
+
+        assert!(curve_set.has_curve_for_index(RateIndex::Sofr));
+        assert!(curve_set.has_curve_for_index(RateIndex::Sonia));
+        assert!(!curve_set.has_curve_for_index(RateIndex::Tonar));
+
+        let indices = curve_set.indices();
+        assert!(indices.contains(&RateIndex::Sofr));
+        assert!(indices.contains(&RateIndex::Sonia));
+    }
+
+    #[test]
+    fn test_curve_set_total_curve_count() {
+        let discount_curve = create_test_curve();
+        let mut forward_curves = HashMap::new();
+        forward_curves.insert(Tenor::ThreeMonth, create_test_curve());
+        forward_curves.insert(Tenor::SixMonth, create_test_curve());
+
+        let mut index_curves = HashMap::new();
+        index_curves.insert(RateIndex::Sonia, create_test_curve());
+
+        let curve_set = CurveSet::with_indices(
+            discount_curve,
+            RateIndex::Sofr,
+            forward_curves,
+            index_curves,
+        );
+
+        // 1 discount + 2 forward + 1 index = 4 total
+        assert_eq!(curve_set.total_curve_count(), 4);
+    }
+
+    #[test]
+    fn test_curve_set_add_index_curve() {
+        let curve = create_test_curve();
+        let mut curve_set = CurveSet::single_curve(curve);
+
+        assert!(!curve_set.has_curve_for_index(RateIndex::Sofr));
+
+        curve_set.add_index_curve(RateIndex::Sofr, create_test_curve());
+
+        assert!(curve_set.has_curve_for_index(RateIndex::Sofr));
+    }
+
+    // ========================================
+    // CurveDependency Tests
+    // ========================================
+
+    #[test]
+    fn test_curve_dependency_new() {
+        let dep = CurveDependency::new(RateIndex::Sofr);
+        assert_eq!(dep.index, RateIndex::Sofr);
+        assert!(dep.discount_index.is_none());
+        assert!(dep.tenor.is_none());
+        assert!(dep.is_self_discounting());
+    }
+
+    #[test]
+    fn test_curve_dependency_with_discount() {
+        let dep = CurveDependency::new(RateIndex::Sonia).with_discount(RateIndex::Sofr);
+        assert_eq!(dep.index, RateIndex::Sonia);
+        assert_eq!(dep.discount_index, Some(RateIndex::Sofr));
+        assert!(!dep.is_self_discounting());
+    }
+
+    #[test]
+    fn test_curve_dependency_with_tenor() {
+        let dep = CurveDependency::new(RateIndex::Sofr).with_tenor(Tenor::ThreeMonth);
+        assert_eq!(dep.tenor, Some(Tenor::ThreeMonth));
+    }
+
+    #[test]
+    fn test_curve_dependency_self_discount_explicit() {
+        // Self-discount when discount_index == index
+        let dep = CurveDependency::new(RateIndex::Sofr).with_discount(RateIndex::Sofr);
+        assert!(dep.is_self_discounting());
+    }
+
+    // ========================================
+    // Build with Dependencies Tests
+    // ========================================
+
+    #[test]
+    fn test_build_with_dependencies_single_curve() {
+        let specs = vec![(
+            CurveDependency::new(RateIndex::Sofr),
+            vec![
+                BootstrapInstrument::ois(1.0, 0.03),
+                BootstrapInstrument::ois(2.0, 0.032),
+            ],
+        )];
+
+        let builder = MultiCurveBuilder::<f64>::with_defaults();
+        let curve_set = builder.build_with_dependencies(&specs).unwrap();
+
+        assert!(curve_set.has_curve_for_index(RateIndex::Sofr));
+        assert_eq!(curve_set.discount_index(), Some(RateIndex::Sofr));
+    }
+
+    #[test]
+    fn test_build_with_dependencies_two_independent_curves() {
+        let specs = vec![
+            (
+                CurveDependency::new(RateIndex::Sofr),
+                vec![
+                    BootstrapInstrument::ois(1.0, 0.03),
+                    BootstrapInstrument::ois(2.0, 0.032),
+                ],
+            ),
+            (
+                CurveDependency::new(RateIndex::Sonia),
+                vec![
+                    BootstrapInstrument::ois(1.0, 0.025),
+                    BootstrapInstrument::ois(2.0, 0.028),
+                ],
+            ),
+        ];
+
+        let builder = MultiCurveBuilder::<f64>::with_defaults();
+        let curve_set = builder.build_with_dependencies(&specs).unwrap();
+
+        assert!(curve_set.has_curve_for_index(RateIndex::Sofr));
+        assert!(curve_set.has_curve_for_index(RateIndex::Sonia));
+    }
+
+    #[test]
+    fn test_build_with_dependencies_dependent_curve() {
+        let specs = vec![
+            (
+                CurveDependency::new(RateIndex::Sofr),
+                vec![
+                    BootstrapInstrument::ois(1.0, 0.03),
+                    BootstrapInstrument::ois(2.0, 0.032),
+                ],
+            ),
+            (
+                CurveDependency::new(RateIndex::Sonia).with_discount(RateIndex::Sofr),
+                vec![
+                    BootstrapInstrument::irs(1.0, 0.035),
+                    BootstrapInstrument::irs(2.0, 0.037),
+                ],
+            ),
+        ];
+
+        let builder = MultiCurveBuilder::<f64>::with_defaults();
+        let curve_set = builder.build_with_dependencies(&specs).unwrap();
+
+        // Both curves should be built
+        assert!(curve_set.has_curve_for_index(RateIndex::Sofr));
+        assert!(curve_set.has_curve_for_index(RateIndex::Sonia));
+
+        // SOFR should be the discount curve
+        assert_eq!(curve_set.discount_index(), Some(RateIndex::Sofr));
+    }
+
+    #[test]
+    fn test_build_with_dependencies_circular_detection() {
+        let specs = vec![
+            (
+                CurveDependency::new(RateIndex::Sofr).with_discount(RateIndex::Sonia),
+                vec![
+                    BootstrapInstrument::ois(1.0, 0.03),
+                    BootstrapInstrument::ois(2.0, 0.032),
+                ],
+            ),
+            (
+                CurveDependency::new(RateIndex::Sonia).with_discount(RateIndex::Sofr),
+                vec![
+                    BootstrapInstrument::ois(1.0, 0.025),
+                    BootstrapInstrument::ois(2.0, 0.028),
+                ],
+            ),
+        ];
+
+        let builder = MultiCurveBuilder::<f64>::with_defaults();
+        let result = builder.build_with_dependencies(&specs);
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(
+            matches!(err, CurveEngineError::CircularDependency { .. }),
+            "Expected CircularDependency error, got: {:?}",
+            err
+        );
+    }
+
+    #[test]
+    fn test_build_with_dependencies_with_tenor() {
+        let specs = vec![
+            (
+                CurveDependency::new(RateIndex::Sofr),
+                vec![
+                    BootstrapInstrument::ois(1.0, 0.03),
+                    BootstrapInstrument::ois(2.0, 0.032),
+                ],
+            ),
+            (
+                CurveDependency::new(RateIndex::Sonia)
+                    .with_discount(RateIndex::Sofr)
+                    .with_tenor(Tenor::ThreeMonth),
+                vec![
+                    BootstrapInstrument::irs(1.0, 0.035),
+                    BootstrapInstrument::irs(2.0, 0.037),
+                ],
+            ),
+        ];
+
+        let builder = MultiCurveBuilder::<f64>::with_defaults();
+        let curve_set = builder.build_with_dependencies(&specs).unwrap();
+
+        // Should also be available by tenor
+        assert!(curve_set.has_forward_curve(Tenor::ThreeMonth));
+    }
+
+    #[test]
+    fn test_build_with_dependencies_chain() {
+        // A -> B -> C (C depends on B, B depends on A)
+        let specs = vec![
+            (
+                CurveDependency::new(RateIndex::Sofr), // A - no dependency
+                vec![
+                    BootstrapInstrument::ois(1.0, 0.03),
+                    BootstrapInstrument::ois(2.0, 0.032),
+                ],
+            ),
+            (
+                CurveDependency::new(RateIndex::Sonia).with_discount(RateIndex::Sofr), // B depends on A
+                vec![
+                    BootstrapInstrument::irs(1.0, 0.035),
+                    BootstrapInstrument::irs(2.0, 0.037),
+                ],
+            ),
+            (
+                CurveDependency::new(RateIndex::Tonar).with_discount(RateIndex::Sonia), // C depends on B
+                vec![
+                    BootstrapInstrument::irs(1.0, 0.032),
+                    BootstrapInstrument::irs(2.0, 0.034),
+                ],
+            ),
+        ];
+
+        let builder = MultiCurveBuilder::<f64>::with_defaults();
+        let curve_set = builder.build_with_dependencies(&specs).unwrap();
+
+        assert!(curve_set.has_curve_for_index(RateIndex::Sofr));
+        assert!(curve_set.has_curve_for_index(RateIndex::Sonia));
+        assert!(curve_set.has_curve_for_index(RateIndex::Tonar));
     }
 }

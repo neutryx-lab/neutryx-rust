@@ -55,9 +55,10 @@ use super::{
     LookbackOption,
 };
 use crate::{
+    ids::TradeId,
     trade::{
         convention::ConventionSet, Cashflow, CashflowType, Direction, Leg, LegType, Payoff, Trade,
-        TradeId, TradeType,
+        TradeType,
     },
     Date,
 };
@@ -1257,7 +1258,7 @@ mod tests {
             .expand_to_trade("SWAPTION-001", valuation_date(), &make_conventions())
             .unwrap();
 
-        assert_eq!(trade.id, "SWAPTION-001");
+        assert_eq!(trade.id.as_str(), "SWAPTION-001");
         assert!(trade.trade_type.is_swaption());
         assert_eq!(trade.num_legs(), 1);
         assert_eq!(trade.total_cashflows(), 1);
@@ -1302,7 +1303,7 @@ mod tests {
             .expand_to_trade("FX-SPOT-001", valuation_date(), &make_conventions())
             .unwrap();
 
-        assert_eq!(trade.id, "FX-SPOT-001");
+        assert_eq!(trade.id.as_str(), "FX-SPOT-001");
         assert_eq!(trade.trade_type, TradeType::FxForward);
         assert_eq!(trade.num_legs(), 2);
         assert_eq!(trade.total_cashflows(), 2);
@@ -1322,7 +1323,7 @@ mod tests {
             .expand_to_trade("FX-FWD-001", valuation_date(), &make_conventions())
             .unwrap();
 
-        assert_eq!(trade.id, "FX-FWD-001");
+        assert_eq!(trade.id.as_str(), "FX-FWD-001");
         assert_eq!(trade.trade_type, TradeType::FxForward);
         assert_eq!(trade.num_legs(), 2);
     }
@@ -1343,7 +1344,7 @@ mod tests {
             .expand_to_trade("FX-SWAP-001", valuation_date(), &make_conventions())
             .unwrap();
 
-        assert_eq!(trade.id, "FX-SWAP-001");
+        assert_eq!(trade.id.as_str(), "FX-SWAP-001");
         assert_eq!(trade.trade_type, TradeType::Swap);
         assert_eq!(trade.num_legs(), 4); // near pay, near receive, far pay, far receive
     }
@@ -1366,7 +1367,7 @@ mod tests {
             .expand_to_trade("EQ-FWD-001", valuation_date(), &make_conventions())
             .unwrap();
 
-        assert_eq!(trade.id, "EQ-FWD-001");
+        assert_eq!(trade.id.as_str(), "EQ-FWD-001");
         assert_eq!(trade.num_legs(), 1);
     }
 
@@ -1390,7 +1391,7 @@ mod tests {
             .expand_to_trade("EQ-OPT-001", valuation_date(), &make_conventions())
             .unwrap();
 
-        assert_eq!(trade.id, "EQ-OPT-001");
+        assert_eq!(trade.id.as_str(), "EQ-OPT-001");
         assert_eq!(trade.trade_type, TradeType::Generic);
     }
 
@@ -1415,7 +1416,7 @@ mod tests {
             .expand_to_trade("CDS-001", valuation_date(), &make_conventions())
             .unwrap();
 
-        assert_eq!(trade.id, "CDS-001");
+        assert_eq!(trade.id.as_str(), "CDS-001");
         assert_eq!(trade.trade_type, TradeType::Swap);
         assert_eq!(trade.num_legs(), 2); // premium leg and protection leg
     }
@@ -1440,7 +1441,7 @@ mod tests {
             .expand_to_trade("COMM-FWD-001", valuation_date(), &make_conventions())
             .unwrap();
 
-        assert_eq!(trade.id, "COMM-FWD-001");
+        assert_eq!(trade.id.as_str(), "COMM-FWD-001");
         assert_eq!(trade.trade_type, TradeType::FxForward);
     }
 
@@ -1461,7 +1462,7 @@ mod tests {
             .expand_to_trade("INST-001", valuation_date(), &make_conventions())
             .unwrap();
 
-        assert_eq!(trade.id, "INST-001");
+        assert_eq!(trade.id.as_str(), "INST-001");
     }
 
     #[test]
@@ -1528,7 +1529,7 @@ mod tests {
             .expand_to_trade("CAP-001", valuation_date(), &make_conventions())
             .unwrap();
 
-        assert_eq!(trade.id, "CAP-001");
+        assert_eq!(trade.id.as_str(), "CAP-001");
         assert_eq!(trade.trade_type, TradeType::CapFloor);
         assert_eq!(trade.num_legs(), 1);
     }
@@ -1551,7 +1552,7 @@ mod tests {
             .expand_to_trade("FRN-001", valuation_date(), &make_conventions())
             .unwrap();
 
-        assert_eq!(trade.id, "FRN-001");
+        assert_eq!(trade.id.as_str(), "FRN-001");
         assert!(matches!(trade.trade_type, TradeType::Bond { .. }));
         assert_eq!(trade.num_legs(), 1);
         assert!(trade.total_cashflows() >= 2); // At least coupon + principal
@@ -1573,7 +1574,7 @@ mod tests {
             .expand_to_trade("CMS-001", valuation_date(), &make_conventions())
             .unwrap();
 
-        assert_eq!(trade.id, "CMS-001");
+        assert_eq!(trade.id.as_str(), "CMS-001");
         assert_eq!(trade.trade_type, TradeType::Swap);
         // Implementation creates single leg with CMS rate cashflow
         assert!(trade.num_legs() >= 1);
@@ -1598,7 +1599,7 @@ mod tests {
             .expand_to_trade("INF-SWAP-001", valuation_date(), &make_conventions())
             .unwrap();
 
-        assert_eq!(trade.id, "INF-SWAP-001");
+        assert_eq!(trade.id.as_str(), "INF-SWAP-001");
         assert_eq!(trade.trade_type, TradeType::Swap);
         // Implementation creates single leg for inflation leg
         assert!(trade.num_legs() >= 1);
@@ -1623,7 +1624,7 @@ mod tests {
             .expand_to_trade("FX-OPT-001", valuation_date(), &make_conventions())
             .unwrap();
 
-        assert_eq!(trade.id, "FX-OPT-001");
+        assert_eq!(trade.id.as_str(), "FX-OPT-001");
         assert_eq!(trade.trade_type, TradeType::Generic);
     }
 
@@ -1655,7 +1656,7 @@ mod tests {
             .expand_to_trade("FX-BARRIER-001", valuation_date(), &make_conventions())
             .unwrap();
 
-        assert_eq!(trade.id, "FX-BARRIER-001");
+        assert_eq!(trade.id.as_str(), "FX-BARRIER-001");
         assert_eq!(trade.trade_type, TradeType::Generic);
     }
 
@@ -1680,7 +1681,7 @@ mod tests {
             .expand_to_trade("ASIAN-001", valuation_date(), &make_conventions())
             .unwrap();
 
-        assert_eq!(trade.id, "ASIAN-001");
+        assert_eq!(trade.id.as_str(), "ASIAN-001");
         assert_eq!(trade.trade_type, TradeType::Generic);
     }
 
@@ -1701,7 +1702,7 @@ mod tests {
             .expand_to_trade("EQ-SWAP-001", valuation_date(), &make_conventions())
             .unwrap();
 
-        assert_eq!(trade.id, "EQ-SWAP-001");
+        assert_eq!(trade.id.as_str(), "EQ-SWAP-001");
         assert_eq!(trade.trade_type, TradeType::Swap);
         assert_eq!(trade.num_legs(), 2); // equity leg + funding leg
     }
@@ -1724,7 +1725,7 @@ mod tests {
             .expand_to_trade("CDS-IDX-001", valuation_date(), &make_conventions())
             .unwrap();
 
-        assert_eq!(trade.id, "CDS-IDX-001");
+        assert_eq!(trade.id.as_str(), "CDS-IDX-001");
         assert_eq!(trade.trade_type, TradeType::Swap);
     }
 
@@ -1748,7 +1749,7 @@ mod tests {
             .expand_to_trade("COMM-SWAP-001", valuation_date(), &make_conventions())
             .unwrap();
 
-        assert_eq!(trade.id, "COMM-SWAP-001");
+        assert_eq!(trade.id.as_str(), "COMM-SWAP-001");
         assert_eq!(trade.trade_type, TradeType::Swap);
         assert_eq!(trade.num_legs(), 2); // fixed + floating
     }
@@ -1774,7 +1775,7 @@ mod tests {
             .expand_to_trade("COMM-OPT-001", valuation_date(), &make_conventions())
             .unwrap();
 
-        assert_eq!(trade.id, "COMM-OPT-001");
+        assert_eq!(trade.id.as_str(), "COMM-OPT-001");
         assert_eq!(trade.trade_type, TradeType::Generic);
     }
 
@@ -1920,7 +1921,7 @@ mod tests {
             .expand_to_trade("ASIAN-001", valuation_date(), &make_conventions())
             .unwrap();
 
-        assert_eq!(trade.id, "ASIAN-001");
+        assert_eq!(trade.id.as_str(), "ASIAN-001");
     }
 
     #[test]

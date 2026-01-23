@@ -6,10 +6,8 @@ use super::{
     cashflow::Cashflow,
     leg::{Leg, LegType},
 };
+use crate::ids::{BookId, CounterpartyId, IssuerId, PortfolioId, TradeId};
 use crate::Date;
-
-/// Trade identifier type.
-pub type TradeId = String;
 
 /// Type of option exercise.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -53,7 +51,7 @@ pub enum TradeType {
     /// Bond or fixed income security.
     Bond {
         /// Issuer identifier.
-        issuer_id: Option<String>,
+        issuer_id: Option<IssuerId>,
         /// Seniority level.
         seniority: Option<String>,
     },
@@ -89,11 +87,11 @@ pub struct TradeMetadata {
     /// Date the trade was executed.
     pub trade_date: Option<Date>,
     /// Counterparty identifier.
-    pub counterparty: Option<String>,
+    pub counterparty: Option<CounterpartyId>,
     /// Portfolio identifier.
-    pub portfolio: Option<String>,
+    pub portfolio: Option<PortfolioId>,
     /// Trading book identifier.
-    pub book: Option<String>,
+    pub book: Option<BookId>,
 }
 
 impl TradeMetadata {
@@ -110,21 +108,21 @@ impl TradeMetadata {
 
     /// Sets the counterparty.
     #[must_use]
-    pub fn with_counterparty(mut self, counterparty: impl Into<String>) -> Self {
+    pub fn with_counterparty(mut self, counterparty: impl Into<CounterpartyId>) -> Self {
         self.counterparty = Some(counterparty.into());
         self
     }
 
     /// Sets the portfolio.
     #[must_use]
-    pub fn with_portfolio(mut self, portfolio: impl Into<String>) -> Self {
+    pub fn with_portfolio(mut self, portfolio: impl Into<PortfolioId>) -> Self {
         self.portfolio = Some(portfolio.into());
         self
     }
 
     /// Sets the book.
     #[must_use]
-    pub fn with_book(mut self, book: impl Into<String>) -> Self {
+    pub fn with_book(mut self, book: impl Into<BookId>) -> Self {
         self.book = Some(book.into());
         self
     }
@@ -316,7 +314,7 @@ mod tests {
     #[test]
     fn test_trade_type_is_bond() {
         let bond = TradeType::Bond {
-            issuer_id: Some("ABC".into()),
+            issuer_id: Some(IssuerId::new("ABC")),
             seniority: Some("Senior".into()),
         };
         assert!(bond.is_bond());
@@ -335,9 +333,9 @@ mod tests {
             metadata.trade_date,
             Some(Date::from_ymd(2025, 1, 1).unwrap())
         );
-        assert_eq!(metadata.counterparty, Some("Bank A".to_string()));
-        assert_eq!(metadata.portfolio, Some("Portfolio1".to_string()));
-        assert_eq!(metadata.book, Some("Trading".to_string()));
+        assert_eq!(metadata.counterparty, Some(CounterpartyId::new("Bank A")));
+        assert_eq!(metadata.portfolio, Some(PortfolioId::new("Portfolio1")));
+        assert_eq!(metadata.book, Some(BookId::new("Trading")));
     }
 
     #[test]
@@ -345,7 +343,7 @@ mod tests {
         let legs = vec![make_fixed_leg()];
         let trade = Trade::new("TRADE001", legs, TradeType::Generic);
 
-        assert_eq!(trade.id, "TRADE001");
+        assert_eq!(trade.id.as_str(), "TRADE001");
         assert_eq!(trade.num_legs(), 1);
     }
 
@@ -355,7 +353,7 @@ mod tests {
         let metadata = TradeMetadata::new().with_counterparty("Bank B");
         let trade = Trade::with_metadata("TRADE002", legs, TradeType::Generic, metadata);
 
-        assert_eq!(trade.metadata.counterparty, Some("Bank B".to_string()));
+        assert_eq!(trade.metadata.counterparty, Some(CounterpartyId::new("Bank B")));
     }
 
     #[test]

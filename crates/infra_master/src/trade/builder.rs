@@ -32,8 +32,9 @@ use super::{
     index::IndexType,
     leg::{Direction, Leg, LegType},
     payoff::Payoff,
-    trade::{Trade, TradeId, TradeMetadata, TradeType},
+    trade::{Trade, TradeMetadata, TradeType},
 };
+use crate::ids::TradeId;
 use crate::{Currency, Date, DayCounter, RateIndex};
 
 /// Builder for constructing legs from a schedule.
@@ -204,6 +205,7 @@ impl TradeBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ids::{CounterpartyId, PortfolioId};
 
     fn sample_schedule() -> Vec<Date> {
         vec![
@@ -287,7 +289,7 @@ mod tests {
         let builder = TradeBuilder::new("TRADE001");
         let trade = builder.build();
 
-        assert_eq!(trade.id, "TRADE001");
+        assert_eq!(trade.id.as_str(), "TRADE001");
         assert_eq!(trade.num_legs(), 0);
     }
 
@@ -309,7 +311,7 @@ mod tests {
             .trade_type(TradeType::Swap)
             .build();
 
-        assert_eq!(trade.id, "SWAP001");
+        assert_eq!(trade.id.as_str(), "SWAP001");
         assert_eq!(trade.num_legs(), 2);
         assert!(trade.is_vanilla_swap());
     }
@@ -322,8 +324,8 @@ mod tests {
 
         let trade = TradeBuilder::new("TRADE002").metadata(metadata).build();
 
-        assert_eq!(trade.metadata.counterparty, Some("BANK01".to_string()));
-        assert_eq!(trade.metadata.portfolio, Some("RATES".to_string()));
+        assert_eq!(trade.metadata.counterparty, Some(CounterpartyId::new("BANK01")));
+        assert_eq!(trade.metadata.portfolio, Some(PortfolioId::new("RATES")));
     }
 
     #[test]

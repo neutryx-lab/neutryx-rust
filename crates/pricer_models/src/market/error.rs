@@ -100,6 +100,13 @@ pub enum MarketDataError {
         /// Description of what data is missing
         description: String,
     },
+
+    /// Feature not implemented for this curve type.
+    #[error("Feature not implemented: {feature}")]
+    NotImplemented {
+        /// Description of the feature that is not implemented
+        feature: String,
+    },
 }
 
 impl From<MarketDataError> for PricingError {

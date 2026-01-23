@@ -25,6 +25,7 @@ mod config;
 mod curve;
 mod curve_builder;
 mod curve_config;
+mod curve_engine;
 mod date_utils;
 mod definition;
 mod engine;
@@ -44,6 +45,7 @@ pub use cache::{BootstrapCache, BufferPool, CurveCache, InterpolationIndices};
 pub use config::{BootstrapInterpolation, GenericBootstrapConfig, GenericBootstrapConfigBuilder};
 pub use curve_config::{CurveConfig, CurveConfigBuilder};
 pub use curve::{BootstrappedCurve, BootstrappedCurveBuilder};
+pub use curve_engine::{CurveConstructionResult, CurveEngine, CurveEngineBuilder};
 pub use definition::{CurveDefinition, CurveInstrumentType, InstrumentSpec, InstrumentTenor};
 pub use curve_builder::{BootstrapConfig, CurveBootstrapper, InterpolationMethod};
 pub use date_utils::{DateCalculator, DateCalculatorBuilder, SpotDateConvention};
@@ -51,7 +53,7 @@ pub use engine::{CachedBootstrapper, GenericBootstrapResult, SequentialBootstrap
 pub use engine_error::{CurveEngineError, CurveParameterRepresentation};
 pub use error::BootstrapError;
 pub use instrument::{BootstrapInstrument, Frequency};
-pub use multi_curve::{CurveSet, MultiCurveBuilder, ParallelCurveSetBuilder, Tenor};
+pub use multi_curve::{CurveDependency, CurveSet, MultiCurveBuilder, ParallelCurveSetBuilder, Tenor};
 pub use result_cache::{CacheStats, CurveKey, CurveResultCache};
 pub use sensitivity::{
     BootstrapResultWithSensitivities, SensitivityBootstrapper, SensitivityVerification,

@@ -182,10 +182,10 @@ math/
 
 traits/     → Priceable, Differentiable, Float, core abstractions
 types/
-├── dual.rs      → Dual numbers (num-dual) for AD
-├── time.rs      → Date, DayCountConvention for financial calculations
-├── currency.rs  → ISO 4217 currency codes with metadata
-└── error.rs     → Structured error types (PricingError, DateError, SolverError, etc.)
+├── dual.rs          → Dual numbers (num-dual) for AD
+├── time.rs          → DayCountConvention, time_to_maturity for financial calculations
+├── currency_pair.rs → FxRate type for FX rate representation (deprecated alias: CurrencyPair)
+└── error.rs         → Structured error types (PricingError, SolverError, InterpolationError, CalibrationError)
 ```
 
 **Key Principles**:
@@ -561,5 +561,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-22_ — infra_master convention expansion (swaption, fx_option, equity, commodity, inflation, convention_set); instrument_def multi-asset catalogue with InstrumentExpander
+_Updated: 2026-01-23_ — Legacy compatibility removal: removed deprecated infra_master convention backward compatibility module; removed pricer_core/pricer_models re-exports; renamed CurrencyPair to FxRate; removed duplicate BusinessDayAdjustment/DayCount types
 _Document patterns, not file trees. New files following patterns should not require updates_

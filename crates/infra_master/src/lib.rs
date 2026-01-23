@@ -50,6 +50,7 @@
 
 // Core modules
 pub mod counterparty;
+pub mod ids;
 pub mod market;
 pub mod time;
 pub mod trade;
@@ -70,11 +71,14 @@ pub use time::{
 };
 // Trade module types
 pub use trade::{SwapDirection, TradeDirection};
+// ID types (centralised for type safety)
+pub use ids::{BookId, CounterpartyId, IssuerId, PortfolioId, TradeId};
 
 /// Prelude module for convenient imports
 pub mod prelude {
     pub use crate::{
         error::{CurrencyError, DateError, MasterDataError},
+        ids::{BookId, CounterpartyId, IssuerId, PortfolioId, TradeId},
         market::{Currency, RateIndex},
         time::{
             AccrualPeriod, BusinessDayConvention, Calendar, CalendarId, ConcreteCalendar, Date,
