@@ -55,7 +55,12 @@ pub enum CounterPartyError {
 
     /// Counterparty mismatch in netting set or ISDA agreement.
     #[error("Counterparty mismatch: expected {expected}, got {actual}")]
-    CounterpartyMismatch { expected: String, actual: String },
+    CounterpartyMismatch {
+        /// The expected counterparty identifier.
+        expected: String,
+        /// The actual counterparty identifier encountered.
+        actual: String,
+    },
 }
 
 // Integration with MasterDataError

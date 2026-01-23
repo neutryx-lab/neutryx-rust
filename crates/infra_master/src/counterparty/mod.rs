@@ -99,6 +99,7 @@ pub mod prelude {
         NettingType,
         NonNettableTrades,
         PreCalculatedExposurePath,
+        ExposurePathBuilder,
         RoundingDirection,
         RoundingRule,
         SegregationType,
@@ -108,5 +109,9 @@ pub mod prelude {
         VariationMarginAgreementId,
         VmTerms,
         CollateralCallFrequency,
+        // Cross-Book Netting
+        CrossBookNettingAgreement,
+        CrossBookNettingAgreementBuilder,
+        CrossBookNettingAgreementId,
     };
 }

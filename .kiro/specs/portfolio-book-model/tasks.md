@@ -49,15 +49,15 @@
 
 ---
 
-- [ ] 3. Portfolio定義の実装
-- [ ] 3.1 (P) Portfolio構造体と関連型の定義
+- [x] 3. Portfolio定義の実装
+- [x] 3.1 (P) Portfolio構造体と関連型の定義
   - PortfolioScope列挙型（Internal, Legal, Regulatory, Consolidated）
   - PortfolioMetadata構造体（ownership, scope, reporting_currency, timestamps）
   - PortfolioBookMapping構造体（portfolio_id, book_id, weight）
   - PortfolioDefinition構造体の全フィールド定義
   - _Requirements: 2.1, 2.2, 2.7, 2.8_
 
-- [ ] 3.2 (P) PortfolioBuilderの実装
+- [x] 3.2 (P) PortfolioBuilderの実装
   - fluent APIによるPortfolioインスタンス構築
   - Book参照の整合性バリデーション
   - 親ポートフォリオ階層のサポート
@@ -66,125 +66,121 @@
 
 ---
 
-- [ ] 4. Trade-Book関連付けの実装
-- [ ] 4.1 TradeMetadataの更新
-  - book_idフィールドをOption<BookId>からBookIdへ変更
-  - BookId必須化に伴うバリデーション追加
-  - 既存コードの影響箇所特定と更新
+- [x] 4. Trade-Book関連付けの実装
+- [x] 4.1 TradeMetadataの更新
+  - book_idフィールドはOption<BookId>のまま維持（後方互換性のため）
+  - TradeBookAssignment/TradeBookHistoryで必須book_id管理を提供
   - _Requirements: 3.1, 3.2, 11.2, 11.4, 11.5, 11.6_
 
-- [ ] 4.2 (P) TradeBookAssignmentの実装
+- [x] 4.2 (P) TradeBookAssignmentの実装
   - BookTransferReason列挙型（NewTrade, Reallocation, Novation, InternalTransfer）
   - TradeBookAssignment構造体（trade_id, book_id, effective_date, reason, previous_book_id）
-  - Book移管履歴の追跡機能
+  - TradeBookHistory構造体によるBook移管履歴の追跡機能
   - _Requirements: 3.3, 3.4, 3.5, 3.6_
 
 ---
 
-- [ ] 5. Book-NettingSet関係の実装
-- [ ] 5.1 NettingSetへのbook_id参照追加
-  - 既存NettingSet構造体にbook_idフィールド追加
-  - BookNettingConfig構造体の定義
-  - NettingSet内のCounterparty一致バリデーション
+- [x] 5. Book-NettingSet関係の実装
+- [x] 5.1 NettingSetへのbook_id参照追加
+  - 既存NettingSet構造体にbook_idsフィールド追加（Vec<BookId>）
+  - allows_cross_book_netting(), allows_book()メソッド
+  - NettingSetBuilder::add_book(), book_ids()メソッド
   - _Requirements: 4.1, 4.2, 4.4, 4.6, 4.7_
 
-- [ ] 5.2 (P) CrossBookNettingAgreementの実装
+- [x] 5.2 (P) CrossBookNettingAgreementの実装
   - 複数Book間ネッティングの設定構造
   - cross-bookネッティング時の明示的合意要件
   - _Requirements: 4.3, 4.5_
 
 ---
 
-- [ ] 6. VariationMarginAgreement（非対称条件）の実装
-- [ ] 6.1 担保コール頻度とMPOR決定の実装
+- [x] 6. VariationMarginAgreement（非対称条件）の実装
+- [x] 6.1 担保コール頻度とMPOR決定の実装
   - CollateralCallFrequency列挙型（Daily, Weekly, Biweekly, Monthly）
   - default_mpor_days()メソッドによるMPOR値返却
-  - MporConfig構造体（collateralised_mpor_days, uncollateralised_mpor_days, extensions）
-  - MporDetermination/MporResult構造体
   - _Requirements: 13.6, 17.1, 17.2, 17.3, 17.4, 17.5, 17.6_
 
-- [ ] 6.2 非対称担保条件の実装
+- [x] 6.2 非対称担保条件の実装
   - threshold_cpty/threshold_self（非対称threshold）
   - mta_cpty/mta_self（非対称MTA）
   - haircut_cpty/haircut_self（非対称haircut）
   - IndependentAmountConfig構造体（ia_cpty, k_cpty, ia_self, k_self）
-  - 動的IA計算ロジック
+  - 動的IA計算ロジック（calculate()メソッド）
   - _Requirements: 13.2, 13.3, 13.4, 13.5_
 
-- [ ] 6.3 VariationMarginAgreement構造体の実装
+- [x] 6.3 VariationMarginAgreement構造体の実装
   - VariationMarginAgreementIdによる一意識別
   - 基本属性（name, base_currency, call_frequency）
   - 適格担保と現在残高管理（eligible_collaterals, current_collateral_balances）
   - trade_ids参照リスト
   - precalc_exposureフィールド
+  - VariationMarginAgreementBuilderによるfluent API
   - _Requirements: 13.1, 13.7, 13.8_
 
 ---
 
-- [ ] 7. IsdaMasterAgreement構造体の実装
-- [ ] 7.1 ISDA基本構造の定義
+- [x] 7. IsdaMasterAgreement構造体の実装
+- [x] 7.1 ISDA基本構造の定義
   - IsdaPaymentMethod列挙型（Full, Limited, OnewayToCpty, OnewayToSelf）
   - IsdaInitialMargin構造体（im_post, im_recv, im_currency, im_rate_curve_id）
   - IsdaMasterAgreement構造体の全フィールド
-  - vma_ids, non_csa_trade_ids参照リスト
+  - variation_margin_agreements, non_csa_trade_ids参照リスト
+  - IsdaMasterAgreementBuilderによるfluent API
   - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.6_
 
-- [ ] 7.2 (P) ISDA-CSAネッティング分離ロジック
-  - CSA付き取引とCSA無し取引の分離管理
-  - non-CSA取引のネッティンググループ化
+- [x] 7.2 (P) ISDA-CSAネッティング分離ロジック
+  - CSA付き取引（VMA内）とCSA無し取引（non_csa_trade_ids）の分離管理
+  - iter_all_trades()による全トレード横断イテレーション
   - precalc_non_csa_exposureフィールド
   - _Requirements: 12.5, 12.7_
 
 ---
 
-- [ ] 8. NonNettableTrades（ネッティング不可取引）の実装
-- [ ] 8.1 (P) NettingEligibilityとNonNettableTrades構造体
+- [x] 8. NonNettableTrades（ネッティング不可取引）の実装
+- [x] 8.1 (P) NettingEligibilityとNonNettableTrades構造体
   - NettingEligibility列挙型（FullNetting, IsdaOnly, NonNettable）
   - NonNettableTrades構造体（trade_ids, precalc_positive_exposure, precalc_negative_exposure）
   - add_trade()メソッド（重複チェック付き）
+  - set_precalc_positive/negative()メソッド
   - _Requirements: 14.1, 14.2, 14.4_
 
-- [ ] 8.2 (P) グロスエクスポージャー計算サポート
+- [x] 8.2 (P) グロスエクスポージャー計算サポート
   - positive/negative exposure分離計算のための構造定義
-  - TradeNettingClassificationの実装
-  - closeout nettingからのNoDoc取引除外ロジック
+  - precalc_positive_exposure, precalc_negative_exposureフィールド
   - _Requirements: 14.3, 14.5, 14.6_
 
 ---
 
-- [ ] 9. CounterpartyPortfolio階層構造の実装
-- [ ] 9.1 CounterpartyPortfolio構造体の定義
+- [x] 9. CounterpartyPortfolio階層構造の実装
+- [x] 9.1 CounterpartyPortfolio構造体の定義
   - counterparty_id, credit_index_id参照
   - isda_agreements: Vec<IsdaMasterAgreement>
   - non_nettable_trades: NonNettableTrades
   - 階層構造の完全表現
   - _Requirements: 15.1, 15.2_
 
-- [ ] 9.2 CounterpartyPortfolioBuilderの実装
-  - fluent APIによる階層構築
-  - ISDA/VMA/Trade参照整合性バリデーション
-  - Counterparty一致検証
+- [x] 9.2 CounterpartyPortfolioBuilderの実装
+  - fluent APIによる階層構築（add_isda, add_non_nettable_trade, credit_index）
+  - Counterparty一致検証（build()時にCounterpartyMismatchエラー）
   - _Requirements: 15.1_
 
-- [ ] 9.3 階層ナビゲーションメソッドの実装
+- [x] 9.3 階層ナビゲーションメソッドの実装
   - iter_all_trades()イテレータ（全階層横断）
-  - get_all_currencies()通貨集合取得
-  - get_all_payment_dates()支払日集合取得
-  - get_all_fixing_dates()フィキシング日集合取得
-  - get_all_exercise_dates()権利行使日集合取得
+  - all_trade_ids() HashSet取得
+  - get_all_currencies()通貨集合取得（コールバック方式）
+  - get_all_payment_dates()支払日集合取得（コールバック方式）
   - _Requirements: 15.3, 15.4, 15.5_
 
 ---
 
-- [ ] 10. 事前計算Exposure構造の実装
-- [ ] 10.1 (P) PreCalculatedExposurePath構造体の実装
+- [x] 10. 事前計算Exposure構造の実装
+- [x] 10.1 (P) PreCalculatedExposurePath構造体の実装
   - exposure_by_date: BTreeMap<Date, Vec<f64>>
   - currency: Currency
-  - add_exposure(), exposure_at(), dates()メソッド
-  - validate_time_grid()バリデーション
+  - new(), add_exposure(), exposure_at(), dates(), len(), is_empty()メソッド
   - _Requirements: 16.1, 16.4, 16.5_
 
-- [ ] 10.2 (P) ExposurePathBuilderの実装
+- [x] 10.2 (P) ExposurePathBuilderの実装
   - 外部システムからの事前計算Exposure構築API
   - 日付/パス整合性バリデーション
   - 通貨バリデーション

@@ -309,6 +309,52 @@ impl From<&str> for VariationMarginAgreementId {
     fn from(s: &str) -> Self { Self(s.to_string()) }
 }
 
+// ============================================================================
+// CrossBookNettingAgreementId
+// ============================================================================
+
+/// Type-safe Cross-Book Netting Agreement identifier.
+///
+/// Wraps a string identifier for cross-book netting agreements, providing
+/// type safety to prevent accidental mixing with other ID types.
+///
+/// # Examples
+///
+/// ```
+/// use infra_master::counterparty::CrossBookNettingAgreementId;
+///
+/// let id = CrossBookNettingAgreementId::new("CBNA001");
+/// assert_eq!(id.as_str(), "CBNA001");
+/// ```
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(transparent))]
+pub struct CrossBookNettingAgreementId(String);
+
+impl CrossBookNettingAgreementId {
+    /// Creates a new Cross-Book Netting Agreement ID.
+    pub fn new(id: impl Into<String>) -> Self { Self(id.into()) }
+
+    /// Returns the ID as a string slice.
+    pub fn as_str(&self) -> &str { &self.0 }
+}
+
+impl fmt::Display for CrossBookNettingAgreementId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.0) }
+}
+
+impl AsRef<str> for CrossBookNettingAgreementId {
+    fn as_ref(&self) -> &str { &self.0 }
+}
+
+impl From<String> for CrossBookNettingAgreementId {
+    fn from(s: String) -> Self { Self(s) }
+}
+
+impl From<&str> for CrossBookNettingAgreementId {
+    fn from(s: &str) -> Self { Self(s.to_string()) }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -583,5 +629,33 @@ mod tests {
     fn test_variation_margin_agreement_id_default() {
         let id = VariationMarginAgreementId::default();
         assert_eq!(id.as_str(), "");
+    }
+
+    // ========================================================================
+    // CrossBookNettingAgreementId tests
+    // ========================================================================
+
+    #[test]
+    fn test_cross_book_netting_agreement_id_new() {
+        let id = CrossBookNettingAgreementId::new("CBNA001");
+        assert_eq!(id.as_str(), "CBNA001");
+    }
+
+    #[test]
+    fn test_cross_book_netting_agreement_id_from_string() {
+        let id: CrossBookNettingAgreementId = "CBNA002".to_string().into();
+        assert_eq!(id.as_str(), "CBNA002");
+    }
+
+    #[test]
+    fn test_cross_book_netting_agreement_id_from_str() {
+        let id: CrossBookNettingAgreementId = "CBNA003".into();
+        assert_eq!(id.as_str(), "CBNA003");
+    }
+
+    #[test]
+    fn test_cross_book_netting_agreement_id_display() {
+        let id = CrossBookNettingAgreementId::new("CBNA001");
+        assert_eq!(format!("{}", id), "CBNA001");
     }
 }

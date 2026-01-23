@@ -143,8 +143,10 @@ pub struct VariationMarginAgreement {
     haircut_cpty: f64,
     haircut_self: f64,
 
-    // Collateral
+    // Collateral (reserved for future collateral management)
+    #[allow(dead_code)]
     eligible_collaterals: Vec<EligibleCollateral>,
+    #[allow(dead_code)]
     current_collateral_balances: Vec<f64>,
 
     // Trades
@@ -411,6 +413,8 @@ pub struct IsdaMasterAgreement {
     variation_margin_agreements: Vec<VariationMarginAgreement>,
     non_csa_trade_ids: Vec<TradeId>,
     initial_margin: Option<IsdaInitialMargin>,
+    /// Pre-calculated exposure path for non-CSA trades (reserved for future use).
+    #[allow(dead_code)]
     precalc_non_csa_exposure: Option<PreCalculatedExposurePath>,
 }
 
@@ -698,6 +702,122 @@ impl PreCalculatedExposurePath {
     #[inline]
     #[must_use]
     pub fn is_empty(&self) -> bool { self.exposure_by_date.is_empty() }
+
+    /// Creates a new builder for PreCalculatedExposurePath.
+    #[must_use]
+    pub fn builder(currency: Currency, num_paths: usize) -> ExposurePathBuilder {
+        ExposurePathBuilder::new(currency, num_paths)
+    }
+}
+
+// ============================================================================
+// ExposurePathBuilder
+// ============================================================================
+
+/// Builder for [`PreCalculatedExposurePath`].
+///
+/// Provides a validated construction API for pre-calculated exposure paths,
+/// ensuring path count consistency across all dates.
+///
+/// # Examples
+///
+/// ```
+/// use infra_master::counterparty::ExposurePathBuilder;
+/// use infra_master::market::Currency;
+/// use infra_master::time::Date;
+///
+/// let date1 = Date::from_ymd(2025, 6, 30).unwrap();
+/// let date2 = Date::from_ymd(2025, 12, 31).unwrap();
+///
+/// let path = ExposurePathBuilder::new(Currency::USD, 3)
+///     .add_date_exposure(date1, vec![100.0, 200.0, 150.0])
+///     .add_date_exposure(date2, vec![120.0, 180.0, 160.0])
+///     .build()
+///     .unwrap();
+///
+/// assert_eq!(path.len(), 2);
+/// ```
+#[derive(Clone, Debug)]
+pub struct ExposurePathBuilder {
+    currency: Currency,
+    num_paths: usize,
+    exposures_by_date: std::collections::BTreeMap<Date, Vec<f64>>,
+    validation_errors: Vec<String>,
+}
+
+impl ExposurePathBuilder {
+    /// Creates a new builder with the specified currency and number of paths.
+    #[must_use]
+    pub fn new(currency: Currency, num_paths: usize) -> Self {
+        Self {
+            currency,
+            num_paths,
+            exposures_by_date: std::collections::BTreeMap::new(),
+            validation_errors: Vec::new(),
+        }
+    }
+
+    /// Adds exposure values for a specific date.
+    ///
+    /// The number of exposure values must match the `num_paths` specified
+    /// in the builder constructor.
+    #[must_use]
+    pub fn add_date_exposure(mut self, date: Date, exposures: Vec<f64>) -> Self {
+        if exposures.len() != self.num_paths {
+            self.validation_errors.push(format!(
+                "Date {}: expected {} paths, got {}",
+                date, self.num_paths, exposures.len()
+            ));
+        }
+        self.exposures_by_date.insert(date, exposures);
+        self
+    }
+
+    /// Sets the complete time grid with exposures.
+    ///
+    /// The `dates` and `exposures` vectors must have the same length.
+    /// Each exposure vector must have `num_paths` elements.
+    #[must_use]
+    pub fn with_time_grid(mut self, dates: Vec<Date>, exposures: Vec<Vec<f64>>) -> Self {
+        if dates.len() != exposures.len() {
+            self.validation_errors.push(format!(
+                "Dates/exposures length mismatch: {} dates, {} exposure vectors",
+                dates.len(), exposures.len()
+            ));
+            return self;
+        }
+
+        for (date, exp) in dates.into_iter().zip(exposures.into_iter()) {
+            if exp.len() != self.num_paths {
+                self.validation_errors.push(format!(
+                    "Date {}: expected {} paths, got {}",
+                    date, self.num_paths, exp.len()
+                ));
+            }
+            self.exposures_by_date.insert(date, exp);
+        }
+
+        self
+    }
+
+    /// Builds the PreCalculatedExposurePath.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CounterPartyError::InvalidCreditParams`] if any validation
+    /// errors occurred during construction.
+    pub fn build(self) -> Result<PreCalculatedExposurePath, CounterPartyError> {
+        if !self.validation_errors.is_empty() {
+            return Err(CounterPartyError::InvalidCreditParams(
+                format!("Exposure path validation failed: {}", self.validation_errors.join("; "))
+            ));
+        }
+
+        Ok(PreCalculatedExposurePath {
+            exposure_by_date: self.exposures_by_date,
+            currency: self.currency,
+        })
+    }
 }
 
 // ============================================================================
@@ -1077,5 +1197,92 @@ mod tests {
 
         assert!(currencies.contains(&Currency::USD));
         assert!(currencies.contains(&Currency::EUR));
+    }
+
+    // ========================================================================
+    // ExposurePathBuilder tests
+    // ========================================================================
+
+    #[test]
+    fn test_exposure_path_builder_basic() {
+        let date1 = Date::from_ymd(2025, 6, 30).unwrap();
+        let date2 = Date::from_ymd(2025, 12, 31).unwrap();
+
+        let path = ExposurePathBuilder::new(Currency::USD, 3)
+            .add_date_exposure(date1, vec![100.0, 200.0, 150.0])
+            .add_date_exposure(date2, vec![120.0, 180.0, 160.0])
+            .build()
+            .unwrap();
+
+        assert_eq!(path.len(), 2);
+        assert_eq!(path.currency(), Currency::USD);
+        assert_eq!(path.exposure_at(&date1).unwrap(), &vec![100.0, 200.0, 150.0]);
+    }
+
+    #[test]
+    fn test_exposure_path_builder_path_count_mismatch() {
+        let date1 = Date::from_ymd(2025, 6, 30).unwrap();
+        let date2 = Date::from_ymd(2025, 12, 31).unwrap();
+
+        let result = ExposurePathBuilder::new(Currency::USD, 3)
+            .add_date_exposure(date1, vec![100.0, 200.0, 150.0])
+            .add_date_exposure(date2, vec![120.0, 180.0]) // Only 2 paths, should be 3
+            .build();
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_exposure_path_builder_empty_dates() {
+        let result = ExposurePathBuilder::new(Currency::EUR, 3).build();
+
+        // Building with no dates should succeed (empty path is valid)
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_exposure_path_builder_with_time_grid() {
+        let dates = vec![
+            Date::from_ymd(2025, 3, 31).unwrap(),
+            Date::from_ymd(2025, 6, 30).unwrap(),
+            Date::from_ymd(2025, 12, 31).unwrap(),
+        ];
+
+        let exposures = vec![
+            vec![100.0, 110.0],
+            vec![120.0, 130.0],
+            vec![140.0, 150.0],
+        ];
+
+        let path = ExposurePathBuilder::new(Currency::JPY, 2)
+            .with_time_grid(dates.clone(), exposures.clone())
+            .build()
+            .unwrap();
+
+        assert_eq!(path.len(), 3);
+        for (date, exp) in dates.iter().zip(exposures.iter()) {
+            assert_eq!(path.exposure_at(date).unwrap(), exp);
+        }
+    }
+
+    #[test]
+    fn test_exposure_path_builder_date_exposure_mismatch() {
+        let dates = vec![
+            Date::from_ymd(2025, 3, 31).unwrap(),
+            Date::from_ymd(2025, 6, 30).unwrap(),
+        ];
+
+        let exposures = vec![
+            vec![100.0, 110.0],
+            vec![120.0, 130.0],
+            vec![140.0, 150.0], // 3 exposure vectors, but only 2 dates
+        ];
+
+        let result = ExposurePathBuilder::new(Currency::JPY, 2)
+            .with_time_grid(dates, exposures)
+            .build();
+
+        assert!(result.is_err());
     }
 }

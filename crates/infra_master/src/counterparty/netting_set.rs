@@ -7,7 +7,8 @@
 #![allow(clippy::return_self_not_must_use)]
 
 use crate::ids::BookId;
-use super::{Ccp, CcpId, CounterPartyError, CounterPartyId, CsaTerms, LegalEntityId, MarginTerms};
+use crate::time::Date;
+use super::{Ccp, CcpId, CounterPartyError, CounterPartyId, CrossBookNettingAgreementId, CsaTerms, LegalEntityId, MarginTerms};
 
 // ============================================================================
 // NettingType
@@ -382,6 +383,221 @@ impl NettingSetBuilder {
     }
 }
 
+// ============================================================================
+// CrossBookNettingAgreement
+// ============================================================================
+
+/// Cross-book netting agreement.
+///
+/// Defines an explicit agreement that allows netting of trades across
+/// multiple books. This is required when cross-book netting is enabled
+/// for a netting set.
+///
+/// # Requirements
+///
+/// According to the design requirements (4.3, 4.5):
+/// - Cross-book netting requires explicit configuration
+/// - Must specify at least 2 books
+/// - Optionally restricts eligible product types
+///
+/// # Examples
+///
+/// ```
+/// use infra_master::counterparty::{CrossBookNettingAgreement, CounterPartyError};
+/// use infra_master::ids::BookId;
+///
+/// let agreement = CrossBookNettingAgreement::builder("CBNA001", "CP001")
+///     .add_book("B001")
+///     .add_book("B002")
+///     .add_eligible_product("IRS")
+///     .build()
+///     .unwrap();
+///
+/// assert!(agreement.is_book_eligible(&BookId::new("B001")));
+/// assert!(agreement.is_product_eligible("IRS"));
+/// ```
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct CrossBookNettingAgreement {
+    /// Unique identifier for this agreement.
+    id: CrossBookNettingAgreementId,
+    /// Counterparty associated with this agreement.
+    counterparty_id: CounterPartyId,
+    /// Books included in this cross-book netting agreement.
+    book_ids: Vec<BookId>,
+    /// Eligible product types (empty = all products eligible).
+    eligible_products: Vec<String>,
+    /// Effective date of the agreement.
+    effective_date: Option<Date>,
+    /// Termination date of the agreement.
+    termination_date: Option<Date>,
+    /// Description of the agreement.
+    description: Option<String>,
+}
+
+impl CrossBookNettingAgreement {
+    /// Creates a new builder.
+    pub fn builder(
+        id: impl Into<CrossBookNettingAgreementId>,
+        counterparty_id: impl Into<CounterPartyId>,
+    ) -> CrossBookNettingAgreementBuilder {
+        CrossBookNettingAgreementBuilder::new(id, counterparty_id)
+    }
+
+    /// Returns the agreement ID.
+    #[inline]
+    pub fn id(&self) -> &CrossBookNettingAgreementId { &self.id }
+
+    /// Returns the counterparty ID.
+    #[inline]
+    pub fn counterparty_id(&self) -> &CounterPartyId { &self.counterparty_id }
+
+    /// Returns the book IDs in this agreement.
+    #[inline]
+    pub fn book_ids(&self) -> &[BookId] { &self.book_ids }
+
+    /// Returns the eligible products (empty = all products eligible).
+    #[inline]
+    pub fn eligible_products(&self) -> &[String] { &self.eligible_products }
+
+    /// Returns the effective date.
+    #[inline]
+    pub fn effective_date(&self) -> Option<Date> { self.effective_date }
+
+    /// Returns the termination date.
+    #[inline]
+    pub fn termination_date(&self) -> Option<Date> { self.termination_date }
+
+    /// Returns the description.
+    #[inline]
+    pub fn description(&self) -> Option<&str> { self.description.as_deref() }
+
+    /// Returns true if the specified book is included in this agreement.
+    pub fn is_book_eligible(&self, book_id: &BookId) -> bool {
+        self.book_ids.contains(book_id)
+    }
+
+    /// Returns true if the specified product is eligible for cross-book netting.
+    ///
+    /// If no products are specified, all products are eligible.
+    pub fn is_product_eligible(&self, product: &str) -> bool {
+        self.eligible_products.is_empty() || self.eligible_products.iter().any(|p| p == product)
+    }
+
+    /// Returns the number of books in this agreement.
+    #[inline]
+    pub fn book_count(&self) -> usize { self.book_ids.len() }
+}
+
+// ============================================================================
+// CrossBookNettingAgreementBuilder
+// ============================================================================
+
+/// Builder for [`CrossBookNettingAgreement`].
+pub struct CrossBookNettingAgreementBuilder {
+    id: CrossBookNettingAgreementId,
+    counterparty_id: CounterPartyId,
+    book_ids: Vec<BookId>,
+    eligible_products: Vec<String>,
+    effective_date: Option<Date>,
+    termination_date: Option<Date>,
+    description: Option<String>,
+}
+
+impl CrossBookNettingAgreementBuilder {
+    /// Creates a new builder with required fields.
+    pub fn new(
+        id: impl Into<CrossBookNettingAgreementId>,
+        counterparty_id: impl Into<CounterPartyId>,
+    ) -> Self {
+        Self {
+            id: id.into(),
+            counterparty_id: counterparty_id.into(),
+            book_ids: Vec::new(),
+            eligible_products: Vec::new(),
+            effective_date: None,
+            termination_date: None,
+            description: None,
+        }
+    }
+
+    /// Adds a book to the agreement.
+    pub fn add_book(mut self, book_id: impl Into<BookId>) -> Self {
+        let id = book_id.into();
+        if !self.book_ids.contains(&id) {
+            self.book_ids.push(id);
+        }
+        self
+    }
+
+    /// Sets the book IDs.
+    pub fn book_ids(mut self, book_ids: impl IntoIterator<Item = impl Into<BookId>>) -> Self {
+        self.book_ids = book_ids.into_iter().map(Into::into).collect();
+        self
+    }
+
+    /// Adds an eligible product type.
+    pub fn add_eligible_product(mut self, product: impl Into<String>) -> Self {
+        let p = product.into();
+        if !self.eligible_products.contains(&p) {
+            self.eligible_products.push(p);
+        }
+        self
+    }
+
+    /// Sets the eligible products.
+    pub fn eligible_products(
+        mut self,
+        products: impl IntoIterator<Item = impl Into<String>>,
+    ) -> Self {
+        self.eligible_products = products.into_iter().map(Into::into).collect();
+        self
+    }
+
+    /// Sets the effective date.
+    pub fn effective_date(mut self, date: Date) -> Self {
+        self.effective_date = Some(date);
+        self
+    }
+
+    /// Sets the termination date.
+    pub fn termination_date(mut self, date: Date) -> Self {
+        self.termination_date = Some(date);
+        self
+    }
+
+    /// Sets the description.
+    pub fn description(mut self, desc: impl Into<String>) -> Self {
+        self.description = Some(desc.into());
+        self
+    }
+
+    /// Builds the CrossBookNettingAgreement.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CounterPartyError::InvalidNettingSetId`] if fewer than 2 books
+    /// are specified, since cross-book netting requires at least 2 books.
+    pub fn build(self) -> Result<CrossBookNettingAgreement, CounterPartyError> {
+        // Cross-book netting requires at least 2 books
+        if self.book_ids.len() < 2 {
+            return Err(CounterPartyError::InvalidNettingSetId(
+                format!("Cross-book netting agreement requires at least 2 books, got {}", self.book_ids.len())
+            ));
+        }
+
+        Ok(CrossBookNettingAgreement {
+            id: self.id,
+            counterparty_id: self.counterparty_id,
+            book_ids: self.book_ids,
+            eligible_products: self.eligible_products,
+            effective_date: self.effective_date,
+            termination_date: self.termination_date,
+            description: self.description,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -660,5 +876,77 @@ mod tests {
             .unwrap();
 
         assert!(!ns.allows_cross_book_netting());
+    }
+
+    // ========================================================================
+    // CrossBookNettingAgreement tests
+    // ========================================================================
+
+    #[test]
+    fn test_cross_book_netting_agreement_builder() {
+        let agreement = CrossBookNettingAgreement::builder("CBNA001", "CP001")
+            .add_book("B001")
+            .add_book("B002")
+            .add_book("B003")
+            .effective_date(Date::from_ymd(2025, 1, 1).unwrap())
+            .build()
+            .unwrap();
+
+        assert_eq!(agreement.id().as_str(), "CBNA001");
+        assert_eq!(agreement.counterparty_id().as_str(), "CP001");
+        assert_eq!(agreement.book_ids().len(), 3);
+        assert!(agreement.is_book_eligible(&BookId::new("B001")));
+        assert!(agreement.is_book_eligible(&BookId::new("B002")));
+        assert!(!agreement.is_book_eligible(&BookId::new("B999")));
+    }
+
+    #[test]
+    fn test_cross_book_netting_agreement_requires_multiple_books() {
+        let result = CrossBookNettingAgreement::builder("CBNA001", "CP001")
+            .add_book("B001")
+            .build();
+
+        // Cross-book netting requires at least 2 books
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_cross_book_netting_agreement_dedup_books() {
+        let agreement = CrossBookNettingAgreement::builder("CBNA001", "CP001")
+            .add_book("B001")
+            .add_book("B002")
+            .add_book("B001") // Duplicate
+            .build()
+            .unwrap();
+
+        assert_eq!(agreement.book_ids().len(), 2);
+    }
+
+    #[test]
+    fn test_cross_book_netting_agreement_product_eligibility() {
+        let agreement = CrossBookNettingAgreement::builder("CBNA001", "CP001")
+            .add_book("B001")
+            .add_book("B002")
+            .add_eligible_product("IRS")
+            .add_eligible_product("CCS")
+            .build()
+            .unwrap();
+
+        assert!(agreement.is_product_eligible("IRS"));
+        assert!(agreement.is_product_eligible("CCS"));
+        assert!(!agreement.is_product_eligible("FX"));
+    }
+
+    #[test]
+    fn test_cross_book_netting_agreement_all_products_eligible_when_empty() {
+        let agreement = CrossBookNettingAgreement::builder("CBNA001", "CP001")
+            .add_book("B001")
+            .add_book("B002")
+            .build()
+            .unwrap();
+
+        // When no products specified, all products are eligible
+        assert!(agreement.is_product_eligible("IRS"));
+        assert!(agreement.is_product_eligible("FX"));
     }
 }
