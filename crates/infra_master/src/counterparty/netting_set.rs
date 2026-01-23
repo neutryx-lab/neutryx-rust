@@ -147,6 +147,213 @@ impl Default for ExposureConfig {
 }
 
 // ============================================================================
+// PfeConfidenceLevel
+// ============================================================================
+
+/// PFE (Potential Future Exposure) confidence level.
+///
+/// Standard confidence levels used in regulatory and risk management contexts.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum PfeConfidenceLevel {
+    /// 95% confidence level (regulatory standard).
+    #[default]
+    Q95,
+    /// 97.5% confidence level.
+    Q97_5,
+    /// 99% confidence level.
+    Q99,
+    /// Custom confidence level with explicit value.
+    Custom(u8),
+}
+
+impl PfeConfidenceLevel {
+    /// Returns the confidence level as a decimal (e.g., 0.95 for Q95).
+    pub fn as_f64(&self) -> f64 {
+        match self {
+            PfeConfidenceLevel::Q95 => 0.95,
+            PfeConfidenceLevel::Q97_5 => 0.975,
+            PfeConfidenceLevel::Q99 => 0.99,
+            PfeConfidenceLevel::Custom(p) => f64::from(*p) / 100.0,
+        }
+    }
+
+    /// Creates a PfeConfidenceLevel from a decimal value.
+    ///
+    /// Values are rounded to the nearest standard level if within 0.5%,
+    /// otherwise a Custom level is returned.
+    pub fn from_f64(value: f64) -> Self {
+        let clamped = value.clamp(0.0, 1.0);
+        if (clamped - 0.95).abs() < 0.005 {
+            PfeConfidenceLevel::Q95
+        } else if (clamped - 0.975).abs() < 0.005 {
+            PfeConfidenceLevel::Q97_5
+        } else if (clamped - 0.99).abs() < 0.005 {
+            PfeConfidenceLevel::Q99
+        } else {
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            PfeConfidenceLevel::Custom((clamped * 100.0).round() as u8)
+        }
+    }
+}
+
+// ============================================================================
+// ExposureAggregation
+// ============================================================================
+
+/// Exposure aggregation method.
+///
+/// Defines how exposure is aggregated across trades, netting sets, and
+/// counterparties.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum ExposureAggregation {
+    /// Gross exposure (no netting applied).
+    Gross,
+    /// Net exposure within each netting set (standard).
+    #[default]
+    NetWithinNettingSet,
+    /// Net exposure within each counterparty (cross-netting set).
+    NetWithinCounterparty,
+}
+
+impl ExposureAggregation {
+    /// Returns true if netting is applied at any level.
+    pub fn applies_netting(&self) -> bool {
+        !matches!(self, ExposureAggregation::Gross)
+    }
+}
+
+// ============================================================================
+// MporConfig
+// ============================================================================
+
+/// Margin Period of Risk (MPOR) configuration.
+///
+/// Configures the MPOR calculation parameters based on regulatory requirements.
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct MporConfig {
+    /// Base MPOR in business days (default: 10 for bilateral OTC).
+    pub base_mpor_days: u32,
+    /// Grace period for disputes in business days.
+    pub dispute_grace_days: u32,
+    /// Whether to apply extended MPOR for illiquid trades.
+    pub apply_illiquidity_extension: bool,
+    /// Illiquidity threshold for MPOR extension (days).
+    pub illiquidity_threshold_days: u32,
+}
+
+impl Default for MporConfig {
+    fn default() -> Self {
+        Self {
+            base_mpor_days: 10,
+            dispute_grace_days: 0,
+            apply_illiquidity_extension: false,
+            illiquidity_threshold_days: 20,
+        }
+    }
+}
+
+// ============================================================================
+// CollateralizedExposureConfig
+// ============================================================================
+
+/// Configuration for collateralized exposure calculations.
+///
+/// Defines parameters for EEPE (Effective Expected Positive Exposure) and
+/// collateral-adjusted exposure calculations.
+///
+/// # Examples
+///
+/// ```
+/// use infra_master::counterparty::CollateralizedExposureConfig;
+///
+/// let config = CollateralizedExposureConfig::new()
+///     .with_eepe_horizon_years(5.0)
+///     .with_effective_maturity_years(1.0)
+///     .with_collateral_volatility(0.15);
+///
+/// assert!((config.eepe_horizon_years() - 5.0).abs() < f64::EPSILON);
+/// ```
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct CollateralizedExposureConfig {
+    /// EEPE calculation horizon in years (regulatory: 5 years).
+    eepe_horizon_years: f64,
+    /// Effective maturity for regulatory purposes in years (default: 1 year).
+    effective_maturity_years: f64,
+    /// Collateral value volatility for haircut calculation.
+    collateral_volatility: f64,
+    /// Whether to apply close-out risk adjustment.
+    apply_closeout_risk: bool,
+    /// MPOR configuration.
+    mpor_config: MporConfig,
+}
+
+impl CollateralizedExposureConfig {
+    /// Creates a new configuration with default values.
+    pub fn new() -> Self { Self::default() }
+
+    /// Sets the EEPE horizon in years.
+    pub fn with_eepe_horizon_years(mut self, years: f64) -> Self {
+        self.eepe_horizon_years = years;
+        self
+    }
+
+    /// Sets the effective maturity in years.
+    pub fn with_effective_maturity_years(mut self, years: f64) -> Self {
+        self.effective_maturity_years = years;
+        self
+    }
+
+    /// Sets the collateral volatility.
+    pub fn with_collateral_volatility(mut self, vol: f64) -> Self {
+        self.collateral_volatility = vol.clamp(0.0, 1.0);
+        self
+    }
+
+    /// Sets whether to apply close-out risk adjustment.
+    pub fn with_apply_closeout_risk(mut self, apply: bool) -> Self {
+        self.apply_closeout_risk = apply;
+        self
+    }
+
+    /// Sets the MPOR configuration.
+    pub fn with_mpor_config(mut self, config: MporConfig) -> Self {
+        self.mpor_config = config;
+        self
+    }
+
+    /// Returns the EEPE horizon in years.
+    pub fn eepe_horizon_years(&self) -> f64 { self.eepe_horizon_years }
+
+    /// Returns the effective maturity in years.
+    pub fn effective_maturity_years(&self) -> f64 { self.effective_maturity_years }
+
+    /// Returns the collateral volatility.
+    pub fn collateral_volatility(&self) -> f64 { self.collateral_volatility }
+
+    /// Returns whether close-out risk is applied.
+    pub fn apply_closeout_risk(&self) -> bool { self.apply_closeout_risk }
+
+    /// Returns the MPOR configuration.
+    pub fn mpor_config(&self) -> &MporConfig { &self.mpor_config }
+}
+
+impl Default for CollateralizedExposureConfig {
+    fn default() -> Self {
+        Self {
+            eepe_horizon_years: 5.0,
+            effective_maturity_years: 1.0,
+            collateral_volatility: 0.0,
+            apply_closeout_risk: true,
+            mpor_config: MporConfig::default(),
+        }
+    }
+}
+
+// ============================================================================
 // NettingSet
 // ============================================================================
 
@@ -948,5 +1155,118 @@ mod tests {
         // When no products specified, all products are eligible
         assert!(agreement.is_product_eligible("IRS"));
         assert!(agreement.is_product_eligible("FX"));
+    }
+
+    // ========================================================================
+    // PfeConfidenceLevel tests
+    // ========================================================================
+
+    #[test]
+    fn test_pfe_confidence_level_default() {
+        assert_eq!(PfeConfidenceLevel::default(), PfeConfidenceLevel::Q95);
+    }
+
+    #[test]
+    fn test_pfe_confidence_level_as_f64() {
+        assert!((PfeConfidenceLevel::Q95.as_f64() - 0.95).abs() < f64::EPSILON);
+        assert!((PfeConfidenceLevel::Q97_5.as_f64() - 0.975).abs() < f64::EPSILON);
+        assert!((PfeConfidenceLevel::Q99.as_f64() - 0.99).abs() < f64::EPSILON);
+        assert!((PfeConfidenceLevel::Custom(90).as_f64() - 0.90).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_pfe_confidence_level_from_f64() {
+        assert_eq!(PfeConfidenceLevel::from_f64(0.95), PfeConfidenceLevel::Q95);
+        assert_eq!(PfeConfidenceLevel::from_f64(0.975), PfeConfidenceLevel::Q97_5);
+        assert_eq!(PfeConfidenceLevel::from_f64(0.99), PfeConfidenceLevel::Q99);
+        assert_eq!(PfeConfidenceLevel::from_f64(0.90), PfeConfidenceLevel::Custom(90));
+    }
+
+    #[test]
+    fn test_pfe_confidence_level_from_f64_rounding() {
+        // Values close to standard levels should snap
+        assert_eq!(PfeConfidenceLevel::from_f64(0.951), PfeConfidenceLevel::Q95);
+        assert_eq!(PfeConfidenceLevel::from_f64(0.949), PfeConfidenceLevel::Q95);
+    }
+
+    // ========================================================================
+    // ExposureAggregation tests
+    // ========================================================================
+
+    #[test]
+    fn test_exposure_aggregation_default() {
+        assert_eq!(ExposureAggregation::default(), ExposureAggregation::NetWithinNettingSet);
+    }
+
+    #[test]
+    fn test_exposure_aggregation_applies_netting() {
+        assert!(!ExposureAggregation::Gross.applies_netting());
+        assert!(ExposureAggregation::NetWithinNettingSet.applies_netting());
+        assert!(ExposureAggregation::NetWithinCounterparty.applies_netting());
+    }
+
+    // ========================================================================
+    // MporConfig tests
+    // ========================================================================
+
+    #[test]
+    fn test_mpor_config_default() {
+        let config = MporConfig::default();
+        assert_eq!(config.base_mpor_days, 10);
+        assert_eq!(config.dispute_grace_days, 0);
+        assert!(!config.apply_illiquidity_extension);
+        assert_eq!(config.illiquidity_threshold_days, 20);
+    }
+
+    // ========================================================================
+    // CollateralizedExposureConfig tests
+    // ========================================================================
+
+    #[test]
+    fn test_collateralized_exposure_config_default() {
+        let config = CollateralizedExposureConfig::default();
+        assert!((config.eepe_horizon_years() - 5.0).abs() < f64::EPSILON);
+        assert!((config.effective_maturity_years() - 1.0).abs() < f64::EPSILON);
+        assert!(config.collateral_volatility().abs() < f64::EPSILON);
+        assert!(config.apply_closeout_risk());
+    }
+
+    #[test]
+    fn test_collateralized_exposure_config_builder() {
+        let config = CollateralizedExposureConfig::new()
+            .with_eepe_horizon_years(7.0)
+            .with_effective_maturity_years(2.0)
+            .with_collateral_volatility(0.15)
+            .with_apply_closeout_risk(false);
+
+        assert!((config.eepe_horizon_years() - 7.0).abs() < f64::EPSILON);
+        assert!((config.effective_maturity_years() - 2.0).abs() < f64::EPSILON);
+        assert!((config.collateral_volatility() - 0.15).abs() < f64::EPSILON);
+        assert!(!config.apply_closeout_risk());
+    }
+
+    #[test]
+    fn test_collateralized_exposure_config_volatility_clamped() {
+        let config = CollateralizedExposureConfig::new()
+            .with_collateral_volatility(1.5);
+
+        assert!((config.collateral_volatility() - 1.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_collateralized_exposure_config_with_mpor() {
+        let mpor = MporConfig {
+            base_mpor_days: 14,
+            dispute_grace_days: 3,
+            apply_illiquidity_extension: true,
+            illiquidity_threshold_days: 30,
+        };
+
+        let config = CollateralizedExposureConfig::new()
+            .with_mpor_config(mpor);
+
+        assert_eq!(config.mpor_config().base_mpor_days, 14);
+        assert_eq!(config.mpor_config().dispute_grace_days, 3);
+        assert!(config.mpor_config().apply_illiquidity_extension);
     }
 }

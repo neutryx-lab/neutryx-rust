@@ -6,24 +6,52 @@
 use num_traits::Float;
 use pricer_core::math::numeric::from_f64;
 
-/// Interpolation method for bootstrapped curves.
+/// Bootstrap interpolation methods ordered by industry usage frequency.
 ///
 /// Determines how discount factors are interpolated between pillar points.
 /// All methods are AAD-compatible with smooth approximations.
+///
+/// # Ordering Rationale
+///
+/// Variants are ordered by industry usage frequency:
+/// 1. `LogLinear` - Most common, industry default for discount curves
+/// 2. `FlatForward` - Second most common, constant forward between pillars
+/// 3. `LinearZeroRate` - Simple linear interpolation on zero rates
+/// 4. `CubicSpline` - Smooth interpolation for presentation purposes
+/// 5. `MonotonicCubic` - Advanced method to prevent arbitrage
+///
+/// # Adding New Variants
+///
+/// When adding new interpolation methods, place them according to their
+/// expected industry usage frequency.
+///
+/// # Example
+///
+/// ```
+/// use pricer_models::market::calibration::bootstrapping::BootstrapInterpolation;
+///
+/// // LogLinear is the default (most commonly used)
+/// assert_eq!(BootstrapInterpolation::default(), BootstrapInterpolation::LogLinear);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum BootstrapInterpolation {
     /// Log-linear interpolation (default) - piecewise constant forward rates.
+    /// Most commonly used in industry for discount curve construction.
     #[default]
     LogLinear,
+    /// Flat forward interpolation - constant forward between pillars.
+    /// Second most common, useful for simple curve construction.
+    FlatForward,
     /// Linear interpolation on zero rates.
+    /// Simple and intuitive, but may produce non-smooth forwards.
     LinearZeroRate,
     /// Cubic spline interpolation on zero rates.
+    /// Produces smooth curves, primarily used for presentation.
     CubicSpline,
     /// Monotonic cubic interpolation - prevents arbitrage.
+    /// Ensures monotonicity of discount factors.
     MonotonicCubic,
-    /// Flat forward interpolation - constant forward between pillars.
-    FlatForward,
 }
 
 /// Configuration for yield curve bootstrapping.

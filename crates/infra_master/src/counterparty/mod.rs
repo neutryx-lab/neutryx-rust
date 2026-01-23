@@ -28,6 +28,7 @@
 //! assert_eq!(cp.name(), "Acme Bank");
 //! ```
 
+mod aggregation;
 mod ccp;
 mod counterparty_entity;
 mod counterparty_portfolio;
@@ -36,9 +37,12 @@ mod csa;
 mod error;
 mod ids;
 mod margin;
+mod netting_agreement;
 mod netting_set;
+mod xva_config;
 
 // Re-export all public types
+pub use aggregation::*;
 pub use ccp::*;
 pub use counterparty_entity::*;
 pub use counterparty_portfolio::*;
@@ -47,7 +51,9 @@ pub use csa::*;
 pub use error::*;
 pub use ids::*;
 pub use margin::*;
+pub use netting_agreement::*;
 pub use netting_set::*;
+pub use xva_config::*;
 
 /// Prelude for commonly used types.
 ///
@@ -80,6 +86,10 @@ pub mod prelude {
         CsaTerms,
         EligibleCollateral,
         ExposureConfig,
+        PfeConfidenceLevel,
+        ExposureAggregation,
+        MporConfig,
+        CollateralizedExposureConfig,
         // Margin
         ImModel,
         ImTerms,
@@ -113,5 +123,32 @@ pub mod prelude {
         CrossBookNettingAgreement,
         CrossBookNettingAgreementBuilder,
         CrossBookNettingAgreementId,
+        // XVA Configuration
+        XvaCalculationLevel,
+        XvaScope,
+        XvaConfig,
+        FundingConfig,
+        CapitalConfig,
+        RegulatoryCapitalMethod,
+        WrongWayRiskConfig,
+        WwrModelType,
+        // Netting Agreement
+        NettingAgreementType,
+        NettingJurisdiction,
+        NettingAgreement,
+        NettingAgreementBuilder,
+        CloseoutCalculationMethod,
+        CloseoutNetting,
+        PaymentNettingFrequency,
+        PaymentNetting,
+        CrossProductNettingEligibility,
+        // Aggregation
+        AggregationHierarchy,
+        AggregationMethod,
+        GroupingKey,
+        AggregationError,
+        AggregationConfig,
+        DrillDownPath,
+        DrillDownSegment,
     };
 }

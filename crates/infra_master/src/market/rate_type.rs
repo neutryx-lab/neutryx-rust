@@ -14,22 +14,34 @@
 
 use std::fmt;
 
-/// Classification of market rate types.
+/// Classification of market rate types grouped by asset class.
 ///
 /// Represents the different types of market rates that can be used
 /// for curve calibration and instrument mapping.
 ///
-/// # Variants
+/// # Ordering Rationale
 ///
-/// - `Deposit`: Money market deposit rate
-/// - `Fra`: Forward rate agreement
-/// - `Futures`: Interest rate futures (IMM)
-/// - `Swap`: Vanilla interest rate swap
-/// - `Ois`: Overnight index swap
-/// - `BasisSwap`: Basis swap (two floating legs)
-/// - `FxSpot`: FX spot rate
-/// - `FxForward`: FX forward rate
-/// - `Vol`: Volatility quote
+/// Variants are grouped by asset class following standard market convention:
+///
+/// 1. **Interest Rate instruments** (core curve building inputs):
+///    - `Deposit` - Money market, short-dated
+///    - `Fra` - Forward rates, short to medium
+///    - `Futures` - Exchange-traded, short to medium
+///    - `Swap` - Medium to long-dated
+///    - `Ois` - Overnight compounding, all tenors
+///    - `BasisSwap` - Multi-curve framework
+///
+/// 2. **FX instruments** (secondary):
+///    - `FxSpot` - Spot exchange rates
+///    - `FxForward` - Forward exchange rates
+///
+/// 3. **Volatility** (tertiary):
+///    - `Vol` - Implied volatility quotes
+///
+/// # Adding New Variants
+///
+/// When adding new rate types, place them within the appropriate asset class
+/// group. Within interest rates, order by typical instrument maturity.
 ///
 /// # Examples
 ///
@@ -47,23 +59,28 @@ use std::fmt;
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub enum RateType {
-    /// Money market deposit rate.
+    // === Interest Rate instruments (ordered by typical maturity) ===
+    /// Money market deposit rate (short-dated, O/N to 1Y).
     Deposit,
-    /// Forward rate agreement.
+    /// Forward rate agreement (short to medium, 1M to 2Y).
     Fra,
-    /// Interest rate futures.
+    /// Interest rate futures (exchange-traded, 3M to 2Y).
     Futures,
-    /// Vanilla interest rate swap.
+    /// Vanilla interest rate swap (medium to long, 1Y to 50Y).
     Swap,
-    /// Overnight index swap.
+    /// Overnight index swap (all tenors, primary discounting).
     Ois,
-    /// Basis swap (two floating legs).
+    /// Basis swap (two floating legs, multi-curve framework).
     BasisSwap,
+
+    // === FX instruments ===
     /// FX spot rate.
     FxSpot,
     /// FX forward rate.
     FxForward,
-    /// Volatility quote.
+
+    // === Volatility ===
+    /// Volatility quote (implied vol for options).
     Vol,
 }
 

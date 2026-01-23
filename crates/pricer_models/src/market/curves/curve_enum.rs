@@ -11,20 +11,37 @@ use num_traits::Float;
 use super::{FlatCurve, InterpolatedCurve, YieldCurve};
 use crate::market::error::MarketDataError;
 
-/// Standard curve names for the multi-curve framework.
+/// Curve names grouped by rate type and region.
 ///
 /// This enum represents the various types of yield curves used in
 /// derivatives pricing and risk management.
 ///
-/// # Variants
+/// # Ordering Rationale
 ///
-/// - `Ois`: Overnight Index Swap curve (e.g., EONIA, Fed Funds)
-/// - `Sofr`: Secured Overnight Financing Rate curve
-/// - `Tonar`: Tokyo Overnight Average Rate curve
-/// - `Euribor`: Euro Interbank Offered Rate curve
-/// - `Forward`: Generic forward curve
-/// - `Discount`: Discount curve for present value calculations
-/// - `Custom`: User-defined curve with custom name
+/// Variants are grouped by rate type and importance:
+///
+/// 1. **Overnight Risk-Free Rates** (primary discounting):
+///    - `Ois` - Generic overnight index swap
+///    - `Sofr` - USD secured overnight rate
+///    - `Tonar` - JPY overnight rate
+///
+/// 2. **Interbank Rates** (legacy, projection):
+///    - `Euribor` - EUR interbank rate
+///
+/// 3. **Functional Types** (generic):
+///    - `Forward` - Generic forward projection curve
+///    - `Discount` - Generic discounting curve
+///
+/// 4. **Extension**:
+///    - `Custom` - User-defined curve for extensibility
+///
+/// # Adding New Variants
+///
+/// When adding new curve names:
+/// - Place overnight rates near `Ois`/`Sofr`/`Tonar`
+/// - Place interbank rates near `Euribor`
+/// - Place functional types near `Forward`/`Discount`
+/// - Keep `Custom` last for extensibility
 ///
 /// # Example
 ///
@@ -39,19 +56,26 @@ use crate::market::error::MarketDataError;
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CurveName {
-    /// Overnight Index Swap curve
+    // === Overnight Risk-Free Rates (primary discounting) ===
+    /// Overnight Index Swap curve (generic OIS).
     Ois,
-    /// Secured Overnight Financing Rate curve
+    /// Secured Overnight Financing Rate curve (USD RFR).
     Sofr,
-    /// Tokyo Overnight Average Rate curve
+    /// Tokyo Overnight Average Rate curve (JPY RFR).
     Tonar,
-    /// Euro Interbank Offered Rate curve
+
+    // === Interbank Rates (legacy, projection) ===
+    /// Euro Interbank Offered Rate curve.
     Euribor,
-    /// Generic forward curve
+
+    // === Functional Types (generic) ===
+    /// Generic forward projection curve.
     Forward,
-    /// Discount curve
+    /// Discount curve for present value calculations.
     Discount,
-    /// Custom curve with user-defined name
+
+    // === Extension ===
+    /// Custom curve with user-defined name.
     Custom(&'static str),
 }
 
