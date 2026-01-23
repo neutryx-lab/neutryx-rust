@@ -1677,210 +1677,226 @@
                 </div>
             </section>
 
-            <!-- Model Calibration View -->
+            <!-- Model Calibration View (volcube-calibration-ui) -->
             <section id="model-calib-view" class="view">
                 <div class="model-calib-container">
                     <!-- Header -->
                     <div class="model-calib-header glass">
                         <div class="model-calib-title">
-                            <h2><i class="fas fa-wave-square"></i> Model Calibration</h2>
+                            <h2><i class="fas fa-wave-square"></i> VolCube Calibration</h2>
                             <p>Calibrate volatility models and visualise surfaces</p>
                         </div>
-                        <div class="vol-calib-actions">
-                            <select id="vol-calib-model" class="fancy-select">
-                                <option value="sabr">SABR</option>
-                                <option value="svi">SVI</option>
-                                <option value="heston">Heston</option>
-                                <option value="local-vol">Local Volatility</option>
-                            </select>
-                            <select id="vol-calib-asset-class" class="fancy-select">
-                                <option value="equity">Equity</option>
-                                <option value="fx">FX</option>
-                                <option value="rates">Rates (Swaption)</option>
-                            </select>
-                            <button id="vol-calib-btn" class="primary-btn">
+                        <div class="volcube-header-actions">
+                            <!-- Asset Class Tabs -->
+                            <div id="volcube-asset-tabs" class="volcube-tabs"></div>
+                            <button id="volcube-calibrate-btn" class="primary-btn">
                                 <i class="fas fa-play"></i> Calibrate
                             </button>
+                            <div class="volcube-export-btns">
+                                <button id="volcube-export-csv" class="icon-btn" title="Export CSV">
+                                    <i class="fas fa-file-csv"></i>
+                                </button>
+                                <button id="volcube-export-json" class="icon-btn" title="Export JSON">
+                                    <i class="fas fa-file-code"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Main Content Grid -->
                     <div class="model-calib-grid">
-                        <!-- Input Panel -->
+                        <!-- Left Panel: Input Forms -->
                         <div class="model-calib-input-panel glass">
-                            <h3><i class="fas fa-edit"></i> Market Quotes</h3>
-                            <div class="vol-calib-input-section">
-                                <label>Underlying</label>
-                                <select id="vol-calib-underlying" class="fancy-select">
-                                    <option value="AAPL">AAPL - Apple Inc.</option>
-                                    <option value="GOOGL">GOOGL - Alphabet</option>
-                                    <option value="MSFT">MSFT - Microsoft</option>
-                                    <option value="EURUSD">EUR/USD</option>
-                                    <option value="USDJPY">USD/JPY</option>
-                                </select>
-                            </div>
-                            <div class="vol-calib-input-section">
-                                <label>Spot Price</label>
-                                <input type="number" id="vol-calib-spot" value="185.00" step="0.01" class="fancy-input">
-                            </div>
-                            <div class="vol-calib-input-section">
-                                <label>Reference Date</label>
-                                <input type="date" id="vol-calib-date" class="fancy-input">
-                            </div>
+                            <!-- Swaption Panel -->
+                            <div id="volcube-swaption-panel">
+                                <h3><i class="fas fa-percentage"></i> Swaption VolCube</h3>
 
-                            <h4>Option Quotes (ATM)</h4>
-                            <div class="vol-quote-grid">
-                                <div class="vol-quote-row header">
-                                    <span>Expiry</span>
-                                    <span>Bid Vol</span>
-                                    <span>Ask Vol</span>
-                                    <span>Mid</span>
+                                <!-- Index Selection -->
+                                <div class="volcube-input-section">
+                                    <label for="volcube-index-selector">Index</label>
+                                    <select id="volcube-index-selector" class="fancy-select"></select>
                                 </div>
-                                <div class="vol-quote-row">
-                                    <span>1M</span>
-                                    <input type="number" value="22.5" step="0.1" class="vol-input">
-                                    <input type="number" value="23.5" step="0.1" class="vol-input">
-                                    <span class="vol-mid">23.0%</span>
+
+                                <div class="volcube-input-section">
+                                    <label for="volcube-reference-date">Reference Date</label>
+                                    <input type="date" id="volcube-reference-date" class="fancy-input">
                                 </div>
-                                <div class="vol-quote-row">
-                                    <span>3M</span>
-                                    <input type="number" value="24.0" step="0.1" class="vol-input">
-                                    <input type="number" value="25.0" step="0.1" class="vol-input">
-                                    <span class="vol-mid">24.5%</span>
-                                </div>
-                                <div class="vol-quote-row">
-                                    <span>6M</span>
-                                    <input type="number" value="25.5" step="0.1" class="vol-input">
-                                    <input type="number" value="26.5" step="0.1" class="vol-input">
-                                    <span class="vol-mid">26.0%</span>
-                                </div>
-                                <div class="vol-quote-row">
-                                    <span>1Y</span>
-                                    <input type="number" value="27.0" step="0.1" class="vol-input">
-                                    <input type="number" value="28.0" step="0.1" class="vol-input">
-                                    <span class="vol-mid">27.5%</span>
+
+                                <!-- Calibration Settings -->
+                                <div id="volcube-calib-settings" class="volcube-settings"></div>
+
+                                <!-- Instrument Table -->
+                                <div class="volcube-instruments-section">
+                                    <h4><i class="fas fa-table"></i> Instruments</h4>
+                                    <div id="volcube-instruments-table" class="volcube-table-container">
+                                        <p class="volcube-placeholder">Loading instruments...</p>
+                                    </div>
                                 </div>
                             </div>
 
-                            <h4>Smile Quotes (6M)</h4>
-                            <div class="vol-quote-grid">
-                                <div class="vol-quote-row header">
-                                    <span>Strike %</span>
-                                    <span>Bid Vol</span>
-                                    <span>Ask Vol</span>
-                                    <span>Mid</span>
+                            <!-- FX Options Panel (hidden by default) -->
+                            <div id="volcube-fx-panel" style="display: none;">
+                                <h3><i class="fas fa-exchange-alt"></i> FX Volatility</h3>
+
+                                <!-- Pair Selection -->
+                                <div class="volcube-input-section">
+                                    <label for="fxvol-pair-selector">Currency Pair</label>
+                                    <select id="fxvol-pair-selector" class="fancy-select"></select>
                                 </div>
-                                <div class="vol-quote-row">
-                                    <span>80%</span>
-                                    <input type="number" value="32.0" step="0.1" class="vol-input">
-                                    <input type="number" value="33.0" step="0.1" class="vol-input">
-                                    <span class="vol-mid">32.5%</span>
+
+                                <!-- Market Data -->
+                                <div class="volcube-input-row">
+                                    <div class="volcube-input-section">
+                                        <label for="fxvol-spot">Spot</label>
+                                        <input type="number" id="fxvol-spot" class="fancy-input" step="0.0001" value="1.0850">
+                                    </div>
+                                    <div class="volcube-input-section">
+                                        <label for="fxvol-domestic-rate">Domestic Rate (%)</label>
+                                        <input type="number" id="fxvol-domestic-rate" class="fancy-input" step="0.01" value="4.50">
+                                    </div>
+                                    <div class="volcube-input-section">
+                                        <label for="fxvol-foreign-rate">Foreign Rate (%)</label>
+                                        <input type="number" id="fxvol-foreign-rate" class="fancy-input" step="0.01" value="3.00">
+                                    </div>
                                 </div>
-                                <div class="vol-quote-row">
-                                    <span>90%</span>
-                                    <input type="number" value="28.0" step="0.1" class="vol-input">
-                                    <input type="number" value="29.0" step="0.1" class="vol-input">
-                                    <span class="vol-mid">28.5%</span>
-                                </div>
-                                <div class="vol-quote-row">
-                                    <span>100%</span>
-                                    <input type="number" value="25.5" step="0.1" class="vol-input">
-                                    <input type="number" value="26.5" step="0.1" class="vol-input">
-                                    <span class="vol-mid">26.0%</span>
-                                </div>
-                                <div class="vol-quote-row">
-                                    <span>110%</span>
-                                    <input type="number" value="24.5" step="0.1" class="vol-input">
-                                    <input type="number" value="25.5" step="0.1" class="vol-input">
-                                    <span class="vol-mid">25.0%</span>
-                                </div>
-                                <div class="vol-quote-row">
-                                    <span>120%</span>
-                                    <input type="number" value="26.0" step="0.1" class="vol-input">
-                                    <input type="number" value="27.0" step="0.1" class="vol-input">
-                                    <span class="vol-mid">26.5%</span>
+
+                                <!-- FX Quotes Table -->
+                                <div class="volcube-instruments-section">
+                                    <h4><i class="fas fa-table"></i> RR/BF Quotes</h4>
+                                    <div id="fxvol-quotes-table" class="volcube-table-container">
+                                        <p class="volcube-placeholder">Loading quotes...</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Results Panel -->
+                        <!-- Right Panel: Results -->
                         <div class="model-calib-results-panel glass">
-                            <h3><i class="fas fa-chart-area"></i> Calibration Results</h3>
+                            <!-- Expiry/Tenor Selection -->
+                            <div class="volcube-slice-selectors">
+                                <div class="volcube-input-section">
+                                    <label for="volcube-expiry-selector">Expiry</label>
+                                    <select id="volcube-expiry-selector" class="fancy-select"></select>
+                                </div>
+                                <div class="volcube-input-section" id="volcube-tenor-selector-container">
+                                    <label for="volcube-tenor-selector">Tenor</label>
+                                    <select id="volcube-tenor-selector" class="fancy-select"></select>
+                                </div>
+                                <div class="volcube-view-btns">
+                                    <button id="volcube-view-density-btn" class="outline-btn">
+                                        <i class="fas fa-chart-area"></i> Density
+                                    </button>
+                                    <button id="volcube-view-surface-btn" class="outline-btn">
+                                        <i class="fas fa-cube"></i> 3D Surface
+                                    </button>
+                                </div>
+                            </div>
 
                             <!-- Placeholder for uncalibrated state -->
-                            <div id="vol-calib-placeholder" class="vol-calib-placeholder">
+                            <div id="volcube-results-placeholder" class="vol-calib-placeholder">
                                 <i class="fas fa-wave-square"></i>
                                 <p>Click "Calibrate" to fit the volatility model</p>
                             </div>
 
                             <!-- Results (hidden initially) -->
-                            <div id="vol-calib-results" style="display: none;">
-                                <div class="vol-calib-params">
+                            <div id="volcube-results-content" style="display: none;">
+                                <!-- SABR Parameters -->
+                                <div class="volcube-params-section">
                                     <h4>SABR Parameters</h4>
                                     <div class="param-grid">
                                         <div class="param-item">
-                                            <span class="param-label">Alpha (α)</span>
-                                            <span class="param-value" id="sabr-alpha">0.2534</span>
+                                            <span class="param-label">Alpha</span>
+                                            <span class="param-value" id="volcube-sabr-alpha">-</span>
                                         </div>
                                         <div class="param-item">
-                                            <span class="param-label">Beta (β)</span>
-                                            <span class="param-value" id="sabr-beta">0.5000</span>
+                                            <span class="param-label">Beta</span>
+                                            <span class="param-value" id="volcube-sabr-beta">-</span>
                                         </div>
                                         <div class="param-item">
-                                            <span class="param-label">Rho (ρ)</span>
-                                            <span class="param-value" id="sabr-rho">-0.1823</span>
+                                            <span class="param-label">Rho</span>
+                                            <span class="param-value" id="volcube-sabr-rho">-</span>
                                         </div>
                                         <div class="param-item">
-                                            <span class="param-label">Nu (ν)</span>
-                                            <span class="param-value" id="sabr-nu">0.4215</span>
+                                            <span class="param-label">Nu</span>
+                                            <span class="param-value" id="volcube-sabr-nu">-</span>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div class="vol-calib-metrics">
+                                <!-- Fit Quality Metrics -->
+                                <div class="volcube-metrics-section">
                                     <h4>Fit Quality</h4>
                                     <div class="metric-grid">
                                         <div class="metric-item">
                                             <span class="metric-label">RMSE</span>
-                                            <span class="metric-value positive">0.12%</span>
+                                            <span class="metric-value" id="volcube-rmse">-</span>
                                         </div>
                                         <div class="metric-item">
                                             <span class="metric-label">Max Error</span>
-                                            <span class="metric-value">0.35%</span>
+                                            <span class="metric-value" id="volcube-max-error">-</span>
                                         </div>
                                         <div class="metric-item">
-                                            <span class="metric-label">R²</span>
-                                            <span class="metric-value positive">0.9987</span>
+                                            <span class="metric-label">R-squared</span>
+                                            <span class="metric-value" id="volcube-r-squared">-</span>
                                         </div>
                                         <div class="metric-item">
-                                            <span class="metric-label">Iterations</span>
-                                            <span class="metric-value">24</span>
+                                            <span class="metric-label">Time</span>
+                                            <span class="metric-value" id="volcube-calib-time">-</span>
                                         </div>
                                     </div>
                                 </div>
 
-                                <!-- Vol Surface Chart Placeholder -->
-                                <div class="vol-surface-chart">
+                                <!-- Smile Chart -->
+                                <div class="volcube-chart-section">
+                                    <h4>Volatility Smile</h4>
+                                    <div class="volcube-chart-container">
+                                        <canvas id="volcube-smile-chart"></canvas>
+                                    </div>
+                                </div>
+
+                                <!-- Density Chart -->
+                                <div class="volcube-chart-section">
+                                    <h4>Risk-Neutral Density</h4>
+                                    <div class="volcube-chart-container">
+                                        <canvas id="volcube-density-chart"></canvas>
+                                    </div>
+                                    <div id="volcube-density-stats" class="volcube-stats-grid"></div>
+                                </div>
+
+                                <!-- 3D Surface -->
+                                <div class="volcube-chart-section">
                                     <h4>Implied Volatility Surface</h4>
-                                    <div id="vol-surface-3d" class="chart-placeholder">
-                                        <i class="fas fa-cube"></i>
-                                        <p>3D Surface Visualisation</p>
-                                        <small>Strike × Expiry × Implied Vol</small>
+                                    <div id="volcube-surface-3d" class="volcube-3d-container"></div>
+                                </div>
+                            </div>
+
+                            <!-- FX-specific charts (hidden when swaption is active) -->
+                            <div id="fxvol-results-content" style="display: none;">
+                                <div class="volcube-chart-section">
+                                    <h4>FX Delta Smile</h4>
+                                    <div class="volcube-chart-container">
+                                        <canvas id="fxvol-smile-chart"></canvas>
                                     </div>
                                 </div>
 
-                                <!-- Smile Comparison -->
-                                <div class="vol-smile-chart">
-                                    <h4>Smile Fit (6M Expiry)</h4>
-                                    <div id="vol-smile-2d" class="chart-placeholder">
-                                        <i class="fas fa-chart-line"></i>
-                                        <p>Market vs Model Comparison</p>
+                                <div class="volcube-chart-section">
+                                    <h4>FX Density</h4>
+                                    <div class="volcube-chart-container">
+                                        <canvas id="fxvol-density-chart"></canvas>
                                     </div>
+                                    <div id="fxvol-density-stats" class="volcube-stats-grid"></div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
+                    <!-- Loading Overlay -->
+                    <div id="volcube-loading-overlay" class="volcube-loading-overlay" style="display: none;">
+                        <div class="loading-spinner">
+                            <div class="spinner-ring"></div>
+                            <span id="volcube-loading-text">Loading...</span>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -1891,7 +1907,7 @@
                     <div class="pricer-header glass">
                         <div class="pricer-title">
                             <h2><i class="fas fa-calculator"></i> Generic Pricer</h2>
-                            <p>GenericPricer検証：PVとGreeks計算</p>
+                            <p>Calculate present value and Greeks for financial instruments</p>
                         </div>
                         <div class="pricer-actions">
                             <button id="pricer-price-btn" class="primary-btn">
@@ -2926,6 +2942,10 @@
     <script src="market-data.js?v=1" defer></script>
     <script src="js/curve-builder.js?v=1" defer></script>
     <script src="js/pricer.js?v=1" defer></script>
+    <script src="js/volcube-builder.js?v=1" defer></script>
+
+    <!-- Plotly.js for 3D Surface (volcube-calibration-ui Task 5.3) -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js" defer></script>
 
     <!-- New ES6 Module Entry Point -->
     <script type="module" src="js/app.js"></script>

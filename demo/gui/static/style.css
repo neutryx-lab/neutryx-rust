@@ -74,6 +74,17 @@
     --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
     --shadow-glow: 0 0 40px rgba(99, 102, 241, 0.3);
+
+    /* Card & Component Colors */
+    --card-bg: rgba(255, 255, 255, 0.04);
+    --card-bg-secondary: rgba(255, 255, 255, 0.02);
+    --card-bg-hover: rgba(255, 255, 255, 0.08);
+    --border-color: rgba(255, 255, 255, 0.1);
+
+    /* Accent Colors (aliases) */
+    --accent-primary: var(--primary);
+    --accent-primary-transparent: rgba(99, 102, 241, 0.15);
+    --error: var(--danger);
 }
 
 /* Light Theme */
@@ -89,6 +100,13 @@ body.light-theme {
     --text-primary: #27364a;
     --text-secondary: #5c6a7d;
     --text-muted: #a0aec0;
+
+    /* Card & Component Colors (Light) */
+    --card-bg: rgba(30, 41, 59, 0.04);
+    --card-bg-secondary: rgba(30, 41, 59, 0.02);
+    --card-bg-hover: rgba(30, 41, 59, 0.08);
+    --border-color: rgba(30, 41, 59, 0.12);
+    --accent-primary-transparent: rgba(99, 102, 241, 0.1);
 }
 
 /* OLED Theme - True Black */
@@ -12659,14 +12677,18 @@ body.light-theme .chart-placeholder {
 /* Sections */
 .pricer-section {
     background: var(--card-bg-secondary);
+    border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
-    padding: 1rem;
+    padding: 1.25rem;
 }
 
 .pricer-section h3 {
-    font-size: 1rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
     color: var(--text-primary);
     margin: 0 0 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -12674,6 +12696,7 @@ body.light-theme .chart-placeholder {
 
 .pricer-section h3 i {
     color: var(--accent-primary);
+    font-size: 0.875rem;
 }
 
 /* Form Elements */
@@ -12746,38 +12769,60 @@ body.light-theme .chart-placeholder {
 
 .pricer-cf-table input.modified {
     border-color: var(--warning);
-    background: rgba(255, 193, 7, 0.1);
+    background: rgba(245, 158, 11, 0.1);
+}
+
+.pricer-cf-table input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 2px var(--accent-primary-transparent);
 }
 
 /* Placeholder Text */
 .pricer-placeholder {
     color: var(--text-muted);
     text-align: center;
-    padding: 2rem;
+    padding: 2.5rem 1.5rem;
     font-size: 0.875rem;
+    background: var(--card-bg);
+    border-radius: var(--radius-sm);
+    border: 1px dashed var(--border-color);
+}
+
+.pricer-placeholder i {
+    display: block;
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    opacity: 0.5;
 }
 
 /* PV Display */
 .pricer-pv-display {
     text-align: center;
-    padding: 1rem;
+    padding: 1.5rem;
+    background: var(--card-bg);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
 }
 
 .pricer-pv-placeholder {
     color: var(--text-muted);
+    padding: 1rem 0;
 }
 
 .pricer-pv-placeholder i {
-    font-size: 2rem;
-    margin-bottom: 0.5rem;
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
     display: block;
+    opacity: 0.5;
 }
 
 .pricer-pv-value {
-    font-size: 2.5rem;
-    font-weight: 600;
+    font-size: 2rem;
+    font-weight: 700;
     color: var(--accent-primary);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
+    font-family: 'SF Mono', 'Consolas', monospace;
 }
 
 .pricer-pv-value.positive {
@@ -12789,25 +12834,28 @@ body.light-theme .chart-placeholder {
 }
 
 .pricer-pv-currency {
-    font-size: 1rem;
+    font-size: 0.875rem;
     color: var(--text-secondary);
+    font-weight: 500;
 }
 
 /* Leg Table */
 .pricer-leg-table {
-    max-height: 200px;
+    max-height: 220px;
     overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
 }
 
 .pricer-leg-table table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
 }
 
 .pricer-leg-table th,
 .pricer-leg-table td {
-    padding: 0.5rem;
+    padding: 0.625rem 0.75rem;
     text-align: right;
     border-bottom: 1px solid var(--border-color);
 }
@@ -12815,16 +12863,27 @@ body.light-theme .chart-placeholder {
 .pricer-leg-table th {
     text-align: left;
     color: var(--text-secondary);
-    font-weight: 500;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    background: var(--card-bg);
+    position: sticky;
+    top: 0;
 }
 
 .pricer-leg-table td:first-child {
     text-align: left;
+    font-weight: 500;
+}
+
+.pricer-leg-table td:last-child {
+    font-family: 'SF Mono', 'Consolas', monospace;
 }
 
 .pricer-leg-row {
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background var(--transition-fast);
 }
 
 .pricer-leg-row:hover {
@@ -12841,58 +12900,81 @@ body.light-theme .chart-placeholder {
 
 .pricer-cf-detail-row td {
     padding-left: 2rem;
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
     color: var(--text-secondary);
 }
 
 /* Greeks Display */
 .pricer-greeks-display {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 0.75rem;
 }
 
 .pricer-greek-card {
     background: var(--card-bg);
+    border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
     padding: 1rem;
     text-align: center;
+    transition: border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.pricer-greek-card:hover {
+    border-color: var(--accent-primary);
+    transform: translateY(-2px);
 }
 
 .pricer-greek-card .label {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
+    font-size: 0.6875rem;
+    color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 0.25rem;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
 }
 
 .pricer-greek-card .value {
-    font-size: 1.25rem;
+    font-size: 1.125rem;
     font-weight: 600;
     color: var(--text-primary);
+    font-family: 'SF Mono', 'Consolas', monospace;
+}
+
+.pricer-greek-card .value.positive {
+    color: var(--success);
+}
+
+.pricer-greek-card .value.negative {
+    color: var(--error);
 }
 
 /* History List */
 .pricer-history-actions {
     display: flex;
     gap: 0.5rem;
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
 }
 
 .pricer-history-list {
-    max-height: 200px;
+    max-height: 180px;
     overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
 }
 
 .pricer-history-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.75rem;
+    padding: 0.625rem 0.75rem;
     border-bottom: 1px solid var(--border-color);
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background var(--transition-fast);
+}
+
+.pricer-history-item:last-child {
+    border-bottom: none;
 }
 
 .pricer-history-item:hover {
@@ -12901,20 +12983,23 @@ body.light-theme .chart-placeholder {
 
 .pricer-history-item.selected {
     background: var(--accent-primary-transparent);
-    border-color: var(--accent-primary);
+    border-left: 3px solid var(--accent-primary);
 }
 
 .pricer-history-timestamp {
-    font-size: 0.75rem;
+    font-size: 0.6875rem;
     color: var(--text-muted);
 }
 
 .pricer-history-pv {
     font-weight: 600;
+    font-size: 0.875rem;
+    font-family: 'SF Mono', 'Consolas', monospace;
 }
 
 .pricer-history-diff {
-    font-size: 0.75rem;
+    font-size: 0.6875rem;
+    font-family: 'SF Mono', 'Consolas', monospace;
 }
 
 .pricer-history-diff.positive {
@@ -12930,5 +13015,291 @@ body.light-theme .chart-placeholder {
     margin-top: 1rem;
     padding-top: 1rem;
     border-top: 1px solid var(--border-color);
+}
+
+/* ============================================
+   VolCube Builder Styles (volcube-calibration-ui)
+   ============================================ */
+
+/* Header Actions */
+.volcube-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.volcube-tabs {
+    display: flex;
+    gap: 0.5rem;
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    padding: 0.25rem;
+}
+
+.volcube-tab {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    font-size: 0.875rem;
+}
+
+.volcube-tab:hover {
+    color: var(--text-primary);
+    background: var(--surface-hover);
+}
+
+.volcube-tab.active {
+    color: var(--primary);
+    background: rgba(99, 102, 241, 0.15);
+}
+
+.volcube-export-btns {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Input Sections */
+.volcube-input-section {
+    margin-bottom: 1rem;
+}
+
+.volcube-input-section label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.volcube-input-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.volcube-settings {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: var(--surface);
+    border-radius: var(--radius-md);
+}
+
+.volcube-setting-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.volcube-setting-group label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* Instruments Section */
+.volcube-instruments-section {
+    margin-top: 1.5rem;
+}
+
+.volcube-instruments-section h4 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.volcube-table-container {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+}
+
+.volcube-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+}
+
+.volcube-table thead {
+    position: sticky;
+    top: 0;
+    background: var(--bg-secondary);
+    z-index: 1;
+}
+
+.volcube-table th,
+.volcube-table td {
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.volcube-table th {
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.volcube-table tbody tr:hover {
+    background: var(--surface-hover);
+}
+
+.volcube-table input.vol-input {
+    width: 80px;
+    padding: 0.25rem 0.5rem;
+    background: var(--surface);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 0.8125rem;
+    text-align: right;
+}
+
+.volcube-table input.vol-input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.volcube-table input.vol-input.small {
+    width: 50px;
+}
+
+.volcube-placeholder {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-muted);
+}
+
+/* Slice Selectors */
+.volcube-slice-selectors {
+    display: flex;
+    align-items: flex-end;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.volcube-slice-selectors .volcube-input-section {
+    margin-bottom: 0;
+    min-width: 100px;
+}
+
+.volcube-view-btns {
+    display: flex;
+    gap: 0.5rem;
+    margin-left: auto;
+}
+
+/* Results Sections */
+.volcube-params-section,
+.volcube-metrics-section {
+    margin-bottom: 1.5rem;
+}
+
+.volcube-params-section h4,
+.volcube-metrics-section h4 {
+    margin-bottom: 0.75rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+/* Chart Sections */
+.volcube-chart-section {
+    margin-bottom: 2rem;
+}
+
+.volcube-chart-section h4 {
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.volcube-chart-container {
+    position: relative;
+    height: 250px;
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+}
+
+.volcube-3d-container {
+    height: 400px;
+    background: var(--surface);
+    border-radius: var(--radius-md);
+}
+
+/* Stats Grid */
+.volcube-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-top: 1rem;
+    padding: 1rem;
+    background: var(--surface);
+    border-radius: var(--radius-md);
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.stat-value {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-family: 'SF Mono', 'Consolas', monospace;
+}
+
+/* Loading Overlay */
+.volcube-loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(10, 10, 15, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    border-radius: var(--radius-lg);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .volcube-input-row {
+        grid-template-columns: 1fr;
+    }
+
+    .volcube-settings {
+        grid-template-columns: 1fr;
+    }
+
+    .volcube-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .volcube-slice-selectors {
+        flex-wrap: wrap;
+    }
 }
 

@@ -512,6 +512,42 @@ pub fn build_router(state: Arc<AppState>) -> Router {
 
     let api_routes = api_routes.nest("/pricer", pricer_routes);
 
+    // VolCube API routes (volcube-calibration-ui Task 7.1)
+    let volcube_routes = Router::new()
+        .route("/indices", get(volcube_handlers::get_indices))
+        .route("/models", get(volcube_handlers::get_models))
+        .route(
+            "/instruments/:index",
+            get(volcube_handlers::get_instruments),
+        )
+        .route(
+            "/instruments/:index",
+            axum::routing::put(volcube_handlers::update_instruments),
+        )
+        .route("/calibrate", post(volcube_handlers::calibrate))
+        .route("/smile", get(volcube_handlers::get_smile))
+        .route("/density", get(volcube_handlers::get_density))
+        .route("/surface", get(volcube_handlers::get_surface));
+
+    let api_routes = api_routes.nest("/volcube", volcube_routes);
+
+    // FxVol API routes (volcube-calibration-ui Task 7.1)
+    let fxvol_routes = Router::new()
+        .route("/pairs", get(fxvol_handlers::get_pairs))
+        .route("/delta-types", get(fxvol_handlers::get_delta_types))
+        .route("/quotes/:pair", get(fxvol_handlers::get_quotes))
+        .route(
+            "/quotes/:pair",
+            axum::routing::put(fxvol_handlers::update_quotes),
+        )
+        .route("/build", post(fxvol_handlers::build_surface))
+        .route("/smile", get(fxvol_handlers::get_smile))
+        .route("/rr-bf", get(fxvol_handlers::get_rr_bf))
+        .route("/density", get(fxvol_handlers::get_density))
+        .route("/delta-strike", post(fxvol_handlers::delta_to_strike_handler));
+
+    let api_routes = api_routes.nest("/fxvol", fxvol_routes);
+
     // Static file serving for the dashboard
     let static_files =
         ServeDir::new("demo/gui/static").not_found_service(handlers::serve_index_with_config());

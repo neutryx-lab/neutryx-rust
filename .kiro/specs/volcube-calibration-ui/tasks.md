@@ -138,8 +138,8 @@
   - FxVol JSONスキーマに準拠（currency_pair、quotes配列）
   - _Requirements: 9.4, 9.5, 9.7_
 
-- [ ] 5. VolCube フロントエンド実装
-- [ ] 5.1 volcube-builder.js コア機能の実装
+- [x] 5. VolCube フロントエンド実装
+- [x] 5.1 volcube-builder.js コア機能の実装
   - 資産クラス選択（Swaption、FX Options）とIndex選択ドロップダウンを実装する
   - インストゥルメントデータをテーブル形式で表示・編集可能にする
   - 依存カーブ選択セクションを実装し、Curve Builder APIと連携する
@@ -149,7 +149,7 @@
   - Task 2のVolCube APIに依存
   - _Requirements: 1.1, 1.2, 1.8, 1.9, 1.10, 2.1, 2.2, 2.3, 2.4, 2.5, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
 
-- [ ] 5.2 スマイル・確率密度チャートの実装
+- [x] 5.2 スマイル・確率密度チャートの実装
   - Expiry/Tenor選択スライダーを実装する
   - Chart.jsでスマイルカーブ（Strike vs Implied Vol）をプロットする
   - 市場観測点（マーカー）とモデル曲線（線）を重ねて表示する
@@ -160,7 +160,7 @@
   - キャリブレーション結果パラメータテーブル（SABR alpha/beta/rho/nu）を表示する
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 6.1, 6.2, 6.3, 6.4, 6.5, 6.6_
 
-- [ ] 5.3 3Dボラティリティサーフェスの実装
+- [x] 5.3 3Dボラティリティサーフェスの実装
   - Plotly.jsをCDN経由で読み込む
   - Expiry × Strike × Implied Volの3Dサーフェスを描画する
   - Tenor選択による3Dサーフェス切替を実装する
@@ -169,8 +169,8 @@
   - 市場観測点を3Dマーカーとして表示する
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6_
 
-- [ ] 6. FxVol フロントエンド実装
-- [ ] 6.1 fxvol-builder.js コア機能の実装
+- [x] 6. FxVol フロントエンド実装
+- [x] 6.1 fxvol-builder.js コア機能の実装
   - 通貨ペア選択ドロップダウンを実装する
   - ATM vol、25D/10D Risk Reversal、25D/10D Butterflyの入力フィールドを各Expiryで提供する
   - Spot価格、Domestic金利、Foreign金利の入力フィールドを実装する
@@ -179,7 +179,7 @@
   - Task 3のFxVol APIに依存
   - _Requirements: 1.3, 1.8, 1.9, 1.10, 10.2, 10.3, 10.5_
 
-- [ ] 6.2 FXスマイル・密度分析UIの実装
+- [x] 6.2 FXスマイル・密度分析UIの実装
   - Delta軸（10D Put、25D Put、ATM、25D Call、10D Call）でスマイルを表示する
   - Risk Reversal（スキュー）とButterfly（曲率）の時系列チャートを表示する
   - Delta-Strike変換結果をテーブル表示する
@@ -189,14 +189,14 @@
   - _Requirements: 10.1, 10.3, 10.4, 10.6, 10.7, 10.8_
 
 - [ ] 7. 統合とテスト
-- [ ] 7.1 APIルート登録とAppState拡張
+- [x] 7.1 APIルート登録とAppState拡張
   - VolCube API（/api/volcube/*）のルートを登録する
   - FxVol API（/api/fxvol/*）のルートを登録する
   - AppStateにvolcube_cache、fxvol_cacheを追加する
   - 既存のCurve Builder APIとの共存を確認する
   - _Requirements: 8.1, 11.1_
 
-- [ ] 7.2 フロントエンドHTML統合
+- [x] 7.2 フロントエンドHTML統合
   - Model Calib画面にvolcube-builder.js、fxvol-builder.jsを読み込む
   - Plotly.js CDNリンクをHTMLに追加する
   - 資産クラス切替タブを実装する

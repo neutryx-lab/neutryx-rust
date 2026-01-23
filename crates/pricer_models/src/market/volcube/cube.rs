@@ -236,7 +236,7 @@ impl<T: Float> VolCube<T> {
         let mut lo = 0;
         let mut hi = grid.len() - 1;
         while hi - lo > 1 {
-            let mid = (lo + hi) / 2;
+            let mid = usize::midpoint(lo, hi);
             if grid[mid] <= x {
                 lo = mid;
             } else {
