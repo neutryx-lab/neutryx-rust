@@ -135,9 +135,7 @@ impl<T: Float> Clone for CurveEngine<T> {
 }
 
 impl<T: Float> Default for CurveEngine<T> {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl<T: Float> CurveEngine<T> {
@@ -191,19 +189,13 @@ impl<T: Float> CurveEngine<T> {
     }
 
     /// Get the bootstrap configuration.
-    pub fn bootstrap_config(&self) -> &GenericBootstrapConfig<T> {
-        &self.bootstrap_config
-    }
+    pub fn bootstrap_config(&self) -> &GenericBootstrapConfig<T> { &self.bootstrap_config }
 
     /// Get the extended curve configuration.
-    pub fn curve_config(&self) -> &CurveConfig<T> {
-        &self.curve_config
-    }
+    pub fn curve_config(&self) -> &CurveConfig<T> { &self.curve_config }
 
     /// Check if caching is enabled.
-    pub fn has_cache(&self) -> bool {
-        self.cache.is_some()
-    }
+    pub fn has_cache(&self) -> bool { self.cache.is_some() }
 
     /// Get cache statistics if caching is enabled.
     pub fn cache_stats(&self) -> Option<super::result_cache::CacheStats> {
@@ -233,7 +225,8 @@ impl<T: Float> CurveEngine<T> {
     /// # Returns
     ///
     /// * `Ok(result)` - Successfully constructed curve with diagnostics
-    /// * `Err(e)` - If construction fails (validation, conversion, or bootstrap error)
+    /// * `Err(e)` - If construction fails (validation, conversion, or bootstrap
+    ///   error)
     ///
     /// # Errors
     ///
@@ -440,9 +433,7 @@ pub struct CurveEngineBuilder<T: Float> {
 }
 
 impl<T: Float> Default for CurveEngineBuilder<T> {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl<T: Float> CurveEngineBuilder<T> {
@@ -811,7 +802,9 @@ mod tests {
         let definition = create_simple_definition();
         let rates = create_simple_rates();
 
-        let result = engine.build_curve_with_sensitivities(&definition, &rates).unwrap();
+        let result = engine
+            .build_curve_with_sensitivities(&definition, &rates)
+            .unwrap();
 
         // Sequential bootstrap creates lower-triangular sensitivity structure
         // DF_0 shouldn't depend on rates at later indices

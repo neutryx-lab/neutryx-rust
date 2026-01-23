@@ -246,11 +246,7 @@ impl Histogram {
         // Output bucket counts (already cumulative from observe())
         for (i, &bound) in self.buckets.iter().enumerate() {
             let count = self.bucket_counts[i].load(Ordering::Relaxed);
-            let _ = writeln!(
-                output,
-                "{}_bucket{{le=\"{}\"}} {}",
-                self.name, bound, count
-            );
+            let _ = writeln!(output, "{}_bucket{{le=\"{}\"}} {}", self.name, bound, count);
         }
         // +Inf bucket
         let inf_count = self.bucket_counts.last().unwrap().load(Ordering::Relaxed);

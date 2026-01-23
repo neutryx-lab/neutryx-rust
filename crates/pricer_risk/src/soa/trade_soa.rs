@@ -179,8 +179,10 @@ impl TradeSoA {
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
-    use infra_master::trade::{ExerciseStyle, InstrumentParams, PricingInstrument, VanillaOption};
-    use infra_master::Currency;
+    use infra_master::{
+        trade::{ExerciseStyle, InstrumentParams, PricingInstrument, VanillaOption},
+        Currency,
+    };
 
     use super::*;
     use crate::portfolio::{CounterpartyId, NettingSetId};

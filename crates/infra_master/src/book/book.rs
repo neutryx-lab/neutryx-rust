@@ -3,9 +3,8 @@
 //! This module provides the Book struct representing a trading book
 //! and its builder for fluent construction.
 
-use crate::ids::BookId;
-
 use super::{BookMetadata, BookOwnership, BookType, RegulatoryBookType};
+use crate::ids::BookId;
 
 // ============================================================================
 // Book
@@ -13,8 +12,8 @@ use super::{BookMetadata, BookOwnership, BookType, RegulatoryBookType};
 
 /// A trading book.
 ///
-/// Represents a logical grouping of trades for risk management, P&L attribution,
-/// and regulatory reporting purposes.
+/// Represents a logical grouping of trades for risk management, P&L
+/// attribution, and regulatory reporting purposes.
 ///
 /// # Examples
 ///
@@ -33,6 +32,7 @@ use super::{BookMetadata, BookOwnership, BookType, RegulatoryBookType};
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+#[allow(clippy::struct_field_names)]
 pub struct Book {
     book_id: BookId,
     name: String,
@@ -383,8 +383,7 @@ mod tests {
 
     #[test]
     fn test_book_builder_clone() {
-        let builder = BookBuilder::new("BOOK001", "Test Book")
-            .description("A test book");
+        let builder = BookBuilder::new("BOOK001", "Test Book").description("A test book");
         let cloned = builder.clone();
         let book = cloned.build();
         assert_eq!(book.description(), Some("A test book"));

@@ -1,0 +1,91 @@
+{
+  "index": "jpy-tona",
+  "currency": "JPY",
+  "reference_date": "2026-01-23",
+  "instruments": [
+    {
+      "type": "deposit",
+      "tenor": "1M",
+      "tenor_years": 0.0833,
+      "rate": -0.0005,
+      "frequency": "annual"
+    },
+    {
+      "type": "deposit",
+      "tenor": "3M",
+      "tenor_years": 0.25,
+      "rate": 0.0000,
+      "frequency": "annual"
+    },
+    {
+      "type": "deposit",
+      "tenor": "6M",
+      "tenor_years": 0.5,
+      "rate": 0.0015,
+      "frequency": "annual"
+    },
+    {
+      "type": "ois",
+      "tenor": "1Y",
+      "tenor_years": 1.0,
+      "rate": 0.0035,
+      "frequency": "annual"
+    },
+    {
+      "type": "ois",
+      "tenor": "2Y",
+      "tenor_years": 2.0,
+      "rate": 0.0055,
+      "frequency": "annual"
+    },
+    {
+      "type": "ois",
+      "tenor": "3Y",
+      "tenor_years": 3.0,
+      "rate": 0.0065,
+      "frequency": "annual"
+    },
+    {
+      "type": "ois",
+      "tenor": "5Y",
+      "tenor_years": 5.0,
+      "rate": 0.0085,
+      "frequency": "annual"
+    },
+    {
+      "type": "ois",
+      "tenor": "7Y",
+      "tenor_years": 7.0,
+      "rate": 0.0105,
+      "frequency": "annual"
+    },
+    {
+      "type": "ois",
+      "tenor": "10Y",
+      "tenor_years": 10.0,
+      "rate": 0.0125,
+      "frequency": "annual"
+    },
+    {
+      "type": "swap",
+      "tenor": "15Y",
+      "tenor_years": 15.0,
+      "rate": 0.0145,
+      "frequency": "semi_annual"
+    },
+    {
+      "type": "swap",
+      "tenor": "20Y",
+      "tenor_years": 20.0,
+      "rate": 0.0155,
+      "frequency": "semi_annual"
+    },
+    {
+      "type": "swap",
+      "tenor": "30Y",
+      "tenor_years": 30.0,
+      "rate": 0.0160,
+      "frequency": "semi_annual"
+    }
+  ]
+}

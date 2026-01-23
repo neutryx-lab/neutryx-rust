@@ -1,6 +1,7 @@
 //! Inflation swap convention definitions.
 //!
-//! This module provides types for representing inflation swap market conventions.
+//! This module provides types for representing inflation swap market
+//! conventions.
 
 use crate::{BusinessDayConvention, CalendarId, DayCounter, Frequency};
 
@@ -240,7 +241,10 @@ mod tests {
     fn test_inflation_index_code() {
         assert_eq!(InflationIndex::UsCpi.code(), "CPURNSA");
         assert_eq!(InflationIndex::UkRpi.code(), "UKRPI");
-        assert_eq!(InflationIndex::Custom("CUSTOM".to_string()).code(), "CUSTOM");
+        assert_eq!(
+            InflationIndex::Custom("CUSTOM".to_string()).code(),
+            "CUSTOM"
+        );
     }
 
     #[test]

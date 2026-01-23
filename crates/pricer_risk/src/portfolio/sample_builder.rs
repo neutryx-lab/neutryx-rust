@@ -26,11 +26,13 @@
 //! assert!(portfolio.trade_count() >= 50);
 //! ```
 
-use infra_master::trade::{
-    ExerciseStyle, Forward, ForwardDirection, InstrumentParams, PayoffType, PricingInstrument,
-    VanillaOption,
+use infra_master::{
+    trade::{
+        ExerciseStyle, Forward, ForwardDirection, InstrumentParams, PayoffType, PricingInstrument,
+        VanillaOption,
+    },
+    Currency,
 };
-use infra_master::Currency;
 
 use super::{
     error::PortfolioError, Counterparty, CounterpartyId, CreditParams, NettingSet, NettingSetId,

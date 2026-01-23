@@ -66,5 +66,6 @@ pub use pricing_instrument::{
     ExerciseStyle, Forward, ForwardDirection, InstrumentParams, PayoffType, PricingInstrument,
     VanillaOption,
 };
-pub use crate::ids::TradeId;
 pub use trade::{ExerciseType, SettlementType, Trade, TradeMetadata, TradeType};
+
+pub use crate::ids::TradeId;

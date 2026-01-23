@@ -14,14 +14,13 @@
 
 // Re-export all ID types from infra_master for backward compatibility.
 // Some types may not be used internally but are re-exported for public API.
+// Also re-export CounterPartyId for code that uses the CamelCase variant
+#[allow(unused_imports)]
+pub use infra_master::counterparty::CounterPartyId;
 #[allow(unused_imports)]
 pub use infra_master::ids::{
     BookId, CcpId, CounterpartyId, IssuerId, LegalEntityId, NettingSetId, PortfolioId, TradeId,
 };
-
-// Also re-export CounterPartyId for code that uses the CamelCase variant
-#[allow(unused_imports)]
-pub use infra_master::counterparty::CounterPartyId;
 
 #[cfg(test)]
 mod tests {

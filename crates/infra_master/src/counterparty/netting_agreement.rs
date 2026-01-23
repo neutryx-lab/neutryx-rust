@@ -6,8 +6,8 @@
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::return_self_not_must_use)]
 
-use crate::time::Date;
 use super::{LegalEntityId, NettingSetId};
+use crate::time::Date;
 
 // ============================================================================
 // NettingAgreementType
@@ -640,7 +640,10 @@ impl CrossProductNettingEligibility {
             "cds" | "credit" => self.credit,
             "equity" | "eq" => self.equity,
             "commodity" | "comm" => self.commodity,
-            other => self.custom_products.iter().any(|p| p.eq_ignore_ascii_case(other)),
+            other => self
+                .custom_products
+                .iter()
+                .any(|p| p.eq_ignore_ascii_case(other)),
         }
     }
 }
@@ -746,7 +749,10 @@ mod tests {
     #[test]
     fn test_closeout_netting_default() {
         let c = CloseoutNetting::default();
-        assert_eq!(c.calculation_method(), CloseoutCalculationMethod::MarketQuotation);
+        assert_eq!(
+            c.calculation_method(),
+            CloseoutCalculationMethod::MarketQuotation
+        );
         assert_eq!(c.notice_period_days(), 0);
         assert_eq!(c.cure_period_days(), 3);
         assert_eq!(c.grace_period_days(), 2);
@@ -762,7 +768,10 @@ mod tests {
             .with_grace_period(3)
             .with_automatic_early_termination(true);
 
-        assert_eq!(c.calculation_method(), CloseoutCalculationMethod::CloseoutAmount);
+        assert_eq!(
+            c.calculation_method(),
+            CloseoutCalculationMethod::CloseoutAmount
+        );
         assert_eq!(c.total_timeline_days(), 9); // 1 + 5 + 3
         assert!(c.automatic_early_termination());
     }
@@ -840,8 +849,7 @@ mod tests {
 
     #[test]
     fn test_cross_product_eligibility_custom() {
-        let e = CrossProductNettingEligibility::none()
-            .add_custom_product("EXOTIC");
+        let e = CrossProductNettingEligibility::none().add_custom_product("EXOTIC");
 
         assert!(!e.is_product_eligible("IRS"));
         assert!(e.is_product_eligible("EXOTIC"));

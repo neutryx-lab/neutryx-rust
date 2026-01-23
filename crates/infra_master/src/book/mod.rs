@@ -30,7 +30,5 @@ pub use types::*;
 
 /// Prelude for commonly used book types.
 pub mod prelude {
-    pub use super::{
-        Book, BookBuilder, BookMetadata, BookOwnership, BookType, RegulatoryBookType,
-    };
+    pub use super::{Book, BookBuilder, BookMetadata, BookOwnership, BookType, RegulatoryBookType};
 }

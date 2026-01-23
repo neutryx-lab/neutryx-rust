@@ -3,8 +3,10 @@
 //! This module provides the Trade structure that wraps instruments
 //! with metadata for portfolio management.
 
-use infra_master::trade::{PayoffType, PricingInstrument};
-use infra_master::Currency;
+use infra_master::{
+    trade::{PayoffType, PricingInstrument},
+    Currency,
+};
 
 use super::ids::{CounterpartyId, NettingSetId, TradeId};
 

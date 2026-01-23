@@ -30,7 +30,8 @@ use std::{
 ///
 /// # Type Parameters
 ///
-/// * `N` - The capacity of the ring buffer (must be a power of 2 for optimal performance)
+/// * `N` - The capacity of the ring buffer (must be a power of 2 for optimal
+///   performance)
 ///
 /// # Thread Safety
 ///
@@ -88,14 +89,10 @@ impl<const N: usize> RingBuffer<N> {
     }
 
     /// Get the current number of elements in the buffer.
-    pub fn len(&self) -> usize {
-        self.count.load(Ordering::Relaxed).min(N)
-    }
+    pub fn len(&self) -> usize { self.count.load(Ordering::Relaxed).min(N) }
 
     /// Check if the buffer is empty.
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
 
     /// Calculate the average of all values in the buffer.
     ///
@@ -114,10 +111,9 @@ impl<const N: usize> RingBuffer<N> {
         sum as f64 / count as f64
     }
 
-    /// Calculate the average in milliseconds (assuming values are in microseconds).
-    pub fn average_ms(&self) -> f64 {
-        self.average() / 1000.0
-    }
+    /// Calculate the average in milliseconds (assuming values are in
+    /// microseconds).
+    pub fn average_ms(&self) -> f64 { self.average() / 1000.0 }
 
     /// Get all values as a vector (for debugging or export).
     pub fn to_vec(&self) -> Vec<u64> {
@@ -182,9 +178,7 @@ impl<const N: usize> RingBuffer<N> {
 }
 
 impl<const N: usize> Default for RingBuffer<N> {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 // =============================================================================
@@ -251,78 +245,54 @@ impl PerformanceMetrics {
     }
 
     /// Record exposure API response time in microseconds.
-    pub fn record_exposure_time(&self, duration_us: u64) {
-        self.exposure_times.push(duration_us);
-    }
+    pub fn record_exposure_time(&self, duration_us: u64) { self.exposure_times.push(duration_us); }
 
     /// Record risk API response time in microseconds.
-    pub fn record_risk_time(&self, duration_us: u64) {
-        self.risk_times.push(duration_us);
-    }
+    pub fn record_risk_time(&self, duration_us: u64) { self.risk_times.push(duration_us); }
 
     /// Record graph API response time in microseconds.
-    pub fn record_graph_time(&self, duration_us: u64) {
-        self.graph_times.push(duration_us);
-    }
+    pub fn record_graph_time(&self, duration_us: u64) { self.graph_times.push(duration_us); }
 
     /// Record WebSocket message latency in microseconds.
-    pub fn record_ws_latency(&self, latency_us: u64) {
-        self.ws_message_latencies.push(latency_us);
-    }
+    pub fn record_ws_latency(&self, latency_us: u64) { self.ws_message_latencies.push(latency_us); }
 
     // =========================================================================
     // Query Methods
     // =========================================================================
 
     /// Get average portfolio response time in milliseconds.
-    pub fn portfolio_avg_ms(&self) -> f64 {
-        self.portfolio_times.average_ms()
-    }
+    pub fn portfolio_avg_ms(&self) -> f64 { self.portfolio_times.average_ms() }
 
     /// Get average exposure response time in milliseconds.
-    pub fn exposure_avg_ms(&self) -> f64 {
-        self.exposure_times.average_ms()
-    }
+    pub fn exposure_avg_ms(&self) -> f64 { self.exposure_times.average_ms() }
 
     /// Get average risk response time in milliseconds.
-    pub fn risk_avg_ms(&self) -> f64 {
-        self.risk_times.average_ms()
-    }
+    pub fn risk_avg_ms(&self) -> f64 { self.risk_times.average_ms() }
 
     /// Get average graph response time in milliseconds.
-    pub fn graph_avg_ms(&self) -> f64 {
-        self.graph_times.average_ms()
-    }
+    pub fn graph_avg_ms(&self) -> f64 { self.graph_times.average_ms() }
 
     /// Get average WebSocket message latency in milliseconds.
-    pub fn ws_latency_avg_ms(&self) -> f64 {
-        self.ws_message_latencies.average_ms()
-    }
+    pub fn ws_latency_avg_ms(&self) -> f64 { self.ws_message_latencies.average_ms() }
 
     /// Get the 95th percentile portfolio response time in milliseconds.
     pub fn portfolio_p95_ms(&self) -> Option<f64> {
-        self.portfolio_times.percentile(95.0).map(|v| v as f64 / 1000.0)
+        self.portfolio_times
+            .percentile(95.0)
+            .map(|v| v as f64 / 1000.0)
     }
 
     /// Get server uptime in seconds.
-    pub fn uptime_seconds(&self) -> u64 {
-        self.start_time.elapsed().as_secs()
-    }
+    pub fn uptime_seconds(&self) -> u64 { self.start_time.elapsed().as_secs() }
 
     /// Get current WebSocket connection count.
-    pub fn ws_connection_count(&self) -> u32 {
-        self.ws_connections.load(Ordering::Relaxed)
-    }
+    pub fn ws_connection_count(&self) -> u32 { self.ws_connections.load(Ordering::Relaxed) }
 
     /// Increment WebSocket connection count.
-    pub fn increment_ws_connections(&self) {
-        self.ws_connections.fetch_add(1, Ordering::Relaxed);
-    }
+    pub fn increment_ws_connections(&self) { self.ws_connections.fetch_add(1, Ordering::Relaxed); }
 
     /// Decrement WebSocket connection count.
-    pub fn decrement_ws_connections(&self) {
-        self.ws_connections.fetch_sub(1, Ordering::Relaxed);
-    }
+    pub fn decrement_ws_connections(&self) { self.ws_connections.fetch_sub(1, Ordering::Relaxed); }
 
     // =========================================================================
     // Async Compatibility Methods
@@ -357,35 +327,23 @@ impl PerformanceMetrics {
     }
 
     /// Get average portfolio response time (async compatibility wrapper).
-    pub async fn portfolio_avg_ms_async(&self) -> f64 {
-        self.portfolio_avg_ms()
-    }
+    pub async fn portfolio_avg_ms_async(&self) -> f64 { self.portfolio_avg_ms() }
 
     /// Get average exposure response time (async compatibility wrapper).
-    pub async fn exposure_avg_ms_async(&self) -> f64 {
-        self.exposure_avg_ms()
-    }
+    pub async fn exposure_avg_ms_async(&self) -> f64 { self.exposure_avg_ms() }
 
     /// Get average risk response time (async compatibility wrapper).
-    pub async fn risk_avg_ms_async(&self) -> f64 {
-        self.risk_avg_ms()
-    }
+    pub async fn risk_avg_ms_async(&self) -> f64 { self.risk_avg_ms() }
 
     /// Get average graph response time (async compatibility wrapper).
-    pub async fn graph_avg_ms_async(&self) -> f64 {
-        self.graph_avg_ms()
-    }
+    pub async fn graph_avg_ms_async(&self) -> f64 { self.graph_avg_ms() }
 
     /// Get average WebSocket latency (async compatibility wrapper).
-    pub async fn ws_latency_avg_ms_async(&self) -> f64 {
-        self.ws_latency_avg_ms()
-    }
+    pub async fn ws_latency_avg_ms_async(&self) -> f64 { self.ws_latency_avg_ms() }
 }
 
 impl Default for PerformanceMetrics {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 // =============================================================================

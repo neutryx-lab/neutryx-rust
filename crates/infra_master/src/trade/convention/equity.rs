@@ -30,7 +30,8 @@ pub enum EquitySettlementType {
 
 /// Convention for equity derivatives.
 ///
-/// Represents the market conventions for pricing and settling equity derivatives.
+/// Represents the market conventions for pricing and settling equity
+/// derivatives.
 ///
 /// # Example
 ///
@@ -154,7 +155,8 @@ impl EquityConvention {
         }
     }
 
-    /// Returns the equity index convention (no dividends in index total return).
+    /// Returns the equity index convention (no dividends in index total
+    /// return).
     ///
     /// - Settlement: T+1
     /// - Dividends: None (total return index)
@@ -188,7 +190,10 @@ mod tests {
 
         assert_eq!(conv.settlement_days, 3);
         assert_eq!(conv.calendar, CalendarId::London);
-        assert_eq!(conv.dividend_convention, DividendConvention::ContinuousYield);
+        assert_eq!(
+            conv.dividend_convention,
+            DividendConvention::ContinuousYield
+        );
         assert_eq!(conv.settlement_type, EquitySettlementType::Physical);
         assert!(conv.premium_adjusted_delta);
         assert!((conv.borrow_spread - 0.005).abs() < 1e-10);
@@ -200,7 +205,10 @@ mod tests {
 
         assert_eq!(conv.settlement_days, 2);
         assert_eq!(conv.calendar, CalendarId::NewYork);
-        assert_eq!(conv.dividend_convention, DividendConvention::DiscreteDividends);
+        assert_eq!(
+            conv.dividend_convention,
+            DividendConvention::DiscreteDividends
+        );
         assert_eq!(conv.settlement_type, EquitySettlementType::Cash);
     }
 
@@ -236,8 +244,14 @@ mod tests {
 
     #[test]
     fn test_dividend_convention_equality() {
-        assert_eq!(DividendConvention::ContinuousYield, DividendConvention::ContinuousYield);
-        assert_ne!(DividendConvention::ContinuousYield, DividendConvention::DiscreteDividends);
+        assert_eq!(
+            DividendConvention::ContinuousYield,
+            DividendConvention::ContinuousYield
+        );
+        assert_ne!(
+            DividendConvention::ContinuousYield,
+            DividendConvention::DiscreteDividends
+        );
     }
 
     #[test]

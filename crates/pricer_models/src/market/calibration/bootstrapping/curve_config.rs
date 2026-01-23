@@ -4,8 +4,10 @@ use std::ops::{Deref, DerefMut};
 
 use num_traits::Float;
 
-use super::config::{BootstrapInterpolation, GenericBootstrapConfig};
-use super::engine_error::{CurveEngineError, CurveParameterRepresentation};
+use super::{
+    config::{BootstrapInterpolation, GenericBootstrapConfig},
+    engine_error::{CurveEngineError, CurveParameterRepresentation},
+};
 
 /// Extended configuration for curve bootstrapping.
 ///
@@ -15,7 +17,10 @@ use super::engine_error::{CurveEngineError, CurveParameterRepresentation};
 #[cfg_attr(
     feature = "serde",
     derive(serde::Serialize, serde::Deserialize),
-    serde(bound(serialize = "T: serde::Serialize", deserialize = "T: serde::Deserialize<'de>"))
+    serde(bound(
+        serialize = "T: serde::Serialize",
+        deserialize = "T: serde::Deserialize<'de>"
+    ))
 )]
 pub struct CurveConfig<T: Float> {
     /// Basic bootstrap configuration.
@@ -60,7 +65,8 @@ impl<T: Float> CurveConfig<T> {
         }
     }
 
-    /// Fast configuration for interactive use (tolerance: 1e-8, iterations: 50).
+    /// Fast configuration for interactive use (tolerance: 1e-8, iterations:
+    /// 50).
     pub fn fast() -> Self {
         Self {
             bootstrap: GenericBootstrapConfig::fast(),
@@ -142,7 +148,11 @@ pub struct CurveConfigBuilder<T: Float> {
 
 impl<T: Float> CurveConfigBuilder<T> {
     /// Create a new builder with default values.
-    pub fn new() -> Self { Self { config: CurveConfig::default() } }
+    pub fn new() -> Self {
+        Self {
+            config: CurveConfig::default(),
+        }
+    }
 
     /// Set the parameter representation.
     pub fn parameter_representation(mut self, repr: CurveParameterRepresentation) -> Self {
@@ -214,7 +224,10 @@ mod tests {
     #[test]
     fn test_default_config() {
         let config: CurveConfig<f64> = CurveConfig::default();
-        assert_eq!(config.parameter_representation, CurveParameterRepresentation::LogDiscountFactor);
+        assert_eq!(
+            config.parameter_representation,
+            CurveParameterRepresentation::LogDiscountFactor
+        );
         assert!((config.tolerance - 1e-12).abs() < 1e-17);
         assert_eq!(config.max_iterations, 100);
         assert_eq!(config.interpolation, BootstrapInterpolation::LogLinear);
@@ -239,13 +252,41 @@ mod tests {
     // ========================================
 
     #[rstest]
-    #[case(CurveParameterRepresentation::LogDiscountFactor, BootstrapInterpolation::LogLinear, true)]
-    #[case(CurveParameterRepresentation::LogDiscountFactor, BootstrapInterpolation::FlatForward, true)]
-    #[case(CurveParameterRepresentation::ZeroRate, BootstrapInterpolation::LinearZeroRate, true)]
-    #[case(CurveParameterRepresentation::ZeroRate, BootstrapInterpolation::CubicSpline, true)]
-    #[case(CurveParameterRepresentation::InstantaneousForward, BootstrapInterpolation::FlatForward, true)]
-    #[case(CurveParameterRepresentation::InstantaneousForward, BootstrapInterpolation::LogLinear, false)]
-    #[case(CurveParameterRepresentation::InstantaneousForward, BootstrapInterpolation::CubicSpline, false)]
+    #[case(
+        CurveParameterRepresentation::LogDiscountFactor,
+        BootstrapInterpolation::LogLinear,
+        true
+    )]
+    #[case(
+        CurveParameterRepresentation::LogDiscountFactor,
+        BootstrapInterpolation::FlatForward,
+        true
+    )]
+    #[case(
+        CurveParameterRepresentation::ZeroRate,
+        BootstrapInterpolation::LinearZeroRate,
+        true
+    )]
+    #[case(
+        CurveParameterRepresentation::ZeroRate,
+        BootstrapInterpolation::CubicSpline,
+        true
+    )]
+    #[case(
+        CurveParameterRepresentation::InstantaneousForward,
+        BootstrapInterpolation::FlatForward,
+        true
+    )]
+    #[case(
+        CurveParameterRepresentation::InstantaneousForward,
+        BootstrapInterpolation::LogLinear,
+        false
+    )]
+    #[case(
+        CurveParameterRepresentation::InstantaneousForward,
+        BootstrapInterpolation::CubicSpline,
+        false
+    )]
     fn test_validation(
         #[case] repr: CurveParameterRepresentation,
         #[case] interp: BootstrapInterpolation,
@@ -322,7 +363,10 @@ mod tests {
             .max_maturity(60.0)
             .build();
 
-        assert_eq!(config.parameter_representation, CurveParameterRepresentation::ZeroRate);
+        assert_eq!(
+            config.parameter_representation,
+            CurveParameterRepresentation::ZeroRate
+        );
         assert!((config.tolerance - 1e-14).abs() < 1e-19);
         assert_eq!(config.max_iterations, 200);
         assert_eq!(config.interpolation, BootstrapInterpolation::LinearZeroRate);

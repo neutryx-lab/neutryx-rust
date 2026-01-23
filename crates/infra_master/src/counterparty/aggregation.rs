@@ -75,9 +75,7 @@ impl AggregationHierarchy {
     }
 
     /// Returns true if this level is more granular than the other.
-    pub fn is_more_granular_than(&self, other: &Self) -> bool {
-        self.depth() > other.depth()
-    }
+    pub fn is_more_granular_than(&self, other: &Self) -> bool { self.depth() > other.depth() }
 }
 
 impl std::fmt::Display for AggregationHierarchy {
@@ -275,9 +273,7 @@ impl AggregationConfig {
 }
 
 impl Default for AggregationConfig {
-    fn default() -> Self {
-        Self::new(AggregationHierarchy::default())
-    }
+    fn default() -> Self { Self::new(AggregationHierarchy::default()) }
 }
 
 // ============================================================================
@@ -305,13 +301,19 @@ impl DrillDownPath {
     /// Creates a path starting from a specific level.
     pub fn from_level(level: AggregationHierarchy, id: impl Into<String>) -> Self {
         Self {
-            segments: vec![DrillDownSegment { level, id: id.into() }],
+            segments: vec![DrillDownSegment {
+                level,
+                id: id.into(),
+            }],
         }
     }
 
     /// Adds a segment to the path.
     pub fn push(&mut self, level: AggregationHierarchy, id: impl Into<String>) {
-        self.segments.push(DrillDownSegment { level, id: id.into() });
+        self.segments.push(DrillDownSegment {
+            level,
+            id: id.into(),
+        });
     }
 
     /// Returns the current level.
@@ -320,9 +322,7 @@ impl DrillDownPath {
     }
 
     /// Returns the current ID.
-    pub fn current_id(&self) -> Option<&str> {
-        self.segments.last().map(|s| s.id.as_str())
-    }
+    pub fn current_id(&self) -> Option<&str> { self.segments.last().map(|s| s.id.as_str()) }
 
     /// Returns the path segments.
     pub fn segments(&self) -> &[DrillDownSegment] { &self.segments }
@@ -334,9 +334,7 @@ impl DrillDownPath {
     pub fn is_empty(&self) -> bool { self.segments.is_empty() }
 
     /// Pops the last segment (moves up one level).
-    pub fn pop(&mut self) -> Option<DrillDownSegment> {
-        self.segments.pop()
-    }
+    pub fn pop(&mut self) -> Option<DrillDownSegment> { self.segments.pop() }
 
     /// Returns the parent path (without the last segment).
     pub fn parent(&self) -> Option<Self> {
@@ -429,8 +427,9 @@ mod tests {
 
     #[test]
     fn test_aggregation_hierarchy_granularity() {
-        assert!(AggregationHierarchy::Trade
-            .is_more_granular_than(&AggregationHierarchy::NettingSet));
+        assert!(
+            AggregationHierarchy::Trade.is_more_granular_than(&AggregationHierarchy::NettingSet)
+        );
         assert!(!AggregationHierarchy::Portfolio
             .is_more_granular_than(&AggregationHierarchy::Counterparty));
     }
@@ -453,7 +452,10 @@ mod tests {
     #[test]
     fn test_aggregation_method_display() {
         assert_eq!(format!("{}", AggregationMethod::Sum), "Sum");
-        assert_eq!(format!("{}", AggregationMethod::WeightedAverage), "WeightedAverage");
+        assert_eq!(
+            format!("{}", AggregationMethod::WeightedAverage),
+            "WeightedAverage"
+        );
     }
 
     // ========================================================================

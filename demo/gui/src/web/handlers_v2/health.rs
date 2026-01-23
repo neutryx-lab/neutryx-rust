@@ -145,9 +145,7 @@ pub async fn get_index(State(state): State<Arc<AppState>>) -> impl IntoResponse 
 }
 
 /// Create a service that serves index.html for fallback routes.
-pub fn serve_index_with_config() -> ServeFile {
-    ServeFile::new("demo/gui/static/index.html")
-}
+pub fn serve_index_with_config() -> ServeFile { ServeFile::new("demo/gui/static/index.html") }
 
 // =============================================================================
 // Tests

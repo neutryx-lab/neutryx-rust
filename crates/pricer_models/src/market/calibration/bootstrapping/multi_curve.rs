@@ -454,7 +454,8 @@ impl<T: Float> MultiCurveBuilder<T> {
     /// # Returns
     ///
     /// * `Ok(curve_set)` - Successfully built curve set with index mappings
-    /// * `Err(CurveEngineError::CircularDependency)` - If circular dependency detected
+    /// * `Err(CurveEngineError::CircularDependency)` - If circular dependency
+    ///   detected
     /// * `Err(CurveEngineError::Bootstrap)` - If bootstrapping fails
     ///
     /// # Example
@@ -597,7 +598,8 @@ impl<T: Float> MultiCurveBuilder<T> {
 
     /// Determine the build order using topological sort.
     ///
-    /// Self-discounting curves are built first, then curves that depend on them.
+    /// Self-discounting curves are built first, then curves that depend on
+    /// them.
     fn determine_build_order(
         curve_specs: &[(CurveDependency, Vec<BootstrapInstrument<T>>)],
     ) -> Result<Vec<usize>, CurveEngineError> {
@@ -1775,14 +1777,14 @@ mod tests {
                 ],
             ),
             (
-                CurveDependency::new(RateIndex::Sonia).with_discount(RateIndex::Sofr), // B depends on A
+                CurveDependency::new(RateIndex::Sonia).with_discount(RateIndex::Sofr), /* B depends on A */
                 vec![
                     BootstrapInstrument::irs(1.0, 0.035),
                     BootstrapInstrument::irs(2.0, 0.037),
                 ],
             ),
             (
-                CurveDependency::new(RateIndex::Tonar).with_discount(RateIndex::Sonia), // C depends on B
+                CurveDependency::new(RateIndex::Tonar).with_discount(RateIndex::Sonia), /* C depends on B */
                 vec![
                     BootstrapInstrument::irs(1.0, 0.032),
                     BootstrapInstrument::irs(2.0, 0.034),

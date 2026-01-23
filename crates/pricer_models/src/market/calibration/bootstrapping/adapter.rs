@@ -1,7 +1,8 @@
 //! Instrument conversion adapter for curve bootstrapping.
 //!
-//! This module provides the `InstrumentAdapter` for converting `CurveDefinition`
-//! and market rates into `BootstrapInstrument` vectors suitable for curve construction.
+//! This module provides the `InstrumentAdapter` for converting
+//! `CurveDefinition` and market rates into `BootstrapInstrument` vectors
+//! suitable for curve construction.
 //!
 //! # Architecture
 //!
@@ -37,15 +38,15 @@
 //! assert_eq!(instruments.len(), 3);
 //! ```
 
+use infra_master::{time::Frequency as InfraMasterFrequency, trade::convention::SwapConvention};
 use num_traits::Float;
 use pricer_core::math::numeric::from_f64;
 
-use super::definition::{CurveDefinition, CurveInstrumentType, InstrumentSpec, InstrumentTenor};
-use super::engine_error::CurveEngineError;
-use super::instrument::{BootstrapInstrument, Frequency};
-
-use infra_master::time::Frequency as InfraMasterFrequency;
-use infra_master::trade::convention::SwapConvention;
+use super::{
+    definition::{CurveDefinition, CurveInstrumentType, InstrumentSpec, InstrumentTenor},
+    engine_error::CurveEngineError,
+    instrument::{BootstrapInstrument, Frequency},
+};
 
 /// Adapter for converting curve definitions and rates to bootstrap instruments.
 ///
@@ -61,12 +62,14 @@ pub struct InstrumentAdapter;
 impl InstrumentAdapter {
     /// Converts a curve definition and rates into bootstrap instruments.
     ///
-    /// The rates array must have the same length as the instruments in the definition,
-    /// with each rate corresponding to an instrument at the same index.
+    /// The rates array must have the same length as the instruments in the
+    /// definition, with each rate corresponding to an instrument at the
+    /// same index.
     ///
     /// # Arguments
     ///
-    /// * `definition` - The curve definition specifying instrument types and tenors
+    /// * `definition` - The curve definition specifying instrument types and
+    ///   tenors
     /// * `rates` - Array of (tenor, rate) pairs for each instrument
     ///
     /// # Returns
@@ -128,7 +131,8 @@ impl InstrumentAdapter {
                     spec.tenor().code(),
                     format!(
                         "Rate tenor {} doesn't match instrument tenor {}",
-                        rate_tenor, spec.tenor()
+                        rate_tenor,
+                        spec.tenor()
                     ),
                 ));
             }
@@ -163,21 +167,11 @@ impl InstrumentAdapter {
         let maturity: T = from_f64(spec.maturity_years());
 
         match spec.instrument_type() {
-            CurveInstrumentType::Ois => {
-                Self::create_ois(maturity, rate, convention)
-            }
-            CurveInstrumentType::Irs => {
-                Self::create_irs(maturity, rate, convention)
-            }
-            CurveInstrumentType::Fra => {
-                Self::create_fra(spec, rate)
-            }
-            CurveInstrumentType::Future => {
-                Self::create_future(spec, rate)
-            }
-            CurveInstrumentType::Deposit => {
-                Ok(Self::create_deposit(maturity, rate))
-            }
+            CurveInstrumentType::Ois => Self::create_ois(maturity, rate, convention),
+            CurveInstrumentType::Irs => Self::create_irs(maturity, rate, convention),
+            CurveInstrumentType::Fra => Self::create_fra(spec, rate),
+            CurveInstrumentType::Future => Self::create_future(spec, rate),
+            CurveInstrumentType::Deposit => Ok(Self::create_deposit(maturity, rate)),
         }
     }
 
@@ -202,7 +196,9 @@ impl InstrumentAdapter {
         convention: &SwapConvention,
     ) -> Result<BootstrapInstrument<T>, CurveEngineError> {
         let frequency = Self::convert_frequency(convention.fixed_leg.payment_frequency)?;
-        Ok(BootstrapInstrument::ois_with_frequency(maturity, rate, frequency))
+        Ok(BootstrapInstrument::ois_with_frequency(
+            maturity, rate, frequency,
+        ))
     }
 
     /// Creates an IRS bootstrap instrument.
@@ -235,7 +231,8 @@ impl InstrumentAdapter {
 
     /// Creates a FRA bootstrap instrument.
     ///
-    /// The FRA period is derived from the tenor specification. For standard tenors:
+    /// The FRA period is derived from the tenor specification. For standard
+    /// tenors:
     /// - 3M → 0.0 to 0.25 years
     /// - 6M → 0.0 to 0.5 years
     /// - etc.
@@ -247,7 +244,8 @@ impl InstrumentAdapter {
     ///
     /// # Requirements Trace
     ///
-    /// - Requirement 3.4: Extract period (start, end) and rate from FRA definition
+    /// - Requirement 3.4: Extract period (start, end) and rate from FRA
+    ///   definition
     pub fn create_fra<T: Float>(
         spec: &InstrumentSpec,
         rate: T,
@@ -302,7 +300,8 @@ impl InstrumentAdapter {
     ///
     /// # Requirements Trace
     ///
-    /// - Requirement 3.5: Extract price and maturity, apply convexity adjustment
+    /// - Requirement 3.5: Extract price and maturity, apply convexity
+    ///   adjustment
     pub fn create_future<T: Float>(
         spec: &InstrumentSpec,
         price: T,
@@ -310,7 +309,11 @@ impl InstrumentAdapter {
         let maturity: T = from_f64(spec.maturity_years());
         let convexity_adjustment: T = from_f64(spec.convexity_adjustment().unwrap_or(0.0));
 
-        Ok(BootstrapInstrument::future(maturity, price, convexity_adjustment))
+        Ok(BootstrapInstrument::future(
+            maturity,
+            price,
+            convexity_adjustment,
+        ))
     }
 
     /// Creates a deposit bootstrap instrument.
@@ -322,9 +325,7 @@ impl InstrumentAdapter {
     }
 
     /// Converts infra_master Frequency to bootstrap Frequency.
-    fn convert_frequency(
-        freq: InfraMasterFrequency,
-    ) -> Result<Frequency, CurveEngineError> {
+    fn convert_frequency(freq: InfraMasterFrequency) -> Result<Frequency, CurveEngineError> {
         match freq {
             InfraMasterFrequency::Annual => Ok(Frequency::Annual),
             InfraMasterFrequency::SemiAnnual => Ok(Frequency::SemiAnnual),
@@ -345,8 +346,9 @@ impl InstrumentAdapter {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use infra_master::market::RateIndex;
+
+    use super::*;
 
     // ========================================
     // OIS Conversion Tests
@@ -372,7 +374,10 @@ mod tests {
 
         // USD SOFR convention uses annual payments
         assert!(instrument.is_ois());
-        if let BootstrapInstrument::Ois { payment_frequency, .. } = instrument {
+        if let BootstrapInstrument::Ois {
+            payment_frequency, ..
+        } = instrument
+        {
             assert_eq!(payment_frequency, Frequency::Annual);
         } else {
             panic!("Expected OIS variant");
@@ -387,7 +392,10 @@ mod tests {
             InstrumentAdapter::create_ois(5.0, 0.02, &convention).unwrap();
 
         // Fixed leg of EUR EURIBOR is annual
-        if let BootstrapInstrument::Ois { payment_frequency, .. } = instrument {
+        if let BootstrapInstrument::Ois {
+            payment_frequency, ..
+        } = instrument
+        {
             assert_eq!(payment_frequency, Frequency::Annual);
         }
     }
@@ -418,7 +426,8 @@ mod tests {
             fixed_frequency,
             float_frequency,
             ..
-        } = instrument {
+        } = instrument
+        {
             assert_eq!(fixed_frequency, Frequency::Annual);
             assert_eq!(float_frequency, Frequency::SemiAnnual);
         } else {
@@ -486,7 +495,11 @@ mod tests {
         let instrument: BootstrapInstrument<f64> =
             InstrumentAdapter::create_future(&spec, 97.0).unwrap();
 
-        if let BootstrapInstrument::Future { convexity_adjustment, .. } = instrument {
+        if let BootstrapInstrument::Future {
+            convexity_adjustment,
+            ..
+        } = instrument
+        {
             assert!((convexity_adjustment - 0.0005).abs() < 1e-10);
         } else {
             panic!("Expected Future variant");
@@ -499,7 +512,11 @@ mod tests {
         let instrument: BootstrapInstrument<f64> =
             InstrumentAdapter::create_future(&spec, 97.5).unwrap();
 
-        if let BootstrapInstrument::Future { convexity_adjustment, .. } = instrument {
+        if let BootstrapInstrument::Future {
+            convexity_adjustment,
+            ..
+        } = instrument
+        {
             assert!(convexity_adjustment.abs() < 1e-10);
         }
     }
@@ -510,14 +527,11 @@ mod tests {
 
     #[test]
     fn test_convert_basic() {
-        let definition = CurveDefinition::new(
-            "USD-SOFR",
-            RateIndex::Sofr,
-            SwapConvention::usd_sofr(),
-        )
-        .with_instrument(InstrumentSpec::ois(InstrumentTenor::OneYear))
-        .with_instrument(InstrumentSpec::ois(InstrumentTenor::TwoYears))
-        .with_instrument(InstrumentSpec::ois(InstrumentTenor::FiveYears));
+        let definition =
+            CurveDefinition::new("USD-SOFR", RateIndex::Sofr, SwapConvention::usd_sofr())
+                .with_instrument(InstrumentSpec::ois(InstrumentTenor::OneYear))
+                .with_instrument(InstrumentSpec::ois(InstrumentTenor::TwoYears))
+                .with_instrument(InstrumentSpec::ois(InstrumentTenor::FiveYears));
 
         let rates = [
             (InstrumentTenor::OneYear, 0.035_f64),
@@ -544,14 +558,11 @@ mod tests {
 
     #[test]
     fn test_convert_unsorted_input() {
-        let definition = CurveDefinition::new(
-            "USD-SOFR",
-            RateIndex::Sofr,
-            SwapConvention::usd_sofr(),
-        )
-        .with_instrument(InstrumentSpec::ois(InstrumentTenor::FiveYears))
-        .with_instrument(InstrumentSpec::ois(InstrumentTenor::OneYear))
-        .with_instrument(InstrumentSpec::ois(InstrumentTenor::TwoYears));
+        let definition =
+            CurveDefinition::new("USD-SOFR", RateIndex::Sofr, SwapConvention::usd_sofr())
+                .with_instrument(InstrumentSpec::ois(InstrumentTenor::FiveYears))
+                .with_instrument(InstrumentSpec::ois(InstrumentTenor::OneYear))
+                .with_instrument(InstrumentSpec::ois(InstrumentTenor::TwoYears));
 
         // Rates in same order as definition (unsorted)
         let rates = [
@@ -575,13 +586,10 @@ mod tests {
 
     #[test]
     fn test_convert_mismatched_rates_count() {
-        let definition = CurveDefinition::new(
-            "USD-SOFR",
-            RateIndex::Sofr,
-            SwapConvention::usd_sofr(),
-        )
-        .with_instrument(InstrumentSpec::ois(InstrumentTenor::OneYear))
-        .with_instrument(InstrumentSpec::ois(InstrumentTenor::TwoYears));
+        let definition =
+            CurveDefinition::new("USD-SOFR", RateIndex::Sofr, SwapConvention::usd_sofr())
+                .with_instrument(InstrumentSpec::ois(InstrumentTenor::OneYear))
+                .with_instrument(InstrumentSpec::ois(InstrumentTenor::TwoYears));
 
         let rates = [(InstrumentTenor::OneYear, 0.035_f64)]; // Only 1 rate for 2 instruments
 
@@ -591,13 +599,10 @@ mod tests {
 
     #[test]
     fn test_convert_mismatched_tenors() {
-        let definition = CurveDefinition::new(
-            "USD-SOFR",
-            RateIndex::Sofr,
-            SwapConvention::usd_sofr(),
-        )
-        .with_instrument(InstrumentSpec::ois(InstrumentTenor::OneYear))
-        .with_instrument(InstrumentSpec::ois(InstrumentTenor::TwoYears));
+        let definition =
+            CurveDefinition::new("USD-SOFR", RateIndex::Sofr, SwapConvention::usd_sofr())
+                .with_instrument(InstrumentSpec::ois(InstrumentTenor::OneYear))
+                .with_instrument(InstrumentSpec::ois(InstrumentTenor::TwoYears));
 
         let rates = [
             (InstrumentTenor::OneYear, 0.035_f64),
@@ -610,14 +615,11 @@ mod tests {
 
     #[test]
     fn test_convert_mixed_instruments() {
-        let definition = CurveDefinition::new(
-            "USD-SOFR",
-            RateIndex::Sofr,
-            SwapConvention::usd_sofr(),
-        )
-        .with_instrument(InstrumentSpec::deposit(InstrumentTenor::OneMonth))
-        .with_instrument(InstrumentSpec::ois(InstrumentTenor::OneYear))
-        .with_instrument(InstrumentSpec::irs(InstrumentTenor::FiveYears));
+        let definition =
+            CurveDefinition::new("USD-SOFR", RateIndex::Sofr, SwapConvention::usd_sofr())
+                .with_instrument(InstrumentSpec::deposit(InstrumentTenor::OneMonth))
+                .with_instrument(InstrumentSpec::ois(InstrumentTenor::OneYear))
+                .with_instrument(InstrumentSpec::irs(InstrumentTenor::FiveYears));
 
         let rates = [
             (InstrumentTenor::OneMonth, 0.030_f64),
@@ -679,12 +681,9 @@ mod tests {
 
     #[test]
     fn test_convert_with_f32() {
-        let definition = CurveDefinition::new(
-            "USD-SOFR",
-            RateIndex::Sofr,
-            SwapConvention::usd_sofr(),
-        )
-        .with_instrument(InstrumentSpec::ois(InstrumentTenor::OneYear));
+        let definition =
+            CurveDefinition::new("USD-SOFR", RateIndex::Sofr, SwapConvention::usd_sofr())
+                .with_instrument(InstrumentSpec::ois(InstrumentTenor::OneYear));
 
         let rates = [(InstrumentTenor::OneYear, 0.035_f32)];
 

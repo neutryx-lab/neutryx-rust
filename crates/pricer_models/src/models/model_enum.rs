@@ -186,7 +186,8 @@ impl<T: Float> ModelParams<T> {
 ///
 /// - **Level 1 (Basic)**: `GBM` - 1-factor, constant volatility
 /// - **Level 2 (Intermediate)**: `Heston`, `SABR` - 2-factor, stochastic vol
-/// - **Level 3 (Specialised)**: `HullWhite`, `CIR` - Rate models with mean reversion
+/// - **Level 3 (Specialised)**: `HullWhite`, `CIR` - Rate models with mean
+///   reversion
 ///
 /// This ordering helps users understand model sophistication and choose
 /// appropriately for their use case.

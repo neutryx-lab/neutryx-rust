@@ -36,7 +36,8 @@ pub enum PriceQuotation {
 
 /// Convention for commodity derivatives.
 ///
-/// Represents the market conventions for pricing and settling commodity derivatives.
+/// Represents the market conventions for pricing and settling commodity
+/// derivatives.
 ///
 /// # Example
 ///

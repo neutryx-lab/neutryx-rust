@@ -34,8 +34,7 @@ use super::{
     payoff::Payoff,
     trade::{Trade, TradeMetadata, TradeType},
 };
-use crate::ids::TradeId;
-use crate::{Currency, Date, DayCounter, RateIndex};
+use crate::{ids::TradeId, Currency, Date, DayCounter, RateIndex};
 
 /// Builder for constructing legs from a schedule.
 ///
@@ -324,7 +323,10 @@ mod tests {
 
         let trade = TradeBuilder::new("TRADE002").metadata(metadata).build();
 
-        assert_eq!(trade.metadata.counterparty, Some(CounterpartyId::new("BANK01")));
+        assert_eq!(
+            trade.metadata.counterparty,
+            Some(CounterpartyId::new("BANK01"))
+        );
         assert_eq!(trade.metadata.portfolio, Some(PortfolioId::new("RATES")));
     }
 

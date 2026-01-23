@@ -137,7 +137,8 @@ pub trait YieldCurve<T: Float> {
     /// # Returns
     ///
     /// * `Ok(f(t))` - Instantaneous forward rate at time t
-    /// * `Err(MarketDataError::NotImplemented)` - If not supported by this curve
+    /// * `Err(MarketDataError::NotImplemented)` - If not supported by this
+    ///   curve
     /// * `Err(MarketDataError::InvalidMaturity)` - If t < 0
     ///
     /// # Mathematical Definition
@@ -175,9 +176,7 @@ pub trait YieldCurve<T: Float> {
     /// # Default Implementation
     ///
     /// Returns `None`. Curves with discrete pillars should override.
-    fn pillar_count(&self) -> Option<usize> {
-        None
-    }
+    fn pillar_count(&self) -> Option<usize> { None }
 
     /// Return the pillar times as a slice.
     ///
@@ -192,9 +191,7 @@ pub trait YieldCurve<T: Float> {
     /// # Default Implementation
     ///
     /// Returns `None`. Curves with discrete pillars should override.
-    fn pillars(&self) -> Option<&[T]> {
-        None
-    }
+    fn pillars(&self) -> Option<&[T]> { None }
 
     /// Return the pillar values (parameters) as a slice.
     ///
@@ -212,9 +209,7 @@ pub trait YieldCurve<T: Float> {
     /// # Default Implementation
     ///
     /// Returns `None`. Curves with discrete pillars should override.
-    fn pillar_values(&self) -> Option<&[T]> {
-        None
-    }
+    fn pillar_values(&self) -> Option<&[T]> { None }
 
     /// Return the maximum maturity supported by this curve.
     ///
@@ -229,9 +224,7 @@ pub trait YieldCurve<T: Float> {
     /// # Default Implementation
     ///
     /// Returns `None` (no upper bound).
-    fn max_maturity(&self) -> Option<T> {
-        None
-    }
+    fn max_maturity(&self) -> Option<T> { None }
 }
 
 #[cfg(test)]
@@ -340,21 +333,13 @@ mod tests {
             Ok((-0.05 * t).exp())
         }
 
-        fn pillar_count(&self) -> Option<usize> {
-            Some(self.pillars.len())
-        }
+        fn pillar_count(&self) -> Option<usize> { Some(self.pillars.len()) }
 
-        fn pillars(&self) -> Option<&[f64]> {
-            Some(&self.pillars)
-        }
+        fn pillars(&self) -> Option<&[f64]> { Some(&self.pillars) }
 
-        fn pillar_values(&self) -> Option<&[f64]> {
-            Some(&self.values)
-        }
+        fn pillar_values(&self) -> Option<&[f64]> { Some(&self.values) }
 
-        fn max_maturity(&self) -> Option<f64> {
-            self.pillars.last().copied()
-        }
+        fn max_maturity(&self) -> Option<f64> { self.pillars.last().copied() }
     }
 
     #[test]

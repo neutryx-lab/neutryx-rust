@@ -9,15 +9,17 @@
 
 #![allow(missing_docs)]
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-use std::sync::Arc;
-use std::thread;
+use std::{sync::Arc, thread};
 
-use pricer_models::market::calibration::bootstrapping::{
-    BootstrapInstrument, BootstrappedCurve, CurveDefinition, CurveEngine, CurveEngineBuilder,
-    CurveKey, CurveResultCache, GenericBootstrapConfig, InstrumentTenor, SequentialBootstrapper,
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use pricer_models::market::{
+    calibration::bootstrapping::{
+        BootstrapInstrument, BootstrappedCurve, CurveDefinition, CurveEngine, CurveEngineBuilder,
+        CurveKey, CurveResultCache, GenericBootstrapConfig, InstrumentTenor,
+        SequentialBootstrapper,
+    },
+    curves::YieldCurve,
 };
-use pricer_models::market::curves::YieldCurve;
 
 // ============================================================================
 // Helper Functions
@@ -25,7 +27,9 @@ use pricer_models::market::curves::YieldCurve;
 
 /// Create a standard set of OIS instruments for benchmarking.
 fn create_ois_instruments(n: usize) -> Vec<BootstrapInstrument<f64>> {
-    let maturities = [0.25, 0.5, 1.0, 2.0, 3.0, 5.0, 7.0, 10.0, 15.0, 20.0, 30.0, 50.0];
+    let maturities = [
+        0.25, 0.5, 1.0, 2.0, 3.0, 5.0, 7.0, 10.0, 15.0, 20.0, 30.0, 50.0,
+    ];
     let base_rate = 0.03;
 
     maturities
@@ -130,7 +134,8 @@ fn bench_cache_performance(c: &mut Criterion) {
     });
 
     // Benchmark cache miss (lookup non-existing)
-    let miss_key = CurveKey::from_rates(infra_master::market::RateIndex::Sofr, &[0.05, 0.06], 99999);
+    let miss_key =
+        CurveKey::from_rates(infra_master::market::RateIndex::Sofr, &[0.05, 0.06], 99999);
     group.bench_function("cache_miss_lookup", |b| {
         b.iter(|| {
             black_box(cache.lookup(black_box(&miss_key)));

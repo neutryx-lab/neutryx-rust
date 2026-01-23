@@ -5,9 +5,11 @@
 
 use chrono::{DateTime, Utc};
 
-use crate::book::BookOwnership;
-use crate::ids::{BookId, PortfolioId};
-use crate::market::Currency;
+use crate::{
+    book::BookOwnership,
+    ids::{BookId, PortfolioId},
+    market::Currency,
+};
 
 // ============================================================================
 // PortfolioScope
@@ -175,10 +177,7 @@ pub struct PortfolioBookMapping {
 impl PortfolioBookMapping {
     /// Creates a new portfolio-book mapping.
     #[must_use]
-    pub fn new(
-        portfolio_id: impl Into<PortfolioId>,
-        book_id: impl Into<BookId>,
-    ) -> Self {
+    pub fn new(portfolio_id: impl Into<PortfolioId>, book_id: impl Into<BookId>) -> Self {
         Self {
             portfolio_id: portfolio_id.into(),
             book_id: book_id.into(),
@@ -285,16 +284,14 @@ mod tests {
 
     #[test]
     fn test_portfolio_metadata_with_scope() {
-        let metadata = PortfolioMetadata::new(Currency::EUR)
-            .with_scope(PortfolioScope::Regulatory);
+        let metadata = PortfolioMetadata::new(Currency::EUR).with_scope(PortfolioScope::Regulatory);
         assert_eq!(metadata.scope(), PortfolioScope::Regulatory);
     }
 
     #[test]
     fn test_portfolio_metadata_with_ownership() {
         let ownership = BookOwnership::new().with_desk("Trading");
-        let metadata = PortfolioMetadata::new(Currency::GBP)
-            .with_ownership(ownership);
+        let metadata = PortfolioMetadata::new(Currency::GBP).with_ownership(ownership);
         assert!(metadata.ownership().is_some());
         assert_eq!(metadata.ownership().unwrap().desk(), Some("Trading"));
     }
@@ -307,8 +304,7 @@ mod tests {
 
     #[test]
     fn test_portfolio_metadata_clone() {
-        let metadata = PortfolioMetadata::new(Currency::JPY)
-            .with_scope(PortfolioScope::Legal);
+        let metadata = PortfolioMetadata::new(Currency::JPY).with_scope(PortfolioScope::Legal);
         let cloned = metadata.clone();
         assert_eq!(cloned.scope(), PortfolioScope::Legal);
         assert_eq!(cloned.reporting_currency(), Currency::JPY);

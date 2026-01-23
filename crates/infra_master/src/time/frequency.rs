@@ -32,7 +32,8 @@ use std::{fmt, str::FromStr};
 ///
 /// Ordering rationale: Financial schedules typically progress from
 /// higher frequency to lower frequency when iterating payment dates.
-/// The `Ord` implementation ensures `Daily < Weekly < Monthly < Quarterly < SemiAnnual < Annual`.
+/// The `Ord` implementation ensures `Daily < Weekly < Monthly < Quarterly <
+/// SemiAnnual < Annual`.
 ///
 /// # Adding New Variants
 ///
@@ -188,7 +189,8 @@ mod tests {
 
     #[test]
     fn test_frequency_ord_full_chain() {
-        // Verify complete ordering: Daily < Weekly < Monthly < Quarterly < SemiAnnual < Annual
+        // Verify complete ordering: Daily < Weekly < Monthly < Quarterly < SemiAnnual <
+        // Annual
         assert!(Frequency::Daily < Frequency::Weekly);
         assert!(Frequency::Weekly < Frequency::Monthly);
         assert!(Frequency::Monthly < Frequency::Quarterly);

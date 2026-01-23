@@ -72,7 +72,8 @@ fn test_math_module_structure() {
 }
 
 /// Test that all DayCountConvention variants are accessible.
-/// Note: This tests pricer_core's own DayCountConvention type, not infra_master's.
+/// Note: This tests pricer_core's own DayCountConvention type, not
+/// infra_master's.
 #[test]
 fn test_day_count_convention_variants() {
     use pricer_core::types::time::DayCountConvention;

@@ -226,10 +226,10 @@ impl PortfolioBuilder {
 
 #[cfg(test)]
 mod tests {
-    use infra_master::trade::{
-        ExerciseStyle, InstrumentParams, PayoffType, PricingInstrument, VanillaOption,
+    use infra_master::{
+        trade::{ExerciseStyle, InstrumentParams, PayoffType, PricingInstrument, VanillaOption},
+        Currency,
     };
-    use infra_master::Currency;
 
     use super::*;
     use crate::portfolio::counterparty::CreditParams;

@@ -6,9 +6,11 @@
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::return_self_not_must_use)]
 
-use crate::ids::BookId;
-use crate::time::Date;
-use super::{Ccp, CcpId, CounterPartyError, CounterPartyId, CrossBookNettingAgreementId, CsaTerms, LegalEntityId, MarginTerms};
+use super::{
+    Ccp, CcpId, CounterPartyError, CounterPartyId, CrossBookNettingAgreementId, CsaTerms,
+    LegalEntityId, MarginTerms,
+};
+use crate::{ids::BookId, time::Date};
 
 // ============================================================================
 // NettingType
@@ -219,9 +221,7 @@ pub enum ExposureAggregation {
 
 impl ExposureAggregation {
     /// Returns true if netting is applied at any level.
-    pub fn applies_netting(&self) -> bool {
-        !matches!(self, ExposureAggregation::Gross)
-    }
+    pub fn applies_netting(&self) -> bool { !matches!(self, ExposureAggregation::Gross) }
 }
 
 // ============================================================================
@@ -437,7 +437,8 @@ impl NettingSet {
     /// If empty, all books are allowed (single-book netting assumed).
     pub fn book_ids(&self) -> &[BookId] { &self.book_ids }
 
-    /// Returns true if cross-book netting is enabled (multiple books specified).
+    /// Returns true if cross-book netting is enabled (multiple books
+    /// specified).
     pub fn allows_cross_book_netting(&self) -> bool { self.book_ids.len() > 1 }
 
     /// Returns true if the specified book is allowed in this netting set.
@@ -680,11 +681,10 @@ impl CrossBookNettingAgreement {
     pub fn description(&self) -> Option<&str> { self.description.as_deref() }
 
     /// Returns true if the specified book is included in this agreement.
-    pub fn is_book_eligible(&self, book_id: &BookId) -> bool {
-        self.book_ids.contains(book_id)
-    }
+    pub fn is_book_eligible(&self, book_id: &BookId) -> bool { self.book_ids.contains(book_id) }
 
-    /// Returns true if the specified product is eligible for cross-book netting.
+    /// Returns true if the specified product is eligible for cross-book
+    /// netting.
     ///
     /// If no products are specified, all products are eligible.
     pub fn is_product_eligible(&self, product: &str) -> bool {
@@ -788,9 +788,10 @@ impl CrossBookNettingAgreementBuilder {
     pub fn build(self) -> Result<CrossBookNettingAgreement, CounterPartyError> {
         // Cross-book netting requires at least 2 books
         if self.book_ids.len() < 2 {
-            return Err(CounterPartyError::InvalidNettingSetId(
-                format!("Cross-book netting agreement requires at least 2 books, got {}", self.book_ids.len())
-            ));
+            return Err(CounterPartyError::InvalidNettingSetId(format!(
+                "Cross-book netting agreement requires at least 2 books, got {}",
+                self.book_ids.len()
+            )));
         }
 
         Ok(CrossBookNettingAgreement {
@@ -1177,9 +1178,15 @@ mod tests {
     #[test]
     fn test_pfe_confidence_level_from_f64() {
         assert_eq!(PfeConfidenceLevel::from_f64(0.95), PfeConfidenceLevel::Q95);
-        assert_eq!(PfeConfidenceLevel::from_f64(0.975), PfeConfidenceLevel::Q97_5);
+        assert_eq!(
+            PfeConfidenceLevel::from_f64(0.975),
+            PfeConfidenceLevel::Q97_5
+        );
         assert_eq!(PfeConfidenceLevel::from_f64(0.99), PfeConfidenceLevel::Q99);
-        assert_eq!(PfeConfidenceLevel::from_f64(0.90), PfeConfidenceLevel::Custom(90));
+        assert_eq!(
+            PfeConfidenceLevel::from_f64(0.90),
+            PfeConfidenceLevel::Custom(90)
+        );
     }
 
     #[test]
@@ -1195,7 +1202,10 @@ mod tests {
 
     #[test]
     fn test_exposure_aggregation_default() {
-        assert_eq!(ExposureAggregation::default(), ExposureAggregation::NetWithinNettingSet);
+        assert_eq!(
+            ExposureAggregation::default(),
+            ExposureAggregation::NetWithinNettingSet
+        );
     }
 
     #[test]
@@ -1247,8 +1257,7 @@ mod tests {
 
     #[test]
     fn test_collateralized_exposure_config_volatility_clamped() {
-        let config = CollateralizedExposureConfig::new()
-            .with_collateral_volatility(1.5);
+        let config = CollateralizedExposureConfig::new().with_collateral_volatility(1.5);
 
         assert!((config.collateral_volatility() - 1.0).abs() < f64::EPSILON);
     }
@@ -1262,8 +1271,7 @@ mod tests {
             illiquidity_threshold_days: 30,
         };
 
-        let config = CollateralizedExposureConfig::new()
-            .with_mpor_config(mpor);
+        let config = CollateralizedExposureConfig::new().with_mpor_config(mpor);
 
         assert_eq!(config.mpor_config().base_mpor_days, 14);
         assert_eq!(config.mpor_config().dispute_grace_days, 3);

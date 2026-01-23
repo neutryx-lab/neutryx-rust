@@ -1,0 +1,91 @@
+{
+  "index": "eur-estr",
+  "currency": "EUR",
+  "reference_date": "2026-01-23",
+  "instruments": [
+    {
+      "type": "deposit",
+      "tenor": "1M",
+      "tenor_years": 0.0833,
+      "rate": 0.0385,
+      "frequency": "annual"
+    },
+    {
+      "type": "deposit",
+      "tenor": "3M",
+      "tenor_years": 0.25,
+      "rate": 0.0380,
+      "frequency": "annual"
+    },
+    {
+      "type": "deposit",
+      "tenor": "6M",
+      "tenor_years": 0.5,
+      "rate": 0.0365,
+      "frequency": "annual"
+    },
+    {
+      "type": "ois",
+      "tenor": "1Y",
+      "tenor_years": 1.0,
+      "rate": 0.0340,
+      "frequency": "annual"
+    },
+    {
+      "type": "ois",
+      "tenor": "2Y",
+      "tenor_years": 2.0,
+      "rate": 0.0285,
+      "frequency": "annual"
+    },
+    {
+      "type": "ois",
+      "tenor": "3Y",
+      "tenor_years": 3.0,
+      "rate": 0.0275,
+      "frequency": "annual"
+    },
+    {
+      "type": "ois",
+      "tenor": "5Y",
+      "tenor_years": 5.0,
+      "rate": 0.0268,
+      "frequency": "annual"
+    },
+    {
+      "type": "ois",
+      "tenor": "7Y",
+      "tenor_years": 7.0,
+      "rate": 0.0272,
+      "frequency": "annual"
+    },
+    {
+      "type": "ois",
+      "tenor": "10Y",
+      "tenor_years": 10.0,
+      "rate": 0.0280,
+      "frequency": "annual"
+    },
+    {
+      "type": "swap",
+      "tenor": "15Y",
+      "tenor_years": 15.0,
+      "rate": 0.0295,
+      "frequency": "annual"
+    },
+    {
+      "type": "swap",
+      "tenor": "20Y",
+      "tenor_years": 20.0,
+      "rate": 0.0305,
+      "frequency": "annual"
+    },
+    {
+      "type": "swap",
+      "tenor": "30Y",
+      "tenor_years": 30.0,
+      "rate": 0.0310,
+      "frequency": "annual"
+    }
+  ]
+}
