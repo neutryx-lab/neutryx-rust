@@ -16,6 +16,11 @@ use infra_master::{
 #[cfg(feature = "l1l2-integration")]
 use pricer_models::market::{MarketProvider, YieldCurve};
 
+#[cfg(feature = "l1l2-integration")]
+use super::ois_calculator::{DailyAccrual, OisCalculator};
+#[cfg(feature = "l1l2-integration")]
+use super::payoff_evaluator::PayoffEvaluator;
+
 #[cfg(not(feature = "l1l2-integration"))]
 use super::config::DefaultCurrency as Currency;
 #[cfg(not(feature = "l1l2-integration"))]
@@ -156,6 +161,9 @@ impl GenericPricer {
             self.get_fx_rate(leg_currency, reporting_currency)?
         };
 
+        // Get curve set for payoff evaluation
+        let curve_set = self.market.curve_set();
+
         // Price each cashflow
         let mut cashflows_results = Vec::with_capacity(leg.len());
         let mut pv_original = 0.0;
@@ -174,8 +182,8 @@ impl GenericPricer {
                 .discount_factor(time_to_payment)
                 .map_err(|e| PricingError::market_data_resolution(format!("{:?}", e)))?;
 
-            // Calculate cashflow PV
-            let cf_amount = cf.year_fraction * self.get_notional_for_cashflow(cf, leg);
+            // Calculate cashflow amount using PayoffEvaluator
+            let cf_amount = self.evaluate_cashflow_amount(cf, valuation_date, &curve_set)?;
             let cf_pv_original = cf_amount * df;
             let cf_pv = cf_pv_original * fx_rate;
 
@@ -205,8 +213,57 @@ impl GenericPricer {
         ))
     }
 
-    /// Gets the notional for a cashflow.
+    /// Evaluates the cashflow amount based on its payoff type.
+    ///
+    /// For OIS cashflows with daily accruals, uses OisCalculator for compounding.
+    /// For other cashflows, uses PayoffEvaluator.
     #[cfg(feature = "l1l2-integration")]
+    fn evaluate_cashflow_amount(
+        &self,
+        cf: &infra_master::trade::Cashflow,
+        valuation_date: Date,
+        curve_set: &pricer_models::market::curves::CurveSet<f64>,
+    ) -> Result<f64, PricingError> {
+        let notional = cf.notional;
+        let year_fraction = cf.year_fraction;
+
+        // Check if this is an OIS cashflow with daily accruals
+        if let Some(daily_accruals) = cf.daily_accruals() {
+            if !daily_accruals.is_empty() {
+                // Convert infra_master DailyAccrual to ois_calculator DailyAccrual
+                let accruals: Vec<DailyAccrual> = daily_accruals
+                    .iter()
+                    .map(|a| DailyAccrual::new(a.overnight_rate, a.day_fraction))
+                    .collect();
+
+                // Calculate compounded rate
+                let compounded_rate = OisCalculator::compound_rate::<f64>(&accruals);
+
+                // Apply notional to get the cashflow amount
+                return Ok(notional * compounded_rate);
+            }
+        }
+
+        // For non-OIS cashflows or OIS without daily accruals, use PayoffEvaluator
+        let evaluator = PayoffEvaluator::new(curve_set);
+
+        // Calculate time parameters for forward rate calculation
+        let valuation_days = valuation_date.into_inner().num_days_from_ce();
+        let start_days = cf.accrual_start.into_inner().num_days_from_ce();
+        let end_days = cf.accrual_end.into_inner().num_days_from_ce();
+
+        let start_time = (start_days - valuation_days) as f64 / 365.0;
+        let end_time = (end_days - valuation_days) as f64 / 365.0;
+
+        evaluator.evaluate(&cf.payoff, notional, year_fraction, start_time, end_time)
+    }
+
+    /// Gets the notional for a cashflow.
+    ///
+    /// Note: This method is preserved for backward compatibility. The new
+    /// `evaluate_cashflow_amount` method extracts notional from `cf.notional`.
+    #[cfg(feature = "l1l2-integration")]
+    #[allow(dead_code)]
     fn get_notional_for_cashflow(&self, _cf: &infra_master::trade::Cashflow, _leg: &Leg) -> f64 {
         // TODO: Extract notional from cashflow/leg based on cashflow type
         // For now, return a default notional

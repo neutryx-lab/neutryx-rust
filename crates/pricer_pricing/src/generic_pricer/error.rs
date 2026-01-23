@@ -80,6 +80,13 @@ pub enum PricingError {
     /// Internal error.
     #[error("Internal error: {0}")]
     Internal(String),
+
+    /// Invalid input parameter.
+    #[error("Invalid input: {reason}")]
+    InvalidInput {
+        /// Reason the input is invalid.
+        reason: String,
+    },
 }
 
 impl PricingError {

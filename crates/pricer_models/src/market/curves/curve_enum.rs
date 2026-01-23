@@ -63,6 +63,12 @@ pub enum CurveName {
     Sofr,
     /// Tokyo Overnight Average Rate curve (JPY RFR).
     Tonar,
+    /// Sterling Overnight Index Average curve (GBP RFR).
+    Sonia,
+    /// Swiss Average Rate Overnight curve (CHF RFR).
+    Saron,
+    /// Euro Short-Term Rate curve (EUR RFR).
+    Estr,
 
     // === Interbank Rates (legacy, projection) ===
     /// Euro Interbank Offered Rate curve.
@@ -96,6 +102,9 @@ impl CurveName {
             CurveName::Ois => "OIS",
             CurveName::Sofr => "SOFR",
             CurveName::Tonar => "TONAR",
+            CurveName::Sonia => "SONIA",
+            CurveName::Saron => "SARON",
+            CurveName::Estr => "ESTR",
             CurveName::Euribor => "EURIBOR",
             CurveName::Forward => "FORWARD",
             CurveName::Discount => "DISCOUNT",

@@ -107,6 +107,13 @@ pub enum MarketDataError {
         /// Description of the feature that is not implemented
         feature: String,
     },
+
+    /// Unsupported index type for curve mapping.
+    #[error("Unsupported index: {index}")]
+    UnsupportedIndex {
+        /// The index that is not supported
+        index: String,
+    },
 }
 
 impl From<MarketDataError> for PricingError {
