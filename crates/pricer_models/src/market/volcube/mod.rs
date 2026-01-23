@@ -31,19 +31,33 @@
 mod breeden_litzenberger;
 mod builder;
 mod cache;
+mod calibrator;
 mod config;
 mod cube;
 mod error;
+pub mod graph;
 mod sabr_surface;
 mod types;
 
 pub use breeden_litzenberger::BreedenLitzenberger;
 pub use builder::VolCubeBuilder;
 pub use cache::{CacheStats, SharedVolCubeCache, VolCubeCache, VolCubeCacheEntry, VolCubeKey};
+pub use calibrator::{
+    BoxedCalibrator, CalibrationResult, CalibratorOutput, SabrCalibrator, SviCalibrator,
+    VolCubeCalibrator, default_calibrator,
+};
+#[cfg(feature = "local-vol")]
+pub use calibrator::LocalVolCalibrator;
+#[cfg(feature = "stochastic-local-vol")]
+pub use calibrator::StochasticLocalVolCalibrator;
 pub use config::{
     ExtrapolationMethod, InterpolationMethod, OptimizerType, StrikeAxisType, VolCubeConfig,
 };
 pub use cube::{VolCube, VolatilityCube};
 pub use error::{CalibrationDiagnostics, VolCubeError};
+pub use graph::{
+    VolCubeEdgeType, VolCubeGraphData, VolCubeGraphEdge, VolCubeGraphNode, VolCubeNodeType,
+    VolCubeSensitivityInfo,
+};
 pub use sabr_surface::SabrParameterSurface;
 pub use types::{InstrumentId, SabrParams, VolInstrument};

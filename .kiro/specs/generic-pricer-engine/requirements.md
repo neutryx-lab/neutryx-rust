@@ -12,8 +12,8 @@
 
 #### Acceptance Criteria
 
-1. When `get_pv(valuation_date)` が呼び出されたとき, the Generic Pricer Engine shall 指定された評価日時点でのPV（現在価値）を計算して返す
-2. When `get_pv_with_currency(valuation_date, target_currency)` が呼び出されたとき, the Generic Pricer Engine shall 指定された通貨建てでPVを返す
+1. When `get_pv(valuation_date, reporting_currency)` が呼び出されたとき, the Generic Pricer Engine shall 指定された評価日時点で、指定された報告通貨建てのPV（現在価値）を計算して返す
+2. ※廃止: `reporting_currency`は`get_pv()`の必須引数に統合（リスク計算の前提条件）
 3. When `get_greeks(valuation_date, greeks_config)` が呼び出されたとき, the Generic Pricer Engine shall 設定に基づいてDelta、Gamma、Vega等のGreeksを計算して返す
 4. The Generic Pricer Engine shall `PricingResult<T>` 型でAD互換の結果を返す（`T: Float`）
 5. If プライシングに必要なマーケットデータが欠落している場合, then the Generic Pricer Engine shall 具体的なエラーメッセージを含む `PricingError::MissingMarketData` を返す
@@ -76,7 +76,7 @@
 1. The Generic Pricer Engine shall `infra_master::market::Currency` 列挙型をサポートする
 2. When 商品通貨と出力通貨が異なるとき, the Generic Pricer Engine shall `MarketProvider` から為替レートを取得してPVを換算する
 3. The Generic Pricer Engine shall `PricingResult<T>` を階層構造（Trade → Leg → Cashflow）で設計し、任意のレベルでPV内訳にアクセスできる
-4. The Generic Pricer Engine shall 各Cashflowノードの通貨を保持し、通貨別PV内訳を `CurrencyBreakdown` で返す
+4. The Generic Pricer Engine shall 各Leg/Cashflowの元通貨を保持し、`PricingResult::group_by_currency()`で通貨別PV内訳を取得できる
 5. When `PricingResult::by_leg()` が呼び出されたとき, the Generic Pricer Engine shall Leg単位でのPV集計を返す
 6. When `PricingResult::by_cashflow()` が呼び出されたとき, the Generic Pricer Engine shall Cashflow単位でのPV詳細を返す
 7. When `PricingResult::by_path()` が呼び出されたとき, the Generic Pricer Engine shall MCシミュレーションのパス単位でのPV分布を返す（MC計算の場合のみ）

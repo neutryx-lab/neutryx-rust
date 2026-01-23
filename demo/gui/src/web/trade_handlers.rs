@@ -21,6 +21,7 @@
 use std::{sync::Arc, time::Instant};
 
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
+use chrono::Datelike;
 use serde_json::json;
 use uuid::Uuid;
 
@@ -325,6 +326,7 @@ fn expand_fra(request: &TradeExpandRequest) -> Result<TradeExpandResponse, Trade
         payoff_type: "Linear".to_string(),
         rate: Some(params.rate),
         spread: None,
+        daily_accruals: None,
     }];
 
     let leg = LegDto {
@@ -371,6 +373,7 @@ fn expand_futures(request: &TradeExpandRequest) -> Result<TradeExpandResponse, T
         payoff_type: "Linear".to_string(),
         rate: Some(params.rate),
         spread: None,
+        daily_accruals: None,
     }];
 
     let leg = LegDto {
@@ -424,23 +427,26 @@ fn expand_ois(request: &TradeExpandRequest) -> Result<TradeExpandResponse, Trade
     let schedule = generate_schedule(&params.start_date, &params.tenor, "Annual", "Act360")
         .map_err(|e| TradeExpandError::schedule_error(&e.message))?;
 
-    // OIS typically has a single payment at maturity
-    let cashflows = schedule_to_cashflows(&schedule, params.notional, params.rate, "Fixed");
+    // Fixed leg: standard cashflows
+    let fixed_cashflows = schedule_to_cashflows(&schedule, params.notional, params.rate, "Fixed");
 
     let fixed_leg = LegDto {
         leg_number: 1,
         direction: "Receiver".to_string(),
         currency: params.currency.clone(),
         leg_type: "Fixed".to_string(),
-        cashflows: cashflows.clone(),
+        cashflows: fixed_cashflows,
     };
+
+    // Floating leg: OIS compounded with daily accrual details
+    let floating_cashflows = schedule_to_ois_floating_cashflows(&schedule, params.notional, params.rate);
 
     let floating_leg = LegDto {
         leg_number: 2,
         direction: "Payer".to_string(),
         currency: params.currency.clone(),
-        leg_type: "Floating".to_string(),
-        cashflows: schedule_to_cashflows(&schedule, params.notional, 0.0, "Linear"),
+        leg_type: "OIS Floating".to_string(),
+        cashflows: floating_cashflows,
     };
 
     let total_cf = fixed_leg.cashflows.len() + floating_leg.cashflows.len();
@@ -469,22 +475,27 @@ fn expand_ois_from_swap(params: &SwapParams) -> Result<TradeExpandResponse, Trad
     .map_err(|e| TradeExpandError::schedule_error(&e.message))?;
 
     let fixed_rate = params.fixed_rate.unwrap_or(0.0);
-    let cashflows = schedule_to_cashflows(&schedule, params.notional, fixed_rate, "Fixed");
+
+    // Fixed leg: standard cashflows
+    let fixed_cashflows = schedule_to_cashflows(&schedule, params.notional, fixed_rate, "Fixed");
 
     let fixed_leg = LegDto {
         leg_number: 1,
         direction: "Receiver".to_string(),
         currency: params.currency.clone(),
         leg_type: "Fixed".to_string(),
-        cashflows: cashflows.clone(),
+        cashflows: fixed_cashflows,
     };
+
+    // Floating leg: OIS compounded with daily accrual details
+    let floating_cashflows = schedule_to_ois_floating_cashflows(&schedule, params.notional, fixed_rate);
 
     let floating_leg = LegDto {
         leg_number: 2,
         direction: "Payer".to_string(),
         currency: params.currency.clone(),
-        leg_type: "Floating".to_string(),
-        cashflows: schedule_to_cashflows(&schedule, params.notional, 0.0, "Linear"),
+        leg_type: "OIS Floating".to_string(),
+        cashflows: floating_cashflows,
     };
 
     let total_cf = fixed_leg.cashflows.len() + floating_leg.cashflows.len();
@@ -653,6 +664,7 @@ fn expand_fx_forward(
             payoff_type: "Fixed".to_string(),
             rate: Some(1.0),
             spread: None,
+            daily_accruals: None,
         }],
     };
 
@@ -670,6 +682,7 @@ fn expand_fx_forward(
             payoff_type: "Fixed".to_string(),
             rate: Some(forward_rate),
             spread: None,
+            daily_accruals: None,
         }],
     };
 
@@ -715,6 +728,7 @@ fn expand_fx_option(request: &TradeExpandRequest) -> Result<TradeExpandResponse,
             payoff_type: "VanillaOption".to_string(),
             rate: Some(strike),
             spread: None,
+            daily_accruals: None,
         }],
     };
 
@@ -822,6 +836,7 @@ fn expand_equity_vanilla_option(
             payoff_type: "VanillaOption".to_string(),
             rate: Some(params.strike),
             spread: None,
+            daily_accruals: None,
         }],
     };
 
@@ -875,6 +890,7 @@ fn expand_equity_forward(
             payoff_type: "Linear".to_string(),
             rate: Some(params.strike),
             spread: None,
+            daily_accruals: None,
         }],
     };
 
@@ -918,8 +934,92 @@ fn schedule_to_cashflows(
             payoff_type: payoff_type.to_string(),
             rate: if rate != 0.0 { Some(rate) } else { None },
             spread: None,
+            daily_accruals: None,
         })
         .collect()
+}
+
+/// Generates OIS floating leg cashflows with daily compounding details.
+fn schedule_to_ois_floating_cashflows(
+    schedule: &[SchedulePeriod],
+    notional: f64,
+    overnight_rate: f64,
+) -> Vec<CashflowDto> {
+    schedule
+        .iter()
+        .map(|period| {
+            // Generate daily accruals for this period
+            let daily_accruals = generate_daily_accruals(
+                &period.start_date,
+                &period.end_date,
+                notional,
+                overnight_rate,
+            );
+
+            CashflowDto {
+                payment_date: period.payment_date.clone(),
+                accrual_start: period.start_date.clone(),
+                accrual_end: period.end_date.clone(),
+                year_fraction: period.year_fraction,
+                notional,
+                payoff_type: "OisCompounded".to_string(),
+                rate: Some(overnight_rate),
+                spread: None,
+                daily_accruals: Some(daily_accruals),
+            }
+        })
+        .collect()
+}
+
+/// Generates daily accrual details for OIS compounding.
+fn generate_daily_accruals(
+    start_date: &str,
+    end_date: &str,
+    notional: f64,
+    overnight_rate: f64,
+) -> Vec<DailyAccrualDto> {
+    use chrono::{Duration, NaiveDate};
+
+    let start = NaiveDate::parse_from_str(start_date, "%Y-%m-%d").unwrap_or_else(|_| {
+        NaiveDate::from_ymd_opt(2026, 1, 1).unwrap()
+    });
+    let end = NaiveDate::parse_from_str(end_date, "%Y-%m-%d").unwrap_or_else(|_| {
+        NaiveDate::from_ymd_opt(2027, 1, 1).unwrap()
+    });
+
+    let mut accruals = Vec::new();
+    let mut current_date = start;
+    let mut compounded_notional = notional;
+
+    // Day count fraction for Act/360
+    let day_fraction = 1.0 / 360.0;
+
+    while current_date < end {
+        // Skip weekends (simplified - real implementation would use business day calendar)
+        let weekday = current_date.weekday();
+        if weekday == chrono::Weekday::Sat || weekday == chrono::Weekday::Sun {
+            current_date += Duration::days(1);
+            continue;
+        }
+
+        // Add small random variation to overnight rate for realism (±5bp)
+        let daily_rate = overnight_rate + (((current_date.day() as f64) % 10.0 - 5.0) * 0.0001);
+
+        // Daily compounding: N(t+1) = N(t) * (1 + r * dt)
+        let daily_interest = compounded_notional * daily_rate * day_fraction;
+        compounded_notional += daily_interest;
+
+        accruals.push(DailyAccrualDto {
+            date: current_date.format("%Y-%m-%d").to_string(),
+            overnight_rate: daily_rate,
+            day_fraction,
+            compounded_notional,
+        });
+
+        current_date += Duration::days(1);
+    }
+
+    accruals
 }
 
 // =============================================================================

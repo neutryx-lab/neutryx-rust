@@ -131,13 +131,13 @@ sequenceDiagram
     participant Model as ModelConfig
     participant Kernel as PricingKernel
 
-    Client->>GenericPricer: get_pv_with_currency(trade, date, target_ccy)
+    Client->>GenericPricer: get_pv(trade, date, reporting_ccy)
     GenericPricer->>Market: resolve_curves(trade.currencies)
     Market-->>GenericPricer: Arc<CurveEnum>
     GenericPricer->>Market: resolve_surfaces(trade.underlyings)
     Market-->>GenericPricer: Arc<VolSurfaceEnum>
-    GenericPricer->>Market: get_fx_rate(leg.currency, target_ccy)
-    Market-->>GenericPricer: FxRate
+    GenericPricer->>Market: get_fx_rate(leg.currency, reporting_ccy)
+    Market-->>GenericPricer: FxRate (f64)
     GenericPricer->>Model: get_model_or_default(trade_type)
     Model-->>GenericPricer: StochasticModelEnum
     GenericPricer->>Kernel: price_trade(trade, curves, surfaces, model)
@@ -146,15 +146,18 @@ sequenceDiagram
         loop For each Cashflow
             Kernel->>Kernel: price_cashflow(cf, discount_curve)
         end
+        Kernel->>Kernel: apply_fx_rate(leg_pv, fx_rate)
     end
-    Kernel-->>GenericPricer: PricingResult<T>
-    GenericPricer->>GenericPricer: convert_to_target_currency(result, fx_rates)
-    GenericPricer-->>Client: Result<PricingResult<T>, PricingError>
+    Kernel-->>GenericPricer: PricingResult (f64固定)
+    GenericPricer-->>Client: Result<PricingResult, PricingError>
 ```
 
 **Key Decisions**:
-- Stage 2（リンキング）でマーケットデータ解決（カーブ、サーフェス、**FxRate**）、Stage 3（カーネル）ではHashMap lookupなし
-- 通貨換算用のFxRateも`MarketProvider`から取得（統一されたマーケットデータソース）
+- `reporting_currency`は必須引数（リスク計算の前提条件）
+- Stage 2（リンキング）でマーケットデータ解決（カーブ、サーフェス、FxRate）
+- Stage 3（カーネル）ではHashMap lookupなし
+- FxRateは`MarketProvider::get_fx_rate()`で直接取得（FxConverter廃止）
+- `PricingResult`はf64固定（ADはget_greeks()のみ必要）
 - 失敗時は`PricingError`で具体的なエラーコンテキストを返す
 
 ### Batch Pricing Flow
@@ -190,8 +193,8 @@ sequenceDiagram
 
 | Requirement | Summary | Components | Interfaces | Flows |
 |-------------|---------|------------|------------|-------|
-| 1.1 | get_pv(valuation_date) | GenericPricer, PricingKernel | GenericPricer::get_pv | Single Trade Pricing |
-| 1.2 | get_pv_with_currency(date, ccy) | GenericPricer, FxConverter | GenericPricer::get_pv_with_currency | Single Trade Pricing |
+| 1.1 | get_pv(valuation_date, reporting_ccy) | GenericPricer, PricingKernel | GenericPricer::get_pv | Single Trade Pricing |
+| 1.2 | ※廃止（reporting_currencyはget_pvの必須引数） | - | - | - |
 | 1.3 | get_greeks(date, config) | GenericPricer, GreeksCalculator | GenericPricer::get_greeks | Greeks Calculation |
 | 1.4 | PricingResult<T>型 | PricingResult | - | - |
 | 1.5 | MissingMarketDataエラー | PricingError | - | - |
@@ -217,9 +220,9 @@ sequenceDiagram
 | 5.4 | 静的ディスパッチ | All enums | - | - |
 | 5.5 | UnsupportedInstrumentエラー | PricingError | - | - |
 | 6.1 | Currency列挙型 | All components | - | - |
-| 6.2 | 為替レート換算 | FxConverter | FxConverter::convert | Single Trade Pricing |
+| 6.2 | 為替レート換算 | GenericPricer | MarketProvider::get_fx_rate | Single Trade Pricing |
 | 6.3 | PricingResult階層構造 | PricingResult, LegPricingResult, CashflowPricingResult | PricingResult::by_leg, by_cashflow | - |
-| 6.4 | CurrencyBreakdown | CurrencyBreakdown | - | - |
+| 6.4 | ※廃止（Leg単位でoriginal_currency保持、group_by_currency()で集計） | PricingResult | PricingResult::group_by_currency | - |
 | 6.5 | by_leg() | PricingResult | PricingResult::by_leg | - |
 | 6.6 | by_cashflow() | PricingResult | PricingResult::by_cashflow | - |
 | 6.7 | by_path() | PricingResult | PricingResult::by_path | - |
@@ -244,34 +247,41 @@ sequenceDiagram
 
 | Component | Domain/Layer | Intent | Req Coverage | Key Dependencies | Contracts |
 |-----------|--------------|--------|--------------|------------------|-----------|
-| GenericPricer | L3/generic_pricer | 統一プライシングAPI提供 | 1.1-1.5, 5.1-5.5 | MarketProvider(P0), ModelConfig(P0), PricerConfig(P1) | Service |
+| GenericPricer | L3/generic_pricer | 統一プライシングAPI提供 | 1.1-1.5, 5.1-5.5, 6.2 | MarketProvider(P0), ModelConfig(P0), PricerConfig(P1) | Service |
 | PricingKernel | L3/generic_pricer | Trade→PV変換の純粋計算 | 1.1, 5.3, 5.4 | CurveEnum(P0), VolSurfaceEnum(P1) | Service |
 | ModelConfig | L3/generic_pricer | モデル・シミュレーション設定 | 3.1-3.6 | StochasticModelEnum(P0) | State |
 | PricerConfig | L3/generic_pricer | プライサー設定 | 4.1-4.5, 6.9 | GreeksConfig(P0), Currency(P1) | State |
-| PricingResult | L3/generic_pricer | 階層的プライシング結果 | 1.4, 6.3-6.7 | LegPricingResult(P0), CurrencyBreakdown(P0) | State |
+| PricingResult | L3/generic_pricer | 階層的プライシング結果（Leg単位） | 1.4, 6.3-6.7 | LegPricingResult(P0) | State |
 | BatchPricer | L3/generic_pricer | バッチプライシング | 8.1-8.5 | GenericPricer(P0), Rayon(P0) | Service |
-| FxConverter | L3/generic_pricer | 為替換算 | 6.2, 6.8 | MarketProvider(P0) | Service |
 | DateUtils | L3/generic_pricer | 日付計算ヘルパー | 7.1-7.5 | infra_master::time(P0) | Service |
+
+**設計変更点**:
+- `GenericPricer`: trait → concrete struct（単一実装で十分）
+- `PricingResult`: `T: Float`ジェネリック → `f64`固定（ADはGreeksのみ必要）
+- `CurrencyBreakdown`: 廃止 → Leg単位で通貨情報を保持（Enzyme AD互換性向上）
+- `FxConverter`: 廃止 → `MarketProvider::get_fx_rate()`を直接使用（過剰な抽象化を排除）
+- `get_pv()`: `reporting_currency`を必須引数に（リスク計算の前提条件）
 
 ---
 
 ### L3: pricer_pricing/generic_pricer
 
-#### GenericPricer (Trait)
+#### GenericPricer (Concrete Struct)
 
 | Field | Detail |
 |-------|--------|
 | Intent | Trade/InstrumentEnumに対する統一プライシングAPI |
-| Requirements | 1.1, 1.2, 1.3, 1.4, 1.5, 5.1, 5.2 |
+| Requirements | 1.1, 1.2, 1.3, 1.4, 1.5, 5.1, 5.2, 6.2 |
 
 **Responsibilities & Constraints**
-- TradeまたはInstrumentEnumを受け取り、PricingResult<T>を返す
+- TradeまたはInstrumentEnumを受け取り、`PricingResult`（f64固定）を返す
+- `reporting_currency`を必須引数として受け取り、FX換算を実行
 - マーケットデータ解決（Stage 2）とカーネル実行（Stage 3）の調整
-- Enzyme互換性のため`T: Float`ジェネリック
+- `get_greeks()`のみ`T: Float`ジェネリックでEnzyme AD対応
 
 **Dependencies**
 - Inbound: service_cli, service_gateway, pricer_risk — プライシングAPI呼び出し (P0)
-- Outbound: MarketProvider — マーケットデータ取得 (P0)
+- Outbound: MarketProvider — マーケットデータ取得、FxRate取得 (P0)
 - Outbound: PricingKernel — 実際の計算実行 (P0)
 - External: rayon — 並列処理 (P1)
 
@@ -280,40 +290,49 @@ sequenceDiagram
 ##### Service Interface
 
 ```rust
-/// 汎用プライサートレイト
-/// T: Float制約でEnzyme AD互換
-pub trait GenericPricer<T: Float> {
-    /// 評価日時点のPVを計算
-    fn get_pv(
-        &self,
-        trade: &Trade,
-        valuation_date: Date,
-    ) -> Result<PricingResult<T>, PricingError>;
+/// 汎用プライサー（具象構造体）
+/// traitは不要 — 単一実装で十分
+pub struct GenericPricer {
+    market: Arc<MarketProvider>,
+    model_config: ModelConfig,
+    pricer_config: PricerConfig,
+}
 
-    /// 指定通貨建てでPVを計算
-    fn get_pv_with_currency(
-        &self,
-        trade: &Trade,
-        valuation_date: Date,
-        target_currency: Currency,
-    ) -> Result<PricingResult<T>, PricingError>;
+impl GenericPricer {
+    /// 新しいGenericPricerを作成
+    pub fn new(
+        market: Arc<MarketProvider>,
+        model_config: ModelConfig,
+        pricer_config: PricerConfig,
+    ) -> Self;
 
-    /// Greeks計算
-    fn get_greeks(
+    /// 評価日時点のPVを計算（報告通貨必須）
+    /// reporting_currencyはリスク計算の前提条件
+    pub fn get_pv(
         &self,
         trade: &Trade,
         valuation_date: Date,
+        reporting_currency: Currency,
+    ) -> Result<PricingResult, PricingError>;
+
+    /// Greeks計算（Enzyme AD対応、ジェネリック）
+    pub fn get_greeks<T: Float>(
+        &self,
+        trade: &Trade,
+        valuation_date: Date,
+        reporting_currency: Currency,
         greeks_config: &GreeksConfig,
     ) -> Result<GreeksResult<T>, GreeksError>;
 }
 ```
 
-- Preconditions: `trade`が有効なTrade構造、`valuation_date`が妥当な日付
-- Postconditions: 成功時はPricingResult<T>を返却、失敗時はPricingErrorで具体的理由
+- Preconditions: `trade`が有効なTrade構造、`valuation_date`が妥当な日付、`reporting_currency`が有効
+- Postconditions: 成功時はPricingResult（f64）を返却、失敗時はPricingErrorで具体的理由
 - Invariants: 同一入力に対して同一結果（決定論的、seedが同じ場合）
 
 **Implementation Notes**
-- Integration: `GenericPricerEngine`構造体がトレイトを実装
+- Integration: 具象構造体として直接使用（traitなし）
+- FX換算: `MarketProvider::get_fx_rate()`を直接呼び出し（FxConverterは不要）
 - Validation: Trade有効性チェック、マーケットデータ存在確認
 - Risks: マーケットデータ欠落時のエラーハンドリング
 
@@ -454,86 +473,98 @@ impl PricerConfigBuilder {
 
 | Field | Detail |
 |-------|--------|
-| Intent | 階層的プライシング結果（Trade → Leg → Cashflow） |
-| Requirements | 1.4, 6.3, 6.4, 6.5, 6.6, 6.7 |
+| Intent | 階層的プライシング結果（Trade → Leg → Cashflow）、f64固定 |
+| Requirements | 1.4, 6.3, 6.5, 6.6, 6.7 |
 
 **Responsibilities & Constraints**
 - Trade/Leg/Cashflow階層に対応したPV内訳の保持
-- 通貨別集計（CurrencyBreakdown）
+- **Leg単位で通貨情報を保持**（CurrencyBreakdown廃止、Enzyme AD互換性向上）
 - MCシミュレーション時のパス分布（オプション）
-- `T: Float`ジェネリックでAD互換
+- **f64固定**（ADはget_greeks()のみ必要、PV結果にはジェネリック不要）
 
 **Dependencies**
 - Inbound: GenericPricer — 結果返却 (P0)
 - Outbound: LegPricingResult — Leg単位結果 (P0)
-- Outbound: CurrencyBreakdown — 通貨別集計 (P0)
 
 **Contracts**: State [x]
 
 ##### State Management
 
 ```rust
-/// プライシング結果（Trade単位）
+/// プライシング結果（Trade単位、f64固定）
+/// ADはget_greeks()のみ必要なため、PricingResultはジェネリック不要
 #[derive(Debug, Clone)]
-pub struct PricingResult<T: Float> {
-    /// 合計PV（デフォルト通貨建て）
-    pub total_pv: T,
+pub struct PricingResult {
+    /// 合計PV（報告通貨建て）
+    pub total_pv: f64,
     /// 各Legの結果
-    pub legs: Vec<LegPricingResult<T>>,
-    /// 通貨別内訳
-    pub currency_breakdown: CurrencyBreakdown<T>,
+    pub legs: Vec<LegPricingResult>,
     /// パス分布（MC計算時のみ）
-    pub path_distribution: Option<PathDistribution<T>>,
+    pub path_distribution: Option<PathDistribution>,
     /// 報告通貨
     pub reporting_currency: Currency,
 }
 
-impl<T: Float> PricingResult<T> {
+impl PricingResult {
     /// Leg単位のPV集計を返す
-    pub fn by_leg(&self) -> &[LegPricingResult<T>];
+    pub fn by_leg(&self) -> &[LegPricingResult];
 
     /// Cashflow単位のPV詳細を返す
-    pub fn by_cashflow(&self) -> Vec<&CashflowPricingResult<T>>;
+    pub fn by_cashflow(&self) -> Vec<&CashflowPricingResult>;
 
     /// パス単位のPV分布を返す（MC計算時のみ）
-    pub fn by_path(&self) -> Option<&PathDistribution<T>>;
+    pub fn by_path(&self) -> Option<&PathDistribution>;
+
+    /// 通貨別PV集計（Leg単位から動的に計算）
+    pub fn group_by_currency(&self) -> Vec<(Currency, f64)>;
 }
 
 /// Leg単位プライシング結果
 #[derive(Debug, Clone)]
-pub struct LegPricingResult<T: Float> {
-    pub pv: T,
+pub struct LegPricingResult {
+    /// 報告通貨建てPV
+    pub pv: f64,
+    /// 元通貨建てPV
+    pub pv_original: f64,
+    /// 元通貨
+    pub original_currency: Currency,
+    /// 使用したFXレート
+    pub fx_rate: f64,
+    /// 支払/受取方向
     pub direction: Direction,
-    pub currency: Currency,
-    pub cashflows: Vec<CashflowPricingResult<T>>,
+    /// Cashflow詳細
+    pub cashflows: Vec<CashflowPricingResult>,
 }
 
 /// Cashflow単位プライシング結果
 #[derive(Debug, Clone)]
-pub struct CashflowPricingResult<T: Float> {
-    pub pv: T,
+pub struct CashflowPricingResult {
+    /// 報告通貨建てPV
+    pub pv: f64,
+    /// 元通貨建てPV
+    pub pv_original: f64,
+    /// 支払日
     pub payment_date: Date,
-    pub discount_factor: T,
-    pub currency: Currency,
+    /// ディスカウントファクター
+    pub discount_factor: f64,
+    /// 元通貨
+    pub original_currency: Currency,
 }
 
-/// 通貨別集計
+/// パス分布（MC用、f64固定）
 #[derive(Debug, Clone)]
-pub struct CurrencyBreakdown<T: Float> {
-    pub pv_by_currency: HashMap<Currency, T>,
-    pub total_pv: T,
-    pub reporting_currency: Currency,
-}
-
-/// パス分布（MC用）
-#[derive(Debug, Clone)]
-pub struct PathDistribution<T: Float> {
-    pub mean: T,
-    pub std_dev: T,
-    pub percentiles: Vec<(f64, T)>, // (percentile, value)
+pub struct PathDistribution {
+    pub mean: f64,
+    pub std_dev: f64,
+    pub percentiles: Vec<(f64, f64)>, // (percentile, value)
     pub path_count: usize,
 }
 ```
+
+**設計根拠**:
+- `CurrencyBreakdown`廃止: `HashMap<Currency, T>`はEnzyme ADと相性が悪い（動的割り当て）
+- Leg単位で`original_currency`と`fx_rate`を保持することで、必要時に`group_by_currency()`で集計可能
+- `f64`固定: PV計算結果にADは不要、`get_greeks()`のみがEnzyme対応必要
 
 ---
 
@@ -604,65 +635,12 @@ pub struct BatchStats {
 
 ---
 
-#### FxConverter
+---
 
-| Field | Detail |
-|-------|--------|
-| Intent | MarketProviderからFxRateを取得し、通貨間換算を実行 |
-| Requirements | 6.2, 6.8 |
-
-**Responsibilities & Constraints**
-- `MarketProvider`からFxRateを取得（統一されたマーケットデータソース）
-- 通貨ペア間のレート換算
-- FxRate不在時のエラーハンドリング
-
-**Dependencies**
-- Inbound: GenericPricer — 通貨換算要求 (P0)
-- Outbound: MarketProvider — FxRate取得 (P0)
-
-**Contracts**: Service [x]
-
-##### Service Interface
-
-```rust
-/// 為替換算ユーティリティ
-/// MarketProviderからFxRateを取得して換算を実行
-pub struct FxConverter<'a> {
-    market: &'a MarketProvider,
-}
-
-impl<'a> FxConverter<'a> {
-    /// 新しいFxConverterを作成
-    pub fn new(market: &'a MarketProvider) -> Self;
-
-    /// 金額を換算
-    /// MarketProviderからFxRateを取得し、base通貨からquote通貨へ換算
-    pub fn convert<T: Float>(
-        &self,
-        amount: T,
-        from: Currency,
-        to: Currency,
-        valuation_date: Date,
-    ) -> Result<T, MarketDataError>;
-
-    /// PricingResultを指定通貨に換算
-    pub fn convert_result<T: Float>(
-        &self,
-        result: PricingResult<T>,
-        target_currency: Currency,
-        valuation_date: Date,
-    ) -> Result<PricingResult<T>, MarketDataError>;
-}
-```
-
-- Preconditions: `market`が有効、通貨ペアがサポート対象
-- Postconditions: 換算後の金額を返却、またはFxRateNotFoundエラー
-- Invariants: 同一通貨間の換算はレート1.0を使用
-
-**Implementation Notes**
-- Integration: `MarketProvider::get_fx_rate(base, quote)`を使用
-- Validation: 通貨ペアの存在確認
-- Risks: クロスレート計算が必要な場合の対応（USD経由等）
+**FxConverter廃止**:
+- `FxConverter`は過剰な抽象化のため削除
+- FX換算は`GenericPricer`内で`MarketProvider::get_fx_rate()`を直接呼び出し
+- クロスレート計算が必要な場合は`MarketProvider`側で対応
 
 ---
 

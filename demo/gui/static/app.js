@@ -7505,10 +7505,14 @@ function createCashflowTable(cashflows, legIndex) {
 
     const sortedClass = (col) => col === sortColumn ? 'sorted' : '';
 
+    // Check if any cashflow has daily accruals
+    const hasDailyAccruals = pageCfs.some(cf => cf.dailyAccruals && cf.dailyAccruals.length > 0);
+
     return `
         <table class="cf-table" data-leg-index="${legIndex}">
             <thead>
                 <tr>
+                    ${hasDailyAccruals ? '<th class="expand-col"></th>' : ''}
                     <th class="${sortedClass('paymentDate')}" data-sort-col="paymentDate">
                         Payment Date ${sortIcon('paymentDate')}
                     </th>
@@ -7533,8 +7537,20 @@ function createCashflowTable(cashflows, legIndex) {
                 </tr>
             </thead>
             <tbody>
-                ${pageCfs.map(cf => `
-                    <tr>
+                ${pageCfs.map((cf, cfIndex) => {
+                    const hasDailyData = cf.dailyAccruals && cf.dailyAccruals.length > 0;
+                    const rowId = `cf-${legIndex}-${cfIndex}`;
+                    return `
+                    <tr class="${hasDailyData ? 'expandable-row' : ''}" data-row-id="${rowId}">
+                        ${hasDailyAccruals ? `
+                            <td class="expand-cell">
+                                ${hasDailyData ? `
+                                    <button class="expand-btn" onclick="toggleDailyAccruals('${rowId}')">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </button>
+                                ` : ''}
+                            </td>
+                        ` : ''}
                         <td class="mono">${cf.paymentDate || '--'}</td>
                         <td class="mono">${cf.accrualStart || '--'}</td>
                         <td class="mono">${cf.accrualEnd || '--'}</td>
@@ -7545,10 +7561,73 @@ function createCashflowTable(cashflows, legIndex) {
                         <td>${cf.payoffType || '--'}</td>
                         <td class="mono">${cf.rate != null ? (cf.rate * 100).toFixed(4) + '%' : '--'}</td>
                     </tr>
-                `).join('')}
+                    ${hasDailyData ? createDailyAccrualsRow(cf.dailyAccruals, rowId, hasDailyAccruals ? 8 : 7) : ''}
+                `}).join('')}
             </tbody>
         </table>
     `;
+}
+
+/**
+ * Create daily accruals expandable row.
+ */
+function createDailyAccrualsRow(dailyAccruals, rowId, colspan) {
+    return `
+        <tr class="daily-accruals-row" id="${rowId}-details" style="display: none;">
+            <td colspan="${colspan}">
+                <div class="daily-accruals-container">
+                    <div class="daily-accruals-header">
+                        <i class="fas fa-calendar-day"></i>
+                        Daily Compounding Details (${dailyAccruals.length} business days)
+                    </div>
+                    <div class="daily-accruals-scroll">
+                        <table class="daily-accruals-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Overnight Rate</th>
+                                    <th>Day Fraction</th>
+                                    <th>Compounded Notional</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${dailyAccruals.slice(0, 50).map(da => `
+                                    <tr>
+                                        <td class="mono">${da.date}</td>
+                                        <td class="mono">${(da.overnightRate * 100).toFixed(4)}%</td>
+                                        <td class="mono">${da.dayFraction.toFixed(6)}</td>
+                                        <td class="mono">${formatNumber(da.compoundedNotional)}</td>
+                                    </tr>
+                                `).join('')}
+                                ${dailyAccruals.length > 50 ? `
+                                    <tr class="more-rows">
+                                        <td colspan="4">... and ${dailyAccruals.length - 50} more days</td>
+                                    </tr>
+                                ` : ''}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+/**
+ * Toggle daily accruals visibility.
+ */
+function toggleDailyAccruals(rowId) {
+    const detailsRow = document.getElementById(`${rowId}-details`);
+    const btn = document.querySelector(`tr[data-row-id="${rowId}"] .expand-btn`);
+
+    if (detailsRow && btn) {
+        const isHidden = detailsRow.style.display === 'none';
+        detailsRow.style.display = isHidden ? 'table-row' : 'none';
+        btn.innerHTML = isHidden
+            ? '<i class="fas fa-chevron-down"></i>'
+            : '<i class="fas fa-chevron-right"></i>';
+        btn.closest('tr').classList.toggle('expanded', isHidden);
+    }
 }
 
 /**

@@ -7,12 +7,13 @@
 use std::time::Instant;
 
 use num_traits::Float;
+use serde::{Deserialize, Serialize};
 
 /// Instrument識別子。
 ///
 /// VolCubeのソースInstrumentを一意に識別する。
 /// カリブレーション元データの追跡とキャッシュキー生成に使用。
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct InstrumentId(String);
 
 impl InstrumentId {
