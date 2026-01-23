@@ -49,6 +49,7 @@
 //! ```
 
 // Core modules
+pub mod book;
 pub mod counterparty;
 pub mod ids;
 pub mod market;
@@ -59,7 +60,10 @@ pub mod trade;
 mod error;
 // Counterparty module types (re-exported for convenience)
 pub use counterparty::{CsaTerms, NettingSet};
-pub use error::{BookError, CurrencyError, DateError, MasterDataError, PortfolioError};
+pub use error::{
+    BookError, CurrencyError, DateError, ExposureError, MasterDataError, NettingError,
+    PortfolioError, ValidationError, ValidationResult,
+};
 // Market module types
 pub use market::{Currency, RateIndex};
 // Re-export commonly used types at crate root for convenience
@@ -73,11 +77,17 @@ pub use time::{
 pub use trade::{SwapDirection, TradeDirection};
 // ID types (centralised for type safety)
 pub use ids::{BookId, CounterpartyId, IssuerId, PortfolioId, TradeId};
+// Book module types
+pub use book::{Book, BookBuilder, BookMetadata, BookOwnership, BookType, RegulatoryBookType};
 
 /// Prelude module for convenient imports
 pub mod prelude {
     pub use crate::{
-        error::{BookError, CurrencyError, DateError, MasterDataError, PortfolioError},
+        book::{Book, BookBuilder, BookMetadata, BookOwnership, BookType, RegulatoryBookType},
+        error::{
+            BookError, CurrencyError, DateError, ExposureError, MasterDataError, NettingError,
+            PortfolioError, ValidationError, ValidationResult,
+        },
         ids::{BookId, CounterpartyId, IssuerId, PortfolioId, TradeId},
         market::{Currency, RateIndex},
         time::{
