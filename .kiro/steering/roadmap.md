@@ -2,13 +2,13 @@
 
 実装状況と今後の開発項目を追跡するドキュメント。
 
-_Updated: 2026-01-22_ — Steering sync: codebase-simplification completed, curve-bootstrap-engine added
+_Updated: 2026-01-23_ — Steering sync: standard-instrument-catalogue completed, 3 new specs in tasks-generated
 
 ---
 
 ## Current State Summary
 
-### Completed Specifications (24)
+### Completed Specifications (25)
 
 | Spec | Description | Completed |
 |------|-------------|-----------|
@@ -36,6 +36,7 @@ _Updated: 2026-01-22_ — Steering sync: codebase-simplification completed, curv
 | trade-instrument-module | Trade/Instrument module with CF-expanded architecture | 2026-01-21 |
 | pricer-core-math-library | Comprehensive math library (distributions, integrators, optimisers, linalg, fitting, mesh) | 2026-01-21 |
 | codebase-simplification | Code deduplication, API surface minimisation, module restructuring | 2026-01-22 |
+| standard-instrument-catalogue | Standard instrument definitions (Rates, FX, Equity, Credit, Commodity) | 2026-01-23 |
 
 ### Layer Implementation Status
 
@@ -139,8 +140,10 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 
 | Spec | Description | Phase |
 |------|-------------|-------|
-| standard-instrument-catalogue | Standard instrument definitions for Rates, FX, Equity, Credit, Commodity | Implementation in progress |
-| curve-bootstrap-engine | Multi-curve yield curve bootstrapping engine | Requirements generated |
+| curve-bootstrap-engine | Multi-curve yield curve bootstrapping engine | Implementation |
+| legacy-compatibility-removal | Legacy code removal and ID type safety | Tasks generated |
+| portfolio-book-model | Portfolio/Book organisation model | Tasks generated |
+| domain-ordering-defaults | Domain ordering and default values | Tasks generated |
 
 ## Recommended Next Steps
 
@@ -154,6 +157,7 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 
 | Date | Change |
 |------|--------|
+| 2026-01-23 | Steering sync: standard-instrument-catalogue completed (186 instrument_def tests, 855 total), 3 new specs in tasks-generated phase, curve-bootstrap-engine in implementation |
 | 2026-01-22 | Steering sync: codebase-simplification completed (24 total), curve-bootstrap-engine added (requirements phase), standard-instrument-catalogue in implementation |
 | 2026-01-21 | Steering sync: Added codebase-simplification to active specs (tasks awaiting approval) |
 | 2026-01-21 | Steering sync: pricer-core-math-library completed (31/31 tasks), moved to completed specs. Total: 23 specs |
