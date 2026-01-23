@@ -15,6 +15,9 @@ enzyme-ad = ["pricer_pricing/enzyme-ad"]
 openapi = ["utoipa", "utoipa-swagger-ui"]
 
 [dependencies]
+# Infra layer
+infra_master = { path = "../../crates/infra_master", features = ["serde"] }
+
 # Pricer layer
 pricer_core = { path = "../../crates/pricer_core" }
 pricer_models = { path = "../../crates/pricer_models" }

@@ -159,6 +159,9 @@ pub mod pool;
 // Computation graph visualisation data structures
 pub mod graph;
 
+// Generic Pricer Engine - unified pricing API
+pub mod generic_pricer;
+
 // Re-export commonly used items for convenience
 pub use enzyme::{gradient, gradient_with_step, ADMode, Activity};
 pub use graph::{

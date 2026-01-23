@@ -127,21 +127,21 @@ Curve Build画面の精緻化タスク。バックエンドAPI、フロントエ
 
 ---
 
-- [ ] 7. IRS機能の削除
+- [x] 7. IRS機能の削除
 
-- [ ] 7.1 IRS関連UI要素の削除
+- [x] 7.1 IRS関連UI要素の削除
   - `#irs-params-section` セクションをHTMLから削除
   - IRS Pricing結果表示カードを削除
   - Risk計算結果カードを削除（Curve Build画面から）
   - _Requirements: 6.1_
 
-- [ ] 7.2 IRS関連JavaScript呼び出しの削除
+- [x] 7.2 IRS関連JavaScript呼び出しの削除
   - handlePriceIrs()関数呼び出しを削除
   - handleRiskBump(), handleRiskAad()呼び出しを削除
   - IRS関連イベントリスナーを削除
   - _Requirements: 6.2_
 
-- [ ] 7.3 View IDのリネーム
+- [x] 7.3 View IDのリネーム
   - `#irs-bootstrap-view` を `#curve-builder-view` にリネーム
   - ナビゲーションメニューのラベルを「Curve Builder」に変更
   - 関連するCSS classの更新
@@ -149,22 +149,22 @@ Curve Build画面の精緻化タスク。バックエンドAPI、フロントエ
 
 ---
 
-- [ ] 8. Curve Builder フロントエンドUI
+- [x] 8. Curve Builder フロントエンドUI
 
-- [ ] 8.1 Index選択ドロップダウンの実装
+- [x] 8.1 Index選択ドロップダウンの実装
   - USD-SOFR, EUR-ESTR, JPY-TONAの選択肢を表示
   - 選択変更時にInstrument一覧APIを呼び出し
   - 選択状態を保持
   - _Requirements: 1.4, 2.1_
 
-- [ ] 8.2 レート入力テーブルの実装
+- [x] 8.2 レート入力テーブルの実装
   - Instrumentタイプ、Tenor、Rate列を持つ編集可能テーブル
   - 数値入力フィールドにバリデーション（-10%～+50%、小数点4桁）
   - 変更されたセルのハイライト表示
   - 元の値を保持し、変更差分を視覚化
   - _Requirements: 2.1, 2.2, 2.3_
 
-- [ ] 8.3 レートのエクスポート・インポート機能
+- [x] 8.3 レートのエクスポート・インポート機能
   - 「Export JSON」ボタンでレートをJSONファイルとしてダウンロード
   - 「Import JSON」ボタンでファイル選択ダイアログを表示
   - インポート時にレートフィールドを更新
@@ -173,21 +173,21 @@ Curve Build画面の精緻化タスク。バックエンドAPI、フロントエ
 
 ---
 
-- [ ] 9. Builder設定UIの実装
+- [x] 9. Builder設定UIの実装
 
-- [ ] 9.1 補間手法選択UIの実装
+- [x] 9.1 補間手法選択UIの実装
   - Linear, LogLinear, CubicSpline, Monotonicのラジオボタン/ドロップダウン
   - 推奨手法（LogLinear）にラベル表示
   - 選択変更時に説明テキストを更新
   - _Requirements: 3.1, 3.3_
 
-- [ ] 9.2 ブートストラップ手法選択UIの実装
+- [x] 9.2 ブートストラップ手法選択UIの実装
   - Sequentialを選択可能として表示
   - Globalは「Coming Soon」ラベル付きで無効化
   - 選択状態に応じてtoleranceとmax_iterationsパラメータを表示
   - _Requirements: 3.2, 3.3_
 
-- [ ] 9.3 Builder設定プリセット機能
+- [x] 9.3 Builder設定プリセット機能
   - 現在の設定をLocalStorageに保存する機能
   - 保存済みプリセットをドロップダウンで選択
   - プリセット適用時に各設定フィールドを更新
@@ -195,53 +195,53 @@ Curve Build画面の精緻化タスク。バックエンドAPI、フロントエ
 
 ---
 
-- [ ] 10. カーブ構築UIの実装
+- [x] 10. カーブ構築UIの実装
 
-- [ ] 10.1 Build Curveボタンと処理
+- [x] 10.1 Build Curveボタンと処理
   - 「Build Curve」ボタンのクリックイベント
   - 入力レートとBuilder設定を収集してAPIリクエスト送信
   - ボタン無効化とプログレス表示
   - _Requirements: 4.1, 4.2_
 
-- [ ] 10.2 構築結果サマリの表示
+- [x] 10.2 構築結果サマリの表示
   - 成功/失敗ステータスのバッジ表示
   - 処理時間、使用Instrument数の表示
   - エラー時は詳細メッセージを表示
   - _Requirements: 4.3, 4.4_
 
-- [ ] 10.3 再構築通知の実装
+- [x] 10.3 再構築通知の実装
   - Builder設定またはレート変更時に「Rebuild Required」通知を表示
   - 通知をクリアする条件（再構築完了時）
   - _Requirements: 4.5_
 
 ---
 
-- [ ] 11. Parameterカーブ表示UIの実装
+- [x] 11. Parameterカーブ表示UIの実装
 
-- [ ] 11.1 Parameter表示モード切替タブ
+- [x] 11.1 Parameter表示モード切替タブ
   - Discount Factor, Zero Rate, Forward Rateの3タブ
   - タブ切替時にParameter取得APIを呼び出し
   - アクティブタブのスタイル適用
   - _Requirements: 5.1_
 
-- [ ] 11.2 Chart.jsでのカーブ描画
+- [x] 11.2 Chart.jsでのカーブ描画
   - 構築済みカーブのチャート表示
   - X軸: Tenor（年）、Y軸: Parameter値
   - ホバー時にツールチップでTenorと値を表示
   - _Requirements: 5.2, 5.4_
 
-- [ ] 11.3 テーブル形式でのデータ表示
+- [x] 11.3 テーブル形式でのデータ表示
   - TenorとValue列を持つテーブル
   - チャートと同じデータを表示
   - _Requirements: 5.3_
 
-- [ ] 11.4 Tenor範囲カスタマイズUI
+- [x] 11.4 Tenor範囲カスタマイズUI
   - 開始年、終了年、グリッド間隔の入力フィールド
   - 「Apply」ボタンでParameterを再取得
   - デフォルト値: 0-30年、0.25年間隔
   - _Requirements: 5.5_
 
-- [ ] 11.5 カーブデータエクスポート機能
+- [x] 11.5 カーブデータエクスポート機能
   - 「Export CSV」ボタンでCSVファイルをダウンロード
   - 「Export JSON」ボタンでJSONファイルをダウンロード
   - ファイル名にcurve_idとparameter_typeを含める
@@ -262,16 +262,16 @@ Curve Build画面の精緻化タスク。バックエンドAPI、フロントエ
 
 ---
 
-- [ ] 13. 統合テスト
+- [x] 13. 統合テスト
 
-- [ ] 13.1 APIエンドポイントのテスト
+- [x] 13.1 APIエンドポイントのテスト
   - GET /api/curves/instruments/{index} の正常系・エラー系テスト
   - POST /api/curves/build のカーブ構築テスト
   - GET /api/curves/{curveId}/parameters のParameter取得テスト
   - GET /api/curves/builders のBuilder一覧テスト
   - _Requirements: 7.1, 7.2, 7.3, 7.4_
 
-- [ ] 13.2 E2Eフローの検証
+- [x] 13.2 E2Eフローの検証
   - Index選択 → レート編集 → Build Curve → Parameterチャート表示の一連フロー
   - 各Parameter表示モード（DF, ZeroRate, ForwardRate）の切替確認
   - エクスポート・インポート機能の動作確認

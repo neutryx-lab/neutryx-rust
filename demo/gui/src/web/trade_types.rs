@@ -340,6 +340,20 @@ pub struct LegDto {
     pub cashflows: Vec<CashflowDto>,
 }
 
+/// Daily accrual detail for OIS compounding.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DailyAccrualDto {
+    /// Date of this accrual (ISO 8601)
+    pub date: String,
+    /// Overnight rate for this day
+    pub overnight_rate: f64,
+    /// Day count fraction (typically 1/360 or 1/365)
+    pub day_fraction: f64,
+    /// Compounded notional up to this date
+    pub compounded_notional: f64,
+}
+
 /// Cashflow DTO for API response.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -360,6 +374,9 @@ pub struct CashflowDto {
     pub rate: Option<f64>,
     /// Spread (if applicable)
     pub spread: Option<f64>,
+    /// Daily accrual details for OIS floating leg (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub daily_accruals: Option<Vec<DailyAccrualDto>>,
 }
 
 /// Trade metadata DTO for API response.
@@ -783,6 +800,7 @@ mod tests {
                         payoff_type: "Fixed".to_string(),
                         rate: Some(0.05),
                         spread: None,
+                        daily_accruals: None,
                     }],
                 }],
                 metadata: TradeMetadataDto {
@@ -826,6 +844,7 @@ mod tests {
                 payoff_type: "Fixed".to_string(),
                 rate: Some(0.05),
                 spread: None,
+                daily_accruals: None,
             };
 
             let json = serde_json::to_string(&cf).unwrap();

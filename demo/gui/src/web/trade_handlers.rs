@@ -24,6 +24,15 @@ use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use serde_json::json;
 use uuid::Uuid;
 
+// Import Infra-master types for OIS expansion
+use infra_master::{
+    trade::{
+        convention::ConventionSet,
+        instrument_def::{InstrumentExpander, Ois, PayerReceiver},
+    },
+    Currency, Date, Frequency, RateIndex,
+};
+
 use super::{
     schedule_utils::{generate_schedule, SchedulePeriod},
     trade_types::*,
@@ -325,6 +334,7 @@ fn expand_fra(request: &TradeExpandRequest) -> Result<TradeExpandResponse, Trade
         payoff_type: "Linear".to_string(),
         rate: Some(params.rate),
         spread: None,
+        daily_accruals: None,
     }];
 
     let leg = LegDto {
@@ -371,6 +381,7 @@ fn expand_futures(request: &TradeExpandRequest) -> Result<TradeExpandResponse, T
         payoff_type: "Linear".to_string(),
         rate: Some(params.rate),
         spread: None,
+        daily_accruals: None,
     }];
 
     let leg = LegDto {
@@ -403,14 +414,28 @@ fn expand_par_swap(request: &TradeExpandRequest) -> Result<TradeExpandResponse, 
     })
 }
 
-/// Expands an OIS instrument.
+/// Expands an OIS instrument using Infra-master's OIS expansion logic.
+///
+/// This function delegates to the Infra-master layer for proper OIS daily
+/// compounding expansion, ensuring separation of concerns.
 fn expand_ois(request: &TradeExpandRequest) -> Result<TradeExpandResponse, TradeExpandError> {
-    let params = match &request.params {
-        InstrumentParamsUnion::Rates(p) => p,
-        InstrumentParamsUnion::Swap(p) => {
-            // Convert SwapParams to RatesParams for OIS
-            return expand_ois_from_swap(p);
-        }
+    let (start_date, tenor, fixed_rate, notional, currency, frequency) = match &request.params {
+        InstrumentParamsUnion::Rates(p) => (
+            &p.start_date,
+            &p.tenor,
+            p.rate,
+            p.notional,
+            &p.currency,
+            "Annual".to_string(),
+        ),
+        InstrumentParamsUnion::Swap(p) => (
+            &p.start_date,
+            &p.tenor,
+            p.fixed_rate.unwrap_or(0.0),
+            p.notional,
+            &p.currency,
+            p.payment_frequency.clone(),
+        ),
         _ => {
             return Err(TradeExpandError::validation(
                 "params",
@@ -419,86 +444,169 @@ fn expand_ois(request: &TradeExpandRequest) -> Result<TradeExpandResponse, Trade
         }
     };
 
-    let trade_id = generate_trade_id("OIS");
+    // Parse parameters for Infra-master OIS
+    let start = parse_date(start_date)?;
+    let end = parse_tenor_end_date(start_date, tenor)?;
+    let ccy = parse_currency(currency)?;
+    let rate_index = currency_to_rate_index(currency);
+    let freq = parse_frequency(&frequency);
 
-    let schedule = generate_schedule(&params.start_date, &params.tenor, "Annual", "Act360")
-        .map_err(|e| TradeExpandError::schedule_error(&e.message))?;
-
-    // OIS typically has a single payment at maturity
-    let cashflows = schedule_to_cashflows(&schedule, params.notional, params.rate, "Fixed");
-
-    let fixed_leg = LegDto {
-        leg_number: 1,
-        direction: "Receiver".to_string(),
-        currency: params.currency.clone(),
-        leg_type: "Fixed".to_string(),
-        cashflows: cashflows.clone(),
+    // Create OIS instrument using Infra-master types
+    let ois = Ois {
+        rate_index,
+        fixed_rate,
+        start_date: start,
+        end_date: end,
+        notional,
+        currency: ccy,
+        payer_receiver: PayerReceiver::Payer,
+        payment_frequency: freq,
     };
 
-    let floating_leg = LegDto {
-        leg_number: 2,
-        direction: "Payer".to_string(),
-        currency: params.currency.clone(),
-        leg_type: "Floating".to_string(),
-        cashflows: schedule_to_cashflows(&schedule, params.notional, 0.0, "Linear"),
-    };
+    // Expand using Infra-master's InstrumentExpander
+    let conventions = ConventionSet::default();
+    let valuation_date = Date::today();
+    let trade_id_str = generate_trade_id("OIS");
 
-    let total_cf = fixed_leg.cashflows.len() + floating_leg.cashflows.len();
+    let trade = ois
+        .expand_to_trade(trade_id_str.clone(), valuation_date, &conventions)
+        .map_err(|e| TradeExpandError::schedule_error(&format!("OIS expansion error: {:?}", e)))?;
+
+    // Convert Infra-master Trade to DTO
+    convert_trade_to_dto(trade, &trade_id_str, "OIS")
+}
+
+/// Helper: Converts Infra-master Trade to TradeExpandResponse DTO.
+fn convert_trade_to_dto(
+    trade: infra_master::trade::Trade,
+    trade_id: &str,
+    trade_type: &str,
+) -> Result<TradeExpandResponse, TradeExpandError> {
+    let mut legs_dto = Vec::new();
+
+    for (idx, leg) in trade.legs().enumerate() {
+        let cashflows_dto: Vec<CashflowDto> = leg
+            .cashflows()
+            .map(|cf| {
+                let daily_accruals_dto = cf.daily_accruals().map(|accruals| {
+                    accruals
+                        .iter()
+                        .map(|a| DailyAccrualDto {
+                            date: a.date.to_string(),
+                            overnight_rate: a.overnight_rate,
+                            day_fraction: a.day_fraction,
+                            compounded_notional: a.compounded_notional,
+                        })
+                        .collect()
+                });
+
+                let rate = match &cf.payoff {
+                    infra_master::trade::Payoff::Fixed { rate } => Some(*rate),
+                    _ => None,
+                };
+
+                CashflowDto {
+                    payment_date: cf.payment_date.to_string(),
+                    accrual_start: cf.accrual_start.to_string(),
+                    accrual_end: cf.accrual_end.to_string(),
+                    year_fraction: cf.year_fraction,
+                    notional: cf.notional,
+                    payoff_type: if cf.has_daily_accruals() {
+                        "OisCompounded".to_string()
+                    } else {
+                        "Fixed".to_string()
+                    },
+                    rate,
+                    spread: None,
+                    daily_accruals: daily_accruals_dto,
+                }
+            })
+            .collect();
+
+        let direction = match leg.direction {
+            infra_master::trade::Direction::Payer => "Payer".to_string(),
+            infra_master::trade::Direction::Receiver => "Receiver".to_string(),
+        };
+
+        let leg_type = match leg.leg_type {
+            infra_master::trade::LegType::Fixed => "Fixed".to_string(),
+            infra_master::trade::LegType::Floating => "OIS Floating".to_string(),
+            infra_master::trade::LegType::Generic => "Generic".to_string(),
+            infra_master::trade::LegType::CapFloor => "CapFloor".to_string(),
+            infra_master::trade::LegType::Principal => "Principal".to_string(),
+        };
+
+        legs_dto.push(LegDto {
+            leg_number: idx + 1,
+            direction,
+            currency: leg.currency.code().to_string(),
+            leg_type,
+            cashflows: cashflows_dto,
+        });
+    }
+
+    let total_cf: usize = legs_dto.iter().map(|l| l.cashflows.len()).sum();
+    let num_legs = legs_dto.len();
 
     Ok(TradeExpandResponse {
-        trade_id,
-        trade_type: "OIS".to_string(),
-        legs: vec![fixed_leg, floating_leg],
+        trade_id: trade_id.to_string(),
+        trade_type: trade_type.to_string(),
+        legs: legs_dto,
         metadata: TradeMetadataDto {
-            total_legs: 2,
+            total_legs: num_legs,
             total_cashflows: total_cf,
             processing_time_ms: 0.0,
         },
     })
 }
 
-fn expand_ois_from_swap(params: &SwapParams) -> Result<TradeExpandResponse, TradeExpandError> {
-    let trade_id = generate_trade_id("OIS");
+/// Helper: Parse date string to Infra-master Date.
+fn parse_date(date_str: &str) -> Result<Date, TradeExpandError> {
+    Date::parse(date_str)
+        .map_err(|_| TradeExpandError::validation("start_date", "Invalid date format"))
+}
 
-    let schedule = generate_schedule(
-        &params.start_date,
-        &params.tenor,
-        &params.payment_frequency,
-        &params.day_count,
-    )
-    .map_err(|e| TradeExpandError::schedule_error(&e.message))?;
+/// Helper: Calculate end date from start date and tenor.
+fn parse_tenor_end_date(start_str: &str, tenor_str: &str) -> Result<Date, TradeExpandError> {
+    use infra_master::time::{EndOfMonthRule, Tenor};
 
-    let fixed_rate = params.fixed_rate.unwrap_or(0.0);
-    let cashflows = schedule_to_cashflows(&schedule, params.notional, fixed_rate, "Fixed");
+    let start = parse_date(start_str)?;
+    let tenor: Tenor = tenor_str
+        .parse()
+        .map_err(|_| TradeExpandError::validation("tenor", "Invalid tenor format"))?;
 
-    let fixed_leg = LegDto {
-        leg_number: 1,
-        direction: "Receiver".to_string(),
-        currency: params.currency.clone(),
-        leg_type: "Fixed".to_string(),
-        cashflows: cashflows.clone(),
-    };
+    Ok(tenor.add_to_date(start, EndOfMonthRule::Adjust))
+}
 
-    let floating_leg = LegDto {
-        leg_number: 2,
-        direction: "Payer".to_string(),
-        currency: params.currency.clone(),
-        leg_type: "Floating".to_string(),
-        cashflows: schedule_to_cashflows(&schedule, params.notional, 0.0, "Linear"),
-    };
+/// Helper: Parse currency string to Infra-master Currency.
+fn parse_currency(ccy: &str) -> Result<Currency, TradeExpandError> {
+    ccy.parse()
+        .map_err(|_| TradeExpandError::validation("currency", "Invalid currency"))
+}
 
-    let total_cf = fixed_leg.cashflows.len() + floating_leg.cashflows.len();
+/// Helper: Map currency to appropriate overnight rate index.
+fn currency_to_rate_index(ccy: &str) -> RateIndex {
+    match ccy.to_uppercase().as_str() {
+        "USD" => RateIndex::Sofr,
+        "EUR" => RateIndex::Euribor3M, // Using as ESTR proxy
+        "GBP" => RateIndex::Sonia,
+        "JPY" => RateIndex::Tonar,
+        "CHF" => RateIndex::Saron,
+        _ => RateIndex::Sofr, // Default
+    }
+}
 
-    Ok(TradeExpandResponse {
-        trade_id,
-        trade_type: "OIS".to_string(),
-        legs: vec![fixed_leg, floating_leg],
-        metadata: TradeMetadataDto {
-            total_legs: 2,
-            total_cashflows: total_cf,
-            processing_time_ms: 0.0,
-        },
-    })
+/// Helper: Parse frequency string to Infra-master Frequency.
+fn parse_frequency(freq: &str) -> Frequency {
+    match freq.to_lowercase().as_str() {
+        "daily" => Frequency::Daily,
+        "weekly" => Frequency::Weekly,
+        "monthly" => Frequency::Monthly,
+        "quarterly" => Frequency::Quarterly,
+        "semi_annual" | "semiannual" => Frequency::SemiAnnual,
+        "annual" | "yearly" => Frequency::Annual,
+        _ => Frequency::Annual, // Default
+    }
 }
 
 /// Expands a BasisSwap instrument.
@@ -653,6 +761,7 @@ fn expand_fx_forward(
             payoff_type: "Fixed".to_string(),
             rate: Some(1.0),
             spread: None,
+            daily_accruals: None,
         }],
     };
 
@@ -670,6 +779,7 @@ fn expand_fx_forward(
             payoff_type: "Fixed".to_string(),
             rate: Some(forward_rate),
             spread: None,
+            daily_accruals: None,
         }],
     };
 
@@ -715,6 +825,7 @@ fn expand_fx_option(request: &TradeExpandRequest) -> Result<TradeExpandResponse,
             payoff_type: "VanillaOption".to_string(),
             rate: Some(strike),
             spread: None,
+            daily_accruals: None,
         }],
     };
 
@@ -822,6 +933,7 @@ fn expand_equity_vanilla_option(
             payoff_type: "VanillaOption".to_string(),
             rate: Some(params.strike),
             spread: None,
+            daily_accruals: None,
         }],
     };
 
@@ -875,6 +987,7 @@ fn expand_equity_forward(
             payoff_type: "Linear".to_string(),
             rate: Some(params.strike),
             spread: None,
+            daily_accruals: None,
         }],
     };
 
@@ -918,6 +1031,7 @@ fn schedule_to_cashflows(
             payoff_type: payoff_type.to_string(),
             rate: if rate != 0.0 { Some(rate) } else { None },
             spread: None,
+            daily_accruals: None,
         })
         .collect()
 }

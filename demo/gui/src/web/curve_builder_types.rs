@@ -26,46 +26,54 @@ use serde::{Deserialize, Serialize};
 
 /// Interpolation method for yield curve construction.
 ///
+/// The naming convention indicates the interpolation target:
+/// - `*OnZeroRate`: Interpolates the continuously compounded zero rate
+/// - `*OnLogDf`: Interpolates the natural log of discount factor (ln(DF))
+///
 /// # Requirements Coverage
 ///
-/// - Requirement 3.1: Linear, LogLinear, CubicSpline, Monotonic補間手法を選択肢として提供
+/// - Requirement 3.1: LinearOnZeroRate, LinearOnLogDf, CubicSplineOnZeroRate, MonotonicOnZeroRate補間手法を選択肢として提供
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum InterpolationMethod {
-    /// Linear interpolation of discount factors
-    Linear,
-    /// Log-linear interpolation (recommended for discount factors)
+    /// Linear interpolation on zero rates.
+    /// Interpolates r(t) linearly, then DF(t) = exp(-r(t) * t).
+    LinearOnZeroRate,
+    /// Linear interpolation on log discount factors (recommended).
+    /// Interpolates ln(DF(t)) linearly, equivalent to constant forward rate between pillars.
     #[default]
-    LogLinear,
-    /// Cubic spline interpolation for smooth curves
-    CubicSpline,
-    /// Monotonic cubic interpolation preserving monotonicity
-    Monotonic,
+    LinearOnLogDf,
+    /// Cubic spline interpolation on zero rates.
+    /// Smooth interpolation with continuous first and second derivatives.
+    CubicSplineOnZeroRate,
+    /// Monotonic cubic interpolation on zero rates.
+    /// Preserves monotonicity of the curve.
+    MonotonicOnZeroRate,
 }
 
 impl InterpolationMethod {
     /// Get the display name for this interpolation method.
     pub fn display_name(&self) -> &'static str {
         match self {
-            Self::Linear => "Linear",
-            Self::LogLinear => "Log-Linear",
-            Self::CubicSpline => "Cubic Spline",
-            Self::Monotonic => "Monotonic Cubic",
+            Self::LinearOnZeroRate => "Linear on Zero Rate",
+            Self::LinearOnLogDf => "Linear on ln(DF)",
+            Self::CubicSplineOnZeroRate => "Cubic Spline on Zero Rate",
+            Self::MonotonicOnZeroRate => "Monotonic on Zero Rate",
         }
     }
 
     /// Get a description of this interpolation method.
     pub fn description(&self) -> &'static str {
         match self {
-            Self::Linear => "Simple linear interpolation between points",
-            Self::LogLinear => "Interpolates in log-space, suitable for discount factors",
-            Self::CubicSpline => "Smooth cubic spline with continuous first and second derivatives",
-            Self::Monotonic => "Monotone-preserving cubic interpolation",
+            Self::LinearOnZeroRate => "Linear interpolation on continuously compounded zero rate",
+            Self::LinearOnLogDf => "Linear interpolation on ln(DF), constant forward between pillars",
+            Self::CubicSplineOnZeroRate => "Cubic spline on zero rate with continuous 1st/2nd derivatives",
+            Self::MonotonicOnZeroRate => "Monotone-preserving cubic interpolation on zero rate",
         }
     }
 
     /// Check if this method is recommended.
-    pub fn is_recommended(&self) -> bool { matches!(self, Self::LogLinear) }
+    pub fn is_recommended(&self) -> bool { matches!(self, Self::LinearOnLogDf) }
 }
 
 /// Bootstrap method for curve construction.
@@ -415,28 +423,28 @@ impl BuilderListResponse {
         Self {
             interpolation_methods: vec![
                 InterpolationMethodInfo {
-                    id: "linear".to_string(),
-                    name: InterpolationMethod::Linear.display_name().to_string(),
-                    description: InterpolationMethod::Linear.description().to_string(),
-                    recommended: InterpolationMethod::Linear.is_recommended(),
+                    id: "linear_on_zero_rate".to_string(),
+                    name: InterpolationMethod::LinearOnZeroRate.display_name().to_string(),
+                    description: InterpolationMethod::LinearOnZeroRate.description().to_string(),
+                    recommended: InterpolationMethod::LinearOnZeroRate.is_recommended(),
                 },
                 InterpolationMethodInfo {
-                    id: "log_linear".to_string(),
-                    name: InterpolationMethod::LogLinear.display_name().to_string(),
-                    description: InterpolationMethod::LogLinear.description().to_string(),
-                    recommended: InterpolationMethod::LogLinear.is_recommended(),
+                    id: "linear_on_log_df".to_string(),
+                    name: InterpolationMethod::LinearOnLogDf.display_name().to_string(),
+                    description: InterpolationMethod::LinearOnLogDf.description().to_string(),
+                    recommended: InterpolationMethod::LinearOnLogDf.is_recommended(),
                 },
                 InterpolationMethodInfo {
-                    id: "cubic_spline".to_string(),
-                    name: InterpolationMethod::CubicSpline.display_name().to_string(),
-                    description: InterpolationMethod::CubicSpline.description().to_string(),
-                    recommended: InterpolationMethod::CubicSpline.is_recommended(),
+                    id: "cubic_spline_on_zero_rate".to_string(),
+                    name: InterpolationMethod::CubicSplineOnZeroRate.display_name().to_string(),
+                    description: InterpolationMethod::CubicSplineOnZeroRate.description().to_string(),
+                    recommended: InterpolationMethod::CubicSplineOnZeroRate.is_recommended(),
                 },
                 InterpolationMethodInfo {
-                    id: "monotonic".to_string(),
-                    name: InterpolationMethod::Monotonic.display_name().to_string(),
-                    description: InterpolationMethod::Monotonic.description().to_string(),
-                    recommended: InterpolationMethod::Monotonic.is_recommended(),
+                    id: "monotonic_on_zero_rate".to_string(),
+                    name: InterpolationMethod::MonotonicOnZeroRate.display_name().to_string(),
+                    description: InterpolationMethod::MonotonicOnZeroRate.description().to_string(),
+                    recommended: InterpolationMethod::MonotonicOnZeroRate.is_recommended(),
                 },
             ],
             bootstrap_methods: vec![
@@ -556,29 +564,29 @@ mod tests {
         #[test]
         fn test_interpolation_method_default() {
             let method = InterpolationMethod::default();
-            assert_eq!(method, InterpolationMethod::LogLinear);
+            assert_eq!(method, InterpolationMethod::LinearOnLogDf);
         }
 
         #[test]
         fn test_interpolation_method_serde() {
-            let method = InterpolationMethod::CubicSpline;
+            let method = InterpolationMethod::CubicSplineOnZeroRate;
             let json = serde_json::to_string(&method).unwrap();
-            assert_eq!(json, "\"cubic_spline\"");
+            assert_eq!(json, "\"cubic_spline_on_zero_rate\"");
 
-            let parsed: InterpolationMethod = serde_json::from_str("\"linear\"").unwrap();
-            assert_eq!(parsed, InterpolationMethod::Linear);
+            let parsed: InterpolationMethod = serde_json::from_str("\"linear_on_zero_rate\"").unwrap();
+            assert_eq!(parsed, InterpolationMethod::LinearOnZeroRate);
         }
 
         #[test]
         fn test_interpolation_method_display_name() {
-            assert_eq!(InterpolationMethod::Linear.display_name(), "Linear");
-            assert_eq!(InterpolationMethod::LogLinear.display_name(), "Log-Linear");
+            assert_eq!(InterpolationMethod::LinearOnZeroRate.display_name(), "Linear on Zero Rate");
+            assert_eq!(InterpolationMethod::LinearOnLogDf.display_name(), "Linear on ln(DF)");
         }
 
         #[test]
         fn test_interpolation_method_is_recommended() {
-            assert!(InterpolationMethod::LogLinear.is_recommended());
-            assert!(!InterpolationMethod::Linear.is_recommended());
+            assert!(InterpolationMethod::LinearOnLogDf.is_recommended());
+            assert!(!InterpolationMethod::LinearOnZeroRate.is_recommended());
         }
     }
 
@@ -710,12 +718,12 @@ mod tests {
                         "rate": 0.0525
                     }
                 ],
-                "interpolation": "log_linear"
+                "interpolation": "linear_on_log_df"
             }"#;
 
             let request: CurveBuildRequest = serde_json::from_str(json).unwrap();
             assert_eq!(request.index, "usd-sofr");
-            assert_eq!(request.interpolation, InterpolationMethod::LogLinear);
+            assert_eq!(request.interpolation, InterpolationMethod::LinearOnLogDf);
             assert_eq!(request.bootstrap_method, BootstrapMethod::Sequential);
             assert_eq!(request.tolerance, 1e-10);
             assert_eq!(request.max_iterations, 100);
@@ -785,13 +793,13 @@ mod tests {
             assert_eq!(response.interpolation_methods.len(), 4);
             assert_eq!(response.bootstrap_methods.len(), 2);
 
-            // Check that log_linear is recommended
-            let log_linear = response
+            // Check that linear_on_log_df is recommended
+            let linear_on_log_df = response
                 .interpolation_methods
                 .iter()
-                .find(|m| m.id == "log_linear")
+                .find(|m| m.id == "linear_on_log_df")
                 .unwrap();
-            assert!(log_linear.recommended);
+            assert!(linear_on_log_df.recommended);
 
             // Check that global is disabled
             let global = response.bootstrap_methods.iter().find(|m| m.id == "global").unwrap();

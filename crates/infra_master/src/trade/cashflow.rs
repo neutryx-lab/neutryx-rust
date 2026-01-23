@@ -6,6 +6,94 @@
 use super::payoff::Payoff;
 use crate::{Currency, Date};
 
+/// Daily accrual detail for OIS (Overnight Index Swap) compounding.
+///
+/// Each daily accrual represents one day's contribution to the compounded
+/// interest calculation in an OIS leg.
+///
+/// # Example
+///
+/// ```rust
+/// use infra_master::trade::DailyAccrual;
+/// use infra_master::Date;
+///
+/// let accrual = DailyAccrual::new(
+///     Date::from_ymd(2025, 1, 2).unwrap(),
+///     0.0425,  // 4.25% overnight rate
+///     1.0 / 360.0,  // day fraction
+///     10_000_000.0,  // starting notional
+/// );
+///
+/// // After one day at 4.25%, the compounded notional
+/// assert!(accrual.compounded_notional > 10_000_000.0);
+/// ```
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct DailyAccrual {
+    /// The date for this daily accrual.
+    pub date: Date,
+
+    /// Overnight rate for this date (as decimal, e.g., 0.0425 for 4.25%).
+    pub overnight_rate: f64,
+
+    /// Day count fraction for this date (typically 1/360 or 1/365).
+    pub day_fraction: f64,
+
+    /// Cumulative compounded notional at end of this date.
+    pub compounded_notional: f64,
+}
+
+impl DailyAccrual {
+    /// Creates a new daily accrual.
+    ///
+    /// # Arguments
+    ///
+    /// * `date` - The accrual date
+    /// * `overnight_rate` - The overnight rate (as decimal)
+    /// * `day_fraction` - The day count fraction
+    /// * `starting_notional` - The notional at start of the day
+    ///
+    /// The `compounded_notional` is calculated as:
+    /// `starting_notional * (1 + overnight_rate * day_fraction)`
+    #[must_use]
+    pub fn new(date: Date, overnight_rate: f64, day_fraction: f64, starting_notional: f64) -> Self {
+        let compounded_notional = starting_notional * (1.0 + overnight_rate * day_fraction);
+        Self {
+            date,
+            overnight_rate,
+            day_fraction,
+            compounded_notional,
+        }
+    }
+
+    /// Creates a daily accrual with pre-calculated compounded notional.
+    ///
+    /// Use this when you already have the compounded notional calculated.
+    #[must_use]
+    pub fn with_compounded_notional(
+        date: Date,
+        overnight_rate: f64,
+        day_fraction: f64,
+        compounded_notional: f64,
+    ) -> Self {
+        Self {
+            date,
+            overnight_rate,
+            day_fraction,
+            compounded_notional,
+        }
+    }
+
+    /// Returns the daily interest earned.
+    ///
+    /// For OIS, this is calculated as the previous compounded notional
+    /// multiplied by the overnight rate and day fraction.
+    #[must_use]
+    pub fn daily_interest(&self, starting_notional: f64) -> f64 {
+        self.compounded_notional - starting_notional
+    }
+}
+
 /// Type of cashflow.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -60,6 +148,12 @@ pub struct Cashflow {
 
     /// Currency of the cashflow.
     pub currency: Currency,
+
+    /// Daily accrual details for OIS compounding.
+    ///
+    /// This field is populated for OIS floating leg cashflows to provide
+    /// the breakdown of daily compounding. For non-OIS cashflows, this is `None`.
+    pub daily_accruals: Option<Vec<DailyAccrual>>,
 }
 
 impl Cashflow {
@@ -84,7 +178,49 @@ impl Cashflow {
             notional,
             payoff,
             currency,
+            daily_accruals: None,
         }
+    }
+
+    /// Creates a new OIS cashflow with daily accrual details.
+    ///
+    /// This constructor is used for OIS floating leg cashflows where
+    /// daily compounding details are required.
+    #[must_use]
+    pub fn new_with_daily_accruals(
+        cf_type: CashflowType,
+        payment_date: Date,
+        accrual_start: Date,
+        accrual_end: Date,
+        year_fraction: f64,
+        notional: f64,
+        payoff: Payoff,
+        currency: Currency,
+        daily_accruals: Vec<DailyAccrual>,
+    ) -> Self {
+        Self {
+            cf_type,
+            payment_date,
+            accrual_start,
+            accrual_end,
+            year_fraction,
+            notional,
+            payoff,
+            currency,
+            daily_accruals: Some(daily_accruals),
+        }
+    }
+
+    /// Returns true if this cashflow has daily accrual details.
+    #[must_use]
+    pub fn has_daily_accruals(&self) -> bool {
+        self.daily_accruals.is_some()
+    }
+
+    /// Returns the daily accrual details if present.
+    #[must_use]
+    pub fn daily_accruals(&self) -> Option<&[DailyAccrual]> {
+        self.daily_accruals.as_deref()
     }
 
     /// Returns true if this cashflow has a fixed rate (no index dependency).

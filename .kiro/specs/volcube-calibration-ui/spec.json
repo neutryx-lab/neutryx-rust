@@ -1,0 +1,32 @@
+{
+  "feature_name": "volcube-calibration-ui",
+  "created_at": "2026-01-23T00:00:00Z",
+  "updated_at": "2026-01-23T00:00:00Z",
+  "language": "ja",
+  "phase": "design-generated",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": false
+    },
+    "tasks": {
+      "generated": false,
+      "approved": false
+    }
+  },
+  "ready_for_implementation": false,
+  "scope": {
+    "asset_classes": ["swaption", "fx_options", "equity_options"],
+    "features": [
+      "volcube_calibration",
+      "fxvol_surface",
+      "probability_density",
+      "smile_visualization",
+      "3d_surface"
+    ]
+  }
+}

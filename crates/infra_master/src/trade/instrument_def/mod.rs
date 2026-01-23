@@ -75,7 +75,7 @@ pub use expander::InstrumentExpander;
 // FX instruments
 pub use fx::{CurrencyPair, FxBarrierOption, FxForward, FxSpot, FxSwap, FxVanillaOption};
 // Rates instruments
-pub use rates::{CapFloor, CapFloorType, CmsSwap, Frn, InflationSwap, SwapType, Swaption};
+pub use rates::{CapFloor, CapFloorType, CmsSwap, Frn, InflationSwap, Ois, SwapType, Swaption};
 
 // ============================================================================
 // InstrumentDefinition - Unified enum for all standard instruments
@@ -131,6 +131,8 @@ pub enum InstrumentDefinition {
     CmsSwap(CmsSwap),
     /// Inflation-linked swap.
     InflationSwap(InflationSwap),
+    /// Overnight Index Swap (OIS) with daily compounding.
+    Ois(Ois),
 
     // === FX ===
     /// FX spot transaction.
@@ -217,7 +219,8 @@ impl InstrumentDefinition {
             | InstrumentDefinition::CapFloor(_)
             | InstrumentDefinition::Frn(_)
             | InstrumentDefinition::CmsSwap(_)
-            | InstrumentDefinition::InflationSwap(_) => AssetClass::Rates,
+            | InstrumentDefinition::InflationSwap(_)
+            | InstrumentDefinition::Ois(_) => AssetClass::Rates,
 
             // FX
             InstrumentDefinition::FxSpot(_)
@@ -291,6 +294,7 @@ impl InstrumentDefinition {
             // Rates swaps
             InstrumentDefinition::CmsSwap(_)
                 | InstrumentDefinition::InflationSwap(_)
+                | InstrumentDefinition::Ois(_)
                 // FX swaps
                 | InstrumentDefinition::FxSwap(_)
                 // Equity swaps
@@ -389,6 +393,7 @@ impl InstrumentDefinition {
             InstrumentDefinition::Frn(f) => f.validate(),
             InstrumentDefinition::CmsSwap(c) => c.validate(),
             InstrumentDefinition::InflationSwap(i) => i.validate(),
+            InstrumentDefinition::Ois(o) => o.validate(),
 
             // FX
             InstrumentDefinition::FxSpot(s) => s.validate(),
@@ -430,6 +435,7 @@ impl std::fmt::Display for InstrumentDefinition {
             InstrumentDefinition::Frn(_) => "FRN",
             InstrumentDefinition::CmsSwap(_) => "CMSSwap",
             InstrumentDefinition::InflationSwap(_) => "InflationSwap",
+            InstrumentDefinition::Ois(_) => "OIS",
             InstrumentDefinition::FxSpot(_) => "FXSpot",
             InstrumentDefinition::FxForward(_) => "FXForward",
             InstrumentDefinition::FxVanillaOption(_) => "FXVanillaOption",

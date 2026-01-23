@@ -67,21 +67,21 @@
       "frequency": "annual"
     },
     {
-      "type": "swap",
+      "type": "ois",
       "tenor": "15Y",
       "tenor_years": 15.0,
       "rate": 0.0295,
       "frequency": "annual"
     },
     {
-      "type": "swap",
+      "type": "ois",
       "tenor": "20Y",
       "tenor_years": 20.0,
       "rate": 0.0305,
       "frequency": "annual"
     },
     {
-      "type": "swap",
+      "type": "ois",
       "tenor": "30Y",
       "tenor_years": 30.0,
       "rate": 0.0310,

@@ -367,7 +367,7 @@ const DEFAULTS = {
             tenorYears: 5,
             frequency: 'annual'
         },
-        interpolation: 'log_linear'
+        interpolation: 'linear_on_log_df'
     },
 
     // Scenario Analysis defaults
@@ -1133,8 +1133,8 @@ class CommandPalette {
             case 'goto-pricer':
                 navigateTo('pricer');
                 break;
-            case 'goto-irs-bootstrap':
-                navigateTo('irs-bootstrap');
+            case 'goto-curve-builder':
+                navigateTo('curve-builder');
                 break;
             case 'goto-graph':
                 navigateToGraph();
@@ -1173,13 +1173,13 @@ function navigateTo(viewName) {
         scenarios: 'Scenario Analysis',
         graph: 'AD Graph',
         'trade-expansion': 'Trade Expansion',
-        'irs-bootstrap': 'Curve Build',
+        'curve-builder': 'Curve Builder',
         'model-calib': 'Model Calibration',
         'market-data': 'Market Data'
     };
 
     // Auto-expand Analysis accordion if navigating to a sub-item
-    const analysisViews = ['trade-expansion', 'irs-bootstrap', 'model-calib', 'graph', 'market-data'];
+    const analysisViews = ['trade-expansion', 'curve-builder', 'model-calib', 'graph', 'market-data'];
     const accordion = document.getElementById('analysis-accordion');
     if (accordion && analysisViews.includes(viewName)) {
         accordion.classList.add('expanded');
@@ -2902,8 +2902,8 @@ function initQuickActions() {
             const action = tile.dataset.action;
             Logger.debug('QuickActions', `Tile clicked: ${action}`);
             switch (action) {
-                case 'irs-bootstrap':
-                    navigateTo('irs-bootstrap');
+                case 'curve-builder':
+                    navigateTo('curve-builder');
                     break;
                 case 'exposure':
                     navigateTo('exposure');
@@ -7505,10 +7505,14 @@ function createCashflowTable(cashflows, legIndex) {
 
     const sortedClass = (col) => col === sortColumn ? 'sorted' : '';
 
+    // Check if any cashflow has daily accruals
+    const hasDailyAccruals = pageCfs.some(cf => cf.dailyAccruals && cf.dailyAccruals.length > 0);
+
     return `
         <table class="cf-table" data-leg-index="${legIndex}">
             <thead>
                 <tr>
+                    ${hasDailyAccruals ? '<th class="expand-col"></th>' : ''}
                     <th class="${sortedClass('paymentDate')}" data-sort-col="paymentDate">
                         Payment Date ${sortIcon('paymentDate')}
                     </th>
@@ -7533,8 +7537,20 @@ function createCashflowTable(cashflows, legIndex) {
                 </tr>
             </thead>
             <tbody>
-                ${pageCfs.map(cf => `
-                    <tr>
+                ${pageCfs.map((cf, cfIndex) => {
+                    const hasDailyData = cf.dailyAccruals && cf.dailyAccruals.length > 0;
+                    const rowId = `cf-${legIndex}-${cfIndex}`;
+                    return `
+                    <tr class="${hasDailyData ? 'expandable-row' : ''}" data-row-id="${rowId}">
+                        ${hasDailyAccruals ? `
+                            <td class="expand-cell">
+                                ${hasDailyData ? `
+                                    <button class="expand-btn" onclick="toggleDailyAccruals('${rowId}')">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </button>
+                                ` : ''}
+                            </td>
+                        ` : ''}
                         <td class="mono">${cf.paymentDate || '--'}</td>
                         <td class="mono">${cf.accrualStart || '--'}</td>
                         <td class="mono">${cf.accrualEnd || '--'}</td>
@@ -7545,10 +7561,73 @@ function createCashflowTable(cashflows, legIndex) {
                         <td>${cf.payoffType || '--'}</td>
                         <td class="mono">${cf.rate != null ? (cf.rate * 100).toFixed(4) + '%' : '--'}</td>
                     </tr>
-                `).join('')}
+                    ${hasDailyData ? createDailyAccrualsRow(cf.dailyAccruals, rowId, hasDailyAccruals ? 8 : 7) : ''}
+                `}).join('')}
             </tbody>
         </table>
     `;
+}
+
+/**
+ * Create daily accruals expandable row.
+ */
+function createDailyAccrualsRow(dailyAccruals, rowId, colspan) {
+    return `
+        <tr class="daily-accruals-row" id="${rowId}-details" style="display: none;">
+            <td colspan="${colspan}">
+                <div class="daily-accruals-container">
+                    <div class="daily-accruals-header">
+                        <i class="fas fa-calendar-day"></i>
+                        Daily Compounding Details (${dailyAccruals.length} business days)
+                    </div>
+                    <div class="daily-accruals-scroll">
+                        <table class="daily-accruals-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Overnight Rate</th>
+                                    <th>Day Fraction</th>
+                                    <th>Compounded Notional</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${dailyAccruals.slice(0, 50).map(da => `
+                                    <tr>
+                                        <td class="mono">${da.date}</td>
+                                        <td class="mono">${(da.overnightRate * 100).toFixed(4)}%</td>
+                                        <td class="mono">${da.dayFraction.toFixed(6)}</td>
+                                        <td class="mono">${formatNumber(da.compoundedNotional)}</td>
+                                    </tr>
+                                `).join('')}
+                                ${dailyAccruals.length > 50 ? `
+                                    <tr class="more-rows">
+                                        <td colspan="4">... and ${dailyAccruals.length - 50} more days</td>
+                                    </tr>
+                                ` : ''}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+/**
+ * Toggle daily accruals visibility.
+ */
+function toggleDailyAccruals(rowId) {
+    const detailsRow = document.getElementById(`${rowId}-details`);
+    const btn = document.querySelector(`tr[data-row-id="${rowId}"] .expand-btn`);
+
+    if (detailsRow && btn) {
+        const isHidden = detailsRow.style.display === 'none';
+        detailsRow.style.display = isHidden ? 'table-row' : 'none';
+        btn.innerHTML = isHidden
+            ? '<i class="fas fa-chevron-down"></i>'
+            : '<i class="fas fa-chevron-right"></i>';
+        btn.closest('tr').classList.toggle('expanded', isHidden);
+    }
 }
 
 /**
@@ -12971,7 +13050,7 @@ const irsBootstrap = (function() {
         showLoading('Bootstrapping curve...');
 
         try {
-            const interpolation = document.getElementById('interpolation-method')?.value || 'log_linear';
+            const interpolation = document.getElementById('interpolation-method')?.value || 'linear_on_log_df';
 
             const response = await fetch('/api/bootstrap', {
                 method: 'POST',
@@ -13561,23 +13640,36 @@ const irsBootstrap = (function() {
     };
 })();
 
-// Initialise IRS Bootstrap module when DOM is ready
+// Initialise IRS Bootstrap module when DOM is ready (legacy support)
 document.addEventListener('DOMContentLoaded', () => {
-    // Only initialise if the view exists
+    // Legacy: Only initialise if the old IRS Bootstrap view exists
     if (document.getElementById('irs-bootstrap-view')) {
         irsBootstrap.init();
+    }
+
+    // New: Initialise Curve Builder module if view exists
+    if (document.getElementById('curve-builder-view') && typeof curveBuilder !== 'undefined') {
+        curveBuilder.init();
     }
 });
 
 // ===========================================
-// IRS Bootstrap View Navigation Handler
+// Curve Builder View Navigation Handler
 // ===========================================
 
-// Add to navigateTo function for IRS Bootstrap view
+// Add to navigateTo function for Curve Builder view
 const originalNavigateTo = typeof navigateTo === 'function' ? navigateTo : null;
 if (originalNavigateTo) {
     window.navigateTo = function(viewName) {
         originalNavigateTo(viewName);
+
+        // Curve Builder view
+        if (viewName === 'curve-builder' && typeof curveBuilder !== 'undefined') {
+            // Dispatch custom event for view change
+            window.dispatchEvent(new CustomEvent('viewChanged', { detail: { view: 'curve-builder' } }));
+        }
+
+        // Legacy: IRS Bootstrap view (for backward compatibility)
         if (viewName === 'irs-bootstrap' && typeof irsBootstrap !== 'undefined') {
             // Reinitialise charts if needed
             if (irsBootstrap.getState().curveData && !irsBootstrap.getState().curveChart) {

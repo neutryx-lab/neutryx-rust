@@ -886,6 +886,7 @@ dependencies = [
  "axum",
  "chrono",
  "futures",
+ "infra_master",
  "open",
  "pricer_core",
  "pricer_models",
