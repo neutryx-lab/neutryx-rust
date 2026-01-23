@@ -1,118 +1,27 @@
 //! Identifier types for portfolio entities.
 //!
-//! This module provides strongly-typed identifiers for trades, counterparties,
-//! and netting sets. Using newtypes ensures type safety and prevents accidental
-//! misuse of identifiers.
+//! This module re-exports ID types from `infra_master::ids` for convenience.
+//! All ID types are defined centrally in the Infra layer to ensure type safety
+//! across the entire codebase.
+//!
+//! # Migration Note
+//!
+//! Previously, this module defined its own ID types. As of the legacy
+//! compatibility removal, all ID types are now defined in `infra_master::ids`
+//! and re-exported here for backward compatibility.
+//!
+//! Prefer importing directly from `infra_master::ids` for new code.
 
-use std::fmt;
+// Re-export all ID types from infra_master for backward compatibility.
+// Some types may not be used internally but are re-exported for public API.
+#[allow(unused_imports)]
+pub use infra_master::ids::{
+    BookId, CcpId, CounterpartyId, IssuerId, LegalEntityId, NettingSetId, PortfolioId, TradeId,
+};
 
-/// Unique identifier for a trade.
-///
-/// # Examples
-///
-/// ```
-/// use pricer_risk::portfolio::TradeId;
-///
-/// let id = TradeId::new("TRADE001");
-/// assert_eq!(id.as_str(), "TRADE001");
-/// ```
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct TradeId(String);
-
-impl TradeId {
-    /// Creates a new trade ID.
-    #[inline]
-    pub fn new(id: impl Into<String>) -> Self { Self(id.into()) }
-
-    /// Returns the ID as a string slice.
-    #[inline]
-    pub fn as_str(&self) -> &str { &self.0 }
-}
-
-impl fmt::Display for TradeId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.0) }
-}
-
-impl From<&str> for TradeId {
-    fn from(s: &str) -> Self { Self::new(s) }
-}
-
-impl From<String> for TradeId {
-    fn from(s: String) -> Self { Self(s) }
-}
-
-/// Unique identifier for a counterparty.
-///
-/// # Examples
-///
-/// ```
-/// use pricer_risk::portfolio::CounterpartyId;
-///
-/// let id = CounterpartyId::new("CP001");
-/// assert_eq!(id.as_str(), "CP001");
-/// ```
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct CounterpartyId(String);
-
-impl CounterpartyId {
-    /// Creates a new counterparty ID.
-    #[inline]
-    pub fn new(id: impl Into<String>) -> Self { Self(id.into()) }
-
-    /// Returns the ID as a string slice.
-    #[inline]
-    pub fn as_str(&self) -> &str { &self.0 }
-}
-
-impl fmt::Display for CounterpartyId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.0) }
-}
-
-impl From<&str> for CounterpartyId {
-    fn from(s: &str) -> Self { Self::new(s) }
-}
-
-impl From<String> for CounterpartyId {
-    fn from(s: String) -> Self { Self(s) }
-}
-
-/// Unique identifier for a netting set.
-///
-/// # Examples
-///
-/// ```
-/// use pricer_risk::portfolio::NettingSetId;
-///
-/// let id = NettingSetId::new("NS001");
-/// assert_eq!(id.as_str(), "NS001");
-/// ```
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct NettingSetId(String);
-
-impl NettingSetId {
-    /// Creates a new netting set ID.
-    #[inline]
-    pub fn new(id: impl Into<String>) -> Self { Self(id.into()) }
-
-    /// Returns the ID as a string slice.
-    #[inline]
-    pub fn as_str(&self) -> &str { &self.0 }
-}
-
-impl fmt::Display for NettingSetId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.0) }
-}
-
-impl From<&str> for NettingSetId {
-    fn from(s: &str) -> Self { Self::new(s) }
-}
-
-impl From<String> for NettingSetId {
-    fn from(s: String) -> Self { Self(s) }
-}
+// Also re-export CounterPartyId for code that uses the CamelCase variant
+#[allow(unused_imports)]
+pub use infra_master::counterparty::CounterPartyId;
 
 #[cfg(test)]
 mod tests {
@@ -216,5 +125,13 @@ mod tests {
         let id = TradeId::new("T1");
         let debug = format!("{:?}", id);
         assert!(debug.contains("T1"));
+    }
+
+    #[test]
+    fn test_counterparty_id_alias() {
+        // Verify CounterpartyId and CounterPartyId are compatible
+        let id1 = CounterpartyId::new("CP001");
+        let id2 = CounterPartyId::new("CP001");
+        assert_eq!(id1, id2);
     }
 }

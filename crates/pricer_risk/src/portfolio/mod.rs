@@ -21,7 +21,7 @@
 //!     PortfolioBuilder, Trade, TradeId, Counterparty, CounterpartyId,
 //!     NettingSet, NettingSetId, CreditParams,
 //! };
-//! use pricer_core::types::Currency;
+//! use infra_master::Currency;
 //! use infra_master::trade::{
 //!     PricingInstrument, VanillaOption, InstrumentParams, PayoffType, ExerciseStyle,
 //! };
@@ -95,7 +95,7 @@ pub use trade::{Trade, TradeBuilder};
 ///     Portfolio, PortfolioBuilder, Trade, TradeId, Counterparty, CounterpartyId,
 ///     NettingSet, NettingSetId, CreditParams,
 /// };
-/// use pricer_core::types::Currency;
+/// use infra_master::Currency;
 /// use infra_master::trade::{
 ///     PricingInstrument, VanillaOption, InstrumentParams, PayoffType, ExerciseStyle,
 /// };
@@ -327,8 +327,8 @@ impl Portfolio {
     }
 
     /// Computes total notional by currency.
-    pub fn notional_by_currency(&self) -> HashMap<pricer_core::types::Currency, f64> {
-        use pricer_core::types::Currency;
+    pub fn notional_by_currency(&self) -> HashMap<infra_master::Currency, f64> {
+        use infra_master::Currency;
         let mut result: HashMap<Currency, f64> = HashMap::new();
         for trade in self.trades.values() {
             *result.entry(trade.currency()).or_insert(0.0) += trade.notional();
@@ -345,7 +345,7 @@ mod tests {
     use infra_master::trade::{
         ExerciseStyle, InstrumentParams, PayoffType, PricingInstrument, VanillaOption,
     };
-    use pricer_core::types::Currency;
+    use infra_master::Currency;
 
     use super::*;
 

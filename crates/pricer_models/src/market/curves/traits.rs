@@ -124,6 +124,114 @@ pub trait YieldCurve<T: Float> {
         }
         Ok(-(df2 / df1).ln() / dt)
     }
+
+    /// Return the instantaneous forward rate at time `t`.
+    ///
+    /// The instantaneous forward rate f(t) is the limit of the forward rate
+    /// as the period length approaches zero.
+    ///
+    /// # Arguments
+    ///
+    /// * `t` - Time in years (must be >= 0)
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(f(t))` - Instantaneous forward rate at time t
+    /// * `Err(MarketDataError::NotImplemented)` - If not supported by this curve
+    /// * `Err(MarketDataError::InvalidMaturity)` - If t < 0
+    ///
+    /// # Mathematical Definition
+    ///
+    /// For a discount factor D(t):
+    /// ```text
+    /// f(t) = -d/dt ln(D(t)) = r(t) + t * dr/dt
+    /// ```
+    ///
+    /// For log-linear interpolation of discount factors:
+    /// ```text
+    /// f(t) = -d/dt (log_df interpolated)
+    /// ```
+    ///
+    /// # Default Implementation
+    ///
+    /// Returns `NotImplemented` error. Concrete implementations should override
+    /// this method using the interpolator's analytic derivative.
+    fn instantaneous_forward(&self, _t: T) -> Result<T, MarketDataError> {
+        Err(MarketDataError::NotImplemented {
+            feature: "instantaneous_forward requires interpolator derivative support".to_string(),
+        })
+    }
+
+    /// Return the number of pillar points in the curve.
+    ///
+    /// Pillar points are the discrete time points at which the curve
+    /// parameters are defined. Between pillars, values are interpolated.
+    ///
+    /// # Returns
+    ///
+    /// * `Some(n)` - Number of pillar points
+    /// * `None` - If this curve type doesn't have discrete pillars
+    ///
+    /// # Default Implementation
+    ///
+    /// Returns `None`. Curves with discrete pillars should override.
+    fn pillar_count(&self) -> Option<usize> {
+        None
+    }
+
+    /// Return the pillar times as a slice.
+    ///
+    /// Pillar times are the discrete time points (in years) at which
+    /// curve parameters are defined.
+    ///
+    /// # Returns
+    ///
+    /// * `Some(&[T])` - Slice of pillar times
+    /// * `None` - If this curve type doesn't have discrete pillars
+    ///
+    /// # Default Implementation
+    ///
+    /// Returns `None`. Curves with discrete pillars should override.
+    fn pillars(&self) -> Option<&[T]> {
+        None
+    }
+
+    /// Return the pillar values (parameters) as a slice.
+    ///
+    /// The meaning of pillar values depends on the curve's parameter
+    /// representation:
+    /// - LogDiscountFactor: log(D(t)) values
+    /// - ZeroRate: r(t) values
+    /// - InstantaneousForward: f(t) values
+    ///
+    /// # Returns
+    ///
+    /// * `Some(&[T])` - Slice of pillar values
+    /// * `None` - If this curve type doesn't have discrete pillars
+    ///
+    /// # Default Implementation
+    ///
+    /// Returns `None`. Curves with discrete pillars should override.
+    fn pillar_values(&self) -> Option<&[T]> {
+        None
+    }
+
+    /// Return the maximum maturity supported by this curve.
+    ///
+    /// For bootstrapped curves, this is typically the longest pillar.
+    /// For analytic curves, this may be infinite (represented as `None`).
+    ///
+    /// # Returns
+    ///
+    /// * `Some(max_t)` - Maximum supported maturity in years
+    /// * `None` - If the curve supports any maturity
+    ///
+    /// # Default Implementation
+    ///
+    /// Returns `None` (no upper bound).
+    fn max_maturity(&self) -> Option<T> {
+        None
+    }
 }
 
 #[cfg(test)]
@@ -178,5 +286,124 @@ mod tests {
             MarketDataError::InvalidMaturity { .. } => {}
             _ => panic!("Expected InvalidMaturity error"),
         }
+    }
+
+    #[test]
+    fn test_default_instantaneous_forward_not_implemented() {
+        let curve = MockCurve { rate: 0.05 };
+        let result = curve.instantaneous_forward(1.0);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            MarketDataError::NotImplemented { feature } => {
+                assert!(feature.contains("instantaneous_forward"));
+            }
+            _ => panic!("Expected NotImplemented error"),
+        }
+    }
+
+    #[test]
+    fn test_default_pillar_count_none() {
+        let curve = MockCurve { rate: 0.05 };
+        assert!(curve.pillar_count().is_none());
+    }
+
+    #[test]
+    fn test_default_pillars_none() {
+        let curve = MockCurve { rate: 0.05 };
+        assert!(curve.pillars().is_none());
+    }
+
+    #[test]
+    fn test_default_pillar_values_none() {
+        let curve = MockCurve { rate: 0.05 };
+        assert!(curve.pillar_values().is_none());
+    }
+
+    #[test]
+    fn test_default_max_maturity_none() {
+        let curve = MockCurve { rate: 0.05 };
+        assert!(curve.max_maturity().is_none());
+    }
+
+    // Test a curve that implements pillar methods
+    struct MockPillarCurve {
+        pillars: Vec<f64>,
+        values: Vec<f64>,
+    }
+
+    impl YieldCurve<f64> for MockPillarCurve {
+        fn discount_factor(&self, t: f64) -> Result<f64, MarketDataError> {
+            if t < 0.0 {
+                return Err(MarketDataError::InvalidMaturity { t });
+            }
+            // Simple linear interpolation for testing
+            Ok((-0.05 * t).exp())
+        }
+
+        fn pillar_count(&self) -> Option<usize> {
+            Some(self.pillars.len())
+        }
+
+        fn pillars(&self) -> Option<&[f64]> {
+            Some(&self.pillars)
+        }
+
+        fn pillar_values(&self) -> Option<&[f64]> {
+            Some(&self.values)
+        }
+
+        fn max_maturity(&self) -> Option<f64> {
+            self.pillars.last().copied()
+        }
+    }
+
+    #[test]
+    fn test_pillar_curve_pillar_count() {
+        let curve = MockPillarCurve {
+            pillars: vec![1.0, 2.0, 5.0, 10.0],
+            values: vec![-0.05, -0.10, -0.25, -0.50],
+        };
+        assert_eq!(curve.pillar_count(), Some(4));
+    }
+
+    #[test]
+    fn test_pillar_curve_pillars() {
+        let curve = MockPillarCurve {
+            pillars: vec![1.0, 2.0, 5.0],
+            values: vec![-0.05, -0.10, -0.25],
+        };
+        let pillars = curve.pillars().unwrap();
+        assert_eq!(pillars.len(), 3);
+        assert!((pillars[0] - 1.0).abs() < 1e-10);
+        assert!((pillars[2] - 5.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_pillar_curve_pillar_values() {
+        let curve = MockPillarCurve {
+            pillars: vec![1.0, 2.0],
+            values: vec![-0.05, -0.10],
+        };
+        let values = curve.pillar_values().unwrap();
+        assert_eq!(values.len(), 2);
+        assert!((values[0] - (-0.05)).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_pillar_curve_max_maturity() {
+        let curve = MockPillarCurve {
+            pillars: vec![1.0, 2.0, 5.0, 10.0, 30.0],
+            values: vec![-0.05, -0.10, -0.25, -0.50, -1.5],
+        };
+        assert_eq!(curve.max_maturity(), Some(30.0));
+    }
+
+    #[test]
+    fn test_pillar_curve_max_maturity_empty() {
+        let curve = MockPillarCurve {
+            pillars: vec![],
+            values: vec![],
+        };
+        assert_eq!(curve.max_maturity(), None);
     }
 }

@@ -21,8 +21,8 @@
 //! # Example
 //!
 //! ```rust
+//! use infra_master::Currency;
 //! use pricer_models::market::MarketProvider;
-//! use pricer_core::types::Currency;
 //!
 //! let provider = MarketProvider::new();
 //!
@@ -41,7 +41,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use pricer_core::types::Currency;
+use infra_master::Currency;
 
 use crate::market::{
     curves::{CurveEnum, FlatCurve},

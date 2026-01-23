@@ -2,13 +2,13 @@
 
 実装状況と今後の開発項目を追跡するドキュメント。
 
-_Updated: 2026-01-22_ — Steering sync: standard-instrument-catalogue added to active specs
+_Updated: 2026-01-23_ — Steering sync: standard-instrument-catalogue completed, 3 new specs in tasks-generated
 
 ---
 
 ## Current State Summary
 
-### Completed Specifications (23)
+### Completed Specifications (25)
 
 | Spec | Description | Completed |
 |------|-------------|-----------|
@@ -35,6 +35,8 @@ _Updated: 2026-01-22_ — Steering sync: standard-instrument-catalogue added to 
 | financial-time-module | Financial time primitives (calendars, frequencies, periods) | 2026-01-21 |
 | trade-instrument-module | Trade/Instrument module with CF-expanded architecture | 2026-01-21 |
 | pricer-core-math-library | Comprehensive math library (distributions, integrators, optimisers, linalg, fitting, mesh) | 2026-01-21 |
+| codebase-simplification | Code deduplication, API surface minimisation, module restructuring | 2026-01-22 |
+| standard-instrument-catalogue | Standard instrument definitions (Rates, FX, Equity, Credit, Commodity) | 2026-01-23 |
 
 ### Layer Implementation Status
 
@@ -56,7 +58,7 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 | Crate | Status | Notes |
 |-------|--------|-------|
 | infra_config | ✅ | Settings loading (TOML/YAML/Env) |
-| infra_master | ✅ | time/, market/, counterparty/, trade/ (CF-expanded), convention/ |
+| infra_master | ✅ | time/, market/, counterparty/, trade/ (CF-expanded), convention/, instrument_def/ |
 | infra_store | 🔶 | Basic traits only, postgres optional |
 
 #### Adapter Layer (A) - Input
@@ -69,9 +71,11 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 #### Service Layer (S) - Output
 | Crate | Status | Notes |
 |-------|--------|-------|
-| service_cli | 🔶 | Basic commands (calibrate/price/report/demo) |
-| service_gateway | ✅ | REST API (price, portfolio, graph), WebSocket, gRPC skeleton |
+| service_cli | ⏸️ | Temporarily disabled pending pricer_risk refactoring |
+| service_gateway | ⏸️ | Temporarily disabled pending pricer_risk refactoring |
 | service_python | 🔶 | Basic bindings (VanillaOption, Forward, HullWhite) |
+
+> **Note**: Service crates (service_cli, service_gateway) temporarily excluded from workspace during codebase-simplification. Re-enable after pricer_risk refactoring is complete.
 
 ---
 
@@ -136,8 +140,10 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 
 | Spec | Description | Phase |
 |------|-------------|-------|
-| codebase-simplification | Code deduplication, API surface minimisation, module restructuring | Implementation ready |
-| standard-instrument-catalogue | Standard instrument definitions for Rates, FX, Equity, Credit, Commodity | Tasks approved |
+| curve-bootstrap-engine | Multi-curve yield curve bootstrapping engine | Implementation |
+| legacy-compatibility-removal | Legacy code removal and ID type safety | Tasks generated |
+| portfolio-book-model | Portfolio/Book organisation model | Tasks generated |
+| domain-ordering-defaults | Domain ordering and default values | Tasks generated |
 
 ## Recommended Next Steps
 
@@ -151,7 +157,8 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 
 | Date | Change |
 |------|--------|
-| 2026-01-22 | Steering sync: Added standard-instrument-catalogue spec (tasks approved), 2 active specs |
+| 2026-01-23 | Steering sync: standard-instrument-catalogue completed (186 instrument_def tests, 855 total), 3 new specs in tasks-generated phase, curve-bootstrap-engine in implementation |
+| 2026-01-22 | Steering sync: codebase-simplification completed (24 total), curve-bootstrap-engine added (requirements phase), standard-instrument-catalogue in implementation |
 | 2026-01-21 | Steering sync: Added codebase-simplification to active specs (tasks awaiting approval) |
 | 2026-01-21 | Steering sync: pricer-core-math-library completed (31/31 tasks), moved to completed specs. Total: 23 specs |
 | 2026-01-21 | Steering sync: pricer_core math expansion (distributions, calculus, utilities, integrators, optimisers, fitting, mesh, linalg), infra_master trade/convention modules, 3 new completed specs |

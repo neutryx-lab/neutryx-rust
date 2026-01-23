@@ -2,14 +2,13 @@
 //!
 //! This module provides helper functions and types for date calculations
 //! in the context of yield curve construction, integrating with the
-//! `infra_master` calendar functionality and `pricer_core` day count
-//! conventions.
+//! `infra_master` calendar functionality.
 //!
 //! ## Features
 //!
-//! - Business day adjustments (Following, Modified Following, Preceding)
+//! - Business day adjustments using `infra_master::BusinessDayConvention`
 //! - Spot date calculation (T+n settlement)
-//! - Year fraction calculations using various day count conventions
+//! - Year fraction calculations using `infra_master::DayCounter`
 //! - Integration with `infra_master` calendars
 //!
 //! ## Example
@@ -24,6 +23,7 @@
 //! ```
 
 use chrono::{Datelike, NaiveDate, Weekday};
+use infra_master::{BusinessDayConvention, Date, DayCounter};
 use num_traits::Float;
 
 /// Spot date convention for settlement.
@@ -70,101 +70,6 @@ impl std::fmt::Display for SpotDateConvention {
     }
 }
 
-/// Business day adjustment convention.
-///
-/// Defines how dates falling on non-business days are adjusted.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub enum BusinessDayAdjustment {
-    /// Move to next business day
-    #[default]
-    Following,
-    /// Move to next business day, unless it crosses month boundary
-    ModifiedFollowing,
-    /// Move to previous business day
-    Preceding,
-    /// Move to previous business day, unless it crosses month boundary
-    ModifiedPreceding,
-    /// No adjustment
-    Unadjusted,
-}
-
-impl BusinessDayAdjustment {
-    /// Get the adjustment name.
-    pub fn name(&self) -> &'static str {
-        match self {
-            BusinessDayAdjustment::Following => "Following",
-            BusinessDayAdjustment::ModifiedFollowing => "Modified Following",
-            BusinessDayAdjustment::Preceding => "Preceding",
-            BusinessDayAdjustment::ModifiedPreceding => "Modified Preceding",
-            BusinessDayAdjustment::Unadjusted => "Unadjusted",
-        }
-    }
-}
-
-impl std::fmt::Display for BusinessDayAdjustment {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name())
-    }
-}
-
-/// Day count convention for year fraction calculations.
-///
-/// Mirrors `pricer_core::types::time::DayCountConvention` for convenience.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub enum DayCount {
-    /// Actual/360 - actual days divided by 360
-    Act360,
-    /// Actual/365 Fixed - actual days divided by 365
-    #[default]
-    Act365Fixed,
-    /// 30/360 Bond Basis
-    Thirty360,
-}
-
-impl DayCount {
-    /// Calculate year fraction between two dates.
-    pub fn year_fraction(&self, start: NaiveDate, end: NaiveDate) -> f64 {
-        let days = (end - start).num_days() as f64;
-
-        match self {
-            DayCount::Act360 => days / 360.0,
-            DayCount::Act365Fixed => days / 365.0,
-            DayCount::Thirty360 => self.thirty_360_fraction(start, end),
-        }
-    }
-
-    /// Calculate year fraction as generic float type.
-    pub fn year_fraction_generic<T: Float>(&self, start: NaiveDate, end: NaiveDate) -> T {
-        T::from(self.year_fraction(start, end)).unwrap_or_else(T::zero)
-    }
-
-    /// Get the convention name.
-    pub fn name(&self) -> &'static str {
-        match self {
-            DayCount::Act360 => "ACT/360",
-            DayCount::Act365Fixed => "ACT/365",
-            DayCount::Thirty360 => "30/360",
-        }
-    }
-
-    fn thirty_360_fraction(self, start: NaiveDate, end: NaiveDate) -> f64 {
-        let (y1, m1, d1) = (start.year(), start.month() as i32, start.day() as i32);
-        let (y2, m2, d2) = (end.year(), end.month() as i32, end.day() as i32);
-
-        let d1_adj = d1.min(30);
-        let d2_adj = if d1_adj == 30 { d2.min(30) } else { d2 };
-
-        let days = 360 * (y2 - y1) + 30 * (m2 - m1) + (d2_adj - d1_adj);
-        days as f64 / 360.0
-    }
-}
-
-impl std::fmt::Display for DayCount {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name())
-    }
-}
-
 /// Date calculator for bootstrapping operations.
 ///
 /// Provides methods for business day adjustments, spot date calculation,
@@ -174,17 +79,17 @@ pub struct DateCalculator {
     /// Default spot date convention
     spot_convention: SpotDateConvention,
     /// Default business day adjustment
-    business_day_adjustment: BusinessDayAdjustment,
+    business_day_convention: BusinessDayConvention,
     /// Default day count convention
-    day_count: DayCount,
+    day_counter: DayCounter,
 }
 
 impl Default for DateCalculator {
     fn default() -> Self {
         Self {
             spot_convention: SpotDateConvention::T2,
-            business_day_adjustment: BusinessDayAdjustment::ModifiedFollowing,
-            day_count: DayCount::Act365Fixed,
+            business_day_convention: BusinessDayConvention::ModifiedFollowing,
+            day_counter: DayCounter::Actual365Fixed,
         }
     }
 }
@@ -248,20 +153,22 @@ impl DateCalculator {
         }
     }
 
-    /// Adjust a date according to the specified business day adjustment.
-    pub fn adjust(&self, date: NaiveDate, adjustment: BusinessDayAdjustment) -> NaiveDate {
-        match adjustment {
-            BusinessDayAdjustment::Following => self.following(date),
-            BusinessDayAdjustment::ModifiedFollowing => self.modified_following(date),
-            BusinessDayAdjustment::Preceding => self.preceding(date),
-            BusinessDayAdjustment::ModifiedPreceding => self.modified_preceding(date),
-            BusinessDayAdjustment::Unadjusted => date,
+    /// Adjust a date according to the specified business day convention.
+    pub fn adjust(&self, date: NaiveDate, convention: BusinessDayConvention) -> NaiveDate {
+        match convention {
+            BusinessDayConvention::Following => self.following(date),
+            BusinessDayConvention::ModifiedFollowing => self.modified_following(date),
+            BusinessDayConvention::Preceding => self.preceding(date),
+            BusinessDayConvention::ModifiedPreceding => self.modified_preceding(date),
+            BusinessDayConvention::Unadjusted => date,
+            // Non-exhaustive enum: fallback to modified following for unknown variants
+            _ => self.modified_following(date),
         }
     }
 
-    /// Adjust a date using the default business day adjustment.
+    /// Adjust a date using the default business day convention.
     pub fn adjust_default(&self, date: NaiveDate) -> NaiveDate {
-        self.adjust(date, self.business_day_adjustment)
+        self.adjust(date, self.business_day_convention)
     }
 
     /// Add business days to a date.
@@ -298,43 +205,65 @@ impl DateCalculator {
     }
 
     /// Calculate year fraction between two dates.
-    pub fn year_fraction(&self, start: NaiveDate, end: NaiveDate, day_count: DayCount) -> f64 {
-        day_count.year_fraction(start, end)
+    pub fn year_fraction(&self, start: NaiveDate, end: NaiveDate, day_counter: DayCounter) -> f64 {
+        let start_date = Date::from_naive(start);
+        let end_date = Date::from_naive(end);
+        day_counter.year_fraction(start_date, end_date)
     }
 
     /// Calculate year fraction using the default day count convention.
     pub fn year_fraction_default(&self, start: NaiveDate, end: NaiveDate) -> f64 {
-        self.year_fraction(start, end, self.day_count)
+        self.year_fraction(start, end, self.day_counter)
+    }
+
+    /// Calculate year fraction as generic float type.
+    pub fn year_fraction_generic<T: Float>(
+        &self,
+        start: NaiveDate,
+        end: NaiveDate,
+        day_counter: DayCounter,
+    ) -> T {
+        T::from(self.year_fraction(start, end, day_counter)).unwrap_or_else(T::zero)
     }
 
     /// Calculate maturity in years from a start date.
     ///
     /// Converts a NaiveDate maturity to a year fraction.
     pub fn maturity_years(&self, start: NaiveDate, maturity: NaiveDate) -> f64 {
-        self.day_count.year_fraction(start, maturity)
+        self.year_fraction(start, maturity, self.day_counter)
     }
 
     /// Calculate maturity in years as generic float type.
     pub fn maturity_years_generic<T: Float>(&self, start: NaiveDate, maturity: NaiveDate) -> T {
-        self.day_count.year_fraction_generic(start, maturity)
+        T::from(self.maturity_years(start, maturity)).unwrap_or_else(T::zero)
     }
 
     /// Get the configured spot date convention.
     pub fn spot_convention(&self) -> SpotDateConvention { self.spot_convention }
 
-    /// Get the configured business day adjustment.
-    pub fn business_day_adjustment(&self) -> BusinessDayAdjustment { self.business_day_adjustment }
+    /// Get the configured business day convention.
+    pub fn business_day_convention(&self) -> BusinessDayConvention { self.business_day_convention }
 
-    /// Get the configured day count convention.
-    pub fn day_count(&self) -> DayCount { self.day_count }
+    /// Get the configured day counter.
+    pub fn day_counter(&self) -> DayCounter { self.day_counter }
 }
 
 /// Builder for `DateCalculator`.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct DateCalculatorBuilder {
     spot_convention: SpotDateConvention,
-    business_day_adjustment: BusinessDayAdjustment,
-    day_count: DayCount,
+    business_day_convention: BusinessDayConvention,
+    day_counter: DayCounter,
+}
+
+impl Default for DateCalculatorBuilder {
+    fn default() -> Self {
+        Self {
+            spot_convention: SpotDateConvention::T2,
+            business_day_convention: BusinessDayConvention::Following,
+            day_counter: DayCounter::Actual365Fixed,
+        }
+    }
 }
 
 impl DateCalculatorBuilder {
@@ -344,15 +273,15 @@ impl DateCalculatorBuilder {
         self
     }
 
-    /// Set the business day adjustment.
-    pub fn business_day_adjustment(mut self, adjustment: BusinessDayAdjustment) -> Self {
-        self.business_day_adjustment = adjustment;
+    /// Set the business day convention.
+    pub fn business_day_convention(mut self, convention: BusinessDayConvention) -> Self {
+        self.business_day_convention = convention;
         self
     }
 
-    /// Set the day count convention.
-    pub fn day_count(mut self, day_count: DayCount) -> Self {
-        self.day_count = day_count;
+    /// Set the day counter.
+    pub fn day_counter(mut self, day_counter: DayCounter) -> Self {
+        self.day_counter = day_counter;
         self
     }
 
@@ -360,8 +289,8 @@ impl DateCalculatorBuilder {
     pub fn build(self) -> DateCalculator {
         DateCalculator {
             spot_convention: self.spot_convention,
-            business_day_adjustment: self.business_day_adjustment,
-            day_count: self.day_count,
+            business_day_convention: self.business_day_convention,
+            day_counter: self.day_counter,
         }
     }
 }
@@ -399,92 +328,6 @@ mod tests {
     #[test]
     fn test_spot_convention_display() {
         assert_eq!(format!("{}", SpotDateConvention::T2), "T+2");
-    }
-
-    // ========================================
-    // BusinessDayAdjustment Tests
-    // ========================================
-
-    #[test]
-    fn test_bda_name() {
-        assert_eq!(BusinessDayAdjustment::Following.name(), "Following");
-        assert_eq!(
-            BusinessDayAdjustment::ModifiedFollowing.name(),
-            "Modified Following"
-        );
-        assert_eq!(BusinessDayAdjustment::Preceding.name(), "Preceding");
-        assert_eq!(
-            BusinessDayAdjustment::ModifiedPreceding.name(),
-            "Modified Preceding"
-        );
-        assert_eq!(BusinessDayAdjustment::Unadjusted.name(), "Unadjusted");
-    }
-
-    #[test]
-    fn test_bda_default() {
-        let bda: BusinessDayAdjustment = Default::default();
-        assert_eq!(bda, BusinessDayAdjustment::Following);
-    }
-
-    #[test]
-    fn test_bda_display() {
-        assert_eq!(
-            format!("{}", BusinessDayAdjustment::ModifiedFollowing),
-            "Modified Following"
-        );
-    }
-
-    // ========================================
-    // DayCount Tests
-    // ========================================
-
-    #[test]
-    fn test_day_count_act360() {
-        let dc = DayCount::Act360;
-        let start = NaiveDate::from_ymd_opt(2026, 1, 1).unwrap();
-        let end = NaiveDate::from_ymd_opt(2026, 4, 1).unwrap(); // 90 days
-        let yf = dc.year_fraction(start, end);
-        assert!((yf - 90.0 / 360.0).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_day_count_act365() {
-        let dc = DayCount::Act365Fixed;
-        let start = NaiveDate::from_ymd_opt(2026, 1, 1).unwrap();
-        let end = NaiveDate::from_ymd_opt(2027, 1, 1).unwrap(); // 365 days
-        let yf = dc.year_fraction(start, end);
-        assert!((yf - 1.0).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_day_count_thirty360() {
-        let dc = DayCount::Thirty360;
-        let start = NaiveDate::from_ymd_opt(2026, 1, 1).unwrap();
-        let end = NaiveDate::from_ymd_opt(2026, 7, 1).unwrap(); // 6 months
-        let yf = dc.year_fraction(start, end);
-        assert!((yf - 0.5).abs() < 1e-10); // 180/360 = 0.5
-    }
-
-    #[test]
-    fn test_day_count_generic() {
-        let dc = DayCount::Act365Fixed;
-        let start = NaiveDate::from_ymd_opt(2026, 1, 1).unwrap();
-        let end = NaiveDate::from_ymd_opt(2027, 1, 1).unwrap();
-        let yf: f64 = dc.year_fraction_generic(start, end);
-        assert!((yf - 1.0).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_day_count_name() {
-        assert_eq!(DayCount::Act360.name(), "ACT/360");
-        assert_eq!(DayCount::Act365Fixed.name(), "ACT/365");
-        assert_eq!(DayCount::Thirty360.name(), "30/360");
-    }
-
-    #[test]
-    fn test_day_count_default() {
-        let dc: DayCount = Default::default();
-        assert_eq!(dc, DayCount::Act365Fixed);
     }
 
     // ========================================
@@ -587,15 +430,15 @@ mod tests {
         let friday = NaiveDate::from_ymd_opt(2026, 1, 9).unwrap();
 
         assert_eq!(
-            calc.adjust(saturday, BusinessDayAdjustment::Following),
+            calc.adjust(saturday, BusinessDayConvention::Following),
             monday
         );
         assert_eq!(
-            calc.adjust(saturday, BusinessDayAdjustment::Preceding),
+            calc.adjust(saturday, BusinessDayConvention::Preceding),
             friday
         );
         assert_eq!(
-            calc.adjust(saturday, BusinessDayAdjustment::Unadjusted),
+            calc.adjust(saturday, BusinessDayConvention::Unadjusted),
             saturday
         );
     }
@@ -654,10 +497,10 @@ mod tests {
         let start = NaiveDate::from_ymd_opt(2026, 1, 1).unwrap();
         let end = NaiveDate::from_ymd_opt(2027, 1, 1).unwrap();
 
-        let yf_365 = calc.year_fraction(start, end, DayCount::Act365Fixed);
+        let yf_365 = calc.year_fraction(start, end, DayCounter::Actual365Fixed);
         assert!((yf_365 - 1.0).abs() < 1e-10);
 
-        let yf_360 = calc.year_fraction(start, end, DayCount::Act360);
+        let yf_360 = calc.year_fraction(start, end, DayCounter::Actual360);
         assert!((yf_360 - 365.0 / 360.0).abs() < 1e-10);
     }
 
@@ -684,26 +527,26 @@ mod tests {
         let calc = DateCalculator::builder().build();
         assert_eq!(calc.spot_convention(), SpotDateConvention::T2);
         assert_eq!(
-            calc.business_day_adjustment(),
-            BusinessDayAdjustment::Following
+            calc.business_day_convention(),
+            BusinessDayConvention::Following
         );
-        assert_eq!(calc.day_count(), DayCount::Act365Fixed);
+        assert_eq!(calc.day_counter(), DayCounter::Actual365Fixed);
     }
 
     #[test]
     fn test_builder_custom() {
         let calc = DateCalculator::builder()
             .spot_convention(SpotDateConvention::T1)
-            .business_day_adjustment(BusinessDayAdjustment::ModifiedFollowing)
-            .day_count(DayCount::Act360)
+            .business_day_convention(BusinessDayConvention::ModifiedFollowing)
+            .day_counter(DayCounter::Actual360)
             .build();
 
         assert_eq!(calc.spot_convention(), SpotDateConvention::T1);
         assert_eq!(
-            calc.business_day_adjustment(),
-            BusinessDayAdjustment::ModifiedFollowing
+            calc.business_day_convention(),
+            BusinessDayConvention::ModifiedFollowing
         );
-        assert_eq!(calc.day_count(), DayCount::Act360);
+        assert_eq!(calc.day_counter(), DayCounter::Actual360);
     }
 
     // ========================================
@@ -715,6 +558,6 @@ mod tests {
         let calc1 = DateCalculator::new();
         let calc2 = calc1.clone();
         assert_eq!(calc1.spot_convention(), calc2.spot_convention());
-        assert_eq!(calc1.day_count(), calc2.day_count());
+        assert_eq!(calc1.day_counter(), calc2.day_counter());
     }
 }

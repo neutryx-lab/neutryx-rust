@@ -77,7 +77,7 @@ S: Service   → Execution environments and interfaces (The Outputs)
 **Location**: `crates/infra_master/src/`
 **Purpose**: Static master data and financial primitives
 **Function**: The "Source of Truth" for static finance data.
-**Scope**: Holiday calendars, Day count conventions, Counterparty/CSA data, Financial date and time primitives, Trade structures, Market conventions.
+**Scope**: Holiday calendars, Day count conventions, Counterparty/CSA data, Financial date and time primitives, Trade structures, Market conventions, Portfolio/Book organisation.
 **Structure**:
 
 ```text
@@ -88,15 +88,39 @@ time/              → Time-related primitives
   ├── period.rs         → Period definitions (Period)
   └── types.rs          → Date type and business day conventions
 
-market/            → Market data references
+market/            → Market data references and rate infrastructure
   ├── currency.rs       → ISO 4217 currency codes (Currency enum with metadata)
-  └── rate_index.rs     → Rate index definitions (RateIndex)
+  ├── rate_index.rs     → Rate index definitions (RateIndex)
+  ├── rate.rs           → Rate values (Rate, RateQuote)
+  ├── rate_id.rs        → Rate identifiers (RateId)
+  ├── rate_type.rs      → Rate type classification (RateType)
+  ├── rate_set.rs       → Rate set collections (RateSet)
+  ├── ticker.rs         → Market tickers (Ticker)
+  ├── quote_type.rs     → Quote types (Bid, Ask, Mid)
+  ├── data_source.rs    → Data source definitions
+  ├── mapper.rs         → Rate/Ticker mapping
+  └── validation.rs     → Market data validation
 
-counterparty/      → Counterparty and credit data
+counterparty/      → Counterparty, netting, and XVA configuration
   ├── csa.rs            → CSA terms (CsaTerms)
   ├── netting_set.rs    → Netting set configuration
+  ├── netting_agreement.rs → Netting agreement structures
   ├── credit.rs         → Credit data (hazard rates)
-  └── margin.rs         → Margin requirements
+  ├── margin.rs         → Margin requirements
+  ├── ccp.rs            → CCP (Central Counterparty) definitions
+  ├── counterparty_entity.rs → Counterparty entity types
+  ├── counterparty_portfolio.rs → Counterparty portfolio mapping
+  ├── xva_config.rs     → XVA configuration parameters
+  ├── aggregation.rs    → Exposure aggregation rules
+  └── ids.rs            → Counterparty ID types (IsdaAgreementId, VmAgreementId)
+
+book/              → Trading book organisation
+  ├── book.rs           → Book entity (Book, BookId)
+  └── types.rs          → Book types and hierarchy
+
+portfolio/         → Portfolio organisation
+  ├── portfolio.rs      → Portfolio entity (Portfolio, PortfolioId)
+  └── types.rs          → Portfolio types
 
 trade/             → Trade representation (CF-expanded format)
   ├── error.rs          → Trade construction errors (TradeError)
@@ -107,16 +131,19 @@ trade/             → Trade representation (CF-expanded format)
   ├── trade.rs          → Trade structure (Trade, TradeId, TradeMetadata, TradeType)
   ├── instrument.rs     → Market instruments (Deposit, FRA, Futures, ParSwap)
   ├── pricing_instrument.rs → Pricing instrument types (VanillaOption, Forward)
-  └── builder.rs        → Builder API (TradeBuilder, LegBuilder)
+  ├── book_assignment.rs → Trade-to-Book assignment
+  ├── builder.rs        → Builder API (TradeBuilder, LegBuilder)
+  └── convention/       → Market conventions (swap, swaption, fx, equity, credit, commodity, etc.)
 
-convention/        → Market conventions
-  ├── swap.rs           → Swap conventions (SwapConvention, SwapLegConvention)
-  ├── fra.rs            → FRA conventions
-  ├── futures.rs        → Futures conventions
-  ├── capfloor.rs       → Cap/Floor conventions
-  ├── fx.rs             → FX conventions (FxConvention)
-  ├── bond.rs           → Bond conventions
-  └── cds.rs            → CDS conventions
+  instrument_def/   → Standard instrument definitions (multi-asset catalogue)
+    ├── rates.rs        → Rates instruments (Swaption, CapFloor, Frn, CmsSwap, InflationSwap)
+    ├── fx.rs           → FX instruments (FxSpot, FxForward, FxVanillaOption, FxBarrierOption, FxSwap)
+    ├── equity.rs       → Equity instruments (EquityForward, EquityVanillaOption, AsianOption, etc.)
+    ├── credit.rs       → Credit instruments (Cds, CdsIndex, CdsOption, NtdBasket)
+    ├── commodity.rs    → Commodity instruments (CommodityForward, CommoditySwap, etc.)
+    ├── common.rs       → Shared types (AssetClass, ExerciseStyle, PayerReceiver)
+    ├── error.rs        → InstrumentError for validation failures
+    └── expander.rs     → InstrumentExpander for trade expansion
 ```
 
 **Trade Architecture**: `Trade` → `Vec<Leg>` → `Vec<Cashflow>` (CF-expanded common format)
@@ -166,10 +193,10 @@ math/
 
 traits/     → Priceable, Differentiable, Float, core abstractions
 types/
-├── dual.rs      → Dual numbers (num-dual) for AD
-├── time.rs      → Date, DayCountConvention for financial calculations
-├── currency.rs  → ISO 4217 currency codes with metadata
-└── error.rs     → Structured error types (PricingError, DateError, SolverError, etc.)
+├── dual.rs          → Dual numbers (num-dual) for AD
+├── time.rs          → DayCountConvention, time_to_maturity for financial calculations
+├── currency_pair.rs → FxRate type for FX rate representation (deprecated alias: CurrencyPair)
+└── error.rs         → Structured error types (PricingError, SolverError, InterpolationError, CalibrationError)
 ```
 
 **Key Principles**:
@@ -193,10 +220,21 @@ instruments/  → Financial instrument definitions
   └── mod.rs    → InstrumentEnum for static dispatch
 
 market/       → Market data structures and calibration
-  ├── curves/        → Yield curves (YieldCurve trait, FlatCurve, InterpolatedCurve, CurveSet, CurveEnum)
+  ├── curves/        → Yield curves (YieldCurve trait, FlatCurve, InterpolatedCurve, CreditCurve, CurveSet, CurveEnum)
   ├── surfaces/      → Volatility surfaces (VolatilitySurface trait, FlatVol, InterpolatedVolSurface, FxVolatilitySurface)
-  ├── calibration/   → Model and curve calibration (bootstrapping, Heston, SABR, Hull-White calibrators)
-  │   └── bootstrapping/ → Multi-curve yield curve construction
+  ├── calibration/   → Model and curve calibration
+  │   ├── bootstrapping/ → Multi-curve yield curve construction (AAD-enabled)
+  │   │   ├── engine.rs      → BootstrapEngine with Adjoint AD
+  │   │   ├── curve_engine.rs → CurveBootstrapEngine
+  │   │   ├── adjoint_solver.rs → Adjoint solver for sensitivities
+  │   │   ├── multi_curve.rs → OIS/LIBOR multi-curve framework
+  │   │   ├── sensitivity.rs → Curve sensitivity calculations
+  │   │   ├── cache.rs       → Bootstrap result caching
+  │   │   └── config.rs      → Bootstrap configuration
+  │   ├── heston.rs      → Heston model calibrator
+  │   ├── sabr.rs        → SABR model calibrator
+  │   ├── hull_white.rs  → Hull-White model calibrator
+  │   └── swaption_calibrator.rs → Swaption vol calibrator
   ├── provider.rs    → MarketProvider for lazy market data resolution (Arc-cached)
   └── error.rs       → MarketDataError for curve/surface validation
 
@@ -545,5 +583,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-21_ — pricer_core math expansion (distributions, calculus, utilities, integrators, optimisers, fitting, mesh, linalg); infra_master trade/convention modules
+_Updated: 2026-01-23_ — Added book/, portfolio/ modules to infra_master; expanded counterparty/ with netting agreements, XVA config; expanded market/ with rate infrastructure; updated market/calibration/bootstrapping with AAD-enabled curve engine
 _Document patterns, not file trees. New files following patterns should not require updates_

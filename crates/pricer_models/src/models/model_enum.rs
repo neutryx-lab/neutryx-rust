@@ -174,19 +174,39 @@ impl<T: Float> ModelParams<T> {
     }
 }
 
-/// Static dispatch enum for stochastic models.
+/// Stochastic models ordered by increasing complexity.
 ///
 /// This enum enables zero-cost abstraction over different stochastic models.
 /// Use this instead of `Box<dyn StochasticModel>` for Enzyme LLVM
 /// compatibility.
 ///
+/// # Ordering Rationale
+///
+/// Variants are ordered by model complexity (simplest to most specialised):
+///
+/// - **Level 1 (Basic)**: `GBM` - 1-factor, constant volatility
+/// - **Level 2 (Intermediate)**: `Heston`, `SABR` - 2-factor, stochastic vol
+/// - **Level 3 (Specialised)**: `HullWhite`, `CIR` - Rate models with mean reversion
+///
+/// This ordering helps users understand model sophistication and choose
+/// appropriately for their use case.
+///
 /// # Supported Models
 ///
-/// - `GBM`: Geometric Brownian Motion (1-factor) - always available
-/// - `Heston`: Heston stochastic volatility model (2-factor) - always available
-/// - `SABR`: SABR stochastic volatility model (2-factor) - always available
-/// - `HullWhite`: Hull-White 1F interest rate model - requires `rates` feature
-/// - `CIR`: Cox-Ingersoll-Ross interest rate model - requires `rates` feature
+/// | Model | Factors | Type | Feature |
+/// |-------|---------|------|---------|
+/// | `GBM` | 1 | Equity | default |
+/// | `Heston` | 2 | Equity (SV) | default |
+/// | `SABR` | 2 | Vol smile | default |
+/// | `HullWhite` | 1 | Rates | `rates` |
+/// | `CIR` | 1 | Rates | `rates` |
+///
+/// # Adding New Models
+///
+/// When adding new models, place them according to complexity:
+/// - Simple 1-factor models near `GBM`
+/// - Stochastic volatility models near `Heston`/`SABR`
+/// - Rate models near `HullWhite`/`CIR`
 ///
 /// # Example
 ///
@@ -205,16 +225,26 @@ impl<T: Float> ModelParams<T> {
 /// ```
 #[derive(Clone, Debug)]
 pub enum StochasticModelEnum<T: Float> {
-    /// Geometric Brownian Motion model (equity)
+    // === Level 1: Basic (1-factor, constant parameters) ===
+    /// Geometric Brownian Motion (simplest, 1-factor, constant volatility).
+    /// Complexity level: 1 (baseline).
     GBM(GBMModel<T>),
-    /// Heston stochastic volatility model (equity, 2-factor)
+
+    // === Level 2: Intermediate (2-factor, stochastic volatility) ===
+    /// Heston stochastic volatility model (2-factor, mean-reverting variance).
+    /// Complexity level: 2 (intermediate).
     Heston(HestonModel<T>),
-    /// SABR stochastic volatility model (2-factor)
+    /// SABR stochastic volatility model (2-factor, vol smile calibration).
+    /// Complexity level: 2 (intermediate).
     SABR(SABRModel<T>),
-    /// Hull-White one-factor model (rates) - requires `rates` feature
+
+    // === Level 3: Specialised (rate models with mean reversion) ===
+    /// Hull-White one-factor model (rates, mean reversion to forward curve).
+    /// Complexity level: 3 (specialised). Requires `rates` feature.
     #[cfg(feature = "rates")]
     HullWhite(HullWhiteModel<T>),
-    /// Cox-Ingersoll-Ross model (rates) - requires `rates` feature
+    /// Cox-Ingersoll-Ross model (rates, positive rates guaranteed).
+    /// Complexity level: 3 (specialised). Requires `rates` feature.
     #[cfg(feature = "rates")]
     CIR(CIRModel<T>),
 }

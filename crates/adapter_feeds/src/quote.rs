@@ -1,6 +1,6 @@
 //! Market quote types and normalisation.
 
-use pricer_core::types::Currency;
+use infra_master::Currency;
 
 /// Type of market quote
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

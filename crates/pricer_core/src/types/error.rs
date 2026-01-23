@@ -6,12 +6,10 @@
 //! - `SolverError`: Errors from root-finding solvers
 //! - `CalibrationError`: Errors from model calibration
 //!
-//! Note: `DateError` and `CurrencyError` are re-exported from `infra_master`.
+//! For `DateError` and `CurrencyError`, import directly from `infra_master`.
 
 use std::fmt;
 
-// Re-export from infra_master (authoritative source)
-pub use infra_master::{CurrencyError, DateError};
 use thiserror::Error;
 
 // Import math errors for From implementations

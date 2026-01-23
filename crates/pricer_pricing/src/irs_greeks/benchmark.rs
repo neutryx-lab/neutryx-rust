@@ -1350,10 +1350,8 @@ mod tests {
 // TODO: l1l2-integration feature disabled pending refactoring
 #[cfg(all(test, feature = "l1l2-integration", feature = "__disabled__"))]
 mod integration_tests {
-    use pricer_core::types::{
-        time::{Date, DayCountConvention},
-        Currency,
-    };
+    use infra_master::{Currency, Date};
+    use pricer_core::types::time::DayCountConvention;
     use pricer_models::{
         instruments::rates::{FixedLeg, FloatingLeg, InterestRateSwap, RateIndex, SwapDirection},
         market::curves::{CurveEnum, CurveName, CurveSet},

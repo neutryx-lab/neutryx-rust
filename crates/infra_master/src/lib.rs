@@ -28,8 +28,7 @@
 //! - [`time`]: Date handling, calendars, day count conventions, periods,
 //!   frequency
 //! - [`market`]: Currency definitions, rate indices
-//! - [`trade`]: Trade representation, legs, cashflows, directions
-//! - [`convention`]: Market conventions for various instruments
+//! - [`trade`]: Trade representation, legs, cashflows, directions, conventions
 //! - [`counterparty`]: Counterparty, CSA, netting set management
 //!
 //! ## Example
@@ -50,9 +49,11 @@
 //! ```
 
 // Core modules
-pub mod convention;
+pub mod book;
 pub mod counterparty;
+pub mod ids;
 pub mod market;
+pub mod portfolio;
 pub mod time;
 pub mod trade;
 
@@ -60,7 +61,10 @@ pub mod trade;
 mod error;
 // Counterparty module types (re-exported for convenience)
 pub use counterparty::{CsaTerms, NettingSet};
-pub use error::{CurrencyError, DateError, MasterDataError};
+pub use error::{
+    BookError, CurrencyError, DateError, ExposureError, MasterDataError, NettingError,
+    PortfolioError, ValidationError, ValidationResult,
+};
 // Market module types
 pub use market::{Currency, RateIndex};
 // Re-export commonly used types at crate root for convenience
@@ -72,12 +76,29 @@ pub use time::{
 };
 // Trade module types
 pub use trade::{SwapDirection, TradeDirection};
+// ID types (centralised for type safety)
+pub use ids::{BookId, CounterpartyId, IssuerId, PortfolioId, TradeId};
+// Book module types
+pub use book::{Book, BookBuilder, BookMetadata, BookOwnership, BookType, RegulatoryBookType};
+// Portfolio module types
+pub use portfolio::{
+    PortfolioBookMapping, PortfolioBuilder, PortfolioDefinition, PortfolioMetadata, PortfolioScope,
+};
 
 /// Prelude module for convenient imports
 pub mod prelude {
     pub use crate::{
-        error::{CurrencyError, DateError, MasterDataError},
+        book::{Book, BookBuilder, BookMetadata, BookOwnership, BookType, RegulatoryBookType},
+        error::{
+            BookError, CurrencyError, DateError, ExposureError, MasterDataError, NettingError,
+            PortfolioError, ValidationError, ValidationResult,
+        },
+        ids::{BookId, CounterpartyId, IssuerId, PortfolioId, TradeId},
         market::{Currency, RateIndex},
+        portfolio::{
+            PortfolioBookMapping, PortfolioBuilder, PortfolioDefinition, PortfolioMetadata,
+            PortfolioScope,
+        },
         time::{
             AccrualPeriod, BusinessDayConvention, Calendar, CalendarId, ConcreteCalendar, Date,
             DayCounter, EndOfMonthRule, Frequency, JointCalendar, JointCalendarRule, Period, Tenor,

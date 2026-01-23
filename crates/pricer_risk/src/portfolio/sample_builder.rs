@@ -30,7 +30,7 @@ use infra_master::trade::{
     ExerciseStyle, Forward, ForwardDirection, InstrumentParams, PayoffType, PricingInstrument,
     VanillaOption,
 };
-use pricer_core::types::Currency;
+use infra_master::Currency;
 
 use super::{
     error::PortfolioError, Counterparty, CounterpartyId, CreditParams, NettingSet, NettingSetId,

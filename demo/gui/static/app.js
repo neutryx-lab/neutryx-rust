@@ -2911,8 +2911,8 @@ function initQuickActions() {
                 case 'trade-expansion':
                     navigateTo('trade-expansion');
                     break;
-                case 'analytics-3d':
-                    navigateTo('analytics');
+                case 'model-calib':
+                    navigateTo('model-calib');
                     break;
                 default:
                     Logger.warn('QuickActions', `Unknown action: ${action}`);
@@ -6545,7 +6545,6 @@ async function init() {
         try { reportGenerator.init(); } catch(e) { Logger.error('App', 'reportGenerator init error', { error: e.message }); }
         try { aiAssistant.init(); } catch(e) { Logger.error('App', 'aiAssistant init error', { error: e.message }); }
         try { initClearAllCache(); } catch(e) { Logger.error('App', 'initClearAllCache error', { error: e.message }); }
-        try { analytics3D.init(); } catch(e) { Logger.error('App', 'analytics3D init error', { error: e.message }); }
         try { initKeyboardShortcuts(); } catch(e) { Logger.error('App', 'initKeyboardShortcuts error', { error: e.message }); }
         try { applyIconButtonLabels(); } catch(e) { Logger.error('App', 'applyIconButtonLabels error', { error: e.message }); }
         try { applyMotionPreference(); } catch(e) { Logger.error('App', 'applyMotionPreference error', { error: e.message }); }
@@ -14678,8 +14677,6 @@ function initModelCalibMock() {
     const placeholder = document.getElementById('vol-calib-placeholder');
     const results = document.getElementById('vol-calib-results');
     const dateInput = document.getElementById('vol-calib-date');
-    const surfacePlaceholder = document.getElementById('surface-viewer-placeholder');
-    const surfaceCanvas = document.getElementById('surface-3d-canvas');
 
     // Set default date to today
     if (dateInput && !dateInput.value) {
@@ -14699,43 +14696,6 @@ function initModelCalibMock() {
                 });
             });
         }
-    });
-
-    // Surface type selector
-    const surfaceTypeSelect = document.getElementById('surface-type-select');
-    if (surfaceTypeSelect) {
-        surfaceTypeSelect.addEventListener('change', (e) => {
-            const zLabels = {
-                'vol-surface': 'Implied Volatility',
-                'local-vol': 'Local Volatility',
-                'pv-surface': 'Present Value',
-                'delta-surface': 'Delta',
-                'gamma-surface': 'Gamma',
-                'vega-surface': 'Vega'
-            };
-            const zLabelEl = document.getElementById('surface-z-label');
-            if (zLabelEl) zLabelEl.textContent = zLabels[e.target.value] || 'Value';
-
-            if (modelCalibState.calibrated) {
-                updateSurfaceStats(e.target.value);
-            }
-        });
-    }
-
-    // Surface control buttons
-    document.getElementById('surface-reset-view')?.addEventListener('click', () => {
-        showToast('View reset', 'info');
-    });
-
-    document.getElementById('surface-fullscreen')?.addEventListener('click', () => {
-        const container = document.getElementById('surface-viewer-container');
-        if (container && container.requestFullscreen) {
-            container.requestFullscreen();
-        }
-    });
-
-    document.getElementById('surface-screenshot')?.addEventListener('click', () => {
-        showToast('Screenshot saved', 'success');
     });
 
     if (calibBtn) {
@@ -14774,18 +14734,13 @@ function initModelCalibMock() {
                 if (r2El) r2El.textContent = r2;
                 if (itersEl) itersEl.textContent = iters;
 
-                // Show 3D surface placeholder as "loaded"
-                if (surfacePlaceholder) {
-                    surfacePlaceholder.innerHTML = `
-                        <i class="fas fa-cube" style="color: var(--success);"></i>
-                        <p>Surface Calibrated</p>
-                        <small>Drag to rotate, scroll to zoom</small>
-                    `;
-                }
+                // Render the volatility surface heatmap
+                renderVolSurfaceHeatmap();
 
-                // Update surface stats
+                // Render the smile comparison chart
+                renderSmileComparisonChart(parseFloat(alpha), parseFloat(rho), parseFloat(nu));
+
                 modelCalibState.calibrated = true;
-                updateSurfaceStats('vol-surface');
 
                 // Reset button
                 calibBtn.disabled = false;
@@ -14799,20 +14754,244 @@ function initModelCalibMock() {
     modelCalibState.initialised = true;
 }
 
-function updateSurfaceStats(surfaceType) {
-    const statsMap = {
-        'vol-surface': { min: '18.5%', max: '35.2%', atm: '26.0%' },
-        'local-vol': { min: '16.2%', max: '42.8%', atm: '24.5%' },
-        'pv-surface': { min: '-$2.1M', max: '$4.5M', atm: '$1.2M' },
-        'delta-surface': { min: '0.02', max: '0.98', atm: '0.52' },
-        'gamma-surface': { min: '0.001', max: '0.045', atm: '0.023' },
-        'vega-surface': { min: '$12K', max: '$185K', atm: '$95K' }
-    };
+// Render volatility surface as a heatmap
+function renderVolSurfaceHeatmap() {
+    const container = document.getElementById('vol-surface-3d');
+    if (!container) return;
 
-    const stats = statsMap[surfaceType] || { min: '--', max: '--', atm: '--' };
-    document.getElementById('surface-min').textContent = stats.min;
-    document.getElementById('surface-max').textContent = stats.max;
-    document.getElementById('surface-atm').textContent = stats.atm;
+    // Clear placeholder and create canvas
+    container.innerHTML = '';
+    container.classList.remove('chart-placeholder');
+    container.style.position = 'relative';
+    container.style.minHeight = '250px';
+
+    const canvas = document.createElement('canvas');
+    canvas.style.width = '100%';
+    canvas.style.height = '250px';
+    container.appendChild(canvas);
+
+    const ctx = canvas.getContext('2d');
+    const rect = container.getBoundingClientRect();
+    canvas.width = rect.width || 400;
+    canvas.height = 250;
+
+    // Generate vol surface data (strikes × expiries)
+    const strikes = [0.8, 0.85, 0.9, 0.95, 1.0, 1.05, 1.1, 1.15, 1.2];
+    const expiries = ['1M', '3M', '6M', '1Y', '2Y'];
+    const volData = [];
+
+    // Generate SABR-like smile for each expiry
+    for (let e = 0; e < expiries.length; e++) {
+        const row = [];
+        const atmVol = 0.22 + e * 0.015; // ATM vol increases with expiry
+        for (let s = 0; s < strikes.length; s++) {
+            const moneyness = strikes[s] - 1.0;
+            // Skew effect (more vol for lower strikes)
+            const skew = -0.15 * moneyness;
+            // Smile effect (curvature)
+            const smile = 0.4 * moneyness * moneyness;
+            const vol = atmVol + skew + smile + (Math.random() * 0.005 - 0.0025);
+            row.push(vol);
+        }
+        volData.push(row);
+    }
+
+    // Find min/max for color scaling
+    const allVols = volData.flat();
+    const minVol = Math.min(...allVols);
+    const maxVol = Math.max(...allVols);
+
+    // Draw heatmap
+    const cellWidth = canvas.width / strikes.length;
+    const cellHeight = (canvas.height - 40) / expiries.length;
+    const offsetY = 20;
+
+    for (let e = 0; e < expiries.length; e++) {
+        for (let s = 0; s < strikes.length; s++) {
+            const vol = volData[e][s];
+            const normalised = (vol - minVol) / (maxVol - minVol);
+
+            // Color gradient: green (low) -> yellow (mid) -> red (high)
+            let r, g, b;
+            if (normalised < 0.5) {
+                const t = normalised * 2;
+                r = Math.round(16 + t * (245 - 16));
+                g = Math.round(185 - t * (185 - 158));
+                b = Math.round(129 - t * (129 - 11));
+            } else {
+                const t = (normalised - 0.5) * 2;
+                r = Math.round(245 + t * (239 - 245));
+                g = Math.round(158 - t * (158 - 68));
+                b = Math.round(11 - t * 11);
+            }
+
+            ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+            ctx.fillRect(s * cellWidth, offsetY + e * cellHeight, cellWidth - 1, cellHeight - 1);
+
+            // Draw vol value
+            ctx.fillStyle = normalised > 0.5 ? '#fff' : '#1a1a2e';
+            ctx.font = '10px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText((vol * 100).toFixed(1) + '%', s * cellWidth + cellWidth / 2, offsetY + e * cellHeight + cellHeight / 2);
+        }
+    }
+
+    // Draw axis labels
+    ctx.fillStyle = 'var(--text-secondary)';
+    ctx.font = '10px Inter, sans-serif';
+
+    // Strike labels (top)
+    ctx.textAlign = 'center';
+    for (let s = 0; s < strikes.length; s++) {
+        ctx.fillStyle = '#8b8b9a';
+        ctx.fillText((strikes[s] * 100).toFixed(0) + '%', s * cellWidth + cellWidth / 2, 10);
+    }
+
+    // Expiry labels (left side - overlay)
+    ctx.textAlign = 'left';
+    for (let e = 0; e < expiries.length; e++) {
+        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        ctx.fillText(expiries[e], 4, offsetY + e * cellHeight + cellHeight / 2);
+    }
+
+    // Add legend
+    const legendWidth = 15;
+    const legendHeight = canvas.height - 50;
+    const legendX = canvas.width - 25;
+    const legendY = 25;
+
+    const gradient = ctx.createLinearGradient(0, legendY + legendHeight, 0, legendY);
+    gradient.addColorStop(0, 'rgb(16, 185, 129)');
+    gradient.addColorStop(0.5, 'rgb(245, 158, 11)');
+    gradient.addColorStop(1, 'rgb(239, 68, 68)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(legendX, legendY, legendWidth, legendHeight);
+
+    ctx.fillStyle = '#8b8b9a';
+    ctx.font = '9px Inter, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText((maxVol * 100).toFixed(0) + '%', legendX + legendWidth + 3, legendY + 5);
+    ctx.fillText((minVol * 100).toFixed(0) + '%', legendX + legendWidth + 3, legendY + legendHeight);
+}
+
+// Render smile comparison chart (Market vs Model)
+function renderSmileComparisonChart(alpha, rho, nu) {
+    const container = document.getElementById('vol-smile-2d');
+    if (!container) return;
+
+    // Clear placeholder and create canvas
+    container.innerHTML = '';
+    container.classList.remove('chart-placeholder');
+
+    const canvas = document.createElement('canvas');
+    container.appendChild(canvas);
+
+    // Market data (from input - mock for now)
+    const marketStrikes = [80, 90, 100, 110, 120];
+    const marketVols = [32.5, 28.5, 26.0, 25.0, 26.5];
+
+    // Model fit (SABR-like curve - simplified)
+    const modelStrikes = [];
+    const modelVols = [];
+    for (let k = 75; k <= 125; k += 2.5) {
+        modelStrikes.push(k);
+        const moneyness = (k - 100) / 100;
+        // Simplified SABR approximation
+        const atmVol = 26.0;
+        const skew = rho * 100 * moneyness * 0.8;
+        const convexity = nu * 50 * moneyness * moneyness;
+        modelVols.push(atmVol + skew + convexity);
+    }
+
+    // Create Chart.js chart
+    const smileChart = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: modelStrikes,
+            datasets: [
+                {
+                    label: 'Model',
+                    data: modelStrikes.map((k, i) => ({ x: k, y: modelVols[i] })),
+                    borderColor: 'rgb(99, 102, 241)',
+                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 0
+                },
+                {
+                    label: 'Market',
+                    data: marketStrikes.map((k, i) => ({ x: k, y: marketVols[i] })),
+                    borderColor: 'rgb(16, 185, 129)',
+                    backgroundColor: 'rgb(16, 185, 129)',
+                    borderWidth: 0,
+                    pointRadius: 6,
+                    pointStyle: 'circle',
+                    showLine: false
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        color: '#8b8b9a',
+                        usePointStyle: true,
+                        padding: 15
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(26, 26, 46, 0.9)',
+                    titleColor: '#fff',
+                    bodyColor: '#8b8b9a',
+                    borderColor: 'rgba(99, 102, 241, 0.3)',
+                    borderWidth: 1,
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}%`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    type: 'linear',
+                    title: {
+                        display: true,
+                        text: 'Strike (%)',
+                        color: '#8b8b9a'
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.05)'
+                    },
+                    ticks: {
+                        color: '#8b8b9a'
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Implied Vol (%)',
+                        color: '#8b8b9a'
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.05)'
+                    },
+                    ticks: {
+                        color: '#8b8b9a'
+                    }
+                }
+            }
+        }
+    });
+
+    // Store chart reference for cleanup
+    modelCalibState.smileChart = smileChart;
 }
 
 // Hook into navigation to reinitialise when switching to scenarios view

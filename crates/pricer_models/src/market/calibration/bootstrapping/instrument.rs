@@ -11,19 +11,34 @@ use num_traits::Float;
 use pricer_core::math::numeric::{from_f64, from_usize};
 
 /// Payment frequency for fixed-income instruments.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+///
+/// Ordered from highest (Daily) to lowest (Annual) frequency.
+/// This ordering matches `infra_master::time::Frequency` to ensure
+/// consistent behaviour across the codebase.
+///
+/// # Ordering Rationale
+///
+/// Financial schedules typically progress from higher frequency to lower
+/// frequency when iterating payment dates. The declaration order ensures
+/// `Daily < Monthly < Quarterly < SemiAnnual < Annual` when using `Ord`.
+///
+/// # Note
+///
+/// This enum does not include `Weekly` frequency as it is not commonly
+/// used in bootstrap instrument definitions.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, PartialOrd, Ord)]
 pub enum Frequency {
-    /// Annual payments (1 per year)
-    #[default]
-    Annual,
-    /// Semi-annual payments (2 per year)
-    SemiAnnual,
-    /// Quarterly payments (4 per year)
-    Quarterly,
-    /// Monthly payments (12 per year)
-    Monthly,
     /// Daily payments (365 per year)
     Daily,
+    /// Monthly payments (12 per year)
+    #[default]
+    Monthly,
+    /// Quarterly payments (4 per year)
+    Quarterly,
+    /// Semi-annual payments (2 per year)
+    SemiAnnual,
+    /// Annual payments (1 per year)
+    Annual,
 }
 
 impl Frequency {
@@ -561,7 +576,39 @@ mod tests {
     #[test]
     fn test_frequency_default() {
         let freq: Frequency = Default::default();
-        assert_eq!(freq, Frequency::Annual);
+        assert_eq!(freq, Frequency::Monthly);
+    }
+
+    #[test]
+    fn test_frequency_ord() {
+        // Verify ordering: Daily < Monthly < Quarterly < SemiAnnual < Annual
+        assert!(Frequency::Daily < Frequency::Monthly);
+        assert!(Frequency::Monthly < Frequency::Quarterly);
+        assert!(Frequency::Quarterly < Frequency::SemiAnnual);
+        assert!(Frequency::SemiAnnual < Frequency::Annual);
+    }
+
+    #[test]
+    fn test_frequency_sort_vec() {
+        let mut frequencies = vec![
+            Frequency::Annual,
+            Frequency::Daily,
+            Frequency::Quarterly,
+            Frequency::Monthly,
+            Frequency::SemiAnnual,
+        ];
+        frequencies.sort();
+
+        assert_eq!(
+            frequencies,
+            vec![
+                Frequency::Daily,
+                Frequency::Monthly,
+                Frequency::Quarterly,
+                Frequency::SemiAnnual,
+                Frequency::Annual,
+            ]
+        );
     }
 
     // ========================================

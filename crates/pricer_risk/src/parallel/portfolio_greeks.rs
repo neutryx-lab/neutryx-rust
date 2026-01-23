@@ -16,7 +16,7 @@ use std::{
     time::Instant,
 };
 
-use pricer_core::types::time::Date;
+use infra_master::Date;
 use pricer_models::{
     instruments::rates::InterestRateSwap,
     market::curves::CurveSet,
