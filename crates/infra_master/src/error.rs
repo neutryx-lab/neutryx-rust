@@ -209,7 +209,8 @@ pub enum NettingError {
     #[error("Invalid netting agreement: {0}")]
     InvalidAgreement(String),
 
-    /// Cross-book netting violation (books must be explicitly allowed for cross-book netting).
+    /// Cross-book netting violation (books must be explicitly allowed for
+    /// cross-book netting).
     #[error("Cross-book netting violation: {0}")]
     CrossBookViolation(String),
 }
@@ -459,10 +460,7 @@ mod tests {
     #[test]
     fn test_portfolio_error_invalid_book_reference_display() {
         let err = PortfolioError::InvalidBookReference("BOOK_UNKNOWN".to_string());
-        assert_eq!(
-            format!("{}", err),
-            "Invalid book reference: BOOK_UNKNOWN"
-        );
+        assert_eq!(format!("{}", err), "Invalid book reference: BOOK_UNKNOWN");
     }
 
     #[test]
@@ -646,9 +644,7 @@ mod tests {
 
     #[test]
     fn test_validation_result_type_alias() {
-        fn returns_validation_result() -> ValidationResult<String> {
-            Ok("success".to_string())
-        }
+        fn returns_validation_result() -> ValidationResult<String> { Ok("success".to_string()) }
         assert!(returns_validation_result().is_ok());
     }
 }

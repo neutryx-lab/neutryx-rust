@@ -5,11 +5,12 @@
 
 use std::collections::HashSet;
 
-use crate::error::PortfolioError;
-use crate::ids::{BookId, PortfolioId};
-use crate::market::Currency;
-
 use super::{PortfolioBookMapping, PortfolioMetadata, PortfolioScope};
+use crate::{
+    error::PortfolioError,
+    ids::{BookId, PortfolioId},
+    market::Currency,
+};
 
 // ============================================================================
 // PortfolioDefinition
@@ -92,9 +93,7 @@ impl PortfolioDefinition {
     /// Returns the parent portfolio ID, if any.
     #[inline]
     #[must_use]
-    pub fn parent_portfolio_id(&self) -> Option<&PortfolioId> {
-        self.parent_portfolio_id.as_ref()
-    }
+    pub fn parent_portfolio_id(&self) -> Option<&PortfolioId> { self.parent_portfolio_id.as_ref() }
 
     /// Returns the list of book IDs in this portfolio.
     #[inline]
@@ -123,18 +122,14 @@ impl PortfolioDefinition {
 
     /// Returns true if this portfolio contains the specified book.
     #[must_use]
-    pub fn contains_book(&self, book_id: &BookId) -> bool {
-        self.book_ids.contains(book_id)
-    }
+    pub fn contains_book(&self, book_id: &BookId) -> bool { self.book_ids.contains(book_id) }
 
     /// Creates book mappings for this portfolio.
     #[must_use]
     pub fn book_mappings(&self) -> Vec<PortfolioBookMapping> {
         self.book_ids
             .iter()
-            .map(|book_id| {
-                PortfolioBookMapping::new(self.portfolio_id.clone(), book_id.clone())
-            })
+            .map(|book_id| PortfolioBookMapping::new(self.portfolio_id.clone(), book_id.clone()))
             .collect()
     }
 }
@@ -249,7 +244,8 @@ impl PortfolioBuilder {
 
     /// Builds the PortfolioDefinition instance.
     ///
-    /// This method consumes the builder and returns a fully constructed portfolio.
+    /// This method consumes the builder and returns a fully constructed
+    /// portfolio.
     #[must_use]
     pub fn build(self) -> PortfolioDefinition {
         PortfolioDefinition {
@@ -268,7 +264,8 @@ impl PortfolioBuilder {
     ///
     /// # Errors
     ///
-    /// Returns [`PortfolioError::InvalidBookReference`] if a book ID is not found.
+    /// Returns [`PortfolioError::InvalidBookReference`] if a book ID is not
+    /// found.
     pub fn build_validated(
         self,
         known_book_ids: &HashSet<BookId>,
@@ -325,8 +322,8 @@ mod tests {
 
     #[test]
     fn test_portfolio_builder_minimal() {
-        let portfolio = PortfolioDefinition::builder("P001", "Test Portfolio", Currency::USD)
-            .build();
+        let portfolio =
+            PortfolioDefinition::builder("P001", "Test Portfolio", Currency::USD).build();
         assert_eq!(portfolio.portfolio_id().as_str(), "P001");
         assert_eq!(portfolio.name(), "Test Portfolio");
         assert_eq!(portfolio.reporting_currency(), Currency::USD);
@@ -410,8 +407,7 @@ mod tests {
         let with_parent = PortfolioDefinition::builder("P002", "Child", Currency::USD)
             .parent("P001")
             .build();
-        let without_parent = PortfolioDefinition::builder("P001", "Parent", Currency::USD)
-            .build();
+        let without_parent = PortfolioDefinition::builder("P001", "Parent", Currency::USD).build();
 
         assert!(with_parent.has_parent());
         assert!(!without_parent.has_parent());
@@ -558,22 +554,17 @@ mod tests {
 
     #[test]
     fn test_portfolio_id_from_string() {
-        let portfolio = PortfolioDefinition::builder(
-            "P001".to_string(),
-            "Test Portfolio",
-            Currency::USD,
-        ).build();
+        let portfolio =
+            PortfolioDefinition::builder("P001".to_string(), "Test Portfolio", Currency::USD)
+                .build();
         assert_eq!(portfolio.portfolio_id().as_str(), "P001");
     }
 
     #[test]
     fn test_portfolio_id_from_portfolio_id() {
         let portfolio_id = PortfolioId::new("P001");
-        let portfolio = PortfolioDefinition::builder(
-            portfolio_id,
-            "Test Portfolio",
-            Currency::USD,
-        ).build();
+        let portfolio =
+            PortfolioDefinition::builder(portfolio_id, "Test Portfolio", Currency::USD).build();
         assert_eq!(portfolio.portfolio_id().as_str(), "P001");
     }
 }

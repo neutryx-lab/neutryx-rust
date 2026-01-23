@@ -1,12 +1,11 @@
 //! Curve engine error types.
 //!
-//! This module provides structured error handling for the curve bootstrap engine
-//! with detailed diagnostic information for each failure mode.
+//! This module provides structured error handling for the curve bootstrap
+//! engine with detailed diagnostic information for each failure mode.
 
 use thiserror::Error;
 
-use super::config::BootstrapInterpolation;
-use super::error::BootstrapError;
+use super::{config::BootstrapInterpolation, error::BootstrapError};
 
 /// Parameter representation for yield curves.
 ///
@@ -139,14 +138,10 @@ impl CurveEngineError {
     }
 
     /// Create an unknown index error.
-    pub fn unknown_index(index: impl Into<String>) -> Self {
-        Self::UnknownIndex(index.into())
-    }
+    pub fn unknown_index(index: impl Into<String>) -> Self { Self::UnknownIndex(index.into()) }
 
     /// Create an interpolation error.
-    pub fn interpolation(message: impl Into<String>) -> Self {
-        Self::Interpolation(message.into())
-    }
+    pub fn interpolation(message: impl Into<String>) -> Self { Self::Interpolation(message.into()) }
 
     /// Create a cache error.
     pub fn cache(message: impl Into<String>) -> Self { Self::Cache(message.into()) }

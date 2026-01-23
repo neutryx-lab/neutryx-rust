@@ -512,13 +512,9 @@ impl<T: Float> YieldCurve<T> for BootstrappedCurve<T> {
         }
     }
 
-    fn pillar_count(&self) -> Option<usize> {
-        Some(self.pillars.len())
-    }
+    fn pillar_count(&self) -> Option<usize> { Some(self.pillars.len()) }
 
-    fn pillars(&self) -> Option<&[T]> {
-        Some(&self.pillars)
-    }
+    fn pillars(&self) -> Option<&[T]> { Some(&self.pillars) }
 
     fn pillar_values(&self) -> Option<&[T]> {
         // Return log(DF) values as the pillar parameters
@@ -527,9 +523,7 @@ impl<T: Float> YieldCurve<T> for BootstrappedCurve<T> {
         Some(&self.discount_factors)
     }
 
-    fn max_maturity(&self) -> Option<T> {
-        self.pillars.last().copied()
-    }
+    fn max_maturity(&self) -> Option<T> { self.pillars.last().copied() }
 }
 
 impl<T: Float> BootstrappedCurve<T> {
@@ -1119,9 +1113,13 @@ mod tests {
         let pillars = vec![1.0, 2.0, 3.0];
         let dfs = vec![0.97, 0.94, 0.91];
 
-        let curve: BootstrappedCurve<f64> =
-            BootstrappedCurve::new(pillars.clone(), dfs, BootstrapInterpolation::LogLinear, true)
-                .unwrap();
+        let curve: BootstrappedCurve<f64> = BootstrappedCurve::new(
+            pillars.clone(),
+            dfs,
+            BootstrapInterpolation::LogLinear,
+            true,
+        )
+        .unwrap();
 
         // Use the trait method
         let trait_pillars = YieldCurve::<f64>::pillars(&curve).unwrap();
@@ -1135,9 +1133,13 @@ mod tests {
         let pillars = vec![1.0, 2.0, 3.0];
         let dfs = vec![0.97, 0.94, 0.91];
 
-        let curve: BootstrappedCurve<f64> =
-            BootstrappedCurve::new(pillars, dfs.clone(), BootstrapInterpolation::LogLinear, true)
-                .unwrap();
+        let curve: BootstrappedCurve<f64> = BootstrappedCurve::new(
+            pillars,
+            dfs.clone(),
+            BootstrapInterpolation::LogLinear,
+            true,
+        )
+        .unwrap();
 
         // Use the trait method
         let values = YieldCurve::<f64>::pillar_values(&curve).unwrap();
@@ -1160,7 +1162,8 @@ mod tests {
 
     #[test]
     fn test_instantaneous_forward_log_linear() {
-        // For log-linear interpolation, instantaneous forward = constant forward between pillars
+        // For log-linear interpolation, instantaneous forward = constant forward
+        // between pillars
         let pillars = vec![1.0, 2.0, 3.0];
         let rate = 0.03;
         let dfs = vec![

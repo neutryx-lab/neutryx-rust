@@ -51,21 +51,15 @@ impl CutOffTime {
 
     /// Returns the standard New York cut-off time (10:00 NY).
     #[must_use]
-    pub fn ny_cut() -> Self {
-        Self::new(10, 0, "NY")
-    }
+    pub fn ny_cut() -> Self { Self::new(10, 0, "NY") }
 
     /// Returns the standard Tokyo cut-off time (15:00 TOK).
     #[must_use]
-    pub fn tokyo_cut() -> Self {
-        Self::new(15, 0, "TOK")
-    }
+    pub fn tokyo_cut() -> Self { Self::new(15, 0, "TOK") }
 
     /// Returns the standard London cut-off time (10:00 LON).
     #[must_use]
-    pub fn london_cut() -> Self {
-        Self::new(10, 0, "LON")
-    }
+    pub fn london_cut() -> Self { Self::new(10, 0, "LON") }
 }
 
 impl std::fmt::Display for CutOffTime {

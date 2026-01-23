@@ -33,8 +33,10 @@ use infra_master::{Date, DayCounter};
 /// For the full set of conventions, use `infra_master::DayCounter` directly.
 ///
 /// # Variants
-/// - `ActualActual365`: Actual days / 365 (equivalent to `DayCounter::Actual365Fixed`)
-/// - `ActualActual360`: Actual days / 360 (equivalent to `DayCounter::Actual360`)
+/// - `ActualActual365`: Actual days / 365 (equivalent to
+///   `DayCounter::Actual365Fixed`)
+/// - `ActualActual360`: Actual days / 360 (equivalent to
+///   `DayCounter::Actual360`)
 /// - `Thirty360`: 30/360 Bond Basis (equivalent to `DayCounter::Thirty360Bond`)
 ///
 /// # Usage

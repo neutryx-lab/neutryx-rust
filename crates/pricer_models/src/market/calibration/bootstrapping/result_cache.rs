@@ -12,7 +12,8 @@
 //! # Thread Safety
 //!
 //! The cache uses `parking_lot::RwLock` for concurrent read access with
-//! exclusive write access, enabling high throughput in multi-threaded scenarios.
+//! exclusive write access, enabling high throughput in multi-threaded
+//! scenarios.
 //!
 //! # Examples
 //!
@@ -36,16 +37,17 @@
 //! assert_eq!(stats.misses, 1);
 //! ```
 
-use std::hash::{Hash, Hasher};
-use std::num::NonZeroUsize;
-use std::sync::Arc;
+use std::{
+    hash::{Hash, Hasher},
+    num::NonZeroUsize,
+    sync::Arc,
+};
 
+use infra_master::market::RateIndex;
 use lru::LruCache;
 use num_traits::Float;
 use ordered_float::OrderedFloat;
 use parking_lot::RwLock;
-
-use infra_master::market::RateIndex;
 
 use super::curve::BootstrappedCurve;
 
@@ -134,7 +136,8 @@ impl CurveKey {
 
     /// Computes a deterministic hash of the rates array.
     ///
-    /// Uses `OrderedFloat` to ensure consistent hashing of floating-point values.
+    /// Uses `OrderedFloat` to ensure consistent hashing of floating-point
+    /// values.
     #[must_use]
     pub fn hash_rates<T: Float>(rates: &[T]) -> u64 {
         use std::collections::hash_map::DefaultHasher;
@@ -166,21 +169,15 @@ impl CurveKey {
 
     /// Returns the rate index.
     #[must_use]
-    pub fn index(&self) -> RateIndex {
-        self.index
-    }
+    pub fn index(&self) -> RateIndex { self.index }
 
     /// Returns the rates hash.
     #[must_use]
-    pub fn rates_hash(&self) -> u64 {
-        self.rates_hash
-    }
+    pub fn rates_hash(&self) -> u64 { self.rates_hash }
 
     /// Returns the config hash.
     #[must_use]
-    pub fn config_hash(&self) -> u64 {
-        self.config_hash
-    }
+    pub fn config_hash(&self) -> u64 { self.config_hash }
 }
 
 /// Statistics for cache performance monitoring.
@@ -210,7 +207,11 @@ impl CacheStats {
     /// Creates a new statistics instance.
     #[must_use]
     pub fn new(hits: u64, misses: u64, entries: usize) -> Self {
-        Self { hits, misses, entries }
+        Self {
+            hits,
+            misses,
+            entries,
+        }
     }
 
     /// Calculates the cache hit rate.
@@ -241,9 +242,7 @@ impl CacheStats {
 
     /// Returns the total number of lookups.
     #[must_use]
-    pub fn total_lookups(&self) -> u64 {
-        self.hits + self.misses
-    }
+    pub fn total_lookups(&self) -> u64 { self.hits + self.misses }
 }
 
 /// Thread-safe LRU cache for bootstrapped yield curves.
@@ -456,27 +455,19 @@ impl<T: Float> CurveResultCache<T> {
 
     /// Returns the number of entries currently in the cache.
     #[must_use]
-    pub fn len(&self) -> usize {
-        self.cache.read().len()
-    }
+    pub fn len(&self) -> usize { self.cache.read().len() }
 
     /// Returns true if the cache is empty.
     #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.cache.read().is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.cache.read().is_empty() }
 
     /// Returns the cache capacity.
     #[must_use]
-    pub fn capacity(&self) -> usize {
-        self.cache.read().cap().get()
-    }
+    pub fn capacity(&self) -> usize { self.cache.read().cap().get() }
 
     /// Checks if a key exists in the cache without updating LRU order.
     #[must_use]
-    pub fn contains(&self, key: &CurveKey) -> bool {
-        self.cache.read().peek(key).is_some()
-    }
+    pub fn contains(&self, key: &CurveKey) -> bool { self.cache.read().peek(key).is_some() }
 }
 
 impl<T: Float> Clone for CurveResultCache<T> {
@@ -502,9 +493,7 @@ impl<T: Float> Clone for CurveResultCache<T> {
 
 impl<T: Float> Default for CurveResultCache<T> {
     /// Creates a cache with default capacity of 100 entries.
-    fn default() -> Self {
-        Self::new(100)
-    }
+    fn default() -> Self { Self::new(100) }
 }
 
 impl<T: Float> std::fmt::Debug for CurveResultCache<T> {

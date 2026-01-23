@@ -6,8 +6,8 @@
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::return_self_not_must_use)]
 
-use crate::market::Currency;
 use super::NettingSetId;
+use crate::market::Currency;
 
 // ============================================================================
 // XvaCalculationLevel
@@ -136,7 +136,7 @@ impl Default for XvaScope {
 /// XVA calculation configuration flags.
 ///
 /// Enables/disables individual XVA components.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct XvaConfig {
     /// Calculate CVA (Credit Valuation Adjustment).
@@ -265,20 +265,6 @@ impl XvaConfig {
     pub fn wwr_config(&self) -> Option<&WrongWayRiskConfig> { self.wwr_config.as_ref() }
 }
 
-impl Default for XvaConfig {
-    fn default() -> Self {
-        Self {
-            calculate_cva: false,
-            calculate_dva: false,
-            calculate_fva: false,
-            calculate_kva: false,
-            calculate_mva: false,
-            funding_config: None,
-            capital_config: None,
-            wwr_config: None,
-        }
-    }
-}
 
 // ============================================================================
 // FundingConfig
@@ -437,10 +423,7 @@ mod tests {
         assert_eq!(scope.netting_set_ids().len(), 2);
         assert!((scope.time_horizon_years() - 5.0).abs() < f64::EPSILON);
         assert_eq!(scope.num_paths(), 50_000);
-        assert_eq!(
-            scope.calculation_level(),
-            XvaCalculationLevel::Counterparty
-        );
+        assert_eq!(scope.calculation_level(), XvaCalculationLevel::Counterparty);
     }
 
     #[test]

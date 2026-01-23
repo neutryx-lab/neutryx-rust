@@ -19,40 +19,40 @@
 //! ```
 
 use super::{
+    // Common
+    AsianOption,
+    BasketOption,
+    // Rates
+    CapFloor,
+    // Credit
+    Cds,
+    CdsIndex,
+    CdsOption,
+    CmsSwap,
     // Commodity
     CommodityAsianOption,
     CommodityForward,
     CommoditySwap,
     CommodityVanillaOption,
-    // Credit
-    Cds,
-    CdsIndex,
-    CdsOption,
     // Equity
     EquityBarrierOption,
     EquityForward,
     EquitySwap,
     EquityVanillaOption,
+    Frn,
     // FX
     FxBarrierOption,
     FxForward,
     FxSpot,
     FxSwap,
     FxVanillaOption,
+    InflationSwap,
     InstrumentDefinition,
     InstrumentError,
+    LookbackOption,
     NtdBasket,
-    // Rates
-    CapFloor,
-    CmsSwap,
-    Frn,
-    InflationSwap,
     SpreadOption,
     Swaption,
-    // Common
-    AsianOption,
-    BasketOption,
-    LookbackOption,
 };
 use crate::{
     ids::TradeId,
@@ -266,7 +266,12 @@ impl InstrumentExpander for CapFloor {
         );
         cashflows.push(settlement_cf);
 
-        let leg = Leg::new(cashflows, Direction::Receiver, LegType::CapFloor, self.currency);
+        let leg = Leg::new(
+            cashflows,
+            Direction::Receiver,
+            LegType::CapFloor,
+            self.currency,
+        );
 
         Ok(Trade::new(trade_id, vec![leg], TradeType::CapFloor))
     }
@@ -1214,15 +1219,20 @@ impl InstrumentExpander for SpreadOption {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::trade::convention::{
-        CdsConvention, EquityConvention, FxConvention, FxOptionConvention,
-        InflationSwapConvention, SwapConvention, SwaptionConvention,
+    use super::{
+        super::{CurrencyPair, EquityUnderlying, ExerciseStyle, PayerReceiver},
+        *,
     };
-    use crate::trade::{ExerciseType, SettlementType};
-    use crate::{Currency, Tenor};
-
-    use super::super::{CurrencyPair, EquityUnderlying, ExerciseStyle, PayerReceiver};
+    use crate::{
+        trade::{
+            convention::{
+                CdsConvention, EquityConvention, FxConvention, FxOptionConvention,
+                InflationSwapConvention, SwapConvention, SwaptionConvention,
+            },
+            ExerciseType, SettlementType,
+        },
+        Currency, Tenor,
+    };
 
     fn make_conventions() -> ConventionSet {
         ConventionSet::new()
@@ -1235,9 +1245,7 @@ mod tests {
             .with_inflation_swap(InflationSwapConvention::us_cpi_zc())
     }
 
-    fn valuation_date() -> Date {
-        Date::from_ymd(2025, 1, 1).unwrap()
-    }
+    fn valuation_date() -> Date { Date::from_ymd(2025, 1, 1).unwrap() }
 
     // === Rates Tests ===
 
@@ -1346,7 +1354,8 @@ mod tests {
 
         assert_eq!(trade.id.as_str(), "FX-SWAP-001");
         assert_eq!(trade.trade_type, TradeType::Swap);
-        assert_eq!(trade.num_legs(), 4); // near pay, near receive, far pay, far receive
+        assert_eq!(trade.num_legs(), 4); // near pay, near receive, far pay, far
+                                         // receive
     }
 
     // === Equity Tests ===
@@ -1630,8 +1639,8 @@ mod tests {
 
     #[test]
     fn test_expand_fx_barrier_option() {
-        use crate::trade::OptionType;
         use super::super::{BarrierDirection, BarrierType};
+        use crate::trade::OptionType;
 
         let vanilla = FxVanillaOption {
             currency_pair: CurrencyPair::new(Currency::EUR, Currency::USD),
@@ -1662,8 +1671,8 @@ mod tests {
 
     #[test]
     fn test_expand_asian_option() {
-        use crate::trade::OptionType;
         use super::super::AveragingType;
+        use crate::trade::OptionType;
 
         let asian = AsianOption {
             underlying: EquityUnderlying::stock("AAPL"),
@@ -1756,8 +1765,8 @@ mod tests {
 
     #[test]
     fn test_expand_commodity_vanilla_option() {
-        use crate::trade::OptionType;
         use super::super::{CommodityType, EnergyType, QuantityUnit};
+        use crate::trade::OptionType;
 
         let comm_opt = CommodityVanillaOption {
             commodity: CommodityType::Energy(EnergyType::NaturalGas),
@@ -1800,7 +1809,12 @@ mod tests {
             .unwrap();
 
         // Trade type should match swaption settings
-        if let TradeType::Swaption { exercise_type, settlement_type, .. } = trade.trade_type {
+        if let TradeType::Swaption {
+            exercise_type,
+            settlement_type,
+            ..
+        } = trade.trade_type
+        {
             assert_eq!(exercise_type, ExerciseType::European);
             assert_eq!(settlement_type, SettlementType::Cash);
         } else {
@@ -1900,8 +1914,8 @@ mod tests {
 
     #[test]
     fn test_edge_case_empty_observed_values() {
-        use crate::trade::OptionType;
         use super::super::AveragingType;
+        use crate::trade::OptionType;
 
         // Asian option with no observed values yet
         let asian = AsianOption {
@@ -2049,7 +2063,10 @@ mod tests {
                 .unwrap();
 
             // Property: trade must have at least one leg with at least one cashflow
-            assert!(trade.total_cashflows() >= 1, "Trade must have at least one cashflow");
+            assert!(
+                trade.total_cashflows() >= 1,
+                "Trade must have at least one cashflow"
+            );
             assert!(trade.num_legs() >= 1, "Trade must have at least one leg");
         }
     }
@@ -2124,7 +2141,10 @@ mod tests {
         for leg in trade.legs() {
             let leg_ccy = leg.currency;
             for cf in leg.cashflows() {
-                assert_eq!(cf.currency, leg_ccy, "Cashflow currency must match leg currency");
+                assert_eq!(
+                    cf.currency, leg_ccy,
+                    "Cashflow currency must match leg currency"
+                );
             }
         }
     }
@@ -2168,6 +2188,9 @@ mod tests {
             .expand_to_trade("OPT-001", valuation_date(), &make_conventions())
             .unwrap();
 
-        assert!(trade.total_cashflows() >= 1, "Option must have at least settlement cashflow");
+        assert!(
+            trade.total_cashflows() >= 1,
+            "Option must have at least settlement cashflow"
+        );
     }
 }

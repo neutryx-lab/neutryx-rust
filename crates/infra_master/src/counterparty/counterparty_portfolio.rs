@@ -1,7 +1,8 @@
 //! CounterpartyPortfolio hierarchy structure.
 //!
 //! This module provides the complete hierarchy for XVA calculation:
-//! CounterpartyPortfolio -> IsdaMasterAgreement -> VariationMarginAgreement -> Trade
+//! CounterpartyPortfolio -> IsdaMasterAgreement -> VariationMarginAgreement ->
+//! Trade
 //!
 //! # Architecture
 //!
@@ -17,14 +18,11 @@
 
 use std::collections::{BTreeSet, HashSet};
 
-use crate::ids::TradeId;
-use crate::market::Currency;
-use crate::time::Date;
-
 use super::{
     CounterPartyError, CounterPartyId, EligibleCollateral, IsdaAgreementId,
     VariationMarginAgreementId,
 };
+use crate::{ids::TradeId, market::Currency, time::Date};
 
 // ============================================================================
 // IsdaPaymentMethod
@@ -413,7 +411,8 @@ pub struct IsdaMasterAgreement {
     variation_margin_agreements: Vec<VariationMarginAgreement>,
     non_csa_trade_ids: Vec<TradeId>,
     initial_margin: Option<IsdaInitialMargin>,
-    /// Pre-calculated exposure path for non-CSA trades (reserved for future use).
+    /// Pre-calculated exposure path for non-CSA trades (reserved for future
+    /// use).
     #[allow(dead_code)]
     precalc_non_csa_exposure: Option<PreCalculatedExposurePath>,
 }
@@ -679,9 +678,7 @@ impl PreCalculatedExposurePath {
 
     /// Returns exposure values at a date.
     #[must_use]
-    pub fn exposure_at(&self, date: &Date) -> Option<&Vec<f64>> {
-        self.exposure_by_date.get(date)
-    }
+    pub fn exposure_at(&self, date: &Date) -> Option<&Vec<f64>> { self.exposure_by_date.get(date) }
 
     /// Returns the currency.
     #[inline]
@@ -689,9 +686,7 @@ impl PreCalculatedExposurePath {
     pub fn currency(&self) -> Currency { self.currency }
 
     /// Returns an iterator over dates.
-    pub fn dates(&self) -> impl Iterator<Item = &Date> {
-        self.exposure_by_date.keys()
-    }
+    pub fn dates(&self) -> impl Iterator<Item = &Date> { self.exposure_by_date.keys() }
 
     /// Returns the number of dates.
     #[inline]
@@ -766,7 +761,9 @@ impl ExposurePathBuilder {
         if exposures.len() != self.num_paths {
             self.validation_errors.push(format!(
                 "Date {}: expected {} paths, got {}",
-                date, self.num_paths, exposures.len()
+                date,
+                self.num_paths,
+                exposures.len()
             ));
         }
         self.exposures_by_date.insert(date, exposures);
@@ -782,7 +779,8 @@ impl ExposurePathBuilder {
         if dates.len() != exposures.len() {
             self.validation_errors.push(format!(
                 "Dates/exposures length mismatch: {} dates, {} exposure vectors",
-                dates.len(), exposures.len()
+                dates.len(),
+                exposures.len()
             ));
             return self;
         }
@@ -791,7 +789,9 @@ impl ExposurePathBuilder {
             if exp.len() != self.num_paths {
                 self.validation_errors.push(format!(
                     "Date {}: expected {} paths, got {}",
-                    date, self.num_paths, exp.len()
+                    date,
+                    self.num_paths,
+                    exp.len()
                 ));
             }
             self.exposures_by_date.insert(date, exp);
@@ -808,9 +808,10 @@ impl ExposurePathBuilder {
     /// errors occurred during construction.
     pub fn build(self) -> Result<PreCalculatedExposurePath, CounterPartyError> {
         if !self.validation_errors.is_empty() {
-            return Err(CounterPartyError::InvalidCreditParams(
-                format!("Exposure path validation failed: {}", self.validation_errors.join("; "))
-            ));
+            return Err(CounterPartyError::InvalidCreditParams(format!(
+                "Exposure path validation failed: {}",
+                self.validation_errors.join("; ")
+            )));
         }
 
         Ok(PreCalculatedExposurePath {
@@ -877,9 +878,7 @@ impl CounterpartyPortfolio {
 
     /// Collects all trade IDs into a set.
     #[must_use]
-    pub fn all_trade_ids(&self) -> HashSet<TradeId> {
-        self.iter_all_trades().cloned().collect()
-    }
+    pub fn all_trade_ids(&self) -> HashSet<TradeId> { self.iter_all_trades().cloned().collect() }
 
     /// Gets all currencies from trades using a lookup function.
     pub fn get_all_currencies<F>(&self, trade_currency_fn: F) -> HashSet<Currency>
@@ -887,7 +886,7 @@ impl CounterpartyPortfolio {
         F: Fn(&TradeId) -> Option<Currency>,
     {
         self.iter_all_trades()
-            .filter_map(|id| trade_currency_fn(id))
+            .filter_map(trade_currency_fn)
             .collect()
     }
 
@@ -897,7 +896,7 @@ impl CounterpartyPortfolio {
         F: Fn(&TradeId) -> Vec<Date>,
     {
         self.iter_all_trades()
-            .flat_map(|id| trade_dates_fn(id))
+            .flat_map(trade_dates_fn)
             .collect()
     }
 }
@@ -1187,12 +1186,10 @@ mod tests {
             .unwrap();
 
         // Mock currency lookup
-        let currencies = portfolio.get_all_currencies(|id| {
-            match id.as_str() {
-                "T001" => Some(Currency::USD),
-                "T002" => Some(Currency::EUR),
-                _ => None,
-            }
+        let currencies = portfolio.get_all_currencies(|id| match id.as_str() {
+            "T001" => Some(Currency::USD),
+            "T002" => Some(Currency::EUR),
+            _ => None,
         });
 
         assert!(currencies.contains(&Currency::USD));
@@ -1216,7 +1213,10 @@ mod tests {
 
         assert_eq!(path.len(), 2);
         assert_eq!(path.currency(), Currency::USD);
-        assert_eq!(path.exposure_at(&date1).unwrap(), &vec![100.0, 200.0, 150.0]);
+        assert_eq!(
+            path.exposure_at(&date1).unwrap(),
+            &vec![100.0, 200.0, 150.0]
+        );
     }
 
     #[test]
@@ -1249,11 +1249,7 @@ mod tests {
             Date::from_ymd(2025, 12, 31).unwrap(),
         ];
 
-        let exposures = vec![
-            vec![100.0, 110.0],
-            vec![120.0, 130.0],
-            vec![140.0, 150.0],
-        ];
+        let exposures = vec![vec![100.0, 110.0], vec![120.0, 130.0], vec![140.0, 150.0]];
 
         let path = ExposurePathBuilder::new(Currency::JPY, 2)
             .with_time_grid(dates.clone(), exposures.clone())

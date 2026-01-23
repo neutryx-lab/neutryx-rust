@@ -39,8 +39,8 @@
 //! - Differentiable smoothing functions (`math::smoothing`)
 //! - Dual number type integration (`types::dual`)
 //! - Traits for pricing and differentiability (`traits`)
-//! - Time types: `Date`, `DayCounter`, `BusinessDayConvention` (re-exported from
-//!   `infra_master`)
+//! - Time types: `Date`, `DayCounter`, `BusinessDayConvention` (re-exported
+//!   from `infra_master`)
 //! - Currency types: `Currency` (re-exported from `infra_master`)
 //! - Convenience: `DayCountConvention` wrapper for common day count conventions
 //! - Error types: `PricingError`, `DateError`, `CurrencyError` (`types::error`)

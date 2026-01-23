@@ -3,8 +3,10 @@
 //! This module provides types for tracking trade-to-book assignments
 //! and maintaining assignment history for audit purposes.
 
-use crate::ids::{BookId, TradeId};
-use crate::time::Date;
+use crate::{
+    ids::{BookId, TradeId},
+    time::Date,
+};
 
 // ============================================================================
 // BookTransferReason
@@ -233,11 +235,7 @@ impl TradeBookHistory {
         effective_date: Date,
     ) -> Self {
         let trade_id = trade_id.into();
-        let assignment = TradeBookAssignment::new_trade(
-            trade_id.clone(),
-            book_id,
-            effective_date,
-        );
+        let assignment = TradeBookAssignment::new_trade(trade_id.clone(), book_id, effective_date);
         Self {
             trade_id,
             assignments: vec![assignment],
@@ -256,9 +254,7 @@ impl TradeBookHistory {
 
     /// Returns the current book ID (most recent assignment).
     #[must_use]
-    pub fn current_book(&self) -> Option<&BookId> {
-        self.assignments.last().map(|a| a.book_id())
-    }
+    pub fn current_book(&self) -> Option<&BookId> { self.assignments.last().map(|a| a.book_id()) }
 
     /// Returns an iterator over all assignments.
     pub fn assignments(&self) -> impl Iterator<Item = &TradeBookAssignment> {
@@ -281,7 +277,7 @@ impl TradeBookHistory {
         self.assignments
             .iter()
             .filter(|a| a.effective_date() <= date)
-            .last()
+            .next_back()
     }
 
     /// Returns the book ID effective at a given date.
@@ -442,7 +438,11 @@ mod tests {
         let mut history = TradeBookHistory::new("T001");
         history.add_assignment(TradeBookAssignment::new_trade("T001", "B001", date1));
         history.add_assignment(TradeBookAssignment::transfer(
-            "T001", "B001", "B002", date2, BookTransferReason::Reallocation,
+            "T001",
+            "B001",
+            "B002",
+            date2,
+            BookTransferReason::Reallocation,
         ));
 
         let assignments: Vec<_> = history.assignments().collect();
@@ -458,7 +458,11 @@ mod tests {
         let mut history = TradeBookHistory::new("T001");
         history.add_assignment(TradeBookAssignment::new_trade("T001", "B001", date1));
         history.add_assignment(TradeBookAssignment::transfer(
-            "T001", "B001", "B002", date2, BookTransferReason::Reallocation,
+            "T001",
+            "B001",
+            "B002",
+            date2,
+            BookTransferReason::Reallocation,
         ));
 
         // Before first assignment
@@ -467,11 +471,17 @@ mod tests {
 
         // After first, before second
         let mid_date = Date::from_ymd(2025, 3, 1).unwrap();
-        assert_eq!(history.assignment_at(mid_date).unwrap().book_id().as_str(), "B001");
+        assert_eq!(
+            history.assignment_at(mid_date).unwrap().book_id().as_str(),
+            "B001"
+        );
 
         // After second
         let late_date = Date::from_ymd(2025, 7, 1).unwrap();
-        assert_eq!(history.assignment_at(late_date).unwrap().book_id().as_str(), "B002");
+        assert_eq!(
+            history.assignment_at(late_date).unwrap().book_id().as_str(),
+            "B002"
+        );
     }
 
     #[test]
@@ -481,7 +491,11 @@ mod tests {
         let mut history = TradeBookHistory::new("T001");
         history.add_assignment(TradeBookAssignment::new_trade("T001", "B001", date1));
         history.add_assignment(TradeBookAssignment::transfer(
-            "T001", "B001", "B002", date2, BookTransferReason::Reallocation,
+            "T001",
+            "B001",
+            "B002",
+            date2,
+            BookTransferReason::Reallocation,
         ));
 
         let mid_date = Date::from_ymd(2025, 3, 1).unwrap();

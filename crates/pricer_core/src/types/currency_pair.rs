@@ -6,8 +6,10 @@
 //! # Note
 //!
 //! `FxRate<T>` is distinct from `infra_master::CurrencyPair`:
-//! - `infra_master::CurrencyPair`: Instrument definition (no spot rate, no AD support)
-//! - `FxRate<T>`: Pricing type (includes spot rate, supports AD via generic `T`)
+//! - `infra_master::CurrencyPair`: Instrument definition (no spot rate, no AD
+//!   support)
+//! - `FxRate<T>`: Pricing type (includes spot rate, supports AD via generic
+//!   `T`)
 //!
 //! # Examples
 //!
@@ -470,7 +472,8 @@ mod tests {
     #[allow(deprecated)]
     fn test_currency_pair_alias() {
         // Test that the deprecated alias still works
-        let rate: CurrencyPair<f64> = CurrencyPair::new(Currency::EUR, Currency::USD, 1.10).unwrap();
+        let rate: CurrencyPair<f64> =
+            CurrencyPair::new(Currency::EUR, Currency::USD, 1.10).unwrap();
         assert_eq!(rate.base(), Currency::EUR);
     }
 }

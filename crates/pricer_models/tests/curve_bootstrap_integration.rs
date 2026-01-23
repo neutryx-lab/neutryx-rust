@@ -7,15 +7,16 @@
 //! - Cache integration
 //! - Multi-curve construction
 
-use infra_master::market::RateIndex;
-use infra_master::trade::convention::SwapConvention;
-use pricer_models::market::calibration::bootstrapping::{
-    BootstrapInstrument, BootstrapInterpolation, BootstrappedCurve, CurveConfigBuilder,
-    CurveDependency, CurveDefinition, CurveEngine, CurveEngineBuilder, CurveKey, CurveResultCache,
-    GenericBootstrapConfig, GenericBootstrapConfigBuilder, InstrumentAdapter, InstrumentSpec,
-    InstrumentTenor, MultiCurveBuilder, SequentialBootstrapper, Tenor,
+use infra_master::{market::RateIndex, trade::convention::SwapConvention};
+use pricer_models::market::{
+    calibration::bootstrapping::{
+        BootstrapInstrument, BootstrapInterpolation, BootstrappedCurve, CurveConfigBuilder,
+        CurveDefinition, CurveDependency, CurveEngine, CurveEngineBuilder, CurveKey,
+        CurveResultCache, GenericBootstrapConfig, GenericBootstrapConfigBuilder, InstrumentAdapter,
+        InstrumentSpec, InstrumentTenor, MultiCurveBuilder, SequentialBootstrapper, Tenor,
+    },
+    curves::YieldCurve,
 };
-use pricer_models::market::curves::YieldCurve;
 
 // ============================================================================
 // Task 9.1: Unit-Level Integration Tests
@@ -168,14 +169,8 @@ mod instrument_adapter_tests {
     fn test_adapter_convert_future_instruments() {
         let definition =
             CurveDefinition::new("USD-FUT", RateIndex::Sofr, SwapConvention::usd_sofr())
-                .with_instrument(InstrumentSpec::future(
-                    InstrumentTenor::ThreeMonths,
-                    0.0001,
-                ))
-                .with_instrument(InstrumentSpec::future(
-                    InstrumentTenor::SixMonths,
-                    0.0002,
-                ));
+                .with_instrument(InstrumentSpec::future(InstrumentTenor::ThreeMonths, 0.0001))
+                .with_instrument(InstrumentSpec::future(InstrumentTenor::SixMonths, 0.0002));
 
         let prices = vec![
             (InstrumentTenor::ThreeMonths, 97.5), // Future prices (100 - rate)
@@ -284,8 +279,9 @@ mod curve_cache_tests {
 }
 
 mod curve_config_tests {
-    use super::*;
     use pricer_models::market::calibration::bootstrapping::CurveParameterRepresentation;
+
+    use super::*;
 
     #[test]
     fn test_config_validate_logdf_loglinear() {
@@ -394,9 +390,7 @@ mod curve_engine_integration_tests {
         assert_eq!(result1.pillars.len(), result2.pillars.len());
         for i in 0..result1.pillars.len() {
             assert!((result1.pillars[i] - result2.pillars[i]).abs() < 1e-12);
-            assert!(
-                (result1.discount_factors[i] - result2.discount_factors[i]).abs() < 1e-12
-            );
+            assert!((result1.discount_factors[i] - result2.discount_factors[i]).abs() < 1e-12);
         }
     }
 
@@ -650,7 +644,11 @@ mod end_to_end_tests {
 
         // All residuals should be small (good fit)
         let max_residual = result.residuals.iter().map(|r| r.abs()).fold(0.0, f64::max);
-        assert!(max_residual < 1e-8, "Max residual too large: {}", max_residual);
+        assert!(
+            max_residual < 1e-8,
+            "Max residual too large: {}",
+            max_residual
+        );
 
         // 5. Use the curve for pricing
         let df_5y = result.curve.discount_factor(5.0).unwrap();

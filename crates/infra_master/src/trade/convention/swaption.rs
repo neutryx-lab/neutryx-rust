@@ -2,9 +2,8 @@
 //!
 //! This module provides types for representing swaption market conventions.
 
-use crate::Currency;
-
 use super::SwapConvention;
+use crate::Currency;
 
 /// Settlement convention for swaption premium and exercise.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

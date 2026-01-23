@@ -64,13 +64,23 @@ pub use xva_config::*;
 /// ```
 pub mod prelude {
     pub use super::{
+        AggregationConfig,
+        AggregationError,
+        // Aggregation
+        AggregationHierarchy,
+        AggregationMethod,
         // CSA
         CallFrequency,
+        CapitalConfig,
         // Entities
         Ccp,
         // IDs
         CcpId,
+        CloseoutCalculationMethod,
+        CloseoutNetting,
+        CollateralCallFrequency,
         CollateralHaircut,
+        CollateralizedExposureConfig,
         CounterParty,
         // Error
         CounterPartyError,
@@ -83,13 +93,20 @@ pub mod prelude {
         // Credit
         CreditParams,
         CreditRating,
+        // Cross-Book Netting
+        CrossBookNettingAgreement,
+        CrossBookNettingAgreementBuilder,
+        CrossBookNettingAgreementId,
+        CrossProductNettingEligibility,
         CsaTerms,
+        DrillDownPath,
+        DrillDownSegment,
         EligibleCollateral,
-        ExposureConfig,
-        PfeConfidenceLevel,
         ExposureAggregation,
-        MporConfig,
-        CollateralizedExposureConfig,
+        ExposureConfig,
+        ExposurePathBuilder,
+        FundingConfig,
+        GroupingKey,
         // Margin
         ImModel,
         ImTerms,
@@ -103,13 +120,22 @@ pub mod prelude {
         LegalEntityId,
         MarginTerms,
         MarginType,
+        MporConfig,
+        NettingAgreement,
+        NettingAgreementBuilder,
+        // Netting Agreement
+        NettingAgreementType,
         NettingEligibility,
+        NettingJurisdiction,
         NettingSet,
         NettingSetId,
         NettingType,
         NonNettableTrades,
+        PaymentNetting,
+        PaymentNettingFrequency,
+        PfeConfidenceLevel,
         PreCalculatedExposurePath,
-        ExposurePathBuilder,
+        RegulatoryCapitalMethod,
         RoundingDirection,
         RoundingRule,
         SegregationType,
@@ -118,37 +144,11 @@ pub mod prelude {
         VariationMarginAgreementBuilder,
         VariationMarginAgreementId,
         VmTerms,
-        CollateralCallFrequency,
-        // Cross-Book Netting
-        CrossBookNettingAgreement,
-        CrossBookNettingAgreementBuilder,
-        CrossBookNettingAgreementId,
-        // XVA Configuration
-        XvaCalculationLevel,
-        XvaScope,
-        XvaConfig,
-        FundingConfig,
-        CapitalConfig,
-        RegulatoryCapitalMethod,
         WrongWayRiskConfig,
         WwrModelType,
-        // Netting Agreement
-        NettingAgreementType,
-        NettingJurisdiction,
-        NettingAgreement,
-        NettingAgreementBuilder,
-        CloseoutCalculationMethod,
-        CloseoutNetting,
-        PaymentNettingFrequency,
-        PaymentNetting,
-        CrossProductNettingEligibility,
-        // Aggregation
-        AggregationHierarchy,
-        AggregationMethod,
-        GroupingKey,
-        AggregationError,
-        AggregationConfig,
-        DrillDownPath,
-        DrillDownSegment,
+        // XVA Configuration
+        XvaCalculationLevel,
+        XvaConfig,
+        XvaScope,
     };
 }

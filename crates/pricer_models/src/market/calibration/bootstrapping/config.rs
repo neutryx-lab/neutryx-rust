@@ -77,7 +77,10 @@ pub enum BootstrapInterpolation {
 #[cfg_attr(
     feature = "serde",
     derive(serde::Serialize, serde::Deserialize),
-    serde(bound(serialize = "T: serde::Serialize", deserialize = "T: serde::Deserialize<'de>"))
+    serde(bound(
+        serialize = "T: serde::Serialize",
+        deserialize = "T: serde::Deserialize<'de>"
+    ))
 )]
 pub struct GenericBootstrapConfig<T: Float> {
     /// Convergence tolerance for solver. Default: 1e-12
@@ -112,7 +115,10 @@ impl<T: Float> GenericBootstrapConfig<T> {
     pub fn new() -> Self { Self::default() }
 
     /// Create a builder (deprecated: use `with_*` methods instead).
-    #[deprecated(since = "0.8.0", note = "Use GenericBootstrapConfig::default().with_*() instead")]
+    #[deprecated(
+        since = "0.8.0",
+        note = "Use GenericBootstrapConfig::default().with_*() instead"
+    )]
     pub fn builder() -> GenericBootstrapConfigBuilder<T> { GenericBootstrapConfigBuilder::new() }
 
     /// High-precision configuration (tolerance: 1e-14, iterations: 500).
@@ -124,7 +130,8 @@ impl<T: Float> GenericBootstrapConfig<T> {
         }
     }
 
-    /// Fast configuration for interactive use (tolerance: 1e-8, iterations: 50).
+    /// Fast configuration for interactive use (tolerance: 1e-8, iterations:
+    /// 50).
     pub fn fast() -> Self {
         Self {
             tolerance: from_f64(1e-8),

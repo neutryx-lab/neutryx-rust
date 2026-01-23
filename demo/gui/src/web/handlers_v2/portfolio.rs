@@ -8,12 +8,7 @@
 
 use std::{collections::HashMap, sync::Arc, time::Instant};
 
-use axum::{
-    extract::State,
-    http::StatusCode,
-    response::IntoResponse,
-    Json,
-};
+use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 
 use crate::web::AppState;

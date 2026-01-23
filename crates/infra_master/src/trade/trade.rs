@@ -6,8 +6,10 @@ use super::{
     cashflow::Cashflow,
     leg::{Leg, LegType},
 };
-use crate::ids::{BookId, CounterpartyId, IssuerId, PortfolioId, TradeId};
-use crate::Date;
+use crate::{
+    ids::{BookId, CounterpartyId, IssuerId, PortfolioId, TradeId},
+    Date,
+};
 
 /// Type of option exercise.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -353,7 +355,10 @@ mod tests {
         let metadata = TradeMetadata::new().with_counterparty("Bank B");
         let trade = Trade::with_metadata("TRADE002", legs, TradeType::Generic, metadata);
 
-        assert_eq!(trade.metadata.counterparty, Some(CounterpartyId::new("Bank B")));
+        assert_eq!(
+            trade.metadata.counterparty,
+            Some(CounterpartyId::new("Bank B"))
+        );
     }
 
     #[test]

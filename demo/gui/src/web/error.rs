@@ -8,7 +8,8 @@
 //!
 //! - `validation`: Input validation failures (400 Bad Request)
 //! - `not_found`: Resource not found (404 Not Found)
-//! - `calculation`: Calculation or processing failures (422 Unprocessable Entity)
+//! - `calculation`: Calculation or processing failures (422 Unprocessable
+//!   Entity)
 //! - `internal`: Internal server errors (500 Internal Server Error)
 //!
 //! # Example
@@ -215,14 +216,10 @@ impl ApiError {
     }
 
     /// Check if this is a client error (4xx).
-    pub fn is_client_error(&self) -> bool {
-        (400..500).contains(&self.status_code)
-    }
+    pub fn is_client_error(&self) -> bool { (400..500).contains(&self.status_code) }
 
     /// Check if this is a server error (5xx).
-    pub fn is_server_error(&self) -> bool {
-        (500..600).contains(&self.status_code)
-    }
+    pub fn is_server_error(&self) -> bool { (500..600).contains(&self.status_code) }
 }
 
 // =============================================================================
@@ -287,9 +284,7 @@ pub trait IntoApiError {
 }
 
 impl<T: IntoApiError> From<T> for ApiError {
-    fn from(err: T) -> Self {
-        err.into_api_error()
-    }
+    fn from(err: T) -> Self { err.into_api_error() }
 }
 
 // =============================================================================
@@ -372,7 +367,10 @@ mod tests {
 
     #[test]
     fn test_status_conversion() {
-        assert_eq!(ApiError::validation("", "").status(), StatusCode::BAD_REQUEST);
+        assert_eq!(
+            ApiError::validation("", "").status(),
+            StatusCode::BAD_REQUEST
+        );
         assert_eq!(ApiError::not_found("", "").status(), StatusCode::NOT_FOUND);
         assert_eq!(
             ApiError::calculation("").status(),

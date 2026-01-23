@@ -10,9 +10,10 @@
 //!
 //! ## Migration Status
 //!
-//! This module is part of an ongoing migration from the monolithic `handlers.rs`
-//! to a more maintainable modular structure. Once migration is complete, this
-//! module will be renamed to `handlers` and the legacy module will be removed.
+//! This module is part of an ongoing migration from the monolithic
+//! `handlers.rs` to a more maintainable modular structure. Once migration is
+//! complete, this module will be renamed to `handlers` and the legacy module
+//! will be removed.
 //!
 //! ### Migrated
 //! - `health` - Health check, metrics, index page
@@ -55,23 +56,19 @@ pub mod risk;
 // =============================================================================
 
 // Health module
+// Exposure module
+pub use exposure::{get_exposure, ExposurePoint, ExposureResponse};
 pub use health::{
     get_index, get_metrics, health, serve_index_with_config, ApiResponseTimes, HealthResponse,
     MetricsResponse,
 };
-
-// Exposure module
-pub use exposure::{get_exposure, ExposurePoint, ExposureResponse};
-
+// Jobs module
+pub use jobs::{get_job_status, list_jobs, JobErrorResponse, JobListResponse, JobPathParams};
 // Portfolio module
 pub use portfolio::{
     get_portfolio, get_portfolio_trades, price_portfolio, sample_trades, PortfolioResponse,
     PortfolioTradeSummary, PortfolioTradesResponse, PortfolioTradesStats, PriceRequest,
     PriceRequestItem, TradeData,
 };
-
 // Risk module
 pub use risk::{get_risk_metrics, RiskMetricsResponse};
-
-// Jobs module
-pub use jobs::{get_job_status, list_jobs, JobErrorResponse, JobListResponse, JobPathParams};

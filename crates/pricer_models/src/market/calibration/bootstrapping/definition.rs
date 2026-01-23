@@ -7,16 +7,15 @@
 //!
 //! - `CurveInstrumentType`: Enum of instrument types used in curve construction
 //! - `InstrumentTenor`: Standard tenors for curve instruments (1M to 50Y)
-//! - `InstrumentSpec`: Specification for a single instrument in curve construction
+//! - `InstrumentSpec`: Specification for a single instrument in curve
+//!   construction
 //! - `CurveDefinition`: Index-to-instrument mapping for curve construction
 
-use std::fmt;
 #[cfg(feature = "serde")]
 use std::path::Path;
-use std::str::FromStr;
+use std::{fmt, str::FromStr};
 
-use infra_master::market::RateIndex;
-use infra_master::trade::convention::SwapConvention;
+use infra_master::{market::RateIndex, trade::convention::SwapConvention};
 
 use super::engine_error::CurveEngineError;
 
@@ -36,7 +35,8 @@ use super::engine_error::CurveEngineError;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum CurveInstrumentType {
-    /// Overnight Index Swap - primary instrument for discount curve construction.
+    /// Overnight Index Swap - primary instrument for discount curve
+    /// construction.
     #[default]
     Ois,
     /// Interest Rate Swap - used for tenor curve construction.
@@ -535,9 +535,7 @@ impl InstrumentSpec {
         }
 
         // Futures typically have short tenors
-        if self.instrument_type == CurveInstrumentType::Future
-            && self.tenor.to_years() > 3.0
-        {
+        if self.instrument_type == CurveInstrumentType::Future && self.tenor.to_years() > 3.0 {
             return Err(format!(
                 "Future tenor {} is unusually long (typically <= 3Y)",
                 self.tenor
@@ -545,9 +543,7 @@ impl InstrumentSpec {
         }
 
         // Deposits typically have very short tenors
-        if self.instrument_type == CurveInstrumentType::Deposit
-            && self.tenor.to_years() > 1.0
-        {
+        if self.instrument_type == CurveInstrumentType::Deposit && self.tenor.to_years() > 1.0 {
             return Err(format!(
                 "Deposit tenor {} is unusually long (typically <= 1Y)",
                 self.tenor
@@ -750,8 +746,8 @@ impl CurveDefinition {
 
         // Check convention consistency (warning-level, not error)
         if self.convention.float_index != self.rate_index {
-            // This is allowed but unusual - convention might be intentionally different
-            // for basis swaps or cross-currency curves
+            // This is allowed but unusual - convention might be intentionally
+            // different for basis swaps or cross-currency curves
         }
 
         Ok(())
@@ -883,11 +879,11 @@ impl CurveDefinition {
     ///
     /// # Errors
     ///
-    /// Returns `CurveEngineError::UnknownIndex` if no default definition exists.
+    /// Returns `CurveEngineError::UnknownIndex` if no default definition
+    /// exists.
     pub fn require_default_for_index(index: RateIndex) -> Result<Self, CurveEngineError> {
-        Self::default_for_index(index).ok_or_else(|| {
-            CurveEngineError::unknown_index(format!("{:?}", index))
-        })
+        Self::default_for_index(index)
+            .ok_or_else(|| CurveEngineError::unknown_index(format!("{:?}", index)))
     }
 
     /// Saves the curve definition to a JSON file.
@@ -1224,8 +1220,7 @@ mod tests {
 
     #[test]
     fn test_spec_validate_convexity_on_non_future() {
-        let spec = InstrumentSpec::ois(InstrumentTenor::OneYear)
-            .with_convexity_adjustment(0.0001);
+        let spec = InstrumentSpec::ois(InstrumentTenor::OneYear).with_convexity_adjustment(0.0001);
         let result = spec.validate();
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("Convexity adjustment"));
@@ -1441,7 +1436,10 @@ mod tests {
             let loaded_sorted = loaded.sorted_instruments();
             for i in 0..orig_sorted.len() {
                 assert_eq!(orig_sorted[i].tenor(), loaded_sorted[i].tenor());
-                assert_eq!(orig_sorted[i].instrument_type(), loaded_sorted[i].instrument_type());
+                assert_eq!(
+                    orig_sorted[i].instrument_type(),
+                    loaded_sorted[i].instrument_type()
+                );
             }
         }
     }
@@ -1465,11 +1463,7 @@ mod tests {
 
     #[test]
     fn test_curve_definition_new() {
-        let def = CurveDefinition::new(
-            "USD-SOFR",
-            RateIndex::Sofr,
-            SwapConvention::usd_sofr(),
-        );
+        let def = CurveDefinition::new("USD-SOFR", RateIndex::Sofr, SwapConvention::usd_sofr());
         assert_eq!(def.index_key(), "USD-SOFR");
         assert_eq!(def.rate_index(), RateIndex::Sofr);
         assert!(def.instruments().is_empty());
@@ -1559,7 +1553,9 @@ mod tests {
     #[test]
     fn test_curve_definition_validate_invalid_instrument() {
         let def = CurveDefinition::new("USD-SOFR", RateIndex::Sofr, SwapConvention::usd_sofr())
-            .with_instrument(InstrumentSpec::ois(InstrumentTenor::OneYear).with_convexity_adjustment(0.1));
+            .with_instrument(
+                InstrumentSpec::ois(InstrumentTenor::OneYear).with_convexity_adjustment(0.1),
+            );
         let result = def.validate();
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("validation failed"));
