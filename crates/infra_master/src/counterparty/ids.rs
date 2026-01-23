@@ -217,6 +217,98 @@ impl From<&str> for CcpId {
     fn from(s: &str) -> Self { Self(s.to_string()) }
 }
 
+// ============================================================================
+// IsdaAgreementId
+// ============================================================================
+
+/// Type-safe ISDA Master Agreement identifier.
+///
+/// Wraps a string identifier for ISDA agreements, providing type safety
+/// to prevent accidental mixing with other ID types.
+///
+/// # Examples
+///
+/// ```
+/// use infra_master::counterparty::IsdaAgreementId;
+///
+/// let id = IsdaAgreementId::new("ISDA001");
+/// assert_eq!(id.as_str(), "ISDA001");
+/// ```
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(transparent))]
+pub struct IsdaAgreementId(String);
+
+impl IsdaAgreementId {
+    /// Creates a new ISDA Agreement ID.
+    pub fn new(id: impl Into<String>) -> Self { Self(id.into()) }
+
+    /// Returns the ID as a string slice.
+    pub fn as_str(&self) -> &str { &self.0 }
+}
+
+impl fmt::Display for IsdaAgreementId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.0) }
+}
+
+impl AsRef<str> for IsdaAgreementId {
+    fn as_ref(&self) -> &str { &self.0 }
+}
+
+impl From<String> for IsdaAgreementId {
+    fn from(s: String) -> Self { Self(s) }
+}
+
+impl From<&str> for IsdaAgreementId {
+    fn from(s: &str) -> Self { Self(s.to_string()) }
+}
+
+// ============================================================================
+// VariationMarginAgreementId
+// ============================================================================
+
+/// Type-safe Variation Margin Agreement identifier.
+///
+/// Wraps a string identifier for VM agreements (CSA contracts), providing
+/// type safety to prevent accidental mixing with other ID types.
+///
+/// # Examples
+///
+/// ```
+/// use infra_master::counterparty::VariationMarginAgreementId;
+///
+/// let id = VariationMarginAgreementId::new("VMA001");
+/// assert_eq!(id.as_str(), "VMA001");
+/// ```
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(transparent))]
+pub struct VariationMarginAgreementId(String);
+
+impl VariationMarginAgreementId {
+    /// Creates a new Variation Margin Agreement ID.
+    pub fn new(id: impl Into<String>) -> Self { Self(id.into()) }
+
+    /// Returns the ID as a string slice.
+    pub fn as_str(&self) -> &str { &self.0 }
+}
+
+impl fmt::Display for VariationMarginAgreementId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.0) }
+}
+
+impl AsRef<str> for VariationMarginAgreementId {
+    fn as_ref(&self) -> &str { &self.0 }
+}
+
+impl From<String> for VariationMarginAgreementId {
+    fn from(s: String) -> Self { Self(s) }
+}
+
+impl From<&str> for VariationMarginAgreementId {
+    fn from(s: &str) -> Self { Self(s.to_string()) }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -387,5 +479,109 @@ mod tests {
         let id3 = CcpId::new("CME");
         assert_eq!(id1, id2);
         assert_ne!(id1, id3);
+    }
+
+    // ========================================================================
+    // IsdaAgreementId tests
+    // ========================================================================
+
+    #[test]
+    fn test_isda_agreement_id_new() {
+        let id = IsdaAgreementId::new("ISDA001");
+        assert_eq!(id.as_str(), "ISDA001");
+    }
+
+    #[test]
+    fn test_isda_agreement_id_from_string() {
+        let id: IsdaAgreementId = "ISDA002".to_string().into();
+        assert_eq!(id.as_str(), "ISDA002");
+    }
+
+    #[test]
+    fn test_isda_agreement_id_from_str() {
+        let id: IsdaAgreementId = "ISDA003".into();
+        assert_eq!(id.as_str(), "ISDA003");
+    }
+
+    #[test]
+    fn test_isda_agreement_id_display() {
+        let id = IsdaAgreementId::new("ISDA001");
+        assert_eq!(format!("{}", id), "ISDA001");
+    }
+
+    #[test]
+    fn test_isda_agreement_id_equality() {
+        let id1 = IsdaAgreementId::new("ISDA001");
+        let id2 = IsdaAgreementId::new("ISDA001");
+        let id3 = IsdaAgreementId::new("ISDA002");
+        assert_eq!(id1, id2);
+        assert_ne!(id1, id3);
+    }
+
+    #[test]
+    fn test_isda_agreement_id_hash() {
+        use std::collections::HashSet;
+        let mut set = HashSet::new();
+        set.insert(IsdaAgreementId::new("ISDA001"));
+        assert!(set.contains(&IsdaAgreementId::new("ISDA001")));
+        assert!(!set.contains(&IsdaAgreementId::new("ISDA002")));
+    }
+
+    #[test]
+    fn test_isda_agreement_id_default() {
+        let id = IsdaAgreementId::default();
+        assert_eq!(id.as_str(), "");
+    }
+
+    // ========================================================================
+    // VariationMarginAgreementId tests
+    // ========================================================================
+
+    #[test]
+    fn test_variation_margin_agreement_id_new() {
+        let id = VariationMarginAgreementId::new("VMA001");
+        assert_eq!(id.as_str(), "VMA001");
+    }
+
+    #[test]
+    fn test_variation_margin_agreement_id_from_string() {
+        let id: VariationMarginAgreementId = "VMA002".to_string().into();
+        assert_eq!(id.as_str(), "VMA002");
+    }
+
+    #[test]
+    fn test_variation_margin_agreement_id_from_str() {
+        let id: VariationMarginAgreementId = "VMA003".into();
+        assert_eq!(id.as_str(), "VMA003");
+    }
+
+    #[test]
+    fn test_variation_margin_agreement_id_display() {
+        let id = VariationMarginAgreementId::new("VMA001");
+        assert_eq!(format!("{}", id), "VMA001");
+    }
+
+    #[test]
+    fn test_variation_margin_agreement_id_equality() {
+        let id1 = VariationMarginAgreementId::new("VMA001");
+        let id2 = VariationMarginAgreementId::new("VMA001");
+        let id3 = VariationMarginAgreementId::new("VMA002");
+        assert_eq!(id1, id2);
+        assert_ne!(id1, id3);
+    }
+
+    #[test]
+    fn test_variation_margin_agreement_id_hash() {
+        use std::collections::HashSet;
+        let mut set = HashSet::new();
+        set.insert(VariationMarginAgreementId::new("VMA001"));
+        assert!(set.contains(&VariationMarginAgreementId::new("VMA001")));
+        assert!(!set.contains(&VariationMarginAgreementId::new("VMA002")));
+    }
+
+    #[test]
+    fn test_variation_margin_agreement_id_default() {
+        let id = VariationMarginAgreementId::default();
+        assert_eq!(id.as_str(), "");
     }
 }

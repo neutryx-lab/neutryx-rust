@@ -59,7 +59,7 @@ pub mod trade;
 mod error;
 // Counterparty module types (re-exported for convenience)
 pub use counterparty::{CsaTerms, NettingSet};
-pub use error::{CurrencyError, DateError, MasterDataError};
+pub use error::{BookError, CurrencyError, DateError, MasterDataError, PortfolioError};
 // Market module types
 pub use market::{Currency, RateIndex};
 // Re-export commonly used types at crate root for convenience
@@ -77,7 +77,7 @@ pub use ids::{BookId, CounterpartyId, IssuerId, PortfolioId, TradeId};
 /// Prelude module for convenient imports
 pub mod prelude {
     pub use crate::{
-        error::{CurrencyError, DateError, MasterDataError},
+        error::{BookError, CurrencyError, DateError, MasterDataError, PortfolioError},
         ids::{BookId, CounterpartyId, IssuerId, PortfolioId, TradeId},
         market::{Currency, RateIndex},
         time::{

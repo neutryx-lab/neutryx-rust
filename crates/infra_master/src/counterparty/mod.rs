@@ -78,6 +78,8 @@ pub mod prelude {
         // Margin
         ImModel,
         ImTerms,
+        // Agreement IDs
+        IsdaAgreementId,
         LegalEntityId,
         MarginTerms,
         MarginType,
@@ -88,6 +90,7 @@ pub mod prelude {
         RoundingRule,
         SegregationType,
         SimmVersion,
+        VariationMarginAgreementId,
         VmTerms,
     };
 }
