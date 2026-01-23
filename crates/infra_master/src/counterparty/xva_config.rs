@@ -265,7 +265,6 @@ impl XvaConfig {
     pub fn wwr_config(&self) -> Option<&WrongWayRiskConfig> { self.wwr_config.as_ref() }
 }
 
-
 // ============================================================================
 // FundingConfig
 // ============================================================================

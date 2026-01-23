@@ -2,13 +2,13 @@
 
 実装状況と今後の開発項目を追跡するドキュメント。
 
-_Updated: 2026-01-23_ — Steering sync: domain-ordering-defaults completed (enum ordering standardisation)
+_Updated: 2026-01-23_ — Steering sync: portfolio-book-model completed (XVA/Exposure/Netting structures)
 
 ---
 
 ## Current State Summary
 
-### Completed Specifications (26)
+### Completed Specifications (27)
 
 | Spec | Description | Completed |
 |------|-------------|-----------|
@@ -38,6 +38,7 @@ _Updated: 2026-01-23_ — Steering sync: domain-ordering-defaults completed (enu
 | codebase-simplification | Code deduplication, API surface minimisation, module restructuring | 2026-01-22 |
 | standard-instrument-catalogue | Standard instrument definitions (Rates, FX, Equity, Credit, Commodity) | 2026-01-23 |
 | domain-ordering-defaults | Domain enum ordering and documentation (Frequency, BootstrapInterpolation, RateType, etc.) | 2026-01-23 |
+| portfolio-book-model | Portfolio/Book organisation model with XVA/Exposure/Netting support | 2026-01-23 |
 
 ### Layer Implementation Status
 
@@ -143,7 +144,6 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 |------|-------------|-------|
 | curve-bootstrap-engine | Multi-curve yield curve bootstrapping engine | Implementation |
 | legacy-compatibility-removal | Legacy code removal and ID type safety | Tasks generated |
-| portfolio-book-model | Portfolio/Book organisation model | Tasks generated |
 
 ## Recommended Next Steps
 
@@ -157,6 +157,7 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 
 | Date | Change |
 |------|--------|
+| 2026-01-23 | Steering sync: portfolio-book-model completed (18 tasks, Book/Portfolio/CounterpartyPortfolio/ISDA/VMA階層構造, XVA/Exposure/Netting設定, 207 tests) |
 | 2026-01-23 | Steering sync: domain-ordering-defaults completed (17 tasks, enum ordering standardisation: Frequency, BootstrapInterpolation, RateType, StochasticModelEnum, CurveName) |
 | 2026-01-23 | Steering sync: standard-instrument-catalogue completed (186 instrument_def tests, 855 total), 3 new specs in tasks-generated phase, curve-bootstrap-engine in implementation |
 | 2026-01-22 | Steering sync: codebase-simplification completed (24 total), curve-bootstrap-engine added (requirements phase), standard-instrument-catalogue in implementation |

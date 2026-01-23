@@ -895,9 +895,7 @@ impl CounterpartyPortfolio {
     where
         F: Fn(&TradeId) -> Vec<Date>,
     {
-        self.iter_all_trades()
-            .flat_map(trade_dates_fn)
-            .collect()
+        self.iter_all_trades().flat_map(trade_dates_fn).collect()
     }
 }
 

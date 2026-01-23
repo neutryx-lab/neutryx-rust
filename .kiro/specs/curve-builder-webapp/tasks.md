@@ -9,22 +9,22 @@ Curve Build画面の精緻化タスク。バックエンドAPI、フロントエ
 
 ## Tasks
 
-- [ ] 1. Index別Instrumentデータファイルの作成
+- [x] 1. Index別Instrumentデータファイルの作成
 
-- [ ] 1.1 (P) USD-SOFR Instrumentファイルの作成
+- [x] 1.1 (P) USD-SOFR Instrumentファイルの作成
   - Deposit（1M, 3M, 6M）、OIS（1Y, 2Y, 3Y, 5Y, 7Y, 10Y）、Swap（15Y, 20Y, 30Y）のレート定義
   - JSON形式でindex, currency, reference_date, instrumentsフィールドを含む
   - tenorとtenor_years（年換算値）の両方を記載
   - `demo/data/input/curves/usd-sofr.json` に保存
   - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
-- [ ] 1.2 (P) EUR-ESTR Instrumentファイルの作成
+- [x] 1.2 (P) EUR-ESTR Instrumentファイルの作成
   - Deposit（1M, 3M, 6M）、OIS（1Y, 2Y, 3Y, 5Y, 7Y, 10Y）、Swap（15Y, 20Y, 30Y）のレート定義
   - USD-SOFRと同じJSON構造を維持
   - `demo/data/input/curves/eur-estr.json` に保存
   - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
-- [ ] 1.3 (P) JPY-TONA Instrumentファイルの作成
+- [x] 1.3 (P) JPY-TONA Instrumentファイルの作成
   - Deposit（1M, 3M, 6M）、OIS（1Y, 2Y, 3Y, 5Y, 7Y, 10Y）、Swap（15Y, 20Y, 30Y）のレート定義
   - USD-SOFRと同じJSON構造を維持
   - `demo/data/input/curves/jpy-tona.json` に保存
@@ -32,9 +32,9 @@ Curve Build画面の精緻化タスク。バックエンドAPI、フロントエ
 
 ---
 
-- [ ] 2. バックエンドAPI型定義
+- [x] 2. バックエンドAPI型定義
 
-- [ ] 2.1 Curve Builder用リクエスト・レスポンス型の定義
+- [x] 2.1 Curve Builder用リクエスト・レスポンス型の定義
   - InstrumentListResponse: index, currency, instruments配列
   - CurveBuildRequest: index, instruments, interpolation, bootstrap_method, tolerance, max_iterations
   - CurveBuildResponse: curve_id, status, pillars, discount_factors, zero_rates, processing_time_ms
@@ -44,13 +44,13 @@ Curve Build画面の精緻化タスク。バックエンドAPI、フロントエ
   - 既存の `BootstrapCurveCache` を再利用
   - _Requirements: 7.1, 7.2, 7.3, 7.4_
 
-- [ ] 2.2 InterpolationMethod・BootstrapMethod enumの定義
+- [x] 2.2 InterpolationMethod・BootstrapMethod enumの定義
   - InterpolationMethod: Linear, LogLinear, CubicSpline, Monotonic
   - BootstrapMethod: Sequential, Global（Globalはバックエンドで未実装フラグを返す）
   - Serdeシリアライズでsnake_case形式
   - _Requirements: 3.1, 3.2_
 
-- [ ] 2.3 RFC 7807 ProblemDetails エラー型の定義
+- [x] 2.3 RFC 7807 ProblemDetails エラー型の定義
   - type, title, status, detail, instanceフィールド
   - 既存ErrorResponseとの互換性を維持
   - カーブ構築エラー、ファイル読み込みエラー用のバリエーション
@@ -58,16 +58,16 @@ Curve Build画面の精緻化タスク。バックエンドAPI、フロントエ
 
 ---
 
-- [ ] 3. Index別Instrument読み込み機能
+- [x] 3. Index別Instrument読み込み機能
 
-- [ ] 3.1 CurveDataLoader実装
+- [x] 3.1 CurveDataLoader実装
   - `demo/data/input/curves/` ディレクトリからJSONファイルを読み込む
   - 指定されたindex名に対応するファイルを取得
   - ファイル不在時はデフォルトInstrumentリストを返却
   - available_indices()で利用可能なIndex一覧を返却
   - _Requirements: 1.1, 1.3, 1.5_
 
-- [ ] 3.2 InstrumentListHandler APIエンドポイント実装
+- [x] 3.2 InstrumentListHandler APIエンドポイント実装
   - `GET /api/curves/instruments/{index}` ルートを追加
   - CurveDataLoaderを呼び出してInstrumentリストを取得
   - 未サポートIndexの場合は404エラーを返却
@@ -75,9 +75,9 @@ Curve Build画面の精緻化タスク。バックエンドAPI、フロントエ
 
 ---
 
-- [ ] 4. Builderモデル一覧API
+- [x] 4. Builderモデル一覧API
 
-- [ ] 4.1 BuilderListHandler実装
+- [x] 4.1 BuilderListHandler実装
   - `GET /api/curves/builders` ルートを追加
   - 4種類の補間手法（Linear, LogLinear, CubicSpline, Monotonic）を返却
   - 各手法にid, name, description, recommendedフラグを付与
@@ -86,9 +86,9 @@ Curve Build画面の精緻化タスク。バックエンドAPI、フロントエ
 
 ---
 
-- [ ] 5. カーブ構築API
+- [x] 5. カーブ構築API
 
-- [ ] 5.1 CurveBuildHandler実装
+- [x] 5.1 CurveBuildHandler実装
   - `POST /api/curves/build` ルートを追加
   - リクエストのバリデーション（レート範囲、Instrument数）
   - InstrumentInputをBootstrapInstrument型に変換
@@ -96,13 +96,13 @@ Curve Build画面の精緻化タスク。バックエンドAPI、フロントエ
   - 処理時間を計測し、レスポンスに含める
   - _Requirements: 4.1, 4.3, 7.2_
 
-- [ ] 5.2 カーブ構築結果のキャッシュ保存
+- [x] 5.2 カーブ構築結果のキャッシュ保存
   - 構築成功時にUUID形式のcurve_idを発行
   - 既存BootstrapCurveCacheにカーブを保存
   - pillars, discount_factors, zero_ratesをレスポンスに含める
   - _Requirements: 4.3, 4.5_
 
-- [ ] 5.3 カーブ構築エラーハンドリング
+- [x] 5.3 カーブ構築エラーハンドリング
   - 収束エラー時は422ステータスとProblemDetails形式で詳細を返却
   - 不正レート検出時は400ステータスでバリデーションエラーを返却
   - ブートストラップ失敗時のtenor情報を含める
@@ -110,16 +110,16 @@ Curve Build画面の精緻化タスク。バックエンドAPI、フロントエ
 
 ---
 
-- [ ] 6. Parameterカーブ取得API
+- [x] 6. Parameterカーブ取得API
 
-- [ ] 6.1 CurveParameterHandler実装
+- [x] 6.1 CurveParameterHandler実装
   - `GET /api/curves/{curveId}/parameters` ルートを追加
   - クエリパラメータ: type（必須）, start_year, end_year, grid_interval
   - curveIdでキャッシュからカーブを取得
   - 存在しないcurveIdの場合は404エラー
   - _Requirements: 5.1, 5.5, 7.3_
 
-- [ ] 6.2 Parameter計算ロジック実装
+- [x] 6.2 Parameter計算ロジック実装
   - YieldCurve traitの discount_factor(), zero_rate(), forward_rate() を使用
   - 指定されたTenor範囲でグリッドポイントを生成
   - 各ポイントで該当Parameterを計算
@@ -249,9 +249,9 @@ Curve Build画面の精緻化タスク。バックエンドAPI、フロントエ
 
 ---
 
-- [ ] 12. axum Routerへのエンドポイント登録
+- [x] 12. axum Routerへのエンドポイント登録
 
-- [ ] 12.1 curve_handlers.rsモジュールの作成とルート登録
+- [x] 12.1 curve_handlers.rsモジュールの作成とルート登録
   - 新規モジュールをmod.rsに追加
   - `/api/curves/instruments/{index}` ルートを登録
   - `/api/curves/builders` ルートを登録

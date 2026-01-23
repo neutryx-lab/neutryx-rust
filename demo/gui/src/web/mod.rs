@@ -11,7 +11,15 @@
 //! - WebSocket: `graph_update` messages for real-time node updates (Task 4.1)
 //! - Subscription: Clients can subscribe to specific trade graph updates (Task
 //!   4.3)
+//!
+//! ## Curve Builder Support (curve-builder-webapp)
+//!
+//! - REST API: `/api/curves/*` endpoints for curve construction
+//! - Index-based instrument management
+//! - Builder model selection (interpolation, bootstrap method)
 
+pub mod curve_builder_handlers;
+pub mod curve_builder_types;
 pub mod error;
 pub mod jobs;
 pub mod market_data;
@@ -465,6 +473,16 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .with_state(state.market_data_cache.clone());
 
     let api_routes = api_routes.nest("/market", market_routes);
+
+    // Curve Builder API routes (curve-builder-webapp)
+    let curve_routes = Router::new()
+        .route("/instruments/:index", get(curve_builder_handlers::get_instruments))
+        .route("/builders", get(curve_builder_handlers::get_builders))
+        .route("/build", post(curve_builder_handlers::build_curve))
+        .route("/:curve_id/parameters", get(curve_builder_handlers::get_parameters))
+        .route("/indices", get(curve_builder_handlers::get_indices));
+
+    let api_routes = api_routes.nest("/curves", curve_routes);
 
     // Static file serving for the dashboard
     let static_files =
