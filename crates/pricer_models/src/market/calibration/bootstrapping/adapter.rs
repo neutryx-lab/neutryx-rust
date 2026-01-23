@@ -176,7 +176,7 @@ impl InstrumentAdapter {
                 Self::create_future(spec, rate)
             }
             CurveInstrumentType::Deposit => {
-                Self::create_deposit(maturity, rate)
+                Ok(Self::create_deposit(maturity, rate))
             }
         }
     }
@@ -316,17 +316,9 @@ impl InstrumentAdapter {
     /// Creates a deposit bootstrap instrument.
     ///
     /// Deposits are treated as single-period OIS for bootstrapping purposes.
-    ///
-    /// # Arguments
-    ///
-    /// * `maturity` - Maturity in years
-    /// * `rate` - Deposit rate as decimal
-    fn create_deposit<T: Float>(
-        maturity: T,
-        rate: T,
-    ) -> Result<BootstrapInstrument<T>, CurveEngineError> {
+    fn create_deposit<T: Float>(maturity: T, rate: T) -> BootstrapInstrument<T> {
         // Deposits are modeled as single-period OIS
-        Ok(BootstrapInstrument::ois(maturity, rate))
+        BootstrapInstrument::ois(maturity, rate)
     }
 
     /// Converts infra_master Frequency to bootstrap Frequency.

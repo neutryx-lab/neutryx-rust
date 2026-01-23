@@ -1,7 +1,6 @@
 //! Extended curve configuration types.
-//!
-//! This module provides the `CurveConfig` structure that extends
-//! `GenericBootstrapConfig` with parameter representation settings.
+
+use std::ops::{Deref, DerefMut};
 
 use num_traits::Float;
 
@@ -10,32 +9,8 @@ use super::engine_error::{CurveEngineError, CurveParameterRepresentation};
 
 /// Extended configuration for curve bootstrapping.
 ///
-/// This structure wraps `GenericBootstrapConfig` and adds parameter
-/// representation settings to control how curve values are stored
-/// and interpolated internally.
-///
-/// # Type Parameters
-///
-/// * `T` - Floating-point type (e.g., `f64`) for AD compatibility
-///
-/// # Examples
-///
-/// ```
-/// use pricer_models::market::calibration::bootstrapping::{
-///     CurveConfig, CurveParameterRepresentation, BootstrapInterpolation,
-/// };
-///
-/// // Use default configuration
-/// let config: CurveConfig<f64> = CurveConfig::default();
-/// assert_eq!(config.parameter_representation, CurveParameterRepresentation::LogDiscountFactor);
-///
-/// // Custom configuration with builder
-/// let config = CurveConfig::<f64>::builder()
-///     .parameter_representation(CurveParameterRepresentation::ZeroRate)
-///     .interpolation(BootstrapInterpolation::LinearZeroRate)
-///     .build();
-/// assert!(config.validate().is_ok());
-/// ```
+/// Wraps `GenericBootstrapConfig` and adds parameter representation settings.
+/// Access inner config fields directly via `Deref` to `GenericBootstrapConfig`.
 #[derive(Debug, Clone)]
 #[cfg_attr(
     feature = "serde",
@@ -44,20 +19,21 @@ use super::engine_error::{CurveEngineError, CurveParameterRepresentation};
 )]
 pub struct CurveConfig<T: Float> {
     /// Basic bootstrap configuration.
-    ///
-    /// Contains tolerance, max_iterations, interpolation method,
-    /// extrapolation settings, and negative rate handling.
     #[cfg_attr(feature = "serde", serde(flatten))]
     pub bootstrap: GenericBootstrapConfig<T>,
 
     /// Parameter representation for internal storage.
-    ///
-    /// Determines how curve values are stored and interpolated:
-    /// - `LogDiscountFactor`: Store log(DF), interpolate for flat forwards
-    /// - `ZeroRate`: Store zero rates, interpolate directly
-    /// - `InstantaneousForward`: Store forward rates
     #[cfg_attr(feature = "serde", serde(default))]
     pub parameter_representation: CurveParameterRepresentation,
+}
+
+impl<T: Float> Deref for CurveConfig<T> {
+    type Target = GenericBootstrapConfig<T>;
+    fn deref(&self) -> &Self::Target { &self.bootstrap }
+}
+
+impl<T: Float> DerefMut for CurveConfig<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.bootstrap }
 }
 
 impl<T: Float> Default for CurveConfig<T> {
@@ -73,12 +49,10 @@ impl<T: Float> CurveConfig<T> {
     /// Create a new configuration with default values.
     pub fn new() -> Self { Self::default() }
 
-    /// Create a configuration builder for fluent construction.
+    /// Create a configuration builder.
     pub fn builder() -> CurveConfigBuilder<T> { CurveConfigBuilder::new() }
 
-    /// Create a high-precision configuration.
-    ///
-    /// Uses tighter tolerance (1e-14) and more iterations (500).
+    /// High-precision configuration (tolerance: 1e-14, iterations: 500).
     pub fn high_precision() -> Self {
         Self {
             bootstrap: GenericBootstrapConfig::high_precision(),
@@ -86,9 +60,7 @@ impl<T: Float> CurveConfig<T> {
         }
     }
 
-    /// Create a fast configuration for interactive use.
-    ///
-    /// Uses relaxed tolerance (1e-8) and fewer iterations (50).
+    /// Fast configuration for interactive use (tolerance: 1e-8, iterations: 50).
     pub fn fast() -> Self {
         Self {
             bootstrap: GenericBootstrapConfig::fast(),
@@ -97,63 +69,30 @@ impl<T: Float> CurveConfig<T> {
     }
 
     /// Validate the configuration for internal consistency.
-    ///
-    /// Checks that the parameter representation and interpolation
-    /// method are compatible. Some combinations may produce
-    /// suboptimal results or numerical issues.
-    ///
-    /// # Returns
-    ///
-    /// `Ok(())` if the configuration is valid, or `Err(CurveEngineError)`
-    /// describing the invalid combination.
-    ///
-    /// # Valid Combinations
-    ///
-    /// - `LogDiscountFactor` + `LogLinear` (default, recommended)
-    /// - `LogDiscountFactor` + `FlatForward`
-    /// - `ZeroRate` + `LinearZeroRate`
-    /// - `ZeroRate` + `CubicSpline`
-    /// - `ZeroRate` + `MonotonicCubic`
-    /// - Any combination with `MonotonicCubic` (preserves monotonicity)
-    ///
-    /// # Warnings (allowed but suboptimal)
-    ///
-    /// - `LogDiscountFactor` + `LinearZeroRate` (works but less natural)
-    /// - `ZeroRate` + `LogLinear` (works but less natural)
     pub fn validate(&self) -> Result<(), CurveEngineError> {
         use BootstrapInterpolation::*;
         use CurveParameterRepresentation::*;
 
         match (self.parameter_representation, self.bootstrap.interpolation) {
             // Optimal combinations
-            (LogDiscountFactor, LogLinear) => Ok(()),
-            (LogDiscountFactor, FlatForward) => Ok(()),
-            (ZeroRate, LinearZeroRate) => Ok(()),
-            (ZeroRate, CubicSpline) => Ok(()),
-
+            (LogDiscountFactor, LogLinear | FlatForward) => Ok(()),
+            (ZeroRate, LinearZeroRate | CubicSpline) => Ok(()),
             // MonotonicCubic works with any representation
             (_, MonotonicCubic) => Ok(()),
-
             // InstantaneousForward requires special handling
             (InstantaneousForward, FlatForward) => Ok(()),
             (InstantaneousForward, _) => Err(CurveEngineError::invalid_config(
                 self.parameter_representation,
                 self.bootstrap.interpolation,
             )),
-
             // Suboptimal but allowed combinations
-            (LogDiscountFactor, LinearZeroRate) => Ok(()),
-            (LogDiscountFactor, CubicSpline) => Ok(()),
-            (ZeroRate, LogLinear) => Ok(()),
-            (ZeroRate, FlatForward) => Ok(()),
+            (LogDiscountFactor, LinearZeroRate | CubicSpline) => Ok(()),
+            (ZeroRate, LogLinear | FlatForward) => Ok(()),
         }
     }
 
     /// Set the parameter representation.
-    pub fn with_parameter_representation(
-        mut self,
-        repr: CurveParameterRepresentation,
-    ) -> Self {
+    pub fn with_parameter_representation(mut self, repr: CurveParameterRepresentation) -> Self {
         self.parameter_representation = repr;
         self
     }
@@ -196,8 +135,6 @@ impl<T: Float> CurveConfig<T> {
 }
 
 /// Builder for `CurveConfig`.
-///
-/// Provides a fluent interface for constructing curve configurations.
 #[derive(Debug, Clone)]
 pub struct CurveConfigBuilder<T: Float> {
     config: CurveConfig<T>,
@@ -205,11 +142,7 @@ pub struct CurveConfigBuilder<T: Float> {
 
 impl<T: Float> CurveConfigBuilder<T> {
     /// Create a new builder with default values.
-    pub fn new() -> Self {
-        Self {
-            config: CurveConfig::default(),
-        }
-    }
+    pub fn new() -> Self { Self { config: CurveConfig::default() } }
 
     /// Set the parameter representation.
     pub fn parameter_representation(mut self, repr: CurveParameterRepresentation) -> Self {
@@ -257,8 +190,6 @@ impl<T: Float> CurveConfigBuilder<T> {
     pub fn build(self) -> CurveConfig<T> { self.config }
 
     /// Build and validate the configuration.
-    ///
-    /// Returns an error if the configuration is invalid.
     pub fn build_validated(self) -> Result<CurveConfig<T>, CurveEngineError> {
         let config = self.config;
         config.validate()?;
@@ -272,186 +203,112 @@ impl<T: Float> Default for CurveConfigBuilder<T> {
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
+
     use super::*;
 
     // ========================================
-    // Default Configuration Tests
+    // Default and Preset Tests
     // ========================================
 
     #[test]
     fn test_default_config() {
         let config: CurveConfig<f64> = CurveConfig::default();
-        assert_eq!(
-            config.parameter_representation,
-            CurveParameterRepresentation::LogDiscountFactor
-        );
-        assert!((config.bootstrap.tolerance - 1e-12).abs() < 1e-17);
-        assert_eq!(config.bootstrap.max_iterations, 100);
-        assert_eq!(config.bootstrap.interpolation, BootstrapInterpolation::LogLinear);
+        assert_eq!(config.parameter_representation, CurveParameterRepresentation::LogDiscountFactor);
+        assert!((config.tolerance - 1e-12).abs() < 1e-17);
+        assert_eq!(config.max_iterations, 100);
+        assert_eq!(config.interpolation, BootstrapInterpolation::LogLinear);
     }
-
-    #[test]
-    fn test_new_equals_default() {
-        let config1: CurveConfig<f64> = CurveConfig::new();
-        let config2: CurveConfig<f64> = CurveConfig::default();
-        assert_eq!(config1.parameter_representation, config2.parameter_representation);
-        assert!((config1.bootstrap.tolerance - config2.bootstrap.tolerance).abs() < 1e-17);
-    }
-
-    // ========================================
-    // Preset Configuration Tests
-    // ========================================
 
     #[test]
     fn test_high_precision_config() {
         let config: CurveConfig<f64> = CurveConfig::high_precision();
-        assert!(config.bootstrap.tolerance < 1e-12);
-        assert!(config.bootstrap.max_iterations >= 500);
-        assert_eq!(
-            config.parameter_representation,
-            CurveParameterRepresentation::LogDiscountFactor
-        );
+        assert!(config.tolerance < 1e-12);
+        assert!(config.max_iterations >= 500);
     }
 
     #[test]
     fn test_fast_config() {
         let config: CurveConfig<f64> = CurveConfig::fast();
-        assert!(config.bootstrap.tolerance > 1e-10);
-        assert!(config.bootstrap.max_iterations <= 50);
+        assert!(config.tolerance > 1e-10);
+        assert!(config.max_iterations <= 50);
     }
 
     // ========================================
-    // Validation Tests
+    // Parameterised Validation Tests
     // ========================================
 
-    #[test]
-    fn test_validate_default_config() {
-        let config: CurveConfig<f64> = CurveConfig::default();
-        assert!(config.validate().is_ok());
-    }
-
-    #[test]
-    fn test_validate_log_df_log_linear() {
+    #[rstest]
+    #[case(CurveParameterRepresentation::LogDiscountFactor, BootstrapInterpolation::LogLinear, true)]
+    #[case(CurveParameterRepresentation::LogDiscountFactor, BootstrapInterpolation::FlatForward, true)]
+    #[case(CurveParameterRepresentation::ZeroRate, BootstrapInterpolation::LinearZeroRate, true)]
+    #[case(CurveParameterRepresentation::ZeroRate, BootstrapInterpolation::CubicSpline, true)]
+    #[case(CurveParameterRepresentation::InstantaneousForward, BootstrapInterpolation::FlatForward, true)]
+    #[case(CurveParameterRepresentation::InstantaneousForward, BootstrapInterpolation::LogLinear, false)]
+    #[case(CurveParameterRepresentation::InstantaneousForward, BootstrapInterpolation::CubicSpline, false)]
+    fn test_validation(
+        #[case] repr: CurveParameterRepresentation,
+        #[case] interp: BootstrapInterpolation,
+        #[case] expected_valid: bool,
+    ) {
         let config: CurveConfig<f64> = CurveConfig::builder()
-            .parameter_representation(CurveParameterRepresentation::LogDiscountFactor)
-            .interpolation(BootstrapInterpolation::LogLinear)
+            .parameter_representation(repr)
+            .interpolation(interp)
             .build();
-        assert!(config.validate().is_ok());
+        assert_eq!(config.validate().is_ok(), expected_valid);
     }
 
-    #[test]
-    fn test_validate_zero_rate_linear_zero_rate() {
+    #[rstest]
+    #[case(CurveParameterRepresentation::LogDiscountFactor)]
+    #[case(CurveParameterRepresentation::ZeroRate)]
+    #[case(CurveParameterRepresentation::InstantaneousForward)]
+    fn test_monotonic_cubic_any_repr(#[case] repr: CurveParameterRepresentation) {
         let config: CurveConfig<f64> = CurveConfig::builder()
-            .parameter_representation(CurveParameterRepresentation::ZeroRate)
-            .interpolation(BootstrapInterpolation::LinearZeroRate)
-            .build();
-        assert!(config.validate().is_ok());
-    }
-
-    #[test]
-    fn test_validate_zero_rate_cubic_spline() {
-        let config: CurveConfig<f64> = CurveConfig::builder()
-            .parameter_representation(CurveParameterRepresentation::ZeroRate)
-            .interpolation(BootstrapInterpolation::CubicSpline)
-            .build();
-        assert!(config.validate().is_ok());
-    }
-
-    #[test]
-    fn test_validate_monotonic_cubic_any_repr() {
-        // MonotonicCubic should work with any representation
-        for repr in [
-            CurveParameterRepresentation::LogDiscountFactor,
-            CurveParameterRepresentation::ZeroRate,
-            CurveParameterRepresentation::InstantaneousForward,
-        ] {
-            let config: CurveConfig<f64> = CurveConfig::builder()
-                .parameter_representation(repr)
-                .interpolation(BootstrapInterpolation::MonotonicCubic)
-                .build();
-            assert!(config.validate().is_ok(), "Failed for {:?}", repr);
-        }
-    }
-
-    #[test]
-    fn test_validate_instantaneous_forward_invalid() {
-        let config: CurveConfig<f64> = CurveConfig::builder()
-            .parameter_representation(CurveParameterRepresentation::InstantaneousForward)
-            .interpolation(BootstrapInterpolation::LogLinear)
-            .build();
-        assert!(config.validate().is_err());
-    }
-
-    #[test]
-    fn test_validate_instantaneous_forward_flat_forward() {
-        let config: CurveConfig<f64> = CurveConfig::builder()
-            .parameter_representation(CurveParameterRepresentation::InstantaneousForward)
-            .interpolation(BootstrapInterpolation::FlatForward)
+            .parameter_representation(repr)
+            .interpolation(BootstrapInterpolation::MonotonicCubic)
             .build();
         assert!(config.validate().is_ok());
     }
 
     // ========================================
-    // Builder Tests
+    // Parameterised With Method Tests
     // ========================================
 
-    #[test]
-    fn test_builder_default() {
-        let config: CurveConfig<f64> = CurveConfig::builder().build();
-        assert_eq!(
-            config.parameter_representation,
-            CurveParameterRepresentation::LogDiscountFactor
-        );
+    #[rstest]
+    #[case(1e-14)]
+    #[case(1e-8)]
+    fn test_with_tolerance(#[case] tol: f64) {
+        let config = CurveConfig::<f64>::default().with_tolerance(tol);
+        assert!((config.tolerance - tol).abs() < 1e-20);
     }
 
-    #[test]
-    fn test_builder_parameter_representation() {
-        let config: CurveConfig<f64> = CurveConfig::builder()
-            .parameter_representation(CurveParameterRepresentation::ZeroRate)
-            .build();
-        assert_eq!(
-            config.parameter_representation,
-            CurveParameterRepresentation::ZeroRate
-        );
+    #[rstest]
+    #[case(50)]
+    #[case(200)]
+    fn test_with_max_iterations(#[case] iters: usize) {
+        let config = CurveConfig::<f64>::default().with_max_iterations(iters);
+        assert_eq!(config.max_iterations, iters);
     }
 
-    #[test]
-    fn test_builder_tolerance() {
-        let config: CurveConfig<f64> = CurveConfig::builder().tolerance(1e-14).build();
-        assert!((config.bootstrap.tolerance - 1e-14).abs() < 1e-19);
+    #[rstest]
+    #[case(true)]
+    #[case(false)]
+    fn test_with_extrapolation(#[case] allow: bool) {
+        let config = CurveConfig::<f64>::default().with_extrapolation(allow);
+        assert_eq!(config.allow_extrapolation, allow);
     }
 
-    #[test]
-    fn test_builder_max_iterations() {
-        let config: CurveConfig<f64> = CurveConfig::builder().max_iterations(200).build();
-        assert_eq!(config.bootstrap.max_iterations, 200);
+    #[rstest]
+    #[case(true)]
+    #[case(false)]
+    fn test_with_negative_rates(#[case] allow: bool) {
+        let config = CurveConfig::<f64>::default().with_negative_rates(allow);
+        assert_eq!(config.allow_negative_rates, allow);
     }
 
-    #[test]
-    fn test_builder_interpolation() {
-        let config: CurveConfig<f64> = CurveConfig::builder()
-            .interpolation(BootstrapInterpolation::CubicSpline)
-            .build();
-        assert_eq!(config.bootstrap.interpolation, BootstrapInterpolation::CubicSpline);
-    }
-
-    #[test]
-    fn test_builder_allow_extrapolation() {
-        let config: CurveConfig<f64> = CurveConfig::builder().allow_extrapolation(false).build();
-        assert!(!config.bootstrap.allow_extrapolation);
-    }
-
-    #[test]
-    fn test_builder_allow_negative_rates() {
-        let config: CurveConfig<f64> = CurveConfig::builder().allow_negative_rates(true).build();
-        assert!(config.bootstrap.allow_negative_rates);
-    }
-
-    #[test]
-    fn test_builder_max_maturity() {
-        let config: CurveConfig<f64> = CurveConfig::builder().max_maturity(100.0).build();
-        assert!((config.bootstrap.max_maturity - 100.0).abs() < 1e-10);
-    }
+    // ========================================
+    // Builder Chained Test
+    // ========================================
 
     #[test]
     fn test_builder_chained() {
@@ -465,132 +322,59 @@ mod tests {
             .max_maturity(60.0)
             .build();
 
-        assert_eq!(
-            config.parameter_representation,
-            CurveParameterRepresentation::ZeroRate
-        );
-        assert!((config.bootstrap.tolerance - 1e-14).abs() < 1e-19);
-        assert_eq!(config.bootstrap.max_iterations, 200);
-        assert_eq!(
-            config.bootstrap.interpolation,
-            BootstrapInterpolation::LinearZeroRate
-        );
-        assert!(!config.bootstrap.allow_extrapolation);
-        assert!(config.bootstrap.allow_negative_rates);
-        assert!((config.bootstrap.max_maturity - 60.0).abs() < 1e-10);
+        assert_eq!(config.parameter_representation, CurveParameterRepresentation::ZeroRate);
+        assert!((config.tolerance - 1e-14).abs() < 1e-19);
+        assert_eq!(config.max_iterations, 200);
+        assert_eq!(config.interpolation, BootstrapInterpolation::LinearZeroRate);
+        assert!(!config.allow_extrapolation);
+        assert!(config.allow_negative_rates);
     }
 
     #[test]
-    fn test_builder_validated_ok() {
-        let result: Result<CurveConfig<f64>, _> = CurveConfig::builder()
+    fn test_builder_validated() {
+        let ok: Result<CurveConfig<f64>, _> = CurveConfig::builder()
             .parameter_representation(CurveParameterRepresentation::ZeroRate)
             .interpolation(BootstrapInterpolation::LinearZeroRate)
             .build_validated();
-        assert!(result.is_ok());
-    }
+        assert!(ok.is_ok());
 
-    #[test]
-    fn test_builder_validated_err() {
-        let result: Result<CurveConfig<f64>, _> = CurveConfig::builder()
+        let err: Result<CurveConfig<f64>, _> = CurveConfig::builder()
             .parameter_representation(CurveParameterRepresentation::InstantaneousForward)
             .interpolation(BootstrapInterpolation::CubicSpline)
             .build_validated();
-        assert!(result.is_err());
+        assert!(err.is_err());
     }
 
     // ========================================
-    // With Method Tests
+    // Deref Access Test
     // ========================================
 
     #[test]
-    fn test_with_parameter_representation() {
-        let config: CurveConfig<f64> = CurveConfig::default()
-            .with_parameter_representation(CurveParameterRepresentation::ZeroRate);
-        assert_eq!(
-            config.parameter_representation,
-            CurveParameterRepresentation::ZeroRate
-        );
+    fn test_deref_access() {
+        let config: CurveConfig<f64> = CurveConfig::default();
+        // Access inner fields directly via Deref
+        assert!((config.tolerance - 1e-12).abs() < 1e-17);
+        assert_eq!(config.max_iterations, 100);
+        assert_eq!(config.interpolation, BootstrapInterpolation::LogLinear);
     }
 
     #[test]
-    fn test_with_tolerance() {
-        let config: CurveConfig<f64> = CurveConfig::default().with_tolerance(1e-14);
-        assert!((config.bootstrap.tolerance - 1e-14).abs() < 1e-19);
-    }
-
-    #[test]
-    fn test_with_max_iterations() {
-        let config: CurveConfig<f64> = CurveConfig::default().with_max_iterations(200);
-        assert_eq!(config.bootstrap.max_iterations, 200);
-    }
-
-    #[test]
-    fn test_with_interpolation() {
-        let config: CurveConfig<f64> =
-            CurveConfig::default().with_interpolation(BootstrapInterpolation::FlatForward);
-        assert_eq!(config.bootstrap.interpolation, BootstrapInterpolation::FlatForward);
-    }
-
-    #[test]
-    fn test_with_extrapolation() {
-        let config: CurveConfig<f64> = CurveConfig::default().with_extrapolation(false);
-        assert!(!config.bootstrap.allow_extrapolation);
-    }
-
-    #[test]
-    fn test_with_negative_rates() {
-        let config: CurveConfig<f64> = CurveConfig::default().with_negative_rates(true);
-        assert!(config.bootstrap.allow_negative_rates);
-    }
-
-    #[test]
-    fn test_with_max_maturity() {
-        let config: CurveConfig<f64> = CurveConfig::default().with_max_maturity(75.0);
-        assert!((config.bootstrap.max_maturity - 75.0).abs() < 1e-10);
+    fn test_deref_mut_access() {
+        let mut config: CurveConfig<f64> = CurveConfig::default();
+        config.tolerance = 1e-14;
+        config.max_iterations = 200;
+        assert!((config.tolerance - 1e-14).abs() < 1e-19);
+        assert_eq!(config.max_iterations, 200);
     }
 
     // ========================================
-    // Clone Tests
-    // ========================================
-
-    #[test]
-    fn test_config_clone() {
-        let config1: CurveConfig<f64> = CurveConfig::builder()
-            .parameter_representation(CurveParameterRepresentation::ZeroRate)
-            .tolerance(1e-14)
-            .build();
-        let config2 = config1.clone();
-        assert_eq!(config1.parameter_representation, config2.parameter_representation);
-        assert!((config1.bootstrap.tolerance - config2.bootstrap.tolerance).abs() < 1e-19);
-    }
-
-    #[test]
-    fn test_builder_clone() {
-        let builder1: CurveConfigBuilder<f64> = CurveConfig::builder()
-            .parameter_representation(CurveParameterRepresentation::ZeroRate);
-        let builder2 = builder1.clone();
-        let config1 = builder1.build();
-        let config2 = builder2.build();
-        assert_eq!(config1.parameter_representation, config2.parameter_representation);
-    }
-
-    // ========================================
-    // Type Parameter Tests
+    // Type Parameter Test
     // ========================================
 
     #[test]
     fn test_config_with_f32() {
         let config: CurveConfig<f32> = CurveConfig::default();
-        assert!(config.bootstrap.tolerance > 0.0);
-        assert_eq!(config.bootstrap.max_iterations, 100);
-    }
-
-    #[test]
-    fn test_builder_with_f32() {
-        let config: CurveConfig<f32> = CurveConfig::builder()
-            .tolerance(1e-6_f32)
-            .max_iterations(50)
-            .build();
-        assert!((config.bootstrap.tolerance - 1e-6_f32).abs() < 1e-10);
+        assert!(config.tolerance > 0.0);
+        assert_eq!(config.max_iterations, 100);
     }
 }

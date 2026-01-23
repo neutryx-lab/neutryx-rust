@@ -130,7 +130,7 @@ impl FromStr for CurveInstrumentType {
 /// assert!((tenor.to_years() - 5.0).abs() < 1e-10);
 /// ```
 #[non_exhaustive]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum InstrumentTenor {
     /// Overnight (O/N)
@@ -150,6 +150,7 @@ pub enum InstrumentTenor {
     /// Nine months (9M)
     NineMonths,
     /// One year (1Y)
+    #[default]
     OneYear,
     /// Eighteen months (18M)
     EighteenMonths,
@@ -359,10 +360,6 @@ impl InstrumentTenor {
             InstrumentTenor::FiftyYears,
         ]
     }
-}
-
-impl Default for InstrumentTenor {
-    fn default() -> Self { InstrumentTenor::OneYear }
 }
 
 impl fmt::Display for InstrumentTenor {

@@ -195,7 +195,8 @@
       "Bash(git check-ignore:*)",
       "Bash(dir /b /s)",
       "Bash(findstr:*)",
-      "Bash(cmd /c \"for /f %f in \\(''dir /b''\\) do @echo %~nxf - %~zf bytes\")"
+      "Bash(cmd /c \"for /f %f in \\(''dir /b''\\) do @echo %~nxf - %~zf bytes\")",
+      "Bash(cargo update:*)"
     ]
   }
 }

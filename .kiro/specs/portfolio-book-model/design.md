@@ -11,9 +11,9 @@
 ### Goals
 
 - Book概念の型安全な定義とPortfolioとの階層関係確立
-- CounterpartyPortfolio → ISDA → CSA → Trade の完全な階層構造実装
+- CounterpartyPortfolio → ISDA → VariationMarginAgreement → Trade の完全な階層構造実装
 - XVA/Exposure/Netting計算に必要な設定構造の提供
-- 非対称CSA条件（Counterparty vs Own）のモデル化
+- 非対称担保条件（Counterparty vs Self）のモデル化
 - 事前計算Exposureパスのサポート
 
 ### Non-Goals
@@ -45,8 +45,8 @@ graph TB
         Book[Book]
         Portfolio[PortfolioDefinition]
         ISDA[IsdaMasterAgreement]
-        VmCsa[VmCsa]
-        NoDoc[NoDocTrades]
+        VMA[VariationMarginAgreement]
+        NonNettable[NonNettableTrades]
         CPPortfolio[CounterpartyPortfolio]
         XvaConfig[XvaConfig]
         ExposureConfig[ExposureConfig]
@@ -62,9 +62,9 @@ graph TB
     Portfolio --> Book
     Book --> NettingSet
     CPPortfolio --> ISDA
-    ISDA --> VmCsa
-    ISDA --> NoDoc
-    VmCsa --> Trade
+    ISDA --> VMA
+    ISDA --> NonNettable
+    VMA --> Trade
 
     InfraMaster -->|From trait| PricerRisk
     XvaConfig --> XvaCalc
@@ -97,20 +97,20 @@ sequenceDiagram
     participant Client
     participant CPBuilder as CounterpartyPortfolioBuilder
     participant IsdaBuilder as IsdaBuilder
-    participant CsaBuilder as VmCsaBuilder
+    participant VmaBuilder as VariationMarginAgreementBuilder
     participant Validator
 
     Client->>CPBuilder: new(counterparty_id, credit_index)
     Client->>IsdaBuilder: new(isda_id, payment_method)
-    Client->>CsaBuilder: new(csa_name, base_currency)
-    CsaBuilder->>CsaBuilder: asymmetric_threshold(cp, own)
-    CsaBuilder->>CsaBuilder: asymmetric_mta(cp, own)
-    CsaBuilder->>IsdaBuilder: add_vm_csa(csa)
+    Client->>VmaBuilder: new(vma_name, base_currency)
+    VmaBuilder->>VmaBuilder: asymmetric_threshold(cpty, self)
+    VmaBuilder->>VmaBuilder: asymmetric_mta(cpty, self)
+    VmaBuilder->>IsdaBuilder: add_variation_margin_agreement(vma)
     IsdaBuilder->>CPBuilder: add_isda(isda)
     CPBuilder->>Validator: build()
     Validator->>Validator: validate_references()
     Validator->>Validator: validate_counterparty_consistency()
-    Validator-->>Client: Result<CounterpartyPortfolio, Error>
+    Validator-->>Client: Result CounterpartyPortfolio Error
 ```
 
 ### Exposure計算入力構造フロー
@@ -118,16 +118,16 @@ sequenceDiagram
 ```mermaid
 flowchart TD
     A[CounterpartyPortfolio] --> B{Netting Level}
-    B -->|CSA| C[VmCsa内ネッティング + 担保考慮]
+    B -->|VMA| C[VMA内ネッティング + 担保考慮]
     B -->|ISDA| D[NonCsaTrades内ネッティング]
-    B -->|NoDoc| E[グロス集計 PE + NE]
+    B -->|NonNettable| E[グロス集計 PE + NE]
 
     C --> F[Total Exposure]
     D --> F
     E --> F
 
-    F --> G{Pre-calculated Path?}
-    G -->|Yes| H[Calculated + PreCalculated]
+    F --> G{Precalc Path?}
+    G -->|Yes| H[Calculated + Precalc]
     G -->|No| I[Calculated Only]
 ```
 
@@ -147,8 +147,8 @@ flowchart TD
 | 10.1-10.6 | シリアライゼーション | serde derives | - | - |
 | 11.1-11.6 | 既存統合 | From impls, TradeMetadata更新 | - | - |
 | 12.1-12.7 | ISDA構造 | IsdaMasterAgreement, IsdaPaymentMethod | IsdaService | CounterpartyPortfolio構築 |
-| 13.1-13.8 | VM CSA詳細 | VmCsa, IndependentAmountConfig | - | - |
-| 14.1-14.6 | NoDoc取引 | NoDocTrades, NettingEligibility | - | - |
+| 13.1-13.8 | VM Agreement詳細 | VariationMarginAgreement, IndependentAmountConfig | - | - |
+| 14.1-14.6 | NonNettable取引 | NonNettableTrades, NettingEligibility | - | - |
 | 15.1-15.6 | CounterpartyPortfolio | CounterpartyPortfolio, 階層構造 | - | CounterpartyPortfolio構築 |
 | 16.1-16.6 | 事前計算Exposure | PreCalculatedExposurePath, ExposurePathBuilder | - | Exposure計算フロー |
 | 17.1-17.6 | MPOR決定 | MporDetermination, MporResult | - | - |
@@ -161,10 +161,10 @@ flowchart TD
 |-----------|--------------|--------|--------------|------------------|-----------|
 | Book | book/ | トレーディングブック定義 | 1.1-1.8 | BookId (P0) | State |
 | PortfolioDefinition | portfolio/ | ポートフォリオ定義 | 2.1-2.8 | Book, BookId (P0) | State |
-| IsdaMasterAgreement | counterparty/ | ISDA契約定義 | 12.1-12.7 | VmCsa, CounterPartyId (P0) | State |
-| VmCsa | counterparty/ | VM CSA詳細条件 | 13.1-13.8 | CsaTerms (P1) | State |
-| NoDocTrades | counterparty/ | ネッティング不可取引 | 14.1-14.6 | TradeId (P0) | State |
-| CounterpartyPortfolio | counterparty/ | CP単位階層構造 | 15.1-15.6 | ISDA, NoDoc (P0) | State, Service |
+| IsdaMasterAgreement | counterparty/ | ISDA契約定義 | 12.1-12.7 | VariationMarginAgreement, CounterPartyId (P0) | State |
+| VariationMarginAgreement | counterparty/ | VM担保契約詳細条件 | 13.1-13.8 | CsaTerms (P1) | State |
+| NonNettableTrades | counterparty/ | ネッティング不可取引 | 14.1-14.6 | TradeId (P0) | State |
+| CounterpartyPortfolio | counterparty/ | CP単位階層構造 | 15.1-15.6 | ISDA, NonNettable (P0) | State, Service |
 | XvaConfig | xva/ | XVA計算設定 | 5.1-5.8 | - | State |
 | ExposureConfig | exposure/ | Exposure計算設定 | 6.1-6.8 | - | State |
 | PreCalculatedExposurePath | exposure/ | 事前計算Exposure | 16.1-16.6 | Date, Currency (P0) | State |
@@ -383,17 +383,17 @@ pub struct PortfolioDefinition {
 
 | Field | Detail |
 |-------|--------|
-| Intent | ISDAマスター契約の定義とCSA階層管理 |
+| Intent | ISDAマスター契約の定義と担保契約階層管理 |
 | Requirements | 12.1, 12.2, 12.3, 12.4, 12.5, 12.6, 12.7 |
 
 **Responsibilities & Constraints**
-- 1つのISDAに複数のVmCsaをサポート
-- CSA付き取引とCSA無し取引の分離管理
+- 1つのISDAに複数のVariationMarginAgreementをサポート
+- 担保契約付き取引と担保契約無し取引の分離管理
 - ISDA-level Initial Margin管理
 
 **Dependencies**
 - Inbound: CounterpartyPortfolio — isda_agreements (P0)
-- Outbound: VmCsa — vm_csas (P0)
+- Outbound: VariationMarginAgreement — vma_ids (P0)
 - Outbound: TradeId — non_csa_trade_ids (P0)
 - External: IrCurve reference — IM利率 (P1)
 
@@ -414,8 +414,8 @@ pub enum IsdaPaymentMethod {
     #[default]
     Full,
     Limited,
-    OnewayCounterparty,
-    OnewayOwn,
+    OnewayToCpty,
+    OnewayToSelf,
 }
 
 /// ISDA-level Initial Margin
@@ -437,24 +437,24 @@ pub struct IsdaMasterAgreement {
     counterparty_id: CounterPartyId,
     agreement_date: Date,
     payment_method: IsdaPaymentMethod,
-    vm_csa_ids: Vec<VmCsaId>,
+    vma_ids: Vec<VariationMarginAgreementId>,
     non_csa_trade_ids: Vec<TradeId>,
     initial_margin: Option<IsdaInitialMargin>,
-    other_non_csa_exposure_path: Option<PreCalculatedExposurePath>,
+    precalc_non_csa_exposure: Option<PreCalculatedExposurePath>,
 }
 ```
 
 ---
 
-#### VmCsa
+#### VariationMarginAgreement
 
 | Field | Detail |
 |-------|--------|
-| Intent | VM CSA詳細条件の非対称モデル化 |
+| Intent | 変動証拠金担保契約の非対称条件モデル化 |
 | Requirements | 13.1, 13.2, 13.3, 13.4, 13.5, 13.6, 13.7, 13.8 |
 
 **Responsibilities & Constraints**
-- Counterparty/Own非対称条件（threshold, MTA, IA, haircut）
+- Counterparty/Self非対称条件（threshold, MTA, IA, haircut）
 - 動的Independent Amount（係数計算）
 - 適格担保と現在残高管理
 
@@ -464,14 +464,14 @@ pub struct IsdaMasterAgreement {
 
 ```rust
 define_id! {
-    /// VM CSAの一意識別子
-    VmCsaId
+    /// 変動証拠金担保契約の一意識別子
+    VariationMarginAgreementId
 }
 
-/// CSAコール頻度
+/// 担保コール頻度
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub enum CsaCallFrequency {
+pub enum CollateralCallFrequency {
     #[default]
     Daily,
     Weekly,
@@ -479,14 +479,14 @@ pub enum CsaCallFrequency {
     Monthly,
 }
 
-impl CsaCallFrequency {
+impl CollateralCallFrequency {
     /// 対応するMPOR（営業日）を返却
     pub fn default_mpor_days(&self) -> u32 {
         match self {
-            CsaCallFrequency::Daily => 10,
-            CsaCallFrequency::Weekly => 10,
-            CsaCallFrequency::Biweekly => 14,
-            CsaCallFrequency::Monthly => 20,
+            CollateralCallFrequency::Daily => 10,
+            CollateralCallFrequency::Weekly => 10,
+            CollateralCallFrequency::Biweekly => 14,
+            CollateralCallFrequency::Monthly => 20,
         }
     }
 }
@@ -495,37 +495,37 @@ impl CsaCallFrequency {
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct IndependentAmountConfig {
-    /// Counterparty IA: ia_counterparty + k_counterparty * max(PV, 0)
-    pub ia_counterparty: f64,
-    pub k_counterparty: f64,
-    /// Own IA: ia_own + k_own * min(PV, 0)
-    pub ia_own: f64,
-    pub k_own: f64,
+    /// Counterparty IA: ia_cpty + k_cpty * max(PV, 0)
+    pub ia_cpty: f64,
+    pub k_cpty: f64,
+    /// Self IA: ia_self + k_self * min(PV, 0)
+    pub ia_self: f64,
+    pub k_self: f64,
 }
 
-/// VM CSA（非対称条件対応）
+/// 変動証拠金担保契約（非対称条件対応）
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct VmCsa {
-    vm_csa_id: VmCsaId,
+pub struct VariationMarginAgreement {
+    vma_id: VariationMarginAgreementId,
     name: String,
     base_currency: Currency,
-    call_frequency: CsaCallFrequency,
+    call_frequency: CollateralCallFrequency,
 
     // Asymmetric thresholds
-    threshold_counterparty: f64,  // positive
-    threshold_own: f64,           // negative
+    threshold_cpty: f64,  // positive
+    threshold_self: f64,  // negative
 
     // Asymmetric MTA
-    mta_counterparty: f64,        // positive
-    mta_own: f64,                 // negative
+    mta_cpty: f64,        // positive
+    mta_self: f64,        // negative
 
     // Dynamic Independent Amount
     independent_amount: IndependentAmountConfig,
 
     // Asymmetric haircuts
-    haircut_counterparty: f64,    // typically negative, e.g., -0.05
-    haircut_own: f64,             // typically positive, e.g., 0.05
+    haircut_cpty: f64,    // typically negative, e.g., -0.05
+    haircut_self: f64,    // typically positive, e.g., 0.05
 
     // Collateral
     eligible_collaterals: Vec<EligibleCollateral>,
@@ -535,13 +535,13 @@ pub struct VmCsa {
     trade_ids: Vec<TradeId>,
 
     // Pre-calculated exposure
-    other_exposure_path: Option<PreCalculatedExposurePath>,
+    precalc_exposure: Option<PreCalculatedExposurePath>,
 }
 ```
 
 ---
 
-#### NoDocTrades
+#### NonNettableTrades
 
 | Field | Detail |
 |-------|--------|
@@ -557,24 +557,24 @@ pub struct VmCsa {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum NettingEligibility {
-    /// CSA付きISDA（フルネッティング + 担保）
+    /// 担保契約付きISDA（フルネッティング + 担保）
     FullNetting,
-    /// CSA無しISDA（ネッティングのみ）
+    /// 担保契約無しISDA（ネッティングのみ）
     IsdaOnly,
     /// ネッティング不可
-    NoNetting,
+    NonNettable,
 }
 
-/// NoDoc取引グループ
+/// ネッティング不可取引グループ
 #[derive(Clone, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct NoDocTrades {
+pub struct NonNettableTrades {
     trade_ids: Vec<TradeId>,
-    other_positive_exposure_path: Option<PreCalculatedExposurePath>,
-    other_negative_exposure_path: Option<PreCalculatedExposurePath>,
+    precalc_positive_exposure: Option<PreCalculatedExposurePath>,
+    precalc_negative_exposure: Option<PreCalculatedExposurePath>,
 }
 
-impl NoDocTrades {
+impl NonNettableTrades {
     pub fn new() -> Self { Self::default() }
 
     pub fn add_trade(&mut self, trade_id: TradeId) {
@@ -597,13 +597,13 @@ impl NoDocTrades {
 | Requirements | 15.1, 15.2, 15.3, 15.4, 15.5, 15.6 |
 
 **Responsibilities & Constraints**
-- CP → ISDA → CSA → Trade の階層管理
+- CP → ISDA → VariationMarginAgreement → Trade の階層管理
 - 全トレードイテレーション機能
 - 通貨・日付集約ユーティリティ
 
 **Dependencies**
 - Inbound: XvaCalculator — 入力構造 (P0)
-- Outbound: IsdaMasterAgreement, NoDocTrades (P0)
+- Outbound: IsdaMasterAgreement, NonNettableTrades (P0)
 - External: CreditIndex reference (P1)
 
 **Contracts**: State [x], Service [x]
@@ -618,7 +618,7 @@ pub struct CounterpartyPortfolio {
     counterparty_id: CounterPartyId,
     credit_index_id: Option<String>,
     isda_agreements: Vec<IsdaMasterAgreement>,
-    nodoc_trades: NoDocTrades,
+    non_nettable_trades: NonNettableTrades,
 }
 ```
 
@@ -914,6 +914,45 @@ pub struct XvaConfig {
 
 ---
 
+### Trade Domain (Updates)
+
+#### TradeBookAssignment
+
+| Field | Detail |
+|-------|--------|
+| Intent | トレードのBook割当履歴管理 |
+| Requirements | 3.3, 3.4, 3.5 |
+
+**Contracts**: State [x]
+
+##### State Management
+
+```rust
+/// Book移管理由
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum BookTransferReason {
+    #[default]
+    NewTrade,
+    Reallocation,
+    Novation,
+    InternalTransfer,
+}
+
+/// トレードBook割当履歴
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct TradeBookAssignment {
+    pub trade_id: TradeId,
+    pub book_id: BookId,
+    pub effective_date: Date,
+    pub reason: BookTransferReason,
+    pub previous_book_id: Option<BookId>,
+}
+```
+
+---
+
 ### Error Types
 
 #### BookError, PortfolioError, NettingError
@@ -1021,9 +1060,9 @@ erDiagram
     NettingSet ||--o{ Trade : contains
 
     CounterpartyPortfolio ||--o{ IsdaMasterAgreement : contains
-    CounterpartyPortfolio ||--|| NoDocTrades : contains
-    IsdaMasterAgreement ||--o{ VmCsa : contains
-    VmCsa ||--o{ Trade : contains
+    CounterpartyPortfolio ||--|| NonNettableTrades : contains
+    IsdaMasterAgreement ||--o{ VariationMarginAgreement : contains
+    VariationMarginAgreement ||--o{ Trade : contains
 
     Trade }o--|| Book : "book_id (mandatory)"
     Trade }o--|| CounterParty : counterparty_id
@@ -1033,13 +1072,13 @@ erDiagram
 **Aggregates**:
 - `Book`: 独立エンティティ、BookIdで識別
 - `PortfolioDefinition`: 独立エンティティ、BookとのMapping管理
-- `CounterpartyPortfolio`: XVA計算入力構造、ISDA/CSA/Trade階層所有
+- `CounterpartyPortfolio`: XVA計算入力構造、ISDA/VMA/Trade階層所有
 
 **Business Rules**:
 - TradeはBookIdを必須で保持
 - NettingSet内の全TradeはCounterpartyが同一
-- ISDA内のVmCsaはネッティング可能、NonCsaTradeは別グループ
-- NoDocTradeはグロスエクスポージャー計算
+- ISDA内のVariationMarginAgreementはネッティング可能、NonCsaTradeは別グループ
+- NonNettableTradeはグロスエクスポージャー計算
 
 ### Logical Data Model
 
@@ -1048,8 +1087,8 @@ erDiagram
 - Book → NettingSet: 1対多（book_id参照）
 - NettingSet → Trade: 1対多（netting_set_id参照）
 - CounterpartyPortfolio → ISDA: 1対多（所有）
-- ISDA → VmCsa: 1対多（所有）
-- VmCsa → Trade: 1対多（trade_ids参照）
+- ISDA → VariationMarginAgreement: 1対多（所有）
+- VariationMarginAgreement → Trade: 1対多（trade_ids参照）
 
 **Consistency & Integrity**:
 - BookId, PortfolioId, TradeIdは一意
@@ -1085,15 +1124,15 @@ erDiagram
 ### Unit Tests
 
 - `Book::builder()` / `BookBuilder::build()` 正常系・異常系
-- `VmCsa` 非対称条件計算（threshold, MTA, IA）
-- `CsaCallFrequency::default_mpor_days()` 各頻度のMPOR値
+- `VariationMarginAgreement` 非対称条件計算（threshold, MTA, IA）
+- `CollateralCallFrequency::default_mpor_days()` 各頻度のMPOR値
 - `PreCalculatedExposurePath::validate_time_grid()` バリデーション
 - Error型の`Display`実装
 
 ### Integration Tests
 
 - `PortfolioBuilder` → `Book`参照バリデーション
-- `CounterpartyPortfolioBuilder` → ISDA/CSA階層構築
+- `CounterpartyPortfolioBuilder` → ISDA/VMA階層構築
 - `TradeMetadata` → `book_id`必須バリデーション
 - serde serialization/deserialization round-trip
 
