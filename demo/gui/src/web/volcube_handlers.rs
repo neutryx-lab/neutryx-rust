@@ -825,7 +825,7 @@ pub async fn get_surface(
         .collect();
 
     if tenor_params.is_empty() {
-        return Err(ApiError::not_found("Tenor", &tenor.to_string()));
+        return Err(ApiError::not_found("Tenor", tenor.to_string()));
     }
 
     // Get expiry range
@@ -845,8 +845,8 @@ pub async fn get_surface(
     let strike_max = forward_avg * 1.5;
 
     // Generate grids
-    let num_expiries = query.expiry_points.max(5).min(50);
-    let num_strikes = query.strike_points.max(5).min(50);
+    let num_expiries = query.expiry_points.clamp(5, 50);
+    let num_strikes = query.strike_points.clamp(5, 50);
 
     let expiry_step = (expiry_max - expiry_min) / (num_expiries - 1).max(1) as f64;
     let strike_step = (strike_max - strike_min) / (num_strikes - 1).max(1) as f64;
