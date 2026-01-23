@@ -52,6 +52,15 @@ pub enum CounterPartyError {
     /// Invalid haircut rate (must be in [0, 1]).
     #[error("Invalid haircut rate: {0} (must be in [0, 1])")]
     InvalidHaircut(f64),
+
+    /// Counterparty mismatch in netting set or ISDA agreement.
+    #[error("Counterparty mismatch: expected {expected}, got {actual}")]
+    CounterpartyMismatch {
+        /// The expected counterparty identifier.
+        expected: String,
+        /// The actual counterparty identifier encountered.
+        actual: String,
+    },
 }
 
 // Integration with MasterDataError

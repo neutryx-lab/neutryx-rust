@@ -401,6 +401,154 @@ impl<T: Float> YieldCurve<T> for BootstrappedCurve<T> {
         }
         self.interpolate(t)
     }
+
+    /// Compute the instantaneous forward rate at time t.
+    ///
+    /// For log-linear interpolation: f(t) = -d/dt log(D(t))
+    /// Since log_df is linear between pillars:
+    /// f(t) = -(log_df2 - log_df1) / (t2 - t1) = constant forward rate
+    ///
+    /// For other interpolation methods, we use numerical differentiation
+    /// as a fallback.
+    fn instantaneous_forward(&self, t: T) -> Result<T, MarketDataError> {
+        if t < T::zero() {
+            return Err(MarketDataError::InvalidMaturity {
+                t: t.to_f64().unwrap_or(0.0),
+            });
+        }
+
+        // For t = 0, use the short rate from the first pillar
+        if t <= T::zero() {
+            let t1 = self.pillars[0];
+            let df1 = self.discount_factors[0];
+            return Ok(-df1.ln() / t1);
+        }
+
+        let n = self.pillars.len();
+
+        // Handle extrapolation cases
+        if t < self.pillars[0] {
+            if !self.allow_extrapolation {
+                return Err(MarketDataError::OutOfBounds {
+                    x: t.to_f64().unwrap_or(0.0),
+                    min: 0.0,
+                    max: self.pillars[0].to_f64().unwrap_or(0.0),
+                });
+            }
+            // Flat rate extrapolation - forward rate is the zero rate
+            let t1 = self.pillars[0];
+            let df1 = self.discount_factors[0];
+            return Ok(-df1.ln() / t1);
+        }
+
+        if t > self.pillars[n - 1] {
+            if !self.allow_extrapolation {
+                return Err(MarketDataError::OutOfBounds {
+                    x: t.to_f64().unwrap_or(0.0),
+                    min: self.pillars[0].to_f64().unwrap_or(0.0),
+                    max: self.pillars[n - 1].to_f64().unwrap_or(0.0),
+                });
+            }
+            // Flat rate extrapolation - forward rate is the zero rate
+            let tn = self.pillars[n - 1];
+            let dfn = self.discount_factors[n - 1];
+            return Ok(-dfn.ln() / tn);
+        }
+
+        // Find bracketing index
+        let idx = self.find_bracket_index(t);
+
+        // Exact match at pillar - use forward rate from this segment
+        // (forward rate is continuous at pillar for log-linear)
+        if idx < n - 1 {
+            match self.interpolation {
+                BootstrapInterpolation::LogLinear | BootstrapInterpolation::FlatForward => {
+                    // Analytic derivative for log-linear: constant forward rate
+                    let t1 = self.pillars[idx];
+                    let t2 = self.pillars[idx + 1];
+                    let df1 = self.discount_factors[idx];
+                    let df2 = self.discount_factors[idx + 1];
+
+                    let log_df1 = df1.ln();
+                    let log_df2 = df2.ln();
+
+                    // f(t) = -(log_df2 - log_df1) / (t2 - t1)
+                    Ok(-(log_df2 - log_df1) / (t2 - t1))
+                }
+                BootstrapInterpolation::LinearZeroRate => {
+                    // For linear zero rate interpolation:
+                    // r(t) = r1 * (1-w) + r2 * w
+                    // log(D(t)) = -r(t) * t = -(r1 * (1-w) + r2 * w) * t
+                    // f(t) = -d/dt log(D(t))
+                    //
+                    // Let w = (t - t1) / (t2 - t1), dw/dt = 1/(t2-t1)
+                    // r(t) = r1 + (r2 - r1) * w
+                    // dr/dt = (r2 - r1) / (t2 - t1)
+                    // f(t) = r(t) + t * dr/dt
+                    let t1 = self.pillars[idx];
+                    let t2 = self.pillars[idx + 1];
+                    let df1 = self.discount_factors[idx];
+                    let df2 = self.discount_factors[idx + 1];
+
+                    let r1 = -df1.ln() / t1;
+                    let r2 = -df2.ln() / t2;
+
+                    let w = (t - t1) / (t2 - t1);
+                    let r_t = r1 * (T::one() - w) + r2 * w;
+                    let dr_dt = (r2 - r1) / (t2 - t1);
+
+                    Ok(r_t + t * dr_dt)
+                }
+                _ => {
+                    // For cubic spline and monotonic cubic, use numerical derivative
+                    self.numerical_instantaneous_forward(t)
+                }
+            }
+        } else {
+            // At or beyond last pillar
+            let tn = self.pillars[n - 1];
+            let dfn = self.discount_factors[n - 1];
+            Ok(-dfn.ln() / tn)
+        }
+    }
+
+    fn pillar_count(&self) -> Option<usize> {
+        Some(self.pillars.len())
+    }
+
+    fn pillars(&self) -> Option<&[T]> {
+        Some(&self.pillars)
+    }
+
+    fn pillar_values(&self) -> Option<&[T]> {
+        // Return log(DF) values as the pillar parameters
+        // Note: This returns the discount factors, not log(DF)
+        // For proper pillar_values we'd need to store log_dfs
+        Some(&self.discount_factors)
+    }
+
+    fn max_maturity(&self) -> Option<T> {
+        self.pillars.last().copied()
+    }
+}
+
+impl<T: Float> BootstrappedCurve<T> {
+    /// Numerical approximation of instantaneous forward rate.
+    ///
+    /// Uses central difference: f(t) ≈ -[log(D(t+h)) - log(D(t-h))] / (2h)
+    fn numerical_instantaneous_forward(&self, t: T) -> Result<T, MarketDataError> {
+        let h: T = from_f64(1e-6);
+        let t_plus = t + h;
+        let t_minus = t - h;
+
+        let df_plus = self.discount_factor(t_plus)?;
+        let df_minus = self.discount_factor(t_minus)?;
+
+        let log_df_plus = df_plus.ln();
+        let log_df_minus = df_minus.ln();
+
+        Ok(-(log_df_plus - log_df_minus) / (h + h))
+    }
 }
 
 /// Builder for constructing `BootstrappedCurve`.
@@ -947,5 +1095,240 @@ mod tests {
 
         let curve2 = curve1.clone();
         assert_eq!(curve1.pillar_count(), curve2.pillar_count());
+    }
+
+    // ========================================
+    // YieldCurve Trait Extension Tests
+    // ========================================
+
+    #[test]
+    fn test_trait_pillar_count() {
+        let pillars = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let dfs = vec![0.97, 0.94, 0.90, 0.86, 0.82];
+
+        let curve: BootstrappedCurve<f64> =
+            BootstrappedCurve::new(pillars, dfs, BootstrapInterpolation::LogLinear, true).unwrap();
+
+        // Use the trait method
+        let count = YieldCurve::<f64>::pillar_count(&curve);
+        assert_eq!(count, Some(5));
+    }
+
+    #[test]
+    fn test_trait_pillars() {
+        let pillars = vec![1.0, 2.0, 3.0];
+        let dfs = vec![0.97, 0.94, 0.91];
+
+        let curve: BootstrappedCurve<f64> =
+            BootstrappedCurve::new(pillars.clone(), dfs, BootstrapInterpolation::LogLinear, true)
+                .unwrap();
+
+        // Use the trait method
+        let trait_pillars = YieldCurve::<f64>::pillars(&curve).unwrap();
+        assert_eq!(trait_pillars.len(), 3);
+        assert!((trait_pillars[0] - 1.0).abs() < 1e-10);
+        assert!((trait_pillars[2] - 3.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_trait_pillar_values() {
+        let pillars = vec![1.0, 2.0, 3.0];
+        let dfs = vec![0.97, 0.94, 0.91];
+
+        let curve: BootstrappedCurve<f64> =
+            BootstrappedCurve::new(pillars, dfs.clone(), BootstrapInterpolation::LogLinear, true)
+                .unwrap();
+
+        // Use the trait method
+        let values = YieldCurve::<f64>::pillar_values(&curve).unwrap();
+        assert_eq!(values.len(), 3);
+        assert!((values[0] - 0.97).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_trait_max_maturity() {
+        let pillars = vec![1.0, 2.0, 5.0, 10.0, 30.0];
+        let dfs = vec![0.97, 0.94, 0.85, 0.74, 0.45];
+
+        let curve: BootstrappedCurve<f64> =
+            BootstrappedCurve::new(pillars, dfs, BootstrapInterpolation::LogLinear, true).unwrap();
+
+        // Use the trait method
+        let max_mat = YieldCurve::<f64>::max_maturity(&curve);
+        assert_eq!(max_mat, Some(30.0));
+    }
+
+    #[test]
+    fn test_instantaneous_forward_log_linear() {
+        // For log-linear interpolation, instantaneous forward = constant forward between pillars
+        let pillars = vec![1.0, 2.0, 3.0];
+        let rate = 0.03;
+        let dfs = vec![
+            (-rate * 1.0_f64).exp(),
+            (-rate * 2.0_f64).exp(),
+            (-rate * 3.0_f64).exp(),
+        ];
+
+        let curve: BootstrappedCurve<f64> =
+            BootstrappedCurve::new(pillars, dfs, BootstrapInterpolation::LogLinear, true).unwrap();
+
+        // Instantaneous forward at t=1.5 should equal the discrete forward rate
+        let inst_fwd = curve.instantaneous_forward(1.5).unwrap();
+
+        // For constant rate curve, instantaneous forward = the rate
+        assert!(
+            (inst_fwd - rate).abs() < 1e-10,
+            "Instantaneous forward should be {}, got {}",
+            rate,
+            inst_fwd
+        );
+    }
+
+    #[test]
+    fn test_instantaneous_forward_constant_between_pillars() {
+        // For log-linear, instantaneous forward should be constant within a segment
+        let pillars = vec![1.0, 2.0, 3.0];
+        let dfs = vec![0.97, 0.94, 0.90];
+
+        let curve: BootstrappedCurve<f64> =
+            BootstrappedCurve::new(pillars, dfs, BootstrapInterpolation::LogLinear, true).unwrap();
+
+        let f1 = curve.instantaneous_forward(1.2).unwrap();
+        let f2 = curve.instantaneous_forward(1.5).unwrap();
+        let f3 = curve.instantaneous_forward(1.8).unwrap();
+
+        // All should be equal (within segment [1, 2])
+        assert!(
+            (f1 - f2).abs() < 1e-10,
+            "Forward at 1.2 and 1.5 should be equal"
+        );
+        assert!(
+            (f2 - f3).abs() < 1e-10,
+            "Forward at 1.5 and 1.8 should be equal"
+        );
+    }
+
+    #[test]
+    fn test_instantaneous_forward_equals_discrete_forward() {
+        // For log-linear, instantaneous forward = discrete forward between pillars
+        let pillars = vec![1.0, 2.0, 3.0];
+        let dfs = vec![0.97, 0.94, 0.90];
+
+        let curve: BootstrappedCurve<f64> =
+            BootstrappedCurve::new(pillars, dfs, BootstrapInterpolation::LogLinear, true).unwrap();
+
+        let inst_fwd = curve.instantaneous_forward(1.5).unwrap();
+        let discrete_fwd = curve.forward_rate(1.0, 2.0).unwrap();
+
+        assert!(
+            (inst_fwd - discrete_fwd).abs() < 1e-10,
+            "Instantaneous forward {} should equal discrete forward {}",
+            inst_fwd,
+            discrete_fwd
+        );
+    }
+
+    #[test]
+    fn test_instantaneous_forward_linear_zero_rate() {
+        // For linear zero rate, forward rate is not constant
+        let pillars = vec![1.0, 2.0, 3.0];
+        let rate = 0.03;
+        let dfs = vec![
+            (-rate * 1.0_f64).exp(),
+            (-rate * 2.0_f64).exp(),
+            (-rate * 3.0_f64).exp(),
+        ];
+
+        let curve: BootstrappedCurve<f64> =
+            BootstrappedCurve::new(pillars, dfs, BootstrapInterpolation::LinearZeroRate, true)
+                .unwrap();
+
+        // For constant rate curve, instantaneous forward should still be ~rate
+        let inst_fwd = curve.instantaneous_forward(1.5).unwrap();
+        assert!(
+            (inst_fwd - rate).abs() < 1e-8,
+            "Instantaneous forward should be ~{}, got {}",
+            rate,
+            inst_fwd
+        );
+    }
+
+    #[test]
+    fn test_instantaneous_forward_invalid_maturity() {
+        let pillars = vec![1.0, 2.0, 3.0];
+        let dfs = vec![0.97, 0.94, 0.91];
+
+        let curve: BootstrappedCurve<f64> =
+            BootstrappedCurve::new(pillars, dfs, BootstrapInterpolation::LogLinear, true).unwrap();
+
+        let result = curve.instantaneous_forward(-1.0);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_instantaneous_forward_extrapolation_left() {
+        let pillars = vec![1.0, 2.0, 3.0];
+        let dfs = vec![0.97, 0.94, 0.91];
+
+        let curve: BootstrappedCurve<f64> =
+            BootstrappedCurve::new(pillars, dfs, BootstrapInterpolation::LogLinear, true).unwrap();
+
+        // Forward before first pillar uses flat rate extrapolation
+        let fwd = curve.instantaneous_forward(0.5).unwrap();
+        assert!(fwd > 0.0, "Forward rate should be positive");
+    }
+
+    #[test]
+    fn test_instantaneous_forward_extrapolation_right() {
+        let pillars = vec![1.0, 2.0, 3.0];
+        let dfs = vec![0.97, 0.94, 0.91];
+
+        let curve: BootstrappedCurve<f64> =
+            BootstrappedCurve::new(pillars, dfs, BootstrapInterpolation::LogLinear, true).unwrap();
+
+        // Forward after last pillar uses flat rate extrapolation
+        let fwd = curve.instantaneous_forward(4.0).unwrap();
+        assert!(fwd > 0.0, "Forward rate should be positive");
+    }
+
+    #[test]
+    fn test_instantaneous_forward_no_extrapolation() {
+        let pillars = vec![1.0, 2.0, 3.0];
+        let dfs = vec![0.97, 0.94, 0.91];
+
+        let curve: BootstrappedCurve<f64> =
+            BootstrappedCurve::new(pillars, dfs, BootstrapInterpolation::LogLinear, false).unwrap();
+
+        // Should error when extrapolation is disabled
+        let result = curve.instantaneous_forward(4.0);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_instantaneous_forward_cubic_spline() {
+        // Cubic spline uses numerical differentiation
+        let pillars = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let rate = 0.03;
+        let dfs = vec![
+            (-rate * 1.0_f64).exp(),
+            (-rate * 2.0_f64).exp(),
+            (-rate * 3.0_f64).exp(),
+            (-rate * 4.0_f64).exp(),
+            (-rate * 5.0_f64).exp(),
+        ];
+
+        let curve: BootstrappedCurve<f64> =
+            BootstrappedCurve::new(pillars, dfs, BootstrapInterpolation::CubicSpline, true)
+                .unwrap();
+
+        let fwd = curve.instantaneous_forward(2.5).unwrap();
+
+        // For constant rate curve, forward should be ~rate
+        assert!(
+            (fwd - rate).abs() < 1e-4, // Lower precision due to numerical derivative
+            "Cubic spline forward should be ~{}, got {}",
+            rate,
+            fwd
+        );
     }
 }

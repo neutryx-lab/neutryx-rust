@@ -28,21 +28,42 @@ use std::{fmt, str::FromStr};
 /// assert_eq!(freq.periods_per_year(), 2);
 /// assert_eq!(freq.months_per_period(), 6);
 /// ```
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// Payment frequency ordered from highest (Daily) to lowest (Annual).
+///
+/// Ordering rationale: Financial schedules typically progress from
+/// higher frequency to lower frequency when iterating payment dates.
+/// The `Ord` implementation ensures `Daily < Weekly < Monthly < Quarterly < SemiAnnual < Annual`.
+///
+/// # Adding New Variants
+///
+/// When adding new frequency variants, place them according to their
+/// payment frequency (higher frequency = earlier in declaration order).
+///
+/// # Examples
+///
+/// ```
+/// use infra_master::time::Frequency;
+///
+/// // Ordering: Daily is "less than" Weekly (higher frequency first)
+/// assert!(Frequency::Daily < Frequency::Weekly);
+/// assert!(Frequency::Monthly < Frequency::Annual);
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Frequency {
-    /// Once per year
-    Annual,
-    /// Twice per year
-    SemiAnnual,
-    /// Four times per year
-    Quarterly,
-    /// Twelve times per year
-    Monthly,
-    /// Fifty-two times per year (approximately)
-    Weekly,
-    /// Every day
+    /// Daily payments (252 business days per year)
     Daily,
+    /// Weekly payments (52 per year)
+    Weekly,
+    /// Monthly payments (12 per year)
+    #[default]
+    Monthly,
+    /// Quarterly payments (4 per year)
+    Quarterly,
+    /// Semi-annual payments (2 per year)
+    SemiAnnual,
+    /// Annual payments (1 per year)
+    Annual,
 }
 
 impl Frequency {
@@ -135,6 +156,79 @@ impl fmt::Display for Frequency {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ========================================
+    // Ordering Tests (Requirement 1.2, 1.3)
+    // ========================================
+
+    #[test]
+    fn test_frequency_ord_daily_less_than_weekly() {
+        assert!(Frequency::Daily < Frequency::Weekly);
+    }
+
+    #[test]
+    fn test_frequency_ord_weekly_less_than_monthly() {
+        assert!(Frequency::Weekly < Frequency::Monthly);
+    }
+
+    #[test]
+    fn test_frequency_ord_monthly_less_than_quarterly() {
+        assert!(Frequency::Monthly < Frequency::Quarterly);
+    }
+
+    #[test]
+    fn test_frequency_ord_quarterly_less_than_semiannual() {
+        assert!(Frequency::Quarterly < Frequency::SemiAnnual);
+    }
+
+    #[test]
+    fn test_frequency_ord_semiannual_less_than_annual() {
+        assert!(Frequency::SemiAnnual < Frequency::Annual);
+    }
+
+    #[test]
+    fn test_frequency_ord_full_chain() {
+        // Verify complete ordering: Daily < Weekly < Monthly < Quarterly < SemiAnnual < Annual
+        assert!(Frequency::Daily < Frequency::Weekly);
+        assert!(Frequency::Weekly < Frequency::Monthly);
+        assert!(Frequency::Monthly < Frequency::Quarterly);
+        assert!(Frequency::Quarterly < Frequency::SemiAnnual);
+        assert!(Frequency::SemiAnnual < Frequency::Annual);
+    }
+
+    #[test]
+    fn test_frequency_sort_vec() {
+        let mut frequencies = vec![
+            Frequency::Annual,
+            Frequency::Daily,
+            Frequency::Quarterly,
+            Frequency::Monthly,
+            Frequency::SemiAnnual,
+            Frequency::Weekly,
+        ];
+        frequencies.sort();
+
+        assert_eq!(
+            frequencies,
+            vec![
+                Frequency::Daily,
+                Frequency::Weekly,
+                Frequency::Monthly,
+                Frequency::Quarterly,
+                Frequency::SemiAnnual,
+                Frequency::Annual,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_frequency_default() {
+        assert_eq!(Frequency::default(), Frequency::Monthly);
+    }
+
+    // ========================================
+    // Existing Tests
+    // ========================================
 
     #[test]
     fn test_months_per_period() {

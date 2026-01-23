@@ -6,7 +6,9 @@
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::return_self_not_must_use)]
 
-use super::{Ccp, CcpId, CounterPartyError, CounterPartyId, CsaTerms, LegalEntityId, MarginTerms};
+use crate::ids::BookId;
+use crate::time::Date;
+use super::{Ccp, CcpId, CounterPartyError, CounterPartyId, CrossBookNettingAgreementId, CsaTerms, LegalEntityId, MarginTerms};
 
 // ============================================================================
 // NettingType
@@ -145,6 +147,213 @@ impl Default for ExposureConfig {
 }
 
 // ============================================================================
+// PfeConfidenceLevel
+// ============================================================================
+
+/// PFE (Potential Future Exposure) confidence level.
+///
+/// Standard confidence levels used in regulatory and risk management contexts.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum PfeConfidenceLevel {
+    /// 95% confidence level (regulatory standard).
+    #[default]
+    Q95,
+    /// 97.5% confidence level.
+    Q97_5,
+    /// 99% confidence level.
+    Q99,
+    /// Custom confidence level with explicit value.
+    Custom(u8),
+}
+
+impl PfeConfidenceLevel {
+    /// Returns the confidence level as a decimal (e.g., 0.95 for Q95).
+    pub fn as_f64(&self) -> f64 {
+        match self {
+            PfeConfidenceLevel::Q95 => 0.95,
+            PfeConfidenceLevel::Q97_5 => 0.975,
+            PfeConfidenceLevel::Q99 => 0.99,
+            PfeConfidenceLevel::Custom(p) => f64::from(*p) / 100.0,
+        }
+    }
+
+    /// Creates a PfeConfidenceLevel from a decimal value.
+    ///
+    /// Values are rounded to the nearest standard level if within 0.5%,
+    /// otherwise a Custom level is returned.
+    pub fn from_f64(value: f64) -> Self {
+        let clamped = value.clamp(0.0, 1.0);
+        if (clamped - 0.95).abs() < 0.005 {
+            PfeConfidenceLevel::Q95
+        } else if (clamped - 0.975).abs() < 0.005 {
+            PfeConfidenceLevel::Q97_5
+        } else if (clamped - 0.99).abs() < 0.005 {
+            PfeConfidenceLevel::Q99
+        } else {
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            PfeConfidenceLevel::Custom((clamped * 100.0).round() as u8)
+        }
+    }
+}
+
+// ============================================================================
+// ExposureAggregation
+// ============================================================================
+
+/// Exposure aggregation method.
+///
+/// Defines how exposure is aggregated across trades, netting sets, and
+/// counterparties.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum ExposureAggregation {
+    /// Gross exposure (no netting applied).
+    Gross,
+    /// Net exposure within each netting set (standard).
+    #[default]
+    NetWithinNettingSet,
+    /// Net exposure within each counterparty (cross-netting set).
+    NetWithinCounterparty,
+}
+
+impl ExposureAggregation {
+    /// Returns true if netting is applied at any level.
+    pub fn applies_netting(&self) -> bool {
+        !matches!(self, ExposureAggregation::Gross)
+    }
+}
+
+// ============================================================================
+// MporConfig
+// ============================================================================
+
+/// Margin Period of Risk (MPOR) configuration.
+///
+/// Configures the MPOR calculation parameters based on regulatory requirements.
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct MporConfig {
+    /// Base MPOR in business days (default: 10 for bilateral OTC).
+    pub base_mpor_days: u32,
+    /// Grace period for disputes in business days.
+    pub dispute_grace_days: u32,
+    /// Whether to apply extended MPOR for illiquid trades.
+    pub apply_illiquidity_extension: bool,
+    /// Illiquidity threshold for MPOR extension (days).
+    pub illiquidity_threshold_days: u32,
+}
+
+impl Default for MporConfig {
+    fn default() -> Self {
+        Self {
+            base_mpor_days: 10,
+            dispute_grace_days: 0,
+            apply_illiquidity_extension: false,
+            illiquidity_threshold_days: 20,
+        }
+    }
+}
+
+// ============================================================================
+// CollateralizedExposureConfig
+// ============================================================================
+
+/// Configuration for collateralized exposure calculations.
+///
+/// Defines parameters for EEPE (Effective Expected Positive Exposure) and
+/// collateral-adjusted exposure calculations.
+///
+/// # Examples
+///
+/// ```
+/// use infra_master::counterparty::CollateralizedExposureConfig;
+///
+/// let config = CollateralizedExposureConfig::new()
+///     .with_eepe_horizon_years(5.0)
+///     .with_effective_maturity_years(1.0)
+///     .with_collateral_volatility(0.15);
+///
+/// assert!((config.eepe_horizon_years() - 5.0).abs() < f64::EPSILON);
+/// ```
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct CollateralizedExposureConfig {
+    /// EEPE calculation horizon in years (regulatory: 5 years).
+    eepe_horizon_years: f64,
+    /// Effective maturity for regulatory purposes in years (default: 1 year).
+    effective_maturity_years: f64,
+    /// Collateral value volatility for haircut calculation.
+    collateral_volatility: f64,
+    /// Whether to apply close-out risk adjustment.
+    apply_closeout_risk: bool,
+    /// MPOR configuration.
+    mpor_config: MporConfig,
+}
+
+impl CollateralizedExposureConfig {
+    /// Creates a new configuration with default values.
+    pub fn new() -> Self { Self::default() }
+
+    /// Sets the EEPE horizon in years.
+    pub fn with_eepe_horizon_years(mut self, years: f64) -> Self {
+        self.eepe_horizon_years = years;
+        self
+    }
+
+    /// Sets the effective maturity in years.
+    pub fn with_effective_maturity_years(mut self, years: f64) -> Self {
+        self.effective_maturity_years = years;
+        self
+    }
+
+    /// Sets the collateral volatility.
+    pub fn with_collateral_volatility(mut self, vol: f64) -> Self {
+        self.collateral_volatility = vol.clamp(0.0, 1.0);
+        self
+    }
+
+    /// Sets whether to apply close-out risk adjustment.
+    pub fn with_apply_closeout_risk(mut self, apply: bool) -> Self {
+        self.apply_closeout_risk = apply;
+        self
+    }
+
+    /// Sets the MPOR configuration.
+    pub fn with_mpor_config(mut self, config: MporConfig) -> Self {
+        self.mpor_config = config;
+        self
+    }
+
+    /// Returns the EEPE horizon in years.
+    pub fn eepe_horizon_years(&self) -> f64 { self.eepe_horizon_years }
+
+    /// Returns the effective maturity in years.
+    pub fn effective_maturity_years(&self) -> f64 { self.effective_maturity_years }
+
+    /// Returns the collateral volatility.
+    pub fn collateral_volatility(&self) -> f64 { self.collateral_volatility }
+
+    /// Returns whether close-out risk is applied.
+    pub fn apply_closeout_risk(&self) -> bool { self.apply_closeout_risk }
+
+    /// Returns the MPOR configuration.
+    pub fn mpor_config(&self) -> &MporConfig { &self.mpor_config }
+}
+
+impl Default for CollateralizedExposureConfig {
+    fn default() -> Self {
+        Self {
+            eepe_horizon_years: 5.0,
+            effective_maturity_years: 1.0,
+            collateral_volatility: 0.0,
+            apply_closeout_risk: true,
+            mpor_config: MporConfig::default(),
+        }
+    }
+}
+
+// ============================================================================
 // NettingSet
 // ============================================================================
 
@@ -182,6 +391,9 @@ pub struct NettingSet {
     margin_terms: Option<MarginTerms>,
     ccp_id: Option<CcpId>,
     exposure_config: Option<ExposureConfig>,
+    /// Book IDs allowed for cross-book netting within this set.
+    /// If empty, all books are allowed (single-book netting assumed).
+    book_ids: Vec<BookId>,
 }
 
 impl NettingSet {
@@ -219,6 +431,21 @@ impl NettingSet {
 
     /// Returns the exposure configuration if set.
     pub fn exposure_config(&self) -> Option<&ExposureConfig> { self.exposure_config.as_ref() }
+
+    /// Returns the book IDs allowed for cross-book netting.
+    ///
+    /// If empty, all books are allowed (single-book netting assumed).
+    pub fn book_ids(&self) -> &[BookId] { &self.book_ids }
+
+    /// Returns true if cross-book netting is enabled (multiple books specified).
+    pub fn allows_cross_book_netting(&self) -> bool { self.book_ids.len() > 1 }
+
+    /// Returns true if the specified book is allowed in this netting set.
+    ///
+    /// If no books are explicitly configured, returns true (all books allowed).
+    pub fn allows_book(&self, book_id: &BookId) -> bool {
+        self.book_ids.is_empty() || self.book_ids.contains(book_id)
+    }
 
     /// Returns whether this is a cleared transaction.
     pub fn is_cleared(&self) -> bool { self.netting_type.is_cleared() }
@@ -262,6 +489,7 @@ pub struct NettingSetBuilder {
     margin_terms: Option<MarginTerms>,
     ccp_id: Option<CcpId>,
     exposure_config: Option<ExposureConfig>,
+    book_ids: Vec<BookId>,
 }
 
 impl NettingSetBuilder {
@@ -277,6 +505,7 @@ impl NettingSetBuilder {
             margin_terms: None,
             ccp_id: None,
             exposure_config: None,
+            book_ids: Vec::new(),
         }
     }
 
@@ -322,6 +551,21 @@ impl NettingSetBuilder {
         self
     }
 
+    /// Adds a book ID to the allowed books list.
+    pub fn add_book(mut self, book_id: impl Into<BookId>) -> Self {
+        let id = book_id.into();
+        if !self.book_ids.contains(&id) {
+            self.book_ids.push(id);
+        }
+        self
+    }
+
+    /// Sets the allowed book IDs for cross-book netting.
+    pub fn book_ids(mut self, book_ids: impl IntoIterator<Item = impl Into<BookId>>) -> Self {
+        self.book_ids = book_ids.into_iter().map(Into::into).collect();
+        self
+    }
+
     /// Builds the NettingSet.
     ///
     /// # Errors
@@ -341,6 +585,222 @@ impl NettingSetBuilder {
             margin_terms: self.margin_terms,
             ccp_id: self.ccp_id,
             exposure_config: self.exposure_config,
+            book_ids: self.book_ids,
+        })
+    }
+}
+
+// ============================================================================
+// CrossBookNettingAgreement
+// ============================================================================
+
+/// Cross-book netting agreement.
+///
+/// Defines an explicit agreement that allows netting of trades across
+/// multiple books. This is required when cross-book netting is enabled
+/// for a netting set.
+///
+/// # Requirements
+///
+/// According to the design requirements (4.3, 4.5):
+/// - Cross-book netting requires explicit configuration
+/// - Must specify at least 2 books
+/// - Optionally restricts eligible product types
+///
+/// # Examples
+///
+/// ```
+/// use infra_master::counterparty::{CrossBookNettingAgreement, CounterPartyError};
+/// use infra_master::ids::BookId;
+///
+/// let agreement = CrossBookNettingAgreement::builder("CBNA001", "CP001")
+///     .add_book("B001")
+///     .add_book("B002")
+///     .add_eligible_product("IRS")
+///     .build()
+///     .unwrap();
+///
+/// assert!(agreement.is_book_eligible(&BookId::new("B001")));
+/// assert!(agreement.is_product_eligible("IRS"));
+/// ```
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct CrossBookNettingAgreement {
+    /// Unique identifier for this agreement.
+    id: CrossBookNettingAgreementId,
+    /// Counterparty associated with this agreement.
+    counterparty_id: CounterPartyId,
+    /// Books included in this cross-book netting agreement.
+    book_ids: Vec<BookId>,
+    /// Eligible product types (empty = all products eligible).
+    eligible_products: Vec<String>,
+    /// Effective date of the agreement.
+    effective_date: Option<Date>,
+    /// Termination date of the agreement.
+    termination_date: Option<Date>,
+    /// Description of the agreement.
+    description: Option<String>,
+}
+
+impl CrossBookNettingAgreement {
+    /// Creates a new builder.
+    pub fn builder(
+        id: impl Into<CrossBookNettingAgreementId>,
+        counterparty_id: impl Into<CounterPartyId>,
+    ) -> CrossBookNettingAgreementBuilder {
+        CrossBookNettingAgreementBuilder::new(id, counterparty_id)
+    }
+
+    /// Returns the agreement ID.
+    #[inline]
+    pub fn id(&self) -> &CrossBookNettingAgreementId { &self.id }
+
+    /// Returns the counterparty ID.
+    #[inline]
+    pub fn counterparty_id(&self) -> &CounterPartyId { &self.counterparty_id }
+
+    /// Returns the book IDs in this agreement.
+    #[inline]
+    pub fn book_ids(&self) -> &[BookId] { &self.book_ids }
+
+    /// Returns the eligible products (empty = all products eligible).
+    #[inline]
+    pub fn eligible_products(&self) -> &[String] { &self.eligible_products }
+
+    /// Returns the effective date.
+    #[inline]
+    pub fn effective_date(&self) -> Option<Date> { self.effective_date }
+
+    /// Returns the termination date.
+    #[inline]
+    pub fn termination_date(&self) -> Option<Date> { self.termination_date }
+
+    /// Returns the description.
+    #[inline]
+    pub fn description(&self) -> Option<&str> { self.description.as_deref() }
+
+    /// Returns true if the specified book is included in this agreement.
+    pub fn is_book_eligible(&self, book_id: &BookId) -> bool {
+        self.book_ids.contains(book_id)
+    }
+
+    /// Returns true if the specified product is eligible for cross-book netting.
+    ///
+    /// If no products are specified, all products are eligible.
+    pub fn is_product_eligible(&self, product: &str) -> bool {
+        self.eligible_products.is_empty() || self.eligible_products.iter().any(|p| p == product)
+    }
+
+    /// Returns the number of books in this agreement.
+    #[inline]
+    pub fn book_count(&self) -> usize { self.book_ids.len() }
+}
+
+// ============================================================================
+// CrossBookNettingAgreementBuilder
+// ============================================================================
+
+/// Builder for [`CrossBookNettingAgreement`].
+pub struct CrossBookNettingAgreementBuilder {
+    id: CrossBookNettingAgreementId,
+    counterparty_id: CounterPartyId,
+    book_ids: Vec<BookId>,
+    eligible_products: Vec<String>,
+    effective_date: Option<Date>,
+    termination_date: Option<Date>,
+    description: Option<String>,
+}
+
+impl CrossBookNettingAgreementBuilder {
+    /// Creates a new builder with required fields.
+    pub fn new(
+        id: impl Into<CrossBookNettingAgreementId>,
+        counterparty_id: impl Into<CounterPartyId>,
+    ) -> Self {
+        Self {
+            id: id.into(),
+            counterparty_id: counterparty_id.into(),
+            book_ids: Vec::new(),
+            eligible_products: Vec::new(),
+            effective_date: None,
+            termination_date: None,
+            description: None,
+        }
+    }
+
+    /// Adds a book to the agreement.
+    pub fn add_book(mut self, book_id: impl Into<BookId>) -> Self {
+        let id = book_id.into();
+        if !self.book_ids.contains(&id) {
+            self.book_ids.push(id);
+        }
+        self
+    }
+
+    /// Sets the book IDs.
+    pub fn book_ids(mut self, book_ids: impl IntoIterator<Item = impl Into<BookId>>) -> Self {
+        self.book_ids = book_ids.into_iter().map(Into::into).collect();
+        self
+    }
+
+    /// Adds an eligible product type.
+    pub fn add_eligible_product(mut self, product: impl Into<String>) -> Self {
+        let p = product.into();
+        if !self.eligible_products.contains(&p) {
+            self.eligible_products.push(p);
+        }
+        self
+    }
+
+    /// Sets the eligible products.
+    pub fn eligible_products(
+        mut self,
+        products: impl IntoIterator<Item = impl Into<String>>,
+    ) -> Self {
+        self.eligible_products = products.into_iter().map(Into::into).collect();
+        self
+    }
+
+    /// Sets the effective date.
+    pub fn effective_date(mut self, date: Date) -> Self {
+        self.effective_date = Some(date);
+        self
+    }
+
+    /// Sets the termination date.
+    pub fn termination_date(mut self, date: Date) -> Self {
+        self.termination_date = Some(date);
+        self
+    }
+
+    /// Sets the description.
+    pub fn description(mut self, desc: impl Into<String>) -> Self {
+        self.description = Some(desc.into());
+        self
+    }
+
+    /// Builds the CrossBookNettingAgreement.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`CounterPartyError::InvalidNettingSetId`] if fewer than 2 books
+    /// are specified, since cross-book netting requires at least 2 books.
+    pub fn build(self) -> Result<CrossBookNettingAgreement, CounterPartyError> {
+        // Cross-book netting requires at least 2 books
+        if self.book_ids.len() < 2 {
+            return Err(CounterPartyError::InvalidNettingSetId(
+                format!("Cross-book netting agreement requires at least 2 books, got {}", self.book_ids.len())
+            ));
+        }
+
+        Ok(CrossBookNettingAgreement {
+            id: self.id,
+            counterparty_id: self.counterparty_id,
+            book_ids: self.book_ids,
+            eligible_products: self.eligible_products,
+            effective_date: self.effective_date,
+            termination_date: self.termination_date,
+            description: self.description,
         })
     }
 }
@@ -546,5 +1006,267 @@ mod tests {
             .unwrap();
 
         assert_eq!(ns.mpor_days(), 5);
+    }
+
+    // ========================================================================
+    // Book IDs tests
+    // ========================================================================
+
+    #[test]
+    fn test_netting_set_book_ids_empty_by_default() {
+        let ns = NettingSet::builder("NS001", "CP001").build().unwrap();
+        assert!(ns.book_ids().is_empty());
+        assert!(!ns.allows_cross_book_netting());
+    }
+
+    #[test]
+    fn test_netting_set_add_book() {
+        let ns = NettingSet::builder("NS001", "CP001")
+            .add_book("B001")
+            .add_book("B002")
+            .build()
+            .unwrap();
+
+        assert_eq!(ns.book_ids().len(), 2);
+        assert!(ns.allows_cross_book_netting());
+    }
+
+    #[test]
+    fn test_netting_set_add_book_dedup() {
+        let ns = NettingSet::builder("NS001", "CP001")
+            .add_book("B001")
+            .add_book("B001") // Duplicate
+            .add_book("B002")
+            .build()
+            .unwrap();
+
+        assert_eq!(ns.book_ids().len(), 2);
+    }
+
+    #[test]
+    fn test_netting_set_book_ids_bulk() {
+        let ns = NettingSet::builder("NS001", "CP001")
+            .book_ids(["B001", "B002", "B003"])
+            .build()
+            .unwrap();
+
+        assert_eq!(ns.book_ids().len(), 3);
+    }
+
+    #[test]
+    fn test_netting_set_allows_book_empty() {
+        let ns = NettingSet::builder("NS001", "CP001").build().unwrap();
+
+        // Empty book_ids means all books allowed
+        assert!(ns.allows_book(&BookId::new("B001")));
+        assert!(ns.allows_book(&BookId::new("B999")));
+    }
+
+    #[test]
+    fn test_netting_set_allows_book_with_list() {
+        let ns = NettingSet::builder("NS001", "CP001")
+            .add_book("B001")
+            .add_book("B002")
+            .build()
+            .unwrap();
+
+        assert!(ns.allows_book(&BookId::new("B001")));
+        assert!(ns.allows_book(&BookId::new("B002")));
+        assert!(!ns.allows_book(&BookId::new("B003")));
+    }
+
+    #[test]
+    fn test_netting_set_single_book_no_cross_book() {
+        let ns = NettingSet::builder("NS001", "CP001")
+            .add_book("B001")
+            .build()
+            .unwrap();
+
+        assert!(!ns.allows_cross_book_netting());
+    }
+
+    // ========================================================================
+    // CrossBookNettingAgreement tests
+    // ========================================================================
+
+    #[test]
+    fn test_cross_book_netting_agreement_builder() {
+        let agreement = CrossBookNettingAgreement::builder("CBNA001", "CP001")
+            .add_book("B001")
+            .add_book("B002")
+            .add_book("B003")
+            .effective_date(Date::from_ymd(2025, 1, 1).unwrap())
+            .build()
+            .unwrap();
+
+        assert_eq!(agreement.id().as_str(), "CBNA001");
+        assert_eq!(agreement.counterparty_id().as_str(), "CP001");
+        assert_eq!(agreement.book_ids().len(), 3);
+        assert!(agreement.is_book_eligible(&BookId::new("B001")));
+        assert!(agreement.is_book_eligible(&BookId::new("B002")));
+        assert!(!agreement.is_book_eligible(&BookId::new("B999")));
+    }
+
+    #[test]
+    fn test_cross_book_netting_agreement_requires_multiple_books() {
+        let result = CrossBookNettingAgreement::builder("CBNA001", "CP001")
+            .add_book("B001")
+            .build();
+
+        // Cross-book netting requires at least 2 books
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_cross_book_netting_agreement_dedup_books() {
+        let agreement = CrossBookNettingAgreement::builder("CBNA001", "CP001")
+            .add_book("B001")
+            .add_book("B002")
+            .add_book("B001") // Duplicate
+            .build()
+            .unwrap();
+
+        assert_eq!(agreement.book_ids().len(), 2);
+    }
+
+    #[test]
+    fn test_cross_book_netting_agreement_product_eligibility() {
+        let agreement = CrossBookNettingAgreement::builder("CBNA001", "CP001")
+            .add_book("B001")
+            .add_book("B002")
+            .add_eligible_product("IRS")
+            .add_eligible_product("CCS")
+            .build()
+            .unwrap();
+
+        assert!(agreement.is_product_eligible("IRS"));
+        assert!(agreement.is_product_eligible("CCS"));
+        assert!(!agreement.is_product_eligible("FX"));
+    }
+
+    #[test]
+    fn test_cross_book_netting_agreement_all_products_eligible_when_empty() {
+        let agreement = CrossBookNettingAgreement::builder("CBNA001", "CP001")
+            .add_book("B001")
+            .add_book("B002")
+            .build()
+            .unwrap();
+
+        // When no products specified, all products are eligible
+        assert!(agreement.is_product_eligible("IRS"));
+        assert!(agreement.is_product_eligible("FX"));
+    }
+
+    // ========================================================================
+    // PfeConfidenceLevel tests
+    // ========================================================================
+
+    #[test]
+    fn test_pfe_confidence_level_default() {
+        assert_eq!(PfeConfidenceLevel::default(), PfeConfidenceLevel::Q95);
+    }
+
+    #[test]
+    fn test_pfe_confidence_level_as_f64() {
+        assert!((PfeConfidenceLevel::Q95.as_f64() - 0.95).abs() < f64::EPSILON);
+        assert!((PfeConfidenceLevel::Q97_5.as_f64() - 0.975).abs() < f64::EPSILON);
+        assert!((PfeConfidenceLevel::Q99.as_f64() - 0.99).abs() < f64::EPSILON);
+        assert!((PfeConfidenceLevel::Custom(90).as_f64() - 0.90).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_pfe_confidence_level_from_f64() {
+        assert_eq!(PfeConfidenceLevel::from_f64(0.95), PfeConfidenceLevel::Q95);
+        assert_eq!(PfeConfidenceLevel::from_f64(0.975), PfeConfidenceLevel::Q97_5);
+        assert_eq!(PfeConfidenceLevel::from_f64(0.99), PfeConfidenceLevel::Q99);
+        assert_eq!(PfeConfidenceLevel::from_f64(0.90), PfeConfidenceLevel::Custom(90));
+    }
+
+    #[test]
+    fn test_pfe_confidence_level_from_f64_rounding() {
+        // Values close to standard levels should snap
+        assert_eq!(PfeConfidenceLevel::from_f64(0.951), PfeConfidenceLevel::Q95);
+        assert_eq!(PfeConfidenceLevel::from_f64(0.949), PfeConfidenceLevel::Q95);
+    }
+
+    // ========================================================================
+    // ExposureAggregation tests
+    // ========================================================================
+
+    #[test]
+    fn test_exposure_aggregation_default() {
+        assert_eq!(ExposureAggregation::default(), ExposureAggregation::NetWithinNettingSet);
+    }
+
+    #[test]
+    fn test_exposure_aggregation_applies_netting() {
+        assert!(!ExposureAggregation::Gross.applies_netting());
+        assert!(ExposureAggregation::NetWithinNettingSet.applies_netting());
+        assert!(ExposureAggregation::NetWithinCounterparty.applies_netting());
+    }
+
+    // ========================================================================
+    // MporConfig tests
+    // ========================================================================
+
+    #[test]
+    fn test_mpor_config_default() {
+        let config = MporConfig::default();
+        assert_eq!(config.base_mpor_days, 10);
+        assert_eq!(config.dispute_grace_days, 0);
+        assert!(!config.apply_illiquidity_extension);
+        assert_eq!(config.illiquidity_threshold_days, 20);
+    }
+
+    // ========================================================================
+    // CollateralizedExposureConfig tests
+    // ========================================================================
+
+    #[test]
+    fn test_collateralized_exposure_config_default() {
+        let config = CollateralizedExposureConfig::default();
+        assert!((config.eepe_horizon_years() - 5.0).abs() < f64::EPSILON);
+        assert!((config.effective_maturity_years() - 1.0).abs() < f64::EPSILON);
+        assert!(config.collateral_volatility().abs() < f64::EPSILON);
+        assert!(config.apply_closeout_risk());
+    }
+
+    #[test]
+    fn test_collateralized_exposure_config_builder() {
+        let config = CollateralizedExposureConfig::new()
+            .with_eepe_horizon_years(7.0)
+            .with_effective_maturity_years(2.0)
+            .with_collateral_volatility(0.15)
+            .with_apply_closeout_risk(false);
+
+        assert!((config.eepe_horizon_years() - 7.0).abs() < f64::EPSILON);
+        assert!((config.effective_maturity_years() - 2.0).abs() < f64::EPSILON);
+        assert!((config.collateral_volatility() - 0.15).abs() < f64::EPSILON);
+        assert!(!config.apply_closeout_risk());
+    }
+
+    #[test]
+    fn test_collateralized_exposure_config_volatility_clamped() {
+        let config = CollateralizedExposureConfig::new()
+            .with_collateral_volatility(1.5);
+
+        assert!((config.collateral_volatility() - 1.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_collateralized_exposure_config_with_mpor() {
+        let mpor = MporConfig {
+            base_mpor_days: 14,
+            dispute_grace_days: 3,
+            apply_illiquidity_extension: true,
+            illiquidity_threshold_days: 30,
+        };
+
+        let config = CollateralizedExposureConfig::new()
+            .with_mpor_config(mpor);
+
+        assert_eq!(config.mpor_config().base_mpor_days, 14);
+        assert_eq!(config.mpor_config().dispute_grace_days, 3);
+        assert!(config.mpor_config().apply_illiquidity_extension);
     }
 }

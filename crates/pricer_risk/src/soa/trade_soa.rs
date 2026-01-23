@@ -180,7 +180,7 @@ impl TradeSoA {
 mod tests {
     use approx::assert_relative_eq;
     use infra_master::trade::{ExerciseStyle, InstrumentParams, PricingInstrument, VanillaOption};
-    use pricer_core::types::Currency;
+    use infra_master::Currency;
 
     use super::*;
     use crate::portfolio::{CounterpartyId, NettingSetId};

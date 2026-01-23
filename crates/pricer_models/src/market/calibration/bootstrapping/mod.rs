@@ -18,33 +18,43 @@
 //! computes sensitivities using the implicit function theorem,
 //! avoiding recording solver iterations in the AD tape.
 
+mod adapter;
 mod adjoint_solver;
 mod cache;
 mod config;
 mod curve;
 mod curve_builder;
+mod curve_config;
+mod curve_engine;
 mod date_utils;
+mod definition;
 mod engine;
+mod engine_error;
 mod error;
 mod instrument;
 mod multi_curve;
+mod result_cache;
 mod sensitivity;
 
+pub use adapter::InstrumentAdapter;
 pub use adjoint_solver::{
     compute_adjoint_contribution, AdjointSolver, AdjointSolverConfig, SolveResult,
     SolveResultWithSensitivities, SolverType,
 };
 pub use cache::{BootstrapCache, BufferPool, CurveCache, InterpolationIndices};
 pub use config::{BootstrapInterpolation, GenericBootstrapConfig, GenericBootstrapConfigBuilder};
+pub use curve_config::{CurveConfig, CurveConfigBuilder};
 pub use curve::{BootstrappedCurve, BootstrappedCurveBuilder};
+pub use curve_engine::{CurveConstructionResult, CurveEngine, CurveEngineBuilder};
+pub use definition::{CurveDefinition, CurveInstrumentType, InstrumentSpec, InstrumentTenor};
 pub use curve_builder::{BootstrapConfig, CurveBootstrapper, InterpolationMethod};
-pub use date_utils::{
-    BusinessDayAdjustment, DateCalculator, DateCalculatorBuilder, DayCount, SpotDateConvention,
-};
+pub use date_utils::{DateCalculator, DateCalculatorBuilder, SpotDateConvention};
 pub use engine::{CachedBootstrapper, GenericBootstrapResult, SequentialBootstrapper};
+pub use engine_error::{CurveEngineError, CurveParameterRepresentation};
 pub use error::BootstrapError;
 pub use instrument::{BootstrapInstrument, Frequency};
-pub use multi_curve::{CurveSet, MultiCurveBuilder, ParallelCurveSetBuilder, Tenor};
+pub use multi_curve::{CurveDependency, CurveSet, MultiCurveBuilder, ParallelCurveSetBuilder, Tenor};
+pub use result_cache::{CacheStats, CurveKey, CurveResultCache};
 pub use sensitivity::{
     BootstrapResultWithSensitivities, SensitivityBootstrapper, SensitivityVerification,
 };

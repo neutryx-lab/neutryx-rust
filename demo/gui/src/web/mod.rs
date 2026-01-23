@@ -12,7 +12,7 @@
 //! - Subscription: Clients can subscribe to specific trade graph updates (Task
 //!   4.3)
 
-pub mod handlers;
+pub mod error;
 pub mod jobs;
 pub mod market_data;
 pub mod market_handlers;
@@ -22,9 +22,17 @@ pub mod openapi;
 pub mod pricer_types;
 pub mod scenario_handlers;
 pub mod schedule_utils;
+pub mod state;
 pub mod trade_handlers;
 pub mod trade_types;
 pub mod websocket;
+
+// Legacy handlers module (being gradually migrated)
+#[path = "handlers.rs"]
+pub mod handlers;
+
+// New modular handlers (migration in progress)
+pub mod handlers_v2;
 
 use std::{
     collections::HashSet,

@@ -11,7 +11,7 @@
 
 use std::{collections::HashMap, time::Instant};
 
-use pricer_core::types::time::Date;
+use infra_master::Date;
 use pricer_models::market::curves::{CurveEnum, CurveName, CurveSet, YieldCurve};
 use pricer_models::instruments::rates::{price_irs, InterestRateSwap};
 use pricer_pricing::{

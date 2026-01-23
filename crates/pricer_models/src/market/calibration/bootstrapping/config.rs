@@ -6,58 +6,55 @@
 use num_traits::Float;
 use pricer_core::math::numeric::from_f64;
 
-/// Interpolation method for bootstrapped curves.
+/// Bootstrap interpolation methods ordered by industry usage frequency.
 ///
 /// Determines how discount factors are interpolated between pillar points.
 /// All methods are AAD-compatible with smooth approximations.
 ///
-/// # Variants
+/// # Ordering Rationale
 ///
-/// - `LogLinear`: Linear interpolation on log(DF) - default, arbitrage-free
-/// - `LinearZeroRate`: Linear interpolation on zero rates
-/// - `CubicSpline`: Cubic spline interpolation on zero rates
-/// - `MonotonicCubic`: Monotone-preserving cubic interpolation
-/// - `FlatForward`: Piecewise constant forward rates
+/// Variants are ordered by industry usage frequency:
+/// 1. `LogLinear` - Most common, industry default for discount curves
+/// 2. `FlatForward` - Second most common, constant forward between pillars
+/// 3. `LinearZeroRate` - Simple linear interpolation on zero rates
+/// 4. `CubicSpline` - Smooth interpolation for presentation purposes
+/// 5. `MonotonicCubic` - Advanced method to prevent arbitrage
+///
+/// # Adding New Variants
+///
+/// When adding new interpolation methods, place them according to their
+/// expected industry usage frequency.
+///
+/// # Example
+///
+/// ```
+/// use pricer_models::market::calibration::bootstrapping::BootstrapInterpolation;
+///
+/// // LogLinear is the default (most commonly used)
+/// assert_eq!(BootstrapInterpolation::default(), BootstrapInterpolation::LogLinear);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum BootstrapInterpolation {
-    /// Log-linear interpolation (default).
-    ///
-    /// Interpolates linearly on log(discount_factor), which is equivalent
-    /// to assuming piecewise constant forward rates between pillars.
-    /// This is the most common method in practice.
+    /// Log-linear interpolation (default) - piecewise constant forward rates.
+    /// Most commonly used in industry for discount curve construction.
     #[default]
     LogLinear,
-
-    /// Linear interpolation on zero rates.
-    ///
-    /// Simple linear interpolation on continuously compounded zero rates.
-    /// May produce small arbitrage opportunities.
-    LinearZeroRate,
-
-    /// Cubic spline interpolation.
-    ///
-    /// Smooth interpolation using natural cubic splines on zero rates.
-    /// Provides continuous second derivatives.
-    CubicSpline,
-
-    /// Monotonic cubic interpolation.
-    ///
-    /// Uses Fritsch-Carlson or similar algorithm to ensure monotonicity
-    /// of discount factors, preventing arbitrage.
-    MonotonicCubic,
-
-    /// Flat forward interpolation.
-    ///
-    /// Assumes constant forward rate between each pair of pillars.
-    /// Produces discontinuous forward rates at pillars.
+    /// Flat forward interpolation - constant forward between pillars.
+    /// Second most common, useful for simple curve construction.
     FlatForward,
+    /// Linear interpolation on zero rates.
+    /// Simple and intuitive, but may produce non-smooth forwards.
+    LinearZeroRate,
+    /// Cubic spline interpolation on zero rates.
+    /// Produces smooth curves, primarily used for presentation.
+    CubicSpline,
+    /// Monotonic cubic interpolation - prevents arbitrage.
+    /// Ensures monotonicity of discount factors.
+    MonotonicCubic,
 }
 
 /// Configuration for yield curve bootstrapping.
-///
-/// Provides all parameters needed to control the bootstrapping process,
-/// including convergence criteria, interpolation method, and validation
-/// options.
 ///
 /// # Type Parameters
 ///
@@ -68,55 +65,32 @@ pub enum BootstrapInterpolation {
 /// ```
 /// use pricer_models::market::calibration::bootstrapping::GenericBootstrapConfig;
 ///
-/// // Use default configuration
+/// // Default configuration
 /// let config: GenericBootstrapConfig<f64> = GenericBootstrapConfig::default();
-/// assert!(config.tolerance < 1e-10);
 ///
-/// // Custom configuration
-/// let config = GenericBootstrapConfig::<f64>::builder()
-///     .tolerance(1e-14)
-///     .max_iterations(200)
-///     .build();
+/// // Fluent configuration
+/// let config = GenericBootstrapConfig::<f64>::default()
+///     .with_tolerance(1e-14)
+///     .with_max_iterations(200);
 /// ```
 #[derive(Debug, Clone)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(bound(serialize = "T: serde::Serialize", deserialize = "T: serde::Deserialize<'de>"))
+)]
 pub struct GenericBootstrapConfig<T: Float> {
-    /// Convergence tolerance for solver.
-    ///
-    /// The solver stops when the residual is below this value.
-    /// Default: 1e-12
+    /// Convergence tolerance for solver. Default: 1e-12
     pub tolerance: T,
-
-    /// Maximum number of iterations per pillar.
-    ///
-    /// If the solver doesn't converge within this limit,
-    /// it falls back to Brent method or returns an error.
-    /// Default: 100
+    /// Maximum iterations per pillar. Default: 100
     pub max_iterations: usize,
-
-    /// Interpolation method for the resulting curve.
-    ///
-    /// Determines how discount factors are interpolated between pillars.
-    /// Default: LogLinear
+    /// Interpolation method. Default: LogLinear
     pub interpolation: BootstrapInterpolation,
-
-    /// Allow extrapolation beyond pillar range.
-    ///
-    /// If true, queries outside the pillar range use flat extrapolation.
-    /// If false, such queries return an error.
-    /// Default: true
+    /// Allow extrapolation beyond pillar range. Default: true
     pub allow_extrapolation: bool,
-
-    /// Allow negative rates.
-    ///
-    /// If true, negative rates produce a warning but bootstrapping continues.
-    /// If false, negative rates cause an error.
-    /// Default: false
+    /// Allow negative rates. Default: false
     pub allow_negative_rates: bool,
-
-    /// Maximum supported maturity in years.
-    ///
-    /// Instruments with maturity beyond this value are rejected.
-    /// Default: 50.0
+    /// Maximum supported maturity in years. Default: 50.0
     pub max_maturity: T,
 }
 
@@ -137,12 +111,11 @@ impl<T: Float> GenericBootstrapConfig<T> {
     /// Create a new configuration with default values.
     pub fn new() -> Self { Self::default() }
 
-    /// Create a configuration builder for fluent construction.
+    /// Create a builder (deprecated: use `with_*` methods instead).
+    #[deprecated(since = "0.8.0", note = "Use GenericBootstrapConfig::default().with_*() instead")]
     pub fn builder() -> GenericBootstrapConfigBuilder<T> { GenericBootstrapConfigBuilder::new() }
 
-    /// Create a high-precision configuration.
-    ///
-    /// Uses tighter tolerance (1e-14) and more iterations (500).
+    /// High-precision configuration (tolerance: 1e-14, iterations: 500).
     pub fn high_precision() -> Self {
         Self {
             tolerance: from_f64(1e-14),
@@ -151,9 +124,7 @@ impl<T: Float> GenericBootstrapConfig<T> {
         }
     }
 
-    /// Create a fast configuration for interactive use.
-    ///
-    /// Uses relaxed tolerance (1e-8) and fewer iterations (50).
+    /// Fast configuration for interactive use (tolerance: 1e-8, iterations: 50).
     pub fn fast() -> Self {
         Self {
             tolerance: from_f64(1e-8),
@@ -199,9 +170,7 @@ impl<T: Float> GenericBootstrapConfig<T> {
     }
 }
 
-/// Builder for `GenericBootstrapConfig`.
-///
-/// Provides a fluent interface for constructing bootstrap configurations.
+/// Builder for `GenericBootstrapConfig` (kept for backward compatibility).
 #[derive(Debug, Clone)]
 pub struct GenericBootstrapConfigBuilder<T: Float> {
     config: GenericBootstrapConfig<T>,
@@ -261,10 +230,12 @@ impl<T: Float> Default for GenericBootstrapConfigBuilder<T> {
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
+
     use super::*;
 
     // ========================================
-    // Default Configuration Tests
+    // Default and Preset Tests
     // ========================================
 
     #[test]
@@ -277,18 +248,6 @@ mod tests {
         assert!(!config.allow_negative_rates);
         assert!((config.max_maturity - 50.0).abs() < 1e-10);
     }
-
-    #[test]
-    fn test_new_equals_default() {
-        let config1: GenericBootstrapConfig<f64> = GenericBootstrapConfig::new();
-        let config2: GenericBootstrapConfig<f64> = GenericBootstrapConfig::default();
-        assert!((config1.tolerance - config2.tolerance).abs() < 1e-17);
-        assert_eq!(config1.max_iterations, config2.max_iterations);
-    }
-
-    // ========================================
-    // Preset Configuration Tests
-    // ========================================
 
     #[test]
     fn test_high_precision_config() {
@@ -305,72 +264,76 @@ mod tests {
     }
 
     // ========================================
-    // Builder Tests
+    // Parameterized With Method Tests
+    // ========================================
+
+    #[rstest]
+    #[case(1e-14)]
+    #[case(1e-8)]
+    #[case(1e-16)]
+    fn test_with_tolerance(#[case] tol: f64) {
+        let config = GenericBootstrapConfig::<f64>::default().with_tolerance(tol);
+        assert!((config.tolerance - tol).abs() < 1e-20);
+    }
+
+    #[rstest]
+    #[case(50)]
+    #[case(200)]
+    #[case(1000)]
+    fn test_with_max_iterations(#[case] iters: usize) {
+        let config = GenericBootstrapConfig::<f64>::default().with_max_iterations(iters);
+        assert_eq!(config.max_iterations, iters);
+    }
+
+    #[rstest]
+    #[case(BootstrapInterpolation::LogLinear)]
+    #[case(BootstrapInterpolation::LinearZeroRate)]
+    #[case(BootstrapInterpolation::CubicSpline)]
+    #[case(BootstrapInterpolation::MonotonicCubic)]
+    #[case(BootstrapInterpolation::FlatForward)]
+    fn test_with_interpolation(#[case] interp: BootstrapInterpolation) {
+        let config = GenericBootstrapConfig::<f64>::default().with_interpolation(interp);
+        assert_eq!(config.interpolation, interp);
+    }
+
+    #[rstest]
+    #[case(true)]
+    #[case(false)]
+    fn test_with_extrapolation(#[case] allow: bool) {
+        let config = GenericBootstrapConfig::<f64>::default().with_extrapolation(allow);
+        assert_eq!(config.allow_extrapolation, allow);
+    }
+
+    #[rstest]
+    #[case(true)]
+    #[case(false)]
+    fn test_with_negative_rates(#[case] allow: bool) {
+        let config = GenericBootstrapConfig::<f64>::default().with_negative_rates(allow);
+        assert_eq!(config.allow_negative_rates, allow);
+    }
+
+    #[rstest]
+    #[case(30.0)]
+    #[case(75.0)]
+    #[case(100.0)]
+    fn test_with_max_maturity(#[case] mat: f64) {
+        let config = GenericBootstrapConfig::<f64>::default().with_max_maturity(mat);
+        assert!((config.max_maturity - mat).abs() < 1e-10);
+    }
+
+    // ========================================
+    // Chained Configuration Test
     // ========================================
 
     #[test]
-    fn test_builder_default() {
-        let config: GenericBootstrapConfig<f64> = GenericBootstrapConfig::builder().build();
-        assert!((config.tolerance - 1e-12).abs() < 1e-17);
-    }
-
-    #[test]
-    fn test_builder_tolerance() {
-        let config: GenericBootstrapConfig<f64> =
-            GenericBootstrapConfig::builder().tolerance(1e-14).build();
-        assert!((config.tolerance - 1e-14).abs() < 1e-19);
-    }
-
-    #[test]
-    fn test_builder_max_iterations() {
-        let config: GenericBootstrapConfig<f64> = GenericBootstrapConfig::builder()
-            .max_iterations(200)
-            .build();
-        assert_eq!(config.max_iterations, 200);
-    }
-
-    #[test]
-    fn test_builder_interpolation() {
-        let config: GenericBootstrapConfig<f64> = GenericBootstrapConfig::builder()
-            .interpolation(BootstrapInterpolation::CubicSpline)
-            .build();
-        assert_eq!(config.interpolation, BootstrapInterpolation::CubicSpline);
-    }
-
-    #[test]
-    fn test_builder_allow_extrapolation() {
-        let config: GenericBootstrapConfig<f64> = GenericBootstrapConfig::builder()
-            .allow_extrapolation(false)
-            .build();
-        assert!(!config.allow_extrapolation);
-    }
-
-    #[test]
-    fn test_builder_allow_negative_rates() {
-        let config: GenericBootstrapConfig<f64> = GenericBootstrapConfig::builder()
-            .allow_negative_rates(true)
-            .build();
-        assert!(config.allow_negative_rates);
-    }
-
-    #[test]
-    fn test_builder_max_maturity() {
-        let config: GenericBootstrapConfig<f64> = GenericBootstrapConfig::builder()
-            .max_maturity(100.0)
-            .build();
-        assert!((config.max_maturity - 100.0).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_builder_chained() {
-        let config: GenericBootstrapConfig<f64> = GenericBootstrapConfig::builder()
-            .tolerance(1e-14)
-            .max_iterations(200)
-            .interpolation(BootstrapInterpolation::MonotonicCubic)
-            .allow_extrapolation(false)
-            .allow_negative_rates(true)
-            .max_maturity(60.0)
-            .build();
+    fn test_chained_configuration() {
+        let config = GenericBootstrapConfig::<f64>::default()
+            .with_tolerance(1e-14)
+            .with_max_iterations(200)
+            .with_interpolation(BootstrapInterpolation::MonotonicCubic)
+            .with_extrapolation(false)
+            .with_negative_rates(true)
+            .with_max_maturity(60.0);
 
         assert!((config.tolerance - 1e-14).abs() < 1e-19);
         assert_eq!(config.max_iterations, 200);
@@ -381,80 +344,18 @@ mod tests {
     }
 
     // ========================================
-    // With Method Tests
+    // Legacy Builder Tests (backward compat)
     // ========================================
 
     #[test]
-    fn test_with_tolerance() {
-        let config: GenericBootstrapConfig<f64> =
-            GenericBootstrapConfig::default().with_tolerance(1e-14);
+    #[allow(deprecated)]
+    fn test_legacy_builder() {
+        let config: GenericBootstrapConfig<f64> = GenericBootstrapConfig::builder()
+            .tolerance(1e-14)
+            .max_iterations(200)
+            .build();
         assert!((config.tolerance - 1e-14).abs() < 1e-19);
-    }
-
-    #[test]
-    fn test_with_max_iterations() {
-        let config: GenericBootstrapConfig<f64> =
-            GenericBootstrapConfig::default().with_max_iterations(200);
         assert_eq!(config.max_iterations, 200);
-    }
-
-    #[test]
-    fn test_with_interpolation() {
-        let config: GenericBootstrapConfig<f64> = GenericBootstrapConfig::default()
-            .with_interpolation(BootstrapInterpolation::FlatForward);
-        assert_eq!(config.interpolation, BootstrapInterpolation::FlatForward);
-    }
-
-    #[test]
-    fn test_with_extrapolation() {
-        let config: GenericBootstrapConfig<f64> =
-            GenericBootstrapConfig::default().with_extrapolation(false);
-        assert!(!config.allow_extrapolation);
-    }
-
-    #[test]
-    fn test_with_negative_rates() {
-        let config: GenericBootstrapConfig<f64> =
-            GenericBootstrapConfig::default().with_negative_rates(true);
-        assert!(config.allow_negative_rates);
-    }
-
-    #[test]
-    fn test_with_max_maturity() {
-        let config: GenericBootstrapConfig<f64> =
-            GenericBootstrapConfig::default().with_max_maturity(75.0);
-        assert!((config.max_maturity - 75.0).abs() < 1e-10);
-    }
-
-    // ========================================
-    // Interpolation Enum Tests
-    // ========================================
-
-    #[test]
-    fn test_interpolation_default() {
-        let interp: BootstrapInterpolation = Default::default();
-        assert_eq!(interp, BootstrapInterpolation::LogLinear);
-    }
-
-    #[test]
-    fn test_interpolation_clone() {
-        let interp1 = BootstrapInterpolation::CubicSpline;
-        let interp2 = interp1.clone();
-        assert_eq!(interp1, interp2);
-    }
-
-    #[test]
-    fn test_interpolation_copy() {
-        let interp1 = BootstrapInterpolation::MonotonicCubic;
-        let interp2 = interp1; // Copy
-        assert_eq!(interp1, interp2);
-    }
-
-    #[test]
-    fn test_interpolation_debug() {
-        let interp = BootstrapInterpolation::FlatForward;
-        let debug_str = format!("{:?}", interp);
-        assert!(debug_str.contains("FlatForward"));
     }
 
     // ========================================
@@ -468,38 +369,24 @@ mod tests {
         assert_eq!(config.max_iterations, 100);
     }
 
-    #[test]
-    fn test_builder_with_f32() {
-        let config: GenericBootstrapConfig<f32> = GenericBootstrapConfig::builder()
-            .tolerance(1e-6_f32)
-            .max_iterations(50)
-            .build();
-        assert!((config.tolerance - 1e-6_f32).abs() < 1e-10);
-        assert_eq!(config.max_iterations, 50);
-    }
-
     // ========================================
-    // Clone Tests
+    // Interpolation Enum Tests
     // ========================================
 
     #[test]
-    fn test_config_clone() {
-        let config1: GenericBootstrapConfig<f64> = GenericBootstrapConfig::builder()
-            .tolerance(1e-14)
-            .max_iterations(200)
-            .build();
-        let config2 = config1.clone();
-        assert!((config1.tolerance - config2.tolerance).abs() < 1e-19);
-        assert_eq!(config1.max_iterations, config2.max_iterations);
+    fn test_interpolation_default() {
+        assert_eq!(
+            BootstrapInterpolation::default(),
+            BootstrapInterpolation::LogLinear
+        );
     }
 
     #[test]
-    fn test_builder_clone() {
-        let builder1: GenericBootstrapConfigBuilder<f64> =
-            GenericBootstrapConfig::builder().tolerance(1e-14);
-        let builder2 = builder1.clone();
-        let config1 = builder1.build();
-        let config2 = builder2.build();
-        assert!((config1.tolerance - config2.tolerance).abs() < 1e-19);
+    fn test_interpolation_clone_copy() {
+        let interp1 = BootstrapInterpolation::CubicSpline;
+        let interp2 = interp1; // Copy
+        let interp3 = interp1.clone();
+        assert_eq!(interp1, interp2);
+        assert_eq!(interp1, interp3);
     }
 }

@@ -22,7 +22,7 @@ exotic = ["equity"]  # Exotic products typically extend equity derivatives
 all = ["equity", "rates", "credit", "fx", "commodity", "exotic"]
 
 # Serialisation support
-serde = ["dep:serde", "pricer_core/serde", "infra_master/serde"]
+serde = ["dep:serde", "dep:serde_json", "pricer_core/serde", "infra_master/serde"]
 
 # AD (Automatic Differentiation) support - forwards to pricer_core
 num-dual-mode = ["pricer_core/num-dual-mode"]
@@ -36,16 +36,26 @@ infra_master = { path = "../infra_master" }
 num-traits.workspace = true
 chrono.workspace = true
 serde = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
 thiserror.workspace = true
 rayon = { workspace = true, optional = true }
+lru.workspace = true
+ordered-float.workspace = true
+parking_lot.workspace = true
 
 [dev-dependencies]
 approx.workspace = true
 proptest.workspace = true
 criterion = { workspace = true, features = ["html_reports"] }
+serde_json.workspace = true
+rstest.workspace = true
 
 [[bench]]
 name = "models"
+harness = false
+
+[[bench]]
+name = "curve_bootstrap"
 harness = false
 
 [lints]
