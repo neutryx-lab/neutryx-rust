@@ -39,8 +39,10 @@
 //! - Differentiable smoothing functions (`math::smoothing`)
 //! - Dual number type integration (`types::dual`)
 //! - Traits for pricing and differentiability (`traits`)
-//! - Time types: `Date`, `DayCountConvention` (`types::time`)
-//! - Currency types: `Currency` (`types::currency`)
+//! - Time types: `Date`, `DayCounter`, `BusinessDayConvention` (re-exported from
+//!   `infra_master`)
+//! - Currency types: `Currency` (re-exported from `infra_master`)
+//! - Convenience: `DayCountConvention` wrapper for common day count conventions
 //! - Error types: `PricingError`, `DateError`, `CurrencyError` (`types::error`)
 //!
 //! ## Zero Dependency Principle
@@ -49,7 +51,7 @@
 //! dependencies:
 //! - num-traits: Traits for generic numerical computation
 //! - num-dual: Dual number types and automatic differentiation (optional)
-//! - chrono: Date arithmetic
+//! - infra_master: Authoritative source for Date, Currency, DayCounter
 //! - serde: Serialisation support (optional)
 //!
 //! ## Stable Rust Toolchain
@@ -61,15 +63,14 @@
 //!
 //! ```rust
 //! use pricer_core::math::smoothing::smooth_max;
-//! use pricer_core::types::{Date, Currency};
-//! use infra_master::time::DayCounter;
+//! use pricer_core::types::{Date, Currency, DayCounter};
 //!
-//! // Date operations
+//! // Date operations (Date is re-exported from infra_master)
 //! let start = Date::from_ymd(2024, 1, 1).unwrap();
 //! let end = Date::from_ymd(2024, 7, 1).unwrap();
-//! let year_fraction = DayCounter::ActualActualIsda.year_fraction(start, end);
+//! let year_fraction = DayCounter::Actual365Fixed.year_fraction(start, end);
 //!
-//! // Currency information
+//! // Currency information (Currency is re-exported from infra_master)
 //! let usd = Currency::USD;
 //! assert_eq!(usd.code(), "USD");
 //! assert_eq!(usd.decimal_places(), 2);
@@ -84,8 +85,7 @@
 //! - `num-dual-mode` (default): Use num-dual for automatic differentiation
 //!   (verification mode)
 //! - `enzyme-mode`: Use f64 directly (Enzyme handles AD at LLVM level)
-//! - `serde` (default): Enable serialisation for Date, Currency,
-//!   DayCountConvention
+//! - `serde` (default): Enable serialisation for Date, Currency, DayCounter
 
 #![deny(missing_docs)]
 #![deny(rustdoc::broken_intra_doc_links)]

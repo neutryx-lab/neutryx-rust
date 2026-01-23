@@ -12,6 +12,7 @@
 //! - Subscription: Clients can subscribe to specific trade graph updates (Task
 //!   4.3)
 
+pub mod error;
 pub mod handlers;
 pub mod jobs;
 pub mod market_data;
@@ -22,6 +23,7 @@ pub mod openapi;
 pub mod pricer_types;
 pub mod scenario_handlers;
 pub mod schedule_utils;
+pub mod state;
 pub mod trade_handlers;
 pub mod trade_types;
 pub mod websocket;

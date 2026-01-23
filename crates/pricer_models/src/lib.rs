@@ -51,10 +51,8 @@ mod direction_ext;
 pub mod market;
 pub mod models;
 
-// Re-export direction types from infra_master
-// Re-export extension traits for direction types
+// Re-export extension traits for direction types (infra_master types not re-exported)
 pub use direction_ext::{SwapDirectionExt, TradeDirectionExt};
-pub use infra_master::{SwapDirection, TradeDirection};
 
 #[cfg(test)]
 mod tests {

@@ -19,6 +19,7 @@ use pricer_core::math::numeric::from_f64;
 /// - `MonotonicCubic`: Monotone-preserving cubic interpolation
 /// - `FlatForward`: Piecewise constant forward rates
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum BootstrapInterpolation {
     /// Log-linear interpolation (default).
     ///
@@ -79,6 +80,11 @@ pub enum BootstrapInterpolation {
 ///     .build();
 /// ```
 #[derive(Debug, Clone)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(bound(serialize = "T: serde::Serialize", deserialize = "T: serde::Deserialize<'de>"))
+)]
 pub struct GenericBootstrapConfig<T: Float> {
     /// Convergence tolerance for solver.
     ///

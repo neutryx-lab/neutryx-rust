@@ -23,8 +23,11 @@ mod cache;
 mod config;
 mod curve;
 mod curve_builder;
+mod curve_config;
 mod date_utils;
+mod definition;
 mod engine;
+mod engine_error;
 mod error;
 mod instrument;
 mod multi_curve;
@@ -36,12 +39,13 @@ pub use adjoint_solver::{
 };
 pub use cache::{BootstrapCache, BufferPool, CurveCache, InterpolationIndices};
 pub use config::{BootstrapInterpolation, GenericBootstrapConfig, GenericBootstrapConfigBuilder};
+pub use curve_config::{CurveConfig, CurveConfigBuilder};
 pub use curve::{BootstrappedCurve, BootstrappedCurveBuilder};
+pub use definition::{CurveDefinition, CurveInstrumentType, InstrumentSpec, InstrumentTenor};
 pub use curve_builder::{BootstrapConfig, CurveBootstrapper, InterpolationMethod};
-pub use date_utils::{
-    BusinessDayAdjustment, DateCalculator, DateCalculatorBuilder, DayCount, SpotDateConvention,
-};
+pub use date_utils::{DateCalculator, DateCalculatorBuilder, SpotDateConvention};
 pub use engine::{CachedBootstrapper, GenericBootstrapResult, SequentialBootstrapper};
+pub use engine_error::{CurveEngineError, CurveParameterRepresentation};
 pub use error::BootstrapError;
 pub use instrument::{BootstrapInstrument, Frequency};
 pub use multi_curve::{CurveSet, MultiCurveBuilder, ParallelCurveSetBuilder, Tenor};

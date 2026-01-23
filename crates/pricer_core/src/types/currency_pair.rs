@@ -6,7 +6,8 @@
 //! # Examples
 //!
 //! ```
-//! use pricer_core::types::{Currency, CurrencyPair};
+//! use infra_master::Currency;
+//! use pricer_core::types::CurrencyPair;
 //!
 //! // Create a USD/JPY currency pair
 //! let pair = CurrencyPair::new(Currency::USD, Currency::JPY, 150.0).unwrap();
@@ -22,10 +23,8 @@
 
 use std::fmt;
 
-use infra_master::Currency;
+use infra_master::{Currency, CurrencyError};
 use num_traits::Float;
-
-use super::error::CurrencyError;
 
 /// A currency pair for foreign exchange calculations.
 ///
@@ -39,7 +38,8 @@ use super::error::CurrencyError;
 /// # Examples
 ///
 /// ```
-/// use pricer_core::types::{Currency, CurrencyPair};
+/// use infra_master::Currency;
+/// use pricer_core::types::CurrencyPair;
 ///
 /// // EUR/USD = 1.10 means 1 EUR = 1.10 USD
 /// let eurusd = CurrencyPair::new(Currency::EUR, Currency::USD, 1.10).unwrap();
@@ -73,7 +73,8 @@ impl<T: Float> CurrencyPair<T> {
     /// # Examples
     ///
     /// ```
-    /// use pricer_core::types::{Currency, CurrencyPair};
+    /// use infra_master::Currency;
+/// use pricer_core::types::CurrencyPair;
     ///
     /// let pair = CurrencyPair::new(Currency::EUR, Currency::USD, 1.10).unwrap();
     /// assert_eq!(pair.spot(), 1.10);
@@ -93,7 +94,8 @@ impl<T: Float> CurrencyPair<T> {
     /// # Examples
     ///
     /// ```
-    /// use pricer_core::types::{Currency, CurrencyPair};
+    /// use infra_master::Currency;
+/// use pricer_core::types::CurrencyPair;
     ///
     /// let pair = CurrencyPair::new(Currency::EUR, Currency::USD, 1.10).unwrap();
     /// assert_eq!(pair.base(), Currency::EUR);
@@ -106,7 +108,8 @@ impl<T: Float> CurrencyPair<T> {
     /// # Examples
     ///
     /// ```
-    /// use pricer_core::types::{Currency, CurrencyPair};
+    /// use infra_master::Currency;
+/// use pricer_core::types::CurrencyPair;
     ///
     /// let pair = CurrencyPair::new(Currency::EUR, Currency::USD, 1.10).unwrap();
     /// assert_eq!(pair.quote(), Currency::USD);
@@ -119,7 +122,8 @@ impl<T: Float> CurrencyPair<T> {
     /// # Examples
     ///
     /// ```
-    /// use pricer_core::types::{Currency, CurrencyPair};
+    /// use infra_master::Currency;
+/// use pricer_core::types::CurrencyPair;
     ///
     /// let pair = CurrencyPair::new(Currency::EUR, Currency::USD, 1.10).unwrap();
     /// assert_eq!(pair.spot(), 1.10);
@@ -132,7 +136,8 @@ impl<T: Float> CurrencyPair<T> {
     /// # Examples
     ///
     /// ```
-    /// use pricer_core::types::{Currency, CurrencyPair};
+    /// use infra_master::Currency;
+/// use pricer_core::types::CurrencyPair;
     ///
     /// let pair = CurrencyPair::new(Currency::EUR, Currency::USD, 1.10).unwrap();
     /// assert_eq!(pair.code(), "EUR/USD");
@@ -152,7 +157,8 @@ impl<T: Float> CurrencyPair<T> {
     /// # Examples
     ///
     /// ```
-    /// use pricer_core::types::{Currency, CurrencyPair};
+    /// use infra_master::Currency;
+/// use pricer_core::types::CurrencyPair;
     ///
     /// let mut pair = CurrencyPair::new(Currency::EUR, Currency::USD, 1.10).unwrap();
     /// pair.set_spot(1.15).unwrap();
@@ -173,7 +179,8 @@ impl<T: Float> CurrencyPair<T> {
     /// # Examples
     ///
     /// ```
-    /// use pricer_core::types::{Currency, CurrencyPair};
+    /// use infra_master::Currency;
+/// use pricer_core::types::CurrencyPair;
     ///
     /// let eurusd: CurrencyPair<f64> = CurrencyPair::new(Currency::EUR, Currency::USD, 1.10).unwrap();
     /// let usdeur = eurusd.invert();
@@ -203,7 +210,8 @@ impl<T: Float> CurrencyPair<T> {
     /// # Examples
     ///
     /// ```
-    /// use pricer_core::types::{Currency, CurrencyPair};
+    /// use infra_master::Currency;
+/// use pricer_core::types::CurrencyPair;
     ///
     /// // EUR/USD = 1.10
     /// let pair: CurrencyPair<f64> = CurrencyPair::new(Currency::EUR, Currency::USD, 1.10).unwrap();
@@ -228,7 +236,8 @@ impl<T: Float> CurrencyPair<T> {
     /// # Examples
     ///
     /// ```
-    /// use pricer_core::types::{Currency, CurrencyPair};
+    /// use infra_master::Currency;
+/// use pricer_core::types::CurrencyPair;
     ///
     /// // EUR/USD = 1.10
     /// let pair: CurrencyPair<f64> = CurrencyPair::new(Currency::EUR, Currency::USD, 1.10).unwrap();
@@ -245,7 +254,8 @@ impl<T: Float> CurrencyPair<T> {
     /// # Examples
     ///
     /// ```
-    /// use pricer_core::types::{Currency, CurrencyPair};
+    /// use infra_master::Currency;
+/// use pricer_core::types::CurrencyPair;
     ///
     /// let pair = CurrencyPair::new(Currency::EUR, Currency::USD, 1.10).unwrap();
     /// assert!(pair.contains(Currency::EUR));

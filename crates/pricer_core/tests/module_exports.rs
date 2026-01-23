@@ -2,6 +2,10 @@
 //!
 //! Task 8.1: Verify that all public modules and types are correctly exported
 //! and accessible via absolute paths.
+//!
+//! Note: Tests for infra_master types (Date, Currency, DayCounter,
+//! BusinessDayConvention) should be in infra_master crate. This file tests
+//! pricer_core-specific exports only.
 
 use chrono::NaiveDate;
 
@@ -47,48 +51,6 @@ fn test_traits_module_exports() {
     assert_eq!(generic_sqrt(4.0_f64), 2.0);
 }
 
-/// Test that types module is accessible via absolute path.
-#[test]
-fn test_types_module_exports() {
-    use pricer_core::types::time::{
-        time_to_maturity, time_to_maturity_dates, Date, DayCountConvention,
-    };
-
-    // Test Date
-    let start = Date::from_ymd(2024, 1, 1).unwrap();
-    let end = Date::from_ymd(2024, 7, 1).unwrap();
-
-    assert_eq!(start.year(), 2024);
-    assert_eq!(start.month(), 1);
-    assert_eq!(start.day(), 1);
-
-    // Test DayCountConvention (using local pricer_core definition)
-    let act_365 = DayCountConvention::ActualActual365;
-    let yf = act_365.year_fraction_dates(start, end);
-    assert!((yf - 0.4986).abs() < 0.001);
-
-    // Test time_to_maturity functions
-    let start_naive = NaiveDate::from_ymd_opt(2024, 1, 1).unwrap();
-    let end_naive = NaiveDate::from_ymd_opt(2024, 7, 1).unwrap();
-    let ttm = time_to_maturity(start_naive, end_naive);
-    assert!((ttm - 0.4986).abs() < 0.001);
-
-    let ttm_dates = time_to_maturity_dates(start, end);
-    assert!((ttm_dates - 0.4986).abs() < 0.001);
-}
-
-/// Test that types re-exports work at module level.
-#[test]
-fn test_types_reexports() {
-    use pricer_core::types::{Currency, CurrencyPair, Date, PricingError};
-
-    // Verify re-exports work (using infra_master types)
-    let _usd = Currency::USD;
-    let _date = Date::from_ymd(2024, 6, 15).unwrap();
-    let _pair: CurrencyPair<f64> = CurrencyPair::new(Currency::EUR, Currency::USD, 1.10).unwrap();
-    let _err = PricingError::InvalidInput("test".to_string());
-}
-
 /// Test that DualNumber type is accessible when feature is enabled.
 #[cfg(feature = "num-dual-mode")]
 #[test]
@@ -110,9 +72,9 @@ fn test_math_module_structure() {
 }
 
 /// Test that all DayCountConvention variants are accessible.
+/// Note: This tests pricer_core's own DayCountConvention type, not infra_master's.
 #[test]
 fn test_day_count_convention_variants() {
-    // Test local pricer_core DayCountConvention variants
     use pricer_core::types::time::DayCountConvention;
 
     let conventions = [
@@ -127,85 +89,50 @@ fn test_day_count_convention_variants() {
     }
 }
 
-/// Test that error types are accessible and work correctly.
+/// Test that pricer_core-specific error types are accessible.
 #[test]
 fn test_error_types_exports() {
-    use pricer_core::types::error::{
-        CurrencyError, DateError, InterpolationError, PricingError, SolverError,
-    };
+    use pricer_core::types::error::{InterpolationError, PricingError, SolverError};
 
     // Verify error types can be created
     let _pricing_err = PricingError::InvalidInput("test".to_string());
-    let _date_err = DateError::InvalidDate {
-        year: 2024,
-        month: 13,
-        day: 1,
-    };
-    let _currency_err = CurrencyError::UnknownCurrency("XXX".to_string());
     let _interp_err = InterpolationError::InsufficientData { got: 1, need: 2 };
     let _solver_err = SolverError::MaxIterationsExceeded { iterations: 100 };
 }
 
-/// Test that Currency enum variants are accessible.
+/// Test that CurrencyPair is accessible.
 #[test]
-fn test_currency_exports() {
-    use pricer_core::types::Currency;
+fn test_currency_pair_exports() {
+    use infra_master::Currency;
+    use pricer_core::types::CurrencyPair;
 
-    let currencies = [
-        Currency::USD,
-        Currency::EUR,
-        Currency::GBP,
-        Currency::JPY,
-        Currency::CHF,
-    ];
-
-    for currency in &currencies {
-        let code = currency.code();
-        assert_eq!(code.len(), 3);
-    }
+    let pair: CurrencyPair<f64> = CurrencyPair::new(Currency::EUR, Currency::USD, 1.10).unwrap();
+    assert_eq!(pair.base(), Currency::EUR);
+    assert_eq!(pair.quote(), Currency::USD);
 }
 
-/// Test chrono integration with time module.
+/// Test time module exports (pricer_core-specific utilities).
 #[test]
-fn test_chrono_integration() {
-    use chrono::NaiveDate;
-    use pricer_core::types::time::{time_to_maturity, DayCountConvention};
+fn test_time_module_exports() {
+    use pricer_core::types::time::{time_to_maturity, time_to_maturity_dates, DayCountConvention};
 
-    let start = NaiveDate::from_ymd_opt(2024, 1, 1).unwrap();
-    let end = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();
+    // Test time_to_maturity with NaiveDate
+    let start_naive = NaiveDate::from_ymd_opt(2024, 1, 1).unwrap();
+    let end_naive = NaiveDate::from_ymd_opt(2024, 7, 1).unwrap();
+    let ttm = time_to_maturity(start_naive, end_naive);
+    assert!((ttm - 0.4986).abs() < 0.001);
 
-    // Test with NaiveDate directly
-    let ttm = time_to_maturity(start, end);
-    assert!(ttm > 0.0);
+    // Test time_to_maturity_dates with Date
+    use infra_master::Date;
+    let start = Date::from_ymd(2024, 1, 1).unwrap();
+    let end = Date::from_ymd(2024, 7, 1).unwrap();
+    let ttm_dates = time_to_maturity_dates(start, end);
+    assert!((ttm_dates - 0.4986).abs() < 0.001);
 
-    // Test year_fraction with NaiveDate
-    let yf = DayCountConvention::ActualActual365.year_fraction(start, end);
-    assert_eq!(ttm, yf);
+    // Test DayCountConvention year_fraction
+    let yf = DayCountConvention::ActualActual365.year_fraction(start_naive, end_naive);
+    assert!((yf - ttm).abs() < 1e-10);
 }
-
-/// Test that BusinessDayConvention is accessible.
-#[test]
-fn test_business_day_convention_exports() {
-    use pricer_core::types::time::BusinessDayConvention;
-
-    let conventions = [
-        BusinessDayConvention::Following,
-        BusinessDayConvention::ModifiedFollowing,
-        BusinessDayConvention::Preceding,
-        BusinessDayConvention::ModifiedPreceding,
-        BusinessDayConvention::Unadjusted,
-    ];
-
-    for conv in &conventions {
-        let name = conv.name();
-        let code = conv.code();
-        assert!(!name.is_empty());
-        assert!(!code.is_empty());
-    }
-}
-
-// NOTE: market_data module has been moved to pricer_models::market
-// Tests for market data should be in pricer_models crate
 
 /// Test interpolator module exports.
 #[test]
@@ -242,9 +169,8 @@ fn test_solver_exports() {
 #[test]
 fn test_main_module_structure() {
     // Verify main module paths
-    use pricer_core::{math, types};
+    use pricer_core::math;
 
     // These should compile if modules are properly exported
     let _ = math::smoothing::smooth_max(1.0_f64, 2.0, 1e-6);
-    let _ = types::Date::from_ymd(2024, 1, 1);
 }

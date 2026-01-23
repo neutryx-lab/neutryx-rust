@@ -28,8 +28,7 @@
 //! - [`time`]: Date handling, calendars, day count conventions, periods,
 //!   frequency
 //! - [`market`]: Currency definitions, rate indices
-//! - [`trade`]: Trade representation, legs, cashflows, directions
-//! - [`convention`]: Market conventions for various instruments
+//! - [`trade`]: Trade representation, legs, cashflows, directions, conventions
 //! - [`counterparty`]: Counterparty, CSA, netting set management
 //!
 //! ## Example
@@ -50,7 +49,6 @@
 //! ```
 
 // Core modules
-pub mod convention;
 pub mod counterparty;
 pub mod market;
 pub mod time;
