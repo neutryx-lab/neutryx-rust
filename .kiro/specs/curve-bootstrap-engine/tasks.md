@@ -59,20 +59,20 @@
   - スキーマバリデーションを実装
   - _Requirements: 1.5, 10.1, 10.2, 10.3, 10.4, 10.5, 10.6_
 
-- [ ] 4. Instrument変換アダプターの実装
-- [ ] 4.1 OISとIRS Instrumentの変換を実装する
+- [x] 4. Instrument変換アダプターの実装
+- [x] 4.1 OISとIRS Instrumentの変換を実装する
   - `infra_master::trade::convention::SwapConvention`からOIS用`BootstrapInstrument`を生成
   - IRS用にFixed LegとFloat Legのキャッシュフロースケジュールを`infra_master::trade::Cashflow`で展開
   - コンベンション（DayCount, BDC, PaymentFrequency）を適用
   - _Requirements: 3.1, 3.2, 3.3_
 
-- [ ] 4.2 FRAとFuture Instrumentの変換を実装する
+- [x] 4.2 FRAとFuture Instrumentの変換を実装する
   - FRA定義から期間（start, end）とレートを抽出
   - Future定義から価格と満期を抽出しConvexity調整を適用
   - Instrument定義が不完全な場合に`IncompleteInstrumentDefinition`エラーを返す
   - _Requirements: 3.4, 3.5, 3.6_
 
-- [ ] 4.3 統合変換メソッドを実装する
+- [x] 4.3 統合変換メソッドを実装する
   - CurveDefinitionとレート配列からBootstrapInstrumentリストを生成
   - レート配列とInstrument定義の整合性を検証
   - 生成されたInstrumentの満期が正順であることを保証

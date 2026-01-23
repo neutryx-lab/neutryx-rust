@@ -18,6 +18,7 @@
 //! computes sensitivities using the implicit function theorem,
 //! avoiding recording solver iterations in the AD tape.
 
+mod adapter;
 mod adjoint_solver;
 mod cache;
 mod config;
@@ -31,8 +32,10 @@ mod engine_error;
 mod error;
 mod instrument;
 mod multi_curve;
+mod result_cache;
 mod sensitivity;
 
+pub use adapter::InstrumentAdapter;
 pub use adjoint_solver::{
     compute_adjoint_contribution, AdjointSolver, AdjointSolverConfig, SolveResult,
     SolveResultWithSensitivities, SolverType,
@@ -49,6 +52,7 @@ pub use engine_error::{CurveEngineError, CurveParameterRepresentation};
 pub use error::BootstrapError;
 pub use instrument::{BootstrapInstrument, Frequency};
 pub use multi_curve::{CurveSet, MultiCurveBuilder, ParallelCurveSetBuilder, Tenor};
+pub use result_cache::{CacheStats, CurveKey, CurveResultCache};
 pub use sensitivity::{
     BootstrapResultWithSensitivities, SensitivityBootstrapper, SensitivityVerification,
 };

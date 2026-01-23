@@ -161,6 +161,8 @@ impl DateCalculator {
             BusinessDayConvention::Preceding => self.preceding(date),
             BusinessDayConvention::ModifiedPreceding => self.modified_preceding(date),
             BusinessDayConvention::Unadjusted => date,
+            // Non-exhaustive enum: fallback to modified following for unknown variants
+            _ => self.modified_following(date),
         }
     }
 

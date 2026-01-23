@@ -3,7 +3,7 @@
 //! This module provides netting set definitions for grouping trades
 //! and managing collateral agreements.
 
-use pricer_core::types::Currency;
+use infra_master::Currency;
 
 use super::{
     error::PortfolioError,
@@ -19,7 +19,7 @@ use super::{
 ///
 /// ```
 /// use pricer_risk::portfolio::CollateralAgreement;
-/// use pricer_core::types::Currency;
+/// use infra_master::Currency;
 ///
 /// let csa = CollateralAgreement::new(
 ///     1_000_000.0,  // threshold

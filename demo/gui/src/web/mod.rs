@@ -13,7 +13,6 @@
 //!   4.3)
 
 pub mod error;
-pub mod handlers;
 pub mod jobs;
 pub mod market_data;
 pub mod market_handlers;
@@ -27,6 +26,13 @@ pub mod state;
 pub mod trade_handlers;
 pub mod trade_types;
 pub mod websocket;
+
+// Legacy handlers module (being gradually migrated)
+#[path = "handlers.rs"]
+pub mod handlers;
+
+// New modular handlers (migration in progress)
+pub mod handlers_v2;
 
 use std::{
     collections::HashSet,

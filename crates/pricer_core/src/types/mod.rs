@@ -5,7 +5,7 @@
 //!   differentiation (when `num-dual-mode` feature is enabled)
 //! - `time`: Time utilities (`DayCountConvention`, `time_to_maturity`) for
 //!   financial calculations
-//! - `currency_pair`: Currency pair types for FX calculations
+//! - `currency_pair`: FX rate types for foreign exchange calculations
 //! - `error`: Structured error types for pricing, interpolation, solver, and
 //!   calibration operations
 //!
@@ -21,7 +21,9 @@ pub mod error;
 pub mod time;
 
 // Re-export pricer_core-specific types
+#[allow(deprecated)]
 pub use currency_pair::CurrencyPair;
+pub use currency_pair::FxRate;
 pub use error::{
     CalibrationError, CalibrationErrorKind, InterpolationError, PricingError, SolverError,
 };

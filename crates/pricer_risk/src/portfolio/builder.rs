@@ -26,7 +26,7 @@ use super::{
 ///     PortfolioBuilder, Trade, TradeId, Counterparty, CounterpartyId,
 ///     NettingSet, NettingSetId, CreditParams,
 /// };
-/// use pricer_core::types::Currency;
+/// use infra_master::Currency;
 /// use infra_master::trade::{
 ///     PricingInstrument, VanillaOption, InstrumentParams, PayoffType, ExerciseStyle,
 /// };
@@ -229,7 +229,7 @@ mod tests {
     use infra_master::trade::{
         ExerciseStyle, InstrumentParams, PayoffType, PricingInstrument, VanillaOption,
     };
-    use pricer_core::types::Currency;
+    use infra_master::Currency;
 
     use super::*;
     use crate::portfolio::counterparty::CreditParams;

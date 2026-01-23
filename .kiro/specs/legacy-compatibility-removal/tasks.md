@@ -36,46 +36,47 @@
   - re-export に言及するコメントを修正
   - _Requirements: 3.3_
 
-- [ ] 4. 責務外テストの削除
-- [ ] 4.1 module_exports.rs から責務違反テスト関数を削除
+- [x] 4. 責務外テストの削除
+- [x] 4.1 module_exports.rs から責務違反テスト関数を削除
   - infra_master 型をテストするテスト関数を削除
   - pricer_core 独自機能のテストは保持
   - 削除後にファイルが空になる場合はファイル自体を削除
   - _Requirements: 4.1, 4.2_
 
-- [ ] 4.2 テストファイルのインポート修正
+- [x] 4.2 テストファイルのインポート修正
   - 削除に伴い不要になったインポートを整理
   - 残存テストに必要なインポートを確認
   - _Requirements: 4.3_
 
-- [ ] 5. pricer_models 重複型定義の削除
-- [ ] 5.1 BusinessDayAdjustment enum を削除し infra_master 型に置換
+- [x] 5. pricer_models 重複型定義の削除
+- [x] 5.1 BusinessDayAdjustment enum を削除し infra_master 型に置換
   - date_utils.rs から BusinessDayAdjustment 定義を削除
   - DateCalculator で BusinessDayConvention を使用するよう修正
   - Following, ModifiedFollowing, Preceding のマッピングを適用
   - _Requirements: 5.1, 5.2, 5.5_
 
-- [ ] 5.2 DayCount enum を削除し infra_master 型に置換
+- [x] 5.2 DayCount enum を削除し infra_master 型に置換
   - date_utils.rs から DayCount 定義を削除
   - DateCalculator で DayCounter を使用するよう修正
   - Act360 → Actual360, Act365Fixed → Actual365Fixed, Thirty360 → Thirty360Bond のマッピングを適用
   - _Requirements: 5.3, 5.4, 5.5_
 
-- [ ] 5.3 bootstrapping モジュールの re-export を更新
+- [x] 5.3 bootstrapping モジュールの re-export を更新
   - mod.rs から削除された型の re-export を除去
   - SpotDateConvention は保持
   - _Requirements: 5.6_
 
-- [ ] 6. CurrencyPair を FxRate にリネーム
-- [ ] 6.1 currency_pair.rs で CurrencyPair<T> を FxRate<T> にリネーム
+- [x] 6. CurrencyPair を FxRate にリネーム
+- [x] 6.1 currency_pair.rs で CurrencyPair<T> を FxRate<T> にリネーム
   - 構造体名を変更
   - 関連する impl ブロックと trait 実装を更新
   - ドキュメントコメントで infra_master::CurrencyPair との違いを明記
+  - deprecated 型エイリアス CurrencyPair<T> = FxRate<T> を追加（後方互換性）
   - _Requirements: 6.1, 6.2, 6.4_
 
-- [ ] 6.2 FxRate への参照を全箇所で更新
+- [x] 6.2 FxRate への参照を全箇所で更新
   - pricer_core 内の全参照を新しい名前に更新
-  - テストコードの参照も更新
+  - テストコードは deprecated エイリアス経由で互換性維持
   - _Requirements: 6.3_
 
 - [ ] 10. ID Newtype パターンの統一（Stringly Typed 解消）

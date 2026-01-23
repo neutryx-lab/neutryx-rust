@@ -39,6 +39,9 @@ serde = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
 thiserror.workspace = true
 rayon = { workspace = true, optional = true }
+lru.workspace = true
+ordered-float.workspace = true
+parking_lot.workspace = true
 
 [dev-dependencies]
 approx.workspace = true

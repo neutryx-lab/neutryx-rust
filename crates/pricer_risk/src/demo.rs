@@ -38,7 +38,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use pricer_core::types::Currency;
+use infra_master::Currency;
 use pricer_models::demo::{
     BlackScholes, CmsSwap, CurveEnum, FlatCurve, InstrumentEnum, ModelEnum, SabrVolSurface,
     VanillaSwap, VolSurfaceEnum,

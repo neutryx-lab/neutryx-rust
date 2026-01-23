@@ -107,6 +107,11 @@ criterion = "0.5"
 # System
 num_cpus = "1.16"
 
+# Caching
+lru = "0.12"
+ordered-float = "4.0"
+parking_lot = "0.12"
+
 [profile.release]
 lto = true
 codegen-units = 1
