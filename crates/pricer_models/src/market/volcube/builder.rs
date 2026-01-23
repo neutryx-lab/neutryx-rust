@@ -125,9 +125,7 @@ impl<T: Float> VolCubeBuilder<T> {
 
         // すべてのInstrumentを検証
         for instrument in &self.instruments {
-            instrument
-                .validate()
-                .map_err(VolCubeError::invalid_input)?;
+            instrument.validate().map_err(VolCubeError::invalid_input)?;
         }
 
         // キャッシュキーを生成

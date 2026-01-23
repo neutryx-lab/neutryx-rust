@@ -52,7 +52,7 @@ pub use curves::{
     FlatHazardRateCurve, HazardRateCurve, InterpolatedCurve, YieldCurve,
 };
 pub use error::MarketDataError;
-pub use fx_density::{DeltaType, FxDensityCalculator};
+pub use fx_density::{DeltaType, DensityStatistics, FxDensityCalculator};
 pub use provider::MarketProvider;
 pub use surfaces::{
     FlatVol, FxDeltaPoint, FxVolatilitySurface, InterpolatedVolSurface, VolSurfaceEnum,

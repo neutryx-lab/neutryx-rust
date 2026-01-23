@@ -2394,6 +2394,549 @@ pub struct ScenarioCompareResponse {
 }
 
 // =============================================================================
+// GenericPricer API Types (demo-webapp-pricer Task 1.1, 1.2)
+// =============================================================================
+
+/// Direction enum for leg payments.
+///
+/// Maps to GenericPricer's Direction type.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum DirectionInput {
+    /// Payer: pays this leg's cashflows (negative NPV contribution).
+    Payer,
+    /// Receiver: receives this leg's cashflows (positive NPV contribution).
+    Receiver,
+}
+
+impl Default for DirectionInput {
+    fn default() -> Self { Self::Receiver }
+}
+
+/// Supported currencies for GenericPricer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum CurrencyInput {
+    /// US Dollar
+    USD,
+    /// Euro
+    EUR,
+    /// Japanese Yen
+    JPY,
+    /// British Pound
+    GBP,
+}
+
+impl Default for CurrencyInput {
+    fn default() -> Self { Self::USD }
+}
+
+impl CurrencyInput {
+    /// Returns the ISO 4217 currency code.
+    pub fn code(&self) -> &'static str {
+        match self {
+            Self::USD => "USD",
+            Self::EUR => "EUR",
+            Self::JPY => "JPY",
+            Self::GBP => "GBP",
+        }
+    }
+}
+
+/// Cashflow input for GenericPricer.
+///
+/// Represents a single cashflow in a leg.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CashflowInput {
+    /// Payment date in "YYYY-MM-DD" format or days since epoch (2000-01-01).
+    pub payment_date: String,
+    /// Cashflow amount.
+    pub amount: f64,
+}
+
+/// Leg input for GenericPricer.
+///
+/// Represents a leg containing multiple cashflows.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LegInput {
+    /// Currency of the leg.
+    pub currency: CurrencyInput,
+    /// Direction of the leg (payer or receiver).
+    pub direction: DirectionInput,
+    /// Cashflows in the leg.
+    pub cashflows: Vec<CashflowInput>,
+}
+
+/// Model configuration input for GenericPricer.
+///
+/// Optional Monte Carlo simulation parameters.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelConfigInput {
+    /// Number of simulation paths (default: 10,000).
+    #[serde(default = "default_num_paths")]
+    pub num_paths: usize,
+    /// Number of time steps per path (default: 100).
+    #[serde(default = "default_num_steps")]
+    pub num_steps: usize,
+    /// Random seed for reproducibility (optional).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub seed: Option<u64>,
+}
+
+fn default_num_paths() -> usize { 10_000 }
+
+fn default_num_steps() -> usize { 100 }
+
+/// Request for GenericPricer pricing endpoint.
+///
+/// POST /api/pricer/price
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GenericPricerRequest {
+    /// Legs to price.
+    pub legs: Vec<LegInput>,
+    /// Valuation date in "YYYY-MM-DD" format or days since epoch.
+    pub valuation_date: String,
+    /// Reporting currency for PV output.
+    pub reporting_currency: CurrencyInput,
+    /// Optional model configuration.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model_config: Option<ModelConfigInput>,
+}
+
+/// Validation error for GenericPricer request.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PricerValidationError {
+    /// Field name that failed validation.
+    pub field: String,
+    /// Error message.
+    pub message: String,
+}
+
+impl GenericPricerRequest {
+    /// Validates the request parameters.
+    ///
+    /// Returns a list of validation errors if any.
+    pub fn validate(&self) -> Vec<PricerValidationError> {
+        let mut errors = Vec::new();
+
+        // Validate legs
+        if self.legs.is_empty() {
+            errors.push(PricerValidationError {
+                field: "legs".to_string(),
+                message: "At least one leg is required".to_string(),
+            });
+        }
+
+        for (i, leg) in self.legs.iter().enumerate() {
+            if leg.cashflows.is_empty() {
+                errors.push(PricerValidationError {
+                    field: format!("legs[{}].cashflows", i),
+                    message: "At least one cashflow is required per leg".to_string(),
+                });
+            }
+        }
+
+        // Validate valuation date format
+        if !is_valid_date_format(&self.valuation_date) {
+            errors.push(PricerValidationError {
+                field: "valuationDate".to_string(),
+                message: "Invalid date format. Use YYYY-MM-DD or days since epoch".to_string(),
+            });
+        }
+
+        // Validate model config if provided
+        if let Some(ref config) = self.model_config {
+            if config.num_paths == 0 {
+                errors.push(PricerValidationError {
+                    field: "modelConfig.numPaths".to_string(),
+                    message: "numPaths must be positive".to_string(),
+                });
+            }
+            if config.num_paths > 10_000_000 {
+                errors.push(PricerValidationError {
+                    field: "modelConfig.numPaths".to_string(),
+                    message: "numPaths must be <= 10,000,000".to_string(),
+                });
+            }
+            if config.num_steps == 0 {
+                errors.push(PricerValidationError {
+                    field: "modelConfig.numSteps".to_string(),
+                    message: "numSteps must be positive".to_string(),
+                });
+            }
+            if config.num_steps > 10_000 {
+                errors.push(PricerValidationError {
+                    field: "modelConfig.numSteps".to_string(),
+                    message: "numSteps must be <= 10,000".to_string(),
+                });
+            }
+        }
+
+        errors
+    }
+}
+
+/// Checks if a string is a valid date format (YYYY-MM-DD or integer days).
+fn is_valid_date_format(s: &str) -> bool {
+    // Check YYYY-MM-DD format
+    if s.len() == 10 && s.chars().nth(4) == Some('-') && s.chars().nth(7) == Some('-') {
+        let parts: Vec<&str> = s.split('-').collect();
+        if parts.len() == 3 {
+            return parts[0].parse::<i32>().is_ok()
+                && parts[1].parse::<u32>().is_ok()
+                && parts[2].parse::<u32>().is_ok();
+        }
+    }
+    // Check integer days format
+    s.parse::<i32>().is_ok()
+}
+
+/// Cashflow result output from GenericPricer.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CashflowResultOutput {
+    /// PV in reporting currency.
+    pub pv: f64,
+    /// PV in original (payment) currency.
+    pub pv_original: f64,
+    /// Payment date as string.
+    pub payment_date: String,
+    /// Discount factor applied.
+    pub discount_factor: f64,
+}
+
+/// Leg result output from GenericPricer.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LegResultOutput {
+    /// PV in reporting currency.
+    pub pv: f64,
+    /// PV in original (leg) currency.
+    pub pv_original: f64,
+    /// Original leg currency.
+    pub original_currency: String,
+    /// FX rate used for conversion.
+    pub fx_rate: f64,
+    /// Direction (payer/receiver).
+    pub direction: String,
+    /// Individual cashflow results.
+    pub cashflows: Vec<CashflowResultOutput>,
+}
+
+/// Response from GenericPricer pricing endpoint.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GenericPricerResponse {
+    /// Whether the pricing was successful.
+    pub success: bool,
+    /// Total PV in reporting currency.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total_pv: Option<f64>,
+    /// Reporting currency.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reporting_currency: Option<String>,
+    /// Leg-level results.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub legs: Option<Vec<LegResultOutput>>,
+    /// Error message if pricing failed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    /// Validation errors if request was invalid.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub validation_errors: Option<Vec<ValidationError>>,
+}
+
+impl GenericPricerResponse {
+    /// Creates a successful response.
+    pub fn success(total_pv: f64, reporting_currency: String, legs: Vec<LegResultOutput>) -> Self {
+        Self {
+            success: true,
+            total_pv: Some(total_pv),
+            reporting_currency: Some(reporting_currency),
+            legs: Some(legs),
+            error: None,
+            validation_errors: None,
+        }
+    }
+
+    /// Creates an error response.
+    pub fn error(message: String) -> Self {
+        Self {
+            success: false,
+            total_pv: None,
+            reporting_currency: None,
+            legs: None,
+            error: Some(message),
+            validation_errors: None,
+        }
+    }
+
+    /// Creates a validation error response.
+    pub fn validation_error(errors: Vec<ValidationError>) -> Self {
+        Self {
+            success: false,
+            total_pv: None,
+            reporting_currency: None,
+            legs: None,
+            error: Some("Validation failed".to_string()),
+            validation_errors: Some(errors),
+        }
+    }
+}
+
+// =============================================================================
+// Greeks API Types (demo-webapp-pricer Task 1.2)
+// =============================================================================
+
+/// Bump sizes input for Greeks calculation.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BumpSizesInput {
+    /// Bump size for rate delta (basis points, default: 1.0).
+    #[serde(default = "default_rate_bump_bp")]
+    pub rate_bump_bp: f64,
+    /// Bump size for FX delta (percentage, default: 1.0).
+    #[serde(default = "default_fx_bump_pct")]
+    pub fx_bump_pct: f64,
+    /// Bump size for volatility vega (percentage points, default: 1.0).
+    #[serde(default = "default_vol_bump_pct")]
+    pub vol_bump_pct: f64,
+}
+
+fn default_rate_bump_bp() -> f64 { 1.0 }
+
+fn default_fx_bump_pct() -> f64 { 1.0 }
+
+fn default_vol_bump_pct() -> f64 { 1.0 }
+
+impl Default for BumpSizesInput {
+    fn default() -> Self {
+        Self {
+            rate_bump_bp: default_rate_bump_bp(),
+            fx_bump_pct: default_fx_bump_pct(),
+            vol_bump_pct: default_vol_bump_pct(),
+        }
+    }
+}
+
+/// Request for Greeks calculation endpoint.
+///
+/// POST /api/pricer/greeks
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GreeksCalculationRequest {
+    /// Legs to calculate Greeks for.
+    pub legs: Vec<LegInput>,
+    /// Valuation date in "YYYY-MM-DD" format or days since epoch.
+    pub valuation_date: String,
+    /// Reporting currency.
+    pub reporting_currency: CurrencyInput,
+    /// Bump sizes for finite difference calculation.
+    #[serde(default)]
+    pub bump_sizes: BumpSizesInput,
+}
+
+impl GreeksCalculationRequest {
+    /// Validates the request parameters.
+    pub fn validate(&self) -> Vec<ValidationError> {
+        let mut errors = Vec::new();
+
+        if self.legs.is_empty() {
+            errors.push(PricerValidationError {
+                field: "legs".to_string(),
+                message: "At least one leg is required".to_string(),
+            });
+        }
+
+        if !is_valid_date_format(&self.valuation_date) {
+            errors.push(PricerValidationError {
+                field: "valuationDate".to_string(),
+                message: "Invalid date format".to_string(),
+            });
+        }
+
+        if self.bump_sizes.rate_bump_bp <= 0.0 {
+            errors.push(PricerValidationError {
+                field: "bumpSizes.rateBumpBp".to_string(),
+                message: "rateBumpBp must be positive".to_string(),
+            });
+        }
+
+        if self.bump_sizes.fx_bump_pct <= 0.0 {
+            errors.push(PricerValidationError {
+                field: "bumpSizes.fxBumpPct".to_string(),
+                message: "fxBumpPct must be positive".to_string(),
+            });
+        }
+
+        if self.bump_sizes.vol_bump_pct <= 0.0 {
+            errors.push(PricerValidationError {
+                field: "bumpSizes.volBumpPct".to_string(),
+                message: "volBumpPct must be positive".to_string(),
+            });
+        }
+
+        errors
+    }
+}
+
+/// Response from Greeks calculation endpoint.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GreeksCalculationResponse {
+    /// Whether the calculation was successful.
+    pub success: bool,
+    /// Rate delta (DV01).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub delta: Option<f64>,
+    /// Gamma (second derivative).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gamma: Option<f64>,
+    /// Theta (time decay).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub theta: Option<f64>,
+    /// Vega (volatility sensitivity).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vega: Option<f64>,
+    /// FX delta.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fx_delta: Option<f64>,
+    /// Calculation mode used.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub calculation_mode: Option<String>,
+    /// Error message if calculation failed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    /// Validation errors if request was invalid.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub validation_errors: Option<Vec<ValidationError>>,
+}
+
+impl GreeksCalculationResponse {
+    /// Creates a successful response with Greeks values.
+    pub fn success(
+        delta: f64,
+        gamma: Option<f64>,
+        theta: Option<f64>,
+        vega: Option<f64>,
+        fx_delta: Option<f64>,
+    ) -> Self {
+        Self {
+            success: true,
+            delta: Some(delta),
+            gamma,
+            theta,
+            vega,
+            fx_delta,
+            calculation_mode: Some("bump-and-revalue".to_string()),
+            error: None,
+            validation_errors: None,
+        }
+    }
+
+    /// Creates an error response.
+    pub fn error(message: String) -> Self {
+        Self {
+            success: false,
+            delta: None,
+            gamma: None,
+            theta: None,
+            vega: None,
+            fx_delta: None,
+            calculation_mode: None,
+            error: Some(message),
+            validation_errors: None,
+        }
+    }
+
+    /// Creates a validation error response.
+    pub fn validation_error(errors: Vec<ValidationError>) -> Self {
+        Self {
+            success: false,
+            delta: None,
+            gamma: None,
+            theta: None,
+            vega: None,
+            fx_delta: None,
+            calculation_mode: None,
+            error: Some("Validation failed".to_string()),
+            validation_errors: Some(errors),
+        }
+    }
+}
+
+/// Available instrument type for pricer.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PricerInstrumentType {
+    /// Instrument type identifier.
+    pub id: String,
+    /// Display name.
+    pub name: String,
+    /// Description.
+    pub description: String,
+}
+
+/// Response for instrument types list endpoint.
+///
+/// GET /api/pricer/instruments
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PricerInstrumentTypesResponse {
+    /// Available instrument types.
+    pub instruments: Vec<PricerInstrumentType>,
+}
+
+impl PricerInstrumentTypesResponse {
+    /// Creates a response with available instrument types.
+    pub fn new() -> Self {
+        Self {
+            instruments: vec![
+                PricerInstrumentType {
+                    id: "irs".to_string(),
+                    name: "Interest Rate Swap".to_string(),
+                    description: "固定 vs 変動金利のスワップ".to_string(),
+                },
+                PricerInstrumentType {
+                    id: "swaption".to_string(),
+                    name: "Swaption".to_string(),
+                    description: "金利スワップのオプション".to_string(),
+                },
+                PricerInstrumentType {
+                    id: "fx_forward".to_string(),
+                    name: "FX Forward".to_string(),
+                    description: "為替先渡取引".to_string(),
+                },
+                PricerInstrumentType {
+                    id: "fx_option".to_string(),
+                    name: "FX Option".to_string(),
+                    description: "通貨オプション".to_string(),
+                },
+                PricerInstrumentType {
+                    id: "deposit".to_string(),
+                    name: "Deposit".to_string(),
+                    description: "預金/ローン".to_string(),
+                },
+                PricerInstrumentType {
+                    id: "fra".to_string(),
+                    name: "FRA".to_string(),
+                    description: "金利先渡取引".to_string(),
+                },
+            ],
+        }
+    }
+}
+
+impl Default for PricerInstrumentTypesResponse {
+    fn default() -> Self { Self::new() }
+}
+
+// =============================================================================
 // Tests
 // =============================================================================
 
@@ -5682,6 +6225,341 @@ mod tests {
             for series in &response.series {
                 assert_eq!(series.values.len(), response.timestamps.len());
             }
+        }
+    }
+
+    // =========================================================================
+    // GenericPricer Types Tests (demo-webapp-pricer Task 1.1, 1.2)
+    // =========================================================================
+
+    mod generic_pricer_types_tests {
+        use super::*;
+
+        #[test]
+        fn test_direction_input_serialisation() {
+            let payer = DirectionInput::Payer;
+            let receiver = DirectionInput::Receiver;
+
+            assert_eq!(serde_json::to_string(&payer).unwrap(), "\"payer\"");
+            assert_eq!(serde_json::to_string(&receiver).unwrap(), "\"receiver\"");
+        }
+
+        #[test]
+        fn test_direction_input_deserialisation() {
+            let payer: DirectionInput = serde_json::from_str("\"payer\"").unwrap();
+            let receiver: DirectionInput = serde_json::from_str("\"receiver\"").unwrap();
+
+            assert_eq!(payer, DirectionInput::Payer);
+            assert_eq!(receiver, DirectionInput::Receiver);
+        }
+
+        #[test]
+        fn test_currency_input_serialisation() {
+            assert_eq!(
+                serde_json::to_string(&CurrencyInput::USD).unwrap(),
+                "\"USD\""
+            );
+            assert_eq!(
+                serde_json::to_string(&CurrencyInput::EUR).unwrap(),
+                "\"EUR\""
+            );
+            assert_eq!(
+                serde_json::to_string(&CurrencyInput::JPY).unwrap(),
+                "\"JPY\""
+            );
+            assert_eq!(
+                serde_json::to_string(&CurrencyInput::GBP).unwrap(),
+                "\"GBP\""
+            );
+        }
+
+        #[test]
+        fn test_cashflow_input_deserialisation() {
+            let json = r#"{"paymentDate": "2025-06-15", "amount": 1000000.0}"#;
+            let cf: CashflowInput = serde_json::from_str(json).unwrap();
+
+            assert_eq!(cf.payment_date, "2025-06-15");
+            assert!((cf.amount - 1_000_000.0).abs() < 1e-10);
+        }
+
+        #[test]
+        fn test_leg_input_deserialisation() {
+            let json = r#"{
+                "currency": "USD",
+                "direction": "receiver",
+                "cashflows": [
+                    {"paymentDate": "2025-06-15", "amount": 50000.0}
+                ]
+            }"#;
+            let leg: LegInput = serde_json::from_str(json).unwrap();
+
+            assert_eq!(leg.currency, CurrencyInput::USD);
+            assert_eq!(leg.direction, DirectionInput::Receiver);
+            assert_eq!(leg.cashflows.len(), 1);
+        }
+
+        #[test]
+        fn test_model_config_input_defaults() {
+            let json = r#"{}"#;
+            let config: ModelConfigInput = serde_json::from_str(json).unwrap();
+
+            assert_eq!(config.num_paths, 10_000);
+            assert_eq!(config.num_steps, 100);
+            assert!(config.seed.is_none());
+        }
+
+        #[test]
+        fn test_model_config_input_custom() {
+            let json = r#"{"numPaths": 50000, "numSteps": 200, "seed": 42}"#;
+            let config: ModelConfigInput = serde_json::from_str(json).unwrap();
+
+            assert_eq!(config.num_paths, 50_000);
+            assert_eq!(config.num_steps, 200);
+            assert_eq!(config.seed, Some(42));
+        }
+
+        #[test]
+        fn test_generic_pricer_request_deserialisation() {
+            let json = r#"{
+                "legs": [
+                    {
+                        "currency": "USD",
+                        "direction": "receiver",
+                        "cashflows": [
+                            {"paymentDate": "2025-06-15", "amount": 50000.0}
+                        ]
+                    }
+                ],
+                "valuationDate": "2025-01-15",
+                "reportingCurrency": "USD"
+            }"#;
+            let request: GenericPricerRequest = serde_json::from_str(json).unwrap();
+
+            assert_eq!(request.legs.len(), 1);
+            assert_eq!(request.valuation_date, "2025-01-15");
+            assert_eq!(request.reporting_currency, CurrencyInput::USD);
+            assert!(request.model_config.is_none());
+        }
+
+        #[test]
+        fn test_generic_pricer_request_validation_empty_legs() {
+            let request = GenericPricerRequest {
+                legs: vec![],
+                valuation_date: "2025-01-15".to_string(),
+                reporting_currency: CurrencyInput::USD,
+                model_config: None,
+            };
+
+            let errors = request.validate();
+            assert!(!errors.is_empty());
+            assert!(errors.iter().any(|e| e.field == "legs"));
+        }
+
+        #[test]
+        fn test_generic_pricer_request_validation_invalid_date() {
+            let request = GenericPricerRequest {
+                legs: vec![LegInput {
+                    currency: CurrencyInput::USD,
+                    direction: DirectionInput::Receiver,
+                    cashflows: vec![CashflowInput {
+                        payment_date: "2025-06-15".to_string(),
+                        amount: 50000.0,
+                    }],
+                }],
+                valuation_date: "invalid-date".to_string(),
+                reporting_currency: CurrencyInput::USD,
+                model_config: None,
+            };
+
+            let errors = request.validate();
+            assert!(errors.iter().any(|e| e.field == "valuationDate"));
+        }
+
+        #[test]
+        fn test_generic_pricer_request_validation_invalid_model_config() {
+            let request = GenericPricerRequest {
+                legs: vec![LegInput {
+                    currency: CurrencyInput::USD,
+                    direction: DirectionInput::Receiver,
+                    cashflows: vec![CashflowInput {
+                        payment_date: "2025-06-15".to_string(),
+                        amount: 50000.0,
+                    }],
+                }],
+                valuation_date: "2025-01-15".to_string(),
+                reporting_currency: CurrencyInput::USD,
+                model_config: Some(ModelConfigInput {
+                    num_paths: 0,
+                    num_steps: 100,
+                    seed: None,
+                }),
+            };
+
+            let errors = request.validate();
+            assert!(errors.iter().any(|e| e.field == "modelConfig.numPaths"));
+        }
+
+        #[test]
+        fn test_generic_pricer_response_success() {
+            let response = GenericPricerResponse::success(1_000_000.0, "USD".to_string(), vec![]);
+
+            assert!(response.success);
+            assert_eq!(response.total_pv, Some(1_000_000.0));
+            assert!(response.error.is_none());
+        }
+
+        #[test]
+        fn test_generic_pricer_response_error() {
+            let response = GenericPricerResponse::error("FX rate not found".to_string());
+
+            assert!(!response.success);
+            assert!(response.total_pv.is_none());
+            assert_eq!(response.error, Some("FX rate not found".to_string()));
+        }
+
+        #[test]
+        fn test_generic_pricer_response_serialisation() {
+            let response = GenericPricerResponse::success(
+                1_000_000.0,
+                "USD".to_string(),
+                vec![LegResultOutput {
+                    pv: 500_000.0,
+                    pv_original: 500_000.0,
+                    original_currency: "USD".to_string(),
+                    fx_rate: 1.0,
+                    direction: "receiver".to_string(),
+                    cashflows: vec![],
+                }],
+            );
+
+            let json = serde_json::to_string(&response).unwrap();
+            assert!(json.contains("\"success\":true"));
+            assert!(json.contains("\"totalPv\":1000000.0"));
+            assert!(json.contains("\"reportingCurrency\":\"USD\""));
+        }
+    }
+
+    mod greeks_calculation_types_tests {
+        use super::*;
+
+        #[test]
+        fn test_bump_sizes_input_defaults() {
+            let bumps = BumpSizesInput::default();
+
+            assert!((bumps.rate_bump_bp - 1.0).abs() < 1e-10);
+            assert!((bumps.fx_bump_pct - 1.0).abs() < 1e-10);
+            assert!((bumps.vol_bump_pct - 1.0).abs() < 1e-10);
+        }
+
+        #[test]
+        fn test_bump_sizes_input_deserialisation() {
+            let json = r#"{"rateBumpBp": 5.0, "fxBumpPct": 2.0, "volBumpPct": 0.5}"#;
+            let bumps: BumpSizesInput = serde_json::from_str(json).unwrap();
+
+            assert!((bumps.rate_bump_bp - 5.0).abs() < 1e-10);
+            assert!((bumps.fx_bump_pct - 2.0).abs() < 1e-10);
+            assert!((bumps.vol_bump_pct - 0.5).abs() < 1e-10);
+        }
+
+        #[test]
+        fn test_greeks_request_validation() {
+            let request = GreeksCalculationRequest {
+                legs: vec![],
+                valuation_date: "2025-01-15".to_string(),
+                reporting_currency: CurrencyInput::USD,
+                bump_sizes: BumpSizesInput::default(),
+            };
+
+            let errors = request.validate();
+            assert!(errors.iter().any(|e| e.field == "legs"));
+        }
+
+        #[test]
+        fn test_greeks_request_validation_negative_bump() {
+            let request = GreeksCalculationRequest {
+                legs: vec![LegInput {
+                    currency: CurrencyInput::USD,
+                    direction: DirectionInput::Receiver,
+                    cashflows: vec![CashflowInput {
+                        payment_date: "2025-06-15".to_string(),
+                        amount: 50000.0,
+                    }],
+                }],
+                valuation_date: "2025-01-15".to_string(),
+                reporting_currency: CurrencyInput::USD,
+                bump_sizes: BumpSizesInput {
+                    rate_bump_bp: -1.0,
+                    fx_bump_pct: 1.0,
+                    vol_bump_pct: 1.0,
+                },
+            };
+
+            let errors = request.validate();
+            assert!(errors.iter().any(|e| e.field == "bumpSizes.rateBumpBp"));
+        }
+
+        #[test]
+        fn test_greeks_response_success() {
+            let response =
+                GreeksCalculationResponse::success(0.0025, Some(0.001), Some(-0.1), None, None);
+
+            assert!(response.success);
+            assert_eq!(response.delta, Some(0.0025));
+            assert_eq!(response.gamma, Some(0.001));
+            assert_eq!(response.theta, Some(-0.1));
+            assert!(response.error.is_none());
+        }
+
+        #[test]
+        fn test_greeks_response_error() {
+            let response = GreeksCalculationResponse::error("Calculation failed".to_string());
+
+            assert!(!response.success);
+            assert!(response.delta.is_none());
+            assert_eq!(response.error, Some("Calculation failed".to_string()));
+        }
+
+        #[test]
+        fn test_greeks_response_serialisation() {
+            let response = GreeksCalculationResponse::success(
+                0.0025,
+                Some(0.001),
+                Some(-0.1),
+                Some(0.05),
+                None,
+            );
+
+            let json = serde_json::to_string(&response).unwrap();
+            assert!(json.contains("\"success\":true"));
+            assert!(json.contains("\"delta\":0.0025"));
+            assert!(json.contains("\"gamma\":0.001"));
+            assert!(json.contains("\"theta\":-0.1"));
+            assert!(json.contains("\"vega\":0.05"));
+            assert!(json.contains("\"calculationMode\":\"bump-and-revalue\""));
+        }
+    }
+
+    mod pricer_instrument_types_tests {
+        use super::*;
+
+        #[test]
+        fn test_pricer_instrument_types_response() {
+            let response = PricerInstrumentTypesResponse::new();
+
+            assert!(!response.instruments.is_empty());
+            assert!(response.instruments.iter().any(|i| i.id == "irs"));
+            assert!(response.instruments.iter().any(|i| i.id == "swaption"));
+            assert!(response.instruments.iter().any(|i| i.id == "fx_forward"));
+        }
+
+        #[test]
+        fn test_pricer_instrument_types_serialisation() {
+            let response = PricerInstrumentTypesResponse::new();
+            let json = serde_json::to_string(&response).unwrap();
+
+            assert!(json.contains("\"instruments\""));
+            assert!(json.contains("\"id\":\"irs\""));
+            assert!(json.contains("\"name\":\"Interest Rate Swap\""));
         }
     }
 }

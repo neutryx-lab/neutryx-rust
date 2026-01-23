@@ -591,12 +591,20 @@ fn generate_ois_floating_leg_cashflows(
 ///
 /// This function creates a daily breakdown of the compounding process,
 /// simulating overnight rates based on the rate index.
+///
+/// # Business Day Handling
+///
+/// OIS rates are published only on business days. For weekends:
+/// - Friday's rate applies for 3 days (Friday, Saturday, Sunday)
+/// - The day fraction for Friday is 3/360 (or 3/365)
 fn generate_daily_accruals(
     start: Date,
     end: Date,
     rate_index: RateIndex,
     initial_notional: f64,
 ) -> Vec<crate::trade::DailyAccrual> {
+    use chrono::Weekday;
+
     use crate::trade::DailyAccrual;
 
     let mut accruals = Vec::new();
@@ -614,18 +622,25 @@ fn generate_daily_accruals(
         RateIndex::Saron => 0.0175,     // ~1.75% SARON
     };
 
+    // Day count basis (360 or 365)
+    let day_count_basis = match rate_index {
+        RateIndex::Sonia | RateIndex::Tonar => 365.0,
+        _ => 360.0,
+    };
+
     while current_date < end {
-        // Add one day using Tenor::Overnight
-        let next_date = Tenor::Overnight.add_to_date(current_date, EndOfMonthRule::None);
-        if next_date > end {
-            break;
+        let weekday = current_date.into_inner().weekday();
+
+        // Skip weekends - only process business days (Mon-Fri)
+        if weekday == Weekday::Sat || weekday == Weekday::Sun {
+            current_date = Tenor::Overnight.add_to_date(current_date, EndOfMonthRule::None);
+            continue;
         }
 
-        // Day count fraction (ACT/360 for most OIS, but adjust based on index)
-        let day_fraction = match rate_index {
-            RateIndex::Sonia | RateIndex::Tonar => 1.0 / 365.0,
-            _ => 1.0 / 360.0,
-        };
+        // Calculate days until next business day
+        // Friday -> Monday = 3 days, otherwise 1 day
+        let days_to_next = if weekday == Weekday::Fri { 3.0 } else { 1.0 };
+        let day_fraction = days_to_next / day_count_basis;
 
         // Simulate small daily rate variation (±5bps) based on day of year
         let day_of_year = current_date.into_inner().ordinal() as f64;
@@ -643,7 +658,9 @@ fn generate_daily_accruals(
         ));
 
         compounded_notional = new_compounded;
-        current_date = next_date;
+
+        // Move to next calendar day
+        current_date = Tenor::Overnight.add_to_date(current_date, EndOfMonthRule::None);
     }
 
     accruals

@@ -444,7 +444,8 @@ impl<'a, T: Float> FxDensityCalculator<'a, T> {
     ///
     /// # Returns
     ///
-    /// * `Ok(DensityStatistics)` - Statistics including mean, variance, skewness, kurtosis
+    /// * `Ok(DensityStatistics)` - Statistics including mean, variance,
+    ///   skewness, kurtosis
     /// * `Err(MarketDataError)` - If parameters are invalid
     ///
     /// # Example
@@ -597,9 +598,7 @@ impl<'a, T: Float> FxDensityCalculator<'a, T> {
         let delta = self.strike_to_delta(strike, expiry, atm_vol);
 
         // Clamp delta to valid range (0.01, 0.99)
-        let delta_clamped = delta
-            .max(from_f64(0.01))
-            .min(from_f64(0.99));
+        let delta_clamped = delta.max(from_f64(0.01)).min(from_f64(0.99));
 
         // Look up volatility at this delta
         self.surface.volatility_by_delta(delta_clamped, expiry)
@@ -1225,8 +1224,12 @@ mod tests {
         let forward_3m = 1.085 * ((0.045 - 0.035) * 0.25).exp();
         let forward_1y = 1.085 * ((0.045 - 0.035) * 1.0).exp();
 
-        let stats_3m = calc.statistics(0.25, (forward_3m * 0.6, forward_3m * 1.4), 100).unwrap();
-        let stats_1y = calc.statistics(1.0, (forward_1y * 0.5, forward_1y * 1.5), 100).unwrap();
+        let stats_3m = calc
+            .statistics(0.25, (forward_3m * 0.6, forward_3m * 1.4), 100)
+            .unwrap();
+        let stats_1y = calc
+            .statistics(1.0, (forward_1y * 0.5, forward_1y * 1.5), 100)
+            .unwrap();
 
         assert!(
             stats_1y.variance > stats_3m.variance,
@@ -1244,7 +1247,9 @@ mod tests {
         let expiry = 0.5;
         let forward = 1.085 * ((0.045 - 0.035) * expiry).exp();
 
-        let stats = calc.statistics(expiry, (forward * 0.7, forward * 1.3), 100).unwrap();
+        let stats = calc
+            .statistics(expiry, (forward * 0.7, forward * 1.3), 100)
+            .unwrap();
 
         // Skewness should be a finite number
         assert!(
@@ -1262,7 +1267,9 @@ mod tests {
         let expiry = 0.5;
         let forward = 1.085 * ((0.045 - 0.035) * expiry).exp();
 
-        let stats = calc.statistics(expiry, (forward * 0.7, forward * 1.3), 100).unwrap();
+        let stats = calc
+            .statistics(expiry, (forward * 0.7, forward * 1.3), 100)
+            .unwrap();
 
         // Kurtosis should be a finite number (normal distribution has kurtosis ~3)
         assert!(

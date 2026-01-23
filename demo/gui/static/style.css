@@ -9899,6 +9899,45 @@ body.light-theme .cf-table th {
     padding: 12px;
 }
 
+.daily-accruals-table .more-rows-toggle td {
+    text-align: center;
+    padding: 8px 12px;
+}
+
+.show-more-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--accent-color);
+    background: transparent;
+    border: 1px solid var(--accent-color);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.show-more-btn:hover {
+    background: var(--accent-color);
+    color: white;
+}
+
+.show-more-btn i {
+    font-size: 0.7rem;
+}
+
+body.light-theme .show-more-btn {
+    color: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
+body.light-theme .show-more-btn:hover {
+    background: var(--accent-color);
+    color: white;
+}
+
 body.light-theme .expand-btn {
     background: #e2e8f0;
 }

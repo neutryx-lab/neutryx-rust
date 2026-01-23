@@ -28,7 +28,7 @@
 
 ## Tasks
 
-- [ ] 1. FxDensityCalculator バックエンド実装
+- [x] 1. FxDensityCalculator バックエンド実装
 - [x] 1.1 (P) Delta-Strike変換機能の実装
   - FX市場慣行に沿ったDelta（Spot Delta、Forward Delta、Premium-adjusted）からAbsolute Strikeへの変換ロジックを実装する
   - Garman-Kohlhagenモデルの逆算にBisectionソルバーを使用する（数値安定性のためBrentから変更）
@@ -46,10 +46,10 @@
   - _Requirements: 10.7_
   - _Contracts: FxDensityCalculator Service_
 
-- [ ] 1.3 確率密度統計量計算の実装
-  - 期待値、分散、歪度、尖度の統計量を数値積分で計算する
-  - CDF（累積分布関数）を台形積分で計算する
+- [x] 1.3 確率密度統計量計算の実装
+  - 期待値、分散、歪度、尖度の統計量を数値積分（台形則）で計算する
   - DensityStatistics構造体にまとめて返却する
+  - 超過尖度（正規分布 = 0）を使用
   - _Requirements: 10.8_
   - _Contracts: FxDensityCalculator Service_
 
