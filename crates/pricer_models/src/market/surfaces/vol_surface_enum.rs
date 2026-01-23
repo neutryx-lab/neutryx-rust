@@ -6,9 +6,10 @@
 
 use num_traits::Float;
 
-use super::{FlatVol, FxVolatilitySurface, InterpolatedVolSurface, VolatilitySurface, VolCubeSlice};
-use crate::market::error::MarketDataError;
-use crate::market::volcube::VolCube;
+use super::{
+    FlatVol, FxVolatilitySurface, InterpolatedVolSurface, VolCubeSlice, VolatilitySurface,
+};
+use crate::market::{error::MarketDataError, volcube::VolCube};
 
 /// Enum wrapper for volatility surface implementations.
 ///
@@ -46,7 +47,7 @@ pub enum VolSurfaceEnum<T: Float + Send + Sync> {
     ///
     /// Adapts a 3D volatility cube to a 2D surface interface by fixing
     /// the tenor dimension.
-    CubeSlice(VolCubeSlice<T>),
+    CubeSlice(Box<VolCubeSlice<T>>),
 }
 
 impl<T: Float + Send + Sync> VolatilitySurface<T> for VolSurfaceEnum<T> {
@@ -95,7 +96,7 @@ impl<T: Float + Send + Sync> VolSurfaceEnum<T> {
     /// * `tenor` - The tenor to slice at (years)
     #[inline]
     pub fn cube_slice(cube: VolCube<T>, tenor: T) -> Self {
-        Self::CubeSlice(VolCubeSlice::new(cube, tenor))
+        Self::CubeSlice(Box::new(VolCubeSlice::new(cube, tenor)))
     }
 
     /// Check if this is a flat surface.
@@ -147,19 +148,19 @@ mod tests {
 
         let sabr_surface = SabrParameterSurface::new(expiries, tenors, &params, beta).unwrap();
 
-        let forwards = vec![
-            vec![0.03, 0.035],
-            vec![0.032, 0.038],
-        ];
+        let forwards = vec![vec![0.03, 0.035], vec![0.032, 0.038]];
 
         let config = VolCubeConfig::default();
-        let source_instruments = vec![
-            InstrumentId::new("INST-1"),
-            InstrumentId::new("INST-2"),
-        ];
+        let source_instruments = vec![InstrumentId::new("INST-1"), InstrumentId::new("INST-2")];
         let strike_domain = (0.01, 0.10);
 
-        VolCube::new(sabr_surface, forwards, config, source_instruments, strike_domain)
+        VolCube::new(
+            sabr_surface,
+            forwards,
+            config,
+            source_instruments,
+            strike_domain,
+        )
     }
 
     // ========================================

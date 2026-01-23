@@ -20,12 +20,8 @@ fn create_test_cube(n_expiries: usize, n_tenors: usize) -> VolCube<f64> {
     let beta = 0.5;
 
     // Generate expiry and tenor grids
-    let expiries: Vec<f64> = (0..n_expiries)
-        .map(|i| 0.25 + (i as f64) * 0.5)
-        .collect();
-    let tenors: Vec<f64> = (0..n_tenors)
-        .map(|i| 1.0 + (i as f64) * 2.0)
-        .collect();
+    let expiries: Vec<f64> = (0..n_expiries).map(|i| 0.25 + (i as f64) * 0.5).collect();
+    let tenors: Vec<f64> = (0..n_tenors).map(|i| 1.0 + (i as f64) * 2.0).collect();
 
     // Generate SABR parameters for each grid point
     let params: Vec<Vec<SabrParams<f64>>> = (0..n_expiries)
@@ -54,11 +50,18 @@ fn create_test_cube(n_expiries: usize, n_tenors: usize) -> VolCube<f64> {
         .collect();
 
     let config = VolCubeConfig::default();
-    let source_instruments: Vec<InstrumentId> =
-        (0..n_expiries * n_tenors * 3).map(|i| InstrumentId::new(format!("INST-{}", i))).collect();
+    let source_instruments: Vec<InstrumentId> = (0..n_expiries * n_tenors * 3)
+        .map(|i| InstrumentId::new(format!("INST-{}", i)))
+        .collect();
     let strike_domain = (0.001, 0.15);
 
-    VolCube::new(sabr_surface, forwards, config, source_instruments, strike_domain)
+    VolCube::new(
+        sabr_surface,
+        forwards,
+        config,
+        source_instruments,
+        strike_domain,
+    )
 }
 
 /// Benchmark single volatility lookup.
@@ -100,7 +103,9 @@ fn bench_vol_lookup_batch(c: &mut Criterion) {
         b.iter(|| {
             let mut sum = 0.0;
             for &(expiry, tenor, strike) in &queries {
-                if let Ok(vol) = cube.volatility(black_box(expiry), black_box(tenor), black_box(strike)) {
+                if let Ok(vol) =
+                    cube.volatility(black_box(expiry), black_box(tenor), black_box(strike))
+                {
                     sum += vol;
                 }
             }

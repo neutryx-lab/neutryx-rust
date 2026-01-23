@@ -1,0 +1,22 @@
+{
+  "feature_name": "rate-index-pricing-integration",
+  "created_at": "2026-01-23T16:16:59Z",
+  "updated_at": "2026-01-23T17:05:00Z",
+  "language": "ja",
+  "phase": "design-generated",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": false
+    },
+    "tasks": {
+      "generated": false,
+      "approved": false
+    }
+  },
+  "ready_for_implementation": false
+}

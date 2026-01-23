@@ -10,11 +10,15 @@
 //!
 //! - **f64 fixed**: AD is only needed for `get_greeks()`, not for PV results
 //! - **Leg-level currency**: Each leg tracks `original_currency` and `fx_rate`
-//! - **No CurrencyBreakdown**: `HashMap<Currency, T>` is not Enzyme AD compatible
-//! - **Dynamic aggregation**: `group_by_currency()` aggregates from leg data on demand
+//! - **No CurrencyBreakdown**: `HashMap<Currency, T>` is not Enzyme AD
+//!   compatible
+//! - **Dynamic aggregation**: `group_by_currency()` aggregates from leg data on
+//!   demand
 
 #[cfg(feature = "l1l2-integration")]
-use infra_master::{market::Currency, time::Date, trade::Direction};
+pub use infra_master::trade::Direction;
+#[cfg(feature = "l1l2-integration")]
+use infra_master::{market::Currency, time::Date};
 
 /// Direction of a leg (without l1l2-integration).
 #[cfg(not(feature = "l1l2-integration"))]
@@ -50,14 +54,10 @@ pub struct Date(pub i32);
 #[cfg(not(feature = "l1l2-integration"))]
 impl Date {
     /// Creates a new date from days since 2000-01-01.
-    pub fn from_days(days: i32) -> Self {
-        Date(days)
-    }
+    pub fn from_days(days: i32) -> Self { Date(days) }
 
     /// Returns the days since 2000-01-01.
-    pub fn days(&self) -> i32 {
-        self.0
-    }
+    pub fn days(&self) -> i32 { self.0 }
 
     /// Creates a date from year, month, day (simple calculation).
     /// Note: This is a simplified calculation for testing purposes.
@@ -155,9 +155,7 @@ impl LegPricingResult {
     }
 
     /// Returns the number of cashflows in this leg.
-    pub fn cashflow_count(&self) -> usize {
-        self.cashflows.len()
-    }
+    pub fn cashflow_count(&self) -> usize { self.cashflows.len() }
 }
 
 /// Monte Carlo path distribution statistics.
@@ -227,11 +225,7 @@ pub struct PricingResult {
 
 impl PricingResult {
     /// Creates a new pricing result.
-    pub fn new(
-        total_pv: f64,
-        legs: Vec<LegPricingResult>,
-        reporting_currency: Currency,
-    ) -> Self {
+    pub fn new(total_pv: f64, legs: Vec<LegPricingResult>, reporting_currency: Currency) -> Self {
         Self {
             total_pv,
             legs,
@@ -256,9 +250,7 @@ impl PricingResult {
     }
 
     /// Returns leg-level PV breakdown.
-    pub fn by_leg(&self) -> &[LegPricingResult] {
-        &self.legs
-    }
+    pub fn by_leg(&self) -> &[LegPricingResult] { &self.legs }
 
     /// Returns cashflow-level PV breakdown (flattened from all legs).
     pub fn by_cashflow(&self) -> Vec<&CashflowPricingResult> {
@@ -269,9 +261,7 @@ impl PricingResult {
     }
 
     /// Returns path distribution (Monte Carlo only).
-    pub fn by_path(&self) -> Option<&PathDistribution> {
-        self.path_distribution.as_ref()
-    }
+    pub fn by_path(&self) -> Option<&PathDistribution> { self.path_distribution.as_ref() }
 
     /// Groups PV by original currency (aggregated from legs).
     ///
@@ -294,7 +284,8 @@ impl PricingResult {
     /// Groups leg PVs by original currency.
     ///
     /// Returns a vector of (currency, pv) pairs where pv is the sum of all
-    /// leg PVs in that currency (in original currency terms, before FX conversion).
+    /// leg PVs in that currency (in original currency terms, before FX
+    /// conversion).
     #[cfg(not(feature = "l1l2-integration"))]
     pub fn group_by_currency(&self) -> Vec<(Currency, f64)> {
         use std::collections::HashMap;
@@ -309,14 +300,10 @@ impl PricingResult {
     }
 
     /// Returns the total number of legs.
-    pub fn leg_count(&self) -> usize {
-        self.legs.len()
-    }
+    pub fn leg_count(&self) -> usize { self.legs.len() }
 
     /// Returns the total number of cashflows across all legs.
-    pub fn cashflow_count(&self) -> usize {
-        self.legs.iter().map(|leg| leg.cashflow_count()).sum()
-    }
+    pub fn cashflow_count(&self) -> usize { self.legs.iter().map(|leg| leg.cashflow_count()).sum() }
 }
 
 #[cfg(test)]
@@ -341,11 +328,11 @@ mod tests {
     #[test]
     fn test_cashflow_pricing_result_creation() {
         let cf = CashflowPricingResult::new(
-            100.0,          // pv
-            95.0,           // pv_original
-            sample_date(),  // payment_date
-            0.95,           // discount_factor
-            Currency::USD,  // original_currency
+            100.0,         // pv
+            95.0,          // pv_original
+            sample_date(), // payment_date
+            0.95,          // discount_factor
+            Currency::USD, // original_currency
         );
 
         assert!((cf.pv - 100.0).abs() < 1e-10);
@@ -356,13 +343,7 @@ mod tests {
 
     #[test]
     fn test_cashflow_pricing_result_clone() {
-        let cf1 = CashflowPricingResult::new(
-            100.0,
-            95.0,
-            sample_date(),
-            0.95,
-            Currency::USD,
-        );
+        let cf1 = CashflowPricingResult::new(100.0, 95.0, sample_date(), 0.95, Currency::USD);
         let cf2 = cf1.clone();
         assert!((cf1.pv - cf2.pv).abs() < 1e-10);
     }
@@ -379,11 +360,11 @@ mod tests {
         ];
 
         let leg = LegPricingResult::new(
-            100.0,                   // pv
-            95.0,                    // pv_original
-            Currency::USD,           // original_currency
-            1.0,                     // fx_rate
-            Direction::Receiver,     // direction
+            100.0,               // pv
+            95.0,                // pv_original
+            Currency::USD,       // original_currency
+            1.0,                 // fx_rate
+            Direction::Receiver, // direction
             cashflows,
         );
 
@@ -395,14 +376,12 @@ mod tests {
 
     #[test]
     fn test_leg_pricing_result_direction() {
-        let leg_receiver = LegPricingResult::new(
-            100.0, 95.0, Currency::USD, 1.0, Direction::Receiver, vec![],
-        );
+        let leg_receiver =
+            LegPricingResult::new(100.0, 95.0, Currency::USD, 1.0, Direction::Receiver, vec![]);
         assert!((leg_receiver.direction.sign() - 1.0).abs() < 1e-10);
 
-        let leg_payer = LegPricingResult::new(
-            100.0, 95.0, Currency::USD, 1.0, Direction::Payer, vec![],
-        );
+        let leg_payer =
+            LegPricingResult::new(100.0, 95.0, Currency::USD, 1.0, Direction::Payer, vec![]);
         assert!((leg_payer.direction.sign() - (-1.0)).abs() < 1e-10);
     }
 
@@ -429,11 +408,7 @@ mod tests {
 
     #[test]
     fn test_path_distribution_percentile() {
-        let percentiles = vec![
-            (2.5, -45.0),
-            (50.0, 100.0),
-            (97.5, 245.0),
-        ];
+        let percentiles = vec![(2.5, -45.0), (50.0, 100.0), (97.5, 245.0)];
 
         let dist = PathDistribution::new(100.0, 50.0, percentiles, 10_000);
 
@@ -444,10 +419,7 @@ mod tests {
 
     #[test]
     fn test_path_distribution_confidence_interval() {
-        let percentiles = vec![
-            (2.5, -45.0),
-            (97.5, 245.0),
-        ];
+        let percentiles = vec![(2.5, -45.0), (97.5, 245.0)];
 
         let dist = PathDistribution::new(100.0, 50.0, percentiles, 10_000);
 
@@ -476,14 +448,17 @@ mod tests {
 
     #[test]
     fn test_pricing_result_with_path_distribution() {
-        let legs = vec![
-            LegPricingResult::new(100.0, 95.0, Currency::USD, 1.0, Direction::Receiver, vec![]),
-        ];
+        let legs = vec![LegPricingResult::new(
+            100.0,
+            95.0,
+            Currency::USD,
+            1.0,
+            Direction::Receiver,
+            vec![],
+        )];
         let dist = PathDistribution::new(100.0, 50.0, vec![], 10_000);
 
-        let result = PricingResult::with_path_distribution(
-            100.0, legs, Currency::USD, dist,
-        );
+        let result = PricingResult::with_path_distribution(100.0, legs, Currency::USD, dist);
 
         assert!(result.path_distribution.is_some());
         assert_eq!(result.by_path().unwrap().path_count, 10_000);
@@ -509,13 +484,31 @@ mod tests {
             CashflowPricingResult::new(50.0, 47.5, sample_date(), 0.95, Currency::USD),
             CashflowPricingResult::new(50.0, 47.5, sample_date(), 0.95, Currency::USD),
         ];
-        let cashflows2 = vec![
-            CashflowPricingResult::new(40.0, 38.0, sample_date(), 0.95, Currency::EUR),
-        ];
+        let cashflows2 = vec![CashflowPricingResult::new(
+            40.0,
+            38.0,
+            sample_date(),
+            0.95,
+            Currency::EUR,
+        )];
 
         let legs = vec![
-            LegPricingResult::new(100.0, 95.0, Currency::USD, 1.0, Direction::Receiver, cashflows1),
-            LegPricingResult::new(40.0, 38.0, Currency::EUR, 1.05, Direction::Payer, cashflows2),
+            LegPricingResult::new(
+                100.0,
+                95.0,
+                Currency::USD,
+                1.0,
+                Direction::Receiver,
+                cashflows1,
+            ),
+            LegPricingResult::new(
+                40.0,
+                38.0,
+                Currency::EUR,
+                1.05,
+                Direction::Payer,
+                cashflows2,
+            ),
         ];
 
         let result = PricingResult::new(60.0, legs, Currency::USD);
@@ -541,21 +534,32 @@ mod tests {
         assert_eq!(by_currency.len(), 2);
 
         // USD: 95 + 50 = 145 (both receiver)
-        let usd_pv = by_currency.iter().find(|(c, _)| *c == Currency::USD).map(|(_, v)| *v);
+        let usd_pv = by_currency
+            .iter()
+            .find(|(c, _)| *c == Currency::USD)
+            .map(|(_, v)| *v);
         assert!(usd_pv.is_some());
         assert!((usd_pv.unwrap() - 145.0).abs() < 1e-10);
 
         // EUR: -76 (payer)
-        let eur_pv = by_currency.iter().find(|(c, _)| *c == Currency::EUR).map(|(_, v)| *v);
+        let eur_pv = by_currency
+            .iter()
+            .find(|(c, _)| *c == Currency::EUR)
+            .map(|(_, v)| *v);
         assert!(eur_pv.is_some());
         assert!((eur_pv.unwrap() - (-76.0)).abs() < 1e-10);
     }
 
     #[test]
     fn test_pricing_result_clone() {
-        let legs = vec![
-            LegPricingResult::new(100.0, 95.0, Currency::USD, 1.0, Direction::Receiver, vec![]),
-        ];
+        let legs = vec![LegPricingResult::new(
+            100.0,
+            95.0,
+            Currency::USD,
+            1.0,
+            Direction::Receiver,
+            vec![],
+        )];
 
         let result1 = PricingResult::new(100.0, legs, Currency::USD);
         let result2 = result1.clone();

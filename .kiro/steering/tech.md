@@ -146,8 +146,12 @@ docker run -it neutryx-enzyme
 ### Containerisation
 
 - **Multi-stage Docker builds**: Separate Dockerfiles for stable, nightly, and web dashboard
+  - `Dockerfile.gui` for web dashboard (Cloud Run deployments)
+  - `docker/Dockerfile.stable` for stable crates (no Enzyme)
+  - `docker/Dockerfile.nightly` for pricer_pricing with Enzyme
 - **Cloud Run support**: Environment-based port binding (`PORT` env var), health endpoints (`/health`)
 - **CI/CD**: Google Cloud Build pipeline (`cloudbuild.yaml`) for automated build→push→deploy
+  - Uses `-f Dockerfile.gui` for web dashboard builds
 - **Container registry**: GCR (Google Container Registry)
 - **Target region**: Configurable via `cloudbuild.yaml` substitutions (default: `asia-northeast1`)
 
@@ -161,5 +165,5 @@ docker run -it neutryx-enzyme
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-21_ — Added nalgebra (linalg feature) and argmin (optimisers) dependencies
+_Updated: 2026-01-23_ — Clarified Dockerfile naming for Cloud Run deployments (Dockerfile.gui)
 _Document standards and patterns, not every dependency_

@@ -21,6 +21,9 @@
 pub mod curve_builder_handlers;
 pub mod curve_builder_types;
 pub mod error;
+pub mod fxvol_handlers;
+pub mod fxvol_types;
+pub mod generic_pricer_handlers;
 pub mod jobs;
 pub mod market_data;
 pub mod market_handlers;
@@ -33,6 +36,8 @@ pub mod schedule_utils;
 pub mod state;
 pub mod trade_handlers;
 pub mod trade_types;
+pub mod volcube_handlers;
+pub mod volcube_types;
 pub mod websocket;
 
 // Legacy handlers module (being gradually migrated)
@@ -249,6 +254,10 @@ pub struct AppState {
     pub job_manager: JobManager,
     /// Market data cache (market-data-viewer-webapp Task 3.1)
     pub market_data_cache: Arc<MarketDataCache>,
+    /// VolCube cache for calibrated volatility cubes (volcube-calibration-ui)
+    pub volcube_cache: volcube_handlers::VolCubeCache,
+    /// FxVol cache for built FX volatility surfaces (volcube-calibration-ui)
+    pub fxvol_cache: fxvol_handlers::FxVolCache,
 }
 
 impl AppState {
@@ -265,6 +274,8 @@ impl AppState {
             curve_cache: BootstrapCurveCache::new(),
             job_manager: JobManager::new(),
             market_data_cache: Arc::new(MarketDataCache::new()),
+            volcube_cache: volcube_handlers::VolCubeCache::new(10),
+            fxvol_cache: fxvol_handlers::FxVolCache::new(10),
         }
     }
 
@@ -476,13 +487,66 @@ pub fn build_router(state: Arc<AppState>) -> Router {
 
     // Curve Builder API routes (curve-builder-webapp)
     let curve_routes = Router::new()
-        .route("/instruments/:index", get(curve_builder_handlers::get_instruments))
+        .route(
+            "/instruments/:index",
+            get(curve_builder_handlers::get_instruments),
+        )
         .route("/builders", get(curve_builder_handlers::get_builders))
         .route("/build", post(curve_builder_handlers::build_curve))
-        .route("/:curve_id/parameters", get(curve_builder_handlers::get_parameters))
+        .route(
+            "/:curve_id/parameters",
+            get(curve_builder_handlers::get_parameters),
+        )
         .route("/indices", get(curve_builder_handlers::get_indices));
 
     let api_routes = api_routes.nest("/curves", curve_routes);
+
+    // GenericPricer API routes (demo-webapp-pricer Task 2.4)
+    let pricer_routes = Router::new()
+        .route("/price", post(generic_pricer_handlers::price_generic))
+        .route("/greeks", post(generic_pricer_handlers::calculate_greeks))
+        .route(
+            "/instruments",
+            get(generic_pricer_handlers::get_pricer_instruments),
+        );
+
+    let api_routes = api_routes.nest("/pricer", pricer_routes);
+
+    // VolCube API routes (volcube-calibration-ui Task 7.1)
+    let volcube_routes = Router::new()
+        .route("/indices", get(volcube_handlers::get_indices))
+        .route("/models", get(volcube_handlers::get_models))
+        .route(
+            "/instruments/:index",
+            get(volcube_handlers::get_instruments),
+        )
+        .route(
+            "/instruments/:index",
+            axum::routing::put(volcube_handlers::update_instruments),
+        )
+        .route("/calibrate", post(volcube_handlers::calibrate))
+        .route("/smile", get(volcube_handlers::get_smile))
+        .route("/density", get(volcube_handlers::get_density))
+        .route("/surface", get(volcube_handlers::get_surface));
+
+    let api_routes = api_routes.nest("/volcube", volcube_routes);
+
+    // FxVol API routes (volcube-calibration-ui Task 7.1)
+    let fxvol_routes = Router::new()
+        .route("/pairs", get(fxvol_handlers::get_pairs))
+        .route("/delta-types", get(fxvol_handlers::get_delta_types))
+        .route("/quotes/:pair", get(fxvol_handlers::get_quotes))
+        .route(
+            "/quotes/:pair",
+            axum::routing::put(fxvol_handlers::update_quotes),
+        )
+        .route("/build", post(fxvol_handlers::build_surface))
+        .route("/smile", get(fxvol_handlers::get_smile))
+        .route("/rr-bf", get(fxvol_handlers::get_rr_bf))
+        .route("/density", get(fxvol_handlers::get_density))
+        .route("/delta-strike", post(fxvol_handlers::delta_to_strike_handler));
+
+    let api_routes = api_routes.nest("/fxvol", fxvol_routes);
 
     // Static file serving for the dashboard
     let static_files =

@@ -12,12 +12,17 @@ authors.workspace = true
 # pricer_core with default-features=false to avoid num-dual (use enzyme-mode)
 pricer_core = { path = "../pricer_core", optional = true, default-features = false }
 pricer_models = { path = "../pricer_models", optional = true, features = ["rates"] }
+# Infra layer for shared types (Currency, Date, Direction) when l1l2-integration is enabled
+infra_master = { path = "../infra_master", optional = true }
 
 # LLVM 18 bindings for Enzyme support
 llvm-sys = { version = "180", features = ["prefer-dynamic"], optional = true }
 
 # Basic numeric traits
 num-traits.workspace = true
+
+# Date/time (only for l1l2-integration feature)
+chrono = { workspace = true, optional = true }
 
 # Error handling
 thiserror.workspace = true
@@ -58,7 +63,7 @@ harness = false
 [features]
 default = []
 # Phase 4: L1/L2 integration for smoothing functions, YieldCurve, Instrument
-l1l2-integration = ["dep:pricer_core", "dep:pricer_models"]
+l1l2-integration = ["dep:pricer_core", "dep:pricer_models", "dep:infra_master", "dep:chrono"]
 # Enzyme AD feature for actual Enzyme integration (works with or without l1l2-integration)
 enzyme-ad = ["dep:llvm-sys"]
 # Serialization support for GreeksResult

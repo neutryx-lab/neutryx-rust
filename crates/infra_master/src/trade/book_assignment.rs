@@ -276,8 +276,7 @@ impl TradeBookHistory {
     pub fn assignment_at(&self, date: Date) -> Option<&TradeBookAssignment> {
         self.assignments
             .iter()
-            .filter(|a| a.effective_date() <= date)
-            .next_back()
+            .rfind(|a| a.effective_date() <= date)
     }
 
     /// Returns the book ID effective at a given date.

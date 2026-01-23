@@ -146,9 +146,7 @@ impl Default for VolCubeConfig {
 
 impl VolCubeConfig {
     /// 新しい設定を作成（デフォルト値）。
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// 補間方式を設定。
     pub fn with_interpolation(mut self, method: InterpolationMethod) -> Self {
@@ -208,10 +206,7 @@ impl VolCubeConfig {
     pub fn validate(&self) -> Result<(), String> {
         if let Some(beta) = self.sabr_beta {
             if !(0.0..=1.0).contains(&beta) {
-                return Err(format!(
-                    "SABR beta must be in [0, 1], got: {}",
-                    beta
-                ));
+                return Err(format!("SABR beta must be in [0, 1], got: {}", beta));
             }
         }
         if self.tolerance <= 0.0 {
@@ -390,10 +385,7 @@ mod tests {
 
     #[test]
     fn test_optimizer_type_all_variants() {
-        let variants = [
-            OptimizerType::LevenbergMarquardt,
-            OptimizerType::NelderMead,
-        ];
+        let variants = [OptimizerType::LevenbergMarquardt, OptimizerType::NelderMead];
         assert_eq!(variants.len(), 2);
     }
 
@@ -423,68 +415,58 @@ mod tests {
 
     #[test]
     fn test_volcube_config_builder_interpolation() {
-        let config = VolCubeConfig::default()
-            .with_interpolation(InterpolationMethod::Svi);
+        let config = VolCubeConfig::default().with_interpolation(InterpolationMethod::Svi);
         assert_eq!(config.interpolation, InterpolationMethod::Svi);
     }
 
     #[test]
     fn test_volcube_config_builder_extrapolation() {
-        let config = VolCubeConfig::default()
-            .with_extrapolation(ExtrapolationMethod::Error);
+        let config = VolCubeConfig::default().with_extrapolation(ExtrapolationMethod::Error);
         assert_eq!(config.extrapolation, ExtrapolationMethod::Error);
     }
 
     #[test]
     fn test_volcube_config_builder_strike_axis() {
-        let config = VolCubeConfig::default()
-            .with_strike_axis(StrikeAxisType::Delta);
+        let config = VolCubeConfig::default().with_strike_axis(StrikeAxisType::Delta);
         assert_eq!(config.strike_axis, StrikeAxisType::Delta);
     }
 
     #[test]
     fn test_volcube_config_builder_optimizer() {
-        let config = VolCubeConfig::default()
-            .with_optimizer(OptimizerType::NelderMead);
+        let config = VolCubeConfig::default().with_optimizer(OptimizerType::NelderMead);
         assert_eq!(config.optimizer, OptimizerType::NelderMead);
     }
 
     #[test]
     fn test_volcube_config_builder_validate_arbitrage_free() {
-        let config = VolCubeConfig::default()
-            .with_validate_arbitrage_free(true);
+        let config = VolCubeConfig::default().with_validate_arbitrage_free(true);
         assert!(config.validate_arbitrage_free);
     }
 
     #[test]
     fn test_volcube_config_builder_sabr_beta() {
-        let config = VolCubeConfig::default()
-            .with_sabr_beta(Some(0.25));
+        let config = VolCubeConfig::default().with_sabr_beta(Some(0.25));
         assert_eq!(config.sabr_beta, Some(0.25));
 
-        let config_none = VolCubeConfig::default()
-            .with_sabr_beta(None);
+        let config_none = VolCubeConfig::default().with_sabr_beta(None);
         assert_eq!(config_none.sabr_beta, None);
     }
 
     #[test]
     fn test_volcube_config_builder_sabr_shift() {
-        let config = VolCubeConfig::default()
-            .with_sabr_shift(0.03);
+        let config = VolCubeConfig::default().with_sabr_shift(0.03);
         assert!((config.sabr_shift - 0.03).abs() < 1e-15);
     }
 
     #[test]
     fn test_volcube_config_builder_max_iterations() {
-        let config = VolCubeConfig::default()
-            .with_max_iterations(500);
+        let config = VolCubeConfig::default().with_max_iterations(500);
         assert_eq!(config.max_iterations, 500);
     }
 
     #[test]
     fn test_volcube_config_builder_tolerance() {
-        let config = VolCubeConfig::default()
-            .with_tolerance(1e-10);
+        let config = VolCubeConfig::default().with_tolerance(1e-10);
         assert!((config.tolerance - 1e-10).abs() < 1e-15);
     }
 
@@ -520,8 +502,7 @@ mod tests {
 
     #[test]
     fn test_volcube_config_validate_beta_out_of_range_high() {
-        let config = VolCubeConfig::default()
-            .with_sabr_beta(Some(1.5));
+        let config = VolCubeConfig::default().with_sabr_beta(Some(1.5));
         let result = config.validate();
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("beta"));
@@ -529,8 +510,7 @@ mod tests {
 
     #[test]
     fn test_volcube_config_validate_beta_out_of_range_low() {
-        let config = VolCubeConfig::default()
-            .with_sabr_beta(Some(-0.1));
+        let config = VolCubeConfig::default().with_sabr_beta(Some(-0.1));
         let result = config.validate();
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("beta"));
@@ -538,15 +518,13 @@ mod tests {
 
     #[test]
     fn test_volcube_config_validate_beta_none() {
-        let config = VolCubeConfig::default()
-            .with_sabr_beta(None);
+        let config = VolCubeConfig::default().with_sabr_beta(None);
         assert!(config.validate().is_ok());
     }
 
     #[test]
     fn test_volcube_config_validate_tolerance_zero() {
-        let config = VolCubeConfig::default()
-            .with_tolerance(0.0);
+        let config = VolCubeConfig::default().with_tolerance(0.0);
         let result = config.validate();
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("Tolerance"));
@@ -554,8 +532,7 @@ mod tests {
 
     #[test]
     fn test_volcube_config_validate_tolerance_negative() {
-        let config = VolCubeConfig::default()
-            .with_tolerance(-1e-8);
+        let config = VolCubeConfig::default().with_tolerance(-1e-8);
         let result = config.validate();
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("Tolerance"));
@@ -563,8 +540,7 @@ mod tests {
 
     #[test]
     fn test_volcube_config_validate_max_iterations_zero() {
-        let config = VolCubeConfig::default()
-            .with_max_iterations(0);
+        let config = VolCubeConfig::default().with_max_iterations(0);
         let result = config.validate();
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("iterations"));
@@ -572,8 +548,7 @@ mod tests {
 
     #[test]
     fn test_volcube_config_clone() {
-        let config = VolCubeConfig::default()
-            .with_interpolation(InterpolationMethod::Svi);
+        let config = VolCubeConfig::default().with_interpolation(InterpolationMethod::Svi);
         let cloned = config.clone();
         assert_eq!(config, cloned);
     }

@@ -56,7 +56,13 @@ mod proptests {
         ];
         let strike_domain = (0.01, 0.10);
 
-        VolCube::new(sabr_surface, forwards, config, source_instruments, strike_domain)
+        VolCube::new(
+            sabr_surface,
+            forwards,
+            config,
+            source_instruments,
+            strike_domain,
+        )
     }
 
     // ========================================
@@ -283,7 +289,7 @@ mod proptests {
         let cube = create_valid_cube();
         let expiry = 1.0;
         let tenor = 5.0;
-        let forward = 0.035;
+        let _forward = 0.035;
 
         // Check smile around ATM
         let strikes = vec![0.02, 0.025, 0.03, 0.035, 0.04, 0.045, 0.05];

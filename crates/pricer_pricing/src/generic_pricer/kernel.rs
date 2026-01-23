@@ -1,7 +1,7 @@
 //! Pricing kernel implementation.
 //!
-//! This module provides the core pricing computation logic for the Generic Pricer.
-//! It handles:
+//! This module provides the core pricing computation logic for the Generic
+//! Pricer. It handles:
 //! - Cashflow-level discounting
 //! - Day count conventions
 //! - Business day adjustments
@@ -12,6 +12,42 @@ use infra_master::time::Date;
 
 #[cfg(not(feature = "l1l2-integration"))]
 use super::result::Date;
+
+// Helper functions for Date operations that work with both infra_master::Date
+// and local Date
+
+/// Returns the number of days between two dates.
+#[cfg(feature = "l1l2-integration")]
+fn days_between(start: Date, end: Date) -> i32 {
+    (end.into_inner() - start.into_inner()).num_days() as i32
+}
+
+#[cfg(not(feature = "l1l2-integration"))]
+fn days_between(start: Date, end: Date) -> i32 { end.0 - start.0 }
+
+/// Returns a date value suitable for date_to_ymd conversion.
+#[cfg(feature = "l1l2-integration")]
+fn date_to_days(date: Date) -> i32 {
+    // Calculate days since 2000-01-01 for compatibility
+    let epoch = chrono::NaiveDate::from_ymd_opt(2000, 1, 1).unwrap();
+    (date.into_inner() - epoch).num_days() as i32
+}
+
+#[cfg(not(feature = "l1l2-integration"))]
+fn date_to_days(date: Date) -> i32 { date.0 }
+
+/// Adds days to a date.
+#[cfg(feature = "l1l2-integration")]
+fn add_days_to_date(date: Date, days: i32) -> Date {
+    let new_naive = date.into_inner() + chrono::Duration::days(i64::from(days));
+    Date::from_ymd(new_naive.year(), new_naive.month(), new_naive.day()).expect("valid date")
+}
+
+#[cfg(not(feature = "l1l2-integration"))]
+fn add_days_to_date(date: Date, days: i32) -> Date { Date(date.0 + days) }
+
+#[cfg(feature = "l1l2-integration")]
+use chrono::Datelike;
 
 /// Day count convention for year fraction calculations.
 ///
@@ -71,7 +107,7 @@ impl DayCountConvention {
     fn day_count(&self, start: Date, end: Date) -> i32 {
         match self {
             Self::Thirty360 => self.thirty360_days(start, end),
-            _ => end.0 - start.0, // Actual days
+            _ => days_between(start, end), // Actual days
         }
     }
 
@@ -95,8 +131,8 @@ impl DayCountConvention {
 /// This is a simplified implementation that assumes dates are stored
 /// as days since an epoch (2000-01-01).
 fn date_to_ymd(date: Date) -> (i32, i32, i32) {
-    // Simple approximation: assume date.0 is days since 2000-01-01
-    let days = date.0;
+    // Simple approximation: assume date is days since 2000-01-01
+    let days = date_to_days(date);
     let year = 2000 + days / 365;
     let day_of_year = days % 365;
     let month = (day_of_year / 30) + 1;
@@ -199,7 +235,7 @@ impl BusinessDayConvention {
     fn next_business_day(&self, date: Date) -> Date {
         let mut d = date;
         while is_weekend(d) {
-            d = Date(d.0 + 1);
+            d = add_days_to_date(d, 1);
         }
         d
     }
@@ -208,7 +244,7 @@ impl BusinessDayConvention {
     fn prev_business_day(&self, date: Date) -> Date {
         let mut d = date;
         while is_weekend(d) {
-            d = Date(d.0 - 1);
+            d = add_days_to_date(d, -1);
         }
         d
     }
@@ -218,7 +254,8 @@ impl BusinessDayConvention {
 fn is_weekend(date: Date) -> bool {
     // Assuming epoch is a Monday (2000-01-03 was a Monday)
     // Adjust for our epoch (2000-01-01 which was a Saturday)
-    let day_of_week = (date.0 + 5) % 7; // 0=Monday, 5=Saturday, 6=Sunday
+    let days = date_to_days(date);
+    let day_of_week = (days + 5) % 7; // 0=Monday, 5=Saturday, 6=Sunday
     day_of_week >= 5
 }
 
@@ -239,9 +276,7 @@ pub struct DiscountCalculator {
 
 impl DiscountCalculator {
     /// Creates a new discount calculator with a flat rate.
-    pub fn with_flat_rate(rate: f64) -> Self {
-        Self { rate }
-    }
+    pub fn with_flat_rate(rate: f64) -> Self { Self { rate } }
 
     /// Calculates the discount factor for a given time to maturity.
     ///
@@ -283,7 +318,7 @@ pub fn price_cashflow(
     day_count: DayCountConvention,
 ) -> f64 {
     // Skip past cashflows
-    if payment_date.0 <= valuation_date.0 {
+    if payment_date <= valuation_date {
         return 0.0;
     }
 
@@ -315,7 +350,13 @@ where
 {
     cashflows
         .map(|(amount, payment_date)| {
-            price_cashflow(amount, payment_date, valuation_date, discount_rate, day_count)
+            price_cashflow(
+                amount,
+                payment_date,
+                valuation_date,
+                discount_rate,
+                day_count,
+            )
         })
         .sum()
 }
@@ -427,8 +468,8 @@ mod tests {
         let dc = DayCountConvention::Actual365Fixed;
 
         let cashflows = vec![
-            (100_000.0, Date::from_days(365)),  // 1 year
-            (100_000.0, Date::from_days(730)),  // 2 years
+            (100_000.0, Date::from_days(365)), // 1 year
+            (100_000.0, Date::from_days(730)), // 2 years
         ];
 
         let pv = price_cashflow_stream(cashflows.into_iter(), valuation_date, rate, dc);

@@ -26,8 +26,7 @@ use std::collections::HashMap;
 use num_traits::Float;
 use serde::{Deserialize, Serialize};
 
-use super::cube::VolCube;
-use super::types::InstrumentId;
+use super::{cube::VolCube, types::InstrumentId};
 
 /// 計算グラフノード種別。
 ///
@@ -72,7 +71,11 @@ pub struct VolCubeGraphNode {
 
 impl VolCubeGraphNode {
     /// 新しいノードを作成。
-    pub fn new(id: impl Into<String>, label: impl Into<String>, node_type: VolCubeNodeType) -> Self {
+    pub fn new(
+        id: impl Into<String>,
+        label: impl Into<String>,
+        node_type: VolCubeNodeType,
+    ) -> Self {
         Self {
             id: id.into(),
             label: label.into(),
@@ -170,21 +173,30 @@ impl VolCubeGraphData {
             format!("VolCube {}", cube_id),
             VolCubeNodeType::Cube,
         )
-        .with_metadata("expiry_min", format!("{:.2}", cube.expiry_domain().0.to_f64().unwrap_or(0.0)))
-        .with_metadata("expiry_max", format!("{:.2}", cube.expiry_domain().1.to_f64().unwrap_or(0.0)))
-        .with_metadata("tenor_min", format!("{:.2}", cube.tenor_domain().0.to_f64().unwrap_or(0.0)))
-        .with_metadata("tenor_max", format!("{:.2}", cube.tenor_domain().1.to_f64().unwrap_or(0.0)));
+        .with_metadata(
+            "expiry_min",
+            format!("{:.2}", cube.expiry_domain().0.to_f64().unwrap_or(0.0)),
+        )
+        .with_metadata(
+            "expiry_max",
+            format!("{:.2}", cube.expiry_domain().1.to_f64().unwrap_or(0.0)),
+        )
+        .with_metadata(
+            "tenor_min",
+            format!("{:.2}", cube.tenor_domain().0.to_f64().unwrap_or(0.0)),
+        )
+        .with_metadata(
+            "tenor_max",
+            format!("{:.2}", cube.tenor_domain().1.to_f64().unwrap_or(0.0)),
+        );
 
         nodes.push(root_node);
 
         // ソースInstrumentノード
         for inst_id in cube.source_instruments() {
             let node_id = format!("{}:{}", cube_id, inst_id.as_str());
-            let node = VolCubeGraphNode::new(
-                &node_id,
-                inst_id.as_str(),
-                VolCubeNodeType::Instrument,
-            );
+            let node =
+                VolCubeGraphNode::new(&node_id, inst_id.as_str(), VolCubeNodeType::Instrument);
             nodes.push(node);
 
             // ソースからキューブへのエッジ
@@ -211,13 +223,10 @@ impl VolCubeGraphData {
                     ten.to_f64().unwrap_or(0.0)
                 );
 
-                let node = VolCubeGraphNode::new(
-                    &slice_id,
-                    slice_label,
-                    VolCubeNodeType::SabrSlice,
-                )
-                .with_metadata("expiry", exp.to_f64().unwrap_or(0.0).to_string())
-                .with_metadata("tenor", ten.to_f64().unwrap_or(0.0).to_string());
+                let node =
+                    VolCubeGraphNode::new(&slice_id, slice_label, VolCubeNodeType::SabrSlice)
+                        .with_metadata("expiry", exp.to_f64().unwrap_or(0.0).to_string())
+                        .with_metadata("tenor", ten.to_f64().unwrap_or(0.0).to_string());
 
                 nodes.push(node);
 
@@ -236,7 +245,10 @@ impl VolCubeGraphData {
         let mut metadata = HashMap::new();
         metadata.insert("node_count".to_string(), nodes.len().to_string());
         metadata.insert("edge_count".to_string(), edges.len().to_string());
-        metadata.insert("source_instruments".to_string(), cube.source_instruments().len().to_string());
+        metadata.insert(
+            "source_instruments".to_string(),
+            cube.source_instruments().len().to_string(),
+        );
 
         Self {
             id: cube_id.to_string(),
@@ -272,14 +284,10 @@ impl VolCubeGraphData {
     }
 
     /// ノード数を取得。
-    pub fn node_count(&self) -> usize {
-        self.nodes.len()
-    }
+    pub fn node_count(&self) -> usize { self.nodes.len() }
 
     /// エッジ数を取得。
-    pub fn edge_count(&self) -> usize {
-        self.edges.len()
-    }
+    pub fn edge_count(&self) -> usize { self.edges.len() }
 }
 
 /// AAD感度情報。
@@ -347,10 +355,7 @@ mod tests {
 
         let sabr_surface = SabrParameterSurface::new(expiries, tenors, &params, beta).unwrap();
 
-        let forwards = vec![
-            vec![0.03, 0.035],
-            vec![0.032, 0.038],
-        ];
+        let forwards = vec![vec![0.03, 0.035], vec![0.032, 0.038]];
 
         let config = VolCubeConfig::default();
         let source_instruments = vec![
@@ -360,7 +365,13 @@ mod tests {
         ];
         let strike_domain = (0.01, 0.10);
 
-        VolCube::new(sabr_surface, forwards, config, source_instruments, strike_domain)
+        VolCube::new(
+            sabr_surface,
+            forwards,
+            config,
+            source_instruments,
+            strike_domain,
+        )
     }
 
     #[test]
@@ -374,8 +385,8 @@ mod tests {
 
     #[test]
     fn test_graph_node_with_value() {
-        let node = VolCubeGraphNode::new("node1", "Test", VolCubeNodeType::Instrument)
-            .with_value(0.25);
+        let node =
+            VolCubeGraphNode::new("node1", "Test", VolCubeNodeType::Instrument).with_value(0.25);
         assert_eq!(node.value, Some(0.25));
     }
 
@@ -438,14 +449,8 @@ mod tests {
 
     #[test]
     fn test_sensitivity_info_creation() {
-        let info = VolCubeSensitivityInfo::new(
-            InstrumentId::new("INST-1"),
-            "vega",
-            0.05,
-            1.0,
-            5.0,
-            0.03,
-        );
+        let info =
+            VolCubeSensitivityInfo::new(InstrumentId::new("INST-1"), "vega", 0.05, 1.0, 5.0, 0.03);
 
         assert_eq!(info.instrument_id.as_str(), "INST-1");
         assert_eq!(info.sensitivity_type, "vega");

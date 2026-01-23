@@ -15,10 +15,13 @@
 //!
 //! # Design Decisions
 //!
-//! - `GenericPricer`: Concrete struct (not trait) - single implementation suffices
+//! - `GenericPricer`: Concrete struct (not trait) - single implementation
+//!   suffices
 //! - `PricingResult`: f64 fixed - AD only needed for `get_greeks()`
-//! - `reporting_currency`: Required argument for `get_pv()` (risk calculation prerequisite)
-//! - Currency breakdown: Leg-level only (no `CurrencyBreakdown` - Enzyme AD compatibility)
+//! - `reporting_currency`: Required argument for `get_pv()` (risk calculation
+//!   prerequisite)
+//! - Currency breakdown: Leg-level only (no `CurrencyBreakdown` - Enzyme AD
+//!   compatibility)
 //!
 //! # Example
 //!
@@ -42,7 +45,11 @@ mod kernel;
 mod pricer;
 mod result;
 
+#[cfg(not(feature = "l1l2-integration"))]
+pub use batch::SimpleTrade;
 pub use batch::{BatchPricer, BatchPricingResult, BatchStats, TradeId};
+#[cfg(not(feature = "l1l2-integration"))]
+pub use config::DefaultCurrency;
 pub use config::{ModelConfig, ModelConfigBuilder, PricerConfig, PricerConfigBuilder};
 pub use error::{ConfigError, PricingError};
 pub use greeks_calculator::{
@@ -54,16 +61,8 @@ pub use kernel::{
     DiscountCalculator, Frequency,
 };
 pub use pricer::GenericPricer;
-pub use result::{CashflowPricingResult, LegPricingResult, PathDistribution, PricingResult};
-
-#[cfg(not(feature = "l1l2-integration"))]
-pub use batch::SimpleTrade;
-
-#[cfg(not(feature = "l1l2-integration"))]
-pub use config::DefaultCurrency;
-
 #[cfg(not(feature = "l1l2-integration"))]
 pub use pricer::{SimpleCashflow, SimpleLeg};
-
+pub use result::{CashflowPricingResult, LegPricingResult, PathDistribution, PricingResult};
 #[cfg(not(feature = "l1l2-integration"))]
 pub use result::{Date, Direction};

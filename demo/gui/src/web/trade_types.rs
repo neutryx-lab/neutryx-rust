@@ -26,7 +26,7 @@ use serde::{Deserialize, Serialize};
 /// Trade instrument type for trade expansion requests.
 ///
 /// Represents all supported instrument types organised by asset class:
-/// - Rates: Deposit, FRA, Futures, ParSwap, OIS, BasisSwap, IRS
+/// - Rates: Deposit, FRA, Futures, OIS, BasisSwap, IRS
 /// - FX: FxForward, FxOption, CrossCurrencySwap
 /// - Equity: EquityVanillaOption, EquityForward
 /// - Credit: CDS (placeholder)
@@ -41,8 +41,6 @@ pub enum TradeInstrumentType {
     Fra,
     /// Interest rate futures
     Futures,
-    /// Par swap (ATM swap)
-    ParSwap,
     /// Overnight Index Swap
     Ois,
     /// Basis swap (two floating legs)
@@ -78,13 +76,9 @@ impl TradeInstrumentType {
     #[must_use]
     pub fn asset_class(&self) -> AssetClass {
         match self {
-            Self::Deposit
-            | Self::Fra
-            | Self::Futures
-            | Self::ParSwap
-            | Self::Ois
-            | Self::BasisSwap
-            | Self::Irs => AssetClass::Rates,
+            Self::Deposit | Self::Fra | Self::Futures | Self::Ois | Self::BasisSwap | Self::Irs => {
+                AssetClass::Rates
+            }
 
             Self::FxForward | Self::FxOption | Self::CrossCurrencySwap => AssetClass::Fx,
 
@@ -116,7 +110,6 @@ impl TradeInstrumentType {
             Self::Deposit,
             Self::Fra,
             Self::Futures,
-            Self::ParSwap,
             Self::Ois,
             Self::BasisSwap,
             Self::Irs,
@@ -141,7 +134,6 @@ impl TradeInstrumentType {
             Self::Deposit => "Deposit",
             Self::Fra => "FRA",
             Self::Futures => "Futures",
-            Self::ParSwap => "Par Swap",
             Self::Ois => "OIS",
             Self::BasisSwap => "Basis Swap",
             Self::Irs => "IRS",
@@ -190,7 +182,7 @@ impl AssetClass {
 // Task 1.2: Instrument Parameter Types
 // =============================================================================
 
-/// Rates instrument parameters (Deposit, FRA, Futures, ParSwap, OIS).
+/// Rates instrument parameters (Deposit, FRA, Futures, OIS).
 ///
 /// Basic parameters for simple rates instruments.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -539,11 +531,10 @@ mod tests {
         fn test_all_instrument_types_exist() {
             let all = TradeInstrumentType::all();
 
-            // Rates (7)
+            // Rates (6)
             assert!(all.contains(&TradeInstrumentType::Deposit));
             assert!(all.contains(&TradeInstrumentType::Fra));
             assert!(all.contains(&TradeInstrumentType::Futures));
-            assert!(all.contains(&TradeInstrumentType::ParSwap));
             assert!(all.contains(&TradeInstrumentType::Ois));
             assert!(all.contains(&TradeInstrumentType::BasisSwap));
             assert!(all.contains(&TradeInstrumentType::Irs));

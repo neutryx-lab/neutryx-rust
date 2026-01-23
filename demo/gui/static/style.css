@@ -74,6 +74,17 @@
     --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
     --shadow-glow: 0 0 40px rgba(99, 102, 241, 0.3);
+
+    /* Card & Component Colors */
+    --card-bg: rgba(255, 255, 255, 0.04);
+    --card-bg-secondary: rgba(255, 255, 255, 0.02);
+    --card-bg-hover: rgba(255, 255, 255, 0.08);
+    --border-color: rgba(255, 255, 255, 0.1);
+
+    /* Accent Colors (aliases) */
+    --accent-primary: var(--primary);
+    --accent-primary-transparent: rgba(99, 102, 241, 0.15);
+    --error: var(--danger);
 }
 
 /* Light Theme */
@@ -89,6 +100,13 @@ body.light-theme {
     --text-primary: #27364a;
     --text-secondary: #5c6a7d;
     --text-muted: #a0aec0;
+
+    /* Card & Component Colors (Light) */
+    --card-bg: rgba(30, 41, 59, 0.04);
+    --card-bg-secondary: rgba(30, 41, 59, 0.02);
+    --card-bg-hover: rgba(30, 41, 59, 0.08);
+    --border-color: rgba(30, 41, 59, 0.12);
+    --accent-primary-transparent: rgba(99, 102, 241, 0.1);
 }
 
 /* OLED Theme - True Black */
@@ -4548,6 +4566,88 @@ kbd {
     font-size: 0.65rem;
     color: var(--text-muted);
     text-transform: uppercase;
+}
+
+/* Portfolio Health Mini Indicator */
+.portfolio-health-mini {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    padding: 4px 10px;
+    background: var(--surface);
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border);
+}
+
+.health-circle-mini {
+    width: 28px;
+    height: 28px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.health-circle-mini svg {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.health-circle-mini .health-bg-mini {
+    fill: none;
+    stroke: var(--surface-hover);
+    stroke-width: 3;
+}
+
+.health-circle-mini .health-fill-mini {
+    fill: none;
+    stroke: var(--success);
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-dasharray: 97.4;
+    stroke-dashoffset: 97.4;
+    transition: stroke-dashoffset 0.6s ease-out, stroke 0.3s ease;
+}
+
+.health-circle-mini .health-fill-mini.warning {
+    stroke: var(--warning);
+}
+
+.health-circle-mini .health-fill-mini.danger {
+    stroke: var(--danger);
+}
+
+.health-value-mini {
+    position: relative;
+    z-index: 1;
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: var(--success);
+}
+
+.health-value-mini.warning {
+    color: var(--warning);
+}
+
+.health-value-mini.danger {
+    color: var(--danger);
+}
+
+.health-label-mini {
+    font-size: 0.65rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.metric-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .risk-summary-stats {
@@ -9817,6 +9917,45 @@ body.light-theme .cf-table th {
     padding: 12px;
 }
 
+.daily-accruals-table .more-rows-toggle td {
+    text-align: center;
+    padding: 8px 12px;
+}
+
+.show-more-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--accent-color);
+    background: transparent;
+    border: 1px solid var(--accent-color);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.show-more-btn:hover {
+    background: var(--accent-color);
+    color: white;
+}
+
+.show-more-btn i {
+    font-size: 0.7rem;
+}
+
+body.light-theme .show-more-btn {
+    color: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
+body.light-theme .show-more-btn:hover {
+    background: var(--accent-color);
+    color: white;
+}
+
 body.light-theme .expand-btn {
     background: #e2e8f0;
 }
@@ -12464,6 +12603,704 @@ body.light-theme .chart-placeholder {
 
     .top-bar {
         padding-left: 0;
+    }
+}
+
+/* =============================================================================
+   Pricer View Styles (demo-webapp-pricer Task 3.1)
+   ============================================================================= */
+
+.pricer-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    height: 100%;
+}
+
+/* Header */
+.pricer-header {
+    padding: 1.5rem;
+    border-radius: var(--radius-lg);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.pricer-title h2 {
+    font-size: 1.5rem;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+}
+
+.pricer-title p {
+    margin: 0.25rem 0 0;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.pricer-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+/* Main Grid - 2 Panel Layout */
+.pricer-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    flex: 1;
+    min-height: 0;
+}
+
+@media (max-width: 1200px) {
+    .pricer-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Panels */
+.pricer-input-panel,
+.pricer-results-panel {
+    padding: 1.5rem;
+    border-radius: var(--radius-lg);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* Sections */
+.pricer-section {
+    background: var(--card-bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+}
+
+.pricer-section h3 {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pricer-section h3 i {
+    color: var(--accent-primary);
+    font-size: 0.875rem;
+}
+
+/* Form Elements */
+.pricer-form-group {
+    margin-bottom: 1rem;
+}
+
+.pricer-form-group:last-child {
+    margin-bottom: 0;
+}
+
+.pricer-form-group label {
+    display: block;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.pricer-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+/* Cashflow Actions */
+.pricer-cf-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+/* Cashflow Table Container */
+.pricer-cf-table-container {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+}
+
+/* CF Table */
+.pricer-cf-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.pricer-cf-table th,
+.pricer-cf-table td {
+    padding: 0.5rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.pricer-cf-table th {
+    background: var(--card-bg);
+    color: var(--text-secondary);
+    font-weight: 500;
+    position: sticky;
+    top: 0;
+}
+
+.pricer-cf-table input {
+    width: 100%;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--card-bg);
+    color: var(--text-primary);
+}
+
+.pricer-cf-table input.modified {
+    border-color: var(--warning);
+    background: rgba(245, 158, 11, 0.1);
+}
+
+.pricer-cf-table input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 2px var(--accent-primary-transparent);
+}
+
+/* Placeholder Text */
+.pricer-placeholder {
+    color: var(--text-muted);
+    text-align: center;
+    padding: 2.5rem 1.5rem;
+    font-size: 0.875rem;
+    background: var(--card-bg);
+    border-radius: var(--radius-sm);
+    border: 1px dashed var(--border-color);
+}
+
+.pricer-placeholder i {
+    display: block;
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    opacity: 0.5;
+}
+
+/* PV Display */
+.pricer-pv-display {
+    text-align: center;
+    padding: 1.5rem;
+    background: var(--card-bg);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+}
+
+.pricer-pv-placeholder {
+    color: var(--text-muted);
+    padding: 1rem 0;
+}
+
+.pricer-pv-placeholder i {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+    display: block;
+    opacity: 0.5;
+}
+
+.pricer-pv-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--accent-primary);
+    margin-bottom: 0.25rem;
+    font-family: 'SF Mono', 'Consolas', monospace;
+}
+
+.pricer-pv-value.positive {
+    color: var(--success);
+}
+
+.pricer-pv-value.negative {
+    color: var(--error);
+}
+
+.pricer-pv-currency {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* Leg Table */
+.pricer-leg-table {
+    max-height: 220px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+}
+
+.pricer-leg-table table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+}
+
+.pricer-leg-table th,
+.pricer-leg-table td {
+    padding: 0.625rem 0.75rem;
+    text-align: right;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.pricer-leg-table th {
+    text-align: left;
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    background: var(--card-bg);
+    position: sticky;
+    top: 0;
+}
+
+.pricer-leg-table td:first-child {
+    text-align: left;
+    font-weight: 500;
+}
+
+.pricer-leg-table td:last-child {
+    font-family: 'SF Mono', 'Consolas', monospace;
+}
+
+.pricer-leg-row {
+    cursor: pointer;
+    transition: background var(--transition-fast);
+}
+
+.pricer-leg-row:hover {
+    background: var(--card-bg-hover);
+}
+
+.pricer-leg-row.expanded {
+    background: var(--card-bg-hover);
+}
+
+.pricer-cf-detail-row {
+    background: var(--card-bg-secondary);
+}
+
+.pricer-cf-detail-row td {
+    padding-left: 2rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+/* Greeks Display */
+.pricer-greeks-display {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 0.75rem;
+}
+
+.pricer-greek-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 1rem;
+    text-align: center;
+    transition: border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.pricer-greek-card:hover {
+    border-color: var(--accent-primary);
+    transform: translateY(-2px);
+}
+
+.pricer-greek-card .label {
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.pricer-greek-card .value {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-family: 'SF Mono', 'Consolas', monospace;
+}
+
+.pricer-greek-card .value.positive {
+    color: var(--success);
+}
+
+.pricer-greek-card .value.negative {
+    color: var(--error);
+}
+
+/* History List */
+.pricer-history-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.pricer-history-list {
+    max-height: 180px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+}
+
+.pricer-history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.625rem 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: background var(--transition-fast);
+}
+
+.pricer-history-item:last-child {
+    border-bottom: none;
+}
+
+.pricer-history-item:hover {
+    background: var(--card-bg-hover);
+}
+
+.pricer-history-item.selected {
+    background: var(--accent-primary-transparent);
+    border-left: 3px solid var(--accent-primary);
+}
+
+.pricer-history-timestamp {
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+}
+
+.pricer-history-pv {
+    font-weight: 600;
+    font-size: 0.875rem;
+    font-family: 'SF Mono', 'Consolas', monospace;
+}
+
+.pricer-history-diff {
+    font-size: 0.6875rem;
+    font-family: 'SF Mono', 'Consolas', monospace;
+}
+
+.pricer-history-diff.positive {
+    color: var(--success);
+}
+
+.pricer-history-diff.negative {
+    color: var(--error);
+}
+
+/* Model Config Fields */
+.pricer-model-config {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+/* ============================================
+   VolCube Builder Styles (volcube-calibration-ui)
+   ============================================ */
+
+/* Header Actions */
+.volcube-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.volcube-tabs {
+    display: flex;
+    gap: 0.5rem;
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    padding: 0.25rem;
+}
+
+.volcube-tab {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    font-size: 0.875rem;
+}
+
+.volcube-tab:hover {
+    color: var(--text-primary);
+    background: var(--surface-hover);
+}
+
+.volcube-tab.active {
+    color: var(--primary);
+    background: rgba(99, 102, 241, 0.15);
+}
+
+.volcube-export-btns {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Input Sections */
+.volcube-input-section {
+    margin-bottom: 1rem;
+}
+
+.volcube-input-section label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.volcube-input-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.volcube-settings {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: var(--surface);
+    border-radius: var(--radius-md);
+}
+
+.volcube-setting-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.volcube-setting-group label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* Instruments Section */
+.volcube-instruments-section {
+    margin-top: 1.5rem;
+}
+
+.volcube-instruments-section h4 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.volcube-table-container {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+}
+
+.volcube-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+}
+
+.volcube-table thead {
+    position: sticky;
+    top: 0;
+    background: var(--bg-secondary);
+    z-index: 1;
+}
+
+.volcube-table th,
+.volcube-table td {
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.volcube-table th {
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.volcube-table tbody tr:hover {
+    background: var(--surface-hover);
+}
+
+.volcube-table input.vol-input {
+    width: 80px;
+    padding: 0.25rem 0.5rem;
+    background: var(--surface);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 0.8125rem;
+    text-align: right;
+}
+
+.volcube-table input.vol-input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.volcube-table input.vol-input.small {
+    width: 50px;
+}
+
+.volcube-placeholder {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-muted);
+}
+
+/* Slice Selectors */
+.volcube-slice-selectors {
+    display: flex;
+    align-items: flex-end;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.volcube-slice-selectors .volcube-input-section {
+    margin-bottom: 0;
+    min-width: 100px;
+}
+
+.volcube-view-btns {
+    display: flex;
+    gap: 0.5rem;
+    margin-left: auto;
+}
+
+/* Results Sections */
+.volcube-params-section,
+.volcube-metrics-section {
+    margin-bottom: 1.5rem;
+}
+
+.volcube-params-section h4,
+.volcube-metrics-section h4 {
+    margin-bottom: 0.75rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+/* Chart Sections */
+.volcube-chart-section {
+    margin-bottom: 2rem;
+}
+
+.volcube-chart-section h4 {
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.volcube-chart-container {
+    position: relative;
+    height: 250px;
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+}
+
+.volcube-3d-container {
+    height: 400px;
+    background: var(--surface);
+    border-radius: var(--radius-md);
+}
+
+/* Stats Grid */
+.volcube-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-top: 1rem;
+    padding: 1rem;
+    background: var(--surface);
+    border-radius: var(--radius-md);
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.stat-value {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-family: 'SF Mono', 'Consolas', monospace;
+}
+
+/* Loading Overlay */
+.volcube-loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(10, 10, 15, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    border-radius: var(--radius-lg);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .volcube-input-row {
+        grid-template-columns: 1fr;
+    }
+
+    .volcube-settings {
+        grid-template-columns: 1fr;
+    }
+
+    .volcube-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .volcube-slice-selectors {
+        flex-wrap: wrap;
     }
 }
 

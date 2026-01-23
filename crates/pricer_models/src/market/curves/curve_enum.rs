@@ -315,7 +315,8 @@ mod tests {
         let tenors = [0.5_f64, 1.0, 2.0];
         let rates = [0.02, 0.03, 0.04];
         let interp =
-            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false).unwrap();
+            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false)
+                .unwrap();
         let curve = CurveEnum::Interpolated(interp);
 
         let df = curve.discount_factor(1.0).unwrap();
@@ -328,7 +329,8 @@ mod tests {
         let tenors = [0.5_f64, 1.0, 2.0];
         let rates = [0.02, 0.03, 0.04];
         let interp =
-            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false).unwrap();
+            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false)
+                .unwrap();
         let curve = CurveEnum::Interpolated(interp);
 
         let rate = curve.zero_rate(1.0).unwrap();
@@ -340,7 +342,8 @@ mod tests {
         let tenors = [0.5_f64, 1.0, 2.0];
         let rates = [0.02, 0.03, 0.04];
         let interp =
-            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false).unwrap();
+            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false)
+                .unwrap();
         let curve: CurveEnum<f64> = interp.into();
 
         match curve {
@@ -365,7 +368,8 @@ mod tests {
         let tenors = [0.5_f64, 1.0, 2.0];
         let rates = [0.02, 0.03, 0.04];
         let interp =
-            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false).unwrap();
+            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false)
+                .unwrap();
         let curve = CurveEnum::Interpolated(interp);
 
         let result = curve.discount_factor(0.25);

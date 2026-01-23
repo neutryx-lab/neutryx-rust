@@ -9,8 +9,10 @@
 use num_traits::Float;
 
 use super::VolatilitySurface;
-use crate::market::error::MarketDataError;
-use crate::market::volcube::{VolCube, VolatilityCube};
+use crate::market::{
+    error::MarketDataError,
+    volcube::{VolCube, VolatilityCube},
+};
 
 /// Adapter for using a 3D VolCube as a 2D VolatilitySurface.
 ///
@@ -56,33 +58,23 @@ impl<T: Float + Send + Sync> VolCubeSlice<T> {
     /// let slice = VolCubeSlice::new(cube, 5.0);
     /// ```
     #[inline]
-    pub fn new(cube: VolCube<T>, tenor: T) -> Self {
-        Self { cube, tenor }
-    }
+    pub fn new(cube: VolCube<T>, tenor: T) -> Self { Self { cube, tenor } }
 
     /// Get the fixed tenor for this slice.
     #[inline]
-    pub fn tenor(&self) -> T {
-        self.tenor
-    }
+    pub fn tenor(&self) -> T { self.tenor }
 
     /// Get a reference to the underlying VolCube.
     #[inline]
-    pub fn cube(&self) -> &VolCube<T> {
-        &self.cube
-    }
+    pub fn cube(&self) -> &VolCube<T> { &self.cube }
 
     /// Consume the slice and return the underlying VolCube.
     #[inline]
-    pub fn into_cube(self) -> VolCube<T> {
-        self.cube
-    }
+    pub fn into_cube(self) -> VolCube<T> { self.cube }
 
     /// Get the tenor domain from the underlying cube.
     #[inline]
-    pub fn tenor_domain(&self) -> (T, T) {
-        self.cube.tenor_domain()
-    }
+    pub fn tenor_domain(&self) -> (T, T) { self.cube.tenor_domain() }
 }
 
 impl<T: Float + Send + Sync> VolatilitySurface<T> for VolCubeSlice<T> {
@@ -107,22 +99,17 @@ impl<T: Float + Send + Sync> VolatilitySurface<T> for VolCubeSlice<T> {
 
     /// Return the valid strike domain from the underlying cube.
     #[inline]
-    fn strike_domain(&self) -> (T, T) {
-        self.cube.strike_domain()
-    }
+    fn strike_domain(&self) -> (T, T) { self.cube.strike_domain() }
 
     /// Return the valid expiry domain from the underlying cube.
     #[inline]
-    fn expiry_domain(&self) -> (T, T) {
-        self.cube.expiry_domain()
-    }
+    fn expiry_domain(&self) -> (T, T) { self.cube.expiry_domain() }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::market::volcube::{SabrParameterSurface, SabrParams, VolCubeConfig};
-    use crate::market::volcube::InstrumentId;
+    use crate::market::volcube::{InstrumentId, SabrParameterSurface, SabrParams, VolCubeConfig};
 
     fn create_test_cube() -> VolCube<f64> {
         let expiries = vec![0.5, 1.0];
@@ -142,19 +129,19 @@ mod tests {
 
         let sabr_surface = SabrParameterSurface::new(expiries, tenors, &params, beta).unwrap();
 
-        let forwards = vec![
-            vec![0.03, 0.035],
-            vec![0.032, 0.038],
-        ];
+        let forwards = vec![vec![0.03, 0.035], vec![0.032, 0.038]];
 
         let config = VolCubeConfig::default();
-        let source_instruments = vec![
-            InstrumentId::new("INST-1"),
-            InstrumentId::new("INST-2"),
-        ];
+        let source_instruments = vec![InstrumentId::new("INST-1"), InstrumentId::new("INST-2")];
         let strike_domain = (0.01, 0.10);
 
-        VolCube::new(sabr_surface, forwards, config, source_instruments, strike_domain)
+        VolCube::new(
+            sabr_surface,
+            forwards,
+            config,
+            source_instruments,
+            strike_domain,
+        )
     }
 
     // ========================================

@@ -31,10 +31,7 @@
 
 use num_traits::Float;
 
-use super::config::VolCubeConfig;
-use super::cube::VolCube;
-use super::error::VolCubeError;
-use super::types::VolInstrument;
+use super::{config::VolCubeConfig, cube::VolCube, error::VolCubeError, types::VolInstrument};
 
 /// Result type for calibration operations.
 pub type CalibrationResult<T> = Result<CalibratorOutput<T>, VolCubeError>;
@@ -118,9 +115,7 @@ pub struct SabrCalibrator;
 
 impl SabrCalibrator {
     /// Create a new SABR calibrator.
-    pub fn new() -> Self {
-        Self
-    }
+    pub fn new() -> Self { Self }
 }
 
 impl<T: Float + Send + Sync> VolCubeCalibrator<T> for SabrCalibrator {
@@ -140,9 +135,7 @@ impl<T: Float + Send + Sync> VolCubeCalibrator<T> for SabrCalibrator {
         Ok(CalibratorOutput::new(cube, config.max_iterations, 0.0))
     }
 
-    fn name(&self) -> &'static str {
-        "SABR"
-    }
+    fn name(&self) -> &'static str { "SABR" }
 
     fn supports_interpolation(&self, method: &super::config::InterpolationMethod) -> bool {
         matches!(
@@ -163,9 +156,7 @@ pub struct SviCalibrator;
 
 impl SviCalibrator {
     /// Create a new SVI calibrator.
-    pub fn new() -> Self {
-        Self
-    }
+    pub fn new() -> Self { Self }
 }
 
 impl<T: Float + Send + Sync> VolCubeCalibrator<T> for SviCalibrator {
@@ -180,9 +171,7 @@ impl<T: Float + Send + Sync> VolCubeCalibrator<T> for SviCalibrator {
         })
     }
 
-    fn name(&self) -> &'static str {
-        "SVI"
-    }
+    fn name(&self) -> &'static str { "SVI" }
 
     fn supports_interpolation(&self, method: &super::config::InterpolationMethod) -> bool {
         matches!(method, super::config::InterpolationMethod::Svi)
@@ -199,9 +188,7 @@ pub struct LocalVolCalibrator;
 #[cfg(feature = "local-vol")]
 impl LocalVolCalibrator {
     /// Create a new Local Volatility calibrator.
-    pub fn new() -> Self {
-        Self
-    }
+    pub fn new() -> Self { Self }
 }
 
 #[cfg(feature = "local-vol")]
@@ -217,9 +204,7 @@ impl<T: Float + Send + Sync> VolCubeCalibrator<T> for LocalVolCalibrator {
         })
     }
 
-    fn name(&self) -> &'static str {
-        "LocalVol"
-    }
+    fn name(&self) -> &'static str { "LocalVol" }
 
     fn supports_interpolation(&self, _method: &super::config::InterpolationMethod) -> bool {
         true // LocalVol can work with any smile representation
@@ -236,9 +221,7 @@ pub struct StochasticLocalVolCalibrator;
 #[cfg(feature = "stochastic-local-vol")]
 impl StochasticLocalVolCalibrator {
     /// Create a new Stochastic Local Volatility calibrator.
-    pub fn new() -> Self {
-        Self
-    }
+    pub fn new() -> Self { Self }
 }
 
 #[cfg(feature = "stochastic-local-vol")]
@@ -254,9 +237,7 @@ impl<T: Float + Send + Sync> VolCubeCalibrator<T> for StochasticLocalVolCalibrat
         })
     }
 
-    fn name(&self) -> &'static str {
-        "StochasticLocalVol"
-    }
+    fn name(&self) -> &'static str { "StochasticLocalVol" }
 
     fn supports_interpolation(&self, _method: &super::config::InterpolationMethod) -> bool {
         true // SLV can work with any smile representation
@@ -283,13 +264,19 @@ mod tests {
     // ========================================
 
     fn create_test_cube() -> VolCube<f64> {
-        use super::super::{SabrParameterSurface, SabrParams, InstrumentId};
+        use super::super::{InstrumentId, SabrParameterSurface, SabrParams};
 
         let expiries = vec![0.5_f64, 1.0];
         let tenors = vec![2.0, 5.0];
         let params = vec![
-            vec![SabrParams::new(0.04, 0.5, -0.3, 0.4), SabrParams::new(0.05, 0.5, -0.25, 0.35)],
-            vec![SabrParams::new(0.045, 0.5, -0.35, 0.45), SabrParams::new(0.055, 0.5, -0.2, 0.3)],
+            vec![
+                SabrParams::new(0.04, 0.5, -0.3, 0.4),
+                SabrParams::new(0.05, 0.5, -0.25, 0.35),
+            ],
+            vec![
+                SabrParams::new(0.045, 0.5, -0.35, 0.45),
+                SabrParams::new(0.055, 0.5, -0.2, 0.3),
+            ],
         ];
         let sabr_surface = SabrParameterSurface::new(expiries, tenors, &params, 0.5).unwrap();
 
@@ -315,8 +302,7 @@ mod tests {
     fn test_calibrator_output_with_errors() {
         let cube = create_test_cube();
         let errors = vec![0.001, 0.002, 0.003];
-        let output = CalibratorOutput::new(cube, 50, 1e-10)
-            .with_instrument_errors(errors.clone());
+        let output = CalibratorOutput::new(cube, 50, 1e-10).with_instrument_errors(errors.clone());
         assert_eq!(output.instrument_errors, errors);
     }
 
@@ -327,16 +313,39 @@ mod tests {
     #[test]
     fn test_sabr_calibrator_name() {
         let calibrator = SabrCalibrator::new();
-        assert_eq!(<SabrCalibrator as VolCubeCalibrator<f64>>::name(&calibrator), "SABR");
+        assert_eq!(
+            <SabrCalibrator as VolCubeCalibrator<f64>>::name(&calibrator),
+            "SABR"
+        );
     }
 
     #[test]
     fn test_sabr_calibrator_supports_interpolation() {
         let calibrator = SabrCalibrator::new();
-        assert!(<SabrCalibrator as VolCubeCalibrator<f64>>::supports_interpolation(&calibrator, &super::super::config::InterpolationMethod::Sabr));
-        assert!(<SabrCalibrator as VolCubeCalibrator<f64>>::supports_interpolation(&calibrator, &super::super::config::InterpolationMethod::Linear));
-        assert!(<SabrCalibrator as VolCubeCalibrator<f64>>::supports_interpolation(&calibrator, &super::super::config::InterpolationMethod::FlatVol));
-        assert!(!<SabrCalibrator as VolCubeCalibrator<f64>>::supports_interpolation(&calibrator, &super::super::config::InterpolationMethod::Svi));
+        assert!(
+            <SabrCalibrator as VolCubeCalibrator<f64>>::supports_interpolation(
+                &calibrator,
+                &super::super::config::InterpolationMethod::Sabr
+            )
+        );
+        assert!(
+            <SabrCalibrator as VolCubeCalibrator<f64>>::supports_interpolation(
+                &calibrator,
+                &super::super::config::InterpolationMethod::Linear
+            )
+        );
+        assert!(
+            <SabrCalibrator as VolCubeCalibrator<f64>>::supports_interpolation(
+                &calibrator,
+                &super::super::config::InterpolationMethod::FlatVol
+            )
+        );
+        assert!(
+            !<SabrCalibrator as VolCubeCalibrator<f64>>::supports_interpolation(
+                &calibrator,
+                &super::super::config::InterpolationMethod::Svi
+            )
+        );
     }
 
     // ========================================
@@ -346,14 +355,27 @@ mod tests {
     #[test]
     fn test_svi_calibrator_name() {
         let calibrator = SviCalibrator::new();
-        assert_eq!(<SviCalibrator as VolCubeCalibrator<f64>>::name(&calibrator), "SVI");
+        assert_eq!(
+            <SviCalibrator as VolCubeCalibrator<f64>>::name(&calibrator),
+            "SVI"
+        );
     }
 
     #[test]
     fn test_svi_calibrator_supports_interpolation() {
         let calibrator = SviCalibrator::new();
-        assert!(<SviCalibrator as VolCubeCalibrator<f64>>::supports_interpolation(&calibrator, &super::super::config::InterpolationMethod::Svi));
-        assert!(!<SviCalibrator as VolCubeCalibrator<f64>>::supports_interpolation(&calibrator, &super::super::config::InterpolationMethod::Sabr));
+        assert!(
+            <SviCalibrator as VolCubeCalibrator<f64>>::supports_interpolation(
+                &calibrator,
+                &super::super::config::InterpolationMethod::Svi
+            )
+        );
+        assert!(
+            !<SviCalibrator as VolCubeCalibrator<f64>>::supports_interpolation(
+                &calibrator,
+                &super::super::config::InterpolationMethod::Sabr
+            )
+        );
     }
 
     #[test]
@@ -385,13 +407,19 @@ mod tests {
     #[test]
     fn test_local_vol_calibrator_name() {
         let calibrator = LocalVolCalibrator::new();
-        assert_eq!(<LocalVolCalibrator as VolCubeCalibrator<f64>>::name(&calibrator), "LocalVol");
+        assert_eq!(
+            <LocalVolCalibrator as VolCubeCalibrator<f64>>::name(&calibrator),
+            "LocalVol"
+        );
     }
 
     #[cfg(feature = "stochastic-local-vol")]
     #[test]
     fn test_slv_calibrator_name() {
         let calibrator = StochasticLocalVolCalibrator::new();
-        assert_eq!(<StochasticLocalVolCalibrator as VolCubeCalibrator<f64>>::name(&calibrator), "StochasticLocalVol");
+        assert_eq!(
+            <StochasticLocalVolCalibrator as VolCubeCalibrator<f64>>::name(&calibrator),
+            "StochasticLocalVol"
+        );
     }
 }

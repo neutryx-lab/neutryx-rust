@@ -2,13 +2,13 @@
 
 実装状況と今後の開発項目を追跡するドキュメント。
 
-_Updated: 2026-01-23_ — Steering sync: portfolio-book-model completed (XVA/Exposure/Netting structures)
+_Updated: 2026-01-23_ — Steering sync: curve-builder-webapp, generic-pricer-engine, demo-webapp-pricer completed; volcube-calibration-ui active
 
 ---
 
 ## Current State Summary
 
-### Completed Specifications (27)
+### Completed Specifications (30)
 
 | Spec | Description | Completed |
 |------|-------------|-----------|
@@ -39,6 +39,9 @@ _Updated: 2026-01-23_ — Steering sync: portfolio-book-model completed (XVA/Exp
 | standard-instrument-catalogue | Standard instrument definitions (Rates, FX, Equity, Credit, Commodity) | 2026-01-23 |
 | domain-ordering-defaults | Domain enum ordering and documentation (Frequency, BootstrapInterpolation, RateType, etc.) | 2026-01-23 |
 | portfolio-book-model | Portfolio/Book organisation model with XVA/Exposure/Netting support | 2026-01-23 |
+| curve-builder-webapp | Curve Builder WebApp with instrument editing and parameter visualisation | 2026-01-23 |
+| generic-pricer-engine | Generic Pricer engine with market provider integration | 2026-01-23 |
+| demo-webapp-pricer | Demo WebApp Pricer with daily accruals display | 2026-01-23 |
 
 ### Layer Implementation Status
 
@@ -144,6 +147,7 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 |------|-------------|-------|
 | curve-bootstrap-engine | Multi-curve yield curve bootstrapping engine | Implementation |
 | legacy-compatibility-removal | Legacy code removal and ID type safety | Tasks generated |
+| volcube-calibration-ui | VolCube calibration UI with FX density calculator | Tasks generated |
 
 ## Recommended Next Steps
 
@@ -157,6 +161,7 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 
 | Date | Change |
 |------|--------|
+| 2026-01-23 | Steering sync: curve-builder-webapp, generic-pricer-engine, demo-webapp-pricer completed (30 total); volcube-calibration-ui active; structure.md updated with web handler pattern |
 | 2026-01-23 | Steering sync: portfolio-book-model completed (18 tasks, Book/Portfolio/CounterpartyPortfolio/ISDA/VMA階層構造, XVA/Exposure/Netting設定, 207 tests) |
 | 2026-01-23 | Steering sync: domain-ordering-defaults completed (17 tasks, enum ordering standardisation: Frequency, BootstrapInterpolation, RateType, StochasticModelEnum, CurveName) |
 | 2026-01-23 | Steering sync: standard-instrument-catalogue completed (186 instrument_def tests, 855 total), 3 new specs in tasks-generated phase, curve-bootstrap-engine in implementation |
