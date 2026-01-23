@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use num_traits::Float;
 
-use super::{CurveEnum, CurveName};
+use super::{CurveEnum, CurveName, YieldCurve};
 use crate::market::error::MarketDataError;
 
 /// Container for managing multiple named yield curves.
@@ -374,6 +374,86 @@ impl<T: Float> CurveSet<T> {
     /// ```
     #[inline]
     pub fn curve_names(&self) -> impl Iterator<Item = &CurveName> { self.curves.keys() }
+
+    /// Get a curve for a specific rate index.
+    ///
+    /// Uses the default index-to-curve mapping to find the appropriate curve.
+    ///
+    /// # Arguments
+    ///
+    /// * `index` - The rate index to look up
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(&CurveEnum)` - The curve for the index
+    /// * `Err(MarketDataError::CurveNotFound)` - If the curve is not in the set
+    /// * `Err(MarketDataError::UnsupportedIndex)` - If the index is not supported
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use pricer_models::market::curves::{CurveSet, CurveName, CurveEnum, YieldCurve};
+    /// use infra_master::RateIndex;
+    ///
+    /// let mut curves = CurveSet::new();
+    /// curves.insert(CurveName::Sofr, CurveEnum::flat(0.035_f64));
+    ///
+    /// let sofr_curve = curves.get_curve_for_index(RateIndex::Sofr).unwrap();
+    /// let rate = sofr_curve.zero_rate(1.0).unwrap();
+    /// assert!((rate - 0.035).abs() < 1e-10);
+    /// ```
+    pub fn get_curve_for_index(
+        &self,
+        index: infra_master::RateIndex,
+    ) -> Result<&CurveEnum<T>, MarketDataError> {
+        use crate::market::index_mapper::{DefaultIndexCurveMapper, IndexCurveMapper};
+
+        let mapper = DefaultIndexCurveMapper;
+        let curve_name = mapper.map_to_curve(index)?;
+        self.get_or_err(&curve_name)
+    }
+
+    /// Compute the forward rate for a specific rate index.
+    ///
+    /// Gets the curve for the index and computes the forward rate
+    /// between the start and end times.
+    ///
+    /// # Arguments
+    ///
+    /// * `index` - The rate index to use
+    /// * `start` - Start time (year fraction)
+    /// * `end` - End time (year fraction)
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(T)` - The forward rate
+    /// * `Err(MarketDataError)` - If the curve is not found or the rate cannot be computed
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use pricer_models::market::curves::{CurveSet, CurveName, CurveEnum};
+    /// use infra_master::RateIndex;
+    ///
+    /// let mut curves = CurveSet::new();
+    /// curves.insert(CurveName::Sofr, CurveEnum::flat(0.035_f64));
+    ///
+    /// let fwd_rate = curves.forward_rate_for_index(RateIndex::Sofr, 0.5, 1.0).unwrap();
+    /// assert!((fwd_rate - 0.035).abs() < 1e-10);
+    /// ```
+    pub fn forward_rate_for_index(
+        &self,
+        index: infra_master::RateIndex,
+        start: T,
+        end: T,
+    ) -> Result<T, MarketDataError> {
+        let curve = self.get_curve_for_index(index)?;
+        curve
+            .forward_rate(start, end)
+            .map_err(|e| MarketDataError::InterpolationFailed {
+                reason: format!("{:?}", e),
+            })
+    }
 }
 
 #[cfg(test)]
@@ -693,5 +773,100 @@ mod tests {
         // Verify rates
         assert!((df - (-0.03_f64).exp()).abs() < 1e-10);
         assert!((fwd_rate - 0.035).abs() < 1e-10);
+    }
+
+    // ========================================
+    // Index-Based Curve Access Tests
+    // ========================================
+
+    #[test]
+    fn test_get_curve_for_index_sofr() {
+        use infra_master::RateIndex;
+
+        let mut curves = CurveSet::new();
+        curves.insert(CurveName::Sofr, CurveEnum::flat(0.035_f64));
+
+        let sofr_curve = curves.get_curve_for_index(RateIndex::Sofr).unwrap();
+        let rate = sofr_curve.zero_rate(1.0).unwrap();
+        assert!((rate - 0.035).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_get_curve_for_index_euribor() {
+        use infra_master::RateIndex;
+
+        let mut curves = CurveSet::new();
+        curves.insert(CurveName::Euribor, CurveEnum::flat(0.04_f64));
+
+        // Both EURIBOR 3M and 6M should map to the same curve
+        let curve_3m = curves.get_curve_for_index(RateIndex::Euribor3M).unwrap();
+        let curve_6m = curves.get_curve_for_index(RateIndex::Euribor6M).unwrap();
+
+        let rate_3m = curve_3m.zero_rate(1.0).unwrap();
+        let rate_6m = curve_6m.zero_rate(1.0).unwrap();
+
+        assert!((rate_3m - 0.04).abs() < 1e-10);
+        assert!((rate_6m - 0.04).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_get_curve_for_index_not_found() {
+        use infra_master::RateIndex;
+
+        let curves: CurveSet<f64> = CurveSet::new();
+        let result = curves.get_curve_for_index(RateIndex::Sofr);
+
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            MarketDataError::CurveNotFound { name } => {
+                assert_eq!(name, CurveName::Sofr);
+            }
+            _ => panic!("Expected CurveNotFound error"),
+        }
+    }
+
+    #[test]
+    fn test_forward_rate_for_index() {
+        use infra_master::RateIndex;
+
+        let mut curves = CurveSet::new();
+        curves.insert(CurveName::Sofr, CurveEnum::flat(0.035_f64));
+
+        let fwd_rate = curves
+            .forward_rate_for_index(RateIndex::Sofr, 0.5, 1.0)
+            .unwrap();
+        assert!((fwd_rate - 0.035).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_forward_rate_for_index_not_found() {
+        use infra_master::RateIndex;
+
+        let curves: CurveSet<f64> = CurveSet::new();
+        let result = curves.forward_rate_for_index(RateIndex::Sonia, 0.5, 1.0);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_get_curve_for_all_indices() {
+        use infra_master::RateIndex;
+
+        let mut curves = CurveSet::new();
+        curves.insert(CurveName::Sofr, CurveEnum::flat(0.035_f64));
+        curves.insert(CurveName::Tonar, CurveEnum::flat(0.001_f64));
+        curves.insert(CurveName::Estr, CurveEnum::flat(0.03_f64));
+        curves.insert(CurveName::Sonia, CurveEnum::flat(0.04_f64));
+        curves.insert(CurveName::Saron, CurveEnum::flat(0.012_f64));
+        curves.insert(CurveName::Euribor, CurveEnum::flat(0.04_f64));
+
+        // Test all supported indices
+        assert!(curves.get_curve_for_index(RateIndex::Sofr).is_ok());
+        assert!(curves.get_curve_for_index(RateIndex::Tonar).is_ok());
+        assert!(curves.get_curve_for_index(RateIndex::Estr).is_ok());
+        assert!(curves.get_curve_for_index(RateIndex::Sonia).is_ok());
+        assert!(curves.get_curve_for_index(RateIndex::Saron).is_ok());
+        assert!(curves.get_curve_for_index(RateIndex::Euribor3M).is_ok());
+        assert!(curves.get_curve_for_index(RateIndex::Euribor6M).is_ok());
     }
 }

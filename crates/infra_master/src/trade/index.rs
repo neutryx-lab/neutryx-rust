@@ -3,6 +3,8 @@
 //! This module provides types for representing various market indices
 //! used in floating-rate instruments.
 
+use crate::market::CompoundingMethod;
+use crate::time::Frequency;
 use crate::{Date, RateIndex};
 
 /// Type of market index.
@@ -96,6 +98,10 @@ impl IndexType {
 ///     .with_observation_period(start, end);
 ///
 /// assert!(compound_obs.is_compound_observation());
+///
+/// // Create from RateIndex with default settings
+/// let sofr_obs = IndexObservation::from_rate_index(RateIndex::Sofr);
+/// assert!(sofr_obs.reset_frequency == infra_master::time::Frequency::Daily);
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -121,10 +127,39 @@ pub struct IndexObservation {
     /// For OIS indices, this defines the period over which overnight
     /// rates are compounded. For IBOR indices, this is typically None.
     pub observation_period: Option<(Date, Date)>,
+
+    /// Reset frequency for the index observation.
+    ///
+    /// For overnight indices (SOFR, SONIA, etc.), this is typically Daily.
+    /// For term indices (EURIBOR, etc.), this matches the index tenor.
+    pub reset_frequency: Frequency,
+
+    /// Compounding method for rate calculation.
+    ///
+    /// - `Compounded`: Used for OIS indices (overnight compounding)
+    /// - `Simple`: Used for IBOR indices (simple interest)
+    /// - `Averaged`: Used for some specific calculations
+    pub compounding_method: CompoundingMethod,
+
+    /// Lookback period in business days.
+    ///
+    /// For "lookback" rate setting conventions, this specifies how many
+    /// business days before the calculation period to look back for fixings.
+    pub lookback_period: Option<i32>,
+
+    /// Lockout period in business days.
+    ///
+    /// For "lockout" conventions, this specifies the number of business
+    /// days at the end of the period where the rate is fixed at the
+    /// lockout date's value.
+    pub lockout_period: Option<i32>,
 }
 
 impl IndexObservation {
     /// Creates a new index observation with default settings.
+    ///
+    /// Uses default values for reset frequency (Monthly) and compounding method (Simple).
+    /// For index-specific defaults, use [`from_rate_index`](Self::from_rate_index).
     #[must_use]
     pub fn new(index_type: IndexType) -> Self {
         Self {
@@ -133,6 +168,64 @@ impl IndexObservation {
             fixing_source: None,
             observation_date: None,
             observation_period: None,
+            reset_frequency: Frequency::default(),
+            compounding_method: CompoundingMethod::default(),
+            lookback_period: None,
+            lockout_period: None,
+        }
+    }
+
+    /// Creates an index observation from a `RateIndex` with appropriate defaults.
+    ///
+    /// This method uses the index's metadata to set the correct:
+    /// - Reset frequency (Daily for overnight indices, matching tenor for term indices)
+    /// - Compounding method (Compounded for OIS, Simple for IBOR)
+    /// - Observation lag (from index metadata)
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use infra_master::trade::IndexObservation;
+    /// use infra_master::RateIndex;
+    /// use infra_master::time::Frequency;
+    /// use infra_master::market::CompoundingMethod;
+    ///
+    /// let sofr_obs = IndexObservation::from_rate_index(RateIndex::Sofr);
+    /// assert_eq!(sofr_obs.reset_frequency, Frequency::Daily);
+    /// assert_eq!(sofr_obs.compounding_method, CompoundingMethod::Compounded);
+    ///
+    /// let euribor_obs = IndexObservation::from_rate_index(RateIndex::Euribor3M);
+    /// assert_eq!(euribor_obs.reset_frequency, Frequency::Quarterly);
+    /// assert_eq!(euribor_obs.compounding_method, CompoundingMethod::Simple);
+    /// ```
+    #[must_use]
+    pub fn from_rate_index(rate_index: RateIndex) -> Self {
+        let metadata = rate_index.metadata();
+
+        // Determine reset frequency based on index type
+        let reset_frequency = if rate_index.is_overnight() {
+            Frequency::Daily
+        } else {
+            // For term indices, use tenor-based frequency
+            match rate_index.tenor() {
+                crate::Tenor::OneMonth => Frequency::Monthly,
+                crate::Tenor::ThreeMonths => Frequency::Quarterly,
+                crate::Tenor::SixMonths => Frequency::SemiAnnual,
+                crate::Tenor::OneYear => Frequency::Annual,
+                _ => Frequency::Quarterly, // Default for unknown tenors
+            }
+        };
+
+        Self {
+            index_type: IndexType::Rate(rate_index),
+            observation_lag: i32::from(metadata.fixing_lag),
+            fixing_source: None,
+            observation_date: None,
+            observation_period: None,
+            reset_frequency,
+            compounding_method: metadata.compounding_method,
+            lookback_period: None,
+            lockout_period: None,
         }
     }
 
@@ -166,6 +259,40 @@ impl IndexObservation {
     #[must_use]
     pub fn with_observation_period(mut self, start: Date, end: Date) -> Self {
         self.observation_period = Some((start, end));
+        self
+    }
+
+    /// Sets the reset frequency for the observation.
+    #[must_use]
+    pub fn with_reset_frequency(mut self, frequency: Frequency) -> Self {
+        self.reset_frequency = frequency;
+        self
+    }
+
+    /// Sets the compounding method for rate calculation.
+    #[must_use]
+    pub fn with_compounding_method(mut self, method: CompoundingMethod) -> Self {
+        self.compounding_method = method;
+        self
+    }
+
+    /// Sets the lookback period in business days.
+    ///
+    /// For "lookback" rate setting conventions, this specifies how many
+    /// business days before the calculation period to look back for fixings.
+    #[must_use]
+    pub fn with_lookback_period(mut self, days: i32) -> Self {
+        self.lookback_period = Some(days);
+        self
+    }
+
+    /// Sets the lockout period in business days.
+    ///
+    /// For "lockout" conventions, this specifies the number of business
+    /// days at the end of the period where the rate is fixed.
+    #[must_use]
+    pub fn with_lockout_period(mut self, days: i32) -> Self {
+        self.lockout_period = Some(days);
         self
     }
 
@@ -414,5 +541,102 @@ mod tests {
         assert_eq!(obs.observation_period, Some((start, end)));
         assert!(obs.is_compound_observation());
         assert!(obs.requires_daily_compounding());
+    }
+
+    // ========================================
+    // Task 1.3: IndexObservation Extended Fields Tests
+    // ========================================
+
+    #[test]
+    fn test_from_rate_index_sofr() {
+        use crate::market::CompoundingMethod;
+        use crate::time::Frequency;
+
+        let obs = IndexObservation::from_rate_index(RateIndex::Sofr);
+
+        // SOFR is an overnight index -> Daily reset, Compounded
+        assert!(matches!(obs.index_type, IndexType::Rate(RateIndex::Sofr)));
+        assert_eq!(obs.reset_frequency, Frequency::Daily);
+        assert_eq!(obs.compounding_method, CompoundingMethod::Compounded);
+        assert!(obs.lookback_period.is_none());
+        assert!(obs.lockout_period.is_none());
+        assert_eq!(obs.observation_lag, 0);
+    }
+
+    #[test]
+    fn test_from_rate_index_euribor() {
+        use crate::market::CompoundingMethod;
+        use crate::time::Frequency;
+
+        let obs = IndexObservation::from_rate_index(RateIndex::Euribor3M);
+
+        // EURIBOR is a term index -> Quarterly reset, Simple
+        assert!(matches!(
+            obs.index_type,
+            IndexType::Rate(RateIndex::Euribor3M)
+        ));
+        assert_eq!(obs.reset_frequency, Frequency::Quarterly);
+        assert_eq!(obs.compounding_method, CompoundingMethod::Simple);
+    }
+
+    #[test]
+    fn test_from_rate_index_sonia() {
+        use crate::market::CompoundingMethod;
+        use crate::time::Frequency;
+
+        let obs = IndexObservation::from_rate_index(RateIndex::Sonia);
+
+        // SONIA is an overnight index
+        assert_eq!(obs.reset_frequency, Frequency::Daily);
+        assert_eq!(obs.compounding_method, CompoundingMethod::Compounded);
+    }
+
+    #[test]
+    fn test_index_observation_with_lookback() {
+        let obs = IndexObservation::new(IndexType::Rate(RateIndex::Sofr)).with_lookback_period(5);
+
+        assert_eq!(obs.lookback_period, Some(5));
+    }
+
+    #[test]
+    fn test_index_observation_with_lockout() {
+        let obs = IndexObservation::new(IndexType::Rate(RateIndex::Sofr)).with_lockout_period(2);
+
+        assert_eq!(obs.lockout_period, Some(2));
+    }
+
+    #[test]
+    fn test_index_observation_with_reset_frequency() {
+        use crate::time::Frequency;
+
+        let obs = IndexObservation::new(IndexType::Rate(RateIndex::Sofr))
+            .with_reset_frequency(Frequency::Daily);
+
+        assert_eq!(obs.reset_frequency, Frequency::Daily);
+    }
+
+    #[test]
+    fn test_index_observation_with_compounding_method() {
+        use crate::market::CompoundingMethod;
+
+        let obs = IndexObservation::new(IndexType::Rate(RateIndex::Sofr))
+            .with_compounding_method(CompoundingMethod::Averaged);
+
+        assert_eq!(obs.compounding_method, CompoundingMethod::Averaged);
+    }
+
+    #[test]
+    fn test_from_rate_index_preserves_metadata() {
+        // Test that from_rate_index uses the index's metadata
+        let sofr_obs = IndexObservation::from_rate_index(RateIndex::Sofr);
+        let sofr_metadata = RateIndex::Sofr.metadata();
+        assert_eq!(sofr_obs.compounding_method, sofr_metadata.compounding_method);
+
+        let euribor_obs = IndexObservation::from_rate_index(RateIndex::Euribor3M);
+        let euribor_metadata = RateIndex::Euribor3M.metadata();
+        assert_eq!(
+            euribor_obs.compounding_method,
+            euribor_metadata.compounding_method
+        );
     }
 }

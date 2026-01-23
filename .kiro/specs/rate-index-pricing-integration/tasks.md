@@ -8,15 +8,15 @@
 
 ### Phase 1: infra_master 拡張
 
-- [ ] 1. コンパウンディング方式の列挙型を追加
-- [ ] 1.1 コンパウンディング方式を表す列挙型を作成する
+- [x] 1. コンパウンディング方式の列挙型を追加
+- [x] 1.1 コンパウンディング方式を表す列挙型を作成する
   - Simple（単利）、Compounded（複利）、Averaged（平均化）の3つのバリアントを定義
   - Default トレイトを実装し、Simple をデフォルト値に設定
   - serde 対応（feature = "serde" での条件付きコンパイル）
   - Debug, Clone, Copy, PartialEq, Eq, Hash を derive
   - _Requirements: 1.4, 2.2_
 
-- [ ] 1.2 (P) RateIndex にフィクシングメタデータを提供する機能を追加する
+- [x] 1.2 (P) RateIndex にフィクシングメタデータを提供する機能を追加する
   - フィクシングカレンダー、公表ラグ、フィクシングオフセット、コンパウンディング方式を保持する構造体を作成
   - 各 RateIndex バリアント（SOFR, TONAR, EURIBOR3M/6M, SONIA, SARON）に対応するメタデータ値を定義
   - SOFR: NewYork カレンダー、公表ラグ 1 日、Compounded
@@ -26,7 +26,7 @@
   - 既存の currency(), tenor(), day_counter() メソッドとの互換性を維持
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6_
 
-- [ ] 1.3 (P) IndexObservation を拡張してコンパウンディング設定をサポートする
+- [x] 1.3 (P) IndexObservation を拡張してコンパウンディング設定をサポートする
   - リセット頻度フィールドを追加（OIS: Daily、IBOR: 期間に応じる）
   - コンパウンディング方式フィールドを追加
   - ルックバック期間とロックアウト期間のオプションフィールドを追加
@@ -35,7 +35,7 @@
   - 既存の new(), with_lag(), with_source() メソッドとの後方互換性を維持
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
 
-- [ ] 1.4 infra_master の単体テストを追加する
+- [x] 1.4 infra_master の単体テストを追加する
   - 全 RateIndex バリアントのメタデータ値を検証
   - OIS インデックスと IBOR インデックスのデフォルトコンパウンディング方式を検証
   - IndexObservation のファクトリメソッドの自動設定を検証
@@ -44,28 +44,28 @@
 
 ### Phase 2: pricer_models 拡張
 
-- [ ] 2. RateIndex からカーブへのマッピング機能を追加
-- [ ] 2.1 RateIndex を CurveName に変換するマッパーを作成する
+- [x] 2. RateIndex からカーブへのマッピング機能を追加
+- [x] 2.1 RateIndex を CurveName に変換するマッパーを作成する
   - RateIndex を CurveName に変換するトレイトを定義
   - 全 RateIndex バリアントに対応するマッチングを実装
   - SOFR → Sofr、EURIBOR3M/6M → Euribor、SONIA → Sonia、TONAR → Tonar、SARON → Saron
   - サポートされていないインデックスの場合は適切なエラーを返す
   - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
-- [ ] 2.2 CurveSet に RateIndex でカーブを取得する機能を追加する
+- [x] 2.2 CurveSet に RateIndex でカーブを取得する機能を追加する
   - RateIndex を引数に取りカーブを返すメソッドを追加
   - 内部でマッパーを使用して CurveName に変換後、既存の get() を呼び出す
   - カーブが存在しない場合は CurveNotFound エラーを返す
   - Float トレイト境界を使用して AD 互換性を維持
   - _Requirements: 3.5, 3.6, 4.5, 10.4_
 
-- [ ] 2.3 インデックス対応のフォワードレート計算メソッドを追加する
+- [x] 2.3 インデックス対応のフォワードレート計算メソッドを追加する
   - RateIndex、開始時点、終了時点を引数に取りフォワードレートを返すメソッドを追加
   - インデックスの day_counter に基づいた年率換算をサポート
   - Float トレイト境界を使用して f64 と Dual64 の両方で動作
   - _Requirements: 4.1, 4.2, 4.5, 10.2_
 
-- [ ] 2.4 pricer_models の単体テストを追加する
+- [x] 2.4 pricer_models の単体テストを追加する
   - 全 RateIndex のマッピングを検証
   - 存在するカーブと存在しないカーブの取得をテスト
   - フォワードレート計算の精度を検証
@@ -74,8 +74,8 @@
 
 ### Phase 3: pricer_pricing 統合
 
-- [ ] 3. Payoff 評価機能を実装
-- [ ] 3.1 Payoff バリアントを評価する機能を作成する
+- [x] 3. Payoff 評価機能を実装
+- [x] 3.1 Payoff バリアントを評価する機能を作成する
   - CurveSet への参照を保持する評価器を作成
   - Fixed Payoff: notional × rate × year_fraction を計算
   - Linear Payoff: インデックスからフォワードレートを取得し、スプレッドとマルチプライヤを適用
@@ -83,14 +83,14 @@
   - Float トレイト境界を使用して AD 互換性を維持
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.6_
 
-- [ ] 3.2 (P) OIS キャッシュフローの日次複利計算機能を作成する
+- [x] 3.2 (P) OIS キャッシュフローの日次複利計算機能を作成する
   - 日次アクルーアルのリストから複利レートを計算（∏(1 + r_i × δ_i) - 1）
   - 複利レートを年率換算するヘルパーメソッドを提供
   - 空のアクルーアルリストの場合はゼロを返す
   - Float トレイト境界を使用して AD 互換性を維持
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [ ] 3.3 Cap/Floor オプションの評価機能を追加する
+- [x] 3.3 Cap/Floor オプションの評価機能を追加する
   - VanillaOption Payoff: Black/Bachelier モデルでオプション価値を計算
   - ボラティリティサーフェスをオプショナルに保持
   - Call オプション: max(forward_rate - strike, 0) のペイオフ
