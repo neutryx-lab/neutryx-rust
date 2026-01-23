@@ -3747,7 +3747,7 @@ mod tests {
                     {"tenor": "20Y", "rate": 0.034},
                     {"tenor": "30Y", "rate": 0.035}
                 ],
-                "interpolation": "log_linear"
+                "interpolation": "linear_on_log_df"
             }"#;
 
             let request: BootstrapRequest = serde_json::from_str(json).unwrap();

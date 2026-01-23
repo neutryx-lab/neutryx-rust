@@ -35,6 +35,7 @@ pub mod schedule_utils;
 pub mod state;
 pub mod trade_handlers;
 pub mod trade_types;
+pub mod volcube_handlers;
 pub mod volcube_types;
 pub mod websocket;
 
@@ -252,6 +253,8 @@ pub struct AppState {
     pub job_manager: JobManager,
     /// Market data cache (market-data-viewer-webapp Task 3.1)
     pub market_data_cache: Arc<MarketDataCache>,
+    /// VolCube cache for calibrated volatility cubes (volcube-calibration-ui)
+    pub volcube_cache: volcube_handlers::VolCubeCache,
 }
 
 impl AppState {
@@ -268,6 +271,7 @@ impl AppState {
             curve_cache: BootstrapCurveCache::new(),
             job_manager: JobManager::new(),
             market_data_cache: Arc::new(MarketDataCache::new()),
+            volcube_cache: volcube_handlers::VolCubeCache::new(10),
         }
     }
 

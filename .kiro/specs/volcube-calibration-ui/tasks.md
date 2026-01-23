@@ -65,7 +65,7 @@
   - _Requirements: 1.5, 3.1, 3.2, 3.3, 4.1, 4.2, 8.1, 8.2, 8.3, 8.4_
   - _Contracts: volcube_types API_
 
-- [ ] 2.2 VolCube APIハンドラー基本エンドポイントの実装
+- [x] 2.2 VolCube APIハンドラー基本エンドポイントの実装
   - `/api/volcube/indices` GETで利用可能なIndex一覧を返す
   - `/api/volcube/instruments/{index}` GETで指定IndexのJSON読み込みとデータ返却を行う
   - `/api/volcube/instruments/{index}` PUTでインストゥルメントデータの更新・保存を行う
@@ -76,7 +76,7 @@
   - _Requirements: 1.4, 1.7, 1.8, 1.9, 2.1, 2.3, 8.1, 8.2, 8.3, 8.8_
   - _Contracts: volcube_handlers API_
 
-- [ ] 2.3 VolCube APIキャリブレーション・分析エンドポイントの実装
+- [x] 2.3 VolCube APIキャリブレーション・分析エンドポイントの実装
   - `/api/volcube/calibrate` POSTでVolCubeBuilderを呼び出しキャリブレーションを実行する
   - `/api/volcube/smile` GETで指定Expiry/Tenorのスマイルデータを返す
   - `/api/volcube/density` GETでBreeden-Litzenberger法による確率密度データを返す
@@ -118,20 +118,20 @@
   - _Requirements: 10.1, 10.3, 10.4, 10.6, 10.7, 10.8, 11.5, 11.6, 11.7, 11.8_
   - _Contracts: fxvol_handlers API_
 
-- [ ] 4. サンプルデータ準備
-- [ ] 4.1 (P) ボラティリティデータディレクトリ構造の作成
+- [x] 4. サンプルデータ準備
+- [x] 4.1 (P) ボラティリティデータディレクトリ構造の作成
   - `demo/data/input/volsurface/`ディレクトリを作成する
   - データフォーマット仕様をREADME.mdで文書化する
   - _Requirements: 9.1, 9.8_
 
-- [ ] 4.2 (P) Swaptionサンプルデータの作成
+- [x] 4.2 (P) Swaptionサンプルデータの作成
   - USD-SOFR-Swaption用JSONファイルを作成する（複数Expiry × Tenor × Strikeグリッド）
   - EUR-ESTR-Swaption用JSONファイルを作成する
   - 各ファイルにrealisticな市場レート（implied_vol、forward）を含める
   - VolCube JSONスキーマに準拠（index、reference_date、instruments配列）
   - _Requirements: 9.2, 9.3, 9.7_
 
-- [ ] 4.3 (P) FX Optionsサンプルデータの作成
+- [x] 4.3 (P) FX Optionsサンプルデータの作成
   - EURUSD FX Options用JSONファイルを作成する（ATM、25D/10D RR/BF × 複数Expiry）
   - USDJPY FX Options用JSONファイルを作成する
   - 各ファイルにspot、domestic_rate、foreign_rateを含める
