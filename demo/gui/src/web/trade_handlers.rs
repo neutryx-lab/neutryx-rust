@@ -101,7 +101,6 @@ fn expand_instrument(
         TradeInstrumentType::Deposit => expand_deposit(request),
         TradeInstrumentType::Fra => expand_fra(request),
         TradeInstrumentType::Futures => expand_futures(request),
-        TradeInstrumentType::ParSwap => expand_par_swap(request),
         TradeInstrumentType::Ois => expand_ois(request),
         TradeInstrumentType::BasisSwap => expand_basis_swap(request),
         TradeInstrumentType::Irs => expand_irs(request),
@@ -401,16 +400,6 @@ fn expand_futures(request: &TradeExpandRequest) -> Result<TradeExpandResponse, T
             total_cashflows: 1,
             processing_time_ms: 0.0,
         },
-    })
-}
-
-/// Expands a ParSwap instrument.
-fn expand_par_swap(request: &TradeExpandRequest) -> Result<TradeExpandResponse, TradeExpandError> {
-    // ParSwap is similar to IRS but at par (PV = 0)
-    expand_irs(request).map(|mut r| {
-        r.trade_type = "ParSwap".to_string();
-        r.trade_id = generate_trade_id("PSW");
-        r
     })
 }
 
@@ -1049,7 +1038,6 @@ fn build_instruments_metadata() -> Vec<InstrumentMeta> {
         TradeInstrumentType::Deposit,
         TradeInstrumentType::Fra,
         TradeInstrumentType::Futures,
-        TradeInstrumentType::ParSwap,
         TradeInstrumentType::Ois,
     ] {
         instruments.push(InstrumentMeta {
@@ -1749,15 +1737,15 @@ mod tests {
         fn test_build_instruments_metadata() {
             let instruments = build_instruments_metadata();
 
-            // Should have all instrument types
-            assert!(instruments.len() >= 14);
+            // Should have all instrument types (13 total: 6 rates + 3 FX + 2 equity + 1 credit + 1 commodity)
+            assert!(instruments.len() >= 13);
 
-            // Check rates instruments are present
+            // Check rates instruments are present (6: Deposit, FRA, Futures, OIS, BasisSwap, IRS)
             let rates_count = instruments
                 .iter()
                 .filter(|i| i.asset_class == AssetClass::Rates)
                 .count();
-            assert!(rates_count >= 7);
+            assert!(rates_count >= 6);
 
             // Check FX instruments are present
             let fx_count = instruments

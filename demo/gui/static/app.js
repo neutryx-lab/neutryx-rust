@@ -944,12 +944,81 @@ class CountUp {
 function updateValue(id, value, options = {}) {
     const el = document.getElementById(id);
     if (!el) return;
-    
+
     if (options.animate !== false) {
         new CountUp(el, value, { duration: options.duration || 800 });
     } else {
         el.textContent = formatCurrency(value);
         el.dataset.value = value;
+    }
+}
+
+// ============================================
+// Portfolio Health Meter
+// ============================================
+
+/**
+ * Calculate and update the portfolio health indicator.
+ * Health is calculated based on:
+ * - Diversification (number of unique instruments/counterparties)
+ * - Risk concentration (max single position as % of total)
+ * - Greeks balance (delta neutrality)
+ */
+function updatePortfolioHealth(portfolioData) {
+    const scoreEl = document.getElementById('portfolio-health-score');
+    const circleEl = document.getElementById('portfolio-health-circle');
+    if (!scoreEl || !circleEl) return;
+
+    const trades = portfolioData?.trades || state.portfolio.data || [];
+    if (trades.length === 0) {
+        scoreEl.textContent = '--';
+        circleEl.style.strokeDashoffset = 97.4;
+        return;
+    }
+
+    // Calculate health components (0-100 each)
+    let healthScore = 0;
+
+    // 1. Diversification score (30 points max)
+    // More unique instruments = better diversification
+    const uniqueInstruments = new Set(trades.map(t => t.instrument || t.product)).size;
+    const diversificationScore = Math.min(30, uniqueInstruments * 5);
+
+    // 2. Concentration risk score (35 points max)
+    // Lower max single position % = better
+    const totalNotional = trades.reduce((sum, t) => sum + Math.abs(t.notional || 0), 0);
+    const maxNotional = Math.max(...trades.map(t => Math.abs(t.notional || 0)));
+    const concentrationRatio = totalNotional > 0 ? maxNotional / totalNotional : 1;
+    const concentrationScore = Math.max(0, 35 * (1 - concentrationRatio));
+
+    // 3. Delta neutrality score (35 points max)
+    // Closer to zero net delta = better hedged
+    const totalDelta = trades.reduce((sum, t) => sum + (t.delta || 0), 0);
+    const avgAbsDelta = trades.reduce((sum, t) => sum + Math.abs(t.delta || 0), 0) / trades.length;
+    const deltaNeutrality = avgAbsDelta > 0 ? 1 - Math.min(1, Math.abs(totalDelta) / (avgAbsDelta * trades.length)) : 1;
+    const deltaScore = 35 * deltaNeutrality;
+
+    healthScore = Math.round(diversificationScore + concentrationScore + deltaScore);
+    healthScore = Math.max(0, Math.min(100, healthScore));
+
+    // Update display
+    scoreEl.textContent = healthScore;
+
+    // Calculate stroke-dashoffset (97.4 is full circle circumference for r=15.5)
+    // 0 = full, 97.4 = empty
+    const dashOffset = 97.4 * (1 - healthScore / 100);
+    circleEl.style.strokeDashoffset = dashOffset;
+
+    // Update colors based on score
+    circleEl.classList.remove('warning', 'danger');
+    scoreEl.classList.remove('warning', 'danger');
+
+    if (healthScore < 40) {
+        circleEl.classList.add('danger');
+        scoreEl.classList.add('danger');
+    } else if (healthScore < 70) {
+        circleEl.classList.add('warning');
+        scoreEl.classList.add('warning');
     }
 }
 
@@ -1408,6 +1477,9 @@ async function fetchPortfolio() {
         updateValue('total-pv', data.total_pv);
         const tradeCountEl = document.getElementById('trade-count');
         if (tradeCountEl) tradeCountEl.textContent = data.trade_count;
+
+        // Update portfolio health meter
+        updatePortfolioHealth(data);
 
         // Enrich data with additional fields for demo
         state.portfolio.data = enrichPortfolioData(data.trades);
@@ -2171,13 +2243,16 @@ function updatePortfolioSummary(data) {
     const totalPv = data.reduce((sum, t) => sum + t.pv, 0);
     const avgDelta = data.length > 0 ? data.reduce((sum, t) => sum + t.delta, 0) / data.length : 0;
     const totalVega = data.reduce((sum, t) => sum + t.vega, 0);
-    
+
     document.getElementById('portfolio-total-pv').textContent = formatCurrency(totalPv);
     document.getElementById('portfolio-total-pv').className = `summary-value ${totalPv >= 0 ? 'positive' : 'negative'}`;
     document.getElementById('portfolio-count').textContent = data.length;
     document.getElementById('portfolio-avg-delta').textContent = avgDelta.toFixed(4);
     document.getElementById('portfolio-total-vega').textContent = formatCurrency(totalVega);
     document.getElementById('selected-count').textContent = state.portfolio.selectedIds.size;
+
+    // Update portfolio health meter
+    updatePortfolioHealth({ trades: data });
 }
 
 function updateFilterCounts() {
@@ -7629,6 +7704,9 @@ function toggleDailyAccruals(rowId) {
         btn.closest('tr').classList.toggle('expanded', isHidden);
     }
 }
+
+// Expose toggleDailyAccruals to global scope for onclick handlers
+window.toggleDailyAccruals = toggleDailyAccruals;
 
 /**
  * Create pagination controls HTML.

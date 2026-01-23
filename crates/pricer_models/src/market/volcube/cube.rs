@@ -101,7 +101,7 @@ impl<T: Float> VolCube<T> {
     /// # Arguments
     ///
     /// * `sabr_params` - カリブレーション済みSABRパラメータ平面
-    /// * `forwards` - Forward rate行列 `forwards[i][j]` = (expiry[i], tenor[j])でのforward
+    /// * `forwards` - Forward rate行列 `forwards\[i\]\[j\]` = (expiry\[i\], tenor\[j\])でのforward
     /// * `config` - VolCube設定
     /// * `source_instruments` - ソースInstrument IDリスト
     /// * `strike_domain` - (strike_min, strike_max)

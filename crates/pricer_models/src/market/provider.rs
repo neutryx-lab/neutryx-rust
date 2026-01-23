@@ -59,6 +59,15 @@ pub struct MarketProvider {
     vol_cache: RwLock<HashMap<Currency, Arc<VolSurfaceEnum<f64>>>>,
 }
 
+impl std::fmt::Debug for MarketProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MarketProvider")
+            .field("curve_cache", &"<RwLock>")
+            .field("vol_cache", &"<RwLock>")
+            .finish()
+    }
+}
+
 impl MarketProvider {
     /// Creates a new `MarketProvider` with empty caches.
     ///

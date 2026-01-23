@@ -18,32 +18,22 @@ pub struct InstrumentId(String);
 
 impl InstrumentId {
     /// 新しいInstrumentIdを作成。
-    pub fn new(id: impl Into<String>) -> Self {
-        Self(id.into())
-    }
+    pub fn new(id: impl Into<String>) -> Self { Self(id.into()) }
 
     /// 内部文字列への参照を取得。
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
+    pub fn as_str(&self) -> &str { &self.0 }
 }
 
 impl std::fmt::Display for InstrumentId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "{}", self.0) }
 }
 
 impl From<String> for InstrumentId {
-    fn from(s: String) -> Self {
-        Self::new(s)
-    }
+    fn from(s: String) -> Self { Self::new(s) }
 }
 
 impl From<&str> for InstrumentId {
-    fn from(s: &str) -> Self {
-        Self::new(s)
-    }
+    fn from(s: &str) -> Self { Self::new(s) }
 }
 
 /// Volatility Instrument（Vol Cube入力データ）。
@@ -151,7 +141,12 @@ pub struct SabrParams<T: Float> {
 impl<T: Float> SabrParams<T> {
     /// 新しいSabrParamsを作成。
     pub fn new(alpha: T, beta: T, rho: T, nu: T) -> Self {
-        Self { alpha, beta, rho, nu }
+        Self {
+            alpha,
+            beta,
+            rho,
+            nu,
+        }
     }
 
     /// パラメータを検証。
@@ -238,8 +233,7 @@ mod tests {
     #[test]
     fn test_vol_instrument_new() {
         let inst = VolInstrument::new(
-            "TEST-1",
-            1.0_f64,  // expiry
+            "TEST-1", 1.0_f64, // expiry
             5.0,      // tenor
             0.03,     // strike
             0.20,     // implied_vol

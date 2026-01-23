@@ -31,6 +31,7 @@
 pub mod calibration;
 pub mod curves;
 pub mod error;
+pub mod fx_density;
 pub mod provider;
 pub mod surfaces;
 pub mod volcube;
@@ -52,6 +53,7 @@ pub use curves::{
 };
 pub use error::MarketDataError;
 pub use provider::MarketProvider;
+pub use fx_density::{DeltaType, FxDensityCalculator};
 pub use surfaces::{
     FlatVol, FxDeltaPoint, FxVolatilitySurface, InterpolatedVolSurface, VolSurfaceEnum,
     VolatilitySurface,

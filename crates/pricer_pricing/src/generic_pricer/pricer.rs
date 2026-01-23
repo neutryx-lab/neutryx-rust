@@ -9,17 +9,14 @@ use super::config::{ModelConfig, PricerConfig};
 use super::error::PricingError;
 use super::result::{CashflowPricingResult, LegPricingResult, PricingResult};
 
-#[cfg(feature = "l1l2-integration")]
-use super::result::Direction;
-
 #[cfg(not(feature = "l1l2-integration"))]
 use super::result::Direction;
 
 #[cfg(feature = "l1l2-integration")]
 use infra_master::{
-    currency::Currency,
+    market::Currency,
     time::Date,
-    trade::{Leg, Trade},
+    trade::{Direction, Leg, Trade},
 };
 
 #[cfg(not(feature = "l1l2-integration"))]
@@ -29,7 +26,9 @@ use super::config::DefaultCurrency as Currency;
 use super::result::Date;
 
 #[cfg(feature = "l1l2-integration")]
-use pricer_models::market::MarketProvider;
+use chrono::Datelike;
+#[cfg(feature = "l1l2-integration")]
+use pricer_models::market::{MarketProvider, YieldCurve};
 
 /// Generic pricer for unified pricing API.
 ///
@@ -168,10 +167,12 @@ impl GenericPricer {
             }
 
             // Calculate discount factor
-            let time_to_payment =
-                (cf.payment_date.days_since_epoch() - valuation_date.days_since_epoch()) as f64
-                    / 365.0;
-            let df = curve.discount_factor(time_to_payment);
+            let payment_days = cf.payment_date.into_inner().num_days_from_ce();
+            let valuation_days = valuation_date.into_inner().num_days_from_ce();
+            let time_to_payment = (payment_days - valuation_days) as f64 / 365.0;
+            let df = curve
+                .discount_factor(time_to_payment)
+                .map_err(|e| PricingError::market_data_resolution(format!("{:?}", e)))?;
 
             // Calculate cashflow PV
             let cf_amount = cf.year_fraction * self.get_notional_for_cashflow(cf, leg);
@@ -190,7 +191,7 @@ impl GenericPricer {
         }
 
         // Apply direction
-        let direction = Direction::from(leg.direction);
+        let direction = leg.direction;
         let pv = pv_original * fx_rate * direction.sign();
         let pv_original_signed = pv_original * direction.sign();
 
@@ -225,10 +226,7 @@ impl GenericPricer {
     ) -> Result<f64, PricingError> {
         // TODO: Implement MarketProvider::get_fx_rate when available
         // For now, return an error indicating the feature is not yet implemented
-        Err(PricingError::FxRateNotFound {
-            base: from.code().to_string(),
-            quote: to.code().to_string(),
-        })
+        Err(PricingError::fx_rate_not_found(from, to))
     }
 }
 

@@ -45,7 +45,7 @@ impl<T: Float> SabrParameterSurface<T> {
     ///
     /// * `expiries` - Expiry格子点（昇順、年単位）
     /// * `tenors` - Tenor格子点（昇順、年単位）
-    /// * `params` - パラメータ行列 `params[i][j]` = (expiry[i], tenor[j])でのSABRパラメータ
+    /// * `params` - パラメータ行列 `params\[i\]\[j\]` = (expiry\[i\], tenor\[j\])でのSABRパラメータ
     /// * `beta` - 固定beta値
     ///
     /// # Errors
@@ -164,19 +164,13 @@ impl<T: Float> SabrParameterSurface<T> {
     }
 
     /// 固定beta値を取得。
-    pub fn beta(&self) -> T {
-        self.beta
-    }
+    pub fn beta(&self) -> T { self.beta }
 
     /// Expiry格子点を取得。
-    pub fn expiries(&self) -> &[T] {
-        &self.expiries
-    }
+    pub fn expiries(&self) -> &[T] { &self.expiries }
 
     /// Tenor格子点を取得。
-    pub fn tenors(&self) -> &[T] {
-        &self.tenors
-    }
+    pub fn tenors(&self) -> &[T] { &self.tenors }
 
     /// 指定したExpiryでのAlpha値を補間取得（tenor固定）。
     pub fn alpha_at(&self, expiry: T, tenor: T) -> Result<T, InterpolationError> {
@@ -208,7 +202,7 @@ mod tests {
         let params = vec![
             // expiry = 0.5
             vec![
-                SabrParams::new(0.04, beta, -0.3, 0.4),  // tenor = 2
+                SabrParams::new(0.04, beta, -0.3, 0.4),   // tenor = 2
                 SabrParams::new(0.05, beta, -0.25, 0.35), // tenor = 5
             ],
             // expiry = 1.0

@@ -2500,8 +2500,10 @@ name = "pricer_pricing"
 version = "0.1.0"
 dependencies = [
  "approx",
+ "chrono",
  "criterion",
  "iai-callgrind",
+ "infra_master",
  "llvm-sys",
  "num-traits",
  "pricer_core",

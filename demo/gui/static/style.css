@@ -4550,6 +4550,88 @@ kbd {
     text-transform: uppercase;
 }
 
+/* Portfolio Health Mini Indicator */
+.portfolio-health-mini {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    padding: 4px 10px;
+    background: var(--surface);
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border);
+}
+
+.health-circle-mini {
+    width: 28px;
+    height: 28px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.health-circle-mini svg {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.health-circle-mini .health-bg-mini {
+    fill: none;
+    stroke: var(--surface-hover);
+    stroke-width: 3;
+}
+
+.health-circle-mini .health-fill-mini {
+    fill: none;
+    stroke: var(--success);
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-dasharray: 97.4;
+    stroke-dashoffset: 97.4;
+    transition: stroke-dashoffset 0.6s ease-out, stroke 0.3s ease;
+}
+
+.health-circle-mini .health-fill-mini.warning {
+    stroke: var(--warning);
+}
+
+.health-circle-mini .health-fill-mini.danger {
+    stroke: var(--danger);
+}
+
+.health-value-mini {
+    position: relative;
+    z-index: 1;
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: var(--success);
+}
+
+.health-value-mini.warning {
+    color: var(--warning);
+}
+
+.health-value-mini.danger {
+    color: var(--danger);
+}
+
+.health-label-mini {
+    font-size: 0.65rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.metric-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
 .risk-summary-stats {
     display: flex;
     gap: 24px;

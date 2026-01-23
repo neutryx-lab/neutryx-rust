@@ -14,7 +14,9 @@
 //! - **Dynamic aggregation**: `group_by_currency()` aggregates from leg data on demand
 
 #[cfg(feature = "l1l2-integration")]
-use infra_master::{market::Currency, time::Date, trade::Direction};
+pub use infra_master::trade::Direction;
+#[cfg(feature = "l1l2-integration")]
+use infra_master::{market::Currency, time::Date};
 
 /// Direction of a leg (without l1l2-integration).
 #[cfg(not(feature = "l1l2-integration"))]
