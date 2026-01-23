@@ -34,11 +34,11 @@ use super::{
     error::{ApiError, ApiResult},
     volcube_types::{
         CalibrationModel, DensityDataResponse, DensityQuery, DensityStatistics, FitMetrics,
-        InstrumentFit, SabrParamsOutput, SmileDataResponse, SmileQuery, SurfaceDataResponse,
-        SurfaceMarketPoint, SurfaceQuery, SwaptionInstrument, VolCubeCalibrateRequest,
-        VolCubeCalibrateResponse, VolCubeFile, VolCubeIndexInfo, VolCubeIndicesResponse,
-        VolCubeInstrumentListRequest, VolCubeInstrumentListResponse, VolCubeModelsResponse,
-        MarketPoint,
+        InstrumentFit, MarketPoint, SabrParamsOutput, SmileDataResponse, SmileQuery,
+        SurfaceDataResponse, SurfaceMarketPoint, SurfaceQuery, SwaptionInstrument,
+        VolCubeCalibrateRequest, VolCubeCalibrateResponse, VolCubeFile, VolCubeIndexInfo,
+        VolCubeIndicesResponse, VolCubeInstrumentListRequest, VolCubeInstrumentListResponse,
+        VolCubeModelsResponse,
     },
     AppState,
 };
@@ -124,8 +124,10 @@ impl Default for VolCubeCache {
 ///
 /// # Requirements Coverage
 ///
-/// - Requirement 1.4: `demo/data/input/volsurface/`ディレクトリからデータ読み込み
-/// - Requirement 1.5: ファイルが存在しないか不正な形式の場合、適切なエラーメッセージ
+/// - Requirement 1.4:
+///   `demo/data/input/volsurface/`ディレクトリからデータ読み込み
+/// - Requirement 1.5:
+///   ファイルが存在しないか不正な形式の場合、適切なエラーメッセージ
 pub struct VolCubeDataLoader {
     base_path: PathBuf,
 }
@@ -151,9 +153,7 @@ impl VolCubeDataLoader {
                     // Only include swaption files (not FX files)
                     if name.ends_with("-swaption.json") {
                         let id = name.trim_end_matches(".json").to_string();
-                        let display_name = id
-                            .replace("-", " ")
-                            .to_uppercase();
+                        let display_name = id.replace("-", " ").to_uppercase();
 
                         let currency = if id.starts_with("usd") {
                             "USD"
@@ -215,7 +215,11 @@ impl VolCubeDataLoader {
     /// # Requirements Coverage
     ///
     /// - Requirement 1.7: 編集したデータを保存可能
-    pub fn save_instruments(&self, index: &str, data: &VolCubeFile) -> Result<(), VolCubeDataError> {
+    pub fn save_instruments(
+        &self,
+        index: &str,
+        data: &VolCubeFile,
+    ) -> Result<(), VolCubeDataError> {
         let file_path = self.base_path.join(format!("{}.json", index));
 
         let content = serde_json::to_string_pretty(data)
@@ -282,7 +286,9 @@ pub async fn get_indices() -> ApiResult<VolCubeIndicesResponse> {
 /// # Requirements Coverage
 ///
 /// - Requirement 8.2: 指定Indexのインストゥルメントデータを返す
-pub async fn get_instruments(Path(index): Path<String>) -> ApiResult<VolCubeInstrumentListResponse> {
+pub async fn get_instruments(
+    Path(index): Path<String>,
+) -> ApiResult<VolCubeInstrumentListResponse> {
     let loader = VolCubeDataLoader::default_path();
 
     let file = loader.load_instruments(&index).map_err(|e| match e {
@@ -345,10 +351,14 @@ pub async fn update_instruments(
     };
 
     // Save to file
-    loader.save_instruments(&index, &file).map_err(|e| match e {
-        VolCubeDataError::IoError(msg) => ApiError::internal(format!("Failed to save: {}", msg)),
-        _ => ApiError::internal("Unexpected error saving instruments"),
-    })?;
+    loader
+        .save_instruments(&index, &file)
+        .map_err(|e| match e {
+            VolCubeDataError::IoError(msg) => {
+                ApiError::internal(format!("Failed to save: {}", msg))
+            }
+            _ => ApiError::internal("Unexpected error saving instruments"),
+        })?;
 
     let response = VolCubeInstrumentListResponse {
         index: file.index,
@@ -393,7 +403,10 @@ pub async fn calibrate(
     // Validate model
     if !request.model.is_enabled() {
         return Err(ApiError::validation(
-            format!("{} model is not yet implemented", request.model.display_name()),
+            format!(
+                "{} model is not yet implemented",
+                request.model.display_name()
+            ),
             "model",
         ));
     }
@@ -419,8 +432,8 @@ pub async fn calibrate(
         let tenor = *tenor_key as f64 / 100.0;
 
         // Calculate average forward
-        let avg_forward = instruments.iter().map(|i| i.forward).sum::<f64>()
-            / instruments.len() as f64;
+        let avg_forward =
+            instruments.iter().map(|i| i.forward).sum::<f64>() / instruments.len() as f64;
 
         // Simple SABR calibration (simplified for demo)
         let (alpha, rho, nu) = calibrate_sabr_simple(instruments, beta, avg_forward);
@@ -437,7 +450,8 @@ pub async fn calibrate(
 
         // Calculate fit quality for each instrument
         for inst in instruments.iter() {
-            let model_vol = sabr_implied_vol(inst.strike, avg_forward, expiry, alpha, beta, rho, nu);
+            let model_vol =
+                sabr_implied_vol(inst.strike, avg_forward, expiry, alpha, beta, rho, nu);
             let error = model_vol - inst.implied_vol;
 
             total_error += error * error;
@@ -463,9 +477,15 @@ pub async fn calibrate(
     };
 
     // R² = 1 - SS_res / SS_tot
-    let mean_vol = request.instruments.iter().map(|i| i.implied_vol).sum::<f64>()
+    let mean_vol = request
+        .instruments
+        .iter()
+        .map(|i| i.implied_vol)
+        .sum::<f64>()
         / request.instruments.len() as f64;
-    let ss_tot: f64 = request.instruments.iter()
+    let ss_tot: f64 = request
+        .instruments
+        .iter()
         .map(|i| (i.implied_vol - mean_vol).powi(2))
         .sum();
     let r_squared = if ss_tot > 0.0 {
@@ -537,16 +557,23 @@ pub async fn get_smile(
         .map_err(|_| ApiError::validation("Invalid cube ID format", "cube_id"))?;
 
     // Get cached cube
-    let cube = state.volcube_cache.get(&cube_id).await
+    let cube = state
+        .volcube_cache
+        .get(&cube_id)
+        .await
         .ok_or_else(|| ApiError::not_found("VolCube", &query.cube_id))?;
 
     // Find SABR params for this expiry-tenor
-    let params = cube.parameters.iter()
+    let params = cube
+        .parameters
+        .iter()
         .find(|p| (p.expiry - query.expiry).abs() < 0.01 && (p.tenor - query.tenor).abs() < 0.01)
-        .ok_or_else(|| ApiError::not_found(
-            "Grid point",
-            &format!("expiry={}, tenor={}", query.expiry, query.tenor),
-        ))?;
+        .ok_or_else(|| {
+            ApiError::not_found(
+                "Grid point",
+                &format!("expiry={}, tenor={}", query.expiry, query.tenor),
+            )
+        })?;
 
     let forward = params.forward;
 
@@ -576,7 +603,9 @@ pub async fn get_smile(
     }
 
     // Get market points for this expiry-tenor
-    let market_points: Vec<MarketPoint> = cube.instruments.iter()
+    let market_points: Vec<MarketPoint> = cube
+        .instruments
+        .iter()
         .filter(|i| (i.expiry - query.expiry).abs() < 0.01 && (i.tenor - query.tenor).abs() < 0.01)
         .map(|i| MarketPoint {
             strike: i.strike,
@@ -611,16 +640,23 @@ pub async fn get_density(
         .map_err(|_| ApiError::validation("Invalid cube ID format", "cube_id"))?;
 
     // Get cached cube
-    let cube = state.volcube_cache.get(&cube_id).await
+    let cube = state
+        .volcube_cache
+        .get(&cube_id)
+        .await
         .ok_or_else(|| ApiError::not_found("VolCube", &query.cube_id))?;
 
     // Find SABR params for this expiry-tenor
-    let params = cube.parameters.iter()
+    let params = cube
+        .parameters
+        .iter()
         .find(|p| (p.expiry - query.expiry).abs() < 0.01 && (p.tenor - query.tenor).abs() < 0.01)
-        .ok_or_else(|| ApiError::not_found(
-            "Grid point",
-            &format!("expiry={}, tenor={}", query.expiry, query.tenor),
-        ))?;
+        .ok_or_else(|| {
+            ApiError::not_found(
+                "Grid point",
+                &format!("expiry={}, tenor={}", query.expiry, query.tenor),
+            )
+        })?;
 
     let forward = params.forward;
     let rate = 0.03; // Approximate discount rate
@@ -644,9 +680,33 @@ pub async fn get_density(
         strikes.push(strike);
 
         // Compute density using central difference
-        let vol_mid = sabr_implied_vol(strike, forward, query.expiry, params.alpha, params.beta, params.rho, params.nu);
-        let vol_low = sabr_implied_vol(strike - h, forward, query.expiry, params.alpha, params.beta, params.rho, params.nu);
-        let vol_high = sabr_implied_vol(strike + h, forward, query.expiry, params.alpha, params.beta, params.rho, params.nu);
+        let vol_mid = sabr_implied_vol(
+            strike,
+            forward,
+            query.expiry,
+            params.alpha,
+            params.beta,
+            params.rho,
+            params.nu,
+        );
+        let vol_low = sabr_implied_vol(
+            strike - h,
+            forward,
+            query.expiry,
+            params.alpha,
+            params.beta,
+            params.rho,
+            params.nu,
+        );
+        let vol_high = sabr_implied_vol(
+            strike + h,
+            forward,
+            query.expiry,
+            params.alpha,
+            params.beta,
+            params.rho,
+            params.nu,
+        );
 
         let c_low = black_call_price(strike - h, forward, query.expiry, vol_low, rate);
         let c_mid = black_call_price(strike, forward, query.expiry, vol_mid, rate);
@@ -676,18 +736,24 @@ pub async fn get_density(
     }
 
     // Compute statistics
-    let mean: f64 = strikes.iter().zip(&densities)
+    let mean: f64 = strikes
+        .iter()
+        .zip(&densities)
         .map(|(k, d)| k * d * strike_step)
         .sum();
 
-    let variance: f64 = strikes.iter().zip(&densities)
+    let variance: f64 = strikes
+        .iter()
+        .zip(&densities)
         .map(|(k, d)| (k - mean).powi(2) * d * strike_step)
         .sum();
 
     let std_dev = variance.sqrt();
 
     let skewness: f64 = if std_dev > 0.0 {
-        strikes.iter().zip(&densities)
+        strikes
+            .iter()
+            .zip(&densities)
             .map(|(k, d)| ((k - mean) / std_dev).powi(3) * d * strike_step)
             .sum()
     } else {
@@ -695,7 +761,9 @@ pub async fn get_density(
     };
 
     let kurtosis: f64 = if std_dev > 0.0 {
-        let m4: f64 = strikes.iter().zip(&densities)
+        let m4: f64 = strikes
+            .iter()
+            .zip(&densities)
             .map(|(k, d)| ((k - mean) / std_dev).powi(4) * d * strike_step)
             .sum();
         m4 - 3.0 // Excess kurtosis
@@ -735,19 +803,24 @@ pub async fn get_surface(
         .map_err(|_| ApiError::validation("Invalid cube ID format", "cube_id"))?;
 
     // Get cached cube
-    let cube = state.volcube_cache.get(&cube_id).await
+    let cube = state
+        .volcube_cache
+        .get(&cube_id)
+        .await
         .ok_or_else(|| ApiError::not_found("VolCube", &query.cube_id))?;
 
     // Get available tenors
     let available_tenors = cube.tenors.clone();
 
     // Select tenor (use first available if not specified)
-    let tenor = query.tenor.unwrap_or_else(|| {
-        available_tenors.first().copied().unwrap_or(5.0)
-    });
+    let tenor = query
+        .tenor
+        .unwrap_or_else(|| available_tenors.first().copied().unwrap_or(5.0));
 
     // Find params for this tenor
-    let tenor_params: Vec<&SabrParamsOutput> = cube.parameters.iter()
+    let tenor_params: Vec<&SabrParamsOutput> = cube
+        .parameters
+        .iter()
         .filter(|p| (p.tenor - tenor).abs() < 0.01)
         .collect();
 
@@ -756,11 +829,18 @@ pub async fn get_surface(
     }
 
     // Get expiry range
-    let expiry_min = tenor_params.iter().map(|p| p.expiry).fold(f64::INFINITY, f64::min);
-    let expiry_max = tenor_params.iter().map(|p| p.expiry).fold(f64::NEG_INFINITY, f64::max);
+    let expiry_min = tenor_params
+        .iter()
+        .map(|p| p.expiry)
+        .fold(f64::INFINITY, f64::min);
+    let expiry_max = tenor_params
+        .iter()
+        .map(|p| p.expiry)
+        .fold(f64::NEG_INFINITY, f64::max);
 
     // Get forward range for strike calculation
-    let forward_avg = tenor_params.iter().map(|p| p.forward).sum::<f64>() / tenor_params.len() as f64;
+    let forward_avg =
+        tenor_params.iter().map(|p| p.forward).sum::<f64>() / tenor_params.len() as f64;
     let strike_min = forward_avg * 0.5;
     let strike_max = forward_avg * 1.5;
 
@@ -784,15 +864,18 @@ pub async fn get_surface(
 
     for &expiry in &expiries {
         // Find closest params for this expiry
-        let params = tenor_params.iter()
+        let params = tenor_params
+            .iter()
             .min_by(|a, b| {
-                (a.expiry - expiry).abs()
+                (a.expiry - expiry)
+                    .abs()
                     .partial_cmp(&(b.expiry - expiry).abs())
                     .unwrap_or(std::cmp::Ordering::Equal)
             })
             .unwrap();
 
-        let row: Vec<f64> = strikes.iter()
+        let row: Vec<f64> = strikes
+            .iter()
             .map(|&strike| {
                 sabr_implied_vol(
                     strike,
@@ -810,7 +893,9 @@ pub async fn get_surface(
     }
 
     // Get market points for markers
-    let market_points: Vec<SurfaceMarketPoint> = cube.instruments.iter()
+    let market_points: Vec<SurfaceMarketPoint> = cube
+        .instruments
+        .iter()
         .filter(|i| (i.tenor - tenor).abs() < 0.01)
         .map(|i| SurfaceMarketPoint {
             expiry: i.expiry,
@@ -844,9 +929,11 @@ fn calibrate_sabr_simple(
     }
 
     // Find ATM instrument
-    let atm_inst = instruments.iter()
+    let atm_inst = instruments
+        .iter()
         .min_by(|a, b| {
-            (a.strike - forward).abs()
+            (a.strike - forward)
+                .abs()
                 .partial_cmp(&(b.strike - forward).abs())
                 .unwrap_or(std::cmp::Ordering::Equal)
         })
@@ -860,10 +947,10 @@ fn calibrate_sabr_simple(
     let high_strikes: Vec<_> = instruments.iter().filter(|i| i.strike > forward).collect();
 
     let rho = if !low_strikes.is_empty() && !high_strikes.is_empty() {
-        let avg_low_vol = low_strikes.iter().map(|i| i.implied_vol).sum::<f64>()
-            / low_strikes.len() as f64;
-        let avg_high_vol = high_strikes.iter().map(|i| i.implied_vol).sum::<f64>()
-            / high_strikes.len() as f64;
+        let avg_low_vol =
+            low_strikes.iter().map(|i| i.implied_vol).sum::<f64>() / low_strikes.len() as f64;
+        let avg_high_vol =
+            high_strikes.iter().map(|i| i.implied_vol).sum::<f64>() / high_strikes.len() as f64;
 
         let skew = avg_low_vol - avg_high_vol;
         -(skew / 0.1).clamp(-0.9, 0.9)
@@ -873,7 +960,8 @@ fn calibrate_sabr_simple(
 
     // Estimate nu from curvature
     let nu = if instruments.len() >= 3 {
-        let wing_vols: Vec<f64> = instruments.iter()
+        let wing_vols: Vec<f64> = instruments
+            .iter()
             .filter(|i| (i.strike - forward).abs() > forward * 0.1)
             .map(|i| i.implied_vol)
             .collect();
@@ -929,8 +1017,11 @@ fn sabr_implied_vol(
         return alpha;
     }
 
-    let prefix = alpha / (fk_mid * (1.0 + one_minus_beta.powi(2) * log_fk.powi(2) / 24.0
-        + one_minus_beta.powi(4) * log_fk.powi(4) / 1920.0));
+    let prefix = alpha
+        / (fk_mid
+            * (1.0
+                + one_minus_beta.powi(2) * log_fk.powi(2) / 24.0
+                + one_minus_beta.powi(4) * log_fk.powi(4) / 1920.0));
 
     let term2 = (one_minus_beta.powi(2) * alpha.powi(2)) / (24.0 * fk_mid.powi(2));
     let term3 = rho * beta * nu * alpha / (4.0 * fk_mid);
@@ -954,9 +1045,7 @@ fn black_call_price(strike: f64, forward: f64, expiry: f64, vol: f64, rate: f64)
     let df = (-rate * expiry).exp();
 
     // Cumulative normal distribution approximation
-    fn norm_cdf(x: f64) -> f64 {
-        0.5 * (1.0 + (x / (2.0_f64.sqrt())).tanh() * (2.0 / PI).sqrt())
-    }
+    fn norm_cdf(x: f64) -> f64 { 0.5 * (1.0 + (x / (2.0_f64.sqrt())).tanh() * (2.0 / PI).sqrt()) }
 
     df * (forward * norm_cdf(d1) - strike * norm_cdf(d2))
 }
@@ -1032,13 +1121,12 @@ mod tests {
     fn test_sabr_implied_vol_atm() {
         let forward = 0.03;
         let vol = sabr_implied_vol(
-            forward,  // ATM
-            forward,
-            1.0,      // 1Y expiry
-            0.04,     // alpha
-            0.5,      // beta
-            -0.2,     // rho
-            0.3,      // nu
+            forward, // ATM
+            forward, 1.0,  // 1Y expiry
+            0.04, // alpha
+            0.5,  // beta
+            -0.2, // rho
+            0.3,  // nu
         );
 
         assert!(vol > 0.0);
@@ -1076,11 +1164,11 @@ mod tests {
     #[test]
     fn test_black_call_price() {
         let price = black_call_price(
-            0.03,   // strike
-            0.035,  // forward
-            1.0,    // expiry
-            0.20,   // vol
-            0.03,   // rate
+            0.03,  // strike
+            0.035, // forward
+            1.0,   // expiry
+            0.20,  // vol
+            0.03,  // rate
         );
 
         // ITM call should have positive value

@@ -597,12 +597,8 @@ mod tests {
     #[test]
     fn test_builder_invalid_instrument() {
         let instruments = vec![VolInstrument::new(
-            "invalid",
-            -1.0, // 負のexpiry
-            5.0,
-            0.03,
-            0.20,
-            0.03,
+            "invalid", -1.0, // 負のexpiry
+            5.0, 0.03, 0.20, 0.03,
         )];
 
         let result = VolCubeBuilder::new()

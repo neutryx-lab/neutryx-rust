@@ -1,19 +1,21 @@
 //! FxVol API type definitions for the WebApp.
 //!
-//! This module provides request/response types for the FX volatility surface API,
-//! including delta-based quotes, Risk Reversal/Butterfly analysis, and probability
-//! density calculation.
+//! This module provides request/response types for the FX volatility surface
+//! API, including delta-based quotes, Risk Reversal/Butterfly analysis, and
+//! probability density calculation.
 //!
 //! # API Endpoints Coverage
 //!
 //! - `GET /api/fxvol/pairs` → `FxVolPairsResponse`
 //! - `GET /api/fxvol/quotes/{pair}` → `FxQuotesResponse`
 //! - `PUT /api/fxvol/quotes/{pair}` → `FxQuotesRequest`
-//! - `POST /api/fxvol/build` → `FxSurfaceBuildRequest`, `FxSurfaceBuildResponse`
+//! - `POST /api/fxvol/build` → `FxSurfaceBuildRequest`,
+//!   `FxSurfaceBuildResponse`
 //! - `GET /api/fxvol/smile` → `FxSmileResponse`
 //! - `GET /api/fxvol/rr-bf` → `RrBfResponse`
 //! - `GET /api/fxvol/density` → `FxDensityResponse`
-//! - `POST /api/fxvol/delta-strike` → `DeltaStrikeRequest`, `DeltaStrikeResponse`
+//! - `POST /api/fxvol/delta-strike` → `DeltaStrikeRequest`,
+//!   `DeltaStrikeResponse`
 //!
 //! # Requirements Coverage
 //!
@@ -734,8 +736,7 @@ mod tests {
 
         #[test]
         fn test_fx_quote_entry_to_delta_vols_with_10d() {
-            let quote =
-                FxQuoteEntry::new(0.25, 0.10, -0.005, 0.003).with_10d(-0.012, 0.008);
+            let quote = FxQuoteEntry::new(0.25, 0.10, -0.005, 0.003).with_10d(-0.012, 0.008);
             let vols = quote.to_delta_vols();
 
             assert!(vols.vol_10d_call.is_some());
@@ -748,8 +749,7 @@ mod tests {
 
         #[test]
         fn test_fx_quote_entry_serde() {
-            let quote =
-                FxQuoteEntry::new(0.25, 0.10, -0.005, 0.003).with_10d(-0.012, 0.008);
+            let quote = FxQuoteEntry::new(0.25, 0.10, -0.005, 0.003).with_10d(-0.012, 0.008);
             let json = serde_json::to_string(&quote).unwrap();
 
             assert!(json.contains("\"expiry\":0.25"));

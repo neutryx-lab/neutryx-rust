@@ -483,14 +483,32 @@ screens.rs       → TUI screen definitions (dashboard, trades, exposure, IRS AA
 visualisation.rs → Benchmark visualisation (speed comparison charts, AAD vs Bump-and-Revalue)
 api_client.rs    → HTTP client for service communication
 web/             → Web server module (feature-gated)
-  ├── main.rs    → Web dashboard entry point
-  ├── handlers.rs → REST API handlers (pricing, portfolio, XVA, Greeks)
+  ├── main.rs         → Web dashboard entry point
+  ├── mod.rs          → Router configuration, middleware, AppState
+  ├── handlers.rs     → Legacy REST API handlers (pricing, portfolio, XVA, Greeks)
+  ├── handlers_v2/    → Modular API handlers (new pattern)
+  │
+  │   Pattern: *_handlers.rs + *_types.rs for each feature domain
+  │   ────────────────────────────────────────────────────────
+  ├── curve_builder_handlers.rs → Curve Builder API (/api/curves/*)
+  ├── curve_builder_types.rs    → Curve Builder type definitions
+  ├── volcube_handlers.rs       → VolCube API (/api/volcube/*)
+  ├── volcube_types.rs          → VolCube type definitions
+  ├── fxvol_handlers.rs         → FX Vol Surface API (/api/fxvol/*)
+  ├── fxvol_types.rs            → FX Vol type definitions
+  ├── trade_handlers.rs         → Trade expansion API (/api/trades/*)
+  ├── trade_types.rs            → Trade type definitions
+  ├── market_handlers.rs        → Market data API (/api/market/*)
+  ├── market_types.rs           → Market data types
+  ├── generic_pricer_handlers.rs → Generic Pricer API (/api/pricer/*)
+  │
   ├── scenario_handlers.rs → Scenario analysis endpoints (presets, run, compare)
-  ├── websocket.rs → WebSocket real-time updates
-  ├── jobs.rs    → Async job manager for background processing
-  ├── metrics.rs → Prometheus-style metrics collection
-  ├── openapi.rs → OpenAPI/Swagger UI (feature = "openapi")
-  └── pricer_types.rs → Shared type definitions
+  ├── websocket.rs    → WebSocket real-time updates
+  ├── jobs.rs         → Async job manager for background processing
+  ├── metrics.rs      → Prometheus-style metrics collection
+  ├── openapi.rs      → OpenAPI/Swagger UI (feature = "openapi")
+  ├── pricer_types.rs → Shared type definitions
+  └── error.rs        → API error handling (ApiError, ApiResult)
 static/          → Web assets (HTML, CSS, JS)
 ```
 
@@ -514,8 +532,24 @@ static/          → Web assets (HTML, CSS, JS)
 
 ### Demo Data & Notebooks
 
-- `demo/data/` - Sample trades, market data, configuration files
-- `demo/notebooks/` - Jupyter notebooks for pricing, calibration, XVA demos
+**Location**: `demo/data/`
+**Purpose**: Sample data for demo applications
+
+```text
+demo/data/
+├── input/               → External data inputs
+│   ├── curves/          → Yield curve instruments (usd-sofr.json, eur-estr.json, jpy-tona.json)
+│   ├── volsurface/      → Volatility surface data (swaption, fx)
+│   ├── market_data/     → Market data snapshots
+│   ├── counterparties.json → Counterparty definitions
+│   ├── netting_sets.json   → Netting set configurations
+│   └── demo_portfolio.json → Sample portfolio
+└── output/              → Generated outputs (reports, exports)
+```
+
+**Data File Pattern**: Index-based JSON files (e.g., `{index}.json` in `curves/`)
+
+**Notebooks**: `demo/notebooks/` - Jupyter notebooks for pricing, calibration, XVA demos
 
 ---
 
@@ -583,5 +617,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-23_ — Added book/, portfolio/ modules to infra_master; expanded counterparty/ with netting agreements, XVA config; expanded market/ with rate infrastructure; updated market/calibration/bootstrapping with AAD-enabled curve engine
+_Updated: 2026-01-23_ — Documented web handler pattern (*_handlers.rs + *_types.rs); added demo/data/ structure with curves/ and volsurface/ directories
 _Document patterns, not file trees. New files following patterns should not require updates_

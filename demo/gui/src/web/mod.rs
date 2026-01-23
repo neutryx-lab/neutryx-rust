@@ -21,6 +21,7 @@
 pub mod curve_builder_handlers;
 pub mod curve_builder_types;
 pub mod error;
+pub mod fxvol_handlers;
 pub mod fxvol_types;
 pub mod generic_pricer_handlers;
 pub mod jobs;
@@ -255,6 +256,8 @@ pub struct AppState {
     pub market_data_cache: Arc<MarketDataCache>,
     /// VolCube cache for calibrated volatility cubes (volcube-calibration-ui)
     pub volcube_cache: volcube_handlers::VolCubeCache,
+    /// FxVol cache for built FX volatility surfaces (volcube-calibration-ui)
+    pub fxvol_cache: fxvol_handlers::FxVolCache,
 }
 
 impl AppState {
@@ -272,6 +275,7 @@ impl AppState {
             job_manager: JobManager::new(),
             market_data_cache: Arc::new(MarketDataCache::new()),
             volcube_cache: volcube_handlers::VolCubeCache::new(10),
+            fxvol_cache: fxvol_handlers::FxVolCache::new(10),
         }
     }
 

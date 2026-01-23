@@ -81,7 +81,8 @@ impl CalibrationModel {
 ///
 /// # Requirements Coverage
 ///
-/// - Requirement 3.3: Strike軸タイプ（Absolute、Moneyness、Log-Moneyness、Delta）
+/// - Requirement 3.3:
+///   Strike軸タイプ（Absolute、Moneyness、Log-Moneyness、Delta）
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum StrikeAxisType {
@@ -119,7 +120,8 @@ impl StrikeAxisType {
 ///
 /// # Requirements Coverage
 ///
-/// - Requirement 1.5: expiry, tenor, strike, implied_vol, forward, weight fields
+/// - Requirement 1.5: expiry, tenor, strike, implied_vol, forward, weight
+///   fields
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SwaptionInstrument {
@@ -142,13 +144,7 @@ fn default_weight() -> f64 { 1.0 }
 
 impl SwaptionInstrument {
     /// Create a new swaption instrument.
-    pub fn new(
-        expiry: f64,
-        tenor: f64,
-        strike: f64,
-        implied_vol: f64,
-        forward: f64,
-    ) -> Self {
+    pub fn new(expiry: f64, tenor: f64, strike: f64, implied_vol: f64, forward: f64) -> Self {
         Self {
             expiry,
             tenor,

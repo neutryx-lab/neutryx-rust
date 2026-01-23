@@ -32,10 +32,10 @@ use super::{
     error::{ApiError, ApiResult},
     fxvol_types::{
         DeltaStrikeRequest, DeltaStrikeResponse, DeltaType, DeltaVols, FxDeltaPoint,
-        FxDensityQuery, FxDensityResponse, FxDensityStatistics, FxPairInfo, FxQuoteEntry,
-        FxQuotesRequest, FxQuotesResponse, FxSmileQuery, FxSmileResponse, FxSurfaceBuildRequest,
-        FxSurfaceBuildResponse, FxVolFile, FxVolPairsResponse, RrBfDataPoint, RrBfQuery,
-        RrBfResponse, FxDeltaTypesResponse,
+        FxDeltaTypesResponse, FxDensityQuery, FxDensityResponse, FxDensityStatistics, FxPairInfo,
+        FxQuoteEntry, FxQuotesRequest, FxQuotesResponse, FxSmileQuery, FxSmileResponse,
+        FxSurfaceBuildRequest, FxSurfaceBuildResponse, FxVolFile, FxVolPairsResponse,
+        RrBfDataPoint, RrBfQuery, RrBfResponse,
     },
     AppState,
 };
@@ -201,8 +201,7 @@ impl FxVolDataLoader {
         let content = serde_json::to_string_pretty(data)
             .map_err(|e| FxVolDataError::ParseError(e.to_string()))?;
 
-        std::fs::write(&file_path, content)
-            .map_err(|e| FxVolDataError::IoError(e.to_string()))?;
+        std::fs::write(&file_path, content).map_err(|e| FxVolDataError::IoError(e.to_string()))?;
 
         Ok(())
     }
@@ -423,13 +422,19 @@ pub async fn get_smile(
         .map_err(|_| ApiError::validation("Invalid surface ID format", "surface_id"))?;
 
     // Get cached surface
-    let surface = state.fxvol_cache.get(&surface_id).await
+    let surface = state
+        .fxvol_cache
+        .get(&surface_id)
+        .await
         .ok_or_else(|| ApiError::not_found("FxVolSurface", &query.surface_id))?;
 
     // Find quote for this expiry (closest match)
-    let quote = surface.quotes.iter()
+    let quote = surface
+        .quotes
+        .iter()
         .min_by(|a, b| {
-            (a.expiry - query.expiry).abs()
+            (a.expiry - query.expiry)
+                .abs()
                 .partial_cmp(&(b.expiry - query.expiry).abs())
                 .unwrap_or(std::cmp::Ordering::Equal)
         })
@@ -476,7 +481,11 @@ pub async fn get_smile(
     }
 
     // Sort by delta (put to call)
-    points.sort_by(|a, b| a.delta.partial_cmp(&b.delta).unwrap_or(std::cmp::Ordering::Equal));
+    points.sort_by(|a, b| {
+        a.delta
+            .partial_cmp(&b.delta)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     Ok(Json(FxSmileResponse {
         expiry: query.expiry,
@@ -506,11 +515,16 @@ pub async fn get_rr_bf(
         .map_err(|_| ApiError::validation("Invalid surface ID format", "surface_id"))?;
 
     // Get cached surface
-    let surface = state.fxvol_cache.get(&surface_id).await
+    let surface = state
+        .fxvol_cache
+        .get(&surface_id)
+        .await
         .ok_or_else(|| ApiError::not_found("FxVolSurface", &query.surface_id))?;
 
     // Build data points
-    let data: Vec<RrBfDataPoint> = surface.quotes.iter()
+    let data: Vec<RrBfDataPoint> = surface
+        .quotes
+        .iter()
         .map(|q| {
             let label = expiry_to_label(q.expiry);
             RrBfDataPoint {
@@ -546,13 +560,19 @@ pub async fn get_density(
         .map_err(|_| ApiError::validation("Invalid surface ID format", "surface_id"))?;
 
     // Get cached surface
-    let surface = state.fxvol_cache.get(&surface_id).await
+    let surface = state
+        .fxvol_cache
+        .get(&surface_id)
+        .await
         .ok_or_else(|| ApiError::not_found("FxVolSurface", &query.surface_id))?;
 
     // Find quote for this expiry (closest match)
-    let quote = surface.quotes.iter()
+    let quote = surface
+        .quotes
+        .iter()
         .min_by(|a, b| {
-            (a.expiry - query.expiry).abs()
+            (a.expiry - query.expiry)
+                .abs()
                 .partial_cmp(&(b.expiry - query.expiry).abs())
                 .unwrap_or(std::cmp::Ordering::Equal)
         })
@@ -615,9 +635,21 @@ pub async fn get_density(
         );
 
         // Calculate call prices
-        let c_low = black_call_price(strike - h, forward, query.expiry, vol_low, surface.domestic_rate);
+        let c_low = black_call_price(
+            strike - h,
+            forward,
+            query.expiry,
+            vol_low,
+            surface.domestic_rate,
+        );
         let c_mid = black_call_price(strike, forward, query.expiry, vol, surface.domestic_rate);
-        let c_high = black_call_price(strike + h, forward, query.expiry, vol_high, surface.domestic_rate);
+        let c_high = black_call_price(
+            strike + h,
+            forward,
+            query.expiry,
+            vol_high,
+            surface.domestic_rate,
+        );
 
         // Second derivative
         let d2c_dk2 = (c_high - 2.0 * c_mid + c_low) / (h * h);
@@ -644,18 +676,24 @@ pub async fn get_density(
     }
 
     // Compute statistics
-    let mean: f64 = strikes.iter().zip(&densities)
+    let mean: f64 = strikes
+        .iter()
+        .zip(&densities)
         .map(|(k, d)| k * d * strike_step)
         .sum();
 
-    let variance: f64 = strikes.iter().zip(&densities)
+    let variance: f64 = strikes
+        .iter()
+        .zip(&densities)
         .map(|(k, d)| (k - mean).powi(2) * d * strike_step)
         .sum();
 
     let std_dev = variance.sqrt();
 
     let skewness: f64 = if std_dev > 0.0 {
-        strikes.iter().zip(&densities)
+        strikes
+            .iter()
+            .zip(&densities)
             .map(|(k, d)| ((k - mean) / std_dev).powi(3) * d * strike_step)
             .sum()
     } else {
@@ -663,7 +701,9 @@ pub async fn get_density(
     };
 
     let kurtosis: f64 = if std_dev > 0.0 {
-        let m4: f64 = strikes.iter().zip(&densities)
+        let m4: f64 = strikes
+            .iter()
+            .zip(&densities)
             .map(|(k, d)| ((k - mean) / std_dev).powi(4) * d * strike_step)
             .sum();
         m4 - 3.0
@@ -706,7 +746,10 @@ pub async fn delta_to_strike_handler(
         return Err(ApiError::validation("Expiry must be positive", "expiry"));
     }
     if request.volatility <= 0.0 {
-        return Err(ApiError::validation("Volatility must be positive", "volatility"));
+        return Err(ApiError::validation(
+            "Volatility must be positive",
+            "volatility",
+        ));
     }
 
     // Calculate forward
@@ -714,7 +757,9 @@ pub async fn delta_to_strike_handler(
     let forward = request.spot * (rate_diff * request.expiry).exp();
 
     // Convert each delta to strike
-    let strikes: Vec<f64> = request.deltas.iter()
+    let strikes: Vec<f64> = request
+        .deltas
+        .iter()
         .map(|&delta| {
             delta_to_strike(
                 delta,
@@ -742,7 +787,8 @@ pub async fn delta_to_strike_handler(
 
 /// Convert expiry in years to a market label.
 fn expiry_to_label(expiry: f64) -> String {
-    if expiry < 0.084 {
+    if expiry < 0.05 {
+        // 1 week ≈ 0.019 years, boundary at midpoint to 1M
         "1W".to_string()
     } else if expiry < 0.125 {
         "1M".to_string()
@@ -822,8 +868,6 @@ fn delta_to_strike(
     volatility: f64,
     delta_type: DeltaType,
 ) -> f64 {
-    use std::f64::consts::PI;
-
     let rate_diff = domestic_rate - foreign_rate;
     let forward = spot * (rate_diff * expiry).exp();
     let sqrt_t = expiry.sqrt();
@@ -860,17 +904,17 @@ fn delta_to_strike(
 
         if p < p_low {
             let q = (-2.0 * p.ln()).sqrt();
-            (((((c1*q+c2)*q+c3)*q+c4)*q+c5)*q+c6) /
-            ((((d1*q+d2)*q+d3)*q+d4)*q+1.0)
+            (((((c1 * q + c2) * q + c3) * q + c4) * q + c5) * q + c6)
+                / ((((d1 * q + d2) * q + d3) * q + d4) * q + 1.0)
         } else if p <= p_high {
             let q = p - 0.5;
             let r = q * q;
-            (((((a1*r+a2)*r+a3)*r+a4)*r+a5)*r+a6)*q /
-            (((((b1*r+b2)*r+b3)*r+b4)*r+b5)*r+1.0)
+            (((((a1 * r + a2) * r + a3) * r + a4) * r + a5) * r + a6) * q
+                / (((((b1 * r + b2) * r + b3) * r + b4) * r + b5) * r + 1.0)
         } else {
             let q = (-2.0 * (1.0 - p).ln()).sqrt();
-            -(((((c1*q+c2)*q+c3)*q+c4)*q+c5)*q+c6) /
-            ((((d1*q+d2)*q+d3)*q+d4)*q+1.0)
+            -(((((c1 * q + c2) * q + c3) * q + c4) * q + c5) * q + c6)
+                / ((((d1 * q + d2) * q + d3) * q + d4) * q + 1.0)
         }
     }
 
@@ -908,7 +952,8 @@ fn delta_to_strike(
     };
 
     // K = F * exp(-d1 * sigma * sqrt(T) + 0.5 * sigma^2 * T)
-    let strike = forward * (-d1 * volatility * sqrt_t + 0.5 * volatility * volatility * expiry).exp();
+    let strike =
+        forward * (-d1 * volatility * sqrt_t + 0.5 * volatility * volatility * expiry).exp();
 
     strike
 }
@@ -926,7 +971,21 @@ fn black_call_price(strike: f64, forward: f64, expiry: f64, vol: f64, rate: f64)
     let df = (-rate * expiry).exp();
 
     fn norm_cdf(x: f64) -> f64 {
-        0.5 * (1.0 + libm::erf(x / std::f64::consts::SQRT_2))
+        // Abramowitz and Stegun approximation for cumulative normal distribution
+        let a1 = 0.254829592;
+        let a2 = -0.284496736;
+        let a3 = 1.421413741;
+        let a4 = -1.453152027;
+        let a5 = 1.061405429;
+        let p = 0.3275911;
+
+        let sign = if x < 0.0 { -1.0 } else { 1.0 };
+        let x_abs = x.abs() / std::f64::consts::SQRT_2;
+
+        let t = 1.0 / (1.0 + p * x_abs);
+        let y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * (-x_abs * x_abs).exp();
+
+        0.5 * (1.0 + sign * y)
     }
 
     df * (forward * norm_cdf(d1) - strike * norm_cdf(d2))

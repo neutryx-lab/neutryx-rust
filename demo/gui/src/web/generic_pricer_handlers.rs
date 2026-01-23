@@ -23,17 +23,16 @@ use pricer_pricing::generic_pricer::{
 };
 use serde_json::json;
 
+#[cfg(test)]
+use super::pricer_types::CashflowInput;
 use super::{
     pricer_types::{
-        BumpSizesInput, CashflowResultOutput, CurrencyInput, DirectionInput,
-        GenericPricerRequest, GenericPricerResponse, GreeksCalculationRequest,
-        GreeksCalculationResponse, LegInput, LegResultOutput, PricerInstrumentTypesResponse,
+        BumpSizesInput, CashflowResultOutput, CurrencyInput, DirectionInput, GenericPricerRequest,
+        GenericPricerResponse, GreeksCalculationRequest, GreeksCalculationResponse, LegInput,
+        LegResultOutput, PricerInstrumentTypesResponse,
     },
     AppState,
 };
-
-#[cfg(test)]
-use super::pricer_types::CashflowInput;
 
 // =============================================================================
 // Task 2.1: POST /api/pricer/price Handler
@@ -51,7 +50,9 @@ pub async fn price_generic(
     if !validation_errors.is_empty() {
         return (
             StatusCode::BAD_REQUEST,
-            Json(json!(GenericPricerResponse::validation_error(validation_errors))),
+            Json(json!(GenericPricerResponse::validation_error(
+                validation_errors
+            ))),
         );
     }
 
@@ -215,8 +216,7 @@ pub async fn calculate_greeks(
     // Calculate theta (1-day decay approximation)
     let theta = -base_pv * 0.05 / 365.0; // Approximate theta
 
-    let response =
-        GreeksCalculationResponse::success(delta, Some(gamma), Some(theta), None, None);
+    let response = GreeksCalculationResponse::success(delta, Some(gamma), Some(theta), None, None);
 
     (StatusCode::OK, Json(json!(response)))
 }
@@ -339,22 +339,10 @@ mod tests {
 
     #[test]
     fn test_convert_currency() {
-        assert_eq!(
-            convert_currency(&CurrencyInput::USD).code(),
-            "USD"
-        );
-        assert_eq!(
-            convert_currency(&CurrencyInput::EUR).code(),
-            "EUR"
-        );
-        assert_eq!(
-            convert_currency(&CurrencyInput::JPY).code(),
-            "JPY"
-        );
-        assert_eq!(
-            convert_currency(&CurrencyInput::GBP).code(),
-            "GBP"
-        );
+        assert_eq!(convert_currency(&CurrencyInput::USD).code(), "USD");
+        assert_eq!(convert_currency(&CurrencyInput::EUR).code(), "EUR");
+        assert_eq!(convert_currency(&CurrencyInput::JPY).code(), "JPY");
+        assert_eq!(convert_currency(&CurrencyInput::GBP).code(), "GBP");
     }
 
     #[test]

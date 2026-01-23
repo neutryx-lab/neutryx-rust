@@ -87,7 +87,7 @@
   - _Requirements: 3.5, 3.6, 4.3, 5.2, 6.2, 6.3, 7.2, 8.4, 8.5, 8.6, 8.7_
   - _Contracts: volcube_handlers API_
 
-- [ ] 3. FxVol API実装
+- [x] 3. FxVol API実装
 - [x] 3.1 (P) FxVol API型定義の実装
   - FxQuoteEntry構造体（expiry、atm_vol、rr_25d、bf_25d、rr_10d、bf_10d）を定義する
   - FxVolFile構造体（currency_pair、spot、domestic_rate、foreign_rate、quotes）を定義する
@@ -98,7 +98,7 @@
   - _Requirements: 1.6, 10.2, 10.5, 11.1, 11.2, 11.3, 11.8_
   - _Contracts: fxvol_types API_
 
-- [ ] 3.2 FxVol APIハンドラー基本エンドポイントの実装
+- [x] 3.2 FxVol APIハンドラー基本エンドポイントの実装
   - `/api/fxvol/pairs` GETで利用可能な通貨ペア一覧を返す
   - `/api/fxvol/quotes/{pair}` GETで指定通貨ペアのボラティリティQuotesを返す
   - `/api/fxvol/quotes/{pair}` PUTでQuotesデータの更新・保存を行う
@@ -108,7 +108,7 @@
   - _Requirements: 1.3, 1.4, 10.2, 11.1, 11.2, 11.3, 11.4_
   - _Contracts: fxvol_handlers API_
 
-- [ ] 3.3 FxVol API分析エンドポイントの実装
+- [x] 3.3 FxVol API分析エンドポイントの実装
   - `/api/fxvol/smile` GETで指定ExpiryのDelta-Volスマイルデータを返す
   - `/api/fxvol/rr-bf` GETでRisk Reversal/Butterflyの時系列データを返す
   - `/api/fxvol/density` GETでFxDensityCalculatorを使用して確率密度データを返す
