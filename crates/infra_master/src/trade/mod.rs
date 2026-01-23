@@ -33,6 +33,7 @@
 //!     .build();
 //! ```
 
+mod book_assignment;
 mod builder;
 mod cashflow;
 mod direction;
@@ -52,6 +53,7 @@ pub mod convention;
 /// Standard instrument definitions for all asset classes.
 pub mod instrument_def;
 
+pub use book_assignment::{BookTransferReason, TradeBookAssignment, TradeBookHistory};
 pub use builder::{LegBuilder, TradeBuilder};
 pub use cashflow::{Cashflow, CashflowType};
 pub use direction::{SwapDirection, TradeDirection};

@@ -54,5 +54,9 @@ rstest.workspace = true
 name = "models"
 harness = false
 
+[[bench]]
+name = "curve_bootstrap"
+harness = false
+
 [lints]
 workspace = true

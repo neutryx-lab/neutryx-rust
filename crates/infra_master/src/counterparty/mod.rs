@@ -30,6 +30,7 @@
 
 mod ccp;
 mod counterparty_entity;
+mod counterparty_portfolio;
 mod credit;
 mod csa;
 mod error;
@@ -40,6 +41,7 @@ mod netting_set;
 // Re-export all public types
 pub use ccp::*;
 pub use counterparty_entity::*;
+pub use counterparty_portfolio::*;
 pub use credit::*;
 pub use csa::*;
 pub use error::*;
@@ -69,6 +71,9 @@ pub mod prelude {
         CounterPartyId,
         // Config
         CounterPartySector,
+        // CounterpartyPortfolio hierarchy
+        CounterpartyPortfolio,
+        CounterpartyPortfolioBuilder,
         // Credit
         CreditParams,
         CreditRating,
@@ -78,19 +83,30 @@ pub mod prelude {
         // Margin
         ImModel,
         ImTerms,
-        // Agreement IDs
+        // ISDA and VM Agreements
+        IndependentAmountConfig,
         IsdaAgreementId,
+        IsdaInitialMargin,
+        IsdaMasterAgreement,
+        IsdaMasterAgreementBuilder,
+        IsdaPaymentMethod,
         LegalEntityId,
         MarginTerms,
         MarginType,
+        NettingEligibility,
         NettingSet,
         NettingSetId,
         NettingType,
+        NonNettableTrades,
+        PreCalculatedExposurePath,
         RoundingDirection,
         RoundingRule,
         SegregationType,
         SimmVersion,
+        VariationMarginAgreement,
+        VariationMarginAgreementBuilder,
         VariationMarginAgreementId,
         VmTerms,
+        CollateralCallFrequency,
     };
 }

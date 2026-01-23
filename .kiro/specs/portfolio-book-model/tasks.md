@@ -8,20 +8,20 @@
 
 ## Tasks
 
-- [ ] 1. 基盤ID型とエラー型の定義
-- [ ] 1.1 (P) 新規ID型の定義
+- [x] 1. 基盤ID型とエラー型の定義
+- [x] 1.1 (P) 新規ID型の定義
   - IsdaAgreementId, VariationMarginAgreementIdをdefine_id!マクロで定義
   - 既存パターン（CounterPartyId, NettingSetId）に準拠したderive属性
   - serde feature flagによる条件付きシリアライゼーション
   - _Requirements: 12.1, 13.1_
 
-- [ ] 1.2 (P) Book/Portfolio関連エラー型の定義
+- [x] 1.2 (P) Book/Portfolio関連エラー型の定義
   - BookError列挙型（DuplicateId, InvalidOwnership, InvalidType, MissingRequiredField）
   - PortfolioError列挙型（DuplicateId, CircularReference, InvalidBookReference, InvalidScope）
   - thiserror deriveによるDisplay実装
   - _Requirements: 9.1, 9.2_
 
-- [ ] 1.3 (P) Netting/Exposure関連エラー型の定義
+- [x] 1.3 (P) Netting/Exposure関連エラー型の定義
   - NettingError列挙型（CounterpartyMismatch, NotEnforceable, InvalidAgreement, CrossBookViolation）
   - ExposureError列挙型（MissingDate, CurrencyMismatch, InvalidTimeGrid）
   - ValidationError統合型とFrom実装
@@ -30,8 +30,8 @@
 
 ---
 
-- [ ] 2. Book概念の実装
-- [ ] 2.1 Book構造体と関連型の定義
+- [x] 2. Book概念の実装
+- [x] 2.1 Book構造体と関連型の定義
   - BookType列挙型（Trading, Banking, Hedge, Internal）とデフォルト値
   - RegulatoryBookType列挙型（TB, NTBR, BB）
   - BookOwnership構造体（desk, division, legal_entity_id）
@@ -39,7 +39,7 @@
   - Book構造体の全フィールド定義
   - _Requirements: 1.1, 1.2, 1.3, 1.7, 1.8_
 
-- [ ] 2.2 BookBuilderの実装
+- [x] 2.2 BookBuilderの実装
   - fluent APIによるBookインスタンス構築
   - 必須フィールド（id, name）のコンストラクタ引数
   - オプションフィールドのbuilderメソッド

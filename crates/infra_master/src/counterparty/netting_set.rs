@@ -6,6 +6,7 @@
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::return_self_not_must_use)]
 
+use crate::ids::BookId;
 use super::{Ccp, CcpId, CounterPartyError, CounterPartyId, CsaTerms, LegalEntityId, MarginTerms};
 
 // ============================================================================
@@ -182,6 +183,9 @@ pub struct NettingSet {
     margin_terms: Option<MarginTerms>,
     ccp_id: Option<CcpId>,
     exposure_config: Option<ExposureConfig>,
+    /// Book IDs allowed for cross-book netting within this set.
+    /// If empty, all books are allowed (single-book netting assumed).
+    book_ids: Vec<BookId>,
 }
 
 impl NettingSet {
@@ -219,6 +223,21 @@ impl NettingSet {
 
     /// Returns the exposure configuration if set.
     pub fn exposure_config(&self) -> Option<&ExposureConfig> { self.exposure_config.as_ref() }
+
+    /// Returns the book IDs allowed for cross-book netting.
+    ///
+    /// If empty, all books are allowed (single-book netting assumed).
+    pub fn book_ids(&self) -> &[BookId] { &self.book_ids }
+
+    /// Returns true if cross-book netting is enabled (multiple books specified).
+    pub fn allows_cross_book_netting(&self) -> bool { self.book_ids.len() > 1 }
+
+    /// Returns true if the specified book is allowed in this netting set.
+    ///
+    /// If no books are explicitly configured, returns true (all books allowed).
+    pub fn allows_book(&self, book_id: &BookId) -> bool {
+        self.book_ids.is_empty() || self.book_ids.contains(book_id)
+    }
 
     /// Returns whether this is a cleared transaction.
     pub fn is_cleared(&self) -> bool { self.netting_type.is_cleared() }
@@ -262,6 +281,7 @@ pub struct NettingSetBuilder {
     margin_terms: Option<MarginTerms>,
     ccp_id: Option<CcpId>,
     exposure_config: Option<ExposureConfig>,
+    book_ids: Vec<BookId>,
 }
 
 impl NettingSetBuilder {
@@ -277,6 +297,7 @@ impl NettingSetBuilder {
             margin_terms: None,
             ccp_id: None,
             exposure_config: None,
+            book_ids: Vec::new(),
         }
     }
 
@@ -322,6 +343,21 @@ impl NettingSetBuilder {
         self
     }
 
+    /// Adds a book ID to the allowed books list.
+    pub fn add_book(mut self, book_id: impl Into<BookId>) -> Self {
+        let id = book_id.into();
+        if !self.book_ids.contains(&id) {
+            self.book_ids.push(id);
+        }
+        self
+    }
+
+    /// Sets the allowed book IDs for cross-book netting.
+    pub fn book_ids(mut self, book_ids: impl IntoIterator<Item = impl Into<BookId>>) -> Self {
+        self.book_ids = book_ids.into_iter().map(Into::into).collect();
+        self
+    }
+
     /// Builds the NettingSet.
     ///
     /// # Errors
@@ -341,6 +377,7 @@ impl NettingSetBuilder {
             margin_terms: self.margin_terms,
             ccp_id: self.ccp_id,
             exposure_config: self.exposure_config,
+            book_ids: self.book_ids,
         })
     }
 }
@@ -546,5 +583,82 @@ mod tests {
             .unwrap();
 
         assert_eq!(ns.mpor_days(), 5);
+    }
+
+    // ========================================================================
+    // Book IDs tests
+    // ========================================================================
+
+    #[test]
+    fn test_netting_set_book_ids_empty_by_default() {
+        let ns = NettingSet::builder("NS001", "CP001").build().unwrap();
+        assert!(ns.book_ids().is_empty());
+        assert!(!ns.allows_cross_book_netting());
+    }
+
+    #[test]
+    fn test_netting_set_add_book() {
+        let ns = NettingSet::builder("NS001", "CP001")
+            .add_book("B001")
+            .add_book("B002")
+            .build()
+            .unwrap();
+
+        assert_eq!(ns.book_ids().len(), 2);
+        assert!(ns.allows_cross_book_netting());
+    }
+
+    #[test]
+    fn test_netting_set_add_book_dedup() {
+        let ns = NettingSet::builder("NS001", "CP001")
+            .add_book("B001")
+            .add_book("B001") // Duplicate
+            .add_book("B002")
+            .build()
+            .unwrap();
+
+        assert_eq!(ns.book_ids().len(), 2);
+    }
+
+    #[test]
+    fn test_netting_set_book_ids_bulk() {
+        let ns = NettingSet::builder("NS001", "CP001")
+            .book_ids(["B001", "B002", "B003"])
+            .build()
+            .unwrap();
+
+        assert_eq!(ns.book_ids().len(), 3);
+    }
+
+    #[test]
+    fn test_netting_set_allows_book_empty() {
+        let ns = NettingSet::builder("NS001", "CP001").build().unwrap();
+
+        // Empty book_ids means all books allowed
+        assert!(ns.allows_book(&BookId::new("B001")));
+        assert!(ns.allows_book(&BookId::new("B999")));
+    }
+
+    #[test]
+    fn test_netting_set_allows_book_with_list() {
+        let ns = NettingSet::builder("NS001", "CP001")
+            .add_book("B001")
+            .add_book("B002")
+            .build()
+            .unwrap();
+
+        assert!(ns.allows_book(&BookId::new("B001")));
+        assert!(ns.allows_book(&BookId::new("B002")));
+        assert!(!ns.allows_book(&BookId::new("B003")));
+    }
+
+    #[test]
+    fn test_netting_set_single_book_no_cross_book() {
+        let ns = NettingSet::builder("NS001", "CP001")
+            .add_book("B001")
+            .build()
+            .unwrap();
+
+        assert!(!ns.allows_cross_book_netting());
     }
 }

@@ -53,6 +53,7 @@ pub mod book;
 pub mod counterparty;
 pub mod ids;
 pub mod market;
+pub mod portfolio;
 pub mod time;
 pub mod trade;
 
@@ -79,6 +80,10 @@ pub use trade::{SwapDirection, TradeDirection};
 pub use ids::{BookId, CounterpartyId, IssuerId, PortfolioId, TradeId};
 // Book module types
 pub use book::{Book, BookBuilder, BookMetadata, BookOwnership, BookType, RegulatoryBookType};
+// Portfolio module types
+pub use portfolio::{
+    PortfolioBookMapping, PortfolioBuilder, PortfolioDefinition, PortfolioMetadata, PortfolioScope,
+};
 
 /// Prelude module for convenient imports
 pub mod prelude {
@@ -90,6 +95,10 @@ pub mod prelude {
         },
         ids::{BookId, CounterpartyId, IssuerId, PortfolioId, TradeId},
         market::{Currency, RateIndex},
+        portfolio::{
+            PortfolioBookMapping, PortfolioBuilder, PortfolioDefinition, PortfolioMetadata,
+            PortfolioScope,
+        },
         time::{
             AccrualPeriod, BusinessDayConvention, Calendar, CalendarId, ConcreteCalendar, Date,
             DayCounter, EndOfMonthRule, Frequency, JointCalendar, JointCalendarRule, Period, Tenor,
