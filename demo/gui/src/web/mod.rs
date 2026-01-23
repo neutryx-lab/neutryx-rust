@@ -544,7 +544,10 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/smile", get(fxvol_handlers::get_smile))
         .route("/rr-bf", get(fxvol_handlers::get_rr_bf))
         .route("/density", get(fxvol_handlers::get_density))
-        .route("/delta-strike", post(fxvol_handlers::delta_to_strike_handler));
+        .route(
+            "/delta-strike",
+            post(fxvol_handlers::delta_to_strike_handler),
+        );
 
     let api_routes = api_routes.nest("/fxvol", fxvol_routes);
 

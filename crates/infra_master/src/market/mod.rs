@@ -104,6 +104,7 @@
 //! assert_eq!(instruments.len(), 1);
 //! ```
 
+mod compounding;
 mod currency;
 mod data_source;
 mod error;
@@ -117,6 +118,8 @@ mod rate_type;
 mod ticker;
 mod validation;
 
+// Compounding methods
+pub use compounding::CompoundingMethod;
 // Core types
 pub use currency::Currency;
 // Quote and rate types
@@ -130,7 +133,7 @@ pub use quote_type::QuoteType;
 pub use rate::MarketRate;
 // Rate identification and mapping
 pub use rate_id::RateId;
-pub use rate_index::RateIndex;
+pub use rate_index::{IndexMetadata, RateIndex};
 pub use rate_set::MarketRateSet;
 pub use rate_type::RateType;
 pub use ticker::TickerMapping;

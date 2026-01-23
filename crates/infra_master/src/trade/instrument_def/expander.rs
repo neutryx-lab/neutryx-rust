@@ -615,6 +615,7 @@ fn generate_daily_accruals(
     // market data)
     let base_rate = match rate_index {
         RateIndex::Sofr => 0.0430,      // ~4.30% SOFR
+        RateIndex::Estr => 0.0390,      // ~3.90% ESTR
         RateIndex::Euribor3M => 0.0390, // ~3.90% EUR (using as ESTR proxy)
         RateIndex::Euribor6M => 0.0395, // ~3.95% EUR
         RateIndex::Sonia => 0.0525,     // ~5.25% SONIA
