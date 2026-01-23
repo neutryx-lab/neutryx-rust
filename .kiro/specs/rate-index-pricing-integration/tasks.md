@@ -98,7 +98,7 @@
   - ボラティリティサーフェスが存在しない場合は MissingVolatility エラーを返す
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
-- [ ] 3.4 GenericPricer に Payoff 評価を統合する
+- [x] 3.4 GenericPricer に Payoff 評価を統合する
   - price_leg メソッド内で Payoff 評価器を使用するように修正
   - cf.notional を使用し、ハードコードされた値を除去
   - daily_accruals が存在する場合は日次複利計算を使用
@@ -106,7 +106,7 @@
   - 既存の get_notional_for_cashflow メソッドを維持
   - _Requirements: 5.2, 5.5, 6.1, 6.3, 10.5_
 
-- [ ] 3.5 pricer_pricing の統合テストを追加する
+- [x] 3.5 pricer_pricing の統合テストを追加する
   - Fixed, Linear, VanillaOption の各 Payoff タイプをテスト
   - OIS 複利計算の精度を既知の値と比較
   - GenericPricer を通じた全 Payoff バリアントの統合テスト

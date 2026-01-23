@@ -44,7 +44,7 @@ use std::{
 use infra_master::Currency;
 
 use crate::market::{
-    curves::{CurveEnum, FlatCurve},
+    curves::{CurveEnum, CurveName, CurveSet, FlatCurve},
     surfaces::VolSurfaceEnum,
 };
 
@@ -57,6 +57,8 @@ pub struct MarketProvider {
     curve_cache: RwLock<HashMap<Currency, Arc<CurveEnum<f64>>>>,
     /// Cache for volatility surfaces, keyed by currency.
     vol_cache: RwLock<HashMap<Currency, Arc<VolSurfaceEnum<f64>>>>,
+    /// Curve set for index-based curve access (forward rate projections).
+    index_curve_set: RwLock<CurveSet<f64>>,
 }
 
 impl std::fmt::Debug for MarketProvider {
@@ -75,10 +77,35 @@ impl MarketProvider {
     ///
     /// A new `MarketProvider` instance ready for lazy population.
     pub fn new() -> Self {
+        // Create a curve set with demo index curves
+        let mut index_curves = CurveSet::new();
+        // Add index curves with typical rates
+        index_curves.insert(CurveName::Sofr, CurveEnum::Flat(FlatCurve::new(0.035)));
+        index_curves.insert(CurveName::Sonia, CurveEnum::Flat(FlatCurve::new(0.04)));
+        index_curves.insert(CurveName::Euribor, CurveEnum::Flat(FlatCurve::new(0.04)));
+        index_curves.insert(CurveName::Tonar, CurveEnum::Flat(FlatCurve::new(0.001)));
+        index_curves.insert(CurveName::Saron, CurveEnum::Flat(FlatCurve::new(0.012)));
+        index_curves.insert(CurveName::Estr, CurveEnum::Flat(FlatCurve::new(0.03)));
+
         Self {
             curve_cache: RwLock::new(HashMap::new()),
             vol_cache: RwLock::new(HashMap::new()),
+            index_curve_set: RwLock::new(index_curves),
         }
+    }
+
+    /// Returns a reference to the index-based curve set.
+    ///
+    /// The curve set contains curves keyed by `CurveName` (e.g., Sofr, Euribor)
+    /// for computing forward rates from rate indices.
+    ///
+    /// # Returns
+    ///
+    /// A clone of the `CurveSet<f64>` for index-based curve access.
+    #[allow(clippy::unwrap_used, clippy::missing_panics_doc)]
+    pub fn curve_set(&self) -> CurveSet<f64> {
+        let curve_set = self.index_curve_set.read().unwrap();
+        curve_set.clone()
     }
 
     /// Retrieves or constructs the yield curve for the given currency.

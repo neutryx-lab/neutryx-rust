@@ -51,8 +51,8 @@ impl DailyAccrual {
 /// let compounded_rate = OisCalculator::compound_rate::<f64>(&accruals);
 /// let annualized = OisCalculator::annualized_rate(compounded_rate, 3.0 / 360.0);
 ///
-/// // Should be approximately 3.5%
-/// assert!((annualized - 0.035).abs() < 1e-6);
+/// // Should be approximately 3.5% (with small compounding effect)
+/// assert!((annualized - 0.035).abs() < 1e-4);
 /// ```
 pub struct OisCalculator;
 
