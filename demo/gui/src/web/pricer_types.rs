@@ -2648,7 +2648,7 @@ pub struct GenericPricerResponse {
     pub error: Option<String>,
     /// Validation errors if request was invalid.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub validation_errors: Option<Vec<ValidationError>>,
+    pub validation_errors: Option<Vec<PricerValidationError>>,
 }
 
 impl GenericPricerResponse {
@@ -2677,7 +2677,7 @@ impl GenericPricerResponse {
     }
 
     /// Creates a validation error response.
-    pub fn validation_error(errors: Vec<ValidationError>) -> Self {
+    pub fn validation_error(errors: Vec<PricerValidationError>) -> Self {
         Self {
             success: false,
             total_pv: None,
@@ -2743,7 +2743,7 @@ pub struct GreeksCalculationRequest {
 
 impl GreeksCalculationRequest {
     /// Validates the request parameters.
-    pub fn validate(&self) -> Vec<ValidationError> {
+    pub fn validate(&self) -> Vec<PricerValidationError> {
         let mut errors = Vec::new();
 
         if self.legs.is_empty() {
@@ -2814,7 +2814,7 @@ pub struct GreeksCalculationResponse {
     pub error: Option<String>,
     /// Validation errors if request was invalid.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub validation_errors: Option<Vec<ValidationError>>,
+    pub validation_errors: Option<Vec<PricerValidationError>>,
 }
 
 impl GreeksCalculationResponse {
@@ -2855,7 +2855,7 @@ impl GreeksCalculationResponse {
     }
 
     /// Creates a validation error response.
-    pub fn validation_error(errors: Vec<ValidationError>) -> Self {
+    pub fn validation_error(errors: Vec<PricerValidationError>) -> Self {
         Self {
             success: false,
             delta: None,
