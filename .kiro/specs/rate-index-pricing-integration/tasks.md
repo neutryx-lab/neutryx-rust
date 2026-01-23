@@ -148,19 +148,19 @@
 ### Phase 5: 最終統合と検証
 
 - [ ] 5. エンドツーエンド統合と後方互換性検証
-- [ ] 5.1 既存テストの回帰テストを実行する
+- [x] 5.1 既存テストの回帰テストを実行する
   - infra_master、pricer_models、pricer_pricing の全既存テストを実行
   - テスト失敗がないことを確認
   - 実行時間が 10% 以上悪化していないことを確認
   - _Requirements: 10.1_
 
-- [ ] 5.2 AD 互換性の検証テストを追加する
+- [x] 5.2 AD 互換性の検証テストを追加する
   - f64 と Dual64 の両方で全数値計算が動作することを検証
   - PayoffEvaluator、OisCalculator の AD 互換性をテスト
   - GenericPricer を通じた感度計算が正しく動作することを確認
   - _Requirements: 10.2, 5.6, 6.5_
 
-- [ ] 5.3 l1l2-integration feature フラグの動作を検証する
+- [x] 5.3 l1l2-integration feature フラグの動作を検証する
   - feature 有効時: 全機能が正常動作
   - feature 無効時: pricer_pricing がスタンドアロンモードで動作
   - 条件付きコンパイルが正しく機能することを確認
