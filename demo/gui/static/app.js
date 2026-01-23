@@ -1133,8 +1133,8 @@ class CommandPalette {
             case 'goto-pricer':
                 navigateTo('pricer');
                 break;
-            case 'goto-irs-bootstrap':
-                navigateTo('irs-bootstrap');
+            case 'goto-curve-builder':
+                navigateTo('curve-builder');
                 break;
             case 'goto-graph':
                 navigateToGraph();
@@ -1173,13 +1173,13 @@ function navigateTo(viewName) {
         scenarios: 'Scenario Analysis',
         graph: 'AD Graph',
         'trade-expansion': 'Trade Expansion',
-        'irs-bootstrap': 'Curve Build',
+        'curve-builder': 'Curve Builder',
         'model-calib': 'Model Calibration',
         'market-data': 'Market Data'
     };
 
     // Auto-expand Analysis accordion if navigating to a sub-item
-    const analysisViews = ['trade-expansion', 'irs-bootstrap', 'model-calib', 'graph', 'market-data'];
+    const analysisViews = ['trade-expansion', 'curve-builder', 'model-calib', 'graph', 'market-data'];
     const accordion = document.getElementById('analysis-accordion');
     if (accordion && analysisViews.includes(viewName)) {
         accordion.classList.add('expanded');
@@ -2902,8 +2902,8 @@ function initQuickActions() {
             const action = tile.dataset.action;
             Logger.debug('QuickActions', `Tile clicked: ${action}`);
             switch (action) {
-                case 'irs-bootstrap':
-                    navigateTo('irs-bootstrap');
+                case 'curve-builder':
+                    navigateTo('curve-builder');
                     break;
                 case 'exposure':
                     navigateTo('exposure');
@@ -13561,23 +13561,36 @@ const irsBootstrap = (function() {
     };
 })();
 
-// Initialise IRS Bootstrap module when DOM is ready
+// Initialise IRS Bootstrap module when DOM is ready (legacy support)
 document.addEventListener('DOMContentLoaded', () => {
-    // Only initialise if the view exists
+    // Legacy: Only initialise if the old IRS Bootstrap view exists
     if (document.getElementById('irs-bootstrap-view')) {
         irsBootstrap.init();
+    }
+
+    // New: Initialise Curve Builder module if view exists
+    if (document.getElementById('curve-builder-view') && typeof curveBuilder !== 'undefined') {
+        curveBuilder.init();
     }
 });
 
 // ===========================================
-// IRS Bootstrap View Navigation Handler
+// Curve Builder View Navigation Handler
 // ===========================================
 
-// Add to navigateTo function for IRS Bootstrap view
+// Add to navigateTo function for Curve Builder view
 const originalNavigateTo = typeof navigateTo === 'function' ? navigateTo : null;
 if (originalNavigateTo) {
     window.navigateTo = function(viewName) {
         originalNavigateTo(viewName);
+
+        // Curve Builder view
+        if (viewName === 'curve-builder' && typeof curveBuilder !== 'undefined') {
+            // Dispatch custom event for view change
+            window.dispatchEvent(new CustomEvent('viewChanged', { detail: { view: 'curve-builder' } }));
+        }
+
+        // Legacy: IRS Bootstrap view (for backward compatibility)
         if (viewName === 'irs-bootstrap' && typeof irsBootstrap !== 'undefined') {
             // Reinitialise charts if needed
             if (irsBootstrap.getState().curveData && !irsBootstrap.getState().curveChart) {

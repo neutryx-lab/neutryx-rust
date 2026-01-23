@@ -33,6 +33,7 @@ pub mod curves;
 pub mod error;
 pub mod provider;
 pub mod surfaces;
+pub mod volcube;
 
 // Re-export commonly used types
 // Re-export calibration types
@@ -54,4 +55,9 @@ pub use provider::MarketProvider;
 pub use surfaces::{
     FlatVol, FxDeltaPoint, FxVolatilitySurface, InterpolatedVolSurface, VolSurfaceEnum,
     VolatilitySurface,
+};
+pub use volcube::{
+    CacheStats, CalibrationDiagnostics as VolCubeCalibrationDiagnostics, ExtrapolationMethod,
+    InstrumentId, InterpolationMethod, OptimizerType, SabrParams, SharedVolCubeCache,
+    StrikeAxisType, VolCubeCache, VolCubeConfig, VolCubeError, VolCubeKey, VolInstrument,
 };
