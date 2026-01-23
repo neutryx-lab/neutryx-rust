@@ -48,6 +48,7 @@ approx.workspace = true
 proptest.workspace = true
 criterion = { workspace = true, features = ["html_reports"] }
 serde_json.workspace = true
+rstest.workspace = true
 
 [[bench]]
 name = "models"

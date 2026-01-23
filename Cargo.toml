@@ -103,6 +103,7 @@ argmin-math = { version = "0.4", features = ["nalgebra_latest"] }
 approx = "0.5"
 proptest = "1.6"
 criterion = "0.5"
+rstest = "0.23"
 
 # System
 num_cpus = "1.16"
