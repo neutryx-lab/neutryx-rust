@@ -2,7 +2,7 @@
 
 実装状況と今後の開発項目を追跡するドキュメント。
 
-_Updated: 2026-01-23_ — legacy-compatibility-removal completed (33 total); ID Newtype統一、A-I-P-S準拠
+_Updated: 2026-01-23_ — Steering sync: rate-index-pricing-integration active (tasks-generated phase); 33 completed specs
 
 ---
 
@@ -146,7 +146,9 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 
 ### Active Specifications (In Progress)
 
-_No active specifications. All pending specs completed._
+| Spec | Phase | Description |
+|------|-------|-------------|
+| rate-index-pricing-integration | tasks-generated | RateIndex pricing integration across L1/L2/L3 layers |
 
 ## Recommended Next Steps
 
@@ -160,6 +162,7 @@ _No active specifications. All pending specs completed._
 
 | Date | Change |
 |------|--------|
+| 2026-01-23 | Steering sync: rate-index-pricing-integration added to active specs (tasks-generated phase, awaiting implementation) |
 | 2026-01-23 | All active specs completed: curve-bootstrap-engine (537 tests), legacy-compatibility-removal (28 tasks, ID Newtype統一). Total: 33 specs |
 | 2026-01-23 | volcube-calibration-ui completed: VolCube/FxVol calibration UI with SABR, smile/density visualisation, 3D surface (21 tasks, 68 unit tests). Total: 31 specs |
 | 2026-01-23 | Steering sync: curve-builder-webapp, generic-pricer-engine, demo-webapp-pricer completed (30 total); volcube-calibration-ui active; structure.md updated with web handler pattern |
