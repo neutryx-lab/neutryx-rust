@@ -7620,7 +7620,7 @@ function createCashflowTable(cashflows, legIndex) {
                         ${hasDailyAccruals ? `
                             <td class="expand-cell">
                                 ${hasDailyData ? `
-                                    <button class="expand-btn" onclick="toggleDailyAccruals('${rowId}')">
+                                    <button class="expand-btn" data-toggle-daily="${rowId}">
                                         <i class="fas fa-chevron-right"></i>
                                     </button>
                                 ` : ''}
@@ -7647,6 +7647,9 @@ function createCashflowTable(cashflows, legIndex) {
  * Create daily accruals expandable row.
  */
 function createDailyAccrualsRow(dailyAccruals, rowId, colspan) {
+    const initialLimit = 50;
+    const hasMore = dailyAccruals.length > initialLimit;
+
     return `
         <tr class="daily-accruals-row" id="${rowId}-details" style="display: none;">
             <td colspan="${colspan}">
@@ -7666,7 +7669,7 @@ function createDailyAccrualsRow(dailyAccruals, rowId, colspan) {
                                 </tr>
                             </thead>
                             <tbody>
-                                ${dailyAccruals.slice(0, 50).map(da => `
+                                ${dailyAccruals.slice(0, initialLimit).map(da => `
                                     <tr>
                                         <td class="mono">${da.date}</td>
                                         <td class="mono">${(da.overnightRate * 100).toFixed(4)}%</td>
@@ -7674,9 +7677,30 @@ function createDailyAccrualsRow(dailyAccruals, rowId, colspan) {
                                         <td class="mono">${formatNumber(da.compoundedNotional)}</td>
                                     </tr>
                                 `).join('')}
-                                ${dailyAccruals.length > 50 ? `
-                                    <tr class="more-rows">
-                                        <td colspan="4">... and ${dailyAccruals.length - 50} more days</td>
+                                ${hasMore ? `
+                                    <tr class="hidden-rows" id="${rowId}-hidden" style="display: none;">
+                                        <td colspan="4" style="padding: 0;">
+                                            <table class="daily-accruals-table" style="margin: 0;">
+                                                <tbody>
+                                                    ${dailyAccruals.slice(initialLimit).map(da => `
+                                                        <tr>
+                                                            <td class="mono">${da.date}</td>
+                                                            <td class="mono">${(da.overnightRate * 100).toFixed(4)}%</td>
+                                                            <td class="mono">${da.dayFraction.toFixed(6)}</td>
+                                                            <td class="mono">${formatNumber(da.compoundedNotional)}</td>
+                                                        </tr>
+                                                    `).join('')}
+                                                </tbody>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                    <tr class="more-rows-toggle" id="${rowId}-toggle">
+                                        <td colspan="4">
+                                            <button class="show-more-btn" data-toggle-more="${rowId}">
+                                                <i class="fas fa-chevron-down"></i>
+                                                Show all ${dailyAccruals.length - initialLimit} more days
+                                            </button>
+                                        </td>
                                     </tr>
                                 ` : ''}
                             </tbody>
@@ -7705,8 +7729,48 @@ function toggleDailyAccruals(rowId) {
     }
 }
 
-// Expose toggleDailyAccruals to global scope for onclick handlers
-window.toggleDailyAccruals = toggleDailyAccruals;
+// Event delegation for daily accruals toggle buttons (CSP-compliant)
+document.addEventListener('click', (e) => {
+    // Handle daily accruals expand/collapse
+    const btn = e.target.closest('[data-toggle-daily]');
+    if (btn) {
+        const rowId = btn.getAttribute('data-toggle-daily');
+        toggleDailyAccruals(rowId);
+        return;
+    }
+
+    // Handle "Show more" button for daily accruals
+    const showMoreBtn = e.target.closest('[data-toggle-more]');
+    if (showMoreBtn) {
+        const rowId = showMoreBtn.getAttribute('data-toggle-more');
+        toggleShowMoreDailyAccruals(rowId, showMoreBtn);
+    }
+});
+
+/**
+ * Toggle show more/less for daily accruals.
+ */
+function toggleShowMoreDailyAccruals(rowId, btn) {
+    const hiddenRows = document.getElementById(`${rowId}-hidden`);
+    if (!hiddenRows) return;
+
+    const isHidden = hiddenRows.style.display === 'none';
+    hiddenRows.style.display = isHidden ? 'table-row' : 'none';
+
+    // Update button text
+    const icon = btn.querySelector('i');
+    const text = btn.textContent.trim();
+    const match = text.match(/(\d+)/);
+    const count = match ? match[1] : '';
+
+    if (isHidden) {
+        icon.className = 'fas fa-chevron-up';
+        btn.innerHTML = `<i class="fas fa-chevron-up"></i> Show less`;
+    } else {
+        icon.className = 'fas fa-chevron-down';
+        btn.innerHTML = `<i class="fas fa-chevron-down"></i> Show all ${count} more days`;
+    }
+}
 
 /**
  * Create pagination controls HTML.

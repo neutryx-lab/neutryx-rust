@@ -37,11 +37,11 @@
   - _Requirements: 10.5, 10.6_
   - _Contracts: FxDensityCalculator Service_
 
-- [ ] 1.2 確率密度計算機能の実装
+- [x] 1.2 確率密度計算機能の実装
   - Strike軸上でのボラティリティ補間を行い、Breeden-Litzenberger法による数値微分でPDF（確率密度関数）を計算する
   - Central difference法（h = 0.001 * strike）で2階微分を近似する
   - 計算結果の正規化（∫ density dK = 1）を検証する
-  - Strike範囲外では警告付きで外挿対応する
+  - 外挿はFxVolatilitySurfaceのallow_extrapolation設定に従う
   - 1.1のDelta-Strike変換機能に依存
   - _Requirements: 10.7_
   - _Contracts: FxDensityCalculator Service_

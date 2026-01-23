@@ -116,7 +116,7 @@ impl<T: Float> VolCubeBuilder<T> {
         // 設定の検証
         self.config
             .validate()
-            .map_err(|e| VolCubeError::invalid_input(e))?;
+            .map_err(VolCubeError::invalid_input)?;
 
         // Instrumentリストが空の場合はエラー
         if self.instruments.is_empty() {
@@ -127,7 +127,7 @@ impl<T: Float> VolCubeBuilder<T> {
         for instrument in &self.instruments {
             instrument
                 .validate()
-                .map_err(|e| VolCubeError::invalid_input(e))?;
+                .map_err(VolCubeError::invalid_input)?;
         }
 
         // キャッシュキーを生成

@@ -47,7 +47,7 @@ pub enum VolSurfaceEnum<T: Float + Send + Sync> {
     ///
     /// Adapts a 3D volatility cube to a 2D surface interface by fixing
     /// the tenor dimension.
-    CubeSlice(VolCubeSlice<T>),
+    CubeSlice(Box<VolCubeSlice<T>>),
 }
 
 impl<T: Float + Send + Sync> VolatilitySurface<T> for VolSurfaceEnum<T> {
@@ -96,7 +96,7 @@ impl<T: Float + Send + Sync> VolSurfaceEnum<T> {
     /// * `tenor` - The tenor to slice at (years)
     #[inline]
     pub fn cube_slice(cube: VolCube<T>, tenor: T) -> Self {
-        Self::CubeSlice(VolCubeSlice::new(cube, tenor))
+        Self::CubeSlice(Box::new(VolCubeSlice::new(cube, tenor)))
     }
 
     /// Check if this is a flat surface.

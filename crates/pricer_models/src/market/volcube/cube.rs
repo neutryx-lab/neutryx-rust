@@ -394,7 +394,7 @@ impl<T: Float + Send + Sync> VolatilityCube<T> for VolCube<T> {
         let sabr = self
             .sabr_params
             .interpolate(expiry, tenor)
-            .map_err(|e| MarketDataError::Interpolation(e))?;
+            .map_err(MarketDataError::Interpolation)?;
 
         // Forward rateを補間取得
         let forward = self.interpolate_forward(expiry, tenor)?;
