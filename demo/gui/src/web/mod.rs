@@ -21,6 +21,7 @@
 pub mod curve_builder_handlers;
 pub mod curve_builder_types;
 pub mod error;
+pub mod fxvol_types;
 pub mod generic_pricer_handlers;
 pub mod jobs;
 pub mod market_data;

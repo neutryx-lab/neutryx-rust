@@ -54,7 +54,7 @@
   - _Contracts: FxDensityCalculator Service_
 
 - [ ] 2. VolCube API実装
-- [ ] 2.1 (P) VolCube API型定義の実装
+- [x] 2.1 (P) VolCube API型定義の実装
   - キャリブレーションモデル選択（SABR、SVI、LocalVolatility）の列挙型を定義する
   - Strike軸タイプ（Absolute、Moneyness、LogMoneyness、Delta）の列挙型を定義する
   - SwaptionInstrument構造体（expiry、tenor、strike、implied_vol、forward、weight）を定義する
@@ -88,7 +88,7 @@
   - _Contracts: volcube_handlers API_
 
 - [ ] 3. FxVol API実装
-- [ ] 3.1 (P) FxVol API型定義の実装
+- [x] 3.1 (P) FxVol API型定義の実装
   - FxQuoteEntry構造体（expiry、atm_vol、rr_25d、bf_25d、rr_10d、bf_10d）を定義する
   - FxVolFile構造体（currency_pair、spot、domestic_rate、foreign_rate、quotes）を定義する
   - DeltaType列挙型（SpotDelta、ForwardDelta、PremiumAdjusted）を定義する
