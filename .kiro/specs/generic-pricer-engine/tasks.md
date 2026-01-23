@@ -11,46 +11,46 @@
 
 ## Tasks
 
-- [ ] 1. エラー型の定義
+- [x] 1. エラー型の定義
 
-- [ ] 1.1 (P) PricingError 列挙型の実装
+- [x] 1.1 (P) PricingError 列挙型の実装
   - マーケットデータ欠落エラーを表現
   - 未対応商品タイプエラーを表現
   - TradeIdやCurrency等の診断情報を含む
   - thiserrorによる構造化エラーメッセージ
   - _Requirements: 1.5, 5.5_
 
-- [ ] 1.2 (P) ConfigError 列挙型の実装
+- [x] 1.2 (P) ConfigError 列挙型の実装
   - 不正なモデルパラメータエラー（num_paths=0等）
   - 不正なプライサー設定エラー
   - パラメータ名と値を含む診断情報
   - _Requirements: 3.6_
 
-- [ ] 1.3 (P) MarketDataError の拡張
-  - FxRateNotFound バリアント追加（base/quote通貨ペア情報）
+- [x] 1.3 (P) MarketDataError の拡張
+  - FxRateNotFound バリアント追加（base/quote通貨ペア情報）→ PricingError内に統合
   - SurfaceNotFound バリアント追加（必要に応じて）
   - 既存エラー型との整合性維持
   - _Requirements: 2.5, 6.8_
 
 ---
 
-- [ ] 2. 設定構造体の実装
+- [x] 2. 設定構造体の実装
 
-- [ ] 2.1 ModelConfig と Builder の実装
+- [x] 2.1 ModelConfig と Builder の実装
   - StochasticModelEnum選択フィールド（Option、Noneでデフォルト）
   - シミュレーションパス数、時間ステップ数、乱数シード
   - Builderパターンによる構築API
   - デフォルト値: num_paths=10,000、num_steps=100
   - _Requirements: 3.1, 3.5_
 
-- [ ] 2.2 PricerConfig と Builder の実装
+- [x] 2.2 PricerConfig と Builder の実装
   - GreeksConfig保持（計算モード、バンプ幅）
   - デフォルト出力通貨設定
   - スレッドローカルバッファ使用フラグ
   - Builderパターンによる構築API
   - _Requirements: 4.1, 4.4, 6.9_
 
-- [ ] 2.3 設定検証ロジックの実装
+- [x] 2.3 設定検証ロジックの実装
   - num_paths > 0、num_steps > 0 の検証
   - モデルパラメータの妥当性チェック（Feller条件等）
   - GreeksConfigの整合性検証
@@ -59,29 +59,29 @@
 
 ---
 
-- [ ] 3. PricingResult 階層構造の実装
+- [x] 3. PricingResult 階層構造の実装
 
-- [ ] 3.1 (P) CashflowPricingResult の実装
+- [x] 3.1 (P) CashflowPricingResult の実装
   - 報告通貨建てPV（f64）
   - 元通貨建てPV（f64）
   - 支払日、ディスカウントファクター
   - 元通貨情報
   - _Requirements: 6.3, 6.6_
 
-- [ ] 3.2 (P) LegPricingResult の実装
+- [x] 3.2 (P) LegPricingResult の実装
   - 報告通貨建てPV、元通貨建てPV
   - 使用したFXレート、元通貨
   - 支払/受取方向（Direction）
   - Cashflow結果のベクタ保持
   - _Requirements: 6.3, 6.5_
 
-- [ ] 3.3 PathDistribution の実装
+- [x] 3.3 PathDistribution の実装
   - mean、std_dev、percentiles（f64固定）
   - path_count
   - MC計算時のみ使用（Option型で保持）
   - _Requirements: 6.7_
 
-- [ ] 3.4 PricingResult の実装
+- [x] 3.4 PricingResult の実装
   - total_pv（報告通貨建て、f64）
   - legs ベクタ、reporting_currency
   - path_distribution（Option）
@@ -91,27 +91,27 @@
 
 ---
 
-- [ ] 4. GenericPricer コア実装
+- [x] 4. GenericPricer コア実装
 
-- [ ] 4.1 GenericPricer 構造体の定義
+- [x] 4.1 GenericPricer 構造体の定義
   - MarketProvider（Arc）保持
   - ModelConfig、PricerConfig保持
   - new() コンストラクタ
   - _Requirements: 2.1_
 
-- [ ] 4.2 マーケットデータ解決ロジック
+- [x] 4.2 マーケットデータ解決ロジック
   - Tradeの各通貨に対応するディスカウントカーブ取得
   - 必要なVolSurfaceの取得
   - 報告通貨へのFXレート取得（MarketProvider::get_fx_rate）
   - データ欠落時のエラーハンドリング
   - _Requirements: 2.2, 2.3, 2.4, 6.1, 6.2_
 
-- [ ] 4.3 デフォルトモデル選択ロジック
+- [x] 4.3 デフォルトモデル選択ロジック
   - ModelConfig.modelがNone時の商品タイプ別デフォルト選択
   - 金利商品→Hull-White、株式→GBM等のマッピング
   - _Requirements: 3.2, 3.3_
 
-- [ ] 4.4 get_pv() メソッドの実装
+- [x] 4.4 get_pv() メソッドの実装
   - Trade、評価日、報告通貨を受け取る
   - マーケットデータ解決 → カーネル実行 → FX換算
   - PricingResult（f64固定）を返す

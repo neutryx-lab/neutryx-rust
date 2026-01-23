@@ -55,7 +55,7 @@ pub mod instrument_def;
 
 pub use book_assignment::{BookTransferReason, TradeBookAssignment, TradeBookHistory};
 pub use builder::{LegBuilder, TradeBuilder};
-pub use cashflow::{Cashflow, CashflowType};
+pub use cashflow::{Cashflow, CashflowType, DailyAccrual};
 pub use direction::{SwapDirection, TradeDirection};
 pub use error::TradeError;
 pub use index::{IndexObservation, IndexType};

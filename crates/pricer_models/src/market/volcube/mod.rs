@@ -39,6 +39,9 @@ pub mod graph;
 mod sabr_surface;
 mod types;
 
+#[cfg(test)]
+mod proptest_tests;
+
 pub use breeden_litzenberger::BreedenLitzenberger;
 pub use builder::VolCubeBuilder;
 pub use cache::{CacheStats, SharedVolCubeCache, VolCubeCache, VolCubeCacheEntry, VolCubeKey};

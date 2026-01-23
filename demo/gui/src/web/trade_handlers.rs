@@ -25,6 +25,15 @@ use chrono::Datelike;
 use serde_json::json;
 use uuid::Uuid;
 
+// Import Infra-master types for OIS expansion
+use infra_master::{
+    trade::{
+        convention::ConventionSet,
+        instrument_def::{InstrumentExpander, Ois, PayerReceiver},
+    },
+    Currency, Date, Frequency, RateIndex,
+};
+
 use super::{
     schedule_utils::{generate_schedule, SchedulePeriod},
     trade_types::*,

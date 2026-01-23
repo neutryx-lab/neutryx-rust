@@ -9702,6 +9702,137 @@ body.light-theme .cf-table th {
     background: #f1f5f9;
 }
 
+/* Daily Accruals Accordion */
+.expand-col {
+    width: 40px;
+}
+
+.expand-cell {
+    padding: 0.5rem !important;
+    text-align: center;
+}
+
+.expand-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 4px;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.expand-btn:hover {
+    background: var(--primary);
+    color: white;
+}
+
+.expandable-row {
+    cursor: pointer;
+}
+
+.expandable-row.expanded {
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.daily-accruals-row {
+    background: var(--bg-secondary) !important;
+}
+
+.daily-accruals-row:hover {
+    background: var(--bg-secondary) !important;
+}
+
+.daily-accruals-container {
+    padding: 1rem;
+    border-radius: 8px;
+    background: var(--bg-tertiary);
+    margin: 0.5rem;
+}
+
+.daily-accruals-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.daily-accruals-header i {
+    font-size: 0.9rem;
+}
+
+.daily-accruals-scroll {
+    max-height: 300px;
+    overflow-y: auto;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+}
+
+.daily-accruals-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.75rem;
+}
+
+.daily-accruals-table th {
+    position: sticky;
+    top: 0;
+    background: var(--bg-primary);
+    padding: 8px 12px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    z-index: 1;
+}
+
+.daily-accruals-table td {
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.daily-accruals-table td.mono {
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.daily-accruals-table tbody tr:hover {
+    background: rgba(99, 102, 241, 0.05);
+}
+
+.daily-accruals-table .more-rows td {
+    text-align: center;
+    color: var(--text-secondary);
+    font-style: italic;
+    padding: 12px;
+}
+
+body.light-theme .expand-btn {
+    background: #e2e8f0;
+}
+
+body.light-theme .daily-accruals-container {
+    background: #f8fafc;
+}
+
+body.light-theme .daily-accruals-row {
+    background: #f1f5f9 !important;
+}
+
+body.light-theme .daily-accruals-table th {
+    background: #e2e8f0;
+}
+
 /* =============================================================================
    IRS Bootstrap & Risk View (Task 7.1-7.6, 8.1-9.3)
    ============================================================================= */
@@ -10618,6 +10749,22 @@ body.light-theme .irs-loading-overlay {
     gap: 8px;
 }
 
+/* Index Selector Row */
+.index-selector-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.index-selector-row #index-selector-container {
+    flex: 1;
+}
+
+.index-selector-row .primary-btn {
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
 /* Changes Indicator */
 .changes-indicator {
     display: flex;
@@ -10880,40 +11027,25 @@ body.light-theme .irs-loading-overlay {
     overflow: hidden;
 }
 
-/* Result Card */
-.result-card {
-    background: var(--card-bg);
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    padding: 20px;
+/* Result Cards (glass-card style) */
+.curve-builder-results-panel .glass-card {
     min-width: 0;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
-.result-card.wide {
+.curve-builder-results-panel .glass-card:hover {
+    transform: none;
+}
+
+.curve-builder-results-panel .glass-card.wide {
     flex: 1;
 }
 
-.result-card .result-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.result-card .result-header h3 {
-    margin: 0;
-    font-size: 1rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.result-card .result-header h3 i {
-    color: var(--primary);
+.curve-builder-results-panel .glass-card .bento-content {
+    flex: 1;
+    overflow: auto;
 }
 
 /* Build Status */
@@ -12218,8 +12350,7 @@ body.light-theme .chart-placeholder {
     flex-direction: column;
     gap: 1.5rem;
     padding: 1.5rem;
-    max-width: 1600px;
-    margin: 0 auto;
+    height: 100%;
 }
 
 /* Header */

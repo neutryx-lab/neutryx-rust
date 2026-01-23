@@ -63,5 +63,9 @@ harness = false
 name = "curve_bootstrap"
 harness = false
 
+[[bench]]
+name = "volcube"
+harness = false
+
 [lints]
 workspace = true

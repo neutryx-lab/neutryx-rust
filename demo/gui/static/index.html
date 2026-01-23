@@ -2492,24 +2492,26 @@
                         <!-- Right Panel: Results -->
                         <div class="curve-builder-results-panel">
                             <!-- Build Result Summary (Task 10.2) -->
-                            <div class="result-card glass" id="build-result-card">
-                                <div class="result-header">
+                            <div class="glass-card" id="build-result-card">
+                                <div class="bento-header">
                                     <h3><i class="fas fa-check-circle"></i> Build Result</h3>
                                     <div class="build-status" id="build-status">
                                         <span class="status-dot"></span>
                                         <span>Not built</span>
                                     </div>
                                 </div>
-                                <div class="build-summary" id="build-summary" style="display: none;">
-                                    <!-- Build summary will be inserted here -->
+                                <div class="bento-content">
+                                    <div class="build-summary" id="build-summary" style="display: none;">
+                                        <!-- Build summary will be inserted here -->
+                                    </div>
                                 </div>
                             </div>
 
                             <!-- Parameter Curve Display (Task 11.1-11.5) -->
-                            <div class="result-card glass wide" id="parameter-curve-card">
-                                <div class="result-header">
+                            <div class="glass-card wide" id="parameter-curve-card">
+                                <div class="bento-header">
                                     <h3><i class="fas fa-chart-area"></i> Parameter Curve</h3>
-                                    <div class="export-actions">
+                                    <div class="bento-actions">
                                         <button id="export-csv-btn" class="icon-btn small" title="Export as CSV">
                                             <i class="fas fa-file-csv"></i> CSV
                                         </button>
@@ -2519,33 +2521,35 @@
                                     </div>
                                 </div>
 
-                                <!-- Parameter Type Tabs (Task 11.1) -->
-                                <div id="parameter-tabs-container">
-                                    <!-- Dynamic tabs will be inserted here -->
-                                </div>
-
-                                <!-- Tenor Range Controls (Task 11.4) -->
-                                <div id="tenor-range-container">
-                                    <!-- Dynamic tenor range controls will be inserted here -->
-                                </div>
-
-                                <!-- Chart Display (Task 11.2) -->
-                                <div class="parameter-chart-container">
-                                    <canvas id="parameter-chart" role="img" aria-label="Parameter curve chart" style="display: none;"></canvas>
-                                    <div class="chart-placeholder" id="chart-placeholder">
-                                        <i class="fas fa-chart-line"></i>
-                                        <p>Build a curve to see parameter visualisation</p>
+                                <div class="bento-content">
+                                    <!-- Parameter Type Tabs (Task 11.1) -->
+                                    <div id="parameter-tabs-container">
+                                        <!-- Dynamic tabs will be inserted here -->
                                     </div>
-                                </div>
 
-                                <!-- Table Display (Task 11.3) -->
-                                <div class="parameter-table-section">
-                                    <details open>
-                                        <summary><i class="fas fa-table"></i> Data Table</summary>
-                                        <div id="parameter-table-container" class="parameter-table-wrapper">
-                                            <!-- Dynamic table will be inserted here -->
+                                    <!-- Tenor Range Controls (Task 11.4) -->
+                                    <div id="tenor-range-container">
+                                        <!-- Dynamic tenor range controls will be inserted here -->
+                                    </div>
+
+                                    <!-- Chart Display (Task 11.2) -->
+                                    <div class="parameter-chart-container">
+                                        <canvas id="parameter-chart" role="img" aria-label="Parameter curve chart" style="display: none;"></canvas>
+                                        <div class="chart-placeholder" id="chart-placeholder">
+                                            <i class="fas fa-chart-line"></i>
+                                            <p>Build a curve to see parameter visualisation</p>
                                         </div>
-                                    </details>
+                                    </div>
+
+                                    <!-- Table Display (Task 11.3) -->
+                                    <div class="parameter-table-section">
+                                        <details open>
+                                            <summary><i class="fas fa-table"></i> Data Table</summary>
+                                            <div id="parameter-table-container" class="parameter-table-wrapper">
+                                                <!-- Dynamic table will be inserted here -->
+                                            </div>
+                                        </details>
+                                    </div>
                                 </div>
                             </div>
                         </div>

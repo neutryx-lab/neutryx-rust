@@ -34,6 +34,21 @@
 //! let cashflows = result.by_cashflow();
 //! ```
 
+mod config;
 mod error;
+mod pricer;
+mod result;
 
+pub use config::{ModelConfig, ModelConfigBuilder, PricerConfig, PricerConfigBuilder};
 pub use error::{ConfigError, PricingError};
+pub use pricer::GenericPricer;
+pub use result::{CashflowPricingResult, LegPricingResult, PathDistribution, PricingResult};
+
+#[cfg(not(feature = "l1l2-integration"))]
+pub use config::DefaultCurrency;
+
+#[cfg(not(feature = "l1l2-integration"))]
+pub use pricer::{SimpleCashflow, SimpleLeg};
+
+#[cfg(not(feature = "l1l2-integration"))]
+pub use result::{Date, Direction};

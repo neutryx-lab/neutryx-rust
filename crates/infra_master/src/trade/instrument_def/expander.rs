@@ -51,6 +51,7 @@ use super::{
     InstrumentError,
     LookbackOption,
     NtdBasket,
+    Ois,
     SpreadOption,
     Swaption,
 };
@@ -121,6 +122,9 @@ impl InstrumentExpander for InstrumentDefinition {
             }
             InstrumentDefinition::InflationSwap(i) => {
                 i.expand_to_trade(trade_id, valuation_date, conventions)
+            }
+            InstrumentDefinition::Ois(o) => {
+                o.expand_to_trade(trade_id, valuation_date, conventions)
             }
 
             // === FX ===
@@ -390,6 +394,262 @@ impl InstrumentExpander for InflationSwap {
 
         Ok(Trade::new(trade_id, vec![inflation_leg], TradeType::Swap))
     }
+}
+
+impl InstrumentExpander for Ois {
+    fn expand_to_trade(
+        &self,
+        trade_id: impl Into<TradeId>,
+        _valuation_date: Date,
+        conventions: &ConventionSet,
+    ) -> Result<Trade, InstrumentError> {
+        let _swap_conv = conventions.get_swap()?;
+
+        // Generate payment schedule based on payment frequency
+        let payment_dates = generate_payment_dates(
+            self.start_date,
+            self.end_date,
+            self.payment_frequency,
+        );
+
+        // Generate fixed leg cashflows
+        let fixed_cashflows = generate_fixed_leg_cashflows(
+            &payment_dates,
+            self.start_date,
+            self.fixed_rate,
+            self.notional,
+            self.currency,
+        );
+
+        // Generate floating (OIS) leg cashflows with daily compounding details
+        let floating_cashflows = generate_ois_floating_leg_cashflows(
+            &payment_dates,
+            self.start_date,
+            self.rate_index,
+            self.notional,
+            self.currency,
+        );
+
+        // Determine directions based on payer/receiver
+        let (fixed_direction, floating_direction) = if self.is_payer() {
+            (Direction::Payer, Direction::Receiver)
+        } else {
+            (Direction::Receiver, Direction::Payer)
+        };
+
+        let fixed_leg = Leg::new(
+            fixed_cashflows,
+            fixed_direction,
+            LegType::Fixed,
+            self.currency,
+        );
+
+        let floating_leg = Leg::new(
+            floating_cashflows,
+            floating_direction,
+            LegType::Floating,
+            self.currency,
+        );
+
+        Ok(Trade::new(
+            trade_id,
+            vec![fixed_leg, floating_leg],
+            TradeType::Swap,
+        ))
+    }
+}
+
+// ============================================================================
+// OIS Helper Functions
+// ============================================================================
+
+use crate::{
+    time::{EndOfMonthRule, Tenor},
+    Frequency, RateIndex,
+};
+use chrono::Datelike;
+
+/// Generates payment dates based on start, end, and frequency.
+fn generate_payment_dates(start: Date, end: Date, frequency: Frequency) -> Vec<Date> {
+    let mut dates = Vec::new();
+
+    // Determine the tenor for each period based on frequency
+    let tenor = match frequency {
+        Frequency::Daily => {
+            // For daily, just return start and end
+            dates.push(start);
+            dates.push(end);
+            return dates;
+        }
+        Frequency::Weekly => Tenor::OneWeek,
+        Frequency::Monthly => Tenor::OneMonth,
+        Frequency::Quarterly => Tenor::ThreeMonths,
+        Frequency::SemiAnnual => Tenor::SixMonths,
+        Frequency::Annual => Tenor::OneYear,
+    };
+
+    let mut current = start;
+    while current < end {
+        dates.push(current);
+        let next = tenor.add_to_date(current, EndOfMonthRule::Adjust);
+        if next > end {
+            break;
+        }
+        current = next;
+    }
+    if dates.last() != Some(&end) {
+        dates.push(end);
+    }
+
+    dates
+}
+
+/// Generates fixed leg cashflows for an OIS.
+fn generate_fixed_leg_cashflows(
+    payment_dates: &[Date],
+    start_date: Date,
+    fixed_rate: f64,
+    notional: f64,
+    currency: crate::Currency,
+) -> Vec<Cashflow> {
+    let mut cashflows = Vec::new();
+
+    for i in 0..payment_dates.len().saturating_sub(1) {
+        let accrual_start = if i == 0 { start_date } else { payment_dates[i] };
+        let accrual_end = payment_dates[i + 1];
+        let payment_date = accrual_end;
+
+        // Calculate year fraction (ACT/360 typical for OIS)
+        let days = (accrual_end - accrual_start) as f64;
+        let year_fraction = days / 360.0;
+
+        let cf = Cashflow::new(
+            CashflowType::Coupon,
+            payment_date,
+            accrual_start,
+            accrual_end,
+            year_fraction,
+            notional,
+            Payoff::fixed(fixed_rate),
+            currency,
+        );
+        cashflows.push(cf);
+    }
+
+    cashflows
+}
+
+/// Generates OIS floating leg cashflows with daily compounding details.
+fn generate_ois_floating_leg_cashflows(
+    payment_dates: &[Date],
+    start_date: Date,
+    rate_index: RateIndex,
+    notional: f64,
+    currency: crate::Currency,
+) -> Vec<Cashflow> {
+    use crate::trade::IndexType;
+
+    let mut cashflows = Vec::new();
+
+    for i in 0..payment_dates.len().saturating_sub(1) {
+        let accrual_start = if i == 0 { start_date } else { payment_dates[i] };
+        let accrual_end = payment_dates[i + 1];
+        let payment_date = accrual_end;
+
+        // Generate daily accruals for this period
+        let daily_accruals = generate_daily_accruals(
+            accrual_start,
+            accrual_end,
+            rate_index,
+            notional,
+        );
+
+        // Calculate year fraction
+        let days = (accrual_end - accrual_start) as f64;
+        let year_fraction = days / 360.0;
+
+        // Final compounded notional from daily accruals
+        let _final_compounded = daily_accruals
+            .last()
+            .map(|a| a.compounded_notional)
+            .unwrap_or(notional);
+
+        let cf = Cashflow::new_with_daily_accruals(
+            CashflowType::Coupon,
+            payment_date,
+            accrual_start,
+            accrual_end,
+            year_fraction,
+            notional,
+            Payoff::floating(IndexType::Rate(rate_index)),
+            currency,
+            daily_accruals,
+        );
+        cashflows.push(cf);
+    }
+
+    cashflows
+}
+
+/// Generates daily accrual details for OIS compounding.
+///
+/// This function creates a daily breakdown of the compounding process,
+/// simulating overnight rates based on the rate index.
+fn generate_daily_accruals(
+    start: Date,
+    end: Date,
+    rate_index: RateIndex,
+    initial_notional: f64,
+) -> Vec<crate::trade::DailyAccrual> {
+    use crate::trade::DailyAccrual;
+
+    let mut accruals = Vec::new();
+    let mut current_date = start;
+    let mut compounded_notional = initial_notional;
+
+    // Base rate simulation based on index (in production, these would come from market data)
+    let base_rate = match rate_index {
+        RateIndex::Sofr => 0.0430,            // ~4.30% SOFR
+        RateIndex::Euribor3M => 0.0390,       // ~3.90% EUR (using as ESTR proxy)
+        RateIndex::Euribor6M => 0.0395,       // ~3.95% EUR
+        RateIndex::Sonia => 0.0525,           // ~5.25% SONIA
+        RateIndex::Tonar => 0.0010,           // ~0.10% TONA
+        RateIndex::Saron => 0.0175,           // ~1.75% SARON
+    };
+
+    while current_date < end {
+        // Add one day using Tenor::Overnight
+        let next_date = Tenor::Overnight.add_to_date(current_date, EndOfMonthRule::None);
+        if next_date > end {
+            break;
+        }
+
+        // Day count fraction (ACT/360 for most OIS, but adjust based on index)
+        let day_fraction = match rate_index {
+            RateIndex::Sonia | RateIndex::Tonar => 1.0 / 365.0,
+            _ => 1.0 / 360.0,
+        };
+
+        // Simulate small daily rate variation (±5bps) based on day of year
+        let day_of_year = current_date.into_inner().ordinal() as f64;
+        let rate_variation = (day_of_year.sin() * 0.0005).abs();
+        let overnight_rate = base_rate + rate_variation;
+
+        // Calculate new compounded notional
+        let new_compounded = compounded_notional * (1.0 + overnight_rate * day_fraction);
+
+        accruals.push(DailyAccrual::with_compounded_notional(
+            current_date,
+            overnight_rate,
+            day_fraction,
+            new_compounded,
+        ));
+
+        compounded_notional = new_compounded;
+        current_date = next_date;
+    }
+
+    accruals
 }
 
 // ============================================================================
@@ -1612,6 +1872,163 @@ mod tests {
         assert_eq!(trade.trade_type, TradeType::Swap);
         // Implementation creates single leg for inflation leg
         assert!(trade.num_legs() >= 1);
+    }
+
+    #[test]
+    fn test_expand_ois() {
+        use crate::RateIndex;
+
+        let ois = Ois {
+            rate_index: RateIndex::Sofr,
+            fixed_rate: 0.04,
+            start_date: Date::from_ymd(2025, 1, 15).unwrap(),
+            end_date: Date::from_ymd(2026, 1, 15).unwrap(),
+            notional: 10_000_000.0,
+            currency: Currency::USD,
+            payer_receiver: PayerReceiver::Payer,
+            payment_frequency: crate::Frequency::Annual,
+        };
+
+        let trade = ois
+            .expand_to_trade("OIS-001", valuation_date(), &make_conventions())
+            .unwrap();
+
+        assert_eq!(trade.id.as_str(), "OIS-001");
+        assert_eq!(trade.trade_type, TradeType::Swap);
+        assert_eq!(trade.num_legs(), 2); // Fixed + Floating
+    }
+
+    #[test]
+    fn test_expand_ois_has_daily_accruals() {
+        use crate::RateIndex;
+
+        let ois = Ois {
+            rate_index: RateIndex::Sofr,
+            fixed_rate: 0.04,
+            start_date: Date::from_ymd(2025, 1, 15).unwrap(),
+            end_date: Date::from_ymd(2025, 4, 15).unwrap(), // 3 months
+            notional: 10_000_000.0,
+            currency: Currency::USD,
+            payer_receiver: PayerReceiver::Receiver,
+            payment_frequency: crate::Frequency::Quarterly,
+        };
+
+        let trade = ois
+            .expand_to_trade("OIS-002", valuation_date(), &make_conventions())
+            .unwrap();
+
+        // Floating leg should have daily accrual details
+        let floating_leg = trade.floating_leg().expect("Should have floating leg");
+        let cashflows: Vec<_> = floating_leg.cashflows().collect();
+        assert!(!cashflows.is_empty());
+
+        // Each cashflow in the floating leg should have daily accruals
+        for cf in cashflows {
+            assert!(cf.has_daily_accruals(), "OIS floating cashflow should have daily accruals");
+            let accruals = cf.daily_accruals().expect("Should have accruals");
+            // Should have roughly 89 business days for a quarter (excluding weekends in real scenario)
+            assert!(!accruals.is_empty(), "Should have daily accrual entries");
+        }
+    }
+
+    #[test]
+    fn test_expand_ois_daily_compounding_calculation() {
+        use crate::RateIndex;
+
+        let ois = Ois {
+            rate_index: RateIndex::Sofr,
+            fixed_rate: 0.04,
+            start_date: Date::from_ymd(2025, 1, 15).unwrap(),
+            end_date: Date::from_ymd(2025, 2, 15).unwrap(), // 1 month
+            notional: 1_000_000.0,
+            currency: Currency::USD,
+            payer_receiver: PayerReceiver::Payer,
+            payment_frequency: crate::Frequency::Monthly,
+        };
+
+        let trade = ois
+            .expand_to_trade("OIS-003", valuation_date(), &make_conventions())
+            .unwrap();
+
+        let floating_leg = trade.floating_leg().expect("Should have floating leg");
+        let cf = floating_leg.cashflows().next().expect("Should have at least one cashflow");
+        let accruals = cf.daily_accruals().expect("Should have accruals");
+
+        // Verify compounding: each day's notional should grow
+        let mut prev_notional = ois.notional;
+        for accrual in accruals {
+            assert!(
+                accrual.compounded_notional >= prev_notional,
+                "Compounded notional should grow: {} >= {}",
+                accrual.compounded_notional,
+                prev_notional
+            );
+            prev_notional = accrual.compounded_notional;
+        }
+
+        // Final compounded notional should be greater than initial
+        if let Some(last) = accruals.last() {
+            assert!(
+                last.compounded_notional > ois.notional,
+                "Final compounded notional {} should exceed initial {}",
+                last.compounded_notional,
+                ois.notional
+            );
+        }
+    }
+
+    #[test]
+    fn test_ois_validate_success() {
+        use crate::RateIndex;
+
+        let ois = Ois {
+            rate_index: RateIndex::Sofr,
+            fixed_rate: 0.04,
+            start_date: Date::from_ymd(2025, 1, 15).unwrap(),
+            end_date: Date::from_ymd(2030, 1, 15).unwrap(),
+            notional: 10_000_000.0,
+            currency: Currency::USD,
+            payer_receiver: PayerReceiver::Payer,
+            payment_frequency: crate::Frequency::Annual,
+        };
+
+        assert!(ois.validate().is_ok());
+    }
+
+    #[test]
+    fn test_ois_validate_invalid_notional() {
+        use crate::RateIndex;
+
+        let ois = Ois {
+            rate_index: RateIndex::Sofr,
+            fixed_rate: 0.04,
+            start_date: Date::from_ymd(2025, 1, 15).unwrap(),
+            end_date: Date::from_ymd(2030, 1, 15).unwrap(),
+            notional: -10_000_000.0, // Invalid: negative
+            currency: Currency::USD,
+            payer_receiver: PayerReceiver::Payer,
+            payment_frequency: crate::Frequency::Annual,
+        };
+
+        assert!(ois.validate().is_err());
+    }
+
+    #[test]
+    fn test_ois_validate_invalid_dates() {
+        use crate::RateIndex;
+
+        let ois = Ois {
+            rate_index: RateIndex::Sofr,
+            fixed_rate: 0.04,
+            start_date: Date::from_ymd(2030, 1, 15).unwrap(),
+            end_date: Date::from_ymd(2025, 1, 15).unwrap(), // Invalid: end before start
+            notional: 10_000_000.0,
+            currency: Currency::USD,
+            payer_receiver: PayerReceiver::Payer,
+            payment_frequency: crate::Frequency::Annual,
+        };
+
+        assert!(ois.validate().is_err());
     }
 
     #[test]

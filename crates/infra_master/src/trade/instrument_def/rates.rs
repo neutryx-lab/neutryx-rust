@@ -278,6 +278,95 @@ impl InflationSwap {
     }
 }
 
+/// Overnight Index Swap (OIS).
+///
+/// An interest rate swap where the floating leg pays an overnight rate
+/// compounded over the accrual period. Common overnight indices include
+/// SOFR (USD), ESTR (EUR), SONIA (GBP), and TONA (JPY).
+///
+/// # Daily Compounding
+///
+/// For an OIS floating leg, the interest is calculated using daily compounding:
+///
+/// ```text
+/// Compounded Rate = ∏(1 + ri × di) - 1
+/// ```
+///
+/// where:
+/// - `ri` is the overnight rate for day `i`
+/// - `di` is the day count fraction for day `i`
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use infra_master::trade::instrument_def::{Ois, PayerReceiver};
+/// use infra_master::{Currency, Date, RateIndex, Frequency};
+///
+/// let ois = Ois {
+///     rate_index: RateIndex::Sofr,
+///     fixed_rate: 0.04,
+///     start_date: Date::from_ymd(2025, 1, 15).unwrap(),
+///     end_date: Date::from_ymd(2030, 1, 15).unwrap(),
+///     notional: 10_000_000.0,
+///     currency: Currency::USD,
+///     payer_receiver: PayerReceiver::Payer,
+///     payment_frequency: Frequency::Annual,
+/// };
+/// ```
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct Ois {
+    /// Overnight rate index (SOFR, ESTR, SONIA, TONA, etc.).
+    pub rate_index: RateIndex,
+    /// Fixed rate (as decimal, e.g., 0.04 for 4%).
+    pub fixed_rate: f64,
+    /// Start date of the swap.
+    pub start_date: Date,
+    /// End date (maturity) of the swap.
+    pub end_date: Date,
+    /// Notional amount.
+    pub notional: f64,
+    /// Currency.
+    pub currency: Currency,
+    /// Payer or Receiver of the fixed leg.
+    pub payer_receiver: PayerReceiver,
+    /// Payment frequency for both legs.
+    pub payment_frequency: Frequency,
+}
+
+impl Ois {
+    /// Validates the OIS parameters.
+    ///
+    /// # Errors
+    ///
+    /// Returns `InstrumentError` if validation fails.
+    pub fn validate(&self) -> Result<(), InstrumentError> {
+        if self.notional <= 0.0 {
+            return Err(InstrumentError::invalid_parameter(
+                "Notional must be positive",
+            ));
+        }
+        if self.end_date <= self.start_date {
+            return Err(InstrumentError::invalid_date(
+                "End date must be after start date",
+            ));
+        }
+        Ok(())
+    }
+
+    /// Returns true if this is a payer OIS (pay fixed, receive floating).
+    #[must_use]
+    pub fn is_payer(&self) -> bool {
+        self.payer_receiver == PayerReceiver::Payer
+    }
+
+    /// Returns the swap tenor in years (approximate).
+    #[must_use]
+    pub fn tenor_years(&self) -> f64 {
+        (self.end_date - self.start_date) as f64 / 365.0
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
