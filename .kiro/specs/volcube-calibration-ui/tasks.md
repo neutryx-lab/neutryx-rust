@@ -53,7 +53,7 @@
   - _Requirements: 10.8_
   - _Contracts: FxDensityCalculator Service_
 
-- [ ] 2. VolCube API実装
+- [x] 2. VolCube API実装
 - [x] 2.1 (P) VolCube API型定義の実装
   - キャリブレーションモデル選択（SABR、SVI、LocalVolatility）の列挙型を定義する
   - Strike軸タイプ（Absolute、Moneyness、LogMoneyness、Delta）の列挙型を定義する
@@ -188,7 +188,7 @@
   - 数値的警告がある場合はUIに表示する
   - _Requirements: 10.1, 10.3, 10.4, 10.6, 10.7, 10.8_
 
-- [ ] 7. 統合とテスト
+- [x] 7. 統合とテスト
 - [x] 7.1 APIルート登録とAppState拡張
   - VolCube API（/api/volcube/*）のルートを登録する
   - FxVol API（/api/fxvol/*）のルートを登録する
@@ -203,7 +203,7 @@
   - 既存のCurve Builder UIとの整合性を確認する
   - _Requirements: 1.1, 1.2, 1.3_
 
-- [ ] 7.3 E2Eテストと動作確認
+- [x] 7.3 E2Eテストと動作確認
   - VolCube: Index選択 → データ編集 → キャリブレーション → 結果表示の一連フローを検証する
   - FxVol: 通貨ペア選択 → RR/BF入力 → Delta-Strike変換 → 確率密度表示の一連フローを検証する
   - エラーケース（存在しないIndex、無効なパラメータ）のハンドリングを確認する

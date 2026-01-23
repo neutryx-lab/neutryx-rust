@@ -197,7 +197,8 @@
       "Bash(findstr:*)",
       "Bash(cmd /c \"for /f %f in \\(''dir /b''\\) do @echo %~nxf - %~zf bytes\")",
       "Bash(cargo update:*)",
-      "Bash(git -C:*)"
+      "Bash(git -C:*)",
+      "Bash(node --check:*)"
     ]
   }
 }
