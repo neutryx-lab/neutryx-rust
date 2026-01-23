@@ -21,6 +21,7 @@
 pub mod curve_builder_handlers;
 pub mod curve_builder_types;
 pub mod error;
+pub mod generic_pricer_handlers;
 pub mod jobs;
 pub mod market_data;
 pub mod market_handlers;
@@ -33,6 +34,7 @@ pub mod schedule_utils;
 pub mod state;
 pub mod trade_handlers;
 pub mod trade_types;
+pub mod volcube_types;
 pub mod websocket;
 
 // Legacy handlers module (being gradually migrated)
@@ -489,6 +491,17 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/indices", get(curve_builder_handlers::get_indices));
 
     let api_routes = api_routes.nest("/curves", curve_routes);
+
+    // GenericPricer API routes (demo-webapp-pricer Task 2.4)
+    let pricer_routes = Router::new()
+        .route("/price", post(generic_pricer_handlers::price_generic))
+        .route("/greeks", post(generic_pricer_handlers::calculate_greeks))
+        .route(
+            "/instruments",
+            get(generic_pricer_handlers::get_pricer_instruments),
+        );
+
+    let api_routes = api_routes.nest("/pricer", pricer_routes);
 
     // Static file serving for the dashboard
     let static_files =

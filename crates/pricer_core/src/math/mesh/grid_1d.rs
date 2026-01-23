@@ -414,9 +414,9 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "Need at least 2 points")]
-    fn test_uniform_grid_single_point() { uniform_grid(0.0, 1.0, 1); }
+    fn test_uniform_grid_single_point() { let _ = uniform_grid(0.0, 1.0, 1); }
 
     #[test]
     #[should_panic(expected = "Start must be positive")]
-    fn test_log_grid_negative_start() { log_grid(-1.0, 1.0, 5); }
+    fn test_log_grid_negative_start() { let _ = log_grid(-1.0, 1.0, 5); }
 }

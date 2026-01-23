@@ -422,21 +422,21 @@ mod tests {
         let forward = 0.03;
         vec![
             // expiry=1.0, tenor=5.0 スマイル
-            VolInstrument::new(("1Y5Y_ATM"), 1.0, 5.0, 0.03, 0.20, forward),
-            VolInstrument::new(("1Y5Y_LOW"), 1.0, 5.0, 0.02, 0.25, forward),
-            VolInstrument::new(("1Y5Y_HIGH"), 1.0, 5.0, 0.04, 0.22, forward),
+            VolInstrument::new("1Y5Y_ATM", 1.0, 5.0, 0.03, 0.20, forward),
+            VolInstrument::new("1Y5Y_LOW", 1.0, 5.0, 0.02, 0.25, forward),
+            VolInstrument::new("1Y5Y_HIGH", 1.0, 5.0, 0.04, 0.22, forward),
             // expiry=1.0, tenor=10.0 スマイル
-            VolInstrument::new(("1Y10Y_ATM"), 1.0, 10.0, 0.03, 0.18, forward),
-            VolInstrument::new(("1Y10Y_LOW"), 1.0, 10.0, 0.02, 0.23, forward),
-            VolInstrument::new(("1Y10Y_HIGH"), 1.0, 10.0, 0.04, 0.20, forward),
+            VolInstrument::new("1Y10Y_ATM", 1.0, 10.0, 0.03, 0.18, forward),
+            VolInstrument::new("1Y10Y_LOW", 1.0, 10.0, 0.02, 0.23, forward),
+            VolInstrument::new("1Y10Y_HIGH", 1.0, 10.0, 0.04, 0.20, forward),
             // expiry=5.0, tenor=5.0 スマイル
-            VolInstrument::new(("5Y5Y_ATM"), 5.0, 5.0, 0.03, 0.16, forward),
-            VolInstrument::new(("5Y5Y_LOW"), 5.0, 5.0, 0.02, 0.20, forward),
-            VolInstrument::new(("5Y5Y_HIGH"), 5.0, 5.0, 0.04, 0.17, forward),
+            VolInstrument::new("5Y5Y_ATM", 5.0, 5.0, 0.03, 0.16, forward),
+            VolInstrument::new("5Y5Y_LOW", 5.0, 5.0, 0.02, 0.20, forward),
+            VolInstrument::new("5Y5Y_HIGH", 5.0, 5.0, 0.04, 0.17, forward),
             // expiry=5.0, tenor=10.0 スマイル
-            VolInstrument::new(("5Y10Y_ATM"), 5.0, 10.0, 0.03, 0.15, forward),
-            VolInstrument::new(("5Y10Y_LOW"), 5.0, 10.0, 0.02, 0.19, forward),
-            VolInstrument::new(("5Y10Y_HIGH"), 5.0, 10.0, 0.04, 0.16, forward),
+            VolInstrument::new("5Y10Y_ATM", 5.0, 10.0, 0.03, 0.15, forward),
+            VolInstrument::new("5Y10Y_LOW", 5.0, 10.0, 0.02, 0.19, forward),
+            VolInstrument::new("5Y10Y_HIGH", 5.0, 10.0, 0.04, 0.16, forward),
         ]
     }
 
@@ -462,7 +462,7 @@ mod tests {
 
     #[test]
     fn test_builder_add_instrument() {
-        let instrument = VolInstrument::new(("test"), 1.0, 5.0, 0.03, 0.20, 0.03);
+        let instrument = VolInstrument::new("test", 1.0, 5.0, 0.03, 0.20, 0.03);
         let builder: VolCubeBuilder<f64> = VolCubeBuilder::new().add_instrument(instrument);
         assert_eq!(builder.instruments.len(), 1);
     }
@@ -520,8 +520,8 @@ mod tests {
     fn test_builder_build_insufficient_grid() {
         // 1つのexpiry-tenorセルしかない場合
         let instruments = vec![
-            VolInstrument::new(("1"), 1.0, 5.0, 0.03, 0.20, 0.03),
-            VolInstrument::new(("2"), 1.0, 5.0, 0.02, 0.25, 0.03),
+            VolInstrument::new("1", 1.0, 5.0, 0.03, 0.20, 0.03),
+            VolInstrument::new("2", 1.0, 5.0, 0.02, 0.25, 0.03),
         ];
 
         let result = VolCubeBuilder::new()
@@ -597,7 +597,7 @@ mod tests {
     #[test]
     fn test_builder_invalid_instrument() {
         let instruments = vec![VolInstrument::new(
-            ("invalid"),
+            "invalid",
             -1.0, // 負のexpiry
             5.0,
             0.03,
@@ -660,9 +660,9 @@ mod tests {
     #[test]
     fn test_simple_sabr_fit() {
         let instruments_raw = vec![
-            VolInstrument::new(("ATM"), 1.0, 5.0, 0.03, 0.20, 0.03),
-            VolInstrument::new(("LOW"), 1.0, 5.0, 0.02, 0.25, 0.03),
-            VolInstrument::new(("HIGH"), 1.0, 5.0, 0.04, 0.18, 0.03),
+            VolInstrument::new("ATM", 1.0, 5.0, 0.03, 0.20, 0.03),
+            VolInstrument::new("LOW", 1.0, 5.0, 0.02, 0.25, 0.03),
+            VolInstrument::new("HIGH", 1.0, 5.0, 0.04, 0.18, 0.03),
         ];
 
         let instruments: Vec<&VolInstrument<f64>> = instruments_raw.iter().collect();
@@ -680,7 +680,7 @@ mod tests {
 
     #[test]
     fn test_calibrate_cell_single_instrument() {
-        let instruments_raw = vec![VolInstrument::new(("single"), 1.0, 5.0, 0.03, 0.20, 0.03)];
+        let instruments_raw = vec![VolInstrument::new("single", 1.0, 5.0, 0.03, 0.20, 0.03)];
 
         let instruments: Vec<&VolInstrument<f64>> = instruments_raw.iter().collect();
 

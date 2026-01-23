@@ -12587,3 +12587,348 @@ body.light-theme .chart-placeholder {
     }
 }
 
+/* =============================================================================
+   Pricer View Styles (demo-webapp-pricer Task 3.1)
+   ============================================================================= */
+
+.pricer-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    height: 100%;
+}
+
+/* Header */
+.pricer-header {
+    padding: 1.5rem;
+    border-radius: var(--radius-lg);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.pricer-title h2 {
+    font-size: 1.5rem;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+}
+
+.pricer-title p {
+    margin: 0.25rem 0 0;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.pricer-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+/* Main Grid - 2 Panel Layout */
+.pricer-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    flex: 1;
+    min-height: 0;
+}
+
+@media (max-width: 1200px) {
+    .pricer-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Panels */
+.pricer-input-panel,
+.pricer-results-panel {
+    padding: 1.5rem;
+    border-radius: var(--radius-lg);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* Sections */
+.pricer-section {
+    background: var(--card-bg-secondary);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+}
+
+.pricer-section h3 {
+    font-size: 1rem;
+    color: var(--text-primary);
+    margin: 0 0 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pricer-section h3 i {
+    color: var(--accent-primary);
+}
+
+/* Form Elements */
+.pricer-form-group {
+    margin-bottom: 1rem;
+}
+
+.pricer-form-group:last-child {
+    margin-bottom: 0;
+}
+
+.pricer-form-group label {
+    display: block;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.pricer-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+/* Cashflow Actions */
+.pricer-cf-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+/* Cashflow Table Container */
+.pricer-cf-table-container {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+}
+
+/* CF Table */
+.pricer-cf-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.pricer-cf-table th,
+.pricer-cf-table td {
+    padding: 0.5rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.pricer-cf-table th {
+    background: var(--card-bg);
+    color: var(--text-secondary);
+    font-weight: 500;
+    position: sticky;
+    top: 0;
+}
+
+.pricer-cf-table input {
+    width: 100%;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--card-bg);
+    color: var(--text-primary);
+}
+
+.pricer-cf-table input.modified {
+    border-color: var(--warning);
+    background: rgba(255, 193, 7, 0.1);
+}
+
+/* Placeholder Text */
+.pricer-placeholder {
+    color: var(--text-muted);
+    text-align: center;
+    padding: 2rem;
+    font-size: 0.875rem;
+}
+
+/* PV Display */
+.pricer-pv-display {
+    text-align: center;
+    padding: 1rem;
+}
+
+.pricer-pv-placeholder {
+    color: var(--text-muted);
+}
+
+.pricer-pv-placeholder i {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.pricer-pv-value {
+    font-size: 2.5rem;
+    font-weight: 600;
+    color: var(--accent-primary);
+    margin-bottom: 0.5rem;
+}
+
+.pricer-pv-value.positive {
+    color: var(--success);
+}
+
+.pricer-pv-value.negative {
+    color: var(--error);
+}
+
+.pricer-pv-currency {
+    font-size: 1rem;
+    color: var(--text-secondary);
+}
+
+/* Leg Table */
+.pricer-leg-table {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.pricer-leg-table table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.pricer-leg-table th,
+.pricer-leg-table td {
+    padding: 0.5rem;
+    text-align: right;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.pricer-leg-table th {
+    text-align: left;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.pricer-leg-table td:first-child {
+    text-align: left;
+}
+
+.pricer-leg-row {
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.pricer-leg-row:hover {
+    background: var(--card-bg-hover);
+}
+
+.pricer-leg-row.expanded {
+    background: var(--card-bg-hover);
+}
+
+.pricer-cf-detail-row {
+    background: var(--card-bg-secondary);
+}
+
+.pricer-cf-detail-row td {
+    padding-left: 2rem;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+}
+
+/* Greeks Display */
+.pricer-greeks-display {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 1rem;
+}
+
+.pricer-greek-card {
+    background: var(--card-bg);
+    border-radius: var(--radius-sm);
+    padding: 1rem;
+    text-align: center;
+}
+
+.pricer-greek-card .label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.25rem;
+}
+
+.pricer-greek-card .value {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* History List */
+.pricer-history-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.pricer-history-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.pricer-history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.pricer-history-item:hover {
+    background: var(--card-bg-hover);
+}
+
+.pricer-history-item.selected {
+    background: var(--accent-primary-transparent);
+    border-color: var(--accent-primary);
+}
+
+.pricer-history-timestamp {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.pricer-history-pv {
+    font-weight: 600;
+}
+
+.pricer-history-diff {
+    font-size: 0.75rem;
+}
+
+.pricer-history-diff.positive {
+    color: var(--success);
+}
+
+.pricer-history-diff.negative {
+    color: var(--error);
+}
+
+/* Model Config Fields */
+.pricer-model-config {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+

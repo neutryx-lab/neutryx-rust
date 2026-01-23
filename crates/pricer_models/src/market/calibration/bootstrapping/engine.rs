@@ -840,10 +840,9 @@ mod tests {
 
     #[test]
     fn test_custom_config() {
-        let config: GenericBootstrapConfig<f64> = GenericBootstrapConfig::builder()
-            .tolerance(1e-14)
-            .max_iterations(200)
-            .build();
+        let config: GenericBootstrapConfig<f64> = GenericBootstrapConfig::default()
+            .with_tolerance(1e-14)
+            .with_max_iterations(200);
 
         let bootstrapper = SequentialBootstrapper::new(config);
         assert!((bootstrapper.config().tolerance - 1e-14).abs() < 1e-19);

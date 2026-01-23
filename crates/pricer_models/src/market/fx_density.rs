@@ -78,13 +78,13 @@ pub enum DeltaType {
 /// the risk-neutral density using numerical integration.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct DensityStatistics<T: Float> {
-    /// Expected value (first moment): E[K]
+    /// Expected value (first moment): E\[K\]
     pub mean: T,
-    /// Variance (second central moment): E[(K - μ)²]
+    /// Variance (second central moment): E\[(K - μ)²\]
     pub variance: T,
-    /// Skewness (third standardised moment): E[(K - μ)³] / σ³
+    /// Skewness (third standardised moment): E\[(K - μ)³\] / σ³
     pub skewness: T,
-    /// Kurtosis (fourth standardised moment): E[(K - μ)⁴] / σ⁴
+    /// Kurtosis (fourth standardised moment): E\[(K - μ)⁴\] / σ⁴
     /// Note: Excess kurtosis (normal = 0) not raw kurtosis (normal = 3)
     pub kurtosis: T,
 }

@@ -101,13 +101,13 @@ fn test_error_types_exports() {
     let _solver_err = SolverError::MaxIterationsExceeded { iterations: 100 };
 }
 
-/// Test that CurrencyPair is accessible.
+/// Test that FxRate is accessible.
 #[test]
-fn test_currency_pair_exports() {
+fn test_fx_rate_exports() {
     use infra_master::Currency;
-    use pricer_core::types::CurrencyPair;
+    use pricer_core::types::FxRate;
 
-    let pair: CurrencyPair<f64> = CurrencyPair::new(Currency::EUR, Currency::USD, 1.10).unwrap();
+    let pair: FxRate<f64> = FxRate::new(Currency::EUR, Currency::USD, 1.10).unwrap();
     assert_eq!(pair.base(), Currency::EUR);
     assert_eq!(pair.quote(), Currency::USD);
 }

@@ -325,6 +325,11 @@
                             <span>Model Calib</span>
                             <div class="nav-indicator"></div>
                         </a>
+                        <a href="#" class="nav-item nav-sub-item" data-view="pricer">
+                            <div class="nav-icon"><i class="fas fa-calculator"></i></div>
+                            <span>Pricer</span>
+                            <div class="nav-indicator"></div>
+                        </a>
                         <a href="#" class="nav-item nav-sub-item" data-view="graph">
                             <div class="nav-icon"><i class="fas fa-project-diagram"></i></div>
                             <span>AD Graph</span>
@@ -1876,6 +1881,182 @@
                         </div>
                     </div>
 
+                </div>
+            </section>
+
+            <!-- Pricer View (demo-webapp-pricer Task 3.1) -->
+            <section id="pricer-view" class="view">
+                <div class="pricer-container">
+                    <!-- Header -->
+                    <div class="pricer-header glass">
+                        <div class="pricer-title">
+                            <h2><i class="fas fa-calculator"></i> Generic Pricer</h2>
+                            <p>GenericPricer検証：PVとGreeks計算</p>
+                        </div>
+                        <div class="pricer-actions">
+                            <button id="pricer-price-btn" class="primary-btn">
+                                <i class="fas fa-play"></i> Price
+                            </button>
+                            <button id="pricer-greeks-btn" class="secondary-btn">
+                                <i class="fas fa-chart-line"></i> Greeks
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Main Content Grid: 2-Panel Layout -->
+                    <div class="pricer-grid">
+                        <!-- Input Panel (Left) -->
+                        <div class="pricer-input-panel glass">
+                            <!-- Trade Selection -->
+                            <div class="pricer-section">
+                                <h3><i class="fas fa-folder-open"></i> Trade Selection</h3>
+                                <div class="pricer-form-group">
+                                    <label for="pricer-instrument-type">Instrument Type</label>
+                                    <select id="pricer-instrument-type" class="fancy-select">
+                                        <option value="">Select instrument...</option>
+                                    </select>
+                                </div>
+                                <div class="pricer-form-group">
+                                    <label for="pricer-sample-trade">Sample Trade</label>
+                                    <select id="pricer-sample-trade" class="fancy-select">
+                                        <option value="">Manual input...</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Cashflow Editor -->
+                            <div class="pricer-section">
+                                <h3><i class="fas fa-list-alt"></i> Cashflows</h3>
+                                <div class="pricer-cf-actions">
+                                    <button id="pricer-expand-cf-btn" class="outline-btn">
+                                        <i class="fas fa-expand"></i> Expand CF
+                                    </button>
+                                    <button id="pricer-reset-cf-btn" class="outline-btn">
+                                        <i class="fas fa-undo"></i> Reset
+                                    </button>
+                                </div>
+                                <div id="pricer-cf-table-container" class="pricer-cf-table-container">
+                                    <p class="pricer-placeholder">Click "Expand CF" to view cashflows</p>
+                                </div>
+                            </div>
+
+                            <!-- Market Data -->
+                            <div class="pricer-section">
+                                <h3><i class="fas fa-chart-area"></i> Market Data</h3>
+                                <div class="pricer-form-group">
+                                    <label for="pricer-curve">Discount Curve</label>
+                                    <select id="pricer-curve" class="fancy-select">
+                                        <option value="USD-SOFR">USD-SOFR</option>
+                                        <option value="EUR-ESTR">EUR-ESTR</option>
+                                        <option value="JPY-TONA">JPY-TONA</option>
+                                    </select>
+                                </div>
+                                <div class="pricer-form-row">
+                                    <div class="pricer-form-group">
+                                        <label for="pricer-valuation-date">Valuation Date</label>
+                                        <input type="date" id="pricer-valuation-date" class="fancy-input">
+                                    </div>
+                                    <div class="pricer-form-group">
+                                        <label for="pricer-reporting-ccy">Reporting CCY</label>
+                                        <select id="pricer-reporting-ccy" class="fancy-select">
+                                            <option value="USD">USD</option>
+                                            <option value="EUR">EUR</option>
+                                            <option value="JPY">JPY</option>
+                                            <option value="GBP">GBP</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Model Config -->
+                            <div class="pricer-section">
+                                <h3><i class="fas fa-cog"></i> Model Config</h3>
+                                <div class="pricer-form-group">
+                                    <label>
+                                        <input type="checkbox" id="pricer-use-defaults" checked>
+                                        Use Default Settings
+                                    </label>
+                                </div>
+                                <div id="pricer-model-config-fields" class="pricer-model-config" style="display: none;">
+                                    <div class="pricer-form-row">
+                                        <div class="pricer-form-group">
+                                            <label for="pricer-num-paths">Num Paths</label>
+                                            <input type="number" id="pricer-num-paths" class="fancy-input" value="10000" min="1" max="10000000">
+                                        </div>
+                                        <div class="pricer-form-group">
+                                            <label for="pricer-num-steps">Num Steps</label>
+                                            <input type="number" id="pricer-num-steps" class="fancy-input" value="100" min="1" max="10000">
+                                        </div>
+                                    </div>
+                                    <div class="pricer-form-group">
+                                        <label for="pricer-seed">Seed (optional)</label>
+                                        <input type="number" id="pricer-seed" class="fancy-input" placeholder="Random">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Greeks Config -->
+                            <div class="pricer-section">
+                                <h3><i class="fas fa-wave-square"></i> Greeks Settings</h3>
+                                <div class="pricer-form-row">
+                                    <div class="pricer-form-group">
+                                        <label for="pricer-rate-bump">Rate Bump (bp)</label>
+                                        <input type="number" id="pricer-rate-bump" class="fancy-input" value="1" step="0.1">
+                                    </div>
+                                    <div class="pricer-form-group">
+                                        <label for="pricer-fx-bump">FX Bump (%)</label>
+                                        <input type="number" id="pricer-fx-bump" class="fancy-input" value="1" step="0.1">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Results Panel (Right) -->
+                        <div class="pricer-results-panel glass">
+                            <!-- PV Result -->
+                            <div class="pricer-section">
+                                <h3><i class="fas fa-dollar-sign"></i> Pricing Result</h3>
+                                <div id="pricer-pv-result" class="pricer-pv-display">
+                                    <div class="pricer-pv-placeholder">
+                                        <i class="fas fa-calculator"></i>
+                                        <p>Click "Price" to calculate PV</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Leg Breakdown -->
+                            <div class="pricer-section">
+                                <h3><i class="fas fa-layer-group"></i> Leg Breakdown</h3>
+                                <div id="pricer-leg-breakdown" class="pricer-leg-table">
+                                    <p class="pricer-placeholder">No pricing result yet</p>
+                                </div>
+                            </div>
+
+                            <!-- Greeks Result -->
+                            <div class="pricer-section">
+                                <h3><i class="fas fa-chart-line"></i> Greeks</h3>
+                                <div id="pricer-greeks-result" class="pricer-greeks-display">
+                                    <p class="pricer-placeholder">Click "Greeks" to calculate sensitivities</p>
+                                </div>
+                            </div>
+
+                            <!-- Result History -->
+                            <div class="pricer-section">
+                                <h3><i class="fas fa-history"></i> Result History</h3>
+                                <div class="pricer-history-actions">
+                                    <button id="pricer-compare-btn" class="outline-btn" disabled>
+                                        <i class="fas fa-columns"></i> Compare
+                                    </button>
+                                    <button id="pricer-clear-history-btn" class="outline-btn">
+                                        <i class="fas fa-trash"></i> Clear
+                                    </button>
+                                </div>
+                                <div id="pricer-history-list" class="pricer-history-list">
+                                    <p class="pricer-placeholder">No history yet</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 

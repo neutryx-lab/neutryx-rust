@@ -63,14 +63,14 @@
 //!
 //! ```rust
 //! use pricer_core::math::smoothing::smooth_max;
-//! use pricer_core::types::{Date, Currency, DayCounter};
+//! use infra_master::{Date, Currency, DayCounter};
 //!
-//! // Date operations (Date is re-exported from infra_master)
+//! // Date operations (from infra_master)
 //! let start = Date::from_ymd(2024, 1, 1).unwrap();
 //! let end = Date::from_ymd(2024, 7, 1).unwrap();
 //! let year_fraction = DayCounter::Actual365Fixed.year_fraction(start, end);
 //!
-//! // Currency information (Currency is re-exported from infra_master)
+//! // Currency information (from infra_master)
 //! let usd = Currency::USD;
 //! assert_eq!(usd.code(), "USD");
 //! assert_eq!(usd.decimal_places(), 2);
