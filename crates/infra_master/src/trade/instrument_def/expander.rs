@@ -401,9 +401,11 @@ impl InstrumentExpander for Ois {
         &self,
         trade_id: impl Into<TradeId>,
         _valuation_date: Date,
-        conventions: &ConventionSet,
+        _conventions: &ConventionSet,
     ) -> Result<Trade, InstrumentError> {
-        let _swap_conv = conventions.get_swap()?;
+        // OIS expansion uses instrument-level parameters directly,
+        // so conventions are not required for basic expansion.
+        // Future enhancement: use conventions for business day adjustments.
 
         // Generate payment schedule based on payment frequency
         let payment_dates = generate_payment_dates(
