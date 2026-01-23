@@ -367,7 +367,7 @@ const DEFAULTS = {
             tenorYears: 5,
             frequency: 'annual'
         },
-        interpolation: 'log_linear'
+        interpolation: 'linear_on_log_df'
     },
 
     // Scenario Analysis defaults
@@ -13050,7 +13050,7 @@ const irsBootstrap = (function() {
         showLoading('Bootstrapping curve...');
 
         try {
-            const interpolation = document.getElementById('interpolation-method')?.value || 'log_linear';
+            const interpolation = document.getElementById('interpolation-method')?.value || 'linear_on_log_df';
 
             const response = await fetch('/api/bootstrap', {
                 method: 'POST',

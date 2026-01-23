@@ -5137,7 +5137,7 @@ mod tests {
 
             let request = BootstrapRequest {
                 par_rates: sample_par_rates(),
-                interpolation: InterpolationMethod::LogLinear,
+                interpolation: InterpolationMethod::LinearOnLogDf,
             };
 
             let result = bootstrap_curve(State(state.clone()), Json(request)).await;
@@ -5161,7 +5161,7 @@ mod tests {
 
             let request = BootstrapRequest {
                 par_rates: vec![],
-                interpolation: InterpolationMethod::LogLinear,
+                interpolation: InterpolationMethod::LinearOnLogDf,
             };
 
             let result = bootstrap_curve(State(state), Json(request)).await;
@@ -5180,7 +5180,7 @@ mod tests {
                     tenor: "1Y".to_string(),
                     rate: -0.01, // Invalid negative rate
                 }],
-                interpolation: InterpolationMethod::LogLinear,
+                interpolation: InterpolationMethod::LinearOnLogDf,
             };
 
             let result = bootstrap_curve(State(state), Json(request)).await;
@@ -5199,7 +5199,7 @@ mod tests {
                     tenor: "INVALID".to_string(),
                     rate: 0.025,
                 }],
-                interpolation: InterpolationMethod::LogLinear,
+                interpolation: InterpolationMethod::LinearOnLogDf,
             };
 
             let result = bootstrap_curve(State(state), Json(request)).await;
@@ -5215,7 +5215,7 @@ mod tests {
 
             let request = BootstrapRequest {
                 par_rates: sample_par_rates(),
-                interpolation: InterpolationMethod::LogLinear,
+                interpolation: InterpolationMethod::LinearOnLogDf,
             };
 
             // Initial cache should be empty
@@ -5234,7 +5234,7 @@ mod tests {
 
             let request = BootstrapRequest {
                 par_rates: sample_par_rates(),
-                interpolation: InterpolationMethod::LogLinear,
+                interpolation: InterpolationMethod::LinearOnLogDf,
             };
 
             let result = bootstrap_curve(State(state), Json(request)).await;
@@ -5298,7 +5298,7 @@ mod tests {
         async fn bootstrap_test_curve(state: &Arc<AppState>) -> String {
             let request = BootstrapRequest {
                 par_rates: sample_par_rates(),
-                interpolation: InterpolationMethod::LogLinear,
+                interpolation: InterpolationMethod::LinearOnLogDf,
             };
 
             let result = bootstrap_curve(State(state.clone()), Json(request)).await;
@@ -5474,7 +5474,7 @@ mod tests {
         async fn bootstrap_test_curve(state: &Arc<AppState>) -> String {
             let request = BootstrapRequest {
                 par_rates: sample_par_rates(),
-                interpolation: InterpolationMethod::LogLinear,
+                interpolation: InterpolationMethod::LinearOnLogDf,
             };
 
             let result = bootstrap_curve(State(state.clone()), Json(request)).await;
@@ -5706,7 +5706,7 @@ mod tests {
         async fn bootstrap_test_curve(state: &Arc<AppState>) -> String {
             let request = BootstrapRequest {
                 par_rates: sample_par_rates(),
-                interpolation: InterpolationMethod::LogLinear,
+                interpolation: InterpolationMethod::LinearOnLogDf,
             };
 
             let result = bootstrap_curve(State(state.clone()), Json(request)).await;
@@ -5818,7 +5818,7 @@ mod tests {
         async fn bootstrap_test_curve(state: &Arc<AppState>) -> String {
             let request = BootstrapRequest {
                 par_rates: sample_par_rates(),
-                interpolation: InterpolationMethod::LogLinear,
+                interpolation: InterpolationMethod::LinearOnLogDf,
             };
 
             let result = bootstrap_curve(State(state.clone()), Json(request)).await;
@@ -5989,7 +5989,7 @@ mod tests {
             // Step 1: Bootstrap curve
             let bootstrap_request = BootstrapRequest {
                 par_rates: create_standard_par_rates(),
-                interpolation: crate::web::pricer_types::InterpolationMethod::LogLinear,
+                interpolation: crate::web::pricer_types::InterpolationMethod::LinearOnLogDf,
             };
 
             let bootstrap_result =
@@ -6033,7 +6033,7 @@ mod tests {
             // Step 1: Bootstrap curve
             let bootstrap_request = BootstrapRequest {
                 par_rates: create_standard_par_rates(),
-                interpolation: crate::web::pricer_types::InterpolationMethod::LogLinear,
+                interpolation: crate::web::pricer_types::InterpolationMethod::LinearOnLogDf,
             };
 
             let bootstrap_result =
@@ -6111,7 +6111,7 @@ mod tests {
 
             let bootstrap_request = BootstrapRequest {
                 par_rates: vec![],
-                interpolation: crate::web::pricer_types::InterpolationMethod::LogLinear,
+                interpolation: crate::web::pricer_types::InterpolationMethod::LinearOnLogDf,
             };
 
             let result = bootstrap_curve(State(state), Json(bootstrap_request)).await;
@@ -6129,7 +6129,7 @@ mod tests {
             // First bootstrap a valid curve
             let bootstrap_request = BootstrapRequest {
                 par_rates: create_standard_par_rates(),
-                interpolation: crate::web::pricer_types::InterpolationMethod::LogLinear,
+                interpolation: crate::web::pricer_types::InterpolationMethod::LinearOnLogDf,
             };
             let curve = bootstrap_curve(State(state.clone()), Json(bootstrap_request))
                 .await
@@ -6174,7 +6174,7 @@ mod tests {
 
             let bootstrap_request = BootstrapRequest {
                 par_rates,
-                interpolation: crate::web::pricer_types::InterpolationMethod::LogLinear,
+                interpolation: crate::web::pricer_types::InterpolationMethod::LinearOnLogDf,
             };
 
             let curve = bootstrap_curve(State(state.clone()), Json(bootstrap_request))
@@ -6252,7 +6252,7 @@ mod tests {
             // Bootstrap curve
             let bootstrap_request = BootstrapRequest {
                 par_rates: create_standard_par_rates(),
-                interpolation: crate::web::pricer_types::InterpolationMethod::LogLinear,
+                interpolation: crate::web::pricer_types::InterpolationMethod::LinearOnLogDf,
             };
 
             let curve = bootstrap_curve(State(state.clone()), Json(bootstrap_request))

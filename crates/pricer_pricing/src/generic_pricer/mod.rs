@@ -34,15 +34,30 @@
 //! let cashflows = result.by_cashflow();
 //! ```
 
+mod batch;
 mod config;
 mod error;
+mod greeks_calculator;
+mod kernel;
 mod pricer;
 mod result;
 
+pub use batch::{BatchPricer, BatchPricingResult, BatchStats, TradeId};
 pub use config::{ModelConfig, ModelConfigBuilder, PricerConfig, PricerConfigBuilder};
 pub use error::{ConfigError, PricingError};
+pub use greeks_calculator::{
+    calculate_delta, calculate_fx_delta, calculate_gamma, calculate_theta, calculate_vega,
+    BumpAndRevalueCalculator, BumpSizes, TradeGreeks,
+};
+pub use kernel::{
+    price_cashflow, price_cashflow_stream, BusinessDayConvention, DayCountConvention,
+    DiscountCalculator, Frequency,
+};
 pub use pricer::GenericPricer;
 pub use result::{CashflowPricingResult, LegPricingResult, PathDistribution, PricingResult};
+
+#[cfg(not(feature = "l1l2-integration"))]
+pub use batch::SimpleTrade;
 
 #[cfg(not(feature = "l1l2-integration"))]
 pub use config::DefaultCurrency;

@@ -5,29 +5,38 @@ Demo内のWebAppのModel Calib画面を精緻化したい。まず、各Index毎
 
 ## Introduction
 
-本仕様は、Demo WebAppのModel Calibration画面を拡張し、VolCube構築のための完全なワークフローを実装する。既存のCurve Builder機能と同様のUIパターンを踏襲しつつ、ボラティリティキューブ特有の3次元構造（Expiry × Tenor × Strike）を可視化・操作可能にする。
+本仕様は、Demo WebAppのModel Calibration画面を拡張し、VolCube/VolSurface構築のための完全なワークフローを実装する。既存のCurve Builder機能と同様のUIパターンを踏襲しつつ、資産クラス毎のボラティリティ構造を可視化・操作可能にする。
 
 **対象ユーザー**: クオンツアナリスト、トレーダー、リスクマネージャー
 
+**対応資産クラス**:
+- **Swaption (Rates)**: 3次元VolCube（Expiry × Tenor × Strike）、SABRキャリブレーション
+- **FX Options**: 2次元VolSurface（Delta × Expiry）、Risk Reversal/Butterfly分析
+- **Equity Options**: 2次元VolSurface（Strike × Expiry）
+
 **主要機能**:
-- Index毎のVolCube用インストゥルメントデータ管理
+- Index/通貨ペア毎のボラティリティデータ管理
 - 複数のキャリブレーションモデル（SABR、SVI、Local Vol）のサポート
-- 構築済みキューブのパラメータ表示・スマイル曲線・確率密度関数の可視化
+- 構築済みキューブ/サーフェスのパラメータ表示・スマイル曲線・確率密度関数の可視化
+- FX固有のRisk Reversal/Butterfly分析
 
 ## Requirements
 
-### Requirement 1: VolCube用インストゥルメントデータ管理
+### Requirement 1: ボラティリティデータ管理
 
-**Objective:** As a クオンツアナリスト, I want 各Index毎にVolCube構築用のインストゥルメントリストを入力データとして管理する機能, so that キャリブレーションに必要な市場データを体系的に準備できる。
+**Objective:** As a クオンツアナリスト, I want 各資産クラス・Index毎にボラティリティ構築用のデータを入力データとして管理する機能, so that キャリブレーションに必要な市場データを体系的に準備できる。
 
 #### Acceptance Criteria
-1. The Model Calib UI shall provide Index選択ドロップダウン（USD-SOFR-Swaption、EUR-ESTR-Swaption、JPY-TONA-Swaption、Equity-Options、FX-Options）。
-2. When Indexが選択される, the Model Calib UI shall `demo/data/input/volcube/` から対応するJSONファイルを読み込み、インストゥルメントテーブルを表示する。
-3. The input data files shall follow a standardised JSON format containing: `index`, `reference_date`, `instruments[]` with each instrument having `expiry`, `tenor`, `strike`, `implied_vol`, `forward`, `weight` fields。
-4. When インストゥルメントデータファイルが存在しない, the Model Calib UI shall デフォルトテンプレートを生成してユーザーに通知する。
-5. The Model Calib UI shall インストゥルメントテーブルの各セル（implied_vol、forward、weight）を直接編集可能にする。
-6. When インストゥルメントデータが編集される, the Model Calib UI shall 変更フラグを表示し、保存・リセット機能を提供する。
-7. The Model Calib UI shall インストゥルメントデータのCSV/JSONエクスポート・インポート機能を提供する。
+1. The Model Calib UI shall provide 資産クラス選択（Swaption、FX Options、Equity Options）とIndex/通貨ペア選択ドロップダウンを提供する。
+2. When Swaptionが選択される, the Model Calib UI shall Index選択（USD-SOFR、EUR-ESTR、JPY-TONA）を表示する。
+3. When FX Optionsが選択される, the Model Calib UI shall 通貨ペア選択（EURUSD、USDJPY、GBPUSD）を表示する。
+4. When Indexが選択される, the Model Calib UI shall `demo/data/input/volsurface/` から対応するJSONファイルを読み込み、データテーブルを表示する。
+5. The Swaption data files shall follow VolCube format: `index`, `reference_date`, `instruments[]` with `expiry`, `tenor`, `strike`, `implied_vol`, `forward`, `weight` fields。
+6. The FX data files shall follow FxVolSurface format: `currency_pair`, `reference_date`, `spot`, `domestic_rate`, `foreign_rate`, `quotes[]` with `expiry`, `delta_type`, `atm_vol`, `rr_25d`, `bf_25d`, `rr_10d`, `bf_10d` fields。
+7. When インストゥルメントデータファイルが存在しない, the Model Calib UI shall デフォルトテンプレートを生成してユーザーに通知する。
+8. The Model Calib UI shall データテーブルの各セルを直接編集可能にする。
+9. When データが編集される, the Model Calib UI shall 変更フラグを表示し、保存・リセット機能を提供する。
+10. The Model Calib UI shall データのCSV/JSONエクスポート・インポート機能を提供する。
 
 ### Requirement 2: 依存カーブ構築統合
 
@@ -116,12 +125,42 @@ Demo内のWebAppのModel Calib画面を精緻化したい。まず、各Index毎
 
 ### Requirement 9: サンプルデータ準備
 
-**Objective:** As a 開発者, I want 各資産クラス・Index用のサンプルインストゥルメントデータを準備する, so that ユーザーがすぐにキャリブレーション機能を試用できる。
+**Objective:** As a 開発者, I want 各資産クラス・Index用のサンプルデータを準備する, so that ユーザーがすぐにキャリブレーション機能を試用できる。
 
 #### Acceptance Criteria
-1. The project shall `demo/data/input/volcube/` ディレクトリを作成する。
+1. The project shall `demo/data/input/volsurface/` ディレクトリを作成する。
 2. The project shall USD-SOFR-Swaption用サンプルデータファイル（複数Expiry × Tenor × Strikeのグリッド）を提供する。
 3. The project shall EUR-ESTR-Swaption用サンプルデータファイルを提供する。
-4. The project shall Equity-Options（例：SPX）用サンプルデータファイルを提供する。
-5. The project shall 各サンプルデータファイルにrealistic な市場レートと適切なweightを含める。
-6. The project shall サンプルデータのフォーマット仕様をREADME.mdで文書化する。
+4. The project shall EURUSD FX Options用サンプルデータファイル（ATM、25D RR/BF、10D RR/BF × 複数Expiry）を提供する。
+5. The project shall USDJPY FX Options用サンプルデータファイルを提供する。
+6. The project shall Equity-Options（例：SPX）用サンプルデータファイルを提供する。
+7. The project shall 各サンプルデータファイルにrealisticな市場レートを含める。
+8. The project shall サンプルデータのフォーマット仕様をREADME.mdで文書化する。
+
+### Requirement 10: FX VolSurface専用機能
+
+**Objective:** As a FXトレーダー, I want FX市場慣行に沿ったボラティリティ分析機能, so that Delta表現でのスマイル構造とRisk Reversal/Butterflyを効率的に分析できる。
+
+#### Acceptance Criteria
+1. When FX Optionsが選択される, the Model Calib UI shall Delta軸（10D Put、25D Put、ATM、25D Call、10D Call）でスマイルを表示する。
+2. The Model Calib UI shall ATM vol、25D Risk Reversal、25D Butterfly、10D Risk Reversal、10D Butterflyの入力フィールドを各Expiryで提供する。
+3. The Model Calib UI shall Risk Reversal/Butterflyから5点Delta volへの自動変換機能を提供する。
+4. The Model Calib UI shall 各ExpiryでのRisk Reversal（スキュー）とButterfly（スマイル曲率）の時系列チャートを表示する。
+5. The Model Calib UI shall Spot価格、Domestic金利、Foreign金利の入力フィールドを提供し、Delta-Strike変換に使用する。
+6. When Delta-Strike変換が実行される, the Model Calib UI shall 各DeltaポイントのAbsolute Strikeを計算・表示する。
+7. The Model Calib UI shall FX VolSurfaceに対してもBreeden-Litzenberger法による確率密度関数を計算・表示する。
+8. The Model Calib UI shall FX確率密度の統計情報（期待値、分散、歪度、尖度）を計算・表示する。
+
+### Requirement 11: FX VolSurface バックエンドAPI
+
+**Objective:** As a 開発者, I want FX VolSurface用のREST APIエンドポイントを実装する, so that フロントエンドがFxVolatilitySurfaceエンジンと連携できる。
+
+#### Acceptance Criteria
+1. The demo-web server shall `/api/fxvol/pairs` GETエンドポイントを提供し、利用可能な通貨ペア一覧を返す。
+2. The demo-web server shall `/api/fxvol/quotes/{pair}` GETエンドポイントを提供し、指定通貨ペアのボラティリティQuotesを返す。
+3. The demo-web server shall `/api/fxvol/quotes/{pair}` PUTエンドポイントを提供し、Quotesデータを更新・保存する。
+4. The demo-web server shall `/api/fxvol/build` POSTエンドポイントを提供し、FxVolatilitySurfaceを構築して結果を返す。
+5. The demo-web server shall `/api/fxvol/smile` GETエンドポイントを提供し、指定ExpiryのDelta-Volスマイルデータを返す。
+6. The demo-web server shall `/api/fxvol/rr-bf` GETエンドポイントを提供し、Risk Reversal/Butterflyの時系列データを返す。
+7. The demo-web server shall `/api/fxvol/density` GETエンドポイントを提供し、FxVolSurfaceから計算した確率密度データを返す。
+8. The demo-web server shall `/api/fxvol/delta-strike` POSTエンドポイントを提供し、Delta-Strike変換結果を返す。

@@ -800,6 +800,7 @@ mod tests {
                         payoff_type: "Fixed".to_string(),
                         rate: Some(0.05),
                         spread: None,
+                        daily_accruals: None,
                     }],
                 }],
                 metadata: TradeMetadataDto {
@@ -843,6 +844,7 @@ mod tests {
                 payoff_type: "Fixed".to_string(),
                 rate: Some(0.05),
                 spread: None,
+                daily_accruals: None,
             };
 
             let json = serde_json::to_string(&cf).unwrap();

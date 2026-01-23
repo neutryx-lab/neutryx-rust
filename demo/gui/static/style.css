@@ -10723,6 +10723,12 @@ body.light-theme .irs-loading-overlay {
     padding-bottom: 0;
 }
 
+/* Index Selection Card - slightly larger */
+#index-section {
+    padding-top: 8px;
+    padding-bottom: 24px;
+}
+
 .curve-section .section-header {
     display: flex;
     justify-content: space-between;

@@ -322,14 +322,19 @@ pub struct PricingErrorResponse {
 /// Interpolation method for yield curve construction.
 ///
 /// Determines how discount factors are interpolated between pillar points.
+/// The naming convention indicates the interpolation target:
+/// - `*OnZeroRate`: Interpolates the continuously compounded zero rate
+/// - `*OnLogDf`: Interpolates the natural log of discount factor (ln(DF))
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum InterpolationMethod {
-    /// Linear interpolation of discount factors
-    Linear,
-    /// Log-linear interpolation (linear in log-space)
+    /// Linear interpolation on zero rates.
+    /// Interpolates r(t) linearly, then DF(t) = exp(-r(t) * t).
+    LinearOnZeroRate,
+    /// Linear interpolation on log discount factors (recommended).
+    /// Interpolates ln(DF(t)) linearly, equivalent to constant forward rate between pillars.
     #[default]
-    LogLinear,
+    LinearOnLogDf,
 }
 
 /// Par rate input for a single tenor point.
@@ -3069,32 +3074,32 @@ mod tests {
         use super::*;
 
         #[test]
-        fn test_serialize_linear() {
-            let method = InterpolationMethod::Linear;
+        fn test_serialize_linear_on_zero_rate() {
+            let method = InterpolationMethod::LinearOnZeroRate;
             let json = serde_json::to_string(&method).unwrap();
-            assert_eq!(json, "\"linear\"");
+            assert_eq!(json, "\"linear_on_zero_rate\"");
         }
 
         #[test]
-        fn test_serialize_log_linear() {
-            let method = InterpolationMethod::LogLinear;
+        fn test_serialize_linear_on_log_df() {
+            let method = InterpolationMethod::LinearOnLogDf;
             let json = serde_json::to_string(&method).unwrap();
-            assert_eq!(json, "\"log_linear\"");
+            assert_eq!(json, "\"linear_on_log_df\"");
         }
 
         #[test]
         fn test_deserialize_interpolation_methods() {
-            let linear: InterpolationMethod = serde_json::from_str("\"linear\"").unwrap();
-            assert_eq!(linear, InterpolationMethod::Linear);
+            let linear: InterpolationMethod = serde_json::from_str("\"linear_on_zero_rate\"").unwrap();
+            assert_eq!(linear, InterpolationMethod::LinearOnZeroRate);
 
-            let log_linear: InterpolationMethod = serde_json::from_str("\"log_linear\"").unwrap();
-            assert_eq!(log_linear, InterpolationMethod::LogLinear);
+            let log_df: InterpolationMethod = serde_json::from_str("\"linear_on_log_df\"").unwrap();
+            assert_eq!(log_df, InterpolationMethod::LinearOnLogDf);
         }
 
         #[test]
-        fn test_default_is_log_linear() {
+        fn test_default_is_linear_on_log_df() {
             let default_method = InterpolationMethod::default();
-            assert_eq!(default_method, InterpolationMethod::LogLinear);
+            assert_eq!(default_method, InterpolationMethod::LinearOnLogDf);
         }
     }
 
@@ -3159,18 +3164,18 @@ mod tests {
                     {"tenor": "5Y", "rate": 0.025},
                     {"tenor": "10Y", "rate": 0.03}
                 ],
-                "interpolation": "linear"
+                "interpolation": "linear_on_zero_rate"
             }"#;
 
             let request: BootstrapRequest = serde_json::from_str(json).unwrap();
             assert_eq!(request.par_rates.len(), 3);
             assert_eq!(request.par_rates[0].tenor, "1Y");
             assert!((request.par_rates[0].rate - 0.02).abs() < 1e-10);
-            assert_eq!(request.interpolation, InterpolationMethod::Linear);
+            assert_eq!(request.interpolation, InterpolationMethod::LinearOnZeroRate);
         }
 
         #[test]
-        fn test_deserialize_without_interpolation_defaults_to_log_linear() {
+        fn test_deserialize_without_interpolation_defaults_to_linear_on_log_df() {
             let json = r#"{
                 "parRates": [
                     {"tenor": "1Y", "rate": 0.02},
@@ -3180,7 +3185,7 @@ mod tests {
 
             let request: BootstrapRequest = serde_json::from_str(json).unwrap();
             assert_eq!(request.par_rates.len(), 2);
-            assert_eq!(request.interpolation, InterpolationMethod::LogLinear);
+            assert_eq!(request.interpolation, InterpolationMethod::LinearOnLogDf);
         }
 
         #[test]

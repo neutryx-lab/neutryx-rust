@@ -120,28 +120,28 @@
 
 ---
 
-- [ ] 5. プライシングカーネル実装
+- [x] 5. プライシングカーネル実装
 
-- [ ] 5.1 Trade/Leg/Cashflow パース処理
+- [x] 5.1 Trade/Leg/Cashflow パース処理
   - Trade構造からLeg配列を取得
   - 各LegからCashflow配列を展開
   - 静的ディスパッチによるInstrumentEnum処理
   - _Requirements: 5.2, 5.3, 5.4_
 
-- [ ] 5.2 Cashflow単位のプライシング
+- [x] 5.2 Cashflow単位のプライシング
   - 支払日までの年率計算（DayCountConvention使用）
   - ディスカウントファクター取得
   - 元通貨建てPV計算
   - _Requirements: 7.3, 7.4_
 
-- [ ] 5.3 Leg単位のプライシング
+- [x] 5.3 Leg単位のプライシング
   - 各CashflowのPVを集計
   - 方向（Pay/Receive）の適用
   - FXレートによる報告通貨換算
   - LegPricingResultの構築
   - _Requirements: 6.2, 6.5_
 
-- [ ] 5.4 日付処理ユーティリティ
+- [x] 5.4 日付処理ユーティリティ
   - Calendar、DayCountConvention、Frequencyとの統合
   - 営業日調整（Following、ModifiedFollowing等）
   - NaiveDateの一貫した使用
@@ -149,21 +149,21 @@
 
 ---
 
-- [ ] 6. Greeks計算実装
+- [x] 6. Greeks計算実装
 
-- [ ] 6.1 get_greeks<T: Float>() メソッドの実装
+- [x] 6.1 get_greeks<T: Float>() メソッドの実装
   - ジェネリック関数としてEnzyme AD対応
   - GreeksConfigに基づくモード選択
   - GreeksResult<T>を返す
   - _Requirements: 1.3_
 
-- [ ] 6.2 AADモード実装
+- [x] 6.2 AADモード実装
   - Enzyme ADを使用した自動微分
   - Delta、Gamma、Vega等の計算
   - pricer_pricingのEnzyme機能との統合
   - _Requirements: 4.2_
 
-- [ ] 6.3 BumpAndRevalueモード実装
+- [x] 6.3 BumpAndRevalueモード実装
   - 有限差分法によるGreeks計算
   - バンプ幅設定の適用
   - 中心差分または前方差分の選択
@@ -171,26 +171,26 @@
 
 ---
 
-- [ ] 7. バッチプライシング実装
+- [x] 7. バッチプライシング実装
 
-- [ ] 7.1 BatchPricer 構造体の実装
+- [x] 7.1 BatchPricer 構造体の実装
   - MarketProvider（Arc）、ModelConfig、PricerConfig保持
   - GenericPricerとの構成関係
   - _Requirements: 8.3_
 
-- [ ] 7.2 price_batch() メソッドの実装
+- [x] 7.2 price_batch() メソッドの実装
   - 複数Tradeの並列プライシング
   - Rayon par_iter使用
   - 評価日と報告通貨の共通設定
   - _Requirements: 8.1, 8.2_
 
-- [ ] 7.3 BatchPricingResult の実装
+- [x] 7.3 BatchPricingResult の実装
   - 成功結果: Vec<(TradeId, PricingResult)>
   - 失敗結果: Vec<(TradeId, PricingError)>
   - 統計情報: total_count、success_count、failure_count、elapsed_ms
   - _Requirements: 8.4_
 
-- [ ] 7.4 部分エラー継続処理
+- [x] 7.4 部分エラー継続処理
   - 一部商品のエラー時も他商品の処理を継続
   - エラー情報の収集と結果への含有
   - _Requirements: 8.5_
@@ -202,21 +202,21 @@
 
 ---
 
-- [ ] 8. 統合とテスト
+- [x] 8. 統合とテスト
 
-- [ ] 8.1 モジュール構成と公開API
+- [x] 8.1 モジュール構成と公開API
   - generic_pricer/ モジュール作成
   - lib.rsからの公開エクスポート
   - 既存コードとの整合性確認
   - _Requirements: 5.4_
 
-- [ ] 8.2 (P) 単体テスト
+- [x] 8.2 (P) 単体テスト
   - ModelConfig/PricerConfig検証テスト
   - PricingResult階層構造テスト
   - エラーハンドリングテスト
   - _Requirements: 1.5, 3.6, 5.5, 6.8_
 
-- [ ] 8.3 (P) 統合テスト
+- [x] 8.3 (P) 統合テスト
   - GenericPricer::get_pv() E2Eテスト
   - FX換算を含むマルチ通貨プライシング
   - BatchPricer並列処理テスト

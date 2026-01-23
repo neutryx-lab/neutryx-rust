@@ -21,7 +21,6 @@
 use std::{sync::Arc, time::Instant};
 
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
-use chrono::Datelike;
 use serde_json::json;
 use uuid::Uuid;
 
@@ -415,14 +414,28 @@ fn expand_par_swap(request: &TradeExpandRequest) -> Result<TradeExpandResponse, 
     })
 }
 
-/// Expands an OIS instrument.
+/// Expands an OIS instrument using Infra-master's OIS expansion logic.
+///
+/// This function delegates to the Infra-master layer for proper OIS daily
+/// compounding expansion, ensuring separation of concerns.
 fn expand_ois(request: &TradeExpandRequest) -> Result<TradeExpandResponse, TradeExpandError> {
-    let params = match &request.params {
-        InstrumentParamsUnion::Rates(p) => p,
-        InstrumentParamsUnion::Swap(p) => {
-            // Convert SwapParams to RatesParams for OIS
-            return expand_ois_from_swap(p);
-        }
+    let (start_date, tenor, fixed_rate, notional, currency, frequency) = match &request.params {
+        InstrumentParamsUnion::Rates(p) => (
+            &p.start_date,
+            &p.tenor,
+            p.rate,
+            p.notional,
+            &p.currency,
+            "Annual".to_string(),
+        ),
+        InstrumentParamsUnion::Swap(p) => (
+            &p.start_date,
+            &p.tenor,
+            p.fixed_rate.unwrap_or(0.0),
+            p.notional,
+            &p.currency,
+            p.payment_frequency.clone(),
+        ),
         _ => {
             return Err(TradeExpandError::validation(
                 "params",
@@ -431,94 +444,169 @@ fn expand_ois(request: &TradeExpandRequest) -> Result<TradeExpandResponse, Trade
         }
     };
 
-    let trade_id = generate_trade_id("OIS");
+    // Parse parameters for Infra-master OIS
+    let start = parse_date(start_date)?;
+    let end = parse_tenor_end_date(start_date, tenor)?;
+    let ccy = parse_currency(currency)?;
+    let rate_index = currency_to_rate_index(currency);
+    let freq = parse_frequency(&frequency);
 
-    let schedule = generate_schedule(&params.start_date, &params.tenor, "Annual", "Act360")
-        .map_err(|e| TradeExpandError::schedule_error(&e.message))?;
-
-    // Fixed leg: standard cashflows
-    let fixed_cashflows = schedule_to_cashflows(&schedule, params.notional, params.rate, "Fixed");
-
-    let fixed_leg = LegDto {
-        leg_number: 1,
-        direction: "Receiver".to_string(),
-        currency: params.currency.clone(),
-        leg_type: "Fixed".to_string(),
-        cashflows: fixed_cashflows,
+    // Create OIS instrument using Infra-master types
+    let ois = Ois {
+        rate_index,
+        fixed_rate,
+        start_date: start,
+        end_date: end,
+        notional,
+        currency: ccy,
+        payer_receiver: PayerReceiver::Payer,
+        payment_frequency: freq,
     };
 
-    // Floating leg: OIS compounded with daily accrual details
-    let floating_cashflows = schedule_to_ois_floating_cashflows(&schedule, params.notional, params.rate);
+    // Expand using Infra-master's InstrumentExpander
+    let conventions = ConventionSet::default();
+    let valuation_date = Date::today();
+    let trade_id_str = generate_trade_id("OIS");
 
-    let floating_leg = LegDto {
-        leg_number: 2,
-        direction: "Payer".to_string(),
-        currency: params.currency.clone(),
-        leg_type: "OIS Floating".to_string(),
-        cashflows: floating_cashflows,
-    };
+    let trade = ois
+        .expand_to_trade(trade_id_str.clone(), valuation_date, &conventions)
+        .map_err(|e| TradeExpandError::schedule_error(&format!("OIS expansion error: {:?}", e)))?;
 
-    let total_cf = fixed_leg.cashflows.len() + floating_leg.cashflows.len();
+    // Convert Infra-master Trade to DTO
+    convert_trade_to_dto(trade, &trade_id_str, "OIS")
+}
+
+/// Helper: Converts Infra-master Trade to TradeExpandResponse DTO.
+fn convert_trade_to_dto(
+    trade: infra_master::trade::Trade,
+    trade_id: &str,
+    trade_type: &str,
+) -> Result<TradeExpandResponse, TradeExpandError> {
+    let mut legs_dto = Vec::new();
+
+    for (idx, leg) in trade.legs().enumerate() {
+        let cashflows_dto: Vec<CashflowDto> = leg
+            .cashflows()
+            .map(|cf| {
+                let daily_accruals_dto = cf.daily_accruals().map(|accruals| {
+                    accruals
+                        .iter()
+                        .map(|a| DailyAccrualDto {
+                            date: a.date.to_string(),
+                            overnight_rate: a.overnight_rate,
+                            day_fraction: a.day_fraction,
+                            compounded_notional: a.compounded_notional,
+                        })
+                        .collect()
+                });
+
+                let rate = match &cf.payoff {
+                    infra_master::trade::Payoff::Fixed { rate } => Some(*rate),
+                    _ => None,
+                };
+
+                CashflowDto {
+                    payment_date: cf.payment_date.to_string(),
+                    accrual_start: cf.accrual_start.to_string(),
+                    accrual_end: cf.accrual_end.to_string(),
+                    year_fraction: cf.year_fraction,
+                    notional: cf.notional,
+                    payoff_type: if cf.has_daily_accruals() {
+                        "OisCompounded".to_string()
+                    } else {
+                        "Fixed".to_string()
+                    },
+                    rate,
+                    spread: None,
+                    daily_accruals: daily_accruals_dto,
+                }
+            })
+            .collect();
+
+        let direction = match leg.direction {
+            infra_master::trade::Direction::Payer => "Payer".to_string(),
+            infra_master::trade::Direction::Receiver => "Receiver".to_string(),
+        };
+
+        let leg_type = match leg.leg_type {
+            infra_master::trade::LegType::Fixed => "Fixed".to_string(),
+            infra_master::trade::LegType::Floating => "OIS Floating".to_string(),
+            infra_master::trade::LegType::Generic => "Generic".to_string(),
+            infra_master::trade::LegType::CapFloor => "CapFloor".to_string(),
+            infra_master::trade::LegType::Principal => "Principal".to_string(),
+        };
+
+        legs_dto.push(LegDto {
+            leg_number: idx + 1,
+            direction,
+            currency: leg.currency.code().to_string(),
+            leg_type,
+            cashflows: cashflows_dto,
+        });
+    }
+
+    let total_cf: usize = legs_dto.iter().map(|l| l.cashflows.len()).sum();
+    let num_legs = legs_dto.len();
 
     Ok(TradeExpandResponse {
-        trade_id,
-        trade_type: "OIS".to_string(),
-        legs: vec![fixed_leg, floating_leg],
+        trade_id: trade_id.to_string(),
+        trade_type: trade_type.to_string(),
+        legs: legs_dto,
         metadata: TradeMetadataDto {
-            total_legs: 2,
+            total_legs: num_legs,
             total_cashflows: total_cf,
             processing_time_ms: 0.0,
         },
     })
 }
 
-fn expand_ois_from_swap(params: &SwapParams) -> Result<TradeExpandResponse, TradeExpandError> {
-    let trade_id = generate_trade_id("OIS");
+/// Helper: Parse date string to Infra-master Date.
+fn parse_date(date_str: &str) -> Result<Date, TradeExpandError> {
+    Date::parse(date_str)
+        .map_err(|_| TradeExpandError::validation("start_date", "Invalid date format"))
+}
 
-    let schedule = generate_schedule(
-        &params.start_date,
-        &params.tenor,
-        &params.payment_frequency,
-        &params.day_count,
-    )
-    .map_err(|e| TradeExpandError::schedule_error(&e.message))?;
+/// Helper: Calculate end date from start date and tenor.
+fn parse_tenor_end_date(start_str: &str, tenor_str: &str) -> Result<Date, TradeExpandError> {
+    use infra_master::time::{EndOfMonthRule, Tenor};
 
-    let fixed_rate = params.fixed_rate.unwrap_or(0.0);
+    let start = parse_date(start_str)?;
+    let tenor: Tenor = tenor_str
+        .parse()
+        .map_err(|_| TradeExpandError::validation("tenor", "Invalid tenor format"))?;
 
-    // Fixed leg: standard cashflows
-    let fixed_cashflows = schedule_to_cashflows(&schedule, params.notional, fixed_rate, "Fixed");
+    Ok(tenor.add_to_date(start, EndOfMonthRule::Adjust))
+}
 
-    let fixed_leg = LegDto {
-        leg_number: 1,
-        direction: "Receiver".to_string(),
-        currency: params.currency.clone(),
-        leg_type: "Fixed".to_string(),
-        cashflows: fixed_cashflows,
-    };
+/// Helper: Parse currency string to Infra-master Currency.
+fn parse_currency(ccy: &str) -> Result<Currency, TradeExpandError> {
+    ccy.parse()
+        .map_err(|_| TradeExpandError::validation("currency", "Invalid currency"))
+}
 
-    // Floating leg: OIS compounded with daily accrual details
-    let floating_cashflows = schedule_to_ois_floating_cashflows(&schedule, params.notional, fixed_rate);
+/// Helper: Map currency to appropriate overnight rate index.
+fn currency_to_rate_index(ccy: &str) -> RateIndex {
+    match ccy.to_uppercase().as_str() {
+        "USD" => RateIndex::Sofr,
+        "EUR" => RateIndex::Euribor3M, // Using as ESTR proxy
+        "GBP" => RateIndex::Sonia,
+        "JPY" => RateIndex::Tonar,
+        "CHF" => RateIndex::Saron,
+        _ => RateIndex::Sofr, // Default
+    }
+}
 
-    let floating_leg = LegDto {
-        leg_number: 2,
-        direction: "Payer".to_string(),
-        currency: params.currency.clone(),
-        leg_type: "OIS Floating".to_string(),
-        cashflows: floating_cashflows,
-    };
-
-    let total_cf = fixed_leg.cashflows.len() + floating_leg.cashflows.len();
-
-    Ok(TradeExpandResponse {
-        trade_id,
-        trade_type: "OIS".to_string(),
-        legs: vec![fixed_leg, floating_leg],
-        metadata: TradeMetadataDto {
-            total_legs: 2,
-            total_cashflows: total_cf,
-            processing_time_ms: 0.0,
-        },
-    })
+/// Helper: Parse frequency string to Infra-master Frequency.
+fn parse_frequency(freq: &str) -> Frequency {
+    match freq.to_lowercase().as_str() {
+        "daily" => Frequency::Daily,
+        "weekly" => Frequency::Weekly,
+        "monthly" => Frequency::Monthly,
+        "quarterly" => Frequency::Quarterly,
+        "semi_annual" | "semiannual" => Frequency::SemiAnnual,
+        "annual" | "yearly" => Frequency::Annual,
+        _ => Frequency::Annual, // Default
+    }
 }
 
 /// Expands a BasisSwap instrument.
@@ -946,89 +1034,6 @@ fn schedule_to_cashflows(
             daily_accruals: None,
         })
         .collect()
-}
-
-/// Generates OIS floating leg cashflows with daily compounding details.
-fn schedule_to_ois_floating_cashflows(
-    schedule: &[SchedulePeriod],
-    notional: f64,
-    overnight_rate: f64,
-) -> Vec<CashflowDto> {
-    schedule
-        .iter()
-        .map(|period| {
-            // Generate daily accruals for this period
-            let daily_accruals = generate_daily_accruals(
-                &period.start_date,
-                &period.end_date,
-                notional,
-                overnight_rate,
-            );
-
-            CashflowDto {
-                payment_date: period.payment_date.clone(),
-                accrual_start: period.start_date.clone(),
-                accrual_end: period.end_date.clone(),
-                year_fraction: period.year_fraction,
-                notional,
-                payoff_type: "OisCompounded".to_string(),
-                rate: Some(overnight_rate),
-                spread: None,
-                daily_accruals: Some(daily_accruals),
-            }
-        })
-        .collect()
-}
-
-/// Generates daily accrual details for OIS compounding.
-fn generate_daily_accruals(
-    start_date: &str,
-    end_date: &str,
-    notional: f64,
-    overnight_rate: f64,
-) -> Vec<DailyAccrualDto> {
-    use chrono::{Duration, NaiveDate};
-
-    let start = NaiveDate::parse_from_str(start_date, "%Y-%m-%d").unwrap_or_else(|_| {
-        NaiveDate::from_ymd_opt(2026, 1, 1).unwrap()
-    });
-    let end = NaiveDate::parse_from_str(end_date, "%Y-%m-%d").unwrap_or_else(|_| {
-        NaiveDate::from_ymd_opt(2027, 1, 1).unwrap()
-    });
-
-    let mut accruals = Vec::new();
-    let mut current_date = start;
-    let mut compounded_notional = notional;
-
-    // Day count fraction for Act/360
-    let day_fraction = 1.0 / 360.0;
-
-    while current_date < end {
-        // Skip weekends (simplified - real implementation would use business day calendar)
-        let weekday = current_date.weekday();
-        if weekday == chrono::Weekday::Sat || weekday == chrono::Weekday::Sun {
-            current_date += Duration::days(1);
-            continue;
-        }
-
-        // Add small random variation to overnight rate for realism (±5bp)
-        let daily_rate = overnight_rate + (((current_date.day() as f64) % 10.0 - 5.0) * 0.0001);
-
-        // Daily compounding: N(t+1) = N(t) * (1 + r * dt)
-        let daily_interest = compounded_notional * daily_rate * day_fraction;
-        compounded_notional += daily_interest;
-
-        accruals.push(DailyAccrualDto {
-            date: current_date.format("%Y-%m-%d").to_string(),
-            overnight_rate: daily_rate,
-            day_fraction,
-            compounded_notional,
-        });
-
-        current_date += Duration::days(1);
-    }
-
-    accruals
 }
 
 // =============================================================================
