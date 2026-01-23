@@ -11588,11 +11588,12 @@ body.light-theme .chart-placeholder {
     .mobile-menu-btn {
         display: flex;
         flex-shrink: 0;
-        margin-right: 0.5rem;
+        margin-left: 0;
+        margin-right: 4px;
     }
 
     .top-bar {
-        padding-left: 0.5rem;
+        padding-left: 0;
     }
 }
 
