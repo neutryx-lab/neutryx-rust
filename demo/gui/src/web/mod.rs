@@ -556,11 +556,10 @@ pub fn build_router(state: Arc<AppState>) -> Router {
     let api_routes = api_routes.nest("/fxvol", fxvol_routes);
 
     // Static file serving for the dashboard
+    // Data files are placed inside static directory (demo/gui/static/data/input)
+    // so they are served via fallback_service without needing a separate route
     let static_files =
         ServeDir::new("demo/gui/static").not_found_service(handlers::serve_index_with_config());
-
-    // Data file serving for external JSON data
-    let data_files = ServeDir::new("demo/data/input");
 
     // CSP header: default policy for local static assets.
     // - Script sources limited to self (vendor assets).
@@ -577,7 +576,6 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         // Task 13.2: Serve index.html with config injection at root
         .route("/", get(handlers::get_index))
         .nest("/api", api_routes)
-        .nest_service("/data/input", data_files)
         .fallback_service(static_files)
         .layer(cache_control_header)
         .layer(csp_header)

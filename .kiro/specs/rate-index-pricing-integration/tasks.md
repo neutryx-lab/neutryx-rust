@@ -115,8 +115,8 @@
 
 ### Phase 4: demo/gui 拡張
 
-- [ ] 4. Demo WebApp の DTO を拡張
-- [ ] 4.1 (P) 入力 DTO にインデックス指定機能を追加する
+- [x] 4. Demo WebApp の DTO を拡張
+- [x] 4.1 (P) 入力 DTO にインデックス指定機能を追加する
   - SwapParams に rate_index オプションフィールドを追加
   - RatesParams に rate_index オプションフィールドを追加
   - "SOFR", "EURIBOR3M", "EURIBOR6M", "SONIA", "TONAR", "SARON" を受け付ける
@@ -124,7 +124,7 @@
   - 無効な rate_index 値の場合は InvalidInput エラーを返す
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
 
-- [ ] 4.2 (P) 出力 DTO にインデックス情報を追加する
+- [x] 4.2 (P) 出力 DTO にインデックス情報を追加する
   - LegDto に rate_index オプションフィールドを追加
   - CashflowDto に rate_index オプションフィールドを追加
   - 変動レッグの場合は対応する rate_index を含める
@@ -132,13 +132,13 @@
   - skip_serializing_if を使用して None の場合は出力しない
   - _Requirements: 9.1, 9.2, 9.3, 9.4_
 
-- [ ] 4.3 トレード変換ロジックを更新する
-  - convert_trade_to_dto で Payoff::required_index() を使用してインデックス情報を抽出
+- [x] 4.3 トレード変換ロジックを更新する
+  - convert_trade_to_dto で IndexType からインデックス情報を抽出
   - 入力の rate_index を RateIndex に変換する処理を追加
   - トレード構築時にインデックスを Payoff に設定
   - _Requirements: 8.3, 9.5_
 
-- [ ] 4.4 demo/gui の API テストを追加する
+- [x] 4.4 demo/gui の API テストを追加する
   - rate_index を指定したスワップ作成をテスト
   - デフォルトインデックスの適用をテスト
   - 無効な rate_index のエラーハンドリングをテスト
@@ -147,7 +147,7 @@
 
 ### Phase 5: 最終統合と検証
 
-- [ ] 5. エンドツーエンド統合と後方互換性検証
+- [x] 5. エンドツーエンド統合と後方互換性検証
 - [x] 5.1 既存テストの回帰テストを実行する
   - infra_master、pricer_models、pricer_pricing の全既存テストを実行
   - テスト失敗がないことを確認

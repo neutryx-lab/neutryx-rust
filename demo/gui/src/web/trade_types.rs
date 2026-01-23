@@ -20,6 +20,54 @@
 use serde::{Deserialize, Serialize};
 
 // =============================================================================
+// Task 4.1: Supported Rate Index Values
+// =============================================================================
+
+/// Supported rate index identifiers for API input.
+///
+/// These correspond to `infra_master::RateIndex` variants.
+pub const SUPPORTED_RATE_INDICES: &[&str] = &[
+    "SOFR",
+    "EURIBOR3M",
+    "EURIBOR6M",
+    "SONIA",
+    "TONAR",
+    "SARON",
+];
+
+/// Validates a rate index string.
+///
+/// Returns `Ok(())` if the rate index is valid or None, `Err` otherwise.
+pub fn validate_rate_index(rate_index: &Option<String>) -> Result<(), String> {
+    if let Some(idx) = rate_index {
+        let normalised = idx.to_uppercase();
+        if !SUPPORTED_RATE_INDICES.contains(&normalised.as_str()) {
+            return Err(format!(
+                "Invalid rate_index '{}'. Supported values: {}",
+                idx,
+                SUPPORTED_RATE_INDICES.join(", ")
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// Returns the default rate index for a given currency.
+///
+/// Used when rate_index is not specified in the request.
+#[must_use]
+pub fn default_rate_index_for_currency(currency: &str) -> &'static str {
+    match currency.to_uppercase().as_str() {
+        "USD" => "SOFR",
+        "EUR" => "EURIBOR3M",
+        "GBP" => "SONIA",
+        "JPY" => "TONAR",
+        "CHF" => "SARON",
+        _ => "SOFR", // Default fallback
+    }
+}
+
+// =============================================================================
 // Task 1.1: TradeInstrumentType Enum
 // =============================================================================
 
@@ -198,6 +246,10 @@ pub struct RatesParams {
     pub rate: f64,
     /// Notional principal amount
     pub notional: f64,
+    /// Rate index for floating leg (e.g., "SOFR", "EURIBOR3M", "SONIA")
+    /// If not specified, defaults to currency-appropriate index.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rate_index: Option<String>,
 }
 
 /// Swap instrument parameters (IRS, BasisSwap).
@@ -222,6 +274,10 @@ pub struct SwapParams {
     pub payment_frequency: String,
     /// Day count convention (e.g., "Act360", "Thirty360")
     pub day_count: String,
+    /// Rate index for floating leg (e.g., "SOFR", "EURIBOR3M", "SONIA")
+    /// If not specified, defaults to currency-appropriate index.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rate_index: Option<String>,
 }
 
 /// FX instrument parameters (FxForward, FxOption, CrossCurrencySwap).
@@ -328,6 +384,9 @@ pub struct LegDto {
     pub currency: String,
     /// Leg type: "Fixed", "Floating", etc.
     pub leg_type: String,
+    /// Rate index for floating legs (e.g., "SOFR", "EURIBOR3M")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rate_index: Option<String>,
     /// Cashflows in this leg
     pub cashflows: Vec<CashflowDto>,
 }
@@ -366,6 +425,9 @@ pub struct CashflowDto {
     pub rate: Option<f64>,
     /// Spread (if applicable)
     pub spread: Option<f64>,
+    /// Rate index for Linear/VanillaOption payoffs (e.g., "SOFR", "EURIBOR3M")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rate_index: Option<String>,
     /// Daily accrual details for OIS floating leg (optional)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub daily_accruals: Option<Vec<DailyAccrualDto>>,
@@ -654,12 +716,30 @@ mod tests {
                 tenor: "3M".to_string(),
                 rate: 0.05,
                 notional: 1_000_000.0,
+                rate_index: None,
             };
 
             let json = serde_json::to_string(&params).unwrap();
             assert!(json.contains("\"currency\":\"USD\""));
             assert!(json.contains("\"startDate\":\"2024-01-15\""));
             assert!(json.contains("\"tenor\":\"3M\""));
+            // rate_index should be omitted when None
+            assert!(!json.contains("rateIndex"));
+        }
+
+        #[test]
+        fn test_rates_params_with_rate_index() {
+            let params = RatesParams {
+                currency: "USD".to_string(),
+                start_date: "2024-01-15".to_string(),
+                tenor: "3M".to_string(),
+                rate: 0.05,
+                notional: 1_000_000.0,
+                rate_index: Some("SOFR".to_string()),
+            };
+
+            let json = serde_json::to_string(&params).unwrap();
+            assert!(json.contains("\"rateIndex\":\"SOFR\""));
         }
 
         #[test]
@@ -673,11 +753,32 @@ mod tests {
                 spread: None,
                 payment_frequency: "SemiAnnual".to_string(),
                 day_count: "Act360".to_string(),
+                rate_index: None,
             };
 
             let json = serde_json::to_string(&params).unwrap();
             assert!(json.contains("\"fixedRate\":0.03"));
             assert!(json.contains("\"paymentFrequency\":\"SemiAnnual\""));
+            // rate_index should be omitted when None
+            assert!(!json.contains("rateIndex"));
+        }
+
+        #[test]
+        fn test_swap_params_with_rate_index() {
+            let params = SwapParams {
+                currency: "EUR".to_string(),
+                start_date: "2024-01-15".to_string(),
+                tenor: "5Y".to_string(),
+                notional: 10_000_000.0,
+                fixed_rate: Some(0.03),
+                spread: None,
+                payment_frequency: "SemiAnnual".to_string(),
+                day_count: "Act360".to_string(),
+                rate_index: Some("EURIBOR6M".to_string()),
+            };
+
+            let json = serde_json::to_string(&params).unwrap();
+            assert!(json.contains("\"rateIndex\":\"EURIBOR6M\""));
         }
 
         #[test]
@@ -726,6 +827,7 @@ mod tests {
                 tenor: "3M".to_string(),
                 rate: 0.05,
                 notional: 1_000_000.0,
+                rate_index: None,
             });
 
             let json = serde_json::to_string(&params).unwrap();
@@ -782,6 +884,7 @@ mod tests {
                     direction: "Receiver".to_string(),
                     currency: "USD".to_string(),
                     leg_type: "Fixed".to_string(),
+                    rate_index: None,
                     cashflows: vec![CashflowDto {
                         payment_date: "2024-07-15".to_string(),
                         accrual_start: "2024-01-15".to_string(),
@@ -791,6 +894,7 @@ mod tests {
                         payoff_type: "Fixed".to_string(),
                         rate: Some(0.05),
                         spread: None,
+                        rate_index: None,
                         daily_accruals: None,
                     }],
                 }],
@@ -815,6 +919,7 @@ mod tests {
                 direction: "Payer".to_string(),
                 currency: "EUR".to_string(),
                 leg_type: "Floating".to_string(),
+                rate_index: None,
                 cashflows: vec![],
             };
 
@@ -822,6 +927,23 @@ mod tests {
             assert!(json.contains("\"legNumber\":1"));
             assert!(json.contains("\"direction\":\"Payer\""));
             assert!(json.contains("\"legType\":\"Floating\""));
+            // rate_index should be omitted when None
+            assert!(!json.contains("rateIndex"));
+        }
+
+        #[test]
+        fn test_leg_dto_with_rate_index() {
+            let leg = LegDto {
+                leg_number: 2,
+                direction: "Payer".to_string(),
+                currency: "USD".to_string(),
+                leg_type: "Floating".to_string(),
+                rate_index: Some("SOFR".to_string()),
+                cashflows: vec![],
+            };
+
+            let json = serde_json::to_string(&leg).unwrap();
+            assert!(json.contains("\"rateIndex\":\"SOFR\""));
         }
 
         #[test]
@@ -835,6 +957,7 @@ mod tests {
                 payoff_type: "Fixed".to_string(),
                 rate: Some(0.05),
                 spread: None,
+                rate_index: None,
                 daily_accruals: None,
             };
 
@@ -842,6 +965,72 @@ mod tests {
             assert!(json.contains("\"paymentDate\":\"2024-07-15\""));
             assert!(json.contains("\"yearFraction\":0.5"));
             assert!(json.contains("\"payoffType\":\"Fixed\""));
+            // rate_index should be omitted when None
+            assert!(!json.contains("rateIndex"));
+        }
+
+        #[test]
+        fn test_cashflow_dto_with_rate_index() {
+            let cf = CashflowDto {
+                payment_date: "2024-07-15".to_string(),
+                accrual_start: "2024-01-15".to_string(),
+                accrual_end: "2024-07-15".to_string(),
+                year_fraction: 0.5,
+                notional: 1_000_000.0,
+                payoff_type: "Linear".to_string(),
+                rate: None,
+                spread: Some(0.001),
+                rate_index: Some("EURIBOR3M".to_string()),
+                daily_accruals: None,
+            };
+
+            let json = serde_json::to_string(&cf).unwrap();
+            assert!(json.contains("\"payoffType\":\"Linear\""));
+            assert!(json.contains("\"rateIndex\":\"EURIBOR3M\""));
+        }
+    }
+
+    // =========================================================================
+    // Task 4.1/4.4: Rate Index Validation Tests
+    // =========================================================================
+
+    mod rate_index_tests {
+        use super::*;
+
+        #[test]
+        fn test_validate_rate_index_valid() {
+            assert!(validate_rate_index(&Some("SOFR".to_string())).is_ok());
+            assert!(validate_rate_index(&Some("sofr".to_string())).is_ok()); // case-insensitive
+            assert!(validate_rate_index(&Some("EURIBOR3M".to_string())).is_ok());
+            assert!(validate_rate_index(&Some("EURIBOR6M".to_string())).is_ok());
+            assert!(validate_rate_index(&Some("SONIA".to_string())).is_ok());
+            assert!(validate_rate_index(&Some("TONAR".to_string())).is_ok());
+            assert!(validate_rate_index(&Some("SARON".to_string())).is_ok());
+        }
+
+        #[test]
+        fn test_validate_rate_index_none() {
+            assert!(validate_rate_index(&None).is_ok());
+        }
+
+        #[test]
+        fn test_validate_rate_index_invalid() {
+            let result = validate_rate_index(&Some("INVALID".to_string()));
+            assert!(result.is_err());
+            let err = result.unwrap_err();
+            assert!(err.contains("Invalid rate_index"));
+            assert!(err.contains("SOFR")); // Should list valid options
+        }
+
+        #[test]
+        fn test_default_rate_index_for_currency() {
+            assert_eq!(default_rate_index_for_currency("USD"), "SOFR");
+            assert_eq!(default_rate_index_for_currency("usd"), "SOFR"); // case-insensitive
+            assert_eq!(default_rate_index_for_currency("EUR"), "EURIBOR3M");
+            assert_eq!(default_rate_index_for_currency("GBP"), "SONIA");
+            assert_eq!(default_rate_index_for_currency("JPY"), "TONAR");
+            assert_eq!(default_rate_index_for_currency("CHF"), "SARON");
+            assert_eq!(default_rate_index_for_currency("XYZ"), "SOFR"); // unknown defaults to SOFR
         }
     }
 

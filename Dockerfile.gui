@@ -22,8 +22,9 @@ RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/
 COPY --from=builder /app/target/release/demo-web ./demo-web
 # Copy static files to the path expected by the code
 COPY --from=builder /app/demo/gui/static ./demo/gui/static
-# Copy data files for external JSON data
-COPY --from=builder /app/demo/data/input ./demo/data/input
+# Copy data files inside static directory for reliable serving via fallback_service
+# Browser requests to /data/input/* will be served from demo/gui/static/data/input/*
+COPY --from=builder /app/demo/data/input ./demo/gui/static/data/input
 
 ENV RUST_LOG=info
 ENV FB_OPEN_BROWSER=false
