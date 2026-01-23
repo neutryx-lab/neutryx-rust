@@ -7,12 +7,13 @@
 
 use num_traits::Float;
 
+use super::{
+    breeden_litzenberger::BreedenLitzenberger,
+    config::{ExtrapolationMethod, VolCubeConfig},
+    sabr_surface::SabrParameterSurface,
+    types::InstrumentId,
+};
 use crate::market::error::MarketDataError;
-
-use super::breeden_litzenberger::BreedenLitzenberger;
-use super::config::{ExtrapolationMethod, VolCubeConfig};
-use super::sabr_surface::SabrParameterSurface;
-use super::types::InstrumentId;
 
 /// 3次元ボラティリティキューブトレイト。
 ///
@@ -101,7 +102,8 @@ impl<T: Float> VolCube<T> {
     /// # Arguments
     ///
     /// * `sabr_params` - カリブレーション済みSABRパラメータ平面
-    /// * `forwards` - Forward rate行列 `forwards\[i\]\[j\]` = (expiry\[i\], tenor\[j\])でのforward
+    /// * `forwards` - Forward rate行列 `forwards\[i\]\[j\]` = (expiry\[i\],
+    ///   tenor\[j\])でのforward
     /// * `config` - VolCube設定
     /// * `source_instruments` - ソースInstrument IDリスト
     /// * `strike_domain` - (strike_min, strike_max)
@@ -144,19 +146,13 @@ impl<T: Float> VolCube<T> {
     }
 
     /// デフォルトテナーを取得。
-    pub fn default_tenor(&self) -> T {
-        self.default_tenor
-    }
+    pub fn default_tenor(&self) -> T { self.default_tenor }
 
     /// 無リスク金利を取得。
-    pub fn risk_free_rate(&self) -> T {
-        self.risk_free_rate
-    }
+    pub fn risk_free_rate(&self) -> T { self.risk_free_rate }
 
     /// 差分計算用ストライク変位を取得。
-    pub fn delta_k(&self) -> T {
-        self.delta_k
-    }
+    pub fn delta_k(&self) -> T { self.delta_k }
 
     /// Forward rateを補間取得。
     ///
@@ -302,7 +298,8 @@ impl<T: Float> VolCube<T> {
         let one_minus_beta_2 = one_minus_beta * one_minus_beta;
         let one_minus_beta_4 = one_minus_beta_2 * one_minus_beta_2;
 
-        let denom = one + one_minus_beta_2 * log_fk_2 / twentyfour
+        let denom = one
+            + one_minus_beta_2 * log_fk_2 / twentyfour
             + one_minus_beta_4 * log_fk_4 / nineteen_twenty;
 
         // Higher-order corrections
@@ -341,14 +338,10 @@ impl<T: Float> VolCube<T> {
     }
 
     /// 設定への参照を取得。
-    pub fn config(&self) -> &VolCubeConfig {
-        &self.config
-    }
+    pub fn config(&self) -> &VolCubeConfig { &self.config }
 
     /// SABRパラメータ平面への参照を取得。
-    pub fn sabr_params(&self) -> &SabrParameterSurface<T> {
-        &self.sabr_params
-    }
+    pub fn sabr_params(&self) -> &SabrParameterSurface<T> { &self.sabr_params }
 }
 
 impl<T: Float + Send + Sync> VolatilityCube<T> for VolCube<T> {
@@ -408,13 +401,7 @@ impl<T: Float + Send + Sync> VolatilityCube<T> for VolCube<T> {
 
         // SABR Hagan公式でimplied volatilityを計算
         let vol = self.sabr_implied_vol(
-            forward,
-            strike,
-            expiry,
-            sabr.alpha,
-            sabr.beta,
-            sabr.rho,
-            sabr.nu,
+            forward, strike, expiry, sabr.alpha, sabr.beta, sabr.rho, sabr.nu,
         );
 
         Ok(vol)
@@ -454,21 +441,13 @@ impl<T: Float + Send + Sync> VolatilityCube<T> for VolCube<T> {
         })
     }
 
-    fn expiry_domain(&self) -> (T, T) {
-        self.sabr_params.expiry_domain()
-    }
+    fn expiry_domain(&self) -> (T, T) { self.sabr_params.expiry_domain() }
 
-    fn tenor_domain(&self) -> (T, T) {
-        self.sabr_params.tenor_domain()
-    }
+    fn tenor_domain(&self) -> (T, T) { self.sabr_params.tenor_domain() }
 
-    fn strike_domain(&self) -> (T, T) {
-        (self.strike_min, self.strike_max)
-    }
+    fn strike_domain(&self) -> (T, T) { (self.strike_min, self.strike_max) }
 
-    fn source_instruments(&self) -> &[InstrumentId] {
-        &self.source_instruments
-    }
+    fn source_instruments(&self) -> &[InstrumentId] { &self.source_instruments }
 }
 
 #[cfg(test)]
@@ -496,18 +475,21 @@ mod tests {
         let sabr_surface = SabrParameterSurface::new(expiries, tenors, &params, beta).unwrap();
 
         let forwards = vec![
-            vec![0.03, 0.035], // expiry = 0.5
+            vec![0.03, 0.035],  // expiry = 0.5
             vec![0.032, 0.038], // expiry = 1.0
         ];
 
         let config = VolCubeConfig::default();
-        let source_instruments = vec![
-            InstrumentId::new("INST-1"),
-            InstrumentId::new("INST-2"),
-        ];
+        let source_instruments = vec![InstrumentId::new("INST-1"), InstrumentId::new("INST-2")];
         let strike_domain = (0.01, 0.10);
 
-        VolCube::new(sabr_surface, forwards, config, source_instruments, strike_domain)
+        VolCube::new(
+            sabr_surface,
+            forwards,
+            config,
+            source_instruments,
+            strike_domain,
+        )
     }
 
     // =========================================================================
@@ -602,7 +584,10 @@ mod tests {
         let cube = create_test_cube();
         let result = cube.volatility(0.5, 0.0, 0.03);
         assert!(result.is_err());
-        assert!(matches!(result, Err(MarketDataError::InvalidMaturity { .. })));
+        assert!(matches!(
+            result,
+            Err(MarketDataError::InvalidMaturity { .. })
+        ));
     }
 
     #[test]
@@ -634,14 +619,19 @@ mod tests {
             let tenors = vec![2.0, 5.0];
             let beta = 0.5;
             let params = vec![
-                vec![SabrParams::new(0.04, beta, -0.3, 0.4), SabrParams::new(0.05, beta, -0.25, 0.35)],
-                vec![SabrParams::new(0.045, beta, -0.35, 0.45), SabrParams::new(0.055, beta, -0.2, 0.3)],
+                vec![
+                    SabrParams::new(0.04, beta, -0.3, 0.4),
+                    SabrParams::new(0.05, beta, -0.25, 0.35),
+                ],
+                vec![
+                    SabrParams::new(0.045, beta, -0.35, 0.45),
+                    SabrParams::new(0.055, beta, -0.2, 0.3),
+                ],
             ];
             SabrParameterSurface::new(expiries, tenors, &params, beta).unwrap()
         };
 
-        let config = VolCubeConfig::default()
-            .with_extrapolation(ExtrapolationMethod::Error);
+        let config = VolCubeConfig::default().with_extrapolation(ExtrapolationMethod::Error);
 
         let cube = VolCube::new(
             sabr_surface,
@@ -695,7 +685,11 @@ mod tests {
         // Should succeed and return non-negative density
         assert!(result.is_ok());
         let density = result.unwrap();
-        assert!(density >= 0.0, "Density should be non-negative: {}", density);
+        assert!(
+            density >= 0.0,
+            "Density should be non-negative: {}",
+            density
+        );
     }
 
     #[test]
@@ -711,8 +705,7 @@ mod tests {
 
     #[test]
     fn test_volcube_probability_density_with_custom_params() {
-        let cube = create_test_cube()
-            .with_density_params(3.5, 0.03, 0.002);
+        let cube = create_test_cube().with_density_params(3.5, 0.03, 0.002);
 
         assert_eq!(cube.default_tenor(), 3.5);
         assert_eq!(cube.risk_free_rate(), 0.03);

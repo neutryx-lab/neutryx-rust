@@ -2,18 +2,19 @@
 //!
 //! This module provides:
 //! - [`ModelConfig`]: Model selection and simulation parameters
-//! - [`PricerConfig`]: Pricer settings including Greeks mode and default currency
-
-use super::error::ConfigError;
-use crate::greeks::{GreeksConfig, GreeksMode};
+//! - [`PricerConfig`]: Pricer settings including Greeks mode and default
+//!   currency
 
 #[cfg(feature = "l1l2-integration")]
 use infra_master::market::Currency;
 
+use super::error::ConfigError;
+use crate::greeks::{GreeksConfig, GreeksMode};
+
 /// Model configuration for Generic Pricer.
 ///
-/// Contains model selection and simulation parameters (path count, steps, seed).
-/// Use [`ModelConfigBuilder`] for construction.
+/// Contains model selection and simulation parameters (path count, steps,
+/// seed). Use [`ModelConfigBuilder`] for construction.
 ///
 /// # Default Values
 ///
@@ -65,9 +66,7 @@ impl Default for ModelConfig {
 
 impl ModelConfig {
     /// Creates a new builder for constructing a `ModelConfig`.
-    pub fn builder() -> ModelConfigBuilder {
-        ModelConfigBuilder::default()
-    }
+    pub fn builder() -> ModelConfigBuilder { ModelConfigBuilder::default() }
 
     /// Validates the configuration.
     ///
@@ -255,9 +254,7 @@ impl Default for PricerConfig {
 
 impl PricerConfig {
     /// Creates a new builder for constructing a `PricerConfig`.
-    pub fn builder() -> PricerConfigBuilder {
-        PricerConfigBuilder::default()
-    }
+    pub fn builder() -> PricerConfigBuilder { PricerConfigBuilder::default() }
 
     /// Validates the configuration.
     ///
@@ -379,7 +376,13 @@ mod tests {
         let result = ModelConfig::builder().num_paths(0).build();
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert!(matches!(err, ConfigError::InvalidModelParameter { name: "num_paths", .. }));
+        assert!(matches!(
+            err,
+            ConfigError::InvalidModelParameter {
+                name: "num_paths",
+                ..
+            }
+        ));
     }
 
     #[test]
@@ -393,7 +396,13 @@ mod tests {
         let result = ModelConfig::builder().num_steps(0).build();
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert!(matches!(err, ConfigError::InvalidModelParameter { name: "num_steps", .. }));
+        assert!(matches!(
+            err,
+            ConfigError::InvalidModelParameter {
+                name: "num_steps",
+                ..
+            }
+        ));
     }
 
     #[test]
@@ -404,7 +413,11 @@ mod tests {
 
     #[test]
     fn test_model_config_clone() {
-        let config1 = ModelConfig::builder().num_paths(5000).seed(123).build().unwrap();
+        let config1 = ModelConfig::builder()
+            .num_paths(5000)
+            .seed(123)
+            .build()
+            .unwrap();
         let config2 = config1.clone();
         assert_eq!(config1.num_paths, config2.num_paths);
         assert_eq!(config1.seed, config2.seed);
@@ -465,7 +478,10 @@ mod tests {
             .build()
             .unwrap();
         let config2 = config1.clone();
-        assert_eq!(config1.use_thread_local_buffers, config2.use_thread_local_buffers);
+        assert_eq!(
+            config1.use_thread_local_buffers,
+            config2.use_thread_local_buffers
+        );
     }
 
     // =========================================================================

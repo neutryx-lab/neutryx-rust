@@ -23,11 +23,11 @@
 //! 2. 中心差分で二次微分を近似
 //! 3. 割引係数でスケーリング
 
-use num_traits::Float;
 use std::f64::consts::PI;
 
-use super::cube::VolatilityCube;
-use super::error::VolCubeError;
+use num_traits::Float;
+
+use super::{cube::VolatilityCube, error::VolCubeError};
 
 /// Breeden-Litzenberger計算を提供する構造体。
 ///
@@ -39,9 +39,7 @@ pub struct BreedenLitzenberger;
 
 impl BreedenLitzenberger {
     /// 新しいBreedenLitzenbergerインスタンスを作成。
-    pub fn new() -> Self {
-        Self
-    }
+    pub fn new() -> Self { Self }
 
     /// リスク中立確率密度関数を計算。
     ///
@@ -98,9 +96,12 @@ impl BreedenLitzenberger {
         let vol_plus = vol_cube.volatility(expiry, tenor, strike + delta_k)?;
 
         // 3点でのコール価格を計算
-        let call_minus = Self::black_scholes_call(forward, strike - delta_k, expiry, vol_minus, risk_free_rate);
-        let call_center = Self::black_scholes_call(forward, strike, expiry, vol_center, risk_free_rate);
-        let call_plus = Self::black_scholes_call(forward, strike + delta_k, expiry, vol_plus, risk_free_rate);
+        let call_minus =
+            Self::black_scholes_call(forward, strike - delta_k, expiry, vol_minus, risk_free_rate);
+        let call_center =
+            Self::black_scholes_call(forward, strike, expiry, vol_center, risk_free_rate);
+        let call_plus =
+            Self::black_scholes_call(forward, strike + delta_k, expiry, vol_plus, risk_free_rate);
 
         // 中心差分で二次微分を近似: d²C/dK² ≈ (C(K+h) - 2C(K) + C(K-h)) / h²
         let delta_k_squared = delta_k * delta_k;
@@ -165,8 +166,10 @@ impl BreedenLitzenberger {
         let vol_plus = vol_cube.volatility(expiry, tenor, strike + delta_k)?;
 
         // 2点でのコール価格を計算
-        let call_minus = Self::black_scholes_call(forward, strike - delta_k, expiry, vol_minus, risk_free_rate);
-        let call_plus = Self::black_scholes_call(forward, strike + delta_k, expiry, vol_plus, risk_free_rate);
+        let call_minus =
+            Self::black_scholes_call(forward, strike - delta_k, expiry, vol_minus, risk_free_rate);
+        let call_plus =
+            Self::black_scholes_call(forward, strike + delta_k, expiry, vol_plus, risk_free_rate);
 
         // 中心差分で一次微分を近似: dC/dK ≈ (C(K+h) - C(K-h)) / 2h
         let two = T::from(2.0).unwrap();
@@ -268,9 +271,7 @@ impl BreedenLitzenberger {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::market::volcube::{
-        VolCubeBuilder, VolCubeConfig, VolInstrument,
-    };
+    use crate::market::volcube::{VolCubeBuilder, VolCubeConfig, VolInstrument};
 
     fn make_test_cube() -> impl VolatilityCube<f64> {
         let forward = 0.03;
@@ -433,8 +434,9 @@ mod tests {
         let delta_k = 0.001;
 
         let density = BreedenLitzenberger::probability_density(
-            &cube, forward, expiry, tenor, strike, rate, delta_k
-        ).unwrap();
+            &cube, forward, expiry, tenor, strike, rate, delta_k,
+        )
+        .unwrap();
 
         // Density should be non-negative
         assert!(density >= 0.0);
@@ -451,8 +453,9 @@ mod tests {
 
         // Density near ATM should be higher than far OTM
         let density_atm = BreedenLitzenberger::probability_density(
-            &cube, forward, expiry, tenor, forward, rate, delta_k
-        ).unwrap();
+            &cube, forward, expiry, tenor, forward, rate, delta_k,
+        )
+        .unwrap();
 
         // Check multiple OTM points if they're in range
         let strike_otm = forward * 1.1; // 10% OTM
@@ -460,8 +463,9 @@ mod tests {
 
         if strike_otm > strike_min && strike_otm < strike_max {
             let density_otm = BreedenLitzenberger::probability_density(
-                &cube, forward, expiry, tenor, strike_otm, rate, delta_k
-            ).unwrap_or(0.0);
+                &cube, forward, expiry, tenor, strike_otm, rate, delta_k,
+            )
+            .unwrap_or(0.0);
 
             // ATM density is typically higher than OTM
             // (not always true for extreme skews, so we just check non-negative)
@@ -474,9 +478,8 @@ mod tests {
     fn test_probability_density_invalid_expiry() {
         let cube = make_test_cube();
 
-        let result = BreedenLitzenberger::probability_density(
-            &cube, 0.03, -1.0, 5.0, 0.03, 0.02, 0.001
-        );
+        let result =
+            BreedenLitzenberger::probability_density(&cube, 0.03, -1.0, 5.0, 0.03, 0.02, 0.001);
 
         assert!(result.is_err());
     }
@@ -485,9 +488,8 @@ mod tests {
     fn test_probability_density_invalid_strike() {
         let cube = make_test_cube();
 
-        let result = BreedenLitzenberger::probability_density(
-            &cube, 0.03, 1.0, 5.0, -0.03, 0.02, 0.001
-        );
+        let result =
+            BreedenLitzenberger::probability_density(&cube, 0.03, 1.0, 5.0, -0.03, 0.02, 0.001);
 
         assert!(result.is_err());
     }
@@ -496,9 +498,8 @@ mod tests {
     fn test_probability_density_invalid_delta_k() {
         let cube = make_test_cube();
 
-        let result = BreedenLitzenberger::probability_density(
-            &cube, 0.03, 1.0, 5.0, 0.03, 0.02, -0.001
-        );
+        let result =
+            BreedenLitzenberger::probability_density(&cube, 0.03, 1.0, 5.0, 0.03, 0.02, -0.001);
 
         assert!(result.is_err());
     }
@@ -514,8 +515,9 @@ mod tests {
         let delta_k = 0.001;
 
         let cdf = BreedenLitzenberger::cumulative_probability(
-            &cube, forward, expiry, tenor, strike, rate, delta_k
-        ).unwrap();
+            &cube, forward, expiry, tenor, strike, rate, delta_k,
+        )
+        .unwrap();
 
         // CDF should be in [0, 1]
         assert!(cdf >= 0.0);
@@ -544,11 +546,17 @@ mod tests {
         let mut prev_cdf = 0.0;
         for &strike in &test_strikes {
             let cdf = BreedenLitzenberger::cumulative_probability(
-                &cube, forward, expiry, tenor, strike, rate, delta_k
-            ).unwrap_or(0.0);
+                &cube, forward, expiry, tenor, strike, rate, delta_k,
+            )
+            .unwrap_or(0.0);
 
             // CDF should be monotonically increasing
-            assert!(cdf >= prev_cdf - 0.01, "CDF should be monotonic: {} >= {}", cdf, prev_cdf);
+            assert!(
+                cdf >= prev_cdf - 0.01,
+                "CDF should be monotonic: {} >= {}",
+                cdf,
+                prev_cdf
+            );
             prev_cdf = cdf;
         }
     }
@@ -560,17 +568,20 @@ mod tests {
         // Invalid expiry
         assert!(BreedenLitzenberger::cumulative_probability(
             &cube, 0.03, -1.0, 5.0, 0.03, 0.02, 0.001
-        ).is_err());
+        )
+        .is_err());
 
         // Invalid strike
         assert!(BreedenLitzenberger::cumulative_probability(
             &cube, 0.03, 1.0, 5.0, -0.03, 0.02, 0.001
-        ).is_err());
+        )
+        .is_err());
 
         // Invalid delta_k
         assert!(BreedenLitzenberger::cumulative_probability(
             &cube, 0.03, 1.0, 5.0, 0.03, 0.02, -0.001
-        ).is_err());
+        )
+        .is_err());
     }
 
     #[test]
@@ -583,8 +594,9 @@ mod tests {
         let delta_k = 0.001;
 
         let cdf_atm = BreedenLitzenberger::cumulative_probability(
-            &cube, forward, expiry, tenor, forward, rate, delta_k
-        ).unwrap();
+            &cube, forward, expiry, tenor, forward, rate, delta_k,
+        )
+        .unwrap();
 
         // ATM CDF should be around 0.5 for symmetric distribution
         // With skew it can deviate, but should be in reasonable range

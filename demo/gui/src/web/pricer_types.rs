@@ -332,7 +332,8 @@ pub enum InterpolationMethod {
     /// Interpolates r(t) linearly, then DF(t) = exp(-r(t) * t).
     LinearOnZeroRate,
     /// Linear interpolation on log discount factors (recommended).
-    /// Interpolates ln(DF(t)) linearly, equivalent to constant forward rate between pillars.
+    /// Interpolates ln(DF(t)) linearly, equivalent to constant forward rate
+    /// between pillars.
     #[default]
     LinearOnLogDf,
 }
@@ -3089,7 +3090,8 @@ mod tests {
 
         #[test]
         fn test_deserialize_interpolation_methods() {
-            let linear: InterpolationMethod = serde_json::from_str("\"linear_on_zero_rate\"").unwrap();
+            let linear: InterpolationMethod =
+                serde_json::from_str("\"linear_on_zero_rate\"").unwrap();
             assert_eq!(linear, InterpolationMethod::LinearOnZeroRate);
 
             let log_df: InterpolationMethod = serde_json::from_str("\"linear_on_log_df\"").unwrap();

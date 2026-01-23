@@ -45,14 +45,14 @@ mod proptest_tests;
 pub use breeden_litzenberger::BreedenLitzenberger;
 pub use builder::VolCubeBuilder;
 pub use cache::{CacheStats, SharedVolCubeCache, VolCubeCache, VolCubeCacheEntry, VolCubeKey};
-pub use calibrator::{
-    BoxedCalibrator, CalibrationResult, CalibratorOutput, SabrCalibrator, SviCalibrator,
-    VolCubeCalibrator, default_calibrator,
-};
 #[cfg(feature = "local-vol")]
 pub use calibrator::LocalVolCalibrator;
 #[cfg(feature = "stochastic-local-vol")]
 pub use calibrator::StochasticLocalVolCalibrator;
+pub use calibrator::{
+    default_calibrator, BoxedCalibrator, CalibrationResult, CalibratorOutput, SabrCalibrator,
+    SviCalibrator, VolCubeCalibrator,
+};
 pub use config::{
     ExtrapolationMethod, InterpolationMethod, OptimizerType, StrikeAxisType, VolCubeConfig,
 };

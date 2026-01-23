@@ -46,7 +46,8 @@ pub enum CurveInterpolation {
 /// # Interpolation Methods
 ///
 /// - `LinearOnZeroRate`: Interpolates zero rates linearly
-/// - `LinearOnLogDf`: Interpolates ln(DF) linearly (constant forward between pillars)
+/// - `LinearOnLogDf`: Interpolates ln(DF) linearly (constant forward between
+///   pillars)
 ///
 /// # Example
 ///
@@ -298,7 +299,8 @@ mod tests {
         let tenors = [0.5_f64, 1.0, 2.0];
         let rates = [0.02, 0.025, 0.03];
         let curve =
-            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false).unwrap();
+            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false)
+                .unwrap();
 
         assert_eq!(curve.domain(), (0.5, 2.0));
         assert_eq!(curve.method(), CurveInterpolation::LinearOnZeroRate);
@@ -309,7 +311,8 @@ mod tests {
     fn test_new_insufficient_data() {
         let tenors = [1.0_f64];
         let rates = [0.02];
-        let result = InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false);
+        let result =
+            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false);
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -325,7 +328,8 @@ mod tests {
     fn test_new_mismatched_lengths() {
         let tenors = [0.5_f64, 1.0, 2.0];
         let rates = [0.02, 0.025];
-        let result = InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false);
+        let result =
+            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false);
 
         assert!(result.is_err());
     }
@@ -334,7 +338,8 @@ mod tests {
     fn test_new_negative_tenor() {
         let tenors = [-0.5_f64, 1.0];
         let rates = [0.02, 0.025];
-        let result = InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false);
+        let result =
+            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false);
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -347,7 +352,8 @@ mod tests {
     fn test_new_unsorted_tenors() {
         let tenors = [1.0_f64, 0.5, 2.0];
         let rates = [0.02, 0.025, 0.03];
-        let result = InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false);
+        let result =
+            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false);
 
         assert!(result.is_err());
     }
@@ -361,7 +367,8 @@ mod tests {
         let tenors = [0.5_f64, 1.0, 2.0];
         let rates = [0.02, 0.03, 0.04];
         let curve =
-            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false).unwrap();
+            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false)
+                .unwrap();
 
         // At pillar points, zero rate should match input
         assert!((curve.zero_rate(0.5).unwrap() - 0.02).abs() < 1e-10);
@@ -374,7 +381,8 @@ mod tests {
         let tenors = [0.5_f64, 1.0, 2.0];
         let rates = [0.02, 0.04, 0.04]; // rate jumps at 1.0
         let curve =
-            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false).unwrap();
+            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false)
+                .unwrap();
 
         // At 0.75 (midpoint of 0.5 and 1.0), rate should be 0.03
         let rate = curve.zero_rate(0.75).unwrap();
@@ -386,7 +394,8 @@ mod tests {
         let tenors = [0.5_f64, 1.0, 2.0];
         let rates = [0.03, 0.03, 0.03]; // flat rates for easy verification
         let curve =
-            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false).unwrap();
+            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false)
+                .unwrap();
 
         let df = curve.discount_factor(1.0).unwrap();
         let expected = (-0.03_f64).exp();
@@ -398,7 +407,8 @@ mod tests {
         let tenors = [0.5_f64, 1.0, 2.0];
         let rates = [0.02, 0.03, 0.04];
         let curve =
-            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false).unwrap();
+            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false)
+                .unwrap();
 
         let result = curve.discount_factor(0.25);
         assert!(result.is_err());
@@ -413,7 +423,8 @@ mod tests {
         let tenors = [0.5_f64, 1.0, 2.0];
         let rates = [0.02, 0.03, 0.04];
         let curve =
-            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, true).unwrap();
+            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, true)
+                .unwrap();
 
         // Extrapolate below: should use first rate
         let rate_low = curve.zero_rate(0.25).unwrap();
@@ -433,7 +444,8 @@ mod tests {
         let tenors = [0.5_f64, 1.0, 2.0];
         let rates = [0.02, 0.03, 0.04];
         let curve =
-            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnLogDf, false).unwrap();
+            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnLogDf, false)
+                .unwrap();
 
         // At pillar points, discount factors should match
         for (&t, &r) in tenors.iter().zip(rates.iter()) {
@@ -454,7 +466,8 @@ mod tests {
         let tenors = [1.0_f64, 2.0];
         let rates = [0.03, 0.04];
         let curve =
-            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnLogDf, false).unwrap();
+            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnLogDf, false)
+                .unwrap();
 
         // LogLinear implies constant forward rate between pillars
         let df1 = curve.discount_factor(1.0).unwrap();
@@ -478,7 +491,8 @@ mod tests {
         let tenors = [0.5_f64, 1.0, 2.0];
         let rates = [0.02, 0.03, 0.04];
         let curve =
-            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false).unwrap();
+            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false)
+                .unwrap();
 
         let df = curve.discount_factor(0.0).unwrap();
         assert!((df - 1.0).abs() < 1e-10);
@@ -489,7 +503,8 @@ mod tests {
         let tenors = [0.5_f64, 1.0, 2.0];
         let rates = [0.02, 0.03, 0.04];
         let curve =
-            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false).unwrap();
+            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false)
+                .unwrap();
 
         let result = curve.discount_factor(-1.0);
         assert!(result.is_err());
@@ -504,7 +519,8 @@ mod tests {
         let tenors = [0.5_f64, 1.0, 2.0];
         let rates = [0.02, 0.03, 0.04];
         let curve =
-            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false).unwrap();
+            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false)
+                .unwrap();
 
         let result = curve.zero_rate(0.0);
         assert!(result.is_err());
@@ -519,7 +535,8 @@ mod tests {
         let tenors = [0.5_f32, 1.0, 2.0];
         let rates = [0.02_f32, 0.03, 0.04];
         let curve =
-            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false).unwrap();
+            InterpolatedCurve::new(&tenors, &rates, CurveInterpolation::LinearOnZeroRate, false)
+                .unwrap();
 
         let df = curve.discount_factor(1.0_f32).unwrap();
         assert!(df > 0.0 && df < 1.0);

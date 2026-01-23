@@ -1,7 +1,8 @@
 //! Curve Builder WebApp type definitions.
 //!
 //! This module provides request/response types for the Curve Builder API,
-//! including instrument lists, curve build parameters, and parameter curve outputs.
+//! including instrument lists, curve build parameters, and parameter curve
+//! outputs.
 //!
 //! # API Endpoints Coverage
 //!
@@ -32,7 +33,8 @@ use serde::{Deserialize, Serialize};
 ///
 /// # Requirements Coverage
 ///
-/// - Requirement 3.1: LinearOnZeroRate, LinearOnLogDf, CubicSplineOnZeroRate, MonotonicOnZeroRate補間手法を選択肢として提供
+/// - Requirement 3.1: LinearOnZeroRate, LinearOnLogDf, CubicSplineOnZeroRate,
+///   MonotonicOnZeroRate補間手法を選択肢として提供
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum InterpolationMethod {
@@ -40,7 +42,8 @@ pub enum InterpolationMethod {
     /// Interpolates r(t) linearly, then DF(t) = exp(-r(t) * t).
     LinearOnZeroRate,
     /// Linear interpolation on log discount factors (recommended).
-    /// Interpolates ln(DF(t)) linearly, equivalent to constant forward rate between pillars.
+    /// Interpolates ln(DF(t)) linearly, equivalent to constant forward rate
+    /// between pillars.
     #[default]
     LinearOnLogDf,
     /// Cubic spline interpolation on zero rates.
@@ -66,8 +69,12 @@ impl InterpolationMethod {
     pub fn description(&self) -> &'static str {
         match self {
             Self::LinearOnZeroRate => "Linear interpolation on continuously compounded zero rate",
-            Self::LinearOnLogDf => "Linear interpolation on ln(DF), constant forward between pillars",
-            Self::CubicSplineOnZeroRate => "Cubic spline on zero rate with continuous 1st/2nd derivatives",
+            Self::LinearOnLogDf => {
+                "Linear interpolation on ln(DF), constant forward between pillars"
+            }
+            Self::CubicSplineOnZeroRate => {
+                "Cubic spline on zero rate with continuous 1st/2nd derivatives"
+            }
             Self::MonotonicOnZeroRate => "Monotone-preserving cubic interpolation on zero rate",
         }
     }
@@ -181,7 +188,8 @@ impl InstrumentType {
 
 /// Instrument definition from JSON file.
 ///
-/// Used for deserializing instrument data from `demo/data/input/curves/{index}.json`.
+/// Used for deserializing instrument data from
+/// `demo/data/input/curves/{index}.json`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct InstrumentFileEntry {
@@ -219,7 +227,8 @@ pub struct InstrumentFile {
 ///
 /// # Requirements Coverage
 ///
-/// - Requirement 1.3: Tenor, Rate Value, Index名, Instrumentタイプを含む完全なInstrument定義
+/// - Requirement 1.3: Tenor, Rate Value, Index名,
+///   Instrumentタイプを含む完全なInstrument定義
 /// - Requirement 7.1: `/api/curves/instruments/{index}` エンドポイント
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -306,7 +315,8 @@ pub struct InstrumentInput {
 ///
 /// # Requirements Coverage
 ///
-/// - Requirement 4.3: 構築結果（成功/失敗、処理時間、使用Instrument数）をサマリとして表示
+/// - Requirement 4.3:
+///   構築結果（成功/失敗、処理時間、使用Instrument数）をサマリとして表示
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CurveBuildResponse {
@@ -424,26 +434,40 @@ impl BuilderListResponse {
             interpolation_methods: vec![
                 InterpolationMethodInfo {
                     id: "linear_on_zero_rate".to_string(),
-                    name: InterpolationMethod::LinearOnZeroRate.display_name().to_string(),
-                    description: InterpolationMethod::LinearOnZeroRate.description().to_string(),
+                    name: InterpolationMethod::LinearOnZeroRate
+                        .display_name()
+                        .to_string(),
+                    description: InterpolationMethod::LinearOnZeroRate
+                        .description()
+                        .to_string(),
                     recommended: InterpolationMethod::LinearOnZeroRate.is_recommended(),
                 },
                 InterpolationMethodInfo {
                     id: "linear_on_log_df".to_string(),
-                    name: InterpolationMethod::LinearOnLogDf.display_name().to_string(),
+                    name: InterpolationMethod::LinearOnLogDf
+                        .display_name()
+                        .to_string(),
                     description: InterpolationMethod::LinearOnLogDf.description().to_string(),
                     recommended: InterpolationMethod::LinearOnLogDf.is_recommended(),
                 },
                 InterpolationMethodInfo {
                     id: "cubic_spline_on_zero_rate".to_string(),
-                    name: InterpolationMethod::CubicSplineOnZeroRate.display_name().to_string(),
-                    description: InterpolationMethod::CubicSplineOnZeroRate.description().to_string(),
+                    name: InterpolationMethod::CubicSplineOnZeroRate
+                        .display_name()
+                        .to_string(),
+                    description: InterpolationMethod::CubicSplineOnZeroRate
+                        .description()
+                        .to_string(),
                     recommended: InterpolationMethod::CubicSplineOnZeroRate.is_recommended(),
                 },
                 InterpolationMethodInfo {
                     id: "monotonic_on_zero_rate".to_string(),
-                    name: InterpolationMethod::MonotonicOnZeroRate.display_name().to_string(),
-                    description: InterpolationMethod::MonotonicOnZeroRate.description().to_string(),
+                    name: InterpolationMethod::MonotonicOnZeroRate
+                        .display_name()
+                        .to_string(),
+                    description: InterpolationMethod::MonotonicOnZeroRate
+                        .description()
+                        .to_string(),
                     recommended: InterpolationMethod::MonotonicOnZeroRate.is_recommended(),
                 },
             ],
@@ -573,14 +597,21 @@ mod tests {
             let json = serde_json::to_string(&method).unwrap();
             assert_eq!(json, "\"cubic_spline_on_zero_rate\"");
 
-            let parsed: InterpolationMethod = serde_json::from_str("\"linear_on_zero_rate\"").unwrap();
+            let parsed: InterpolationMethod =
+                serde_json::from_str("\"linear_on_zero_rate\"").unwrap();
             assert_eq!(parsed, InterpolationMethod::LinearOnZeroRate);
         }
 
         #[test]
         fn test_interpolation_method_display_name() {
-            assert_eq!(InterpolationMethod::LinearOnZeroRate.display_name(), "Linear on Zero Rate");
-            assert_eq!(InterpolationMethod::LinearOnLogDf.display_name(), "Linear on ln(DF)");
+            assert_eq!(
+                InterpolationMethod::LinearOnZeroRate.display_name(),
+                "Linear on Zero Rate"
+            );
+            assert_eq!(
+                InterpolationMethod::LinearOnLogDf.display_name(),
+                "Linear on ln(DF)"
+            );
         }
 
         #[test]
@@ -631,7 +662,10 @@ mod tests {
 
         #[test]
         fn test_parameter_type_display_name() {
-            assert_eq!(ParameterType::DiscountFactor.display_name(), "Discount Factor");
+            assert_eq!(
+                ParameterType::DiscountFactor.display_name(),
+                "Discount Factor"
+            );
             assert_eq!(ParameterType::ZeroRate.display_name(), "Zero Rate");
             assert_eq!(ParameterType::ForwardRate.display_name(), "Forward Rate");
         }
@@ -768,8 +802,14 @@ mod tests {
                 curve_id: "abc-123".to_string(),
                 parameter_type: ParameterType::DiscountFactor,
                 data: vec![
-                    ParameterPoint { tenor: 0.25, value: 0.9875 },
-                    ParameterPoint { tenor: 0.5, value: 0.975 },
+                    ParameterPoint {
+                        tenor: 0.25,
+                        value: 0.9875,
+                    },
+                    ParameterPoint {
+                        tenor: 0.5,
+                        value: 0.975,
+                    },
                 ],
             };
 
@@ -802,7 +842,11 @@ mod tests {
             assert!(linear_on_log_df.recommended);
 
             // Check that global is disabled
-            let global = response.bootstrap_methods.iter().find(|m| m.id == "global").unwrap();
+            let global = response
+                .bootstrap_methods
+                .iter()
+                .find(|m| m.id == "global")
+                .unwrap();
             assert!(!global.enabled);
         }
 
@@ -853,10 +897,7 @@ mod tests {
                 .with_instance("/api/curves/build/request-123");
 
             assert!(problem.instance.is_some());
-            assert_eq!(
-                problem.instance.unwrap(),
-                "/api/curves/build/request-123"
-            );
+            assert_eq!(problem.instance.unwrap(), "/api/curves/build/request-123");
         }
 
         #[test]

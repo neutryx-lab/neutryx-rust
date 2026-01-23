@@ -4,14 +4,12 @@
 //! - Bump-and-revalue (finite difference) method
 //! - AAD (Enzyme AD) method (when enzyme-ad feature is enabled)
 
-use super::error::PricingError;
-
 #[cfg(not(feature = "l1l2-integration"))]
 use super::config::DefaultCurrency as Currency;
-
+#[cfg(not(feature = "l1l2-integration"))]
+use super::error::PricingError;
 #[cfg(not(feature = "l1l2-integration"))]
 use super::pricer::{GenericPricer, SimpleLeg};
-
 #[cfg(not(feature = "l1l2-integration"))]
 use super::result::Date;
 
@@ -29,9 +27,9 @@ pub struct BumpSizes {
 impl Default for BumpSizes {
     fn default() -> Self {
         Self {
-            rate_bump_bp: 1.0,     // 1 basis point
-            fx_bump_pct: 1.0,      // 1%
-            vol_bump_pct: 1.0,     // 1 vol point
+            rate_bump_bp: 1.0, // 1 basis point
+            fx_bump_pct: 1.0,  // 1%
+            vol_bump_pct: 1.0, // 1 vol point
         }
     }
 }
@@ -136,25 +134,17 @@ impl BumpAndRevalueCalculator {
     }
 
     /// Returns the bump sizes.
-    pub fn bump_sizes(&self) -> &BumpSizes {
-        &self.bump_sizes
-    }
+    pub fn bump_sizes(&self) -> &BumpSizes { &self.bump_sizes }
 
     /// Returns whether gamma calculation is enabled.
-    pub fn computes_gamma(&self) -> bool {
-        self.compute_gamma
-    }
+    pub fn computes_gamma(&self) -> bool { self.compute_gamma }
 
     /// Returns whether theta calculation is enabled.
-    pub fn computes_theta(&self) -> bool {
-        self.compute_theta
-    }
+    pub fn computes_theta(&self) -> bool { self.compute_theta }
 }
 
 impl Default for BumpAndRevalueCalculator {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 /// Calculates rate delta using central difference.
@@ -208,9 +198,7 @@ pub fn calculate_gamma(pv_base: f64, pv_up: f64, pv_down: f64, bump_bp: f64) -> 
 /// # Returns
 ///
 /// Theta - the daily time decay.
-pub fn calculate_theta(pv_today: f64, pv_tomorrow: f64) -> f64 {
-    pv_tomorrow - pv_today
-}
+pub fn calculate_theta(pv_today: f64, pv_tomorrow: f64) -> f64 { pv_tomorrow - pv_today }
 
 /// Calculates FX delta.
 ///
@@ -325,10 +313,8 @@ fn estimate_average_time(legs: &[SimpleLeg], valuation_date: Date) -> f64 {
 mod tests {
     use super::*;
     use crate::generic_pricer::config::{ModelConfigBuilder, PricerConfigBuilder};
-
     #[cfg(not(feature = "l1l2-integration"))]
     use crate::generic_pricer::pricer::SimpleCashflow;
-
     #[cfg(not(feature = "l1l2-integration"))]
     use crate::generic_pricer::result::Direction;
 
@@ -459,7 +445,8 @@ mod tests {
 
         // Theta should be negative (time decay)
         assert!(greeks.theta.is_some());
-        // For a simple discounting case, theta is positive (we're getting closer to payment)
+        // For a simple discounting case, theta is positive (we're getting
+        // closer to payment)
     }
 
     #[cfg(not(feature = "l1l2-integration"))]

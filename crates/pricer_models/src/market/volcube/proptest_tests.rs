@@ -56,7 +56,13 @@ mod proptests {
         ];
         let strike_domain = (0.01, 0.10);
 
-        VolCube::new(sabr_surface, forwards, config, source_instruments, strike_domain)
+        VolCube::new(
+            sabr_surface,
+            forwards,
+            config,
+            source_instruments,
+            strike_domain,
+        )
     }
 
     // ========================================

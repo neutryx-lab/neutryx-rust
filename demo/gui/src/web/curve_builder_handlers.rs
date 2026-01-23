@@ -1,7 +1,8 @@
 //! Curve Builder API handlers.
 //!
 //! This module provides REST API handlers for the Curve Builder WebApp,
-//! including instrument list retrieval, curve construction, and parameter queries.
+//! including instrument list retrieval, curve construction, and parameter
+//! queries.
 //!
 //! # Endpoints
 //!
@@ -18,9 +19,7 @@
 //! - Requirement 5: Parameterカーブ表示
 //! - Requirement 7: API設計
 
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::time::Instant;
+use std::{path::PathBuf, sync::Arc, time::Instant};
 
 use axum::{
     extract::{Path, Query, State},
@@ -28,13 +27,15 @@ use axum::{
 };
 use uuid::Uuid;
 
-use super::curve_builder_types::{
-    BuildStatus, BuilderListResponse, CurveBuildRequest, CurveBuildResponse, InstrumentFile,
-    InstrumentInfo, InstrumentListResponse, ParameterPoint, ParameterQuery, ParameterResponse,
-    ParameterType,
+use super::{
+    curve_builder_types::{
+        BuildStatus, BuilderListResponse, CurveBuildRequest, CurveBuildResponse, InstrumentFile,
+        InstrumentInfo, InstrumentListResponse, ParameterPoint, ParameterQuery, ParameterResponse,
+        ParameterType,
+    },
+    error::{ApiError, ApiResult},
+    AppState,
 };
-use super::error::{ApiError, ApiResult};
-use super::AppState;
 
 // =============================================================================
 // CurveDataLoader (Task 3.1)
@@ -44,8 +45,10 @@ use super::AppState;
 ///
 /// # Requirements Coverage
 ///
-/// - Requirement 1.1: `demo/data/input/curves/` ディレクトリにIndex別のInstrumentリストJSONファイルを格納
-/// - Requirement 1.5: ファイルが存在しないか不正な形式の場合、適切なエラーメッセージを表示
+/// - Requirement 1.1: `demo/data/input/curves/`
+///   ディレクトリにIndex別のInstrumentリストJSONファイルを格納
+/// - Requirement 1.5:
+///   ファイルが存在しないか不正な形式の場合、適切なエラーメッセージを表示
 pub struct CurveDataLoader {
     base_path: PathBuf,
 }
@@ -61,7 +64,8 @@ impl CurveDataLoader {
     ///
     /// # Requirements Coverage
     ///
-    /// - Requirement 1.4: USD-SOFR, EUR-ESTR, JPY-TONAの3通貨をデフォルトでサポート
+    /// - Requirement 1.4: USD-SOFR, EUR-ESTR,
+    ///   JPY-TONAの3通貨をデフォルトでサポート
     pub fn available_indices(&self) -> Vec<String> {
         // Scan the directory for JSON files
         let mut indices = Vec::new();
@@ -159,13 +163,19 @@ pub async fn get_instruments(Path(index): Path<String>) -> ApiResult<InstrumentL
     let file = loader.load_instruments(&index).map_err(|e| match e {
         CurveDataError::IndexNotFound(_) => ApiError::not_found("Index", &index),
         CurveDataError::IoError(msg) => ApiError::internal(msg),
-        CurveDataError::ParseError(msg) => ApiError::internal(format!("Invalid instrument file: {}", msg)),
+        CurveDataError::ParseError(msg) => {
+            ApiError::internal(format!("Invalid instrument file: {}", msg))
+        }
     })?;
 
     let response = InstrumentListResponse {
         index: file.index,
         currency: file.currency,
-        instruments: file.instruments.into_iter().map(InstrumentInfo::from).collect(),
+        instruments: file
+            .instruments
+            .into_iter()
+            .map(InstrumentInfo::from)
+            .collect(),
     };
 
     Ok(Json(response))
@@ -195,14 +205,20 @@ pub async fn build_curve(
 
     // Validate request
     if request.instruments.is_empty() {
-        return Err(ApiError::validation("At least one instrument is required", "instruments"));
+        return Err(ApiError::validation(
+            "At least one instrument is required",
+            "instruments",
+        ));
     }
 
     // Check rate ranges (-10% to +50%)
     for inst in &request.instruments {
         if inst.rate < -0.10 || inst.rate > 0.50 {
             return Err(ApiError::validation(
-                format!("Rate {} for {} is out of range (-10% to +50%)", inst.rate, inst.tenor),
+                format!(
+                    "Rate {} for {} is out of range (-10% to +50%)",
+                    inst.rate, inst.tenor
+                ),
                 "rate",
             ));
         }
@@ -233,7 +249,11 @@ pub async fn build_curve(
 
         // Zero rate from discount factor
         // z = -ln(DF) / t
-        let zero_rate = if tenor_years > 0.0 { -df.ln() / tenor_years } else { rate };
+        let zero_rate = if tenor_years > 0.0 {
+            -df.ln() / tenor_years
+        } else {
+            rate
+        };
 
         pillars.push(tenor_years);
         discount_factors.push(df);
@@ -254,8 +274,12 @@ pub async fn build_curve(
         })
         .collect();
 
-    let cached_curve =
-        CachedCurve::new(pillars.clone(), discount_factors.clone(), zero_rates.clone(), par_rates);
+    let cached_curve = CachedCurve::new(
+        pillars.clone(),
+        discount_factors.clone(),
+        zero_rates.clone(),
+        par_rates,
+    );
 
     state.curve_cache.add(curve_id, cached_curve);
 
@@ -286,10 +310,14 @@ pub async fn get_parameters(
     Query(query): Query<ParameterQuery>,
 ) -> ApiResult<ParameterResponse> {
     // Parse curve ID
-    let uuid = Uuid::parse_str(&curve_id).map_err(|_| ApiError::validation("Invalid curve ID format", "curveId"))?;
+    let uuid = Uuid::parse_str(&curve_id)
+        .map_err(|_| ApiError::validation("Invalid curve ID format", "curveId"))?;
 
     // Get curve from cache
-    let cached_curve = state.curve_cache.get(&uuid).ok_or_else(|| ApiError::not_found("Curve", &curve_id))?;
+    let cached_curve = state
+        .curve_cache
+        .get(&uuid)
+        .ok_or_else(|| ApiError::not_found("Curve", &curve_id))?;
 
     // Generate grid points
     let mut data = Vec::new();
@@ -299,7 +327,9 @@ pub async fn get_parameters(
         let value = match query.r#type {
             ParameterType::DiscountFactor => interpolate_df(&cached_curve, t),
             ParameterType::ZeroRate => interpolate_zero_rate(&cached_curve, t),
-            ParameterType::ForwardRate => interpolate_forward_rate(&cached_curve, t, query.grid_interval),
+            ParameterType::ForwardRate => {
+                interpolate_forward_rate(&cached_curve, t, query.grid_interval)
+            }
         };
 
         data.push(ParameterPoint { tenor: t, value });

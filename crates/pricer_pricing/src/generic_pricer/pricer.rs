@@ -5,30 +5,28 @@
 #[cfg(feature = "l1l2-integration")]
 use std::sync::Arc;
 
-use super::config::{ModelConfig, PricerConfig};
-use super::error::PricingError;
-use super::result::{CashflowPricingResult, LegPricingResult, PricingResult};
-
-#[cfg(not(feature = "l1l2-integration"))]
-use super::result::Direction;
-
+#[cfg(feature = "l1l2-integration")]
+use chrono::Datelike;
 #[cfg(feature = "l1l2-integration")]
 use infra_master::{
     market::Currency,
     time::Date,
-    trade::{Direction, Leg, Trade},
+    trade::{Leg, Trade},
 };
+#[cfg(feature = "l1l2-integration")]
+use pricer_models::market::{MarketProvider, YieldCurve};
 
 #[cfg(not(feature = "l1l2-integration"))]
 use super::config::DefaultCurrency as Currency;
-
 #[cfg(not(feature = "l1l2-integration"))]
 use super::result::Date;
-
-#[cfg(feature = "l1l2-integration")]
-use chrono::Datelike;
-#[cfg(feature = "l1l2-integration")]
-use pricer_models::market::{MarketProvider, YieldCurve};
+#[cfg(not(feature = "l1l2-integration"))]
+use super::result::Direction;
+use super::{
+    config::{ModelConfig, PricerConfig},
+    error::PricingError,
+    result::{CashflowPricingResult, LegPricingResult, PricingResult},
+};
 
 /// Generic pricer for unified pricing API.
 ///
@@ -88,14 +86,10 @@ impl GenericPricer {
     }
 
     /// Returns a reference to the model configuration.
-    pub fn model_config(&self) -> &ModelConfig {
-        &self.model_config
-    }
+    pub fn model_config(&self) -> &ModelConfig { &self.model_config }
 
     /// Returns a reference to the pricer configuration.
-    pub fn pricer_config(&self) -> &PricerConfig {
-        &self.pricer_config
-    }
+    pub fn pricer_config(&self) -> &PricerConfig { &self.pricer_config }
 
     /// Computes the present value of a trade.
     ///
@@ -103,11 +97,13 @@ impl GenericPricer {
     ///
     /// * `trade` - The trade to price
     /// * `valuation_date` - The date at which to evaluate
-    /// * `reporting_currency` - The currency for the output PV (required for risk calculations)
+    /// * `reporting_currency` - The currency for the output PV (required for
+    ///   risk calculations)
     ///
     /// # Returns
     ///
-    /// `PricingResult` containing total PV, leg-level breakdown, and optional path distribution.
+    /// `PricingResult` containing total PV, leg-level breakdown, and optional
+    /// path distribution.
     ///
     /// # Errors
     ///
@@ -133,7 +129,11 @@ impl GenericPricer {
         // Calculate total PV
         let total_pv: f64 = legs_results.iter().map(|leg| leg.pv).sum();
 
-        Ok(PricingResult::new(total_pv, legs_results, reporting_currency))
+        Ok(PricingResult::new(
+            total_pv,
+            legs_results,
+            reporting_currency,
+        ))
     }
 
     /// Prices a single leg.
@@ -207,11 +207,7 @@ impl GenericPricer {
 
     /// Gets the notional for a cashflow.
     #[cfg(feature = "l1l2-integration")]
-    fn get_notional_for_cashflow(
-        &self,
-        _cf: &infra_master::trade::Cashflow,
-        _leg: &Leg,
-    ) -> f64 {
+    fn get_notional_for_cashflow(&self, _cf: &infra_master::trade::Cashflow, _leg: &Leg) -> f64 {
         // TODO: Extract notional from cashflow/leg based on cashflow type
         // For now, return a default notional
         1_000_000.0
@@ -219,11 +215,7 @@ impl GenericPricer {
 
     /// Gets the FX rate between two currencies.
     #[cfg(feature = "l1l2-integration")]
-    fn get_fx_rate(
-        &self,
-        from: Currency,
-        to: Currency,
-    ) -> Result<f64, PricingError> {
+    fn get_fx_rate(&self, from: Currency, to: Currency) -> Result<f64, PricingError> {
         // TODO: Implement MarketProvider::get_fx_rate when available
         // For now, return an error indicating the feature is not yet implemented
         Err(PricingError::fx_rate_not_found(from, to))
@@ -235,8 +227,8 @@ impl GenericPricer {
 impl GenericPricer {
     /// Computes the present value using simplified inputs.
     ///
-    /// This is a standalone mode that doesn't require full market data integration.
-    /// Useful for testing and demonstration purposes.
+    /// This is a standalone mode that doesn't require full market data
+    /// integration. Useful for testing and demonstration purposes.
     pub fn get_pv_simple(
         &self,
         legs: Vec<SimpleLeg>,
@@ -252,7 +244,11 @@ impl GenericPricer {
 
         let total_pv: f64 = legs_results.iter().map(|leg| leg.pv).sum();
 
-        Ok(PricingResult::new(total_pv, legs_results, reporting_currency))
+        Ok(PricingResult::new(
+            total_pv,
+            legs_results,
+            reporting_currency,
+        ))
     }
 
     /// Prices a simple leg.
@@ -342,10 +338,7 @@ pub struct SimpleCashflow {
 
 /// Gets a placeholder FX rate for standalone mode.
 #[cfg(not(feature = "l1l2-integration"))]
-fn get_placeholder_fx_rate(
-    from: Currency,
-    to: Currency,
-) -> Result<f64, PricingError> {
+fn get_placeholder_fx_rate(from: Currency, to: Currency) -> Result<f64, PricingError> {
     // Simple placeholder rates for testing
     // In production, this would use the market provider
     match (from.code(), to.code()) {

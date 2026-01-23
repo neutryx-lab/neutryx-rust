@@ -6,8 +6,7 @@
 //! Bilinear補間で取得する機能を提供する。
 
 use num_traits::Float;
-use pricer_core::math::interpolators::BilinearInterpolator;
-use pricer_core::types::InterpolationError;
+use pricer_core::{math::interpolators::BilinearInterpolator, types::InterpolationError};
 
 use super::types::SabrParams;
 
@@ -45,7 +44,8 @@ impl<T: Float> SabrParameterSurface<T> {
     ///
     /// * `expiries` - Expiry格子点（昇順、年単位）
     /// * `tenors` - Tenor格子点（昇順、年単位）
-    /// * `params` - パラメータ行列 `params\[i\]\[j\]` = (expiry\[i\], tenor\[j\])でのSABRパラメータ
+    /// * `params` - パラメータ行列 `params\[i\]\[j\]` = (expiry\[i\],
+    ///   tenor\[j\])でのSABRパラメータ
     /// * `beta` - 固定beta値
     ///
     /// # Errors

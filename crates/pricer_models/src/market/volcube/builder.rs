@@ -24,12 +24,14 @@ use std::collections::HashMap;
 use num_traits::Float;
 use ordered_float::OrderedFloat;
 
-use super::cache::{SharedVolCubeCache, VolCubeKey};
-use super::config::VolCubeConfig;
-use super::cube::VolCube;
-use super::error::{CalibrationDiagnostics, VolCubeError};
-use super::sabr_surface::SabrParameterSurface;
-use super::types::{SabrParams, VolInstrument};
+use super::{
+    cache::{SharedVolCubeCache, VolCubeKey},
+    config::VolCubeConfig,
+    cube::VolCube,
+    error::{CalibrationDiagnostics, VolCubeError},
+    sabr_surface::SabrParameterSurface,
+    types::{SabrParams, VolInstrument},
+};
 
 /// VolCubeのBuilder。
 ///
@@ -50,9 +52,7 @@ pub struct VolCubeBuilder<T: Float> {
 }
 
 impl<T: Float> Default for VolCubeBuilder<T> {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl<T: Float> VolCubeBuilder<T> {
@@ -107,7 +107,8 @@ impl<T: Float> VolCubeBuilder<T> {
     ///
     /// # Errors
     ///
-    /// - `InsufficientData`: Instrumentリストが空、またはexpiry-tenor格子に必要な
+    /// - `InsufficientData`:
+    ///   Instrumentリストが空、またはexpiry-tenor格子に必要な
     ///   点が不足している場合。
     /// - `NotConverged`: SABRカリブレーションが収束しなかった場合。
     /// - `InvalidInput`: Instrumentデータに不整合がある場合。
@@ -157,14 +158,8 @@ impl<T: Float> VolCubeBuilder<T> {
         let grouped = self.group_by_expiry_tenor();
 
         // グリッドの次元を決定
-        let mut expiries: Vec<T> = grouped
-            .keys()
-            .filter_map(|(e, _)| T::from(e.0))
-            .collect();
-        let mut tenors: Vec<T> = grouped
-            .keys()
-            .filter_map(|(_, t)| T::from(t.0))
-            .collect();
+        let mut expiries: Vec<T> = grouped.keys().filter_map(|(e, _)| T::from(e.0)).collect();
+        let mut tenors: Vec<T> = grouped.keys().filter_map(|(_, t)| T::from(t.0)).collect();
 
         // 重複を除去してソート
         expiries.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
@@ -209,7 +204,10 @@ impl<T: Float> VolCubeBuilder<T> {
                         // SABRカリブレーション
                         let p = self.calibrate_cell(instruments, *expiry, &mut diagnostics)?;
                         // Forward平均を計算
-                        let avg_forward = instruments.iter().map(|i| i.forward).fold(T::zero(), |a, b| a + b)
+                        let avg_forward = instruments
+                            .iter()
+                            .map(|i| i.forward)
+                            .fold(T::zero(), |a, b| a + b)
                             / T::from(instruments.len()).unwrap();
                         (p, avg_forward)
                     }
@@ -228,8 +226,9 @@ impl<T: Float> VolCubeBuilder<T> {
         }
 
         // SABRパラメータサーフェスを作成
-        let sabr_surface = SabrParameterSurface::new(expiries.clone(), tenors.clone(), &params_grid, beta)
-            .map_err(|e| VolCubeError::invalid_input(format!("SABR surface error: {}", e)))?;
+        let sabr_surface =
+            SabrParameterSurface::new(expiries.clone(), tenors.clone(), &params_grid, beta)
+                .map_err(|e| VolCubeError::invalid_input(format!("SABR surface error: {}", e)))?;
 
         // Strike範囲を決定
         let strike_bounds = self.strike_bounds.unwrap_or_else(|| {
@@ -259,8 +258,11 @@ impl<T: Float> VolCubeBuilder<T> {
     }
 
     /// Instrumentをexpiry-tenorでグループ化（OrderedFloat<f64>を使用）。
-    fn group_by_expiry_tenor(&self) -> HashMap<(OrderedFloat<f64>, OrderedFloat<f64>), Vec<&VolInstrument<T>>> {
-        let mut groups: HashMap<(OrderedFloat<f64>, OrderedFloat<f64>), Vec<&VolInstrument<T>>> = HashMap::new();
+    fn group_by_expiry_tenor(
+        &self,
+    ) -> HashMap<(OrderedFloat<f64>, OrderedFloat<f64>), Vec<&VolInstrument<T>>> {
+        let mut groups: HashMap<(OrderedFloat<f64>, OrderedFloat<f64>), Vec<&VolInstrument<T>>> =
+            HashMap::new();
 
         for instrument in &self.instruments {
             let key = (
@@ -285,7 +287,10 @@ impl<T: Float> VolCubeBuilder<T> {
         }
 
         // 平均forwardを計算
-        let avg_forward = instruments.iter().map(|i| i.forward).fold(T::zero(), |a, b| a + b)
+        let avg_forward = instruments
+            .iter()
+            .map(|i| i.forward)
+            .fold(T::zero(), |a, b| a + b)
             / T::from(instruments.len()).unwrap();
 
         // ATMに最も近いInstrumentを探す
@@ -307,7 +312,8 @@ impl<T: Float> VolCubeBuilder<T> {
         let initial_alpha = atm_instrument.implied_vol * forward_pow;
 
         // 簡易的なカリブレーション
-        let (alpha, rho, nu) = self.simple_sabr_fit(instruments, initial_alpha, beta, avg_forward)?;
+        let (alpha, rho, nu) =
+            self.simple_sabr_fit(instruments, initial_alpha, beta, avg_forward)?;
 
         // 診断情報を更新
         diagnostics.converged_slices += 1;
@@ -412,8 +418,7 @@ impl<T: Float> VolCubeBuilder<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use super::super::cube::VolatilityCube;
+    use super::{super::cube::VolatilityCube, *};
 
     fn make_test_instruments() -> Vec<VolInstrument<f64>> {
         let forward = 0.03;
@@ -560,8 +565,9 @@ mod tests {
 
     #[test]
     fn test_builder_build_with_cache() {
-        use super::super::cache::VolCubeCache;
         use std::sync::Arc;
+
+        use super::super::cache::VolCubeCache;
 
         let instruments = make_test_instruments();
         let cache = Arc::new(VolCubeCache::new(10));
@@ -676,14 +682,7 @@ mod tests {
 
     #[test]
     fn test_calibrate_cell_single_instrument() {
-        let instruments_raw = vec![VolInstrument::new(
-            ("single"),
-            1.0,
-            5.0,
-            0.03,
-            0.20,
-            0.03,
-        )];
+        let instruments_raw = vec![VolInstrument::new(("single"), 1.0, 5.0, 0.03, 0.20, 0.03)];
 
         let instruments: Vec<&VolInstrument<f64>> = instruments_raw.iter().collect();
 

@@ -5,10 +5,9 @@
 //! - Configuration validation (`ConfigError`)
 //! - Market data extensions (`GenericPricerMarketError`)
 
-use thiserror::Error;
-
 #[cfg(feature = "l1l2-integration")]
 use infra_master::market::Currency;
+use thiserror::Error;
 
 /// Pricing operation errors.
 ///
@@ -153,10 +152,7 @@ impl PricingError {
     }
 
     /// Creates an invalid trade error with trade ID.
-    pub fn invalid_trade_with_id(
-        reason: impl Into<String>,
-        trade_id: impl Into<String>,
-    ) -> Self {
+    pub fn invalid_trade_with_id(reason: impl Into<String>, trade_id: impl Into<String>) -> Self {
         Self::InvalidTrade {
             reason: reason.into(),
             trade_id: Some(trade_id.into()),
@@ -164,9 +160,7 @@ impl PricingError {
     }
 
     /// Creates an internal error.
-    pub fn internal(msg: impl Into<String>) -> Self {
-        Self::Internal(msg.into())
-    }
+    pub fn internal(msg: impl Into<String>) -> Self { Self::Internal(msg.into()) }
 
     /// Returns true if this is a market data error.
     pub fn is_market_data_error(&self) -> bool {
@@ -233,9 +227,7 @@ impl ConfigError {
     }
 
     /// Creates a missing field error.
-    pub fn missing_field(field: &'static str) -> Self {
-        Self::MissingField { field }
-    }
+    pub fn missing_field(field: &'static str) -> Self { Self::MissingField { field } }
 }
 
 #[cfg(test)]
@@ -257,8 +249,7 @@ mod tests {
 
     #[test]
     fn test_pricing_error_missing_market_data_with_trade() {
-        let err =
-            PricingError::missing_market_data_with_trade("EUR discount curve", "TRADE-001");
+        let err = PricingError::missing_market_data_with_trade("EUR discount curve", "TRADE-001");
         assert!(err.to_string().contains("TRADE-001"));
         assert!(err.is_market_data_error());
     }
@@ -274,8 +265,7 @@ mod tests {
 
     #[test]
     fn test_pricing_error_unsupported_instrument_with_trade() {
-        let err =
-            PricingError::unsupported_instrument_with_trade("DigitalOption", "TRADE-002");
+        let err = PricingError::unsupported_instrument_with_trade("DigitalOption", "TRADE-002");
         assert!(err.to_string().contains("TRADE-002"));
         assert!(err.is_instrument_error());
     }

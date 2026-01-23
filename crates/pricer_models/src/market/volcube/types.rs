@@ -234,10 +234,10 @@ mod tests {
     fn test_vol_instrument_new() {
         let inst = VolInstrument::new(
             "TEST-1", 1.0_f64, // expiry
-            5.0,      // tenor
-            0.03,     // strike
-            0.20,     // implied_vol
-            0.03,     // forward
+            5.0,     // tenor
+            0.03,    // strike
+            0.20,    // implied_vol
+            0.03,    // forward
         );
         assert_eq!(inst.instrument_id.as_str(), "TEST-1");
         assert_eq!(inst.expiry, 1.0);
@@ -250,8 +250,7 @@ mod tests {
 
     #[test]
     fn test_vol_instrument_with_weight() {
-        let inst = VolInstrument::new("TEST", 1.0_f64, 5.0, 0.03, 0.20, 0.03)
-            .with_weight(2.0);
+        let inst = VolInstrument::new("TEST", 1.0_f64, 5.0, 0.03, 0.20, 0.03).with_weight(2.0);
         assert_eq!(inst.weight, 2.0);
     }
 

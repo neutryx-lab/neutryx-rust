@@ -21,9 +21,6 @@
 use std::{sync::Arc, time::Instant};
 
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
-use serde_json::json;
-use uuid::Uuid;
-
 // Import Infra-master types for OIS expansion
 use infra_master::{
     trade::{
@@ -32,6 +29,8 @@ use infra_master::{
     },
     Currency, Date, Frequency, RateIndex,
 };
+use serde_json::json;
+use uuid::Uuid;
 
 use super::{
     schedule_utils::{generate_schedule, SchedulePeriod},
@@ -1737,10 +1736,12 @@ mod tests {
         fn test_build_instruments_metadata() {
             let instruments = build_instruments_metadata();
 
-            // Should have all instrument types (13 total: 6 rates + 3 FX + 2 equity + 1 credit + 1 commodity)
+            // Should have all instrument types (13 total: 6 rates + 3 FX + 2 equity + 1
+            // credit + 1 commodity)
             assert!(instruments.len() >= 13);
 
-            // Check rates instruments are present (6: Deposit, FRA, Futures, OIS, BasisSwap, IRS)
+            // Check rates instruments are present (6: Deposit, FRA, Futures, OIS,
+            // BasisSwap, IRS)
             let rates_count = instruments
                 .iter()
                 .filter(|i| i.asset_class == AssetClass::Rates)

@@ -1,7 +1,7 @@
 //! Pricing kernel implementation.
 //!
-//! This module provides the core pricing computation logic for the Generic Pricer.
-//! It handles:
+//! This module provides the core pricing computation logic for the Generic
+//! Pricer. It handles:
 //! - Cashflow-level discounting
 //! - Day count conventions
 //! - Business day adjustments
@@ -13,7 +13,8 @@ use infra_master::time::Date;
 #[cfg(not(feature = "l1l2-integration"))]
 use super::result::Date;
 
-// Helper functions for Date operations that work with both infra_master::Date and local Date
+// Helper functions for Date operations that work with both infra_master::Date
+// and local Date
 
 /// Returns the number of days between two dates.
 #[cfg(feature = "l1l2-integration")]
@@ -22,9 +23,7 @@ fn days_between(start: Date, end: Date) -> i32 {
 }
 
 #[cfg(not(feature = "l1l2-integration"))]
-fn days_between(start: Date, end: Date) -> i32 {
-    end.0 - start.0
-}
+fn days_between(start: Date, end: Date) -> i32 { end.0 - start.0 }
 
 /// Returns a date value suitable for date_to_ymd conversion.
 #[cfg(feature = "l1l2-integration")]
@@ -35,26 +34,17 @@ fn date_to_days(date: Date) -> i32 {
 }
 
 #[cfg(not(feature = "l1l2-integration"))]
-fn date_to_days(date: Date) -> i32 {
-    date.0
-}
+fn date_to_days(date: Date) -> i32 { date.0 }
 
 /// Adds days to a date.
 #[cfg(feature = "l1l2-integration")]
 fn add_days_to_date(date: Date, days: i32) -> Date {
     let new_naive = date.into_inner() + chrono::Duration::days(i64::from(days));
-    Date::from_ymd(
-        new_naive.year(),
-        new_naive.month(),
-        new_naive.day(),
-    )
-    .expect("valid date")
+    Date::from_ymd(new_naive.year(), new_naive.month(), new_naive.day()).expect("valid date")
 }
 
 #[cfg(not(feature = "l1l2-integration"))]
-fn add_days_to_date(date: Date, days: i32) -> Date {
-    Date(date.0 + days)
-}
+fn add_days_to_date(date: Date, days: i32) -> Date { Date(date.0 + days) }
 
 #[cfg(feature = "l1l2-integration")]
 use chrono::Datelike;
@@ -286,9 +276,7 @@ pub struct DiscountCalculator {
 
 impl DiscountCalculator {
     /// Creates a new discount calculator with a flat rate.
-    pub fn with_flat_rate(rate: f64) -> Self {
-        Self { rate }
-    }
+    pub fn with_flat_rate(rate: f64) -> Self { Self { rate } }
 
     /// Calculates the discount factor for a given time to maturity.
     ///
@@ -362,7 +350,13 @@ where
 {
     cashflows
         .map(|(amount, payment_date)| {
-            price_cashflow(amount, payment_date, valuation_date, discount_rate, day_count)
+            price_cashflow(
+                amount,
+                payment_date,
+                valuation_date,
+                discount_rate,
+                day_count,
+            )
         })
         .sum()
 }
@@ -474,8 +468,8 @@ mod tests {
         let dc = DayCountConvention::Actual365Fixed;
 
         let cashflows = vec![
-            (100_000.0, Date::from_days(365)),  // 1 year
-            (100_000.0, Date::from_days(730)),  // 2 years
+            (100_000.0, Date::from_days(365)), // 1 year
+            (100_000.0, Date::from_days(730)), // 2 years
         ];
 
         let pv = price_cashflow_stream(cashflows.into_iter(), valuation_date, rate, dc);

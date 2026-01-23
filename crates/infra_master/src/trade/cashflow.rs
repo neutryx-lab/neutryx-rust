@@ -152,7 +152,8 @@ pub struct Cashflow {
     /// Daily accrual details for OIS compounding.
     ///
     /// This field is populated for OIS floating leg cashflows to provide
-    /// the breakdown of daily compounding. For non-OIS cashflows, this is `None`.
+    /// the breakdown of daily compounding. For non-OIS cashflows, this is
+    /// `None`.
     pub daily_accruals: Option<Vec<DailyAccrual>>,
 }
 
@@ -213,15 +214,11 @@ impl Cashflow {
 
     /// Returns true if this cashflow has daily accrual details.
     #[must_use]
-    pub fn has_daily_accruals(&self) -> bool {
-        self.daily_accruals.is_some()
-    }
+    pub fn has_daily_accruals(&self) -> bool { self.daily_accruals.is_some() }
 
     /// Returns the daily accrual details if present.
     #[must_use]
-    pub fn daily_accruals(&self) -> Option<&[DailyAccrual]> {
-        self.daily_accruals.as_deref()
-    }
+    pub fn daily_accruals(&self) -> Option<&[DailyAccrual]> { self.daily_accruals.as_deref() }
 
     /// Returns true if this cashflow has a fixed rate (no index dependency).
     #[must_use]

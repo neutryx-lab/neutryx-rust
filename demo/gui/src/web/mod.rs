@@ -476,10 +476,16 @@ pub fn build_router(state: Arc<AppState>) -> Router {
 
     // Curve Builder API routes (curve-builder-webapp)
     let curve_routes = Router::new()
-        .route("/instruments/:index", get(curve_builder_handlers::get_instruments))
+        .route(
+            "/instruments/:index",
+            get(curve_builder_handlers::get_instruments),
+        )
         .route("/builders", get(curve_builder_handlers::get_builders))
         .route("/build", post(curve_builder_handlers::build_curve))
-        .route("/:curve_id/parameters", get(curve_builder_handlers::get_parameters))
+        .route(
+            "/:curve_id/parameters",
+            get(curve_builder_handlers::get_parameters),
+        )
         .route("/indices", get(curve_builder_handlers::get_indices));
 
     let api_routes = api_routes.nest("/curves", curve_routes);

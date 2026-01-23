@@ -408,11 +408,8 @@ impl InstrumentExpander for Ois {
         // Future enhancement: use conventions for business day adjustments.
 
         // Generate payment schedule based on payment frequency
-        let payment_dates = generate_payment_dates(
-            self.start_date,
-            self.end_date,
-            self.payment_frequency,
-        );
+        let payment_dates =
+            generate_payment_dates(self.start_date, self.end_date, self.payment_frequency);
 
         // Generate fixed leg cashflows
         let fixed_cashflows = generate_fixed_leg_cashflows(
@@ -465,11 +462,12 @@ impl InstrumentExpander for Ois {
 // OIS Helper Functions
 // ============================================================================
 
+use chrono::Datelike;
+
 use crate::{
     time::{EndOfMonthRule, Tenor},
     Frequency, RateIndex,
 };
-use chrono::Datelike;
 
 /// Generates payment dates based on start, end, and frequency.
 fn generate_payment_dates(start: Date, end: Date, frequency: Frequency) -> Vec<Date> {
@@ -559,12 +557,8 @@ fn generate_ois_floating_leg_cashflows(
         let payment_date = accrual_end;
 
         // Generate daily accruals for this period
-        let daily_accruals = generate_daily_accruals(
-            accrual_start,
-            accrual_end,
-            rate_index,
-            notional,
-        );
+        let daily_accruals =
+            generate_daily_accruals(accrual_start, accrual_end, rate_index, notional);
 
         // Calculate year fraction
         let days = (accrual_end - accrual_start) as f64;
@@ -609,14 +603,15 @@ fn generate_daily_accruals(
     let mut current_date = start;
     let mut compounded_notional = initial_notional;
 
-    // Base rate simulation based on index (in production, these would come from market data)
+    // Base rate simulation based on index (in production, these would come from
+    // market data)
     let base_rate = match rate_index {
-        RateIndex::Sofr => 0.0430,            // ~4.30% SOFR
-        RateIndex::Euribor3M => 0.0390,       // ~3.90% EUR (using as ESTR proxy)
-        RateIndex::Euribor6M => 0.0395,       // ~3.95% EUR
-        RateIndex::Sonia => 0.0525,           // ~5.25% SONIA
-        RateIndex::Tonar => 0.0010,           // ~0.10% TONA
-        RateIndex::Saron => 0.0175,           // ~1.75% SARON
+        RateIndex::Sofr => 0.0430,      // ~4.30% SOFR
+        RateIndex::Euribor3M => 0.0390, // ~3.90% EUR (using as ESTR proxy)
+        RateIndex::Euribor6M => 0.0395, // ~3.95% EUR
+        RateIndex::Sonia => 0.0525,     // ~5.25% SONIA
+        RateIndex::Tonar => 0.0010,     // ~0.10% TONA
+        RateIndex::Saron => 0.0175,     // ~1.75% SARON
     };
 
     while current_date < end {
@@ -1926,9 +1921,13 @@ mod tests {
 
         // Each cashflow in the floating leg should have daily accruals
         for cf in cashflows {
-            assert!(cf.has_daily_accruals(), "OIS floating cashflow should have daily accruals");
+            assert!(
+                cf.has_daily_accruals(),
+                "OIS floating cashflow should have daily accruals"
+            );
             let accruals = cf.daily_accruals().expect("Should have accruals");
-            // Should have roughly 89 business days for a quarter (excluding weekends in real scenario)
+            // Should have roughly 89 business days for a quarter (excluding weekends in
+            // real scenario)
             assert!(!accruals.is_empty(), "Should have daily accrual entries");
         }
     }
@@ -1953,7 +1952,10 @@ mod tests {
             .unwrap();
 
         let floating_leg = trade.floating_leg().expect("Should have floating leg");
-        let cf = floating_leg.cashflows().next().expect("Should have at least one cashflow");
+        let cf = floating_leg
+            .cashflows()
+            .next()
+            .expect("Should have at least one cashflow");
         let accruals = cf.daily_accruals().expect("Should have accruals");
 
         // Verify compounding: each day's notional should grow

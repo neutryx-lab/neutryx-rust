@@ -76,12 +76,9 @@ impl TradeInstrumentType {
     #[must_use]
     pub fn asset_class(&self) -> AssetClass {
         match self {
-            Self::Deposit
-            | Self::Fra
-            | Self::Futures
-            | Self::Ois
-            | Self::BasisSwap
-            | Self::Irs => AssetClass::Rates,
+            Self::Deposit | Self::Fra | Self::Futures | Self::Ois | Self::BasisSwap | Self::Irs => {
+                AssetClass::Rates
+            }
 
             Self::FxForward | Self::FxOption | Self::CrossCurrencySwap => AssetClass::Fx,
 

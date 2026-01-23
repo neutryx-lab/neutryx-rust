@@ -6,18 +6,19 @@
 //! 入力Instrumentリストと設定のハッシュに基づくキャッシュキーを生成し、
 //! 同一条件での再カリブレーションを回避する。
 
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
-use std::sync::Arc;
-use std::time::Instant;
+use std::{
+    collections::hash_map::DefaultHasher,
+    hash::{Hash, Hasher},
+    sync::Arc,
+    time::Instant,
+};
 
 use lru::LruCache;
 use num_traits::Float;
 use ordered_float::OrderedFloat;
 use parking_lot::RwLock;
 
-use super::config::VolCubeConfig;
-use super::types::VolInstrument;
+use super::{config::VolCubeConfig, types::VolInstrument};
 
 /// キャッシュ統計情報。
 ///
@@ -149,14 +150,10 @@ impl VolCubeKey {
     }
 
     /// Instrumentハッシュを取得。
-    pub fn instruments_hash(&self) -> u64 {
-        self.instruments_hash
-    }
+    pub fn instruments_hash(&self) -> u64 { self.instruments_hash }
 
     /// 設定ハッシュを取得。
-    pub fn config_hash(&self) -> u64 {
-        self.config_hash
-    }
+    pub fn config_hash(&self) -> u64 { self.config_hash }
 }
 
 /// VolCubeキャッシュエントリ。
@@ -299,24 +296,16 @@ impl<V: Clone> VolCubeCache<V> {
     }
 
     /// 現在のエントリ数を取得。
-    pub fn len(&self) -> usize {
-        self.cache.read().len()
-    }
+    pub fn len(&self) -> usize { self.cache.read().len() }
 
     /// キャッシュが空かどうか。
-    pub fn is_empty(&self) -> bool {
-        self.cache.read().is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.cache.read().is_empty() }
 
     /// 容量を取得。
-    pub fn capacity(&self) -> usize {
-        self.stats.read().capacity
-    }
+    pub fn capacity(&self) -> usize { self.stats.read().capacity }
 
     /// キーが存在するか確認（LRU順序を更新しない）。
-    pub fn contains(&self, key: &VolCubeKey) -> bool {
-        self.cache.read().contains(key)
-    }
+    pub fn contains(&self, key: &VolCubeKey) -> bool { self.cache.read().contains(key) }
 }
 
 // Note: VolCubeCache<V> automatically implements Send + Sync
@@ -413,12 +402,8 @@ mod tests {
     fn test_volcube_key_different_instruments() {
         let config = VolCubeConfig::default();
 
-        let instruments1 = vec![
-            VolInstrument::new("INST-1", 1.0_f64, 5.0, 0.03, 0.20, 0.03),
-        ];
-        let instruments2 = vec![
-            VolInstrument::new("INST-2", 1.0_f64, 5.0, 0.03, 0.20, 0.03),
-        ];
+        let instruments1 = vec![VolInstrument::new("INST-1", 1.0_f64, 5.0, 0.03, 0.20, 0.03)];
+        let instruments2 = vec![VolInstrument::new("INST-2", 1.0_f64, 5.0, 0.03, 0.20, 0.03)];
 
         let key1 = VolCubeKey::from_instruments(&instruments1, &config);
         let key2 = VolCubeKey::from_instruments(&instruments2, &config);
@@ -428,9 +413,7 @@ mod tests {
 
     #[test]
     fn test_volcube_key_different_config() {
-        let instruments = vec![
-            VolInstrument::new("INST-1", 1.0_f64, 5.0, 0.03, 0.20, 0.03),
-        ];
+        let instruments = vec![VolInstrument::new("INST-1", 1.0_f64, 5.0, 0.03, 0.20, 0.03)];
 
         let config1 = VolCubeConfig::default();
         let config2 = VolCubeConfig::default().with_sabr_beta(Some(0.75));
@@ -469,9 +452,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "capacity must be positive")]
-    fn test_cache_new_zero_capacity() {
-        let _cache: VolCubeCache<String> = VolCubeCache::new(0);
-    }
+    fn test_cache_new_zero_capacity() { let _cache: VolCubeCache<String> = VolCubeCache::new(0); }
 
     #[test]
     fn test_cache_insert_lookup() {

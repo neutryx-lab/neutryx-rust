@@ -356,15 +356,11 @@ impl Ois {
 
     /// Returns true if this is a payer OIS (pay fixed, receive floating).
     #[must_use]
-    pub fn is_payer(&self) -> bool {
-        self.payer_receiver == PayerReceiver::Payer
-    }
+    pub fn is_payer(&self) -> bool { self.payer_receiver == PayerReceiver::Payer }
 
     /// Returns the swap tenor in years (approximate).
     #[must_use]
-    pub fn tenor_years(&self) -> f64 {
-        (self.end_date - self.start_date) as f64 / 365.0
-    }
+    pub fn tenor_years(&self) -> f64 { (self.end_date - self.start_date) as f64 / 365.0 }
 }
 
 #[cfg(test)]

@@ -29,9 +29,9 @@
 ## Tasks
 
 - [ ] 1. FxDensityCalculator バックエンド実装
-- [ ] 1.1 (P) Delta-Strike変換機能の実装
+- [x] 1.1 (P) Delta-Strike変換機能の実装
   - FX市場慣行に沿ったDelta（Spot Delta、Forward Delta、Premium-adjusted）からAbsolute Strikeへの変換ロジックを実装する
-  - Garman-Kohlhagenモデルの逆算にBrentソルバーを使用する
+  - Garman-Kohlhagenモデルの逆算にBisectionソルバーを使用する（数値安定性のためBrentから変更）
   - Spot、Domestic Rate、Foreign Rate、Expiry、Volatilityを入力としてStrike値を出力する
   - Put Delta（負値）とCall Delta（正値）の両方に対応する
   - _Requirements: 10.5, 10.6_

@@ -7,23 +7,25 @@
 //! - Arc-cached market data sharing
 //! - Processing statistics
 
+#[cfg(not(feature = "l1l2-integration"))]
 use std::time::Instant;
 
+#[cfg(not(feature = "l1l2-integration"))]
 use rayon::prelude::*;
-
-use super::config::{ModelConfig, PricerConfig};
-use super::error::PricingError;
-use super::pricer::GenericPricer;
-use super::result::PricingResult;
 
 #[cfg(not(feature = "l1l2-integration"))]
 use super::config::DefaultCurrency as Currency;
-
+#[cfg(not(feature = "l1l2-integration"))]
+use super::pricer::GenericPricer;
 #[cfg(not(feature = "l1l2-integration"))]
 use super::pricer::SimpleLeg;
-
 #[cfg(not(feature = "l1l2-integration"))]
 use super::result::Date;
+use super::{
+    config::{ModelConfig, PricerConfig},
+    error::PricingError,
+    result::PricingResult,
+};
 
 /// Unique identifier for a trade.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -31,32 +33,22 @@ pub struct TradeId(pub String);
 
 impl TradeId {
     /// Creates a new trade ID.
-    pub fn new(id: impl Into<String>) -> Self {
-        Self(id.into())
-    }
+    pub fn new(id: impl Into<String>) -> Self { Self(id.into()) }
 
     /// Returns the ID as a string slice.
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
+    pub fn as_str(&self) -> &str { &self.0 }
 }
 
 impl std::fmt::Display for TradeId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "{}", self.0) }
 }
 
 impl From<&str> for TradeId {
-    fn from(s: &str) -> Self {
-        Self(s.to_string())
-    }
+    fn from(s: &str) -> Self { Self(s.to_string()) }
 }
 
 impl From<String> for TradeId {
-    fn from(s: String) -> Self {
-        Self(s)
-    }
+    fn from(s: String) -> Self { Self(s) }
 }
 
 /// Statistics for batch pricing operation.
@@ -131,19 +123,13 @@ impl BatchPricingResult {
     }
 
     /// Returns true if all trades were priced successfully.
-    pub fn all_succeeded(&self) -> bool {
-        self.failures.is_empty()
-    }
+    pub fn all_succeeded(&self) -> bool { self.failures.is_empty() }
 
     /// Returns true if all trades failed.
-    pub fn all_failed(&self) -> bool {
-        self.successes.is_empty()
-    }
+    pub fn all_failed(&self) -> bool { self.successes.is_empty() }
 
     /// Returns the total PV across all successful trades.
-    pub fn total_pv(&self) -> f64 {
-        self.successes.iter().map(|(_, r)| r.total_pv).sum()
-    }
+    pub fn total_pv(&self) -> f64 { self.successes.iter().map(|(_, r)| r.total_pv).sum() }
 
     /// Gets the result for a specific trade ID.
     pub fn get(&self, trade_id: &TradeId) -> Option<Result<&PricingResult, &PricingError>> {
@@ -182,14 +168,10 @@ impl BatchPricer {
     }
 
     /// Returns the model configuration.
-    pub fn model_config(&self) -> &ModelConfig {
-        &self.model_config
-    }
+    pub fn model_config(&self) -> &ModelConfig { &self.model_config }
 
     /// Returns the pricer configuration.
-    pub fn pricer_config(&self) -> &PricerConfig {
-        &self.pricer_config
-    }
+    pub fn pricer_config(&self) -> &PricerConfig { &self.pricer_config }
 }
 
 /// Simple trade wrapper for standalone mode.
@@ -244,11 +226,8 @@ impl BatchPricer {
         let results: Vec<(TradeId, Result<PricingResult, PricingError>)> = trades
             .par_iter()
             .map(|trade| {
-                let result = pricer.get_pv_simple(
-                    trade.legs.clone(),
-                    valuation_date,
-                    reporting_currency,
-                );
+                let result =
+                    pricer.get_pv_simple(trade.legs.clone(), valuation_date, reporting_currency);
                 (trade.id.clone(), result)
             })
             .collect();
@@ -283,11 +262,8 @@ impl BatchPricer {
         let mut failures = Vec::new();
 
         for trade in trades {
-            let result = pricer.get_pv_simple(
-                trade.legs.clone(),
-                valuation_date,
-                reporting_currency,
-            );
+            let result =
+                pricer.get_pv_simple(trade.legs.clone(), valuation_date, reporting_currency);
 
             match result {
                 Ok(pricing_result) => successes.push((trade.id.clone(), pricing_result)),
@@ -304,10 +280,8 @@ impl BatchPricer {
 mod tests {
     use super::*;
     use crate::generic_pricer::config::{ModelConfigBuilder, PricerConfigBuilder};
-
     #[cfg(not(feature = "l1l2-integration"))]
     use crate::generic_pricer::pricer::SimpleCashflow;
-
     #[cfg(not(feature = "l1l2-integration"))]
     use crate::generic_pricer::result::Direction;
 
@@ -348,7 +322,10 @@ mod tests {
         let pricer_config = PricerConfigBuilder::default().build().unwrap();
         let batch_pricer = BatchPricer::new(model_config.clone(), pricer_config);
 
-        assert_eq!(batch_pricer.model_config().num_paths, model_config.num_paths);
+        assert_eq!(
+            batch_pricer.model_config().num_paths,
+            model_config.num_paths
+        );
     }
 
     #[cfg(not(feature = "l1l2-integration"))]

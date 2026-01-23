@@ -27,11 +27,9 @@
 //! ```
 
 use num_traits::Float;
-
 use pricer_core::math::{distributions::norm_cdf, numeric::from_f64};
 
-use super::error::MarketDataError;
-use super::surfaces::FxVolatilitySurface;
+use super::{error::MarketDataError, surfaces::FxVolatilitySurface};
 
 /// Delta convention type for FX options.
 ///
@@ -111,7 +109,7 @@ impl<'a, T: Float> FxDensityCalculator<'a, T> {
 
     /// Convert delta to strike using Garman-Kohlhagen inverse calculation.
     ///
-    /// Uses Brent's method to solve for the strike K such that
+    /// Uses bisection method to solve for the strike K such that
     /// the option with given parameters has the specified delta.
     ///
     /// # Arguments
@@ -177,14 +175,8 @@ impl<'a, T: Float> FxDensityCalculator<'a, T> {
 
         // Use bisection method for robust root finding
         // This is slower but guaranteed to converge and stay within bounds
-        let result = self.bisection_delta_to_strike(
-            forward,
-            expiry,
-            volatility,
-            delta,
-            delta_type,
-            is_call,
-        )?;
+        let result = self
+            .bisection_delta_to_strike(forward, expiry, volatility, delta, delta_type, is_call)?;
 
         Ok(result)
     }
@@ -198,7 +190,6 @@ impl<'a, T: Float> FxDensityCalculator<'a, T> {
         delta_type: DeltaType,
         is_call: bool,
     ) -> T {
-        let _sqrt_t = expiry.sqrt();
         let d1 = self.compute_d1(strike, expiry, volatility);
         let discount_foreign = (-self.foreign_rate * expiry).exp();
 
@@ -256,8 +247,10 @@ impl<'a, T: Float> FxDensityCalculator<'a, T> {
         let mut k_high = forward * vol_factor;
 
         // Evaluate objective at bracket endpoints
-        let f_low = self.compute_delta(k_low, expiry, volatility, delta_type, is_call) - target_delta;
-        let f_high = self.compute_delta(k_high, expiry, volatility, delta_type, is_call) - target_delta;
+        let f_low =
+            self.compute_delta(k_low, expiry, volatility, delta_type, is_call) - target_delta;
+        let f_high =
+            self.compute_delta(k_high, expiry, volatility, delta_type, is_call) - target_delta;
 
         // Check for valid bracket
         if f_low * f_high > T::zero() {
@@ -277,20 +270,25 @@ impl<'a, T: Float> FxDensityCalculator<'a, T> {
         let tolerance: T = from_f64(1e-10);
         let max_iterations = 100;
 
+        // Track sign at lower bound to avoid recomputation
+        let mut sign_low = if f_low < T::zero() { -1i8 } else { 1i8 };
+
         for _ in 0..max_iterations {
             let k_mid = (k_low + k_high) / from_f64::<T>(2.0);
-            let f_mid = self.compute_delta(k_mid, expiry, volatility, delta_type, is_call) - target_delta;
+            let f_mid =
+                self.compute_delta(k_mid, expiry, volatility, delta_type, is_call) - target_delta;
 
             if f_mid.abs() < tolerance || (k_high - k_low) / from_f64::<T>(2.0) < tolerance {
                 return Ok(k_mid);
             }
 
-            // Update bracket
-            let f_low_current = self.compute_delta(k_low, expiry, volatility, delta_type, is_call) - target_delta;
-            if f_low_current * f_mid < T::zero() {
+            // Update bracket based on sign
+            let sign_mid = if f_mid < T::zero() { -1i8 } else { 1i8 };
+            if sign_low != sign_mid {
                 k_high = k_mid;
             } else {
                 k_low = k_mid;
+                sign_low = sign_mid;
             }
         }
 
@@ -317,27 +315,19 @@ impl<'a, T: Float> FxDensityCalculator<'a, T> {
 
     /// Get the spot rate.
     #[inline]
-    pub fn spot(&self) -> T {
-        self.spot
-    }
+    pub fn spot(&self) -> T { self.spot }
 
     /// Get the domestic rate.
     #[inline]
-    pub fn domestic_rate(&self) -> T {
-        self.domestic_rate
-    }
+    pub fn domestic_rate(&self) -> T { self.domestic_rate }
 
     /// Get the foreign rate.
     #[inline]
-    pub fn foreign_rate(&self) -> T {
-        self.foreign_rate
-    }
+    pub fn foreign_rate(&self) -> T { self.foreign_rate }
 
     /// Get reference to the underlying surface.
     #[inline]
-    pub fn surface(&self) -> &FxVolatilitySurface<T> {
-        self.surface
-    }
+    pub fn surface(&self) -> &FxVolatilitySurface<T> { self.surface }
 }
 
 #[cfg(test)]
@@ -478,7 +468,8 @@ mod tests {
             .unwrap();
 
         // Verify by computing delta at that strike
-        let computed_delta = calc.compute_delta(strike, expiry, volatility, DeltaType::SpotDelta, true);
+        let computed_delta =
+            calc.compute_delta(strike, expiry, volatility, DeltaType::SpotDelta, true);
 
         assert!(
             (computed_delta - target_delta).abs() < 1e-6,
@@ -529,7 +520,8 @@ mod tests {
             .unwrap();
 
         // Verify roundtrip
-        let computed_delta = calc.compute_delta(strike, expiry, volatility, DeltaType::ForwardDelta, false);
+        let computed_delta =
+            calc.compute_delta(strike, expiry, volatility, DeltaType::ForwardDelta, false);
 
         assert!(
             (computed_delta - target_delta).abs() < 1e-6,
@@ -557,7 +549,8 @@ mod tests {
             .unwrap();
 
         // Verify roundtrip
-        let computed_delta = calc.compute_delta(strike, expiry, volatility, DeltaType::PremiumAdjusted, true);
+        let computed_delta =
+            calc.compute_delta(strike, expiry, volatility, DeltaType::PremiumAdjusted, true);
 
         assert!(
             (computed_delta - target_delta).abs() < 1e-6,

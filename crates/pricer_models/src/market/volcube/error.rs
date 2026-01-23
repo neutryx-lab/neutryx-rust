@@ -7,8 +7,7 @@
 
 use thiserror::Error;
 
-use crate::market::error::MarketDataError;
-use crate::market::CalibrationError;
+use crate::market::{error::MarketDataError, CalibrationError};
 
 /// VolCubeカリブレーション診断情報。
 ///
@@ -31,9 +30,7 @@ pub struct CalibrationDiagnostics {
 
 impl CalibrationDiagnostics {
     /// 新しい診断情報を作成。
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// 反復回数を設定。
     pub fn with_iterations(mut self, iterations: usize) -> Self {
@@ -66,9 +63,7 @@ impl CalibrationDiagnostics {
     }
 
     /// 総残差（二乗和の平方根）を計算。
-    pub fn total_residual(&self) -> f64 {
-        self.residuals.iter().map(|r| r * r).sum::<f64>().sqrt()
-    }
+    pub fn total_residual(&self) -> f64 { self.residuals.iter().map(|r| r * r).sum::<f64>().sqrt() }
 
     /// 収束率を計算。
     pub fn convergence_rate(&self) -> f64 {
@@ -126,9 +121,7 @@ pub enum VolCubeError {
     /// Arbitrage-free条件違反。
     ///
     /// # Requirements: 7.3
-    #[error(
-        "Arbitrage-free条件違反: {condition} (expiry={expiry:.4}, strike={strike:.4})"
-    )]
+    #[error("Arbitrage-free条件違反: {condition} (expiry={expiry:.4}, strike={strike:.4})")]
     ArbitrageFreeViolation {
         /// 違反した条件の説明。
         condition: String,
@@ -207,9 +200,7 @@ impl VolCubeError {
     }
 
     /// 診断情報付きの収束失敗を返す。
-    pub fn not_converged_with_diagnostics(
-        diagnostics: &CalibrationDiagnostics,
-    ) -> Self {
+    pub fn not_converged_with_diagnostics(diagnostics: &CalibrationDiagnostics) -> Self {
         VolCubeError::NotConverged {
             iterations: diagnostics.iterations,
             residual: diagnostics.total_residual(),
@@ -271,8 +262,7 @@ mod tests {
 
     #[test]
     fn test_diagnostics_total_residual() {
-        let diag = CalibrationDiagnostics::new()
-            .with_residuals(vec![3.0, 4.0]);
+        let diag = CalibrationDiagnostics::new().with_residuals(vec![3.0, 4.0]);
         let total = diag.total_residual();
         assert!((total - 5.0).abs() < 1e-10); // sqrt(9 + 16) = 5
     }
@@ -388,7 +378,9 @@ mod tests {
         let err = VolCubeError::not_converged_with_diagnostics(&diag);
 
         match err {
-            VolCubeError::NotConverged { iterations, params, .. } => {
+            VolCubeError::NotConverged {
+                iterations, params, ..
+            } => {
                 assert_eq!(iterations, 50);
                 assert_eq!(params.len(), 3);
             }
