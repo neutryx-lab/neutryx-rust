@@ -63,7 +63,8 @@ impl<'a, T: Float + 'static> PayoffEvaluator<'a, T> {
     /// # Payoff Types
     ///
     /// - **Fixed**: `notional * rate * year_fraction`
-    /// - **Linear**: `notional * (forward_rate + spread) * multiplier * year_fraction`
+    /// - **Linear**: `notional * (forward_rate + spread) * multiplier *
+    ///   year_fraction`
     /// - **VanillaOption**: Cap/Floor pricing (using Black's model)
     /// - **Digital**: Binary option (not yet implemented, returns 0)
     pub fn evaluate(
@@ -152,8 +153,9 @@ impl<'a, T: Float + 'static> PayoffEvaluator<'a, T> {
 
     /// Evaluates a vanilla option (cap/floor) payoff using Black's model.
     ///
-    /// For caps/floors, this computes the intrinsic value (max(rate - strike, 0)
-    /// for caps, max(strike - rate, 0) for floors) when no vol surface is available.
+    /// For caps/floors, this computes the intrinsic value (max(rate - strike,
+    /// 0) for caps, max(strike - rate, 0) for floors) when no vol surface
+    /// is available.
     fn evaluate_vanilla_option(
         &self,
         index: &IndexType,
@@ -205,10 +207,11 @@ impl<'a, T: Float + 'static> PayoffEvaluator<'a, T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use OptionType;
     use infra_master::RateIndex;
     use pricer_models::market::curves::{CurveEnum, CurveName};
+    use OptionType;
+
+    use super::*;
 
     fn create_curve_set() -> CurveSet<f64> {
         let mut curves = CurveSet::new();

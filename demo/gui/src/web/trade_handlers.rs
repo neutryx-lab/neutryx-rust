@@ -32,14 +32,13 @@ use infra_master::{
 use serde_json::json;
 use uuid::Uuid;
 
+// Re-export rate index helpers from trade_types
+use super::trade_types::{default_rate_index_for_currency, validate_rate_index};
 use super::{
     schedule_utils::{generate_schedule, SchedulePeriod},
     trade_types::*,
     AppState,
 };
-
-// Re-export rate index helpers from trade_types
-use super::trade_types::{default_rate_index_for_currency, validate_rate_index};
 
 // =============================================================================
 // Task 4.1: POST /api/trade/expand Handler
@@ -696,7 +695,13 @@ fn expand_basis_swap(
         currency: params.currency.clone(),
         leg_type: "Floating".to_string(),
         rate_index: Some(rate_index.clone()),
-        cashflows: schedule_to_cashflows(&schedule, params.notional, spread, "Linear", Some(&rate_index)),
+        cashflows: schedule_to_cashflows(
+            &schedule,
+            params.notional,
+            spread,
+            "Linear",
+            Some(&rate_index),
+        ),
     };
 
     let leg2 = LegDto {
@@ -705,7 +710,13 @@ fn expand_basis_swap(
         currency: params.currency.clone(),
         leg_type: "Floating".to_string(),
         rate_index: Some(rate_index.clone()),
-        cashflows: schedule_to_cashflows(&schedule, params.notional, 0.0, "Linear", Some(&rate_index)),
+        cashflows: schedule_to_cashflows(
+            &schedule,
+            params.notional,
+            0.0,
+            "Linear",
+            Some(&rate_index),
+        ),
     };
 
     let total_cf = leg1.cashflows.len() + leg2.cashflows.len();
@@ -746,7 +757,8 @@ fn expand_irs(request: &TradeExpandRequest) -> Result<TradeExpandResponse, Trade
 
     let fixed_rate = params.fixed_rate.unwrap_or(0.0);
 
-    // Determine rate index for floating leg (use provided or default based on currency)
+    // Determine rate index for floating leg (use provided or default based on
+    // currency)
     let rate_index = params
         .rate_index
         .clone()
@@ -949,7 +961,13 @@ fn expand_cross_currency_swap(
         currency: params.base_currency.clone(),
         leg_type: "Floating".to_string(),
         rate_index: Some(base_rate_index.to_string()),
-        cashflows: schedule_to_cashflows(&schedule, params.notional, 0.0, "Linear", Some(base_rate_index)),
+        cashflows: schedule_to_cashflows(
+            &schedule,
+            params.notional,
+            0.0,
+            "Linear",
+            Some(base_rate_index),
+        ),
     };
 
     let quote_leg = LegDto {
@@ -958,7 +976,13 @@ fn expand_cross_currency_swap(
         currency: params.quote_currency.clone(),
         leg_type: "Floating".to_string(),
         rate_index: Some(quote_rate_index.to_string()),
-        cashflows: schedule_to_cashflows(&schedule, params.notional * forward_rate, 0.0, "Linear", Some(quote_rate_index)),
+        cashflows: schedule_to_cashflows(
+            &schedule,
+            params.notional * forward_rate,
+            0.0,
+            "Linear",
+            Some(quote_rate_index),
+        ),
     };
 
     let total_cf = base_leg.cashflows.len() + quote_leg.cashflows.len();

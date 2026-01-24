@@ -16,13 +16,12 @@ use infra_master::{
 #[cfg(feature = "l1l2-integration")]
 use pricer_models::market::{MarketProvider, YieldCurve};
 
+#[cfg(not(feature = "l1l2-integration"))]
+use super::config::DefaultCurrency as Currency;
 #[cfg(feature = "l1l2-integration")]
 use super::ois_calculator::{DailyAccrual, OisCalculator};
 #[cfg(feature = "l1l2-integration")]
 use super::payoff_evaluator::PayoffEvaluator;
-
-#[cfg(not(feature = "l1l2-integration"))]
-use super::config::DefaultCurrency as Currency;
 #[cfg(not(feature = "l1l2-integration"))]
 use super::result::Date;
 #[cfg(not(feature = "l1l2-integration"))]
@@ -215,8 +214,8 @@ impl GenericPricer {
 
     /// Evaluates the cashflow amount based on its payoff type.
     ///
-    /// For OIS cashflows with daily accruals, uses OisCalculator for compounding.
-    /// For other cashflows, uses PayoffEvaluator.
+    /// For OIS cashflows with daily accruals, uses OisCalculator for
+    /// compounding. For other cashflows, uses PayoffEvaluator.
     #[cfg(feature = "l1l2-integration")]
     fn evaluate_cashflow_amount(
         &self,

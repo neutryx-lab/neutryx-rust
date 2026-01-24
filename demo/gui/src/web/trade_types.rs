@@ -26,14 +26,8 @@ use serde::{Deserialize, Serialize};
 /// Supported rate index identifiers for API input.
 ///
 /// These correspond to `infra_master::RateIndex` variants.
-pub const SUPPORTED_RATE_INDICES: &[&str] = &[
-    "SOFR",
-    "EURIBOR3M",
-    "EURIBOR6M",
-    "SONIA",
-    "TONAR",
-    "SARON",
-];
+pub const SUPPORTED_RATE_INDICES: &[&str] =
+    &["SOFR", "EURIBOR3M", "EURIBOR6M", "SONIA", "TONAR", "SARON"];
 
 /// Validates a rate index string.
 ///

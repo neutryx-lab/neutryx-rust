@@ -53,8 +53,8 @@ pub use curves::{
     FlatHazardRateCurve, HazardRateCurve, InterpolatedCurve, YieldCurve,
 };
 pub use error::MarketDataError;
-pub use index_mapper::{DefaultIndexCurveMapper, IndexCurveMapper};
 pub use fx_density::{DeltaType, DensityStatistics, FxDensityCalculator};
+pub use index_mapper::{DefaultIndexCurveMapper, IndexCurveMapper};
 pub use provider::MarketProvider;
 pub use surfaces::{
     FlatVol, FxDeltaPoint, FxVolatilitySurface, InterpolatedVolSurface, VolSurfaceEnum,

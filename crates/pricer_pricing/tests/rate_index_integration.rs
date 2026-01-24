@@ -1,7 +1,9 @@
 //! RateIndex Pricing Integration Tests
 //!
-//! These tests verify the integration of RateIndex throughout the pricing pipeline:
-//! - PayoffEvaluator correctly evaluates Fixed, Linear, and VanillaOption payoffs
+//! These tests verify the integration of RateIndex throughout the pricing
+//! pipeline:
+//! - PayoffEvaluator correctly evaluates Fixed, Linear, and VanillaOption
+//!   payoffs
 //! - OisCalculator correctly computes daily compounded rates
 //! - AD compatibility with Dual64 numeric type
 //!
@@ -18,9 +20,12 @@ use pricer_pricing::generic_pricer::{DailyAccrual, OisCalculator, PayoffEvaluato
 // =============================================================================
 
 mod payoff_evaluator_integration {
+    use infra_master::{
+        trade::{IndexType, Payoff},
+        RateIndex,
+    };
+
     use super::*;
-    use infra_master::trade::{IndexType, Payoff};
-    use infra_master::RateIndex;
 
     fn create_test_curve_set() -> CurveSet<f64> {
         let mut curves = CurveSet::new();
@@ -115,10 +120,7 @@ mod payoff_evaluator_integration {
             .unwrap();
 
         // Expected intrinsic: 1,000,000 * (0.035 - 0.03) * 0.25 = 1,250
-        assert!(
-            amount > 0.0,
-            "ITM cap should have positive intrinsic value"
-        );
+        assert!(amount > 0.0, "ITM cap should have positive intrinsic value");
         assert!(
             (amount - 1_250.0).abs() < 200.0,
             "Cap intrinsic value calculation"
@@ -228,10 +230,7 @@ mod ois_calculator_integration {
     fn test_empty_accruals() {
         let accruals: Vec<DailyAccrual> = vec![];
         let rate = OisCalculator::compound_rate::<f64>(&accruals);
-        assert!(
-            rate.abs() < 1e-15,
-            "Empty accruals should return zero rate"
-        );
+        assert!(rate.abs() < 1e-15, "Empty accruals should return zero rate");
     }
 
     /// Test: Single day accrual
@@ -308,10 +307,7 @@ mod ois_calculator_integration {
     #[test]
     fn test_zero_period_annualization() {
         let rate = OisCalculator::annualized_rate::<f64>(0.005, 0.0);
-        assert!(
-            rate.abs() < 1e-10,
-            "Zero period should return zero rate"
-        );
+        assert!(rate.abs() < 1e-10, "Zero period should return zero rate");
     }
 
     /// Test: Known SOFR compounding scenario
@@ -430,9 +426,12 @@ mod ad_compatibility {
 // =============================================================================
 
 mod cross_component {
+    use infra_master::{
+        trade::{IndexType, Payoff},
+        RateIndex,
+    };
+
     use super::*;
-    use infra_master::trade::{IndexType, Payoff};
-    use infra_master::RateIndex;
 
     /// Test: Full pipeline from RateIndex to evaluated amount
     /// Requirement: 5.5, 6.3

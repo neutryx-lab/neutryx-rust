@@ -3,9 +3,7 @@
 //! This module provides types for representing various market indices
 //! used in floating-rate instruments.
 
-use crate::market::CompoundingMethod;
-use crate::time::Frequency;
-use crate::{Date, RateIndex};
+use crate::{market::CompoundingMethod, time::Frequency, Date, RateIndex};
 
 /// Type of market index.
 ///
@@ -158,8 +156,9 @@ pub struct IndexObservation {
 impl IndexObservation {
     /// Creates a new index observation with default settings.
     ///
-    /// Uses default values for reset frequency (Monthly) and compounding method (Simple).
-    /// For index-specific defaults, use [`from_rate_index`](Self::from_rate_index).
+    /// Uses default values for reset frequency (Monthly) and compounding method
+    /// (Simple). For index-specific defaults, use
+    /// [`from_rate_index`](Self::from_rate_index).
     #[must_use]
     pub fn new(index_type: IndexType) -> Self {
         Self {
@@ -175,10 +174,12 @@ impl IndexObservation {
         }
     }
 
-    /// Creates an index observation from a `RateIndex` with appropriate defaults.
+    /// Creates an index observation from a `RateIndex` with appropriate
+    /// defaults.
     ///
     /// This method uses the index's metadata to set the correct:
-    /// - Reset frequency (Daily for overnight indices, matching tenor for term indices)
+    /// - Reset frequency (Daily for overnight indices, matching tenor for term
+    ///   indices)
     /// - Compounding method (Compounded for OIS, Simple for IBOR)
     /// - Observation lag (from index metadata)
     ///
@@ -549,8 +550,7 @@ mod tests {
 
     #[test]
     fn test_from_rate_index_sofr() {
-        use crate::market::CompoundingMethod;
-        use crate::time::Frequency;
+        use crate::{market::CompoundingMethod, time::Frequency};
 
         let obs = IndexObservation::from_rate_index(RateIndex::Sofr);
 
@@ -565,8 +565,7 @@ mod tests {
 
     #[test]
     fn test_from_rate_index_euribor() {
-        use crate::market::CompoundingMethod;
-        use crate::time::Frequency;
+        use crate::{market::CompoundingMethod, time::Frequency};
 
         let obs = IndexObservation::from_rate_index(RateIndex::Euribor3M);
 
@@ -581,8 +580,7 @@ mod tests {
 
     #[test]
     fn test_from_rate_index_sonia() {
-        use crate::market::CompoundingMethod;
-        use crate::time::Frequency;
+        use crate::{market::CompoundingMethod, time::Frequency};
 
         let obs = IndexObservation::from_rate_index(RateIndex::Sonia);
 
@@ -630,7 +628,10 @@ mod tests {
         // Test that from_rate_index uses the index's metadata
         let sofr_obs = IndexObservation::from_rate_index(RateIndex::Sofr);
         let sofr_metadata = RateIndex::Sofr.metadata();
-        assert_eq!(sofr_obs.compounding_method, sofr_metadata.compounding_method);
+        assert_eq!(
+            sofr_obs.compounding_method,
+            sofr_metadata.compounding_method
+        );
 
         let euribor_obs = IndexObservation::from_rate_index(RateIndex::Euribor3M);
         let euribor_metadata = RateIndex::Euribor3M.metadata();

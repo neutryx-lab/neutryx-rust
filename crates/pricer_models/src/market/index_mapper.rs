@@ -6,8 +6,7 @@
 
 use infra_master::RateIndex;
 
-use super::curves::CurveName;
-use super::error::MarketDataError;
+use super::{curves::CurveName, error::MarketDataError};
 
 /// Trait for mapping rate indices to curve names.
 ///
@@ -41,7 +40,8 @@ pub trait IndexCurveMapper {
     /// # Returns
     ///
     /// * `Ok(CurveName)` - The corresponding curve name
-    /// * `Err(MarketDataError::UnsupportedIndex)` - If the index is not supported
+    /// * `Err(MarketDataError::UnsupportedIndex)` - If the index is not
+    ///   supported
     fn map_to_curve(&self, index: RateIndex) -> Result<CurveName, MarketDataError>;
 }
 

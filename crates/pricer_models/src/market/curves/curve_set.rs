@@ -387,7 +387,8 @@ impl<T: Float> CurveSet<T> {
     ///
     /// * `Ok(&CurveEnum)` - The curve for the index
     /// * `Err(MarketDataError::CurveNotFound)` - If the curve is not in the set
-    /// * `Err(MarketDataError::UnsupportedIndex)` - If the index is not supported
+    /// * `Err(MarketDataError::UnsupportedIndex)` - If the index is not
+    ///   supported
     ///
     /// # Example
     ///
@@ -427,7 +428,8 @@ impl<T: Float> CurveSet<T> {
     /// # Returns
     ///
     /// * `Ok(T)` - The forward rate
-    /// * `Err(MarketDataError)` - If the curve is not found or the rate cannot be computed
+    /// * `Err(MarketDataError)` - If the curve is not found or the rate cannot
+    ///   be computed
     ///
     /// # Example
     ///
