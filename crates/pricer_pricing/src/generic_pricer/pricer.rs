@@ -34,13 +34,13 @@ use super::config::DefaultCurrency;
 use super::ois_calculator::{DailyAccrual, OisCalculator};
 #[cfg(feature = "l1l2-integration")]
 use super::payoff_evaluator::PayoffEvaluator;
+#[cfg(feature = "l1l2-integration")]
+use super::result::{CashflowPricingResult, LegPricingResult, PricingResult};
 use super::{
     config::{ModelConfig, PricerConfig},
     error::PricingError,
     result::{SimpleDate, SimpleDirection},
 };
-#[cfg(feature = "l1l2-integration")]
-use super::result::{CashflowPricingResult, LegPricingResult, PricingResult};
 
 /// Generic pricer for unified pricing API.
 ///
@@ -508,10 +508,10 @@ fn get_placeholder_fx_rate(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::generic_pricer::config::{ModelConfigBuilder, PricerConfigBuilder};
     // Type aliases for standalone mode tests
     #[cfg(not(feature = "l1l2-integration"))]
     use crate::generic_pricer::config::DefaultCurrency as Currency;
+    use crate::generic_pricer::config::{ModelConfigBuilder, PricerConfigBuilder};
     #[cfg(not(feature = "l1l2-integration"))]
     use crate::generic_pricer::result::{Date, Direction};
 
