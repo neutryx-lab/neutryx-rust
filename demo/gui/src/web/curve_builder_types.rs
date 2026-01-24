@@ -283,6 +283,7 @@ pub struct CurveBuildRequest {
     /// Instruments with rates (potentially edited by user)
     pub instruments: Vec<InstrumentInput>,
     /// Interpolation method
+    #[serde(alias = "interpolationMethod")]
     pub interpolation: InterpolationMethod,
     /// Bootstrap method
     #[serde(default)]
@@ -324,16 +325,37 @@ pub struct CurveBuildResponse {
     pub curve_id: String,
     /// Build status
     pub status: BuildStatus,
-    /// Pillar points (years)
+    /// Index name (e.g., "usd-sofr")
+    pub index: String,
+    /// Interpolation method used
+    pub interpolation_method: String,
+    /// Parameter points for visualisation
+    pub parameters: Vec<CurveParameter>,
+    /// Pillar points (years) - legacy field
     pub pillars: Vec<f64>,
-    /// Discount factors at pillar points
+    /// Discount factors at pillar points - legacy field
     pub discount_factors: Vec<f64>,
-    /// Zero rates at pillar points
+    /// Zero rates at pillar points - legacy field
     pub zero_rates: Vec<f64>,
-    /// Processing time in milliseconds
-    pub processing_time_ms: f64,
+    /// Build time in milliseconds
+    pub build_time_ms: f64,
     /// Number of instruments used
     pub instrument_count: usize,
+}
+
+/// A single curve parameter point for visualisation.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CurveParameter {
+    /// Tenor in years
+    pub tenor_years: f64,
+    /// Discount factor at this tenor
+    pub discount_factor: f64,
+    /// Zero rate at this tenor
+    pub zero_rate: f64,
+    /// Forward rate at this tenor (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub forward_rate: Option<f64>,
 }
 
 /// Query parameters for `GET /api/curves/{curveId}/parameters`.
@@ -768,16 +790,19 @@ mod tests {
             let response = CurveBuildResponse {
                 curve_id: "abc-123".to_string(),
                 status: BuildStatus::Success,
+                index: "usd-sofr".to_string(),
+                interpolation_method: "linear".to_string(),
+                parameters: vec![],
                 pillars: vec![0.25, 0.5, 1.0],
                 discount_factors: vec![0.9875, 0.975, 0.95],
                 zero_rates: vec![0.05, 0.0505, 0.051],
-                processing_time_ms: 15.5,
+                build_time_ms: 15.5,
                 instrument_count: 3,
             };
 
             let json = serde_json::to_string(&response).unwrap();
             assert!(json.contains("\"curveId\""));
-            assert!(json.contains("\"processingTimeMs\""));
+            assert!(json.contains("\"buildTimeMs\""));
             assert!(json.contains("\"instrumentCount\""));
         }
     }

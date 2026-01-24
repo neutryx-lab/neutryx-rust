@@ -18,8 +18,8 @@ use std::sync::Arc;
 
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use pricer_pricing::generic_pricer::{
-    BumpSizes, Date, DefaultCurrency, Direction, GenericPricer, ModelConfig, PricerConfig,
-    SimpleCashflow, SimpleLeg,
+    BumpSizes, DefaultCurrency, GenericPricer, ModelConfig, PricerConfig, SimpleCashflow,
+    SimpleDate, SimpleDirection, SimpleLeg,
 };
 use serde_json::json;
 
@@ -91,8 +91,8 @@ pub async fn price_generic(
 
     let pricer_config = PricerConfig::default();
 
-    // Create pricer and compute PV
-    let pricer = GenericPricer::new(model_config, pricer_config);
+    // Create pricer and compute PV (standalone mode)
+    let pricer = GenericPricer::new_standalone(model_config, pricer_config);
 
     match pricer.get_pv_simple(legs, valuation_date, reporting_currency) {
         Ok(result) => {
@@ -106,8 +106,8 @@ pub async fn price_generic(
                     original_currency: leg.original_currency.code().to_string(),
                     fx_rate: leg.fx_rate,
                     direction: match leg.direction {
-                        Direction::Payer => "payer".to_string(),
-                        Direction::Receiver => "receiver".to_string(),
+                        SimpleDirection::Payer => "payer".to_string(),
+                        SimpleDirection::Receiver => "receiver".to_string(),
                     },
                     cashflows: leg
                         .cashflows
@@ -115,7 +115,7 @@ pub async fn price_generic(
                         .map(|cf| CashflowResultOutput {
                             pv: cf.pv,
                             pv_original: cf.pv_original,
-                            payment_date: format_date(cf.payment_date),
+                            payment_date: format_simple_date(cf.payment_date),
                             discount_factor: cf.discount_factor,
                         })
                         .collect(),
@@ -182,10 +182,10 @@ pub async fn calculate_greeks(
 
     let reporting_currency = convert_currency(&request.reporting_currency);
 
-    // Create pricer
+    // Create pricer (standalone mode)
     let model_config = ModelConfig::default();
     let pricer_config = PricerConfig::default();
-    let pricer = GenericPricer::new(model_config, pricer_config);
+    let pricer = GenericPricer::new_standalone(model_config, pricer_config);
 
     // Calculate base PV
     let base_pv = match pricer.get_pv_simple(legs.clone(), valuation_date, reporting_currency) {
@@ -273,11 +273,11 @@ fn convert_currency(currency: &CurrencyInput) -> DefaultCurrency {
     }
 }
 
-/// Converts DirectionInput to Direction.
-fn convert_direction(direction: &DirectionInput) -> Direction {
+/// Converts DirectionInput to SimpleDirection.
+fn convert_direction(direction: &DirectionInput) -> SimpleDirection {
     match direction {
-        DirectionInput::Payer => Direction::Payer,
-        DirectionInput::Receiver => Direction::Receiver,
+        DirectionInput::Payer => SimpleDirection::Payer,
+        DirectionInput::Receiver => SimpleDirection::Receiver,
     }
 }
 
@@ -290,13 +290,13 @@ fn convert_bump_sizes(input: &BumpSizesInput) -> BumpSizes {
     }
 }
 
-/// Parses a date string to Date.
+/// Parses a date string to SimpleDate.
 ///
 /// Supports "YYYY-MM-DD" format or integer days since epoch (2000-01-01).
-fn parse_date(s: &str) -> Result<Date, String> {
+fn parse_date(s: &str) -> Result<SimpleDate, String> {
     // Try parsing as integer days first
     if let Ok(days) = s.parse::<i32>() {
-        return Ok(Date::from_days(days));
+        return Ok(SimpleDate::from_days(days));
     }
 
     // Try parsing as YYYY-MM-DD
@@ -315,11 +315,11 @@ fn parse_date(s: &str) -> Result<Date, String> {
         .parse()
         .map_err(|_| format!("Invalid day: {}", parts[2]))?;
 
-    Date::from_ymd(year, month, day).ok_or_else(|| format!("Invalid date: {}", s))
+    SimpleDate::from_ymd(year, month, day).ok_or_else(|| format!("Invalid date: {}", s))
 }
 
-/// Formats a Date to string.
-fn format_date(date: Date) -> String {
+/// Formats a SimpleDate to string.
+fn format_simple_date(date: SimpleDate) -> String {
     // Simplified: convert days since 2000-01-01 to approximate YYYY-MM-DD
     let days = date.days();
     let year = 2000 + days / 365;
@@ -349,11 +349,11 @@ mod tests {
     fn test_convert_direction() {
         assert!(matches!(
             convert_direction(&DirectionInput::Payer),
-            Direction::Payer
+            SimpleDirection::Payer
         ));
         assert!(matches!(
             convert_direction(&DirectionInput::Receiver),
-            Direction::Receiver
+            SimpleDirection::Receiver
         ));
     }
 
@@ -403,7 +403,7 @@ mod tests {
         let result = convert_to_simple_legs(&legs).unwrap();
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].currency.code(), "USD");
-        assert!(matches!(result[0].direction, Direction::Receiver));
+        assert!(matches!(result[0].direction, SimpleDirection::Receiver));
         assert_eq!(result[0].cashflows.len(), 1);
         assert!((result[0].cashflows[0].amount - 100_000.0).abs() < 1e-10);
     }

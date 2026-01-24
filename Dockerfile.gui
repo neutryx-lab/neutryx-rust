@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/
 COPY --from=builder /app/target/release/demo-web ./demo-web
 # Copy static files to the path expected by the code
 COPY --from=builder /app/demo/gui/static ./demo/gui/static
-# Copy data files for external JSON data
+# Copy data files for nest_service("/data/input", ServeDir::new("demo/data/input"))
 COPY --from=builder /app/demo/data/input ./demo/data/input
 
 ENV RUST_LOG=info

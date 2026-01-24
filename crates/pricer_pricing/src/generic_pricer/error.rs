@@ -68,6 +68,16 @@ pub enum PricingError {
         quote: String,
     },
 
+    /// FX rate not found for standalone pricing (always available).
+    /// Use this variant when pricing in standalone mode with DefaultCurrency.
+    #[error("FX rate not found (standalone): {base}/{quote}")]
+    StandaloneFxRateNotFound {
+        /// Base currency code.
+        base: String,
+        /// Quote currency code.
+        quote: String,
+    },
+
     /// Trade structure is invalid.
     #[error("Invalid trade: {reason} (trade_id: {trade_id:?})")]
     InvalidTrade {
@@ -80,6 +90,13 @@ pub enum PricingError {
     /// Internal error.
     #[error("Internal error: {0}")]
     Internal(String),
+
+    /// Invalid input parameter.
+    #[error("Invalid input: {reason}")]
+    InvalidInput {
+        /// Reason the input is invalid.
+        reason: String,
+    },
 }
 
 impl PricingError {
@@ -143,6 +160,17 @@ impl PricingError {
         }
     }
 
+    /// Creates an FX rate not found error for standalone pricing (always
+    /// available).
+    ///
+    /// Use this when pricing in standalone mode with DefaultCurrency.
+    pub fn standalone_fx_rate_not_found(base: impl Into<String>, quote: impl Into<String>) -> Self {
+        Self::StandaloneFxRateNotFound {
+            base: base.into(),
+            quote: quote.into(),
+        }
+    }
+
     /// Creates an invalid trade error.
     pub fn invalid_trade(reason: impl Into<String>) -> Self {
         Self::InvalidTrade {
@@ -169,6 +197,7 @@ impl PricingError {
             Self::MissingMarketData { .. }
                 | Self::MarketDataResolution { .. }
                 | Self::FxRateNotFound { .. }
+                | Self::StandaloneFxRateNotFound { .. }
         )
     }
 
@@ -279,7 +308,7 @@ mod tests {
 
     #[test]
     fn test_pricing_error_fx_rate_not_found() {
-        let err = PricingError::fx_rate_not_found("EUR", "USD");
+        let err = PricingError::standalone_fx_rate_not_found("EUR", "USD");
         assert!(err.to_string().contains("FX rate not found"));
         assert!(err.to_string().contains("EUR"));
         assert!(err.to_string().contains("USD"));

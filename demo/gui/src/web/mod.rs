@@ -369,12 +369,19 @@ fn build_cors() -> CorsLayer {
 }
 
 fn build_csp_header() -> SetResponseHeaderLayer<HeaderValue> {
+    // CSP policy:
+    // - script-src + script-src-elem: 'self', cdn.plot.ly, 'unsafe-eval' for Plotly
+    // - style-src: 'unsafe-inline' for inline styles, external fonts
+    // - connect-src: ws/wss for WebSocket connections
+    // - worker-src: blob for Plotly web workers
     const DEFAULT_CSP: &str = "default-src 'self'; \
-        script-src 'self'; \
+        script-src 'self' 'unsafe-eval' https://cdn.plot.ly; \
+        script-src-elem 'self' https://cdn.plot.ly; \
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; \
         font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; \
         img-src 'self' data: blob:; \
-        connect-src 'self' ws: wss:;";
+        connect-src 'self' ws: wss:; \
+        worker-src 'self' blob:;";
 
     let csp_value = std::env::var("FB_CSP").unwrap_or_else(|_| DEFAULT_CSP.to_string());
     let header_value =
@@ -502,6 +509,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
     let api_routes = api_routes.nest("/curves", curve_routes);
 
     // GenericPricer API routes (demo-webapp-pricer Task 2.4)
+    // Available in both standalone and l1l2-integration modes
     let pricer_routes = Router::new()
         .route("/price", post(generic_pricer_handlers::price_generic))
         .route("/greeks", post(generic_pricer_handlers::calculate_greeks))
@@ -509,7 +517,6 @@ pub fn build_router(state: Arc<AppState>) -> Router {
             "/instruments",
             get(generic_pricer_handlers::get_pricer_instruments),
         );
-
     let api_routes = api_routes.nest("/pricer", pricer_routes);
 
     // VolCube API routes (volcube-calibration-ui Task 7.1)

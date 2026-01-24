@@ -10,9 +10,13 @@ name = "demo-web"
 path = "src/web/main.rs"
 
 [features]
-default = []
+# L1/L2 integration is default because pricer_risk (in workspace) requires it
+# This disables the standalone GenericPricer handlers
+default = ["l1l2-integration"]
 enzyme-ad = ["pricer_pricing/enzyme-ad"]
 openapi = ["utoipa", "utoipa-swagger-ui"]
+# L1/L2 integration feature - disables standalone pricer mode
+l1l2-integration = ["pricer_pricing/l1l2-integration"]
 
 [dependencies]
 # Infra layer

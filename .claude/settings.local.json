@@ -198,7 +198,9 @@
       "Bash(cmd /c \"for /f %f in \\(''dir /b''\\) do @echo %~nxf - %~zf bytes\")",
       "Bash(cargo update:*)",
       "Bash(git -C:*)",
-      "Bash(node --check:*)"
+      "Bash(node --check:*)",
+      "Bash(tasklist:*)",
+      "Bash(powershell -Command \"Get-Process | Where-Object {$_ProcessName -match ''rust-analyzer|cargo|rustc''} | Select-Object ProcessName, Id\")"
     ]
   }
 }

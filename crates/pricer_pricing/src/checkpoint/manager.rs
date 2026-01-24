@@ -204,11 +204,10 @@ impl<T: Float> CheckpointManager<T> {
                         // Binomial: interval is √n to achieve O(√n) memory
                         let interval = ((self.total_steps as f64).sqrt().ceil() as usize).max(1);
                         // Limit by memory slots
-                        if memory_slots > 0 {
-                            (self.total_steps / memory_slots).max(1)
-                        } else {
-                            interval
-                        }
+                        self.total_steps
+                            .checked_div(memory_slots)
+                            .map(|v| v.max(1))
+                            .unwrap_or(interval)
                     }
                 }
             }

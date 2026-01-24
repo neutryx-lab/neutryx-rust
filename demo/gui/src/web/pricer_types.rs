@@ -2400,24 +2400,22 @@ pub struct ScenarioCompareResponse {
 /// Direction enum for leg payments.
 ///
 /// Maps to GenericPricer's Direction type.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum DirectionInput {
     /// Payer: pays this leg's cashflows (negative NPV contribution).
     Payer,
     /// Receiver: receives this leg's cashflows (positive NPV contribution).
+    #[default]
     Receiver,
 }
 
-impl Default for DirectionInput {
-    fn default() -> Self { Self::Receiver }
-}
-
 /// Supported currencies for GenericPricer.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum CurrencyInput {
     /// US Dollar
+    #[default]
     USD,
     /// Euro
     EUR,
@@ -2425,10 +2423,6 @@ pub enum CurrencyInput {
     JPY,
     /// British Pound
     GBP,
-}
-
-impl Default for CurrencyInput {
-    fn default() -> Self { Self::USD }
 }
 
 impl CurrencyInput {

@@ -29,9 +29,9 @@ use uuid::Uuid;
 
 use super::{
     curve_builder_types::{
-        BuildStatus, BuilderListResponse, CurveBuildRequest, CurveBuildResponse, InstrumentFile,
-        InstrumentInfo, InstrumentListResponse, ParameterPoint, ParameterQuery, ParameterResponse,
-        ParameterType,
+        BuildStatus, BuilderListResponse, CurveBuildRequest, CurveBuildResponse, CurveParameter,
+        InstrumentFile, InstrumentInfo, InstrumentListResponse, ParameterPoint, ParameterQuery,
+        ParameterResponse, ParameterType,
     },
     error::{ApiError, ApiResult},
     AppState,
@@ -72,7 +72,10 @@ impl CurveDataLoader {
         if let Ok(entries) = std::fs::read_dir(&self.base_path) {
             for entry in entries.flatten() {
                 if let Some(name) = entry.file_name().to_str() {
-                    if name.ends_with(".json") {
+                    if std::path::Path::new(name)
+                        .extension()
+                        .is_some_and(|ext| ext.eq_ignore_ascii_case("json"))
+                    {
                         indices.push(name.trim_end_matches(".json").to_string());
                     }
                 }
@@ -283,15 +286,51 @@ pub async fn build_curve(
 
     state.curve_cache.add(curve_id, cached_curve);
 
-    let processing_time_ms = start.elapsed().as_secs_f64() * 1000.0;
+    let build_time_ms = start.elapsed().as_secs_f64() * 1000.0;
+
+    // Build parameters array for visualisation with forward rates
+    let parameters: Vec<CurveParameter> = pillars
+        .iter()
+        .enumerate()
+        .map(|(i, &tenor)| {
+            let df = discount_factors[i];
+            let zr = zero_rates[i];
+
+            // Calculate forward rate from consecutive discount factors
+            // f(t1, t2) = (ln(DF1) - ln(DF2)) / (t2 - t1)
+            let forward_rate = if i > 0 {
+                let prev_tenor = pillars[i - 1];
+                let prev_df = discount_factors[i - 1];
+                let dt = tenor - prev_tenor;
+                if dt > 0.0 {
+                    Some((prev_df.ln() - df.ln()) / dt)
+                } else {
+                    Some(zr) // Fallback to zero rate
+                }
+            } else {
+                // First point: forward rate equals zero rate
+                Some(zr)
+            };
+
+            CurveParameter {
+                tenor_years: tenor,
+                discount_factor: df,
+                zero_rate: zr,
+                forward_rate,
+            }
+        })
+        .collect();
 
     let response = CurveBuildResponse {
         curve_id: curve_id.to_string(),
         status: BuildStatus::Success,
+        index: request.index.clone(),
+        interpolation_method: request.interpolation.display_name().to_string(),
+        parameters,
         pillars,
         discount_factors,
         zero_rates,
-        processing_time_ms,
+        build_time_ms,
         instrument_count: sorted_instruments.len(),
     };
 

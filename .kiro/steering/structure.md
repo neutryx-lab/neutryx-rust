@@ -221,7 +221,13 @@ instruments/  → Financial instrument definitions
 
 market/       → Market data structures and calibration
   ├── curves/        → Yield curves (YieldCurve trait, FlatCurve, InterpolatedCurve, CreditCurve, CurveSet, CurveEnum)
-  ├── surfaces/      → Volatility surfaces (VolatilitySurface trait, FlatVol, InterpolatedVolSurface, FxVolatilitySurface)
+  ├── surfaces/      → Volatility surfaces (VolatilitySurface trait, FlatVol, InterpolatedVolSurface, FxVolatilitySurface, VolSurfaceEnum)
+  ├── volcube/       → Volatility cube infrastructure (SABR calibration, Breeden-Litzenberger density extraction)
+  │   ├── cube.rs         → VolCube core with expiry/tenor grid
+  │   ├── calibrator.rs   → SABR calibration engine
+  │   ├── sabr_surface.rs → SABR surface construction
+  │   ├── breeden_litzenberger.rs → Risk-neutral density extraction
+  │   └── builder.rs      → VolCubeBuilder for construction
   ├── calibration/   → Model and curve calibration
   │   ├── bootstrapping/ → Multi-curve yield curve construction (AAD-enabled)
   │   │   ├── engine.rs      → BootstrapEngine with Adjoint AD
@@ -617,5 +623,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-23_ — Documented web handler pattern (*_handlers.rs + *_types.rs); added demo/data/ structure with curves/ and volsurface/ directories
+_Updated: 2026-01-23_ — Added volcube/ module to pricer_models::market (SABR calibration, density extraction)
 _Document patterns, not file trees. New files following patterns should not require updates_

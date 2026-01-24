@@ -203,6 +203,7 @@ pub struct SabrConfigInput {
     pub calibrate_beta: bool,
 }
 
+#[allow(clippy::unnecessary_wraps)] // Required by serde default for Option<f64> field
 fn default_sabr_beta() -> Option<f64> { Some(0.5) }
 
 impl Default for SabrConfigInput {

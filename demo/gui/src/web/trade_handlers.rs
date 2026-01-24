@@ -32,6 +32,8 @@ use infra_master::{
 use serde_json::json;
 use uuid::Uuid;
 
+// Re-export rate index helpers from trade_types
+use super::trade_types::{default_rate_index_for_currency, validate_rate_index};
 use super::{
     schedule_utils::{generate_schedule, SchedulePeriod},
     trade_types::*,
@@ -156,6 +158,10 @@ fn validate_rates_params(params: &RatesParams) -> Result<(), TradeExpandError> {
             "Notional must be positive",
         ));
     }
+    // Validate rate_index if provided
+    if let Err(msg) = validate_rate_index(&params.rate_index) {
+        return Err(TradeExpandError::validation("rateIndex", &msg));
+    }
     Ok(())
 }
 
@@ -192,6 +198,10 @@ fn validate_swap_params(params: &SwapParams) -> Result<(), TradeExpandError> {
             "dayCount",
             "Day count convention is required",
         ));
+    }
+    // Validate rate_index if provided
+    if let Err(msg) = validate_rate_index(&params.rate_index) {
+        return Err(TradeExpandError::validation("rateIndex", &msg));
     }
     Ok(())
 }
@@ -286,13 +296,14 @@ fn expand_deposit(request: &TradeExpandRequest) -> Result<TradeExpandResponse, T
     let schedule = generate_schedule(&params.start_date, &params.tenor, "Annual", "Act360")
         .map_err(|e| TradeExpandError::schedule_error(&e.message))?;
 
-    let cashflows = schedule_to_cashflows(&schedule, params.notional, params.rate, "Fixed");
+    let cashflows = schedule_to_cashflows(&schedule, params.notional, params.rate, "Fixed", None);
 
     let leg = LegDto {
         leg_number: 1,
         direction: "Receiver".to_string(),
         currency: params.currency.clone(),
         leg_type: "Fixed".to_string(),
+        rate_index: None, // Deposits don't have a rate index
         cashflows,
     };
 
@@ -322,6 +333,12 @@ fn expand_fra(request: &TradeExpandRequest) -> Result<TradeExpandResponse, Trade
 
     let trade_id = generate_trade_id("FRA");
 
+    // Determine rate index (use provided or default based on currency)
+    let rate_index = params
+        .rate_index
+        .clone()
+        .unwrap_or_else(|| default_rate_index_for_currency(&params.currency).to_string());
+
     // FRA has a single settlement cashflow
     let cashflows = vec![CashflowDto {
         payment_date: params.start_date.clone(), // Settlement at start
@@ -332,6 +349,7 @@ fn expand_fra(request: &TradeExpandRequest) -> Result<TradeExpandResponse, Trade
         payoff_type: "Linear".to_string(),
         rate: Some(params.rate),
         spread: None,
+        rate_index: Some(rate_index.clone()),
         daily_accruals: None,
     }];
 
@@ -340,6 +358,7 @@ fn expand_fra(request: &TradeExpandRequest) -> Result<TradeExpandResponse, Trade
         direction: "Receiver".to_string(),
         currency: params.currency.clone(),
         leg_type: "Floating".to_string(),
+        rate_index: Some(rate_index),
         cashflows,
     };
 
@@ -369,6 +388,12 @@ fn expand_futures(request: &TradeExpandRequest) -> Result<TradeExpandResponse, T
 
     let trade_id = generate_trade_id("FUT");
 
+    // Determine rate index (use provided or default based on currency)
+    let rate_index = params
+        .rate_index
+        .clone()
+        .unwrap_or_else(|| default_rate_index_for_currency(&params.currency).to_string());
+
     // Futures have a single settlement
     let cashflows = vec![CashflowDto {
         payment_date: params.start_date.clone(),
@@ -379,6 +404,7 @@ fn expand_futures(request: &TradeExpandRequest) -> Result<TradeExpandResponse, T
         payoff_type: "Linear".to_string(),
         rate: Some(params.rate),
         spread: None,
+        rate_index: Some(rate_index.clone()),
         daily_accruals: None,
     }];
 
@@ -387,6 +413,7 @@ fn expand_futures(request: &TradeExpandRequest) -> Result<TradeExpandResponse, T
         direction: "Receiver".to_string(),
         currency: params.currency.clone(),
         leg_type: "Floating".to_string(),
+        rate_index: Some(rate_index),
         cashflows,
     };
 
@@ -461,7 +488,15 @@ fn expand_ois(request: &TradeExpandRequest) -> Result<TradeExpandResponse, Trade
         .map_err(|e| TradeExpandError::schedule_error(&format!("OIS expansion error: {:?}", e)))?;
 
     // Convert Infra-master Trade to DTO
-    convert_trade_to_dto(trade, &trade_id_str, "OIS")
+    Ok(convert_trade_to_dto(trade, &trade_id_str, "OIS"))
+}
+
+/// Helper: Extracts rate index string from IndexType.
+fn extract_rate_index_string(index: &infra_master::trade::IndexType) -> Option<String> {
+    match index {
+        infra_master::trade::IndexType::Rate(ri) => Some(format!("{:?}", ri)),
+        _ => None,
+    }
 }
 
 /// Helper: Converts Infra-master Trade to TradeExpandResponse DTO.
@@ -469,10 +504,13 @@ fn convert_trade_to_dto(
     trade: infra_master::trade::Trade,
     trade_id: &str,
     trade_type: &str,
-) -> Result<TradeExpandResponse, TradeExpandError> {
+) -> TradeExpandResponse {
     let mut legs_dto = Vec::new();
 
     for (idx, leg) in trade.legs().enumerate() {
+        // Track rate index found in cashflows for this leg
+        let mut leg_rate_index: Option<String> = None;
+
         let cashflows_dto: Vec<CashflowDto> = leg
             .cashflows()
             .map(|cf| {
@@ -493,6 +531,25 @@ fn convert_trade_to_dto(
                     _ => None,
                 };
 
+                // Extract rate index from payoff if it's a Linear or VanillaOption type
+                let cf_rate_index = match &cf.payoff {
+                    infra_master::trade::Payoff::Linear { index, .. } => {
+                        let ri = extract_rate_index_string(index);
+                        if leg_rate_index.is_none() {
+                            leg_rate_index.clone_from(&ri);
+                        }
+                        ri
+                    }
+                    infra_master::trade::Payoff::VanillaOption { index, .. } => {
+                        let ri = extract_rate_index_string(index);
+                        if leg_rate_index.is_none() {
+                            leg_rate_index.clone_from(&ri);
+                        }
+                        ri
+                    }
+                    _ => None,
+                };
+
                 CashflowDto {
                     payment_date: cf.payment_date.to_string(),
                     accrual_start: cf.accrual_start.to_string(),
@@ -506,6 +563,7 @@ fn convert_trade_to_dto(
                     },
                     rate,
                     spread: None,
+                    rate_index: cf_rate_index,
                     daily_accruals: daily_accruals_dto,
                 }
             })
@@ -529,6 +587,7 @@ fn convert_trade_to_dto(
             direction,
             currency: leg.currency.code().to_string(),
             leg_type,
+            rate_index: leg_rate_index,
             cashflows: cashflows_dto,
         });
     }
@@ -536,7 +595,7 @@ fn convert_trade_to_dto(
     let total_cf: usize = legs_dto.iter().map(|l| l.cashflows.len()).sum();
     let num_legs = legs_dto.len();
 
-    Ok(TradeExpandResponse {
+    TradeExpandResponse {
         trade_id: trade_id.to_string(),
         trade_type: trade_type.to_string(),
         legs: legs_dto,
@@ -545,7 +604,7 @@ fn convert_trade_to_dto(
             total_cashflows: total_cf,
             processing_time_ms: 0.0,
         },
-    })
+    }
 }
 
 /// Helper: Parse date string to Infra-master Date.
@@ -623,13 +682,26 @@ fn expand_basis_swap(
 
     let spread = params.spread.unwrap_or(0.0);
 
+    // Determine rate index (use provided or default based on currency)
+    let rate_index = params
+        .rate_index
+        .clone()
+        .unwrap_or_else(|| default_rate_index_for_currency(&params.currency).to_string());
+
     // Two floating legs
     let leg1 = LegDto {
         leg_number: 1,
         direction: "Receiver".to_string(),
         currency: params.currency.clone(),
         leg_type: "Floating".to_string(),
-        cashflows: schedule_to_cashflows(&schedule, params.notional, spread, "Linear"),
+        rate_index: Some(rate_index.clone()),
+        cashflows: schedule_to_cashflows(
+            &schedule,
+            params.notional,
+            spread,
+            "Linear",
+            Some(&rate_index),
+        ),
     };
 
     let leg2 = LegDto {
@@ -637,7 +709,14 @@ fn expand_basis_swap(
         direction: "Payer".to_string(),
         currency: params.currency.clone(),
         leg_type: "Floating".to_string(),
-        cashflows: schedule_to_cashflows(&schedule, params.notional, 0.0, "Linear"),
+        rate_index: Some(rate_index.clone()),
+        cashflows: schedule_to_cashflows(
+            &schedule,
+            params.notional,
+            0.0,
+            "Linear",
+            Some(&rate_index),
+        ),
     };
 
     let total_cf = leg1.cashflows.len() + leg2.cashflows.len();
@@ -678,12 +757,20 @@ fn expand_irs(request: &TradeExpandRequest) -> Result<TradeExpandResponse, Trade
 
     let fixed_rate = params.fixed_rate.unwrap_or(0.0);
 
+    // Determine rate index for floating leg (use provided or default based on
+    // currency)
+    let rate_index = params
+        .rate_index
+        .clone()
+        .unwrap_or_else(|| default_rate_index_for_currency(&params.currency).to_string());
+
     let fixed_leg = LegDto {
         leg_number: 1,
         direction: "Receiver".to_string(),
         currency: params.currency.clone(),
         leg_type: "Fixed".to_string(),
-        cashflows: schedule_to_cashflows(&schedule, params.notional, fixed_rate, "Fixed"),
+        rate_index: None, // Fixed leg has no rate index
+        cashflows: schedule_to_cashflows(&schedule, params.notional, fixed_rate, "Fixed", None),
     };
 
     let floating_leg = LegDto {
@@ -691,11 +778,13 @@ fn expand_irs(request: &TradeExpandRequest) -> Result<TradeExpandResponse, Trade
         direction: "Payer".to_string(),
         currency: params.currency.clone(),
         leg_type: "Floating".to_string(),
+        rate_index: Some(rate_index.clone()),
         cashflows: schedule_to_cashflows(
             &schedule,
             params.notional,
             params.spread.unwrap_or(0.0),
             "Linear",
+            Some(&rate_index),
         ),
     };
 
@@ -740,6 +829,7 @@ fn expand_fx_forward(
         direction: "Payer".to_string(),
         currency: params.base_currency.clone(),
         leg_type: "Principal".to_string(),
+        rate_index: None, // FX Forward has no rate index
         cashflows: vec![CashflowDto {
             payment_date: params.expiry.clone(),
             accrual_start: params.expiry.clone(),
@@ -749,6 +839,7 @@ fn expand_fx_forward(
             payoff_type: "Fixed".to_string(),
             rate: Some(1.0),
             spread: None,
+            rate_index: None,
             daily_accruals: None,
         }],
     };
@@ -758,6 +849,7 @@ fn expand_fx_forward(
         direction: "Receiver".to_string(),
         currency: params.quote_currency.clone(),
         leg_type: "Principal".to_string(),
+        rate_index: None,
         cashflows: vec![CashflowDto {
             payment_date: params.expiry.clone(),
             accrual_start: params.expiry.clone(),
@@ -767,6 +859,7 @@ fn expand_fx_forward(
             payoff_type: "Fixed".to_string(),
             rate: Some(forward_rate),
             spread: None,
+            rate_index: None,
             daily_accruals: None,
         }],
     };
@@ -804,6 +897,7 @@ fn expand_fx_option(request: &TradeExpandRequest) -> Result<TradeExpandResponse,
         direction: "Receiver".to_string(),
         currency: params.quote_currency.clone(),
         leg_type: "CapFloor".to_string(),
+        rate_index: None, // FX Option has no rate index
         cashflows: vec![CashflowDto {
             payment_date: params.expiry.clone(),
             accrual_start: params.expiry.clone(),
@@ -813,6 +907,7 @@ fn expand_fx_option(request: &TradeExpandRequest) -> Result<TradeExpandResponse,
             payoff_type: "VanillaOption".to_string(),
             rate: Some(strike),
             spread: None,
+            rate_index: None,
             daily_accruals: None,
         }],
     };
@@ -856,12 +951,23 @@ fn expand_cross_currency_swap(
 
     let forward_rate = params.forward_rate.unwrap_or(params.spot_rate);
 
+    // Determine rate indices for each currency leg
+    let base_rate_index = default_rate_index_for_currency(&params.base_currency);
+    let quote_rate_index = default_rate_index_for_currency(&params.quote_currency);
+
     let base_leg = LegDto {
         leg_number: 1,
         direction: "Payer".to_string(),
         currency: params.base_currency.clone(),
         leg_type: "Floating".to_string(),
-        cashflows: schedule_to_cashflows(&schedule, params.notional, 0.0, "Linear"),
+        rate_index: Some(base_rate_index.to_string()),
+        cashflows: schedule_to_cashflows(
+            &schedule,
+            params.notional,
+            0.0,
+            "Linear",
+            Some(base_rate_index),
+        ),
     };
 
     let quote_leg = LegDto {
@@ -869,7 +975,14 @@ fn expand_cross_currency_swap(
         direction: "Receiver".to_string(),
         currency: params.quote_currency.clone(),
         leg_type: "Floating".to_string(),
-        cashflows: schedule_to_cashflows(&schedule, params.notional * forward_rate, 0.0, "Linear"),
+        rate_index: Some(quote_rate_index.to_string()),
+        cashflows: schedule_to_cashflows(
+            &schedule,
+            params.notional * forward_rate,
+            0.0,
+            "Linear",
+            Some(quote_rate_index),
+        ),
     };
 
     let total_cf = base_leg.cashflows.len() + quote_leg.cashflows.len();
@@ -912,6 +1025,7 @@ fn expand_equity_vanilla_option(
         direction: "Receiver".to_string(),
         currency: "USD".to_string(), // Default to USD for equity
         leg_type: "CapFloor".to_string(),
+        rate_index: None, // Equity option has no rate index
         cashflows: vec![CashflowDto {
             payment_date: params.expiry.clone(),
             accrual_start: params.expiry.clone(),
@@ -921,6 +1035,7 @@ fn expand_equity_vanilla_option(
             payoff_type: "VanillaOption".to_string(),
             rate: Some(params.strike),
             spread: None,
+            rate_index: None,
             daily_accruals: None,
         }],
     };
@@ -966,6 +1081,7 @@ fn expand_equity_forward(
         },
         currency: "USD".to_string(),
         leg_type: "Generic".to_string(),
+        rate_index: None, // Equity forward has no rate index
         cashflows: vec![CashflowDto {
             payment_date: params.expiry.clone(),
             accrual_start: params.expiry.clone(),
@@ -975,6 +1091,7 @@ fn expand_equity_forward(
             payoff_type: "Linear".to_string(),
             rate: Some(params.strike),
             spread: None,
+            rate_index: None, // Equity forward has no rate index
             daily_accruals: None,
         }],
     };
@@ -1007,6 +1124,7 @@ fn schedule_to_cashflows(
     notional: f64,
     rate: f64,
     payoff_type: &str,
+    rate_index: Option<&str>,
 ) -> Vec<CashflowDto> {
     schedule
         .iter()
@@ -1019,6 +1137,12 @@ fn schedule_to_cashflows(
             payoff_type: payoff_type.to_string(),
             rate: if rate != 0.0 { Some(rate) } else { None },
             spread: None,
+            // Include rate_index for Linear payoffs (floating legs)
+            rate_index: if payoff_type == "Linear" {
+                rate_index.map(|s| s.to_string())
+            } else {
+                None
+            },
             daily_accruals: None,
         })
         .collect()
@@ -1630,8 +1754,36 @@ mod tests {
                 tenor: "1Y".to_string(),
                 rate: 0.05,
                 notional: 1_000_000.0,
+                rate_index: None,
             };
             assert!(validate_rates_params(&params).is_ok());
+        }
+
+        #[test]
+        fn test_validate_rates_params_with_valid_rate_index() {
+            let params = RatesParams {
+                currency: "USD".to_string(),
+                start_date: "2024-01-15".to_string(),
+                tenor: "1Y".to_string(),
+                rate: 0.05,
+                notional: 1_000_000.0,
+                rate_index: Some("SOFR".to_string()),
+            };
+            assert!(validate_rates_params(&params).is_ok());
+        }
+
+        #[test]
+        fn test_validate_rates_params_with_invalid_rate_index() {
+            let params = RatesParams {
+                currency: "USD".to_string(),
+                start_date: "2024-01-15".to_string(),
+                tenor: "1Y".to_string(),
+                rate: 0.05,
+                notional: 1_000_000.0,
+                rate_index: Some("INVALID".to_string()),
+            };
+            let result = validate_rates_params(&params);
+            assert!(result.is_err());
         }
 
         #[test]
@@ -1642,6 +1794,7 @@ mod tests {
                 tenor: "1Y".to_string(),
                 rate: 0.05,
                 notional: 1_000_000.0,
+                rate_index: None,
             };
             assert!(validate_rates_params(&params).is_err());
         }
@@ -1654,6 +1807,7 @@ mod tests {
                 tenor: "1Y".to_string(),
                 rate: 0.05,
                 notional: -1000.0,
+                rate_index: None,
             };
             assert!(validate_rates_params(&params).is_err());
         }
@@ -1672,6 +1826,7 @@ mod tests {
                     tenor: "1Y".to_string(),
                     rate: 0.05,
                     notional: 1_000_000.0,
+                    rate_index: None,
                 }),
             };
 
@@ -1681,6 +1836,8 @@ mod tests {
             let response = result.unwrap();
             assert_eq!(response.trade_type, "Deposit");
             assert_eq!(response.legs.len(), 1);
+            // Deposit should have no rate_index
+            assert!(response.legs[0].rate_index.is_none());
         }
 
         #[test]
@@ -1696,6 +1853,7 @@ mod tests {
                     spread: None,
                     payment_frequency: "Quarterly".to_string(),
                     day_count: "Act360".to_string(),
+                    rate_index: None,
                 }),
             };
 
@@ -1706,6 +1864,36 @@ mod tests {
             assert_eq!(response.trade_type, "IRS");
             assert_eq!(response.legs.len(), 2); // Fixed + Floating
             assert_eq!(response.metadata.total_legs, 2);
+
+            // Fixed leg should have no rate_index
+            assert!(response.legs[0].rate_index.is_none());
+            // Floating leg should have rate_index (default SOFR for USD)
+            assert_eq!(response.legs[1].rate_index, Some("SOFR".to_string()));
+        }
+
+        #[test]
+        fn test_expand_irs_with_custom_rate_index() {
+            let request = TradeExpandRequest {
+                instrument_type: TradeInstrumentType::Irs,
+                params: InstrumentParamsUnion::Swap(SwapParams {
+                    currency: "EUR".to_string(),
+                    start_date: "2024-01-15".to_string(),
+                    tenor: "5Y".to_string(),
+                    notional: 10_000_000.0,
+                    fixed_rate: Some(0.03),
+                    spread: None,
+                    payment_frequency: "Quarterly".to_string(),
+                    day_count: "Act360".to_string(),
+                    rate_index: Some("EURIBOR6M".to_string()),
+                }),
+            };
+
+            let result = expand_instrument(&request);
+            assert!(result.is_ok());
+
+            let response = result.unwrap();
+            // Floating leg should have the custom rate_index
+            assert_eq!(response.legs[1].rate_index, Some("EURIBOR6M".to_string()));
         }
 
         #[test]
@@ -1718,6 +1906,7 @@ mod tests {
                     tenor: "5Y".to_string(),
                     rate: 0.01,
                     notional: 10_000_000.0,
+                    rate_index: None,
                 }),
             };
 
@@ -1726,6 +1915,34 @@ mod tests {
 
             let error = result.unwrap_err();
             assert_eq!(error.error, "unsupported_instrument");
+        }
+
+        #[test]
+        fn test_expand_fra_with_rate_index() {
+            let request = TradeExpandRequest {
+                instrument_type: TradeInstrumentType::Fra,
+                params: InstrumentParamsUnion::Rates(RatesParams {
+                    currency: "GBP".to_string(),
+                    start_date: "2024-01-15".to_string(),
+                    tenor: "3M".to_string(),
+                    rate: 0.05,
+                    notional: 1_000_000.0,
+                    rate_index: Some("SONIA".to_string()),
+                }),
+            };
+
+            let result = expand_instrument(&request);
+            assert!(result.is_ok());
+
+            let response = result.unwrap();
+            assert_eq!(response.trade_type, "FRA");
+            // FRA leg should have the specified rate_index
+            assert_eq!(response.legs[0].rate_index, Some("SONIA".to_string()));
+            // Cashflow should also have rate_index
+            assert_eq!(
+                response.legs[0].cashflows[0].rate_index,
+                Some("SONIA".to_string())
+            );
         }
     }
 

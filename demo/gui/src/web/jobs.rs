@@ -123,9 +123,10 @@ pub struct JobManagerConfig {
 }
 
 impl Default for JobManagerConfig {
+    #[allow(unknown_lints, clippy::duration_suboptimal_units)]
     fn default() -> Self {
         Self {
-            ttl: Duration::from_secs(300), // 5 minutes
+            ttl: Duration::from_secs(5 * 60), // 5 minutes
             max_jobs: 1000,
             cleanup_interval: Duration::from_secs(60), // 1 minute
         }
