@@ -6336,11 +6336,12 @@ function updateProgressRing(element, percentage) {
     }
 }
 
-// Gauge Needle Animation
-function updateGauge(element, value, min = 0, max = 100) {
+// Gauge Needle Animation (for generic gauge elements with .gauge-needle class)
+function updateGaugeNeedle(element, value, min = 0, max = 100) {
+    if (!element) return;
     const needle = element.querySelector('.gauge-needle');
     if (!needle) return;
-    
+
     const percentage = (value - min) / (max - min);
     const angle = -90 + (percentage * 180); // -90 to 90 degrees
     needle.style.transform = `translateX(-50%) rotate(${angle}deg)`;
@@ -13789,27 +13790,22 @@ document.addEventListener('DOMContentLoaded', () => {
         irsBootstrap.init();
     }
 
-    // New: Initialise Curve Builder module if view exists
-    if (document.getElementById('curve-builder-view') && typeof curveBuilder !== 'undefined') {
-        curveBuilder.init();
-    }
+    // Note: curveBuilder, genericPricer, and volcubeBuilder modules
+    // handle their own initialization in their respective JS files
 });
 
 // ===========================================
 // Curve Builder View Navigation Handler
 // ===========================================
 
-// Add to navigateTo function for Curve Builder view
+// Add to navigateTo function for all feature views
 const originalNavigateTo = typeof navigateTo === 'function' ? navigateTo : null;
 if (originalNavigateTo) {
     window.navigateTo = function(viewName) {
         originalNavigateTo(viewName);
 
-        // Curve Builder view
-        if (viewName === 'curve-builder' && typeof curveBuilder !== 'undefined') {
-            // Dispatch custom event for view change
-            window.dispatchEvent(new CustomEvent('viewChanged', { detail: { view: 'curve-builder' } }));
-        }
+        // Dispatch viewChanged event for all views (used by feature modules)
+        window.dispatchEvent(new CustomEvent('viewChanged', { detail: { view: viewName } }));
 
         // Legacy: IRS Bootstrap view (for backward compatibility)
         if (viewName === 'irs-bootstrap' && typeof irsBootstrap !== 'undefined') {

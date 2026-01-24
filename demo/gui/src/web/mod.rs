@@ -370,12 +370,19 @@ fn build_cors() -> CorsLayer {
 }
 
 fn build_csp_header() -> SetResponseHeaderLayer<HeaderValue> {
+    // CSP policy:
+    // - script-src + script-src-elem: 'self', cdn.plot.ly, 'unsafe-eval' for Plotly
+    // - style-src: 'unsafe-inline' for inline styles, external fonts
+    // - connect-src: ws/wss for WebSocket connections
+    // - worker-src: blob for Plotly web workers
     const DEFAULT_CSP: &str = "default-src 'self'; \
-        script-src 'self'; \
+        script-src 'self' 'unsafe-eval' https://cdn.plot.ly; \
+        script-src-elem 'self' https://cdn.plot.ly; \
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; \
         font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; \
         img-src 'self' data: blob:; \
-        connect-src 'self' ws: wss:;";
+        connect-src 'self' ws: wss:; \
+        worker-src 'self' blob:;";
 
     let csp_value = std::env::var("FB_CSP").unwrap_or_else(|_| DEFAULT_CSP.to_string());
     let header_value =
@@ -556,10 +563,11 @@ pub fn build_router(state: Arc<AppState>) -> Router {
     let api_routes = api_routes.nest("/fxvol", fxvol_routes);
 
     // Static file serving for the dashboard
-    // Data files are placed inside static directory (demo/gui/static/data/input)
-    // so they are served via fallback_service without needing a separate route
     let static_files =
         ServeDir::new("demo/gui/static").not_found_service(handlers::serve_index_with_config());
+
+    // Data file serving for external JSON data
+    let data_files = ServeDir::new("demo/data/input");
 
     // CSP header: default policy for local static assets.
     // - Script sources limited to self (vendor assets).
@@ -576,6 +584,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         // Task 13.2: Serve index.html with config injection at root
         .route("/", get(handlers::get_index))
         .nest("/api", api_routes)
+        .nest_service("/data/input", data_files)
         .fallback_service(static_files)
         .layer(cache_control_header)
         .layer(csp_header)
