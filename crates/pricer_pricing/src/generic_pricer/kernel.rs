@@ -368,8 +368,18 @@ mod tests {
     #[test]
     fn test_day_count_actual365() {
         let dc = DayCountConvention::Actual365Fixed;
-        let start = Date::from_ymd(2024, 1, 1).unwrap();
-        let end = Date::from_ymd(2025, 1, 1).unwrap();
+        // Use non-leap year (2023) for exactly 365 days with proper calendar
+        #[cfg(feature = "l1l2-integration")]
+        let (start, end) = (
+            Date::from_ymd(2023, 1, 1).unwrap(),
+            Date::from_ymd(2024, 1, 1).unwrap(),
+        );
+        // SimpleDate uses simplified calculation (30 days/month, 365 days/year)
+        #[cfg(not(feature = "l1l2-integration"))]
+        let (start, end) = (
+            Date::from_ymd(2024, 1, 1).unwrap(),
+            Date::from_ymd(2025, 1, 1).unwrap(),
+        );
         let yf = dc.year_fraction(start, end);
         assert!((yf - 1.0).abs() < 1e-10);
     }
@@ -377,10 +387,18 @@ mod tests {
     #[test]
     fn test_day_count_actual360() {
         let dc = DayCountConvention::Actual360;
-        let start = Date::from_ymd(2024, 1, 1).unwrap();
-        // Note: SimpleDate uses simplified calculation (30 days/month, 365 days/year)
-        // so 2024-12-31 gives exactly 360 days from 2024-01-01
-        let end = Date::from_ymd(2024, 12, 31).unwrap();
+        // Use dates exactly 360 days apart for proper calendar
+        #[cfg(feature = "l1l2-integration")]
+        let (start, end) = (
+            Date::from_ymd(2023, 1, 1).unwrap(),
+            Date::from_ymd(2023, 12, 27).unwrap(), // 360 days in non-leap year
+        );
+        // SimpleDate: 30 days/month means 2024-12-31 is 360 days from 2024-01-01
+        #[cfg(not(feature = "l1l2-integration"))]
+        let (start, end) = (
+            Date::from_ymd(2024, 1, 1).unwrap(),
+            Date::from_ymd(2024, 12, 31).unwrap(),
+        );
         let yf = dc.year_fraction(start, end);
         assert!((yf - 1.0).abs() < 1e-10);
     }
