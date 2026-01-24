@@ -790,16 +790,19 @@ mod tests {
             let response = CurveBuildResponse {
                 curve_id: "abc-123".to_string(),
                 status: BuildStatus::Success,
+                index: "usd-sofr".to_string(),
+                interpolation_method: "linear".to_string(),
+                parameters: vec![],
                 pillars: vec![0.25, 0.5, 1.0],
                 discount_factors: vec![0.9875, 0.975, 0.95],
                 zero_rates: vec![0.05, 0.0505, 0.051],
-                processing_time_ms: 15.5,
+                build_time_ms: 15.5,
                 instrument_count: 3,
             };
 
             let json = serde_json::to_string(&response).unwrap();
             assert!(json.contains("\"curveId\""));
-            assert!(json.contains("\"processingTimeMs\""));
+            assert!(json.contains("\"buildTimeMs\""));
             assert!(json.contains("\"instrumentCount\""));
         }
     }
