@@ -684,7 +684,11 @@ mod tests {
 
         let result = pricer.get_pv_simple(vec![leg], valuation_date, Currency::USD);
 
-        assert!(matches!(result, Err(PricingError::FxRateNotFound { .. })));
+        // Standalone mode uses StandaloneFxRateNotFound (not FxRateNotFound)
+        assert!(matches!(
+            result,
+            Err(PricingError::StandaloneFxRateNotFound { .. })
+        ));
     }
 
     #[cfg(not(feature = "l1l2-integration"))]

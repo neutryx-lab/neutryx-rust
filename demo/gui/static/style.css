@@ -13018,6 +13018,638 @@ body.light-theme .chart-placeholder {
 }
 
 /* ============================================
+   Pricer Parameter Form Styles
+   ============================================ */
+
+.pricer-parameter-form {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--glass-border);
+}
+
+.param-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+}
+
+.param-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+
+.param-field label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.param-field .required-mark {
+    color: var(--error);
+    margin-left: 0.25rem;
+}
+
+.param-field .fancy-input,
+.param-field .fancy-select {
+    width: 100%;
+}
+
+.param-section-divider {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 0.5rem 0;
+}
+
+.param-section-divider::before,
+.param-section-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--glass-border);
+}
+
+.param-section-divider span {
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.param-notice {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+}
+
+.param-notice i {
+    color: var(--primary);
+}
+
+/* Expanded Trade Display */
+.expanded-trade-info {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.trade-id-badge,
+.trade-type-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.trade-id-badge {
+    color: var(--primary);
+}
+
+.trade-type-badge {
+    color: var(--accent);
+}
+
+.leg-section {
+    margin-bottom: 1.5rem;
+}
+
+.leg-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    font-size: 0.8125rem;
+    flex-wrap: wrap;
+}
+
+.leg-header.payer {
+    background: rgba(239, 68, 68, 0.1);
+    border-left: 3px solid var(--error);
+}
+
+.leg-header.receiver {
+    background: rgba(16, 185, 129, 0.1);
+    border-left: 3px solid var(--success);
+}
+
+.leg-number {
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.leg-direction {
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.leg-direction.payer {
+    background: var(--error);
+    color: #fff;
+}
+
+.leg-direction.receiver {
+    background: var(--success);
+    color: #fff;
+}
+
+.leg-currency {
+    padding: 0.125rem 0.5rem;
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.leg-type,
+.leg-rate-index {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.leg-rate-index {
+    color: var(--primary);
+}
+
+.leg-section .pricer-cf-table {
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+
+.payoff-type {
+    display: inline-block;
+    padding: 0.125rem 0.375rem;
+    background: var(--surface-hover);
+    border-radius: var(--radius-xs);
+    font-size: 0.6875rem;
+    font-weight: 500;
+}
+
+.cf-rate {
+    margin-left: 0.5rem;
+    font-family: 'SF Mono', 'Consolas', monospace;
+    font-size: 0.75rem;
+    color: var(--primary);
+}
+
+.cf-index {
+    margin-left: 0.5rem;
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+}
+
+.trade-metadata {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 0.75rem 1rem;
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    flex-wrap: wrap;
+}
+
+.trade-metadata span {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.trade-metadata i {
+    color: var(--primary);
+}
+
+.reset-edits-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-left: auto;
+    padding: 0.375rem 0.75rem;
+    background: var(--warning);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.reset-edits-btn:hover {
+    background: #d97706;
+    transform: translateY(-1px);
+}
+
+/* ============================================
+   Editable Cashflow Table Styles
+   ============================================ */
+
+.expanded-trade-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.cf-edit-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.75rem;
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: var(--radius-sm);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--warning);
+}
+
+.cf-edit-indicator i {
+    font-size: 0.625rem;
+}
+
+.leg-section {
+    margin-bottom: 1.5rem;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid var(--glass-border);
+}
+
+.leg-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1rem;
+    font-size: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.leg-header.payer {
+    background: linear-gradient(90deg, rgba(239, 68, 68, 0.15) 0%, transparent 100%);
+    border-left: 3px solid var(--error);
+}
+
+.leg-header.receiver {
+    background: linear-gradient(90deg, rgba(16, 185, 129, 0.15) 0%, transparent 100%);
+    border-left: 3px solid var(--success);
+}
+
+.leg-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    background: var(--surface);
+    border-radius: 50%;
+    font-weight: 700;
+    font-size: 0.75rem;
+}
+
+.leg-direction-tag {
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.leg-direction-tag.payer {
+    background: var(--error);
+    color: #fff;
+}
+
+.leg-direction-tag.receiver {
+    background: var(--success);
+    color: #fff;
+}
+
+.leg-currency-tag {
+    padding: 0.125rem 0.5rem;
+    background: var(--primary);
+    color: #fff;
+    border-radius: var(--radius-sm);
+    font-size: 0.625rem;
+    font-weight: 700;
+}
+
+.leg-type-tag {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.leg-index-tag {
+    padding: 0.125rem 0.375rem;
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: var(--radius-sm);
+    font-size: 0.625rem;
+    color: var(--primary);
+    font-weight: 500;
+}
+
+.cf-table-wrapper {
+    overflow-x: auto;
+}
+
+.pricer-cf-table.editable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.75rem;
+}
+
+.pricer-cf-table.editable th,
+.pricer-cf-table.editable td {
+    padding: 0.5rem 0.625rem;
+    text-align: left;
+    border-bottom: 1px solid var(--glass-border);
+    white-space: nowrap;
+}
+
+.pricer-cf-table.editable th {
+    background: var(--bg-secondary);
+    font-weight: 600;
+    font-size: 0.6875rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.pricer-cf-table.editable tr:hover {
+    background: var(--surface-hover);
+}
+
+.pricer-cf-table.editable tr.edited {
+    background: rgba(245, 158, 11, 0.08);
+}
+
+.pricer-cf-table.editable tr.edited:hover {
+    background: rgba(245, 158, 11, 0.12);
+}
+
+/* Column widths */
+.col-date { width: 100px; }
+.col-period { width: 180px; }
+.col-yf { width: 70px; text-align: right; }
+.col-notional { width: 100px; }
+.col-rate { width: 100px; }
+.col-type { width: 120px; }
+
+/* Period styling */
+.period-start,
+.period-end {
+    font-family: 'SF Mono', 'Consolas', monospace;
+    font-size: 0.6875rem;
+}
+
+.period-arrow {
+    margin: 0 0.25rem;
+    color: var(--text-muted);
+}
+
+/* Editable input fields */
+.cf-input {
+    width: 100%;
+    padding: 0.25rem 0.5rem;
+    background: var(--surface);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: 'SF Mono', 'Consolas', monospace;
+    font-size: 0.75rem;
+    text-align: right;
+    transition: all var(--transition-fast);
+}
+
+.cf-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: var(--bg-primary);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+.cf-input.modified {
+    border-color: var(--warning);
+    background: rgba(245, 158, 11, 0.1);
+}
+
+.cf-input.modified:focus {
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+}
+
+.notional-input {
+    max-width: 90px;
+}
+
+.rate-input {
+    max-width: 70px;
+}
+
+.rate-unit {
+    margin-left: 0.25rem;
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+}
+
+.rate-floating {
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* Payoff badges */
+.payoff-badge {
+    display: inline-block;
+    padding: 0.125rem 0.375rem;
+    border-radius: var(--radius-xs);
+    font-size: 0.625rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.payoff-badge.fixed {
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--primary);
+}
+
+.payoff-badge.linear {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success);
+}
+
+.payoff-badge.vanillaoption {
+    background: rgba(236, 72, 153, 0.15);
+    color: #ec4899;
+}
+
+.index-badge {
+    margin-left: 0.375rem;
+    padding: 0.125rem 0.375rem;
+    background: var(--surface);
+    border-radius: var(--radius-xs);
+    font-size: 0.5625rem;
+    color: var(--text-muted);
+}
+
+/* PV Card Styles */
+.pricer-pv-card {
+    padding: 1.5rem;
+    border-radius: var(--radius-lg);
+    text-align: center;
+}
+
+.pricer-pv-card.positive {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.pricer-pv-card.negative {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.05) 100%);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.pv-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+}
+
+.pv-value {
+    font-size: 2rem;
+    font-weight: 700;
+    font-family: 'SF Mono', 'Consolas', monospace;
+}
+
+.pricer-pv-card.positive .pv-value {
+    color: var(--success);
+}
+
+.pricer-pv-card.negative .pv-value {
+    color: var(--error);
+}
+
+.pv-meta {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* Leg Table Improvements */
+.pricer-leg-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+.pricer-leg-table th,
+.pricer-leg-table td {
+    padding: 0.625rem 0.75rem;
+    text-align: left;
+    font-size: 0.8125rem;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.pricer-leg-table th {
+    background: var(--bg-secondary);
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.pricer-leg-table tfoot td {
+    background: var(--surface);
+    font-weight: 600;
+}
+
+.pricer-leg-table td.positive {
+    color: var(--success);
+}
+
+.pricer-leg-table td.negative {
+    color: var(--error);
+}
+
+/* Greeks Grid */
+.pricer-greeks-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+}
+
+.greek-card {
+    padding: 1rem;
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    text-align: center;
+    transition: transform var(--transition-fast);
+}
+
+.greek-card:hover {
+    transform: translateY(-2px);
+}
+
+.greek-label {
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.375rem;
+}
+
+.greek-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    font-family: 'SF Mono', 'Consolas', monospace;
+    color: var(--text-primary);
+}
+
+.greek-value.positive {
+    color: var(--success);
+}
+
+.greek-value.negative {
+    color: var(--error);
+}
+
+/* API Notice */
+.pricer-api-notice {
+    padding: 1.5rem;
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    text-align: center;
+}
+
+.pricer-api-notice i {
+    font-size: 2rem;
+    color: var(--warning);
+    margin-bottom: 1rem;
+}
+
+.pricer-api-notice p {
+    color: var(--text-secondary);
+    margin: 0.5rem 0;
+}
+
+/* ============================================
    VolCube Builder Styles (volcube-calibration-ui)
    ============================================ */
 
