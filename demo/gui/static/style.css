@@ -11564,6 +11564,50 @@ body.light-theme .curve-builder-loading-overlay {
     flex-wrap: wrap;
 }
 
+/* Asset Class Toggle */
+.asset-class-toggle {
+    display: flex;
+    background: var(--surface);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    padding: 2px;
+    gap: 2px;
+}
+
+.asset-toggle-btn {
+    padding: 6px 14px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+}
+
+.asset-toggle-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.asset-toggle-btn.active {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Light Theme */
+body.light-theme .asset-class-toggle {
+    background: white;
+    border-color: #e0e0e0;
+}
+
+body.light-theme .asset-toggle-btn:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
 /* Filter Groups */
 .filter-group {
     display: flex;
@@ -12160,6 +12204,37 @@ body.light-theme .market-rates-table tbody tr:hover {
 body.light-theme .convention-card {
     background: white;
     border-color: #e2e8f0;
+}
+
+/* Conventions Empty State */
+.conventions-empty {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 16px;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.conventions-empty i {
+    font-size: 2rem;
+    margin-bottom: 8px;
+    opacity: 0.5;
+}
+
+.conventions-empty p {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+/* Placeholder hint for empty states */
+.placeholder-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+    opacity: 0.7;
 }
 
 body.light-theme .export-menu {

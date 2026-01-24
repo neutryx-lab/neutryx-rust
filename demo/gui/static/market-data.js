@@ -12,7 +12,9 @@ const marketDataViewer = (() => {
         sortDirection: 'asc',
         lastUpdated: null,
         previousValues: new Map(), // For change highlighting
-        isInitialised: false
+        isInitialised: false,
+        assetClass: 'Rates', // Default asset class filter
+        allConventions: [] // All conventions (unfiltered)
     };
 
     // DOM Elements (cached)
@@ -39,6 +41,7 @@ const marketDataViewer = (() => {
 
     function cacheElements() {
         elements = {
+            assetClassToggle: document.getElementById('market-asset-class-toggle'),
             currencyFilter: document.getElementById('market-currency-filter'),
             typeFilter: document.getElementById('market-type-filter'),
             indexFilter: document.getElementById('market-index-filter'),
@@ -60,6 +63,14 @@ const marketDataViewer = (() => {
     }
 
     function bindEvents() {
+        // Asset Class Toggle
+        elements.assetClassToggle?.querySelectorAll('.asset-toggle-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const assetClass = btn.dataset.asset;
+                setAssetClass(assetClass);
+            });
+        });
+
         // Filters
         elements.currencyFilter?.addEventListener('change', applyFilters);
         elements.typeFilter?.addEventListener('change', applyFilters);
@@ -172,9 +183,86 @@ const marketDataViewer = (() => {
             if (!response.ok) throw new Error('Failed to fetch conventions');
 
             const data = await response.json();
-            renderConventions(data.conventions || []);
+            state.allConventions = data.conventions || [];
+            filterAndRenderConventions();
         } catch (error) {
             logError('Failed to load conventions:', error);
+        }
+    }
+
+    /**
+     * Filters and renders conventions based on current asset class.
+     */
+    function filterAndRenderConventions() {
+        if (!state.allConventions) return;
+
+        const assetClass = state.assetClass;
+        const conventionTypes = getAssetClassConventionTypes(assetClass);
+
+        const filtered = state.allConventions.filter(conv => {
+            if (conventionTypes.length === 0) return true;
+            const convType = conv.conventionType?.toLowerCase() || '';
+            return conventionTypes.some(t => convType.includes(t));
+        });
+
+        renderConventions(filtered);
+    }
+
+    /**
+     * Maps asset class to convention type patterns.
+     */
+    function getAssetClassConventionTypes(assetClass) {
+        switch (assetClass) {
+            case 'Rates':
+                return ['ois', 'swap', 'deposit', 'depo'];
+            case 'FX':
+                return ['fx', 'spot'];
+            case 'IRVol':
+                return ['swaption', 'cap', 'floor', 'irvol'];
+            case 'FXVol':
+                return ['fxvol', 'fxoption'];
+            default:
+                return [];
+        }
+    }
+
+    // ===========================================
+    // Asset Class Selection
+    // ===========================================
+
+    function setAssetClass(assetClass) {
+        state.assetClass = assetClass;
+        updateAssetClassToggle();
+        applyFilters();
+        filterAndRenderConventions();
+        log(`Asset class changed to: ${assetClass}`);
+    }
+
+    function updateAssetClassToggle() {
+        elements.assetClassToggle?.querySelectorAll('.asset-toggle-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.asset === state.assetClass);
+        });
+    }
+
+    /**
+     * Maps asset class to rateType values.
+     * Rates: Deposit, Swap, OIS
+     * FX: FxSpot, FxForward
+     * IRVol: IRSwaption, IRCap
+     * FXVol: FxOption
+     */
+    function getAssetClassRateTypes(assetClass) {
+        switch (assetClass) {
+            case 'Rates':
+                return ['deposit', 'swap', 'ois'];
+            case 'FX':
+                return ['fxspot', 'fxforward'];
+            case 'IRVol':
+                return ['irswaption', 'ircap', 'irfloor'];
+            case 'FXVol':
+                return ['fxoption', 'fxvol'];
+            default:
+                return [];
         }
     }
 
@@ -199,10 +287,18 @@ const marketDataViewer = (() => {
         const currency = elements.currencyFilter?.value?.toLowerCase() || '';
         const rateType = elements.typeFilter?.value?.toLowerCase() || '';
         const index = elements.indexFilter?.value?.toLowerCase() || '';
+        const assetClassTypes = getAssetClassRateTypes(state.assetClass);
 
         state.filteredRates = state.rates.filter(rate => {
+            // Filter by asset class (always applied)
+            const rateTypeLower = rate.rateType?.toLowerCase() || '';
+            if (assetClassTypes.length > 0 && !assetClassTypes.includes(rateTypeLower)) {
+                return false;
+            }
+
+            // Additional filters
             if (currency && rate.currency.toLowerCase() !== currency) return false;
-            if (rateType && rate.rateType.toLowerCase() !== rateType) return false;
+            if (rateType && rateTypeLower !== rateType) return false;
             if (index && (!rate.rateIndex || rate.rateIndex.toLowerCase() !== index)) return false;
             return true;
         });
@@ -253,7 +349,24 @@ const marketDataViewer = (() => {
 
         if (state.filteredRates.length === 0) {
             elements.ratesTbody.innerHTML = '';
-            if (elements.placeholder) elements.placeholder.style.display = 'flex';
+            if (elements.placeholder) {
+                elements.placeholder.style.display = 'flex';
+                // Show asset-class specific message
+                const assetClass = state.assetClass;
+                const noDataAssets = ['IRVol', 'FXVol'];
+                if (noDataAssets.includes(assetClass)) {
+                    elements.placeholder.innerHTML = `
+                        <i class="fas fa-database"></i>
+                        <p>No ${assetClass} data available</p>
+                        <span class="placeholder-hint">Volatility surfaces not yet implemented</span>
+                    `;
+                } else {
+                    elements.placeholder.innerHTML = `
+                        <i class="fas fa-search"></i>
+                        <p>No rates match the current filters</p>
+                    `;
+                }
+            }
             return;
         }
 
@@ -417,6 +530,17 @@ const marketDataViewer = (() => {
 
     function renderConventions(conventions) {
         if (!elements.conventionsGrid) return;
+
+        if (conventions.length === 0) {
+            const assetClass = state.assetClass;
+            elements.conventionsGrid.innerHTML = `
+                <div class="conventions-empty">
+                    <i class="fas fa-info-circle"></i>
+                    <p>No conventions for ${assetClass}</p>
+                </div>
+            `;
+            return;
+        }
 
         const html = conventions.map(conv => `
             <div class="convention-card" data-convention-id="${escapeHtml(conv.id)}">
