@@ -86,7 +86,7 @@ impl FxVolCache {
 
         // Simple eviction: remove oldest if at capacity
         if surfaces.len() >= self.max_entries {
-            if let Some(key) = surfaces.keys().next().cloned() {
+            if let Some(key) = surfaces.keys().next().copied() {
                 surfaces.remove(&key);
             }
         }
@@ -150,7 +150,11 @@ impl FxVolDataLoader {
             for entry in entries.flatten() {
                 if let Some(name) = entry.file_name().to_str() {
                     // FX files are 6-char currency pairs (not ending in -swaption)
-                    if name.ends_with(".json") && !name.contains("-swaption") {
+                    if std::path::Path::new(name)
+                        .extension()
+                        .is_some_and(|ext| ext.eq_ignore_ascii_case("json"))
+                        && !name.contains("-swaption")
+                    {
                         let pair_code = name.trim_end_matches(".json").to_uppercase();
                         if pair_code.len() == 6 {
                             pairs.push(FxPairInfo::new(&pair_code));
@@ -438,7 +442,7 @@ pub async fn get_smile(
                 .partial_cmp(&(b.expiry - query.expiry).abs())
                 .unwrap_or(std::cmp::Ordering::Equal)
         })
-        .ok_or_else(|| ApiError::not_found("Expiry", &query.expiry.to_string()))?;
+        .ok_or_else(|| ApiError::not_found("Expiry", query.expiry.to_string()))?;
 
     // Calculate forward
     let rate_diff = surface.domestic_rate - surface.foreign_rate;
@@ -448,7 +452,7 @@ pub async fn get_smile(
     let delta_vols = quote.to_delta_vols();
 
     // Generate smile points
-    let num_points = query.num_points.max(5).min(50);
+    let num_points = query.num_points.clamp(5, 50);
     let mut points = Vec::with_capacity(num_points);
 
     // Add standard delta points
@@ -576,7 +580,7 @@ pub async fn get_density(
                 .partial_cmp(&(b.expiry - query.expiry).abs())
                 .unwrap_or(std::cmp::Ordering::Equal)
         })
-        .ok_or_else(|| ApiError::not_found("Expiry", &query.expiry.to_string()))?;
+        .ok_or_else(|| ApiError::not_found("Expiry", query.expiry.to_string()))?;
 
     // Calculate forward
     let rate_diff = surface.domestic_rate - surface.foreign_rate;
@@ -585,7 +589,7 @@ pub async fn get_density(
     // Generate strike grid
     let strike_min = forward * 0.7;
     let strike_max = forward * 1.3;
-    let num_points = query.num_points.max(50).min(500);
+    let num_points = query.num_points.clamp(50, 500);
     let strike_step = (strike_max - strike_min) / (num_points - 1) as f64;
 
     let mut strikes = Vec::with_capacity(num_points);
@@ -850,9 +854,9 @@ fn volatility_at_strike(
     // Approximate delta from moneyness
     let moneyness = strike / forward;
     let approx_delta = if moneyness > 1.0 {
-        0.5 * (2.0 - moneyness).max(0.0).min(1.0)
+        0.5 * (2.0 - moneyness).clamp(0.0, 1.0)
     } else {
-        -0.5 * moneyness.max(0.0).min(1.0)
+        -0.5 * moneyness.clamp(0.0, 1.0)
     };
 
     interpolate_delta_vol(vols, approx_delta)
@@ -952,10 +956,7 @@ fn delta_to_strike(
     };
 
     // K = F * exp(-d1 * sigma * sqrt(T) + 0.5 * sigma^2 * T)
-    let strike =
-        forward * (-d1 * volatility * sqrt_t + 0.5 * volatility * volatility * expiry).exp();
-
-    strike
+    forward * (-d1 * volatility * sqrt_t + 0.5 * volatility * volatility * expiry).exp()
 }
 
 /// Black call price.

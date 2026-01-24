@@ -72,7 +72,10 @@ impl CurveDataLoader {
         if let Ok(entries) = std::fs::read_dir(&self.base_path) {
             for entry in entries.flatten() {
                 if let Some(name) = entry.file_name().to_str() {
-                    if name.ends_with(".json") {
+                    if std::path::Path::new(name)
+                        .extension()
+                        .is_some_and(|ext| ext.eq_ignore_ascii_case("json"))
+                    {
                         indices.push(name.trim_end_matches(".json").to_string());
                     }
                 }

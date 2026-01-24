@@ -85,7 +85,7 @@ impl VolCubeCache {
 
         // Simple eviction: remove oldest if at capacity
         if cubes.len() >= self.max_entries {
-            if let Some(key) = cubes.keys().next().cloned() {
+            if let Some(key) = cubes.keys().next().copied() {
                 cubes.remove(&key);
             }
         }
@@ -153,7 +153,7 @@ impl VolCubeDataLoader {
                     // Only include swaption files (not FX files)
                     if name.ends_with("-swaption.json") {
                         let id = name.trim_end_matches(".json").to_string();
-                        let display_name = id.replace("-", " ").to_uppercase();
+                        let display_name = id.replace('-', " ").to_uppercase();
 
                         let currency = if id.starts_with("usd") {
                             "USD"
@@ -571,7 +571,7 @@ pub async fn get_smile(
         .ok_or_else(|| {
             ApiError::not_found(
                 "Grid point",
-                &format!("expiry={}, tenor={}", query.expiry, query.tenor),
+                format!("expiry={}, tenor={}", query.expiry, query.tenor),
             )
         })?;
 
@@ -580,7 +580,7 @@ pub async fn get_smile(
     // Generate strike grid
     let strike_min = forward * 0.5;
     let strike_max = forward * 1.5;
-    let num_points = query.num_points.max(10).min(200);
+    let num_points = query.num_points.clamp(10, 200);
     let strike_step = (strike_max - strike_min) / (num_points - 1) as f64;
 
     let mut strikes = Vec::with_capacity(num_points);
@@ -654,7 +654,7 @@ pub async fn get_density(
         .ok_or_else(|| {
             ApiError::not_found(
                 "Grid point",
-                &format!("expiry={}, tenor={}", query.expiry, query.tenor),
+                format!("expiry={}, tenor={}", query.expiry, query.tenor),
             )
         })?;
 
@@ -664,7 +664,7 @@ pub async fn get_density(
     // Generate strike grid
     let strike_min = forward * 0.5;
     let strike_max = forward * 1.5;
-    let num_points = query.num_points.max(50).min(500);
+    let num_points = query.num_points.clamp(50, 500);
     let strike_step = (strike_max - strike_min) / (num_points - 1) as f64;
 
     let mut strikes = Vec::with_capacity(num_points);

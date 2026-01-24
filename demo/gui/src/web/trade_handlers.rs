@@ -488,7 +488,7 @@ fn expand_ois(request: &TradeExpandRequest) -> Result<TradeExpandResponse, Trade
         .map_err(|e| TradeExpandError::schedule_error(&format!("OIS expansion error: {:?}", e)))?;
 
     // Convert Infra-master Trade to DTO
-    convert_trade_to_dto(trade, &trade_id_str, "OIS")
+    Ok(convert_trade_to_dto(trade, &trade_id_str, "OIS"))
 }
 
 /// Helper: Extracts rate index string from IndexType.
@@ -504,7 +504,7 @@ fn convert_trade_to_dto(
     trade: infra_master::trade::Trade,
     trade_id: &str,
     trade_type: &str,
-) -> Result<TradeExpandResponse, TradeExpandError> {
+) -> TradeExpandResponse {
     let mut legs_dto = Vec::new();
 
     for (idx, leg) in trade.legs().enumerate() {
@@ -536,14 +536,14 @@ fn convert_trade_to_dto(
                     infra_master::trade::Payoff::Linear { index, .. } => {
                         let ri = extract_rate_index_string(index);
                         if leg_rate_index.is_none() {
-                            leg_rate_index = ri.clone();
+                            leg_rate_index.clone_from(&ri);
                         }
                         ri
                     }
                     infra_master::trade::Payoff::VanillaOption { index, .. } => {
                         let ri = extract_rate_index_string(index);
                         if leg_rate_index.is_none() {
-                            leg_rate_index = ri.clone();
+                            leg_rate_index.clone_from(&ri);
                         }
                         ri
                     }
@@ -595,7 +595,7 @@ fn convert_trade_to_dto(
     let total_cf: usize = legs_dto.iter().map(|l| l.cashflows.len()).sum();
     let num_legs = legs_dto.len();
 
-    Ok(TradeExpandResponse {
+    TradeExpandResponse {
         trade_id: trade_id.to_string(),
         trade_type: trade_type.to_string(),
         legs: legs_dto,
@@ -604,7 +604,7 @@ fn convert_trade_to_dto(
             total_cashflows: total_cf,
             processing_time_ms: 0.0,
         },
-    })
+    }
 }
 
 /// Helper: Parse date string to Infra-master Date.
