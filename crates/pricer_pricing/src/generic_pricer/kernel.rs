@@ -44,7 +44,7 @@ fn add_days_to_date(date: Date, days: i32) -> Date {
 }
 
 #[cfg(not(feature = "l1l2-integration"))]
-fn add_days_to_date(date: Date, days: i32) -> Date { Date(date.0 + days) }
+fn add_days_to_date(date: Date, days: i32) -> Date { Date::from_days(date.days() + days) }
 
 #[cfg(feature = "l1l2-integration")]
 use chrono::Datelike;
@@ -368,8 +368,8 @@ mod tests {
     #[test]
     fn test_day_count_actual365() {
         let dc = DayCountConvention::Actual365Fixed;
-        let start = Date::from_days(0);
-        let end = Date::from_days(365);
+        let start = Date::from_ymd(2024, 1, 1).unwrap();
+        let end = Date::from_ymd(2025, 1, 1).unwrap();
         let yf = dc.year_fraction(start, end);
         assert!((yf - 1.0).abs() < 1e-10);
     }
@@ -377,8 +377,8 @@ mod tests {
     #[test]
     fn test_day_count_actual360() {
         let dc = DayCountConvention::Actual360;
-        let start = Date::from_days(0);
-        let end = Date::from_days(360);
+        let start = Date::from_ymd(2024, 1, 1).unwrap();
+        let end = Date::from_ymd(2024, 12, 27).unwrap(); // 360 days later
         let yf = dc.year_fraction(start, end);
         assert!((yf - 1.0).abs() < 1e-10);
     }
@@ -386,8 +386,8 @@ mod tests {
     #[test]
     fn test_day_count_half_year() {
         let dc = DayCountConvention::Actual365Fixed;
-        let start = Date::from_days(0);
-        let end = Date::from_days(182);
+        let start = Date::from_ymd(2024, 1, 1).unwrap();
+        let end = Date::from_ymd(2024, 7, 1).unwrap(); // ~182 days
         let yf = dc.year_fraction(start, end);
         assert!(yf > 0.49 && yf < 0.51);
     }
@@ -426,8 +426,8 @@ mod tests {
         let calc = DiscountCalculator::with_flat_rate(0.05);
         let dc = DayCountConvention::Actual365Fixed;
 
-        let val_date = Date::from_days(0);
-        let pay_date = Date::from_days(365);
+        let val_date = Date::from_ymd(2024, 1, 1).unwrap();
+        let pay_date = Date::from_ymd(2025, 1, 1).unwrap();
 
         let df = calc.discount_factor_dates(val_date, pay_date, dc);
         assert!((df - 0.9512).abs() < 0.001);
@@ -436,8 +436,8 @@ mod tests {
     #[test]
     fn test_price_cashflow() {
         let amount = 100_000.0;
-        let payment_date = Date::from_days(365);
-        let valuation_date = Date::from_days(0);
+        let payment_date = Date::from_ymd(2025, 1, 1).unwrap();
+        let valuation_date = Date::from_ymd(2024, 1, 1).unwrap();
         let rate = 0.05;
         let dc = DayCountConvention::Actual365Fixed;
 
@@ -450,8 +450,8 @@ mod tests {
     #[test]
     fn test_price_cashflow_past() {
         let amount = 100_000.0;
-        let payment_date = Date::from_days(50); // Past
-        let valuation_date = Date::from_days(100);
+        let payment_date = Date::from_ymd(2024, 2, 20).unwrap(); // Past
+        let valuation_date = Date::from_ymd(2024, 4, 10).unwrap();
         let rate = 0.05;
         let dc = DayCountConvention::Actual365Fixed;
 
@@ -463,13 +463,13 @@ mod tests {
 
     #[test]
     fn test_price_cashflow_stream() {
-        let valuation_date = Date::from_days(0);
+        let valuation_date = Date::from_ymd(2024, 1, 1).unwrap();
         let rate = 0.05;
         let dc = DayCountConvention::Actual365Fixed;
 
         let cashflows = vec![
-            (100_000.0, Date::from_days(365)), // 1 year
-            (100_000.0, Date::from_days(730)), // 2 years
+            (100_000.0, Date::from_ymd(2025, 1, 1).unwrap()), // 1 year
+            (100_000.0, Date::from_ymd(2026, 1, 1).unwrap()), // 2 years
         ];
 
         let pv = price_cashflow_stream(cashflows.into_iter(), valuation_date, rate, dc);
@@ -482,10 +482,10 @@ mod tests {
     fn test_business_day_following() {
         let conv = BusinessDayConvention::Following;
 
-        // Monday should stay Monday
-        let monday = Date::from_days(2); // Assuming 2000-01-03 was Monday
+        // Monday should stay Monday (2024-01-08 is a Monday)
+        let monday = Date::from_ymd(2024, 1, 8).unwrap();
         let adjusted = conv.adjust(monday);
-        assert_eq!(adjusted.0, monday.0);
+        assert_eq!(adjusted, monday);
     }
 
     #[test]
@@ -493,9 +493,9 @@ mod tests {
         let conv = BusinessDayConvention::None;
 
         // Any day should stay the same
-        let date = Date::from_days(0);
+        let date = Date::from_ymd(2024, 1, 1).unwrap();
         let adjusted = conv.adjust(date);
-        assert_eq!(adjusted.0, date.0);
+        assert_eq!(adjusted, date);
     }
 
     #[test]

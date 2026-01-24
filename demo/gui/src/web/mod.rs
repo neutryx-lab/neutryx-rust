@@ -23,7 +23,6 @@ pub mod curve_builder_types;
 pub mod error;
 pub mod fxvol_handlers;
 pub mod fxvol_types;
-#[cfg(not(feature = "l1l2-integration"))]
 pub mod generic_pricer_handlers;
 pub mod jobs;
 pub mod market_data;
@@ -510,18 +509,15 @@ pub fn build_router(state: Arc<AppState>) -> Router {
     let api_routes = api_routes.nest("/curves", curve_routes);
 
     // GenericPricer API routes (demo-webapp-pricer Task 2.4)
-    // Only available when l1l2-integration is NOT enabled (standalone mode)
-    #[cfg(not(feature = "l1l2-integration"))]
-    let api_routes = {
-        let pricer_routes = Router::new()
-            .route("/price", post(generic_pricer_handlers::price_generic))
-            .route("/greeks", post(generic_pricer_handlers::calculate_greeks))
-            .route(
-                "/instruments",
-                get(generic_pricer_handlers::get_pricer_instruments),
-            );
-        api_routes.nest("/pricer", pricer_routes)
-    };
+    // Available in both standalone and l1l2-integration modes
+    let pricer_routes = Router::new()
+        .route("/price", post(generic_pricer_handlers::price_generic))
+        .route("/greeks", post(generic_pricer_handlers::calculate_greeks))
+        .route(
+            "/instruments",
+            get(generic_pricer_handlers::get_pricer_instruments),
+        );
+    let api_routes = api_routes.nest("/pricer", pricer_routes);
 
     // VolCube API routes (volcube-calibration-ui Task 7.1)
     let volcube_routes = Router::new()

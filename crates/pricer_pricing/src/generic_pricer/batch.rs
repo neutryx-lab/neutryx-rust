@@ -20,12 +20,21 @@ use super::pricer::GenericPricer;
 #[cfg(not(feature = "l1l2-integration"))]
 use super::pricer::SimpleLeg;
 #[cfg(not(feature = "l1l2-integration"))]
+use super::pricer::StandalonePricingResult;
+#[cfg(not(feature = "l1l2-integration"))]
 use super::result::Date;
+#[cfg(feature = "l1l2-integration")]
+use super::result::PricingResult;
 use super::{
     config::{ModelConfig, PricerConfig},
     error::PricingError,
-    result::PricingResult,
 };
+
+// Type alias for batch pricing result type
+#[cfg(feature = "l1l2-integration")]
+type BatchResultType = PricingResult;
+#[cfg(not(feature = "l1l2-integration"))]
+type BatchResultType = StandalonePricingResult;
 
 /// Unique identifier for a trade.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -98,7 +107,7 @@ impl BatchStats {
 #[derive(Debug)]
 pub struct BatchPricingResult {
     /// Successfully priced trades.
-    pub successes: Vec<(TradeId, PricingResult)>,
+    pub successes: Vec<(TradeId, BatchResultType)>,
     /// Failed trades with their errors.
     pub failures: Vec<(TradeId, PricingError)>,
     /// Processing statistics.
@@ -108,7 +117,7 @@ pub struct BatchPricingResult {
 impl BatchPricingResult {
     /// Creates a new batch pricing result.
     pub fn new(
-        successes: Vec<(TradeId, PricingResult)>,
+        successes: Vec<(TradeId, BatchResultType)>,
         failures: Vec<(TradeId, PricingError)>,
         elapsed_ms: u64,
     ) -> Self {
@@ -132,7 +141,7 @@ impl BatchPricingResult {
     pub fn total_pv(&self) -> f64 { self.successes.iter().map(|(_, r)| r.total_pv).sum() }
 
     /// Gets the result for a specific trade ID.
-    pub fn get(&self, trade_id: &TradeId) -> Option<Result<&PricingResult, &PricingError>> {
+    pub fn get(&self, trade_id: &TradeId) -> Option<Result<&BatchResultType, &PricingError>> {
         // Check successes first
         if let Some((_, result)) = self.successes.iter().find(|(id, _)| id == trade_id) {
             return Some(Ok(result));
@@ -223,7 +232,7 @@ impl BatchPricer {
         let pricer = GenericPricer::new(self.model_config.clone(), self.pricer_config.clone());
 
         // Process trades in parallel
-        let results: Vec<(TradeId, Result<PricingResult, PricingError>)> = trades
+        let results: Vec<(TradeId, Result<BatchResultType, PricingError>)> = trades
             .par_iter()
             .map(|trade| {
                 let result =

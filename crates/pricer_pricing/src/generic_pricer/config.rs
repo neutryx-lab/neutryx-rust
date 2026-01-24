@@ -145,8 +145,10 @@ impl ModelConfigBuilder {
     }
 }
 
-/// Default currency when l1l2-integration is not enabled.
-#[cfg(not(feature = "l1l2-integration"))]
+/// Default currency for standalone pricing (always available).
+///
+/// This type is always exported regardless of l1l2-integration feature.
+/// Use this for standalone pricing without full market data integration.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum DefaultCurrency {
     /// US Dollar
@@ -162,7 +164,6 @@ pub enum DefaultCurrency {
     CHF,
 }
 
-#[cfg(not(feature = "l1l2-integration"))]
 impl DefaultCurrency {
     /// Creates a currency from a string code.
     ///
@@ -190,7 +191,6 @@ impl DefaultCurrency {
     }
 }
 
-#[cfg(not(feature = "l1l2-integration"))]
 impl std::fmt::Display for DefaultCurrency {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.code())

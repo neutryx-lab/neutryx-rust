@@ -15,46 +15,48 @@
 //! - **Dynamic aggregation**: `group_by_currency()` aggregates from leg data on
 //!   demand
 
+// Re-export infra_master types when l1l2-integration is enabled
 #[cfg(feature = "l1l2-integration")]
 pub use infra_master::trade::Direction;
 #[cfg(feature = "l1l2-integration")]
 use infra_master::{market::Currency, time::Date};
 
-/// Direction of a leg (without l1l2-integration).
-#[cfg(not(feature = "l1l2-integration"))]
+// ============================================================================
+// Standalone types (always available for demo/testing without full L1/L2)
+// ============================================================================
+
+/// Direction of a leg (standalone version).
+///
+/// Always available regardless of l1l2-integration feature.
+/// Use this for standalone pricing without full market data integration.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Direction {
+pub enum SimpleDirection {
     /// Payer: pays this leg's cashflows (negative NPV contribution).
     Payer,
     /// Receiver: receives this leg's cashflows (positive NPV contribution).
     Receiver,
 }
 
-#[cfg(not(feature = "l1l2-integration"))]
-impl Direction {
+impl SimpleDirection {
     /// Returns the sign for NPV calculation.
     pub fn sign(&self) -> f64 {
         match self {
-            Direction::Payer => -1.0,
-            Direction::Receiver => 1.0,
+            SimpleDirection::Payer => -1.0,
+            SimpleDirection::Receiver => 1.0,
         }
     }
 }
 
-/// Currency type (without l1l2-integration).
-#[cfg(not(feature = "l1l2-integration"))]
-pub use super::config::DefaultCurrency as Currency;
-
 /// Simple date representation (days since 2000-01-01).
-/// Used when l1l2-integration is not enabled.
-#[cfg(not(feature = "l1l2-integration"))]
+///
+/// Always available regardless of l1l2-integration feature.
+/// Use this for standalone pricing without full market data integration.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Date(pub i32);
+pub struct SimpleDate(pub i32);
 
-#[cfg(not(feature = "l1l2-integration"))]
-impl Date {
+impl SimpleDate {
     /// Creates a new date from days since 2000-01-01.
-    pub fn from_days(days: i32) -> Self { Date(days) }
+    pub fn from_days(days: i32) -> Self { SimpleDate(days) }
 
     /// Returns the days since 2000-01-01.
     pub fn days(&self) -> i32 { self.0 }
@@ -64,9 +66,19 @@ impl Date {
     pub fn from_ymd(year: i32, month: u32, day: u32) -> Option<Self> {
         // Simplified days calculation from 2000-01-01
         let days = (year - 2000) * 365 + (month as i32 - 1) * 30 + day as i32;
-        Some(Date(days))
+        Some(SimpleDate(days))
     }
 }
+
+// Type aliases for backward compatibility when l1l2-integration is NOT enabled
+#[cfg(not(feature = "l1l2-integration"))]
+pub use super::config::DefaultCurrency as Currency;
+/// Date type alias for standalone mode (uses SimpleDate).
+#[cfg(not(feature = "l1l2-integration"))]
+pub type Date = SimpleDate;
+/// Direction type alias for standalone mode (uses SimpleDirection).
+#[cfg(not(feature = "l1l2-integration"))]
+pub type Direction = SimpleDirection;
 
 /// Cashflow-level pricing result.
 ///

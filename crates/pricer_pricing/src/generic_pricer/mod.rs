@@ -51,7 +51,7 @@ mod result;
 #[cfg(not(feature = "l1l2-integration"))]
 pub use batch::SimpleTrade;
 pub use batch::{BatchPricer, BatchPricingResult, BatchStats, TradeId};
-#[cfg(not(feature = "l1l2-integration"))]
+// Always export DefaultCurrency for standalone pricing
 pub use config::DefaultCurrency;
 pub use config::{ModelConfig, ModelConfigBuilder, PricerConfig, PricerConfigBuilder};
 pub use error::{ConfigError, PricingError};
@@ -67,8 +67,14 @@ pub use ois_calculator::{DailyAccrual, OisCalculator};
 #[cfg(feature = "l1l2-integration")]
 pub use payoff_evaluator::PayoffEvaluator;
 pub use pricer::GenericPricer;
-#[cfg(not(feature = "l1l2-integration"))]
-pub use pricer::{SimpleCashflow, SimpleLeg};
+// Always export standalone types for dual-mode support
+pub use pricer::{
+    SimpleCashflow, SimpleLeg, StandaloneCashflowResult, StandaloneLegResult,
+    StandalonePricingResult,
+};
 pub use result::{CashflowPricingResult, LegPricingResult, PathDistribution, PricingResult};
+// Type aliases for backward compatibility when l1l2-integration is NOT enabled
 #[cfg(not(feature = "l1l2-integration"))]
-pub use result::{Date, Direction};
+pub use result::{Currency, Date, Direction};
+// Always export standalone types
+pub use result::{SimpleDate, SimpleDirection};

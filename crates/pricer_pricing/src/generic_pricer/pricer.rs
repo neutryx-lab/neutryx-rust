@@ -1,6 +1,18 @@
 //! Generic Pricer implementation.
 //!
 //! Provides a unified pricing API for financial instruments.
+//!
+//! # Dual-mode Support
+//!
+//! This module supports two pricing modes:
+//!
+//! 1. **Standalone mode** (always available): Uses `SimpleLeg`,
+//!    `SimpleCashflow`, `SimpleDate`, `SimpleDirection`, and `DefaultCurrency`.
+//!    No external market data provider required. Use `new_standalone()` and
+//!    `get_pv_simple()`.
+//!
+//! 2. **Integrated mode** (with `l1l2-integration` feature): Uses
+//!    `infra_master` types and `MarketProvider`. Use `new()` and `get_pv()`.
 
 #[cfg(feature = "l1l2-integration")]
 use std::sync::Arc;
@@ -16,6 +28,9 @@ use infra_master::{
 #[cfg(feature = "l1l2-integration")]
 use pricer_models::market::{MarketProvider, YieldCurve};
 
+// Standalone types - always available
+use super::config::DefaultCurrency;
+// Type aliases for backward compatibility when l1l2-integration is NOT enabled
 #[cfg(not(feature = "l1l2-integration"))]
 use super::config::DefaultCurrency as Currency;
 #[cfg(feature = "l1l2-integration")]
@@ -29,7 +44,7 @@ use super::result::Direction;
 use super::{
     config::{ModelConfig, PricerConfig},
     error::PricingError,
-    result::{CashflowPricingResult, LegPricingResult, PricingResult},
+    result::{CashflowPricingResult, LegPricingResult, PricingResult, SimpleDate, SimpleDirection},
 };
 
 /// Generic pricer for unified pricing API.
@@ -278,19 +293,61 @@ impl GenericPricer {
     }
 }
 
-// Standalone mode implementation (no l1l2-integration)
-#[cfg(not(feature = "l1l2-integration"))]
+// =============================================================================
+// Standalone mode implementation (always available)
+// =============================================================================
+
+/// Simple leg representation for standalone pricing.
+///
+/// Always available regardless of l1l2-integration feature.
+/// Use this for standalone pricing without full market data integration.
+#[derive(Debug, Clone)]
+pub struct SimpleLeg {
+    /// Currency of the leg.
+    pub currency: DefaultCurrency,
+    /// Direction of the leg.
+    pub direction: SimpleDirection,
+    /// Cashflows in the leg.
+    pub cashflows: Vec<SimpleCashflow>,
+}
+
+/// Simple cashflow representation for standalone pricing.
+///
+/// Always available regardless of l1l2-integration feature.
+/// Use this for standalone pricing without full market data integration.
+#[derive(Debug, Clone)]
+pub struct SimpleCashflow {
+    /// Payment date.
+    pub payment_date: SimpleDate,
+    /// Cashflow amount.
+    pub amount: f64,
+}
+
 impl GenericPricer {
-    /// Computes the present value using simplified inputs.
+    /// Creates a new GenericPricer in standalone mode (no market provider).
     ///
-    /// This is a standalone mode that doesn't require full market data
-    /// integration. Useful for testing and demonstration purposes.
+    /// Always available regardless of l1l2-integration feature.
+    /// Use this for standalone pricing without full market data integration.
+    pub fn new_standalone(model_config: ModelConfig, pricer_config: PricerConfig) -> Self {
+        Self {
+            #[cfg(feature = "l1l2-integration")]
+            market: std::sync::Arc::new(pricer_models::market::MarketProvider::new()),
+            model_config,
+            pricer_config,
+        }
+    }
+
+    /// Computes the present value using simplified inputs (standalone mode).
+    ///
+    /// Always available regardless of l1l2-integration feature.
+    /// This mode doesn't require full market data integration.
+    /// Useful for testing, demonstration, and web API purposes.
     pub fn get_pv_simple(
         &self,
         legs: Vec<SimpleLeg>,
-        valuation_date: Date,
-        reporting_currency: Currency,
-    ) -> Result<PricingResult, PricingError> {
+        valuation_date: SimpleDate,
+        reporting_currency: DefaultCurrency,
+    ) -> Result<StandalonePricingResult, PricingError> {
         let mut legs_results = Vec::with_capacity(legs.len());
 
         for leg in &legs {
@@ -300,20 +357,20 @@ impl GenericPricer {
 
         let total_pv: f64 = legs_results.iter().map(|leg| leg.pv).sum();
 
-        Ok(PricingResult::new(
+        Ok(StandalonePricingResult {
             total_pv,
-            legs_results,
+            legs: legs_results,
             reporting_currency,
-        ))
+        })
     }
 
-    /// Prices a simple leg.
+    /// Prices a simple leg (standalone mode).
     fn price_simple_leg(
         &self,
         leg: &SimpleLeg,
-        valuation_date: Date,
-        reporting_currency: Currency,
-    ) -> Result<LegPricingResult, PricingError> {
+        valuation_date: SimpleDate,
+        reporting_currency: DefaultCurrency,
+    ) -> Result<StandaloneLegResult, PricingError> {
         // Simple flat rate discounting
         let discount_rate = 0.05; // 5% flat rate for demo
 
@@ -346,55 +403,94 @@ impl GenericPricer {
 
             pv_original += cf_pv_original;
 
-            cashflows_results.push(CashflowPricingResult::new(
-                cf_pv,
-                cf_pv_original,
-                cf.payment_date,
-                df,
-                leg.currency,
-            ));
+            cashflows_results.push(StandaloneCashflowResult {
+                pv: cf_pv,
+                pv_original: cf_pv_original,
+                payment_date: cf.payment_date,
+                discount_factor: df,
+            });
         }
 
         // Apply direction
         let pv = pv_original * fx_rate * leg.direction.sign();
         let pv_original_signed = pv_original * leg.direction.sign();
 
-        Ok(LegPricingResult::new(
+        Ok(StandaloneLegResult {
             pv,
-            pv_original_signed,
-            leg.currency,
+            pv_original: pv_original_signed,
+            original_currency: leg.currency,
             fx_rate,
-            leg.direction,
-            cashflows_results,
-        ))
+            direction: leg.direction,
+            cashflows: cashflows_results,
+        })
     }
 }
 
-/// Simple leg representation for standalone mode.
-#[cfg(not(feature = "l1l2-integration"))]
+/// Standalone pricing result (always available).
 #[derive(Debug, Clone)]
-pub struct SimpleLeg {
-    /// Currency of the leg.
-    pub currency: Currency,
-    /// Direction of the leg.
-    pub direction: Direction,
-    /// Cashflows in the leg.
-    pub cashflows: Vec<SimpleCashflow>,
+pub struct StandalonePricingResult {
+    /// Total PV in reporting currency.
+    pub total_pv: f64,
+    /// Leg-level results.
+    pub legs: Vec<StandaloneLegResult>,
+    /// Reporting currency.
+    pub reporting_currency: DefaultCurrency,
 }
 
-/// Simple cashflow representation for standalone mode.
-#[cfg(not(feature = "l1l2-integration"))]
+/// Standalone leg result (always available).
 #[derive(Debug, Clone)]
-pub struct SimpleCashflow {
+pub struct StandaloneLegResult {
+    /// PV in reporting currency.
+    pub pv: f64,
+    /// PV in original currency.
+    pub pv_original: f64,
+    /// Original leg currency.
+    pub original_currency: DefaultCurrency,
+    /// FX rate used.
+    pub fx_rate: f64,
+    /// Direction.
+    pub direction: SimpleDirection,
+    /// Cashflow results.
+    pub cashflows: Vec<StandaloneCashflowResult>,
+}
+
+/// Standalone cashflow result (always available).
+#[derive(Debug, Clone)]
+pub struct StandaloneCashflowResult {
+    /// PV in reporting currency.
+    pub pv: f64,
+    /// PV in original currency.
+    pub pv_original: f64,
     /// Payment date.
-    pub payment_date: Date,
-    /// Cashflow amount.
-    pub amount: f64,
+    pub payment_date: SimpleDate,
+    /// Discount factor.
+    pub discount_factor: f64,
+}
+
+impl StandalonePricingResult {
+    /// Returns the number of legs.
+    pub fn leg_count(&self) -> usize { self.legs.len() }
+
+    /// Returns the total number of cashflows across all legs.
+    pub fn cashflow_count(&self) -> usize { self.legs.iter().map(|l| l.cashflows.len()).sum() }
+
+    /// Groups PV by currency.
+    ///
+    /// Returns a map from currency code to total PV in that currency.
+    pub fn group_by_currency(&self) -> std::collections::HashMap<&str, f64> {
+        let mut result = std::collections::HashMap::new();
+        for leg in &self.legs {
+            *result.entry(leg.original_currency.code()).or_insert(0.0) += leg.pv_original;
+        }
+        result
+    }
 }
 
 /// Gets a placeholder FX rate for standalone mode.
-#[cfg(not(feature = "l1l2-integration"))]
-fn get_placeholder_fx_rate(from: Currency, to: Currency) -> Result<f64, PricingError> {
+fn get_placeholder_fx_rate(
+    from: DefaultCurrency,
+    to: DefaultCurrency,
+) -> Result<f64, PricingError> {
     // Simple placeholder rates for testing
     // In production, this would use the market provider
     match (from.code(), to.code()) {
@@ -407,10 +503,10 @@ fn get_placeholder_fx_rate(from: Currency, to: Currency) -> Result<f64, PricingE
         ("USD", "GBP") => Ok(0.79),
         ("GBP", "USD") => Ok(1.266),
         (a, b) if a == b => Ok(1.0),
-        _ => Err(PricingError::FxRateNotFound {
-            base: from.code().to_string(),
-            quote: to.code().to_string(),
-        }),
+        _ => Err(PricingError::standalone_fx_rate_not_found(
+            from.code(),
+            to.code(),
+        )),
     }
 }
 

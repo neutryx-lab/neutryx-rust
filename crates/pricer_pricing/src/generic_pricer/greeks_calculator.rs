@@ -275,7 +275,7 @@ impl GenericPricer {
         // Calculate theta if requested
         if calculator.computes_theta() {
             // Move valuation date forward by 1 day
-            let tomorrow = Date(valuation_date.0 + 1);
+            let tomorrow = Date::from_days(valuation_date.days() + 1);
             let tomorrow_result =
                 self.get_pv_simple(legs.to_vec(), tomorrow, reporting_currency)?;
             let theta = calculate_theta(pv_base, tomorrow_result.total_pv);
@@ -294,8 +294,9 @@ fn estimate_average_time(legs: &[SimpleLeg], valuation_date: Date) -> f64 {
 
     for leg in legs {
         for cf in &leg.cashflows {
-            if cf.payment_date.0 > valuation_date.0 {
-                let time = (cf.payment_date.0 - valuation_date.0) as f64 / 365.0;
+            if cf.payment_date > valuation_date {
+                let days = cf.payment_date.days() - valuation_date.days();
+                let time = days as f64 / 365.0;
                 weighted_time += cf.amount.abs() * time;
                 total_amount += cf.amount.abs();
             }
