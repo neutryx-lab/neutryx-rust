@@ -30,22 +30,17 @@ use pricer_models::market::{MarketProvider, YieldCurve};
 
 // Standalone types - always available
 use super::config::DefaultCurrency;
-// Type aliases for backward compatibility when l1l2-integration is NOT enabled
-#[cfg(not(feature = "l1l2-integration"))]
-use super::config::DefaultCurrency as Currency;
 #[cfg(feature = "l1l2-integration")]
 use super::ois_calculator::{DailyAccrual, OisCalculator};
 #[cfg(feature = "l1l2-integration")]
 use super::payoff_evaluator::PayoffEvaluator;
-#[cfg(not(feature = "l1l2-integration"))]
-use super::result::Date;
-#[cfg(not(feature = "l1l2-integration"))]
-use super::result::Direction;
 use super::{
     config::{ModelConfig, PricerConfig},
     error::PricingError,
-    result::{CashflowPricingResult, LegPricingResult, PricingResult, SimpleDate, SimpleDirection},
+    result::{SimpleDate, SimpleDirection},
 };
+#[cfg(feature = "l1l2-integration")]
+use super::result::{CashflowPricingResult, LegPricingResult, PricingResult};
 
 /// Generic pricer for unified pricing API.
 ///
@@ -514,6 +509,11 @@ fn get_placeholder_fx_rate(
 mod tests {
     use super::*;
     use crate::generic_pricer::config::{ModelConfigBuilder, PricerConfigBuilder};
+    // Type aliases for standalone mode tests
+    #[cfg(not(feature = "l1l2-integration"))]
+    use crate::generic_pricer::config::DefaultCurrency as Currency;
+    #[cfg(not(feature = "l1l2-integration"))]
+    use crate::generic_pricer::result::{Date, Direction};
 
     #[test]
     fn test_generic_pricer_creation() {
