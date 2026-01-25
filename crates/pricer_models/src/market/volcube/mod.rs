@@ -34,6 +34,7 @@ mod cache;
 mod calibrator;
 mod config;
 mod cube;
+mod engine;
 mod error;
 pub mod graph;
 mod interpolator;
@@ -60,6 +61,7 @@ pub use config::{
     OptimizerType, SabrParameterInterpolation, StrikeAxisType, VolCubeConfig,
 };
 pub use cube::{VolCube, VolatilityCube};
+pub use engine::{EngineOutput, ProgressCallback, VolCubeCalibrationEngine};
 pub use error::{
     ArbitrageViolation, ArbitrageViolationType, BoundaryViolation, CalibrationDiagnostics,
     ConvergenceStatus, SabrParameter, SliceDiagnostics, VolCubeError,

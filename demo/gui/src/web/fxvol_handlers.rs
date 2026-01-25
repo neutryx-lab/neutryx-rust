@@ -1197,8 +1197,6 @@ pub async fn get_surface(
             .unwrap();
 
         let delta_vols = quote.to_delta_vols();
-        let rate_diff = surface.domestic_rate - surface.foreign_rate;
-        let forward = surface.spot * (rate_diff * expiry).exp();
 
         let mut vol_row = Vec::with_capacity(delta_axis.len());
         let mut strike_row = Vec::with_capacity(delta_axis.len());

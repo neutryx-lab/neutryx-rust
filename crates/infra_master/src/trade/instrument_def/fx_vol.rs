@@ -36,10 +36,11 @@ pub enum FxVolInstrumentError {
 // ============================================================================
 
 /// Delta type convention for FX options.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum DeltaType {
     /// Spot delta (standard for most G10 pairs like EURUSD).
+    #[default]
     SpotDelta,
     /// Premium-adjusted delta (standard for pairs like USDJPY).
     PremiumAdjustedDelta,
@@ -47,24 +48,17 @@ pub enum DeltaType {
     ForwardDelta,
 }
 
-impl Default for DeltaType {
-    fn default() -> Self { Self::SpotDelta }
-}
-
 /// Cut-off time for option expiry.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum CutOffTime {
     /// New York 10:00 AM (standard for most FX options).
+    #[default]
     NewYork10am,
     /// Tokyo 3:00 PM.
     Tokyo3pm,
     /// London 10:00 AM.
     London10am,
-}
-
-impl Default for CutOffTime {
-    fn default() -> Self { Self::NewYork10am }
 }
 
 /// FX Vol Convention specification.

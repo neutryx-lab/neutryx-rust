@@ -62,7 +62,7 @@ impl std::fmt::Display for BasisSpread {
 // ============================================================================
 
 /// Notional exchange type for XCCY swaps.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum NotionalExchange {
     /// Exchange notionals at trade inception only.
@@ -70,27 +70,21 @@ pub enum NotionalExchange {
     /// Exchange notionals at maturity only.
     Final,
     /// Exchange notionals at both inception and maturity.
+    #[default]
     Both,
     /// No notional exchange.
     None,
 }
 
-impl Default for NotionalExchange {
-    fn default() -> Self { Self::Both }
-}
-
 /// Indicates which leg receives the basis spread.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum SpreadLeg {
     /// Spread applied to domestic leg.
     Domestic,
     /// Spread applied to foreign leg (standard).
+    #[default]
     Foreign,
-}
-
-impl Default for SpreadLeg {
-    fn default() -> Self { Self::Foreign }
 }
 
 /// Cross-currency swap leg details.

@@ -302,11 +302,7 @@ impl CapFloor {
     pub fn num_caplets(&self) -> u32 {
         let tenor_months = self.tenor.to_months();
         let freq_months = self.payment_frequency.months_per_period();
-        if freq_months == 0 {
-            1
-        } else {
-            tenor_months / freq_months
-        }
+        tenor_months.checked_div(freq_months).unwrap_or(1)
     }
 }
 
