@@ -33,6 +33,12 @@ RUN echo "=== Verifying static files ===" && \
     test -f ./demo/gui/static/app.js || (echo "ERROR: app.js missing" && exit 1) && \
     test -f ./demo/gui/static/config.js || (echo "ERROR: config.js missing" && exit 1) && \
     test -f ./demo/gui/static/style.css || (echo "ERROR: style.css missing" && exit 1) && \
+    echo "=== Verifying js directory ===" && \
+    test -d ./demo/gui/static/js || (echo "ERROR: js directory missing" && exit 1) && \
+    ls -la ./demo/gui/static/js/ && \
+    test -f ./demo/gui/static/js/curve-builder.js || (echo "ERROR: curve-builder.js missing" && exit 1) && \
+    test -f ./demo/gui/static/js/pricer.js || (echo "ERROR: pricer.js missing" && exit 1) && \
+    test -f ./demo/gui/static/js/volcube-builder.js || (echo "ERROR: volcube-builder.js missing" && exit 1) && \
     echo "=== Verifying data files ===" && \
     ls -la ./demo/data/input/ && \
     test -f ./demo/data/input/demo_portfolio.json || (echo "ERROR: demo_portfolio.json missing" && exit 1) && \
