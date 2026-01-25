@@ -207,7 +207,8 @@
       "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: add static js files to git for Cloud Build\n\n- Remove demo/gui/static/ from .gitignore to include js files in repo\n- Add js/curve-builder.js, js/pricer.js, js/volcube-builder.js\n- Add verification for js directory and data directories in Dockerfile.gui\n\nThe js/ directory was excluded from git, causing 404 errors on Cloud Run\nbecause Cloud Build clones from the repo and these files were missing.\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(xargs ls:*)",
       "Bash(git stash:*)",
-      "Bash(cargo rustdoc:*)"
+      "Bash(cargo rustdoc:*)",
+      "Bash(ls -la \"f:\\\\Codes\\\\neutryx-rust\\\\neutryx-rust\\\\crates\\\\pricer_models\\\\src\\\\market\\\\volcube\"\" 2>/dev/null || echo \"Directory not found \")"
     ]
   }
 }

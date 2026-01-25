@@ -100,6 +100,7 @@ pub struct RiskEngine {
     config: RiskEngineConfig,
 }
 
+#[allow(clippy::result_large_err)]
 impl RiskEngine {
     /// Creates a new RiskEngine with the given configuration.
     pub fn new(config: RiskEngineConfig) -> Self { Self { config } }
@@ -126,6 +127,7 @@ impl RiskEngine {
     pub fn is_aad_available() -> bool { false }
 
     /// Converts RiskConfig's GreeksMethod to GreeksMode.
+    #[allow(dead_code)]
     fn to_greeks_mode(&self) -> Result<GreeksMode, RiskError> {
         match self.config.risk_config.greeks_method {
             GreeksMethod::Aad => {
@@ -148,6 +150,7 @@ impl RiskEngine {
     }
 
     /// Creates GreeksConfig from RiskConfig.
+    #[allow(dead_code)]
     fn create_greeks_config(&self) -> Result<GreeksConfig, RiskError> {
         let mode = self.to_greeks_mode()?;
         let bump_sizes = &self.config.risk_config.bump_sizes;

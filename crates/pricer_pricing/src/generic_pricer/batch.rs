@@ -18,7 +18,7 @@ use std::{sync::Arc, time::Instant};
 #[cfg(feature = "l1l2-integration")]
 use infra_config::PricingConfig;
 #[cfg(feature = "l1l2-integration")]
-use infra_master::{market::Currency, time::Date, trade::Trade};
+use infra_master::trade::Trade;
 #[cfg(feature = "l1l2-integration")]
 use pricer_models::market::MarketProvider;
 use rayon::prelude::*;
