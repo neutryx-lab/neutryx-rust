@@ -78,25 +78,25 @@
 
 ## Phase 2: 統合依存グラフとカリブレーションエンジン
 
-- [ ] 6. VolCubeカリブレーションエンジン
-- [ ] 6.1 エンジンの基本構造を実装する
+- [x] 6. VolCubeカリブレーションエンジン
+- [x] 6.1 エンジンの基本構造を実装する
   - instrument listとVolCube設定を入力として受け取る
   - カリブレーション結果として診断データ付きCalibratedVolCubeを返す
   - 既存SabrCalibratorをper-sliceで呼び出すループを実装
   - _Requirements: 5.1, 5.2, 5.6, 9.1, 9.3_
 
-- [ ] 6.2 Curve依存解決とforward rate計算を実装する
+- [x] 6.2 Curve依存解決とforward rate計算を実装する
   - CurveSetから指定されたdiscount/projection curveを取得
   - 各(expiry, tenor)でforward swap rateを計算
   - Curve未発見時のエラーハンドリング
   - _Requirements: 5.3, 5.9_
 
-- [ ] 6.3 進捗報告機能を実装する
+- [x] 6.3 進捗報告機能を実装する
   - callback/channel経由でカリブレーション進捗を通知
   - 現在のスライス、総スライス数、反復回数、残差を報告
   - _Requirements: 5.5_
 
-- [ ] 6.4 VolatilitySurface traitを実装する
+- [x] 6.4 VolatilitySurface traitを実装する
   - CalibratedVolCubeがpricing contextで使用可能になるようtraitを実装
   - volatility(expiry, tenor, strike)メソッドを公開
   - _Requirements: 5.7_

@@ -5,6 +5,8 @@
 //! このモジュールはVolCubeカリブレーションと操作に関する
 //! 構造化エラーを定義する。
 
+use std::fmt::Write;
+
 use thiserror::Error;
 
 use crate::market::{error::MarketDataError, CalibrationError};
@@ -481,7 +483,7 @@ impl CalibrationDiagnostics {
         if !violations.is_empty() {
             report.push_str("\n--- パラメータ境界違反 ---\n");
             for violation in violations {
-                report.push_str(&format!("  - {}\n", violation.message));
+                let _ = writeln!(report, "  - {}", violation.message);
             }
         }
 
@@ -489,7 +491,7 @@ impl CalibrationDiagnostics {
         if !arb_violations.is_empty() {
             report.push_str("\n--- Arbitrage条件違反 ---\n");
             for violation in arb_violations {
-                report.push_str(&format!("  - {}\n", violation.message));
+                let _ = writeln!(report, "  - {}", violation.message);
             }
         }
 

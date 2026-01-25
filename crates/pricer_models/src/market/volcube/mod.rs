@@ -61,7 +61,10 @@ pub use config::{
     OptimizerType, SabrParameterInterpolation, StrikeAxisType, VolCubeConfig,
 };
 pub use cube::{VolCube, VolatilityCube};
-pub use engine::{EngineOutput, ProgressCallback, VolCubeCalibrationEngine};
+pub use engine::{
+    calculate_forward_swap_rate, CalibrationProgress, ClosureForwardRateProvider, EngineOutput,
+    ForwardRateError, ForwardRateProvider, ProgressCallback, VolCubeCalibrationEngine,
+};
 pub use error::{
     ArbitrageViolation, ArbitrageViolationType, BoundaryViolation, CalibrationDiagnostics,
     ConvergenceStatus, SabrParameter, SliceDiagnostics, VolCubeError,
