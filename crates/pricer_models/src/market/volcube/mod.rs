@@ -36,6 +36,7 @@ mod config;
 mod cube;
 mod error;
 pub mod graph;
+mod interpolator;
 mod quote;
 mod sabr_surface;
 mod types;
@@ -55,17 +56,21 @@ pub use calibrator::{
     SviCalibrator, VolCubeCalibrator,
 };
 pub use config::{
-    ExtrapolationMethod, InterpolationMethod, OptimizerType, StrikeAxisType, VolCubeConfig,
+    AxisInterpolationMethod, CalibrationOrder, ExtrapolationMethod, InterpolationMethod,
+    OptimizerType, SabrParameterInterpolation, StrikeAxisType, VolCubeConfig,
 };
 pub use cube::{VolCube, VolatilityCube};
 pub use error::{CalibrationDiagnostics, VolCubeError};
+pub use interpolator::{
+    FlatInterpolator, Interpolator, InterpolationError, LinearInterpolator, VolCubeInterpolator,
+};
 pub use graph::{
     VolCubeEdgeType, VolCubeGraphData, VolCubeGraphEdge, VolCubeGraphNode, VolCubeNodeType,
     VolCubeSensitivityInfo,
 };
 pub use quote::{
-    vol_quote_to_instrument, Currency, GridStats, QuoteType, Strike, Tenor, UnderlyingIndex,
-    VolQuote, VolQuoteSet,
+    vol_quote_to_instrument, Currency, GridStats, QuoteType, Tenor, UnderlyingIndex, VolQuote,
+    VolQuoteSet, VolStrike,
 };
 pub use sabr_surface::SabrParameterSurface;
 pub use types::{InstrumentId, SabrParams, VolInstrument};

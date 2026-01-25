@@ -11,43 +11,43 @@
   - serde serializationを実装
   - _Requirements: 2.2, 2.6_
 
-- [ ] 1.2 (P) クォートセットをVolCubeBuilderに渡せる形式に変換する
+- [x] 1.2 (P) クォートセットをVolCubeBuilderに渡せる形式に変換する
   - 複数クォートを集約するコレクション構造を実装
   - expiry/tenor/strikeでクォートをグループ化するヘルパーメソッドを追加
   - 既存VolCubeBuilderとの互換性を確保
   - _Requirements: 2.1, 2.3_
 
-- [ ] 2. VolCubeConfig拡張とCurve依存設定
-- [ ] 2.1 discount curveとprojection curveの参照設定を追加する
+- [x] 2. VolCubeConfig拡張とCurve依存設定
+- [x] 2.1 discount curveとprojection curveの参照設定を追加する
   - CurveName型でdiscount_curveとprojection_curveを設定可能にする
   - カリブレーション順序（expiry-first / tenor-first）を選択可能にする
   - _Requirements: 5.4, 5.8_
 
-- [ ] 2.2 通貨別デフォルトcurve設定を実装する
+- [x] 2.2 通貨別デフォルトcurve設定を実装する
   - USD→SOFR、EUR→ESTR、JPY→TONAのデフォルトマッピングを定義
   - `default_for_currency()`ファクトリメソッドを追加
   - _Requirements: 5.10_
 
-- [ ] 3. 補間器フレームワーク拡張
-- [ ] 3.1 (P) Flat補間器を実装する
+- [x] 3. 補間器フレームワーク拡張
+- [x] 3.1 (P) Flat補間器を実装する
   - 最近傍グリッド点の値を返すシンプルな補間を実装
   - VolCubeInterpolator traitを実装
   - enum-based static dispatchに組み込む
   - _Requirements: 3.3, 3.6_
 
-- [ ] 3.2 (P) Linear補間器を実装する
+- [x] 3.2 (P) Linear補間器を実装する
   - 各軸方向の線形補間を実装
   - 3次元補間のためのtrilinear interpolationを実装
   - VolCubeInterpolator traitを実装
   - _Requirements: 3.3, 3.6_
 
-- [ ] 3.3 SABRパラメータ軸別補間設定を追加する
+- [x] 3.3 SABRパラメータ軸別補間設定を追加する
   - α、β、ρ、νの各パラメータをどの軸で補間するか設定可能にする
   - VolCubeConfigに補間設定フィールドを追加
   - _Requirements: 3.4, 3.5_
 
 - [ ] 4. SABRカリブレーション機能拡張
-- [ ] 4.1 既存SabrCalibratorのβ固定モードを確認・拡張する
+- [x] 4.1 既存SabrCalibratorのβ固定モードを確認・拡張する
   - β=0、0.5、1.0等の固定値設定をサポート
   - 既存実装の再利用を優先し、不足機能のみ追加
   - _Requirements: 4.2, 9.2_

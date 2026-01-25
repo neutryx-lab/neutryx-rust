@@ -19,7 +19,9 @@ mod builder;
 mod config;
 mod curve;
 mod error;
+mod fx_market_builder;
 mod lazy_surface;
+mod sensitivity;
 mod surface;
 mod types;
 mod vol_builder;
@@ -37,3 +39,8 @@ pub use vol_builder::{
     VolQuoteType,
 };
 pub use lazy_surface::{CacheStats, LazyFxVolSurface};
+pub use sensitivity::{
+    smooth, ComputationGraph, ComputationGraphEdge, ComputationGraphNode, ExpirySensitivity,
+    SensitivityConfig, SensitivityMode, VolSurfaceSensitivity,
+};
+pub use fx_market_builder::{FxMarket, FxMarketBuilder, FxMarketDiagnostics, FxMarketError};

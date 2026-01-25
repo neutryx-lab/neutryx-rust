@@ -16,6 +16,7 @@ use thiserror::Error;
 
 use super::config::FxVolSurfaceConfig;
 use super::curve::FxCurve;
+use super::types::Strike;
 use crate::market::surfaces::VolatilitySurface;
 use crate::market::volcube::InterpolationMethod;
 
@@ -538,6 +539,22 @@ impl<T: Float + Send + Sync> CalibratedFxVolSurface<T> {
     #[must_use]
     pub fn expiry_dates(&self) -> Vec<NaiveDate> { self.smiles.keys().copied().collect() }
 
+    /// Returns volatility at a given strike and expiry.
+    ///
+    /// # Arguments
+    /// * `strike` - The option strike price
+    /// * `expiry` - Time to expiry in years
+    pub fn vol(&self, strike: Strike, expiry: T) -> Result<T, VolSurfaceError> {
+        let expiry_f64 = expiry.to_f64().unwrap_or(0.0);
+        if expiry_f64 <= 0.0 {
+            return Err(VolSurfaceError::invalid_expiry("Expiry must be positive"));
+        }
+
+        let smile = self.get_interpolated_smile(expiry)?;
+        let strike_t = T::from(strike.value()).unwrap();
+        smile.vol_at_strike(strike_t)
+    }
+
     /// Returns volatility at a given expiry and delta.
     ///
     /// Delta is expressed as a value in (0, 1) where 0.5 is ATM.
@@ -706,6 +723,33 @@ impl<T: Float + Send + Sync> VolatilitySurface<T> for CalibratedFxVolSurface<T> 
             *self.smile_times.last().unwrap(),
         )
     }
+}
+
+// ============================================================================
+// Differentiable Trait Implementation
+// ============================================================================
+
+/// Marker trait implementation indicating AD compatibility.
+///
+/// The [`CalibratedFxVolSurface`] uses smooth interpolation methods that are
+/// compatible with automatic differentiation backends. All operations on the
+/// generic `T: Float` type avoid discontinuous branching, ensuring gradients
+/// can be computed correctly.
+///
+/// # AD Compatibility
+///
+/// - Smile interpolation uses linear/cubic methods that are smooth
+/// - Delta-to-strike conversion uses smooth Newton iteration
+/// - Extrapolation uses flat values (continuous but not smooth at boundary)
+///
+/// # Usage with Enzyme
+///
+/// When using Enzyme for reverse-mode AD, ensure that the surface is
+/// constructed with AAD-compatible types and that all input quotes flow
+/// through the computation graph.
+impl<T: Float + Send + Sync> pricer_core::traits::priceable::Differentiable
+    for CalibratedFxVolSurface<T>
+{
 }
 
 // ============================================================================

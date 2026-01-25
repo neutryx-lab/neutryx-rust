@@ -7,11 +7,10 @@ use std::sync::{Arc, RwLock};
 
 use num_traits::Float;
 
-use crate::market::surfaces::traits::VolatilitySurface;
+use crate::market::VolatilitySurface;
 
 use super::config::FxVolSurfaceConfig;
 use super::surface::{CalibratedFxVolSurface, VolSmile, VolSurfaceError};
-use super::types::Strike;
 use super::vol_builder::{CalibrationDiagnostics, CalibrationError, FxVolSurfaceBuilder};
 
 /// Statistics for cache usage.
@@ -76,11 +75,11 @@ struct LazyInner<T: Float> {
 /// ```ignore
 /// let lazy_surface = LazyFxVolSurface::new(builder);
 ///
-/// // Calibration happens on first vol() call
-/// let vol = lazy_surface.vol(strike, expiry)?;
+/// // Calibration happens on first volatility() call
+/// let vol = lazy_surface.volatility(strike, expiry)?;
 ///
 /// // Subsequent calls use cached surface
-/// let vol2 = lazy_surface.vol(strike2, expiry)?;
+/// let vol2 = lazy_surface.volatility(strike2, expiry)?;
 ///
 /// // Check cache statistics
 /// let stats = lazy_surface.cache_stats();
@@ -179,33 +178,35 @@ impl<T: Float + Send + Sync + 'static> LazyFxVolSurface<T> {
         }
     }
 
-    /// Queries volatility by strike.
+    /// Queries volatility by strike and expiry.
     ///
     /// Triggers calibration on first call.
-    pub fn vol(&self, strike: Strike<T>, expiry: T) -> Result<T, VolSurfaceError> {
+    pub fn volatility(&self, strike: T, expiry: T) -> Result<T, VolSurfaceError> {
         let mut inner = self.inner.write().expect("Lock poisoned");
         self.ensure_calibrated(&mut inner)
-            .map_err(|e| VolSurfaceError::CalibrationFailed(e.to_string()))?;
+            .map_err(|e| VolSurfaceError::calibration_error(e.to_string()))?;
 
+        inner.stats.hits += 1;
         if let LazyState::Calibrated { surface, .. } = &inner.state {
-            inner.stats.hits += 1;
-            surface.vol(strike, expiry)
+            surface
+                .volatility(strike, expiry)
+                .map_err(|e| VolSurfaceError::interpolation_error(e.to_string()))
         } else {
             unreachable!("ensure_calibrated succeeded but state is not Calibrated")
         }
     }
 
-    /// Queries volatility by delta.
+    /// Queries volatility by expiry and delta.
     ///
     /// Triggers calibration on first call.
-    pub fn vol_by_delta(&self, delta: T, expiry: T) -> Result<T, VolSurfaceError> {
+    pub fn vol_by_delta(&self, expiry: T, delta: T) -> Result<T, VolSurfaceError> {
         let mut inner = self.inner.write().expect("Lock poisoned");
         self.ensure_calibrated(&mut inner)
-            .map_err(|e| VolSurfaceError::CalibrationFailed(e.to_string()))?;
+            .map_err(|e| VolSurfaceError::calibration_error(e.to_string()))?;
 
+        inner.stats.hits += 1;
         if let LazyState::Calibrated { surface, .. } = &inner.state {
-            inner.stats.hits += 1;
-            surface.vol_by_delta(delta, expiry)
+            surface.vol_by_delta(expiry, delta)
         } else {
             unreachable!("ensure_calibrated succeeded but state is not Calibrated")
         }
@@ -217,10 +218,10 @@ impl<T: Float + Send + Sync + 'static> LazyFxVolSurface<T> {
     pub fn smile(&self, expiry: T) -> Result<VolSmile<T>, VolSurfaceError> {
         let mut inner = self.inner.write().expect("Lock poisoned");
         self.ensure_calibrated(&mut inner)
-            .map_err(|e| VolSurfaceError::CalibrationFailed(e.to_string()))?;
+            .map_err(|e| VolSurfaceError::calibration_error(e.to_string()))?;
 
+        inner.stats.hits += 1;
         if let LazyState::Calibrated { surface, .. } = &inner.state {
-            inner.stats.hits += 1;
             surface.smile(expiry)
         } else {
             unreachable!("ensure_calibrated succeeded but state is not Calibrated")
@@ -233,10 +234,10 @@ impl<T: Float + Send + Sync + 'static> LazyFxVolSurface<T> {
     pub fn atm_vol(&self, expiry: T) -> Result<T, VolSurfaceError> {
         let mut inner = self.inner.write().expect("Lock poisoned");
         self.ensure_calibrated(&mut inner)
-            .map_err(|e| VolSurfaceError::CalibrationFailed(e.to_string()))?;
+            .map_err(|e| VolSurfaceError::calibration_error(e.to_string()))?;
 
+        inner.stats.hits += 1;
         if let LazyState::Calibrated { surface, .. } = &inner.state {
-            inner.stats.hits += 1;
             surface.atm_vol(expiry)
         } else {
             unreachable!("ensure_calibrated succeeded but state is not Calibrated")
@@ -293,11 +294,12 @@ impl<T: Float + Send + Sync + 'static> Clone for LazyFxVolSurface<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::market::curves::FlatCurve;
     use crate::market::fx_calibration::curve::SimpleFxCurve;
-    use crate::market::fx_calibration::vol_builder::VolQuoteType;
     use crate::market::fx_calibration::FxCurve;
     use chrono::NaiveDate;
-    use infra_master::data::instruments::fx::CurrencyPair;
+    use infra_master::trade::instrument_def::CurrencyPair;
+    use infra_master::Currency;
     use std::sync::Arc;
 
     fn make_test_builder() -> FxVolSurfaceBuilder<f64> {
@@ -305,46 +307,19 @@ mod tests {
         let ref_date = NaiveDate::from_ymd_opt(2024, 1, 15).unwrap();
         let expiry_1m = NaiveDate::from_ymd_opt(2024, 2, 15).unwrap();
 
-        FxVolSurfaceBuilder::new(CurrencyPair::eurusd())
+        FxVolSurfaceBuilder::new(CurrencyPair::new(Currency::EUR, Currency::USD))
             .with_reference_date(ref_date)
-            .with_fx_curve(Arc::new(curve))
-            .with_quote(expiry_1m, VolQuoteType::Atm, 0.08)
+            .with_fx_curve(curve)
+            .add_atm_quote(expiry_1m, 0.08)
     }
 
-    fn make_test_fx_curve() -> SimpleFxCurve<f64> {
-        use crate::market::curves::interpolator::InterpolationMethod;
-        use crate::market::curves::traits::YieldCurve;
-        use crate::market::curves::BootstrappedCurve;
-        use chrono::NaiveDate;
-
-        let ref_date = NaiveDate::from_ymd_opt(2024, 1, 15).unwrap();
-
-        let domestic_curve: Arc<dyn YieldCurve<f64> + Send + Sync> = Arc::new(
-            BootstrappedCurve::new(
-                ref_date,
-                vec![0.0, 0.25, 0.5, 1.0],
-                vec![0.045, 0.045, 0.046, 0.047],
-                InterpolationMethod::Linear,
-            )
-            .unwrap(),
-        );
-
-        let foreign_curve: Arc<dyn YieldCurve<f64> + Send + Sync> = Arc::new(
-            BootstrappedCurve::new(
-                ref_date,
-                vec![0.0, 0.25, 0.5, 1.0],
-                vec![0.035, 0.035, 0.036, 0.037],
-                InterpolationMethod::Linear,
-            )
-            .unwrap(),
-        );
-
-        SimpleFxCurve::new(
-            CurrencyPair::eurusd(),
-            1.0850,
-            domestic_curve,
-            foreign_curve,
-        )
+    fn make_test_fx_curve() -> Arc<dyn FxCurve<f64> + Send + Sync> {
+        let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
+        let domestic: Arc<dyn crate::market::YieldCurve<f64> + Send + Sync> =
+            Arc::new(FlatCurve::new(0.05));
+        let foreign: Arc<dyn crate::market::YieldCurve<f64> + Send + Sync> =
+            Arc::new(FlatCurve::new(0.03));
+        Arc::new(SimpleFxCurve::new(pair, 1.10, domestic, foreign))
     }
 
     #[test]
@@ -365,8 +340,8 @@ mod tests {
         assert!(!lazy_surface.is_calibrated());
 
         // Query triggers calibration
-        let strike = Strike::new(1.0850).unwrap();
-        let vol = lazy_surface.vol(strike, 0.0833);
+        let strike = 1.10;
+        let vol = lazy_surface.volatility(strike, 0.0833);
         assert!(vol.is_ok());
 
         // Now calibrated
@@ -383,15 +358,15 @@ mod tests {
         assert_eq!(stats_before.misses, 0);
 
         // First query triggers calibration (miss)
-        let strike = Strike::new(1.0850).unwrap();
-        let _ = lazy_surface.vol(strike, 0.0833);
+        let strike = 1.10;
+        let _ = lazy_surface.volatility(strike, 0.0833);
 
         let stats_after_first = lazy_surface.cache_stats();
         assert_eq!(stats_after_first.misses, 1);
         assert_eq!(stats_after_first.hits, 1); // The vol call after calibration
 
         // Second query uses cache (hit)
-        let _ = lazy_surface.vol(strike, 0.0833);
+        let _ = lazy_surface.volatility(strike, 0.0833);
 
         let stats_after_second = lazy_surface.cache_stats();
         assert_eq!(stats_after_second.hits, 2);
@@ -497,7 +472,8 @@ mod tests {
         let builder = make_test_builder();
         let lazy_surface = LazyFxVolSurface::new(builder);
 
-        let vol = lazy_surface.vol_by_delta(0.25, 0.0833);
+        // Parameters: expiry, delta
+        let vol = lazy_surface.vol_by_delta(0.0833, 0.25);
         assert!(vol.is_ok());
         assert!(lazy_surface.is_calibrated());
     }

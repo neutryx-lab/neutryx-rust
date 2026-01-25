@@ -21,6 +21,8 @@
 pub mod curve_builder_handlers;
 pub mod curve_builder_types;
 pub mod error;
+pub mod fxcurve_handlers;
+pub mod fxcurve_types;
 pub mod fxvol_handlers;
 pub mod fxvol_types;
 pub mod generic_pricer_handlers;
@@ -600,6 +602,13 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         );
 
     let api_routes = api_routes.nest("/fxvol", fxvol_routes);
+
+    // FxCurve API routes (fx-vol-surface-calibration Task 13.1)
+    let fxcurve_routes = Router::new()
+        .route("/build", post(fxcurve_handlers::build_fx_curve))
+        .route("/market", post(fxcurve_handlers::build_fx_market))
+        .route("/forward", get(fxcurve_handlers::get_forward_rate));
+    let api_routes = api_routes.nest("/fxcurve", fxcurve_routes);
 
     // Risk Engine API routes (generic-pricing-risk-engine Task 8.3)
     let risk_engine_routes = Router::new()

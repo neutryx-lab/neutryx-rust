@@ -161,54 +161,61 @@
   - _Requirements: 3.1, 3.2, 3.3, 3.5, 3.6, 3.7_
   - **実装済み**: `fx_calibration/vol_builder.rs` (CalibrationDiagnostics, ExpiryDiagnostics, VolQuote, VolQuoteType)
 
-- [ ] 10. 遅延評価とキャッシュ最適化の実装
-- [ ] 10.1 LazyFxVolSurfaceラッパーを遅延カリブレーション付きで実装
+- [x] 10. 遅延評価とキャッシュ最適化の実装
+- [x] 10.1 LazyFxVolSurfaceラッパーを遅延カリブレーション付きで実装
   - `LazyFxVolSurface<T>`構造体（ビルダー、キャッシュ、統計）
   - 初回`vol()`呼び出し時のカリブレーショントリガー
   - キャッシュ済み結果の再カリブレーションなし返却
   - _Requirements: 5.1, 5.2, 5.3_
+  - **実装済み**: `fx_calibration/lazy_surface.rs` (LazyFxVolSurface with deferred calibration)
 
-- [ ] 10.2 キャッシュ無効化とスレッドセーフアクセスを実装
+- [x] 10.2 キャッシュ無効化とスレッドセーフアクセスを実装
   - `invalidate()`メソッドでキャッシュクリアと再カリブレーション強制
   - 基礎インストルメントクォート変更時の自動無効化
   - `Arc<RwLock<>>`ベースのスレッドセーフキャッシング
   - `CacheStats`（ヒット、ミス、無効化回数）
   - _Requirements: 5.4, 5.5, 5.6, 5.7_
+  - **実装済み**: `fx_calibration/lazy_surface.rs` (CacheStats, invalidate, thread-safe access)
 
-- [ ] 11. AAD計算グラフサポートの実装
-- [ ] 11.1 ボラティリティサーフェス感応度計算を実装
+- [x] 11. AAD計算グラフサポートの実装
+- [x] 11.1 ボラティリティサーフェス感応度計算を実装
   - `VolSurfaceSensitivity<T>`構造体（dVol/dATM、dVol/dBF、dVol/dRR）
   - BF/RRクォートに対する勾配計算
   - 不連続操作のスムーズ近似
   - _Requirements: 6.3, 6.4, 6.5_
+  - **実装済み**: `fx_calibration/sensitivity.rs` (VolSurfaceSensitivity, ExpirySensitivity, smooth approximations)
 
-- [ ] 11.2 Differentiableトレイト実装とフォワード/リバースモード微分を実装
+- [x] 11.2 Differentiableトレイト実装とフォワード/リバースモード微分を実装
   - `CalibratedFxVolSurface`への`Differentiable`トレイト実装
   - ADモード時のインストルメントクォートからボラティリティ出力への計算グラフ構築
   - タンジェント（フォワード）とアジョイント（リバース）両モードサポート
   - D3.js互換JSON出力
   - _Requirements: 6.1, 6.2, 6.6, 6.7_
+  - **実装済み**: `fx_calibration/surface.rs` (Differentiable trait impl), `sensitivity.rs` (ComputationGraph for D3.js)
 
 ## Phase 3: 統合（Pricerレイヤー）
 
-- [ ] 12. FxMarketBuilderエンドツーエンドオーケストレーションの実装
-- [ ] 12.1 OISカーブ構築の統合（既存CurveEngine使用）
+- [x] 12. FxMarketBuilderエンドツーエンドオーケストレーションの実装
+- [x] 12.1 OISカーブ構築の統合（既存CurveEngine使用）
   - `FxMarketBuilder<T>`構造体（通貨ペア、OISインストルメント、FXインストルメント、ボラティリティインストルメント）
   - 既存`CurveEngine`を使用したOISカーブブートストラップ
   - 事前構築済みカーブ使用オプション（`with_prebuilt_domestic_curve`、`with_prebuilt_foreign_curve`）
   - _Requirements: 11.1, 11.3, 11.7_
+  - **実装済み**: `fx_calibration/fx_market_builder.rs` (FxMarketBuilder with CurveEngine integration)
 
-- [ ] 12.2 依存チェーン実行と部分ビルドメソッドを実装
+- [x] 12.2 依存チェーン実行と部分ビルドメソッドを実装
   - `build()`メソッド: (1) 国内OISカーブ → (2) 外貨OISカーブ → (3) FXフォワードカーブ → (4) ボラティリティサーフェス
   - 部分ビルドメソッド（`build_discount_curves`、`build_fx_curve`、`build_vol_surface`）
   - 中間ステップ失敗時のエラー（失敗ステップと部分結果を含む）
   - 遅延評価モードサポート
   - _Requirements: 11.2, 11.4, 11.5, 11.6_
+  - **実装済み**: `fx_calibration/fx_market_builder.rs` (build, build_lazy, build_discount_curves, build_fx_curve, build_vol_surface)
 
-- [ ] 12.3 FxMarket結果型を定義
+- [x] 12.3 FxMarket結果型を定義
   - `FxMarket<T>`構造体（通貨ペア、国内ディスカウントカーブ、外貨ディスカウントカーブ、FXフォワードカーブ、オプショナルボラティリティサーフェス）
   - 全コンポーネントへのアクセサーメソッド
   - _Requirements: 11.8_
+  - **実装済み**: `fx_calibration/fx_market_builder.rs` (FxMarket struct with accessors, FxMarketDiagnostics)
 
 ## Phase 4: WebApp統合とクリーンアップ
 
