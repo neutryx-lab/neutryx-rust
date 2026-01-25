@@ -2,13 +2,13 @@
 
 実装状況と今後の開発項目を追跡するドキュメント。
 
-_Updated: 2026-01-23_ — Steering sync: rate-index-pricing-integration active (tasks-generated phase); 33 completed specs
+_Updated: 2026-01-25_ — Steering sync: rate-index-pricing-integration completed (41 tests); 34 completed specs
 
 ---
 
 ## Current State Summary
 
-### Completed Specifications (33)
+### Completed Specifications (34)
 
 | Spec | Description | Completed |
 |------|-------------|-----------|
@@ -45,6 +45,7 @@ _Updated: 2026-01-23_ — Steering sync: rate-index-pricing-integration active (
 | volcube-calibration-ui | VolCube/FxVol calibration UI with SABR, smile/density visualisation, 3D surface | 2026-01-23 |
 | curve-bootstrap-engine | Multi-curve yield curve bootstrapping engine (537 tests) | 2026-01-23 |
 | legacy-compatibility-removal | Legacy code removal and ID type safety (28 tasks) | 2026-01-23 |
+| rate-index-pricing-integration | RateIndex pricing integration across L1/L2/L3 layers (41 tests) | 2026-01-23 |
 
 ### Layer Implementation Status
 
@@ -146,9 +147,7 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 
 ### Active Specifications (In Progress)
 
-| Spec | Phase | Description |
-|------|-------|-------------|
-| rate-index-pricing-integration | tasks-generated | RateIndex pricing integration across L1/L2/L3 layers |
+_No active specifications._
 
 ## Recommended Next Steps
 
@@ -162,6 +161,7 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 
 | Date | Change |
 |------|--------|
+| 2026-01-25 | Steering sync: rate-index-pricing-integration completed (41 tests, RateIndex/Tenor/CurveName pricing). Total: 34 specs |
 | 2026-01-23 | Steering sync: rate-index-pricing-integration added to active specs (tasks-generated phase, awaiting implementation) |
 | 2026-01-23 | All active specs completed: curve-bootstrap-engine (537 tests), legacy-compatibility-removal (28 tasks, ID Newtype統一). Total: 33 specs |
 | 2026-01-23 | volcube-calibration-ui completed: VolCube/FxVol calibration UI with SABR, smile/density visualisation, 3D surface (21 tasks, 68 unit tests). Total: 31 specs |

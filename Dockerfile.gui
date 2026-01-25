@@ -36,6 +36,14 @@ RUN echo "=== Verifying static files ===" && \
     echo "=== Verifying data files ===" && \
     ls -la ./demo/data/input/ && \
     test -f ./demo/data/input/demo_portfolio.json || (echo "ERROR: demo_portfolio.json missing" && exit 1) && \
+    echo "=== Verifying curves data directory ===" && \
+    test -d ./demo/data/input/curves || (echo "ERROR: curves directory missing" && exit 1) && \
+    ls -la ./demo/data/input/curves/ && \
+    test -f ./demo/data/input/curves/usd-sofr.json || (echo "ERROR: usd-sofr.json missing" && exit 1) && \
+    echo "=== Verifying volsurface data directory ===" && \
+    test -d ./demo/data/input/volsurface || (echo "ERROR: volsurface directory missing" && exit 1) && \
+    ls -la ./demo/data/input/volsurface/ && \
+    test -f ./demo/data/input/volsurface/usd-sofr-swaption.json || (echo "ERROR: usd-sofr-swaption.json missing" && exit 1) && \
     echo "=== All critical files verified ==="
 
 ENV RUST_LOG=info
