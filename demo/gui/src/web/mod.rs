@@ -345,8 +345,9 @@ impl Default for AppState {
 /// - If `FB_CORS_ALLOW_ANY` is "true": allow any origin (useful for Cloud Run)
 /// - Otherwise: default to localhost:3000 for development
 ///
-/// Note: For same-origin requests (frontend served from same server), CORS doesn't apply.
-/// This mainly affects development scenarios with separate frontend/backend servers.
+/// Note: For same-origin requests (frontend served from same server), CORS
+/// doesn't apply. This mainly affects development scenarios with separate
+/// frontend/backend servers.
 fn build_cors() -> CorsLayer {
     // Check for explicit "allow any" mode (useful for Cloud Run public services)
     let allow_any = std::env::var("FB_CORS_ALLOW_ANY")
@@ -362,22 +363,20 @@ fn build_cors() -> CorsLayer {
     }
 
     // Check for explicit origins list
-    let origins = std::env::var("FB_CORS_ORIGINS")
-        .ok()
-        .and_then(|value| {
-            let origins: Vec<HeaderValue> = value
-                .split(',')
-                .map(|origin| origin.trim())
-                .filter(|origin| !origin.is_empty())
-                .filter_map(|origin| HeaderValue::from_str(origin).ok())
-                .collect();
-            if origins.is_empty() {
-                None
-            } else {
-                info!("CORS: Using explicit origins from FB_CORS_ORIGINS");
-                Some(origins)
-            }
-        });
+    let origins = std::env::var("FB_CORS_ORIGINS").ok().and_then(|value| {
+        let origins: Vec<HeaderValue> = value
+            .split(',')
+            .map(|origin| origin.trim())
+            .filter(|origin| !origin.is_empty())
+            .filter_map(|origin| HeaderValue::from_str(origin).ok())
+            .collect();
+        if origins.is_empty() {
+            None
+        } else {
+            info!("CORS: Using explicit origins from FB_CORS_ORIGINS");
+            Some(origins)
+        }
+    });
 
     if let Some(origins) = origins {
         return CorsLayer::new()
