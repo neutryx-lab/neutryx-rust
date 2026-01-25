@@ -78,9 +78,7 @@ impl LoaderError {
 
     /// Creates a file not found error.
     #[must_use]
-    pub fn file_not_found(path: impl Into<String>) -> Self {
-        Self::FileNotFound(path.into())
-    }
+    pub fn file_not_found(path: impl Into<String>) -> Self { Self::FileNotFound(path.into()) }
 
     /// Creates a glob pattern error.
     #[must_use]

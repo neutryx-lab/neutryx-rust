@@ -11,10 +11,10 @@
 //! - **Error mapping**: Maps crate errors to HTTP-friendly error types
 //! - **API stability**: Provides a stable interface for handlers
 
-use pricer_models::analytical::{
-    BlackScholes, GarmanKohlhagen, GarmanKohlhagenParams,
+use pricer_models::{
+    analytical::{BlackScholes, GarmanKohlhagen, GarmanKohlhagenParams},
+    instruments::FxOptionType,
 };
-use pricer_models::instruments::FxOptionType;
 
 /// Result of Black-Scholes pricing.
 #[derive(Debug, Clone)]
@@ -135,9 +135,17 @@ pub fn price_equity_option(
         let greeks = if compute_greeks {
             Some(GreeksData {
                 delta: if is_call {
-                    if spot > strike { 1.0 } else { 0.0 }
+                    if spot > strike {
+                        1.0
+                    } else {
+                        0.0
+                    }
                 } else {
-                    if spot < strike { -1.0 } else { 0.0 }
+                    if spot < strike {
+                        -1.0
+                    } else {
+                        0.0
+                    }
                 },
                 gamma: 0.0,
                 vega: 0.0,
@@ -155,12 +163,11 @@ pub fn price_equity_option(
     }
 
     // Create BlackScholes model from crate
-    let bs = BlackScholes::new(spot, rate, volatility).map_err(|e| {
-        PricingServiceError::CrateError {
+    let bs =
+        BlackScholes::new(spot, rate, volatility).map_err(|e| PricingServiceError::CrateError {
             source: "pricer_models::analytical::BlackScholes".to_string(),
             message: format!("{:?}", e),
-        }
-    })?;
+        })?;
 
     // Calculate price using crate method
     let price = if is_call {
@@ -267,7 +274,8 @@ pub fn price_fx_option(
 ///
 /// # Arguments
 ///
-/// * `greek_type` - The Greek to calculate ("delta", "gamma", "vega", "theta", "rho")
+/// * `greek_type` - The Greek to calculate ("delta", "gamma", "vega", "theta",
+///   "rho")
 /// * `spot` - Current spot price
 /// * `strike` - Strike price
 /// * `expiry` - Time to expiration in years
@@ -292,9 +300,17 @@ pub fn calculate_greek(
         return Ok(match greek_type.to_lowercase().as_str() {
             "delta" => {
                 if is_call {
-                    if spot > strike { 1.0 } else { 0.0 }
+                    if spot > strike {
+                        1.0
+                    } else {
+                        0.0
+                    }
                 } else {
-                    if spot < strike { -1.0 } else { 0.0 }
+                    if spot < strike {
+                        -1.0
+                    } else {
+                        0.0
+                    }
                 }
             }
             _ => 0.0,
@@ -302,12 +318,11 @@ pub fn calculate_greek(
     }
 
     // Create BlackScholes model
-    let bs = BlackScholes::new(spot, rate, volatility).map_err(|e| {
-        PricingServiceError::CrateError {
+    let bs =
+        BlackScholes::new(spot, rate, volatility).map_err(|e| PricingServiceError::CrateError {
             source: "pricer_models::analytical::BlackScholes".to_string(),
             message: format!("{:?}", e),
-        }
-    })?;
+        })?;
 
     // Calculate the requested Greek
     let greek = match greek_type.to_lowercase().as_str() {
@@ -329,8 +344,9 @@ pub fn calculate_greek(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     #[test]
     fn test_price_equity_option_call() {

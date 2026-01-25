@@ -75,7 +75,7 @@ mod engine;
 mod error;
 mod result;
 
-pub use engine::{RiskEngine, RiskEngineConfig};
+pub use engine::{RiskEngine, RiskEngineConfig, ScenarioGreeksResult, ScenarioPortfolioResult};
 pub use error::{PartialGreeksResult, RiskError};
 pub use result::{
     AggregatedGreeks, ComputedGreeks, ExecutionStats, FailedCalculation, PerformanceMetrics,

@@ -891,11 +891,13 @@ dependencies = [
  "axum",
  "chrono",
  "futures",
+ "infra_config",
  "infra_master",
  "open",
  "pricer_core",
  "pricer_models",
  "pricer_pricing",
+ "pricer_risk",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
@@ -2540,6 +2542,7 @@ dependencies = [
  "pricer_pricing",
  "rayon",
  "serde",
+ "serde_json",
  "thiserror 2.0.18",
 ]
 

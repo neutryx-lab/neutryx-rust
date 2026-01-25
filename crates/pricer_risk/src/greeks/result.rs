@@ -10,9 +10,7 @@ use num_traits::Float;
 ///
 /// This is a local utility to avoid depending on pricer_pricing::numeric.
 #[inline]
-fn from_f64<T: Float>(value: f64) -> T {
-    T::from(value).unwrap_or_else(|| T::zero())
-}
+fn from_f64<T: Float>(value: f64) -> T { T::from(value).unwrap_or_else(|| T::zero()) }
 
 /// Greeks calculation result with optional sensitivities.
 ///
@@ -124,9 +122,7 @@ impl<T: Float> GreeksResult<T> {
     /// println!("Price: {:.2} +/- {:.4}", result.price, ci);
     /// ```
     #[inline]
-    pub fn confidence_95(&self) -> T {
-        from_f64::<T>(1.96) * self.std_error
-    }
+    pub fn confidence_95(&self) -> T { from_f64::<T>(1.96) * self.std_error }
 
     /// Returns the 99% confidence interval half-width.
     ///
@@ -148,9 +144,7 @@ impl<T: Float> GreeksResult<T> {
     /// println!("Price: {:.2} +/- {:.4}", result.price, ci);
     /// ```
     #[inline]
-    pub fn confidence_99(&self) -> T {
-        from_f64::<T>(2.576) * self.std_error
-    }
+    pub fn confidence_99(&self) -> T { from_f64::<T>(2.576) * self.std_error }
 
     /// Creates a new result with only price and standard error.
     ///

@@ -13,6 +13,7 @@
 /// * `NumDual` - Forward-mode AD using num-dual library
 /// * `EnzymeAAD` - Enzyme LLVM-level AAD (requires `enzyme-ad` feature)
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum GreeksMode {
     /// Bump-and-revalue using finite differences.
     ///
@@ -118,9 +119,7 @@ impl GreeksConfig {
     ///     .build()
     ///     .unwrap();
     /// ```
-    pub fn builder() -> GreeksConfigBuilder {
-        GreeksConfigBuilder::default()
-    }
+    pub fn builder() -> GreeksConfigBuilder { GreeksConfigBuilder::default() }
 
     /// Validates the configuration.
     ///
@@ -196,9 +195,7 @@ impl GreeksConfig {
     /// assert!((bump - 1.0).abs() < 1e-10); // 1% of 100 = 1.0
     /// ```
     #[inline]
-    pub fn compute_spot_bump(&self, spot: f64) -> f64 {
-        (self.spot_bump_relative * spot).max(1e-8)
-    }
+    pub fn compute_spot_bump(&self, spot: f64) -> f64 { (self.spot_bump_relative * spot).max(1e-8) }
 }
 
 /// Builder for [`GreeksConfig`].

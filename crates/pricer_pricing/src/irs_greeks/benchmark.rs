@@ -396,6 +396,7 @@ pub enum BenchmarkError {
     GreeksError(#[from] IrsGreeksError),
 }
 
+#[allow(deprecated)]
 impl From<BenchmarkError> for crate::greeks::GreeksError {
     fn from(err: BenchmarkError) -> Self {
         match err {

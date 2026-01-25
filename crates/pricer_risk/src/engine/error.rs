@@ -1,6 +1,7 @@
 //! Risk engine error types.
 //!
-//! Provides [`RiskError`] for comprehensive error handling in risk calculations.
+//! Provides [`RiskError`] for comprehensive error handling in risk
+//! calculations.
 //!
 //! # Requirements
 //!
@@ -34,7 +35,9 @@ pub enum RiskError {
     AadNotAvailable,
 
     /// Numerical instability detected during calculation.
-    #[error("Numerical instability: {description} (value: {value}, suggestion: {suggested_mitigation})")]
+    #[error(
+        "Numerical instability: {description} (value: {value}, suggestion: {suggested_mitigation})"
+    )]
     NumericalInstability {
         /// Description of the instability.
         description: String,
@@ -103,9 +106,7 @@ impl PartialGreeksResult {
 }
 
 impl Default for PartialGreeksResult {
-    fn default() -> Self {
-        Self::empty()
-    }
+    fn default() -> Self { Self::empty() }
 }
 
 #[cfg(test)]

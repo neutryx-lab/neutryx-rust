@@ -22,7 +22,7 @@ use super::{
     error::IrsGreeksError,
     result::{IrsDeltaResult, IrsGreeksResult},
 };
-#[allow(unused_imports)]
+#[allow(unused_imports, deprecated)]
 use crate::greeks::GreeksMode;
 
 /// IRS Greeks calculator.

@@ -57,5 +57,6 @@ impl<T: Float> IrsGreeksCalculator<T> {
 }
 
 // TODO: l1l2-integration feature implementation pending refactoring
-// The IRS Greeks calculation methods are disabled until infra_master::trade::Trade
-// refactoring is complete. See pricer_pricing::irs_greeks for reference.
+// The IRS Greeks calculation methods are disabled until
+// infra_master::trade::Trade refactoring is complete. See
+// pricer_pricing::irs_greeks for reference.

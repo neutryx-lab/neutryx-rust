@@ -27,6 +27,7 @@ num-traits.workspace = true
 [dev-dependencies]
 approx.workspace = true
 criterion = { workspace = true, features = ["html_reports"] }
+serde_json.workspace = true
 
 [[bench]]
 name = "risk"

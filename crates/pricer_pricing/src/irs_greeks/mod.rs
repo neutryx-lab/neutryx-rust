@@ -6,7 +6,8 @@
 //!
 //! # Migration Guide
 //!
-//! Replace imports from `pricer_pricing::irs_greeks` with `pricer_risk::irs_greeks`:
+//! Replace imports from `pricer_pricing::irs_greeks` with
+//! `pricer_risk::irs_greeks`:
 //!
 //! ```rust,ignore
 //! // Old (deprecated)

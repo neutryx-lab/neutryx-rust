@@ -16,7 +16,6 @@ use uuid::Uuid;
 
 use super::{
     jobs::JobResponse,
-    pricing_service,
     pricer_types::{
         parse_tenor_to_years, validate_bucket_dv01_request, validate_first_order_greeks_request,
         validate_greeks_compare_request, validate_irs_pricing_request, validate_par_rates,
@@ -33,6 +32,7 @@ use super::{
         SecondOrderGreeksRequest, SecondOrderGreeksResponse, TenorDiff, TimeseriesSeries,
         TimingComparison, TimingStats, BUCKET_TENORS,
     },
+    pricing_service,
     websocket::{
         broadcast_bootstrap_complete, broadcast_pricing_complete, broadcast_risk_complete,
     },
@@ -851,7 +851,8 @@ pub async fn price_instrument(
                 )
             })?;
 
-            // Note: FX options have rho_domestic and rho_foreign, but we use rho_domestic as rho
+            // Note: FX options have rho_domestic and rho_foreign, but we use rho_domestic
+            // as rho
             let greeks = result.greeks.map(|g| GreeksData {
                 delta: g.delta,
                 gamma: g.gamma,

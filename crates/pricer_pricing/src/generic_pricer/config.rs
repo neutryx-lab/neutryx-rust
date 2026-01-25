@@ -9,6 +9,9 @@
 use infra_master::market::Currency;
 
 use super::error::ConfigError;
+// Allow deprecated usage: This internal code still needs GreeksConfig/GreeksMode
+// until the module is fully migrated. The deprecation is for external crate users.
+#[allow(deprecated)]
 use crate::greeks::{GreeksConfig, GreeksMode};
 
 /// Model configuration for Generic Pricer.
@@ -240,6 +243,7 @@ pub struct PricerConfig {
 }
 
 impl Default for PricerConfig {
+    #[allow(deprecated)]
     fn default() -> Self {
         Self {
             greeks_config: GreeksConfig::default(),
@@ -261,6 +265,7 @@ impl PricerConfig {
     /// # Errors
     ///
     /// Returns [`ConfigError`] if any parameter is invalid.
+    #[allow(deprecated)]
     pub fn validate(&self) -> Result<(), ConfigError> {
         self.greeks_config
             .validate()
@@ -282,12 +287,14 @@ pub struct PricerConfigBuilder {
 
 impl PricerConfigBuilder {
     /// Sets the Greeks configuration.
+    #[allow(deprecated)]
     pub fn greeks_config(mut self, config: GreeksConfig) -> Self {
         self.greeks_config = Some(config);
         self
     }
 
     /// Sets the Greeks calculation mode (convenience method).
+    #[allow(deprecated)]
     pub fn greeks_mode(mut self, mode: GreeksMode) -> Self {
         let mut config = self.greeks_config.take().unwrap_or_default();
         config.mode = mode;

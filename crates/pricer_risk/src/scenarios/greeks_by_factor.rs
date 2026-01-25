@@ -12,11 +12,11 @@
 use std::collections::HashMap;
 
 use pricer_core::traits::Float;
-use crate::greeks::{GreeksMode, GreeksResult};
 #[cfg(feature = "serde")]
 use serde::Serialize;
 
 use super::RiskFactorId;
+use crate::greeks::{GreeksMode, GreeksResult};
 
 /// Greeks calculation results organised by risk factor.
 ///

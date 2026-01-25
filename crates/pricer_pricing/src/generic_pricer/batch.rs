@@ -33,12 +33,12 @@ use super::pricer::SimpleLeg;
 use super::pricer::StandalonePricingResult;
 #[cfg(not(feature = "l1l2-integration"))]
 use super::result::Date;
-#[cfg(feature = "l1l2-integration")]
-use super::{pricer::GenericPricer, result::PricingResult};
 use super::{
     config::{ModelConfig, PricerConfig},
     error::PricingError,
 };
+#[cfg(feature = "l1l2-integration")]
+use super::{pricer::GenericPricer, result::PricingResult};
 
 // Type alias for batch pricing result type
 #[cfg(feature = "l1l2-integration")]
@@ -357,9 +357,7 @@ pub struct PortfolioAggregations {
 #[cfg(feature = "l1l2-integration")]
 impl PortfolioAggregations {
     /// Creates a new empty aggregation.
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Adds a PV to the currency bucket.
     pub fn add_by_currency(&mut self, currency: &str, pv: f64) {
@@ -415,19 +413,13 @@ impl PortfolioPricingResult {
     }
 
     /// Returns true if all trades were priced successfully.
-    pub fn all_succeeded(&self) -> bool {
-        self.failures.is_empty()
-    }
+    pub fn all_succeeded(&self) -> bool { self.failures.is_empty() }
 
     /// Returns true if all trades failed.
-    pub fn all_failed(&self) -> bool {
-        self.successes.is_empty()
-    }
+    pub fn all_failed(&self) -> bool { self.successes.is_empty() }
 
     /// Returns the total PV across all successful trades.
-    pub fn total_pv(&self) -> f64 {
-        self.successes.iter().map(|(_, r)| r.total_pv).sum()
-    }
+    pub fn total_pv(&self) -> f64 { self.successes.iter().map(|(_, r)| r.total_pv).sum() }
 
     /// Gets the result for a specific trade ID.
     pub fn get(&self, trade_id: &TradeId) -> Option<Result<&PricingResult, &PricingError>> {
@@ -490,14 +482,10 @@ impl PortfolioPricer {
     }
 
     /// Returns a reference to the pricing configuration.
-    pub fn config(&self) -> &PricingConfig {
-        &self.config
-    }
+    pub fn config(&self) -> &PricingConfig { &self.config }
 
     /// Returns a reference to the underlying GenericPricer.
-    pub fn pricer(&self) -> &GenericPricer {
-        &self.pricer
-    }
+    pub fn pricer(&self) -> &GenericPricer { &self.pricer }
 
     /// Prices a portfolio of trades.
     ///
@@ -510,7 +498,8 @@ impl PortfolioPricer {
     ///
     /// # Returns
     ///
-    /// `PortfolioPricingResult` containing successes, failures, stats, and aggregations.
+    /// `PortfolioPricingResult` containing successes, failures, stats, and
+    /// aggregations.
     pub fn price_portfolio(
         &self,
         trades: &[(TradeId, Trade)],

@@ -11,12 +11,14 @@
 
 use std::time::Instant;
 
-use infra_config::{GreeksMethod, GreekType, RiskConfig, SecondOrderMode};
+use infra_config::{GreekType, GreeksMethod, RiskConfig, SecondOrderMode};
 use rayon::prelude::*;
 
-use super::error::RiskError;
-use super::result::{
-    ComputedGreeks, FailedCalculation, PerformanceMetrics, PortfolioRiskResult, RiskResult,
+use super::{
+    error::RiskError,
+    result::{
+        ComputedGreeks, FailedCalculation, PerformanceMetrics, PortfolioRiskResult, RiskResult,
+    },
 };
 use crate::greeks::{GreeksConfig, GreeksMode, GreeksResult};
 
@@ -100,40 +102,28 @@ pub struct RiskEngine {
 
 impl RiskEngine {
     /// Creates a new RiskEngine with the given configuration.
-    pub fn new(config: RiskEngineConfig) -> Self {
-        Self { config }
-    }
+    pub fn new(config: RiskEngineConfig) -> Self { Self { config } }
 
     /// Creates a RiskEngine with default configuration.
-    pub fn with_defaults() -> Self {
-        Self::new(RiskEngineConfig::default())
-    }
+    pub fn with_defaults() -> Self { Self::new(RiskEngineConfig::default()) }
 
     /// Returns a reference to the configuration.
-    pub fn config(&self) -> &RiskEngineConfig {
-        &self.config
-    }
+    pub fn config(&self) -> &RiskEngineConfig { &self.config }
 
     /// Returns the active Greeks calculation method.
-    pub fn greeks_method(&self) -> GreeksMethod {
-        self.config.risk_config.greeks_method
-    }
+    pub fn greeks_method(&self) -> GreeksMethod { self.config.risk_config.greeks_method }
 
     /// Checks if AAD is available.
     ///
     /// Returns true if the `enzyme-ad` feature is enabled.
     #[cfg(feature = "enzyme-ad")]
-    pub fn is_aad_available() -> bool {
-        true
-    }
+    pub fn is_aad_available() -> bool { true }
 
     /// Checks if AAD is available.
     ///
     /// Returns false when `enzyme-ad` feature is not enabled.
     #[cfg(not(feature = "enzyme-ad"))]
-    pub fn is_aad_available() -> bool {
-        false
-    }
+    pub fn is_aad_available() -> bool { false }
 
     /// Converts RiskConfig's GreeksMethod to GreeksMode.
     fn to_greeks_mode(&self) -> Result<GreeksMode, RiskError> {
@@ -170,7 +160,9 @@ impl RiskEngine {
             .vol_bump_absolute(bump_sizes.vol)
             .rate_bump_absolute(bump_sizes.rate);
 
-        builder.build().map_err(|e| RiskError::Config(e.to_string()))
+        builder
+            .build()
+            .map_err(|e| RiskError::Config(e.to_string()))
     }
 
     /// Determines whether to use parallel processing.
@@ -303,7 +295,9 @@ impl RiskEngine {
         }
 
         let elapsed_ms = start.elapsed().as_secs_f64() * 1000.0;
-        Ok(PortfolioRiskResult::new(results, failures, elapsed_ms, false))
+        Ok(PortfolioRiskResult::new(
+            results, failures, elapsed_ms, false,
+        ))
     }
 
     /// Computes portfolio Greeks in parallel.
@@ -347,13 +341,13 @@ impl RiskEngine {
         }
 
         let elapsed_ms = start.elapsed().as_secs_f64() * 1000.0;
-        Ok(PortfolioRiskResult::new(results, failures, elapsed_ms, true))
+        Ok(PortfolioRiskResult::new(
+            results, failures, elapsed_ms, true,
+        ))
     }
 
     /// Returns the target Greeks from configuration.
-    pub fn target_greeks(&self) -> &[GreekType] {
-        &self.config.risk_config.target_greeks
-    }
+    pub fn target_greeks(&self) -> &[GreekType] { &self.config.risk_config.target_greeks }
 
     /// Returns true if second-order Greeks are requested.
     pub fn has_second_order_greeks(&self) -> bool {
@@ -361,15 +355,223 @@ impl RiskEngine {
     }
 
     /// Returns the second-order calculation mode.
-    pub fn second_order_mode(&self) -> SecondOrderMode {
-        self.config.risk_config.second_order_mode
+    pub fn second_order_mode(&self) -> SecondOrderMode { self.config.risk_config.second_order_mode }
+
+    // =========================================================================
+    // Task 7.10: CSA Conditions Support
+    // =========================================================================
+
+    /// Applies CSA (Credit Support Annex) conditions to an exposure value.
+    ///
+    /// This method adjusts the raw exposure based on collateral agreement
+    /// terms:
+    /// - Threshold: Amount below which no collateral is required
+    /// - Independent Amount: Pre-agreed collateral amount
+    ///
+    /// # Arguments
+    ///
+    /// * `exposure` - Raw uncollateralized exposure
+    /// * `collateral` - Collateral agreement parameters
+    ///
+    /// # Returns
+    ///
+    /// Collateralized exposure after applying CSA terms.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// use pricer_risk::portfolio::CollateralAgreement;
+    ///
+    /// let csa = CollateralAgreement::new(1_000_000.0, 0.0, 0.0, Currency::USD, 0.04)?;
+    /// let collateralised_exp = engine.apply_csa_adjustment(2_500_000.0, &csa);
+    /// assert_eq!(collateralised_exp, 1_500_000.0); // 2.5M - 1M threshold
+    /// ```
+    pub fn apply_csa_adjustment(
+        &self,
+        exposure: f64,
+        collateral: &crate::portfolio::CollateralAgreement,
+    ) -> f64 {
+        collateral.collateralised_exposure(exposure)
     }
+
+    /// Applies CSA conditions to a portfolio of exposures by netting set.
+    ///
+    /// # Arguments
+    ///
+    /// * `exposures` - Map of netting set ID to raw exposure
+    /// * `netting_sets` - Netting sets with collateral agreements
+    ///
+    /// # Returns
+    ///
+    /// Map of netting set ID to collateralized exposure.
+    pub fn apply_csa_to_portfolio(
+        &self,
+        exposures: &std::collections::HashMap<String, f64>,
+        netting_sets: &[crate::portfolio::NettingSet],
+    ) -> std::collections::HashMap<String, f64> {
+        let mut collateralised = std::collections::HashMap::new();
+
+        for ns in netting_sets {
+            let ns_id = ns.id().as_str().to_string();
+            if let Some(&exposure) = exposures.get(&ns_id) {
+                let adj_exposure = if let Some(csa) = ns.collateral() {
+                    self.apply_csa_adjustment(exposure, csa)
+                } else {
+                    exposure
+                };
+                collateralised.insert(ns_id, adj_exposure);
+            }
+        }
+
+        collateralised
+    }
+
+    // =========================================================================
+    // Task 7.11: Scenario-Based Greeks
+    // =========================================================================
+
+    /// Computes Greeks under a specified scenario.
+    ///
+    /// This method applies market shifts from a scenario before computing
+    /// Greeks, allowing stress testing and scenario analysis.
+    ///
+    /// # Arguments
+    ///
+    /// * `trade_id` - Trade identifier
+    /// * `scenario` - Market scenario to apply
+    /// * `pricing_fn` - Closure that computes Greeks under the scenario
+    ///
+    /// # Returns
+    ///
+    /// `RiskResult` with Greeks computed under the scenario.
+    pub fn compute_greeks_with_scenario<F>(
+        &self,
+        trade_id: &str,
+        scenario_name: &str,
+        pricing_fn: F,
+    ) -> Result<ScenarioGreeksResult, RiskError>
+    where
+        F: Fn() -> Result<crate::greeks::GreeksResult<f64>, RiskError>,
+    {
+        let result = self.compute_greeks(trade_id, pricing_fn)?;
+
+        Ok(ScenarioGreeksResult {
+            scenario_name: scenario_name.to_string(),
+            result,
+        })
+    }
+
+    /// Computes Greeks for multiple scenarios.
+    ///
+    /// This is useful for stress testing where Greeks need to be computed
+    /// under various market conditions.
+    ///
+    /// # Arguments
+    ///
+    /// * `trade_id` - Trade identifier
+    /// * `scenarios` - Vector of (scenario_name, pricing_fn) pairs
+    ///
+    /// # Returns
+    ///
+    /// Vector of `ScenarioGreeksResult` for each scenario.
+    pub fn compute_greeks_multi_scenario<'a, I, F>(
+        &self,
+        trade_id: &str,
+        scenarios: I,
+    ) -> Result<Vec<ScenarioGreeksResult>, RiskError>
+    where
+        I: IntoIterator<Item = (&'a str, F)>,
+        F: Fn() -> Result<crate::greeks::GreeksResult<f64>, RiskError>,
+    {
+        let mut results = Vec::new();
+
+        for (scenario_name, pricing_fn) in scenarios {
+            let scenario_result =
+                self.compute_greeks_with_scenario(trade_id, scenario_name, pricing_fn)?;
+            results.push(scenario_result);
+        }
+
+        Ok(results)
+    }
+
+    /// Computes scenario-based portfolio Greeks.
+    ///
+    /// Applies a scenario to an entire portfolio and computes Greeks for each
+    /// trade.
+    ///
+    /// # Arguments
+    ///
+    /// * `scenario_name` - Name of the scenario
+    /// * `trades` - Iterator of (trade_id, pricing_fn) pairs
+    ///
+    /// # Returns
+    ///
+    /// `ScenarioPortfolioResult` with aggregated Greeks under the scenario.
+    pub fn compute_portfolio_greeks_with_scenario<'a, I, F>(
+        &self,
+        scenario_name: &str,
+        trades: I,
+    ) -> Result<ScenarioPortfolioResult, RiskError>
+    where
+        I: IntoIterator<Item = (&'a str, F)>,
+        F: Fn() -> Result<crate::greeks::GreeksResult<f64>, RiskError> + Send + Sync,
+    {
+        let portfolio_result = self.compute_portfolio_greeks(trades)?;
+
+        Ok(ScenarioPortfolioResult {
+            scenario_name: scenario_name.to_string(),
+            result: portfolio_result,
+        })
+    }
+}
+
+/// Result of Greeks calculation under a specific scenario.
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct ScenarioGreeksResult {
+    /// Name of the scenario applied.
+    pub scenario_name: String,
+    /// Greeks result under this scenario.
+    pub result: RiskResult,
+}
+
+impl ScenarioGreeksResult {
+    /// Returns the scenario name.
+    pub fn scenario_name(&self) -> &str { &self.scenario_name }
+
+    /// Returns the PV under this scenario.
+    pub fn pv(&self) -> f64 { self.result.pv }
+
+    /// Returns the delta under this scenario.
+    pub fn delta(&self) -> Option<f64> { self.result.greeks.delta }
+}
+
+/// Result of portfolio Greeks calculation under a specific scenario.
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct ScenarioPortfolioResult {
+    /// Name of the scenario applied.
+    pub scenario_name: String,
+    /// Portfolio result under this scenario.
+    pub result: PortfolioRiskResult,
+}
+
+impl ScenarioPortfolioResult {
+    /// Returns the scenario name.
+    pub fn scenario_name(&self) -> &str { &self.scenario_name }
+
+    /// Returns the total PV under this scenario.
+    pub fn total_pv(&self) -> f64 { self.result.total_pv() }
+
+    /// Returns the total delta under this scenario.
+    pub fn total_delta(&self) -> Option<f64> { self.result.aggregations.total.delta }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use infra_config::{BumpSizes, GreekType};
+
+    use super::*;
 
     // =========================================================================
     // RiskEngineConfig Tests
@@ -435,9 +637,7 @@ mod tests {
         };
         let engine = RiskEngine::new(RiskEngineConfig::new(risk_config));
 
-        let result = engine.compute_greeks("T001", || {
-            Ok(GreeksResult::new(100.0, 0.01))
-        });
+        let result = engine.compute_greeks("T001", || Ok(GreeksResult::new(100.0, 0.01)));
 
         #[cfg(not(feature = "enzyme-ad"))]
         assert!(matches!(result, Err(RiskError::AadNotAvailable)));
@@ -451,7 +651,9 @@ mod tests {
         let engine = RiskEngine::with_defaults();
 
         let result = engine.compute_greeks("T001", || {
-            Ok(GreeksResult::new(100.0, 0.01).with_delta(0.5).with_gamma(0.02))
+            Ok(GreeksResult::new(100.0, 0.01)
+                .with_delta(0.5)
+                .with_gamma(0.02))
         });
 
         assert!(result.is_ok());
@@ -499,9 +701,18 @@ mod tests {
         let config = RiskEngineConfig::default().with_parallel_threshold(1000);
         let engine = RiskEngine::new(config);
 
-        let trades: Vec<(&str, Box<dyn Fn() -> Result<GreeksResult<f64>, RiskError> + Send + Sync>)> = vec![
-            ("T001", Box::new(|| Ok(GreeksResult::new(100.0, 0.01).with_delta(0.5)))),
-            ("T002", Box::new(|| Ok(GreeksResult::new(50.0, 0.005).with_delta(0.3)))),
+        let trades: Vec<(
+            &str,
+            Box<dyn Fn() -> Result<GreeksResult<f64>, RiskError> + Send + Sync>,
+        )> = vec![
+            (
+                "T001",
+                Box::new(|| Ok(GreeksResult::new(100.0, 0.01).with_delta(0.5))),
+            ),
+            (
+                "T002",
+                Box::new(|| Ok(GreeksResult::new(50.0, 0.005).with_delta(0.3))),
+            ),
         ];
 
         let result = engine.compute_portfolio_greeks(trades).unwrap();
@@ -518,10 +729,22 @@ mod tests {
         let config = RiskEngineConfig::default().with_parallel_threshold(1);
         let engine = RiskEngine::new(config);
 
-        let trades: Vec<(&str, Box<dyn Fn() -> Result<GreeksResult<f64>, RiskError> + Send + Sync>)> = vec![
-            ("T001", Box::new(|| Ok(GreeksResult::new(100.0, 0.01).with_delta(0.5)))),
-            ("T002", Box::new(|| Ok(GreeksResult::new(50.0, 0.005).with_delta(0.3)))),
-            ("T003", Box::new(|| Ok(GreeksResult::new(25.0, 0.002).with_delta(0.1)))),
+        let trades: Vec<(
+            &str,
+            Box<dyn Fn() -> Result<GreeksResult<f64>, RiskError> + Send + Sync>,
+        )> = vec![
+            (
+                "T001",
+                Box::new(|| Ok(GreeksResult::new(100.0, 0.01).with_delta(0.5))),
+            ),
+            (
+                "T002",
+                Box::new(|| Ok(GreeksResult::new(50.0, 0.005).with_delta(0.3))),
+            ),
+            (
+                "T003",
+                Box::new(|| Ok(GreeksResult::new(25.0, 0.002).with_delta(0.1))),
+            ),
         ];
 
         let result = engine.compute_portfolio_greeks(trades).unwrap();
@@ -538,10 +761,22 @@ mod tests {
             .with_continue_on_error(true);
         let engine = RiskEngine::new(config);
 
-        let trades: Vec<(&str, Box<dyn Fn() -> Result<GreeksResult<f64>, RiskError> + Send + Sync>)> = vec![
-            ("T001", Box::new(|| Ok(GreeksResult::new(100.0, 0.01).with_delta(0.5)))),
-            ("T002", Box::new(|| Err(RiskError::MarketData("Missing curve".to_string())))),
-            ("T003", Box::new(|| Ok(GreeksResult::new(50.0, 0.005).with_delta(0.3)))),
+        let trades: Vec<(
+            &str,
+            Box<dyn Fn() -> Result<GreeksResult<f64>, RiskError> + Send + Sync>,
+        )> = vec![
+            (
+                "T001",
+                Box::new(|| Ok(GreeksResult::new(100.0, 0.01).with_delta(0.5))),
+            ),
+            (
+                "T002",
+                Box::new(|| Err(RiskError::MarketData("Missing curve".to_string()))),
+            ),
+            (
+                "T003",
+                Box::new(|| Ok(GreeksResult::new(50.0, 0.005).with_delta(0.3))),
+            ),
         ];
 
         let result = engine.compute_portfolio_greeks(trades).unwrap();
@@ -574,5 +809,226 @@ mod tests {
         let engine = RiskEngine::new(RiskEngineConfig::new(risk_config));
 
         assert_eq!(engine.second_order_mode(), SecondOrderMode::Serial);
+    }
+
+    // =========================================================================
+    // Task 7.10: CSA Conditions Tests
+    // =========================================================================
+
+    #[test]
+    fn test_apply_csa_adjustment_below_threshold() {
+        use infra_master::Currency;
+
+        use crate::portfolio::CollateralAgreement;
+
+        let engine = RiskEngine::with_defaults();
+        let csa = CollateralAgreement::new(
+            1_000_000.0, // threshold
+            0.0,
+            0.0,
+            Currency::USD,
+            CollateralAgreement::bilateral_mpor(),
+        )
+        .unwrap();
+
+        // Exposure below threshold: should return 0
+        let result = engine.apply_csa_adjustment(500_000.0, &csa);
+        assert_eq!(result, 0.0);
+    }
+
+    #[test]
+    fn test_apply_csa_adjustment_above_threshold() {
+        use infra_master::Currency;
+
+        use crate::portfolio::CollateralAgreement;
+
+        let engine = RiskEngine::with_defaults();
+        let csa = CollateralAgreement::new(
+            1_000_000.0, // threshold
+            0.0,
+            0.0,
+            Currency::USD,
+            CollateralAgreement::bilateral_mpor(),
+        )
+        .unwrap();
+
+        // Exposure above threshold: 2.5M - 1M = 1.5M
+        let result = engine.apply_csa_adjustment(2_500_000.0, &csa);
+        assert!((result - 1_500_000.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_apply_csa_adjustment_with_independent_amount() {
+        use infra_master::Currency;
+
+        use crate::portfolio::CollateralAgreement;
+
+        let engine = RiskEngine::with_defaults();
+        let csa = CollateralAgreement::new(
+            1_000_000.0, // threshold
+            0.0,
+            200_000.0, // independent amount (we post)
+            Currency::USD,
+            CollateralAgreement::bilateral_mpor(),
+        )
+        .unwrap();
+
+        // CE = max(E - Threshold - IA, 0) = max(2.5M - 1M - 0.2M, 0) = 1.3M
+        let result = engine.apply_csa_adjustment(2_500_000.0, &csa);
+        assert!((result - 1_300_000.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_apply_csa_to_portfolio() {
+        use std::collections::HashMap;
+
+        use infra_master::Currency;
+
+        use crate::portfolio::{CollateralAgreement, CounterpartyId, NettingSet, NettingSetId};
+
+        let engine = RiskEngine::with_defaults();
+
+        // Create netting sets - one with CSA, one without
+        let csa = CollateralAgreement::new(
+            500_000.0,
+            0.0,
+            0.0,
+            Currency::USD,
+            CollateralAgreement::bilateral_mpor(),
+        )
+        .unwrap();
+
+        let ns_collateralised = NettingSet::with_collateral(
+            NettingSetId::new("NS001"),
+            CounterpartyId::new("CP001"),
+            csa,
+        );
+        let ns_uncollateralised =
+            NettingSet::new(NettingSetId::new("NS002"), CounterpartyId::new("CP002"));
+
+        let netting_sets = vec![ns_collateralised, ns_uncollateralised];
+
+        let mut exposures = HashMap::new();
+        exposures.insert("NS001".to_string(), 1_000_000.0);
+        exposures.insert("NS002".to_string(), 500_000.0);
+
+        let result = engine.apply_csa_to_portfolio(&exposures, &netting_sets);
+
+        // NS001: 1M - 500K threshold = 500K collateralised exposure
+        assert!((result.get("NS001").unwrap() - 500_000.0).abs() < 1e-10);
+        // NS002: no CSA, so exposure remains unchanged
+        assert!((result.get("NS002").unwrap() - 500_000.0).abs() < 1e-10);
+    }
+
+    // =========================================================================
+    // Task 7.11: Scenario-Based Greeks Tests
+    // =========================================================================
+
+    #[test]
+    fn test_compute_greeks_with_scenario() {
+        let engine = RiskEngine::with_defaults();
+
+        let result = engine.compute_greeks_with_scenario("T001", "IR +100bp", || {
+            Ok(GreeksResult::new(95.0, 0.01).with_delta(0.45))
+        });
+
+        assert!(result.is_ok());
+        let scenario_result = result.unwrap();
+        assert_eq!(scenario_result.scenario_name(), "IR +100bp");
+        assert!((scenario_result.pv() - 95.0).abs() < f64::EPSILON);
+        assert!((scenario_result.delta().unwrap() - 0.45).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_compute_greeks_multi_scenario() {
+        let engine = RiskEngine::with_defaults();
+
+        let scenarios: Vec<(&str, Box<dyn Fn() -> Result<GreeksResult<f64>, RiskError>>)> = vec![
+            (
+                "Base",
+                Box::new(|| Ok(GreeksResult::new(100.0, 0.01).with_delta(0.5))),
+            ),
+            (
+                "IR +50bp",
+                Box::new(|| Ok(GreeksResult::new(98.0, 0.01).with_delta(0.48))),
+            ),
+            (
+                "IR +100bp",
+                Box::new(|| Ok(GreeksResult::new(95.0, 0.01).with_delta(0.45))),
+            ),
+        ];
+
+        let results = engine.compute_greeks_multi_scenario("T001", scenarios);
+
+        assert!(results.is_ok());
+        let results = results.unwrap();
+        assert_eq!(results.len(), 3);
+        assert_eq!(results[0].scenario_name(), "Base");
+        assert_eq!(results[1].scenario_name(), "IR +50bp");
+        assert_eq!(results[2].scenario_name(), "IR +100bp");
+    }
+
+    #[test]
+    fn test_compute_portfolio_greeks_with_scenario() {
+        let config = RiskEngineConfig::default().with_parallel_threshold(1000);
+        let engine = RiskEngine::new(config);
+
+        let trades: Vec<(
+            &str,
+            Box<dyn Fn() -> Result<GreeksResult<f64>, RiskError> + Send + Sync>,
+        )> = vec![
+            (
+                "T001",
+                Box::new(|| Ok(GreeksResult::new(95.0, 0.01).with_delta(0.45))),
+            ),
+            (
+                "T002",
+                Box::new(|| Ok(GreeksResult::new(48.0, 0.005).with_delta(0.28))),
+            ),
+        ];
+
+        let result = engine.compute_portfolio_greeks_with_scenario("Stress Test", trades);
+
+        assert!(result.is_ok());
+        let scenario_result = result.unwrap();
+        assert_eq!(scenario_result.scenario_name(), "Stress Test");
+        assert!((scenario_result.total_pv() - 143.0).abs() < 1e-10);
+        assert!((scenario_result.total_delta().unwrap() - 0.73).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_scenario_greeks_result_accessors() {
+        let greeks = ComputedGreeks {
+            delta: Some(0.5),
+            gamma: Some(0.02),
+            ..Default::default()
+        };
+        let risk_result = RiskResult::new("T001", 100.0, greeks, GreeksMethod::Bump, 1.0);
+        let scenario_result = ScenarioGreeksResult {
+            scenario_name: "Test Scenario".to_string(),
+            result: risk_result,
+        };
+
+        assert_eq!(scenario_result.scenario_name(), "Test Scenario");
+        assert!((scenario_result.pv() - 100.0).abs() < f64::EPSILON);
+        assert!((scenario_result.delta().unwrap() - 0.5).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_scenario_portfolio_result_accessors() {
+        let greeks = ComputedGreeks {
+            delta: Some(0.5),
+            ..Default::default()
+        };
+        let risk_result = RiskResult::new("T001", 100.0, greeks, GreeksMethod::Bump, 1.0);
+        let portfolio_result = PortfolioRiskResult::new(vec![risk_result], vec![], 1.0, false);
+        let scenario_result = ScenarioPortfolioResult {
+            scenario_name: "Stress Test".to_string(),
+            result: portfolio_result,
+        };
+
+        assert_eq!(scenario_result.scenario_name(), "Stress Test");
+        assert!((scenario_result.total_pv() - 100.0).abs() < f64::EPSILON);
+        assert!((scenario_result.total_delta().unwrap() - 0.5).abs() < f64::EPSILON);
     }
 }

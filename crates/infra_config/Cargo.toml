@@ -28,6 +28,9 @@ num_cpus.workspace = true
 
 [features]
 default = []
+# Serde is always enabled, but this feature exists for compatibility with
+# dependents that request it explicitly
+serde = []
 
 [dev-dependencies]
 approx.workspace = true

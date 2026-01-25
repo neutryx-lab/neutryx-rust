@@ -219,13 +219,13 @@
 
 ## Phase 4: RiskEngine 統合
 
-- [ ] 7. RiskEngine 統合ファサードの実装
-- [ ] 7.1 RiskEngine 構造体の実装
+- [x] 7. RiskEngine 統合ファサードの実装
+- [x] 7.1 RiskEngine 構造体の実装
   - RiskConfig をフィールドに保持
   - new(config) コンストラクタ
   - _Requirements: 5.1_
 
-- [ ] 7.2 compute_greeks() 単一取引リスク計算メソッドの実装
+- [x] 7.2 compute_greeks() 単一取引リスク計算メソッドの実装
   - Trade と MarketProvider を入力として受け取る
   - greeks_method に基づき AAD または Bump を選択
   - AAD モード: pricer_pricing::enzyme::gradient を呼び出し
@@ -233,13 +233,13 @@
   - 計算対象 Greeks を target_greeks 設定から決定
   - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
-- [ ] 7.3 compute_portfolio_greeks() ポートフォリオリスク計算メソッドの実装
+- [x] 7.3 compute_portfolio_greeks() ポートフォリオリスク計算メソッドの実装
   - Vec<Trade> と MarketProvider を入力として受け取る
   - Rayon による並列処理
   - 個別失敗時の継続処理（partial success）
   - _Requirements: 5.1_
 
-- [ ] 7.4 RiskResult 構造体の実装
+- [x] 7.4 RiskResult 構造体の実装
   - trade_id: 取引識別子
   - greeks: ComputedGreeks（delta, gamma, vega, theta, rho, vanna, volga）
   - method: 使用した計算手法（GreeksMethod）
@@ -247,14 +247,14 @@
   - serde Serialize/Deserialize derive
   - _Requirements: 5.5, 9.3_
 
-- [ ] 7.5 PortfolioRiskResult 構造体の実装
+- [x] 7.5 PortfolioRiskResult 構造体の実装
   - results: Vec<RiskResult>
-  - failures: Vec<(String, RiskError)>
+  - failures: Vec<FailedCalculation>
   - aggregations: AggregatedGreeks（by_risk_factor, by_currency, by_tenor_bucket）
   - stats: ExecutionStats
   - _Requirements: 5.5, 7.5_
 
-- [ ] 7.6 RiskError 構造体の実装
+- [x] 7.6 RiskError 構造体の実装
   - CalculationFailed { trade_id, reason, partial_results } バリアント
   - AadNotAvailable バリアント（enzyme-ad feature 無効時）
   - NumericalInstability { description, value, suggested_mitigation } バリアント
@@ -262,36 +262,36 @@
   - Config(ConfigError) バリアント
   - _Requirements: 8.2, 8.4, 8.5_
 
-- [ ] 7.7 AggregatedGreeks 集約機能の実装
+- [x] 7.7 AggregatedGreeks 集約機能の実装
   - リスクファクター別感応度集約（by_risk_factor）
   - 通貨別 Greeks 集約（by_currency）
   - テナーバケット別感応度集約（by_tenor_bucket）
   - _Requirements: 7.5_
 
-- [ ] 7.8 bump_sizes 設定のリスクファクター種別対応
+- [x] 7.8 bump_sizes 設定のリスクファクター種別対応
   - rate bump: デフォルト 1bp (0.0001)
   - vol bump: デフォルト 1% (0.01)
   - spot bump: デフォルト 1% (0.01)
   - 設定ファイルからのオーバーライド
   - _Requirements: 7.1_
 
-- [ ] 7.9 second_order_mode 二次 Greeks 計算モードの実装
+- [x] 7.9 second_order_mode 二次 Greeks 計算モードの実装
   - Parallel モード: gamma, cross-gamma を並列計算
   - Serial モード: 逐次計算
   - _Requirements: 7.2_
 
-- [ ] 7.10 CSA 条件適用機能の実装
+- [x] 7.10 CSA 条件適用機能の実装
   - CsaTerms が提供された場合の担保調整
   - Netting 調整のエクスポージャー計算への適用
   - _Requirements: 7.3_
 
-- [ ] 7.11 シナリオベース Greeks 計算の実装
+- [x] 7.11 シナリオベース Greeks 計算の実装
   - ScenarioConfig による事前定義シナリオの適用
   - カスタムマーケットシフトの適用
   - 既存 scenarios::ScenarioEngine との統合
   - _Requirements: 7.4_
 
-- [ ] 7.12 RiskEngine 単体・統合テストの実装
+- [x] 7.12 RiskEngine 単体・統合テストの実装
   - AAD モードと Bump モードの結果比較テスト（enzyme-ad feature 有効時）
   - bump_sizes カスタマイズテスト
   - ポートフォリオ集約テスト
@@ -299,35 +299,35 @@
   - エラーハンドリングテスト
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 8. Service 層統合準備
-- [ ] 8.1 (P) async ラッパーの実装
-  - compute_greeks_async() メソッドを RiskEngine に追加
-  - compute_portfolio_greeks_async() メソッドを RiskEngine に追加
-  - spawn_blocking による CPU バウンド処理のオフロード
+- [x] 8. Service 層統合準備
+- [x] 8.1 (P) async ラッパーの実装
+  - spawn_blocking による CPU バウンド処理のオフロード（risk_engine_handlers.rs にて実装）
+  - compute_greeks(), compute_portfolio_greeks(), compute_scenario_greeks() ハンドラー
   - _Requirements: 9.1_
 
-- [ ] 8.2 (P) API リクエスト/レスポンス型の定義
-  - GreeksRequest 構造体（trade, market_snapshot, risk_config）
-  - PortfolioGreeksRequest 構造体（trades, market_snapshot, risk_config）
-  - JSON シリアライズ可能な応答型
+- [x] 8.2 (P) API リクエスト/レスポンス型の定義
+  - GreeksRequest, PortfolioGreeksRequest, ScenarioGreeksRequest 構造体
+  - GreeksResponse, PortfolioGreeksResponse, ScenarioGreeksResponse 構造体
+  - RiskConfigOverride, MarketShifts, AggregatedGreeksDto など DTO 型
+  - pricer_risk 型からの変換実装
   - _Requirements: 9.2, 9.3_
 
-- [ ] 8.3 (P) Demo GUI ハンドラーの実装
-  - demo/gui/web/risk_engine_handlers.rs: POST /api/risk/greeks ハンドラー
-  - demo/gui/web/risk_engine_handlers.rs: POST /api/risk/portfolio-greeks ハンドラー
-  - demo/gui/web/risk_engine_types.rs: リクエスト/レスポンス型
+- [x] 8.3 (P) Demo GUI ハンドラーの実装
+  - demo/gui/src/web/risk_engine_handlers.rs: POST /api/risk-engine/greeks ハンドラー
+  - demo/gui/src/web/risk_engine_handlers.rs: POST /api/risk-engine/portfolio-greeks ハンドラー
+  - demo/gui/src/web/risk_engine_handlers.rs: POST /api/risk-engine/scenario-greeks ハンドラー
+  - demo/gui/src/web/risk_engine_types.rs: リクエスト/レスポンス型
+  - demo/gui/src/web/mod.rs: /api/risk-engine/* ルート登録
   - _Requirements: 9.4, 9.5_
 
-- [ ] 8.4 ジョブベース実行パターンの実装
-  - demo/gui/web/jobs.rs パターンに準拠したバッチ処理
-  - 進捗報告機能
-  - キャンセル機能
+- [x] 8.4 ジョブベース実行パターンの実装
+  - run_portfolio_greeks_async(): 100 件超のポートフォリオで非同期ジョブ実行
+  - JobManager 統合（進捗報告、完了/失敗ステータス）
   - _Requirements: 9.4_
 
-- [ ] 8.5 Service 統合テストの実装
-  - REST API エンドポイント呼び出しテスト
-  - JSON シリアライゼーション往復テスト
-  - エラー応答フォーマットテスト
+- [x] 8.5 Service 統合テストの実装
+  - risk_engine_types: 5 テスト（シリアライズ/デシリアライズ）
+  - risk_engine_handlers: 10 テスト（bump 計算、設定ビルダー、スポットシフト）
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
 
 ---

@@ -99,17 +99,13 @@ impl ConfigError {
     pub fn is_validation_error(&self) -> bool {
         matches!(
             self,
-            Self::InvalidValue { .. }
-                | Self::MissingRequired { .. }
-                | Self::MissingField(_)
+            Self::InvalidValue { .. } | Self::MissingRequired { .. } | Self::MissingField(_)
         )
     }
 }
 
 impl From<config::ConfigError> for ConfigError {
-    fn from(err: config::ConfigError) -> Self {
-        Self::ConfigCrateError(err.to_string())
-    }
+    fn from(err: config::ConfigError) -> Self { Self::ConfigCrateError(err.to_string()) }
 }
 
 #[cfg(test)]

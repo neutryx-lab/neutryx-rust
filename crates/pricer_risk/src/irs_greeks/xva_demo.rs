@@ -1,6 +1,7 @@
 //! XVA demonstration module for IRS Greeks.
 //!
-//! Provides exposure profile calculation, CVA/DVA computation, and XVA sensitivity benchmarking.
+//! Provides exposure profile calculation, CVA/DVA computation, and XVA
+//! sensitivity benchmarking.
 
 use thiserror::Error;
 

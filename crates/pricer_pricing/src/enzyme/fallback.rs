@@ -37,6 +37,9 @@
 //! ```
 
 use super::greeks::GreeksMode as EnzymeGreeksMode;
+// Allow deprecated usage: This internal code still needs GreeksConfig/GreeksMode
+// until the module is fully migrated. The deprecation is for external crate users.
+#[allow(deprecated)]
 use crate::greeks::{GreeksConfig, GreeksMode as CoreGreeksMode};
 
 /// Configuration for fallback behaviour.

@@ -86,9 +86,7 @@ pub struct PricingConfig {
     pub parallel_enabled: bool,
 }
 
-fn default_true() -> bool {
-    true
-}
+fn default_true() -> bool { true }
 
 impl Default for PricingConfig {
     fn default() -> Self {
@@ -129,7 +127,10 @@ impl PricingConfig {
 
         // Validate currency format (ISO 4217: 3 uppercase letters)
         if self.reporting_currency.len() != 3
-            || !self.reporting_currency.chars().all(|c| c.is_ascii_uppercase())
+            || !self
+                .reporting_currency
+                .chars()
+                .all(|c| c.is_ascii_uppercase())
         {
             return Err(ConfigError::InvalidValue {
                 key: "reporting_currency".to_string(),

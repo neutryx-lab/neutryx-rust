@@ -32,6 +32,8 @@ pub mod metrics;
 pub mod openapi;
 pub mod pricer_types;
 pub mod pricing_service;
+pub mod risk_engine_handlers;
+pub mod risk_engine_types;
 pub mod scenario_handlers;
 pub mod schedule_utils;
 pub mod state;
@@ -598,6 +600,19 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         );
 
     let api_routes = api_routes.nest("/fxvol", fxvol_routes);
+
+    // Risk Engine API routes (generic-pricing-risk-engine Task 8.3)
+    let risk_engine_routes = Router::new()
+        .route("/greeks", post(risk_engine_handlers::compute_greeks))
+        .route(
+            "/portfolio-greeks",
+            post(risk_engine_handlers::compute_portfolio_greeks),
+        )
+        .route(
+            "/scenario-greeks",
+            post(risk_engine_handlers::compute_scenario_greeks),
+        );
+    let api_routes = api_routes.nest("/risk-engine", risk_engine_routes);
 
     // Static file serving for the dashboard
     let static_files =

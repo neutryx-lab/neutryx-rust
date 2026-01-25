@@ -31,6 +31,7 @@
 pub mod calibration;
 pub mod curves;
 pub mod error;
+pub mod fx_calibration;
 pub mod fx_density;
 pub mod index_mapper;
 pub mod provider;

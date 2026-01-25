@@ -139,17 +139,20 @@ impl GenericPricer {
             }
         }
 
-        let model_config = model_builder.build().map_err(|e| {
-            PricingError::InvalidInput {
+        let model_config = model_builder
+            .build()
+            .map_err(|e| PricingError::InvalidInput {
                 reason: format!("Invalid model configuration: {}", e),
-            }
-        })?;
+            })?;
 
         // Convert currency string to Currency enum
-        let currency: Currency = config.reporting_currency.parse()
-            .map_err(|_| PricingError::InvalidInput {
-                reason: format!("Invalid currency code: {}", config.reporting_currency),
-            })?;
+        let currency: Currency =
+            config
+                .reporting_currency
+                .parse()
+                .map_err(|_| PricingError::InvalidInput {
+                    reason: format!("Invalid currency code: {}", config.reporting_currency),
+                })?;
 
         let pricer_config = PricerConfigBuilder::default()
             .default_currency(currency)
@@ -180,7 +183,8 @@ impl GenericPricer {
     /// # Arguments
     ///
     /// * `trade` - The trade to price
-    /// * `config` - Pricing configuration containing valuation date and currency
+    /// * `config` - Pricing configuration containing valuation date and
+    ///   currency
     ///
     /// # Returns
     ///
@@ -209,11 +213,13 @@ impl GenericPricer {
         })?;
 
         // Parse reporting currency
-        let reporting_currency: Currency = config.reporting_currency.parse().map_err(|_| {
-            PricingError::InvalidInput {
-                reason: format!("Invalid currency code: {}", config.reporting_currency),
-            }
-        })?;
+        let reporting_currency: Currency =
+            config
+                .reporting_currency
+                .parse()
+                .map_err(|_| PricingError::InvalidInput {
+                    reason: format!("Invalid currency code: {}", config.reporting_currency),
+                })?;
 
         self.get_pv(trade, valuation_date, reporting_currency)
     }

@@ -147,7 +147,8 @@ pub mod checkpoint;
 pub mod analytical;
 
 // Greeks calculation types and configuration
-// DEPRECATED: Use pricer_risk::greeks instead. This module will be removed in a future release.
+// DEPRECATED: Use pricer_risk::greeks instead. This module will be removed in a
+// future release.
 #[deprecated(
     since = "0.8.0",
     note = "Use pricer_risk::greeks instead. This module will be removed in a future release."
@@ -155,7 +156,8 @@ pub mod analytical;
 pub mod greeks;
 
 // IRS-specific Greeks calculation (AAD demo)
-// DEPRECATED: Use pricer_risk::irs_greeks instead. This module will be removed in a future release.
+// DEPRECATED: Use pricer_risk::irs_greeks instead. This module will be removed
+// in a future release.
 #[cfg(feature = "l1l2-integration")]
 #[deprecated(
     since = "0.8.0",

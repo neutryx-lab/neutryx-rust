@@ -45,14 +45,10 @@ impl GreekType {
     }
 
     /// Returns all first-order Greeks.
-    pub fn first_order() -> Vec<Self> {
-        vec![Self::Delta, Self::Vega, Self::Theta, Self::Rho]
-    }
+    pub fn first_order() -> Vec<Self> { vec![Self::Delta, Self::Vega, Self::Theta, Self::Rho] }
 
     /// Returns all second-order Greeks.
-    pub fn second_order() -> Vec<Self> {
-        vec![Self::Gamma, Self::Vanna, Self::Volga]
-    }
+    pub fn second_order() -> Vec<Self> { vec![Self::Gamma, Self::Vanna, Self::Volga] }
 
     /// Returns all Greek types.
     pub fn all() -> Vec<Self> {
@@ -115,28 +111,19 @@ impl BumpSizes {
         if self.rate <= 0.0 || self.rate > 0.01 {
             return Err(ConfigError::InvalidValue {
                 key: "bump_sizes.rate".to_string(),
-                message: format!(
-                    "rate bump must be in (0, 0.01], got {}",
-                    self.rate
-                ),
+                message: format!("rate bump must be in (0, 0.01], got {}", self.rate),
             });
         }
         if self.vol <= 0.0 || self.vol > 0.5 {
             return Err(ConfigError::InvalidValue {
                 key: "bump_sizes.vol".to_string(),
-                message: format!(
-                    "vol bump must be in (0, 0.5], got {}",
-                    self.vol
-                ),
+                message: format!("vol bump must be in (0, 0.5], got {}", self.vol),
             });
         }
         if self.spot <= 0.0 || self.spot > 0.5 {
             return Err(ConfigError::InvalidValue {
                 key: "bump_sizes.spot".to_string(),
-                message: format!(
-                    "spot bump must be in (0, 0.5], got {}",
-                    self.spot
-                ),
+                message: format!("spot bump must be in (0, 0.5], got {}", self.spot),
             });
         }
         Ok(())

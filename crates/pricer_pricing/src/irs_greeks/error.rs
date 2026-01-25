@@ -39,6 +39,7 @@ pub enum IrsGreeksError {
 // Conversion to unified GreeksError
 // =============================================================================
 
+#[allow(deprecated)]
 impl From<IrsGreeksError> for crate::greeks::GreeksError {
     fn from(err: IrsGreeksError) -> Self {
         match err {
@@ -54,6 +55,7 @@ impl From<IrsGreeksError> for crate::greeks::GreeksError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[allow(deprecated)]
     use crate::greeks::GreeksError;
 
     #[test]

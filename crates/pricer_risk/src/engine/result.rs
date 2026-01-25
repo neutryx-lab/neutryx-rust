@@ -14,8 +14,7 @@ use infra_config::GreeksMethod;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-use crate::greeks::GreeksResult;
-use crate::scenarios::RiskFactorId;
+use crate::{greeks::GreeksResult, scenarios::RiskFactorId};
 
 /// Computed Greeks for a single trade.
 #[derive(Debug, Clone)]
@@ -93,9 +92,7 @@ impl ComputedGreeks {
 }
 
 impl Default for ComputedGreeks {
-    fn default() -> Self {
-        Self::empty()
-    }
+    fn default() -> Self { Self::empty() }
 }
 
 /// Performance metrics for a calculation.
@@ -177,9 +174,7 @@ pub struct AggregatedGreeks {
 
 impl AggregatedGreeks {
     /// Creates empty aggregated Greeks.
-    pub fn empty() -> Self {
-        Self::default()
-    }
+    pub fn empty() -> Self { Self::default() }
 
     /// Creates aggregated Greeks from individual results.
     pub fn from_results(results: &[RiskResult]) -> Self {
@@ -347,7 +342,13 @@ impl PortfolioRiskResult {
         let failed = failures.len();
 
         let aggregations = AggregatedGreeks::from_results(&results);
-        let stats = ExecutionStats::new(total_trades, successful, failed, total_time_ms, used_parallel);
+        let stats = ExecutionStats::new(
+            total_trades,
+            successful,
+            failed,
+            total_time_ms,
+            used_parallel,
+        );
 
         Self {
             results,
@@ -358,14 +359,10 @@ impl PortfolioRiskResult {
     }
 
     /// Returns the total PV across all trades.
-    pub fn total_pv(&self) -> f64 {
-        self.results.iter().map(|r| r.pv).sum()
-    }
+    pub fn total_pv(&self) -> f64 { self.results.iter().map(|r| r.pv).sum() }
 
     /// Returns true if all calculations succeeded.
-    pub fn all_succeeded(&self) -> bool {
-        self.failures.is_empty()
-    }
+    pub fn all_succeeded(&self) -> bool { self.failures.is_empty() }
 }
 
 #[cfg(test)]
@@ -494,18 +491,16 @@ mod tests {
 
     #[test]
     fn test_portfolio_risk_result_new() {
-        let results = vec![
-            RiskResult::new(
-                "T001",
-                100.0,
-                ComputedGreeks {
-                    delta: Some(0.5),
-                    ..Default::default()
-                },
-                GreeksMethod::Bump,
-                1.0,
-            ),
-        ];
+        let results = vec![RiskResult::new(
+            "T001",
+            100.0,
+            ComputedGreeks {
+                delta: Some(0.5),
+                ..Default::default()
+            },
+            GreeksMethod::Bump,
+            1.0,
+        )];
         let failures: Vec<FailedCalculation> = vec![];
 
         let portfolio_result = PortfolioRiskResult::new(results, failures, 2.0, false);
@@ -517,18 +512,14 @@ mod tests {
 
     #[test]
     fn test_portfolio_risk_result_with_failures() {
-        let results = vec![
-            RiskResult::new(
-                "T001",
-                100.0,
-                ComputedGreeks::default(),
-                GreeksMethod::Bump,
-                1.0,
-            ),
-        ];
-        let failures = vec![
-            FailedCalculation::new("T002", "Curve not found"),
-        ];
+        let results = vec![RiskResult::new(
+            "T001",
+            100.0,
+            ComputedGreeks::default(),
+            GreeksMethod::Bump,
+            1.0,
+        )];
+        let failures = vec![FailedCalculation::new("T002", "Curve not found")];
 
         let portfolio_result = PortfolioRiskResult::new(results, failures, 3.0, true);
 

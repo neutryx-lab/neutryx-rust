@@ -1,5 +1,9 @@
 //! Configuration for IRS Greeks calculation.
 
+// Allow deprecated usage: This internal code still needs GreeksMode
+// until the module is fully migrated. The deprecation is for external crate
+// users.
+#[allow(deprecated)]
 use crate::greeks::GreeksMode;
 
 /// Configuration for IRS Greeks calculation.

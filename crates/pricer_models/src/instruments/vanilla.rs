@@ -94,13 +94,19 @@ impl<T: Float> InstrumentParams<T> {
 
         if expiry < zero {
             return Err(AnalyticalError::NumericalInstability {
-                message: format!("Expiry must be non-negative: {}", expiry.to_f64().unwrap_or(0.0)),
+                message: format!(
+                    "Expiry must be non-negative: {}",
+                    expiry.to_f64().unwrap_or(0.0)
+                ),
             });
         }
 
         if notional <= zero {
             return Err(AnalyticalError::NumericalInstability {
-                message: format!("Notional must be positive: {}", notional.to_f64().unwrap_or(0.0)),
+                message: format!(
+                    "Notional must be positive: {}",
+                    notional.to_f64().unwrap_or(0.0)
+                ),
             });
         }
 
@@ -141,7 +147,8 @@ impl<T: Float> VanillaOption<T> {
     /// * `params` - Common instrument parameters (strike, expiry, notional)
     /// * `payoff_type` - Type of payoff (Call, Put, etc.)
     /// * `exercise_style` - Exercise style (European, American, etc.)
-    /// * `epsilon` - Smoothing parameter for differentiable payoff (typically 1e-6)
+    /// * `epsilon` - Smoothing parameter for differentiable payoff (typically
+    ///   1e-6)
     #[must_use]
     pub fn new(
         params: InstrumentParams<T>,

@@ -23,11 +23,9 @@
 //! let trades = TradeLoader::load_portfolio("trades.json")?;
 //! ```
 
-use std::collections::HashMap;
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 
-use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::error::LoaderError;
 
@@ -50,7 +48,8 @@ impl JsonLoader {
     ///
     /// # Returns
     ///
-    /// Deserialized instance of type `T`, or error if file not found or parsing fails.
+    /// Deserialized instance of type `T`, or error if file not found or parsing
+    /// fails.
     ///
     /// # Example
     ///
@@ -97,9 +96,8 @@ impl JsonLoader {
     pub fn load_glob<T: DeserializeOwned>(
         pattern: &str,
     ) -> Result<Vec<Result<(String, T), LoaderError>>, LoaderError> {
-        let paths = glob::glob(pattern).map_err(|e| {
-            LoaderError::glob_pattern_error(pattern, e.to_string())
-        })?;
+        let paths = glob::glob(pattern)
+            .map_err(|e| LoaderError::glob_pattern_error(pattern, e.to_string()))?;
 
         let results: Vec<Result<(String, T), LoaderError>> = paths
             .filter_map(|entry| entry.ok())
@@ -115,7 +113,8 @@ impl JsonLoader {
         Ok(results)
     }
 
-    /// Load all JSON files matching a glob pattern, collecting successful results.
+    /// Load all JSON files matching a glob pattern, collecting successful
+    /// results.
     ///
     /// Files that fail to parse are skipped with a warning logged.
     ///
@@ -128,7 +127,11 @@ impl JsonLoader {
     /// Vector of successfully loaded values.
     pub fn load_glob_ok<T: DeserializeOwned>(pattern: &str) -> Result<Vec<T>, LoaderError> {
         let results = Self::load_glob::<T>(pattern)?;
-        Ok(results.into_iter().filter_map(|r| r.ok()).map(|(_, v)| v).collect())
+        Ok(results
+            .into_iter()
+            .filter_map(|r| r.ok())
+            .map(|(_, v)| v)
+            .collect())
     }
 }
 
@@ -138,7 +141,8 @@ impl JsonLoader {
 
 /// Trade data loader for JSON format.
 ///
-/// Loads trade data from JSON files into `infra_master::trade::Trade` structures.
+/// Loads trade data from JSON files into `infra_master::trade::Trade`
+/// structures.
 pub struct TradeLoader;
 
 impl TradeLoader {
@@ -213,9 +217,7 @@ pub struct CurveData {
     pub interpolation: String,
 }
 
-fn default_interpolation() -> String {
-    "linear_on_zero_rate".to_string()
-}
+fn default_interpolation() -> String { "linear_on_zero_rate".to_string() }
 
 /// Volatility surface point data.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -268,7 +270,10 @@ impl MarketData {
     /// Get FX spots as a HashMap for easy lookup.
     #[must_use]
     pub fn fx_spot_map(&self) -> HashMap<String, f64> {
-        self.fx_spots.iter().map(|fx| (fx.pair.clone(), fx.rate)).collect()
+        self.fx_spots
+            .iter()
+            .map(|fx| (fx.pair.clone(), fx.rate))
+            .collect()
     }
 
     /// Find a curve by its ID.
@@ -279,13 +284,18 @@ impl MarketData {
 
     /// Find curves by currency.
     pub fn get_curves_by_currency(&self, currency: &str) -> Vec<&CurveData> {
-        self.curves.iter().filter(|c| c.currency == currency).collect()
+        self.curves
+            .iter()
+            .filter(|c| c.currency == currency)
+            .collect()
     }
 
     /// Find a volatility surface by its ID.
     #[must_use]
     pub fn get_vol_surface(&self, surface_id: &str) -> Option<&VolSurfaceData> {
-        self.vol_surfaces.iter().find(|s| s.surface_id == surface_id)
+        self.vol_surfaces
+            .iter()
+            .find(|s| s.surface_id == surface_id)
     }
 }
 
@@ -312,7 +322,8 @@ impl MarketLoader {
         JsonLoader::load(path)
     }
 
-    /// Load and merge market data from multiple JSON files matching a glob pattern.
+    /// Load and merge market data from multiple JSON files matching a glob
+    /// pattern.
     ///
     /// # Arguments
     ///
@@ -377,7 +388,9 @@ impl CsaLoader {
     /// # Returns
     ///
     /// `CsaTerms` instance.
-    pub fn load<P: AsRef<Path>>(path: P) -> Result<infra_master::counterparty::CsaTerms, LoaderError> {
+    pub fn load<P: AsRef<Path>>(
+        path: P,
+    ) -> Result<infra_master::counterparty::CsaTerms, LoaderError> {
         JsonLoader::load(path)
     }
 
@@ -403,9 +416,11 @@ impl CsaLoader {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::io::Write;
+
     use tempfile::NamedTempFile;
+
+    use super::*;
 
     // -------------------------------------------------------------------------
     // JsonLoader Tests
@@ -466,8 +481,14 @@ mod tests {
             curves: vec![],
             vol_surfaces: vec![],
             fx_spots: vec![
-                FxSpotData { pair: "USDJPY".to_string(), rate: 150.0 },
-                FxSpotData { pair: "EURUSD".to_string(), rate: 1.08 },
+                FxSpotData {
+                    pair: "USDJPY".to_string(),
+                    rate: 150.0,
+                },
+                FxSpotData {
+                    pair: "EURUSD".to_string(),
+                    rate: 1.08,
+                },
             ],
         };
 
@@ -479,15 +500,13 @@ mod tests {
     #[test]
     fn test_market_data_get_curve() {
         let data = MarketData {
-            curves: vec![
-                CurveData {
-                    curve_id: "USD_SOFR".to_string(),
-                    curve_type: "sofr".to_string(),
-                    currency: "USD".to_string(),
-                    points: vec![],
-                    interpolation: "linear_on_zero_rate".to_string(),
-                },
-            ],
+            curves: vec![CurveData {
+                curve_id: "USD_SOFR".to_string(),
+                curve_type: "sofr".to_string(),
+                currency: "USD".to_string(),
+                points: vec![],
+                interpolation: "linear_on_zero_rate".to_string(),
+            }],
             vol_surfaces: vec![],
             fx_spots: vec![],
         };
@@ -593,11 +612,15 @@ mod tests {
     #[test]
     fn test_market_loader_load() {
         let mut file = NamedTempFile::new().unwrap();
-        writeln!(file, r#"{{
+        writeln!(
+            file,
+            r#"{{
             "curves": [],
             "vol_surfaces": [],
             "fx_spots": [{{ "pair": "USDJPY", "rate": 150.0 }}]
-        }}"#).unwrap();
+        }}"#
+        )
+        .unwrap();
 
         let data = MarketLoader::load(file.path()).unwrap();
         assert_eq!(data.fx_spots.len(), 1);

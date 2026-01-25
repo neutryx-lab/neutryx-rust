@@ -1,6 +1,7 @@
 //! Benchmark utilities for IRS Greeks calculation.
 //!
-//! Provides tools for measuring and comparing AAD vs Bump-and-Revalue performance.
+//! Provides tools for measuring and comparing AAD vs Bump-and-Revalue
+//! performance.
 
 use thiserror::Error;
 

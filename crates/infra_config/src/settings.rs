@@ -3,9 +3,7 @@
 use config::{Config, Environment, File};
 use serde::{Deserialize, Serialize};
 
-use crate::error::ConfigError;
-use crate::pricing_config::PricingConfig;
-use crate::risk_config::RiskConfig;
+use crate::{error::ConfigError, pricing_config::PricingConfig, risk_config::RiskConfig};
 
 /// Main application settings.
 ///
@@ -229,13 +227,9 @@ impl Default for RestConfig {
     }
 }
 
-fn default_true() -> bool {
-    true
-}
+fn default_true() -> bool { true }
 
-fn default_rest_addr() -> String {
-    "0.0.0.0:8080".to_string()
-}
+fn default_rest_addr() -> String { "0.0.0.0:8080".to_string() }
 
 /// gRPC API configuration.
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -257,9 +251,7 @@ impl Default for GrpcConfig {
     }
 }
 
-fn default_grpc_addr() -> String {
-    "0.0.0.0:50051".to_string()
-}
+fn default_grpc_addr() -> String { "0.0.0.0:50051".to_string() }
 
 /// Logging and output configuration.
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -281,19 +273,17 @@ impl Default for LoggingConfig {
     }
 }
 
-fn default_log_level() -> String {
-    "info".to_string()
-}
+fn default_log_level() -> String { "info".to_string() }
 
-fn default_output_dir() -> String {
-    "./output".to_string()
-}
+fn default_output_dir() -> String { "./output".to_string() }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::pricing_config::PricingMethod;
-    use crate::risk_config::{GreekType, GreeksMethod};
+    use crate::{
+        pricing_config::PricingMethod,
+        risk_config::{GreekType, GreeksMethod},
+    };
 
     #[test]
     fn test_default_settings() {
