@@ -142,7 +142,7 @@ pub enum SecondOrderMode {
 }
 
 /// Scenario configuration for scenario-based Greeks.
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Default, Deserialize, Serialize)]
 pub struct ScenarioConfig {
     /// Predefined scenario type.
     #[serde(default)]
@@ -150,15 +150,6 @@ pub struct ScenarioConfig {
     /// Custom market shifts.
     #[serde(default)]
     pub custom_shifts: Vec<MarketShift>,
-}
-
-impl Default for ScenarioConfig {
-    fn default() -> Self {
-        Self {
-            preset: None,
-            custom_shifts: Vec::new(),
-        }
-    }
 }
 
 /// A single market shift for scenario analysis.

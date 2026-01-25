@@ -334,10 +334,14 @@
 
 ## Phase 5: コードクリーンアップ
 
+> **ステータス (2026-01-25)**: タスク 9.1 の検証完了。downstream コードは pricer_risk への移行を完了済み（greeks_by_factor.rs, risk.rs ベンチマーク）。ただし、deprecation 警告期間（1リリースサイクル）が未経過のため、タスク 9.2〜9.6 の実施は次回リリース後に延期。
+>
+> **アーキテクチャ注記**: タスク 9.5 について、pricer_pricing (L3) は pricer_risk (L4) に依存できないため、`generic_pricer/greeks_calculator.rs` の `BumpSizes` を `pricer_risk::greeks::GreeksConfig` で置き換えることは不可。代替案として、`BumpSizes` を `infra_config` に移動するか、pricer_pricing 内で維持する必要あり。
+
 - [ ] 9. pricer_pricing からの Greeks 関連コード削除
-- [ ] 9.1 deprecated re-export の削除準備
-  - downstream コードが pricer_risk への移行を完了していることを確認
-  - 1 リリースサイクルの deprecation 警告期間経過を確認
+- [x] 9.1 deprecated re-export の削除準備
+  - ✅ downstream コードが pricer_risk への移行を完了していることを確認（2026-01-25）
+  - ⏳ 1 リリースサイクルの deprecation 警告期間経過を確認（未経過）
   - _Requirements: 6.3_
 
 - [ ] 9.2 pricer_pricing/src/lib.rs の re-export 削除

@@ -9,9 +9,6 @@
 use infra_master::market::Currency;
 
 use super::error::ConfigError;
-// Allow deprecated usage: This internal code still needs GreeksConfig/GreeksMode
-// until the module is fully migrated. The deprecation is for external crate users.
-#[allow(deprecated)]
 use crate::greeks::{GreeksConfig, GreeksMode};
 
 /// Model configuration for Generic Pricer.
@@ -215,12 +212,10 @@ impl std::fmt::Display for DefaultCurrency {
 ///
 /// # Examples
 ///
-/// ```rust
-/// use pricer_pricing::generic_pricer::PricerConfig;
-/// use pricer_pricing::greeks::GreeksMode;
+/// ```rust,ignore
+/// use pricer_pricing::generic_pricer::{PricerConfig, GreeksMode};
 ///
 /// let config = PricerConfig::builder()
-///     .greeks_mode(GreeksMode::BumpRevalue)
 ///     .use_thread_local_buffers(true)
 ///     .build()
 ///     .unwrap();
@@ -243,8 +238,7 @@ pub struct PricerConfig {
 }
 
 impl Default for PricerConfig {
-    #[allow(deprecated)]
-    fn default() -> Self {
+        fn default() -> Self {
         Self {
             greeks_config: GreeksConfig::default(),
             #[cfg(feature = "l1l2-integration")]
@@ -265,8 +259,7 @@ impl PricerConfig {
     /// # Errors
     ///
     /// Returns [`ConfigError`] if any parameter is invalid.
-    #[allow(deprecated)]
-    pub fn validate(&self) -> Result<(), ConfigError> {
+        pub fn validate(&self) -> Result<(), ConfigError> {
         self.greeks_config
             .validate()
             .map_err(|e| ConfigError::invalid_pricer_config(e.to_string()))?;
@@ -287,15 +280,13 @@ pub struct PricerConfigBuilder {
 
 impl PricerConfigBuilder {
     /// Sets the Greeks configuration.
-    #[allow(deprecated)]
-    pub fn greeks_config(mut self, config: GreeksConfig) -> Self {
+        pub fn greeks_config(mut self, config: GreeksConfig) -> Self {
         self.greeks_config = Some(config);
         self
     }
 
     /// Sets the Greeks calculation mode (convenience method).
-    #[allow(deprecated)]
-    pub fn greeks_mode(mut self, mode: GreeksMode) -> Self {
+        pub fn greeks_mode(mut self, mode: GreeksMode) -> Self {
         let mut config = self.greeks_config.take().unwrap_or_default();
         config.mode = mode;
         self.greeks_config = Some(config);

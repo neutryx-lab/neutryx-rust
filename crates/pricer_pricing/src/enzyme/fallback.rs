@@ -101,6 +101,7 @@ pub struct FallbackResolver {
     config: FallbackConfig,
 }
 
+#[allow(deprecated)]
 impl FallbackResolver {
     /// Creates a new fallback resolver with the given configuration.
     #[inline]
@@ -191,6 +192,7 @@ pub struct ResolvedMode {
     pub error: Option<FallbackError>,
 }
 
+#[allow(deprecated)]
 impl ResolvedMode {
     /// Creates a resolved mode using Enzyme AD.
     fn enzyme(mode: EnzymeGreeksMode) -> Self {

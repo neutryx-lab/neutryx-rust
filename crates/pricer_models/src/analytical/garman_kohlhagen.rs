@@ -30,7 +30,7 @@
 //! use pricer_models::analytical::garman_kohlhagen::{
 //!     GarmanKohlhagen, GarmanKohlhagenParams,
 //! };
-//! use pricer_models::instruments::fx::FxOptionType;
+//! use pricer_models::instruments::FxOptionType;
 //!
 //! let params = GarmanKohlhagenParams::new(
 //!     1.10,   // spot

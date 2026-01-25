@@ -86,19 +86,21 @@
 
 ## Phase 2: ビルダーコンポーネント（Pricerレイヤー）
 
-- [ ] 6. FXカーブトレイトとカリブレーション済みカーブの実装
-- [ ] 6.1 FXフォワードカーブトレイトを定義
+- [x] 6. FXカーブトレイトとカリブレーション済みカーブの実装
+- [x] 6.1 FXフォワードカーブトレイトを定義
   - `FxCurve<T>`トレイト（forward_rate、forward_points、spot_rate、discount_factor_domestic/foreign、currency_pair）
   - ジェネリック`T: Float`でAAD互換性を維持
   - エラー型定義（extrapolation beyond bounds等）
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.6, 9.7_
+  - **実装済み**: `fx_calibration/curve.rs` (FxCurve trait, FxCurveError, ExtrapolationPolicy)
 
-- [ ] 6.2 カリブレーション済みFXカーブを補間付きで実装
+- [x] 6.2 カリブレーション済みFXカーブを補間付きで実装
   - `CalibratedFxCurve<T>`構造体（通貨ペア、スポットレート、フォワードポイント曲線、ディスカウントカーブ参照）
   - `FxCurve<T>`トレイト実装
   - フォワードポイント補間ロジック
   - 外挿ポリシー適用
   - _Requirements: 9.5_
+  - **実装済み**: `fx_calibration/curve.rs` (CalibratedFxCurve, SimpleFxCurve)
 
 - [ ] 7. FXフォワードカーブビルダーの実装
 - [ ] 7.1 短期FXスワップからのフォワードポイントブートストラップを実装

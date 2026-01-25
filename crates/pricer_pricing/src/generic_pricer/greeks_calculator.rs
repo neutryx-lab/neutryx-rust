@@ -13,26 +13,8 @@ use super::pricer::{GenericPricer, SimpleLeg};
 #[cfg(not(feature = "l1l2-integration"))]
 use super::result::Date;
 
-/// Bump sizes for finite difference Greeks calculation.
-#[derive(Debug, Clone, Copy)]
-pub struct BumpSizes {
-    /// Bump size for rate delta (basis points).
-    pub rate_bump_bp: f64,
-    /// Bump size for FX delta (percentage).
-    pub fx_bump_pct: f64,
-    /// Bump size for volatility vega (percentage points).
-    pub vol_bump_pct: f64,
-}
-
-impl Default for BumpSizes {
-    fn default() -> Self {
-        Self {
-            rate_bump_bp: 1.0, // 1 basis point
-            fx_bump_pct: 1.0,  // 1%
-            vol_bump_pct: 1.0, // 1 vol point
-        }
-    }
-}
+// Re-export BumpSizes from infra_config for backwards compatibility
+pub use infra_config::BumpSizes;
 
 /// Greeks calculation result for a single trade.
 #[derive(Debug, Clone)]
@@ -322,9 +304,10 @@ mod tests {
     #[test]
     fn test_bump_sizes_default() {
         let bumps = BumpSizes::default();
-        assert!((bumps.rate_bump_bp - 1.0).abs() < 1e-10);
-        assert!((bumps.fx_bump_pct - 1.0).abs() < 1e-10);
-        assert!((bumps.vol_bump_pct - 1.0).abs() < 1e-10);
+        // infra_config::BumpSizes uses decimal form: 1bp = 0.0001, 1% = 0.01
+        assert!((bumps.rate - 0.0001).abs() < 1e-10); // 1bp
+        assert!((bumps.spot - 0.01).abs() < 1e-10);   // 1%
+        assert!((bumps.vol - 0.01).abs() < 1e-10);    // 1%
     }
 
     #[test]

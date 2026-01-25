@@ -336,12 +336,10 @@ impl MarketLoader {
         let results = JsonLoader::load_glob::<MarketData>(pattern)?;
 
         let mut merged = MarketData::default();
-        for result in results {
-            if let Ok((_, data)) = result {
-                merged.curves.extend(data.curves);
-                merged.vol_surfaces.extend(data.vol_surfaces);
-                merged.fx_spots.extend(data.fx_spots);
-            }
+        for (_, data) in results.into_iter().flatten() {
+            merged.curves.extend(data.curves);
+            merged.vol_surfaces.extend(data.vol_surfaces);
+            merged.fx_spots.extend(data.fx_spots);
         }
 
         Ok(merged)

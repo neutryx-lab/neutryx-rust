@@ -210,6 +210,7 @@ impl EnzymeGreeksResult {
     }
 }
 
+#[allow(deprecated)]
 impl From<EnzymeGreeksResult> for GreeksResult<f64> {
     fn from(result: EnzymeGreeksResult) -> Self { result.to_greeks_result() }
 }
