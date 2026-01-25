@@ -338,32 +338,72 @@ impl Default for AppState {
     fn default() -> Self { Self::new() }
 }
 
-/// Build the web application router
+/// Build the web application router with Cloud Run compatible CORS.
+///
+/// CORS configuration:
+/// - If `FB_CORS_ORIGINS` is set: use the comma-separated list of origins
+/// - If `FB_CORS_ALLOW_ANY` is "true": allow any origin (useful for Cloud Run)
+/// - Otherwise: default to localhost:3000 for development
+///
+/// Note: For same-origin requests (frontend served from same server), CORS
+/// doesn't apply. This mainly affects development scenarios with separate
+/// frontend/backend servers.
 fn build_cors() -> CorsLayer {
-    let origins = std::env::var("FB_CORS_ORIGINS")
-        .ok()
-        .and_then(|value| {
-            let origins: Vec<HeaderValue> = value
-                .split(',')
-                .map(|origin| origin.trim())
-                .filter(|origin| !origin.is_empty())
-                .filter_map(|origin| HeaderValue::from_str(origin).ok())
-                .collect();
-            if origins.is_empty() {
-                None
-            } else {
-                Some(origins)
-            }
-        })
-        .unwrap_or_else(|| {
-            vec![
-                HeaderValue::from_static("http://127.0.0.1:3000"),
-                HeaderValue::from_static("http://localhost:3000"),
-            ]
-        });
+    // Check for explicit "allow any" mode (useful for Cloud Run public services)
+    let allow_any = std::env::var("FB_CORS_ALLOW_ANY")
+        .map(|v| v.to_lowercase() == "true" || v == "1")
+        .unwrap_or(false);
 
+    if allow_any {
+        info!("CORS: Allowing any origin (FB_CORS_ALLOW_ANY=true)");
+        return CorsLayer::new()
+            .allow_origin(Any)
+            .allow_methods(Any)
+            .allow_headers(Any);
+    }
+
+    // Check for explicit origins list
+    let origins = std::env::var("FB_CORS_ORIGINS").ok().and_then(|value| {
+        let origins: Vec<HeaderValue> = value
+            .split(',')
+            .map(|origin| origin.trim())
+            .filter(|origin| !origin.is_empty())
+            .filter_map(|origin| HeaderValue::from_str(origin).ok())
+            .collect();
+        if origins.is_empty() {
+            None
+        } else {
+            info!("CORS: Using explicit origins from FB_CORS_ORIGINS");
+            Some(origins)
+        }
+    });
+
+    if let Some(origins) = origins {
+        return CorsLayer::new()
+            .allow_origin(AllowOrigin::list(origins))
+            .allow_methods(Any)
+            .allow_headers(Any);
+    }
+
+    // Detect Cloud Run environment and be more permissive
+    let is_cloud_run = std::env::var("K_SERVICE").is_ok() || std::env::var("CLOUD_RUN_JOB").is_ok();
+    if is_cloud_run {
+        info!("CORS: Detected Cloud Run environment, allowing any origin");
+        return CorsLayer::new()
+            .allow_origin(Any)
+            .allow_methods(Any)
+            .allow_headers(Any);
+    }
+
+    // Default: development mode with localhost origins
+    info!("CORS: Using default localhost origins for development");
     CorsLayer::new()
-        .allow_origin(AllowOrigin::list(origins))
+        .allow_origin(AllowOrigin::list(vec![
+            HeaderValue::from_static("http://127.0.0.1:3000"),
+            HeaderValue::from_static("http://localhost:3000"),
+            HeaderValue::from_static("http://127.0.0.1:8080"),
+            HeaderValue::from_static("http://localhost:8080"),
+        ]))
         .allow_methods(Any)
         .allow_headers(Any)
 }
