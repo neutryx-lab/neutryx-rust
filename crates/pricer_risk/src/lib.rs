@@ -120,7 +120,10 @@
 #![deny(rustdoc::private_intra_doc_links)]
 
 pub mod demo;
+pub mod engine;
 pub mod exposure;
+pub mod greeks;
+pub mod irs_greeks;
 pub mod parallel;
 pub mod portfolio;
 pub mod scenarios;
@@ -129,6 +132,13 @@ pub mod xva;
 
 // Re-export commonly used types
 pub use exposure::ExposureCalculator;
+pub use greeks::{GreeksConfig, GreeksConfigBuilder, GreeksConfigError, GreeksError, GreeksMode, GreeksResult};
+pub use irs_greeks::{
+    BenchmarkConfig, BenchmarkError, BenchmarkRunner, DeltaBenchmarkResult, FullBenchmarkResult,
+    IrsDeltaResult, IrsGreeksCalculator, IrsGreeksConfig, IrsGreeksError, IrsGreeksResult,
+    IrsLazyEvaluator, PvBenchmarkResult, ScalabilityResult, SingleDeltaBenchmarkResult, SwapId,
+    SwapParams, TenorPoint, TimingStats,
+};
 pub use parallel::{
     create_shared_monitor, MemoryMonitor, MemoryMonitorConfig, MemoryStats, ParallelConfig,
     SharedMemoryMonitor, DEFAULT_BATCH_SIZE,
@@ -159,4 +169,9 @@ pub use xva::{
     compute_cva, compute_cva_with_survival, compute_dva, compute_dva_with_survival, compute_fba,
     compute_fca, compute_fva, generate_flat_discount_factors, CounterpartyXva, FundingParams,
     NettingSetXva, OwnCreditParams, PortfolioXva, XvaCalculator, XvaConfig, XvaError,
+};
+// Risk Engine facade
+pub use engine::{
+    AggregatedGreeks, ComputedGreeks, ExecutionStats, FailedCalculation, PartialGreeksResult,
+    PerformanceMetrics, PortfolioRiskResult, RiskEngine, RiskEngineConfig, RiskError, RiskResult,
 };

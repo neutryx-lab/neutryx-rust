@@ -1,0 +1,24 @@
+{
+  "description": "ATM Put option, 1Y expiry, Black-Scholes pricing",
+  "input": {
+    "spot": 100.0,
+    "strike": 100.0,
+    "expiry_years": 1.0,
+    "rate": 0.05,
+    "volatility": 0.2,
+    "option_type": "put"
+  },
+  "output": {
+    "price": 5.5735,
+    "greeks": {
+      "delta": -0.3632,
+      "gamma": 0.0188,
+      "vega": 0.3752,
+      "theta": -0.0039,
+      "rho": -0.4189
+    }
+  },
+  "source": "pricer_models::analytical::BlackScholes",
+  "generated_at": "2026-01-25T00:00:00Z",
+  "notes": "Reference values calculated using BlackScholes crate implementation"
+}

@@ -147,10 +147,20 @@ pub mod checkpoint;
 pub mod analytical;
 
 // Greeks calculation types and configuration
+// DEPRECATED: Use pricer_risk::greeks instead. This module will be removed in a future release.
+#[deprecated(
+    since = "0.8.0",
+    note = "Use pricer_risk::greeks instead. This module will be removed in a future release."
+)]
 pub mod greeks;
 
 // IRS-specific Greeks calculation (AAD demo)
+// DEPRECATED: Use pricer_risk::irs_greeks instead. This module will be removed in a future release.
 #[cfg(feature = "l1l2-integration")]
+#[deprecated(
+    since = "0.8.0",
+    note = "Use pricer_risk::irs_greeks instead. This module will be removed in a future release."
+)]
 pub mod irs_greeks;
 
 // Thread-local buffer pool for allocation-free simulation
@@ -168,9 +178,19 @@ pub use graph::{
     ComputationGraph, GraphBuilder, GraphEdge, GraphError, GraphExtractable, GraphMetadata,
     GraphNode, GraphNodeUpdate, NodeGroup, NodeType, SimpleGraphExtractor,
 };
+// Deprecated: Use pricer_risk::greeks instead
+#[deprecated(
+    since = "0.8.0",
+    note = "Greeks types have been moved to pricer_risk::greeks. Update your imports to use pricer_risk::greeks::{GreeksConfig, GreeksConfigError, GreeksError, GreeksMode, GreeksResult}"
+)]
 pub use greeks::{GreeksConfig, GreeksConfigError, GreeksError, GreeksMode, GreeksResult};
 // Re-export IRS Greeks types when l1l2-integration is enabled
+// Deprecated: Use pricer_risk::irs_greeks instead
 #[cfg(feature = "l1l2-integration")]
+#[deprecated(
+    since = "0.8.0",
+    note = "IRS Greeks types have been moved to pricer_risk::irs_greeks. Update your imports to use pricer_risk::irs_greeks"
+)]
 pub use irs_greeks::{
     BenchmarkConfig, BenchmarkError, BenchmarkRunner, CacheKey, CacheState, CacheStats,
     CachedResult, DeltaBenchmarkResult, DependencyGraph, ExposureProfile, FullBenchmarkResult,

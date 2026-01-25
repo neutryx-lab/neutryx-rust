@@ -21,7 +21,7 @@ use pricer_models::{
     instruments::rates::InterestRateSwap,
     market::curves::CurveSet,
 };
-use pricer_pricing::greeks::{GreeksMode, GreeksResult};
+use crate::greeks::{GreeksMode, GreeksResult};
 use rayon::prelude::*;
 
 use super::ParallelConfig;

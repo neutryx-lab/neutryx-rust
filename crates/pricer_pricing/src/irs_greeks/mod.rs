@@ -1,5 +1,21 @@
 //! IRS Greeks calculation module for AAD demonstration.
 //!
+//! **Deprecation Notice**: This module will be deprecated in a future release.
+//! Please use [`pricer_risk::irs_greeks`] for new code, which provides the same
+//! types with better integration into the risk management layer.
+//!
+//! # Migration Guide
+//!
+//! Replace imports from `pricer_pricing::irs_greeks` with `pricer_risk::irs_greeks`:
+//!
+//! ```rust,ignore
+//! // Old (deprecated)
+//! use pricer_pricing::irs_greeks::{IrsGreeksCalculator, IrsGreeksConfig};
+//!
+//! // New (recommended)
+//! use pricer_risk::irs_greeks::{IrsGreeksCalculator, IrsGreeksConfig};
+//! ```
+//!
 //! This module provides:
 //! - [`IrsGreeksCalculator`]: IRS Greeks calculator (AAD/Bump-and-Revalue)
 //! - [`IrsGreeksConfig`]: Configuration for IRS Greeks calculation

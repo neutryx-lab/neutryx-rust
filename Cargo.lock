@@ -37,9 +37,12 @@ dependencies = [
  "approx",
  "arrow",
  "csv",
+ "glob",
  "infra_master",
  "parquet",
  "serde",
+ "serde_json",
+ "tempfile",
  "thiserror 2.0.18",
 ]
 
@@ -661,6 +664,7 @@ dependencies = [
  "nom",
  "pathdiff",
  "serde",
+ "serde_json",
  "toml",
  "yaml-rust2",
 ]
@@ -883,6 +887,7 @@ name = "demo_gui"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "approx",
  "axum",
  "chrono",
  "futures",
@@ -1648,10 +1653,13 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "approx",
+ "chrono",
  "config",
  "num_cpus",
  "serde",
+ "serde_json",
  "thiserror 2.0.18",
+ "toml",
 ]
 
 [[package]]
@@ -2503,6 +2511,7 @@ dependencies = [
  "chrono",
  "criterion",
  "iai-callgrind",
+ "infra_config",
  "infra_master",
  "llvm-sys",
  "num-traits",
@@ -2523,7 +2532,9 @@ version = "0.1.0"
 dependencies = [
  "approx",
  "criterion",
+ "infra_config",
  "infra_master",
+ "num-traits",
  "pricer_core",
  "pricer_models",
  "pricer_pricing",

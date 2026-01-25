@@ -203,7 +203,9 @@
       "Bash(powershell -Command \"Get-Process | Where-Object {$_ProcessName -match ''rust-analyzer|cargo|rustc''} | Select-Object ProcessName, Id\")",
       "Bash(docker build:*)",
       "Bash(docker stop:*)",
-      "Bash(docker run:*)"
+      "Bash(docker run:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: add static js files to git for Cloud Build\n\n- Remove demo/gui/static/ from .gitignore to include js files in repo\n- Add js/curve-builder.js, js/pricer.js, js/volcube-builder.js\n- Add verification for js directory and data directories in Dockerfile.gui\n\nThe js/ directory was excluded from git, causing 404 errors on Cloud Run\nbecause Cloud Build clones from the repo and these files were missing.\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(xargs ls:*)"
     ]
   }
 }

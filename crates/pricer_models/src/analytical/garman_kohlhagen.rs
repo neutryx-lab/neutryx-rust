@@ -58,7 +58,7 @@ use super::{
     distributions::{norm_cdf, norm_pdf},
     error::AnalyticalError,
 };
-use crate::instruments::fx::FxOptionType;
+use crate::instruments::FxOptionType;
 
 /// Parameters for the Garman-Kohlhagen model.
 ///

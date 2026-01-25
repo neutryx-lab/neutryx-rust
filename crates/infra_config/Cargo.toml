@@ -9,7 +9,7 @@ description = "System configuration and environment management for Neutryx"
 
 [dependencies]
 # Configuration management
-config = { version = "0.14", default-features = false, features = ["toml", "yaml"] }
+config = { version = "0.14", default-features = false, features = ["toml", "yaml", "json"] }
 
 # Error handling
 thiserror.workspace = true
@@ -17,6 +17,11 @@ anyhow.workspace = true
 
 # Serialisation
 serde = { workspace = true }
+serde_json.workspace = true
+toml.workspace = true
+
+# Date/time
+chrono.workspace = true
 
 # System utilities
 num_cpus.workspace = true

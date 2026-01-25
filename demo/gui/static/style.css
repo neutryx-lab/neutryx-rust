@@ -11464,10 +11464,6 @@ body.light-theme .irs-loading-overlay {
     .curve-builder-input-panel {
         max-height: none;
     }
-
-    .curve-builder-results-panel {
-        order: -1;
-    }
 }
 
 /* Light Theme */

@@ -31,6 +31,7 @@ pub mod market_types;
 pub mod metrics;
 pub mod openapi;
 pub mod pricer_types;
+pub mod pricing_service;
 pub mod scenario_handlers;
 pub mod schedule_utils;
 pub mod state;

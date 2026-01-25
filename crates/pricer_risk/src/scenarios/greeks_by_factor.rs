@@ -12,7 +12,7 @@
 use std::collections::HashMap;
 
 use pricer_core::traits::Float;
-use pricer_pricing::greeks::{GreeksMode, GreeksResult};
+use crate::greeks::{GreeksMode, GreeksResult};
 #[cfg(feature = "serde")]
 use serde::Serialize;
 
@@ -33,7 +33,7 @@ use super::RiskFactorId;
 ///
 /// ```rust
 /// use pricer_risk::scenarios::{GreeksResultByFactor, RiskFactorId};
-/// use pricer_pricing::greeks::{GreeksMode, GreeksResult};
+/// use pricer_risk::greeks::{GreeksMode, GreeksResult};
 ///
 /// // Create results for different risk factors
 /// let mut results = GreeksResultByFactor::<f64>::new(GreeksMode::BumpRevalue);
@@ -80,7 +80,7 @@ impl<T: Float> GreeksResultByFactor<T> {
     ///
     /// ```rust
     /// use pricer_risk::scenarios::GreeksResultByFactor;
-    /// use pricer_pricing::greeks::GreeksMode;
+    /// use pricer_risk::greeks::GreeksMode;
     ///
     /// let results = GreeksResultByFactor::<f64>::new(GreeksMode::BumpRevalue);
     /// assert!(results.is_empty());
@@ -228,7 +228,7 @@ impl<T: Float> GreeksResultByFactor<T> {
     ///
     /// ```rust
     /// use pricer_risk::scenarios::{GreeksResultByFactor, RiskFactorId};
-    /// use pricer_pricing::greeks::{GreeksMode, GreeksResult};
+    /// use pricer_risk::greeks::{GreeksMode, GreeksResult};
     ///
     /// let mut results = GreeksResultByFactor::<f64>::new(GreeksMode::BumpRevalue);
     ///
