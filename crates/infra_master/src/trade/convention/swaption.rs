@@ -142,6 +142,25 @@ impl SwaptionConvention {
             exercise_lag: 2,
         }
     }
+
+    /// Returns the EUR ESTR swaption convention.
+    ///
+    /// - Underlying: EUR ESTR swap
+    /// - Exercise settlement: Cash
+    /// - Premium currency: EUR
+    /// - Premium lag: 2 days
+    /// - Exercise lag: 2 days
+    #[must_use]
+    pub fn eur_estr() -> Self {
+        Self {
+            underlying_swap: SwapConvention::eur_estr(),
+            premium_settlement: SettlementConvention::Cash,
+            exercise_settlement: SettlementConvention::Cash,
+            premium_currency: Currency::EUR,
+            premium_lag: 2,
+            exercise_lag: 2,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -200,6 +219,17 @@ mod tests {
 
         assert_eq!(conv.premium_currency, Currency::JPY);
         assert_eq!(conv.underlying_swap.float_index, RateIndex::Tonar);
+    }
+
+    #[test]
+    fn test_eur_estr_swaption_convention() {
+        let conv = SwaptionConvention::eur_estr();
+
+        assert_eq!(conv.premium_currency, Currency::EUR);
+        assert_eq!(conv.underlying_swap.float_index, RateIndex::Estr);
+        assert_eq!(conv.exercise_settlement, SettlementConvention::Cash);
+        assert_eq!(conv.premium_lag, 2);
+        assert_eq!(conv.exercise_lag, 2);
     }
 
     #[test]

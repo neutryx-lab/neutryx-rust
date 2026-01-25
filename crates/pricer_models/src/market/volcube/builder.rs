@@ -317,7 +317,6 @@ impl<T: Float + Send + Sync> VolCubeBuilder<T> {
 
         // Arbitrage-free検証フラグを保存（configがmoveされる前に）
         let should_validate_arbitrage = self.config.validate_arbitrage_free;
-        let default_forward = self.default_forward;
 
         // VolCubeを構築
         let cube = VolCube::new(
@@ -467,9 +466,9 @@ impl<T: Float + Send + Sync> VolCubeBuilder<T> {
     /// 残差（RMSE）を計算。
     ///
     /// # Requirements: 4.4
-    fn compute_residual<'a>(
+    fn compute_residual(
         &self,
-        instruments: &[&'a VolInstrument<T>],
+        instruments: &[&VolInstrument<T>],
         alpha: T,
         beta: T,
         rho: T,

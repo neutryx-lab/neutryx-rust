@@ -4,6 +4,8 @@
 //! FX volatility surfaces, supporting both forward and reverse mode
 //! automatic differentiation.
 
+use std::ops::Add;
+
 use num_traits::Float;
 use serde::{Deserialize, Serialize};
 
@@ -63,9 +65,13 @@ impl<T: Float> VolSurfaceSensitivity<T> {
             d_vol_d_rr: self.d_vol_d_rr * factor,
         }
     }
+}
+
+impl<T: Float> Add for VolSurfaceSensitivity<T> {
+    type Output = Self;
 
     /// Adds two sensitivity structures element-wise.
-    pub fn add(self, other: Self) -> Self {
+    fn add(self, other: Self) -> Self::Output {
         Self {
             d_vol_d_atm: self.d_vol_d_atm + other.d_vol_d_atm,
             d_vol_d_bf: self.d_vol_d_bf + other.d_vol_d_bf,
@@ -109,7 +115,7 @@ impl<T: Float> ExpirySensitivity<T> {
     /// # Arguments
     /// * `delta` - The delta at which to compute sensitivities (0 < delta < 1)
     /// * `is_call_side` - True for call side (delta > 0.5), false for put side
-    pub fn to_vol_sensitivity(&self, delta: T, is_call_side: bool) -> VolSurfaceSensitivity<T> {
+    pub fn to_vol_sensitivity(&self, _delta: T, is_call_side: bool) -> VolSurfaceSensitivity<T> {
         // ATM always affects vol
         let d_vol_d_atm = self.atm_sens;
 

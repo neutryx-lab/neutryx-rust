@@ -215,6 +215,7 @@ pub struct CalibratedFxCurve<T: Float> {
     extrapolation: ExtrapolationPolicy,
 }
 
+#[allow(clippy::missing_fields_in_debug)]
 impl<T: Float + std::fmt::Debug> std::fmt::Debug for CalibratedFxCurve<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("CalibratedFxCurve")
@@ -223,7 +224,7 @@ impl<T: Float + std::fmt::Debug> std::fmt::Debug for CalibratedFxCurve<T> {
             .field("pillar_times", &self.pillar_times)
             .field("pillar_forward_points", &self.pillar_forward_points)
             .field("extrapolation", &self.extrapolation)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -444,7 +445,7 @@ impl<T: Float + std::fmt::Debug> std::fmt::Debug for SimpleFxCurve<T> {
         f.debug_struct("SimpleFxCurve")
             .field("currency_pair", &self.currency_pair)
             .field("spot_rate", &self.spot_rate)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 

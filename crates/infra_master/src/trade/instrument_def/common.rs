@@ -3,6 +3,8 @@
 //! This module provides shared enums and structs used by multiple
 //! instrument types across asset classes.
 
+use crate::time::{AccrualPeriod, Date, EndOfMonthRule, Frequency, Period, Tenor, TimeUnit};
+
 /// Asset class categorisation for financial instruments.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -158,6 +160,134 @@ impl Default for NotionalSchedule {
     }
 }
 
+/// Payment schedule for fixed income instruments.
+///
+/// Contains a series of accrual periods representing the payment structure
+/// of an instrument such as a swap, cap/floor, or bond.
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// use infra_master::trade::instrument_def::PaymentSchedule;
+/// use infra_master::time::{Date, Frequency};
+///
+/// let schedule = PaymentSchedule::generate(
+///     Date::from_ymd(2025, 1, 1).unwrap(),
+///     Date::from_ymd(2030, 1, 1).unwrap(),
+///     Frequency::Annual,
+///     0, // payment lag
+/// );
+/// assert_eq!(schedule.periods.len(), 5);
+/// ```
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct PaymentSchedule {
+    /// Accrual periods in the schedule.
+    pub periods: Vec<AccrualPeriod>,
+}
+
+impl PaymentSchedule {
+    /// Creates a new payment schedule from a list of accrual periods.
+    #[must_use]
+    pub fn new(periods: Vec<AccrualPeriod>) -> Self { Self { periods } }
+
+    /// Creates an empty payment schedule.
+    #[must_use]
+    pub fn empty() -> Self { Self { periods: vec![] } }
+
+    /// Generates a payment schedule from start/end dates and frequency.
+    ///
+    /// # Arguments
+    /// * `start` - Start date of the schedule
+    /// * `end` - End date of the schedule
+    /// * `frequency` - Payment frequency
+    /// * `payment_lag` - Number of business days between end of period and
+    ///   payment
+    ///
+    /// # Returns
+    /// A new payment schedule with accrual periods.
+    #[must_use]
+    pub fn generate(start: Date, end: Date, frequency: Frequency, payment_lag: u32) -> Self {
+        let mut periods = Vec::new();
+        let period_months = frequency.months_per_period();
+
+        if period_months == 0 {
+            // For overnight or unknown frequency, create single period
+            let payment = add_business_days(end, payment_lag);
+            periods.push(AccrualPeriod::new(start, end, payment));
+            return Self { periods };
+        }
+
+        let mut current_start = start;
+        while current_start < end {
+            let current_end = add_months_to_date(current_start, period_months);
+            let actual_end = if current_end > end { end } else { current_end };
+            let payment = add_business_days(actual_end, payment_lag);
+
+            periods.push(AccrualPeriod::new(current_start, actual_end, payment));
+            current_start = actual_end;
+
+            if actual_end >= end {
+                break;
+            }
+        }
+
+        Self { periods }
+    }
+
+    /// Generates a schedule from a start date and tenor.
+    ///
+    /// # Arguments
+    /// * `start` - Start date of the schedule
+    /// * `tenor` - Total tenor of the instrument
+    /// * `frequency` - Payment frequency
+    /// * `payment_lag` - Number of business days between end of period and
+    ///   payment
+    #[must_use]
+    pub fn generate_from_tenor(
+        start: Date,
+        tenor: Tenor,
+        frequency: Frequency,
+        payment_lag: u32,
+    ) -> Self {
+        let end = tenor.add_to_date(start, EndOfMonthRule::Adjust);
+        Self::generate(start, end, frequency, payment_lag)
+    }
+
+    /// Returns the number of periods in the schedule.
+    #[must_use]
+    pub fn num_periods(&self) -> usize { self.periods.len() }
+
+    /// Returns true if the schedule is empty.
+    #[must_use]
+    pub fn is_empty(&self) -> bool { self.periods.is_empty() }
+
+    /// Returns the start date of the first period.
+    #[must_use]
+    pub fn start_date(&self) -> Option<Date> { self.periods.first().map(|p| p.start) }
+
+    /// Returns the end date of the last period.
+    #[must_use]
+    pub fn end_date(&self) -> Option<Date> { self.periods.last().map(|p| p.end) }
+
+    /// Returns all payment dates in the schedule.
+    #[must_use]
+    pub fn payment_dates(&self) -> Vec<Date> { self.periods.iter().map(|p| p.payment).collect() }
+}
+
+/// Helper function to add months to a date.
+fn add_months_to_date(date: Date, months: u32) -> Date {
+    date + Period::new(months as i32, TimeUnit::Months)
+}
+
+/// Helper function to add business days (simplified - ignores holidays).
+fn add_business_days(date: Date, days: u32) -> Date {
+    if days == 0 {
+        return date;
+    }
+    date + Period::days(days as i32)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -251,6 +381,76 @@ mod tests {
     #[test]
     fn test_notional_schedule_clone() {
         let schedule = NotionalSchedule::from_schedule(vec![100.0, 200.0]);
+        let cloned = schedule.clone();
+        assert_eq!(schedule, cloned);
+    }
+
+    // PaymentSchedule tests
+
+    #[test]
+    fn test_payment_schedule_generate_annual() {
+        let start = Date::from_ymd(2025, 1, 1).unwrap();
+        let end = Date::from_ymd(2030, 1, 1).unwrap();
+        let schedule = PaymentSchedule::generate(start, end, Frequency::Annual, 0);
+
+        assert_eq!(schedule.num_periods(), 5);
+        assert_eq!(schedule.start_date(), Some(start));
+        assert_eq!(schedule.end_date(), Some(end));
+    }
+
+    #[test]
+    fn test_payment_schedule_generate_semiannual() {
+        let start = Date::from_ymd(2025, 1, 1).unwrap();
+        let end = Date::from_ymd(2027, 1, 1).unwrap();
+        let schedule = PaymentSchedule::generate(start, end, Frequency::SemiAnnual, 0);
+
+        assert_eq!(schedule.num_periods(), 4);
+    }
+
+    #[test]
+    fn test_payment_schedule_generate_quarterly() {
+        let start = Date::from_ymd(2025, 1, 1).unwrap();
+        let end = Date::from_ymd(2026, 1, 1).unwrap();
+        let schedule = PaymentSchedule::generate(start, end, Frequency::Quarterly, 0);
+
+        assert_eq!(schedule.num_periods(), 4);
+    }
+
+    #[test]
+    fn test_payment_schedule_generate_with_lag() {
+        let start = Date::from_ymd(2025, 1, 1).unwrap();
+        let end = Date::from_ymd(2026, 1, 1).unwrap();
+        let schedule = PaymentSchedule::generate(start, end, Frequency::Annual, 2);
+
+        assert_eq!(schedule.num_periods(), 1);
+        // Payment date should be 2 days after end date
+        let payment_dates = schedule.payment_dates();
+        assert_eq!(payment_dates[0], Date::from_ymd(2026, 1, 3).unwrap());
+    }
+
+    #[test]
+    fn test_payment_schedule_generate_from_tenor() {
+        let start = Date::from_ymd(2025, 1, 1).unwrap();
+        let schedule =
+            PaymentSchedule::generate_from_tenor(start, Tenor::FiveYears, Frequency::Annual, 0);
+
+        assert_eq!(schedule.num_periods(), 5);
+    }
+
+    #[test]
+    fn test_payment_schedule_empty() {
+        let schedule = PaymentSchedule::empty();
+        assert!(schedule.is_empty());
+        assert_eq!(schedule.num_periods(), 0);
+        assert_eq!(schedule.start_date(), None);
+        assert_eq!(schedule.end_date(), None);
+    }
+
+    #[test]
+    fn test_payment_schedule_clone() {
+        let start = Date::from_ymd(2025, 1, 1).unwrap();
+        let end = Date::from_ymd(2026, 1, 1).unwrap();
+        let schedule = PaymentSchedule::generate(start, end, Frequency::Annual, 0);
         let cloned = schedule.clone();
         assert_eq!(schedule, cloned);
     }

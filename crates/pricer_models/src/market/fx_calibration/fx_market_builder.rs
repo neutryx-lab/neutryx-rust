@@ -370,7 +370,7 @@ impl<T: Float + Send + Sync + 'static> FxMarketBuilder<T> {
     /// Requires discount curves to be available (either pre-built or via
     /// instruments).
     pub fn build_fx_curve(&self) -> Result<Arc<dyn FxCurve<T> + Send + Sync>, FxMarketError> {
-        let reference_date = self
+        let _reference_date = self
             .reference_date
             .ok_or_else(|| FxMarketError::MissingInput {
                 field: "reference_date".to_string(),

@@ -64,14 +64,14 @@
   - 検証結果を診断データに含める
   - _Requirements: 4.6_
 
-- [ ] 5. IR商品定義の拡張
-- [ ] 5.1 (P) underlying schedule自動生成機能を追加する
+- [x] 5. IR商品定義の拡張
+- [x] 5.1 (P) underlying schedule自動生成機能を追加する
   - Swaptionからunderlying swapのscheduleを自動構築
   - CapFloorからunderlying capのscheduleを自動構築
   - 無効なstrike/expiry/tenor組み合わせでInstrumentErrorを返す
   - _Requirements: 1.5, 1.6_
 
-- [ ] 5.2 (P) EUR ESTR swaption conventionを追加する
+- [x] 5.2 (P) EUR ESTR swaption conventionを追加する
   - 既存EUR EURIBOR conventionを参考にESTR版を定義
   - payment frequency、day count、settlement conventionを設定
   - _Requirements: 1.3_

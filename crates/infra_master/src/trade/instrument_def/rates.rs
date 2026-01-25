@@ -4,10 +4,11 @@
 //! swaptions, caps/floors, FRNs, CMS swaps, and inflation swaps.
 
 use super::{
-    common::{NotionalSchedule, PayerReceiver},
+    common::{NotionalSchedule, PayerReceiver, PaymentSchedule},
     error::InstrumentError,
 };
 use crate::{
+    time::EndOfMonthRule,
     trade::{ExerciseType, SettlementType},
     Currency, Date, Frequency, RateIndex, Tenor,
 };
@@ -54,7 +55,93 @@ impl Swaption {
                 "Strike must be non-negative",
             ));
         }
+        // Validate strike is reasonable (not more than 50%)
+        if self.strike > 0.5 {
+            return Err(InstrumentError::invalid_parameter(
+                "Strike rate exceeds reasonable bounds (>50%)",
+            ));
+        }
+        // Validate underlying tenor is reasonable for swaption
+        if self.underlying_swap_tenor.to_months() == 0 {
+            return Err(InstrumentError::invalid_parameter(
+                "Underlying swap tenor must be at least 1 month",
+            ));
+        }
         Ok(())
+    }
+
+    /// Generates the underlying swap schedule.
+    ///
+    /// The schedule represents the payment dates of the underlying swap
+    /// that would begin at the swaption expiry date.
+    ///
+    /// # Arguments
+    /// * `payment_frequency` - Payment frequency for the swap legs (default:
+    ///   Annual)
+    /// * `payment_lag` - Business days between accrual end and payment
+    ///
+    /// # Returns
+    /// A `PaymentSchedule` containing the accrual periods of the underlying
+    /// swap.
+    ///
+    /// # Errors
+    /// Returns `InstrumentError` if the schedule cannot be generated.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// use infra_master::trade::instrument_def::Swaption;
+    /// use infra_master::time::Frequency;
+    ///
+    /// let swaption = /* ... */;
+    /// let schedule = swaption.generate_underlying_schedule(Frequency::Annual, 2)?;
+    /// ```
+    pub fn generate_underlying_schedule(
+        &self,
+        payment_frequency: Frequency,
+        payment_lag: u32,
+    ) -> Result<PaymentSchedule, InstrumentError> {
+        // Validate before generating schedule
+        self.validate()?;
+
+        // The underlying swap starts at swaption expiry
+        let swap_start = self.expiry;
+
+        // Calculate swap end date from tenor
+        let swap_end = self
+            .underlying_swap_tenor
+            .add_to_date(swap_start, EndOfMonthRule::Adjust);
+
+        // Validate the resulting schedule
+        if swap_end <= swap_start {
+            return Err(InstrumentError::invalid_date(
+                "Underlying swap end date must be after start date",
+            ));
+        }
+
+        Ok(PaymentSchedule::generate(
+            swap_start,
+            swap_end,
+            payment_frequency,
+            payment_lag,
+        ))
+    }
+
+    /// Returns the start date of the underlying swap.
+    #[must_use]
+    pub fn underlying_swap_start(&self) -> Date { self.expiry }
+
+    /// Returns the end date of the underlying swap.
+    #[must_use]
+    pub fn underlying_swap_end(&self) -> Date {
+        self.underlying_swap_tenor
+            .add_to_date(self.expiry, EndOfMonthRule::Adjust)
+    }
+
+    /// Returns the expiry time in years from a given valuation date.
+    #[must_use]
+    pub fn expiry_years(&self, valuation_date: Date) -> f64 {
+        (self.expiry - valuation_date) as f64 / 365.0
     }
 }
 
@@ -136,9 +223,90 @@ impl CapFloor {
                     "Strike must be non-negative",
                 ));
             }
+            // Validate strike is reasonable (not more than 50%)
+            if *strike > 0.5 {
+                return Err(InstrumentError::invalid_parameter(
+                    "Strike rate exceeds reasonable bounds (>50%)",
+                ));
+            }
+        }
+
+        // Validate tenor is reasonable
+        if self.tenor.to_months() == 0 {
+            return Err(InstrumentError::invalid_parameter(
+                "Cap/Floor tenor must be at least 1 month",
+            ));
         }
 
         Ok(())
+    }
+
+    /// Generates the underlying cap/floor payment schedule.
+    ///
+    /// The schedule represents the caplet/floorlet periods from start date
+    /// to the end of the tenor.
+    ///
+    /// # Arguments
+    /// * `payment_lag` - Business days between accrual end and payment
+    ///
+    /// # Returns
+    /// A `PaymentSchedule` containing the accrual periods (caplets/floorlets).
+    ///
+    /// # Errors
+    /// Returns `InstrumentError` if the schedule cannot be generated.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// use infra_master::trade::instrument_def::CapFloor;
+    ///
+    /// let cap = /* ... */;
+    /// let schedule = cap.generate_underlying_schedule(2)?;
+    /// ```
+    pub fn generate_underlying_schedule(
+        &self,
+        payment_lag: u32,
+    ) -> Result<PaymentSchedule, InstrumentError> {
+        // Validate before generating schedule
+        self.validate()?;
+
+        // Calculate end date from tenor
+        let end_date = self
+            .tenor
+            .add_to_date(self.start_date, EndOfMonthRule::Adjust);
+
+        // Validate the resulting schedule
+        if end_date <= self.start_date {
+            return Err(InstrumentError::invalid_date(
+                "Cap/Floor end date must be after start date",
+            ));
+        }
+
+        Ok(PaymentSchedule::generate(
+            self.start_date,
+            end_date,
+            self.payment_frequency,
+            payment_lag,
+        ))
+    }
+
+    /// Returns the end date of the cap/floor.
+    #[must_use]
+    pub fn end_date(&self) -> Date {
+        self.tenor
+            .add_to_date(self.start_date, EndOfMonthRule::Adjust)
+    }
+
+    /// Returns the number of caplets/floorlets based on frequency and tenor.
+    #[must_use]
+    pub fn num_caplets(&self) -> u32 {
+        let tenor_months = self.tenor.to_months();
+        let freq_months = self.payment_frequency.months_per_period();
+        if freq_months == 0 {
+            1
+        } else {
+            tenor_months / freq_months
+        }
     }
 }
 
@@ -581,5 +749,100 @@ mod tests {
     fn test_swap_type_equality() {
         assert_eq!(SwapType::ZeroCoupon, SwapType::ZeroCoupon);
         assert_ne!(SwapType::ZeroCoupon, SwapType::YearOnYear);
+    }
+
+    // Schedule generation tests
+
+    #[test]
+    fn test_swaption_generate_underlying_schedule() {
+        let swaption = make_test_swaption();
+        let schedule = swaption
+            .generate_underlying_schedule(Frequency::Annual, 2)
+            .unwrap();
+
+        // 10Y swap with annual frequency = 10 periods
+        assert_eq!(schedule.num_periods(), 10);
+        assert_eq!(schedule.start_date(), Some(swaption.expiry));
+    }
+
+    #[test]
+    fn test_swaption_generate_underlying_schedule_semiannual() {
+        let swaption = make_test_swaption();
+        let schedule = swaption
+            .generate_underlying_schedule(Frequency::SemiAnnual, 0)
+            .unwrap();
+
+        // 10Y swap with semi-annual frequency = 20 periods
+        assert_eq!(schedule.num_periods(), 20);
+    }
+
+    #[test]
+    fn test_swaption_underlying_swap_dates() {
+        let swaption = make_test_swaption();
+        let start = swaption.underlying_swap_start();
+        let end = swaption.underlying_swap_end();
+
+        assert_eq!(start, swaption.expiry);
+        // 10Y from 2026-01-15 = 2036-01-15
+        assert_eq!(end, Date::from_ymd(2036, 1, 15).unwrap());
+    }
+
+    #[test]
+    fn test_swaption_expiry_years() {
+        let swaption = make_test_swaption();
+        let valuation = Date::from_ymd(2025, 1, 15).unwrap();
+        let years = swaption.expiry_years(valuation);
+
+        // Approximately 1 year
+        assert!((years - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_swaption_validate_invalid_strike() {
+        let mut swaption = make_test_swaption();
+        swaption.strike = 0.6; // 60% - too high
+        assert!(swaption.validate().is_err());
+    }
+
+    #[test]
+    fn test_capfloor_generate_underlying_schedule() {
+        let cap = make_test_cap();
+        let schedule = cap.generate_underlying_schedule(2).unwrap();
+
+        // 5Y cap with quarterly frequency = 20 caplets
+        assert_eq!(schedule.num_periods(), 20);
+        assert_eq!(schedule.start_date(), Some(cap.start_date));
+    }
+
+    #[test]
+    fn test_capfloor_end_date() {
+        let cap = make_test_cap();
+        let end = cap.end_date();
+
+        // 5Y from 2025-01-01 = 2030-01-01
+        assert_eq!(end, Date::from_ymd(2030, 1, 1).unwrap());
+    }
+
+    #[test]
+    fn test_capfloor_num_caplets() {
+        let cap = make_test_cap();
+        let num = cap.num_caplets();
+
+        // 5Y (60 months) / quarterly (3 months) = 20 caplets
+        assert_eq!(num, 20);
+    }
+
+    #[test]
+    fn test_capfloor_validate_invalid_strike() {
+        let mut cap = make_test_cap();
+        cap.strikes = vec![0.6]; // 60% - too high
+        assert!(cap.validate().is_err());
+    }
+
+    #[test]
+    fn test_capfloor_validate_invalid_tenor() {
+        let mut cap = make_test_cap();
+        cap.tenor = Tenor::Overnight; // Too short for cap/floor
+        assert!(cap.validate().is_err());
     }
 }

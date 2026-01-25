@@ -63,6 +63,7 @@ pub use commodity::{
 };
 pub use common::{
     AssetClass, BarrierDirection, BarrierType, ExerciseStyle, NotionalSchedule, PayerReceiver,
+    PaymentSchedule,
 };
 // Credit instruments
 pub use credit::{Cds, CdsIndex, CdsOption, CreditEvent, NtdBasket};

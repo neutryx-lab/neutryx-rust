@@ -314,12 +314,12 @@ impl<T: Float> CalibratedSmile<T> {
 
         // Convert delta to strike using Black-Scholes formula
         // For simplicity, we use an iterative approach
-        let strike = self.delta_to_strike(delta)?;
+        let strike = self.delta_to_strike(delta);
         self.vol_at_strike(strike)
     }
 
     /// Converts delta to strike using Newton-Raphson iteration.
-    fn delta_to_strike(&self, delta: T) -> Result<T, VolSurfaceError> {
+    fn delta_to_strike(&self, delta: T) -> T {
         let f = self.forward;
         let t = self.expiry_time;
         let atm = self.atm_vol;
@@ -335,11 +335,9 @@ impl<T: Float> CalibratedSmile<T> {
         let n_inv = approximate_norm_inv(delta_f64);
         let n_inv_t = from_f64::<T>(n_inv);
 
-        let initial_strike = f * (-(atm * sqrt_t * n_inv_t)).exp();
-
         // For simple implementation, just return the initial guess
         // A full implementation would iterate with Newton-Raphson
-        Ok(initial_strike)
+        f * (-(atm * sqrt_t * n_inv_t)).exp()
     }
 }
 
@@ -484,11 +482,13 @@ pub struct CalibratedFxVolSurface<T: Float> {
     /// Smile times in years (sorted).
     smile_times: Vec<T>,
     /// FX forward curve for delta-strike conversion.
+    #[allow(dead_code)]
     fx_curve: Arc<dyn FxCurve<T> + Send + Sync>,
     /// Surface configuration.
     config: FxVolSurfaceConfig,
 }
 
+#[allow(clippy::missing_fields_in_debug)]
 impl<T: Float + std::fmt::Debug> std::fmt::Debug for CalibratedFxVolSurface<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("CalibratedFxVolSurface")
@@ -496,7 +496,7 @@ impl<T: Float + std::fmt::Debug> std::fmt::Debug for CalibratedFxVolSurface<T> {
             .field("reference_date", &self.reference_date)
             .field("num_expiries", &self.smiles.len())
             .field("config", &self.config)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 

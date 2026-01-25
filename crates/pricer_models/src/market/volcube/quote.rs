@@ -321,13 +321,13 @@ impl VolQuote {
                 return Err("Bid must be less than or equal to ask".to_string());
             }
         }
-        if !self.strike.is_valid() {
-            if matches!(
+        if !self.strike.is_valid()
+            && matches!(
                 self.strike,
                 VolStrike::Absolute(_) | VolStrike::Moneyness(_)
-            ) {
-                return Err("Strike must be positive for Absolute/Moneyness types".to_string());
-            }
+            )
+        {
+            return Err("Strike must be positive for Absolute/Moneyness types".to_string());
         }
         Ok(())
     }

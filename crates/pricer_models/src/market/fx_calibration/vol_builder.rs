@@ -467,7 +467,7 @@ impl<T: Float + Send + Sync> FxVolSurfaceBuilder<T> {
         // Create smile based on available quotes
         let (smile, diag) = if self.enable_sabr && quotes.len() >= 3 {
             // Attempt SABR calibration
-            self.calibrate_sabr_smile(expiry, expiry_time, atm_vol, forward, quotes)?
+            self.calibrate_sabr_smile(expiry, expiry_time, atm_vol, forward, quotes)
         } else {
             // Simple flat smile
             let smile = CalibratedSmile::flat(expiry, expiry_time, atm_vol, forward);
@@ -492,7 +492,7 @@ impl<T: Float + Send + Sync> FxVolSurfaceBuilder<T> {
         atm_vol: T,
         forward: T,
         quotes: &[&VolQuote<T>],
-    ) -> Result<(CalibratedSmile<T>, ExpiryDiagnostics), CalibrationError> {
+    ) -> (CalibratedSmile<T>, ExpiryDiagnostics) {
         let beta = self.sabr_beta.unwrap_or(from_f64(0.5));
 
         // Find BF and RR quotes
@@ -553,7 +553,7 @@ impl<T: Float + Send + Sync> FxVolSurfaceBuilder<T> {
             instrument_errors: errors,
         };
 
-        Ok((smile, diag))
+        (smile, diag)
     }
 }
 

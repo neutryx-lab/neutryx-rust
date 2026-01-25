@@ -316,7 +316,7 @@ impl<T: Float + Send + Sync> FxForwardCurveBuilder<T> {
                 spot_rate,
                 domestic_curve,
                 foreign_curve,
-            )?;
+            );
         }
 
         Ok((pillar_times, pillar_forward_points))
@@ -364,7 +364,7 @@ impl<T: Float + Send + Sync> FxForwardCurveBuilder<T> {
         _spot_rate: T,
         _domestic_curve: &Arc<dyn YieldCurve<T> + Send + Sync>,
         _foreign_curve: &Arc<dyn YieldCurve<T> + Send + Sync>,
-    ) -> Result<(), FxCurveError> {
+    ) {
         // Sort pillars by tenor
         let mut pairs: Vec<_> = pillar_times
             .iter()
@@ -396,8 +396,6 @@ impl<T: Float + Send + Sync> FxForwardCurveBuilder<T> {
             pillar_times.push(t);
             pillar_forward_points.push(fp);
         }
-
-        Ok(())
     }
 }
 
