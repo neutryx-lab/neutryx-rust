@@ -117,9 +117,85 @@ impl BoundaryViolation {
     }
 }
 
+/// Arbitrage-free条件違反情報。
+///
+/// # Requirements: 4.6
+///
+/// Breeden-Litzenberger公式による確率密度が負になった場合など、
+/// arbitrage-free条件に違反した詳細情報を保持する。
+#[derive(Debug, Clone, PartialEq)]
+pub struct ArbitrageViolation {
+    /// 違反が検出されたストライク。
+    pub strike: f64,
+    /// 違反の種類。
+    pub violation_type: ArbitrageViolationType,
+    /// 違反の詳細メッセージ。
+    pub message: String,
+    /// 違反時の確率密度値（負の場合に検出）。
+    pub density_value: Option<f64>,
+}
+
+/// Arbitrage違反の種類。
+///
+/// # Requirements: 4.6
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ArbitrageViolationType {
+    /// 負の確率密度（Breeden-Litzenberger）。
+    NegativeDensity,
+    /// Butterfly spread負（Cal-spread arbitrage）。
+    NegativeButterflySpread,
+    /// Calendar spread負。
+    NegativeCalendarSpread,
+}
+
+impl std::fmt::Display for ArbitrageViolationType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ArbitrageViolationType::NegativeDensity => write!(f, "負の確率密度"),
+            ArbitrageViolationType::NegativeButterflySpread => write!(f, "負のButterfly Spread"),
+            ArbitrageViolationType::NegativeCalendarSpread => write!(f, "負のCalendar Spread"),
+        }
+    }
+}
+
+impl ArbitrageViolation {
+    /// 新しいarbitrage違反情報を作成。
+    pub fn new(strike: f64, violation_type: ArbitrageViolationType) -> Self {
+        let message = format!(
+            "{} at strike={:.6}",
+            violation_type, strike
+        );
+        Self {
+            strike,
+            violation_type,
+            message,
+            density_value: None,
+        }
+    }
+
+    /// 確率密度違反を作成。
+    pub fn negative_density(strike: f64, density: f64) -> Self {
+        let message = format!(
+            "負の確率密度: strike={:.6}, density={:.6e}",
+            strike, density
+        );
+        Self {
+            strike,
+            violation_type: ArbitrageViolationType::NegativeDensity,
+            message,
+            density_value: Some(density),
+        }
+    }
+
+    /// Butterfly spread違反を作成。
+    pub fn negative_butterfly(strike: f64) -> Self {
+        Self::new(strike, ArbitrageViolationType::NegativeButterflySpread)
+    }
+}
+
 /// スライス別診断情報。
 ///
-/// # Requirements: 4.4, 4.5, 4.7
+/// # Requirements: 4.4, 4.5, 4.6, 4.7
 ///
 /// 個々のexpiry-tenorスライスのカリブレーション結果を保持する。
 #[derive(Debug, Clone, PartialEq)]
@@ -140,6 +216,10 @@ pub struct SliceDiagnostics {
     pub forward: f64,
     /// パラメータ境界違反情報（ある場合）。
     pub boundary_violations: Vec<BoundaryViolation>,
+    /// Arbitrage-free条件違反情報（ある場合）。
+    ///
+    /// # Requirements: 4.6
+    pub arbitrage_violations: Vec<ArbitrageViolation>,
 }
 
 impl SliceDiagnostics {
@@ -154,6 +234,7 @@ impl SliceDiagnostics {
             parameters: [0.0; 4],
             forward: 0.0,
             boundary_violations: Vec::new(),
+            arbitrage_violations: Vec::new(),
         }
     }
 
@@ -196,6 +277,17 @@ impl SliceDiagnostics {
         }
     }
 
+    /// Arbitrage違反を追加。
+    ///
+    /// # Requirements: 4.6
+    pub fn add_arbitrage_violation(&mut self, violation: ArbitrageViolation) {
+        self.arbitrage_violations.push(violation);
+        // Arbitrage違反があれば警告状態に（エラーではない）
+        if self.status == ConvergenceStatus::Success {
+            self.status = ConvergenceStatus::Warning;
+        }
+    }
+
     /// このスライスが成功したか。
     pub fn is_success(&self) -> bool {
         self.status == ConvergenceStatus::Success
@@ -203,7 +295,16 @@ impl SliceDiagnostics {
 
     /// このスライスに警告があるか。
     pub fn has_warnings(&self) -> bool {
-        !self.boundary_violations.is_empty() || self.status == ConvergenceStatus::Warning
+        !self.boundary_violations.is_empty()
+            || !self.arbitrage_violations.is_empty()
+            || self.status == ConvergenceStatus::Warning
+    }
+
+    /// このスライスにarbitrage違反があるか。
+    ///
+    /// # Requirements: 4.6
+    pub fn has_arbitrage_violations(&self) -> bool {
+        !self.arbitrage_violations.is_empty()
     }
 }
 
@@ -342,9 +443,29 @@ impl CalibrationDiagnostics {
             .collect()
     }
 
+    /// 全てのarbitrage違反を取得。
+    ///
+    /// # Requirements: 4.6
+    pub fn all_arbitrage_violations(&self) -> Vec<&ArbitrageViolation> {
+        self.slice_diagnostics
+            .iter()
+            .flat_map(|s| s.arbitrage_violations.iter())
+            .collect()
+    }
+
+    /// Arbitrage違反があるスライスの数を取得。
+    ///
+    /// # Requirements: 4.6
+    pub fn arbitrage_violation_count(&self) -> usize {
+        self.slice_diagnostics
+            .iter()
+            .filter(|s| s.has_arbitrage_violations())
+            .count()
+    }
+
     /// サマリーレポートを生成。
     ///
-    /// # Requirements: 4.4
+    /// # Requirements: 4.4, 4.6
     pub fn summary_report(&self) -> String {
         let status_str = match self.overall_status {
             ConvergenceStatus::Success => "成功",
@@ -374,6 +495,14 @@ impl CalibrationDiagnostics {
         if !violations.is_empty() {
             report.push_str("\n--- パラメータ境界違反 ---\n");
             for violation in violations {
+                report.push_str(&format!("  - {}\n", violation.message));
+            }
+        }
+
+        let arb_violations = self.all_arbitrage_violations();
+        if !arb_violations.is_empty() {
+            report.push_str("\n--- Arbitrage条件違反 ---\n");
+            for violation in arb_violations {
                 report.push_str(&format!("  - {}\n", violation.message));
             }
         }

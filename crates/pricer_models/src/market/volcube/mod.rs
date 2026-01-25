@@ -60,7 +60,10 @@ pub use config::{
     OptimizerType, SabrParameterInterpolation, StrikeAxisType, VolCubeConfig,
 };
 pub use cube::{VolCube, VolatilityCube};
-pub use error::{CalibrationDiagnostics, VolCubeError};
+pub use error::{
+    ArbitrageViolation, ArbitrageViolationType, BoundaryViolation, CalibrationDiagnostics,
+    ConvergenceStatus, SabrParameter, SliceDiagnostics, VolCubeError,
+};
 pub use interpolator::{
     FlatInterpolator, Interpolator, InterpolationError, LinearInterpolator, VolCubeInterpolator,
 };

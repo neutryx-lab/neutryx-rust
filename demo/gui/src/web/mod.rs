@@ -583,7 +583,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
 
     let api_routes = api_routes.nest("/volcube", volcube_routes);
 
-    // FxVol API routes (volcube-calibration-ui Task 7.1)
+    // FxVol API routes (volcube-calibration-ui Task 7.1, fx-vol-surface-calibration Task 13.2)
     let fxvol_routes = Router::new()
         .route("/pairs", get(fxvol_handlers::get_pairs))
         .route("/delta-types", get(fxvol_handlers::get_delta_types))
@@ -593,7 +593,9 @@ pub fn build_router(state: Arc<AppState>) -> Router {
             axum::routing::put(fxvol_handlers::update_quotes),
         )
         .route("/build", post(fxvol_handlers::build_surface))
+        .route("/calibrate", post(fxvol_handlers::calibrate_surface))
         .route("/smile", get(fxvol_handlers::get_smile))
+        .route("/surface", get(fxvol_handlers::get_surface))
         .route("/rr-bf", get(fxvol_handlers::get_rr_bf))
         .route("/density", get(fxvol_handlers::get_density))
         .route(

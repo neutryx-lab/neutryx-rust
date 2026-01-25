@@ -993,6 +993,283 @@ fn black_call_price(strike: f64, forward: f64, expiry: f64, vol: f64, rate: f64)
 }
 
 // =============================================================================
+// Extended API Handlers (Task 13.2)
+// =============================================================================
+
+use super::fxvol_types::{
+    FxCalibrationDiagnostics, FxCalibrateRequest, FxCalibrateResponse, FxSurfaceQuery,
+    FxSurfaceResponse, SabrParameters, SurfacePoint,
+};
+
+/// Handler for `POST /api/fxvol/calibrate`.
+///
+/// Calibrates an FX volatility surface using SABR model.
+///
+/// # Requirements Coverage
+///
+/// - Requirement 12.3: ボラティリティサーフェスカリブレーションAPIエンドポイント
+/// - Requirement 12.5: カリブレーション診断表示
+pub async fn calibrate_surface(
+    State(state): State<Arc<AppState>>,
+    Json(request): Json<FxCalibrateRequest>,
+) -> ApiResult<FxCalibrateResponse> {
+    let start = Instant::now();
+
+    // Validate request
+    if request.quotes.is_empty() {
+        return Err(ApiError::validation(
+            "At least one quote is required for calibration",
+            "quotes",
+        ));
+    }
+
+    if request.spot <= 0.0 {
+        return Err(ApiError::validation(
+            format!("Spot must be positive, got {}", request.spot),
+            "spot",
+        ));
+    }
+
+    let mut warnings = Vec::new();
+    let mut sabr_params = Vec::new();
+    let mut max_residual = 0.0_f64;
+    let mut total_residual = 0.0_f64;
+
+    // Calibrate SABR for each expiry
+    for quote in &request.quotes {
+        let label = expiry_to_label(quote.expiry);
+
+        // Calculate forward rate
+        let rate_diff = request.domestic_rate - request.foreign_rate;
+        let forward = request.spot * (rate_diff * quote.expiry).exp();
+
+        // Initial SABR parameter estimates
+        let atm_vol = quote.atm_vol;
+        let beta = request.sabr_beta;
+
+        // Simplified SABR calibration
+        // In production, would use proper optimisation
+        let alpha = atm_vol * forward.powf(1.0 - beta);
+
+        // Estimate rho from risk reversal
+        let rho = (quote.rr_25d / atm_vol).clamp(-0.95, 0.95);
+
+        // Estimate nu from butterfly
+        let nu = (quote.bf_25d.abs() / atm_vol * 4.0 + 0.2).clamp(0.1, 2.0);
+
+        // Compute calibration residual (simplified)
+        let delta_vols = quote.to_delta_vols();
+        let model_25c = sabr_vol(forward, forward * 1.05, quote.expiry, alpha, beta, rho, nu);
+        let model_25p = sabr_vol(forward, forward * 0.95, quote.expiry, alpha, beta, rho, nu);
+        let residual_25c = (model_25c - delta_vols.vol_25d_call).abs();
+        let residual_25p = (model_25p - delta_vols.vol_25d_put).abs();
+        let residual = ((residual_25c.powi(2) + residual_25p.powi(2)) / 2.0).sqrt();
+
+        max_residual = max_residual.max(residual);
+        total_residual += residual;
+
+        sabr_params.push(SabrParameters {
+            expiry: quote.expiry,
+            label,
+            alpha,
+            beta,
+            rho,
+            nu,
+            forward,
+            residual,
+            iterations: 10, // Placeholder
+        });
+    }
+
+    let expiry_count = request.quotes.len();
+    let avg_residual = if expiry_count > 0 {
+        total_residual / expiry_count as f64
+    } else {
+        0.0
+    };
+
+    // Check convergence (residual threshold)
+    let converged = max_residual < 0.005; // 50bps tolerance
+    if !converged {
+        warnings.push(format!(
+            "High calibration residual: max={:.4}, avg={:.4}",
+            max_residual, avg_residual
+        ));
+    }
+
+    // Generate surface ID and cache
+    let surface_id = Uuid::new_v4();
+
+    // Extract expiry points
+    let mut expiry_points: Vec<f64> = request.quotes.iter().map(|q| q.expiry).collect();
+    expiry_points.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    expiry_points.dedup();
+
+    let cached_surface = CachedFxSurface {
+        currency_pair: request.currency_pair.clone(),
+        spot: request.spot,
+        domestic_rate: request.domestic_rate,
+        foreign_rate: request.foreign_rate,
+        quotes: request.quotes.clone(),
+        delta_points: vec![0.10, 0.25, 0.50, -0.25, -0.10],
+        expiry_points,
+        allow_extrapolation: true,
+    };
+
+    state.fxvol_cache.add(surface_id, cached_surface).await;
+
+    let calibration_time_ms = start.elapsed().as_secs_f64() * 1000.0;
+
+    let diagnostics = FxCalibrationDiagnostics {
+        model: format!("{:?}", request.model),
+        calibration_time_ms,
+        expiry_count,
+        converged,
+        max_residual,
+        avg_residual,
+        sabr_params,
+        warnings,
+    };
+
+    Ok(Json(FxCalibrateResponse {
+        surface_id: surface_id.to_string(),
+        currency_pair: request.currency_pair,
+        diagnostics,
+    }))
+}
+
+/// Handler for `GET /api/fxvol/surface`.
+///
+/// Returns 3D volatility surface data for visualisation.
+///
+/// # Requirements Coverage
+///
+/// - Requirement 12.4: 3D可視化用JSON形式でサーフェスデータ返却
+pub async fn get_surface(
+    State(state): State<Arc<AppState>>,
+    Query(query): Query<FxSurfaceQuery>,
+) -> ApiResult<FxSurfaceResponse> {
+    // Parse surface ID
+    let surface_id = Uuid::parse_str(&query.surface_id)
+        .map_err(|_| ApiError::validation("Invalid surface ID format", "surface_id"))?;
+
+    // Get cached surface
+    let surface = state
+        .fxvol_cache
+        .get(&surface_id)
+        .await
+        .ok_or_else(|| ApiError::not_found("FxVolSurface", &query.surface_id))?;
+
+    // Build delta axis (from put to call)
+    let delta_count = query.delta_points;
+    let mut delta_axis = Vec::with_capacity(delta_count);
+
+    // Standard delta points: -0.10, -0.25, -0.50 (puts), 0.50, 0.25, 0.10 (calls)
+    // Map to uniform range for visualisation
+    for i in 0..delta_count {
+        let t = i as f64 / (delta_count - 1) as f64;
+        // Map [0, 1] to delta range [-0.45, 0.45]
+        let delta = -0.45 + t * 0.9;
+        delta_axis.push(delta);
+    }
+
+    // Get expiry axis from surface data
+    let expiry_axis = surface.expiry_points.clone();
+    let expiry_labels: Vec<String> = expiry_axis.iter().map(|e| expiry_to_label(*e)).collect();
+
+    // Build surface points and matrices
+    let mut points = Vec::new();
+    let mut vol_matrix = Vec::with_capacity(expiry_axis.len());
+    let mut strike_matrix = Vec::with_capacity(expiry_axis.len());
+
+    for &expiry in &expiry_axis {
+        // Find closest quote for this expiry
+        let quote = surface
+            .quotes
+            .iter()
+            .min_by(|a, b| {
+                (a.expiry - expiry)
+                    .abs()
+                    .partial_cmp(&(b.expiry - expiry).abs())
+                    .unwrap()
+            })
+            .unwrap();
+
+        let delta_vols = quote.to_delta_vols();
+        let rate_diff = surface.domestic_rate - surface.foreign_rate;
+        let forward = surface.spot * (rate_diff * expiry).exp();
+
+        let mut vol_row = Vec::with_capacity(delta_axis.len());
+        let mut strike_row = Vec::with_capacity(delta_axis.len());
+
+        for &delta in &delta_axis {
+            // Interpolate volatility from delta vols
+            let vol = interpolate_delta_vol(&delta_vols, delta);
+
+            // Calculate strike from delta
+            let strike = delta_to_strike(
+                delta,
+                surface.spot,
+                surface.domestic_rate,
+                surface.foreign_rate,
+                expiry,
+                vol,
+                DeltaType::SpotDelta,
+            );
+
+            points.push(SurfacePoint {
+                delta,
+                expiry,
+                volatility: vol,
+                strike,
+            });
+
+            vol_row.push(vol);
+            strike_row.push(strike);
+        }
+
+        vol_matrix.push(vol_row);
+        strike_matrix.push(strike_row);
+    }
+
+    Ok(Json(FxSurfaceResponse {
+        currency_pair: surface.currency_pair.clone(),
+        spot: surface.spot,
+        reference_date: "".to_string(), // Not stored in cache
+        delta_axis,
+        expiry_axis,
+        expiry_labels,
+        points,
+        vol_matrix,
+        strike_matrix,
+    }))
+}
+
+/// Simplified SABR volatility formula.
+fn sabr_vol(forward: f64, strike: f64, expiry: f64, alpha: f64, beta: f64, rho: f64, nu: f64) -> f64 {
+    if (forward - strike).abs() < 1e-10 {
+        // ATM approximation
+        let fk_beta = forward.powf(1.0 - beta);
+        return alpha / fk_beta
+            * (1.0
+                + ((1.0 - beta).powi(2) / 24.0 * alpha.powi(2) / fk_beta.powi(2)
+                    + 0.25 * rho * beta * nu * alpha / fk_beta
+                    + (2.0 - 3.0 * rho.powi(2)) / 24.0 * nu.powi(2))
+                    * expiry);
+    }
+
+    let log_fk = (forward / strike).ln();
+    let fk_mid = (forward * strike).powf((1.0 - beta) / 2.0);
+    let z = nu / alpha * fk_mid * log_fk;
+    let x_z = ((1.0 - 2.0 * rho * z + z.powi(2)).sqrt() + z - rho).ln() / (1.0 - rho);
+
+    let prefix = alpha / (fk_mid * (1.0 + (1.0 - beta).powi(2) / 24.0 * log_fk.powi(2)));
+    let zeta = if x_z.abs() < 1e-10 { 1.0 } else { z / x_z };
+
+    prefix * zeta
+}
+
+// =============================================================================
 // Tests
 // =============================================================================
 

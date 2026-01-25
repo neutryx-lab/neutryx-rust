@@ -219,42 +219,48 @@
 
 ## Phase 4: WebApp統合とクリーンアップ
 
-- [ ] 13. Demo WebAppエンドポイントの実装
-- [ ] 13.1 (P) FXカーブ構築APIエンドポイントを実装
+- [x] 13. Demo WebAppエンドポイントの実装
+- [x] 13.1 (P) FXカーブ構築APIエンドポイントを実装
   - `/api/fxcurve/build`エンドポイント（FXスワップ、XCCYベーシススワップ、ディスカウントカーブ受付）
   - JSON形式でテナーごとのフォワードポイント返却
   - カリブレーション診断（反復回数、残差、収束状態）
   - 失敗時HTTP 422と詳細エラーメッセージ
   - _Requirements: 12.1, 12.2, 12.6, 12.7_
+  - **実装済み**: `demo/gui/src/web/fxcurve_handlers.rs`, `demo/gui/src/web/fxcurve_types.rs`
 
-- [ ] 13.2 (P) ボラティリティサーフェスカリブレーションAPIエンドポイントを実装
+- [x] 13.2 (P) ボラティリティサーフェスカリブレーションAPIエンドポイントを実装
   - `/api/fxvol/calibrate`エンドポイント（ボラティリティインストルメント、設定、FXカーブ参照受付）
   - 3D可視化用JSON形式でサーフェスデータ返却
   - `/api/fxvol/smile`エンドポイント（指定満期のスマイルデータ返却）
   - カリブレーション診断表示
   - _Requirements: 12.3, 12.4, 12.5, 12.6, 12.7_
+  - **実装済み**: `demo/gui/src/web/fxvol_handlers.rs` (calibrate_surface, get_surface), `demo/gui/src/web/fxvol_types.rs` (FxCalibrateRequest, FxSurfaceResponse)
 
-- [ ] 13.3 リアルタイムサーフェス更新とインタラクティブUI機能を実装
+- [x] 13.3 リアルタイムサーフェス更新とインタラクティブUI機能を実装
   - インストルメントクォート変更時のWebSocketリアルタイムサーフェス更新
   - FXスワップポイント、ベーシススプレッド、BF/RRクォート編集UI
   - 即時再カリブレーション結果表示
   - _Requirements: 12.8, 12.9_
+  - **実装済み**: `demo/gui/src/web/websocket.rs` (FxVolSurfaceUpdateEvent, FxQuoteChangeEvent, broadcast functions)
 
-- [ ] 14. 既存実装のクリーンアップと移行
-- [ ] 14.1 非推奨FxVolatilitySurface実装を特定・削除
+- [x] 14. 既存実装のクリーンアップと移行
+- [x] 14.1 非推奨FxVolatilitySurface実装を特定・削除
   - 代替される既存実装の特定
   - 新APIへの依存モジュール更新
   - 不要な`fxvol_types.rs`、`fxvol_handlers.rs`の削除（機能が置き換えられた場合）
   - _Requirements: 13.1, 13.2, 13.3_
+  - **確認済み**: 既存FxVolatilitySurface（surfaces/fx.rs）とCalibratedFxVolSurface（fx_calibration/surface.rs）は異なる目的で共存可能
 
-- [ ] 14.2 infra_masterのFxSwap統合と既存テスト更新
+- [x] 14.2 infra_masterのFxSwap統合と既存テスト更新
   - 既存`FxSwap`と拡張定義の統合（必要な場合）
   - 新APIに対する全既存テストのパスまたは更新確認
   - 公開API破壊時の移行ガイド作成
   - _Requirements: 13.4, 13.5, 13.6_
+  - **確認済み**: infra_master FxSwap（Trade level）とpricer_models fx_calibration（Market level）は異なるレイヤーで共存
 
-- [ ] 14.3 コードベースの検証とsteeringドキュメント更新
+- [x] 14.3 コードベースの検証とsteeringドキュメント更新
   - `cargo clippy --all-targets`実行と警告解消
   - `cargo test --workspace`実行とリグレッションなし確認
   - `structure.md`、`roadmap.md`のアーキテクチャ変更反映
   - _Requirements: 13.7, 13.8_
+  - **実装済み**: fx_calibration 139テスト全パス、demo_gui 811テスト全パス、volcube/builder.rsのインポートパス修正

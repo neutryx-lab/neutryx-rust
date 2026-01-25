@@ -1196,6 +1196,121 @@ pub fn broadcast_subgraph_error(state: &AppState, trade_ids: Vec<String>, error:
     let _ = state.tx.send(update.to_json());
 }
 
+// =============================================================================
+// Task 13.3: FX Vol Surface Update WebSocket Events
+// =============================================================================
+
+/// FX volatility surface update event.
+///
+/// Broadcast when a volatility surface quote changes and recalibration occurs.
+///
+/// # Requirements Coverage
+///
+/// - Requirement 12.8: リアルタイムサーフェス更新
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FxVolSurfaceUpdateEvent {
+    /// Surface ID
+    pub surface_id: String,
+    /// Currency pair
+    pub currency_pair: String,
+    /// Updated expiry (if single quote update)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub updated_expiry: Option<f64>,
+    /// Quote type that changed (atm, rr_25d, bf_25d, rr_10d, bf_10d)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub quote_type: Option<String>,
+    /// New quote value
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub new_value: Option<f64>,
+    /// Recalibration time (ms)
+    pub recalibration_time_ms: f64,
+    /// Whether recalibration succeeded
+    pub recalibration_success: bool,
+}
+
+/// FX quote change event for real-time editing.
+///
+/// Broadcast when user edits a quote in the UI.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FxQuoteChangeEvent {
+    /// Surface ID
+    pub surface_id: String,
+    /// Expiry of the changed quote
+    pub expiry: f64,
+    /// Quote field that changed
+    pub field: String,
+    /// Old value
+    pub old_value: f64,
+    /// New value
+    pub new_value: f64,
+}
+
+impl RealTimeUpdate {
+    /// Create an FX vol surface update event.
+    ///
+    /// # Arguments
+    ///
+    /// * `event` - Surface update event data
+    pub fn fxvol_surface_update(event: FxVolSurfaceUpdateEvent) -> Self {
+        Self {
+            update_type: "fxvol_surface_update".to_string(),
+            timestamp: chrono::Utc::now().timestamp_millis(),
+            data: serde_json::json!({
+                "surface_id": event.surface_id,
+                "currency_pair": event.currency_pair,
+                "updated_expiry": event.updated_expiry,
+                "quote_type": event.quote_type,
+                "new_value": event.new_value,
+                "recalibration_time_ms": event.recalibration_time_ms,
+                "recalibration_success": event.recalibration_success
+            }),
+        }
+    }
+
+    /// Create an FX quote change event.
+    ///
+    /// # Arguments
+    ///
+    /// * `event` - Quote change event data
+    pub fn fxvol_quote_change(event: FxQuoteChangeEvent) -> Self {
+        Self {
+            update_type: "fxvol_quote_change".to_string(),
+            timestamp: chrono::Utc::now().timestamp_millis(),
+            data: serde_json::json!({
+                "surface_id": event.surface_id,
+                "expiry": event.expiry,
+                "field": event.field,
+                "old_value": event.old_value,
+                "new_value": event.new_value
+            }),
+        }
+    }
+}
+
+/// Broadcast an FX vol surface update to all connected clients.
+///
+/// # Arguments
+///
+/// * `state` - Application state containing the broadcast channel
+/// * `event` - Surface update event data
+pub fn broadcast_fxvol_surface_update(state: &AppState, event: FxVolSurfaceUpdateEvent) {
+    let update = RealTimeUpdate::fxvol_surface_update(event);
+    let _ = state.tx.send(update.to_json());
+}
+
+/// Broadcast an FX quote change to all connected clients.
+///
+/// # Arguments
+///
+/// * `state` - Application state containing the broadcast channel
+/// * `event` - Quote change event data
+pub fn broadcast_fxvol_quote_change(state: &AppState, event: FxQuoteChangeEvent) {
+    let update = RealTimeUpdate::fxvol_quote_change(event);
+    let _ = state.tx.send(update.to_json());
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

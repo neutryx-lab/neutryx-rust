@@ -428,7 +428,7 @@ impl VolQuoteSet {
     }
 }
 
-/// VolQuoteからVolInstrument<f64>への変換ヘルパー。
+/// VolQuoteから`VolInstrument<f64>`への変換ヘルパー。
 ///
 /// 基準日からのexpiry年数とforward rateを計算してVolInstrumentに変換する。
 pub fn vol_quote_to_instrument<T: Float>(
