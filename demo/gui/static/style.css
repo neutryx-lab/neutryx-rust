@@ -12199,6 +12199,20 @@ body.light-theme .asset-toggle-btn:hover {
     color: var(--primary);
 }
 
+.conventions-panel .panel-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.conventions-panel .panel-header h3 i {
+    color: var(--purple);
+}
+
 .conventions-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));

@@ -39,6 +39,7 @@ mod engine;
 mod error;
 pub mod graph;
 mod interpolator;
+mod lazy_evaluator;
 mod quote;
 mod sabr_surface;
 mod types;
@@ -50,7 +51,8 @@ pub use breeden_litzenberger::BreedenLitzenberger;
 pub use builder::VolCubeBuilder;
 pub use cache::{CacheStats, SharedVolCubeCache, VolCubeCache, VolCubeCacheEntry, VolCubeKey};
 pub use calibration_graph::{
-    CalibrationGraph, CalibrationNode, CalibrationNodeId, CalibrationState, GraphError, NodeKind,
+    CalibrationExecutor, CalibrationGraph, CalibrationNode, CalibrationNodeId, CalibrationState,
+    GraphCalibrationResult, GraphError, NoOpCalibrationExecutor, NodeKind,
 };
 #[cfg(feature = "local-vol")]
 pub use calibrator::LocalVolCalibrator;
@@ -79,6 +81,10 @@ pub use graph::{
 };
 pub use interpolator::{
     FlatInterpolator, InterpolationError, Interpolator, LinearInterpolator, VolCubeInterpolator,
+};
+pub use lazy_evaluator::{
+    CalibratedSlice, LazyEvaluatorStats, LazyEvaluatorStatsSnapshot, QuoteUpdateListener,
+    SliceCacheState, SliceKey, VolLazyEvaluator,
 };
 pub use quote::{
     vol_quote_to_instrument, Currency, GridStats, QuoteType, Tenor, UnderlyingIndex, VolQuote,

@@ -224,13 +224,11 @@ pub async fn build_fx_market(
 
     // Timing for each stage
     let domestic_start = Instant::now();
-    // Domestic curve construction (simulated)
-    let _domestic_rate = request.domestic_rate;
+    // Domestic curve construction (simulated) - timing only
     let domestic_time = domestic_start.elapsed().as_secs_f64() * 1000.0;
 
     let foreign_start = Instant::now();
-    // Foreign curve construction (simulated)
-    let _foreign_rate = request.foreign_rate;
+    // Foreign curve construction (simulated) - timing only
     let foreign_time = foreign_start.elapsed().as_secs_f64() * 1000.0;
 
     let fx_start = Instant::now();

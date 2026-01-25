@@ -15,6 +15,9 @@
 //! - Requirement 9.4: job-based execution
 //! - Requirement 9.5: handler pattern conformance
 
+// Allow large error types in closures - boxing RiskError would require changes to pricer_risk
+#![allow(clippy::result_large_err)]
+
 use std::{sync::Arc, time::Instant};
 
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
@@ -46,7 +49,7 @@ pub async fn compute_greeks(
     let start = Instant::now();
 
     // Build RiskConfig from request
-    let risk_config = build_risk_config(&request.risk_config);
+    let risk_config = build_risk_config(request.risk_config.as_ref());
 
     // Clone request data for the blocking task
     let trade_id = request.trade_id.clone();
@@ -183,7 +186,7 @@ pub async fn compute_portfolio_greeks(
     }
 
     // Build RiskConfig from request
-    let risk_config = build_risk_config(&request.risk_config);
+    let risk_config = build_risk_config(request.risk_config.as_ref());
 
     // Clone trades for the blocking task
     let trades = request.trades.clone();
@@ -316,7 +319,7 @@ pub async fn compute_scenario_greeks(
     let shifted_rate = request.base.rate + request.shifts.rate_shift;
 
     // Build RiskConfig
-    let risk_config = build_risk_config(&request.base.risk_config);
+    let risk_config = build_risk_config(request.base.risk_config.as_ref());
 
     // Clone data for blocking task
     let trade_id = request.base.trade_id.clone();
@@ -416,7 +419,7 @@ async fn run_portfolio_greeks_async(
     // Spawn background task
     let job_manager = state.job_manager.clone();
     let trades = request.trades;
-    let risk_config = build_risk_config(&request.risk_config);
+    let risk_config = build_risk_config(request.risk_config.as_ref());
 
     tokio::spawn(async move {
         // Update progress: starting
@@ -501,7 +504,7 @@ async fn run_portfolio_greeks_async(
 // =============================================================================
 
 /// Build RiskConfig from optional override.
-fn build_risk_config(override_config: &Option<RiskConfigOverride>) -> RiskConfig {
+fn build_risk_config(override_config: Option<&RiskConfigOverride>) -> RiskConfig {
     let mut config = RiskConfig::default();
 
     if let Some(overrides) = override_config {
@@ -678,7 +681,7 @@ mod tests {
 
     #[test]
     fn test_build_risk_config_default() {
-        let config = build_risk_config(&None);
+        let config = build_risk_config(None);
         assert_eq!(config.greeks_method, GreeksMethod::Bump);
     }
 
@@ -695,7 +698,7 @@ mod tests {
             second_order_mode: Some("serial".to_string()),
         };
 
-        let config = build_risk_config(&Some(overrides));
+        let config = build_risk_config(Some(&overrides));
 
         assert_eq!(config.greeks_method, GreeksMethod::Bump);
         assert_eq!(config.target_greeks.len(), 2);

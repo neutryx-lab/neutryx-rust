@@ -22,13 +22,13 @@
 //!
 //! ```ignore
 //! use pricer_models::market::volcube::calibration_graph::{
-//!     CalibrationGraph, CalibrationNodeId, CalibrationExecutor, CalibrationResult,
+//!     CalibrationGraph, CalibrationNodeId, CalibrationExecutor, GraphCalibrationResult,
 //! };
 //!
 //! // Define a calibration executor
 //! struct MyCalibratorExecutor;
 //! impl CalibrationExecutor for MyCalibratorExecutor {
-//!     fn calibrate(&self, id: &CalibrationNodeId) -> CalibrationResult {
+//!     fn calibrate(&self, id: &CalibrationNodeId) -> GraphCalibrationResult {
 //!         // Perform actual calibration...
 //!         Ok(())
 //!     }
@@ -253,8 +253,8 @@ impl std::fmt::Display for GraphError {
 
 impl std::error::Error for GraphError {}
 
-/// Result type for calibration operations.
-pub type CalibrationResult = Result<(), GraphError>;
+/// Result type for graph calibration operations.
+pub type GraphCalibrationResult = Result<(), GraphError>;
 
 /// Trait for executing calibration of individual nodes.
 ///
@@ -274,7 +274,7 @@ pub trait CalibrationExecutor: Send + Sync {
     /// # Returns
     ///
     /// Ok(()) on success, or GraphError on failure.
-    fn calibrate(&self, id: &CalibrationNodeId, kind: NodeKind) -> CalibrationResult;
+    fn calibrate(&self, id: &CalibrationNodeId, kind: NodeKind) -> GraphCalibrationResult;
 }
 
 /// A no-op calibration executor for testing.
@@ -284,7 +284,9 @@ pub trait CalibrationExecutor: Send + Sync {
 pub struct NoOpCalibrationExecutor;
 
 impl CalibrationExecutor for NoOpCalibrationExecutor {
-    fn calibrate(&self, _id: &CalibrationNodeId, _kind: NodeKind) -> CalibrationResult { Ok(()) }
+    fn calibrate(&self, _id: &CalibrationNodeId, _kind: NodeKind) -> GraphCalibrationResult {
+        Ok(())
+    }
 }
 
 /// Calibration dependency graph.
@@ -657,7 +659,7 @@ impl CalibrationGraph {
         }
 
         // Get all transitive dependencies
-        let deps = self.transitive_dependencies(id)?;
+        let deps = self.transitive_dependencies(id);
 
         // Filter to uncalibrated and sort by calibration order
         let full_order = self.calibration_order()?;
@@ -678,10 +680,7 @@ impl CalibrationGraph {
     }
 
     /// Get all transitive dependencies (parents, grandparents, etc.).
-    fn transitive_dependencies(
-        &self,
-        id: &CalibrationNodeId,
-    ) -> Result<Vec<CalibrationNodeId>, GraphError> {
+    fn transitive_dependencies(&self, id: &CalibrationNodeId) -> Vec<CalibrationNodeId> {
         let mut result = Vec::new();
         let mut visited = HashSet::new();
         let mut queue = VecDeque::new();
@@ -710,7 +709,7 @@ impl CalibrationGraph {
             }
         }
 
-        Ok(result)
+        result
     }
 
     /// Get the calibration sequence needed to calibrate a specific node.
@@ -809,7 +808,7 @@ impl CalibrationGraph {
         &mut self,
         id: &CalibrationNodeId,
         executor: &dyn CalibrationExecutor,
-    ) -> CalibrationResult {
+    ) -> GraphCalibrationResult {
         // Get the calibration sequence
         let sequence = self.calibration_sequence_for(id)?;
 
@@ -828,7 +827,7 @@ impl CalibrationGraph {
         &mut self,
         id: &CalibrationNodeId,
         executor: &dyn CalibrationExecutor,
-    ) -> CalibrationResult {
+    ) -> GraphCalibrationResult {
         // Get node kind
         let kind = {
             let node = self
@@ -865,7 +864,7 @@ impl CalibrationGraph {
         &mut self,
         ids: &[CalibrationNodeId],
         executor: &dyn CalibrationExecutor,
-    ) -> CalibrationResult {
+    ) -> GraphCalibrationResult {
         // Collect all needed calibrations
         let mut all_needed: HashSet<CalibrationNodeId> = HashSet::new();
 
@@ -1438,5 +1437,247 @@ mod tests {
         let ready = graph.ready_nodes();
         assert_eq!(ready.len(), 1);
         assert!(ready.contains(&curve_id));
+    }
+
+    // ========================================
+    // Lazy Calibration Execution Tests
+    // ========================================
+
+    use std::sync::Arc;
+
+    use parking_lot::Mutex;
+
+    /// Test executor that records calibration calls.
+    struct RecordingExecutor {
+        calls: Arc<Mutex<Vec<(CalibrationNodeId, NodeKind)>>>,
+    }
+
+    impl RecordingExecutor {
+        fn new() -> Self {
+            Self {
+                calls: Arc::new(Mutex::new(Vec::new())),
+            }
+        }
+
+        fn calls(&self) -> Vec<(CalibrationNodeId, NodeKind)> { self.calls.lock().clone() }
+    }
+
+    impl CalibrationExecutor for RecordingExecutor {
+        fn calibrate(&self, id: &CalibrationNodeId, kind: NodeKind) -> GraphCalibrationResult {
+            self.calls.lock().push((id.clone(), kind));
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn test_ensure_calibrated_simple() {
+        let mut graph = CalibrationGraph::new();
+        let curve_id = graph.add_curve("CURVE", "Curve").unwrap();
+
+        let executor = RecordingExecutor::new();
+        graph.ensure_calibrated(&curve_id, &executor).unwrap();
+
+        // Should have calibrated the curve
+        let calls = executor.calls();
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].0, curve_id);
+        assert_eq!(calls[0].1, NodeKind::Curve);
+
+        // Node should be calibrated
+        assert!(graph.get_node(&curve_id).unwrap().state.is_calibrated());
+    }
+
+    #[test]
+    fn test_ensure_calibrated_with_dependency() {
+        let mut graph = CalibrationGraph::new();
+        let curve_id = graph.add_curve("CURVE", "Curve").unwrap();
+        let vol_id = graph.add_volcube("VOL", "Vol").unwrap();
+
+        graph.add_dependency(&vol_id, &curve_id).unwrap();
+
+        let executor = RecordingExecutor::new();
+        graph.ensure_calibrated(&vol_id, &executor).unwrap();
+
+        // Should have calibrated curve first, then vol
+        let calls = executor.calls();
+        assert_eq!(calls.len(), 2);
+        assert_eq!(calls[0].0, curve_id);
+        assert_eq!(calls[0].1, NodeKind::Curve);
+        assert_eq!(calls[1].0, vol_id);
+        assert_eq!(calls[1].1, NodeKind::VolCube);
+
+        // Both should be calibrated
+        assert!(graph.get_node(&curve_id).unwrap().state.is_calibrated());
+        assert!(graph.get_node(&vol_id).unwrap().state.is_calibrated());
+    }
+
+    #[test]
+    fn test_ensure_calibrated_already_calibrated() {
+        let mut graph = CalibrationGraph::new();
+        let curve_id = graph.add_curve("CURVE", "Curve").unwrap();
+
+        // Pre-calibrate
+        graph.get_node_mut(&curve_id).unwrap().mark_calibrated();
+
+        let executor = RecordingExecutor::new();
+        graph.ensure_calibrated(&curve_id, &executor).unwrap();
+
+        // Should not have called executor (already calibrated)
+        let calls = executor.calls();
+        assert!(calls.is_empty());
+    }
+
+    #[test]
+    fn test_ensure_calibrated_complex_chain() {
+        let mut graph = CalibrationGraph::new();
+
+        // DISC <- PROJ <- VOL
+        let disc = graph.add_curve("DISC", "Discount").unwrap();
+        let proj = graph.add_curve("PROJ", "Projection").unwrap();
+        let vol = graph.add_volcube("VOL", "Vol").unwrap();
+
+        graph.add_dependency(&proj, &disc).unwrap();
+        graph.add_dependency(&vol, &proj).unwrap();
+
+        let executor = RecordingExecutor::new();
+        graph.ensure_calibrated(&vol, &executor).unwrap();
+
+        // Should have calibrated in order: DISC, PROJ, VOL
+        let calls = executor.calls();
+        assert_eq!(calls.len(), 3);
+        assert_eq!(calls[0].0, disc);
+        assert_eq!(calls[1].0, proj);
+        assert_eq!(calls[2].0, vol);
+    }
+
+    #[test]
+    fn test_ensure_calibrated_partial_chain() {
+        let mut graph = CalibrationGraph::new();
+
+        // DISC <- PROJ <- VOL
+        let disc = graph.add_curve("DISC", "Discount").unwrap();
+        let proj = graph.add_curve("PROJ", "Projection").unwrap();
+        let vol = graph.add_volcube("VOL", "Vol").unwrap();
+
+        graph.add_dependency(&proj, &disc).unwrap();
+        graph.add_dependency(&vol, &proj).unwrap();
+
+        // Pre-calibrate DISC
+        graph.get_node_mut(&disc).unwrap().mark_calibrated();
+
+        let executor = RecordingExecutor::new();
+        graph.ensure_calibrated(&vol, &executor).unwrap();
+
+        // Should have calibrated only PROJ and VOL
+        let calls = executor.calls();
+        assert_eq!(calls.len(), 2);
+        assert_eq!(calls[0].0, proj);
+        assert_eq!(calls[1].0, vol);
+    }
+
+    #[test]
+    fn test_ensure_calibrated_all() {
+        let mut graph = CalibrationGraph::new();
+
+        // Two independent VolCubes with shared curve
+        // DISC <- VOL1
+        // DISC <- VOL2
+        let disc = graph.add_curve("DISC", "Discount").unwrap();
+        let vol1 = graph.add_volcube("VOL1", "Vol1").unwrap();
+        let vol2 = graph.add_volcube("VOL2", "Vol2").unwrap();
+
+        graph.add_dependency(&vol1, &disc).unwrap();
+        graph.add_dependency(&vol2, &disc).unwrap();
+
+        let executor = RecordingExecutor::new();
+        graph
+            .ensure_calibrated_all(&[vol1.clone(), vol2.clone()], &executor)
+            .unwrap();
+
+        // Should have calibrated DISC once, then both vols
+        let calls = executor.calls();
+        assert_eq!(calls.len(), 3);
+        // DISC should be first
+        assert_eq!(calls[0].0, disc);
+    }
+
+    /// Test executor that fails on specific nodes.
+    struct FailingExecutor {
+        fail_on: HashSet<CalibrationNodeId>,
+    }
+
+    impl FailingExecutor {
+        fn failing_on(ids: &[CalibrationNodeId]) -> Self {
+            Self {
+                fail_on: ids.iter().cloned().collect(),
+            }
+        }
+    }
+
+    impl CalibrationExecutor for FailingExecutor {
+        fn calibrate(&self, id: &CalibrationNodeId, _kind: NodeKind) -> GraphCalibrationResult {
+            if self.fail_on.contains(id) {
+                Err(GraphError::NodeNotFound { id: id.clone() }) // Using as a
+                                                                 // generic error
+            } else {
+                Ok(())
+            }
+        }
+    }
+
+    #[test]
+    fn test_ensure_calibrated_failure_marks_failed() {
+        let mut graph = CalibrationGraph::new();
+        let curve_id = graph.add_curve("CURVE", "Curve").unwrap();
+
+        let executor = FailingExecutor::failing_on(&[curve_id.clone()]);
+        let result = graph.ensure_calibrated(&curve_id, &executor);
+
+        // Should have failed
+        assert!(result.is_err());
+
+        // Node should be marked as failed
+        assert_eq!(
+            graph.get_node(&curve_id).unwrap().state,
+            CalibrationState::Failed
+        );
+    }
+
+    #[test]
+    fn test_ensure_calibrated_stops_on_failure() {
+        let mut graph = CalibrationGraph::new();
+        let curve_id = graph.add_curve("CURVE", "Curve").unwrap();
+        let vol_id = graph.add_volcube("VOL", "Vol").unwrap();
+
+        graph.add_dependency(&vol_id, &curve_id).unwrap();
+
+        // Fail on curve
+        let executor = FailingExecutor::failing_on(&[curve_id.clone()]);
+        let result = graph.ensure_calibrated(&vol_id, &executor);
+
+        // Should have failed
+        assert!(result.is_err());
+
+        // Curve should be failed, vol should still be pending
+        assert_eq!(
+            graph.get_node(&curve_id).unwrap().state,
+            CalibrationState::Failed
+        );
+        assert_eq!(
+            graph.get_node(&vol_id).unwrap().state,
+            CalibrationState::Pending
+        );
+    }
+
+    #[test]
+    fn test_noop_executor() {
+        let mut graph = CalibrationGraph::new();
+        let curve_id = graph.add_curve("CURVE", "Curve").unwrap();
+
+        let executor = NoOpCalibrationExecutor;
+        graph.ensure_calibrated(&curve_id, &executor).unwrap();
+
+        // Should be calibrated (no-op succeeds)
+        assert!(graph.get_node(&curve_id).unwrap().state.is_calibrated());
     }
 }

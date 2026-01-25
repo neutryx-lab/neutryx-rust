@@ -11,12 +11,11 @@ use axum::{
     Json,
 };
 use serde_json::json;
-use std::sync::RwLock;
-use tokio::fs;
+use tokio::{fs, sync::RwLock};
 use tracing::info;
 use uuid::Uuid;
 
-use super::irvol_types::*;
+use super::{irvol_types::*, AppState};
 
 // =============================================================================
 // Cache for Built Surfaces
@@ -28,7 +27,7 @@ pub struct IrVolCache {
     max_size: usize,
 }
 
-struct CachedIrVolSurface {
+pub(crate) struct CachedIrVolSurface {
     currency: String,
     quotes: Vec<SwaptionVolQuote>,
     built_at: i64,
@@ -37,6 +36,7 @@ struct CachedIrVolSurface {
 }
 
 impl IrVolCache {
+    /// Create a new IR vol cache with the given maximum size.
     pub fn new(max_size: usize) -> Self {
         Self {
             surfaces: RwLock::new(HashMap::new()),
@@ -44,8 +44,9 @@ impl IrVolCache {
         }
     }
 
-    pub fn insert(&self, id: String, surface: CachedIrVolSurface) {
-        let mut surfaces = self.surfaces.write().unwrap();
+    /// Insert a surface into the cache.
+    pub(crate) async fn insert(&self, id: String, surface: CachedIrVolSurface) {
+        let mut surfaces = self.surfaces.write().await;
         if surfaces.len() >= self.max_size {
             // Remove oldest entry
             if let Some(oldest) = surfaces.keys().next().cloned() {
@@ -55,8 +56,9 @@ impl IrVolCache {
         surfaces.insert(id, surface);
     }
 
-    pub fn get(&self, id: &str) -> Option<CachedIrVolSurface> {
-        self.surfaces.read().unwrap().get(id).cloned()
+    /// Get a surface from the cache by ID.
+    pub(crate) async fn get(&self, id: &str) -> Option<CachedIrVolSurface> {
+        self.surfaces.read().await.get(id).cloned()
     }
 }
 
@@ -125,8 +127,8 @@ async fn load_quotes_from_file(currency: &str) -> Result<Vec<SwaptionVolQuote>, 
 
 /// Generate demo swaption vol quotes for a currency.
 fn generate_demo_quotes(currency: &str) -> Vec<SwaptionVolQuote> {
-    let expiries = vec!["1M", "3M", "6M", "1Y", "2Y", "3Y", "5Y", "7Y", "10Y"];
-    let tenors = vec!["1Y", "2Y", "3Y", "5Y", "7Y", "10Y", "15Y", "20Y", "30Y"];
+    let expiries = ["1M", "3M", "6M", "1Y", "2Y", "3Y", "5Y", "7Y", "10Y"];
+    let tenors = ["1Y", "2Y", "3Y", "5Y", "7Y", "10Y", "15Y", "20Y", "30Y"];
 
     // Base ATM vol levels by currency (in %)
     let base_vol = match currency {
@@ -188,22 +190,17 @@ pub async fn get_currencies() -> impl IntoResponse {
 
     for (code, name) in AVAILABLE_CURRENCIES {
         let quotes = generate_demo_quotes(code);
-        let expiries: Vec<String> = quotes
-            .iter()
-            .map(|q| q.expiry.clone())
-            .collect::<std::collections::HashSet<_>>()
-            .into_iter()
-            .collect();
-        let tenors: Vec<String> = quotes
-            .iter()
-            .map(|q| q.tenor.clone())
-            .collect::<std::collections::HashSet<_>>()
-            .into_iter()
-            .collect();
+        let mut expiries: Vec<String> = quotes.iter().map(|q| q.expiry.clone()).collect();
+        expiries.sort();
+        expiries.dedup();
+
+        let mut tenors: Vec<String> = quotes.iter().map(|q| q.tenor.clone()).collect();
+        tenors.sort();
+        tenors.dedup();
 
         currencies.push(IrVolCurrencyInfo {
-            currency: code.to_string(),
-            display_name: name.to_string(),
+            currency: (*code).to_string(),
+            display_name: (*name).to_string(),
             default_vol_type: VolQuoteType::Normal,
             quote_count: quotes.len(),
             expiries,
@@ -277,7 +274,7 @@ pub async fn update_quotes(
 /// POST /api/irvol/build
 /// Build IR vol surface from quotes.
 pub async fn build_surface(
-    State(cache): State<IrVolState>,
+    State(state): State<Arc<AppState>>,
     Json(request): Json<IrVolSurfaceBuildRequest>,
 ) -> impl IntoResponse {
     let currency = request.currency.to_uppercase();
@@ -295,7 +292,7 @@ pub async fn build_surface(
                 expiry_interp: request.expiry_interp,
                 tenor_interp: request.tenor_interp,
             };
-            cache.insert(surface_id.clone(), cached);
+            state.irvol_cache.insert(surface_id.clone(), cached).await;
 
             let response = IrVolSurfaceBuildResponse {
                 success: true,
@@ -320,10 +317,10 @@ pub async fn build_surface(
 /// GET /api/irvol/smile
 /// Get smile curve at specific expiry/tenor.
 pub async fn get_smile(
-    State(cache): State<IrVolState>,
+    State(state): State<Arc<AppState>>,
     Query(query): Query<IrVolSmileQuery>,
 ) -> impl IntoResponse {
-    let surface = match cache.get(&query.surface_id) {
+    let surface = match state.irvol_cache.get(&query.surface_id).await {
         Some(s) => s,
         None => {
             return (
@@ -380,10 +377,10 @@ pub async fn get_smile(
 /// GET /api/irvol/atm-term
 /// Get ATM term structure.
 pub async fn get_atm_term(
-    State(cache): State<IrVolState>,
+    State(state): State<Arc<AppState>>,
     Query(query): Query<IrVolAtmTermQuery>,
 ) -> impl IntoResponse {
-    let surface = match cache.get(&query.surface_id) {
+    let surface = match state.irvol_cache.get(&query.surface_id).await {
         Some(s) => s,
         None => {
             return (
@@ -432,10 +429,10 @@ pub async fn get_atm_term(
 /// GET /api/irvol/surface
 /// Get full 3D surface data for visualisation.
 pub async fn get_surface(
-    State(cache): State<IrVolState>,
+    State(state): State<Arc<AppState>>,
     Query(query): Query<IrVolSurfaceQuery>,
 ) -> impl IntoResponse {
-    let surface = match cache.get(&query.surface_id) {
+    let surface = match state.irvol_cache.get(&query.surface_id).await {
         Some(s) => s,
         None => {
             return (

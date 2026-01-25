@@ -140,12 +140,10 @@ pub fn price_equity_option(
                     } else {
                         0.0
                     }
+                } else if spot < strike {
+                    -1.0
                 } else {
-                    if spot < strike {
-                        -1.0
-                    } else {
-                        0.0
-                    }
+                    0.0
                 },
                 gamma: 0.0,
                 vega: 0.0,
@@ -305,12 +303,10 @@ pub fn calculate_greek(
                     } else {
                         0.0
                     }
+                } else if spot < strike {
+                    -1.0
                 } else {
-                    if spot < strike {
-                        -1.0
-                    } else {
-                        0.0
-                    }
+                    0.0
                 }
             }
             _ => 0.0,

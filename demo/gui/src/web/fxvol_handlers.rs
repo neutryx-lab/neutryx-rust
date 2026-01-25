@@ -1064,7 +1064,7 @@ pub async fn calibrate_surface(
         let model_25p = sabr_vol(forward, forward * 0.95, quote.expiry, alpha, beta, rho, nu);
         let residual_25c = (model_25c - delta_vols.vol_25d_call).abs();
         let residual_25p = (model_25p - delta_vols.vol_25d_put).abs();
-        let residual = ((residual_25c.powi(2) + residual_25p.powi(2)) / 2.0).sqrt();
+        let residual = f64::midpoint(residual_25c.powi(2), residual_25p.powi(2)).sqrt();
 
         max_residual = max_residual.max(residual);
         total_residual += residual;
@@ -1234,7 +1234,7 @@ pub async fn get_surface(
     Ok(Json(FxSurfaceResponse {
         currency_pair: surface.currency_pair.clone(),
         spot: surface.spot,
-        reference_date: "".to_string(), // Not stored in cache
+        reference_date: String::new(), // Not stored in cache
         delta_axis,
         expiry_axis,
         expiry_labels,

@@ -394,7 +394,9 @@ pub struct CapFloorVolQuote {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum CapFloorType {
+    /// Interest rate cap.
     Cap,
+    /// Interest rate floor.
     Floor,
 }
 

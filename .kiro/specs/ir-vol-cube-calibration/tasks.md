@@ -114,31 +114,31 @@
   - 依存するCurveを先にカリブレーションする順序を保証
   - _Requirements: 6.9_
 
-- [ ] 7.3 依存Curveの自動カリブレーションを実装する
+- [x] 7.3 依存Curveの自動カリブレーションを実装する
   - VolCube要求時に依存Curveが未カリブレーションなら自動実行
   - MarketProviderと連携して遅延カリブレーション
   - _Requirements: 6.8, 6.10_
 
-- [ ] 8. VolLazyEvaluator（遅延評価とキャッシュ）
-- [ ] 8.1 スライス単位キャッシュを実装する
+- [x] 8. VolLazyEvaluator（遅延評価とキャッシュ）
+- [x] 8.1 スライス単位キャッシュを実装する
   - expiry-tenorスライス単位でカリブレーション結果をキャッシュ
-  - DashMapによるthread-safe実装
+  - RwLock<HashMap>によるthread-safe実装
   - 同一座標への複数回アクセスでキャッシュから返す
   - _Requirements: 6.2, 6.3, 6.4_
 
-- [ ] 8.2 lazy initialization patternを実装する
+- [x] 8.2 lazy initialization patternを実装する
   - 必要時のみカリブレーションを実行
   - double-check lockingで並行アクセスを最適化
   - IrsLazyEvaluatorパターンを踏襲
   - _Requirements: 6.1, 6.7_
 
-- [ ] 8.3 Quote更新時のキャッシュ無効化を実装する
+- [x] 8.3 Quote更新時のキャッシュ無効化を実装する
   - 入力market quotes更新時に影響範囲を特定
-  - CalibrationGraphを使って依存ノードをカスケード無効化
+  - QuoteUpdateListener traitでカスケード無効化
   - Stale状態の管理と再カリブレーショントリガー
   - _Requirements: 6.5_
 
-- [ ] 8.4 キャッシュメトリクスを実装する
+- [x] 8.4 キャッシュメトリクスを実装する
   - ヒット率、ミス率、無効化回数、カリブレーション回数を追跡
   - メモリ使用量の概算を提供
   - _Requirements: 6.6_
