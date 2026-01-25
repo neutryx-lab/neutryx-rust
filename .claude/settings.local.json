@@ -208,7 +208,8 @@
       "Bash(xargs ls:*)",
       "Bash(git stash:*)",
       "Bash(cargo rustdoc:*)",
-      "Bash(ls -la \"f:\\\\Codes\\\\neutryx-rust\\\\neutryx-rust\\\\crates\\\\pricer_models\\\\src\\\\market\\\\volcube\"\" 2>/dev/null || echo \"Directory not found \")"
+      "Bash(ls -la \"f:\\\\Codes\\\\neutryx-rust\\\\neutryx-rust\\\\crates\\\\pricer_models\\\\src\\\\market\\\\volcube\"\" 2>/dev/null || echo \"Directory not found \")",
+      "Bash(node -c:*)"
     ]
   }
 }

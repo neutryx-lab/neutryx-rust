@@ -101,14 +101,14 @@
   - volatility(expiry, tenor, strike)メソッドを公開
   - _Requirements: 5.7_
 
-- [ ] 7. CalibrationGraph（Curve→VolCube依存管理）
-- [ ] 7.1 依存グラフのノードとエッジ管理を実装する
+- [x] 7. CalibrationGraph（Curve→VolCube依存管理）
+- [x] 7.1 依存グラフのノードとエッジ管理を実装する
   - CurveノードとVolCubeノードを定義
   - child→parent依存関係とparent→children逆依存を管理
   - カリブレーション状態（Pending/Computing/Calibrated/Stale）を追跡
   - _Requirements: 6.12_
 
-- [ ] 7.2 トポロジカルソートによるカリブレーション順序決定を実装する
+- [x] 7.2 トポロジカルソートによるカリブレーション順序決定を実装する
   - Kahn's algorithmでカリブレーション順序を計算
   - 循環依存を検出してエラーを返す
   - 依存するCurveを先にカリブレーションする順序を保証

@@ -26,6 +26,8 @@ pub mod fxcurve_types;
 pub mod fxvol_handlers;
 pub mod fxvol_types;
 pub mod generic_pricer_handlers;
+pub mod irvol_handlers;
+pub mod irvol_types;
 pub mod jobs;
 pub mod market_data;
 pub mod market_handlers;
@@ -263,6 +265,8 @@ pub struct AppState {
     pub volcube_cache: volcube_handlers::VolCubeCache,
     /// FxVol cache for built FX volatility surfaces (volcube-calibration-ui)
     pub fxvol_cache: fxvol_handlers::FxVolCache,
+    /// IrVol cache for built IR volatility surfaces (market-data-viewer-webapp)
+    pub irvol_cache: irvol_handlers::IrVolState,
 }
 
 impl AppState {
@@ -281,6 +285,7 @@ impl AppState {
             market_data_cache: Arc::new(MarketDataCache::new()),
             volcube_cache: volcube_handlers::VolCubeCache::new(10),
             fxvol_cache: fxvol_handlers::FxVolCache::new(10),
+            irvol_cache: irvol_handlers::create_irvol_state(),
         }
     }
 
@@ -605,6 +610,21 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         );
 
     let api_routes = api_routes.nest("/fxvol", fxvol_routes);
+
+    // IrVol API routes (market-data-viewer-webapp)
+    let irvol_routes = Router::new()
+        .route("/currencies", get(irvol_handlers::get_currencies))
+        .route("/quotes/:currency", get(irvol_handlers::get_quotes))
+        .route(
+            "/quotes/:currency",
+            axum::routing::put(irvol_handlers::update_quotes),
+        )
+        .route("/build", post(irvol_handlers::build_surface))
+        .route("/smile", get(irvol_handlers::get_smile))
+        .route("/atm-term", get(irvol_handlers::get_atm_term))
+        .route("/surface", get(irvol_handlers::get_surface));
+
+    let api_routes = api_routes.nest("/irvol", irvol_routes);
 
     // FxCurve API routes (fx-vol-surface-calibration Task 13.1)
     let fxcurve_routes = Router::new()

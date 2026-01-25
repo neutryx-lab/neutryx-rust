@@ -1,0 +1,59 @@
+{
+  "metadata": {
+    "currency": "USD",
+    "volType": "normal",
+    "description": "USD Swaption Normal Volatility Surface",
+    "source": "Demo Data",
+    "lastUpdated": "2026-01-25T00:00:00Z"
+  },
+  "quotes": [
+    { "expiry": "1M", "tenor": "1Y", "atmVol": 0.68, "volType": "normal" },
+    { "expiry": "1M", "tenor": "2Y", "atmVol": 0.72, "volType": "normal" },
+    { "expiry": "1M", "tenor": "5Y", "atmVol": 0.78, "volType": "normal" },
+    { "expiry": "1M", "tenor": "10Y", "atmVol": 0.82, "volType": "normal" },
+    { "expiry": "1M", "tenor": "30Y", "atmVol": 0.75, "volType": "normal" },
+
+    { "expiry": "3M", "tenor": "1Y", "atmVol": 0.65, "volType": "normal" },
+    { "expiry": "3M", "tenor": "2Y", "atmVol": 0.69, "volType": "normal" },
+    { "expiry": "3M", "tenor": "5Y", "atmVol": 0.75, "volType": "normal" },
+    { "expiry": "3M", "tenor": "10Y", "atmVol": 0.79, "volType": "normal" },
+    { "expiry": "3M", "tenor": "30Y", "atmVol": 0.73, "volType": "normal" },
+
+    { "expiry": "6M", "tenor": "1Y", "atmVol": 0.62, "volType": "normal" },
+    { "expiry": "6M", "tenor": "2Y", "atmVol": 0.66, "volType": "normal" },
+    { "expiry": "6M", "tenor": "5Y", "atmVol": 0.72, "volType": "normal" },
+    { "expiry": "6M", "tenor": "10Y", "atmVol": 0.76, "volType": "normal" },
+    { "expiry": "6M", "tenor": "30Y", "atmVol": 0.71, "volType": "normal" },
+
+    { "expiry": "1Y", "tenor": "1Y", "atmVol": 0.58, "volType": "normal" },
+    { "expiry": "1Y", "tenor": "2Y", "atmVol": 0.62, "volType": "normal" },
+    { "expiry": "1Y", "tenor": "5Y", "atmVol": 0.68, "volType": "normal" },
+    { "expiry": "1Y", "tenor": "10Y", "atmVol": 0.72, "volType": "normal" },
+    { "expiry": "1Y", "tenor": "30Y", "atmVol": 0.68, "volType": "normal" },
+
+    { "expiry": "2Y", "tenor": "1Y", "atmVol": 0.52, "volType": "normal" },
+    { "expiry": "2Y", "tenor": "2Y", "atmVol": 0.56, "volType": "normal" },
+    { "expiry": "2Y", "tenor": "5Y", "atmVol": 0.62, "volType": "normal" },
+    { "expiry": "2Y", "tenor": "10Y", "atmVol": 0.66, "volType": "normal" },
+    { "expiry": "2Y", "tenor": "30Y", "atmVol": 0.63, "volType": "normal" },
+
+    { "expiry": "5Y", "tenor": "1Y", "atmVol": 0.45, "volType": "normal" },
+    { "expiry": "5Y", "tenor": "2Y", "atmVol": 0.48, "volType": "normal" },
+    { "expiry": "5Y", "tenor": "5Y", "atmVol": 0.54, "volType": "normal" },
+    { "expiry": "5Y", "tenor": "10Y", "atmVol": 0.58, "volType": "normal" },
+    { "expiry": "5Y", "tenor": "30Y", "atmVol": 0.55, "volType": "normal" },
+
+    { "expiry": "10Y", "tenor": "1Y", "atmVol": 0.40, "volType": "normal" },
+    { "expiry": "10Y", "tenor": "2Y", "atmVol": 0.43, "volType": "normal" },
+    { "expiry": "10Y", "tenor": "5Y", "atmVol": 0.48, "volType": "normal" },
+    { "expiry": "10Y", "tenor": "10Y", "atmVol": 0.52, "volType": "normal" },
+    { "expiry": "10Y", "tenor": "30Y", "atmVol": 0.50, "volType": "normal" }
+  ],
+  "smileParameters": {
+    "model": "sabr",
+    "defaultAlpha": 0.02,
+    "defaultBeta": 0.5,
+    "defaultRho": -0.15,
+    "defaultNu": 0.4
+  }
+}

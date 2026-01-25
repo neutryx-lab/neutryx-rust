@@ -125,7 +125,8 @@ impl FlatInterpolator {
         let mut lo = 0;
         let mut hi = n - 1;
         while hi - lo > 1 {
-            let mid = usize::midpoint(lo, hi);
+            #[allow(unknown_lints, clippy::manual_midpoint)]
+            let mid = (lo + hi) / 2;
             if grid[mid] <= x {
                 lo = mid;
             } else {
@@ -226,7 +227,8 @@ impl LinearInterpolator {
         let mut lo = 0;
         let mut hi = n - 1;
         while hi - lo > 1 {
-            let mid = usize::midpoint(lo, hi);
+            #[allow(unknown_lints, clippy::manual_midpoint)]
+            let mid = (lo + hi) / 2;
             if grid[mid] <= x {
                 lo = mid;
             } else {

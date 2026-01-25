@@ -31,6 +31,7 @@
 mod breeden_litzenberger;
 mod builder;
 mod cache;
+mod calibration_graph;
 mod calibrator;
 mod config;
 mod cube;
@@ -48,6 +49,9 @@ mod proptest_tests;
 pub use breeden_litzenberger::BreedenLitzenberger;
 pub use builder::VolCubeBuilder;
 pub use cache::{CacheStats, SharedVolCubeCache, VolCubeCache, VolCubeCacheEntry, VolCubeKey};
+pub use calibration_graph::{
+    CalibrationGraph, CalibrationNode, CalibrationNodeId, CalibrationState, GraphError, NodeKind,
+};
 #[cfg(feature = "local-vol")]
 pub use calibrator::LocalVolCalibrator;
 #[cfg(feature = "stochastic-local-vol")]
