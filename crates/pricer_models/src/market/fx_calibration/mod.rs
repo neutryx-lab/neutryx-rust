@@ -19,6 +19,7 @@ mod builder;
 mod config;
 mod curve;
 mod error;
+mod lazy_surface;
 mod surface;
 mod types;
 mod vol_builder;
@@ -35,3 +36,4 @@ pub use vol_builder::{
     CalibrationDiagnostics, CalibrationError, ExpiryDiagnostics, FxVolSurfaceBuilder, VolQuote,
     VolQuoteType,
 };
+pub use lazy_surface::{CacheStats, LazyFxVolSurface};

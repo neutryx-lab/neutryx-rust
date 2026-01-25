@@ -29,6 +29,7 @@ use super::{
     config::VolCubeConfig,
     cube::VolCube,
     error::{CalibrationDiagnostics, VolCubeError},
+    quote::VolQuoteSet,
     sabr_surface::SabrParameterSurface,
     types::{SabrParams, VolInstrument},
 };
@@ -70,6 +71,36 @@ impl<T: Float> VolCubeBuilder<T> {
     /// Instrumentリストを設定。
     pub fn with_instruments(mut self, instruments: Vec<VolInstrument<T>>) -> Self {
         self.instruments = instruments;
+        self
+    }
+
+    /// VolQuoteSetからInstrumentを設定。
+    ///
+    /// # Arguments
+    /// * `quote_set` - VolQuoteSet
+    /// * `forward_fn` - (expiry, tenor)から forward rate を計算するクロージャ
+    ///
+    /// # Requirements: 2.1, 2.3
+    ///
+    /// VolQuoteSetをVolInstrumentに変換してBuilderに設定する。
+    pub fn with_quote_set<F>(mut self, quote_set: &VolQuoteSet, forward_fn: F) -> Self
+    where
+        F: Fn(f64, f64) -> T,
+    {
+        self.instruments = quote_set.to_instruments(forward_fn);
+        self
+    }
+
+    /// VolQuoteSetから固定forward rateでInstrumentを設定。
+    ///
+    /// # Arguments
+    /// * `quote_set` - VolQuoteSet
+    /// * `forward` - 全クォートに適用する固定forward rate
+    ///
+    /// # Requirements: 2.1, 2.3
+    pub fn with_quote_set_fixed_forward(mut self, quote_set: &VolQuoteSet, forward: T) -> Self {
+        self.instruments = quote_set.to_instruments_with_fixed_forward(forward);
+        self.default_forward = forward;
         self
     }
 

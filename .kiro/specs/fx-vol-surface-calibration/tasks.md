@@ -143,21 +143,23 @@
   - _Requirements: 4.4, 4.5, 4.6, 4.7_
   - **実装済み**: `fx_calibration/surface.rs` (vol_by_delta, smile, CalibratedSmile, VolSmile, SabrParameters)
 
-- [ ] 9. FXボラティリティサーフェスビルダーの実装
-- [ ] 9.1 SABRカリブレーション機能を満期ごとに実装
+- [x] 9. FXボラティリティサーフェスビルダーの実装
+- [x] 9.1 SABRカリブレーション機能を満期ごとに実装
   - 満期ごとのインストルメントグルーピング
   - ATMボラティリティ解決
   - SABRパラメータ（alpha、beta、rho、nu）カリブレーション
   - BF/RRフィッティングエラー最小化
   - _Requirements: 3.4, 2.2_
+  - **実装済み**: `fx_calibration/vol_builder.rs` (FxVolSurfaceBuilder with SABR calibration per expiry)
 
-- [ ] 9.2 FxVolSurfaceBuilderのメソッドチェーンと診断機能を実装
+- [x] 9.2 FxVolSurfaceBuilderのメソッドチェーンと診断機能を実装
   - `FxVolSurfaceBuilder<T>`メソッドチェーン（new → with_instruments → with_config → with_fx_curve → build）
   - `CalibrationDiagnostics`（反復回数、残差、収束状態、インストルメントごとエラー）
   - 収束失敗時の診断情報付きエラー
   - 重複満期インストルメントの最新クォート使用
   - 増分カリブレーション（既存サーフェスへのインストルメント追加）
   - _Requirements: 3.1, 3.2, 3.3, 3.5, 3.6, 3.7_
+  - **実装済み**: `fx_calibration/vol_builder.rs` (CalibrationDiagnostics, ExpiryDiagnostics, VolQuote, VolQuoteType)
 
 - [ ] 10. 遅延評価とキャッシュ最適化の実装
 - [ ] 10.1 LazyFxVolSurfaceラッパーを遅延カリブレーション付きで実装

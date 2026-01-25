@@ -64,8 +64,8 @@ pub use graph::{
     VolCubeSensitivityInfo,
 };
 pub use quote::{
-    vol_quote_to_instrument, Currency, QuoteType, Strike, Tenor, UnderlyingIndex, VolQuote,
-    VolQuoteSet,
+    vol_quote_to_instrument, Currency, GridStats, QuoteType, Strike, Tenor, UnderlyingIndex,
+    VolQuote, VolQuoteSet,
 };
 pub use sabr_surface::SabrParameterSurface;
 pub use types::{InstrumentId, SabrParams, VolInstrument};

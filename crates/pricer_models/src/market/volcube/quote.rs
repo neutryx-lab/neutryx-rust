@@ -452,6 +452,102 @@ pub fn vol_quote_to_instrument<T: Float>(
     )
 }
 
+impl VolQuoteSet {
+    /// VolQuoteSetをVolInstrumentのベクタに変換する。
+    ///
+    /// # Arguments
+    /// * `forward_fn` - (expiry, tenor)から forward rate を計算するクロージャ
+    ///
+    /// # Requirements: 2.1, 2.3
+    ///
+    /// 各クォートを対応するVolInstrumentに変換し、VolCubeBuilderで使用可能な形式にする。
+    pub fn to_instruments<T, F>(&self, forward_fn: F) -> Vec<super::types::VolInstrument<T>>
+    where
+        T: Float,
+        F: Fn(f64, f64) -> T,
+    {
+        self.quotes
+            .iter()
+            .map(|quote| {
+                let expiry_days = (quote.expiry - self.as_of_date).num_days();
+                let expiry_years = expiry_days as f64 / 365.0;
+                let tenor_years = quote.tenor.0;
+                let forward = forward_fn(expiry_years, tenor_years);
+                vol_quote_to_instrument(quote, self.as_of_date, forward)
+            })
+            .collect()
+    }
+
+    /// 固定forward rateを使用してVolInstrumentに変換する。
+    ///
+    /// # Arguments
+    /// * `forward` - 全クォートに適用する固定forward rate
+    ///
+    /// # Requirements: 2.1, 2.3
+    pub fn to_instruments_with_fixed_forward<T: Float>(
+        &self,
+        forward: T,
+    ) -> Vec<super::types::VolInstrument<T>> {
+        self.to_instruments(|_, _| forward)
+    }
+
+    /// expiry/tenorグリッドの統計情報を取得。
+    ///
+    /// VolCubeBuilderに渡す前にデータの妥当性を確認するために使用。
+    pub fn grid_stats(&self) -> GridStats {
+        let expiries = self.unique_expiries();
+        let tenors = self.unique_tenors();
+        let groups = self.group_by_slice();
+
+        let quotes_per_slice: Vec<usize> = groups.values().map(|v| v.len()).collect();
+        let min_quotes = quotes_per_slice.iter().min().copied().unwrap_or(0);
+        let max_quotes = quotes_per_slice.iter().max().copied().unwrap_or(0);
+        let avg_quotes = if quotes_per_slice.is_empty() {
+            0.0
+        } else {
+            quotes_per_slice.iter().sum::<usize>() as f64 / quotes_per_slice.len() as f64
+        };
+
+        GridStats {
+            num_expiries: expiries.len(),
+            num_tenors: tenors.len(),
+            num_slices: groups.len(),
+            total_quotes: self.quotes.len(),
+            min_quotes_per_slice: min_quotes,
+            max_quotes_per_slice: max_quotes,
+            avg_quotes_per_slice: avg_quotes,
+        }
+    }
+}
+
+/// クォートセットのグリッド統計情報。
+#[derive(Debug, Clone, PartialEq)]
+pub struct GridStats {
+    /// Expiry数。
+    pub num_expiries: usize,
+    /// Tenor数。
+    pub num_tenors: usize,
+    /// スライス数（expiry × tenor の組み合わせ）。
+    pub num_slices: usize,
+    /// 総クォート数。
+    pub total_quotes: usize,
+    /// スライス毎の最小クォート数。
+    pub min_quotes_per_slice: usize,
+    /// スライス毎の最大クォート数。
+    pub max_quotes_per_slice: usize,
+    /// スライス毎の平均クォート数。
+    pub avg_quotes_per_slice: f64,
+}
+
+impl GridStats {
+    /// VolCubeBuilderの最小要件を満たしているか確認。
+    ///
+    /// 最低2つのexpiry、2つのtenor、各スライスに1つ以上のクォートが必要。
+    pub fn meets_minimum_requirements(&self) -> bool {
+        self.num_expiries >= 2 && self.num_tenors >= 2 && self.min_quotes_per_slice >= 1
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -953,5 +1049,153 @@ mod tests {
         assert_eq!(instrument.strike, 0.03);
         assert_eq!(instrument.implied_vol, 0.20);
         assert_eq!(instrument.forward, 0.025);
+    }
+
+    // =========================================================================
+    // VolQuoteSet to_instruments Tests
+    // =========================================================================
+
+    #[test]
+    fn test_vol_quote_set_to_instruments_fixed_forward() {
+        let as_of = NaiveDate::from_ymd_opt(2026, 1, 25).unwrap();
+        let expiry = NaiveDate::from_ymd_opt(2027, 1, 25).unwrap();
+
+        let quotes = vec![
+            VolQuote::new("TEST-1", expiry, Tenor::years(5.0), Strike::Absolute(0.03), 0.20),
+            VolQuote::new("TEST-2", expiry, Tenor::years(10.0), Strike::Absolute(0.035), 0.22),
+        ];
+
+        let qs = VolQuoteSet::new(Currency::Usd, UnderlyingIndex::Sofr, as_of).with_quotes(quotes);
+
+        let instruments = qs.to_instruments_with_fixed_forward(0.03_f64);
+
+        assert_eq!(instruments.len(), 2);
+        assert_eq!(instruments[0].forward, 0.03);
+        assert_eq!(instruments[1].forward, 0.03);
+    }
+
+    #[test]
+    fn test_vol_quote_set_to_instruments_with_forward_fn() {
+        let as_of = NaiveDate::from_ymd_opt(2026, 1, 25).unwrap();
+        let expiry = NaiveDate::from_ymd_opt(2027, 1, 25).unwrap();
+
+        let quotes = vec![
+            VolQuote::new("TEST-1", expiry, Tenor::years(5.0), Strike::Absolute(0.03), 0.20),
+            VolQuote::new("TEST-2", expiry, Tenor::years(10.0), Strike::Absolute(0.035), 0.22),
+        ];
+
+        let qs = VolQuoteSet::new(Currency::Usd, UnderlyingIndex::Sofr, as_of).with_quotes(quotes);
+
+        // forward = 0.02 + 0.001 * tenor
+        let instruments = qs.to_instruments(|_expiry, tenor| 0.02 + 0.001 * tenor);
+
+        assert_eq!(instruments.len(), 2);
+        assert!((instruments[0].forward - 0.025).abs() < 1e-10); // 0.02 + 0.001 * 5
+        assert!((instruments[1].forward - 0.030).abs() < 1e-10); // 0.02 + 0.001 * 10
+    }
+
+    // =========================================================================
+    // GridStats Tests
+    // =========================================================================
+
+    #[test]
+    fn test_grid_stats_empty() {
+        let as_of = NaiveDate::from_ymd_opt(2026, 1, 25).unwrap();
+        let qs = VolQuoteSet::new(Currency::Usd, UnderlyingIndex::Sofr, as_of);
+
+        let stats = qs.grid_stats();
+
+        assert_eq!(stats.num_expiries, 0);
+        assert_eq!(stats.num_tenors, 0);
+        assert_eq!(stats.num_slices, 0);
+        assert_eq!(stats.total_quotes, 0);
+        assert!(!stats.meets_minimum_requirements());
+    }
+
+    #[test]
+    fn test_grid_stats_single_slice() {
+        let as_of = NaiveDate::from_ymd_opt(2026, 1, 25).unwrap();
+        let expiry = NaiveDate::from_ymd_opt(2027, 1, 25).unwrap();
+
+        let quotes = vec![
+            VolQuote::new("TEST-1", expiry, Tenor::years(5.0), Strike::Absolute(0.03), 0.20),
+            VolQuote::new("TEST-2", expiry, Tenor::years(5.0), Strike::Absolute(0.035), 0.22),
+        ];
+
+        let qs = VolQuoteSet::new(Currency::Usd, UnderlyingIndex::Sofr, as_of).with_quotes(quotes);
+
+        let stats = qs.grid_stats();
+
+        assert_eq!(stats.num_expiries, 1);
+        assert_eq!(stats.num_tenors, 1);
+        assert_eq!(stats.num_slices, 1);
+        assert_eq!(stats.total_quotes, 2);
+        assert_eq!(stats.min_quotes_per_slice, 2);
+        assert_eq!(stats.max_quotes_per_slice, 2);
+        assert!(!stats.meets_minimum_requirements()); // only 1 expiry and 1 tenor
+    }
+
+    #[test]
+    fn test_grid_stats_2x2_grid() {
+        let as_of = NaiveDate::from_ymd_opt(2026, 1, 25).unwrap();
+        let expiry1 = NaiveDate::from_ymd_opt(2027, 1, 25).unwrap();
+        let expiry2 = NaiveDate::from_ymd_opt(2028, 1, 25).unwrap();
+
+        let quotes = vec![
+            // expiry1, tenor 5Y
+            VolQuote::new("1", expiry1, Tenor::years(5.0), Strike::Absolute(0.03), 0.20),
+            VolQuote::new("2", expiry1, Tenor::years(5.0), Strike::Absolute(0.035), 0.22),
+            // expiry1, tenor 10Y
+            VolQuote::new("3", expiry1, Tenor::years(10.0), Strike::Absolute(0.03), 0.18),
+            // expiry2, tenor 5Y
+            VolQuote::new("4", expiry2, Tenor::years(5.0), Strike::Absolute(0.03), 0.19),
+            // expiry2, tenor 10Y
+            VolQuote::new("5", expiry2, Tenor::years(10.0), Strike::Absolute(0.03), 0.17),
+            VolQuote::new("6", expiry2, Tenor::years(10.0), Strike::Absolute(0.04), 0.18),
+        ];
+
+        let qs = VolQuoteSet::new(Currency::Usd, UnderlyingIndex::Sofr, as_of).with_quotes(quotes);
+
+        let stats = qs.grid_stats();
+
+        assert_eq!(stats.num_expiries, 2);
+        assert_eq!(stats.num_tenors, 2);
+        assert_eq!(stats.num_slices, 4);
+        assert_eq!(stats.total_quotes, 6);
+        assert_eq!(stats.min_quotes_per_slice, 1);
+        assert_eq!(stats.max_quotes_per_slice, 2);
+        assert!(stats.meets_minimum_requirements());
+    }
+
+    #[test]
+    fn test_grid_stats_meets_minimum_requirements() {
+        let stats = GridStats {
+            num_expiries: 2,
+            num_tenors: 2,
+            num_slices: 4,
+            total_quotes: 8,
+            min_quotes_per_slice: 2,
+            max_quotes_per_slice: 2,
+            avg_quotes_per_slice: 2.0,
+        };
+        assert!(stats.meets_minimum_requirements());
+
+        let insufficient_expiries = GridStats {
+            num_expiries: 1,
+            ..stats.clone()
+        };
+        assert!(!insufficient_expiries.meets_minimum_requirements());
+
+        let insufficient_tenors = GridStats {
+            num_tenors: 1,
+            ..stats.clone()
+        };
+        assert!(!insufficient_tenors.meets_minimum_requirements());
+
+        let insufficient_quotes = GridStats {
+            min_quotes_per_slice: 0,
+            ..stats.clone()
+        };
+        assert!(!insufficient_quotes.meets_minimum_requirements());
     }
 }

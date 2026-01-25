@@ -2,8 +2,8 @@
 
 ## Phase 1: VolCube基盤拡張
 
-- [ ] 1. VolQuote構造とマーケットデータ表現
-- [ ] 1.1 (P) ボラティリティクォートのデータ構造を実装する
+- [x] 1. VolQuote構造とマーケットデータ表現
+- [x] 1.1 (P) ボラティリティクォートのデータ構造を実装する
   - マーケットクォート（bid/ask/mid）を保持する構造を定義
   - strike表現（絶対値、ATM相対、moneyness、log-moneyness）をenum化
   - クォートタイプ（normal、lognormal、shifted-lognormal）を定義
