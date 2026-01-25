@@ -72,12 +72,7 @@ pub struct BoundaryViolation {
 
 impl BoundaryViolation {
     /// 新しい境界違反情報を作成。
-    pub fn new(
-        parameter: SabrParameter,
-        value: f64,
-        lower_bound: f64,
-        upper_bound: f64,
-    ) -> Self {
+    pub fn new(parameter: SabrParameter, value: f64, lower_bound: f64, upper_bound: f64) -> Self {
         let message = if value <= lower_bound {
             format!(
                 "{} が下限 {} に達しました (値: {})",
@@ -161,10 +156,7 @@ impl std::fmt::Display for ArbitrageViolationType {
 impl ArbitrageViolation {
     /// 新しいarbitrage違反情報を作成。
     pub fn new(strike: f64, violation_type: ArbitrageViolationType) -> Self {
-        let message = format!(
-            "{} at strike={:.6}",
-            violation_type, strike
-        );
+        let message = format!("{} at strike={:.6}", violation_type, strike);
         Self {
             strike,
             violation_type,
@@ -289,9 +281,7 @@ impl SliceDiagnostics {
     }
 
     /// このスライスが成功したか。
-    pub fn is_success(&self) -> bool {
-        self.status == ConvergenceStatus::Success
-    }
+    pub fn is_success(&self) -> bool { self.status == ConvergenceStatus::Success }
 
     /// このスライスに警告があるか。
     pub fn has_warnings(&self) -> bool {
@@ -303,9 +293,7 @@ impl SliceDiagnostics {
     /// このスライスにarbitrage違反があるか。
     ///
     /// # Requirements: 4.6
-    pub fn has_arbitrage_violations(&self) -> bool {
-        !self.arbitrage_violations.is_empty()
-    }
+    pub fn has_arbitrage_violations(&self) -> bool { !self.arbitrage_violations.is_empty() }
 }
 
 /// VolCubeカリブレーション診断情報。
@@ -415,9 +403,7 @@ impl CalibrationDiagnostics {
     }
 
     /// 全てのスライスが成功したか。
-    pub fn all_success(&self) -> bool {
-        self.overall_status == ConvergenceStatus::Success
-    }
+    pub fn all_success(&self) -> bool { self.overall_status == ConvergenceStatus::Success }
 
     /// 警告があるスライスの数を取得。
     pub fn warning_count(&self) -> usize {

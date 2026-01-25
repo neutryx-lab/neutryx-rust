@@ -6,7 +6,8 @@
 //! # Endpoints
 //!
 //! - `POST /api/fxcurve/build` - Build an FX forward curve
-//! - `POST /api/fxcurve/market` - Build complete FX market (curves + vol surface)
+//! - `POST /api/fxcurve/market` - Build complete FX market (curves + vol
+//!   surface)
 //! - `GET /api/fxcurve/forward` - Get forward rate at specific tenor
 //!
 //! # Requirements Coverage
@@ -86,8 +87,10 @@ pub async fn build_fx_curve(
     }
 
     // Parse reference date
-    let reference_date = NaiveDate::parse_from_str(&request.reference_date, "%Y-%m-%d")
-        .map_err(|e| ApiError::validation(format!("Invalid date format: {}", e), "referenceDate"))?;
+    let reference_date =
+        NaiveDate::parse_from_str(&request.reference_date, "%Y-%m-%d").map_err(|e| {
+            ApiError::validation(format!("Invalid date format: {}", e), "referenceDate")
+        })?;
 
     // Generate curve ID
     let curve_id = Uuid::new_v4().to_string();
@@ -212,8 +215,10 @@ pub async fn build_fx_market(
     }
 
     // Parse reference date
-    let reference_date = NaiveDate::parse_from_str(&request.reference_date, "%Y-%m-%d")
-        .map_err(|e| ApiError::validation(format!("Invalid date format: {}", e), "referenceDate"))?;
+    let reference_date =
+        NaiveDate::parse_from_str(&request.reference_date, "%Y-%m-%d").map_err(|e| {
+            ApiError::validation(format!("Invalid date format: {}", e), "referenceDate")
+        })?;
 
     let market_id = Uuid::new_v4().to_string();
 
@@ -429,13 +434,11 @@ mod tests {
         let response = result.unwrap();
         // Should have interpolated points
         assert!(!response.forward_points.is_empty());
-        assert!(
-            response
-                .diagnostics
-                .warnings
-                .iter()
-                .any(|w| w.contains("No instruments"))
-        );
+        assert!(response
+            .diagnostics
+            .warnings
+            .iter()
+            .any(|w| w.contains("No instruments")));
     }
 
     #[tokio::test]

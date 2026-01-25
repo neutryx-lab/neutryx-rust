@@ -195,8 +195,8 @@ pub trait FxCurve<T: Float>: Send + Sync {
 
 /// Calibrated FX Forward Curve implementation.
 ///
-/// This curve is constructed from market instruments (FX swaps, XCCY basis swaps)
-/// and stores interpolated forward points.
+/// This curve is constructed from market instruments (FX swaps, XCCY basis
+/// swaps) and stores interpolated forward points.
 #[derive(Clone)]
 pub struct CalibratedFxCurve<T: Float> {
     /// Currency pair (domestic/foreign).
@@ -259,7 +259,8 @@ impl<T: Float> CalibratedFxCurve<T> {
         })
     }
 
-    /// Creates a curve directly from discount curves using interest rate parity.
+    /// Creates a curve directly from discount curves using interest rate
+    /// parity.
     pub fn from_discount_curves(
         currency_pair: CurrencyPair,
         spot_rate: T,
@@ -313,7 +314,10 @@ impl<T: Float> CalibratedFxCurve<T> {
 
     #[inline]
     fn domain(&self) -> (T, T) {
-        (self.pillar_times[0], self.pillar_times[self.pillar_times.len() - 1])
+        (
+            self.pillar_times[0],
+            self.pillar_times[self.pillar_times.len() - 1],
+        )
     }
 
     fn interpolate_forward_points(&self, t: T) -> Result<T, FxCurveError> {
@@ -332,9 +336,9 @@ impl<T: Float> CalibratedFxCurve<T> {
                 .map_err(|e| FxCurveError::interpolation_failed(format!("{:?}", e)))
         } else {
             match self.extrapolation {
-                ExtrapolationPolicy::Error => {
-                    Err(FxCurveError::extrapolation_not_allowed(t_f64, t_min_f64, t_max_f64))
-                }
+                ExtrapolationPolicy::Error => Err(FxCurveError::extrapolation_not_allowed(
+                    t_f64, t_min_f64, t_max_f64,
+                )),
                 ExtrapolationPolicy::Flat => {
                     if t < t_min {
                         Ok(self.pillar_forward_points[0])
@@ -460,7 +464,12 @@ impl<T: Float> SimpleFxCurve<T> {
         domestic_curve: Arc<dyn YieldCurve<T> + Send + Sync>,
         foreign_curve: Arc<dyn YieldCurve<T> + Send + Sync>,
     ) -> Self {
-        Self { currency_pair, spot_rate, domestic_curve, foreign_curve }
+        Self {
+            currency_pair,
+            spot_rate,
+            domestic_curve,
+            foreign_curve,
+        }
     }
 }
 
@@ -519,9 +528,10 @@ impl<T: Float + Send + Sync> FxCurve<T> for SimpleFxCurve<T> {
 
 #[cfg(test)]
 mod tests {
+    use infra_master::Currency;
+
     use super::*;
     use crate::market::curves::FlatCurve;
-    use infra_master::Currency;
 
     fn make_test_curve() -> SimpleFxCurve<f64> {
         let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
@@ -621,8 +631,14 @@ mod tests {
         let foreign = Arc::new(FlatCurve::new(0.03_f64));
         let pillar_times = vec![0.25, 0.5, 1.0, 2.0, 5.0];
         let curve = CalibratedFxCurve::from_discount_curves(
-            pair, 1.10, &pillar_times, domestic, foreign, ExtrapolationPolicy::Flat,
-        ).unwrap();
+            pair,
+            1.10,
+            &pillar_times,
+            domestic,
+            foreign,
+            ExtrapolationPolicy::Flat,
+        )
+        .unwrap();
         assert!((curve.spot_rate() - 1.10).abs() < 1e-10);
         let fwd = curve.forward_rate(1.0).unwrap();
         let expected = 1.10 * (0.02_f64).exp();
@@ -636,8 +652,14 @@ mod tests {
         let foreign = Arc::new(FlatCurve::new(0.03_f64));
         let pillar_times = vec![0.5, 1.0, 2.0];
         let curve = CalibratedFxCurve::from_discount_curves(
-            pair, 1.10, &pillar_times, domestic, foreign, ExtrapolationPolicy::Flat,
-        ).unwrap();
+            pair,
+            1.10,
+            &pillar_times,
+            domestic,
+            foreign,
+            ExtrapolationPolicy::Flat,
+        )
+        .unwrap();
         let fwd_075 = curve.forward_rate(0.75).unwrap();
         let fwd_05 = curve.forward_rate(0.5).unwrap();
         let fwd_10 = curve.forward_rate(1.0).unwrap();
@@ -652,8 +674,14 @@ mod tests {
         let foreign = Arc::new(FlatCurve::new(0.03_f64));
         let pillar_times = vec![0.5, 1.0, 2.0];
         let curve = CalibratedFxCurve::from_discount_curves(
-            pair, 1.10, &pillar_times, domestic, foreign, ExtrapolationPolicy::Flat,
-        ).unwrap();
+            pair,
+            1.10,
+            &pillar_times,
+            domestic,
+            foreign,
+            ExtrapolationPolicy::Flat,
+        )
+        .unwrap();
         let fp_5y = curve.forward_points(5.0).unwrap();
         let fp_2y = curve.forward_points(2.0).unwrap();
         assert!((fp_5y - fp_2y).abs() < 1e-10);
@@ -666,11 +694,20 @@ mod tests {
         let foreign = Arc::new(FlatCurve::new(0.03_f64));
         let pillar_times = vec![0.5, 1.0, 2.0];
         let curve = CalibratedFxCurve::from_discount_curves(
-            pair, 1.10, &pillar_times, domestic, foreign, ExtrapolationPolicy::Error,
-        ).unwrap();
+            pair,
+            1.10,
+            &pillar_times,
+            domestic,
+            foreign,
+            ExtrapolationPolicy::Error,
+        )
+        .unwrap();
         assert!(curve.forward_rate(1.0).is_ok());
         let result = curve.forward_rate(5.0);
-        assert!(matches!(result, Err(FxCurveError::ExtrapolationNotAllowed { .. })));
+        assert!(matches!(
+            result,
+            Err(FxCurveError::ExtrapolationNotAllowed { .. })
+        ));
     }
 
     #[test]
@@ -680,8 +717,14 @@ mod tests {
         let foreign = Arc::new(FlatCurve::new(0.03_f64));
         let pillar_times = vec![0.5, 1.0, 2.0, 5.0];
         let curve = CalibratedFxCurve::from_discount_curves(
-            pair, 1.10, &pillar_times, domestic, foreign, ExtrapolationPolicy::Flat,
-        ).unwrap();
+            pair,
+            1.10,
+            &pillar_times,
+            domestic,
+            foreign,
+            ExtrapolationPolicy::Flat,
+        )
+        .unwrap();
         let max_t = curve.max_maturity();
         assert!(max_t.is_some());
         assert!((max_t.unwrap() - 5.0).abs() < 1e-10);
@@ -694,8 +737,14 @@ mod tests {
         let foreign = Arc::new(FlatCurve::new(0.03_f64));
         let pillar_times = vec![0.5, 1.0, 2.0];
         let curve = CalibratedFxCurve::from_discount_curves(
-            pair, 1.10, &pillar_times, domestic, foreign, ExtrapolationPolicy::Flat,
-        ).unwrap();
+            pair,
+            1.10,
+            &pillar_times,
+            domestic,
+            foreign,
+            ExtrapolationPolicy::Flat,
+        )
+        .unwrap();
         let pillars = curve.pillar_times();
         assert_eq!(pillars.len(), 3);
         assert!((pillars[0] - 0.5).abs() < 1e-10);

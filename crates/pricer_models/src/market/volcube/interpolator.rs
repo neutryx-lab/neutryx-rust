@@ -103,9 +103,7 @@ pub struct FlatInterpolator;
 
 impl FlatInterpolator {
     /// 新しいFlat補間器を作成。
-    pub fn new() -> Self {
-        Self
-    }
+    pub fn new() -> Self { Self }
 
     /// 格子点から最も近いインデックスを見つける。
     fn find_nearest_index<T: Float>(&self, x: T, grid: &[T]) -> usize {
@@ -169,9 +167,7 @@ impl<T: Float + Send + Sync> VolCubeInterpolator<T> for FlatInterpolator {
         Ok(values[idx])
     }
 
-    fn name(&self) -> &'static str {
-        "Flat"
-    }
+    fn name(&self) -> &'static str { "Flat" }
 
     fn supports_extrapolation(&self) -> bool {
         true // Flat補間は自然に外挿をサポート（境界値を返す）
@@ -189,9 +185,7 @@ pub struct LinearInterpolator;
 
 impl LinearInterpolator {
     /// 新しいLinear補間器を作成。
-    pub fn new() -> Self {
-        Self
-    }
+    pub fn new() -> Self { Self }
 
     /// 格子点でxを挟むブラケットインデックスと補間係数を見つける。
     ///
@@ -279,9 +273,7 @@ impl<T: Float + Send + Sync> VolCubeInterpolator<T> for LinearInterpolator {
         Ok(result)
     }
 
-    fn name(&self) -> &'static str {
-        "Linear"
-    }
+    fn name(&self) -> &'static str { "Linear" }
 
     fn supports_extrapolation(&self) -> bool {
         true // 線形外挿をサポート
@@ -720,12 +712,14 @@ mod tests {
 
     #[test]
     fn test_interpolator_enum_supports_extrapolation() {
-        assert!(<Interpolator as VolCubeInterpolator<f64>>::supports_extrapolation(
-            &Interpolator::Flat
-        ));
-        assert!(<Interpolator as VolCubeInterpolator<f64>>::supports_extrapolation(
-            &Interpolator::Linear
-        ));
+        assert!(
+            <Interpolator as VolCubeInterpolator<f64>>::supports_extrapolation(&Interpolator::Flat)
+        );
+        assert!(
+            <Interpolator as VolCubeInterpolator<f64>>::supports_extrapolation(
+                &Interpolator::Linear
+            )
+        );
     }
 
     #[test]

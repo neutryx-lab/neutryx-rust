@@ -6,21 +6,21 @@
 use std::sync::Arc;
 
 use chrono::NaiveDate;
-use infra_master::trade::instrument_def::CurrencyPair;
-use infra_master::Currency;
+use infra_master::{trade::instrument_def::CurrencyPair, Currency};
 use num_traits::Float;
 use thiserror::Error;
 
-use crate::market::calibration::bootstrapping::{
-    BootstrapInstrument, CurveEngine, CurveEngineError,
+use super::{
+    config::FxVolSurfaceConfig,
+    curve::{FxCurve, SimpleFxCurve},
+    lazy_surface::LazyFxVolSurface,
+    surface::CalibratedFxVolSurface,
+    vol_builder::{CalibrationDiagnostics, CalibrationError, FxVolSurfaceBuilder, VolQuote},
 };
-use crate::market::YieldCurve;
-
-use super::config::FxVolSurfaceConfig;
-use super::curve::{FxCurve, SimpleFxCurve};
-use super::lazy_surface::LazyFxVolSurface;
-use super::surface::CalibratedFxVolSurface;
-use super::vol_builder::{CalibrationDiagnostics, CalibrationError, FxVolSurfaceBuilder, VolQuote};
+use crate::market::{
+    calibration::bootstrapping::{BootstrapInstrument, CurveEngine, CurveEngineError},
+    YieldCurve,
+};
 
 // ============================================================================
 // Error Types
@@ -134,51 +134,35 @@ pub struct FxMarket<T: Float> {
 impl<T: Float + Send + Sync + 'static> FxMarket<T> {
     /// Returns the currency pair.
     #[must_use]
-    pub fn currency_pair(&self) -> CurrencyPair {
-        self.currency_pair
-    }
+    pub fn currency_pair(&self) -> CurrencyPair { self.currency_pair }
 
     /// Returns the reference date.
     #[must_use]
-    pub fn reference_date(&self) -> NaiveDate {
-        self.reference_date
-    }
+    pub fn reference_date(&self) -> NaiveDate { self.reference_date }
 
     /// Returns the domestic discount curve.
     #[must_use]
-    pub fn domestic_curve(&self) -> &Arc<dyn YieldCurve<T> + Send + Sync> {
-        &self.domestic_curve
-    }
+    pub fn domestic_curve(&self) -> &Arc<dyn YieldCurve<T> + Send + Sync> { &self.domestic_curve }
 
     /// Returns the foreign discount curve.
     #[must_use]
-    pub fn foreign_curve(&self) -> &Arc<dyn YieldCurve<T> + Send + Sync> {
-        &self.foreign_curve
-    }
+    pub fn foreign_curve(&self) -> &Arc<dyn YieldCurve<T> + Send + Sync> { &self.foreign_curve }
 
     /// Returns the FX forward curve.
     #[must_use]
-    pub fn fx_curve(&self) -> &Arc<dyn FxCurve<T> + Send + Sync> {
-        &self.fx_curve
-    }
+    pub fn fx_curve(&self) -> &Arc<dyn FxCurve<T> + Send + Sync> { &self.fx_curve }
 
     /// Returns the volatility surface if available.
     #[must_use]
-    pub fn vol_surface(&self) -> Option<&CalibratedFxVolSurface<T>> {
-        self.vol_surface.as_ref()
-    }
+    pub fn vol_surface(&self) -> Option<&CalibratedFxVolSurface<T>> { self.vol_surface.as_ref() }
 
     /// Returns the calibration diagnostics.
     #[must_use]
-    pub fn diagnostics(&self) -> &FxMarketDiagnostics {
-        &self.diagnostics
-    }
+    pub fn diagnostics(&self) -> &FxMarketDiagnostics { &self.diagnostics }
 
     /// Returns the spot rate.
     #[must_use]
-    pub fn spot_rate(&self) -> T {
-        self.fx_curve.spot_rate()
-    }
+    pub fn spot_rate(&self) -> T { self.fx_curve.spot_rate() }
 
     /// Returns the forward rate at a given time.
     pub fn forward_rate(&self, t: T) -> Result<T, super::curve::FxCurveError> {
@@ -275,14 +259,10 @@ impl<T: Float + Send + Sync + 'static> FxMarketBuilder<T> {
     }
 
     /// Creates a builder for EURUSD.
-    pub fn eurusd() -> Self {
-        Self::new(CurrencyPair::new(Currency::EUR, Currency::USD))
-    }
+    pub fn eurusd() -> Self { Self::new(CurrencyPair::new(Currency::EUR, Currency::USD)) }
 
     /// Creates a builder for USDJPY.
-    pub fn usdjpy() -> Self {
-        Self::new(CurrencyPair::new(Currency::USD, Currency::JPY))
-    }
+    pub fn usdjpy() -> Self { Self::new(CurrencyPair::new(Currency::USD, Currency::JPY)) }
 
     /// Sets the reference date.
     pub fn with_reference_date(mut self, date: NaiveDate) -> Self {
@@ -387,7 +367,8 @@ impl<T: Float + Send + Sync + 'static> FxMarketBuilder<T> {
 
     /// Builds just the FX forward curve.
     ///
-    /// Requires discount curves to be available (either pre-built or via instruments).
+    /// Requires discount curves to be available (either pre-built or via
+    /// instruments).
     pub fn build_fx_curve(&self) -> Result<Arc<dyn FxCurve<T> + Send + Sync>, FxMarketError> {
         let reference_date = self
             .reference_date
@@ -504,9 +485,7 @@ impl<T: Float + Send + Sync + 'static> FxMarketBuilder<T> {
     }
 
     /// Builds a lazy FX market with deferred vol surface calibration.
-    pub fn build_lazy(
-        self,
-    ) -> Result<(FxMarket<T>, Option<LazyFxVolSurface<T>>), FxMarketError> {
+    pub fn build_lazy(self) -> Result<(FxMarket<T>, Option<LazyFxVolSurface<T>>), FxMarketError> {
         let start = std::time::Instant::now();
 
         let reference_date = self
@@ -677,7 +656,8 @@ mod tests {
         let fwd = market.forward_rate(1.0);
         assert!(fwd.is_ok());
         // F = S * DF_f / DF_d
-        // With flat curves: F ≈ 1.0850 * exp(-0.03) / exp(-0.05) ≈ 1.0850 * exp(0.02)
+        // With flat curves: F ≈ 1.0850 * exp(-0.03) / exp(-0.05) ≈ 1.0850 *
+        // exp(0.02)
     }
 
     #[test]

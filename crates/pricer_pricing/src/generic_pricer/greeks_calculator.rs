@@ -4,6 +4,9 @@
 //! - Bump-and-revalue (finite difference) method
 //! - AAD (Enzyme AD) method (when enzyme-ad feature is enabled)
 
+// Re-export BumpSizes from infra_config for backwards compatibility
+pub use infra_config::BumpSizes;
+
 #[cfg(not(feature = "l1l2-integration"))]
 use super::config::DefaultCurrency as Currency;
 #[cfg(not(feature = "l1l2-integration"))]
@@ -12,9 +15,6 @@ use super::error::PricingError;
 use super::pricer::{GenericPricer, SimpleLeg};
 #[cfg(not(feature = "l1l2-integration"))]
 use super::result::Date;
-
-// Re-export BumpSizes from infra_config for backwards compatibility
-pub use infra_config::BumpSizes;
 
 /// Greeks calculation result for a single trade.
 #[derive(Debug, Clone)]
@@ -306,8 +306,8 @@ mod tests {
         let bumps = BumpSizes::default();
         // infra_config::BumpSizes uses decimal form: 1bp = 0.0001, 1% = 0.01
         assert!((bumps.rate - 0.0001).abs() < 1e-10); // 1bp
-        assert!((bumps.spot - 0.01).abs() < 1e-10);   // 1%
-        assert!((bumps.vol - 0.01).abs() < 1e-10);    // 1%
+        assert!((bumps.spot - 0.01).abs() < 1e-10); // 1%
+        assert!((bumps.vol - 0.01).abs() < 1e-10); // 1%
     }
 
     #[test]

@@ -135,7 +135,7 @@ impl Default for SabrParameterInterpolation {
         Self {
             alpha_expiry: AxisInterpolationMethod::Linear,
             alpha_tenor: AxisInterpolationMethod::Linear,
-            beta_expiry: AxisInterpolationMethod::Flat,  // βは通常固定なのでFlat
+            beta_expiry: AxisInterpolationMethod::Flat, // βは通常固定なのでFlat
             beta_tenor: AxisInterpolationMethod::Flat,
             rho_expiry: AxisInterpolationMethod::Linear,
             rho_tenor: AxisInterpolationMethod::Linear,
@@ -147,9 +147,7 @@ impl Default for SabrParameterInterpolation {
 
 impl SabrParameterInterpolation {
     /// 新しい補間設定を作成（デフォルト値）。
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// 全パラメータを同じ補間方式に設定。
     pub fn uniform(method: AxisInterpolationMethod) -> Self {
@@ -166,28 +164,44 @@ impl SabrParameterInterpolation {
     }
 
     /// αの補間方式を設定。
-    pub fn with_alpha(mut self, expiry: AxisInterpolationMethod, tenor: AxisInterpolationMethod) -> Self {
+    pub fn with_alpha(
+        mut self,
+        expiry: AxisInterpolationMethod,
+        tenor: AxisInterpolationMethod,
+    ) -> Self {
         self.alpha_expiry = expiry;
         self.alpha_tenor = tenor;
         self
     }
 
     /// βの補間方式を設定。
-    pub fn with_beta(mut self, expiry: AxisInterpolationMethod, tenor: AxisInterpolationMethod) -> Self {
+    pub fn with_beta(
+        mut self,
+        expiry: AxisInterpolationMethod,
+        tenor: AxisInterpolationMethod,
+    ) -> Self {
         self.beta_expiry = expiry;
         self.beta_tenor = tenor;
         self
     }
 
     /// ρの補間方式を設定。
-    pub fn with_rho(mut self, expiry: AxisInterpolationMethod, tenor: AxisInterpolationMethod) -> Self {
+    pub fn with_rho(
+        mut self,
+        expiry: AxisInterpolationMethod,
+        tenor: AxisInterpolationMethod,
+    ) -> Self {
         self.rho_expiry = expiry;
         self.rho_tenor = tenor;
         self
     }
 
     /// νの補間方式を設定。
-    pub fn with_nu(mut self, expiry: AxisInterpolationMethod, tenor: AxisInterpolationMethod) -> Self {
+    pub fn with_nu(
+        mut self,
+        expiry: AxisInterpolationMethod,
+        tenor: AxisInterpolationMethod,
+    ) -> Self {
         self.nu_expiry = expiry;
         self.nu_tenor = tenor;
         self
@@ -381,9 +395,7 @@ impl VolCubeConfig {
     ///
     /// 負金利環境で一般的に使用されるNormal SABRモデル。
     /// ボラティリティは絶対値（bps単位）として解釈される。
-    pub fn with_normal_sabr(self) -> Self {
-        self.with_sabr_beta(Some(0.0))
-    }
+    pub fn with_normal_sabr(self) -> Self { self.with_sabr_beta(Some(0.0)) }
 
     /// SABR beta = 0.5 を設定（CIR / Square-root model）。
     ///
@@ -391,9 +403,7 @@ impl VolCubeConfig {
     ///
     /// 金利デリバティブで最も一般的に使用されるデフォルト設定。
     /// CIRプロセスに対応し、正の金利を仮定。
-    pub fn with_cir_sabr(self) -> Self {
-        self.with_sabr_beta(Some(0.5))
-    }
+    pub fn with_cir_sabr(self) -> Self { self.with_sabr_beta(Some(0.5)) }
 
     /// SABR beta = 1.0 を設定（Lognormal model / Black）。
     ///
@@ -401,9 +411,7 @@ impl VolCubeConfig {
     ///
     /// 伝統的なBlack-Scholesタイプのログノーマルモデル。
     /// 正の金利を強く仮定し、負金利環境では不適切。
-    pub fn with_lognormal_sabr(self) -> Self {
-        self.with_sabr_beta(Some(1.0))
-    }
+    pub fn with_lognormal_sabr(self) -> Self { self.with_sabr_beta(Some(1.0)) }
 
     /// βをカリブレーション対象に設定（固定しない）。
     ///
@@ -411,9 +419,7 @@ impl VolCubeConfig {
     ///
     /// βを他のSABRパラメータと共にカリブレーションする。
     /// より多くのデータ点が必要だが、最適なフィットを得られる可能性がある。
-    pub fn with_calibrated_beta(self) -> Self {
-        self.with_sabr_beta(None)
-    }
+    pub fn with_calibrated_beta(self) -> Self { self.with_sabr_beta(None) }
 
     /// SABR shiftを設定（負金利対応）。
     pub fn with_sabr_shift(mut self, shift: f64) -> Self {
@@ -770,9 +776,7 @@ mod tests {
     #[test]
     fn test_volcube_config_sabr_beta_chaining() {
         // Normal → CIR
-        let config = VolCubeConfig::default()
-            .with_normal_sabr()
-            .with_cir_sabr();
+        let config = VolCubeConfig::default().with_normal_sabr().with_cir_sabr();
         assert_eq!(config.sabr_beta, Some(0.5));
 
         // Lognormal → Calibrated
@@ -958,7 +962,10 @@ mod tests {
 
         let config_parallel =
             VolCubeConfig::default().with_calibration_order(CalibrationOrder::Parallel);
-        assert_eq!(config_parallel.calibration_order, CalibrationOrder::Parallel);
+        assert_eq!(
+            config_parallel.calibration_order,
+            CalibrationOrder::Parallel
+        );
     }
 
     #[test]
@@ -1126,8 +1133,10 @@ mod tests {
 
     #[test]
     fn test_sabr_param_interp_with_alpha() {
-        let interp = SabrParameterInterpolation::default()
-            .with_alpha(AxisInterpolationMethod::LogLinear, AxisInterpolationMethod::CubicSpline);
+        let interp = SabrParameterInterpolation::default().with_alpha(
+            AxisInterpolationMethod::LogLinear,
+            AxisInterpolationMethod::CubicSpline,
+        );
 
         assert_eq!(interp.alpha_expiry, AxisInterpolationMethod::LogLinear);
         assert_eq!(interp.alpha_tenor, AxisInterpolationMethod::CubicSpline);
@@ -1137,8 +1146,10 @@ mod tests {
 
     #[test]
     fn test_sabr_param_interp_with_beta() {
-        let interp = SabrParameterInterpolation::default()
-            .with_beta(AxisInterpolationMethod::Linear, AxisInterpolationMethod::Linear);
+        let interp = SabrParameterInterpolation::default().with_beta(
+            AxisInterpolationMethod::Linear,
+            AxisInterpolationMethod::Linear,
+        );
 
         assert_eq!(interp.beta_expiry, AxisInterpolationMethod::Linear);
         assert_eq!(interp.beta_tenor, AxisInterpolationMethod::Linear);
@@ -1146,8 +1157,10 @@ mod tests {
 
     #[test]
     fn test_sabr_param_interp_with_rho() {
-        let interp = SabrParameterInterpolation::default()
-            .with_rho(AxisInterpolationMethod::CubicSpline, AxisInterpolationMethod::Flat);
+        let interp = SabrParameterInterpolation::default().with_rho(
+            AxisInterpolationMethod::CubicSpline,
+            AxisInterpolationMethod::Flat,
+        );
 
         assert_eq!(interp.rho_expiry, AxisInterpolationMethod::CubicSpline);
         assert_eq!(interp.rho_tenor, AxisInterpolationMethod::Flat);
@@ -1155,8 +1168,10 @@ mod tests {
 
     #[test]
     fn test_sabr_param_interp_with_nu() {
-        let interp = SabrParameterInterpolation::default()
-            .with_nu(AxisInterpolationMethod::LogLinear, AxisInterpolationMethod::LogLinear);
+        let interp = SabrParameterInterpolation::default().with_nu(
+            AxisInterpolationMethod::LogLinear,
+            AxisInterpolationMethod::LogLinear,
+        );
 
         assert_eq!(interp.nu_expiry, AxisInterpolationMethod::LogLinear);
         assert_eq!(interp.nu_tenor, AxisInterpolationMethod::LogLinear);
@@ -1165,10 +1180,19 @@ mod tests {
     #[test]
     fn test_sabr_param_interp_chain() {
         let interp = SabrParameterInterpolation::default()
-            .with_alpha(AxisInterpolationMethod::LogLinear, AxisInterpolationMethod::LogLinear)
+            .with_alpha(
+                AxisInterpolationMethod::LogLinear,
+                AxisInterpolationMethod::LogLinear,
+            )
             .with_beta(AxisInterpolationMethod::Flat, AxisInterpolationMethod::Flat)
-            .with_rho(AxisInterpolationMethod::CubicSpline, AxisInterpolationMethod::Linear)
-            .with_nu(AxisInterpolationMethod::Linear, AxisInterpolationMethod::CubicSpline);
+            .with_rho(
+                AxisInterpolationMethod::CubicSpline,
+                AxisInterpolationMethod::Linear,
+            )
+            .with_nu(
+                AxisInterpolationMethod::Linear,
+                AxisInterpolationMethod::CubicSpline,
+            );
 
         assert_eq!(interp.alpha_expiry, AxisInterpolationMethod::LogLinear);
         assert_eq!(interp.alpha_tenor, AxisInterpolationMethod::LogLinear);
@@ -1203,8 +1227,10 @@ mod tests {
 
     #[test]
     fn test_volcube_config_full_chain_with_sabr_param_interp() {
-        let interp = SabrParameterInterpolation::default()
-            .with_alpha(AxisInterpolationMethod::LogLinear, AxisInterpolationMethod::Linear);
+        let interp = SabrParameterInterpolation::default().with_alpha(
+            AxisInterpolationMethod::LogLinear,
+            AxisInterpolationMethod::Linear,
+        );
 
         let config = VolCubeConfig::default()
             .with_interpolation(InterpolationMethod::Sabr)

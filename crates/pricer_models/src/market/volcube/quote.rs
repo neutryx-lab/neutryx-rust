@@ -322,7 +322,10 @@ impl VolQuote {
             }
         }
         if !self.strike.is_valid() {
-            if matches!(self.strike, VolStrike::Absolute(_) | VolStrike::Moneyness(_)) {
+            if matches!(
+                self.strike,
+                VolStrike::Absolute(_) | VolStrike::Moneyness(_)
+            ) {
                 return Err("Strike must be positive for Absolute/Moneyness types".to_string());
             }
         }
@@ -350,7 +353,11 @@ pub struct VolQuoteSet {
 
 impl VolQuoteSet {
     /// 新しいVolQuoteSetを作成。
-    pub fn new(currency: Currency, underlying_index: UnderlyingIndex, as_of_date: NaiveDate) -> Self {
+    pub fn new(
+        currency: Currency,
+        underlying_index: UnderlyingIndex,
+        as_of_date: NaiveDate,
+    ) -> Self {
         Self {
             quotes: Vec::new(),
             currency,
@@ -460,7 +467,8 @@ impl VolQuoteSet {
     ///
     /// # Requirements: 2.1, 2.3
     ///
-    /// 各クォートを対応するVolInstrumentに変換し、VolCubeBuilderで使用可能な形式にする。
+    /// 各クォートを対応するVolInstrumentに変換し、
+    /// VolCubeBuilderで使用可能な形式にする。
     pub fn to_instruments<T, F>(&self, forward_fn: F) -> Vec<super::types::VolInstrument<T>>
     where
         T: Float,
@@ -747,9 +755,18 @@ mod tests {
 
     #[test]
     fn test_currency_default_index() {
-        assert!(matches!(Currency::Usd.default_index(), UnderlyingIndex::Sofr));
-        assert!(matches!(Currency::Eur.default_index(), UnderlyingIndex::Estr));
-        assert!(matches!(Currency::Jpy.default_index(), UnderlyingIndex::Tona));
+        assert!(matches!(
+            Currency::Usd.default_index(),
+            UnderlyingIndex::Sofr
+        ));
+        assert!(matches!(
+            Currency::Eur.default_index(),
+            UnderlyingIndex::Estr
+        ));
+        assert!(matches!(
+            Currency::Jpy.default_index(),
+            UnderlyingIndex::Tona
+        ));
     }
 
     // =========================================================================
@@ -759,7 +776,13 @@ mod tests {
     #[test]
     fn test_vol_quote_new() {
         let expiry = NaiveDate::from_ymd_opt(2027, 1, 25).unwrap();
-        let quote = VolQuote::new("TEST-1", expiry, Tenor::years(5.0), VolStrike::Absolute(0.03), 0.20);
+        let quote = VolQuote::new(
+            "TEST-1",
+            expiry,
+            Tenor::years(5.0),
+            VolStrike::Absolute(0.03),
+            0.20,
+        );
 
         assert_eq!(quote.instrument_id.as_str(), "TEST-1");
         assert_eq!(quote.expiry, expiry);
@@ -773,9 +796,15 @@ mod tests {
     #[test]
     fn test_vol_quote_with_bid_ask() {
         let expiry = NaiveDate::from_ymd_opt(2027, 1, 25).unwrap();
-        let quote = VolQuote::new("TEST-1", expiry, Tenor::years(5.0), VolStrike::Absolute(0.03), 0.20)
-            .with_bid(0.19)
-            .with_ask(0.21);
+        let quote = VolQuote::new(
+            "TEST-1",
+            expiry,
+            Tenor::years(5.0),
+            VolStrike::Absolute(0.03),
+            0.20,
+        )
+        .with_bid(0.19)
+        .with_ask(0.21);
 
         assert_eq!(quote.bid, Some(0.19));
         assert_eq!(quote.ask, Some(0.21));
@@ -786,8 +815,14 @@ mod tests {
     #[test]
     fn test_vol_quote_with_bid_ask_combined() {
         let expiry = NaiveDate::from_ymd_opt(2027, 1, 25).unwrap();
-        let quote = VolQuote::new("TEST-1", expiry, Tenor::years(5.0), VolStrike::Absolute(0.03), 0.20)
-            .with_bid_ask(0.18, 0.22);
+        let quote = VolQuote::new(
+            "TEST-1",
+            expiry,
+            Tenor::years(5.0),
+            VolStrike::Absolute(0.03),
+            0.20,
+        )
+        .with_bid_ask(0.18, 0.22);
 
         assert_eq!(quote.bid, Some(0.18));
         assert_eq!(quote.ask, Some(0.22));
@@ -796,8 +831,14 @@ mod tests {
     #[test]
     fn test_vol_quote_with_quote_type() {
         let expiry = NaiveDate::from_ymd_opt(2027, 1, 25).unwrap();
-        let quote = VolQuote::new("TEST-1", expiry, Tenor::years(5.0), VolStrike::Absolute(0.03), 0.20)
-            .with_quote_type(QuoteType::Normal);
+        let quote = VolQuote::new(
+            "TEST-1",
+            expiry,
+            Tenor::years(5.0),
+            VolStrike::Absolute(0.03),
+            0.20,
+        )
+        .with_quote_type(QuoteType::Normal);
 
         assert!(matches!(quote.quote_type, QuoteType::Normal));
     }
@@ -805,7 +846,13 @@ mod tests {
     #[test]
     fn test_vol_quote_spread_none() {
         let expiry = NaiveDate::from_ymd_opt(2027, 1, 25).unwrap();
-        let quote = VolQuote::new("TEST-1", expiry, Tenor::years(5.0), VolStrike::Absolute(0.03), 0.20);
+        let quote = VolQuote::new(
+            "TEST-1",
+            expiry,
+            Tenor::years(5.0),
+            VolStrike::Absolute(0.03),
+            0.20,
+        );
 
         assert!(quote.spread().is_none());
     }
@@ -813,8 +860,14 @@ mod tests {
     #[test]
     fn test_vol_quote_validate_valid() {
         let expiry = NaiveDate::from_ymd_opt(2027, 1, 25).unwrap();
-        let quote = VolQuote::new("TEST-1", expiry, Tenor::years(5.0), VolStrike::Absolute(0.03), 0.20)
-            .with_bid_ask(0.19, 0.21);
+        let quote = VolQuote::new(
+            "TEST-1",
+            expiry,
+            Tenor::years(5.0),
+            VolStrike::Absolute(0.03),
+            0.20,
+        )
+        .with_bid_ask(0.19, 0.21);
 
         assert!(quote.validate().is_ok());
     }
@@ -822,7 +875,13 @@ mod tests {
     #[test]
     fn test_vol_quote_validate_negative_mid() {
         let expiry = NaiveDate::from_ymd_opt(2027, 1, 25).unwrap();
-        let quote = VolQuote::new("TEST-1", expiry, Tenor::years(5.0), VolStrike::Absolute(0.03), -0.20);
+        let quote = VolQuote::new(
+            "TEST-1",
+            expiry,
+            Tenor::years(5.0),
+            VolStrike::Absolute(0.03),
+            -0.20,
+        );
 
         let result = quote.validate();
         assert!(result.is_err());
@@ -832,8 +891,14 @@ mod tests {
     #[test]
     fn test_vol_quote_validate_bid_greater_than_mid() {
         let expiry = NaiveDate::from_ymd_opt(2027, 1, 25).unwrap();
-        let quote = VolQuote::new("TEST-1", expiry, Tenor::years(5.0), VolStrike::Absolute(0.03), 0.20)
-            .with_bid(0.25);
+        let quote = VolQuote::new(
+            "TEST-1",
+            expiry,
+            Tenor::years(5.0),
+            VolStrike::Absolute(0.03),
+            0.20,
+        )
+        .with_bid(0.25);
 
         let result = quote.validate();
         assert!(result.is_err());
@@ -843,8 +908,14 @@ mod tests {
     #[test]
     fn test_vol_quote_validate_ask_less_than_mid() {
         let expiry = NaiveDate::from_ymd_opt(2027, 1, 25).unwrap();
-        let quote = VolQuote::new("TEST-1", expiry, Tenor::years(5.0), VolStrike::Absolute(0.03), 0.20)
-            .with_ask(0.15);
+        let quote = VolQuote::new(
+            "TEST-1",
+            expiry,
+            Tenor::years(5.0),
+            VolStrike::Absolute(0.03),
+            0.20,
+        )
+        .with_ask(0.15);
 
         let result = quote.validate();
         assert!(result.is_err());
@@ -854,8 +925,14 @@ mod tests {
     #[test]
     fn test_vol_quote_validate_bid_greater_than_ask() {
         let expiry = NaiveDate::from_ymd_opt(2027, 1, 25).unwrap();
-        let quote = VolQuote::new("TEST-1", expiry, Tenor::years(5.0), VolStrike::Absolute(0.03), 0.20)
-            .with_bid_ask(0.21, 0.19);
+        let quote = VolQuote::new(
+            "TEST-1",
+            expiry,
+            Tenor::years(5.0),
+            VolStrike::Absolute(0.03),
+            0.20,
+        )
+        .with_bid_ask(0.21, 0.19);
 
         let result = quote.validate();
         assert!(result.is_err());
@@ -864,9 +941,15 @@ mod tests {
     #[test]
     fn test_vol_quote_serde() {
         let expiry = NaiveDate::from_ymd_opt(2027, 1, 25).unwrap();
-        let quote = VolQuote::new("TEST-1", expiry, Tenor::years(5.0), VolStrike::Absolute(0.03), 0.20)
-            .with_bid_ask(0.19, 0.21)
-            .with_quote_type(QuoteType::ShiftedLogNormal { shift: 0.02 });
+        let quote = VolQuote::new(
+            "TEST-1",
+            expiry,
+            Tenor::years(5.0),
+            VolStrike::Absolute(0.03),
+            0.20,
+        )
+        .with_bid_ask(0.19, 0.21)
+        .with_quote_type(QuoteType::ShiftedLogNormal { shift: 0.02 });
 
         let json = serde_json::to_string(&quote).unwrap();
         let deserialized: VolQuote = serde_json::from_str(&json).unwrap();
@@ -898,7 +981,13 @@ mod tests {
         let expiry = NaiveDate::from_ymd_opt(2027, 1, 25).unwrap();
         let mut qs = VolQuoteSet::new(Currency::Usd, UnderlyingIndex::Sofr, as_of);
 
-        let quote = VolQuote::new("TEST-1", expiry, Tenor::years(5.0), VolStrike::Absolute(0.03), 0.20);
+        let quote = VolQuote::new(
+            "TEST-1",
+            expiry,
+            Tenor::years(5.0),
+            VolStrike::Absolute(0.03),
+            0.20,
+        );
         qs.add_quote(quote);
 
         assert_eq!(qs.len(), 1);
@@ -912,8 +1001,20 @@ mod tests {
         let expiry2 = NaiveDate::from_ymd_opt(2028, 1, 25).unwrap();
 
         let quotes = vec![
-            VolQuote::new("TEST-1", expiry1, Tenor::years(5.0), VolStrike::Absolute(0.03), 0.20),
-            VolQuote::new("TEST-2", expiry2, Tenor::years(10.0), VolStrike::Absolute(0.035), 0.22),
+            VolQuote::new(
+                "TEST-1",
+                expiry1,
+                Tenor::years(5.0),
+                VolStrike::Absolute(0.03),
+                0.20,
+            ),
+            VolQuote::new(
+                "TEST-2",
+                expiry2,
+                Tenor::years(10.0),
+                VolStrike::Absolute(0.035),
+                0.22,
+            ),
         ];
 
         let qs = VolQuoteSet::new(Currency::Usd, UnderlyingIndex::Sofr, as_of).with_quotes(quotes);
@@ -927,8 +1028,20 @@ mod tests {
         let expiry = NaiveDate::from_ymd_opt(2027, 1, 25).unwrap();
 
         let quotes = vec![
-            VolQuote::new("TEST-1", expiry, Tenor::years(5.0), VolStrike::Absolute(0.03), 0.20),
-            VolQuote::new("TEST-2", expiry, Tenor::years(10.0), VolStrike::Absolute(0.035), -0.22), // invalid
+            VolQuote::new(
+                "TEST-1",
+                expiry,
+                Tenor::years(5.0),
+                VolStrike::Absolute(0.03),
+                0.20,
+            ),
+            VolQuote::new(
+                "TEST-2",
+                expiry,
+                Tenor::years(10.0),
+                VolStrike::Absolute(0.035),
+                -0.22,
+            ), // invalid
         ];
 
         let qs = VolQuoteSet::new(Currency::Usd, UnderlyingIndex::Sofr, as_of).with_quotes(quotes);
@@ -945,9 +1058,27 @@ mod tests {
         let expiry2 = NaiveDate::from_ymd_opt(2028, 1, 25).unwrap();
 
         let quotes = vec![
-            VolQuote::new("TEST-1", expiry1, Tenor::years(5.0), VolStrike::Absolute(0.03), 0.20),
-            VolQuote::new("TEST-2", expiry1, Tenor::years(10.0), VolStrike::Absolute(0.035), 0.22),
-            VolQuote::new("TEST-3", expiry2, Tenor::years(5.0), VolStrike::Absolute(0.03), 0.21),
+            VolQuote::new(
+                "TEST-1",
+                expiry1,
+                Tenor::years(5.0),
+                VolStrike::Absolute(0.03),
+                0.20,
+            ),
+            VolQuote::new(
+                "TEST-2",
+                expiry1,
+                Tenor::years(10.0),
+                VolStrike::Absolute(0.035),
+                0.22,
+            ),
+            VolQuote::new(
+                "TEST-3",
+                expiry2,
+                Tenor::years(5.0),
+                VolStrike::Absolute(0.03),
+                0.21,
+            ),
         ];
 
         let qs = VolQuoteSet::new(Currency::Usd, UnderlyingIndex::Sofr, as_of).with_quotes(quotes);
@@ -964,9 +1095,27 @@ mod tests {
         let expiry = NaiveDate::from_ymd_opt(2027, 1, 25).unwrap();
 
         let quotes = vec![
-            VolQuote::new("TEST-1", expiry, Tenor::years(5.0), VolStrike::Absolute(0.03), 0.20),
-            VolQuote::new("TEST-2", expiry, Tenor::years(10.0), VolStrike::Absolute(0.035), 0.22),
-            VolQuote::new("TEST-3", expiry, Tenor::years(5.0), VolStrike::Absolute(0.04), 0.21),
+            VolQuote::new(
+                "TEST-1",
+                expiry,
+                Tenor::years(5.0),
+                VolStrike::Absolute(0.03),
+                0.20,
+            ),
+            VolQuote::new(
+                "TEST-2",
+                expiry,
+                Tenor::years(10.0),
+                VolStrike::Absolute(0.035),
+                0.22,
+            ),
+            VolQuote::new(
+                "TEST-3",
+                expiry,
+                Tenor::years(5.0),
+                VolStrike::Absolute(0.04),
+                0.21,
+            ),
         ];
 
         let qs = VolQuoteSet::new(Currency::Usd, UnderlyingIndex::Sofr, as_of).with_quotes(quotes);
@@ -984,10 +1133,34 @@ mod tests {
         let expiry2 = NaiveDate::from_ymd_opt(2028, 1, 25).unwrap();
 
         let quotes = vec![
-            VolQuote::new("TEST-1", expiry1, Tenor::years(5.0), VolStrike::Absolute(0.03), 0.20),
-            VolQuote::new("TEST-2", expiry1, Tenor::years(5.0), VolStrike::Absolute(0.035), 0.22),
-            VolQuote::new("TEST-3", expiry1, Tenor::years(10.0), VolStrike::Absolute(0.03), 0.21),
-            VolQuote::new("TEST-4", expiry2, Tenor::years(5.0), VolStrike::Absolute(0.03), 0.19),
+            VolQuote::new(
+                "TEST-1",
+                expiry1,
+                Tenor::years(5.0),
+                VolStrike::Absolute(0.03),
+                0.20,
+            ),
+            VolQuote::new(
+                "TEST-2",
+                expiry1,
+                Tenor::years(5.0),
+                VolStrike::Absolute(0.035),
+                0.22,
+            ),
+            VolQuote::new(
+                "TEST-3",
+                expiry1,
+                Tenor::years(10.0),
+                VolStrike::Absolute(0.03),
+                0.21,
+            ),
+            VolQuote::new(
+                "TEST-4",
+                expiry2,
+                Tenor::years(5.0),
+                VolStrike::Absolute(0.03),
+                0.19,
+            ),
         ];
 
         let qs = VolQuoteSet::new(Currency::Usd, UnderlyingIndex::Sofr, as_of).with_quotes(quotes);
@@ -1003,16 +1176,41 @@ mod tests {
         let expiry2 = NaiveDate::from_ymd_opt(2028, 1, 25).unwrap();
 
         let quotes = vec![
-            VolQuote::new("TEST-1", expiry1, Tenor::years(5.0), VolStrike::Absolute(0.03), 0.20),
-            VolQuote::new("TEST-2", expiry1, Tenor::years(5.0), VolStrike::Absolute(0.035), 0.22),
-            VolQuote::new("TEST-3", expiry1, Tenor::years(10.0), VolStrike::Absolute(0.03), 0.21),
-            VolQuote::new("TEST-4", expiry2, Tenor::years(5.0), VolStrike::Absolute(0.03), 0.19),
+            VolQuote::new(
+                "TEST-1",
+                expiry1,
+                Tenor::years(5.0),
+                VolStrike::Absolute(0.03),
+                0.20,
+            ),
+            VolQuote::new(
+                "TEST-2",
+                expiry1,
+                Tenor::years(5.0),
+                VolStrike::Absolute(0.035),
+                0.22,
+            ),
+            VolQuote::new(
+                "TEST-3",
+                expiry1,
+                Tenor::years(10.0),
+                VolStrike::Absolute(0.03),
+                0.21,
+            ),
+            VolQuote::new(
+                "TEST-4",
+                expiry2,
+                Tenor::years(5.0),
+                VolStrike::Absolute(0.03),
+                0.19,
+            ),
         ];
 
         let qs = VolQuoteSet::new(Currency::Usd, UnderlyingIndex::Sofr, as_of).with_quotes(quotes);
 
         let groups = qs.group_by_slice();
-        assert_eq!(groups.len(), 3); // (expiry1, 5Y), (expiry1, 10Y), (expiry2, 5Y)
+        assert_eq!(groups.len(), 3); // (expiry1, 5Y), (expiry1, 10Y), (expiry2,
+                                     // 5Y)
     }
 
     #[test]
@@ -1021,7 +1219,13 @@ mod tests {
         let expiry = NaiveDate::from_ymd_opt(2027, 1, 25).unwrap();
 
         let qs = VolQuoteSet::new(Currency::Usd, UnderlyingIndex::Sofr, as_of).with_quote(
-            VolQuote::new("TEST-1", expiry, Tenor::years(5.0), VolStrike::Absolute(0.03), 0.20),
+            VolQuote::new(
+                "TEST-1",
+                expiry,
+                Tenor::years(5.0),
+                VolStrike::Absolute(0.03),
+                0.20,
+            ),
         );
 
         let json = serde_json::to_string(&qs).unwrap();
@@ -1039,7 +1243,13 @@ mod tests {
         let as_of = NaiveDate::from_ymd_opt(2026, 1, 25).unwrap();
         let expiry = NaiveDate::from_ymd_opt(2027, 1, 25).unwrap(); // ~1 year
 
-        let quote = VolQuote::new("TEST-1", expiry, Tenor::years(5.0), VolStrike::Absolute(0.03), 0.20);
+        let quote = VolQuote::new(
+            "TEST-1",
+            expiry,
+            Tenor::years(5.0),
+            VolStrike::Absolute(0.03),
+            0.20,
+        );
 
         let instrument = vol_quote_to_instrument(&quote, as_of, 0.025_f64);
 
@@ -1061,8 +1271,20 @@ mod tests {
         let expiry = NaiveDate::from_ymd_opt(2027, 1, 25).unwrap();
 
         let quotes = vec![
-            VolQuote::new("TEST-1", expiry, Tenor::years(5.0), VolStrike::Absolute(0.03), 0.20),
-            VolQuote::new("TEST-2", expiry, Tenor::years(10.0), VolStrike::Absolute(0.035), 0.22),
+            VolQuote::new(
+                "TEST-1",
+                expiry,
+                Tenor::years(5.0),
+                VolStrike::Absolute(0.03),
+                0.20,
+            ),
+            VolQuote::new(
+                "TEST-2",
+                expiry,
+                Tenor::years(10.0),
+                VolStrike::Absolute(0.035),
+                0.22,
+            ),
         ];
 
         let qs = VolQuoteSet::new(Currency::Usd, UnderlyingIndex::Sofr, as_of).with_quotes(quotes);
@@ -1080,8 +1302,20 @@ mod tests {
         let expiry = NaiveDate::from_ymd_opt(2027, 1, 25).unwrap();
 
         let quotes = vec![
-            VolQuote::new("TEST-1", expiry, Tenor::years(5.0), VolStrike::Absolute(0.03), 0.20),
-            VolQuote::new("TEST-2", expiry, Tenor::years(10.0), VolStrike::Absolute(0.035), 0.22),
+            VolQuote::new(
+                "TEST-1",
+                expiry,
+                Tenor::years(5.0),
+                VolStrike::Absolute(0.03),
+                0.20,
+            ),
+            VolQuote::new(
+                "TEST-2",
+                expiry,
+                Tenor::years(10.0),
+                VolStrike::Absolute(0.035),
+                0.22,
+            ),
         ];
 
         let qs = VolQuoteSet::new(Currency::Usd, UnderlyingIndex::Sofr, as_of).with_quotes(quotes);
@@ -1091,7 +1325,8 @@ mod tests {
 
         assert_eq!(instruments.len(), 2);
         assert!((instruments[0].forward - 0.025).abs() < 1e-10); // 0.02 + 0.001 * 5
-        assert!((instruments[1].forward - 0.030).abs() < 1e-10); // 0.02 + 0.001 * 10
+        assert!((instruments[1].forward - 0.030).abs() < 1e-10); // 0.02 + 0.001
+                                                                 // * 10
     }
 
     // =========================================================================
@@ -1118,8 +1353,20 @@ mod tests {
         let expiry = NaiveDate::from_ymd_opt(2027, 1, 25).unwrap();
 
         let quotes = vec![
-            VolQuote::new("TEST-1", expiry, Tenor::years(5.0), VolStrike::Absolute(0.03), 0.20),
-            VolQuote::new("TEST-2", expiry, Tenor::years(5.0), VolStrike::Absolute(0.035), 0.22),
+            VolQuote::new(
+                "TEST-1",
+                expiry,
+                Tenor::years(5.0),
+                VolStrike::Absolute(0.03),
+                0.20,
+            ),
+            VolQuote::new(
+                "TEST-2",
+                expiry,
+                Tenor::years(5.0),
+                VolStrike::Absolute(0.035),
+                0.22,
+            ),
         ];
 
         let qs = VolQuoteSet::new(Currency::Usd, UnderlyingIndex::Sofr, as_of).with_quotes(quotes);
@@ -1132,7 +1379,8 @@ mod tests {
         assert_eq!(stats.total_quotes, 2);
         assert_eq!(stats.min_quotes_per_slice, 2);
         assert_eq!(stats.max_quotes_per_slice, 2);
-        assert!(!stats.meets_minimum_requirements()); // only 1 expiry and 1 tenor
+        assert!(!stats.meets_minimum_requirements()); // only 1 expiry and 1
+                                                      // tenor
     }
 
     #[test]
@@ -1143,15 +1391,51 @@ mod tests {
 
         let quotes = vec![
             // expiry1, tenor 5Y
-            VolQuote::new("1", expiry1, Tenor::years(5.0), VolStrike::Absolute(0.03), 0.20),
-            VolQuote::new("2", expiry1, Tenor::years(5.0), VolStrike::Absolute(0.035), 0.22),
+            VolQuote::new(
+                "1",
+                expiry1,
+                Tenor::years(5.0),
+                VolStrike::Absolute(0.03),
+                0.20,
+            ),
+            VolQuote::new(
+                "2",
+                expiry1,
+                Tenor::years(5.0),
+                VolStrike::Absolute(0.035),
+                0.22,
+            ),
             // expiry1, tenor 10Y
-            VolQuote::new("3", expiry1, Tenor::years(10.0), VolStrike::Absolute(0.03), 0.18),
+            VolQuote::new(
+                "3",
+                expiry1,
+                Tenor::years(10.0),
+                VolStrike::Absolute(0.03),
+                0.18,
+            ),
             // expiry2, tenor 5Y
-            VolQuote::new("4", expiry2, Tenor::years(5.0), VolStrike::Absolute(0.03), 0.19),
+            VolQuote::new(
+                "4",
+                expiry2,
+                Tenor::years(5.0),
+                VolStrike::Absolute(0.03),
+                0.19,
+            ),
             // expiry2, tenor 10Y
-            VolQuote::new("5", expiry2, Tenor::years(10.0), VolStrike::Absolute(0.03), 0.17),
-            VolQuote::new("6", expiry2, Tenor::years(10.0), VolStrike::Absolute(0.04), 0.18),
+            VolQuote::new(
+                "5",
+                expiry2,
+                Tenor::years(10.0),
+                VolStrike::Absolute(0.03),
+                0.17,
+            ),
+            VolQuote::new(
+                "6",
+                expiry2,
+                Tenor::years(10.0),
+                VolStrike::Absolute(0.04),
+                0.18,
+            ),
         ];
 
         let qs = VolQuoteSet::new(Currency::Usd, UnderlyingIndex::Sofr, as_of).with_quotes(quotes);

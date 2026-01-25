@@ -28,7 +28,7 @@ use super::{
     breeden_litzenberger::BreedenLitzenberger,
     cache::{SharedVolCubeCache, VolCubeKey},
     config::VolCubeConfig,
-    cube::{VolCube, VolatilityCube},
+    cube::VolCube,
     error::{
         ArbitrageViolation, BoundaryViolation, CalibrationDiagnostics, ConvergenceStatus,
         SabrParameter, SliceDiagnostics, VolCubeError,
@@ -56,7 +56,7 @@ pub struct VolCubeBuilder<T: Float> {
     strike_bounds: Option<(T, T)>,
 }
 
-impl<T: Float> Default for VolCubeBuilder<T> {
+impl<T: Float + Send + Sync> Default for VolCubeBuilder<T> {
     fn default() -> Self { Self::new() }
 }
 
@@ -199,7 +199,9 @@ impl<T: Float + Send + Sync> VolCubeBuilder<T> {
     /// # Errors
     ///
     /// `build()`と同じエラーを返す。
-    pub fn build_with_diagnostics(self) -> Result<(VolCube<T>, CalibrationDiagnostics), VolCubeError> {
+    pub fn build_with_diagnostics(
+        self,
+    ) -> Result<(VolCube<T>, CalibrationDiagnostics), VolCubeError> {
         // 設定の検証
         self.config
             .validate()
@@ -269,7 +271,8 @@ impl<T: Float + Send + Sync> VolCubeBuilder<T> {
                             source_instruments.push(inst.instrument_id.clone());
                         }
                         // SABRカリブレーション
-                        let p = self.calibrate_cell(instruments, *expiry, *tenor, &mut diagnostics)?;
+                        let p =
+                            self.calibrate_cell(instruments, *expiry, *tenor, &mut diagnostics)?;
                         // Forward平均を計算
                         let avg_forward = instruments
                             .iter()
@@ -492,7 +495,13 @@ impl<T: Float + Send + Sync> VolCubeBuilder<T> {
             let market_vol = inst.implied_vol.to_f64().unwrap_or(0.2);
 
             let model_vol = SABRCalibrator::implied_vol(
-                forward_f64, strike_f64, expiry_f64, alpha_f64, beta_f64, rho_f64, nu_f64,
+                forward_f64,
+                strike_f64,
+                expiry_f64,
+                alpha_f64,
+                beta_f64,
+                rho_f64,
+                nu_f64,
             );
 
             let diff = model_vol - market_vol;
@@ -557,12 +566,7 @@ impl<T: Float + Send + Sync> VolCubeBuilder<T> {
 
         // Nu bounds: (0.001, 2.0)
         if nu <= 0.001 || nu >= 2.0 {
-            slice.add_boundary_violation(BoundaryViolation::new(
-                SabrParameter::Nu,
-                nu,
-                0.001,
-                2.0,
-            ));
+            slice.add_boundary_violation(BoundaryViolation::new(SabrParameter::Nu, nu, 0.001, 2.0));
         } else if nu < 0.05 || nu > 1.8 {
             // Near boundary
             let violation = BoundaryViolation::new(SabrParameter::Nu, nu, 0.001, 2.0);
@@ -591,28 +595,31 @@ impl<T: Float + Send + Sync> VolCubeBuilder<T> {
         let num_points = 20usize;
 
         let step = (strike_range.1 - strike_range.0 - delta_k * 2.0) / (num_points - 1) as f64;
-        let rate = 0.02_f64; // 仮の無リスク金利
+        let rate = 0.02; // 仮の無リスク金利
+
+        // Convert to T for BreedenLitzenberger call
+        let forward_t = T::from(forward_f64).unwrap_or(T::from(0.03).unwrap());
+        let expiry_t = T::from(expiry_f64).unwrap_or(T::one());
+        let tenor_t = T::from(tenor_f64).unwrap_or(T::from(5.0).unwrap());
+        let rate_t = T::from(rate).unwrap();
+        let delta_k_t = T::from(delta_k).unwrap();
 
         for i in 0..num_points {
             let strike_f64 = strike_range.0 + delta_k + (i as f64) * step;
+            let strike_t = T::from(strike_f64).unwrap();
 
             // Breeden-Litzenbergerで確率密度を計算
             match BreedenLitzenberger::probability_density(
-                cube,
-                forward_f64,
-                expiry_f64,
-                tenor_f64,
-                strike_f64,
-                rate,
-                delta_k,
+                cube, forward_t, expiry_t, tenor_t, strike_t, rate_t, delta_k_t,
             ) {
                 Ok(density) => {
                     // 負の密度はarbitrage違反
-                    if density < -1e-10 {
-                        slice_diag
-                            .add_arbitrage_violation(ArbitrageViolation::negative_density(
-                                strike_f64, density,
-                            ));
+                    let density_f64 = density.to_f64().unwrap_or(0.0);
+                    if density_f64 < -1e-10 {
+                        slice_diag.add_arbitrage_violation(ArbitrageViolation::negative_density(
+                            strike_f64,
+                            density_f64,
+                        ));
                     }
                 }
                 Err(_) => {
@@ -1118,8 +1125,8 @@ mod tests {
         // Rho should be in valid range
         assert!(rho > -1.0 && rho < 1.0, "rho should be in (-1, 1)");
 
-        // If rho is near boundary (>0.9), there should be a warning or boundary violation
-        // The boundary violation detection uses 0.9 as threshold
+        // If rho is near boundary (>0.9), there should be a warning or boundary
+        // violation The boundary violation detection uses 0.9 as threshold
         if rho.abs() > 0.9 {
             assert!(
                 slice.has_warnings()
@@ -1238,13 +1245,19 @@ mod tests {
         let violation = ArbitrageViolation::negative_density(0.03, -0.001);
 
         assert_eq!(violation.strike, 0.03);
-        assert_eq!(violation.violation_type, ArbitrageViolationType::NegativeDensity);
+        assert_eq!(
+            violation.violation_type,
+            ArbitrageViolationType::NegativeDensity
+        );
         assert!(violation.density_value.is_some());
         assert!(violation.message.contains("負の確率密度"));
 
         // Test butterfly spread violation
         let butterfly = ArbitrageViolation::negative_butterfly(0.04);
-        assert_eq!(butterfly.violation_type, ArbitrageViolationType::NegativeButterflySpread);
+        assert_eq!(
+            butterfly.violation_type,
+            ArbitrageViolationType::NegativeButterflySpread
+        );
     }
 
     #[test]

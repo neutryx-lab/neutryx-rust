@@ -6,7 +6,8 @@
 //! ## Supported Instruments
 //!
 //! - **FX Swaps** (short-term: ON to 1Y): Used for constructing the short end
-//! - **XCCY Basis Swaps** (long-term: 2Y to 30Y): Used for constructing the long end
+//! - **XCCY Basis Swaps** (long-term: 2Y to 30Y): Used for constructing the
+//!   long end
 //!
 //! ## Example
 //!
@@ -118,20 +119,14 @@ impl<T: Float + Send + Sync> FxForwardCurveBuilder<T> {
 
     /// Sets the domestic (quote currency) discount curve.
     #[must_use]
-    pub fn with_domestic_curve(
-        mut self,
-        curve: Arc<dyn YieldCurve<T> + Send + Sync>,
-    ) -> Self {
+    pub fn with_domestic_curve(mut self, curve: Arc<dyn YieldCurve<T> + Send + Sync>) -> Self {
         self.domestic_curve = Some(curve);
         self
     }
 
     /// Sets the foreign (base currency) discount curve.
     #[must_use]
-    pub fn with_foreign_curve(
-        mut self,
-        curve: Arc<dyn YieldCurve<T> + Send + Sync>,
-    ) -> Self {
+    pub fn with_foreign_curve(mut self, curve: Arc<dyn YieldCurve<T> + Send + Sync>) -> Self {
         self.foreign_curve = Some(curve);
         self
     }
@@ -145,8 +140,8 @@ impl<T: Float + Send + Sync> FxForwardCurveBuilder<T> {
         for swap in swaps {
             // Calculate tenor in years (approximate using 365.25 days/year)
             let days = swap.far_date - swap.near_date;
-            let tenor = T::from(days).unwrap_or_else(T::zero)
-                / T::from(365.25).unwrap_or_else(T::one);
+            let tenor =
+                T::from(days).unwrap_or_else(T::zero) / T::from(365.25).unwrap_or_else(T::one);
             let forward_points = T::from(swap.swap_points.as_decimal()).unwrap_or_else(T::zero);
 
             self.fx_swaps.push(FxSwapData {
@@ -206,9 +201,7 @@ impl<T: Float + Send + Sync> FxForwardCurveBuilder<T> {
     /// - Bootstrap fails
     pub fn build(self) -> Result<CalibratedFxCurve<T>, FxCurveError> {
         // Validate required inputs
-        let spot_rate = self
-            .spot_rate
-            .ok_or(FxCurveError::MissingSpotRate)?;
+        let spot_rate = self.spot_rate.ok_or(FxCurveError::MissingSpotRate)?;
 
         let domestic_curve = self
             .domestic_curve
@@ -362,7 +355,8 @@ impl<T: Float + Send + Sync> FxForwardCurveBuilder<T> {
         Ok(fp)
     }
 
-    /// Blends forward points in the transition region between short and long-term data.
+    /// Blends forward points in the transition region between short and
+    /// long-term data.
     fn blend_transition_region(
         &self,
         pillar_times: &mut Vec<T>,
@@ -413,10 +407,10 @@ impl<T: Float + Send + Sync> FxForwardCurveBuilder<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::market::curves::FlatCurve;
-    use crate::market::fx_calibration::FxCurve;
     use infra_master::Currency;
+
+    use super::*;
+    use crate::market::{curves::FlatCurve, fx_calibration::FxCurve};
 
     fn make_test_curves() -> (
         Arc<dyn YieldCurve<f64> + Send + Sync>,

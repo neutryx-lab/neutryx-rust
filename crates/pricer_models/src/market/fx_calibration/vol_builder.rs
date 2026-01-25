@@ -14,8 +14,7 @@
 //!     .build()?;
 //! ```
 
-use std::collections::BTreeMap;
-use std::sync::Arc;
+use std::{collections::BTreeMap, sync::Arc};
 
 use chrono::NaiveDate;
 use infra_master::trade::instrument_def::CurrencyPair;
@@ -23,9 +22,11 @@ use num_traits::Float;
 use pricer_core::math::numeric::from_f64;
 use thiserror::Error;
 
-use super::config::FxVolSurfaceConfig;
-use super::curve::FxCurve;
-use super::surface::{CalibratedFxVolSurface, CalibratedSmile, SabrParameters, VolSurfaceError};
+use super::{
+    config::FxVolSurfaceConfig,
+    curve::FxCurve,
+    surface::{CalibratedFxVolSurface, CalibratedSmile, SabrParameters, VolSurfaceError},
+};
 
 // ============================================================================
 // CalibrationError
@@ -153,7 +154,10 @@ impl CalibrationDiagnostics {
     /// Returns the worst residual across all expiries.
     #[must_use]
     pub fn worst_residual(&self) -> Option<f64> {
-        self.by_expiry.iter().map(|d| d.residual).max_by(|a, b| a.partial_cmp(b).unwrap())
+        self.by_expiry
+            .iter()
+            .map(|d| d.residual)
+            .max_by(|a, b| a.partial_cmp(b).unwrap())
     }
 
     /// Returns whether all expiries converged.
@@ -201,7 +205,12 @@ impl<T: Float> VolQuote<T> {
     /// Creates an ATM quote.
     #[must_use]
     pub fn atm(expiry: NaiveDate, vol: T) -> Self {
-        Self { expiry, quote_type: VolQuoteType::Atm, value: vol, delta: None }
+        Self {
+            expiry,
+            quote_type: VolQuoteType::Atm,
+            value: vol,
+            delta: None,
+        }
     }
 
     /// Creates a 25-delta butterfly quote.
@@ -349,7 +358,8 @@ impl<T: Float + Send + Sync> FxVolSurfaceBuilder<T> {
     /// Adds a 25-delta risk reversal quote.
     #[must_use]
     pub fn add_risk_reversal_25d_quote(mut self, expiry: NaiveDate, spread: T) -> Self {
-        self.quotes.push(VolQuote::risk_reversal_25d(expiry, spread));
+        self.quotes
+            .push(VolQuote::risk_reversal_25d(expiry, spread));
         self
     }
 
@@ -365,9 +375,16 @@ impl<T: Float + Send + Sync> FxVolSurfaceBuilder<T> {
     /// # Errors
     ///
     /// Returns error if required inputs are missing or calibration fails.
-    pub fn build(self) -> Result<(CalibratedFxVolSurface<T>, CalibrationDiagnostics), CalibrationError> {
-        let reference_date = self.reference_date.ok_or(CalibrationError::MissingReferenceDate)?;
-        let fx_curve = self.fx_curve.clone().ok_or(CalibrationError::MissingFxCurve)?;
+    pub fn build(
+        self,
+    ) -> Result<(CalibratedFxVolSurface<T>, CalibrationDiagnostics), CalibrationError> {
+        let reference_date = self
+            .reference_date
+            .ok_or(CalibrationError::MissingReferenceDate)?;
+        let fx_curve = self
+            .fx_curve
+            .clone()
+            .ok_or(CalibrationError::MissingFxCurve)?;
 
         if self.quotes.is_empty() {
             return Err(CalibrationError::NoInstruments);
@@ -381,12 +398,8 @@ impl<T: Float + Send + Sync> FxVolSurfaceBuilder<T> {
         let mut diagnostics = CalibrationDiagnostics::new();
 
         for (expiry, quotes) in quotes_by_expiry {
-            let (smile, diag) = self.calibrate_expiry(
-                expiry,
-                &quotes,
-                reference_date,
-                &fx_curve,
-            )?;
+            let (smile, diag) =
+                self.calibrate_expiry(expiry, &quotes, reference_date, &fx_curve)?;
             smiles.insert(expiry, smile);
             diagnostics.add_expiry(diag);
         }
@@ -483,8 +496,12 @@ impl<T: Float + Send + Sync> FxVolSurfaceBuilder<T> {
         let beta = self.sabr_beta.unwrap_or(from_f64(0.5));
 
         // Find BF and RR quotes
-        let bf_25d = quotes.iter().find(|q| q.quote_type == VolQuoteType::Butterfly25D);
-        let rr_25d = quotes.iter().find(|q| q.quote_type == VolQuoteType::RiskReversal25D);
+        let bf_25d = quotes
+            .iter()
+            .find(|q| q.quote_type == VolQuoteType::Butterfly25D);
+        let rr_25d = quotes
+            .iter()
+            .find(|q| q.quote_type == VolQuoteType::RiskReversal25D);
 
         // Initial SABR parameters
         // alpha = ATM vol / F^(1-beta)
@@ -509,9 +526,7 @@ impl<T: Float + Send + Sync> FxVolSurfaceBuilder<T> {
             (from_f64::<T>(-0.2), from_f64::<T>(0.4))
         };
 
-        let sabr_params = SabrParameters::new(
-            alpha_init, beta, rho, nu, forward, expiry_time,
-        );
+        let sabr_params = SabrParameters::new(alpha_init, beta, rho, nu, forward, expiry_time);
 
         // For now, just use initial estimates (a full implementation would iterate)
         let smile = CalibratedSmile::sabr(expiry, expiry_time, atm_vol, forward, sabr_params);
@@ -523,7 +538,8 @@ impl<T: Float + Send + Sync> FxVolSurfaceBuilder<T> {
                 VolQuoteType::Atm => atm_vol,
                 _ => atm_vol, // Simplified; a full impl would compute proper model values
             };
-            let error = (model_vol.to_f64().unwrap_or(0.0) - quote.value.to_f64().unwrap_or(0.0)).abs();
+            let error =
+                (model_vol.to_f64().unwrap_or(0.0) - quote.value.to_f64().unwrap_or(0.0)).abs();
             errors.push(error);
         }
 
@@ -547,10 +563,10 @@ impl<T: Float + Send + Sync> FxVolSurfaceBuilder<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::market::curves::FlatCurve;
-    use crate::market::fx_calibration::curve::SimpleFxCurve;
     use infra_master::Currency;
+
+    use super::*;
+    use crate::market::{curves::FlatCurve, fx_calibration::curve::SimpleFxCurve};
 
     fn make_test_fx_curve() -> Arc<dyn FxCurve<f64> + Send + Sync> {
         let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
@@ -612,7 +628,10 @@ mod tests {
             .add_atm_quote(NaiveDate::from_ymd_opt(2024, 6, 1).unwrap(), 0.10)
             .build();
 
-        assert!(matches!(result, Err(CalibrationError::MissingReferenceDate)));
+        assert!(matches!(
+            result,
+            Err(CalibrationError::MissingReferenceDate)
+        ));
     }
 
     #[test]

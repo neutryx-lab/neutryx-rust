@@ -1,12 +1,12 @@
 //! Calibrated FX Volatility Surface implementation.
 //!
 //! This module provides:
-//! - [`CalibratedFxVolSurface`]: Calibrated FX vol surface with smile interpolation
+//! - [`CalibratedFxVolSurface`]: Calibrated FX vol surface with smile
+//!   interpolation
 //! - [`CalibratedSmile`]: Per-expiry calibrated smile parameters
 //! - [`VolSmile`]: Extracted smile data structure
 
-use std::collections::BTreeMap;
-use std::sync::Arc;
+use std::{collections::BTreeMap, sync::Arc};
 
 use chrono::NaiveDate;
 use infra_master::trade::instrument_def::CurrencyPair;
@@ -14,11 +14,8 @@ use num_traits::Float;
 use pricer_core::math::numeric::from_f64;
 use thiserror::Error;
 
-use super::config::FxVolSurfaceConfig;
-use super::curve::FxCurve;
-use super::types::Strike;
-use crate::market::surfaces::VolatilitySurface;
-use crate::market::volcube::InterpolationMethod;
+use super::{config::FxVolSurfaceConfig, curve::FxCurve, types::Strike};
+use crate::market::{surfaces::VolatilitySurface, volcube::InterpolationMethod};
 
 // ============================================================================
 // VolSurfaceError
@@ -147,10 +144,18 @@ impl<T: Float> SabrParameters<T> {
     /// Creates new SABR parameters.
     #[must_use]
     pub fn new(alpha: T, beta: T, rho: T, nu: T, forward: T, expiry: T) -> Self {
-        Self { alpha, beta, rho, nu, forward, expiry }
+        Self {
+            alpha,
+            beta,
+            rho,
+            nu,
+            forward,
+            expiry,
+        }
     }
 
-    /// Calculates implied volatility for a given strike using Hagan approximation.
+    /// Calculates implied volatility for a given strike using Hagan
+    /// approximation.
     ///
     /// This is the standard SABR approximation formula by Hagan et al.
     pub fn implied_vol(&self, strike: T) -> T {
@@ -191,7 +196,8 @@ impl<T: Float> SabrParameters<T> {
         // Denominator
         let denom_factor = one - beta;
         let denom = fk
-            * (one + denom_factor.powi(2) * log_fk_sq / twenty_four
+            * (one
+                + denom_factor.powi(2) * log_fk_sq / twenty_four
                 + denom_factor.powi(4) * log_fk_sq * log_fk_sq / from_f64::<T>(1920.0));
 
         // Numerator correction
@@ -298,9 +304,7 @@ impl<T: Float> CalibratedSmile<T> {
     /// Delta is expressed as a value in (0, 1) where 0.5 is ATM.
     pub fn vol_at_delta(&self, delta: T) -> Result<T, VolSurfaceError> {
         if delta <= T::zero() || delta >= T::one() {
-            return Err(VolSurfaceError::invalid_strike(
-                "Delta must be in (0, 1)",
-            ));
+            return Err(VolSurfaceError::invalid_strike("Delta must be in (0, 1)"));
         }
 
         // For flat smile, return ATM vol
@@ -361,7 +365,11 @@ fn approximate_norm_inv(p: f64) -> f64 {
 
     let result = t - (c0 + c1 * t + c2 * t * t) / (1.0 + d1 * t + d2 * t * t + d3 * t * t * t);
 
-    if p < 0.5 { -result } else { result }
+    if p < 0.5 {
+        -result
+    } else {
+        result
+    }
 }
 
 // ============================================================================
@@ -389,7 +397,13 @@ impl<T: Float> VolSmile<T> {
     /// Creates a new volatility smile.
     #[must_use]
     pub fn new(expiry: T, forward: T, deltas: Vec<T>, vols: Vec<T>, atm_vol: T) -> Self {
-        Self { expiry, forward, deltas, vols, atm_vol }
+        Self {
+            expiry,
+            forward,
+            deltas,
+            vols,
+            atm_vol,
+        }
     }
 
     /// Calculates the 25-delta risk reversal (RR).
@@ -424,8 +438,7 @@ impl<T: Float> VolSmile<T> {
         // Find bracketing deltas and interpolate
         for i in 0..self.deltas.len().saturating_sub(1) {
             if self.deltas[i] <= delta && delta <= self.deltas[i + 1] {
-                let t =
-                    (delta - self.deltas[i]) / (self.deltas[i + 1] - self.deltas[i]);
+                let t = (delta - self.deltas[i]) / (self.deltas[i + 1] - self.deltas[i]);
                 return Some(self.vols[i] + t * (self.vols[i + 1] - self.vols[i]));
             }
         }
@@ -564,9 +577,7 @@ impl<T: Float + Send + Sync> CalibratedFxVolSurface<T> {
             return Err(VolSurfaceError::invalid_expiry("Expiry must be positive"));
         }
         if delta <= T::zero() || delta >= T::one() {
-            return Err(VolSurfaceError::invalid_strike(
-                "Delta must be in (0, 1)",
-            ));
+            return Err(VolSurfaceError::invalid_strike("Delta must be in (0, 1)"));
         }
 
         let smile = self.get_interpolated_smile(expiry)?;
@@ -696,11 +707,11 @@ impl<T: Float + Send + Sync> VolatilitySurface<T> for CalibratedFxVolSurface<T> 
             });
         }
 
-        let smile = self
-            .get_interpolated_smile(expiry)
-            .map_err(|e| crate::market::error::MarketDataError::InterpolationFailed {
+        let smile = self.get_interpolated_smile(expiry).map_err(|e| {
+            crate::market::error::MarketDataError::InterpolationFailed {
                 reason: e.to_string(),
-            })?;
+            }
+        })?;
 
         smile.vol_at_strike(strike).map_err(|e| {
             crate::market::error::MarketDataError::InterpolationFailed {
@@ -758,10 +769,10 @@ impl<T: Float + Send + Sync> pricer_core::traits::priceable::Differentiable
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::market::curves::FlatCurve;
-    use crate::market::fx_calibration::curve::SimpleFxCurve;
     use infra_master::Currency;
+
+    use super::*;
+    use crate::market::{curves::FlatCurve, fx_calibration::curve::SimpleFxCurve};
 
     fn make_test_fx_curve() -> Arc<dyn FxCurve<f64> + Send + Sync> {
         let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
@@ -794,10 +805,7 @@ mod tests {
 
         // Add 1Y expiry
         let expiry_1y = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();
-        smiles.insert(
-            expiry_1y,
-            CalibratedSmile::flat(expiry_1y, 1.0, 0.12, 1.11),
-        );
+        smiles.insert(expiry_1y, CalibratedSmile::flat(expiry_1y, 1.0, 0.12, 1.11));
 
         CalibratedFxVolSurface::new(pair, ref_date, smiles, fx_curve, config)
     }
@@ -985,10 +993,7 @@ mod tests {
 
         let mut smiles = BTreeMap::new();
         let expiry = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();
-        smiles.insert(
-            expiry,
-            CalibratedSmile::flat(expiry, 1.0, 0.12, 1.11),
-        );
+        smiles.insert(expiry, CalibratedSmile::flat(expiry, 1.0, 0.12, 1.11));
 
         let surface = CalibratedFxVolSurface::new(pair, ref_date, smiles, fx_curve, config);
 

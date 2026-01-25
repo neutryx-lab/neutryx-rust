@@ -64,12 +64,12 @@ pub use error::{
     ArbitrageViolation, ArbitrageViolationType, BoundaryViolation, CalibrationDiagnostics,
     ConvergenceStatus, SabrParameter, SliceDiagnostics, VolCubeError,
 };
-pub use interpolator::{
-    FlatInterpolator, Interpolator, InterpolationError, LinearInterpolator, VolCubeInterpolator,
-};
 pub use graph::{
     VolCubeEdgeType, VolCubeGraphData, VolCubeGraphEdge, VolCubeGraphNode, VolCubeNodeType,
     VolCubeSensitivityInfo,
+};
+pub use interpolator::{
+    FlatInterpolator, InterpolationError, Interpolator, LinearInterpolator, VolCubeInterpolator,
 };
 pub use quote::{
     vol_quote_to_instrument, Currency, GridStats, QuoteType, Tenor, UnderlyingIndex, VolQuote,

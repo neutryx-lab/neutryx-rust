@@ -1,17 +1,19 @@
 //! Lazy FX Volatility Surface with deferred calibration.
 //!
 //! This module provides a lazy wrapper around [`CalibratedFxVolSurface`] that
-//! defers calibration until the first volatility query, with thread-safe caching.
+//! defers calibration until the first volatility query, with thread-safe
+//! caching.
 
 use std::sync::{Arc, RwLock};
 
 use num_traits::Float;
 
+use super::{
+    config::FxVolSurfaceConfig,
+    surface::{CalibratedFxVolSurface, VolSmile, VolSurfaceError},
+    vol_builder::{CalibrationDiagnostics, CalibrationError, FxVolSurfaceBuilder},
+};
 use crate::market::VolatilitySurface;
-
-use super::config::FxVolSurfaceConfig;
-use super::surface::{CalibratedFxVolSurface, VolSmile, VolSurfaceError};
-use super::vol_builder::{CalibrationDiagnostics, CalibrationError, FxVolSurfaceBuilder};
 
 /// Statistics for cache usage.
 #[derive(Debug, Clone, Default)]
@@ -26,9 +28,7 @@ pub struct CacheStats {
 
 impl CacheStats {
     /// Creates new empty cache statistics.
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Returns the hit rate (0.0 to 1.0).
     pub fn hit_rate(&self) -> f64 {
@@ -245,10 +245,7 @@ impl<T: Float + Send + Sync + 'static> LazyFxVolSurface<T> {
     }
 
     /// Ensures calibration has been performed.
-    fn ensure_calibrated(
-        &self,
-        inner: &mut LazyInner<T>,
-    ) -> Result<(), CalibrationError> {
+    fn ensure_calibrated(&self, inner: &mut LazyInner<T>) -> Result<(), CalibrationError> {
         match &inner.state {
             LazyState::Calibrated { .. } => Ok(()),
             LazyState::Failed(e) => Err(e.clone()),
@@ -263,7 +260,10 @@ impl<T: Float + Send + Sync + 'static> LazyFxVolSurface<T> {
                     inner.stats.misses += 1;
                     match builder.build() {
                         Ok((surface, diagnostics)) => {
-                            inner.state = LazyState::Calibrated { surface, diagnostics };
+                            inner.state = LazyState::Calibrated {
+                                surface,
+                                diagnostics,
+                            };
                             Ok(())
                         }
                         Err(e) => {
@@ -293,14 +293,16 @@ impl<T: Float + Send + Sync + 'static> Clone for LazyFxVolSurface<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::market::curves::FlatCurve;
-    use crate::market::fx_calibration::curve::SimpleFxCurve;
-    use crate::market::fx_calibration::FxCurve;
-    use chrono::NaiveDate;
-    use infra_master::trade::instrument_def::CurrencyPair;
-    use infra_master::Currency;
     use std::sync::Arc;
+
+    use chrono::NaiveDate;
+    use infra_master::{trade::instrument_def::CurrencyPair, Currency};
+
+    use super::*;
+    use crate::market::{
+        curves::FlatCurve,
+        fx_calibration::{curve::SimpleFxCurve, FxCurve},
+    };
 
     fn make_test_builder() -> FxVolSurfaceBuilder<f64> {
         let curve = make_test_fx_curve();

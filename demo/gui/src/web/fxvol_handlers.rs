@@ -997,7 +997,7 @@ fn black_call_price(strike: f64, forward: f64, expiry: f64, vol: f64, rate: f64)
 // =============================================================================
 
 use super::fxvol_types::{
-    FxCalibrationDiagnostics, FxCalibrateRequest, FxCalibrateResponse, FxSurfaceQuery,
+    FxCalibrateRequest, FxCalibrateResponse, FxCalibrationDiagnostics, FxSurfaceQuery,
     FxSurfaceResponse, SabrParameters, SurfacePoint,
 };
 
@@ -1007,7 +1007,8 @@ use super::fxvol_types::{
 ///
 /// # Requirements Coverage
 ///
-/// - Requirement 12.3: ボラティリティサーフェスカリブレーションAPIエンドポイント
+/// - Requirement 12.3:
+///   ボラティリティサーフェスカリブレーションAPIエンドポイント
 /// - Requirement 12.5: カリブレーション診断表示
 pub async fn calibrate_surface(
     State(state): State<Arc<AppState>>,
@@ -1246,7 +1247,15 @@ pub async fn get_surface(
 }
 
 /// Simplified SABR volatility formula.
-fn sabr_vol(forward: f64, strike: f64, expiry: f64, alpha: f64, beta: f64, rho: f64, nu: f64) -> f64 {
+fn sabr_vol(
+    forward: f64,
+    strike: f64,
+    expiry: f64,
+    alpha: f64,
+    beta: f64,
+    rho: f64,
+    nu: f64,
+) -> f64 {
     if (forward - strike).abs() < 1e-10 {
         // ATM approximation
         let fk_beta = forward.powf(1.0 - beta);

@@ -75,9 +75,7 @@ impl<T: Float> VolSurfaceSensitivity<T> {
 }
 
 impl<T: Float + Default> Default for VolSurfaceSensitivity<T> {
-    fn default() -> Self {
-        Self::zero()
-    }
+    fn default() -> Self { Self::zero() }
 }
 
 /// Quote sensitivities at a specific expiry.
@@ -161,9 +159,7 @@ pub mod smooth {
     ///
     /// Approximates min(a, b) = -max(-a, -b)
     #[inline]
-    pub fn smooth_min<T: Float>(a: T, b: T, epsilon: T) -> T {
-        -smooth_max(-a, -b, epsilon)
-    }
+    pub fn smooth_min<T: Float>(a: T, b: T, epsilon: T) -> T { -smooth_max(-a, -b, epsilon) }
 
     /// Smooth indicator function (sigmoid).
     ///
@@ -180,9 +176,7 @@ pub mod smooth {
     ///
     /// Approximates |x| using sqrt(x² + ε²)
     #[inline]
-    pub fn smooth_abs<T: Float>(x: T, epsilon: T) -> T {
-        (x * x + epsilon * epsilon).sqrt()
-    }
+    pub fn smooth_abs<T: Float>(x: T, epsilon: T) -> T { (x * x + epsilon * epsilon).sqrt() }
 
     /// Smooth clamp function.
     ///
@@ -335,9 +329,7 @@ impl ComputationGraph {
 }
 
 impl Default for ComputationGraph {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 #[cfg(test)]

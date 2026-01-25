@@ -657,7 +657,8 @@ impl Default for FxDeltaTypesResponse {
 ///
 /// # Requirements Coverage
 ///
-/// - Requirement 12.3: ボラティリティサーフェスカリブレーションAPIエンドポイント
+/// - Requirement 12.3:
+///   ボラティリティサーフェスカリブレーションAPIエンドポイント
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FxCalibrateRequest {
@@ -681,9 +682,7 @@ pub struct FxCalibrateRequest {
     pub sabr_beta: f64,
 }
 
-fn default_sabr_beta() -> f64 {
-    0.5
-}
+fn default_sabr_beta() -> f64 { 0.5 }
 
 /// Calibration model type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -771,9 +770,7 @@ pub struct FxSurfaceQuery {
     pub expiry_points: Option<usize>,
 }
 
-fn default_surface_delta_points() -> usize {
-    11
-}
+fn default_surface_delta_points() -> usize { 11 }
 
 /// Single point on the 3D volatility surface.
 #[derive(Debug, Clone, PartialEq, Serialize)]

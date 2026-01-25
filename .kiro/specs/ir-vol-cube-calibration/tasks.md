@@ -46,7 +46,7 @@
   - VolCubeConfigに補間設定フィールドを追加
   - _Requirements: 3.4, 3.5_
 
-- [ ] 4. SABRカリブレーション機能拡張
+- [x] 4. SABRカリブレーション機能拡張
 - [x] 4.1 既存SabrCalibratorのβ固定モードを確認・拡張する
   - β=0、0.5、1.0等の固定値設定をサポート
   - 既存実装の再利用を優先し、不足機能のみ追加
@@ -58,7 +58,7 @@
   - パラメータ境界違反の詳細情報を含める
   - _Requirements: 4.4, 4.5, 4.7_
 
-- [ ] 4.3 Breeden-Litzenbergerによるarbitrage-free検証を統合する
+- [x] 4.3 Breeden-Litzenbergerによるarbitrage-free検証を統合する
   - カリブレーション後にsmileのarbitrage条件を検証
   - 違反時は警告を発行（エラーではない）
   - 検証結果を診断データに含める

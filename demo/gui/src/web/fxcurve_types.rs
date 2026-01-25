@@ -6,7 +6,8 @@
 //! # API Endpoints Coverage
 //!
 //! - `POST /api/fxcurve/build` → `FxCurveBuildRequest`, `FxCurveBuildResponse`
-//! - `POST /api/fxcurve/market` → `FxMarketBuildRequest`, `FxMarketBuildResponse`
+//! - `POST /api/fxcurve/market` → `FxMarketBuildRequest`,
+//!   `FxMarketBuildResponse`
 //!
 //! # Requirements Coverage
 //!
@@ -38,9 +39,7 @@ pub struct FxSwapInput {
     pub scaling_factor: f64,
 }
 
-fn default_scaling_factor() -> f64 {
-    10000.0
-}
+fn default_scaling_factor() -> f64 { 10000.0 }
 
 /// XCCY basis swap input for long-tenor curve construction.
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -108,13 +107,9 @@ pub struct FxCurveBuildRequest {
     pub transition_end: f64,
 }
 
-fn default_transition_start() -> f64 {
-    1.0
-}
+fn default_transition_start() -> f64 { 1.0 }
 
-fn default_transition_end() -> f64 {
-    2.0
-}
+fn default_transition_end() -> f64 { 2.0 }
 
 /// Forward point data at a specific tenor.
 #[derive(Debug, Clone, PartialEq, Serialize)]

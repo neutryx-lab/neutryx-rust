@@ -384,15 +384,15 @@ mod tests {
     #[test]
     fn test_convert_bump_sizes() {
         let input = BumpSizesInput {
-            rate_bump_bp: 5.0,  // 5 bp
-            fx_bump_pct: 2.0,   // 2%
-            vol_bump_pct: 1.5,  // 1.5%
+            rate_bump_bp: 5.0, // 5 bp
+            fx_bump_pct: 2.0,  // 2%
+            vol_bump_pct: 1.5, // 1.5%
         };
         let bumps = convert_bump_sizes(&input);
         // Verify conversion: bp/% to decimal
         assert!((bumps.rate - 5.0 * 0.0001).abs() < 1e-10); // 5bp = 0.0005
-        assert!((bumps.spot - 2.0 * 0.01).abs() < 1e-10);   // 2% = 0.02
-        assert!((bumps.vol - 1.5 * 0.01).abs() < 1e-10);    // 1.5% = 0.015
+        assert!((bumps.spot - 2.0 * 0.01).abs() < 1e-10); // 2% = 0.02
+        assert!((bumps.vol - 1.5 * 0.01).abs() < 1e-10); // 1.5% = 0.015
     }
 
     #[test]
