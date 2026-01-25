@@ -23,5 +23,5 @@ target
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-# GUI build artifacts
-demo/gui/static/
+# GUI build artifacts (keep static files in git for Cloud Build)
+# demo/gui/static/
