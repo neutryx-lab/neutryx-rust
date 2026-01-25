@@ -102,41 +102,46 @@
   - _Requirements: 9.5_
   - **実装済み**: `fx_calibration/curve.rs` (CalibratedFxCurve, SimpleFxCurve)
 
-- [ ] 7. FXフォワードカーブビルダーの実装
-- [ ] 7.1 短期FXスワップからのフォワードポイントブートストラップを実装
+- [x] 7. FXフォワードカーブビルダーの実装
+- [x] 7.1 短期FXスワップからのフォワードポイントブートストラップを実装
   - FXスワップからフォワードポイントを抽出するロジック
   - ディスカウントカーブを使用した暗黙フォワードレート計算
   - 入力インストルメントのリプライシングエラー検証
   - _Requirements: 10.2, 10.7_
+  - **実装済み**: `fx_calibration/builder.rs` (FxForwardCurveBuilder with FxSwapData)
 
-- [ ] 7.2 XCCYベーシススワップからの長期フォワードポイントブートストラップを実装
+- [x] 7.2 XCCYベーシススワップからの長期フォワードポイントブートストラップを実装
   - `SequentialBootstrapper<T>`を再利用した解法
   - ベーシススプレッド適用ロジック
   - パーレートにリプライスするフォワードポイント求解
   - _Requirements: 10.2, 10.8_
+  - **実装済み**: `fx_calibration/builder.rs` (XccySwapData, bootstrap_xccy_forward_points)
 
-- [ ] 7.3 短期・長期テナーブレンディングとビルダーAPIを完成
+- [x] 7.3 短期・長期テナーブレンディングとビルダーAPIを完成
   - `FxForwardCurveBuilder<T>`メソッドチェーン（new → with_spot_rate → with_domestic_curve → with_foreign_curve → with_fx_swaps → with_xccy_basis_swaps → build）
   - 1Y-2Y遷移域でのスムーズなブレンディング
   - テナー重複時の優先順位設定（デフォルト: ≤1YはFXスワップ優先）
   - ディスカウントカーブ欠落エラー
   - _Requirements: 10.1, 10.3, 10.4, 10.5, 10.6_
+  - **実装済み**: `fx_calibration/builder.rs` (blend_transition_region, with_transition_region)
 
-- [ ] 8. カリブレーション済みFXボラティリティサーフェスの実装
-- [ ] 8.1 VolatilitySurfaceトレイトを実装してストライク空間でのボラティリティ取得を可能に
+- [x] 8. カリブレーション済みFXボラティリティサーフェスの実装
+- [x] 8.1 VolatilitySurfaceトレイトを実装してストライク空間でのボラティリティ取得を可能に
   - `CalibratedFxVolSurface<T>`構造体（通貨ペア、参照日、スマイルマップ、FXカーブ参照）
   - `VolatilitySurface`トレイト実装（vol(expiry, strike) -> T）
   - カリブレーション済みポイントでの正確な値返却
   - 補間ポイントでの設定済み補間器使用
   - _Requirements: 4.1, 4.2, 4.3_
+  - **実装済み**: `fx_calibration/surface.rs` (CalibratedFxVolSurface, VolatilitySurface trait impl)
 
-- [ ] 8.2 デルタ空間でのボラティリティクエリとスマイル抽出を実装
+- [x] 8.2 デルタ空間でのボラティリティクエリとスマイル抽出を実装
   - `vol_by_delta(expiry, delta) -> T`メソッド
   - デルタ-ストライク変換ロジック（FXカーブ使用）
   - `smile(expiry) -> VolSmile<T>`メソッド
   - 外挿境界外クエリのポリシー適用
   - ジェネリック`T: Float`でAAD互換性維持
   - _Requirements: 4.4, 4.5, 4.6, 4.7_
+  - **実装済み**: `fx_calibration/surface.rs` (vol_by_delta, smile, CalibratedSmile, VolSmile, SabrParameters)
 
 - [ ] 9. FXボラティリティサーフェスビルダーの実装
 - [ ] 9.1 SABRカリブレーション機能を満期ごとに実装

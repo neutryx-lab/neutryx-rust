@@ -9,6 +9,8 @@
 //! - [`CalibratedFxCurve`]: Calibrated FX curve with interpolated forward points
 //! - [`SimpleFxCurve`]: Simple FX curve using interest rate parity
 //! - [`FxForwardCurveBuilder`]: Builder for constructing FX forward curves
+//! - [`CalibratedFxVolSurface`]: Calibrated FX volatility surface
+//! - [`FxVolSurfaceBuilder`]: Builder for constructing FX volatility surfaces
 //! - [`FxVolSurfaceConfig`]: Configuration for FX vol surface calibration
 //! - [`FxCalibrationError`]: Error types for calibration operations
 //! - Newtypes: [`Strike`], [`Vol`], [`ForwardPoints`], [`ExpiryInterpolation`]
@@ -17,10 +19,19 @@ mod builder;
 mod config;
 mod curve;
 mod error;
+mod surface;
 mod types;
+mod vol_builder;
 
 pub use builder::{FxForwardCurveBuilder, FxSwapData, XccySwapData};
 pub use config::FxVolSurfaceConfig;
 pub use curve::{CalibratedFxCurve, ExtrapolationPolicy, FxCurve, FxCurveError, SimpleFxCurve};
 pub use error::FxCalibrationError;
+pub use surface::{
+    CalibratedFxVolSurface, CalibratedSmile, SabrParameters, VolSmile, VolSurfaceError,
+};
 pub use types::{ExpiryInterpolation, ForwardPoints, Strike, Vol};
+pub use vol_builder::{
+    CalibrationDiagnostics, CalibrationError, ExpiryDiagnostics, FxVolSurfaceBuilder, VolQuote,
+    VolQuoteType,
+};

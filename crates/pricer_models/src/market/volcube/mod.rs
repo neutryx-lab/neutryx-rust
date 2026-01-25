@@ -36,6 +36,7 @@ mod config;
 mod cube;
 mod error;
 pub mod graph;
+mod quote;
 mod sabr_surface;
 mod types;
 
@@ -61,6 +62,10 @@ pub use error::{CalibrationDiagnostics, VolCubeError};
 pub use graph::{
     VolCubeEdgeType, VolCubeGraphData, VolCubeGraphEdge, VolCubeGraphNode, VolCubeNodeType,
     VolCubeSensitivityInfo,
+};
+pub use quote::{
+    vol_quote_to_instrument, Currency, QuoteType, Strike, Tenor, UnderlyingIndex, VolQuote,
+    VolQuoteSet,
 };
 pub use sabr_surface::SabrParameterSurface;
 pub use types::{InstrumentId, SabrParams, VolInstrument};
