@@ -336,7 +336,8 @@ const INDICES_FILE: &str = "demo/data/input/indices.json";
 /// # Returns
 ///
 /// JSON object with all available indices.
-pub async fn get_indices() -> Result<Json<serde_json::Value>, (StatusCode, Json<MarketDataApiError>)> {
+pub async fn get_indices() -> Result<Json<serde_json::Value>, (StatusCode, Json<MarketDataApiError>)>
+{
     match std::fs::read_to_string(INDICES_FILE) {
         Ok(content) => match serde_json::from_str(&content) {
             Ok(data) => Ok(Json(data)),

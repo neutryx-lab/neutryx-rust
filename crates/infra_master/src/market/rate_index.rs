@@ -126,7 +126,15 @@ impl RateIndex {
     /// ```
     #[must_use]
     pub const fn all_codes() -> [&'static str; 7] {
-        ["SOFR", "TONAR", "ESTR", "EURIBOR3M", "EURIBOR6M", "SONIA", "SARON"]
+        [
+            "SOFR",
+            "TONAR",
+            "ESTR",
+            "EURIBOR3M",
+            "EURIBOR6M",
+            "SONIA",
+            "SARON",
+        ]
     }
 
     /// Returns the API code for this rate index (no spaces, suitable for JSON).

@@ -302,6 +302,15 @@ checkpoint/      → Memory management for checkpointing
 analytical/      → Closed-form solutions (geometric Asian, barrier options)
 greeks/          → Greeks calculation types (GreeksConfig, GreeksMode, GreeksResult<T>)
 pool/            → Thread-local buffer pool (ThreadLocalPool, PooledBuffer, PoolStats)
+tree/            → Tree-based pricing methods (Binomial/Trinomial)
+  ├── binomial.rs   → CRR binomial tree (BinomialTree, CrrParams)
+  ├── config.rs     → TreeConfig, TreeConfigBuilder, TreeType
+  └── method.rs     → TreeMethod high-level interface
+result/          → Unified pricing result types
+  └── mod.rs        → UnifiedPricingResult, UnifiedGreeks, PricingMetadata
+dispatcher/      → Pricing method dispatcher
+  └── mod.rs        → PricingMethodDispatcher, DispatcherConfig
+generic_pricer/  → Generic pricer API and configuration
 context.rs       → [l1l2-integration] 3-stage rocket: PricingContext, price_single_trade
 irs_greeks/      → IRS Greeks workflow (AAD vs Bump-and-Revalue, lazy evaluation, benchmarks)
 graph/           → Computation graph extraction (D3.js-compatible JSON for DAG visualisation)
@@ -660,5 +669,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-26_ — Added fx_calibration/ module (FX curve + vol surface calibration), expanded volcube/ (engine, cache, vega), new web handlers (irvol, fxvol, fxcurve, risk_engine)
+_Updated: 2026-01-26_ — Added tree/, result/, dispatcher/ modules to pricer_pricing (Tree-based pricing, unified result types, method dispatcher)
 _Document patterns, not file trees. New files following patterns should not require updates_

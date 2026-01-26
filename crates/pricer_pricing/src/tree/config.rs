@@ -46,9 +46,7 @@ impl TreeConfig {
     }
 
     /// Returns a builder for TreeConfig.
-    pub fn builder() -> TreeConfigBuilder {
-        TreeConfigBuilder::default()
-    }
+    pub fn builder() -> TreeConfigBuilder { TreeConfigBuilder::default() }
 
     /// Validates the configuration.
     ///
@@ -110,7 +108,8 @@ impl TreeConfigBuilder {
     ///
     /// # Errors
     ///
-    /// Returns `ConfigError` if required fields are missing or validation fails.
+    /// Returns `ConfigError` if required fields are missing or validation
+    /// fails.
     pub fn build(self) -> Result<TreeConfig, ConfigError> {
         let config = TreeConfig {
             num_steps: self.num_steps.unwrap_or(100),

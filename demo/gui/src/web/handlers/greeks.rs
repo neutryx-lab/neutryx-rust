@@ -17,19 +17,17 @@ use axum::{
 };
 use uuid::Uuid;
 
-use crate::web::AppState;
-
 use super::types::{
     parse_tenor_to_years, validate_bucket_dv01_request, validate_first_order_greeks_request,
     validate_greeks_compare_request, validate_second_order_greeks_request, BucketDv01Request,
     BucketDv01Response, BucketDv01Result, CachedCurve, DeltaResult, FirstOrderGreeksRequest,
-    FirstOrderGreeksResponse, GreekType, GreekValue, GreeksCalculationMode,
-    GreeksCompareRequest, GreeksCompareResponse, GreeksDiff, GreeksHeatmapRequest,
-    GreeksHeatmapResponse, GreeksMethodResult, GreeksTimeseriesRequest,
-    GreeksTimeseriesResponse, IrsBootstrapErrorResponse, OptionType, SecondOrderGreeksRequest,
-    SecondOrderGreeksResponse, TenorDiff, TimeseriesSeries, TimingComparison, TimingStats,
-    BUCKET_TENORS,
+    FirstOrderGreeksResponse, GreekType, GreekValue, GreeksCalculationMode, GreeksCompareRequest,
+    GreeksCompareResponse, GreeksDiff, GreeksHeatmapRequest, GreeksHeatmapResponse,
+    GreeksMethodResult, GreeksTimeseriesRequest, GreeksTimeseriesResponse,
+    IrsBootstrapErrorResponse, OptionType, SecondOrderGreeksRequest, SecondOrderGreeksResponse,
+    TenorDiff, TimeseriesSeries, TimingComparison, TimingStats, BUCKET_TENORS,
 };
+use crate::web::AppState;
 
 // =============================================================================
 // Helper Functions
@@ -54,9 +52,7 @@ fn norm_cdf(x: f64) -> f64 {
 }
 
 /// Standard normal probability density function (PDF).
-fn norm_pdf(x: f64) -> f64 {
-    (-0.5 * x * x).exp() / (2.0 * std::f64::consts::PI).sqrt()
-}
+fn norm_pdf(x: f64) -> f64 { (-0.5 * x * x).exp() / (2.0 * std::f64::consts::PI).sqrt() }
 
 /// Default tolerance for Greeks comparison (relative error percentage).
 const DEFAULT_TOLERANCE_PCT: f64 = 0.01; // 1%

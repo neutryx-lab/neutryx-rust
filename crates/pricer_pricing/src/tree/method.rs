@@ -2,8 +2,10 @@
 
 use std::time::Instant;
 
-use super::binomial::BinomialTree;
-use super::config::{TreeConfig, TreeType};
+use super::{
+    binomial::BinomialTree,
+    config::{TreeConfig, TreeType},
+};
 use crate::generic_pricer::PricingError;
 
 /// Greeks computed from tree-based pricing.
@@ -41,19 +43,13 @@ pub struct TreeMethod {
 
 impl TreeMethod {
     /// Creates a new TreeMethod with the given configuration.
-    pub fn new(config: TreeConfig) -> Self {
-        Self { config }
-    }
+    pub fn new(config: TreeConfig) -> Self { Self { config } }
 
     /// Creates a TreeMethod with default configuration.
-    pub fn with_defaults() -> Self {
-        Self::new(TreeConfig::default())
-    }
+    pub fn with_defaults() -> Self { Self::new(TreeConfig::default()) }
 
     /// Returns the configuration.
-    pub fn config(&self) -> &TreeConfig {
-        &self.config
-    }
+    pub fn config(&self) -> &TreeConfig { &self.config }
 
     /// Prices a vanilla option.
     ///
@@ -179,9 +175,7 @@ impl TreeMethod {
     /// Checks if this method supports the given parameters.
     ///
     /// Currently only vanilla options (call/put) are supported.
-    pub fn supports_vanilla(&self) -> bool {
-        true
-    }
+    pub fn supports_vanilla(&self) -> bool { true }
 }
 
 #[cfg(test)]
@@ -249,7 +243,9 @@ mod tests {
             .unwrap();
         let method = TreeMethod::new(config);
 
-        let result = method.price(100.0, 100.0, 1.0, 0.05, 0.2, true, false).unwrap();
+        let result = method
+            .price(100.0, 100.0, 1.0, 0.05, 0.2, true, false)
+            .unwrap();
         assert!(result.greeks.is_none());
     }
 
@@ -293,7 +289,9 @@ mod tests {
     #[test]
     fn test_tree_pricing_result_metadata() {
         let method = TreeMethod::with_defaults();
-        let result = method.price(100.0, 100.0, 1.0, 0.05, 0.2, true, false).unwrap();
+        let result = method
+            .price(100.0, 100.0, 1.0, 0.05, 0.2, true, false)
+            .unwrap();
 
         assert_eq!(result.num_steps, 100);
         assert_eq!(result.tree_type, TreeType::Binomial);

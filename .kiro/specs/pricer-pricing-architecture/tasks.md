@@ -173,14 +173,17 @@
 
 ### 10. Instrument Support
 
-- [ ] 10.1 VanillaOption → Dispatcher 統合
-  - `supports()` メソッドで互換性判定
-  - American → Tree 推奨（警告ログ）
+- [x] 10.1 VanillaOption → Dispatcher 統合
+  - `supports_exercise_style()` メソッドで互換性判定
+  - `recommended_method()` でAmerican → Tree 推奨
+  - `price_vanilla_option()` で VanillaOption を直接受け入れ
   - European → Discount/MC/Tree すべてサポート
   - _Requirements: 8.1, 8.2_
 
-- [ ] 10.2 Forward → Dispatcher 統合
-  - Discount 手法を優先使用
+- [x] 10.2 Forward → Dispatcher 統合
+  - `price_forward()` メソッドで Forward を直接受け入れ
+  - Discount 手法を優先使用（Forward は常に Analytical）
+  - Greeks: Delta = direction, Gamma = 0
   - _Requirements: 8.3_
 
 ---
@@ -220,13 +223,14 @@
 
 ### 13. ドキュメント
 
-- [ ] 13.1 モジュールドキュメント
+- [x] 13.1 モジュールドキュメント
   - `tree/mod.rs` にモジュールレベルドキュメント追加
-  - 使用例コード追加
+  - 包括的な使用例コード追加（European, American, Greeks, TreeMethod）
+  - 収束テーブルと理論セクション追加
   - _Requirements: 10.1_
 
-- [ ] 13.2 steering 更新
-  - `.kiro/steering/structure.md` に `tree/` モジュール追記
+- [x] 13.2 steering 更新
+  - `.kiro/steering/structure.md` に `tree/`, `result/`, `dispatcher/` モジュール追記
   - _Requirements: 10.1_
 
 ---

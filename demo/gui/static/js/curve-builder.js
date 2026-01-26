@@ -792,11 +792,11 @@ const curveBuilder = {
         const discountFactors = data.map(p => p.discountFactor);
         const forwardRates = data.map(p => ((p.forwardRate || 0) * 100));
 
-        // Create vertical line annotations for CB meetings
-        const annotations = {};
-        console.log('[CurveBuilder] CB Meetings for annotations:', cbMeetings);
-        cbMeetings.forEach((meeting, idx) => {
-            // Find the closest data point index and its label
+        // Collect CB meeting point indices for red circle markers
+        const cbMeetingIndices = new Set();
+        console.log('[CurveBuilder] CB Meetings:', cbMeetings);
+        cbMeetings.forEach((meeting) => {
+            // Find the closest data point index
             let closestIdx = 0;
             let minDiff = Infinity;
             data.forEach((d, i) => {
@@ -806,32 +806,16 @@ const curveBuilder = {
                     closestIdx = i;
                 }
             });
-
-            const xLabel = tenors[closestIdx];
-            annotations[`cbMeeting${idx}`] = {
-                type: 'line',
-                display: true,
-                scaleID: 'x',
-                value: xLabel,
-                borderColor: 'rgba(239, 68, 68, 0.9)',
-                borderWidth: 2,
-                label: {
-                    display: true,
-                    content: meeting.label.split('(')[0].trim(),
-                    position: 'start',
-                    backgroundColor: 'rgba(239, 68, 68, 0.9)',
-                    color: '#fff',
-                    font: { size: 8, weight: 'bold' },
-                    padding: 4,
-                    rotation: -90,
-                    yAdjust: -40
-                }
-            };
-            console.log(`[CurveBuilder] Added CB Meeting annotation at label "${xLabel}" (index ${closestIdx}):`, meeting.label);
+            cbMeetingIndices.add(closestIdx);
+            console.log(`[CurveBuilder] CB Meeting "${meeting.label}" mapped to index ${closestIdx} (tenor: ${tenors[closestIdx]})`);
         });
 
-        console.log('[CurveBuilder] Final annotations object:', annotations);
-        console.log('[CurveBuilder] Number of annotations:', Object.keys(annotations).length);
+        // Create point style arrays for CB meeting markers (red circles on meeting dates)
+        const pointRadiusArray = data.map((_, i) => cbMeetingIndices.has(i) ? 6 : 0);
+        const pointBackgroundColorRed = data.map((_, i) => cbMeetingIndices.has(i) ? 'rgba(239, 68, 68, 1)' : 'transparent');
+        const pointBorderColorRed = data.map((_, i) => cbMeetingIndices.has(i) ? 'rgba(239, 68, 68, 1)' : 'transparent');
+
+        console.log('[CurveBuilder] CB Meeting indices for red markers:', [...cbMeetingIndices]);
 
         this.chartShort = new Chart(ctx, {
             type: 'line',
@@ -845,7 +829,9 @@ const curveBuilder = {
                         backgroundColor: 'rgba(99, 102, 241, 0.1)',
                         fill: false,
                         tension: 0.1,
-                        pointRadius: 0,
+                        pointRadius: pointRadiusArray,
+                        pointBackgroundColor: pointBackgroundColorRed,
+                        pointBorderColor: pointBorderColorRed,
                         borderWidth: 2,
                         yAxisID: 'y',
                         hidden: true  // Default: show Forward Rates only
@@ -857,7 +843,9 @@ const curveBuilder = {
                         backgroundColor: 'rgba(16, 185, 129, 0.1)',
                         fill: false,
                         tension: 0.1,
-                        pointRadius: 0,
+                        pointRadius: pointRadiusArray,
+                        pointBackgroundColor: pointBackgroundColorRed,
+                        pointBorderColor: pointBorderColorRed,
                         borderWidth: 2,
                         yAxisID: 'y1',
                         hidden: true  // Default: show Forward Rates only
@@ -869,7 +857,9 @@ const curveBuilder = {
                         backgroundColor: 'rgba(245, 158, 11, 0.1)',
                         fill: false,
                         tension: 0.1,
-                        pointRadius: 0,
+                        pointRadius: pointRadiusArray,
+                        pointBackgroundColor: pointBackgroundColorRed,
+                        pointBorderColor: pointBorderColorRed,
                         borderWidth: 2,
                         yAxisID: 'y',
                         hidden: false  // Default: show Forward Rates

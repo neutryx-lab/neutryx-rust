@@ -14,13 +14,12 @@
 use std::collections::HashMap;
 
 use axum::Json;
-use serde::Serialize;
-
 use infra_config::{BumpSizes, GreekType};
 use infra_master::{
     market::Currency,
     time::{DayCounter, Frequency, Tenor},
 };
+use serde::Serialize;
 
 // =============================================================================
 // Enum Values Types
@@ -513,9 +512,7 @@ impl ConfigResponse {
 /// ```text
 /// GET /api/config
 /// ```
-pub async fn get_config() -> Json<ConfigResponse> {
-    Json(ConfigResponse::build())
-}
+pub async fn get_config() -> Json<ConfigResponse> { Json(ConfigResponse::build()) }
 
 /// Get Enum values only.
 ///
@@ -527,9 +524,7 @@ pub async fn get_config() -> Json<ConfigResponse> {
 /// ```text
 /// GET /api/config/enums
 /// ```
-pub async fn get_enums() -> Json<EnumValues> {
-    Json(EnumValues::build())
-}
+pub async fn get_enums() -> Json<EnumValues> { Json(EnumValues::build()) }
 
 /// Get default values only.
 ///
@@ -541,9 +536,7 @@ pub async fn get_enums() -> Json<EnumValues> {
 /// ```text
 /// GET /api/config/defaults
 /// ```
-pub async fn get_defaults() -> Json<DefaultValues> {
-    Json(DefaultValues::default())
-}
+pub async fn get_defaults() -> Json<DefaultValues> { Json(DefaultValues::default()) }
 
 // =============================================================================
 // Tests

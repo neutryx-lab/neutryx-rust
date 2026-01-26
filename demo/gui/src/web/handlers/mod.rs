@@ -38,7 +38,6 @@
 //! ```
 
 pub mod benchmarks;
-pub mod types;
 pub mod config;
 pub mod curves;
 pub mod events;
@@ -60,6 +59,7 @@ pub mod risk_engine;
 pub mod scenario_analysis;
 pub mod scenarios;
 pub mod trades;
+pub mod types;
 pub mod volcube;
 
 // =============================================================================
@@ -67,8 +67,9 @@ pub mod volcube;
 // =============================================================================
 
 // Exposure module
+// Benchmarks module
+pub use benchmarks::{get_speed_comparison, SpeedComparisonResponse};
 pub use exposure::{get_exposure, ExposurePoint, ExposureResponse};
-
 // Graphs module - all types are now defined in graphs.rs
 pub use graphs::{
     generate_sample_graph, generate_sample_portfolio_graph, get_graph, get_instrument_graph,
@@ -78,55 +79,40 @@ pub use graphs::{
     InstrumentGraphResponse, PortfolioGraphCache, PortfolioGraphMetadataResponse,
     PortfolioGraphNodeResponse, PortfolioGraphQueryParams, PortfolioGraphResponse,
 };
-
+// Greeks module - handlers from greeks.rs, types from types module
+pub use greeks::{
+    get_greeks_heatmap, get_greeks_timeseries, greeks_bucket_dv01, greeks_compare,
+    greeks_first_order, greeks_second_order,
+};
 // Health module
 pub use health::{
     get_index, get_metrics, health, serve_index_with_config, ApiResponseTimes, HealthResponse,
     MetricsResponse,
 };
-
 // Jobs module
 pub use jobs::{get_job_status, list_jobs, JobErrorResponse, JobListResponse, JobPathParams};
-
 // Portfolio module
 pub use portfolio::{
     get_portfolio, get_portfolio_trades, price_portfolio, sample_trades, PortfolioResponse,
     PortfolioTradeSummary, PortfolioTradesResponse, PortfolioTradesStats, PriceRequest,
     PriceRequestItem, TradeData,
 };
-
-// Risk module - handlers from risk.rs, types from types module
-pub use risk::{get_risk_metrics, risk_aad, risk_bump, risk_compare, RiskMetricsResponse};
-pub use types::{
-    RiskAadResponse, RiskBumpResponse, RiskCompareResponse, RiskMethodResult, RiskRequest,
-};
-
 // Pricing module - handlers from pricing.rs, types from types module
 pub use pricing::{bootstrap_curve, price_instrument, price_irs};
-pub use types::{
-    BootstrapRequest, BootstrapResponse, EquityOptionParams, FxOptionParams, GreeksData,
-    InstrumentParams, InstrumentType, IrsBootstrapErrorResponse, IrsParams, IrsPricingRequest,
-    IrsPricingResponse, MarketDataConfig, MarketDataSource, PricingErrorResponse, PricingRequest,
-    PricingResponse,
-};
-
-// Greeks module - handlers from greeks.rs, types from types module
-pub use greeks::{
-    get_greeks_heatmap, get_greeks_timeseries, greeks_bucket_dv01, greeks_compare,
-    greeks_first_order, greeks_second_order,
-};
-pub use types::{
-    BucketDv01Request, BucketDv01Response, GreeksCalculationRequest, GreeksCalculationResponse,
-    GreeksCompareRequest, GreeksCompareResponse, GreeksDiff, GreeksHeatmapRequest,
-    GreeksHeatmapResponse, GreeksMethodResult, GreeksTimeseriesRequest, GreeksTimeseriesResponse,
-    SecondOrderGreeksRequest, SecondOrderGreeksResponse,
-};
-
+// Risk module - handlers from risk.rs, types from types module
+pub use risk::{get_risk_metrics, risk_aad, risk_bump, risk_compare, RiskMetricsResponse};
 // Scenarios module
 pub use scenarios::{run_scenario, ScenarioRequest, ScenarioResponse};
-
-// Benchmarks module
-pub use benchmarks::{get_speed_comparison, SpeedComparisonResponse};
+pub use types::{
+    BootstrapRequest, BootstrapResponse, BucketDv01Request, BucketDv01Response, EquityOptionParams,
+    FxOptionParams, GreeksCalculationRequest, GreeksCalculationResponse, GreeksCompareRequest,
+    GreeksCompareResponse, GreeksData, GreeksDiff, GreeksHeatmapRequest, GreeksHeatmapResponse,
+    GreeksMethodResult, GreeksTimeseriesRequest, GreeksTimeseriesResponse, InstrumentParams,
+    InstrumentType, IrsBootstrapErrorResponse, IrsParams, IrsPricingRequest, IrsPricingResponse,
+    MarketDataConfig, MarketDataSource, PricingErrorResponse, PricingRequest, PricingResponse,
+    RiskAadResponse, RiskBumpResponse, RiskCompareResponse, RiskMethodResult, RiskRequest,
+    SecondOrderGreeksRequest, SecondOrderGreeksResponse,
+};
 
 // Other handlers are accessed via handlers::<module>::<function>
 // e.g., handlers::scenario_analysis::get_scenario_presets

@@ -30,8 +30,9 @@
 //! println!("All passed: {}", result.all_passed());
 //! ```
 
-use super::greeks::{EnzymeGreeksResult, GreeksEnzyme, GreeksMode};
 use pricer_pricing::mc::{GbmParams, MonteCarloConfig, MonteCarloPricer, PayoffParams};
+
+use super::greeks::{EnzymeGreeksResult, GreeksEnzyme, GreeksMode};
 
 /// Configuration for verification tests.
 #[derive(Clone, Debug)]

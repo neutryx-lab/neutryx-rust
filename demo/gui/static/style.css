@@ -11436,6 +11436,36 @@ body.light-theme .irs-loading-overlay {
     color: var(--text-primary);
 }
 
+/* Build Summary Grid - Compact horizontal layout */
+.build-summary-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    align-items: center;
+}
+
+.build-summary-grid .summary-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.build-summary-grid .summary-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.build-summary-grid .summary-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
 /* Export Actions */
 .export-actions {
     display: flex;

@@ -41,10 +41,9 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use handlers::{GraphCache, PortfolioGraphCache};
+use handlers::{types::BootstrapCurveCache, GraphCache, PortfolioGraphCache};
 use jobs::JobManager;
 use market_data::MarketDataCache;
-use handlers::types::BootstrapCurveCache;
 use tokio::sync::{broadcast, RwLock};
 use tower_http::{
     cors::{AllowOrigin, Any, CorsLayer},
@@ -509,7 +508,10 @@ pub fn build_router(state: Arc<AppState>) -> Router {
             post(handlers::market::refresh_market_rates),
         )
         .route("/rates/:id", get(handlers::market::get_market_rate_detail))
-        .route("/conventions", get(handlers::market::get_market_conventions))
+        .route(
+            "/conventions",
+            get(handlers::market::get_market_conventions),
+        )
         .route(
             "/conventions/:id",
             get(handlers::market::get_market_convention_detail),
@@ -615,7 +617,10 @@ pub fn build_router(state: Arc<AppState>) -> Router {
     let events_routes = Router::new()
         .route("/", get(handlers::events::get_events))
         .route("/types", get(handlers::events::get_event_types))
-        .route("/central-banks", get(handlers::events::get_central_banks_list))
+        .route(
+            "/central-banks",
+            get(handlers::events::get_central_banks_list),
+        )
         .route("/:id", get(handlers::events::get_event_detail));
 
     let api_routes = api_routes.nest("/events", events_routes);

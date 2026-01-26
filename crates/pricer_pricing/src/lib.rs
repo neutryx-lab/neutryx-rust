@@ -154,11 +154,11 @@ pub mod result;
 pub mod dispatcher;
 
 // Re-export commonly used items for convenience
+pub use dispatcher::{DispatcherConfig, PricingMethodDispatcher};
 pub use graph::{
     ComputationGraph, GraphBuilder, GraphEdge, GraphError, GraphExtractable, GraphMetadata,
     GraphNode, GraphNodeUpdate, NodeGroup, NodeType, SimpleGraphExtractor,
 };
 pub use mc::{GbmParams, Greek, MonteCarloConfig, MonteCarloPricer, PayoffParams, PricingResult};
-pub use tree::{BinomialTree, CrrParams, TreeConfig, TreeMethod, TreeType};
 pub use result::{PricingMetadata, TreeTypeMetadata, UnifiedGreeks, UnifiedPricingResult};
-pub use dispatcher::{DispatcherConfig, PricingMethodDispatcher};
+pub use tree::{BinomialTree, CrrParams, TreeConfig, TreeMethod, TreeType};

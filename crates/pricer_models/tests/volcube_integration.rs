@@ -22,7 +22,8 @@ mod curve_volcube_flow_tests {
     use super::*;
 
     /// Test that VolCube calibration works with instruments.
-    /// Note: VolCube requires at least 2 expiries AND 2 tenors for grid construction.
+    /// Note: VolCube requires at least 2 expiries AND 2 tenors for grid
+    /// construction.
     #[test]
     fn test_volcube_calibration_basic_flow() {
         // Create instruments for calibration with 2+ expiries and 2+ tenors
@@ -112,8 +113,9 @@ mod curve_volcube_flow_tests {
 // ============================================================================
 
 mod cache_invalidation_tests {
-    use super::*;
     use pricer_models::market::volcube::QuoteUpdateListener;
+
+    use super::*;
 
     /// Test that quote updates trigger cache invalidation.
     #[test]
@@ -270,7 +272,8 @@ mod e2e_flow_tests {
     use super::*;
 
     /// Test complete flow from quotes to calibrated cube.
-    /// Note: VolCube requires at least 2 expiries AND 2 tenors for grid construction.
+    /// Note: VolCube requires at least 2 expiries AND 2 tenors for grid
+    /// construction.
     #[test]
     fn test_quotes_to_calibrated_cube() {
         let as_of = NaiveDate::from_ymd_opt(2026, 1, 25).unwrap();

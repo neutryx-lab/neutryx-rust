@@ -19,9 +19,7 @@
 //! - `Scope`: A logical scope for grouping nodes
 //! - `DetailLevel`: Level of detail for graph export
 
-use std::cell::RefCell;
-use std::panic::Location;
-use std::rc::Rc;
+use std::{cell::RefCell, panic::Location, rc::Rc};
 
 #[cfg(feature = "serde")]
 use serde::Serialize;
@@ -40,21 +38,15 @@ pub struct NodeId(pub u64);
 impl NodeId {
     /// Creates a new NodeId.
     #[must_use]
-    pub const fn new(id: u64) -> Self {
-        Self(id)
-    }
+    pub const fn new(id: u64) -> Self { Self(id) }
 
     /// Returns the inner ID value.
     #[must_use]
-    pub const fn value(self) -> u64 {
-        self.0
-    }
+    pub const fn value(self) -> u64 { self.0 }
 }
 
 impl std::fmt::Display for NodeId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "N{}", self.0)
-    }
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "N{}", self.0) }
 }
 
 /// Unique identifier for a scope in the computation graph.
@@ -67,21 +59,15 @@ pub struct ScopeId(pub u64);
 impl ScopeId {
     /// Creates a new ScopeId.
     #[must_use]
-    pub const fn new(id: u64) -> Self {
-        Self(id)
-    }
+    pub const fn new(id: u64) -> Self { Self(id) }
 
     /// Returns the inner ID value.
     #[must_use]
-    pub const fn value(self) -> u64 {
-        self.0
-    }
+    pub const fn value(self) -> u64 { self.0 }
 }
 
 impl std::fmt::Display for ScopeId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "S{}", self.0)
-    }
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "S{}", self.0) }
 }
 
 // =============================================================================
@@ -372,9 +358,7 @@ pub struct TraceEdge {
 impl TraceEdge {
     /// Creates a new edge.
     #[must_use]
-    pub const fn new(source: NodeId, target: NodeId) -> Self {
-        Self { source, target }
-    }
+    pub const fn new(source: NodeId, target: NodeId) -> Self { Self { source, target } }
 }
 
 // =============================================================================
@@ -453,51 +437,35 @@ pub struct ExecutionTrace {
 impl ExecutionTrace {
     /// Creates a new empty execution trace.
     #[must_use]
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Returns the number of nodes in the trace.
     #[must_use]
-    pub fn node_count(&self) -> usize {
-        self.nodes.len()
-    }
+    pub fn node_count(&self) -> usize { self.nodes.len() }
 
     /// Returns the number of edges in the trace.
     #[must_use]
-    pub fn edge_count(&self) -> usize {
-        self.edges.len()
-    }
+    pub fn edge_count(&self) -> usize { self.edges.len() }
 
     /// Returns the number of scopes in the trace.
     #[must_use]
-    pub fn scope_count(&self) -> usize {
-        self.scopes.len()
-    }
+    pub fn scope_count(&self) -> usize { self.scopes.len() }
 
     /// Returns a reference to all nodes.
     #[must_use]
-    pub fn nodes(&self) -> &[TraceNode] {
-        &self.nodes
-    }
+    pub fn nodes(&self) -> &[TraceNode] { &self.nodes }
 
     /// Returns a reference to all edges.
     #[must_use]
-    pub fn edges(&self) -> &[TraceEdge] {
-        &self.edges
-    }
+    pub fn edges(&self) -> &[TraceEdge] { &self.edges }
 
     /// Returns a reference to all scopes.
     #[must_use]
-    pub fn scopes(&self) -> &[Scope] {
-        &self.scopes
-    }
+    pub fn scopes(&self) -> &[Scope] { &self.scopes }
 
     /// Returns the current active scope ID (if any).
     #[must_use]
-    pub fn current_scope(&self) -> Option<ScopeId> {
-        self.scope_stack.last().copied()
-    }
+    pub fn current_scope(&self) -> Option<ScopeId> { self.scope_stack.last().copied() }
 
     /// Adds an input node with a label.
     pub fn add_input(&mut self, value: f64, label: &str, location: SourceLocation) -> NodeId {
@@ -575,9 +543,7 @@ impl ExecutionTrace {
     }
 
     /// Exits the current scope.
-    pub fn exit_scope(&mut self) {
-        self.scope_stack.pop();
-    }
+    pub fn exit_scope(&mut self) { self.scope_stack.pop(); }
 
     /// Clears all trace data.
     pub fn clear(&mut self) {
@@ -634,9 +600,7 @@ impl ScopeGuard {
 }
 
 impl Drop for ScopeGuard {
-    fn drop(&mut self) {
-        self.trace.borrow_mut().exit_scope();
-    }
+    fn drop(&mut self) { self.trace.borrow_mut().exit_scope(); }
 }
 
 // =============================================================================
@@ -795,8 +759,8 @@ mod tests {
         #[test]
         fn test_trace_node_with_scope() {
             let loc = SourceLocation::new("test.rs", 1, 1);
-            let node = TraceNode::input(NodeId::new(0), 100.0, "spot", loc)
-                .with_scope(ScopeId::new(5));
+            let node =
+                TraceNode::input(NodeId::new(0), 100.0, "spot", loc).with_scope(ScopeId::new(5));
 
             assert_eq!(node.scope_id, Some(ScopeId::new(5)));
         }

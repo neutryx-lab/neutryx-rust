@@ -6,7 +6,8 @@
 //! # Data Sources
 //!
 //! Market data is loaded from:
-//! - `demo/data/input/rates/market_quotes.json` - Interest rates (USD, EUR, JPY, GBP)
+//! - `demo/data/input/rates/market_quotes.json` - Interest rates (USD, EUR,
+//!   JPY, GBP)
 //! - `demo/data/input/fx/fx_spots.json` - FX spot rates
 //! - `demo/data/input/fx/fx_forwards.json` - FX forward points
 //! - `demo/data/input/fx/xccy_basis.json` - Cross currency basis swaps

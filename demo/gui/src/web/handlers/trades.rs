@@ -355,7 +355,10 @@ impl TradeExpandError {
     pub fn unsupported_instrument(instrument_type: TradeInstrumentType) -> Self {
         Self {
             error: "unsupported_instrument".to_string(),
-            message: format!("Instrument type '{:?}' is not yet supported", instrument_type),
+            message: format!(
+                "Instrument type '{:?}' is not yet supported",
+                instrument_type
+            ),
             field: None,
         }
     }

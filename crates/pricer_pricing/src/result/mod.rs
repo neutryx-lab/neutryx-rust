@@ -9,8 +9,9 @@
 //! - [`UnifiedGreeks`]: Greeks computed from pricing
 //! - [`PricingMetadata`]: Method-specific metadata
 //!
-//! The naming "Unified" distinguishes from the existing `generic_pricer::PricingResult`
-//! which is Trade-centric with legs and cashflows.
+//! The naming "Unified" distinguishes from the existing
+//! `generic_pricer::PricingResult` which is Trade-centric with legs and
+//! cashflows.
 
 use infra_config::PricingMethod;
 
@@ -145,34 +146,22 @@ impl UnifiedPricingResult {
     }
 
     /// Returns the delta if computed.
-    pub fn delta(&self) -> Option<f64> {
-        self.greeks.as_ref().and_then(|g| g.delta)
-    }
+    pub fn delta(&self) -> Option<f64> { self.greeks.as_ref().and_then(|g| g.delta) }
 
     /// Returns the gamma if computed.
-    pub fn gamma(&self) -> Option<f64> {
-        self.greeks.as_ref().and_then(|g| g.gamma)
-    }
+    pub fn gamma(&self) -> Option<f64> { self.greeks.as_ref().and_then(|g| g.gamma) }
 
     /// Returns the vega if computed.
-    pub fn vega(&self) -> Option<f64> {
-        self.greeks.as_ref().and_then(|g| g.vega)
-    }
+    pub fn vega(&self) -> Option<f64> { self.greeks.as_ref().and_then(|g| g.vega) }
 
     /// Returns the theta if computed.
-    pub fn theta(&self) -> Option<f64> {
-        self.greeks.as_ref().and_then(|g| g.theta)
-    }
+    pub fn theta(&self) -> Option<f64> { self.greeks.as_ref().and_then(|g| g.theta) }
 
     /// Returns the rho if computed.
-    pub fn rho(&self) -> Option<f64> {
-        self.greeks.as_ref().and_then(|g| g.rho)
-    }
+    pub fn rho(&self) -> Option<f64> { self.greeks.as_ref().and_then(|g| g.rho) }
 
     /// Returns true if this result includes Greeks.
-    pub fn has_greeks(&self) -> bool {
-        self.greeks.as_ref().map_or(false, |g| g.has_any())
-    }
+    pub fn has_greeks(&self) -> bool { self.greeks.as_ref().is_some_and(|g| g.has_any()) }
 
     /// Returns the standard error (Monte Carlo only).
     pub fn standard_error(&self) -> Option<f64> {
@@ -231,8 +220,8 @@ mod tests {
             num_paths: 100_000,
             standard_error: 0.05,
         };
-        let result =
-            UnifiedPricingResult::new(10.5, PricingMethod::MonteCarlo, 5000).with_metadata(metadata);
+        let result = UnifiedPricingResult::new(10.5, PricingMethod::MonteCarlo, 5000)
+            .with_metadata(metadata);
 
         assert_eq!(result.num_paths(), Some(100_000));
         assert!((result.standard_error().unwrap() - 0.05).abs() < 1e-10);
@@ -274,13 +263,7 @@ mod tests {
 
     #[test]
     fn test_unified_greeks_new() {
-        let greeks = UnifiedGreeks::new(
-            Some(0.55),
-            Some(0.02),
-            Some(15.0),
-            Some(-5.0),
-            Some(10.0),
-        );
+        let greeks = UnifiedGreeks::new(Some(0.55), Some(0.02), Some(15.0), Some(-5.0), Some(10.0));
 
         assert!((greeks.delta.unwrap() - 0.55).abs() < 1e-10);
         assert!((greeks.gamma.unwrap() - 0.02).abs() < 1e-10);

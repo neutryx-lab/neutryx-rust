@@ -10,13 +10,12 @@ use axum::{
     response::IntoResponse,
     Json,
 };
+use infra_master::market::Currency;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::{fs, sync::RwLock};
 use tracing::info;
 use uuid::Uuid;
-
-use infra_master::market::Currency;
 
 use crate::web::AppState;
 
@@ -132,14 +131,10 @@ impl SwaptionVolQuote {
     }
 
     /// Get expiry in years (approximate).
-    pub fn expiry_years(&self) -> f64 {
-        parse_tenor_years(&self.expiry)
-    }
+    pub fn expiry_years(&self) -> f64 { parse_tenor_years(&self.expiry) }
 
     /// Get swap tenor in years (approximate).
-    pub fn tenor_years(&self) -> f64 {
-        parse_tenor_years(&self.tenor)
-    }
+    pub fn tenor_years(&self) -> f64 { parse_tenor_years(&self.tenor) }
 }
 
 /// Parse a tenor string to years (approximate).
@@ -290,13 +285,9 @@ pub struct IrVolSmileQuery {
     pub strike_range_bp: i32,
 }
 
-fn default_num_points() -> usize {
-    21
-}
+fn default_num_points() -> usize { 21 }
 
-fn default_strike_range() -> i32 {
-    200
-}
+fn default_strike_range() -> i32 { 200 }
 
 /// Response for smile curve.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -350,9 +341,7 @@ pub struct IrVolSurfaceQuery {
     pub num_tenor_points: usize,
 }
 
-fn default_surface_points() -> usize {
-    15
-}
+fn default_surface_points() -> usize { 15 }
 
 /// Response for 3D surface data (for Plotly).
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -468,9 +457,7 @@ impl Clone for CachedIrVolSurface {
 pub type IrVolState = Arc<IrVolCache>;
 
 /// Create default IR vol state.
-pub fn create_irvol_state() -> IrVolState {
-    Arc::new(IrVolCache::new(10))
-}
+pub fn create_irvol_state() -> IrVolState { Arc::new(IrVolCache::new(10)) }
 
 // =============================================================================
 // Data Loading
@@ -478,7 +465,10 @@ pub fn create_irvol_state() -> IrVolState {
 
 /// Get available currencies for IR vol data from infra_master.
 fn get_available_currencies() -> Vec<(&'static str, &'static str)> {
-    Currency::all().iter().map(|c| (c.code(), c.name())).collect()
+    Currency::all()
+        .iter()
+        .map(|c| (c.code(), c.name()))
+        .collect()
 }
 
 /// Load IR vol quotes from JSON file.
@@ -601,7 +591,10 @@ pub async fn get_currencies() -> impl IntoResponse {
 pub async fn get_quotes(Path(currency): Path<String>) -> impl IntoResponse {
     let currency = currency.to_uppercase();
 
-    if !get_available_currencies().iter().any(|(c, _)| *c == currency) {
+    if !get_available_currencies()
+        .iter()
+        .any(|(c, _)| *c == currency)
+    {
         return (
             StatusCode::NOT_FOUND,
             Json(json!({

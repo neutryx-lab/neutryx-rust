@@ -119,9 +119,7 @@ impl Currency {
     /// assert_eq!(codes, ["USD", "EUR", "GBP", "JPY", "CHF"]);
     /// ```
     #[must_use]
-    pub const fn all_codes() -> [&'static str; 5] {
-        ["USD", "EUR", "GBP", "JPY", "CHF"]
-    }
+    pub const fn all_codes() -> [&'static str; 5] { ["USD", "EUR", "GBP", "JPY", "CHF"] }
 
     /// Returns the ISO 4217 three-letter currency code.
     ///

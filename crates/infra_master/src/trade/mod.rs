@@ -60,6 +60,8 @@ pub use direction::{SwapDirection, TradeDirection};
 pub use error::TradeError;
 pub use index::{IndexObservation, IndexType};
 pub use instrument::Instrument;
+// Re-export common types from instrument_def
+pub use instrument_def::AssetClass;
 pub use leg::{Direction, Leg, LegType};
 pub use payoff::{OptionType, Payoff};
 pub use pricing_instrument::{
@@ -67,8 +69,5 @@ pub use pricing_instrument::{
     PricingInstrument, VanillaOption,
 };
 pub use trade::{ExerciseType, SettlementType, Trade, TradeMetadata, TradeType};
-
-// Re-export common types from instrument_def
-pub use instrument_def::AssetClass;
 
 pub use crate::ids::TradeId;

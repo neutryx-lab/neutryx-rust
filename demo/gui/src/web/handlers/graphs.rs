@@ -5,8 +5,7 @@
 //! - Instrument graph endpoints (`/api/instrument-graph`)
 //! - Portfolio graph endpoints (`/api/v1/portfolio/graph`)
 
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use axum::{
     extract::{Query, State},
@@ -497,7 +496,9 @@ fn generate_instrument_graph(currency: &str, index_type: &str) -> InstrumentGrap
 }
 
 /// Generate a sample portfolio graph
-pub fn generate_sample_portfolio_graph(trade_ids_filter: Option<&[String]>) -> PortfolioGraphResponse {
+pub fn generate_sample_portfolio_graph(
+    trade_ids_filter: Option<&[String]>,
+) -> PortfolioGraphResponse {
     let all_trade_ids = [
         "T001".to_string(),
         "T002".to_string(),

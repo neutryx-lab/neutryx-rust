@@ -17,15 +17,12 @@
 //! - Edge cases: zero, negative values
 
 use approx::{assert_relative_eq, relative_eq};
-
-// Use enzyme::gradient from pricer_risk
-use pricer_risk::enzyme::gradient;
-
-// Use verify functions from pricer_pricing
-use pricer_pricing::verify::{square, square_gradient};
-
 // Use path_dependent types from pricer_pricing
 use pricer_pricing::path_dependent::PathPayoffType;
+// Use verify functions from pricer_pricing
+use pricer_pricing::verify::{square, square_gradient};
+// Use enzyme::gradient from pricer_risk
+use pricer_risk::enzyme::gradient;
 
 // Requirement 5.2: Gradient of f(x) = x * x shall return 2 * x
 

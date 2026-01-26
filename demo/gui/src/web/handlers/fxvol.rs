@@ -26,6 +26,11 @@ use axum::{
     Json,
 };
 use chrono::NaiveDate;
+// =============================================================================
+// Delta Type Re-export (Req 10.5)
+// =============================================================================
+/// Re-export DeltaType from infra_master.
+pub use infra_master::trade::instrument_def::DeltaType;
 use infra_master::{market::Currency, trade::instrument_def::CurrencyPair};
 use pricer_models::market::{
     curves::{FlatCurve, YieldCurve},
@@ -39,13 +44,6 @@ use crate::web::{
     error::{ApiError, ApiResult},
     AppState,
 };
-
-// =============================================================================
-// Delta Type Re-export (Req 10.5)
-// =============================================================================
-
-/// Re-export DeltaType from infra_master.
-pub use infra_master::trade::instrument_def::DeltaType;
 
 // =============================================================================
 // FX Quote Data Structures (Req 1.6)
@@ -67,7 +65,14 @@ pub struct FxQuoteEntry {
 
 impl FxQuoteEntry {
     pub fn new(expiry: f64, atm_vol: f64, rr_25d: f64, bf_25d: f64) -> Self {
-        Self { expiry, atm_vol, rr_25d, bf_25d, rr_10d: None, bf_10d: None }
+        Self {
+            expiry,
+            atm_vol,
+            rr_25d,
+            bf_25d,
+            rr_10d: None,
+            bf_10d: None,
+        }
     }
 
     pub fn with_10d(mut self, rr_10d: f64, bf_10d: f64) -> Self {
@@ -84,7 +89,13 @@ impl FxQuoteEntry {
             (Some(rr), Some(bf)) => (Some(atm + bf + rr / 2.0), Some(atm + bf - rr / 2.0)),
             _ => (None, None),
         };
-        DeltaVols { vol_10d_put, vol_25d_put, atm, vol_25d_call, vol_10d_call }
+        DeltaVols {
+            vol_10d_put,
+            vol_25d_put,
+            atm,
+            vol_25d_call,
+            vol_10d_call,
+        }
     }
 }
 
@@ -135,7 +146,11 @@ pub struct FxPairInfo {
 
 impl FxPairInfo {
     pub fn new(pair: &str) -> Self {
-        let (base, quote) = if pair.len() == 6 { (&pair[0..3], &pair[3..6]) } else { (pair, "") };
+        let (base, quote) = if pair.len() == 6 {
+            (&pair[0..3], &pair[3..6])
+        } else {
+            (pair, "")
+        };
         Self {
             pair: pair.to_string(),
             name: format!("{}/{}", base, quote),

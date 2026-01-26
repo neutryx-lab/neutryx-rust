@@ -64,19 +64,19 @@ impl GreeksConfig {
     /// Validates the configuration.
     pub fn validate(&self) -> Result<(), GreeksConfigError> {
         if self.spot_bump_relative <= 0.0 || self.spot_bump_relative > 1.0 {
-            return Err(GreeksConfigError::InvalidSpotBump);
+            return Err(GreeksConfigError::SpotBump);
         }
         if self.vol_bump_absolute <= 0.0 || self.vol_bump_absolute > 0.5 {
-            return Err(GreeksConfigError::InvalidVolBump);
+            return Err(GreeksConfigError::VolBump);
         }
         if self.time_bump_years <= 0.0 || self.time_bump_years > 1.0 {
-            return Err(GreeksConfigError::InvalidTimeBump);
+            return Err(GreeksConfigError::TimeBump);
         }
         if self.rate_bump_absolute <= 0.0 || self.rate_bump_absolute > 0.1 {
-            return Err(GreeksConfigError::InvalidRateBump);
+            return Err(GreeksConfigError::RateBump);
         }
         if self.verification_tolerance <= 0.0 {
-            return Err(GreeksConfigError::InvalidTolerance);
+            return Err(GreeksConfigError::Tolerance);
         }
         Ok(())
     }
@@ -149,25 +149,25 @@ impl GreeksConfigBuilder {
 #[derive(Debug, Clone, PartialEq)]
 pub enum GreeksConfigError {
     /// Invalid spot bump value.
-    InvalidSpotBump,
+    SpotBump,
     /// Invalid volatility bump value.
-    InvalidVolBump,
+    VolBump,
     /// Invalid time bump value.
-    InvalidTimeBump,
+    TimeBump,
     /// Invalid rate bump value.
-    InvalidRateBump,
+    RateBump,
     /// Invalid verification tolerance.
-    InvalidTolerance,
+    Tolerance,
 }
 
 impl std::fmt::Display for GreeksConfigError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::InvalidSpotBump => write!(f, "Invalid spot bump"),
-            Self::InvalidVolBump => write!(f, "Invalid vol bump"),
-            Self::InvalidTimeBump => write!(f, "Invalid time bump"),
-            Self::InvalidRateBump => write!(f, "Invalid rate bump"),
-            Self::InvalidTolerance => write!(f, "Invalid tolerance"),
+            Self::SpotBump => write!(f, "Invalid spot bump"),
+            Self::VolBump => write!(f, "Invalid vol bump"),
+            Self::TimeBump => write!(f, "Invalid time bump"),
+            Self::RateBump => write!(f, "Invalid rate bump"),
+            Self::Tolerance => write!(f, "Invalid tolerance"),
         }
     }
 }

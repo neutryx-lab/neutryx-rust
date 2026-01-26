@@ -35,9 +35,9 @@
 //! ```
 
 use num_traits::Float;
+use pricer_pricing::checkpoint::{CheckpointManager, CheckpointStrategy};
 
 use super::{loops::AdjointAccumulator, reverse::ReverseAD};
-use pricer_pricing::checkpoint::{CheckpointManager, CheckpointStrategy};
 
 /// Configuration for checkpointed AD.
 #[derive(Clone, Debug)]

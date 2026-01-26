@@ -7,6 +7,8 @@
 //!
 //! All data is loaded from JSON files in `demo/data/input/events/`.
 
+use std::path::PathBuf;
+
 use axum::{
     extract::{Path, Query},
     http::StatusCode,
@@ -15,7 +17,6 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::path::PathBuf;
 use tracing::{error, info};
 
 // =============================================================================
@@ -248,7 +249,11 @@ impl EventsDataLoader {
                 }
                 match serde_json::from_str::<CentralBanksFile>(&content) {
                     Ok(data) => {
-                        info!("Loaded {} central banks from {:?}", data.central_banks.len(), path);
+                        info!(
+                            "Loaded {} central banks from {:?}",
+                            data.central_banks.len(),
+                            path
+                        );
                         data.central_banks
                     }
                     Err(e) => {
@@ -309,9 +314,7 @@ impl EventsDataLoader {
 }
 
 impl Default for EventsDataLoader {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 // =============================================================================

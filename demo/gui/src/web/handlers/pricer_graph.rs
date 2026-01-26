@@ -5,7 +5,8 @@
 //!
 //! ## Endpoint
 //!
-//! - `GET /api/pricer/graph` - Get the computation graph for a pricing calculation
+//! - `GET /api/pricer/graph` - Get the computation graph for a pricing
+//!   calculation
 //!
 //! ## Query Parameters
 //!
@@ -13,20 +14,19 @@
 //!   - `operation` (default): Show all individual operations
 //!   - `scope`: Aggregate operations into scopes
 
-use std::cell::RefCell;
-use std::rc::Rc;
-use std::sync::Arc;
+use std::{cell::RefCell, rc::Rc, sync::Arc};
 
-use axum::extract::{Query, State};
-use axum::http::StatusCode;
-use axum::Json;
+use axum::{
+    extract::{Query, State},
+    http::StatusCode,
+    Json,
+};
 use num_traits::Float;
-use serde::{Deserialize, Serialize};
-
 use pricer_core::types::{
     clear_trace_context, export_graph, set_trace_context, D3Graph, DetailLevel, ExecutionTrace,
     TracedFloat,
 };
+use serde::{Deserialize, Serialize};
 
 use crate::web::AppState;
 
@@ -49,9 +49,7 @@ pub struct PricerGraphQueryParams {
     pub formula: Option<String>,
 }
 
-fn default_detail_level() -> String {
-    "operation".to_string()
-}
+fn default_detail_level() -> String { "operation".to_string() }
 
 // =============================================================================
 // Response Types
@@ -86,9 +84,7 @@ fn calculate_d1<T: Float>(spot: T, strike: T, rate: T, vol: T, time: T) -> T {
 }
 
 /// Black-Scholes d2 calculation.
-fn calculate_d2<T: Float>(d1: T, vol: T, time: T) -> T {
-    d1 - vol * time.sqrt()
-}
+fn calculate_d2<T: Float>(d1: T, vol: T, time: T) -> T { d1 - vol * time.sqrt() }
 
 /// Simplified Black-Scholes call price calculation.
 /// Uses a simplified approximation of the normal CDF.

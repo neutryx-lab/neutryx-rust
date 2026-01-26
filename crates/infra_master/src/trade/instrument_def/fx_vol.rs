@@ -851,10 +851,7 @@ mod tests {
             .build()
             .unwrap();
 
-        assert_eq!(
-            inst.convention().delta_type,
-            DeltaType::PremiumAdjusted
-        );
+        assert_eq!(inst.convention().delta_type, DeltaType::PremiumAdjusted);
     }
 
     #[test]

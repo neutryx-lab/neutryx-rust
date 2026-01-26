@@ -365,26 +365,40 @@ impl BuilderListResponse {
             interpolation_methods: vec![
                 InterpolationMethodInfo {
                     id: "linear_on_zero_rate".to_string(),
-                    name: InterpolationMethod::LinearOnZeroRate.display_name().to_string(),
-                    description: InterpolationMethod::LinearOnZeroRate.description().to_string(),
+                    name: InterpolationMethod::LinearOnZeroRate
+                        .display_name()
+                        .to_string(),
+                    description: InterpolationMethod::LinearOnZeroRate
+                        .description()
+                        .to_string(),
                     recommended: InterpolationMethod::LinearOnZeroRate.is_recommended(),
                 },
                 InterpolationMethodInfo {
                     id: "linear_on_log_df".to_string(),
-                    name: InterpolationMethod::LinearOnLogDf.display_name().to_string(),
+                    name: InterpolationMethod::LinearOnLogDf
+                        .display_name()
+                        .to_string(),
                     description: InterpolationMethod::LinearOnLogDf.description().to_string(),
                     recommended: InterpolationMethod::LinearOnLogDf.is_recommended(),
                 },
                 InterpolationMethodInfo {
                     id: "cubic_spline_on_zero_rate".to_string(),
-                    name: InterpolationMethod::CubicSplineOnZeroRate.display_name().to_string(),
-                    description: InterpolationMethod::CubicSplineOnZeroRate.description().to_string(),
+                    name: InterpolationMethod::CubicSplineOnZeroRate
+                        .display_name()
+                        .to_string(),
+                    description: InterpolationMethod::CubicSplineOnZeroRate
+                        .description()
+                        .to_string(),
                     recommended: InterpolationMethod::CubicSplineOnZeroRate.is_recommended(),
                 },
                 InterpolationMethodInfo {
                     id: "monotonic_on_zero_rate".to_string(),
-                    name: InterpolationMethod::MonotonicOnZeroRate.display_name().to_string(),
-                    description: InterpolationMethod::MonotonicOnZeroRate.description().to_string(),
+                    name: InterpolationMethod::MonotonicOnZeroRate
+                        .display_name()
+                        .to_string(),
+                    description: InterpolationMethod::MonotonicOnZeroRate
+                        .description()
+                        .to_string(),
                     recommended: InterpolationMethod::MonotonicOnZeroRate.is_recommended(),
                 },
             ],
@@ -515,7 +529,11 @@ pub async fn get_instruments(Path(index): Path<String>) -> ApiResult<InstrumentL
     let response = InstrumentListResponse {
         index: file.index,
         currency: file.currency,
-        instruments: file.instruments.into_iter().map(InstrumentInfo::from).collect(),
+        instruments: file
+            .instruments
+            .into_iter()
+            .map(InstrumentInfo::from)
+            .collect(),
     };
 
     Ok(Json(response))
@@ -534,13 +552,19 @@ pub async fn build_curve(
     let start = Instant::now();
 
     if request.instruments.is_empty() {
-        return Err(ApiError::validation("At least one instrument is required", "instruments"));
+        return Err(ApiError::validation(
+            "At least one instrument is required",
+            "instruments",
+        ));
     }
 
     for inst in &request.instruments {
         if inst.rate < -0.10 || inst.rate > 0.50 {
             return Err(ApiError::validation(
-                format!("Rate {} for {} is out of range (-10% to +50%)", inst.rate, inst.tenor),
+                format!(
+                    "Rate {} for {} is out of range (-10% to +50%)",
+                    inst.rate, inst.tenor
+                ),
                 "rate",
             ));
         }
@@ -561,7 +585,11 @@ pub async fn build_curve(
         let tenor_years = parse_tenor_years(&inst.tenor);
         let rate = inst.rate;
         let df = 1.0 / (1.0 + rate * tenor_years);
-        let zero_rate = if tenor_years > 0.0 { -df.ln() / tenor_years } else { rate };
+        let zero_rate = if tenor_years > 0.0 {
+            -df.ln() / tenor_years
+        } else {
+            rate
+        };
 
         pillars.push(tenor_years);
         discount_factors.push(df);
@@ -574,7 +602,10 @@ pub async fn build_curve(
 
     let par_rates: Vec<ParRateInput> = sorted_instruments
         .iter()
-        .map(|i| ParRateInput { tenor: i.tenor.clone(), rate: i.rate })
+        .map(|i| ParRateInput {
+            tenor: i.tenor.clone(),
+            rate: i.rate,
+        })
         .collect();
 
     let cached_curve = CachedCurve::new(
@@ -599,12 +630,21 @@ pub async fn build_curve(
                 let prev_tenor = pillars[i - 1];
                 let prev_df = discount_factors[i - 1];
                 let dt = tenor - prev_tenor;
-                if dt > 0.0 { Some((prev_df.ln() - df.ln()) / dt) } else { Some(zr) }
+                if dt > 0.0 {
+                    Some((prev_df.ln() - df.ln()) / dt)
+                } else {
+                    Some(zr)
+                }
             } else {
                 Some(zr)
             };
 
-            CurveParameter { tenor_years: tenor, discount_factor: df, zero_rate: zr, forward_rate }
+            CurveParameter {
+                tenor_years: tenor,
+                discount_factor: df,
+                zero_rate: zr,
+                forward_rate,
+            }
         })
         .collect();
 
@@ -645,14 +685,20 @@ pub async fn get_parameters(
         let value = match query.r#type {
             ParameterType::DiscountFactor => interpolate_df(&cached_curve, t),
             ParameterType::ZeroRate => interpolate_zero_rate(&cached_curve, t),
-            ParameterType::ForwardRate => interpolate_forward_rate(&cached_curve, t, query.grid_interval),
+            ParameterType::ForwardRate => {
+                interpolate_forward_rate(&cached_curve, t, query.grid_interval)
+            }
         };
 
         data.push(ParameterPoint { tenor: t, value });
         t += query.grid_interval;
     }
 
-    Ok(Json(ParameterResponse { curve_id, parameter_type: query.r#type, data }))
+    Ok(Json(ParameterResponse {
+        curve_id,
+        parameter_type: query.r#type,
+        data,
+    }))
 }
 
 /// Handler for `GET /api/curves/indices`.
@@ -664,6 +710,8 @@ pub async fn get_indices() -> ApiResult<Vec<String>> {
 }
 
 /// Handler for `GET /api/curves/central-bank-meetings`.
+/// Transforms the events array into a currency-keyed meetings object for
+/// frontend consumption.
 pub async fn get_central_bank_meetings() -> ApiResult<serde_json::Value> {
     let file_path = std::path::PathBuf::from("demo/data/input/events/central_bank_meetings.json");
 
@@ -677,7 +725,39 @@ pub async fn get_central_bank_meetings() -> ApiResult<serde_json::Value> {
     let data: serde_json::Value = serde_json::from_str(&content)
         .map_err(|e| ApiError::internal(format!("Failed to parse central bank meetings: {}", e)))?;
 
-    Ok(Json(data))
+    // Transform events array into currency-keyed meetings object
+    // Expected input: { "events": [{ "currency": "USD", "date": "2025-01-29",
+    // "centralBank": {...} }, ...] } Expected output: { "meetings": { "USD": {
+    // "centralBank": "FED", "dates": ["2025-01-29", ...] }, ... } }
+    let mut meetings: std::collections::HashMap<String, serde_json::Value> =
+        std::collections::HashMap::new();
+
+    if let Some(events) = data.get("events").and_then(|e| e.as_array()) {
+        for event in events {
+            let currency = event
+                .get("currency")
+                .and_then(|c| c.as_str())
+                .unwrap_or("UNKNOWN");
+            let date = event.get("date").and_then(|d| d.as_str()).unwrap_or("");
+            let central_bank_code = event
+                .get("centralBank")
+                .and_then(|cb| cb.get("code"))
+                .and_then(|c| c.as_str())
+                .unwrap_or("");
+
+            let entry = meetings.entry(currency.to_string()).or_insert_with(
+                || serde_json::json!({ "centralBank": central_bank_code, "dates": [] }),
+            );
+
+            if let Some(dates) = entry.get_mut("dates").and_then(|d| d.as_array_mut()) {
+                if !date.is_empty() {
+                    dates.push(serde_json::Value::String(date.to_string()));
+                }
+            }
+        }
+    }
+
+    Ok(Json(serde_json::json!({ "meetings": meetings })))
 }
 
 // =============================================================================
@@ -701,12 +781,16 @@ fn parse_tenor_years(tenor: &str) -> f64 {
 }
 
 fn interpolate_df(curve: &super::types::CachedCurve, t: f64) -> f64 {
-    if t <= 0.0 { return 1.0; }
+    if t <= 0.0 {
+        return 1.0;
+    }
 
     let pillars = &curve.pillars;
     let dfs = &curve.discount_factors;
 
-    if pillars.is_empty() { return 1.0; }
+    if pillars.is_empty() {
+        return 1.0;
+    }
 
     if t <= pillars[0] {
         let log_df = dfs[0].ln() * t / pillars[0];
@@ -739,7 +823,9 @@ fn interpolate_df(curve: &super::types::CachedCurve, t: f64) -> f64 {
 
 fn interpolate_zero_rate(curve: &super::types::CachedCurve, t: f64) -> f64 {
     if t <= 0.0 {
-        if !curve.zero_rates.is_empty() { return curve.zero_rates[0]; }
+        if !curve.zero_rates.is_empty() {
+            return curve.zero_rates[0];
+        }
         return 0.0;
     }
 

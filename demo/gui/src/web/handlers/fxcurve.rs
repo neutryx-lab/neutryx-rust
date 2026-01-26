@@ -47,9 +47,7 @@ pub struct FxSwapInput {
     pub scaling_factor: f64,
 }
 
-fn default_scaling_factor() -> f64 {
-    10000.0
-}
+fn default_scaling_factor() -> f64 { 10000.0 }
 
 /// XCCY basis swap input for long-tenor curve construction.
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -117,13 +115,9 @@ pub struct FxCurveBuildRequest {
     pub transition_end: f64,
 }
 
-fn default_transition_start() -> f64 {
-    1.0
-}
+fn default_transition_start() -> f64 { 1.0 }
 
-fn default_transition_end() -> f64 {
-    2.0
-}
+fn default_transition_end() -> f64 { 2.0 }
 
 /// Forward point data at a specific tenor.
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -627,7 +621,9 @@ pub async fn build_fx_market(
 /// Handler for `GET /api/fxcurve/forward`.
 ///
 /// Get forward rate at a specific expiry from a built curve.
-pub async fn get_forward_rate(Query(query): Query<ForwardRateQuery>) -> ApiResult<ForwardRateResponse> {
+pub async fn get_forward_rate(
+    Query(query): Query<ForwardRateQuery>,
+) -> ApiResult<ForwardRateResponse> {
     // In a full implementation, would look up curve from cache
     // For now, return error indicating curve not found
     Err(ApiError::not_found("FxCurve", &query.curve_id))

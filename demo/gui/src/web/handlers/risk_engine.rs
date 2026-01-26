@@ -222,7 +222,9 @@ impl From<pricer_risk::ComputedGreeks> for ComputedGreeksDto {
 
 impl From<pricer_risk::PerformanceMetrics> for ExecutionMetricsDto {
     fn from(m: pricer_risk::PerformanceMetrics) -> Self {
-        Self { computation_time_ms: m.computation_time_ms }
+        Self {
+            computation_time_ms: m.computation_time_ms,
+        }
     }
 }
 
@@ -240,7 +242,10 @@ impl From<pricer_risk::RiskResult> for GreeksResponse {
 
 impl From<pricer_risk::FailedCalculation> for FailedCalculationDto {
     fn from(f: pricer_risk::FailedCalculation) -> Self {
-        Self { trade_id: f.trade_id, error: f.error_message }
+        Self {
+            trade_id: f.trade_id,
+            error: f.error_message,
+        }
     }
 }
 
@@ -277,7 +282,10 @@ impl From<pricer_risk::PortfolioRiskResult> for PortfolioGreeksResponse {
 
 impl From<pricer_risk::ScenarioGreeksResult> for ScenarioGreeksResponse {
     fn from(r: pricer_risk::ScenarioGreeksResult) -> Self {
-        Self { scenario_name: r.scenario_name, result: r.result.into() }
+        Self {
+            scenario_name: r.scenario_name,
+            result: r.result.into(),
+        }
     }
 }
 

@@ -123,13 +123,13 @@
 #![deny(rustdoc::private_intra_doc_links)]
 
 pub mod demo;
+pub mod engine;
 /// Enzyme autodiff bindings for risk calculations.
 ///
 /// This module provides the interface for Enzyme LLVM-level automatic
 /// differentiation. Enzyme operates at the LLVM IR level, enabling
 /// high-performance gradient computation for financial derivative pricing.
 pub mod enzyme;
-pub mod engine;
 pub mod exposure;
 pub mod greeks;
 pub mod irs_greeks;
@@ -146,6 +146,8 @@ pub use engine::{
     PerformanceMetrics, PortfolioRiskResult, RiskEngine, RiskEngineConfig, RiskError, RiskResult,
     ScenarioGreeksResult, ScenarioPortfolioResult,
 };
+// Enzyme AD types
+pub use enzyme::{gradient, gradient_with_step, ADMode, Activity};
 pub use exposure::ExposureCalculator;
 pub use greeks::{
     GreeksConfig, GreeksConfigBuilder, GreeksConfigError, GreeksError, GreeksMode, GreeksResult,
@@ -187,5 +189,3 @@ pub use xva::{
     compute_fca, compute_fva, generate_flat_discount_factors, CounterpartyXva, FundingParams,
     NettingSetXva, OwnCreditParams, PortfolioXva, XvaCalculator, XvaConfig, XvaError,
 };
-// Enzyme AD types
-pub use enzyme::{gradient, gradient_with_step, ADMode, Activity};

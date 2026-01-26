@@ -374,8 +374,14 @@ mod tests {
 
         #[test]
         fn test_frequency_parse() {
-            assert_eq!("Quarterly".parse::<Frequency>().unwrap(), Frequency::Quarterly);
-            assert_eq!("semi-annual".parse::<Frequency>().unwrap(), Frequency::SemiAnnual);
+            assert_eq!(
+                "Quarterly".parse::<Frequency>().unwrap(),
+                Frequency::Quarterly
+            );
+            assert_eq!(
+                "semi-annual".parse::<Frequency>().unwrap(),
+                Frequency::SemiAnnual
+            );
             assert_eq!("ANNUAL".parse::<Frequency>().unwrap(), Frequency::Annual);
             assert_eq!("monthly".parse::<Frequency>().unwrap(), Frequency::Monthly);
         }
@@ -394,9 +400,18 @@ mod tests {
 
         #[test]
         fn test_day_count_parse() {
-            assert_eq!("Act360".parse::<DayCounter>().unwrap(), DayCounter::Actual360);
-            assert_eq!("act/365".parse::<DayCounter>().unwrap(), DayCounter::Actual365Fixed);
-            assert_eq!("30/360".parse::<DayCounter>().unwrap(), DayCounter::Thirty360Bond);
+            assert_eq!(
+                "Act360".parse::<DayCounter>().unwrap(),
+                DayCounter::Actual360
+            );
+            assert_eq!(
+                "act/365".parse::<DayCounter>().unwrap(),
+                DayCounter::Actual365Fixed
+            );
+            assert_eq!(
+                "30/360".parse::<DayCounter>().unwrap(),
+                DayCounter::Thirty360Bond
+            );
         }
     }
 

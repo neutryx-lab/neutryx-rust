@@ -4,14 +4,17 @@
 //! and ensure consistency across the pricing infrastructure.
 
 use infra_config::PricingMethod;
-use pricer_pricing::dispatcher::{DispatcherConfig, PricingMethodDispatcher};
-use pricer_pricing::tree::{BinomialTree, TreeConfig, TreeMethod, TreeType};
+use pricer_pricing::{
+    dispatcher::{DispatcherConfig, PricingMethodDispatcher},
+    tree::{BinomialTree, TreeConfig, TreeMethod, TreeType},
+};
 
 // =============================================================================
 // Task 11.1: Tree Method Integration Tests
 // =============================================================================
 
-/// Test that Tree method produces consistent results with different step counts.
+/// Test that Tree method produces consistent results with different step
+/// counts.
 #[test]
 fn test_tree_convergence_with_increasing_steps() {
     let spot = 100.0;
@@ -77,7 +80,15 @@ fn test_dispatcher_routes_all_methods() {
     let analytical = dispatcher
         .price_vanilla(
             PricingMethod::Analytical,
-            100.0, 100.0, 1.0, 0.05, 0.2, true, false, None, None,
+            100.0,
+            100.0,
+            1.0,
+            0.05,
+            0.2,
+            true,
+            false,
+            None,
+            None,
         )
         .expect("Analytical pricing failed");
     assert_eq!(analytical.method, PricingMethod::Analytical);
@@ -87,7 +98,15 @@ fn test_dispatcher_routes_all_methods() {
     let tree = dispatcher
         .price_vanilla(
             PricingMethod::Tree,
-            100.0, 100.0, 1.0, 0.05, 0.2, true, false, Some(100), None,
+            100.0,
+            100.0,
+            1.0,
+            0.05,
+            0.2,
+            true,
+            false,
+            Some(100),
+            None,
         )
         .expect("Tree pricing failed");
     assert_eq!(tree.method, PricingMethod::Tree);
@@ -97,7 +116,15 @@ fn test_dispatcher_routes_all_methods() {
     let mc = dispatcher
         .price_vanilla(
             PricingMethod::MonteCarlo,
-            100.0, 100.0, 1.0, 0.05, 0.2, true, false, None, Some(5000),
+            100.0,
+            100.0,
+            1.0,
+            0.05,
+            0.2,
+            true,
+            false,
+            None,
+            Some(5000),
         )
         .expect("MC pricing failed");
     assert_eq!(mc.method, PricingMethod::MonteCarlo);
@@ -119,21 +146,45 @@ fn test_dispatcher_method_consistency() {
     let analytical = dispatcher
         .price_vanilla(
             PricingMethod::Analytical,
-            spot, strike, expiry, rate, volatility, true, false, None, None,
+            spot,
+            strike,
+            expiry,
+            rate,
+            volatility,
+            true,
+            false,
+            None,
+            None,
         )
         .unwrap();
 
     let tree = dispatcher
         .price_vanilla(
             PricingMethod::Tree,
-            spot, strike, expiry, rate, volatility, true, false, Some(500), None,
+            spot,
+            strike,
+            expiry,
+            rate,
+            volatility,
+            true,
+            false,
+            Some(500),
+            None,
         )
         .unwrap();
 
     let mc = dispatcher
         .price_vanilla(
             PricingMethod::MonteCarlo,
-            spot, strike, expiry, rate, volatility, true, false, None, Some(50_000),
+            spot,
+            strike,
+            expiry,
+            rate,
+            volatility,
+            true,
+            false,
+            None,
+            Some(50_000),
         )
         .unwrap();
 
@@ -141,14 +192,16 @@ fn test_dispatcher_method_consistency() {
     assert!(
         (analytical.pv - tree.pv).abs() < 0.1,
         "Analytical {} vs Tree {}: diff too large",
-        analytical.pv, tree.pv
+        analytical.pv,
+        tree.pv
     );
 
     // MC has more variance, allow larger tolerance
     assert!(
         (analytical.pv - mc.pv).abs() < 0.5,
         "Analytical {} vs MC {}: diff too large",
-        analytical.pv, mc.pv
+        analytical.pv,
+        mc.pv
     );
 }
 
@@ -167,7 +220,15 @@ fn test_dispatcher_custom_config() {
     let result = dispatcher
         .price_vanilla(
             PricingMethod::Tree,
-            100.0, 100.0, 1.0, 0.05, 0.2, true, false, None, None,
+            100.0,
+            100.0,
+            1.0,
+            0.05,
+            0.2,
+            true,
+            false,
+            None,
+            None,
         )
         .unwrap();
 
@@ -185,32 +246,54 @@ fn test_american_put_geq_european() {
     let dispatcher = PricingMethodDispatcher::new();
 
     let test_cases = [
-        (100.0, 100.0, 0.05, 0.2, 1.0),  // ATM, 1Y
-        (100.0, 110.0, 0.05, 0.2, 1.0),  // ITM put, 1Y
-        (100.0, 90.0, 0.05, 0.2, 1.0),   // OTM put, 1Y
-        (100.0, 100.0, 0.05, 0.3, 0.5),  // High vol, 6M
-        (100.0, 100.0, 0.10, 0.2, 2.0),  // High rate, 2Y
+        (100.0, 100.0, 0.05, 0.2, 1.0), // ATM, 1Y
+        (100.0, 110.0, 0.05, 0.2, 1.0), // ITM put, 1Y
+        (100.0, 90.0, 0.05, 0.2, 1.0),  // OTM put, 1Y
+        (100.0, 100.0, 0.05, 0.3, 0.5), // High vol, 6M
+        (100.0, 100.0, 0.10, 0.2, 2.0), // High rate, 2Y
     ];
 
     for (spot, strike, rate, vol, expiry) in test_cases {
         let european = dispatcher
             .price_vanilla(
                 PricingMethod::Tree,
-                spot, strike, expiry, rate, vol, false, false, Some(300), None,
+                spot,
+                strike,
+                expiry,
+                rate,
+                vol,
+                false,
+                false,
+                Some(300),
+                None,
             )
             .unwrap();
 
         let american = dispatcher
             .price_vanilla(
                 PricingMethod::Tree,
-                spot, strike, expiry, rate, vol, false, true, Some(300), None,
+                spot,
+                strike,
+                expiry,
+                rate,
+                vol,
+                false,
+                true,
+                Some(300),
+                None,
             )
             .unwrap();
 
         assert!(
             american.pv >= european.pv - 1e-6,
             "American put {} should be >= European put {} for S={}, K={}, r={}, vol={}, T={}",
-            american.pv, european.pv, spot, strike, rate, vol, expiry
+            american.pv,
+            european.pv,
+            spot,
+            strike,
+            rate,
+            vol,
+            expiry
         );
     }
 }
@@ -230,14 +313,30 @@ fn test_american_call_equals_european_no_dividend() {
         let european = dispatcher
             .price_vanilla(
                 PricingMethod::Tree,
-                spot, strike, expiry, rate, vol, true, false, Some(500), None,
+                spot,
+                strike,
+                expiry,
+                rate,
+                vol,
+                true,
+                false,
+                Some(500),
+                None,
             )
             .unwrap();
 
         let american = dispatcher
             .price_vanilla(
                 PricingMethod::Tree,
-                spot, strike, expiry, rate, vol, true, true, Some(500), None,
+                spot,
+                strike,
+                expiry,
+                rate,
+                vol,
+                true,
+                true,
+                Some(500),
+                None,
             )
             .unwrap();
 
@@ -245,7 +344,8 @@ fn test_american_call_equals_european_no_dividend() {
         assert!(
             (american.pv - european.pv).abs() < 1e-4,
             "American call {} should equal European call {} (no dividends)",
-            american.pv, european.pv
+            american.pv,
+            european.pv
         );
     }
 }
@@ -264,14 +364,30 @@ fn test_put_call_parity() {
     let call = dispatcher
         .price_vanilla(
             PricingMethod::Analytical,
-            spot, strike, expiry, rate, vol, true, false, None, None,
+            spot,
+            strike,
+            expiry,
+            rate,
+            vol,
+            true,
+            false,
+            None,
+            None,
         )
         .unwrap();
 
     let put = dispatcher
         .price_vanilla(
             PricingMethod::Analytical,
-            spot, strike, expiry, rate, vol, false, false, None, None,
+            spot,
+            strike,
+            expiry,
+            rate,
+            vol,
+            false,
+            false,
+            None,
+            None,
         )
         .unwrap();
 
@@ -283,7 +399,8 @@ fn test_put_call_parity() {
     assert!(
         (parity_lhs - parity_rhs).abs() < 1e-6,
         "Put-call parity violated: C - P = {}, S - K*e^(-rT) = {}",
-        parity_lhs, parity_rhs
+        parity_lhs,
+        parity_rhs
     );
 }
 
@@ -295,14 +412,30 @@ fn test_greeks_consistency() {
     let analytical = dispatcher
         .price_vanilla(
             PricingMethod::Analytical,
-            100.0, 100.0, 1.0, 0.05, 0.2, true, false, None, None,
+            100.0,
+            100.0,
+            1.0,
+            0.05,
+            0.2,
+            true,
+            false,
+            None,
+            None,
         )
         .unwrap();
 
     let tree = dispatcher
         .price_vanilla(
             PricingMethod::Tree,
-            100.0, 100.0, 1.0, 0.05, 0.2, true, false, Some(500), None,
+            100.0,
+            100.0,
+            1.0,
+            0.05,
+            0.2,
+            true,
+            false,
+            Some(500),
+            None,
         )
         .unwrap();
 
@@ -313,7 +446,8 @@ fn test_greeks_consistency() {
     assert!(
         (analytical_delta - tree_delta).abs() < 0.02,
         "Delta mismatch: Analytical {} vs Tree {}",
-        analytical_delta, tree_delta
+        analytical_delta,
+        tree_delta
     );
 
     // Compare Gamma
@@ -323,7 +457,8 @@ fn test_greeks_consistency() {
     assert!(
         (analytical_gamma - tree_gamma).abs() < 0.005,
         "Gamma mismatch: Analytical {} vs Tree {}",
-        analytical_gamma, tree_gamma
+        analytical_gamma,
+        tree_gamma
     );
 }
 
@@ -336,7 +471,15 @@ fn test_extreme_moneyness() {
     let deep_itm_call = dispatcher
         .price_vanilla(
             PricingMethod::Tree,
-            150.0, 100.0, 1.0, 0.05, 0.2, true, false, Some(200), None,
+            150.0,
+            100.0,
+            1.0,
+            0.05,
+            0.2,
+            true,
+            false,
+            Some(200),
+            None,
         )
         .unwrap();
 
@@ -345,14 +488,23 @@ fn test_extreme_moneyness() {
     assert!(
         deep_itm_call.pv > intrinsic,
         "Deep ITM call {} should be > intrinsic {}",
-        deep_itm_call.pv, intrinsic
+        deep_itm_call.pv,
+        intrinsic
     );
 
     // Deep OTM call
     let deep_otm_call = dispatcher
         .price_vanilla(
             PricingMethod::Tree,
-            50.0, 100.0, 1.0, 0.05, 0.2, true, false, Some(200), None,
+            50.0,
+            100.0,
+            1.0,
+            0.05,
+            0.2,
+            true,
+            false,
+            Some(200),
+            None,
         )
         .unwrap();
 

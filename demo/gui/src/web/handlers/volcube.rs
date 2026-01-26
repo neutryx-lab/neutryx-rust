@@ -110,7 +110,14 @@ fn default_weight() -> f64 { 1.0 }
 
 impl SwaptionInstrument {
     pub fn new(expiry: f64, tenor: f64, strike: f64, implied_vol: f64, forward: f64) -> Self {
-        Self { expiry, tenor, strike, implied_vol, forward, weight: 1.0 }
+        Self {
+            expiry,
+            tenor,
+            strike,
+            implied_vol,
+            forward,
+            weight: 1.0,
+        }
     }
 
     pub fn with_weight(mut self, weight: f64) -> Self {
@@ -149,7 +156,11 @@ fn default_sabr_beta() -> Option<f64> { Some(0.5) }
 
 impl Default for SabrConfigInput {
     fn default() -> Self {
-        Self { beta: Some(0.5), shift: 0.0, calibrate_beta: false }
+        Self {
+            beta: Some(0.5),
+            shift: 0.0,
+            calibrate_beta: false,
+        }
     }
 }
 
@@ -547,8 +558,7 @@ impl Default for VolCubeCache {
 ///
 /// # Requirements Coverage
 ///
-/// - Requirement 1.4:
-///   `demo/data/input/irvol/`ディレクトリからデータ読み込み
+/// - Requirement 1.4: `demo/data/input/irvol/`ディレクトリからデータ読み込み
 /// - Requirement 1.5:
 ///   ファイルが存在しないか不正な形式の場合、適切なエラーメッセージ
 pub struct VolCubeDataLoader {

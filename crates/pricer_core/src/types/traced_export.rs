@@ -233,11 +233,8 @@ fn export_operation_level(trace: &ExecutionTrace) -> D3Graph {
         .collect();
 
     // Find output nodes (nodes with no outgoing edges)
-    let nodes_with_outgoing: std::collections::HashSet<NodeId> = trace
-        .edges()
-        .iter()
-        .map(|e| e.source)
-        .collect();
+    let nodes_with_outgoing: std::collections::HashSet<NodeId> =
+        trace.edges().iter().map(|e| e.source).collect();
 
     // Convert nodes
     let nodes: Vec<D3Node> = trace
@@ -254,9 +251,10 @@ fn export_operation_level(trace: &ExecutionTrace) -> D3Graph {
                 _ => D3NodeGroup::Intermediate,
             };
 
-            let label = node.label.clone().unwrap_or_else(|| {
-                format!("{:?}", node.operation)
-            });
+            let label = node
+                .label
+                .clone()
+                .unwrap_or_else(|| format!("{:?}", node.operation));
 
             D3Node {
                 id: format!("N{}", node.id.value()),
@@ -264,7 +262,9 @@ fn export_operation_level(trace: &ExecutionTrace) -> D3Graph {
                 label,
                 value: Some(node.value),
                 group,
-                scope: node.scope_id.and_then(|sid| scope_names.get(&sid).map(|s| (*s).to_string())),
+                scope: node
+                    .scope_id
+                    .and_then(|sid| scope_names.get(&sid).map(|s| (*s).to_string())),
                 source: Some(node.source_location.to_string()),
             }
         })
@@ -306,10 +306,7 @@ fn export_scope_level(trace: &ExecutionTrace) -> D3Graph {
     // Build scope hierarchy and membership
     let mut scope_nodes: HashMap<Option<ScopeId>, Vec<NodeId>> = HashMap::new();
     for node in trace.nodes() {
-        scope_nodes
-            .entry(node.scope_id)
-            .or_default()
-            .push(node.id);
+        scope_nodes.entry(node.scope_id).or_default().push(node.id);
     }
 
     // Create scope-level nodes
@@ -317,7 +314,10 @@ fn export_scope_level(trace: &ExecutionTrace) -> D3Graph {
 
     // Add a node for each scope
     for scope in trace.scopes() {
-        let node_ids = scope_nodes.get(&Some(scope.id)).cloned().unwrap_or_default();
+        let node_ids = scope_nodes
+            .get(&Some(scope.id))
+            .cloned()
+            .unwrap_or_default();
         let scope_nodes_data: Vec<_> = node_ids
             .iter()
             .filter_map(|id| trace.nodes().iter().find(|n| n.id == *id))
@@ -327,7 +327,9 @@ fn export_scope_level(trace: &ExecutionTrace) -> D3Graph {
         let total_value: f64 = scope_nodes_data.iter().map(|n| n.value).sum();
 
         // Determine group based on contained operations
-        let has_inputs = scope_nodes_data.iter().any(|n| matches!(n.operation, Operation::Input));
+        let has_inputs = scope_nodes_data
+            .iter()
+            .any(|n| matches!(n.operation, Operation::Input));
         let group = if has_inputs {
             D3NodeGroup::Input
         } else {
@@ -341,7 +343,11 @@ fn export_scope_level(trace: &ExecutionTrace) -> D3Graph {
             value: Some(total_value),
             group,
             scope: scope.parent_id.and_then(|pid| {
-                trace.scopes().iter().find(|s| s.id == pid).map(|s| s.name.clone())
+                trace
+                    .scopes()
+                    .iter()
+                    .find(|s| s.id == pid)
+                    .map(|s| s.name.clone())
             }),
             source: None,
         });
@@ -351,7 +357,10 @@ fn export_scope_level(trace: &ExecutionTrace) -> D3Graph {
     let top_level_nodes = scope_nodes.get(&None).cloned().unwrap_or_default();
     for node_id in &top_level_nodes {
         if let Some(node) = trace.nodes().iter().find(|n| n.id == *node_id) {
-            let label = node.label.clone().unwrap_or_else(|| format!("{:?}", node.operation));
+            let label = node
+                .label
+                .clone()
+                .unwrap_or_else(|| format!("{:?}", node.operation));
             nodes.push(D3Node {
                 id: format!("N{}", node.id.value()),
                 node_type: D3NodeType::from(node.operation),
@@ -369,7 +378,8 @@ fn export_scope_level(trace: &ExecutionTrace) -> D3Graph {
 
     // Build edges between scopes
     let mut edges: Vec<D3Edge> = Vec::new();
-    let mut seen_edges: std::collections::HashSet<(String, String)> = std::collections::HashSet::new();
+    let mut seen_edges: std::collections::HashSet<(String, String)> =
+        std::collections::HashSet::new();
 
     for edge in trace.edges() {
         // Find scope for source and target nodes
@@ -387,9 +397,14 @@ fn export_scope_level(trace: &ExecutionTrace) -> D3Graph {
             };
 
             // Skip self-loops and duplicates
-            if source_id != target_id && !seen_edges.contains(&(source_id.clone(), target_id.clone())) {
+            if source_id != target_id
+                && !seen_edges.contains(&(source_id.clone(), target_id.clone()))
+            {
                 seen_edges.insert((source_id.clone(), target_id.clone()));
-                edges.push(D3Edge { source: source_id, target: target_id });
+                edges.push(D3Edge {
+                    source: source_id,
+                    target: target_id,
+                });
             }
         }
     }
@@ -417,14 +432,15 @@ fn export_scope_level(trace: &ExecutionTrace) -> D3Graph {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::types::traced::{
-        clear_trace_context, set_trace_context, ExecutionTrace, SourceLocation,
-    };
-    use crate::types::TracedFloat;
+    use std::{cell::RefCell, rc::Rc};
+
     use num_traits::Float;
-    use std::cell::RefCell;
-    use std::rc::Rc;
+
+    use super::*;
+    use crate::types::{
+        traced::{clear_trace_context, set_trace_context, ExecutionTrace, SourceLocation},
+        TracedFloat,
+    };
 
     fn setup_trace() -> Rc<RefCell<ExecutionTrace>> {
         let trace = Rc::new(RefCell::new(ExecutionTrace::new()));
@@ -432,9 +448,7 @@ mod tests {
         trace
     }
 
-    fn teardown() {
-        clear_trace_context();
-    }
+    fn teardown() { clear_trace_context(); }
 
     mod d3_node_type_tests {
         use super::*;
@@ -511,8 +525,8 @@ mod tests {
             // Check groups
             assert_eq!(graph.nodes[0].group, D3NodeGroup::Input); // a
             assert_eq!(graph.nodes[1].group, D3NodeGroup::Input); // b
-            // c is intermediate
-            // d is output (no outgoing edges)
+                                                                  // c is intermediate
+                                                                  // d is output (no outgoing edges)
 
             teardown();
         }
@@ -554,7 +568,10 @@ mod tests {
             let graph = export_graph(&trace.borrow(), DetailLevel::Operation);
 
             // All nodes should have scope = "calculate"
-            assert!(graph.nodes.iter().all(|n| n.scope == Some("calculate".to_string())));
+            assert!(graph
+                .nodes
+                .iter()
+                .all(|n| n.scope == Some("calculate".to_string())));
 
             teardown();
         }

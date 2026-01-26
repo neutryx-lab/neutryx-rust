@@ -228,7 +228,11 @@ impl PricingError {
     }
 
     /// Creates a convergence failed error.
-    pub fn convergence_failed(method: impl Into<String>, iterations: usize, tolerance: f64) -> Self {
+    pub fn convergence_failed(
+        method: impl Into<String>,
+        iterations: usize,
+        tolerance: f64,
+    ) -> Self {
         Self::ConvergenceFailed {
             method: method.into(),
             iterations,
@@ -264,19 +268,13 @@ impl PricingError {
     }
 
     /// Returns true if this is a method-related error.
-    pub fn is_method_error(&self) -> bool {
-        matches!(self, Self::UnsupportedMethod { .. })
-    }
+    pub fn is_method_error(&self) -> bool { matches!(self, Self::UnsupportedMethod { .. }) }
 
     /// Returns true if this is a convergence error.
-    pub fn is_convergence_error(&self) -> bool {
-        matches!(self, Self::ConvergenceFailed { .. })
-    }
+    pub fn is_convergence_error(&self) -> bool { matches!(self, Self::ConvergenceFailed { .. }) }
 
     /// Returns true if this is a numerical error.
-    pub fn is_numerical_error(&self) -> bool {
-        matches!(self, Self::NumericalInstability { .. })
-    }
+    pub fn is_numerical_error(&self) -> bool { matches!(self, Self::NumericalInstability { .. }) }
 }
 
 /// Configuration validation errors.

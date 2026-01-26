@@ -57,7 +57,8 @@ pub mod instruments {
     //! Lightweight instrument definitions for analytical pricing models.
     //!
     //! This module re-exports types from `infra_master::trade` for backwards
-    //! compatibility. For full instrument definitions, see `infra_master::trade`.
+    //! compatibility. For full instrument definitions, see
+    //! `infra_master::trade`.
 
     pub use infra_master::trade::{
         ExerciseStyle, Forward, ForwardDirection as Direction, FxOptionType, InstrumentParams,

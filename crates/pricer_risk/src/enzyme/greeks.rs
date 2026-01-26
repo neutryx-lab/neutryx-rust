@@ -566,7 +566,9 @@ fn compute_delta_fd(
         spot: gbm.spot - bump,
         ..gbm
     };
-    let price_down = pricer.price_european(gbm_down, payoff, discount_factor).price;
+    let price_down = pricer
+        .price_european(gbm_down, payoff, discount_factor)
+        .price;
 
     (price_up - price_down) / (2.0 * bump)
 }
@@ -599,7 +601,9 @@ fn compute_gamma_fd(
         spot: gbm.spot - bump,
         ..gbm
     };
-    let price_down = pricer.price_european(gbm_down, payoff, discount_factor).price;
+    let price_down = pricer
+        .price_european(gbm_down, payoff, discount_factor)
+        .price;
 
     (price_up - 2.0 * price_mid + price_down) / (bump * bump)
 }
@@ -628,7 +632,9 @@ fn compute_vega_fd(
         volatility: (gbm.volatility - bump).max(0.001),
         ..gbm
     };
-    let price_down = pricer.price_european(gbm_down, payoff, discount_factor).price;
+    let price_down = pricer
+        .price_european(gbm_down, payoff, discount_factor)
+        .price;
 
     (price_up - price_down) / (2.0 * bump)
 }
@@ -696,8 +702,9 @@ fn compute_rho_fd(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use pricer_pricing::mc::MonteCarloConfig;
+
+    use super::*;
 
     fn create_pricer() -> MonteCarloPricer {
         let config = MonteCarloConfig::builder()

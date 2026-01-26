@@ -2374,7 +2374,6 @@ pub struct ScenarioCompareResponse {
 
 /// Direction enum for leg payments (re-exported from infra_master).
 pub use infra_master::trade::Direction as DirectionInput;
-
 /// Supported currencies for GenericPricer (re-exported from infra_master).
 /// Note: Also includes CHF in addition to USD, EUR, JPY, GBP.
 pub use infra_master::Currency as CurrencyInput;
@@ -3805,7 +3804,8 @@ mod tests {
 
         #[test]
         fn test_default_is_monthly() {
-            // Note: PaymentFrequency is now Frequency from infra_master, which defaults to Monthly
+            // Note: PaymentFrequency is now Frequency from infra_master, which defaults to
+            // Monthly
             let default_freq = PaymentFrequency::default();
             assert_eq!(default_freq, PaymentFrequency::Monthly);
         }

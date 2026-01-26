@@ -1,8 +1,9 @@
 //! # TracedFloat - Computation Graph Building Numeric Type
 //!
-//! `TracedFloat` is a floating-point type that automatically builds a computation
-//! graph while performing calculations. It implements `num_traits::Float` so it
-//! can be used with existing generic code (`T: Float`).
+//! `TracedFloat` is a floating-point type that automatically builds a
+//! computation graph while performing calculations. It implements
+//! `num_traits::Float` so it can be used with existing generic code (`T:
+//! Float`).
 //!
 //! ## Feature Gate
 //!
@@ -38,10 +39,12 @@
 //! clear_trace_context();
 //! ```
 
-use std::cmp::Ordering;
-use std::fmt;
-use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
-use std::panic::Location;
+use std::{
+    cmp::Ordering,
+    fmt,
+    ops::{Add, Div, Mul, Neg, Rem, Sub},
+    panic::Location,
+};
 
 use num_traits::{Float, FloatConst, FromPrimitive, Num, NumCast, One, ToPrimitive, Zero};
 
@@ -93,27 +96,21 @@ impl TracedFloat {
     ///
     /// This is an internal method used for operations that don't need tracing.
     #[inline]
-    const fn from_raw(value: f64, node_id: NodeId) -> Self {
-        Self { value, node_id }
-    }
+    const fn from_raw(value: f64, node_id: NodeId) -> Self { Self { value, node_id } }
 
     /// Returns the wrapped f64 value.
     #[must_use]
-    pub const fn value(self) -> f64 {
-        self.value
-    }
+    pub const fn value(self) -> f64 { self.value }
 
     /// Returns the node ID in the computation graph.
     #[must_use]
-    pub const fn node_id(self) -> NodeId {
-        self.node_id
-    }
+    pub const fn node_id(self) -> NodeId { self.node_id }
 
     /// Creates a new TracedFloat from a unary operation.
     #[track_caller]
     fn unary_op(self, op: Operation, result: f64) -> Self {
-        let trace = get_trace_context()
-            .expect("TracedFloat operations require an active trace context");
+        let trace =
+            get_trace_context().expect("TracedFloat operations require an active trace context");
         let location = SourceLocation::from_location(Location::caller());
         let node_id = trace
             .borrow_mut()
@@ -124,20 +121,21 @@ impl TracedFloat {
     /// Creates a new TracedFloat from a binary operation.
     #[track_caller]
     fn binary_op(self, other: Self, op: Operation, result: f64) -> Self {
-        let trace = get_trace_context()
-            .expect("TracedFloat operations require an active trace context");
+        let trace =
+            get_trace_context().expect("TracedFloat operations require an active trace context");
         let location = SourceLocation::from_location(Location::caller());
-        let node_id = trace
-            .borrow_mut()
-            .add_node(op, result, location, vec![self.node_id, other.node_id]);
+        let node_id =
+            trace
+                .borrow_mut()
+                .add_node(op, result, location, vec![self.node_id, other.node_id]);
         Self::from_raw(result, node_id)
     }
 
     /// Creates a new TracedFloat from a ternary operation.
     #[track_caller]
     fn ternary_op(self, b: Self, c: Self, op: Operation, result: f64) -> Self {
-        let trace = get_trace_context()
-            .expect("TracedFloat operations require an active trace context");
+        let trace =
+            get_trace_context().expect("TracedFloat operations require an active trace context");
         let location = SourceLocation::from_location(Location::caller());
         let node_id = trace.borrow_mut().add_node(
             op,
@@ -151,8 +149,8 @@ impl TracedFloat {
     /// Internal helper to add a constant node.
     #[track_caller]
     fn add_constant_node(value: f64) -> Self {
-        let trace = get_trace_context()
-            .expect("TracedFloat operations require an active trace context");
+        let trace =
+            get_trace_context().expect("TracedFloat operations require an active trace context");
         let location = SourceLocation::from_location(Location::caller());
         let node_id = trace.borrow_mut().add_constant(value, location);
         Self::from_raw(value, node_id)
@@ -173,9 +171,7 @@ impl fmt::Debug for TracedFloat {
 }
 
 impl fmt::Display for TracedFloat {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.value)
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.value) }
 }
 
 // =============================================================================
@@ -183,15 +179,11 @@ impl fmt::Display for TracedFloat {
 // =============================================================================
 
 impl PartialEq for TracedFloat {
-    fn eq(&self, other: &Self) -> bool {
-        self.value == other.value
-    }
+    fn eq(&self, other: &Self) -> bool { self.value == other.value }
 }
 
 impl PartialOrd for TracedFloat {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.value.partial_cmp(&other.value)
-    }
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> { self.value.partial_cmp(&other.value) }
 }
 
 // =============================================================================
@@ -264,20 +256,14 @@ impl Rem for TracedFloat {
 
 impl Zero for TracedFloat {
     #[track_caller]
-    fn zero() -> Self {
-        Self::add_constant_node(0.0)
-    }
+    fn zero() -> Self { Self::add_constant_node(0.0) }
 
-    fn is_zero(&self) -> bool {
-        self.value == 0.0
-    }
+    fn is_zero(&self) -> bool { self.value == 0.0 }
 }
 
 impl One for TracedFloat {
     #[track_caller]
-    fn one() -> Self {
-        Self::add_constant_node(1.0)
-    }
+    fn one() -> Self { Self::add_constant_node(1.0) }
 }
 
 // =============================================================================
@@ -297,41 +283,27 @@ impl Num for TracedFloat {
 // =============================================================================
 
 impl ToPrimitive for TracedFloat {
-    fn to_i64(&self) -> Option<i64> {
-        self.value.to_i64()
-    }
+    fn to_i64(&self) -> Option<i64> { self.value.to_i64() }
 
-    fn to_u64(&self) -> Option<u64> {
-        self.value.to_u64()
-    }
+    fn to_u64(&self) -> Option<u64> { self.value.to_u64() }
 
-    fn to_f64(&self) -> Option<f64> {
-        Some(self.value)
-    }
+    fn to_f64(&self) -> Option<f64> { Some(self.value) }
 }
 
 impl FromPrimitive for TracedFloat {
     #[track_caller]
-    fn from_i64(n: i64) -> Option<Self> {
-        f64::from_i64(n).map(Self::add_constant_node)
-    }
+    fn from_i64(n: i64) -> Option<Self> { f64::from_i64(n).map(Self::add_constant_node) }
 
     #[track_caller]
-    fn from_u64(n: u64) -> Option<Self> {
-        f64::from_u64(n).map(Self::add_constant_node)
-    }
+    fn from_u64(n: u64) -> Option<Self> { f64::from_u64(n).map(Self::add_constant_node) }
 
     #[track_caller]
-    fn from_f64(n: f64) -> Option<Self> {
-        Some(Self::add_constant_node(n))
-    }
+    fn from_f64(n: f64) -> Option<Self> { Some(Self::add_constant_node(n)) }
 }
 
 impl NumCast for TracedFloat {
     #[track_caller]
-    fn from<T: ToPrimitive>(n: T) -> Option<Self> {
-        n.to_f64().and_then(FromPrimitive::from_f64)
-    }
+    fn from<T: ToPrimitive>(n: T) -> Option<Self> { n.to_f64().and_then(FromPrimitive::from_f64) }
 }
 
 // =============================================================================
@@ -340,84 +312,52 @@ impl NumCast for TracedFloat {
 
 impl FloatConst for TracedFloat {
     #[track_caller]
-    fn E() -> Self {
-        Self::add_constant_node(std::f64::consts::E)
-    }
+    fn E() -> Self { Self::add_constant_node(std::f64::consts::E) }
 
     #[track_caller]
-    fn FRAC_1_PI() -> Self {
-        Self::add_constant_node(std::f64::consts::FRAC_1_PI)
-    }
+    fn FRAC_1_PI() -> Self { Self::add_constant_node(std::f64::consts::FRAC_1_PI) }
 
     #[track_caller]
-    fn FRAC_1_SQRT_2() -> Self {
-        Self::add_constant_node(std::f64::consts::FRAC_1_SQRT_2)
-    }
+    fn FRAC_1_SQRT_2() -> Self { Self::add_constant_node(std::f64::consts::FRAC_1_SQRT_2) }
 
     #[track_caller]
-    fn FRAC_2_PI() -> Self {
-        Self::add_constant_node(std::f64::consts::FRAC_2_PI)
-    }
+    fn FRAC_2_PI() -> Self { Self::add_constant_node(std::f64::consts::FRAC_2_PI) }
 
     #[track_caller]
-    fn FRAC_2_SQRT_PI() -> Self {
-        Self::add_constant_node(std::f64::consts::FRAC_2_SQRT_PI)
-    }
+    fn FRAC_2_SQRT_PI() -> Self { Self::add_constant_node(std::f64::consts::FRAC_2_SQRT_PI) }
 
     #[track_caller]
-    fn FRAC_PI_2() -> Self {
-        Self::add_constant_node(std::f64::consts::FRAC_PI_2)
-    }
+    fn FRAC_PI_2() -> Self { Self::add_constant_node(std::f64::consts::FRAC_PI_2) }
 
     #[track_caller]
-    fn FRAC_PI_3() -> Self {
-        Self::add_constant_node(std::f64::consts::FRAC_PI_3)
-    }
+    fn FRAC_PI_3() -> Self { Self::add_constant_node(std::f64::consts::FRAC_PI_3) }
 
     #[track_caller]
-    fn FRAC_PI_4() -> Self {
-        Self::add_constant_node(std::f64::consts::FRAC_PI_4)
-    }
+    fn FRAC_PI_4() -> Self { Self::add_constant_node(std::f64::consts::FRAC_PI_4) }
 
     #[track_caller]
-    fn FRAC_PI_6() -> Self {
-        Self::add_constant_node(std::f64::consts::FRAC_PI_6)
-    }
+    fn FRAC_PI_6() -> Self { Self::add_constant_node(std::f64::consts::FRAC_PI_6) }
 
     #[track_caller]
-    fn FRAC_PI_8() -> Self {
-        Self::add_constant_node(std::f64::consts::FRAC_PI_8)
-    }
+    fn FRAC_PI_8() -> Self { Self::add_constant_node(std::f64::consts::FRAC_PI_8) }
 
     #[track_caller]
-    fn LN_10() -> Self {
-        Self::add_constant_node(std::f64::consts::LN_10)
-    }
+    fn LN_10() -> Self { Self::add_constant_node(std::f64::consts::LN_10) }
 
     #[track_caller]
-    fn LN_2() -> Self {
-        Self::add_constant_node(std::f64::consts::LN_2)
-    }
+    fn LN_2() -> Self { Self::add_constant_node(std::f64::consts::LN_2) }
 
     #[track_caller]
-    fn LOG10_E() -> Self {
-        Self::add_constant_node(std::f64::consts::LOG10_E)
-    }
+    fn LOG10_E() -> Self { Self::add_constant_node(std::f64::consts::LOG10_E) }
 
     #[track_caller]
-    fn LOG2_E() -> Self {
-        Self::add_constant_node(std::f64::consts::LOG2_E)
-    }
+    fn LOG2_E() -> Self { Self::add_constant_node(std::f64::consts::LOG2_E) }
 
     #[track_caller]
-    fn PI() -> Self {
-        Self::add_constant_node(std::f64::consts::PI)
-    }
+    fn PI() -> Self { Self::add_constant_node(std::f64::consts::PI) }
 
     #[track_caller]
-    fn SQRT_2() -> Self {
-        Self::add_constant_node(std::f64::consts::SQRT_2)
-    }
+    fn SQRT_2() -> Self { Self::add_constant_node(std::f64::consts::SQRT_2) }
 }
 
 // =============================================================================
@@ -426,102 +366,60 @@ impl FloatConst for TracedFloat {
 
 impl Float for TracedFloat {
     #[track_caller]
-    fn nan() -> Self {
-        Self::add_constant_node(f64::NAN)
-    }
+    fn nan() -> Self { Self::add_constant_node(f64::NAN) }
 
     #[track_caller]
-    fn infinity() -> Self {
-        Self::add_constant_node(f64::INFINITY)
-    }
+    fn infinity() -> Self { Self::add_constant_node(f64::INFINITY) }
 
     #[track_caller]
-    fn neg_infinity() -> Self {
-        Self::add_constant_node(f64::NEG_INFINITY)
-    }
+    fn neg_infinity() -> Self { Self::add_constant_node(f64::NEG_INFINITY) }
 
     #[track_caller]
-    fn neg_zero() -> Self {
-        Self::add_constant_node(-0.0)
-    }
+    fn neg_zero() -> Self { Self::add_constant_node(-0.0) }
 
     #[track_caller]
-    fn min_value() -> Self {
-        Self::add_constant_node(f64::MIN)
-    }
+    fn min_value() -> Self { Self::add_constant_node(f64::MIN) }
 
     #[track_caller]
-    fn min_positive_value() -> Self {
-        Self::add_constant_node(f64::MIN_POSITIVE)
-    }
+    fn min_positive_value() -> Self { Self::add_constant_node(f64::MIN_POSITIVE) }
 
     #[track_caller]
-    fn max_value() -> Self {
-        Self::add_constant_node(f64::MAX)
-    }
+    fn max_value() -> Self { Self::add_constant_node(f64::MAX) }
 
-    fn is_nan(self) -> bool {
-        self.value.is_nan()
-    }
+    fn is_nan(self) -> bool { self.value.is_nan() }
 
-    fn is_infinite(self) -> bool {
-        self.value.is_infinite()
-    }
+    fn is_infinite(self) -> bool { self.value.is_infinite() }
 
-    fn is_finite(self) -> bool {
-        self.value.is_finite()
-    }
+    fn is_finite(self) -> bool { self.value.is_finite() }
 
-    fn is_normal(self) -> bool {
-        self.value.is_normal()
-    }
+    fn is_normal(self) -> bool { self.value.is_normal() }
 
-    fn classify(self) -> std::num::FpCategory {
-        self.value.classify()
-    }
+    fn classify(self) -> std::num::FpCategory { self.value.classify() }
 
     #[track_caller]
-    fn floor(self) -> Self {
-        self.unary_op(Operation::Floor, self.value.floor())
-    }
+    fn floor(self) -> Self { self.unary_op(Operation::Floor, self.value.floor()) }
 
     #[track_caller]
-    fn ceil(self) -> Self {
-        self.unary_op(Operation::Ceil, self.value.ceil())
-    }
+    fn ceil(self) -> Self { self.unary_op(Operation::Ceil, self.value.ceil()) }
 
     #[track_caller]
-    fn round(self) -> Self {
-        self.unary_op(Operation::Round, self.value.round())
-    }
+    fn round(self) -> Self { self.unary_op(Operation::Round, self.value.round()) }
 
     #[track_caller]
-    fn trunc(self) -> Self {
-        self.unary_op(Operation::Trunc, self.value.trunc())
-    }
+    fn trunc(self) -> Self { self.unary_op(Operation::Trunc, self.value.trunc()) }
 
     #[track_caller]
-    fn fract(self) -> Self {
-        self.unary_op(Operation::Fract, self.value.fract())
-    }
+    fn fract(self) -> Self { self.unary_op(Operation::Fract, self.value.fract()) }
 
     #[track_caller]
-    fn abs(self) -> Self {
-        self.unary_op(Operation::Abs, self.value.abs())
-    }
+    fn abs(self) -> Self { self.unary_op(Operation::Abs, self.value.abs()) }
 
     #[track_caller]
-    fn signum(self) -> Self {
-        self.unary_op(Operation::Signum, self.value.signum())
-    }
+    fn signum(self) -> Self { self.unary_op(Operation::Signum, self.value.signum()) }
 
-    fn is_sign_positive(self) -> bool {
-        self.value.is_sign_positive()
-    }
+    fn is_sign_positive(self) -> bool { self.value.is_sign_positive() }
 
-    fn is_sign_negative(self) -> bool {
-        self.value.is_sign_negative()
-    }
+    fn is_sign_negative(self) -> bool { self.value.is_sign_negative() }
 
     #[track_caller]
     fn mul_add(self, a: Self, b: Self) -> Self {
@@ -530,15 +428,13 @@ impl Float for TracedFloat {
     }
 
     #[track_caller]
-    fn recip(self) -> Self {
-        self.unary_op(Operation::Recip, self.value.recip())
-    }
+    fn recip(self) -> Self { self.unary_op(Operation::Recip, self.value.recip()) }
 
     #[track_caller]
     fn powi(self, n: i32) -> Self {
         let result = self.value.powi(n);
-        let trace = get_trace_context()
-            .expect("TracedFloat operations require an active trace context");
+        let trace =
+            get_trace_context().expect("TracedFloat operations require an active trace context");
         let location = SourceLocation::from_location(Location::caller());
         let n_node = trace
             .borrow_mut()
@@ -559,24 +455,16 @@ impl Float for TracedFloat {
     }
 
     #[track_caller]
-    fn sqrt(self) -> Self {
-        self.unary_op(Operation::Sqrt, self.value.sqrt())
-    }
+    fn sqrt(self) -> Self { self.unary_op(Operation::Sqrt, self.value.sqrt()) }
 
     #[track_caller]
-    fn exp(self) -> Self {
-        self.unary_op(Operation::Exp, self.value.exp())
-    }
+    fn exp(self) -> Self { self.unary_op(Operation::Exp, self.value.exp()) }
 
     #[track_caller]
-    fn exp2(self) -> Self {
-        self.unary_op(Operation::Exp2, self.value.exp2())
-    }
+    fn exp2(self) -> Self { self.unary_op(Operation::Exp2, self.value.exp2()) }
 
     #[track_caller]
-    fn ln(self) -> Self {
-        self.unary_op(Operation::Ln, self.value.ln())
-    }
+    fn ln(self) -> Self { self.unary_op(Operation::Ln, self.value.ln()) }
 
     #[track_caller]
     fn log(self, base: Self) -> Self {
@@ -585,8 +473,8 @@ impl Float for TracedFloat {
         let ln_base = base.value.ln();
         let result = ln_self / ln_base;
 
-        let trace = get_trace_context()
-            .expect("TracedFloat operations require an active trace context");
+        let trace =
+            get_trace_context().expect("TracedFloat operations require an active trace context");
         let location = SourceLocation::from_location(Location::caller());
 
         let ln_self_id = trace.borrow_mut().add_node(
@@ -611,14 +499,10 @@ impl Float for TracedFloat {
     }
 
     #[track_caller]
-    fn log2(self) -> Self {
-        self.unary_op(Operation::Log2, self.value.log2())
-    }
+    fn log2(self) -> Self { self.unary_op(Operation::Log2, self.value.log2()) }
 
     #[track_caller]
-    fn log10(self) -> Self {
-        self.unary_op(Operation::Log10, self.value.log10())
-    }
+    fn log10(self) -> Self { self.unary_op(Operation::Log10, self.value.log10()) }
 
     #[track_caller]
     fn max(self, other: Self) -> Self {
@@ -642,12 +526,10 @@ impl Float for TracedFloat {
     fn cbrt(self) -> Self {
         // cbrt(x) = x^(1/3)
         let result = self.value.cbrt();
-        let trace = get_trace_context()
-            .expect("TracedFloat operations require an active trace context");
+        let trace =
+            get_trace_context().expect("TracedFloat operations require an active trace context");
         let location = SourceLocation::from_location(Location::caller());
-        let third_id = trace
-            .borrow_mut()
-            .add_constant(1.0 / 3.0, location.clone());
+        let third_id = trace.borrow_mut().add_constant(1.0 / 3.0, location.clone());
         let node_id = trace.borrow_mut().add_node(
             Operation::Powf,
             result,
@@ -664,34 +546,22 @@ impl Float for TracedFloat {
     }
 
     #[track_caller]
-    fn sin(self) -> Self {
-        self.unary_op(Operation::Sin, self.value.sin())
-    }
+    fn sin(self) -> Self { self.unary_op(Operation::Sin, self.value.sin()) }
 
     #[track_caller]
-    fn cos(self) -> Self {
-        self.unary_op(Operation::Cos, self.value.cos())
-    }
+    fn cos(self) -> Self { self.unary_op(Operation::Cos, self.value.cos()) }
 
     #[track_caller]
-    fn tan(self) -> Self {
-        self.unary_op(Operation::Tan, self.value.tan())
-    }
+    fn tan(self) -> Self { self.unary_op(Operation::Tan, self.value.tan()) }
 
     #[track_caller]
-    fn asin(self) -> Self {
-        self.unary_op(Operation::Asin, self.value.asin())
-    }
+    fn asin(self) -> Self { self.unary_op(Operation::Asin, self.value.asin()) }
 
     #[track_caller]
-    fn acos(self) -> Self {
-        self.unary_op(Operation::Acos, self.value.acos())
-    }
+    fn acos(self) -> Self { self.unary_op(Operation::Acos, self.value.acos()) }
 
     #[track_caller]
-    fn atan(self) -> Self {
-        self.unary_op(Operation::Atan, self.value.atan())
-    }
+    fn atan(self) -> Self { self.unary_op(Operation::Atan, self.value.atan()) }
 
     #[track_caller]
     fn atan2(self, other: Self) -> Self {
@@ -702,8 +572,8 @@ impl Float for TracedFloat {
     #[track_caller]
     fn sin_cos(self) -> (Self, Self) {
         let (sin_val, cos_val) = self.value.sin_cos();
-        let trace = get_trace_context()
-            .expect("TracedFloat operations require an active trace context");
+        let trace =
+            get_trace_context().expect("TracedFloat operations require an active trace context");
         let location = SourceLocation::from_location(Location::caller());
 
         let sin_id = trace.borrow_mut().add_node(
@@ -717,57 +587,40 @@ impl Float for TracedFloat {
                 .borrow_mut()
                 .add_node(Operation::Cos, cos_val, location, vec![self.node_id]);
 
-        (Self::from_raw(sin_val, sin_id), Self::from_raw(cos_val, cos_id))
+        (
+            Self::from_raw(sin_val, sin_id),
+            Self::from_raw(cos_val, cos_id),
+        )
     }
 
     #[track_caller]
-    fn exp_m1(self) -> Self {
-        self.unary_op(Operation::ExpM1, self.value.exp_m1())
-    }
+    fn exp_m1(self) -> Self { self.unary_op(Operation::ExpM1, self.value.exp_m1()) }
 
     #[track_caller]
-    fn ln_1p(self) -> Self {
-        self.unary_op(Operation::Ln1p, self.value.ln_1p())
-    }
+    fn ln_1p(self) -> Self { self.unary_op(Operation::Ln1p, self.value.ln_1p()) }
 
     #[track_caller]
-    fn sinh(self) -> Self {
-        self.unary_op(Operation::Sinh, self.value.sinh())
-    }
+    fn sinh(self) -> Self { self.unary_op(Operation::Sinh, self.value.sinh()) }
 
     #[track_caller]
-    fn cosh(self) -> Self {
-        self.unary_op(Operation::Cosh, self.value.cosh())
-    }
+    fn cosh(self) -> Self { self.unary_op(Operation::Cosh, self.value.cosh()) }
 
     #[track_caller]
-    fn tanh(self) -> Self {
-        self.unary_op(Operation::Tanh, self.value.tanh())
-    }
+    fn tanh(self) -> Self { self.unary_op(Operation::Tanh, self.value.tanh()) }
 
     #[track_caller]
-    fn asinh(self) -> Self {
-        self.unary_op(Operation::Asinh, self.value.asinh())
-    }
+    fn asinh(self) -> Self { self.unary_op(Operation::Asinh, self.value.asinh()) }
 
     #[track_caller]
-    fn acosh(self) -> Self {
-        self.unary_op(Operation::Acosh, self.value.acosh())
-    }
+    fn acosh(self) -> Self { self.unary_op(Operation::Acosh, self.value.acosh()) }
 
     #[track_caller]
-    fn atanh(self) -> Self {
-        self.unary_op(Operation::Atanh, self.value.atanh())
-    }
+    fn atanh(self) -> Self { self.unary_op(Operation::Atanh, self.value.atanh()) }
 
-    fn integer_decode(self) -> (u64, i16, i8) {
-        self.value.integer_decode()
-    }
+    fn integer_decode(self) -> (u64, i16, i8) { self.value.integer_decode() }
 
     #[track_caller]
-    fn epsilon() -> Self {
-        Self::add_constant_node(f64::EPSILON)
-    }
+    fn epsilon() -> Self { Self::add_constant_node(f64::EPSILON) }
 
     #[track_caller]
     fn copysign(self, sign: Self) -> Self {
@@ -782,11 +635,12 @@ impl Float for TracedFloat {
 
 #[cfg(test)]
 mod tests {
+    use std::{cell::RefCell, rc::Rc};
+
+    use approx::assert_relative_eq;
+
     use super::*;
     use crate::types::traced::{clear_trace_context, set_trace_context, ExecutionTrace};
-    use approx::assert_relative_eq;
-    use std::cell::RefCell;
-    use std::rc::Rc;
 
     fn setup_trace() -> Rc<RefCell<ExecutionTrace>> {
         let trace = Rc::new(RefCell::new(ExecutionTrace::new()));
@@ -794,9 +648,7 @@ mod tests {
         trace
     }
 
-    fn teardown() {
-        clear_trace_context();
-    }
+    fn teardown() { clear_trace_context(); }
 
     mod basic_tests {
         use super::*;
@@ -1279,7 +1131,8 @@ mod tests {
         use super::*;
 
         /// A generic function that works with any `T: Float`.
-        /// This demonstrates that TracedFloat can be used with existing generic code.
+        /// This demonstrates that TracedFloat can be used with existing generic
+        /// code.
         fn compute_price<T: Float>(spot: T, vol: T, time: T) -> T {
             let sqrt_t = time.sqrt();
             spot * vol * sqrt_t

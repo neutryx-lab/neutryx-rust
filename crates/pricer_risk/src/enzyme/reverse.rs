@@ -137,7 +137,7 @@ impl<T: Float> ReverseAD<T> {
     ///
     /// Note: Standard error is set to zero as AD doesn't compute MC error.
     #[inline]
-        pub fn to_greeks_result(self) -> GreeksResult<T> {
+    pub fn to_greeks_result(self) -> GreeksResult<T> {
         GreeksResult {
             price: self.price,
             std_error: T::zero(),
@@ -260,7 +260,7 @@ impl<T: Float> CompleteGreeks<T> {
 
     /// Converts to GreeksResult<T> for compatibility.
     #[inline]
-        pub fn to_greeks_result(self) -> GreeksResult<T> {
+    pub fn to_greeks_result(self) -> GreeksResult<T> {
         GreeksResult {
             price: self.first_order.price,
             std_error: T::zero(),

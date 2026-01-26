@@ -132,9 +132,7 @@ impl BinomialTree {
     }
 
     /// Returns the CRR parameters.
-    pub fn params(&self) -> CrrParams {
-        self.params
-    }
+    pub fn params(&self) -> CrrParams { self.params }
 
     /// Computes the payoff at a given spot level.
     fn payoff(&self, spot: f64) -> f64 {
@@ -235,7 +233,8 @@ impl BinomialTree {
     /// Computes Gamma from the tree.
     ///
     /// Gamma is computed from the second derivative approximation:
-    /// Gamma = ((V_uu - V_ud) / (S_uu - S_ud) - (V_ud - V_dd) / (S_ud - S_dd)) / ((S_uu - S_dd) / 2)
+    /// Gamma = ((V_uu - V_ud) / (S_uu - S_ud) - (V_ud - V_dd) / (S_ud - S_dd))
+    /// / ((S_uu - S_dd) / 2)
     pub fn gamma(&self) -> f64 {
         if self.num_steps < 2 {
             return 0.0;
@@ -287,44 +286,28 @@ impl BinomialTree {
     }
 
     /// Returns whether this is a call option.
-    pub fn is_call(&self) -> bool {
-        self.is_call
-    }
+    pub fn is_call(&self) -> bool { self.is_call }
 
     /// Returns whether this is an American option.
-    pub fn is_american(&self) -> bool {
-        self.is_american
-    }
+    pub fn is_american(&self) -> bool { self.is_american }
 
     /// Returns the spot price.
-    pub fn spot(&self) -> f64 {
-        self.spot
-    }
+    pub fn spot(&self) -> f64 { self.spot }
 
     /// Returns the strike price.
-    pub fn strike(&self) -> f64 {
-        self.strike
-    }
+    pub fn strike(&self) -> f64 { self.strike }
 
     /// Returns the time to expiry.
-    pub fn expiry(&self) -> f64 {
-        self.expiry
-    }
+    pub fn expiry(&self) -> f64 { self.expiry }
 
     /// Returns the number of steps.
-    pub fn num_steps(&self) -> usize {
-        self.num_steps
-    }
+    pub fn num_steps(&self) -> usize { self.num_steps }
 
     /// Returns the volatility.
-    pub fn volatility(&self) -> f64 {
-        self.volatility
-    }
+    pub fn volatility(&self) -> f64 { self.volatility }
 
     /// Returns the risk-free rate.
-    pub fn rate(&self) -> f64 {
-        self.rate
-    }
+    pub fn rate(&self) -> f64 { self.rate }
 }
 
 #[cfg(test)]
@@ -346,13 +329,14 @@ mod tests {
             let x_abs = x.abs() / std::f64::consts::SQRT_2;
 
             let t = 1.0 / (1.0 + P * x_abs);
-            let y = 1.0 - (((((A5 * t + A4) * t) + A3) * t + A2) * t + A1) * t * (-x_abs * x_abs).exp();
+            let y =
+                1.0 - (((((A5 * t + A4) * t) + A3) * t + A2) * t + A1) * t * (-x_abs * x_abs).exp();
 
             0.5 * (1.0 + sign * y)
         }
 
-        let d1 =
-            ((spot / strike).ln() + (rate + 0.5 * volatility * volatility) * expiry) / (volatility * expiry.sqrt());
+        let d1 = ((spot / strike).ln() + (rate + 0.5 * volatility * volatility) * expiry)
+            / (volatility * expiry.sqrt());
         let d2 = d1 - volatility * expiry.sqrt();
 
         spot * norm_cdf(d1) - strike * (-rate * expiry).exp() * norm_cdf(d2)
@@ -436,8 +420,10 @@ mod tests {
 
         // Test convergence with increasing steps
         for num_steps in [100, 500, 1000] {
-            let tree = BinomialTree::new(spot, strike, expiry, rate, volatility, num_steps, true, false)
-                .unwrap();
+            let tree = BinomialTree::new(
+                spot, strike, expiry, rate, volatility, num_steps, true, false,
+            )
+            .unwrap();
             let tree_price = tree.price();
 
             // Allow larger tolerance for fewer steps
@@ -467,8 +453,8 @@ mod tests {
 
         let bs_price = black_scholes_put(spot, strike, rate, volatility, expiry);
 
-        let tree = BinomialTree::new(spot, strike, expiry, rate, volatility, 500, false, false)
-            .unwrap();
+        let tree =
+            BinomialTree::new(spot, strike, expiry, rate, volatility, 500, false, false).unwrap();
         let tree_price = tree.price();
 
         assert!(
@@ -488,10 +474,14 @@ mod tests {
         let expiry = 1.0;
         let num_steps = 500;
 
-        let european_tree = BinomialTree::new(spot, strike, expiry, rate, volatility, num_steps, false, false)
-            .unwrap();
-        let american_tree = BinomialTree::new(spot, strike, expiry, rate, volatility, num_steps, false, true)
-            .unwrap();
+        let european_tree = BinomialTree::new(
+            spot, strike, expiry, rate, volatility, num_steps, false, false,
+        )
+        .unwrap();
+        let american_tree = BinomialTree::new(
+            spot, strike, expiry, rate, volatility, num_steps, false, true,
+        )
+        .unwrap();
 
         let european_price = european_tree.price();
         let american_price = american_tree.price();
@@ -515,10 +505,14 @@ mod tests {
         let expiry = 1.0;
         let num_steps = 500;
 
-        let european_tree = BinomialTree::new(spot, strike, expiry, rate, volatility, num_steps, true, false)
-            .unwrap();
-        let american_tree = BinomialTree::new(spot, strike, expiry, rate, volatility, num_steps, true, true)
-            .unwrap();
+        let european_tree = BinomialTree::new(
+            spot, strike, expiry, rate, volatility, num_steps, true, false,
+        )
+        .unwrap();
+        let american_tree = BinomialTree::new(
+            spot, strike, expiry, rate, volatility, num_steps, true, true,
+        )
+        .unwrap();
 
         let european_price = european_tree.price();
         let american_price = american_tree.price();
@@ -533,30 +527,35 @@ mod tests {
 
     #[test]
     fn test_delta_reasonable_range() {
-        let tree = BinomialTree::new(100.0, 100.0, 1.0, 0.05, 0.2, 500, true, false)
-            .unwrap();
+        let tree = BinomialTree::new(100.0, 100.0, 1.0, 0.05, 0.2, 500, true, false).unwrap();
         let delta = tree.delta();
 
         // Delta for ATM call should be around 0.5-0.6
-        assert!(delta > 0.4 && delta < 0.8, "Call delta {} should be reasonable", delta);
+        assert!(
+            delta > 0.4 && delta < 0.8,
+            "Call delta {} should be reasonable",
+            delta
+        );
     }
 
     #[test]
     fn test_delta_put_negative() {
-        let tree = BinomialTree::new(100.0, 100.0, 1.0, 0.05, 0.2, 500, false, false)
-            .unwrap();
+        let tree = BinomialTree::new(100.0, 100.0, 1.0, 0.05, 0.2, 500, false, false).unwrap();
         let delta = tree.delta();
 
         // Put delta should be negative
         assert!(delta < 0.0, "Put delta {} should be negative", delta);
         // ATM put delta around -0.4 to -0.5
-        assert!(delta > -0.7 && delta < -0.3, "Put delta {} should be reasonable", delta);
+        assert!(
+            delta > -0.7 && delta < -0.3,
+            "Put delta {} should be reasonable",
+            delta
+        );
     }
 
     #[test]
     fn test_gamma_positive() {
-        let tree = BinomialTree::new(100.0, 100.0, 1.0, 0.05, 0.2, 500, true, false)
-            .unwrap();
+        let tree = BinomialTree::new(100.0, 100.0, 1.0, 0.05, 0.2, 500, true, false).unwrap();
         let gamma = tree.gamma();
 
         // Gamma should always be positive for vanilla options
@@ -566,27 +565,32 @@ mod tests {
     #[test]
     fn test_deep_itm_call_delta_near_one() {
         // Deep ITM call should have delta close to 1
-        let tree = BinomialTree::new(150.0, 100.0, 1.0, 0.05, 0.2, 500, true, false)
-            .unwrap();
+        let tree = BinomialTree::new(150.0, 100.0, 1.0, 0.05, 0.2, 500, true, false).unwrap();
         let delta = tree.delta();
 
-        assert!(delta > 0.9, "Deep ITM call delta {} should be close to 1", delta);
+        assert!(
+            delta > 0.9,
+            "Deep ITM call delta {} should be close to 1",
+            delta
+        );
     }
 
     #[test]
     fn test_deep_otm_call_delta_near_zero() {
         // Deep OTM call should have delta close to 0
-        let tree = BinomialTree::new(50.0, 100.0, 1.0, 0.05, 0.2, 500, true, false)
-            .unwrap();
+        let tree = BinomialTree::new(50.0, 100.0, 1.0, 0.05, 0.2, 500, true, false).unwrap();
         let delta = tree.delta();
 
-        assert!(delta < 0.1, "Deep OTM call delta {} should be close to 0", delta);
+        assert!(
+            delta < 0.1,
+            "Deep OTM call delta {} should be close to 0",
+            delta
+        );
     }
 
     #[test]
     fn test_crr_params_accessible() {
-        let tree = BinomialTree::new(100.0, 100.0, 1.0, 0.05, 0.2, 100, true, false)
-            .unwrap();
+        let tree = BinomialTree::new(100.0, 100.0, 1.0, 0.05, 0.2, 100, true, false).unwrap();
         let params = tree.params();
 
         // Verify CRR relationship: u * d = 1

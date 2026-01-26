@@ -29,25 +29,21 @@ impl SpeedComparisonData {
         }
     }
 
-    fn sample() -> Self {
-        Self::new(150_000.0, 2_500_000.0, 20)
-    }
+    fn sample() -> Self { Self::new(150_000.0, 2_500_000.0, 20) }
 
-    fn aad_mean_us(&self) -> f64 {
-        self.aad_mean_ns / 1000.0
-    }
+    fn aad_mean_us(&self) -> f64 { self.aad_mean_ns / 1000.0 }
 
-    fn bump_mean_us(&self) -> f64 {
-        self.bump_mean_ns / 1000.0
-    }
+    fn bump_mean_us(&self) -> f64 { self.bump_mean_ns / 1000.0 }
 }
 
 /// Query parameters for speed comparison endpoint
 #[derive(Debug, Clone, Deserialize)]
 pub struct SpeedComparisonQueryParams {
-    /// AAD mean time in nanoseconds (optional, uses sample data if not provided)
+    /// AAD mean time in nanoseconds (optional, uses sample data if not
+    /// provided)
     pub aad_mean_ns: Option<f64>,
-    /// Bump mean time in nanoseconds (optional, uses sample data if not provided)
+    /// Bump mean time in nanoseconds (optional, uses sample data if not
+    /// provided)
     pub bump_mean_ns: Option<f64>,
     /// Number of tenor points (optional, defaults to 20)
     pub tenor_count: Option<usize>,
