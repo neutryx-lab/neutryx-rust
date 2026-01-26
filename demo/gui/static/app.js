@@ -6642,6 +6642,7 @@ async function init() {
         try { initImpactChart(); } catch(e) { Logger.error('App', 'initImpactChart error', { error: e.message }); }
         try { initPricer(); } catch(e) { Logger.error('App', 'initPricer error', { error: e.message }); }
         try { initTradeExpansion(); } catch(e) { Logger.error('App', 'initTradeExpansion error', { error: e.message }); }
+        try { setupInstrumentGraphListeners(); } catch(e) { Logger.error('App', 'setupInstrumentGraphListeners error', { error: e.message }); }
 
         // Load data
         Logger.debug('App', 'Loading data...');
@@ -8132,6 +8133,343 @@ function initGraphView() {
     graphManager.addListener('graph_update', ({ updatedNodes }) => {
         updateCanvasGraphNodes(updatedNodes);
     });
+}
+
+// =============================================================================
+// Instrument Graph: USD OIS → Curve → Bootstrap Instruments
+// =============================================================================
+
+/**
+ * Instrument Graph state
+ */
+const instrumentGraphState = {
+    svg: null,
+    g: null,
+    simulation: null,
+    nodes: [],
+    links: [],
+    metadata: null,
+    currentType: 'trade', // 'trade' or 'instrument'
+};
+
+/**
+ * Initialise instrument graph view
+ */
+function initInstrumentGraphView() {
+    const container = document.getElementById('instrument-graph-container');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    const width = container.clientWidth || 800;
+    const height = container.clientHeight || 600;
+
+    instrumentGraphState.svg = d3.select(container)
+        .append('svg')
+        .attr('width', '100%')
+        .attr('height', '100%')
+        .attr('viewBox', `0 0 ${width} ${height}`)
+        .attr('class', 'instrument-graph-svg');
+
+    instrumentGraphState.g = instrumentGraphState.svg.append('g')
+        .attr('class', 'instrument-graph-main-group');
+
+    // Add arrow marker
+    instrumentGraphState.svg.append('defs').append('marker')
+        .attr('id', 'inst-arrowhead')
+        .attr('viewBox', '-0 -5 10 10')
+        .attr('refX', 25)
+        .attr('refY', 0)
+        .attr('orient', 'auto')
+        .attr('markerWidth', 6)
+        .attr('markerHeight', 6)
+        .append('path')
+        .attr('d', 'M0,-5L10,0L0,5')
+        .attr('fill', '#64748b');
+
+    // Setup zoom for instrument graph
+    const zoom = d3.zoom()
+        .scaleExtent([0.1, 4])
+        .on('zoom', (event) => {
+            instrumentGraphState.g.attr('transform', event.transform);
+        });
+
+    instrumentGraphState.svg.call(zoom);
+}
+
+/**
+ * Fetch and render instrument graph
+ */
+async function fetchInstrumentGraph() {
+    const currencySelect = document.getElementById('instrument-currency-selector');
+    const tenorSelect = document.getElementById('instrument-tenor-selector');
+
+    const currency = currencySelect?.value || 'USD';
+    const tenor = tenorSelect?.value || '1';
+
+    const loadingEl = document.getElementById('graph-loading');
+    if (loadingEl) loadingEl.style.display = 'flex';
+
+    try {
+        const response = await fetch(`${API_BASE}/instrument-graph?currency=${currency}&tenor=${tenor}&instrument_type=ois`);
+        if (!response.ok) throw new Error('Failed to fetch instrument graph');
+
+        const data = await response.json();
+        renderInstrumentGraph(data);
+        updateInstrumentInfo(data);
+    } catch (error) {
+        console.error('Error fetching instrument graph:', error);
+        showToast('Failed to load instrument graph', 'error');
+    } finally {
+        if (loadingEl) loadingEl.style.display = 'none';
+    }
+}
+
+/**
+ * Render instrument graph with hierarchical layout
+ */
+function renderInstrumentGraph(data) {
+    if (!instrumentGraphState.g) {
+        initInstrumentGraphView();
+    }
+
+    const g = instrumentGraphState.g;
+    const container = document.getElementById('instrument-graph-container');
+    const width = container?.clientWidth || 800;
+    const height = container?.clientHeight || 600;
+
+    // Store state
+    instrumentGraphState.nodes = data.nodes || [];
+    instrumentGraphState.links = data.links || [];
+    instrumentGraphState.metadata = data.metadata || {};
+
+    // Clear existing elements
+    g.selectAll('*').remove();
+
+    // Separate nodes by type for hierarchical layout
+    const outputNodes = data.nodes.filter(n => n.group === 'output');
+    const curveNodes = data.nodes.filter(n => n.group === 'intermediate');
+    const instrumentNodes = data.nodes.filter(n => n.group === 'input');
+
+    // Calculate positions - hierarchical top-to-bottom layout
+    const nodePositions = new Map();
+
+    // Output node at top
+    outputNodes.forEach((n, i) => {
+        nodePositions.set(n.id, { x: width / 2, y: 80 });
+    });
+
+    // Curve node in middle
+    curveNodes.forEach((n, i) => {
+        nodePositions.set(n.id, { x: width / 2, y: height / 2 - 50 });
+    });
+
+    // Instrument nodes at bottom in a row
+    const instrumentSpacing = Math.min(100, (width - 100) / Math.max(instrumentNodes.length, 1));
+    const startX = (width - (instrumentNodes.length - 1) * instrumentSpacing) / 2;
+    instrumentNodes.forEach((n, i) => {
+        nodePositions.set(n.id, {
+            x: startX + i * instrumentSpacing,
+            y: height - 120
+        });
+    });
+
+    // Assign positions to nodes
+    data.nodes.forEach(n => {
+        const pos = nodePositions.get(n.id);
+        if (pos) {
+            n.x = pos.x;
+            n.y = pos.y;
+        }
+    });
+
+    // Draw links (curved paths)
+    const links = g.selectAll('.inst-link')
+        .data(data.links)
+        .join('path')
+        .attr('class', 'inst-link')
+        .attr('fill', 'none')
+        .attr('stroke', '#64748b')
+        .attr('stroke-width', 2)
+        .attr('stroke-opacity', 0.6)
+        .attr('marker-end', 'url(#inst-arrowhead)')
+        .attr('d', d => {
+            const source = data.nodes.find(n => n.id === d.source);
+            const target = data.nodes.find(n => n.id === d.target);
+            if (!source || !target) return '';
+
+            // Curved path
+            const midY = (source.y + target.y) / 2;
+            return `M${source.x},${source.y} Q${source.x},${midY} ${target.x},${target.y}`;
+        });
+
+    // Draw nodes
+    const nodeGroups = g.selectAll('.inst-node')
+        .data(data.nodes)
+        .join('g')
+        .attr('class', 'inst-node')
+        .attr('transform', d => `translate(${d.x}, ${d.y})`);
+
+    // Node shapes based on type
+    nodeGroups.each(function(d) {
+        const node = d3.select(this);
+
+        if (d.group === 'output') {
+            // Output: Large rounded rectangle
+            node.append('rect')
+                .attr('x', -80)
+                .attr('y', -30)
+                .attr('width', 160)
+                .attr('height', 60)
+                .attr('rx', 10)
+                .attr('fill', '#22c55e')
+                .attr('stroke', '#16a34a')
+                .attr('stroke-width', 2);
+        } else if (d.group === 'intermediate') {
+            // Curve: Rounded rectangle
+            node.append('rect')
+                .attr('x', -100)
+                .attr('y', -25)
+                .attr('width', 200)
+                .attr('height', 50)
+                .attr('rx', 8)
+                .attr('fill', '#3b82f6')
+                .attr('stroke', '#2563eb')
+                .attr('stroke-width', 2);
+        } else {
+            // Instrument: Circle
+            node.append('circle')
+                .attr('r', 30)
+                .attr('fill', '#f97316')
+                .attr('stroke', '#ea580c')
+                .attr('stroke-width', 2);
+        }
+    });
+
+    // Add labels
+    nodeGroups.append('text')
+        .attr('text-anchor', 'middle')
+        .attr('dy', d => d.group === 'input' ? 4 : 0)
+        .attr('fill', '#fff')
+        .attr('font-size', d => d.group === 'input' ? '10px' : '12px')
+        .attr('font-weight', '600')
+        .text(d => d.label);
+
+    // Add value labels for output node
+    nodeGroups.filter(d => d.group === 'output')
+        .append('text')
+        .attr('text-anchor', 'middle')
+        .attr('dy', 20)
+        .attr('fill', '#fff')
+        .attr('font-size', '14px')
+        .attr('font-weight', '700')
+        .text(d => d.value ? `$${d.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '');
+
+    // Add rate labels for instrument nodes
+    nodeGroups.filter(d => d.group === 'input')
+        .append('text')
+        .attr('text-anchor', 'middle')
+        .attr('dy', 50)
+        .attr('fill', '#94a3b8')
+        .attr('font-size', '10px')
+        .text(d => d.value ? `${d.value.toFixed(2)}%` : '');
+
+    // Add tooltips
+    nodeGroups.on('mouseenter', function(event, d) {
+        const tooltip = d.instrument_details || d.label;
+        showToast(tooltip, 'info', 2000);
+    });
+
+    // Update statistics
+    document.getElementById('graph-node-count').textContent = data.nodes.length;
+    document.getElementById('graph-edge-count').textContent = data.links.length;
+    document.getElementById('graph-depth').textContent = '3'; // Fixed depth: Instrument → Curve → PV
+    document.getElementById('graph-generated-at').textContent =
+        new Date(data.metadata.generated_at).toLocaleTimeString();
+}
+
+/**
+ * Update instrument info panel
+ */
+function updateInstrumentInfo(data) {
+    const meta = data.metadata;
+
+    document.getElementById('inst-info-name').textContent = meta.instrument;
+
+    const pvEl = document.getElementById('inst-info-pv');
+    pvEl.textContent = `$${meta.pv.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+    pvEl.className = meta.pv >= 0 ? 'info-value positive' : 'info-value negative';
+
+    document.getElementById('inst-info-curve').textContent = `${meta.currency} SOFR`;
+    document.getElementById('inst-info-pillars').textContent =
+        data.nodes.filter(n => n.group === 'input').length;
+}
+
+/**
+ * Switch between trade graph and instrument graph
+ */
+function switchGraphType(type) {
+    instrumentGraphState.currentType = type;
+
+    const tradeControls = document.getElementById('trade-graph-controls');
+    const instControls = document.getElementById('instrument-graph-controls');
+    const tradeContent = document.getElementById('graph-content');
+    const instContent = document.getElementById('instrument-graph-content');
+    const instInfoSection = document.getElementById('instrument-info-section');
+
+    // Update tab buttons
+    document.querySelectorAll('.graph-type-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.graphType === type);
+    });
+
+    if (type === 'trade') {
+        if (tradeControls) tradeControls.style.display = 'flex';
+        if (instControls) instControls.style.display = 'none';
+        if (tradeContent) tradeContent.style.display = 'block';
+        if (instContent) instContent.style.display = 'none';
+        if (instInfoSection) instInfoSection.style.display = 'none';
+    } else {
+        if (tradeControls) tradeControls.style.display = 'none';
+        if (instControls) instControls.style.display = 'flex';
+        if (tradeContent) tradeContent.style.display = 'none';
+        if (instContent) instContent.style.display = 'block';
+        if (instInfoSection) instInfoSection.style.display = 'block';
+
+        // Init and load instrument graph if not already
+        if (!instrumentGraphState.svg) {
+            initInstrumentGraphView();
+            fetchInstrumentGraph();
+        }
+    }
+}
+
+/**
+ * Setup instrument graph event listeners
+ */
+function setupInstrumentGraphListeners() {
+    // Tab switching
+    document.querySelectorAll('.graph-type-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            switchGraphType(tab.dataset.graphType);
+        });
+    });
+
+    // Load button
+    const loadBtn = document.getElementById('load-instrument-graph');
+    if (loadBtn) {
+        loadBtn.addEventListener('click', fetchInstrumentGraph);
+    }
+
+    // Currency/Tenor change
+    const currencySelect = document.getElementById('instrument-currency-selector');
+    const tenorSelect = document.getElementById('instrument-tenor-selector');
+
+    if (currencySelect) {
+        currencySelect.addEventListener('change', fetchInstrumentGraph);
+    }
+    if (tenorSelect) {
+        tenorSelect.addEventListener('change', fetchInstrumentGraph);
+    }
 }
 
 /**

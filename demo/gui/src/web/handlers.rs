@@ -1430,6 +1430,227 @@ pub async fn get_graph(
 }
 
 // =============================================================================
+// Instrument Graph API: 1Y USD OIS → Curve → Bootstrap Instruments
+// =============================================================================
+
+/// Query parameters for instrument graph endpoint
+#[derive(Debug, Clone, Deserialize)]
+pub struct InstrumentGraphQueryParams {
+    /// Instrument type (default: "ois")
+    pub instrument_type: Option<String>,
+    /// Currency (default: "USD")
+    pub currency: Option<String>,
+    /// Tenor in years (default: 1)
+    pub tenor: Option<f64>,
+}
+
+/// Instrument node for the graph
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InstrumentGraphNode {
+    /// Unique identifier
+    pub id: String,
+    /// Node type: "price", "curve", "instrument"
+    #[serde(rename = "type")]
+    pub node_type: String,
+    /// Display label
+    pub label: String,
+    /// Value (rate or PV)
+    pub value: Option<f64>,
+    /// Node group for styling
+    pub group: String,
+    /// Additional metadata
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tenor: Option<String>,
+    /// Instrument details
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub instrument_details: Option<String>,
+}
+
+/// Instrument graph response
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InstrumentGraphResponse {
+    /// Graph nodes
+    pub nodes: Vec<InstrumentGraphNode>,
+    /// Graph edges (links)
+    pub links: Vec<GraphEdgeResponse>,
+    /// Graph metadata
+    pub metadata: InstrumentGraphMetadata,
+}
+
+/// Instrument graph metadata
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InstrumentGraphMetadata {
+    /// Target instrument description
+    pub instrument: String,
+    /// Currency
+    pub currency: String,
+    /// Tenor description
+    pub tenor: String,
+    /// Total number of nodes
+    pub node_count: usize,
+    /// Total number of edges
+    pub edge_count: usize,
+    /// Calculated PV
+    pub pv: f64,
+    /// Generation timestamp
+    pub generated_at: String,
+}
+
+/// Generate USD OIS instrument graph
+///
+/// Creates a dependency graph showing:
+/// - Top: 1Y USD OIS PV
+/// - Middle: USD OIS Discount Curve
+/// - Bottom: Bootstrap instruments (OIS swap quotes)
+fn generate_instrument_graph(
+    instrument_type: &str,
+    currency: &str,
+    tenor: f64,
+) -> InstrumentGraphResponse {
+    let mut nodes = Vec::new();
+    let mut links = Vec::new();
+
+    // USD SOFR OIS curve bootstrap instruments (market quotes)
+    // These are the instruments used to construct the USD OIS discount curve
+    let bootstrap_instruments = vec![
+        ("1W", 0.019, 0.0192),   // 1 Week OIS
+        ("1M", 0.083, 0.0435),   // 1 Month OIS
+        ("3M", 0.25, 0.0442),    // 3 Month OIS
+        ("6M", 0.5, 0.0438),     // 6 Month OIS
+        ("9M", 0.75, 0.0431),    // 9 Month OIS
+        ("1Y", 1.0, 0.0425),     // 1 Year OIS
+        ("18M", 1.5, 0.0412),    // 18 Month OIS
+        ("2Y", 2.0, 0.0398),     // 2 Year OIS
+        ("3Y", 3.0, 0.0375),     // 3 Year OIS
+        ("5Y", 5.0, 0.0358),     // 5 Year OIS
+        ("7Y", 7.0, 0.0362),     // 7 Year OIS
+        ("10Y", 10.0, 0.0378),   // 10 Year OIS
+    ];
+
+    // Determine which instruments are used for the target tenor
+    let relevant_instruments: Vec<_> = bootstrap_instruments
+        .iter()
+        .filter(|(_, mat, _)| *mat <= tenor + 0.01) // Include instruments up to target tenor
+        .collect();
+
+    // Calculate a sample PV for the 1Y USD OIS
+    // In practice: PV = Notional * (Fixed Rate - Par Rate) * DV01
+    let par_rate = 0.0425; // Current 1Y OIS par rate
+    let fixed_rate = 0.0430; // Our swap fixed rate (slightly above par)
+    let notional = 10_000_000.0; // $10M notional
+    let dv01 = 0.9958; // Approximate DV01 for 1Y
+    let pv = notional * (fixed_rate - par_rate) * dv01 * 100.0; // PV in USD
+
+    // 1. Create PV node (top of graph)
+    let pv_node_id = format!("{}-{}-{}Y-PV", currency, instrument_type.to_uppercase(), tenor);
+    nodes.push(InstrumentGraphNode {
+        id: pv_node_id.clone(),
+        node_type: "output".to_string(),
+        label: format!("{}Y {} {} PV", tenor, currency, instrument_type.to_uppercase()),
+        value: Some(pv),
+        group: "output".to_string(),
+        tenor: Some(format!("{}Y", tenor)),
+        instrument_details: Some(format!(
+            "Notional: ${:.0}M, Fixed: {:.2}%, Par: {:.2}%",
+            notional / 1_000_000.0,
+            fixed_rate * 100.0,
+            par_rate * 100.0
+        )),
+    });
+
+    // 2. Create Discount Curve node (middle of graph)
+    let curve_node_id = format!("{}-SOFR-DISC", currency);
+    nodes.push(InstrumentGraphNode {
+        id: curve_node_id.clone(),
+        node_type: "curve".to_string(),
+        label: format!("{} SOFR Discount Curve", currency),
+        value: None,
+        group: "intermediate".to_string(),
+        tenor: None,
+        instrument_details: Some(format!(
+            "Bootstrap method: Iterative, Interpolation: Log-linear, {} pillars",
+            relevant_instruments.len()
+        )),
+    });
+
+    // Link: PV → Curve
+    links.push(GraphEdgeResponse {
+        source: curve_node_id.clone(),
+        target: pv_node_id.clone(),
+        weight: Some(1.0),
+    });
+
+    // 3. Create Bootstrap Instrument nodes (bottom of graph)
+    for (label, maturity, rate) in &relevant_instruments {
+        let inst_node_id = format!("{}-SOFR-OIS-{}", currency, label);
+        nodes.push(InstrumentGraphNode {
+            id: inst_node_id.clone(),
+            node_type: "instrument".to_string(),
+            label: format!("{} OIS {}", currency, label),
+            value: Some(*rate * 100.0), // Display as percentage
+            group: "input".to_string(),
+            tenor: Some(label.to_string()),
+            instrument_details: Some(format!(
+                "Type: OIS, Maturity: {:.2}Y, Rate: {:.4}%, Freq: Annual",
+                maturity,
+                rate * 100.0
+            )),
+        });
+
+        // Link: Instrument → Curve
+        links.push(GraphEdgeResponse {
+            source: inst_node_id,
+            target: curve_node_id.clone(),
+            weight: Some(1.0),
+        });
+    }
+
+    let tenor_str = if tenor == 1.0 {
+        "1Y".to_string()
+    } else {
+        format!("{}Y", tenor)
+    };
+
+    InstrumentGraphResponse {
+        metadata: InstrumentGraphMetadata {
+            instrument: format!("{} {} {}", tenor_str, currency, instrument_type.to_uppercase()),
+            currency: currency.to_string(),
+            tenor: tenor_str,
+            node_count: nodes.len(),
+            edge_count: links.len(),
+            pv,
+            generated_at: chrono::Utc::now().to_rfc3339(),
+        },
+        nodes,
+        links,
+    }
+}
+
+/// Get instrument dependency graph
+///
+/// # Endpoint
+///
+/// `GET /api/instrument-graph`
+/// `GET /api/instrument-graph?instrument_type=ois&currency=USD&tenor=1`
+///
+/// # Response
+///
+/// Returns a D3.js compatible graph showing the dependency chain:
+/// - PV of the target instrument
+/// - Discount curve used for valuation
+/// - Bootstrap instruments used to construct the curve
+pub async fn get_instrument_graph(
+    Query(params): Query<InstrumentGraphQueryParams>,
+) -> Json<InstrumentGraphResponse> {
+    let instrument_type = params.instrument_type.as_deref().unwrap_or("ois");
+    let currency = params.currency.as_deref().unwrap_or("USD");
+    let tenor = params.tenor.unwrap_or(1.0);
+
+    let graph = generate_instrument_graph(instrument_type, currency, tenor);
+    Json(graph)
+}
+
+// =============================================================================
 // Task 7.2: Speed Comparison Chart API
 // =============================================================================
 

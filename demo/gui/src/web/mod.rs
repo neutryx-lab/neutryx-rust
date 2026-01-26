@@ -466,6 +466,8 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/risk", get(handlers::get_risk_metrics))
         // Task 3.2: Add /api/graph route for computation graph visualisation
         .route("/graph", get(handlers::get_graph))
+        // Instrument Graph: USD OIS → Curve → Bootstrap Instruments dependency graph
+        .route("/instrument-graph", get(handlers::get_instrument_graph))
         // Task 7.2: Add /api/benchmark/speed-comparison route for speed comparison chart
         .route(
             "/benchmark/speed-comparison",

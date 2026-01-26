@@ -7635,6 +7635,98 @@ body.light-theme .fancy-select {
     gap: 12px;
 }
 
+/* Graph Type Tabs */
+.graph-type-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    margin: 0 16px;
+}
+
+.graph-type-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.graph-type-tab:hover {
+    color: var(--text-primary);
+    background: var(--surface-elevated);
+}
+
+.graph-type-tab.active {
+    color: var(--text-primary);
+    background: var(--accent);
+    color: white;
+}
+
+.graph-type-tab i {
+    font-size: 0.875rem;
+}
+
+/* Instrument Graph Info Panel */
+.instrument-info-details {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.instrument-info-details .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+}
+
+.instrument-info-details .info-label {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.instrument-info-details .info-value {
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.instrument-info-details .info-value.positive {
+    color: var(--success);
+}
+
+.instrument-info-details .info-value.negative {
+    color: var(--danger);
+}
+
+/* Instrument Graph Nodes */
+.inst-node {
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.inst-node:hover {
+    transform: scale(1.05);
+}
+
+.inst-link {
+    transition: stroke-opacity 0.2s ease;
+}
+
+.inst-node:hover ~ .inst-link {
+    stroke-opacity: 1;
+}
+
 .zoom-controls {
     display: flex;
     gap: 4px;
