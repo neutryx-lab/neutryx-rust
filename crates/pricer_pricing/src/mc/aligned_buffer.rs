@@ -219,9 +219,10 @@ impl<T: Float> AlignedPathBuffer<T> {
     /// assert!(buffer.is_aligned_to(8)); // Always true for f64
     /// ```
     #[inline]
+    #[allow(clippy::manual_is_multiple_of)] // is_multiple_of is unstable
     pub fn is_aligned_to(&self, alignment: usize) -> bool {
         let ptr = self.inner.as_ptr() as usize;
-        alignment != 0 && ptr.is_multiple_of(alignment)
+        alignment != 0 && ptr % alignment == 0
     }
 
     /// Returns the memory usage of the buffer in bytes.

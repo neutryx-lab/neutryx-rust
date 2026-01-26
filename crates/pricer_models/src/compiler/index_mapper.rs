@@ -155,7 +155,7 @@ impl IndexMapper {
     /// * `None` - ID out of range
     #[must_use]
     pub fn get_forward_index(&self, id: u16) -> Option<Option<RateIndex>> {
-        self.id_to_fwd_index.get(id as usize).cloned()
+        self.id_to_fwd_index.get(id as usize).copied()
     }
 
     /// Returns the number of registered forward indices (excluding dummy).

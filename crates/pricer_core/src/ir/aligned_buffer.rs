@@ -121,7 +121,7 @@ impl<T: Clone + Default> AlignedBuffer<T> {
         let layout = Layout::from_size_align(size, ALIGNMENT).expect("Invalid layout");
 
         // SAFETY: Layout is valid, and we check for null pointer.
-        let ptr = unsafe { alloc_zeroed(layout) as *mut T };
+        let ptr = unsafe { alloc_zeroed(layout).cast::<T>() };
 
         let ptr = NonNull::new(ptr).expect("Memory allocation failed");
 
@@ -240,6 +240,7 @@ impl<T> AlignedBuffer<T> {
     /// ```
     #[inline]
     #[must_use]
+    #[allow(clippy::manual_is_multiple_of)] // is_multiple_of is unstable
     pub fn is_aligned(&self) -> bool {
         if self.cap == 0 {
             return true;
@@ -300,6 +301,20 @@ impl<T> AlignedBuffer<T> {
     pub fn memory_usage(&self) -> usize { self.cap * std::mem::size_of::<T>() }
 }
 
+impl<'a, T> IntoIterator for &'a AlignedBuffer<T> {
+    type Item = &'a T;
+    type IntoIter = slice::Iter<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter { self.iter() }
+}
+
+impl<'a, T> IntoIterator for &'a mut AlignedBuffer<T> {
+    type Item = &'a mut T;
+    type IntoIter = slice::IterMut<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter { self.iter_mut() }
+}
+
 impl<T> Drop for AlignedBuffer<T> {
     fn drop(&mut self) {
         if self.cap == 0 {
@@ -319,7 +334,7 @@ impl<T> Drop for AlignedBuffer<T> {
 
         // SAFETY: ptr was allocated with this layout.
         unsafe {
-            dealloc(self.ptr.as_ptr() as *mut u8, layout);
+            dealloc(self.ptr.as_ptr().cast::<u8>(), layout);
         }
     }
 }
@@ -603,9 +618,8 @@ mod tests {
     #[test]
     fn test_aligned_buffer_multiple_buffers_alignment() {
         // Verify multiple independent buffers are all aligned
-        let buffers: Vec<AlignedBuffer<f64>> = (0..10)
-            .map(|_| AlignedBuffer::with_capacity(100))
-            .collect();
+        let buffers: Vec<AlignedBuffer<f64>> =
+            (0..10).map(|_| AlignedBuffer::with_capacity(100)).collect();
 
         for (i, buf) in buffers.iter().enumerate() {
             let ptr_addr = buf.as_ptr() as usize;

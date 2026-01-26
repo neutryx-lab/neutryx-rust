@@ -3,7 +3,10 @@
 //! This module provides `LinearProductsCompiler` which compiles Trade
 //! structures into PricingKernel IR for linear products.
 
+use std::sync::Arc;
+
 use infra_master::{
+    time::{BusinessDayConvention, Calendar, CalendarId, ConcreteCalendar},
     trade::{IndexType, Payoff, Trade},
     Date,
 };
@@ -23,34 +26,66 @@ use super::{index_mapper::IndexMapper, TradeCompiler};
 /// - Forward Rate Agreements (FRAs)
 /// - Cross-currency swaps (basic support)
 ///
+/// # Calendar Support
+///
+/// The compiler supports optional business day adjustment for payment and
+/// fixing dates via [`Calendar`] and [`BusinessDayConvention`].
+///
 /// # Example
 ///
 /// ```ignore
 /// use pricer_models::compiler::{LinearProductsCompiler, IndexMapper};
 /// use infra_master::trade::Trade;
+/// use infra_master::time::{CalendarId, BusinessDayConvention};
 ///
 /// let mapper = IndexMapper::with_common_indices();
-/// let compiler = LinearProductsCompiler::new(mapper);
+/// let compiler = LinearProductsCompiler::new(mapper)
+///     .with_calendar(CalendarId::NewYork, BusinessDayConvention::ModifiedFollowing);
 ///
 /// let kernel = compiler.compile(&trade)?;
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct LinearProductsCompiler {
     /// Index mapper for ID resolution.
     mapper: IndexMapper,
     /// Reference date for converting dates to days from epoch.
     epoch: Date,
+    /// Optional calendar for business day adjustment.
+    calendar: Option<Arc<dyn Calendar>>,
+    /// Business day convention for payment dates.
+    payment_bdc: BusinessDayConvention,
+    /// Business day convention for fixing dates.
+    fixing_bdc: BusinessDayConvention,
+}
+
+impl std::fmt::Debug for LinearProductsCompiler {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LinearProductsCompiler")
+            .field("mapper", &self.mapper)
+            .field("epoch", &self.epoch)
+            .field("has_calendar", &self.calendar.is_some())
+            .field("payment_bdc", &self.payment_bdc)
+            .field("fixing_bdc", &self.fixing_bdc)
+            .finish()
+    }
 }
 
 impl LinearProductsCompiler {
     /// Creates a new compiler with the given index mapper.
     ///
     /// Uses Unix epoch (1970-01-01) as the reference date.
+    /// No calendar adjustment is applied by default.
     #[must_use]
     pub fn new(mapper: IndexMapper) -> Self {
         // Unix epoch: 1970-01-01
         let epoch = Date::from_ymd(1970, 1, 1).expect("Unix epoch is valid");
-        Self { mapper, epoch }
+        Self {
+            mapper,
+            epoch,
+            calendar: None,
+            payment_bdc: BusinessDayConvention::Unadjusted,
+            fixing_bdc: BusinessDayConvention::Unadjusted,
+        }
     }
 
     /// Creates a compiler with a custom reference date for day counting.
@@ -60,7 +95,78 @@ impl LinearProductsCompiler {
     /// * `mapper` - Index mapper for ID resolution
     /// * `epoch` - Reference date for converting dates to integers
     #[must_use]
-    pub fn with_epoch(mapper: IndexMapper, epoch: Date) -> Self { Self { mapper, epoch } }
+    pub fn with_epoch(mapper: IndexMapper, epoch: Date) -> Self {
+        Self {
+            mapper,
+            epoch,
+            calendar: None,
+            payment_bdc: BusinessDayConvention::Unadjusted,
+            fixing_bdc: BusinessDayConvention::Unadjusted,
+        }
+    }
+
+    /// Configures the compiler with a calendar for business day adjustment.
+    ///
+    /// # Arguments
+    ///
+    /// * `calendar_id` - The calendar identifier (e.g., `CalendarId::NewYork`)
+    /// * `convention` - Business day convention for payment dates
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use pricer_models::compiler::{LinearProductsCompiler, IndexMapper};
+    /// use infra_master::time::{CalendarId, BusinessDayConvention};
+    ///
+    /// let compiler = LinearProductsCompiler::new(IndexMapper::new())
+    ///     .with_calendar(CalendarId::Target, BusinessDayConvention::ModifiedFollowing);
+    /// ```
+    #[must_use]
+    pub fn with_calendar(
+        mut self,
+        calendar_id: CalendarId,
+        convention: BusinessDayConvention,
+    ) -> Self {
+        self.calendar = Some(Arc::new(ConcreteCalendar::new(calendar_id)));
+        self.payment_bdc = convention;
+        self.fixing_bdc = convention;
+        self
+    }
+
+    /// Configures the compiler with a custom calendar implementation.
+    ///
+    /// # Arguments
+    ///
+    /// * `calendar` - The calendar implementation
+    /// * `convention` - Business day convention for payment dates
+    #[must_use]
+    pub fn with_custom_calendar(
+        mut self,
+        calendar: Arc<dyn Calendar>,
+        convention: BusinessDayConvention,
+    ) -> Self {
+        self.calendar = Some(calendar);
+        self.payment_bdc = convention;
+        self.fixing_bdc = convention;
+        self
+    }
+
+    /// Configures separate conventions for payment and fixing dates.
+    ///
+    /// # Arguments
+    ///
+    /// * `payment_convention` - Convention for payment date adjustment
+    /// * `fixing_convention` - Convention for fixing date adjustment
+    #[must_use]
+    pub fn with_conventions(
+        mut self,
+        payment_convention: BusinessDayConvention,
+        fixing_convention: BusinessDayConvention,
+    ) -> Self {
+        self.payment_bdc = payment_convention;
+        self.fixing_bdc = fixing_convention;
+        self
+    }
 
     /// Returns a reference to the index mapper.
     #[must_use]
@@ -69,10 +175,45 @@ impl LinearProductsCompiler {
     /// Returns a mutable reference to the index mapper.
     pub fn mapper_mut(&mut self) -> &mut IndexMapper { &mut self.mapper }
 
-    /// Converts a Date to days from epoch.
+    /// Returns true if a calendar is configured.
+    #[must_use]
+    pub fn has_calendar(&self) -> bool { self.calendar.is_some() }
+
+    /// Returns the payment date business day convention.
+    #[must_use]
+    pub fn payment_convention(&self) -> BusinessDayConvention { self.payment_bdc }
+
+    /// Returns the fixing date business day convention.
+    #[must_use]
+    pub fn fixing_convention(&self) -> BusinessDayConvention { self.fixing_bdc }
+
+    /// Adjusts a date according to the calendar and convention.
+    ///
+    /// If no calendar is configured, returns the original date.
+    fn adjust_date(&self, date: Date, convention: BusinessDayConvention) -> Date {
+        match &self.calendar {
+            Some(cal) => cal.adjust(date, convention),
+            None => date,
+        }
+    }
+
+    /// Converts a Date to days from epoch, optionally adjusting for business
+    /// days.
     fn date_to_days(&self, date: Date) -> i32 {
         // Date subtraction returns i64 (number of days between dates)
         (date - self.epoch) as i32
+    }
+
+    /// Converts a Date to days from epoch with payment date adjustment.
+    fn payment_date_to_days(&self, date: Date) -> i32 {
+        let adjusted = self.adjust_date(date, self.payment_bdc);
+        self.date_to_days(adjusted)
+    }
+
+    /// Converts a Date to days from epoch with fixing date adjustment.
+    fn fixing_date_to_days(&self, date: Date) -> i32 {
+        let adjusted = self.adjust_date(date, self.fixing_bdc);
+        self.date_to_days(adjusted)
     }
 
     /// Extracts gearing and spread from a Payoff.
@@ -154,9 +295,9 @@ impl LinearProductsCompiler {
                     continue;
                 }
 
-                // Convert dates to days from epoch
-                let payment_date = self.date_to_days(cf.payment_date);
-                let fixing_date = self.date_to_days(cf.accrual_start); // Use accrual start as fixing date
+                // Convert dates to days from epoch with business day adjustment
+                let payment_date = self.payment_date_to_days(cf.payment_date);
+                let fixing_date = self.fixing_date_to_days(cf.accrual_start); // Use accrual start as fixing date
 
                 // Extract payoff parameters
                 let (gearing, spread, fwd_index_id) = self.extract_payoff_params(&cf.payoff)?;
@@ -652,5 +793,227 @@ mod tests {
 
         // Spread = -0.025 (FRA rate)
         assert!((kernel.spreads[0] - (-0.025)).abs() < 1e-10);
+    }
+
+    // === Task 3.4: Calendar and Business Day Adjustment Tests ===
+
+    use infra_master::time::{BusinessDayConvention, CalendarId, ConcreteCalendar};
+
+    #[test]
+    fn test_compiler_with_calendar() {
+        let mapper = IndexMapper::new();
+        let compiler = LinearProductsCompiler::new(mapper)
+            .with_calendar(CalendarId::NewYork, BusinessDayConvention::ModifiedFollowing);
+
+        assert!(compiler.has_calendar());
+        assert_eq!(
+            compiler.payment_convention(),
+            BusinessDayConvention::ModifiedFollowing
+        );
+        assert_eq!(
+            compiler.fixing_convention(),
+            BusinessDayConvention::ModifiedFollowing
+        );
+    }
+
+    #[test]
+    fn test_compiler_without_calendar() {
+        let mapper = IndexMapper::new();
+        let compiler = LinearProductsCompiler::new(mapper);
+
+        assert!(!compiler.has_calendar());
+        assert_eq!(
+            compiler.payment_convention(),
+            BusinessDayConvention::Unadjusted
+        );
+    }
+
+    #[test]
+    fn test_compiler_with_custom_calendar() {
+        use std::sync::Arc;
+
+        let mapper = IndexMapper::new();
+        let calendar = Arc::new(ConcreteCalendar::new(CalendarId::Target));
+        let compiler = LinearProductsCompiler::new(mapper)
+            .with_custom_calendar(calendar, BusinessDayConvention::Following);
+
+        assert!(compiler.has_calendar());
+        assert_eq!(
+            compiler.payment_convention(),
+            BusinessDayConvention::Following
+        );
+    }
+
+    #[test]
+    fn test_compiler_with_separate_conventions() {
+        let mapper = IndexMapper::new();
+        let compiler = LinearProductsCompiler::new(mapper)
+            .with_calendar(CalendarId::NewYork, BusinessDayConvention::ModifiedFollowing)
+            .with_conventions(
+                BusinessDayConvention::ModifiedFollowing,
+                BusinessDayConvention::Preceding,
+            );
+
+        assert_eq!(
+            compiler.payment_convention(),
+            BusinessDayConvention::ModifiedFollowing
+        );
+        assert_eq!(
+            compiler.fixing_convention(),
+            BusinessDayConvention::Preceding
+        );
+    }
+
+    /// Creates a leg with a payment date on a weekend.
+    fn create_leg_with_weekend_payment() -> Leg {
+        // 2026-01-10 is Saturday
+        let cashflows = vec![Cashflow::new(
+            CashflowType::Coupon,
+            Date::from_ymd(2026, 1, 10).unwrap(), // Saturday
+            Date::from_ymd(2025, 7, 10).unwrap(),
+            Date::from_ymd(2026, 1, 10).unwrap(),
+            0.5,
+            1_000_000.0,
+            Payoff::fixed(0.05),
+            Currency::USD,
+        )];
+
+        Leg::new(
+            cashflows,
+            Direction::Receiver,
+            LegType::Fixed,
+            Currency::USD,
+        )
+    }
+
+    #[test]
+    fn test_compile_with_calendar_adjustment() {
+        let mapper = IndexMapper::new();
+        let mut compiler_with_cal = LinearProductsCompiler::new(mapper.clone())
+            .with_calendar(CalendarId::WeekendOnly, BusinessDayConvention::Following);
+        let mut compiler_no_cal = LinearProductsCompiler::new(mapper);
+
+        let trade = Trade::new(
+            "TEST001",
+            vec![create_leg_with_weekend_payment()],
+            infra_master::trade::TradeType::Generic,
+        );
+
+        let kernel_with_cal = compiler_with_cal.compile_with_registration(&trade).unwrap();
+        let kernel_no_cal = compiler_no_cal.compile_with_registration(&trade).unwrap();
+
+        // Without calendar: 2026-01-10 (Saturday) stays as Saturday
+        // With calendar (Following): 2026-01-10 -> 2026-01-12 (Monday)
+        // The difference should be 2 days (Saturday -> Monday)
+        let diff = kernel_with_cal.payment_dates[0] - kernel_no_cal.payment_dates[0];
+        assert_eq!(
+            diff, 2,
+            "Following convention should adjust Saturday to Monday (+2 days)"
+        );
+    }
+
+    #[test]
+    fn test_compile_with_modified_following_month_boundary() {
+        let mapper = IndexMapper::new();
+        let mut compiler = LinearProductsCompiler::new(mapper)
+            .with_calendar(CalendarId::WeekendOnly, BusinessDayConvention::ModifiedFollowing);
+
+        // 2026-01-31 is Saturday, next business day (Feb 2) crosses month
+        // ModifiedFollowing should go to Jan 30 (Friday)
+        let cashflows = vec![Cashflow::new(
+            CashflowType::Coupon,
+            Date::from_ymd(2026, 1, 31).unwrap(), // Saturday (month end)
+            Date::from_ymd(2025, 7, 31).unwrap(),
+            Date::from_ymd(2026, 1, 31).unwrap(),
+            0.5,
+            1_000_000.0,
+            Payoff::fixed(0.05),
+            Currency::USD,
+        )];
+
+        let leg = Leg::new(
+            cashflows,
+            Direction::Receiver,
+            LegType::Fixed,
+            Currency::USD,
+        );
+
+        let trade = Trade::new(
+            "MONTHEND001",
+            vec![leg],
+            infra_master::trade::TradeType::Generic,
+        );
+
+        let kernel = compiler.compile_with_registration(&trade).unwrap();
+
+        // Jan 30, 2026 in days from Unix epoch
+        let jan_30_2026 = Date::from_ymd(2026, 1, 30).unwrap();
+        let epoch = Date::from_ymd(1970, 1, 1).unwrap();
+        let expected_days = (jan_30_2026 - epoch) as i32;
+
+        assert_eq!(
+            kernel.payment_dates[0], expected_days,
+            "ModifiedFollowing should adjust to Jan 30 (Friday), not Feb 2 (Monday)"
+        );
+    }
+
+    #[test]
+    fn test_compile_with_target_calendar_holiday() {
+        let mapper = IndexMapper::new();
+        let mut compiler = LinearProductsCompiler::new(mapper)
+            .with_calendar(CalendarId::Target, BusinessDayConvention::Following);
+
+        // 2026-12-25 is Christmas Day (Friday), a TARGET holiday
+        // Following should go to Dec 28 (Monday, skip Sat/Sun and Boxing Day)
+        let cashflows = vec![Cashflow::new(
+            CashflowType::Coupon,
+            Date::from_ymd(2026, 12, 25).unwrap(), // Christmas
+            Date::from_ymd(2026, 6, 25).unwrap(),
+            Date::from_ymd(2026, 12, 25).unwrap(),
+            0.5,
+            1_000_000.0,
+            Payoff::fixed(0.05),
+            Currency::USD,
+        )];
+
+        let leg = Leg::new(
+            cashflows,
+            Direction::Receiver,
+            LegType::Fixed,
+            Currency::USD,
+        );
+
+        let trade = Trade::new(
+            "XMAS001",
+            vec![leg],
+            infra_master::trade::TradeType::Generic,
+        );
+
+        let kernel = compiler.compile_with_registration(&trade).unwrap();
+
+        // Dec 25, 2026 is Friday (Christmas)
+        // Dec 26, 2026 is Saturday (Boxing Day + weekend)
+        // Dec 27, 2026 is Sunday
+        // Dec 28, 2026 is Monday - first business day
+        let dec_28_2026 = Date::from_ymd(2026, 12, 28).unwrap();
+        let epoch = Date::from_ymd(1970, 1, 1).unwrap();
+        let expected_days = (dec_28_2026 - epoch) as i32;
+
+        assert_eq!(
+            kernel.payment_dates[0], expected_days,
+            "TARGET calendar should adjust Christmas to Dec 28 (Monday)"
+        );
+    }
+
+    #[test]
+    fn test_compiler_debug_format() {
+        let mapper = IndexMapper::new();
+        let compiler = LinearProductsCompiler::new(mapper)
+            .with_calendar(CalendarId::NewYork, BusinessDayConvention::ModifiedFollowing);
+
+        let debug_str = format!("{:?}", compiler);
+        assert!(debug_str.contains("LinearProductsCompiler"));
+        assert!(debug_str.contains("has_calendar: true"));
+        assert!(debug_str.contains("ModifiedFollowing"));
     }
 }

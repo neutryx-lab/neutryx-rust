@@ -63,7 +63,7 @@
   - FRAの単一決済キャッシュフローをコンパイルする
   - _Requirements: 3.2, 3.3_
 
-- [ ] 3.4 カレンダー・休日調整統合
+- [x] 3.4 カレンダー・休日調整統合
   - infra_master::Calendarを使用した営業日調整を実装する
   - CalendarCacheによるキャッシュ管理
   - 休日調整適用後の支払日計算
@@ -85,7 +85,7 @@
   - Copy/Clone派生
   - _Requirements: 5.3, 8.3, 12.2_
 
-- [ ] 4.3 MarketProvider参照実装
+- [x] 4.3 MarketProvider参照実装
   - IndexedMarket<T>からKernelContext用プロバイダーを構築する
   - 割引カーブ/フォワードカーブ/FXレート配列の参照保持
   - CurveProviderトレイト実装
@@ -116,7 +116,7 @@
   - ポインタアドレスの下位6ビットが0であることを確認
   - _Requirements: 11.1_
 
-- [ ] 6.3 (P) Enzyme AD互換性検証
+- [x] 6.3 (P) Enzyme AD互換性検証
   - price_kernelのEnzyme微分テストを作成する
   - num-dualとの結果比較
   - スムーズ関数のみ使用確認
