@@ -58,6 +58,11 @@ harness = false
 name = "engine_iai"
 harness = false
 
+[[bench]]
+name = "kernel_batch"
+harness = false
+required-features = ["l1l2-integration"]
+
 [build-dependencies]
 # Future: For linking Enzyme LLVM plugin
 # cc = "1.0"

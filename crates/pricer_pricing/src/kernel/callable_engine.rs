@@ -23,6 +23,7 @@
 
 use pricer_core::ir::{CallableBlock, CallableKernel, PricingKernel};
 
+use super::lsmc::{LSMCRegressor, RegressionResult};
 use super::{days_to_years, CurveProvider, KernelContext, LinearEngine};
 
 /// State at an exercise point during forward pass.
@@ -278,7 +279,7 @@ impl CallableEngine {
                 let spread = kernel.spreads[i];
                 let gearing = kernel.gearings[i];
                 let fwd_index_id = kernel.fwd_index_ids[i];
-                let discount_curve_id = kernel.discount_curve_ids[i];
+                let _discount_curve_id = kernel.discount_curve_ids[i];
                 let fx_index_id = kernel.fx_index_ids[i];
 
                 // Get forward rate (for floating, use path-dependent rate)
@@ -401,12 +402,242 @@ impl CallableEngine {
 
         total_pv
     }
+
+    /// Performs the backward pass: LSMC regression for optimal exercise.
+    ///
+    /// Walks backwards through exercise points, using regression to
+    /// estimate continuation values and determine optimal exercise.
+    ///
+    /// # Algorithm
+    ///
+    /// For each exercise date t (backward from last to first):
+    /// 1. Regress discounted future value against basis functions of state
+    /// 2. Compare exercise value vs estimated continuation value
+    /// 3. If exercise is optimal, update path value to exercise value
+    ///
+    /// # Arguments
+    ///
+    /// * `exercise_states` - Forward pass results (from `forward_pass`)
+    /// * `paths` - Simulated paths (for discount factors)
+    /// * `valuation_date_days` - Valuation date as days from epoch
+    /// * `regressor` - LSMC regressor configuration
+    ///
+    /// # Returns
+    ///
+    /// `BackwardPassResult` containing option values and exercise decisions.
+    pub fn backward_pass(
+        exercise_states: &[ExerciseState],
+        paths: &SimulatedPaths,
+        valuation_date_days: i32,
+        regressor: &LSMCRegressor,
+    ) -> BackwardPassResult {
+        if exercise_states.is_empty() {
+            return BackwardPassResult::empty();
+        }
+
+        let num_paths = paths.num_paths();
+        let num_exercise_dates = exercise_states.len();
+
+        // Cashflow values for each path (updated during backward pass)
+        let mut cashflow_values = vec![0.0; num_paths];
+
+        // Track exercise decisions: (exercise_date, exercised paths)
+        let mut exercise_decisions: Vec<ExerciseDecision> = Vec::with_capacity(num_exercise_dates);
+
+        // Track regression results for diagnostics
+        let mut regression_results: Vec<RegressionResult> = Vec::with_capacity(num_exercise_dates);
+
+        // Process exercise dates in reverse order
+        for (state_idx, state) in exercise_states.iter().enumerate().rev() {
+            let exercise_time = days_to_years(state.exercise_date, valuation_date_days);
+            let time_idx = paths.find_time_index(exercise_time.max(0.0));
+
+            // Determine in-the-money paths (intrinsic > 0)
+            let itm_mask: Vec<bool> = state
+                .intrinsic_values
+                .iter()
+                .map(|&v| v > 0.0)
+                .collect();
+
+            // Calculate future values (discounted from next exercise or final)
+            let future_values: Vec<f64> = if state_idx == exercise_states.len() - 1 {
+                // Last exercise date: future value is intrinsic at maturity
+                state.intrinsic_values.clone()
+            } else {
+                // Discount cashflow values from next exercise date
+                let next_state = &exercise_states[state_idx + 1];
+                let next_time = days_to_years(next_state.exercise_date, valuation_date_days);
+                let next_time_idx = paths.find_time_index(next_time.max(0.0));
+
+                (0..num_paths)
+                    .map(|path_idx| {
+                        let df_ratio = if paths.discount_factor(path_idx, next_time_idx) > 0.0 {
+                            paths.discount_factor(path_idx, time_idx)
+                                / paths.discount_factor(path_idx, next_time_idx)
+                        } else {
+                            1.0
+                        };
+                        cashflow_values[path_idx] * df_ratio
+                    })
+                    .collect()
+            };
+
+            // Fit regression for continuation value estimation
+            let regression_result = regressor.fit(
+                &state.short_rates,
+                &future_values,
+                Some(&itm_mask),
+            );
+
+            // Determine exercise decisions
+            let exercise_now = regressor.determine_exercise(
+                &state.short_rates,
+                &state.intrinsic_values,
+                &regression_result,
+            );
+
+            // Update cashflow values based on exercise decision
+            for path_idx in 0..num_paths {
+                if exercise_now[path_idx] {
+                    // Exercise: take intrinsic value
+                    cashflow_values[path_idx] = state.intrinsic_values[path_idx];
+                } else if state_idx == exercise_states.len() - 1 {
+                    // Last exercise date, don't exercise: take future value
+                    cashflow_values[path_idx] = future_values[path_idx];
+                }
+                // Otherwise: keep previously computed cashflow value
+            }
+
+            // Record decisions (reverse order, will be reversed later)
+            exercise_decisions.push(ExerciseDecision {
+                exercise_date: state.exercise_date,
+                exercised: exercise_now,
+            });
+
+            regression_results.push(regression_result);
+        }
+
+        // Reverse to chronological order
+        exercise_decisions.reverse();
+        regression_results.reverse();
+
+        // Calculate option value as mean of discounted cashflows
+        let final_time = days_to_years(
+            exercise_states.last().unwrap().exercise_date,
+            valuation_date_days,
+        );
+        let final_time_idx = paths.find_time_index(final_time.max(0.0));
+
+        let option_value: f64 = (0..num_paths)
+            .map(|path_idx| {
+                cashflow_values[path_idx] * paths.discount_factor(path_idx, final_time_idx)
+            })
+            .sum::<f64>()
+            / num_paths as f64;
+
+        BackwardPassResult {
+            option_value,
+            cashflow_values,
+            exercise_decisions,
+            regression_results,
+        }
+    }
+
+    /// Full LSMC pricing: forward pass + backward pass.
+    ///
+    /// # Arguments
+    ///
+    /// * `kernel` - Compiled callable kernel
+    /// * `context` - Market data context
+    /// * `paths` - Simulated rate paths
+    /// * `valuation_date_days` - Valuation date as days from epoch
+    /// * `regressor` - LSMC regressor configuration
+    ///
+    /// # Returns
+    ///
+    /// Option value (present value).
+    pub fn price_lsmc<P: CurveProvider>(
+        kernel: &CallableKernel,
+        context: &KernelContext<P>,
+        paths: &SimulatedPaths,
+        valuation_date_days: i32,
+        regressor: &LSMCRegressor,
+    ) -> f64 {
+        // Forward pass: accumulate values to exercise points
+        let exercise_states = Self::forward_pass(kernel, context, paths, valuation_date_days);
+
+        if exercise_states.is_empty() {
+            return Self::price_deterministic(kernel, context);
+        }
+
+        // Backward pass: LSMC regression for optimal exercise
+        let result = Self::backward_pass(&exercise_states, paths, valuation_date_days, regressor);
+
+        result.option_value
+    }
+}
+
+/// Result of backward pass LSMC algorithm.
+#[derive(Clone, Debug)]
+pub struct BackwardPassResult {
+    /// Option value (mean of discounted cashflows).
+    pub option_value: f64,
+
+    /// Final cashflow value for each path.
+    pub cashflow_values: Vec<f64>,
+
+    /// Exercise decisions at each exercise date.
+    pub exercise_decisions: Vec<ExerciseDecision>,
+
+    /// Regression results at each exercise date.
+    pub regression_results: Vec<RegressionResult>,
+}
+
+impl BackwardPassResult {
+    /// Creates an empty result.
+    #[must_use]
+    pub fn empty() -> Self {
+        Self {
+            option_value: 0.0,
+            cashflow_values: Vec::new(),
+            exercise_decisions: Vec::new(),
+            regression_results: Vec::new(),
+        }
+    }
+
+    /// Returns the number of exercise dates.
+    #[must_use]
+    pub fn num_exercise_dates(&self) -> usize {
+        self.exercise_decisions.len()
+    }
+
+    /// Returns the exercise probability at each exercise date.
+    #[must_use]
+    pub fn exercise_probabilities(&self) -> Vec<f64> {
+        self.exercise_decisions
+            .iter()
+            .map(|d| {
+                let exercised = d.exercised.iter().filter(|&&e| e).count();
+                exercised as f64 / d.exercised.len() as f64
+            })
+            .collect()
+    }
+}
+
+/// Exercise decision at a specific date.
+#[derive(Clone, Debug)]
+pub struct ExerciseDecision {
+    /// Exercise date (days from epoch).
+    pub exercise_date: i32,
+
+    /// Whether each path exercised (true = exercised).
+    pub exercised: Vec<bool>,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pricer_core::ir::{CallableBlock, CallableKernel, ExerciseDef, ExerciseStyle, PricingKernel};
+    use pricer_core::ir::{CallableBlock, CallableKernel, ExerciseDef, PricingKernel};
 
     fn create_test_kernel() -> CallableKernel {
         CallableKernel::new(
@@ -642,5 +873,174 @@ mod tests {
 
         // Should have some value
         assert!(pv.abs() > 0.0);
+    }
+
+    // =========================================================================
+    // Backward Pass Tests
+    // =========================================================================
+
+    #[test]
+    fn test_backward_pass_empty_states() {
+        let paths = create_test_paths();
+        let regressor = LSMCRegressor::default();
+
+        let result = CallableEngine::backward_pass(&[], &paths, 19000, &regressor);
+
+        assert!(result.option_value.abs() < 1e-10);
+        assert!(result.cashflow_values.is_empty());
+        assert!(result.exercise_decisions.is_empty());
+    }
+
+    #[test]
+    fn test_backward_pass_creates_exercise_decisions() {
+        let kernel = create_test_kernel();
+        let paths = create_test_paths();
+        let regressor = LSMCRegressor::default();
+
+        let curves = super::super::FlatCurveProvider::new(0.03, 0.03);
+        let context = KernelContext::new(&curves);
+
+        let states = CallableEngine::forward_pass(&kernel, &context, &paths, 19000);
+        let result = CallableEngine::backward_pass(&states, &paths, 19000, &regressor);
+
+        // Should have 2 exercise decisions (one per exercise date)
+        assert_eq!(result.num_exercise_dates(), 2);
+        assert_eq!(result.exercise_decisions.len(), 2);
+    }
+
+    #[test]
+    fn test_backward_pass_exercise_decision_paths() {
+        let kernel = create_test_kernel();
+        let paths = create_test_paths();
+        let regressor = LSMCRegressor::default();
+
+        let curves = super::super::FlatCurveProvider::new(0.03, 0.03);
+        let context = KernelContext::new(&curves);
+
+        let states = CallableEngine::forward_pass(&kernel, &context, &paths, 19000);
+        let result = CallableEngine::backward_pass(&states, &paths, 19000, &regressor);
+
+        // Each decision should have the same number of paths
+        for decision in &result.exercise_decisions {
+            assert_eq!(decision.exercised.len(), paths.num_paths());
+        }
+    }
+
+    #[test]
+    fn test_backward_pass_result_empty() {
+        let result = BackwardPassResult::empty();
+
+        assert!(result.option_value.abs() < 1e-10);
+        assert!(result.cashflow_values.is_empty());
+        assert_eq!(result.num_exercise_dates(), 0);
+    }
+
+    #[test]
+    fn test_backward_pass_exercise_probabilities() {
+        let kernel = create_test_kernel();
+        let paths = create_test_paths();
+        let regressor = LSMCRegressor::default();
+
+        let curves = super::super::FlatCurveProvider::new(0.03, 0.03);
+        let context = KernelContext::new(&curves);
+
+        let states = CallableEngine::forward_pass(&kernel, &context, &paths, 19000);
+        let result = CallableEngine::backward_pass(&states, &paths, 19000, &regressor);
+
+        let probs = result.exercise_probabilities();
+
+        // Should have probability for each exercise date
+        assert_eq!(probs.len(), 2);
+
+        // Probabilities should be between 0 and 1
+        for prob in &probs {
+            assert!(*prob >= 0.0 && *prob <= 1.0);
+        }
+    }
+
+    #[test]
+    fn test_backward_pass_with_intrinsic_values() {
+        // Create exercise states with known intrinsic values
+        let num_paths = 100;
+        let mut state = ExerciseState::new(19365, num_paths);
+
+        // Half paths are ITM with value 1.0
+        for i in 0..num_paths {
+            if i < 50 {
+                state.intrinsic_values[i] = 1.0;
+            }
+            state.short_rates[i] = 0.03;
+        }
+
+        let paths = create_test_paths();
+        let regressor = LSMCRegressor::default();
+
+        let result = CallableEngine::backward_pass(&[state], &paths, 19000, &regressor);
+
+        // Should have one exercise decision
+        assert_eq!(result.num_exercise_dates(), 1);
+    }
+
+    // =========================================================================
+    // Full LSMC Pricing Tests
+    // =========================================================================
+
+    #[test]
+    fn test_price_lsmc_empty_kernel() {
+        let kernel = CallableKernel::empty();
+        let paths = create_test_paths();
+        let regressor = LSMCRegressor::default();
+
+        let curves = super::super::FlatCurveProvider::new(0.03, 0.03);
+        let context = KernelContext::new(&curves);
+
+        let price = CallableEngine::price_lsmc(&kernel, &context, &paths, 19000, &regressor);
+
+        // Empty kernel should have zero price
+        assert!(price.abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_price_lsmc_with_exercise() {
+        let kernel = create_test_kernel();
+        let paths = create_test_paths();
+        let regressor = LSMCRegressor::default();
+
+        let curves = super::super::FlatCurveProvider::new(0.03, 0.03);
+        let context = KernelContext::new(&curves);
+
+        let price = CallableEngine::price_lsmc(&kernel, &context, &paths, 19000, &regressor);
+
+        // Price should be finite
+        assert!(price.is_finite());
+    }
+
+    #[test]
+    fn test_exercise_decision_new() {
+        let decision = ExerciseDecision {
+            exercise_date: 19365,
+            exercised: vec![true, false, true, false],
+        };
+
+        assert_eq!(decision.exercise_date, 19365);
+        assert_eq!(decision.exercised.len(), 4);
+        assert!(decision.exercised[0]);
+        assert!(!decision.exercised[1]);
+    }
+
+    #[test]
+    fn test_backward_pass_regression_results() {
+        let kernel = create_test_kernel();
+        let paths = create_test_paths();
+        let regressor = LSMCRegressor::default();
+
+        let curves = super::super::FlatCurveProvider::new(0.03, 0.03);
+        let context = KernelContext::new(&curves);
+
+        let states = CallableEngine::forward_pass(&kernel, &context, &paths, 19000);
+        let result = CallableEngine::backward_pass(&states, &paths, 19000, &regressor);
+
+        // Should have regression result for each exercise date
+        assert_eq!(result.regression_results.len(), 2);
     }
 }

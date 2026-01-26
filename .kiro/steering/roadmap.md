@@ -2,13 +2,13 @@
 
 実装状況と今後の開発項目を追跡するドキュメント。
 
-_Updated: 2026-01-26_ — 39 completed specs; 4 active specs (pricing-kernel-ir implementing)
+_Updated: 2026-01-26_ — 42 completed specs; 1 active spec (pricing-kernel-ir 71%)
 
 ---
 
 ## Current State Summary
 
-### Completed Specifications (39)
+### Completed Specifications (42)
 
 | Spec | Description | Completed |
 |------|-------------|-----------|
@@ -51,6 +51,9 @@ _Updated: 2026-01-26_ — 39 completed specs; 4 active specs (pricing-kernel-ir 
 | ir-vol-cube-calibration | IR VolCube calibration engine with SABR, lazy evaluation, AAD Vega, WebApp (64 tasks) | 2026-01-26 |
 | pricer-pricing-architecture | Tree pricing (Binomial/Trinomial), UnifiedPricingResult, PricingMethodDispatcher | 2026-01-26 |
 | market-index-keyed-access | IndexedMarket, IndexedMarketBuilder, TradeIndexRequirements, MarketValidator | 2026-01-26 |
+| shadow-object-aad | Shadow trait, slice-based kernels, AAD binder layer (16 tasks) | 2026-01-26 |
+| external-numerics-migration | argmin/levenberg-marquardt integration, external-numerics feature (30 tasks) | 2026-01-26 |
+| mc-memory-layout-optimisation | PathLayout, AlignedPathBuffer, TimeStepFirstWorkspace, StreamingEngine (21 tasks) | 2026-01-26 |
 
 ### Layer Implementation Status
 
@@ -175,10 +178,7 @@ Codebase redundancy cleanup performed:
 
 | Spec | Description | Status |
 |------|-------------|--------|
-| pricing-kernel-ir | PricingKernel IR, AlignedBuffer, TradeCompiler, IndexMapper | implementing (14/17 tasks) |
-| shadow-object-aad | Shadow object functionality for reverse mode AAD | tasks-generated |
-| external-numerics-migration | Migration to external numerics library | tasks-generated |
-| mc-memory-layout-optimisation | Memory layout optimisation for Monte Carlo | tasks-generated |
+| pricing-kernel-ir | PricingKernel IR, TradeCompiler, IndexMapper, CallableKernel | implementing (22/31 tasks, 71%) |
 
 ## Recommended Next Steps
 
@@ -192,6 +192,7 @@ Codebase redundancy cleanup performed:
 
 | Date | Change |
 |------|--------|
+| 2026-01-26 | Closed 3 completed specs: shadow-object-aad (16 tasks), external-numerics-migration (30 tasks), mc-memory-layout-optimisation (21 tasks). Total: 42 specs. 1 active: pricing-kernel-ir (71%) |
 | 2026-01-26 | Steering sync: Added IR module (PricingKernel, AlignedBuffer, ScriptKernel), compiler module (TradeCompiler, IndexMapper), enzyme extensions (shadow, kernel, binder). 4 active specs: pricing-kernel-ir (implementing), shadow-object-aad, external-numerics-migration, mc-memory-layout-optimisation |
 | 2026-01-26 | Codebase redundancy cleanup: Fixed tokio versions, removed dead code/unused modules, added test fixtures, documented app.js refactor plan |
 | 2026-01-26 | Steering sync: market-index-keyed-access completed (39 total). Added IndexedMarket, TradeIndexRequirements, MarketValidator to structure.md. |
