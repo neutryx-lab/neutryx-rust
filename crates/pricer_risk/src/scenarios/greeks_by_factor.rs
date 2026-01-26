@@ -77,7 +77,10 @@ where
 /// - Requirement 1.1, 1.2, 1.3, 1.5
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize))]
-#[cfg_attr(feature = "serde", serde(bound(serialize = "T: Float + Serialize, GreeksResult<T>: Serialize")))]
+#[cfg_attr(
+    feature = "serde",
+    serde(bound(serialize = "T: Float + Serialize, GreeksResult<T>: Serialize"))
+)]
 pub struct GreeksResultByFactor<T: Float> {
     /// Greeks results keyed by risk factor.
     #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_by_factor"))]

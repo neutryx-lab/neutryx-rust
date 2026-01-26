@@ -1,260 +1,162 @@
 # Requirements Document
 
-## Project Description (Input)
-「3. 取引定義（Human Definition）と価格評価（Pricing Representation）の分離」について、金融工学ライブラリにおける現代的かつ最も強力なアプローチである**「データ指向設計（Data-Oriented Design）への移行」**を提案します。
+## Introduction
 
-既存のオブジェクト指向的な「階層構造（Trade > Leg > Schedule > Coupon）」を、数値計算エンジンが好む「リニアな配列構造（Linear Arrays / Streams）」に変換する**コンパイル・フェーズ**を導入します。
+本仕様は、Neutryxデリバティブプライシングライブラリにおける**「Pricing Kernel IR（中間表現）」**アーキテクチャの導入を定義します。
 
-以下にその具体的な構造と設計を示します。
+既存のオブジェクト指向的な階層構造（`Trade → Leg → Cashflow`）を、数値計算エンジンが最適化しやすい**SoA（Structure of Arrays）形式の線形配列構造**に変換するコンパイルフェーズを導入します。これにより、SIMD命令の活用、Enzyme自動微分との親和性向上、キャッシュ局所性の改善を実現し、大規模ポートフォリオ評価のスループットを飛躍的に向上させます。
 
----
-
-### コンセプト：Pricing IR（中間表現）の導入
-
-現在の「Swap 定義」は人間が読むための契約書に近いものです。これをCPUが処理しやすい「命令セット」に変換します。
-
-1. **Source (Input):** `Trade` (階層的、日付、カレンダー、文字列)
-2. **Compiler:** `TradeBuilder` (日付計算、休日調整、スケジュール展開を行う)
-3. **IR (Output):** `PricingKernel` (完全に平坦化された `f64` と `usize` の配列)
-
-### 具体的な構造案
-
-プライシングエンジン（モンテカルロや解析解ソルバー）が受け取る構造体を、以下のような「SoA（Structure of Arrays）」スタイルに変更します。
-
-#### 1. データ構造の定義（Rustコード例）
-
-従来の `Vec<Box<dyn Instrument>>` や `enum Instrument` の代わりに、商品タイプを問わず共通して使える単一の構造体を定義します。
-
-```rust
-/// プライシング専用の中間表現 (Intermediate Representation)
-/// 全ての金融商品をこの形式（またはその組み合わせ）に「コンパイル」します。
-pub struct LinearCashflowEngine {
-    // --- 時間軸 (Time Domain) ---
-    // すべてのキャッシュフローが発生する時間 (年単位, t=0 is valuation date)
-    // 昇順ソート済み
-    pub flow_times: Vec<f64>,
-
-    // --- 確定キャッシュフロー (Fixed Flows) ---
-    // flow_times に対応する確定額 (固定金利 * Notional * YearFraction)
-    // 発生しないタイムステップは 0.0
-    pub fixed_amounts: Vec<f64>,
-
-    // --- 確率的キャッシュフロー (Floating Flows) ---
-    // 参照するリスクファクターのインデックス (例: 0=USD-SOFR, 1=EUR-ESTR)
-    pub index_pointers: Vec<usize>,
-
-    // 変動部分の乗数 (Notional * YearFraction)
-    pub gearing: Vec<f64>,
-
-    // スプレッド部分 (Spread * Notional * YearFraction)
-    pub spreads: Vec<f64>,
-
-    // --- 割引 (Discounting) ---
-    // 割引に使用するカーブのインデックス
-    pub discount_curve_ids: Vec<usize>,
-}
-```
-
-#### 2. この構造が「強力」である理由
-
-この構造に変更することで、以下のような劇的なメリットが生まれます。
-
-**A. 条件分岐の排除 (Branchless Logic)**
-従来の `match instrument` では、商品ごとに異なるコードパスが実行され、CPUのパイプラインハザードが発生していました。
-上記の構造であれば、エンジンは商品の種類（Swap, Bond, FRA）を知る必要がありません。単に配列を上から下へ計算するだけです。
-
-```rust
-// エンジンのメインループ（擬似コード）
-// もはや商品ごとの分岐は存在しない
-for i in 0..flow_times.len() {
-    let t = flow_times[i];
-
-    // 1. 市場データの取得 (Index Value & Discount Factor)
-    let fwd_rate = model.get_forward_rate(index_pointers[i], t);
-    let df = model.get_discount_factor(discount_curve_ids[i], t);
-
-    // 2. フロー計算 (Fused Multiply-Add)
-    let float_flow = (fwd_rate * gearing[i]) + spreads[i];
-    let total_flow = fixed_amounts[i] + float_flow;
-
-    // 3. 現在価値への集計
-    pv += total_flow * df;
-}
-```
-
-**B. SIMD（ベクトル化）の最大化**
-データが連続したメモリ領域（`Vec<f64>`）に配置されているため、コンパイラ（LLVM）は容易に AVX-512 などのSIMD命令を生成できます。一度のCPUサイクルで8個や16個のキャッシュフローを同時に計算可能になります。
-
-**C. 自動微分（Enzyme / AAD）との親和性**
-`pricer_models` で課題となっていた AAD の複雑さは、制御フロー（if/match）に起因します。このリニアな計算グラフは、Enzyme が最も効率的に微分コードを生成できる形式です。ジェネリクス汚染も最小限に抑えられます。
-
-**D. メモリ局所性 (Cache Locality)**
-階層構造（ポインタ参照）を辿る必要がないため、キャッシュミスが激減します。大規模ポートフォリオ（数万件のトレード）を一括評価する際、この設計は桁違いのスループットを発揮します。
-
-### 3. バリア・オプションなど「経路依存型」への拡張
-
-上記は「線形商品（Linear Products）」向けですが、バリアオプションのような「経路依存型」も、この設計思想を拡張して対応します。
-
-```rust
-pub struct ScriptEngine {
-    // 観測日
-    pub observation_times: Vec<f64>,
-
-    // 状態更新ロジック (イベントIDの列挙)
-    // 例: 1=CheckBarrier, 2=Accumulate, 3=Pay
-    pub ops_code: Vec<u8>,
-
-    // オペランド (バリア値など)
-    pub constants: Vec<f64>,
-}
-```
-
-これも「イベント駆動」としてフラット化します。複雑なエキゾチック商品も、「イベントの配列」として定義し直すことで、エンジン自体はシンプルなまま保つことができます。
-
-### 実装へのロードマップ
-
-1. **IR定義**: `pricer_core` または `pricer_pricing` に `LinearCashflowStream` 構造体を作成する。
-2. **Compiler実装**: `infra_master` の `Trade` を入力とし、`LinearCashflowStream` を出力する `Compiler` トレイトを実装する。ここでカレンダー計算や `Schedule` の展開を全て終わらせる。
-3. **Engine差し替え**: 既存の `Pricer` トレイトの実装を、この IR をイテレートするだけの単純なループに置き換える。
-
-実務では「期間（Term）」ではなく「絶対日付（Date）」が契約の正であり、CCY Basis（通貨ベーシス）やCMS（コンベクシティ調整）、Callable（権利行使）といった「非線形・多次元」な要素こそがシステムの複雑性を生む主因です。
-
-これらをシンプルかつ強力に扱うための、もう一段階進化したアーキテクチャとして**「イベント駆動型ベクトルマシン（Event-Driven Vector Machine）」**モデルを提案します。
-
-これは、金融商品を「キャッシュフロー」だけでなく、「状態遷移を引き起こすイベントの連続」として捉え、GPUやSIMD命令セットに最適化した構造です。
-
----
-
-### 1. 日付と時間の分離（Date-Time Separation）
-
-実務的な日付処理と計算効率を両立させるため、**「契約定義（Date）」と「計算実行（Time）」を明確に分離**します。
-
-* **静的データ（Compile Time）**: 契約上の「日付（例: 2026-03-15）」と、期間係数（YearFraction）は不変です。これらはビルド時（IR生成時）に確定させます。
-* **動的データ（Run Time）**: 評価基準日（Valuation Date）からの相対時間のみを動的に計算します。
-
-#### データ構造案（SoA: Structure of Arrays）
-
-```rust
-pub struct PricingKernel {
-    // --- 1. 日付管理 (i32: Days from Epoch) ---
-    // これにより、休日判定や実日数の計算が可能になる
-    pub payment_dates: Vec<i32>,     // 支払日
-    pub fixing_dates: Vec<i32>,      // 観測日
-
-    // --- 2. 静的計算係数 (f64) ---
-    // DayCountConvention (Act/360等) に基づく期間は事前に計算しておく
-    pub year_fractions: Vec<f64>,    // τ (tau)
-
-    // --- 3. キャッシュフロー定義 ---
-    pub notionals: Vec<f64>,         // 想定元本
-    pub spreads: Vec<f64>,           // 固定スプレッド
-
-    // --- 4. 多通貨・多重定義対応 (ID pointers) ---
-    pub currency_ids: Vec<u8>,       // 通貨ID (0=USD, 1=JPY, ...)
-    pub discount_curve_ids: Vec<u8>, // 割引カーブID (OIS, Collateral curve)
-    pub fwd_index_ids: Vec<u16>,     // 参照インデックスID (SOFR, CMS10Y, etc.)
-}
-```
-
----
-
-### 2. 複雑な商品の行列化戦略
-
-単純な「金利×期間」に収まらない商品（CCY, CMS, Callable）をどう行列化するか、具体的な解決策を示します。
-
-#### A. CCY Basis (X-Ccy Swap) の行列化： 「通貨次元の追加」
-
-通貨ベーシススワップは、「異なる割引カーブ」と「FX変換」が絡むだけです。これを分岐（if文）で処理せず、**すべてのフローに「FX適用フラグ」と「カーブID」を持たせる**ことでフラット化します。
-
-* **戦略**:
-  * 単一通貨スワップでも `currency_id` と `fx_index_id` を持ちます（自国通貨なら FX=1.0 のダミーモデルを指す）。
-* **計算式（全商品共通）**: PV = flow * DF * FX
-* これにより、USD/JPYベーシススワップも、通常のIRSと同じループで処理可能になります。
-
-#### B. CMS (Constant Maturity Swap) の行列化： 「観測タイプの抽象化」
-
-CMSは「スワップレート（＝正規分布やLogNormalではない分布を持つ）」を観測します。これを扱うには、**`MarketModel` への問い合わせ（Query）をベクトル化**します。
-
-* **戦略**:
-  * `fwd_index_ids` が指し示す先を、単純な「LIBOR/SOFRカーブ」だけでなく、「CMS凸性調整済みモデル」も指せるようにします。
-  * プライシングエンジン側は「インデックスIDを渡してレートをもらう」という動作を変えません。
-* **裏側の仕組み**:
-  * `IndexID=5` (USD-SOFR-3M) → 単純なForward Curve lookup
-  * `IndexID=20` (USD-CMS-10Y) → Swaption Vol Cube を参照し、凸性調整（Convexity Adjustment）を加えたレートを返す関数
-* これにより、エンジンコードを汚さずにCMSをサポートできます。
-
-#### C. Callable Swap / Bermudan の行列化： 「Backward Pass（後退計算）」
-
-ここが最大の難所です。コール条項付きスワップは「未来の価値（Hold Value）」と「行使価値（Exercise Value）」の比較が必要です。これは一本道のストリーム処理では不可能です。
-
-**解決策：LSMC（Longstaff-Schwartz）対応の「ブロック実行モデル」**
-
-IR（中間表現）を**「行使日（Call Date）」で区切られたブロック**として管理します。
-
-1. **Block Structure**:
-```rust
-struct CallableBlock {
-    start_date: i32,
-    end_date: i32,
-    core_flows: PricingKernel, // この期間内の確定・変動フロー（上記IR）
-    exercise_opportunity: Option<ExerciseDef>, // このブロック末尾での行使条件
-}
-```
-
-2. **実行フロー**:
-* **Step 1 (Forward Pass)**: 全ブロックのキャッシュフローを現在価値へ、または各行使時点へ向けて計算・蓄積します。
-* **Step 2 (Backward Pass)**: 最終ブロックから過去へ遡り、`exercise_opportunity` がある地点で回帰分析（Regression）を行い、継続価値と行使価値を比較してパスを更新します。
-
----
-
-### 3. 実装イメージ： 命令セット（Instruction Set）アプローチ
-
-最終的に、Neutryxのプライシングエンジンは、金融商品を**「仮想マシンへの命令列」**として実行する形が最も強力です。
-
-```rust
-// エンジンが実行する「命令」の列挙
-enum PricingOp {
-    // 基本フロー
-    CalcFixed { date: i32, amount: f64, ccy: u8 },
-    CalcFloat { date: i32, index: u16, gearing: f64, spread: f64, ccy: u8 },
-
-    // 複雑な操作
-    ApplyFX { date: i32, target_ccy: u8 }, // 通貨変換
-    AccumulatePV,                          // 現在価値バッファに加算
-
-    // 経路依存・条件分岐
-    CheckBarrier { obs_date: i32, barrier_level: f64, type: BarrierType },
-    CheckExercise { exercise_date: i32, fee: f64 }, // Callable判定
-}
-
-// 実行エンジン（イメージ）
-fn execute(ops: &[PricingOp], market: &MarketData) -> f64 {
-    let mut pv = 0.0;
-    let mut current_state = State::new();
-
-    for op in ops {
-        match op {
-            PricingOp::CalcFloat { date, index, .. } => {
-                // CMSだろうがIBORだろうが、market.get_rate(index) で解決
-                let rate = market.get_rate(index, date);
-                // ...計算とPV加算
-            },
-            PricingOp::CheckExercise { .. } => {
-                // Backward Induction 用の保存処理など
-            }
-            // ...
-        }
-    }
-    pv
-}
-```
-
-### 結論：提案するアーキテクチャの要点
-
-1. **Date First**: IRは「絶対日付」を持つ。`YearFraction`はコンパイル時に焼き込む。
-2. **Currency as Dimension**: X-Ccy Basis対応のため、通貨とFX変換を全フローの属性として持たせる。
-3. **Smart Indices**: CMS対応のため、インデックスIDの参照先（Market Adapter）に凸性調整ロジックを隠蔽する。
-4. **Block-Based Execution**: Callable対応のため、商品を「行使日」で分割したブロック配列として管理し、Forward/Backwardの両パスに対応させる。
+**主要コンセプト**:
+- **Source**: `Trade`（階層的、日付、カレンダー、文字列）
+- **Compiler**: `TradeCompiler`（日付計算、休日調整、スケジュール展開）
+- **IR**: `PricingKernel`（平坦化された`f64`と`usize`の配列）
 
 ## Requirements
-<!-- Will be generated in /kiro:spec-requirements phase -->
+
+### Requirement 1: PricingKernel IR データ構造
+
+**Objective:** As a クオンツ開発者, I want SoA形式のPricingKernel中間表現構造体を定義できること, so that SIMD命令とEnzyme ADに最適化されたデータレイアウトでプライシングを実行できる
+
+#### Acceptance Criteria
+1. The PricingKernel shall store payment dates as a contiguous `Vec<i32>` (days from epoch) for efficient memory access.
+2. The PricingKernel shall store fixing dates as a contiguous `Vec<i32>` for observation date management.
+3. The PricingKernel shall store year fractions as a contiguous `Vec<f64>` pre-computed from DayCountConvention.
+4. The PricingKernel shall store notionals as a contiguous `Vec<f64>` for principal amounts.
+5. The PricingKernel shall store spreads as a contiguous `Vec<f64>` for fixed spread components.
+6. The PricingKernel shall store currency IDs as a contiguous `Vec<u8>` for multi-currency support.
+7. The PricingKernel shall store discount curve IDs as a contiguous `Vec<u8>` for discounting reference.
+8. The PricingKernel shall store forward index IDs as a contiguous `Vec<u16>` for rate index reference.
+9. The PricingKernel shall maintain all arrays at equal length, representing cashflow-aligned data.
+10. The PricingKernel shall be `Clone`, `Debug`, and optionally `serde::Serialize`/`Deserialize`.
+
+### Requirement 2: Trade Compiler トレイト
+
+**Objective:** As a クオンツ開発者, I want Trade階層構造をPricingKernel IRにコンパイルするCompilerトレイトを使用できること, so that 人間可読な取引定義と計算最適化された表現を分離できる
+
+#### Acceptance Criteria
+1. The TradeCompiler trait shall define a `compile` method accepting a `&Trade` and returning `Result<PricingKernel, CompileError>`.
+2. When a Trade with fixed legs is compiled, the TradeCompiler shall expand all payment schedules to individual cashflow entries.
+3. When a Trade with floating legs is compiled, the TradeCompiler shall resolve rate index references to forward index IDs.
+4. When a Trade is compiled, the TradeCompiler shall apply business day adjustments using the calendar from `infra_master`.
+5. When a Trade is compiled, the TradeCompiler shall pre-compute year fractions based on the specified DayCountConvention.
+6. If a Trade contains an unsupported instrument type, then the TradeCompiler shall return a `CompileError::UnsupportedInstrument`.
+7. If a Trade references an undefined rate index, then the TradeCompiler shall return a `CompileError::UnknownIndex`.
+8. The TradeCompiler shall support compilation of multiple trades into a single batched `PricingKernel` for portfolio evaluation.
+
+### Requirement 3: 線形商品（Linear Products）のコンパイル
+
+**Objective:** As a クオンツ開発者, I want IRS、Bond、FRA等の線形商品をPricingKernel IRにコンパイルできること, so that 商品タイプに依存しない統一的なプライシングループで評価できる
+
+#### Acceptance Criteria
+1. When an Interest Rate Swap (IRS) is compiled, the TradeCompiler shall generate separate entries for fixed and floating legs.
+2. When a Bond is compiled, the TradeCompiler shall generate entries for coupon payments and principal redemption.
+3. When a Forward Rate Agreement (FRA) is compiled, the TradeCompiler shall generate a single settlement cashflow entry.
+4. When a vanilla swap with amortising notional is compiled, the TradeCompiler shall generate entries with varying notional amounts per period.
+5. The compiled PricingKernel for linear products shall not contain any conditional logic (if/match) in the data representation.
+6. When compiling linear products, the TradeCompiler shall sort all cashflows by payment date in ascending order.
+
+### Requirement 4: 多通貨・X-Ccy Basis 対応
+
+**Objective:** As a クオンツ開発者, I want X-Ccy BasisスワップやFX商品をPricingKernel IRで表現できること, so that 通貨変換を分岐なしの統一ループで処理できる
+
+#### Acceptance Criteria
+1. The PricingKernel shall include an optional `fx_index_ids: Vec<u16>` field for FX rate references.
+2. When compiling a single-currency trade, the TradeCompiler shall assign a dummy FX index (identity FX=1.0) for uniformity.
+3. When compiling a cross-currency swap, the TradeCompiler shall assign appropriate FX index IDs to each leg's cashflows.
+4. The pricing formula `PV = flow * DF * FX` shall be applicable to all cashflows without branching on currency type.
+5. The PricingKernel shall support both collateral and funding currency distinctions via separate discount curve IDs.
+
+### Requirement 5: CMS・Convexity Adjustment 対応
+
+**Objective:** As a クオンツ開発者, I want CMS（Constant Maturity Swap）をPricingKernel IRで表現できること, so that 凸性調整を市場モデル層に委譲しエンジンコードを汚さない
+
+#### Acceptance Criteria
+1. The PricingKernel shall use `fwd_index_ids` to reference both simple forward rates and CMS rates uniformly.
+2. When a CMS coupon is compiled, the TradeCompiler shall assign a CMS-specific index ID that triggers convexity adjustment in the market model.
+3. The market model interface (`get_rate(index_id, date)`) shall return convexity-adjusted rates for CMS index IDs transparently.
+4. The pricing engine loop shall remain unchanged regardless of whether the index is SOFR or CMS.
+
+### Requirement 6: 経路依存型商品（Path-Dependent Products）のIR拡張
+
+**Objective:** As a クオンツ開発者, I want バリアオプションやアジアンオプション等の経路依存型商品をイベント駆動形式のIRで表現できること, so that 複雑なエキゾチック商品もシンプルなイベントループで評価できる
+
+#### Acceptance Criteria
+1. The system shall define a `ScriptKernel` struct with observation times, operation codes, and constant operands.
+2. The ScriptKernel shall support operation codes for: CalcFixed, CalcFloat, CheckBarrier, Accumulate, Pay.
+3. When a barrier option is compiled, the TradeCompiler shall generate CheckBarrier operations at each observation date.
+4. When an Asian option is compiled, the TradeCompiler shall generate Accumulate operations for averaging.
+5. The ScriptKernel execution shall proceed as a linear sequence of operations without runtime type dispatch.
+6. If an unsupported exotic payoff is encountered, then the TradeCompiler shall return `CompileError::UnsupportedPayoff`.
+
+### Requirement 7: Callable/Bermudan商品のブロック実行モデル
+
+**Objective:** As a クオンツ開発者, I want Callable SwapやBermudanオプションを行使日で区切られたブロック構造で表現できること, so that Forward/Backward両パスに対応したLSMC評価を実行できる
+
+#### Acceptance Criteria
+1. The system shall define a `CallableKernel` struct containing a sequence of `CallableBlock` entries.
+2. Each CallableBlock shall contain: start_date, end_date, core_flows (PricingKernel), and optional exercise_opportunity.
+3. When a Bermudan swaption is compiled, the TradeCompiler shall split the underlying swap into blocks at each exercise date.
+4. The execution engine shall support a Forward Pass to accumulate cashflow values to each exercise point.
+5. The execution engine shall support a Backward Pass for LSMC regression at exercise points.
+6. While executing a Callable product, the engine shall track continuation value and exercise value at each decision point.
+
+### Requirement 8: プライシングエンジン統合
+
+**Objective:** As a クオンツ開発者, I want PricingKernel IRを評価するシンプルなプライシングループを使用できること, so that 条件分岐なしのベクトル化されたコードでPV計算を実行できる
+
+#### Acceptance Criteria
+1. The pricing engine shall provide a `price_kernel` function accepting `&PricingKernel` and `&MarketData` returning `f64` PV.
+2. The pricing engine main loop shall iterate over array indices without matching on instrument types.
+3. The pricing engine shall use the IndexedMarket pattern for efficient market data lookup by index ID.
+4. The pricing engine shall be compatible with Enzyme AD for automatic differentiation of sensitivities.
+5. When pricing a batched portfolio kernel, the engine shall process all trades in a single contiguous pass.
+6. The pricing engine shall support SIMD-friendly memory access patterns through aligned f64 arrays.
+
+### Requirement 9: 日付・時間分離アーキテクチャ
+
+**Objective:** As a クオンツ開発者, I want 契約日付（Date）と計算時間（Time）が明確に分離されたIRを使用できること, so that 静的な契約情報と動的な評価基準日を独立に管理できる
+
+#### Acceptance Criteria
+1. The PricingKernel shall store absolute dates as `i32` (days from epoch) for contractual dates.
+2. The PricingKernel shall store pre-computed year fractions (τ) at compile time.
+3. When evaluating, the engine shall compute relative time-to-maturity (`t`) dynamically from valuation date.
+4. The separation shall allow re-evaluation at different valuation dates without recompilation.
+5. The date representation shall be compatible with `infra_master::time` calendar functions.
+
+### Requirement 10: A-I-P-Sアーキテクチャ適合
+
+**Objective:** As a システムアーキテクト, I want PricingKernel IRがNeutryxのA-I-P-Sデータフローに適合すること, so that 既存のレイヤー分離と3-stage rocketパターンを維持できる
+
+#### Acceptance Criteria
+1. The PricingKernel struct shall be defined in `pricer_core` (L1) as a foundational data type.
+2. The TradeCompiler implementation shall reside in `pricer_models` (L2) with access to instrument definitions.
+3. The pricing engine integration shall be in `pricer_pricing` (L3) for Monte Carlo and analytical evaluation.
+4. The portfolio-level orchestration shall be in `pricer_risk` (L4) for batched evaluation and risk scenarios.
+5. The PricingKernel shall not depend on any Service (S) or Adapter (A) layer crates.
+6. The TradeCompiler shall use `infra_master` types (Trade, Calendar, DayCountConvention) as input.
+7. The design shall follow the 3-stage rocket pattern: Definition (L2) → Linking (Context) → Execution (Kernel).
+
+### Requirement 11: パフォーマンス最適化
+
+**Objective:** As a システムアーキテクト, I want PricingKernel IRがSIMD命令とキャッシュ効率を最大化する設計であること, so that 大規模ポートフォリオ評価で桁違いのスループットを実現できる
+
+#### Acceptance Criteria
+1. The PricingKernel arrays shall be aligned to 64-byte boundaries for AVX-512 compatibility.
+2. The pricing loop shall be structured to enable LLVM auto-vectorisation.
+3. The memory layout shall minimise cache misses by co-locating frequently accessed data.
+4. The batched portfolio kernel shall process 10,000+ trades with linear scaling.
+5. The design shall eliminate pointer indirection in the hot path.
+6. While processing large portfolios, the engine shall maintain >80% CPU utilisation through Rayon parallelism.
+
+### Requirement 12: Enzyme AD 互換性
+
+**Objective:** As a クオンツ開発者, I want PricingKernel IRがEnzyme自動微分と完全互換であること, so that 高速なAADベースのGreeks計算を実行できる
+
+#### Acceptance Criteria
+1. The PricingKernel struct shall contain only Enzyme-compatible types (primitives, arrays).
+2. The pricing function shall be free of control flow that breaks Enzyme differentiation.
+3. The pricing function shall use smooth approximations for any discontinuous operations.
+4. The PricingKernel pricing shall support forward-mode and reverse-mode AD via Enzyme.
+5. If using num-dual fallback, the pricing kernel shall produce identical results for verification.
+6. The design shall minimise generic type parameters to reduce Enzyme compilation complexity.
+

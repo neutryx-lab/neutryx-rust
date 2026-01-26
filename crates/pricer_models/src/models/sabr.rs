@@ -45,10 +45,10 @@ use pricer_core::{
 };
 use thiserror::Error;
 
-use crate::models::stochastic::{
-    EquityModel, FxModel, RatesModel, StochasticModel, TwoFactorState,
+use crate::models::{
+    stochastic::{EquityModel, FxModel, RatesModel, StochasticModel, TwoFactorState},
+    validation::{ComputationError, ParamValidationError},
 };
-use crate::models::validation::{ComputationError, ParamValidationError};
 
 /// SABRモデルエラー型
 ///

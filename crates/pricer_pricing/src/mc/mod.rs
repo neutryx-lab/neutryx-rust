@@ -146,6 +146,7 @@
 
 pub mod config;
 pub mod error;
+pub mod layout_config;
 pub mod paths;
 pub mod payoff;
 pub mod pricer;
@@ -156,7 +157,8 @@ pub mod workspace_checkpoint;
 
 // Re-exports for convenient access
 pub use config::{AdMode, MonteCarloConfig, MonteCarloConfigBuilder};
-pub use error::MonteCarloConfigError;
+pub use error::{LayoutConfigError, MonteCarloConfigError};
+pub use layout_config::{PathLayout, PathLayoutConfig, StreamingConfig};
 pub use paths::{generate_gbm_paths, GbmParams};
 pub use payoff::{
     asian_arithmetic_call_smooth, asian_arithmetic_put_smooth, compute_payoff, compute_payoffs,

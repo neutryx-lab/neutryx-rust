@@ -23,12 +23,7 @@
 //! let trades = TradeLoader::load_portfolio("trades.json")?;
 //! ```
 
-use std::{
-    collections::HashMap,
-    fs::File,
-    io::BufReader,
-    path::Path,
-};
+use std::{collections::HashMap, fs::File, io::BufReader, path::Path};
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 

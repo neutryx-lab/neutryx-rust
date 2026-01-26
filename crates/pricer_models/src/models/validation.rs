@@ -135,7 +135,8 @@ impl std::error::Error for ParamValidationError {}
 ///
 /// # Variants
 ///
-/// - `NumericalInstability`: General numerical issues (overflow, underflow, etc.)
+/// - `NumericalInstability`: General numerical issues (overflow, underflow,
+///   etc.)
 /// - `NonFinite`: NaN or infinity detected in computation
 /// - `ConvergenceFailure`: Iterative algorithm failed to converge
 ///
@@ -176,9 +177,7 @@ impl ComputationError {
 
     /// Create a non-finite value error.
     #[must_use]
-    pub fn non_finite(context: impl Into<String>) -> Self {
-        Self::NonFinite(context.into())
-    }
+    pub fn non_finite(context: impl Into<String>) -> Self { Self::NonFinite(context.into()) }
 
     /// Create a convergence failure error.
     #[must_use]
