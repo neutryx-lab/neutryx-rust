@@ -253,9 +253,9 @@ impl LinearEngine {
     /// // Parallel pricing
     /// let npvs = LinearEngine::price_batch_parallel(&kernels, &context);
     /// ```
-    pub fn price_batch_parallel<'a, P: CurveProvider + Sync>(
+    pub fn price_batch_parallel<P: CurveProvider + Sync>(
         kernels: &[PricingKernel],
-        context: &KernelContext<'a, P>,
+        context: &KernelContext<'_, P>,
     ) -> Vec<f64>
     where
         P: Sync,
@@ -278,9 +278,9 @@ impl LinearEngine {
     /// # Returns
     ///
     /// Sum of all NPVs.
-    pub fn price_batch_sum_parallel<'a, P: CurveProvider + Sync>(
+    pub fn price_batch_sum_parallel<P: CurveProvider + Sync>(
         kernels: &[PricingKernel],
-        context: &KernelContext<'a, P>,
+        context: &KernelContext<'_, P>,
     ) -> f64
     where
         P: Sync,
