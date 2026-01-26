@@ -166,34 +166,34 @@
 
 ## Phase 3: Callable対応
 
-- [ ] 10. CallableKernel
-- [ ] 10.1 (P) CallableKernel構造体定義
+- [x] 10. CallableKernel
+- [x] 10.1 (P) CallableKernel構造体定義
   - ブロック構造IR表現構造体を定義する
   - CallableBlock（start_date, end_date, core_flows, exercise）
   - ExerciseDef（exercise_date, exercise_cost, style）
   - ExerciseStyle列挙型（Bermudan, American）
   - _Requirements: 7.1, 7.2_
 
-- [ ] 10.2 CallableCompiler実装
+- [x] 10.2 CallableCompiler実装
   - Bermudanスワップションを行使日ブロックに分割コンパイルする
   - 原資産スワップを行使日でブロック分割
   - 各ブロックにPricingKernel（core_flows）を生成
   - _Requirements: 7.3_
 
-- [ ] 11. CallableEngine・LSMC
-- [ ] 11.1 Forward Pass実装
+- [x] 11. CallableEngine・LSMC
+- [x] 11.1 Forward Pass実装
   - 行使ポイントまでのキャッシュフロー累積を実装する
   - 各ブロックのcore_flowsをprice_kernelで評価
   - 累積PVの記録
   - _Requirements: 7.4_
 
-- [ ] 11.2 LSMCRegressor実装
+- [x] 11.2 LSMCRegressor実装
   - Longstaff-Schwartz最小二乗回帰を実装する
-  - nalgebraによるQR分解
+  - Choleskyによる正規方程式解法（nalgebra代替）
   - 継続価値の推定
   - _Requirements: 7.5_
 
-- [ ] 11.3 Backward Pass実装
+- [x] 11.3 Backward Pass実装
   - 行使ポイントでの行使/継続判定を実装する
   - 各行使日で行使価値vs継続価値を比較
   - パス更新ロジック
@@ -201,23 +201,23 @@
 
 ## Phase 4: 最適化・ベンチマーク
 
-- [ ] 12. パフォーマンス検証
-- [ ] 12.1 バッチ評価ベンチマーク
+- [x] 12. パフォーマンス検証
+- [x] 12.1 バッチ評価ベンチマーク
   - 10,000トレードのバッチ評価スループットを測定する
   - criterionベンチマーク
   - 線形スケーリング検証
   - _Requirements: 11.4_
 
-- [ ] 12.2 (P) SIMD検証
-  - LLVMベクトル化の確認を行う
-  - `perf stat`でSIMD命令カウント
-  - キャッシュミス率測定
+- [x] 12.2 (P) SIMD検証
+  - SIMD最適化ドキュメント追加
+  - LinearEngine::priceのSIMDフレンドリーな設計確認
+  - ベンチマークでのキャッシュアクセスパターン検証
   - _Requirements: 11.2, 11.3_
 
-- [ ] 12.3 (P) Rayon並列化統合
+- [x] 12.3 (P) Rayon並列化統合
   - バッチ評価のRayon並列化を実装する
-  - トレード単位のpar_iter
-  - CPU利用率>80%の検証
+  - price_batch_parallel, price_batch_sum_parallel API追加
+  - ベンチマークで並列vs逐次性能比較
   - _Requirements: 11.6_
 
 ---

@@ -66,10 +66,7 @@ fn create_floating_kernel() -> PricingKernel {
         .map(|i| start_date + (i as i32 + 1) * 91)
         .collect();
 
-    let fixing_dates: Vec<i32> = payment_dates
-        .iter()
-        .map(|&d| d - 2)
-        .collect();
+    let fixing_dates: Vec<i32> = payment_dates.iter().map(|&d| d - 2).collect();
 
     let year_fractions: Vec<f64> = vec![0.25; num_flows];
     let notionals: Vec<f64> = vec![1_000_000.0; num_flows];
@@ -102,17 +99,12 @@ fn create_swap_kernel() -> PricingKernel {
     let start_date = 19000;
 
     // Pay leg (fixed)
-    let mut payment_dates: Vec<i32> = (0..20)
-        .map(|i| start_date + (i as i32 + 1) * 91)
-        .collect();
+    let mut payment_dates: Vec<i32> = (0..20).map(|i| start_date + (i as i32 + 1) * 91).collect();
 
     // Receive leg (floating)
     payment_dates.extend((0..20).map(|i| start_date + (i as i32 + 1) * 91));
 
-    let fixing_dates: Vec<i32> = payment_dates
-        .iter()
-        .map(|&d| d - 2)
-        .collect();
+    let fixing_dates: Vec<i32> = payment_dates.iter().map(|&d| d - 2).collect();
 
     let year_fractions: Vec<f64> = vec![0.25; num_flows];
     let notionals: Vec<f64> = vec![1_000_000.0; num_flows];
@@ -199,9 +191,7 @@ fn bench_batch_evaluation(c: &mut Criterion) {
     // Test different batch sizes
     for batch_size in [10, 100, 1_000, 10_000] {
         // Pre-create kernels
-        let kernels: Vec<PricingKernel> = (0..batch_size)
-            .map(|_| create_swap_kernel())
-            .collect();
+        let kernels: Vec<PricingKernel> = (0..batch_size).map(|_| create_swap_kernel()).collect();
 
         group.throughput(Throughput::Elements(batch_size as u64));
 
@@ -235,9 +225,7 @@ fn bench_linear_scaling(c: &mut Criterion) {
 
     // Fixed leg kernels
     for batch_size in [100, 500, 1_000, 5_000, 10_000] {
-        let kernels: Vec<PricingKernel> = (0..batch_size)
-            .map(|_| create_irs_kernel())
-            .collect();
+        let kernels: Vec<PricingKernel> = (0..batch_size).map(|_| create_irs_kernel()).collect();
 
         group.throughput(Throughput::Elements(batch_size as u64));
 
@@ -258,9 +246,8 @@ fn bench_linear_scaling(c: &mut Criterion) {
 
     // Floating leg kernels (more computation)
     for batch_size in [100, 500, 1_000, 5_000, 10_000] {
-        let kernels: Vec<PricingKernel> = (0..batch_size)
-            .map(|_| create_floating_kernel())
-            .collect();
+        let kernels: Vec<PricingKernel> =
+            (0..batch_size).map(|_| create_floating_kernel()).collect();
 
         group.throughput(Throughput::Elements(batch_size as u64));
 
@@ -302,10 +289,7 @@ fn bench_kernel_sizes(c: &mut Criterion) {
             .map(|i| start_date + (i as i32 + 1) * 91)
             .collect();
 
-        let fixing_dates: Vec<i32> = payment_dates
-            .iter()
-            .map(|&d| d - 2)
-            .collect();
+        let fixing_dates: Vec<i32> = payment_dates.iter().map(|&d| d - 2).collect();
 
         let year_fractions: Vec<f64> = vec![0.25; num_flows];
         let notionals: Vec<f64> = vec![1_000_000.0; num_flows];
@@ -384,9 +368,7 @@ fn bench_access_patterns(c: &mut Criterion) {
     let context = KernelContext::new(&provider);
 
     let batch_size = 1_000;
-    let kernels: Vec<PricingKernel> = (0..batch_size)
-        .map(|_| create_swap_kernel())
-        .collect();
+    let kernels: Vec<PricingKernel> = (0..batch_size).map(|_| create_swap_kernel()).collect();
 
     // Sequential access
     group.bench_function("sequential", |b| {
@@ -401,8 +383,10 @@ fn bench_access_patterns(c: &mut Criterion) {
 
     // Random access (simulate cache misses)
     let indices: Vec<usize> = {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
+        use std::{
+            collections::hash_map::DefaultHasher,
+            hash::{Hash, Hasher},
+        };
 
         (0..batch_size)
             .map(|i| {
@@ -426,6 +410,101 @@ fn bench_access_patterns(c: &mut Criterion) {
     group.finish();
 }
 
+// =============================================================================
+// Rayon Parallelisation Benchmarks (Task 12.3)
+// =============================================================================
+
+/// Benchmark sequential vs parallel batch evaluation.
+///
+/// Target: Parallel should achieve >80% CPU utilisation.
+fn bench_parallel_vs_sequential(c: &mut Criterion) {
+    let mut group = c.benchmark_group("parallel_vs_sequential");
+    group.sample_size(30);
+
+    let provider = FlatCurveProvider::new(0.03, 0.03);
+    let context = KernelContext::new(&provider);
+
+    for batch_size in [100, 1_000, 10_000] {
+        let kernels: Vec<PricingKernel> = (0..batch_size).map(|_| create_swap_kernel()).collect();
+
+        group.throughput(Throughput::Elements(batch_size as u64));
+
+        // Sequential
+        group.bench_with_input(
+            BenchmarkId::new("sequential", batch_size),
+            &kernels,
+            |b, kernels| {
+                b.iter(|| {
+                    let npvs = LinearEngine::price_batch(kernels, &context);
+                    black_box(npvs)
+                });
+            },
+        );
+
+        // Parallel
+        group.bench_with_input(
+            BenchmarkId::new("parallel", batch_size),
+            &kernels,
+            |b, kernels| {
+                b.iter(|| {
+                    let npvs = LinearEngine::price_batch_parallel(kernels, &context);
+                    black_box(npvs)
+                });
+            },
+        );
+
+        // Parallel sum (more efficient for total only)
+        group.bench_with_input(
+            BenchmarkId::new("parallel_sum", batch_size),
+            &kernels,
+            |b, kernels| {
+                b.iter(|| {
+                    let sum = LinearEngine::price_batch_sum_parallel(kernels, &context);
+                    black_box(sum)
+                });
+            },
+        );
+    }
+
+    group.finish();
+}
+
+/// Benchmark parallel speedup at different batch sizes.
+fn bench_parallel_speedup(c: &mut Criterion) {
+    let mut group = c.benchmark_group("parallel_speedup");
+    group.sample_size(20);
+
+    let provider = FlatCurveProvider::new(0.03, 0.03);
+    let context = KernelContext::new(&provider);
+
+    // Large batch for meaningful parallelisation
+    let batch_size = 10_000;
+    let kernels: Vec<PricingKernel> = (0..batch_size).map(|_| create_swap_kernel()).collect();
+
+    group.throughput(Throughput::Elements(batch_size as u64));
+
+    // Baseline: sequential
+    group.bench_function("sequential_10k", |b| {
+        b.iter(|| {
+            let sum: f64 = kernels
+                .iter()
+                .map(|k| LinearEngine::price(k, &context))
+                .sum();
+            black_box(sum)
+        });
+    });
+
+    // Parallel with Rayon
+    group.bench_function("parallel_10k", |b| {
+        b.iter(|| {
+            let sum = LinearEngine::price_batch_sum_parallel(&kernels, &context);
+            black_box(sum)
+        });
+    });
+
+    group.finish();
+}
+
 criterion_group!(
     benches,
     bench_single_kernel,
@@ -434,5 +513,7 @@ criterion_group!(
     bench_kernel_sizes,
     bench_decomposed_pricing,
     bench_access_patterns,
+    bench_parallel_vs_sequential,
+    bench_parallel_speedup,
 );
 criterion_main!(benches);

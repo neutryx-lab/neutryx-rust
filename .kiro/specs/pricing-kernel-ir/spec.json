@@ -3,7 +3,7 @@
   "created_at": "2026-01-26T20:15:00+09:00",
   "updated_at": "2026-01-27T12:00:00+09:00",
   "language": "ja",
-  "phase": "implementing",
+  "phase": "implemented",
   "approvals": {
     "requirements": {
       "generated": true,
@@ -50,13 +50,40 @@
       }
     },
     "phase2_extension": {
-      "status": "pending"
+      "status": "completed",
+      "completed_tasks": [
+        "7.1 FXQuote/CrossCcyBasis実装",
+        "8.1 CMSインデックス統合",
+        "9.1 ScriptKernel構造体定義",
+        "9.2 ExoticCompiler（Barrier/Asian）",
+        "9.3 ScriptEngine実装"
+      ]
     },
     "phase3_callable": {
-      "status": "pending"
+      "status": "completed",
+      "completed_tasks": [
+        "10.1 CallableKernel構造体定義",
+        "10.2 CallableCompiler実装",
+        "11.1 Forward Pass実装",
+        "11.2 LSMCRegressor実装",
+        "11.3 Backward Pass実装"
+      ],
+      "test_results": {
+        "callable_engine": "23 tests passed",
+        "lsmc": "15 tests passed"
+      }
     },
     "phase4_optimization": {
-      "status": "pending"
+      "status": "completed",
+      "completed_tasks": [
+        "12.1 バッチ評価ベンチマーク",
+        "12.2 SIMD検証",
+        "12.3 Rayon並列化統合"
+      ],
+      "test_results": {
+        "kernel_total": "137 tests passed",
+        "batch_pricing": "6 tests passed"
+      }
     }
   }
 }

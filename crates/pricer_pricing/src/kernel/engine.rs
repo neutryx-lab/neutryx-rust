@@ -2,8 +2,29 @@
 //!
 //! This module provides `LinearEngine` which executes the branchless
 //! pricing formula on `PricingKernel` data structures.
+//!
+//! # SIMD Optimisation
+//!
+//! The pricing loop is designed to be SIMD-friendly:
+//! - Sequential array access (cache-friendly)
+//! - No data-dependent branching
+//! - Unified formula for fixed/floating (branchless)
+//! - f64 operations suitable for AVX2/AVX-512
+//!
+//! To verify SIMD vectorisation, compile with:
+//! ```bash
+//! RUSTFLAGS="-C target-cpu=native -C opt-level=3" cargo build --release
+//! ```
+//!
+//! And inspect assembly with:
+//! ```bash
+//! cargo asm pricer_pricing::kernel::engine::LinearEngine::price
+//! ```
+//!
+//! Expected SIMD instructions: vfmadd*, vmulpd, vaddpd
 
 use pricer_core::ir::PricingKernel;
+use rayon::prelude::*;
 
 use super::{context::KernelContext, provider::CurveProvider};
 
@@ -184,6 +205,87 @@ impl LinearEngine {
         }
 
         total
+    }
+
+    // =========================================================================
+    // Batch Evaluation (Task 12.3: Rayon Parallelisation)
+    // =========================================================================
+
+    /// Prices a batch of kernels sequentially.
+    ///
+    /// Useful for comparison with parallel batch pricing.
+    ///
+    /// # Arguments
+    ///
+    /// * `kernels` - Slice of kernels to price
+    /// * `context` - Market data context (shared across all kernels)
+    ///
+    /// # Returns
+    ///
+    /// Vector of NPVs, one per kernel.
+    pub fn price_batch<P: CurveProvider>(
+        kernels: &[PricingKernel],
+        context: &KernelContext<'_, P>,
+    ) -> Vec<f64> {
+        kernels.iter().map(|k| Self::price(k, context)).collect()
+    }
+
+    /// Prices a batch of kernels in parallel using Rayon.
+    ///
+    /// Distributes kernel pricing across available CPU cores.
+    /// Optimal for large batches (>100 kernels).
+    ///
+    /// # Arguments
+    ///
+    /// * `kernels` - Slice of kernels to price
+    /// * `context` - Market data context (must be Sync for parallel access)
+    ///
+    /// # Returns
+    ///
+    /// Vector of NPVs, one per kernel (same order as input).
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let kernels: Vec<PricingKernel> = /* compiled kernels */;
+    /// let context = KernelContext::new(&curves);
+    ///
+    /// // Parallel pricing
+    /// let npvs = LinearEngine::price_batch_parallel(&kernels, &context);
+    /// ```
+    pub fn price_batch_parallel<'a, P: CurveProvider + Sync>(
+        kernels: &[PricingKernel],
+        context: &KernelContext<'a, P>,
+    ) -> Vec<f64>
+    where
+        P: Sync,
+    {
+        kernels
+            .par_iter()
+            .map(|k| Self::price(k, context))
+            .collect()
+    }
+
+    /// Sums batch NPVs in parallel.
+    ///
+    /// More efficient than collecting to Vec when only total is needed.
+    ///
+    /// # Arguments
+    ///
+    /// * `kernels` - Slice of kernels to price
+    /// * `context` - Market data context
+    ///
+    /// # Returns
+    ///
+    /// Sum of all NPVs.
+    pub fn price_batch_sum_parallel<'a, P: CurveProvider + Sync>(
+        kernels: &[PricingKernel],
+        context: &KernelContext<'a, P>,
+    ) -> f64
+    where
+        P: Sync,
+    {
+        kernels.par_iter().map(|k| Self::price(k, context)).sum()
     }
 }
 
@@ -443,5 +545,106 @@ mod tests {
         let valuation = 18262;
         let days = super::years_to_days(2.0, valuation);
         assert_eq!(days, valuation + 730);
+    }
+
+    // === Task 12.3: Batch pricing tests ===
+
+    #[test]
+    fn test_price_batch_empty() {
+        let kernels: Vec<PricingKernel> = vec![];
+        let provider = FlatCurveProvider::new(0.05, 0.03);
+        let context = KernelContext::new(&provider);
+
+        let npvs = LinearEngine::price_batch(&kernels, &context);
+        assert!(npvs.is_empty());
+    }
+
+    #[test]
+    fn test_price_batch_single() {
+        let kernels = vec![create_fixed_kernel()];
+        let provider = FlatCurveProvider::new(0.05, 0.03);
+        let context = KernelContext::new(&provider);
+
+        let npvs = LinearEngine::price_batch(&kernels, &context);
+        let single_npv = LinearEngine::price(&kernels[0], &context);
+
+        assert_eq!(npvs.len(), 1);
+        assert!((npvs[0] - single_npv).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_price_batch_multiple() {
+        let kernels = vec![
+            create_fixed_kernel(),
+            create_floating_kernel(),
+            create_swap_kernel(),
+        ];
+        let provider = FlatCurveProvider::new(0.05, 0.03);
+        let context = KernelContext::new(&provider);
+
+        let npvs = LinearEngine::price_batch(&kernels, &context);
+
+        assert_eq!(npvs.len(), 3);
+
+        // Verify each NPV matches individual pricing
+        for (i, kernel) in kernels.iter().enumerate() {
+            let expected = LinearEngine::price(kernel, &context);
+            assert!((npvs[i] - expected).abs() < 1e-10);
+        }
+    }
+
+    #[test]
+    fn test_price_batch_parallel_consistency() {
+        // Create a batch of identical kernels
+        let kernels: Vec<PricingKernel> = (0..100).map(|_| create_fixed_kernel()).collect();
+        let provider = FlatCurveProvider::new(0.05, 0.03);
+        let context = KernelContext::new(&provider);
+
+        let sequential = LinearEngine::price_batch(&kernels, &context);
+        let parallel = LinearEngine::price_batch_parallel(&kernels, &context);
+
+        assert_eq!(sequential.len(), parallel.len());
+
+        for (seq, par) in sequential.iter().zip(parallel.iter()) {
+            assert!(
+                (seq - par).abs() < 1e-10,
+                "Parallel result should match sequential"
+            );
+        }
+    }
+
+    #[test]
+    fn test_price_batch_sum_parallel() {
+        let kernels: Vec<PricingKernel> = (0..50).map(|_| create_fixed_kernel()).collect();
+        let provider = FlatCurveProvider::new(0.05, 0.03);
+        let context = KernelContext::new(&provider);
+
+        let sum_parallel = LinearEngine::price_batch_sum_parallel(&kernels, &context);
+        let sum_sequential: f64 = LinearEngine::price_batch(&kernels, &context).iter().sum();
+
+        assert!((sum_parallel - sum_sequential).abs() < 1e-8);
+    }
+
+    #[test]
+    fn test_price_batch_parallel_mixed_types() {
+        // Mix of different kernel types
+        let mut kernels = Vec::new();
+        for _ in 0..10 {
+            kernels.push(create_fixed_kernel());
+            kernels.push(create_floating_kernel());
+            kernels.push(create_swap_kernel());
+        }
+
+        let provider = FlatCurveProvider::new(0.05, 0.03);
+        let context = KernelContext::new(&provider);
+
+        let sequential = LinearEngine::price_batch(&kernels, &context);
+        let parallel = LinearEngine::price_batch_parallel(&kernels, &context);
+
+        assert_eq!(sequential.len(), parallel.len());
+
+        for (seq, par) in sequential.iter().zip(parallel.iter()) {
+            assert!((seq - par).abs() < 1e-10);
+        }
     }
 }
