@@ -198,38 +198,38 @@
 
 ## Phase 4: WebApp統合とデータローダー
 
-- [ ] 14. VolSurfaceLoader
-- [ ] 14.1 (P) CSV形式のswaption/capfloor vol quoteローダーを実装する
+- [x] 14. VolSurfaceLoader
+- [x] 14.1 (P) CSV形式のswaption/capfloor vol quoteローダーを実装する
   - expiry、tenor、strike、vol（bid/ask/mid）カラムをパース
   - 行番号付きパースエラーを返す
   - demo/data/input/volsurface/ディレクトリ規約に従う
   - _Requirements: 10.1, 10.2, 10.3, 10.5, 10.6_
 
-- [ ] 14.2 (P) JSON形式のvol quoteローダーを実装する
+- [x] 14.2 (P) JSON形式のvol quoteローダーを実装する
   - swaption vol quote JSONをパース
   - capfloor vol quote JSONをパース
   - ファイル未発見時のLoaderErrorハンドリング
   - _Requirements: 10.1, 10.2, 10.4_
 
-- [ ] 14.3 VolQuoteSet変換を実装する
+- [x] 14.3 VolQuoteSet変換を実装する
   - ロード済みデータをVolCubeBuilderに渡せる型に変換
   - strike type、quote typeの自動判別
   - _Requirements: 10.7_
 
-- [ ] 15. WebApp APIエンドポイント
-- [ ] 15.1 /api/volcube/calibrate POSTエンドポイントを実装する
+- [x] 15. WebApp APIエンドポイント
+- [x] 15.1 /api/volcube/calibrate POSTエンドポイントを実装する
   - 通貨とunderlying indexを受け取りカリブレーションを実行
   - SABRパラメータグリッドと診断データを返す
   - エラー発生時は詳細情報を含むエラーレスポンスを返す
   - _Requirements: 8.1, 8.4, 8.7_
 
-- [ ] 15.2 3Dサーフェス可視化用データを提供する
+- [x] 15.2 3Dサーフェス可視化用データを提供する
   - expiry×tenor×strike smileのグリッドデータを返す
   - market quote vs fitted volの比較データを提供
   - plotly.js互換の形式でデータを構造化
   - _Requirements: 8.3, 8.5_
 
-- [ ] 15.3 Breeden-Litzenberger密度関数エンドポイントを追加する
+- [x] 15.3 Breeden-Litzenberger密度関数エンドポイントを追加する
   - 指定expiry/tenorでの確率密度を計算
   - 可視化用のデータポイントを返す
   - _Requirements: 8.6_

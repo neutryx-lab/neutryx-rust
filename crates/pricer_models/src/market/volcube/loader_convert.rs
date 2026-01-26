@@ -3,7 +3,8 @@
 //! # Requirements: 10.7
 //!
 //! Provides conversion from adapter_loader types to `VolQuoteSet`.
-//! This module bridges the Adapter layer (adapter_loader) with the Pricer layer.
+//! This module bridges the Adapter layer (adapter_loader) with the Pricer
+//! layer.
 //!
 //! # Example
 //!
@@ -17,8 +18,10 @@
 
 use chrono::NaiveDate;
 
-use super::quote::{Currency, QuoteType, Tenor, UnderlyingIndex, VolQuote, VolQuoteSet, VolStrike};
-use super::types::InstrumentId;
+use super::{
+    quote::{Currency, QuoteType, Tenor, UnderlyingIndex, VolQuote, VolQuoteSet, VolStrike},
+    types::InstrumentId,
+};
 
 /// Error type for conversion operations.
 #[derive(Debug, Clone, thiserror::Error)]
@@ -175,7 +178,8 @@ pub trait ToVolQuote {
 /// * `currency` - Currency string (e.g., "USD")
 /// * `underlying_index` - Optional underlying index string
 /// * `as_of_date` - As-of date string (YYYY-MM-DD)
-/// * `quotes` - Iterator of quote data (expiry, tenor_years, strike_value, strike_type, mid, bid, ask, quote_type, shift)
+/// * `quotes` - Iterator of quote data (expiry, tenor_years, strike_value,
+///   strike_type, mid, bid, ask, quote_type, shift)
 pub fn convert_json_quotes<'a, I>(
     currency: &str,
     underlying_index: Option<&str>,
@@ -185,15 +189,15 @@ pub fn convert_json_quotes<'a, I>(
 where
     I: IntoIterator<
         Item = (
-            &'a str,       // expiry
-            f64,           // tenor_years
-            f64,           // strike_value
-            &'a str,       // strike_type
-            f64,           // mid
-            Option<f64>,   // bid
-            Option<f64>,   // ask
+            &'a str,         // expiry
+            f64,             // tenor_years
+            f64,             // strike_value
+            &'a str,         // strike_type
+            f64,             // mid
+            Option<f64>,     // bid
+            Option<f64>,     // ask
             Option<&'a str>, // quote_type
-            Option<f64>,   // shift
+            Option<f64>,     // shift
             Option<&'a str>, // instrument_id
         ),
     >,
@@ -208,7 +212,11 @@ where
 
     let mut quote_set = VolQuoteSet::new(ccy, index, as_of_date);
 
-    for (i, (expiry, tenor_years, strike_value, strike_type, mid, bid, ask, quote_type, shift, inst_id)) in quotes.into_iter().enumerate() {
+    for (
+        i,
+        (expiry, tenor_years, strike_value, strike_type, mid, bid, ask, quote_type, shift, inst_id),
+    ) in quotes.into_iter().enumerate()
+    {
         let expiry_date = parse_expiry_to_date(expiry, as_of_date)?;
         let tenor = Tenor::years(tenor_years);
         let strike = parse_strike(strike_value, strike_type)?;
@@ -222,8 +230,8 @@ where
             None => format!("VOL-{}", i).into(),
         };
 
-        let mut quote = VolQuote::new(instrument_id, expiry_date, tenor, strike, mid)
-            .with_quote_type(qt);
+        let mut quote =
+            VolQuote::new(instrument_id, expiry_date, tenor, strike, mid).with_quote_type(qt);
 
         if let Some(b) = bid {
             quote = quote.with_bid(b);
@@ -245,7 +253,8 @@ where
 /// * `currency` - Currency
 /// * `underlying_index` - Underlying index
 /// * `as_of_date` - As-of date
-/// * `rows` - Iterator of (expiry_str, tenor_str, strike, mid, bid, ask, quote_type, strike_type, shift)
+/// * `rows` - Iterator of (expiry_str, tenor_str, strike, mid, bid, ask,
+///   quote_type, strike_type, shift)
 pub fn convert_swaption_csv_rows<'a, I>(
     currency: Currency,
     underlying_index: UnderlyingIndex,
@@ -255,21 +264,25 @@ pub fn convert_swaption_csv_rows<'a, I>(
 where
     I: IntoIterator<
         Item = (
-            &'a str,       // expiry
-            &'a str,       // tenor
-            f64,           // strike
-            f64,           // mid
-            Option<f64>,   // bid
-            Option<f64>,   // ask
-            &'a str,       // quote_type
-            &'a str,       // strike_type
-            Option<f64>,   // shift
+            &'a str,     // expiry
+            &'a str,     // tenor
+            f64,         // strike
+            f64,         // mid
+            Option<f64>, // bid
+            Option<f64>, // ask
+            &'a str,     // quote_type
+            &'a str,     // strike_type
+            Option<f64>, // shift
         ),
     >,
 {
     let mut quote_set = VolQuoteSet::new(currency, underlying_index, as_of_date);
 
-    for (i, (expiry_str, tenor_str, strike_val, mid, bid, ask, quote_type_str, strike_type_str, shift)) in rows.into_iter().enumerate() {
+    for (
+        i,
+        (expiry_str, tenor_str, strike_val, mid, bid, ask, quote_type_str, strike_type_str, shift),
+    ) in rows.into_iter().enumerate()
+    {
         let expiry_date = parse_expiry_to_date(expiry_str, as_of_date)?;
         let tenor_years = parse_tenor_to_years(tenor_str)?;
         let tenor = Tenor::years(tenor_years);
@@ -278,8 +291,8 @@ where
 
         let instrument_id: InstrumentId = format!("SWAPTION-{}", i).into();
 
-        let mut quote = VolQuote::new(instrument_id, expiry_date, tenor, strike, mid)
-            .with_quote_type(qt);
+        let mut quote =
+            VolQuote::new(instrument_id, expiry_date, tenor, strike, mid).with_quote_type(qt);
 
         if let Some(b) = bid {
             quote = quote.with_bid(b);
@@ -296,8 +309,8 @@ where
 
 /// Convert CSV capfloor rows to VolQuoteSet.
 ///
-/// Cap/Floor quotes typically don't have an underlying tenor in the same way swaptions do.
-/// We use a default tenor or derive it from the cap structure.
+/// Cap/Floor quotes typically don't have an underlying tenor in the same way
+/// swaptions do. We use a default tenor or derive it from the cap structure.
 pub fn convert_capfloor_csv_rows<'a, I>(
     currency: Currency,
     underlying_index: UnderlyingIndex,
@@ -308,21 +321,25 @@ pub fn convert_capfloor_csv_rows<'a, I>(
 where
     I: IntoIterator<
         Item = (
-            &'a str,       // expiry
-            f64,           // strike
-            f64,           // mid
-            Option<f64>,   // bid
-            Option<f64>,   // ask
-            &'a str,       // quote_type
-            &'a str,       // strike_type
-            Option<f64>,   // shift
-            &'a str,       // cap_floor
+            &'a str,     // expiry
+            f64,         // strike
+            f64,         // mid
+            Option<f64>, // bid
+            Option<f64>, // ask
+            &'a str,     // quote_type
+            &'a str,     // strike_type
+            Option<f64>, // shift
+            &'a str,     // cap_floor
         ),
     >,
 {
     let mut quote_set = VolQuoteSet::new(currency, underlying_index, as_of_date);
 
-    for (i, (expiry_str, strike_val, mid, bid, ask, quote_type_str, strike_type_str, shift, cap_floor)) in rows.into_iter().enumerate() {
+    for (
+        i,
+        (expiry_str, strike_val, mid, bid, ask, quote_type_str, strike_type_str, shift, cap_floor),
+    ) in rows.into_iter().enumerate()
+    {
         let expiry_date = parse_expiry_to_date(expiry_str, as_of_date)?;
         let tenor = Tenor::years(default_tenor);
         let strike = parse_strike(strike_val, strike_type_str)?;
@@ -330,8 +347,8 @@ where
 
         let instrument_id: InstrumentId = format!("{}-{}", cap_floor.to_uppercase(), i).into();
 
-        let mut quote = VolQuote::new(instrument_id, expiry_date, tenor, strike, mid)
-            .with_quote_type(qt);
+        let mut quote =
+            VolQuote::new(instrument_id, expiry_date, tenor, strike, mid).with_quote_type(qt);
 
         if let Some(b) = bid {
             quote = quote.with_bid(b);
@@ -439,24 +456,19 @@ mod tests {
     #[test]
     fn test_convert_json_quotes() {
         let quotes = vec![(
-            "2027-01-25",  // expiry
-            5.0,           // tenor_years
-            0.03,          // strike_value
-            "absolute",    // strike_type
-            0.20,          // mid
-            Some(0.19),    // bid
-            Some(0.21),    // ask
+            "2027-01-25",      // expiry
+            5.0,               // tenor_years
+            0.03,              // strike_value
+            "absolute",        // strike_type
+            0.20,              // mid
+            Some(0.19),        // bid
+            Some(0.21),        // ask
             Some("lognormal"), // quote_type
-            None,          // shift
-            Some("TEST-1"), // instrument_id
+            None,              // shift
+            Some("TEST-1"),    // instrument_id
         )];
 
-        let quote_set = convert_json_quotes(
-            "USD",
-            Some("SOFR"),
-            "2026-01-25",
-            quotes,
-        ).unwrap();
+        let quote_set = convert_json_quotes("USD", Some("SOFR"), "2026-01-25", quotes).unwrap();
 
         assert_eq!(quote_set.len(), 1);
         assert!(matches!(quote_set.currency, Currency::Usd));
@@ -470,16 +482,32 @@ mod tests {
     fn test_convert_swaption_csv_rows() {
         let as_of = NaiveDate::from_ymd_opt(2026, 1, 25).unwrap();
         let rows = vec![
-            ("1Y", "5Y", 0.03, 0.20, Some(0.19), Some(0.21), "lognormal", "absolute", None),
-            ("2Y", "10Y", 0.035, 0.22, None, None, "lognormal", "absolute", None),
+            (
+                "1Y",
+                "5Y",
+                0.03,
+                0.20,
+                Some(0.19),
+                Some(0.21),
+                "lognormal",
+                "absolute",
+                None,
+            ),
+            (
+                "2Y",
+                "10Y",
+                0.035,
+                0.22,
+                None,
+                None,
+                "lognormal",
+                "absolute",
+                None,
+            ),
         ];
 
-        let quote_set = convert_swaption_csv_rows(
-            Currency::Usd,
-            UnderlyingIndex::Sofr,
-            as_of,
-            rows,
-        ).unwrap();
+        let quote_set =
+            convert_swaption_csv_rows(Currency::Usd, UnderlyingIndex::Sofr, as_of, rows).unwrap();
 
         assert_eq!(quote_set.len(), 2);
         assert!((quote_set.quotes[0].mid - 0.20).abs() < 1e-10);
@@ -490,8 +518,28 @@ mod tests {
     fn test_convert_capfloor_csv_rows() {
         let as_of = NaiveDate::from_ymd_opt(2026, 1, 25).unwrap();
         let rows = vec![
-            ("5Y", 0.03, 0.25, None, None, "lognormal", "absolute", None, "cap"),
-            ("10Y", 0.04, 0.22, None, None, "lognormal", "absolute", None, "floor"),
+            (
+                "5Y",
+                0.03,
+                0.25,
+                None,
+                None,
+                "lognormal",
+                "absolute",
+                None,
+                "cap",
+            ),
+            (
+                "10Y",
+                0.04,
+                0.22,
+                None,
+                None,
+                "lognormal",
+                "absolute",
+                None,
+                "floor",
+            ),
         ];
 
         let quote_set = convert_capfloor_csv_rows(
@@ -500,11 +548,18 @@ mod tests {
             as_of,
             0.25, // 3M default tenor
             rows,
-        ).unwrap();
+        )
+        .unwrap();
 
         assert_eq!(quote_set.len(), 2);
-        assert!(quote_set.quotes[0].instrument_id.as_str().starts_with("CAP"));
-        assert!(quote_set.quotes[1].instrument_id.as_str().starts_with("FLOOR"));
+        assert!(quote_set.quotes[0]
+            .instrument_id
+            .as_str()
+            .starts_with("CAP"));
+        assert!(quote_set.quotes[1]
+            .instrument_id
+            .as_str()
+            .starts_with("FLOOR"));
     }
 
     #[test]
@@ -527,7 +582,8 @@ mod tests {
             None, // No index specified, should default to ESTR
             "2026-01-25",
             quotes,
-        ).unwrap();
+        )
+        .unwrap();
 
         assert!(matches!(quote_set.underlying_index, UnderlyingIndex::Estr));
     }
