@@ -18,27 +18,16 @@
 //! - Index-based instrument management
 //! - Builder model selection (interpolation, bootstrap method)
 
-// Type definitions (tests removed, types kept for handler use)
-pub mod curve_builder_types;
 pub mod error;
-pub mod fxcurve_types;
-pub mod fxvol_types;
-pub mod irvol_types;
+pub mod handlers;
 pub mod jobs;
 pub mod market_data;
-pub mod market_types;
 pub mod metrics;
 pub mod openapi;
 pub mod pricing_service;
-pub mod risk_engine_types;
 pub mod schedule_utils;
 pub mod state;
-pub mod trade_types;
-pub mod volcube_types;
 pub mod websocket;
-
-// All handlers are in handlers
-pub mod handlers;
 
 use std::{
     collections::HashSet,

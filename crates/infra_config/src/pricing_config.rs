@@ -202,6 +202,25 @@ impl PricingConfig {
             }
         }
 
+        // Validate Tree params when method is Tree
+        if self.pricing_method == PricingMethod::Tree {
+            match &self.tree_params {
+                Some(tree) => {
+                    if tree.num_steps == 0 {
+                        return Err(ConfigError::InvalidValue {
+                            key: "tree_params.num_steps".to_string(),
+                            message: "num_steps must be greater than 0".to_string(),
+                        });
+                    }
+                }
+                None => {
+                    return Err(ConfigError::missing_required(
+                        "tree_params parameters required when pricing_method is 'tree'",
+                    ));
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -426,6 +445,7 @@ mod tests {
             reporting_currency: "USD".to_string(),
             pricing_method: PricingMethod::Analytical,
             monte_carlo: None,
+            tree_params: None,
             market_data_path: PathBuf::from("data/market.json"),
             trade_data_path: PathBuf::from("data/trades.json"),
             csa_data_path: None,

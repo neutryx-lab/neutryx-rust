@@ -97,6 +97,35 @@ pub enum PricingError {
         /// Reason the input is invalid.
         reason: String,
     },
+
+    /// Pricing method is not supported.
+    #[error("Unsupported pricing method: {method} - {reason}")]
+    UnsupportedMethod {
+        /// The unsupported method name.
+        method: String,
+        /// Reason the method is not supported.
+        reason: String,
+    },
+
+    /// Convergence failed during numerical method.
+    #[error("Convergence failed for {method}: {iterations} iterations, tolerance {tolerance}")]
+    ConvergenceFailed {
+        /// The method that failed to converge.
+        method: String,
+        /// Number of iterations attempted.
+        iterations: usize,
+        /// Tolerance that was not met.
+        tolerance: f64,
+    },
+
+    /// Numerical instability during computation.
+    #[error("Numerical instability in {method}: {details}")]
+    NumericalInstability {
+        /// The method that experienced instability.
+        method: String,
+        /// Details of the instability.
+        details: String,
+    },
 }
 
 impl PricingError {
@@ -190,6 +219,31 @@ impl PricingError {
     /// Creates an internal error.
     pub fn internal(msg: impl Into<String>) -> Self { Self::Internal(msg.into()) }
 
+    /// Creates an unsupported method error.
+    pub fn unsupported_method(method: impl Into<String>, reason: impl Into<String>) -> Self {
+        Self::UnsupportedMethod {
+            method: method.into(),
+            reason: reason.into(),
+        }
+    }
+
+    /// Creates a convergence failed error.
+    pub fn convergence_failed(method: impl Into<String>, iterations: usize, tolerance: f64) -> Self {
+        Self::ConvergenceFailed {
+            method: method.into(),
+            iterations,
+            tolerance,
+        }
+    }
+
+    /// Creates a numerical instability error.
+    pub fn numerical_instability(method: impl Into<String>, details: impl Into<String>) -> Self {
+        Self::NumericalInstability {
+            method: method.into(),
+            details: details.into(),
+        }
+    }
+
     /// Returns true if this is a market data error.
     pub fn is_market_data_error(&self) -> bool {
         matches!(
@@ -207,6 +261,21 @@ impl PricingError {
             self,
             Self::UnsupportedInstrument { .. } | Self::InvalidTrade { .. }
         )
+    }
+
+    /// Returns true if this is a method-related error.
+    pub fn is_method_error(&self) -> bool {
+        matches!(self, Self::UnsupportedMethod { .. })
+    }
+
+    /// Returns true if this is a convergence error.
+    pub fn is_convergence_error(&self) -> bool {
+        matches!(self, Self::ConvergenceFailed { .. })
+    }
+
+    /// Returns true if this is a numerical error.
+    pub fn is_numerical_error(&self) -> bool {
+        matches!(self, Self::NumericalInstability { .. })
     }
 }
 
@@ -387,5 +456,56 @@ mod tests {
     fn test_config_error_trait_implementation() {
         let err = ConfigError::invalid_model_parameter("test", "reason");
         let _: &dyn std::error::Error = &err;
+    }
+
+    // =========================================================================
+    // Task 2.1: Extended PricingError Tests (TDD RED → GREEN)
+    // =========================================================================
+
+    #[test]
+    fn test_pricing_error_unsupported_method() {
+        let err = PricingError::unsupported_method("PDE", "Not implemented yet");
+        assert!(err.to_string().contains("Unsupported pricing method"));
+        assert!(err.to_string().contains("PDE"));
+        assert!(err.to_string().contains("Not implemented"));
+        assert!(err.is_method_error());
+        assert!(!err.is_convergence_error());
+    }
+
+    #[test]
+    fn test_pricing_error_convergence_failed() {
+        let err = PricingError::convergence_failed("Tree", 1000, 1e-8);
+        assert!(err.to_string().contains("Convergence failed"));
+        assert!(err.to_string().contains("Tree"));
+        assert!(err.to_string().contains("1000"));
+        assert!(err.is_convergence_error());
+        assert!(!err.is_numerical_error());
+    }
+
+    #[test]
+    fn test_pricing_error_numerical_instability() {
+        let err = PricingError::numerical_instability("MonteCarlo", "NaN detected in path");
+        assert!(err.to_string().contains("Numerical instability"));
+        assert!(err.to_string().contains("MonteCarlo"));
+        assert!(err.to_string().contains("NaN detected"));
+        assert!(err.is_numerical_error());
+        assert!(!err.is_convergence_error());
+    }
+
+    #[test]
+    fn test_pricing_error_method_helpers() {
+        let method_err = PricingError::unsupported_method("Test", "reason");
+        let conv_err = PricingError::convergence_failed("Test", 100, 1e-6);
+        let num_err = PricingError::numerical_instability("Test", "overflow");
+        let market_err = PricingError::missing_market_data("test");
+
+        assert!(method_err.is_method_error());
+        assert!(!conv_err.is_method_error());
+
+        assert!(conv_err.is_convergence_error());
+        assert!(!method_err.is_convergence_error());
+
+        assert!(num_err.is_numerical_error());
+        assert!(!market_err.is_numerical_error());
     }
 }

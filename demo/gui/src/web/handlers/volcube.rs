@@ -27,21 +27,444 @@ use axum::{
     extract::{Path, Query, State},
     Json,
 };
+use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use crate::web::{
     error::{ApiError, ApiResult},
-    volcube_types::{
-        CalibrationModel, DensityDataResponse, DensityQuery, DensityStatistics, FitMetrics,
-        InstrumentFit, MarketPoint, SabrParamsOutput, SmileDataResponse, SmileQuery,
-        SurfaceDataResponse, SurfaceMarketPoint, SurfaceQuery, SwaptionInstrument,
-        VolCubeCalibrateRequest, VolCubeCalibrateResponse, VolCubeFile, VolCubeIndexInfo,
-        VolCubeIndicesResponse, VolCubeInstrumentListRequest, VolCubeInstrumentListResponse,
-        VolCubeModelsResponse,
-    },
     AppState,
 };
+
+// =============================================================================
+// Calibration Model Enums
+// =============================================================================
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum CalibrationModel {
+    #[default]
+    Sabr,
+    Svi,
+    LocalVolatility,
+}
+
+impl CalibrationModel {
+    pub fn display_name(&self) -> &'static str {
+        match self {
+            Self::Sabr => "SABR",
+            Self::Svi => "SVI",
+            Self::LocalVolatility => "Local Volatility",
+        }
+    }
+
+    pub fn description(&self) -> &'static str {
+        match self {
+            Self::Sabr => "Stochastic Alpha Beta Rho - standard for rates",
+            Self::Svi => "Stochastic Volatility Inspired - popular for equity",
+            Self::LocalVolatility => "Dupire's local volatility - arbitrage-free",
+        }
+    }
+
+    pub fn is_enabled(&self) -> bool { matches!(self, Self::Sabr) }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum StrikeAxisType {
+    #[default]
+    Absolute,
+    Moneyness,
+    LogMoneyness,
+    Delta,
+}
+
+impl StrikeAxisType {
+    pub fn display_name(&self) -> &'static str {
+        match self {
+            Self::Absolute => "Absolute Strike",
+            Self::Moneyness => "Moneyness (K/F)",
+            Self::LogMoneyness => "Log-Moneyness",
+            Self::Delta => "Delta",
+        }
+    }
+}
+
+// =============================================================================
+// Instrument Data Structures
+// =============================================================================
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SwaptionInstrument {
+    pub expiry: f64,
+    pub tenor: f64,
+    pub strike: f64,
+    pub implied_vol: f64,
+    pub forward: f64,
+    #[serde(default = "default_weight")]
+    pub weight: f64,
+}
+
+fn default_weight() -> f64 { 1.0 }
+
+impl SwaptionInstrument {
+    pub fn new(expiry: f64, tenor: f64, strike: f64, implied_vol: f64, forward: f64) -> Self {
+        Self { expiry, tenor, strike, implied_vol, forward, weight: 1.0 }
+    }
+
+    pub fn with_weight(mut self, weight: f64) -> Self {
+        self.weight = weight;
+        self
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VolCubeFile {
+    pub index: String,
+    pub reference_date: String,
+    #[serde(default)]
+    pub dependent_curves: Vec<String>,
+    pub instruments: Vec<SwaptionInstrument>,
+}
+
+// =============================================================================
+// SABR Configuration
+// =============================================================================
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SabrConfigInput {
+    #[serde(default = "default_sabr_beta")]
+    pub beta: Option<f64>,
+    #[serde(default)]
+    pub shift: f64,
+    #[serde(default)]
+    pub calibrate_beta: bool,
+}
+
+#[allow(clippy::unnecessary_wraps)]
+fn default_sabr_beta() -> Option<f64> { Some(0.5) }
+
+impl Default for SabrConfigInput {
+    fn default() -> Self {
+        Self { beta: Some(0.5), shift: 0.0, calibrate_beta: false }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VolCubeConfigInput {
+    #[serde(default)]
+    pub sabr: SabrConfigInput,
+    #[serde(default = "default_interpolation")]
+    pub expiry_interpolation: String,
+    #[serde(default = "default_interpolation")]
+    pub tenor_interpolation: String,
+    #[serde(default = "default_extrapolation")]
+    pub extrapolation: String,
+    #[serde(default = "default_tolerance")]
+    pub tolerance: f64,
+    #[serde(default = "default_max_iterations")]
+    pub max_iterations: usize,
+}
+
+fn default_interpolation() -> String { "linear".to_string() }
+fn default_extrapolation() -> String { "flat".to_string() }
+fn default_tolerance() -> f64 { 1e-8 }
+fn default_max_iterations() -> usize { 100 }
+
+impl Default for VolCubeConfigInput {
+    fn default() -> Self {
+        Self {
+            sabr: SabrConfigInput::default(),
+            expiry_interpolation: default_interpolation(),
+            tenor_interpolation: default_interpolation(),
+            extrapolation: default_extrapolation(),
+            tolerance: default_tolerance(),
+            max_iterations: default_max_iterations(),
+        }
+    }
+}
+
+// =============================================================================
+// API Request/Response Types
+// =============================================================================
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VolCubeIndicesResponse {
+    pub indices: Vec<VolCubeIndexInfo>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VolCubeIndexInfo {
+    pub id: String,
+    pub name: String,
+    pub asset_class: String,
+    pub currency: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VolCubeInstrumentListResponse {
+    pub index: String,
+    pub reference_date: String,
+    pub dependent_curves: Vec<String>,
+    pub instruments: Vec<SwaptionInstrument>,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VolCubeInstrumentListRequest {
+    pub reference_date: String,
+    #[serde(default)]
+    pub dependent_curves: Vec<String>,
+    pub instruments: Vec<SwaptionInstrument>,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VolCubeCalibrateRequest {
+    pub index: String,
+    pub instruments: Vec<SwaptionInstrument>,
+    #[serde(default)]
+    pub model: CalibrationModel,
+    #[serde(default)]
+    pub config: VolCubeConfigInput,
+    pub dependent_curve_id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SabrParamsOutput {
+    pub expiry: f64,
+    pub tenor: f64,
+    pub alpha: f64,
+    pub beta: f64,
+    pub rho: f64,
+    pub nu: f64,
+    pub forward: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct FitMetrics {
+    pub rmse: f64,
+    pub max_error: f64,
+    pub r_squared: f64,
+    pub iterations: usize,
+    pub instrument_count: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InstrumentFit {
+    pub expiry: f64,
+    pub tenor: f64,
+    pub strike: f64,
+    pub market_vol: f64,
+    pub model_vol: f64,
+    pub error: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VolCubeCalibrateResponse {
+    pub cube_id: String,
+    pub model: CalibrationModel,
+    pub parameters: Vec<SabrParamsOutput>,
+    pub fit_metrics: FitMetrics,
+    pub instrument_fits: Vec<InstrumentFit>,
+    pub processing_time_ms: f64,
+}
+
+// =============================================================================
+// Smile and Density Query Types
+// =============================================================================
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct SmileQuery {
+    pub cube_id: String,
+    pub expiry: f64,
+    pub tenor: f64,
+    #[serde(default)]
+    pub strike_axis: StrikeAxisType,
+    #[serde(default = "default_num_points")]
+    pub num_points: usize,
+}
+
+fn default_num_points() -> usize { 50 }
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MarketPoint {
+    pub strike: f64,
+    pub implied_vol: f64,
+    pub weight: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SmileDataResponse {
+    pub expiry: f64,
+    pub tenor: f64,
+    pub forward: f64,
+    pub strikes: Vec<f64>,
+    pub model_vols: Vec<f64>,
+    pub market_points: Vec<MarketPoint>,
+    pub sabr_params: SabrParamsOutput,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct DensityQuery {
+    pub cube_id: String,
+    pub expiry: f64,
+    pub tenor: f64,
+    #[serde(default = "default_density_points")]
+    pub num_points: usize,
+}
+
+fn default_density_points() -> usize { 100 }
+
+#[derive(Debug, Clone, PartialEq, Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct DensityStatistics {
+    pub mean: f64,
+    pub variance: f64,
+    pub skewness: f64,
+    pub kurtosis: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DensityDataResponse {
+    pub expiry: f64,
+    pub tenor: f64,
+    pub forward: f64,
+    pub strikes: Vec<f64>,
+    pub densities: Vec<f64>,
+    pub cdf: Vec<f64>,
+    pub statistics: DensityStatistics,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub warnings: Vec<String>,
+}
+
+// =============================================================================
+// 3D Surface Query Types
+// =============================================================================
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct SurfaceQuery {
+    pub cube_id: String,
+    pub tenor: Option<f64>,
+    #[serde(default = "default_surface_points")]
+    pub expiry_points: usize,
+    #[serde(default = "default_surface_points")]
+    pub strike_points: usize,
+}
+
+fn default_surface_points() -> usize { 25 }
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SurfaceDataResponse {
+    pub tenor: f64,
+    pub expiries: Vec<f64>,
+    pub strikes: Vec<f64>,
+    pub volatilities: Vec<Vec<f64>>,
+    pub market_points: Vec<SurfaceMarketPoint>,
+    pub available_tenors: Vec<f64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SurfaceMarketPoint {
+    pub expiry: f64,
+    pub strike: f64,
+    pub implied_vol: f64,
+}
+
+// =============================================================================
+// Models Response
+// =============================================================================
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VolCubeModelsResponse {
+    pub models: Vec<CalibrationModelInfo>,
+    pub strike_axis_types: Vec<StrikeAxisTypeInfo>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CalibrationModelInfo {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub enabled: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StrikeAxisTypeInfo {
+    pub id: String,
+    pub name: String,
+}
+
+impl VolCubeModelsResponse {
+    pub fn new() -> Self {
+        Self {
+            models: vec![
+                CalibrationModelInfo {
+                    id: "sabr".to_string(),
+                    name: CalibrationModel::Sabr.display_name().to_string(),
+                    description: CalibrationModel::Sabr.description().to_string(),
+                    enabled: CalibrationModel::Sabr.is_enabled(),
+                },
+                CalibrationModelInfo {
+                    id: "svi".to_string(),
+                    name: CalibrationModel::Svi.display_name().to_string(),
+                    description: CalibrationModel::Svi.description().to_string(),
+                    enabled: CalibrationModel::Svi.is_enabled(),
+                },
+                CalibrationModelInfo {
+                    id: "local_volatility".to_string(),
+                    name: CalibrationModel::LocalVolatility.display_name().to_string(),
+                    description: CalibrationModel::LocalVolatility.description().to_string(),
+                    enabled: CalibrationModel::LocalVolatility.is_enabled(),
+                },
+            ],
+            strike_axis_types: vec![
+                StrikeAxisTypeInfo {
+                    id: "absolute".to_string(),
+                    name: StrikeAxisType::Absolute.display_name().to_string(),
+                },
+                StrikeAxisTypeInfo {
+                    id: "moneyness".to_string(),
+                    name: StrikeAxisType::Moneyness.display_name().to_string(),
+                },
+                StrikeAxisTypeInfo {
+                    id: "log_moneyness".to_string(),
+                    name: StrikeAxisType::LogMoneyness.display_name().to_string(),
+                },
+                StrikeAxisTypeInfo {
+                    id: "delta".to_string(),
+                    name: StrikeAxisType::Delta.display_name().to_string(),
+                },
+            ],
+        }
+    }
+}
+
+impl Default for VolCubeModelsResponse {
+    fn default() -> Self { Self::new() }
+}
 
 // =============================================================================
 // VolCubeCache - LRU Cache for calibrated cubes (Req 8.8)
