@@ -748,6 +748,12 @@ const curveBuilder = {
             } catch (e) {
                 console.error('[CurveBuilder] Error rendering long-term chart:', e);
             }
+
+            // Force resize after render to ensure proper fit
+            setTimeout(() => {
+                if (this.chartShort) this.chartShort.resize();
+                if (this.chartLong) this.chartLong.resize();
+            }, 50);
         }
 
         // Render table with original pillar data

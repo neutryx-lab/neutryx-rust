@@ -23,6 +23,8 @@ pub mod config_types;
 pub mod curve_builder_handlers;
 pub mod curve_builder_types;
 pub mod error;
+pub mod events_handlers;
+pub mod events_types;
 pub mod fxcurve_handlers;
 pub mod fxcurve_types;
 pub mod fxvol_handlers;
@@ -637,6 +639,15 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/surface", get(irvol_handlers::get_surface));
 
     let api_routes = api_routes.nest("/irvol", irvol_routes);
+
+    // Events API routes (market-data-viewer-webapp Events)
+    let events_routes = Router::new()
+        .route("/", get(events_handlers::get_events))
+        .route("/types", get(events_handlers::get_event_types))
+        .route("/central-banks", get(events_handlers::get_central_banks_list))
+        .route("/:id", get(events_handlers::get_event_detail));
+
+    let api_routes = api_routes.nest("/events", events_routes);
 
     // FxCurve API routes (fx-vol-surface-calibration Task 13.1)
     let fxcurve_routes = Router::new()

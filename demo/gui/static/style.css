@@ -11554,6 +11554,7 @@ body.light-theme .irs-loading-overlay {
     margin-bottom: 8px;
     padding-bottom: 8px;
     border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
 }
 
 .parameter-chart-container .chart-title {
@@ -11958,6 +11959,113 @@ body.light-theme .cb-meeting-toggle .toggle-label:hover {
 .stats-badge.displayed i {
     color: var(--primary);
     opacity: 1;
+}
+
+/* Events Styles */
+.event-type-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 0.7rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.event-type-badge.central_bank_meeting {
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--primary);
+}
+
+.event-type-badge.economic_release {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success);
+}
+
+.event-type-badge.holiday {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--warning);
+}
+
+.event-type-badge.news {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+}
+
+.event-type-badge.expiry {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger);
+}
+
+.event-type-badge.other {
+    background: rgba(107, 114, 128, 0.15);
+    color: var(--text-secondary);
+}
+
+.event-date {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+}
+
+.event-title {
+    font-weight: 500;
+    max-width: 250px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.importance-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.importance-badge.importance-critical {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.importance-badge.importance-high {
+    background: rgba(245, 158, 11, 0.2);
+    color: var(--warning);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.importance-badge.importance-medium {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.importance-badge.importance-low {
+    background: rgba(107, 114, 128, 0.15);
+    color: var(--text-secondary);
+    border: 1px solid rgba(107, 114, 128, 0.3);
+}
+
+.event-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 8px;
+}
+
+.event-tag {
+    display: inline-flex;
+    padding: 2px 6px;
+    background: var(--surface);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.65rem;
+    color: var(--text-secondary);
 }
 
 /* Asset Class Toggle */
