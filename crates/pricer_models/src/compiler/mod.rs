@@ -22,11 +22,13 @@
 //! - [`ExoticCompiler`]: Implementation for path-dependent products (barriers,
 //!   Asians)
 
+mod callable;
 mod exotic;
 mod index_mapper;
 mod linear;
 mod xccy;
 
+pub use callable::{CallableCompiler, Cashflow, CashflowSchedule};
 pub use exotic::ExoticCompiler;
 pub use index_mapper::{CmsIndex, ForwardIndexType, IndexMapper};
 pub use linear::LinearProductsCompiler;

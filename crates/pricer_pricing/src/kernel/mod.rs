@@ -35,6 +35,8 @@
 //! ```
 
 #[cfg(feature = "l1l2-integration")]
+mod callable_engine;
+#[cfg(feature = "l1l2-integration")]
 mod context;
 #[cfg(feature = "l1l2-integration")]
 mod engine;
@@ -43,6 +45,8 @@ mod provider;
 #[cfg(feature = "l1l2-integration")]
 mod script_engine;
 
+#[cfg(feature = "l1l2-integration")]
+pub use callable_engine::{CallableEngine, ExerciseState, SimulatedPaths};
 #[cfg(feature = "l1l2-integration")]
 pub use context::KernelContext;
 #[cfg(feature = "l1l2-integration")]
