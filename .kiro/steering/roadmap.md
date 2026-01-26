@@ -2,13 +2,13 @@
 
 実装状況と今後の開発項目を追跡するドキュメント。
 
-_Updated: 2026-01-26_ — Steering sync: fx-vol-surface-calibration completed (139 tests, FX curve + vol surface builders); ir-vol-cube-calibration active (Phase 1-2 complete); 35 completed specs
+_Updated: 2026-01-26_ — Steering sync: move-enzyme-to-pricer-risk completed (Enzyme AD moved to L4); pricer-pricing-architecture active (Tree pricing, Dispatcher); market-index-keyed-access in requirements; 36 completed specs
 
 ---
 
 ## Current State Summary
 
-### Completed Specifications (34)
+### Completed Specifications (36)
 
 | Spec | Description | Completed |
 |------|-------------|-----------|
