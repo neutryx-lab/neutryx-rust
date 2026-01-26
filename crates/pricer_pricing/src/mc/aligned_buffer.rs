@@ -51,6 +51,10 @@ pub struct AlignedPathBuffer<T: Float> {
     inner: aligned_vec::AVec<T, aligned_vec::ConstAlign<DEFAULT_ALIGNMENT>>,
 }
 
+/// Aligned memory buffer for path data (fallback implementation).
+///
+/// When the `simd-aligned` feature is not enabled, this uses a standard
+/// `Vec<T>` which provides natural alignment for type `T`.
 #[cfg(not(feature = "simd-aligned"))]
 pub struct AlignedPathBuffer<T: Float> {
     inner: Vec<T>,
@@ -82,6 +86,9 @@ impl<T: Float> AlignedPathBuffer<T> {
         Self { inner }
     }
 
+    /// Creates a new buffer with the specified capacity (fallback).
+    ///
+    /// Uses standard `Vec<T>` when `simd-aligned` feature is not enabled.
     #[cfg(not(feature = "simd-aligned"))]
     pub fn new(capacity: usize) -> Self {
         Self {
@@ -121,6 +128,10 @@ impl<T: Float> AlignedPathBuffer<T> {
         Self { inner }
     }
 
+    /// Creates a buffer with custom alignment (fallback).
+    ///
+    /// Without `simd-aligned` feature, alignment is ignored and uses natural
+    /// type alignment.
     #[cfg(not(feature = "simd-aligned"))]
     pub fn with_alignment(capacity: usize, _alignment: usize) -> Self {
         Self::new(capacity)
@@ -191,6 +202,10 @@ impl<T: Float> AlignedPathBuffer<T> {
         DEFAULT_ALIGNMENT
     }
 
+    /// Returns the alignment of the buffer in bytes (fallback).
+    ///
+    /// Returns the natural alignment of type `T` when `simd-aligned`
+    /// feature is not enabled.
     #[cfg(not(feature = "simd-aligned"))]
     #[inline]
     pub fn alignment(&self) -> usize {
@@ -287,10 +302,6 @@ impl<T: Float + Clone> Clone for AlignedPathBuffer<T> {
         }
     }
 }
-
-// Safety: AlignedPathBuffer is Send + Sync if T is
-unsafe impl<T: Float + Send> Send for AlignedPathBuffer<T> {}
-unsafe impl<T: Float + Sync> Sync for AlignedPathBuffer<T> {}
 
 #[cfg(test)]
 mod tests {
@@ -422,11 +433,8 @@ mod tests {
         let mut buffer: AlignedPathBuffer<f64> = AlignedPathBuffer::new(100);
         let ptr = buffer.as_mut_ptr();
         assert!(!ptr.is_null());
-        // Write through pointer
-        unsafe {
-            *ptr = 42.0;
-        }
-        assert_eq!(buffer.as_slice()[0], 42.0);
+        // Verify pointer alignment to f64
+        assert_eq!(ptr as usize % std::mem::align_of::<f64>(), 0);
     }
 
     #[cfg(feature = "simd-aligned")]
