@@ -17,11 +17,13 @@
 
 ### Non-Goals
 
-- faer による線形代数バックエンド置換（Phase 2 で評価）
+- faer による線形代数バックエンド置換（Phase 2 で評価、Req 4）
 - 新規最適化アルゴリズムの追加
 - 公開 API の破壊的変更
 
 ## Architecture
+
+> 詳細な調査結果は `research.md` を参照。本セクションでは設計判断とコントラクトを記載。
 
 ### Existing Architecture Analysis
 
@@ -30,18 +32,18 @@
 pricer_core/src/math/
 ├── optimisers/
 │   ├── mod.rs          # 公開 API
-│   ├── nelder_mead.rs  # 自前実装 (~200行)
-│   ├── lbfgs.rs        # 自前実装 (~310行)
+│   ├── nelder_mead.rs  # 自前実装 (~330行)
+│   ├── lbfgs.rs        # 自前実装 (~440行)
 │   ├── config.rs       # 設定型
 │   ├── result.rs       # 結果型
 │   └── error.rs        # エラー型
 └── solvers/
     ├── mod.rs          # 公開 API
-    ├── brent.rs        # 自前実装 (~230行)
-    ├── newton_raphson.rs    # 自前実装 (~150行) + AD
+    ├── brent.rs        # 自前実装 (~470行)
+    ├── newton_raphson.rs    # 自前実装 (~450行) + AD
     ├── bisection.rs         # 自前実装 (~200行)
     ├── backtracking_newton.rs  # 自前実装 (~250行)
-    ├── levenberg_marquardt.rs  # 自前実装 (~350行)
+    ├── levenberg_marquardt.rs  # 自前実装 (~740行)
     └── config.rs       # 設定型
 ```
 
@@ -53,14 +55,14 @@ pricer_core/src/math/
 │   ├── argmin_wrapper.rs   # argmin ラッパー (新規)
 │   ├── config.rs       # 設定型（変更なし）
 │   ├── result.rs       # 結果型（変更なし）
-│   └── error.rs        # エラー型（拡張）
+│   └── error.rs        # エラー型（External 追加）
 └── solvers/
     ├── mod.rs          # 公開 API（変更なし）
-    ├── argmin_wrapper.rs   # argmin BrentRoot ラッパー (新規)
+    ├── brent_wrapper.rs    # argmin BrentRoot ラッパー (新規)
     ├── lm_wrapper.rs       # levenberg-marquardt ラッパー (新規)
-    ├── newton_raphson.rs   # AD 対応のため保持
+    ├── newton_raphson.rs   # AD 対応のため保持（Req 5.4）
     ├── bisection.rs        # 簡易実装のため保持
-    ├── backtracking_newton.rs  # roots 非対応のため保持
+    ├── backtracking_newton.rs  # roots 非対応のため保持（Req 2.6）
     └── config.rs       # 設定型（変更なし）
 ```
 
@@ -74,13 +76,14 @@ graph TB
         Brent[BrentSolver]
         NR[NewtonRaphsonSolver]
         Bisect[BisectionSolver]
+        BacktrackNR[BacktrackingNewtonSolver]
         LM[LevenbergMarquardtSolver]
     end
 
     subgraph Wrapper[Wrapper Layer]
         ArgminOpt[ArgminOptimiserWrapper]
-        ArgminRoot[ArgminRootWrapper]
-        LMWrap[LevenbergMarquardtWrapper]
+        BrentWrap[BrentWrapper]
+        LMWrap[LMWrapper]
     end
 
     subgraph External[External Crates]
@@ -90,7 +93,7 @@ graph TB
         LMCrate[levenberg-marquardt]
     end
 
-    subgraph Retained[Retained Self-Impl]
+    subgraph Retained[Retained Self-Impl - AD / Non-supported]
         NRImpl[newton_raphson.rs AD]
         BisectImpl[bisection.rs]
         BacktrackImpl[backtracking_newton.rs]
@@ -98,43 +101,65 @@ graph TB
 
     NM --> ArgminOpt
     LBFGS --> ArgminOpt
-    Brent --> ArgminRoot
+    Brent --> BrentWrap
     LM --> LMWrap
 
     ArgminOpt --> ArgminNM
     ArgminOpt --> ArgminLBFGS
-    ArgminRoot --> ArgminBrent
+    BrentWrap --> ArgminBrent
     LMWrap --> LMCrate
 
     NR --> NRImpl
     Bisect --> BisectImpl
+    BacktrackNR --> BacktrackImpl
 ```
 
 **Architecture Integration**:
-- **Selected pattern**: Wrapper Approach（公開 API 維持、内部委譲）
+- **Selected pattern**: Wrapper Pattern + AD Fallback（`research.md` Decision 1）
 - **Domain boundaries**: Wrapper 層が外部クレートの API 差異を吸収
-- **Existing patterns preserved**: `OptimisationResult`, `SolverConfig`, エラー型
-- **New components rationale**: 外部クレートとの型変換・エラー変換を担当
+- **Existing patterns preserved**: `OptimisationResult`, `SolverConfig`, `LMResult`, エラー型
+- **Retained components rationale**:
+  - `newton_raphson.rs`: Dual64 AD 対応（Req 5.4）
+  - `bisection.rs`: 簡易実装（~200行）、外部依存追加のコストに見合わない
+  - `backtracking_newton.rs`: roots/argmin 非対応の backtracking line search（Req 2.6）
 - **Steering compliance**: A-I-P-S レイヤー維持、Pricer 内部完結
 
 ### Technology Stack
 
 | Layer | Choice / Version | Role in Feature | Notes |
 |-------|------------------|-----------------|-------|
-| Optimisation | argmin 0.10, argmin-math 0.4 | Nelder-Mead, L-BFGS, Brent | workspace 既存 |
+| Optimisation | argmin 0.10, argmin-math 0.4 | Nelder-Mead, L-BFGS | workspace 既存 |
+| Root-finding | argmin 0.10 (BrentRoot) | Brent | workspace 既存 |
 | Least Squares | levenberg-marquardt 0.14 | LM solver | 新規追加 |
-| Linear Algebra | nalgebra (既存) | LM の行列操作 | 変更なし |
-| AD | num-dual (既存) | Newton-Raphson AD | 変更なし |
+| Linear Algebra | nalgebra 0.33 (既存) | LM の行列操作 | 変更なし |
+| AD | num-dual 0.9 (既存) | Newton-Raphson AD | 変更なし |
+
+> faer の評価は Requirement 4 で定義。詳細は `research.md` の「faer クレートの評価」を参照。Phase 2 で optional `faer-backend` feature として検討。
 
 ## Requirements Traceability
 
 | Requirement | Summary | Components | Interfaces | Flows |
 |-------------|---------|------------|------------|-------|
-| 1.1-1.8 | argmin 最適化移行 | ArgminOptimiserWrapper | CostFunction, Gradient | ConfigToArgmin |
-| 2.1-2.8 | roots 求根移行 | ArgminRootWrapper | BrentRoot | ConfigToArgmin |
-| 3.1-3.5 | LM 移行 | LMWrapper | LeastSquaresProblem | ResidualToLM |
-| 4.1-4.6 | faer 評価 | (Phase 2) | - | - |
-| 5.1-5.5 | AD 互換性 | NewtonRaphsonSolver | find_root_ad | ADPreserved |
+| 1.1 | Nelder-Mead argmin 委譲 | ArgminOptimiserWrapper | CostFunction | NM → Wrapper → argmin |
+| 1.2 | L-BFGS argmin 委譲 | ArgminOptimiserWrapper | Gradient | LBFGS → Wrapper → argmin |
+| 1.3 | L-BFGS numerical gradient | ArgminOptimiserWrapper | finitediff | LBFGS_num → Wrapper |
+| 1.4-1.6 | 既存 API/Config/Result 維持 | ConfigConverter, ResultConverter | - | - |
+| 1.7 | エラー変換 | ArgminOptimiserWrapper | OptimisationError::External | - |
+| 1.8 | 自前実装削除 | - | - | Cleanup |
+| 2.1 | Brent argmin 委譲 | BrentWrapper | CostFunction | Brent → Wrapper → argmin |
+| 2.2 | Bisection | (保持) BisectionSolver | - | - |
+| 2.3 | Newton-Raphson | (保持) NewtonRaphsonSolver | - | AD 対応 |
+| 2.4-2.5 | 既存 API/Config 維持 | - | - | - |
+| 2.6 | BacktrackingNewton 保持 | BacktrackingNewtonSolver | - | roots 非対応 |
+| 2.7-2.8 | 自前実装削除/エラー | BrentWrapper | SolverError::External | Cleanup |
+| 3.1 | LM 委譲 | LMWrapper | LeastSquaresProblem | LM → Wrapper → lm-crate |
+| 3.2-3.4 | 既存 Config/Result 維持 | ConfigConverter | - | - |
+| 3.5 | 自前実装削除 | - | - | Cleanup |
+| 4.1-4.6 | faer 評価 | (Phase 2) BenchmarkSuite | - | 評価後判断 |
+| 5.1 | Float ジェネリック維持 | 全 Wrapper | - | - |
+| 5.2 | ArgminOp AD 対応 | ArgminOptimiserWrapper | - | - |
+| 5.3-5.4 | Dual64 検証/find_root_ad 保持 | NewtonRaphsonSolver | - | - |
+| 5.5 | AD fallback | NewtonRaphsonSolver | - | - |
 | 6.1-6.5 | テスト互換 | All | - | RegressionTests |
 | 7.1-7.6 | 依存管理 | Cargo.toml | - | FeatureFlags |
 | 8.1-8.4 | ドキュメント | mod.rs docs | - | - |
@@ -144,10 +169,10 @@ graph TB
 | Component | Domain/Layer | Intent | Req Coverage | Key Dependencies | Contracts |
 |-----------|--------------|--------|--------------|------------------|-----------|
 | ArgminOptimiserWrapper | math/optimisers | argmin への委譲 | 1.1-1.8 | argmin (P0) | Service |
-| ArgminRootWrapper | math/solvers | argmin BrentRoot への委譲 | 2.1-2.7 | argmin (P0) | Service |
+| BrentWrapper | math/solvers | argmin BrentRoot への委譲 | 2.1, 2.7-2.8 | argmin (P0) | Service |
 | LMWrapper | math/solvers | levenberg-marquardt への委譲 | 3.1-3.5 | levenberg-marquardt (P0), nalgebra (P0) | Service |
-| ConfigConverter | math/optimisers | Config → argmin パラメータ変換 | 1.4-1.6 | - | - |
-| ResultConverter | math/optimisers | argmin 結果 → OptimisationResult | 1.6 | - | - |
+| ConfigConverter | math/optimisers | Config → argmin パラメータ変換 | 1.4-1.6 | - | Internal |
+| ResultConverter | math/optimisers | argmin 結果 → OptimisationResult | 1.6 | - | Internal |
 
 ### math/optimisers
 
@@ -230,9 +255,9 @@ fn argmin_result_to_optimisation_result(
 ```
 
 **Implementation Notes**
-- Integration: `#[cfg(feature = "argmin")]` でゲート、デフォルト有効
+- Integration: `#[cfg(feature = "external-numerics")]` でゲート、デフォルト有効
 - Validation: 空の初期点は `OptimisationError::InvalidInput` を返す
-- Risks: argmin API 変更時の互換性維持
+- Risks: argmin API 変更時の互換性維持（バージョン固定で軽減）
 
 ---
 
@@ -267,7 +292,7 @@ fn argmin_result_to_optimisation_result(
 
 ### math/solvers
 
-#### ArgminRootWrapper
+#### BrentWrapper
 
 | Field | Detail |
 |-------|--------|
@@ -278,6 +303,7 @@ fn argmin_result_to_optimisation_result(
 - `BrentSolver::find_root` の内部実装を argmin BrentRoot に委譲
 - ブラケット検証とエラー変換
 - 既存の `SolverConfig` との互換維持
+- 注意: ジェネリック `T: Float` は f64 に制限される（argmin 制約）
 
 **Dependencies**
 - Outbound: argmin::solver::brent::BrentRoot — 求根実行 (P0)
@@ -288,10 +314,10 @@ fn argmin_result_to_optimisation_result(
 ##### Service Interface
 
 ```rust
-/// BrentSolver の argmin 委譲実装
-impl<T: Float> BrentSolver<T> {
-    /// argmin BrentRoot を使用した求根（f64 専用）
-    pub fn find_root_argmin<F>(&self, f: F, a: f64, b: f64) -> Result<f64, SolverError>
+/// BrentSolver の argmin 委譲実装（f64 専用）
+impl BrentSolver<f64> {
+    /// argmin BrentRoot を使用した求根
+    pub fn find_root<F>(&self, f: F, a: f64, b: f64) -> Result<f64, SolverError>
     where
         F: Fn(f64) -> f64;
 }
@@ -316,9 +342,9 @@ fn argmin_error_to_solver_error(err: argmin::core::Error) -> SolverError;
 ```
 
 **Implementation Notes**
-- Integration: 既存の `find_root` メソッドを内部で置換
+- Integration: 既存の `find_root` メソッドを内部で argmin に委譲
 - Validation: `f(a) * f(b) > 0` の場合 `SolverError::NoBracket`
-- Risks: ジェネリック `T: Float` は f64 専用に制限される可能性
+- Limitation: f32 は引き続き自前実装を使用
 
 ---
 
@@ -351,12 +377,12 @@ struct ResidualProblem<F> {
     n_residuals: usize,
 }
 
-impl<F> LeastSquaresProblem<f64> for ResidualProblem<F>
+impl<F> LeastSquaresProblem<f64, Dyn, Dyn> for ResidualProblem<F>
 where
     F: Fn(&[f64]) -> Vec<f64>,
 {
-    type ParameterStorage = Owned<f64, Dyn, U1>;
-    type ResidualStorage = Owned<f64, Dyn, U1>;
+    type ParameterStorage = Owned<f64, Dyn>;
+    type ResidualStorage = Owned<f64, Dyn>;
     type JacobianStorage = Owned<f64, Dyn, Dyn>;
 
     fn set_params(&mut self, params: &DVector<f64>);
@@ -378,7 +404,7 @@ fn lm_report_to_result(
 **Implementation Notes**
 - Integration: 既存 `solve` メソッドを内部で置換
 - Validation: パラメータ数と残差数の整合性チェック
-- Risks: Jacobian 自動計算のパフォーマンス（数値微分）
+- Risks: Jacobian 自動計算のパフォーマンス（数値微分、argmin と同様）
 
 ---
 
@@ -391,19 +417,24 @@ fn lm_report_to_result(
 ### Error Categories and Responses
 
 **Optimisation Errors (OptimisationError)**:
-- `InvalidInput` → argmin パラメータ検証失敗
-- `ConvergenceFailed` → argmin TerminationReason 非成功
-- `External(String)` → argmin::core::Error のラップ（新規追加）
+- `InvalidInput` → argmin パラメータ検証失敗（空の初期点など）
+- `NotConverged { iterations }` → argmin TerminationReason::MaxItersReached
+- `NumericalError(String)` → argmin 数値問題
+- `External(String)` → argmin::core::Error のラップ（**新規追加**）
 
 **Solver Errors (SolverError)**:
-- `NoBracket` → ブラケット検証失敗（変更なし）
-- `MaxIterationsExceeded` → argmin/lm 反復上限到達
-- `External(String)` → 外部クレートエラーのラップ（新規追加）
+- `NoBracket { a, b }` → ブラケット検証失敗（変更なし）
+- `MaxIterationsExceeded { iterations }` → argmin/lm 反復上限到達
+- `NumericalInstability(String)` → 数値発散
+- `External(String)` → 外部クレートエラーのラップ（**新規追加**）
 
 ### Monitoring
 
 - 外部クレートの verbose/callback は `OptimisationConfig.verbose` で制御
 - エラー時は元のエラーメッセージを保持してラップ
+- 反復回数・関数評価回数は `OptimisationResult`/`LMResult` に格納
+
+---
 
 ## Testing Strategy
 
@@ -411,55 +442,125 @@ fn lm_report_to_result(
 
 1. **Config 変換テスト**: `NelderMeadConfig` → argmin パラメータの正確な変換
 2. **Result 変換テスト**: argmin 結果 → `OptimisationResult` フィールドマッピング
-3. **エラー変換テスト**: argmin エラー → `OptimisationError` 変換
+3. **エラー変換テスト**: argmin エラー → `OptimisationError::External` 変換
 4. **LM Problem 構築テスト**: クロージャ → `LeastSquaresProblem` 適合
 
-### Integration Tests
+### Integration Tests (Req 6.1-6.5)
 
 1. **Rosenbrock 関数**: Nelder-Mead と L-BFGS の収束確認
-2. **√2 求根**: Brent solver の精度確認
-3. **SABR キャリブレーション**: LM solver のエンドツーエンド確認
-4. **既存テスト回帰**: 全既存テストのパス確認
+2. **√2 求根**: Brent solver の精度確認（tolerance 1e-10）
+3. **Beale 関数**: Nelder-Mead の多次元収束確認
+4. **SABR キャリブレーション**: LM solver のエンドツーエンド確認（pricer_models）
+5. **既存テスト回帰**: 全既存テストのパス確認
 
-### Performance Tests
+### Regression Tests (Req 6.2, 6.3)
+
+1. **数値精度比較**: 自前実装 vs 外部クレート、tolerance 10x 以内
+2. **反復回数比較**: 外部クレート反復回数 ≤ 2x 自前実装
+3. **収束特性**: 同一入力で収束成功/失敗の一致
+
+### Performance Tests (bench/)
 
 1. **bench_nelder_mead_argmin_vs_self**: 自前実装と argmin の比較
 2. **bench_lbfgs_argmin_vs_self**: 自前実装と argmin の比較
 3. **bench_brent_argmin_vs_self**: 自前実装と argmin の比較
 4. **bench_lm_crate_vs_self**: 自前実装と levenberg-marquardt の比較
 
+---
+
 ## Migration Strategy
 
-### Phase 1: Dependency Setup
+### Phase 1: Dependency Setup (Req 7.1-7.6)
 
-1. `pricer_core/Cargo.toml` に `argmin`, `argmin-math`, `levenberg-marquardt` 追加
-2. Feature flag `external-numerics` 追加（デフォルト有効）
-3. `cargo tree --duplicates` で重複確認
+1. `Cargo.toml` (workspace) に `levenberg-marquardt = "0.14"` 追加
+2. `pricer_core/Cargo.toml` に依存追加:
+   - `argmin = { workspace = true, optional = true }`
+   - `argmin-math = { workspace = true, optional = true }`
+   - `levenberg-marquardt = { workspace = true, optional = true }`
+3. Feature flag `external-numerics = ["dep:argmin", "dep:argmin-math", "dep:levenberg-marquardt"]` 追加（デフォルト有効）
+4. `cargo tree --duplicates` で重複確認
 
-### Phase 2: Wrapper Implementation
+### Phase 2: Wrapper Implementation (Req 1-3, 5)
 
-1. `argmin_wrapper.rs` 作成（NelderMead, LBFGS）
-2. `lm_wrapper.rs` 作成
-3. 既存実装ファイルを `_legacy.rs` にリネーム
-4. 公開関数の内部実装をラッパーに切り替え
+1. `optimisers/argmin_wrapper.rs` 作成（NelderMead, LBFGS）
+2. `solvers/brent_wrapper.rs` 作成
+3. `solvers/lm_wrapper.rs` 作成
+4. 公開関数の内部実装をラッパーに切り替え（`#[cfg(feature)]` 分岐）
+5. 既存実装を `#[cfg(not(feature))]` でフォールバックとして保持
 
-### Phase 3: Validation
+### Phase 3: Validation (Req 6)
 
-1. 全既存テスト実行
-2. 回帰ベンチマーク実行
-3. 数値結果の差異検証
+1. 全既存テスト実行 (`cargo test --all-features`)
+2. 回帰ベンチマーク実行 (`cargo bench`)
+3. 数値結果の差異検証（tolerance 10x、iterations 2x）
 
-### Phase 4: Cleanup
+### Phase 4: Cleanup (Req 1.8, 2.7, 3.5)
 
-1. `_legacy.rs` ファイル削除
-2. ドキュメント更新
-3. CHANGELOG 更新
+1. フォールバックコード削除（検証成功後）
+2. `#[cfg]` 分岐を外部クレート実装のみに統一
+3. ドキュメント更新（Req 8）
+4. CHANGELOG 更新
 
 ### Rollback Triggers
 
 - 既存テストの 5% 以上が失敗
 - ベンチマークでスループット 20% 以上低下
-- AD 機能の互換性問題発生
+- AD 機能（`find_root_ad`）の互換性問題発生
+
+---
+
+## Documentation (Req 8.1-8.4)
+
+### Module Documentation Updates
+
+**optimisers/mod.rs**:
+```rust
+//! ## Backend
+//!
+//! This module delegates to the `argmin` crate for optimisation algorithms.
+//! The `argmin` backend provides well-tested, performant implementations with
+//! features like checkpointing and observers.
+//!
+//! ## AD Compatibility
+//!
+//! All public functions support automatic differentiation via `Dual64` from
+//! `num-dual` when gradients are provided by the caller.
+```
+
+**solvers/mod.rs**:
+```rust
+//! ## Backend
+//!
+//! Root-finding algorithms use a mix of backends:
+//! - `BrentSolver`: argmin BrentRoot (f64 only)
+//! - `NewtonRaphsonSolver`: Self-implemented with AD support (`find_root_ad`)
+//! - `BisectionSolver`: Self-implemented
+//! - `BacktrackingNewtonSolver`: Self-implemented
+//! - `LevenbergMarquardtSolver`: levenberg-marquardt crate
+```
+
+### Deprecation Attributes
+
+None required（API シグネチャ変更なし）。
+
+### CHANGELOG Entry
+
+```markdown
+## [Unreleased]
+
+### Changed
+- **pricer_core/math/optimisers**: Nelder-Mead, L-BFGS now delegate to `argmin` crate
+- **pricer_core/math/solvers**: Brent solver now delegates to `argmin` BrentRoot
+- **pricer_core/math/solvers**: Levenberg-Marquardt now delegates to `levenberg-marquardt` crate
+
+### Added
+- `OptimisationError::External` variant for external crate errors
+- `SolverError::External` variant for external crate errors
+- Feature flag `external-numerics` (enabled by default)
+
+### Removed
+- Self-implemented algorithm code for Nelder-Mead, L-BFGS, Brent, LM (~1500 lines)
+```
 
 ---
 
@@ -506,3 +607,12 @@ if report.termination.was_successful() {
     // ...
 }
 ```
+
+### Research Log Reference
+
+詳細な調査結果、設計判断の背景、リスク評価は `research.md` を参照。
+
+- argmin/roots/faer クレートの評価
+- Wrapper Pattern の選定理由
+- AD 互換性の制約分析
+- 数値精度・収束特性の考慮事項

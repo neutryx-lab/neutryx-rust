@@ -1,0 +1,166 @@
+# Implementation Plan
+
+## Tasks
+
+- [ ] 1. 依存関係とフィーチャーフラグのセットアップ
+- [ ] 1.1 ワークスペース依存関係に levenberg-marquardt を追加する
+  - ルート Cargo.toml の workspace.dependencies に `levenberg-marquardt = "0.14"` を追加
+  - nalgebra との互換性を確認
+  - _Requirements: 7.1, 7.6_
+- [ ] 1.2 (P) pricer_core に外部数値計算クレートの依存を追加する
+  - argmin、argmin-math、levenberg-marquardt を optional 依存として追加
+  - `external-numerics` フィーチャーフラグを作成し、デフォルト有効化
+  - linalg フィーチャーとの整合性を確認
+  - _Requirements: 7.1, 7.2, 7.5_
+- [ ] 1.3 依存関係の重複がないことを確認する
+  - `cargo tree --duplicates` を実行して重複依存を検出
+  - 重複がある場合は version pinning で解決
+  - _Requirements: 7.4_
+
+- [ ] 2. エラー型の拡張
+- [ ] 2.1 (P) OptimisationError に External バリアントを追加する
+  - `External(String)` バリアントを追加して argmin エラーをラップ
+  - From trait 実装で argmin::core::Error から変換可能に
+  - エラーメッセージに元のエラー情報を保持
+  - _Requirements: 1.7_
+- [ ] 2.2 (P) SolverError に External バリアントを追加する
+  - `External(String)` バリアントを追加して外部クレートエラーをラップ
+  - 収束失敗時に詳細な理由を伝達できるようにする
+  - _Requirements: 2.8_
+
+- [ ] 3. 最適化アルゴリズムの argmin ラッパー実装
+- [ ] 3.1 CostFunction アダプターを実装する
+  - クロージャベースの目的関数を argmin の CostFunction trait に適合
+  - 空の初期点に対する検証ロジックを追加
+  - _Requirements: 1.1, 1.4_
+- [ ] 3.2 Gradient アダプターを実装する
+  - 勾配付き目的関数を argmin の Gradient trait に適合
+  - cost と gradient を同時に返すクロージャに対応
+  - _Requirements: 1.2_
+- [ ] 3.3 Config 変換機能を実装する
+  - NelderMeadConfig から argmin NelderMead builder パラメータへの変換
+  - LbfgsConfig から LBFGS + MoreThuente 設定への変換
+  - 既存の設定フィールドをすべてマッピング
+  - _Requirements: 1.4, 1.5_
+- [ ] 3.4 minimize_nelder_mead を argmin 委譲に切り替える
+  - 既存の公開 API シグネチャを維持
+  - 内部実装を argmin Executor パターンで置換
+  - 結果を OptimisationResult に変換
+  - _Requirements: 1.1, 1.4, 1.5, 1.6_
+- [ ] 3.5 minimize_lbfgs を argmin 委譲に切り替える
+  - 勾配付き目的関数で LBFGS + MoreThuente を使用
+  - 既存の公開 API シグネチャを維持
+  - _Requirements: 1.2, 1.4, 1.5, 1.6_
+- [ ] 3.6 minimize_lbfgs_numerical を argmin 委譲に切り替える
+  - 有限差分による勾配近似を使用
+  - 既存の公開 API シグネチャを維持
+  - _Requirements: 1.3, 1.4, 1.5, 1.6_
+
+- [ ] 4. Brent 求根アルゴリズムの argmin ラッパー実装
+- [ ] 4.1 RootFn アダプターを実装する
+  - 単一変数関数を argmin BrentRoot の CostFunction に適合
+  - ブラケット条件の検証を追加
+  - _Requirements: 2.1_
+- [ ] 4.2 BrentSolver::find_root を argmin 委譲に切り替える
+  - f64 版の find_root を argmin BrentRoot で実装
+  - 既存の SolverConfig との互換性を維持
+  - ブラケット条件違反時に NoBracket エラーを返す
+  - _Requirements: 2.1, 2.4, 2.5, 2.8_
+
+- [ ] 5. Levenberg-Marquardt ソルバーの外部クレート移行
+- [ ] 5.1 ResidualProblem アダプターを実装する
+  - クロージャベース残差関数を LeastSquaresProblem trait に適合
+  - パラメータと残差のベクトル管理を実装
+  - Jacobian は数値微分（None 返却）で対応
+  - _Requirements: 3.1, 3.3_
+- [ ] 5.2 LMConfig から levenberg-marquardt 設定への変換を実装する
+  - tolerance、max_iterations などの設定をマッピング
+  - 既存の LMConfig フィールドとの互換性を維持
+  - _Requirements: 3.2, 3.4_
+- [ ] 5.3 LevenbergMarquardtSolver::solve を外部クレート委譲に切り替える
+  - 既存の公開 API シグネチャを維持
+  - MinimizationReport から LMResult への変換を実装
+  - 収束判定の互換性を確認
+  - _Requirements: 3.1, 3.2, 3.4_
+
+- [ ] 6. AD 互換性の検証と維持
+- [ ] 6.1 (P) Float ジェネリック制約の維持を確認する
+  - 公開関数の型パラメータ制約が AD 型と互換であることを確認
+  - Dual64 型でのコンパイルテストを追加
+  - _Requirements: 5.1_
+- [ ] 6.2 (P) NewtonRaphsonSolver の find_root_ad メソッドが機能することを確認する
+  - 既存の Dual64 ベースの自動微分機能を維持
+  - AD ワークフローのテストを追加
+  - _Requirements: 5.3, 5.4_
+- [ ] 6.3 AD フォールバック機構が正しく動作することを確認する
+  - 外部クレートが AD 型をサポートしない場合の自前実装への切り替え
+  - 条件分岐の正確性をテストで検証
+  - _Requirements: 5.5_
+
+- [ ] 7. 回帰テストと検証
+- [ ] 7.1 既存の単体テストがすべてパスすることを確認する
+  - optimisers/ と solvers/ モジュールの全テストを実行
+  - 失敗するテストがあれば原因を特定して修正
+  - _Requirements: 6.1_
+- [ ] 7.2 ベースライン比較の回帰テストを追加する
+  - 自前実装と外部クレートの結果を比較するテストを作成
+  - 数値精度が tolerance 10x 以内であることを確認
+  - 反復回数が 2x 以内であることを確認
+  - _Requirements: 6.2, 6.3_
+- [ ] 7.3 数値差異のドキュメント化
+  - テスト結果の差異が改善か許容可能な変動かを判定
+  - 差異がある場合はコメントで文書化
+  - _Requirements: 6.4_
+- [ ] 7.4 キャリブレーション統合テストを実行する
+  - SABR、Heston、Hull-White キャリブレータのエンドツーエンドテスト
+  - pricer_models との統合が正常に動作することを確認
+  - _Requirements: 6.5_
+
+- [ ] 8. レガシーコードのクリーンアップ
+- [ ] 8.1 nelder_mead.rs から自前アルゴリズムロジックを削除する
+  - ラッパーコードのみを残し、アルゴリズム実装を削除
+  - 約 330 行のコード削減
+  - _Requirements: 1.8_
+- [ ] 8.2 (P) lbfgs.rs から自前アルゴリズムロジックを削除する
+  - ラッパーコードのみを残し、アルゴリズム実装を削除
+  - 約 440 行のコード削減
+  - _Requirements: 1.8_
+- [ ] 8.3 (P) brent.rs から自前アルゴリズムロジックを削除する
+  - ラッパーコードのみを残し、アルゴリズム実装を削除
+  - 約 470 行のコード削減
+  - _Requirements: 2.7_
+- [ ] 8.4 (P) levenberg_marquardt.rs から自前アルゴリズムロジックを削除する
+  - ラッパーコードのみを残し、アルゴリズム実装を削除
+  - 約 740 行のコード削減
+  - _Requirements: 3.5_
+
+- [ ] 9. ドキュメント更新
+- [ ] 9.1 (P) optimisers/mod.rs のモジュールドキュメントを更新する
+  - 外部クレート使用についての説明を追加
+  - AD 互換性についての記載を追加
+  - _Requirements: 8.1_
+- [ ] 9.2 (P) solvers/mod.rs のモジュールドキュメントを更新する
+  - 各ソルバーのバックエンド情報を記載
+  - 保持された自前実装（NewtonRaphson AD、Bisection、BacktrackingNewton）の説明
+  - _Requirements: 8.1_
+- [ ] 9.3 動作差異のコード内ドキュメント化
+  - tolerance や iteration limit のデフォルト値変更がある場合にコメントで記載
+  - _Requirements: 8.2_
+- [ ] 9.4 CHANGELOG.md にマイグレーションノートを追加する
+  - 変更内容、追加されたエラーバリアント、新規フィーチャーフラグを記載
+  - 削除されたコード行数を記載
+  - _Requirements: 8.4_
+
+- [ ] 10. faer ベンチマーク評価（Phase 2）
+- [ ] 10.1 nalgebra vs faer のベンチマークスイートを作成する
+  - 行列乗算、Cholesky 分解、LU 分解、SVD の比較
+  - 様々なサイズの行列で測定
+  - _Requirements: 4.1_
+- [ ] 10.2 faer の AD 互換性を評価する
+  - Dual64 型での動作可否を確認
+  - AD 非対応の場合は nalgebra をデフォルトに維持することを確認
+  - _Requirements: 4.4, 4.5_
+- [ ] 10.3 ベンチマーク結果に基づいて faer-backend フィーチャーの採否を決定する
+  - 20% 以上の性能向上があれば optional フィーチャーとして追加
+  - 結果と根拠を文書化
+  - _Requirements: 4.2, 4.3, 4.6_
