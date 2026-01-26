@@ -159,27 +159,27 @@
 
 ## Phase 6: 統合と後方互換性
 
-- [ ] 6. 統合テストと後方互換性
-- [ ] 6.1 (P) CurveSet fallback 統合テストを実装する
+- [x] 6. 統合テストと後方互換性
+- [x] 6.1 (P) CurveSet fallback 統合テストを実装する
   - IndexedMarket 経由と CurveSet 直接アクセスの結果一致を検証
   - forward_rate_for_index との互換性検証
   - _Requirements: 4.1, 4.2_
 
-- [ ] 6.2 (P) VolCubeCache 統合テストを実装する
+- [x] 6.2 (P) VolCubeCache 統合テストを実装する
   - lazy evaluation との連携動作を検証
   - キャッシュヒット率の確認
   - _Requirements: 4.2_
 
-- [ ] 6.3 (P) MarketProvider FxCurve 統合テストを実装する
+- [x] 6.3 (P) MarketProvider FxCurve 統合テストを実装する
   - CurrencyPair でのアクセスと Currency でのアクセスの一貫性を検証
   - _Requirements: 4.3, 4.4_
 
-- [ ] 6.4 非推奨API属性を追加する
+- [x] 6.4 非推奨API属性を追加する
   - CurveSet 直接アクセスに #[deprecated] 属性を追加
   - deprecation warning メッセージに移行先APIを記載
   - _Requirements: 8.1, 8.3_
 
-- [ ] 6.5 性能ベンチマークを実装する
+- [x] 6.5 性能ベンチマークを実装する
   - HashMap lookup overhead の測定（1000 Index）
   - 大規模Portfolio検証（10000 trades）の性能測定
   - get_df() latency < 100ns の確認

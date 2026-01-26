@@ -1419,8 +1419,7 @@ fn calibrate_sabr_simple(
             .iter()
             .map(|inst| {
                 let model_vol = sabr_implied_vol(inst.strike, forward, inst.expiry, a, beta, r, n);
-                // Penalize negative model vols heavily
-                if model_vol <= 0.0 {
+                if model_vol <= 0.0 || model_vol.is_nan() {
                     return 1e10;
                 }
                 let err = (model_vol - inst.implied_vol) * inst.weight;
@@ -1429,76 +1428,74 @@ fn calibrate_sabr_simple(
             .sum()
     };
 
-    // Determine rho sign constraint from market skew
-    // Negative skew (low strike vol > high strike vol) requires negative rho
-    let rho_sign = rho_init.signum();
-    let rho_min = if rho_sign < 0.0 { -0.95 } else { 0.0 };
-    let rho_max = if rho_sign < 0.0 { 0.0 } else { 0.95 };
-
-    // Multi-start optimization with sign-constrained rho
-    let starting_points = vec![
-        (alpha_init, rho_init, nu_init),
-        (alpha_init, rho_sign * 0.3, 0.4),
-        (alpha_init, rho_sign * 0.5, 0.6),
-        (alpha_init * 1.1, rho_sign * 0.4, nu_init * 0.8),
-        (alpha_init * 0.9, rho_sign * 0.6, nu_init * 1.2),
-    ];
+    // Grid search to find the best starting region, then refine with optimization
+    // This avoids getting stuck in local minima
+    let alpha_vals = [alpha_init * 0.8, alpha_init, alpha_init * 1.2];
+    let rho_vals = [-0.6, -0.4, -0.2, 0.0, 0.2, 0.4, 0.6];
+    let nu_vals = [0.3, 0.5, 0.7, 1.0];
 
     let mut best_alpha = alpha_init;
     let mut best_rho = rho_init;
     let mut best_nu = nu_init;
     let mut best_obj = f64::INFINITY;
 
-    for (start_alpha, start_rho, start_nu) in starting_points {
-        let (a, r, n, obj) = optimize_sabr_constrained(
-            start_alpha,
-            start_rho,
-            start_nu,
-            rho_min,
-            rho_max,
-            &objective,
-        );
-        if obj < best_obj {
-            best_obj = obj;
-            best_alpha = a;
-            best_rho = r;
-            best_nu = n;
+    // Coarse grid search to find best starting region
+    for &a in &alpha_vals {
+        for &r in &rho_vals {
+            for &n in &nu_vals {
+                let obj = objective(a, r, n);
+                if !obj.is_nan() && obj < best_obj {
+                    best_obj = obj;
+                    best_alpha = a;
+                    best_rho = r;
+                    best_nu = n;
+                }
+            }
         }
+    }
+
+    // Refine from the best grid point using gradient descent
+    let (a, r, n, obj) = optimize_sabr(best_alpha, best_rho, best_nu, &objective);
+    if !obj.is_nan() && obj < best_obj {
+        best_alpha = a;
+        best_rho = r;
+        best_nu = n;
     }
 
     (best_alpha, best_rho, best_nu)
 }
 
-/// Run LM-style optimization from a starting point with rho constraints.
-fn optimize_sabr_constrained<F>(
+/// Run LM-style optimization from a starting point.
+fn optimize_sabr<F>(
     mut alpha: f64,
     mut rho: f64,
     mut nu: f64,
-    rho_min: f64,
-    rho_max: f64,
     objective: &F,
 ) -> (f64, f64, f64, f64)
 where
     F: Fn(f64, f64, f64) -> f64,
 {
-    let max_iterations = 100;
-    let tolerance = 1e-10;
+    let max_iterations = 150;
+    let tolerance = 1e-12;
     let mut lambda = 0.001;
-
-    // Ensure starting point is within bounds
-    rho = rho.clamp(rho_min, rho_max);
 
     for _ in 0..max_iterations {
         let current_obj = objective(alpha, rho, nu);
+        if current_obj.is_nan() || current_obj.is_infinite() {
+            break;
+        }
 
-        // Compute numerical gradients
-        let h = 1e-6;
+        let h = 1e-7;
         let grad_alpha =
             (objective(alpha + h, rho, nu) - objective(alpha - h, rho, nu)) / (2.0 * h);
         let grad_rho = (objective(alpha, rho + h, nu) - objective(alpha, rho - h, nu)) / (2.0 * h);
         let grad_nu = (objective(alpha, rho, nu + h) - objective(alpha, rho, nu - h)) / (2.0 * h);
 
-        // Compute approximate Hessian diagonal (for damping)
+        // Skip if gradients are NaN
+        if grad_alpha.is_nan() || grad_rho.is_nan() || grad_nu.is_nan() {
+            break;
+        }
+
         let hess_alpha = (objective(alpha + h, rho, nu) - 2.0 * current_obj
             + objective(alpha - h, rho, nu))
             / (h * h);
@@ -1509,29 +1506,33 @@ where
             + objective(alpha, rho, nu - h))
             / (h * h);
 
-        // Compute update with damping (simplified diagonal LM)
-        let d_alpha = -grad_alpha / (hess_alpha.abs().max(1e-10) + lambda);
-        let d_rho = -grad_rho / (hess_rho.abs().max(1e-10) + lambda);
-        let d_nu = -grad_nu / (hess_nu.abs().max(1e-10) + lambda);
+        let d_alpha = -grad_alpha / (hess_alpha.abs().max(1e-8) + lambda);
+        let d_rho = -grad_rho / (hess_rho.abs().max(1e-8) + lambda);
+        let d_nu = -grad_nu / (hess_nu.abs().max(1e-8) + lambda);
 
-        // Line search with backtracking
         let mut step = 1.0;
         let mut new_alpha = alpha;
         let mut new_rho = rho;
         let mut new_nu = nu;
+        let mut accepted = false;
 
-        for _ in 0..15 {
-            new_alpha = (alpha + step * d_alpha).clamp(0.001, 10.0);
-            // Constrain rho to the specified sign range
-            new_rho = (rho + step * d_rho).clamp(rho_min, rho_max);
-            new_nu = (nu + step * d_nu).clamp(0.01, 5.0);
+        for _ in 0..20 {
+            new_alpha = (alpha + step * d_alpha).clamp(0.001, 1.0);
+            new_rho = (rho + step * d_rho).clamp(-0.95, 0.95);
+            new_nu = (nu + step * d_nu).clamp(0.05, 3.0);
 
             let new_obj = objective(new_alpha, new_rho, new_nu);
-            if new_obj < current_obj {
-                lambda = (lambda * 0.5).max(1e-10);
+            if !new_obj.is_nan() && new_obj < current_obj {
+                lambda = (lambda * 0.7).max(1e-10);
+                accepted = true;
                 break;
             }
             step *= 0.5;
+        }
+
+        if !accepted {
+            lambda = (lambda * 2.0).min(1e4);
+            continue;
         }
 
         let improvement = (alpha - new_alpha).abs() + (rho - new_rho).abs() + (nu - new_nu).abs();
@@ -1541,10 +1542,6 @@ where
 
         if improvement < tolerance {
             break;
-        }
-
-        if step < 0.01 {
-            lambda = (lambda * 2.0).min(1e6);
         }
     }
 

@@ -2,13 +2,13 @@
 
 実装状況と今後の開発項目を追跡するドキュメント。
 
-_Updated: 2026-01-26_ — pricer-pricing-architecture completed (TrinomialTree with Kamrad-Ritchken); market-index-keyed-access ready for implementation; 38 completed specs
+_Updated: 2026-01-26_ — market-index-keyed-access completed (IndexedMarket, TradeIndexRequirements, MarketValidator); 39 completed specs
 
 ---
 
 ## Current State Summary
 
-### Completed Specifications (38)
+### Completed Specifications (39)
 
 | Spec | Description | Completed |
 |------|-------------|-----------|
@@ -50,6 +50,7 @@ _Updated: 2026-01-26_ — pricer-pricing-architecture completed (TrinomialTree w
 | move-enzyme-to-pricer-risk | Enzyme AD module moved from pricer_pricing (L3) to pricer_risk (L4) | 2026-01-26 |
 | ir-vol-cube-calibration | IR VolCube calibration engine with SABR, lazy evaluation, AAD Vega, WebApp (64 tasks) | 2026-01-26 |
 | pricer-pricing-architecture | Tree pricing (Binomial/Trinomial), UnifiedPricingResult, PricingMethodDispatcher | 2026-01-26 |
+| market-index-keyed-access | IndexedMarket, IndexedMarketBuilder, TradeIndexRequirements, MarketValidator | 2026-01-26 |
 
 ### Layer Implementation Status
 
@@ -153,7 +154,7 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 
 | Spec | Description | Status |
 |------|-------------|--------|
-| market-index-keyed-access | Market index keyed access pattern for curves/surfaces (6 phases, 23 tasks, ready for implementation) | 🔶 |
+| (none) | All specs completed | ✅ |
 
 ## Recommended Next Steps
 
@@ -167,6 +168,7 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 
 | Date | Change |
 |------|--------|
+| 2026-01-26 | Steering sync: market-index-keyed-access completed (39 total). Added IndexedMarket, TradeIndexRequirements, MarketValidator to structure.md. |
 | 2026-01-26 | Steering sync: pricer-pricing-architecture completed (38 total). Added TrinomialTree (Kamrad-Ritchken) to structure.md. market-index-keyed-access ready for implementation. |
 | 2026-01-26 | market-index-keyed-access tasks generated (6 phases, 23 sub-tasks: IndexRequirement, IndexedMarket, Builder, TradeIndexRequirements, MarketValidator). Ready for implementation. |
 | 2026-01-26 | ir-vol-cube-calibration completed (64/64 tasks, all phases done including SABR calibration, AAD Vega, WebApp). market-index-keyed-access advanced to design phase. Total: 37 specs |

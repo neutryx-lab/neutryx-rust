@@ -88,7 +88,7 @@ use num_traits::Float;
 ///     // Process step
 /// }
 /// ```
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct FixedSteps {
     current: usize,
     total: usize,
@@ -163,7 +163,7 @@ impl ExactSizeIterator for FixedSteps {}
 ///     // Simulate path
 /// }
 /// ```
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct FixedPaths {
     current: usize,
     total: usize,

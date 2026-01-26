@@ -219,7 +219,8 @@
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\khosh\\\\Codes\\\\neutryx-rust\\\\demo\\\\data\\\\input\" -Recurse -Name)",
       "Bash(for f in config.rs curves.rs events.rs fxcurve.rs fxvol.rs generic_pricer.rs irvol.rs market.rs pricer_graph.rs risk_engine.rs scenario_analysis.rs trades.rs volcube.rs)",
       "Bash(do sed -i 's/use crate::web::\\\\*;/use super::*;\\\\n    use axum::Json;/g' \"$f\")",
-      "Read(//c/**)"
+      "Read(//c/**)",
+      "Bash(python3:*)"
     ]
   }
 }

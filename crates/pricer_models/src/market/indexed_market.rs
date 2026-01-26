@@ -759,6 +759,7 @@ mod tests {
 // ============================================================================
 
 #[cfg(test)]
+#[allow(deprecated)] // Integration tests intentionally use deprecated CurveSet methods for compatibility verification
 mod integration_tests {
     use std::sync::Arc;
 
