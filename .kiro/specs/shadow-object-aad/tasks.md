@@ -36,8 +36,8 @@
 
 ---
 
-- [ ] 2. スライスベース・カーネル実装
-- [ ] 2.1 プライシングカーネル関数定義
+- [x] 2. スライスベース・カーネル実装
+- [x] 2.1 プライシングカーネル関数定義
   - `pricer_risk::enzyme::kernel` モジュールにカーネル関数を定義
   - Active inputs（微分対象）用の `&[f64]` スライス引数を設計
   - Const inputs（定数）用の `&[f64]` スライス引数を設計
@@ -46,7 +46,7 @@
   - 具象 `f64` 型のみを使用（ジェネリクス・Dual numbers 不使用）
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.6, 5.1, 5.2, 5.3_
 
-- [ ] 2.2 Enzyme autodiff マクロ適用
+- [x] 2.2 Enzyme autodiff マクロ適用
   - `#[autodiff]` マクロを使用してカーネル関数を微分可能に
   - `Duplicated` フラグで Active inputs を指定
   - `Const` フラグで定数 inputs を指定
@@ -54,7 +54,7 @@
   - Feature なしビルド時の fallback 実装を提供
   - _Requirements: 2.5, 8.2, 8.4_
 
-- [ ] 2.3 (P) カーネル関数単体テスト
+- [x] 2.3 (P) カーネル関数単体テスト
   - `pricing_kernel` が正しい PV を計算することを検証（解析解比較）
   - `d_pricing_kernel`（Enzyme 自動生成）が正しい勾配を計算することを検証
   - Finite difference との比較による勾配精度検証
