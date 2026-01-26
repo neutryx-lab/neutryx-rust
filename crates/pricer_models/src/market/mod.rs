@@ -34,6 +34,7 @@ pub mod error;
 pub mod fx_calibration;
 pub mod fx_density;
 pub mod index_mapper;
+pub mod indexed_market;
 pub mod provider;
 pub mod surfaces;
 pub mod volcube;
@@ -53,7 +54,8 @@ pub use curves::{
     CreditCurve, CurveEnum, CurveInterpolation, CurveName, CurveSet, FlatCurve,
     FlatHazardRateCurve, HazardRateCurve, InterpolatedCurve, YieldCurve,
 };
-pub use error::MarketDataError;
+pub use error::{MarketBuildError, MarketDataError};
+pub use indexed_market::{IndexedMarket, IndexedMarketBuilder};
 pub use fx_density::{DeltaType, DensityStatistics, FxDensityCalculator};
 pub use index_mapper::{DefaultIndexCurveMapper, IndexCurveMapper};
 pub use provider::{MarketProvider, VolCubeProviderKey};

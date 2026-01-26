@@ -22,7 +22,9 @@
 //! | [`TreeConfig`] | Configuration for tree-based pricing (steps, type, Greeks) |
 //! | [`TreeConfigBuilder`] | Builder pattern for constructing `TreeConfig` |
 //! | [`BinomialTree`] | Cox-Ross-Rubinstein (CRR) binomial tree implementation |
+//! | [`TrinomialTree`] | Kamrad-Ritchken trinomial tree implementation |
 //! | [`CrrParams`] | CRR model parameters (u, d, p, dt) |
+//! | [`TrinomialParams`] | Trinomial model parameters (u, d, p_u, p_m, p_d, dt) |
 //! | [`TreeMethod`] | High-level pricing interface with unified result |
 //! | [`TreeType`] | Selection between Binomial and Trinomial trees |
 //!

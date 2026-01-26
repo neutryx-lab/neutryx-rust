@@ -1440,15 +1440,20 @@ fn sabr_implied_vol(
         return term1 * (1.0 + (term2 + term3 + term4) * expiry);
     }
 
-    // General case
+    // General case (Hagan et al. 2002)
     let log_fk = (forward / strike).ln();
     let fk_mid = (forward * strike).powf(one_minus_beta / 2.0);
     let z = (nu / alpha) * fk_mid * log_fk;
-    let x_z = ((1.0 - 2.0 * rho * z + z * z).sqrt() + z - rho).ln() / (1.0 - rho);
 
-    if x_z.abs() < eps {
-        return alpha;
-    }
+    // x(z) = (sqrt(1 - 2*rho*z + z^2) + z - rho) / (1 - rho)
+    // The ratio z/ln(x(z)) appears in the formula; when z→0, x(z)→1, so we need L'Hopital
+    let x_z = ((1.0 - 2.0 * rho * z + z * z).sqrt() + z - rho) / (1.0 - rho);
+    let x_z_ratio = if (x_z - 1.0).abs() < eps {
+        // When x_z ≈ 1, ln(x_z) ≈ 0, use limit: z/ln(x_z) → 1 as z→0
+        1.0
+    } else {
+        z / x_z.ln()
+    };
 
     let prefix = alpha
         / (fk_mid
@@ -1460,7 +1465,7 @@ fn sabr_implied_vol(
     let term3 = rho * beta * nu * alpha / (4.0 * fk_mid);
     let term4 = (2.0 - 3.0 * rho.powi(2)) * nu.powi(2) / 24.0;
 
-    prefix * (z / x_z) * (1.0 + (term2 + term3 + term4) * expiry)
+    prefix * x_z_ratio * (1.0 + (term2 + term3 + term4) * expiry)
 }
 
 /// Black call price for density calculation.

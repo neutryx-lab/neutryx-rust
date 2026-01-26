@@ -30,8 +30,8 @@ pub struct TrinomialParams {
 impl TrinomialParams {
     /// Computes trinomial parameters from volatility, rate, and time step.
     ///
-    /// Uses the standard parameterisation where:
-    /// - u = exp(sigma * sqrt(2 * dt))
+    /// Uses the Kamrad-Ritchken parameterisation where:
+    /// - u = exp(λ * sigma * sqrt(dt)), with λ = sqrt(3)
     /// - d = 1/u
     /// - m = 1 (middle node stays at same level)
     ///
@@ -45,37 +45,40 @@ impl TrinomialParams {
     ///
     /// Trinomial parameters (u, d, p_u, p_m, p_d, dt)
     pub fn compute(volatility: f64, rate: f64, dt: f64) -> Self {
-        // Trinomial tree parameters
-        // u = exp(sigma * sqrt(2 * dt))
-        let u = (volatility * (2.0 * dt).sqrt()).exp();
+        // Kamrad-Ritchken trinomial tree parameters
+        // λ = sqrt(3) for optimal stability
+        let lambda = 3.0_f64.sqrt();
+
+        // u = exp(lambda * sigma * sqrt(dt))
+        let u = (lambda * volatility * dt.sqrt()).exp();
         let d = 1.0 / u;
 
-        // For numerical stability, use the following formulation:
-        // Let nu = r - 0.5 * sigma^2 (drift)
+        // Drift term: nu = r - 0.5 * sigma^2
         let nu = rate - 0.5 * volatility * volatility;
-        let sigma = volatility;
 
-        // Intermediate terms
+        // Probabilities using Kamrad-Ritchken formulation:
+        // p_u = 1/(2*lambda^2) + nu*sqrt(dt)/(2*lambda*sigma)
+        // p_d = 1/(2*lambda^2) - nu*sqrt(dt)/(2*lambda*sigma)
+        // p_m = 1 - 1/lambda^2
         let sqrt_dt = dt.sqrt();
-        let sqrt_2dt = (2.0 * dt).sqrt();
+        let lambda_sq = lambda * lambda; // = 3
 
-        // Probabilities using Hull's formulation
-        let exp_nu_sqrt_dt = (nu * sqrt_dt).exp();
-        let exp_sigma_sqrt_dt = (sigma * sqrt_dt).exp();
-        let exp_neg_sigma_sqrt_dt = (-sigma * sqrt_dt).exp();
+        let drift_term = nu * sqrt_dt / (2.0 * lambda * volatility);
 
-        let denom = exp_sigma_sqrt_dt - exp_neg_sigma_sqrt_dt;
+        let p_u = 1.0 / (2.0 * lambda_sq) + drift_term;
+        let p_d = 1.0 / (2.0 * lambda_sq) - drift_term;
+        let p_m = 1.0 - 1.0 / lambda_sq;
 
-        // p_u = ((exp(nu*sqrt(dt)) - exp(-sigma*sqrt(dt))) / (exp(sigma*sqrt(dt)) - exp(-sigma*sqrt(dt))))^2
-        let term_u = (exp_nu_sqrt_dt - exp_neg_sigma_sqrt_dt) / denom;
-        let p_u = term_u * term_u;
+        // Ensure probabilities are valid (clamp to [0, 1])
+        let p_u = p_u.max(0.0).min(1.0);
+        let p_d = p_d.max(0.0).min(1.0);
+        let p_m = p_m.max(0.0).min(1.0);
 
-        // p_d = ((exp(sigma*sqrt(dt)) - exp(nu*sqrt(dt))) / (exp(sigma*sqrt(dt)) - exp(-sigma*sqrt(dt))))^2
-        let term_d = (exp_sigma_sqrt_dt - exp_nu_sqrt_dt) / denom;
-        let p_d = term_d * term_d;
-
-        // p_m = 1 - p_u - p_d
-        let p_m = 1.0 - p_u - p_d;
+        // Renormalise if needed
+        let total = p_u + p_m + p_d;
+        let p_u = p_u / total;
+        let p_m = p_m / total;
+        let p_d = p_d / total;
 
         Self {
             u,
@@ -213,7 +216,6 @@ impl TrinomialTree {
     /// The option price at time 0.
     pub fn price(&self) -> f64 {
         let n = self.num_steps;
-        let u = self.params.u;
         let p_u = self.params.p_u;
         let p_m = self.params.p_m;
         let p_d = self.params.p_d;
