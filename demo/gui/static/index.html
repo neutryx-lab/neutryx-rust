@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FrictionalBank Dashboard</title>
-    <link rel="stylesheet" href="style.css?v=5">
+    <link rel="stylesheet" href="style.css?v=9">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -1709,25 +1709,36 @@
                         <div class="model-calib-input-panel glass">
                             <!-- Swaption Panel -->
                             <div id="volcube-swaption-panel">
-                                <h3><i class="fas fa-percentage"></i> Swaption VolCube</h3>
-
-                                <!-- Index Selection -->
-                                <div class="volcube-input-section">
-                                    <label for="volcube-index-selector">Index</label>
-                                    <select id="volcube-index-selector" class="fancy-select"></select>
+                                <!-- Index Selection Section -->
+                                <div class="curve-section">
+                                    <div class="section-header">
+                                        <h3><i class="fas fa-globe"></i> Index Selection</h3>
+                                    </div>
+                                    <div class="volcube-form-grid">
+                                        <div class="volcube-form-group">
+                                            <label for="volcube-index-selector">Index</label>
+                                            <select id="volcube-index-selector" class="fancy-select"></select>
+                                        </div>
+                                        <div class="volcube-form-group">
+                                            <label for="volcube-reference-date">Reference Date</label>
+                                            <input type="date" id="volcube-reference-date" class="fancy-input">
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <div class="volcube-input-section">
-                                    <label for="volcube-reference-date">Reference Date</label>
-                                    <input type="date" id="volcube-reference-date" class="fancy-input">
+                                <!-- Model Settings Section -->
+                                <div class="curve-section">
+                                    <div class="section-header">
+                                        <h3><i class="fas fa-cogs"></i> Model Settings</h3>
+                                    </div>
+                                    <div id="volcube-calib-settings" class="volcube-settings"></div>
                                 </div>
 
-                                <!-- Calibration Settings -->
-                                <div id="volcube-calib-settings" class="volcube-settings"></div>
-
-                                <!-- Instrument Table -->
-                                <div class="volcube-instruments-section">
-                                    <h4><i class="fas fa-table"></i> Instruments</h4>
+                                <!-- Instruments Section -->
+                                <div class="curve-section">
+                                    <div class="section-header">
+                                        <h3><i class="fas fa-table"></i> Instruments</h3>
+                                    </div>
                                     <div id="volcube-instruments-table" class="volcube-table-container">
                                         <p class="volcube-placeholder">Loading instruments...</p>
                                     </div>
@@ -1736,45 +1747,55 @@
 
                             <!-- FX Options Panel (hidden by default) -->
                             <div id="volcube-fx-panel" style="display: none;">
-                                <h3><i class="fas fa-exchange-alt"></i> FX Volatility</h3>
-
-                                <!-- Pair Selection -->
-                                <div class="volcube-input-section">
-                                    <label for="fxvol-pair-selector">Currency Pair</label>
-                                    <select id="fxvol-pair-selector" class="fancy-select"></select>
-                                </div>
-
-                                <!-- Model Selection -->
-                                <div class="volcube-input-section">
-                                    <label for="fxvol-model-selector">Model</label>
-                                    <select id="fxvol-model-selector" class="fancy-select">
-                                        <option value="linear" selected>Linear</option>
-                                        <option value="polynomial">Polynomial</option>
-                                        <option value="vanna-volga">Vanna-Volga</option>
-                                        <option value="svi">SVI</option>
-                                        <option value="sabr">SABR</option>
-                                    </select>
-                                </div>
-
-                                <!-- Market Data -->
-                                <div class="volcube-input-row">
-                                    <div class="volcube-input-section">
-                                        <label for="fxvol-spot">Spot</label>
-                                        <input type="number" id="fxvol-spot" class="fancy-input" step="0.0001" value="1.0850">
+                                <!-- Pair Selection Section -->
+                                <div class="curve-section">
+                                    <div class="section-header">
+                                        <h3><i class="fas fa-globe"></i> Pair Selection</h3>
                                     </div>
-                                    <div class="volcube-input-section">
-                                        <label for="fxvol-domestic-rate">Domestic Rate (%)</label>
-                                        <input type="number" id="fxvol-domestic-rate" class="fancy-input" step="0.01" value="4.50">
-                                    </div>
-                                    <div class="volcube-input-section">
-                                        <label for="fxvol-foreign-rate">Foreign Rate (%)</label>
-                                        <input type="number" id="fxvol-foreign-rate" class="fancy-input" step="0.01" value="3.00">
+                                    <div class="volcube-form-grid">
+                                        <div class="volcube-form-group">
+                                            <label for="fxvol-pair-selector">Currency Pair</label>
+                                            <select id="fxvol-pair-selector" class="fancy-select"></select>
+                                        </div>
+                                        <div class="volcube-form-group">
+                                            <label for="fxvol-model-selector">Model</label>
+                                            <select id="fxvol-model-selector" class="fancy-select">
+                                                <option value="linear" selected>Linear</option>
+                                                <option value="polynomial">Polynomial</option>
+                                                <option value="vanna-volga">Vanna-Volga</option>
+                                                <option value="svi">SVI</option>
+                                                <option value="sabr">SABR</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <!-- FX Quotes Table -->
-                                <div class="volcube-instruments-section">
-                                    <h4><i class="fas fa-table"></i> RR/BF Quotes</h4>
+                                <!-- Market Data Section -->
+                                <div class="curve-section">
+                                    <div class="section-header">
+                                        <h3><i class="fas fa-chart-line"></i> Market Data</h3>
+                                    </div>
+                                    <div class="volcube-form-grid volcube-form-grid-3">
+                                        <div class="volcube-form-group">
+                                            <label for="fxvol-spot">Spot</label>
+                                            <input type="number" id="fxvol-spot" class="fancy-input" step="0.0001" value="1.0850">
+                                        </div>
+                                        <div class="volcube-form-group">
+                                            <label for="fxvol-domestic-rate">Domestic Rate (%)</label>
+                                            <input type="number" id="fxvol-domestic-rate" class="fancy-input" step="0.01" value="4.50">
+                                        </div>
+                                        <div class="volcube-form-group">
+                                            <label for="fxvol-foreign-rate">Foreign Rate (%)</label>
+                                            <input type="number" id="fxvol-foreign-rate" class="fancy-input" step="0.01" value="3.00">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- FX Quotes Section -->
+                                <div class="curve-section">
+                                    <div class="section-header">
+                                        <h3><i class="fas fa-table"></i> RR/BF Quotes</h3>
+                                    </div>
                                     <div id="fxvol-quotes-table" class="volcube-table-container">
                                         <p class="volcube-placeholder">Loading quotes...</p>
                                     </div>
@@ -1922,11 +1943,8 @@
                             <p>Calculate present value and Greeks for financial instruments</p>
                         </div>
                         <div class="pricer-actions">
-                            <button id="pricer-price-btn" class="primary-btn">
-                                <i class="fas fa-play"></i> Price
-                            </button>
-                            <button id="pricer-greeks-btn" class="secondary-btn">
-                                <i class="fas fa-chart-line"></i> Greeks
+                            <button id="pricer-calculate-btn" class="primary-btn">
+                                <i class="fas fa-play"></i> Price & Risks
                             </button>
                         </div>
                     </div>
@@ -2068,21 +2086,6 @@
                                 </div>
                             </div>
 
-                            <!-- Result History -->
-                            <div class="pricer-section">
-                                <h3><i class="fas fa-history"></i> Result History</h3>
-                                <div class="pricer-history-actions">
-                                    <button id="pricer-compare-btn" class="outline-btn" disabled>
-                                        <i class="fas fa-columns"></i> Compare
-                                    </button>
-                                    <button id="pricer-clear-history-btn" class="outline-btn">
-                                        <i class="fas fa-trash"></i> Clear
-                                    </button>
-                                </div>
-                                <div id="pricer-history-list" class="pricer-history-list">
-                                    <p class="pricer-placeholder">No history yet</p>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -2096,7 +2099,66 @@
                         <h2><i class="fas fa-project-diagram"></i> Computation Graph</h2>
                         <p>Interactive visualisation of the AD computation graph</p>
                     </div>
-                    <div class="graph-controls">
+                    <!-- Graph Type Tabs -->
+                    <div class="graph-type-tabs">
+                        <button type="button" class="graph-type-tab" data-graph-type="pricer">
+                            <i class="fas fa-calculator"></i> Pricer Graph
+                        </button>
+                        <button type="button" class="graph-type-tab active" data-graph-type="static">
+                            <i class="fas fa-project-diagram"></i> Static Graph
+                        </button>
+                    </div>
+                </div>
+                <!-- Pricer Graph Controls -->
+                <div class="graph-controls-row" id="pricer-graph-controls" style="display: none;">
+                    <div class="graph-controls-left">
+                        <label for="pricer-formula-selector" class="visually-hidden">Formula Selector</label>
+                        <select id="pricer-formula-selector" name="pricer-formula-selector" class="fancy-select">
+                            <option value="black_scholes" selected>Black-Scholes</option>
+                            <option value="simple">Simple Arithmetic</option>
+                        </select>
+                        <label for="pricer-detail-level" class="visually-hidden">Detail Level</label>
+                        <select id="pricer-detail-level" name="pricer-detail-level" class="fancy-select">
+                            <option value="operation" selected>Operation Level</option>
+                            <option value="scope">Scope Level</option>
+                        </select>
+                        <button class="primary-btn" id="load-pricer-graph">
+                            <i class="fas fa-sync-alt"></i> Load
+                        </button>
+                    </div>
+                    <div class="graph-controls-right">
+                        <!-- Task 7.2: Node Search for Pricer Graph -->
+                        <div class="graph-search-wrapper">
+                            <div class="graph-search-input-container">
+                                <i class="fas fa-search graph-search-icon"></i>
+                                <input type="text"
+                                       id="pricer-graph-search-input"
+                                       class="graph-search-input"
+                                       placeholder="Search nodes..."
+                                       autocomplete="off">
+                                <button class="icon-btn graph-search-clear" id="pricer-graph-search-clear" title="Clear Search" style="display: none;">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="zoom-controls">
+                            <button class="icon-btn" id="pricer-graph-zoom-in" title="Zoom In">
+                                <i class="fas fa-search-plus"></i>
+                            </button>
+                            <button class="icon-btn" id="pricer-graph-zoom-out" title="Zoom Out">
+                                <i class="fas fa-search-minus"></i>
+                            </button>
+                            <button class="icon-btn" id="pricer-graph-zoom-reset" title="Reset Zoom">
+                                <i class="fas fa-compress-arrows-alt"></i>
+                            </button>
+                            <button class="icon-btn" id="pricer-graph-zoom-fit" title="Fit to View">
+                                <i class="fas fa-expand"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                    <!-- Static Graph Controls (default active) -->
+                    <div class="graph-controls" id="trade-graph-controls">
                         <label for="graph-trade-selector" class="visually-hidden">Graph Trade Selector</label>
                         <select id="graph-trade-selector" name="graph-trade-selector" class="fancy-select">
                             <option value="">All Trades</option>
@@ -2151,7 +2213,6 @@
                             <i class="fas fa-times-circle"></i>
                         </button>
                     </div>
-                </div>
 
                 <!-- Graph Layout -->
                 <div class="graph-layout">
@@ -2163,6 +2224,11 @@
                                 <span>Loading graph...</span>
                             </div>
                         </div>
+                        <!-- Pricer Graph Container -->
+                        <div id="pricer-graph-content" class="graph-content" style="display: none;">
+                            <div id="pricer-graph-container" class="graph-container"></div>
+                        </div>
+                        <!-- Static Graph Container (default active) -->
                         <div id="graph-content" class="graph-content">
                             <div id="graph-container" class="graph-container"></div>
                             <!-- Task 8.1: Canvas for large graph rendering -->
@@ -2173,6 +2239,38 @@
                     <!-- Graph Sidebar -->
                     <div class="graph-sidebar">
                         <div class="graph-accordion glass-card">
+                            <!-- Pricer Graph Node Info (shown when pricer graph is active) -->
+                            <div class="accordion-section" data-section="pricer-node-info" id="pricer-node-info-section">
+                                <button type="button" class="accordion-header" aria-expanded="true">
+                                    <span class="accordion-title"><i class="fas fa-info-circle"></i> Node Details</span>
+                                    <i class="fas fa-chevron-down accordion-icon"></i>
+                                </button>
+                                <div class="accordion-content expanded">
+                                    <div class="pricer-node-info-details">
+                                        <div class="info-row">
+                                            <span class="info-label">Operation</span>
+                                            <span class="info-value" id="pricer-node-operation">-</span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span class="info-label">Value</span>
+                                            <span class="info-value" id="pricer-node-value">-</span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span class="info-label">Label</span>
+                                            <span class="info-value" id="pricer-node-label">-</span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span class="info-label">Scope</span>
+                                            <span class="info-value" id="pricer-node-scope">-</span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span class="info-label">Source</span>
+                                            <span class="info-value code-location" id="pricer-node-source">-</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Graph Statistics -->
                             <div class="accordion-section" data-section="statistics">
                                 <button type="button" class="accordion-header" aria-expanded="true">
@@ -2295,6 +2393,11 @@
                         <div class="trade-expansion-title">
                             <h2><i class="fas fa-project-diagram"></i> Trade Expansion</h2>
                             <p>Expand instruments into cashflow-detailed trades</p>
+                        </div>
+                        <div class="trade-expansion-actions">
+                            <button id="expansion-expand-btn" class="primary-btn">
+                                <i class="fas fa-expand-arrows-alt"></i> Expand Trade
+                            </button>
                         </div>
                     </div>
 
@@ -2566,12 +2669,6 @@
                                 </div>
                             </div>
 
-                            <!-- Expand Button -->
-                            <button id="expansion-expand-btn" class="primary-btn calculate-btn">
-                                <i class="fas fa-expand-arrows-alt"></i>
-                                <span>Expand Trade</span>
-                            </button>
-
                             <!-- Error Message -->
                             <div id="expansion-error" class="pricer-error" style="display: none;"></div>
                         </div>
@@ -2636,10 +2733,17 @@
                             <h2><i class="fas fa-chart-line"></i> Curve Builder</h2>
                             <p>Construct yield curves from market instruments and visualise parameter curves</p>
                         </div>
-                        <!-- Rebuild Notification (Task 10.3) -->
-                        <div class="rebuild-notification" id="rebuild-notification" style="display: none;">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <span>Settings changed. Rebuild required.</span>
+                        <div class="curve-builder-header-right">
+                            <!-- Rebuild Notification (Task 10.3) -->
+                            <div class="rebuild-notification" id="rebuild-notification" style="display: none;">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <span>Settings changed. Rebuild required.</span>
+                            </div>
+                            <div class="curve-builder-actions">
+                                <button id="build-curve-btn" class="primary-btn">
+                                    <i class="fas fa-play"></i> Build Curve
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -2652,14 +2756,8 @@
                                 <div class="section-header">
                                     <h3><i class="fas fa-globe"></i> Index Selection</h3>
                                 </div>
-                                <div class="index-selector-row">
-                                    <div id="index-selector-container">
-                                        <!-- Dynamic index selector will be inserted here -->
-                                    </div>
-                                    <button id="build-curve-btn" class="primary-btn">
-                                        <i class="fas fa-play"></i>
-                                        <span>Build Curve</span>
-                                    </button>
+                                <div id="index-selector-container">
+                                    <!-- Dynamic index selector will be inserted here -->
                                 </div>
                             </div>
 
@@ -2751,9 +2849,24 @@
                                         <!-- Dynamic tenor range controls will be inserted here -->
                                     </div>
 
-                                    <!-- Chart Display (Task 11.2) -->
-                                    <div class="parameter-chart-container">
-                                        <canvas id="parameter-chart" role="img" aria-label="Parameter curve chart" style="display: none;"></canvas>
+                                    <!-- Chart Display (Task 11.2) - Dual Charts -->
+                                    <div class="curve-charts-wrapper">
+                                        <!-- Short-term Chart (0-1Y) -->
+                                        <div class="parameter-chart-container short-term">
+                                            <div class="chart-header">
+                                                <span class="chart-title"><i class="fas fa-calendar-day"></i> Short-term (0-1Y)</span>
+                                                <span class="chart-subtitle">Daily (0-3M) / Weekly (3M-1Y)</span>
+                                            </div>
+                                            <canvas id="parameter-chart-short" role="img" aria-label="Short-term parameter curve chart" style="display: none;"></canvas>
+                                        </div>
+                                        <!-- Long-term Chart (0-30Y) -->
+                                        <div class="parameter-chart-container long-term">
+                                            <div class="chart-header">
+                                                <span class="chart-title"><i class="fas fa-calendar-alt"></i> Long-term (0-30Y)</span>
+                                                <span class="chart-subtitle">Monthly Grid</span>
+                                            </div>
+                                            <canvas id="parameter-chart-long" role="img" aria-label="Long-term parameter curve chart" style="display: none;"></canvas>
+                                        </div>
                                         <div class="chart-placeholder" id="chart-placeholder">
                                             <i class="fas fa-chart-line"></i>
                                             <p>Build a curve to see parameter visualisation</p>
@@ -2787,11 +2900,14 @@
             <!-- Market Data View (market-data-viewer-webapp) -->
             <section id="market-data-view" class="view">
                 <div class="market-data-container">
-                    <!-- Header with Controls -->
+                    <!-- Header with Controls (2-row layout) -->
                     <div class="market-data-header glass-card">
-                        <div class="market-data-title">
-                            <i class="fas fa-chart-area"></i>
-                            <h2>Market Data Viewer</h2>
+                        <!-- Row 1: Title and Stats -->
+                        <div class="market-data-header-row">
+                            <div class="market-data-title">
+                                <i class="fas fa-chart-area"></i>
+                                <h2>Market Data Viewer</h2>
+                            </div>
                             <div class="market-data-stats-badges">
                                 <span class="stats-badge" title="Total items">
                                     <i class="fas fa-database"></i>
@@ -2805,50 +2921,31 @@
                                     <i class="fas fa-eye"></i>
                                     <span id="market-stats-displayed">--</span>
                                 </span>
+                                <span class="last-update-badge" id="market-last-updated">--</span>
                             </div>
-                            <span class="last-update-badge" id="market-last-updated">--</span>
                         </div>
-                        <div class="market-data-actions">
+                        <!-- Row 2: Controls -->
+                        <div class="market-data-controls-row">
                             <!-- Asset Class Toggle -->
                             <div class="asset-class-toggle" id="market-asset-class-toggle">
                                 <button class="asset-toggle-btn active" data-asset="Rates">Rates</button>
                                 <button class="asset-toggle-btn" data-asset="FX">FX</button>
                                 <button class="asset-toggle-btn" data-asset="IRVol">IRVol</button>
                                 <button class="asset-toggle-btn" data-asset="FXVol">FXVol</button>
+                                <button class="asset-toggle-btn" data-asset="Events">Events</button>
                             </div>
-                            <!-- Currency Filter -->
-                            <div class="filter-group">
-                                <label for="market-currency-filter">Currency</label>
-                                <select id="market-currency-filter" class="filter-select">
-                                    <option value="">All</option>
-                                    <option value="USD">USD</option>
-                                    <option value="EUR">EUR</option>
-                                    <option value="JPY">JPY</option>
-                                    <option value="GBP">GBP</option>
-                                </select>
-                            </div>
-                            <!-- Rate Type Filter -->
-                            <div class="filter-group">
-                                <label for="market-type-filter">Rate Type</label>
-                                <select id="market-type-filter" class="filter-select">
-                                    <option value="">All</option>
-                                    <option value="Deposit">Deposit</option>
-                                    <option value="Swap">Swap</option>
-                                    <option value="Ois">OIS</option>
-                                    <option value="FxSpot">FX Spot</option>
-                                </select>
-                            </div>
-                            <!-- Index Filter -->
-                            <div class="filter-group">
-                                <label for="market-index-filter">Index</label>
-                                <select id="market-index-filter" class="filter-select">
-                                    <option value="">All</option>
-                                    <option value="SOFR">SOFR</option>
-                                    <option value="ESTR">ESTR</option>
-                                    <option value="TONA">TONA</option>
-                                    <option value="EURIBOR">EURIBOR</option>
-                                    <option value="TIBOR">TIBOR</option>
-                                </select>
+                            <div class="market-data-filters">
+                                <!-- Currency Filter -->
+                                <div class="filter-group compact">
+                                    <label for="market-currency-filter">Currency</label>
+                                    <select id="market-currency-filter" class="filter-select">
+                                        <option value="">All</option>
+                                        <option value="USD" selected>USD</option>
+                                        <option value="EUR">EUR</option>
+                                        <option value="JPY">JPY</option>
+                                        <option value="GBP">GBP</option>
+                                    </select>
+                                </div>
                             </div>
                             <!-- Action Buttons -->
                             <div class="action-buttons">
@@ -2987,10 +3084,12 @@
 
     <!-- Configuration -->
     <script src="config.js"></script>
+    <script src="js/config-loader.js"></script>
 
     <!-- Libraries -->
     <script src="vendor/logger.js"></script>
     <script src="vendor/chart.umd.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js" defer></script>
 
     <!-- Legacy Application (will be gradually migrated) -->
     <script src="app.js?v=5" defer></script>

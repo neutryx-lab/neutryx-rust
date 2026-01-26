@@ -192,7 +192,7 @@ impl FromStr for DayCounter {
     ///
     /// Supports multiple aliases for each convention.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_uppercase().replace(['/', ' ', '.'], "").as_str() {
+        match s.to_uppercase().replace(['/', ' ', '.', '_'], "").as_str() {
             "ACT360" | "ACTUAL360" | "A360" => Ok(DayCounter::Actual360),
             "ACT365" | "ACTUAL365" | "A365" | "ACT365FIXED" | "ACTUAL365FIXED" => {
                 Ok(DayCounter::Actual365Fixed)

@@ -1,0 +1,53 @@
+{
+  "description": "List of major central banks for market events",
+  "centralBanks": [
+    {
+      "code": "FED",
+      "name": "Federal Reserve",
+      "currency": "USD",
+      "region": "United States"
+    },
+    {
+      "code": "ECB",
+      "name": "European Central Bank",
+      "currency": "EUR",
+      "region": "Eurozone"
+    },
+    {
+      "code": "BOJ",
+      "name": "Bank of Japan",
+      "currency": "JPY",
+      "region": "Japan"
+    },
+    {
+      "code": "BOE",
+      "name": "Bank of England",
+      "currency": "GBP",
+      "region": "United Kingdom"
+    },
+    {
+      "code": "SNB",
+      "name": "Swiss National Bank",
+      "currency": "CHF",
+      "region": "Switzerland"
+    },
+    {
+      "code": "RBA",
+      "name": "Reserve Bank of Australia",
+      "currency": "AUD",
+      "region": "Australia"
+    },
+    {
+      "code": "BOC",
+      "name": "Bank of Canada",
+      "currency": "CAD",
+      "region": "Canada"
+    },
+    {
+      "code": "RBNZ",
+      "name": "Reserve Bank of New Zealand",
+      "currency": "NZD",
+      "region": "New Zealand"
+    }
+  ]
+}

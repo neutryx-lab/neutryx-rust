@@ -50,13 +50,14 @@ use crate::error::CurrencyError;
 /// assert_eq!(eur, Currency::EUR);
 /// ```
 #[non_exhaustive]
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Currency {
     /// United States Dollar
     ///
     /// ISO 4217 code: USD
     /// Standard decimal places: 2
+    #[default]
     USD,
 
     /// Euro
@@ -85,6 +86,41 @@ pub enum Currency {
 }
 
 impl Currency {
+    /// Returns all supported currencies.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use infra_master::market::Currency;
+    ///
+    /// let currencies = Currency::all();
+    /// assert_eq!(currencies.len(), 5);
+    /// assert!(currencies.contains(&Currency::USD));
+    /// ```
+    #[must_use]
+    pub const fn all() -> [Currency; 5] {
+        [
+            Currency::USD,
+            Currency::EUR,
+            Currency::GBP,
+            Currency::JPY,
+            Currency::CHF,
+        ]
+    }
+
+    /// Returns all currency codes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use infra_master::market::Currency;
+    ///
+    /// let codes = Currency::all_codes();
+    /// assert_eq!(codes, ["USD", "EUR", "GBP", "JPY", "CHF"]);
+    /// ```
+    #[must_use]
+    pub const fn all_codes() -> [&'static str; 5] { ["USD", "EUR", "GBP", "JPY", "CHF"] }
+
     /// Returns the ISO 4217 three-letter currency code.
     ///
     /// # Examples
@@ -106,6 +142,27 @@ impl Currency {
             Currency::GBP => "GBP",
             Currency::JPY => "JPY",
             Currency::CHF => "CHF",
+        }
+    }
+
+    /// Returns the full currency name.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use infra_master::market::Currency;
+    ///
+    /// assert_eq!(Currency::USD.name(), "US Dollar");
+    /// assert_eq!(Currency::JPY.name(), "Japanese Yen");
+    /// ```
+    #[must_use]
+    pub fn name(&self) -> &'static str {
+        match self {
+            Currency::USD => "US Dollar",
+            Currency::EUR => "Euro",
+            Currency::GBP => "British Pound",
+            Currency::JPY => "Japanese Yen",
+            Currency::CHF => "Swiss Franc",
         }
     }
 

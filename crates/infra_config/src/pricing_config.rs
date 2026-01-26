@@ -18,6 +18,19 @@ pub enum PricingMethod {
     Analytical,
     /// Monte Carlo simulation
     MonteCarlo,
+    /// Tree-based pricing (Binomial/Trinomial)
+    Tree,
+}
+
+/// Tree type selection for tree-based pricing methods.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum TreeType {
+    /// Cox-Ross-Rubinstein binomial tree.
+    #[default]
+    Binomial,
+    /// Trinomial tree.
+    Trinomial,
 }
 
 /// Monte Carlo simulation parameters.
@@ -38,6 +51,25 @@ impl Default for MonteCarloParams {
             num_paths: 10_000,
             num_steps: 252,
             seed: None,
+        }
+    }
+}
+
+/// Tree pricing parameters.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct TreeParams {
+    /// Number of time steps in the tree.
+    pub num_steps: usize,
+    /// Tree type (Binomial or Trinomial).
+    #[serde(default)]
+    pub tree_type: TreeType,
+}
+
+impl Default for TreeParams {
+    fn default() -> Self {
+        Self {
+            num_steps: 100,
+            tree_type: TreeType::Binomial,
         }
     }
 }
@@ -74,6 +106,9 @@ pub struct PricingConfig {
     /// Monte Carlo parameters (used when pricing_method is MonteCarlo).
     #[serde(default)]
     pub monte_carlo: Option<MonteCarloParams>,
+    /// Tree parameters (used when pricing_method is Tree).
+    #[serde(default)]
+    pub tree_params: Option<TreeParams>,
     /// Path to market data file(s).
     pub market_data_path: PathBuf,
     /// Path to trade data file(s).
@@ -95,6 +130,7 @@ impl Default for PricingConfig {
             reporting_currency: "USD".to_string(),
             pricing_method: PricingMethod::default(),
             monte_carlo: None,
+            tree_params: None,
             market_data_path: PathBuf::from("data/market.json"),
             trade_data_path: PathBuf::from("data/trades.json"),
             csa_data_path: None,
@@ -161,6 +197,25 @@ impl PricingConfig {
                 None => {
                     return Err(ConfigError::missing_required(
                         "monte_carlo parameters required when pricing_method is 'monte_carlo'",
+                    ));
+                }
+            }
+        }
+
+        // Validate Tree params when method is Tree
+        if self.pricing_method == PricingMethod::Tree {
+            match &self.tree_params {
+                Some(tree) => {
+                    if tree.num_steps == 0 {
+                        return Err(ConfigError::InvalidValue {
+                            key: "tree_params.num_steps".to_string(),
+                            message: "num_steps must be greater than 0".to_string(),
+                        });
+                    }
+                }
+                None => {
+                    return Err(ConfigError::missing_required(
+                        "tree_params parameters required when pricing_method is 'tree'",
                     ));
                 }
             }
@@ -390,6 +445,7 @@ mod tests {
             reporting_currency: "USD".to_string(),
             pricing_method: PricingMethod::Analytical,
             monte_carlo: None,
+            tree_params: None,
             market_data_path: PathBuf::from("data/market.json"),
             trade_data_path: PathBuf::from("data/trades.json"),
             csa_data_path: None,
@@ -427,5 +483,116 @@ mod tests {
 
         let mc: PricingMethod = serde_json::from_str("\"monte_carlo\"").unwrap();
         assert_eq!(mc, PricingMethod::MonteCarlo);
+    }
+
+    // =========================================================================
+    // Task 1.1: Tree Pricing Method Tests (TDD RED → GREEN)
+    // =========================================================================
+
+    #[test]
+    fn test_pricing_method_tree_serde() {
+        // Test Tree serialization
+        assert_eq!(
+            serde_json::to_string(&PricingMethod::Tree).unwrap(),
+            "\"tree\""
+        );
+
+        // Test Tree deserialization
+        let tree: PricingMethod = serde_json::from_str("\"tree\"").unwrap();
+        assert_eq!(tree, PricingMethod::Tree);
+    }
+
+    #[test]
+    fn test_pricing_config_from_json_with_tree() {
+        let json = r#"{
+            "valuation_date": "2026-01-25",
+            "reporting_currency": "USD",
+            "pricing_method": "tree",
+            "tree_params": {
+                "num_steps": 200,
+                "tree_type": "binomial"
+            },
+            "market_data_path": "data/market.json",
+            "trade_data_path": "data/trades.json"
+        }"#;
+
+        let config = PricingConfig::from_json(json).unwrap();
+        assert_eq!(config.pricing_method, PricingMethod::Tree);
+        let tree = config.tree_params.unwrap();
+        assert_eq!(tree.num_steps, 200);
+        assert_eq!(tree.tree_type, TreeType::Binomial);
+    }
+
+    #[test]
+    fn test_pricing_config_tree_requires_params() {
+        let config = PricingConfig {
+            pricing_method: PricingMethod::Tree,
+            tree_params: None,
+            ..Default::default()
+        };
+
+        let result = config.validate();
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("tree_params parameters required"));
+    }
+
+    #[test]
+    fn test_pricing_config_tree_validates_num_steps() {
+        let config = PricingConfig {
+            pricing_method: PricingMethod::Tree,
+            tree_params: Some(TreeParams {
+                num_steps: 0,
+                tree_type: TreeType::Binomial,
+            }),
+            ..Default::default()
+        };
+
+        let result = config.validate();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("num_steps"));
+    }
+
+    #[test]
+    fn test_pricing_config_valid_tree() {
+        let config = PricingConfig {
+            pricing_method: PricingMethod::Tree,
+            tree_params: Some(TreeParams {
+                num_steps: 100,
+                tree_type: TreeType::Binomial,
+            }),
+            ..Default::default()
+        };
+
+        assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn test_tree_params_default() {
+        let params = TreeParams::default();
+        assert_eq!(params.num_steps, 100);
+        assert_eq!(params.tree_type, TreeType::Binomial);
+    }
+
+    #[test]
+    fn test_tree_type_serde() {
+        // Test serialization
+        assert_eq!(
+            serde_json::to_string(&TreeType::Binomial).unwrap(),
+            "\"binomial\""
+        );
+        assert_eq!(
+            serde_json::to_string(&TreeType::Trinomial).unwrap(),
+            "\"trinomial\""
+        );
+
+        // Test deserialization
+        let binomial: TreeType = serde_json::from_str("\"binomial\"").unwrap();
+        assert_eq!(binomial, TreeType::Binomial);
+
+        let trinomial: TreeType = serde_json::from_str("\"trinomial\"").unwrap();
+        assert_eq!(trinomial, TreeType::Trinomial);
     }
 }

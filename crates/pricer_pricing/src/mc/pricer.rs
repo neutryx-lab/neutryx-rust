@@ -235,6 +235,15 @@ impl MonteCarloPricer {
     #[inline]
     pub fn config(&self) -> &MonteCarloConfig { &self.config }
 
+    /// Returns the current RNG seed for reproducible finite difference
+    /// calculations.
+    ///
+    /// This allows external code to capture the current seed and use
+    /// `reset_with_seed` to ensure consistent random numbers across
+    /// multiple pricings (e.g., for Greeks).
+    #[inline]
+    pub fn current_seed(&self) -> u64 { self.rng.seed() }
+
     /// Resets the pricer state for a new simulation.
     ///
     /// Resets the workspace and RNG (using original seed).

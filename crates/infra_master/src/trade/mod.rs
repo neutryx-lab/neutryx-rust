@@ -39,6 +39,7 @@ mod cashflow;
 mod direction;
 mod error;
 mod index;
+mod index_requirement;
 mod leg;
 mod payoff;
 mod pricing_instrument;
@@ -59,12 +60,15 @@ pub use cashflow::{Cashflow, CashflowType, DailyAccrual};
 pub use direction::{SwapDirection, TradeDirection};
 pub use error::TradeError;
 pub use index::{IndexObservation, IndexType};
+pub use index_requirement::IndexRequirement;
 pub use instrument::Instrument;
+// Re-export common types from instrument_def
+pub use instrument_def::AssetClass;
 pub use leg::{Direction, Leg, LegType};
 pub use payoff::{OptionType, Payoff};
 pub use pricing_instrument::{
-    ExerciseStyle, Forward, ForwardDirection, InstrumentParams, PayoffType, PricingInstrument,
-    VanillaOption,
+    ExerciseStyle, Forward, ForwardDirection, FxOptionType, InstrumentParams, PayoffType,
+    PricingInstrument, VanillaOption,
 };
 pub use trade::{ExerciseType, SettlementType, Trade, TradeMetadata, TradeType};
 

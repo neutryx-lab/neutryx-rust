@@ -34,8 +34,11 @@ pub mod error;
 pub mod fx_calibration;
 pub mod fx_density;
 pub mod index_mapper;
+pub mod indexed_market;
 pub mod provider;
+pub mod requirements;
 pub mod surfaces;
+pub mod validator;
 pub mod volcube;
 
 // Re-export commonly used types
@@ -53,14 +56,17 @@ pub use curves::{
     CreditCurve, CurveEnum, CurveInterpolation, CurveName, CurveSet, FlatCurve,
     FlatHazardRateCurve, HazardRateCurve, InterpolatedCurve, YieldCurve,
 };
-pub use error::MarketDataError;
+pub use error::{MarketBuildError, MarketDataError};
 pub use fx_density::{DeltaType, DensityStatistics, FxDensityCalculator};
 pub use index_mapper::{DefaultIndexCurveMapper, IndexCurveMapper};
+pub use indexed_market::{IndexedMarket, IndexedMarketBuilder};
 pub use provider::{MarketProvider, VolCubeProviderKey};
+pub use requirements::TradeIndexRequirements;
 pub use surfaces::{
     FlatVol, FxDeltaPoint, FxVolatilitySurface, InterpolatedVolSurface, VolCubeSlice,
     VolSurfaceEnum, VolatilitySurface,
 };
+pub use validator::{MarketValidator, ValidationReport};
 pub use volcube::{
     calculate_forward_swap_rate, CacheStats,
     CalibrationDiagnostics as VolCubeCalibrationDiagnostics, CalibrationProgress,

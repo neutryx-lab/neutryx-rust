@@ -1,0 +1,66 @@
+{
+  "metadata": {
+    "description": "Master index of all available market data",
+    "last_updated": "2026-01-26T00:00:00Z",
+    "version": "1.0"
+  },
+  "indices": {
+    "rates": {
+      "description": "Interest rate curves",
+      "items": [
+        { "id": "usd-sofr", "currency": "USD", "index": "SOFR", "displayName": "USD SOFR" },
+        { "id": "eur-estr", "currency": "EUR", "index": "ESTR", "displayName": "EUR ESTR" },
+        { "id": "jpy-tona", "currency": "JPY", "index": "TONA", "displayName": "JPY TONA" }
+      ]
+    },
+    "fx": {
+      "description": "FX spot and forward rates",
+      "items": [
+        { "id": "EURUSD", "baseCurrency": "EUR", "quoteCurrency": "USD", "displayName": "EUR/USD" },
+        { "id": "USDJPY", "baseCurrency": "USD", "quoteCurrency": "JPY", "displayName": "USD/JPY" },
+        { "id": "GBPUSD", "baseCurrency": "GBP", "quoteCurrency": "USD", "displayName": "GBP/USD" },
+        { "id": "EURGBP", "baseCurrency": "EUR", "quoteCurrency": "GBP", "displayName": "EUR/GBP" },
+        { "id": "EURJPY", "baseCurrency": "EUR", "quoteCurrency": "JPY", "displayName": "EUR/JPY" },
+        { "id": "GBPJPY", "baseCurrency": "GBP", "quoteCurrency": "JPY", "displayName": "GBP/JPY" },
+        { "id": "AUDUSD", "baseCurrency": "AUD", "quoteCurrency": "USD", "displayName": "AUD/USD" },
+        { "id": "USDCAD", "baseCurrency": "USD", "quoteCurrency": "CAD", "displayName": "USD/CAD" },
+        { "id": "USDCHF", "baseCurrency": "USD", "quoteCurrency": "CHF", "displayName": "USD/CHF" },
+        { "id": "NZDUSD", "baseCurrency": "NZD", "quoteCurrency": "USD", "displayName": "NZD/USD" }
+      ]
+    },
+    "irvol": {
+      "description": "Interest rate volatility surfaces",
+      "items": [
+        { "id": "usd", "currency": "USD", "type": "swaption", "volType": "normal", "displayName": "USD Swaption Vol" },
+        { "id": "eur", "currency": "EUR", "type": "swaption", "volType": "normal", "displayName": "EUR Swaption Vol" },
+        { "id": "jpy", "currency": "JPY", "type": "swaption", "volType": "normal", "displayName": "JPY Swaption Vol" },
+        { "id": "gbp", "currency": "GBP", "type": "swaption", "volType": "normal", "displayName": "GBP Swaption Vol" },
+        { "id": "usd-sofr-swaption", "currency": "USD", "type": "volcube", "volType": "lognormal", "displayName": "USD SOFR Swaption Cube" },
+        { "id": "eur-estr-swaption", "currency": "EUR", "type": "volcube", "volType": "lognormal", "displayName": "EUR ESTR Swaption Cube" }
+      ]
+    },
+    "fxvol": {
+      "description": "FX volatility surfaces",
+      "items": [
+        { "id": "eurusd", "currencyPair": "EURUSD", "volType": "lognormal", "displayName": "EUR/USD Vol Surface" },
+        { "id": "usdjpy", "currencyPair": "USDJPY", "volType": "lognormal", "displayName": "USD/JPY Vol Surface" }
+      ]
+    },
+    "events": {
+      "description": "Market events and calendars",
+      "items": [
+        { "id": "central_bank_meetings", "type": "monetary_policy", "displayName": "Central Bank Meetings" }
+      ]
+    }
+  },
+  "currencies": [
+    { "code": "USD", "name": "US Dollar", "index": "SOFR", "calendar": "New York" },
+    { "code": "EUR", "name": "Euro", "index": "ESTR", "calendar": "TARGET" },
+    { "code": "JPY", "name": "Japanese Yen", "index": "TONA", "calendar": "Tokyo" },
+    { "code": "GBP", "name": "British Pound", "index": "SONIA", "calendar": "London" },
+    { "code": "AUD", "name": "Australian Dollar", "index": "AONIA", "calendar": "Sydney" },
+    { "code": "CAD", "name": "Canadian Dollar", "index": "CORRA", "calendar": "Toronto" },
+    { "code": "CHF", "name": "Swiss Franc", "index": "SARON", "calendar": "Zurich" },
+    { "code": "NZD", "name": "New Zealand Dollar", "index": "OCR", "calendar": "Wellington" }
+  ]
+}

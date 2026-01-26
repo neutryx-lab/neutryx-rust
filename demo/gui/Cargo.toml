@@ -13,7 +13,7 @@ path = "src/web/main.rs"
 # L1/L2 integration is default because pricer_risk (in workspace) requires it
 # This disables the standalone GenericPricer handlers
 default = ["l1l2-integration"]
-enzyme-ad = ["pricer_pricing/enzyme-ad"]
+enzyme-ad = ["pricer_risk/enzyme-ad"]
 openapi = ["utoipa", "utoipa-swagger-ui"]
 # L1/L2 integration feature - disables standalone pricer mode
 l1l2-integration = ["pricer_pricing/l1l2-integration"]
@@ -23,7 +23,7 @@ l1l2-integration = ["pricer_pricing/l1l2-integration"]
 infra_master = { path = "../../crates/infra_master", features = ["serde"] }
 
 # Pricer layer
-pricer_core = { path = "../../crates/pricer_core" }
+pricer_core = { path = "../../crates/pricer_core", features = ["execution-trace", "serde"] }
 pricer_models = { path = "../../crates/pricer_models" }
 pricer_pricing = { path = "../../crates/pricer_pricing" }
 pricer_risk = { path = "../../crates/pricer_risk", features = ["serde"] }
@@ -37,6 +37,9 @@ tokio = { workspace = true }
 # Serialization
 serde = { workspace = true }
 serde_json = { workspace = true }
+
+# Numeric traits
+num-traits = { workspace = true }
 
 # UUID for curve cache
 uuid = { version = "1.0", features = ["v4"] }

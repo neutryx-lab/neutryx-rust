@@ -2,13 +2,13 @@
 
 実装状況と今後の開発項目を追跡するドキュメント。
 
-_Updated: 2026-01-26_ — Steering sync: fx-vol-surface-calibration completed (139 tests, FX curve + vol surface builders); ir-vol-cube-calibration active (Phase 1-2 complete); 35 completed specs
+_Updated: 2026-01-26_ — market-index-keyed-access completed (IndexedMarket, TradeIndexRequirements, MarketValidator); 39 completed specs
 
 ---
 
 ## Current State Summary
 
-### Completed Specifications (34)
+### Completed Specifications (39)
 
 | Spec | Description | Completed |
 |------|-------------|-----------|
@@ -47,6 +47,10 @@ _Updated: 2026-01-26_ — Steering sync: fx-vol-surface-calibration completed (1
 | legacy-compatibility-removal | Legacy code removal and ID type safety (28 tasks) | 2026-01-23 |
 | rate-index-pricing-integration | RateIndex pricing integration across L1/L2/L3 layers (41 tests) | 2026-01-23 |
 | fx-vol-surface-calibration | FX curve + vol surface calibration with SABR, lazy evaluation (139 tests) | 2026-01-26 |
+| move-enzyme-to-pricer-risk | Enzyme AD module moved from pricer_pricing (L3) to pricer_risk (L4) | 2026-01-26 |
+| ir-vol-cube-calibration | IR VolCube calibration engine with SABR, lazy evaluation, AAD Vega, WebApp (64 tasks) | 2026-01-26 |
+| pricer-pricing-architecture | Tree pricing (Binomial/Trinomial), UnifiedPricingResult, PricingMethodDispatcher | 2026-01-26 |
+| market-index-keyed-access | IndexedMarket, IndexedMarketBuilder, TradeIndexRequirements, MarketValidator | 2026-01-26 |
 
 ### Layer Implementation Status
 
@@ -59,8 +63,8 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 |-------|-------|--------|-------|
 | pricer_core | L1 | ✅ | math (smoothing, distributions, calculus, utilities, interpolators, solvers, integrators, optimisers, fitting, mesh, linalg), types, traits |
 | pricer_models | L2 | ✅ | instruments, market (curves, surfaces, calibration, provider), models, schedules, analytical, demo |
-| pricer_pricing | L3 | ✅ | mc, rng, enzyme, greeks, path_dependent, checkpoint, context (l1l2-integration) |
-| pricer_risk | L4 | ✅ | portfolio, exposure, xva, scenarios (engine/shifts/aggregator/presets), soa, demo |
+| pricer_pricing | L3 | ✅ | mc, rng, greeks, path_dependent, checkpoint, context (l1l2-integration), generic_pricer |
+| pricer_risk | L4 | ✅ | portfolio, exposure, xva, scenarios (engine/shifts/aggregator/presets), soa, enzyme (AD), demo |
 
 > **Note**: `pricer_optimiser` (L2.5) was removed in 2026-01. All market data (curves, surfaces, bootstrapping, provider, calibration) consolidated into `pricer_models::market`.
 
@@ -150,7 +154,7 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 
 | Spec | Description | Status |
 |------|-------------|--------|
-| ir-vol-cube-calibration | IR VolCube calibration engine with SABR, lazy evaluation, AAD (Phase 1-2 complete, Phase 3-5 pending) | 🔶 |
+| (none) | All specs completed | ✅ |
 
 ## Recommended Next Steps
 
@@ -164,6 +168,11 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 
 | Date | Change |
 |------|--------|
+| 2026-01-26 | Steering sync: market-index-keyed-access completed (39 total). Added IndexedMarket, TradeIndexRequirements, MarketValidator to structure.md. |
+| 2026-01-26 | Steering sync: pricer-pricing-architecture completed (38 total). Added TrinomialTree (Kamrad-Ritchken) to structure.md. market-index-keyed-access ready for implementation. |
+| 2026-01-26 | market-index-keyed-access tasks generated (6 phases, 23 sub-tasks: IndexRequirement, IndexedMarket, Builder, TradeIndexRequirements, MarketValidator). Ready for implementation. |
+| 2026-01-26 | ir-vol-cube-calibration completed (64/64 tasks, all phases done including SABR calibration, AAD Vega, WebApp). market-index-keyed-access advanced to design phase. Total: 37 specs |
+| 2026-01-26 | Steering sync: move-enzyme-to-pricer-risk completed (Enzyme AD → L4), pricer-pricing-architecture active (Tree, Dispatcher), market-index-keyed-access in requirements. Layer status updated. Total: 36 specs |
 | 2026-01-26 | Steering sync: fx-vol-surface-calibration completed (139 tests, FX curve + vol surface); ir-vol-cube-calibration active (Phase 1-2 complete); structure.md updated (fx_calibration/, volcube/ expansion, web handlers). Total: 35 specs |
 | 2026-01-25 | Steering sync: rate-index-pricing-integration completed (41 tests, RateIndex/Tenor/CurveName pricing). Total: 34 specs |
 | 2026-01-23 | Steering sync: rate-index-pricing-integration added to active specs (tasks-generated phase, awaiting implementation) |

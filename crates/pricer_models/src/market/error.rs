@@ -114,6 +114,98 @@ pub enum MarketDataError {
         /// The index that is not supported
         index: String,
     },
+
+    // ========================================
+    // Index-Keyed Access Errors (Req 1.4, 2.6, 3.5)
+    // ========================================
+    /// Index not found in the market.
+    ///
+    /// Returned when attempting to access market data for an index
+    /// that has not been registered in the IndexedMarket.
+    #[error("Index not found: {index}")]
+    IndexNotFound {
+        /// String representation of the index that was not found
+        index: String,
+    },
+
+    /// Curve not built for the specified index.
+    ///
+    /// Returned when the curve for an index exists in mapping but
+    /// has not been constructed yet (e.g., bootstrapping not complete).
+    #[error("Curve not built for index: {index}")]
+    CurveNotBuilt {
+        /// String representation of the index
+        index: String,
+    },
+
+    /// VolCube not calibrated for the specified index.
+    ///
+    /// Returned when the volatility cube for an index exists but
+    /// calibration has not been completed.
+    #[error("VolCube not calibrated for index: {index}")]
+    VolCubeNotCalibrated {
+        /// String representation of the index
+        index: String,
+    },
+}
+
+/// Market build error types.
+///
+/// Provides structured error handling for `IndexedMarketBuilder` operations.
+/// Used during Market construction to report configuration and validation
+/// errors.
+///
+/// # Variants
+///
+/// - `DuplicateIndexMapping`: Same index registered more than once
+/// - `IndexNotSpecified`: Required index not set before build
+/// - `InvalidValuationDate`: Valuation date is invalid or inconsistent
+///
+/// # Examples
+///
+/// ```
+/// use pricer_models::market::MarketBuildError;
+///
+/// let err = MarketBuildError::DuplicateIndexMapping {
+///     index: "SOFR".to_string(),
+/// };
+/// assert!(format!("{}", err).contains("Duplicate"));
+/// ```
+#[derive(Error, Debug, Clone, PartialEq)]
+pub enum MarketBuildError {
+    /// Duplicate index mapping detected.
+    ///
+    /// Returned when attempting to register the same index twice
+    /// in the `IndexedMarketBuilder`.
+    #[error("Duplicate index mapping: {index}")]
+    DuplicateIndexMapping {
+        /// String representation of the duplicate index
+        index: String,
+    },
+
+    /// Required index not specified.
+    ///
+    /// Returned when `build()` is called but a required index
+    /// was not registered (e.g., no curves at all).
+    #[error("Index not specified: {context}")]
+    IndexNotSpecified {
+        /// Context describing what was missing
+        context: String,
+    },
+
+    /// Invalid valuation date.
+    ///
+    /// Returned when the valuation date is invalid or inconsistent
+    /// with other market data.
+    #[error("Invalid valuation date: {reason}")]
+    InvalidValuationDate {
+        /// Description of why the date is invalid
+        reason: String,
+    },
+}
+
+impl From<MarketBuildError> for PricingError {
+    fn from(err: MarketBuildError) -> Self { PricingError::InvalidInput(err.to_string()) }
 }
 
 impl From<MarketDataError> for PricingError {
@@ -234,5 +326,140 @@ mod tests {
         let display = format!("{}", err);
         assert!(display.contains("Missing market data"));
         assert!(display.contains("SOFR curve"));
+    }
+
+    // ========================================
+    // Index-Keyed Access Error Tests
+    // ========================================
+
+    #[test]
+    fn test_index_not_found_display() {
+        let err = MarketDataError::IndexNotFound {
+            index: "SOFR".to_string(),
+        };
+        let display = format!("{}", err);
+        assert!(display.contains("Index not found"));
+        assert!(display.contains("SOFR"));
+    }
+
+    #[test]
+    fn test_index_not_found_equality() {
+        let err1 = MarketDataError::IndexNotFound {
+            index: "SOFR".to_string(),
+        };
+        let err2 = MarketDataError::IndexNotFound {
+            index: "SOFR".to_string(),
+        };
+        let err3 = MarketDataError::IndexNotFound {
+            index: "EURIBOR3M".to_string(),
+        };
+        assert_eq!(err1, err2);
+        assert_ne!(err1, err3);
+    }
+
+    #[test]
+    fn test_curve_not_built_display() {
+        let err = MarketDataError::CurveNotBuilt {
+            index: "TONAR".to_string(),
+        };
+        let display = format!("{}", err);
+        assert!(display.contains("Curve not built"));
+        assert!(display.contains("TONAR"));
+    }
+
+    #[test]
+    fn test_volcube_not_calibrated_display() {
+        let err = MarketDataError::VolCubeNotCalibrated {
+            index: "SONIA".to_string(),
+        };
+        let display = format!("{}", err);
+        assert!(display.contains("VolCube not calibrated"));
+        assert!(display.contains("SONIA"));
+    }
+
+    #[test]
+    fn test_index_errors_into_pricing_error() {
+        let err = MarketDataError::IndexNotFound {
+            index: "SOFR".to_string(),
+        };
+        let pricing_err: PricingError = err.into();
+        match pricing_err {
+            PricingError::InvalidInput(msg) => {
+                assert!(msg.contains("Index not found"));
+            }
+            _ => panic!("Expected InvalidInput variant"),
+        }
+    }
+
+    // ========================================
+    // MarketBuildError Tests
+    // ========================================
+
+    #[test]
+    fn test_duplicate_index_mapping_display() {
+        let err = MarketBuildError::DuplicateIndexMapping {
+            index: "SOFR".to_string(),
+        };
+        let display = format!("{}", err);
+        assert!(display.contains("Duplicate index mapping"));
+        assert!(display.contains("SOFR"));
+    }
+
+    #[test]
+    fn test_index_not_specified_display() {
+        let err = MarketBuildError::IndexNotSpecified {
+            context: "No curves registered".to_string(),
+        };
+        let display = format!("{}", err);
+        assert!(display.contains("Index not specified"));
+        assert!(display.contains("No curves"));
+    }
+
+    #[test]
+    fn test_invalid_valuation_date_display() {
+        let err = MarketBuildError::InvalidValuationDate {
+            reason: "Date is in the past".to_string(),
+        };
+        let display = format!("{}", err);
+        assert!(display.contains("Invalid valuation date"));
+        assert!(display.contains("past"));
+    }
+
+    #[test]
+    fn test_market_build_error_equality() {
+        let err1 = MarketBuildError::DuplicateIndexMapping {
+            index: "SOFR".to_string(),
+        };
+        let err2 = MarketBuildError::DuplicateIndexMapping {
+            index: "SOFR".to_string(),
+        };
+        let err3 = MarketBuildError::DuplicateIndexMapping {
+            index: "SONIA".to_string(),
+        };
+        assert_eq!(err1, err2);
+        assert_ne!(err1, err3);
+    }
+
+    #[test]
+    fn test_market_build_error_clone() {
+        let err1 = MarketBuildError::InvalidValuationDate {
+            reason: "test".to_string(),
+        };
+        let err2 = err1.clone();
+        assert_eq!(err1, err2);
+    }
+
+    #[test]
+    fn test_market_build_error_into_pricing_error() {
+        let err = MarketBuildError::DuplicateIndexMapping {
+            index: "EURIBOR3M".to_string(),
+        };
+        let pricing_err: PricingError = err.into();
+        match pricing_err {
+            PricingError::InvalidInput(msg) => {
+                assert!(msg.contains("Duplicate"));
+            }
+            _ => panic!("Expected InvalidInput variant"),
+        }
     }
 }

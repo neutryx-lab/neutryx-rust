@@ -712,16 +712,39 @@ const volcubeBuilder = {
             y: inst.impliedVol * 100
         })).sort((a, b) => a.x - b.x);
 
-        // Generate model curve using SABR parameters
+        // Generate model curve using SABR parameters with 129 points (ATM centered)
         const forward = instruments[0]?.forward || 0.03;
         const modelData = [];
         const minStrike = Math.min(...marketData.map(d => d.x)) - 0.5;
         const maxStrike = Math.max(...marketData.map(d => d.x)) + 0.5;
+        const atmStrike = forward * 100;
 
-        for (let k = minStrike; k <= maxStrike; k += 0.1) {
+        // 129 points: 64 points below ATM + ATM + 64 points above ATM
+        const numPoints = 129;
+        const halfPoints = 64;
+        const stepBelow = (atmStrike - minStrike) / halfPoints;
+        const stepAbove = (maxStrike - atmStrike) / halfPoints;
+
+        // Generate points below ATM
+        for (let i = 0; i < halfPoints; i++) {
+            const k = minStrike + i * stepBelow;
             const strike = k / 100;
             const moneyness = Math.log(strike / forward);
-            // Simplified SABR approximation
+            const atmVol = params.alpha * 100;
+            const skew = params.rho * params.nu * moneyness * 50;
+            const convexity = params.nu * params.nu * moneyness * moneyness * 25;
+            const vol = atmVol + skew + convexity;
+            modelData.push({ x: k, y: vol });
+        }
+
+        // ATM point (center, index 64)
+        modelData.push({ x: atmStrike, y: params.alpha * 100 });
+
+        // Generate points above ATM
+        for (let i = 1; i <= halfPoints; i++) {
+            const k = atmStrike + i * stepAbove;
+            const strike = k / 100;
+            const moneyness = Math.log(strike / forward);
             const atmVol = params.alpha * 100;
             const skew = params.rho * params.nu * moneyness * 50;
             const convexity = params.nu * params.nu * moneyness * moneyness * 25;
@@ -808,6 +831,7 @@ const volcubeBuilder = {
         const forward = instruments[0]?.forward || 0.03;
 
         // Generate risk-neutral density using log-normal approximation with SABR vol
+        // Using 129 points (ATM centered at index 64)
         const atmVol = params.alpha;
         const expiry = this.state.selectedExpiry || 1;
         const sigma = atmVol * Math.sqrt(expiry);
@@ -815,10 +839,35 @@ const volcubeBuilder = {
         const densityData = [];
         const minRate = Math.max(0.001, forward - 4 * sigma * forward);
         const maxRate = forward + 4 * sigma * forward;
-        const step = (maxRate - minRate) / 100;
+
+        // 129 points: 64 points below ATM + ATM + 64 points above ATM
+        const numPoints = 129;
+        const halfPoints = 64;
+        const stepBelow = (forward - minRate) / halfPoints;
+        const stepAbove = (maxRate - forward) / halfPoints;
 
         let maxDensity = 0;
-        for (let rate = minRate; rate <= maxRate; rate += step) {
+
+        // Generate points below ATM (forward)
+        for (let i = 0; i < halfPoints; i++) {
+            const rate = minRate + i * stepBelow;
+            const d1 = (Math.log(rate / forward) + 0.5 * sigma * sigma) / sigma;
+            const density = Math.exp(-0.5 * d1 * d1) / (rate * sigma * Math.sqrt(2 * Math.PI));
+            densityData.push({ x: rate * 100, y: density });
+            maxDensity = Math.max(maxDensity, density);
+        }
+
+        // ATM point (center, index 64)
+        {
+            const d1 = (0.5 * sigma * sigma) / sigma; // log(forward/forward) = 0
+            const density = Math.exp(-0.5 * d1 * d1) / (forward * sigma * Math.sqrt(2 * Math.PI));
+            densityData.push({ x: forward * 100, y: density });
+            maxDensity = Math.max(maxDensity, density);
+        }
+
+        // Generate points above ATM (forward)
+        for (let i = 1; i <= halfPoints; i++) {
+            const rate = forward + i * stepAbove;
             const d1 = (Math.log(rate / forward) + 0.5 * sigma * sigma) / sigma;
             const density = Math.exp(-0.5 * d1 * d1) / (rate * sigma * Math.sqrt(2 * Math.PI));
             densityData.push({ x: rate * 100, y: density });
@@ -961,8 +1010,31 @@ const volcubeBuilder = {
                 { x: 90, y: (atm + bf10 + rr10 / 2) * 100 }
             ];
 
-            // Generate smooth model curve from RR/BF
-            for (let d = 5; d <= 95; d += 1) {
+            // Generate smooth model curve from RR/BF with 129 points (ATM centered at delta=50)
+            // 64 points below ATM + ATM + 64 points above ATM
+            const minDelta = 5;
+            const maxDelta = 95;
+            const atmDelta = 50;
+            const halfPoints = 64;
+            const stepBelow = (atmDelta - minDelta) / halfPoints;
+            const stepAbove = (maxDelta - atmDelta) / halfPoints;
+
+            // Points below ATM (delta < 50)
+            for (let i = 0; i < halfPoints; i++) {
+                const d = minDelta + i * stepBelow;
+                const atmVol = atm * 100;
+                const delta50 = d - 50;
+                const skew = rr25 * (delta50 / 25) * 50;
+                const smile = bf25 * Math.abs(delta50 / 25) * 100;
+                modelData.push({ x: d, y: atmVol + skew + smile });
+            }
+
+            // ATM point (center, index 64)
+            modelData.push({ x: 50, y: atm * 100 });
+
+            // Points above ATM (delta > 50)
+            for (let i = 1; i <= halfPoints; i++) {
+                const d = atmDelta + i * stepAbove;
                 const atmVol = atm * 100;
                 const delta50 = d - 50;
                 const skew = rr25 * (delta50 / 25) * 50;
@@ -1067,7 +1139,7 @@ const volcubeBuilder = {
                 kurtosis: apiData.statistics?.kurtosis
             };
         } else {
-            // Fallback: Generate log-normal density from quotes
+            // Fallback: Generate log-normal density from quotes with 129 points (ATM centered)
             const quotes = this.state.fxQuotes || [];
             if (quotes.length === 0) return;
 
@@ -1079,10 +1151,34 @@ const volcubeBuilder = {
 
             const minSpot = spot * 0.8;
             const maxSpot = spot * 1.2;
-            const step = (maxSpot - minSpot) / 100;
+
+            // 129 points: 64 points below ATM + ATM + 64 points above ATM
+            const halfPoints = 64;
+            const stepBelow = (spot - minSpot) / halfPoints;
+            const stepAbove = (maxSpot - spot) / halfPoints;
 
             let maxDensity = 0;
-            for (let s = minSpot; s <= maxSpot; s += step) {
+
+            // Points below ATM (spot)
+            for (let i = 0; i < halfPoints; i++) {
+                const s = minSpot + i * stepBelow;
+                const d1 = (Math.log(s / spot) + 0.5 * sigma * sigma) / sigma;
+                const density = Math.exp(-0.5 * d1 * d1) / (s * sigma * Math.sqrt(2 * Math.PI));
+                densityData.push({ x: s, y: density });
+                maxDensity = Math.max(maxDensity, density);
+            }
+
+            // ATM point (center, index 64)
+            {
+                const d1 = (0.5 * sigma * sigma) / sigma;
+                const density = Math.exp(-0.5 * d1 * d1) / (spot * sigma * Math.sqrt(2 * Math.PI));
+                densityData.push({ x: spot, y: density });
+                maxDensity = Math.max(maxDensity, density);
+            }
+
+            // Points above ATM (spot)
+            for (let i = 1; i <= halfPoints; i++) {
+                const s = spot + i * stepAbove;
                 const d1 = (Math.log(s / spot) + 0.5 * sigma * sigma) / sigma;
                 const density = Math.exp(-0.5 * d1 * d1) / (s * sigma * Math.sqrt(2 * Math.PI));
                 densityData.push({ x: s, y: density });

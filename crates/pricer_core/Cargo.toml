@@ -33,6 +33,7 @@ harness = false
 default = ["num-dual-mode", "serde", "equity", "parallel"]
 num-dual-mode = ["dep:num-dual"]  # Verification mode with dual numbers
 enzyme-mode = []                   # Production mode (Enzyme AD)
+execution-trace = []               # Execution trace mode for computation graph extraction
 serde = ["dep:serde", "chrono/serde", "infra_master/serde"]  # Serialisation support
 parallel = ["dep:rayon"]           # Parallel bootstrapping support
 linalg = ["dep:ndarray", "dep:nalgebra", "dep:rand", "dep:rand_distr"]  # Linear algebra support (includes multi-dimensional copula)

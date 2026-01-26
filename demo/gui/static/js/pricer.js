@@ -49,26 +49,19 @@ const genericPricer = {
         this.elements.resetCfBtn = document.getElementById('pricer-reset-cf-btn');
         this.elements.cfTableContainer = document.getElementById('pricer-cf-table-container');
 
-        // Action buttons
-        this.elements.priceBtn = document.getElementById('pricer-price-btn');
-        this.elements.greeksBtn = document.getElementById('pricer-greeks-btn');
+        // Action button
+        this.elements.calculateBtn = document.getElementById('pricer-calculate-btn');
 
         // Result elements
         this.elements.pvResult = document.getElementById('pricer-pv-result');
         this.elements.legBreakdown = document.getElementById('pricer-leg-breakdown');
         this.elements.greeksResult = document.getElementById('pricer-greeks-result');
-        this.elements.resultHistory = document.getElementById('pricer-result-history');
     },
 
     attachEventListeners() {
-        // Price button
-        if (this.elements.priceBtn) {
-            this.elements.priceBtn.addEventListener('click', () => this.price());
-        }
-
-        // Greeks button
-        if (this.elements.greeksBtn) {
-            this.elements.greeksBtn.addEventListener('click', () => this.calculateGreeks());
+        // Calculate button (Price & Risks)
+        if (this.elements.calculateBtn) {
+            this.elements.calculateBtn.addEventListener('click', () => this.calculateAll());
         }
 
         // Instrument type change
@@ -115,9 +108,33 @@ const genericPricer = {
             const data = await response.json();
             this.state.instruments = data.instruments || [];
             this.renderInstrumentSelector();
+
+            // Set default to OIS Swap and auto-expand
+            await this.setDefaultInstrument();
         } catch (error) {
             console.error('Failed to load instruments:', error);
             this.showApiNotAvailable();
+        }
+    },
+
+    async setDefaultInstrument() {
+        // Find OIS in the instruments list (snake_case from serde)
+        const ois = this.state.instruments.find(
+            inst => (inst.instrumentType || inst.id || inst.type) === 'ois'
+        );
+
+        if (ois && this.elements.instrumentType) {
+            // Set the select value
+            this.elements.instrumentType.value = 'ois';
+            this.state.selectedInstrument = 'ois';
+
+            // Render the parameter form
+            this.onInstrumentSelected();
+
+            // Auto-expand cashflows after a short delay to ensure form is rendered
+            setTimeout(() => {
+                this.expandCashflows();
+            }, 100);
         }
     },
 
@@ -128,11 +145,8 @@ const genericPricer = {
             `;
             this.elements.instrumentType.disabled = true;
         }
-        if (this.elements.priceBtn) {
-            this.elements.priceBtn.disabled = true;
-        }
-        if (this.elements.greeksBtn) {
-            this.elements.greeksBtn.disabled = true;
+        if (this.elements.calculateBtn) {
+            this.elements.calculateBtn.disabled = true;
         }
 
         // Show message in results panel
@@ -695,7 +709,10 @@ const genericPricer = {
         };
     },
 
-    async price() {
+    /**
+     * Calculate both price and risks in a single action.
+     */
+    async calculateAll() {
         if (!this.state.selectedInstrument) {
             alert('Please select an instrument type first');
             return;
@@ -706,12 +723,43 @@ const genericPricer = {
             return;
         }
 
-        try {
-            if (this.elements.priceBtn) {
-                this.elements.priceBtn.disabled = true;
-                this.elements.priceBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Pricing...';
-            }
+        // Set button to loading state
+        if (this.elements.calculateBtn) {
+            this.elements.calculateBtn.disabled = true;
+            this.elements.calculateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Calculating...';
+        }
 
+        try {
+            // Run price and greeks calculations in parallel
+            await Promise.all([
+                this.price(),
+                this.calculateGreeks()
+            ]);
+
+            if (typeof Logger !== 'undefined') {
+                Logger.info('GenericPricer', 'Price & Risks calculation completed', { instrument: this.state.selectedInstrument });
+            }
+        } catch (error) {
+            console.error('Calculation failed:', error);
+        } finally {
+            // Restore button state
+            if (this.elements.calculateBtn) {
+                this.elements.calculateBtn.disabled = false;
+                this.elements.calculateBtn.innerHTML = '<i class="fas fa-play"></i> Price & Risks';
+            }
+        }
+    },
+
+    async price() {
+        if (!this.state.selectedInstrument) {
+            return; // Validation handled by calculateAll
+        }
+
+        if (!this.state.expandedTrade) {
+            return; // Validation handled by calculateAll
+        }
+
+        try {
             const request = this.buildPricingRequest();
 
             const response = await fetch('/api/pricer/price', {
@@ -735,11 +783,6 @@ const genericPricer = {
             console.error('Pricing failed:', error);
             // Show demo result on error
             this.showDemoPricingResult();
-        } finally {
-            if (this.elements.priceBtn) {
-                this.elements.priceBtn.disabled = false;
-                this.elements.priceBtn.innerHTML = '<i class="fas fa-play"></i> Price';
-            }
         }
     },
 
@@ -810,21 +853,14 @@ const genericPricer = {
 
     async calculateGreeks() {
         if (!this.state.selectedInstrument) {
-            alert('Please select an instrument type first');
-            return;
+            return; // Validation handled by calculateAll
         }
 
         if (!this.state.expandedTrade) {
-            alert('Please expand cashflows first');
-            return;
+            return; // Validation handled by calculateAll
         }
 
         try {
-            if (this.elements.greeksBtn) {
-                this.elements.greeksBtn.disabled = true;
-                this.elements.greeksBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Calculating...';
-            }
-
             const request = {
                 ...this.buildPricingRequest(),
                 bumpSizes: {
@@ -850,11 +886,6 @@ const genericPricer = {
         } catch (error) {
             console.error('Greeks calculation failed:', error);
             this.showDemoGreeksResult();
-        } finally {
-            if (this.elements.greeksBtn) {
-                this.elements.greeksBtn.disabled = false;
-                this.elements.greeksBtn.innerHTML = '<i class="fas fa-chart-line"></i> Greeks';
-            }
         }
     },
 

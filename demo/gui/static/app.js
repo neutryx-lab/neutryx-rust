@@ -293,101 +293,49 @@ const parseNum = (el, fallback = 0) => parseFloat(el?.value) || fallback;
 /** Parse a string input with optional fallback. */
 const parseStr = (el, fallback = '') => el?.value || fallback;
 
-// --- Default Values (centralised for all modules) ---
+// --- Default Values (loaded from /api/config via ConfigLoader) ---
+let DEFAULTS = null;
 
-const DEFAULTS = {
-    // Trade Expansion defaults
-    expansion: {
-        rates: {
-            currency: 'USD',
-            tenor: '1Y',
-            rate: 3.5,              // percent
-            notional: 10_000_000
-        },
-        swap: {
-            currency: 'USD',
-            tenor: '5Y',
-            fixedRate: 3.0,         // percent
-            spread: 0,              // percent
-            notional: 10_000_000,
-            paymentFrequency: 'semi_annual',
-            dayCount: 'act_365'
-        },
-        fx: {
-            baseCurrency: 'EUR',
-            quoteCurrency: 'USD',
-            spotRate: 1.085,
-            forwardRate: 1.09,
-            notional: 1_000_000,
-            optionType: 'call',
-            volatility: 10          // percent
-        },
-        equity: {
-            underlying: 'AAPL',
-            spotPrice: 180,
-            strike: 185,
-            volatility: 25,         // percent
-            riskFreeRate: 5,        // percent
-            optionType: 'call',
-            direction: 'long'
-        }
-    },
+/** Initialise DEFAULTS from ConfigLoader (fallbacks handled by ConfigLoader) */
+async function initDefaults() {
+    if (DEFAULTS) return DEFAULTS;
+    await ConfigLoader.load();
+    const d = ConfigLoader.getConfig().defaults;
+    const e = d.expansion, p = d.pricer, c = d.curve;
 
-    // Pricer module defaults
-    pricer: {
-        equity: {
-            spot: 100,
-            strike: 100,
-            expiryYears: 1,
-            volatility: 20,         // percent
-            rate: 5,                // percent
-            optionType: 'call'
+    // Convert decimal rates to percentage for UI display
+    const pct = v => (v || 0) * 100;
+    DEFAULTS = {
+        expansion: {
+            rates: { ...e.rates, rate: pct(e.rates.rate) },
+            swap: { ...e.swap, fixedRate: pct(e.swap.fixedRate), spread: pct(e.swap.spread) },
+            fx: { ...e.fx, volatility: pct(e.fx.volatility) },
+            equity: { ...e.equity, volatility: pct(e.equity.volatility), riskFreeRate: pct(e.equity.riskFreeRate) }
         },
-        fx: {
-            spot: 1.10,
-            strike: 1.10,
-            expiryYears: 1,
-            volatility: 10,         // percent
-            domesticRate: 5,        // percent
-            foreignRate: 2,         // percent
-            optionType: 'call'
+        pricer: {
+            equity: { ...p.equity, volatility: pct(p.equity.volatility), rate: pct(p.equity.rate) },
+            fx: { ...p.fx, volatility: pct(p.fx.volatility), domesticRate: pct(p.fx.domesticRate), foreignRate: pct(p.fx.foreignRate) },
+            irs: { ...p.irs, fixedRate: pct(p.irs.fixedRate) }
         },
-        irs: {
-            notional: 1_000_000,
-            fixedRate: 2.5,         // percent
-            tenorYears: 5
-        }
-    },
+        curve: { irs: { notional: c.notional, fixedRate: pct(c.fixedRate), tenorYears: c.tenorYears, frequency: 'annual' },
+                 interpolation: c.interpolation },
+        scenario: { rateShock: 0, volShift: 0, spreadShock: 0, corrShift: 0,
+                    irs: { notional: c.notional, fixedRate: c.fixedRate, tenorYears: c.tenorYears, paymentFrequency: 'SemiAnnual' } }
+    };
+    Logger.debug('App', 'DEFAULTS initialised from ConfigLoader');
+    return DEFAULTS;
+}
 
-    // Curve Bootstrapping defaults
-    curve: {
-        irs: {
-            notional: 10_000_000,
-            fixedRate: 3.0,         // percent
-            tenorYears: 5,
-            frequency: 'annual'
-        },
-        interpolation: 'linear_on_log_df'
-    },
+/** Get defaults (returns empty structure if not yet loaded) */
+function getDefaults() {
+    return DEFAULTS || { expansion: {}, pricer: {}, curve: {}, scenario: {} };
+}
 
-    // Scenario Analysis defaults
-    scenario: {
-        rateShock: 0,               // bps
-        volShift: 0,                // percent
-        spreadShock: 0,             // bps
-        corrShift: 0,               // percent
-        // IRS parameters for scenario analysis
-        irs: {
-            notional: 10_000_000,
-            fixedRate: 0.035,       // decimal (3.5%)
-            tenorYears: 5,
-            paymentFrequency: 'SemiAnnual'
-        }
-    }
-};
-
-// Backward compatibility alias
-const EXPANSION_DEFAULTS = DEFAULTS.expansion;
+// Backward compatibility: EXPANSION_DEFAULTS getter
+Object.defineProperty(window, 'EXPANSION_DEFAULTS', {
+    get: () => DEFAULTS?.expansion || {},
+    configurable: true
+});
 
 const debounce = (fn, wait) => {
     let timeout;
@@ -6607,6 +6555,9 @@ function initVisualEffects() {
 async function init() {
     Logger.debug('App', 'init() called');
     try {
+        // Load configuration and defaults from API
+        await initDefaults();
+
         // Load external data from JSON files
         await loadExternalData();
 
@@ -6642,6 +6593,7 @@ async function init() {
         try { initImpactChart(); } catch(e) { Logger.error('App', 'initImpactChart error', { error: e.message }); }
         try { initPricer(); } catch(e) { Logger.error('App', 'initPricer error', { error: e.message }); }
         try { initTradeExpansion(); } catch(e) { Logger.error('App', 'initTradeExpansion error', { error: e.message }); }
+        try { setupInstrumentGraphListeners(); } catch(e) { Logger.error('App', 'setupInstrumentGraphListeners error', { error: e.message }); }
 
         // Load data
         Logger.debug('App', 'Loading data...');
@@ -6692,20 +6644,13 @@ document.addEventListener('DOMContentLoaded', init);
 // Task 4.1-4.8: Pricer Module
 // ============================================
 
-const pricerState = {
-    history: [],
-    maxHistoryItems: 10,
-    storageKey: 'fb.pricerHistory'
-};
+const pricerState = {};
 
 /**
  * Initialize the Pricer view and its event handlers.
  */
 function initPricer() {
     Logger.debug('Pricer', 'Initializing pricer module');
-
-    // Load history from LocalStorage
-    loadPricerHistory();
 
     // Instrument type selector
     const typeSelector = document.getElementById('pricer-instrument-type');
@@ -6717,12 +6662,6 @@ function initPricer() {
     const calculateBtn = document.getElementById('pricer-calculate-btn');
     if (calculateBtn) {
         calculateBtn.addEventListener('click', handlePricerCalculate);
-    }
-
-    // Clear history button
-    const clearHistoryBtn = document.getElementById('pricer-clear-history');
-    if (clearHistoryBtn) {
-        clearHistoryBtn.addEventListener('click', clearPricerHistory);
     }
 
     Logger.info('Pricer', 'Pricer module initialized');
@@ -6770,7 +6709,7 @@ async function handlePricerCalculate() {
         // Show loading state
         if (calculateBtn) {
             calculateBtn.disabled = true;
-            calculateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Calculating...</span>';
+            calculateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Pricing...</span>';
         }
         if (errorDiv) {
             errorDiv.style.display = 'none';
@@ -6800,9 +6739,6 @@ async function handlePricerCalculate() {
         // Display results
         displayPricerResults(response);
 
-        // Add to history
-        addToHistory(request, response);
-
     } catch (error) {
         Logger.error('Pricer', 'Calculation error', { error: error.message });
         if (errorDiv) {
@@ -6813,7 +6749,7 @@ async function handlePricerCalculate() {
         // Reset button
         if (calculateBtn) {
             calculateBtn.disabled = false;
-            calculateBtn.innerHTML = '<i class="fas fa-play"></i> <span>Calculate</span>';
+            calculateBtn.innerHTML = '<i class="fas fa-play"></i> <span>Price & Risks</span>';
         }
     }
 }
@@ -6956,192 +6892,6 @@ function clearPricerResults() {
         calcInfo.style.display = 'none';
     }
 }
-
-/**
- * Add calculation to history.
- */
-function addToHistory(request, response) {
-    const historyItem = {
-        id: response.calculationId,
-        timestamp: response.timestamp,
-        instrumentType: request.instrumentType,
-        params: request.params,
-        pv: response.pv,
-        greeks: response.greeks
-    };
-
-    // Add to beginning of array
-    pricerState.history.unshift(historyItem);
-
-    // Keep only maxHistoryItems
-    if (pricerState.history.length > pricerState.maxHistoryItems) {
-        pricerState.history = pricerState.history.slice(0, pricerState.maxHistoryItems);
-    }
-
-    // Save to LocalStorage
-    savePricerHistory();
-
-    // Render history
-    renderPricerHistory();
-}
-
-/**
- * Render history list.
- */
-function renderPricerHistory() {
-    const historyList = document.getElementById('pricer-history');
-    const clearBtn = document.getElementById('pricer-clear-history');
-    if (!historyList) return;
-
-    if (pricerState.history.length === 0) {
-        historyList.innerHTML = `
-            <div class="history-empty">
-                <i class="fas fa-clock"></i>
-                <p>No calculations yet</p>
-            </div>
-        `;
-        if (clearBtn) clearBtn.style.display = 'none';
-        return;
-    }
-
-    if (clearBtn) clearBtn.style.display = 'block';
-
-    const typeLabels = {
-        'equity_vanilla_option': 'Equity Option',
-        'fx_option': 'FX Option',
-        'irs': 'IRS'
-    };
-
-    historyList.innerHTML = pricerState.history.map(item => `
-        <div class="history-item" data-history-id="${item.id}">
-            <div class="history-item-header">
-                <span class="history-type">${typeLabels[item.instrumentType] || item.instrumentType}</span>
-                <span class="history-time">${new Date(item.timestamp).toLocaleTimeString()}</span>
-            </div>
-            <div class="history-item-value ${item.pv >= 0 ? 'positive' : 'negative'}">
-                PV: ${formatPricerNumber(item.pv)}
-            </div>
-        </div>
-    `).join('');
-
-    // Add click listeners to history items
-    historyList.querySelectorAll('.history-item').forEach(item => {
-        item.addEventListener('click', () => {
-            const historyId = item.dataset.historyId;
-            if (historyId) restoreHistoryItem(historyId);
-        });
-    });
-}
-
-/**
- * Restore a history item to the form.
- */
-function restoreHistoryItem(historyId) {
-    const item = pricerState.history.find(h => h.id === historyId);
-    if (!item) return;
-
-    Logger.debug('Pricer', 'Restoring history item', { id: historyId });
-
-    // Set instrument type
-    const typeSelector = document.getElementById('pricer-instrument-type');
-    if (typeSelector) {
-        typeSelector.value = item.instrumentType;
-        handleInstrumentTypeChange({ target: typeSelector });
-    }
-
-    // Restore parameters
-    const params = item.params;
-    switch (item.instrumentType) {
-        case 'equity_vanilla_option':
-            setInputValue('equity-spot', params.spot);
-            setInputValue('equity-strike', params.strike);
-            setInputValue('equity-expiry', params.expiryYears);
-            setInputValue('equity-vol', params.volatility * 100);
-            setInputValue('equity-rate', params.rate * 100);
-            setSelectValue('equity-option-type', params.optionType);
-            break;
-
-        case 'fx_option':
-            setInputValue('fx-spot', params.spot);
-            setInputValue('fx-strike', params.strike);
-            setInputValue('fx-expiry', params.expiryYears);
-            setInputValue('fx-vol', params.volatility * 100);
-            setInputValue('fx-dom-rate', params.domesticRate * 100);
-            setInputValue('fx-for-rate', params.foreignRate * 100);
-            setSelectValue('fx-option-type', params.optionType);
-            break;
-
-        case 'irs':
-            setInputValue('irs-notional', params.notional);
-            setInputValue('irs-fixed-rate', params.fixedRate * 100);
-            setInputValue('irs-tenor', params.tenorYears);
-            break;
-    }
-
-    // Display stored results
-    displayPricerResults({
-        calculationId: item.id,
-        pv: item.pv,
-        greeks: item.greeks,
-        timestamp: item.timestamp
-    });
-}
-
-/**
- * Helper to set input value.
- */
-function setInputValue(id, value) {
-    const el = document.getElementById(id);
-    if (el) el.value = value;
-}
-
-/**
- * Helper to set select value.
- */
-function setSelectValue(id, value) {
-    const el = document.getElementById(id);
-    if (el) el.value = value;
-}
-
-/**
- * Save history to LocalStorage.
- */
-function savePricerHistory() {
-    try {
-        localStorage.setItem(pricerState.storageKey, JSON.stringify(pricerState.history));
-    } catch (e) {
-        Logger.warn('Pricer', 'Failed to save history', { error: e.message });
-    }
-}
-
-/**
- * Load history from LocalStorage.
- */
-function loadPricerHistory() {
-    try {
-        const stored = localStorage.getItem(pricerState.storageKey);
-        if (stored) {
-            pricerState.history = JSON.parse(stored);
-            renderPricerHistory();
-        }
-    } catch (e) {
-        Logger.warn('Pricer', 'Failed to load history', { error: e.message });
-        pricerState.history = [];
-    }
-}
-
-/**
- * Clear all history.
- */
-function clearPricerHistory() {
-    pricerState.history = [];
-    savePricerHistory();
-    renderPricerHistory();
-    Logger.info('Pricer', 'History cleared');
-}
-
-// Make restoreHistoryItem available globally
-window.restoreHistoryItem = restoreHistoryItem;
 
 // ============================================
 // Trade Expansion Module (pricer-trade-expansion-ui)
@@ -7679,22 +7429,14 @@ function createDailyAccrualsRow(dailyAccruals, rowId, colspan) {
                                     </tr>
                                 `).join('')}
                                 ${hasMore ? `
-                                    <tr class="hidden-rows" id="${rowId}-hidden" style="display: none;">
-                                        <td colspan="4" style="padding: 0;">
-                                            <table class="daily-accruals-table" style="margin: 0;">
-                                                <tbody>
-                                                    ${dailyAccruals.slice(initialLimit).map(da => `
-                                                        <tr>
-                                                            <td class="mono">${da.date}</td>
-                                                            <td class="mono">${(da.overnightRate * 100).toFixed(4)}%</td>
-                                                            <td class="mono">${da.dayFraction.toFixed(6)}</td>
-                                                            <td class="mono">${formatNumber(da.compoundedNotional)}</td>
-                                                        </tr>
-                                                    `).join('')}
-                                                </tbody>
-                                            </table>
-                                        </td>
-                                    </tr>
+                                    ${dailyAccruals.slice(initialLimit).map(da => `
+                                        <tr class="hidden-row" data-hidden-group="${rowId}" style="display: none;">
+                                            <td class="mono">${da.date}</td>
+                                            <td class="mono">${(da.overnightRate * 100).toFixed(4)}%</td>
+                                            <td class="mono">${da.dayFraction.toFixed(6)}</td>
+                                            <td class="mono">${formatNumber(da.compoundedNotional)}</td>
+                                        </tr>
+                                    `).join('')}
                                     <tr class="more-rows-toggle" id="${rowId}-toggle">
                                         <td colspan="4">
                                             <button class="show-more-btn" data-toggle-more="${rowId}">
@@ -7752,23 +7494,22 @@ document.addEventListener('click', (e) => {
  * Toggle show more/less for daily accruals.
  */
 function toggleShowMoreDailyAccruals(rowId, btn) {
-    const hiddenRows = document.getElementById(`${rowId}-hidden`);
-    if (!hiddenRows) return;
+    const hiddenRows = document.querySelectorAll(`tr[data-hidden-group="${rowId}"]`);
+    if (hiddenRows.length === 0) return;
 
-    const isHidden = hiddenRows.style.display === 'none';
-    hiddenRows.style.display = isHidden ? 'table-row' : 'none';
+    const isHidden = hiddenRows[0].style.display === 'none';
+    hiddenRows.forEach(row => {
+        row.style.display = isHidden ? 'table-row' : 'none';
+    });
 
     // Update button text
-    const icon = btn.querySelector('i');
     const text = btn.textContent.trim();
     const match = text.match(/(\d+)/);
-    const count = match ? match[1] : '';
+    const count = match ? match[1] : hiddenRows.length;
 
     if (isHidden) {
-        icon.className = 'fas fa-chevron-up';
         btn.innerHTML = `<i class="fas fa-chevron-up"></i> Show less`;
     } else {
-        icon.className = 'fas fa-chevron-down';
         btn.innerHTML = `<i class="fas fa-chevron-down"></i> Show all ${count} more days`;
     }
 }
@@ -8132,6 +7873,764 @@ function initGraphView() {
     graphManager.addListener('graph_update', ({ updatedNodes }) => {
         updateCanvasGraphNodes(updatedNodes);
     });
+}
+
+// =============================================================================
+// Pricer Graph: TracedFloat computation graph visualisation
+// =============================================================================
+
+/**
+ * Pricer Graph state
+ */
+const pricerGraphState = {
+    svg: null,
+    g: null,
+    zoom: null,
+    simulation: null,
+    nodes: [],
+    links: [],
+    metadata: null,
+    selectedNode: null,
+    searchResults: [],
+    searchIndex: -1,
+};
+
+/**
+ * Initialise pricer graph view
+ */
+function initPricerGraphView() {
+    const container = document.getElementById('pricer-graph-container');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    const width = container.clientWidth || 800;
+    const height = container.clientHeight || 600;
+
+    pricerGraphState.svg = d3.select(container)
+        .append('svg')
+        .attr('width', '100%')
+        .attr('height', '100%')
+        .attr('viewBox', `0 0 ${width} ${height}`)
+        .attr('class', 'pricer-graph-svg');
+
+    pricerGraphState.g = pricerGraphState.svg.append('g')
+        .attr('class', 'pricer-graph-main-group');
+
+    // Add arrow marker for directed edges
+    pricerGraphState.svg.append('defs').append('marker')
+        .attr('id', 'pricer-arrow')
+        .attr('viewBox', '0 -5 10 10')
+        .attr('refX', 20)
+        .attr('refY', 0)
+        .attr('markerWidth', 6)
+        .attr('markerHeight', 6)
+        .attr('orient', 'auto')
+        .append('path')
+        .attr('fill', '#64748b')
+        .attr('d', 'M0,-5L10,0L0,5');
+
+    // Setup zoom
+    pricerGraphState.zoom = d3.zoom()
+        .scaleExtent([0.1, 4])
+        .on('zoom', (event) => {
+            pricerGraphState.g.attr('transform', event.transform);
+        });
+
+    pricerGraphState.svg.call(pricerGraphState.zoom);
+
+    // Setup force simulation
+    pricerGraphState.simulation = d3.forceSimulation()
+        .force('link', d3.forceLink().id(d => d.id).distance(80))
+        .force('charge', d3.forceManyBody().strength(-200))
+        .force('center', d3.forceCenter(width / 2, height / 2))
+        .force('collision', d3.forceCollide().radius(30));
+}
+
+/**
+ * Fetch pricer graph from API
+ */
+async function fetchPricerGraph() {
+    const formulaSelect = document.getElementById('pricer-formula-selector');
+    const detailSelect = document.getElementById('pricer-detail-level');
+
+    const formula = formulaSelect ? formulaSelect.value : 'black_scholes';
+    const detailLevel = detailSelect ? detailSelect.value : 'operation';
+
+    try {
+        const response = await fetch(`${API_BASE}/pricer/graph?formula=${formula}&detail_level=${detailLevel}`);
+        if (!response.ok) throw new Error('Failed to fetch pricer graph');
+
+        const data = await response.json();
+        renderPricerGraph(data);
+    } catch (error) {
+        console.error('Error fetching pricer graph:', error);
+        showToast('Failed to load pricer graph', 'error');
+    }
+}
+
+/**
+ * Render pricer graph with force-directed layout
+ */
+function renderPricerGraph(data) {
+    if (!pricerGraphState.g || !pricerGraphState.simulation) {
+        console.warn('Pricer graph view not initialised');
+        return;
+    }
+
+    // Store state
+    pricerGraphState.nodes = data.nodes || [];
+    pricerGraphState.links = data.edges || [];
+    pricerGraphState.metadata = data.metadata || {};
+
+    // Update statistics
+    document.getElementById('graph-node-count').textContent = pricerGraphState.nodes.length;
+    document.getElementById('graph-edge-count').textContent = pricerGraphState.links.length;
+    document.getElementById('graph-generated-at').textContent = new Date().toLocaleTimeString();
+
+    // Clear existing elements
+    pricerGraphState.g.selectAll('*').remove();
+
+    // Create scope backgrounds for operation-level view
+    if (pricerGraphState.metadata.detail_level === 'Operation') {
+        renderPricerScopes();
+    }
+
+    // Create links (edges)
+    const links = pricerGraphState.g.append('g')
+        .attr('class', 'pricer-links')
+        .selectAll('line')
+        .data(pricerGraphState.links)
+        .enter()
+        .append('line')
+        .attr('class', 'pricer-link')
+        .attr('stroke', '#64748b')
+        .attr('stroke-width', 1.5)
+        .attr('marker-end', 'url(#pricer-arrow)');
+
+    // Create nodes
+    const nodes = pricerGraphState.g.append('g')
+        .attr('class', 'pricer-nodes')
+        .selectAll('g')
+        .data(pricerGraphState.nodes)
+        .enter()
+        .append('g')
+        .attr('class', d => `pricer-node pricer-node-${d.node_type.toLowerCase()}`)
+        .call(d3.drag()
+            .on('start', dragStarted)
+            .on('drag', dragged)
+            .on('end', dragEnded))
+        .on('click', (event, d) => selectPricerNode(d));
+
+    // Add circles for nodes
+    nodes.append('circle')
+        .attr('r', d => getPricerNodeRadius(d))
+        .attr('fill', d => getPricerNodeColor(d))
+        .attr('stroke', '#fff')
+        .attr('stroke-width', 2);
+
+    // Add labels
+    nodes.append('text')
+        .attr('class', 'pricer-node-label')
+        .attr('dy', d => getPricerNodeRadius(d) + 14)
+        .attr('text-anchor', 'middle')
+        .attr('fill', 'var(--text-secondary)')
+        .attr('font-size', '10px')
+        .text(d => getPricerNodeLabel(d));
+
+    // Setup simulation
+    pricerGraphState.simulation
+        .nodes(pricerGraphState.nodes)
+        .on('tick', () => {
+            links
+                .attr('x1', d => d.source.x)
+                .attr('y1', d => d.source.y)
+                .attr('x2', d => d.target.x)
+                .attr('y2', d => d.target.y);
+
+            nodes.attr('transform', d => `translate(${d.x},${d.y})`);
+        });
+
+    pricerGraphState.simulation.force('link').links(pricerGraphState.links);
+    pricerGraphState.simulation.alpha(1).restart();
+
+    // Drag functions
+    function dragStarted(event, d) {
+        if (!event.active) pricerGraphState.simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+    }
+
+    function dragged(event, d) {
+        d.fx = event.x;
+        d.fy = event.y;
+    }
+
+    function dragEnded(event, d) {
+        if (!event.active) pricerGraphState.simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+    }
+}
+
+/**
+ * Render scope backgrounds as dashed rectangles
+ */
+function renderPricerScopes() {
+    // Group nodes by scope
+    const scopeNodes = {};
+    pricerGraphState.nodes.forEach(node => {
+        const scopeId = node.group?.scope_id || 'root';
+        if (!scopeNodes[scopeId]) {
+            scopeNodes[scopeId] = {
+                name: node.group?.scope_name || 'root',
+                nodes: []
+            };
+        }
+        scopeNodes[scopeId].nodes.push(node);
+    });
+
+    // This will be updated on tick - placeholder for now
+}
+
+/**
+ * Get node radius based on type
+ */
+function getPricerNodeRadius(node) {
+    switch (node.node_type) {
+        case 'Input': return 18;
+        case 'Output': return 20;
+        case 'Scope': return 25;
+        default: return 12;
+    }
+}
+
+/**
+ * Get node color based on type
+ */
+function getPricerNodeColor(node) {
+    switch (node.node_type) {
+        case 'Input': return '#22c55e';  // Green for inputs
+        case 'Output': return '#ef4444'; // Red for outputs
+        case 'Scope': return '#8b5cf6';  // Purple for scopes
+        case 'Intermediate':
+        default:
+            // Color by operation type
+            const op = node.label || '';
+            if (op.includes('Add') || op.includes('Sub')) return '#3b82f6'; // Blue for add/sub
+            if (op.includes('Mul') || op.includes('Div')) return '#f59e0b'; // Orange for mul/div
+            if (op.includes('Sqrt') || op.includes('Exp') || op.includes('Ln')) return '#ec4899'; // Pink for functions
+            return '#64748b'; // Grey for others
+    }
+}
+
+/**
+ * Get node label
+ */
+function getPricerNodeLabel(node) {
+    if (node.label && node.label !== '') return node.label;
+    if (node.node_type === 'Input') return 'input';
+    if (node.node_type === 'Scope') return node.id || 'scope';
+    return '';
+}
+
+/**
+ * Select a pricer graph node and show details
+ */
+function selectPricerNode(node) {
+    pricerGraphState.selectedNode = node;
+
+    // Update selection visual
+    pricerGraphState.g.selectAll('.pricer-node circle')
+        .attr('stroke', '#fff')
+        .attr('stroke-width', 2);
+
+    pricerGraphState.g.selectAll('.pricer-node')
+        .filter(d => d.id === node.id)
+        .select('circle')
+        .attr('stroke', '#fbbf24')
+        .attr('stroke-width', 3);
+
+    // Update info panel
+    document.getElementById('pricer-node-operation').textContent = node.label || node.node_type || '-';
+    document.getElementById('pricer-node-value').textContent =
+        node.value !== undefined ? node.value.toFixed(6) : '-';
+    document.getElementById('pricer-node-label').textContent = node.label || '-';
+    document.getElementById('pricer-node-scope').textContent =
+        node.group?.scope_name || '-';
+    document.getElementById('pricer-node-source').textContent =
+        node.source_location || '-';
+}
+
+/**
+ * Setup pricer graph event listeners
+ */
+function setupPricerGraphListeners() {
+    // Load button
+    const loadBtn = document.getElementById('load-pricer-graph');
+    if (loadBtn) {
+        loadBtn.addEventListener('click', fetchPricerGraph);
+    }
+
+    // Formula change
+    const formulaSelect = document.getElementById('pricer-formula-selector');
+    if (formulaSelect) {
+        formulaSelect.addEventListener('change', fetchPricerGraph);
+    }
+
+    // Detail level change
+    const detailSelect = document.getElementById('pricer-detail-level');
+    if (detailSelect) {
+        detailSelect.addEventListener('change', fetchPricerGraph);
+    }
+
+    // Zoom controls
+    const zoomIn = document.getElementById('pricer-graph-zoom-in');
+    const zoomOut = document.getElementById('pricer-graph-zoom-out');
+    const zoomReset = document.getElementById('pricer-graph-zoom-reset');
+    const zoomFit = document.getElementById('pricer-graph-zoom-fit');
+
+    if (zoomIn) {
+        zoomIn.addEventListener('click', () => {
+            pricerGraphState.svg.transition().call(
+                pricerGraphState.zoom.scaleBy, 1.3
+            );
+        });
+    }
+    if (zoomOut) {
+        zoomOut.addEventListener('click', () => {
+            pricerGraphState.svg.transition().call(
+                pricerGraphState.zoom.scaleBy, 0.7
+            );
+        });
+    }
+    if (zoomReset) {
+        zoomReset.addEventListener('click', () => {
+            pricerGraphState.svg.transition().call(
+                pricerGraphState.zoom.transform, d3.zoomIdentity
+            );
+        });
+    }
+    if (zoomFit) {
+        zoomFit.addEventListener('click', () => fitPricerGraphToView());
+    }
+
+    // Search
+    const searchInput = document.getElementById('pricer-graph-search-input');
+    const searchClear = document.getElementById('pricer-graph-search-clear');
+
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            searchPricerGraph(query);
+            if (searchClear) {
+                searchClear.style.display = query ? 'block' : 'none';
+            }
+        });
+    }
+    if (searchClear) {
+        searchClear.addEventListener('click', () => {
+            if (searchInput) searchInput.value = '';
+            clearPricerGraphSearch();
+            searchClear.style.display = 'none';
+        });
+    }
+}
+
+/**
+ * Fit pricer graph to view
+ */
+function fitPricerGraphToView() {
+    if (!pricerGraphState.nodes.length) return;
+
+    const container = document.getElementById('pricer-graph-container');
+    if (!container) return;
+
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+
+    // Calculate bounds
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    pricerGraphState.nodes.forEach(d => {
+        if (d.x < minX) minX = d.x;
+        if (d.x > maxX) maxX = d.x;
+        if (d.y < minY) minY = d.y;
+        if (d.y > maxY) maxY = d.y;
+    });
+
+    const graphWidth = maxX - minX;
+    const graphHeight = maxY - minY;
+    const scale = 0.9 * Math.min(width / graphWidth, height / graphHeight);
+    const translateX = width / 2 - scale * (minX + maxX) / 2;
+    const translateY = height / 2 - scale * (minY + maxY) / 2;
+
+    pricerGraphState.svg.transition().duration(500).call(
+        pricerGraphState.zoom.transform,
+        d3.zoomIdentity.translate(translateX, translateY).scale(scale)
+    );
+}
+
+/**
+ * Search pricer graph nodes
+ */
+function searchPricerGraph(query) {
+    if (!query) {
+        clearPricerGraphSearch();
+        return;
+    }
+
+    pricerGraphState.searchResults = pricerGraphState.nodes.filter(n =>
+        (n.label && n.label.toLowerCase().includes(query)) ||
+        (n.id && n.id.toLowerCase().includes(query)) ||
+        (n.node_type && n.node_type.toLowerCase().includes(query))
+    );
+    pricerGraphState.searchIndex = pricerGraphState.searchResults.length > 0 ? 0 : -1;
+
+    // Highlight matching nodes
+    pricerGraphState.g.selectAll('.pricer-node')
+        .classed('search-match', d => pricerGraphState.searchResults.includes(d))
+        .classed('search-dim', d => !pricerGraphState.searchResults.includes(d));
+
+    // Select first result
+    if (pricerGraphState.searchResults.length > 0) {
+        selectPricerNode(pricerGraphState.searchResults[0]);
+    }
+}
+
+/**
+ * Clear pricer graph search
+ */
+function clearPricerGraphSearch() {
+    pricerGraphState.searchResults = [];
+    pricerGraphState.searchIndex = -1;
+
+    pricerGraphState.g.selectAll('.pricer-node')
+        .classed('search-match', false)
+        .classed('search-dim', false);
+}
+
+// Instrument Graph: USD OIS → Curve → Bootstrap Instruments
+// =============================================================================
+
+/**
+ * Instrument Graph state
+ */
+const instrumentGraphState = {
+    svg: null,
+    g: null,
+    simulation: null,
+    nodes: [],
+    links: [],
+    metadata: null,
+    currentType: 'pricer', // 'pricer' or 'static'
+};
+
+/**
+ * Initialise instrument graph view
+ */
+function initInstrumentGraphView() {
+    const container = document.getElementById('instrument-graph-container');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    const width = container.clientWidth || 800;
+    const height = container.clientHeight || 600;
+
+    instrumentGraphState.svg = d3.select(container)
+        .append('svg')
+        .attr('width', '100%')
+        .attr('height', '100%')
+        .attr('viewBox', `0 0 ${width} ${height}`)
+        .attr('class', 'instrument-graph-svg');
+
+    instrumentGraphState.g = instrumentGraphState.svg.append('g')
+        .attr('class', 'instrument-graph-main-group');
+
+    // Add arrow marker
+    instrumentGraphState.svg.append('defs').append('marker')
+        .attr('id', 'inst-arrowhead')
+        .attr('viewBox', '-0 -5 10 10')
+        .attr('refX', 25)
+        .attr('refY', 0)
+        .attr('orient', 'auto')
+        .attr('markerWidth', 6)
+        .attr('markerHeight', 6)
+        .append('path')
+        .attr('d', 'M0,-5L10,0L0,5')
+        .attr('fill', '#64748b');
+
+    // Setup zoom for instrument graph
+    const zoom = d3.zoom()
+        .scaleExtent([0.1, 4])
+        .on('zoom', (event) => {
+            instrumentGraphState.g.attr('transform', event.transform);
+        });
+
+    instrumentGraphState.svg.call(zoom);
+}
+
+/**
+ * Fetch and render instrument graph
+ */
+async function fetchInstrumentGraph() {
+    const currencySelect = document.getElementById('instrument-currency-selector');
+    const tenorSelect = document.getElementById('instrument-tenor-selector');
+
+    const currency = currencySelect?.value || 'USD';
+    const tenor = tenorSelect?.value || '1';
+
+    const loadingEl = document.getElementById('graph-loading');
+    if (loadingEl) loadingEl.style.display = 'flex';
+
+    try {
+        const response = await fetch(`${API_BASE}/instrument-graph?currency=${currency}&tenor=${tenor}&instrument_type=ois`);
+        if (!response.ok) throw new Error('Failed to fetch instrument graph');
+
+        const data = await response.json();
+        renderInstrumentGraph(data);
+        updateInstrumentInfo(data);
+    } catch (error) {
+        console.error('Error fetching instrument graph:', error);
+        showToast('Failed to load instrument graph', 'error');
+    } finally {
+        if (loadingEl) loadingEl.style.display = 'none';
+    }
+}
+
+/**
+ * Render instrument graph with hierarchical layout
+ */
+function renderInstrumentGraph(data) {
+    if (!instrumentGraphState.g) {
+        initInstrumentGraphView();
+    }
+
+    const g = instrumentGraphState.g;
+    const container = document.getElementById('instrument-graph-container');
+    const width = container?.clientWidth || 800;
+    const height = container?.clientHeight || 600;
+
+    // Store state
+    instrumentGraphState.nodes = data.nodes || [];
+    instrumentGraphState.links = data.links || [];
+    instrumentGraphState.metadata = data.metadata || {};
+
+    // Clear existing elements
+    g.selectAll('*').remove();
+
+    // Separate nodes by type for hierarchical layout
+    const outputNodes = data.nodes.filter(n => n.group === 'output');
+    const curveNodes = data.nodes.filter(n => n.group === 'intermediate');
+    const instrumentNodes = data.nodes.filter(n => n.group === 'input');
+
+    // Calculate positions - hierarchical top-to-bottom layout
+    const nodePositions = new Map();
+
+    // Output node at top
+    outputNodes.forEach((n, i) => {
+        nodePositions.set(n.id, { x: width / 2, y: 80 });
+    });
+
+    // Curve node in middle
+    curveNodes.forEach((n, i) => {
+        nodePositions.set(n.id, { x: width / 2, y: height / 2 - 50 });
+    });
+
+    // Instrument nodes at bottom in a row
+    const instrumentSpacing = Math.min(100, (width - 100) / Math.max(instrumentNodes.length, 1));
+    const startX = (width - (instrumentNodes.length - 1) * instrumentSpacing) / 2;
+    instrumentNodes.forEach((n, i) => {
+        nodePositions.set(n.id, {
+            x: startX + i * instrumentSpacing,
+            y: height - 120
+        });
+    });
+
+    // Assign positions to nodes
+    data.nodes.forEach(n => {
+        const pos = nodePositions.get(n.id);
+        if (pos) {
+            n.x = pos.x;
+            n.y = pos.y;
+        }
+    });
+
+    // Draw links (curved paths)
+    const links = g.selectAll('.inst-link')
+        .data(data.links)
+        .join('path')
+        .attr('class', 'inst-link')
+        .attr('fill', 'none')
+        .attr('stroke', '#64748b')
+        .attr('stroke-width', 2)
+        .attr('stroke-opacity', 0.6)
+        .attr('marker-end', 'url(#inst-arrowhead)')
+        .attr('d', d => {
+            const source = data.nodes.find(n => n.id === d.source);
+            const target = data.nodes.find(n => n.id === d.target);
+            if (!source || !target) return '';
+
+            // Curved path
+            const midY = (source.y + target.y) / 2;
+            return `M${source.x},${source.y} Q${source.x},${midY} ${target.x},${target.y}`;
+        });
+
+    // Draw nodes
+    const nodeGroups = g.selectAll('.inst-node')
+        .data(data.nodes)
+        .join('g')
+        .attr('class', 'inst-node')
+        .attr('transform', d => `translate(${d.x}, ${d.y})`);
+
+    // Node shapes based on type
+    nodeGroups.each(function(d) {
+        const node = d3.select(this);
+
+        if (d.group === 'output') {
+            // Output: Large rounded rectangle
+            node.append('rect')
+                .attr('x', -80)
+                .attr('y', -30)
+                .attr('width', 160)
+                .attr('height', 60)
+                .attr('rx', 10)
+                .attr('fill', '#22c55e')
+                .attr('stroke', '#16a34a')
+                .attr('stroke-width', 2);
+        } else if (d.group === 'intermediate') {
+            // Curve: Rounded rectangle
+            node.append('rect')
+                .attr('x', -100)
+                .attr('y', -25)
+                .attr('width', 200)
+                .attr('height', 50)
+                .attr('rx', 8)
+                .attr('fill', '#3b82f6')
+                .attr('stroke', '#2563eb')
+                .attr('stroke-width', 2);
+        } else {
+            // Instrument: Circle
+            node.append('circle')
+                .attr('r', 30)
+                .attr('fill', '#f97316')
+                .attr('stroke', '#ea580c')
+                .attr('stroke-width', 2);
+        }
+    });
+
+    // Add labels
+    nodeGroups.append('text')
+        .attr('text-anchor', 'middle')
+        .attr('dy', d => d.group === 'input' ? 4 : 0)
+        .attr('fill', '#fff')
+        .attr('font-size', d => d.group === 'input' ? '10px' : '12px')
+        .attr('font-weight', '600')
+        .text(d => d.label);
+
+    // Add value labels for output node
+    nodeGroups.filter(d => d.group === 'output')
+        .append('text')
+        .attr('text-anchor', 'middle')
+        .attr('dy', 20)
+        .attr('fill', '#fff')
+        .attr('font-size', '14px')
+        .attr('font-weight', '700')
+        .text(d => d.value ? `$${d.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '');
+
+    // Add rate labels for instrument nodes
+    nodeGroups.filter(d => d.group === 'input')
+        .append('text')
+        .attr('text-anchor', 'middle')
+        .attr('dy', 50)
+        .attr('fill', '#94a3b8')
+        .attr('font-size', '10px')
+        .text(d => d.value ? `${d.value.toFixed(2)}%` : '');
+
+    // Add tooltips
+    nodeGroups.on('mouseenter', function(event, d) {
+        const tooltip = d.instrument_details || d.label;
+        showToast(tooltip, 'info', 2000);
+    });
+
+    // Update statistics
+    document.getElementById('graph-node-count').textContent = data.nodes.length;
+    document.getElementById('graph-edge-count').textContent = data.links.length;
+    document.getElementById('graph-depth').textContent = '3'; // Fixed depth: Instrument → Curve → PV
+    document.getElementById('graph-generated-at').textContent =
+        new Date(data.metadata.generated_at).toLocaleTimeString();
+}
+
+/**
+ * Update instrument info panel
+ */
+function updateInstrumentInfo(data) {
+    const meta = data.metadata;
+
+    document.getElementById('inst-info-name').textContent = meta.instrument;
+
+    const pvEl = document.getElementById('inst-info-pv');
+    pvEl.textContent = `$${meta.pv.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+    pvEl.className = meta.pv >= 0 ? 'info-value positive' : 'info-value negative';
+
+    document.getElementById('inst-info-curve').textContent = `${meta.currency} SOFR`;
+    document.getElementById('inst-info-pillars').textContent =
+        data.nodes.filter(n => n.group === 'input').length;
+}
+
+/**
+ * Switch between pricer and static graph
+ */
+function switchGraphType(type) {
+    instrumentGraphState.currentType = type;
+
+    const pricerControls = document.getElementById('pricer-graph-controls');
+    const staticControls = document.getElementById('trade-graph-controls');
+    const pricerContent = document.getElementById('pricer-graph-content');
+    const staticContent = document.getElementById('graph-content');
+    const pricerInfoSection = document.getElementById('pricer-node-info-section');
+
+    // Update tab buttons
+    document.querySelectorAll('.graph-type-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.graphType === type);
+    });
+
+    // Hide all controls and content first
+    if (pricerControls) pricerControls.style.display = 'none';
+    if (staticControls) staticControls.style.display = 'none';
+    if (pricerContent) pricerContent.style.display = 'none';
+    if (staticContent) staticContent.style.display = 'none';
+    if (pricerInfoSection) pricerInfoSection.style.display = 'none';
+
+    if (type === 'pricer') {
+        if (pricerControls) pricerControls.style.display = 'flex';
+        if (pricerContent) pricerContent.style.display = 'block';
+        if (pricerInfoSection) pricerInfoSection.style.display = 'block';
+
+        // Init and load pricer graph if not already
+        if (!pricerGraphState.svg) {
+            initPricerGraphView();
+            fetchPricerGraph();
+        }
+    } else if (type === 'static') {
+        if (staticControls) staticControls.style.display = 'flex';
+        if (staticContent) staticContent.style.display = 'block';
+    }
+}
+
+/**
+ * Setup graph event listeners
+ */
+function setupInstrumentGraphListeners() {
+    // Tab switching
+    document.querySelectorAll('.graph-type-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            switchGraphType(tab.dataset.graphType);
+        });
+    });
+
+    // Setup pricer graph listeners
+    setupPricerGraphListeners();
 }
 
 /**

@@ -68,5 +68,9 @@ harness = false
 name = "volcube"
 harness = false
 
+[[bench]]
+name = "indexed_market"
+harness = false
+
 [lints]
 workspace = true

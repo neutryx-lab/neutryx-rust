@@ -1,0 +1,19 @@
+{
+  "metadata": {
+    "description": "FX Spot rates",
+    "last_updated": "2026-01-25T00:00:00Z",
+    "version": "1.0"
+  },
+  "spots": [
+    { "pair": "EURUSD", "value": 1.0850 },
+    { "pair": "USDJPY", "value": 149.50 },
+    { "pair": "GBPUSD", "value": 1.2650 },
+    { "pair": "EURGBP", "value": 0.8578 },
+    { "pair": "EURJPY", "value": 162.21 },
+    { "pair": "GBPJPY", "value": 189.12 },
+    { "pair": "AUDUSD", "value": 0.6580 },
+    { "pair": "USDCAD", "value": 1.3520 },
+    { "pair": "USDCHF", "value": 0.8825 },
+    { "pair": "NZDUSD", "value": 0.6125 }
+  ]
+}

@@ -18,41 +18,16 @@
 //! - Index-based instrument management
 //! - Builder model selection (interpolation, bootstrap method)
 
-pub mod curve_builder_handlers;
-pub mod curve_builder_types;
 pub mod error;
-pub mod fxcurve_handlers;
-pub mod fxcurve_types;
-pub mod fxvol_handlers;
-pub mod fxvol_types;
-pub mod generic_pricer_handlers;
-pub mod irvol_handlers;
-pub mod irvol_types;
+pub mod handlers;
 pub mod jobs;
 pub mod market_data;
-pub mod market_handlers;
-pub mod market_types;
 pub mod metrics;
 pub mod openapi;
-pub mod pricer_types;
 pub mod pricing_service;
-pub mod risk_engine_handlers;
-pub mod risk_engine_types;
-pub mod scenario_handlers;
 pub mod schedule_utils;
 pub mod state;
-pub mod trade_handlers;
-pub mod trade_types;
-pub mod volcube_handlers;
-pub mod volcube_types;
 pub mod websocket;
-
-// Legacy handlers module (being gradually migrated)
-#[path = "handlers.rs"]
-pub mod handlers;
-
-// New modular handlers (migration in progress)
-pub mod handlers_v2;
 
 use std::{
     collections::HashSet,
@@ -66,10 +41,9 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use handlers::{GraphCache, PortfolioGraphCache};
+use handlers::{types::BootstrapCurveCache, GraphCache, PortfolioGraphCache};
 use jobs::JobManager;
 use market_data::MarketDataCache;
-use pricer_types::BootstrapCurveCache;
 use tokio::sync::{broadcast, RwLock};
 use tower_http::{
     cors::{AllowOrigin, Any, CorsLayer},
@@ -262,11 +236,11 @@ pub struct AppState {
     /// Market data cache (market-data-viewer-webapp Task 3.1)
     pub market_data_cache: Arc<MarketDataCache>,
     /// VolCube cache for calibrated volatility cubes (volcube-calibration-ui)
-    pub volcube_cache: volcube_handlers::VolCubeCache,
+    pub volcube_cache: handlers::volcube::VolCubeCache,
     /// FxVol cache for built FX volatility surfaces (volcube-calibration-ui)
-    pub fxvol_cache: fxvol_handlers::FxVolCache,
+    pub fxvol_cache: handlers::fxvol::FxVolCache,
     /// IrVol cache for built IR volatility surfaces (market-data-viewer-webapp)
-    pub irvol_cache: irvol_handlers::IrVolState,
+    pub irvol_cache: handlers::irvol::IrVolState,
 }
 
 impl AppState {
@@ -283,9 +257,9 @@ impl AppState {
             curve_cache: BootstrapCurveCache::new(),
             job_manager: JobManager::new(),
             market_data_cache: Arc::new(MarketDataCache::new()),
-            volcube_cache: volcube_handlers::VolCubeCache::new(10),
-            fxvol_cache: fxvol_handlers::FxVolCache::new(10),
-            irvol_cache: irvol_handlers::create_irvol_state(),
+            volcube_cache: handlers::volcube::VolCubeCache::new(10),
+            fxvol_cache: handlers::fxvol::FxVolCache::new(10),
+            irvol_cache: handlers::irvol::create_irvol_state(),
         }
     }
 
@@ -425,8 +399,8 @@ fn build_csp_header() -> SetResponseHeaderLayer<HeaderValue> {
     // - connect-src: ws/wss for WebSocket connections
     // - worker-src: blob for Plotly web workers
     const DEFAULT_CSP: &str = "default-src 'self'; \
-        script-src 'self' 'unsafe-eval' https://cdn.plot.ly; \
-        script-src-elem 'self' https://cdn.plot.ly; \
+        script-src 'self' 'unsafe-eval' https://cdn.plot.ly https://cdn.jsdelivr.net; \
+        script-src-elem 'self' https://cdn.plot.ly https://cdn.jsdelivr.net; \
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; \
         font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; \
         img-src 'self' data: blob:; \
@@ -457,7 +431,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
     // CORS configuration for development
     let cors = build_cors();
 
-    // API routes
+    // API routes (using modular handlers where available)
     let api_routes = Router::new()
         .route("/health", get(handlers::health))
         .route("/portfolio", get(handlers::get_portfolio))
@@ -466,6 +440,8 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/risk", get(handlers::get_risk_metrics))
         // Task 3.2: Add /api/graph route for computation graph visualisation
         .route("/graph", get(handlers::get_graph))
+        // Instrument Graph: USD OIS → Curve → Bootstrap Instruments dependency graph
+        .route("/instrument-graph", get(handlers::get_instrument_graph))
         // Task 7.2: Add /api/benchmark/speed-comparison route for speed comparison chart
         .route(
             "/benchmark/speed-comparison",
@@ -500,14 +476,14 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         // Task 6.1: Add /api/scenarios/presets endpoint for preset scenario list
         .route(
             "/scenarios/presets",
-            get(scenario_handlers::get_scenario_presets),
+            get(handlers::scenario_analysis::get_scenario_presets),
         )
         // Task 6.2: Add /api/scenarios/run endpoint for scenario execution
-        .route("/scenarios/run", post(scenario_handlers::run_scenario))
+        .route("/scenarios/run", post(handlers::scenario_analysis::run_scenario))
         // Task 6.4: Add /api/scenarios/compare endpoint for scenario comparison
         .route(
             "/scenarios/compare",
-            post(scenario_handlers::compare_scenarios),
+            post(handlers::scenario_analysis::compare_scenarios),
         )
         // Task 7.2: Add /api/v1/jobs endpoints for async job management
         .route("/v1/jobs", get(handlers::list_jobs))
@@ -520,24 +496,29 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         // Task 4.3: Portfolio Trades List API (portfolio-graph-optimisation)
         .route("/v1/portfolio/trades", get(handlers::get_portfolio_trades))
         // Trade expansion API (pricer-trade-expansion-ui)
-        .route("/trade/expand", post(trade_handlers::expand_trade))
-        .route("/instruments", get(trade_handlers::get_instruments));
+        .route("/trade/expand", post(handlers::trades::expand_trade))
+        .route("/instruments", get(handlers::trades::get_instruments));
 
     // Market Data API routes (market-data-viewer-webapp Task 3.5)
     let market_routes = Router::new()
-        .route("/rates", get(market_handlers::get_market_rates))
+        .route("/indices", get(handlers::market::get_indices))
+        .route("/rates", get(handlers::market::get_market_rates))
         .route(
             "/rates/refresh",
-            post(market_handlers::refresh_market_rates),
+            post(handlers::market::refresh_market_rates),
         )
-        .route("/rates/:id", get(market_handlers::get_market_rate_detail))
-        .route("/conventions", get(market_handlers::get_market_conventions))
+        .route("/rates/:id", get(handlers::market::get_market_rate_detail))
+        .route(
+            "/conventions",
+            get(handlers::market::get_market_conventions),
+        )
         .route(
             "/conventions/:id",
-            get(market_handlers::get_market_convention_detail),
+            get(handlers::market::get_market_convention_detail),
         )
-        .route("/export/csv", get(market_handlers::export_rates_csv))
-        .route("/export/json", get(market_handlers::export_rates_json))
+        .route("/config", get(handlers::market::get_market_config))
+        .route("/export/csv", get(handlers::market::export_rates_csv))
+        .route("/export/json", get(handlers::market::export_rates_json))
         .with_state(state.market_data_cache.clone());
 
     let api_routes = api_routes.nest("/market", market_routes);
@@ -546,105 +527,130 @@ pub fn build_router(state: Arc<AppState>) -> Router {
     let curve_routes = Router::new()
         .route(
             "/instruments/:index",
-            get(curve_builder_handlers::get_instruments),
+            get(handlers::curves::get_instruments),
         )
-        .route("/builders", get(curve_builder_handlers::get_builders))
-        .route("/build", post(curve_builder_handlers::build_curve))
+        .route("/builders", get(handlers::curves::get_builders))
+        .route("/build", post(handlers::curves::build_curve))
         .route(
             "/:curve_id/parameters",
-            get(curve_builder_handlers::get_parameters),
+            get(handlers::curves::get_parameters),
         )
-        .route("/indices", get(curve_builder_handlers::get_indices));
+        .route("/indices", get(handlers::curves::get_indices))
+        .route(
+            "/central-bank-meetings",
+            get(handlers::curves::get_central_bank_meetings),
+        );
 
     let api_routes = api_routes.nest("/curves", curve_routes);
 
     // GenericPricer API routes (demo-webapp-pricer Task 2.4)
     // Available in both standalone and l1l2-integration modes
     let pricer_routes = Router::new()
-        .route("/price", post(generic_pricer_handlers::price_generic))
-        .route("/greeks", post(generic_pricer_handlers::calculate_greeks))
+        .route("/price", post(handlers::generic_pricer::price_generic))
+        .route("/greeks", post(handlers::generic_pricer::calculate_greeks))
         .route(
             "/instruments",
-            get(generic_pricer_handlers::get_pricer_instruments),
-        );
+            get(handlers::generic_pricer::get_pricer_instruments),
+        )
+        // Pricer computation graph API (pricer-computation-graph Task 6.2)
+        .route("/graph", get(handlers::pricer_graph::get_pricer_graph));
     let api_routes = api_routes.nest("/pricer", pricer_routes);
 
     // VolCube API routes (volcube-calibration-ui Task 7.1)
     let volcube_routes = Router::new()
-        .route("/indices", get(volcube_handlers::get_indices))
-        .route("/models", get(volcube_handlers::get_models))
+        .route("/indices", get(handlers::volcube::get_indices))
+        .route("/models", get(handlers::volcube::get_models))
         .route(
             "/instruments/:index",
-            get(volcube_handlers::get_instruments),
+            get(handlers::volcube::get_instruments),
         )
         .route(
             "/instruments/:index",
-            axum::routing::put(volcube_handlers::update_instruments),
+            axum::routing::put(handlers::volcube::update_instruments),
         )
-        .route("/calibrate", post(volcube_handlers::calibrate))
-        .route("/smile", get(volcube_handlers::get_smile))
-        .route("/density", get(volcube_handlers::get_density))
-        .route("/surface", get(volcube_handlers::get_surface));
+        .route("/calibrate", post(handlers::volcube::calibrate))
+        .route("/smile", get(handlers::volcube::get_smile))
+        .route("/density", get(handlers::volcube::get_density))
+        .route("/surface", get(handlers::volcube::get_surface));
 
     let api_routes = api_routes.nest("/volcube", volcube_routes);
 
     // FxVol API routes (volcube-calibration-ui Task 7.1, fx-vol-surface-calibration
     // Task 13.2)
     let fxvol_routes = Router::new()
-        .route("/pairs", get(fxvol_handlers::get_pairs))
-        .route("/delta-types", get(fxvol_handlers::get_delta_types))
-        .route("/quotes/:pair", get(fxvol_handlers::get_quotes))
+        .route("/pairs", get(handlers::fxvol::get_pairs))
+        .route("/delta-types", get(handlers::fxvol::get_delta_types))
+        .route("/quotes/:pair", get(handlers::fxvol::get_quotes))
         .route(
             "/quotes/:pair",
-            axum::routing::put(fxvol_handlers::update_quotes),
+            axum::routing::put(handlers::fxvol::update_quotes),
         )
-        .route("/build", post(fxvol_handlers::build_surface))
-        .route("/calibrate", post(fxvol_handlers::calibrate_surface))
-        .route("/smile", get(fxvol_handlers::get_smile))
-        .route("/surface", get(fxvol_handlers::get_surface))
-        .route("/rr-bf", get(fxvol_handlers::get_rr_bf))
-        .route("/density", get(fxvol_handlers::get_density))
+        .route("/build", post(handlers::fxvol::build_surface))
+        .route("/calibrate", post(handlers::fxvol::calibrate_surface))
+        .route("/smile", get(handlers::fxvol::get_smile))
+        .route("/surface", get(handlers::fxvol::get_surface))
+        .route("/rr-bf", get(handlers::fxvol::get_rr_bf))
+        .route("/density", get(handlers::fxvol::get_density))
         .route(
             "/delta-strike",
-            post(fxvol_handlers::delta_to_strike_handler),
+            post(handlers::fxvol::delta_to_strike_handler),
         );
 
     let api_routes = api_routes.nest("/fxvol", fxvol_routes);
 
     // IrVol API routes (market-data-viewer-webapp)
     let irvol_routes = Router::new()
-        .route("/currencies", get(irvol_handlers::get_currencies))
-        .route("/quotes/:currency", get(irvol_handlers::get_quotes))
+        .route("/currencies", get(handlers::irvol::get_currencies))
+        .route("/quotes/:currency", get(handlers::irvol::get_quotes))
         .route(
             "/quotes/:currency",
-            axum::routing::put(irvol_handlers::update_quotes),
+            axum::routing::put(handlers::irvol::update_quotes),
         )
-        .route("/build", post(irvol_handlers::build_surface))
-        .route("/smile", get(irvol_handlers::get_smile))
-        .route("/atm-term", get(irvol_handlers::get_atm_term))
-        .route("/surface", get(irvol_handlers::get_surface));
+        .route("/build", post(handlers::irvol::build_surface))
+        .route("/smile", get(handlers::irvol::get_smile))
+        .route("/atm-term", get(handlers::irvol::get_atm_term))
+        .route("/surface", get(handlers::irvol::get_surface));
 
     let api_routes = api_routes.nest("/irvol", irvol_routes);
 
+    // Events API routes (market-data-viewer-webapp Events)
+    let events_routes = Router::new()
+        .route("/", get(handlers::events::get_events))
+        .route("/types", get(handlers::events::get_event_types))
+        .route(
+            "/central-banks",
+            get(handlers::events::get_central_banks_list),
+        )
+        .route("/:id", get(handlers::events::get_event_detail));
+
+    let api_routes = api_routes.nest("/events", events_routes);
+
     // FxCurve API routes (fx-vol-surface-calibration Task 13.1)
     let fxcurve_routes = Router::new()
-        .route("/build", post(fxcurve_handlers::build_fx_curve))
-        .route("/market", post(fxcurve_handlers::build_fx_market))
-        .route("/forward", get(fxcurve_handlers::get_forward_rate));
+        .route("/build", post(handlers::fxcurve::build_fx_curve))
+        .route("/market", post(handlers::fxcurve::build_fx_market))
+        .route("/forward", get(handlers::fxcurve::get_forward_rate));
     let api_routes = api_routes.nest("/fxcurve", fxcurve_routes);
 
     // Risk Engine API routes (generic-pricing-risk-engine Task 8.3)
     let risk_engine_routes = Router::new()
-        .route("/greeks", post(risk_engine_handlers::compute_greeks))
+        .route("/greeks", post(handlers::risk_engine::compute_greeks))
         .route(
             "/portfolio-greeks",
-            post(risk_engine_handlers::compute_portfolio_greeks),
+            post(handlers::risk_engine::compute_portfolio_greeks),
         )
         .route(
             "/scenario-greeks",
-            post(risk_engine_handlers::compute_scenario_greeks),
+            post(handlers::risk_engine::compute_scenario_greeks),
         );
     let api_routes = api_routes.nest("/risk-engine", risk_engine_routes);
+
+    // Configuration API routes (webapp-refactoring)
+    let config_routes = Router::new()
+        .route("/", get(handlers::config::get_config))
+        .route("/enums", get(handlers::config::get_enums))
+        .route("/defaults", get(handlers::config::get_defaults));
+    let api_routes = api_routes.nest("/config", config_routes);
 
     // Static file serving for the dashboard
     let static_files =

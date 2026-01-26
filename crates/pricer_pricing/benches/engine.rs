@@ -18,6 +18,7 @@ use pricer_pricing::{
     },
     path_dependent::PathPayoffType,
     rng::PricerRng,
+    tree::{BinomialTree, TrinomialTree},
 };
 use rayon::prelude::*;
 
@@ -1052,6 +1053,181 @@ fn bench_graph_builder(c: &mut Criterion) {
     group.finish();
 }
 
+// ============================================================================
+// Tree Pricing Benchmarks (Task 12.1)
+// ============================================================================
+
+/// Benchmark Binomial Tree pricing with different step counts.
+///
+/// Performance targets:
+/// - 100 steps: < 1ms
+/// - 5000 steps: < 500ms
+fn bench_binomial_tree_steps(c: &mut Criterion) {
+    let mut group = c.benchmark_group("binomial_tree_steps");
+    group.sample_size(100);
+
+    let spot = 100.0;
+    let strike = 100.0;
+    let expiry = 1.0;
+    let rate = 0.05;
+    let volatility = 0.2;
+
+    // Test different step counts
+    for num_steps in [100, 200, 500, 1000, 2000, 5000] {
+        group.bench_with_input(
+            BenchmarkId::new("european_call", num_steps),
+            &num_steps,
+            |b, &steps| {
+                let tree =
+                    BinomialTree::new(spot, strike, expiry, rate, volatility, steps, true, false)
+                        .unwrap();
+                b.iter(|| black_box(tree.price()));
+            },
+        );
+
+        group.bench_with_input(
+            BenchmarkId::new("american_put", num_steps),
+            &num_steps,
+            |b, &steps| {
+                let tree =
+                    BinomialTree::new(spot, strike, expiry, rate, volatility, steps, false, true)
+                        .unwrap();
+                b.iter(|| black_box(tree.price()));
+            },
+        );
+    }
+
+    group.finish();
+}
+
+/// Benchmark Binomial Tree Greeks computation.
+fn bench_binomial_tree_greeks(c: &mut Criterion) {
+    let mut group = c.benchmark_group("binomial_tree_greeks");
+    group.sample_size(100);
+
+    let spot = 100.0;
+    let strike = 100.0;
+    let expiry = 1.0;
+    let rate = 0.05;
+    let volatility = 0.2;
+
+    for num_steps in [100, 500, 1000] {
+        group.bench_with_input(
+            BenchmarkId::new("delta", num_steps),
+            &num_steps,
+            |b, &steps| {
+                let tree =
+                    BinomialTree::new(spot, strike, expiry, rate, volatility, steps, true, false)
+                        .unwrap();
+                b.iter(|| black_box(tree.delta()));
+            },
+        );
+
+        group.bench_with_input(
+            BenchmarkId::new("gamma", num_steps),
+            &num_steps,
+            |b, &steps| {
+                let tree =
+                    BinomialTree::new(spot, strike, expiry, rate, volatility, steps, true, false)
+                        .unwrap();
+                b.iter(|| black_box(tree.gamma()));
+            },
+        );
+    }
+
+    group.finish();
+}
+
+/// Benchmark Trinomial Tree pricing.
+fn bench_trinomial_tree_steps(c: &mut Criterion) {
+    let mut group = c.benchmark_group("trinomial_tree_steps");
+    group.sample_size(100);
+
+    let spot = 100.0;
+    let strike = 100.0;
+    let expiry = 1.0;
+    let rate = 0.05;
+    let volatility = 0.2;
+
+    // Trinomial converges faster, so use fewer steps
+    for num_steps in [50, 100, 200, 500, 1000] {
+        group.bench_with_input(
+            BenchmarkId::new("european_call", num_steps),
+            &num_steps,
+            |b, &steps| {
+                let tree =
+                    TrinomialTree::new(spot, strike, expiry, rate, volatility, steps, true, false)
+                        .unwrap();
+                b.iter(|| black_box(tree.price()));
+            },
+        );
+
+        group.bench_with_input(
+            BenchmarkId::new("american_put", num_steps),
+            &num_steps,
+            |b, &steps| {
+                let tree =
+                    TrinomialTree::new(spot, strike, expiry, rate, volatility, steps, false, true)
+                        .unwrap();
+                b.iter(|| black_box(tree.price()));
+            },
+        );
+    }
+
+    group.finish();
+}
+
+/// Benchmark Binomial vs Trinomial comparison.
+fn bench_tree_type_comparison(c: &mut Criterion) {
+    let mut group = c.benchmark_group("tree_type_comparison");
+    group.sample_size(100);
+
+    let spot = 100.0;
+    let strike = 100.0;
+    let expiry = 1.0;
+    let rate = 0.05;
+    let volatility = 0.2;
+    let num_steps = 200;
+
+    // Binomial European call
+    group.bench_function("binomial_european_call", |b| {
+        let tree = BinomialTree::new(
+            spot, strike, expiry, rate, volatility, num_steps, true, false,
+        )
+        .unwrap();
+        b.iter(|| black_box(tree.price()));
+    });
+
+    // Trinomial European call (same steps)
+    group.bench_function("trinomial_european_call", |b| {
+        let tree = TrinomialTree::new(
+            spot, strike, expiry, rate, volatility, num_steps, true, false,
+        )
+        .unwrap();
+        b.iter(|| black_box(tree.price()));
+    });
+
+    // Binomial American put
+    group.bench_function("binomial_american_put", |b| {
+        let tree = BinomialTree::new(
+            spot, strike, expiry, rate, volatility, num_steps, false, true,
+        )
+        .unwrap();
+        b.iter(|| black_box(tree.price()));
+    });
+
+    // Trinomial American put
+    group.bench_function("trinomial_american_put", |b| {
+        let tree = TrinomialTree::new(
+            spot, strike, expiry, rate, volatility, num_steps, false, true,
+        )
+        .unwrap();
+        b.iter(|| black_box(tree.price()));
+    });
+
+    group.finish();
+}
+
 criterion_group!(
     benches,
     bench_rng_generation,
@@ -1069,6 +1245,10 @@ criterion_group!(
     bench_parallel_path_simulation,
     bench_thread_scalability,
     bench_graph_extraction,
-    bench_graph_builder
+    bench_graph_builder,
+    bench_binomial_tree_steps,
+    bench_binomial_tree_greeks,
+    bench_trinomial_tree_steps,
+    bench_tree_type_comparison
 );
 criterion_main!(benches);

@@ -152,7 +152,7 @@
 
 ## Phase 3: AAD（自動微分）統合
 
-- [ ] 10. AAD基盤とGraphExtractable実装
+- [x] 10. AAD基盤とGraphExtractable実装
 - [x] 10.1 VolCubeにGraphExtractable traitを実装する
   - カリブレーショングラフ（VolQuotes→SABRParams→InterpolatedVol）を抽出
   - D3.js互換のDAG形式でエクスポート可能にする
@@ -163,7 +163,7 @@
   - Enzyme AADモードでの実行を可能にする
   - _Requirements: 7.1_
 
-- [ ] 11. Vega計算（∂Price/∂VolQuote）
+- [x] 11. Vega計算（∂Price/∂VolQuote）
 - [x] 11.1 adjoint modeによるVega計算を実装する
   - VolQuote変動に対するprice感応度を計算
   - 各(expiry, tenor, strike)点でのVega gridを出力
@@ -234,48 +234,48 @@
   - 可視化用のデータポイントを返す
   - _Requirements: 8.6_
 
-- [ ] 16. WebApp UI
-- [ ] 16.1 通貨選択UIを実装する
+- [x] 16. WebApp UI
+- [x] 16.1 通貨選択UIを実装する
   - USD/EUR/JPYの選択コンポーネントを追加
   - curve-builder-webappのUIパターンに従う
   - _Requirements: 8.2, 8.8_
 
-- [ ] 16.2 3Dサーフェス可視化を実装する
+- [x] 16.2 3Dサーフェス可視化を実装する
   - plotly.jsで3Dボラティリティサーフェスを描画
   - expiry/tenor/strikeの各軸でインタラクティブに操作可能
   - _Requirements: 8.3_
 
-- [ ] 16.3 SABRパラメータグリッドと比較チャートを実装する
+- [x] 16.3 SABRパラメータグリッドと比較チャートを実装する
   - カリブレーション済みSABRパラメータをテーブル表示
   - market vs fitted volの2D比較チャートを描画
   - _Requirements: 8.4, 8.5_
 
 ## Phase 5: 統合とコード整理
 
-- [ ] 17. エンドツーエンド統合テスト
-- [ ] 17.1 Curve→VolCubeカリブレーションフローをテストする
+- [x] 17. エンドツーエンド統合テスト
+- [x] 17.1 Curve→VolCubeカリブレーションフローをテストする
   - 入力データからカリブレーション完了までのフローを検証
   - 依存Curveの自動カリブレーションを確認
   - _Requirements: 5.9, 6.8, 6.10_
 
-- [ ] 17.2 Quote更新→キャッシュ無効化をテストする
+- [x] 17.2 Quote更新→キャッシュ無効化をテストする
   - market quote更新時のカスケード無効化を検証
   - 再カリブレーションの正常動作を確認
   - _Requirements: 6.5_
 
-- [ ] 17.3 AAD Vega計算の精度をテストする
+- [x] 17.3 AAD Vega計算の精度をテストする
   - bump-and-revalueとの一致を検証
   - 許容誤差範囲内であることを確認
   - _Requirements: 7.6_
 
-- [ ] 18. コード整理と不要コード削除
-- [ ] 18.1 新実装により不要になったコードを特定・削除する
+- [x] 18. コード整理と不要コード削除
+- [x] 18.1 新実装により不要になったコードを特定・削除する
   - 影響範囲分析を実施
   - 依存コードを更新
   - deprecated APIは即座に削除（#[deprecated]属性不使用）
   - _Requirements: 9.4, 9.5, 9.6_
 
-- [ ] 18.2 未使用import・dead codeを除去する
+- [x] 18.2 未使用import・dead codeを除去する
   - cargo clippyで警告を確認
   - 全ての未使用コードを削除
   - _Requirements: 9.7_

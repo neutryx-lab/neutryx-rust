@@ -22,9 +22,10 @@ S: Service   → service_cli, service_gateway, service_python
 ## Core Technologies
 
 - **Language**: Rust Edition 2021
-- **Nightly Toolchain**: `nightly-2025-01-15` (workspace default, pricer_pricing-first development)
-- **Stable Compatibility**: All crates except pricer_pricing can build on stable
-- **AD Backend**: Enzyme LLVM plugin (LLVM 18 required)
+- **Default Toolchain**: Stable Rust (workspace default)
+- **Nightly Toolchain**: `nightly-2025-01-15` (required only for `pricer_risk` with `enzyme-ad` feature)
+- **Stable Compatibility**: All crates build on stable; Enzyme AD requires nightly
+- **AD Backend**: Enzyme LLVM plugin (LLVM 18 required, via `pricer_risk::enzyme`)
 - **Build System**: Cargo workspace with resolver = "2"
 
 ## Key Libraries
@@ -36,7 +37,7 @@ S: Service   → service_cli, service_gateway, service_python
 - **Parallelisation**: `rayon` (portfolio-level parallelism)
 - **Random**: `rand`, `rand_distr` (Monte Carlo, Ziggurat algorithm for normals)
 - **Time**: `chrono` (date arithmetic, day count conventions)
-- **LLVM Bindings**: `llvm-sys = "180"` (optional, `enzyme-ad` feature in pricer_pricing)
+- **LLVM Bindings**: `llvm-sys = "180"` (optional, `enzyme-ad` feature in pricer_risk)
 - **Serialisation**: `serde` (optional, ISO 4217 currency support)
 - **Error Handling**: `thiserror` (structured error types)
 - **Testing**: `approx`, `proptest`, `criterion`
@@ -96,22 +97,23 @@ S: Service   → service_cli, service_gateway, service_python
 
 ### Required Tools
 
-- Rust nightly-2025-01-15 (workspace default)
-- LLVM 18 (for Enzyme in pricer_pricing)
+- Rust stable (workspace default)
+- Rust nightly-2025-01-15 (required only for pricer_risk with enzyme-ad feature)
+- LLVM 18 (for Enzyme AD in pricer_risk)
 - Docker (recommended for reproducible Enzyme builds)
 - Google Cloud SDK (`gcloud`) for Cloud Run deployments (optional)
 
 ### Common Commands
 
 ```bash
-# Dev (stable crates only)
-cargo build --workspace --exclude pricer_pricing
-cargo test --workspace --exclude pricer_pricing
+# Dev (all crates - stable)
+cargo build --workspace
+cargo test --workspace
 
-# Dev (with Enzyme - pricer_pricing)
+# Dev (with Enzyme AD - pricer_risk enzyme-ad feature)
 export RUSTFLAGS="-C llvm-args=-load=/usr/local/lib/LLVMEnzyme-18.so"
-cargo +nightly build -p pricer_pricing
-cargo +nightly test -p pricer_pricing
+cargo +nightly build -p pricer_risk --features enzyme-ad
+cargo +nightly test -p pricer_risk --features enzyme-ad
 
 # Docker (full Enzyme environment)
 docker build -f docker/Dockerfile.nightly -t neutryx-enzyme .
@@ -123,12 +125,13 @@ docker run -it neutryx-enzyme
 | Decision | Rationale |
 |----------|-----------|
 | **A-I-P-S Architecture** | Unidirectional data flow from Adapters through Infrastructure and Pricing to Services |
-| **Pricer Layer Hierarchy** | L1→L2→L3→L4 isolates experimental Enzyme code |
+| **Pricer Layer Hierarchy** | L1→L2→L3→L4 with Enzyme AD in L4 (pricer_risk) for risk integration |
 | **Static Dispatch (enum)** | Enzyme performs better with concrete types than trait objects |
 | **StochasticModel Trait** | Unified interface for stochastic processes with enum-based dispatch |
 | **Dual-Mode Verification** | Enzyme (performance) + num-dual (correctness) for validation |
 | **Smooth Approximations** | Replace all discontinuities (if/max) with differentiable functions |
 | **3-Stage Rocket Pattern** | Definition (L2) → Linking (PricingContext) → Execution (pure kernel); zero HashMap lookups in hot path |
+| **IndexedMarket Pattern** | Market data keyed by `RateIndex`/`CurrencyPair` not strings; `TradeIndexRequirements` trait declares dependencies; `MarketValidator` checks completeness |
 | **Feature Flag Coordination** | Features propagate through dependency chain (demo→frictional_bank→pricer_pricing) enabling modular compilation for different deployment scenarios |
 | **Feature Flags** | `num-dual-mode` (default), `enzyme-mode`, `serde` for serialisation; Asset classes: `equity` (default), `rates`, `credit`, `fx`, `commodity`, `exotic`; Convenience: `all`; Integration: `l1l2-integration` |
 
@@ -147,8 +150,8 @@ docker run -it neutryx-enzyme
 
 - **Multi-stage Docker builds**: Separate Dockerfiles for stable, nightly, and web dashboard
   - `Dockerfile.gui` for web dashboard (Cloud Run deployments)
-  - `docker/Dockerfile.stable` for stable crates (no Enzyme)
-  - `docker/Dockerfile.nightly` for pricer_pricing with Enzyme
+  - `docker/Dockerfile.stable` for stable crates (all crates without enzyme-ad)
+  - `docker/Dockerfile.nightly` for pricer_risk with Enzyme AD (enzyme-ad feature)
 - **Cloud Run support**: Environment-based port binding (`PORT` env var), health endpoints (`/health`)
 - **CI/CD**: Google Cloud Build pipeline (`cloudbuild.yaml`) for automated build→push→deploy
   - Uses `-f Dockerfile.gui` for web dashboard builds
@@ -165,5 +168,5 @@ docker run -it neutryx-enzyme
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-26_ — Added fx_calibration module pattern (FX curve + vol surface calibration)
+_Updated: 2026-01-26_ — Added IndexedMarket pattern to Key Technical Decisions
 _Document standards and patterns, not every dependency_

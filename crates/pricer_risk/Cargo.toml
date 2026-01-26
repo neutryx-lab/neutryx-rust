@@ -10,7 +10,8 @@ description = "Portfolio risk management and XVA calculations for neutryx-rust"
 [features]
 default = []
 serde = ["dep:serde"]
-enzyme-ad = []
+# Enzyme AD feature for actual Enzyme integration (requires nightly Rust and LLVM 18)
+enzyme-ad = ["dep:llvm-sys"]
 
 [dependencies]
 infra_config = { path = "../infra_config" }
@@ -23,6 +24,8 @@ serde = { workspace = true, optional = true }
 thiserror.workspace = true
 # For GreeksResult<T: Float>
 num-traits.workspace = true
+# LLVM 18 bindings for Enzyme support
+llvm-sys = { version = "180", features = ["prefer-dynamic"], optional = true }
 
 [dev-dependencies]
 approx.workspace = true

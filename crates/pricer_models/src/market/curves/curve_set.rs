@@ -140,6 +140,19 @@ impl<T: Float> CurveSet<T> {
     /// * `Some(&CurveEnum)` - Reference to the curve if found
     /// * `None` - If no curve with that name exists
     ///
+    /// # Deprecated
+    ///
+    /// This method is deprecated. Use [`crate::market::IndexedMarket::curve`]
+    /// for Index-keyed access:
+    ///
+    /// ```ignore
+    /// // Old (deprecated):
+    /// let curve = curve_set.get(&CurveName::Sofr)?;
+    ///
+    /// // New (recommended):
+    /// let curve = indexed_market.curve(RateIndex::Sofr)?;
+    /// ```
+    ///
     /// # Example
     ///
     /// ```
@@ -148,11 +161,16 @@ impl<T: Float> CurveSet<T> {
     /// let mut curves = CurveSet::new();
     /// curves.insert(CurveName::Sofr, CurveEnum::flat(0.035_f64));
     ///
+    /// #[allow(deprecated)]
     /// let sofr = curves.get(&CurveName::Sofr).unwrap();
     /// let rate = sofr.zero_rate(1.0).unwrap();
     /// assert!((rate - 0.035).abs() < 1e-10);
     /// ```
     #[inline]
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use IndexedMarket::curve(RateIndex) for type-safe Index-keyed access"
+    )]
     pub fn get(&self, name: &CurveName) -> Option<&CurveEnum<T>> { self.curves.get(name) }
 
     /// Get a curve by name, returning an error if not found.
@@ -167,6 +185,11 @@ impl<T: Float> CurveSet<T> {
     /// * `Err(MarketDataError::CurveNotFound)` - If no curve with that name
     ///   exists
     ///
+    /// # Deprecated
+    ///
+    /// This method is deprecated. Use [`crate::market::IndexedMarket::curve`]
+    /// for Index-keyed access.
+    ///
     /// # Example
     ///
     /// ```
@@ -175,9 +198,14 @@ impl<T: Float> CurveSet<T> {
     /// let mut curves = CurveSet::new();
     /// curves.insert(CurveName::Sofr, CurveEnum::flat(0.035_f64));
     ///
+    /// #[allow(deprecated)]
     /// let result = curves.get_or_err(&CurveName::Tonar);
     /// assert!(result.is_err());
     /// ```
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use IndexedMarket::curve(RateIndex) for type-safe Index-keyed access"
+    )]
     pub fn get_or_err(&self, name: &CurveName) -> Result<&CurveEnum<T>, MarketDataError> {
         self.curves
             .get(name)
@@ -259,6 +287,11 @@ impl<T: Float> CurveSet<T> {
     /// * `Some(&CurveEnum)` - The discount curve if found
     /// * `None` - If no discount curve is configured
     ///
+    /// # Deprecated
+    ///
+    /// This method is deprecated. Use [`crate::market::IndexedMarket::curve`]
+    /// with the appropriate discount RateIndex.
+    ///
     /// # Example
     ///
     /// ```
@@ -268,11 +301,17 @@ impl<T: Float> CurveSet<T> {
     /// curves.insert(CurveName::Ois, CurveEnum::flat(0.03_f64));
     /// curves.set_discount_curve(CurveName::Ois);
     ///
+    /// #[allow(deprecated)]
     /// let discount = curves.discount_curve().unwrap();
     /// ```
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use IndexedMarket::curve(discount_index) for type-safe Index-keyed access"
+    )]
     pub fn discount_curve(&self) -> Option<&CurveEnum<T>> {
         // First try the explicitly set discount curve
         if let Some(name) = self.discount_curve_name {
+            #[allow(deprecated)]
             if let Some(curve) = self.curves.get(&name) {
                 return Some(curve);
             }
@@ -288,7 +327,17 @@ impl<T: Float> CurveSet<T> {
     /// * `Ok(&CurveEnum)` - The discount curve
     /// * `Err(MarketDataError::CurveNotFound)` - If no discount curve is
     ///   configured
+    ///
+    /// # Deprecated
+    ///
+    /// This method is deprecated. Use [`crate::market::IndexedMarket::curve`]
+    /// with the appropriate discount RateIndex.
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use IndexedMarket::curve(discount_index) for type-safe Index-keyed access"
+    )]
     pub fn discount_curve_or_err(&self) -> Result<&CurveEnum<T>, MarketDataError> {
+        #[allow(deprecated)]
         self.discount_curve().ok_or(MarketDataError::CurveNotFound {
             name: CurveName::Discount,
         })
@@ -309,6 +358,19 @@ impl<T: Float> CurveSet<T> {
     /// * `Some(&CurveEnum)` - The forward curve if found
     /// * `None` - If no curve with that name exists
     ///
+    /// # Deprecated
+    ///
+    /// This method is deprecated. Use [`crate::market::IndexedMarket::curve`]
+    /// for Index-keyed access:
+    ///
+    /// ```ignore
+    /// // Old (deprecated):
+    /// let curve = curve_set.forward_curve(&CurveName::Sofr)?;
+    ///
+    /// // New (recommended):
+    /// let curve = indexed_market.curve(RateIndex::Sofr)?;
+    /// ```
+    ///
     /// # Example
     ///
     /// ```
@@ -317,10 +379,15 @@ impl<T: Float> CurveSet<T> {
     /// let mut curves = CurveSet::new();
     /// curves.insert(CurveName::Sofr, CurveEnum::flat(0.035_f64));
     ///
+    /// #[allow(deprecated)]
     /// let forward = curves.forward_curve(&CurveName::Sofr).unwrap();
     /// let fwd_rate = forward.forward_rate(1.0, 2.0).unwrap();
     /// ```
     #[inline]
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use IndexedMarket::curve(RateIndex) for type-safe Index-keyed access"
+    )]
     pub fn forward_curve(&self, name: &CurveName) -> Option<&CurveEnum<T>> { self.curves.get(name) }
 
     /// Get a forward curve by name, returning an error if not found.
@@ -334,6 +401,15 @@ impl<T: Float> CurveSet<T> {
     /// * `Ok(&CurveEnum)` - The forward curve
     /// * `Err(MarketDataError::CurveNotFound)` - If no curve with that name
     ///   exists
+    ///
+    /// # Deprecated
+    ///
+    /// This method is deprecated. Use [`crate::market::IndexedMarket::curve`]
+    /// for Index-keyed access.
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use IndexedMarket::curve(RateIndex) for type-safe Index-keyed access"
+    )]
     pub fn forward_curve_or_err(&self, name: &CurveName) -> Result<&CurveEnum<T>, MarketDataError> {
         self.curves
             .get(name)
@@ -390,6 +466,12 @@ impl<T: Float> CurveSet<T> {
     /// * `Err(MarketDataError::UnsupportedIndex)` - If the index is not
     ///   supported
     ///
+    /// # Note
+    ///
+    /// For new code, prefer using [`crate::market::IndexedMarket::curve`] which
+    /// provides direct Index-keyed access without the intermediate
+    /// CurveName mapping.
+    ///
     /// # Example
     ///
     /// ```
@@ -403,6 +485,7 @@ impl<T: Float> CurveSet<T> {
     /// let rate = sofr_curve.zero_rate(1.0).unwrap();
     /// assert!((rate - 0.035).abs() < 1e-10);
     /// ```
+    #[allow(deprecated)] // Uses deprecated get_or_err internally
     pub fn get_curve_for_index(
         &self,
         index: infra_master::RateIndex,
@@ -459,6 +542,7 @@ impl<T: Float> CurveSet<T> {
 }
 
 #[cfg(test)]
+#[allow(deprecated)] // Tests intentionally use deprecated methods to verify backward compatibility
 mod tests {
     use super::*;
     use crate::market::curves::{CurveInterpolation, InterpolatedCurve, YieldCurve};

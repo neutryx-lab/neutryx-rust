@@ -89,6 +89,98 @@ pub enum RateIndex {
 }
 
 impl RateIndex {
+    /// Returns all supported rate indices.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use infra_master::market::RateIndex;
+    ///
+    /// let indices = RateIndex::all();
+    /// assert_eq!(indices.len(), 7);
+    /// assert!(indices.contains(&RateIndex::Sofr));
+    /// ```
+    #[must_use]
+    pub const fn all() -> [RateIndex; 7] {
+        [
+            RateIndex::Sofr,
+            RateIndex::Tonar,
+            RateIndex::Estr,
+            RateIndex::Euribor3M,
+            RateIndex::Euribor6M,
+            RateIndex::Sonia,
+            RateIndex::Saron,
+        ]
+    }
+
+    /// Returns all rate index codes for API validation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use infra_master::market::RateIndex;
+    ///
+    /// let codes = RateIndex::all_codes();
+    /// assert!(codes.contains(&"SOFR"));
+    /// assert!(codes.contains(&"EURIBOR3M"));
+    /// ```
+    #[must_use]
+    pub const fn all_codes() -> [&'static str; 7] {
+        [
+            "SOFR",
+            "TONAR",
+            "ESTR",
+            "EURIBOR3M",
+            "EURIBOR6M",
+            "SONIA",
+            "SARON",
+        ]
+    }
+
+    /// Returns the API code for this rate index (no spaces, suitable for JSON).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use infra_master::market::RateIndex;
+    ///
+    /// assert_eq!(RateIndex::Sofr.api_code(), "SOFR");
+    /// assert_eq!(RateIndex::Euribor3M.api_code(), "EURIBOR3M");
+    /// ```
+    #[must_use]
+    pub const fn api_code(&self) -> &'static str {
+        match self {
+            Self::Sofr => "SOFR",
+            Self::Tonar => "TONAR",
+            Self::Estr => "ESTR",
+            Self::Euribor3M => "EURIBOR3M",
+            Self::Euribor6M => "EURIBOR6M",
+            Self::Sonia => "SONIA",
+            Self::Saron => "SARON",
+        }
+    }
+
+    /// Returns the default rate index for a given currency.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use infra_master::market::{RateIndex, Currency};
+    ///
+    /// assert_eq!(RateIndex::default_for_currency(Currency::USD), RateIndex::Sofr);
+    /// assert_eq!(RateIndex::default_for_currency(Currency::EUR), RateIndex::Euribor3M);
+    /// ```
+    #[must_use]
+    pub const fn default_for_currency(currency: Currency) -> Self {
+        match currency {
+            Currency::USD => Self::Sofr,
+            Currency::EUR => Self::Euribor3M,
+            Currency::GBP => Self::Sonia,
+            Currency::JPY => Self::Tonar,
+            Currency::CHF => Self::Saron,
+        }
+    }
+
     /// Returns the currency associated with this rate index.
     ///
     /// # Examples

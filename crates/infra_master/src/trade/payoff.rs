@@ -6,23 +6,46 @@
 use super::index::IndexType;
 
 /// Option type for vanilla options.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
 pub enum OptionType {
     /// Call option (right to buy).
+    #[default]
     Call,
     /// Put option (right to sell).
     Put,
+    /// Digital call - pays 1 if S > K, else 0.
+    DigitalCall,
+    /// Digital put - pays 1 if S < K, else 0.
+    DigitalPut,
 }
 
 impl OptionType {
-    /// Returns 1.0 for Call, -1.0 for Put.
+    /// Returns 1.0 for Call/DigitalCall, -1.0 for Put/DigitalPut.
     #[must_use]
     pub fn sign(&self) -> f64 {
         match self {
-            OptionType::Call => 1.0,
-            OptionType::Put => -1.0,
+            OptionType::Call | OptionType::DigitalCall => 1.0,
+            OptionType::Put | OptionType::DigitalPut => -1.0,
         }
+    }
+
+    /// Returns true if this is a call-like payoff.
+    #[inline]
+    #[must_use]
+    pub fn is_call(&self) -> bool { matches!(self, OptionType::Call | OptionType::DigitalCall) }
+
+    /// Returns true if this is a put-like payoff.
+    #[inline]
+    #[must_use]
+    pub fn is_put(&self) -> bool { matches!(self, OptionType::Put | OptionType::DigitalPut) }
+
+    /// Returns true if this is a digital option.
+    #[inline]
+    #[must_use]
+    pub fn is_digital(&self) -> bool {
+        matches!(self, OptionType::DigitalCall | OptionType::DigitalPut)
     }
 }
 

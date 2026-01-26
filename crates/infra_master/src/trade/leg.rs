@@ -7,12 +7,14 @@ use super::cashflow::Cashflow;
 use crate::{Currency, Date};
 
 /// Direction of a leg from the perspective of the trade holder.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
 pub enum Direction {
     /// Payer: pays this leg's cashflows (negative NPV contribution).
     Payer,
     /// Receiver: receives this leg's cashflows (positive NPV contribution).
+    #[default]
     Receiver,
 }
 

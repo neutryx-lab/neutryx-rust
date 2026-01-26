@@ -9,7 +9,7 @@ const marketDataViewer = (() => {
         filteredRates: [],
         selectedRateId: null,
         selectedConventionId: null,
-        sortColumn: 'id',
+        sortColumn: 'tenor',
         sortDirection: 'asc',
         lastUpdated: null,
         previousValues: new Map(), // For change highlighting
@@ -24,15 +24,77 @@ const marketDataViewer = (() => {
         // FXVol state
         fxVolPairs: [],
         fxVolQuotes: [], // Flattened quotes for table display
-        selectedFxVolPair: null
+        selectedFxVolPair: null,
+        // Events state
+        events: [],
+        filteredEvents: [],
+        eventTypes: [],
+        selectedEventId: null
     };
 
     // DOM Elements (cached)
     let elements = {};
 
+    // Tenor order map (populated from infra_master via API)
+    let TENOR_ORDER = {};
+
+    /**
+     * Compares two tenor strings using INFRA_MASTER Tenor enum order.
+     * Falls back to string comparison for unknown tenors.
+     */
+    function compareTenor(a, b) {
+        const aUpper = String(a).toUpperCase();
+        const bUpper = String(b).toUpperCase();
+        const aOrder = TENOR_ORDER[aUpper];
+        const bOrder = TENOR_ORDER[bUpper];
+
+        // Both known tenors
+        if (aOrder !== undefined && bOrder !== undefined) {
+            return aOrder - bOrder;
+        }
+        // Unknown tenor goes to the end
+        if (aOrder === undefined && bOrder !== undefined) return 1;
+        if (aOrder !== undefined && bOrder === undefined) return -1;
+        // Both unknown: fallback to string comparison
+        return aUpper.localeCompare(bUpper);
+    }
+
     // ===========================================
     // Initialisation
     // ===========================================
+
+    /**
+     * Load market configuration (tenor order) from API.
+     */
+    async function loadConfig() {
+        try {
+            const response = await fetch('/api/market/config');
+            if (!response.ok) {
+                throw new Error(`Config fetch failed: ${response.status}`);
+            }
+            const config = await response.json();
+
+            // Build tenor order map from API response
+            TENOR_ORDER = {};
+            config.tenorOrder.forEach((tenor, index) => {
+                TENOR_ORDER[tenor.toUpperCase()] = index;
+            });
+            // Add alternative notation for Overnight
+            if (TENOR_ORDER['ON'] !== undefined) {
+                TENOR_ORDER['O/N'] = TENOR_ORDER['ON'];
+            }
+
+            log('Market config loaded:', Object.keys(TENOR_ORDER).length, 'tenors');
+        } catch (error) {
+            log('Failed to load market config:', error);
+            // Fallback to default order if API fails
+            TENOR_ORDER = {
+                'ON': 0, 'O/N': 0, '1W': 1, '2W': 2, '1M': 3, '2M': 4, '3M': 5,
+                '6M': 6, '9M': 7, '1Y': 8, '2Y': 9, '3Y': 10, '5Y': 11, '7Y': 12,
+                '10Y': 13, '15Y': 14, '20Y': 15, '30Y': 16
+            };
+        }
+    }
 
     function init() {
         if (state.isInitialised) {
@@ -42,8 +104,11 @@ const marketDataViewer = (() => {
 
         cacheElements();
         bindEvents();
-        loadRates();
-        loadConventions();
+        // Load config first, then load data
+        loadConfig().then(() => {
+            loadRates();
+            loadConventions();
+        });
         state.isInitialised = true;
 
         log('Market Data Viewer initialised');
@@ -53,8 +118,6 @@ const marketDataViewer = (() => {
         elements = {
             assetClassToggle: document.getElementById('market-asset-class-toggle'),
             currencyFilter: document.getElementById('market-currency-filter'),
-            typeFilter: document.getElementById('market-type-filter'),
-            indexFilter: document.getElementById('market-index-filter'),
             refreshBtn: document.getElementById('market-refresh-btn'),
             exportBtn: document.getElementById('market-export-btn'),
             exportMenu: document.getElementById('market-export-menu'),
@@ -79,6 +142,8 @@ const marketDataViewer = (() => {
             closeConventionDetailBtn: document.getElementById('close-convention-detail'),
             conventionsCount: document.getElementById('conventions-count')
         };
+        // Debug logging for important elements
+        log(`Cached elements - ratesTable: ${!!elements.ratesTable}, ratesTbody: ${!!elements.ratesTbody}, placeholder: ${!!elements.placeholder}`);
     }
 
     function bindEvents() {
@@ -92,8 +157,6 @@ const marketDataViewer = (() => {
 
         // Filters
         elements.currencyFilter?.addEventListener('change', applyFilters);
-        elements.typeFilter?.addEventListener('change', applyFilters);
-        elements.indexFilter?.addEventListener('change', applyFilters);
 
         // Refresh button
         elements.refreshBtn?.addEventListener('click', refreshRates);
@@ -182,6 +245,11 @@ const marketDataViewer = (() => {
                 state.fxVolQuotes = []; // Clear cache to force reload
                 await loadFxVolData();
                 showToast('FX Vol data refreshed', 'success');
+            } else if (state.assetClass === 'Events') {
+                // Reload Events data
+                state.events = []; // Clear cache to force reload
+                await loadEventsData();
+                showToast('Events data refreshed', 'success');
             } else {
                 // Original rates refresh
                 const response = await fetch('/api/market/rates/refresh', { method: 'POST' });
@@ -270,6 +338,7 @@ const marketDataViewer = (() => {
             state.irVolQuotes = allQuotes;
             state.lastUpdated = new Date().toISOString();
 
+            sortIrVolQuotes();
             renderIrVolTable();
             updateIrVolStats();
             updateLastUpdated();
@@ -289,11 +358,13 @@ const marketDataViewer = (() => {
         // Update table headers for IRVol
         updateTableHeadersForAssetClass('IRVol');
 
-        // Filter by selected currency if any
+        // Filter by selected currency if any (case-insensitive)
         let filteredQuotes = state.irVolQuotes;
-        const currency = elements.currencyFilter?.value;
+        const currency = elements.currencyFilter?.value?.toUpperCase();
         if (currency) {
-            filteredQuotes = filteredQuotes.filter(q => q.currency === currency);
+            filteredQuotes = filteredQuotes.filter(q =>
+                q.currency && q.currency.toUpperCase() === currency
+            );
         }
 
         if (filteredQuotes.length === 0) {
@@ -424,21 +495,35 @@ const marketDataViewer = (() => {
 
     async function loadFxVolData() {
         showLoading(true);
+        // Show loading placeholder in table
+        showTablePlaceholder('Loading FX volatility data...', 'fa-spinner fa-spin');
+
         try {
-            // Load available pairs
+            log('Fetching FX vol pairs from /api/fxvol/pairs...');
             const pairsResp = await fetch('/api/fxvol/pairs');
-            if (!pairsResp.ok) throw new Error('Failed to fetch FX vol pairs');
+            if (!pairsResp.ok) {
+                throw new Error(`Failed to fetch FX vol pairs: ${pairsResp.status} ${pairsResp.statusText}`);
+            }
 
             const pairsData = await pairsResp.json();
+            log(`Received pairs data: ${JSON.stringify(pairsData)}`);
             state.fxVolPairs = pairsData.pairs || [];
+
+            if (state.fxVolPairs.length === 0) {
+                log('No FX vol pairs found');
+                showTablePlaceholder('No FX volatility pairs available', 'fa-chart-area');
+                return;
+            }
 
             // Load quotes for all pairs and flatten for table display
             const allQuotes = [];
             for (const pairInfo of state.fxVolPairs) {
                 try {
+                    log(`Fetching quotes for ${pairInfo.pair}...`);
                     const quotesResp = await fetch(`/api/fxvol/quotes/${pairInfo.pair}`);
                     if (quotesResp.ok) {
                         const quotesData = await quotesResp.json();
+                        log(`Received ${(quotesData.quotes || []).length} quotes for ${pairInfo.pair}`);
                         for (const quote of quotesData.quotes || []) {
                             allQuotes.push({
                                 id: `${pairInfo.pair}-${quote.expiry}`,
@@ -454,6 +539,8 @@ const marketDataViewer = (() => {
                                 source: 'Demo'
                             });
                         }
+                    } else {
+                        logError(`Failed to load quotes for ${pairInfo.pair}: ${quotesResp.status}`);
                     }
                 } catch (e) {
                     logError(`Failed to load quotes for ${pairInfo.pair}:`, e);
@@ -463,6 +550,7 @@ const marketDataViewer = (() => {
             state.fxVolQuotes = allQuotes;
             state.lastUpdated = new Date().toISOString();
 
+            sortFxVolQuotes();
             renderFxVolTable();
             updateFxVolStats();
             updateLastUpdated();
@@ -471,8 +559,22 @@ const marketDataViewer = (() => {
         } catch (error) {
             logError('Failed to load FX vol data:', error);
             showError('Failed to load FX volatility data');
+            showTablePlaceholder('Failed to load FX volatility data. Check console for details.', 'fa-exclamation-triangle');
         } finally {
             showLoading(false);
+        }
+    }
+
+    function showTablePlaceholder(message, iconClass) {
+        if (elements.ratesTbody) {
+            elements.ratesTbody.innerHTML = '';
+        }
+        if (elements.placeholder) {
+            elements.placeholder.style.display = 'flex';
+            elements.placeholder.innerHTML = `
+                <i class="fas ${iconClass}"></i>
+                <p>${message}</p>
+            `;
         }
     }
 
@@ -495,11 +597,13 @@ const marketDataViewer = (() => {
         // Update table headers for FXVol
         updateTableHeadersForAssetClass('FXVol');
 
-        // Filter by selected currency pair (using currency filter for pair)
+        // Filter by selected currency pair (using currency filter for pair, case-insensitive)
         let filteredQuotes = state.fxVolQuotes;
-        const pairFilter = elements.currencyFilter?.value;
+        const pairFilter = elements.currencyFilter?.value?.toUpperCase();
         if (pairFilter) {
-            filteredQuotes = filteredQuotes.filter(q => q.pair.includes(pairFilter));
+            filteredQuotes = filteredQuotes.filter(q =>
+                q.pair && q.pair.toUpperCase().includes(pairFilter)
+            );
         }
 
         if (filteredQuotes.length === 0) {
@@ -653,12 +757,344 @@ const marketDataViewer = (() => {
     }
 
     // ===========================================
+    // Events Data Loading
+    // ===========================================
+
+    async function loadEventsData() {
+        showLoading(true);
+        // Show loading placeholder in table
+        showTablePlaceholder('Loading events data...', 'fa-spinner fa-spin');
+
+        try {
+            // Load event types
+            log('Fetching event types from /api/events/types...');
+            const typesResp = await fetch('/api/events/types');
+            if (typesResp.ok) {
+                const typesData = await typesResp.json();
+                log(`Received event types: ${JSON.stringify(typesData)}`);
+                state.eventTypes = typesData.types || [];
+            } else {
+                logError(`Failed to fetch event types: ${typesResp.status}`);
+            }
+
+            // Load all events
+            log('Fetching events from /api/events...');
+            const eventsResp = await fetch('/api/events');
+            if (!eventsResp.ok) {
+                throw new Error(`Failed to fetch events: ${eventsResp.status} ${eventsResp.statusText}`);
+            }
+
+            const eventsData = await eventsResp.json();
+            log(`Received events data: ${eventsData.events?.length || 0} events`);
+            state.events = eventsData.events || [];
+            state.filteredEvents = [...state.events];
+            state.lastUpdated = new Date().toISOString();
+
+            if (state.events.length === 0) {
+                log('No events found');
+                showTablePlaceholder('No events available', 'fa-calendar-alt');
+                return;
+            }
+
+            sortEvents();
+            renderEventsTable();
+            updateEventsStats();
+            updateLastUpdated();
+
+            log(`Loaded ${state.events.length} events`);
+        } catch (error) {
+            logError('Failed to load events data:', error);
+            showError('Failed to load events data');
+            showTablePlaceholder('Failed to load events data. Check console for details.', 'fa-exclamation-triangle');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    function sortEvents() {
+        const col = state.sortColumn;
+        const dir = state.sortDirection === 'asc' ? 1 : -1;
+
+        state.filteredEvents.sort((a, b) => {
+            let aVal = a[col];
+            let bVal = b[col];
+
+            if (aVal == null) aVal = '';
+            if (bVal == null) bVal = '';
+
+            // Date comparison
+            if (col === 'date') {
+                return aVal.localeCompare(bVal) * dir;
+            }
+
+            // Importance comparison (Critical > High > Medium > Low)
+            if (col === 'importance') {
+                const order = { critical: 0, high: 1, medium: 2, low: 3 };
+                const aOrder = order[String(aVal).toLowerCase()] ?? 99;
+                const bOrder = order[String(bVal).toLowerCase()] ?? 99;
+                return (aOrder - bOrder) * dir;
+            }
+
+            return String(aVal).localeCompare(String(bVal)) * dir;
+        });
+    }
+
+    function renderEventsTable() {
+        if (!elements.ratesTbody) return;
+
+        // Update table headers for Events
+        updateTableHeadersForAssetClass('Events');
+
+        // Filter by currency if selected (case-insensitive)
+        let filteredEvents = [...state.events];
+        const currency = elements.currencyFilter?.value?.toUpperCase();
+        if (currency) {
+            filteredEvents = filteredEvents.filter(e =>
+                e.currency && e.currency.toUpperCase() === currency
+            );
+        }
+
+        state.filteredEvents = filteredEvents;
+        sortEvents();
+
+        if (state.filteredEvents.length === 0) {
+            elements.ratesTbody.innerHTML = '';
+            if (elements.placeholder) {
+                elements.placeholder.style.display = 'flex';
+                elements.placeholder.innerHTML = `
+                    <i class="fas fa-calendar-alt"></i>
+                    <p>No events available</p>
+                    <span class="placeholder-hint">Check the Events API for data</span>
+                `;
+            }
+            return;
+        }
+
+        if (elements.placeholder) elements.placeholder.style.display = 'none';
+
+        const html = state.filteredEvents.map(event => {
+            const importanceClass = getImportanceClass(event.importance);
+            const typeIcon = getEventTypeIcon(event.eventType);
+            const typeLabel = formatEventType(event.eventType);
+
+            return `
+                <tr data-event-id="${event.id}" class="${state.selectedRateId === event.id ? 'selected' : ''}">
+                    <td>
+                        <span class="event-date">${escapeHtml(event.date)}</span>
+                    </td>
+                    <td>
+                        <span class="event-type-badge ${event.eventType}">
+                            <i class="fas ${typeIcon}"></i>
+                            ${typeLabel}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="event-title">${escapeHtml(event.title)}</span>
+                    </td>
+                    <td>${event.currency ? escapeHtml(event.currency) : '-'}</td>
+                    <td>${event.region ? escapeHtml(event.region) : '-'}</td>
+                    <td>
+                        <span class="importance-badge ${importanceClass}">
+                            ${escapeHtml(event.importance)}
+                        </span>
+                    </td>
+                    <td>${event.time ? escapeHtml(event.time) : '-'}</td>
+                    <td>${escapeHtml(event.source)}</td>
+                </tr>
+            `;
+        }).join('');
+
+        elements.ratesTbody.innerHTML = html;
+
+        // Bind row click events for Events
+        elements.ratesTbody.querySelectorAll('tr').forEach(row => {
+            row.addEventListener('click', () => {
+                const eventId = row.dataset.eventId;
+                selectEvent(eventId);
+            });
+        });
+    }
+
+    function selectEvent(eventId) {
+        state.selectedRateId = eventId;
+        const event = state.filteredEvents.find(e => e.id === eventId);
+        if (event) {
+            renderEventDetail(event);
+        }
+        updateEventsTableSelection();
+    }
+
+    function updateEventsTableSelection() {
+        elements.ratesTbody?.querySelectorAll('tr').forEach(row => {
+            row.classList.toggle('selected', row.dataset.eventId === state.selectedRateId);
+        });
+    }
+
+    function renderEventDetail(event) {
+        if (!elements.detailContent) return;
+
+        const typeIcon = getEventTypeIcon(event.eventType);
+        const typeLabel = formatEventType(event.eventType);
+
+        let centralBankHtml = '';
+        if (event.centralBank) {
+            centralBankHtml = `
+                <div class="detail-section">
+                    <div class="detail-section-title"><i class="fas fa-landmark"></i> Central Bank</div>
+                    <div class="detail-row">
+                        <span class="detail-label">Bank</span>
+                        <span class="detail-value">${escapeHtml(event.centralBank.name)}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Code</span>
+                        <span class="detail-value">${escapeHtml(event.centralBank.code)}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Currency</span>
+                        <span class="detail-value">${escapeHtml(event.centralBank.currency)}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        let economicDataHtml = '';
+        if (event.previous || event.forecast || event.actual) {
+            economicDataHtml = `
+                <div class="detail-section">
+                    <div class="detail-section-title"><i class="fas fa-chart-bar"></i> Economic Data</div>
+                    ${event.previous ? `
+                    <div class="detail-row">
+                        <span class="detail-label">Previous</span>
+                        <span class="detail-value">${escapeHtml(event.previous)}</span>
+                    </div>
+                    ` : ''}
+                    ${event.forecast ? `
+                    <div class="detail-row">
+                        <span class="detail-label">Forecast</span>
+                        <span class="detail-value">${escapeHtml(event.forecast)}</span>
+                    </div>
+                    ` : ''}
+                    ${event.actual ? `
+                    <div class="detail-row">
+                        <span class="detail-label">Actual</span>
+                        <span class="detail-value large">${escapeHtml(event.actual)}</span>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        const tagsHtml = event.tags && event.tags.length > 0
+            ? `<div class="event-tags">${event.tags.map(t => `<span class="event-tag">${escapeHtml(t)}</span>`).join('')}</div>`
+            : '';
+
+        elements.detailContent.innerHTML = `
+            <div class="detail-section">
+                <div class="detail-section-title"><i class="fas ${typeIcon}"></i> ${typeLabel}</div>
+                <div class="detail-row">
+                    <span class="detail-label">Title</span>
+                    <span class="detail-value">${escapeHtml(event.title)}</span>
+                </div>
+                ${event.description ? `
+                <div class="detail-row">
+                    <span class="detail-label">Description</span>
+                    <span class="detail-value">${escapeHtml(event.description)}</span>
+                </div>
+                ` : ''}
+                <div class="detail-row">
+                    <span class="detail-label">Date</span>
+                    <span class="detail-value large">${escapeHtml(event.date)}</span>
+                </div>
+                ${event.time ? `
+                <div class="detail-row">
+                    <span class="detail-label">Time</span>
+                    <span class="detail-value">${escapeHtml(event.time)} ${event.timezone ? `(${escapeHtml(event.timezone)})` : ''}</span>
+                </div>
+                ` : ''}
+                <div class="detail-row">
+                    <span class="detail-label">Importance</span>
+                    <span class="detail-value"><span class="importance-badge ${getImportanceClass(event.importance)}">${escapeHtml(event.importance)}</span></span>
+                </div>
+                ${event.currency ? `
+                <div class="detail-row">
+                    <span class="detail-label">Currency</span>
+                    <span class="detail-value">${escapeHtml(event.currency)}</span>
+                </div>
+                ` : ''}
+                ${event.region ? `
+                <div class="detail-row">
+                    <span class="detail-label">Region</span>
+                    <span class="detail-value">${escapeHtml(event.region)}</span>
+                </div>
+                ` : ''}
+                <div class="detail-row">
+                    <span class="detail-label">Source</span>
+                    <span class="detail-value">${escapeHtml(event.source)}</span>
+                </div>
+                ${tagsHtml}
+            </div>
+            ${centralBankHtml}
+            ${economicDataHtml}
+        `;
+    }
+
+    function updateEventsStats() {
+        const total = state.events.length;
+        const cbMeetings = state.events.filter(e => e.eventType === 'central_bank_meeting').length;
+        const displayed = state.filteredEvents.length;
+
+        if (elements.statsTotal) elements.statsTotal.textContent = total;
+        if (elements.statsLive) elements.statsLive.textContent = cbMeetings;
+        if (elements.statsDisplayed) elements.statsDisplayed.textContent = displayed;
+        if (elements.totalCount) elements.totalCount.textContent = displayed;
+        if (elements.staleCount) elements.staleCount.textContent = '0';
+    }
+
+    function getEventTypeIcon(eventType) {
+        const icons = {
+            'central_bank_meeting': 'fa-landmark',
+            'economic_release': 'fa-chart-bar',
+            'holiday': 'fa-calendar-times',
+            'news': 'fa-newspaper',
+            'expiry': 'fa-hourglass-end',
+            'other': 'fa-info-circle'
+        };
+        return icons[eventType] || 'fa-calendar';
+    }
+
+    function formatEventType(eventType) {
+        const labels = {
+            'central_bank_meeting': 'CB Meeting',
+            'economic_release': 'Economic',
+            'holiday': 'Holiday',
+            'news': 'News',
+            'expiry': 'Expiry',
+            'other': 'Other'
+        };
+        return labels[eventType] || eventType;
+    }
+
+    function getImportanceClass(importance) {
+        const classes = {
+            'critical': 'importance-critical',
+            'high': 'importance-high',
+            'medium': 'importance-medium',
+            'low': 'importance-low'
+        };
+        return classes[String(importance).toLowerCase()] || '';
+    }
+
+    // ===========================================
     // Dynamic Table Headers
     // ===========================================
 
     function updateTableHeadersForAssetClass(assetClass) {
+        log(`Updating table headers for asset class: ${assetClass}`);
         const thead = elements.ratesTable?.querySelector('thead tr');
-        if (!thead) return;
+        if (!thead) {
+            logError('Cannot update table headers: thead element not found');
+            return;
+        }
 
         switch (assetClass) {
             case 'IRVol':
@@ -683,6 +1119,18 @@ const marketDataViewer = (() => {
                     <th class="sortable numeric" data-sort="rr10d">10D RR <i class="fas fa-sort"></i></th>
                     <th class="sortable numeric" data-sort="bf10d">10D BF <i class="fas fa-sort"></i></th>
                     <th>Status</th>
+                `;
+                break;
+            case 'Events':
+                thead.innerHTML = `
+                    <th class="sortable" data-sort="date">Date <i class="fas fa-sort"></i></th>
+                    <th class="sortable" data-sort="eventType">Type <i class="fas fa-sort"></i></th>
+                    <th class="sortable" data-sort="title">Event <i class="fas fa-sort"></i></th>
+                    <th class="sortable" data-sort="currency">Currency <i class="fas fa-sort"></i></th>
+                    <th class="sortable" data-sort="region">Region <i class="fas fa-sort"></i></th>
+                    <th class="sortable" data-sort="importance">Importance <i class="fas fa-sort"></i></th>
+                    <th>Time</th>
+                    <th>Source</th>
                 `;
                 break;
             default:
@@ -718,6 +1166,9 @@ const marketDataViewer = (() => {
                 } else if (assetClass === 'FXVol') {
                     sortFxVolQuotes();
                     renderFxVolTable();
+                } else if (assetClass === 'Events') {
+                    sortEvents();
+                    renderEventsTable();
                 } else {
                     sortAndRender();
                 }
@@ -730,6 +1181,13 @@ const marketDataViewer = (() => {
         const dir = state.sortDirection === 'asc' ? 1 : -1;
 
         state.irVolQuotes.sort((a, b) => {
+            // Primary sort: always by currency
+            const currencyCompare = String(a.currency || '').localeCompare(String(b.currency || ''));
+            if (currencyCompare !== 0) {
+                return currencyCompare;
+            }
+
+            // Secondary sort: by selected column
             let aVal = a[col];
             let bVal = b[col];
 
@@ -738,6 +1196,10 @@ const marketDataViewer = (() => {
 
             if (col === 'atmVol') {
                 return (parseFloat(aVal) - parseFloat(bVal)) * dir;
+            }
+            // Tenor/expiry comparison using INFRA_MASTER order
+            if (col === 'tenor' || col === 'expiry') {
+                return compareTenor(aVal, bVal) * dir;
             }
             return String(aVal).localeCompare(String(bVal)) * dir;
         });
@@ -748,6 +1210,13 @@ const marketDataViewer = (() => {
         const dir = state.sortDirection === 'asc' ? 1 : -1;
 
         state.fxVolQuotes.sort((a, b) => {
+            // Primary sort: always by pair
+            const pairCompare = String(a.pair || '').localeCompare(String(b.pair || ''));
+            if (pairCompare !== 0) {
+                return pairCompare;
+            }
+
+            // Secondary sort: by selected column
             let aVal = a[col];
             let bVal = b[col];
 
@@ -814,14 +1283,33 @@ const marketDataViewer = (() => {
     function setAssetClass(assetClass) {
         state.assetClass = assetClass;
         state.selectedRateId = null; // Clear selection when switching
+
+        // Set default sort column for each asset class
+        if (assetClass === 'FXVol') {
+            state.sortColumn = 'expiry';
+        } else if (assetClass === 'Events') {
+            state.sortColumn = 'date';
+        } else {
+            state.sortColumn = 'tenor';
+        }
+        state.sortDirection = 'asc';
+
+        // Reset filter to "All" when switching asset classes
+        if (elements.currencyFilter) {
+            elements.currencyFilter.value = '';
+        }
+
         updateAssetClassToggle();
+
+        // Always update table headers first when switching asset classes
+        updateTableHeadersForAssetClass(assetClass);
 
         // Load data based on asset class
         if (assetClass === 'IRVol') {
             if (state.irVolQuotes.length === 0) {
                 loadIrVolData();
             } else {
-                updateTableHeadersForAssetClass('IRVol');
+                sortIrVolQuotes();
                 renderIrVolTable();
                 updateIrVolStats();
             }
@@ -829,13 +1317,20 @@ const marketDataViewer = (() => {
             if (state.fxVolQuotes.length === 0) {
                 loadFxVolData();
             } else {
-                updateTableHeadersForAssetClass('FXVol');
+                sortFxVolQuotes();
                 renderFxVolTable();
                 updateFxVolStats();
             }
+        } else if (assetClass === 'Events') {
+            if (state.events.length === 0) {
+                loadEventsData();
+            } else {
+                sortEvents();
+                renderEventsTable();
+                updateEventsStats();
+            }
         } else {
             // Rates or FX
-            updateTableHeadersForAssetClass(assetClass);
             applyFilters();
         }
 
@@ -879,12 +1374,8 @@ const marketDataViewer = (() => {
     function buildQueryParams() {
         const params = new URLSearchParams();
         const currency = elements.currencyFilter?.value;
-        const rateType = elements.typeFilter?.value;
-        const index = elements.indexFilter?.value;
 
         if (currency) params.set('currency', currency);
-        if (rateType) params.set('rateType', rateType);
-        if (index) params.set('index', index);
 
         return params.toString() ? `?${params.toString()}` : '';
     }
@@ -901,11 +1392,15 @@ const marketDataViewer = (() => {
             updateFxVolStats();
             return;
         }
+        if (state.assetClass === 'Events') {
+            // renderEventsTable handles currency filtering internally
+            renderEventsTable();
+            updateEventsStats();
+            return;
+        }
 
         // Original filtering for Rates and FX
         const currency = elements.currencyFilter?.value?.toLowerCase() || '';
-        const rateType = elements.typeFilter?.value?.toLowerCase() || '';
-        const index = elements.indexFilter?.value?.toLowerCase() || '';
         const assetClassTypes = getAssetClassRateTypes(state.assetClass);
 
         state.filteredRates = state.rates.filter(rate => {
@@ -915,10 +1410,8 @@ const marketDataViewer = (() => {
                 return false;
             }
 
-            // Additional filters
+            // Currency filter
             if (currency && rate.currency.toLowerCase() !== currency) return false;
-            if (rateType && rateTypeLower !== rateType) return false;
-            if (index && (!rate.rateIndex || rate.rateIndex.toLowerCase() !== index)) return false;
             return true;
         });
 
@@ -931,6 +1424,13 @@ const marketDataViewer = (() => {
         const dir = state.sortDirection === 'asc' ? 1 : -1;
 
         state.filteredRates.sort((a, b) => {
+            // Primary sort: always by currency
+            const currencyCompare = String(a.currency || '').localeCompare(String(b.currency || ''));
+            if (currencyCompare !== 0) {
+                return currencyCompare;
+            }
+
+            // Secondary sort: by selected column
             let aVal = a[col];
             let bVal = b[col];
 
@@ -941,6 +1441,11 @@ const marketDataViewer = (() => {
             // Numeric comparison for value
             if (col === 'value') {
                 return (parseFloat(aVal) - parseFloat(bVal)) * dir;
+            }
+
+            // Tenor comparison using INFRA_MASTER order
+            if (col === 'tenor') {
+                return compareTenor(aVal, bVal) * dir;
             }
 
             // String comparison

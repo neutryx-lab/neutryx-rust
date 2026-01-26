@@ -18,7 +18,7 @@ use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 #[cfg(feature = "openapi")]
-use crate::web::pricer_types::{
+use crate::web::handlers::types::{
     FirstOrderGreeksRequest, FirstOrderGreeksResponse, SecondOrderGreeksRequest,
     SecondOrderGreeksResponse,
 };

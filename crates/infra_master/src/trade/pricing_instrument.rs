@@ -19,6 +19,32 @@ pub enum ExerciseStyle {
     European,
     /// American option (exercise any time before expiry).
     American,
+    /// Bermudan option (exercise on specified dates).
+    Bermudan,
+    /// Asian option (payoff depends on average price).
+    Asian,
+}
+
+impl ExerciseStyle {
+    /// Returns true if this is European exercise.
+    #[inline]
+    #[must_use]
+    pub fn is_european(&self) -> bool { matches!(self, ExerciseStyle::European) }
+
+    /// Returns true if this is American exercise.
+    #[inline]
+    #[must_use]
+    pub fn is_american(&self) -> bool { matches!(self, ExerciseStyle::American) }
+
+    /// Returns true if this is Bermudan exercise.
+    #[inline]
+    #[must_use]
+    pub fn is_bermudan(&self) -> bool { matches!(self, ExerciseStyle::Bermudan) }
+
+    /// Returns true if this is Asian exercise.
+    #[inline]
+    #[must_use]
+    pub fn is_asian(&self) -> bool { matches!(self, ExerciseStyle::Asian) }
 }
 
 impl fmt::Display for ExerciseStyle {
@@ -26,6 +52,8 @@ impl fmt::Display for ExerciseStyle {
         match self {
             ExerciseStyle::European => write!(f, "European"),
             ExerciseStyle::American => write!(f, "American"),
+            ExerciseStyle::Bermudan => write!(f, "Bermudan"),
+            ExerciseStyle::Asian => write!(f, "Asian"),
         }
     }
 }
@@ -136,6 +164,21 @@ impl<T: Copy> VanillaOption<T> {
     /// Returns the instrument parameters.
     #[must_use]
     pub fn params(&self) -> &InstrumentParams<T> { &self.params }
+
+    /// Returns the strike price.
+    #[inline]
+    #[must_use]
+    pub fn strike(&self) -> T { self.params.strike() }
+
+    /// Returns the time to expiry.
+    #[inline]
+    #[must_use]
+    pub fn expiry(&self) -> T { self.params.expiry() }
+
+    /// Returns the notional amount.
+    #[inline]
+    #[must_use]
+    pub fn notional(&self) -> T { self.params.notional() }
 
     /// Returns the payoff type.
     #[must_use]
@@ -282,6 +325,28 @@ impl PricingInstrument<f64> {
             PricingInstrument::Forward(fwd) => fwd.payoff(spot),
         }
     }
+}
+
+/// FX option type (Call or Put).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum FxOptionType {
+    /// Call option - right to buy the base currency.
+    Call,
+    /// Put option - right to sell the base currency.
+    Put,
+}
+
+impl FxOptionType {
+    /// Returns true if this is a call option.
+    #[inline]
+    #[must_use]
+    pub fn is_call(&self) -> bool { matches!(self, FxOptionType::Call) }
+
+    /// Returns true if this is a put option.
+    #[inline]
+    #[must_use]
+    pub fn is_put(&self) -> bool { matches!(self, FxOptionType::Put) }
 }
 
 /// Smooth maximum function for AD compatibility.
