@@ -28,6 +28,7 @@
 //! let vol = cube.volatility(1.0, 5.0, 0.03)?;
 //! ```
 
+mod aad_validation;
 mod breeden_litzenberger;
 mod builder;
 mod cache;
@@ -42,12 +43,17 @@ mod interpolator;
 mod lazy_evaluator;
 mod quote;
 mod sabr_surface;
+mod sensitivity_path;
 mod types;
 mod vega;
 
 #[cfg(test)]
 mod proptest_tests;
 
+pub use aad_validation::{
+    AADCrossValidator, DiscontinuityDetector, DiscontinuityKind, DiscontinuityPoint,
+    PointValidation, SmoothingConfig, ValidationReport,
+};
 pub use breeden_litzenberger::BreedenLitzenberger;
 pub use builder::VolCubeBuilder;
 pub use cache::{CacheStats, SharedVolCubeCache, VolCubeCache, VolCubeCacheEntry, VolCubeKey};
@@ -92,7 +98,12 @@ pub use quote::{
     VolQuoteSet, VolStrike,
 };
 pub use sabr_surface::SabrParameterSurface;
+pub use sensitivity_path::{
+    IndirectSensitivity, IndirectSensitivityCalculator, SensitivityEdge, SensitivityNode,
+    SensitivityNodeKind, SensitivityPath, SensitivityPathBuilder,
+};
 pub use types::{InstrumentId, SabrParams, VolInstrument};
 pub use vega::{
-    BucketVega, PointVega, VegaBumpConfig, VegaError, VegaGrid, VolCubeVegaCalculator,
+    BucketVega, ForwardModeVegaCalculator, PointVega, VegaBumpConfig, VegaComputationMode,
+    VegaError, VegaGrid, VegaVerificationResult, VolCubeVegaCalculator,
 };

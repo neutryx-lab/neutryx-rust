@@ -474,6 +474,9 @@ fn generate_fallback_rates(timestamp: i64) -> Vec<MarketRateResponse> {
 fn generate_fallback_conventions() -> HashMap<String, ConventionData> {
     let mut conventions = HashMap::new();
 
+    // ===========================================
+    // OIS Conventions
+    // ===========================================
     conventions.insert(
         "USD-SOFR-OIS".to_string(),
         ConventionData {
@@ -502,6 +505,165 @@ fn generate_fallback_conventions() -> HashMap<String, ConventionData> {
                     serde_json::json!("ACT/360"),
                 );
                 fields.insert("float_leg_index".to_string(), serde_json::json!("SOFR"));
+                fields
+            },
+        },
+    );
+
+    // ===========================================
+    // Swaption (IRVol) Conventions
+    // ===========================================
+    conventions.insert(
+        "USD-SWAPTION".to_string(),
+        ConventionData {
+            convention_type: "SwaptionConvention".to_string(),
+            currency: "USD".to_string(),
+            is_default: true,
+            fields: {
+                let mut fields = HashMap::new();
+                fields.insert("vol_type".to_string(), serde_json::json!("Normal"));
+                fields.insert("vol_unit".to_string(), serde_json::json!("bp"));
+                fields.insert("settlement".to_string(), serde_json::json!("Cash"));
+                fields.insert("exercise_style".to_string(), serde_json::json!("European"));
+                fields.insert("underlying_tenor".to_string(), serde_json::json!("Swap"));
+                fields
+            },
+        },
+    );
+
+    conventions.insert(
+        "EUR-SWAPTION".to_string(),
+        ConventionData {
+            convention_type: "SwaptionConvention".to_string(),
+            currency: "EUR".to_string(),
+            is_default: true,
+            fields: {
+                let mut fields = HashMap::new();
+                fields.insert("vol_type".to_string(), serde_json::json!("Normal"));
+                fields.insert("vol_unit".to_string(), serde_json::json!("bp"));
+                fields.insert("settlement".to_string(), serde_json::json!("Cash"));
+                fields.insert("exercise_style".to_string(), serde_json::json!("European"));
+                fields.insert("underlying_tenor".to_string(), serde_json::json!("Swap"));
+                fields
+            },
+        },
+    );
+
+    conventions.insert(
+        "JPY-SWAPTION".to_string(),
+        ConventionData {
+            convention_type: "SwaptionConvention".to_string(),
+            currency: "JPY".to_string(),
+            is_default: true,
+            fields: {
+                let mut fields = HashMap::new();
+                fields.insert("vol_type".to_string(), serde_json::json!("Normal"));
+                fields.insert("vol_unit".to_string(), serde_json::json!("bp"));
+                fields.insert("settlement".to_string(), serde_json::json!("Cash"));
+                fields.insert("exercise_style".to_string(), serde_json::json!("European"));
+                fields.insert("underlying_tenor".to_string(), serde_json::json!("Swap"));
+                fields
+            },
+        },
+    );
+
+    conventions.insert(
+        "GBP-SWAPTION".to_string(),
+        ConventionData {
+            convention_type: "SwaptionConvention".to_string(),
+            currency: "GBP".to_string(),
+            is_default: true,
+            fields: {
+                let mut fields = HashMap::new();
+                fields.insert("vol_type".to_string(), serde_json::json!("Normal"));
+                fields.insert("vol_unit".to_string(), serde_json::json!("bp"));
+                fields.insert("settlement".to_string(), serde_json::json!("Cash"));
+                fields.insert("exercise_style".to_string(), serde_json::json!("European"));
+                fields.insert("underlying_tenor".to_string(), serde_json::json!("Swap"));
+                fields
+            },
+        },
+    );
+
+    // Cap/Floor Conventions
+    conventions.insert(
+        "USD-CAPFLOOR".to_string(),
+        ConventionData {
+            convention_type: "CapFloorConvention".to_string(),
+            currency: "USD".to_string(),
+            is_default: true,
+            fields: {
+                let mut fields = HashMap::new();
+                fields.insert("vol_type".to_string(), serde_json::json!("Normal"));
+                fields.insert("vol_unit".to_string(), serde_json::json!("bp"));
+                fields.insert("underlying_index".to_string(), serde_json::json!("SOFR"));
+                fields.insert("frequency".to_string(), serde_json::json!("Quarterly"));
+                fields
+            },
+        },
+    );
+
+    // ===========================================
+    // FX Option (FXVol) Conventions
+    // ===========================================
+    conventions.insert(
+        "EURUSD-FXOPTION".to_string(),
+        ConventionData {
+            convention_type: "FxOptionConvention".to_string(),
+            currency: "EUR".to_string(),
+            is_default: true,
+            fields: {
+                let mut fields = HashMap::new();
+                fields.insert("delta_type".to_string(), serde_json::json!("Spot Delta"));
+                fields.insert(
+                    "vol_quote_style".to_string(),
+                    serde_json::json!("ATM + RR/BF"),
+                );
+                fields.insert("premium_currency".to_string(), serde_json::json!("USD"));
+                fields.insert("settlement".to_string(), serde_json::json!("T+2"));
+                fields.insert("cut_time".to_string(), serde_json::json!("NY 10:00"));
+                fields
+            },
+        },
+    );
+
+    conventions.insert(
+        "USDJPY-FXOPTION".to_string(),
+        ConventionData {
+            convention_type: "FxOptionConvention".to_string(),
+            currency: "USD".to_string(),
+            is_default: true,
+            fields: {
+                let mut fields = HashMap::new();
+                fields.insert("delta_type".to_string(), serde_json::json!("Spot Delta"));
+                fields.insert(
+                    "vol_quote_style".to_string(),
+                    serde_json::json!("ATM + RR/BF"),
+                );
+                fields.insert("premium_currency".to_string(), serde_json::json!("JPY"));
+                fields.insert("settlement".to_string(), serde_json::json!("T+2"));
+                fields.insert("cut_time".to_string(), serde_json::json!("Tokyo 15:00"));
+                fields
+            },
+        },
+    );
+
+    conventions.insert(
+        "GBPUSD-FXOPTION".to_string(),
+        ConventionData {
+            convention_type: "FxOptionConvention".to_string(),
+            currency: "GBP".to_string(),
+            is_default: true,
+            fields: {
+                let mut fields = HashMap::new();
+                fields.insert("delta_type".to_string(), serde_json::json!("Spot Delta"));
+                fields.insert(
+                    "vol_quote_style".to_string(),
+                    serde_json::json!("ATM + RR/BF"),
+                );
+                fields.insert("premium_currency".to_string(), serde_json::json!("USD"));
+                fields.insert("settlement".to_string(), serde_json::json!("T+2"));
+                fields.insert("cut_time".to_string(), serde_json::json!("NY 10:00"));
                 fields
             },
         },

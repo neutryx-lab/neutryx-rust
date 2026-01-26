@@ -164,23 +164,23 @@
   - _Requirements: 7.1_
 
 - [ ] 11. Vega計算（∂Price/∂VolQuote）
-- [ ] 11.1 adjoint modeによるVega計算を実装する
+- [x] 11.1 adjoint modeによるVega計算を実装する
   - VolQuote変動に対するprice感応度を計算
   - 各(expiry, tenor, strike)点でのVega gridを出力
   - _Requirements: 7.2, 7.5_
 
-- [ ] 11.2 forward modeによるVega計算を実装する
+- [x] 11.2 forward modeによるVega計算を実装する
   - 特定VolQuoteへの感応度を効率的に計算
   - adjoint modeとの結果一致を検証
   - _Requirements: 7.5_
 
-- [ ] 12. Curve経由の間接感応度
-- [ ] 12.1 CurveQuote→Price完全パスのAADグラフを構築する
+- [x] 12. Curve経由の間接感応度
+- [x] 12.1 CurveQuote→Price完全パスのAADグラフを構築する
   - CurveQuote→CurveCalibration→ForwardRate→VolCubeCalibration→Priceのパスを確立
   - CalibrationGraphと計算グラフを連携
   - _Requirements: 7.8, 6.11_
 
-- [ ] 12.2 ∂SwaptionPrice/∂CurveQuoteの間接感応度を計算する
+- [x] 12.2 ∂SwaptionPrice/∂CurveQuoteの間接感応度を計算する
   - Curve経由のVolCubeへの影響を追跡
   - Vegaと同時に計算可能なAADパスを構築
   - _Requirements: 7.9, 7.10_

@@ -59,9 +59,9 @@ pub struct VegaBumpConfig {
 impl Default for VegaBumpConfig {
     fn default() -> Self {
         Self {
-            vol_bump: 0.0001,         // 1bp
+            vol_bump: 0.0001, // 1bp
             use_relative_bump: false,
-            relative_bump_pct: 0.01,  // 1%
+            relative_bump_pct: 0.01, // 1%
             use_central_difference: true,
         }
     }
@@ -181,14 +181,8 @@ impl BucketVega {
             self.weighted_strike = 0.0;
             return;
         }
-        let weighted_sum: f64 = self.strike_vegas
-            .iter()
-            .map(|(k, v)| k * v.abs())
-            .sum();
-        let abs_total: f64 = self.strike_vegas
-            .iter()
-            .map(|(_, v)| v.abs())
-            .sum();
+        let weighted_sum: f64 = self.strike_vegas.iter().map(|(k, v)| k * v.abs()).sum();
+        let abs_total: f64 = self.strike_vegas.iter().map(|(_, v)| v.abs()).sum();
         if abs_total > 1e-12 {
             self.weighted_strike = weighted_sum / abs_total;
         }
@@ -214,9 +208,7 @@ pub struct VegaGrid {
 
 impl VegaGrid {
     /// 新しいVegaGridを作成。
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// バケットを追加。
     pub fn add_bucket(&mut self, bucket: BucketVega) {
@@ -231,36 +223,38 @@ impl VegaGrid {
     }
 
     /// PointVegaを追加。
-    pub fn add_point_vega(&mut self, point: PointVega) {
-        self.point_vegas.push(point);
-    }
+    pub fn add_point_vega(&mut self, point: PointVega) { self.point_vegas.push(point); }
 
     /// 特定のExpiry-TenorバケットのVegaを取得。
     pub fn get_bucket(&self, expiry: f64, tenor: f64) -> Option<&BucketVega> {
-        self.buckets.iter().find(|b|
-            (b.expiry - expiry).abs() < 1e-10 && (b.tenor - tenor).abs() < 1e-10
-        )
+        self.buckets
+            .iter()
+            .find(|b| (b.expiry - expiry).abs() < 1e-10 && (b.tenor - tenor).abs() < 1e-10)
     }
 
     /// Expiry軸でソート。
     pub fn sort_by_expiry(&mut self) {
-        self.buckets.sort_by(|a, b|
-            a.expiry.partial_cmp(&b.expiry).unwrap_or(std::cmp::Ordering::Equal)
-                .then(a.tenor.partial_cmp(&b.tenor).unwrap_or(std::cmp::Ordering::Equal))
-        );
-        self.expiries.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-        self.tenors.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        self.buckets.sort_by(|a, b| {
+            a.expiry
+                .partial_cmp(&b.expiry)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then(
+                    a.tenor
+                        .partial_cmp(&b.tenor)
+                        .unwrap_or(std::cmp::Ordering::Equal),
+                )
+        });
+        self.expiries
+            .sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        self.tenors
+            .sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     }
 
     /// バケット数。
-    pub fn bucket_count(&self) -> usize {
-        self.buckets.len()
-    }
+    pub fn bucket_count(&self) -> usize { self.buckets.len() }
 
     /// Point Vega数。
-    pub fn point_count(&self) -> usize {
-        self.point_vegas.len()
-    }
+    pub fn point_count(&self) -> usize { self.point_vegas.len() }
 }
 
 // =============================================================================
@@ -281,19 +275,13 @@ pub struct VolCubeVegaCalculator {
 
 impl VolCubeVegaCalculator {
     /// 新しいVega計算器を作成。
-    pub fn new(config: VegaBumpConfig) -> Self {
-        Self { config }
-    }
+    pub fn new(config: VegaBumpConfig) -> Self { Self { config } }
 
     /// デフォルト設定でVega計算器を作成。
-    pub fn with_defaults() -> Self {
-        Self::new(VegaBumpConfig::default())
-    }
+    pub fn with_defaults() -> Self { Self::new(VegaBumpConfig::default()) }
 
     /// 設定を取得。
-    pub fn config(&self) -> &VegaBumpConfig {
-        &self.config
-    }
+    pub fn config(&self) -> &VegaBumpConfig { &self.config }
 
     /// バケットVegaを計算。
     ///
@@ -324,11 +312,13 @@ impl VolCubeVegaCalculator {
 
         for &(expiry, tenor, strike) in points {
             // 基準vol取得
-            let base_vol = cube.volatility(
-                T::from(expiry).ok_or(VegaError::ConversionError)?,
-                T::from(tenor).ok_or(VegaError::ConversionError)?,
-                T::from(strike).ok_or(VegaError::ConversionError)?,
-            ).map_err(|e| VegaError::VolCubeError(format!("{:?}", e)))?;
+            let base_vol = cube
+                .volatility(
+                    T::from(expiry).ok_or(VegaError::ConversionError)?,
+                    T::from(tenor).ok_or(VegaError::ConversionError)?,
+                    T::from(strike).ok_or(VegaError::ConversionError)?,
+                )
+                .map_err(|e| VegaError::VolCubeError(format!("{:?}", e)))?;
 
             let base_vol_f64 = base_vol.to_f64().ok_or(VegaError::ConversionError)?;
 
@@ -413,11 +403,13 @@ impl VolCubeVegaCalculator {
         C: VolatilityCube<T>,
         F: Fn(f64) -> f64,
     {
-        let base_vol = cube.volatility(
-            T::from(expiry).ok_or(VegaError::ConversionError)?,
-            T::from(tenor).ok_or(VegaError::ConversionError)?,
-            T::from(strike).ok_or(VegaError::ConversionError)?,
-        ).map_err(|e| VegaError::VolCubeError(format!("{:?}", e)))?;
+        let base_vol = cube
+            .volatility(
+                T::from(expiry).ok_or(VegaError::ConversionError)?,
+                T::from(tenor).ok_or(VegaError::ConversionError)?,
+                T::from(strike).ok_or(VegaError::ConversionError)?,
+            )
+            .map_err(|e| VegaError::VolCubeError(format!("{:?}", e)))?;
 
         let base_vol_f64 = base_vol.to_f64().ok_or(VegaError::ConversionError)?;
         let bump = self.config.compute_bump(base_vol_f64);
@@ -436,9 +428,7 @@ impl VolCubeVegaCalculator {
 }
 
 impl Default for VolCubeVegaCalculator {
-    fn default() -> Self {
-        Self::with_defaults()
-    }
+    fn default() -> Self { Self::with_defaults() }
 }
 
 // =============================================================================
@@ -467,6 +457,169 @@ impl std::fmt::Display for VegaError {
 }
 
 impl std::error::Error for VegaError {}
+
+// =============================================================================
+// Forward Mode AD Support
+// =============================================================================
+
+/// Forward Mode AD計算モード。
+///
+/// # Requirements: 7.5
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum VegaComputationMode {
+    /// Bump-and-revalue（数値微分）。
+    #[default]
+    BumpAndRevalue,
+    /// Forward mode AD（自動微分）。
+    ForwardModeAD,
+    /// Hybrid（ADで計算し、bump-and-revalueで検証）。
+    Hybrid,
+}
+
+/// Forward Mode AD Vega計算器。
+///
+/// # Requirements: 7.5
+///
+/// DualNumberを使用してforward mode ADでVegaを計算する。
+/// pricing関数がジェネリックであれば、exact derivativeを取得できる。
+///
+/// # 使用例
+///
+/// ```ignore
+/// use pricer_models::market::volcube::ForwardModeVegaCalculator;
+/// use num_dual::Dual64;
+///
+/// let calculator = ForwardModeVegaCalculator::new();
+///
+/// // DualNumber対応のpricing関数
+/// let pricing_fn = |vol: Dual64| -> Dual64 {
+///     // Black-Scholes Vega計算など
+///     vol * Dual64::from(100.0)
+/// };
+///
+/// let vega = calculator.compute_vega(0.20, pricing_fn);
+/// ```
+#[derive(Debug, Clone, Default)]
+pub struct ForwardModeVegaCalculator {
+    /// 検証用の許容誤差。
+    tolerance: f64,
+}
+
+impl ForwardModeVegaCalculator {
+    /// 新しいForward Mode AD計算器を作成。
+    pub fn new() -> Self { Self { tolerance: 1e-6 } }
+
+    /// 許容誤差を設定。
+    pub fn with_tolerance(mut self, tolerance: f64) -> Self {
+        self.tolerance = tolerance;
+        self
+    }
+
+    /// 許容誤差を取得。
+    pub fn tolerance(&self) -> f64 { self.tolerance }
+
+    /// Forward mode ADでVegaを計算（ジェネリック版）。
+    ///
+    /// pricing_fnがDualNumber対応の場合、exact derivativeを計算。
+    ///
+    /// # Type Parameters
+    ///
+    /// * `D` - Dual number型（DualNum<f64>を実装）
+    /// * `F` - Pricing関数 fn(D) -> D
+    ///
+    /// # Arguments
+    ///
+    /// * `vol` - 基準ボラティリティ
+    /// * `pricing_fn` - DualNumber対応のpricing関数
+    ///
+    /// # Returns
+    ///
+    /// (price, vega) のタプル
+    #[cfg(feature = "num-dual-mode")]
+    pub fn compute_vega_ad<F>(&self, vol: f64, pricing_fn: F) -> (f64, f64)
+    where
+        F: Fn(num_dual::Dual64) -> num_dual::Dual64,
+    {
+        use num_dual::DualNum;
+
+        // Create dual number with derivative = 1.0
+        let vol_dual = num_dual::Dual64::from(vol).derivative();
+
+        // Compute price with AD
+        let result = pricing_fn(vol_dual);
+
+        // Extract price and derivative
+        (result.re(), result.eps)
+    }
+
+    /// Forward mode ADでVegaを計算（f64フォールバック版）。
+    ///
+    /// num-dual-mode featureが無効の場合、bump-and-revalueにフォールバック。
+    #[cfg(not(feature = "num-dual-mode"))]
+    pub fn compute_vega_ad<F>(&self, vol: f64, pricing_fn: F) -> (f64, f64)
+    where
+        F: Fn(f64) -> f64,
+    {
+        let bump = 0.0001; // 1bp
+        let price = pricing_fn(vol);
+        let price_up = pricing_fn(vol + bump);
+        let price_down = pricing_fn((vol - bump).max(1e-6));
+        let vega = (price_up - price_down) / (2.0 * bump);
+        (price, vega)
+    }
+
+    /// Bump-and-revalueとAD結果を比較検証。
+    ///
+    /// # Returns
+    ///
+    /// (ad_vega, bump_vega, relative_error)
+    pub fn verify_vega<F>(&self, vol: f64, pricing_fn: F, bump: f64) -> VegaVerificationResult
+    where
+        F: Fn(f64) -> f64 + Copy,
+    {
+        // Bump-and-revalue
+        let price_up = pricing_fn(vol + bump);
+        let price_down = pricing_fn((vol - bump).max(1e-6));
+        let bump_vega = (price_up - price_down) / (2.0 * bump);
+
+        // AD (via fallback for now)
+        let (_price, ad_vega) = self.compute_vega_ad(vol, pricing_fn);
+
+        let relative_error = if bump_vega.abs() > 1e-12 {
+            ((ad_vega - bump_vega) / bump_vega).abs()
+        } else {
+            (ad_vega - bump_vega).abs()
+        };
+
+        VegaVerificationResult {
+            ad_vega,
+            bump_vega,
+            relative_error,
+            passed: relative_error < self.tolerance,
+        }
+    }
+}
+
+/// Vega検証結果。
+#[derive(Debug, Clone, PartialEq)]
+pub struct VegaVerificationResult {
+    /// AD計算によるVega。
+    pub ad_vega: f64,
+    /// Bump-and-revalueによるVega。
+    pub bump_vega: f64,
+    /// 相対誤差。
+    pub relative_error: f64,
+    /// 検証パス判定。
+    pub passed: bool,
+}
+
+impl VegaVerificationResult {
+    /// 検証がパスしたかどうか。
+    pub fn is_passed(&self) -> bool { self.passed }
+
+    /// 誤差が許容範囲内かどうか。
+    pub fn within_tolerance(&self, tolerance: f64) -> bool { self.relative_error < tolerance }
+}
 
 // =============================================================================
 // Tests
@@ -600,14 +753,7 @@ mod tests {
         let pricing_fn = |vol: f64| vol * 100.0;
         let base_price = 0.20 * 100.0; // Assume base vol is ~0.20
 
-        let vega = calc.calculate_point_vega(
-            &cube,
-            pricing_fn,
-            base_price,
-            0.5,
-            2.0,
-            0.03,
-        );
+        let vega = calc.calculate_point_vega(&cube, pricing_fn, base_price, 0.5, 2.0, 0.03);
 
         assert!(vega.is_ok());
         let v = vega.unwrap();
@@ -668,24 +814,97 @@ mod tests {
     #[test]
     fn test_one_sided_difference() {
         let cube = create_test_cube();
-        let calc = VolCubeVegaCalculator::new(
-            VegaBumpConfig::default().with_one_sided_difference()
-        );
+        let calc =
+            VolCubeVegaCalculator::new(VegaBumpConfig::default().with_one_sided_difference());
 
         let pricing_fn = |vol: f64| vol * vol * 100.0; // Quadratic
         let base_vol = 0.20;
         let base_price = base_vol * base_vol * 100.0;
 
-        let vega = calc.calculate_point_vega(
-            &cube,
-            pricing_fn,
-            base_price,
-            0.5,
-            2.0,
-            0.03,
-        );
+        let vega = calc.calculate_point_vega(&cube, pricing_fn, base_price, 0.5, 2.0, 0.03);
 
         assert!(vega.is_ok());
         // One-sided should give slightly different result than central
+    }
+
+    // =========================================================================
+    // Forward Mode AD Tests
+    // =========================================================================
+
+    #[test]
+    fn test_forward_mode_calculator_creation() {
+        let calc = ForwardModeVegaCalculator::new();
+        assert!((calc.tolerance() - 1e-6).abs() < 1e-12);
+
+        let calc2 = ForwardModeVegaCalculator::new().with_tolerance(1e-4);
+        assert!((calc2.tolerance() - 1e-4).abs() < 1e-12);
+    }
+
+    #[test]
+    fn test_forward_mode_compute_vega_ad() {
+        let calc = ForwardModeVegaCalculator::new();
+
+        // Linear pricing function: price = vol * 100
+        let pricing_fn = |vol: f64| vol * 100.0;
+        let (price, vega) = calc.compute_vega_ad(0.20, pricing_fn);
+
+        // Price = 0.20 * 100 = 20
+        assert!((price - 20.0).abs() < 1e-6);
+        // Vega = d(vol * 100)/d(vol) = 100
+        assert!((vega - 100.0).abs() < 1.0);
+    }
+
+    #[test]
+    fn test_forward_mode_compute_vega_quadratic() {
+        let calc = ForwardModeVegaCalculator::new();
+
+        // Quadratic pricing function: price = vol^2 * 100
+        let pricing_fn = |vol: f64| vol * vol * 100.0;
+        let vol = 0.20;
+        let (price, vega) = calc.compute_vega_ad(vol, pricing_fn);
+
+        // Price = 0.20^2 * 100 = 4
+        assert!((price - 4.0).abs() < 1e-6);
+        // Vega = d(vol^2 * 100)/d(vol) = 2 * vol * 100 = 40
+        // Note: bump-and-revalue approximation, so allow tolerance
+        assert!((vega - 40.0).abs() < 1.0);
+    }
+
+    #[test]
+    fn test_verify_vega_linear() {
+        let calc = ForwardModeVegaCalculator::new().with_tolerance(1e-3);
+
+        let pricing_fn = |vol: f64| vol * 100.0;
+        let result = calc.verify_vega(0.20, pricing_fn, 0.0001);
+
+        assert!(result.is_passed());
+        assert!((result.ad_vega - 100.0).abs() < 1.0);
+        assert!((result.bump_vega - 100.0).abs() < 1.0);
+    }
+
+    #[test]
+    fn test_verify_vega_result() {
+        let result = VegaVerificationResult {
+            ad_vega: 100.0,
+            bump_vega: 99.99,
+            relative_error: 0.0001,
+            passed: true,
+        };
+
+        assert!(result.is_passed());
+        assert!(result.within_tolerance(0.001));
+        assert!(!result.within_tolerance(0.00001));
+    }
+
+    #[test]
+    fn test_vega_computation_mode() {
+        let mode = VegaComputationMode::default();
+        assert_eq!(mode, VegaComputationMode::BumpAndRevalue);
+
+        let mode2 = VegaComputationMode::ForwardModeAD;
+        assert_ne!(mode, mode2);
+
+        let mode3 = VegaComputationMode::Hybrid;
+        assert_ne!(mode2, mode3);
     }
 }

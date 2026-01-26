@@ -19,11 +19,17 @@
 //! - Requirement 10: FX VolSurface専用機能
 //! - Requirement 11: FX VolSurface バックエンドAPI
 
-use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Instant};
+use std::{collections::HashMap, path::PathBuf, str::FromStr, sync::Arc, time::Instant};
 
 use axum::{
     extract::{Path, Query, State},
     Json,
+};
+use chrono::NaiveDate;
+use infra_master::{market::Currency, trade::instrument_def::CurrencyPair};
+use pricer_models::market::{
+    curves::{FlatCurve, YieldCurve},
+    fx_calibration::{FxCurve, FxVolSurfaceBuilder, SimpleFxCurve, VolQuote},
 };
 use tokio::sync::RwLock;
 use uuid::Uuid;
@@ -39,6 +45,35 @@ use super::{
     },
     AppState,
 };
+
+// =============================================================================
+// Helper Functions
+// =============================================================================
+
+/// Parses a currency pair string like "EURUSD" or "EUR/USD" into a
+/// CurrencyPair.
+fn parse_currency_pair(pair_str: &str) -> Result<CurrencyPair, ApiError> {
+    let cleaned = pair_str.replace('/', "").to_uppercase();
+    if cleaned.len() != 6 {
+        return Err(ApiError::validation(
+            format!("Invalid currency pair format: {}", pair_str),
+            "currency_pair",
+        ));
+    }
+    let base = Currency::from_str(&cleaned[0..3]).map_err(|e| {
+        ApiError::validation(
+            format!("Invalid base currency '{}': {}", &cleaned[0..3], e),
+            "currency_pair",
+        )
+    })?;
+    let quote = Currency::from_str(&cleaned[3..6]).map_err(|e| {
+        ApiError::validation(
+            format!("Invalid quote currency '{}': {}", &cleaned[3..6], e),
+            "currency_pair",
+        )
+    })?;
+    Ok(CurrencyPair::new(base, quote))
+}
 
 // =============================================================================
 // FxVolCache - LRU Cache for built surfaces (Req 11.4)
@@ -1003,7 +1038,8 @@ use super::fxvol_types::{
 
 /// Handler for `POST /api/fxvol/calibrate`.
 ///
-/// Calibrates an FX volatility surface using SABR model.
+/// Calibrates an FX volatility surface using SABR model via
+/// `FxVolSurfaceBuilder`.
 ///
 /// # Requirements Coverage
 ///
@@ -1031,46 +1067,106 @@ pub async fn calibrate_surface(
         ));
     }
 
+    // Parse reference date
+    let reference_date =
+        NaiveDate::parse_from_str(&request.reference_date, "%Y-%m-%d").map_err(|e| {
+            ApiError::validation(
+                format!("Invalid reference date '{}': {}", request.reference_date, e),
+                "reference_date",
+            )
+        })?;
+
+    // Parse currency pair
+    let currency_pair = parse_currency_pair(&request.currency_pair)?;
+
+    // Create yield curves for domestic and foreign rates using FlatCurve
+    let domestic_curve: Arc<dyn YieldCurve<f64> + Send + Sync> =
+        Arc::new(FlatCurve::new(request.domestic_rate));
+    let foreign_curve: Arc<dyn YieldCurve<f64> + Send + Sync> =
+        Arc::new(FlatCurve::new(request.foreign_rate));
+
+    // Create SimpleFxCurve using interest rate parity
+    let fx_curve: Arc<dyn FxCurve<f64> + Send + Sync> = Arc::new(SimpleFxCurve::new(
+        currency_pair.clone(),
+        request.spot,
+        domestic_curve,
+        foreign_curve,
+    ));
+
+    // Build the FxVolSurfaceBuilder with quotes
+    let mut builder = FxVolSurfaceBuilder::<f64>::new(currency_pair.clone())
+        .with_reference_date(reference_date)
+        .with_fx_curve(fx_curve.clone())
+        .with_sabr(request.sabr_beta);
+
+    // Add quotes to the builder
+    for quote in &request.quotes {
+        let expiry_date = reference_date + chrono::Duration::days((quote.expiry * 365.0) as i64);
+
+        // Add ATM quote
+        builder = builder.add_atm_quote(expiry_date, quote.atm_vol);
+
+        // Add 25-delta butterfly and risk reversal
+        builder = builder.add_butterfly_25d_quote(expiry_date, quote.bf_25d);
+        builder = builder.add_risk_reversal_25d_quote(expiry_date, quote.rr_25d);
+
+        // Add 10-delta quotes if available
+        if let Some(bf_10d) = quote.bf_10d {
+            builder = builder.add_quotes(vec![VolQuote::butterfly_10d(expiry_date, bf_10d)]);
+        }
+        if let Some(rr_10d) = quote.rr_10d {
+            builder = builder.add_quotes(vec![VolQuote::risk_reversal_10d(expiry_date, rr_10d)]);
+        }
+    }
+
+    // Build the calibrated surface using the crates implementation
+    let (calibrated_surface, crate_diagnostics) = builder
+        .build()
+        .map_err(|e| ApiError::internal(format!("Calibration failed: {}", e)))?;
+
+    // Map CalibrationDiagnostics to response format
     let mut warnings = Vec::new();
     let mut sabr_params = Vec::new();
     let mut max_residual = 0.0_f64;
     let mut total_residual = 0.0_f64;
 
-    // Calibrate SABR for each expiry
-    for quote in &request.quotes {
-        let label = expiry_to_label(quote.expiry);
+    // Extract SABR parameters from calibrated smiles
+    for (expiry_date, smile) in calibrated_surface.smiles() {
+        let expiry_time = smile.expiry_time;
+        let forward = smile.forward;
+        let label = expiry_to_label(expiry_time);
 
-        // Calculate forward rate
-        let rate_diff = request.domestic_rate - request.foreign_rate;
-        let forward = request.spot * (rate_diff * quote.expiry).exp();
-
-        // Initial SABR parameter estimates
-        let atm_vol = quote.atm_vol;
-        let beta = request.sabr_beta;
-
-        // Simplified SABR calibration
-        // In production, would use proper optimisation
-        let alpha = atm_vol * forward.powf(1.0 - beta);
-
-        // Estimate rho from risk reversal
-        let rho = (quote.rr_25d / atm_vol).clamp(-0.95, 0.95);
-
-        // Estimate nu from butterfly
-        let nu = (quote.bf_25d.abs() / atm_vol * 4.0 + 0.2).clamp(0.1, 2.0);
-
-        // Compute calibration residual (simplified)
-        let delta_vols = quote.to_delta_vols();
-        let model_25c = sabr_vol(forward, forward * 1.05, quote.expiry, alpha, beta, rho, nu);
-        let model_25p = sabr_vol(forward, forward * 0.95, quote.expiry, alpha, beta, rho, nu);
-        let residual_25c = (model_25c - delta_vols.vol_25d_call).abs();
-        let residual_25p = (model_25p - delta_vols.vol_25d_put).abs();
-        let residual = f64::midpoint(residual_25c.powi(2), residual_25p.powi(2)).sqrt();
+        // Get SABR parameters from the calibrated smile
+        let (alpha, beta, rho, nu, residual, iterations) = if let Some(sabr) = &smile.sabr_params {
+            (
+                sabr.alpha,
+                sabr.beta,
+                sabr.rho,
+                sabr.nu,
+                crate_diagnostics
+                    .by_expiry
+                    .iter()
+                    .find(|d| d.expiry == *expiry_date)
+                    .map(|d| d.residual)
+                    .unwrap_or(0.0),
+                crate_diagnostics
+                    .by_expiry
+                    .iter()
+                    .find(|d| d.expiry == *expiry_date)
+                    .map(|d| d.iterations)
+                    .unwrap_or(0),
+            )
+        } else {
+            // Flat smile fallback
+            let atm = smile.atm_vol;
+            (atm * forward.powf(0.5), request.sabr_beta, 0.0, 0.3, 0.0, 0)
+        };
 
         max_residual = max_residual.max(residual);
         total_residual += residual;
 
         sabr_params.push(SabrParameters {
-            expiry: quote.expiry,
+            expiry: expiry_time,
             label,
             alpha,
             beta,
@@ -1078,19 +1174,19 @@ pub async fn calibrate_surface(
             nu,
             forward,
             residual,
-            iterations: 10, // Placeholder
+            iterations,
         });
     }
 
-    let expiry_count = request.quotes.len();
+    let expiry_count = sabr_params.len();
     let avg_residual = if expiry_count > 0 {
         total_residual / expiry_count as f64
     } else {
         0.0
     };
 
-    // Check convergence (residual threshold)
-    let converged = max_residual < 0.005; // 50bps tolerance
+    // Check convergence
+    let converged = crate_diagnostics.all_converged();
     if !converged {
         warnings.push(format!(
             "High calibration residual: max={:.4}, avg={:.4}",
@@ -1102,7 +1198,7 @@ pub async fn calibrate_surface(
     let surface_id = Uuid::new_v4();
 
     // Extract expiry points
-    let mut expiry_points: Vec<f64> = request.quotes.iter().map(|q| q.expiry).collect();
+    let mut expiry_points: Vec<f64> = sabr_params.iter().map(|p| p.expiry).collect();
     expiry_points.sort_by(|a, b| a.partial_cmp(b).unwrap());
     expiry_points.dedup();
 
@@ -1242,38 +1338,6 @@ pub async fn get_surface(
         vol_matrix,
         strike_matrix,
     }))
-}
-
-/// Simplified SABR volatility formula.
-fn sabr_vol(
-    forward: f64,
-    strike: f64,
-    expiry: f64,
-    alpha: f64,
-    beta: f64,
-    rho: f64,
-    nu: f64,
-) -> f64 {
-    if (forward - strike).abs() < 1e-10 {
-        // ATM approximation
-        let fk_beta = forward.powf(1.0 - beta);
-        return alpha / fk_beta
-            * (1.0
-                + ((1.0 - beta).powi(2) / 24.0 * alpha.powi(2) / fk_beta.powi(2)
-                    + 0.25 * rho * beta * nu * alpha / fk_beta
-                    + (2.0 - 3.0 * rho.powi(2)) / 24.0 * nu.powi(2))
-                    * expiry);
-    }
-
-    let log_fk = (forward / strike).ln();
-    let fk_mid = (forward * strike).powf((1.0 - beta) / 2.0);
-    let z = nu / alpha * fk_mid * log_fk;
-    let x_z = ((1.0 - 2.0 * rho * z + z.powi(2)).sqrt() + z - rho).ln() / (1.0 - rho);
-
-    let prefix = alpha / (fk_mid * (1.0 + (1.0 - beta).powi(2) / 24.0 * log_fk.powi(2)));
-    let zeta = if x_z.abs() < 1e-10 { 1.0 } else { z / x_z };
-
-    prefix * zeta
 }
 
 // =============================================================================

@@ -552,6 +552,10 @@ impl<T: Float + Send + Sync> CalibratedFxVolSurface<T> {
     #[must_use]
     pub fn expiry_dates(&self) -> Vec<NaiveDate> { self.smiles.keys().copied().collect() }
 
+    /// Returns a reference to the calibrated smiles by expiry date.
+    #[must_use]
+    pub fn smiles(&self) -> &BTreeMap<NaiveDate, CalibratedSmile<T>> { &self.smiles }
+
     /// Returns volatility at a given strike and expiry.
     ///
     /// # Arguments

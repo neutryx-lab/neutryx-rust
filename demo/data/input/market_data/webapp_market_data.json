@@ -440,6 +440,109 @@
         "notional_exchange": "Both",
         "settlement_days": 2
       }
+    },
+    "USD-SWAPTION": {
+      "type": "SwaptionConvention",
+      "currency": "USD",
+      "is_default": true,
+      "fields": {
+        "vol_type": "Normal",
+        "vol_unit": "bp",
+        "settlement": "Cash",
+        "exercise_style": "European",
+        "underlying_tenor": "Swap",
+        "underlying_index": "SOFR"
+      }
+    },
+    "EUR-SWAPTION": {
+      "type": "SwaptionConvention",
+      "currency": "EUR",
+      "is_default": true,
+      "fields": {
+        "vol_type": "Normal",
+        "vol_unit": "bp",
+        "settlement": "Cash",
+        "exercise_style": "European",
+        "underlying_tenor": "Swap",
+        "underlying_index": "EURIBOR"
+      }
+    },
+    "JPY-SWAPTION": {
+      "type": "SwaptionConvention",
+      "currency": "JPY",
+      "is_default": true,
+      "fields": {
+        "vol_type": "Normal",
+        "vol_unit": "bp",
+        "settlement": "Cash",
+        "exercise_style": "European",
+        "underlying_tenor": "Swap",
+        "underlying_index": "TIBOR"
+      }
+    },
+    "GBP-SWAPTION": {
+      "type": "SwaptionConvention",
+      "currency": "GBP",
+      "is_default": true,
+      "fields": {
+        "vol_type": "Normal",
+        "vol_unit": "bp",
+        "settlement": "Cash",
+        "exercise_style": "European",
+        "underlying_tenor": "Swap",
+        "underlying_index": "SONIA"
+      }
+    },
+    "USD-CAPFLOOR": {
+      "type": "CapFloorConvention",
+      "currency": "USD",
+      "is_default": true,
+      "fields": {
+        "vol_type": "Normal",
+        "vol_unit": "bp",
+        "underlying_index": "SOFR",
+        "cap_frequency": "Quarterly",
+        "settlement": "T+2"
+      }
+    },
+    "EURUSD-FXOPTION": {
+      "type": "FxOptionConvention",
+      "currency": "EUR",
+      "is_default": true,
+      "fields": {
+        "delta_type": "Spot Delta",
+        "vol_quote_style": "ATM + RR/BF",
+        "premium_currency": "USD",
+        "settlement": "T+2",
+        "cut_time": "NY 10:00",
+        "calendar": "New York + TARGET"
+      }
+    },
+    "USDJPY-FXOPTION": {
+      "type": "FxOptionConvention",
+      "currency": "USD",
+      "is_default": true,
+      "fields": {
+        "delta_type": "Spot Delta",
+        "vol_quote_style": "ATM + RR/BF",
+        "premium_currency": "JPY",
+        "settlement": "T+2",
+        "cut_time": "Tokyo 15:00",
+        "calendar": "Tokyo + New York"
+      }
+    },
+    "GBPUSD-FXOPTION": {
+      "type": "FxOptionConvention",
+      "currency": "GBP",
+      "is_default": true,
+      "fields": {
+        "delta_type": "Spot Delta",
+        "vol_quote_style": "ATM + RR/BF",
+        "premium_currency": "USD",
+        "settlement": "T+2",
+        "cut_time": "NY 10:00",
+        "calendar": "London + New York"
+      }
     }
   },
   "instruments": {

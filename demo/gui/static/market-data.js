@@ -571,8 +571,10 @@ const marketDataViewer = (() => {
         // Calculate delta vols from RR/BF
         const vol25c = quote.atmVol + quote.bf25d + quote.rr25d / 2;
         const vol25p = quote.atmVol + quote.bf25d - quote.rr25d / 2;
-        const vol10c = quote.atmVol + quote.bf10d + quote.rr10d / 2;
-        const vol10p = quote.atmVol + quote.bf10d - quote.rr10d / 2;
+        // 10D vols are optional
+        const has10d = quote.rr10d != null && quote.bf10d != null;
+        const vol10c = has10d ? quote.atmVol + quote.bf10d + quote.rr10d / 2 : null;
+        const vol10p = has10d ? quote.atmVol + quote.bf10d - quote.rr10d / 2 : null;
 
         elements.detailContent.innerHTML = `
             <div class="detail-section">
