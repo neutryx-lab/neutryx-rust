@@ -240,7 +240,7 @@ impl<T> AlignedBuffer<T> {
     /// ```
     #[inline]
     #[must_use]
-    #[allow(clippy::manual_is_multiple_of)] // is_multiple_of is unstable
+    #[allow(unknown_lints, clippy::manual_is_multiple_of)] // is_multiple_of is unstable
     pub fn is_aligned(&self) -> bool {
         if self.cap == 0 {
             return true;

@@ -51,6 +51,7 @@ pub mod checkpoint_ad;
 pub mod fallback;
 pub mod forward;
 pub mod greeks;
+pub mod kernel;
 pub mod loops;
 pub mod parallel;
 pub mod reverse;
