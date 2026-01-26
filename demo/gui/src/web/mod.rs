@@ -400,8 +400,8 @@ fn build_csp_header() -> SetResponseHeaderLayer<HeaderValue> {
     // - connect-src: ws/wss for WebSocket connections
     // - worker-src: blob for Plotly web workers
     const DEFAULT_CSP: &str = "default-src 'self'; \
-        script-src 'self' 'unsafe-eval' https://cdn.plot.ly; \
-        script-src-elem 'self' https://cdn.plot.ly; \
+        script-src 'self' 'unsafe-eval' https://cdn.plot.ly https://cdn.jsdelivr.net; \
+        script-src-elem 'self' https://cdn.plot.ly https://cdn.jsdelivr.net; \
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; \
         font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; \
         img-src 'self' data: blob:; \

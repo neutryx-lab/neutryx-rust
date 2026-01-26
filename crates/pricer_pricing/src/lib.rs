@@ -144,9 +144,21 @@ pub mod graph;
 // Generic Pricer Engine - unified pricing API
 pub mod generic_pricer;
 
+// Tree-based pricing methods (Binomial/Trinomial)
+pub mod tree;
+
+// Unified pricing result types
+pub mod result;
+
+// Pricing method dispatcher
+pub mod dispatcher;
+
 // Re-export commonly used items for convenience
 pub use graph::{
     ComputationGraph, GraphBuilder, GraphEdge, GraphError, GraphExtractable, GraphMetadata,
     GraphNode, GraphNodeUpdate, NodeGroup, NodeType, SimpleGraphExtractor,
 };
 pub use mc::{GbmParams, Greek, MonteCarloConfig, MonteCarloPricer, PayoffParams, PricingResult};
+pub use tree::{BinomialTree, CrrParams, TreeConfig, TreeMethod, TreeType};
+pub use result::{PricingMetadata, TreeTypeMetadata, UnifiedGreeks, UnifiedPricingResult};
+pub use dispatcher::{DispatcherConfig, PricingMethodDispatcher};

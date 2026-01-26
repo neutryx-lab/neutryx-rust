@@ -1,5 +1,6 @@
 // Clippy configuration for demo_gui
 // Demo code uses simpler patterns acceptable for non-production code
+#![allow(missing_docs)]
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::return_self_not_must_use)]

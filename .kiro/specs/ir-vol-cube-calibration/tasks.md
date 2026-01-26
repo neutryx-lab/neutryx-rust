@@ -152,7 +152,7 @@
 
 ## Phase 3: AAD（自動微分）統合
 
-- [ ] 10. AAD基盤とGraphExtractable実装
+- [x] 10. AAD基盤とGraphExtractable実装
 - [x] 10.1 VolCubeにGraphExtractable traitを実装する
   - カリブレーショングラフ（VolQuotes→SABRParams→InterpolatedVol）を抽出
   - D3.js互換のDAG形式でエクスポート可能にする
@@ -163,7 +163,7 @@
   - Enzyme AADモードでの実行を可能にする
   - _Requirements: 7.1_
 
-- [ ] 11. Vega計算（∂Price/∂VolQuote）
+- [x] 11. Vega計算（∂Price/∂VolQuote）
 - [x] 11.1 adjoint modeによるVega計算を実装する
   - VolQuote変動に対するprice感応度を計算
   - 各(expiry, tenor, strike)点でのVega gridを出力
