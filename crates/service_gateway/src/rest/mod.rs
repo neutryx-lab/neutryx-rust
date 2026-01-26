@@ -23,18 +23,6 @@ pub fn create_router() -> Router {
         .nest("/api/v1", api_v1_routes())
 }
 
-/// Create the REST API router with graph state
-#[allow(dead_code)]
-pub fn create_router_with_graph_state(graph_state: Arc<GraphAppState>) -> Router {
-    Router::new()
-        // Health check
-        .route("/health", get(handlers::health))
-        // API v1 routes
-        .nest("/api/v1", api_v1_routes())
-        // Portfolio graph routes with state
-        .nest("/api/v1/portfolio", portfolio_routes(graph_state))
-}
-
 /// Create the REST API router with both graph state and WebSocket support
 pub fn create_router_with_ws_state(ws_state: Arc<WsAppState>) -> Router {
     let graph_state = ws_state.graph_state.clone();

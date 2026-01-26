@@ -2,7 +2,7 @@
 
 実装状況と今後の開発項目を追跡するドキュメント。
 
-_Updated: 2026-01-26_ — market-index-keyed-access completed (IndexedMarket, TradeIndexRequirements, MarketValidator); 39 completed specs
+_Updated: 2026-01-26_ — Codebase redundancy cleanup completed; 39 completed specs
 
 ---
 
@@ -148,6 +148,27 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 | documentation | API docs, user guides, examples | ❌ |
 | testing-coverage | Test coverage, property-based testing | ❌ |
 
+### Maintenance Tasks (Completed 2026-01-26)
+
+Codebase redundancy cleanup performed:
+
+| Task | Description | Status |
+|------|-------------|--------|
+| tokio-version-fix | Fixed tokio version inconsistency (workspace = true) | ✅ |
+| dead-code-removal | Removed dead code in service_gateway | ✅ |
+| unused-modules-cleanup | Removed unused modules in pricer_risk (bucket_dv01, irs_greeks_by_factor, portfolio_greeks) | ✅ |
+| test-fixtures-common | Created shared test fixtures (pricer_pricing/tests/common, pricer_models/tests/common) | ✅ |
+| app-js-refactor-plan | Documented app.js refactoring plan (15,000+ lines → modular) | ✅ |
+
+### Future Maintenance (Low Priority)
+
+| Task | Description | Status |
+|------|-------------|--------|
+| app-js-modularisation | Split app.js into separate modules (chart-utils, portfolio-table, etc.) | ⏳ Planned |
+| error-consolidation | Consolidate 31 error.rs files into shared patterns | ⏳ Planned |
+| spec-consolidation | Consolidate FrictionalBank-related specs (4 specs → 1) | ⏳ Planned |
+| d3-module-audit | Audit D3.js modules usage in demo/gui/static/vendor | ⏳ Planned |
+
 ---
 
 ### Active Specifications (In Progress)
@@ -168,6 +189,7 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 
 | Date | Change |
 |------|--------|
+| 2026-01-26 | Codebase redundancy cleanup: Fixed tokio versions, removed dead code/unused modules, added test fixtures, documented app.js refactor plan |
 | 2026-01-26 | Steering sync: market-index-keyed-access completed (39 total). Added IndexedMarket, TradeIndexRequirements, MarketValidator to structure.md. |
 | 2026-01-26 | Steering sync: pricer-pricing-architecture completed (38 total). Added TrinomialTree (Kamrad-Ritchken) to structure.md. market-index-keyed-access ready for implementation. |
 | 2026-01-26 | market-index-keyed-access tasks generated (6 phases, 23 sub-tasks: IndexRequirement, IndexedMarket, Builder, TradeIndexRequirements, MarketValidator). Ready for implementation. |

@@ -23,7 +23,12 @@
 //! let trades = TradeLoader::load_portfolio("trades.json")?;
 //! ```
 
-use std::{collections::HashMap, path::Path};
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::BufReader,
+    path::Path,
+};
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -62,6 +67,11 @@ impl JsonLoader {
     ///
     /// let config: Config = JsonLoader::load("config.json")?;
     /// ```
+    /// Load a single JSON file into type `T` using streaming deserialization.
+    ///
+    /// Uses `BufReader` with `serde_json::from_reader` for memory-efficient
+    /// loading of large files. Instead of loading the entire file content into
+    /// a `String`, this method streams the data directly to the deserializer.
     pub fn load<T: DeserializeOwned, P: AsRef<Path>>(path: P) -> Result<T, LoaderError> {
         let path = path.as_ref();
         let path_str = path.display().to_string();
@@ -70,8 +80,9 @@ impl JsonLoader {
             return Err(LoaderError::file_not_found(&path_str));
         }
 
-        let content = std::fs::read_to_string(path)?;
-        serde_json::from_str(&content).map_err(|e| LoaderError::json_error(&path_str, &e))
+        let file = File::open(path)?;
+        let reader = BufReader::new(file);
+        serde_json::from_reader(reader).map_err(|e| LoaderError::json_error(&path_str, &e))
     }
 
     /// Load multiple JSON files matching a glob pattern.

@@ -14,17 +14,10 @@
 //! - [`MemoryMonitor`] - Memory monitoring and auto-checkpoint mechanism
 
 mod memory_monitor;
-// TODO: portfolio_greeks temporarily disabled - depends on removed
-// InterestRateSwap types mod portfolio_greeks;
 
 pub use memory_monitor::{
     create_shared_monitor, MemoryMonitor, MemoryMonitorConfig, MemoryStats, SharedMemoryMonitor,
 };
-// TODO: Re-enable when rates instruments are restored
-// pub use portfolio_greeks::{
-//     ParallelGreeksConfig, ParallelGreeksError, ParallelGreeksStats,
-//     ParallelPortfolioGreeksCalculator, PortfolioGreeksResult,
-// };
 use rayon::prelude::*;
 
 /// Batch size for parallel processing.

@@ -48,6 +48,7 @@ use thiserror::Error;
 use crate::models::stochastic::{
     EquityModel, FxModel, RatesModel, StochasticModel, TwoFactorState,
 };
+use crate::models::validation::{ComputationError, ParamValidationError};
 
 /// SABRモデルエラー型
 ///
@@ -124,6 +125,38 @@ pub enum SABRError {
     /// NaNまたは無限大が検出された
     #[error("{0}でNaNまたはInfinityが検出されました")]
     NonFinite(String),
+}
+
+impl From<ParamValidationError> for SABRError {
+    fn from(err: ParamValidationError) -> Self {
+        match err.param {
+            "forward" | "F" => SABRError::InvalidForward(err.value),
+            "alpha" => SABRError::InvalidAlpha(err.value),
+            "nu" => SABRError::InvalidNu(err.value),
+            "beta" => SABRError::InvalidBeta(err.value),
+            "rho" => SABRError::InvalidRho(err.value),
+            "maturity" | "T" => SABRError::InvalidMaturity(err.value),
+            "atm_threshold" => SABRError::InvalidAtmThreshold(err.value),
+            "epsilon" | "smoothing_epsilon" => SABRError::InvalidEpsilon(err.value),
+            "strike" | "K" => SABRError::InvalidStrike(err.value),
+            _ => SABRError::NumericalInstability(err.to_string()),
+        }
+    }
+}
+
+impl From<ComputationError> for SABRError {
+    fn from(err: ComputationError) -> Self {
+        match err {
+            ComputationError::NumericalInstability(msg) => SABRError::NumericalInstability(msg),
+            ComputationError::NonFinite(ctx) => SABRError::NonFinite(ctx),
+            ComputationError::ConvergenceFailure {
+                iterations,
+                residual,
+            } => SABRError::NumericalInstability(format!(
+                "Convergence failure after {iterations} iterations (residual: {residual})"
+            )),
+        }
+    }
 }
 
 /// SABRモデルパラメータ
