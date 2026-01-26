@@ -38,6 +38,7 @@ pub mod indexed_market;
 pub mod provider;
 pub mod requirements;
 pub mod surfaces;
+pub mod validator;
 pub mod volcube;
 
 // Re-export commonly used types
@@ -65,6 +66,7 @@ pub use surfaces::{
     FlatVol, FxDeltaPoint, FxVolatilitySurface, InterpolatedVolSurface, VolCubeSlice,
     VolSurfaceEnum, VolatilitySurface,
 };
+pub use validator::{MarketValidator, ValidationReport};
 pub use volcube::{
     calculate_forward_swap_rate, CacheStats,
     CalibrationDiagnostics as VolCubeCalibrationDiagnostics, CalibrationProgress,

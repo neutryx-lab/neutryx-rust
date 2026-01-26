@@ -70,9 +70,9 @@ impl TrinomialParams {
         let p_m = 1.0 - 1.0 / lambda_sq;
 
         // Ensure probabilities are valid (clamp to [0, 1])
-        let p_u = p_u.max(0.0).min(1.0);
-        let p_d = p_d.max(0.0).min(1.0);
-        let p_m = p_m.max(0.0).min(1.0);
+        let p_u = p_u.clamp(0.0, 1.0);
+        let p_d = p_d.clamp(0.0, 1.0);
+        let p_m = p_m.clamp(0.0, 1.0);
 
         // Renormalise if needed
         let total = p_u + p_m + p_d;

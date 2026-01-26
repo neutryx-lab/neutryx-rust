@@ -11,22 +11,22 @@
 
 ## Phase 1: 基盤型定義
 
-- [ ] 1. IndexRequirementとエラー型の定義
-- [ ] 1.1 (P) IndexRequirement enum を定義する
+- [x] 1. IndexRequirementとエラー型の定義
+- [x] 1.1 (P) IndexRequirement enum を定義する
   - Trade/Cashflowが必要とするIndexの型表現を定義
   - RateCurve, SwaptionVol, FxCurve, FxVol の4バリアントを実装
   - Hash, Eq, Clone, Debug, PartialEq derive を追加
   - 各バリアントは対応するIndex型（RateIndex, CurrencyPair）を保持
   - _Requirements: 1.1, 1.2, 1.3, 1.5_
 
-- [ ] 1.2 (P) MarketError に Index関連エラーバリアントを追加する
+- [x] 1.2 (P) MarketError に Index関連エラーバリアントを追加する
   - IndexNotFound エラー（存在しないIndex参照時）を追加
   - CurveNotBuilt エラー（Curve未構築時）を追加
   - VolCubeNotCalibrated エラー（VolCube未キャリブレーション時）を追加
   - 既存MarketError enum への拡張として実装
   - _Requirements: 1.4, 2.6, 3.5_
 
-- [ ] 1.3 (P) MarketBuildError 型を定義する
+- [x] 1.3 (P) MarketBuildError 型を定義する
   - DuplicateIndexMapping エラー（重複Index登録時）を定義
   - IndexNotSpecified エラー（Builder でIndex未指定時）を定義
   - InvalidValuationDate エラー（無効な評価日）を定義
@@ -35,15 +35,15 @@
 
 ## Phase 2: IndexedMarket ファサード実装
 
-- [ ] 2. IndexedMarket 構造体の実装
-- [ ] 2.1 IndexedMarket の基本構造を実装する
+- [x] 2. IndexedMarket 構造体の実装
+- [x] 2.1 IndexedMarket の基本構造を実装する
   - valuation_date と内部HashMap（curves, volcubes, fx_curves, fx_vol_surfaces）を定義
   - CurveSet と IndexCurveMapper への fallback 参照を保持
   - T: Float + Send + Sync のジェネリクス制約を適用
   - Arc による共有所有権パターンを実装
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 2.2 (P) Curve アクセスAPI を実装する
+- [x] 2.2 (P) Curve アクセスAPI を実装する
   - get_df(index, term) で Discount Factor を取得する機能を実装
   - get_forward_rate(index, start, end) で forward rate を取得する機能を実装
   - get_zero_rate(index, term) で zero rate を取得する機能を実装
@@ -51,7 +51,7 @@
   - CurveSet への fallback 動作を実装
   - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-- [ ] 2.3 (P) VolCube アクセスAPI を実装する
+- [x] 2.3 (P) VolCube アクセスAPI を実装する
   - get_swaption_vol(index, expiry, tenor, strike) で swaption vol を取得する機能を実装
   - get_bs_vol(index, expiry, strike) で Black-Scholes vol を取得する機能を実装
   - RateIndex から VolCubeProviderKey への変換ロジックを実装
@@ -59,13 +59,13 @@
   - VolCubeCache との統合を実装
   - _Requirements: 3.1, 3.2, 3.4, 3.6_
 
-- [ ] 2.4 (P) FX アクセスAPI を実装する
+- [x] 2.4 (P) FX アクセスAPI を実装する
   - get_fx_forward(pair, term) で FX forward を取得する機能を実装
   - get_fx_vol(pair, expiry, strike) で FX vol を取得する機能を実装
   - CurrencyPair でのキー化とMarketProviderとの統合
   - _Requirements: 1.2, 3.3_
 
-- [ ] 2.5 Index存在確認メソッドを実装する
+- [x] 2.5 Index存在確認メソッドを実装する
   - has_curve(index), has_volcube(index), has_fx_curve(pair), has_fx_vol(pair) を実装
   - available_rate_indices(), available_currency_pairs() を実装
   - valuation_date() アクセサを実装
