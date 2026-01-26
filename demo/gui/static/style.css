@@ -11328,12 +11328,86 @@ body.light-theme .irs-loading-overlay {
     font-size: 0.75rem;
 }
 
-/* Parameter Chart Container */
-.parameter-chart-container {
-    height: 300px;
+/* Parameter Chart Container - Dual Charts */
+.curve-charts-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
     position: relative;
     margin-bottom: 16px;
+}
+
+.parameter-chart-container {
+    height: 280px;
+    position: relative;
     min-width: 0;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.parameter-chart-container.short-term,
+.parameter-chart-container.long-term {
+    display: none;
+}
+
+.parameter-chart-container.short-term.visible,
+.parameter-chart-container.long-term.visible {
+    display: block;
+}
+
+.parameter-chart-container .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.parameter-chart-container .chart-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.parameter-chart-container .chart-title i {
+    color: var(--primary);
+}
+
+.parameter-chart-container .chart-subtitle {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+/* Central Bank Meeting Legend */
+.cb-meeting-legend {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    padding: 8px;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.cb-meeting-legend .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cb-meeting-legend .legend-marker {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+}
+
+.cb-meeting-legend .legend-marker.cb-meeting {
+    background: rgba(239, 68, 68, 0.8);
+    border: 2px dashed #ef4444;
 }
 
 .chart-placeholder {

@@ -554,7 +554,11 @@ pub fn build_router(state: Arc<AppState>) -> Router {
             "/:curve_id/parameters",
             get(curve_builder_handlers::get_parameters),
         )
-        .route("/indices", get(curve_builder_handlers::get_indices));
+        .route("/indices", get(curve_builder_handlers::get_indices))
+        .route(
+            "/central-bank-meetings",
+            get(curve_builder_handlers::get_central_bank_meetings),
+        );
 
     let api_routes = api_routes.nest("/curves", curve_routes);
 

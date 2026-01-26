@@ -2751,12 +2751,31 @@
                                         <!-- Dynamic tenor range controls will be inserted here -->
                                     </div>
 
-                                    <!-- Chart Display (Task 11.2) -->
-                                    <div class="parameter-chart-container">
-                                        <canvas id="parameter-chart" role="img" aria-label="Parameter curve chart" style="display: none;"></canvas>
+                                    <!-- Chart Display (Task 11.2) - Dual Charts -->
+                                    <div class="curve-charts-wrapper">
+                                        <!-- Short-term Chart (0-1Y) -->
+                                        <div class="parameter-chart-container short-term">
+                                            <div class="chart-header">
+                                                <span class="chart-title"><i class="fas fa-calendar-day"></i> Short-term (0-1Y)</span>
+                                                <span class="chart-subtitle">Daily (0-3M) / Weekly (3M-1Y)</span>
+                                            </div>
+                                            <canvas id="parameter-chart-short" role="img" aria-label="Short-term parameter curve chart" style="display: none;"></canvas>
+                                        </div>
+                                        <!-- Long-term Chart (0-30Y) -->
+                                        <div class="parameter-chart-container long-term">
+                                            <div class="chart-header">
+                                                <span class="chart-title"><i class="fas fa-calendar-alt"></i> Long-term (0-30Y)</span>
+                                                <span class="chart-subtitle">Monthly Grid</span>
+                                            </div>
+                                            <canvas id="parameter-chart-long" role="img" aria-label="Long-term parameter curve chart" style="display: none;"></canvas>
+                                        </div>
                                         <div class="chart-placeholder" id="chart-placeholder">
                                             <i class="fas fa-chart-line"></i>
                                             <p>Build a curve to see parameter visualisation</p>
+                                        </div>
+                                        <!-- Central Bank Meeting Legend -->
+                                        <div class="cb-meeting-legend" id="cb-meeting-legend" style="display: none;">
+                                            <span class="legend-item"><span class="legend-marker cb-meeting"></span> Central Bank Meeting</span>
                                         </div>
                                     </div>
 

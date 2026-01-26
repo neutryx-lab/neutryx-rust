@@ -73,14 +73,19 @@ const curveBuilder = {
         rebuildNotification: null,
         buildStatus: null,
         buildSummary: null,
-        parameterChart: null,
+        parameterChartShort: null,
+        parameterChartLong: null,
         chartPlaceholder: null,
         parameterTabsContainer: null,
         parameterTableContainer: null,
+        cbMeetingLegend: null,
         errorContainer: null,
         errorMessage: null,
         loadingOverlay: null
     },
+
+    // Central bank meeting dates cache
+    centralBankMeetings: null,
 
     initialized: false,
 
@@ -102,6 +107,7 @@ const curveBuilder = {
         try {
             await this.loadIndices();
             await this.loadBuilders();
+            await this.loadCentralBankMeetings();
             this.initialized = true;
 
             if (typeof Logger !== 'undefined') {
@@ -110,6 +116,54 @@ const curveBuilder = {
         } catch (error) {
             console.error('[CurveBuilder] Init failed:', error);
         }
+    },
+
+    /**
+     * Loads central bank meeting dates for all currencies.
+     */
+    async loadCentralBankMeetings() {
+        try {
+            const response = await fetch('/api/curves/central-bank-meetings');
+            if (response.ok) {
+                this.centralBankMeetings = await response.json();
+            }
+        } catch (error) {
+            console.warn('[CurveBuilder] Failed to load central bank meetings:', error);
+            // Non-critical, continue without meetings
+        }
+    },
+
+    /**
+     * Gets central bank meeting dates for the current currency within a year range.
+     * @param {string} currency - Currency code (USD, EUR, JPY, etc.)
+     * @param {Date} referenceDate - Reference date for calculations
+     * @param {number} maxYears - Maximum years to look ahead (default 1)
+     * @returns {Array} Array of {yearFraction, date, label} objects
+     */
+    getCentralBankMeetingsInRange(currency, referenceDate, maxYears = 1) {
+        if (!this.centralBankMeetings?.meetings?.[currency]) {
+            return [];
+        }
+
+        const meetings = [];
+        const refDate = new Date(referenceDate);
+        const maxDate = new Date(refDate);
+        maxDate.setFullYear(maxDate.getFullYear() + maxYears);
+
+        for (const dateStr of this.centralBankMeetings.meetings[currency].dates) {
+            const meetingDate = new Date(dateStr);
+            if (meetingDate > refDate && meetingDate <= maxDate) {
+                const diffMs = meetingDate - refDate;
+                const yearFraction = diffMs / (365.25 * 24 * 60 * 60 * 1000);
+                meetings.push({
+                    yearFraction,
+                    date: meetingDate,
+                    label: `${this.centralBankMeetings.meetings[currency].centralBank} (${dateStr})`
+                });
+            }
+        }
+
+        return meetings.sort((a, b) => a.yearFraction - b.yearFraction);
     },
 
     cacheElements() {
@@ -124,8 +178,10 @@ const curveBuilder = {
         this.elements.rebuildNotification = document.getElementById('rebuild-notification');
         this.elements.buildStatus = document.getElementById('build-status');
         this.elements.buildSummary = document.getElementById('build-summary');
-        this.elements.parameterChart = document.getElementById('parameter-chart');
+        this.elements.parameterChartShort = document.getElementById('parameter-chart-short');
+        this.elements.parameterChartLong = document.getElementById('parameter-chart-long');
         this.elements.chartPlaceholder = document.getElementById('chart-placeholder');
+        this.elements.cbMeetingLegend = document.getElementById('cb-meeting-legend');
         this.elements.parameterTabsContainer = document.getElementById('parameter-tabs-container');
         this.elements.parameterTableContainer = document.getElementById('parameter-table-container');
         this.elements.errorContainer = document.getElementById('curve-builder-error');
@@ -477,100 +533,413 @@ const curveBuilder = {
         }
     },
 
+    /**
+     * Generates curve data points with specified granularity.
+     * @param {Array} params - Original curve parameters (pillar points)
+     * @param {number} startYear - Start of range in years
+     * @param {number} endYear - End of range in years
+     * @param {string} granularity - 'daily', 'weekly', or 'monthly'
+     * @returns {Array} Generated data points
+     */
+    generateCurveData(params, startYear, endYear, granularity) {
+        const data = [];
+        let step;
+
+        switch (granularity) {
+            case 'daily':
+                step = 1 / 365; // 1 day
+                break;
+            case 'weekly':
+                step = 1 / 52; // 1 week
+                break;
+            case 'monthly':
+            default:
+                step = 1 / 12; // 1 month
+                break;
+        }
+
+        // Sort params by tenor
+        const sortedParams = [...params].sort((a, b) => a.tenorYears - b.tenorYears);
+
+        for (let t = startYear; t <= endYear + step / 2; t += step) {
+            const point = this.interpolateAtTenor(sortedParams, t);
+            data.push(point);
+        }
+
+        return data;
+    },
+
+    /**
+     * Interpolates curve values at a given tenor using log-linear interpolation.
+     * @param {Array} params - Sorted curve parameters
+     * @param {number} t - Tenor in years
+     * @returns {Object} Interpolated point
+     */
+    interpolateAtTenor(params, t) {
+        if (params.length === 0) {
+            return { tenorYears: t, discountFactor: 1, zeroRate: 0, forwardRate: 0 };
+        }
+
+        // Handle edge cases
+        if (t <= 0) {
+            return { tenorYears: t, discountFactor: 1, zeroRate: params[0]?.zeroRate || 0, forwardRate: params[0]?.zeroRate || 0 };
+        }
+
+        if (t <= params[0].tenorYears) {
+            // Extrapolate from first point
+            const logDf = Math.log(params[0].discountFactor) * t / params[0].tenorYears;
+            const df = Math.exp(logDf);
+            const zr = -logDf / t;
+            return { tenorYears: t, discountFactor: df, zeroRate: zr, forwardRate: zr };
+        }
+
+        if (t >= params[params.length - 1].tenorYears) {
+            // Extrapolate from last two points
+            const n = params.length;
+            const logDfLast = Math.log(params[n - 1].discountFactor);
+            const logDfPrev = Math.log(params[n - 2].discountFactor);
+            const slope = (logDfLast - logDfPrev) / (params[n - 1].tenorYears - params[n - 2].tenorYears);
+            const logDf = logDfLast + slope * (t - params[n - 1].tenorYears);
+            const df = Math.exp(logDf);
+            const zr = -logDf / t;
+            return { tenorYears: t, discountFactor: df, zeroRate: zr, forwardRate: zr };
+        }
+
+        // Find bracketing points and interpolate
+        for (let i = 1; i < params.length; i++) {
+            if (t <= params[i].tenorYears) {
+                const t0 = params[i - 1].tenorYears;
+                const t1 = params[i].tenorYears;
+                const logDf0 = Math.log(params[i - 1].discountFactor);
+                const logDf1 = Math.log(params[i].discountFactor);
+
+                // Log-linear interpolation
+                const w = (t - t0) / (t1 - t0);
+                const logDf = logDf0 + w * (logDf1 - logDf0);
+                const df = Math.exp(logDf);
+                const zr = -logDf / t;
+
+                // Forward rate
+                const fr = (logDf0 - logDf1) / (t1 - t0);
+
+                return { tenorYears: t, discountFactor: df, zeroRate: zr, forwardRate: fr };
+            }
+        }
+
+        return { tenorYears: t, discountFactor: 1, zeroRate: 0, forwardRate: 0 };
+    },
+
+    /**
+     * Generates short-term curve data with proper granularity.
+     * 0-3M: daily, 3M-1Y: weekly
+     * @param {Array} params - Original curve parameters
+     * @returns {Array} Combined data points
+     */
+    generateShortTermData(params) {
+        // 0 to 3 months (0.25 years): daily granularity
+        const dailyData = this.generateCurveData(params, 0, 0.25, 'daily');
+        // 3 months to 1 year: weekly granularity (exclude first point to avoid overlap)
+        const weeklyData = this.generateCurveData(params, 0.25 + 1/52, 1.0, 'weekly');
+
+        return [...dailyData, ...weeklyData];
+    },
+
+    /**
+     * Generates long-term curve data with monthly granularity.
+     * @param {Array} params - Original curve parameters
+     * @returns {Array} Data points
+     */
+    generateLongTermData(params) {
+        // Get max tenor from params
+        const maxTenor = Math.max(...params.map(p => p.tenorYears), 30);
+        return this.generateCurveData(params, 0, maxTenor, 'monthly');
+    },
+
     renderParameterCurve() {
         if (!this.state.buildResult?.parameters) return;
 
         const params = this.state.buildResult.parameters;
 
-        // Hide placeholder, show chart
+        // Hide placeholder, show charts
         if (this.elements.chartPlaceholder) {
             this.elements.chartPlaceholder.style.display = 'none';
         }
-        if (this.elements.parameterChart) {
-            this.elements.parameterChart.style.display = 'block';
+
+        // Show chart containers
+        const shortContainer = this.elements.parameterChartShort?.closest('.parameter-chart-container');
+        const longContainer = this.elements.parameterChartLong?.closest('.parameter-chart-container');
+
+        if (shortContainer) shortContainer.classList.add('visible');
+        if (longContainer) longContainer.classList.add('visible');
+
+        if (this.elements.parameterChartShort) {
+            this.elements.parameterChartShort.style.display = 'block';
+        }
+        if (this.elements.parameterChartLong) {
+            this.elements.parameterChartLong.style.display = 'block';
+        }
+
+        // Show CB meeting legend
+        if (this.elements.cbMeetingLegend) {
+            this.elements.cbMeetingLegend.style.display = 'flex';
         }
 
         // Render tabs
         this.renderParameterTabs();
 
-        // Render chart using Chart.js if available
-        if (typeof Chart !== 'undefined' && this.elements.parameterChart) {
-            const ctx = this.elements.parameterChart.getContext('2d');
+        // Generate data for both charts
+        const shortTermData = this.generateShortTermData(params);
+        const longTermData = this.generateLongTermData(params);
 
-            // Destroy existing chart
-            if (this.chart) {
-                this.chart.destroy();
-            }
+        // Get currency from index (e.g., "usd-sofr" -> "USD")
+        const currency = this.state.selectedIndex?.split('-')[0]?.toUpperCase() || 'USD';
+        const referenceDate = new Date(); // Use current date as reference
 
-            const tenors = params.map(p => this.formatTenor(p.tenorYears));
-            const discountFactors = params.map(p => p.discountFactor);
-            const zeroRates = params.map(p => (p.zeroRate * 100));
-            const forwardRates = params.map(p => ((p.forwardRate || 0) * 100));
+        // Get central bank meetings for short-term chart
+        const cbMeetings = this.getCentralBankMeetingsInRange(currency, referenceDate, 1);
 
-            this.chart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: tenors,
-                    datasets: [
-                        {
-                            label: 'Zero Rate (%)',
-                            data: zeroRates,
-                            borderColor: '#6366f1',
-                            backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                            fill: false,
-                            tension: 0.4,
-                            yAxisID: 'y'
-                        },
-                        {
-                            label: 'Discount Factor',
-                            data: discountFactors,
-                            borderColor: '#10b981',
-                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                            fill: false,
-                            tension: 0.4,
-                            yAxisID: 'y1'
-                        },
-                        {
-                            label: 'Forward Rate (%)',
-                            data: forwardRates,
-                            borderColor: '#f59e0b',
-                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                            fill: false,
-                            tension: 0.4,
-                            yAxisID: 'y'
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false
-                    },
-                    scales: {
-                        x: {
-                            title: { display: true, text: 'Tenor' }
-                        },
-                        y: {
-                            type: 'linear',
-                            position: 'left',
-                            title: { display: true, text: 'Rate (%)' }
-                        },
-                        y1: {
-                            type: 'linear',
-                            position: 'right',
-                            title: { display: true, text: 'Discount Factor' },
-                            grid: { drawOnChartArea: false }
-                        }
-                    }
-                }
-            });
+        // Render both charts
+        if (typeof Chart !== 'undefined') {
+            this.renderShortTermChart(shortTermData, cbMeetings);
+            this.renderLongTermChart(longTermData);
         }
 
-        // Render table and set initial chart visibility to Zero Rates
+        // Render table with original pillar data
         this.renderParameterTable(params);
         this.updateChartVisibility('zero');
+    },
+
+    /**
+     * Renders the short-term curve chart (0-1Y).
+     */
+    renderShortTermChart(data, cbMeetings = []) {
+        if (!this.elements.parameterChartShort) return;
+
+        const ctx = this.elements.parameterChartShort.getContext('2d');
+
+        // Destroy existing chart
+        if (this.chartShort) {
+            this.chartShort.destroy();
+        }
+
+        const tenors = data.map(p => this.formatTenor(p.tenorYears));
+        const zeroRates = data.map(p => (p.zeroRate * 100));
+        const forwardRates = data.map(p => ((p.forwardRate || 0) * 100));
+
+        // Create vertical line annotations for CB meetings
+        const annotations = {};
+        cbMeetings.forEach((meeting, idx) => {
+            // Find the closest data point index
+            let closestIdx = 0;
+            let minDiff = Infinity;
+            data.forEach((d, i) => {
+                const diff = Math.abs(d.tenorYears - meeting.yearFraction);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    closestIdx = i;
+                }
+            });
+
+            annotations[`cbMeeting${idx}`] = {
+                type: 'line',
+                xMin: closestIdx,
+                xMax: closestIdx,
+                borderColor: 'rgba(239, 68, 68, 0.8)',
+                borderWidth: 2,
+                borderDash: [5, 5],
+                label: {
+                    display: true,
+                    content: meeting.label.split('(')[0].trim(),
+                    position: 'start',
+                    backgroundColor: 'rgba(239, 68, 68, 0.9)',
+                    color: '#fff',
+                    font: { size: 9 },
+                    padding: 3,
+                    rotation: -90,
+                    yAdjust: -60
+                }
+            };
+        });
+
+        this.chartShort = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: tenors,
+                datasets: [
+                    {
+                        label: 'Zero Rate (%)',
+                        data: zeroRates,
+                        borderColor: '#6366f1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: 0,
+                        borderWidth: 2
+                    },
+                    {
+                        label: 'Forward Rate (%)',
+                        data: forwardRates,
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: 0,
+                        borderWidth: 2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: { color: '#8b8b9a', usePointStyle: true, boxWidth: 8, font: { size: 10 } }
+                    },
+                    annotation: {
+                        annotations: annotations
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(26, 26, 46, 0.95)',
+                        titleColor: '#fff',
+                        bodyColor: '#8b8b9a',
+                        callbacks: {
+                            title: (items) => {
+                                const idx = items[0]?.dataIndex;
+                                if (idx !== undefined && data[idx]) {
+                                    // Check if this is near a CB meeting
+                                    const meeting = cbMeetings.find(m => {
+                                        const meetingIdx = data.findIndex(d => Math.abs(d.tenorYears - m.yearFraction) < 0.01);
+                                        return Math.abs(meetingIdx - idx) <= 1;
+                                    });
+                                    if (meeting) {
+                                        return `${tenors[idx]} - ${meeting.label}`;
+                                    }
+                                    return tenors[idx];
+                                }
+                                return '';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Tenor', color: '#8b8b9a', font: { size: 10 } },
+                        ticks: { color: '#8b8b9a', font: { size: 9 }, maxRotation: 45, maxTicksLimit: 15 },
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                    },
+                    y: {
+                        type: 'linear',
+                        position: 'left',
+                        title: { display: true, text: 'Rate (%)', color: '#8b8b9a', font: { size: 10 } },
+                        ticks: { color: '#8b8b9a', font: { size: 9 } },
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                    }
+                }
+            }
+        });
+    },
+
+    /**
+     * Renders the long-term curve chart (0-30Y).
+     */
+    renderLongTermChart(data) {
+        if (!this.elements.parameterChartLong) return;
+
+        const ctx = this.elements.parameterChartLong.getContext('2d');
+
+        // Destroy existing chart
+        if (this.chartLong) {
+            this.chartLong.destroy();
+        }
+
+        const tenors = data.map(p => this.formatTenor(p.tenorYears));
+        const discountFactors = data.map(p => p.discountFactor);
+        const zeroRates = data.map(p => (p.zeroRate * 100));
+        const forwardRates = data.map(p => ((p.forwardRate || 0) * 100));
+
+        this.chartLong = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: tenors,
+                datasets: [
+                    {
+                        label: 'Zero Rate (%)',
+                        data: zeroRates,
+                        borderColor: '#6366f1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        fill: false,
+                        tension: 0.2,
+                        pointRadius: 0,
+                        borderWidth: 2,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Discount Factor',
+                        data: discountFactors,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        fill: false,
+                        tension: 0.2,
+                        pointRadius: 0,
+                        borderWidth: 2,
+                        yAxisID: 'y1'
+                    },
+                    {
+                        label: 'Forward Rate (%)',
+                        data: forwardRates,
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        fill: false,
+                        tension: 0.2,
+                        pointRadius: 0,
+                        borderWidth: 2,
+                        yAxisID: 'y'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: { color: '#8b8b9a', usePointStyle: true, boxWidth: 8, font: { size: 10 } }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Tenor', color: '#8b8b9a', font: { size: 10 } },
+                        ticks: { color: '#8b8b9a', font: { size: 9 }, maxRotation: 45, maxTicksLimit: 20 },
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                    },
+                    y: {
+                        type: 'linear',
+                        position: 'left',
+                        title: { display: true, text: 'Rate (%)', color: '#8b8b9a', font: { size: 10 } },
+                        ticks: { color: '#8b8b9a', font: { size: 9 } },
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                    },
+                    y1: {
+                        type: 'linear',
+                        position: 'right',
+                        title: { display: true, text: 'Discount Factor', color: '#8b8b9a', font: { size: 10 } },
+                        ticks: { color: '#8b8b9a', font: { size: 9 } },
+                        grid: { drawOnChartArea: false }
+                    }
+                }
+            }
+        });
     },
 
     renderParameterTabs() {
@@ -655,25 +1024,34 @@ const curveBuilder = {
      * Updates chart dataset visibility based on selected type.
      */
     updateChartVisibility(type) {
-        if (!this.chart) return;
-
-        // Dataset indices: 0 = Zero Rate, 1 = Discount Factor, 2 = Forward Rate
         const showZero = type === 'all' || type === 'zero';
         const showDf = type === 'all' || type === 'df';
         const showFwd = type === 'all' || type === 'fwd';
 
-        // Update visibility
-        if (this.chart.data.datasets[0]) {
-            this.chart.data.datasets[0].hidden = !showZero;
-        }
-        if (this.chart.data.datasets[1]) {
-            this.chart.data.datasets[1].hidden = !showDf;
-        }
-        if (this.chart.data.datasets[2]) {
-            this.chart.data.datasets[2].hidden = !showFwd;
+        // Update short-term chart (has Zero Rate and Forward Rate only)
+        if (this.chartShort) {
+            if (this.chartShort.data.datasets[0]) {
+                this.chartShort.data.datasets[0].hidden = !showZero;
+            }
+            if (this.chartShort.data.datasets[1]) {
+                this.chartShort.data.datasets[1].hidden = !showFwd;
+            }
+            this.chartShort.update();
         }
 
-        this.chart.update();
+        // Update long-term chart (has Zero Rate, Discount Factor, Forward Rate)
+        if (this.chartLong) {
+            if (this.chartLong.data.datasets[0]) {
+                this.chartLong.data.datasets[0].hidden = !showZero;
+            }
+            if (this.chartLong.data.datasets[1]) {
+                this.chartLong.data.datasets[1].hidden = !showDf;
+            }
+            if (this.chartLong.data.datasets[2]) {
+                this.chartLong.data.datasets[2].hidden = !showFwd;
+            }
+            this.chartLong.update();
+        }
     },
 
     renderParameterTable(params) {
