@@ -237,7 +237,7 @@ impl<'a> CallableCompiler<'a> {
             discount_curve_id,
             fwd_index_id,
             is_payer,
-        )?;
+        );
 
         self.compile_from_schedule(
             swap_start,
@@ -264,7 +264,7 @@ impl<'a> CallableCompiler<'a> {
         discount_curve_id: u8,
         fwd_index_id: u16,
         is_payer: bool,
-    ) -> Result<CashflowSchedule, CompileError> {
+    ) -> CashflowSchedule {
         let mut cashflows = Vec::new();
 
         // Assume annual frequency (365 days per period)
@@ -313,7 +313,7 @@ impl<'a> CallableCompiler<'a> {
             period_start = period_end;
         }
 
-        Ok(CashflowSchedule::new(cashflows))
+        CashflowSchedule::new(cashflows)
     }
 }
 
