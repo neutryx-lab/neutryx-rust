@@ -238,7 +238,9 @@ use std::autodiff::autodiff;
 /// - 2.2: times, notionals, year_fractions は Const input
 /// - 2.3: output は &mut f64
 /// - 2.4: ヒープアロケーションなし
-/// - 2.5: #[autodiff] マクロ使用（#[no_mangle] 不要）
+/// - 2.5: Enzyme アクセス可能性を `#[autodiff]` マクロで実現
+///        （`#[no_mangle]` は不要。理由: Enzyme Rust は LLVM レベルで動作し、
+///        FFI シンボルエクスポートを必要としない。詳細は research.md 参照）
 /// - 2.6: f64 のみ使用
 #[cfg(feature = "enzyme-ad")]
 #[autodiff(d_pricing_kernel, Reverse, Duplicated, Const, Const, Const, Duplicated)]

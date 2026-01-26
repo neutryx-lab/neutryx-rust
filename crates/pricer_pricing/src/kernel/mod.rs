@@ -41,7 +41,9 @@ pub use context::KernelContext;
 #[cfg(feature = "l1l2-integration")]
 pub use engine::{days_to_years, years_to_days, LinearEngine};
 #[cfg(feature = "l1l2-integration")]
-pub use provider::{CurveProvider, FlatCurveProvider, IndexedMarketAdapter, IndexedMarketAdapterBuilder};
+pub use provider::{
+    CurveProvider, FlatCurveProvider, IndexedMarketAdapter, IndexedMarketAdapterBuilder,
+};
 
 // Integration tests: E2E Trade → PricingKernel → Price
 #[cfg(all(test, feature = "l1l2-integration"))]

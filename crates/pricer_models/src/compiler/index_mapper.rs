@@ -6,7 +6,7 @@
 use std::collections::HashMap;
 
 use infra_master::{Currency, RateIndex};
-use pricer_core::ir::CompileError;
+use pricer_core::{ir::CompileError, types::FxPair};
 
 /// Maps rate indices, currencies, and curves to numeric IDs.
 ///
@@ -14,6 +14,7 @@ use pricer_core::ir::CompileError;
 /// - `RateIndex` ↔ `u16` forward index IDs
 /// - `Currency` ↔ `u8` currency IDs
 /// - Curve names ↔ `u8` discount curve IDs
+/// - `FxPair` ↔ `u16` FX index IDs
 ///
 /// # ID Conventions
 ///
@@ -50,6 +51,10 @@ pub struct IndexMapper {
     // Discount curve mapping (String → u8)
     discount_curve_to_id: HashMap<String, u8>,
     id_to_discount_curve: Vec<String>,
+
+    // FX pair mapping (FxPair → u16)
+    fx_pair_to_id: HashMap<FxPair, u16>,
+    id_to_fx_pair: Vec<Option<FxPair>>,
 }
 
 impl IndexMapper {
@@ -57,6 +62,7 @@ impl IndexMapper {
     ///
     /// The mapper is initialised with:
     /// - ID 0 reserved for dummy forward index
+    /// - ID 0 reserved for dummy FX index (returns 1.0)
     /// - No currencies registered (first registered becomes base)
     #[must_use]
     pub fn new() -> Self {
@@ -67,6 +73,8 @@ impl IndexMapper {
             id_to_currency: Vec::new(),
             discount_curve_to_id: HashMap::new(),
             id_to_discount_curve: Vec::new(),
+            fx_pair_to_id: HashMap::new(),
+            id_to_fx_pair: vec![None], // 0 = dummy (no FX conversion)
         }
     }
 
@@ -276,6 +284,107 @@ impl IndexMapper {
     pub fn discount_curve_count(&self) -> usize { self.id_to_discount_curve.len() }
 
     // =========================================================================
+    // FX Pair Methods
+    // =========================================================================
+
+    /// Registers an FX pair and returns its ID.
+    ///
+    /// If the pair is already registered, returns the existing ID.
+    /// ID 0 is reserved for dummy (no FX conversion).
+    ///
+    /// # Arguments
+    ///
+    /// * `fx_pair` - The FX pair to register (e.g., EUR/USD)
+    ///
+    /// # Returns
+    ///
+    /// The numeric ID assigned to this FX pair (1+, 0 is reserved).
+    pub fn register_fx_pair(&mut self, fx_pair: FxPair) -> u16 {
+        if let Some(&id) = self.fx_pair_to_id.get(&fx_pair) {
+            return id;
+        }
+
+        let id = self.id_to_fx_pair.len() as u16;
+        self.fx_pair_to_id.insert(fx_pair, id);
+        self.id_to_fx_pair.push(Some(fx_pair));
+        id
+    }
+
+    /// Gets the ID for an FX pair.
+    ///
+    /// # Arguments
+    ///
+    /// * `fx_pair` - The FX pair to look up
+    ///
+    /// # Returns
+    ///
+    /// * `Some(id)` - The pair's ID
+    /// * `None` - Pair not registered
+    #[must_use]
+    pub fn get_fx_pair_id(&self, fx_pair: FxPair) -> Option<u16> {
+        self.fx_pair_to_id.get(&fx_pair).copied()
+    }
+
+    /// Gets or registers an FX pair.
+    ///
+    /// If not registered, registers it first.
+    pub fn get_or_register_fx_pair(&mut self, fx_pair: FxPair) -> u16 {
+        if let Some(&id) = self.fx_pair_to_id.get(&fx_pair) {
+            id
+        } else {
+            self.register_fx_pair(fx_pair)
+        }
+    }
+
+    /// Gets the FX pair for a given ID.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The ID to look up
+    ///
+    /// # Returns
+    ///
+    /// * `Some(FxPair)` - The FX pair (None for ID 0 = dummy)
+    /// * `None` - ID out of range
+    #[must_use]
+    pub fn get_fx_pair(&self, id: u16) -> Option<Option<FxPair>> {
+        self.id_to_fx_pair.get(id as usize).copied()
+    }
+
+    /// Returns the number of registered FX pairs (excluding dummy).
+    #[must_use]
+    pub fn fx_pair_count(&self) -> usize {
+        self.id_to_fx_pair.len() - 1 // Subtract dummy
+    }
+
+    /// Returns the ID for single currency (dummy FX returning 1.0).
+    #[must_use]
+    pub const fn single_currency_fx_id(&self) -> u16 {
+        0 // Dummy FX
+    }
+
+    /// Registers an FX pair from two currencies.
+    ///
+    /// Convenience method that creates an FxPair from base and quote currencies.
+    ///
+    /// # Arguments
+    ///
+    /// * `base` - Base currency (e.g., EUR)
+    /// * `quote` - Quote currency (e.g., USD)
+    ///
+    /// # Returns
+    ///
+    /// The numeric ID assigned to this FX pair.
+    pub fn register_fx_pair_from_currencies(
+        &mut self,
+        base: Currency,
+        quote: Currency,
+    ) -> u16 {
+        let fx_pair = FxPair::new(base, quote);
+        self.register_fx_pair(fx_pair)
+    }
+
+    // =========================================================================
     // Validation
     // =========================================================================
 
@@ -305,6 +414,21 @@ impl IndexMapper {
         } else {
             Err(CompileError::UnknownCurrency(format!(
                 "Invalid currency ID: {id}"
+            )))
+        }
+    }
+
+    /// Validates that an FX pair ID is valid.
+    ///
+    /// # Errors
+    ///
+    /// Returns `CompileError::UnknownIndex` if the ID is out of range.
+    pub fn validate_fx_pair_id(&self, id: u16) -> Result<(), CompileError> {
+        if (id as usize) < self.id_to_fx_pair.len() {
+            Ok(())
+        } else {
+            Err(CompileError::unknown_index(format!(
+                "Invalid FX pair ID: {id}"
             )))
         }
     }
@@ -499,5 +623,117 @@ mod tests {
         let cloned = mapper.clone();
         assert_eq!(cloned.forward_index_count(), 1);
         assert_eq!(cloned.currency_count(), 1);
+    }
+
+    // =========================================================================
+    // FX Pair Tests (Task 7.1)
+    // =========================================================================
+
+    use pricer_core::types::FxPair;
+
+    #[test]
+    fn test_register_fx_pair() {
+        let mut mapper = IndexMapper::new();
+
+        let eurusd = FxPair::new(Currency::EUR, Currency::USD);
+        let id = mapper.register_fx_pair(eurusd);
+        assert_eq!(id, 1); // 0 is reserved for dummy
+
+        let gbpusd = FxPair::new(Currency::GBP, Currency::USD);
+        let id2 = mapper.register_fx_pair(gbpusd);
+        assert_eq!(id2, 2);
+
+        // Re-registering returns same ID
+        let id3 = mapper.register_fx_pair(eurusd);
+        assert_eq!(id3, 1);
+
+        assert_eq!(mapper.fx_pair_count(), 2);
+    }
+
+    #[test]
+    fn test_get_fx_pair_id() {
+        let mut mapper = IndexMapper::new();
+        let eurusd = FxPair::new(Currency::EUR, Currency::USD);
+        mapper.register_fx_pair(eurusd);
+
+        assert_eq!(mapper.get_fx_pair_id(eurusd), Some(1));
+
+        let gbpusd = FxPair::new(Currency::GBP, Currency::USD);
+        assert_eq!(mapper.get_fx_pair_id(gbpusd), None);
+    }
+
+    #[test]
+    fn test_get_fx_pair() {
+        let mut mapper = IndexMapper::new();
+        let eurusd = FxPair::new(Currency::EUR, Currency::USD);
+        mapper.register_fx_pair(eurusd);
+
+        // ID 0 is dummy (None)
+        assert_eq!(mapper.get_fx_pair(0), Some(None));
+
+        // ID 1 is EUR/USD
+        assert_eq!(mapper.get_fx_pair(1), Some(Some(eurusd)));
+
+        // ID 2 is out of range
+        assert_eq!(mapper.get_fx_pair(2), None);
+    }
+
+    #[test]
+    fn test_single_currency_fx_id() {
+        let mapper = IndexMapper::new();
+        assert_eq!(mapper.single_currency_fx_id(), 0);
+    }
+
+    #[test]
+    fn test_get_or_register_fx_pair() {
+        let mut mapper = IndexMapper::new();
+        let eurusd = FxPair::new(Currency::EUR, Currency::USD);
+
+        // First call registers
+        let id1 = mapper.get_or_register_fx_pair(eurusd);
+        assert_eq!(id1, 1);
+
+        // Second call returns existing
+        let id2 = mapper.get_or_register_fx_pair(eurusd);
+        assert_eq!(id2, 1);
+    }
+
+    #[test]
+    fn test_register_fx_pair_from_currencies() {
+        let mut mapper = IndexMapper::new();
+
+        let id = mapper.register_fx_pair_from_currencies(Currency::EUR, Currency::USD);
+        assert_eq!(id, 1);
+
+        // Should be equivalent to registering FxPair directly
+        let eurusd = FxPair::new(Currency::EUR, Currency::USD);
+        let id2 = mapper.get_fx_pair_id(eurusd);
+        assert_eq!(id2, Some(1));
+    }
+
+    #[test]
+    fn test_validate_fx_pair_id() {
+        let mut mapper = IndexMapper::new();
+        let eurusd = FxPair::new(Currency::EUR, Currency::USD);
+        mapper.register_fx_pair(eurusd);
+
+        assert!(mapper.validate_fx_pair_id(0).is_ok()); // Dummy
+        assert!(mapper.validate_fx_pair_id(1).is_ok()); // EUR/USD
+        assert!(mapper.validate_fx_pair_id(2).is_err()); // Invalid
+    }
+
+    #[test]
+    fn test_fx_pair_preserves_direction() {
+        let mut mapper = IndexMapper::new();
+
+        // EUR/USD and USD/EUR should be different pairs
+        let eurusd = FxPair::new(Currency::EUR, Currency::USD);
+        let usdeur = FxPair::new(Currency::USD, Currency::EUR);
+
+        let id1 = mapper.register_fx_pair(eurusd);
+        let id2 = mapper.register_fx_pair(usdeur);
+
+        assert_ne!(id1, id2, "Different FX directions should have different IDs");
+        assert_eq!(mapper.fx_pair_count(), 2);
     }
 }

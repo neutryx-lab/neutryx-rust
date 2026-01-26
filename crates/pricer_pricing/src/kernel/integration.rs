@@ -370,11 +370,10 @@ mod tests {
     }
 
     impl FiniteDifferenceSensitivity {
-        fn new(bump_size: f64) -> Self {
-            Self { bump_size }
-        }
+        fn new(bump_size: f64) -> Self { Self { bump_size } }
 
-        /// Compute ∂PV/∂r (sensitivity to discount rate) using central difference.
+        /// Compute ∂PV/∂r (sensitivity to discount rate) using central
+        /// difference.
         fn discount_rate_sensitivity(
             &self,
             kernel: &pricer_core::ir::PricingKernel,
@@ -397,7 +396,8 @@ mod tests {
             (pv_up - pv_down) / (2.0 * h)
         }
 
-        /// Compute ∂PV/∂L (sensitivity to forward rate) using central difference.
+        /// Compute ∂PV/∂L (sensitivity to forward rate) using central
+        /// difference.
         fn forward_rate_sensitivity(
             &self,
             kernel: &pricer_core::ir::PricingKernel,
@@ -425,10 +425,12 @@ mod tests {
     ///
     /// # Enzyme AD Compatibility
     ///
-    /// The `LinearEngine::price` function is designed to be Enzyme AD compatible:
+    /// The `LinearEngine::price` function is designed to be Enzyme AD
+    /// compatible:
     ///
     /// 1. **Smooth operations only**: Uses only +, *, exp (via discount factor)
-    /// 2. **No data-dependent branching**: Fixed formula applied to all cashflows
+    /// 2. **No data-dependent branching**: Fixed formula applied to all
+    ///    cashflows
     /// 3. **Sequential array access**: SIMD-friendly memory access pattern
     ///
     /// This test verifies smoothness by checking that finite difference
@@ -439,14 +441,19 @@ mod tests {
         let trade = create_test_irs("IRS-AD-TEST", 10_000_000.0, 0.025, 0.001);
         let mapper = IndexMapper::new();
         let compiler = LinearProductsCompiler::new(mapper);
-        let kernel = compiler.compile(&trade).expect("Compilation should succeed");
+        let kernel = compiler
+            .compile(&trade)
+            .expect("Compilation should succeed");
 
         let discount_rate = 0.03;
         let forward_rate = 0.025;
 
         // Compute sensitivities at different bump sizes
-        let sensitivity_1bp = FiniteDifferenceSensitivity::new(0.0001)
-            .discount_rate_sensitivity(&kernel, discount_rate, forward_rate);
+        let sensitivity_1bp = FiniteDifferenceSensitivity::new(0.0001).discount_rate_sensitivity(
+            &kernel,
+            discount_rate,
+            forward_rate,
+        );
         let sensitivity_0_1bp = FiniteDifferenceSensitivity::new(0.00001)
             .discount_rate_sensitivity(&kernel, discount_rate, forward_rate);
         let sensitivity_0_01bp = FiniteDifferenceSensitivity::new(0.000001)
@@ -477,16 +484,24 @@ mod tests {
         let trade = create_test_irs("IRS-AD-FWD", 10_000_000.0, 0.01, 0.002);
         let mapper = IndexMapper::new();
         let compiler = LinearProductsCompiler::new(mapper);
-        let kernel = compiler.compile(&trade).expect("Compilation should succeed");
+        let kernel = compiler
+            .compile(&trade)
+            .expect("Compilation should succeed");
 
         let discount_rate = 0.03;
         let forward_rate = 0.025;
 
         // Compute sensitivities at different bump sizes
-        let sensitivity_1bp = FiniteDifferenceSensitivity::new(0.0001)
-            .forward_rate_sensitivity(&kernel, discount_rate, forward_rate);
-        let sensitivity_0_1bp = FiniteDifferenceSensitivity::new(0.00001)
-            .forward_rate_sensitivity(&kernel, discount_rate, forward_rate);
+        let sensitivity_1bp = FiniteDifferenceSensitivity::new(0.0001).forward_rate_sensitivity(
+            &kernel,
+            discount_rate,
+            forward_rate,
+        );
+        let sensitivity_0_1bp = FiniteDifferenceSensitivity::new(0.00001).forward_rate_sensitivity(
+            &kernel,
+            discount_rate,
+            forward_rate,
+        );
         let sensitivity_0_01bp = FiniteDifferenceSensitivity::new(0.000001)
             .forward_rate_sensitivity(&kernel, discount_rate, forward_rate);
 
@@ -517,15 +532,15 @@ mod tests {
     fn test_enzyme_ad_fixed_leg_analytical() {
         // Create a pure fixed kernel
         let kernel = pricer_core::ir::PricingKernel::new(
-            vec![365],       // payment 1 year from now
-            vec![0],         // fixing date (not used)
-            vec![1.0],       // year fraction
+            vec![365],         // payment 1 year from now
+            vec![0],           // fixing date (not used)
+            vec![1.0],         // year fraction
             vec![1_000_000.0], // notional
-            vec![0.05],      // 5% fixed rate
-            vec![0.0],       // gearing = 0 (fixed)
+            vec![0.05],        // 5% fixed rate
+            vec![0.0],         // gearing = 0 (fixed)
             vec![0],
             vec![0],
-            vec![0],         // dummy fwd index
+            vec![0], // dummy fwd index
             vec![0],
         )
         .expect("Valid kernel");
@@ -534,8 +549,11 @@ mod tests {
         let forward_rate = 0.0; // Not used for fixed
 
         // Compute finite difference sensitivity
-        let sensitivity = FiniteDifferenceSensitivity::new(0.0001)
-            .discount_rate_sensitivity(&kernel, discount_rate, forward_rate);
+        let sensitivity = FiniteDifferenceSensitivity::new(0.0001).discount_rate_sensitivity(
+            &kernel,
+            discount_rate,
+            forward_rate,
+        );
 
         // Compute base PV
         let provider = FlatCurveProvider::new(discount_rate, forward_rate);
@@ -571,15 +589,15 @@ mod tests {
     fn test_enzyme_ad_floating_leg_analytical() {
         // Create a pure floating kernel
         let kernel = pricer_core::ir::PricingKernel::new(
-            vec![365],       // payment 1 year from now
-            vec![0],         // fixing date
-            vec![1.0],       // year fraction
+            vec![365],         // payment 1 year from now
+            vec![0],           // fixing date
+            vec![1.0],         // year fraction
             vec![1_000_000.0], // notional
-            vec![0.01],      // 100bp spread
-            vec![1.0],       // gearing = 1.0 (floating)
+            vec![0.01],        // 100bp spread
+            vec![1.0],         // gearing = 1.0 (floating)
             vec![0],
             vec![0],
-            vec![1],         // real fwd index
+            vec![1], // real fwd index
             vec![0],
         )
         .expect("Valid kernel");
@@ -588,8 +606,11 @@ mod tests {
         let forward_rate = 0.025;
 
         // Compute finite difference sensitivity to forward rate
-        let sensitivity = FiniteDifferenceSensitivity::new(0.0001)
-            .forward_rate_sensitivity(&kernel, discount_rate, forward_rate);
+        let sensitivity = FiniteDifferenceSensitivity::new(0.0001).forward_rate_sensitivity(
+            &kernel,
+            discount_rate,
+            forward_rate,
+        );
 
         // Analytical expectation: ∂PV/∂L = N × τ × gearing × DF(t)
         let notional = 1_000_000.0;

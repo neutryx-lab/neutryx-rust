@@ -62,7 +62,7 @@ Enzymeの強力な点は、**「ポインタ（参照）の先にあるデータ
 2. The Kernel module shall define pricing functions that accept `&[f64]` slices for constant inputs (定数).
 3. The Kernel module shall define pricing functions that write results to `&mut f64` output parameters.
 4. When a kernel function is called, the Kernel module shall perform no heap allocation within the function body.
-5. The Kernel module shall mark kernel functions with `#[no_mangle]` attribute for Enzyme visibility.
+5. The Kernel module shall ensure kernel functions are accessible to Enzyme (e.g., via `#[no_mangle]` attribute or `#[autodiff]` macro).
 6. The Kernel module shall use only `f64` arithmetic operations (no Dual numbers or generic types).
 
 ---
