@@ -48,9 +48,7 @@ use ordered_float::OrderedFloat;
 use crate::market::{
     curves::{CurveEnum, CurveName, CurveSet, FlatCurve},
     surfaces::VolSurfaceEnum,
-    volcube::{
-        Currency as VolCubeCurrency, UnderlyingIndex, VolCubeConfig, VolLazyEvaluator,
-    },
+    volcube::{Currency as VolCubeCurrency, UnderlyingIndex, VolCubeConfig, VolLazyEvaluator},
 };
 
 // =============================================================================
@@ -59,8 +57,9 @@ use crate::market::{
 
 /// Cache key for VolCube instances.
 ///
-/// Combines currency, underlying index, and config hash for unique identification.
-/// This allows caching different VolCube configurations separately.
+/// Combines currency, underlying index, and config hash for unique
+/// identification. This allows caching different VolCube configurations
+/// separately.
 ///
 /// # Requirements: 6.9
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -113,19 +112,13 @@ impl VolCubeProviderKey {
     }
 
     /// Get the currency.
-    pub fn currency(&self) -> VolCubeCurrency {
-        self.currency
-    }
+    pub fn currency(&self) -> VolCubeCurrency { self.currency }
 
     /// Get the underlying index.
-    pub fn index(&self) -> UnderlyingIndex {
-        self.index
-    }
+    pub fn index(&self) -> UnderlyingIndex { self.index }
 
     /// Get the config hash.
-    pub fn config_hash(&self) -> u64 {
-        self.config_hash
-    }
+    pub fn config_hash(&self) -> u64 { self.config_hash }
 }
 
 // =============================================================================
@@ -306,7 +299,8 @@ impl MarketProvider {
         vol
     }
 
-    /// Retrieves or constructs a VolCube lazy evaluator for the given parameters.
+    /// Retrieves or constructs a VolCube lazy evaluator for the given
+    /// parameters.
     ///
     /// Implements double-check locking pattern similar to `get_curve()`.
     /// The VolLazyEvaluator provides lazy slice-level calibration with caching.
@@ -364,7 +358,8 @@ impl MarketProvider {
         evaluator
     }
 
-    /// Retrieves or constructs a VolCube lazy evaluator using currency defaults.
+    /// Retrieves or constructs a VolCube lazy evaluator using currency
+    /// defaults.
     ///
     /// Uses the currency's default underlying index and default configuration.
     ///
@@ -385,15 +380,11 @@ impl MarketProvider {
 
     /// Get the number of cached VolCube evaluators.
     #[allow(clippy::unwrap_used, clippy::missing_panics_doc)]
-    pub fn volcube_cache_size(&self) -> usize {
-        self.volcube_cache.read().unwrap().len()
-    }
+    pub fn volcube_cache_size(&self) -> usize { self.volcube_cache.read().unwrap().len() }
 
     /// Clear the VolCube cache.
     #[allow(clippy::unwrap_used, clippy::missing_panics_doc)]
-    pub fn clear_volcube_cache(&self) {
-        self.volcube_cache.write().unwrap().clear();
-    }
+    pub fn clear_volcube_cache(&self) { self.volcube_cache.write().unwrap().clear(); }
 }
 
 impl Default for MarketProvider {
@@ -660,16 +651,9 @@ mod tests {
         let provider = MarketProvider::new();
         let config = VolCubeConfig::default();
 
-        let eval1 = provider.get_volcube(
-            VolCubeCurrency::Usd,
-            UnderlyingIndex::Sofr,
-            config.clone(),
-        );
-        let eval2 = provider.get_volcube(
-            VolCubeCurrency::Usd,
-            UnderlyingIndex::Sofr,
-            config,
-        );
+        let eval1 =
+            provider.get_volcube(VolCubeCurrency::Usd, UnderlyingIndex::Sofr, config.clone());
+        let eval2 = provider.get_volcube(VolCubeCurrency::Usd, UnderlyingIndex::Sofr, config);
 
         // Both should point to the same Arc
         assert!(Arc::ptr_eq(&eval1, &eval2), "Should return cached Arc");
@@ -681,16 +665,8 @@ mod tests {
         let provider = MarketProvider::new();
         let config = VolCubeConfig::default();
 
-        let usd = provider.get_volcube(
-            VolCubeCurrency::Usd,
-            UnderlyingIndex::Sofr,
-            config.clone(),
-        );
-        let eur = provider.get_volcube(
-            VolCubeCurrency::Eur,
-            UnderlyingIndex::Estr,
-            config,
-        );
+        let usd = provider.get_volcube(VolCubeCurrency::Usd, UnderlyingIndex::Sofr, config.clone());
+        let eur = provider.get_volcube(VolCubeCurrency::Eur, UnderlyingIndex::Estr, config);
 
         // Should be different objects
         assert!(
@@ -707,16 +683,8 @@ mod tests {
         let config1 = VolCubeConfig::default();
         let config2 = VolCubeConfig::default().with_sabr_beta(Some(0.0));
 
-        let eval1 = provider.get_volcube(
-            VolCubeCurrency::Usd,
-            UnderlyingIndex::Sofr,
-            config1,
-        );
-        let eval2 = provider.get_volcube(
-            VolCubeCurrency::Usd,
-            UnderlyingIndex::Sofr,
-            config2,
-        );
+        let eval1 = provider.get_volcube(VolCubeCurrency::Usd, UnderlyingIndex::Sofr, config1);
+        let eval2 = provider.get_volcube(VolCubeCurrency::Usd, UnderlyingIndex::Sofr, config2);
 
         // Different configs should create different evaluators
         assert!(

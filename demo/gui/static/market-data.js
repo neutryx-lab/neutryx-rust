@@ -16,7 +16,15 @@ const marketDataViewer = (() => {
         isInitialised: false,
         assetClass: 'Rates', // Default asset class filter
         allConventions: [], // All conventions (unfiltered)
-        filteredConventions: [] // Filtered conventions for current asset class
+        filteredConventions: [], // Filtered conventions for current asset class
+        // IRVol state
+        irVolCurrencies: [],
+        irVolQuotes: [], // Flattened quotes for table display
+        selectedIrVolCurrency: null,
+        // FXVol state
+        fxVolPairs: [],
+        fxVolQuotes: [], // Flattened quotes for table display
+        selectedFxVolPair: null
     };
 
     // DOM Elements (cached)
@@ -164,13 +172,25 @@ const marketDataViewer = (() => {
     async function refreshRates() {
         elements.refreshBtn?.classList.add('spinning');
         try {
-            const response = await fetch('/api/market/rates/refresh', { method: 'POST' });
-            if (!response.ok) throw new Error('Failed to refresh');
-
-            await loadRates();
-            showToast('Market data refreshed', 'success');
+            if (state.assetClass === 'IRVol') {
+                // Reload IRVol data
+                state.irVolQuotes = []; // Clear cache to force reload
+                await loadIrVolData();
+                showToast('IR Vol data refreshed', 'success');
+            } else if (state.assetClass === 'FXVol') {
+                // Reload FXVol data
+                state.fxVolQuotes = []; // Clear cache to force reload
+                await loadFxVolData();
+                showToast('FX Vol data refreshed', 'success');
+            } else {
+                // Original rates refresh
+                const response = await fetch('/api/market/rates/refresh', { method: 'POST' });
+                if (!response.ok) throw new Error('Failed to refresh');
+                await loadRates();
+                showToast('Market data refreshed', 'success');
+            }
         } catch (error) {
-            logError('Failed to refresh rates:', error);
+            logError('Failed to refresh data:', error);
             showToast('Failed to refresh data', 'error');
         } finally {
             elements.refreshBtn?.classList.remove('spinning');
@@ -206,6 +226,537 @@ const marketDataViewer = (() => {
         } catch (error) {
             logError('Failed to load conventions:', error);
         }
+    }
+
+    // ===========================================
+    // IRVol Data Loading
+    // ===========================================
+
+    async function loadIrVolData() {
+        showLoading(true);
+        try {
+            // Load available currencies
+            const currenciesResp = await fetch('/api/irvol/currencies');
+            if (!currenciesResp.ok) throw new Error('Failed to fetch IR vol currencies');
+
+            const currenciesData = await currenciesResp.json();
+            state.irVolCurrencies = currenciesData.currencies || [];
+
+            // Load quotes for all currencies and flatten for table display
+            const allQuotes = [];
+            for (const currency of state.irVolCurrencies) {
+                try {
+                    const quotesResp = await fetch(`/api/irvol/quotes/${currency.currency}`);
+                    if (quotesResp.ok) {
+                        const quotesData = await quotesResp.json();
+                        for (const quote of quotesData.quotes || []) {
+                            allQuotes.push({
+                                id: `${currency.currency}-${quote.expiry}-${quote.tenor}`,
+                                currency: currency.currency,
+                                expiry: quote.expiry,
+                                tenor: quote.tenor,
+                                atmVol: quote.atmVol,
+                                volType: quotesData.volType || 'Normal',
+                                smile: quote.smile || [],
+                                source: quotesData.source || 'Demo'
+                            });
+                        }
+                    }
+                } catch (e) {
+                    logError(`Failed to load quotes for ${currency.currency}:`, e);
+                }
+            }
+
+            state.irVolQuotes = allQuotes;
+            state.lastUpdated = new Date().toISOString();
+
+            renderIrVolTable();
+            updateIrVolStats();
+            updateLastUpdated();
+
+            log(`Loaded ${allQuotes.length} IR vol quotes`);
+        } catch (error) {
+            logError('Failed to load IR vol data:', error);
+            showError('Failed to load IR volatility data');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    function renderIrVolTable() {
+        if (!elements.ratesTbody) return;
+
+        // Update table headers for IRVol
+        updateTableHeadersForAssetClass('IRVol');
+
+        // Filter by selected currency if any
+        let filteredQuotes = state.irVolQuotes;
+        const currency = elements.currencyFilter?.value;
+        if (currency) {
+            filteredQuotes = filteredQuotes.filter(q => q.currency === currency);
+        }
+
+        if (filteredQuotes.length === 0) {
+            elements.ratesTbody.innerHTML = '';
+            if (elements.placeholder) {
+                elements.placeholder.style.display = 'flex';
+                elements.placeholder.innerHTML = `
+                    <i class="fas fa-chart-area"></i>
+                    <p>No IR volatility data available</p>
+                    <span class="placeholder-hint">Check that the IR vol API is returning data</span>
+                `;
+            }
+            return;
+        }
+
+        if (elements.placeholder) elements.placeholder.style.display = 'none';
+
+        const html = filteredQuotes.map(quote => {
+            // Calculate smile range for display
+            const smileInfo = quote.smile.length > 0
+                ? `${quote.smile.length} points`
+                : 'ATM only';
+
+            return `
+                <tr data-quote-id="${quote.id}" class="${state.selectedRateId === quote.id ? 'selected' : ''}">
+                    <td>${escapeHtml(quote.currency)}</td>
+                    <td>${escapeHtml(quote.expiry)}</td>
+                    <td>${escapeHtml(quote.tenor)}</td>
+                    <td class="numeric">
+                        <span class="rate-value">${formatVol(quote.atmVol)}</span>
+                    </td>
+                    <td>${escapeHtml(quote.volType)}</td>
+                    <td>${smileInfo}</td>
+                    <td>${escapeHtml(quote.source)}</td>
+                    <td>
+                        <span class="status-indicator fresh">
+                            <i class="fas fa-check"></i>
+                            Live
+                        </span>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        elements.ratesTbody.innerHTML = html;
+
+        // Bind row click events for IRVol
+        elements.ratesTbody.querySelectorAll('tr').forEach(row => {
+            row.addEventListener('click', () => {
+                const quoteId = row.dataset.quoteId;
+                selectIrVolQuote(quoteId);
+            });
+        });
+    }
+
+    function selectIrVolQuote(quoteId) {
+        state.selectedRateId = quoteId;
+        const quote = state.irVolQuotes.find(q => q.id === quoteId);
+        if (quote) {
+            renderIrVolDetail(quote);
+        }
+        updateIrVolTableSelection();
+    }
+
+    function updateIrVolTableSelection() {
+        elements.ratesTbody?.querySelectorAll('tr').forEach(row => {
+            row.classList.toggle('selected', row.dataset.quoteId === state.selectedRateId);
+        });
+    }
+
+    function renderIrVolDetail(quote) {
+        if (!elements.detailContent) return;
+
+        const smileHtml = quote.smile.length > 0
+            ? quote.smile.map(p => `
+                <div class="detail-row">
+                    <span class="detail-label">${p.strikeOffsetBp > 0 ? '+' : ''}${p.strikeOffsetBp}bp</span>
+                    <span class="detail-value">${formatVol(p.vol)}</span>
+                </div>
+            `).join('')
+            : '<div class="detail-row"><span class="detail-label">No smile data</span></div>';
+
+        elements.detailContent.innerHTML = `
+            <div class="detail-section">
+                <div class="detail-section-title"><i class="fas fa-chart-line"></i> Swaption Vol Quote</div>
+                <div class="detail-row">
+                    <span class="detail-label">Currency</span>
+                    <span class="detail-value">${escapeHtml(quote.currency)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Expiry</span>
+                    <span class="detail-value">${escapeHtml(quote.expiry)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Tenor</span>
+                    <span class="detail-value">${escapeHtml(quote.tenor)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">ATM Vol</span>
+                    <span class="detail-value large">${formatVol(quote.atmVol)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Vol Type</span>
+                    <span class="detail-value">${escapeHtml(quote.volType)}</span>
+                </div>
+            </div>
+            <div class="detail-section">
+                <div class="detail-section-title"><i class="fas fa-smile"></i> Smile Curve</div>
+                ${smileHtml}
+            </div>
+        `;
+    }
+
+    function updateIrVolStats() {
+        const total = state.irVolQuotes.length;
+        const currencies = new Set(state.irVolQuotes.map(q => q.currency)).size;
+
+        if (elements.statsTotal) elements.statsTotal.textContent = total;
+        if (elements.statsLive) elements.statsLive.textContent = currencies;
+        if (elements.statsDisplayed) elements.statsDisplayed.textContent = total;
+        if (elements.totalCount) elements.totalCount.textContent = total;
+        if (elements.staleCount) elements.staleCount.textContent = '0';
+    }
+
+    // ===========================================
+    // FXVol Data Loading
+    // ===========================================
+
+    async function loadFxVolData() {
+        showLoading(true);
+        try {
+            // Load available pairs
+            const pairsResp = await fetch('/api/fxvol/pairs');
+            if (!pairsResp.ok) throw new Error('Failed to fetch FX vol pairs');
+
+            const pairsData = await pairsResp.json();
+            state.fxVolPairs = pairsData.pairs || [];
+
+            // Load quotes for all pairs and flatten for table display
+            const allQuotes = [];
+            for (const pairInfo of state.fxVolPairs) {
+                try {
+                    const quotesResp = await fetch(`/api/fxvol/quotes/${pairInfo.pair}`);
+                    if (quotesResp.ok) {
+                        const quotesData = await quotesResp.json();
+                        for (const quote of quotesData.quotes || []) {
+                            allQuotes.push({
+                                id: `${pairInfo.pair}-${quote.expiry}`,
+                                pair: pairInfo.pair,
+                                expiry: quote.expiry,
+                                expiryLabel: expiryToLabel(quote.expiry),
+                                atmVol: quote.atmVol,
+                                rr25d: quote.rr25d,
+                                bf25d: quote.bf25d,
+                                rr10d: quote.rr10d,
+                                bf10d: quote.bf10d,
+                                spot: quotesData.spot,
+                                source: 'Demo'
+                            });
+                        }
+                    }
+                } catch (e) {
+                    logError(`Failed to load quotes for ${pairInfo.pair}:`, e);
+                }
+            }
+
+            state.fxVolQuotes = allQuotes;
+            state.lastUpdated = new Date().toISOString();
+
+            renderFxVolTable();
+            updateFxVolStats();
+            updateLastUpdated();
+
+            log(`Loaded ${allQuotes.length} FX vol quotes`);
+        } catch (error) {
+            logError('Failed to load FX vol data:', error);
+            showError('Failed to load FX volatility data');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    function expiryToLabel(expiry) {
+        if (expiry < 0.05) return '1W';
+        if (expiry < 0.125) return '1M';
+        if (expiry < 0.21) return '2M';
+        if (expiry < 0.33) return '3M';
+        if (expiry < 0.54) return '6M';
+        if (expiry < 0.83) return '9M';
+        if (expiry < 1.5) return '1Y';
+        if (expiry < 2.5) return '2Y';
+        if (expiry < 4.0) return '3Y';
+        return `${Math.round(expiry)}Y`;
+    }
+
+    function renderFxVolTable() {
+        if (!elements.ratesTbody) return;
+
+        // Update table headers for FXVol
+        updateTableHeadersForAssetClass('FXVol');
+
+        // Filter by selected currency pair (using currency filter for pair)
+        let filteredQuotes = state.fxVolQuotes;
+        const pairFilter = elements.currencyFilter?.value;
+        if (pairFilter) {
+            filteredQuotes = filteredQuotes.filter(q => q.pair.includes(pairFilter));
+        }
+
+        if (filteredQuotes.length === 0) {
+            elements.ratesTbody.innerHTML = '';
+            if (elements.placeholder) {
+                elements.placeholder.style.display = 'flex';
+                elements.placeholder.innerHTML = `
+                    <i class="fas fa-chart-area"></i>
+                    <p>No FX volatility data available</p>
+                    <span class="placeholder-hint">Check that the FX vol API is returning data</span>
+                `;
+            }
+            return;
+        }
+
+        if (elements.placeholder) elements.placeholder.style.display = 'none';
+
+        const html = filteredQuotes.map(quote => {
+            return `
+                <tr data-quote-id="${quote.id}" class="${state.selectedRateId === quote.id ? 'selected' : ''}">
+                    <td>${escapeHtml(quote.pair)}</td>
+                    <td>${escapeHtml(quote.expiryLabel)}</td>
+                    <td class="numeric">
+                        <span class="rate-value">${formatVol(quote.atmVol)}</span>
+                    </td>
+                    <td class="numeric ${quote.rr25d >= 0 ? '' : 'negative'}">${formatVolBps(quote.rr25d)}</td>
+                    <td class="numeric">${formatVolBps(quote.bf25d)}</td>
+                    <td class="numeric ${quote.rr10d >= 0 ? '' : 'negative'}">${formatVolBps(quote.rr10d)}</td>
+                    <td class="numeric">${formatVolBps(quote.bf10d)}</td>
+                    <td>
+                        <span class="status-indicator fresh">
+                            <i class="fas fa-check"></i>
+                            Live
+                        </span>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        elements.ratesTbody.innerHTML = html;
+
+        // Bind row click events for FXVol
+        elements.ratesTbody.querySelectorAll('tr').forEach(row => {
+            row.addEventListener('click', () => {
+                const quoteId = row.dataset.quoteId;
+                selectFxVolQuote(quoteId);
+            });
+        });
+    }
+
+    function selectFxVolQuote(quoteId) {
+        state.selectedRateId = quoteId;
+        const quote = state.fxVolQuotes.find(q => q.id === quoteId);
+        if (quote) {
+            renderFxVolDetail(quote);
+        }
+        updateFxVolTableSelection();
+    }
+
+    function updateFxVolTableSelection() {
+        elements.ratesTbody?.querySelectorAll('tr').forEach(row => {
+            row.classList.toggle('selected', row.dataset.quoteId === state.selectedRateId);
+        });
+    }
+
+    function renderFxVolDetail(quote) {
+        if (!elements.detailContent) return;
+
+        // Calculate delta vols from RR/BF
+        const vol25c = quote.atmVol + quote.bf25d + quote.rr25d / 2;
+        const vol25p = quote.atmVol + quote.bf25d - quote.rr25d / 2;
+        const vol10c = quote.atmVol + quote.bf10d + quote.rr10d / 2;
+        const vol10p = quote.atmVol + quote.bf10d - quote.rr10d / 2;
+
+        elements.detailContent.innerHTML = `
+            <div class="detail-section">
+                <div class="detail-section-title"><i class="fas fa-chart-line"></i> FX Vol Quote</div>
+                <div class="detail-row">
+                    <span class="detail-label">Pair</span>
+                    <span class="detail-value">${escapeHtml(quote.pair)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Expiry</span>
+                    <span class="detail-value">${escapeHtml(quote.expiryLabel)} (${quote.expiry.toFixed(4)}Y)</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Spot</span>
+                    <span class="detail-value">${quote.spot ? quote.spot.toFixed(4) : '-'}</span>
+                </div>
+            </div>
+            <div class="detail-section">
+                <div class="detail-section-title"><i class="fas fa-smile"></i> ATM & Smile</div>
+                <div class="detail-row">
+                    <span class="detail-label">ATM Vol</span>
+                    <span class="detail-value large">${formatVol(quote.atmVol)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">25D RR</span>
+                    <span class="detail-value">${formatVolBps(quote.rr25d)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">25D BF</span>
+                    <span class="detail-value">${formatVolBps(quote.bf25d)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">10D RR</span>
+                    <span class="detail-value">${formatVolBps(quote.rr10d)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">10D BF</span>
+                    <span class="detail-value">${formatVolBps(quote.bf10d)}</span>
+                </div>
+            </div>
+            <div class="detail-section">
+                <div class="detail-section-title"><i class="fas fa-calculator"></i> Delta Vols (Derived)</div>
+                <div class="detail-row">
+                    <span class="detail-label">10D Put</span>
+                    <span class="detail-value">${formatVol(vol10p)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">25D Put</span>
+                    <span class="detail-value">${formatVol(vol25p)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">ATM</span>
+                    <span class="detail-value">${formatVol(quote.atmVol)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">25D Call</span>
+                    <span class="detail-value">${formatVol(vol25c)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">10D Call</span>
+                    <span class="detail-value">${formatVol(vol10c)}</span>
+                </div>
+            </div>
+        `;
+    }
+
+    function updateFxVolStats() {
+        const total = state.fxVolQuotes.length;
+        const pairs = new Set(state.fxVolQuotes.map(q => q.pair)).size;
+
+        if (elements.statsTotal) elements.statsTotal.textContent = total;
+        if (elements.statsLive) elements.statsLive.textContent = pairs;
+        if (elements.statsDisplayed) elements.statsDisplayed.textContent = total;
+        if (elements.totalCount) elements.totalCount.textContent = total;
+        if (elements.staleCount) elements.staleCount.textContent = '0';
+    }
+
+    // ===========================================
+    // Dynamic Table Headers
+    // ===========================================
+
+    function updateTableHeadersForAssetClass(assetClass) {
+        const thead = elements.ratesTable?.querySelector('thead tr');
+        if (!thead) return;
+
+        switch (assetClass) {
+            case 'IRVol':
+                thead.innerHTML = `
+                    <th class="sortable" data-sort="currency">Currency <i class="fas fa-sort"></i></th>
+                    <th class="sortable" data-sort="expiry">Expiry <i class="fas fa-sort"></i></th>
+                    <th class="sortable" data-sort="tenor">Tenor <i class="fas fa-sort"></i></th>
+                    <th class="sortable numeric" data-sort="atmVol">ATM Vol <i class="fas fa-sort"></i></th>
+                    <th>Vol Type</th>
+                    <th>Smile</th>
+                    <th>Source</th>
+                    <th>Status</th>
+                `;
+                break;
+            case 'FXVol':
+                thead.innerHTML = `
+                    <th class="sortable" data-sort="pair">Pair <i class="fas fa-sort"></i></th>
+                    <th class="sortable" data-sort="expiry">Expiry <i class="fas fa-sort"></i></th>
+                    <th class="sortable numeric" data-sort="atmVol">ATM Vol <i class="fas fa-sort"></i></th>
+                    <th class="sortable numeric" data-sort="rr25d">25D RR <i class="fas fa-sort"></i></th>
+                    <th class="sortable numeric" data-sort="bf25d">25D BF <i class="fas fa-sort"></i></th>
+                    <th class="sortable numeric" data-sort="rr10d">10D RR <i class="fas fa-sort"></i></th>
+                    <th class="sortable numeric" data-sort="bf10d">10D BF <i class="fas fa-sort"></i></th>
+                    <th>Status</th>
+                `;
+                break;
+            default:
+                // Rates and FX use the original headers
+                thead.innerHTML = `
+                    <th class="sortable" data-sort="id">ID <i class="fas fa-sort"></i></th>
+                    <th class="sortable" data-sort="currency">Currency <i class="fas fa-sort"></i></th>
+                    <th class="sortable" data-sort="tenor">Tenor <i class="fas fa-sort"></i></th>
+                    <th class="sortable" data-sort="rateType">Type <i class="fas fa-sort"></i></th>
+                    <th class="sortable numeric" data-sort="value">Value <i class="fas fa-sort"></i></th>
+                    <th>Index</th>
+                    <th>Source</th>
+                    <th>Status</th>
+                `;
+                break;
+        }
+
+        // Re-bind sorting events for new headers
+        thead.querySelectorAll('th.sortable').forEach(th => {
+            th.addEventListener('click', () => {
+                const column = th.dataset.sort;
+                if (state.sortColumn === column) {
+                    state.sortDirection = state.sortDirection === 'asc' ? 'desc' : 'asc';
+                } else {
+                    state.sortColumn = column;
+                    state.sortDirection = 'asc';
+                }
+                updateSortIndicators();
+                // Re-render appropriate table
+                if (assetClass === 'IRVol') {
+                    sortIrVolQuotes();
+                    renderIrVolTable();
+                } else if (assetClass === 'FXVol') {
+                    sortFxVolQuotes();
+                    renderFxVolTable();
+                } else {
+                    sortAndRender();
+                }
+            });
+        });
+    }
+
+    function sortIrVolQuotes() {
+        const col = state.sortColumn;
+        const dir = state.sortDirection === 'asc' ? 1 : -1;
+
+        state.irVolQuotes.sort((a, b) => {
+            let aVal = a[col];
+            let bVal = b[col];
+
+            if (aVal == null) aVal = '';
+            if (bVal == null) bVal = '';
+
+            if (col === 'atmVol') {
+                return (parseFloat(aVal) - parseFloat(bVal)) * dir;
+            }
+            return String(aVal).localeCompare(String(bVal)) * dir;
+        });
+    }
+
+    function sortFxVolQuotes() {
+        const col = state.sortColumn;
+        const dir = state.sortDirection === 'asc' ? 1 : -1;
+
+        state.fxVolQuotes.sort((a, b) => {
+            let aVal = a[col];
+            let bVal = b[col];
+
+            if (aVal == null) aVal = '';
+            if (bVal == null) bVal = '';
+
+            if (['atmVol', 'rr25d', 'bf25d', 'rr10d', 'bf10d', 'expiry'].includes(col)) {
+                return (parseFloat(aVal) - parseFloat(bVal)) * dir;
+            }
+            return String(aVal).localeCompare(String(bVal)) * dir;
+        });
     }
 
     /**
@@ -260,9 +811,34 @@ const marketDataViewer = (() => {
 
     function setAssetClass(assetClass) {
         state.assetClass = assetClass;
+        state.selectedRateId = null; // Clear selection when switching
         updateAssetClassToggle();
-        applyFilters();
+
+        // Load data based on asset class
+        if (assetClass === 'IRVol') {
+            if (state.irVolQuotes.length === 0) {
+                loadIrVolData();
+            } else {
+                updateTableHeadersForAssetClass('IRVol');
+                renderIrVolTable();
+                updateIrVolStats();
+            }
+        } else if (assetClass === 'FXVol') {
+            if (state.fxVolQuotes.length === 0) {
+                loadFxVolData();
+            } else {
+                updateTableHeadersForAssetClass('FXVol');
+                renderFxVolTable();
+                updateFxVolStats();
+            }
+        } else {
+            // Rates or FX
+            updateTableHeadersForAssetClass(assetClass);
+            applyFilters();
+        }
+
         filterAndRenderConventions();
+        renderDetailPanel(); // Clear detail panel
         log(`Asset class changed to: ${assetClass}`);
     }
 
@@ -312,6 +888,19 @@ const marketDataViewer = (() => {
     }
 
     function applyFilters() {
+        // For IRVol and FXVol, re-render with updated filters
+        if (state.assetClass === 'IRVol') {
+            renderIrVolTable();
+            updateIrVolStats();
+            return;
+        }
+        if (state.assetClass === 'FXVol') {
+            renderFxVolTable();
+            updateFxVolStats();
+            return;
+        }
+
+        // Original filtering for Rates and FX
         const currency = elements.currencyFilter?.value?.toLowerCase() || '';
         const rateType = elements.typeFilter?.value?.toLowerCase() || '';
         const index = elements.indexFilter?.value?.toLowerCase() || '';
@@ -807,6 +1396,20 @@ const marketDataViewer = (() => {
         return (value * 100).toFixed(4) + '%';
     }
 
+    function formatVol(value) {
+        // Format volatility as percentage (e.g., 0.12 -> 12.00%)
+        if (value == null) return '-';
+        return (value * 100).toFixed(2) + '%';
+    }
+
+    function formatVolBps(value) {
+        // Format volatility difference as basis points (e.g., 0.005 -> 50 bps)
+        if (value == null) return '-';
+        const bps = value * 10000;
+        const sign = bps >= 0 ? '+' : '';
+        return sign + bps.toFixed(1) + ' bps';
+    }
+
     function formatTimestamp(ts) {
         const date = new Date(ts);
         return date.toLocaleString();
@@ -860,8 +1463,10 @@ const marketDataViewer = (() => {
 
     return {
         init,
-        refresh: loadRates,
+        refresh: refreshRates,
         getRates: () => [...state.rates],
+        getIrVolQuotes: () => [...state.irVolQuotes],
+        getFxVolQuotes: () => [...state.fxVolQuotes],
         getState: () => ({ ...state })
     };
 })();

@@ -158,7 +158,7 @@
   - D3.js互換のDAG形式でエクスポート可能にする
   - _Requirements: 7.3, 7.4_
 
-- [ ] 10.2 T: Float ジェネリクスでAAD互換性を確保する
+- [x] 10.2 T: Float ジェネリクスでAAD互換性を確保する
   - 全数値計算をDualNumber互換の型で実装
   - Enzyme AADモードでの実行を可能にする
   - _Requirements: 7.1_

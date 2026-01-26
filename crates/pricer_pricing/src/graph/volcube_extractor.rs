@@ -36,7 +36,9 @@ use pricer_models::market::volcube::{
 use super::{
     error::GraphError,
     extractor::GraphExtractable,
-    types::{ComputationGraph, GraphEdge, GraphMetadata, GraphNode, GraphNodeUpdate, NodeGroup, NodeType},
+    types::{
+        ComputationGraph, GraphEdge, GraphMetadata, GraphNode, GraphNodeUpdate, NodeGroup, NodeType,
+    },
 };
 
 // =============================================================================
@@ -96,19 +98,13 @@ impl<'a, T: num_traits::Float + Send + Sync> VolCubeGraphExtractor<'a, T> {
     }
 
     /// Get the underlying VolCube reference.
-    pub fn cube(&self) -> &'a VolCube<T> {
-        self.cube
-    }
+    pub fn cube(&self) -> &'a VolCube<T> { self.cube }
 
     /// Get the cube identifier.
-    pub fn cube_id(&self) -> &str {
-        &self.cube_id
-    }
+    pub fn cube_id(&self) -> &str { &self.cube_id }
 
     /// Get the raw graph data.
-    pub fn graph_data(&self) -> &VolCubeGraphData {
-        &self.graph_data
-    }
+    pub fn graph_data(&self) -> &VolCubeGraphData { &self.graph_data }
 
     /// Convert VolCubeNodeType to NodeType.
     fn convert_node_type(volcube_type: VolCubeNodeType) -> NodeType {
@@ -142,15 +138,19 @@ impl<'a, T: num_traits::Float + Send + Sync> VolCubeGraphExtractor<'a, T> {
         // Build adjacency list (source -> targets)
         let mut adj: HashMap<&str, Vec<&str>> = HashMap::new();
         for edge in &self.graph_data.edges {
-            adj.entry(&edge.source)
-                .or_default()
-                .push(&edge.target);
+            adj.entry(&edge.source).or_default().push(&edge.target);
         }
 
         // Find input nodes (no incoming edges)
-        let targets: std::collections::HashSet<_> =
-            self.graph_data.edges.iter().map(|e| e.target.as_str()).collect();
-        let sources: Vec<_> = self.graph_data.nodes
+        let targets: std::collections::HashSet<_> = self
+            .graph_data
+            .edges
+            .iter()
+            .map(|e| e.target.as_str())
+            .collect();
+        let sources: Vec<_> = self
+            .graph_data
+            .nodes
             .iter()
             .filter(|n| !targets.contains(n.id.as_str()))
             .map(|n| n.id.as_str())
@@ -182,7 +182,7 @@ impl<'a, T: num_traits::Float + Send + Sync> VolCubeGraphExtractor<'a, T> {
     }
 }
 
-impl<'a, T: num_traits::Float + Send + Sync> GraphExtractable for VolCubeGraphExtractor<'a, T> {
+impl<T: num_traits::Float + Send + Sync> GraphExtractable for VolCubeGraphExtractor<'_, T> {
     /// Extract the computation graph from the VolCube.
     ///
     /// # Arguments
@@ -196,7 +196,9 @@ impl<'a, T: num_traits::Float + Send + Sync> GraphExtractable for VolCubeGraphEx
         let start_time = Instant::now();
 
         // Convert nodes
-        let nodes: Vec<GraphNode> = self.graph_data.nodes
+        let nodes: Vec<GraphNode> = self
+            .graph_data
+            .nodes
             .iter()
             .map(|n| GraphNode {
                 id: n.id.clone(),
@@ -210,7 +212,9 @@ impl<'a, T: num_traits::Float + Send + Sync> GraphExtractable for VolCubeGraphEx
             .collect();
 
         // Convert edges
-        let edges: Vec<GraphEdge> = self.graph_data.edges
+        let edges: Vec<GraphEdge> = self
+            .graph_data
+            .edges
             .iter()
             .map(|e| GraphEdge {
                 source: e.source.clone(),
@@ -267,10 +271,11 @@ impl<'a, T: num_traits::Float + Send + Sync> GraphExtractable for VolCubeGraphEx
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use pricer_models::market::volcube::{
         InstrumentId, SabrParameterSurface, SabrParams, VolCubeConfig,
     };
+
+    use super::*;
 
     fn create_test_cube() -> VolCube<f64> {
         let expiries = vec![0.5, 1.0];
@@ -340,11 +345,13 @@ mod tests {
         let graph = extractor.extract_graph(None).unwrap();
 
         // Find different node types
-        let input_nodes: Vec<_> = graph.nodes
+        let input_nodes: Vec<_> = graph
+            .nodes
             .iter()
             .filter(|n| n.node_type == NodeType::Input)
             .collect();
-        let output_nodes: Vec<_> = graph.nodes
+        let output_nodes: Vec<_> = graph
+            .nodes
             .iter()
             .filter(|n| n.node_type == NodeType::Output)
             .collect();
@@ -363,7 +370,8 @@ mod tests {
         let graph = extractor.extract_graph(None).unwrap();
 
         // Input nodes (instruments) should be sensitivity targets
-        let sensitivity_targets: Vec<_> = graph.nodes
+        let sensitivity_targets: Vec<_> = graph
+            .nodes
             .iter()
             .filter(|n| n.is_sensitivity_target)
             .collect();
@@ -383,15 +391,18 @@ mod tests {
         let graph = extractor.extract_graph(None).unwrap();
 
         // Check that we have different groups
-        let input_group: Vec<_> = graph.nodes
+        let input_group: Vec<_> = graph
+            .nodes
             .iter()
             .filter(|n| n.group == NodeGroup::Input)
             .collect();
-        let intermediate_group: Vec<_> = graph.nodes
+        let intermediate_group: Vec<_> = graph
+            .nodes
             .iter()
             .filter(|n| n.group == NodeGroup::Intermediate)
             .collect();
-        let output_group: Vec<_> = graph.nodes
+        let output_group: Vec<_> = graph
+            .nodes
             .iter()
             .filter(|n| n.group == NodeGroup::Output)
             .collect();

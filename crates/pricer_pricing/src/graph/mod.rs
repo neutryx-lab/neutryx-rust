@@ -47,7 +47,6 @@ pub use types::{
     ComputationGraph, GraphEdge, GraphMetadata, GraphNode, GraphNodeUpdate, NodeGroup, NodeType,
     PortfolioComputationGraph, PortfolioGraphMetadata,
 };
-
 #[cfg(feature = "l1l2-integration")]
 pub use volcube_extractor::VolCubeGraphExtractor;
 

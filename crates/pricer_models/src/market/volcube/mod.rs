@@ -43,6 +43,7 @@ mod lazy_evaluator;
 mod quote;
 mod sabr_surface;
 mod types;
+mod vega;
 
 #[cfg(test)]
 mod proptest_tests;
@@ -92,3 +93,6 @@ pub use quote::{
 };
 pub use sabr_surface::SabrParameterSurface;
 pub use types::{InstrumentId, SabrParams, VolInstrument};
+pub use vega::{
+    BucketVega, PointVega, VegaBumpConfig, VegaError, VegaGrid, VolCubeVegaCalculator,
+};
