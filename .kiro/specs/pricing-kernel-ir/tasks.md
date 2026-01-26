@@ -99,7 +99,7 @@
   - ジェネリック型パラメータ<T: Float, C: CurveProvider<T>>
   - _Requirements: 8.1, 8.2, 8.4, 12.3_
 
-- [ ] 5.2 days_to_yearsヘルパー
+- [x] 5.2 days_to_yearsヘルパー
   - 評価日からの年単位時間計算を実装する
   - 日付（days from epoch）から年単位時間への変換
   - _Requirements: 9.3, 9.4_
@@ -111,7 +111,7 @@
   - 既存price_single_tradeとの結果一致検証
   - _Requirements: 8.5_
 
-- [ ] 6.2 (P) AlignedBufferアラインメント検証
+- [x] 6.2 (P) AlignedBufferアラインメント検証
   - 64バイトアラインメントの実行時検証テストを作成する
   - ポインタアドレスの下位6ビットが0であることを確認
   - _Requirements: 11.1_
