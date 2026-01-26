@@ -392,6 +392,27 @@ pub async fn get_indices() -> ApiResult<Vec<String>> {
     Ok(Json(loader.available_indices()))
 }
 
+/// Handler for `GET /api/curves/central-bank-meetings`.
+///
+/// Returns central bank policy rate decision meeting dates by currency.
+pub async fn get_central_bank_meetings() -> ApiResult<serde_json::Value> {
+    let file_path = std::path::PathBuf::from("demo/data/input/central_bank_meetings.json");
+
+    if !file_path.exists() {
+        return Ok(Json(serde_json::json!({
+            "meetings": {}
+        })));
+    }
+
+    let content = std::fs::read_to_string(&file_path)
+        .map_err(|e| ApiError::internal(format!("Failed to read central bank meetings: {}", e)))?;
+
+    let data: serde_json::Value = serde_json::from_str(&content)
+        .map_err(|e| ApiError::internal(format!("Failed to parse central bank meetings: {}", e)))?;
+
+    Ok(Json(data))
+}
+
 // =============================================================================
 // Helper Functions
 // =============================================================================
