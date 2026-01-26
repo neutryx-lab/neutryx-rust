@@ -143,8 +143,8 @@
   - メモリ使用量の概算を提供
   - _Requirements: 6.6_
 
-- [ ] 9. MarketProvider拡張
-- [ ] 9.1 VolCubeキャッシュをMarketProviderに統合する
+- [x] 9. MarketProvider拡張
+- [x] 9.1 VolCubeキャッシュをMarketProviderに統合する
   - 既存のCurveキャッシュと同様のパターンでVolCubeを管理
   - get_volcube(currency, index, config)メソッドを追加
   - Arc-wrapped lazy evaluationを適用
@@ -153,7 +153,7 @@
 ## Phase 3: AAD（自動微分）統合
 
 - [ ] 10. AAD基盤とGraphExtractable実装
-- [ ] 10.1 VolCubeにGraphExtractable traitを実装する
+- [x] 10.1 VolCubeにGraphExtractable traitを実装する
   - カリブレーショングラフ（VolQuotes→SABRParams→InterpolatedVol）を抽出
   - D3.js互換のDAG形式でエクスポート可能にする
   - _Requirements: 7.3, 7.4_

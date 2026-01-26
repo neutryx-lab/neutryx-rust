@@ -56,7 +56,7 @@ pub use curves::{
 pub use error::MarketDataError;
 pub use fx_density::{DeltaType, DensityStatistics, FxDensityCalculator};
 pub use index_mapper::{DefaultIndexCurveMapper, IndexCurveMapper};
-pub use provider::MarketProvider;
+pub use provider::{MarketProvider, VolCubeProviderKey};
 pub use surfaces::{
     FlatVol, FxDeltaPoint, FxVolatilitySurface, InterpolatedVolSurface, VolCubeSlice,
     VolSurfaceEnum, VolatilitySurface,

@@ -267,7 +267,7 @@ impl LazyEvaluatorStatsSnapshot {
 /// # Requirements: 6.1-6.7
 ///
 /// Provides lazy evaluation of SABR calibration with:
-/// - Thread-safe slice-level caching using RwLock<HashMap>
+/// - Thread-safe slice-level caching using `RwLock<HashMap>`
 /// - Double-check locking for concurrent access
 /// - Cache invalidation on quote updates
 /// - Comprehensive statistics tracking
