@@ -245,9 +245,7 @@ impl LSMCRegressor {
     }
 
     /// Evaluates power basis (1, x, x², ...).
-    fn power_basis(x: f64, n: usize) -> Vec<f64> {
-        (0..n).map(|i| x.powi(i as i32)).collect()
-    }
+    fn power_basis(x: f64, n: usize) -> Vec<f64> { (0..n).map(|i| x.powi(i as i32)).collect() }
 
     /// Solves normal equations using Cholesky decomposition.
     fn solve_normal_equations(

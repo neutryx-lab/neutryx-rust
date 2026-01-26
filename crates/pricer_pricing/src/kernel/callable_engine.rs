@@ -23,8 +23,11 @@
 
 use pricer_core::ir::{CallableBlock, CallableKernel, PricingKernel};
 
-use super::lsmc::{LSMCRegressor, RegressionResult};
-use super::{days_to_years, CurveProvider, KernelContext, LinearEngine};
+use super::{
+    days_to_years,
+    lsmc::{LSMCRegressor, RegressionResult},
+    CurveProvider, KernelContext, LinearEngine,
+};
 
 /// State at an exercise point during forward pass.
 ///
@@ -215,8 +218,7 @@ impl CallableEngine {
                 let mut state = ExerciseState::new(exercise.exercise_date, num_paths);
 
                 // Calculate accumulated values up to this point
-                let exercise_time =
-                    days_to_years(exercise.exercise_date, valuation_date_days);
+                let exercise_time = days_to_years(exercise.exercise_date, valuation_date_days);
                 let time_idx = paths.find_time_index(exercise_time);
 
                 for path_idx in 0..num_paths {
@@ -226,7 +228,8 @@ impl CallableEngine {
 
                     // Add values from previous exercise states
                     if let Some(prev_state) = exercise_states.last() {
-                        state.accumulated_values[path_idx] += prev_state.accumulated_values[path_idx];
+                        state.accumulated_values[path_idx] +=
+                            prev_state.accumulated_values[path_idx];
                     }
 
                     // Record short rate at exercise point
@@ -453,11 +456,7 @@ impl CallableEngine {
             let time_idx = paths.find_time_index(exercise_time.max(0.0));
 
             // Determine in-the-money paths (intrinsic > 0)
-            let itm_mask: Vec<bool> = state
-                .intrinsic_values
-                .iter()
-                .map(|&v| v > 0.0)
-                .collect();
+            let itm_mask: Vec<bool> = state.intrinsic_values.iter().map(|&v| v > 0.0).collect();
 
             // Calculate future values (discounted from next exercise or final)
             let future_values: Vec<f64> = if state_idx == exercise_states.len() - 1 {
@@ -483,11 +482,8 @@ impl CallableEngine {
             };
 
             // Fit regression for continuation value estimation
-            let regression_result = regressor.fit(
-                &state.short_rates,
-                &future_values,
-                Some(&itm_mask),
-            );
+            let regression_result =
+                regressor.fit(&state.short_rates, &future_values, Some(&itm_mask));
 
             // Determine exercise decisions
             let exercise_now = regressor.determine_exercise(
@@ -607,9 +603,7 @@ impl BackwardPassResult {
 
     /// Returns the number of exercise dates.
     #[must_use]
-    pub fn num_exercise_dates(&self) -> usize {
-        self.exercise_decisions.len()
-    }
+    pub fn num_exercise_dates(&self) -> usize { self.exercise_decisions.len() }
 
     /// Returns the exercise probability at each exercise date.
     #[must_use]
@@ -636,8 +630,9 @@ pub struct ExerciseDecision {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use pricer_core::ir::{CallableBlock, CallableKernel, ExerciseDef, PricingKernel};
+
+    use super::*;
 
     fn create_test_kernel() -> CallableKernel {
         CallableKernel::new(
@@ -671,12 +666,7 @@ mod tests {
             .collect();
 
         let df_paths: Vec<Vec<f64>> = (0..num_paths)
-            .map(|_| {
-                time_grid
-                    .iter()
-                    .map(|&t| (-0.03 * t).exp())
-                    .collect()
-            })
+            .map(|_| time_grid.iter().map(|&t| (-0.03 * t).exp()).collect())
             .collect();
 
         paths.set_short_rate_paths(short_rate_paths);
