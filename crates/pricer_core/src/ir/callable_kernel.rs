@@ -787,9 +787,7 @@ mod tests {
 
     #[test]
     fn test_builder_base_currency() {
-        let kernel = CallableKernelBuilder::new()
-            .base_currency(1)
-            .build();
+        let kernel = CallableKernelBuilder::new().base_currency(1).build();
 
         assert_eq!(kernel.base_currency_id, 1);
     }
