@@ -152,12 +152,12 @@ pub struct SabrConfigInput {
 }
 
 #[allow(clippy::unnecessary_wraps)]
-fn default_sabr_beta() -> Option<f64> { Some(0.5) }
+fn default_sabr_beta() -> Option<f64> { Some(1.0) }
 
 impl Default for SabrConfigInput {
     fn default() -> Self {
         Self {
-            beta: Some(0.5),
+            beta: Some(1.0),
             shift: 0.0,
             calibrate_beta: false,
         }
@@ -1428,41 +1428,13 @@ fn calibrate_sabr_simple(
             .sum()
     };
 
-    // Grid search to find the best starting region, then refine with optimization
-    // This avoids getting stuck in local minima
-    let alpha_vals = [alpha_init * 0.8, alpha_init, alpha_init * 1.2];
-    let rho_vals = [-0.6, -0.4, -0.2, 0.0, 0.2, 0.4, 0.6];
-    let nu_vals = [0.3, 0.5, 0.7, 1.0];
+    // Start optimization directly from estimated initial values
+    // For swaptions, rho is typically negative - bias initial guess accordingly
+    let rho_start = rho_init.min(-0.1); // Ensure we start from negative rho
 
-    let mut best_alpha = alpha_init;
-    let mut best_rho = rho_init;
-    let mut best_nu = nu_init;
-    let mut best_obj = f64::INFINITY;
+    let (alpha, rho, nu, _) = optimize_sabr(alpha_init, rho_start, nu_init, &objective);
 
-    // Coarse grid search to find best starting region
-    for &a in &alpha_vals {
-        for &r in &rho_vals {
-            for &n in &nu_vals {
-                let obj = objective(a, r, n);
-                if !obj.is_nan() && obj < best_obj {
-                    best_obj = obj;
-                    best_alpha = a;
-                    best_rho = r;
-                    best_nu = n;
-                }
-            }
-        }
-    }
-
-    // Refine from the best grid point using gradient descent
-    let (a, r, n, obj) = optimize_sabr(best_alpha, best_rho, best_nu, &objective);
-    if !obj.is_nan() && obj < best_obj {
-        best_alpha = a;
-        best_rho = r;
-        best_nu = n;
-    }
-
-    (best_alpha, best_rho, best_nu)
+    (alpha, rho, nu)
 }
 
 /// Run LM-style optimization from a starting point.

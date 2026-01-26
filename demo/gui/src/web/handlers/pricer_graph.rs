@@ -154,7 +154,7 @@ fn execute_simple_calculation() -> ExecutionTrace {
 
     // (a + b) * c = (10 + 5) * 2 = 30
     let sum = a + b;
-    let _result = sum * c;
+    let _ = sum * c;
 
     trace.borrow_mut().exit_scope();
     clear_trace_context();
