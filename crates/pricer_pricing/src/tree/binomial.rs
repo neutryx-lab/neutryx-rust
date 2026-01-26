@@ -315,6 +315,16 @@ impl BinomialTree {
     pub fn num_steps(&self) -> usize {
         self.num_steps
     }
+
+    /// Returns the volatility.
+    pub fn volatility(&self) -> f64 {
+        self.volatility
+    }
+
+    /// Returns the risk-free rate.
+    pub fn rate(&self) -> f64 {
+        self.rate
+    }
 }
 
 #[cfg(test)]

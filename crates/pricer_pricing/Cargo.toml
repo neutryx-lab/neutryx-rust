@@ -65,6 +65,8 @@ default = []
 l1l2-integration = ["dep:pricer_core", "dep:pricer_models", "dep:infra_master", "dep:chrono"]
 # Serialization support for GreeksResult
 serde = ["dep:serde", "dep:serde_json"]
+# Enzyme automatic differentiation (future: LLVM plugin integration)
+enzyme-ad = []
 
 [lints]
 workspace = true

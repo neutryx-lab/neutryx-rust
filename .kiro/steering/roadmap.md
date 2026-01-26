@@ -2,7 +2,7 @@
 
 実装状況と今後の開発項目を追跡するドキュメント。
 
-_Updated: 2026-01-26_ — ir-vol-cube-calibration completed (64/64 tasks, SABR calibration, AAD Vega, WebApp); market-index-keyed-access in design phase; 37 completed specs
+_Updated: 2026-01-26_ — ir-vol-cube-calibration completed; market-index-keyed-access tasks generated (6 phases, 23 sub-tasks); 37 completed specs
 
 ---
 
@@ -153,7 +153,7 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 | Spec | Description | Status |
 |------|-------------|--------|
 | pricer-pricing-architecture | Tree pricing method, PricingMethodDispatcher, unified PricingResult (6 phases, ready for implementation) | 🔶 |
-| market-index-keyed-access | Market index keyed access pattern for curves/surfaces (design phase, awaiting approval) | 📋 |
+| market-index-keyed-access | Market index keyed access pattern for curves/surfaces (6 phases, 23 tasks, ready for implementation) | 🔶 |
 
 ## Recommended Next Steps
 
@@ -167,6 +167,7 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 
 | Date | Change |
 |------|--------|
+| 2026-01-26 | market-index-keyed-access tasks generated (6 phases, 23 sub-tasks: IndexRequirement, IndexedMarket, Builder, TradeIndexRequirements, MarketValidator). Ready for implementation. |
 | 2026-01-26 | ir-vol-cube-calibration completed (64/64 tasks, all phases done including SABR calibration, AAD Vega, WebApp). market-index-keyed-access advanced to design phase. Total: 37 specs |
 | 2026-01-26 | Steering sync: move-enzyme-to-pricer-risk completed (Enzyme AD → L4), pricer-pricing-architecture active (Tree, Dispatcher), market-index-keyed-access in requirements. Layer status updated. Total: 36 specs |
 | 2026-01-26 | Steering sync: fx-vol-surface-calibration completed (139 tests, FX curve + vol surface); ir-vol-cube-calibration active (Phase 1-2 complete); structure.md updated (fx_calibration/, volcube/ expansion, web handlers). Total: 35 specs |

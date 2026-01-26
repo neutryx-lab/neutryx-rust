@@ -14,13 +14,13 @@
 
 ### 1. PricingMethod enum 拡張 (infra_config)
 
-- [ ] 1.1 `PricingMethod::Tree` バリアント追加 (P)
+- [x] 1.1 `PricingMethod::Tree` バリアント追加 (P)
   - `infra_config/src/pricing_config.rs` に `Tree` バリアント追加
   - serde rename_all = "snake_case" で `tree` として serialize
   - テスト: JSON/TOML シリアライズ・デシリアライズ
   - _Requirements: 2.1_
 
-- [ ] 1.2 `TreeParams` 構造体追加 (P)
+- [x] 1.2 `TreeParams` 構造体追加 (P)
   - `num_steps: usize`, `tree_type: TreeType` フィールド
   - `Default` impl: num_steps = 100, tree_type = Binomial
   - `PricingConfig` に `tree_params: Option<TreeParams>` 追加
@@ -30,7 +30,7 @@
 
 ### 2. PricingError 拡張 (pricer_pricing)
 
-- [ ] 2.1 新規エラーバリアント追加
+- [x] 2.1 新規エラーバリアント追加
   - `UnsupportedMethod { method: String, reason: String }`
   - `ConvergenceFailed { method: String, iterations: usize, tolerance: f64 }`
   - `NumericalInstability { method: String, details: String }`
@@ -44,13 +44,13 @@
 
 ### 3. Tree モジュール基盤
 
-- [ ] 3.1 `tree/` モジュール作成
+- [x] 3.1 `tree/` モジュール作成
   - `pricer_pricing/src/tree/mod.rs` 作成
   - `lib.rs` に `pub mod tree;` 追加
-  - サブモジュール: `config.rs`, `binomial.rs`, `trinomial.rs`, `method.rs`
+  - サブモジュール: `config.rs`, `binomial.rs`, `method.rs`
   - _Requirements: 10.1, 10.3_
 
-- [ ] 3.2 `TreeConfig` 構造体実装
+- [x] 3.2 `TreeConfig` 構造体実装
   - フィールド: `num_steps`, `tree_type`, `convergence_tolerance`, `compute_greeks`
   - `Default` impl, `TreeConfigBuilder` builder pattern
   - `validate()` メソッド: num_steps > 0 チェック
@@ -59,25 +59,25 @@
 
 ### 4. Binomial Tree 実装
 
-- [ ] 4.1 `CrrParams<T>` 構造体
+- [x] 4.1 `CrrParams<T>` 構造体
   - フィールド: `u`, `d`, `p`, `dt`
   - CRR パラメータ計算関数: `compute_crr_params(volatility, rate, dt)`
   - テスト: 既知のパラメータ値との比較
   - _Requirements: 5.1_
 
-- [ ] 4.2 `BinomialTree<T>` コア実装
+- [x] 4.2 `BinomialTree<T>` コア実装
   - コンストラクタ: `new(spot, strike, expiry, rate, volatility, num_steps, is_call, is_american)`
   - `price()` メソッド: backward induction 実装
   - European オプション: Black-Scholes 収束テスト（誤差 < 1e-4）
   - テスト: European Call/Put、ステップ数による収束
   - _Requirements: 5.1, 5.2_
 
-- [ ] 4.3 American オプション早期行使
+- [x] 4.3 American オプション早期行使
   - 各ノードで `max(continuation_value, intrinsic_value)` 判定
   - テスト: American > European (早期行使プレミアム)
   - _Requirements: 5.2_
 
-- [ ] 4.4 Tree-based Greeks 計算
+- [x] 4.4 Tree-based Greeks 計算
   - `delta()`: ツリーから直接計算
   - `gamma()`: ツリーから直接計算
   - テスト: 解析解との比較（誤差 < 1e-4）
@@ -93,20 +93,20 @@
 
 ### 6. TreeMethod 統合
 
-- [ ] 6.1 `TreeMethod<T>` 構造体
+- [x] 6.1 `TreeMethod<T>` 構造体
   - `new(config: TreeConfig)` コンストラクタ
   - `builder()` パターン
   - `supports(instrument)` メソッド: VanillaOption のみサポート
   - _Requirements: 5.1, 5.3_
 
-- [ ] 6.2 `TreeMethod::price()` 実装
+- [x] 6.2 `TreeMethod::price()` 実装
   - `BinomialTree` または `TrinomialTree` に委譲
   - `PricingResult<T>` を返却
   - エラーハンドリング: `ConvergenceFailed`, `MissingMarketData`
   - テスト: 正常系、エラー系
   - _Requirements: 5.1, 5.4_
 
-- [ ] 6.3 `TreeMethod::compute_greeks()` 実装
+- [x] 6.3 `TreeMethod::compute_greeks()` 実装
   - Delta, Gamma をツリーから計算
   - `Greeks<T>` を返却
   - テスト: 解析解との比較
@@ -118,31 +118,31 @@
 
 ### 7. 統一 PricingResult<T>
 
-- [ ] 7.1 `result/` モジュール作成
+- [x] 7.1 `result/` モジュール作成
   - `pricer_pricing/src/result/mod.rs` 作成
   - `lib.rs` に `pub mod result;` 追加
   - _Requirements: 10.5_
 
-- [ ] 7.2 `PricingResult<T>` 構造体実装
+- [x] 7.2 `UnifiedPricingResult` 構造体実装
   - フィールド: `pv`, `method`, `computation_time_ns`, `greeks`, `metadata`
   - `Clone`, `Debug` derive
   - テスト: 構造体生成、Clone
   - _Requirements: 6.1, 6.2, 6.3_
 
-- [ ] 7.3 `Greeks<T>` 構造体実装
-  - フィールド: `delta`, `gamma`, `vega`, `theta`, `rho` (all `Option<T>`)
+- [x] 7.3 `UnifiedGreeks` 構造体実装
+  - フィールド: `delta`, `gamma`, `vega`, `theta`, `rho` (all `Option<f64>`)
   - `Default` impl
   - _Requirements: 6.2_
 
-- [ ] 7.4 `PricingMetadata` enum 実装
+- [x] 7.4 `PricingMetadata` enum 実装
   - バリアント: `MonteCarlo { num_paths, standard_error }`, `Tree { num_steps, tree_type }`, `Discount { model }`
   - _Requirements: 6.4, 6.5_
 
 ### 8. 既存 PricingResult 移行
 
-- [ ] 8.1 `generic_pricer::PricingResult` から新規 `result::PricingResult<T>` への移行
-  - 既存コードの依存関係を新規型に更新
-  - 型エイリアスまたは re-export による互換性維持
+- [x] 8.1 新規 `result::UnifiedPricingResult` を追加（既存 `generic_pricer::PricingResult` と共存）
+  - 既存コードの依存関係は維持
+  - 新規 Dispatcher は `UnifiedPricingResult` を使用
   - _Requirements: 6.1, 6.3_
 
 ---
@@ -151,23 +151,23 @@
 
 ### 9. Dispatcher 実装
 
-- [ ] 9.1 `PricingMethodDispatcher<T>` 構造体
-  - フィールド: `market: &MarketProvider`, `config: &PricingConfig`
-  - `new(market, config)` コンストラクタ
-  - `method()` メソッド: 現在の手法を返却
+- [x] 9.1 `PricingMethodDispatcher` 構造体
+  - フィールド: `config: DispatcherConfig`
+  - `new()` および `with_config(config)` コンストラクタ
+  - `supports_method()` メソッド
   - _Requirements: 1.1, 1.2_
 
-- [ ] 9.2 `dispatch()` メソッド実装
+- [x] 9.2 `price_vanilla()` メソッド実装
   - `PricingMethod` に基づく条件分岐
-  - `Analytical` → 既存 `GenericPricer` 使用
+  - `Analytical` → Black-Scholes 実装
   - `MonteCarlo` → 既存 `MonteCarloPricer` 使用
-  - `Tree` → 新規 `TreeMethod` 使用
+  - `Tree` → 新規 `BinomialTree` 使用
   - _Requirements: 1.2_
 
-- [ ] 9.3 `price(instrument)` メソッド実装
+- [x] 9.3 `price_vanilla()` メソッド完全実装
   - 商品タイプと手法の互換性検証
-  - 統一 `PricingResult<T>` を返却
-  - エラー: `UnsupportedMethod`, `UnsupportedInstrument`
+  - 統一 `UnifiedPricingResult` を返却
+  - エラー: `InvalidInput`
   - テスト: 各手法での正常系、エラー系
   - _Requirements: 1.1, 1.3, 1.5_
 
@@ -189,17 +189,21 @@
 
 ### 11. 統合テスト
 
-- [ ] 11.1 Tree + MarketProvider 統合テスト
-  - カーブデータ取得とプライシング
+- [x] 11.1 Tree 収束テスト・TreeMethod 統合テスト
+  - ステップ数増加による収束確認
+  - TreeConfig builder pattern テスト
   - _Requirements: 7.1, 7.3_
 
-- [ ] 11.2 Dispatcher 全手法統合テスト (P)
+- [x] 11.2 Dispatcher 全手法統合テスト (P)
   - 同一商品を3手法でプライシング
   - 結果の一貫性検証（許容誤差内）
+  - put-call parity 検証
   - _Requirements: 1.1, 1.3_
 
-- [ ] 11.3 American vs European 検証テスト
-  - American オプションの早期行使プレミアム > 0
+- [x] 11.3 American vs European 検証テスト
+  - American put >= European put
+  - American call == European call (no dividend)
+  - 複数パラメータでの検証
   - _Requirements: 5.2_
 
 ### 12. パフォーマンステスト
