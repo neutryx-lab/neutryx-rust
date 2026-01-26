@@ -51,14 +51,14 @@
   - TradeCompilerトレイト実装
   - _Requirements: 2.2, 2.4, 2.5, 3.5_
 
-- [ ] 3.2 IRS固有コンパイルロジック
+- [x] 3.2 IRS固有コンパイルロジック
   - Interest Rate Swapの固定/変動レグを分離してコンパイルする
   - 固定レグ: gearings=0.0, spreads=fixed_rate
   - 変動レグ: gearings=1.0, spreads=spread, fwd_index_ids=インデックスID
   - アモチ対応（期間ごとの元本変動）
   - _Requirements: 3.1, 3.4_
 
-- [ ] 3.3 Bond/FRAコンパイルロジック
+- [x] 3.3 Bond/FRAコンパイルロジック
   - Bondのクーポンと元本償還をコンパイルする
   - FRAの単一決済キャッシュフローをコンパイルする
   - _Requirements: 3.2, 3.3_
