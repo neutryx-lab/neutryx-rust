@@ -356,23 +356,17 @@ impl FxPair {
     /// assert_eq!(pair.base(), Currency::EUR);
     /// ```
     #[must_use]
-    pub fn new(base: Currency, quote: Currency) -> Self {
-        Self { base, quote }
-    }
+    pub fn new(base: Currency, quote: Currency) -> Self { Self { base, quote } }
 
     /// Returns the base currency.
     #[inline]
     #[must_use]
-    pub fn base(&self) -> Currency {
-        self.base
-    }
+    pub fn base(&self) -> Currency { self.base }
 
     /// Returns the quote currency.
     #[inline]
     #[must_use]
-    pub fn quote(&self) -> Currency {
-        self.quote
-    }
+    pub fn quote(&self) -> Currency { self.quote }
 
     /// Returns the currency pair code in standard format (BASE/QUOTE).
     ///
@@ -386,9 +380,7 @@ impl FxPair {
     /// assert_eq!(pair.code(), "EUR/USD");
     /// ```
     #[must_use]
-    pub fn code(&self) -> String {
-        format!("{}/{}", self.base.code(), self.quote.code())
-    }
+    pub fn code(&self) -> String { format!("{}/{}", self.base.code(), self.quote.code()) }
 
     /// Creates an inverted FX pair (swaps base and quote).
     ///
@@ -436,9 +428,7 @@ impl FxPair {
     /// but can be useful for validation.
     #[inline]
     #[must_use]
-    pub fn is_same_currency(&self) -> bool {
-        self.base == self.quote
-    }
+    pub fn is_same_currency(&self) -> bool { self.base == self.quote }
 }
 
 impl fmt::Display for FxPair {

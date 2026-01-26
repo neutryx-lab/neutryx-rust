@@ -365,7 +365,8 @@ impl IndexMapper {
 
     /// Registers an FX pair from two currencies.
     ///
-    /// Convenience method that creates an FxPair from base and quote currencies.
+    /// Convenience method that creates an FxPair from base and quote
+    /// currencies.
     ///
     /// # Arguments
     ///
@@ -375,11 +376,7 @@ impl IndexMapper {
     /// # Returns
     ///
     /// The numeric ID assigned to this FX pair.
-    pub fn register_fx_pair_from_currencies(
-        &mut self,
-        base: Currency,
-        quote: Currency,
-    ) -> u16 {
+    pub fn register_fx_pair_from_currencies(&mut self, base: Currency, quote: Currency) -> u16 {
         let fx_pair = FxPair::new(base, quote);
         self.register_fx_pair(fx_pair)
     }
@@ -733,7 +730,10 @@ mod tests {
         let id1 = mapper.register_fx_pair(eurusd);
         let id2 = mapper.register_fx_pair(usdeur);
 
-        assert_ne!(id1, id2, "Different FX directions should have different IDs");
+        assert_ne!(
+            id1, id2,
+            "Different FX directions should have different IDs"
+        );
         assert_eq!(mapper.fx_pair_count(), 2);
     }
 }

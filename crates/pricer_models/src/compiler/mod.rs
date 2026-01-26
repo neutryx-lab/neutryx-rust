@@ -18,12 +18,15 @@
 //! - [`TradeCompiler`]: Trait for compiling trades to IR
 //! - [`IndexMapper`]: Maps rate indices and currencies to numeric IDs
 //! - [`LinearProductsCompiler`]: Implementation for linear IR products
+//! - [`XCcyCompiler`]: Implementation for cross-currency products
 
 mod index_mapper;
 mod linear;
+mod xccy;
 
 pub use index_mapper::IndexMapper;
 pub use linear::LinearProductsCompiler;
+pub use xccy::XCcyCompiler;
 use pricer_core::ir::{CompileError, PricingKernel};
 
 /// Trait for compiling `Trade` definitions into `PricingKernel` IR.

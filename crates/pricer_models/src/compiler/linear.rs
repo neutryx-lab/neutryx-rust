@@ -802,8 +802,10 @@ mod tests {
     #[test]
     fn test_compiler_with_calendar() {
         let mapper = IndexMapper::new();
-        let compiler = LinearProductsCompiler::new(mapper)
-            .with_calendar(CalendarId::NewYork, BusinessDayConvention::ModifiedFollowing);
+        let compiler = LinearProductsCompiler::new(mapper).with_calendar(
+            CalendarId::NewYork,
+            BusinessDayConvention::ModifiedFollowing,
+        );
 
         assert!(compiler.has_calendar());
         assert_eq!(
@@ -848,7 +850,10 @@ mod tests {
     fn test_compiler_with_separate_conventions() {
         let mapper = IndexMapper::new();
         let compiler = LinearProductsCompiler::new(mapper)
-            .with_calendar(CalendarId::NewYork, BusinessDayConvention::ModifiedFollowing)
+            .with_calendar(
+                CalendarId::NewYork,
+                BusinessDayConvention::ModifiedFollowing,
+            )
             .with_conventions(
                 BusinessDayConvention::ModifiedFollowing,
                 BusinessDayConvention::Preceding,
@@ -915,8 +920,10 @@ mod tests {
     #[test]
     fn test_compile_with_modified_following_month_boundary() {
         let mapper = IndexMapper::new();
-        let mut compiler = LinearProductsCompiler::new(mapper)
-            .with_calendar(CalendarId::WeekendOnly, BusinessDayConvention::ModifiedFollowing);
+        let mut compiler = LinearProductsCompiler::new(mapper).with_calendar(
+            CalendarId::WeekendOnly,
+            BusinessDayConvention::ModifiedFollowing,
+        );
 
         // 2026-01-31 is Saturday, next business day (Feb 2) crosses month
         // ModifiedFollowing should go to Jan 30 (Friday)
@@ -1008,8 +1015,10 @@ mod tests {
     #[test]
     fn test_compiler_debug_format() {
         let mapper = IndexMapper::new();
-        let compiler = LinearProductsCompiler::new(mapper)
-            .with_calendar(CalendarId::NewYork, BusinessDayConvention::ModifiedFollowing);
+        let compiler = LinearProductsCompiler::new(mapper).with_calendar(
+            CalendarId::NewYork,
+            BusinessDayConvention::ModifiedFollowing,
+        );
 
         let debug_str = format!("{:?}", compiler);
         assert!(debug_str.contains("LinearProductsCompiler"));
