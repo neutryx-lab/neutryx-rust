@@ -24,8 +24,8 @@ use pricer_pricing::generic_pricer::{
 use serde_json::json;
 
 #[cfg(test)]
-use super::pricer_types::CashflowInput;
-use super::{
+use crate::web::pricer_types::CashflowInput;
+use crate::web::{
     pricer_types::{
         BumpSizesInput, CashflowResultOutput, CurrencyInput, DirectionInput, GenericPricerRequest,
         GenericPricerResponse, GreeksCalculationRequest, GreeksCalculationResponse, LegInput,
@@ -343,6 +343,7 @@ fn format_simple_date(date: SimpleDate) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::Json;
 
     #[test]
     fn test_convert_currency() {

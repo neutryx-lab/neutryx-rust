@@ -33,7 +33,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::{
+use crate::web::{
     market_data::{get_convention, get_conventions_list, MarketDataCache},
     market_types::{
         ConventionResponse, ConventionsListResponse, MarketDataApiError, MarketRateDetailResponse,
@@ -322,9 +322,11 @@ pub async fn export_rates_json(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::Json;
 
     mod handler_tests {
         use super::*;
+    use axum::Json;
 
         #[tokio::test]
         async fn test_get_market_rates_returns_rates() {

@@ -28,7 +28,7 @@ use pricer_core::types::{
     TracedFloat,
 };
 
-use super::AppState;
+use crate::web::AppState;
 
 // =============================================================================
 // Request Types
@@ -235,6 +235,7 @@ pub async fn get_pricer_graph(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::Json;
 
     #[test]
     fn test_execute_simple_calculation() {

@@ -12,7 +12,7 @@
 
 use axum::Json;
 
-use super::config_types::{ConfigResponse, DefaultValues, EnumValues};
+use crate::web::config_types::{ConfigResponse, DefaultValues, EnumValues};
 
 // =============================================================================
 // GET /api/config - Complete Configuration
@@ -78,6 +78,7 @@ pub async fn get_defaults() -> Json<DefaultValues> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::Json;
 
     #[tokio::test]
     async fn test_get_config() {

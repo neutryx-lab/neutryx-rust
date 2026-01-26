@@ -18,7 +18,7 @@ use serde_json::json;
 use std::path::PathBuf;
 use tracing::{error, info};
 
-use super::events_types::*;
+use crate::web::events_types::*;
 
 // =============================================================================
 // Data Loading

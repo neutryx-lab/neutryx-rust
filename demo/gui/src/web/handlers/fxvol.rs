@@ -34,7 +34,7 @@ use pricer_models::market::{
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use super::{
+use crate::web::{
     error::{ApiError, ApiResult},
     fxvol_types::{
         DeltaStrikeRequest, DeltaStrikeResponse, DeltaType, DeltaVols, FxDeltaPoint,
@@ -1031,7 +1031,7 @@ fn black_call_price(strike: f64, forward: f64, expiry: f64, vol: f64, rate: f64)
 // Extended API Handlers (Task 13.2)
 // =============================================================================
 
-use super::fxvol_types::{
+use crate::web::fxvol_types::{
     FxCalibrateRequest, FxCalibrateResponse, FxCalibrationDiagnostics, FxSurfaceQuery,
     FxSurfaceResponse, SabrParameters, SurfacePoint,
 };
@@ -1347,6 +1347,7 @@ pub async fn get_surface(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::Json;
 
     #[test]
     fn test_fxvol_data_loader_default() {

@@ -30,7 +30,7 @@ use axum::{
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use super::{
+use crate::web::{
     error::{ApiError, ApiResult},
     volcube_types::{
         CalibrationModel, DensityDataResponse, DensityQuery, DensityStatistics, FitMetrics,
@@ -1057,6 +1057,7 @@ fn black_call_price(strike: f64, forward: f64, expiry: f64, vol: f64, rate: f64)
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::Json;
 
     #[test]
     fn test_volcube_data_loader_default() {

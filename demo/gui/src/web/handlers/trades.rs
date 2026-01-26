@@ -33,8 +33,8 @@ use serde_json::json;
 use uuid::Uuid;
 
 // Re-export rate index helpers from trade_types
-use super::trade_types::{default_rate_index_for_currency, validate_rate_index};
-use super::{
+use crate::web::trade_types::{default_rate_index_for_currency, validate_rate_index};
+use crate::web::{
     schedule_utils::{generate_schedule, SchedulePeriod},
     trade_types::*,
     AppState,
@@ -1742,9 +1742,11 @@ fn build_equity_optional_params() -> Vec<ParameterFieldMeta> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::Json;
 
     mod validation_tests {
         use super::*;
+    use axum::Json;
 
         #[test]
         fn test_validate_rates_params_valid() {
@@ -1815,6 +1817,7 @@ mod tests {
 
     mod expansion_tests {
         use super::*;
+    use axum::Json;
 
         #[test]
         fn test_expand_deposit() {
@@ -1948,6 +1951,7 @@ mod tests {
 
     mod metadata_tests {
         use super::*;
+    use axum::Json;
 
         #[test]
         fn test_build_instruments_metadata() {

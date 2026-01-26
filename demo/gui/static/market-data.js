@@ -118,8 +118,6 @@ const marketDataViewer = (() => {
         elements = {
             assetClassToggle: document.getElementById('market-asset-class-toggle'),
             currencyFilter: document.getElementById('market-currency-filter'),
-            typeFilter: document.getElementById('market-type-filter'),
-            indexFilter: document.getElementById('market-index-filter'),
             refreshBtn: document.getElementById('market-refresh-btn'),
             exportBtn: document.getElementById('market-export-btn'),
             exportMenu: document.getElementById('market-export-menu'),
@@ -159,8 +157,6 @@ const marketDataViewer = (() => {
 
         // Filters
         elements.currencyFilter?.addEventListener('change', applyFilters);
-        elements.typeFilter?.addEventListener('change', applyFilters);
-        elements.indexFilter?.addEventListener('change', applyFilters);
 
         // Refresh button
         elements.refreshBtn?.addEventListener('click', refreshRates);
@@ -362,11 +358,13 @@ const marketDataViewer = (() => {
         // Update table headers for IRVol
         updateTableHeadersForAssetClass('IRVol');
 
-        // Filter by selected currency if any
+        // Filter by selected currency if any (case-insensitive)
         let filteredQuotes = state.irVolQuotes;
-        const currency = elements.currencyFilter?.value;
+        const currency = elements.currencyFilter?.value?.toUpperCase();
         if (currency) {
-            filteredQuotes = filteredQuotes.filter(q => q.currency === currency);
+            filteredQuotes = filteredQuotes.filter(q =>
+                q.currency && q.currency.toUpperCase() === currency
+            );
         }
 
         if (filteredQuotes.length === 0) {
@@ -599,11 +597,13 @@ const marketDataViewer = (() => {
         // Update table headers for FXVol
         updateTableHeadersForAssetClass('FXVol');
 
-        // Filter by selected currency pair (using currency filter for pair)
+        // Filter by selected currency pair (using currency filter for pair, case-insensitive)
         let filteredQuotes = state.fxVolQuotes;
-        const pairFilter = elements.currencyFilter?.value;
+        const pairFilter = elements.currencyFilter?.value?.toUpperCase();
         if (pairFilter) {
-            filteredQuotes = filteredQuotes.filter(q => q.pair.includes(pairFilter));
+            filteredQuotes = filteredQuotes.filter(q =>
+                q.pair && q.pair.toUpperCase().includes(pairFilter)
+            );
         }
 
         if (filteredQuotes.length === 0) {
@@ -845,11 +845,13 @@ const marketDataViewer = (() => {
         // Update table headers for Events
         updateTableHeadersForAssetClass('Events');
 
-        // Filter by currency if selected
+        // Filter by currency if selected (case-insensitive)
         let filteredEvents = [...state.events];
-        const currency = elements.currencyFilter?.value;
+        const currency = elements.currencyFilter?.value?.toUpperCase();
         if (currency) {
-            filteredEvents = filteredEvents.filter(e => e.currency === currency);
+            filteredEvents = filteredEvents.filter(e =>
+                e.currency && e.currency.toUpperCase() === currency
+            );
         }
 
         state.filteredEvents = filteredEvents;
@@ -1372,12 +1374,8 @@ const marketDataViewer = (() => {
     function buildQueryParams() {
         const params = new URLSearchParams();
         const currency = elements.currencyFilter?.value;
-        const rateType = elements.typeFilter?.value;
-        const index = elements.indexFilter?.value;
 
         if (currency) params.set('currency', currency);
-        if (rateType) params.set('rateType', rateType);
-        if (index) params.set('index', index);
 
         return params.toString() ? `?${params.toString()}` : '';
     }
@@ -1394,11 +1392,15 @@ const marketDataViewer = (() => {
             updateFxVolStats();
             return;
         }
+        if (state.assetClass === 'Events') {
+            // renderEventsTable handles currency filtering internally
+            renderEventsTable();
+            updateEventsStats();
+            return;
+        }
 
         // Original filtering for Rates and FX
         const currency = elements.currencyFilter?.value?.toLowerCase() || '';
-        const rateType = elements.typeFilter?.value?.toLowerCase() || '';
-        const index = elements.indexFilter?.value?.toLowerCase() || '';
         const assetClassTypes = getAssetClassRateTypes(state.assetClass);
 
         state.filteredRates = state.rates.filter(rate => {
@@ -1408,10 +1410,8 @@ const marketDataViewer = (() => {
                 return false;
             }
 
-            // Additional filters
+            // Currency filter
             if (currency && rate.currency.toLowerCase() !== currency) return false;
-            if (rateType && rateTypeLower !== rateType) return false;
-            if (index && (!rate.rateIndex || rate.rateIndex.toLowerCase() !== index)) return false;
             return true;
         });
 

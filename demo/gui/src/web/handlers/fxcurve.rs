@@ -24,7 +24,7 @@ use chrono::NaiveDate;
 use serde::Deserialize;
 use uuid::Uuid;
 
-use super::{
+use crate::web::{
     error::{ApiError, ApiResult},
     fxcurve_types::{
         CalibratedSmileData, ForwardPointData, FxCurveBuildRequest, FxCurveBuildResponse,
@@ -380,6 +380,7 @@ fn expiry_to_label(expiry: f64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::Json;
 
     #[test]
     fn test_expiry_to_label() {

@@ -30,7 +30,7 @@ use pricer_risk::{greeks::GreeksResult, RiskEngine, RiskEngineConfig, RiskError}
 use serde_json::json;
 use tracing::{info, warn};
 
-use super::{jobs::JobCreatedResponse, risk_engine_types::*, AppState};
+use crate::web::{jobs::JobCreatedResponse, risk_engine_types::*, AppState};
 
 // =============================================================================
 // Task 8.3: Handlers
@@ -678,6 +678,7 @@ fn compute_rho_bump(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::Json;
 
     #[test]
     fn test_build_risk_config_default() {

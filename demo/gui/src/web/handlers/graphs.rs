@@ -1,12 +1,12 @@
-//! Graph-related handlers and types.
+//! Graph-related handlers.
 //!
-//! This module provides:
+//! This module provides graph visualization handlers:
 //! - Computation graph endpoints (`/api/graph`)
 //! - Instrument graph endpoints (`/api/instrument-graph`)
 //! - Portfolio graph endpoints (`/api/v1/portfolio/graph`)
-//! - Graph caching with TTL support
 
-use std::{collections::HashMap, sync::Arc, time::Instant};
+use std::collections::HashMap;
+use std::sync::Arc;
 
 use axum::{
     extract::{Query, State},
@@ -18,73 +18,73 @@ use serde::{Deserialize, Serialize};
 use crate::web::AppState;
 
 // =============================================================================
-// Graph Types (D3.js compatible)
+// Core Graph Types
 // =============================================================================
 
-/// Query parameters for graph endpoint
+/// Query parameters for the graph endpoint
 #[derive(Debug, Clone, Deserialize)]
 pub struct GraphQueryParams {
-    /// Optional trade ID to filter graph extraction
+    /// Optional trade ID to filter the graph
     pub trade_id: Option<String>,
 }
 
-/// Graph node for API response (D3.js compatible)
+/// Node in a computation graph
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GraphNodeResponse {
-    /// Unique identifier for the node
+    /// Unique node identifier
     pub id: String,
-    /// Operation type (D3.js compatible: "type" field)
+    /// Node type (input, output, mul, add, etc.)
     #[serde(rename = "type")]
     pub node_type: String,
-    /// Human-readable label
+    /// Display label
     pub label: String,
-    /// Current computed value
+    /// Current value if applicable
     pub value: Option<f64>,
-    /// Whether this node is a sensitivity calculation target
+    /// Whether this is a sensitivity target
     pub is_sensitivity_target: bool,
-    /// Visual grouping for colour coding
+    /// Node group for visualisation
     pub group: String,
 }
 
-/// Graph edge for API response (D3.js compatible: "links")
+/// Edge in a computation graph
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GraphEdgeResponse {
     /// Source node ID
     pub source: String,
     /// Target node ID
     pub target: String,
-    /// Optional edge weight
+    /// Edge weight if applicable
     pub weight: Option<f64>,
 }
 
-/// Graph metadata for API response
+/// Graph metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GraphMetadataResponse {
-    /// Trade ID (None for aggregate graphs)
+    /// Trade ID if single-trade graph
     pub trade_id: Option<String>,
-    /// Total number of nodes
+    /// Total node count
     pub node_count: usize,
-    /// Total number of edges
+    /// Total edge count
     pub edge_count: usize,
-    /// Graph depth (longest path)
+    /// Graph depth
     pub depth: usize,
-    /// Generation timestamp (ISO 8601)
+    /// Generation timestamp
     pub generated_at: String,
 }
 
-/// Graph API response (D3.js compatible)
+/// Full graph response
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GraphResponse {
-    /// All nodes in the computation graph
-    pub nodes: Vec<GraphNodeResponse>,
-    /// All edges (D3.js compatible: "links")
-    pub links: Vec<GraphEdgeResponse>,
     /// Graph metadata
     pub metadata: GraphMetadataResponse,
+    /// Graph nodes
+    pub nodes: Vec<GraphNodeResponse>,
+    /// Graph edges
+    pub links: Vec<GraphEdgeResponse>,
 }
 
-/// Error response for graph API
-#[derive(Debug, Serialize)]
+/// Error response for graph endpoints
+#[derive(Debug, Clone, Serialize)]
 pub struct GraphErrorResponse {
     /// Error type
     pub error_type: String,
@@ -93,29 +93,100 @@ pub struct GraphErrorResponse {
 }
 
 // =============================================================================
-// Graph Cache
+// Portfolio Graph Types
 // =============================================================================
 
-/// Cached graph entry with timestamp
+/// Query parameters for portfolio graph
+#[derive(Debug, Clone, Deserialize)]
+pub struct PortfolioGraphQueryParams {
+    /// Comma-separated trade IDs to include
+    pub trade_ids: Option<String>,
+}
+
+/// Node in a portfolio graph
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PortfolioGraphNodeResponse {
+    /// Unique node identifier
+    pub id: String,
+    /// Node type
+    #[serde(rename = "type")]
+    pub node_type: String,
+    /// Display label
+    pub label: String,
+    /// Current value if applicable
+    pub value: Option<f64>,
+    /// Whether this is a sensitivity target
+    pub is_sensitivity_target: bool,
+    /// Node group
+    pub group: String,
+    /// Trade IDs that share this node
+    pub trade_ids: Vec<String>,
+}
+
+/// Portfolio graph metadata
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PortfolioGraphMetadataResponse {
+    /// Total node count
+    pub node_count: usize,
+    /// Total edge count
+    pub edge_count: usize,
+    /// Graph depth
+    pub depth: usize,
+    /// Generation timestamp
+    pub generated_at: String,
+    /// Number of trades
+    pub trade_count: usize,
+    /// Number of shared nodes
+    pub shared_node_count: usize,
+    /// Optimisation ratio
+    pub optimisation_ratio: f64,
+    /// Warning for large graphs
+    pub large_graph_warning: bool,
+}
+
+/// Portfolio graph response
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PortfolioGraphResponse {
+    /// Graph nodes
+    pub nodes: Vec<PortfolioGraphNodeResponse>,
+    /// Graph edges
+    pub links: Vec<GraphEdgeResponse>,
+    /// Metadata
+    pub metadata: PortfolioGraphMetadataResponse,
+}
+
+// =============================================================================
+// Cache Types
+// =============================================================================
+
+/// Cached graph entry
 #[derive(Debug, Clone)]
 pub struct CachedGraph {
     /// The cached graph response
     pub graph: GraphResponse,
-    /// When the cache entry was created
-    pub created_at: Instant,
+    /// Cache timestamp
+    pub cached_at: std::time::Instant,
 }
 
-/// Graph cache with TTL support
-#[derive(Debug, Default)]
-pub struct GraphCache {
-    /// Cache entries by trade_id (None key = all trades)
-    entries: HashMap<Option<String>, CachedGraph>,
+/// Graph cache (trade_id -> graph)
+pub type GraphCache = HashMap<Option<String>, GraphResponse>;
+
+/// Cached portfolio graph entry
+#[derive(Debug, Clone)]
+pub struct CachedPortfolioGraph {
+    /// The cached portfolio graph response
+    pub graph: PortfolioGraphResponse,
+    /// Cache timestamp
+    pub cached_at: std::time::Instant,
 }
 
-impl GraphCache {
-    /// Cache TTL in seconds
-    const TTL_SECONDS: u64 = 5;
+/// Portfolio graph cache wrapper
+#[derive(Debug, Clone, Default)]
+pub struct PortfolioGraphCache {
+    entries: HashMap<String, PortfolioGraphResponse>,
+}
 
+impl PortfolioGraphCache {
     /// Create a new empty cache
     pub fn new() -> Self {
         Self {
@@ -123,197 +194,28 @@ impl GraphCache {
         }
     }
 
-    /// Get a cached graph if it exists and is not expired
-    pub fn get(&self, trade_id: &Option<String>) -> Option<&GraphResponse> {
-        self.entries.get(trade_id).and_then(|entry| {
-            if entry.created_at.elapsed().as_secs() < Self::TTL_SECONDS {
-                Some(&entry.graph)
-            } else {
-                None
-            }
-        })
+    /// Get a cached entry by trade IDs
+    pub fn get(&self, trade_ids: Option<&[String]>) -> Option<&PortfolioGraphResponse> {
+        let key = Self::make_key(trade_ids);
+        self.entries.get(&key)
     }
 
-    /// Insert a graph into the cache
-    pub fn insert(&mut self, trade_id: Option<String>, graph: GraphResponse) {
-        self.entries.insert(
-            trade_id,
-            CachedGraph {
-                graph,
-                created_at: Instant::now(),
-            },
-        );
+    /// Insert a new entry
+    pub fn insert(&mut self, trade_ids: Option<&[String]>, graph: PortfolioGraphResponse) {
+        let key = Self::make_key(trade_ids);
+        self.entries.insert(key, graph);
     }
 
-    /// Remove expired entries from the cache
-    pub fn cleanup(&mut self) {
-        self.entries
-            .retain(|_, entry| entry.created_at.elapsed().as_secs() < Self::TTL_SECONDS);
-    }
-
-    /// Clear the entire cache
-    pub fn clear(&mut self) {
-        self.entries.clear();
-    }
-}
-
-// =============================================================================
-// Portfolio Graph Types
-// =============================================================================
-
-/// Query parameters for portfolio graph endpoint
-#[derive(Debug, Clone, Deserialize)]
-pub struct PortfolioGraphQueryParams {
-    /// Optional comma-separated list of trade IDs to filter
-    pub trade_ids: Option<String>,
-}
-
-/// Portfolio graph node with trade ownership (D3.js compatible)
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PortfolioGraphNodeResponse {
-    /// Unique identifier for the node
-    pub id: String,
-    /// Operation type (D3.js compatible: "type" field)
-    #[serde(rename = "type")]
-    pub node_type: String,
-    /// Human-readable label
-    pub label: String,
-    /// Current computed value
-    pub value: Option<f64>,
-    /// Whether this node is a sensitivity calculation target
-    pub is_sensitivity_target: bool,
-    /// Visual grouping for colour coding
-    pub group: String,
-    /// Trade IDs that share this node
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub trade_ids: Vec<String>,
-}
-
-/// Portfolio graph metadata with optimisation statistics
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PortfolioGraphMetadataResponse {
-    /// Total number of nodes (after deduplication)
-    pub node_count: usize,
-    /// Total number of edges
-    pub edge_count: usize,
-    /// Graph depth (longest path)
-    pub depth: usize,
-    /// Generation timestamp (ISO 8601)
-    pub generated_at: String,
-    /// Number of trades in the portfolio
-    pub trade_count: usize,
-    /// Number of shared (deduplicated) nodes
-    pub shared_node_count: usize,
-    /// Optimisation ratio (lower is better deduplication)
-    pub optimisation_ratio: f64,
-    /// Warning flag for large graphs (> 10,000 nodes)
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    pub large_graph_warning: bool,
-}
-
-/// Portfolio graph API response (D3.js compatible)
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PortfolioGraphResponse {
-    /// All nodes in the portfolio computation graph
-    pub nodes: Vec<PortfolioGraphNodeResponse>,
-    /// All edges (D3.js compatible: "links")
-    pub links: Vec<GraphEdgeResponse>,
-    /// Portfolio graph metadata with optimisation statistics
-    pub metadata: PortfolioGraphMetadataResponse,
-}
-
-// =============================================================================
-// Portfolio Graph Cache
-// =============================================================================
-
-/// Cached portfolio graph entry with timestamp
-#[derive(Debug, Clone)]
-pub struct CachedPortfolioGraph {
-    /// The cached portfolio graph response
-    pub graph: PortfolioGraphResponse,
-    /// When the cache entry was created
-    pub created_at: Instant,
-}
-
-/// Portfolio graph cache with 5-second TTL
-#[derive(Debug, Default)]
-pub struct PortfolioGraphCache {
-    /// Cache entries keyed by comma-sorted trade_ids (None = full graph)
-    entries: HashMap<Option<String>, CachedPortfolioGraph>,
-}
-
-impl PortfolioGraphCache {
-    /// Cache TTL in seconds
-    const TTL_SECONDS: u64 = 5;
-
-    /// Create a new empty portfolio graph cache
-    pub fn new() -> Self {
-        Self {
-            entries: HashMap::new(),
+    fn make_key(trade_ids: Option<&[String]>) -> String {
+        match trade_ids {
+            Some(ids) => ids.join(","),
+            None => "__all__".to_string(),
         }
     }
-
-    /// Generate a cache key from optional trade_ids filter
-    fn cache_key(trade_ids: Option<&[String]>) -> Option<String> {
-        trade_ids.map(|ids| {
-            let mut sorted: Vec<&String> = ids.iter().collect();
-            sorted.sort();
-            sorted
-                .iter()
-                .map(|s| s.as_str())
-                .collect::<Vec<_>>()
-                .join(",")
-        })
-    }
-
-    /// Get a cached portfolio graph if it exists and is not expired
-    pub fn get(&self, trade_ids: Option<&[String]>) -> Option<&PortfolioGraphResponse> {
-        let key = Self::cache_key(trade_ids);
-        self.entries.get(&key).and_then(|entry| {
-            if entry.created_at.elapsed().as_secs() < Self::TTL_SECONDS {
-                Some(&entry.graph)
-            } else {
-                None
-            }
-        })
-    }
-
-    /// Insert a portfolio graph into the cache
-    pub fn insert(&mut self, trade_ids: Option<&[String]>, graph: PortfolioGraphResponse) {
-        let key = Self::cache_key(trade_ids);
-        self.entries.insert(
-            key,
-            CachedPortfolioGraph {
-                graph,
-                created_at: Instant::now(),
-            },
-        );
-    }
-
-    /// Remove expired entries from the cache
-    pub fn cleanup(&mut self) {
-        self.entries
-            .retain(|_, entry| entry.created_at.elapsed().as_secs() < Self::TTL_SECONDS);
-    }
-
-    /// Clear the entire cache
-    pub fn clear(&mut self) {
-        self.entries.clear();
-    }
-
-    /// Get the number of entries in the cache
-    pub fn len(&self) -> usize {
-        self.entries.len()
-    }
-
-    /// Check if the cache is empty
-    pub fn is_empty(&self) -> bool {
-        self.entries.is_empty()
-    }
 }
 
 // =============================================================================
-// Instrument Graph Types
+// Instrument Graph Types (new in handlers)
 // =============================================================================
 
 /// Query parameters for instrument graph endpoint
@@ -409,7 +311,7 @@ fn trade_exists(trade_id: &str) -> bool {
 }
 
 /// Generate a sample computation graph for a trade
-fn generate_sample_graph(trade_id: Option<&str>) -> GraphResponse {
+pub fn generate_sample_graph(trade_id: Option<&str>) -> GraphResponse {
     let mut nodes = Vec::new();
     let mut links = Vec::new();
 
@@ -595,7 +497,7 @@ fn generate_instrument_graph(currency: &str, index_type: &str) -> InstrumentGrap
 }
 
 /// Generate a sample portfolio graph
-fn generate_sample_portfolio_graph(trade_ids_filter: Option<&[String]>) -> PortfolioGraphResponse {
+pub fn generate_sample_portfolio_graph(trade_ids_filter: Option<&[String]>) -> PortfolioGraphResponse {
     let all_trade_ids = [
         "T001".to_string(),
         "T002".to_string(),
@@ -693,7 +595,7 @@ pub async fn get_graph(
     State(state): State<Arc<AppState>>,
     Query(params): Query<GraphQueryParams>,
 ) -> Result<Json<GraphResponse>, (StatusCode, Json<GraphErrorResponse>)> {
-    let start = Instant::now();
+    let start = std::time::Instant::now();
 
     // Validate trade exists
     if let Some(ref trade_id) = params.trade_id {
@@ -752,7 +654,7 @@ pub async fn get_portfolio_graph(
     State(state): State<Arc<AppState>>,
     Query(params): Query<PortfolioGraphQueryParams>,
 ) -> Json<PortfolioGraphResponse> {
-    let start = Instant::now();
+    let start = std::time::Instant::now();
 
     // Parse trade_ids filter
     let trade_ids_filter: Option<Vec<String>> = params
@@ -792,27 +694,6 @@ pub async fn get_portfolio_graph(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_graph_cache_ttl() {
-        let mut cache = GraphCache::new();
-        let graph = generate_sample_graph(Some("T001"));
-
-        cache.insert(Some("T001".to_string()), graph);
-        assert!(cache.get(&Some("T001".to_string())).is_some());
-    }
-
-    #[test]
-    fn test_portfolio_graph_cache() {
-        let mut cache = PortfolioGraphCache::new();
-        assert!(cache.is_empty());
-
-        let graph = generate_sample_portfolio_graph(None);
-        cache.insert(None, graph);
-
-        assert_eq!(cache.len(), 1);
-        assert!(cache.get(None).is_some());
-    }
 
     #[test]
     fn test_trade_exists() {
