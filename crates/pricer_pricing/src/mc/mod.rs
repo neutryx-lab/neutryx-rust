@@ -152,6 +152,7 @@ pub mod paths;
 pub mod payoff;
 pub mod pricer;
 pub mod pricer_checkpoint;
+pub mod streaming;
 pub mod thread_local;
 pub mod workspace;
 pub mod workspace_checkpoint;
@@ -164,7 +165,6 @@ pub use aligned_buffer::AlignedPathBuffer;
 pub use config::{AdMode, MonteCarloConfig, MonteCarloConfigBuilder};
 pub use error::{LayoutConfigError, MonteCarloConfigError};
 pub use layout_config::{PathLayout, PathLayoutConfig, StreamingConfig};
-pub use workspace_trait::PathWorkspaceTrait;
 pub use paths::{
     generate_gbm_paths, generate_gbm_paths_generic, terminal_prices_generic, GbmParams,
 };
@@ -174,6 +174,10 @@ pub use payoff::{
     PayoffType,
 };
 pub use pricer::{Greek, MonteCarloPricer, PricingResult};
+pub use streaming::{
+    ArithmeticAverageObserver, BarrierObserver, EuropeanObserver, LookbackObserver,
+    StreamingEngine, StreamingObserver, StreamingResult,
+};
 pub use thread_local::{
     current_thread_index, DefaultWorkspaceFactory, ParallelWorkspaces, ThreadLocalWorkspacePool,
     WorkspaceFactory,
@@ -182,3 +186,4 @@ pub use workspace::PathWorkspace;
 pub use workspace_checkpoint::CheckpointWorkspace;
 pub use workspace_enum::WorkspaceEnum;
 pub use workspace_timestep_first::TimeStepFirstWorkspace;
+pub use workspace_trait::PathWorkspaceTrait;

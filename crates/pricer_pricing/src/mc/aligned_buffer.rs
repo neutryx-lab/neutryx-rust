@@ -15,8 +15,9 @@
 //! - Reduced cache line splits
 //! - Better hardware prefetching
 
-use num_traits::Float;
 use std::marker::PhantomData;
+
+use num_traits::Float;
 
 /// Default alignment for AVX-512 cache lines.
 pub const DEFAULT_ALIGNMENT: usize = 64;
@@ -102,7 +103,8 @@ impl<T: Float> AlignedPathBuffer<T> {
     /// # Arguments
     ///
     /// * `capacity` - Number of elements to allocate
-    /// * `alignment` - Alignment in bytes (ignored without `simd-aligned` feature)
+    /// * `alignment` - Alignment in bytes (ignored without `simd-aligned`
+    ///   feature)
     ///
     /// # Panics
     ///
@@ -133,9 +135,7 @@ impl<T: Float> AlignedPathBuffer<T> {
     /// Without `simd-aligned` feature, alignment is ignored and uses natural
     /// type alignment.
     #[cfg(not(feature = "simd-aligned"))]
-    pub fn with_alignment(capacity: usize, _alignment: usize) -> Self {
-        Self::new(capacity)
-    }
+    pub fn with_alignment(capacity: usize, _alignment: usize) -> Self { Self::new(capacity) }
 
     /// Returns an immutable slice of the buffer.
     ///
@@ -149,9 +149,7 @@ impl<T: Float> AlignedPathBuffer<T> {
     /// assert_eq!(slice.len(), 10);
     /// ```
     #[inline]
-    pub fn as_slice(&self) -> &[T] {
-        &self.inner
-    }
+    pub fn as_slice(&self) -> &[T] { &self.inner }
 
     /// Returns a mutable slice of the buffer.
     ///
@@ -165,21 +163,15 @@ impl<T: Float> AlignedPathBuffer<T> {
     /// assert_eq!(buffer.as_slice()[0], 42.0);
     /// ```
     #[inline]
-    pub fn as_mut_slice(&mut self) -> &mut [T] {
-        &mut self.inner
-    }
+    pub fn as_mut_slice(&mut self) -> &mut [T] { &mut self.inner }
 
     /// Returns the number of elements in the buffer.
     #[inline]
-    pub fn len(&self) -> usize {
-        self.inner.len()
-    }
+    pub fn len(&self) -> usize { self.inner.len() }
 
     /// Returns true if the buffer is empty.
     #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.inner.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.inner.is_empty() }
 
     /// Returns the alignment of the buffer in bytes.
     ///
@@ -198,9 +190,7 @@ impl<T: Float> AlignedPathBuffer<T> {
     /// ```
     #[cfg(feature = "simd-aligned")]
     #[inline]
-    pub fn alignment(&self) -> usize {
-        DEFAULT_ALIGNMENT
-    }
+    pub fn alignment(&self) -> usize { DEFAULT_ALIGNMENT }
 
     /// Returns the alignment of the buffer in bytes (fallback).
     ///
@@ -208,9 +198,7 @@ impl<T: Float> AlignedPathBuffer<T> {
     /// feature is not enabled.
     #[cfg(not(feature = "simd-aligned"))]
     #[inline]
-    pub fn alignment(&self) -> usize {
-        std::mem::align_of::<T>()
-    }
+    pub fn alignment(&self) -> usize { std::mem::align_of::<T>() }
 
     /// Checks if the buffer data is aligned to the specified boundary.
     ///
@@ -233,14 +221,12 @@ impl<T: Float> AlignedPathBuffer<T> {
     #[inline]
     pub fn is_aligned_to(&self, alignment: usize) -> bool {
         let ptr = self.inner.as_ptr() as usize;
-        ptr % alignment == 0
+        ptr.is_multiple_of(alignment)
     }
 
     /// Returns the memory usage of the buffer in bytes.
     #[inline]
-    pub fn memory_usage(&self) -> usize {
-        self.inner.len() * std::mem::size_of::<T>()
-    }
+    pub fn memory_usage(&self) -> usize { self.inner.len() * std::mem::size_of::<T>() }
 
     /// Resizes the buffer to the specified length.
     ///
@@ -250,9 +236,7 @@ impl<T: Float> AlignedPathBuffer<T> {
     /// # Arguments
     ///
     /// * `new_len` - New number of elements
-    pub fn resize(&mut self, new_len: usize) {
-        self.inner.resize(new_len, T::zero());
-    }
+    pub fn resize(&mut self, new_len: usize) { self.inner.resize(new_len, T::zero()); }
 
     /// Clears the buffer, setting all elements to zero.
     ///
@@ -269,9 +253,7 @@ impl<T: Float> AlignedPathBuffer<T> {
     ///
     /// The returned pointer is valid for `len()` elements.
     #[inline]
-    pub fn as_ptr(&self) -> *const T {
-        self.inner.as_ptr()
-    }
+    pub fn as_ptr(&self) -> *const T { self.inner.as_ptr() }
 
     /// Returns a mutable raw pointer to the buffer data.
     ///
@@ -279,9 +261,7 @@ impl<T: Float> AlignedPathBuffer<T> {
     ///
     /// The returned pointer is valid for `len()` elements.
     #[inline]
-    pub fn as_mut_ptr(&mut self) -> *mut T {
-        self.inner.as_mut_ptr()
-    }
+    pub fn as_mut_ptr(&mut self) -> *mut T { self.inner.as_mut_ptr() }
 }
 
 // Implement Clone manually since we need Float bound

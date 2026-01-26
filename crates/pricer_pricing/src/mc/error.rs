@@ -34,7 +34,8 @@ pub enum MonteCarloConfigError {
 
 /// Error type for layout and streaming configuration.
 ///
-/// These errors occur when invalid layout or streaming parameters are specified.
+/// These errors occur when invalid layout or streaming parameters are
+/// specified.
 #[derive(Error, Clone, Debug, PartialEq, Eq)]
 pub enum LayoutConfigError {
     /// Streaming mode requires TimeStepFirst layout.

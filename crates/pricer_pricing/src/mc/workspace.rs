@@ -311,14 +311,10 @@ impl Default for PathWorkspace {
 // Implementation of PathWorkspaceTrait for PathWorkspace
 impl super::workspace_trait::PathWorkspaceTrait for PathWorkspace {
     #[inline]
-    fn num_paths(&self) -> usize {
-        self.size_paths
-    }
+    fn num_paths(&self) -> usize { self.size_paths }
 
     #[inline]
-    fn num_steps(&self) -> usize {
-        self.size_steps
-    }
+    fn num_steps(&self) -> usize { self.size_steps }
 
     #[inline]
     fn layout(&self) -> super::layout_config::PathLayout {
@@ -377,39 +373,25 @@ impl super::workspace_trait::PathWorkspaceTrait for PathWorkspace {
     }
 
     #[inline]
-    fn memory_usage(&self) -> usize {
-        PathWorkspace::memory_usage(self)
-    }
+    fn memory_usage(&self) -> usize { PathWorkspace::memory_usage(self) }
 
     #[inline]
-    fn randoms(&self) -> &[f64] {
-        PathWorkspace::randoms(self)
-    }
+    fn randoms(&self) -> &[f64] { PathWorkspace::randoms(self) }
 
     #[inline]
-    fn randoms_mut(&mut self) -> &mut [f64] {
-        PathWorkspace::randoms_mut(self)
-    }
+    fn randoms_mut(&mut self) -> &mut [f64] { PathWorkspace::randoms_mut(self) }
 
     #[inline]
-    fn payoffs(&self) -> &[f64] {
-        PathWorkspace::payoffs(self)
-    }
+    fn payoffs(&self) -> &[f64] { PathWorkspace::payoffs(self) }
 
     #[inline]
-    fn payoffs_mut(&mut self) -> &mut [f64] {
-        PathWorkspace::payoffs_mut(self)
-    }
+    fn payoffs_mut(&mut self) -> &mut [f64] { PathWorkspace::payoffs_mut(self) }
 
     #[inline]
-    fn paths(&self) -> &[f64] {
-        PathWorkspace::paths(self)
-    }
+    fn paths(&self) -> &[f64] { PathWorkspace::paths(self) }
 
     #[inline]
-    fn paths_mut(&mut self) -> &mut [f64] {
-        PathWorkspace::paths_mut(self)
-    }
+    fn paths_mut(&mut self) -> &mut [f64] { PathWorkspace::paths_mut(self) }
 }
 
 #[cfg(test)]

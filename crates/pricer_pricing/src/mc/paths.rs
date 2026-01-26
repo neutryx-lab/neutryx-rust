@@ -17,10 +17,10 @@
 //! Paths are stored in row-major order: `paths[path_idx * (n_steps + 1) +
 //! step_idx]` where `step_idx = 0` contains the initial spot price.
 
-use super::layout_config::PathLayout;
-use super::workspace::PathWorkspace;
-use super::workspace_enum::WorkspaceEnum;
-use super::workspace_trait::PathWorkspaceTrait;
+use super::{
+    layout_config::PathLayout, workspace::PathWorkspace, workspace_enum::WorkspaceEnum,
+    workspace_trait::PathWorkspaceTrait,
+};
 
 /// Parameters for Geometric Brownian Motion path generation.
 ///
@@ -271,7 +271,8 @@ pub fn terminal_prices(workspace: &PathWorkspace, n_paths: usize, n_steps: usize
 // Generic Path Generation Functions (for WorkspaceEnum)
 // ============================================================================
 
-/// Generates GBM paths using the appropriate algorithm for the workspace layout.
+/// Generates GBM paths using the appropriate algorithm for the workspace
+/// layout.
 ///
 /// This function automatically selects the optimal algorithm based on the
 /// workspace's memory layout:
@@ -368,7 +369,7 @@ fn generate_gbm_paths_timestep_first(
         let current_vals: Vec<f64> = workspace
             .get_step_slice(step)
             .map(|s| s.to_vec())
-            .unwrap_or_else(Vec::new);
+            .unwrap_or_default();
 
         // Compute and write next step values
         if let Some(next_slice) = workspace.get_step_slice_mut(step + 1) {
@@ -409,7 +410,7 @@ pub fn terminal_prices_generic(workspace: &WorkspaceEnum) -> Vec<f64> {
             workspace
                 .get_step_slice(n_steps)
                 .map(|slice| slice.to_vec())
-                .unwrap_or_else(Vec::new)
+                .unwrap_or_default()
         }
     }
 }
@@ -594,8 +595,7 @@ mod tests {
 
     #[test]
     fn test_generic_path_generation_path_first() {
-        let mut workspace =
-            setup_workspace_enum_with_randoms(PathLayout::PathFirst, 10, 5, 42);
+        let mut workspace = setup_workspace_enum_with_randoms(PathLayout::PathFirst, 10, 5, 42);
         let params = GbmParams::default();
 
         generate_gbm_paths_generic(&mut workspace, params);
@@ -615,8 +615,7 @@ mod tests {
 
     #[test]
     fn test_generic_path_generation_timestep_first() {
-        let mut workspace =
-            setup_workspace_enum_with_randoms(PathLayout::TimeStepFirst, 10, 5, 42);
+        let mut workspace = setup_workspace_enum_with_randoms(PathLayout::TimeStepFirst, 10, 5, 42);
         let params = GbmParams::default();
 
         generate_gbm_paths_generic(&mut workspace, params);
@@ -642,18 +641,10 @@ mod tests {
         let n_steps = 10;
         let seed = 12345;
 
-        let mut ws_pf = setup_workspace_enum_with_randoms(
-            PathLayout::PathFirst,
-            n_paths,
-            n_steps,
-            seed,
-        );
-        let mut ws_tsf = setup_workspace_enum_with_randoms(
-            PathLayout::TimeStepFirst,
-            n_paths,
-            n_steps,
-            seed,
-        );
+        let mut ws_pf =
+            setup_workspace_enum_with_randoms(PathLayout::PathFirst, n_paths, n_steps, seed);
+        let mut ws_tsf =
+            setup_workspace_enum_with_randoms(PathLayout::TimeStepFirst, n_paths, n_steps, seed);
 
         let params = GbmParams::default();
 
@@ -702,8 +693,7 @@ mod tests {
 
     #[test]
     fn test_terminal_prices_generic_timestep_first() {
-        let mut workspace =
-            setup_workspace_enum_with_randoms(PathLayout::TimeStepFirst, 10, 5, 42);
+        let mut workspace = setup_workspace_enum_with_randoms(PathLayout::TimeStepFirst, 10, 5, 42);
         let params = GbmParams::default();
 
         generate_gbm_paths_generic(&mut workspace, params);

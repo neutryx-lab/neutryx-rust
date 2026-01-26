@@ -18,9 +18,10 @@
 //! - Reduces cache misses during step-wise operations
 //! - Better prefetching behaviour for sequential step processing
 
-use super::aligned_buffer::AlignedPathBuffer;
-use super::layout_config::PathLayout;
-use super::workspace_trait::PathWorkspaceTrait;
+use super::{
+    aligned_buffer::AlignedPathBuffer, layout_config::PathLayout,
+    workspace_trait::PathWorkspaceTrait,
+};
 
 /// Workspace with time-step-first memory layout.
 ///
@@ -135,9 +136,7 @@ impl TimeStepFirstWorkspace {
 
     /// Returns the alignment in bytes.
     #[inline]
-    pub fn alignment(&self) -> usize {
-        self.alignment
-    }
+    pub fn alignment(&self) -> usize { self.alignment }
 
     /// Calculates the buffer index for a given path and step.
     ///
@@ -225,8 +224,7 @@ impl TimeStepFirstWorkspace {
     /// * `num_paths` - Required number of paths
     /// * `num_steps` - Required number of steps
     pub fn ensure_capacity(&mut self, num_paths: usize, num_steps: usize) {
-        let needs_resize =
-            num_paths > self.num_paths || num_steps > self.num_steps;
+        let needs_resize = num_paths > self.num_paths || num_steps > self.num_steps;
 
         if needs_resize {
             let new_paths = num_paths.max(self.num_paths);
@@ -261,19 +259,13 @@ impl TimeStepFirstWorkspace {
 
 impl PathWorkspaceTrait for TimeStepFirstWorkspace {
     #[inline]
-    fn num_paths(&self) -> usize {
-        self.num_paths
-    }
+    fn num_paths(&self) -> usize { self.num_paths }
 
     #[inline]
-    fn num_steps(&self) -> usize {
-        self.num_steps
-    }
+    fn num_steps(&self) -> usize { self.num_steps }
 
     #[inline]
-    fn layout(&self) -> PathLayout {
-        PathLayout::TimeStepFirst
-    }
+    fn layout(&self) -> PathLayout { PathLayout::TimeStepFirst }
 
     #[inline]
     fn get_path_value(&self, path_idx: usize, step_idx: usize) -> f64 {
@@ -321,34 +313,22 @@ impl PathWorkspaceTrait for TimeStepFirstWorkspace {
     }
 
     #[inline]
-    fn randoms(&self) -> &[f64] {
-        self.randoms.as_slice()
-    }
+    fn randoms(&self) -> &[f64] { self.randoms.as_slice() }
 
     #[inline]
-    fn randoms_mut(&mut self) -> &mut [f64] {
-        self.randoms.as_mut_slice()
-    }
+    fn randoms_mut(&mut self) -> &mut [f64] { self.randoms.as_mut_slice() }
 
     #[inline]
-    fn payoffs(&self) -> &[f64] {
-        self.payoffs.as_slice()
-    }
+    fn payoffs(&self) -> &[f64] { self.payoffs.as_slice() }
 
     #[inline]
-    fn payoffs_mut(&mut self) -> &mut [f64] {
-        self.payoffs.as_mut_slice()
-    }
+    fn payoffs_mut(&mut self) -> &mut [f64] { self.payoffs.as_mut_slice() }
 
     #[inline]
-    fn paths(&self) -> &[f64] {
-        self.paths.as_slice()
-    }
+    fn paths(&self) -> &[f64] { self.paths.as_slice() }
 
     #[inline]
-    fn paths_mut(&mut self) -> &mut [f64] {
-        self.paths.as_mut_slice()
-    }
+    fn paths_mut(&mut self) -> &mut [f64] { self.paths.as_mut_slice() }
 }
 
 #[cfg(test)]

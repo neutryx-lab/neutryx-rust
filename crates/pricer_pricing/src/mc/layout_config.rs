@@ -6,7 +6,8 @@
 //! # Layout Modes
 //!
 //! - [`PathLayout::PathFirst`]: Traditional `[path][step]` layout (default)
-//! - [`PathLayout::TimeStepFirst`]: Optimised `[step][path]` layout for cache efficiency
+//! - [`PathLayout::TimeStepFirst`]: Optimised `[step][path]` layout for cache
+//!   efficiency
 //!
 //! # Streaming Mode
 //!
@@ -23,7 +24,8 @@ use super::error::LayoutConfigError;
 /// # Cache Behaviour
 ///
 /// - `PathFirst`: Efficient for path-wise operations (each path contiguous)
-/// - `TimeStepFirst`: Efficient for step-wise operations (all paths at step t contiguous)
+/// - `TimeStepFirst`: Efficient for step-wise operations (all paths at step t
+///   contiguous)
 ///
 /// # Examples
 ///
@@ -102,9 +104,7 @@ impl PathLayoutConfig {
     /// let config = PathLayoutConfig::new(PathLayout::TimeStepFirst, 64);
     /// ```
     #[inline]
-    pub const fn new(layout: PathLayout, alignment: usize) -> Self {
-        Self { layout, alignment }
-    }
+    pub const fn new(layout: PathLayout, alignment: usize) -> Self { Self { layout, alignment } }
 
     /// Creates a configuration with default alignment.
     ///
@@ -130,15 +130,11 @@ impl PathLayoutConfig {
 
     /// Returns the layout mode.
     #[inline]
-    pub const fn layout(&self) -> PathLayout {
-        self.layout
-    }
+    pub const fn layout(&self) -> PathLayout { self.layout }
 
     /// Returns the alignment in bytes.
     #[inline]
-    pub const fn alignment(&self) -> usize {
-        self.alignment
-    }
+    pub const fn alignment(&self) -> usize { self.alignment }
 
     /// Validates the configuration.
     ///
@@ -278,15 +274,11 @@ impl StreamingConfig {
 
     /// Returns whether streaming mode is enabled.
     #[inline]
-    pub const fn is_enabled(&self) -> bool {
-        self.enabled
-    }
+    pub const fn is_enabled(&self) -> bool { self.enabled }
 
     /// Returns the number of buffer steps.
     #[inline]
-    pub const fn buffer_steps(&self) -> usize {
-        self.buffer_steps
-    }
+    pub const fn buffer_steps(&self) -> usize { self.buffer_steps }
 
     /// Validates the configuration.
     ///

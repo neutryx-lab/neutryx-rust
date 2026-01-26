@@ -23,10 +23,10 @@
 //! assert_eq!(workspace.layout(), PathLayout::TimeStepFirst);
 //! ```
 
-use super::layout_config::PathLayout;
-use super::workspace::PathWorkspace;
-use super::workspace_timestep_first::TimeStepFirstWorkspace;
-use super::workspace_trait::PathWorkspaceTrait;
+use super::{
+    layout_config::PathLayout, workspace::PathWorkspace,
+    workspace_timestep_first::TimeStepFirstWorkspace, workspace_trait::PathWorkspaceTrait,
+};
 
 /// Static dispatch enum for workspace implementations.
 ///
@@ -116,11 +116,7 @@ impl WorkspaceEnum {
     /// * `num_steps` - Number of time steps
     /// * `alignment` - Alignment in bytes (must be power of 2)
     #[inline]
-    pub fn timestep_first_aligned(
-        num_paths: usize,
-        num_steps: usize,
-        alignment: usize,
-    ) -> Self {
+    pub fn timestep_first_aligned(num_paths: usize, num_steps: usize, alignment: usize) -> Self {
         Self::TimeStepFirst(TimeStepFirstWorkspace::with_alignment(
             num_paths, num_steps, alignment,
         ))
@@ -144,7 +140,8 @@ impl WorkspaceEnum {
         }
     }
 
-    /// Returns a reference to the inner TimeStepFirstWorkspace if TimeStepFirst.
+    /// Returns a reference to the inner TimeStepFirstWorkspace if
+    /// TimeStepFirst.
     #[inline]
     pub fn as_timestep_first(&self) -> Option<&TimeStepFirstWorkspace> {
         match self {
@@ -153,7 +150,8 @@ impl WorkspaceEnum {
         }
     }
 
-    /// Returns a mutable reference to the inner TimeStepFirstWorkspace if TimeStepFirst.
+    /// Returns a mutable reference to the inner TimeStepFirstWorkspace if
+    /// TimeStepFirst.
     #[inline]
     pub fn as_timestep_first_mut(&mut self) -> Option<&mut TimeStepFirstWorkspace> {
         match self {
