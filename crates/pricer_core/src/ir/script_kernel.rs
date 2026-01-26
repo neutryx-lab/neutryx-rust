@@ -32,18 +32,20 @@
 //! use pricer_core::ir::{ScriptKernel, ScriptOp, BarrierType, ScriptKernelBuilder};
 //!
 //! // Create a simple barrier option script
-//! let kernel = ScriptKernelBuilder::new()
+//! let mut builder = ScriptKernelBuilder::new();
+//! let barrier_idx = builder.add_constant(1.05);  // Barrier level (105%)
+//! let strike_idx = builder.add_constant(1.0);    // Strike (100%)
+//!
+//! let kernel = builder
 //!     .add_observation_time(1.0)
-//!     .add_constant(1.05)  // Barrier level (105%)
-//!     .add_constant(1.0)   // Strike (100%)
 //!     .push_op(ScriptOp::CheckBarrier {
-//!         barrier_idx: 0,
+//!         barrier_idx,
 //!         barrier_type: BarrierType::UpOut,
 //!     })
 //!     .push_op(ScriptOp::CalcFloat {
 //!         index_id: 1,
-//!         gearing_idx: 0,
-//!         spread_idx: 1,
+//!         gearing_idx: barrier_idx,
+//!         spread_idx: strike_idx,
 //!     })
 //!     .push_op(ScriptOp::Pay { ccy_id: 0, dc_id: 0 })
 //!     .build()
@@ -363,13 +365,15 @@ impl std::fmt::Display for BarrierType {
 /// ```
 /// use pricer_core::ir::{ScriptKernelBuilder, ScriptOp, BarrierType};
 ///
-/// let kernel = ScriptKernelBuilder::new()
+/// let mut builder = ScriptKernelBuilder::new();
+/// let barrier_idx = builder.add_constant(105.0);  // Barrier at 105
+///
+/// let kernel = builder
 ///     .trade_id("BARRIER001")
 ///     .add_observation_time(0.5)
 ///     .add_observation_time(1.0)
-///     .add_constant(105.0)  // Barrier at 105
 ///     .push_op(ScriptOp::CheckBarrier {
-///         barrier_idx: 0,
+///         barrier_idx,
 ///         barrier_type: BarrierType::UpOut,
 ///     })
 ///     .push_op(ScriptOp::Pay { ccy_id: 0, dc_id: 0 })
