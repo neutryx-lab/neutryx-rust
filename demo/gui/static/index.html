@@ -2096,7 +2096,16 @@
                         <h2><i class="fas fa-project-diagram"></i> Computation Graph</h2>
                         <p>Interactive visualisation of the AD computation graph</p>
                     </div>
-                    <div class="graph-controls">
+                    <!-- Graph Type Tabs -->
+                    <div class="graph-type-tabs">
+                        <button type="button" class="graph-type-tab active" data-graph-type="trade">
+                            <i class="fas fa-exchange-alt"></i> Trade Graph
+                        </button>
+                        <button type="button" class="graph-type-tab" data-graph-type="instrument">
+                            <i class="fas fa-sitemap"></i> Instrument Graph
+                        </button>
+                    </div>
+                    <div class="graph-controls" id="trade-graph-controls">
                         <label for="graph-trade-selector" class="visually-hidden">Graph Trade Selector</label>
                         <select id="graph-trade-selector" name="graph-trade-selector" class="fancy-select">
                             <option value="">All Trades</option>
@@ -2151,6 +2160,27 @@
                             <i class="fas fa-times-circle"></i>
                         </button>
                     </div>
+                    <!-- Instrument Graph Controls (hidden by default) -->
+                    <div class="graph-controls" id="instrument-graph-controls" style="display: none;">
+                        <label for="instrument-currency-selector" class="visually-hidden">Currency</label>
+                        <select id="instrument-currency-selector" name="instrument-currency-selector" class="fancy-select">
+                            <option value="USD" selected>USD</option>
+                            <option value="EUR">EUR</option>
+                            <option value="JPY">JPY</option>
+                            <option value="GBP">GBP</option>
+                        </select>
+                        <label for="instrument-tenor-selector" class="visually-hidden">Tenor</label>
+                        <select id="instrument-tenor-selector" name="instrument-tenor-selector" class="fancy-select">
+                            <option value="1" selected>1Y OIS</option>
+                            <option value="2">2Y OIS</option>
+                            <option value="3">3Y OIS</option>
+                            <option value="5">5Y OIS</option>
+                            <option value="10">10Y OIS</option>
+                        </select>
+                        <button class="primary-btn" id="load-instrument-graph">
+                            <i class="fas fa-sync-alt"></i> Load Graph
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Graph Layout -->
@@ -2168,11 +2198,43 @@
                             <!-- Task 8.1: Canvas for large graph rendering -->
                             <canvas id="graph-canvas" class="graph-canvas" style="display: none;"></canvas>
                         </div>
+                        <!-- Instrument Graph Container (hidden by default) -->
+                        <div id="instrument-graph-content" class="graph-content" style="display: none;">
+                            <div id="instrument-graph-container" class="graph-container"></div>
+                        </div>
                     </div>
 
                     <!-- Graph Sidebar -->
                     <div class="graph-sidebar">
                         <div class="graph-accordion glass-card">
+                            <!-- Instrument Graph Info (shown when instrument graph is active) -->
+                            <div class="accordion-section" data-section="instrument-info" id="instrument-info-section" style="display: none;">
+                                <button type="button" class="accordion-header" aria-expanded="true">
+                                    <span class="accordion-title"><i class="fas fa-info-circle"></i> Instrument Info</span>
+                                    <i class="fas fa-chevron-down accordion-icon"></i>
+                                </button>
+                                <div class="accordion-content expanded">
+                                    <div class="instrument-info-details">
+                                        <div class="info-row">
+                                            <span class="info-label">Instrument</span>
+                                            <span class="info-value" id="inst-info-name">1Y USD OIS</span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span class="info-label">PV</span>
+                                            <span class="info-value positive" id="inst-info-pv">$0</span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span class="info-label">Curve</span>
+                                            <span class="info-value" id="inst-info-curve">USD SOFR</span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span class="info-label">Pillars</span>
+                                            <span class="info-value" id="inst-info-pillars">0</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Graph Statistics -->
                             <div class="accordion-section" data-section="statistics">
                                 <button type="button" class="accordion-header" aria-expanded="true">
