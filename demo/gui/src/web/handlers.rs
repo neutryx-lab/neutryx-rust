@@ -1605,7 +1605,7 @@ fn generate_instrument_graph(
         });
     }
 
-    let tenor_str = if tenor == 1.0 {
+    let tenor_str = if (tenor - 1.0).abs() < f64::EPSILON {
         "1Y".to_string()
     } else {
         format!("{}Y", tenor)

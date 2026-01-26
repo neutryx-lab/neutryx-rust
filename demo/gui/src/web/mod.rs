@@ -18,6 +18,8 @@
 //! - Index-based instrument management
 //! - Builder model selection (interpolation, bootstrap method)
 
+pub mod config_handlers;
+pub mod config_types;
 pub mod curve_builder_handlers;
 pub mod curve_builder_types;
 pub mod error;
@@ -27,6 +29,7 @@ pub mod fxvol_handlers;
 pub mod fxvol_types;
 pub mod generic_pricer_handlers;
 pub mod irvol_handlers;
+pub mod pricer_graph_handlers;
 pub mod irvol_types;
 pub mod jobs;
 pub mod market_data;
@@ -538,6 +541,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
             "/conventions/:id",
             get(market_handlers::get_market_convention_detail),
         )
+        .route("/config", get(market_handlers::get_market_config))
         .route("/export/csv", get(market_handlers::export_rates_csv))
         .route("/export/json", get(market_handlers::export_rates_json))
         .with_state(state.market_data_cache.clone());
@@ -572,7 +576,9 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route(
             "/instruments",
             get(generic_pricer_handlers::get_pricer_instruments),
-        );
+        )
+        // Pricer computation graph API (pricer-computation-graph Task 6.2)
+        .route("/graph", get(pricer_graph_handlers::get_pricer_graph));
     let api_routes = api_routes.nest("/pricer", pricer_routes);
 
     // VolCube API routes (volcube-calibration-ui Task 7.1)
@@ -651,6 +657,13 @@ pub fn build_router(state: Arc<AppState>) -> Router {
             post(risk_engine_handlers::compute_scenario_greeks),
         );
     let api_routes = api_routes.nest("/risk-engine", risk_engine_routes);
+
+    // Configuration API routes (webapp-refactoring)
+    let config_routes = Router::new()
+        .route("/", get(config_handlers::get_config))
+        .route("/enums", get(config_handlers::get_enums))
+        .route("/defaults", get(config_handlers::get_defaults));
+    let api_routes = api_routes.nest("/config", config_routes);
 
     // Static file serving for the dashboard
     let static_files =

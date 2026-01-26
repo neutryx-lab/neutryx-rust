@@ -15,6 +15,8 @@ use tokio::{fs, sync::RwLock};
 use tracing::info;
 use uuid::Uuid;
 
+use infra_master::market::Currency;
+
 use super::{irvol_types::*, AppState};
 
 // =============================================================================
@@ -88,13 +90,10 @@ pub fn create_irvol_state() -> IrVolState { Arc::new(IrVolCache::new(10)) }
 // Data Loading
 // =============================================================================
 
-/// Available currencies for IR vol data.
-const AVAILABLE_CURRENCIES: &[(&str, &str)] = &[
-    ("USD", "US Dollar"),
-    ("EUR", "Euro"),
-    ("GBP", "British Pound"),
-    ("JPY", "Japanese Yen"),
-];
+/// Get available currencies for IR vol data from infra_master.
+fn get_available_currencies() -> Vec<(&'static str, &'static str)> {
+    Currency::all().iter().map(|c| (c.code(), c.name())).collect()
+}
 
 /// Load IR vol quotes from JSON file.
 async fn load_quotes_from_file(currency: &str) -> Result<Vec<SwaptionVolQuote>, String> {
@@ -188,7 +187,7 @@ fn generate_demo_quotes(currency: &str) -> Vec<SwaptionVolQuote> {
 pub async fn get_currencies() -> impl IntoResponse {
     let mut currencies = Vec::new();
 
-    for (code, name) in AVAILABLE_CURRENCIES {
+    for (code, name) in get_available_currencies() {
         let quotes = generate_demo_quotes(code);
         let mut expiries: Vec<String> = quotes.iter().map(|q| q.expiry.clone()).collect();
         expiries.sort();
@@ -199,8 +198,8 @@ pub async fn get_currencies() -> impl IntoResponse {
         tenors.dedup();
 
         currencies.push(IrVolCurrencyInfo {
-            currency: (*code).to_string(),
-            display_name: (*name).to_string(),
+            currency: code.to_string(),
+            display_name: name.to_string(),
             default_vol_type: VolQuoteType::Normal,
             quote_count: quotes.len(),
             expiries,
@@ -216,7 +215,7 @@ pub async fn get_currencies() -> impl IntoResponse {
 pub async fn get_quotes(Path(currency): Path<String>) -> impl IntoResponse {
     let currency = currency.to_uppercase();
 
-    if !AVAILABLE_CURRENCIES.iter().any(|(c, _)| *c == currency) {
+    if !get_available_currencies().iter().any(|(c, _)| *c == currency) {
         return (
             StatusCode::NOT_FOUND,
             Json(json!({

@@ -172,6 +172,32 @@ pub async fn get_market_convention_detail(
 }
 
 // =============================================================================
+// GET /api/market/config - Market Data Configuration
+// =============================================================================
+
+/// Response for market configuration endpoint.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MarketConfigResponse {
+    /// Tenor codes in canonical order (from INFRA_MASTER).
+    pub tenor_order: Vec<&'static str>,
+}
+
+/// Get market data configuration.
+///
+/// Returns configuration values used by the frontend, including the
+/// canonical tenor ordering from `infra_master::time::Tenor`.
+///
+/// # Returns
+///
+/// JSON object with configuration values.
+pub async fn get_market_config() -> Json<MarketConfigResponse> {
+    Json(MarketConfigResponse {
+        tenor_order: infra_master::time::Tenor::all_codes().to_vec(),
+    })
+}
+
+// =============================================================================
 // Task 6.1: GET /api/market/export/csv - Export as CSV
 // =============================================================================
 

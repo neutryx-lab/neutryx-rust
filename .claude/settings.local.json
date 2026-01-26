@@ -213,7 +213,9 @@
       "Bash(xargs basename:*)",
       "Bash(copy /b \"f:\\\\Codes\\\\neutryx-rust\\\\neutryx-rust\\\\crates\\\\pricer_models\\\\src\\\\market\\\\volcube\\\\sensitivity_path.rs\"+,, \"f:\\\\Codes\\\\neutryx-rust\\\\neutryx-rust\\\\crates\\\\pricer_models\\\\src\\\\market\\\\volcube\\\\sensitivity_path.rs\")",
       "Bash(copy /b \"f:\\\\Codes\\\\neutryx-rust\\\\neutryx-rust\\\\demo\\\\gui\\\\src\\\\web\\\\fxvol_handlers.rs\"+,, \"f:\\\\Codes\\\\neutryx-rust\\\\neutryx-rust\\\\demo\\\\gui\\\\src\\\\web\\\\fxvol_handlers.rs\")",
-      "Bash(RUSTFLAGS=\"-W dead_code\" cargo check:*)"
+      "Bash(RUSTFLAGS=\"-W dead_code\" cargo check:*)",
+      "Skill(kiro:validate-gap)",
+      "Skill(kiro:validate-gap:*)"
     ]
   }
 }

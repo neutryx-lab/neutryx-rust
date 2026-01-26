@@ -7675,6 +7675,95 @@ body.light-theme .fancy-select {
     font-size: 0.875rem;
 }
 
+/* Pricer Graph Info Panel */
+.pricer-node-info-details {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pricer-node-info-details .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.pricer-node-info-details .info-row:last-child {
+    border-bottom: none;
+}
+
+.pricer-node-info-details .info-label {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.pricer-node-info-details .info-value {
+    font-weight: 600;
+    font-size: 0.875rem;
+    max-width: 60%;
+    text-align: right;
+    word-break: break-all;
+}
+
+.pricer-node-info-details .code-location {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent);
+}
+
+/* Pricer Graph Nodes */
+.pricer-graph-svg {
+    background: var(--surface);
+    border-radius: var(--radius-md);
+}
+
+.pricer-node {
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.pricer-node:hover circle {
+    filter: brightness(1.2);
+}
+
+.pricer-node-label {
+    pointer-events: none;
+}
+
+.pricer-node.search-match circle {
+    stroke: #fbbf24;
+    stroke-width: 3px;
+}
+
+.pricer-node.search-dim {
+    opacity: 0.3;
+}
+
+.pricer-link {
+    stroke-opacity: 0.6;
+    transition: stroke-opacity 0.2s ease;
+}
+
+.pricer-node-input circle {
+    fill: #22c55e;
+}
+
+.pricer-node-output circle {
+    fill: #ef4444;
+}
+
+.pricer-node-scope circle {
+    fill: #8b5cf6;
+}
+
+.pricer-node-intermediate circle {
+    fill: #64748b;
+}
+
 /* Instrument Graph Info Panel */
 .instrument-info-details {
     display: flex;
@@ -9992,6 +10081,7 @@ body.light-theme .cf-table th {
     padding: 6px 12px;
     border-bottom: 1px solid var(--border-color);
     color: var(--text-primary);
+    text-align: left;
 }
 
 .daily-accruals-table td.mono {
@@ -11436,6 +11526,15 @@ body.light-theme .irs-loading-overlay {
     background: var(--bg-tertiary);
     border-radius: 8px;
     padding: 12px;
+    display: flex;
+    flex-direction: column;
+}
+
+.parameter-chart-container canvas {
+    flex: 1;
+    min-height: 0;
+    width: 100% !important;
+    height: auto !important;
 }
 
 .parameter-chart-container.short-term,
@@ -11445,7 +11544,7 @@ body.light-theme .irs-loading-overlay {
 
 .parameter-chart-container.short-term.visible,
 .parameter-chart-container.long-term.visible {
-    display: block;
+    display: flex;
 }
 
 .parameter-chart-container .chart-header {
@@ -11473,33 +11572,6 @@ body.light-theme .irs-loading-overlay {
 .parameter-chart-container .chart-subtitle {
     font-size: 0.75rem;
     color: var(--text-secondary);
-}
-
-/* Central Bank Meeting Legend */
-.cb-meeting-legend {
-    display: flex;
-    justify-content: center;
-    gap: 16px;
-    padding: 8px;
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-}
-
-.cb-meeting-legend .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.cb-meeting-legend .legend-marker {
-    width: 12px;
-    height: 12px;
-    border-radius: 2px;
-}
-
-.cb-meeting-legend .legend-marker.cb-meeting {
-    background: rgba(239, 68, 68, 0.8);
-    border: 2px dashed #ef4444;
 }
 
 .chart-placeholder {
@@ -11670,6 +11742,108 @@ body.light-theme .curve-builder-loading-overlay {
     background: rgba(248, 250, 252, 0.9);
 }
 
+/* Parameter Tabs Row (with CB Meeting toggle) */
+.param-tabs-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.param-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+}
+
+.param-tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.param-tab:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.param-tab.active {
+    background: var(--primary);
+    color: #ffffff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.cb-meeting-toggle {
+    display: flex;
+    align-items: center;
+}
+
+.cb-meeting-toggle .toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 6px 12px;
+    background: var(--bg-tertiary);
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.cb-meeting-toggle .toggle-label:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.cb-meeting-toggle .toggle-label input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.cb-meeting-toggle .toggle-text {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cb-meeting-toggle .toggle-text i {
+    font-size: 0.75rem;
+    color: var(--primary);
+}
+
+body.light-theme .param-tabs {
+    background: #f1f5f9;
+}
+
+body.light-theme .param-tab:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+body.light-theme .cb-meeting-toggle .toggle-label {
+    background: #f1f5f9;
+}
+
+body.light-theme .cb-meeting-toggle .toggle-label:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
 /* ============================================
    Market Data Viewer (market-data-viewer-webapp)
    ============================================ */
@@ -11683,39 +11857,45 @@ body.light-theme .curve-builder-loading-overlay {
     overflow-y: auto;
 }
 
-/* Header */
+/* Header - 2-row layout */
 .market-data-header {
+    display: flex;
+    flex-direction: column;
+    padding: 12px 16px;
+    gap: 10px;
+}
+
+/* Row 1: Title and Stats */
+.market-data-header-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px 20px;
-    flex-wrap: wrap;
-    gap: 16px;
+    gap: 12px;
 }
 
 .market-data-title {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
 }
 
 .market-data-title i {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     color: var(--primary);
 }
 
 .market-data-title h2 {
     margin: 0;
-    font-size: 1.25rem;
+    font-size: 1.1rem;
     font-weight: 600;
     color: var(--text-primary);
 }
 
 .last-update-badge {
     background: var(--surface);
-    padding: 4px 10px;
+    padding: 3px 8px;
     border-radius: var(--radius-sm);
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: var(--text-secondary);
 }
 
@@ -11723,25 +11903,38 @@ body.light-theme .curve-builder-loading-overlay {
 .market-data-stats-badges {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-left: 8px;
+    gap: 6px;
+}
+
+/* Row 2: Controls */
+.market-data-controls-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.market-data-filters {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .stats-badge {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    padding: 4px 10px;
+    gap: 4px;
+    padding: 3px 8px;
     background: var(--surface);
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-sm);
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: var(--text-secondary);
     transition: all var(--transition-fast);
 }
 
 .stats-badge i {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     opacity: 0.7;
 }
 
@@ -11767,13 +11960,6 @@ body.light-theme .curve-builder-loading-overlay {
     opacity: 1;
 }
 
-.market-data-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-}
-
 /* Asset Class Toggle */
 .asset-class-toggle {
     display: flex;
@@ -11785,12 +11971,12 @@ body.light-theme .curve-builder-loading-overlay {
 }
 
 .asset-toggle-btn {
-    padding: 6px 14px;
+    padding: 5px 12px;
     background: transparent;
     border: none;
     border-radius: var(--radius-sm);
     color: var(--text-secondary);
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     font-weight: 500;
     cursor: pointer;
     transition: all var(--transition-fast);
@@ -11832,6 +12018,24 @@ body.light-theme .asset-toggle-btn:hover {
     letter-spacing: 0.5px;
 }
 
+/* Compact filter group for inline layouts */
+.filter-group.compact {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+}
+
+.filter-group.compact label {
+    font-size: 0.65rem;
+    white-space: nowrap;
+}
+
+.filter-group.compact .filter-select {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    min-width: 70px;
+}
+
 .filter-select {
     padding: 6px 12px;
     background: var(--surface);
@@ -11854,19 +12058,20 @@ body.light-theme .asset-toggle-btn:hover {
 .action-buttons {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
+    margin-left: auto;
 }
 
 .action-btn {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 14px;
+    gap: 5px;
+    padding: 5px 10px;
     background: var(--surface);
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-sm);
     color: var(--text-primary);
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     cursor: pointer;
     transition: all var(--transition-fast);
 }
@@ -13069,8 +13274,49 @@ body.light-theme .chart-placeholder {
 /* Cashflow Actions */
 .pricer-cf-actions {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.75rem;
     margin-bottom: 1rem;
+}
+
+.pricer-cf-actions .outline-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.pricer-cf-actions .outline-btn:hover {
+    color: var(--primary);
+    border-color: var(--primary);
+    background: rgba(99, 102, 241, 0.05);
+}
+
+.pricer-cf-actions .outline-btn:active {
+    transform: scale(0.98);
+}
+
+.pricer-cf-actions .outline-btn i {
+    font-size: 0.75rem;
+    opacity: 0.8;
+}
+
+.pricer-cf-actions .outline-btn:hover i {
+    opacity: 1;
+}
+
+/* Reset button danger style on hover */
+.pricer-cf-actions #pricer-reset-cf-btn:hover {
+    color: var(--danger);
+    border-color: var(--danger);
+    background: rgba(239, 68, 68, 0.05);
 }
 
 /* Cashflow Table Container */

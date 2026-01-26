@@ -9,7 +9,7 @@ const marketDataViewer = (() => {
         filteredRates: [],
         selectedRateId: null,
         selectedConventionId: null,
-        sortColumn: 'id',
+        sortColumn: 'tenor',
         sortDirection: 'asc',
         lastUpdated: null,
         previousValues: new Map(), // For change highlighting
@@ -30,9 +30,66 @@ const marketDataViewer = (() => {
     // DOM Elements (cached)
     let elements = {};
 
+    // Tenor order map (populated from infra_master via API)
+    let TENOR_ORDER = {};
+
+    /**
+     * Compares two tenor strings using INFRA_MASTER Tenor enum order.
+     * Falls back to string comparison for unknown tenors.
+     */
+    function compareTenor(a, b) {
+        const aUpper = String(a).toUpperCase();
+        const bUpper = String(b).toUpperCase();
+        const aOrder = TENOR_ORDER[aUpper];
+        const bOrder = TENOR_ORDER[bUpper];
+
+        // Both known tenors
+        if (aOrder !== undefined && bOrder !== undefined) {
+            return aOrder - bOrder;
+        }
+        // Unknown tenor goes to the end
+        if (aOrder === undefined && bOrder !== undefined) return 1;
+        if (aOrder !== undefined && bOrder === undefined) return -1;
+        // Both unknown: fallback to string comparison
+        return aUpper.localeCompare(bUpper);
+    }
+
     // ===========================================
     // Initialisation
     // ===========================================
+
+    /**
+     * Load market configuration (tenor order) from API.
+     */
+    async function loadConfig() {
+        try {
+            const response = await fetch('/api/market/config');
+            if (!response.ok) {
+                throw new Error(`Config fetch failed: ${response.status}`);
+            }
+            const config = await response.json();
+
+            // Build tenor order map from API response
+            TENOR_ORDER = {};
+            config.tenorOrder.forEach((tenor, index) => {
+                TENOR_ORDER[tenor.toUpperCase()] = index;
+            });
+            // Add alternative notation for Overnight
+            if (TENOR_ORDER['ON'] !== undefined) {
+                TENOR_ORDER['O/N'] = TENOR_ORDER['ON'];
+            }
+
+            log('Market config loaded:', Object.keys(TENOR_ORDER).length, 'tenors');
+        } catch (error) {
+            log('Failed to load market config:', error);
+            // Fallback to default order if API fails
+            TENOR_ORDER = {
+                'ON': 0, 'O/N': 0, '1W': 1, '2W': 2, '1M': 3, '2M': 4, '3M': 5,
+                '6M': 6, '9M': 7, '1Y': 8, '2Y': 9, '3Y': 10, '5Y': 11, '7Y': 12,
+                '10Y': 13, '15Y': 14, '20Y': 15, '30Y': 16
+            };
+        }
+    }
 
     function init() {
         if (state.isInitialised) {
@@ -42,8 +99,11 @@ const marketDataViewer = (() => {
 
         cacheElements();
         bindEvents();
-        loadRates();
-        loadConventions();
+        // Load config first, then load data
+        loadConfig().then(() => {
+            loadRates();
+            loadConventions();
+        });
         state.isInitialised = true;
 
         log('Market Data Viewer initialised');
@@ -270,6 +330,7 @@ const marketDataViewer = (() => {
             state.irVolQuotes = allQuotes;
             state.lastUpdated = new Date().toISOString();
 
+            sortIrVolQuotes();
             renderIrVolTable();
             updateIrVolStats();
             updateLastUpdated();
@@ -463,6 +524,7 @@ const marketDataViewer = (() => {
             state.fxVolQuotes = allQuotes;
             state.lastUpdated = new Date().toISOString();
 
+            sortFxVolQuotes();
             renderFxVolTable();
             updateFxVolStats();
             updateLastUpdated();
@@ -730,6 +792,13 @@ const marketDataViewer = (() => {
         const dir = state.sortDirection === 'asc' ? 1 : -1;
 
         state.irVolQuotes.sort((a, b) => {
+            // Primary sort: always by currency
+            const currencyCompare = String(a.currency || '').localeCompare(String(b.currency || ''));
+            if (currencyCompare !== 0) {
+                return currencyCompare;
+            }
+
+            // Secondary sort: by selected column
             let aVal = a[col];
             let bVal = b[col];
 
@@ -738,6 +807,10 @@ const marketDataViewer = (() => {
 
             if (col === 'atmVol') {
                 return (parseFloat(aVal) - parseFloat(bVal)) * dir;
+            }
+            // Tenor/expiry comparison using INFRA_MASTER order
+            if (col === 'tenor' || col === 'expiry') {
+                return compareTenor(aVal, bVal) * dir;
             }
             return String(aVal).localeCompare(String(bVal)) * dir;
         });
@@ -748,6 +821,13 @@ const marketDataViewer = (() => {
         const dir = state.sortDirection === 'asc' ? 1 : -1;
 
         state.fxVolQuotes.sort((a, b) => {
+            // Primary sort: always by pair
+            const pairCompare = String(a.pair || '').localeCompare(String(b.pair || ''));
+            if (pairCompare !== 0) {
+                return pairCompare;
+            }
+
+            // Secondary sort: by selected column
             let aVal = a[col];
             let bVal = b[col];
 
@@ -814,6 +894,15 @@ const marketDataViewer = (() => {
     function setAssetClass(assetClass) {
         state.assetClass = assetClass;
         state.selectedRateId = null; // Clear selection when switching
+
+        // Set default sort column for each asset class
+        if (assetClass === 'FXVol') {
+            state.sortColumn = 'expiry';
+        } else {
+            state.sortColumn = 'tenor';
+        }
+        state.sortDirection = 'asc';
+
         updateAssetClassToggle();
 
         // Load data based on asset class
@@ -822,6 +911,7 @@ const marketDataViewer = (() => {
                 loadIrVolData();
             } else {
                 updateTableHeadersForAssetClass('IRVol');
+                sortIrVolQuotes();
                 renderIrVolTable();
                 updateIrVolStats();
             }
@@ -830,6 +920,7 @@ const marketDataViewer = (() => {
                 loadFxVolData();
             } else {
                 updateTableHeadersForAssetClass('FXVol');
+                sortFxVolQuotes();
                 renderFxVolTable();
                 updateFxVolStats();
             }
@@ -931,6 +1022,13 @@ const marketDataViewer = (() => {
         const dir = state.sortDirection === 'asc' ? 1 : -1;
 
         state.filteredRates.sort((a, b) => {
+            // Primary sort: always by currency
+            const currencyCompare = String(a.currency || '').localeCompare(String(b.currency || ''));
+            if (currencyCompare !== 0) {
+                return currencyCompare;
+            }
+
+            // Secondary sort: by selected column
             let aVal = a[col];
             let bVal = b[col];
 
@@ -941,6 +1039,11 @@ const marketDataViewer = (() => {
             // Numeric comparison for value
             if (col === 'value') {
                 return (parseFloat(aVal) - parseFloat(bVal)) * dir;
+            }
+
+            // Tenor comparison using INFRA_MASTER order
+            if (col === 'tenor') {
+                return compareTenor(aVal, bVal) * dir;
             }
 
             // String comparison

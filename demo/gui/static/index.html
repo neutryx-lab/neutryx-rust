@@ -332,7 +332,7 @@
                         </a>
                         <a href="#" class="nav-item nav-sub-item" data-view="graph">
                             <div class="nav-icon"><i class="fas fa-project-diagram"></i></div>
-                            <span>AD Graph</span>
+                            <span>Pricer Graph</span>
                             <div class="nav-indicator"></div>
                         </a>
                     </div>
@@ -2093,19 +2093,66 @@
                 <!-- Graph Header Bar -->
                 <div class="graph-header-bar glass">
                     <div class="graph-title">
-                        <h2><i class="fas fa-project-diagram"></i> Computation Graph</h2>
-                        <p>Interactive visualisation of the AD computation graph</p>
+                        <h2><i class="fas fa-project-diagram"></i> Pricer Computation Graph</h2>
+                        <p>Interactive visualisation of pricing computation graphs</p>
                     </div>
                     <!-- Graph Type Tabs -->
                     <div class="graph-type-tabs">
-                        <button type="button" class="graph-type-tab active" data-graph-type="trade">
+                        <button type="button" class="graph-type-tab active" data-graph-type="pricer">
+                            <i class="fas fa-calculator"></i> Pricer Graph
+                        </button>
+                        <button type="button" class="graph-type-tab" data-graph-type="trade">
                             <i class="fas fa-exchange-alt"></i> Trade Graph
                         </button>
                         <button type="button" class="graph-type-tab" data-graph-type="instrument">
                             <i class="fas fa-sitemap"></i> Instrument Graph
                         </button>
                     </div>
-                    <div class="graph-controls" id="trade-graph-controls">
+                    <!-- Pricer Graph Controls (default active) -->
+                    <div class="graph-controls" id="pricer-graph-controls">
+                        <label for="pricer-formula-selector" class="visually-hidden">Formula Selector</label>
+                        <select id="pricer-formula-selector" name="pricer-formula-selector" class="fancy-select">
+                            <option value="black_scholes" selected>Black-Scholes</option>
+                            <option value="simple">Simple Arithmetic</option>
+                        </select>
+                        <label for="pricer-detail-level" class="visually-hidden">Detail Level</label>
+                        <select id="pricer-detail-level" name="pricer-detail-level" class="fancy-select">
+                            <option value="operation" selected>Operation Level</option>
+                            <option value="scope">Scope Level</option>
+                        </select>
+                        <!-- Task 7.2: Node Search for Pricer Graph -->
+                        <div class="graph-search-wrapper">
+                            <div class="graph-search-input-container">
+                                <i class="fas fa-search graph-search-icon"></i>
+                                <input type="text"
+                                       id="pricer-graph-search-input"
+                                       class="graph-search-input"
+                                       placeholder="Search nodes..."
+                                       autocomplete="off">
+                                <button class="icon-btn graph-search-clear" id="pricer-graph-search-clear" title="Clear Search" style="display: none;">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="zoom-controls">
+                            <button class="icon-btn" id="pricer-graph-zoom-in" title="Zoom In">
+                                <i class="fas fa-search-plus"></i>
+                            </button>
+                            <button class="icon-btn" id="pricer-graph-zoom-out" title="Zoom Out">
+                                <i class="fas fa-search-minus"></i>
+                            </button>
+                            <button class="icon-btn" id="pricer-graph-zoom-reset" title="Reset Zoom">
+                                <i class="fas fa-compress-arrows-alt"></i>
+                            </button>
+                            <button class="icon-btn" id="pricer-graph-zoom-fit" title="Fit to View">
+                                <i class="fas fa-expand"></i>
+                            </button>
+                        </div>
+                        <button class="primary-btn" id="load-pricer-graph">
+                            <i class="fas fa-sync-alt"></i> Load Graph
+                        </button>
+                    </div>
+                    <div class="graph-controls" id="trade-graph-controls" style="display: none;">
                         <label for="graph-trade-selector" class="visually-hidden">Graph Trade Selector</label>
                         <select id="graph-trade-selector" name="graph-trade-selector" class="fancy-select">
                             <option value="">All Trades</option>
@@ -2193,7 +2240,11 @@
                                 <span>Loading graph...</span>
                             </div>
                         </div>
-                        <div id="graph-content" class="graph-content">
+                        <!-- Pricer Graph Container (default active) -->
+                        <div id="pricer-graph-content" class="graph-content">
+                            <div id="pricer-graph-container" class="graph-container"></div>
+                        </div>
+                        <div id="graph-content" class="graph-content" style="display: none;">
                             <div id="graph-container" class="graph-container"></div>
                             <!-- Task 8.1: Canvas for large graph rendering -->
                             <canvas id="graph-canvas" class="graph-canvas" style="display: none;"></canvas>
@@ -2207,6 +2258,38 @@
                     <!-- Graph Sidebar -->
                     <div class="graph-sidebar">
                         <div class="graph-accordion glass-card">
+                            <!-- Pricer Graph Node Info (shown when pricer graph is active) -->
+                            <div class="accordion-section" data-section="pricer-node-info" id="pricer-node-info-section">
+                                <button type="button" class="accordion-header" aria-expanded="true">
+                                    <span class="accordion-title"><i class="fas fa-info-circle"></i> Node Details</span>
+                                    <i class="fas fa-chevron-down accordion-icon"></i>
+                                </button>
+                                <div class="accordion-content expanded">
+                                    <div class="pricer-node-info-details">
+                                        <div class="info-row">
+                                            <span class="info-label">Operation</span>
+                                            <span class="info-value" id="pricer-node-operation">-</span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span class="info-label">Value</span>
+                                            <span class="info-value" id="pricer-node-value">-</span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span class="info-label">Label</span>
+                                            <span class="info-value" id="pricer-node-label">-</span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span class="info-label">Scope</span>
+                                            <span class="info-value" id="pricer-node-scope">-</span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span class="info-label">Source</span>
+                                            <span class="info-value code-location" id="pricer-node-source">-</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Instrument Graph Info (shown when instrument graph is active) -->
                             <div class="accordion-section" data-section="instrument-info" id="instrument-info-section" style="display: none;">
                                 <button type="button" class="accordion-header" aria-expanded="true">
@@ -2835,10 +2918,6 @@
                                             <i class="fas fa-chart-line"></i>
                                             <p>Build a curve to see parameter visualisation</p>
                                         </div>
-                                        <!-- Central Bank Meeting Legend -->
-                                        <div class="cb-meeting-legend" id="cb-meeting-legend" style="display: none;">
-                                            <span class="legend-item"><span class="legend-marker cb-meeting"></span> Central Bank Meeting</span>
-                                        </div>
                                     </div>
 
                                     <!-- Table Display (Task 11.3) -->
@@ -2868,11 +2947,14 @@
             <!-- Market Data View (market-data-viewer-webapp) -->
             <section id="market-data-view" class="view">
                 <div class="market-data-container">
-                    <!-- Header with Controls -->
+                    <!-- Header with Controls (2-row layout) -->
                     <div class="market-data-header glass-card">
-                        <div class="market-data-title">
-                            <i class="fas fa-chart-area"></i>
-                            <h2>Market Data Viewer</h2>
+                        <!-- Row 1: Title and Stats -->
+                        <div class="market-data-header-row">
+                            <div class="market-data-title">
+                                <i class="fas fa-chart-area"></i>
+                                <h2>Market Data Viewer</h2>
+                            </div>
                             <div class="market-data-stats-badges">
                                 <span class="stats-badge" title="Total items">
                                     <i class="fas fa-database"></i>
@@ -2886,50 +2968,54 @@
                                     <i class="fas fa-eye"></i>
                                     <span id="market-stats-displayed">--</span>
                                 </span>
+                                <span class="last-update-badge" id="market-last-updated">--</span>
                             </div>
-                            <span class="last-update-badge" id="market-last-updated">--</span>
                         </div>
-                        <div class="market-data-actions">
+                        <!-- Row 2: Controls -->
+                        <div class="market-data-controls-row">
                             <!-- Asset Class Toggle -->
                             <div class="asset-class-toggle" id="market-asset-class-toggle">
                                 <button class="asset-toggle-btn active" data-asset="Rates">Rates</button>
                                 <button class="asset-toggle-btn" data-asset="FX">FX</button>
                                 <button class="asset-toggle-btn" data-asset="IRVol">IRVol</button>
                                 <button class="asset-toggle-btn" data-asset="FXVol">FXVol</button>
+                                <button class="asset-toggle-btn" data-asset="Events">Events</button>
                             </div>
-                            <!-- Currency Filter -->
-                            <div class="filter-group">
-                                <label for="market-currency-filter">Currency</label>
-                                <select id="market-currency-filter" class="filter-select">
-                                    <option value="">All</option>
-                                    <option value="USD">USD</option>
-                                    <option value="EUR">EUR</option>
-                                    <option value="JPY">JPY</option>
-                                    <option value="GBP">GBP</option>
-                                </select>
-                            </div>
-                            <!-- Rate Type Filter -->
-                            <div class="filter-group">
-                                <label for="market-type-filter">Rate Type</label>
-                                <select id="market-type-filter" class="filter-select">
-                                    <option value="">All</option>
-                                    <option value="Deposit">Deposit</option>
-                                    <option value="Swap">Swap</option>
-                                    <option value="Ois">OIS</option>
-                                    <option value="FxSpot">FX Spot</option>
-                                </select>
-                            </div>
-                            <!-- Index Filter -->
-                            <div class="filter-group">
-                                <label for="market-index-filter">Index</label>
-                                <select id="market-index-filter" class="filter-select">
-                                    <option value="">All</option>
-                                    <option value="SOFR">SOFR</option>
-                                    <option value="ESTR">ESTR</option>
-                                    <option value="TONA">TONA</option>
-                                    <option value="EURIBOR">EURIBOR</option>
-                                    <option value="TIBOR">TIBOR</option>
-                                </select>
+                            <div class="market-data-filters">
+                                <!-- Currency Filter -->
+                                <div class="filter-group compact">
+                                    <label for="market-currency-filter">Currency</label>
+                                    <select id="market-currency-filter" class="filter-select">
+                                        <option value="">All</option>
+                                        <option value="USD">USD</option>
+                                        <option value="EUR">EUR</option>
+                                        <option value="JPY">JPY</option>
+                                        <option value="GBP">GBP</option>
+                                    </select>
+                                </div>
+                                <!-- Rate Type Filter -->
+                                <div class="filter-group compact">
+                                    <label for="market-type-filter">Rate Type</label>
+                                    <select id="market-type-filter" class="filter-select">
+                                        <option value="">All</option>
+                                        <option value="Deposit">Deposit</option>
+                                        <option value="Swap">Swap</option>
+                                        <option value="Ois">OIS</option>
+                                        <option value="FxSpot">FX Spot</option>
+                                    </select>
+                                </div>
+                                <!-- Index Filter -->
+                                <div class="filter-group compact">
+                                    <label for="market-index-filter">Index</label>
+                                    <select id="market-index-filter" class="filter-select">
+                                        <option value="">All</option>
+                                        <option value="SOFR">SOFR</option>
+                                        <option value="ESTR">ESTR</option>
+                                        <option value="TONA">TONA</option>
+                                        <option value="EURIBOR">EURIBOR</option>
+                                        <option value="TIBOR">TIBOR</option>
+                                    </select>
+                                </div>
                             </div>
                             <!-- Action Buttons -->
                             <div class="action-buttons">
@@ -3068,6 +3154,7 @@
 
     <!-- Configuration -->
     <script src="config.js"></script>
+    <script src="js/config-loader.js"></script>
 
     <!-- Libraries -->
     <script src="vendor/logger.js"></script>

@@ -301,6 +301,64 @@ pub enum Tenor {
 }
 
 impl Tenor {
+    /// Returns all tenors in their canonical order.
+    ///
+    /// The order matches the enum definition order, which represents
+    /// the standard financial ordering from shortest to longest maturity.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use infra_master::time::Tenor;
+    ///
+    /// let tenors = Tenor::all();
+    /// assert_eq!(tenors[0], Tenor::Overnight);
+    /// assert_eq!(tenors[1], Tenor::OneWeek);
+    /// assert_eq!(tenors.last(), Some(&Tenor::ThirtyYears));
+    /// ```
+    #[must_use]
+    pub const fn all() -> [Tenor; 17] {
+        [
+            Tenor::Overnight,
+            Tenor::OneWeek,
+            Tenor::TwoWeeks,
+            Tenor::OneMonth,
+            Tenor::TwoMonths,
+            Tenor::ThreeMonths,
+            Tenor::SixMonths,
+            Tenor::NineMonths,
+            Tenor::OneYear,
+            Tenor::TwoYears,
+            Tenor::ThreeYears,
+            Tenor::FiveYears,
+            Tenor::SevenYears,
+            Tenor::TenYears,
+            Tenor::FifteenYears,
+            Tenor::TwentyYears,
+            Tenor::ThirtyYears,
+        ]
+    }
+
+    /// Returns all tenor codes in their canonical order.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use infra_master::time::Tenor;
+    ///
+    /// let codes = Tenor::all_codes();
+    /// assert_eq!(codes[0], "ON");
+    /// assert_eq!(codes[3], "1M");
+    /// assert_eq!(codes[8], "1Y");
+    /// ```
+    #[must_use]
+    pub const fn all_codes() -> [&'static str; 17] {
+        [
+            "ON", "1W", "2W", "1M", "2M", "3M", "6M", "9M", "1Y", "2Y", "3Y", "5Y", "7Y", "10Y",
+            "15Y", "20Y", "30Y",
+        ]
+    }
+
     /// Returns the standard code for this tenor.
     ///
     /// # Examples

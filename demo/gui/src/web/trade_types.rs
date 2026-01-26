@@ -19,27 +19,25 @@
 
 use serde::{Deserialize, Serialize};
 
-// =============================================================================
-// Task 4.1: Supported Rate Index Values
-// =============================================================================
+use infra_master::market::{Currency, RateIndex};
 
-/// Supported rate index identifiers for API input.
-///
-/// These correspond to `infra_master::RateIndex` variants.
-pub const SUPPORTED_RATE_INDICES: &[&str] =
-    &["SOFR", "EURIBOR3M", "EURIBOR6M", "SONIA", "TONAR", "SARON"];
+// =============================================================================
+// Task 4.1: Rate Index Validation (using infra_master::RateIndex)
+// =============================================================================
 
 /// Validates a rate index string.
 ///
 /// Returns `Ok(())` if the rate index is valid or None, `Err` otherwise.
+/// Uses `RateIndex::all_codes()` from infra_master.
 pub fn validate_rate_index(rate_index: &Option<String>) -> Result<(), String> {
     if let Some(idx) = rate_index {
         let normalised = idx.to_uppercase();
-        if !SUPPORTED_RATE_INDICES.contains(&normalised.as_str()) {
+        let valid_codes = RateIndex::all_codes();
+        if !valid_codes.contains(&normalised.as_str()) {
             return Err(format!(
                 "Invalid rate_index '{}'. Supported values: {}",
                 idx,
-                SUPPORTED_RATE_INDICES.join(", ")
+                valid_codes.join(", ")
             ));
         }
     }
@@ -48,17 +46,11 @@ pub fn validate_rate_index(rate_index: &Option<String>) -> Result<(), String> {
 
 /// Returns the default rate index for a given currency.
 ///
-/// Used when rate_index is not specified in the request.
+/// Uses `RateIndex::default_for_currency()` from infra_master.
 #[must_use]
 pub fn default_rate_index_for_currency(currency: &str) -> &'static str {
-    match currency.to_uppercase().as_str() {
-        "USD" => "SOFR",
-        "EUR" => "EURIBOR3M",
-        "GBP" => "SONIA",
-        "JPY" => "TONAR",
-        "CHF" => "SARON",
-        _ => "SOFR", // Default fallback
-    }
+    let currency_enum = currency.parse::<Currency>().unwrap_or(Currency::USD);
+    RateIndex::default_for_currency(currency_enum).api_code()
 }
 
 // =============================================================================
@@ -1013,7 +1005,8 @@ mod tests {
             assert!(result.is_err());
             let err = result.unwrap_err();
             assert!(err.contains("Invalid rate_index"));
-            assert!(err.contains("SOFR")); // Should list valid options
+            // Uses RateIndex::all_codes() which includes SOFR
+            assert!(err.contains("SOFR"));
         }
 
         #[test]

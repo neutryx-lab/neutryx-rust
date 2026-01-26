@@ -115,9 +115,33 @@ const genericPricer = {
             const data = await response.json();
             this.state.instruments = data.instruments || [];
             this.renderInstrumentSelector();
+
+            // Set default to OIS Swap and auto-expand
+            await this.setDefaultInstrument();
         } catch (error) {
             console.error('Failed to load instruments:', error);
             this.showApiNotAvailable();
+        }
+    },
+
+    async setDefaultInstrument() {
+        // Find OIS in the instruments list (snake_case from serde)
+        const ois = this.state.instruments.find(
+            inst => (inst.instrumentType || inst.id || inst.type) === 'ois'
+        );
+
+        if (ois && this.elements.instrumentType) {
+            // Set the select value
+            this.elements.instrumentType.value = 'ois';
+            this.state.selectedInstrument = 'ois';
+
+            // Render the parameter form
+            this.onInstrumentSelected();
+
+            // Auto-expand cashflows after a short delay to ensure form is rendered
+            setTimeout(() => {
+                this.expandCashflows();
+            }, 100);
         }
     },
 

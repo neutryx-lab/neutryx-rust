@@ -908,6 +908,7 @@ dependencies = [
  "futures",
  "infra_config",
  "infra_master",
+ "num-traits",
  "open",
  "pricer_core",
  "pricer_models",

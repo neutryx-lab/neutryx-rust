@@ -23,7 +23,7 @@ l1l2-integration = ["pricer_pricing/l1l2-integration"]
 infra_master = { path = "../../crates/infra_master", features = ["serde"] }
 
 # Pricer layer
-pricer_core = { path = "../../crates/pricer_core" }
+pricer_core = { path = "../../crates/pricer_core", features = ["execution-trace", "serde"] }
 pricer_models = { path = "../../crates/pricer_models" }
 pricer_pricing = { path = "../../crates/pricer_pricing" }
 pricer_risk = { path = "../../crates/pricer_risk", features = ["serde"] }
@@ -37,6 +37,9 @@ tokio = { workspace = true }
 # Serialization
 serde = { workspace = true }
 serde_json = { workspace = true }
+
+# Numeric traits
+num-traits = { workspace = true }
 
 # UUID for curve cache
 uuid = { version = "1.0", features = ["v4"] }

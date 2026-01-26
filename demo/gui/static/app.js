@@ -293,101 +293,83 @@ const parseNum = (el, fallback = 0) => parseFloat(el?.value) || fallback;
 /** Parse a string input with optional fallback. */
 const parseStr = (el, fallback = '') => el?.value || fallback;
 
-// --- Default Values (centralised for all modules) ---
+// --- Default Values (loaded from /api/config via ConfigLoader) ---
+// DEFAULTS is populated asynchronously; use getDefaults() for safe access
 
-const DEFAULTS = {
-    // Trade Expansion defaults
-    expansion: {
-        rates: {
-            currency: 'USD',
-            tenor: '1Y',
-            rate: 3.5,              // percent
-            notional: 10_000_000
-        },
-        swap: {
-            currency: 'USD',
-            tenor: '5Y',
-            fixedRate: 3.0,         // percent
-            spread: 0,              // percent
-            notional: 10_000_000,
-            paymentFrequency: 'semi_annual',
-            dayCount: 'act_365'
-        },
-        fx: {
-            baseCurrency: 'EUR',
-            quoteCurrency: 'USD',
-            spotRate: 1.085,
-            forwardRate: 1.09,
-            notional: 1_000_000,
-            optionType: 'call',
-            volatility: 10          // percent
-        },
-        equity: {
-            underlying: 'AAPL',
-            spotPrice: 180,
-            strike: 185,
-            volatility: 25,         // percent
-            riskFreeRate: 5,        // percent
-            optionType: 'call',
-            direction: 'long'
-        }
-    },
+let DEFAULTS = null;
 
-    // Pricer module defaults
-    pricer: {
-        equity: {
-            spot: 100,
-            strike: 100,
-            expiryYears: 1,
-            volatility: 20,         // percent
-            rate: 5,                // percent
-            optionType: 'call'
-        },
-        fx: {
-            spot: 1.10,
-            strike: 1.10,
-            expiryYears: 1,
-            volatility: 10,         // percent
-            domesticRate: 5,        // percent
-            foreignRate: 2,         // percent
-            optionType: 'call'
-        },
-        irs: {
-            notional: 1_000_000,
-            fixedRate: 2.5,         // percent
-            tenorYears: 5
-        }
-    },
+/** Get defaults, initialising from ConfigLoader if needed */
+function getDefaults() {
+    if (DEFAULTS) return DEFAULTS;
+    // Fallback if ConfigLoader not yet loaded
+    return {
+        expansion: { rates: {}, swap: {}, fx: {}, equity: {} },
+        pricer: { equity: {}, fx: {}, irs: {} },
+        curve: { irs: {}, interpolation: 'linear_on_log_df' },
+        scenario: { rateShock: 0, volShift: 0, spreadShock: 0, corrShift: 0, irs: {} }
+    };
+}
 
-    // Curve Bootstrapping defaults
-    curve: {
-        irs: {
-            notional: 10_000_000,
-            fixedRate: 3.0,         // percent
-            tenorYears: 5,
-            frequency: 'annual'
-        },
-        interpolation: 'linear_on_log_df'
-    },
+/** Initialise DEFAULTS from ConfigLoader */
+async function initDefaults() {
+    if (DEFAULTS) return DEFAULTS;
+    try {
+        await ConfigLoader.load();
+        const cfg = ConfigLoader.getConfig();
+        if (!cfg?.defaults) throw new Error('No defaults in config');
 
-    // Scenario Analysis defaults
-    scenario: {
-        rateShock: 0,               // bps
-        volShift: 0,                // percent
-        spreadShock: 0,             // bps
-        corrShift: 0,               // percent
-        // IRS parameters for scenario analysis
-        irs: {
-            notional: 10_000_000,
-            fixedRate: 0.035,       // decimal (3.5%)
-            tenorYears: 5,
-            paymentFrequency: 'SemiAnnual'
-        }
+        const d = cfg.defaults;
+        const e = d.expansion || {};
+        const p = d.pricer || {};
+        const c = d.curve || {};
+
+        DEFAULTS = {
+            expansion: {
+                rates: { currency: e.rates?.currency||'USD', tenor: e.rates?.tenor||'1Y',
+                         rate: (e.rates?.rate||0.035)*100, notional: e.rates?.notional||10_000_000 },
+                swap: { currency: e.swap?.currency||'USD', tenor: e.swap?.tenor||'5Y',
+                        fixedRate: (e.swap?.fixedRate||0.03)*100, spread: (e.swap?.spread||0)*100,
+                        notional: e.swap?.notional||10_000_000, paymentFrequency: e.swap?.paymentFrequency||'SemiAnnual',
+                        dayCount: e.swap?.dayCount||'Actual365Fixed' },
+                fx: { baseCurrency: e.fx?.baseCurrency||'EUR', quoteCurrency: e.fx?.quoteCurrency||'USD',
+                      spotRate: e.fx?.spotRate||1.085, forwardRate: e.fx?.forwardRate||1.09,
+                      notional: e.fx?.notional||1_000_000, optionType: e.fx?.optionType||'call',
+                      volatility: (e.fx?.volatility||0.10)*100 },
+                equity: { underlying: e.equity?.underlying||'AAPL', spotPrice: e.equity?.spotPrice||180,
+                          strike: e.equity?.strike||185, volatility: (e.equity?.volatility||0.25)*100,
+                          riskFreeRate: (e.equity?.riskFreeRate||0.05)*100, optionType: e.equity?.optionType||'call',
+                          direction: e.equity?.direction||'long' }
+            },
+            pricer: {
+                equity: { spot: p.equity?.spot||100, strike: p.equity?.strike||100, expiryYears: p.equity?.expiryYears||1,
+                          volatility: (p.equity?.volatility||0.20)*100, rate: (p.equity?.rate||0.05)*100,
+                          optionType: p.equity?.optionType||'call' },
+                fx: { spot: p.fx?.spot||1.10, strike: p.fx?.strike||1.10, expiryYears: p.fx?.expiryYears||1,
+                      volatility: (p.fx?.volatility||0.10)*100, domesticRate: (p.fx?.domesticRate||0.05)*100,
+                      foreignRate: (p.fx?.foreignRate||0.02)*100, optionType: p.fx?.optionType||'call' },
+                irs: { notional: p.irs?.notional||1_000_000, fixedRate: (p.irs?.fixedRate||0.025)*100,
+                       tenorYears: p.irs?.tenorYears||5 }
+            },
+            curve: { irs: { notional: c.notional||10_000_000, fixedRate: (c.fixedRate||0.03)*100,
+                            tenorYears: c.tenorYears||5, frequency: 'annual' },
+                     interpolation: c.interpolation||'linear_on_log_df' },
+            scenario: { rateShock: 0, volShift: 0, spreadShock: 0, corrShift: 0,
+                        irs: { notional: c.notional||10_000_000, fixedRate: c.fixedRate||0.035,
+                               tenorYears: c.tenorYears||5, paymentFrequency: 'SemiAnnual' } }
+        };
+        Logger.debug('App', 'DEFAULTS initialised from ConfigLoader');
+    } catch (err) {
+        Logger.warn('App', 'Failed to load defaults from API, using fallback', err);
+        DEFAULTS = getDefaults();
     }
-};
+    return DEFAULTS;
+}
 
-// Backward compatibility alias
-const EXPANSION_DEFAULTS = DEFAULTS.expansion;
+// Backward compatibility: EXPANSION_DEFAULTS getter
+Object.defineProperty(window, 'EXPANSION_DEFAULTS', {
+    get: () => DEFAULTS?.expansion || getDefaults().expansion,
+    configurable: true
+});
 
 const debounce = (fn, wait) => {
     let timeout;
@@ -1240,7 +1222,7 @@ function navigateTo(viewName) {
         risk: 'Risk Analysis',
         exposure: 'Exposure Profile',
         scenarios: 'Scenario Analysis',
-        graph: 'AD Graph',
+        graph: 'Pricer Graph',
         'trade-expansion': 'Trade Expansion',
         'curve-builder': 'Curve Builder',
         'model-calib': 'Model Calibration',
@@ -6607,6 +6589,9 @@ function initVisualEffects() {
 async function init() {
     Logger.debug('App', 'init() called');
     try {
+        // Load configuration and defaults from API
+        await initDefaults();
+
         // Load external data from JSON files
         await loadExternalData();
 
@@ -7680,22 +7665,14 @@ function createDailyAccrualsRow(dailyAccruals, rowId, colspan) {
                                     </tr>
                                 `).join('')}
                                 ${hasMore ? `
-                                    <tr class="hidden-rows" id="${rowId}-hidden" style="display: none;">
-                                        <td colspan="4" style="padding: 0;">
-                                            <table class="daily-accruals-table" style="margin: 0;">
-                                                <tbody>
-                                                    ${dailyAccruals.slice(initialLimit).map(da => `
-                                                        <tr>
-                                                            <td class="mono">${da.date}</td>
-                                                            <td class="mono">${(da.overnightRate * 100).toFixed(4)}%</td>
-                                                            <td class="mono">${da.dayFraction.toFixed(6)}</td>
-                                                            <td class="mono">${formatNumber(da.compoundedNotional)}</td>
-                                                        </tr>
-                                                    `).join('')}
-                                                </tbody>
-                                            </table>
-                                        </td>
-                                    </tr>
+                                    ${dailyAccruals.slice(initialLimit).map(da => `
+                                        <tr class="hidden-row" data-hidden-group="${rowId}" style="display: none;">
+                                            <td class="mono">${da.date}</td>
+                                            <td class="mono">${(da.overnightRate * 100).toFixed(4)}%</td>
+                                            <td class="mono">${da.dayFraction.toFixed(6)}</td>
+                                            <td class="mono">${formatNumber(da.compoundedNotional)}</td>
+                                        </tr>
+                                    `).join('')}
                                     <tr class="more-rows-toggle" id="${rowId}-toggle">
                                         <td colspan="4">
                                             <button class="show-more-btn" data-toggle-more="${rowId}">
@@ -7753,23 +7730,22 @@ document.addEventListener('click', (e) => {
  * Toggle show more/less for daily accruals.
  */
 function toggleShowMoreDailyAccruals(rowId, btn) {
-    const hiddenRows = document.getElementById(`${rowId}-hidden`);
-    if (!hiddenRows) return;
+    const hiddenRows = document.querySelectorAll(`tr[data-hidden-group="${rowId}"]`);
+    if (hiddenRows.length === 0) return;
 
-    const isHidden = hiddenRows.style.display === 'none';
-    hiddenRows.style.display = isHidden ? 'table-row' : 'none';
+    const isHidden = hiddenRows[0].style.display === 'none';
+    hiddenRows.forEach(row => {
+        row.style.display = isHidden ? 'table-row' : 'none';
+    });
 
     // Update button text
-    const icon = btn.querySelector('i');
     const text = btn.textContent.trim();
     const match = text.match(/(\d+)/);
-    const count = match ? match[1] : '';
+    const count = match ? match[1] : hiddenRows.length;
 
     if (isHidden) {
-        icon.className = 'fas fa-chevron-up';
         btn.innerHTML = `<i class="fas fa-chevron-up"></i> Show less`;
     } else {
-        icon.className = 'fas fa-chevron-down';
         btn.innerHTML = `<i class="fas fa-chevron-down"></i> Show all ${count} more days`;
     }
 }
@@ -8136,6 +8112,439 @@ function initGraphView() {
 }
 
 // =============================================================================
+// Pricer Graph: TracedFloat computation graph visualisation
+// =============================================================================
+
+/**
+ * Pricer Graph state
+ */
+const pricerGraphState = {
+    svg: null,
+    g: null,
+    zoom: null,
+    simulation: null,
+    nodes: [],
+    links: [],
+    metadata: null,
+    selectedNode: null,
+    searchResults: [],
+    searchIndex: -1,
+};
+
+/**
+ * Initialise pricer graph view
+ */
+function initPricerGraphView() {
+    const container = document.getElementById('pricer-graph-container');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    const width = container.clientWidth || 800;
+    const height = container.clientHeight || 600;
+
+    pricerGraphState.svg = d3.select(container)
+        .append('svg')
+        .attr('width', '100%')
+        .attr('height', '100%')
+        .attr('viewBox', `0 0 ${width} ${height}`)
+        .attr('class', 'pricer-graph-svg');
+
+    pricerGraphState.g = pricerGraphState.svg.append('g')
+        .attr('class', 'pricer-graph-main-group');
+
+    // Add arrow marker for directed edges
+    pricerGraphState.svg.append('defs').append('marker')
+        .attr('id', 'pricer-arrow')
+        .attr('viewBox', '0 -5 10 10')
+        .attr('refX', 20)
+        .attr('refY', 0)
+        .attr('markerWidth', 6)
+        .attr('markerHeight', 6)
+        .attr('orient', 'auto')
+        .append('path')
+        .attr('fill', '#64748b')
+        .attr('d', 'M0,-5L10,0L0,5');
+
+    // Setup zoom
+    pricerGraphState.zoom = d3.zoom()
+        .scaleExtent([0.1, 4])
+        .on('zoom', (event) => {
+            pricerGraphState.g.attr('transform', event.transform);
+        });
+
+    pricerGraphState.svg.call(pricerGraphState.zoom);
+
+    // Setup force simulation
+    pricerGraphState.simulation = d3.forceSimulation()
+        .force('link', d3.forceLink().id(d => d.id).distance(80))
+        .force('charge', d3.forceManyBody().strength(-200))
+        .force('center', d3.forceCenter(width / 2, height / 2))
+        .force('collision', d3.forceCollide().radius(30));
+}
+
+/**
+ * Fetch pricer graph from API
+ */
+async function fetchPricerGraph() {
+    const formulaSelect = document.getElementById('pricer-formula-selector');
+    const detailSelect = document.getElementById('pricer-detail-level');
+
+    const formula = formulaSelect ? formulaSelect.value : 'black_scholes';
+    const detailLevel = detailSelect ? detailSelect.value : 'operation';
+
+    try {
+        const response = await fetch(`${API_BASE}/pricer/graph?formula=${formula}&detail_level=${detailLevel}`);
+        if (!response.ok) throw new Error('Failed to fetch pricer graph');
+
+        const data = await response.json();
+        renderPricerGraph(data);
+    } catch (error) {
+        console.error('Error fetching pricer graph:', error);
+        showToast('Failed to load pricer graph', 'error');
+    }
+}
+
+/**
+ * Render pricer graph with force-directed layout
+ */
+function renderPricerGraph(data) {
+    if (!pricerGraphState.g || !pricerGraphState.simulation) {
+        console.warn('Pricer graph view not initialised');
+        return;
+    }
+
+    // Store state
+    pricerGraphState.nodes = data.nodes || [];
+    pricerGraphState.links = data.edges || [];
+    pricerGraphState.metadata = data.metadata || {};
+
+    // Update statistics
+    document.getElementById('graph-node-count').textContent = pricerGraphState.nodes.length;
+    document.getElementById('graph-edge-count').textContent = pricerGraphState.links.length;
+    document.getElementById('graph-generated-at').textContent = new Date().toLocaleTimeString();
+
+    // Clear existing elements
+    pricerGraphState.g.selectAll('*').remove();
+
+    // Create scope backgrounds for operation-level view
+    if (pricerGraphState.metadata.detail_level === 'Operation') {
+        renderPricerScopes();
+    }
+
+    // Create links (edges)
+    const links = pricerGraphState.g.append('g')
+        .attr('class', 'pricer-links')
+        .selectAll('line')
+        .data(pricerGraphState.links)
+        .enter()
+        .append('line')
+        .attr('class', 'pricer-link')
+        .attr('stroke', '#64748b')
+        .attr('stroke-width', 1.5)
+        .attr('marker-end', 'url(#pricer-arrow)');
+
+    // Create nodes
+    const nodes = pricerGraphState.g.append('g')
+        .attr('class', 'pricer-nodes')
+        .selectAll('g')
+        .data(pricerGraphState.nodes)
+        .enter()
+        .append('g')
+        .attr('class', d => `pricer-node pricer-node-${d.node_type.toLowerCase()}`)
+        .call(d3.drag()
+            .on('start', dragStarted)
+            .on('drag', dragged)
+            .on('end', dragEnded))
+        .on('click', (event, d) => selectPricerNode(d));
+
+    // Add circles for nodes
+    nodes.append('circle')
+        .attr('r', d => getPricerNodeRadius(d))
+        .attr('fill', d => getPricerNodeColor(d))
+        .attr('stroke', '#fff')
+        .attr('stroke-width', 2);
+
+    // Add labels
+    nodes.append('text')
+        .attr('class', 'pricer-node-label')
+        .attr('dy', d => getPricerNodeRadius(d) + 14)
+        .attr('text-anchor', 'middle')
+        .attr('fill', 'var(--text-secondary)')
+        .attr('font-size', '10px')
+        .text(d => getPricerNodeLabel(d));
+
+    // Setup simulation
+    pricerGraphState.simulation
+        .nodes(pricerGraphState.nodes)
+        .on('tick', () => {
+            links
+                .attr('x1', d => d.source.x)
+                .attr('y1', d => d.source.y)
+                .attr('x2', d => d.target.x)
+                .attr('y2', d => d.target.y);
+
+            nodes.attr('transform', d => `translate(${d.x},${d.y})`);
+        });
+
+    pricerGraphState.simulation.force('link').links(pricerGraphState.links);
+    pricerGraphState.simulation.alpha(1).restart();
+
+    // Drag functions
+    function dragStarted(event, d) {
+        if (!event.active) pricerGraphState.simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+    }
+
+    function dragged(event, d) {
+        d.fx = event.x;
+        d.fy = event.y;
+    }
+
+    function dragEnded(event, d) {
+        if (!event.active) pricerGraphState.simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+    }
+}
+
+/**
+ * Render scope backgrounds as dashed rectangles
+ */
+function renderPricerScopes() {
+    // Group nodes by scope
+    const scopeNodes = {};
+    pricerGraphState.nodes.forEach(node => {
+        const scopeId = node.group?.scope_id || 'root';
+        if (!scopeNodes[scopeId]) {
+            scopeNodes[scopeId] = {
+                name: node.group?.scope_name || 'root',
+                nodes: []
+            };
+        }
+        scopeNodes[scopeId].nodes.push(node);
+    });
+
+    // This will be updated on tick - placeholder for now
+}
+
+/**
+ * Get node radius based on type
+ */
+function getPricerNodeRadius(node) {
+    switch (node.node_type) {
+        case 'Input': return 18;
+        case 'Output': return 20;
+        case 'Scope': return 25;
+        default: return 12;
+    }
+}
+
+/**
+ * Get node color based on type
+ */
+function getPricerNodeColor(node) {
+    switch (node.node_type) {
+        case 'Input': return '#22c55e';  // Green for inputs
+        case 'Output': return '#ef4444'; // Red for outputs
+        case 'Scope': return '#8b5cf6';  // Purple for scopes
+        case 'Intermediate':
+        default:
+            // Color by operation type
+            const op = node.label || '';
+            if (op.includes('Add') || op.includes('Sub')) return '#3b82f6'; // Blue for add/sub
+            if (op.includes('Mul') || op.includes('Div')) return '#f59e0b'; // Orange for mul/div
+            if (op.includes('Sqrt') || op.includes('Exp') || op.includes('Ln')) return '#ec4899'; // Pink for functions
+            return '#64748b'; // Grey for others
+    }
+}
+
+/**
+ * Get node label
+ */
+function getPricerNodeLabel(node) {
+    if (node.label && node.label !== '') return node.label;
+    if (node.node_type === 'Input') return 'input';
+    if (node.node_type === 'Scope') return node.id || 'scope';
+    return '';
+}
+
+/**
+ * Select a pricer graph node and show details
+ */
+function selectPricerNode(node) {
+    pricerGraphState.selectedNode = node;
+
+    // Update selection visual
+    pricerGraphState.g.selectAll('.pricer-node circle')
+        .attr('stroke', '#fff')
+        .attr('stroke-width', 2);
+
+    pricerGraphState.g.selectAll('.pricer-node')
+        .filter(d => d.id === node.id)
+        .select('circle')
+        .attr('stroke', '#fbbf24')
+        .attr('stroke-width', 3);
+
+    // Update info panel
+    document.getElementById('pricer-node-operation').textContent = node.label || node.node_type || '-';
+    document.getElementById('pricer-node-value').textContent =
+        node.value !== undefined ? node.value.toFixed(6) : '-';
+    document.getElementById('pricer-node-label').textContent = node.label || '-';
+    document.getElementById('pricer-node-scope').textContent =
+        node.group?.scope_name || '-';
+    document.getElementById('pricer-node-source').textContent =
+        node.source_location || '-';
+}
+
+/**
+ * Setup pricer graph event listeners
+ */
+function setupPricerGraphListeners() {
+    // Load button
+    const loadBtn = document.getElementById('load-pricer-graph');
+    if (loadBtn) {
+        loadBtn.addEventListener('click', fetchPricerGraph);
+    }
+
+    // Formula change
+    const formulaSelect = document.getElementById('pricer-formula-selector');
+    if (formulaSelect) {
+        formulaSelect.addEventListener('change', fetchPricerGraph);
+    }
+
+    // Detail level change
+    const detailSelect = document.getElementById('pricer-detail-level');
+    if (detailSelect) {
+        detailSelect.addEventListener('change', fetchPricerGraph);
+    }
+
+    // Zoom controls
+    const zoomIn = document.getElementById('pricer-graph-zoom-in');
+    const zoomOut = document.getElementById('pricer-graph-zoom-out');
+    const zoomReset = document.getElementById('pricer-graph-zoom-reset');
+    const zoomFit = document.getElementById('pricer-graph-zoom-fit');
+
+    if (zoomIn) {
+        zoomIn.addEventListener('click', () => {
+            pricerGraphState.svg.transition().call(
+                pricerGraphState.zoom.scaleBy, 1.3
+            );
+        });
+    }
+    if (zoomOut) {
+        zoomOut.addEventListener('click', () => {
+            pricerGraphState.svg.transition().call(
+                pricerGraphState.zoom.scaleBy, 0.7
+            );
+        });
+    }
+    if (zoomReset) {
+        zoomReset.addEventListener('click', () => {
+            pricerGraphState.svg.transition().call(
+                pricerGraphState.zoom.transform, d3.zoomIdentity
+            );
+        });
+    }
+    if (zoomFit) {
+        zoomFit.addEventListener('click', () => fitPricerGraphToView());
+    }
+
+    // Search
+    const searchInput = document.getElementById('pricer-graph-search-input');
+    const searchClear = document.getElementById('pricer-graph-search-clear');
+
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            searchPricerGraph(query);
+            if (searchClear) {
+                searchClear.style.display = query ? 'block' : 'none';
+            }
+        });
+    }
+    if (searchClear) {
+        searchClear.addEventListener('click', () => {
+            if (searchInput) searchInput.value = '';
+            clearPricerGraphSearch();
+            searchClear.style.display = 'none';
+        });
+    }
+}
+
+/**
+ * Fit pricer graph to view
+ */
+function fitPricerGraphToView() {
+    if (!pricerGraphState.nodes.length) return;
+
+    const container = document.getElementById('pricer-graph-container');
+    if (!container) return;
+
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+
+    // Calculate bounds
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    pricerGraphState.nodes.forEach(d => {
+        if (d.x < minX) minX = d.x;
+        if (d.x > maxX) maxX = d.x;
+        if (d.y < minY) minY = d.y;
+        if (d.y > maxY) maxY = d.y;
+    });
+
+    const graphWidth = maxX - minX;
+    const graphHeight = maxY - minY;
+    const scale = 0.9 * Math.min(width / graphWidth, height / graphHeight);
+    const translateX = width / 2 - scale * (minX + maxX) / 2;
+    const translateY = height / 2 - scale * (minY + maxY) / 2;
+
+    pricerGraphState.svg.transition().duration(500).call(
+        pricerGraphState.zoom.transform,
+        d3.zoomIdentity.translate(translateX, translateY).scale(scale)
+    );
+}
+
+/**
+ * Search pricer graph nodes
+ */
+function searchPricerGraph(query) {
+    if (!query) {
+        clearPricerGraphSearch();
+        return;
+    }
+
+    pricerGraphState.searchResults = pricerGraphState.nodes.filter(n =>
+        (n.label && n.label.toLowerCase().includes(query)) ||
+        (n.id && n.id.toLowerCase().includes(query)) ||
+        (n.node_type && n.node_type.toLowerCase().includes(query))
+    );
+    pricerGraphState.searchIndex = pricerGraphState.searchResults.length > 0 ? 0 : -1;
+
+    // Highlight matching nodes
+    pricerGraphState.g.selectAll('.pricer-node')
+        .classed('search-match', d => pricerGraphState.searchResults.includes(d))
+        .classed('search-dim', d => !pricerGraphState.searchResults.includes(d));
+
+    // Select first result
+    if (pricerGraphState.searchResults.length > 0) {
+        selectPricerNode(pricerGraphState.searchResults[0]);
+    }
+}
+
+/**
+ * Clear pricer graph search
+ */
+function clearPricerGraphSearch() {
+    pricerGraphState.searchResults = [];
+    pricerGraphState.searchIndex = -1;
+
+    pricerGraphState.g.selectAll('.pricer-node')
+        .classed('search-match', false)
+        .classed('search-dim', false);
+}
+
 // Instrument Graph: USD OIS → Curve → Bootstrap Instruments
 // =============================================================================
 
@@ -8149,7 +8558,7 @@ const instrumentGraphState = {
     nodes: [],
     links: [],
     metadata: null,
-    currentType: 'trade', // 'trade' or 'instrument'
+    currentType: 'pricer', // 'pricer', 'trade', or 'instrument'
 };
 
 /**
@@ -8406,15 +8815,18 @@ function updateInstrumentInfo(data) {
 }
 
 /**
- * Switch between trade graph and instrument graph
+ * Switch between pricer, trade, and instrument graph
  */
 function switchGraphType(type) {
     instrumentGraphState.currentType = type;
 
+    const pricerControls = document.getElementById('pricer-graph-controls');
     const tradeControls = document.getElementById('trade-graph-controls');
     const instControls = document.getElementById('instrument-graph-controls');
+    const pricerContent = document.getElementById('pricer-graph-content');
     const tradeContent = document.getElementById('graph-content');
     const instContent = document.getElementById('instrument-graph-content');
+    const pricerInfoSection = document.getElementById('pricer-node-info-section');
     const instInfoSection = document.getElementById('instrument-info-section');
 
     // Update tab buttons
@@ -8422,16 +8834,31 @@ function switchGraphType(type) {
         tab.classList.toggle('active', tab.dataset.graphType === type);
     });
 
-    if (type === 'trade') {
+    // Hide all controls and content first
+    if (pricerControls) pricerControls.style.display = 'none';
+    if (tradeControls) tradeControls.style.display = 'none';
+    if (instControls) instControls.style.display = 'none';
+    if (pricerContent) pricerContent.style.display = 'none';
+    if (tradeContent) tradeContent.style.display = 'none';
+    if (instContent) instContent.style.display = 'none';
+    if (pricerInfoSection) pricerInfoSection.style.display = 'none';
+    if (instInfoSection) instInfoSection.style.display = 'none';
+
+    if (type === 'pricer') {
+        if (pricerControls) pricerControls.style.display = 'flex';
+        if (pricerContent) pricerContent.style.display = 'block';
+        if (pricerInfoSection) pricerInfoSection.style.display = 'block';
+
+        // Init and load pricer graph if not already
+        if (!pricerGraphState.svg) {
+            initPricerGraphView();
+            fetchPricerGraph();
+        }
+    } else if (type === 'trade') {
         if (tradeControls) tradeControls.style.display = 'flex';
-        if (instControls) instControls.style.display = 'none';
         if (tradeContent) tradeContent.style.display = 'block';
-        if (instContent) instContent.style.display = 'none';
-        if (instInfoSection) instInfoSection.style.display = 'none';
-    } else {
-        if (tradeControls) tradeControls.style.display = 'none';
+    } else if (type === 'instrument') {
         if (instControls) instControls.style.display = 'flex';
-        if (tradeContent) tradeContent.style.display = 'none';
         if (instContent) instContent.style.display = 'block';
         if (instInfoSection) instInfoSection.style.display = 'block';
 
@@ -8470,6 +8897,9 @@ function setupInstrumentGraphListeners() {
     if (tenorSelect) {
         tenorSelect.addEventListener('change', fetchInstrumentGraph);
     }
+
+    // Setup pricer graph listeners
+    setupPricerGraphListeners();
 }
 
 /**
