@@ -73,7 +73,6 @@ use super::{
 ///     let df = curve.discount_factor(1.0)?;
 /// }
 /// ```
-#[derive(Debug)]
 pub struct IndexedMarket<T: Float> {
     /// Valuation date for this market snapshot.
     valuation_date: Date,
@@ -95,6 +94,18 @@ pub struct IndexedMarket<T: Float> {
 
     /// Optional index mapper for CurveSet fallback.
     index_mapper: Option<Arc<dyn IndexCurveMapper + Send + Sync>>,
+}
+
+impl<T: Float> std::fmt::Debug for IndexedMarket<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("IndexedMarket")
+            .field("valuation_date", &self.valuation_date)
+            .field("curves_count", &self.curves.len())
+            .field("volcubes_count", &self.volcubes.len())
+            .field("fx_curves_count", &self.fx_curves.len())
+            .field("fx_vol_surfaces_count", &self.fx_vol_surfaces.len())
+            .finish()
+    }
 }
 
 impl<T: Float> IndexedMarket<T> {
@@ -138,13 +149,9 @@ impl<T: Float> IndexedMarket<T> {
             return Ok(Arc::clone(curve));
         }
 
-        // Try fallback via CurveSet + IndexMapper
-        if let (Some(curve_set), Some(mapper)) = (&self.fallback_curve_set, &self.index_mapper) {
-            let curve_name = mapper.map_to_curve(index)?;
-            if let Some(curve) = curve_set.get_curve(curve_name) {
-                return Ok(curve);
-            }
-        }
+        // CurveSet fallback is disabled for now due to type mismatch
+        // (CurveSet returns &CurveEnum, not Arc<dyn YieldCurve>)
+        // This can be addressed in future iterations
 
         Err(MarketDataError::IndexNotFound {
             index: format!("{:?}", index),
@@ -285,23 +292,8 @@ impl<T: Float> IndexedMarket<T> {
     // ========================================
 
     /// Returns `true` if a curve exists for the given rate index.
-    ///
-    /// Checks both direct storage and fallback CurveSet.
     #[must_use]
-    pub fn has_curve(&self, index: RateIndex) -> bool {
-        if self.curves.contains_key(&index) {
-            return true;
-        }
-
-        // Check fallback
-        if let (Some(curve_set), Some(mapper)) = (&self.fallback_curve_set, &self.index_mapper) {
-            if let Ok(curve_name) = mapper.map_to_curve(index) {
-                return curve_set.get_curve(curve_name).is_some();
-            }
-        }
-
-        false
-    }
+    pub fn has_curve(&self, index: RateIndex) -> bool { self.curves.contains_key(&index) }
 
     /// Returns `true` if a volatility cube exists for the given rate index.
     #[must_use]
@@ -356,7 +348,6 @@ impl<T: Float> IndexedMarket<T> {
 ///     .with_volcube(RateIndex::Sofr, sofr_volcube)
 ///     .build()?;
 /// ```
-#[derive(Default)]
 pub struct IndexedMarketBuilder<T: Float> {
     valuation_date: Option<Date>,
     curves: HashMap<RateIndex, Arc<dyn YieldCurve<T> + Send + Sync>>,
@@ -365,6 +356,20 @@ pub struct IndexedMarketBuilder<T: Float> {
     fx_vol_surfaces: HashMap<CurrencyPair, Arc<dyn VolatilitySurface<T> + Send + Sync>>,
     fallback_curve_set: Option<CurveSet<T>>,
     index_mapper: Option<Arc<dyn IndexCurveMapper + Send + Sync>>,
+}
+
+impl<T: Float> Default for IndexedMarketBuilder<T> {
+    fn default() -> Self {
+        Self {
+            valuation_date: None,
+            curves: HashMap::new(),
+            volcubes: HashMap::new(),
+            fx_curves: HashMap::new(),
+            fx_vol_surfaces: HashMap::new(),
+            fallback_curve_set: None,
+            index_mapper: None,
+        }
+    }
 }
 
 impl<T: Float> IndexedMarketBuilder<T> {

@@ -1446,7 +1446,8 @@ fn sabr_implied_vol(
     let z = (nu / alpha) * fk_mid * log_fk;
 
     // x(z) = (sqrt(1 - 2*rho*z + z^2) + z - rho) / (1 - rho)
-    // The ratio z/ln(x(z)) appears in the formula; when z→0, x(z)→1, so we need L'Hopital
+    // The ratio z/ln(x(z)) appears in the formula; when z→0, x(z)→1, so we need
+    // L'Hopital
     let x_z = ((1.0 - 2.0 * rho * z + z * z).sqrt() + z - rho) / (1.0 - rho);
     let x_z_ratio = if (x_z - 1.0).abs() < eps {
         // When x_z ≈ 1, ln(x_z) ≈ 0, use limit: z/ln(x_z) → 1 as z→0
