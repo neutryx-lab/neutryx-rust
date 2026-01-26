@@ -197,11 +197,11 @@ impl Default for PathLayoutConfig {
 ///
 /// // Default (disabled)
 /// let config = StreamingConfig::default();
-/// assert!(!config.enabled());
+/// assert!(!config.is_enabled());
 ///
 /// // Enabled streaming
 /// let config = StreamingConfig::enabled();
-/// assert!(config.enabled());
+/// assert!(config.is_enabled());
 /// assert_eq!(config.buffer_steps(), 2);
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -229,7 +229,7 @@ impl StreamingConfig {
     /// use pricer_pricing::mc::StreamingConfig;
     ///
     /// let config = StreamingConfig::new(true, 2);
-    /// assert!(config.enabled());
+    /// assert!(config.is_enabled());
     /// ```
     #[inline]
     pub const fn new(enabled: bool, buffer_steps: usize) -> Self {
@@ -247,7 +247,7 @@ impl StreamingConfig {
     /// use pricer_pricing::mc::StreamingConfig;
     ///
     /// let config = StreamingConfig::enabled();
-    /// assert!(config.enabled());
+    /// assert!(config.is_enabled());
     /// assert_eq!(config.buffer_steps(), 2);
     /// ```
     #[inline]
@@ -266,7 +266,7 @@ impl StreamingConfig {
     /// use pricer_pricing::mc::StreamingConfig;
     ///
     /// let config = StreamingConfig::disabled();
-    /// assert!(!config.enabled());
+    /// assert!(!config.is_enabled());
     /// ```
     #[inline]
     pub const fn disabled() -> Self {
@@ -278,7 +278,7 @@ impl StreamingConfig {
 
     /// Returns whether streaming mode is enabled.
     #[inline]
-    pub const fn enabled(&self) -> bool {
+    pub const fn is_enabled(&self) -> bool {
         self.enabled
     }
 
@@ -428,28 +428,28 @@ mod tests {
     #[test]
     fn test_streaming_config_default() {
         let config = StreamingConfig::default();
-        assert!(!config.enabled());
+        assert!(!config.is_enabled());
         assert_eq!(config.buffer_steps(), 2);
     }
 
     #[test]
     fn test_streaming_config_enabled() {
         let config = StreamingConfig::enabled();
-        assert!(config.enabled());
+        assert!(config.is_enabled());
         assert_eq!(config.buffer_steps(), StreamingConfig::MIN_BUFFER_STEPS);
     }
 
     #[test]
     fn test_streaming_config_disabled() {
         let config = StreamingConfig::disabled();
-        assert!(!config.enabled());
+        assert!(!config.is_enabled());
         assert_eq!(config.buffer_steps(), StreamingConfig::MIN_BUFFER_STEPS);
     }
 
     #[test]
     fn test_streaming_config_new() {
         let config = StreamingConfig::new(true, 3);
-        assert!(config.enabled());
+        assert!(config.is_enabled());
         assert_eq!(config.buffer_steps(), 3);
     }
 

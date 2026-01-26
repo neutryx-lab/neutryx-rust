@@ -144,6 +144,7 @@
 //! println!("Price: {:.4}, Delta: {:.4}", price, delta);
 //! ```
 
+pub mod aligned_buffer;
 pub mod config;
 pub mod error;
 pub mod layout_config;
@@ -156,6 +157,7 @@ pub mod workspace;
 pub mod workspace_checkpoint;
 
 // Re-exports for convenient access
+pub use aligned_buffer::AlignedPathBuffer;
 pub use config::{AdMode, MonteCarloConfig, MonteCarloConfigBuilder};
 pub use error::{LayoutConfigError, MonteCarloConfigError};
 pub use layout_config::{PathLayout, PathLayoutConfig, StreamingConfig};
