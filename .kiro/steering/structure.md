@@ -266,7 +266,10 @@ market/       → Market data structures and calibration
   │   ├── hull_white.rs  → Hull-White model calibrator
   │   └── swaption_calibrator.rs → Swaption vol calibrator
   ├── provider.rs    → MarketProvider for lazy market data resolution (Arc-cached, VolCube support)
-  └── error.rs       → MarketDataError for curve/surface validation
+  ├── error.rs       → MarketDataError for curve/surface validation
+  ├── indexed_market.rs → IndexedMarket<T> container (RateIndex→Curve, CurrencyPair→FxCurve keyed access)
+  ├── requirements.rs → TradeIndexRequirements trait (declares required market indices)
+  └── validator.rs   → MarketValidator, ValidationReport (validates market completeness)
 
 models/       → Stochastic models with unified trait interface
   ├── equity/   → Equity models: GBM, Heston, SABR (feature-gated)
@@ -281,6 +284,7 @@ demo.rs       → Demo types for 3-stage rocket: ModelEnum, InstrumentEnum, Curv
 **Key Principles**:
 
 - **Market data consolidation**: All market data (curves, surfaces, calibration, provider) resides in `market/` module
+- **IndexedMarket Pattern**: Market data keyed by logical indices (`RateIndex`, `CurrencyPair`) not strings; `TradeIndexRequirements` declares needed indices
 - **StochasticModel Trait**: Unified interface for stochastic processes (`evolve_step`, `initial_state`, `brownian_dim`)
 - **StochasticModelEnum**: Static dispatch enum wrapping concrete models (GBM, Heston, SABR, Hull-White, CIR)
 - **CalibrationEngine**: Uses `pricer_core::math::solvers` for parameter optimisation
@@ -670,5 +674,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-26_ — Added trinomial.rs (Kamrad-Ritchken) to tree/ module
+_Updated: 2026-01-26_ — Added IndexedMarket, TradeIndexRequirements, MarketValidator for index-keyed market access
 _Document patterns, not file trees. New files following patterns should not require updates_
