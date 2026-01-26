@@ -294,80 +294,46 @@ const parseNum = (el, fallback = 0) => parseFloat(el?.value) || fallback;
 const parseStr = (el, fallback = '') => el?.value || fallback;
 
 // --- Default Values (loaded from /api/config via ConfigLoader) ---
-// DEFAULTS is populated asynchronously; use getDefaults() for safe access
-
 let DEFAULTS = null;
 
-/** Get defaults, initialising from ConfigLoader if needed */
-function getDefaults() {
-    if (DEFAULTS) return DEFAULTS;
-    // Fallback if ConfigLoader not yet loaded
-    return {
-        expansion: { rates: {}, swap: {}, fx: {}, equity: {} },
-        pricer: { equity: {}, fx: {}, irs: {} },
-        curve: { irs: {}, interpolation: 'linear_on_log_df' },
-        scenario: { rateShock: 0, volShift: 0, spreadShock: 0, corrShift: 0, irs: {} }
-    };
-}
-
-/** Initialise DEFAULTS from ConfigLoader */
+/** Initialise DEFAULTS from ConfigLoader (fallbacks handled by ConfigLoader) */
 async function initDefaults() {
     if (DEFAULTS) return DEFAULTS;
-    try {
-        await ConfigLoader.load();
-        const cfg = ConfigLoader.getConfig();
-        if (!cfg?.defaults) throw new Error('No defaults in config');
+    await ConfigLoader.load();
+    const d = ConfigLoader.getConfig().defaults;
+    const e = d.expansion, p = d.pricer, c = d.curve;
 
-        const d = cfg.defaults;
-        const e = d.expansion || {};
-        const p = d.pricer || {};
-        const c = d.curve || {};
-
-        DEFAULTS = {
-            expansion: {
-                rates: { currency: e.rates?.currency||'USD', tenor: e.rates?.tenor||'1Y',
-                         rate: (e.rates?.rate||0.035)*100, notional: e.rates?.notional||10_000_000 },
-                swap: { currency: e.swap?.currency||'USD', tenor: e.swap?.tenor||'5Y',
-                        fixedRate: (e.swap?.fixedRate||0.03)*100, spread: (e.swap?.spread||0)*100,
-                        notional: e.swap?.notional||10_000_000, paymentFrequency: e.swap?.paymentFrequency||'SemiAnnual',
-                        dayCount: e.swap?.dayCount||'Actual365Fixed' },
-                fx: { baseCurrency: e.fx?.baseCurrency||'EUR', quoteCurrency: e.fx?.quoteCurrency||'USD',
-                      spotRate: e.fx?.spotRate||1.085, forwardRate: e.fx?.forwardRate||1.09,
-                      notional: e.fx?.notional||1_000_000, optionType: e.fx?.optionType||'call',
-                      volatility: (e.fx?.volatility||0.10)*100 },
-                equity: { underlying: e.equity?.underlying||'AAPL', spotPrice: e.equity?.spotPrice||180,
-                          strike: e.equity?.strike||185, volatility: (e.equity?.volatility||0.25)*100,
-                          riskFreeRate: (e.equity?.riskFreeRate||0.05)*100, optionType: e.equity?.optionType||'call',
-                          direction: e.equity?.direction||'long' }
-            },
-            pricer: {
-                equity: { spot: p.equity?.spot||100, strike: p.equity?.strike||100, expiryYears: p.equity?.expiryYears||1,
-                          volatility: (p.equity?.volatility||0.20)*100, rate: (p.equity?.rate||0.05)*100,
-                          optionType: p.equity?.optionType||'call' },
-                fx: { spot: p.fx?.spot||1.10, strike: p.fx?.strike||1.10, expiryYears: p.fx?.expiryYears||1,
-                      volatility: (p.fx?.volatility||0.10)*100, domesticRate: (p.fx?.domesticRate||0.05)*100,
-                      foreignRate: (p.fx?.foreignRate||0.02)*100, optionType: p.fx?.optionType||'call' },
-                irs: { notional: p.irs?.notional||1_000_000, fixedRate: (p.irs?.fixedRate||0.025)*100,
-                       tenorYears: p.irs?.tenorYears||5 }
-            },
-            curve: { irs: { notional: c.notional||10_000_000, fixedRate: (c.fixedRate||0.03)*100,
-                            tenorYears: c.tenorYears||5, frequency: 'annual' },
-                     interpolation: c.interpolation||'linear_on_log_df' },
-            scenario: { rateShock: 0, volShift: 0, spreadShock: 0, corrShift: 0,
-                        irs: { notional: c.notional||10_000_000, fixedRate: c.fixedRate||0.035,
-                               tenorYears: c.tenorYears||5, paymentFrequency: 'SemiAnnual' } }
-        };
-        Logger.debug('App', 'DEFAULTS initialised from ConfigLoader');
-    } catch (err) {
-        Logger.warn('App', 'Failed to load defaults from API, using fallback', err);
-        DEFAULTS = getDefaults();
-    }
+    // Convert decimal rates to percentage for UI display
+    const pct = v => (v || 0) * 100;
+    DEFAULTS = {
+        expansion: {
+            rates: { ...e.rates, rate: pct(e.rates.rate) },
+            swap: { ...e.swap, fixedRate: pct(e.swap.fixedRate), spread: pct(e.swap.spread) },
+            fx: { ...e.fx, volatility: pct(e.fx.volatility) },
+            equity: { ...e.equity, volatility: pct(e.equity.volatility), riskFreeRate: pct(e.equity.riskFreeRate) }
+        },
+        pricer: {
+            equity: { ...p.equity, volatility: pct(p.equity.volatility), rate: pct(p.equity.rate) },
+            fx: { ...p.fx, volatility: pct(p.fx.volatility), domesticRate: pct(p.fx.domesticRate), foreignRate: pct(p.fx.foreignRate) },
+            irs: { ...p.irs, fixedRate: pct(p.irs.fixedRate) }
+        },
+        curve: { irs: { notional: c.notional, fixedRate: pct(c.fixedRate), tenorYears: c.tenorYears, frequency: 'annual' },
+                 interpolation: c.interpolation },
+        scenario: { rateShock: 0, volShift: 0, spreadShock: 0, corrShift: 0,
+                    irs: { notional: c.notional, fixedRate: c.fixedRate, tenorYears: c.tenorYears, paymentFrequency: 'SemiAnnual' } }
+    };
+    Logger.debug('App', 'DEFAULTS initialised from ConfigLoader');
     return DEFAULTS;
+}
+
+/** Get defaults (returns empty structure if not yet loaded) */
+function getDefaults() {
+    return DEFAULTS || { expansion: {}, pricer: {}, curve: {}, scenario: {} };
 }
 
 // Backward compatibility: EXPANSION_DEFAULTS getter
 Object.defineProperty(window, 'EXPANSION_DEFAULTS', {
-    get: () => DEFAULTS?.expansion || getDefaults().expansion,
+    get: () => DEFAULTS?.expansion || {},
     configurable: true
 });
 
@@ -1222,7 +1188,7 @@ function navigateTo(viewName) {
         risk: 'Risk Analysis',
         exposure: 'Exposure Profile',
         scenarios: 'Scenario Analysis',
-        graph: 'Pricer Graph',
+        graph: 'AD Graph',
         'trade-expansion': 'Trade Expansion',
         'curve-builder': 'Curve Builder',
         'model-calib': 'Model Calibration',
@@ -6678,20 +6644,13 @@ document.addEventListener('DOMContentLoaded', init);
 // Task 4.1-4.8: Pricer Module
 // ============================================
 
-const pricerState = {
-    history: [],
-    maxHistoryItems: 10,
-    storageKey: 'fb.pricerHistory'
-};
+const pricerState = {};
 
 /**
  * Initialize the Pricer view and its event handlers.
  */
 function initPricer() {
     Logger.debug('Pricer', 'Initializing pricer module');
-
-    // Load history from LocalStorage
-    loadPricerHistory();
 
     // Instrument type selector
     const typeSelector = document.getElementById('pricer-instrument-type');
@@ -6703,12 +6662,6 @@ function initPricer() {
     const calculateBtn = document.getElementById('pricer-calculate-btn');
     if (calculateBtn) {
         calculateBtn.addEventListener('click', handlePricerCalculate);
-    }
-
-    // Clear history button
-    const clearHistoryBtn = document.getElementById('pricer-clear-history');
-    if (clearHistoryBtn) {
-        clearHistoryBtn.addEventListener('click', clearPricerHistory);
     }
 
     Logger.info('Pricer', 'Pricer module initialized');
@@ -6756,7 +6709,7 @@ async function handlePricerCalculate() {
         // Show loading state
         if (calculateBtn) {
             calculateBtn.disabled = true;
-            calculateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Calculating...</span>';
+            calculateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Pricing...</span>';
         }
         if (errorDiv) {
             errorDiv.style.display = 'none';
@@ -6786,9 +6739,6 @@ async function handlePricerCalculate() {
         // Display results
         displayPricerResults(response);
 
-        // Add to history
-        addToHistory(request, response);
-
     } catch (error) {
         Logger.error('Pricer', 'Calculation error', { error: error.message });
         if (errorDiv) {
@@ -6799,7 +6749,7 @@ async function handlePricerCalculate() {
         // Reset button
         if (calculateBtn) {
             calculateBtn.disabled = false;
-            calculateBtn.innerHTML = '<i class="fas fa-play"></i> <span>Calculate</span>';
+            calculateBtn.innerHTML = '<i class="fas fa-play"></i> <span>Price & Risks</span>';
         }
     }
 }
@@ -8558,7 +8508,7 @@ const instrumentGraphState = {
     nodes: [],
     links: [],
     metadata: null,
-    currentType: 'pricer', // 'pricer', 'trade', or 'instrument'
+    currentType: 'pricer', // 'pricer' or 'static'
 };
 
 /**
@@ -8815,19 +8765,16 @@ function updateInstrumentInfo(data) {
 }
 
 /**
- * Switch between pricer, trade, and instrument graph
+ * Switch between pricer and static graph
  */
 function switchGraphType(type) {
     instrumentGraphState.currentType = type;
 
     const pricerControls = document.getElementById('pricer-graph-controls');
-    const tradeControls = document.getElementById('trade-graph-controls');
-    const instControls = document.getElementById('instrument-graph-controls');
+    const staticControls = document.getElementById('trade-graph-controls');
     const pricerContent = document.getElementById('pricer-graph-content');
-    const tradeContent = document.getElementById('graph-content');
-    const instContent = document.getElementById('instrument-graph-content');
+    const staticContent = document.getElementById('graph-content');
     const pricerInfoSection = document.getElementById('pricer-node-info-section');
-    const instInfoSection = document.getElementById('instrument-info-section');
 
     // Update tab buttons
     document.querySelectorAll('.graph-type-tab').forEach(tab => {
@@ -8836,13 +8783,10 @@ function switchGraphType(type) {
 
     // Hide all controls and content first
     if (pricerControls) pricerControls.style.display = 'none';
-    if (tradeControls) tradeControls.style.display = 'none';
-    if (instControls) instControls.style.display = 'none';
+    if (staticControls) staticControls.style.display = 'none';
     if (pricerContent) pricerContent.style.display = 'none';
-    if (tradeContent) tradeContent.style.display = 'none';
-    if (instContent) instContent.style.display = 'none';
+    if (staticContent) staticContent.style.display = 'none';
     if (pricerInfoSection) pricerInfoSection.style.display = 'none';
-    if (instInfoSection) instInfoSection.style.display = 'none';
 
     if (type === 'pricer') {
         if (pricerControls) pricerControls.style.display = 'flex';
@@ -8854,24 +8798,14 @@ function switchGraphType(type) {
             initPricerGraphView();
             fetchPricerGraph();
         }
-    } else if (type === 'trade') {
-        if (tradeControls) tradeControls.style.display = 'flex';
-        if (tradeContent) tradeContent.style.display = 'block';
-    } else if (type === 'instrument') {
-        if (instControls) instControls.style.display = 'flex';
-        if (instContent) instContent.style.display = 'block';
-        if (instInfoSection) instInfoSection.style.display = 'block';
-
-        // Init and load instrument graph if not already
-        if (!instrumentGraphState.svg) {
-            initInstrumentGraphView();
-            fetchInstrumentGraph();
-        }
+    } else if (type === 'static') {
+        if (staticControls) staticControls.style.display = 'flex';
+        if (staticContent) staticContent.style.display = 'block';
     }
 }
 
 /**
- * Setup instrument graph event listeners
+ * Setup graph event listeners
  */
 function setupInstrumentGraphListeners() {
     // Tab switching
@@ -8880,23 +8814,6 @@ function setupInstrumentGraphListeners() {
             switchGraphType(tab.dataset.graphType);
         });
     });
-
-    // Load button
-    const loadBtn = document.getElementById('load-instrument-graph');
-    if (loadBtn) {
-        loadBtn.addEventListener('click', fetchInstrumentGraph);
-    }
-
-    // Currency/Tenor change
-    const currencySelect = document.getElementById('instrument-currency-selector');
-    const tenorSelect = document.getElementById('instrument-tenor-selector');
-
-    if (currencySelect) {
-        currencySelect.addEventListener('change', fetchInstrumentGraph);
-    }
-    if (tenorSelect) {
-        tenorSelect.addEventListener('change', fetchInstrumentGraph);
-    }
 
     // Setup pricer graph listeners
     setupPricerGraphListeners();

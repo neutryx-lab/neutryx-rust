@@ -1,18 +1,16 @@
 //! Market data loading and caching.
 //!
-//! This module loads market data from a consolidated JSON file and provides
+//! This module loads market data from multiple JSON files and provides
 //! caching functionality for the Market Data Viewer webapp.
 //!
-//! # Data Source
+//! # Data Sources
 //!
-//! All market data is loaded from:
-//! `demo/data/input/market_data/webapp_market_data.json`
-//!
-//! This file contains:
-//! - Interest rates (USD, EUR, JPY): Deposit, OIS, Swap
-//! - FX spot rates
-//! - Market conventions
-//! - Instrument definitions
+//! Market data is loaded from:
+//! - `demo/data/input/rates/market_quotes.json` - Interest rates (USD, EUR, JPY, GBP)
+//! - `demo/data/input/fx/fx_spots.json` - FX spot rates
+//! - `demo/data/input/fx/fx_forwards.json` - FX forward points
+//! - `demo/data/input/fx/xccy_basis.json` - Cross currency basis swaps
+//! - `demo/data/input/conventions/conventions.json` - Market conventions
 
 use std::{
     collections::HashMap,
@@ -28,23 +26,41 @@ use super::market_types::{
 };
 
 // =============================================================================
-// JSON Data Structures (for loading from file)
+// JSON Data Structures (for loading from files)
 // =============================================================================
 
-/// Root structure of the market data JSON file.
-#[derive(Debug, Deserialize)]
-struct MarketDataFile {
+/// Root structure of the rates market quotes JSON file.
+#[derive(Debug, Deserialize, Default)]
+struct RatesFile {
     rates: CurrencyRates,
-    #[serde(default)]
-    xccy_basis: HashMap<String, Vec<XccyBasisData>>,
-    fx_spots: Vec<FxSpotData>,
-    #[serde(default)]
-    fx_forwards: HashMap<String, Vec<FxForwardData>>,
+}
+
+/// Root structure of the FX spots JSON file.
+#[derive(Debug, Deserialize)]
+struct FxSpotsFile {
+    spots: Vec<FxSpotData>,
+}
+
+/// Root structure of the FX forwards JSON file.
+#[derive(Debug, Deserialize)]
+struct FxForwardsFile {
+    forwards: HashMap<String, Vec<FxForwardData>>,
+}
+
+/// Root structure of the XCCY basis JSON file.
+#[derive(Debug, Deserialize)]
+struct XccyBasisFile {
+    basis: HashMap<String, Vec<XccyBasisData>>,
+}
+
+/// Root structure of the conventions JSON file.
+#[derive(Debug, Deserialize)]
+struct ConventionsFile {
     conventions: HashMap<String, ConventionData>,
 }
 
 /// Currency-grouped rates.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 #[serde(rename_all = "UPPERCASE")]
 struct CurrencyRates {
     usd: Option<RatesByType>,
@@ -102,11 +118,19 @@ struct ConventionData {
 }
 
 // =============================================================================
-// Data File Path
+// Data File Paths
 // =============================================================================
 
-/// Path to the consolidated market data JSON file.
-const MARKET_DATA_FILE: &str = "demo/data/input/market_data/webapp_market_data.json";
+/// Path to the rates market quotes JSON file.
+const RATES_FILE: &str = "demo/data/input/rates/market_quotes.json";
+/// Path to the FX spots JSON file.
+const FX_SPOTS_FILE: &str = "demo/data/input/fx/fx_spots.json";
+/// Path to the FX forwards JSON file.
+const FX_FORWARDS_FILE: &str = "demo/data/input/fx/fx_forwards.json";
+/// Path to the XCCY basis JSON file.
+const XCCY_BASIS_FILE: &str = "demo/data/input/fx/xccy_basis.json";
+/// Path to the conventions JSON file.
+const CONVENTIONS_FILE: &str = "demo/data/input/conventions/conventions.json";
 
 // =============================================================================
 // Market Data Cache
@@ -247,78 +271,87 @@ impl MarketDataCache {
 }
 
 // =============================================================================
-// Data Loading from JSON
+// Data Loading from JSON Files
 // =============================================================================
 
-/// Loads market data from the JSON file.
+/// Loads market data from multiple JSON files.
 fn load_market_data_from_file(
     timestamp: i64,
 ) -> (Vec<MarketRateResponse>, HashMap<String, ConventionData>) {
-    match std::fs::read_to_string(MARKET_DATA_FILE) {
-        Ok(content) => match serde_json::from_str::<MarketDataFile>(&content) {
-            Ok(data) => {
-                let rates = convert_to_rates(&data, timestamp);
-                (rates, data.conventions)
-            }
-            Err(e) => {
-                eprintln!("[MarketDataCache] Failed to parse JSON: {e}");
-                (
-                    generate_fallback_rates(timestamp),
-                    generate_fallback_conventions(),
-                )
-            }
-        },
-        Err(_) => {
-            // File not found - use fallback data (common in tests)
-            (
-                generate_fallback_rates(timestamp),
-                generate_fallback_conventions(),
-            )
-        }
-    }
-}
-
-/// Converts JSON data to MarketRateResponse vec.
-fn convert_to_rates(data: &MarketDataFile, timestamp: i64) -> Vec<MarketRateResponse> {
     let mut rates = Vec::new();
 
-    // Process each currency
-    if let Some(ref usd) = data.rates.usd {
-        rates.extend(convert_currency_rates("USD", usd, timestamp));
-    }
-    if let Some(ref eur) = data.rates.eur {
-        rates.extend(convert_currency_rates("EUR", eur, timestamp));
-    }
-    if let Some(ref jpy) = data.rates.jpy {
-        rates.extend(convert_currency_rates("JPY", jpy, timestamp));
-    }
-    if let Some(ref gbp) = data.rates.gbp {
-        rates.extend(convert_currency_rates("GBP", gbp, timestamp));
-    }
-
-    // Process XCCY Basis Swaps
-    for (pair, basis_data) in &data.xccy_basis {
-        for r in basis_data {
-            rates.push(MarketRateResponse {
-                id: format!("{}-{}-XCCY", pair, r.tenor),
-                currency: pair.clone(),
-                tenor: r.tenor.clone(),
-                rate_type: "XccyBasis".to_string(),
-                value: r.value,
-                quote_type: "Mid".to_string(),
-                timestamp,
-                source: "Bloomberg".to_string(),
-                is_stale: false,
-                rate_index: r.index.clone(),
-            });
+    // Load rates from rates/market_quotes.json
+    if let Ok(content) = std::fs::read_to_string(RATES_FILE) {
+        if let Ok(data) = serde_json::from_str::<RatesFile>(&content) {
+            rates.extend(convert_rates_to_responses(&data.rates, timestamp));
         }
     }
 
-    // Process FX spots
-    for fx in &data.fx_spots {
-        rates.push(MarketRateResponse {
+    // Load FX spots from fx/fx_spots.json
+    if let Ok(content) = std::fs::read_to_string(FX_SPOTS_FILE) {
+        if let Ok(data) = serde_json::from_str::<FxSpotsFile>(&content) {
+            rates.extend(convert_fx_spots_to_responses(&data.spots, timestamp));
+        }
+    }
+
+    // Load FX forwards from fx/fx_forwards.json
+    if let Ok(content) = std::fs::read_to_string(FX_FORWARDS_FILE) {
+        if let Ok(data) = serde_json::from_str::<FxForwardsFile>(&content) {
+            rates.extend(convert_fx_forwards_to_responses(&data.forwards, timestamp));
+        }
+    }
+
+    // Load XCCY basis from fx/xccy_basis.json
+    if let Ok(content) = std::fs::read_to_string(XCCY_BASIS_FILE) {
+        if let Ok(data) = serde_json::from_str::<XccyBasisFile>(&content) {
+            rates.extend(convert_xccy_basis_to_responses(&data.basis, timestamp));
+        }
+    }
+
+    // Load conventions from conventions/conventions.json
+    let conventions = if let Ok(content) = std::fs::read_to_string(CONVENTIONS_FILE) {
+        serde_json::from_str::<ConventionsFile>(&content)
+            .map(|data| data.conventions)
+            .unwrap_or_else(|_| generate_fallback_conventions())
+    } else {
+        generate_fallback_conventions()
+    };
+
+    // If no rates were loaded, use fallback
+    if rates.is_empty() {
+        rates = generate_fallback_rates(timestamp);
+    }
+
+    (rates, conventions)
+}
+
+/// Converts currency rates to MarketRateResponse vec.
+fn convert_rates_to_responses(rates: &CurrencyRates, timestamp: i64) -> Vec<MarketRateResponse> {
+    let mut result = Vec::new();
+
+    if let Some(ref usd) = rates.usd {
+        result.extend(convert_currency_rates("USD", usd, timestamp));
+    }
+    if let Some(ref eur) = rates.eur {
+        result.extend(convert_currency_rates("EUR", eur, timestamp));
+    }
+    if let Some(ref jpy) = rates.jpy {
+        result.extend(convert_currency_rates("JPY", jpy, timestamp));
+    }
+    if let Some(ref gbp) = rates.gbp {
+        result.extend(convert_currency_rates("GBP", gbp, timestamp));
+    }
+
+    result
+}
+
+/// Converts FX spots to MarketRateResponse vec.
+fn convert_fx_spots_to_responses(spots: &[FxSpotData], timestamp: i64) -> Vec<MarketRateResponse> {
+    spots
+        .iter()
+        .map(|fx| MarketRateResponse {
             id: format!("{}-SPOT", fx.pair),
-            currency: fx.pair[..3].to_string(), // First 3 chars as base currency
+            currency: fx.pair[..3].to_string(),
             tenor: "SPOT".to_string(),
             rate_type: "FxSpot".to_string(),
             value: fx.value,
@@ -327,13 +360,19 @@ fn convert_to_rates(data: &MarketDataFile, timestamp: i64) -> Vec<MarketRateResp
             source: "Reuters".to_string(),
             is_stale: false,
             rate_index: None,
-        });
-    }
+        })
+        .collect()
+}
 
-    // Process FX Forwards
-    for (pair, fwd_data) in &data.fx_forwards {
+/// Converts FX forwards to MarketRateResponse vec.
+fn convert_fx_forwards_to_responses(
+    forwards: &HashMap<String, Vec<FxForwardData>>,
+    timestamp: i64,
+) -> Vec<MarketRateResponse> {
+    let mut result = Vec::new();
+    for (pair, fwd_data) in forwards {
         for r in fwd_data {
-            rates.push(MarketRateResponse {
+            result.push(MarketRateResponse {
                 id: format!("{}-{}-FWD", pair, r.tenor),
                 currency: pair[..3].to_string(),
                 tenor: r.tenor.clone(),
@@ -347,8 +386,32 @@ fn convert_to_rates(data: &MarketDataFile, timestamp: i64) -> Vec<MarketRateResp
             });
         }
     }
+    result
+}
 
-    rates
+/// Converts XCCY basis to MarketRateResponse vec.
+fn convert_xccy_basis_to_responses(
+    basis: &HashMap<String, Vec<XccyBasisData>>,
+    timestamp: i64,
+) -> Vec<MarketRateResponse> {
+    let mut result = Vec::new();
+    for (pair, basis_data) in basis {
+        for r in basis_data {
+            result.push(MarketRateResponse {
+                id: format!("{}-{}-XCCY", pair, r.tenor),
+                currency: pair.clone(),
+                tenor: r.tenor.clone(),
+                rate_type: "XccyBasis".to_string(),
+                value: r.value,
+                quote_type: "Mid".to_string(),
+                timestamp,
+                source: "Bloomberg".to_string(),
+                is_stale: false,
+                rate_index: r.index.clone(),
+            });
+        }
+    }
+    result
 }
 
 /// Converts rates for a single currency.
@@ -678,8 +741,8 @@ fn generate_fallback_conventions() -> HashMap<String, ConventionData> {
 
 /// Gets all available conventions.
 pub fn get_conventions_list() -> ConventionsListResponse {
-    let conventions_map = match std::fs::read_to_string(MARKET_DATA_FILE) {
-        Ok(content) => match serde_json::from_str::<MarketDataFile>(&content) {
+    let conventions_map = match std::fs::read_to_string(CONVENTIONS_FILE) {
+        Ok(content) => match serde_json::from_str::<ConventionsFile>(&content) {
             Ok(data) => data.conventions,
             Err(_) => generate_fallback_conventions(),
         },
@@ -701,8 +764,8 @@ pub fn get_conventions_list() -> ConventionsListResponse {
 
 /// Gets a convention by ID.
 pub fn get_convention(convention_id: &str) -> Option<ConventionResponse> {
-    let conventions_map = match std::fs::read_to_string(MARKET_DATA_FILE) {
-        Ok(content) => match serde_json::from_str::<MarketDataFile>(&content) {
+    let conventions_map = match std::fs::read_to_string(CONVENTIONS_FILE) {
+        Ok(content) => match serde_json::from_str::<ConventionsFile>(&content) {
             Ok(data) => data.conventions,
             Err(_) => generate_fallback_conventions(),
         },

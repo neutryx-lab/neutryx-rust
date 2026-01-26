@@ -51,6 +51,7 @@ use std::{fmt, str::FromStr};
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
 pub enum Frequency {
     /// Daily payments (252 business days per year)
     Daily,

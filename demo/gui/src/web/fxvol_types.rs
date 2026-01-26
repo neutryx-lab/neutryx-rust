@@ -29,51 +29,12 @@ use serde::{Deserialize, Serialize};
 // Delta Type Enum (Req 10.5)
 // =============================================================================
 
-/// Delta convention type for FX options.
-///
-/// Different market conventions use different delta definitions based on
-/// the regional market practice.
+/// Re-export DeltaType from infra_master.
 ///
 /// # Requirements Coverage
 ///
 /// - Requirement 10.5: Delta表現でのスマイル構造
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "snake_case")]
-pub enum DeltaType {
-    /// Spot delta (premium excluded).
-    /// Most common in G10 FX markets.
-    /// Δ = exp(-r_f * T) * N(d1) for calls.
-    #[default]
-    SpotDelta,
-    /// Forward delta.
-    /// Premium excluded, measured vs forward.
-    /// Δ = N(d1) for calls.
-    ForwardDelta,
-    /// Premium-adjusted delta.
-    /// Common in EM FX markets.
-    /// Δ = exp(-r_f * T) * N(d1) * K / F for calls.
-    PremiumAdjusted,
-}
-
-impl DeltaType {
-    /// Get the display name for this delta type.
-    pub fn display_name(&self) -> &'static str {
-        match self {
-            Self::SpotDelta => "Spot Delta",
-            Self::ForwardDelta => "Forward Delta",
-            Self::PremiumAdjusted => "Premium-Adjusted Delta",
-        }
-    }
-
-    /// Get a description of this delta type.
-    pub fn description(&self) -> &'static str {
-        match self {
-            Self::SpotDelta => "Premium excluded, standard G10 convention",
-            Self::ForwardDelta => "Premium excluded, measured vs forward",
-            Self::PremiumAdjusted => "Premium included, common in EM markets",
-        }
-    }
-}
+pub use infra_master::trade::instrument_def::DeltaType;
 
 // =============================================================================
 // FX Quote Data Structures (Req 1.6)
@@ -188,7 +149,7 @@ pub struct DeltaVols {
 
 /// Complete FX volatility data file structure.
 ///
-/// JSON schema for files in `demo/data/input/volsurface/`.
+/// JSON schema for files in `demo/data/input/fxvol/`.
 ///
 /// # Requirements Coverage
 ///

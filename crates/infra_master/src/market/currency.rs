@@ -50,13 +50,14 @@ use crate::error::CurrencyError;
 /// assert_eq!(eur, Currency::EUR);
 /// ```
 #[non_exhaustive]
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Currency {
     /// United States Dollar
     ///
     /// ISO 4217 code: USD
     /// Standard decimal places: 2
+    #[default]
     USD,
 
     /// Euro

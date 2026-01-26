@@ -270,6 +270,8 @@ fn convert_currency(currency: &CurrencyInput) -> DefaultCurrency {
         CurrencyInput::EUR => DefaultCurrency::EUR,
         CurrencyInput::JPY => DefaultCurrency::JPY,
         CurrencyInput::GBP => DefaultCurrency::GBP,
+        CurrencyInput::CHF => DefaultCurrency::EUR, // CHF uses EUR as fallback
+        _ => DefaultCurrency::USD, // Future currencies default to USD
     }
 }
 

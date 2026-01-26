@@ -68,4 +68,7 @@ pub use pricing_instrument::{
 };
 pub use trade::{ExerciseType, SettlementType, Trade, TradeMetadata, TradeType};
 
+// Re-export common types from instrument_def
+pub use instrument_def::AssetClass;
+
 pub use crate::ids::TradeId;

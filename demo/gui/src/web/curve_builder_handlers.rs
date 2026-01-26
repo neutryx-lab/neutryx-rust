@@ -45,7 +45,7 @@ use super::{
 ///
 /// # Requirements Coverage
 ///
-/// - Requirement 1.1: `demo/data/input/curves/`
+/// - Requirement 1.1: `demo/data/input/rates/`
 ///   ディレクトリにIndex別のInstrumentリストJSONファイルを格納
 /// - Requirement 1.5:
 ///   ファイルが存在しないか不正な形式の場合、適切なエラーメッセージを表示
@@ -58,7 +58,7 @@ impl CurveDataLoader {
     pub fn new(base_path: PathBuf) -> Self { Self { base_path } }
 
     /// Create a CurveDataLoader with the default path.
-    pub fn default_path() -> Self { Self::new(PathBuf::from("demo/data/input/curves")) }
+    pub fn default_path() -> Self { Self::new(PathBuf::from("demo/data/input/rates")) }
 
     /// Get the list of available indices.
     ///
@@ -389,14 +389,19 @@ pub async fn get_parameters(
 /// Returns the list of available index identifiers.
 pub async fn get_indices() -> ApiResult<Vec<String>> {
     let loader = CurveDataLoader::default_path();
-    Ok(Json(loader.available_indices()))
+    let mut indices = loader.available_indices();
+
+    // Filter out non-index files like market_quotes.json
+    indices.retain(|idx| !idx.contains("market_quotes"));
+
+    Ok(Json(indices))
 }
 
 /// Handler for `GET /api/curves/central-bank-meetings`.
 ///
 /// Returns central bank policy rate decision meeting dates by currency.
 pub async fn get_central_bank_meetings() -> ApiResult<serde_json::Value> {
-    let file_path = std::path::PathBuf::from("demo/data/input/central_bank_meetings.json");
+    let file_path = std::path::PathBuf::from("demo/data/input/events/central_bank_meetings.json");
 
     if !file_path.exists() {
         return Ok(Json(serde_json::json!({

@@ -6,10 +6,12 @@
 use super::index::IndexType;
 
 /// Option type for vanilla options.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
 pub enum OptionType {
     /// Call option (right to buy).
+    #[default]
     Call,
     /// Put option (right to sell).
     Put,

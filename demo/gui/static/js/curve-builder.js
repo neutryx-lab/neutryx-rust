@@ -112,6 +112,12 @@ const curveBuilder = {
             await this.loadCentralBankMeetings();
             this.initialized = true;
 
+            // Check if annotation plugin is available
+            if (typeof Chart !== 'undefined') {
+                const hasAnnotation = Chart.registry?.plugins?.get('annotation');
+                console.log('[CurveBuilder] Chart.js annotation plugin available:', !!hasAnnotation);
+            }
+
             if (typeof Logger !== 'undefined') {
                 Logger.info('CurveBuilder', 'Curve builder module initialised');
             }
@@ -128,6 +134,9 @@ const curveBuilder = {
             const response = await fetch('/api/curves/central-bank-meetings');
             if (response.ok) {
                 this.centralBankMeetings = await response.json();
+                console.log('[CurveBuilder] Central bank meetings loaded:', this.centralBankMeetings);
+            } else {
+                console.warn('[CurveBuilder] Failed to load CB meetings, status:', response.status);
             }
         } catch (error) {
             console.warn('[CurveBuilder] Failed to load central bank meetings:', error);
@@ -730,8 +739,12 @@ const curveBuilder = {
         const currency = this.state.selectedIndex?.split('-')[0]?.toUpperCase() || 'USD';
         const referenceDate = new Date(); // Use current date as reference
 
+        console.log('[CurveBuilder] Currency for CB meetings:', currency);
+        console.log('[CurveBuilder] Central bank meetings data:', this.centralBankMeetings);
+
         // Get central bank meetings for short-term chart
         const cbMeetings = this.getCentralBankMeetingsInRange(currency, referenceDate, 1);
+        console.log('[CurveBuilder] CB Meetings found:', cbMeetings);
 
         // Render both charts
         if (typeof Chart !== 'undefined') {
@@ -781,8 +794,9 @@ const curveBuilder = {
 
         // Create vertical line annotations for CB meetings
         const annotations = {};
+        console.log('[CurveBuilder] CB Meetings for annotations:', cbMeetings);
         cbMeetings.forEach((meeting, idx) => {
-            // Find the closest data point index
+            // Find the closest data point index and its label
             let closestIdx = 0;
             let minDiff = Infinity;
             data.forEach((d, i) => {
@@ -793,26 +807,31 @@ const curveBuilder = {
                 }
             });
 
+            const xLabel = tenors[closestIdx];
             annotations[`cbMeeting${idx}`] = {
                 type: 'line',
-                xMin: closestIdx,
-                xMax: closestIdx,
-                borderColor: 'rgba(239, 68, 68, 0.8)',
+                display: true,
+                scaleID: 'x',
+                value: xLabel,
+                borderColor: 'rgba(239, 68, 68, 0.9)',
                 borderWidth: 2,
-                borderDash: [5, 5],
                 label: {
                     display: true,
                     content: meeting.label.split('(')[0].trim(),
                     position: 'start',
                     backgroundColor: 'rgba(239, 68, 68, 0.9)',
                     color: '#fff',
-                    font: { size: 9 },
-                    padding: 3,
+                    font: { size: 8, weight: 'bold' },
+                    padding: 4,
                     rotation: -90,
-                    yAdjust: -60
+                    yAdjust: -40
                 }
             };
+            console.log(`[CurveBuilder] Added CB Meeting annotation at label "${xLabel}" (index ${closestIdx}):`, meeting.label);
         });
+
+        console.log('[CurveBuilder] Final annotations object:', annotations);
+        console.log('[CurveBuilder] Number of annotations:', Object.keys(annotations).length);
 
         this.chartShort = new Chart(ctx, {
             type: 'line',
@@ -860,6 +879,14 @@ const curveBuilder = {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: {
+                    padding: {
+                        top: 5,
+                        right: 10,
+                        bottom: 5,
+                        left: 10
+                    }
+                },
                 interaction: {
                     mode: 'index',
                     intersect: false
@@ -985,6 +1012,14 @@ const curveBuilder = {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: {
+                    padding: {
+                        top: 5,
+                        right: 10,
+                        bottom: 5,
+                        left: 10
+                    }
+                },
                 interaction: {
                     mode: 'index',
                     intersect: false

@@ -38,14 +38,37 @@ pub enum FxVolInstrumentError {
 /// Delta type convention for FX options.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
 pub enum DeltaType {
     /// Spot delta (standard for most G10 pairs like EURUSD).
     #[default]
     SpotDelta,
     /// Premium-adjusted delta (standard for pairs like USDJPY).
-    PremiumAdjustedDelta,
+    PremiumAdjusted,
     /// Forward delta.
     ForwardDelta,
+}
+
+impl DeltaType {
+    /// Returns the display name for this delta type.
+    #[must_use]
+    pub fn display_name(&self) -> &'static str {
+        match self {
+            Self::SpotDelta => "Spot Delta",
+            Self::ForwardDelta => "Forward Delta",
+            Self::PremiumAdjusted => "Premium-Adjusted Delta",
+        }
+    }
+
+    /// Returns a description of this delta type.
+    #[must_use]
+    pub fn description(&self) -> &'static str {
+        match self {
+            Self::SpotDelta => "Premium excluded, standard G10 convention",
+            Self::ForwardDelta => "Premium excluded, measured vs forward",
+            Self::PremiumAdjusted => "Premium included, common in EM markets",
+        }
+    }
 }
 
 /// Cut-off time for option expiry.
@@ -109,7 +132,7 @@ impl FxVolConvention {
     #[must_use]
     pub fn usdjpy() -> Self {
         Self {
-            delta_type: DeltaType::PremiumAdjustedDelta,
+            delta_type: DeltaType::PremiumAdjusted,
             premium_currency: Currency::JPY,
             cut_off: CutOffTime::Tokyo3pm,
             calendar: CalendarId::Tokyo,
@@ -614,7 +637,7 @@ mod tests {
     #[test]
     fn test_convention_usdjpy() {
         let conv = FxVolConvention::usdjpy();
-        assert_eq!(conv.delta_type, DeltaType::PremiumAdjustedDelta);
+        assert_eq!(conv.delta_type, DeltaType::PremiumAdjusted);
         assert_eq!(conv.premium_currency, Currency::JPY);
     }
 
@@ -626,11 +649,11 @@ mod tests {
 
         let usdjpy = CurrencyPair::new(Currency::USD, Currency::JPY);
         let conv_usdjpy = FxVolConvention::for_currency_pair(&usdjpy);
-        assert_eq!(conv_usdjpy.delta_type, DeltaType::PremiumAdjustedDelta);
+        assert_eq!(conv_usdjpy.delta_type, DeltaType::PremiumAdjusted);
 
         let eurjpy = CurrencyPair::new(Currency::EUR, Currency::JPY);
         let conv_eurjpy = FxVolConvention::for_currency_pair(&eurjpy);
-        assert_eq!(conv_eurjpy.delta_type, DeltaType::PremiumAdjustedDelta);
+        assert_eq!(conv_eurjpy.delta_type, DeltaType::PremiumAdjusted);
     }
 
     // === FxVolInstrument Tests ===
@@ -830,7 +853,7 @@ mod tests {
 
         assert_eq!(
             inst.convention().delta_type,
-            DeltaType::PremiumAdjustedDelta
+            DeltaType::PremiumAdjusted
         );
     }
 

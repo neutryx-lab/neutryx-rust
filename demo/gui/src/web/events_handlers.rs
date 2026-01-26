@@ -220,8 +220,10 @@ fn generate_economic_releases() -> Vec<MarketEvent> {
     for month_offset in 0..12 {
         let target_month = today + Duration::days(month_offset * 30);
         let first_day = NaiveDate::from_ymd_opt(target_month.year(), target_month.month(), 1).unwrap();
-        let days_to_friday = (5 - first_day.weekday().num_days_from_monday() + 7) % 7;
-        let nfp_date = first_day + Duration::days(days_to_friday as i64);
+        // Use i32 to avoid underflow when first day is Saturday (5) or Sunday (6)
+        let days_from_mon = first_day.weekday().num_days_from_monday() as i32;
+        let days_to_friday = ((5 - days_from_mon + 7) % 7) as i64;
+        let nfp_date = first_day + Duration::days(days_to_friday);
 
         events.push(MarketEvent {
             id: format!("NFP-{}", month_offset + 1),

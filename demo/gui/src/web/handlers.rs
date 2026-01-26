@@ -2243,12 +2243,7 @@ fn calculate_irs_legs(
     frequency: PaymentFrequency,
 ) -> (f64, f64) {
     // Get payments per year based on frequency
-    let payments_per_year = match frequency {
-        PaymentFrequency::Annual => 1.0,
-        PaymentFrequency::SemiAnnual => 2.0,
-        PaymentFrequency::Quarterly => 4.0,
-        PaymentFrequency::Monthly => 12.0,
-    };
+    let payments_per_year = frequency.periods_per_year() as f64;
 
     let period_years = 1.0 / payments_per_year;
     let num_periods = (tenor_years * payments_per_year).ceil() as usize;
@@ -3218,12 +3213,7 @@ fn calculate_irs_npv(cached_curve: &CachedCurve, request: &GreeksCompareRequest)
     let discount_rate = cached_curve.zero_rates.last().copied().unwrap_or(0.03);
 
     // Simple annuity PV calculation
-    let payments_per_year = match request.payment_frequency {
-        PaymentFrequency::Monthly => 12.0,
-        PaymentFrequency::Quarterly => 4.0,
-        PaymentFrequency::SemiAnnual => 2.0,
-        PaymentFrequency::Annual => 1.0,
-    };
+    let payments_per_year = request.payment_frequency.periods_per_year() as f64;
     let num_payments = (tenor_years * payments_per_year) as i32;
 
     let payment_amount = notional * fixed_rate / payments_per_year;
@@ -3530,12 +3520,7 @@ fn calculate_irs_npv_with_rate_shift(
     let base_rate = cached_curve.zero_rates.last().copied().unwrap_or(0.03);
     let discount_rate = base_rate + shift;
 
-    let payments_per_year = match request.payment_frequency {
-        PaymentFrequency::Monthly => 12.0,
-        PaymentFrequency::Quarterly => 4.0,
-        PaymentFrequency::SemiAnnual => 2.0,
-        PaymentFrequency::Annual => 1.0,
-    };
+    let payments_per_year = request.payment_frequency.periods_per_year() as f64;
     let num_payments = (tenor_years * payments_per_year) as i32;
     let payment_amount = notional * fixed_rate / payments_per_year;
 
@@ -3728,12 +3713,7 @@ fn calculate_irs_npv_with_tenor_shift(
     // Get base discount rate from curve
     let base_rate = cached_curve.zero_rates.last().copied().unwrap_or(0.03);
 
-    let payments_per_year = match request.payment_frequency {
-        PaymentFrequency::Monthly => 12.0,
-        PaymentFrequency::Quarterly => 4.0,
-        PaymentFrequency::SemiAnnual => 2.0,
-        PaymentFrequency::Annual => 1.0,
-    };
+    let payments_per_year = request.payment_frequency.periods_per_year() as f64;
     let num_payments = (swap_tenor_years * payments_per_year) as i32;
     let payment_amount = notional * fixed_rate / payments_per_year;
 

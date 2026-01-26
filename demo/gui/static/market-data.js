@@ -144,6 +144,8 @@ const marketDataViewer = (() => {
             closeConventionDetailBtn: document.getElementById('close-convention-detail'),
             conventionsCount: document.getElementById('conventions-count')
         };
+        // Debug logging for important elements
+        log(`Cached elements - ratesTable: ${!!elements.ratesTable}, ratesTbody: ${!!elements.ratesTbody}, placeholder: ${!!elements.placeholder}`);
     }
 
     function bindEvents() {
@@ -495,21 +497,35 @@ const marketDataViewer = (() => {
 
     async function loadFxVolData() {
         showLoading(true);
+        // Show loading placeholder in table
+        showTablePlaceholder('Loading FX volatility data...', 'fa-spinner fa-spin');
+
         try {
-            // Load available pairs
+            log('Fetching FX vol pairs from /api/fxvol/pairs...');
             const pairsResp = await fetch('/api/fxvol/pairs');
-            if (!pairsResp.ok) throw new Error('Failed to fetch FX vol pairs');
+            if (!pairsResp.ok) {
+                throw new Error(`Failed to fetch FX vol pairs: ${pairsResp.status} ${pairsResp.statusText}`);
+            }
 
             const pairsData = await pairsResp.json();
+            log(`Received pairs data: ${JSON.stringify(pairsData)}`);
             state.fxVolPairs = pairsData.pairs || [];
+
+            if (state.fxVolPairs.length === 0) {
+                log('No FX vol pairs found');
+                showTablePlaceholder('No FX volatility pairs available', 'fa-chart-area');
+                return;
+            }
 
             // Load quotes for all pairs and flatten for table display
             const allQuotes = [];
             for (const pairInfo of state.fxVolPairs) {
                 try {
+                    log(`Fetching quotes for ${pairInfo.pair}...`);
                     const quotesResp = await fetch(`/api/fxvol/quotes/${pairInfo.pair}`);
                     if (quotesResp.ok) {
                         const quotesData = await quotesResp.json();
+                        log(`Received ${(quotesData.quotes || []).length} quotes for ${pairInfo.pair}`);
                         for (const quote of quotesData.quotes || []) {
                             allQuotes.push({
                                 id: `${pairInfo.pair}-${quote.expiry}`,
@@ -525,6 +541,8 @@ const marketDataViewer = (() => {
                                 source: 'Demo'
                             });
                         }
+                    } else {
+                        logError(`Failed to load quotes for ${pairInfo.pair}: ${quotesResp.status}`);
                     }
                 } catch (e) {
                     logError(`Failed to load quotes for ${pairInfo.pair}:`, e);
@@ -543,8 +561,22 @@ const marketDataViewer = (() => {
         } catch (error) {
             logError('Failed to load FX vol data:', error);
             showError('Failed to load FX volatility data');
+            showTablePlaceholder('Failed to load FX volatility data. Check console for details.', 'fa-exclamation-triangle');
         } finally {
             showLoading(false);
+        }
+    }
+
+    function showTablePlaceholder(message, iconClass) {
+        if (elements.ratesTbody) {
+            elements.ratesTbody.innerHTML = '';
+        }
+        if (elements.placeholder) {
+            elements.placeholder.style.display = 'flex';
+            elements.placeholder.innerHTML = `
+                <i class="fas ${iconClass}"></i>
+                <p>${message}</p>
+            `;
         }
     }
 
@@ -730,22 +762,39 @@ const marketDataViewer = (() => {
 
     async function loadEventsData() {
         showLoading(true);
+        // Show loading placeholder in table
+        showTablePlaceholder('Loading events data...', 'fa-spinner fa-spin');
+
         try {
             // Load event types
+            log('Fetching event types from /api/events/types...');
             const typesResp = await fetch('/api/events/types');
             if (typesResp.ok) {
                 const typesData = await typesResp.json();
+                log(`Received event types: ${JSON.stringify(typesData)}`);
                 state.eventTypes = typesData.types || [];
+            } else {
+                logError(`Failed to fetch event types: ${typesResp.status}`);
             }
 
             // Load all events
+            log('Fetching events from /api/events...');
             const eventsResp = await fetch('/api/events');
-            if (!eventsResp.ok) throw new Error('Failed to fetch events');
+            if (!eventsResp.ok) {
+                throw new Error(`Failed to fetch events: ${eventsResp.status} ${eventsResp.statusText}`);
+            }
 
             const eventsData = await eventsResp.json();
+            log(`Received events data: ${eventsData.events?.length || 0} events`);
             state.events = eventsData.events || [];
             state.filteredEvents = [...state.events];
             state.lastUpdated = new Date().toISOString();
+
+            if (state.events.length === 0) {
+                log('No events found');
+                showTablePlaceholder('No events available', 'fa-calendar-alt');
+                return;
+            }
 
             sortEvents();
             renderEventsTable();
@@ -756,6 +805,7 @@ const marketDataViewer = (() => {
         } catch (error) {
             logError('Failed to load events data:', error);
             showError('Failed to load events data');
+            showTablePlaceholder('Failed to load events data. Check console for details.', 'fa-exclamation-triangle');
         } finally {
             showLoading(false);
         }
@@ -1037,8 +1087,12 @@ const marketDataViewer = (() => {
     // ===========================================
 
     function updateTableHeadersForAssetClass(assetClass) {
+        log(`Updating table headers for asset class: ${assetClass}`);
         const thead = elements.ratesTable?.querySelector('thead tr');
-        if (!thead) return;
+        if (!thead) {
+            logError('Cannot update table headers: thead element not found');
+            return;
+        }
 
         switch (assetClass) {
             case 'IRVol':
@@ -1238,14 +1292,21 @@ const marketDataViewer = (() => {
         }
         state.sortDirection = 'asc';
 
+        // Reset filter to "All" when switching asset classes
+        if (elements.currencyFilter) {
+            elements.currencyFilter.value = '';
+        }
+
         updateAssetClassToggle();
+
+        // Always update table headers first when switching asset classes
+        updateTableHeadersForAssetClass(assetClass);
 
         // Load data based on asset class
         if (assetClass === 'IRVol') {
             if (state.irVolQuotes.length === 0) {
                 loadIrVolData();
             } else {
-                updateTableHeadersForAssetClass('IRVol');
                 sortIrVolQuotes();
                 renderIrVolTable();
                 updateIrVolStats();
@@ -1254,7 +1315,6 @@ const marketDataViewer = (() => {
             if (state.fxVolQuotes.length === 0) {
                 loadFxVolData();
             } else {
-                updateTableHeadersForAssetClass('FXVol');
                 sortFxVolQuotes();
                 renderFxVolTable();
                 updateFxVolStats();
@@ -1263,14 +1323,12 @@ const marketDataViewer = (() => {
             if (state.events.length === 0) {
                 loadEventsData();
             } else {
-                updateTableHeadersForAssetClass('Events');
                 sortEvents();
                 renderEventsTable();
                 updateEventsStats();
             }
         } else {
             // Rates or FX
-            updateTableHeadersForAssetClass(assetClass);
             applyFilters();
         }
 

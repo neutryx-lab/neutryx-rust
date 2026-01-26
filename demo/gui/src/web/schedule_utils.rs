@@ -14,6 +14,8 @@
 
 use std::str::FromStr;
 
+use infra_master::time::{DayCounter, Frequency};
+
 /// Schedule generation error.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ScheduleError {
@@ -49,76 +51,6 @@ pub struct SchedulePeriod {
     pub payment_date: String,
     /// Year fraction for the period (approximate, based on Act/360 or Act/365)
     pub year_fraction: f64,
-}
-
-/// Payment frequency enum for schedule generation.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum PaymentFrequency {
-    /// Annual payments (once per year).
-    Annual,
-    /// Semi-annual payments (twice per year).
-    SemiAnnual,
-    /// Quarterly payments (four times per year).
-    Quarterly,
-    /// Monthly payments (twelve times per year).
-    Monthly,
-}
-
-impl PaymentFrequency {
-    /// Returns the number of months between payments.
-    pub fn months_per_period(&self) -> u32 {
-        match self {
-            Self::Annual => 12,
-            Self::SemiAnnual => 6,
-            Self::Quarterly => 3,
-            Self::Monthly => 1,
-        }
-    }
-}
-
-impl FromStr for PaymentFrequency {
-    type Err = ScheduleError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().replace(['-', '_', ' '], "").as_str() {
-            "annual" | "yearly" | "1y" => Ok(Self::Annual),
-            "semiannual" | "6m" => Ok(Self::SemiAnnual),
-            "quarterly" | "3m" => Ok(Self::Quarterly),
-            "monthly" | "1m" => Ok(Self::Monthly),
-            _ => Err(ScheduleError::new(format!(
-                "Invalid payment frequency: {}",
-                s
-            ))),
-        }
-    }
-}
-
-/// Day count convention for year fraction calculation.
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
-pub enum DayCountConvention {
-    /// Actual/360 day count convention.
-    #[default]
-    Act360,
-    /// Actual/365 day count convention.
-    Act365,
-    /// 30/360 day count convention.
-    Thirty360,
-}
-
-impl FromStr for DayCountConvention {
-    type Err = ScheduleError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().replace(['/', '_', ' '], "").as_str() {
-            "act360" | "actual360" => Ok(Self::Act360),
-            "act365" | "actual365" | "act365fixed" => Ok(Self::Act365),
-            "thirty360" | "30360" | "bond" => Ok(Self::Thirty360),
-            _ => Err(ScheduleError::new(format!(
-                "Invalid day count convention: {}",
-                s
-            ))),
-        }
-    }
 }
 
 /// Tenor representation for schedule generation.
@@ -321,8 +253,12 @@ pub fn generate_schedule(
 ) -> Result<Vec<SchedulePeriod>, ScheduleError> {
     let start = SimpleDate::parse(start_date)?;
     let tenor = Tenor::from_str(tenor)?;
-    let frequency = PaymentFrequency::from_str(frequency)?;
-    let day_count = DayCountConvention::from_str(day_count)?;
+    let frequency: Frequency = frequency
+        .parse()
+        .map_err(|e: String| ScheduleError::new(e))?;
+    let day_count: DayCounter = day_count
+        .parse()
+        .map_err(|e: String| ScheduleError::new(e))?;
 
     // Handle short tenors (< 1 month)
     if tenor.months == 0 {
@@ -368,17 +304,20 @@ pub fn generate_schedule(
 }
 
 /// Calculates year fraction based on months and day count convention.
-fn calculate_year_fraction(months: u32, day_count: DayCountConvention) -> f64 {
+fn calculate_year_fraction(months: u32, day_count: DayCounter) -> f64 {
     let days = months * 30; // Approximate
     calculate_year_fraction_from_days(days as i64, day_count)
 }
 
 /// Calculates year fraction from actual days.
-fn calculate_year_fraction_from_days(days: i64, day_count: DayCountConvention) -> f64 {
+fn calculate_year_fraction_from_days(days: i64, day_count: DayCounter) -> f64 {
     match day_count {
-        DayCountConvention::Act360 => days as f64 / 360.0,
-        DayCountConvention::Act365 => days as f64 / 365.0,
-        DayCountConvention::Thirty360 => days as f64 / 360.0,
+        DayCounter::Actual360 => days as f64 / 360.0,
+        DayCounter::Actual365Fixed => days as f64 / 365.0,
+        DayCounter::Thirty360Bond | DayCounter::Thirty360European | DayCounter::ThirtyE360Isda => {
+            days as f64 / 360.0
+        }
+        _ => days as f64 / 365.0, // Default to Act/365 for other conventions
     }
 }
 
@@ -435,30 +374,18 @@ mod tests {
 
         #[test]
         fn test_frequency_parse() {
-            assert_eq!(
-                PaymentFrequency::from_str("Quarterly").unwrap(),
-                PaymentFrequency::Quarterly
-            );
-            assert_eq!(
-                PaymentFrequency::from_str("semi-annual").unwrap(),
-                PaymentFrequency::SemiAnnual
-            );
-            assert_eq!(
-                PaymentFrequency::from_str("ANNUAL").unwrap(),
-                PaymentFrequency::Annual
-            );
-            assert_eq!(
-                PaymentFrequency::from_str("monthly").unwrap(),
-                PaymentFrequency::Monthly
-            );
+            assert_eq!("Quarterly".parse::<Frequency>().unwrap(), Frequency::Quarterly);
+            assert_eq!("semi-annual".parse::<Frequency>().unwrap(), Frequency::SemiAnnual);
+            assert_eq!("ANNUAL".parse::<Frequency>().unwrap(), Frequency::Annual);
+            assert_eq!("monthly".parse::<Frequency>().unwrap(), Frequency::Monthly);
         }
 
         #[test]
         fn test_frequency_months_per_period() {
-            assert_eq!(PaymentFrequency::Annual.months_per_period(), 12);
-            assert_eq!(PaymentFrequency::SemiAnnual.months_per_period(), 6);
-            assert_eq!(PaymentFrequency::Quarterly.months_per_period(), 3);
-            assert_eq!(PaymentFrequency::Monthly.months_per_period(), 1);
+            assert_eq!(Frequency::Annual.months_per_period(), 12);
+            assert_eq!(Frequency::SemiAnnual.months_per_period(), 6);
+            assert_eq!(Frequency::Quarterly.months_per_period(), 3);
+            assert_eq!(Frequency::Monthly.months_per_period(), 1);
         }
     }
 
@@ -467,18 +394,9 @@ mod tests {
 
         #[test]
         fn test_day_count_parse() {
-            assert_eq!(
-                DayCountConvention::from_str("Act360").unwrap(),
-                DayCountConvention::Act360
-            );
-            assert_eq!(
-                DayCountConvention::from_str("act/365").unwrap(),
-                DayCountConvention::Act365
-            );
-            assert_eq!(
-                DayCountConvention::from_str("30/360").unwrap(),
-                DayCountConvention::Thirty360
-            );
+            assert_eq!("Act360".parse::<DayCounter>().unwrap(), DayCounter::Actual360);
+            assert_eq!("act/365".parse::<DayCounter>().unwrap(), DayCounter::Actual365Fixed);
+            assert_eq!("30/360".parse::<DayCounter>().unwrap(), DayCounter::Thirty360Bond);
         }
     }
 

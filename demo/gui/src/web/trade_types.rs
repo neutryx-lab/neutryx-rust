@@ -182,35 +182,8 @@ impl TradeInstrumentType {
     }
 }
 
-/// Asset class categorisation.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum AssetClass {
-    /// Interest rates
-    Rates,
-    /// Foreign exchange
-    Fx,
-    /// Equity
-    Equity,
-    /// Credit
-    Credit,
-    /// Commodity
-    Commodity,
-}
-
-impl AssetClass {
-    /// Returns the display name for this asset class.
-    #[must_use]
-    pub fn display_name(&self) -> &'static str {
-        match self {
-            Self::Rates => "Rates",
-            Self::Fx => "FX",
-            Self::Equity => "Equity",
-            Self::Credit => "Credit",
-            Self::Commodity => "Commodity",
-        }
-    }
-}
+/// Asset class categorisation (re-exported from infra_master).
+pub use infra_master::trade::AssetClass;
 
 // =============================================================================
 // Task 1.2: Instrument Parameter Types

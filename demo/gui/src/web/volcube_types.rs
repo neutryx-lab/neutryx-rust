@@ -116,7 +116,7 @@ impl StrikeAxisType {
 /// Swaption instrument from JSON data file.
 ///
 /// Represents a single market observation point for VolCube construction.
-/// Used for deserialising from `demo/data/input/volsurface/{index}.json`.
+/// Used for deserialising from `demo/data/input/irvol/{index}.json`.
 ///
 /// # Requirements Coverage
 ///
@@ -164,7 +164,7 @@ impl SwaptionInstrument {
 
 /// Complete VolCube data file structure.
 ///
-/// JSON schema for files in `demo/data/input/volsurface/`.
+/// JSON schema for files in `demo/data/input/irvol/`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VolCubeFile {

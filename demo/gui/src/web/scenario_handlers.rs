@@ -353,12 +353,7 @@ fn calculate_irs_npv(
     payment_frequency: &PaymentFrequency,
 ) -> f64 {
     // Get payment frequency as number of payments per year
-    let payments_per_year = match payment_frequency {
-        PaymentFrequency::Annual => 1,
-        PaymentFrequency::SemiAnnual => 2,
-        PaymentFrequency::Quarterly => 4,
-        PaymentFrequency::Monthly => 12,
-    };
+    let payments_per_year = payment_frequency.periods_per_year();
 
     let period = 1.0 / payments_per_year as f64;
     let num_periods = (tenor_years * payments_per_year as f64).round() as usize;

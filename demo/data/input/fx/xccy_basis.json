@@ -1,0 +1,64 @@
+{
+  "metadata": {
+    "description": "Cross Currency Basis Swap spreads",
+    "last_updated": "2026-01-25T00:00:00Z",
+    "version": "1.0"
+  },
+  "basis": {
+    "EURUSD": [
+      { "tenor": "1Y", "value": -0.00085, "index": "ESTR/SOFR" },
+      { "tenor": "2Y", "value": -0.00078, "index": "ESTR/SOFR" },
+      { "tenor": "3Y", "value": -0.00072, "index": "ESTR/SOFR" },
+      { "tenor": "5Y", "value": -0.00065, "index": "ESTR/SOFR" },
+      { "tenor": "7Y", "value": -0.00058, "index": "ESTR/SOFR" },
+      { "tenor": "10Y", "value": -0.00052, "index": "ESTR/SOFR" },
+      { "tenor": "15Y", "value": -0.00048, "index": "ESTR/SOFR" },
+      { "tenor": "20Y", "value": -0.00045, "index": "ESTR/SOFR" },
+      { "tenor": "30Y", "value": -0.00042, "index": "ESTR/SOFR" }
+    ],
+    "USDJPY": [
+      { "tenor": "1Y", "value": -0.00125, "index": "SOFR/TONA" },
+      { "tenor": "2Y", "value": -0.00118, "index": "SOFR/TONA" },
+      { "tenor": "3Y", "value": -0.00112, "index": "SOFR/TONA" },
+      { "tenor": "5Y", "value": -0.00098, "index": "SOFR/TONA" },
+      { "tenor": "7Y", "value": -0.00088, "index": "SOFR/TONA" },
+      { "tenor": "10Y", "value": -0.00078, "index": "SOFR/TONA" },
+      { "tenor": "15Y", "value": -0.00068, "index": "SOFR/TONA" },
+      { "tenor": "20Y", "value": -0.00062, "index": "SOFR/TONA" },
+      { "tenor": "30Y", "value": -0.00055, "index": "SOFR/TONA" }
+    ],
+    "GBPUSD": [
+      { "tenor": "1Y", "value": -0.00045, "index": "SONIA/SOFR" },
+      { "tenor": "2Y", "value": -0.00042, "index": "SONIA/SOFR" },
+      { "tenor": "3Y", "value": -0.00038, "index": "SONIA/SOFR" },
+      { "tenor": "5Y", "value": -0.00032, "index": "SONIA/SOFR" },
+      { "tenor": "7Y", "value": -0.00028, "index": "SONIA/SOFR" },
+      { "tenor": "10Y", "value": -0.00025, "index": "SONIA/SOFR" },
+      { "tenor": "15Y", "value": -0.00022, "index": "SONIA/SOFR" },
+      { "tenor": "20Y", "value": -0.00020, "index": "SONIA/SOFR" },
+      { "tenor": "30Y", "value": -0.00018, "index": "SONIA/SOFR" }
+    ],
+    "EURJPY": [
+      { "tenor": "1Y", "value": -0.00155, "index": "ESTR/TONA" },
+      { "tenor": "2Y", "value": -0.00145, "index": "ESTR/TONA" },
+      { "tenor": "3Y", "value": -0.00135, "index": "ESTR/TONA" },
+      { "tenor": "5Y", "value": -0.00120, "index": "ESTR/TONA" },
+      { "tenor": "7Y", "value": -0.00108, "index": "ESTR/TONA" },
+      { "tenor": "10Y", "value": -0.00095, "index": "ESTR/TONA" },
+      { "tenor": "15Y", "value": -0.00085, "index": "ESTR/TONA" },
+      { "tenor": "20Y", "value": -0.00078, "index": "ESTR/TONA" },
+      { "tenor": "30Y", "value": -0.00070, "index": "ESTR/TONA" }
+    ],
+    "EURGBP": [
+      { "tenor": "1Y", "value": -0.00035, "index": "ESTR/SONIA" },
+      { "tenor": "2Y", "value": -0.00032, "index": "ESTR/SONIA" },
+      { "tenor": "3Y", "value": -0.00028, "index": "ESTR/SONIA" },
+      { "tenor": "5Y", "value": -0.00025, "index": "ESTR/SONIA" },
+      { "tenor": "7Y", "value": -0.00022, "index": "ESTR/SONIA" },
+      { "tenor": "10Y", "value": -0.00020, "index": "ESTR/SONIA" },
+      { "tenor": "15Y", "value": -0.00018, "index": "ESTR/SONIA" },
+      { "tenor": "20Y", "value": -0.00016, "index": "ESTR/SONIA" },
+      { "tenor": "30Y", "value": -0.00015, "index": "ESTR/SONIA" }
+    ]
+  }
+}

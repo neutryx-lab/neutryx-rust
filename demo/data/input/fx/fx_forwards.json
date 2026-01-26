@@ -1,0 +1,49 @@
+{
+  "metadata": {
+    "description": "FX Forward points (pips)",
+    "last_updated": "2026-01-25T00:00:00Z",
+    "version": "1.0"
+  },
+  "forwards": {
+    "EURUSD": [
+      { "tenor": "1W", "points": -2.5 },
+      { "tenor": "1M", "points": -8.5 },
+      { "tenor": "2M", "points": -17.2 },
+      { "tenor": "3M", "points": -26.5 },
+      { "tenor": "6M", "points": -52.8 },
+      { "tenor": "9M", "points": -78.5 },
+      { "tenor": "1Y", "points": -105.2 },
+      { "tenor": "2Y", "points": -198.5 }
+    ],
+    "USDJPY": [
+      { "tenor": "1W", "points": 12.5 },
+      { "tenor": "1M", "points": 52.8 },
+      { "tenor": "2M", "points": 108.5 },
+      { "tenor": "3M", "points": 165.2 },
+      { "tenor": "6M", "points": 335.8 },
+      { "tenor": "9M", "points": 512.5 },
+      { "tenor": "1Y", "points": 695.2 },
+      { "tenor": "2Y", "points": 1425.8 }
+    ],
+    "GBPUSD": [
+      { "tenor": "1W", "points": -1.8 },
+      { "tenor": "1M", "points": -5.2 },
+      { "tenor": "2M", "points": -10.5 },
+      { "tenor": "3M", "points": -16.2 },
+      { "tenor": "6M", "points": -32.5 },
+      { "tenor": "9M", "points": -48.8 },
+      { "tenor": "1Y", "points": -65.2 },
+      { "tenor": "2Y", "points": -125.5 }
+    ],
+    "EURJPY": [
+      { "tenor": "1W", "points": 8.5 },
+      { "tenor": "1M", "points": 35.2 },
+      { "tenor": "2M", "points": 72.5 },
+      { "tenor": "3M", "points": 110.8 },
+      { "tenor": "6M", "points": 225.5 },
+      { "tenor": "9M", "points": 345.2 },
+      { "tenor": "1Y", "points": 468.5 },
+      { "tenor": "2Y", "points": 958.2 }
+    ]
+  }
+}

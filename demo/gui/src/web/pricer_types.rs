@@ -38,19 +38,10 @@ pub enum InstrumentType {
 }
 
 // =============================================================================
-// Option Type Enum
+// Option Type Enum (re-exported from infra_master)
 // =============================================================================
 
-/// Option type (Call or Put).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "lowercase")]
-pub enum OptionType {
-    /// Call option (right to buy)
-    #[default]
-    Call,
-    /// Put option (right to sell)
-    Put,
-}
+pub use infra_master::trade::OptionType;
 
 // =============================================================================
 // Instrument Parameters
@@ -385,23 +376,10 @@ pub struct BootstrapResponse {
 // IRS Pricing Types (Task 1.2: IRS Bootstrap & Risk)
 // =============================================================================
 
-/// Payment frequency for IRS legs.
+/// Payment frequency for IRS legs (re-exported from infra_master).
 ///
-/// Determines how often payments are made on the swap.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
-#[cfg_attr(feature = "openapi", derive(utoipa::ToSchema))]
-#[serde(rename_all = "snake_case")]
-pub enum PaymentFrequency {
-    /// Annual payments (once per year)
-    #[default]
-    Annual,
-    /// Semi-annual payments (twice per year)
-    SemiAnnual,
-    /// Quarterly payments (four times per year)
-    Quarterly,
-    /// Monthly payments (twelve times per year)
-    Monthly,
-}
+/// Note: Frequency also includes Daily and Weekly variants.
+pub use infra_master::time::Frequency as PaymentFrequency;
 
 /// IRS pricing request using a bootstrapped curve.
 ///
@@ -872,9 +850,6 @@ impl ValidationError {
 // =============================================================================
 // Validation Functions (Task 1.4: IRS Bootstrap & Risk)
 // =============================================================================
-
-/// Valid tenor strings for IRS Bootstrap.
-pub const VALID_TENORS: [&str; 9] = ["1Y", "2Y", "3Y", "5Y", "7Y", "10Y", "15Y", "20Y", "30Y"];
 
 /// Maximum tenor years allowed.
 pub const MAX_TENOR_YEARS: f64 = 50.0;
@@ -2397,45 +2372,12 @@ pub struct ScenarioCompareResponse {
 // GenericPricer API Types (demo-webapp-pricer Task 1.1, 1.2)
 // =============================================================================
 
-/// Direction enum for leg payments.
-///
-/// Maps to GenericPricer's Direction type.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum DirectionInput {
-    /// Payer: pays this leg's cashflows (negative NPV contribution).
-    Payer,
-    /// Receiver: receives this leg's cashflows (positive NPV contribution).
-    #[default]
-    Receiver,
-}
+/// Direction enum for leg payments (re-exported from infra_master).
+pub use infra_master::trade::Direction as DirectionInput;
 
-/// Supported currencies for GenericPricer.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "UPPERCASE")]
-pub enum CurrencyInput {
-    /// US Dollar
-    #[default]
-    USD,
-    /// Euro
-    EUR,
-    /// Japanese Yen
-    JPY,
-    /// British Pound
-    GBP,
-}
-
-impl CurrencyInput {
-    /// Returns the ISO 4217 currency code.
-    pub fn code(&self) -> &'static str {
-        match self {
-            Self::USD => "USD",
-            Self::EUR => "EUR",
-            Self::JPY => "JPY",
-            Self::GBP => "GBP",
-        }
-    }
-}
+/// Supported currencies for GenericPricer (re-exported from infra_master).
+/// Note: Also includes CHF in addition to USD, EUR, JPY, GBP.
+pub use infra_master::Currency as CurrencyInput;
 
 /// Cashflow input for GenericPricer.
 ///
@@ -3862,9 +3804,10 @@ mod tests {
         }
 
         #[test]
-        fn test_default_is_annual() {
+        fn test_default_is_monthly() {
+            // Note: PaymentFrequency is now Frequency from infra_master, which defaults to Monthly
             let default_freq = PaymentFrequency::default();
-            assert_eq!(default_freq, PaymentFrequency::Annual);
+            assert_eq!(default_freq, PaymentFrequency::Monthly);
         }
     }
 
@@ -5095,13 +5038,6 @@ mod tests {
         fn test_parse_tenor_to_years_fractional() {
             assert!((parse_tenor_to_years("0.5Y").unwrap() - 0.5).abs() < 1e-10);
             assert!((parse_tenor_to_years("1.5Y").unwrap() - 1.5).abs() < 1e-10);
-        }
-
-        #[test]
-        fn test_valid_tenors_constant() {
-            assert_eq!(VALID_TENORS.len(), 9);
-            assert!(VALID_TENORS.contains(&"1Y"));
-            assert!(VALID_TENORS.contains(&"30Y"));
         }
 
         #[test]

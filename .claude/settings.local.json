@@ -215,7 +215,8 @@
       "Bash(copy /b \"f:\\\\Codes\\\\neutryx-rust\\\\neutryx-rust\\\\demo\\\\gui\\\\src\\\\web\\\\fxvol_handlers.rs\"+,, \"f:\\\\Codes\\\\neutryx-rust\\\\neutryx-rust\\\\demo\\\\gui\\\\src\\\\web\\\\fxvol_handlers.rs\")",
       "Bash(RUSTFLAGS=\"-W dead_code\" cargo check:*)",
       "Skill(kiro:validate-gap)",
-      "Skill(kiro:validate-gap:*)"
+      "Skill(kiro:validate-gap:*)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\khosh\\\\Codes\\\\neutryx-rust\\\\demo\\\\data\\\\input\" -Recurse -Name)"
     ]
   }
 }

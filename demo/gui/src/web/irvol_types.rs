@@ -390,15 +390,8 @@ pub struct CapFloorVolQuote {
     pub vol_type: VolQuoteType,
 }
 
-/// Cap or Floor.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum CapFloorType {
-    /// Interest rate cap.
-    Cap,
-    /// Interest rate floor.
-    Floor,
-}
+/// Re-export CapFloorType from infra_master.
+pub use infra_master::trade::instrument_def::CapFloorType;
 
 // =============================================================================
 // Tests

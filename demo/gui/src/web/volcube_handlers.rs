@@ -125,7 +125,7 @@ impl Default for VolCubeCache {
 /// # Requirements Coverage
 ///
 /// - Requirement 1.4:
-///   `demo/data/input/volsurface/`ディレクトリからデータ読み込み
+///   `demo/data/input/irvol/`ディレクトリからデータ読み込み
 /// - Requirement 1.5:
 ///   ファイルが存在しないか不正な形式の場合、適切なエラーメッセージ
 pub struct VolCubeDataLoader {
@@ -137,7 +137,7 @@ impl VolCubeDataLoader {
     pub fn new(base_path: PathBuf) -> Self { Self { base_path } }
 
     /// Create a VolCubeDataLoader with the default path.
-    pub fn default_path() -> Self { Self::new(PathBuf::from("demo/data/input/volsurface")) }
+    pub fn default_path() -> Self { Self::new(PathBuf::from("demo/data/input/irvol")) }
 
     /// Get the list of available swaption indices.
     ///
@@ -1061,7 +1061,7 @@ mod tests {
     #[test]
     fn test_volcube_data_loader_default() {
         let loader = VolCubeDataLoader::default_path();
-        assert!(loader.base_path.ends_with("demo/data/input/volsurface"));
+        assert!(loader.base_path.ends_with("demo/data/input/irvol"));
     }
 
     #[test]

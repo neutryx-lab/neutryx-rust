@@ -532,6 +532,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
 
     // Market Data API routes (market-data-viewer-webapp Task 3.5)
     let market_routes = Router::new()
+        .route("/indices", get(market_handlers::get_indices))
         .route("/rates", get(market_handlers::get_market_rates))
         .route(
             "/rates/refresh",

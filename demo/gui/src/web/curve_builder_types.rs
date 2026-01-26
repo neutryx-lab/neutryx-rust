@@ -189,7 +189,7 @@ impl InstrumentType {
 /// Instrument definition from JSON file.
 ///
 /// Used for deserializing instrument data from
-/// `demo/data/input/curves/{index}.json`.
+/// `demo/data/input/rates/{index}.json`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct InstrumentFileEntry {

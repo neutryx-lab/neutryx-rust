@@ -42,14 +42,20 @@ RUN echo "=== Verifying static files ===" && \
     echo "=== Verifying data files ===" && \
     ls -la ./demo/data/input/ && \
     test -f ./demo/data/input/demo_portfolio.json || (echo "ERROR: demo_portfolio.json missing" && exit 1) && \
-    echo "=== Verifying curves data directory ===" && \
-    test -d ./demo/data/input/curves || (echo "ERROR: curves directory missing" && exit 1) && \
-    ls -la ./demo/data/input/curves/ && \
-    test -f ./demo/data/input/curves/usd-sofr.json || (echo "ERROR: usd-sofr.json missing" && exit 1) && \
-    echo "=== Verifying volsurface data directory ===" && \
-    test -d ./demo/data/input/volsurface || (echo "ERROR: volsurface directory missing" && exit 1) && \
-    ls -la ./demo/data/input/volsurface/ && \
-    test -f ./demo/data/input/volsurface/usd-sofr-swaption.json || (echo "ERROR: usd-sofr-swaption.json missing" && exit 1) && \
+    echo "=== Verifying rates data directory ===" && \
+    test -d ./demo/data/input/rates || (echo "ERROR: rates directory missing" && exit 1) && \
+    ls -la ./demo/data/input/rates/ && \
+    test -f ./demo/data/input/rates/usd-sofr.json || (echo "ERROR: usd-sofr.json missing" && exit 1) && \
+    echo "=== Verifying irvol data directory ===" && \
+    test -d ./demo/data/input/irvol || (echo "ERROR: irvol directory missing" && exit 1) && \
+    ls -la ./demo/data/input/irvol/ && \
+    test -f ./demo/data/input/irvol/usd-sofr-swaption.json || (echo "ERROR: usd-sofr-swaption.json missing" && exit 1) && \
+    echo "=== Verifying fxvol data directory ===" && \
+    test -d ./demo/data/input/fxvol || (echo "ERROR: fxvol directory missing" && exit 1) && \
+    ls -la ./demo/data/input/fxvol/ && \
+    echo "=== Verifying events data directory ===" && \
+    test -d ./demo/data/input/events || (echo "ERROR: events directory missing" && exit 1) && \
+    ls -la ./demo/data/input/events/ && \
     echo "=== All critical files verified ==="
 
 ENV RUST_LOG=info

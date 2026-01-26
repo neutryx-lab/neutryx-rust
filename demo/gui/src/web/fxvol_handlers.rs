@@ -171,7 +171,7 @@ impl FxVolDataLoader {
     pub fn new(base_path: PathBuf) -> Self { Self { base_path } }
 
     /// Create a FxVolDataLoader with the default path.
-    pub fn default_path() -> Self { Self::new(PathBuf::from("demo/data/input/volsurface")) }
+    pub fn default_path() -> Self { Self::new(PathBuf::from("demo/data/input/fxvol")) }
 
     /// Get the list of available FX currency pairs.
     ///
@@ -1351,7 +1351,7 @@ mod tests {
     #[test]
     fn test_fxvol_data_loader_default() {
         let loader = FxVolDataLoader::default_path();
-        assert!(loader.base_path.ends_with("demo/data/input/volsurface"));
+        assert!(loader.base_path.ends_with("demo/data/input/fxvol"));
     }
 
     #[test]

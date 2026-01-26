@@ -12,15 +12,16 @@
 //!
 //! # Endpoints
 //!
-//! | Method | Path                      | Description                    |
-//! |--------|---------------------------|--------------------------------|
-//! | GET    | /api/market/rates         | List all rates (filterable)    |
-//! | GET    | /api/market/rates/:id     | Get rate detail with instrument|
-//! | POST   | /api/market/rates/refresh | Refresh rate data              |
-//! | GET    | /api/market/conventions   | List all conventions           |
-//! | GET    | /api/market/conventions/:id | Get convention detail        |
-//! | GET    | /api/market/export/csv    | Export rates as CSV            |
-//! | GET    | /api/market/export/json   | Export rates as JSON           |
+//! | Method | Path                        | Description                    |
+//! |--------|-----------------------------|--------------------------------|
+//! | GET    | /api/market/indices         | Get all available indices      |
+//! | GET    | /api/market/rates           | List all rates (filterable)    |
+//! | GET    | /api/market/rates/:id       | Get rate detail with instrument|
+//! | POST   | /api/market/rates/refresh   | Refresh rate data              |
+//! | GET    | /api/market/conventions     | List all conventions           |
+//! | GET    | /api/market/conventions/:id | Get convention detail          |
+//! | GET    | /api/market/export/csv      | Export rates as CSV            |
+//! | GET    | /api/market/export/json     | Export rates as JSON           |
 
 use std::{fmt::Write as _, sync::Arc};
 
@@ -195,6 +196,40 @@ pub async fn get_market_config() -> Json<MarketConfigResponse> {
     Json(MarketConfigResponse {
         tenor_order: infra_master::time::Tenor::all_codes().to_vec(),
     })
+}
+
+// =============================================================================
+// GET /api/market/indices - Get all available indices
+// =============================================================================
+
+/// Path to the indices JSON file.
+const INDICES_FILE: &str = "demo/data/input/indices.json";
+
+/// Get all available market data indices.
+///
+/// Returns the master index of all available market data categorised by type
+/// (rates, fx, irvol, fxvol, events).
+///
+/// # Returns
+///
+/// JSON object with all available indices.
+pub async fn get_indices() -> Result<Json<serde_json::Value>, (StatusCode, Json<MarketDataApiError>)> {
+    match std::fs::read_to_string(INDICES_FILE) {
+        Ok(content) => match serde_json::from_str(&content) {
+            Ok(data) => Ok(Json(data)),
+            Err(e) => Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(MarketDataApiError::internal(&format!(
+                    "Failed to parse indices file: {}",
+                    e
+                ))),
+            )),
+        },
+        Err(_) => Err((
+            StatusCode::NOT_FOUND,
+            Json(MarketDataApiError::not_found("indices", "indices.json")),
+        )),
+    }
 }
 
 // =============================================================================
