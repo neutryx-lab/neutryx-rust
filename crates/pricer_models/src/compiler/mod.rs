@@ -19,11 +19,15 @@
 //! - [`IndexMapper`]: Maps rate indices and currencies to numeric IDs
 //! - [`LinearProductsCompiler`]: Implementation for linear IR products
 //! - [`XCcyCompiler`]: Implementation for cross-currency products
+//! - [`ExoticCompiler`]: Implementation for path-dependent products (barriers,
+//!   Asians)
 
+mod exotic;
 mod index_mapper;
 mod linear;
 mod xccy;
 
+pub use exotic::ExoticCompiler;
 pub use index_mapper::IndexMapper;
 pub use linear::LinearProductsCompiler;
 use pricer_core::ir::{CompileError, PricingKernel};

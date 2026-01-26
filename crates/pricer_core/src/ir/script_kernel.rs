@@ -154,21 +154,15 @@ impl ScriptKernel {
 
     /// Returns the number of observation times.
     #[must_use]
-    pub fn observation_count(&self) -> usize {
-        self.observation_count
-    }
+    pub fn observation_count(&self) -> usize { self.observation_count }
 
     /// Returns the number of operations.
     #[must_use]
-    pub fn op_count(&self) -> usize {
-        self.ops.len()
-    }
+    pub fn op_count(&self) -> usize { self.ops.len() }
 
     /// Returns true if the kernel is empty.
     #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.ops.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.ops.is_empty() }
 
     /// Returns the constant at the given index.
     ///
@@ -177,9 +171,7 @@ impl ScriptKernel {
     /// Panics if index is out of bounds.
     #[inline]
     #[must_use]
-    pub fn constant(&self, idx: u16) -> f64 {
-        self.constants[idx as usize]
-    }
+    pub fn constant(&self, idx: u16) -> f64 { self.constants[idx as usize] }
 
     /// Returns the observation time at the given index.
     ///
@@ -188,20 +180,18 @@ impl ScriptKernel {
     /// Panics if index is out of bounds.
     #[inline]
     #[must_use]
-    pub fn observation_time(&self, idx: usize) -> f64 {
-        self.observation_times[idx]
-    }
+    pub fn observation_time(&self, idx: usize) -> f64 { self.observation_times[idx] }
 
     /// Returns the final observation time (maturity).
     #[must_use]
-    pub fn maturity(&self) -> Option<f64> {
-        self.observation_times.last().copied()
-    }
+    pub fn maturity(&self) -> Option<f64> { self.observation_times.last().copied() }
 
     /// Checks if the kernel contains any barrier operations.
     #[must_use]
     pub fn has_barriers(&self) -> bool {
-        self.ops.iter().any(|op| matches!(op, ScriptOp::CheckBarrier { .. }))
+        self.ops
+            .iter()
+            .any(|op| matches!(op, ScriptOp::CheckBarrier { .. }))
     }
 
     /// Checks if the kernel contains accumulation operations (Asian-style).
@@ -340,27 +330,19 @@ pub enum BarrierType {
 impl BarrierType {
     /// Returns true if this is an "In" barrier (knock-in).
     #[must_use]
-    pub fn is_knock_in(&self) -> bool {
-        matches!(self, BarrierType::UpIn | BarrierType::DownIn)
-    }
+    pub fn is_knock_in(&self) -> bool { matches!(self, BarrierType::UpIn | BarrierType::DownIn) }
 
     /// Returns true if this is an "Out" barrier (knock-out).
     #[must_use]
-    pub fn is_knock_out(&self) -> bool {
-        matches!(self, BarrierType::UpOut | BarrierType::DownOut)
-    }
+    pub fn is_knock_out(&self) -> bool { matches!(self, BarrierType::UpOut | BarrierType::DownOut) }
 
     /// Returns true if this is an "Up" barrier.
     #[must_use]
-    pub fn is_up(&self) -> bool {
-        matches!(self, BarrierType::UpIn | BarrierType::UpOut)
-    }
+    pub fn is_up(&self) -> bool { matches!(self, BarrierType::UpIn | BarrierType::UpOut) }
 
     /// Returns true if this is a "Down" barrier.
     #[must_use]
-    pub fn is_down(&self) -> bool {
-        matches!(self, BarrierType::DownIn | BarrierType::DownOut)
-    }
+    pub fn is_down(&self) -> bool { matches!(self, BarrierType::DownIn | BarrierType::DownOut) }
 }
 
 impl std::fmt::Display for BarrierType {
@@ -405,9 +387,7 @@ pub struct ScriptKernelBuilder {
 impl ScriptKernelBuilder {
     /// Creates a new builder.
     #[must_use]
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Sets the trade ID.
     #[must_use]
@@ -460,13 +440,10 @@ impl ScriptKernelBuilder {
     /// Returns error if observation_times or ops is empty.
     pub fn build(mut self) -> Result<ScriptKernel, super::CompileError> {
         // Sort observation times
-        self.observation_times.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        self.observation_times
+            .sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
-        let mut kernel = ScriptKernel::new(
-            self.observation_times,
-            self.ops,
-            self.constants,
-        )?;
+        let mut kernel = ScriptKernel::new(self.observation_times, self.ops, self.constants)?;
         kernel.trade_id = self.trade_id;
         Ok(kernel)
     }
@@ -480,7 +457,13 @@ mod tests {
     fn test_script_kernel_new() {
         let kernel = ScriptKernel::new(
             vec![0.25, 0.5, 0.75, 1.0],
-            vec![ScriptOp::Accumulate, ScriptOp::Pay { ccy_id: 0, dc_id: 0 }],
+            vec![
+                ScriptOp::Accumulate,
+                ScriptOp::Pay {
+                    ccy_id: 0,
+                    dc_id: 0,
+                },
+            ],
             vec![100.0, 1.05],
         )
         .expect("Valid kernel");
@@ -501,7 +484,10 @@ mod tests {
     fn test_script_kernel_error_no_observations() {
         let result = ScriptKernel::new(
             vec![],
-            vec![ScriptOp::Pay { ccy_id: 0, dc_id: 0 }],
+            vec![ScriptOp::Pay {
+                ccy_id: 0,
+                dc_id: 0,
+            }],
             vec![],
         );
         assert!(result.is_err());
@@ -517,7 +503,10 @@ mod tests {
     fn test_script_kernel_with_trade_id() {
         let kernel = ScriptKernel::new(
             vec![1.0],
-            vec![ScriptOp::Pay { ccy_id: 0, dc_id: 0 }],
+            vec![ScriptOp::Pay {
+                ccy_id: 0,
+                dc_id: 0,
+            }],
             vec![],
         )
         .expect("Valid kernel")
@@ -544,7 +533,10 @@ mod tests {
     fn test_script_kernel_maturity() {
         let kernel = ScriptKernel::new(
             vec![0.25, 0.5, 0.75, 1.0],
-            vec![ScriptOp::Pay { ccy_id: 0, dc_id: 0 }],
+            vec![ScriptOp::Pay {
+                ccy_id: 0,
+                dc_id: 0,
+            }],
             vec![],
         )
         .expect("Valid kernel");
@@ -561,7 +553,10 @@ mod tests {
                     barrier_idx: 0,
                     barrier_type: BarrierType::UpOut,
                 },
-                ScriptOp::Pay { ccy_id: 0, dc_id: 0 },
+                ScriptOp::Pay {
+                    ccy_id: 0,
+                    dc_id: 0,
+                },
             ],
             vec![105.0],
         )
@@ -569,7 +564,10 @@ mod tests {
 
         let kernel_no_barrier = ScriptKernel::new(
             vec![1.0],
-            vec![ScriptOp::Pay { ccy_id: 0, dc_id: 0 }],
+            vec![ScriptOp::Pay {
+                ccy_id: 0,
+                dc_id: 0,
+            }],
             vec![],
         )
         .expect("Valid kernel");
@@ -586,7 +584,10 @@ mod tests {
                 ScriptOp::Accumulate,
                 ScriptOp::Accumulate,
                 ScriptOp::CalcAverage,
-                ScriptOp::Pay { ccy_id: 0, dc_id: 0 },
+                ScriptOp::Pay {
+                    ccy_id: 0,
+                    dc_id: 0,
+                },
             ],
             vec![],
         )
@@ -648,7 +649,10 @@ mod tests {
                 is_call: true,
             })
             .push_op(ScriptOp::ApplyNotional { notional_idx })
-            .push_op(ScriptOp::Pay { ccy_id: 0, dc_id: 0 })
+            .push_op(ScriptOp::Pay {
+                ccy_id: 0,
+                dc_id: 0,
+            })
             .build()
             .expect("Valid kernel");
 
@@ -681,7 +685,10 @@ mod tests {
                 is_call: true,
             })
             .push_op(ScriptOp::ApplyNotional { notional_idx })
-            .push_op(ScriptOp::Pay { ccy_id: 0, dc_id: 0 })
+            .push_op(ScriptOp::Pay {
+                ccy_id: 0,
+                dc_id: 0,
+            })
             .build()
             .expect("Valid kernel");
 
@@ -693,7 +700,10 @@ mod tests {
     fn test_script_kernel_clone() {
         let kernel = ScriptKernel::new(
             vec![1.0],
-            vec![ScriptOp::Pay { ccy_id: 0, dc_id: 0 }],
+            vec![ScriptOp::Pay {
+                ccy_id: 0,
+                dc_id: 0,
+            }],
             vec![100.0],
         )
         .expect("Valid kernel");
@@ -707,7 +717,10 @@ mod tests {
     fn test_script_kernel_debug() {
         let kernel = ScriptKernel::new(
             vec![1.0],
-            vec![ScriptOp::Pay { ccy_id: 0, dc_id: 0 }],
+            vec![ScriptOp::Pay {
+                ccy_id: 0,
+                dc_id: 0,
+            }],
             vec![],
         )
         .expect("Valid kernel");
@@ -768,7 +781,10 @@ mod tests {
             .add_observation_time(0.25)
             .add_observation_time(0.75)
             .add_observation_time(0.5)
-            .push_op(ScriptOp::Pay { ccy_id: 0, dc_id: 0 })
+            .push_op(ScriptOp::Pay {
+                ccy_id: 0,
+                dc_id: 0,
+            })
             .build()
             .expect("Valid kernel");
 

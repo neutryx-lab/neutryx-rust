@@ -151,7 +151,7 @@
   - BarrierType列挙型（UpIn, UpOut, DownIn, DownOut）
   - _Requirements: 6.1, 6.2_
 
-- [ ] 9.2 ExoticCompiler（Barrier/Asian）
+- [x] 9.2 ExoticCompiler（Barrier/Asian）
   - バリアオプション/アジアンオプションをScriptKernelにコンパイルする
   - バリア: CheckBarrierオペレーション生成
   - アジアン: Accumulateオペレーション生成

@@ -184,33 +184,23 @@ impl SimpleYieldCurve {
 
     /// Return the number of pillar points.
     #[inline]
-    pub fn len(&self) -> usize {
-        self.rates.len()
-    }
+    pub fn len(&self) -> usize { self.rates.len() }
 
     /// Return whether the curve is empty.
     #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.rates.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.rates.is_empty() }
 
     /// Get rates as a slice (for kernel functions).
     #[inline]
-    pub fn rates_slice(&self) -> &[f64] {
-        &self.rates
-    }
+    pub fn rates_slice(&self) -> &[f64] { &self.rates }
 
     /// Get times as a slice (for kernel functions).
     #[inline]
-    pub fn times_slice(&self) -> &[f64] {
-        &self.times
-    }
+    pub fn times_slice(&self) -> &[f64] { &self.times }
 
     /// Get mutable rates slice (for gradient accumulation).
     #[inline]
-    pub fn rates_slice_mut(&mut self) -> &mut [f64] {
-        &mut self.rates
-    }
+    pub fn rates_slice_mut(&mut self) -> &mut [f64] { &mut self.rates }
 }
 
 impl Shadow for SimpleYieldCurve {
@@ -266,11 +256,7 @@ impl SimpleVolSurface {
     /// Panics if dimensions are inconsistent.
     #[inline]
     pub fn new(vols: Vec<Vec<f64>>, strikes: Vec<f64>, expiries: Vec<f64>) -> Self {
-        assert_eq!(
-            vols.len(),
-            expiries.len(),
-            "vols rows must match expiries"
-        );
+        assert_eq!(vols.len(), expiries.len(), "vols rows must match expiries");
         for (i, row) in vols.iter().enumerate() {
             assert_eq!(
                 row.len(),
@@ -288,15 +274,11 @@ impl SimpleVolSurface {
 
     /// Return the number of expiries.
     #[inline]
-    pub fn n_expiries(&self) -> usize {
-        self.expiries.len()
-    }
+    pub fn n_expiries(&self) -> usize { self.expiries.len() }
 
     /// Return the number of strikes.
     #[inline]
-    pub fn n_strikes(&self) -> usize {
-        self.strikes.len()
-    }
+    pub fn n_strikes(&self) -> usize { self.strikes.len() }
 
     /// Get volatility at (expiry_idx, strike_idx).
     #[inline]
@@ -313,9 +295,7 @@ impl SimpleVolSurface {
     /// Flatten vols to a single slice for kernel functions.
     ///
     /// Returns row-major order: `[row0, row1, ...]`
-    pub fn vols_flat(&self) -> Vec<f64> {
-        self.vols.iter().flatten().copied().collect()
-    }
+    pub fn vols_flat(&self) -> Vec<f64> { self.vols.iter().flatten().copied().collect() }
 }
 
 impl Shadow for SimpleVolSurface {
@@ -551,5 +531,247 @@ mod tests {
         for &v in &vec {
             assert_eq!(v, 0.0);
         }
+    }
+
+    // =========================================================================
+    // Task 1.2: Market data structure Shadow tests (Requirements 1.5, 6.1-6.5)
+    // =========================================================================
+
+    #[test]
+    fn test_simple_yield_curve_new() {
+        let curve = SimpleYieldCurve::new(vec![0.02, 0.03, 0.04], vec![1.0, 2.0, 5.0]);
+
+        assert_eq!(curve.len(), 3);
+        assert!(!curve.is_empty());
+        assert_eq!(curve.rates_slice(), &[0.02, 0.03, 0.04]);
+        assert_eq!(curve.times_slice(), &[1.0, 2.0, 5.0]);
+    }
+
+    #[test]
+    fn test_simple_yield_curve_zero_out() {
+        // Requirement 6.2: Gradient mapping
+        let mut curve = SimpleYieldCurve::new(vec![0.02, 0.03, 0.04], vec![1.0, 2.0, 5.0]);
+
+        curve.zero_out();
+
+        // Rates are zeroed (active)
+        assert_eq!(curve.rates, vec![0.0, 0.0, 0.0]);
+        // Times are NOT zeroed (const)
+        assert_eq!(curve.times, vec![1.0, 2.0, 5.0]);
+    }
+
+    #[test]
+    fn test_simple_yield_curve_create_shadow() {
+        // Requirement 6.1: Identical field structure
+        let original = SimpleYieldCurve::new(vec![0.02, 0.03, 0.04], vec![1.0, 2.0, 5.0]);
+
+        let shadow = original.create_shadow();
+
+        // Structure preserved
+        assert_eq!(shadow.len(), original.len());
+        assert_eq!(shadow.times, original.times);
+
+        // Rates zeroed
+        for &r in &shadow.rates {
+            assert_eq!(r, 0.0);
+        }
+
+        // Original unchanged
+        assert_eq!(original.rates, vec![0.02, 0.03, 0.04]);
+    }
+
+    #[test]
+    fn test_simple_yield_curve_gradient_mapping() {
+        // Requirement 6.2: d_market.rates[i] corresponds to market.rates[i]
+        let market = SimpleYieldCurve::new(vec![0.02, 0.03, 0.04], vec![1.0, 2.0, 5.0]);
+        let mut d_market = market.create_shadow();
+
+        // Simulate gradient accumulation
+        d_market.rates[0] = 1.5;
+        d_market.rates[1] = 2.3;
+        d_market.rates[2] = 0.7;
+
+        // Gradients accessible at same indices
+        assert_eq!(d_market.rates[0], 1.5);
+        assert_eq!(d_market.rates[1], 2.3);
+        assert_eq!(d_market.rates[2], 0.7);
+    }
+
+    #[test]
+    fn test_simple_vol_surface_new() {
+        let surface = SimpleVolSurface::new(
+            vec![vec![0.20, 0.22, 0.25], vec![0.21, 0.23, 0.26]],
+            vec![90.0, 100.0, 110.0],
+            vec![0.5, 1.0],
+        );
+
+        assert_eq!(surface.n_expiries(), 2);
+        assert_eq!(surface.n_strikes(), 3);
+        assert_eq!(surface.vol(0, 1), 0.22);
+        assert_eq!(surface.vol(1, 2), 0.26);
+    }
+
+    #[test]
+    fn test_simple_vol_surface_zero_out() {
+        let mut surface = SimpleVolSurface::new(
+            vec![vec![0.20, 0.22, 0.25], vec![0.21, 0.23, 0.26]],
+            vec![90.0, 100.0, 110.0],
+            vec![0.5, 1.0],
+        );
+
+        surface.zero_out();
+
+        // Vols are zeroed (active)
+        for row in &surface.vols {
+            for &v in row {
+                assert_eq!(v, 0.0);
+            }
+        }
+
+        // Strikes and expiries are NOT zeroed (const)
+        assert_eq!(surface.strikes, vec![90.0, 100.0, 110.0]);
+        assert_eq!(surface.expiries, vec![0.5, 1.0]);
+    }
+
+    #[test]
+    fn test_simple_vol_surface_create_shadow() {
+        // Requirement 6.1: Identical structure
+        let original = SimpleVolSurface::new(
+            vec![vec![0.20, 0.22, 0.25], vec![0.21, 0.23, 0.26]],
+            vec![90.0, 100.0, 110.0],
+            vec![0.5, 1.0],
+        );
+
+        let shadow = original.create_shadow();
+
+        // Structure preserved
+        assert_eq!(shadow.n_expiries(), original.n_expiries());
+        assert_eq!(shadow.n_strikes(), original.n_strikes());
+        assert_eq!(shadow.strikes, original.strikes);
+        assert_eq!(shadow.expiries, original.expiries);
+
+        // Vols zeroed
+        for row in &shadow.vols {
+            for &v in row {
+                assert_eq!(v, 0.0);
+            }
+        }
+
+        // Original unchanged
+        assert_eq!(original.vol(0, 0), 0.20);
+    }
+
+    #[test]
+    fn test_simple_vol_surface_vols_flat() {
+        let surface = SimpleVolSurface::new(
+            vec![vec![0.20, 0.22], vec![0.21, 0.23]],
+            vec![100.0, 110.0],
+            vec![0.5, 1.0],
+        );
+
+        let flat = surface.vols_flat();
+        assert_eq!(flat, vec![0.20, 0.22, 0.21, 0.23]);
+    }
+
+    #[test]
+    fn test_simple_market_data_discount_only() {
+        let curve = SimpleYieldCurve::new(vec![0.02, 0.03], vec![1.0, 2.0]);
+        let market = SimpleMarketData::with_discount_curve(curve);
+
+        assert!(market.forward_curve.is_none());
+        assert!(market.vol_surface.is_none());
+    }
+
+    #[test]
+    fn test_simple_market_data_full() {
+        let discount = SimpleYieldCurve::new(vec![0.02, 0.03], vec![1.0, 2.0]);
+        let forward = SimpleYieldCurve::new(vec![0.025, 0.035], vec![1.0, 2.0]);
+        let vol = SimpleVolSurface::new(
+            vec![vec![0.20, 0.22], vec![0.21, 0.23]],
+            vec![100.0, 110.0],
+            vec![0.5, 1.0],
+        );
+
+        let market = SimpleMarketData::with_discount_curve(discount)
+            .with_forward_curve(forward)
+            .with_vol_surface(vol);
+
+        assert!(market.forward_curve.is_some());
+        assert!(market.vol_surface.is_some());
+    }
+
+    #[test]
+    fn test_simple_market_data_zero_out() {
+        // Requirement 1.5: Nested structure support
+        let discount = SimpleYieldCurve::new(vec![0.02, 0.03], vec![1.0, 2.0]);
+        let forward = SimpleYieldCurve::new(vec![0.025, 0.035], vec![1.0, 2.0]);
+        let vol = SimpleVolSurface::new(
+            vec![vec![0.20, 0.22], vec![0.21, 0.23]],
+            vec![100.0, 110.0],
+            vec![0.5, 1.0],
+        );
+
+        let mut market = SimpleMarketData::with_discount_curve(discount)
+            .with_forward_curve(forward)
+            .with_vol_surface(vol);
+
+        market.zero_out();
+
+        // All active inputs are zeroed
+        assert_eq!(market.discount_curve.rates, vec![0.0, 0.0]);
+        assert_eq!(market.forward_curve.as_ref().unwrap().rates, vec![0.0, 0.0]);
+        for row in &market.vol_surface.as_ref().unwrap().vols {
+            for &v in row {
+                assert_eq!(v, 0.0);
+            }
+        }
+
+        // Const inputs are preserved
+        assert_eq!(market.discount_curve.times, vec![1.0, 2.0]);
+        assert_eq!(
+            market.vol_surface.as_ref().unwrap().strikes,
+            vec![100.0, 110.0]
+        );
+    }
+
+    #[test]
+    fn test_simple_market_data_create_shadow() {
+        // Requirement 6.5: Multiple curves preserve identity
+        let discount = SimpleYieldCurve::new(vec![0.02, 0.03], vec![1.0, 2.0]);
+        let forward = SimpleYieldCurve::new(vec![0.025, 0.035], vec![1.0, 2.0]);
+
+        let market = SimpleMarketData::with_discount_curve(discount).with_forward_curve(forward);
+
+        let shadow = market.create_shadow();
+
+        // Curve identity preserved
+        assert_eq!(shadow.discount_curve.len(), market.discount_curve.len());
+        assert_eq!(
+            shadow.forward_curve.as_ref().unwrap().len(),
+            market.forward_curve.as_ref().unwrap().len()
+        );
+
+        // Active inputs zeroed
+        assert_eq!(shadow.discount_curve.rates, vec![0.0, 0.0]);
+        assert_eq!(shadow.forward_curve.as_ref().unwrap().rates, vec![0.0, 0.0]);
+
+        // Original unchanged
+        assert_eq!(market.discount_curve.rates, vec![0.02, 0.03]);
+    }
+
+    #[test]
+    fn test_gradient_named_field_access() {
+        // Requirement 6.4: Named field access for gradients
+        let market = SimpleMarketData::with_discount_curve(SimpleYieldCurve::new(
+            vec![0.02, 0.03],
+            vec![1.0, 2.0],
+        ));
+
+        let mut d_market = market.create_shadow();
+
+        // Access gradients via named fields
+        d_market.discount_curve.rates[0] = 1.5;
+
+        assert_eq!(d_market.discount_curve.rates[0], 1.5);
     }
 }
