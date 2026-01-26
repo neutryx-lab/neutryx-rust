@@ -2,11 +2,113 @@
 //!
 //! This module provides `IndexMapper` which converts rate indices,
 //! currencies, and curves to numeric IDs for the SoA kernel format.
+//!
+//! # CMS Index Support
+//!
+//! CMS (Constant Maturity Swap) indices are supported via [`CmsIndex`].
+//! CMS indices are registered in the same ID space as forward indices,
+//! allowing unified processing in the pricing kernel. The market data
+//! provider is responsible for applying convexity adjustments when
+//! returning rates for CMS index IDs.
+//!
+//! ```
+//! use pricer_models::compiler::{IndexMapper, CmsIndex};
+//! use infra_master::time::Tenor;
+//! use infra_master::Currency;
+//!
+//! let mut mapper = IndexMapper::new();
+//!
+//! // Register a CMS index (10Y USD swap rate)
+//! let cms10y = CmsIndex::new(Currency::USD, Tenor::TenYears);
+//! let cms_id = mapper.register_cms_index(cms10y);
+//!
+//! // CMS indices share the same ID space as forward indices
+//! assert!(cms_id > 0); // 0 is reserved for dummy
+//! ```
 
 use std::collections::HashMap;
 
-use infra_master::{Currency, RateIndex};
+use infra_master::{time::Tenor, Currency, RateIndex};
 use pricer_core::{ir::CompileError, types::FxPair};
+
+/// CMS (Constant Maturity Swap) index definition.
+///
+/// Represents a CMS rate index for a specific currency and swap tenor.
+/// CMS rates require convexity adjustment when used in pricing, which
+/// is handled transparently by the `CurveProvider`.
+///
+/// # Examples
+///
+/// ```
+/// use pricer_models::compiler::CmsIndex;
+/// use infra_master::{time::Tenor, Currency};
+///
+/// // 10Y USD CMS rate
+/// let cms10y = CmsIndex::new(Currency::USD, Tenor::TenYears);
+/// assert_eq!(cms10y.currency(), Currency::USD);
+/// assert_eq!(cms10y.swap_tenor(), Tenor::TenYears);
+///
+/// // 5Y EUR CMS rate
+/// let cms5y = CmsIndex::new(Currency::EUR, Tenor::FiveYears);
+/// assert!(cms5y.requires_convexity_adjustment());
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct CmsIndex {
+    /// Currency of the underlying swap.
+    currency: Currency,
+    /// Tenor of the underlying swap rate.
+    swap_tenor: Tenor,
+}
+
+impl CmsIndex {
+    /// Creates a new CMS index.
+    ///
+    /// # Arguments
+    ///
+    /// * `currency` - Currency of the underlying swap
+    /// * `swap_tenor` - Tenor of the underlying swap rate (e.g., 10Y)
+    #[must_use]
+    pub const fn new(currency: Currency, swap_tenor: Tenor) -> Self {
+        Self {
+            currency,
+            swap_tenor,
+        }
+    }
+
+    /// Returns the currency of the underlying swap.
+    #[must_use]
+    pub const fn currency(&self) -> Currency { self.currency }
+
+    /// Returns the swap tenor for this CMS index.
+    #[must_use]
+    pub const fn swap_tenor(&self) -> Tenor { self.swap_tenor }
+
+    /// Returns true (CMS rates always require convexity adjustment).
+    #[must_use]
+    pub const fn requires_convexity_adjustment(&self) -> bool { true }
+
+    /// Returns a display name for this CMS index.
+    #[must_use]
+    pub fn name(&self) -> String { format!("CMS-{}-{}", self.currency, self.swap_tenor) }
+}
+
+impl std::fmt::Display for CmsIndex {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "CMS-{}-{}", self.currency, self.swap_tenor)
+    }
+}
+
+/// Forward index type: either a standard rate index or a CMS index.
+///
+/// This enum allows unified handling of both simple forward rates and
+/// CMS rates in the `IndexMapper`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ForwardIndexType {
+    /// Standard rate index (SOFR, EURIBOR, etc.)
+    Rate(RateIndex),
+    /// CMS index (requires convexity adjustment)
+    Cms(CmsIndex),
+}
 
 /// Maps rate indices, currencies, and curves to numeric IDs.
 ///
@@ -44,6 +146,11 @@ pub struct IndexMapper {
     fwd_index_to_id: HashMap<RateIndex, u16>,
     id_to_fwd_index: Vec<Option<RateIndex>>,
 
+    // CMS index mapping (CmsIndex → u16)
+    // CMS indices share the same ID space as forward indices
+    cms_index_to_id: HashMap<CmsIndex, u16>,
+    id_to_cms_index: HashMap<u16, CmsIndex>,
+
     // Currency mapping (Currency → u8)
     currency_to_id: HashMap<Currency, u8>,
     id_to_currency: Vec<Currency>,
@@ -69,6 +176,8 @@ impl IndexMapper {
         Self {
             fwd_index_to_id: HashMap::new(),
             id_to_fwd_index: vec![None], // 0 = dummy
+            cms_index_to_id: HashMap::new(),
+            id_to_cms_index: HashMap::new(),
             currency_to_id: HashMap::new(),
             id_to_currency: Vec::new(),
             discount_curve_to_id: HashMap::new(),
@@ -176,6 +285,131 @@ impl IndexMapper {
     #[must_use]
     pub const fn fixed_leg_index_id(&self) -> u16 {
         0 // Dummy index
+    }
+
+    // =========================================================================
+    // CMS Index Methods
+    // =========================================================================
+
+    /// Registers a CMS index and returns its ID.
+    ///
+    /// CMS indices share the same ID space as forward indices, allowing
+    /// unified processing. The `CurveProvider` is responsible for returning
+    /// convexity-adjusted rates for CMS index IDs.
+    ///
+    /// # Arguments
+    ///
+    /// * `cms_index` - The CMS index to register
+    ///
+    /// # Returns
+    ///
+    /// The numeric ID assigned to this CMS index (shares space with forward indices).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pricer_models::compiler::{IndexMapper, CmsIndex};
+    /// use infra_master::{time::Tenor, Currency};
+    ///
+    /// let mut mapper = IndexMapper::new();
+    /// let cms10y = CmsIndex::new(Currency::USD, Tenor::TenYears);
+    /// let id = mapper.register_cms_index(cms10y);
+    /// assert!(id > 0); // 0 is reserved for dummy
+    /// ```
+    pub fn register_cms_index(&mut self, cms_index: CmsIndex) -> u16 {
+        if let Some(&id) = self.cms_index_to_id.get(&cms_index) {
+            return id;
+        }
+
+        // CMS indices use the same ID space as forward indices
+        let id = self.id_to_fwd_index.len() as u16;
+        self.cms_index_to_id.insert(cms_index, id);
+        self.id_to_cms_index.insert(id, cms_index);
+        self.id_to_fwd_index.push(None); // No RateIndex for CMS
+        id
+    }
+
+    /// Gets the ID for a CMS index.
+    ///
+    /// # Arguments
+    ///
+    /// * `cms_index` - The CMS index to look up
+    ///
+    /// # Returns
+    ///
+    /// * `Some(id)` - The CMS index's ID
+    /// * `None` - CMS index not registered
+    #[must_use]
+    pub fn get_cms_index_id(&self, cms_index: CmsIndex) -> Option<u16> {
+        self.cms_index_to_id.get(&cms_index).copied()
+    }
+
+    /// Gets or registers a CMS index.
+    ///
+    /// If not registered, registers it first.
+    pub fn get_or_register_cms_index(&mut self, cms_index: CmsIndex) -> u16 {
+        if let Some(&id) = self.cms_index_to_id.get(&cms_index) {
+            id
+        } else {
+            self.register_cms_index(cms_index)
+        }
+    }
+
+    /// Gets the CMS index for a given ID.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The ID to look up
+    ///
+    /// # Returns
+    ///
+    /// * `Some(CmsIndex)` - The CMS index
+    /// * `None` - ID is not a CMS index
+    #[must_use]
+    pub fn get_cms_index(&self, id: u16) -> Option<CmsIndex> {
+        self.id_to_cms_index.get(&id).copied()
+    }
+
+    /// Returns true if the given ID refers to a CMS index.
+    ///
+    /// CMS indices require convexity adjustment in the market data provider.
+    #[must_use]
+    pub fn is_cms_index(&self, id: u16) -> bool { self.id_to_cms_index.contains_key(&id) }
+
+    /// Returns the number of registered CMS indices.
+    #[must_use]
+    pub fn cms_index_count(&self) -> usize { self.cms_index_to_id.len() }
+
+    /// Gets the forward index type for a given ID.
+    ///
+    /// Returns the appropriate type (Rate or CMS) for unified handling.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The forward index ID
+    ///
+    /// # Returns
+    ///
+    /// * `Some(ForwardIndexType::Rate(..))` - Standard rate index
+    /// * `Some(ForwardIndexType::Cms(..))` - CMS index
+    /// * `None` - ID is dummy (0) or out of range
+    #[must_use]
+    pub fn get_forward_index_type(&self, id: u16) -> Option<ForwardIndexType> {
+        if id == 0 {
+            return None; // Dummy index
+        }
+
+        // Check if it's a CMS index
+        if let Some(&cms) = self.id_to_cms_index.get(&id) {
+            return Some(ForwardIndexType::Cms(cms));
+        }
+
+        // Check if it's a standard rate index
+        if let Some(Some(rate)) = self.id_to_fwd_index.get(id as usize) {
+            return Some(ForwardIndexType::Rate(*rate));
+        }
+
+        None
     }
 
     // =========================================================================

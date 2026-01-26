@@ -23,9 +23,12 @@
 //! - 4.1-4.5: Zero-copy data transfer
 //! - 7.1-7.5: ActivityMask and partial differentiation
 
-use super::kernel::{finite_difference_gradients, pricing_kernel_irs};
-use super::shadow::{Shadow, SimpleMarketData, SimpleYieldCurve};
 use thiserror::Error;
+
+use super::{
+    kernel::{finite_difference_gradients, pricing_kernel_irs},
+    shadow::{Shadow, SimpleMarketData, SimpleYieldCurve},
+};
 
 // =============================================================================
 // Error Types (Task 4.3)
@@ -204,9 +207,7 @@ pub struct RiskResult<M: Shadow> {
 impl<M: Shadow> RiskResult<M> {
     /// Create a new risk result.
     #[inline]
-    pub fn new(pv: f64, gradients: M) -> Self {
-        Self { pv, gradients }
-    }
+    pub fn new(pv: f64, gradients: M) -> Self { Self { pv, gradients } }
 }
 
 // =============================================================================
@@ -266,16 +267,12 @@ pub struct MarketRiskCalculator {
 }
 
 impl Default for MarketRiskCalculator {
-    fn default() -> Self {
-        Self { bump_size: 1e-7 }
-    }
+    fn default() -> Self { Self { bump_size: 1e-7 } }
 }
 
 impl MarketRiskCalculator {
     /// Create a new calculator with custom bump size.
-    pub fn with_bump_size(bump_size: f64) -> Self {
-        Self { bump_size }
-    }
+    pub fn with_bump_size(bump_size: f64) -> Self { Self { bump_size } }
 
     /// Calculate risk for an IRS trade using Shadow Object AAD.
     ///
@@ -502,11 +499,7 @@ mod tests {
 
         // Gradients should be non-zero (rate sensitivity)
         for (i, &grad) in result.gradients.rates.iter().enumerate() {
-            assert!(
-                grad.abs() > 0.0,
-                "Gradient {} should be non-zero",
-                i
-            );
+            assert!(grad.abs() > 0.0, "Gradient {} should be non-zero", i);
         }
     }
 
@@ -591,7 +584,8 @@ mod tests {
 
     #[test]
     fn test_gradient_magnitude() {
-        // Verify gradient magnitudes are reasonable (DV01 = ~100 per bp per year per $1M)
+        // Verify gradient magnitudes are reasonable (DV01 = ~100 per bp per year per
+        // $1M)
         let calc = MarketRiskCalculator::default();
         let market = SimpleYieldCurve::new(vec![0.03], vec![1.0]);
         let trade = IrsTradeParams::uniform(1_000_000.0, 1.0, 0.03, 1);
@@ -685,7 +679,12 @@ mod tests {
         assert_eq!(result.gradients.rates.len(), n);
 
         // At least some gradients should be non-zero
-        let non_zero_count = result.gradients.rates.iter().filter(|&&g| g.abs() > 1e-10).count();
+        let non_zero_count = result
+            .gradients
+            .rates
+            .iter()
+            .filter(|&&g| g.abs() > 1e-10)
+            .count();
         assert!(non_zero_count > 0, "Should have non-zero gradients");
     }
 
@@ -721,7 +720,7 @@ mod tests {
 
     #[test]
     fn test_vol_surface_structure() {
-        use super::super::shadow::{SimpleVolSurface, Shadow};
+        use super::super::shadow::{Shadow, SimpleVolSurface};
 
         // Create a realistic vol surface (5 expiries x 5 strikes)
         let strikes = vec![80.0, 90.0, 100.0, 110.0, 120.0];
@@ -758,14 +757,11 @@ mod tests {
 
     #[test]
     fn test_vol_surface_gradient_mapping() {
-        use super::super::shadow::{SimpleVolSurface, Shadow};
+        use super::super::shadow::{Shadow, SimpleVolSurface};
 
         // Create surface
         let surface = SimpleVolSurface::new(
-            vec![
-                vec![0.20, 0.22],
-                vec![0.21, 0.23],
-            ],
+            vec![vec![0.20, 0.22], vec![0.21, 0.23]],
             vec![100.0, 110.0],
             vec![0.5, 1.0],
         );
