@@ -174,7 +174,7 @@ L4: pricer_risk      → Application + Enzyme AD (Stable, Nightly with enzyme-ad
 ### pricer_core (L1)
 
 **Location**: `crates/pricer_core/src/`
-**Purpose**: Math types, traits, smoothing functions (stable Rust, pure foundation)
+**Purpose**: Math types, traits, smoothing functions, IR data structures (stable Rust, pure foundation)
 **Structure**:
 ```text
 math/
@@ -191,6 +191,12 @@ math/
 ├── mesh/             → Grid generation (grid_1d, grid_2d)
 └── linalg/           → Linear algebra (feature-gated, nalgebra wrappers)
 
+ir/         → Pricing Kernel Intermediate Representation (SIMD/Enzyme-optimised)
+├── aligned_buffer.rs → 64-byte aligned heap buffer (AlignedBuffer<T>)
+├── pricing_kernel.rs → SoA cashflow representation (PricingKernel, PricingKernelBuilder)
+├── script_kernel.rs  → Event-driven IR for path-dependent (ScriptKernel, ScriptOp, BarrierType)
+└── error.rs          → Compilation errors (CompileError)
+
 traits/     → Priceable, Differentiable, Float, core abstractions
 types/
 ├── dual.rs          → Dual numbers (num-dual) for AD
@@ -202,8 +208,9 @@ types/
 **Key Principles**:
 
 - Zero dependencies on other pricer_* crates, pure foundation
-- Minimal scope: math utilities, core traits, basic types
+- Minimal scope: math utilities, core traits, basic types, IR data structures
 - All numeric types generic over `T: Float` for AD compatibility
+- IR module provides SIMD-aligned (64-byte) data structures for pricing kernels
 
 ### pricer_models (L2)
 
@@ -276,6 +283,12 @@ models/       → Stochastic models with unified trait interface
   ├── rates/    → Interest rate models: Hull-White, CIR (feature-gated)
   └── hybrid/   → Correlated multi-factor models (feature-gated)
 
+compiler/     → Trade compiler for IR generation
+  ├── index_mapper.rs → IndexMapper (RateIndex/Currency → numeric ID)
+  ├── linear.rs       → LinearProductsCompiler (IRS, Bond, FRA)
+  ├── xccy.rs         → XCcyCompiler (cross-currency swaps)
+  └── exotic.rs       → ExoticCompiler (barriers, Asians)
+
 schedules/    → Payment schedule generation (Frequency, Period, ScheduleBuilder)
 analytical/   → Closed-form solutions (Black-Scholes, Garman-Kohlhagen)
 demo.rs       → Demo types for 3-stage rocket: ModelEnum, InstrumentEnum, CurveEnum, VolSurfaceEnum
@@ -285,6 +298,7 @@ demo.rs       → Demo types for 3-stage rocket: ModelEnum, InstrumentEnum, Curv
 
 - **Market data consolidation**: All market data (curves, surfaces, calibration, provider) resides in `market/` module
 - **IndexedMarket Pattern**: Market data keyed by logical indices (`RateIndex`, `CurrencyPair`) not strings; `TradeIndexRequirements` declares needed indices
+- **TradeCompiler Pattern**: `TradeCompiler<T>` trait compiles Trade → PricingKernel IR; `IndexMapper` maps indices to numeric IDs
 - **StochasticModel Trait**: Unified interface for stochastic processes (`evolve_step`, `initial_state`, `brownian_dim`)
 - **StochasticModelEnum**: Static dispatch enum wrapping concrete models (GBM, Heston, SABR, Hull-White, CIR)
 - **CalibrationEngine**: Uses `pricer_core::math::solvers` for parameter optimisation
@@ -401,6 +415,9 @@ enzyme/     → Enzyme autodiff bindings (ADMode, Activity, gradient, GreeksEnzy
             → checkpoint_ad.rs (CheckpointedAD, PathDependentAD)
             → smooth.rs (smooth_max, smooth_indicator, smooth_call_payoff)
             → forward.rs, reverse.rs, loops.rs, parallel.rs (AD infrastructure)
+            → shadow.rs (ShadowObject trait, shadow buffers for reverse mode)
+            → kernel.rs (PricingKernel integration for AAD)
+            → binder.rs (AAD binder layer for market risk calculations)
 regulatory/ → SA-CCR, FRTB, SIMM (planned)
 soa/        → Structure of Arrays (TradeSoA, ExposureSoA)
 parallel/   → Rayon-based parallelisation utilities (>80% efficiency on 8+ cores)
@@ -674,5 +691,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-26_ — Added IndexedMarket, TradeIndexRequirements, MarketValidator for index-keyed market access
+_Updated: 2026-01-26_ — Added IR module (PricingKernel, AlignedBuffer), compiler module (TradeCompiler, IndexMapper), enzyme extensions (shadow, kernel, binder)
 _Document patterns, not file trees. New files following patterns should not require updates_

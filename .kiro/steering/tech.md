@@ -132,6 +132,8 @@ docker run -it neutryx-enzyme
 | **Smooth Approximations** | Replace all discontinuities (if/max) with differentiable functions |
 | **3-Stage Rocket Pattern** | Definition (L2) → Linking (PricingContext) → Execution (pure kernel); zero HashMap lookups in hot path |
 | **IndexedMarket Pattern** | Market data keyed by `RateIndex`/`CurrencyPair` not strings; `TradeIndexRequirements` trait declares dependencies; `MarketValidator` checks completeness |
+| **IR Compilation Pattern** | Trade (hierarchical) → TradeCompiler → PricingKernel (SoA, 64-byte aligned); `IndexMapper` converts indices to numeric IDs for SIMD-friendly access |
+| **Shadow Object Pattern** | Reverse mode AAD uses shadow buffers for gradient accumulation; `binder.rs` orchestrates market data → portfolio Greeks flow |
 | **Feature Flag Coordination** | Features propagate through dependency chain (demo→frictional_bank→pricer_pricing) enabling modular compilation for different deployment scenarios |
 | **Feature Flags** | `num-dual-mode` (default), `enzyme-mode`, `serde` for serialisation; Asset classes: `equity` (default), `rates`, `credit`, `fx`, `commodity`, `exotic`; Convenience: `all`; Integration: `l1l2-integration` |
 
@@ -140,6 +142,7 @@ docker run -it neutryx-enzyme
 - **LTO**: Link-time optimisation enabled in release profile
 - **Single Codegen Unit**: `codegen-units = 1` for maximum optimisation
 - **Structure of Arrays (SoA)**: Memory layout for vectorisation (pricer_risk)
+- **64-byte SIMD Alignment**: `AlignedBuffer<T>` ensures cache-line and AVX-512 alignment for PricingKernel IR
 - **Rayon Parallelism**: Portfolio-level parallel processing (>80% efficiency on 8+ cores)
 - **Parallel Portfolio Greeks**: Batch processing for 1000+ trades with memory monitoring
 - **Thread-local Buffers**: RAII buffer pools for zero-allocation hot paths
@@ -168,5 +171,5 @@ docker run -it neutryx-enzyme
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-26_ — Added IndexedMarket pattern to Key Technical Decisions
+_Updated: 2026-01-26_ — Added IR Compilation Pattern, Shadow Object Pattern, 64-byte SIMD alignment
 _Document standards and patterns, not every dependency_

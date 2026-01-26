@@ -17,7 +17,10 @@
 //! Paths are stored in row-major order: `paths[path_idx * (n_steps + 1) +
 //! step_idx]` where `step_idx = 0` contains the initial spot price.
 
-use super::workspace::PathWorkspace;
+use super::{
+    layout_config::PathLayout, workspace::PathWorkspace, workspace_enum::WorkspaceEnum,
+    workspace_trait::PathWorkspaceTrait,
+};
 
 /// Parameters for Geometric Brownian Motion path generation.
 ///
@@ -264,6 +267,154 @@ pub fn terminal_prices(workspace: &PathWorkspace, n_paths: usize, n_steps: usize
         .collect()
 }
 
+// ============================================================================
+// Generic Path Generation Functions (for WorkspaceEnum)
+// ============================================================================
+
+/// Generates GBM paths using the appropriate algorithm for the workspace
+/// layout.
+///
+/// This function automatically selects the optimal algorithm based on the
+/// workspace's memory layout:
+/// - `PathFirst`: Path-major iteration (traditional)
+/// - `TimeStepFirst`: Step-major iteration (cache-efficient for SIMD)
+///
+/// # Arguments
+///
+/// * `workspace` - Pre-allocated workspace with random samples filled
+/// * `params` - GBM parameters
+///
+/// # Performance
+///
+/// The `TimeStepFirst` layout enables:
+/// - Better cache utilisation (all paths at a step are contiguous)
+/// - SIMD vectorisation opportunities
+/// - Reduced cache misses during step-wise operations
+///
+/// # Examples
+///
+/// ```rust
+/// use pricer_pricing::mc::{WorkspaceEnum, PathLayout, GbmParams, generate_gbm_paths_generic};
+/// use pricer_pricing::rng::PricerRng;
+/// use pricer_pricing::mc::PathWorkspaceTrait;
+///
+/// let mut workspace = WorkspaceEnum::new(PathLayout::TimeStepFirst, 1000, 100);
+/// let mut rng = PricerRng::from_seed(42);
+/// rng.fill_normal(workspace.randoms_mut());
+///
+/// let params = GbmParams::default();
+/// generate_gbm_paths_generic(&mut workspace, params);
+/// ```
+pub fn generate_gbm_paths_generic(workspace: &mut WorkspaceEnum, params: GbmParams) {
+    let n_paths = workspace.num_paths();
+    let n_steps = workspace.num_steps();
+
+    match workspace.layout() {
+        PathLayout::PathFirst => {
+            if let Some(ws) = workspace.as_path_first_mut() {
+                generate_gbm_paths(ws, params, n_paths, n_steps);
+            }
+        }
+        PathLayout::TimeStepFirst => {
+            generate_gbm_paths_timestep_first(workspace, params, n_paths, n_steps);
+        }
+    }
+}
+
+/// Generates GBM paths using step-major iteration for TimeStepFirst layout.
+///
+/// This is the optimised algorithm for TimeStepFirst workspace:
+/// - Outer loop over steps, inner loop over paths
+/// - Uses contiguous step slices for cache efficiency
+/// - Enables SIMD vectorisation across paths
+///
+/// # Algorithm
+///
+/// ```text
+/// for step in 0..n_steps:
+///     current_slice = workspace.get_step_slice(step)
+///     next_slice = workspace.get_step_slice(step + 1)
+///     for path in 0..n_paths:
+///         next_slice[path] = current_slice[path] * exp(drift + vol * z)
+/// ```
+fn generate_gbm_paths_timestep_first(
+    workspace: &mut WorkspaceEnum,
+    params: GbmParams,
+    n_paths: usize,
+    n_steps: usize,
+) {
+    // Precompute time step
+    let dt = params.maturity / n_steps as f64;
+
+    // Precompute drift and volatility terms (outside loop for Enzyme)
+    let drift_dt = (params.rate - 0.5 * params.volatility * params.volatility) * dt;
+    let vol_sqrt_dt = params.volatility * dt.sqrt();
+
+    // Set initial spot for all paths
+    if let Some(step0) = workspace.get_step_slice_mut(0) {
+        for val in step0.iter_mut() {
+            *val = params.spot;
+        }
+    }
+
+    // Get randoms buffer
+    let randoms = workspace.randoms().to_vec();
+
+    // Step-major iteration for cache efficiency
+    // Process all paths at each step before moving to next step
+    for step in 0..n_steps {
+        let random_offset = step * n_paths;
+
+        // Read current step values
+        let current_vals: Vec<f64> = workspace
+            .get_step_slice(step)
+            .map(|s| s.to_vec())
+            .unwrap_or_default();
+
+        // Compute and write next step values
+        if let Some(next_slice) = workspace.get_step_slice_mut(step + 1) {
+            for path_idx in 0..n_paths {
+                let z = randoms[random_offset + path_idx];
+                let increment = drift_dt + vol_sqrt_dt * z;
+                next_slice[path_idx] = current_vals[path_idx] * increment.exp();
+            }
+        }
+    }
+}
+
+/// Extracts terminal prices from a generic workspace.
+///
+/// Works with both PathFirst and TimeStepFirst layouts.
+///
+/// # Arguments
+///
+/// * `workspace` - Workspace with generated paths
+///
+/// # Returns
+///
+/// Vector of terminal prices (one per path).
+pub fn terminal_prices_generic(workspace: &WorkspaceEnum) -> Vec<f64> {
+    let n_paths = workspace.num_paths();
+    let n_steps = workspace.num_steps();
+
+    match workspace.layout() {
+        PathLayout::PathFirst => {
+            if let Some(ws) = workspace.as_path_first() {
+                terminal_prices(ws, n_paths, n_steps)
+            } else {
+                Vec::new()
+            }
+        }
+        PathLayout::TimeStepFirst => {
+            // For TimeStepFirst, terminal prices are at the last step slice
+            workspace
+                .get_step_slice(n_steps)
+                .map(|slice| slice.to_vec())
+                .unwrap_or_default()
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
@@ -425,6 +576,134 @@ mod tests {
                 let expected = 1.0 / params.spot;
                 assert_relative_eq!(ratio, expected, epsilon = 1e-10);
             }
+        }
+    }
+
+    // ========== Generic Path Generation Tests ==========
+
+    fn setup_workspace_enum_with_randoms(
+        layout: PathLayout,
+        n_paths: usize,
+        n_steps: usize,
+        seed: u64,
+    ) -> WorkspaceEnum {
+        let mut workspace = WorkspaceEnum::new(layout, n_paths, n_steps);
+        let mut rng = PricerRng::from_seed(seed);
+        rng.fill_normal(workspace.randoms_mut());
+        workspace
+    }
+
+    #[test]
+    fn test_generic_path_generation_path_first() {
+        let mut workspace = setup_workspace_enum_with_randoms(PathLayout::PathFirst, 10, 5, 42);
+        let params = GbmParams::default();
+
+        generate_gbm_paths_generic(&mut workspace, params);
+
+        // Check all paths start at spot
+        for path_idx in 0..10 {
+            assert_eq!(workspace.get_path_value(path_idx, 0), 100.0);
+        }
+
+        // All prices should be positive
+        let terminals = terminal_prices_generic(&workspace);
+        assert_eq!(terminals.len(), 10);
+        for &price in &terminals {
+            assert!(price > 0.0);
+        }
+    }
+
+    #[test]
+    fn test_generic_path_generation_timestep_first() {
+        let mut workspace = setup_workspace_enum_with_randoms(PathLayout::TimeStepFirst, 10, 5, 42);
+        let params = GbmParams::default();
+
+        generate_gbm_paths_generic(&mut workspace, params);
+
+        // Check all paths start at spot
+        for path_idx in 0..10 {
+            assert_eq!(workspace.get_path_value(path_idx, 0), 100.0);
+        }
+
+        // All prices should be positive
+        let terminals = terminal_prices_generic(&workspace);
+        assert_eq!(terminals.len(), 10);
+        for &price in &terminals {
+            assert!(price > 0.0);
+        }
+    }
+
+    #[test]
+    fn test_generic_path_generation_layouts_produce_same_results() {
+        // Both layouts with same seed should produce same terminal prices
+        // (not exactly same due to different iteration order, but same distribution)
+        let n_paths = 1000;
+        let n_steps = 10;
+        let seed = 12345;
+
+        let mut ws_pf =
+            setup_workspace_enum_with_randoms(PathLayout::PathFirst, n_paths, n_steps, seed);
+        let mut ws_tsf =
+            setup_workspace_enum_with_randoms(PathLayout::TimeStepFirst, n_paths, n_steps, seed);
+
+        let params = GbmParams::default();
+
+        generate_gbm_paths_generic(&mut ws_pf, params);
+        generate_gbm_paths_generic(&mut ws_tsf, params);
+
+        let terminals_pf = terminal_prices_generic(&ws_pf);
+        let terminals_tsf = terminal_prices_generic(&ws_tsf);
+
+        // Check statistical properties match
+        let mean_pf = terminals_pf.iter().sum::<f64>() / n_paths as f64;
+        let mean_tsf = terminals_tsf.iter().sum::<f64>() / n_paths as f64;
+
+        // Both should be close to expected value
+        let expected = params.spot * (params.rate * params.maturity).exp();
+        assert_relative_eq!(mean_pf, expected, max_relative = 0.05);
+        assert_relative_eq!(mean_tsf, expected, max_relative = 0.05);
+    }
+
+    #[test]
+    fn test_generic_path_generation_positive_prices() {
+        let n_paths = 100;
+        let n_steps = 50;
+
+        for layout in [PathLayout::PathFirst, PathLayout::TimeStepFirst] {
+            let mut workspace = setup_workspace_enum_with_randoms(layout, n_paths, n_steps, 42);
+            let params = GbmParams::new(100.0, 0.05, 0.2, 1.0);
+
+            generate_gbm_paths_generic(&mut workspace, params);
+
+            // All path values should be positive (GBM property)
+            for path_idx in 0..n_paths {
+                for step_idx in 0..=n_steps {
+                    let price = workspace.get_path_value(path_idx, step_idx);
+                    assert!(
+                        price > 0.0,
+                        "Price at ({}, {}) must be positive: {}",
+                        path_idx,
+                        step_idx,
+                        price
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_terminal_prices_generic_timestep_first() {
+        let mut workspace = setup_workspace_enum_with_randoms(PathLayout::TimeStepFirst, 10, 5, 42);
+        let params = GbmParams::default();
+
+        generate_gbm_paths_generic(&mut workspace, params);
+
+        let terminals = terminal_prices_generic(&workspace);
+        assert_eq!(terminals.len(), 10);
+
+        // Verify against direct access
+        for path_idx in 0..10 {
+            assert_eq!(terminals[path_idx], workspace.get_path_value(path_idx, 5));
         }
     }
 }

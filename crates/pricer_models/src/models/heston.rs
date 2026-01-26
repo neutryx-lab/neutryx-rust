@@ -59,6 +59,8 @@ use pricer_core::{
 };
 use thiserror::Error;
 
+use super::validation::{ComputationError, ParamValidationError};
+
 /// Hestonモデルエラー型
 ///
 /// パラメータ検証と数値計算時のエラーを表現する。
@@ -129,6 +131,38 @@ pub enum HestonError {
     /// NaNまたは無限大が検出された
     #[error("{0}でNaNまたはInfinityが検出されました")]
     NonFinite(String),
+}
+
+impl From<ParamValidationError> for HestonError {
+    fn from(err: ParamValidationError) -> Self {
+        match err.param {
+            "spot" | "S0" => HestonError::InvalidSpot(err.value),
+            "v0" => HestonError::InvalidV0(err.value),
+            "theta" => HestonError::InvalidTheta(err.value),
+            "kappa" => HestonError::InvalidKappa(err.value),
+            "xi" => HestonError::InvalidXi(err.value),
+            "rho" => HestonError::InvalidRho(err.value),
+            "maturity" | "T" => HestonError::InvalidMaturity(err.value),
+            "psi_c" => HestonError::InvalidPsiC(err.value),
+            "epsilon" | "smoothing_epsilon" => HestonError::InvalidEpsilon(err.value),
+            _ => HestonError::NumericalInstability(err.to_string()),
+        }
+    }
+}
+
+impl From<ComputationError> for HestonError {
+    fn from(err: ComputationError) -> Self {
+        match err {
+            ComputationError::NumericalInstability(msg) => HestonError::NumericalInstability(msg),
+            ComputationError::NonFinite(ctx) => HestonError::NonFinite(ctx),
+            ComputationError::ConvergenceFailure {
+                iterations,
+                residual,
+            } => HestonError::NumericalInstability(format!(
+                "Convergence failure after {iterations} iterations (residual: {residual})"
+            )),
+        }
+    }
 }
 
 /// Hestonモデルパラメータ

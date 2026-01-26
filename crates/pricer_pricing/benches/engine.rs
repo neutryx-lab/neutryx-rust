@@ -1228,6 +1228,228 @@ fn bench_tree_type_comparison(c: &mut Criterion) {
     group.finish();
 }
 
+// ============================================================================
+// Memory Layout Benchmarks (mc-memory-layout-optimisation)
+// ============================================================================
+
+use pricer_pricing::mc::{
+    layout_config::{PathLayout, PathLayoutConfig, StreamingConfig},
+    workspace_enum::WorkspaceEnum,
+    workspace_trait::PathWorkspaceTrait,
+    ArithmeticAverageObserver, EuropeanObserver, LookbackObserver, StreamingEngine,
+};
+
+/// Benchmark PathFirst vs TimeStepFirst layout for path generation.
+///
+/// Measures the performance difference between traditional PathFirst layout
+/// and optimised TimeStepFirst layout for different workload sizes.
+fn bench_layout_comparison(c: &mut Criterion) {
+    let mut group = c.benchmark_group("memory_layout");
+    group.sample_size(50);
+
+    let gbm = GbmParams::default();
+
+    // Test different path × step combinations
+    for (n_paths, n_steps) in [(10_000, 100), (50_000, 252), (100_000, 50)] {
+        let label = format!("{}x{}", n_paths, n_steps);
+
+        // PathFirst layout
+        group.bench_with_input(
+            BenchmarkId::new("path_first", &label),
+            &(n_paths, n_steps),
+            |b, &(paths, steps)| {
+                let config = MonteCarloConfig::builder()
+                    .n_paths(paths)
+                    .n_steps(steps)
+                    .layout(PathLayoutConfig::with_layout(PathLayout::PathFirst))
+                    .seed(42)
+                    .build()
+                    .unwrap();
+                let mut pricer = MonteCarloPricer::new(config).unwrap();
+                let payoff = PayoffParams::call(100.0);
+                let df = 0.95;
+
+                b.iter(|| black_box(pricer.price_european(gbm, payoff, df)));
+            },
+        );
+
+        // TimeStepFirst layout
+        group.bench_with_input(
+            BenchmarkId::new("timestep_first", &label),
+            &(n_paths, n_steps),
+            |b, &(paths, steps)| {
+                let config = MonteCarloConfig::builder()
+                    .n_paths(paths)
+                    .n_steps(steps)
+                    .layout(PathLayoutConfig::with_layout(PathLayout::TimeStepFirst))
+                    .seed(42)
+                    .build()
+                    .unwrap();
+                let mut pricer = MonteCarloPricer::new(config).unwrap();
+                let payoff = PayoffParams::call(100.0);
+                let df = 0.95;
+
+                b.iter(|| black_box(pricer.price_european(gbm, payoff, df)));
+            },
+        );
+    }
+
+    group.finish();
+}
+
+/// Benchmark streaming mode vs batch mode memory efficiency.
+///
+/// Compares:
+/// - Batch: O(paths × steps) memory
+/// - Streaming: O(paths) memory
+fn bench_streaming_vs_batch(c: &mut Criterion) {
+    let mut group = c.benchmark_group("streaming_vs_batch");
+    group.sample_size(30);
+
+    let gbm = GbmParams::default();
+    let df = 0.95;
+
+    // Test with varying step counts to demonstrate memory advantage
+    for n_steps in [100, 252, 500] {
+        let n_paths = 50_000;
+
+        // Batch mode (traditional)
+        group.bench_with_input(BenchmarkId::new("batch", n_steps), &n_steps, |b, &steps| {
+            let config = MonteCarloConfig::builder()
+                .n_paths(n_paths)
+                .n_steps(steps)
+                .seed(42)
+                .build()
+                .unwrap();
+            let mut pricer = MonteCarloPricer::new(config).unwrap();
+            let payoff = PayoffParams::call(100.0);
+
+            b.iter(|| black_box(pricer.price_european(gbm, payoff, df)));
+        });
+
+        // Streaming mode
+        group.bench_with_input(
+            BenchmarkId::new("streaming", n_steps),
+            &n_steps,
+            |b, &steps| {
+                let config = MonteCarloConfig::builder()
+                    .n_paths(n_paths)
+                    .n_steps(steps)
+                    .layout(PathLayoutConfig::with_layout(PathLayout::TimeStepFirst))
+                    .streaming(StreamingConfig::enabled())
+                    .seed(42)
+                    .build()
+                    .unwrap();
+                let mut pricer = MonteCarloPricer::new(config).unwrap();
+                let payoff = PayoffParams::call(100.0);
+
+                b.iter(|| black_box(pricer.price_streaming(gbm, payoff, df)));
+            },
+        );
+    }
+
+    group.finish();
+}
+
+/// Benchmark streaming engine for path-dependent options.
+///
+/// Streaming is particularly efficient for options requiring path statistics.
+fn bench_streaming_path_dependent(c: &mut Criterion) {
+    let mut group = c.benchmark_group("streaming_path_dependent");
+    group.sample_size(30);
+
+    let n_paths = 50_000;
+    let n_steps = 252;
+    let gbm = GbmParams::default();
+    let df = 0.95;
+
+    // Asian option (arithmetic average)
+    group.bench_function("asian_call", |b| {
+        let config = MonteCarloConfig::builder()
+            .n_paths(n_paths)
+            .n_steps(n_steps)
+            .layout(PathLayoutConfig::with_layout(PathLayout::TimeStepFirst))
+            .streaming(StreamingConfig::enabled())
+            .seed(42)
+            .build()
+            .unwrap();
+        let mut pricer = MonteCarloPricer::new(config).unwrap();
+
+        b.iter(|| black_box(pricer.price_asian_streaming(gbm, 100.0, true, df)));
+    });
+
+    // Lookback option (floating strike)
+    group.bench_function("lookback_floating_call", |b| {
+        let config = MonteCarloConfig::builder()
+            .n_paths(n_paths)
+            .n_steps(n_steps)
+            .layout(PathLayoutConfig::with_layout(PathLayout::TimeStepFirst))
+            .streaming(StreamingConfig::enabled())
+            .seed(42)
+            .build()
+            .unwrap();
+        let mut pricer = MonteCarloPricer::new(config).unwrap();
+
+        b.iter(|| black_box(pricer.price_lookback_streaming(gbm, None, true, true, df)));
+    });
+
+    // Barrier option (up-and-out)
+    group.bench_function("barrier_up_out_call", |b| {
+        let config = MonteCarloConfig::builder()
+            .n_paths(n_paths)
+            .n_steps(n_steps)
+            .layout(PathLayoutConfig::with_layout(PathLayout::TimeStepFirst))
+            .streaming(StreamingConfig::enabled())
+            .seed(42)
+            .build()
+            .unwrap();
+        let mut pricer = MonteCarloPricer::new(config).unwrap();
+
+        b.iter(|| {
+            black_box(pricer.price_barrier_streaming(gbm, 100.0, 150.0, true, true, true, df))
+        });
+    });
+
+    group.finish();
+}
+
+/// Benchmark memory usage comparison.
+///
+/// Demonstrates memory footprint differences between layouts.
+fn bench_memory_footprint(c: &mut Criterion) {
+    let mut group = c.benchmark_group("memory_footprint");
+    group.sample_size(20);
+
+    let n_paths = 100_000;
+    let n_steps = 252;
+
+    // Measure workspace allocation sizes
+    group.bench_function("pathfirst_allocation", |b| {
+        b.iter(|| {
+            let workspace = WorkspaceEnum::new(PathLayout::PathFirst, n_paths, n_steps);
+            black_box(workspace.paths().len())
+        });
+    });
+
+    group.bench_function("timestepfirst_allocation", |b| {
+        b.iter(|| {
+            let workspace = WorkspaceEnum::new(PathLayout::TimeStepFirst, n_paths, n_steps);
+            black_box(workspace.paths().len())
+        });
+    });
+
+    // Streaming engine has constant memory regardless of steps
+    group.bench_function("streaming_allocation", |b| {
+        let streaming_config = StreamingConfig::enabled();
+        b.iter(|| {
+            let engine = StreamingEngine::new(n_paths, n_steps, streaming_config, 42);
+            black_box(engine.memory_usage())
+        });
+    });
+
+    group.finish();
+}
+
 criterion_group!(
     benches,
     bench_rng_generation,
@@ -1249,6 +1471,11 @@ criterion_group!(
     bench_binomial_tree_steps,
     bench_binomial_tree_greeks,
     bench_trinomial_tree_steps,
-    bench_tree_type_comparison
+    bench_tree_type_comparison,
+    // Memory layout optimisation benchmarks
+    bench_layout_comparison,
+    bench_streaming_vs_batch,
+    bench_streaming_path_dependent,
+    bench_memory_footprint
 );
 criterion_main!(benches);

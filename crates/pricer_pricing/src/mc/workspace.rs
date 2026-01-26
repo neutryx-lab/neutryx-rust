@@ -308,6 +308,92 @@ impl Default for PathWorkspace {
     fn default() -> Self { Self::new(0, 0) }
 }
 
+// Implementation of PathWorkspaceTrait for PathWorkspace
+impl super::workspace_trait::PathWorkspaceTrait for PathWorkspace {
+    #[inline]
+    fn num_paths(&self) -> usize { self.size_paths }
+
+    #[inline]
+    fn num_steps(&self) -> usize { self.size_steps }
+
+    #[inline]
+    fn layout(&self) -> super::layout_config::PathLayout {
+        super::layout_config::PathLayout::PathFirst
+    }
+
+    #[inline]
+    fn get_path_value(&self, path_idx: usize, step_idx: usize) -> f64 {
+        let idx = self.path_index(path_idx, step_idx);
+        self.paths[idx]
+    }
+
+    #[inline]
+    fn set_path_value(&mut self, path_idx: usize, step_idx: usize, value: f64) {
+        let idx = self.path_index(path_idx, step_idx);
+        self.paths[idx] = value;
+    }
+
+    #[inline]
+    fn get_step_slice(&self, _step_idx: usize) -> Option<&[f64]> {
+        // PathFirst layout: step data is not contiguous
+        None
+    }
+
+    #[inline]
+    fn get_step_slice_mut(&mut self, _step_idx: usize) -> Option<&mut [f64]> {
+        // PathFirst layout: step data is not contiguous
+        None
+    }
+
+    #[inline]
+    fn get_path_slice(&self, path_idx: usize) -> Option<&[f64]> {
+        let start = self.path_index(path_idx, 0);
+        let end = start + self.size_steps + 1;
+        Some(&self.paths[start..end])
+    }
+
+    #[inline]
+    fn get_path_slice_mut(&mut self, path_idx: usize) -> Option<&mut [f64]> {
+        let start = self.path_index(path_idx, 0);
+        let end = start + self.size_steps + 1;
+        Some(&mut self.paths[start..end])
+    }
+
+    fn clear(&mut self) {
+        // Zero out all buffers
+        for val in self.randoms.iter_mut() {
+            *val = 0.0;
+        }
+        for val in self.paths.iter_mut() {
+            *val = 0.0;
+        }
+        for val in self.payoffs.iter_mut() {
+            *val = 0.0;
+        }
+    }
+
+    #[inline]
+    fn memory_usage(&self) -> usize { PathWorkspace::memory_usage(self) }
+
+    #[inline]
+    fn randoms(&self) -> &[f64] { PathWorkspace::randoms(self) }
+
+    #[inline]
+    fn randoms_mut(&mut self) -> &mut [f64] { PathWorkspace::randoms_mut(self) }
+
+    #[inline]
+    fn payoffs(&self) -> &[f64] { PathWorkspace::payoffs(self) }
+
+    #[inline]
+    fn payoffs_mut(&mut self) -> &mut [f64] { PathWorkspace::payoffs_mut(self) }
+
+    #[inline]
+    fn paths(&self) -> &[f64] { PathWorkspace::paths(self) }
+
+    #[inline]
+    fn paths_mut(&mut self) -> &mut [f64] { PathWorkspace::paths_mut(self) }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

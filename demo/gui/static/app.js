@@ -2,6 +2,29 @@
  * FrictionalBank Dashboard - Modern Interactive Application
  * Bento Grid + Particle Animations + Command Palette
  * ========================================================
+ *
+ * TODO: Refactoring Plan (Identified 2026-01-26)
+ * -----------------------------------------------
+ * This file has grown to 15,000+ lines and should be modularised.
+ * Identified duplications with separate modules:
+ *
+ * 1. fetchJson/loadScript utilities → Extract to js/utils.js
+ *    - Duplicated in: market-data.js, curve-builder.js
+ *
+ * 2. State management patterns → Consider shared state module
+ *    - Similar patterns in: market-data.js, volcube-builder.js
+ *
+ * 3. Chart configuration → Extract to js/chart-utils.js
+ *    - createLineChartConfig, updateExposureChart, etc.
+ *
+ * 4. Portfolio table rendering → Extract to js/portfolio-table.js
+ *    - renderPortfolioTable, applyAllFilters, etc.
+ *
+ * 5. ParticleSystem class → Move to js/particle-system.js
+ *
+ * 6. CommandPalette class → Move to js/command-palette.js
+ *
+ * Priority: Medium (functionality works, but maintenance burden)
  */
 
 // ============================================

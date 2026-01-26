@@ -2,13 +2,13 @@
 
 実装状況と今後の開発項目を追跡するドキュメント。
 
-_Updated: 2026-01-26_ — market-index-keyed-access completed (IndexedMarket, TradeIndexRequirements, MarketValidator); 39 completed specs
+_Updated: 2026-01-26_ — 42 completed specs; 1 active spec (pricing-kernel-ir 71%)
 
 ---
 
 ## Current State Summary
 
-### Completed Specifications (39)
+### Completed Specifications (42)
 
 | Spec | Description | Completed |
 |------|-------------|-----------|
@@ -51,6 +51,9 @@ _Updated: 2026-01-26_ — market-index-keyed-access completed (IndexedMarket, Tr
 | ir-vol-cube-calibration | IR VolCube calibration engine with SABR, lazy evaluation, AAD Vega, WebApp (64 tasks) | 2026-01-26 |
 | pricer-pricing-architecture | Tree pricing (Binomial/Trinomial), UnifiedPricingResult, PricingMethodDispatcher | 2026-01-26 |
 | market-index-keyed-access | IndexedMarket, IndexedMarketBuilder, TradeIndexRequirements, MarketValidator | 2026-01-26 |
+| shadow-object-aad | Shadow trait, slice-based kernels, AAD binder layer (16 tasks) | 2026-01-26 |
+| external-numerics-migration | argmin/levenberg-marquardt integration, external-numerics feature (30 tasks) | 2026-01-26 |
+| mc-memory-layout-optimisation | PathLayout, AlignedPathBuffer, TimeStepFirstWorkspace, StreamingEngine (21 tasks) | 2026-01-26 |
 
 ### Layer Implementation Status
 
@@ -61,10 +64,10 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 #### Pricer Layer (P) - Core Engine
 | Crate | Layer | Status | Notes |
 |-------|-------|--------|-------|
-| pricer_core | L1 | ✅ | math (smoothing, distributions, calculus, utilities, interpolators, solvers, integrators, optimisers, fitting, mesh, linalg), types, traits |
-| pricer_models | L2 | ✅ | instruments, market (curves, surfaces, calibration, provider), models, schedules, analytical, demo |
+| pricer_core | L1 | ✅ | math (smoothing, distributions, calculus, utilities, interpolators, solvers, integrators, optimisers, fitting, mesh, linalg), types, traits, ir (AlignedBuffer, PricingKernel, ScriptKernel) |
+| pricer_models | L2 | ✅ | instruments, market (curves, surfaces, calibration, provider), models, schedules, analytical, compiler (IndexMapper, TradeCompiler), demo |
 | pricer_pricing | L3 | ✅ | mc, rng, greeks, path_dependent, checkpoint, context (l1l2-integration), generic_pricer |
-| pricer_risk | L4 | ✅ | portfolio, exposure, xva, scenarios (engine/shifts/aggregator/presets), soa, enzyme (AD), demo |
+| pricer_risk | L4 | ✅ | portfolio, exposure, xva, scenarios (engine/shifts/aggregator/presets), soa, enzyme (AD, shadow, kernel, binder), demo |
 
 > **Note**: `pricer_optimiser` (L2.5) was removed in 2026-01. All market data (curves, surfaces, bootstrapping, provider, calibration) consolidated into `pricer_models::market`.
 
@@ -148,13 +151,34 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 | documentation | API docs, user guides, examples | ❌ |
 | testing-coverage | Test coverage, property-based testing | ❌ |
 
+### Maintenance Tasks (Completed 2026-01-26)
+
+Codebase redundancy cleanup performed:
+
+| Task | Description | Status |
+|------|-------------|--------|
+| tokio-version-fix | Fixed tokio version inconsistency (workspace = true) | ✅ |
+| dead-code-removal | Removed dead code in service_gateway | ✅ |
+| unused-modules-cleanup | Removed unused modules in pricer_risk (bucket_dv01, irs_greeks_by_factor, portfolio_greeks) | ✅ |
+| test-fixtures-common | Created shared test fixtures (pricer_pricing/tests/common, pricer_models/tests/common) | ✅ |
+| app-js-refactor-plan | Documented app.js refactoring plan (15,000+ lines → modular) | ✅ |
+
+### Future Maintenance (Low Priority)
+
+| Task | Description | Status |
+|------|-------------|--------|
+| app-js-modularisation | Split app.js into separate modules (chart-utils, portfolio-table, etc.) | ⏳ Planned |
+| error-consolidation | Consolidate 31 error.rs files into shared patterns | ⏳ Planned |
+| spec-consolidation | Consolidate FrictionalBank-related specs (4 specs → 1) | ⏳ Planned |
+| d3-module-audit | Audit D3.js modules usage in demo/gui/static/vendor | ⏳ Planned |
+
 ---
 
 ### Active Specifications (In Progress)
 
 | Spec | Description | Status |
 |------|-------------|--------|
-| (none) | All specs completed | ✅ |
+| pricing-kernel-ir | PricingKernel IR, TradeCompiler, IndexMapper, CallableKernel | implementing (22/31 tasks, 71%) |
 
 ## Recommended Next Steps
 
@@ -168,6 +192,9 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 
 | Date | Change |
 |------|--------|
+| 2026-01-26 | Closed 3 completed specs: shadow-object-aad (16 tasks), external-numerics-migration (30 tasks), mc-memory-layout-optimisation (21 tasks). Total: 42 specs. 1 active: pricing-kernel-ir (71%) |
+| 2026-01-26 | Steering sync: Added IR module (PricingKernel, AlignedBuffer, ScriptKernel), compiler module (TradeCompiler, IndexMapper), enzyme extensions (shadow, kernel, binder). 4 active specs: pricing-kernel-ir (implementing), shadow-object-aad, external-numerics-migration, mc-memory-layout-optimisation |
+| 2026-01-26 | Codebase redundancy cleanup: Fixed tokio versions, removed dead code/unused modules, added test fixtures, documented app.js refactor plan |
 | 2026-01-26 | Steering sync: market-index-keyed-access completed (39 total). Added IndexedMarket, TradeIndexRequirements, MarketValidator to structure.md. |
 | 2026-01-26 | Steering sync: pricer-pricing-architecture completed (38 total). Added TrinomialTree (Kamrad-Ritchken) to structure.md. market-index-keyed-access ready for implementation. |
 | 2026-01-26 | market-index-keyed-access tasks generated (6 phases, 23 sub-tasks: IndexRequirement, IndexedMarket, Builder, TradeIndexRequirements, MarketValidator). Ready for implementation. |

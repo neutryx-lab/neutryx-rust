@@ -47,13 +47,16 @@
 //! ```
 
 // Submodules
+pub mod binder;
 pub mod checkpoint_ad;
 pub mod fallback;
 pub mod forward;
 pub mod greeks;
+pub mod kernel;
 pub mod loops;
 pub mod parallel;
 pub mod reverse;
+pub mod shadow;
 pub mod smooth;
 pub mod verification;
 pub mod wrappers;

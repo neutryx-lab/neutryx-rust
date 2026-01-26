@@ -31,7 +31,7 @@ pub mod traced_float;
 // Re-export pricer_core-specific types
 #[allow(deprecated)]
 pub use currency_pair::CurrencyPair;
-pub use currency_pair::FxRate;
+pub use currency_pair::{FxPair, FxRate};
 pub use error::{
     CalibrationError, CalibrationErrorKind, InterpolationError, PricingError, SolverError,
 };

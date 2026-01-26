@@ -346,7 +346,7 @@ jobs:
         id: parse-results
         run: |
           # Extract regression information from iai output
-          if grep -q "Performance has regressed" iai-output.txt; then
+          if grep -q "Performance has regressed" iai-output.txt 2>/dev/null; then
             echo "regression_detected=true" >> $GITHUB_OUTPUT
             echo "::warning::Performance regression detected in iai-callgrind benchmarks"
           else
@@ -354,8 +354,9 @@ jobs:
             echo "::notice::Iai-callgrind benchmarks completed successfully"
           fi
 
-          # Count benchmarks
-          TOTAL=$(grep -c "engine_iai::" iai-output.txt || echo "0")
+          # Count benchmarks (avoid capturing both grep output and fallback echo)
+          TOTAL=$(grep -c "engine_iai::" iai-output.txt 2>/dev/null || true)
+          TOTAL=${TOTAL:-0}
           echo "total_benchmarks=$TOTAL" >> $GITHUB_OUTPUT
 
       - name: Check regression threshold

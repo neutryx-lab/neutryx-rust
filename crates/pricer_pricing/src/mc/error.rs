@@ -27,6 +27,28 @@ pub enum MonteCarloConfigError {
         /// Description of the invalid value.
         value: String,
     },
+    /// Layout configuration error.
+    #[error("Layout configuration error: {0}")]
+    LayoutError(#[from] LayoutConfigError),
+}
+
+/// Error type for layout and streaming configuration.
+///
+/// These errors occur when invalid layout or streaming parameters are
+/// specified.
+#[derive(Error, Clone, Debug, PartialEq, Eq)]
+pub enum LayoutConfigError {
+    /// Streaming mode requires TimeStepFirst layout.
+    #[error("Streaming mode requires TimeStepFirst layout")]
+    StreamingRequiresTimeStepFirst,
+
+    /// Alignment must be a power of 2.
+    #[error("Alignment must be a power of 2, got {0}")]
+    InvalidAlignment(usize),
+
+    /// Buffer steps must be at least 2.
+    #[error("Buffer steps must be at least 2, got {0}")]
+    InvalidBufferSteps(usize),
 }
 
 #[cfg(test)]

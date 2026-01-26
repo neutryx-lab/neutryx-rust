@@ -36,6 +36,7 @@
 pub mod error;
 pub mod model_enum;
 pub mod stochastic;
+pub mod validation;
 
 // === Individual Models ===
 

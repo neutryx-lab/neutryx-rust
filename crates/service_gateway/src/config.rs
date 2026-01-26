@@ -12,7 +12,6 @@ pub use infra_config::Settings;
 /// Provides convenient access to gateway-specific settings from the unified
 /// `Settings` struct.
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct ServerConfig {
     /// Enable REST API
     pub rest_enabled: bool,
