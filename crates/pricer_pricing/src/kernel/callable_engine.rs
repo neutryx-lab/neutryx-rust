@@ -282,7 +282,6 @@ impl CallableEngine {
                 let spread = kernel.spreads[i];
                 let gearing = kernel.gearings[i];
                 let fwd_index_id = kernel.fwd_index_ids[i];
-                let _discount_curve_id = kernel.discount_curve_ids[i];
                 let fx_index_id = kernel.fx_index_ids[i];
 
                 // Get forward rate (for floating, use path-dependent rate)

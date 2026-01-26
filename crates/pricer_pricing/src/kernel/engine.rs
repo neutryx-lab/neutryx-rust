@@ -256,10 +256,7 @@ impl LinearEngine {
     pub fn price_batch_parallel<P: CurveProvider + Sync>(
         kernels: &[PricingKernel],
         context: &KernelContext<'_, P>,
-    ) -> Vec<f64>
-    where
-        P: Sync,
-    {
+    ) -> Vec<f64> {
         kernels
             .par_iter()
             .map(|k| Self::price(k, context))
@@ -281,10 +278,7 @@ impl LinearEngine {
     pub fn price_batch_sum_parallel<P: CurveProvider + Sync>(
         kernels: &[PricingKernel],
         context: &KernelContext<'_, P>,
-    ) -> f64
-    where
-        P: Sync,
-    {
+    ) -> f64 {
         kernels.par_iter().map(|k| Self::price(k, context)).sum()
     }
 }
