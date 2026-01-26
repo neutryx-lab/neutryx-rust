@@ -24,8 +24,7 @@
 //! - [`AlignedBuffer`]: 64-byte aligned heap buffer for SIMD efficiency
 //! - [`PricingKernel`]: SoA cashflow representation for linear products
 //! - [`ScriptKernel`]: Event-driven IR for path-dependent products
-//! - `CallableKernel`: Block-structured IR for callable/Bermudan products
-//!   (planned)
+//! - [`CallableKernel`]: Block-structured IR for callable/Bermudan products
 //! - [`CompileError`]: Structured compilation error types
 //!
 //! # Example
@@ -42,11 +41,15 @@
 //! ```
 
 mod aligned_buffer;
+mod callable_kernel;
 mod error;
 mod pricing_kernel;
 mod script_kernel;
 
 pub use aligned_buffer::{AlignedBuffer, ALIGNMENT};
+pub use callable_kernel::{
+    CallableBlock, CallableKernel, CallableKernelBuilder, ExerciseDef, ExerciseStyle,
+};
 pub use error::CompileError;
 pub use pricing_kernel::{PricingKernel, PricingKernelBuilder};
 pub use script_kernel::{BarrierType, ScriptKernel, ScriptKernelBuilder, ScriptOp};

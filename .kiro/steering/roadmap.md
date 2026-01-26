@@ -2,7 +2,7 @@
 
 実装状況と今後の開発項目を追跡するドキュメント。
 
-_Updated: 2026-01-26_ — Codebase redundancy cleanup completed; 39 completed specs
+_Updated: 2026-01-26_ — 39 completed specs; 4 active specs (pricing-kernel-ir implementing)
 
 ---
 
@@ -61,10 +61,10 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 #### Pricer Layer (P) - Core Engine
 | Crate | Layer | Status | Notes |
 |-------|-------|--------|-------|
-| pricer_core | L1 | ✅ | math (smoothing, distributions, calculus, utilities, interpolators, solvers, integrators, optimisers, fitting, mesh, linalg), types, traits |
-| pricer_models | L2 | ✅ | instruments, market (curves, surfaces, calibration, provider), models, schedules, analytical, demo |
+| pricer_core | L1 | ✅ | math (smoothing, distributions, calculus, utilities, interpolators, solvers, integrators, optimisers, fitting, mesh, linalg), types, traits, ir (AlignedBuffer, PricingKernel, ScriptKernel) |
+| pricer_models | L2 | ✅ | instruments, market (curves, surfaces, calibration, provider), models, schedules, analytical, compiler (IndexMapper, TradeCompiler), demo |
 | pricer_pricing | L3 | ✅ | mc, rng, greeks, path_dependent, checkpoint, context (l1l2-integration), generic_pricer |
-| pricer_risk | L4 | ✅ | portfolio, exposure, xva, scenarios (engine/shifts/aggregator/presets), soa, enzyme (AD), demo |
+| pricer_risk | L4 | ✅ | portfolio, exposure, xva, scenarios (engine/shifts/aggregator/presets), soa, enzyme (AD, shadow, kernel, binder), demo |
 
 > **Note**: `pricer_optimiser` (L2.5) was removed in 2026-01. All market data (curves, surfaces, bootstrapping, provider, calibration) consolidated into `pricer_models::market`.
 
@@ -175,7 +175,10 @@ Codebase redundancy cleanup performed:
 
 | Spec | Description | Status |
 |------|-------------|--------|
-| (none) | All specs completed | ✅ |
+| pricing-kernel-ir | PricingKernel IR, AlignedBuffer, TradeCompiler, IndexMapper | implementing (14/17 tasks) |
+| shadow-object-aad | Shadow object functionality for reverse mode AAD | tasks-generated |
+| external-numerics-migration | Migration to external numerics library | tasks-generated |
+| mc-memory-layout-optimisation | Memory layout optimisation for Monte Carlo | tasks-generated |
 
 ## Recommended Next Steps
 
@@ -189,6 +192,7 @@ Codebase redundancy cleanup performed:
 
 | Date | Change |
 |------|--------|
+| 2026-01-26 | Steering sync: Added IR module (PricingKernel, AlignedBuffer, ScriptKernel), compiler module (TradeCompiler, IndexMapper), enzyme extensions (shadow, kernel, binder). 4 active specs: pricing-kernel-ir (implementing), shadow-object-aad, external-numerics-migration, mc-memory-layout-optimisation |
 | 2026-01-26 | Codebase redundancy cleanup: Fixed tokio versions, removed dead code/unused modules, added test fixtures, documented app.js refactor plan |
 | 2026-01-26 | Steering sync: market-index-keyed-access completed (39 total). Added IndexedMarket, TradeIndexRequirements, MarketValidator to structure.md. |
 | 2026-01-26 | Steering sync: pricer-pricing-architecture completed (38 total). Added TrinomialTree (Kamrad-Ritchken) to structure.md. market-index-keyed-access ready for implementation. |

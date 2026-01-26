@@ -303,7 +303,8 @@ impl IndexMapper {
     ///
     /// # Returns
     ///
-    /// The numeric ID assigned to this CMS index (shares space with forward indices).
+    /// The numeric ID assigned to this CMS index (shares space with forward
+    /// indices).
     ///
     /// # Examples
     ///
@@ -969,5 +970,184 @@ mod tests {
             "Different FX directions should have different IDs"
         );
         assert_eq!(mapper.fx_pair_count(), 2);
+    }
+
+    // =========================================================================
+    // CMS Index Tests (Task 8.1)
+    // =========================================================================
+
+    use infra_master::time::Tenor;
+
+    use super::{CmsIndex, ForwardIndexType};
+
+    #[test]
+    fn test_cms_index_new() {
+        let cms10y = CmsIndex::new(Currency::USD, Tenor::TenYears);
+        assert_eq!(cms10y.currency(), Currency::USD);
+        assert_eq!(cms10y.swap_tenor(), Tenor::TenYears);
+        assert!(cms10y.requires_convexity_adjustment());
+    }
+
+    #[test]
+    fn test_cms_index_name() {
+        let cms10y = CmsIndex::new(Currency::USD, Tenor::TenYears);
+        assert_eq!(cms10y.name(), "CMS-USD-10Y");
+
+        let cms5y = CmsIndex::new(Currency::EUR, Tenor::FiveYears);
+        assert_eq!(cms5y.name(), "CMS-EUR-5Y");
+    }
+
+    #[test]
+    fn test_cms_index_display() {
+        let cms10y = CmsIndex::new(Currency::USD, Tenor::TenYears);
+        assert_eq!(format!("{}", cms10y), "CMS-USD-10Y");
+    }
+
+    #[test]
+    fn test_register_cms_index() {
+        let mut mapper = IndexMapper::new();
+
+        let cms10y = CmsIndex::new(Currency::USD, Tenor::TenYears);
+        let id = mapper.register_cms_index(cms10y);
+        assert!(id > 0); // 0 is reserved for dummy
+
+        let cms5y = CmsIndex::new(Currency::EUR, Tenor::FiveYears);
+        let id2 = mapper.register_cms_index(cms5y);
+        assert_eq!(id2, id + 1);
+
+        // Re-registering returns same ID
+        let id3 = mapper.register_cms_index(cms10y);
+        assert_eq!(id3, id);
+
+        assert_eq!(mapper.cms_index_count(), 2);
+    }
+
+    #[test]
+    fn test_get_cms_index_id() {
+        let mut mapper = IndexMapper::new();
+        let cms10y = CmsIndex::new(Currency::USD, Tenor::TenYears);
+        let id = mapper.register_cms_index(cms10y);
+
+        assert_eq!(mapper.get_cms_index_id(cms10y), Some(id));
+
+        let cms5y = CmsIndex::new(Currency::EUR, Tenor::FiveYears);
+        assert_eq!(mapper.get_cms_index_id(cms5y), None);
+    }
+
+    #[test]
+    fn test_get_cms_index() {
+        let mut mapper = IndexMapper::new();
+        let cms10y = CmsIndex::new(Currency::USD, Tenor::TenYears);
+        let id = mapper.register_cms_index(cms10y);
+
+        assert_eq!(mapper.get_cms_index(id), Some(cms10y));
+        assert_eq!(mapper.get_cms_index(0), None); // Dummy
+        assert_eq!(mapper.get_cms_index(999), None); // Out of range
+    }
+
+    #[test]
+    fn test_is_cms_index() {
+        let mut mapper = IndexMapper::new();
+
+        // Register a forward index
+        let sofr_id = mapper.register_forward_index(RateIndex::Sofr);
+
+        // Register a CMS index
+        let cms10y = CmsIndex::new(Currency::USD, Tenor::TenYears);
+        let cms_id = mapper.register_cms_index(cms10y);
+
+        assert!(!mapper.is_cms_index(0)); // Dummy
+        assert!(!mapper.is_cms_index(sofr_id)); // SOFR
+        assert!(mapper.is_cms_index(cms_id)); // CMS
+    }
+
+    #[test]
+    fn test_get_or_register_cms_index() {
+        let mut mapper = IndexMapper::new();
+        let cms10y = CmsIndex::new(Currency::USD, Tenor::TenYears);
+
+        // First call registers
+        let id1 = mapper.get_or_register_cms_index(cms10y);
+        assert!(id1 > 0);
+
+        // Second call returns existing
+        let id2 = mapper.get_or_register_cms_index(cms10y);
+        assert_eq!(id1, id2);
+    }
+
+    #[test]
+    fn test_cms_and_forward_share_id_space() {
+        let mut mapper = IndexMapper::new();
+
+        // Register a forward index
+        let sofr_id = mapper.register_forward_index(RateIndex::Sofr);
+
+        // Register a CMS index - should get next ID
+        let cms10y = CmsIndex::new(Currency::USD, Tenor::TenYears);
+        let cms_id = mapper.register_cms_index(cms10y);
+
+        assert_eq!(
+            cms_id,
+            sofr_id + 1,
+            "CMS should use next ID in shared space"
+        );
+
+        // Register another forward index - should get next ID
+        let estr_id = mapper.register_forward_index(RateIndex::Estr);
+        assert_eq!(estr_id, cms_id + 1);
+    }
+
+    #[test]
+    fn test_get_forward_index_type() {
+        let mut mapper = IndexMapper::new();
+
+        // Dummy index
+        assert_eq!(mapper.get_forward_index_type(0), None);
+
+        // Register forward index
+        let sofr_id = mapper.register_forward_index(RateIndex::Sofr);
+        assert_eq!(
+            mapper.get_forward_index_type(sofr_id),
+            Some(ForwardIndexType::Rate(RateIndex::Sofr))
+        );
+
+        // Register CMS index
+        let cms10y = CmsIndex::new(Currency::USD, Tenor::TenYears);
+        let cms_id = mapper.register_cms_index(cms10y);
+        assert_eq!(
+            mapper.get_forward_index_type(cms_id),
+            Some(ForwardIndexType::Cms(cms10y))
+        );
+
+        // Out of range
+        assert_eq!(mapper.get_forward_index_type(999), None);
+    }
+
+    #[test]
+    fn test_cms_index_hash() {
+        use std::collections::HashSet;
+
+        let cms10y = CmsIndex::new(Currency::USD, Tenor::TenYears);
+        let cms5y = CmsIndex::new(Currency::EUR, Tenor::FiveYears);
+        let cms10y_dup = CmsIndex::new(Currency::USD, Tenor::TenYears);
+
+        let mut set = HashSet::new();
+        set.insert(cms10y);
+        set.insert(cms5y);
+        set.insert(cms10y_dup); // Duplicate
+
+        assert_eq!(set.len(), 2);
+    }
+
+    #[test]
+    fn test_cms_index_equality() {
+        let cms10y_a = CmsIndex::new(Currency::USD, Tenor::TenYears);
+        let cms10y_b = CmsIndex::new(Currency::USD, Tenor::TenYears);
+        let cms5y = CmsIndex::new(Currency::USD, Tenor::FiveYears);
+        let cms10y_eur = CmsIndex::new(Currency::EUR, Tenor::TenYears);
+
+        assert_eq!(cms10y_a, cms10y_b);
+        assert_ne!(cms10y_a, cms5y);
+        assert_ne!(cms10y_a, cms10y_eur);
     }
 }

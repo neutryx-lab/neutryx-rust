@@ -28,7 +28,7 @@ mod linear;
 mod xccy;
 
 pub use exotic::ExoticCompiler;
-pub use index_mapper::IndexMapper;
+pub use index_mapper::{CmsIndex, ForwardIndexType, IndexMapper};
 pub use linear::LinearProductsCompiler;
 use pricer_core::ir::{CompileError, PricingKernel};
 pub use xccy::XCcyCompiler;
