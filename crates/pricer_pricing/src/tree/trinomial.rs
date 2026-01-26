@@ -186,9 +186,7 @@ impl TrinomialTree {
     }
 
     /// Returns the trinomial parameters.
-    pub fn params(&self) -> TrinomialParams {
-        self.params
-    }
+    pub fn params(&self) -> TrinomialParams { self.params }
 
     /// Computes the payoff at a given spot level.
     fn payoff(&self, spot: f64) -> f64 {
@@ -205,9 +203,7 @@ impl TrinomialTree {
     ///
     /// At time step i, j ranges from -i to +i
     /// spot_ij = spot * u^j (where j can be negative, so u^(-j) = d^j)
-    fn spot_at_node(&self, j: i32) -> f64 {
-        self.spot * self.params.u.powi(j)
-    }
+    fn spot_at_node(&self, j: i32) -> f64 { self.spot * self.params.u.powi(j) }
 
     /// Prices the option using backward induction.
     ///
@@ -248,12 +244,12 @@ impl TrinomialTree {
                 // Current indices in the values array (from step i+1)
                 // At step i+1, j ranges from -(i+1) to +(i+1)
                 // So we need values at j-1, j, j+1 relative to step i+1
-                let up_idx = ((j + 1) + (i + 1) as i32) as usize;   // j+1 at step i+1
-                let mid_idx = (j + (i + 1) as i32) as usize;        // j at step i+1
+                let up_idx = ((j + 1) + (i + 1) as i32) as usize; // j+1 at step i+1
+                let mid_idx = (j + (i + 1) as i32) as usize; // j at step i+1
                 let down_idx = ((j - 1) + (i + 1) as i32) as usize; // j-1 at step i+1
 
-                let continuation =
-                    discount * (p_u * values[up_idx] + p_m * values[mid_idx] + p_d * values[down_idx]);
+                let continuation = discount
+                    * (p_u * values[up_idx] + p_m * values[mid_idx] + p_d * values[down_idx]);
 
                 if self.is_american {
                     // Early exercise check
@@ -308,8 +304,8 @@ impl TrinomialTree {
                 let mid_idx = (j + (i + 1) as i32) as usize;
                 let down_idx = ((j - 1) + (i + 1) as i32) as usize;
 
-                let continuation =
-                    discount * (p_u * values[up_idx] + p_m * values[mid_idx] + p_d * values[down_idx]);
+                let continuation = discount
+                    * (p_u * values[up_idx] + p_m * values[mid_idx] + p_d * values[down_idx]);
 
                 if self.is_american {
                     let spot_ij = self.spot_at_node(j);
@@ -322,7 +318,8 @@ impl TrinomialTree {
             values = new_values;
         }
 
-        // At step 1: values[0] = V_d (j=-1), values[1] = V_m (j=0), values[2] = V_u (j=1)
+        // At step 1: values[0] = V_d (j=-1), values[1] = V_m (j=0), values[2] = V_u
+        // (j=1)
         let v_u = values[2]; // j = +1
         let v_d = values[0]; // j = -1
         let s_u = self.spot * u;
@@ -368,8 +365,8 @@ impl TrinomialTree {
                 let mid_idx = (j + (i + 1) as i32) as usize;
                 let down_idx = ((j - 1) + (i + 1) as i32) as usize;
 
-                let continuation =
-                    discount * (p_u * values[up_idx] + p_m * values[mid_idx] + p_d * values[down_idx]);
+                let continuation = discount
+                    * (p_u * values[up_idx] + p_m * values[mid_idx] + p_d * values[down_idx]);
 
                 if self.is_american {
                     let spot_ij = self.spot_at_node(j);
@@ -382,7 +379,8 @@ impl TrinomialTree {
             values = new_values;
         }
 
-        // At step 1: values[0] = V_d (j=-1), values[1] = V_m (j=0), values[2] = V_u (j=1)
+        // At step 1: values[0] = V_d (j=-1), values[1] = V_m (j=0), values[2] = V_u
+        // (j=1)
         let v_u = values[2]; // j = +1
         let v_m = values[1]; // j = 0
         let v_d = values[0]; // j = -1
@@ -400,44 +398,28 @@ impl TrinomialTree {
     }
 
     /// Returns whether this is a call option.
-    pub fn is_call(&self) -> bool {
-        self.is_call
-    }
+    pub fn is_call(&self) -> bool { self.is_call }
 
     /// Returns whether this is an American option.
-    pub fn is_american(&self) -> bool {
-        self.is_american
-    }
+    pub fn is_american(&self) -> bool { self.is_american }
 
     /// Returns the spot price.
-    pub fn spot(&self) -> f64 {
-        self.spot
-    }
+    pub fn spot(&self) -> f64 { self.spot }
 
     /// Returns the strike price.
-    pub fn strike(&self) -> f64 {
-        self.strike
-    }
+    pub fn strike(&self) -> f64 { self.strike }
 
     /// Returns the time to expiry.
-    pub fn expiry(&self) -> f64 {
-        self.expiry
-    }
+    pub fn expiry(&self) -> f64 { self.expiry }
 
     /// Returns the number of steps.
-    pub fn num_steps(&self) -> usize {
-        self.num_steps
-    }
+    pub fn num_steps(&self) -> usize { self.num_steps }
 
     /// Returns the volatility.
-    pub fn volatility(&self) -> f64 {
-        self.volatility
-    }
+    pub fn volatility(&self) -> f64 { self.volatility }
 
     /// Returns the risk-free rate.
-    pub fn rate(&self) -> f64 {
-        self.rate
-    }
+    pub fn rate(&self) -> f64 { self.rate }
 }
 
 #[cfg(test)]
@@ -483,16 +465,28 @@ mod tests {
         // u = exp(0.2 * sqrt(0.02)) ≈ exp(0.0283) ≈ 1.0287
         assert!(params.u > 1.0, "u should be > 1");
         // d = 1/u
-        assert!((params.u * params.d - 1.0).abs() < 1e-10, "u * d should be 1");
+        assert!(
+            (params.u * params.d - 1.0).abs() < 1e-10,
+            "u * d should be 1"
+        );
         // Probabilities should sum to 1
         assert!(
             (params.p_u + params.p_m + params.p_d - 1.0).abs() < 1e-10,
             "Probabilities should sum to 1"
         );
         // All probabilities should be positive
-        assert!(params.p_u > 0.0 && params.p_u < 1.0, "p_u should be in (0,1)");
-        assert!(params.p_m > 0.0 && params.p_m < 1.0, "p_m should be in (0,1)");
-        assert!(params.p_d > 0.0 && params.p_d < 1.0, "p_d should be in (0,1)");
+        assert!(
+            params.p_u > 0.0 && params.p_u < 1.0,
+            "p_u should be in (0,1)"
+        );
+        assert!(
+            params.p_m > 0.0 && params.p_m < 1.0,
+            "p_m should be in (0,1)"
+        );
+        assert!(
+            params.p_d > 0.0 && params.p_d < 1.0,
+            "p_d should be in (0,1)"
+        );
     }
 
     #[test]
@@ -736,10 +730,10 @@ mod tests {
         let expiry = 1.0;
 
         // Both should converge to similar values
-        let binomial = BinomialTree::new(spot, strike, expiry, rate, volatility, 500, true, false)
-            .unwrap();
-        let trinomial = TrinomialTree::new(spot, strike, expiry, rate, volatility, 200, true, false)
-            .unwrap();
+        let binomial =
+            BinomialTree::new(spot, strike, expiry, rate, volatility, 500, true, false).unwrap();
+        let trinomial =
+            TrinomialTree::new(spot, strike, expiry, rate, volatility, 200, true, false).unwrap();
 
         let bi_price = binomial.price();
         let tri_price = trinomial.price();

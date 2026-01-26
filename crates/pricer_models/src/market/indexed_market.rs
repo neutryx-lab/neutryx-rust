@@ -218,9 +218,11 @@ impl<T: Float> IndexedMarket<T> {
     /// let vol = cube.volatility(strike, expiry, tenor)?;
     /// ```
     pub fn volcube(&self, index: RateIndex) -> Result<&VolCube<T>, MarketDataError> {
-        self.volcubes.get(&index).ok_or(MarketDataError::IndexNotFound {
-            index: format!("{:?}", index),
-        })
+        self.volcubes
+            .get(&index)
+            .ok_or(MarketDataError::IndexNotFound {
+                index: format!("{:?}", index),
+            })
     }
 
     // ========================================
@@ -321,7 +323,9 @@ impl<T: Float> IndexedMarket<T> {
 
     /// Returns all available currency pairs for FX curves.
     #[must_use]
-    pub fn available_fx_pairs(&self) -> Vec<CurrencyPair> { self.fx_curves.keys().copied().collect() }
+    pub fn available_fx_pairs(&self) -> Vec<CurrencyPair> {
+        self.fx_curves.keys().copied().collect()
+    }
 
     /// Returns all available currency pairs for FX vol surfaces.
     #[must_use]
@@ -507,10 +511,10 @@ impl<T: Float> IndexedMarketBuilder<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::market::curves::FlatCurve;
-    use crate::market::surfaces::FlatVol;
     use infra_master::Currency;
+
+    use super::*;
+    use crate::market::{curves::FlatCurve, surfaces::FlatVol};
 
     // ========================================
     // Builder Tests (Task 3)
@@ -601,7 +605,8 @@ mod tests {
 
         let result = market.curve(RateIndex::Sofr);
         assert!(result.is_err());
-        match result.unwrap_err() {
+        let err = result.err().unwrap();
+        match err {
             MarketDataError::IndexNotFound { index } => {
                 assert!(index.contains("Sofr"));
             }

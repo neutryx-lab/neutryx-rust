@@ -118,7 +118,6 @@ pub enum MarketDataError {
     // ========================================
     // Index-Keyed Access Errors (Req 1.4, 2.6, 3.5)
     // ========================================
-
     /// Index not found in the market.
     ///
     /// Returned when attempting to access market data for an index
@@ -153,7 +152,8 @@ pub enum MarketDataError {
 /// Market build error types.
 ///
 /// Provides structured error handling for `IndexedMarketBuilder` operations.
-/// Used during Market construction to report configuration and validation errors.
+/// Used during Market construction to report configuration and validation
+/// errors.
 ///
 /// # Variants
 ///

@@ -85,8 +85,8 @@
 
 ### 5. Trinomial Tree 実装 (Optional)
 
-- [ ]* 5.1 `TrinomialTree<T>` 実装
-  - 3分木パラメータ計算
+- [x] 5.1 `TrinomialTree<T>` 実装
+  - 3分木パラメータ計算 (Kamrad-Ritchken 方式)
   - Binomial と同等のインターフェース
   - テスト: European オプション収束
   - _Requirements: 5.1_
@@ -211,10 +211,11 @@
 
 ### 12. パフォーマンステスト
 
-- [ ]* 12.1 Binomial Tree ベンチマーク
-  - 100 steps: < 1ms
-  - 5000 steps: < 500ms
-  - `criterion` でベンチマーク追加
+- [x] 12.1 Binomial Tree ベンチマーク
+  - 100 steps: ~6µs (目標 < 1ms 達成)
+  - 5000 steps: ~37ms (目標 < 500ms 達成)
+  - `criterion` でベンチマーク追加 (`benches/engine.rs`)
+  - TrinomialTree ベンチマークも追加
   - _Requirements: 5.3_
 
 ---

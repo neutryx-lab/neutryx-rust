@@ -36,6 +36,7 @@ pub mod fx_density;
 pub mod index_mapper;
 pub mod indexed_market;
 pub mod provider;
+pub mod requirements;
 pub mod surfaces;
 pub mod volcube;
 
@@ -55,10 +56,11 @@ pub use curves::{
     FlatHazardRateCurve, HazardRateCurve, InterpolatedCurve, YieldCurve,
 };
 pub use error::{MarketBuildError, MarketDataError};
-pub use indexed_market::{IndexedMarket, IndexedMarketBuilder};
 pub use fx_density::{DeltaType, DensityStatistics, FxDensityCalculator};
 pub use index_mapper::{DefaultIndexCurveMapper, IndexCurveMapper};
+pub use indexed_market::{IndexedMarket, IndexedMarketBuilder};
 pub use provider::{MarketProvider, VolCubeProviderKey};
+pub use requirements::TradeIndexRequirements;
 pub use surfaces::{
     FlatVol, FxDeltaPoint, FxVolatilitySurface, InterpolatedVolSurface, VolCubeSlice,
     VolSurfaceEnum, VolatilitySurface,

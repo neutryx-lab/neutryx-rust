@@ -1078,10 +1078,9 @@ fn bench_binomial_tree_steps(c: &mut Criterion) {
             BenchmarkId::new("european_call", num_steps),
             &num_steps,
             |b, &steps| {
-                let tree = BinomialTree::new(
-                    spot, strike, expiry, rate, volatility, steps, true, false,
-                )
-                .unwrap();
+                let tree =
+                    BinomialTree::new(spot, strike, expiry, rate, volatility, steps, true, false)
+                        .unwrap();
                 b.iter(|| black_box(tree.price()));
             },
         );
@@ -1090,10 +1089,9 @@ fn bench_binomial_tree_steps(c: &mut Criterion) {
             BenchmarkId::new("american_put", num_steps),
             &num_steps,
             |b, &steps| {
-                let tree = BinomialTree::new(
-                    spot, strike, expiry, rate, volatility, steps, false, true,
-                )
-                .unwrap();
+                let tree =
+                    BinomialTree::new(spot, strike, expiry, rate, volatility, steps, false, true)
+                        .unwrap();
                 b.iter(|| black_box(tree.price()));
             },
         );
@@ -1118,10 +1116,9 @@ fn bench_binomial_tree_greeks(c: &mut Criterion) {
             BenchmarkId::new("delta", num_steps),
             &num_steps,
             |b, &steps| {
-                let tree = BinomialTree::new(
-                    spot, strike, expiry, rate, volatility, steps, true, false,
-                )
-                .unwrap();
+                let tree =
+                    BinomialTree::new(spot, strike, expiry, rate, volatility, steps, true, false)
+                        .unwrap();
                 b.iter(|| black_box(tree.delta()));
             },
         );
@@ -1130,10 +1127,9 @@ fn bench_binomial_tree_greeks(c: &mut Criterion) {
             BenchmarkId::new("gamma", num_steps),
             &num_steps,
             |b, &steps| {
-                let tree = BinomialTree::new(
-                    spot, strike, expiry, rate, volatility, steps, true, false,
-                )
-                .unwrap();
+                let tree =
+                    BinomialTree::new(spot, strike, expiry, rate, volatility, steps, true, false)
+                        .unwrap();
                 b.iter(|| black_box(tree.gamma()));
             },
         );
@@ -1159,10 +1155,9 @@ fn bench_trinomial_tree_steps(c: &mut Criterion) {
             BenchmarkId::new("european_call", num_steps),
             &num_steps,
             |b, &steps| {
-                let tree = TrinomialTree::new(
-                    spot, strike, expiry, rate, volatility, steps, true, false,
-                )
-                .unwrap();
+                let tree =
+                    TrinomialTree::new(spot, strike, expiry, rate, volatility, steps, true, false)
+                        .unwrap();
                 b.iter(|| black_box(tree.price()));
             },
         );
@@ -1171,10 +1166,9 @@ fn bench_trinomial_tree_steps(c: &mut Criterion) {
             BenchmarkId::new("american_put", num_steps),
             &num_steps,
             |b, &steps| {
-                let tree = TrinomialTree::new(
-                    spot, strike, expiry, rate, volatility, steps, false, true,
-                )
-                .unwrap();
+                let tree =
+                    TrinomialTree::new(spot, strike, expiry, rate, volatility, steps, false, true)
+                        .unwrap();
                 b.iter(|| black_box(tree.price()));
             },
         );

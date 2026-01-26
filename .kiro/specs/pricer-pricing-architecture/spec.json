@@ -20,5 +20,5 @@
   },
   "ready_for_implementation": true,
   "implementation_complete": true,
-  "implementation_notes": "Phase 1-6 完了。Tree手法、UnifiedPricingResult、Dispatcher、VanillaOption/Forward統合、ドキュメント追加。オプションタスク (5.1 TrinomialTree, 12.1 Benchmark) は後回し。"
+  "implementation_notes": "Phase 1-6 完了。Tree手法、UnifiedPricingResult、Dispatcher、VanillaOption/Forward統合、ドキュメント追加。オプションタスク完了: TrinomialTree (Kamrad-Ritchken方式)、criterion benchmark (100 steps: ~6µs, 5000 steps: ~37ms)。"
 }

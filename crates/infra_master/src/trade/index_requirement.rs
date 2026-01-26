@@ -32,8 +32,10 @@ use crate::{market::RateIndex, trade::instrument_def::CurrencyPair};
 ///
 /// # Variants
 ///
-/// - `RateCurve`: Requires a yield curve for discount/projection (e.g., SOFR, EURIBOR)
-/// - `SwaptionVol`: Requires a swaption volatility cube for the given rate index
+/// - `RateCurve`: Requires a yield curve for discount/projection (e.g., SOFR,
+///   EURIBOR)
+/// - `SwaptionVol`: Requires a swaption volatility cube for the given rate
+///   index
 /// - `FxCurve`: Requires an FX forward curve for the given currency pair
 /// - `FxVol`: Requires an FX volatility surface for the given currency pair
 ///
