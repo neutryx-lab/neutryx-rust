@@ -37,10 +37,48 @@
 //! ```
 
 use super::greeks::GreeksMode as EnzymeGreeksMode;
-// Allow deprecated usage: This internal code still needs GreeksConfig/GreeksMode
-// until the module is fully migrated. The deprecation is for external crate users.
-#[allow(deprecated)]
-use crate::greeks::{GreeksConfig, GreeksMode as CoreGreeksMode};
+
+// Local definitions (previously from crate::greeks)
+
+/// Core Greeks calculation mode.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+pub enum CoreGreeksMode {
+    /// Bump-and-revalue using finite differences.
+    #[default]
+    BumpRevalue,
+    /// Forward-mode AD using num-dual library.
+    NumDual,
+}
+
+/// Configuration for Greeks calculation.
+#[derive(Clone, Debug)]
+pub struct GreeksConfig {
+    /// Calculation mode.
+    pub mode: CoreGreeksMode,
+    /// Relative bump for spot price.
+    pub spot_bump_relative: f64,
+    /// Absolute bump for volatility.
+    pub vol_bump_absolute: f64,
+    /// Time bump in years.
+    pub time_bump_years: f64,
+    /// Absolute bump for interest rate.
+    pub rate_bump_absolute: f64,
+    /// Tolerance for verification.
+    pub verification_tolerance: f64,
+}
+
+impl Default for GreeksConfig {
+    fn default() -> Self {
+        Self {
+            mode: CoreGreeksMode::default(),
+            spot_bump_relative: 0.01,
+            vol_bump_absolute: 0.01,
+            time_bump_years: 1.0 / 252.0,
+            rate_bump_absolute: 0.01,
+            verification_tolerance: 1e-6,
+        }
+    }
+}
 
 /// Configuration for fallback behaviour.
 #[derive(Clone, Debug)]

@@ -322,11 +322,9 @@ pub async fn export_rates_json(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::Json;
 
     mod handler_tests {
         use super::*;
-    use axum::Json;
 
         #[tokio::test]
         async fn test_get_market_rates_returns_rates() {

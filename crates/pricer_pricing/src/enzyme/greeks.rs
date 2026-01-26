@@ -27,14 +27,79 @@
 //! println!("Price: {:.4}, Delta: {:.4}", result.price, result.delta);
 //! ```
 
-// Allow deprecated usage: This internal code still needs GreeksResult
-// until the module is fully migrated. The deprecation is for external crate
-// users.
-#[allow(deprecated)]
-use crate::{
-    greeks::GreeksResult,
-    mc::{GbmParams, MonteCarloPricer, PayoffParams, PricingResult},
-};
+use crate::mc::{GbmParams, MonteCarloPricer, PayoffParams, PricingResult};
+
+// Local definition (previously from crate::greeks)
+
+/// Greeks calculation result with optional sensitivities.
+#[derive(Clone, Debug, PartialEq)]
+pub struct GreeksResult<T> {
+    /// Present value.
+    pub price: T,
+    /// Standard error.
+    pub std_error: T,
+    /// Delta.
+    pub delta: Option<T>,
+    /// Vega.
+    pub vega: Option<T>,
+    /// Theta.
+    pub theta: Option<T>,
+    /// Rho.
+    pub rho: Option<T>,
+    /// Gamma.
+    pub gamma: Option<T>,
+    /// Vanna.
+    pub vanna: Option<T>,
+    /// Volga.
+    pub volga: Option<T>,
+}
+
+impl<T: Default> GreeksResult<T> {
+    /// Creates a new result with only price and standard error.
+    pub fn new(price: T, std_error: T) -> Self {
+        Self {
+            price,
+            std_error,
+            delta: None,
+            vega: None,
+            theta: None,
+            rho: None,
+            gamma: None,
+            vanna: None,
+            volga: None,
+        }
+    }
+
+    /// Sets delta.
+    pub fn with_delta(mut self, delta: T) -> Self {
+        self.delta = Some(delta);
+        self
+    }
+
+    /// Sets gamma.
+    pub fn with_gamma(mut self, gamma: T) -> Self {
+        self.gamma = Some(gamma);
+        self
+    }
+
+    /// Sets vega.
+    pub fn with_vega(mut self, vega: T) -> Self {
+        self.vega = Some(vega);
+        self
+    }
+
+    /// Sets theta.
+    pub fn with_theta(mut self, theta: T) -> Self {
+        self.theta = Some(theta);
+        self
+    }
+
+    /// Sets rho.
+    pub fn with_rho(mut self, rho: T) -> Self {
+        self.rho = Some(rho);
+        self
+    }
+}
 
 /// Mode for Greeks computation.
 ///
@@ -161,7 +226,6 @@ impl EnzymeGreeksResult {
 
     /// Converts to `GreeksResult<f64>` for compatibility.
     #[inline]
-    #[allow(deprecated)]
     pub fn to_greeks_result(&self) -> GreeksResult<f64> {
         GreeksResult::new(self.price, self.std_error)
             .with_delta(self.delta)

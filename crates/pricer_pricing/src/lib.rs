@@ -146,10 +146,6 @@ pub mod checkpoint;
 // Phase 4: Analytical solutions for verification
 pub mod analytical;
 
-// Greeks calculation types and configuration (internal use only)
-// External users should use pricer_risk::greeks
-pub(crate) mod greeks;
-
 // Thread-local buffer pool for allocation-free simulation
 pub mod pool;
 

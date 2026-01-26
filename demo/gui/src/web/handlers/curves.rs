@@ -524,11 +524,9 @@ fn interpolate_forward_rate(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::Json;
 
     mod curve_data_loader_tests {
         use super::*;
-    use axum::Json;
 
         #[test]
         fn test_parse_tenor_years() {
@@ -601,8 +599,7 @@ mod tests {
 
     mod interpolation_tests {
         use super::*;
-    use axum::Json;
-        use super::types::{CachedCurve, ParRateInput};
+        use crate::web::handlers::types::{CachedCurve, ParRateInput};
 
         fn sample_curve() -> CachedCurve {
             let pillars = vec![0.25, 0.5, 1.0, 2.0, 5.0, 10.0];

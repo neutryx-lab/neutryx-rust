@@ -678,7 +678,6 @@ fn compute_rho_bump(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::Json;
 
     #[test]
     fn test_build_risk_config_default() {

@@ -1347,7 +1347,6 @@ pub async fn get_surface(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::Json;
 
     #[test]
     fn test_fxvol_data_loader_default() {

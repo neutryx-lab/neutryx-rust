@@ -9,7 +9,170 @@
 use infra_master::market::Currency;
 
 use super::error::ConfigError;
-use crate::greeks::{GreeksConfig, GreeksMode};
+
+// =============================================================================
+// Greeks Configuration (local definitions)
+// =============================================================================
+
+/// Calculation mode for Greeks computation.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+pub enum GreeksMode {
+    /// Bump-and-revalue using finite differences.
+    #[default]
+    BumpRevalue,
+    /// Forward-mode AD using num-dual library.
+    NumDual,
+    /// Enzyme LLVM-level automatic differentiation.
+    #[cfg(feature = "enzyme-ad")]
+    EnzymeAAD,
+}
+
+/// Configuration for Greeks calculation.
+#[derive(Clone, Debug)]
+pub struct GreeksConfig {
+    /// Calculation mode.
+    pub mode: GreeksMode,
+    /// Relative bump for spot price (default: 0.01 = 1%).
+    pub spot_bump_relative: f64,
+    /// Absolute bump for volatility (default: 0.01).
+    pub vol_bump_absolute: f64,
+    /// Time bump in years (default: 1/252).
+    pub time_bump_years: f64,
+    /// Absolute bump for interest rate (default: 0.01).
+    pub rate_bump_absolute: f64,
+    /// Tolerance for verification (default: 1e-6).
+    pub verification_tolerance: f64,
+}
+
+impl Default for GreeksConfig {
+    fn default() -> Self {
+        Self {
+            mode: GreeksMode::default(),
+            spot_bump_relative: 0.01,
+            vol_bump_absolute: 0.01,
+            time_bump_years: 1.0 / 252.0,
+            rate_bump_absolute: 0.01,
+            verification_tolerance: 1e-6,
+        }
+    }
+}
+
+impl GreeksConfig {
+    /// Creates a new builder.
+    pub fn builder() -> GreeksConfigBuilder { GreeksConfigBuilder::default() }
+
+    /// Validates the configuration.
+    pub fn validate(&self) -> Result<(), GreeksConfigError> {
+        if self.spot_bump_relative <= 0.0 || self.spot_bump_relative > 1.0 {
+            return Err(GreeksConfigError::InvalidSpotBump);
+        }
+        if self.vol_bump_absolute <= 0.0 || self.vol_bump_absolute > 0.5 {
+            return Err(GreeksConfigError::InvalidVolBump);
+        }
+        if self.time_bump_years <= 0.0 || self.time_bump_years > 1.0 {
+            return Err(GreeksConfigError::InvalidTimeBump);
+        }
+        if self.rate_bump_absolute <= 0.0 || self.rate_bump_absolute > 0.1 {
+            return Err(GreeksConfigError::InvalidRateBump);
+        }
+        if self.verification_tolerance <= 0.0 {
+            return Err(GreeksConfigError::InvalidTolerance);
+        }
+        Ok(())
+    }
+}
+
+/// Builder for GreeksConfig.
+#[derive(Debug, Default)]
+pub struct GreeksConfigBuilder {
+    mode: Option<GreeksMode>,
+    spot_bump_relative: Option<f64>,
+    vol_bump_absolute: Option<f64>,
+    time_bump_years: Option<f64>,
+    rate_bump_absolute: Option<f64>,
+    verification_tolerance: Option<f64>,
+}
+
+impl GreeksConfigBuilder {
+    /// Sets the calculation mode.
+    pub fn mode(mut self, mode: GreeksMode) -> Self {
+        self.mode = Some(mode);
+        self
+    }
+
+    /// Sets the relative spot bump.
+    pub fn spot_bump_relative(mut self, bump: f64) -> Self {
+        self.spot_bump_relative = Some(bump);
+        self
+    }
+
+    /// Sets the absolute volatility bump.
+    pub fn vol_bump_absolute(mut self, bump: f64) -> Self {
+        self.vol_bump_absolute = Some(bump);
+        self
+    }
+
+    /// Sets the time bump in years.
+    pub fn time_bump_years(mut self, bump: f64) -> Self {
+        self.time_bump_years = Some(bump);
+        self
+    }
+
+    /// Sets the absolute rate bump.
+    pub fn rate_bump_absolute(mut self, bump: f64) -> Self {
+        self.rate_bump_absolute = Some(bump);
+        self
+    }
+
+    /// Sets the verification tolerance.
+    pub fn verification_tolerance(mut self, tolerance: f64) -> Self {
+        self.verification_tolerance = Some(tolerance);
+        self
+    }
+
+    /// Builds the configuration.
+    pub fn build(self) -> Result<GreeksConfig, GreeksConfigError> {
+        let config = GreeksConfig {
+            mode: self.mode.unwrap_or_default(),
+            spot_bump_relative: self.spot_bump_relative.unwrap_or(0.01),
+            vol_bump_absolute: self.vol_bump_absolute.unwrap_or(0.01),
+            time_bump_years: self.time_bump_years.unwrap_or(1.0 / 252.0),
+            rate_bump_absolute: self.rate_bump_absolute.unwrap_or(0.01),
+            verification_tolerance: self.verification_tolerance.unwrap_or(1e-6),
+        };
+        config.validate()?;
+        Ok(config)
+    }
+}
+
+/// Error type for GreeksConfig validation.
+#[derive(Debug, Clone, PartialEq)]
+pub enum GreeksConfigError {
+    /// Invalid spot bump value.
+    InvalidSpotBump,
+    /// Invalid volatility bump value.
+    InvalidVolBump,
+    /// Invalid time bump value.
+    InvalidTimeBump,
+    /// Invalid rate bump value.
+    InvalidRateBump,
+    /// Invalid verification tolerance.
+    InvalidTolerance,
+}
+
+impl std::fmt::Display for GreeksConfigError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InvalidSpotBump => write!(f, "Invalid spot bump"),
+            Self::InvalidVolBump => write!(f, "Invalid vol bump"),
+            Self::InvalidTimeBump => write!(f, "Invalid time bump"),
+            Self::InvalidRateBump => write!(f, "Invalid rate bump"),
+            Self::InvalidTolerance => write!(f, "Invalid tolerance"),
+        }
+    }
+}
+
+impl std::error::Error for GreeksConfigError {}
 
 /// Model configuration for Generic Pricer.
 ///

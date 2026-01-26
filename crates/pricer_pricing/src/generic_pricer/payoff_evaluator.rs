@@ -199,6 +199,22 @@ impl<'a, T: Float + 'static> PayoffEvaluator<'a, T> {
                     T::zero()
                 }
             }
+            OptionType::DigitalCall => {
+                // Digital call: 1 if rate > strike, else 0
+                if fwd_rate > strike_t {
+                    T::one()
+                } else {
+                    T::zero()
+                }
+            }
+            OptionType::DigitalPut => {
+                // Digital put: 1 if rate < strike, else 0
+                if fwd_rate < strike_t {
+                    T::one()
+                } else {
+                    T::zero()
+                }
+            }
         };
 
         Ok(notional * intrinsic * year_fraction)

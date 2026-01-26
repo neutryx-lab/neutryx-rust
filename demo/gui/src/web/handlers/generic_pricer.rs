@@ -17,22 +17,21 @@
 use std::sync::Arc;
 
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
+use infra_config::BumpSizes;
 use pricer_pricing::generic_pricer::{
-    BumpSizes, DefaultCurrency, GenericPricer, ModelConfig, PricerConfig, SimpleCashflow,
-    SimpleDate, SimpleDirection, SimpleLeg,
+    DefaultCurrency, GenericPricer, ModelConfig, PricerConfig, SimpleCashflow, SimpleDate,
+    SimpleDirection, SimpleLeg,
 };
 use serde_json::json;
 
 #[cfg(test)]
 use super::types::CashflowInput;
-use crate::web::{
-    pricer_types::{
-        BumpSizesInput, CashflowResultOutput, CurrencyInput, DirectionInput, GenericPricerRequest,
-        GenericPricerResponse, GreeksCalculationRequest, GreeksCalculationResponse, LegInput,
-        LegResultOutput, PricerInstrumentTypesResponse,
-    },
-    AppState,
+use super::types::{
+    BumpSizesInput, CashflowResultOutput, CurrencyInput, DirectionInput, GenericPricerRequest,
+    GenericPricerResponse, GreeksCalculationRequest, GreeksCalculationResponse, LegInput,
+    LegResultOutput, PricerInstrumentTypesResponse,
 };
+use crate::web::AppState;
 
 // =============================================================================
 // Task 2.1: POST /api/pricer/price Handler
@@ -343,7 +342,6 @@ fn format_simple_date(date: SimpleDate) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::Json;
 
     #[test]
     fn test_convert_currency() {

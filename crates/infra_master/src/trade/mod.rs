@@ -63,8 +63,8 @@ pub use instrument::Instrument;
 pub use leg::{Direction, Leg, LegType};
 pub use payoff::{OptionType, Payoff};
 pub use pricing_instrument::{
-    ExerciseStyle, Forward, ForwardDirection, InstrumentParams, PayoffType, PricingInstrument,
-    VanillaOption,
+    ExerciseStyle, Forward, ForwardDirection, FxOptionType, InstrumentParams, PayoffType,
+    PricingInstrument, VanillaOption,
 };
 pub use trade::{ExerciseType, SettlementType, Trade, TradeMetadata, TradeType};
 

@@ -36,10 +36,30 @@
 
 use num_traits::Float;
 
-// Allow deprecated usage: This internal code still needs GreeksResult until
-// the module is fully migrated. The deprecation is for external crate users.
-#[allow(deprecated)]
-use crate::greeks::GreeksResult;
+// Local definition (previously from crate::greeks)
+
+/// Greeks calculation result with optional sensitivities.
+#[derive(Clone, Debug, PartialEq)]
+pub struct GreeksResult<T: Float> {
+    /// Present value of the instrument.
+    pub price: T,
+    /// Standard error of the Monte Carlo estimate.
+    pub std_error: T,
+    /// Delta: ∂V/∂S (sensitivity to spot price).
+    pub delta: Option<T>,
+    /// Vega: ∂V/∂σ (sensitivity to volatility).
+    pub vega: Option<T>,
+    /// Theta: ∂V/∂τ (sensitivity to time, time decay).
+    pub theta: Option<T>,
+    /// Rho: ∂V/∂r (sensitivity to interest rate).
+    pub rho: Option<T>,
+    /// Gamma: ∂²V/∂S² (convexity with respect to spot).
+    pub gamma: Option<T>,
+    /// Vanna: ∂²V/∂S∂σ (cross sensitivity between spot and volatility).
+    pub vanna: Option<T>,
+    /// Volga: ∂²V/∂σ² (volatility convexity).
+    pub volga: Option<T>,
+}
 
 /// Reverse mode AD result containing all first-order Greeks.
 ///
@@ -117,8 +137,7 @@ impl<T: Float> ReverseAD<T> {
     ///
     /// Note: Standard error is set to zero as AD doesn't compute MC error.
     #[inline]
-    #[allow(deprecated)]
-    pub fn to_greeks_result(self) -> GreeksResult<T> {
+        pub fn to_greeks_result(self) -> GreeksResult<T> {
         GreeksResult {
             price: self.price,
             std_error: T::zero(),
@@ -241,8 +260,7 @@ impl<T: Float> CompleteGreeks<T> {
 
     /// Converts to GreeksResult<T> for compatibility.
     #[inline]
-    #[allow(deprecated)]
-    pub fn to_greeks_result(self) -> GreeksResult<T> {
+        pub fn to_greeks_result(self) -> GreeksResult<T> {
         GreeksResult {
             price: self.first_order.price,
             std_error: T::zero(),

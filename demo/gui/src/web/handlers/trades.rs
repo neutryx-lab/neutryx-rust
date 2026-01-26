@@ -1742,11 +1742,9 @@ fn build_equity_optional_params() -> Vec<ParameterFieldMeta> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::Json;
 
     mod validation_tests {
         use super::*;
-    use axum::Json;
 
         #[test]
         fn test_validate_rates_params_valid() {
@@ -1817,7 +1815,6 @@ mod tests {
 
     mod expansion_tests {
         use super::*;
-    use axum::Json;
 
         #[test]
         fn test_expand_deposit() {
@@ -1951,7 +1948,6 @@ mod tests {
 
     mod metadata_tests {
         use super::*;
-    use axum::Json;
 
         #[test]
         fn test_build_instruments_metadata() {

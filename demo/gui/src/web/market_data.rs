@@ -1028,9 +1028,8 @@ mod tests {
 
         #[test]
         fn test_get_conventions_list() {
-            let list = get_conventions_list();
-            // May be empty if JSON file not found, but should not panic
-            assert!(list.conventions.len() >= 0);
+            // Should not panic - may return empty list if JSON file not found
+            let _list = get_conventions_list();
         }
 
         #[test]

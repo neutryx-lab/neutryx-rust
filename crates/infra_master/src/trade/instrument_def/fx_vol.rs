@@ -385,8 +385,8 @@ impl std::fmt::Display for FxVolInstrument {
                 ..
             } => {
                 let opt_str = match option_type {
-                    OptionType::Call => "C",
-                    OptionType::Put => "P",
+                    OptionType::Call | OptionType::DigitalCall => "C",
+                    OptionType::Put | OptionType::DigitalPut => "P",
                 };
                 write!(f, "{} {} {} {}", currency_pair, delta, opt_str, expiry)
             }
