@@ -148,7 +148,7 @@ pub trait TradeIndexRequirements {
     }
 }
 
-/// Blanket implementation for Vec<T> where T: TradeIndexRequirements.
+/// Blanket implementation for `Vec<T>` where `T: TradeIndexRequirements`.
 ///
 /// Collects all requirements from all elements.
 impl<T: TradeIndexRequirements> TradeIndexRequirements for Vec<T> {
@@ -157,7 +157,7 @@ impl<T: TradeIndexRequirements> TradeIndexRequirements for Vec<T> {
     }
 }
 
-/// Blanket implementation for Option<T> where T: TradeIndexRequirements.
+/// Blanket implementation for `Option<T>` where `T: TradeIndexRequirements`.
 ///
 /// Returns empty vec for None, delegating to inner for Some.
 impl<T: TradeIndexRequirements> TradeIndexRequirements for Option<T> {

@@ -90,9 +90,13 @@ pub struct IndexedMarket<T: Float> {
     fx_vol_surfaces: HashMap<CurrencyPair, Arc<dyn VolatilitySurface<T> + Send + Sync>>,
 
     /// Optional fallback curve set for backward compatibility.
+    /// NOTE: Fallback via CurveSet is planned for future iterations.
+    #[allow(dead_code)]
     fallback_curve_set: Option<CurveSet<T>>,
 
     /// Optional index mapper for CurveSet fallback.
+    /// NOTE: Fallback via CurveSet is planned for future iterations.
+    #[allow(dead_code)]
     index_mapper: Option<Arc<dyn IndexCurveMapper + Send + Sync>>,
 }
 
@@ -104,7 +108,7 @@ impl<T: Float> std::fmt::Debug for IndexedMarket<T> {
             .field("volcubes_count", &self.volcubes.len())
             .field("fx_curves_count", &self.fx_curves.len())
             .field("fx_vol_surfaces_count", &self.fx_vol_surfaces.len())
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -746,5 +750,497 @@ mod tests {
         assert!(market.available_volcube_indices().is_empty());
         assert!(market.available_fx_pairs().is_empty());
         assert!(market.available_fx_vol_pairs().is_empty());
+    }
+}
+
+// ============================================================================
+// Phase 6: Integration Tests (Task 6.1 - 6.3)
+// ============================================================================
+
+#[cfg(test)]
+mod integration_tests {
+    use std::sync::Arc;
+
+    use infra_master::{Currency, Date, RateIndex};
+
+    use crate::market::{
+        curves::{CurveEnum, CurveName, CurveSet, FlatCurve, YieldCurve},
+        fx_calibration::SimpleFxCurve,
+        indexed_market::{IndexedMarket, IndexedMarketBuilder},
+        surfaces::FlatVol,
+        volcube::{VolCube, VolCubeCache, VolCubeConfig, VolCubeKey, VolInstrument},
+        CurrencyPair, DefaultIndexCurveMapper, IndexCurveMapper,
+    };
+
+    // ========================================
+    // Task 6.1: CurveSet Fallback Integration Tests
+    // ========================================
+
+    /// Test that IndexedMarket access produces same results as CurveSet direct access.
+    /// Requirements: 4.1, 4.2
+    #[test]
+    fn test_curveset_indexed_market_result_consistency() {
+        let date = Date::from_ymd(2025, 1, 15).unwrap();
+        let sofr_rate = 0.05_f64;
+        let euribor_rate = 0.03_f64;
+
+        // Create CurveSet for direct access
+        let mut curve_set: CurveSet<f64> = CurveSet::new();
+        curve_set.insert(CurveName::Sofr, CurveEnum::flat(sofr_rate));
+        curve_set.insert(CurveName::Euribor, CurveEnum::flat(euribor_rate));
+
+        // Create IndexedMarket with same curves
+        let market: IndexedMarket<f64> = IndexedMarketBuilder::new()
+            .valuation_date(date)
+            .with_curve(RateIndex::Sofr, FlatCurve::new(sofr_rate))
+            .with_curve(RateIndex::Euribor3M, FlatCurve::new(euribor_rate))
+            .build()
+            .unwrap();
+
+        // Verify discount factors match
+        let t = 1.0_f64;
+
+        let curveset_sofr = curve_set.get(&CurveName::Sofr).unwrap();
+        let curveset_df = curveset_sofr.discount_factor(t).unwrap();
+
+        let indexed_df = market.discount_factor(RateIndex::Sofr, t).unwrap();
+
+        assert!(
+            (curveset_df - indexed_df).abs() < 1e-15,
+            "CurveSet DF {} != IndexedMarket DF {}",
+            curveset_df,
+            indexed_df
+        );
+
+        // Verify forward rates match
+        let t1 = 0.5_f64;
+        let t2 = 1.0_f64;
+
+        let curveset_fwd = curveset_sofr.forward_rate(t1, t2).unwrap();
+        let indexed_fwd = market.forward_rate(RateIndex::Sofr, t1, t2).unwrap();
+
+        assert!(
+            (curveset_fwd - indexed_fwd).abs() < 1e-15,
+            "CurveSet fwd {} != IndexedMarket fwd {}",
+            curveset_fwd,
+            indexed_fwd
+        );
+    }
+
+    /// Test forward_rate_for_index compatibility with IndexedMarket.
+    /// Requirements: 4.1, 4.2
+    #[test]
+    fn test_forward_rate_for_index_compatibility() {
+        let date = Date::from_ymd(2025, 1, 15).unwrap();
+        let sofr_rate = 0.045_f64;
+
+        // Create CurveSet with index-based access
+        let mut curve_set: CurveSet<f64> = CurveSet::new();
+        curve_set.insert(CurveName::Sofr, CurveEnum::flat(sofr_rate));
+
+        // Create IndexedMarket
+        let market: IndexedMarket<f64> = IndexedMarketBuilder::new()
+            .valuation_date(date)
+            .with_curve(RateIndex::Sofr, FlatCurve::new(sofr_rate))
+            .build()
+            .unwrap();
+
+        // Use CurveSet's forward_rate_for_index
+        let curveset_fwd = curve_set
+            .forward_rate_for_index(RateIndex::Sofr, 1.0, 2.0)
+            .unwrap();
+
+        // Use IndexedMarket's forward_rate
+        let indexed_fwd = market.forward_rate(RateIndex::Sofr, 1.0, 2.0).unwrap();
+
+        assert!(
+            (curveset_fwd - indexed_fwd).abs() < 1e-15,
+            "CurveSet forward_rate_for_index {} != IndexedMarket forward_rate {}",
+            curveset_fwd,
+            indexed_fwd
+        );
+    }
+
+    /// Test IndexedMarket with fallback CurveSet configured.
+    #[test]
+    fn test_indexed_market_with_fallback_curveset() {
+        let date = Date::from_ymd(2025, 1, 15).unwrap();
+
+        // Create fallback CurveSet
+        let mut fallback_set: CurveSet<f64> = CurveSet::new();
+        fallback_set.insert(CurveName::Sonia, CurveEnum::flat(0.04));
+
+        // Create IndexedMarket with fallback
+        let market: IndexedMarket<f64> = IndexedMarketBuilder::new()
+            .valuation_date(date)
+            .with_curve(RateIndex::Sofr, FlatCurve::new(0.05))
+            .with_fallback_curve_set(fallback_set)
+            .with_index_mapper(DefaultIndexCurveMapper)
+            .build()
+            .unwrap();
+
+        // Direct lookup should work
+        assert!(market.has_curve(RateIndex::Sofr));
+        let df = market.discount_factor(RateIndex::Sofr, 1.0).unwrap();
+        assert!((df - (-0.05_f64).exp()).abs() < 1e-10);
+
+        // Note: Fallback is currently disabled in implementation
+        // This test documents the builder accepts fallback configuration
+    }
+
+    /// Test multi-index access consistency.
+    #[test]
+    fn test_multi_index_consistency() {
+        let date = Date::from_ymd(2025, 1, 15).unwrap();
+
+        // Create multiple curves
+        let indices_and_rates = [
+            (RateIndex::Sofr, 0.05_f64),
+            (RateIndex::Euribor3M, 0.03),
+            (RateIndex::Sonia, 0.04),
+            (RateIndex::Tonar, 0.001),
+            (RateIndex::Estr, 0.035),
+        ];
+
+        let mut builder = IndexedMarketBuilder::new().valuation_date(date);
+        for (index, rate) in &indices_and_rates {
+            builder = builder.with_curve(*index, FlatCurve::new(*rate));
+        }
+        let market: IndexedMarket<f64> = builder.build().unwrap();
+
+        // Verify all curves accessible and correct
+        for (index, expected_rate) in &indices_and_rates {
+            assert!(market.has_curve(*index), "Missing curve for {:?}", index);
+
+            let fwd = market.forward_rate(*index, 1.0, 2.0).unwrap();
+            assert!(
+                (fwd - expected_rate).abs() < 1e-10,
+                "Rate mismatch for {:?}: expected {}, got {}",
+                index,
+                expected_rate,
+                fwd
+            );
+        }
+    }
+
+    // ========================================
+    // Task 6.2: VolCubeCache Integration Tests
+    // ========================================
+
+    /// Test VolCubeCache lookup and insert operations.
+    /// Requirements: 4.2
+    #[test]
+    fn test_volcube_cache_basic_operations() {
+        let cache: VolCubeCache<String> = VolCubeCache::new(10);
+
+        // Create key from instruments
+        let instruments = vec![
+            VolInstrument::new("INST-1", 1.0_f64, 5.0, 0.03, 0.20, 0.03),
+            VolInstrument::new("INST-2", 2.0_f64, 5.0, 0.03, 0.22, 0.03),
+        ];
+        let config = VolCubeConfig::default();
+        let key = VolCubeKey::from_instruments(&instruments, &config);
+
+        // Insert
+        cache.insert(key.clone(), "calibrated_volcube".to_string());
+
+        // Lookup (cache hit)
+        let result = cache.lookup(&key);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), "calibrated_volcube");
+
+        // Stats should show hit
+        let stats = cache.stats();
+        assert_eq!(stats.hits, 1);
+        assert_eq!(stats.misses, 0);
+    }
+
+    /// Test cache miss detection.
+    #[test]
+    fn test_volcube_cache_miss() {
+        let cache: VolCubeCache<String> = VolCubeCache::new(10);
+
+        let instruments = vec![VolInstrument::new("INST-1", 1.0_f64, 5.0, 0.03, 0.20, 0.03)];
+        let config = VolCubeConfig::default();
+        let key = VolCubeKey::from_instruments(&instruments, &config);
+
+        // Lookup without insert (cache miss)
+        let result = cache.lookup(&key);
+        assert!(result.is_none());
+
+        let stats = cache.stats();
+        assert_eq!(stats.hits, 0);
+        assert_eq!(stats.misses, 1);
+    }
+
+    /// Test cache hit rate calculation.
+    #[test]
+    fn test_volcube_cache_hit_rate() {
+        let cache: VolCubeCache<i32> = VolCubeCache::new(10);
+
+        // Insert one entry
+        let key1 = VolCubeKey::new(1, 1);
+        cache.insert(key1.clone(), 100);
+
+        // 2 hits
+        let _ = cache.lookup(&key1);
+        let _ = cache.lookup(&key1);
+
+        // 2 misses
+        let key2 = VolCubeKey::new(999, 999);
+        let _ = cache.lookup(&key2);
+        let _ = cache.lookup(&key2);
+
+        let stats = cache.stats();
+        assert_eq!(stats.hits, 2);
+        assert_eq!(stats.misses, 2);
+        assert!((stats.hit_rate() - 0.5).abs() < 1e-10);
+    }
+
+    /// Test cache LRU eviction behavior.
+    #[test]
+    fn test_volcube_cache_lru_eviction() {
+        let cache: VolCubeCache<i32> = VolCubeCache::new(3);
+
+        // Fill cache
+        for i in 0..3 {
+            let key = VolCubeKey::new(i, 0);
+            cache.insert(key, i as i32);
+        }
+        assert_eq!(cache.len(), 3);
+
+        // Access key 0 to make it recently used
+        let _ = cache.lookup(&VolCubeKey::new(0, 0));
+
+        // Insert 4th item, should evict least recently used (key 1)
+        let key4 = VolCubeKey::new(100, 0);
+        cache.insert(key4.clone(), 100);
+
+        assert_eq!(cache.len(), 3);
+        // Key 0 and 2 should still be present (0 was accessed, 2 was added after 1)
+        assert!(cache.contains(&VolCubeKey::new(0, 0)));
+        assert!(cache.contains(&key4));
+    }
+
+    // ========================================
+    // Task 6.3: MarketProvider FxCurve Integration Tests
+    // ========================================
+
+    /// Test FX curve access via CurrencyPair.
+    /// Requirements: 4.3, 4.4
+    #[test]
+    fn test_fx_curve_currency_pair_access() {
+        let date = Date::from_ymd(2025, 1, 15).unwrap();
+
+        let eurusd = CurrencyPair::new(Currency::EUR, Currency::USD);
+        let usd_curve = Arc::new(FlatCurve::new(0.05_f64));
+        let eur_curve = Arc::new(FlatCurve::new(0.03_f64));
+
+        let fx_curve = SimpleFxCurve::new(eurusd, 1.10, usd_curve, eur_curve);
+
+        let market: IndexedMarket<f64> = IndexedMarketBuilder::new()
+            .valuation_date(date)
+            .with_fx_curve(eurusd, fx_curve)
+            .build()
+            .unwrap();
+
+        // Access by CurrencyPair
+        assert!(market.has_fx_curve(eurusd));
+        let curve = market.fx_curve(eurusd).unwrap();
+
+        // Verify spot rate
+        let spot = curve.spot_rate();
+        assert!((spot - 1.10).abs() < 1e-10);
+
+        // Verify forward rate
+        let fwd = curve.forward_rate(1.0).unwrap();
+        // F = S * exp((r_f - r_d) * t) = 1.10 * exp((0.03 - 0.05) * 1) = 1.10 * exp(-0.02)
+        let expected_fwd = 1.10 * (-0.02_f64).exp();
+        assert!(
+            (fwd - expected_fwd).abs() < 1e-6,
+            "Forward rate mismatch: {} vs {}",
+            fwd,
+            expected_fwd
+        );
+    }
+
+    /// Test multiple FX pairs in same market.
+    #[test]
+    fn test_multiple_fx_pairs() {
+        let date = Date::from_ymd(2025, 1, 15).unwrap();
+
+        let eurusd = CurrencyPair::new(Currency::EUR, Currency::USD);
+        let usdjpy = CurrencyPair::new(Currency::USD, Currency::JPY);
+        let gbpusd = CurrencyPair::new(Currency::GBP, Currency::USD);
+
+        let base_curve = Arc::new(FlatCurve::new(0.05_f64));
+
+        let market: IndexedMarket<f64> = IndexedMarketBuilder::new()
+            .valuation_date(date)
+            .with_fx_curve(
+                eurusd,
+                SimpleFxCurve::new(eurusd, 1.10, base_curve.clone(), base_curve.clone()),
+            )
+            .with_fx_curve(
+                usdjpy,
+                SimpleFxCurve::new(usdjpy, 150.0, base_curve.clone(), base_curve.clone()),
+            )
+            .with_fx_curve(
+                gbpusd,
+                SimpleFxCurve::new(gbpusd, 1.27, base_curve.clone(), base_curve.clone()),
+            )
+            .build()
+            .unwrap();
+
+        // Verify all pairs accessible
+        assert!(market.has_fx_curve(eurusd));
+        assert!(market.has_fx_curve(usdjpy));
+        assert!(market.has_fx_curve(gbpusd));
+
+        // Verify different spot rates
+        assert!((market.fx_curve(eurusd).unwrap().spot_rate() - 1.10).abs() < 1e-10);
+        assert!((market.fx_curve(usdjpy).unwrap().spot_rate() - 150.0).abs() < 1e-10);
+        assert!((market.fx_curve(gbpusd).unwrap().spot_rate() - 1.27).abs() < 1e-10);
+    }
+
+    /// Test FX vol surface access via CurrencyPair.
+    #[test]
+    fn test_fx_vol_surface_currency_pair_access() {
+        let date = Date::from_ymd(2025, 1, 15).unwrap();
+
+        let eurusd = CurrencyPair::new(Currency::EUR, Currency::USD);
+        let usdjpy = CurrencyPair::new(Currency::USD, Currency::JPY);
+
+        let market: IndexedMarket<f64> = IndexedMarketBuilder::new()
+            .valuation_date(date)
+            .with_fx_vol_surface(eurusd, FlatVol::new(0.10))
+            .with_fx_vol_surface(usdjpy, FlatVol::new(0.08))
+            .build()
+            .unwrap();
+
+        // Verify vol surface access
+        let eurusd_vol = market.fx_vol_surface(eurusd).unwrap();
+        let usdjpy_vol = market.fx_vol_surface(usdjpy).unwrap();
+
+        // Verify different vols
+        assert!((eurusd_vol.volatility(100.0, 1.0).unwrap() - 0.10).abs() < 1e-10);
+        assert!((usdjpy_vol.volatility(150.0, 1.0).unwrap() - 0.08).abs() < 1e-10);
+    }
+
+    /// Test FX curve not found error.
+    #[test]
+    fn test_fx_curve_not_found() {
+        let date = Date::from_ymd(2025, 1, 15).unwrap();
+
+        let market: IndexedMarket<f64> = IndexedMarketBuilder::new()
+            .valuation_date(date)
+            .build()
+            .unwrap();
+
+        let eurusd = CurrencyPair::new(Currency::EUR, Currency::USD);
+        let result = market.fx_curve(eurusd);
+
+        assert!(result.is_err());
+        match result.err().unwrap() {
+            crate::market::MarketDataError::IndexNotFound { index } => {
+                assert!(index.contains("EUR/USD"));
+            }
+            _ => panic!("Expected IndexNotFound error"),
+        }
+    }
+
+    /// Test available FX pairs enumeration.
+    #[test]
+    fn test_available_fx_pairs_consistency() {
+        let date = Date::from_ymd(2025, 1, 15).unwrap();
+
+        let pairs = [
+            CurrencyPair::new(Currency::EUR, Currency::USD),
+            CurrencyPair::new(Currency::USD, Currency::JPY),
+            CurrencyPair::new(Currency::GBP, Currency::USD),
+        ];
+
+        let base_curve = Arc::new(FlatCurve::new(0.05_f64));
+
+        let mut builder = IndexedMarketBuilder::new().valuation_date(date);
+        for pair in &pairs {
+            builder = builder.with_fx_curve(
+                *pair,
+                SimpleFxCurve::new(*pair, 1.0, base_curve.clone(), base_curve.clone()),
+            );
+        }
+        let market: IndexedMarket<f64> = builder.build().unwrap();
+
+        let available = market.available_fx_pairs();
+        assert_eq!(available.len(), pairs.len());
+
+        for pair in &pairs {
+            assert!(available.contains(pair), "Missing pair: {}", pair);
+        }
+    }
+
+    // ========================================
+    // Combined Integration Tests
+    // ========================================
+
+    /// Test complete market with all data types.
+    #[test]
+    fn test_complete_market_integration() {
+        let date = Date::from_ymd(2025, 1, 15).unwrap();
+
+        let eurusd = CurrencyPair::new(Currency::EUR, Currency::USD);
+        let base_curve = Arc::new(FlatCurve::new(0.05_f64));
+
+        let market: IndexedMarket<f64> = IndexedMarketBuilder::new()
+            .valuation_date(date)
+            // Rate curves
+            .with_curve(RateIndex::Sofr, FlatCurve::new(0.05))
+            .with_curve(RateIndex::Euribor3M, FlatCurve::new(0.03))
+            // FX curves
+            .with_fx_curve(
+                eurusd,
+                SimpleFxCurve::new(eurusd, 1.10, base_curve.clone(), base_curve),
+            )
+            // FX vol surfaces
+            .with_fx_vol_surface(eurusd, FlatVol::new(0.10))
+            .build()
+            .unwrap();
+
+        // Verify all components
+        assert!(market.has_curve(RateIndex::Sofr));
+        assert!(market.has_curve(RateIndex::Euribor3M));
+        assert!(market.has_fx_curve(eurusd));
+        assert!(market.has_fx_vol_surface(eurusd));
+
+        // Verify valuation date
+        assert_eq!(market.valuation_date(), date);
+
+        // Verify data consistency
+        let df = market.discount_factor(RateIndex::Sofr, 1.0).unwrap();
+        assert!((df - (-0.05_f64).exp()).abs() < 1e-10);
+
+        let spot = market.fx_curve(eurusd).unwrap().spot_rate();
+        assert!((spot - 1.10).abs() < 1e-10);
+
+        let vol = market.fx_vol_surface(eurusd).unwrap().volatility(100.0, 1.0).unwrap();
+        assert!((vol - 0.10).abs() < 1e-10);
+    }
+
+    /// Test market with Debug formatting.
+    #[test]
+    fn test_market_debug_output() {
+        let date = Date::from_ymd(2025, 1, 15).unwrap();
+
+        let market: IndexedMarket<f64> = IndexedMarketBuilder::new()
+            .valuation_date(date)
+            .with_curve(RateIndex::Sofr, FlatCurve::new(0.05))
+            .with_curve(RateIndex::Euribor3M, FlatCurve::new(0.03))
+            .build()
+            .unwrap();
+
+        let debug_str = format!("{:?}", market);
+        assert!(debug_str.contains("IndexedMarket"));
+        assert!(debug_str.contains("curves_count"));
+        assert!(debug_str.contains("2")); // 2 curves
     }
 }

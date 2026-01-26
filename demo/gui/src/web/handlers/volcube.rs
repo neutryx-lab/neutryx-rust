@@ -1351,7 +1351,10 @@ pub async fn get_surface(
 // Helper Functions
 // =============================================================================
 
-/// Simple SABR calibration (closed-form approximation).
+/// SABR calibration using iterative least-squares optimization.
+///
+/// Uses Levenberg-Marquardt style optimization to find optimal (alpha, rho, nu)
+/// that minimises the sum of squared errors between model and market volatilities.
 fn calibrate_sabr_simple(
     instruments: &[&SwaptionInstrument],
     beta: f64,
@@ -1361,7 +1364,7 @@ fn calibrate_sabr_simple(
         return (0.2 * forward.powf(1.0 - beta), 0.0, 0.3);
     }
 
-    // Find ATM instrument
+    // Find ATM instrument for initial guess
     let atm_inst = instruments
         .iter()
         .min_by(|a, b| {
@@ -1372,43 +1375,119 @@ fn calibrate_sabr_simple(
         })
         .unwrap();
 
-    // Initial alpha from ATM vol
-    let alpha = atm_inst.implied_vol * forward.powf(1.0 - beta);
+    // Initial guess for alpha from ATM vol (accounting for f^(1-beta) scaling)
+    let f_mid = forward.powf(1.0 - beta);
+    let mut alpha = (atm_inst.implied_vol * f_mid).max(0.001);
+    let mut rho = 0.0;
+    let mut nu = 0.3;
 
-    // Estimate rho from skew
+    // Better initial guess for rho from skew
     let low_strikes: Vec<_> = instruments.iter().filter(|i| i.strike < forward).collect();
     let high_strikes: Vec<_> = instruments.iter().filter(|i| i.strike > forward).collect();
-
-    let rho = if !low_strikes.is_empty() && !high_strikes.is_empty() {
+    if !low_strikes.is_empty() && !high_strikes.is_empty() {
         let avg_low_vol =
             low_strikes.iter().map(|i| i.implied_vol).sum::<f64>() / low_strikes.len() as f64;
         let avg_high_vol =
             high_strikes.iter().map(|i| i.implied_vol).sum::<f64>() / high_strikes.len() as f64;
-
         let skew = avg_low_vol - avg_high_vol;
-        -(skew / 0.1).clamp(-0.9, 0.9)
-    } else {
-        0.0
-    };
+        // More aggressive initial rho estimate
+        rho = (-skew * 4.0 / atm_inst.implied_vol).clamp(-0.9, 0.9);
+    }
 
-    // Estimate nu from curvature
-    let nu = if instruments.len() >= 3 {
+    // Better initial guess for nu from smile curvature
+    if instruments.len() >= 3 {
         let wing_vols: Vec<f64> = instruments
             .iter()
-            .filter(|i| (i.strike - forward).abs() > forward * 0.1)
+            .filter(|i| (i.strike - forward).abs() > forward * 0.15)
             .map(|i| i.implied_vol)
             .collect();
-
         if !wing_vols.is_empty() {
             let avg_wing = wing_vols.iter().sum::<f64>() / wing_vols.len() as f64;
-            let curvature = (avg_wing - atm_inst.implied_vol).abs();
-            (0.2 + curvature * 3.0).clamp(0.1, 1.5)
-        } else {
-            0.3
+            let curvature = (avg_wing - atm_inst.implied_vol).max(0.0);
+            // More aggressive initial nu estimate
+            nu = (curvature * 8.0 / atm_inst.implied_vol + 0.1).clamp(0.1, 2.0);
         }
-    } else {
-        0.3
+    }
+
+    // Objective function: sum of squared weighted errors
+    let objective = |a: f64, r: f64, n: f64| -> f64 {
+        instruments
+            .iter()
+            .map(|inst| {
+                let model_vol =
+                    sabr_implied_vol(inst.strike, forward, inst.expiry, a, beta, r, n);
+                let err = (model_vol - inst.implied_vol) * inst.weight;
+                err * err
+            })
+            .sum()
     };
+
+    // Levenberg-Marquardt style iteration
+    let max_iterations = 50;
+    let tolerance = 1e-8;
+    let mut lambda = 0.01; // Damping parameter
+
+    for _ in 0..max_iterations {
+        let current_obj = objective(alpha, rho, nu);
+
+        // Compute numerical gradients
+        let h = 1e-6;
+        let grad_alpha = (objective(alpha + h, rho, nu) - objective(alpha - h, rho, nu)) / (2.0 * h);
+        let grad_rho = (objective(alpha, rho + h, nu) - objective(alpha, rho - h, nu)) / (2.0 * h);
+        let grad_nu = (objective(alpha, rho, nu + h) - objective(alpha, rho, nu - h)) / (2.0 * h);
+
+        // Compute approximate Hessian diagonal (for damping)
+        let hess_alpha =
+            (objective(alpha + h, rho, nu) - 2.0 * current_obj + objective(alpha - h, rho, nu))
+                / (h * h);
+        let hess_rho =
+            (objective(alpha, rho + h, nu) - 2.0 * current_obj + objective(alpha, rho - h, nu))
+                / (h * h);
+        let hess_nu =
+            (objective(alpha, rho, nu + h) - 2.0 * current_obj + objective(alpha, rho, nu - h))
+                / (h * h);
+
+        // Compute update with damping (simplified diagonal LM)
+        let d_alpha = -grad_alpha / (hess_alpha.abs().max(1e-10) + lambda);
+        let d_rho = -grad_rho / (hess_rho.abs().max(1e-10) + lambda);
+        let d_nu = -grad_nu / (hess_nu.abs().max(1e-10) + lambda);
+
+        // Line search with backtracking
+        let mut step = 1.0;
+        let mut new_alpha = alpha;
+        let mut new_rho = rho;
+        let mut new_nu = nu;
+
+        for _ in 0..10 {
+            new_alpha = (alpha + step * d_alpha).clamp(0.001, 10.0);
+            new_rho = (rho + step * d_rho).clamp(-0.999, 0.999);
+            new_nu = (nu + step * d_nu).clamp(0.01, 5.0);
+
+            let new_obj = objective(new_alpha, new_rho, new_nu);
+            if new_obj < current_obj {
+                // Accept step, decrease damping
+                lambda = (lambda * 0.5).max(1e-10);
+                break;
+            }
+            // Reject step, try smaller
+            step *= 0.5;
+        }
+
+        let improvement = (alpha - new_alpha).abs() + (rho - new_rho).abs() + (nu - new_nu).abs();
+        alpha = new_alpha;
+        rho = new_rho;
+        nu = new_nu;
+
+        // Check convergence
+        if improvement < tolerance {
+            break;
+        }
+
+        // Increase damping if we're stuck
+        if step < 0.01 {
+            lambda = (lambda * 2.0).min(1e6);
+        }
+    }
 
     (alpha, rho, nu)
 }

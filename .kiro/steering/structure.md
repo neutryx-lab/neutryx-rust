@@ -304,6 +304,7 @@ greeks/          → Greeks calculation types (GreeksConfig, GreeksMode, GreeksR
 pool/            → Thread-local buffer pool (ThreadLocalPool, PooledBuffer, PoolStats)
 tree/            → Tree-based pricing methods (Binomial/Trinomial)
   ├── binomial.rs   → CRR binomial tree (BinomialTree, CrrParams)
+  ├── trinomial.rs  → Kamrad-Ritchken trinomial tree (TrinomialTree, KrParams)
   ├── config.rs     → TreeConfig, TreeConfigBuilder, TreeType
   └── method.rs     → TreeMethod high-level interface
 result/          → Unified pricing result types
@@ -669,5 +670,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-26_ — Added tree/, result/, dispatcher/ modules to pricer_pricing (Tree-based pricing, unified result types, method dispatcher)
+_Updated: 2026-01-26_ — Added trinomial.rs (Kamrad-Ritchken) to tree/ module
 _Document patterns, not file trees. New files following patterns should not require updates_
