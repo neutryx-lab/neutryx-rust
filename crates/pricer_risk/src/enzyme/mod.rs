@@ -47,6 +47,7 @@
 //! ```
 
 // Submodules
+pub mod binder;
 pub mod checkpoint_ad;
 pub mod fallback;
 pub mod forward;

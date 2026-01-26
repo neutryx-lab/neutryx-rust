@@ -63,15 +63,15 @@
 
 ---
 
-- [ ] 3. AAD バインダー層構築
-- [ ] 3.1 RiskResult 型と ActivityMask 定義
+- [x] 3. AAD バインダー層構築
+- [x] 3.1 RiskResult 型と ActivityMask 定義
   - `RiskResult<M: Shadow>` 構造体を定義（`pv: f64`, `gradients: M`）
   - `ActivityMask` 構造体を定義（`rates_active`, `volatilities_active`, `fx_rates_active`）
   - `ActivityMask::default()` で全コンポーネントを active に設定
   - const 指定されたコンポーネントの shadow 値が 0.0 のままであることを保証
   - _Requirements: 7.1, 7.5_
 
-- [ ] 3.2 MarketRiskCalculator トレイト実装
+- [x] 3.2 MarketRiskCalculator トレイト実装
   - `MarketRiskCalculator<M: Shadow, T>` トレイトを定義
   - `calculate_risk(market, trade, mask)` メソッドを設計
   - マーケットデータ構造から `&[f64]` スライスを抽出するロジックを実装
@@ -80,14 +80,14 @@
   - 計算完了後に `(pv, shadow)` を `RiskResult` として返却
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7_
 
-- [ ] 3.3 ゼロコピー・データ受け渡し実装
+- [x] 3.3 ゼロコピー・データ受け渡し実装
   - `as_ptr()`, `as_mut_ptr()` を使用したポインタ渡しを実装
   - `&self.rates[..]` 構文によるゼロコピースライス抽出
   - 中間 Pack/Unpack なしでカーネルを呼び出し可能に
   - カーネル実行中のソースデータの有効性を保証
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
-- [ ] 3.4 (P) バインダー層単体テスト
+- [x] 3.4 (P) バインダー層単体テスト
   - `calculate_risk` が正しい PV と勾配を返すことを検証
   - `ActivityMask` による部分微分の動作を検証（rates のみ、vols のみ）
   - const コンポーネントの勾配が 0.0 であることを検証
@@ -96,21 +96,21 @@
 
 ---
 
-- [ ] 4. 既存 pricer_risk 統合
-- [ ] 4.1 enzyme モジュールへの統合
+- [x] 4. 既存 pricer_risk 統合
+- [x] 4.1 enzyme モジュールへの統合
   - `shadow.rs`, `kernel.rs`, `binder.rs` を `pricer_risk::enzyme` に配置
   - 既存の `mod.rs`（`ADMode`, `Activity`）との整合性を確保
   - `enzyme-ad` feature flag との互換性を維持
   - A-I-P-S 依存ルール（L4 は L1-L3 に依存、S/A には依存しない）を遵守
   - _Requirements: 8.1, 8.2, 8.5_
 
-- [ ] 4.2 GreeksEnzyme トレイトとの連携
+- [x] 4.2 GreeksEnzyme トレイトとの連携
   - 既存 `GreeksEnzyme` トレイトインフラとの統合パスを確立
   - `EnzymeGreeksResult` との型互換性を確保
   - 既存の non-AAD コードパスとの後方互換性を維持
   - _Requirements: 8.3, 5.4, 5.5_
 
-- [ ] 4.3 (P) エラー型定義
+- [x] 4.3 (P) エラー型定義
   - `ShadowAadError` 列挙型を定義（`LengthMismatch`, `EmptySlice`, `EnzymeNotAvailable`）
   - 入力検証での早期エラー検出を実装
   - `EnzymeNotAvailable` 時の finite difference fallback を実装

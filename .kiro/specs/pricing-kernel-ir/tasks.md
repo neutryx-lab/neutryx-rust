@@ -158,7 +158,7 @@
   - UnsupportedPayoffエラー処理
   - _Requirements: 6.3, 6.4, 6.6_
 
-- [ ] 9.3 ScriptEngine実装
+- [x] 9.3 ScriptEngine実装
   - ScriptKernelを線形シーケンスとして実行する
   - オペレーションコードによるディスパッチ（enumマッチ）
   - 実行時型ディスパッチなし

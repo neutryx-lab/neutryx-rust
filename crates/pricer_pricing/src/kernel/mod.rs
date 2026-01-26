@@ -1,16 +1,21 @@
-//! Pricing kernel module for linear products.
+//! Pricing kernel module for linear and exotic products.
 //!
-//! This module provides the runtime pricing engine for `PricingKernel` IR:
+//! This module provides runtime pricing engines for `PricingKernel` and
+//! `ScriptKernel` IRs:
 //!
 //! - [`CurveProvider`]: Trait for market data access (discount factors, forward
 //!   rates)
+//! - [`SpotProvider`]: Extended trait for exotic products (spot prices)
 //! - [`KernelContext`]: Runtime context holding curve references
 //! - [`LinearEngine`]: SIMD-friendly pricing engine for linear products
+//! - [`ScriptEngine`]: Sequential execution engine for exotic products
 //!
 //! # Design Principles
 //!
-//! - **Trait-based abstraction**: `CurveProvider` abstracts market data access
-//! - **Branchless pricing**: Unified formula works for fixed and floating
+//! - **Trait-based abstraction**: `CurveProvider`/`SpotProvider` abstract
+//!   market data
+//! - **Branchless pricing**: Linear products use unified formula
+//! - **Sequential execution**: Exotic products use opcode dispatch
 //! - **SIMD-friendly**: Sequential array access, no data-dependent branching
 //!
 //! # Example
@@ -35,6 +40,8 @@ mod context;
 mod engine;
 #[cfg(feature = "l1l2-integration")]
 mod provider;
+#[cfg(feature = "l1l2-integration")]
+mod script_engine;
 
 #[cfg(feature = "l1l2-integration")]
 pub use context::KernelContext;
@@ -44,6 +51,8 @@ pub use engine::{days_to_years, years_to_days, LinearEngine};
 pub use provider::{
     CurveProvider, FlatCurveProvider, IndexedMarketAdapter, IndexedMarketAdapterBuilder,
 };
+#[cfg(feature = "l1l2-integration")]
+pub use script_engine::{ExecutionTrace, FlatSpotProvider, ScriptEngine, SpotProvider, TraceStep};
 
 // Integration tests: E2E Trade → PricingKernel → Price
 #[cfg(all(test, feature = "l1l2-integration"))]

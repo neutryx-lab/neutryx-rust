@@ -1,8 +1,8 @@
 //! Slice-based pricing kernels for Enzyme AAD.
 //!
-//! This module provides pricing kernel functions that operate on `&[f64]` slices,
-//! enabling Enzyme LLVM-level automatic differentiation without heap allocations
-//! in the hot path.
+//! This module provides pricing kernel functions that operate on `&[f64]`
+//! slices, enabling Enzyme LLVM-level automatic differentiation without heap
+//! allocations in the hot path.
 //!
 //! # Design Principles
 //!
@@ -89,7 +89,16 @@ use std::autodiff::autodiff;
 ///
 /// Debug assertions check that all input slices have equal length.
 #[cfg(feature = "enzyme-ad")]
-#[autodiff(d_pricing_kernel_irs, Reverse, Duplicated, Const, Const, Const, Const, Duplicated)]
+#[autodiff(
+    d_pricing_kernel_irs,
+    Reverse,
+    Duplicated,
+    Const,
+    Const,
+    Const,
+    Const,
+    Duplicated
+)]
 pub fn pricing_kernel_irs(
     rates: &[f64],
     times: &[f64],
@@ -190,7 +199,15 @@ pub fn discount_kernel(rate: &f64, time: f64, cashflow: f64, output: &mut f64) {
 /// * `face_value` - Face/principal value (Const)
 /// * `output` - Bond present value (Active)
 #[cfg(feature = "enzyme-ad")]
-#[autodiff(d_bond_pricing_kernel, Reverse, Duplicated, Const, Const, Const, Duplicated)]
+#[autodiff(
+    d_bond_pricing_kernel,
+    Reverse,
+    Duplicated,
+    Const,
+    Const,
+    Const,
+    Duplicated
+)]
 pub fn bond_pricing_kernel(
     rates: &[f64],
     times: &[f64],
@@ -267,7 +284,15 @@ pub fn bond_pricing_kernel(
 /// pv = notional * (forward_rate - fra_rate) * (times[1] - times[0]) * df_long
 /// ```
 #[cfg(feature = "enzyme-ad")]
-#[autodiff(d_fra_pricing_kernel, Reverse, Duplicated, Const, Const, Const, Duplicated)]
+#[autodiff(
+    d_fra_pricing_kernel,
+    Reverse,
+    Duplicated,
+    Const,
+    Const,
+    Const,
+    Duplicated
+)]
 pub fn fra_pricing_kernel(
     rates: &[f64],
     times: &[f64],
