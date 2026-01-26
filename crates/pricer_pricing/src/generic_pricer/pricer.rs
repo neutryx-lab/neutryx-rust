@@ -20,6 +20,8 @@ use std::sync::Arc;
 #[cfg(feature = "l1l2-integration")]
 use chrono::Datelike;
 #[cfg(feature = "l1l2-integration")]
+use infra_config::{PricingConfig, PricingMethod};
+#[cfg(feature = "l1l2-integration")]
 use infra_master::{
     market::Currency,
     time::Date,
@@ -97,6 +99,129 @@ impl GenericPricer {
             model_config,
             pricer_config,
         }
+    }
+
+    /// Creates a new GenericPricer from a PricingConfig.
+    ///
+    /// This factory method converts `infra_config::PricingConfig` to the
+    /// internal `ModelConfig` and `PricerConfig` structures, selecting the
+    /// appropriate pricing method based on configuration.
+    ///
+    /// # Arguments
+    ///
+    /// * `market` - Arc-shared market data provider
+    /// * `config` - Configuration from infra_config
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// use infra_config::PricingConfig;
+    /// use pricer_pricing::generic_pricer::GenericPricer;
+    ///
+    /// let pricing_config = PricingConfig::from_toml_str(toml_str)?;
+    /// let pricer = GenericPricer::from_config(market, &pricing_config)?;
+    /// ```
+    #[cfg(feature = "l1l2-integration")]
+    pub fn from_config(
+        market: Arc<MarketProvider>,
+        config: &PricingConfig,
+    ) -> Result<Self, PricingError> {
+        use super::config::{ModelConfigBuilder, PricerConfigBuilder};
+
+        // Convert Monte Carlo parameters if specified
+        let mut model_builder = ModelConfigBuilder::default();
+        if let Some(ref mc_params) = config.monte_carlo {
+            model_builder = model_builder
+                .num_paths(mc_params.num_paths)
+                .num_steps(mc_params.num_steps);
+            if let Some(seed) = mc_params.seed {
+                model_builder = model_builder.seed(seed);
+            }
+        }
+
+        let model_config = model_builder
+            .build()
+            .map_err(|e| PricingError::InvalidInput {
+                reason: format!("Invalid model configuration: {}", e),
+            })?;
+
+        // Convert currency string to Currency enum
+        let currency: Currency =
+            config
+                .reporting_currency
+                .parse()
+                .map_err(|_| PricingError::InvalidInput {
+                    reason: format!("Invalid currency code: {}", config.reporting_currency),
+                })?;
+
+        let pricer_config = PricerConfigBuilder::default()
+            .default_currency(currency)
+            .use_thread_local_buffers(config.parallel_enabled)
+            .build()
+            .map_err(|e| PricingError::InvalidInput {
+                reason: format!("Invalid pricer configuration: {}", e),
+            })?;
+
+        Ok(Self {
+            market,
+            model_config,
+            pricer_config,
+        })
+    }
+
+    /// Returns the pricing method from config (Analytical or MonteCarlo).
+    #[cfg(feature = "l1l2-integration")]
+    pub fn pricing_method_from_config(config: &PricingConfig) -> PricingMethod {
+        config.pricing_method
+    }
+
+    /// Prices a trade using configuration settings.
+    ///
+    /// This is a convenience method that extracts valuation date and
+    /// reporting currency from the PricingConfig and delegates to `get_pv()`.
+    ///
+    /// # Arguments
+    ///
+    /// * `trade` - The trade to price
+    /// * `config` - Pricing configuration containing valuation date and
+    ///   currency
+    ///
+    /// # Returns
+    ///
+    /// `PricingResult` containing total PV, leg-level breakdown, and metadata.
+    ///
+    /// # Errors
+    ///
+    /// Returns `PricingError` if:
+    /// - Required market data is missing
+    /// - Currency code is invalid
+    /// - The instrument type is not supported
+    #[cfg(feature = "l1l2-integration")]
+    pub fn price_with_config(
+        &self,
+        trade: &Trade,
+        config: &PricingConfig,
+    ) -> Result<PricingResult, PricingError> {
+        // Convert valuation date from NaiveDate to Date
+        let valuation_date = Date::from_ymd(
+            config.valuation_date.year(),
+            config.valuation_date.month(),
+            config.valuation_date.day(),
+        )
+        .map_err(|e| PricingError::InvalidInput {
+            reason: format!("Invalid valuation date: {}", e),
+        })?;
+
+        // Parse reporting currency
+        let reporting_currency: Currency =
+            config
+                .reporting_currency
+                .parse()
+                .map_err(|_| PricingError::InvalidInput {
+                    reason: format!("Invalid currency code: {}", config.reporting_currency),
+                })?;
+
+        self.get_pv(trade, valuation_date, reporting_currency)
     }
 
     /// Returns a reference to the model configuration.

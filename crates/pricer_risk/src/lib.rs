@@ -120,7 +120,10 @@
 #![deny(rustdoc::private_intra_doc_links)]
 
 pub mod demo;
+pub mod engine;
 pub mod exposure;
+pub mod greeks;
+pub mod irs_greeks;
 pub mod parallel;
 pub mod portfolio;
 pub mod scenarios;
@@ -128,7 +131,22 @@ pub mod soa;
 pub mod xva;
 
 // Re-export commonly used types
+// Risk Engine facade
+pub use engine::{
+    AggregatedGreeks, ComputedGreeks, ExecutionStats, FailedCalculation, PartialGreeksResult,
+    PerformanceMetrics, PortfolioRiskResult, RiskEngine, RiskEngineConfig, RiskError, RiskResult,
+    ScenarioGreeksResult, ScenarioPortfolioResult,
+};
 pub use exposure::ExposureCalculator;
+pub use greeks::{
+    GreeksConfig, GreeksConfigBuilder, GreeksConfigError, GreeksError, GreeksMode, GreeksResult,
+};
+pub use irs_greeks::{
+    BenchmarkConfig, BenchmarkError, BenchmarkRunner, DeltaBenchmarkResult, FullBenchmarkResult,
+    IrsDeltaResult, IrsGreeksCalculator, IrsGreeksConfig, IrsGreeksError, IrsGreeksResult,
+    IrsLazyEvaluator, PvBenchmarkResult, ScalabilityResult, SingleDeltaBenchmarkResult, SwapId,
+    SwapParams, TenorPoint, TimingStats,
+};
 pub use parallel::{
     create_shared_monitor, MemoryMonitor, MemoryMonitorConfig, MemoryStats, ParallelConfig,
     SharedMemoryMonitor, DEFAULT_BATCH_SIZE,

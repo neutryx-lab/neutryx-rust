@@ -48,6 +48,7 @@
 pub mod analytical;
 pub mod demo;
 mod direction_ext;
+pub mod instruments;
 pub mod market;
 pub mod models;
 

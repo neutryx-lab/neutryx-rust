@@ -274,6 +274,255 @@ impl FxSwap {
     pub fn swap_points(&self) -> f64 { self.far_rate - self.near_rate }
 }
 
+// ============================================================================
+// FX Swap Calibration Instruments
+// ============================================================================
+
+/// Swap points with scaling factor for forward rate calculation.
+///
+/// Swap points represent the difference between forward and spot rates,
+/// typically quoted in "pips" with a scaling factor that varies by currency
+/// pair.
+///
+/// # Scaling Factors by Currency Pair
+///
+/// - **EURUSD, GBPUSD, etc.**: 10000 (4 decimal places)
+/// - **USDJPY, EURJPY**: 100 (2 decimal places)
+///
+/// # Example
+///
+/// ```rust
+/// use infra_master::trade::instrument_def::SwapPoints;
+///
+/// // EURUSD swap points: 50 pips = 0.0050
+/// let sp = SwapPoints::for_eurusd(50.0);
+/// let forward = sp.to_forward_rate(1.1000);
+/// assert!((forward - 1.1050).abs() < 1e-10);
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct SwapPoints {
+    /// Raw swap points value (e.g., 50 for 50 pips).
+    value: f64,
+    /// Scaling factor (e.g., 10000 for EURUSD, 100 for USDJPY).
+    scaling_factor: f64,
+}
+
+impl SwapPoints {
+    /// Creates new swap points with explicit scaling factor.
+    #[must_use]
+    pub fn new(value: f64, scaling_factor: f64) -> Self {
+        Self {
+            value,
+            scaling_factor,
+        }
+    }
+
+    /// Creates swap points for EURUSD-like pairs (scaling factor = 10000).
+    #[must_use]
+    pub fn for_eurusd(value: f64) -> Self { Self::new(value, 10000.0) }
+
+    /// Creates swap points for USDJPY-like pairs (scaling factor = 100).
+    #[must_use]
+    pub fn for_usdjpy(value: f64) -> Self { Self::new(value, 100.0) }
+
+    /// Creates swap points from rate difference.
+    ///
+    /// Calculates the swap points value given spot, forward, and scaling
+    /// factor.
+    #[must_use]
+    pub fn from_rate_difference(spot: f64, forward: f64, scaling_factor: f64) -> Self {
+        let value = (forward - spot) * scaling_factor;
+        Self::new(value, scaling_factor)
+    }
+
+    /// Returns the raw swap points value.
+    #[inline]
+    #[must_use]
+    pub fn value(&self) -> f64 { self.value }
+
+    /// Returns the scaling factor.
+    #[inline]
+    #[must_use]
+    pub fn scaling_factor(&self) -> f64 { self.scaling_factor }
+
+    /// Converts to forward rate given spot rate.
+    ///
+    /// Formula: F = S + swap_points / scaling_factor
+    #[inline]
+    #[must_use]
+    pub fn to_forward_rate(&self, spot: f64) -> f64 { spot + self.value / self.scaling_factor }
+
+    /// Returns the swap points as a decimal rate adjustment.
+    #[inline]
+    #[must_use]
+    pub fn as_decimal(&self) -> f64 { self.value / self.scaling_factor }
+}
+
+impl std::fmt::Display for SwapPoints {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:.2} pips", self.value)
+    }
+}
+
+/// Standard FX swap tenors for short-term forward curve construction.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum FxSwapTenor {
+    /// Overnight (T+0 to T+1).
+    ON,
+    /// Tomorrow-Next (T+1 to T+2).
+    TN,
+    /// Spot-Next (T+2 to T+3).
+    SN,
+    /// 1 Week.
+    W1,
+    /// 2 Weeks.
+    W2,
+    /// 1 Month.
+    M1,
+    /// 2 Months.
+    M2,
+    /// 3 Months.
+    M3,
+    /// 6 Months.
+    M6,
+    /// 9 Months.
+    M9,
+    /// 1 Year.
+    Y1,
+}
+
+impl FxSwapTenor {
+    /// Returns the tenor name as a string.
+    #[must_use]
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::ON => "ON",
+            Self::TN => "TN",
+            Self::SN => "SN",
+            Self::W1 => "1W",
+            Self::W2 => "2W",
+            Self::M1 => "1M",
+            Self::M2 => "2M",
+            Self::M3 => "3M",
+            Self::M6 => "6M",
+            Self::M9 => "9M",
+            Self::Y1 => "1Y",
+        }
+    }
+}
+
+impl std::fmt::Display for FxSwapTenor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name())
+    }
+}
+
+/// FX swap convention for business day and settlement rules.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct FxSwapConvention {
+    /// Number of business days from trade date to spot settlement.
+    pub spot_lag: u32,
+}
+
+impl Default for FxSwapConvention {
+    fn default() -> Self { Self { spot_lag: 2 } }
+}
+
+impl FxSwapConvention {
+    /// Creates a convention with spot lag = 2 (standard T+2).
+    #[must_use]
+    pub fn standard() -> Self { Self::default() }
+
+    /// Creates a convention with spot lag = 1 (for CAD, TRY, etc.).
+    #[must_use]
+    pub fn t_plus_1() -> Self { Self { spot_lag: 1 } }
+}
+
+/// FX Swap Instrument for forward point bootstrapping.
+///
+/// This structure is designed for calibration purposes, storing swap points
+/// rather than outright rates, with associated conventions.
+///
+/// # Example
+///
+/// ```rust
+/// use infra_master::trade::instrument_def::{
+///     FxSwapInstrument, SwapPoints, FxSwapConvention, CurrencyPair,
+/// };
+/// use infra_master::{Currency, Date};
+///
+/// let inst = FxSwapInstrument {
+///     currency_pair: CurrencyPair::new(Currency::EUR, Currency::USD),
+///     near_date: Date::from_ymd(2025, 1, 3).unwrap(),
+///     far_date: Date::from_ymd(2025, 4, 3).unwrap(),
+///     spot_rate: 1.1000,
+///     swap_points: SwapPoints::for_eurusd(50.0),
+///     convention: FxSwapConvention::default(),
+/// };
+///
+/// // Get implied forward rate
+/// let forward = inst.implied_forward_rate();
+/// assert!((forward - 1.1050).abs() < 1e-10);
+/// ```
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct FxSwapInstrument {
+    /// Currency pair.
+    pub currency_pair: CurrencyPair,
+    /// Near leg date (typically spot date).
+    pub near_date: Date,
+    /// Far leg date (forward settlement date).
+    pub far_date: Date,
+    /// Spot rate for the near leg.
+    pub spot_rate: f64,
+    /// Swap points for forward calculation.
+    pub swap_points: SwapPoints,
+    /// Market convention.
+    pub convention: FxSwapConvention,
+}
+
+impl FxSwapInstrument {
+    /// Returns the implied forward rate.
+    ///
+    /// Formula: F = S + swap_points / scaling_factor
+    #[must_use]
+    pub fn implied_forward_rate(&self) -> f64 { self.swap_points.to_forward_rate(self.spot_rate) }
+
+    /// Validates the FX swap instrument parameters.
+    pub fn validate(&self) -> Result<(), FxSwapError> {
+        if self.spot_rate <= 0.0 {
+            return Err(FxSwapError::InvalidSpotRate(self.spot_rate));
+        }
+        if self.far_date <= self.near_date {
+            return Err(FxSwapError::InvalidDates {
+                near: self.near_date,
+                far: self.far_date,
+            });
+        }
+        Ok(())
+    }
+}
+
+/// Errors specific to FX swap operations.
+#[derive(Debug, Clone, PartialEq, thiserror::Error)]
+pub enum FxSwapError {
+    /// Invalid swap dates (near >= far).
+    #[error("Invalid swap dates: near {near} >= far {far}")]
+    InvalidDates {
+        /// Near leg date.
+        near: Date,
+        /// Far leg date.
+        far: Date,
+    },
+
+    /// Invalid spot rate.
+    #[error("Invalid spot rate: {0} (must be positive)")]
+    InvalidSpotRate(f64),
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -439,5 +688,138 @@ mod tests {
             notional_currency: Currency::EUR,
         };
         assert!((swap.swap_points() - 0.0020).abs() < 1e-10);
+    }
+
+    // === SwapPoints Tests ===
+
+    #[test]
+    fn test_swap_points_new() {
+        let sp = SwapPoints::new(50.0, 10000.0);
+        assert!((sp.value() - 50.0).abs() < 1e-10);
+        assert!((sp.scaling_factor() - 10000.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_swap_points_to_forward_rate_eurusd() {
+        // EURUSD: scaling factor = 10000
+        let sp = SwapPoints::new(50.0, 10000.0);
+        let spot = 1.1000;
+        let forward = sp.to_forward_rate(spot);
+        // F = S + swap_points / scaling_factor = 1.1000 + 50/10000 = 1.1050
+        assert!((forward - 1.1050).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_swap_points_to_forward_rate_usdjpy() {
+        // USDJPY: scaling factor = 100
+        let sp = SwapPoints::new(-25.0, 100.0);
+        let spot = 150.00;
+        let forward = sp.to_forward_rate(spot);
+        // F = S + swap_points / scaling_factor = 150.00 + (-25)/100 = 149.75
+        assert!((forward - 149.75).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_swap_points_for_eurusd() {
+        let sp = SwapPoints::for_eurusd(50.0);
+        assert!((sp.scaling_factor() - 10000.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_swap_points_for_usdjpy() {
+        let sp = SwapPoints::for_usdjpy(-25.0);
+        assert!((sp.scaling_factor() - 100.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_swap_points_from_rate_difference() {
+        // Given spot and forward, calculate swap points
+        let spot = 1.1000;
+        let forward = 1.1050;
+        let scaling = 10000.0;
+        let sp = SwapPoints::from_rate_difference(spot, forward, scaling);
+        assert!((sp.value() - 50.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_swap_points_display() {
+        let sp = SwapPoints::new(50.0, 10000.0);
+        assert_eq!(sp.to_string(), "50.00 pips");
+    }
+
+    // === FxSwapTenor Tests ===
+
+    #[test]
+    fn test_fx_swap_tenor_names() {
+        assert_eq!(FxSwapTenor::ON.name(), "ON");
+        assert_eq!(FxSwapTenor::TN.name(), "TN");
+        assert_eq!(FxSwapTenor::SN.name(), "SN");
+        assert_eq!(FxSwapTenor::W1.name(), "1W");
+        assert_eq!(FxSwapTenor::M3.name(), "3M");
+        assert_eq!(FxSwapTenor::Y1.name(), "1Y");
+    }
+
+    // === FxSwapConvention Tests ===
+
+    #[test]
+    fn test_fx_swap_convention_default() {
+        let conv = FxSwapConvention::default();
+        assert_eq!(conv.spot_lag, 2);
+    }
+
+    // === FxSwapInstrument Tests ===
+
+    #[test]
+    fn test_fx_swap_instrument_implied_forward() {
+        let inst = FxSwapInstrument {
+            currency_pair: make_test_currency_pair(),
+            near_date: Date::from_ymd(2025, 1, 3).unwrap(),
+            far_date: Date::from_ymd(2025, 4, 3).unwrap(),
+            spot_rate: 1.1000,
+            swap_points: SwapPoints::for_eurusd(50.0),
+            convention: FxSwapConvention::default(),
+        };
+        assert!((inst.implied_forward_rate() - 1.1050).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_fx_swap_instrument_validate_success() {
+        let inst = FxSwapInstrument {
+            currency_pair: make_test_currency_pair(),
+            near_date: Date::from_ymd(2025, 1, 3).unwrap(),
+            far_date: Date::from_ymd(2025, 4, 3).unwrap(),
+            spot_rate: 1.1000,
+            swap_points: SwapPoints::for_eurusd(50.0),
+            convention: FxSwapConvention::default(),
+        };
+        assert!(inst.validate().is_ok());
+    }
+
+    #[test]
+    fn test_fx_swap_instrument_validate_invalid_dates() {
+        let inst = FxSwapInstrument {
+            currency_pair: make_test_currency_pair(),
+            near_date: Date::from_ymd(2025, 4, 3).unwrap(),
+            far_date: Date::from_ymd(2025, 1, 3).unwrap(), // far before near
+            spot_rate: 1.1000,
+            swap_points: SwapPoints::for_eurusd(50.0),
+            convention: FxSwapConvention::default(),
+        };
+        let result = inst.validate();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_fx_swap_instrument_validate_invalid_spot() {
+        let inst = FxSwapInstrument {
+            currency_pair: make_test_currency_pair(),
+            near_date: Date::from_ymd(2025, 1, 3).unwrap(),
+            far_date: Date::from_ymd(2025, 4, 3).unwrap(),
+            spot_rate: -1.0, // invalid
+            swap_points: SwapPoints::for_eurusd(50.0),
+            convention: FxSwapConvention::default(),
+        };
+        let result = inst.validate();
+        assert!(result.is_err());
     }
 }

@@ -50,7 +50,9 @@ mod result;
 
 #[cfg(not(feature = "l1l2-integration"))]
 pub use batch::SimpleTrade;
-pub use batch::{BatchPricer, BatchPricingResult, BatchStats, TradeId};
+pub use batch::{BatchPricer, BatchPricingResult, BatchStats, ExecutionStats, TradeId};
+#[cfg(feature = "l1l2-integration")]
+pub use batch::{PortfolioAggregations, PortfolioPricer, PortfolioPricingResult};
 // Always export DefaultCurrency for standalone pricing
 pub use config::DefaultCurrency;
 pub use config::{ModelConfig, ModelConfigBuilder, PricerConfig, PricerConfigBuilder};

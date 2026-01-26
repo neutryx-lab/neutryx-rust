@@ -221,13 +221,37 @@ instruments/  → Financial instrument definitions
 
 market/       → Market data structures and calibration
   ├── curves/        → Yield curves (YieldCurve trait, FlatCurve, InterpolatedCurve, CreditCurve, CurveSet, CurveEnum)
-  ├── surfaces/      → Volatility surfaces (VolatilitySurface trait, FlatVol, InterpolatedVolSurface, FxVolatilitySurface, VolSurfaceEnum)
-  ├── volcube/       → Volatility cube infrastructure (SABR calibration, Breeden-Litzenberger density extraction)
+  ├── surfaces/      → Volatility surfaces (VolatilitySurface trait, FlatVol, InterpolatedVolSurface, FxVolatilitySurface, VolSurfaceEnum, VolCubeSlice)
+  ├── volcube/       → IR volatility cube infrastructure (SABR calibration, lazy evaluation, caching)
   │   ├── cube.rs         → VolCube core with expiry/tenor grid
-  │   ├── calibrator.rs   → SABR calibration engine
+  │   ├── engine.rs       → VolCubeCalibrationEngine for full cube calibration
+  │   ├── calibrator.rs   → SABR calibration engine (per-slice)
   │   ├── sabr_surface.rs → SABR surface construction
+  │   ├── interpolator.rs → VolCubeInterpolator trait (Flat, Linear)
+  │   ├── lazy_evaluator.rs → VolLazyEvaluator for on-demand calibration
+  │   ├── cache.rs        → SharedVolCubeCache, VolCubeCache, CacheStats
+  │   ├── vega.rs         → Vega calculation (adjoint/forward mode)
+  │   ├── calibration_graph.rs → CalibrationGraph for dependency management
   │   ├── breeden_litzenberger.rs → Risk-neutral density extraction
+  │   ├── config.rs       → VolCubeConfig (interpolation, extrapolation, SABR settings)
+  │   ├── quote.rs        → VolQuote, VolQuoteSet for market data representation
+  │   ├── types.rs        → VolInstrument, SabrParams, InstrumentId
+  │   ├── graph.rs        → GraphExtractable for D3.js visualisation
+  │   ├── error.rs        → VolCubeError
   │   └── builder.rs      → VolCubeBuilder for construction
+  ├── fx_calibration/ → FX curve and volatility surface calibration (new)
+  │   ├── types.rs        → Strike, Vol, ForwardPoints newtypes; ExpiryInterpolation
+  │   ├── config.rs       → FxVolSurfaceConfig with SABR settings and presets
+  │   ├── error.rs        → FxCalibrationError (12 variants)
+  │   ├── curve.rs        → FxCurve trait, CalibratedFxCurve, SimpleFxCurve
+  │   ├── builder.rs      → FxForwardCurveBuilder (FX swaps, XCCY basis swaps)
+  │   ├── surface.rs      → CalibratedFxVolSurface, VolSmile, SabrParameters
+  │   ├── vol_builder.rs  → FxVolSurfaceBuilder with SABR calibration
+  │   ├── lazy_surface.rs → LazyFxVolSurface for deferred calibration
+  │   ├── sensitivity.rs  → VolSurfaceSensitivity for AAD computation graph
+  │   └── fx_market_builder.rs → FxMarketBuilder orchestration (curves + vol surface)
+  ├── fx_density.rs  → FxDensityCalculator, DeltaType, DensityStatistics
+  ├── index_mapper.rs → IndexCurveMapper, DefaultIndexCurveMapper
   ├── calibration/   → Model and curve calibration
   │   ├── bootstrapping/ → Multi-curve yield curve construction (AAD-enabled)
   │   │   ├── engine.rs      → BootstrapEngine with Adjoint AD
@@ -241,7 +265,7 @@ market/       → Market data structures and calibration
   │   ├── sabr.rs        → SABR model calibrator
   │   ├── hull_white.rs  → Hull-White model calibrator
   │   └── swaption_calibrator.rs → Swaption vol calibrator
-  ├── provider.rs    → MarketProvider for lazy market data resolution (Arc-cached)
+  ├── provider.rs    → MarketProvider for lazy market data resolution (Arc-cached, VolCube support)
   └── error.rs       → MarketDataError for curve/surface validation
 
 models/       → Stochastic models with unified trait interface
@@ -492,24 +516,32 @@ web/             → Web server module (feature-gated)
   ├── main.rs         → Web dashboard entry point
   ├── mod.rs          → Router configuration, middleware, AppState
   ├── handlers.rs     → Legacy REST API handlers (pricing, portfolio, XVA, Greeks)
-  ├── handlers_v2/    → Modular API handlers (new pattern)
   │
   │   Pattern: *_handlers.rs + *_types.rs for each feature domain
   │   ────────────────────────────────────────────────────────
   ├── curve_builder_handlers.rs → Curve Builder API (/api/curves/*)
   ├── curve_builder_types.rs    → Curve Builder type definitions
-  ├── volcube_handlers.rs       → VolCube API (/api/volcube/*)
-  ├── volcube_types.rs          → VolCube type definitions
-  ├── fxvol_handlers.rs         → FX Vol Surface API (/api/fxvol/*)
-  ├── fxvol_types.rs            → FX Vol type definitions
+  ├── volcube_handlers.rs       → IR VolCube API (/api/volcube/*)
+  ├── volcube_types.rs          → IR VolCube type definitions
+  ├── irvol_handlers.rs         → IR Vol Surface API (/api/irvol/*)
+  ├── irvol_types.rs            → IR Vol type definitions
+  ├── fxvol_handlers.rs         → FX Vol Surface API (/api/fxvol/calibrate, /api/fxvol/surface)
+  ├── fxvol_types.rs            → FX Vol type definitions (FxCalibrateRequest, FxSurfaceResponse)
+  ├── fxcurve_handlers.rs       → FX Curve API (/api/fxcurve/build)
+  ├── fxcurve_types.rs          → FX Curve type definitions
   ├── trade_handlers.rs         → Trade expansion API (/api/trades/*)
   ├── trade_types.rs            → Trade type definitions
   ├── market_handlers.rs        → Market data API (/api/market/*)
   ├── market_types.rs           → Market data types
+  ├── market_data.rs            → Market data module
   ├── generic_pricer_handlers.rs → Generic Pricer API (/api/pricer/*)
+  ├── risk_engine_handlers.rs   → Risk Engine API (/api/risk/*)
+  ├── risk_engine_types.rs      → Risk Engine type definitions
   │
   ├── scenario_handlers.rs → Scenario analysis endpoints (presets, run, compare)
-  ├── websocket.rs    → WebSocket real-time updates
+  ├── pricing_service.rs  → Pricing service integration
+  ├── schedule_utils.rs   → Schedule generation utilities
+  ├── websocket.rs    → WebSocket real-time updates (FxVolSurfaceUpdateEvent)
   ├── jobs.rs         → Async job manager for background processing
   ├── metrics.rs      → Prometheus-style metrics collection
   ├── openapi.rs      → OpenAPI/Swagger UI (feature = "openapi")
@@ -623,5 +655,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-23_ — Added volcube/ module to pricer_models::market (SABR calibration, density extraction)
+_Updated: 2026-01-26_ — Added fx_calibration/ module (FX curve + vol surface calibration), expanded volcube/ (engine, cache, vega), new web handlers (irvol, fxvol, fxcurve, risk_engine)
 _Document patterns, not file trees. New files following patterns should not require updates_

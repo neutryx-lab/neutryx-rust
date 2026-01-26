@@ -32,6 +32,7 @@ use super::{
         SecondOrderGreeksRequest, SecondOrderGreeksResponse, TenorDiff, TimeseriesSeries,
         TimingComparison, TimingStats, BUCKET_TENORS,
     },
+    pricing_service,
     websocket::{
         broadcast_bootstrap_complete, broadcast_pricing_complete, broadcast_risk_complete,
     },
@@ -423,7 +424,12 @@ pub async fn get_risk_metrics(State(state): State<Arc<AppState>>) -> Json<RiskMe
 // Task 2.1: Pricing Handler Implementation
 // =============================================================================
 
+// NOTE: The following inline calculation functions are retained for
+// backwards compatibility with tests. Production handlers now use
+// `pricing_service` which delegates to crates (pricer_models, pricer_pricing).
+
 /// Standard normal cumulative distribution function (CDF).
+#[allow(dead_code)]
 fn norm_cdf(x: f64) -> f64 {
     let a1 = 0.254829592;
     let a2 = -0.284496736;
@@ -442,9 +448,11 @@ fn norm_cdf(x: f64) -> f64 {
 }
 
 /// Standard normal probability density function (PDF).
+#[allow(dead_code)]
 fn norm_pdf(x: f64) -> f64 { (-0.5 * x * x).exp() / (2.0 * std::f64::consts::PI).sqrt() }
 
 /// Black-Scholes pricing for European options.
+#[allow(dead_code)]
 fn black_scholes_price(
     spot: f64,
     strike: f64,
@@ -475,6 +483,7 @@ fn black_scholes_price(
 }
 
 /// Black-Scholes Greeks calculation.
+#[allow(dead_code)]
 fn black_scholes_greeks(
     spot: f64,
     strike: f64,
@@ -538,6 +547,7 @@ fn black_scholes_greeks(
 }
 
 /// Garman-Kohlhagen pricing for FX options.
+#[allow(dead_code)]
 fn garman_kohlhagen_price(
     spot: f64,
     strike: f64,
@@ -570,6 +580,7 @@ fn garman_kohlhagen_price(
 }
 
 /// Garman-Kohlhagen Greeks calculation.
+#[allow(dead_code)]
 fn garman_kohlhagen_greeks(
     spot: f64,
     strike: f64,
@@ -772,27 +783,36 @@ pub async fn price_instrument(
             }
 
             let is_call = params.option_type == OptionType::Call;
-            let pv = black_scholes_price(
+
+            // Delegate to pricing_service (crate-backed implementation)
+            let result = pricing_service::price_equity_option(
                 params.spot,
                 params.strike,
                 params.expiry_years,
                 params.rate,
                 params.volatility,
                 is_call,
-            );
-            let greeks = if request.compute_greeks {
-                Some(black_scholes_greeks(
-                    params.spot,
-                    params.strike,
-                    params.expiry_years,
-                    params.rate,
-                    params.volatility,
-                    is_call,
-                ))
-            } else {
-                None
-            };
-            (pv, greeks)
+                request.compute_greeks,
+            )
+            .map_err(|e| {
+                (
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    Json(PricingErrorResponse {
+                        error_type: "PricingError".to_string(),
+                        message: e.to_string(),
+                        field: None,
+                    }),
+                )
+            })?;
+
+            let greeks = result.greeks.map(|g| GreeksData {
+                delta: g.delta,
+                gamma: g.gamma,
+                vega: g.vega,
+                theta: g.theta,
+                rho: g.rho,
+            });
+            (result.price, greeks)
         }
 
         (InstrumentType::FxOption, InstrumentParams::FxOption(params)) => {
@@ -808,7 +828,9 @@ pub async fn price_instrument(
             }
 
             let is_call = params.option_type == OptionType::Call;
-            let pv = garman_kohlhagen_price(
+
+            // Delegate to pricing_service (crate-backed implementation)
+            let result = pricing_service::price_fx_option(
                 params.spot,
                 params.strike,
                 params.expiry_years,
@@ -816,21 +838,29 @@ pub async fn price_instrument(
                 params.foreign_rate,
                 params.volatility,
                 is_call,
-            );
-            let greeks = if request.compute_greeks {
-                Some(garman_kohlhagen_greeks(
-                    params.spot,
-                    params.strike,
-                    params.expiry_years,
-                    params.domestic_rate,
-                    params.foreign_rate,
-                    params.volatility,
-                    is_call,
-                ))
-            } else {
-                None
-            };
-            (pv, greeks)
+                request.compute_greeks,
+            )
+            .map_err(|e| {
+                (
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    Json(PricingErrorResponse {
+                        error_type: "PricingError".to_string(),
+                        message: e.to_string(),
+                        field: None,
+                    }),
+                )
+            })?;
+
+            // Note: FX options have rho_domestic and rho_foreign, but we use rho_domestic
+            // as rho
+            let greeks = result.greeks.map(|g| GreeksData {
+                delta: g.delta,
+                gamma: g.gamma,
+                vega: g.vega,
+                theta: g.theta,
+                rho: g.rho_domestic,
+            });
+            (result.price, greeks)
         }
 
         (InstrumentType::Irs, InstrumentParams::Irs(params)) => {

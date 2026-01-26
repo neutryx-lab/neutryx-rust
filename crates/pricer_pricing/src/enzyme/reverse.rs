@@ -36,6 +36,9 @@
 
 use num_traits::Float;
 
+// Allow deprecated usage: This internal code still needs GreeksResult until
+// the module is fully migrated. The deprecation is for external crate users.
+#[allow(deprecated)]
 use crate::greeks::GreeksResult;
 
 /// Reverse mode AD result containing all first-order Greeks.
@@ -114,6 +117,7 @@ impl<T: Float> ReverseAD<T> {
     ///
     /// Note: Standard error is set to zero as AD doesn't compute MC error.
     #[inline]
+    #[allow(deprecated)]
     pub fn to_greeks_result(self) -> GreeksResult<T> {
         GreeksResult {
             price: self.price,
@@ -237,6 +241,7 @@ impl<T: Float> CompleteGreeks<T> {
 
     /// Converts to GreeksResult<T> for compatibility.
     #[inline]
+    #[allow(deprecated)]
     pub fn to_greeks_result(self) -> GreeksResult<T> {
         GreeksResult {
             price: self.first_order.price,

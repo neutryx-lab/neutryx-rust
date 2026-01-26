@@ -21,9 +21,13 @@
 pub mod curve_builder_handlers;
 pub mod curve_builder_types;
 pub mod error;
+pub mod fxcurve_handlers;
+pub mod fxcurve_types;
 pub mod fxvol_handlers;
 pub mod fxvol_types;
 pub mod generic_pricer_handlers;
+pub mod irvol_handlers;
+pub mod irvol_types;
 pub mod jobs;
 pub mod market_data;
 pub mod market_handlers;
@@ -31,6 +35,9 @@ pub mod market_types;
 pub mod metrics;
 pub mod openapi;
 pub mod pricer_types;
+pub mod pricing_service;
+pub mod risk_engine_handlers;
+pub mod risk_engine_types;
 pub mod scenario_handlers;
 pub mod schedule_utils;
 pub mod state;
@@ -258,6 +265,8 @@ pub struct AppState {
     pub volcube_cache: volcube_handlers::VolCubeCache,
     /// FxVol cache for built FX volatility surfaces (volcube-calibration-ui)
     pub fxvol_cache: fxvol_handlers::FxVolCache,
+    /// IrVol cache for built IR volatility surfaces (market-data-viewer-webapp)
+    pub irvol_cache: irvol_handlers::IrVolState,
 }
 
 impl AppState {
@@ -276,6 +285,7 @@ impl AppState {
             market_data_cache: Arc::new(MarketDataCache::new()),
             volcube_cache: volcube_handlers::VolCubeCache::new(10),
             fxvol_cache: fxvol_handlers::FxVolCache::new(10),
+            irvol_cache: irvol_handlers::create_irvol_state(),
         }
     }
 
@@ -578,7 +588,8 @@ pub fn build_router(state: Arc<AppState>) -> Router {
 
     let api_routes = api_routes.nest("/volcube", volcube_routes);
 
-    // FxVol API routes (volcube-calibration-ui Task 7.1)
+    // FxVol API routes (volcube-calibration-ui Task 7.1, fx-vol-surface-calibration
+    // Task 13.2)
     let fxvol_routes = Router::new()
         .route("/pairs", get(fxvol_handlers::get_pairs))
         .route("/delta-types", get(fxvol_handlers::get_delta_types))
@@ -588,7 +599,9 @@ pub fn build_router(state: Arc<AppState>) -> Router {
             axum::routing::put(fxvol_handlers::update_quotes),
         )
         .route("/build", post(fxvol_handlers::build_surface))
+        .route("/calibrate", post(fxvol_handlers::calibrate_surface))
         .route("/smile", get(fxvol_handlers::get_smile))
+        .route("/surface", get(fxvol_handlers::get_surface))
         .route("/rr-bf", get(fxvol_handlers::get_rr_bf))
         .route("/density", get(fxvol_handlers::get_density))
         .route(
@@ -597,6 +610,41 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         );
 
     let api_routes = api_routes.nest("/fxvol", fxvol_routes);
+
+    // IrVol API routes (market-data-viewer-webapp)
+    let irvol_routes = Router::new()
+        .route("/currencies", get(irvol_handlers::get_currencies))
+        .route("/quotes/:currency", get(irvol_handlers::get_quotes))
+        .route(
+            "/quotes/:currency",
+            axum::routing::put(irvol_handlers::update_quotes),
+        )
+        .route("/build", post(irvol_handlers::build_surface))
+        .route("/smile", get(irvol_handlers::get_smile))
+        .route("/atm-term", get(irvol_handlers::get_atm_term))
+        .route("/surface", get(irvol_handlers::get_surface));
+
+    let api_routes = api_routes.nest("/irvol", irvol_routes);
+
+    // FxCurve API routes (fx-vol-surface-calibration Task 13.1)
+    let fxcurve_routes = Router::new()
+        .route("/build", post(fxcurve_handlers::build_fx_curve))
+        .route("/market", post(fxcurve_handlers::build_fx_market))
+        .route("/forward", get(fxcurve_handlers::get_forward_rate));
+    let api_routes = api_routes.nest("/fxcurve", fxcurve_routes);
+
+    // Risk Engine API routes (generic-pricing-risk-engine Task 8.3)
+    let risk_engine_routes = Router::new()
+        .route("/greeks", post(risk_engine_handlers::compute_greeks))
+        .route(
+            "/portfolio-greeks",
+            post(risk_engine_handlers::compute_portfolio_greeks),
+        )
+        .route(
+            "/scenario-greeks",
+            post(risk_engine_handlers::compute_scenario_greeks),
+        );
+    let api_routes = api_routes.nest("/risk-engine", risk_engine_routes);
 
     // Static file serving for the dashboard
     let static_files =

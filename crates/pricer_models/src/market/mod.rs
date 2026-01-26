@@ -31,6 +31,7 @@
 pub mod calibration;
 pub mod curves;
 pub mod error;
+pub mod fx_calibration;
 pub mod fx_density;
 pub mod index_mapper;
 pub mod provider;
@@ -55,13 +56,17 @@ pub use curves::{
 pub use error::MarketDataError;
 pub use fx_density::{DeltaType, DensityStatistics, FxDensityCalculator};
 pub use index_mapper::{DefaultIndexCurveMapper, IndexCurveMapper};
-pub use provider::MarketProvider;
+pub use provider::{MarketProvider, VolCubeProviderKey};
 pub use surfaces::{
-    FlatVol, FxDeltaPoint, FxVolatilitySurface, InterpolatedVolSurface, VolSurfaceEnum,
-    VolatilitySurface,
+    FlatVol, FxDeltaPoint, FxVolatilitySurface, InterpolatedVolSurface, VolCubeSlice,
+    VolSurfaceEnum, VolatilitySurface,
 };
 pub use volcube::{
-    CacheStats, CalibrationDiagnostics as VolCubeCalibrationDiagnostics, ExtrapolationMethod,
-    InstrumentId, InterpolationMethod, OptimizerType, SabrParams, SharedVolCubeCache,
-    StrikeAxisType, VolCubeCache, VolCubeConfig, VolCubeError, VolCubeKey, VolInstrument,
+    calculate_forward_swap_rate, CacheStats,
+    CalibrationDiagnostics as VolCubeCalibrationDiagnostics, CalibrationProgress,
+    ClosureForwardRateProvider, EngineOutput, ExtrapolationMethod, ForwardRateError,
+    ForwardRateProvider, InstrumentId, InterpolationMethod, OptimizerType, ProgressCallback,
+    SabrParams, SharedVolCubeCache, StrikeAxisType, VolCube, VolCubeCache,
+    VolCubeCalibrationEngine, VolCubeConfig, VolCubeError, VolCubeKey, VolInstrument,
+    VolatilityCube,
 };

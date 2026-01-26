@@ -1,0 +1,234 @@
+{
+  "metadata": {
+    "currency": "JPY",
+    "volType": "normal",
+    "description": "JPY Swaption Normal Volatility Surface with Smile",
+    "source": "Demo Data",
+    "lastUpdated": "2026-01-26T00:00:00Z"
+  },
+  "quotes": [
+    { "expiry": "1M", "tenor": "1Y", "atmVol": 0.42, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.454 },
+      { "strikeOffsetBp": -50, "vol": 0.433 },
+      { "strikeOffsetBp": 50, "vol": 0.428 },
+      { "strikeOffsetBp": 100, "vol": 0.445 }
+    ]},
+    { "expiry": "1M", "tenor": "2Y", "atmVol": 0.45, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.486 },
+      { "strikeOffsetBp": -50, "vol": 0.464 },
+      { "strikeOffsetBp": 50, "vol": 0.459 },
+      { "strikeOffsetBp": 100, "vol": 0.477 }
+    ]},
+    { "expiry": "1M", "tenor": "5Y", "atmVol": 0.50, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.540 },
+      { "strikeOffsetBp": -50, "vol": 0.515 },
+      { "strikeOffsetBp": 50, "vol": 0.510 },
+      { "strikeOffsetBp": 100, "vol": 0.530 }
+    ]},
+    { "expiry": "1M", "tenor": "10Y", "atmVol": 0.55, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.594 },
+      { "strikeOffsetBp": -50, "vol": 0.567 },
+      { "strikeOffsetBp": 50, "vol": 0.561 },
+      { "strikeOffsetBp": 100, "vol": 0.583 }
+    ]},
+    { "expiry": "1M", "tenor": "30Y", "atmVol": 0.48, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.518 },
+      { "strikeOffsetBp": -50, "vol": 0.494 },
+      { "strikeOffsetBp": 50, "vol": 0.490 },
+      { "strikeOffsetBp": 100, "vol": 0.509 }
+    ]},
+
+    { "expiry": "3M", "tenor": "1Y", "atmVol": 0.40, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.432 },
+      { "strikeOffsetBp": -50, "vol": 0.412 },
+      { "strikeOffsetBp": 50, "vol": 0.408 },
+      { "strikeOffsetBp": 100, "vol": 0.424 }
+    ]},
+    { "expiry": "3M", "tenor": "2Y", "atmVol": 0.43, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.464 },
+      { "strikeOffsetBp": -50, "vol": 0.443 },
+      { "strikeOffsetBp": 50, "vol": 0.439 },
+      { "strikeOffsetBp": 100, "vol": 0.456 }
+    ]},
+    { "expiry": "3M", "tenor": "5Y", "atmVol": 0.48, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.518 },
+      { "strikeOffsetBp": -50, "vol": 0.494 },
+      { "strikeOffsetBp": 50, "vol": 0.490 },
+      { "strikeOffsetBp": 100, "vol": 0.509 }
+    ]},
+    { "expiry": "3M", "tenor": "10Y", "atmVol": 0.52, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.562 },
+      { "strikeOffsetBp": -50, "vol": 0.536 },
+      { "strikeOffsetBp": 50, "vol": 0.530 },
+      { "strikeOffsetBp": 100, "vol": 0.551 }
+    ]},
+    { "expiry": "3M", "tenor": "30Y", "atmVol": 0.46, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.497 },
+      { "strikeOffsetBp": -50, "vol": 0.474 },
+      { "strikeOffsetBp": 50, "vol": 0.469 },
+      { "strikeOffsetBp": 100, "vol": 0.488 }
+    ]},
+
+    { "expiry": "6M", "tenor": "1Y", "atmVol": 0.38, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.410 },
+      { "strikeOffsetBp": -50, "vol": 0.391 },
+      { "strikeOffsetBp": 50, "vol": 0.388 },
+      { "strikeOffsetBp": 100, "vol": 0.403 }
+    ]},
+    { "expiry": "6M", "tenor": "2Y", "atmVol": 0.41, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.443 },
+      { "strikeOffsetBp": -50, "vol": 0.422 },
+      { "strikeOffsetBp": 50, "vol": 0.418 },
+      { "strikeOffsetBp": 100, "vol": 0.435 }
+    ]},
+    { "expiry": "6M", "tenor": "5Y", "atmVol": 0.46, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.497 },
+      { "strikeOffsetBp": -50, "vol": 0.474 },
+      { "strikeOffsetBp": 50, "vol": 0.469 },
+      { "strikeOffsetBp": 100, "vol": 0.488 }
+    ]},
+    { "expiry": "6M", "tenor": "10Y", "atmVol": 0.50, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.540 },
+      { "strikeOffsetBp": -50, "vol": 0.515 },
+      { "strikeOffsetBp": 50, "vol": 0.510 },
+      { "strikeOffsetBp": 100, "vol": 0.530 }
+    ]},
+    { "expiry": "6M", "tenor": "30Y", "atmVol": 0.44, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.475 },
+      { "strikeOffsetBp": -50, "vol": 0.453 },
+      { "strikeOffsetBp": 50, "vol": 0.449 },
+      { "strikeOffsetBp": 100, "vol": 0.466 }
+    ]},
+
+    { "expiry": "1Y", "tenor": "1Y", "atmVol": 0.35, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.378 },
+      { "strikeOffsetBp": -50, "vol": 0.361 },
+      { "strikeOffsetBp": 50, "vol": 0.357 },
+      { "strikeOffsetBp": 100, "vol": 0.371 }
+    ]},
+    { "expiry": "1Y", "tenor": "2Y", "atmVol": 0.38, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.410 },
+      { "strikeOffsetBp": -50, "vol": 0.391 },
+      { "strikeOffsetBp": 50, "vol": 0.388 },
+      { "strikeOffsetBp": 100, "vol": 0.403 }
+    ]},
+    { "expiry": "1Y", "tenor": "5Y", "atmVol": 0.43, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.464 },
+      { "strikeOffsetBp": -50, "vol": 0.443 },
+      { "strikeOffsetBp": 50, "vol": 0.439 },
+      { "strikeOffsetBp": 100, "vol": 0.456 }
+    ]},
+    { "expiry": "1Y", "tenor": "10Y", "atmVol": 0.47, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.508 },
+      { "strikeOffsetBp": -50, "vol": 0.484 },
+      { "strikeOffsetBp": 50, "vol": 0.479 },
+      { "strikeOffsetBp": 100, "vol": 0.498 }
+    ]},
+    { "expiry": "1Y", "tenor": "30Y", "atmVol": 0.42, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.454 },
+      { "strikeOffsetBp": -50, "vol": 0.433 },
+      { "strikeOffsetBp": 50, "vol": 0.428 },
+      { "strikeOffsetBp": 100, "vol": 0.445 }
+    ]},
+
+    { "expiry": "2Y", "tenor": "1Y", "atmVol": 0.32, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.346 },
+      { "strikeOffsetBp": -50, "vol": 0.330 },
+      { "strikeOffsetBp": 50, "vol": 0.326 },
+      { "strikeOffsetBp": 100, "vol": 0.339 }
+    ]},
+    { "expiry": "2Y", "tenor": "2Y", "atmVol": 0.35, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.378 },
+      { "strikeOffsetBp": -50, "vol": 0.361 },
+      { "strikeOffsetBp": 50, "vol": 0.357 },
+      { "strikeOffsetBp": 100, "vol": 0.371 }
+    ]},
+    { "expiry": "2Y", "tenor": "5Y", "atmVol": 0.40, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.432 },
+      { "strikeOffsetBp": -50, "vol": 0.412 },
+      { "strikeOffsetBp": 50, "vol": 0.408 },
+      { "strikeOffsetBp": 100, "vol": 0.424 }
+    ]},
+    { "expiry": "2Y", "tenor": "10Y", "atmVol": 0.44, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.475 },
+      { "strikeOffsetBp": -50, "vol": 0.453 },
+      { "strikeOffsetBp": 50, "vol": 0.449 },
+      { "strikeOffsetBp": 100, "vol": 0.466 }
+    ]},
+    { "expiry": "2Y", "tenor": "30Y", "atmVol": 0.40, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.432 },
+      { "strikeOffsetBp": -50, "vol": 0.412 },
+      { "strikeOffsetBp": 50, "vol": 0.408 },
+      { "strikeOffsetBp": 100, "vol": 0.424 }
+    ]},
+
+    { "expiry": "5Y", "tenor": "1Y", "atmVol": 0.28, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.302 },
+      { "strikeOffsetBp": -50, "vol": 0.288 },
+      { "strikeOffsetBp": 50, "vol": 0.286 },
+      { "strikeOffsetBp": 100, "vol": 0.297 }
+    ]},
+    { "expiry": "5Y", "tenor": "2Y", "atmVol": 0.30, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.324 },
+      { "strikeOffsetBp": -50, "vol": 0.309 },
+      { "strikeOffsetBp": 50, "vol": 0.306 },
+      { "strikeOffsetBp": 100, "vol": 0.318 }
+    ]},
+    { "expiry": "5Y", "tenor": "5Y", "atmVol": 0.35, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.378 },
+      { "strikeOffsetBp": -50, "vol": 0.361 },
+      { "strikeOffsetBp": 50, "vol": 0.357 },
+      { "strikeOffsetBp": 100, "vol": 0.371 }
+    ]},
+    { "expiry": "5Y", "tenor": "10Y", "atmVol": 0.38, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.410 },
+      { "strikeOffsetBp": -50, "vol": 0.391 },
+      { "strikeOffsetBp": 50, "vol": 0.388 },
+      { "strikeOffsetBp": 100, "vol": 0.403 }
+    ]},
+    { "expiry": "5Y", "tenor": "30Y", "atmVol": 0.35, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.378 },
+      { "strikeOffsetBp": -50, "vol": 0.361 },
+      { "strikeOffsetBp": 50, "vol": 0.357 },
+      { "strikeOffsetBp": 100, "vol": 0.371 }
+    ]},
+
+    { "expiry": "10Y", "tenor": "1Y", "atmVol": 0.25, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.270 },
+      { "strikeOffsetBp": -50, "vol": 0.258 },
+      { "strikeOffsetBp": 50, "vol": 0.255 },
+      { "strikeOffsetBp": 100, "vol": 0.265 }
+    ]},
+    { "expiry": "10Y", "tenor": "2Y", "atmVol": 0.27, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.292 },
+      { "strikeOffsetBp": -50, "vol": 0.278 },
+      { "strikeOffsetBp": 50, "vol": 0.275 },
+      { "strikeOffsetBp": 100, "vol": 0.286 }
+    ]},
+    { "expiry": "10Y", "tenor": "5Y", "atmVol": 0.32, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.346 },
+      { "strikeOffsetBp": -50, "vol": 0.330 },
+      { "strikeOffsetBp": 50, "vol": 0.326 },
+      { "strikeOffsetBp": 100, "vol": 0.339 }
+    ]},
+    { "expiry": "10Y", "tenor": "10Y", "atmVol": 0.35, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.378 },
+      { "strikeOffsetBp": -50, "vol": 0.361 },
+      { "strikeOffsetBp": 50, "vol": 0.357 },
+      { "strikeOffsetBp": 100, "vol": 0.371 }
+    ]},
+    { "expiry": "10Y", "tenor": "30Y", "atmVol": 0.33, "volType": "normal", "smile": [
+      { "strikeOffsetBp": -100, "vol": 0.356 },
+      { "strikeOffsetBp": -50, "vol": 0.340 },
+      { "strikeOffsetBp": 50, "vol": 0.337 },
+      { "strikeOffsetBp": 100, "vol": 0.350 }
+    ]}
+  ],
+  "smileParameters": {
+    "model": "sabr",
+    "defaultAlpha": 0.015,
+    "defaultBeta": 0.5,
+    "defaultRho": -0.10,
+    "defaultNu": 0.30
+  }
+}

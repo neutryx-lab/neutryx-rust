@@ -650,6 +650,173 @@ impl Default for FxDeltaTypesResponse {
 }
 
 // =============================================================================
+// 3D Surface Visualisation Types (Requirement 12.3, 12.4)
+// =============================================================================
+
+/// Request for `POST /api/fxvol/calibrate`.
+///
+/// # Requirements Coverage
+///
+/// - Requirement 12.3:
+///   ボラティリティサーフェスカリブレーションAPIエンドポイント
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FxCalibrateRequest {
+    /// Currency pair
+    pub currency_pair: String,
+    /// Reference date
+    pub reference_date: String,
+    /// Spot rate
+    pub spot: f64,
+    /// Domestic interest rate
+    pub domestic_rate: f64,
+    /// Foreign interest rate
+    pub foreign_rate: f64,
+    /// Volatility quotes
+    pub quotes: Vec<FxQuoteEntry>,
+    /// Calibration model (SABR, SVI, Flat)
+    #[serde(default)]
+    pub model: CalibrationType,
+    /// SABR beta parameter (fixed, usually 0.5 for FX)
+    #[serde(default = "default_sabr_beta")]
+    pub sabr_beta: f64,
+}
+
+fn default_sabr_beta() -> f64 { 0.5 }
+
+/// Calibration model type.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CalibrationType {
+    /// SABR stochastic volatility model
+    #[default]
+    Sabr,
+    /// SVI parameterisation
+    Svi,
+    /// Flat smile (ATM only)
+    Flat,
+}
+
+/// SABR calibrated parameters for a single expiry.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SabrParameters {
+    /// Expiry in years
+    pub expiry: f64,
+    /// Tenor label (e.g., "3M")
+    pub label: String,
+    /// ATM forward volatility
+    pub alpha: f64,
+    /// CEV exponent (usually fixed)
+    pub beta: f64,
+    /// Correlation
+    pub rho: f64,
+    /// Vol-of-vol
+    pub nu: f64,
+    /// Forward rate at this expiry
+    pub forward: f64,
+    /// Calibration residual (RMS error)
+    pub residual: f64,
+    /// Number of iterations
+    pub iterations: usize,
+}
+
+/// Calibration diagnostics for the entire surface.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FxCalibrationDiagnostics {
+    /// Calibration model used
+    pub model: String,
+    /// Total calibration time (ms)
+    pub calibration_time_ms: f64,
+    /// Number of expiries calibrated
+    pub expiry_count: usize,
+    /// Overall convergence status
+    pub converged: bool,
+    /// Maximum residual across expiries
+    pub max_residual: f64,
+    /// Average residual
+    pub avg_residual: f64,
+    /// Per-expiry SABR parameters
+    pub sabr_params: Vec<SabrParameters>,
+    /// Warnings
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub warnings: Vec<String>,
+}
+
+/// Response for `POST /api/fxvol/calibrate`.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FxCalibrateResponse {
+    /// Unique surface identifier
+    pub surface_id: String,
+    /// Currency pair
+    pub currency_pair: String,
+    /// Calibration diagnostics
+    pub diagnostics: FxCalibrationDiagnostics,
+}
+
+/// Query parameters for `GET /api/fxvol/surface`.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct FxSurfaceQuery {
+    /// Surface ID from build or calibrate
+    pub surface_id: String,
+    /// Number of delta points (default 11)
+    #[serde(default = "default_surface_delta_points")]
+    pub delta_points: usize,
+    /// Number of expiry points (default based on data)
+    #[serde(default)]
+    pub expiry_points: Option<usize>,
+}
+
+fn default_surface_delta_points() -> usize { 11 }
+
+/// Single point on the 3D volatility surface.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SurfacePoint {
+    /// Delta value (-0.1 to 0.1 for puts, 0.1 to 0.5 for calls)
+    pub delta: f64,
+    /// Time to expiry in years
+    pub expiry: f64,
+    /// Implied volatility
+    pub volatility: f64,
+    /// Corresponding absolute strike
+    pub strike: f64,
+}
+
+/// Response for `GET /api/fxvol/surface`.
+///
+/// Provides data for 3D surface visualisation.
+///
+/// # Requirements Coverage
+///
+/// - Requirement 12.4: 3D可視化用JSON形式でサーフェスデータ返却
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FxSurfaceResponse {
+    /// Currency pair
+    pub currency_pair: String,
+    /// Spot rate
+    pub spot: f64,
+    /// Reference date
+    pub reference_date: String,
+    /// Delta axis values
+    pub delta_axis: Vec<f64>,
+    /// Expiry axis values (in years)
+    pub expiry_axis: Vec<f64>,
+    /// Expiry labels (e.g., ["1M", "3M", "6M", "1Y"])
+    pub expiry_labels: Vec<String>,
+    /// Surface points for 3D visualisation
+    pub points: Vec<SurfacePoint>,
+    /// Volatility matrix [expiry][delta] for heatmap
+    pub vol_matrix: Vec<Vec<f64>>,
+    /// Strike matrix [expiry][delta] for reference
+    pub strike_matrix: Vec<Vec<f64>>,
+}
+
+// =============================================================================
 // Tests
 // =============================================================================
 

@@ -17,8 +17,8 @@ use crate::greeks::GreeksMode;
 /// # Examples
 ///
 /// ```rust,ignore
-/// use pricer_pricing::irs_greeks::IrsGreeksConfig;
-/// use pricer_pricing::greeks::GreeksMode;
+/// use pricer_risk::irs_greeks::IrsGreeksConfig;
+/// use pricer_risk::greeks::GreeksMode;
 ///
 /// let config = IrsGreeksConfig::default();
 /// assert!((config.bump_size - 0.0001).abs() < 1e-10);

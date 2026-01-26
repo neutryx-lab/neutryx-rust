@@ -212,12 +212,10 @@ impl std::fmt::Display for DefaultCurrency {
 ///
 /// # Examples
 ///
-/// ```rust
-/// use pricer_pricing::generic_pricer::PricerConfig;
-/// use pricer_pricing::greeks::GreeksMode;
+/// ```rust,ignore
+/// use pricer_pricing::generic_pricer::{PricerConfig, GreeksMode};
 ///
 /// let config = PricerConfig::builder()
-///     .greeks_mode(GreeksMode::BumpRevalue)
 ///     .use_thread_local_buffers(true)
 ///     .build()
 ///     .unwrap();

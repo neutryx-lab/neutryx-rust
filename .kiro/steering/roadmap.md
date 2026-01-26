@@ -2,7 +2,7 @@
 
 実装状況と今後の開発項目を追跡するドキュメント。
 
-_Updated: 2026-01-25_ — Steering sync: rate-index-pricing-integration completed (41 tests); 34 completed specs
+_Updated: 2026-01-26_ — Steering sync: fx-vol-surface-calibration completed (139 tests, FX curve + vol surface builders); ir-vol-cube-calibration active (Phase 1-2 complete); 35 completed specs
 
 ---
 
@@ -46,6 +46,7 @@ _Updated: 2026-01-25_ — Steering sync: rate-index-pricing-integration complete
 | curve-bootstrap-engine | Multi-curve yield curve bootstrapping engine (537 tests) | 2026-01-23 |
 | legacy-compatibility-removal | Legacy code removal and ID type safety (28 tasks) | 2026-01-23 |
 | rate-index-pricing-integration | RateIndex pricing integration across L1/L2/L3 layers (41 tests) | 2026-01-23 |
+| fx-vol-surface-calibration | FX curve + vol surface calibration with SABR, lazy evaluation (139 tests) | 2026-01-26 |
 
 ### Layer Implementation Status
 
@@ -147,7 +148,9 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 
 ### Active Specifications (In Progress)
 
-_No active specifications._
+| Spec | Description | Status |
+|------|-------------|--------|
+| ir-vol-cube-calibration | IR VolCube calibration engine with SABR, lazy evaluation, AAD (Phase 1-2 complete, Phase 3-5 pending) | 🔶 |
 
 ## Recommended Next Steps
 
@@ -161,6 +164,7 @@ _No active specifications._
 
 | Date | Change |
 |------|--------|
+| 2026-01-26 | Steering sync: fx-vol-surface-calibration completed (139 tests, FX curve + vol surface); ir-vol-cube-calibration active (Phase 1-2 complete); structure.md updated (fx_calibration/, volcube/ expansion, web handlers). Total: 35 specs |
 | 2026-01-25 | Steering sync: rate-index-pricing-integration completed (41 tests, RateIndex/Tenor/CurveName pricing). Total: 34 specs |
 | 2026-01-23 | Steering sync: rate-index-pricing-integration added to active specs (tasks-generated phase, awaiting implementation) |
 | 2026-01-23 | All active specs completed: curve-bootstrap-engine (537 tests), legacy-compatibility-removal (28 tasks, ID Newtype統一). Total: 33 specs |

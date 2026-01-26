@@ -179,6 +179,34 @@ impl SwapConvention {
             spot_lag: 0,
         }
     }
+
+    /// Returns the EUR ESTR swap convention.
+    ///
+    /// - Fixed leg: Annual, ACT/360, TARGET calendar, Modified Following
+    /// - Float leg: Annual, ACT/360, TARGET calendar, Modified Following (ESTR
+    ///   compounded)
+    /// - Spot lag: 2 days
+    #[must_use]
+    pub fn eur_estr() -> Self {
+        Self {
+            fixed_leg: SwapLegConvention {
+                day_count: DayCounter::Actual360,
+                payment_frequency: Frequency::Annual,
+                calendar: CalendarId::Target,
+                business_day_convention: BusinessDayConvention::ModifiedFollowing,
+                payment_lag: 2,
+            },
+            float_leg: SwapLegConvention {
+                day_count: DayCounter::Actual360,
+                payment_frequency: Frequency::Annual,
+                calendar: CalendarId::Target,
+                business_day_convention: BusinessDayConvention::ModifiedFollowing,
+                payment_lag: 2,
+            },
+            float_index: RateIndex::Estr,
+            spot_lag: 2,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -275,5 +303,18 @@ mod tests {
         let conv = SwapConvention::usd_sofr();
         let cloned = conv.clone();
         assert_eq!(conv, cloned);
+    }
+
+    #[test]
+    fn test_eur_estr_convention() {
+        let conv = SwapConvention::eur_estr();
+
+        assert_eq!(conv.float_index, RateIndex::Estr);
+        assert_eq!(conv.spot_lag, 2);
+        assert_eq!(conv.fixed_leg.day_count, DayCounter::Actual360);
+        assert_eq!(conv.fixed_leg.payment_frequency, Frequency::Annual);
+        assert_eq!(conv.fixed_leg.calendar, CalendarId::Target);
+        assert_eq!(conv.float_leg.day_count, DayCounter::Actual360);
+        assert_eq!(conv.float_leg.payment_frequency, Frequency::Annual);
     }
 }

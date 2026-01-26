@@ -19,11 +19,17 @@
 //! - Requirement 10: FX VolSurface専用機能
 //! - Requirement 11: FX VolSurface バックエンドAPI
 
-use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Instant};
+use std::{collections::HashMap, path::PathBuf, str::FromStr, sync::Arc, time::Instant};
 
 use axum::{
     extract::{Path, Query, State},
     Json,
+};
+use chrono::NaiveDate;
+use infra_master::{market::Currency, trade::instrument_def::CurrencyPair};
+use pricer_models::market::{
+    curves::{FlatCurve, YieldCurve},
+    fx_calibration::{FxCurve, FxVolSurfaceBuilder, SimpleFxCurve, VolQuote},
 };
 use tokio::sync::RwLock;
 use uuid::Uuid;
@@ -39,6 +45,35 @@ use super::{
     },
     AppState,
 };
+
+// =============================================================================
+// Helper Functions
+// =============================================================================
+
+/// Parses a currency pair string like "EURUSD" or "EUR/USD" into a
+/// CurrencyPair.
+fn parse_currency_pair(pair_str: &str) -> Result<CurrencyPair, ApiError> {
+    let cleaned = pair_str.replace('/', "").to_uppercase();
+    if cleaned.len() != 6 {
+        return Err(ApiError::validation(
+            format!("Invalid currency pair format: {}", pair_str),
+            "currency_pair",
+        ));
+    }
+    let base = Currency::from_str(&cleaned[0..3]).map_err(|e| {
+        ApiError::validation(
+            format!("Invalid base currency '{}': {}", &cleaned[0..3], e),
+            "currency_pair",
+        )
+    })?;
+    let quote = Currency::from_str(&cleaned[3..6]).map_err(|e| {
+        ApiError::validation(
+            format!("Invalid quote currency '{}': {}", &cleaned[3..6], e),
+            "currency_pair",
+        )
+    })?;
+    Ok(CurrencyPair::new(base, quote))
+}
 
 // =============================================================================
 // FxVolCache - LRU Cache for built surfaces (Req 11.4)
@@ -990,6 +1025,319 @@ fn black_call_price(strike: f64, forward: f64, expiry: f64, vol: f64, rate: f64)
     }
 
     df * (forward * norm_cdf(d1) - strike * norm_cdf(d2))
+}
+
+// =============================================================================
+// Extended API Handlers (Task 13.2)
+// =============================================================================
+
+use super::fxvol_types::{
+    FxCalibrateRequest, FxCalibrateResponse, FxCalibrationDiagnostics, FxSurfaceQuery,
+    FxSurfaceResponse, SabrParameters, SurfacePoint,
+};
+
+/// Handler for `POST /api/fxvol/calibrate`.
+///
+/// Calibrates an FX volatility surface using SABR model via
+/// `FxVolSurfaceBuilder`.
+///
+/// # Requirements Coverage
+///
+/// - Requirement 12.3:
+///   ボラティリティサーフェスカリブレーションAPIエンドポイント
+/// - Requirement 12.5: カリブレーション診断表示
+pub async fn calibrate_surface(
+    State(state): State<Arc<AppState>>,
+    Json(request): Json<FxCalibrateRequest>,
+) -> ApiResult<FxCalibrateResponse> {
+    let start = Instant::now();
+
+    // Validate request
+    if request.quotes.is_empty() {
+        return Err(ApiError::validation(
+            "At least one quote is required for calibration",
+            "quotes",
+        ));
+    }
+
+    if request.spot <= 0.0 {
+        return Err(ApiError::validation(
+            format!("Spot must be positive, got {}", request.spot),
+            "spot",
+        ));
+    }
+
+    // Parse reference date
+    let reference_date =
+        NaiveDate::parse_from_str(&request.reference_date, "%Y-%m-%d").map_err(|e| {
+            ApiError::validation(
+                format!("Invalid reference date '{}': {}", request.reference_date, e),
+                "reference_date",
+            )
+        })?;
+
+    // Parse currency pair
+    let currency_pair = parse_currency_pair(&request.currency_pair)?;
+
+    // Create yield curves for domestic and foreign rates using FlatCurve
+    let domestic_curve: Arc<dyn YieldCurve<f64> + Send + Sync> =
+        Arc::new(FlatCurve::new(request.domestic_rate));
+    let foreign_curve: Arc<dyn YieldCurve<f64> + Send + Sync> =
+        Arc::new(FlatCurve::new(request.foreign_rate));
+
+    // Create SimpleFxCurve using interest rate parity
+    let fx_curve: Arc<dyn FxCurve<f64> + Send + Sync> = Arc::new(SimpleFxCurve::new(
+        currency_pair,
+        request.spot,
+        domestic_curve,
+        foreign_curve,
+    ));
+
+    // Build the FxVolSurfaceBuilder with quotes
+    let mut builder = FxVolSurfaceBuilder::<f64>::new(currency_pair)
+        .with_reference_date(reference_date)
+        .with_fx_curve(fx_curve.clone())
+        .with_sabr(request.sabr_beta);
+
+    // Add quotes to the builder
+    for quote in &request.quotes {
+        let expiry_date = reference_date + chrono::Duration::days((quote.expiry * 365.0) as i64);
+
+        // Add ATM quote
+        builder = builder.add_atm_quote(expiry_date, quote.atm_vol);
+
+        // Add 25-delta butterfly and risk reversal
+        builder = builder.add_butterfly_25d_quote(expiry_date, quote.bf_25d);
+        builder = builder.add_risk_reversal_25d_quote(expiry_date, quote.rr_25d);
+
+        // Add 10-delta quotes if available
+        if let Some(bf_10d) = quote.bf_10d {
+            builder = builder.add_quotes(vec![VolQuote::butterfly_10d(expiry_date, bf_10d)]);
+        }
+        if let Some(rr_10d) = quote.rr_10d {
+            builder = builder.add_quotes(vec![VolQuote::risk_reversal_10d(expiry_date, rr_10d)]);
+        }
+    }
+
+    // Build the calibrated surface using the crates implementation
+    let (calibrated_surface, crate_diagnostics) = builder
+        .build()
+        .map_err(|e| ApiError::internal(format!("Calibration failed: {}", e)))?;
+
+    // Map CalibrationDiagnostics to response format
+    let mut warnings = Vec::new();
+    let mut sabr_params = Vec::new();
+    let mut max_residual = 0.0_f64;
+    let mut total_residual = 0.0_f64;
+
+    // Extract SABR parameters from calibrated smiles
+    for (expiry_date, smile) in calibrated_surface.smiles() {
+        let expiry_time = smile.expiry_time;
+        let forward = smile.forward;
+        let label = expiry_to_label(expiry_time);
+
+        // Get SABR parameters from the calibrated smile
+        let (alpha, beta, rho, nu, residual, iterations) = if let Some(sabr) = &smile.sabr_params {
+            (
+                sabr.alpha,
+                sabr.beta,
+                sabr.rho,
+                sabr.nu,
+                crate_diagnostics
+                    .by_expiry
+                    .iter()
+                    .find(|d| d.expiry == *expiry_date)
+                    .map(|d| d.residual)
+                    .unwrap_or(0.0),
+                crate_diagnostics
+                    .by_expiry
+                    .iter()
+                    .find(|d| d.expiry == *expiry_date)
+                    .map(|d| d.iterations)
+                    .unwrap_or(0),
+            )
+        } else {
+            // Flat smile fallback
+            let atm = smile.atm_vol;
+            (atm * forward.powf(0.5), request.sabr_beta, 0.0, 0.3, 0.0, 0)
+        };
+
+        max_residual = max_residual.max(residual);
+        total_residual += residual;
+
+        sabr_params.push(SabrParameters {
+            expiry: expiry_time,
+            label,
+            alpha,
+            beta,
+            rho,
+            nu,
+            forward,
+            residual,
+            iterations,
+        });
+    }
+
+    let expiry_count = sabr_params.len();
+    let avg_residual = if expiry_count > 0 {
+        total_residual / expiry_count as f64
+    } else {
+        0.0
+    };
+
+    // Check convergence
+    let converged = crate_diagnostics.all_converged();
+    if !converged {
+        warnings.push(format!(
+            "High calibration residual: max={:.4}, avg={:.4}",
+            max_residual, avg_residual
+        ));
+    }
+
+    // Generate surface ID and cache
+    let surface_id = Uuid::new_v4();
+
+    // Extract expiry points
+    let mut expiry_points: Vec<f64> = sabr_params.iter().map(|p| p.expiry).collect();
+    expiry_points.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    expiry_points.dedup();
+
+    let cached_surface = CachedFxSurface {
+        currency_pair: request.currency_pair.clone(),
+        spot: request.spot,
+        domestic_rate: request.domestic_rate,
+        foreign_rate: request.foreign_rate,
+        quotes: request.quotes.clone(),
+        delta_points: vec![0.10, 0.25, 0.50, -0.25, -0.10],
+        expiry_points,
+        allow_extrapolation: true,
+    };
+
+    state.fxvol_cache.add(surface_id, cached_surface).await;
+
+    let calibration_time_ms = start.elapsed().as_secs_f64() * 1000.0;
+
+    let diagnostics = FxCalibrationDiagnostics {
+        model: format!("{:?}", request.model),
+        calibration_time_ms,
+        expiry_count,
+        converged,
+        max_residual,
+        avg_residual,
+        sabr_params,
+        warnings,
+    };
+
+    Ok(Json(FxCalibrateResponse {
+        surface_id: surface_id.to_string(),
+        currency_pair: request.currency_pair,
+        diagnostics,
+    }))
+}
+
+/// Handler for `GET /api/fxvol/surface`.
+///
+/// Returns 3D volatility surface data for visualisation.
+///
+/// # Requirements Coverage
+///
+/// - Requirement 12.4: 3D可視化用JSON形式でサーフェスデータ返却
+pub async fn get_surface(
+    State(state): State<Arc<AppState>>,
+    Query(query): Query<FxSurfaceQuery>,
+) -> ApiResult<FxSurfaceResponse> {
+    // Parse surface ID
+    let surface_id = Uuid::parse_str(&query.surface_id)
+        .map_err(|_| ApiError::validation("Invalid surface ID format", "surface_id"))?;
+
+    // Get cached surface
+    let surface = state
+        .fxvol_cache
+        .get(&surface_id)
+        .await
+        .ok_or_else(|| ApiError::not_found("FxVolSurface", &query.surface_id))?;
+
+    // Build delta axis (from put to call)
+    let delta_count = query.delta_points;
+    let mut delta_axis = Vec::with_capacity(delta_count);
+
+    // Standard delta points: -0.10, -0.25, -0.50 (puts), 0.50, 0.25, 0.10 (calls)
+    // Map to uniform range for visualisation
+    for i in 0..delta_count {
+        let t = i as f64 / (delta_count - 1) as f64;
+        // Map [0, 1] to delta range [-0.45, 0.45]
+        let delta = -0.45 + t * 0.9;
+        delta_axis.push(delta);
+    }
+
+    // Get expiry axis from surface data
+    let expiry_axis = surface.expiry_points.clone();
+    let expiry_labels: Vec<String> = expiry_axis.iter().map(|e| expiry_to_label(*e)).collect();
+
+    // Build surface points and matrices
+    let mut points = Vec::new();
+    let mut vol_matrix = Vec::with_capacity(expiry_axis.len());
+    let mut strike_matrix = Vec::with_capacity(expiry_axis.len());
+
+    for &expiry in &expiry_axis {
+        // Find closest quote for this expiry
+        let quote = surface
+            .quotes
+            .iter()
+            .min_by(|a, b| {
+                (a.expiry - expiry)
+                    .abs()
+                    .partial_cmp(&(b.expiry - expiry).abs())
+                    .unwrap()
+            })
+            .unwrap();
+
+        let delta_vols = quote.to_delta_vols();
+
+        let mut vol_row = Vec::with_capacity(delta_axis.len());
+        let mut strike_row = Vec::with_capacity(delta_axis.len());
+
+        for &delta in &delta_axis {
+            // Interpolate volatility from delta vols
+            let vol = interpolate_delta_vol(&delta_vols, delta);
+
+            // Calculate strike from delta
+            let strike = delta_to_strike(
+                delta,
+                surface.spot,
+                surface.domestic_rate,
+                surface.foreign_rate,
+                expiry,
+                vol,
+                DeltaType::SpotDelta,
+            );
+
+            points.push(SurfacePoint {
+                delta,
+                expiry,
+                volatility: vol,
+                strike,
+            });
+
+            vol_row.push(vol);
+            strike_row.push(strike);
+        }
+
+        vol_matrix.push(vol_row);
+        strike_matrix.push(strike_row);
+    }
+
+    Ok(Json(FxSurfaceResponse {
+        currency_pair: surface.currency_pair.clone(),
+        spot: surface.spot,
+        reference_date: String::new(), // Not stored in cache
+        delta_axis,
+        expiry_axis,
+        expiry_labels,
+        points,
+        vol_matrix,
+        strike_matrix,
+    }))
 }
 
 // =============================================================================

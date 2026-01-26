@@ -37,16 +37,93 @@
 //! ```
 
 use std::{
-    collections::HashMap,
+    collections::{hash_map::DefaultHasher, HashMap},
+    hash::{Hash, Hasher},
     sync::{Arc, RwLock},
 };
 
 use infra_master::Currency;
+use ordered_float::OrderedFloat;
 
 use crate::market::{
     curves::{CurveEnum, CurveName, CurveSet, FlatCurve},
     surfaces::VolSurfaceEnum,
+    volcube::{Currency as VolCubeCurrency, UnderlyingIndex, VolCubeConfig, VolLazyEvaluator},
 };
+
+// =============================================================================
+// VolCube Provider Key
+// =============================================================================
+
+/// Cache key for VolCube instances.
+///
+/// Combines currency, underlying index, and config hash for unique
+/// identification. This allows caching different VolCube configurations
+/// separately.
+///
+/// # Requirements: 6.9
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct VolCubeProviderKey {
+    /// Currency for the VolCube.
+    currency: VolCubeCurrency,
+    /// Underlying index (rate index).
+    index: UnderlyingIndex,
+    /// Hash of the VolCubeConfig.
+    config_hash: u64,
+}
+
+impl VolCubeProviderKey {
+    /// Create a new VolCube provider key.
+    pub fn new(currency: VolCubeCurrency, index: UnderlyingIndex, config: &VolCubeConfig) -> Self {
+        Self {
+            currency,
+            index,
+            config_hash: Self::hash_config(config),
+        }
+    }
+
+    /// Hash the VolCubeConfig for cache key generation.
+    fn hash_config(config: &VolCubeConfig) -> u64 {
+        let mut hasher = DefaultHasher::new();
+
+        // Hash enum variants as u8
+        (config.interpolation as u8).hash(&mut hasher);
+        (config.extrapolation as u8).hash(&mut hasher);
+        (config.strike_axis as u8).hash(&mut hasher);
+        (config.optimizer as u8).hash(&mut hasher);
+        config.validate_arbitrage_free.hash(&mut hasher);
+
+        // Hash SABR parameters
+        if let Some(beta) = config.sabr_beta {
+            OrderedFloat(beta).hash(&mut hasher);
+        }
+        OrderedFloat(config.sabr_shift).hash(&mut hasher);
+        config.max_iterations.hash(&mut hasher);
+        OrderedFloat(config.tolerance).hash(&mut hasher);
+
+        // Hash curve names
+        config.discount_curve.hash(&mut hasher);
+        config.projection_curve.hash(&mut hasher);
+
+        // Hash calibration order
+        (config.calibration_order as u8).hash(&mut hasher);
+
+        hasher.finish()
+    }
+
+    /// Get the currency.
+    pub fn currency(&self) -> VolCubeCurrency { self.currency }
+
+    /// Get the underlying index.
+    pub fn index(&self) -> UnderlyingIndex { self.index }
+
+    /// Get the config hash.
+    pub fn config_hash(&self) -> u64 { self.config_hash }
+}
+
+// =============================================================================
+// MarketProvider
+// =============================================================================
 
 /// Thread-safe market data provider with lazy evaluation and Arc caching.
 ///
@@ -57,6 +134,10 @@ pub struct MarketProvider {
     curve_cache: RwLock<HashMap<Currency, Arc<CurveEnum<f64>>>>,
     /// Cache for volatility surfaces, keyed by currency.
     vol_cache: RwLock<HashMap<Currency, Arc<VolSurfaceEnum<f64>>>>,
+    /// Cache for VolCube lazy evaluators, keyed by (currency, index, config).
+    ///
+    /// # Requirements: 6.9
+    volcube_cache: RwLock<HashMap<VolCubeProviderKey, Arc<VolLazyEvaluator<f64>>>>,
     /// Curve set for index-based curve access (forward rate projections).
     index_curve_set: RwLock<CurveSet<f64>>,
 }
@@ -66,6 +147,7 @@ impl std::fmt::Debug for MarketProvider {
         f.debug_struct("MarketProvider")
             .field("curve_cache", &"<RwLock>")
             .field("vol_cache", &"<RwLock>")
+            .field("volcube_cache", &"<RwLock>")
             .finish()
     }
 }
@@ -90,6 +172,7 @@ impl MarketProvider {
         Self {
             curve_cache: RwLock::new(HashMap::new()),
             vol_cache: RwLock::new(HashMap::new()),
+            volcube_cache: RwLock::new(HashMap::new()),
             index_curve_set: RwLock::new(index_curves),
         }
     }
@@ -215,6 +298,93 @@ impl MarketProvider {
         cache.insert(ccy, Arc::clone(&vol));
         vol
     }
+
+    /// Retrieves or constructs a VolCube lazy evaluator for the given
+    /// parameters.
+    ///
+    /// Implements double-check locking pattern similar to `get_curve()`.
+    /// The VolLazyEvaluator provides lazy slice-level calibration with caching.
+    ///
+    /// # Requirements: 6.9
+    ///
+    /// # Arguments
+    ///
+    /// * `currency` - The currency for the VolCube (volcube::Currency).
+    /// * `index` - The underlying rate index.
+    /// * `config` - The VolCube configuration.
+    ///
+    /// # Returns
+    ///
+    /// `Arc<VolLazyEvaluator<f64>>` - shared reference to the lazy evaluator.
+    ///
+    /// # Logging
+    ///
+    /// On cache miss, prints: `[MarketData] Creating VolCube LazyEvaluator for
+    /// {currency}/{index}...`
+    #[allow(clippy::unwrap_used, clippy::missing_panics_doc)]
+    pub fn get_volcube(
+        &self,
+        currency: VolCubeCurrency,
+        index: UnderlyingIndex,
+        config: VolCubeConfig,
+    ) -> Arc<VolLazyEvaluator<f64>> {
+        let key = VolCubeProviderKey::new(currency, index, &config);
+
+        // Fast path: read lock check
+        {
+            let cache = self.volcube_cache.read().unwrap();
+            if let Some(evaluator) = cache.get(&key) {
+                return Arc::clone(evaluator);
+            }
+        }
+
+        // Slow path: write lock with double-check
+        let mut cache = self.volcube_cache.write().unwrap();
+
+        // Double-check: another thread may have populated while we waited
+        if let Some(evaluator) = cache.get(&key) {
+            return Arc::clone(evaluator);
+        }
+
+        // Create the VolCube lazy evaluator
+        println!(
+            "[MarketData] Creating VolCube LazyEvaluator for {}/{}...",
+            currency.as_str(),
+            index.as_str()
+        );
+
+        let evaluator = Arc::new(VolLazyEvaluator::new(config));
+        cache.insert(key, Arc::clone(&evaluator));
+        evaluator
+    }
+
+    /// Retrieves or constructs a VolCube lazy evaluator using currency
+    /// defaults.
+    ///
+    /// Uses the currency's default underlying index and default configuration.
+    ///
+    /// # Requirements: 6.9
+    ///
+    /// # Arguments
+    ///
+    /// * `currency` - The currency for the VolCube.
+    ///
+    /// # Returns
+    ///
+    /// `Arc<VolLazyEvaluator<f64>>` - shared reference to the lazy evaluator.
+    pub fn get_volcube_default(&self, currency: VolCubeCurrency) -> Arc<VolLazyEvaluator<f64>> {
+        let index = currency.default_index();
+        let config = VolCubeConfig::default_for_currency(currency);
+        self.get_volcube(currency, index, config)
+    }
+
+    /// Get the number of cached VolCube evaluators.
+    #[allow(clippy::unwrap_used, clippy::missing_panics_doc)]
+    pub fn volcube_cache_size(&self) -> usize { self.volcube_cache.read().unwrap().len() }
+
+    /// Clear the VolCube cache.
+    #[allow(clippy::unwrap_used, clippy::missing_panics_doc)]
+    pub fn clear_volcube_cache(&self) { self.volcube_cache.write().unwrap().clear(); }
 }
 
 impl Default for MarketProvider {
@@ -448,5 +618,179 @@ mod tests {
                 "All threads should get same Arc"
             );
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // VolCube Cache Tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_volcube_cache_empty_initially() {
+        let provider = MarketProvider::new();
+        assert_eq!(provider.volcube_cache_size(), 0);
+    }
+
+    #[test]
+    fn test_get_volcube_creates_evaluator() {
+        let provider = MarketProvider::new();
+        let config = VolCubeConfig::default();
+
+        let evaluator = provider.get_volcube(VolCubeCurrency::Usd, UnderlyingIndex::Sofr, config);
+
+        // Should have one entry in cache
+        assert_eq!(provider.volcube_cache_size(), 1);
+
+        // Evaluator should be valid
+        let stats = evaluator.stats_snapshot();
+        assert_eq!(stats.hits, 0);
+        assert_eq!(stats.misses, 0);
+    }
+
+    #[test]
+    fn test_get_volcube_caches_result() {
+        let provider = MarketProvider::new();
+        let config = VolCubeConfig::default();
+
+        let eval1 =
+            provider.get_volcube(VolCubeCurrency::Usd, UnderlyingIndex::Sofr, config.clone());
+        let eval2 = provider.get_volcube(VolCubeCurrency::Usd, UnderlyingIndex::Sofr, config);
+
+        // Both should point to the same Arc
+        assert!(Arc::ptr_eq(&eval1, &eval2), "Should return cached Arc");
+        assert_eq!(provider.volcube_cache_size(), 1);
+    }
+
+    #[test]
+    fn test_get_volcube_different_currencies() {
+        let provider = MarketProvider::new();
+        let config = VolCubeConfig::default();
+
+        let usd = provider.get_volcube(VolCubeCurrency::Usd, UnderlyingIndex::Sofr, config.clone());
+        let eur = provider.get_volcube(VolCubeCurrency::Eur, UnderlyingIndex::Estr, config);
+
+        // Should be different objects
+        assert!(
+            !Arc::ptr_eq(&usd, &eur),
+            "Different currencies should have different evaluators"
+        );
+        assert_eq!(provider.volcube_cache_size(), 2);
+    }
+
+    #[test]
+    fn test_get_volcube_different_configs() {
+        let provider = MarketProvider::new();
+
+        let config1 = VolCubeConfig::default();
+        let config2 = VolCubeConfig::default().with_sabr_beta(Some(0.0));
+
+        let eval1 = provider.get_volcube(VolCubeCurrency::Usd, UnderlyingIndex::Sofr, config1);
+        let eval2 = provider.get_volcube(VolCubeCurrency::Usd, UnderlyingIndex::Sofr, config2);
+
+        // Different configs should create different evaluators
+        assert!(
+            !Arc::ptr_eq(&eval1, &eval2),
+            "Different configs should have different evaluators"
+        );
+        assert_eq!(provider.volcube_cache_size(), 2);
+    }
+
+    #[test]
+    fn test_get_volcube_default() {
+        let provider = MarketProvider::new();
+
+        let evaluator = provider.get_volcube_default(VolCubeCurrency::Usd);
+
+        assert_eq!(provider.volcube_cache_size(), 1);
+
+        // Check that stats are accessible
+        let stats = evaluator.stats_snapshot();
+        assert_eq!(stats.hits + stats.misses, 0);
+    }
+
+    #[test]
+    fn test_clear_volcube_cache() {
+        let provider = MarketProvider::new();
+
+        // Populate cache
+        provider.get_volcube_default(VolCubeCurrency::Usd);
+        provider.get_volcube_default(VolCubeCurrency::Eur);
+        assert_eq!(provider.volcube_cache_size(), 2);
+
+        // Clear cache
+        provider.clear_volcube_cache();
+        assert_eq!(provider.volcube_cache_size(), 0);
+    }
+
+    #[test]
+    fn test_volcube_provider_key_equality() {
+        let config1 = VolCubeConfig::default();
+        let config2 = VolCubeConfig::default();
+
+        let key1 = VolCubeProviderKey::new(VolCubeCurrency::Usd, UnderlyingIndex::Sofr, &config1);
+        let key2 = VolCubeProviderKey::new(VolCubeCurrency::Usd, UnderlyingIndex::Sofr, &config2);
+
+        // Same parameters should produce equal keys
+        assert_eq!(key1, key2);
+    }
+
+    #[test]
+    fn test_volcube_provider_key_different_currency() {
+        let config = VolCubeConfig::default();
+
+        let key1 = VolCubeProviderKey::new(VolCubeCurrency::Usd, UnderlyingIndex::Sofr, &config);
+        let key2 = VolCubeProviderKey::new(VolCubeCurrency::Eur, UnderlyingIndex::Sofr, &config);
+
+        assert_ne!(key1, key2);
+    }
+
+    #[test]
+    fn test_volcube_provider_key_different_index() {
+        let config = VolCubeConfig::default();
+
+        let key1 = VolCubeProviderKey::new(VolCubeCurrency::Eur, UnderlyingIndex::Estr, &config);
+        let key2 = VolCubeProviderKey::new(VolCubeCurrency::Eur, UnderlyingIndex::Euribor, &config);
+
+        assert_ne!(key1, key2);
+    }
+
+    #[test]
+    fn test_volcube_provider_key_different_config() {
+        let config1 = VolCubeConfig::default();
+        let config2 = VolCubeConfig::default().with_sabr_beta(Some(1.0));
+
+        let key1 = VolCubeProviderKey::new(VolCubeCurrency::Usd, UnderlyingIndex::Sofr, &config1);
+        let key2 = VolCubeProviderKey::new(VolCubeCurrency::Usd, UnderlyingIndex::Sofr, &config2);
+
+        assert_ne!(key1, key2);
+    }
+
+    #[test]
+    fn test_concurrent_volcube_access() {
+        use std::thread;
+
+        let provider = Arc::new(MarketProvider::new());
+        let mut handles = vec![];
+
+        // Spawn multiple threads accessing the same volcube
+        for _ in 0..4 {
+            let provider_clone = Arc::clone(&provider);
+            handles.push(thread::spawn(move || {
+                provider_clone.get_volcube_default(VolCubeCurrency::Usd)
+            }));
+        }
+
+        // Collect results
+        let evaluators: Vec<_> = handles.into_iter().map(|h| h.join().unwrap()).collect();
+
+        // All should point to the same Arc
+        for eval in evaluators.iter().skip(1) {
+            assert!(
+                Arc::ptr_eq(&evaluators[0], eval),
+                "All threads should get same Arc"
+            );
+        }
+
+        // Only one entry in cache
+        assert_eq!(provider.volcube_cache_size(), 1);
     }
 }

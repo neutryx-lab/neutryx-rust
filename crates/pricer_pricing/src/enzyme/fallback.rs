@@ -37,6 +37,9 @@
 //! ```
 
 use super::greeks::GreeksMode as EnzymeGreeksMode;
+// Allow deprecated usage: This internal code still needs GreeksConfig/GreeksMode
+// until the module is fully migrated. The deprecation is for external crate users.
+#[allow(deprecated)]
 use crate::greeks::{GreeksConfig, GreeksMode as CoreGreeksMode};
 
 /// Configuration for fallback behaviour.
@@ -98,6 +101,7 @@ pub struct FallbackResolver {
     config: FallbackConfig,
 }
 
+#[allow(deprecated)]
 impl FallbackResolver {
     /// Creates a new fallback resolver with the given configuration.
     #[inline]
@@ -188,6 +192,7 @@ pub struct ResolvedMode {
     pub error: Option<FallbackError>,
 }
 
+#[allow(deprecated)]
 impl ResolvedMode {
     /// Creates a resolved mode using Enzyme AD.
     fn enzyme(mode: EnzymeGreeksMode) -> Self {

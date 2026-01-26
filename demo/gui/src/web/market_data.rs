@@ -35,7 +35,11 @@ use super::market_types::{
 #[derive(Debug, Deserialize)]
 struct MarketDataFile {
     rates: CurrencyRates,
+    #[serde(default)]
+    xccy_basis: HashMap<String, Vec<XccyBasisData>>,
     fx_spots: Vec<FxSpotData>,
+    #[serde(default)]
+    fx_forwards: HashMap<String, Vec<FxForwardData>>,
     conventions: HashMap<String, ConventionData>,
 }
 
@@ -46,6 +50,7 @@ struct CurrencyRates {
     usd: Option<RatesByType>,
     eur: Option<RatesByType>,
     jpy: Option<RatesByType>,
+    gbp: Option<RatesByType>,
 }
 
 /// Rates grouped by type (deposit, ois, swap).
@@ -69,6 +74,21 @@ struct RateData {
 struct FxSpotData {
     pair: String,
     value: f64,
+}
+
+/// XCCY Basis Swap data from JSON.
+#[derive(Debug, Deserialize)]
+struct XccyBasisData {
+    tenor: String,
+    value: f64,
+    index: Option<String>,
+}
+
+/// FX Forward data from JSON.
+#[derive(Debug, Deserialize)]
+struct FxForwardData {
+    tenor: String,
+    points: f64,
 }
 
 /// Convention data from JSON.
@@ -272,6 +292,27 @@ fn convert_to_rates(data: &MarketDataFile, timestamp: i64) -> Vec<MarketRateResp
     if let Some(ref jpy) = data.rates.jpy {
         rates.extend(convert_currency_rates("JPY", jpy, timestamp));
     }
+    if let Some(ref gbp) = data.rates.gbp {
+        rates.extend(convert_currency_rates("GBP", gbp, timestamp));
+    }
+
+    // Process XCCY Basis Swaps
+    for (pair, basis_data) in &data.xccy_basis {
+        for r in basis_data {
+            rates.push(MarketRateResponse {
+                id: format!("{}-{}-XCCY", pair, r.tenor),
+                currency: pair.clone(),
+                tenor: r.tenor.clone(),
+                rate_type: "XccyBasis".to_string(),
+                value: r.value,
+                quote_type: "Mid".to_string(),
+                timestamp,
+                source: "Bloomberg".to_string(),
+                is_stale: false,
+                rate_index: r.index.clone(),
+            });
+        }
+    }
 
     // Process FX spots
     for fx in &data.fx_spots {
@@ -287,6 +328,24 @@ fn convert_to_rates(data: &MarketDataFile, timestamp: i64) -> Vec<MarketRateResp
             is_stale: false,
             rate_index: None,
         });
+    }
+
+    // Process FX Forwards
+    for (pair, fwd_data) in &data.fx_forwards {
+        for r in fwd_data {
+            rates.push(MarketRateResponse {
+                id: format!("{}-{}-FWD", pair, r.tenor),
+                currency: pair[..3].to_string(),
+                tenor: r.tenor.clone(),
+                rate_type: "FxForward".to_string(),
+                value: r.points,
+                quote_type: "Points".to_string(),
+                timestamp,
+                source: "Reuters".to_string(),
+                is_stale: false,
+                rate_index: None,
+            });
+        }
     }
 
     rates
@@ -415,6 +474,9 @@ fn generate_fallback_rates(timestamp: i64) -> Vec<MarketRateResponse> {
 fn generate_fallback_conventions() -> HashMap<String, ConventionData> {
     let mut conventions = HashMap::new();
 
+    // ===========================================
+    // OIS Conventions
+    // ===========================================
     conventions.insert(
         "USD-SOFR-OIS".to_string(),
         ConventionData {
@@ -443,6 +505,165 @@ fn generate_fallback_conventions() -> HashMap<String, ConventionData> {
                     serde_json::json!("ACT/360"),
                 );
                 fields.insert("float_leg_index".to_string(), serde_json::json!("SOFR"));
+                fields
+            },
+        },
+    );
+
+    // ===========================================
+    // Swaption (IRVol) Conventions
+    // ===========================================
+    conventions.insert(
+        "USD-SWAPTION".to_string(),
+        ConventionData {
+            convention_type: "SwaptionConvention".to_string(),
+            currency: "USD".to_string(),
+            is_default: true,
+            fields: {
+                let mut fields = HashMap::new();
+                fields.insert("vol_type".to_string(), serde_json::json!("Normal"));
+                fields.insert("vol_unit".to_string(), serde_json::json!("bp"));
+                fields.insert("settlement".to_string(), serde_json::json!("Cash"));
+                fields.insert("exercise_style".to_string(), serde_json::json!("European"));
+                fields.insert("underlying_tenor".to_string(), serde_json::json!("Swap"));
+                fields
+            },
+        },
+    );
+
+    conventions.insert(
+        "EUR-SWAPTION".to_string(),
+        ConventionData {
+            convention_type: "SwaptionConvention".to_string(),
+            currency: "EUR".to_string(),
+            is_default: true,
+            fields: {
+                let mut fields = HashMap::new();
+                fields.insert("vol_type".to_string(), serde_json::json!("Normal"));
+                fields.insert("vol_unit".to_string(), serde_json::json!("bp"));
+                fields.insert("settlement".to_string(), serde_json::json!("Cash"));
+                fields.insert("exercise_style".to_string(), serde_json::json!("European"));
+                fields.insert("underlying_tenor".to_string(), serde_json::json!("Swap"));
+                fields
+            },
+        },
+    );
+
+    conventions.insert(
+        "JPY-SWAPTION".to_string(),
+        ConventionData {
+            convention_type: "SwaptionConvention".to_string(),
+            currency: "JPY".to_string(),
+            is_default: true,
+            fields: {
+                let mut fields = HashMap::new();
+                fields.insert("vol_type".to_string(), serde_json::json!("Normal"));
+                fields.insert("vol_unit".to_string(), serde_json::json!("bp"));
+                fields.insert("settlement".to_string(), serde_json::json!("Cash"));
+                fields.insert("exercise_style".to_string(), serde_json::json!("European"));
+                fields.insert("underlying_tenor".to_string(), serde_json::json!("Swap"));
+                fields
+            },
+        },
+    );
+
+    conventions.insert(
+        "GBP-SWAPTION".to_string(),
+        ConventionData {
+            convention_type: "SwaptionConvention".to_string(),
+            currency: "GBP".to_string(),
+            is_default: true,
+            fields: {
+                let mut fields = HashMap::new();
+                fields.insert("vol_type".to_string(), serde_json::json!("Normal"));
+                fields.insert("vol_unit".to_string(), serde_json::json!("bp"));
+                fields.insert("settlement".to_string(), serde_json::json!("Cash"));
+                fields.insert("exercise_style".to_string(), serde_json::json!("European"));
+                fields.insert("underlying_tenor".to_string(), serde_json::json!("Swap"));
+                fields
+            },
+        },
+    );
+
+    // Cap/Floor Conventions
+    conventions.insert(
+        "USD-CAPFLOOR".to_string(),
+        ConventionData {
+            convention_type: "CapFloorConvention".to_string(),
+            currency: "USD".to_string(),
+            is_default: true,
+            fields: {
+                let mut fields = HashMap::new();
+                fields.insert("vol_type".to_string(), serde_json::json!("Normal"));
+                fields.insert("vol_unit".to_string(), serde_json::json!("bp"));
+                fields.insert("underlying_index".to_string(), serde_json::json!("SOFR"));
+                fields.insert("frequency".to_string(), serde_json::json!("Quarterly"));
+                fields
+            },
+        },
+    );
+
+    // ===========================================
+    // FX Option (FXVol) Conventions
+    // ===========================================
+    conventions.insert(
+        "EURUSD-FXOPTION".to_string(),
+        ConventionData {
+            convention_type: "FxOptionConvention".to_string(),
+            currency: "EUR".to_string(),
+            is_default: true,
+            fields: {
+                let mut fields = HashMap::new();
+                fields.insert("delta_type".to_string(), serde_json::json!("Spot Delta"));
+                fields.insert(
+                    "vol_quote_style".to_string(),
+                    serde_json::json!("ATM + RR/BF"),
+                );
+                fields.insert("premium_currency".to_string(), serde_json::json!("USD"));
+                fields.insert("settlement".to_string(), serde_json::json!("T+2"));
+                fields.insert("cut_time".to_string(), serde_json::json!("NY 10:00"));
+                fields
+            },
+        },
+    );
+
+    conventions.insert(
+        "USDJPY-FXOPTION".to_string(),
+        ConventionData {
+            convention_type: "FxOptionConvention".to_string(),
+            currency: "USD".to_string(),
+            is_default: true,
+            fields: {
+                let mut fields = HashMap::new();
+                fields.insert("delta_type".to_string(), serde_json::json!("Spot Delta"));
+                fields.insert(
+                    "vol_quote_style".to_string(),
+                    serde_json::json!("ATM + RR/BF"),
+                );
+                fields.insert("premium_currency".to_string(), serde_json::json!("JPY"));
+                fields.insert("settlement".to_string(), serde_json::json!("T+2"));
+                fields.insert("cut_time".to_string(), serde_json::json!("Tokyo 15:00"));
+                fields
+            },
+        },
+    );
+
+    conventions.insert(
+        "GBPUSD-FXOPTION".to_string(),
+        ConventionData {
+            convention_type: "FxOptionConvention".to_string(),
+            currency: "GBP".to_string(),
+            is_default: true,
+            fields: {
+                let mut fields = HashMap::new();
+                fields.insert("delta_type".to_string(), serde_json::json!("Spot Delta"));
+                fields.insert(
+                    "vol_quote_style".to_string(),
+                    serde_json::json!("ATM + RR/BF"),
+                );
+                fields.insert("premium_currency".to_string(), serde_json::json!("USD"));
+                fields.insert("settlement".to_string(), serde_json::json!("T+2"));
+                fields.insert("cut_time".to_string(), serde_json::json!("NY 10:00"));
                 fields
             },
         },

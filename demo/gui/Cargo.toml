@@ -26,6 +26,10 @@ infra_master = { path = "../../crates/infra_master", features = ["serde"] }
 pricer_core = { path = "../../crates/pricer_core" }
 pricer_models = { path = "../../crates/pricer_models" }
 pricer_pricing = { path = "../../crates/pricer_pricing" }
+pricer_risk = { path = "../../crates/pricer_risk", features = ["serde"] }
+
+# Config layer
+infra_config = { path = "../../crates/infra_config", features = ["serde"] }
 
 # Async runtime
 tokio = { workspace = true }
@@ -61,6 +65,7 @@ validator = { version = "0.19", features = ["derive"] }
 
 [dev-dependencies]
 tokio-test = "0.4"
+approx = "0.5"
 
 [lints]
 workspace = true

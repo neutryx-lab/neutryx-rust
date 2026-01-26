@@ -28,23 +28,40 @@
 //! let vol = cube.volatility(1.0, 5.0, 0.03)?;
 //! ```
 
+mod aad_validation;
 mod breeden_litzenberger;
 mod builder;
 mod cache;
+mod calibration_graph;
 mod calibrator;
 mod config;
 mod cube;
+mod engine;
 mod error;
 pub mod graph;
+mod interpolator;
+mod lazy_evaluator;
+mod loader_convert;
+mod quote;
 mod sabr_surface;
+mod sensitivity_path;
 mod types;
+mod vega;
 
 #[cfg(test)]
 mod proptest_tests;
 
+pub use aad_validation::{
+    AADCrossValidator, DiscontinuityDetector, DiscontinuityKind, DiscontinuityPoint,
+    PointValidation, SmoothingConfig, ValidationReport,
+};
 pub use breeden_litzenberger::BreedenLitzenberger;
 pub use builder::VolCubeBuilder;
 pub use cache::{CacheStats, SharedVolCubeCache, VolCubeCache, VolCubeCacheEntry, VolCubeKey};
+pub use calibration_graph::{
+    CalibrationExecutor, CalibrationGraph, CalibrationNode, CalibrationNodeId, CalibrationState,
+    GraphCalibrationResult, GraphError, NoOpCalibrationExecutor, NodeKind,
+};
 #[cfg(feature = "local-vol")]
 pub use calibrator::LocalVolCalibrator;
 #[cfg(feature = "stochastic-local-vol")]
@@ -54,13 +71,45 @@ pub use calibrator::{
     SviCalibrator, VolCubeCalibrator,
 };
 pub use config::{
-    ExtrapolationMethod, InterpolationMethod, OptimizerType, StrikeAxisType, VolCubeConfig,
+    AxisInterpolationMethod, CalibrationOrder, ExtrapolationMethod, InterpolationMethod,
+    OptimizerType, SabrParameterInterpolation, StrikeAxisType, VolCubeConfig,
 };
 pub use cube::{VolCube, VolatilityCube};
-pub use error::{CalibrationDiagnostics, VolCubeError};
+pub use engine::{
+    calculate_forward_swap_rate, CalibrationProgress, ClosureForwardRateProvider, EngineOutput,
+    ForwardRateError, ForwardRateProvider, ProgressCallback, VolCubeCalibrationEngine,
+};
+pub use error::{
+    ArbitrageViolation, ArbitrageViolationType, BoundaryViolation, CalibrationDiagnostics,
+    ConvergenceStatus, SabrParameter, SliceDiagnostics, VolCubeError,
+};
 pub use graph::{
     VolCubeEdgeType, VolCubeGraphData, VolCubeGraphEdge, VolCubeGraphNode, VolCubeNodeType,
     VolCubeSensitivityInfo,
 };
+pub use interpolator::{
+    FlatInterpolator, InterpolationError, Interpolator, LinearInterpolator, VolCubeInterpolator,
+};
+pub use lazy_evaluator::{
+    CalibratedSlice, LazyEvaluatorStats, LazyEvaluatorStatsSnapshot, QuoteUpdateListener,
+    SliceCacheState, SliceKey, VolLazyEvaluator,
+};
+pub use loader_convert::{
+    convert_capfloor_csv_rows, convert_json_quotes, convert_swaption_csv_rows, parse_currency,
+    parse_expiry_to_date, parse_quote_type, parse_strike, parse_tenor_to_years,
+    parse_underlying_index, ConversionError, ConversionResult, ToVolQuote, ToVolQuoteSet,
+};
+pub use quote::{
+    vol_quote_to_instrument, Currency, GridStats, QuoteType, Tenor, UnderlyingIndex, VolQuote,
+    VolQuoteSet, VolStrike,
+};
 pub use sabr_surface::SabrParameterSurface;
+pub use sensitivity_path::{
+    IndirectSensitivity, IndirectSensitivityCalculator, SensitivityEdge, SensitivityNode,
+    SensitivityNodeKind, SensitivityPath, SensitivityPathBuilder,
+};
 pub use types::{InstrumentId, SabrParams, VolInstrument};
+pub use vega::{
+    BucketVega, ForwardModeVegaCalculator, PointVega, VegaBumpConfig, VegaComputationMode,
+    VegaError, VegaGrid, VegaVerificationResult, VolCubeVegaCalculator,
+};

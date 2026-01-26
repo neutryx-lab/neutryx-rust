@@ -27,6 +27,10 @@
 //! println!("Price: {:.4}, Delta: {:.4}", result.price, result.delta);
 //! ```
 
+// Allow deprecated usage: This internal code still needs GreeksResult
+// until the module is fully migrated. The deprecation is for external crate
+// users.
+#[allow(deprecated)]
 use crate::{
     greeks::GreeksResult,
     mc::{GbmParams, MonteCarloPricer, PayoffParams, PricingResult},
@@ -157,6 +161,7 @@ impl EnzymeGreeksResult {
 
     /// Converts to `GreeksResult<f64>` for compatibility.
     #[inline]
+    #[allow(deprecated)]
     pub fn to_greeks_result(&self) -> GreeksResult<f64> {
         GreeksResult::new(self.price, self.std_error)
             .with_delta(self.delta)
@@ -205,6 +210,7 @@ impl EnzymeGreeksResult {
     }
 }
 
+#[allow(deprecated)]
 impl From<EnzymeGreeksResult> for GreeksResult<f64> {
     fn from(result: EnzymeGreeksResult) -> Self { result.to_greeks_result() }
 }

@@ -9,17 +9,26 @@ description = "Flat file loaders (CSV/Parquet) and CSA details for Neutryx"
 
 [dependencies]
 # Master data from Infra layer
-infra_master = { path = "../infra_master" }
+infra_master = { path = "../infra_master", features = ["serde"] }
 
 # CSV parsing
 csv = "1.3"
+
+# JSON parsing
+serde_json.workspace = true
+
+# Glob pattern matching
+glob = "0.3"
 
 # Error handling
 thiserror.workspace = true
 anyhow.workspace = true
 
 # Serialisation
-serde = { workspace = true, optional = true }
+serde = { workspace = true }
+
+# Date/time handling
+chrono.workspace = true
 
 # Parquet support (optional)
 parquet = { version = "54", optional = true }
@@ -27,11 +36,12 @@ arrow = { version = "54", optional = true }
 
 [features]
 default = []
-serde = ["dep:serde", "infra_master/serde"]
+full-serde = ["infra_master/serde"]
 parquet = ["dep:parquet", "dep:arrow"]
 
 [dev-dependencies]
 approx.workspace = true
+tempfile = "3"
 
 [lints]
 workspace = true

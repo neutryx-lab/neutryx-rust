@@ -165,5 +165,5 @@ docker run -it neutryx-enzyme
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-23_ — Clarified Dockerfile naming for Cloud Run deployments (Dockerfile.gui)
+_Updated: 2026-01-26_ — Added fx_calibration module pattern (FX curve + vol surface calibration)
 _Document standards and patterns, not every dependency_

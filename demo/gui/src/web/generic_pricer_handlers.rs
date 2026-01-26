@@ -203,8 +203,8 @@ pub async fn calculate_greeks(
 
     // Calculate delta using bump-and-revalue
     // For simplicity, we'll bump the discount rate and recalculate
-    let bump_bp = bump_sizes.rate_bump_bp;
-    let bump_rate = bump_bp * 0.0001; // Convert bp to absolute
+    // Note: bump_sizes.rate is already in decimal form (0.0001 = 1bp)
+    let bump_rate = bump_sizes.rate;
 
     // Calculate bumped PVs (simplified - bumps all rates uniformly)
     let pv_up = base_pv * (1.0 - bump_rate * 5.0); // Approximate rate sensitivity
@@ -282,11 +282,16 @@ fn convert_direction(direction: &DirectionInput) -> SimpleDirection {
 }
 
 /// Converts BumpSizesInput to BumpSizes.
+///
+/// Note: API uses basis points and percentages, while library uses decimals.
+/// - rate_bump_bp (1.0 = 1bp) → rate (0.0001 = 1bp)
+/// - fx_bump_pct (1.0 = 1%) → spot (0.01 = 1%)
+/// - vol_bump_pct (1.0 = 1%) → vol (0.01 = 1%)
 fn convert_bump_sizes(input: &BumpSizesInput) -> BumpSizes {
     BumpSizes {
-        rate_bump_bp: input.rate_bump_bp,
-        fx_bump_pct: input.fx_bump_pct,
-        vol_bump_pct: input.vol_bump_pct,
+        rate: input.rate_bump_bp * 0.0001, // Convert bp to decimal
+        spot: input.fx_bump_pct * 0.01,    // Convert % to decimal
+        vol: input.vol_bump_pct * 0.01,    // Convert % to decimal
     }
 }
 
@@ -379,14 +384,15 @@ mod tests {
     #[test]
     fn test_convert_bump_sizes() {
         let input = BumpSizesInput {
-            rate_bump_bp: 5.0,
-            fx_bump_pct: 2.0,
-            vol_bump_pct: 1.5,
+            rate_bump_bp: 5.0, // 5 bp
+            fx_bump_pct: 2.0,  // 2%
+            vol_bump_pct: 1.5, // 1.5%
         };
         let bumps = convert_bump_sizes(&input);
-        assert!((bumps.rate_bump_bp - 5.0).abs() < 1e-10);
-        assert!((bumps.fx_bump_pct - 2.0).abs() < 1e-10);
-        assert!((bumps.vol_bump_pct - 1.5).abs() < 1e-10);
+        // Verify conversion: bp/% to decimal
+        assert!((bumps.rate - 5.0 * 0.0001).abs() < 1e-10); // 5bp = 0.0005
+        assert!((bumps.spot - 2.0 * 0.01).abs() < 1e-10); // 2% = 0.02
+        assert!((bumps.vol - 1.5 * 0.01).abs() < 1e-10); // 1.5% = 0.015
     }
 
     #[test]

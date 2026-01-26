@@ -51,7 +51,9 @@ mod commodity;
 mod credit;
 mod equity;
 mod fx;
+mod fx_vol;
 mod rates;
+mod xccy;
 
 // Re-exports
 // Commodity instruments
@@ -61,6 +63,7 @@ pub use commodity::{
 };
 pub use common::{
     AssetClass, BarrierDirection, BarrierType, ExerciseStyle, NotionalSchedule, PayerReceiver,
+    PaymentSchedule,
 };
 // Credit instruments
 pub use credit::{Cds, CdsIndex, CdsOption, CreditEvent, NtdBasket};
@@ -73,9 +76,22 @@ pub use equity::{
 pub use error::InstrumentError;
 pub use expander::InstrumentExpander;
 // FX instruments
-pub use fx::{CurrencyPair, FxBarrierOption, FxForward, FxSpot, FxSwap, FxVanillaOption};
+pub use fx::{
+    CurrencyPair, FxBarrierOption, FxForward, FxSpot, FxSwap, FxSwapConvention, FxSwapError,
+    FxSwapInstrument, FxSwapTenor, FxVanillaOption, SwapPoints,
+};
+// FX Vol instruments
+pub use fx_vol::{
+    CutOffTime, Delta, DeltaType, FxVolConvention, FxVolInstrument, FxVolInstrumentBuilder,
+    FxVolInstrumentError,
+};
 // Rates instruments
 pub use rates::{CapFloor, CapFloorType, CmsSwap, Frn, InflationSwap, Ois, SwapType, Swaption};
+// XCCY instruments
+pub use xccy::{
+    BasisSpread, CrossCurrencyBasisSwap, NotionalExchange, SpreadLeg, XccyBasisConvention, XccyLeg,
+    XccySwapError, XccyTenor,
+};
 
 // ============================================================================
 // InstrumentDefinition - Unified enum for all standard instruments

@@ -62,6 +62,24 @@ impl CapFloorConvention {
             index: RateIndex::Euribor3M,
         }
     }
+
+    /// Returns the EUR ESTR cap/floor convention.
+    ///
+    /// - Day count: ACT/360
+    /// - Payment frequency: Quarterly
+    /// - Calendar: TARGET
+    /// - Business day convention: Modified Following
+    /// - Index: ESTR
+    #[must_use]
+    pub fn eur_estr() -> Self {
+        Self {
+            day_count: DayCounter::Actual360,
+            payment_frequency: Frequency::Quarterly,
+            calendar: CalendarId::Target,
+            business_day_convention: BusinessDayConvention::ModifiedFollowing,
+            index: RateIndex::Estr,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -101,5 +119,14 @@ mod tests {
         let conv = CapFloorConvention::usd_sofr();
         let cloned = conv.clone();
         assert_eq!(conv, cloned);
+    }
+
+    #[test]
+    fn test_eur_estr_capfloor_convention() {
+        let conv = CapFloorConvention::eur_estr();
+        assert_eq!(conv.index, RateIndex::Estr);
+        assert_eq!(conv.calendar, CalendarId::Target);
+        assert_eq!(conv.day_count, DayCounter::Actual360);
+        assert_eq!(conv.payment_frequency, Frequency::Quarterly);
     }
 }

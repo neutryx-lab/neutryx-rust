@@ -25,9 +25,16 @@
 //! ```
 
 mod error;
+mod pricing_config;
+mod risk_config;
 mod settings;
 
 pub use error::ConfigError;
+pub use pricing_config::{MonteCarloParams, PricingConfig, PricingMethod};
+pub use risk_config::{
+    BumpSizes, GreekType, GreeksMethod, MarketShift, RiskConfig, ScenarioConfig, SecondOrderMode,
+    ShiftType,
+};
 pub use settings::{
     DatabaseConfig, EngineConfig, GrpcConfig, LoggingConfig, RestConfig, ServiceConfig, Settings,
 };
@@ -35,7 +42,8 @@ pub use settings::{
 /// Prelude module for convenient imports
 pub mod prelude {
     pub use crate::{
-        ConfigError, DatabaseConfig, EngineConfig, GrpcConfig, LoggingConfig, RestConfig,
-        ServiceConfig, Settings,
+        BumpSizes, ConfigError, DatabaseConfig, EngineConfig, GreekType, GreeksMethod, GrpcConfig,
+        LoggingConfig, MarketShift, MonteCarloParams, PricingConfig, PricingMethod, RestConfig,
+        RiskConfig, ScenarioConfig, SecondOrderMode, ServiceConfig, Settings, ShiftType,
     };
 }

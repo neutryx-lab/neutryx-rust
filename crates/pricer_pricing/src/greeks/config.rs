@@ -55,7 +55,7 @@ pub enum GreeksMode {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,ignore
 /// use pricer_pricing::greeks::{GreeksConfig, GreeksMode};
 ///
 /// // Use defaults
@@ -110,7 +110,7 @@ impl GreeksConfig {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// use pricer_pricing::greeks::GreeksConfig;
     ///
     /// let config = GreeksConfig::builder()
@@ -186,7 +186,7 @@ impl GreeksConfig {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// use pricer_pricing::greeks::GreeksConfig;
     ///
     /// let config = GreeksConfig::default(); // 1% bump

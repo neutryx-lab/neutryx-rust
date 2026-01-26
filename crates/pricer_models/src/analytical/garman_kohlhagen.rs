@@ -30,7 +30,7 @@
 //! use pricer_models::analytical::garman_kohlhagen::{
 //!     GarmanKohlhagen, GarmanKohlhagenParams,
 //! };
-//! use pricer_models::instruments::fx::FxOptionType;
+//! use pricer_models::instruments::FxOptionType;
 //!
 //! let params = GarmanKohlhagenParams::new(
 //!     1.10,   // spot
@@ -58,7 +58,7 @@ use super::{
     distributions::{norm_cdf, norm_pdf},
     error::AnalyticalError,
 };
-use crate::instruments::fx::FxOptionType;
+use crate::instruments::FxOptionType;
 
 /// Parameters for the Garman-Kohlhagen model.
 ///

@@ -43,10 +43,11 @@
 //! # Usage
 //!
 //! ```rust,ignore
-//! use pricer_pricing::irs_greeks::{IrsGreeksCalculator, IrsGreeksConfig, GreeksMode};
-//! use pricer_pricing::irs_greeks::{IrsLazyEvaluator, SwapId, TenorPoint};
-//! use pricer_pricing::irs_greeks::{BenchmarkRunner, BenchmarkConfig};
-//! use pricer_pricing::irs_greeks::xva_demo::{XvaDemoRunner, XvaDemoConfig, CreditParams};
+//! use pricer_risk::irs_greeks::{IrsGreeksCalculator, IrsGreeksConfig};
+//! use pricer_risk::greeks::GreeksMode;
+//! use pricer_risk::irs_greeks::{IrsLazyEvaluator, SwapId, TenorPoint};
+//! use pricer_risk::irs_greeks::{BenchmarkRunner, BenchmarkConfig};
+//! use pricer_risk::irs_greeks::xva_demo::{XvaDemoRunner, XvaDemoConfig, CreditParams};
 //! use pricer_models::instruments::rates::{InterestRateSwap, ...};
 //! use pricer_models::market::curves::CurveSet;
 //!

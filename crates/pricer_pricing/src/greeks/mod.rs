@@ -1,20 +1,14 @@
-//! Greeks calculation types and configuration.
+//! Greeks calculation types and configuration (internal use only).
 //!
-//! This module provides:
-//! - [`GreeksResult<T>`]: Generic result type for Greeks calculations
-//!   (AD-compatible)
-//! - [`GreeksConfig`]: Configuration for bump widths and calculation modes
-//! - [`GreeksMode`]: Calculation mode selection (Bump-and-Revalue, AAD,
-//!   num-dual)
-//! - [`GreeksError`]: Unified error type for all Greeks operations
+//! This module provides internal types for the generic_pricer module.
+//! External users should use `pricer_risk::greeks` instead.
 
 mod config;
-mod error;
 mod result;
 
-pub use config::{GreeksConfig, GreeksConfigBuilder, GreeksConfigError, GreeksMode};
-pub use error::GreeksError;
-pub use result::GreeksResult;
+// Keep error module for potential future use
+#[allow(dead_code)]
+mod error;
 
-#[cfg(test)]
-mod tests;
+pub(crate) use config::{GreeksConfig, GreeksMode};
+pub(crate) use result::GreeksResult;

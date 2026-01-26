@@ -146,12 +146,9 @@ pub mod checkpoint;
 // Phase 4: Analytical solutions for verification
 pub mod analytical;
 
-// Greeks calculation types and configuration
-pub mod greeks;
-
-// IRS-specific Greeks calculation (AAD demo)
-#[cfg(feature = "l1l2-integration")]
-pub mod irs_greeks;
+// Greeks calculation types and configuration (internal use only)
+// External users should use pricer_risk::greeks
+pub(crate) mod greeks;
 
 // Thread-local buffer pool for allocation-free simulation
 pub mod pool;
@@ -167,16 +164,5 @@ pub use enzyme::{gradient, gradient_with_step, ADMode, Activity};
 pub use graph::{
     ComputationGraph, GraphBuilder, GraphEdge, GraphError, GraphExtractable, GraphMetadata,
     GraphNode, GraphNodeUpdate, NodeGroup, NodeType, SimpleGraphExtractor,
-};
-pub use greeks::{GreeksConfig, GreeksConfigError, GreeksError, GreeksMode, GreeksResult};
-// Re-export IRS Greeks types when l1l2-integration is enabled
-#[cfg(feature = "l1l2-integration")]
-pub use irs_greeks::{
-    BenchmarkConfig, BenchmarkError, BenchmarkRunner, CacheKey, CacheState, CacheStats,
-    CachedResult, DeltaBenchmarkResult, DependencyGraph, ExposureProfile, FullBenchmarkResult,
-    IrsDeltaResult, IrsGreeksCalculator, IrsGreeksConfig, IrsGreeksError, IrsGreeksResult,
-    IrsLazyEvaluator, PvBenchmarkResult, ScalabilityResult, SingleDeltaBenchmarkResult, SwapId,
-    SwapParams, TenorPoint, TimingStats, XvaCreditParams, XvaDemoConfig, XvaDemoError,
-    XvaDemoRunner, XvaResult, XvaSensitivityBenchmark,
 };
 pub use mc::{GbmParams, Greek, MonteCarloConfig, MonteCarloPricer, PayoffParams, PricingResult};

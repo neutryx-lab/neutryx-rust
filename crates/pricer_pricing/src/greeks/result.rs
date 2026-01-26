@@ -35,7 +35,7 @@ use crate::numeric::from_f64;
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,ignore
 /// use pricer_pricing::greeks::GreeksResult;
 ///
 /// // Create a result with first-order Greeks
@@ -105,7 +105,7 @@ impl<T: Float> GreeksResult<T> {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// use pricer_pricing::greeks::GreeksResult;
     ///
     /// let result = GreeksResult::<f64> {
@@ -127,7 +127,7 @@ impl<T: Float> GreeksResult<T> {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// use pricer_pricing::greeks::GreeksResult;
     ///
     /// let result = GreeksResult::<f64> {
@@ -148,7 +148,7 @@ impl<T: Float> GreeksResult<T> {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// use pricer_pricing::greeks::GreeksResult;
     ///
     /// let result = GreeksResult::new(10.5, 0.05);

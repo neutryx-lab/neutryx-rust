@@ -31,9 +31,9 @@ use pricer_models::{
     },
     schedules::{Frequency, ScheduleBuilder},
 };
-use pricer_pricing::greeks::GreeksMode;
 use pricer_risk::{
     exposure::ExposureCalculator,
+    greeks::GreeksMode,
     parallel::{ParallelGreeksConfig, ParallelPortfolioGreeksCalculator},
     portfolio::{
         Counterparty, CounterpartyId, CreditParams, NettingSet, NettingSetId, PortfolioBuilder,

@@ -25,7 +25,7 @@ use thiserror::Error;
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,ignore
 /// use pricer_pricing::greeks::GreeksError;
 ///
 /// fn validate_spot_bump(bump: f64) -> Result<(), GreeksError> {

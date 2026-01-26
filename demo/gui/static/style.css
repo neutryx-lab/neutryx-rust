@@ -11464,10 +11464,6 @@ body.light-theme .irs-loading-overlay {
     .curve-builder-input-panel {
         max-height: none;
     }
-
-    .curve-builder-results-panel {
-        order: -1;
-    }
 }
 
 /* Light Theme */
@@ -11555,6 +11551,54 @@ body.light-theme .curve-builder-loading-overlay {
     border-radius: var(--radius-sm);
     font-size: 0.75rem;
     color: var(--text-secondary);
+}
+
+/* Market Data Stats Badges */
+.market-data-stats-badges {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 8px;
+}
+
+.stats-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    background: var(--surface);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    transition: all var(--transition-fast);
+}
+
+.stats-badge i {
+    font-size: 0.7rem;
+    opacity: 0.7;
+}
+
+.stats-badge.live {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: var(--success);
+}
+
+.stats-badge.live i {
+    color: var(--success);
+    opacity: 1;
+}
+
+.stats-badge.displayed {
+    background: rgba(99, 102, 241, 0.1);
+    border-color: rgba(99, 102, 241, 0.3);
+    color: var(--primary);
+}
+
+.stats-badge.displayed i {
+    color: var(--primary);
+    opacity: 1;
 }
 
 .market-data-actions {
@@ -12093,13 +12137,66 @@ body.light-theme .asset-toggle-btn:hover {
     font-family: 'JetBrains Mono', 'SF Mono', monospace;
 }
 
+/* Conventions Section */
+.conventions-section {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 16px;
+}
+
+@media (max-width: 1200px) {
+    .conventions-section {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* Conventions Panel */
 .conventions-panel {
     padding: 16px;
 }
 
 .conventions-panel .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 16px;
+}
+
+.convention-stats .stat-value {
+    background: var(--surface);
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+/* Convention Detail Panel */
+.convention-detail-panel {
+    padding: 16px;
+    height: fit-content;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.convention-detail-panel .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.convention-detail-panel .panel-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.convention-detail-panel .panel-header h3 i {
+    color: var(--primary);
 }
 
 .conventions-panel .panel-header h3 {
@@ -12134,6 +12231,12 @@ body.light-theme .asset-toggle-btn:hover {
 .convention-card:hover {
     border-color: var(--primary);
     transform: translateY(-2px);
+}
+
+.convention-card.selected {
+    border-color: var(--primary);
+    background: rgba(99, 102, 241, 0.1);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
 }
 
 .convention-card-header {

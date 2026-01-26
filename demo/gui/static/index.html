@@ -2792,6 +2792,20 @@
                         <div class="market-data-title">
                             <i class="fas fa-chart-area"></i>
                             <h2>Market Data Viewer</h2>
+                            <div class="market-data-stats-badges">
+                                <span class="stats-badge" title="Total items">
+                                    <i class="fas fa-database"></i>
+                                    <span id="market-stats-total">--</span>
+                                </span>
+                                <span class="stats-badge live" title="Live items">
+                                    <i class="fas fa-signal"></i>
+                                    <span id="market-stats-live">--</span>
+                                </span>
+                                <span class="stats-badge displayed" title="Currently displayed">
+                                    <i class="fas fa-eye"></i>
+                                    <span id="market-stats-displayed">--</span>
+                                </span>
+                            </div>
                             <span class="last-update-badge" id="market-last-updated">--</span>
                         </div>
                         <div class="market-data-actions">
@@ -2925,12 +2939,34 @@
                     </div>
 
                     <!-- Conventions Section -->
-                    <div class="conventions-panel glass-card">
-                        <div class="panel-header">
-                            <h3><i class="fas fa-book"></i> Market Conventions</h3>
+                    <div class="conventions-section">
+                        <div class="conventions-panel glass-card">
+                            <div class="panel-header">
+                                <h3><i class="fas fa-book"></i> Market Conventions</h3>
+                                <div class="convention-stats">
+                                    <span class="stat-item">
+                                        <span class="stat-value" id="conventions-count">--</span>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="conventions-grid" id="conventions-grid">
+                                <!-- Dynamically filled -->
+                            </div>
                         </div>
-                        <div class="conventions-grid" id="conventions-grid">
-                            <!-- Dynamically filled -->
+                        <!-- Convention Detail Panel -->
+                        <div class="convention-detail-panel glass-card" id="convention-detail-panel">
+                            <div class="panel-header">
+                                <h3><i class="fas fa-info-circle"></i> Convention Detail</h3>
+                                <button class="close-btn" id="close-convention-detail" title="Close">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div class="detail-content" id="convention-detail-content">
+                                <div class="detail-placeholder">
+                                    <i class="fas fa-hand-pointer"></i>
+                                    <p>Select a convention to view details</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

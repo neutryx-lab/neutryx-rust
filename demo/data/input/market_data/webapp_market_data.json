@@ -1,8 +1,8 @@
 {
   "metadata": {
     "description": "Consolidated market data for FrictionalBank demo webapp",
-    "last_updated": "2026-01-22T00:00:00Z",
-    "version": "1.0"
+    "last_updated": "2026-01-25T00:00:00Z",
+    "version": "2.0"
   },
   "rates": {
     "USD": {
@@ -10,13 +10,17 @@
         { "tenor": "ON", "value": 0.0530, "index": "SOFR" },
         { "tenor": "1W", "value": 0.0528, "index": "SOFR" },
         { "tenor": "1M", "value": 0.0525, "index": "SOFR" },
-        { "tenor": "3M", "value": 0.0518, "index": "SOFR" }
+        { "tenor": "3M", "value": 0.0518, "index": "SOFR" },
+        { "tenor": "6M", "value": 0.0512, "index": "SOFR" }
       ],
       "ois": [
         { "tenor": "1M", "value": 0.0525, "index": "SOFR" },
         { "tenor": "3M", "value": 0.0520, "index": "SOFR" },
         { "tenor": "6M", "value": 0.0510, "index": "SOFR" },
-        { "tenor": "1Y", "value": 0.0480, "index": "SOFR" }
+        { "tenor": "1Y", "value": 0.0480, "index": "SOFR" },
+        { "tenor": "2Y", "value": 0.0445, "index": "SOFR" },
+        { "tenor": "3Y", "value": 0.0428, "index": "SOFR" },
+        { "tenor": "5Y", "value": 0.0412, "index": "SOFR" }
       ],
       "swap": [
         { "tenor": "2Y", "value": 0.0425, "index": "SOFR" },
@@ -34,13 +38,17 @@
         { "tenor": "ON", "value": 0.0390, "index": "ESTR" },
         { "tenor": "1W", "value": 0.0388, "index": "ESTR" },
         { "tenor": "1M", "value": 0.0385, "index": "ESTR" },
-        { "tenor": "3M", "value": 0.0380, "index": "ESTR" }
+        { "tenor": "3M", "value": 0.0380, "index": "ESTR" },
+        { "tenor": "6M", "value": 0.0372, "index": "ESTR" }
       ],
       "ois": [
         { "tenor": "1M", "value": 0.0385, "index": "ESTR" },
         { "tenor": "3M", "value": 0.0378, "index": "ESTR" },
         { "tenor": "6M", "value": 0.0365, "index": "ESTR" },
-        { "tenor": "1Y", "value": 0.0340, "index": "ESTR" }
+        { "tenor": "1Y", "value": 0.0340, "index": "ESTR" },
+        { "tenor": "2Y", "value": 0.0305, "index": "ESTR" },
+        { "tenor": "3Y", "value": 0.0288, "index": "ESTR" },
+        { "tenor": "5Y", "value": 0.0275, "index": "ESTR" }
       ],
       "swap": [
         { "tenor": "2Y", "value": 0.0285, "index": "EURIBOR6M" },
@@ -58,13 +66,17 @@
         { "tenor": "ON", "value": -0.0010, "index": "TONA" },
         { "tenor": "1W", "value": -0.0008, "index": "TONA" },
         { "tenor": "1M", "value": -0.0005, "index": "TONA" },
-        { "tenor": "3M", "value": 0.0000, "index": "TONA" }
+        { "tenor": "3M", "value": 0.0000, "index": "TONA" },
+        { "tenor": "6M", "value": 0.0010, "index": "TONA" }
       ],
       "ois": [
         { "tenor": "1M", "value": -0.0005, "index": "TONA" },
         { "tenor": "3M", "value": 0.0002, "index": "TONA" },
         { "tenor": "6M", "value": 0.0015, "index": "TONA" },
-        { "tenor": "1Y", "value": 0.0035, "index": "TONA" }
+        { "tenor": "1Y", "value": 0.0035, "index": "TONA" },
+        { "tenor": "2Y", "value": 0.0048, "index": "TONA" },
+        { "tenor": "3Y", "value": 0.0058, "index": "TONA" },
+        { "tenor": "5Y", "value": 0.0078, "index": "TONA" }
       ],
       "swap": [
         { "tenor": "2Y", "value": 0.0055, "index": "TIBOR3M" },
@@ -76,15 +88,147 @@
         { "tenor": "20Y", "value": 0.0155, "index": "TIBOR3M" },
         { "tenor": "30Y", "value": 0.0160, "index": "TIBOR3M" }
       ]
+    },
+    "GBP": {
+      "deposit": [
+        { "tenor": "ON", "value": 0.0520, "index": "SONIA" },
+        { "tenor": "1W", "value": 0.0518, "index": "SONIA" },
+        { "tenor": "1M", "value": 0.0515, "index": "SONIA" },
+        { "tenor": "3M", "value": 0.0508, "index": "SONIA" },
+        { "tenor": "6M", "value": 0.0498, "index": "SONIA" }
+      ],
+      "ois": [
+        { "tenor": "1M", "value": 0.0515, "index": "SONIA" },
+        { "tenor": "3M", "value": 0.0508, "index": "SONIA" },
+        { "tenor": "6M", "value": 0.0495, "index": "SONIA" },
+        { "tenor": "1Y", "value": 0.0465, "index": "SONIA" },
+        { "tenor": "2Y", "value": 0.0428, "index": "SONIA" },
+        { "tenor": "3Y", "value": 0.0412, "index": "SONIA" },
+        { "tenor": "5Y", "value": 0.0395, "index": "SONIA" }
+      ],
+      "swap": [
+        { "tenor": "2Y", "value": 0.0410, "index": "SONIA" },
+        { "tenor": "3Y", "value": 0.0400, "index": "SONIA" },
+        { "tenor": "5Y", "value": 0.0390, "index": "SONIA" },
+        { "tenor": "7Y", "value": 0.0388, "index": "SONIA" },
+        { "tenor": "10Y", "value": 0.0392, "index": "SONIA" },
+        { "tenor": "15Y", "value": 0.0405, "index": "SONIA" },
+        { "tenor": "20Y", "value": 0.0415, "index": "SONIA" },
+        { "tenor": "30Y", "value": 0.0420, "index": "SONIA" }
+      ]
     }
+  },
+  "xccy_basis": {
+    "EURUSD": [
+      { "tenor": "1Y", "value": -0.00085, "index": "ESTR/SOFR" },
+      { "tenor": "2Y", "value": -0.00078, "index": "ESTR/SOFR" },
+      { "tenor": "3Y", "value": -0.00072, "index": "ESTR/SOFR" },
+      { "tenor": "5Y", "value": -0.00065, "index": "ESTR/SOFR" },
+      { "tenor": "7Y", "value": -0.00058, "index": "ESTR/SOFR" },
+      { "tenor": "10Y", "value": -0.00052, "index": "ESTR/SOFR" },
+      { "tenor": "15Y", "value": -0.00048, "index": "ESTR/SOFR" },
+      { "tenor": "20Y", "value": -0.00045, "index": "ESTR/SOFR" },
+      { "tenor": "30Y", "value": -0.00042, "index": "ESTR/SOFR" }
+    ],
+    "USDJPY": [
+      { "tenor": "1Y", "value": -0.00125, "index": "SOFR/TONA" },
+      { "tenor": "2Y", "value": -0.00118, "index": "SOFR/TONA" },
+      { "tenor": "3Y", "value": -0.00112, "index": "SOFR/TONA" },
+      { "tenor": "5Y", "value": -0.00098, "index": "SOFR/TONA" },
+      { "tenor": "7Y", "value": -0.00088, "index": "SOFR/TONA" },
+      { "tenor": "10Y", "value": -0.00078, "index": "SOFR/TONA" },
+      { "tenor": "15Y", "value": -0.00068, "index": "SOFR/TONA" },
+      { "tenor": "20Y", "value": -0.00062, "index": "SOFR/TONA" },
+      { "tenor": "30Y", "value": -0.00055, "index": "SOFR/TONA" }
+    ],
+    "GBPUSD": [
+      { "tenor": "1Y", "value": -0.00045, "index": "SONIA/SOFR" },
+      { "tenor": "2Y", "value": -0.00042, "index": "SONIA/SOFR" },
+      { "tenor": "3Y", "value": -0.00038, "index": "SONIA/SOFR" },
+      { "tenor": "5Y", "value": -0.00032, "index": "SONIA/SOFR" },
+      { "tenor": "7Y", "value": -0.00028, "index": "SONIA/SOFR" },
+      { "tenor": "10Y", "value": -0.00025, "index": "SONIA/SOFR" },
+      { "tenor": "15Y", "value": -0.00022, "index": "SONIA/SOFR" },
+      { "tenor": "20Y", "value": -0.00020, "index": "SONIA/SOFR" },
+      { "tenor": "30Y", "value": -0.00018, "index": "SONIA/SOFR" }
+    ],
+    "EURJPY": [
+      { "tenor": "1Y", "value": -0.00155, "index": "ESTR/TONA" },
+      { "tenor": "2Y", "value": -0.00145, "index": "ESTR/TONA" },
+      { "tenor": "3Y", "value": -0.00135, "index": "ESTR/TONA" },
+      { "tenor": "5Y", "value": -0.00120, "index": "ESTR/TONA" },
+      { "tenor": "7Y", "value": -0.00108, "index": "ESTR/TONA" },
+      { "tenor": "10Y", "value": -0.00095, "index": "ESTR/TONA" },
+      { "tenor": "15Y", "value": -0.00085, "index": "ESTR/TONA" },
+      { "tenor": "20Y", "value": -0.00078, "index": "ESTR/TONA" },
+      { "tenor": "30Y", "value": -0.00070, "index": "ESTR/TONA" }
+    ],
+    "EURGBP": [
+      { "tenor": "1Y", "value": -0.00035, "index": "ESTR/SONIA" },
+      { "tenor": "2Y", "value": -0.00032, "index": "ESTR/SONIA" },
+      { "tenor": "3Y", "value": -0.00028, "index": "ESTR/SONIA" },
+      { "tenor": "5Y", "value": -0.00025, "index": "ESTR/SONIA" },
+      { "tenor": "7Y", "value": -0.00022, "index": "ESTR/SONIA" },
+      { "tenor": "10Y", "value": -0.00020, "index": "ESTR/SONIA" },
+      { "tenor": "15Y", "value": -0.00018, "index": "ESTR/SONIA" },
+      { "tenor": "20Y", "value": -0.00016, "index": "ESTR/SONIA" },
+      { "tenor": "30Y", "value": -0.00015, "index": "ESTR/SONIA" }
+    ]
   },
   "fx_spots": [
     { "pair": "EURUSD", "value": 1.0850 },
     { "pair": "USDJPY", "value": 149.50 },
     { "pair": "GBPUSD", "value": 1.2650 },
     { "pair": "EURGBP", "value": 0.8578 },
-    { "pair": "EURJPY", "value": 162.21 }
+    { "pair": "EURJPY", "value": 162.21 },
+    { "pair": "GBPJPY", "value": 189.12 },
+    { "pair": "AUDUSD", "value": 0.6580 },
+    { "pair": "USDCAD", "value": 1.3520 },
+    { "pair": "USDCHF", "value": 0.8825 },
+    { "pair": "NZDUSD", "value": 0.6125 }
   ],
+  "fx_forwards": {
+    "EURUSD": [
+      { "tenor": "1W", "points": -2.5 },
+      { "tenor": "1M", "points": -8.5 },
+      { "tenor": "2M", "points": -17.2 },
+      { "tenor": "3M", "points": -26.5 },
+      { "tenor": "6M", "points": -52.8 },
+      { "tenor": "9M", "points": -78.5 },
+      { "tenor": "1Y", "points": -105.2 },
+      { "tenor": "2Y", "points": -198.5 }
+    ],
+    "USDJPY": [
+      { "tenor": "1W", "points": 12.5 },
+      { "tenor": "1M", "points": 52.8 },
+      { "tenor": "2M", "points": 108.5 },
+      { "tenor": "3M", "points": 165.2 },
+      { "tenor": "6M", "points": 335.8 },
+      { "tenor": "9M", "points": 512.5 },
+      { "tenor": "1Y", "points": 695.2 },
+      { "tenor": "2Y", "points": 1425.8 }
+    ],
+    "GBPUSD": [
+      { "tenor": "1W", "points": -1.8 },
+      { "tenor": "1M", "points": -5.2 },
+      { "tenor": "2M", "points": -10.5 },
+      { "tenor": "3M", "points": -16.2 },
+      { "tenor": "6M", "points": -32.5 },
+      { "tenor": "9M", "points": -48.8 },
+      { "tenor": "1Y", "points": -65.2 },
+      { "tenor": "2Y", "points": -125.5 }
+    ],
+    "EURJPY": [
+      { "tenor": "1W", "points": 8.5 },
+      { "tenor": "1M", "points": 35.2 },
+      { "tenor": "2M", "points": 72.5 },
+      { "tenor": "3M", "points": 110.8 },
+      { "tenor": "6M", "points": 225.5 },
+      { "tenor": "9M", "points": 345.2 },
+      { "tenor": "1Y", "points": 468.5 },
+      { "tenor": "2Y", "points": 958.2 }
+    ]
+  },
   "conventions": {
     "USD-SOFR-OIS": {
       "type": "OisConvention",
@@ -203,6 +347,45 @@
         "calendar": "Tokyo"
       }
     },
+    "GBP-SONIA-OIS": {
+      "type": "OisConvention",
+      "currency": "GBP",
+      "is_default": true,
+      "fields": {
+        "index": "SONIA",
+        "day_count": "ACT/365F",
+        "payment_frequency": "Annual",
+        "business_day_convention": "Modified Following",
+        "settlement_days": 0,
+        "calendar": "London"
+      }
+    },
+    "GBP-SONIA-SWAP": {
+      "type": "SwapConvention",
+      "currency": "GBP",
+      "is_default": true,
+      "fields": {
+        "fixed_leg_day_count": "ACT/365F",
+        "fixed_leg_frequency": "Annual",
+        "float_leg_index": "SONIA",
+        "float_leg_day_count": "ACT/365F",
+        "float_leg_frequency": "Annual",
+        "business_day_convention": "Modified Following",
+        "settlement_days": 0,
+        "calendar": "London"
+      }
+    },
+    "GBP-DEPO": {
+      "type": "DepositConvention",
+      "currency": "GBP",
+      "is_default": true,
+      "fields": {
+        "day_count": "ACT/365F",
+        "business_day_convention": "Modified Following",
+        "settlement_days": 0,
+        "calendar": "London"
+      }
+    },
     "FX-SPOT": {
       "type": "FxConvention",
       "currency": "USD",
@@ -211,6 +394,154 @@
         "settlement_days": 2,
         "business_day_convention": "Following",
         "calendar": "New York + London"
+      }
+    },
+    "XCCY-EURUSD": {
+      "type": "XccyBasisConvention",
+      "currency": "EUR",
+      "is_default": true,
+      "fields": {
+        "base_currency": "EUR",
+        "quote_currency": "USD",
+        "base_index": "ESTR",
+        "quote_index": "SOFR",
+        "spread_on": "base",
+        "payment_frequency": "Quarterly",
+        "notional_exchange": "Both",
+        "settlement_days": 2
+      }
+    },
+    "XCCY-USDJPY": {
+      "type": "XccyBasisConvention",
+      "currency": "USD",
+      "is_default": true,
+      "fields": {
+        "base_currency": "USD",
+        "quote_currency": "JPY",
+        "base_index": "SOFR",
+        "quote_index": "TONA",
+        "spread_on": "quote",
+        "payment_frequency": "Quarterly",
+        "notional_exchange": "Both",
+        "settlement_days": 2
+      }
+    },
+    "XCCY-GBPUSD": {
+      "type": "XccyBasisConvention",
+      "currency": "GBP",
+      "is_default": true,
+      "fields": {
+        "base_currency": "GBP",
+        "quote_currency": "USD",
+        "base_index": "SONIA",
+        "quote_index": "SOFR",
+        "spread_on": "base",
+        "payment_frequency": "Quarterly",
+        "notional_exchange": "Both",
+        "settlement_days": 2
+      }
+    },
+    "USD-SWAPTION": {
+      "type": "SwaptionConvention",
+      "currency": "USD",
+      "is_default": true,
+      "fields": {
+        "vol_type": "Normal",
+        "vol_unit": "bp",
+        "settlement": "Cash",
+        "exercise_style": "European",
+        "underlying_tenor": "Swap",
+        "underlying_index": "SOFR"
+      }
+    },
+    "EUR-SWAPTION": {
+      "type": "SwaptionConvention",
+      "currency": "EUR",
+      "is_default": true,
+      "fields": {
+        "vol_type": "Normal",
+        "vol_unit": "bp",
+        "settlement": "Cash",
+        "exercise_style": "European",
+        "underlying_tenor": "Swap",
+        "underlying_index": "EURIBOR"
+      }
+    },
+    "JPY-SWAPTION": {
+      "type": "SwaptionConvention",
+      "currency": "JPY",
+      "is_default": true,
+      "fields": {
+        "vol_type": "Normal",
+        "vol_unit": "bp",
+        "settlement": "Cash",
+        "exercise_style": "European",
+        "underlying_tenor": "Swap",
+        "underlying_index": "TIBOR"
+      }
+    },
+    "GBP-SWAPTION": {
+      "type": "SwaptionConvention",
+      "currency": "GBP",
+      "is_default": true,
+      "fields": {
+        "vol_type": "Normal",
+        "vol_unit": "bp",
+        "settlement": "Cash",
+        "exercise_style": "European",
+        "underlying_tenor": "Swap",
+        "underlying_index": "SONIA"
+      }
+    },
+    "USD-CAPFLOOR": {
+      "type": "CapFloorConvention",
+      "currency": "USD",
+      "is_default": true,
+      "fields": {
+        "vol_type": "Normal",
+        "vol_unit": "bp",
+        "underlying_index": "SOFR",
+        "cap_frequency": "Quarterly",
+        "settlement": "T+2"
+      }
+    },
+    "EURUSD-FXOPTION": {
+      "type": "FxOptionConvention",
+      "currency": "EUR",
+      "is_default": true,
+      "fields": {
+        "delta_type": "Spot Delta",
+        "vol_quote_style": "ATM + RR/BF",
+        "premium_currency": "USD",
+        "settlement": "T+2",
+        "cut_time": "NY 10:00",
+        "calendar": "New York + TARGET"
+      }
+    },
+    "USDJPY-FXOPTION": {
+      "type": "FxOptionConvention",
+      "currency": "USD",
+      "is_default": true,
+      "fields": {
+        "delta_type": "Spot Delta",
+        "vol_quote_style": "ATM + RR/BF",
+        "premium_currency": "JPY",
+        "settlement": "T+2",
+        "cut_time": "Tokyo 15:00",
+        "calendar": "Tokyo + New York"
+      }
+    },
+    "GBPUSD-FXOPTION": {
+      "type": "FxOptionConvention",
+      "currency": "GBP",
+      "is_default": true,
+      "fields": {
+        "delta_type": "Spot Delta",
+        "vol_quote_style": "ATM + RR/BF",
+        "premium_currency": "USD",
+        "settlement": "T+2",
+        "cut_time": "NY 10:00",
+        "calendar": "London + New York"
       }
     }
   },
@@ -227,9 +558,17 @@
       "description": "Interest Rate Swap",
       "fields": ["currency", "tenor", "rate", "index", "start_date", "end_date", "notional", "fixed_leg_frequency", "float_leg_frequency", "fixed_leg_day_count", "float_leg_day_count"]
     },
+    "xccy_basis": {
+      "description": "Cross Currency Basis Swap",
+      "fields": ["currency_pair", "tenor", "basis_spread", "base_index", "quote_index", "notional", "notional_exchange"]
+    },
     "fx_spot": {
       "description": "FX Spot",
       "fields": ["currency_pair", "rate", "settlement_date", "buy_amount", "sell_amount"]
+    },
+    "fx_forward": {
+      "description": "FX Forward",
+      "fields": ["currency_pair", "tenor", "forward_points", "spot_rate", "forward_rate", "settlement_date"]
     }
   }
 }

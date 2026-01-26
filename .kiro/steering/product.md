@@ -22,6 +22,7 @@ The workspace enforces a strict unidirectional data flow that mirrors alphabetic
 - **XVA & Risk Analytics**: CVA, DVA, FVA calculations with exposure metrics (EE, EPE, PFE, EEPE, ENE)
 - **Market Data Infrastructure**: AD-compatible yield curves and volatility surfaces with interpolation
 - **Model Calibration**: Heston, SABR, Hull-White calibration with Levenberg-Marquardt optimisation
+- **FX Market Calibration**: FX forward curves (FX swaps, XCCY basis swaps), FX volatility surfaces with SABR calibration
 - **Interest Rate Models**: Hull-White, Cox-Ingersoll-Ross (CIR) with mean reversion
 - **Portfolio Analytics**: Parallelised portfolio-level computations with SoA optimisation
 - **Computation Graph Visualisation**: D3.js-compatible DAG export for debugging and understanding pricing workflows
@@ -45,5 +46,5 @@ The workspace enforces a strict unidirectional data flow that mirrors alphabetic
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-15_ — Added IRS Greeks workflow, computation graph visualisation, cloud deployment
+_Updated: 2026-01-26_ — Added FX market calibration (curves, vol surfaces)
 _Focus on patterns and purpose, not exhaustive feature lists_
