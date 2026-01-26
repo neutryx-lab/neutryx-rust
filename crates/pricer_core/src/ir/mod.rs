@@ -23,8 +23,9 @@
 //!
 //! - [`AlignedBuffer`]: 64-byte aligned heap buffer for SIMD efficiency
 //! - [`PricingKernel`]: SoA cashflow representation for linear products
-//! - [`ScriptKernel`]: Event-driven IR for path-dependent products
-//! - [`CallableKernel`]: Block-structured IR for callable/Bermudan products
+//! - `ScriptKernel`: Event-driven IR for path-dependent products (planned)
+//! - `CallableKernel`: Block-structured IR for callable/Bermudan products
+//!   (planned)
 //! - [`CompileError`]: Structured compilation error types
 //!
 //! # Example
