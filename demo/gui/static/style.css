@@ -9283,32 +9283,6 @@ body.light-theme .loading-state-overlay {
     color: var(--text-secondary);
 }
 
-/* History Panel (Bottom Layout) */
-.pricer-history-panel {
-    padding: 1.25rem 1.5rem;
-    border-radius: var(--radius-lg);
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    max-height: 180px;
-}
-
-.pricer-history-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.pricer-history-panel h3 {
-    margin: 0;
-    font-size: 1rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--text-primary);
-}
-
 .history-list.horizontal {
     flex-direction: row;
     flex-wrap: nowrap;
@@ -9468,10 +9442,6 @@ body.light-theme .loading-state-overlay {
 
     .greek-card:last-child {
         grid-column: span 2;
-    }
-
-    .pricer-history-panel {
-        max-height: 160px;
     }
 
     .history-list.horizontal .history-item {
@@ -13679,67 +13649,6 @@ body.light-theme .chart-placeholder {
 }
 
 .pricer-greek-card .value.negative {
-    color: var(--error);
-}
-
-/* History List */
-.pricer-history-actions {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
-}
-
-.pricer-history-list {
-    max-height: 180px;
-    overflow-y: auto;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-}
-
-.pricer-history-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.625rem 0.75rem;
-    border-bottom: 1px solid var(--border-color);
-    cursor: pointer;
-    transition: background var(--transition-fast);
-}
-
-.pricer-history-item:last-child {
-    border-bottom: none;
-}
-
-.pricer-history-item:hover {
-    background: var(--card-bg-hover);
-}
-
-.pricer-history-item.selected {
-    background: var(--accent-primary-transparent);
-    border-left: 3px solid var(--accent-primary);
-}
-
-.pricer-history-timestamp {
-    font-size: 0.6875rem;
-    color: var(--text-muted);
-}
-
-.pricer-history-pv {
-    font-weight: 600;
-    font-size: 0.875rem;
-    font-family: 'SF Mono', 'Consolas', monospace;
-}
-
-.pricer-history-diff {
-    font-size: 0.6875rem;
-    font-family: 'SF Mono', 'Consolas', monospace;
-}
-
-.pricer-history-diff.positive {
-    color: var(--success);
-}
-
-.pricer-history-diff.negative {
     color: var(--error);
 }
 

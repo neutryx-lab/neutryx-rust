@@ -462,13 +462,13 @@ pub fn build_router(state: Arc<AppState>) -> Router {
     // CORS configuration for development
     let cors = build_cors();
 
-    // API routes
+    // API routes (using modular handlers_v2 where available)
     let api_routes = Router::new()
-        .route("/health", get(handlers::health))
-        .route("/portfolio", get(handlers::get_portfolio))
-        .route("/portfolio", post(handlers::price_portfolio))
-        .route("/exposure", get(handlers::get_exposure))
-        .route("/risk", get(handlers::get_risk_metrics))
+        .route("/health", get(handlers_v2::health))
+        .route("/portfolio", get(handlers_v2::get_portfolio))
+        .route("/portfolio", post(handlers_v2::price_portfolio))
+        .route("/exposure", get(handlers_v2::get_exposure))
+        .route("/risk", get(handlers_v2::get_risk_metrics))
         // Task 3.2: Add /api/graph route for computation graph visualisation
         .route("/graph", get(handlers::get_graph))
         // Instrument Graph: USD OIS → Curve → Bootstrap Instruments dependency graph
@@ -479,7 +479,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
             get(handlers::get_speed_comparison),
         )
         // Task 6.3: Add /api/metrics endpoint for performance statistics
-        .route("/metrics", get(handlers::get_metrics))
+        .route("/metrics", get(handlers_v2::get_metrics))
         // Task 2.2: Add /api/price endpoint for instrument pricing
         .route("/price", post(handlers::price_instrument))
         // Task 2.1: Add /api/bootstrap endpoint for yield curve construction
@@ -517,15 +517,15 @@ pub fn build_router(state: Arc<AppState>) -> Router {
             post(scenario_handlers::compare_scenarios),
         )
         // Task 7.2: Add /api/v1/jobs endpoints for async job management
-        .route("/v1/jobs", get(handlers::list_jobs))
-        .route("/v1/jobs/:id", get(handlers::get_job_status))
+        .route("/v1/jobs", get(handlers_v2::list_jobs))
+        .route("/v1/jobs/:id", get(handlers_v2::get_job_status))
         // Scenario analysis endpoint
         .route("/scenario", post(handlers::run_scenario))
         .route("/ws", get(websocket::ws_handler))
         // Task 4.1: Portfolio Graph API (portfolio-graph-optimisation)
         .route("/v1/portfolio/graph", get(handlers::get_portfolio_graph))
         // Task 4.3: Portfolio Trades List API (portfolio-graph-optimisation)
-        .route("/v1/portfolio/trades", get(handlers::get_portfolio_trades))
+        .route("/v1/portfolio/trades", get(handlers_v2::get_portfolio_trades))
         // Trade expansion API (pricer-trade-expansion-ui)
         .route("/trade/expand", post(trade_handlers::expand_trade))
         .route("/instruments", get(trade_handlers::get_instruments));
@@ -679,7 +679,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
 
     // Static file serving for the dashboard
     let static_files =
-        ServeDir::new("demo/gui/static").not_found_service(handlers::serve_index_with_config());
+        ServeDir::new("demo/gui/static").not_found_service(handlers_v2::serve_index_with_config());
 
     // Data file serving for external JSON data
     let data_files = ServeDir::new("demo/data/input");
@@ -697,7 +697,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
     // Task 8.1: Build router with optional OpenAPI/Swagger UI support
     let router = Router::new()
         // Task 13.2: Serve index.html with config injection at root
-        .route("/", get(handlers::get_index))
+        .route("/", get(handlers_v2::get_index))
         .nest("/api", api_routes)
         .nest_service("/data/input", data_files)
         .fallback_service(static_files)

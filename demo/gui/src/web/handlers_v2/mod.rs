@@ -7,6 +7,7 @@
 //! - [`portfolio`]: Portfolio management
 //! - [`risk`]: XVA risk metrics
 //! - [`jobs`]: Async job management
+//! - [`graphs`]: Computation graph visualisation
 //!
 //! ## Migration Status
 //!
@@ -21,19 +22,19 @@
 //! - `portfolio` - Portfolio data, pricing, trades list
 //! - `risk` - XVA risk metrics (basic handler only)
 //! - `jobs` - Job status and listing
+//! - `graphs` - Computation graph, instrument graph, portfolio graph
 //!
 //! ### Not Yet Migrated (in legacy handlers.rs)
 //! - Pricing handlers (`price_instrument`, `bootstrap_curve`, `price_irs`)
 //! - Advanced risk handlers (`risk_bump`, `risk_aad`, `risk_compare`)
 //! - Greeks handlers (`greeks_compare`, `greeks_first_order`, etc.)
-//! - Graph handlers (`get_graph`, `get_speed_comparison`)
-//! - Portfolio graph (`get_portfolio_graph`)
+//! - Benchmark handlers (`get_speed_comparison`)
 //! - Scenario handler (`run_scenario`)
 //!
 //! ## Usage
 //!
 //! ```rust,ignore
-//! use demo_gui::web::handlers_v2::{health, exposure, portfolio, risk, jobs};
+//! use demo_gui::web::handlers_v2::{health, exposure, portfolio, risk, jobs, graphs};
 //!
 //! // Use the new modular handlers
 //! let router = Router::new()
@@ -42,10 +43,12 @@
 //!     .route("/api/exposure", get(exposure::get_exposure))
 //!     .route("/api/portfolio", get(portfolio::get_portfolio))
 //!     .route("/api/risk", get(risk::get_risk_metrics))
+//!     .route("/api/graph", get(graphs::get_graph))
 //!     .route("/api/v1/jobs", get(jobs::list_jobs));
 //! ```
 
 pub mod exposure;
+pub mod graphs;
 pub mod health;
 pub mod jobs;
 pub mod portfolio;
@@ -55,9 +58,17 @@ pub mod risk;
 // Re-exports for convenience
 // =============================================================================
 
-// Health module
 // Exposure module
 pub use exposure::{get_exposure, ExposurePoint, ExposureResponse};
+// Graphs module
+pub use graphs::{
+    get_graph, get_instrument_graph, get_portfolio_graph, GraphCache, GraphEdgeResponse,
+    GraphErrorResponse, GraphMetadataResponse, GraphNodeResponse, GraphQueryParams, GraphResponse,
+    InstrumentGraphMetadata, InstrumentGraphNode, InstrumentGraphQueryParams,
+    InstrumentGraphResponse, PortfolioGraphCache, PortfolioGraphMetadataResponse,
+    PortfolioGraphNodeResponse, PortfolioGraphQueryParams, PortfolioGraphResponse,
+};
+// Health module
 pub use health::{
     get_index, get_metrics, health, serve_index_with_config, ApiResponseTimes, HealthResponse,
     MetricsResponse,
