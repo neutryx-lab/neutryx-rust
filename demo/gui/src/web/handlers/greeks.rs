@@ -17,19 +17,18 @@ use axum::{
 };
 use uuid::Uuid;
 
-use crate::web::{
-    pricer_types::{
-        parse_tenor_to_years, validate_bucket_dv01_request, validate_first_order_greeks_request,
-        validate_greeks_compare_request, validate_second_order_greeks_request, BucketDv01Request,
-        BucketDv01Response, BucketDv01Result, CachedCurve, DeltaResult, FirstOrderGreeksRequest,
-        FirstOrderGreeksResponse, GreekType, GreekValue, GreeksCalculationMode,
-        GreeksCompareRequest, GreeksCompareResponse, GreeksDiff, GreeksHeatmapRequest,
-        GreeksHeatmapResponse, GreeksMethodResult, GreeksTimeseriesRequest,
-        GreeksTimeseriesResponse, IrsBootstrapErrorResponse, OptionType, SecondOrderGreeksRequest,
-        SecondOrderGreeksResponse, TenorDiff, TimeseriesSeries, TimingComparison, TimingStats,
-        BUCKET_TENORS,
-    },
-    AppState,
+use crate::web::AppState;
+
+use super::types::{
+    parse_tenor_to_years, validate_bucket_dv01_request, validate_first_order_greeks_request,
+    validate_greeks_compare_request, validate_second_order_greeks_request, BucketDv01Request,
+    BucketDv01Response, BucketDv01Result, CachedCurve, DeltaResult, FirstOrderGreeksRequest,
+    FirstOrderGreeksResponse, GreekType, GreekValue, GreeksCalculationMode,
+    GreeksCompareRequest, GreeksCompareResponse, GreeksDiff, GreeksHeatmapRequest,
+    GreeksHeatmapResponse, GreeksMethodResult, GreeksTimeseriesRequest,
+    GreeksTimeseriesResponse, IrsBootstrapErrorResponse, OptionType, SecondOrderGreeksRequest,
+    SecondOrderGreeksResponse, TenorDiff, TimeseriesSeries, TimingComparison, TimingStats,
+    BUCKET_TENORS,
 };
 
 // =============================================================================

@@ -19,10 +19,8 @@
 //! - Builder model selection (interpolation, bootstrap method)
 
 // Type definitions
-pub mod config_types;
 pub mod curve_builder_types;
 pub mod error;
-pub mod events_types;
 pub mod fxcurve_types;
 pub mod fxvol_types;
 pub mod irvol_types;
@@ -31,7 +29,6 @@ pub mod market_data;
 pub mod market_types;
 pub mod metrics;
 pub mod openapi;
-pub mod pricer_types;
 pub mod pricing_service;
 pub mod risk_engine_types;
 pub mod schedule_utils;
@@ -58,7 +55,7 @@ use axum::{
 use handlers::{GraphCache, PortfolioGraphCache};
 use jobs::JobManager;
 use market_data::MarketDataCache;
-use pricer_types::BootstrapCurveCache;
+use handlers::types::BootstrapCurveCache;
 use tokio::sync::{broadcast, RwLock};
 use tower_http::{
     cors::{AllowOrigin, Any, CorsLayer},

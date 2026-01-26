@@ -9,7 +9,9 @@ use axum::{extract::State, http::StatusCode, Json};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::web::{pricer_types::PricingErrorResponse, AppState};
+use crate::web::AppState;
+
+use super::types::PricingErrorResponse;
 
 // =============================================================================
 // Types

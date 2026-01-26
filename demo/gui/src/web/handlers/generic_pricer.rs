@@ -24,7 +24,7 @@ use pricer_pricing::generic_pricer::{
 use serde_json::json;
 
 #[cfg(test)]
-use crate::web::pricer_types::CashflowInput;
+use super::types::CashflowInput;
 use crate::web::{
     pricer_types::{
         BumpSizesInput, CashflowResultOutput, CurrencyInput, DirectionInput, GenericPricerRequest,

@@ -20,14 +20,13 @@ use pricer_models::market::calibration::bootstrapping::{
 };
 use uuid::Uuid;
 
-use crate::web::{
-    pricer_types::{
-        parse_tenor_to_years, AppliedShiftInfo, CachedCurve, IrsBootstrapErrorResponse,
-        ParRateInput, PaymentFrequency, PresetScenarioTypeApi, ScenarioCompareRequest,
-        ScenarioCompareResponse, ScenarioPnlResult, ScenarioPresetsResponse, ScenarioRunRequest,
-        ScenarioRunResponse,
-    },
-    AppState,
+use crate::web::AppState;
+
+use super::types::{
+    parse_tenor_to_years, AppliedShiftInfo, CachedCurve, IrsBootstrapErrorResponse,
+    ParRateInput, PaymentFrequency, PresetScenarioTypeApi, ScenarioCompareRequest,
+    ScenarioCompareResponse, ScenarioPnlResult, ScenarioPresetsResponse, ScenarioRunRequest,
+    ScenarioRunResponse,
 };
 
 // =============================================================================

@@ -267,7 +267,7 @@ pub async fn build_curve(
     let curve_id = Uuid::new_v4();
 
     // Store in the curve cache (using existing CachedCurve)
-    use crate::web::pricer_types::{CachedCurve, ParRateInput};
+    use super::types::{CachedCurve, ParRateInput};
 
     let par_rates: Vec<ParRateInput> = sorted_instruments
         .iter()
@@ -441,7 +441,7 @@ fn parse_tenor_years(tenor: &str) -> f64 {
 }
 
 /// Interpolate discount factor at time t using log-linear interpolation.
-fn interpolate_df(curve: &crate::web::pricer_types::CachedCurve, t: f64) -> f64 {
+fn interpolate_df(curve: &super::types::CachedCurve, t: f64) -> f64 {
     if t <= 0.0 {
         return 1.0;
     }
@@ -488,7 +488,7 @@ fn interpolate_df(curve: &crate::web::pricer_types::CachedCurve, t: f64) -> f64 
 }
 
 /// Interpolate zero rate at time t.
-fn interpolate_zero_rate(curve: &crate::web::pricer_types::CachedCurve, t: f64) -> f64 {
+fn interpolate_zero_rate(curve: &super::types::CachedCurve, t: f64) -> f64 {
     if t <= 0.0 {
         // Return the short-end rate
         if !curve.zero_rates.is_empty() {
@@ -503,7 +503,7 @@ fn interpolate_zero_rate(curve: &crate::web::pricer_types::CachedCurve, t: f64) 
 
 /// Interpolate forward rate at time t with given interval.
 fn interpolate_forward_rate(
-    curve: &crate::web::pricer_types::CachedCurve,
+    curve: &super::types::CachedCurve,
     t: f64,
     interval: f64,
 ) -> f64 {
@@ -602,7 +602,7 @@ mod tests {
     mod interpolation_tests {
         use super::*;
     use axum::Json;
-        use crate::web::pricer_types::{CachedCurve, ParRateInput};
+        use super::types::{CachedCurve, ParRateInput};
 
         fn sample_curve() -> CachedCurve {
             let pillars = vec![0.25, 0.5, 1.0, 2.0, 5.0, 10.0];

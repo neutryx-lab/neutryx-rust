@@ -38,6 +38,7 @@
 //! ```
 
 pub mod benchmarks;
+pub mod types;
 pub mod config;
 pub mod curves;
 pub mod events;
@@ -96,13 +97,13 @@ pub use portfolio::{
 
 // Risk module - handlers from risk.rs, types from pricer_types
 pub use risk::{get_risk_metrics, risk_aad, risk_bump, risk_compare, RiskMetricsResponse};
-pub use crate::web::pricer_types::{
+pub use super::types::{
     RiskAadResponse, RiskBumpResponse, RiskCompareResponse, RiskMethodResult, RiskRequest,
 };
 
 // Pricing module - handlers from pricing.rs, types from pricer_types
 pub use pricing::{bootstrap_curve, price_instrument, price_irs};
-pub use crate::web::pricer_types::{
+pub use super::types::{
     BootstrapRequest, BootstrapResponse, EquityOptionParams, FxOptionParams, GreeksData,
     InstrumentParams, InstrumentType, IrsBootstrapErrorResponse, IrsParams, IrsPricingRequest,
     IrsPricingResponse, MarketDataConfig, MarketDataSource, PricingErrorResponse, PricingRequest,
@@ -114,7 +115,7 @@ pub use greeks::{
     get_greeks_heatmap, get_greeks_timeseries, greeks_bucket_dv01, greeks_compare,
     greeks_first_order, greeks_second_order,
 };
-pub use crate::web::pricer_types::{
+pub use super::types::{
     BucketDv01Request, BucketDv01Response, GreeksCalculationRequest, GreeksCalculationResponse,
     GreeksCompareRequest, GreeksCompareResponse, GreeksDiff, GreeksHeatmapRequest,
     GreeksHeatmapResponse, GreeksMethodResult, GreeksTimeseriesRequest, GreeksTimeseriesResponse,
