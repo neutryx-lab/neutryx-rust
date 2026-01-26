@@ -2,8 +2,8 @@
 
 ## Phase 1: 基盤（MVP）
 
-- [ ] 1. IR基盤型定義（pricer_core）
-- [ ] 1.1 (P) AlignedBuffer実装
+- [x] 1. IR基盤型定義（pricer_core）
+- [x] 1.1 (P) AlignedBuffer実装
   - 64バイトアラインメント付きメモリバッファを実装する
   - `std::alloc::Layout`によるカスタムアロケーション
   - `Deref`トレイトでスライスアクセスを提供
@@ -11,7 +11,7 @@
   - アラインメント検証用ユニットテストを追加
   - _Requirements: 11.1, 11.2_
 
-- [ ] 1.2 (P) PricingKernel構造体定義
+- [x] 1.2 (P) PricingKernel構造体定義
   - SoA形式のキャッシュフロー中間表現構造体を定義する
   - 日付配列（payment_dates, fixing_dates）をAlignedBuffer<i32>で保持
   - 計算係数（year_fractions, notionals, spreads, gearings）をAlignedBuffer<f64>で保持
@@ -21,29 +21,29 @@
   - 全配列同一長の不変条件を強制するコンストラクタを実装
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 1.10, 9.1, 9.2_
 
-- [ ] 1.3 (P) CompileError型定義
+- [x] 1.3 (P) CompileError型定義
   - コンパイルエラーの構造化表現を定義する
   - UnsupportedInstrument、UnknownIndex、InvalidSchedule等のバリアントを実装
   - thiserrorによるError派生を適用
   - エラーメッセージに詳細コンテキストを含める
   - _Requirements: 2.6, 2.7_
 
-- [ ] 2. TradeCompilerフレームワーク（pricer_models）
-- [ ] 2.1 TradeCompilerトレイト定義
+- [x] 2. TradeCompilerフレームワーク（pricer_models）
+- [x] 2.1 TradeCompilerトレイト定義
   - Trade階層構造からIRへの変換トレイトを定義する
   - `compile(&Trade) -> Result<CompiledIR, CompileError>`シグネチャ
   - `compile_batch(&[Trade]) -> Result<PricingKernel, CompileError>`シグネチャ
   - CompiledIR列挙型（Linear, Script, Callable）を定義
   - _Requirements: 2.1, 2.8_
 
-- [ ] 2.2 IndexMapper実装
+- [x] 2.2 IndexMapper実装
   - RateIndex/CurrencyPair→インデックスID変換マッパーを実装する
   - ダミーインデックス規約（fwd_index_ids[0]=0.0, fx_index_ids[0]=1.0）を強制
   - 既存IndexedMarketパターンとの統合
   - _Requirements: 2.3, 4.2, 5.1_
 
-- [ ] 3. 線形商品コンパイラ（pricer_models）
-- [ ] 3.1 LinearProductsCompiler基本実装
+- [x] 3. 線形商品コンパイラ（pricer_models）
+- [x] 3.1 LinearProductsCompiler基本実装
   - IRS/Bond/FRAをPricingKernelにコンパイルする基本ロジックを実装する
   - 固定レグ/変動レグのスケジュール展開
   - 支払日の昇順ソート
@@ -69,8 +69,8 @@
   - 休日調整適用後の支払日計算
   - _Requirements: 2.4, 9.5_
 
-- [ ] 4. CurveProvider・KernelContext（pricer_pricing）
-- [ ] 4.1 CurveProviderトレイト定義
+- [x] 4. CurveProvider・KernelContext（pricer_pricing）
+- [x] 4.1 CurveProviderトレイト定義
   - 静的ディスパッチ用の市場データプロバイダートレイトを定義する
   - discount_factor(curve_id, t) -> T
   - forward_rate(index_id, fixing_date) -> T
@@ -78,7 +78,7 @@
   - ダミーインデックス規約をトレイト契約として文書化
   - _Requirements: 8.3, 12.2_
 
-- [ ] 4.2 KernelContext実装
+- [x] 4.2 KernelContext実装
   - ジェネリック型パラメータC: CurveProviderによる静的ディスパッチを実装する
   - get_discount_factor, get_forward_rate, get_fx_rateメソッド
   - `#[inline(always)]`によるインライン展開保証
@@ -91,8 +91,8 @@
   - CurveProviderトレイト実装
   - _Requirements: 8.3_
 
-- [ ] 5. LinearEngine（price_kernel関数）
-- [ ] 5.1 price_kernel基本実装
+- [x] 5. LinearEngine（price_kernel関数）
+- [x] 5.1 price_kernel基本実装
   - ブランチレス統一式によるPV計算を実装する
   - 統一式: (L_idx × α + β) × N × τ × FX × DF
   - ループ内に条件分岐なし
@@ -104,8 +104,8 @@
   - 日付（days from epoch）から年単位時間への変換
   - _Requirements: 9.3, 9.4_
 
-- [ ] 6. 統合テスト・検証（Phase 1）
-- [ ] 6.1 Trade→PricingKernel→PVパイプラインテスト
+- [x] 6. 統合テスト・検証（Phase 1）
+- [x] 6.1 Trade→PricingKernel→PVパイプラインテスト
   - フルコンパイル〜評価パイプラインの統合テストを作成する
   - 単純なIRSでの結果検証
   - 既存price_single_tradeとの結果一致検証

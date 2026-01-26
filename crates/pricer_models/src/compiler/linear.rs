@@ -1,0 +1,474 @@
+//! Linear products compiler for IRS, Bonds, and other linear instruments.
+//!
+//! This module provides `LinearProductsCompiler` which compiles Trade
+//! structures into PricingKernel IR for linear products.
+
+use infra_master::trade::{IndexType, Payoff, Trade};
+use infra_master::Date;
+
+use pricer_core::ir::{CompileError, PricingKernel, PricingKernelBuilder};
+
+use super::index_mapper::IndexMapper;
+use super::TradeCompiler;
+
+/// Compiler for linear products (IRS, Bonds, FRAs).
+///
+/// Transforms `Trade` structures with fixed and floating legs into
+/// `PricingKernel` IR format optimised for SIMD pricing.
+///
+/// # Supported Products
+///
+/// - Interest Rate Swaps (IRS) - fixed vs floating
+/// - Fixed Rate Bonds
+/// - Forward Rate Agreements (FRAs)
+/// - Cross-currency swaps (basic support)
+///
+/// # Example
+///
+/// ```ignore
+/// use pricer_models::compiler::{LinearProductsCompiler, IndexMapper};
+/// use infra_master::trade::Trade;
+///
+/// let mapper = IndexMapper::with_common_indices();
+/// let compiler = LinearProductsCompiler::new(mapper);
+///
+/// let kernel = compiler.compile(&trade)?;
+/// ```
+#[derive(Debug, Clone)]
+pub struct LinearProductsCompiler {
+    /// Index mapper for ID resolution.
+    mapper: IndexMapper,
+    /// Reference date for converting dates to days from epoch.
+    epoch: Date,
+}
+
+impl LinearProductsCompiler {
+    /// Creates a new compiler with the given index mapper.
+    ///
+    /// Uses Unix epoch (1970-01-01) as the reference date.
+    #[must_use]
+    pub fn new(mapper: IndexMapper) -> Self {
+        // Unix epoch: 1970-01-01
+        let epoch = Date::from_ymd(1970, 1, 1).expect("Unix epoch is valid");
+        Self { mapper, epoch }
+    }
+
+    /// Creates a compiler with a custom reference date for day counting.
+    ///
+    /// # Arguments
+    ///
+    /// * `mapper` - Index mapper for ID resolution
+    /// * `epoch` - Reference date for converting dates to integers
+    #[must_use]
+    pub fn with_epoch(mapper: IndexMapper, epoch: Date) -> Self {
+        Self { mapper, epoch }
+    }
+
+    /// Returns a reference to the index mapper.
+    #[must_use]
+    pub fn mapper(&self) -> &IndexMapper {
+        &self.mapper
+    }
+
+    /// Returns a mutable reference to the index mapper.
+    pub fn mapper_mut(&mut self) -> &mut IndexMapper {
+        &mut self.mapper
+    }
+
+    /// Converts a Date to days from epoch.
+    fn date_to_days(&self, date: Date) -> i32 {
+        // Date subtraction returns i64 (number of days between dates)
+        (date - self.epoch) as i32
+    }
+
+    /// Extracts gearing and spread from a Payoff.
+    ///
+    /// Returns `(gearing, spread, fwd_index_id)`:
+    /// - Fixed: (0.0, rate, 0)
+    /// - Linear: (multiplier, spread, index_id)
+    fn extract_payoff_params(
+        &mut self,
+        payoff: &Payoff,
+    ) -> Result<(f64, f64, u16), CompileError> {
+        match payoff {
+            Payoff::Fixed { rate } => {
+                // Fixed: gearing = 0, spread = rate, fwd_index_id = 0 (dummy)
+                Ok((0.0, *rate, 0))
+            }
+            Payoff::Linear {
+                index,
+                spread,
+                multiplier,
+            } => {
+                // Extract rate index from IndexType
+                let fwd_index_id = match index {
+                    IndexType::Rate(rate_index) => {
+                        self.mapper.get_or_register_forward_index(*rate_index)
+                    }
+                    _ => {
+                        return Err(CompileError::UnsupportedPayoff(format!(
+                            "Non-rate index not supported for linear products: {:?}",
+                            index
+                        )));
+                    }
+                };
+                Ok((*multiplier, *spread, fwd_index_id))
+            }
+            Payoff::VanillaOption { .. } | Payoff::Digital { .. } => {
+                Err(CompileError::UnsupportedPayoff(
+                    "Option payoffs not supported in linear compiler".to_string(),
+                ))
+            }
+        }
+    }
+}
+
+impl TradeCompiler<Trade> for LinearProductsCompiler {
+    fn compile(&self, trade: &Trade) -> Result<PricingKernel, CompileError> {
+        // We need a mutable mapper for registration, so clone it
+        let mut compiler = self.clone();
+        compiler.compile_with_registration(trade)
+    }
+}
+
+impl LinearProductsCompiler {
+    /// Internal compilation with mutable mapper access.
+    fn compile_with_registration(
+        &mut self,
+        trade: &Trade,
+    ) -> Result<PricingKernel, CompileError> {
+        // Count total cashflows for capacity hint
+        let total_cashflows: usize = trade.legs().map(|leg| leg.len()).sum();
+
+        if total_cashflows == 0 {
+            return Err(CompileError::EmptyTrade(trade.id.to_string()));
+        }
+
+        let mut builder = PricingKernelBuilder::with_capacity(total_cashflows);
+
+        // Process each leg
+        for leg in trade.legs() {
+            let currency_id = self.mapper.get_or_register_currency(leg.currency);
+
+            // Determine discount curve based on currency
+            // Default convention: currency name as discount curve
+            let discount_curve_id = self
+                .mapper
+                .get_or_register_discount_curve(leg.currency.code());
+
+            // Get direction sign for notional
+            let direction_sign = leg.direction.sign();
+
+            // Process each cashflow in the leg
+            for cf in leg.cashflows() {
+                // Skip non-coupon cashflows for now
+                if !cf.cf_type.is_coupon() {
+                    continue;
+                }
+
+                // Convert dates to days from epoch
+                let payment_date = self.date_to_days(cf.payment_date);
+                let fixing_date = self.date_to_days(cf.accrual_start); // Use accrual start as fixing date
+
+                // Extract payoff parameters
+                let (gearing, spread, fwd_index_id) = self.extract_payoff_params(&cf.payoff)?;
+
+                // Apply direction to notional
+                let notional = cf.notional * direction_sign;
+
+                builder.add_cashflow(
+                    payment_date,
+                    fixing_date,
+                    cf.year_fraction,
+                    notional,
+                    spread,
+                    gearing,
+                    currency_id,
+                    discount_curve_id,
+                    fwd_index_id,
+                    0, // fx_index_id = 0 (no FX conversion for single currency)
+                );
+            }
+        }
+
+        builder.increment_trade_count();
+        builder.sort_by_payment_date();
+        builder.build()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use infra_master::trade::{Cashflow, CashflowType, Direction, Leg, LegType, Payoff};
+    use infra_master::{Currency, RateIndex};
+
+    fn create_fixed_leg() -> Leg {
+        let cashflows = vec![
+            Cashflow::new(
+                CashflowType::Coupon,
+                Date::from_ymd(2025, 6, 30).unwrap(),
+                Date::from_ymd(2025, 1, 1).unwrap(),
+                Date::from_ymd(2025, 6, 30).unwrap(),
+                0.5,
+                1_000_000.0,
+                Payoff::fixed(0.05),
+                Currency::USD,
+            ),
+            Cashflow::new(
+                CashflowType::Coupon,
+                Date::from_ymd(2025, 12, 31).unwrap(),
+                Date::from_ymd(2025, 7, 1).unwrap(),
+                Date::from_ymd(2025, 12, 31).unwrap(),
+                0.5,
+                1_000_000.0,
+                Payoff::fixed(0.05),
+                Currency::USD,
+            ),
+        ];
+
+        Leg::new(cashflows, Direction::Receiver, LegType::Fixed, Currency::USD)
+    }
+
+    fn create_floating_leg() -> Leg {
+        let cashflows = vec![
+            Cashflow::new(
+                CashflowType::Coupon,
+                Date::from_ymd(2025, 6, 30).unwrap(),
+                Date::from_ymd(2025, 1, 1).unwrap(),
+                Date::from_ymd(2025, 6, 30).unwrap(),
+                0.5,
+                1_000_000.0,
+                Payoff::floating_with_spread(IndexType::Rate(RateIndex::Sofr), 0.001),
+                Currency::USD,
+            ),
+            Cashflow::new(
+                CashflowType::Coupon,
+                Date::from_ymd(2025, 12, 31).unwrap(),
+                Date::from_ymd(2025, 7, 1).unwrap(),
+                Date::from_ymd(2025, 12, 31).unwrap(),
+                0.5,
+                1_000_000.0,
+                Payoff::floating_with_spread(IndexType::Rate(RateIndex::Sofr), 0.001),
+                Currency::USD,
+            ),
+        ];
+
+        Leg::new(
+            cashflows,
+            Direction::Payer,
+            LegType::Floating,
+            Currency::USD,
+        )
+    }
+
+    fn create_test_swap() -> Trade {
+        use infra_master::trade::TradeType;
+
+        Trade::new(
+            "SWAP001",
+            vec![create_fixed_leg(), create_floating_leg()],
+            TradeType::Swap,
+        )
+    }
+
+    #[test]
+    fn test_linear_compiler_new() {
+        let mapper = IndexMapper::new();
+        let compiler = LinearProductsCompiler::new(mapper);
+
+        assert_eq!(compiler.mapper().forward_index_count(), 0);
+    }
+
+    #[test]
+    fn test_compile_swap() {
+        let mapper = IndexMapper::new();
+        let mut compiler = LinearProductsCompiler::new(mapper);
+
+        let swap = create_test_swap();
+        let kernel = compiler.compile_with_registration(&swap).unwrap();
+
+        // Should have 4 cashflows (2 fixed + 2 floating)
+        assert_eq!(kernel.len(), 4);
+        assert_eq!(kernel.trade_count(), 1);
+    }
+
+    #[test]
+    fn test_compile_fixed_leg_gearing() {
+        let mapper = IndexMapper::new();
+        let mut compiler = LinearProductsCompiler::new(mapper);
+
+        let trade = Trade::new(
+            "FIXED001",
+            vec![create_fixed_leg()],
+            infra_master::trade::TradeType::Generic,
+        );
+
+        let kernel = compiler.compile_with_registration(&trade).unwrap();
+
+        // Fixed leg should have gearing = 0.0
+        for i in 0..kernel.len() {
+            assert!(
+                (kernel.gearings[i] - 0.0).abs() < 1e-10,
+                "Fixed cashflow gearing should be 0"
+            );
+            assert_eq!(kernel.fwd_index_ids[i], 0, "Fixed cashflow should use dummy index");
+        }
+    }
+
+    #[test]
+    fn test_compile_floating_leg_gearing() {
+        let mapper = IndexMapper::new();
+        let mut compiler = LinearProductsCompiler::new(mapper);
+
+        let trade = Trade::new(
+            "FLOAT001",
+            vec![create_floating_leg()],
+            infra_master::trade::TradeType::Generic,
+        );
+
+        let kernel = compiler.compile_with_registration(&trade).unwrap();
+
+        // Floating leg should have gearing = 1.0 (default multiplier)
+        for i in 0..kernel.len() {
+            assert!(
+                (kernel.gearings[i] - 1.0).abs() < 1e-10,
+                "Floating cashflow gearing should be 1.0"
+            );
+            assert_ne!(
+                kernel.fwd_index_ids[i], 0,
+                "Floating cashflow should use real index"
+            );
+        }
+    }
+
+    #[test]
+    fn test_compile_direction_sign() {
+        let mapper = IndexMapper::new();
+        let mut compiler = LinearProductsCompiler::new(mapper);
+
+        let swap = create_test_swap();
+        let kernel = compiler.compile_with_registration(&swap).unwrap();
+
+        // Check that direction is applied (receiver = positive, payer = negative)
+        let mut has_positive = false;
+        let mut has_negative = false;
+
+        for i in 0..kernel.len() {
+            if kernel.notionals[i] > 0.0 {
+                has_positive = true;
+            } else if kernel.notionals[i] < 0.0 {
+                has_negative = true;
+            }
+        }
+
+        assert!(has_positive, "Should have receiver (positive) cashflows");
+        assert!(has_negative, "Should have payer (negative) cashflows");
+    }
+
+    #[test]
+    fn test_compile_payment_dates_sorted() {
+        let mapper = IndexMapper::new();
+        let mut compiler = LinearProductsCompiler::new(mapper);
+
+        let swap = create_test_swap();
+        let kernel = compiler.compile_with_registration(&swap).unwrap();
+
+        // Payment dates should be sorted
+        for i in 1..kernel.len() {
+            assert!(
+                kernel.payment_dates[i] >= kernel.payment_dates[i - 1],
+                "Payment dates should be sorted ascending"
+            );
+        }
+    }
+
+    #[test]
+    fn test_compile_empty_trade_error() {
+        let mapper = IndexMapper::new();
+        let mut compiler = LinearProductsCompiler::new(mapper);
+
+        let empty_trade = Trade::new(
+            "EMPTY001",
+            vec![],
+            infra_master::trade::TradeType::Generic,
+        );
+
+        let result = compiler.compile_with_registration(&empty_trade);
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), CompileError::EmptyTrade(_)));
+    }
+
+    #[test]
+    fn test_compile_currency_registration() {
+        let mapper = IndexMapper::new();
+        let mut compiler = LinearProductsCompiler::new(mapper);
+
+        let swap = create_test_swap();
+        compiler.compile_with_registration(&swap).unwrap();
+
+        // USD should be registered
+        assert!(compiler.mapper().get_currency_id(Currency::USD).is_some());
+        assert_eq!(compiler.mapper().currency_count(), 1);
+    }
+
+    #[test]
+    fn test_compile_index_registration() {
+        let mapper = IndexMapper::new();
+        let mut compiler = LinearProductsCompiler::new(mapper);
+
+        let swap = create_test_swap();
+        compiler.compile_with_registration(&swap).unwrap();
+
+        // SOFR should be registered
+        assert!(compiler
+            .mapper()
+            .get_forward_index_id(RateIndex::Sofr)
+            .is_some());
+    }
+
+    #[test]
+    fn test_date_to_days() {
+        let mapper = IndexMapper::new();
+        let compiler = LinearProductsCompiler::new(mapper);
+
+        // Test known date: 2020-01-01 is 18262 days from Unix epoch
+        let date = Date::from_ymd(2020, 1, 1).unwrap();
+        let days = compiler.date_to_days(date);
+        assert_eq!(days, 18262);
+    }
+
+    #[test]
+    fn test_kernel_is_aligned() {
+        let mapper = IndexMapper::new();
+        let mut compiler = LinearProductsCompiler::new(mapper);
+
+        let swap = create_test_swap();
+        let kernel = compiler.compile_with_registration(&swap).unwrap();
+
+        assert!(kernel.is_aligned(), "Kernel buffers should be 64-byte aligned");
+    }
+
+    #[test]
+    fn test_compile_with_spread() {
+        let mapper = IndexMapper::new();
+        let mut compiler = LinearProductsCompiler::new(mapper);
+
+        // The floating leg has 0.001 (10bp) spread
+        let trade = Trade::new(
+            "FLOAT001",
+            vec![create_floating_leg()],
+            infra_master::trade::TradeType::Generic,
+        );
+
+        let kernel = compiler.compile_with_registration(&trade).unwrap();
+
+        // Check that spread is captured
+        for i in 0..kernel.len() {
+            assert!(
+                (kernel.spreads[i] - 0.001).abs() < 1e-10,
+                "Spread should be 0.001 (10bp)"
+            );
+        }
+    }
+}

@@ -46,6 +46,7 @@
 #![deny(rustdoc::private_intra_doc_links)]
 
 pub mod analytical;
+pub mod compiler;
 pub mod demo;
 mod direction_ext;
 pub mod market;

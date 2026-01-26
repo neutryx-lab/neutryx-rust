@@ -117,6 +117,10 @@ mod integration_tests;
 #[cfg(feature = "l1l2-integration")]
 pub mod context;
 
+// Pricing Kernel IR runtime engine (Phase 4: L1/L2 integration)
+#[cfg(feature = "l1l2-integration")]
+pub mod kernel;
+
 // Numeric conversion utilities (standalone, no l1l2-integration dependency)
 pub mod numeric;
 
