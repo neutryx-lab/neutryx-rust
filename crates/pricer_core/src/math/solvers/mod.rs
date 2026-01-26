@@ -21,8 +21,8 @@
 //!
 //! - [`LevenbergMarquardtSolver`]: Nonlinear least-squares for model
 //!   calibration (internal implementation)
-//! - [`solve_lm_external`]: External LM implementation using `levenberg-marquardt`
-//!   crate (requires `external-numerics` feature)
+//! - [`solve_lm_external`]: External LM implementation using
+//!   `levenberg-marquardt` crate (requires `external-numerics` feature)
 //!
 //! ## Feature Flags
 //!
@@ -129,9 +129,8 @@ pub use backtracking_newton::BacktrackingNewtonSolver;
 pub use bisection::BisectionSolver;
 pub use brent::BrentSolver;
 pub use config::SolverConfig;
-pub use levenberg_marquardt::{LMConfig, LMResult, LevenbergMarquardtSolver};
-pub use newton_raphson::NewtonRaphsonSolver;
-
 // External implementations (available when external-numerics is enabled)
 #[cfg(feature = "external-numerics")]
 pub use external::solve_lm_external;
+pub use levenberg_marquardt::{LMConfig, LMResult, LevenbergMarquardtSolver};
+pub use newton_raphson::NewtonRaphsonSolver;

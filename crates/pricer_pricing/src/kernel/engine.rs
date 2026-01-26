@@ -5,8 +5,42 @@
 
 use pricer_core::ir::PricingKernel;
 
-use super::context::KernelContext;
-use super::provider::CurveProvider;
+use super::{context::KernelContext, provider::CurveProvider};
+
+/// Days per year constant for time calculations (ACT/365).
+const DAYS_PER_YEAR: f64 = 365.0;
+
+/// Converts days from epoch to time in years relative to valuation date.
+///
+/// # Arguments
+///
+/// * `days` - Days from epoch
+/// * `valuation_date_days` - Valuation date as days from epoch
+///
+/// # Returns
+///
+/// Time in years (can be negative for past dates).
+///
+/// # Example
+///
+/// ```ignore
+/// // If valuation date is day 18262 (2020-01-01)
+/// // and payment date is day 18627 (2021-01-01)
+/// let t = days_to_years(18627, 18262);
+/// assert!((t - 1.0).abs() < 0.01); // ~1 year
+/// ```
+#[inline]
+pub fn days_to_years(days: i32, valuation_date_days: i32) -> f64 {
+    (days - valuation_date_days) as f64 / DAYS_PER_YEAR
+}
+
+/// Converts time in years to days from valuation date.
+///
+/// Inverse of `days_to_years`.
+#[inline]
+pub fn years_to_days(years: f64, valuation_date_days: i32) -> i32 {
+    valuation_date_days + (years * DAYS_PER_YEAR) as i32
+}
 
 /// SIMD-friendly pricing engine for linear products.
 ///
@@ -87,10 +121,7 @@ impl LinearEngine {
             let amount = kernel.notionals[i] * kernel.year_fractions[i] * rate;
 
             // Discount factor to payment date
-            let df = context.discount_factor(
-                kernel.discount_curve_ids[i],
-                kernel.payment_dates[i],
-            );
+            let df = context.discount_factor(kernel.discount_curve_ids[i], kernel.payment_dates[i]);
 
             // FX rate (1.0 for single currency via dummy)
             let fx = context.fx_rate(kernel.fx_index_ids[i]);
@@ -126,10 +157,7 @@ impl LinearEngine {
             let fwd = context.forward_rate(kernel.fwd_index_ids[i], kernel.fixing_dates[i]);
             let rate = fwd * kernel.gearings[i] + kernel.spreads[i];
             let amount = kernel.notionals[i] * kernel.year_fractions[i] * rate;
-            let df = context.discount_factor(
-                kernel.discount_curve_ids[i],
-                kernel.payment_dates[i],
-            );
+            let df = context.discount_factor(kernel.discount_curve_ids[i], kernel.payment_dates[i]);
             let fx = context.fx_rate(kernel.fx_index_ids[i]);
 
             pvs.push(amount * df * fx);
@@ -161,22 +189,21 @@ impl LinearEngine {
 
 #[cfg(test)]
 mod tests {
-    use super::super::provider::FlatCurveProvider;
-    use super::*;
+    use super::{super::provider::FlatCurveProvider, *};
 
     fn create_fixed_kernel() -> PricingKernel {
         // 2 fixed cashflows: 5% rate, 1M notional, semi-annual
         PricingKernel::new(
-            vec![365, 730],            // payment_dates (1Y, 2Y from epoch)
-            vec![0, 365],              // fixing_dates (not used for fixed)
-            vec![0.5, 0.5],            // year_fractions
+            vec![365, 730],                 // payment_dates (1Y, 2Y from epoch)
+            vec![0, 365],                   // fixing_dates (not used for fixed)
+            vec![0.5, 0.5],                 // year_fractions
             vec![1_000_000.0, 1_000_000.0], // notionals
-            vec![0.05, 0.05],          // spreads (= fixed rate)
-            vec![0.0, 0.0],            // gearings (0 = fixed)
-            vec![0, 0],                // currency_ids
-            vec![0, 0],                // discount_curve_ids
-            vec![0, 0],                // fwd_index_ids (0 = dummy)
-            vec![0, 0],                // fx_index_ids (0 = no FX)
+            vec![0.05, 0.05],               // spreads (= fixed rate)
+            vec![0.0, 0.0],                 // gearings (0 = fixed)
+            vec![0, 0],                     // currency_ids
+            vec![0, 0],                     // discount_curve_ids
+            vec![0, 0],                     // fwd_index_ids (0 = dummy)
+            vec![0, 0],                     // fx_index_ids (0 = no FX)
         )
         .expect("Valid kernel")
     }
@@ -184,16 +211,16 @@ mod tests {
     fn create_floating_kernel() -> PricingKernel {
         // 2 floating cashflows: SOFR + 100bp, 1M notional
         PricingKernel::new(
-            vec![365, 730],            // payment_dates
-            vec![0, 365],              // fixing_dates
-            vec![0.5, 0.5],            // year_fractions
+            vec![365, 730],                 // payment_dates
+            vec![0, 365],                   // fixing_dates
+            vec![0.5, 0.5],                 // year_fractions
             vec![1_000_000.0, 1_000_000.0], // notionals
-            vec![0.01, 0.01],          // spreads (100bp)
-            vec![1.0, 1.0],            // gearings (1.0 = floating)
-            vec![0, 0],                // currency_ids
-            vec![0, 0],                // discount_curve_ids
-            vec![1, 1],                // fwd_index_ids (1 = real index)
-            vec![0, 0],                // fx_index_ids
+            vec![0.01, 0.01],               // spreads (100bp)
+            vec![1.0, 1.0],                 // gearings (1.0 = floating)
+            vec![0, 0],                     // currency_ids
+            vec![0, 0],                     // discount_curve_ids
+            vec![1, 1],                     // fwd_index_ids (1 = real index)
+            vec![0, 0],                     // fx_index_ids
         )
         .expect("Valid kernel")
     }
@@ -201,16 +228,18 @@ mod tests {
     fn create_swap_kernel() -> PricingKernel {
         // Swap: receive fixed 5%, pay floating SOFR
         PricingKernel::new(
-            vec![365, 365, 730, 730],  // payment_dates (interleaved)
-            vec![0, 0, 365, 365],      // fixing_dates
-            vec![0.5, 0.5, 0.5, 0.5],  // year_fractions
-            vec![1_000_000.0, -1_000_000.0, 1_000_000.0, -1_000_000.0], // notionals (receiver fixed, payer floating)
+            vec![365, 365, 730, 730], // payment_dates (interleaved)
+            vec![0, 0, 365, 365],     // fixing_dates
+            vec![0.5, 0.5, 0.5, 0.5], // year_fractions
+            vec![1_000_000.0, -1_000_000.0, 1_000_000.0, -1_000_000.0], /* notionals (receiver
+                                       * fixed, payer
+                                       * floating) */
             vec![0.05, 0.0, 0.05, 0.0], // spreads
-            vec![0.0, 1.0, 0.0, 1.0],  // gearings
-            vec![0, 0, 0, 0],          // currency_ids
-            vec![0, 0, 0, 0],          // discount_curve_ids
-            vec![0, 1, 0, 1],          // fwd_index_ids
-            vec![0, 0, 0, 0],          // fx_index_ids
+            vec![0.0, 1.0, 0.0, 1.0],   // gearings
+            vec![0, 0, 0, 0],           // currency_ids
+            vec![0, 0, 0, 0],           // discount_curve_ids
+            vec![0, 1, 0, 1],           // fwd_index_ids
+            vec![0, 0, 0, 0],           // fx_index_ids
         )
         .expect("Valid kernel")
     }
@@ -365,5 +394,54 @@ mod tests {
 
         let npv = LinearEngine::price(&kernel, &context);
         assert!((npv - 0.0).abs() < 1e-10);
+    }
+
+    // === Task 5.2: days_to_years helper tests ===
+
+    #[test]
+    fn test_days_to_years_one_year() {
+        let valuation = 18262; // 2020-01-01
+        let payment = 18262 + 365; // 2021-01-01
+        let years = super::days_to_years(payment, valuation);
+        assert!((years - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_days_to_years_half_year() {
+        let valuation = 18262;
+        let payment = valuation + 183; // ~6 months
+        let years = super::days_to_years(payment, valuation);
+        assert!((years - 0.5013698630).abs() < 0.01); // 183/365
+    }
+
+    #[test]
+    fn test_days_to_years_same_date() {
+        let valuation = 18262;
+        let years = super::days_to_years(valuation, valuation);
+        assert!((years - 0.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_days_to_years_past_date() {
+        let valuation = 18262;
+        let past = valuation - 365;
+        let years = super::days_to_years(past, valuation);
+        assert!((years - (-1.0)).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_years_to_days_roundtrip() {
+        let valuation = 18262;
+        let original_days = 18627; // 1 year later
+        let years = super::days_to_years(original_days, valuation);
+        let back_to_days = super::years_to_days(years, valuation);
+        assert_eq!(back_to_days, original_days);
+    }
+
+    #[test]
+    fn test_years_to_days_two_years() {
+        let valuation = 18262;
+        let days = super::years_to_days(2.0, valuation);
+        assert_eq!(days, valuation + 730);
     }
 }

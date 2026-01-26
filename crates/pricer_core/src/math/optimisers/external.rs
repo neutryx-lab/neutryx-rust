@@ -1,7 +1,8 @@
 //! External optimisation library wrappers.
 //!
 //! This module provides wrappers around external optimisation crates (argmin)
-//! to provide battle-tested implementations while maintaining API compatibility.
+//! to provide battle-tested implementations while maintaining API
+//! compatibility.
 //!
 //! # Feature Flag
 //!
@@ -13,29 +14,33 @@
 //!
 //! ## Nelder-Mead
 //!
-//! - **Convergence criterion**: argmin uses `target_cost` (absolute tolerance on
-//!   function value) rather than simplex size tolerance. The internal implementation
-//!   uses both absolute and relative tolerance on simplex range.
+//! - **Convergence criterion**: argmin uses `target_cost` (absolute tolerance
+//!   on function value) rather than simplex size tolerance. The internal
+//!   implementation uses both absolute and relative tolerance on simplex range.
 //! - **Iteration count**: May differ due to algorithmic differences in simplex
 //!   operations. Typically within 2x of internal implementation.
 //!
 //! ## L-BFGS
 //!
-//! - **Line search**: Uses More-Thuente line search with Wolfe conditions (c1, c2).
-//!   Internal implementation uses simpler Armijo backtracking.
+//! - **Line search**: Uses More-Thuente line search with Wolfe conditions (c1,
+//!   c2). Internal implementation uses simpler Armijo backtracking.
 //! - **Convergence**: argmin may converge faster due to more sophisticated line
 //!   search, resulting in fewer iterations for smooth functions.
 //! - **Memory (m)**: Both use the same L-BFGS memory size parameter.
 //!
 //! ## General
 //!
-//! - External implementations only support `f64` (not generic over Float types).
-//! - For AD-compatible code, use the internal implementations which support `Dual64`.
+//! - External implementations only support `f64` (not generic over Float
+//!   types).
+//! - For AD-compatible code, use the internal implementations which support
+//!   `Dual64`.
 
-use argmin::core::{CostFunction, Executor, Gradient, State};
-use argmin::solver::{
-    linesearch::MoreThuenteLineSearch, neldermead::NelderMead as ArgminNelderMead,
-    quasinewton::LBFGS as ArgminLBFGS,
+use argmin::{
+    core::{CostFunction, Executor, Gradient, State},
+    solver::{
+        linesearch::MoreThuenteLineSearch, neldermead::NelderMead as ArgminNelderMead,
+        quasinewton::LBFGS as ArgminLBFGS,
+    },
 };
 
 use super::{LbfgsConfig, NelderMeadConfig, OptimisationError, OptimisationResult};
@@ -140,9 +145,9 @@ where
 
     // Extract results
     let state = result.state();
-    let best_param = state.get_best_param().ok_or_else(|| {
-        OptimisationError::External("No best parameter found".to_string())
-    })?;
+    let best_param = state
+        .get_best_param()
+        .ok_or_else(|| OptimisationError::External("No best parameter found".to_string()))?;
     let best_cost = state.get_best_cost();
     let iterations = state.get_iter() as usize;
 
@@ -241,9 +246,9 @@ where
     let init_param = x0.to_vec();
 
     // Create line search
-    let linesearch = MoreThuenteLineSearch::new().with_c(config.c1, 0.9).map_err(|e| {
-        OptimisationError::External(format!("Line search setup failed: {}", e))
-    })?;
+    let linesearch = MoreThuenteLineSearch::new()
+        .with_c(config.c1, 0.9)
+        .map_err(|e| OptimisationError::External(format!("Line search setup failed: {}", e)))?;
 
     // Create argmin L-BFGS solver
     let solver = ArgminLBFGS::new(linesearch, config.m);
@@ -261,9 +266,9 @@ where
 
     // Extract results
     let state = result.state();
-    let best_param = state.get_best_param().ok_or_else(|| {
-        OptimisationError::External("No best parameter found".to_string())
-    })?;
+    let best_param = state
+        .get_best_param()
+        .ok_or_else(|| OptimisationError::External("No best parameter found".to_string()))?;
     let best_cost = state.get_best_cost();
     let iterations = state.get_iter() as usize;
     // Get function evaluation count from the counts map
@@ -489,8 +494,8 @@ mod tests {
             // Check that both reach similar minimum value
             // Allow for algorithmic differences
             assert!(
-                value_diff < base_tolerance * tolerance_factor ||
-                (internal.value < 1e-3 && external.value < 1e-3),
+                value_diff < base_tolerance * tolerance_factor
+                    || (internal.value < 1e-3 && external.value < 1e-3),
                 "{}: Value difference too large. Internal: {}, External: {}, Diff: {}",
                 test_name,
                 internal.value,
@@ -499,9 +504,15 @@ mod tests {
             );
 
             // Parameter accuracy: should be reasonably close
-            for (i, (int_p, ext_p)) in internal.params.iter().zip(external.params.iter()).enumerate() {
+            for (i, (int_p, ext_p)) in internal
+                .params
+                .iter()
+                .zip(external.params.iter())
+                .enumerate()
+            {
                 let param_diff = (int_p - ext_p).abs();
-                // Allow larger tolerance for parameters since algorithms may find different local minima
+                // Allow larger tolerance for parameters since algorithms may find different
+                // local minima
                 assert!(
                     param_diff < 0.5 || (int_p.abs() < 0.1 && ext_p.abs() < 0.1),
                     "{}: Parameter {} difference too large. Internal: {}, External: {}, Diff: {}",
@@ -526,8 +537,8 @@ mod tests {
             let tolerance_factor = 10.0;
 
             assert!(
-                value_diff < base_tolerance * tolerance_factor ||
-                (internal.value < 1e-6 && external.value < 1e-6),
+                value_diff < base_tolerance * tolerance_factor
+                    || (internal.value < 1e-6 && external.value < 1e-6),
                 "{}: Value difference too large. Internal: {}, External: {}, Diff: {}",
                 test_name,
                 internal.value,
@@ -536,7 +547,12 @@ mod tests {
             );
 
             // Parameter accuracy
-            for (i, (int_p, ext_p)) in internal.params.iter().zip(external.params.iter()).enumerate() {
+            for (i, (int_p, ext_p)) in internal
+                .params
+                .iter()
+                .zip(external.params.iter())
+                .enumerate()
+            {
                 let param_diff = (int_p - ext_p).abs();
                 assert!(
                     param_diff < 1e-3,
@@ -550,7 +566,8 @@ mod tests {
             }
 
             // Iteration count: external should not be more than 2x internal
-            // Note: This is a soft check - different algorithms may have different iteration counts
+            // Note: This is a soft check - different algorithms may have different
+            // iteration counts
             let iteration_ratio = if internal.iterations > 0 {
                 external.iterations as f64 / internal.iterations as f64
             } else {
@@ -693,8 +710,12 @@ mod tests {
             let h = 1e-8;
 
             let internal = crate::math::optimisers::minimize_lbfgs_numerical(
-                f, &[3.0, 4.0], config.clone(), h
-            ).unwrap();
+                f,
+                &[3.0, 4.0],
+                config.clone(),
+                h,
+            )
+            .unwrap();
             let external = minimize_lbfgs_numerical_external(f, &[3.0, 4.0], config, h).unwrap();
 
             // Allow more tolerance for numerical gradient

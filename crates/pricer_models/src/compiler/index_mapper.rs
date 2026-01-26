@@ -6,7 +6,6 @@
 use std::collections::HashMap;
 
 use infra_master::{Currency, RateIndex};
-
 use pricer_core::ir::CompileError;
 
 /// Maps rate indices, currencies, and curves to numeric IDs.
@@ -221,9 +220,7 @@ impl IndexMapper {
 
     /// Returns the number of registered currencies.
     #[must_use]
-    pub fn currency_count(&self) -> usize {
-        self.id_to_currency.len()
-    }
+    pub fn currency_count(&self) -> usize { self.id_to_currency.len() }
 
     // =========================================================================
     // Discount Curve Methods
@@ -269,14 +266,14 @@ impl IndexMapper {
     /// Gets the curve name for a given ID.
     #[must_use]
     pub fn get_discount_curve(&self, id: u8) -> Option<&str> {
-        self.id_to_discount_curve.get(id as usize).map(String::as_str)
+        self.id_to_discount_curve
+            .get(id as usize)
+            .map(String::as_str)
     }
 
     /// Returns the number of registered discount curves.
     #[must_use]
-    pub fn discount_curve_count(&self) -> usize {
-        self.id_to_discount_curve.len()
-    }
+    pub fn discount_curve_count(&self) -> usize { self.id_to_discount_curve.len() }
 
     // =========================================================================
     // Validation
@@ -291,7 +288,9 @@ impl IndexMapper {
         if (id as usize) < self.id_to_fwd_index.len() {
             Ok(())
         } else {
-            Err(CompileError::unknown_index(format!("Invalid forward index ID: {id}")))
+            Err(CompileError::unknown_index(format!(
+                "Invalid forward index ID: {id}"
+            )))
         }
     }
 
@@ -304,7 +303,9 @@ impl IndexMapper {
         if (id as usize) < self.id_to_currency.len() {
             Ok(())
         } else {
-            Err(CompileError::UnknownCurrency(format!("Invalid currency ID: {id}")))
+            Err(CompileError::UnknownCurrency(format!(
+                "Invalid currency ID: {id}"
+            )))
         }
     }
 }

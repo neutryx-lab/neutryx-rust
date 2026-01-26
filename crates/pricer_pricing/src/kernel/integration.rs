@@ -4,17 +4,16 @@
 
 #[cfg(test)]
 mod tests {
+    use infra_master::{
+        trade::{
+            Cashflow, CashflowType, Direction, IndexType, Leg, LegType, Payoff, Trade, TradeType,
+        },
+        Currency, Date, RateIndex,
+    };
     use pricer_core::ir::PricingKernelBuilder;
     use pricer_models::compiler::{IndexMapper, LinearProductsCompiler, TradeCompiler};
 
-    use super::super::context::KernelContext;
-    use super::super::engine::LinearEngine;
-    use super::super::provider::FlatCurveProvider;
-
-    use infra_master::trade::{
-        Cashflow, CashflowType, Direction, IndexType, Leg, LegType, Payoff, Trade, TradeType,
-    };
-    use infra_master::{Currency, Date, RateIndex};
+    use super::super::{context::KernelContext, engine::LinearEngine, provider::FlatCurveProvider};
 
     /// Creates a fixed leg for testing.
     fn create_fixed_leg(notional: f64, rate: f64, direction: Direction) -> Leg {
@@ -94,7 +93,9 @@ mod tests {
         let compiler = LinearProductsCompiler::new(mapper);
 
         // Step 3: Compile trade to PricingKernel
-        let kernel = compiler.compile(&trade).expect("Compilation should succeed");
+        let kernel = compiler
+            .compile(&trade)
+            .expect("Compilation should succeed");
 
         // Verify kernel has cashflows (4 = 2 fixed + 2 floating)
         assert_eq!(kernel.len(), 4, "Kernel should have 4 cashflows");
@@ -166,7 +167,9 @@ mod tests {
         // Compile
         let mapper = IndexMapper::new();
         let compiler = LinearProductsCompiler::new(mapper);
-        let kernel = compiler.compile(&trade).expect("Compilation should succeed");
+        let kernel = compiler
+            .compile(&trade)
+            .expect("Compilation should succeed");
 
         // Price with decomposition
         let provider = FlatCurveProvider::new(0.03, 0.025);
@@ -236,8 +239,7 @@ mod tests {
         assert!(kernel.is_aligned());
 
         // Price it
-        let provider =
-            FlatCurveProvider::new(0.03, 0.025).with_valuation_date(valuation_date_days);
+        let provider = FlatCurveProvider::new(0.03, 0.025).with_valuation_date(valuation_date_days);
         let context = KernelContext::new(&provider);
 
         let pv = LinearEngine::price(&kernel, &context);
@@ -268,7 +270,9 @@ mod tests {
         // Compile
         let mapper = IndexMapper::new();
         let compiler = LinearProductsCompiler::new(mapper);
-        let kernel = compiler.compile(&trade).expect("Compilation should succeed");
+        let kernel = compiler
+            .compile(&trade)
+            .expect("Compilation should succeed");
 
         // Scenario 1: Low rates
         let provider_low = FlatCurveProvider::new(0.01, 0.01); // 1% rates
@@ -306,7 +310,9 @@ mod tests {
         // Compile
         let mapper = IndexMapper::new();
         let compiler = LinearProductsCompiler::new(mapper);
-        let kernel = compiler.compile(&trade).expect("Compilation should succeed");
+        let kernel = compiler
+            .compile(&trade)
+            .expect("Compilation should succeed");
 
         // Should have 2 cashflows
         assert_eq!(kernel.len(), 2);
@@ -334,7 +340,9 @@ mod tests {
         // Compile
         let mapper = IndexMapper::new();
         let compiler = LinearProductsCompiler::new(mapper);
-        let kernel = compiler.compile(&trade).expect("Compilation should succeed");
+        let kernel = compiler
+            .compile(&trade)
+            .expect("Compilation should succeed");
 
         // Price with forward rate = fixed rate
         let provider = FlatCurveProvider::new(0.03, 0.03); // discount = forward = 3%

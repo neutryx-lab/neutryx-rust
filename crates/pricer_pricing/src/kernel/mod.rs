@@ -2,7 +2,8 @@
 //!
 //! This module provides the runtime pricing engine for `PricingKernel` IR:
 //!
-//! - [`CurveProvider`]: Trait for market data access (discount factors, forward rates)
+//! - [`CurveProvider`]: Trait for market data access (discount factors, forward
+//!   rates)
 //! - [`KernelContext`]: Runtime context holding curve references
 //! - [`LinearEngine`]: SIMD-friendly pricing engine for linear products
 //!
@@ -38,7 +39,7 @@ mod provider;
 #[cfg(feature = "l1l2-integration")]
 pub use context::KernelContext;
 #[cfg(feature = "l1l2-integration")]
-pub use engine::LinearEngine;
+pub use engine::{days_to_years, years_to_days, LinearEngine};
 #[cfg(feature = "l1l2-integration")]
 pub use provider::{CurveProvider, FlatCurveProvider};
 

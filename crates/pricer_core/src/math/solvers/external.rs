@@ -1,7 +1,8 @@
 //! External solver library wrappers.
 //!
-//! This module provides wrappers around external solver crates (levenberg-marquardt)
-//! to provide battle-tested implementations while maintaining API compatibility.
+//! This module provides wrappers around external solver crates
+//! (levenberg-marquardt) to provide battle-tested implementations while
+//! maintaining API compatibility.
 //!
 //! # Feature Flag
 //!
@@ -11,23 +12,26 @@
 //!
 //! ## Levenberg-Marquardt
 //!
-//! - **Damping strategy**: The external `levenberg-marquardt` crate uses a different
-//!   damping update strategy. It uses "patience" (number of evaluations without
-//!   improvement) rather than explicit lambda adjustment factors.
+//! - **Damping strategy**: The external `levenberg-marquardt` crate uses a
+//!   different damping update strategy. It uses "patience" (number of
+//!   evaluations without improvement) rather than explicit lambda adjustment
+//!   factors.
 //! - **Config mapping**: `LMConfig.max_iterations` maps to patience,
 //!   `LMConfig.initial_lambda` maps to stepbound. Other lambda parameters
 //!   (`lambda_up`, `lambda_down`, `min_lambda`, `max_lambda`) are not directly
 //!   applicable to the external crate.
 //! - **Convergence**: The external crate may use different convergence criteria
-//!   internally. The `converged` field in `LMResult` reflects `report.termination.was_successful()`.
-//! - **Final lambda**: The external crate does not expose the final damping parameter,
-//!   so `LMResult.final_lambda` is set to `1.0` as a placeholder.
-//! - **Iteration count**: Reports `number_of_evaluations` rather than iterations,
-//!   which typically equals the number of Jacobian computations.
+//!   internally. The `converged` field in `LMResult` reflects
+//!   `report.termination.was_successful()`.
+//! - **Final lambda**: The external crate does not expose the final damping
+//!   parameter, so `LMResult.final_lambda` is set to `1.0` as a placeholder.
+//! - **Iteration count**: Reports `number_of_evaluations` rather than
+//!   iterations, which typically equals the number of Jacobian computations.
 //!
 //! ## General
 //!
-//! - External implementations only support `f64` (not generic over Float types).
+//! - External implementations only support `f64` (not generic over Float
+//!   types).
 //! - For AD-compatible code, use the internal `LevenbergMarquardtSolver` which
 //!   supports generic Float types.
 
@@ -78,13 +82,9 @@ where
     type ResidualStorage = Owned<f64, Dyn>;
     type JacobianStorage = Owned<f64, Dyn, Dyn>;
 
-    fn set_params(&mut self, params: &OVector<f64, Dyn>) {
-        self.params = params.clone();
-    }
+    fn set_params(&mut self, params: &OVector<f64, Dyn>) { self.params = params.clone(); }
 
-    fn params(&self) -> OVector<f64, Dyn> {
-        self.params.clone()
-    }
+    fn params(&self) -> OVector<f64, Dyn> { self.params.clone() }
 
     fn residuals(&self) -> Option<OVector<f64, Dyn>> {
         let params_slice = self.params.as_slice();
@@ -116,10 +116,12 @@ where
     }
 }
 
-/// Solve a nonlinear least-squares problem using the external levenberg-marquardt crate.
+/// Solve a nonlinear least-squares problem using the external
+/// levenberg-marquardt crate.
 ///
 /// This wraps the external levenberg-marquardt crate, providing a battle-tested
-/// implementation while maintaining API compatibility with the internal implementation.
+/// implementation while maintaining API compatibility with the internal
+/// implementation.
 ///
 /// # Arguments
 ///
@@ -248,9 +250,7 @@ mod tests {
     #[test]
     fn test_lm_external_exponential_fit() {
         // Fit y = a * exp(-x) to data where a = 1
-        fn model(a: f64, x: f64) -> f64 {
-            a * (-x).exp()
-        }
+        fn model(a: f64, x: f64) -> f64 { a * (-x).exp() }
 
         let x_data: [f64; 3] = [0.0, 1.0, 2.0];
         let y_data: [f64; 3] = [1.0, (-1.0_f64).exp(), (-2.0_f64).exp()];
@@ -302,7 +302,8 @@ mod tests {
         };
 
         let result =
-            solve_lm_external(residuals, vec![10.0, 10.0, 10.0, 10.0], LMConfig::default()).unwrap();
+            solve_lm_external(residuals, vec![10.0, 10.0, 10.0, 10.0], LMConfig::default())
+                .unwrap();
 
         assert!(result.converged);
         for (i, &p) in result.params.iter().enumerate() {
@@ -356,8 +357,11 @@ mod tests {
             );
 
             // Parameter accuracy
-            for (i, (int_p, ext_p)) in
-                internal.params.iter().zip(external.params.iter()).enumerate()
+            for (i, (int_p, ext_p)) in internal
+                .params
+                .iter()
+                .zip(external.params.iter())
+                .enumerate()
             {
                 let param_diff = (int_p - ext_p).abs();
                 assert!(
@@ -413,9 +417,7 @@ mod tests {
 
         #[test]
         fn test_regression_lm_exponential_fit() {
-            fn model(a: f64, x: f64) -> f64 {
-                a * (-x).exp()
-            }
+            fn model(a: f64, x: f64) -> f64 { a * (-x).exp() }
 
             let x_data: [f64; 3] = [0.0, 1.0, 2.0];
             let y_data: [f64; 3] = [1.0, (-1.0_f64).exp(), (-2.0_f64).exp()];
@@ -460,12 +462,9 @@ mod tests {
             let internal = solver
                 .solve(residuals, vec![10.0, 10.0, 10.0, 10.0])
                 .unwrap();
-            let external = solve_lm_external(
-                residuals,
-                vec![10.0, 10.0, 10.0, 10.0],
-                LMConfig::default(),
-            )
-            .unwrap();
+            let external =
+                solve_lm_external(residuals, vec![10.0, 10.0, 10.0, 10.0], LMConfig::default())
+                    .unwrap();
 
             compare_lm_results(&internal, &external, "multi_dimensional");
 

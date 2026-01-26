@@ -30,8 +30,7 @@
 //! - `τ`: Year fraction
 //! - `FX_idx`: FX rate (1.0 for single currency via dummy index)
 
-use super::aligned_buffer::AlignedBuffer;
-use super::error::CompileError;
+use super::{aligned_buffer::AlignedBuffer, error::CompileError};
 
 /// SoA (Structure of Arrays) intermediate representation for cashflows.
 ///
@@ -212,28 +211,20 @@ impl PricingKernel {
     /// Returns the number of cashflows in the kernel.
     #[inline]
     #[must_use]
-    pub fn len(&self) -> usize {
-        self.len
-    }
+    pub fn len(&self) -> usize { self.len }
 
     /// Returns `true` if the kernel contains no cashflows.
     #[inline]
     #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.len == 0
-    }
+    pub fn is_empty(&self) -> bool { self.len == 0 }
 
     /// Returns the number of original trades.
     #[inline]
     #[must_use]
-    pub fn trade_count(&self) -> usize {
-        self.trade_count
-    }
+    pub fn trade_count(&self) -> usize { self.trade_count }
 
     /// Sets the trade count for batched compilation.
-    pub fn set_trade_count(&mut self, count: usize) {
-        self.trade_count = count;
-    }
+    pub fn set_trade_count(&mut self, count: usize) { self.trade_count = count; }
 
     /// Validates that all internal arrays have consistent lengths.
     ///
@@ -250,7 +241,10 @@ impl PricingKernel {
             return Err(CompileError::length_mismatch(len, self.fixing_dates.len()));
         }
         if self.year_fractions.len() != len {
-            return Err(CompileError::length_mismatch(len, self.year_fractions.len()));
+            return Err(CompileError::length_mismatch(
+                len,
+                self.year_fractions.len(),
+            ));
         }
         if self.notionals.len() != len {
             return Err(CompileError::length_mismatch(len, self.notionals.len()));
@@ -329,9 +323,7 @@ pub struct PricingKernelBuilder {
 impl PricingKernelBuilder {
     /// Creates a new empty builder.
     #[must_use]
-    pub fn new() -> Self {
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     /// Creates a builder with pre-allocated capacity.
     #[must_use]
@@ -475,15 +467,11 @@ impl PricingKernelBuilder {
 
     /// Returns the current number of cashflows in the builder.
     #[must_use]
-    pub fn len(&self) -> usize {
-        self.payment_dates.len()
-    }
+    pub fn len(&self) -> usize { self.payment_dates.len() }
 
     /// Returns `true` if the builder is empty.
     #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.payment_dates.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.payment_dates.is_empty() }
 
     /// Builds the `PricingKernel`.
     ///

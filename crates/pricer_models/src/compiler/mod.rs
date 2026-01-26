@@ -24,7 +24,6 @@ mod linear;
 
 pub use index_mapper::IndexMapper;
 pub use linear::LinearProductsCompiler;
-
 use pricer_core::ir::{CompileError, PricingKernel};
 
 /// Trait for compiling `Trade` definitions into `PricingKernel` IR.

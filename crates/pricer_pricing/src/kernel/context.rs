@@ -87,40 +87,32 @@ impl<'a, P: CurveProvider> KernelContext<'a, P> {
         fixing_days: i32,
         tenor_days: i32,
     ) -> f64 {
-        self.provider.forward_rate(fwd_index_id, fixing_days, tenor_days)
+        self.provider
+            .forward_rate(fwd_index_id, fixing_days, tenor_days)
     }
 
     /// Returns the FX rate for currency conversion.
     #[inline]
-    pub fn fx_rate(&self, fx_id: u16) -> f64 {
-        self.provider.fx_rate(fx_id)
-    }
+    pub fn fx_rate(&self, fx_id: u16) -> f64 { self.provider.fx_rate(fx_id) }
 
     /// Returns the valuation date as days from epoch.
     #[inline]
-    pub fn valuation_date_days(&self) -> i32 {
-        self.provider.valuation_date_days()
-    }
+    pub fn valuation_date_days(&self) -> i32 { self.provider.valuation_date_days() }
 
     /// Returns a reference to the underlying curve provider.
     #[inline]
     #[must_use]
-    pub fn provider(&self) -> &P {
-        self.provider
-    }
+    pub fn provider(&self) -> &P { self.provider }
 
     /// Returns the default tenor in days.
     #[inline]
     #[must_use]
-    pub fn default_tenor_days(&self) -> i32 {
-        self.default_tenor_days
-    }
+    pub fn default_tenor_days(&self) -> i32 { self.default_tenor_days }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::super::provider::FlatCurveProvider;
-    use super::*;
+    use super::{super::provider::FlatCurveProvider, *};
 
     #[test]
     fn test_kernel_context_new() {

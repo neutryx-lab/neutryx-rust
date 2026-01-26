@@ -1146,8 +1146,8 @@ impl MonteCarloPricer {
     ///
     /// # Memory Usage
     ///
-    /// Memory is O(paths) regardless of step count, compared to O(paths × steps)
-    /// for batch mode.
+    /// Memory is O(paths) regardless of step count, compared to O(paths ×
+    /// steps) for batch mode.
     ///
     /// # Example
     ///
@@ -1190,7 +1190,8 @@ impl MonteCarloPricer {
 
         // Create observer based on payoff type
         let is_call = matches!(payoff.payoff_type, super::payoff::PayoffType::Call);
-        let mut observer = EuropeanObserver::new(n_paths, payoff.strike, payoff.smoothing_epsilon, is_call);
+        let mut observer =
+            EuropeanObserver::new(n_paths, payoff.strike, payoff.smoothing_epsilon, is_call);
 
         // Run streaming simulation
         let result = engine.run(gbm, &mut observer);
@@ -1295,7 +1296,8 @@ impl MonteCarloPricer {
 
         let streaming_config = self.config.streaming().clone();
         let mut engine = StreamingEngine::new(n_paths, n_steps, streaming_config, seed);
-        let mut observer = BarrierObserver::new(n_paths, strike, barrier, epsilon, is_up, is_out, is_call);
+        let mut observer =
+            BarrierObserver::new(n_paths, strike, barrier, epsilon, is_up, is_out, is_call);
 
         let result = engine.run(gbm, &mut observer);
 

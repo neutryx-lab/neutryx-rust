@@ -28,12 +28,14 @@
 //! The implementation uses `unsafe` for custom memory allocation but
 //! maintains safety through RAII patterns and careful lifetime management.
 
-use std::alloc::{Layout, alloc_zeroed, dealloc};
-use std::fmt;
-use std::marker::PhantomData;
-use std::ops::{Deref, DerefMut, Index, IndexMut};
-use std::ptr::NonNull;
-use std::slice;
+use std::{
+    alloc::{alloc_zeroed, dealloc, Layout},
+    fmt,
+    marker::PhantomData,
+    ops::{Deref, DerefMut, Index, IndexMut},
+    ptr::NonNull,
+    slice,
+};
 
 /// Alignment in bytes for AVX-512 cache lines.
 pub const ALIGNMENT: usize = 64;
@@ -214,23 +216,17 @@ impl<T> AlignedBuffer<T> {
     /// Returns the number of elements in the buffer.
     #[inline]
     #[must_use]
-    pub fn len(&self) -> usize {
-        self.len
-    }
+    pub fn len(&self) -> usize { self.len }
 
     /// Returns `true` if the buffer contains no elements.
     #[inline]
     #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.len == 0
-    }
+    pub fn is_empty(&self) -> bool { self.len == 0 }
 
     /// Returns the capacity of the buffer in elements.
     #[inline]
     #[must_use]
-    pub fn capacity(&self) -> usize {
-        self.cap
-    }
+    pub fn capacity(&self) -> usize { self.cap }
 
     /// Returns `true` if the buffer data is 64-byte aligned.
     ///
@@ -254,9 +250,7 @@ impl<T> AlignedBuffer<T> {
     /// Returns the memory alignment in bytes.
     #[inline]
     #[must_use]
-    pub fn alignment(&self) -> usize {
-        ALIGNMENT
-    }
+    pub fn alignment(&self) -> usize { ALIGNMENT }
 
     /// Returns a raw pointer to the buffer data.
     ///
@@ -265,9 +259,7 @@ impl<T> AlignedBuffer<T> {
     /// The returned pointer is valid for `len()` elements.
     #[inline]
     #[must_use]
-    pub fn as_ptr(&self) -> *const T {
-        self.ptr.as_ptr()
-    }
+    pub fn as_ptr(&self) -> *const T { self.ptr.as_ptr() }
 
     /// Returns a mutable raw pointer to the buffer data.
     ///
@@ -276,9 +268,7 @@ impl<T> AlignedBuffer<T> {
     /// The returned pointer is valid for `len()` elements.
     #[inline]
     #[must_use]
-    pub fn as_mut_ptr(&mut self) -> *mut T {
-        self.ptr.as_ptr()
-    }
+    pub fn as_mut_ptr(&mut self) -> *mut T { self.ptr.as_ptr() }
 
     /// Returns the buffer as a slice.
     #[inline]
@@ -298,22 +288,16 @@ impl<T> AlignedBuffer<T> {
 
     /// Returns an iterator over the buffer elements.
     #[inline]
-    pub fn iter(&self) -> slice::Iter<'_, T> {
-        self.as_slice().iter()
-    }
+    pub fn iter(&self) -> slice::Iter<'_, T> { self.as_slice().iter() }
 
     /// Returns a mutable iterator over the buffer elements.
     #[inline]
-    pub fn iter_mut(&mut self) -> slice::IterMut<'_, T> {
-        self.as_mut_slice().iter_mut()
-    }
+    pub fn iter_mut(&mut self) -> slice::IterMut<'_, T> { self.as_mut_slice().iter_mut() }
 
     /// Returns the total memory usage in bytes.
     #[inline]
     #[must_use]
-    pub fn memory_usage(&self) -> usize {
-        self.cap * std::mem::size_of::<T>()
-    }
+    pub fn memory_usage(&self) -> usize { self.cap * std::mem::size_of::<T>() }
 }
 
 impl<T> Drop for AlignedBuffer<T> {
@@ -372,38 +356,28 @@ impl<T> Deref for AlignedBuffer<T> {
     type Target = [T];
 
     #[inline]
-    fn deref(&self) -> &[T] {
-        self.as_slice()
-    }
+    fn deref(&self) -> &[T] { self.as_slice() }
 }
 
 impl<T> DerefMut for AlignedBuffer<T> {
     #[inline]
-    fn deref_mut(&mut self) -> &mut [T] {
-        self.as_mut_slice()
-    }
+    fn deref_mut(&mut self) -> &mut [T] { self.as_mut_slice() }
 }
 
 impl<T> Index<usize> for AlignedBuffer<T> {
     type Output = T;
 
     #[inline]
-    fn index(&self, index: usize) -> &Self::Output {
-        &self.as_slice()[index]
-    }
+    fn index(&self, index: usize) -> &Self::Output { &self.as_slice()[index] }
 }
 
 impl<T> IndexMut<usize> for AlignedBuffer<T> {
     #[inline]
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        &mut self.as_mut_slice()[index]
-    }
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output { &mut self.as_mut_slice()[index] }
 }
 
 impl<T: PartialEq> PartialEq for AlignedBuffer<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.as_slice() == other.as_slice()
-    }
+    fn eq(&self, other: &Self) -> bool { self.as_slice() == other.as_slice() }
 }
 
 impl<T: Eq> Eq for AlignedBuffer<T> {}
@@ -606,5 +580,58 @@ mod tests {
 
         assert_send::<AlignedBuffer<f64>>();
         assert_sync::<AlignedBuffer<f64>>();
+    }
+
+    // === Task 6.2: Explicit 64-byte alignment bit verification ===
+
+    #[test]
+    fn test_aligned_buffer_lower_6_bits_zero() {
+        // 64-byte alignment requires lower 6 bits of address to be zero
+        // (64 = 2^6, so address & 0x3F should equal 0)
+        let buffer: AlignedBuffer<f64> = AlignedBuffer::with_capacity(1000);
+        let ptr_addr = buffer.as_ptr() as usize;
+
+        // Explicit bit-level check per spec requirement 11.1
+        assert_eq!(
+            ptr_addr & 0x3F,
+            0,
+            "Lower 6 bits must be 0 for 64-byte alignment. Got addr: {:#x}",
+            ptr_addr
+        );
+    }
+
+    #[test]
+    fn test_aligned_buffer_multiple_buffers_alignment() {
+        // Verify multiple independent buffers are all aligned
+        let buffers: Vec<AlignedBuffer<f64>> = (0..10)
+            .map(|_| AlignedBuffer::with_capacity(100))
+            .collect();
+
+        for (i, buf) in buffers.iter().enumerate() {
+            let ptr_addr = buf.as_ptr() as usize;
+            assert_eq!(
+                ptr_addr & 0x3F,
+                0,
+                "Buffer {} must be 64-byte aligned. Got addr: {:#x}",
+                i,
+                ptr_addr
+            );
+        }
+    }
+
+    #[test]
+    fn test_aligned_buffer_different_sizes_alignment() {
+        // Verify alignment is maintained regardless of buffer size
+        for size in [1, 7, 16, 64, 100, 1000, 10000] {
+            let buffer: AlignedBuffer<f64> = AlignedBuffer::with_capacity(size);
+            let ptr_addr = buffer.as_ptr() as usize;
+            assert_eq!(
+                ptr_addr & 0x3F,
+                0,
+                "Buffer of size {} must be 64-byte aligned. Got addr: {:#x}",
+                size,
+                ptr_addr
+            );
+        }
     }
 }

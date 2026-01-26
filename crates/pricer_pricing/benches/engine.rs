@@ -1314,22 +1314,18 @@ fn bench_streaming_vs_batch(c: &mut Criterion) {
         let n_paths = 50_000;
 
         // Batch mode (traditional)
-        group.bench_with_input(
-            BenchmarkId::new("batch", n_steps),
-            &n_steps,
-            |b, &steps| {
-                let config = MonteCarloConfig::builder()
-                    .n_paths(n_paths)
-                    .n_steps(steps)
-                    .seed(42)
-                    .build()
-                    .unwrap();
-                let mut pricer = MonteCarloPricer::new(config).unwrap();
-                let payoff = PayoffParams::call(100.0);
+        group.bench_with_input(BenchmarkId::new("batch", n_steps), &n_steps, |b, &steps| {
+            let config = MonteCarloConfig::builder()
+                .n_paths(n_paths)
+                .n_steps(steps)
+                .seed(42)
+                .build()
+                .unwrap();
+            let mut pricer = MonteCarloPricer::new(config).unwrap();
+            let payoff = PayoffParams::call(100.0);
 
-                b.iter(|| black_box(pricer.price_european(gbm, payoff, df)));
-            },
-        );
+            b.iter(|| black_box(pricer.price_european(gbm, payoff, df)));
+        });
 
         // Streaming mode
         group.bench_with_input(

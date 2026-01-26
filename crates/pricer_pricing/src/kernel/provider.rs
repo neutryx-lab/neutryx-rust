@@ -43,7 +43,8 @@ pub trait CurveProvider {
     ///
     /// # Arguments
     ///
-    /// * `curve_id` - Discount curve ID (from `PricingKernel::discount_curve_ids`)
+    /// * `curve_id` - Discount curve ID (from
+    ///   `PricingKernel::discount_curve_ids`)
     /// * `days_from_epoch` - Payment date as days from epoch
     ///
     /// # Returns
@@ -56,7 +57,8 @@ pub trait CurveProvider {
     ///
     /// # Arguments
     ///
-    /// * `fwd_index_id` - Forward index ID (from `PricingKernel::fwd_index_ids`)
+    /// * `fwd_index_id` - Forward index ID (from
+    ///   `PricingKernel::fwd_index_ids`)
     ///   - 0 = dummy index returning 0.0
     /// * `fixing_days` - Fixing date as days from epoch
     /// * `tenor_days` - Tenor in days (e.g., 90 for 3M)
@@ -121,7 +123,8 @@ impl FlatCurveProvider {
     ///
     /// # Arguments
     ///
-    /// * `discount_rate` - Continuous compound discount rate (e.g., 0.05 for 5%)
+    /// * `discount_rate` - Continuous compound discount rate (e.g., 0.05 for
+    ///   5%)
     /// * `forward_rate` - Flat forward rate (e.g., 0.03 for 3%)
     #[must_use]
     pub fn new(discount_rate: f64, forward_rate: f64) -> Self {
@@ -175,9 +178,7 @@ impl CurveProvider for FlatCurveProvider {
         }
     }
 
-    fn valuation_date_days(&self) -> i32 {
-        self.valuation_date_days
-    }
+    fn valuation_date_days(&self) -> i32 { self.valuation_date_days }
 }
 
 #[cfg(test)]

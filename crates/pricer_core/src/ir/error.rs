@@ -76,15 +76,11 @@ impl CompileError {
 
     /// Creates an `UnknownIndex` error.
     #[must_use]
-    pub fn unknown_index(name: impl Into<String>) -> Self {
-        Self::UnknownIndex(name.into())
-    }
+    pub fn unknown_index(name: impl Into<String>) -> Self { Self::UnknownIndex(name.into()) }
 
     /// Creates an `InvalidSchedule` error.
     #[must_use]
-    pub fn invalid_schedule(msg: impl Into<String>) -> Self {
-        Self::InvalidSchedule(msg.into())
-    }
+    pub fn invalid_schedule(msg: impl Into<String>) -> Self { Self::InvalidSchedule(msg.into()) }
 
     /// Creates a `LengthMismatch` error.
     #[must_use]

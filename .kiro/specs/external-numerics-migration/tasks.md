@@ -162,16 +162,29 @@
   - 依存関係の重複に関する注意を記載
   - _Requirements: 8.4_
 
-- [ ] 10. faer ベンチマーク評価（Phase 2）
-- [ ] 10.1 nalgebra vs faer のベンチマークスイートを作成する
-  - 行列乗算、Cholesky 分解、LU 分解、SVD の比較
-  - 様々なサイズの行列で測定
+- [x] 10. faer ベンチマーク評価（Phase 2）
+- [x] 10.1 nalgebra vs faer のベンチマークスイートを作成する
+  - **スキップ**: Task 10.2 の AD 互換性評価で faer が Dual64 非対応と判明
+  - ベンチマーク作成は不要（AD 互換性が必須要件のため）
   - _Requirements: 4.1_
-- [ ] 10.2 faer の AD 互換性を評価する
-  - Dual64 型での動作可否を確認
-  - AD 非対応の場合は nalgebra をデフォルトに維持することを確認
+- [x] 10.2 faer の AD 互換性を評価する
+  - **結論: faer は Dual64 非対応**
+  - faer は独自の trait 体系（`Entity`, `RealField`, `ComplexField`）を `faer-entity` で定義
+  - num-dual の `Dual64` は faer の traits を実装していない
+  - faer の Entity trait は SIMD 最適化のために特殊な設計（Group/Unit 分離）
+  - Rust の AD エコシステム（num-dual, ad-trait）は主に nalgebra をターゲット
+  - **Requirement 4.5 に基づき nalgebra をデフォルトとして維持**
   - _Requirements: 4.4, 4.5_
-- [ ] 10.3 ベンチマーク結果に基づいて faer-backend フィーチャーの採否を決定する
-  - 20% 以上の性能向上があれば optional フィーチャーとして追加
-  - 結果と根拠を文書化
+- [x] 10.3 ベンチマーク結果に基づいて faer-backend フィーチャーの採否を決定する
+  - **決定: faer-backend フィーチャーは追加しない**
+  - 根拠:
+    1. faer は Dual64（num-dual）非対応のため AD ワークフローが破壊される
+    2. Requirement 4.4「AD compatibility preserved regardless of backend choice」を満たせない
+    3. Requirement 4.5「If faer does not support required AD types, retain nalgebra as default」に該当
+  - 性能ベンチマークは AD 互換性の前提条件を満たさないため実施不要
+  - **結論: nalgebra を唯一の線形代数バックエンドとして維持**
+  - 参考資料:
+    - https://docs.rs/faer-entity/latest/faer_entity/trait.RealField.html
+    - https://docs.rs/num-dual
+    - https://github.com/sarah-quinones/faer-rs
   - _Requirements: 4.2, 4.3, 4.6_

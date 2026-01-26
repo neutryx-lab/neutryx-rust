@@ -3,13 +3,13 @@
 //! This module provides `LinearProductsCompiler` which compiles Trade
 //! structures into PricingKernel IR for linear products.
 
-use infra_master::trade::{IndexType, Payoff, Trade};
-use infra_master::Date;
-
+use infra_master::{
+    trade::{IndexType, Payoff, Trade},
+    Date,
+};
 use pricer_core::ir::{CompileError, PricingKernel, PricingKernelBuilder};
 
-use super::index_mapper::IndexMapper;
-use super::TradeCompiler;
+use super::{index_mapper::IndexMapper, TradeCompiler};
 
 /// Compiler for linear products (IRS, Bonds, FRAs).
 ///
@@ -60,20 +60,14 @@ impl LinearProductsCompiler {
     /// * `mapper` - Index mapper for ID resolution
     /// * `epoch` - Reference date for converting dates to integers
     #[must_use]
-    pub fn with_epoch(mapper: IndexMapper, epoch: Date) -> Self {
-        Self { mapper, epoch }
-    }
+    pub fn with_epoch(mapper: IndexMapper, epoch: Date) -> Self { Self { mapper, epoch } }
 
     /// Returns a reference to the index mapper.
     #[must_use]
-    pub fn mapper(&self) -> &IndexMapper {
-        &self.mapper
-    }
+    pub fn mapper(&self) -> &IndexMapper { &self.mapper }
 
     /// Returns a mutable reference to the index mapper.
-    pub fn mapper_mut(&mut self) -> &mut IndexMapper {
-        &mut self.mapper
-    }
+    pub fn mapper_mut(&mut self) -> &mut IndexMapper { &mut self.mapper }
 
     /// Converts a Date to days from epoch.
     fn date_to_days(&self, date: Date) -> i32 {
@@ -86,10 +80,7 @@ impl LinearProductsCompiler {
     /// Returns `(gearing, spread, fwd_index_id)`:
     /// - Fixed: (0.0, rate, 0)
     /// - Linear: (multiplier, spread, index_id)
-    fn extract_payoff_params(
-        &mut self,
-        payoff: &Payoff,
-    ) -> Result<(f64, f64, u16), CompileError> {
+    fn extract_payoff_params(&mut self, payoff: &Payoff) -> Result<(f64, f64, u16), CompileError> {
         match payoff {
             Payoff::Fixed { rate } => {
                 // Fixed: gearing = 0, spread = rate, fwd_index_id = 0 (dummy)
@@ -133,10 +124,7 @@ impl TradeCompiler<Trade> for LinearProductsCompiler {
 
 impl LinearProductsCompiler {
     /// Internal compilation with mutable mapper access.
-    fn compile_with_registration(
-        &mut self,
-        trade: &Trade,
-    ) -> Result<PricingKernel, CompileError> {
+    fn compile_with_registration(&mut self, trade: &Trade) -> Result<PricingKernel, CompileError> {
         // Count total cashflows for capacity hint
         let total_cashflows: usize = trade.legs().map(|leg| leg.len()).sum();
 
@@ -161,8 +149,8 @@ impl LinearProductsCompiler {
 
             // Process each cashflow in the leg
             for cf in leg.cashflows() {
-                // Skip non-coupon cashflows for now
-                if !cf.cf_type.is_coupon() {
+                // Skip Fee cashflows (not relevant for pricing)
+                if matches!(cf.cf_type, infra_master::trade::CashflowType::Fee) {
                     continue;
                 }
 
@@ -199,9 +187,12 @@ impl LinearProductsCompiler {
 
 #[cfg(test)]
 mod tests {
+    use infra_master::{
+        trade::{Cashflow, CashflowType, Direction, Leg, LegType, Payoff},
+        Currency, RateIndex,
+    };
+
     use super::*;
-    use infra_master::trade::{Cashflow, CashflowType, Direction, Leg, LegType, Payoff};
-    use infra_master::{Currency, RateIndex};
 
     fn create_fixed_leg() -> Leg {
         let cashflows = vec![
@@ -227,7 +218,12 @@ mod tests {
             ),
         ];
 
-        Leg::new(cashflows, Direction::Receiver, LegType::Fixed, Currency::USD)
+        Leg::new(
+            cashflows,
+            Direction::Receiver,
+            LegType::Fixed,
+            Currency::USD,
+        )
     }
 
     fn create_floating_leg() -> Leg {
@@ -312,7 +308,10 @@ mod tests {
                 (kernel.gearings[i] - 0.0).abs() < 1e-10,
                 "Fixed cashflow gearing should be 0"
             );
-            assert_eq!(kernel.fwd_index_ids[i], 0, "Fixed cashflow should use dummy index");
+            assert_eq!(
+                kernel.fwd_index_ids[i], 0,
+                "Fixed cashflow should use dummy index"
+            );
         }
     }
 
@@ -388,11 +387,7 @@ mod tests {
         let mapper = IndexMapper::new();
         let mut compiler = LinearProductsCompiler::new(mapper);
 
-        let empty_trade = Trade::new(
-            "EMPTY001",
-            vec![],
-            infra_master::trade::TradeType::Generic,
-        );
+        let empty_trade = Trade::new("EMPTY001", vec![], infra_master::trade::TradeType::Generic);
 
         let result = compiler.compile_with_registration(&empty_trade);
         assert!(result.is_err());
@@ -446,7 +441,10 @@ mod tests {
         let swap = create_test_swap();
         let kernel = compiler.compile_with_registration(&swap).unwrap();
 
-        assert!(kernel.is_aligned(), "Kernel buffers should be 64-byte aligned");
+        assert!(
+            kernel.is_aligned(),
+            "Kernel buffers should be 64-byte aligned"
+        );
     }
 
     #[test]
@@ -470,5 +468,189 @@ mod tests {
                 "Spread should be 0.001 (10bp)"
             );
         }
+    }
+
+    // === Task 3.2: IRS Amortizing Support Tests ===
+
+    /// Creates an amortizing fixed leg where notional decreases each period.
+    fn create_amortizing_fixed_leg() -> Leg {
+        let cashflows = vec![
+            Cashflow::new(
+                CashflowType::Coupon,
+                Date::from_ymd(2025, 6, 30).unwrap(),
+                Date::from_ymd(2025, 1, 1).unwrap(),
+                Date::from_ymd(2025, 6, 30).unwrap(),
+                0.5,
+                1_000_000.0, // Full notional
+                Payoff::fixed(0.05),
+                Currency::USD,
+            ),
+            Cashflow::new(
+                CashflowType::Coupon,
+                Date::from_ymd(2025, 12, 31).unwrap(),
+                Date::from_ymd(2025, 7, 1).unwrap(),
+                Date::from_ymd(2025, 12, 31).unwrap(),
+                0.5,
+                750_000.0, // 75% notional
+                Payoff::fixed(0.05),
+                Currency::USD,
+            ),
+            Cashflow::new(
+                CashflowType::Coupon,
+                Date::from_ymd(2026, 6, 30).unwrap(),
+                Date::from_ymd(2026, 1, 1).unwrap(),
+                Date::from_ymd(2026, 6, 30).unwrap(),
+                0.5,
+                500_000.0, // 50% notional
+                Payoff::fixed(0.05),
+                Currency::USD,
+            ),
+        ];
+
+        Leg::new(
+            cashflows,
+            Direction::Receiver,
+            LegType::Fixed,
+            Currency::USD,
+        )
+    }
+
+    #[test]
+    fn test_compile_amortizing_irs() {
+        let mapper = IndexMapper::new();
+        let mut compiler = LinearProductsCompiler::new(mapper);
+
+        let trade = Trade::new(
+            "AMORT001",
+            vec![create_amortizing_fixed_leg()],
+            infra_master::trade::TradeType::Swap,
+        );
+
+        let kernel = compiler.compile_with_registration(&trade).unwrap();
+
+        // Should have 3 cashflows with decreasing notionals
+        assert_eq!(kernel.len(), 3);
+
+        // Verify notionals are preserved (with receiver direction = positive)
+        assert!((kernel.notionals[0] - 1_000_000.0).abs() < 1e-6);
+        assert!((kernel.notionals[1] - 750_000.0).abs() < 1e-6);
+        assert!((kernel.notionals[2] - 500_000.0).abs() < 1e-6);
+    }
+
+    // === Task 3.3: Bond Principal and FRA Support Tests ===
+
+    /// Creates a bond with coupons and principal redemption.
+    fn create_bond_with_principal() -> Leg {
+        let cashflows = vec![
+            // Coupon 1
+            Cashflow::new(
+                CashflowType::Coupon,
+                Date::from_ymd(2025, 6, 30).unwrap(),
+                Date::from_ymd(2025, 1, 1).unwrap(),
+                Date::from_ymd(2025, 6, 30).unwrap(),
+                0.5,
+                100_000_000.0,
+                Payoff::fixed(0.04), // 4% coupon
+                Currency::USD,
+            ),
+            // Coupon 2
+            Cashflow::new(
+                CashflowType::Coupon,
+                Date::from_ymd(2025, 12, 31).unwrap(),
+                Date::from_ymd(2025, 7, 1).unwrap(),
+                Date::from_ymd(2025, 12, 31).unwrap(),
+                0.5,
+                100_000_000.0,
+                Payoff::fixed(0.04),
+                Currency::USD,
+            ),
+            // Principal redemption at maturity
+            Cashflow::new(
+                CashflowType::Principal,
+                Date::from_ymd(2025, 12, 31).unwrap(),
+                Date::from_ymd(2025, 12, 31).unwrap(),
+                Date::from_ymd(2025, 12, 31).unwrap(),
+                1.0, // year_fraction = 1.0 for principal
+                100_000_000.0,
+                Payoff::fixed(1.0), // rate = 1.0 for principal (100% return)
+                Currency::USD,
+            ),
+        ];
+
+        Leg::new(
+            cashflows,
+            Direction::Receiver,
+            LegType::Fixed,
+            Currency::USD,
+        )
+    }
+
+    #[test]
+    fn test_compile_bond_with_principal() {
+        let mapper = IndexMapper::new();
+        let mut compiler = LinearProductsCompiler::new(mapper);
+
+        let trade = Trade::new(
+            "BOND001",
+            vec![create_bond_with_principal()],
+            infra_master::trade::TradeType::Generic,
+        );
+
+        let kernel = compiler.compile_with_registration(&trade).unwrap();
+
+        // Should have 3 cashflows (2 coupons + 1 principal)
+        assert_eq!(kernel.len(), 3);
+
+        // First two should be coupons (rate = 0.04)
+        assert!((kernel.spreads[0] - 0.04).abs() < 1e-10);
+        assert!((kernel.spreads[1] - 0.04).abs() < 1e-10);
+
+        // Third should be principal (rate = 1.0)
+        assert!((kernel.spreads[2] - 1.0).abs() < 1e-10);
+    }
+
+    /// Creates a single FRA settlement cashflow.
+    fn create_fra_settlement() -> Leg {
+        // FRA: Single settlement cashflow
+        let cashflows = vec![Cashflow::new(
+            CashflowType::Settlement,
+            Date::from_ymd(2025, 3, 15).unwrap(), // Settlement date
+            Date::from_ymd(2025, 3, 15).unwrap(),
+            Date::from_ymd(2025, 6, 15).unwrap(), // 3M tenor
+            0.25,                                 // 3-month year fraction
+            10_000_000.0,
+            Payoff::floating_with_spread(IndexType::Rate(RateIndex::Sofr), -0.025), /* FRA rate as negative spread */
+            Currency::USD,
+        )];
+
+        Leg::new(
+            cashflows,
+            Direction::Receiver,
+            LegType::Floating,
+            Currency::USD,
+        )
+    }
+
+    #[test]
+    fn test_compile_fra() {
+        let mapper = IndexMapper::new();
+        let mut compiler = LinearProductsCompiler::new(mapper);
+
+        let trade = Trade::new(
+            "FRA001",
+            vec![create_fra_settlement()],
+            infra_master::trade::TradeType::Generic,
+        );
+
+        let kernel = compiler.compile_with_registration(&trade).unwrap();
+
+        // Should have 1 cashflow
+        assert_eq!(kernel.len(), 1);
+
+        // Floating with gearing = 1.0
+        assert!((kernel.gearings[0] - 1.0).abs() < 1e-10);
+
+        // Spread = -0.025 (FRA rate)
+        assert!((kernel.spreads[0] - (-0.025)).abs() < 1e-10);
     }
 }
