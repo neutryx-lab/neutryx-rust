@@ -23,15 +23,14 @@ num-traits.workspace = true
 pricer_core = { path = "../pricer_core" }
 pricer_models = { path = "../pricer_models" }
 pricer_pricing = { path = "../pricer_pricing" }
-# TODO: pricer_risk temporarily disabled - needs refactoring
-# pricer_risk = { path = "../pricer_risk" }
+pricer_risk = { path = "../pricer_risk" }
 infra_config = { path = "../infra_config" }
 infra_master = { path = "../infra_master" }
 
 [features]
 default = []
 # Enable Enzyme AD support (requires nightly + LLVM)
-enzyme-ad = ["pricer_pricing/enzyme-ad"]
+enzyme-ad = ["pricer_risk/enzyme-ad"]
 
 [dev-dependencies]
 

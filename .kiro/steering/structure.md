@@ -165,8 +165,8 @@ trade/             → Trade representation (CF-expanded format)
 ```text
 L1: pricer_core      → Foundation (Stable) - math (smoothing, interpolators, solvers), types, traits
 L2: pricer_models    → Business Logic (Stable) - instruments, market (curves, surfaces, calibration), models, schedules
-L3: pricer_pricing   → AD Engine (Nightly + Enzyme) - mc, rng, enzyme, greeks, context
-L4: pricer_risk      → Application (Stable) - portfolio, exposure, xva, scenarios
+L3: pricer_pricing   → MC Engine (Stable) - mc, rng, greeks, context, path_dependent, checkpoint
+L4: pricer_risk      → Application + Enzyme AD (Stable, Nightly with enzyme-ad) - portfolio, exposure, xva, scenarios, enzyme
 ```
 
 > **Note**: L2.5 (`pricer_optimiser`) was removed in 2026-01. Market data functionality (curves, surfaces, bootstrapping, provider) consolidated into `pricer_models::market`, calibration engine into `pricer_models::market::calibration`.
@@ -290,15 +290,14 @@ demo.rs       → Demo types for 3-stage rocket: ModelEnum, InstrumentEnum, Curv
 ### pricer_pricing (L3)
 
 **Location**: `crates/pricer_pricing/src/`
-**Purpose**: Monte Carlo + Enzyme AD (nightly Rust, LLVM plugin)
+**Purpose**: Monte Carlo Engine (stable Rust)
 **Structure**:
 
 ```text
-enzyme/          → Enzyme bindings, autodiff macros
 mc/              → Monte Carlo kernel (GBM paths, workspace buffers, Greeks, MonteCarloPricer, thread_local)
 path_dependent/  → Path-dependent options (Asian, Barrier, Lookback) with streaming statistics
 rng/             → Random number generation (PRNG, QMC sequences)
-verify/          → Enzyme vs num-dual verification tests
+verify/          → Verification tests
 checkpoint/      → Memory management for checkpointing
 analytical/      → Closed-form solutions (geometric Asian, barrier options)
 greeks/          → Greeks calculation types (GreeksConfig, GreeksMode, GreeksResult<T>)
@@ -308,7 +307,7 @@ irs_greeks/      → IRS Greeks workflow (AAD vs Bump-and-Revalue, lazy evaluati
 graph/           → Computation graph extraction (D3.js-compatible JSON for DAG visualisation)
 ```
 
-**Key Principle**: **Only crate requiring nightly Rust and Enzyme**. Currently isolated (Phase 3.0) with zero pricer_* dependencies.
+**Key Principle**: Monte Carlo simulation engine with stable Rust. Enzyme AD has been moved to pricer_risk for L4 integration.
 
 > **Note**: This crate was renamed from `pricer_kernel` to `pricer_engine` in version 0.7.0, then to `pricer_pricing` for alphabetical ordering with dependency hierarchy.
 
@@ -369,7 +368,7 @@ graph/           → Computation graph extraction (D3.js-compatible JSON for DAG
 ### pricer_risk (L4)
 
 **Location**: `crates/pricer_risk/src/`
-**Purpose**: Portfolio analytics, XVA, and risk metrics (stable Rust)
+**Purpose**: Portfolio analytics, XVA, risk metrics, and Enzyme AD (stable Rust, nightly with enzyme-ad feature)
 **Structure**:
 
 ```text
@@ -382,6 +381,12 @@ scenarios/  → Scenario analysis and risk factor management
             → bucket_dv01.rs (BucketDv01Calculator, KeyRateDuration), curve_shifts.rs (CurveShifter)
             → risk_factor.rs (RiskFactorId), greeks_by_factor.rs (GreeksResultByFactor)
             → irs_greeks_by_factor.rs (IrsGreeksByFactorCalculator)
+enzyme/     → Enzyme autodiff bindings (ADMode, Activity, gradient, GreeksEnzyme trait)
+            → greeks.rs (GreeksEnzyme trait, EnzymeGreeksResult, GreeksMode)
+            → verification.rs (VerificationConfig, analytical module)
+            → checkpoint_ad.rs (CheckpointedAD, PathDependentAD)
+            → smooth.rs (smooth_max, smooth_indicator, smooth_call_payoff)
+            → forward.rs, reverse.rs, loops.rs, parallel.rs (AD infrastructure)
 regulatory/ → SA-CCR, FRTB, SIMM (planned)
 soa/        → Structure of Arrays (TradeSoA, ExposureSoA)
 parallel/   → Rayon-based parallelisation utilities (>80% efficiency on 8+ cores)
@@ -391,7 +396,7 @@ parallel/   → Rayon-based parallelisation utilities (>80% efficiency on 8+ cor
 demo.rs     → Portfolio orchestration demo (DemoTrade, Pull-then-Push pattern)
 ```
 
-**Key Principle**: Consumer of L1+L2+L3, orchestrates portfolio-level computations with parallel processing.
+**Key Principle**: Consumer of L1+L2+L3, orchestrates portfolio-level computations with parallel processing. Enzyme AD feature (`enzyme-ad`) requires nightly Rust (nightly-2025-01-15) and LLVM 18.
 
 ---
 

@@ -27,10 +27,259 @@ use pricer_models::{
     instruments::FxOptionType,
 };
 use pricer_risk::{greeks::GreeksResult, RiskEngine, RiskEngineConfig, RiskError};
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{info, warn};
 
-use crate::web::{jobs::JobCreatedResponse, risk_engine_types::*, AppState};
+use crate::web::{jobs::JobCreatedResponse, AppState};
+
+// =============================================================================
+// Risk Engine API Types
+// =============================================================================
+
+/// Request to compute Greeks for a single trade.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GreeksRequest {
+    pub trade_id: String,
+    pub instrument_type: String,
+    pub spot: f64,
+    pub strike: f64,
+    pub expiry: f64,
+    pub volatility: f64,
+    pub rate: f64,
+    #[serde(default)]
+    pub dividend_yield: f64,
+    #[serde(default)]
+    pub risk_config: Option<RiskConfigOverride>,
+}
+
+/// Request to compute Greeks for a portfolio of trades.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PortfolioGreeksRequest {
+    pub trades: Vec<GreeksRequest>,
+    #[serde(default)]
+    pub risk_config: Option<RiskConfigOverride>,
+    #[serde(default)]
+    pub async_mode: bool,
+}
+
+/// Risk configuration overrides for API requests.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct RiskConfigOverride {
+    #[serde(default)]
+    pub greeks_method: Option<String>,
+    #[serde(default)]
+    pub target_greeks: Option<Vec<String>>,
+    #[serde(default)]
+    pub bump_sizes: Option<BumpSizesOverride>,
+    #[serde(default)]
+    pub second_order_mode: Option<String>,
+}
+
+/// Bump sizes override for API requests.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BumpSizesOverride {
+    #[serde(default)]
+    pub rate: Option<f64>,
+    #[serde(default)]
+    pub vol: Option<f64>,
+    #[serde(default)]
+    pub spot: Option<f64>,
+}
+
+/// Request for scenario-based Greeks calculation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScenarioGreeksRequest {
+    #[serde(flatten)]
+    pub base: GreeksRequest,
+    pub scenario_name: String,
+    pub shifts: MarketShifts,
+}
+
+/// Market shifts for scenario analysis.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct MarketShifts {
+    #[serde(default)]
+    pub spot_shift: f64,
+    #[serde(default)]
+    pub spot_shift_relative: f64,
+    #[serde(default)]
+    pub vol_shift: f64,
+    #[serde(default)]
+    pub rate_shift: f64,
+}
+
+/// Response containing computed Greeks for a single trade.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GreeksResponse {
+    pub trade_id: String,
+    pub pv: f64,
+    pub greeks: ComputedGreeksDto,
+    pub method: String,
+    pub metrics: ExecutionMetricsDto,
+}
+
+/// Computed Greeks DTO.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ComputedGreeksDto {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub delta: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gamma: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vega: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub theta: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rho: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vanna: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub volga: Option<f64>,
+}
+
+/// Execution metrics DTO.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExecutionMetricsDto {
+    pub computation_time_ms: f64,
+}
+
+/// Response for portfolio Greeks calculation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PortfolioGreeksResponse {
+    pub results: Vec<GreeksResponse>,
+    pub failures: Vec<FailedCalculationDto>,
+    pub aggregations: AggregatedGreeksDto,
+    pub stats: ExecutionStatsDto,
+}
+
+/// Failed calculation DTO.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FailedCalculationDto {
+    pub trade_id: String,
+    pub error: String,
+}
+
+/// Aggregated Greeks DTO.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AggregatedGreeksDto {
+    pub total_pv: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total_delta: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total_gamma: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total_vega: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total_theta: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total_rho: Option<f64>,
+}
+
+/// Execution statistics DTO.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExecutionStatsDto {
+    pub total: usize,
+    pub successful: usize,
+    pub failed: usize,
+    pub elapsed_ms: f64,
+    pub used_parallel: bool,
+}
+
+/// Response for scenario-based Greeks.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScenarioGreeksResponse {
+    pub scenario_name: String,
+    pub result: GreeksResponse,
+}
+
+/// Error response.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RiskErrorResponse {
+    pub error: String,
+    pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub details: Option<String>,
+}
+
+// =============================================================================
+// Conversions from pricer_risk types
+// =============================================================================
+
+impl From<pricer_risk::ComputedGreeks> for ComputedGreeksDto {
+    fn from(g: pricer_risk::ComputedGreeks) -> Self {
+        Self {
+            delta: g.delta,
+            gamma: g.gamma,
+            vega: g.vega,
+            theta: g.theta,
+            rho: g.rho,
+            vanna: g.vanna,
+            volga: g.volga,
+        }
+    }
+}
+
+impl From<pricer_risk::PerformanceMetrics> for ExecutionMetricsDto {
+    fn from(m: pricer_risk::PerformanceMetrics) -> Self {
+        Self { computation_time_ms: m.computation_time_ms }
+    }
+}
+
+impl From<pricer_risk::RiskResult> for GreeksResponse {
+    fn from(r: pricer_risk::RiskResult) -> Self {
+        Self {
+            trade_id: r.trade_id,
+            pv: r.pv,
+            greeks: r.greeks.into(),
+            method: format!("{:?}", r.method),
+            metrics: r.metrics.into(),
+        }
+    }
+}
+
+impl From<pricer_risk::FailedCalculation> for FailedCalculationDto {
+    fn from(f: pricer_risk::FailedCalculation) -> Self {
+        Self { trade_id: f.trade_id, error: f.error_message }
+    }
+}
+
+impl From<pricer_risk::ExecutionStats> for ExecutionStatsDto {
+    fn from(s: pricer_risk::ExecutionStats) -> Self {
+        Self {
+            total: s.total_trades,
+            successful: s.successful,
+            failed: s.failed,
+            elapsed_ms: s.total_time_ms,
+            used_parallel: s.used_parallel,
+        }
+    }
+}
+
+impl From<pricer_risk::PortfolioRiskResult> for PortfolioGreeksResponse {
+    fn from(r: pricer_risk::PortfolioRiskResult) -> Self {
+        let total_pv: f64 = r.results.iter().map(|result| result.pv).sum();
+        Self {
+            results: r.results.clone().into_iter().map(Into::into).collect(),
+            failures: r.failures.into_iter().map(Into::into).collect(),
+            aggregations: AggregatedGreeksDto {
+                total_pv,
+                total_delta: r.aggregations.total.delta,
+                total_gamma: r.aggregations.total.gamma,
+                total_vega: r.aggregations.total.vega,
+                total_theta: r.aggregations.total.theta,
+                total_rho: r.aggregations.total.rho,
+            },
+            stats: r.stats.into(),
+        }
+    }
+}
+
+impl From<pricer_risk::ScenarioGreeksResult> for ScenarioGreeksResponse {
+    fn from(r: pricer_risk::ScenarioGreeksResult) -> Self {
+        Self { scenario_name: r.scenario_name, result: r.result.into() }
+    }
+}
 
 // =============================================================================
 // Task 8.3: Handlers

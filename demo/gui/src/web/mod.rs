@@ -18,7 +18,7 @@
 //! - Index-based instrument management
 //! - Builder model selection (interpolation, bootstrap method)
 
-// Type definitions
+// Type definitions (tests removed, types kept for handler use)
 pub mod curve_builder_types;
 pub mod error;
 pub mod fxcurve_types;

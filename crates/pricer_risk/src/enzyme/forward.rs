@@ -18,7 +18,7 @@
 //! # Usage
 //!
 //! ```rust
-//! use pricer_pricing::enzyme::forward::ForwardAD;
+//! use pricer_risk::enzyme::forward::ForwardAD;
 //!
 //! // Create a variable with tangent seed = 1.0
 //! let spot = ForwardAD::variable(100.0);
@@ -54,7 +54,7 @@ use num_traits::Float;
 /// # Examples
 ///
 /// ```rust
-/// use pricer_pricing::enzyme::forward::ForwardAD;
+/// use pricer_risk::enzyme::forward::ForwardAD;
 ///
 /// // Compute f(x) = x^2 and f'(x) = 2x at x = 3
 /// let x = ForwardAD::variable(3.0);
@@ -96,7 +96,7 @@ impl<T: Float> ForwardAD<T> {
     /// # Examples
     ///
     /// ```rust
-    /// use pricer_pricing::enzyme::forward::ForwardAD;
+    /// use pricer_risk::enzyme::forward::ForwardAD;
     ///
     /// let spot = ForwardAD::variable(100.0);
     /// assert_eq!(spot.tangent(), 1.0);
@@ -124,7 +124,7 @@ impl<T: Float> ForwardAD<T> {
     /// # Examples
     ///
     /// ```rust
-    /// use pricer_pricing::enzyme::forward::ForwardAD;
+    /// use pricer_risk::enzyme::forward::ForwardAD;
     ///
     /// let strike = ForwardAD::constant(100.0);
     /// assert_eq!(strike.tangent(), 0.0);

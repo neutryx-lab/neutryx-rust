@@ -16,7 +16,7 @@
 //! # Usage
 //!
 //! ```rust,ignore
-//! use pricer_pricing::enzyme::checkpoint_ad::{CheckpointedAD, CheckpointADConfig};
+//! use pricer_risk::enzyme::checkpoint_ad::{CheckpointedAD, CheckpointADConfig};
 //! use pricer_pricing::checkpoint::CheckpointStrategy;
 //!
 //! let config = CheckpointADConfig::new(252, CheckpointStrategy::binomial_optimal(252, 16));
@@ -37,7 +37,7 @@
 use num_traits::Float;
 
 use super::{loops::AdjointAccumulator, reverse::ReverseAD};
-use crate::checkpoint::{CheckpointManager, CheckpointStrategy};
+use pricer_pricing::checkpoint::{CheckpointManager, CheckpointStrategy};
 
 /// Configuration for checkpointed AD.
 #[derive(Clone, Debug)]

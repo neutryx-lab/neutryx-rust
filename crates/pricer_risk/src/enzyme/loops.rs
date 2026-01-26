@@ -53,7 +53,7 @@
 //! # Example: Enzyme-Compatible Path Generation
 //!
 //! ```rust
-//! use pricer_pricing::enzyme::loops::{FixedSteps, FixedPaths, EnzymeLoop};
+//! use pricer_risk::enzyme::loops::{FixedSteps, FixedPaths, EnzymeLoop};
 //!
 //! // Simulate paths with fixed step count
 //! let n_paths = 1000usize;
@@ -79,7 +79,7 @@ use num_traits::Float;
 /// # Example
 ///
 /// ```rust
-/// use pricer_pricing::enzyme::loops::FixedSteps;
+/// use pricer_risk::enzyme::loops::FixedSteps;
 ///
 /// let steps = FixedSteps::new(252);
 /// assert_eq!(steps.len(), 252);
@@ -154,7 +154,7 @@ impl ExactSizeIterator for FixedSteps {}
 /// # Example
 ///
 /// ```rust
-/// use pricer_pricing::enzyme::loops::FixedPaths;
+/// use pricer_risk::enzyme::loops::FixedPaths;
 ///
 /// let paths = FixedPaths::new(10000);
 /// assert_eq!(paths.len(), 10000);
@@ -229,7 +229,7 @@ impl ExactSizeIterator for FixedPaths {}
 /// # Example
 ///
 /// ```rust
-/// use pricer_pricing::enzyme::loops::EnzymeLoop;
+/// use pricer_risk::enzyme::loops::EnzymeLoop;
 ///
 /// // Wrap a standard range in EnzymeLoop for clarity
 /// let enzyme_iter = EnzymeLoop::from_range(0..100);
@@ -274,7 +274,7 @@ where
     /// # Example
     ///
     /// ```rust
-    /// use pricer_pricing::enzyme::loops::EnzymeLoop;
+    /// use pricer_risk::enzyme::loops::EnzymeLoop;
     ///
     /// let iter = EnzymeLoop::from_range(0..10);
     /// assert_eq!(iter.len(), 10);
@@ -323,7 +323,7 @@ pub trait EnzymeAccumulate<T: Float> {
 /// # Example
 ///
 /// ```rust
-/// use pricer_pricing::enzyme::loops::AdjointAccumulator;
+/// use pricer_risk::enzyme::loops::AdjointAccumulator;
 ///
 /// let mut acc: AdjointAccumulator<f64> = AdjointAccumulator::new();
 ///
@@ -454,7 +454,7 @@ impl<T: Float> AdjointAccumulator<T> {
 /// # Example
 ///
 /// ```rust
-/// use pricer_pricing::enzyme::loops::EnzymeGbmGenerator;
+/// use pricer_risk::enzyme::loops::EnzymeGbmGenerator;
 ///
 /// let gen = EnzymeGbmGenerator::new(100.0, 0.05, 0.2, 1.0, 252);
 ///
@@ -623,7 +623,7 @@ pub trait EnzymeCompatible {}
 /// # Example
 ///
 /// ```rust
-/// use pricer_pricing::enzyme_compatible;
+/// use pricer_risk::enzyme_compatible;
 ///
 /// fn price_option(spot: f64, strike: f64, vol: f64, n_steps: usize) -> f64 {
 ///     enzyme_compatible! {

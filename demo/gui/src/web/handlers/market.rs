@@ -23,7 +23,7 @@
 //! | GET    | /api/market/export/csv      | Export rates as CSV            |
 //! | GET    | /api/market/export/json     | Export rates as JSON           |
 
-use std::{fmt::Write as _, sync::Arc};
+use std::{collections::HashMap, fmt::Write as _, sync::Arc};
 
 use axum::{
     extract::{Path, Query, State},
@@ -33,13 +33,136 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::web::{
-    market_data::{get_convention, get_conventions_list, MarketDataCache},
-    market_types::{
-        ConventionResponse, ConventionsListResponse, MarketDataApiError, MarketRateDetailResponse,
-        MarketRateQuery, MarketRatesListResponse,
-    },
-};
+use crate::web::market_data::{get_convention, get_conventions_list, MarketDataCache};
+
+// =============================================================================
+// Market Data API DTO Types
+// =============================================================================
+
+/// Market rate API response.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct MarketRateResponse {
+    pub id: String,
+    pub currency: String,
+    pub tenor: String,
+    pub rate_type: String,
+    pub value: f64,
+    pub quote_type: String,
+    pub timestamp: i64,
+    pub source: String,
+    pub is_stale: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rate_index: Option<String>,
+}
+
+/// Market rates list response with metadata.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct MarketRatesListResponse {
+    pub rates: Vec<MarketRateResponse>,
+    pub last_updated: i64,
+    pub total_count: usize,
+}
+
+/// Query parameters for market rate filtering.
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct MarketRateQuery {
+    pub currency: Option<String>,
+    pub rate_type: Option<String>,
+    pub index: Option<String>,
+}
+
+/// Instrument response for rate detail.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct InstrumentResponse {
+    pub instrument_type: String,
+    pub currency: String,
+    pub start_date: String,
+    pub end_date: String,
+    pub rate: f64,
+    pub parameters: HashMap<String, serde_json::Value>,
+}
+
+/// Convention field (key/value pair).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ConventionField {
+    pub label: String,
+    pub value: String,
+}
+
+/// Convention response.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ConventionResponse {
+    pub convention_type: String,
+    pub fields: Vec<ConventionField>,
+}
+
+/// Market rate detail response with instrument and convention.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct MarketRateDetailResponse {
+    pub rate: MarketRateResponse,
+    pub instrument: Option<InstrumentResponse>,
+    pub convention: Option<ConventionResponse>,
+}
+
+/// Convention summary for list endpoint.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ConventionSummary {
+    pub id: String,
+    pub currency: String,
+    pub convention_type: String,
+    pub is_default: bool,
+}
+
+/// Conventions list response.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ConventionsListResponse {
+    pub conventions: Vec<ConventionSummary>,
+}
+
+/// API error response.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct MarketDataApiError {
+    pub error: String,
+    pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub details: Option<String>,
+}
+
+impl MarketDataApiError {
+    pub fn not_found(resource: &str, id: &str) -> Self {
+        Self {
+            error: "not_found".to_string(),
+            message: format!("{} with ID '{}' not found", resource, id),
+            details: None,
+        }
+    }
+
+    pub fn invalid_parameter(param: &str, reason: &str) -> Self {
+        Self {
+            error: "invalid_parameter".to_string(),
+            message: format!("Invalid parameter '{}': {}", param, reason),
+            details: None,
+        }
+    }
+
+    pub fn internal(message: &str) -> Self {
+        Self {
+            error: "internal_error".to_string(),
+            message: message.to_string(),
+            details: None,
+        }
+    }
+}
 
 // =============================================================================
 // Task 3.2: GET /api/market/rates - List Market Rates

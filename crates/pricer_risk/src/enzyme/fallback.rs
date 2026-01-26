@@ -21,8 +21,8 @@
 //! # Usage
 //!
 //! ```rust
-//! use pricer_pricing::enzyme::fallback::{FallbackResolver, FallbackConfig};
-//! use pricer_pricing::enzyme::greeks::GreeksMode as EnzymeMode;
+//! use pricer_risk::enzyme::fallback::{FallbackResolver, FallbackConfig};
+//! use pricer_risk::enzyme::greeks::GreeksMode as EnzymeMode;
 //!
 //! let config = FallbackConfig::default();
 //! let resolver = FallbackResolver::new(config);

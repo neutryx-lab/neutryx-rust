@@ -21,24 +21,361 @@
 use std::{sync::Arc, time::Instant};
 
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
-// Import Infra-master types for OIS expansion
 use infra_master::{
+    market::{Currency, RateIndex},
     trade::{
         convention::ConventionSet,
         instrument_def::{InstrumentExpander, Ois, PayerReceiver},
+        AssetClass,
     },
-    Currency, Date, Frequency, RateIndex,
+    Date, Frequency,
 };
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use uuid::Uuid;
 
-// Re-export rate index helpers from trade_types
-use crate::web::trade_types::{default_rate_index_for_currency, validate_rate_index};
 use crate::web::{
     schedule_utils::{generate_schedule, SchedulePeriod},
-    trade_types::*,
     AppState,
 };
+
+// =============================================================================
+// Rate Index Validation (using infra_master::RateIndex)
+// =============================================================================
+
+/// Validates a rate index string.
+pub fn validate_rate_index(rate_index: &Option<String>) -> Result<(), String> {
+    if let Some(idx) = rate_index {
+        let normalised = idx.to_uppercase();
+        let valid_codes = RateIndex::all_codes();
+        if !valid_codes.contains(&normalised.as_str()) {
+            return Err(format!(
+                "Invalid rate_index '{}'. Supported values: {}",
+                idx,
+                valid_codes.join(", ")
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// Returns the default rate index for a given currency.
+#[must_use]
+pub fn default_rate_index_for_currency(currency: &str) -> &'static str {
+    let currency_enum = currency.parse::<Currency>().unwrap_or(Currency::USD);
+    RateIndex::default_for_currency(currency_enum).api_code()
+}
+
+// =============================================================================
+// TradeInstrumentType Enum
+// =============================================================================
+
+/// Trade instrument type for trade expansion requests.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TradeInstrumentType {
+    Deposit,
+    Fra,
+    Futures,
+    Ois,
+    BasisSwap,
+    Irs,
+    FxForward,
+    FxOption,
+    CrossCurrencySwap,
+    EquityVanillaOption,
+    EquityForward,
+    Cds,
+    CommodityForward,
+}
+
+impl TradeInstrumentType {
+    #[must_use]
+    pub fn asset_class(&self) -> AssetClass {
+        match self {
+            Self::Deposit | Self::Fra | Self::Futures | Self::Ois | Self::BasisSwap | Self::Irs => {
+                AssetClass::Rates
+            }
+            Self::FxForward | Self::FxOption | Self::CrossCurrencySwap => AssetClass::Fx,
+            Self::EquityVanillaOption | Self::EquityForward => AssetClass::Equity,
+            Self::Cds => AssetClass::Credit,
+            Self::CommodityForward => AssetClass::Commodity,
+        }
+    }
+
+    #[must_use]
+    pub fn is_rates(&self) -> bool { matches!(self.asset_class(), AssetClass::Rates) }
+
+    #[must_use]
+    pub fn is_fx(&self) -> bool { matches!(self.asset_class(), AssetClass::Fx) }
+
+    #[must_use]
+    pub fn is_equity(&self) -> bool { matches!(self.asset_class(), AssetClass::Equity) }
+
+    #[must_use]
+    pub fn all() -> Vec<Self> {
+        vec![
+            Self::Deposit,
+            Self::Fra,
+            Self::Futures,
+            Self::Ois,
+            Self::BasisSwap,
+            Self::Irs,
+            Self::FxForward,
+            Self::FxOption,
+            Self::CrossCurrencySwap,
+            Self::EquityVanillaOption,
+            Self::EquityForward,
+            Self::Cds,
+            Self::CommodityForward,
+        ]
+    }
+
+    #[must_use]
+    pub fn display_name(&self) -> &'static str {
+        match self {
+            Self::Deposit => "Deposit",
+            Self::Fra => "FRA",
+            Self::Futures => "Futures",
+            Self::Ois => "OIS",
+            Self::BasisSwap => "Basis Swap",
+            Self::Irs => "IRS",
+            Self::FxForward => "FX Forward",
+            Self::FxOption => "FX Option",
+            Self::CrossCurrencySwap => "Cross Currency Swap",
+            Self::EquityVanillaOption => "Equity Vanilla Option",
+            Self::EquityForward => "Equity Forward",
+            Self::Cds => "CDS",
+            Self::CommodityForward => "Commodity Forward",
+        }
+    }
+}
+
+// =============================================================================
+// Instrument Parameter Types
+// =============================================================================
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RatesParams {
+    pub currency: String,
+    pub start_date: String,
+    pub tenor: String,
+    pub rate: f64,
+    pub notional: f64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rate_index: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SwapParams {
+    pub currency: String,
+    pub start_date: String,
+    pub tenor: String,
+    pub notional: f64,
+    pub fixed_rate: Option<f64>,
+    pub spread: Option<f64>,
+    pub payment_frequency: String,
+    pub day_count: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rate_index: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FxParams {
+    pub base_currency: String,
+    pub quote_currency: String,
+    pub spot_rate: f64,
+    pub forward_rate: Option<f64>,
+    pub strike: Option<f64>,
+    pub expiry: String,
+    pub notional: f64,
+    pub option_type: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EquityParams {
+    pub underlying: String,
+    pub spot_price: f64,
+    pub strike: f64,
+    pub expiry: String,
+    pub volatility: f64,
+    pub risk_free_rate: f64,
+    pub option_type: Option<String>,
+    pub direction: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum InstrumentParamsUnion {
+    Rates(RatesParams),
+    Swap(SwapParams),
+    Fx(FxParams),
+    Equity(EquityParams),
+}
+
+// =============================================================================
+// Trade Expand Request/Response Types
+// =============================================================================
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TradeExpandRequest {
+    pub instrument_type: TradeInstrumentType,
+    pub params: InstrumentParamsUnion,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TradeExpandResponse {
+    pub trade_id: String,
+    pub trade_type: String,
+    pub legs: Vec<LegDto>,
+    pub metadata: TradeMetadataDto,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LegDto {
+    pub leg_number: usize,
+    pub direction: String,
+    pub currency: String,
+    pub leg_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rate_index: Option<String>,
+    pub cashflows: Vec<CashflowDto>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DailyAccrualDto {
+    pub date: String,
+    pub overnight_rate: f64,
+    pub day_fraction: f64,
+    pub compounded_notional: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CashflowDto {
+    pub payment_date: String,
+    pub accrual_start: String,
+    pub accrual_end: String,
+    pub year_fraction: f64,
+    pub notional: f64,
+    pub payoff_type: String,
+    pub rate: Option<f64>,
+    pub spread: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rate_index: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub daily_accruals: Option<Vec<DailyAccrualDto>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TradeMetadataDto {
+    pub total_legs: usize,
+    pub total_cashflows: usize,
+    pub processing_time_ms: f64,
+}
+
+// =============================================================================
+// Instruments API Response Types
+// =============================================================================
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ParameterFieldMeta {
+    pub name: String,
+    pub label: String,
+    pub field_type: String,
+    pub required: bool,
+    pub default_value: Option<serde_json::Value>,
+    pub validation: Option<ValidationRules>,
+    pub options: Option<Vec<SelectOption>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ValidationRules {
+    pub min: Option<f64>,
+    pub max: Option<f64>,
+    pub pattern: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SelectOption {
+    pub value: String,
+    pub label: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InstrumentMeta {
+    pub instrument_type: TradeInstrumentType,
+    pub display_name: String,
+    pub asset_class: AssetClass,
+    pub asset_class_name: String,
+    pub required_params: Vec<ParameterFieldMeta>,
+    pub optional_params: Vec<ParameterFieldMeta>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InstrumentsResponse {
+    pub instruments: Vec<InstrumentMeta>,
+}
+
+// =============================================================================
+// Error Response Types
+// =============================================================================
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TradeExpandError {
+    pub error: String,
+    pub message: String,
+    pub field: Option<String>,
+}
+
+impl TradeExpandError {
+    pub fn validation(field: &str, message: &str) -> Self {
+        Self {
+            error: "invalid_parameter".to_string(),
+            message: message.to_string(),
+            field: Some(field.to_string()),
+        }
+    }
+
+    pub fn unsupported_instrument(instrument_type: TradeInstrumentType) -> Self {
+        Self {
+            error: "unsupported_instrument".to_string(),
+            message: format!("Instrument type '{:?}' is not yet supported", instrument_type),
+            field: None,
+        }
+    }
+
+    pub fn schedule_error(message: &str) -> Self {
+        Self {
+            error: "schedule_error".to_string(),
+            message: message.to_string(),
+            field: None,
+        }
+    }
+
+    pub fn internal(message: &str) -> Self {
+        Self {
+            error: "internal_error".to_string(),
+            message: message.to_string(),
+            field: None,
+        }
+    }
+}
 
 // =============================================================================
 // Task 4.1: POST /api/trade/expand Handler

@@ -31,20 +31,425 @@ use pricer_models::market::{
     curves::{FlatCurve, YieldCurve},
     fx_calibration::{FxCurve, FxVolSurfaceBuilder, SimpleFxCurve, VolQuote},
 };
+use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use crate::web::{
     error::{ApiError, ApiResult},
-    fxvol_types::{
-        DeltaStrikeRequest, DeltaStrikeResponse, DeltaType, DeltaVols, FxDeltaPoint,
-        FxDeltaTypesResponse, FxDensityQuery, FxDensityResponse, FxDensityStatistics, FxPairInfo,
-        FxQuoteEntry, FxQuotesRequest, FxQuotesResponse, FxSmileQuery, FxSmileResponse,
-        FxSurfaceBuildRequest, FxSurfaceBuildResponse, FxVolFile, FxVolPairsResponse,
-        RrBfDataPoint, RrBfQuery, RrBfResponse,
-    },
     AppState,
 };
+
+// =============================================================================
+// Delta Type Re-export (Req 10.5)
+// =============================================================================
+
+/// Re-export DeltaType from infra_master.
+pub use infra_master::trade::instrument_def::DeltaType;
+
+// =============================================================================
+// FX Quote Data Structures (Req 1.6)
+// =============================================================================
+
+/// FX volatility quote entry for a single expiry.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FxQuoteEntry {
+    pub expiry: f64,
+    pub atm_vol: f64,
+    pub rr_25d: f64,
+    pub bf_25d: f64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rr_10d: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bf_10d: Option<f64>,
+}
+
+impl FxQuoteEntry {
+    pub fn new(expiry: f64, atm_vol: f64, rr_25d: f64, bf_25d: f64) -> Self {
+        Self { expiry, atm_vol, rr_25d, bf_25d, rr_10d: None, bf_10d: None }
+    }
+
+    pub fn with_10d(mut self, rr_10d: f64, bf_10d: f64) -> Self {
+        self.rr_10d = Some(rr_10d);
+        self.bf_10d = Some(bf_10d);
+        self
+    }
+
+    pub fn to_delta_vols(&self) -> DeltaVols {
+        let atm = self.atm_vol;
+        let vol_25d_call = atm + self.bf_25d + self.rr_25d / 2.0;
+        let vol_25d_put = atm + self.bf_25d - self.rr_25d / 2.0;
+        let (vol_10d_call, vol_10d_put) = match (self.rr_10d, self.bf_10d) {
+            (Some(rr), Some(bf)) => (Some(atm + bf + rr / 2.0), Some(atm + bf - rr / 2.0)),
+            _ => (None, None),
+        };
+        DeltaVols { vol_10d_put, vol_25d_put, atm, vol_25d_call, vol_10d_call }
+    }
+}
+
+/// 5-point delta volatilities computed from RR/BF quotes.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeltaVols {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vol_10d_put: Option<f64>,
+    pub vol_25d_put: f64,
+    pub atm: f64,
+    pub vol_25d_call: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vol_10d_call: Option<f64>,
+}
+
+/// Complete FX volatility data file structure.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FxVolFile {
+    pub currency_pair: String,
+    pub reference_date: String,
+    pub spot: f64,
+    pub domestic_rate: f64,
+    pub foreign_rate: f64,
+    pub quotes: Vec<FxQuoteEntry>,
+}
+
+// =============================================================================
+// API Request/Response Types
+// =============================================================================
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FxVolPairsResponse {
+    pub pairs: Vec<FxPairInfo>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FxPairInfo {
+    pub pair: String,
+    pub name: String,
+    pub base: String,
+    pub quote: String,
+    pub decimals: u8,
+}
+
+impl FxPairInfo {
+    pub fn new(pair: &str) -> Self {
+        let (base, quote) = if pair.len() == 6 { (&pair[0..3], &pair[3..6]) } else { (pair, "") };
+        Self {
+            pair: pair.to_string(),
+            name: format!("{}/{}", base, quote),
+            base: base.to_string(),
+            quote: quote.to_string(),
+            decimals: if pair.contains("JPY") { 2 } else { 4 },
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FxQuotesResponse {
+    pub currency_pair: String,
+    pub reference_date: String,
+    pub spot: f64,
+    pub domestic_rate: f64,
+    pub foreign_rate: f64,
+    pub quotes: Vec<FxQuoteEntry>,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FxQuotesRequest {
+    pub reference_date: String,
+    pub spot: f64,
+    pub domestic_rate: f64,
+    pub foreign_rate: f64,
+    pub quotes: Vec<FxQuoteEntry>,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FxSurfaceBuildRequest {
+    pub currency_pair: String,
+    pub reference_date: String,
+    pub spot: f64,
+    pub domestic_rate: f64,
+    pub foreign_rate: f64,
+    pub quotes: Vec<FxQuoteEntry>,
+    #[serde(default = "default_true")]
+    pub allow_extrapolation: bool,
+}
+
+fn default_true() -> bool { true }
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FxSurfaceBuildResponse {
+    pub surface_id: String,
+    pub currency_pair: String,
+    pub delta_points: Vec<f64>,
+    pub expiry_points: Vec<f64>,
+    pub processing_time_ms: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeltaStrikeRequest {
+    pub spot: f64,
+    pub domestic_rate: f64,
+    pub foreign_rate: f64,
+    pub expiry: f64,
+    pub volatility: f64,
+    pub deltas: Vec<f64>,
+    #[serde(default)]
+    pub delta_type: DeltaType,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeltaStrikeResponse {
+    pub deltas: Vec<f64>,
+    pub strikes: Vec<f64>,
+    pub forward: f64,
+    pub delta_type: DeltaType,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct FxSmileQuery {
+    pub surface_id: String,
+    pub expiry: f64,
+    #[serde(default = "default_smile_points")]
+    pub num_points: usize,
+}
+
+fn default_smile_points() -> usize { 21 }
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FxDeltaPoint {
+    pub delta: f64,
+    pub label: String,
+    pub volatility: f64,
+    pub strike: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FxSmileResponse {
+    pub expiry: f64,
+    pub spot: f64,
+    pub forward: f64,
+    pub atm_vol: f64,
+    pub points: Vec<FxDeltaPoint>,
+    pub rr_25d: f64,
+    pub bf_25d: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rr_10d: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bf_10d: Option<f64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct RrBfQuery {
+    pub surface_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RrBfDataPoint {
+    pub expiry: f64,
+    pub label: String,
+    pub atm_vol: f64,
+    pub rr_25d: f64,
+    pub bf_25d: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rr_10d: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bf_10d: Option<f64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RrBfResponse {
+    pub currency_pair: String,
+    pub data: Vec<RrBfDataPoint>,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct FxDensityQuery {
+    pub surface_id: String,
+    pub expiry: f64,
+    #[serde(default = "default_density_points")]
+    pub num_points: usize,
+}
+
+fn default_density_points() -> usize { 100 }
+
+#[derive(Debug, Clone, PartialEq, Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct FxDensityStatistics {
+    pub mean: f64,
+    pub variance: f64,
+    pub std_dev: f64,
+    pub skewness: f64,
+    pub kurtosis: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FxDensityResponse {
+    pub expiry: f64,
+    pub spot: f64,
+    pub forward: f64,
+    pub strikes: Vec<f64>,
+    pub densities: Vec<f64>,
+    pub cdf: Vec<f64>,
+    pub statistics: FxDensityStatistics,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub warnings: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FxDeltaTypesResponse {
+    pub delta_types: Vec<DeltaTypeInfo>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeltaTypeInfo {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+}
+
+impl FxDeltaTypesResponse {
+    pub fn new() -> Self {
+        Self {
+            delta_types: vec![
+                DeltaTypeInfo {
+                    id: "spot_delta".to_string(),
+                    name: DeltaType::SpotDelta.display_name().to_string(),
+                    description: DeltaType::SpotDelta.description().to_string(),
+                },
+                DeltaTypeInfo {
+                    id: "forward_delta".to_string(),
+                    name: DeltaType::ForwardDelta.display_name().to_string(),
+                    description: DeltaType::ForwardDelta.description().to_string(),
+                },
+                DeltaTypeInfo {
+                    id: "premium_adjusted".to_string(),
+                    name: DeltaType::PremiumAdjusted.display_name().to_string(),
+                    description: DeltaType::PremiumAdjusted.description().to_string(),
+                },
+            ],
+        }
+    }
+}
+
+impl Default for FxDeltaTypesResponse {
+    fn default() -> Self { Self::new() }
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FxCalibrateRequest {
+    pub currency_pair: String,
+    pub reference_date: String,
+    pub spot: f64,
+    pub domestic_rate: f64,
+    pub foreign_rate: f64,
+    pub quotes: Vec<FxQuoteEntry>,
+    #[serde(default)]
+    pub model: CalibrationType,
+    #[serde(default = "default_sabr_beta")]
+    pub sabr_beta: f64,
+}
+
+fn default_sabr_beta() -> f64 { 0.5 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CalibrationType {
+    #[default]
+    Sabr,
+    Svi,
+    Flat,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SabrParameters {
+    pub expiry: f64,
+    pub label: String,
+    pub alpha: f64,
+    pub beta: f64,
+    pub rho: f64,
+    pub nu: f64,
+    pub forward: f64,
+    pub residual: f64,
+    pub iterations: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FxCalibrationDiagnostics {
+    pub model: String,
+    pub calibration_time_ms: f64,
+    pub expiry_count: usize,
+    pub converged: bool,
+    pub max_residual: f64,
+    pub avg_residual: f64,
+    pub sabr_params: Vec<SabrParameters>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub warnings: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FxCalibrateResponse {
+    pub surface_id: String,
+    pub currency_pair: String,
+    pub diagnostics: FxCalibrationDiagnostics,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct FxSurfaceQuery {
+    pub surface_id: String,
+    #[serde(default = "default_surface_delta_points")]
+    pub delta_points: usize,
+    #[serde(default)]
+    pub expiry_points: Option<usize>,
+}
+
+fn default_surface_delta_points() -> usize { 11 }
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SurfacePoint {
+    pub delta: f64,
+    pub expiry: f64,
+    pub volatility: f64,
+    pub strike: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FxSurfaceResponse {
+    pub currency_pair: String,
+    pub spot: f64,
+    pub reference_date: String,
+    pub delta_axis: Vec<f64>,
+    pub expiry_axis: Vec<f64>,
+    pub expiry_labels: Vec<String>,
+    pub points: Vec<SurfacePoint>,
+    pub vol_matrix: Vec<Vec<f64>>,
+    pub strike_matrix: Vec<Vec<f64>>,
+}
 
 // =============================================================================
 // Helper Functions
@@ -1030,11 +1435,6 @@ fn black_call_price(strike: f64, forward: f64, expiry: f64, vol: f64, rate: f64)
 // =============================================================================
 // Extended API Handlers (Task 13.2)
 // =============================================================================
-
-use crate::web::fxvol_types::{
-    FxCalibrateRequest, FxCalibrateResponse, FxCalibrationDiagnostics, FxSurfaceQuery,
-    FxSurfaceResponse, SabrParameters, SurfacePoint,
-};
 
 /// Handler for `POST /api/fxvol/calibrate`.
 ///

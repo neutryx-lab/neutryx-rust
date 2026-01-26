@@ -8,7 +8,7 @@
 //! # Usage
 //!
 //! ```rust,no_run
-//! use pricer_pricing::enzyme::greeks::{GreeksEnzyme, GreeksMode, EnzymeGreeksResult};
+//! use pricer_risk::enzyme::greeks::{GreeksEnzyme, GreeksMode, EnzymeGreeksResult};
 //! use pricer_pricing::mc::{GbmParams, PayoffParams, MonteCarloPricer, MonteCarloConfig};
 //!
 //! let config = MonteCarloConfig::builder()
@@ -27,7 +27,7 @@
 //! println!("Price: {:.4}, Delta: {:.4}", result.price, result.delta);
 //! ```
 
-use crate::mc::{GbmParams, MonteCarloPricer, PayoffParams, PricingResult};
+use pricer_pricing::mc::{GbmParams, MonteCarloPricer, PayoffParams, PricingResult};
 
 // Local definition (previously from crate::greeks)
 
@@ -372,21 +372,21 @@ impl GreeksEnzyme for MonteCarloPricer {
         match resolved_mode {
             GreeksMode::FiniteDifference | GreeksMode::Auto => {
                 // Fall back to finite differences
-                self.compute_greeks_fd(gbm, payoff, discount_factor)
+                compute_greeks_fd(self, gbm, payoff, discount_factor)
             }
             GreeksMode::ForwardMode => {
                 // Use forward mode for individual Greeks
-                self.compute_greeks_forward(gbm, payoff, discount_factor)
+                compute_greeks_forward(self, gbm, payoff, discount_factor)
             }
             GreeksMode::ReverseMode => {
                 // Use reverse mode for all Greeks at once
-                self.compute_greeks_reverse(gbm, payoff, discount_factor)
+                compute_greeks_reverse(self, gbm, payoff, discount_factor)
             }
             GreeksMode::EnzymeOnly => {
                 // EnzymeOnly mode - use reverse if available
                 #[cfg(feature = "enzyme-ad")]
                 {
-                    self.compute_greeks_reverse(gbm, payoff, discount_factor)
+                    compute_greeks_reverse(self, gbm, payoff, discount_factor)
                 }
                 #[cfg(not(feature = "enzyme-ad"))]
                 {
@@ -411,7 +411,7 @@ impl GreeksEnzyme for MonteCarloPricer {
         }
         #[cfg(not(feature = "enzyme-ad"))]
         {
-            self.compute_delta_fd(gbm, payoff, discount_factor)
+            compute_delta_fd(self, gbm, payoff, discount_factor)
         }
     }
 
@@ -423,7 +423,7 @@ impl GreeksEnzyme for MonteCarloPricer {
     ) -> f64 {
         // Gamma requires nested AD or finite differences on Delta
         // For now, use finite differences
-        self.compute_gamma_fd(gbm, payoff, discount_factor)
+        compute_gamma_fd(self, gbm, payoff, discount_factor)
     }
 
     fn compute_vega_ad(
@@ -435,11 +435,11 @@ impl GreeksEnzyme for MonteCarloPricer {
         #[cfg(feature = "enzyme-ad")]
         {
             // Enzyme would compute this via reverse mode
-            self.compute_vega_fd(gbm, payoff, discount_factor)
+            compute_vega_fd(self, gbm, payoff, discount_factor)
         }
         #[cfg(not(feature = "enzyme-ad"))]
         {
-            self.compute_vega_fd(gbm, payoff, discount_factor)
+            compute_vega_fd(self, gbm, payoff, discount_factor)
         }
     }
 
@@ -449,7 +449,7 @@ impl GreeksEnzyme for MonteCarloPricer {
         payoff: PayoffParams,
         discount_factor: f64,
     ) -> f64 {
-        self.compute_theta_fd(gbm, payoff, discount_factor)
+        compute_theta_fd(self, gbm, payoff, discount_factor)
     }
 
     fn compute_rho_ad(
@@ -458,247 +458,246 @@ impl GreeksEnzyme for MonteCarloPricer {
         payoff: PayoffParams,
         discount_factor: f64,
     ) -> f64 {
-        self.compute_rho_fd(gbm, payoff, discount_factor)
+        compute_rho_fd(self, gbm, payoff, discount_factor)
     }
 }
 
-/// Internal implementation methods for MonteCarloPricer.
-impl MonteCarloPricer {
-    /// Computes all Greeks using finite differences.
-    fn compute_greeks_fd(
-        &mut self,
-        gbm: GbmParams,
-        payoff: PayoffParams,
-        discount_factor: f64,
-    ) -> EnzymeGreeksResult {
-        // Base price
-        let base_result = self.price_european(gbm, payoff, discount_factor);
+// Helper functions for Greeks computation (used by GreeksEnzyme trait impl)
 
-        // Compute all Greeks
-        let delta = self.compute_delta_fd(gbm, payoff, discount_factor);
-        let gamma = self.compute_gamma_fd(gbm, payoff, discount_factor);
-        let vega = self.compute_vega_fd(gbm, payoff, discount_factor);
-        let theta = self.compute_theta_fd(gbm, payoff, discount_factor);
-        let rho = self.compute_rho_fd(gbm, payoff, discount_factor);
+/// Computes all Greeks using finite differences.
+fn compute_greeks_fd(
+    pricer: &mut MonteCarloPricer,
+    gbm: GbmParams,
+    payoff: PayoffParams,
+    discount_factor: f64,
+) -> EnzymeGreeksResult {
+    // Base price
+    let base_result = pricer.price_european(gbm, payoff, discount_factor);
 
-        EnzymeGreeksResult::new(
-            base_result.price,
-            base_result.std_error,
-            delta,
-            gamma,
-            vega,
-            theta,
-            rho,
-        )
+    // Compute all Greeks
+    let delta = compute_delta_fd(pricer, gbm, payoff, discount_factor);
+    let gamma = compute_gamma_fd(pricer, gbm, payoff, discount_factor);
+    let vega = compute_vega_fd(pricer, gbm, payoff, discount_factor);
+    let theta = compute_theta_fd(pricer, gbm, payoff, discount_factor);
+    let rho = compute_rho_fd(pricer, gbm, payoff, discount_factor);
+
+    EnzymeGreeksResult::new(
+        base_result.price,
+        base_result.std_error,
+        delta,
+        gamma,
+        vega,
+        theta,
+        rho,
+    )
+}
+
+/// Computes Greeks using forward mode AD.
+fn compute_greeks_forward(
+    pricer: &mut MonteCarloPricer,
+    gbm: GbmParams,
+    payoff: PayoffParams,
+    discount_factor: f64,
+) -> EnzymeGreeksResult {
+    // Forward mode computes one Greek at a time
+    let base_result = pricer.price_european(gbm, payoff, discount_factor);
+
+    let (_, delta) = pricer.price_with_delta_ad(gbm, payoff, discount_factor);
+    let gamma = compute_gamma_fd(pricer, gbm, payoff, discount_factor);
+    let vega = compute_vega_fd(pricer, gbm, payoff, discount_factor);
+    let theta = compute_theta_fd(pricer, gbm, payoff, discount_factor);
+    let rho = compute_rho_fd(pricer, gbm, payoff, discount_factor);
+
+    EnzymeGreeksResult::new(
+        base_result.price,
+        base_result.std_error,
+        delta,
+        gamma,
+        vega,
+        theta,
+        rho,
+    )
+}
+
+/// Computes Greeks using reverse mode AD.
+///
+/// In a full Enzyme implementation, this would compute all Greeks
+/// in a single reverse pass. Currently falls back to finite differences.
+fn compute_greeks_reverse(
+    pricer: &mut MonteCarloPricer,
+    gbm: GbmParams,
+    payoff: PayoffParams,
+    discount_factor: f64,
+) -> EnzymeGreeksResult {
+    #[cfg(feature = "enzyme-ad")]
+    {
+        // When Enzyme is enabled, this would use #[autodiff_reverse]
+        // to compute all Greeks in one reverse pass.
+        // For now, use finite differences as placeholder.
+        compute_greeks_fd(pricer, gbm, payoff, discount_factor)
     }
-
-    /// Computes Greeks using forward mode AD.
-    fn compute_greeks_forward(
-        &mut self,
-        gbm: GbmParams,
-        payoff: PayoffParams,
-        discount_factor: f64,
-    ) -> EnzymeGreeksResult {
-        // Forward mode computes one Greek at a time
-        let base_result = self.price_european(gbm, payoff, discount_factor);
-
-        let delta = self.compute_delta_ad(gbm, payoff, discount_factor);
-        let gamma = self.compute_gamma_fd(gbm, payoff, discount_factor);
-        let vega = self.compute_vega_fd(gbm, payoff, discount_factor);
-        let theta = self.compute_theta_fd(gbm, payoff, discount_factor);
-        let rho = self.compute_rho_fd(gbm, payoff, discount_factor);
-
-        EnzymeGreeksResult::new(
-            base_result.price,
-            base_result.std_error,
-            delta,
-            gamma,
-            vega,
-            theta,
-            rho,
-        )
+    #[cfg(not(feature = "enzyme-ad"))]
+    {
+        compute_greeks_fd(pricer, gbm, payoff, discount_factor)
     }
+}
 
-    /// Computes Greeks using reverse mode AD.
-    ///
-    /// In a full Enzyme implementation, this would compute all Greeks
-    /// in a single reverse pass. Currently falls back to finite differences.
-    fn compute_greeks_reverse(
-        &mut self,
-        gbm: GbmParams,
-        payoff: PayoffParams,
-        discount_factor: f64,
-    ) -> EnzymeGreeksResult {
-        #[cfg(feature = "enzyme-ad")]
-        {
-            // When Enzyme is enabled, this would use #[autodiff_reverse]
-            // to compute all Greeks in one reverse pass.
-            // For now, use finite differences as placeholder.
-            self.compute_greeks_fd(gbm, payoff, discount_factor)
-        }
-        #[cfg(not(feature = "enzyme-ad"))]
-        {
-            self.compute_greeks_fd(gbm, payoff, discount_factor)
-        }
-    }
+/// Computes Delta using finite differences (central difference).
+fn compute_delta_fd(
+    pricer: &mut MonteCarloPricer,
+    gbm: GbmParams,
+    payoff: PayoffParams,
+    discount_factor: f64,
+) -> f64 {
+    let bump = (0.01 * gbm.spot).max(0.01);
+    let seed = pricer.current_seed();
 
-    /// Computes Delta using finite differences (central difference).
-    fn compute_delta_fd(
-        &mut self,
-        gbm: GbmParams,
-        payoff: PayoffParams,
-        discount_factor: f64,
-    ) -> f64 {
-        let bump = (0.01 * gbm.spot).max(0.01);
-        let seed = self.rng.seed();
+    // Price at S + bump
+    pricer.reset_with_seed(seed);
+    let gbm_up = GbmParams {
+        spot: gbm.spot + bump,
+        ..gbm
+    };
+    let price_up = pricer.price_european(gbm_up, payoff, discount_factor).price;
 
-        // Price at S + bump
-        self.reset_with_seed(seed);
-        let gbm_up = GbmParams {
-            spot: gbm.spot + bump,
-            ..gbm
-        };
-        let price_up = self.price_european(gbm_up, payoff, discount_factor).price;
+    // Price at S - bump
+    pricer.reset_with_seed(seed);
+    let gbm_down = GbmParams {
+        spot: gbm.spot - bump,
+        ..gbm
+    };
+    let price_down = pricer.price_european(gbm_down, payoff, discount_factor).price;
 
-        // Price at S - bump
-        self.reset_with_seed(seed);
-        let gbm_down = GbmParams {
-            spot: gbm.spot - bump,
-            ..gbm
-        };
-        let price_down = self.price_european(gbm_down, payoff, discount_factor).price;
+    (price_up - price_down) / (2.0 * bump)
+}
 
-        (price_up - price_down) / (2.0 * bump)
-    }
+/// Computes Gamma using finite differences.
+fn compute_gamma_fd(
+    pricer: &mut MonteCarloPricer,
+    gbm: GbmParams,
+    payoff: PayoffParams,
+    discount_factor: f64,
+) -> f64 {
+    let bump = (0.01 * gbm.spot).max(0.01);
+    let seed = pricer.current_seed();
 
-    /// Computes Gamma using finite differences.
-    fn compute_gamma_fd(
-        &mut self,
-        gbm: GbmParams,
-        payoff: PayoffParams,
-        discount_factor: f64,
-    ) -> f64 {
-        let bump = (0.01 * gbm.spot).max(0.01);
-        let seed = self.rng.seed();
+    // Price at S
+    pricer.reset_with_seed(seed);
+    let price_mid = pricer.price_european(gbm, payoff, discount_factor).price;
 
-        // Price at S
-        self.reset_with_seed(seed);
-        let price_mid = self.price_european(gbm, payoff, discount_factor).price;
+    // Price at S + bump
+    pricer.reset_with_seed(seed);
+    let gbm_up = GbmParams {
+        spot: gbm.spot + bump,
+        ..gbm
+    };
+    let price_up = pricer.price_european(gbm_up, payoff, discount_factor).price;
 
-        // Price at S + bump
-        self.reset_with_seed(seed);
-        let gbm_up = GbmParams {
-            spot: gbm.spot + bump,
-            ..gbm
-        };
-        let price_up = self.price_european(gbm_up, payoff, discount_factor).price;
+    // Price at S - bump
+    pricer.reset_with_seed(seed);
+    let gbm_down = GbmParams {
+        spot: gbm.spot - bump,
+        ..gbm
+    };
+    let price_down = pricer.price_european(gbm_down, payoff, discount_factor).price;
 
-        // Price at S - bump
-        self.reset_with_seed(seed);
-        let gbm_down = GbmParams {
-            spot: gbm.spot - bump,
-            ..gbm
-        };
-        let price_down = self.price_european(gbm_down, payoff, discount_factor).price;
+    (price_up - 2.0 * price_mid + price_down) / (bump * bump)
+}
 
-        (price_up - 2.0 * price_mid + price_down) / (bump * bump)
-    }
+/// Computes Vega using finite differences.
+fn compute_vega_fd(
+    pricer: &mut MonteCarloPricer,
+    gbm: GbmParams,
+    payoff: PayoffParams,
+    discount_factor: f64,
+) -> f64 {
+    let bump = 0.01;
+    let seed = pricer.current_seed();
 
-    /// Computes Vega using finite differences.
-    fn compute_vega_fd(
-        &mut self,
-        gbm: GbmParams,
-        payoff: PayoffParams,
-        discount_factor: f64,
-    ) -> f64 {
-        let bump = 0.01;
-        let seed = self.rng.seed();
+    // Price at vol + bump
+    pricer.reset_with_seed(seed);
+    let gbm_up = GbmParams {
+        volatility: gbm.volatility + bump,
+        ..gbm
+    };
+    let price_up = pricer.price_european(gbm_up, payoff, discount_factor).price;
 
-        // Price at vol + bump
-        self.reset_with_seed(seed);
-        let gbm_up = GbmParams {
-            volatility: gbm.volatility + bump,
-            ..gbm
-        };
-        let price_up = self.price_european(gbm_up, payoff, discount_factor).price;
+    // Price at vol - bump
+    pricer.reset_with_seed(seed);
+    let gbm_down = GbmParams {
+        volatility: (gbm.volatility - bump).max(0.001),
+        ..gbm
+    };
+    let price_down = pricer.price_european(gbm_down, payoff, discount_factor).price;
 
-        // Price at vol - bump
-        self.reset_with_seed(seed);
-        let gbm_down = GbmParams {
-            volatility: (gbm.volatility - bump).max(0.001),
-            ..gbm
-        };
-        let price_down = self.price_european(gbm_down, payoff, discount_factor).price;
+    (price_up - price_down) / (2.0 * bump)
+}
 
-        (price_up - price_down) / (2.0 * bump)
-    }
+/// Computes Theta using finite differences.
+fn compute_theta_fd(
+    pricer: &mut MonteCarloPricer,
+    gbm: GbmParams,
+    payoff: PayoffParams,
+    discount_factor: f64,
+) -> f64 {
+    let bump = 1.0 / 252.0; // 1 day
+    let seed = pricer.current_seed();
 
-    /// Computes Theta using finite differences.
-    fn compute_theta_fd(
-        &mut self,
-        gbm: GbmParams,
-        payoff: PayoffParams,
-        discount_factor: f64,
-    ) -> f64 {
-        let bump = 1.0 / 252.0; // 1 day
-        let seed = self.rng.seed();
+    // Price at T
+    pricer.reset_with_seed(seed);
+    let price_now = pricer.price_european(gbm, payoff, discount_factor).price;
 
-        // Price at T
-        self.reset_with_seed(seed);
-        let price_now = self.price_european(gbm, payoff, discount_factor).price;
+    // Price at T - bump
+    pricer.reset_with_seed(seed);
+    let gbm_short = GbmParams {
+        maturity: (gbm.maturity - bump).max(0.001),
+        ..gbm
+    };
+    let price_short = pricer
+        .price_european(gbm_short, payoff, discount_factor)
+        .price;
 
-        // Price at T - bump
-        self.reset_with_seed(seed);
-        let gbm_short = GbmParams {
-            maturity: (gbm.maturity - bump).max(0.001),
-            ..gbm
-        };
-        let price_short = self
-            .price_european(gbm_short, payoff, discount_factor)
-            .price;
+    // Theta is typically negative (time decay)
+    // Convention: dV/dT where T decreases
+    -(price_now - price_short) / bump
+}
 
-        // Theta is typically negative (time decay)
-        // Convention: dV/dT where T decreases
-        -(price_now - price_short) / bump
-    }
+/// Computes Rho using finite differences.
+fn compute_rho_fd(
+    pricer: &mut MonteCarloPricer,
+    gbm: GbmParams,
+    payoff: PayoffParams,
+    discount_factor: f64,
+) -> f64 {
+    let bump = 0.0001; // 1 basis point
+    let seed = pricer.current_seed();
 
-    /// Computes Rho using finite differences.
-    fn compute_rho_fd(
-        &mut self,
-        gbm: GbmParams,
-        payoff: PayoffParams,
-        discount_factor: f64,
-    ) -> f64 {
-        let bump = 0.0001; // 1 basis point
-        let seed = self.rng.seed();
+    // Price at r + bump (with adjusted discount factor)
+    pricer.reset_with_seed(seed);
+    let gbm_up = GbmParams {
+        rate: gbm.rate + bump,
+        ..gbm
+    };
+    let df_up = discount_factor * (-bump * gbm.maturity).exp();
+    let price_up = pricer.price_european(gbm_up, payoff, df_up).price;
 
-        // Price at r + bump (with adjusted discount factor)
-        self.reset_with_seed(seed);
-        let gbm_up = GbmParams {
-            rate: gbm.rate + bump,
-            ..gbm
-        };
-        let df_up = discount_factor * (-bump * gbm.maturity).exp();
-        let price_up = self.price_european(gbm_up, payoff, df_up).price;
+    // Price at r - bump
+    pricer.reset_with_seed(seed);
+    let gbm_down = GbmParams {
+        rate: gbm.rate - bump,
+        ..gbm
+    };
+    let df_down = discount_factor * (bump * gbm.maturity).exp();
+    let price_down = pricer.price_european(gbm_down, payoff, df_down).price;
 
-        // Price at r - bump
-        self.reset_with_seed(seed);
-        let gbm_down = GbmParams {
-            rate: gbm.rate - bump,
-            ..gbm
-        };
-        let df_down = discount_factor * (bump * gbm.maturity).exp();
-        let price_down = self.price_european(gbm_down, payoff, df_down).price;
-
-        // Scaled to 1% rate move
-        (price_up - price_down) / (2.0 * bump) * 0.01
-    }
+    // Scaled to 1% rate move
+    (price_up - price_down) / (2.0 * bump) * 0.01
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mc::MonteCarloConfig;
+    use pricer_pricing::mc::MonteCarloConfig;
 
     fn create_pricer() -> MonteCarloPricer {
         let config = MonteCarloConfig::builder()

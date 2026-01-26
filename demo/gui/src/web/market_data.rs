@@ -19,7 +19,7 @@ use std::{
 
 use serde::Deserialize;
 
-use super::market_types::{
+use super::handlers::market::{
     ConventionField, ConventionResponse, ConventionSummary, ConventionsListResponse,
     InstrumentResponse, MarketRateDetailResponse, MarketRateQuery, MarketRateResponse,
     MarketRatesListResponse,

@@ -28,6 +28,9 @@
 #![allow(clippy::needless_borrows_for_generic_args)]
 #![allow(clippy::no_effect_underscore_binding)]
 #![allow(clippy::cast_possible_wrap)]
+// Enzyme AD: Enable autodiff feature when enzyme-ad feature is active
+// This requires nightly Rust (nightly-2025-01-15) with Enzyme LLVM plugin
+#![cfg_attr(feature = "enzyme-ad", feature(autodiff))]
 
 //! # Pricer Risk (L4: Application)
 //!
@@ -120,6 +123,12 @@
 #![deny(rustdoc::private_intra_doc_links)]
 
 pub mod demo;
+/// Enzyme autodiff bindings for risk calculations.
+///
+/// This module provides the interface for Enzyme LLVM-level automatic
+/// differentiation. Enzyme operates at the LLVM IR level, enabling
+/// high-performance gradient computation for financial derivative pricing.
+pub mod enzyme;
 pub mod engine;
 pub mod exposure;
 pub mod greeks;
@@ -178,3 +187,5 @@ pub use xva::{
     compute_fca, compute_fva, generate_flat_discount_factors, CounterpartyXva, FundingParams,
     NettingSetXva, OwnCreditParams, PortfolioXva, XvaCalculator, XvaConfig, XvaError,
 };
+// Enzyme AD types
+pub use enzyme::{gradient, gradient_with_step, ADMode, Activity};

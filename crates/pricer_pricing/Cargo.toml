@@ -17,9 +17,6 @@ infra_master = { path = "../infra_master", optional = true, features = ["serde"]
 # Infra configuration for config-driven pricing (always enabled for BumpSizes)
 infra_config = { path = "../infra_config" }
 
-# LLVM 18 bindings for Enzyme support
-llvm-sys = { version = "180", features = ["prefer-dynamic"], optional = true }
-
 # Basic numeric traits
 num-traits.workspace = true
 
@@ -66,8 +63,6 @@ harness = false
 default = []
 # Phase 4: L1/L2 integration for smoothing functions, YieldCurve, Instrument
 l1l2-integration = ["dep:pricer_core", "dep:pricer_models", "dep:infra_master", "dep:chrono"]
-# Enzyme AD feature for actual Enzyme integration (works with or without l1l2-integration)
-enzyme-ad = ["dep:llvm-sys"]
 # Serialization support for GreeksResult
 serde = ["dep:serde", "dep:serde_json"]
 

@@ -100,11 +100,6 @@
 //!   system (enzyme-ad feature)
 //! - **Optional L1/L2**: Use `--features l1l2-integration` to enable
 //!   pricer_core/pricer_models
-// Enzyme AD: Enable autodiff feature when enzyme-ad feature is active
-// This requires nightly Rust (nightly-2025-01-15) with Enzyme LLVM plugin
-// Requirement 1.1: #![feature(autodiff)] を有効化する仕組み
-// Requirement 1.2: enzyme-ad feature が無効時は stable Rust でコンパイル可能
-#![cfg_attr(feature = "enzyme-ad", feature(autodiff))]
 #![deny(missing_docs)]
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(rustdoc::private_intra_doc_links)]
@@ -113,12 +108,6 @@
 
 // Phase 3.0: Core modules
 pub mod verify;
-
-// Phase 3.0: Enzyme autodiff infrastructure (placeholder implementation)
-pub mod enzyme;
-
-// Phase 3.0: Enzyme gradient verification tests
-mod verify_enzyme;
 
 // Phase 4: L1/L2 integration tests (conditional compilation)
 #[cfg(all(test, feature = "l1l2-integration"))]
@@ -156,7 +145,6 @@ pub mod graph;
 pub mod generic_pricer;
 
 // Re-export commonly used items for convenience
-pub use enzyme::{gradient, gradient_with_step, ADMode, Activity};
 pub use graph::{
     ComputationGraph, GraphBuilder, GraphEdge, GraphError, GraphExtractable, GraphMetadata,
     GraphNode, GraphNodeUpdate, NodeGroup, NodeType, SimpleGraphExtractor,

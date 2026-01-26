@@ -13,7 +13,7 @@
 //! # Usage
 //!
 //! ```rust
-//! use pricer_pricing::enzyme::wrappers::{price_european_delta, price_european_greeks};
+//! use pricer_risk::enzyme::wrappers::{price_european_delta, price_european_greeks};
 //!
 //! // Forward mode: compute Delta
 //! let (price, delta) = price_european_delta(100.0, 100.0, 0.05, 0.2, 1.0);
