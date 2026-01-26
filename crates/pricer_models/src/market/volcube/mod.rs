@@ -41,6 +41,7 @@ mod error;
 pub mod graph;
 mod interpolator;
 mod lazy_evaluator;
+mod loader_convert;
 mod quote;
 mod sabr_surface;
 mod sensitivity_path;
@@ -92,6 +93,11 @@ pub use interpolator::{
 pub use lazy_evaluator::{
     CalibratedSlice, LazyEvaluatorStats, LazyEvaluatorStatsSnapshot, QuoteUpdateListener,
     SliceCacheState, SliceKey, VolLazyEvaluator,
+};
+pub use loader_convert::{
+    convert_capfloor_csv_rows, convert_json_quotes, convert_swaption_csv_rows, parse_currency,
+    parse_expiry_to_date, parse_quote_type, parse_strike, parse_tenor_to_years,
+    parse_underlying_index, ConversionError, ConversionResult, ToVolQuote, ToVolQuoteSet,
 };
 pub use quote::{
     vol_quote_to_instrument, Currency, GridStats, QuoteType, Tenor, UnderlyingIndex, VolQuote,

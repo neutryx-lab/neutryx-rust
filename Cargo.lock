@@ -36,6 +36,7 @@ dependencies = [
  "anyhow",
  "approx",
  "arrow",
+ "chrono",
  "csv",
  "glob",
  "infra_master",

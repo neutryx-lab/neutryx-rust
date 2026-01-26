@@ -27,6 +27,9 @@ anyhow.workspace = true
 # Serialisation
 serde = { workspace = true }
 
+# Date/time handling
+chrono.workspace = true
+
 # Parquet support (optional)
 parquet = { version = "54", optional = true }
 arrow = { version = "54", optional = true }

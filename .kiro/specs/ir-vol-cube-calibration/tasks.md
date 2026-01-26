@@ -185,13 +185,13 @@
   - Vegaと同時に計算可能なAADパスを構築
   - _Requirements: 7.9, 7.10_
 
-- [ ] 13. AAD検証とsmooth approximation
-- [ ] 13.1 bump-and-revalueとのクロス検証を実装する
+- [x] 13. AAD検証とsmooth approximation
+- [x] 13.1 bump-and-revalueとのクロス検証を実装する
   - 数値微分との比較検証機能を追加
   - 許容誤差範囲内の一致を確認
   - _Requirements: 7.6_
 
-- [ ] 13.2 不連続点でのsmooth approximationを適用する
+- [x] 13.2 不連続点でのsmooth approximationを適用する
   - 微分が不連続点を通過する場合の平滑化を実装
   - 既存pricer_core::math::smoothingを活用
   - _Requirements: 7.7_

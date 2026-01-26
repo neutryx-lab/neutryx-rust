@@ -1087,14 +1087,14 @@ pub async fn calibrate_surface(
 
     // Create SimpleFxCurve using interest rate parity
     let fx_curve: Arc<dyn FxCurve<f64> + Send + Sync> = Arc::new(SimpleFxCurve::new(
-        currency_pair.clone(),
+        currency_pair,
         request.spot,
         domestic_curve,
         foreign_curve,
     ));
 
     // Build the FxVolSurfaceBuilder with quotes
-    let mut builder = FxVolSurfaceBuilder::<f64>::new(currency_pair.clone())
+    let mut builder = FxVolSurfaceBuilder::<f64>::new(currency_pair)
         .with_reference_date(reference_date)
         .with_fx_curve(fx_curve.clone())
         .with_sabr(request.sabr_beta);

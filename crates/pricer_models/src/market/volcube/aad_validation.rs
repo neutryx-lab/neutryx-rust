@@ -196,18 +196,18 @@ impl ValidationReport {
     /// レポートを完成させる。
     pub fn finalize(&mut self) {
         if self.total_tests > 0 {
-            self.mean_relative_error = self.point_validations
+            self.mean_relative_error = self
+                .point_validations
                 .iter()
                 .map(|p| p.relative_error)
-                .sum::<f64>() / self.total_tests as f64;
+                .sum::<f64>()
+                / self.total_tests as f64;
         }
         self.overall_passed = self.failed_tests == 0;
     }
 
     /// 検証がパスしたかどうか。
-    pub fn is_valid(&self) -> bool {
-        self.overall_passed
-    }
+    pub fn is_valid(&self) -> bool { self.overall_passed }
 
     /// パス率を取得。
     pub fn pass_rate(&self) -> f64 {
@@ -220,7 +220,10 @@ impl ValidationReport {
 
     /// 失敗した点を取得。
     pub fn failed_points(&self) -> Vec<&PointValidation> {
-        self.point_validations.iter().filter(|p| !p.passed).collect()
+        self.point_validations
+            .iter()
+            .filter(|p| !p.passed)
+            .collect()
     }
 }
 
@@ -282,9 +285,7 @@ impl AADCrossValidator {
     }
 
     /// 許容誤差を取得。
-    pub fn tolerance(&self) -> f64 {
-        self.tolerance
-    }
+    pub fn tolerance(&self) -> f64 { self.tolerance }
 
     /// 単一点でのVegaを検証。
     ///
@@ -327,7 +328,8 @@ impl AADCrossValidator {
     ///
     /// # Arguments
     ///
-    /// * `points` - 検証点リスト [(expiry, tenor, strike, base_vol, aad_vega), ...]
+    /// * `points` - 検証点リスト [(expiry, tenor, strike, base_vol, aad_vega),
+    ///   ...]
     /// * `pricing_fn` - 価格計算関数
     ///
     /// # Returns
@@ -344,9 +346,8 @@ impl AADCrossValidator {
         let mut report = ValidationReport::new(self.tolerance);
 
         for &(expiry, tenor, strike, base_vol, aad_vega) in points {
-            let validation = self.validate_point(
-                expiry, tenor, strike, base_vol, &pricing_fn, aad_vega
-            );
+            let validation =
+                self.validate_point(expiry, tenor, strike, base_vol, &pricing_fn, aad_vega);
             report.add_point(validation);
         }
 
@@ -372,9 +373,7 @@ impl AADCrossValidator {
 }
 
 impl Default for AADCrossValidator {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 // =============================================================================
@@ -446,13 +445,7 @@ impl DiscontinuityDetector {
     /// * `strike` - ストライク
     /// * `expiry` - 満期
     /// * `tenor` - テナー
-    pub fn detect_atm(
-        &mut self,
-        forward: f64,
-        strike: f64,
-        expiry: f64,
-        tenor: f64,
-    ) {
+    pub fn detect_atm(&mut self, forward: f64, strike: f64, expiry: f64, tenor: f64) {
         let moneyness = (strike / forward - 1.0).abs();
         if moneyness < self.threshold {
             self.discontinuities.push(DiscontinuityPoint {
@@ -465,13 +458,7 @@ impl DiscontinuityDetector {
     }
 
     /// Digital payoff不連続点を検出。
-    pub fn detect_digital(
-        &mut self,
-        barrier: f64,
-        spot: f64,
-        expiry: f64,
-        tenor: f64,
-    ) {
+    pub fn detect_digital(&mut self, barrier: f64, spot: f64, expiry: f64, tenor: f64) {
         let distance = (spot / barrier - 1.0).abs();
         if distance < self.threshold {
             self.discontinuities.push(DiscontinuityPoint {
@@ -484,19 +471,13 @@ impl DiscontinuityDetector {
     }
 
     /// 検出された不連続点を取得。
-    pub fn discontinuities(&self) -> &[DiscontinuityPoint] {
-        &self.discontinuities
-    }
+    pub fn discontinuities(&self) -> &[DiscontinuityPoint] { &self.discontinuities }
 
     /// 不連続点が検出されたかどうか。
-    pub fn has_discontinuities(&self) -> bool {
-        !self.discontinuities.is_empty()
-    }
+    pub fn has_discontinuities(&self) -> bool { !self.discontinuities.is_empty() }
 
     /// クリア。
-    pub fn clear(&mut self) {
-        self.discontinuities.clear();
-    }
+    pub fn clear(&mut self) { self.discontinuities.clear(); }
 }
 
 // =============================================================================
@@ -537,8 +518,9 @@ mod tests {
     fn test_point_validation_failure() {
         let validation = PointValidation::new(1.0, 5.0, 0.03, 100.0, 90.0, 0.01);
 
-        assert!(!validation.passed); // 10% error > 1% tolerance
-        assert!((validation.relative_error - 0.1).abs() < 0.01);
+        assert!(!validation.passed); // ~11% error > 1% tolerance
+                                     // relative_error = abs(100 - 90) / 90 ≈ 0.1111
+        assert!((validation.relative_error - 10.0 / 90.0).abs() < 0.01);
     }
 
     #[test]
@@ -618,7 +600,10 @@ mod tests {
 
         assert!(detector.has_discontinuities());
         assert_eq!(detector.discontinuities().len(), 1);
-        assert_eq!(detector.discontinuities()[0].kind, DiscontinuityKind::AtmPayoff);
+        assert_eq!(
+            detector.discontinuities()[0].kind,
+            DiscontinuityKind::AtmPayoff
+        );
     }
 
     #[test]
@@ -639,7 +624,10 @@ mod tests {
         detector.detect_digital(100.0, 100.5, 1.0, 5.0);
 
         assert!(detector.has_discontinuities());
-        assert_eq!(detector.discontinuities()[0].kind, DiscontinuityKind::DigitalPayoff);
+        assert_eq!(
+            detector.discontinuities()[0].kind,
+            DiscontinuityKind::DigitalPayoff
+        );
     }
 
     #[test]

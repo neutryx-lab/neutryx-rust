@@ -40,6 +40,7 @@ mod csa;
 mod csv_loader;
 mod error;
 mod json_loader;
+mod vol_surface_loader;
 
 pub use csa::{CsaTerms, NettingSet};
 pub use csv_loader::CsvLoader;
@@ -47,6 +48,10 @@ pub use error::LoaderError;
 pub use json_loader::{
     CsaLoader, CurveData, CurvePoint, FxSpotData, JsonLoader, MarketData, MarketLoader,
     TradeLoader, VolPoint, VolSurfaceData,
+};
+pub use vol_surface_loader::{
+    parse_expiry_string, parse_tenor_string, CapFloorVolCsvRow, QuoteTypeJson, StrikeValue,
+    SwaptionVolCsvRow, TenorValue, VolQuoteJson, VolQuoteSetJson, VolSurfaceLoader,
 };
 
 /// Prelude module for convenient imports
