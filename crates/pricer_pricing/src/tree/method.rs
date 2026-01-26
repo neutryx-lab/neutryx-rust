@@ -5,6 +5,7 @@ use std::time::Instant;
 use super::{
     binomial::BinomialTree,
     config::{TreeConfig, TreeType},
+    trinomial::TrinomialTree,
 };
 use crate::generic_pricer::PricingError;
 
@@ -116,11 +117,40 @@ impl TreeMethod {
                 })
             }
             TreeType::Trinomial => {
-                // Trinomial tree not yet implemented
-                Err(PricingError::unsupported_method(
-                    "Trinomial",
-                    "Trinomial tree not yet implemented",
-                ))
+                let tree = TrinomialTree::new(
+                    spot,
+                    strike,
+                    expiry,
+                    rate,
+                    volatility,
+                    self.config.num_steps,
+                    is_call,
+                    is_american,
+                )
+                .map_err(|e| PricingError::InvalidInput {
+                    reason: e.to_string(),
+                })?;
+
+                let pv = tree.price();
+
+                let greeks = if self.config.compute_greeks {
+                    Some(TreeGreeks {
+                        delta: Some(tree.delta()),
+                        gamma: Some(tree.gamma()),
+                    })
+                } else {
+                    None
+                };
+
+                let elapsed = start.elapsed();
+
+                Ok(TreePricingResult {
+                    pv,
+                    greeks,
+                    num_steps: self.config.num_steps,
+                    tree_type: TreeType::Trinomial,
+                    computation_time_ns: elapsed.as_nanos() as u64,
+                })
             }
         }
     }
@@ -165,10 +195,26 @@ impl TreeMethod {
                     gamma: Some(tree.gamma()),
                 })
             }
-            TreeType::Trinomial => Err(PricingError::unsupported_method(
-                "Trinomial",
-                "Trinomial tree not yet implemented",
-            )),
+            TreeType::Trinomial => {
+                let tree = TrinomialTree::new(
+                    spot,
+                    strike,
+                    expiry,
+                    rate,
+                    volatility,
+                    self.config.num_steps,
+                    is_call,
+                    is_american,
+                )
+                .map_err(|e| PricingError::InvalidInput {
+                    reason: e.to_string(),
+                })?;
+
+                Ok(TreeGreeks {
+                    delta: Some(tree.delta()),
+                    gamma: Some(tree.gamma()),
+                })
+            }
         }
     }
 
@@ -265,19 +311,43 @@ mod tests {
     }
 
     #[test]
-    fn test_tree_method_trinomial_not_implemented() {
+    fn test_tree_method_trinomial_pricing() {
         let config = TreeConfig::builder()
             .tree_type(TreeType::Trinomial)
+            .num_steps(100)
             .build()
             .unwrap();
         let method = TreeMethod::new(config);
 
         let result = method.price(100.0, 100.0, 1.0, 0.05, 0.2, true, false);
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("not yet implemented"));
+        assert!(result.is_ok());
+        let result = result.unwrap();
+        // ATM European call should be around 10-12 for these params
+        assert!(result.pv > 8.0 && result.pv < 15.0);
+        assert_eq!(result.tree_type, TreeType::Trinomial);
+        assert!(result.greeks.is_some());
+    }
+
+    #[test]
+    fn test_tree_method_trinomial_greeks() {
+        let config = TreeConfig::builder()
+            .tree_type(TreeType::Trinomial)
+            .num_steps(100)
+            .compute_greeks(true)
+            .build()
+            .unwrap();
+        let method = TreeMethod::new(config);
+
+        let greeks = method
+            .compute_greeks(100.0, 100.0, 1.0, 0.05, 0.2, true, false)
+            .unwrap();
+
+        assert!(greeks.delta.is_some());
+        assert!(greeks.gamma.is_some());
+        // Call delta should be positive
+        assert!(greeks.delta.unwrap() > 0.0);
+        // Gamma should be positive
+        assert!(greeks.gamma.unwrap() > 0.0);
     }
 
     #[test]

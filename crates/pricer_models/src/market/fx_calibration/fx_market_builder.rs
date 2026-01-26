@@ -749,8 +749,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let diag = market.diagnostics();
-        assert!(diag.build_time_ms >= 0);
+        let _diag = market.diagnostics();
     }
 
     #[test]

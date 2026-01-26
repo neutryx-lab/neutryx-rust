@@ -114,6 +114,40 @@ pub enum MarketDataError {
         /// The index that is not supported
         index: String,
     },
+
+    // ========================================
+    // Index-Keyed Access Errors (Req 1.4, 2.6, 3.5)
+    // ========================================
+
+    /// Index not found in the market.
+    ///
+    /// Returned when attempting to access market data for an index
+    /// that has not been registered in the IndexedMarket.
+    #[error("Index not found: {index}")]
+    IndexNotFound {
+        /// String representation of the index that was not found
+        index: String,
+    },
+
+    /// Curve not built for the specified index.
+    ///
+    /// Returned when the curve for an index exists in mapping but
+    /// has not been constructed yet (e.g., bootstrapping not complete).
+    #[error("Curve not built for index: {index}")]
+    CurveNotBuilt {
+        /// String representation of the index
+        index: String,
+    },
+
+    /// VolCube not calibrated for the specified index.
+    ///
+    /// Returned when the volatility cube for an index exists but
+    /// calibration has not been completed.
+    #[error("VolCube not calibrated for index: {index}")]
+    VolCubeNotCalibrated {
+        /// String representation of the index
+        index: String,
+    },
 }
 
 impl From<MarketDataError> for PricingError {

@@ -841,14 +841,14 @@ impl CurveDefinition {
     ///     "convention": {
     ///         "fixed_leg": {
     ///             "day_count": "Actual360",
-    ///             "payment_frequency": "Annual",
+    ///             "payment_frequency": "annual",
     ///             "calendar": "NewYork",
     ///             "business_day_convention": "ModifiedFollowing",
     ///             "payment_lag": 2
     ///         },
     ///         "float_leg": {
     ///             "day_count": "Actual360",
-    ///             "payment_frequency": "Annual",
+    ///             "payment_frequency": "annual",
     ///             "calendar": "NewYork",
     ///             "business_day_convention": "ModifiedFollowing",
     ///             "payment_lag": 2
@@ -1350,14 +1350,14 @@ mod tests {
                 "convention": {
                     "fixed_leg": {
                         "day_count": "Actual360",
-                        "payment_frequency": "Annual",
+                        "payment_frequency": "annual",
                         "calendar": "NewYork",
                         "business_day_convention": "ModifiedFollowing",
                         "payment_lag": 2
                     },
                     "float_leg": {
                         "day_count": "Actual360",
-                        "payment_frequency": "Annual",
+                        "payment_frequency": "annual",
                         "calendar": "NewYork",
                         "business_day_convention": "ModifiedFollowing",
                         "payment_lag": 2
@@ -1391,14 +1391,14 @@ mod tests {
                 "convention": {
                     "fixed_leg": {
                         "day_count": "Actual360",
-                        "payment_frequency": "Annual",
+                        "payment_frequency": "annual",
                         "calendar": "NewYork",
                         "business_day_convention": "ModifiedFollowing",
                         "payment_lag": 2
                     },
                     "float_leg": {
                         "day_count": "Actual360",
-                        "payment_frequency": "Annual",
+                        "payment_frequency": "annual",
                         "calendar": "NewYork",
                         "business_day_convention": "ModifiedFollowing",
                         "payment_lag": 2

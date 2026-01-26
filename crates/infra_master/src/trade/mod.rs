@@ -39,6 +39,7 @@ mod cashflow;
 mod direction;
 mod error;
 mod index;
+mod index_requirement;
 mod leg;
 mod payoff;
 mod pricing_instrument;
@@ -59,6 +60,7 @@ pub use cashflow::{Cashflow, CashflowType, DailyAccrual};
 pub use direction::{SwapDirection, TradeDirection};
 pub use error::TradeError;
 pub use index::{IndexObservation, IndexType};
+pub use index_requirement::IndexRequirement;
 pub use instrument::Instrument;
 // Re-export common types from instrument_def
 pub use instrument_def::AssetClass;

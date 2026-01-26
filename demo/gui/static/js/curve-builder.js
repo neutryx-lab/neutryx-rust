@@ -536,7 +536,7 @@ const curveBuilder = {
                     </div>
                     <div class="summary-item">
                         <span class="summary-label">Build Time</span>
-                        <span class="summary-value">${result.buildTimeMs || 0}ms</span>
+                        <span class="summary-value">${Number(result.buildTimeMs || 0).toPrecision(5)}ms</span>
                     </div>
                 </div>
             `;
@@ -792,11 +792,11 @@ const curveBuilder = {
         const discountFactors = data.map(p => p.discountFactor);
         const forwardRates = data.map(p => ((p.forwardRate || 0) * 100));
 
-        // Collect CB meeting point indices for red circle markers
-        const cbMeetingIndices = new Set();
+        // Build annotation objects for CB meeting vertical lines
         console.log('[CurveBuilder] CB Meetings:', cbMeetings);
-        cbMeetings.forEach((meeting) => {
-            // Find the closest data point index
+        const cbAnnotations = {};
+        cbMeetings.forEach((meeting, idx) => {
+            // Find the closest label index
             let closestIdx = 0;
             let minDiff = Infinity;
             data.forEach((d, i) => {
@@ -806,16 +806,21 @@ const curveBuilder = {
                     closestIdx = i;
                 }
             });
-            cbMeetingIndices.add(closestIdx);
             console.log(`[CurveBuilder] CB Meeting "${meeting.label}" mapped to index ${closestIdx} (tenor: ${tenors[closestIdx]})`);
+            cbAnnotations[`cbMeeting${idx}`] = {
+                type: 'line',
+                xMin: closestIdx,
+                xMax: closestIdx,
+                borderColor: 'rgba(239, 68, 68, 0.6)',
+                borderWidth: 1,
+                borderDash: [4, 2],
+                label: {
+                    display: false,
+                    content: meeting.label
+                }
+            };
         });
-
-        // Create point style arrays for CB meeting markers (red circles on meeting dates)
-        const pointRadiusArray = data.map((_, i) => cbMeetingIndices.has(i) ? 6 : 0);
-        const pointBackgroundColorRed = data.map((_, i) => cbMeetingIndices.has(i) ? 'rgba(239, 68, 68, 1)' : 'transparent');
-        const pointBorderColorRed = data.map((_, i) => cbMeetingIndices.has(i) ? 'rgba(239, 68, 68, 1)' : 'transparent');
-
-        console.log('[CurveBuilder] CB Meeting indices for red markers:', [...cbMeetingIndices]);
+        console.log('[CurveBuilder] CB Annotations created:', Object.keys(cbAnnotations).length);
 
         this.chartShort = new Chart(ctx, {
             type: 'line',
@@ -829,9 +834,7 @@ const curveBuilder = {
                         backgroundColor: 'rgba(99, 102, 241, 0.1)',
                         fill: false,
                         tension: 0.1,
-                        pointRadius: pointRadiusArray,
-                        pointBackgroundColor: pointBackgroundColorRed,
-                        pointBorderColor: pointBorderColorRed,
+                        pointRadius: 0,
                         borderWidth: 2,
                         yAxisID: 'y',
                         hidden: true  // Default: show Forward Rates only
@@ -843,9 +846,7 @@ const curveBuilder = {
                         backgroundColor: 'rgba(16, 185, 129, 0.1)',
                         fill: false,
                         tension: 0.1,
-                        pointRadius: pointRadiusArray,
-                        pointBackgroundColor: pointBackgroundColorRed,
-                        pointBorderColor: pointBorderColorRed,
+                        pointRadius: 0,
                         borderWidth: 2,
                         yAxisID: 'y1',
                         hidden: true  // Default: show Forward Rates only
@@ -857,9 +858,7 @@ const curveBuilder = {
                         backgroundColor: 'rgba(245, 158, 11, 0.1)',
                         fill: false,
                         tension: 0.1,
-                        pointRadius: pointRadiusArray,
-                        pointBackgroundColor: pointBackgroundColorRed,
-                        pointBorderColor: pointBorderColorRed,
+                        pointRadius: 0,
                         borderWidth: 2,
                         yAxisID: 'y',
                         hidden: false  // Default: show Forward Rates
@@ -885,10 +884,16 @@ const curveBuilder = {
                     legend: {
                         display: true,
                         position: 'top',
-                        labels: { color: '#8b8b9a', usePointStyle: true, boxWidth: 8, font: { size: 10 } }
+                        labels: {
+                            color: '#8b8b9a',
+                            usePointStyle: false,
+                            boxWidth: 20,
+                            boxHeight: 2,
+                            font: { size: 10 }
+                        }
                     },
                     annotation: {
-                        annotations: annotations
+                        annotations: cbAnnotations
                     },
                     tooltip: {
                         backgroundColor: 'rgba(26, 26, 46, 0.95)',
@@ -1018,7 +1023,13 @@ const curveBuilder = {
                     legend: {
                         display: true,
                         position: 'top',
-                        labels: { color: '#8b8b9a', usePointStyle: true, boxWidth: 8, font: { size: 10 } }
+                        labels: {
+                            color: '#8b8b9a',
+                            usePointStyle: false,
+                            boxWidth: 20,
+                            boxHeight: 2,
+                            font: { size: 10 }
+                        }
                     }
                 },
                 scales: {
@@ -1090,7 +1101,7 @@ const curveBuilder = {
     },
 
     /**
-     * Toggles visibility of CB Meeting annotations on the short-term chart.
+     * Toggles visibility of CB Meeting vertical lines on the short-term chart.
      */
     toggleCbMeetingAnnotations(show) {
         if (!this.chartShort?.options?.plugins?.annotation?.annotations) return;
