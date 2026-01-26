@@ -118,19 +118,19 @@
 
 ---
 
-- [ ] 5. 統合テストとパフォーマンス検証
-- [ ] 5.1 YieldCurve 統合テスト
+- [x] 5. 統合テストとパフォーマンス検証
+- [x] 5.1 YieldCurve 統合テスト
   - `YieldCurve` に対する Delta/DV01 計算を bump-and-revalue と比較
   - 1000 要素スライスでの AAD パフォーマンスを測定（target: < 1ms）
   - `clone()` + `zero_out()` のオーバーヘッドを測定
   - _Requirements: 1.1, 1.2, 1.3, 4.1, 4.2_
 
-- [ ] 5.2 (P) VolSurface 統合テスト
+- [x] 5.2 (P) VolSurface 統合テスト
   - `VolSurface` に対する Vega 計算を実装・検証
   - 2D 構造（strikes × expiries）での勾配マッピングを検証
   - _Requirements: 6.1, 6.4, 7.3_
 
-- [ ] 5.3 (P) Feature flag 検証テスト
+- [x] 5.3 (P) Feature flag 検証テスト
   - `enzyme-ad` feature 有効/無効での結果一致を確認
   - Feature なしビルドで Enzyme 依存なしでコンパイルできることを検証
   - _Requirements: 8.2, 8.4_

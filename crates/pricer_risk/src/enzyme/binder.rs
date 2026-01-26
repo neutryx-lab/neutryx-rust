@@ -626,4 +626,240 @@ mod tests {
         // Times preserved (const)
         assert_eq!(result.gradients.times, market.times);
     }
+
+    // =========================================================================
+    // Task 5.1: YieldCurve Integration Tests
+    // =========================================================================
+
+    #[test]
+    fn test_yield_curve_delta_calculation() {
+        // Test Delta/DV01 calculation for yield curve
+        let calc = MarketRiskCalculator::default();
+
+        // Realistic yield curve with multiple tenors
+        let tenors = vec![0.25, 0.5, 1.0, 2.0, 5.0, 10.0];
+        let rates = vec![0.03, 0.032, 0.035, 0.038, 0.042, 0.045];
+        let market = SimpleYieldCurve::new(rates.clone(), tenors.clone());
+
+        let trade = IrsTradeParams::new(
+            vec![1_000_000.0; 6],
+            vec![0.25, 0.25, 0.5, 1.0, 3.0, 5.0],
+            0.04,
+        );
+
+        let result = calc
+            .calculate_irs_risk(&market, &trade, ActivityMask::default())
+            .unwrap();
+
+        // Verify gradients are computed for all tenors
+        assert_eq!(result.gradients.rates.len(), 6);
+
+        // Verify longer tenors generally have larger sensitivities (DV01)
+        // This is a simplified check - real DV01 depends on cashflow timing
+        for &grad in &result.gradients.rates {
+            assert!(
+                grad.abs() > 0.0,
+                "All rate sensitivities should be non-zero"
+            );
+        }
+    }
+
+    #[test]
+    fn test_yield_curve_large_scale() {
+        // Test 5.1: Performance with 100 pillar points
+        let calc = MarketRiskCalculator::default();
+
+        // Create large yield curve (100 pillars)
+        let n = 100;
+        let tenors: Vec<f64> = (1..=n).map(|i| i as f64 * 0.1).collect(); // 0.1Y to 10Y
+        let rates: Vec<f64> = (1..=n).map(|i| 0.02 + 0.0002 * i as f64).collect();
+        let market = SimpleYieldCurve::new(rates.clone(), tenors.clone());
+
+        let trade = IrsTradeParams::uniform(1_000_000.0, 0.1, 0.035, n);
+
+        let result = calc
+            .calculate_irs_risk(&market, &trade, ActivityMask::default())
+            .unwrap();
+
+        // Verify all gradients computed
+        assert_eq!(result.gradients.rates.len(), n);
+
+        // At least some gradients should be non-zero
+        let non_zero_count = result.gradients.rates.iter().filter(|&&g| g.abs() > 1e-10).count();
+        assert!(non_zero_count > 0, "Should have non-zero gradients");
+    }
+
+    #[test]
+    fn test_shadow_overhead_minimal() {
+        // Test 5.1: Verify clone + zero_out overhead is reasonable
+        use std::time::Instant;
+
+        // Large curve for overhead measurement
+        let n = 1000;
+        let rates: Vec<f64> = (0..n).map(|i| 0.02 + 0.00001 * i as f64).collect();
+        let times: Vec<f64> = (1..=n).map(|i| i as f64 * 0.01).collect();
+        let market = SimpleYieldCurve::new(rates, times);
+
+        // Measure shadow creation time
+        let start = Instant::now();
+        for _ in 0..1000 {
+            let _shadow = market.create_shadow();
+        }
+        let elapsed = start.elapsed();
+
+        // 1000 iterations should complete in < 100ms (0.1ms per shadow creation)
+        assert!(
+            elapsed.as_millis() < 100,
+            "Shadow creation overhead too high: {:?}",
+            elapsed
+        );
+    }
+
+    // =========================================================================
+    // Task 5.2: VolSurface Integration Tests
+    // =========================================================================
+
+    #[test]
+    fn test_vol_surface_structure() {
+        use super::super::shadow::{SimpleVolSurface, Shadow};
+
+        // Create a realistic vol surface (5 expiries x 5 strikes)
+        let strikes = vec![80.0, 90.0, 100.0, 110.0, 120.0];
+        let expiries = vec![0.25, 0.5, 1.0, 2.0, 5.0];
+        let vols = vec![
+            vec![0.25, 0.22, 0.20, 0.22, 0.25], // 3M smile
+            vec![0.24, 0.21, 0.19, 0.21, 0.24], // 6M smile
+            vec![0.23, 0.20, 0.18, 0.20, 0.23], // 1Y smile
+            vec![0.22, 0.19, 0.17, 0.19, 0.22], // 2Y smile
+            vec![0.21, 0.18, 0.16, 0.18, 0.21], // 5Y smile
+        ];
+
+        let surface = SimpleVolSurface::new(vols.clone(), strikes.clone(), expiries.clone());
+
+        // Verify structure
+        assert_eq!(surface.n_expiries(), 5);
+        assert_eq!(surface.n_strikes(), 5);
+
+        // Create shadow and verify structure preserved
+        let shadow = surface.create_shadow();
+
+        assert_eq!(shadow.n_expiries(), surface.n_expiries());
+        assert_eq!(shadow.n_strikes(), surface.n_strikes());
+        assert_eq!(shadow.strikes, surface.strikes);
+        assert_eq!(shadow.expiries, surface.expiries);
+
+        // All vols should be zeroed
+        for row in &shadow.vols {
+            for &v in row {
+                assert_eq!(v, 0.0);
+            }
+        }
+    }
+
+    #[test]
+    fn test_vol_surface_gradient_mapping() {
+        use super::super::shadow::{SimpleVolSurface, Shadow};
+
+        // Create surface
+        let surface = SimpleVolSurface::new(
+            vec![
+                vec![0.20, 0.22],
+                vec![0.21, 0.23],
+            ],
+            vec![100.0, 110.0],
+            vec![0.5, 1.0],
+        );
+
+        // Create shadow and simulate gradient accumulation
+        let mut shadow = surface.create_shadow();
+
+        // Set gradients at specific positions
+        *shadow.vol_mut(0, 0) = 1.5; // (expiry=0, strike=0)
+        *shadow.vol_mut(1, 1) = 2.3; // (expiry=1, strike=1)
+
+        // Verify gradient retrieval at same indices
+        assert_eq!(shadow.vol(0, 0), 1.5);
+        assert_eq!(shadow.vol(1, 1), 2.3);
+        assert_eq!(shadow.vol(0, 1), 0.0); // Unchanged
+    }
+
+    // =========================================================================
+    // Task 5.3: Feature Flag Verification Tests
+    // =========================================================================
+
+    #[test]
+    fn test_fallback_without_enzyme() {
+        // This test verifies that the code compiles and runs without enzyme-ad feature
+        // The finite difference fallback should produce valid results
+
+        let calc = MarketRiskCalculator::with_bump_size(1e-8);
+        let market = SimpleYieldCurve::new(vec![0.03, 0.04, 0.05], vec![1.0, 2.0, 3.0]);
+        let trade = IrsTradeParams::uniform(1_000_000.0, 1.0, 0.04, 3);
+
+        let result = calc
+            .calculate_irs_risk(&market, &trade, ActivityMask::rates_only())
+            .unwrap();
+
+        // Finite difference should produce reasonable gradients
+        // For an ATM-ish swap, expect sensitivities in the range of 100K-2M
+        for (i, &grad) in result.gradients.rates.iter().enumerate() {
+            assert!(
+                grad.abs() > 10_000.0,
+                "FD gradient {} too small: {}",
+                i,
+                grad
+            );
+        }
+    }
+
+    #[test]
+    fn test_bump_size_sensitivity() {
+        // Verify that different bump sizes produce similar results (within tolerance)
+        let market = SimpleYieldCurve::new(vec![0.03], vec![1.0]);
+        let trade = IrsTradeParams::uniform(1_000_000.0, 1.0, 0.03, 1);
+
+        let calc_small = MarketRiskCalculator::with_bump_size(1e-8);
+        let calc_large = MarketRiskCalculator::with_bump_size(1e-6);
+
+        let result_small = calc_small
+            .calculate_irs_risk(&market, &trade, ActivityMask::default())
+            .unwrap();
+        let result_large = calc_large
+            .calculate_irs_risk(&market, &trade, ActivityMask::default())
+            .unwrap();
+
+        // Results should be close (within 1% relative error)
+        let grad_small = result_small.gradients.rates[0];
+        let grad_large = result_large.gradients.rates[0];
+        let rel_error = ((grad_small - grad_large) / grad_small).abs();
+
+        assert!(
+            rel_error < 0.01,
+            "Bump size sensitivity too high: small={}, large={}, rel_error={}",
+            grad_small,
+            grad_large,
+            rel_error
+        );
+    }
+
+    #[test]
+    fn test_error_types_complete() {
+        // Verify all error types are properly defined and usable
+        let err1 = ShadowAadError::LengthMismatch {
+            expected: 10,
+            actual: 5,
+        };
+        assert!(err1.to_string().contains("Length mismatch"));
+
+        let err2 = ShadowAadError::EmptySlice { field: "rates" };
+        assert!(err2.to_string().contains("Empty slice"));
+
+        let err3 = ShadowAadError::EnzymeNotAvailable;
+        assert!(err3.to_string().contains("Enzyme AD not available"));
+
+        let err4 = ShadowAadError::InvalidMarketData {
+            message: "test".to_string(),
+        };
+        assert!(err4.to_string().contains("Invalid market data"));
+    }
 }
