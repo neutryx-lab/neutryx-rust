@@ -1695,9 +1695,11 @@ mod tests {
         let vol_atm = sabr_implied_vol(forward, forward, 1.0, 0.04, 0.5, -0.2, 0.3);
         let vol_high = sabr_implied_vol(0.04, forward, 1.0, 0.04, 0.5, -0.2, 0.3);
 
-        // With negative rho, low strikes should have higher vol
+        // With negative rho, SABR produces a skew (not a smile):
+        // - low strikes have higher vol (negative correlation effect)
+        // - high strikes have lower vol
         assert!(vol_low > vol_atm);
-        assert!(vol_high > vol_atm);
+        assert!(vol_high < vol_atm);
     }
 
     #[test]
