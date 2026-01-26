@@ -26,8 +26,8 @@ mod xccy;
 
 pub use index_mapper::IndexMapper;
 pub use linear::LinearProductsCompiler;
-pub use xccy::XCcyCompiler;
 use pricer_core::ir::{CompileError, PricingKernel};
+pub use xccy::XCcyCompiler;
 
 /// Trait for compiling `Trade` definitions into `PricingKernel` IR.
 ///

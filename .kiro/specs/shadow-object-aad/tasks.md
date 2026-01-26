@@ -10,8 +10,8 @@
 
 ## Tasks
 
-- [ ] 1. Shadow Trait 基盤構築
-- [ ] 1.1 Shadow トレイト定義と基本型実装
+- [x] 1. Shadow Trait 基盤構築
+- [x] 1.1 Shadow トレイト定義と基本型実装
   - `Shadow` トレイトを `pricer_risk::enzyme::shadow` モジュールに定義
   - `Clone` bound を持つトレイトとして `zero_out()` と `create_shadow()` メソッドを提供
   - `f64` および `Vec<f64>` に対する `Shadow` 実装を追加

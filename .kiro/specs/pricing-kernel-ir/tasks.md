@@ -124,14 +124,14 @@
 
 ## Phase 2: 拡張
 
-- [ ] 7. X-Ccy・FX対応
-- [ ] 7.1 XCcyCompiler実装
+- [x] 7. X-Ccy・FX対応
+- [x] 7.1 XCcyCompiler実装
   - クロス通貨スワップをPricingKernelにコンパイルする
   - 各レグにFXインデックスIDを割り当て
   - 単一通貨トレードにはダミーFX（fx_index_ids[0]）を割り当て
   - _Requirements: 4.1, 4.3, 4.4_
 
-- [ ] 7.2 コラテラル・ファンディング通貨対応
+- [x] 7.2 コラテラル・ファンディング通貨対応
   - 担保通貨と資金調達通貨の分離をサポートする
   - 割引カーブIDの使い分け
   - _Requirements: 4.5_
@@ -143,8 +143,8 @@
   - フォワードカーブがCMS凸性調整を透過的に返却
   - _Requirements: 5.1, 5.2, 5.4_
 
-- [ ] 9. ScriptKernel（経路依存型）
-- [ ] 9.1 (P) ScriptKernel構造体定義
+- [x] 9. ScriptKernel（経路依存型）
+- [x] 9.1 (P) ScriptKernel構造体定義
   - イベント駆動IR表現構造体を定義する
   - observation_times, ops, constants配列
   - ScriptOp列挙型（CalcFixed, CalcFloat, CheckBarrier, Accumulate, Pay）

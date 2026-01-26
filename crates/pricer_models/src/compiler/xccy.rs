@@ -1,7 +1,8 @@
 //! Cross-currency swap compiler for multi-currency trades.
 //!
 //! This module provides `XCcyCompiler` which compiles Trade structures with
-//! multiple currencies into `PricingKernel` IR with proper FX index assignments.
+//! multiple currencies into `PricingKernel` IR with proper FX index
+//! assignments.
 //!
 //! # Cross-Currency Support
 //!
@@ -152,7 +153,8 @@ impl XCcyCompiler {
     ///
     /// # Arguments
     ///
-    /// * `currency` - The collateral currency (e.g., EUR for EUR-collateralised)
+    /// * `currency` - The collateral currency (e.g., EUR for
+    ///   EUR-collateralised)
     #[must_use]
     pub fn with_collateral_currency(mut self, currency: Currency) -> Self {
         self.collateral_currency = Some(currency);
@@ -199,32 +201,22 @@ impl XCcyCompiler {
 
     /// Returns a reference to the index mapper.
     #[must_use]
-    pub fn mapper(&self) -> &IndexMapper {
-        &self.mapper
-    }
+    pub fn mapper(&self) -> &IndexMapper { &self.mapper }
 
     /// Returns a mutable reference to the index mapper.
-    pub fn mapper_mut(&mut self) -> &mut IndexMapper {
-        &mut self.mapper
-    }
+    pub fn mapper_mut(&mut self) -> &mut IndexMapper { &mut self.mapper }
 
     /// Returns true if a calendar is configured.
     #[must_use]
-    pub fn has_calendar(&self) -> bool {
-        self.calendar.is_some()
-    }
+    pub fn has_calendar(&self) -> bool { self.calendar.is_some() }
 
     /// Returns the base (reporting) currency.
     #[must_use]
-    pub fn base_currency(&self) -> Currency {
-        self.base_currency
-    }
+    pub fn base_currency(&self) -> Currency { self.base_currency }
 
     /// Returns the collateral currency if set.
     #[must_use]
-    pub fn collateral_currency(&self) -> Option<Currency> {
-        self.collateral_currency
-    }
+    pub fn collateral_currency(&self) -> Option<Currency> { self.collateral_currency }
 
     /// Adjusts a date according to the calendar and convention.
     fn adjust_date(&self, date: Date, convention: BusinessDayConvention) -> Date {
@@ -235,9 +227,7 @@ impl XCcyCompiler {
     }
 
     /// Converts a Date to days from epoch.
-    fn date_to_days(&self, date: Date) -> i32 {
-        (date - self.epoch) as i32
-    }
+    fn date_to_days(&self, date: Date) -> i32 { (date - self.epoch) as i32 }
 
     /// Converts a Date to days from epoch with payment date adjustment.
     fn payment_date_to_days(&self, date: Date) -> i32 {
@@ -251,7 +241,8 @@ impl XCcyCompiler {
         self.date_to_days(adjusted)
     }
 
-    /// Gets or registers the FX index for converting from cashflow currency to base.
+    /// Gets or registers the FX index for converting from cashflow currency to
+    /// base.
     ///
     /// Returns 0 (dummy) if the cashflow currency is the same as base currency.
     fn get_fx_index_id(&mut self, cashflow_currency: Currency) -> u16 {

@@ -54,6 +54,7 @@ pub mod greeks;
 pub mod loops;
 pub mod parallel;
 pub mod reverse;
+pub mod shadow;
 pub mod smooth;
 pub mod verification;
 pub mod wrappers;
