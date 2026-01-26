@@ -118,6 +118,7 @@ pub enum InterpolationError {
 /// - `DerivativeNearZero`: Derivative too small for Newton-Raphson
 /// - `NoBracket`: Function values at bracket endpoints have same sign
 /// - `NumericalInstability`: General numerical instability
+/// - `External`: Error from external crate (argmin, roots, levenberg-marquardt)
 ///
 /// # Examples
 /// ```
@@ -155,6 +156,10 @@ pub enum SolverError {
     /// Numerical instability during computation.
     #[error("Numerical instability: {0}")]
     NumericalInstability(String),
+
+    /// External crate error (argmin, roots, levenberg-marquardt, etc.).
+    #[error("External solver error: {0}")]
+    External(String),
 }
 
 /// Calibration error kind.
@@ -419,6 +424,9 @@ impl From<SolverError> for CalibrationError {
                 "No bracket found between {} and {}",
                 a, b
             )),
+            SolverError::External(msg) => {
+                CalibrationError::numerical_instability(format!("External solver error: {msg}"))
+            }
         }
     }
 }
@@ -453,6 +461,9 @@ impl From<OptimisationError> for CalibrationError {
             OptimisationError::LineSearchError(msg) => {
                 CalibrationError::numerical_instability(format!("Line search failed: {msg}"))
             }
+            OptimisationError::External(msg) => CalibrationError::numerical_instability(format!(
+                "External optimisation error: {msg}"
+            )),
         }
     }
 }
@@ -853,6 +864,13 @@ mod tests {
         assert_eq!(err1, err2);
     }
 
+    #[test]
+    fn test_solver_error_external_display() {
+        let err = SolverError::External("levenberg-marquardt failed".to_string());
+        assert!(format!("{}", err).contains("External"));
+        assert!(format!("{}", err).contains("levenberg-marquardt"));
+    }
+
     // CalibrationError tests
 
     #[test]
@@ -987,6 +1005,22 @@ mod tests {
         let solver_err = SolverError::NoBracket { a: 0.0, b: 1.0 };
         let calib_err: CalibrationError = solver_err.into();
         assert!(calib_err.is_numerical_instability());
+    }
+
+    #[test]
+    fn test_calibration_error_from_solver_external() {
+        let solver_err = SolverError::External("roots crate error".to_string());
+        let calib_err: CalibrationError = solver_err.into();
+        assert!(calib_err.is_numerical_instability());
+        assert!(calib_err.message.as_ref().unwrap().contains("External"));
+    }
+
+    #[test]
+    fn test_calibration_error_from_optimisation_external() {
+        let opt_err = OptimisationError::External("argmin error".to_string());
+        let calib_err: CalibrationError = opt_err.into();
+        assert!(calib_err.is_numerical_instability());
+        assert!(calib_err.message.as_ref().unwrap().contains("External"));
     }
 
     #[test]

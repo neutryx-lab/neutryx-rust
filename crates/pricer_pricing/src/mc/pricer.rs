@@ -25,6 +25,10 @@ use super::{
     error::MonteCarloConfigError,
     paths::{generate_gbm_paths, generate_gbm_paths_tangent_spot, GbmParams},
     payoff::{compute_payoff, compute_payoffs, PayoffParams},
+    streaming::{
+        ArithmeticAverageObserver, BarrierObserver, EuropeanObserver, LookbackObserver,
+        StreamingEngine, StreamingObserver,
+    },
     workspace::PathWorkspace,
 };
 use crate::{
@@ -1120,6 +1124,261 @@ impl MonteCarloPricer {
 
         (price_up - price_down) / (2.0 * bump)
     }
+
+    // ========================================================================
+    // Streaming Mode Methods
+    // ========================================================================
+
+    /// Prices a European option using streaming mode.
+    ///
+    /// Streaming mode processes paths step-by-step with O(paths) memory,
+    /// dramatically reducing memory usage for large simulations.
+    ///
+    /// # Arguments
+    ///
+    /// * `gbm` - GBM parameters (spot, rate, volatility, maturity)
+    /// * `payoff` - Payoff parameters (strike, type, smoothing)
+    /// * `discount_factor` - Present value discount factor
+    ///
+    /// # Returns
+    ///
+    /// Price and standard error.
+    ///
+    /// # Memory Usage
+    ///
+    /// Memory is O(paths) regardless of step count, compared to O(paths × steps)
+    /// for batch mode.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use pricer_pricing::mc::{
+    ///     MonteCarloPricer, MonteCarloConfig, GbmParams, PayoffParams,
+    ///     PathLayoutConfig, PathLayout, StreamingConfig,
+    /// };
+    ///
+    /// let config = MonteCarloConfig::builder()
+    ///     .n_paths(100_000)
+    ///     .n_steps(252)
+    ///     .layout(PathLayoutConfig::with_layout(PathLayout::TimeStepFirst))
+    ///     .streaming(StreamingConfig::enabled())
+    ///     .seed(42)
+    ///     .build()
+    ///     .unwrap();
+    ///
+    /// let mut pricer = MonteCarloPricer::new(config).unwrap();
+    /// let gbm = GbmParams::default();
+    /// let payoff = PayoffParams::call(100.0);
+    /// let df = (-0.05_f64).exp();
+    ///
+    /// let result = pricer.price_streaming(gbm, payoff, df);
+    /// println!("Price: {:.4} ± {:.4}", result.price, result.std_error);
+    /// ```
+    pub fn price_streaming(
+        &mut self,
+        gbm: GbmParams,
+        payoff: PayoffParams,
+        discount_factor: f64,
+    ) -> PricingResult {
+        let n_paths = self.config.n_paths();
+        let n_steps = self.config.n_steps();
+        let seed = self.config.seed().unwrap_or(0);
+
+        // Create streaming engine
+        let streaming_config = self.config.streaming().clone();
+        let mut engine = StreamingEngine::new(n_paths, n_steps, streaming_config, seed);
+
+        // Create observer based on payoff type
+        let is_call = matches!(payoff.payoff_type, super::payoff::PayoffType::Call);
+        let mut observer = EuropeanObserver::new(n_paths, payoff.strike, payoff.smoothing_epsilon, is_call);
+
+        // Run streaming simulation
+        let result = engine.run(gbm, &mut observer);
+
+        PricingResult {
+            price: result.mean * discount_factor,
+            std_error: result.std_error * discount_factor,
+            ..Default::default()
+        }
+    }
+
+    /// Prices an Asian option using streaming mode.
+    ///
+    /// Uses arithmetic averaging by default. Streaming mode is particularly
+    /// efficient for path-dependent options as it accumulates statistics
+    /// incrementally.
+    ///
+    /// # Arguments
+    ///
+    /// * `gbm` - GBM parameters
+    /// * `strike` - Strike price
+    /// * `is_call` - True for call, false for put
+    /// * `discount_factor` - Discount factor
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use pricer_pricing::mc::{
+    ///     MonteCarloPricer, MonteCarloConfig, GbmParams,
+    ///     PathLayoutConfig, PathLayout, StreamingConfig,
+    /// };
+    ///
+    /// let config = MonteCarloConfig::builder()
+    ///     .n_paths(100_000)
+    ///     .n_steps(252)
+    ///     .layout(PathLayoutConfig::with_layout(PathLayout::TimeStepFirst))
+    ///     .streaming(StreamingConfig::enabled())
+    ///     .seed(42)
+    ///     .build()
+    ///     .unwrap();
+    ///
+    /// let mut pricer = MonteCarloPricer::new(config).unwrap();
+    /// let gbm = GbmParams::default();
+    /// let df = (-0.05_f64).exp();
+    ///
+    /// let result = pricer.price_asian_streaming(gbm, 100.0, true, df);
+    /// println!("Asian Call Price: {:.4}", result.price);
+    /// ```
+    pub fn price_asian_streaming(
+        &mut self,
+        gbm: GbmParams,
+        strike: f64,
+        is_call: bool,
+        discount_factor: f64,
+    ) -> PricingResult {
+        let n_paths = self.config.n_paths();
+        let n_steps = self.config.n_steps();
+        let seed = self.config.seed().unwrap_or(0);
+        let epsilon = 1e-6;
+
+        let streaming_config = self.config.streaming().clone();
+        let mut engine = StreamingEngine::new(n_paths, n_steps, streaming_config, seed);
+        let mut observer = ArithmeticAverageObserver::new(n_paths, strike, epsilon, is_call);
+
+        let result = engine.run(gbm, &mut observer);
+
+        PricingResult {
+            price: result.mean * discount_factor,
+            std_error: result.std_error * discount_factor,
+            ..Default::default()
+        }
+    }
+
+    /// Prices a barrier option using streaming mode.
+    ///
+    /// Streaming is ideal for barrier options as it can monitor the barrier
+    /// condition at each step without storing the full path.
+    ///
+    /// # Arguments
+    ///
+    /// * `gbm` - GBM parameters
+    /// * `strike` - Strike price
+    /// * `barrier` - Barrier level
+    /// * `is_up` - True for up barrier, false for down
+    /// * `is_out` - True for knock-out, false for knock-in
+    /// * `is_call` - True for call, false for put
+    /// * `discount_factor` - Discount factor
+    pub fn price_barrier_streaming(
+        &mut self,
+        gbm: GbmParams,
+        strike: f64,
+        barrier: f64,
+        is_up: bool,
+        is_out: bool,
+        is_call: bool,
+        discount_factor: f64,
+    ) -> PricingResult {
+        let n_paths = self.config.n_paths();
+        let n_steps = self.config.n_steps();
+        let seed = self.config.seed().unwrap_or(0);
+        let epsilon = 1e-6;
+
+        let streaming_config = self.config.streaming().clone();
+        let mut engine = StreamingEngine::new(n_paths, n_steps, streaming_config, seed);
+        let mut observer = BarrierObserver::new(n_paths, strike, barrier, epsilon, is_up, is_out, is_call);
+
+        let result = engine.run(gbm, &mut observer);
+
+        PricingResult {
+            price: result.mean * discount_factor,
+            std_error: result.std_error * discount_factor,
+            ..Default::default()
+        }
+    }
+
+    /// Prices a lookback option using streaming mode.
+    ///
+    /// # Arguments
+    ///
+    /// * `gbm` - GBM parameters
+    /// * `strike` - Strike price (None for floating strike)
+    /// * `is_call` - True for call, false for put
+    /// * `is_floating` - True for floating strike, false for fixed
+    /// * `discount_factor` - Discount factor
+    pub fn price_lookback_streaming(
+        &mut self,
+        gbm: GbmParams,
+        strike: Option<f64>,
+        is_call: bool,
+        is_floating: bool,
+        discount_factor: f64,
+    ) -> PricingResult {
+        let n_paths = self.config.n_paths();
+        let n_steps = self.config.n_steps();
+        let seed = self.config.seed().unwrap_or(0);
+        let epsilon = 1e-6;
+
+        let streaming_config = self.config.streaming().clone();
+        let mut engine = StreamingEngine::new(n_paths, n_steps, streaming_config, seed);
+        let mut observer = LookbackObserver::new(n_paths, strike, epsilon, is_call, is_floating);
+
+        let result = engine.run(gbm, &mut observer);
+
+        PricingResult {
+            price: result.mean * discount_factor,
+            std_error: result.std_error * discount_factor,
+            ..Default::default()
+        }
+    }
+
+    /// Prices using streaming mode with a custom observer.
+    ///
+    /// This method allows using any custom observer that implements
+    /// the [`StreamingObserver`] trait.
+    ///
+    /// # Arguments
+    ///
+    /// * `gbm` - GBM parameters
+    /// * `observer` - Custom observer implementing StreamingObserver
+    /// * `discount_factor` - Discount factor
+    ///
+    /// # Type Parameters
+    ///
+    /// * `O` - Observer type implementing StreamingObserver
+    pub fn price_streaming_with_observer<O>(
+        &mut self,
+        gbm: GbmParams,
+        observer: &mut O,
+        discount_factor: f64,
+    ) -> PricingResult
+    where
+        O: StreamingObserver,
+    {
+        let n_paths = self.config.n_paths();
+        let n_steps = self.config.n_steps();
+        let seed = self.config.seed().unwrap_or(0);
+
+        let streaming_config = self.config.streaming().clone();
+        let mut engine = StreamingEngine::new(n_paths, n_steps, streaming_config, seed);
+
+        let result = engine.run(gbm, observer);
+
+        PricingResult {
+            price: result.mean * discount_factor,
+            std_error: result.std_error * discount_factor,
+            ..Default::default()
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1577,5 +1836,149 @@ mod tests {
 
         // Vega should be positive for options
         assert!(vega > 0.0, "Vega = {}", vega);
+    }
+
+    // ========================================================================
+    // Streaming Mode Tests
+    // ========================================================================
+
+    #[test]
+    fn test_price_streaming_european_call() {
+        use super::super::layout_config::{PathLayout, PathLayoutConfig, StreamingConfig};
+
+        let config = MonteCarloConfig::builder()
+            .n_paths(10_000)
+            .n_steps(50)
+            .layout(PathLayoutConfig::with_layout(PathLayout::TimeStepFirst))
+            .streaming(StreamingConfig::enabled())
+            .seed(42)
+            .build()
+            .unwrap();
+
+        let mut pricer = MonteCarloPricer::new(config).unwrap();
+        let gbm = GbmParams::default();
+        let payoff = PayoffParams::call(100.0);
+        let df = (-0.05_f64).exp();
+
+        let result = pricer.price_streaming(gbm, payoff, df);
+
+        assert!(result.price > 0.0);
+        assert!(result.std_error > 0.0);
+    }
+
+    #[test]
+    fn test_price_asian_streaming() {
+        use super::super::layout_config::{PathLayout, PathLayoutConfig, StreamingConfig};
+
+        let config = MonteCarloConfig::builder()
+            .n_paths(10_000)
+            .n_steps(50)
+            .layout(PathLayoutConfig::with_layout(PathLayout::TimeStepFirst))
+            .streaming(StreamingConfig::enabled())
+            .seed(42)
+            .build()
+            .unwrap();
+
+        let mut pricer = MonteCarloPricer::new(config).unwrap();
+        let gbm = GbmParams::default();
+        let df = (-0.05_f64).exp();
+
+        let result = pricer.price_asian_streaming(gbm, 100.0, true, df);
+
+        assert!(result.price > 0.0);
+        assert!(result.std_error > 0.0);
+    }
+
+    #[test]
+    fn test_price_barrier_streaming() {
+        use super::super::layout_config::{PathLayout, PathLayoutConfig, StreamingConfig};
+
+        let config = MonteCarloConfig::builder()
+            .n_paths(10_000)
+            .n_steps(50)
+            .layout(PathLayoutConfig::with_layout(PathLayout::TimeStepFirst))
+            .streaming(StreamingConfig::enabled())
+            .seed(42)
+            .build()
+            .unwrap();
+
+        let mut pricer = MonteCarloPricer::new(config).unwrap();
+        let gbm = GbmParams::default();
+        let df = (-0.05_f64).exp();
+
+        // Up-and-out call with barrier at 150
+        let result = pricer.price_barrier_streaming(gbm, 100.0, 150.0, true, true, true, df);
+
+        assert!(result.price >= 0.0);
+        assert!(result.std_error >= 0.0);
+    }
+
+    #[test]
+    fn test_price_lookback_streaming() {
+        use super::super::layout_config::{PathLayout, PathLayoutConfig, StreamingConfig};
+
+        let config = MonteCarloConfig::builder()
+            .n_paths(10_000)
+            .n_steps(50)
+            .layout(PathLayoutConfig::with_layout(PathLayout::TimeStepFirst))
+            .streaming(StreamingConfig::enabled())
+            .seed(42)
+            .build()
+            .unwrap();
+
+        let mut pricer = MonteCarloPricer::new(config).unwrap();
+        let gbm = GbmParams::default();
+        let df = (-0.05_f64).exp();
+
+        // Floating strike lookback call
+        let result = pricer.price_lookback_streaming(gbm, None, true, true, df);
+
+        assert!(result.price > 0.0);
+        assert!(result.std_error > 0.0);
+    }
+
+    #[test]
+    fn test_streaming_vs_batch_similar_results() {
+        use super::super::layout_config::{PathLayout, PathLayoutConfig, StreamingConfig};
+
+        // Compare streaming vs batch European call
+        let n_paths = 50_000;
+        let n_steps = 50;
+        let seed = 42;
+        let gbm = GbmParams::default();
+        let payoff = PayoffParams::call(100.0);
+        let df = (-0.05_f64).exp();
+
+        // Batch mode
+        let batch_config = MonteCarloConfig::builder()
+            .n_paths(n_paths)
+            .n_steps(n_steps)
+            .seed(seed)
+            .build()
+            .unwrap();
+        let mut batch_pricer = MonteCarloPricer::new(batch_config).unwrap();
+        let batch_result = batch_pricer.price_european(gbm, payoff, df);
+
+        // Streaming mode
+        let streaming_config = MonteCarloConfig::builder()
+            .n_paths(n_paths)
+            .n_steps(n_steps)
+            .layout(PathLayoutConfig::with_layout(PathLayout::TimeStepFirst))
+            .streaming(StreamingConfig::enabled())
+            .seed(seed)
+            .build()
+            .unwrap();
+        let mut streaming_pricer = MonteCarloPricer::new(streaming_config).unwrap();
+        let streaming_result = streaming_pricer.price_streaming(gbm, payoff, df);
+
+        // Results should be similar (within 10% for this seed)
+        let diff_ratio = (streaming_result.price - batch_result.price).abs() / batch_result.price;
+        assert!(
+            diff_ratio < 0.10,
+            "Streaming ({:.4}) vs Batch ({:.4}) diff ratio: {:.4}",
+            streaming_result.price,
+            batch_result.price,
+            diff_ratio
+        );
     }
 }

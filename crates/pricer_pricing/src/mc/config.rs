@@ -2,8 +2,25 @@
 //!
 //! This module provides configuration types and builders for Monte Carlo
 //! pricing simulations with automatic differentiation support.
+//!
+//! # Memory Layout Configuration
+//!
+//! The configuration supports two memory layouts:
+//! - `PathFirst`: Traditional `[path][step]` layout (default, backward
+//!   compatible)
+//! - `TimeStepFirst`: Optimised `[step][path]` layout for cache efficiency and
+//!   SIMD
+//!
+//! # Streaming Mode
+//!
+//! When streaming is enabled, simulation processes step-by-step with O(paths)
+//! memory instead of O(paths × steps). Streaming requires `TimeStepFirst`
+//! layout.
 
-use super::error::MonteCarloConfigError;
+use super::{
+    error::{LayoutConfigError, MonteCarloConfigError},
+    layout_config::{PathLayout, PathLayoutConfig, StreamingConfig},
+};
 
 /// Maximum number of simulation paths allowed.
 pub const MAX_PATHS: usize = 10_000_000;
@@ -62,6 +79,24 @@ pub enum AdMode {
 /// assert_eq!(config.n_paths(), 10_000);
 /// assert_eq!(config.n_steps(), 252);
 /// ```
+///
+/// # Layout and Streaming Configuration
+///
+/// ```rust
+/// use pricer_pricing::mc::{MonteCarloConfig, PathLayoutConfig, PathLayout, StreamingConfig};
+///
+/// let config = MonteCarloConfig::builder()
+///     .n_paths(100_000)
+///     .n_steps(252)
+///     .layout(PathLayoutConfig::with_layout(PathLayout::TimeStepFirst))
+///     .streaming(StreamingConfig::enabled())
+///     .seed(42)
+///     .build()
+///     .expect("valid configuration");
+///
+/// assert_eq!(config.layout().layout(), PathLayout::TimeStepFirst);
+/// assert!(config.streaming().is_enabled());
+/// ```
 #[derive(Clone, Debug)]
 pub struct MonteCarloConfig {
     /// Number of simulation paths.
@@ -72,6 +107,10 @@ pub struct MonteCarloConfig {
     ad_mode: AdMode,
     /// Optional seed for reproducibility.
     seed: Option<u64>,
+    /// Memory layout configuration.
+    layout: PathLayoutConfig,
+    /// Streaming mode configuration.
+    streaming: StreamingConfig,
 }
 
 impl MonteCarloConfig {
@@ -107,6 +146,18 @@ impl MonteCarloConfig {
     #[inline]
     pub fn seed(&self) -> Option<u64> { self.seed }
 
+    /// Returns the memory layout configuration.
+    #[inline]
+    pub fn layout(&self) -> &PathLayoutConfig { &self.layout }
+
+    /// Returns the streaming mode configuration.
+    #[inline]
+    pub fn streaming(&self) -> &StreamingConfig { &self.streaming }
+
+    /// Returns true if streaming mode is enabled.
+    #[inline]
+    pub fn is_streaming(&self) -> bool { self.streaming.is_enabled() }
+
     /// Validates the configuration.
     ///
     /// # Errors
@@ -114,6 +165,8 @@ impl MonteCarloConfig {
     /// Returns `MonteCarloConfigError` if:
     /// - `n_paths` is 0 or greater than 10,000,000
     /// - `n_steps` is 0 or greater than 10,000
+    /// - Streaming enabled with PathFirst layout
+    /// - Invalid alignment or buffer steps
     pub fn validate(&self) -> Result<(), MonteCarloConfigError> {
         if self.n_paths == 0 || self.n_paths > MAX_PATHS {
             return Err(MonteCarloConfigError::InvalidPathCount(self.n_paths));
@@ -121,6 +174,20 @@ impl MonteCarloConfig {
         if self.n_steps == 0 || self.n_steps > MAX_STEPS {
             return Err(MonteCarloConfigError::InvalidStepCount(self.n_steps));
         }
+
+        // Validate layout configuration
+        self.layout.validate()?;
+
+        // Validate streaming configuration
+        self.streaming.validate()?;
+
+        // Streaming mode requires TimeStepFirst layout
+        if self.streaming.is_enabled() && self.layout.layout() == PathLayout::PathFirst {
+            return Err(MonteCarloConfigError::LayoutError(
+                LayoutConfigError::StreamingRequiresTimeStepFirst,
+            ));
+        }
+
         Ok(())
     }
 }
@@ -142,12 +209,28 @@ impl MonteCarloConfig {
 ///     .build()
 ///     .expect("valid config");
 /// ```
+///
+/// # Layout and Streaming
+///
+/// ```rust
+/// use pricer_pricing::mc::{MonteCarloConfig, PathLayoutConfig, PathLayout, StreamingConfig};
+///
+/// let config = MonteCarloConfig::builder()
+///     .n_paths(100_000)
+///     .n_steps(252)
+///     .layout(PathLayoutConfig::with_layout(PathLayout::TimeStepFirst))
+///     .streaming(StreamingConfig::enabled())
+///     .build()
+///     .expect("valid config");
+/// ```
 #[derive(Clone, Debug, Default)]
 pub struct MonteCarloConfigBuilder {
     n_paths: Option<usize>,
     n_steps: Option<usize>,
     ad_mode: AdMode,
     seed: Option<u64>,
+    layout: PathLayoutConfig,
+    streaming: StreamingConfig,
 }
 
 impl MonteCarloConfigBuilder {
@@ -195,6 +278,60 @@ impl MonteCarloConfigBuilder {
         self
     }
 
+    /// Sets the memory layout configuration.
+    ///
+    /// # Arguments
+    ///
+    /// * `layout` - Path layout configuration
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pricer_pricing::mc::{MonteCarloConfig, PathLayoutConfig, PathLayout};
+    ///
+    /// let config = MonteCarloConfig::builder()
+    ///     .n_paths(10_000)
+    ///     .n_steps(100)
+    ///     .layout(PathLayoutConfig::with_layout(PathLayout::TimeStepFirst))
+    ///     .build()
+    ///     .unwrap();
+    /// ```
+    #[inline]
+    pub fn layout(mut self, layout: PathLayoutConfig) -> Self {
+        self.layout = layout;
+        self
+    }
+
+    /// Sets the streaming mode configuration.
+    ///
+    /// # Arguments
+    ///
+    /// * `streaming` - Streaming configuration
+    ///
+    /// # Note
+    ///
+    /// Streaming mode requires `TimeStepFirst` layout. The build will fail
+    /// if streaming is enabled with `PathFirst` layout.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use pricer_pricing::mc::{MonteCarloConfig, PathLayoutConfig, PathLayout, StreamingConfig};
+    ///
+    /// let config = MonteCarloConfig::builder()
+    ///     .n_paths(100_000)
+    ///     .n_steps(252)
+    ///     .layout(PathLayoutConfig::with_layout(PathLayout::TimeStepFirst))
+    ///     .streaming(StreamingConfig::enabled())
+    ///     .build()
+    ///     .unwrap();
+    /// ```
+    #[inline]
+    pub fn streaming(mut self, streaming: StreamingConfig) -> Self {
+        self.streaming = streaming;
+        self
+    }
+
     /// Builds the configuration.
     ///
     /// # Errors
@@ -222,6 +359,8 @@ impl MonteCarloConfigBuilder {
             n_steps,
             ad_mode: self.ad_mode,
             seed: self.seed,
+            layout: self.layout,
+            streaming: self.streaming,
         };
 
         config.validate()?;
@@ -346,5 +485,125 @@ mod tests {
     #[test]
     fn test_ad_mode_default() {
         assert_eq!(AdMode::default(), AdMode::NoAd);
+    }
+
+    // ========================================================================
+    // Layout and Streaming Configuration Tests
+    // ========================================================================
+
+    #[test]
+    fn test_config_default_layout() {
+        let config = MonteCarloConfig::builder()
+            .n_paths(1000)
+            .n_steps(100)
+            .build()
+            .unwrap();
+
+        assert_eq!(config.layout().layout(), PathLayout::PathFirst);
+        assert_eq!(config.layout().alignment(), 64);
+        assert!(!config.is_streaming());
+    }
+
+    #[test]
+    fn test_config_with_timestep_first_layout() {
+        let config = MonteCarloConfig::builder()
+            .n_paths(1000)
+            .n_steps(100)
+            .layout(PathLayoutConfig::with_layout(PathLayout::TimeStepFirst))
+            .build()
+            .unwrap();
+
+        assert_eq!(config.layout().layout(), PathLayout::TimeStepFirst);
+    }
+
+    #[test]
+    fn test_config_with_streaming_enabled() {
+        let config = MonteCarloConfig::builder()
+            .n_paths(1000)
+            .n_steps(100)
+            .layout(PathLayoutConfig::with_layout(PathLayout::TimeStepFirst))
+            .streaming(StreamingConfig::enabled())
+            .build()
+            .unwrap();
+
+        assert!(config.is_streaming());
+        assert_eq!(config.streaming().buffer_steps(), 2);
+    }
+
+    #[test]
+    fn test_config_streaming_requires_timestep_first() {
+        let result = MonteCarloConfig::builder()
+            .n_paths(1000)
+            .n_steps(100)
+            .layout(PathLayoutConfig::with_layout(PathLayout::PathFirst))
+            .streaming(StreamingConfig::enabled())
+            .build();
+
+        assert!(matches!(
+            result,
+            Err(MonteCarloConfigError::LayoutError(
+                LayoutConfigError::StreamingRequiresTimeStepFirst
+            ))
+        ));
+    }
+
+    #[test]
+    fn test_config_invalid_alignment() {
+        let result = MonteCarloConfig::builder()
+            .n_paths(1000)
+            .n_steps(100)
+            .layout(PathLayoutConfig::new(PathLayout::PathFirst, 7)) // Not power of 2
+            .build();
+
+        assert!(matches!(
+            result,
+            Err(MonteCarloConfigError::LayoutError(
+                LayoutConfigError::InvalidAlignment(7)
+            ))
+        ));
+    }
+
+    #[test]
+    fn test_config_invalid_buffer_steps() {
+        let result = MonteCarloConfig::builder()
+            .n_paths(1000)
+            .n_steps(100)
+            .layout(PathLayoutConfig::with_layout(PathLayout::TimeStepFirst))
+            .streaming(StreamingConfig::new(true, 1)) // Less than 2
+            .build();
+
+        assert!(matches!(
+            result,
+            Err(MonteCarloConfigError::LayoutError(
+                LayoutConfigError::InvalidBufferSteps(1)
+            ))
+        ));
+    }
+
+    #[test]
+    fn test_config_custom_alignment() {
+        let config = MonteCarloConfig::builder()
+            .n_paths(1000)
+            .n_steps(100)
+            .layout(PathLayoutConfig::new(PathLayout::TimeStepFirst, 128))
+            .build()
+            .unwrap();
+
+        assert_eq!(config.layout().alignment(), 128);
+    }
+
+    #[test]
+    fn test_config_streaming_disabled_with_path_first() {
+        // PathFirst with streaming disabled is valid
+        let config = MonteCarloConfig::builder()
+            .n_paths(1000)
+            .n_steps(100)
+            .layout(PathLayoutConfig::with_layout(PathLayout::PathFirst))
+            .streaming(StreamingConfig::disabled())
+            .build()
+            .unwrap();
+
+        assert!(!config.is_streaming());
+        assert_eq!(config.layout().layout(), PathLayout::PathFirst);
     }
 }

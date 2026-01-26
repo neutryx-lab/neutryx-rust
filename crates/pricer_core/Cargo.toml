@@ -19,6 +19,11 @@ nalgebra = { workspace = true, optional = true }
 rand = { workspace = true, optional = true }
 rand_distr = { workspace = true, optional = true }
 
+# External numerics (optional, for external-numerics feature)
+argmin = { workspace = true, optional = true }
+argmin-math = { workspace = true, optional = true }
+levenberg-marquardt = { workspace = true, optional = true }
+
 [dev-dependencies]
 approx.workspace = true
 proptest.workspace = true
@@ -30,13 +35,14 @@ name = "core"
 harness = false
 
 [features]
-default = ["num-dual-mode", "serde", "equity", "parallel"]
+default = ["num-dual-mode", "serde", "equity", "parallel", "external-numerics"]
 num-dual-mode = ["dep:num-dual"]  # Verification mode with dual numbers
 enzyme-mode = []                   # Production mode (Enzyme AD)
 execution-trace = []               # Execution trace mode for computation graph extraction
 serde = ["dep:serde", "chrono/serde", "infra_master/serde"]  # Serialisation support
 parallel = ["dep:rayon"]           # Parallel bootstrapping support
 linalg = ["dep:ndarray", "dep:nalgebra", "dep:rand", "dep:rand_distr"]  # Linear algebra support (includes multi-dimensional copula)
+external-numerics = ["dep:argmin", "dep:argmin-math", "dep:levenberg-marquardt", "dep:nalgebra"]  # External optimisation libraries
 
 # Asset class features (trades/instruments)
 equity = []      # Equity derivatives (VanillaOption, Forward) - default

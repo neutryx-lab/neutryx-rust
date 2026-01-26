@@ -40,6 +40,10 @@ pub enum OptimisationError {
     /// Line search failed.
     #[error("Line search failed: {0}")]
     LineSearchError(String),
+
+    /// External crate error (argmin, etc.).
+    #[error("External optimisation error: {0}")]
+    External(String),
 }
 
 #[cfg(test)]
@@ -75,5 +79,12 @@ mod tests {
         let err1 = OptimisationError::NotConverged { iterations: 50 };
         let err2 = err1.clone();
         assert_eq!(err1, err2);
+    }
+
+    #[test]
+    fn test_external_error() {
+        let err = OptimisationError::External("argmin solver failed".to_string());
+        assert!(format!("{}", err).contains("External"));
+        assert!(format!("{}", err).contains("argmin"));
     }
 }

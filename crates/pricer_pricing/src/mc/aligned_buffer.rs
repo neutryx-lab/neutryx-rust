@@ -221,7 +221,7 @@ impl<T: Float> AlignedPathBuffer<T> {
     #[inline]
     pub fn is_aligned_to(&self, alignment: usize) -> bool {
         let ptr = self.inner.as_ptr() as usize;
-        ptr.is_multiple_of(alignment)
+        alignment != 0 && ptr % alignment == 0
     }
 
     /// Returns the memory usage of the buffer in bytes.

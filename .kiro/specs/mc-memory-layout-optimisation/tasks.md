@@ -128,33 +128,33 @@
 
 ### Phase 4: ストリーミングエンジン
 
-- [ ] 6. StreamingEngine の実装
-- [ ] 6.1 StreamingEngine 構造体の実装
+- [x] 6. StreamingEngine の実装
+- [x] 6.1 StreamingEngine 構造体の実装
   - ダブルバッファ（current, previous）を AlignedPathBuffer で保持
   - RNG、設定、現在ステップインデックスを管理
   - new() で初期化、memory_usage() でメモリ使用量を返す
   - _Requirements: 2.1, 2.4_
 
-- [ ] 6.2 StreamingObserver トレイトの定義
+- [x] 6.2 StreamingObserver トレイトの定義
   - observe_step(step_idx, values) でステップごとの観測を受け取る
   - finalize() で累積統計を返す
   - reset() でオブザーバー状態をリセット
   - Send + Sync 境界を設定
   - _Requirements: 4.1_
 
-- [ ] 6.3 ストリーミング処理ループの実装
+- [x] 6.3 ストリーミング処理ループの実装
   - run() メソッドで全ステップをループ処理
   - 各ステップで generate → observe → swap_buffers のサイクルを実行
   - ダブルバッファのスワップはポインタ交換のみ（O(1)）
   - _Requirements: 2.2, 2.3_
 
-- [ ] 6.4 既存 PathObserver のストリーミング対応
+- [x] 6.4 既存 PathObserver のストリーミング対応
   - PathObserver に StreamingObserver トレイトを実装
   - observe_step() 内で各パスの observe() を呼び出し
   - Asian（算術平均）、Barrier（バリア監視）、Lookback（最小/最大追跡）との互換性を確保
   - _Requirements: 4.1, 4.2, 4.3, 4.4_
 
-- [ ] 6.5 ストリーミング処理のテスト
+- [x] 6.5 ストリーミング処理のテスト
   - メモリ使用量が O(num_paths) であることを検証（1M paths × 100 steps）
   - ストリーミングと一括処理で Asian option 価格が一致することを確認
   - ダブルバッファスワップが正しく動作することを検証
@@ -164,21 +164,21 @@
 
 ### Phase 5: 統合とAPI
 
-- [ ] 7. MonteCarloPricer の拡張と性能検証
-- [ ] 7.1 MonteCarloConfig ビルダーの拡張
+- [x] 7. MonteCarloPricer の拡張と性能検証
+- [x] 7.1 MonteCarloConfig ビルダーの拡張
   - .layout(PathLayoutConfig) メソッドを追加
   - .streaming(StreamingConfig) メソッドを追加
   - 無効な組み合わせ（PathFirst + Streaming）でエラーを返す
   - _Requirements: 5.3, 5.4_
 
-- [ ] 7.2 MonteCarloPricer のレイアウト対応
+- [x] 7.2 MonteCarloPricer のレイアウト対応
   - WorkspaceEnum を内部保持するよう変更
   - 設定に応じて PathFirst または TimeStepFirst を選択
   - price_streaming() メソッドを追加（StreamingEngine 使用）
   - 既存の price_european() 等は変更なしで動作
   - _Requirements: 7.1, 7.2, 7.4_
 
-- [ ] 7.3 性能ベンチマークの作成
+- [x] 7.3 性能ベンチマークの作成
   - Criterion で bench_timestep_first_vs_path_first を作成
   - bench_streaming_memory でメモリ使用量を測定
   - bench_aligned_vs_unaligned でアラインメント効果を測定
@@ -186,7 +186,7 @@
   - Rayon 並列実行時のスケーラビリティを検証
   - _Requirements: 6.1, 6.2, 6.3, 6.4_
 
-- [ ] 7.4 後方互換性の最終検証
+- [x] 7.4 後方互換性の最終検証
   - 既存の全テストスイートが変更なしでパスすることを確認
   - デフォルト設定（PathFirst, Streaming無効）で従来動作を保証
   - 新規 API が既存 API を破壊しないことを確認

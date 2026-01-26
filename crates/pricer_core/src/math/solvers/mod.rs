@@ -7,9 +7,10 @@
 //!
 //! ## Available Solvers
 //!
-//! ### Root-Finding
+//! ### Root-Finding (Internal Implementations)
 //!
-//! - [`NewtonRaphsonSolver`]: Fast quadratic convergence using derivatives
+//! - [`NewtonRaphsonSolver`]: Fast quadratic convergence using derivatives.
+//!   Supports AD via `find_root_ad` method.
 //! - [`BacktrackingNewtonSolver`]: Newton-Raphson with Armijo line search for
 //!   improved global convergence
 //! - [`BisectionSolver`]: Simple, robust bracketing method with linear
@@ -19,7 +20,14 @@
 //! ### Optimisation
 //!
 //! - [`LevenbergMarquardtSolver`]: Nonlinear least-squares for model
-//!   calibration
+//!   calibration (internal implementation)
+//! - [`solve_lm_external`]: External LM implementation using `levenberg-marquardt`
+//!   crate (requires `external-numerics` feature)
+//!
+//! ## Feature Flags
+//!
+//! - `external-numerics`: Enables external solver implementations that use
+//!   battle-tested crates (`levenberg-marquardt`). Enabled by default.
 //!
 //! ## Configuration
 //!
@@ -34,7 +42,12 @@
 //!
 //! The Newton-Raphson solver provides an AD-powered `find_root_ad` method
 //! that automatically computes derivatives using `Dual64`, eliminating the
-//! need to provide explicit derivative functions.
+//! need to provide explicit derivative functions. Other root-finding solvers
+//! support generic Float types and are compatible with AD frameworks.
+//!
+//! Note: External solver implementations (`solve_lm_external`) only support
+//! `f64` and are not AD-compatible. Use the internal implementations when
+//! AD is required.
 //!
 //! ## Examples
 //!
@@ -107,6 +120,10 @@ mod config;
 mod levenberg_marquardt;
 mod newton_raphson;
 
+// External implementations (levenberg-marquardt crate wrapper)
+#[cfg(feature = "external-numerics")]
+mod external;
+
 // Re-export public types at module level
 pub use backtracking_newton::BacktrackingNewtonSolver;
 pub use bisection::BisectionSolver;
@@ -114,3 +131,7 @@ pub use brent::BrentSolver;
 pub use config::SolverConfig;
 pub use levenberg_marquardt::{LMConfig, LMResult, LevenbergMarquardtSolver};
 pub use newton_raphson::NewtonRaphsonSolver;
+
+// External implementations (available when external-numerics is enabled)
+#[cfg(feature = "external-numerics")]
+pub use external::solve_lm_external;

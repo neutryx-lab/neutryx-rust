@@ -179,7 +179,7 @@ sequenceDiagram
 | 8.1-8.6 | プライシングエンジン | LinearEngine | `price_kernel()` | Execution |
 | 9.1-9.5 | Date/Time分離 | PricingKernel | `payment_dates`, `year_fractions` | - |
 | 10.1-10.7 | A-I-P-S適合 | 全コンポーネント | - | - |
-| 11.1-11.6 | パフォーマンス最適化 | AlignedVec, LinearEngine | - | Execution |
+| 11.1-11.6 | パフォーマンス最適化 | AlignedBuffer, LinearEngine | - | Execution |
 | 12.1-12.6 | Enzyme AD互換 | PricingKernel, LinearEngine | - | - |
 
 ---
@@ -232,19 +232,19 @@ sequenceDiagram
 pub struct PricingKernel {
     // --- 日付管理 (i32: Days from Unix Epoch) ---
     /// 支払日（昇順ソート済み）
-    pub payment_dates: AlignedVec<i32>,
+    pub payment_dates: AlignedBuffer<i32>,
     /// 観測日（fixing date for floating coupons）
-    pub fixing_dates: AlignedVec<i32>,
+    pub fixing_dates: AlignedBuffer<i32>,
 
     // --- 静的計算係数 (f64) ---
     /// 期間係数（DayCountConventionから事前計算）
-    pub year_fractions: AlignedVec<f64>,
+    pub year_fractions: AlignedBuffer<f64>,
     /// 想定元本
-    pub notionals: AlignedVec<f64>,
+    pub notionals: AlignedBuffer<f64>,
     /// 固定スプレッド（固定クーポンまたはfloating spread）
-    pub spreads: AlignedVec<f64>,
+    pub spreads: AlignedBuffer<f64>,
     /// ギアリング係数（floating leg用）
-    pub gearings: AlignedVec<f64>,
+    pub gearings: AlignedBuffer<f64>,
 
     // --- インデックスポインタ (ID references) ---
     /// 通貨ID (0=base currency)
@@ -356,7 +356,7 @@ impl<T: std::fmt::Debug> std::fmt::Debug for AlignedBuffer<T> {
 - **Concurrency**: Read-only sharing via `&PricingKernel`
 
 **Implementation Notes**
-- `AlignedVec<T>`は内部でアラインメントを保証
+- `AlignedBuffer<T>`は内部でアラインメントを保証
 - `serde`サポートはオプション（feature flag）
 - `len`フィールドで配列長検証を簡略化
 
@@ -755,35 +755,95 @@ where
 ##### State Management
 
 ```rust
-/// Kernel評価用市場データコンテキスト
-#[derive(Clone, Copy)]
-pub struct KernelContext<'a, T: Float> {
-    /// 割引カーブ配列（ID順）
-    pub discount_curves: &'a [&'a dyn DiscountCurve<T>],
-    /// フォワードカーブ配列（ID順、CMS含む）
-    pub forward_curves: &'a [&'a dyn ForwardCurve<T>],
-    /// FXレート配列（ID順）
-    pub fx_rates: &'a [&'a dyn FxCurve<T>],
-    /// Vol Surface（CMS凸性調整用）
-    pub vol_surfaces: Option<&'a [&'a dyn VolSurface<T>]>,
+/// カーブプロバイダートレイト（静的ディスパッチ用）
+///
+/// Enzyme ADはLLVM IRレベルで解析を行うため、関数呼び出し先が
+/// 静的に確定していることが自動微分の生成成功率と速度に直結する。
+/// `dyn`トレイトオブジェクトはvtable間接参照を伴うため、
+/// ジェネリック型パラメータによる静的ディスパッチを採用。
+pub trait CurveProvider<T: Float> {
+    /// 割引係数取得
+    fn discount_factor(&self, curve_id: u8, t: T) -> T;
+
+    /// フォワードレート取得（index_id=0は常に0.0を返す）
+    fn forward_rate(&self, index_id: u16, fixing_date: i32) -> T;
+
+    /// FXレート取得（fx_id=0は常に1.0を返す）
+    fn fx_rate(&self, fx_id: u16, t: T) -> T;
 }
 
-impl<'a, T: Float> KernelContext<'a, T> {
+/// Kernel評価用市場データコンテキスト（静的ディスパッチ版）
+///
+/// # Type Parameters
+/// - `C`: CurveProviderトレイト実装型（静的ディスパッチ）
+///
+/// # Design Rationale
+/// - `dyn Trait`（トレイトオブジェクト）→ `C: CurveProvider<T>`（ジェネリック）
+/// - vtable間接参照を排除し、Enzyme ADとの完全互換性を確保
+/// - コンパイル時に関数呼び出し先が確定するため、インライン展開可能
+#[derive(Clone, Copy)]
+pub struct KernelContext<'a, C> {
+    /// 市場データプロバイダー（静的ディスパッチ）
+    pub provider: &'a C,
+}
+
+impl<'a, C> KernelContext<'a, C> {
+    pub fn new(provider: &'a C) -> Self {
+        Self { provider }
+    }
+}
+
+impl<'a, T, C> KernelContext<'a, C>
+where
+    T: Float,
+    C: CurveProvider<T>,
+{
     /// 割引係数取得
-    #[inline]
+    #[inline(always)]
     pub fn get_discount_factor(&self, curve_id: u8, t: T) -> T {
+        self.provider.discount_factor(curve_id, t)
+    }
+
+    /// フォワードレート取得（index_id=0は常にT::zero()）
+    #[inline(always)]
+    pub fn get_forward_rate(&self, index_id: u16, fixing_date: i32) -> T {
+        self.provider.forward_rate(index_id, fixing_date)
+    }
+
+    /// FXレート取得（fx_id=0は常にT::one()）
+    #[inline(always)]
+    pub fn get_fx_rate(&self, fx_id: u16, t: T) -> T {
+        self.provider.fx_rate(fx_id, t)
+    }
+}
+
+/// 標準的なCurveProvider実装例
+///
+/// IndexedMarket<T>からKernelContext用のプロバイダーを構築
+pub struct MarketProvider<'a, T: Float> {
+    /// 割引カーブ配列（ID順）
+    pub discount_curves: &'a [DiscountCurveImpl<T>],
+    /// フォワードカーブ配列（ID順、index 0はダミー）
+    pub forward_curves: &'a [ForwardCurveImpl<T>],
+    /// FXレート配列（ID順、index 0はダミー）
+    pub fx_rates: &'a [FxRateImpl<T>],
+}
+
+impl<T: Float> CurveProvider<T> for MarketProvider<'_, T> {
+    #[inline(always)]
+    fn discount_factor(&self, curve_id: u8, t: T) -> T {
         self.discount_curves[curve_id as usize].df(t)
     }
 
-    /// フォワードレート取得（CMS凸性調整含む）
-    #[inline]
-    pub fn get_forward_rate(&self, index_id: u16, fixing_date: i32) -> T {
+    #[inline(always)]
+    fn forward_rate(&self, index_id: u16, fixing_date: i32) -> T {
+        // index_id=0はダミー（常に0.0を返す）
         self.forward_curves[index_id as usize].forward_rate(fixing_date)
     }
 
-    /// FXレート取得
-    #[inline]
-    pub fn get_fx_rate(&self, fx_id: u16, t: T) -> T {
+    #[inline(always)]
+    fn fx_rate(&self, fx_id: u16, t: T) -> T {
+        // fx_id=0はダミー（常に1.0を返す）
         self.fx_rates[fx_id as usize].spot_rate(t)
     }
 }
@@ -792,6 +852,7 @@ impl<'a, T: Float> KernelContext<'a, T> {
 - **Persistence**: In-memory, 評価期間中のみ有効
 - **Consistency**: 参照型のため元データの一貫性に依存
 - **Concurrency**: Read-only, 複数スレッドから安全にアクセス可能
+- **Enzyme Compatibility**: 静的ディスパッチによりLLVM IR解析が成功
 
 ---
 
@@ -809,7 +870,7 @@ impl<'a, T: Float> KernelContext<'a, T> {
 - `ExerciseDef`: 行使機会の定義
 
 **Value Objects**:
-- `AlignedVec<T>`: アラインメント保証付き配列
+- `AlignedBuffer<T>`: アラインメント保証付き配列
 - `ScriptOp`: スクリプトオペレーション
 - `BarrierType`: バリアタイプ列挙
 - `ExerciseStyle`: 行使スタイル列挙
@@ -825,12 +886,12 @@ impl<'a, T: Float> KernelContext<'a, T> {
 
 | Field | Type | Description | Nullable |
 |-------|------|-------------|----------|
-| payment_dates | `AlignedVec<i32>` | 支払日（epoch日数） | No |
-| fixing_dates | `AlignedVec<i32>` | 観測日（epoch日数） | No |
-| year_fractions | `AlignedVec<f64>` | 期間係数 | No |
-| notionals | `AlignedVec<f64>` | 想定元本 | No |
-| spreads | `AlignedVec<f64>` | スプレッド | No |
-| gearings | `AlignedVec<f64>` | ギアリング | No |
+| payment_dates | `AlignedBuffer<i32>` | 支払日（epoch日数） | No |
+| fixing_dates | `AlignedBuffer<i32>` | 観測日（epoch日数） | No |
+| year_fractions | `AlignedBuffer<f64>` | 期間係数 | No |
+| notionals | `AlignedBuffer<f64>` | 想定元本 | No |
+| spreads | `AlignedBuffer<f64>` | スプレッド | No |
+| gearings | `AlignedBuffer<f64>` | ギアリング | No |
 | currency_ids | `Vec<u8>` | 通貨ID | No |
 | discount_curve_ids | `Vec<u8>` | 割引カーブID | No |
 | fwd_index_ids | `Vec<u16>` | フォワードインデックスID | No |
@@ -878,7 +939,7 @@ impl<'a, T: Float> KernelContext<'a, T> {
 ### Unit Tests
 
 - `PricingKernel::new()` - 配列長検証
-- `AlignedVec<T>` - アラインメント検証
+- `AlignedBuffer<T>` - アラインメント検証
 - `LinearProductsCompiler::compile_irs()` - IRS展開ロジック
 - `price_kernel()` - 単純なPV計算
 - `ScriptOp` - オペレーションコード実行
