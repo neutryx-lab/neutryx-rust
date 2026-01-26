@@ -1,7 +1,7 @@
 {
   "feature_name": "pricing-kernel-ir",
   "created_at": "2026-01-26T20:15:00+09:00",
-  "updated_at": "2026-01-27T10:00:00+09:00",
+  "updated_at": "2026-01-27T12:00:00+09:00",
   "language": "ja",
   "phase": "implementing",
   "approvals": {
@@ -29,15 +29,24 @@
         "2.1 TradeCompilerトレイト定義",
         "2.2 IndexMapper実装",
         "3.1 LinearProductsCompiler基本実装",
+        "3.2 IRS固有コンパイルロジック",
+        "3.3 Bond/FRAコンパイルロジック",
         "4.1 CurveProviderトレイト定義",
         "4.2 KernelContext実装",
         "5.1 price_kernel基本実装",
-        "6.1 統合テスト作成"
+        "5.2 days_to_yearsヘルパー",
+        "6.1 統合テスト作成",
+        "6.2 AlignedBufferアラインメント検証"
+      ],
+      "pending_tasks": [
+        "3.4 カレンダー・休日調整統合",
+        "4.3 MarketProvider参照実装",
+        "6.3 Enzyme AD互換性検証"
       ],
       "test_results": {
-        "pricer_core_ir": "65 tests passed",
-        "pricer_models_compiler": "29 tests passed",
-        "pricer_pricing_kernel": "47 tests passed"
+        "pricer_core_ir": "68 tests passed",
+        "pricer_models_compiler": "32 tests passed",
+        "pricer_pricing_kernel": "53 tests passed"
       }
     },
     "phase2_extension": {

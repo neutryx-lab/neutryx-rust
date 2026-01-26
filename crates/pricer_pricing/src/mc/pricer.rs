@@ -1185,7 +1185,7 @@ impl MonteCarloPricer {
         let seed = self.config.seed().unwrap_or(0);
 
         // Create streaming engine
-        let streaming_config = self.config.streaming().clone();
+        let streaming_config = *self.config.streaming();
         let mut engine = StreamingEngine::new(n_paths, n_steps, streaming_config, seed);
 
         // Create observer based on payoff type
@@ -1252,7 +1252,7 @@ impl MonteCarloPricer {
         let seed = self.config.seed().unwrap_or(0);
         let epsilon = 1e-6;
 
-        let streaming_config = self.config.streaming().clone();
+        let streaming_config = *self.config.streaming();
         let mut engine = StreamingEngine::new(n_paths, n_steps, streaming_config, seed);
         let mut observer = ArithmeticAverageObserver::new(n_paths, strike, epsilon, is_call);
 
@@ -1294,7 +1294,7 @@ impl MonteCarloPricer {
         let seed = self.config.seed().unwrap_or(0);
         let epsilon = 1e-6;
 
-        let streaming_config = self.config.streaming().clone();
+        let streaming_config = *self.config.streaming();
         let mut engine = StreamingEngine::new(n_paths, n_steps, streaming_config, seed);
         let mut observer =
             BarrierObserver::new(n_paths, strike, barrier, epsilon, is_up, is_out, is_call);
@@ -1330,7 +1330,7 @@ impl MonteCarloPricer {
         let seed = self.config.seed().unwrap_or(0);
         let epsilon = 1e-6;
 
-        let streaming_config = self.config.streaming().clone();
+        let streaming_config = *self.config.streaming();
         let mut engine = StreamingEngine::new(n_paths, n_steps, streaming_config, seed);
         let mut observer = LookbackObserver::new(n_paths, strike, epsilon, is_call, is_floating);
 
@@ -1370,7 +1370,7 @@ impl MonteCarloPricer {
         let n_steps = self.config.n_steps();
         let seed = self.config.seed().unwrap_or(0);
 
-        let streaming_config = self.config.streaming().clone();
+        let streaming_config = *self.config.streaming();
         let mut engine = StreamingEngine::new(n_paths, n_steps, streaming_config, seed);
 
         let result = engine.run(gbm, observer);
