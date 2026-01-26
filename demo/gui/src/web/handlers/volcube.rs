@@ -1353,8 +1353,9 @@ pub async fn get_surface(
 
 /// SABR calibration using iterative least-squares optimization.
 ///
-/// Uses Levenberg-Marquardt style optimization to find optimal (alpha, rho, nu)
-/// that minimises the sum of squared errors between model and market volatilities.
+/// Uses Levenberg-Marquardt style optimization with multi-start to find optimal
+/// (alpha, rho, nu) that minimises the sum of squared errors between model and
+/// market volatilities.
 fn calibrate_sabr_simple(
     instruments: &[&SwaptionInstrument],
     beta: f64,
@@ -1377,25 +1378,25 @@ fn calibrate_sabr_simple(
 
     // Initial guess for alpha from ATM vol (accounting for f^(1-beta) scaling)
     let f_mid = forward.powf(1.0 - beta);
-    let mut alpha = (atm_inst.implied_vol * f_mid).max(0.001);
-    let mut rho = 0.0;
-    let mut nu = 0.3;
+    let alpha_init = (atm_inst.implied_vol * f_mid).max(0.001);
 
-    // Better initial guess for rho from skew
+    // Estimate rho from skew direction
     let low_strikes: Vec<_> = instruments.iter().filter(|i| i.strike < forward).collect();
     let high_strikes: Vec<_> = instruments.iter().filter(|i| i.strike > forward).collect();
-    if !low_strikes.is_empty() && !high_strikes.is_empty() {
+    let rho_init = if !low_strikes.is_empty() && !high_strikes.is_empty() {
         let avg_low_vol =
             low_strikes.iter().map(|i| i.implied_vol).sum::<f64>() / low_strikes.len() as f64;
         let avg_high_vol =
             high_strikes.iter().map(|i| i.implied_vol).sum::<f64>() / high_strikes.len() as f64;
         let skew = avg_low_vol - avg_high_vol;
-        // More aggressive initial rho estimate
-        rho = (-skew * 4.0 / atm_inst.implied_vol).clamp(-0.9, 0.9);
-    }
+        // Negative skew (higher vol at low strikes) -> negative rho
+        (-skew * 5.0 / atm_inst.implied_vol).clamp(-0.8, 0.8)
+    } else {
+        0.0
+    };
 
-    // Better initial guess for nu from smile curvature
-    if instruments.len() >= 3 {
+    // Estimate nu from smile curvature
+    let nu_init = if instruments.len() >= 3 {
         let wing_vols: Vec<f64> = instruments
             .iter()
             .filter(|i| (i.strike - forward).abs() > forward * 0.15)
@@ -1404,48 +1405,90 @@ fn calibrate_sabr_simple(
         if !wing_vols.is_empty() {
             let avg_wing = wing_vols.iter().sum::<f64>() / wing_vols.len() as f64;
             let curvature = (avg_wing - atm_inst.implied_vol).max(0.0);
-            // More aggressive initial nu estimate
-            nu = (curvature * 8.0 / atm_inst.implied_vol + 0.1).clamp(0.1, 2.0);
+            (curvature * 10.0 / atm_inst.implied_vol + 0.2).clamp(0.1, 2.0)
+        } else {
+            0.4
         }
-    }
+    } else {
+        0.4
+    };
 
     // Objective function: sum of squared weighted errors
     let objective = |a: f64, r: f64, n: f64| -> f64 {
         instruments
             .iter()
             .map(|inst| {
-                let model_vol =
-                    sabr_implied_vol(inst.strike, forward, inst.expiry, a, beta, r, n);
+                let model_vol = sabr_implied_vol(inst.strike, forward, inst.expiry, a, beta, r, n);
+                // Penalize negative model vols heavily
+                if model_vol <= 0.0 {
+                    return 1e10;
+                }
                 let err = (model_vol - inst.implied_vol) * inst.weight;
                 err * err
             })
             .sum()
     };
 
-    // Levenberg-Marquardt style iteration
-    let max_iterations = 50;
-    let tolerance = 1e-8;
-    let mut lambda = 0.01; // Damping parameter
+    // Multi-start optimization: try different starting points to avoid local minima
+    let starting_points = vec![
+        (alpha_init, rho_init, nu_init),                   // Best guess
+        (alpha_init, rho_init.signum() * 0.3, 0.5),        // Moderate params, same rho sign
+        (alpha_init * 1.1, rho_init * 0.5, nu_init * 0.8), // Perturbed
+        (alpha_init * 0.9, rho_init * 1.2, nu_init * 1.2), // Perturbed other direction
+    ];
+
+    let mut best_alpha = alpha_init;
+    let mut best_rho = rho_init;
+    let mut best_nu = nu_init;
+    let mut best_obj = f64::INFINITY;
+
+    for (start_alpha, start_rho, start_nu) in starting_points {
+        let (a, r, n, obj) = optimize_sabr(start_alpha, start_rho, start_nu, &objective);
+        if obj < best_obj {
+            best_obj = obj;
+            best_alpha = a;
+            best_rho = r;
+            best_nu = n;
+        }
+    }
+
+    (best_alpha, best_rho, best_nu)
+}
+
+/// Run LM-style optimization from a starting point.
+fn optimize_sabr<F>(
+    mut alpha: f64,
+    mut rho: f64,
+    mut nu: f64,
+    objective: &F,
+) -> (f64, f64, f64, f64)
+where
+    F: Fn(f64, f64, f64) -> f64,
+{
+    let max_iterations = 100;
+    let tolerance = 1e-10;
+    let mut lambda = 0.001;
 
     for _ in 0..max_iterations {
         let current_obj = objective(alpha, rho, nu);
 
         // Compute numerical gradients
         let h = 1e-6;
-        let grad_alpha = (objective(alpha + h, rho, nu) - objective(alpha - h, rho, nu)) / (2.0 * h);
+        let grad_alpha =
+            (objective(alpha + h, rho, nu) - objective(alpha - h, rho, nu)) / (2.0 * h);
         let grad_rho = (objective(alpha, rho + h, nu) - objective(alpha, rho - h, nu)) / (2.0 * h);
         let grad_nu = (objective(alpha, rho, nu + h) - objective(alpha, rho, nu - h)) / (2.0 * h);
 
         // Compute approximate Hessian diagonal (for damping)
-        let hess_alpha =
-            (objective(alpha + h, rho, nu) - 2.0 * current_obj + objective(alpha - h, rho, nu))
-                / (h * h);
-        let hess_rho =
-            (objective(alpha, rho + h, nu) - 2.0 * current_obj + objective(alpha, rho - h, nu))
-                / (h * h);
-        let hess_nu =
-            (objective(alpha, rho, nu + h) - 2.0 * current_obj + objective(alpha, rho, nu - h))
-                / (h * h);
+        let hess_alpha = (objective(alpha + h, rho, nu) - 2.0 * current_obj
+            + objective(alpha - h, rho, nu))
+            / (h * h);
+        let hess_rho = (objective(alpha, rho + h, nu) - 2.0 * current_obj
+            + objective(alpha, rho - h, nu))
+            / (h * h);
+        let hess_nu = (objective(alpha, rho, nu + h) - 2.0 * current_obj
+            + objective(alpha, rho, nu - h))
+            / (h * h);
 
         // Compute update with damping (simplified diagonal LM)
         let d_alpha = -grad_alpha / (hess_alpha.abs().max(1e-10) + lambda);
@@ -1489,7 +1532,8 @@ fn calibrate_sabr_simple(
         }
     }
 
-    (alpha, rho, nu)
+    let final_obj = objective(alpha, rho, nu);
+    (alpha, rho, nu, final_obj)
 }
 
 /// SABR implied volatility approximation (Hagan formula).
@@ -1545,7 +1589,15 @@ fn sabr_implied_vol(
     let term3 = rho * beta * nu * alpha / (4.0 * fk_mid);
     let term4 = (2.0 - 3.0 * rho.powi(2)) * nu.powi(2) / 24.0;
 
-    prefix * x_z_ratio * (1.0 + (term2 + term3 + term4) * expiry)
+    let result = prefix * x_z_ratio * (1.0 + (term2 + term3 + term4) * expiry);
+
+    // Safeguard: ensure non-negative, finite result
+    if result.is_nan() || result.is_infinite() || result < 0.0 {
+        // Fallback to simple ATM-like approximation
+        return (alpha / fk_mid).max(0.001);
+    }
+
+    result
 }
 
 /// Black call price for density calculation.

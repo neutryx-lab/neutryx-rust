@@ -100,6 +100,7 @@ pub struct IndexedMarket<T: Float> {
     index_mapper: Option<Arc<dyn IndexCurveMapper + Send + Sync>>,
 }
 
+#[allow(clippy::missing_fields_in_debug)]
 impl<T: Float> std::fmt::Debug for IndexedMarket<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("IndexedMarket")
@@ -761,15 +762,15 @@ mod tests {
 mod integration_tests {
     use std::sync::Arc;
 
-    use infra_master::{Currency, Date, RateIndex};
+    use infra_master::{trade::instrument_def::CurrencyPair, Currency, Date, RateIndex};
 
     use crate::market::{
         curves::{CurveEnum, CurveName, CurveSet, FlatCurve, YieldCurve},
         fx_calibration::SimpleFxCurve,
         indexed_market::{IndexedMarket, IndexedMarketBuilder},
         surfaces::FlatVol,
-        volcube::{VolCube, VolCubeCache, VolCubeConfig, VolCubeKey, VolInstrument},
-        CurrencyPair, DefaultIndexCurveMapper, IndexCurveMapper,
+        volcube::{VolCubeCache, VolCubeConfig, VolCubeKey, VolInstrument},
+        DefaultIndexCurveMapper,
     };
 
     // ========================================
@@ -1054,8 +1055,9 @@ mod integration_tests {
 
         // Verify forward rate
         let fwd = curve.forward_rate(1.0).unwrap();
-        // F = S * exp((r_f - r_d) * t) = 1.10 * exp((0.03 - 0.05) * 1) = 1.10 * exp(-0.02)
-        let expected_fwd = 1.10 * (-0.02_f64).exp();
+        // Covered interest rate parity: F = S * DF_f / DF_d
+        // F = 1.10 * exp(-0.03) / exp(-0.05) = 1.10 * exp(0.02)
+        let expected_fwd = 1.10 * (0.02_f64).exp();
         assert!(
             (fwd - expected_fwd).abs() < 1e-6,
             "Forward rate mismatch: {} vs {}",
