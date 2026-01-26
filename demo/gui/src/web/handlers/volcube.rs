@@ -1429,12 +1429,19 @@ fn calibrate_sabr_simple(
             .sum()
     };
 
-    // Multi-start optimization: try different starting points to avoid local minima
+    // Determine rho sign constraint from market skew
+    // Negative skew (low strike vol > high strike vol) requires negative rho
+    let rho_sign = rho_init.signum();
+    let rho_min = if rho_sign < 0.0 { -0.95 } else { 0.0 };
+    let rho_max = if rho_sign < 0.0 { 0.0 } else { 0.95 };
+
+    // Multi-start optimization with sign-constrained rho
     let starting_points = vec![
-        (alpha_init, rho_init, nu_init),                   // Best guess
-        (alpha_init, rho_init.signum() * 0.3, 0.5),        // Moderate params, same rho sign
-        (alpha_init * 1.1, rho_init * 0.5, nu_init * 0.8), // Perturbed
-        (alpha_init * 0.9, rho_init * 1.2, nu_init * 1.2), // Perturbed other direction
+        (alpha_init, rho_init, nu_init),
+        (alpha_init, rho_sign * 0.3, 0.4),
+        (alpha_init, rho_sign * 0.5, 0.6),
+        (alpha_init * 1.1, rho_sign * 0.4, nu_init * 0.8),
+        (alpha_init * 0.9, rho_sign * 0.6, nu_init * 1.2),
     ];
 
     let mut best_alpha = alpha_init;
@@ -1443,7 +1450,14 @@ fn calibrate_sabr_simple(
     let mut best_obj = f64::INFINITY;
 
     for (start_alpha, start_rho, start_nu) in starting_points {
-        let (a, r, n, obj) = optimize_sabr(start_alpha, start_rho, start_nu, &objective);
+        let (a, r, n, obj) = optimize_sabr_constrained(
+            start_alpha,
+            start_rho,
+            start_nu,
+            rho_min,
+            rho_max,
+            &objective,
+        );
         if obj < best_obj {
             best_obj = obj;
             best_alpha = a;
@@ -1455,11 +1469,13 @@ fn calibrate_sabr_simple(
     (best_alpha, best_rho, best_nu)
 }
 
-/// Run LM-style optimization from a starting point.
-fn optimize_sabr<F>(
+/// Run LM-style optimization from a starting point with rho constraints.
+fn optimize_sabr_constrained<F>(
     mut alpha: f64,
     mut rho: f64,
     mut nu: f64,
+    rho_min: f64,
+    rho_max: f64,
     objective: &F,
 ) -> (f64, f64, f64, f64)
 where
@@ -1468,6 +1484,9 @@ where
     let max_iterations = 100;
     let tolerance = 1e-10;
     let mut lambda = 0.001;
+
+    // Ensure starting point is within bounds
+    rho = rho.clamp(rho_min, rho_max);
 
     for _ in 0..max_iterations {
         let current_obj = objective(alpha, rho, nu);
@@ -1501,18 +1520,17 @@ where
         let mut new_rho = rho;
         let mut new_nu = nu;
 
-        for _ in 0..10 {
+        for _ in 0..15 {
             new_alpha = (alpha + step * d_alpha).clamp(0.001, 10.0);
-            new_rho = (rho + step * d_rho).clamp(-0.999, 0.999);
+            // Constrain rho to the specified sign range
+            new_rho = (rho + step * d_rho).clamp(rho_min, rho_max);
             new_nu = (nu + step * d_nu).clamp(0.01, 5.0);
 
             let new_obj = objective(new_alpha, new_rho, new_nu);
             if new_obj < current_obj {
-                // Accept step, decrease damping
                 lambda = (lambda * 0.5).max(1e-10);
                 break;
             }
-            // Reject step, try smaller
             step *= 0.5;
         }
 
@@ -1521,12 +1539,10 @@ where
         rho = new_rho;
         nu = new_nu;
 
-        // Check convergence
         if improvement < tolerance {
             break;
         }
 
-        // Increase damping if we're stuck
         if step < 0.01 {
             lambda = (lambda * 2.0).min(1e6);
         }

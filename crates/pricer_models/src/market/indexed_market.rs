@@ -777,8 +777,8 @@ mod integration_tests {
     // Task 6.1: CurveSet Fallback Integration Tests
     // ========================================
 
-    /// Test that IndexedMarket access produces same results as CurveSet direct access.
-    /// Requirements: 4.1, 4.2
+    /// Test that IndexedMarket access produces same results as CurveSet direct
+    /// access. Requirements: 4.1, 4.2
     #[test]
     fn test_curveset_indexed_market_result_consistency() {
         let date = Date::from_ymd(2025, 1, 15).unwrap();
@@ -1224,7 +1224,11 @@ mod integration_tests {
         let spot = market.fx_curve(eurusd).unwrap().spot_rate();
         assert!((spot - 1.10).abs() < 1e-10);
 
-        let vol = market.fx_vol_surface(eurusd).unwrap().volatility(100.0, 1.0).unwrap();
+        let vol = market
+            .fx_vol_surface(eurusd)
+            .unwrap()
+            .volatility(100.0, 1.0)
+            .unwrap();
         assert!((vol - 0.10).abs() < 1e-10);
     }
 

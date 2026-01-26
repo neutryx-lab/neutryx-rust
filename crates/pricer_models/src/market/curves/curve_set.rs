@@ -142,8 +142,8 @@ impl<T: Float> CurveSet<T> {
     ///
     /// # Deprecated
     ///
-    /// This method is deprecated. Use [`crate::market::IndexedMarket::curve`] for Index-keyed
-    /// access:
+    /// This method is deprecated. Use [`crate::market::IndexedMarket::curve`]
+    /// for Index-keyed access:
     ///
     /// ```ignore
     /// // Old (deprecated):
@@ -187,8 +187,8 @@ impl<T: Float> CurveSet<T> {
     ///
     /// # Deprecated
     ///
-    /// This method is deprecated. Use [`crate::market::IndexedMarket::curve`] for Index-keyed
-    /// access.
+    /// This method is deprecated. Use [`crate::market::IndexedMarket::curve`]
+    /// for Index-keyed access.
     ///
     /// # Example
     ///
@@ -289,8 +289,8 @@ impl<T: Float> CurveSet<T> {
     ///
     /// # Deprecated
     ///
-    /// This method is deprecated. Use [`crate::market::IndexedMarket::curve`] with the
-    /// appropriate discount RateIndex.
+    /// This method is deprecated. Use [`crate::market::IndexedMarket::curve`]
+    /// with the appropriate discount RateIndex.
     ///
     /// # Example
     ///
@@ -330,8 +330,8 @@ impl<T: Float> CurveSet<T> {
     ///
     /// # Deprecated
     ///
-    /// This method is deprecated. Use [`crate::market::IndexedMarket::curve`] with the
-    /// appropriate discount RateIndex.
+    /// This method is deprecated. Use [`crate::market::IndexedMarket::curve`]
+    /// with the appropriate discount RateIndex.
     #[deprecated(
         since = "0.2.0",
         note = "Use IndexedMarket::curve(discount_index) for type-safe Index-keyed access"
@@ -360,8 +360,8 @@ impl<T: Float> CurveSet<T> {
     ///
     /// # Deprecated
     ///
-    /// This method is deprecated. Use [`crate::market::IndexedMarket::curve`] for Index-keyed
-    /// access:
+    /// This method is deprecated. Use [`crate::market::IndexedMarket::curve`]
+    /// for Index-keyed access:
     ///
     /// ```ignore
     /// // Old (deprecated):
@@ -404,8 +404,8 @@ impl<T: Float> CurveSet<T> {
     ///
     /// # Deprecated
     ///
-    /// This method is deprecated. Use [`crate::market::IndexedMarket::curve`] for Index-keyed
-    /// access.
+    /// This method is deprecated. Use [`crate::market::IndexedMarket::curve`]
+    /// for Index-keyed access.
     #[deprecated(
         since = "0.2.0",
         note = "Use IndexedMarket::curve(RateIndex) for type-safe Index-keyed access"
@@ -468,8 +468,9 @@ impl<T: Float> CurveSet<T> {
     ///
     /// # Note
     ///
-    /// For new code, prefer using [`crate::market::IndexedMarket::curve`] which provides
-    /// direct Index-keyed access without the intermediate CurveName mapping.
+    /// For new code, prefer using [`crate::market::IndexedMarket::curve`] which
+    /// provides direct Index-keyed access without the intermediate
+    /// CurveName mapping.
     ///
     /// # Example
     ///
