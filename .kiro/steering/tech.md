@@ -131,6 +131,7 @@ docker run -it neutryx-enzyme
 | **Dual-Mode Verification** | Enzyme (performance) + num-dual (correctness) for validation |
 | **Smooth Approximations** | Replace all discontinuities (if/max) with differentiable functions |
 | **3-Stage Rocket Pattern** | Definition (L2) → Linking (PricingContext) → Execution (pure kernel); zero HashMap lookups in hot path |
+| **IndexedMarket Pattern** | Market data keyed by `RateIndex`/`CurrencyPair` not strings; `TradeIndexRequirements` trait declares dependencies; `MarketValidator` checks completeness |
 | **Feature Flag Coordination** | Features propagate through dependency chain (demo→frictional_bank→pricer_pricing) enabling modular compilation for different deployment scenarios |
 | **Feature Flags** | `num-dual-mode` (default), `enzyme-mode`, `serde` for serialisation; Asset classes: `equity` (default), `rates`, `credit`, `fx`, `commodity`, `exotic`; Convenience: `all`; Integration: `l1l2-integration` |
 
@@ -167,5 +168,5 @@ docker run -it neutryx-enzyme
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-26_ — Added fx_calibration module pattern (FX curve + vol surface calibration)
+_Updated: 2026-01-26_ — Added IndexedMarket pattern to Key Technical Decisions
 _Document standards and patterns, not every dependency_
