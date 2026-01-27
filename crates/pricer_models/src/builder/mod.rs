@@ -1,4 +1,12 @@
-//! Curve builder module for yield curve bootstrapping and market data calibration.
+//! Builder module for yield curves, volatility surfaces, and market data calibration.
+//!
+//! ## Calibration Patterns
+//!
+//! | Pattern | Module | Description |
+//! |---------|--------|-------------|
+//! | Sequential | [`bootstrap`] | Solve one pillar at a time (curves) |
+//! | Slice-wise | [`paramsurface`] | Calibrate each slice independently, then aggregate (vol surfaces) |
+//! | Global | [`globalsolver`] | Solve all parameters simultaneously (curves) |
 
 use pricer_core::types::SolverError;
 use thiserror::Error;
@@ -8,12 +16,17 @@ use crate::market::MarketDataError;
 mod bootstrap;
 mod error;
 mod instrument;
+mod paramsurface;
 #[cfg(feature = "global-bootstrap")]
 mod globalsolver;
 
 pub use bootstrap::{BootstrapConfig, CurveBootstrapper, InterpolationMethod};
 pub use error::CalibrationError;
 pub use instrument::CalibrationInstrument;
+pub use paramsurface::{
+    FxVolBuilder, FxVolResult, SabrParams, SabrSliceCalibrator, SliceCalibrationConfig,
+    SliceCalibrator, VolCubeBuilder, VolCubeResult, VolQuote,
+};
 #[cfg(feature = "global-bootstrap")]
 pub use globalsolver::{GlobalBootstrapConfig, GlobalBootstrapResult, GlobalBootstrapper};
 
