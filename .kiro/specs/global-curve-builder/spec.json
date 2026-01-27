@@ -3,9 +3,13 @@
   "created_at": "2026-01-27T00:00:00Z",
   "updated_at": "2026-01-27T00:00:00Z",
   "language": "ja",
-  "phase": "requirements-generated",
+  "phase": "gap-analysis-completed",
   "approvals": {
     "requirements": {
+      "generated": true,
+      "approved": false
+    },
+    "gap_analysis": {
       "generated": true,
       "approved": false
     },

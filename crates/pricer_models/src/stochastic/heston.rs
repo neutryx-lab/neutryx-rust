@@ -31,7 +31,7 @@
 //! ## 使用例
 //!
 //! ```
-//! use pricer_models::models::{HestonParams, HestonError};
+//! use pricer_models::stochastic::{HestonParams, HestonError};
 //!
 //! // パラメータを作成
 //! let params = HestonParams::new(
@@ -81,7 +81,7 @@ use super::validation::{ComputationError, ParamValidationError};
 /// # 例
 ///
 /// ```
-/// use pricer_models::models::HestonError;
+/// use pricer_models::stochastic::HestonError;
 ///
 /// let err = HestonError::InvalidSpot(-100.0);
 /// assert!(format!("{}", err).contains("-100"));
@@ -187,7 +187,7 @@ impl From<ComputationError> for HestonError {
 /// # 例
 ///
 /// ```
-/// use pricer_models::models::HestonParams;
+/// use pricer_models::stochastic::HestonParams;
 ///
 /// let params = HestonParams::new(
 ///     100.0, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0
@@ -240,7 +240,7 @@ impl<T: Float> HestonParams<T> {
     /// # 例
     ///
     /// ```
-    /// use pricer_models::models::HestonParams;
+    /// use pricer_models::stochastic::HestonParams;
     ///
     /// // 有効なパラメータ
     /// let params = HestonParams::new(100.0, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0);
@@ -393,7 +393,7 @@ impl<T: Float> HestonParams<T> {
     /// # 例
     ///
     /// ```
-    /// use pricer_models::models::HestonParams;
+    /// use pricer_models::stochastic::HestonParams;
     ///
     /// // Feller条件を満たすパラメータ: 2 * 1.5 * 0.04 = 0.12 > 0.3^2 = 0.09
     /// let params = HestonParams::new(100.0, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0).unwrap();
@@ -480,7 +480,7 @@ impl<T: Float> Default for HestonParams<T> {
 /// # 例
 ///
 /// ```
-/// use pricer_models::models::{HestonModel, HestonParams};
+/// use pricer_models::stochastic::{HestonModel, HestonParams};
 ///
 /// let params = HestonParams::new(
 ///     100.0,  // スポット価格
@@ -534,7 +534,7 @@ impl<T: Float> HestonModel<T> {
     /// # 例
     ///
     /// ```
-    /// use pricer_models::models::{HestonModel, HestonParams};
+    /// use pricer_models::stochastic::{HestonModel, HestonParams};
     ///
     /// let params = HestonParams::new(100.0, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0).unwrap();
     /// let model = HestonModel::new(params);
@@ -595,7 +595,7 @@ impl<T: Float> HestonModel<T> {
     /// # 例
     ///
     /// ```
-    /// use pricer_models::models::{HestonModel, HestonParams};
+    /// use pricer_models::stochastic::{HestonModel, HestonParams};
     ///
     /// // Feller条件を満たすパラメータ
     /// let params = HestonParams::new(100.0, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0).unwrap();
@@ -930,7 +930,7 @@ impl<T: Float> HestonModel<T> {
     ///
     /// # Example
     /// ```
-    /// use pricer_models::models::{HestonModel, HestonParams};
+    /// use pricer_models::stochastic::{HestonModel, HestonParams};
     ///
     /// let params = HestonParams::new(100.0, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0).unwrap();
     /// let model = HestonModel::new(params).unwrap();
@@ -1062,8 +1062,8 @@ use crate::stochastic::stochastic::{EquityModel, StochasticModel, TwoFactorState
 /// # 使用例
 ///
 /// ```
-/// use pricer_models::models::{HestonModel, HestonParams};
-/// use pricer_models::models::stochastic::StochasticModel;
+/// use pricer_models::stochastic::{HestonModel, HestonParams};
+/// use pricer_models::stochastic::stochastic::StochasticModel;
 ///
 /// let params = HestonParams::new(100.0, 0.04, 0.04, 1.5, 0.3, -0.7, 0.05, 1.0).unwrap();
 /// let state = HestonModel::initial_state(&params);

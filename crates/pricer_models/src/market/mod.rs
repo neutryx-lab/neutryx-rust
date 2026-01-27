@@ -87,8 +87,8 @@ pub use curves::{
     FlatHazardRateCurve, HazardRateCurve, InterpolatedCurve, YieldCurve,
 };
 
-// Re-export error types
-pub use error::{MarketBuildError, MarketDataError};
+// Re-export error types (unified hierarchy + legacy)
+pub use error::{ContextError, CurveError, MarketBuildError, MarketDataError, MarketError, SurfaceError};
 
 // Re-export FX density types
 pub use fx_density::{DeltaType, DensityStatistics, FxDensityCalculator};

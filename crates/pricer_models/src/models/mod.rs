@@ -1,80 +1,168 @@
 //! Stochastic process models for Monte Carlo simulation.
 //!
-//! This module provides stochastic models with a flat structure and
-//! trait markers for asset class categorisation.
+//! **DEPRECATED**: This module has been renamed to [`stochastic`](crate::stochastic).
+//! Please update your imports to use `pricer_models::stochastic` instead.
 //!
-//! ## Model Categories (via trait markers)
+//! This module will be removed in a future version.
 //!
-//! - `EquityModel`: GBM, Heston, SABR
-//! - `RatesModel`: Hull-White, CIR, SABR
-//! - `FxModel`: SABR (+ future FX-specific models)
-//! - `HybridModel`: Correlated multi-factor
-//!
-//! ## Design Philosophy
-//!
-//! - Static dispatch via enum (not `Box<dyn Trait>`)
-//! - Generic `Float` type for AD compatibility
-//! - Smooth approximations for differentiability
-//! - Trait markers allow a single model (e.g., SABR) to serve multiple asset
-//!   classes
-//!
-//! ## Example
-//!
-//! ```
-//! use pricer_models::models::{StochasticModelEnum, ModelParams, GBMParams};
-//!
-//! let model = StochasticModelEnum::<f64>::gbm();
-//! let params = ModelParams::GBM(GBMParams::new(100.0, 0.05, 0.2).unwrap());
-//!
-//! let n_steps = 10;
-//! let dt = 1.0 / 252.0;
-//! let randoms = vec![0.0; n_steps];
-//! let path = model.generate_path(&params, n_steps, dt, &randoms);
-//! ```
+//! Note: The SABR stochastic SDE implementation has been removed. For SABR
+//! implied volatility calculations, use [`crate::formulas::sabr_implied_vol`].
 
-// Core infrastructure
-pub mod error;
-pub mod model_enum;
-pub mod stochastic;
-pub mod validation;
+#![deprecated(
+    since = "0.2.0",
+    note = "Use `pricer_models::stochastic` instead. This module will be removed in a future version."
+)]
 
-// === Individual Models ===
-
-#[cfg(feature = "equity")]
-pub mod gbm;
-
-#[cfg(feature = "equity")]
-pub mod heston;
-
-#[cfg(feature = "equity")]
-pub mod sabr;
-
-#[cfg(feature = "rates")]
-pub mod hull_white;
-
-#[cfg(feature = "rates")]
-pub mod cir;
-
-#[cfg(feature = "exotic")]
-pub mod correlated;
-
-// === Re-exports ===
-
-#[cfg(feature = "rates")]
-pub use cir::{CIRModel, CIRParams};
-#[cfg(feature = "exotic")]
-pub use correlated::{CholeskyFactor, CorrelatedModels, CorrelationError, CorrelationMatrix};
-pub use error::ModelError;
-#[cfg(feature = "equity")]
-pub use gbm::{GBMModel, GBMParams};
-#[cfg(feature = "equity")]
-pub use heston::{HestonError, HestonModel, HestonParams};
-#[cfg(feature = "rates")]
-pub use hull_white::{HullWhiteModel, HullWhiteParams, ThetaFunction};
-pub use model_enum::{ModelParams, ModelState, StochasticModelEnum};
-#[cfg(feature = "equity")]
-pub use sabr::{SABRError, SABRModel, SABRParams};
-pub use stochastic::{
-    EquityModel, FxModel, HybridModel, RatesModel, SingleState, StochasticModel, StochasticState,
-    TwoFactorState,
+// Re-export everything from stochastic for backward compatibility
+#[allow(deprecated)]
+pub use crate::stochastic::{
+    EquityModel, FxModel, HybridModel, ModelError, ModelParams, ModelState, RatesModel,
+    SingleState, StochasticModel, StochasticModelEnum, StochasticState, TwoFactorState,
 };
+
+#[cfg(feature = "equity")]
+#[allow(deprecated)]
+pub use crate::stochastic::{GBMModel, GBMParams, HestonError, HestonModel, HestonParams};
+
+#[cfg(feature = "rates")]
+#[allow(deprecated)]
+pub use crate::stochastic::{CIRModel, CIRParams, HullWhiteModel, HullWhiteParams, ThetaFunction};
+
+#[cfg(feature = "exotic")]
+#[allow(deprecated)]
+pub use crate::stochastic::{
+    CholeskyFactor, CorrelatedModels, CorrelationError, CorrelationMatrix,
+};
+
+/// Deprecated module for error types.
+///
+/// Use [`crate::stochastic::error`] instead.
+#[deprecated(
+    since = "0.2.0",
+    note = "Use `pricer_models::stochastic::error` instead."
+)]
+pub mod error {
+    pub use crate::stochastic::error::*;
+}
+
+/// Deprecated module for stochastic model enum.
+///
+/// Use [`crate::stochastic::model_enum`] instead.
+#[deprecated(
+    since = "0.2.0",
+    note = "Use `pricer_models::stochastic::model_enum` instead."
+)]
+pub mod model_enum {
+    pub use crate::stochastic::model_enum::*;
+}
+
+/// Deprecated module for stochastic traits.
+///
+/// Use [`crate::stochastic::stochastic`] instead.
+#[deprecated(
+    since = "0.2.0",
+    note = "Use `pricer_models::stochastic::stochastic` instead."
+)]
+pub mod stochastic {
+    pub use crate::stochastic::stochastic::*;
+}
+
+/// Deprecated module for validation utilities.
+///
+/// Use [`crate::stochastic::validation`] instead.
+#[deprecated(
+    since = "0.2.0",
+    note = "Use `pricer_models::stochastic::validation` instead."
+)]
+pub mod validation {
+    pub use crate::stochastic::validation::*;
+}
+
+/// Deprecated module for GBM model.
+///
+/// Use [`crate::stochastic::gbm`] instead.
+#[cfg(feature = "equity")]
+#[deprecated(since = "0.2.0", note = "Use `pricer_models::stochastic::gbm` instead.")]
+pub mod gbm {
+    pub use crate::stochastic::gbm::*;
+}
+
+/// Deprecated module for Heston model.
+///
+/// Use [`crate::stochastic::heston`] instead.
+#[cfg(feature = "equity")]
+#[deprecated(
+    since = "0.2.0",
+    note = "Use `pricer_models::stochastic::heston` instead."
+)]
+pub mod heston {
+    pub use crate::stochastic::heston::*;
+}
+
+/// Deprecated module for Hull-White model.
+///
+/// Use [`crate::stochastic::hull_white`] instead.
+#[cfg(feature = "rates")]
+#[deprecated(
+    since = "0.2.0",
+    note = "Use `pricer_models::stochastic::hull_white` instead."
+)]
+pub mod hull_white {
+    pub use crate::stochastic::hull_white::*;
+}
+
+/// Deprecated module for CIR model.
+///
+/// Use [`crate::stochastic::cir`] instead.
+#[cfg(feature = "rates")]
+#[deprecated(since = "0.2.0", note = "Use `pricer_models::stochastic::cir` instead.")]
+pub mod cir {
+    pub use crate::stochastic::cir::*;
+}
+
+/// Deprecated module for correlated models.
+///
+/// Use [`crate::stochastic::correlated`] instead.
+#[cfg(feature = "exotic")]
+#[deprecated(
+    since = "0.2.0",
+    note = "Use `pricer_models::stochastic::correlated` instead."
+)]
+pub mod correlated {
+    pub use crate::stochastic::correlated::*;
+}
+
+/// SABR stochastic model (DEPRECATED).
+///
+/// The SABR stochastic SDE implementation has been removed.
+/// For SABR implied volatility calculations, use
+/// [`crate::formulas::sabr_implied_vol`] instead.
+#[cfg(feature = "equity")]
+#[deprecated(
+    since = "0.2.0",
+    note = "SABR stochastic SDE is removed. Use `pricer_models::formulas::sabr_implied_vol` for implied vol calculations."
+)]
+pub mod sabr {
+    // SABR stochastic SDE has been removed.
+    // For backward compatibility, we provide empty type aliases
+    // pointing to the formulas module.
+
+    /// SABR parameters for implied volatility (use formulas module directly).
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use `pricer_models::formulas::sabr_implied_vol::SabrImpliedVolParams` instead."
+    )]
+    pub type SABRParams<T> = crate::formulas::sabr_implied_vol::SabrImpliedVolParams<T>;
+
+    /// SABR error type (use formulas module directly).
+    #[deprecated(
+        since = "0.2.0",
+        note = "Use `pricer_models::formulas::sabr_implied_vol::SabrImpliedVolError` instead."
+    )]
+    pub type SABRError = crate::formulas::sabr_implied_vol::SabrImpliedVolError;
+}
+
+// Re-export deprecated SABR types at module level for backward compatibility
+#[cfg(feature = "equity")]
+#[allow(deprecated)]
+pub use sabr::{SABRError, SABRParams};

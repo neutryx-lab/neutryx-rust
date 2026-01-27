@@ -2,11 +2,252 @@
 //!
 //! This module provides structured error handling for market data operations
 //! including yield curve and volatility surface lookups.
+//!
+//! # Architecture
+//!
+//! The error hierarchy follows a domain-driven design:
+//!
+//! ```text
+//! MarketError (root)
+//! ├── Curve(CurveError)      - Yield curve operations
+//! ├── Surface(SurfaceError)  - Volatility surface operations
+//! └── Context(ContextError)  - Market data context operations
+//! ```
+//!
+//! Legacy error types (`MarketDataError`, `MarketBuildError`) are preserved
+//! for backward compatibility but new code should use the hierarchical types.
 
 use pricer_core::types::{InterpolationError, PricingError};
 use thiserror::Error;
 
 use super::curves::CurveName;
+
+// ============================================================================
+// Unified Hierarchical Error Types (Design Document Section 2)
+// ============================================================================
+
+/// Root market error type.
+///
+/// Provides a unified entry point for all market-related errors.
+/// Supports automatic conversion from sub-error types via `#[from]`.
+///
+/// # Examples
+///
+/// ```
+/// use pricer_models::market::error::{MarketError, CurveError};
+///
+/// let err: MarketError = CurveError::not_found("SOFR").into();
+/// assert!(matches!(err, MarketError::Curve(_)));
+/// ```
+#[derive(Debug, Error, Clone)]
+pub enum MarketError {
+    /// Curve-related errors (interpolation, bootstrap, lookup).
+    #[error("curve error: {0}")]
+    Curve(#[from] CurveError),
+
+    /// Surface-related errors (volatility lookup, calibration).
+    #[error("surface error: {0}")]
+    Surface(#[from] SurfaceError),
+
+    /// Context-related errors (provider, validation).
+    #[error("context error: {0}")]
+    Context(#[from] ContextError),
+}
+
+/// Curve-related errors.
+///
+/// Covers yield curve interpolation, bootstrapping, and lookup failures.
+///
+/// # Examples
+///
+/// ```
+/// use pricer_models::market::error::CurveError;
+///
+/// let err = CurveError::interpolation(2.5, "extrapolation not allowed");
+/// assert!(format!("{}", err).contains("2.5"));
+/// ```
+#[derive(Debug, Error, Clone, PartialEq)]
+pub enum CurveError {
+    /// Interpolation failed at a specific time point.
+    #[error("interpolation failed at t={time}: {reason}")]
+    Interpolation {
+        /// The time point where interpolation failed.
+        time: f64,
+        /// Description of the failure.
+        reason: String,
+    },
+
+    /// Bootstrapping operation failed.
+    #[error("bootstrap failed: {0}")]
+    Bootstrap(String),
+
+    /// Curve not found by name.
+    #[error("curve not found: {0}")]
+    NotFound(String),
+
+    /// Invalid curve configuration.
+    #[error("invalid configuration: {0}")]
+    InvalidConfig(String),
+
+    /// FX curve-specific error.
+    #[error("fx curve error: {0}")]
+    Fx(String),
+
+    /// Wrapped interpolation error from pricer_core.
+    #[error("interpolation: {0}")]
+    InterpolationCore(#[from] InterpolationError),
+}
+
+impl CurveError {
+    /// Create an interpolation error.
+    #[must_use]
+    pub fn interpolation(time: f64, reason: impl Into<String>) -> Self {
+        Self::Interpolation {
+            time,
+            reason: reason.into(),
+        }
+    }
+
+    /// Create a bootstrap error.
+    #[must_use]
+    pub fn bootstrap(message: impl Into<String>) -> Self { Self::Bootstrap(message.into()) }
+
+    /// Create a not found error.
+    #[must_use]
+    pub fn not_found(name: impl Into<String>) -> Self { Self::NotFound(name.into()) }
+
+    /// Create an invalid config error.
+    #[must_use]
+    pub fn invalid_config(message: impl Into<String>) -> Self {
+        Self::InvalidConfig(message.into())
+    }
+
+    /// Create an FX curve error.
+    #[must_use]
+    pub fn fx(message: impl Into<String>) -> Self { Self::Fx(message.into()) }
+}
+
+/// Surface-related errors.
+///
+/// Covers volatility surface lookup, calibration, and strike validation.
+///
+/// # Examples
+///
+/// ```
+/// use pricer_models::market::error::SurfaceError;
+///
+/// let err = SurfaceError::invalid_strike(-0.01);
+/// assert!(format!("{}", err).contains("-0.01"));
+/// ```
+#[derive(Debug, Error, Clone, PartialEq)]
+pub enum SurfaceError {
+    /// Volatility lookup failed.
+    #[error("volatility lookup failed: {0}")]
+    VolLookup(String),
+
+    /// Calibration failed.
+    #[error("calibration failed: {0}")]
+    Calibration(String),
+
+    /// Invalid strike value.
+    #[error("invalid strike: {0}")]
+    InvalidStrike(String),
+
+    /// Swaption-specific error.
+    #[error("swaption vol error: {0}")]
+    Swaption(String),
+
+    /// FX volatility-specific error.
+    #[error("fx vol error: {0}")]
+    FxVol(String),
+}
+
+impl SurfaceError {
+    /// Create a vol lookup error.
+    #[must_use]
+    pub fn vol_lookup(message: impl Into<String>) -> Self { Self::VolLookup(message.into()) }
+
+    /// Create a calibration error.
+    #[must_use]
+    pub fn calibration(message: impl Into<String>) -> Self { Self::Calibration(message.into()) }
+
+    /// Create an invalid strike error with the strike value.
+    #[must_use]
+    pub fn invalid_strike(strike: f64) -> Self { Self::InvalidStrike(format!("{strike}")) }
+
+    /// Create a swaption error.
+    #[must_use]
+    pub fn swaption(message: impl Into<String>) -> Self { Self::Swaption(message.into()) }
+
+    /// Create an FX vol error.
+    #[must_use]
+    pub fn fx_vol(message: impl Into<String>) -> Self { Self::FxVol(message.into()) }
+}
+
+/// Context-related errors.
+///
+/// Covers market data provider, validation, and missing data errors.
+///
+/// # Examples
+///
+/// ```
+/// use pricer_models::market::error::ContextError;
+///
+/// let err = ContextError::not_found("SOFR curve");
+/// assert!(format!("{}", err).contains("SOFR"));
+/// ```
+#[derive(Debug, Error, Clone, PartialEq)]
+pub enum ContextError {
+    /// Market data not found.
+    #[error("market data not found: {0}")]
+    NotFound(String),
+
+    /// Validation failed.
+    #[error("validation failed: {0}")]
+    Validation(String),
+
+    /// Provider error.
+    #[error("provider error: {0}")]
+    Provider(String),
+}
+
+impl ContextError {
+    /// Create a not found error.
+    #[must_use]
+    pub fn not_found(description: impl Into<String>) -> Self { Self::NotFound(description.into()) }
+
+    /// Create a validation error.
+    #[must_use]
+    pub fn validation(message: impl Into<String>) -> Self { Self::Validation(message.into()) }
+
+    /// Create a provider error.
+    #[must_use]
+    pub fn provider(message: impl Into<String>) -> Self { Self::Provider(message.into()) }
+}
+
+// ============================================================================
+// Conversions to PricingError
+// ============================================================================
+
+impl From<MarketError> for PricingError {
+    fn from(err: MarketError) -> Self { PricingError::InvalidInput(err.to_string()) }
+}
+
+impl From<CurveError> for PricingError {
+    fn from(err: CurveError) -> Self { PricingError::InvalidInput(err.to_string()) }
+}
+
+impl From<SurfaceError> for PricingError {
+    fn from(err: SurfaceError) -> Self { PricingError::InvalidInput(err.to_string()) }
+}
+
+impl From<ContextError> for PricingError {
+    fn from(err: ContextError) -> Self { PricingError::InvalidInput(err.to_string()) }
+}
+
+// ============================================================================
+// Legacy Error Types (Preserved for Backward Compatibility)
+// ============================================================================
 
 /// Market data operation errors.
 ///
@@ -461,5 +702,266 @@ mod tests {
             }
             _ => panic!("Expected InvalidInput variant"),
         }
+    }
+
+    // ========================================
+    // Unified Hierarchical Error Tests (Task 1.2)
+    // ========================================
+
+    // --- CurveError Tests ---
+
+    #[test]
+    fn test_curve_error_interpolation() {
+        let err = CurveError::interpolation(2.5, "extrapolation not allowed");
+        let display = format!("{}", err);
+        assert!(display.contains("2.5"));
+        assert!(display.contains("extrapolation not allowed"));
+    }
+
+    #[test]
+    fn test_curve_error_bootstrap() {
+        let err = CurveError::bootstrap("solver failed at maturity 5Y");
+        let display = format!("{}", err);
+        assert!(display.contains("bootstrap failed"));
+        assert!(display.contains("solver failed"));
+    }
+
+    #[test]
+    fn test_curve_error_not_found() {
+        let err = CurveError::not_found("SOFR");
+        let display = format!("{}", err);
+        assert!(display.contains("curve not found"));
+        assert!(display.contains("SOFR"));
+    }
+
+    #[test]
+    fn test_curve_error_invalid_config() {
+        let err = CurveError::invalid_config("negative tolerance");
+        let display = format!("{}", err);
+        assert!(display.contains("invalid configuration"));
+        assert!(display.contains("negative tolerance"));
+    }
+
+    #[test]
+    fn test_curve_error_fx() {
+        let err = CurveError::fx("missing forward points");
+        let display = format!("{}", err);
+        assert!(display.contains("fx curve error"));
+        assert!(display.contains("missing forward points"));
+    }
+
+    #[test]
+    fn test_curve_error_equality() {
+        let err1 = CurveError::not_found("SOFR");
+        let err2 = CurveError::not_found("SOFR");
+        let err3 = CurveError::not_found("SONIA");
+        assert_eq!(err1, err2);
+        assert_ne!(err1, err3);
+    }
+
+    #[test]
+    fn test_curve_error_clone() {
+        let err1 = CurveError::bootstrap("test");
+        let err2 = err1.clone();
+        assert_eq!(err1, err2);
+    }
+
+    // --- SurfaceError Tests ---
+
+    #[test]
+    fn test_surface_error_vol_lookup() {
+        let err = SurfaceError::vol_lookup("out of strike range");
+        let display = format!("{}", err);
+        assert!(display.contains("volatility lookup failed"));
+        assert!(display.contains("out of strike range"));
+    }
+
+    #[test]
+    fn test_surface_error_calibration() {
+        let err = SurfaceError::calibration("optimiser did not converge");
+        let display = format!("{}", err);
+        assert!(display.contains("calibration failed"));
+        assert!(display.contains("optimiser"));
+    }
+
+    #[test]
+    fn test_surface_error_invalid_strike() {
+        let err = SurfaceError::invalid_strike(-0.01);
+        let display = format!("{}", err);
+        assert!(display.contains("invalid strike"));
+        assert!(display.contains("-0.01"));
+    }
+
+    #[test]
+    fn test_surface_error_swaption() {
+        let err = SurfaceError::swaption("missing ATM quote");
+        let display = format!("{}", err);
+        assert!(display.contains("swaption vol error"));
+        assert!(display.contains("ATM"));
+    }
+
+    #[test]
+    fn test_surface_error_fx_vol() {
+        let err = SurfaceError::fx_vol("SABR calibration failed");
+        let display = format!("{}", err);
+        assert!(display.contains("fx vol error"));
+        assert!(display.contains("SABR"));
+    }
+
+    #[test]
+    fn test_surface_error_equality() {
+        let err1 = SurfaceError::vol_lookup("test");
+        let err2 = SurfaceError::vol_lookup("test");
+        let err3 = SurfaceError::vol_lookup("other");
+        assert_eq!(err1, err2);
+        assert_ne!(err1, err3);
+    }
+
+    // --- ContextError Tests ---
+
+    #[test]
+    fn test_context_error_not_found() {
+        let err = ContextError::not_found("SOFR curve");
+        let display = format!("{}", err);
+        assert!(display.contains("market data not found"));
+        assert!(display.contains("SOFR"));
+    }
+
+    #[test]
+    fn test_context_error_validation() {
+        let err = ContextError::validation("missing required curves");
+        let display = format!("{}", err);
+        assert!(display.contains("validation failed"));
+        assert!(display.contains("missing"));
+    }
+
+    #[test]
+    fn test_context_error_provider() {
+        let err = ContextError::provider("lazy resolution failed");
+        let display = format!("{}", err);
+        assert!(display.contains("provider error"));
+        assert!(display.contains("lazy resolution"));
+    }
+
+    #[test]
+    fn test_context_error_equality() {
+        let err1 = ContextError::not_found("SOFR");
+        let err2 = ContextError::not_found("SOFR");
+        let err3 = ContextError::not_found("SONIA");
+        assert_eq!(err1, err2);
+        assert_ne!(err1, err3);
+    }
+
+    // --- MarketError (Root) Tests ---
+
+    #[test]
+    fn test_market_error_from_curve_error() {
+        let curve_err = CurveError::not_found("SOFR");
+        let market_err: MarketError = curve_err.into();
+        let display = format!("{}", market_err);
+        assert!(display.contains("curve error"));
+        assert!(display.contains("SOFR"));
+    }
+
+    #[test]
+    fn test_market_error_from_surface_error() {
+        let surface_err = SurfaceError::vol_lookup("out of bounds");
+        let market_err: MarketError = surface_err.into();
+        let display = format!("{}", market_err);
+        assert!(display.contains("surface error"));
+        assert!(display.contains("out of bounds"));
+    }
+
+    #[test]
+    fn test_market_error_from_context_error() {
+        let context_err = ContextError::validation("incomplete market");
+        let market_err: MarketError = context_err.into();
+        let display = format!("{}", market_err);
+        assert!(display.contains("context error"));
+        assert!(display.contains("incomplete"));
+    }
+
+    #[test]
+    fn test_market_error_matches_variant() {
+        let market_err: MarketError = CurveError::bootstrap("test").into();
+        assert!(matches!(market_err, MarketError::Curve(_)));
+
+        let market_err: MarketError = SurfaceError::calibration("test").into();
+        assert!(matches!(market_err, MarketError::Surface(_)));
+
+        let market_err: MarketError = ContextError::provider("test").into();
+        assert!(matches!(market_err, MarketError::Context(_)));
+    }
+
+    #[test]
+    fn test_market_error_into_pricing_error() {
+        let market_err: MarketError = CurveError::not_found("SOFR").into();
+        let pricing_err: PricingError = market_err.into();
+        match pricing_err {
+            PricingError::InvalidInput(msg) => {
+                assert!(msg.contains("curve error"));
+            }
+            _ => panic!("Expected InvalidInput variant"),
+        }
+    }
+
+    #[test]
+    fn test_curve_error_into_pricing_error() {
+        let curve_err = CurveError::bootstrap("failed");
+        let pricing_err: PricingError = curve_err.into();
+        match pricing_err {
+            PricingError::InvalidInput(msg) => {
+                assert!(msg.contains("bootstrap"));
+            }
+            _ => panic!("Expected InvalidInput variant"),
+        }
+    }
+
+    #[test]
+    fn test_surface_error_into_pricing_error() {
+        let surface_err = SurfaceError::calibration("failed");
+        let pricing_err: PricingError = surface_err.into();
+        match pricing_err {
+            PricingError::InvalidInput(msg) => {
+                assert!(msg.contains("calibration"));
+            }
+            _ => panic!("Expected InvalidInput variant"),
+        }
+    }
+
+    #[test]
+    fn test_context_error_into_pricing_error() {
+        let context_err = ContextError::not_found("curve");
+        let pricing_err: PricingError = context_err.into();
+        match pricing_err {
+            PricingError::InvalidInput(msg) => {
+                assert!(msg.contains("not found"));
+            }
+            _ => panic!("Expected InvalidInput variant"),
+        }
+    }
+
+    #[test]
+    fn test_market_error_clone() {
+        let market_err: MarketError = CurveError::not_found("SOFR").into();
+        let cloned = market_err.clone();
+        let display1 = format!("{}", market_err);
+        let display2 = format!("{}", cloned);
+        assert_eq!(display1, display2);
+    }
+
+    #[test]
+    fn test_error_trait_for_unified_types() {
+        let curve_err = CurveError::not_found("test");
+        let _: &dyn std::error::Error = &curve_err;
+
+        let surface_err = SurfaceError::vol_lookup("test");
+        let _: &dyn std::error::Error = &surface_err;
+
+        let context_err = ContextError::not_found("test");
+        let _: &dyn std::error::Error = &context_err;
+
+        let market_err: MarketError = curve_err.into();
+        let _: &dyn std::error::Error = &market_err;
     }
 }

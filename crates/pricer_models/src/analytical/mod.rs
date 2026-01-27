@@ -1,27 +1,54 @@
 //! Analytical pricing formulas for European options.
 //!
-//! This module provides closed-form solutions for option pricing:
-//! - Black-Scholes model for lognormal dynamics
-//! - Bachelier model for normal dynamics
-//! - Garman-Kohlhagen model for FX options
-//! - Analytical Greeks (Delta, Gamma, Vega, Theta, Rho)
+//! **DEPRECATED**: This module has been renamed to [`formulas`](crate::formulas).
+//! Please update your imports to use `pricer_models::formulas` instead.
 //!
-//! ## Design Principles
-//!
-//! - **Generic over `T: Float`**: Supports both `f64` and `Dual64` for AD
-//! - **AD Compatibility**: Avoids branching for tape consistency
-//! - **Numerical Stability**: Uses erfc-based CDF for accuracy
+//! This module will be removed in a future version.
 
-pub mod distributions;
-pub mod error;
+#![deprecated(
+    since = "0.2.0",
+    note = "Use `pricer_models::formulas` instead. This module will be removed in a future version."
+)]
 
-mod bachelier;
-mod black_scholes;
-pub mod garman_kohlhagen;
+// Re-export everything from formulas for backward compatibility
+#[allow(deprecated)]
+pub use crate::formulas::{
+    norm_cdf, norm_inv_cdf, norm_pdf, AnalyticalError, Bachelier, BlackScholes, GarmanKohlhagen,
+    GarmanKohlhagenParams,
+};
 
-// Re-export main types at module level
-pub use bachelier::Bachelier;
-pub use black_scholes::BlackScholes;
-pub use distributions::{norm_cdf, norm_inv_cdf, norm_pdf};
-pub use error::AnalyticalError;
-pub use garman_kohlhagen::{fx_call_price, fx_put_price, GarmanKohlhagen, GarmanKohlhagenParams};
+#[allow(deprecated)]
+pub use crate::formulas::garman_kohlhagen::{fx_call_price, fx_put_price};
+
+/// Deprecated module for error types.
+///
+/// Use [`crate::formulas::error`] instead.
+#[deprecated(
+    since = "0.2.0",
+    note = "Use `pricer_models::formulas::error` instead."
+)]
+pub mod error {
+    pub use crate::formulas::error::*;
+}
+
+/// Deprecated module for distribution functions.
+///
+/// Use [`pricer_core::math::distributions`] instead.
+#[deprecated(
+    since = "0.2.0",
+    note = "Use `pricer_core::math::distributions` instead."
+)]
+pub mod distributions {
+    pub use pricer_core::math::distributions::{norm_cdf, norm_inv_cdf, norm_pdf};
+}
+
+/// Deprecated module for Garman-Kohlhagen FX pricing.
+///
+/// Use [`crate::formulas::garman_kohlhagen`] instead.
+#[deprecated(
+    since = "0.2.0",
+    note = "Use `pricer_models::formulas::garman_kohlhagen` instead."
+)]
+pub mod garman_kohlhagen {
+    pub use crate::formulas::garman_kohlhagen::*;
+}

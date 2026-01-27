@@ -22,7 +22,7 @@
 //! ## Usage
 //!
 //! ```
-//! use pricer_models::models::hybrid::correlated::CorrelationMatrix;
+//! use pricer_models::stochastic::CorrelationMatrix;
 //!
 //! // Create a 2x2 correlation matrix with rho = 0.5
 //! let corr = CorrelationMatrix::new(&[

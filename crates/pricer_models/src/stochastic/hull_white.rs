@@ -20,8 +20,8 @@
 //! ## Usage
 //!
 //! ```
-//! use pricer_models::models::{HullWhiteModel, HullWhiteParams};
-//! use pricer_models::models::stochastic::StochasticModel;
+//! use pricer_models::stochastic::{HullWhiteModel, HullWhiteParams};
+//! use pricer_models::stochastic::stochastic::StochasticModel;
 //! use pricer_models::market::curves::FlatCurve;
 //!
 //! // Create parameters with flat initial curve
@@ -231,7 +231,7 @@ impl<T: Float> HullWhiteParams<T> {
     /// # Example
     ///
     /// ```
-    /// use pricer_models::models::HullWhiteParams;
+    /// use pricer_models::stochastic::HullWhiteParams;
     /// use pricer_models::market::curves::FlatCurve;
     ///
     /// let params = HullWhiteParams::new(0.05, 0.01, FlatCurve::new(0.03));

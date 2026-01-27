@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+#### num-dual Dependency Removal
+
+- **Removed `num-dual` crate dependency** from workspace
+  - Removed `num-dual-mode` feature flag from `pricer_core` and `pricer_models`
+  - Greeks calculation now uses bump-and-revalue as the default method
+  - Enzyme AD remains available via the `enzyme-ad` feature flag
+
+- **Removed Files and Types**:
+  - Deleted `crates/pricer_core/src/types/dual.rs` and associated tests
+  - Removed `GreeksMode::NumDual` variant from all Greeks enums
+  - Removed `NewtonRaphsonSolver::find_root_ad()` method
+  - Removed `VegaCalculator::compute_vega_ad()` num-dual version (kept bump-and-revalue version)
+  - Removed `SensitivityBootstrapper::bootstrap_with_sensitivities()` num-dual version
+  - Removed `SensitivityVerification` struct
+
+- **Updated CI/CD**:
+  - Removed `num-dual-mode` test step from GitHub Actions workflow
+  - Updated fallback messages to reference bump-and-revalue instead of num-dual
+
 ### Added
 
 #### External Numerics Migration (`external-numerics` feature)

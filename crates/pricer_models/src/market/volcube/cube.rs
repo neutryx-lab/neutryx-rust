@@ -256,7 +256,9 @@ impl<T: Float> VolCube<T> {
     }
 
     /// SABR Hagan公式でimplied volatilityを計算。
-    fn sabr_implied_vol(
+    ///
+    /// `formulas::sabr_implied_vol` モジュールを使用。
+    fn compute_sabr_implied_vol(
         &self,
         forward: T,
         strike: T,
@@ -266,76 +268,21 @@ impl<T: Float> VolCube<T> {
         rho: T,
         nu: T,
     ) -> T {
-        let eps = T::from(1e-10).unwrap();
-        let one = T::one();
-        let two = T::from(2.0).unwrap();
-        let three = T::from(3.0).unwrap();
-        let twentyfour = T::from(24.0).unwrap();
-        let quarter = T::from(0.25).unwrap();
-        let nineteen_twenty = T::from(1920.0).unwrap();
+        let params = SabrImpliedVolParams {
+            forward,
+            alpha,
+            beta,
+            nu,
+            rho,
+            maturity: expiry,
+        };
 
-        // ATM近傍の処理
-        if (forward - strike).abs() < eps * forward {
-            return self.sabr_atm_vol(forward, expiry, alpha, beta, rho, nu);
-        }
-
-        let one_minus_beta = one - beta;
-        let log_fk = (forward / strike).ln();
-        let fk_mid = (forward * strike).powf(one_minus_beta / two);
-
-        // z = (nu/alpha) * (FK)^((1-beta)/2) * ln(F/K)
-        let z = (nu / alpha) * fk_mid * log_fk;
-
-        // chi(z) = ln[(sqrt(1-2*rho*z+z^2)+z-rho)/(1-rho)]
-        let sqrt_term = (one - two * rho * z + z * z).sqrt();
-        let chi_z = ((sqrt_term + z - rho) / (one - rho)).ln();
-
-        // Handle chi(z) near zero
-        let z_over_chi = if chi_z.abs() < eps { one } else { z / chi_z };
-
-        // Denominator from log-moneyness expansion
-        let log_fk_2 = log_fk * log_fk;
-        let log_fk_4 = log_fk_2 * log_fk_2;
-        let one_minus_beta_2 = one_minus_beta * one_minus_beta;
-        let one_minus_beta_4 = one_minus_beta_2 * one_minus_beta_2;
-
-        let denom = one
-            + one_minus_beta_2 * log_fk_2 / twentyfour
-            + one_minus_beta_4 * log_fk_4 / nineteen_twenty;
-
-        // Higher-order corrections
-        let fk_mid_2 = fk_mid * fk_mid;
-        let term1 = one_minus_beta_2 * alpha * alpha / (twentyfour * fk_mid_2);
-        let term2 = quarter * rho * beta * nu * alpha / fk_mid;
-        let term3 = (two - three * rho * rho) * nu * nu / twentyfour;
-
-        let higher_order = one + (term1 + term2 + term3) * expiry;
-
-        // Final volatility
-        (alpha / fk_mid) * z_over_chi * higher_order / denom
-    }
-
-    /// SABR ATM volatility approximation。
-    fn sabr_atm_vol(&self, forward: T, expiry: T, alpha: T, beta: T, rho: T, nu: T) -> T {
-        let one = T::one();
-        let two = T::from(2.0).unwrap();
-        let three = T::from(3.0).unwrap();
-        let twentyfour = T::from(24.0).unwrap();
-        let quarter = T::from(0.25).unwrap();
-
-        let one_minus_beta = one - beta;
-        let f_pow = forward.powf(one_minus_beta);
-
-        // Base ATM vol
-        let vol_0 = alpha / f_pow;
-
-        // Higher-order ATM corrections
-        let f_pow_2 = f_pow * f_pow;
-        let term1 = one_minus_beta * one_minus_beta * alpha * alpha / (twentyfour * f_pow_2);
-        let term2 = quarter * rho * beta * nu * alpha / f_pow;
-        let term3 = (two - three * rho * rho) * nu * nu / twentyfour;
-
-        vol_0 * (one + (term1 + term2 + term3) * expiry)
+        // Use the formulas module, with a floor to ensure positive vol
+        let floor = T::from(1e-8).unwrap();
+        sabr_implied_vol(&params, strike).unwrap_or_else(|_| {
+            // Fallback to ATM vol if general formula fails
+            sabr_atm_vol(&params).max(floor)
+        })
     }
 
     /// 設定への参照を取得。
@@ -401,7 +348,7 @@ impl<T: Float + Send + Sync> VolatilityCube<T> for VolCube<T> {
         let forward = self.interpolate_forward(expiry, tenor)?;
 
         // SABR Hagan公式でimplied volatilityを計算
-        let vol = self.sabr_implied_vol(
+        let vol = self.compute_sabr_implied_vol(
             forward, strike, expiry, sabr.alpha, sabr.beta, sabr.rho, sabr.nu,
         );
 

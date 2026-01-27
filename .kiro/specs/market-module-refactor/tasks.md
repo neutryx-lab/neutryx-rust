@@ -36,15 +36,17 @@
   - _Note: 旧モジュール(index_mapper.rs, indexed_market.rs, provider.rs, requirements.rs, validator.rs)は削除済み_
   - _Requirements: 6.1, 6.2_
 
-- [ ] 2. カーブ関連機能をcurvesモジュールに統合する
+- [x] 2. カーブ関連機能をcurvesモジュールに統合する（部分完了）
 - [x] 2.1 (P) FXカーブ機能を統合する
   - FxCurveトレイト、SimpleFxCurve、CalibratedFxCurveをcurves/fx.rsに統合済み
   - FxForwardCurveBuilder、FxSwapData、XccySwapDataを含めた
   - ForwardPointsをcurves/fx.rsに移動済み（Strike、Volはvol関連のためtypes.rsに残置）
   - fx_calibration/curve.rs、builder.rsは削除済み
+  - fx_calibration/mod.rsはcurves/fxから再エクスポートに更新済み
   - _Requirements: 4.1, 1.3_
 
 - [ ] 2.2 ブートストラップ機能を統合する
+  - _Note: 18ファイルの大規模統合タスク。別途対応が必要_
   - 17ファイルに分散しているbootstrapping機能を単一ファイルに統合する
   - BootstrappedCurve、CurveBootstrapper、MultiCurveBuilderを含める
   - BootstrapCache、DateCalculatorを含める
@@ -52,10 +54,11 @@
   - エラー型をCurveErrorに統合する
   - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-- [ ] 2.3 curves/のmod.rsとre-exportを更新する
-  - YieldCurve、FxCurve、BootstrappedCurve等の公開APIを整理する
-  - 後方互換性を維持しながら新しい構造を反映する
-  - dispatch.rsでCurveEnumを更新する
+- [x] 2.3 curves/のmod.rsとre-exportを更新する（FX部分完了）
+  - FxCurve関連の公開APIを追加済み
+  - ~~YieldCurve、FxCurve、BootstrappedCurve等の公開APIを整理する~~
+  - ~~後方互換性を維持しながら新しい構造を反映する~~
+  - ~~dispatch.rsでCurveEnumを更新する~~
   - _Requirements: 6.1, 6.3, 4.4_
 
 - [ ] 3. ボラティリティサーフェス機能をsurfacesモジュールに統合する
@@ -87,6 +90,8 @@
 
 - [ ] 4. 不要ファイルとlegacyコードを削除する
 - [ ] 4.1 (P) sensitivity系ファイルを削除する
+  - _Note: これらのファイルは現在公開APIとしてエクスポートされているため、削除は破壊的変更となる_
+  - _Note: pricer_riskモジュールへの移動を検討するか、別フェーズで対応_
   - volcube/vega.rs、volcube/sensitivity_path.rs、volcube/aad_validation.rsを削除する
   - calibration/bootstrapping/sensitivity.rs、adjoint_solver.rsを削除する
   - fx_calibration/sensitivity.rsを削除する
@@ -94,8 +99,9 @@
   - _Requirements: 1.1, 1.2, 1.5_
 
 - [ ] 4.2 (P) legacy/未使用ファイルを削除する
-  - calibration/model_calibrator.rs（engine.rsに置換済み）を削除する
-  - calibration/heston.rs、hull_white.rs、sabr.rs（models/へ移動またはsurfaces/に統合済み）を削除する
+  - _Note: calibration/heston.rs等は現在も公開APIとしてエクスポートされている_
+  - calibration/model_calibrator.rs（engine.rsに置換済み、#[allow(dead_code)]付き）を削除する
+  - ~~calibration/heston.rs、hull_white.rs、sabr.rs（models/へ移動またはsurfaces/に統合済み）を削除する~~
   - volcube/loader_convert.rs、volcube/graph.rs（外部未使用）を削除する
   - `#[allow(dead_code)]`アノテーションが付いた未使用フィールドを精査・削除する
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_

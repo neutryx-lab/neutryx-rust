@@ -29,8 +29,8 @@
 //!
 //! ## Usage
 //! ```
-//! use pricer_models::models::{CIRModel, CIRParams};
-//! use pricer_models::models::stochastic::StochasticModel;
+//! use pricer_models::stochastic::{CIRModel, CIRParams};
+//! use pricer_models::stochastic::stochastic::StochasticModel;
 //!
 //! // Create parameters satisfying Feller condition
 //! let params = CIRParams::new(0.1_f64, 0.05, 0.05, 0.03).unwrap();
@@ -92,7 +92,7 @@ impl<T: Float> CIRParams<T> {
     /// # Example
     ///
     /// ```
-    /// use pricer_models::models::CIRParams;
+    /// use pricer_models::stochastic::CIRParams;
     ///
     /// let params = CIRParams::new(0.1_f64, 0.05, 0.05, 0.03);
     /// assert!(params.is_some());
@@ -136,7 +136,7 @@ impl<T: Float> CIRParams<T> {
     /// # Example
     ///
     /// ```
-    /// use pricer_models::models::CIRParams;
+    /// use pricer_models::stochastic::CIRParams;
     ///
     /// // Satisfies Feller: 2 * 0.1 * 0.05 = 0.01 >= 0.05^2 = 0.0025
     /// let params = CIRParams::new(0.1_f64, 0.05, 0.05, 0.03).unwrap();
