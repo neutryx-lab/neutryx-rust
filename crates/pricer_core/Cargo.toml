@@ -34,12 +34,13 @@ name = "core"
 harness = false
 
 [features]
-default = ["serde", "equity", "parallel", "external-numerics"]
+default = ["serde", "equity", "parallel", "external-numerics", "rng"]
 enzyme-mode = []                   # Production mode (Enzyme AD)
 execution-trace = []               # Execution trace mode for computation graph extraction
 serde = ["dep:serde", "chrono/serde", "infra_master/serde"]  # Serialisation support
 parallel = ["dep:rayon"]           # Parallel bootstrapping support
-linalg = ["dep:ndarray", "dep:nalgebra", "dep:rand", "dep:rand_distr"]  # Linear algebra support (includes multi-dimensional copula)
+rng = ["dep:rand", "dep:rand_distr"]  # Random number generation (PRNG, QMC placeholders)
+linalg = ["dep:ndarray", "dep:nalgebra", "rng"]  # Linear algebra support (includes multi-dimensional copula)
 external-numerics = ["dep:argmin", "dep:argmin-math", "dep:levenberg-marquardt", "dep:nalgebra"]  # External optimisation libraries
 
 # Asset class features (trades/instruments)

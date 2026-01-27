@@ -1488,30 +1488,47 @@ pub enum CalibrationError {
     /// Insufficient instruments for calibration.
     #[error("Insufficient instruments at expiry {expiry}: got {got}, need {need}")]
     InsufficientInstruments {
+        /// The expiry date.
         expiry: NaiveDate,
+        /// Number of instruments provided.
         got: usize,
+        /// Number of instruments needed.
         need: usize,
     },
     /// SABR calibration failed to converge.
     #[error("SABR calibration failed at expiry {expiry}: {message}")]
-    SabrCalibrationFailed { expiry: NaiveDate, message: String },
+    SabrCalibrationFailed {
+        /// The expiry date.
+        expiry: NaiveDate,
+        /// Description of the failure.
+        message: String,
+    },
     /// Invalid instrument quote.
     #[error("Invalid quote: {message}")]
-    InvalidQuote { message: String },
+    InvalidQuote {
+        /// Description of the invalid quote.
+        message: String,
+    },
     /// Surface construction error.
     #[error("Surface construction error: {message}")]
-    SurfaceConstructionError { message: String },
+    SurfaceConstructionError {
+        /// Description of the error.
+        message: String,
+    },
 }
 
 impl CalibrationError {
+    /// Creates a SABR calibration failed error.
     #[must_use]
     pub fn sabr_calibration_failed(expiry: NaiveDate, message: impl Into<String>) -> Self {
         Self::SabrCalibrationFailed { expiry, message: message.into() }
     }
+    /// Creates an invalid quote error.
     #[must_use]
     pub fn invalid_quote(message: impl Into<String>) -> Self {
         Self::InvalidQuote { message: message.into() }
     }
+    /// Creates a surface construction error.
     #[must_use]
     pub fn surface_construction_error(message: impl Into<String>) -> Self {
         Self::SurfaceConstructionError { message: message.into() }
@@ -1529,29 +1546,41 @@ impl From<VolSurfaceError> for CalibrationError {
 /// Calibration diagnostics for a single expiry.
 #[derive(Debug, Clone)]
 pub struct ExpiryDiagnostics {
+    /// The expiry date.
     pub expiry: NaiveDate,
+    /// Number of iterations used.
     pub iterations: usize,
+    /// Final residual error.
     pub residual: f64,
+    /// Whether calibration converged.
     pub converged: bool,
+    /// Per-instrument repricing errors.
     pub instrument_errors: Vec<f64>,
 }
 
 /// Full calibration diagnostics.
 #[derive(Debug, Clone, Default)]
 pub struct CalibrationDiagnostics {
+    /// Diagnostics per expiry.
     pub by_expiry: Vec<ExpiryDiagnostics>,
+    /// Total calibration time in milliseconds.
     pub total_time_ms: u64,
+    /// Overall success status.
     pub success: bool,
 }
 
 impl CalibrationDiagnostics {
+    /// Creates a new empty diagnostics object.
     #[must_use]
     pub fn new() -> Self { Self::default() }
+    /// Adds diagnostics for an expiry.
     pub fn add_expiry(&mut self, diag: ExpiryDiagnostics) { self.by_expiry.push(diag); }
+    /// Returns the worst residual across all expiries.
     #[must_use]
     pub fn worst_residual(&self) -> Option<f64> {
         self.by_expiry.iter().map(|d| d.residual).max_by(|a, b| a.partial_cmp(b).unwrap())
     }
+    /// Returns whether all expiries converged.
     #[must_use]
     pub fn all_converged(&self) -> bool { self.by_expiry.iter().all(|d| d.converged) }
 }
@@ -1563,41 +1592,57 @@ impl CalibrationDiagnostics {
 /// A volatility quote for calibration.
 #[derive(Debug, Clone)]
 pub struct VolQuote<T: Float> {
+    /// Expiry date.
     pub expiry: NaiveDate,
+    /// Quote type.
     pub quote_type: VolQuoteType,
+    /// Quote value (volatility or spread).
     pub value: T,
+    /// Delta for delta-quoted instruments.
     pub delta: Option<T>,
 }
 
 /// Type of volatility quote.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VolQuoteType {
+    /// At-the-money volatility.
     Atm,
+    /// 25-delta butterfly spread.
     Butterfly25D,
+    /// 10-delta butterfly spread.
     Butterfly10D,
+    /// 25-delta risk reversal.
     RiskReversal25D,
+    /// 10-delta risk reversal.
     RiskReversal10D,
+    /// Direct delta quote (call).
     DeltaCall,
+    /// Direct delta quote (put).
     DeltaPut,
 }
 
 impl<T: Float> VolQuote<T> {
+    /// Creates an ATM quote.
     #[must_use]
     pub fn atm(expiry: NaiveDate, vol: T) -> Self {
         Self { expiry, quote_type: VolQuoteType::Atm, value: vol, delta: None }
     }
+    /// Creates a 25-delta butterfly quote.
     #[must_use]
     pub fn butterfly_25d(expiry: NaiveDate, spread: T) -> Self {
         Self { expiry, quote_type: VolQuoteType::Butterfly25D, value: spread, delta: Some(from_f64(0.25)) }
     }
+    /// Creates a 25-delta risk reversal quote.
     #[must_use]
     pub fn risk_reversal_25d(expiry: NaiveDate, spread: T) -> Self {
         Self { expiry, quote_type: VolQuoteType::RiskReversal25D, value: spread, delta: Some(from_f64(0.25)) }
     }
+    /// Creates a 10-delta butterfly quote.
     #[must_use]
     pub fn butterfly_10d(expiry: NaiveDate, spread: T) -> Self {
         Self { expiry, quote_type: VolQuoteType::Butterfly10D, value: spread, delta: Some(from_f64(0.10)) }
     }
+    /// Creates a 10-delta risk reversal quote.
     #[must_use]
     pub fn risk_reversal_10d(expiry: NaiveDate, spread: T) -> Self {
         Self { expiry, quote_type: VolQuoteType::RiskReversal10D, value: spread, delta: Some(from_f64(0.10)) }
@@ -1620,6 +1665,7 @@ pub struct FxVolSurfaceBuilder<T: Float> {
 }
 
 impl<T: Float + Send + Sync> FxVolSurfaceBuilder<T> {
+    /// Creates a new FX volatility surface builder.
     #[must_use]
     pub fn new(currency_pair: CurrencyPair) -> Self {
         Self {
@@ -1633,24 +1679,28 @@ impl<T: Float + Send + Sync> FxVolSurfaceBuilder<T> {
         }
     }
 
+    /// Sets the reference date.
     #[must_use]
     pub fn with_reference_date(mut self, date: NaiveDate) -> Self {
         self.reference_date = Some(date);
         self
     }
 
+    /// Sets the FX forward curve.
     #[must_use]
     pub fn with_fx_curve(mut self, curve: Arc<dyn FxCurve<T> + Send + Sync>) -> Self {
         self.fx_curve = Some(curve);
         self
     }
 
+    /// Sets the surface configuration.
     #[must_use]
     pub fn with_config(mut self, config: FxVolSurfaceConfig) -> Self {
         self.config = config;
         self
     }
 
+    /// Enables SABR calibration with the specified beta.
     #[must_use]
     pub fn with_sabr(mut self, beta: T) -> Self {
         self.enable_sabr = true;
@@ -1658,30 +1708,35 @@ impl<T: Float + Send + Sync> FxVolSurfaceBuilder<T> {
         self
     }
 
+    /// Adds an ATM volatility quote.
     #[must_use]
     pub fn add_atm_quote(mut self, expiry: NaiveDate, vol: T) -> Self {
         self.quotes.push(VolQuote::atm(expiry, vol));
         self
     }
 
+    /// Adds a 25-delta butterfly quote.
     #[must_use]
     pub fn add_butterfly_25d_quote(mut self, expiry: NaiveDate, spread: T) -> Self {
         self.quotes.push(VolQuote::butterfly_25d(expiry, spread));
         self
     }
 
+    /// Adds a 25-delta risk reversal quote.
     #[must_use]
     pub fn add_risk_reversal_25d_quote(mut self, expiry: NaiveDate, spread: T) -> Self {
         self.quotes.push(VolQuote::risk_reversal_25d(expiry, spread));
         self
     }
 
+    /// Adds multiple quotes.
     #[must_use]
     pub fn add_quotes(mut self, quotes: Vec<VolQuote<T>>) -> Self {
         self.quotes.extend(quotes);
         self
     }
 
+    /// Builds the calibrated volatility surface.
     pub fn build(self) -> Result<(CalibratedFxVolSurface<T>, CalibrationDiagnostics), CalibrationError> {
         let reference_date = self.reference_date.ok_or(CalibrationError::MissingReferenceDate)?;
         let fx_curve = self.fx_curve.clone().ok_or(CalibrationError::MissingFxCurve)?;
@@ -1787,13 +1842,18 @@ impl<T: Float + Send + Sync> FxVolSurfaceBuilder<T> {
 /// Statistics for cache usage.
 #[derive(Debug, Clone, Default)]
 pub struct CacheStats {
+    /// Number of cache hits.
     pub hits: usize,
+    /// Number of cache misses (including first access).
     pub misses: usize,
+    /// Number of explicit invalidations.
     pub invalidations: usize,
 }
 
 impl CacheStats {
+    /// Creates new empty cache statistics.
     pub fn new() -> Self { Self::default() }
+    /// Returns the hit rate (0.0 to 1.0).
     pub fn hit_rate(&self) -> f64 {
         let total = self.hits + self.misses;
         if total == 0 { 0.0 } else { self.hits as f64 / total as f64 }
@@ -1822,6 +1882,7 @@ pub struct LazyFxVolSurface<T: Float> {
 }
 
 impl<T: Float + Send + Sync + 'static> LazyFxVolSurface<T> {
+    /// Creates a new lazy surface from a builder.
     pub fn new(builder: FxVolSurfaceBuilder<T>) -> Self {
         Self {
             inner: Arc::new(RwLock::new(LazyInner {
@@ -1831,21 +1892,25 @@ impl<T: Float + Send + Sync + 'static> LazyFxVolSurface<T> {
         }
     }
 
+    /// Returns whether the surface has been calibrated.
     pub fn is_calibrated(&self) -> bool {
         let inner = self.inner.read().expect("Lock poisoned");
         matches!(inner.state, LazyState::Calibrated { .. })
     }
 
+    /// Returns whether calibration has failed.
     pub fn has_failed(&self) -> bool {
         let inner = self.inner.read().expect("Lock poisoned");
         matches!(inner.state, LazyState::Failed(_))
     }
 
+    /// Returns a clone of the cache statistics.
     pub fn cache_stats(&self) -> CacheStats {
         let inner = self.inner.read().expect("Lock poisoned");
         inner.stats.clone()
     }
 
+    /// Returns calibration diagnostics if calibration has completed.
     pub fn diagnostics(&self) -> Option<CalibrationDiagnostics> {
         let inner = self.inner.read().expect("Lock poisoned");
         if let LazyState::Calibrated { diagnostics, .. } = &inner.state {
@@ -1855,12 +1920,14 @@ impl<T: Float + Send + Sync + 'static> LazyFxVolSurface<T> {
         }
     }
 
+    /// Forces calibration and returns the result.
     pub fn force_calibrate(&self) -> Result<(), CalibrationError> {
         let mut inner = self.inner.write().expect("Lock poisoned");
         self.ensure_calibrated(&mut inner)?;
         Ok(())
     }
 
+    /// Invalidates the cache and resets to pending state.
     pub fn invalidate(&self, new_builder: Option<FxVolSurfaceBuilder<T>>) {
         let mut inner = self.inner.write().expect("Lock poisoned");
         inner.stats.invalidations += 1;
@@ -1871,10 +1938,12 @@ impl<T: Float + Send + Sync + 'static> LazyFxVolSurface<T> {
         }
     }
 
+    /// Invalidates the cache with a new builder.
     pub fn invalidate_with_builder(&self, builder: FxVolSurfaceBuilder<T>) {
         self.invalidate(Some(builder));
     }
 
+    /// Gets the configuration if available.
     pub fn config(&self) -> Option<FxVolSurfaceConfig> {
         let inner = self.inner.read().expect("Lock poisoned");
         if let LazyState::Calibrated { surface, .. } = &inner.state {
@@ -1884,6 +1953,7 @@ impl<T: Float + Send + Sync + 'static> LazyFxVolSurface<T> {
         }
     }
 
+    /// Queries volatility by strike and expiry.
     pub fn volatility(&self, strike: T, expiry: T) -> Result<T, VolSurfaceError> {
         let mut inner = self.inner.write().expect("Lock poisoned");
         self.ensure_calibrated(&mut inner)
@@ -1897,6 +1967,7 @@ impl<T: Float + Send + Sync + 'static> LazyFxVolSurface<T> {
         }
     }
 
+    /// Queries volatility by expiry and delta.
     pub fn vol_by_delta(&self, expiry: T, delta: T) -> Result<T, VolSurfaceError> {
         let mut inner = self.inner.write().expect("Lock poisoned");
         self.ensure_calibrated(&mut inner)
@@ -1909,6 +1980,7 @@ impl<T: Float + Send + Sync + 'static> LazyFxVolSurface<T> {
         }
     }
 
+    /// Extracts a smile at a given expiry.
     pub fn smile(&self, expiry: T) -> Result<VolSmile<T>, VolSurfaceError> {
         let mut inner = self.inner.write().expect("Lock poisoned");
         self.ensure_calibrated(&mut inner)
@@ -1921,6 +1993,7 @@ impl<T: Float + Send + Sync + 'static> LazyFxVolSurface<T> {
         }
     }
 
+    /// Returns the ATM volatility at a given expiry.
     pub fn atm_vol(&self, expiry: T) -> Result<T, VolSurfaceError> {
         let mut inner = self.inner.write().expect("Lock poisoned");
         self.ensure_calibrated(&mut inner)
@@ -1972,9 +2045,12 @@ impl<T: Float + Send + Sync + 'static> Clone for LazyFxVolSurface<T> {
 /// Delta convention type for FX options.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum DeltaType {
+    /// Spot delta (premium excluded).
     #[default]
     SpotDelta,
+    /// Forward delta.
     ForwardDelta,
+    /// Premium-adjusted delta.
     PremiumAdjusted,
 }
 
@@ -1985,9 +2061,13 @@ pub enum DeltaType {
 /// Statistics of the probability density function.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct DensityStatistics<T: Float> {
+    /// Expected value (first moment).
     pub mean: T,
+    /// Variance (second central moment).
     pub variance: T,
+    /// Skewness (third standardised moment).
     pub skewness: T,
+    /// Kurtosis (fourth standardised moment, excess).
     pub kurtosis: T,
 }
 
@@ -2011,10 +2091,12 @@ pub struct FxDensityCalculator<'a, T: Float> {
 }
 
 impl<'a, T: Float> FxDensityCalculator<'a, T> {
+    /// Create a new FX density calculator.
     pub fn new(surface: &'a FxVolatilitySurface<T>, spot: T, domestic_rate: T, foreign_rate: T) -> Self {
         Self { surface, spot, domestic_rate, foreign_rate }
     }
 
+    /// Convert delta to strike using Garman-Kohlhagen inverse calculation.
     pub fn delta_to_strike(
         &self, delta: T, expiry: T, volatility: T, delta_type: DeltaType,
     ) -> Result<T, MarketDataError> {
@@ -2094,6 +2176,7 @@ impl<'a, T: Float> FxDensityCalculator<'a, T> {
         numerator / (volatility * sqrt_t)
     }
 
+    /// Compute the risk-neutral probability density at a given strike.
     pub fn probability_density(&self, strike: T, expiry: T) -> Result<T, MarketDataError> {
         if strike <= T::zero() {
             return Err(MarketDataError::InvalidStrike { strike: strike.to_f64().unwrap_or(0.0) });
@@ -2118,6 +2201,7 @@ impl<'a, T: Float> FxDensityCalculator<'a, T> {
         Ok(density.max(T::zero()))
     }
 
+    /// Compute statistics of the probability density function.
     pub fn statistics(&self, expiry: T, strike_range: (T, T), num_points: usize) -> Result<DensityStatistics<T>, MarketDataError> {
         let (k_min, k_max) = strike_range;
         if expiry <= T::zero() {
@@ -2200,12 +2284,16 @@ impl<'a, T: Float> FxDensityCalculator<'a, T> {
         self.spot * discount_foreign * norm_cdf(d1) - strike * discount_domestic * norm_cdf(d2)
     }
 
+    /// Get the spot rate.
     #[inline]
     pub fn spot(&self) -> T { self.spot }
+    /// Get the domestic rate.
     #[inline]
     pub fn domestic_rate(&self) -> T { self.domestic_rate }
+    /// Get the foreign rate.
     #[inline]
     pub fn foreign_rate(&self) -> T { self.foreign_rate }
+    /// Get reference to the underlying surface.
     #[inline]
     pub fn surface(&self) -> &FxVolatilitySurface<T> { self.surface }
 }

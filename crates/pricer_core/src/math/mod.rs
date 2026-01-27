@@ -16,6 +16,7 @@
 //! - `fitting`: Curve fitting and regression analysis
 //! - `mesh`: Grid generation for numerical methods
 //! - `linalg`: Linear algebra operations (requires `linalg` feature)
+//! - `rng`: Random number generation (requires `rng` feature)
 
 // Allow standard mathematical single-letter variable names (a, b, c, x, y, etc.)
 // which are conventional in numerical computing and interpolation algorithms.
@@ -36,3 +37,6 @@ pub mod utilities;
 
 #[cfg(feature = "linalg")]
 pub mod linalg;
+
+#[cfg(feature = "rng")]
+pub mod rng;

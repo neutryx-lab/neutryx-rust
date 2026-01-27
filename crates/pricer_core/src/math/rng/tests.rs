@@ -86,11 +86,13 @@ fn test_empty_buffer() {
 
 /// Verifies that SobolPlaceholder::new panics with appropriate message.
 #[test]
-#[should_panic(expected = "Sobol sequence not implemented in Phase 3.1a")]
-fn test_sobol_placeholder_panics() { let _ = SobolPlaceholder::new(10); }
+#[should_panic(expected = "Sobol sequence not implemented")]
+fn test_sobol_placeholder_panics() {
+    let _ = SobolPlaceholder::new(10);
+}
 
 // ============================================================================
-// Task 3.2: Large Batch Performance Verification
+// Large Batch Performance Verification
 // ============================================================================
 
 /// Verifies that large batch normal generation (1M samples) completes
@@ -200,7 +202,7 @@ fn test_batch_performance_consistency() {
 }
 
 // ============================================================================
-// Task 5.2: Property-Based Tests with Proptest
+// Property-Based Tests with Proptest
 // ============================================================================
 
 use proptest::prelude::*;
@@ -298,10 +300,10 @@ proptest! {
 }
 
 // ============================================================================
-// Task 6.1: Module Publication and API Consistency
+// API Consistency and Documentation
 // ============================================================================
 
-/// Verifies that all public API items are accessible from pricer_kernel::rng.
+/// Verifies that all public API items are accessible.
 #[test]
 fn test_public_api_accessibility() {
     // Test that PricerRng is fully accessible with all methods
@@ -321,49 +323,6 @@ fn test_public_api_accessibility() {
     let _type_check: fn(usize) -> SobolPlaceholder = SobolPlaceholder::new;
 }
 
-/// Verifies that the module has no dependencies on pricer_core.
-/// This is a compile-time check - if pricer_core were imported, this
-/// module wouldn't compile without it in Cargo.toml dependencies.
-#[test]
-fn test_no_pricer_core_dependency() {
-    // This test exists to document the requirement.
-    // The actual verification is done at compile time:
-    // - pricer_kernel/Cargo.toml does NOT list pricer_core as a dependency
-    // - If any code in rng/ tried to use pricer_core, compilation would fail
-
-    // Verify our RNG module works in complete isolation
-    let mut rng = PricerRng::from_seed(12345);
-    let _ = rng.gen_normal();
-
-    // If this compiles and runs, we've verified isolation
-    assert!(true, "RNG module operates independently of pricer_core");
-}
-
-/// Verifies that the RNG module can be tested in isolation.
-#[test]
-fn test_module_isolation() {
-    // Create RNG without any other pricer_kernel modules
-    let mut rng = PricerRng::from_seed(99999);
-
-    // Perform operations that don't require other modules
-    let uniform = rng.gen_uniform();
-    let normal = rng.gen_normal();
-
-    assert!(uniform >= 0.0 && uniform < 1.0);
-    assert!(normal.is_finite());
-
-    // Test batch operations in isolation
-    let mut buffer = vec![0.0; 1000];
-    rng.fill_uniform(&mut buffer);
-    rng.fill_normal(&mut buffer);
-
-    // All operations completed without requiring other modules
-}
-
-// ============================================================================
-// Task 6.2: Enzyme Compatibility and Documentation Completeness
-// ============================================================================
-
 /// Verifies that no dynamic dispatch (Box<dyn Trait>) is used in PricerRng.
 /// This is primarily a code review check documented as a test.
 #[test]
@@ -382,57 +341,4 @@ fn test_no_dynamic_dispatch() {
     // The following would NOT compile if PricerRng used dynamic dispatch:
     // - PricerRng would need to be ?Sized
     // - References would require explicit dyn markers
-}
-
-/// Documents Enzyme compatibility considerations for the RNG module.
-#[test]
-fn test_enzyme_compatibility_documentation() {
-    // This test documents the Enzyme compatibility design decisions:
-    //
-    // 1. Static Dispatch: PricerRng wraps StdRng directly, not Box<dyn Rng>
-    //    - Enables LLVM-level analysis
-    //    - No vtable indirection in hot paths
-    //
-    // 2. Fixed-Size Loops: fill_normal and fill_uniform use for-in loops
-    //    - Enzyme handles fixed iteration counts better
-    //    - No while-loops with dynamic termination
-    //
-    // 3. Separation of Concerns:
-    //    - Seed initialisation (non-differentiable): from_seed()
-    //    - Random generation (consumption): gen_uniform(), gen_normal()
-    //    - The generated values may be consumed in differentiable contexts
-    //
-    // 4. Known Limitations:
-    //    - RNG state itself is not differentiable
-    //    - Branching in Ziggurat algorithm may affect AD efficiency
-    //    - Future: Consider recording random draws for adjoint mode
-
-    // Verify the design is in place
-    let mut rng = PricerRng::from_seed(42);
-    let _ = rng.gen_normal(); // Uses Ziggurat via StandardNormal
-    assert!(true, "Enzyme compatibility design verified");
-}
-
-/// Verifies that public items have rustdoc documentation.
-/// This is a documentation requirement check.
-#[test]
-fn test_documentation_completeness() {
-    // This test documents that all public items are documented.
-    // Actual verification is done by:
-    // 1. #![warn(missing_docs)] in lib.rs
-    // 2. Code review of rustdoc comments
-    //
-    // Documented items:
-    // - PricerRng struct and all public methods
-    // - LowDiscrepancySequence trait and all methods
-    // - SobolPlaceholder struct and methods
-    // - Module-level documentation in mod.rs
-    //
-    // British English conventions used:
-    // - "initialise" (not "initialize")
-    // - "behaviour" (not "behavior")
-    // - "optimisation" (not "optimization")
-    // - "randomise" (not "randomize")
-
-    assert!(true, "Documentation completeness verified by code review");
 }

@@ -28,8 +28,8 @@ use crate::{
     },
     methods::mc::{workspace_checkpoint::CheckpointWorkspace, GbmParams, MonteCarloConfig, PricingResult},
     methods::path_dependent::{PathObserverState, PathPayoffType},
-    rng::PricerRng,
 };
+use pricer_core::math::rng::PricerRng;
 
 /// Configuration for checkpoint-enabled pricing.
 ///

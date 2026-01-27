@@ -104,9 +104,6 @@ pub mod kernel;
 // Numeric conversion utilities (standalone, no l1l2-integration dependency)
 pub mod numeric;
 
-// Phase 3.1a: Random number generation infrastructure
-pub mod rng;
-
 // Pricing methods (Monte Carlo, Tree, Path-dependent)
 pub mod methods;
 

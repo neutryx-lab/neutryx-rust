@@ -4,10 +4,12 @@
 //! - Portfolio construction with varying trade counts
 //! - CVA/DVA computation
 //! - SoA data structure operations
+//! - ImplicitSolver AAD curve sensitivity computation
 //!
 //! # Requirements Coverage
 //!
 //! - Requirement 3.4: Criterion format benchmark output
+//! - Requirement 10: Performance requirements (AAD 5x speedup)
 
 #![allow(missing_docs)]
 
@@ -16,7 +18,9 @@ use infra_master::trade::{
     ExerciseStyle, InstrumentParams, PayoffType, PricingInstrument, VanillaOption,
 };
 use infra_master::Currency;
+use nalgebra::{DMatrix, DVector};
 use pricer_risk::{
+    greeks::ad::implicit_solver::ImplicitSolver,
     portfolio::{
         Counterparty, CounterpartyId, CreditParams, NettingSet, NettingSetId, PortfolioBuilder,
         Trade, TradeId,

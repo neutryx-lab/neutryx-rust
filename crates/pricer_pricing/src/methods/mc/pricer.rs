@@ -6,7 +6,7 @@
 //! # Overview
 //!
 //! The [`MonteCarloPricer`] coordinates:
-//! 1. Random number generation (via [`PricerRng`](crate::rng::PricerRng))
+//! 1. Random number generation (via [`PricerRng`](pricer_core::math::rng::PricerRng))
 //! 2. Path generation (via
 //!    [`generate_gbm_paths`](super::paths::generate_gbm_paths))
 //! 3. Payoff computation (via
@@ -31,10 +31,8 @@ use super::{
     },
     workspace::PathWorkspace,
 };
-use crate::{
-    methods::path_dependent::{PathObserver, PathPayoffType},
-    rng::PricerRng,
-};
+use crate::methods::path_dependent::{PathObserver, PathPayoffType};
+use pricer_core::math::rng::PricerRng;
 
 /// Greek type for selection.
 ///

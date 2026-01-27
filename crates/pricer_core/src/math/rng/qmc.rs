@@ -24,7 +24,7 @@
 ///
 /// # Warning
 ///
-/// No implementations are available in Phase 3.1a. Attempting to use
+/// No implementations are available in the current phase. Attempting to use
 /// placeholder types will result in panics with clear error messages.
 ///
 /// # British English Note
@@ -78,7 +78,7 @@ pub trait LowDiscrepancySequence {
 /// # Example (will panic)
 ///
 /// ```rust,should_panic
-/// use pricer_pricing::rng::SobolPlaceholder;
+/// use pricer_core::math::rng::SobolPlaceholder;
 ///
 /// let mut sobol = SobolPlaceholder::new(10);  // panics!
 /// ```
@@ -101,7 +101,7 @@ impl SobolPlaceholder {
     /// # Panics
     ///
     /// Always panics with a message indicating that Sobol sequences
-    /// are not implemented in Phase 3.1a.
+    /// are not implemented in the current phase.
     ///
     /// # Arguments
     ///
@@ -109,7 +109,7 @@ impl SobolPlaceholder {
     #[allow(clippy::new_ret_no_self)]
     pub fn new(dimension: usize) -> Self {
         unimplemented!(
-            "Sobol sequence not implemented in Phase 3.1a. \
+            "Sobol sequence not implemented in the current phase. \
              Dimension {} was requested. \
              See research.md for future integration plans with `sobol` crate.",
             dimension
@@ -118,13 +118,19 @@ impl SobolPlaceholder {
 }
 
 impl LowDiscrepancySequence for SobolPlaceholder {
-    fn dimension(&self) -> usize { unimplemented!("Sobol sequence not implemented in Phase 3.1a") }
-
-    fn next_point(&mut self) -> &[f64] {
-        unimplemented!("Sobol sequence not implemented in Phase 3.1a")
+    fn dimension(&self) -> usize {
+        unimplemented!("Sobol sequence not implemented in the current phase")
     }
 
-    fn reset(&mut self) { unimplemented!("Sobol sequence not implemented in Phase 3.1a") }
+    fn next_point(&mut self) -> &[f64] {
+        unimplemented!("Sobol sequence not implemented in the current phase")
+    }
 
-    fn skip(&mut self, _n: usize) { unimplemented!("Sobol sequence not implemented in Phase 3.1a") }
+    fn reset(&mut self) {
+        unimplemented!("Sobol sequence not implemented in the current phase")
+    }
+
+    fn skip(&mut self, _n: usize) {
+        unimplemented!("Sobol sequence not implemented in the current phase")
+    }
 }

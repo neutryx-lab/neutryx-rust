@@ -26,7 +26,7 @@
 //! ```
 
 use super::{aligned_buffer::AlignedPathBuffer, layout_config::StreamingConfig, paths::GbmParams};
-use crate::rng::PricerRng;
+use pricer_core::math::rng::PricerRng;
 
 /// Result of streaming Monte Carlo simulation.
 #[derive(Clone, Debug, Default)]
@@ -944,7 +944,7 @@ mod tests {
             layout_config::PathLayout, paths::generate_gbm_paths_generic,
             workspace_enum::WorkspaceEnum, workspace_trait::PathWorkspaceTrait,
         };
-        use crate::rng::PricerRng;
+        use pricer_core::math::rng::PricerRng;
 
         let n_paths = 10_000;
         let n_steps = 20;

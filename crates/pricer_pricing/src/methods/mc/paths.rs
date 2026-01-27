@@ -295,7 +295,7 @@ pub fn terminal_prices(workspace: &PathWorkspace, n_paths: usize, n_steps: usize
 ///
 /// ```rust
 /// use pricer_pricing::mc::{WorkspaceEnum, PathLayout, GbmParams, generate_gbm_paths_generic};
-/// use pricer_pricing::rng::PricerRng;
+/// use pricer_core::math::rng::PricerRng;
 /// use pricer_pricing::mc::PathWorkspaceTrait;
 ///
 /// let mut workspace = WorkspaceEnum::new(PathLayout::TimeStepFirst, 1000, 100);
@@ -420,7 +420,7 @@ mod tests {
     use approx::assert_relative_eq;
 
     use super::*;
-    use crate::rng::PricerRng;
+    use pricer_core::math::rng::PricerRng;
 
     fn setup_workspace_with_randoms(n_paths: usize, n_steps: usize, seed: u64) -> PathWorkspace {
         let mut workspace = PathWorkspace::new(n_paths, n_steps);

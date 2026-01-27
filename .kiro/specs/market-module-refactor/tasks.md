@@ -62,21 +62,24 @@
   - ~~dispatch.rsでCurveEnumを更新する~~
   - _Requirements: 6.1, 6.3, 4.4_
 
-- [ ] 3. ボラティリティサーフェス機能をsurfacesモジュールに統合する
-- [ ] 3.1 (P) FXボラティリティサーフェス機能を統合する
+- [x] 3. ボラティリティサーフェス機能をsurfacesモジュールに統合する
+- [x] 3.1 (P) FXボラティリティサーフェス機能を統合する
   - FxVolatilitySurface（シンプル版）とCalibratedFxVolSurface（SABR版）を単一ファイルに統合する
   - FxVolSurfaceBuilder、LazyFxVolSurfaceを含める
   - FxDensityCalculator、DensityStatisticsを含める
   - FxVolSurfaceConfigを含める
   - sensitivity系は除外する
   - _Requirements: 4.1, 1.3_
-  - _Progress (partial):_
-    - ✅ Strike, Vol, ExpiryInterpolation → surfaces/fx.rs（fx_calibration/types.rsは再エクスポートに変更）
-    - ✅ FxVolSurfaceConfig → surfaces/fx.rs（fx_calibration/config.rsは再エクスポートに変更）
-    - 🔲 CalibratedFxVolSurface, SabrParameters, CalibratedSmile, VolSmile → surfaces/fx.rs
-    - 🔲 FxVolSurfaceBuilder, LazyFxVolSurface → surfaces/fx.rs
-    - 🔲 FxDensityCalculator, DensityStatistics → surfaces/fx.rs
-  - _All 1948 tests passing_
+  - _Completed:_
+    - ✅ Strike, Vol, ExpiryInterpolation → surfaces/fx.rs
+    - ✅ FxVolSurfaceConfig → surfaces/fx.rs
+    - ✅ CalibratedFxVolSurface, SabrParameters, CalibratedSmile, VolSmile, VolSurfaceError → surfaces/fx.rs
+    - ✅ FxVolSurfaceBuilder, CalibrationDiagnostics, CalibrationError, VolQuote, VolQuoteType → surfaces/fx.rs
+    - ✅ LazyFxVolSurface, CacheStats → surfaces/fx.rs
+    - ✅ FxDensityCalculator, DeltaType, DensityStatistics → surfaces/fx.rs
+    - ✅ fx_calibration/surface.rs, vol_builder.rs, lazy_surface.rs → 再エクスポートに変更
+    - ✅ fx_density.rs → 再エクスポートに変更
+  - _All 1888 tests passing_
 
 - [ ] 3.2 スワプションボラティリティキューブ機能を統合する
   - 21ファイルに分散しているvolcube機能を単一ファイルに統合する
@@ -90,11 +93,12 @@
   - proptest_tests.rsはtests/ディレクトリに移動する
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [ ] 3.3 surfaces/のmod.rsとre-exportを更新する
+- [x] 3.3 surfaces/のmod.rsとre-exportを更新する
   - VolatilitySurface、VolCube、FxVolatilitySurface等の公開APIを整理する
   - 後方互換性を維持しながら新しい構造を反映する
   - dispatch.rsでVolSurfaceEnumを更新する
   - _Requirements: 6.1, 6.3, 4.4_
+  - _Completed: FX関連の全型をsurfaces/mod.rsから再エクスポート_
 
 - [ ] 4. 不要ファイルとlegacyコードを削除する
 - [ ] 4.1 (P) sensitivity系ファイルを削除する

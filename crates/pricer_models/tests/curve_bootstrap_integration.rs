@@ -747,3 +747,216 @@ mod end_to_end_tests {
         }
     }
 }
+
+// ============================================================================
+// Task 5.3: GlobalBootstrapper vs SequentialBootstrapper Comparison
+// ============================================================================
+
+#[cfg(feature = "global-bootstrap")]
+mod global_bootstrapper_comparison_tests {
+    use super::*;
+    use pricer_models::market::calibration::bootstrapping::{
+        GlobalBootstrapConfig, GlobalBootstrapper,
+    };
+
+    /// Helper to create test instruments for comparison tests
+    fn create_comparison_instruments() -> Vec<BootstrapInstrument<f64>> {
+        vec![
+            BootstrapInstrument::ois(1.0, 0.03),
+            BootstrapInstrument::ois(2.0, 0.032),
+            BootstrapInstrument::ois(3.0, 0.034),
+            BootstrapInstrument::ois(5.0, 0.037),
+            BootstrapInstrument::ois(10.0, 0.040),
+        ]
+    }
+
+    #[test]
+    fn test_global_bootstrapper_produces_valid_curve() {
+        let instruments = create_comparison_instruments();
+        let bootstrapper = GlobalBootstrapper::<f64>::with_defaults();
+
+        let result = bootstrapper.calibrate(&instruments).unwrap();
+
+        // Verify convergence
+        assert!(result.converged);
+        assert_eq!(result.pillars.len(), 5);
+        assert_eq!(result.discount_factors.len(), 5);
+
+        // Verify discount factors are positive and decreasing
+        for i in 0..result.discount_factors.len() {
+            assert!(
+                result.discount_factors[i] > 0.0,
+                "DF at {} should be positive",
+                i
+            );
+            assert!(
+                result.discount_factors[i] <= 1.0,
+                "DF at {} should be <= 1.0",
+                i
+            );
+        }
+
+        // Verify DFs are decreasing
+        for i in 1..result.discount_factors.len() {
+            assert!(
+                result.discount_factors[i] < result.discount_factors[i - 1],
+                "DFs should be decreasing: {} vs {}",
+                result.discount_factors[i],
+                result.discount_factors[i - 1]
+            );
+        }
+    }
+
+    #[test]
+    fn test_global_vs_sequential_discount_factor_consistency() {
+        let instruments = create_comparison_instruments();
+
+        // Bootstrap with GlobalBootstrapper
+        let global_config = GlobalBootstrapConfig::default();
+        let global_bootstrapper = GlobalBootstrapper::new(global_config);
+        let global_result = global_bootstrapper.calibrate(&instruments).unwrap();
+
+        // Bootstrap with SequentialBootstrapper
+        let seq_config = GenericBootstrapConfig::default();
+        let seq_bootstrapper = SequentialBootstrapper::new(seq_config);
+        let seq_result = seq_bootstrapper.bootstrap(&instruments).unwrap();
+
+        // Compare discount factors at each pillar
+        assert_eq!(
+            global_result.pillars.len(),
+            seq_result.pillars.len(),
+            "Number of pillars should match"
+        );
+
+        for i in 0..global_result.pillars.len() {
+            let global_df = global_result.discount_factors[i];
+            let seq_df = seq_result.discount_factors[i];
+
+            // Allow small numerical differences (< 1bp in rate terms)
+            let tolerance = 1e-6;
+            let diff = (global_df - seq_df).abs();
+            assert!(
+                diff < tolerance,
+                "DF mismatch at pillar {}: global={}, sequential={}, diff={}",
+                global_result.pillars[i],
+                global_df,
+                seq_df,
+                diff
+            );
+        }
+    }
+
+    #[test]
+    fn test_global_vs_sequential_curve_interpolation_consistency() {
+        let instruments = create_comparison_instruments();
+
+        // Bootstrap with both methods
+        let global_result = GlobalBootstrapper::<f64>::with_defaults()
+            .calibrate(&instruments)
+            .unwrap();
+        let seq_result = SequentialBootstrapper::<f64>::with_defaults()
+            .bootstrap(&instruments)
+            .unwrap();
+
+        // Compare interpolated DFs at intermediate points
+        let test_maturities = [0.5, 1.5, 2.5, 4.0, 7.0];
+
+        for &t in &test_maturities {
+            let global_df = global_result.curve.discount_factor(t).unwrap();
+            let seq_df = seq_result.curve.discount_factor(t).unwrap();
+
+            // Slightly larger tolerance for interpolated points
+            let tolerance = 1e-5;
+            let diff = (global_df - seq_df).abs();
+            assert!(
+                diff < tolerance,
+                "Interpolated DF mismatch at t={}: global={}, sequential={}, diff={}",
+                t,
+                global_df,
+                seq_df,
+                diff
+            );
+        }
+    }
+
+    #[test]
+    fn test_global_bootstrapper_stores_jacobian_inverse() {
+        let instruments = create_comparison_instruments();
+        let config = GlobalBootstrapConfig::default().with_jacobian_inverse(true);
+        let bootstrapper = GlobalBootstrapper::new(config);
+
+        let result = bootstrapper.calibrate(&instruments).unwrap();
+
+        assert!(result.has_jacobian_inverse());
+        let j_inv = result.jacobian_inverse.as_ref().unwrap();
+
+        // Jacobian inverse should be n x n where n = number of pillars
+        assert_eq!(j_inv.nrows(), 5);
+        assert_eq!(j_inv.ncols(), 5);
+
+        // Verify J_inv is not singular (diagonal elements should be non-zero)
+        for i in 0..5 {
+            assert!(
+                j_inv[(i, i)].abs() > 1e-15,
+                "Diagonal element {} is near-zero",
+                i
+            );
+        }
+    }
+
+    #[test]
+    fn test_global_bootstrapper_pricing_errors_minimal() {
+        use pricer_models::market::calibration::bootstrapping::CalibrationInstrument;
+
+        let instruments = create_comparison_instruments();
+        let result = GlobalBootstrapper::<f64>::with_defaults()
+            .calibrate(&instruments)
+            .unwrap();
+
+        // Verify pricing errors are minimal for all instruments
+        for (i, instr) in instruments.iter().enumerate() {
+            let error = instr.pricing_error(&result.curve).unwrap();
+            assert!(
+                error.abs() < 1e-8,
+                "Instrument {} has pricing error {} (should be < 1e-8)",
+                i,
+                error
+            );
+        }
+    }
+
+    #[test]
+    fn test_global_bootstrapper_inverted_curve() {
+        // Test with inverted (downward sloping) curve
+        let instruments = vec![
+            BootstrapInstrument::ois(1.0, 0.05),
+            BootstrapInstrument::ois(2.0, 0.045),
+            BootstrapInstrument::ois(5.0, 0.040),
+            BootstrapInstrument::ois(10.0, 0.035),
+        ];
+
+        let global_result = GlobalBootstrapper::<f64>::with_defaults()
+            .calibrate(&instruments)
+            .unwrap();
+        let seq_result = SequentialBootstrapper::<f64>::with_defaults()
+            .bootstrap(&instruments)
+            .unwrap();
+
+        assert!(global_result.converged);
+
+        // Compare zero rates at pillars
+        for &t in &[1.0, 2.0, 5.0, 10.0] {
+            let global_zr = global_result.curve.zero_rate(t).unwrap();
+            let seq_zr = seq_result.curve.zero_rate(t).unwrap();
+
+            let diff = (global_zr - seq_zr).abs();
+            assert!(
+                diff < 1e-5,
+                "Zero rate mismatch at t={}: global={}, seq={}",
+                t,
+                global_zr,
+                seq_zr
+            );
+        }
+    }
+}
