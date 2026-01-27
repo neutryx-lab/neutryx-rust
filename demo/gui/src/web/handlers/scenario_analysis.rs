@@ -16,7 +16,7 @@ use std::{sync::Arc, time::Instant};
 
 use axum::{extract::State, http::StatusCode, Json};
 use pricer_models::market::calibration::bootstrapping::{
-    BootstrapInstrument, GenericBootstrapConfig, SequentialBootstrapper,
+    CalibrationInstrument, GenericBootstrapConfig, SequentialBootstrapper,
 };
 use uuid::Uuid;
 
@@ -387,12 +387,12 @@ fn calculate_scenario_stressed_npv(
     payment_frequency: &PaymentFrequency,
 ) -> f64 {
     // Build instruments from shifted par rates
-    let instruments: Vec<BootstrapInstrument<f64>> = shifted_par_rates
+    let instruments: Vec<CalibrationInstrument<f64>> = shifted_par_rates
         .iter()
         .filter_map(|pr| {
             parse_tenor_to_years(&pr.tenor)
                 .ok()
-                .map(|years| BootstrapInstrument::ois(years, pr.rate))
+                .map(|years| CalibrationInstrument::ois(years, pr.rate))
         })
         .collect();
 

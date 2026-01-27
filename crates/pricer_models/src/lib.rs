@@ -58,9 +58,10 @@
 #![deny(rustdoc::private_intra_doc_links)]
 
 pub mod analytic;
+pub mod calibration;
 pub mod compiler;
 mod direction_ext;
-pub mod calibration;
+pub mod market;
 pub mod stochastic;
 
 // Re-export instrument types from infra_master for backwards compatibility

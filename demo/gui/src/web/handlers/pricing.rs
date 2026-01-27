@@ -9,7 +9,7 @@ use std::{sync::Arc, time::Instant};
 
 use axum::{extract::State, http::StatusCode, Json};
 use pricer_models::market::calibration::bootstrapping::{
-    BootstrapError, BootstrapInstrument, GenericBootstrapConfig, SequentialBootstrapper,
+    BootstrapError, CalibrationInstrument, GenericBootstrapConfig, SequentialBootstrapper,
 };
 use uuid::Uuid;
 
@@ -525,11 +525,11 @@ pub async fn bootstrap_curve(
         ));
     }
 
-    let instruments: Result<Vec<BootstrapInstrument<f64>>, _> = request
+    let instruments: Result<Vec<CalibrationInstrument<f64>>, _> = request
         .par_rates
         .iter()
         .map(|pr| {
-            parse_tenor_to_years(&pr.tenor).map(|years| BootstrapInstrument::ois(years, pr.rate))
+            parse_tenor_to_years(&pr.tenor).map(|years| CalibrationInstrument::ois(years, pr.rate))
         })
         .collect();
 

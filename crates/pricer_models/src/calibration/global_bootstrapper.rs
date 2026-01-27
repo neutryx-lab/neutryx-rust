@@ -24,14 +24,14 @@
 //!
 //! ```ignore
 //! use pricer_models::market::calibration::bootstrapping::{
-//!     GlobalBootstrapper, GlobalBootstrapConfig, BootstrapInstrument,
+//!     GlobalBootstrapper, GlobalBootstrapConfig, CalibrationInstrument,
 //! };
 //!
 //! let instruments = vec![
-//!     BootstrapInstrument::ois(1.0, 0.03),
-//!     BootstrapInstrument::ois(2.0, 0.035),
-//!     BootstrapInstrument::ois(5.0, 0.04),
-//!     BootstrapInstrument::ois(10.0, 0.045),
+//!     CalibrationInstrument::ois(1.0, 0.03),
+//!     CalibrationInstrument::ois(2.0, 0.035),
+//!     CalibrationInstrument::ois(5.0, 0.04),
+//!     CalibrationInstrument::ois(10.0, 0.045),
 //! ];
 //!
 //! let config = GlobalBootstrapConfig::default();
@@ -47,9 +47,8 @@ use pricer_core::math::linalg::{DMatrix, LinearAlgebraError, RealField, lu_solve
 use pricer_core::math::numeric::from_f64;
 use pricer_core::types::SolverError;
 
-use crate::market::calibration::bootstrapping::{
-    BootstrapInterpolation, BootstrappedCurve, CalibrationInstrument,
-};
+use crate::calibration::CalibrationInstrument;
+use crate::market::curves::{BootstrapInterpolation, BootstrappedCurve};
 
 // =============================================================================
 // Configuration
@@ -440,15 +439,15 @@ fn vector_norm<T: Float>(v: &[T]) -> T {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::market::calibration::bootstrapping::BootstrapInstrument;
+    use crate::market::curves::CalibrationInstrument;
     use approx::assert_relative_eq;
 
-    fn create_test_instruments() -> Vec<BootstrapInstrument<f64>> {
+    fn create_test_instruments() -> Vec<CalibrationInstrument<f64>> {
         vec![
-            BootstrapInstrument::ois(1.0, 0.03),
-            BootstrapInstrument::ois(2.0, 0.032),
-            BootstrapInstrument::ois(5.0, 0.035),
-            BootstrapInstrument::ois(10.0, 0.04),
+            CalibrationInstrument::ois(1.0, 0.03),
+            CalibrationInstrument::ois(2.0, 0.032),
+            CalibrationInstrument::ois(5.0, 0.035),
+            CalibrationInstrument::ois(10.0, 0.04),
         ]
     }
 
@@ -532,7 +531,7 @@ mod tests {
 
     #[test]
     fn test_calibrate_empty_instruments_error() {
-        let instruments: Vec<BootstrapInstrument<f64>> = vec![];
+        let instruments: Vec<CalibrationInstrument<f64>> = vec![];
         let bootstrapper = GlobalBootstrapper::<f64>::with_defaults();
 
         let result = bootstrapper.calibrate(&instruments);
@@ -546,7 +545,7 @@ mod tests {
 
     #[test]
     fn test_calibrate_single_instrument() {
-        let instruments = vec![BootstrapInstrument::ois(5.0, 0.03)];
+        let instruments = vec![CalibrationInstrument::ois(5.0, 0.03)];
         let bootstrapper = GlobalBootstrapper::<f64>::with_defaults();
 
         let result = bootstrapper.calibrate(&instruments).unwrap();
@@ -563,11 +562,11 @@ mod tests {
     fn test_calibrate_upward_sloping_curve() {
         // Upward sloping rate curve
         let instruments = vec![
-            BootstrapInstrument::ois(1.0, 0.02),
-            BootstrapInstrument::ois(2.0, 0.025),
-            BootstrapInstrument::ois(5.0, 0.03),
-            BootstrapInstrument::ois(10.0, 0.035),
-            BootstrapInstrument::ois(30.0, 0.04),
+            CalibrationInstrument::ois(1.0, 0.02),
+            CalibrationInstrument::ois(2.0, 0.025),
+            CalibrationInstrument::ois(5.0, 0.03),
+            CalibrationInstrument::ois(10.0, 0.035),
+            CalibrationInstrument::ois(30.0, 0.04),
         ];
 
         let bootstrapper = GlobalBootstrapper::<f64>::with_defaults();
@@ -591,10 +590,10 @@ mod tests {
     fn test_calibrate_inverted_curve() {
         // Inverted rate curve
         let instruments = vec![
-            BootstrapInstrument::ois(1.0, 0.05),
-            BootstrapInstrument::ois(2.0, 0.045),
-            BootstrapInstrument::ois(5.0, 0.04),
-            BootstrapInstrument::ois(10.0, 0.035),
+            CalibrationInstrument::ois(1.0, 0.05),
+            CalibrationInstrument::ois(2.0, 0.045),
+            CalibrationInstrument::ois(5.0, 0.04),
+            CalibrationInstrument::ois(10.0, 0.035),
         ];
 
         let bootstrapper = GlobalBootstrapper::<f64>::with_defaults();

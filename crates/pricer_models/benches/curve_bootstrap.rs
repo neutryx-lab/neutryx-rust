@@ -14,7 +14,7 @@ use std::{sync::Arc, thread};
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use pricer_models::market::{
     calibration::bootstrapping::{
-        BootstrapInstrument, BootstrappedCurve, CurveDefinition, CurveEngine, CurveEngineBuilder,
+        CalibrationInstrument, BootstrappedCurve, CurveDefinition, CurveEngine, CurveEngineBuilder,
         CurveKey, CurveResultCache, GenericBootstrapConfig, InstrumentTenor,
         SequentialBootstrapper,
     },
@@ -26,7 +26,7 @@ use pricer_models::market::{
 // ============================================================================
 
 /// Create a standard set of OIS instruments for benchmarking.
-fn create_ois_instruments(n: usize) -> Vec<BootstrapInstrument<f64>> {
+fn create_ois_instruments(n: usize) -> Vec<CalibrationInstrument<f64>> {
     let maturities = [
         0.25, 0.5, 1.0, 2.0, 3.0, 5.0, 7.0, 10.0, 15.0, 20.0, 30.0, 50.0,
     ];
@@ -38,7 +38,7 @@ fn create_ois_instruments(n: usize) -> Vec<BootstrapInstrument<f64>> {
         .enumerate()
         .map(|(i, &t)| {
             let rate = base_rate + (i as f64) * 0.002;
-            BootstrapInstrument::ois(t, rate)
+            CalibrationInstrument::ois(t, rate)
         })
         .collect()
 }

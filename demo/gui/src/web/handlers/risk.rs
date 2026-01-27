@@ -10,7 +10,7 @@ use std::{sync::Arc, time::Instant};
 
 use axum::{extract::State, http::StatusCode, Json};
 use pricer_models::market::calibration::bootstrapping::{
-    BootstrapError, BootstrapInstrument, GenericBootstrapConfig, SequentialBootstrapper,
+    BootstrapError, CalibrationInstrument, GenericBootstrapConfig, SequentialBootstrapper,
 };
 use serde::Serialize;
 use uuid::Uuid;
@@ -130,10 +130,10 @@ fn calculate_irs_legs(
 
 /// Bootstrap a curve from par rates (helper for bump-and-revalue).
 fn bootstrap_from_par_rates(par_rates: &[ParRateInput]) -> Result<CachedCurve, BootstrapError> {
-    let instruments: Result<Vec<BootstrapInstrument<f64>>, _> = par_rates
+    let instruments: Result<Vec<CalibrationInstrument<f64>>, _> = par_rates
         .iter()
         .map(|pr| {
-            parse_tenor_to_years(&pr.tenor).map(|years| BootstrapInstrument::ois(years, pr.rate))
+            parse_tenor_to_years(&pr.tenor).map(|years| CalibrationInstrument::ois(years, pr.rate))
         })
         .collect();
 
