@@ -31,7 +31,7 @@
 //! - Instrument definitions (vanilla options, barriers, swaps, etc.)
 //! - Payoff functions with smooth approximations
 //! - Stochastic models (GBM, Heston, etc.)
-//! - Market data structures (curves, surfaces)
+//! - Yield curve bootstrapping and calibration
 //! - Analytical pricing with instrument integration
 //! - Model calibration to market data
 //!
@@ -39,7 +39,7 @@
 //!
 //! - [`stochastic`] - Stochastic process models (GBM, Heston, Hull-White, CIR)
 //! - [`analytic`] - Analytical pricing with instrument wrappers
-//! - [`market`] - Market data structures (curves, surfaces, vol cubes)
+//! - [`calibration`] - Yield curve bootstrapping and market data calibration
 //! - [`compiler`] - Instrument compilation for pricing engines
 //!
 //! ## Analytical Formulas
@@ -60,7 +60,7 @@
 pub mod analytic;
 pub mod compiler;
 mod direction_ext;
-pub mod market;
+pub mod calibration;
 pub mod stochastic;
 
 // Re-export instrument types from infra_master for backwards compatibility
