@@ -20,12 +20,13 @@ use infra_master::trade::{
 use infra_master::Currency;
 use nalgebra::{DMatrix, DVector};
 use pricer_risk::{
+    compute_cva, compute_dva, generate_flat_discount_factors,
     greeks::ad::implicit_solver::ImplicitSolver,
     portfolio::{
         Counterparty, CounterpartyId, CreditParams, NettingSet, NettingSetId, PortfolioBuilder,
         Trade, TradeId,
     },
-    xva::{compute_cva, compute_dva, generate_flat_discount_factors, OwnCreditParams},
+    OwnCreditParams,
 };
 
 /// Generate time grid for XVA calculations.
@@ -169,6 +170,115 @@ fn bench_discount_factors(c: &mut Criterion) {
     group.finish();
 }
 
+/// Benchmark ImplicitSolver curve sensitivity computation (Implicit Function Theorem).
+///
+/// Requirements Coverage:
+/// - Requirement 10: AAD performance (5x speedup vs bump-and-revalue)
+fn bench_implicit_solver(c: &mut Criterion) {
+    let mut group = c.benchmark_group("implicit_solver");
+
+    // Benchmark compute_curve_sensitivities with different matrix sizes
+    for n in [5, 10, 30, 50] {
+        // Create random Jacobian inverse and adjoint vector
+        let j_inv = DMatrix::from_fn(n, n, |i, j| {
+            if i == j {
+                0.99 - 0.01 * (i as f64)
+            } else {
+                0.01 / ((i as f64 - j as f64).abs() + 1.0)
+            }
+        });
+        let adjoint = DVector::from_fn(n, |i, _| 100.0 * (1.0 - i as f64 / n as f64));
+
+        group.bench_with_input(
+            BenchmarkId::new("implicit_function_theorem", n),
+            &(j_inv.clone(), adjoint.clone()),
+            |b, (j_inv, adjoint)| {
+                b.iter(|| {
+                    black_box(
+                        ImplicitSolver::compute_curve_sensitivities(black_box(j_inv), black_box(adjoint))
+                            .unwrap(),
+                    )
+                });
+            },
+        );
+    }
+
+    group.finish();
+}
+
+/// Benchmark ImplicitSolver finite difference fallback.
+fn bench_implicit_solver_fd(c: &mut Criterion) {
+    let mut group = c.benchmark_group("implicit_solver_fd");
+
+    for n in [5, 10, 30] {
+        // Simple quadratic loss function for testing
+        let nodes = DVector::from_fn(n, |i, _| 0.03 + 0.002 * i as f64);
+
+        group.bench_with_input(
+            BenchmarkId::new("finite_difference", n),
+            &nodes,
+            |b, nodes| {
+                // Loss function: L(x) = sum(x_i^2)
+                let loss_fn = |x: &DVector<f64>| x.iter().map(|&v| v * v).sum();
+                b.iter(|| {
+                    black_box(ImplicitSolver::compute_curve_sensitivities_fd(
+                        black_box(&loss_fn),
+                        black_box(nodes),
+                        black_box(1e-6),
+                    ))
+                });
+            },
+        );
+    }
+
+    group.finish();
+}
+
+/// Benchmark ImplicitSolver vs finite difference comparison.
+///
+/// This demonstrates the speedup of using the Implicit Function Theorem
+/// with pre-computed Jacobian inverse vs bump-and-revalue.
+fn bench_implicit_vs_fd(c: &mut Criterion) {
+    let mut group = c.benchmark_group("implicit_vs_fd_comparison");
+
+    let n = 30; // Typical curve pillar count
+
+    // Setup Jacobian inverse (from calibration)
+    let j_inv = DMatrix::from_fn(n, n, |i, j| {
+        if i == j {
+            0.99 - 0.01 * (i as f64)
+        } else {
+            0.01 / ((i as f64 - j as f64).abs() + 1.0)
+        }
+    });
+    let adjoint = DVector::from_fn(n, |i, _| 100.0 * (1.0 - i as f64 / n as f64));
+    let nodes = DVector::from_fn(n, |i, _| 0.03 + 0.002 * i as f64);
+
+    // Implicit Function Theorem approach
+    group.bench_function("implicit_30_nodes", |b| {
+        b.iter(|| {
+            black_box(
+                ImplicitSolver::compute_curve_sensitivities(black_box(&j_inv), black_box(&adjoint))
+                    .unwrap(),
+            )
+        });
+    });
+
+    // Finite difference (bump-and-revalue) approach
+    group.bench_function("finite_diff_30_nodes", |b| {
+        let loss_fn = |x: &DVector<f64>| x.iter().map(|&v| v * v).sum();
+        b.iter(|| {
+            black_box(ImplicitSolver::compute_curve_sensitivities_fd(
+                black_box(&loss_fn),
+                black_box(&nodes),
+                black_box(1e-6),
+            ))
+        });
+    });
+
+    group.finish();
+}
+
 criterion_group!(
     benches,
     bench_cva_calculation,
@@ -176,4 +286,12 @@ criterion_group!(
     bench_portfolio_construction,
     bench_discount_factors,
 );
-criterion_main!(benches);
+
+criterion_group!(
+    implicit_solver_benches,
+    bench_implicit_solver,
+    bench_implicit_solver_fd,
+    bench_implicit_vs_fd,
+);
+
+criterion_main!(benches, implicit_solver_benches);

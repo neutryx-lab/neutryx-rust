@@ -52,9 +52,6 @@ mod engine;
 mod error;
 pub mod heston;
 pub mod hull_white;
-// Legacy module kept for internal use - use engine.rs for new code
-#[allow(dead_code)]
-mod model_calibrator;
 mod result;
 pub mod sabr;
 mod swaption_calibrator;

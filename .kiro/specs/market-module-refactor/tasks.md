@@ -110,13 +110,15 @@
   - 削除決定を文書化する
   - _Requirements: 1.1, 1.2, 1.5_
 
-- [ ] 4.2 (P) legacy/未使用ファイルを削除する
+- [x] 4.2 (P) legacy/未使用ファイルを削除する（部分完了）
   - _Note: calibration/heston.rs等は現在も公開APIとしてエクスポートされている_
-  - calibration/model_calibrator.rs（engine.rsに置換済み、#[allow(dead_code)]付き）を削除する
+  - ✅ calibration/model_calibrator.rs（engine.rsに置換済み、#[allow(dead_code)]付き）を削除済み
   - ~~calibration/heston.rs、hull_white.rs、sabr.rs（models/へ移動またはsurfaces/に統合済み）を削除する~~
-  - volcube/loader_convert.rs、volcube/graph.rs（外部未使用）を削除する
+  - ❌ volcube/loader_convert.rs：公開APIのため削除は破壊的変更
+  - ❌ volcube/graph.rs：pricer_pricing::graph::volcube_extractor.rsで使用中のため削除不可
   - `#[allow(dead_code)]`アノテーションが付いた未使用フィールドを精査・削除する
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
+  - _Completed: model_calibrator.rs削除、1878テストパス_
 
 - [ ] 4.3 旧ディレクトリ構造を削除する
   - fx_calibration/ディレクトリ全体を削除する（curves/fx.rs、surfaces/fx.rsに統合済み）

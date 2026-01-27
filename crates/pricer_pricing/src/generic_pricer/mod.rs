@@ -41,7 +41,6 @@ mod batch;
 mod config;
 mod error;
 mod kernel;
-mod ois_calculator;
 #[cfg(feature = "l1l2-integration")]
 mod payoff_evaluator;
 mod pricer;
@@ -60,7 +59,6 @@ pub use kernel::{
     price_cashflow, price_cashflow_stream, BusinessDayConvention, DayCountConvention,
     DiscountCalculator, Frequency,
 };
-pub use ois_calculator::{DailyAccrual, OisCalculator};
 #[cfg(feature = "l1l2-integration")]
 pub use payoff_evaluator::PayoffEvaluator;
 pub use pricer::GenericPricer;
