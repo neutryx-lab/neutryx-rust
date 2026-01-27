@@ -60,14 +60,13 @@ mod targets;
 // Primary exports (new API)
 // Re-export bootstrapping types
 pub use bootstrapping::{
-    AdjointSolver, AdjointSolverConfig, BootstrapCache, BootstrapConfig, BootstrapError,
-    BootstrapInterpolation, BootstrapResult, BootstrappedCurve, BootstrappedCurveBuilder,
-    BufferPool, CachedBootstrapper, CurveBootstrapper, CurveCache, DateCalculator,
-    DateCalculatorBuilder, GenericBootstrapConfig, GenericBootstrapConfigBuilder,
-    GenericBootstrapResult, InterpolationIndices, InterpolationMethod, MultiCurveBuilder,
-    ParallelCurveSetBuilder, SensitivityBootstrapper, SequentialBootstrapper, SolveResult,
-    SolveResultWithSensitivities, SolverType,
+    BootstrapConfig, BootstrapError, BootstrapInterpolation, BootstrapInstrument, BootstrapResult,
+    BootstrappedCurve, BootstrappedCurveBuilder, CalibrationInstrument, CurveBootstrapper,
+    Frequency, GenericBootstrapConfig, GenericBootstrapConfigBuilder, InterpolationMethod,
 };
+// Global bootstrapping exports (requires global-bootstrap feature)
+#[cfg(feature = "global-bootstrap")]
+pub use bootstrapping::{GlobalBootstrapConfig, GlobalBootstrapResult, GlobalBootstrapper};
 pub use engine::{
     CalibrationEngine,
     CalibrationEngineConfig,

@@ -47,7 +47,12 @@
   - _Requirements: 4.1, 1.3_
 
 - [ ] 2.2 ブートストラップ機能を統合する
-  - _Note: 18ファイルの大規模統合タスク。別途対応が必要_
+  - _Status: **DEFERRED** - 単一ファイル統合は現実的でない_
+  - _Note: 20ファイル、合計約13,000行。設計の想定（~1500行）との乖離大_
+  - _Analysis (2026-01-27):_
+    - 現在のbootstrapping/には20ファイルが存在（主要: multi_curve.rs 1802行, definition.rs 1631行, curve.rs 1337行）
+    - 単一ファイルへの統合は保守性を著しく低下させる
+    - **推奨アプローチ**: curves/bootstrapping/サブモジュールとして移動し、re-export整理
   - 17ファイルに分散しているbootstrapping機能を単一ファイルに統合する
   - BootstrappedCurve、CurveBootstrapper、MultiCurveBuilderを含める
   - BootstrapCache、DateCalculatorを含める
@@ -82,6 +87,12 @@
   - _All 1888 tests passing_
 
 - [ ] 3.2 スワプションボラティリティキューブ機能を統合する
+  - _Status: **DEFERRED** - 単一ファイル統合は現実的でない_
+  - _Note: 21ファイル、合計約15,400行。設計の想定（~2500行）との乖離大_
+  - _Analysis (2026-01-27):_
+    - 現在のvolcube/には21ファイルが存在（主要: calibration_graph.rs 1683行, quote.rs 1485行, builder.rs 1302行）
+    - 単一ファイルへの統合は保守性を著しく低下させる
+    - **推奨アプローチ**: surfaces/swaption/サブモジュールとして移動し、re-export整理
   - 21ファイルに分散しているvolcube機能を単一ファイルに統合する
   - VolCube、VolCubeSlice、VolatilityCubeトレイトを含める
   - VolQuote、VolQuoteSet、SabrParams等の型を含める
@@ -102,8 +113,14 @@
 
 - [ ] 4. 不要ファイルとlegacyコードを削除する
 - [ ] 4.1 (P) sensitivity系ファイルを削除する
+  - _Status: **DEFERRED** - 破壊的変更のため別フェーズで対応_
   - _Note: これらのファイルは現在公開APIとしてエクスポートされているため、削除は破壊的変更となる_
-  - _Note: pricer_riskモジュールへの移動を検討するか、別フェーズで対応_
+  - _Analysis (2026-01-27):_
+    - `SensitivityBootstrapper`, `AdjointSolver`: curve_engine.rsで使用、calibration/mod.rsでエクスポート
+    - `VolCubeVegaCalculator`, `ForwardModeVegaCalculator`: volcube_integration.rsテストで使用
+    - `SensitivityPath`, `SensitivityPathBuilder`: volcube/mod.rsでエクスポート
+    - **pricer_riskへの移動は依存関係の問題を生む**（L2→L4の循環依存回避が必要）
+    - **推奨アプローチ**: deprecation警告を追加し、次期バージョンで削除計画
   - volcube/vega.rs、volcube/sensitivity_path.rs、volcube/aad_validation.rsを削除する
   - calibration/bootstrapping/sensitivity.rs、adjoint_solver.rsを削除する
   - fx_calibration/sensitivity.rsを削除する
@@ -121,6 +138,8 @@
   - _Completed: model_calibrator.rs削除、1878テストパス_
 
 - [ ] 4.3 旧ディレクトリ構造を削除する
+  - _Status: **BLOCKED** - タスク2.2、3.2、4.1の完了に依存_
+  - _Note: 現在のモジュール構造は機能しており、後方互換性を維持_
   - fx_calibration/ディレクトリ全体を削除する（curves/fx.rs、surfaces/fx.rsに統合済み）
   - volcube/ディレクトリ全体を削除する（surfaces/swaption.rsに統合済み）
   - calibration/bootstrapping/ディレクトリ全体を削除する（curves/bootstrapping.rsに統合済み）
@@ -148,3 +167,42 @@
   - ファイル数82→18の変更を反映する
   - _Requirements: 7.1, 7.2, 7.3, 7.4_
   - _Completed: context/モジュール、curves/fx.rs統合、volcube/、fx_calibration/、calibration/構造を文書化_
+
+---
+
+## 実装分析サマリー (2026-01-27)
+
+### 完了したタスク
+- **タスク1系**: context/モジュール作成、統合エラー型実装 ✅
+- **タスク2.1, 2.3**: FXカーブ統合 ✅
+- **タスク3.1, 3.3**: FXボラティリティサーフェス統合 ✅
+- **タスク4.2**: model_calibrator.rs削除 ✅
+- **タスク5系**: テスト検証、demo/gui確認、ドキュメント更新 ✅
+
+### 保留タスク（設計再検討が必要）
+
+| タスク | 状態 | 理由 |
+|--------|------|------|
+| 2.2 | DEFERRED | 20ファイル/~13,000行を単一ファイルに統合は非現実的 |
+| 3.2 | DEFERRED | 21ファイル/~15,400行を単一ファイルに統合は非現実的 |
+| 4.1 | DEFERRED | 公開API削除は破壊的変更、pricer_risk移動は依存関係問題 |
+| 4.3 | BLOCKED | タスク2.2, 3.2, 4.1に依存 |
+
+### 推奨アプローチ（次期フェーズ）
+
+1. **モジュール再編成**（統合ではなく移動）
+   - `calibration/bootstrapping/` → `curves/bootstrapping/`
+   - `volcube/` → `surfaces/swaption/`
+   - 既存ファイル構造を維持し、re-exportのみ整理
+
+2. **Sensitivity系の段階的移行**
+   - Phase 1: deprecation警告を追加
+   - Phase 2: pricer_risk::scenariosに代替実装を作成
+   - Phase 3: 旧実装を削除（メジャーバージョンアップ時）
+
+3. **ファイル数削減目標の見直し**
+   - 当初目標: 82 → 18ファイル（78%削減）
+   - 現実的目標: モジュール整理とAPI明確化（ファイル数ではなく構造改善）
+
+### 現在のテスト状況
+- pricer_models: 132テストパス、69 ignored、0 failed

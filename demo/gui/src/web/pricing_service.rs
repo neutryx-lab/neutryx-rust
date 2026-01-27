@@ -12,7 +12,7 @@
 //! - **API stability**: Provides a stable interface for handlers
 
 use pricer_models::{
-    analytical::{BlackScholes, GarmanKohlhagen, GarmanKohlhagenParams},
+    analytic::{BlackScholes, GarmanKohlhagen, GarmanKohlhagenParams},
     instruments::FxOptionType,
 };
 
@@ -163,7 +163,7 @@ pub fn price_equity_option(
     // Create BlackScholes model from crate
     let bs =
         BlackScholes::new(spot, rate, volatility).map_err(|e| PricingServiceError::CrateError {
-            source: "pricer_models::analytical::BlackScholes".to_string(),
+            source: "pricer_models::analytic::BlackScholes".to_string(),
             message: format!("{:?}", e),
         })?;
 
@@ -229,7 +229,7 @@ pub fn price_fx_option(
         expiry,
     )
     .map_err(|e| PricingServiceError::CrateError {
-        source: "pricer_models::analytical::GarmanKohlhagenParams".to_string(),
+        source: "pricer_models::analytic::GarmanKohlhagenParams".to_string(),
         message: format!("{:?}", e),
     })?;
 
@@ -316,7 +316,7 @@ pub fn calculate_greek(
     // Create BlackScholes model
     let bs =
         BlackScholes::new(spot, rate, volatility).map_err(|e| PricingServiceError::CrateError {
-            source: "pricer_models::analytical::BlackScholes".to_string(),
+            source: "pricer_models::analytic::BlackScholes".to_string(),
             message: format!("{:?}", e),
         })?;
 

@@ -17,9 +17,11 @@ use super::{
     vol_builder::{CalibrationDiagnostics, CalibrationError, FxVolSurfaceBuilder, VolQuote},
     FxCurve, SimpleFxCurve,
 };
-use crate::market::{
-    calibration::bootstrapping::{BootstrapInstrument, CurveEngine, CurveEngineError},
-    YieldCurve,
+use crate::market::{calibration::bootstrapping::BootstrapInstrument, YieldCurve};
+
+#[cfg(feature = "global-bootstrap")]
+use crate::market::calibration::bootstrapping::{
+    CalibrationInstrument, GlobalBootstrapConfig, GlobalBootstrapper,
 };
 
 // ============================================================================
@@ -72,13 +74,7 @@ pub enum FxMarketError {
     },
 }
 
-impl From<CurveEngineError> for FxMarketError {
-    fn from(e: CurveEngineError) -> Self {
-        FxMarketError::DomesticCurveFailed {
-            reason: e.to_string(),
-        }
-    }
-}
+// Note: CurveEngine was removed in favour of GlobalBootstrapper
 
 impl From<CalibrationError> for FxMarketError {
     fn from(e: CalibrationError) -> Self {
@@ -549,7 +545,11 @@ impl<T: Float + Send + Sync + 'static> FxMarketBuilder<T> {
     }
 
     /// Builds the domestic discount curve.
-    fn build_domestic_curve(&self) -> Result<Arc<dyn YieldCurve<T> + Send + Sync>, FxMarketError> {
+    #[cfg(feature = "global-bootstrap")]
+    fn build_domestic_curve(&self) -> Result<Arc<dyn YieldCurve<T> + Send + Sync>, FxMarketError>
+    where
+        T: pricer_core::math::linalg::RealField,
+    {
         if let Some(ref curve) = self.prebuilt_domestic {
             return Ok(Arc::clone(curve));
         }
@@ -560,10 +560,11 @@ impl<T: Float + Send + Sync + 'static> FxMarketBuilder<T> {
             });
         }
 
-        // Use CurveEngine to bootstrap
-        let engine = CurveEngine::<T>::new();
-        let result = engine
-            .build_curve_from_instruments(&self.domestic_instruments)
+        // Use GlobalBootstrapper for curve calibration
+        let config = GlobalBootstrapConfig::default();
+        let bootstrapper = GlobalBootstrapper::new(config);
+        let result = bootstrapper
+            .calibrate(&self.domestic_instruments)
             .map_err(|e| FxMarketError::DomesticCurveFailed {
                 reason: e.to_string(),
             })?;
@@ -571,8 +572,24 @@ impl<T: Float + Send + Sync + 'static> FxMarketBuilder<T> {
         Ok(Arc::new(result.curve) as Arc<dyn YieldCurve<T> + Send + Sync>)
     }
 
+    /// Builds the domestic discount curve (requires prebuilt curve when global-bootstrap feature is disabled).
+    #[cfg(not(feature = "global-bootstrap"))]
+    fn build_domestic_curve(&self) -> Result<Arc<dyn YieldCurve<T> + Send + Sync>, FxMarketError> {
+        if let Some(ref curve) = self.prebuilt_domestic {
+            return Ok(Arc::clone(curve));
+        }
+
+        Err(FxMarketError::MissingInput {
+            field: "prebuilt_domestic_curve (enable 'global-bootstrap' feature for instrument bootstrapping)".to_string(),
+        })
+    }
+
     /// Builds the foreign discount curve.
-    fn build_foreign_curve(&self) -> Result<Arc<dyn YieldCurve<T> + Send + Sync>, FxMarketError> {
+    #[cfg(feature = "global-bootstrap")]
+    fn build_foreign_curve(&self) -> Result<Arc<dyn YieldCurve<T> + Send + Sync>, FxMarketError>
+    where
+        T: pricer_core::math::linalg::RealField,
+    {
         if let Some(ref curve) = self.prebuilt_foreign {
             return Ok(Arc::clone(curve));
         }
@@ -583,15 +600,28 @@ impl<T: Float + Send + Sync + 'static> FxMarketBuilder<T> {
             });
         }
 
-        // Use CurveEngine to bootstrap
-        let engine = CurveEngine::<T>::new();
-        let result = engine
-            .build_curve_from_instruments(&self.foreign_instruments)
+        // Use GlobalBootstrapper for curve calibration
+        let config = GlobalBootstrapConfig::default();
+        let bootstrapper = GlobalBootstrapper::new(config);
+        let result = bootstrapper
+            .calibrate(&self.foreign_instruments)
             .map_err(|e| FxMarketError::ForeignCurveFailed {
                 reason: e.to_string(),
             })?;
 
         Ok(Arc::new(result.curve) as Arc<dyn YieldCurve<T> + Send + Sync>)
+    }
+
+    /// Builds the foreign discount curve (requires prebuilt curve when global-bootstrap feature is disabled).
+    #[cfg(not(feature = "global-bootstrap"))]
+    fn build_foreign_curve(&self) -> Result<Arc<dyn YieldCurve<T> + Send + Sync>, FxMarketError> {
+        if let Some(ref curve) = self.prebuilt_foreign {
+            return Ok(Arc::clone(curve));
+        }
+
+        Err(FxMarketError::MissingInput {
+            field: "prebuilt_foreign_curve (enable 'global-bootstrap' feature for instrument bootstrapping)".to_string(),
+        })
     }
 }
 

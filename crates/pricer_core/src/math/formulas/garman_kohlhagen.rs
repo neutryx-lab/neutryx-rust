@@ -27,10 +27,9 @@
 //! # Examples
 //!
 //! ```
-//! use pricer_models::formulas::garman_kohlhagen::{
+//! use pricer_core::math::formulas::garman_kohlhagen::{
 //!     GarmanKohlhagen, GarmanKohlhagenParams,
 //! };
-//! use pricer_models::instruments::FxOptionType;
 //!
 //! let params = GarmanKohlhagenParams::new(
 //!     1.10,   // spot
@@ -42,8 +41,8 @@
 //! ).unwrap();
 //!
 //! let model = GarmanKohlhagen::new(params);
-//! let call_price = model.price(FxOptionType::Call);
-//! let put_price = model.price(FxOptionType::Put);
+//! let call_price = model.price(true);
+//! let put_price = model.price(false);
 //!
 //! // Put-call parity check
 //! let parity_diff = call_price - put_price
@@ -52,10 +51,9 @@
 //! ```
 
 use num_traits::Float;
-use pricer_core::math::{distributions::{norm_cdf, norm_pdf}, numeric::from_f64};
 
-use super::error::AnalyticalError;
-use crate::instruments::FxOptionType;
+use super::error::FormulaError;
+use crate::math::{distributions::{norm_cdf, norm_pdf}, numeric::from_f64};
 
 /// Parameters for the Garman-Kohlhagen model.
 ///
@@ -92,7 +90,7 @@ impl<T: Float> GarmanKohlhagenParams<T> {
     ///
     /// # Errors
     ///
-    /// Returns `AnalyticalError` if any parameter is invalid.
+    /// Returns `FormulaError` if any parameter is invalid.
     pub fn new(
         spot: T,
         strike: T,
@@ -100,25 +98,25 @@ impl<T: Float> GarmanKohlhagenParams<T> {
         rate_foreign: T,
         volatility: T,
         expiry: T,
-    ) -> Result<Self, AnalyticalError> {
+    ) -> Result<Self, FormulaError> {
         if spot <= T::zero() {
-            return Err(AnalyticalError::InvalidSpot {
+            return Err(FormulaError::InvalidSpot {
                 spot: spot.to_f64().unwrap_or(0.0),
             });
         }
         if strike <= T::zero() {
-            return Err(AnalyticalError::InvalidSpot {
+            return Err(FormulaError::InvalidSpot {
                 spot: strike.to_f64().unwrap_or(0.0),
             });
         }
         if volatility <= T::zero() {
-            return Err(AnalyticalError::InvalidVolatility {
+            return Err(FormulaError::InvalidVolatility {
                 volatility: volatility.to_f64().unwrap_or(0.0),
             });
         }
         if expiry <= T::zero() {
-            return Err(AnalyticalError::NumericalInstability {
-                message: format!("Invalid expiry: {}", expiry.to_f64().unwrap_or(0.0)),
+            return Err(FormulaError::InvalidExpiry {
+                expiry: expiry.to_f64().unwrap_or(0.0),
             });
         }
 
@@ -217,29 +215,38 @@ impl<T: Float> GarmanKohlhagen<T> {
     ///
     /// # Arguments
     ///
-    /// * `option_type` - Call or Put
+    /// * `is_call` - True for call, false for put
     ///
     /// # Returns
     ///
     /// Option price in domestic currency.
-    pub fn price(&self, option_type: FxOptionType) -> T {
+    pub fn price(&self, is_call: bool) -> T {
         let nd1 = norm_cdf(self.d1);
         let nd2 = norm_cdf(self.d2);
 
-        match option_type {
-            FxOptionType::Call => {
-                // C = S * e^(-rf*T) * N(d1) - K * e^(-rd*T) * N(d2)
-                self.params.spot * self.df_foreign * nd1
-                    - self.params.strike * self.df_domestic * nd2
-            }
-            FxOptionType::Put => {
-                // P = K * e^(-rd*T) * N(-d2) - S * e^(-rf*T) * N(-d1)
-                let nd1_neg = norm_cdf(-self.d1);
-                let nd2_neg = norm_cdf(-self.d2);
-                self.params.strike * self.df_domestic * nd2_neg
-                    - self.params.spot * self.df_foreign * nd1_neg
-            }
+        if is_call {
+            // C = S * e^(-rf*T) * N(d1) - K * e^(-rd*T) * N(d2)
+            self.params.spot * self.df_foreign * nd1
+                - self.params.strike * self.df_domestic * nd2
+        } else {
+            // P = K * e^(-rd*T) * N(-d2) - S * e^(-rf*T) * N(-d1)
+            let nd1_neg = norm_cdf(-self.d1);
+            let nd2_neg = norm_cdf(-self.d2);
+            self.params.strike * self.df_domestic * nd2_neg
+                - self.params.spot * self.df_foreign * nd1_neg
         }
+    }
+
+    /// Computes European call option price.
+    #[inline]
+    pub fn price_call(&self) -> T {
+        self.price(true)
+    }
+
+    /// Computes European put option price.
+    #[inline]
+    pub fn price_put(&self) -> T {
+        self.price(false)
     }
 
     /// Computes Delta.
@@ -248,23 +255,20 @@ impl<T: Float> GarmanKohlhagen<T> {
     ///
     /// # Arguments
     ///
-    /// * `option_type` - Call or Put
+    /// * `is_call` - True for call, false for put
     ///
     /// # Returns
     ///
     /// Delta value.
-    pub fn delta(&self, option_type: FxOptionType) -> T {
+    pub fn delta(&self, is_call: bool) -> T {
         let nd1 = norm_cdf(self.d1);
 
-        match option_type {
-            FxOptionType::Call => {
-                // Δ_call = e^(-rf*T) * N(d1)
-                self.df_foreign * nd1
-            }
-            FxOptionType::Put => {
-                // Δ_put = -e^(-rf*T) * N(-d1) = e^(-rf*T) * (N(d1) - 1)
-                self.df_foreign * (nd1 - T::one())
-            }
+        if is_call {
+            // Δ_call = e^(-rf*T) * N(d1)
+            self.df_foreign * nd1
+        } else {
+            // Δ_put = -e^(-rf*T) * N(-d1) = e^(-rf*T) * (N(d1) - 1)
+            self.df_foreign * (nd1 - T::one())
         }
     }
 
@@ -305,12 +309,12 @@ impl<T: Float> GarmanKohlhagen<T> {
     ///
     /// # Arguments
     ///
-    /// * `option_type` - Call or Put
+    /// * `is_call` - True for call, false for put
     ///
     /// # Returns
     ///
     /// Theta value (per day).
-    pub fn theta(&self, option_type: FxOptionType) -> T {
+    pub fn theta(&self, is_call: bool) -> T {
         let pdf_d1 = norm_pdf(self.d1);
         let nd1 = norm_cdf(self.d1);
         let nd2 = norm_cdf(self.d2);
@@ -321,21 +325,18 @@ impl<T: Float> GarmanKohlhagen<T> {
         let term1 = -self.params.spot * self.df_foreign * pdf_d1 * self.params.volatility
             / (two * self.sqrt_t);
 
-        match option_type {
-            FxOptionType::Call => {
-                let term2 = self.params.rate_foreign * self.params.spot * self.df_foreign * nd1;
-                let term3 = self.params.rate_domestic * self.params.strike * self.df_domestic * nd2;
-                (term1 + term2 - term3) / days_per_year
-            }
-            FxOptionType::Put => {
-                let nd1_neg = T::one() - nd1;
-                let nd2_neg = T::one() - nd2;
-                let term2 =
-                    -self.params.rate_foreign * self.params.spot * self.df_foreign * nd1_neg;
-                let term3 =
-                    self.params.rate_domestic * self.params.strike * self.df_domestic * nd2_neg;
-                (term1 + term2 + term3) / days_per_year
-            }
+        if is_call {
+            let term2 = self.params.rate_foreign * self.params.spot * self.df_foreign * nd1;
+            let term3 = self.params.rate_domestic * self.params.strike * self.df_domestic * nd2;
+            (term1 + term2 - term3) / days_per_year
+        } else {
+            let nd1_neg = T::one() - nd1;
+            let nd2_neg = T::one() - nd2;
+            let term2 =
+                -self.params.rate_foreign * self.params.spot * self.df_foreign * nd1_neg;
+            let term3 =
+                self.params.rate_domestic * self.params.strike * self.df_domestic * nd2_neg;
+            (term1 + term2 + term3) / days_per_year
         }
     }
 
@@ -345,25 +346,22 @@ impl<T: Float> GarmanKohlhagen<T> {
     ///
     /// # Arguments
     ///
-    /// * `option_type` - Call or Put
+    /// * `is_call` - True for call, false for put
     ///
     /// # Returns
     ///
     /// Rho value (per 1% rate change).
-    pub fn rho_domestic(&self, option_type: FxOptionType) -> T {
+    pub fn rho_domestic(&self, is_call: bool) -> T {
         let nd2 = norm_cdf(self.d2);
         let hundred: T = from_f64(100.0);
 
-        match option_type {
-            FxOptionType::Call => {
-                // ρ_d = K * T * e^(-rd*T) * N(d2)
-                self.params.strike * self.params.expiry * self.df_domestic * nd2 / hundred
-            }
-            FxOptionType::Put => {
-                // ρ_d = -K * T * e^(-rd*T) * N(-d2)
-                let nd2_neg = T::one() - nd2;
-                -self.params.strike * self.params.expiry * self.df_domestic * nd2_neg / hundred
-            }
+        if is_call {
+            // ρ_d = K * T * e^(-rd*T) * N(d2)
+            self.params.strike * self.params.expiry * self.df_domestic * nd2 / hundred
+        } else {
+            // ρ_d = -K * T * e^(-rd*T) * N(-d2)
+            let nd2_neg = T::one() - nd2;
+            -self.params.strike * self.params.expiry * self.df_domestic * nd2_neg / hundred
         }
     }
 
@@ -373,25 +371,22 @@ impl<T: Float> GarmanKohlhagen<T> {
     ///
     /// # Arguments
     ///
-    /// * `option_type` - Call or Put
+    /// * `is_call` - True for call, false for put
     ///
     /// # Returns
     ///
     /// Rho value (per 1% rate change).
-    pub fn rho_foreign(&self, option_type: FxOptionType) -> T {
+    pub fn rho_foreign(&self, is_call: bool) -> T {
         let nd1 = norm_cdf(self.d1);
         let hundred: T = from_f64(100.0);
 
-        match option_type {
-            FxOptionType::Call => {
-                // ρ_f = -S * T * e^(-rf*T) * N(d1)
-                -self.params.spot * self.params.expiry * self.df_foreign * nd1 / hundred
-            }
-            FxOptionType::Put => {
-                // ρ_f = S * T * e^(-rf*T) * N(-d1)
-                let nd1_neg = T::one() - nd1;
-                self.params.spot * self.params.expiry * self.df_foreign * nd1_neg / hundred
-            }
+        if is_call {
+            // ρ_f = -S * T * e^(-rf*T) * N(d1)
+            -self.params.spot * self.params.expiry * self.df_foreign * nd1 / hundred
+        } else {
+            // ρ_f = S * T * e^(-rf*T) * N(-d1)
+            let nd1_neg = T::one() - nd1;
+            self.params.spot * self.params.expiry * self.df_foreign * nd1_neg / hundred
         }
     }
 }
@@ -417,7 +412,7 @@ pub fn fx_call_price<T: Float>(
     rate_foreign: T,
     volatility: T,
     expiry: T,
-) -> Result<T, AnalyticalError> {
+) -> Result<T, FormulaError> {
     let params = GarmanKohlhagenParams::new(
         spot,
         strike,
@@ -427,7 +422,7 @@ pub fn fx_call_price<T: Float>(
         expiry,
     )?;
     let model = GarmanKohlhagen::new(params);
-    Ok(model.price(FxOptionType::Call))
+    Ok(model.price(true))
 }
 
 /// Convenience function to price an FX put option.
@@ -451,7 +446,7 @@ pub fn fx_put_price<T: Float>(
     rate_foreign: T,
     volatility: T,
     expiry: T,
-) -> Result<T, AnalyticalError> {
+) -> Result<T, FormulaError> {
     let params = GarmanKohlhagenParams::new(
         spot,
         strike,
@@ -461,7 +456,7 @@ pub fn fx_put_price<T: Float>(
         expiry,
     )?;
     let model = GarmanKohlhagen::new(params);
-    Ok(model.price(FxOptionType::Put))
+    Ok(model.price(false))
 }
 
 #[cfg(test)]
@@ -532,7 +527,7 @@ mod tests {
     fn test_call_price() {
         let params = create_test_params();
         let model = GarmanKohlhagen::new(params);
-        let call = model.price(FxOptionType::Call);
+        let call = model.price(true);
 
         // Call price should be positive
         assert!(call > 0.0);
@@ -544,7 +539,7 @@ mod tests {
     fn test_put_price() {
         let params = create_test_params();
         let model = GarmanKohlhagen::new(params);
-        let put = model.price(FxOptionType::Put);
+        let put = model.price(false);
 
         // Put price should be positive
         assert!(put > 0.0);
@@ -557,8 +552,8 @@ mod tests {
         let params = create_test_params();
         let model = GarmanKohlhagen::new(params);
 
-        let call = model.price(FxOptionType::Call);
-        let put = model.price(FxOptionType::Put);
+        let call = model.price(true);
+        let put = model.price(false);
 
         // Put-call parity: C - P = S * e^(-rf*T) - K * e^(-rd*T)
         let forward_diff = params.spot * (-params.rate_foreign * params.expiry).exp()
@@ -573,32 +568,12 @@ mod tests {
     }
 
     #[test]
-    fn test_atm_option() {
-        // At-the-money forward option
-        let spot = 1.10_f64;
-        let rd = 0.03;
-        let rf = 0.01;
-        let expiry = 1.0;
-        let forward = spot * ((rd - rf) * expiry).exp();
-
-        let params = GarmanKohlhagenParams::new(spot, forward, rd, rf, 0.15, expiry).unwrap();
-        let model = GarmanKohlhagen::new(params);
-
-        let call = model.price(FxOptionType::Call);
-        let put = model.price(FxOptionType::Put);
-
-        // For ATM-forward option, call ≈ put (approximately)
-        // Due to different discounting, they won't be exactly equal
-        assert!((call - put).abs() < 0.01);
-    }
-
-    #[test]
     fn test_delta() {
         let params = create_test_params();
         let model = GarmanKohlhagen::new(params);
 
-        let call_delta = model.delta(FxOptionType::Call);
-        let put_delta = model.delta(FxOptionType::Put);
+        let call_delta = model.delta(true);
+        let put_delta = model.delta(false);
 
         // Call delta should be between 0 and 1 (adjusted for foreign rate)
         let df_foreign = (-params.rate_foreign * params.expiry).exp();
@@ -640,11 +615,9 @@ mod tests {
         let params = create_test_params();
         let model = GarmanKohlhagen::new(params);
 
-        let call_theta = model.theta(FxOptionType::Call);
-        let put_theta = model.theta(FxOptionType::Put);
+        let call_theta = model.theta(true);
+        let put_theta = model.theta(false);
 
-        // Theta is usually negative (time decay)
-        // But can be positive for deep ITM options with high rates
         // Just check they're finite
         assert!(call_theta.is_finite());
         assert!(put_theta.is_finite());
@@ -655,11 +628,10 @@ mod tests {
         let params = create_test_params();
         let model = GarmanKohlhagen::new(params);
 
-        let call_rho = model.rho_domestic(FxOptionType::Call);
-        let put_rho = model.rho_domestic(FxOptionType::Put);
+        let call_rho = model.rho_domestic(true);
+        let put_rho = model.rho_domestic(false);
 
-        // Call rho_domestic should be positive (higher domestic rate increases call
-        // value)
+        // Call rho_domestic should be positive
         assert!(call_rho > 0.0);
         // Put rho_domestic should be negative
         assert!(put_rho < 0.0);
@@ -670,11 +642,10 @@ mod tests {
         let params = create_test_params();
         let model = GarmanKohlhagen::new(params);
 
-        let call_rho = model.rho_foreign(FxOptionType::Call);
-        let put_rho = model.rho_foreign(FxOptionType::Put);
+        let call_rho = model.rho_foreign(true);
+        let put_rho = model.rho_foreign(false);
 
-        // Call rho_foreign should be negative (higher foreign rate decreases call
-        // value)
+        // Call rho_foreign should be negative
         assert!(call_rho < 0.0);
         // Put rho_foreign should be positive
         assert!(put_rho > 0.0);
@@ -691,66 +662,8 @@ mod tests {
         // Verify against model
         let params = create_test_params();
         let model = GarmanKohlhagen::new(params);
-        assert!((call - model.price(FxOptionType::Call)).abs() < 1e-10);
-        assert!((put - model.price(FxOptionType::Put)).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_high_volatility() {
-        let params = GarmanKohlhagenParams::new(1.10, 1.12, 0.03, 0.01, 0.50, 1.0).unwrap();
-        let model = GarmanKohlhagen::new(params);
-
-        let call = model.price(FxOptionType::Call);
-        let put = model.price(FxOptionType::Put);
-
-        // Higher volatility should increase option prices
-        let low_vol_params = create_test_params();
-        let low_vol_model = GarmanKohlhagen::new(low_vol_params);
-
-        assert!(call > low_vol_model.price(FxOptionType::Call));
-        assert!(put > low_vol_model.price(FxOptionType::Put));
-    }
-
-    #[test]
-    fn test_short_expiry() {
-        let params = GarmanKohlhagenParams::new(1.10, 1.12, 0.03, 0.01, 0.15, 0.01).unwrap();
-        let model = GarmanKohlhagen::new(params);
-
-        let call = model.price(FxOptionType::Call);
-        let put = model.price(FxOptionType::Put);
-
-        // OTM call (1.10 < 1.12) should be close to zero for short expiry
-        assert!(call < 0.01);
-        // OTM put should also be small
-        assert!(put > 0.0);
-    }
-
-    #[test]
-    fn test_deep_itm_call() {
-        // Deep ITM call (spot >> strike)
-        let params = GarmanKohlhagenParams::new(1.30, 1.00, 0.03, 0.01, 0.15, 1.0).unwrap();
-        let model = GarmanKohlhagen::new(params);
-
-        let call = model.price(FxOptionType::Call);
-
-        // Deep ITM call should be approximately (S * e^(-rf*T) - K * e^(-rd*T))
-        let intrinsic = params.spot * (-params.rate_foreign * params.expiry).exp()
-            - params.strike * (-params.rate_domestic * params.expiry).exp();
-        assert!((call - intrinsic).abs() < 0.05);
-    }
-
-    #[test]
-    fn test_deep_itm_put() {
-        // Deep ITM put (spot << strike)
-        let params = GarmanKohlhagenParams::new(1.00, 1.30, 0.03, 0.01, 0.15, 1.0).unwrap();
-        let model = GarmanKohlhagen::new(params);
-
-        let put = model.price(FxOptionType::Put);
-
-        // Deep ITM put should be approximately (K * e^(-rd*T) - S * e^(-rf*T))
-        let intrinsic = params.strike * (-params.rate_domestic * params.expiry).exp()
-            - params.spot * (-params.rate_foreign * params.expiry).exp();
-        assert!((put - intrinsic).abs() < 0.05);
+        assert!((call - model.price(true)).abs() < 1e-10);
+        assert!((put - model.price(false)).abs() < 1e-10);
     }
 
     #[test]

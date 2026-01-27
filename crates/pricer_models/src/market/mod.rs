@@ -56,7 +56,6 @@ pub mod context;
 pub mod curves;
 pub mod error;
 pub mod fx_calibration;
-pub mod fx_density;
 pub mod surfaces;
 pub mod volcube;
 
@@ -91,7 +90,7 @@ pub use curves::{
 pub use error::{ContextError, CurveError, MarketBuildError, MarketDataError, MarketError, SurfaceError};
 
 // Re-export FX density types
-pub use fx_density::{DeltaType, DensityStatistics, FxDensityCalculator};
+pub use surfaces::{DeltaType, DensityStatistics, FxDensityCalculator};
 
 // Re-export surface types
 pub use surfaces::{

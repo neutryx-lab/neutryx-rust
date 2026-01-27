@@ -119,6 +119,10 @@ pub mod generic_pricer;
 // Unified pricing result types
 pub mod result;
 
+// Re-export pricing method submodules for convenient access
+pub use methods::mc;
+pub use methods::path_dependent;
+
 // Re-export commonly used items for convenience
 pub use graph::{
     ComputationGraph, GraphBuilder, GraphEdge, GraphError, GraphExtractable, GraphMetadata,

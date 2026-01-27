@@ -30,7 +30,7 @@
 //! # Examples
 //!
 //! ```
-//! use pricer_models::formulas::sabr_implied_vol::{sabr_implied_vol, SabrImpliedVolParams};
+//! use pricer_core::math::formulas::sabr::{sabr_implied_vol, SabrImpliedVolParams};
 //!
 //! let params = SabrImpliedVolParams {
 //!     forward: 100.0,
@@ -51,11 +51,12 @@
 //! ```
 
 use num_traits::Float;
-use pricer_core::math::{
+use thiserror::Error;
+
+use crate::math::{
     numeric::from_f64,
     smoothing::{smooth_log, smooth_pow},
 };
-use thiserror::Error;
 
 /// Default ATM threshold for determining when to use the ATM expansion formula.
 pub const DEFAULT_ATM_THRESHOLD: f64 = 0.01;
@@ -225,7 +226,7 @@ impl<T: Float> SabrImpliedVolParams<T> {
 /// # Examples
 ///
 /// ```
-/// use pricer_models::formulas::sabr_implied_vol::{sabr_implied_vol, SabrImpliedVolParams};
+/// use pricer_core::math::formulas::sabr::{sabr_implied_vol, SabrImpliedVolParams};
 ///
 /// let params = SabrImpliedVolParams {
 ///     forward: 100.0,
@@ -713,7 +714,6 @@ mod tests {
     #[test]
     fn test_smile_negative_rho() {
         // With negative rho, OTM puts should have higher IV than OTM calls
-        // Use more extreme parameters to demonstrate skew effect
         let params = SabrImpliedVolParams {
             forward: 100.0,
             alpha: 0.2,
@@ -728,7 +728,6 @@ mod tests {
         let iv_110 = sabr_implied_vol(&params, 110.0).unwrap();
 
         // With negative rho, OTM puts (K < F) should have higher vol
-        // than OTM calls (K > F), demonstrating negative skew
         assert!(iv_90 > iv_110, "Expected negative skew: iv_90={} > iv_110={}", iv_90, iv_110);
 
         // All implied vols should be positive and reasonable

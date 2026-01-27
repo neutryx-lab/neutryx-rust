@@ -13,7 +13,7 @@ use super::{
     sabr_surface::SabrParameterSurface,
     types::InstrumentId,
 };
-use crate::formulas::sabr_implied_vol::{sabr_atm_vol, sabr_implied_vol, SabrImpliedVolParams};
+use pricer_core::math::formulas::sabr::{sabr_atm_vol, sabr_implied_vol, SabrImpliedVolParams};
 use crate::market::error::MarketDataError;
 
 /// 3次元ボラティリティキューブトレイト。

@@ -23,7 +23,7 @@ use std::{sync::Arc, time::Instant};
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use infra_config::{BumpSizes, GreekType, GreeksMethod, RiskConfig, SecondOrderMode};
 use pricer_models::{
-    analytical::garman_kohlhagen::{GarmanKohlhagen, GarmanKohlhagenParams},
+    analytic::{GarmanKohlhagen, GarmanKohlhagenParams},
     instruments::FxOptionType,
 };
 use pricer_risk::{greeks::GreeksResult, RiskEngine, RiskEngineConfig, RiskError};

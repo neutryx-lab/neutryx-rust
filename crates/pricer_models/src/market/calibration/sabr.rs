@@ -31,7 +31,7 @@ use pricer_core::traits::calibration::{
 };
 
 use super::{ModelCalibrator, ModelCalibratorConfig};
-use crate::formulas::sabr_implied_vol::{SabrImpliedVolParams, sabr_implied_vol_with_options};
+use pricer_core::math::formulas::sabr::{SabrImpliedVolParams, sabr_implied_vol_with_options};
 
 /// SABR smile point for calibration.
 ///

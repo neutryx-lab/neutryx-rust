@@ -32,15 +32,20 @@
 //! - Payoff functions with smooth approximations
 //! - Stochastic models (GBM, Heston, etc.)
 //! - Market data structures (curves, surfaces)
-//! - Closed-form pricing formulas (Black-Scholes, Bachelier, SABR Hagan)
+//! - Analytical pricing with instrument integration
 //! - Model calibration to market data
 //!
 //! ## Module Organisation
 //!
 //! - [`stochastic`] - Stochastic process models (GBM, Heston, Hull-White, CIR)
-//! - [`formulas`] - Closed-form pricing formulas (Black-Scholes, Bachelier, SABR Hagan)
+//! - [`analytic`] - Analytical pricing with instrument wrappers
 //! - [`market`] - Market data structures (curves, surfaces, vol cubes)
 //! - [`compiler`] - Instrument compilation for pricing engines
+//!
+//! ## Analytical Formulas
+//!
+//! Pure mathematical formulas are in `pricer_core::math::formulas`.
+//! The [`analytic`] module re-exports these and adds instrument integration.
 //!
 //! ## Design Principles
 //!
@@ -52,9 +57,9 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(rustdoc::private_intra_doc_links)]
 
+pub mod analytic;
 pub mod compiler;
 mod direction_ext;
-pub mod formulas;
 pub mod market;
 pub mod stochastic;
 

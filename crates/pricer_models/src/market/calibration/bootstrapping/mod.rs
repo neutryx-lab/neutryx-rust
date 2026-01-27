@@ -1,68 +1,48 @@
 //! Yield curve bootstrapping from OIS/Swap rates.
 //!
-//! This module implements multi-curve stripping logic to construct
-//! yield curves from market-observed swap rates, with support for
-//! AAD (Adjoint Algorithmic Differentiation) sensitivity computation.
+//! This module provides two bootstrapping approaches:
 //!
-//! ## Architecture
+//! - `CurveBootstrapper`: Simple sequential bootstrapping for basic use cases
+//! - `GlobalBootstrapper`: Multi-dimensional Newton solver for global calibration
 //!
-//! The bootstrapping module provides:
+//! ## Core Types
+//!
 //! - `BootstrapInstrument<T>`: Market instruments (OIS, IRS, FRA, Futures)
-//! - `CurveBootstrapper<T>`: Sequential bootstrapping engine
 //! - `BootstrappedCurve<T>`: Result curve implementing `YieldCurve<T>`
-//! - `MultiCurveBuilder<T>`: OIS discount + tenor curve construction
+//! - `CalibrationInstrument<T>`: Trait for global calibration instruments
 //!
-//! ## Sensitivity Support
+//! ## Example
 //!
-//! The bootstrapper computes sensitivities using bump-and-revalue
-//! finite differences for yield curve risk calculations.
+//! ```ignore
+//! use pricer_models::market::calibration::bootstrapping::{
+//!     CurveBootstrapper, BootstrapInstrument,
+//! };
+//!
+//! let bootstrapper = CurveBootstrapper::new();
+//! let pillars = vec![1.0, 2.0, 5.0];
+//! let rates = vec![0.03, 0.035, 0.04];
+//!
+//! let result = bootstrapper.bootstrap(&pillars, &rates)?;
+//! ```
 
-mod adapter;
-mod adjoint_solver;
-mod cache;
 mod calibration_instrument;
 mod config;
 mod curve;
 mod curve_builder;
-mod curve_config;
-mod curve_engine;
-mod date_utils;
-mod definition;
-mod engine;
-mod engine_error;
 mod error;
 mod instrument;
-mod multi_curve;
-mod result_cache;
-mod sensitivity;
 
 // Global bootstrapping with multi-dimensional Newton solver
 #[cfg(feature = "global-bootstrap")]
 mod global_bootstrapper;
 
-pub use adapter::InstrumentAdapter;
+// Core exports
 pub use calibration_instrument::CalibrationInstrument;
-pub use adjoint_solver::{
-    compute_adjoint_contribution, AdjointSolver, AdjointSolverConfig, SolveResult,
-    SolveResultWithSensitivities, SolverType,
-};
-pub use cache::{BootstrapCache, BufferPool, CurveCache, InterpolationIndices};
 pub use config::{BootstrapInterpolation, GenericBootstrapConfig, GenericBootstrapConfigBuilder};
 pub use curve::{BootstrappedCurve, BootstrappedCurveBuilder};
 pub use curve_builder::{BootstrapConfig, CurveBootstrapper, InterpolationMethod};
-pub use curve_config::{CurveConfig, CurveConfigBuilder};
-pub use curve_engine::{CurveConstructionResult, CurveEngine, CurveEngineBuilder};
-pub use date_utils::{DateCalculator, DateCalculatorBuilder, SpotDateConvention};
-pub use definition::{CurveDefinition, CurveInstrumentType, InstrumentSpec, InstrumentTenor};
-pub use engine::{CachedBootstrapper, GenericBootstrapResult, SequentialBootstrapper};
-pub use engine_error::{CurveEngineError, CurveParameterRepresentation};
 pub use error::BootstrapError;
 pub use instrument::{BootstrapInstrument, Frequency};
-pub use multi_curve::{
-    CurveDependency, CurveSet, MultiCurveBuilder, ParallelCurveSetBuilder, Tenor,
-};
-pub use result_cache::{CacheStats, CurveKey, CurveResultCache};
-pub use sensitivity::{BootstrapResultWithSensitivities, SensitivityBootstrapper};
 
 // Global bootstrapping exports (requires linalg feature)
 #[cfg(feature = "global-bootstrap")]
