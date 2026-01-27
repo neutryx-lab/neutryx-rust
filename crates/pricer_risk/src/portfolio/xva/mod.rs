@@ -35,8 +35,7 @@
 //! # Example
 //!
 //! ```ignore
-//! use pricer_risk::xva::{XvaCalculator, FundingParams, OwnCreditParams};
-//! use pricer_risk::soa::ExposureSoA;
+//! use pricer_risk::{XvaCalculator, FundingParams, OwnCreditParams, ExposureSoA};
 //!
 //! let calculator = XvaCalculator::new()
 //!     .with_own_credit(OwnCreditParams::new(0.02, 0.4).unwrap())
@@ -57,6 +56,7 @@
 mod cva;
 mod dva;
 mod error;
+mod exposure_soa;
 mod fva;
 mod params;
 mod result;
@@ -71,10 +71,9 @@ pub use params::{FundingParams, OwnCreditParams};
 use rayon::prelude::*;
 pub use result::{CounterpartyXva, NettingSetXva, PortfolioXva};
 
-use crate::{
-    portfolio::{CounterpartyId, CreditParams, NettingSetId, Portfolio},
-    soa::ExposureSoA,
-};
+pub use exposure_soa::ExposureSoA;
+
+use crate::portfolio::{CounterpartyId, CreditParams, NettingSetId, Portfolio};
 
 /// Configuration for XVA calculations.
 ///
@@ -449,7 +448,7 @@ impl XvaCalculator {
 /// # Examples
 ///
 /// ```
-/// use pricer_risk::xva::generate_flat_discount_factors;
+/// use pricer_risk::generate_flat_discount_factors;
 ///
 /// let time_grid = vec![0.0, 0.25, 0.5, 0.75, 1.0];
 /// let df = generate_flat_discount_factors(0.05, &time_grid);

@@ -70,6 +70,13 @@
   - FxVolSurfaceConfigを含める
   - sensitivity系は除外する
   - _Requirements: 4.1, 1.3_
+  - _Progress (partial):_
+    - ✅ Strike, Vol, ExpiryInterpolation → surfaces/fx.rs（fx_calibration/types.rsは再エクスポートに変更）
+    - ✅ FxVolSurfaceConfig → surfaces/fx.rs（fx_calibration/config.rsは再エクスポートに変更）
+    - 🔲 CalibratedFxVolSurface, SabrParameters, CalibratedSmile, VolSmile → surfaces/fx.rs
+    - 🔲 FxVolSurfaceBuilder, LazyFxVolSurface → surfaces/fx.rs
+    - 🔲 FxDensityCalculator, DensityStatistics → surfaces/fx.rs
+  - _All 1948 tests passing_
 
 - [ ] 3.2 スワプションボラティリティキューブ機能を統合する
   - 21ファイルに分散しているvolcube機能を単一ファイルに統合する
@@ -122,14 +129,16 @@
   - _Requirements: 6.3, 6.4_
   - _Completed: 2136+テストパス、ビルド成功、clippy警告1件（minor）_
 
-- [ ] 5.2 demo/guiの動作確認を行う
+- [x] 5.2 demo/guiの動作確認を行う
   - demo/gui/src/web/handlers/fxcurve.rsが正常に動作することを確認する
   - demo/gui/src/web/handlers/fxvol.rsが正常に動作することを確認する
   - demo/gui/src/web/handlers/volcube.rsが正常に動作することを確認する
   - _Requirements: 6.3_
+  - _Completed: demo_guiビルド成功、テスト9パス、ハンドラーがpricer_models::marketを正しく使用_
 
-- [ ] 5.3 steering/structure.mdを更新する
+- [x] 5.3 steering/structure.mdを更新する
   - market/セクションを新しい構造（context/, curves/, surfaces/）に更新する
   - 各サブモジュールの役割と含まれるファイルを文書化する
   - ファイル数82→18の変更を反映する
   - _Requirements: 7.1, 7.2, 7.3, 7.4_
+  - _Completed: context/モジュール、curves/fx.rs統合、volcube/、fx_calibration/、calibration/構造を文書化_

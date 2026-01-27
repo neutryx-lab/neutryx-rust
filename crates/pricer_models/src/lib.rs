@@ -42,10 +42,6 @@
 //! - [`market`] - Market data structures (curves, surfaces, vol cubes)
 //! - [`compiler`] - Instrument compilation for pricing engines
 //!
-//! ### Deprecated Modules
-//!
-//! - [`analytical`] - Deprecated, use [`formulas`] instead
-//!
 //! ## Design Principles
 //!
 //! - **Enum-based instruments** for static dispatch (Enzyme-friendly)
@@ -56,7 +52,6 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(rustdoc::private_intra_doc_links)]
 
-pub mod analytical;
 pub mod compiler;
 mod direction_ext;
 pub mod formulas;

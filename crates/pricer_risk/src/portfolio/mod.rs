@@ -67,10 +67,14 @@
 mod builder;
 mod counterparty;
 mod error;
+mod exposure;
 mod ids;
 mod netting_set;
 mod sample_builder;
 mod trade;
+
+/// XVA calculations (CVA, DVA, FVA).
+pub mod xva;
 
 // Re-export public types
 use std::collections::HashMap;
@@ -78,6 +82,7 @@ use std::collections::HashMap;
 pub use builder::PortfolioBuilder;
 pub use counterparty::{Counterparty, CreditParams, CreditRating};
 pub use error::PortfolioError;
+pub use exposure::ExposureCalculator;
 pub use ids::{CounterpartyId, NettingSetId, TradeId};
 pub use netting_set::{CollateralAgreement, NettingSet};
 use rayon::prelude::*;

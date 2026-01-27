@@ -31,7 +31,7 @@
 //! # Example
 //!
 //! ```rust,ignore
-//! use pricer_risk::enzyme::kernel::pricing_kernel_irs;
+//! use pricer_risk::greeks::ad::kernel::pricing_kernel_irs;
 //!
 //! let rates = [0.02, 0.03, 0.04];
 //! let times = [1.0, 2.0, 5.0];

@@ -35,7 +35,7 @@
 //! # Usage
 //!
 //! ```rust
-//! use pricer_risk::enzyme::{Activity, ADMode, gradient};
+//! use pricer_risk::greeks::ad::{Activity, ADMode, gradient};
 //!
 //! // Simple gradient computation
 //! let grad = gradient(|x| x * x, 3.0);
@@ -51,7 +51,7 @@ pub mod binder;
 pub mod checkpoint_ad;
 pub mod fallback;
 pub mod forward;
-pub mod greeks;
+pub mod enzyme_greeks;
 pub mod kernel;
 pub mod loops;
 pub mod parallel;
@@ -82,7 +82,7 @@ pub mod wrappers;
 /// # 使用例
 ///
 /// ```rust
-/// use pricer_risk::enzyme::ADMode;
+/// use pricer_risk::greeks::ad::ADMode;
 ///
 /// // デフォルトはInactive（微分無効）
 /// let mode = ADMode::default();
@@ -141,7 +141,7 @@ impl ADMode {
     /// # 使用例
     ///
     /// ```rust
-    /// use pricer_risk::enzyme::ADMode;
+    /// use pricer_risk::greeks::ad::ADMode;
     ///
     /// assert!(ADMode::Forward.is_forward());
     /// assert!(!ADMode::Reverse.is_forward());
@@ -159,7 +159,7 @@ impl ADMode {
     /// # 使用例
     ///
     /// ```rust
-    /// use pricer_risk::enzyme::ADMode;
+    /// use pricer_risk::greeks::ad::ADMode;
     ///
     /// assert!(ADMode::Reverse.is_reverse());
     /// assert!(!ADMode::Forward.is_reverse());
@@ -177,7 +177,7 @@ impl ADMode {
     /// # 使用例
     ///
     /// ```rust
-    /// use pricer_risk::enzyme::ADMode;
+    /// use pricer_risk::greeks::ad::ADMode;
     ///
     /// assert!(!ADMode::Inactive.is_active());
     /// assert!(ADMode::Forward.is_active());
@@ -297,7 +297,7 @@ impl Activity {
 /// # Examples
 ///
 /// ```rust
-/// use pricer_risk::enzyme::gradient;
+/// use pricer_risk::greeks::ad::gradient;
 ///
 /// // Gradient of x^2 is 2x
 /// let grad = gradient(|x| x * x, 3.0);

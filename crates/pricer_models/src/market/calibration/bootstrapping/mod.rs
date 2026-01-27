@@ -20,6 +20,7 @@
 mod adapter;
 mod adjoint_solver;
 mod cache;
+mod calibration_instrument;
 mod config;
 mod curve;
 mod curve_builder;
@@ -35,7 +36,12 @@ mod multi_curve;
 mod result_cache;
 mod sensitivity;
 
+// Global bootstrapping with multi-dimensional Newton solver
+#[cfg(feature = "global-bootstrap")]
+mod global_bootstrapper;
+
 pub use adapter::InstrumentAdapter;
+pub use calibration_instrument::CalibrationInstrument;
 pub use adjoint_solver::{
     compute_adjoint_contribution, AdjointSolver, AdjointSolverConfig, SolveResult,
     SolveResultWithSensitivities, SolverType,
@@ -57,6 +63,10 @@ pub use multi_curve::{
 };
 pub use result_cache::{CacheStats, CurveKey, CurveResultCache};
 pub use sensitivity::{BootstrapResultWithSensitivities, SensitivityBootstrapper};
+
+// Global bootstrapping exports (requires linalg feature)
+#[cfg(feature = "global-bootstrap")]
+pub use global_bootstrapper::{GlobalBootstrapConfig, GlobalBootstrapResult, GlobalBootstrapper};
 
 /// Result of curve bootstrapping.
 #[derive(Debug, Clone)]

@@ -27,6 +27,9 @@ serde = ["dep:serde", "dep:serde_json", "pricer_core/serde", "infra_master/serde
 # Parallel processing for multi-curve bootstrapping
 parallel = ["dep:rayon"]
 
+# Global bootstrapping with multi-dimensional Newton solver
+global-bootstrap = ["pricer_core/linalg"]
+
 # Advanced volatility model features
 local-vol = []
 stochastic-local-vol = ["local-vol"]

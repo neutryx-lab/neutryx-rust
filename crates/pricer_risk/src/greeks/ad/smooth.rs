@@ -56,7 +56,7 @@ pub const DEFAULT_EPSILON: f64 = 1e-6;
 /// # Examples
 ///
 /// ```rust
-/// use pricer_risk::enzyme::smooth::smooth_max;
+/// use pricer_risk::greeks::ad::smooth::smooth_max;
 ///
 /// let result: f64 = smooth_max(5.0, 3.0, 1e-6);
 /// assert!((result - 5.0).abs() < 1e-5);
@@ -99,7 +99,7 @@ pub fn smooth_min<T: Float>(a: T, b: T, epsilon: T) -> T { -smooth_max(-a, -b, e
 /// # Examples
 ///
 /// ```rust
-/// use pricer_risk::enzyme::smooth::smooth_relu;
+/// use pricer_risk::greeks::ad::smooth::smooth_relu;
 ///
 /// // Positive input
 /// let result: f64 = smooth_relu(5.0, 1e-6);
@@ -165,7 +165,7 @@ pub fn smooth_relu_derivative<T: Float>(x: T, epsilon: T) -> T { smooth_indicato
 /// # Examples
 ///
 /// ```rust
-/// use pricer_risk::enzyme::smooth::smooth_indicator;
+/// use pricer_risk::greeks::ad::smooth::smooth_indicator;
 ///
 /// // Far positive
 /// let result: f64 = smooth_indicator(10.0, 1.0);
@@ -245,7 +245,7 @@ pub fn smooth_abs_derivative<T: Float>(x: T, epsilon: T) -> T { x / smooth_abs(x
 /// # Examples
 ///
 /// ```rust
-/// use pricer_risk::enzyme::smooth::smooth_call_payoff;
+/// use pricer_risk::greeks::ad::smooth::smooth_call_payoff;
 ///
 /// // ITM call
 /// let payoff: f64 = smooth_call_payoff(110.0, 100.0, 1e-6);
@@ -284,7 +284,7 @@ pub fn smooth_call_delta<T: Float>(spot: T, strike: T, epsilon: T) -> T {
 /// # Examples
 ///
 /// ```rust
-/// use pricer_risk::enzyme::smooth::smooth_put_payoff;
+/// use pricer_risk::greeks::ad::smooth::smooth_put_payoff;
 ///
 /// // ITM put
 /// let payoff: f64 = smooth_put_payoff(90.0, 100.0, 1e-6);
@@ -323,7 +323,7 @@ pub fn smooth_put_delta<T: Float>(spot: T, strike: T, epsilon: T) -> T {
 /// # Examples
 ///
 /// ```rust
-/// use pricer_risk::enzyme::smooth::smooth_digital_call;
+/// use pricer_risk::greeks::ad::smooth::smooth_digital_call;
 ///
 /// // Deep ITM
 /// let payoff = smooth_digital_call(110.0, 100.0, 1.0);

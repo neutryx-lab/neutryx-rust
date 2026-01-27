@@ -120,6 +120,10 @@ mod config;
 mod levenberg_marquardt;
 mod newton_raphson;
 
+// Multi-dimensional Newton-Raphson (requires linalg feature)
+#[cfg(feature = "linalg")]
+mod multidim_newton;
+
 // External implementations (levenberg-marquardt crate wrapper)
 #[cfg(feature = "external-numerics")]
 mod external;
@@ -134,3 +138,9 @@ pub use config::SolverConfig;
 pub use external::solve_lm_external;
 pub use levenberg_marquardt::{LMConfig, LMResult, LevenbergMarquardtSolver};
 pub use newton_raphson::NewtonRaphsonSolver;
+
+// Multi-dimensional solver exports (requires linalg feature)
+#[cfg(feature = "linalg")]
+pub use multidim_newton::{
+    MultidimNewtonConfig, MultidimSolverResult, MultidimensionalNewtonSolver, SystemOfEquations,
+};

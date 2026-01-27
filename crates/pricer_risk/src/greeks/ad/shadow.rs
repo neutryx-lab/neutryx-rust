@@ -15,7 +15,7 @@
 //! # Example
 //!
 //! ```rust,ignore
-//! use pricer_risk::enzyme::shadow::Shadow;
+//! use pricer_risk::greeks::ad::shadow::Shadow;
 //!
 //! // Clone market data and zero all f64 values
 //! let market = YieldCurve { rates: vec![0.02, 0.03, 0.04], times: vec![1.0, 2.0, 5.0] };

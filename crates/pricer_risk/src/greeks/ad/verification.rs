@@ -19,7 +19,7 @@
 //! # Usage
 //!
 //! ```rust,no_run
-//! use pricer_risk::enzyme::verification::{
+//! use pricer_risk::greeks::ad::verification::{
 //!     VerificationConfig, VerificationResult, verify_european_greeks,
 //! };
 //!
@@ -32,7 +32,7 @@
 
 use pricer_pricing::methods::mc::{GbmParams, MonteCarloConfig, MonteCarloPricer, PayoffParams};
 
-use super::greeks::{EnzymeGreeksResult, GreeksEnzyme, GreeksMode};
+use super::enzyme_greeks::{EnzymeGreeksResult, GreeksEnzyme, GreeksMode};
 
 /// Configuration for verification tests.
 #[derive(Clone, Debug)]

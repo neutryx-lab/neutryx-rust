@@ -10,8 +10,8 @@
 
 ### Phase 1: L1 Foundation (pricer_core)
 
-- [ ] 1. ソルバー基盤型の実装
-- [ ] 1.1 (P) SolverError列挙型の拡張
+- [x] 1. ソルバー基盤型の実装
+- [x] 1.1 (P) SolverError列挙型の拡張
   - 多次元ソルバー固有のエラーバリアントを追加
   - `SingularJacobian`（最小ピボット値を含む）を実装
   - `DimensionMismatch`（期待次元と実際次元を含む）を実装
@@ -19,7 +19,7 @@
   - _Requirements: 9_
   - _Contracts: SolverError拡張_
 
-- [ ] 1.2 (P) SystemOfEquationsトレイトの定義
+- [x] 1.2 (P) SystemOfEquationsトレイトの定義
   - 連立方程式の統一インターフェースを設計
   - `dimension()`, `evaluate()`, `jacobian()` メソッドを定義
   - 数値Jacobianのデフォルト実装を提供（有限差分法）
@@ -27,7 +27,7 @@
   - _Requirements: 2_
   - _Contracts: SystemOfEquations Trait_
 
-- [ ] 1.3 (P) SolverResult構造体の実装
+- [x] 1.3 (P) SolverResult構造体の実装
   - 解ベクトル、残差ノルム、反復回数を格納
   - Jacobian逆行列のオプション格納機能を実装
   - 収束フラグとAAD用メタデータを含む
@@ -37,15 +37,15 @@
 
 ### Phase 2: L1 Solver Implementation (pricer_core)
 
-- [ ] 2. 多次元Newton-Raphsonソルバーの実装
-- [ ] 2.1 NewtonConfig設定構造体の実装
+- [x] 2. 多次元Newton-Raphsonソルバーの実装
+- [x] 2.1 NewtonConfig設定構造体の実装
   - 収束許容誤差（残差ノルム、パラメータ変化量）を設定可能に
   - 最大反復回数の設定
   - 数値Jacobianのイプシロン設定
   - Default, fast, high_precision プリセット実装
   - _Requirements: 1_
 
-- [ ] 2.2 Newton-Raphson反復アルゴリズムの実装
+- [x] 2.2 Newton-Raphson反復アルゴリズムの実装
   - x_{k+1} = x_k - J(x_k)⁻¹ F(x_k) の反復を実装
   - 既存linalg::lu_solveを使用した線形システム求解
   - 収束判定（残差ノルムおよびパラメータ変化量の二重条件）
@@ -53,7 +53,7 @@
   - _Requirements: 1, 7_
   - _Contracts: MultidimensionalNewtonSolver Service_
 
-- [ ] 2.3 Jacobian逆行列の計算と格納
+- [x] 2.3 Jacobian逆行列の計算と格納
   - 収束時にlinalg::inverseを使用してJacobian逆行列を計算
   - SolverResultへの逆行列格納（AAD用）
   - 遅延計算オプション（store_jacobian_inverse フラグ）
@@ -61,52 +61,50 @@
 
 ### Phase 3: L2 Calibration Infrastructure (pricer_models)
 
-- [ ] 3. キャリブレーション商品インターフェースの実装
-- [ ] 3.1 CalibrationInstrumentトレイトの定義
-  - 残差計算メソッド `residual(curve)` を定義
-  - Jacobian行寄与計算 `jacobian_row(curve, epsilon)` を定義
-  - 満期取得メソッド（ソート用）を定義
-  - ジェネリックカーブ型パラメータ対応
+- [x] 3. キャリブレーション商品インターフェースの実装
+- [x] 3.1 CalibrationInstrumentトレイトの定義
+  - `market_rate()`, `theoretical_rate()`, `pricing_error()` メソッドを定義
+  - 満期取得メソッド `maturity()` を定義
+  - ジェネリックカーブ型パラメータ `C: YieldCurve<T>` 対応
   - _Requirements: 5_
   - _Contracts: CalibrationInstrument Trait_
 
-- [ ] 3.2 既存BootstrapInstrumentへのトレイト実装
+- [x] 3.2 既存BootstrapInstrumentへのトレイト実装
   - OIS, IRS, FRA, Futureの各バリアントにCalibrationInstrument実装
-  - 既存のresidual()メソッドを活用
-  - jacobian_row()の数値微分実装
+  - `compute_ois_par_rate`, `compute_irs_par_rate`, `compute_fra_rate` ヘルパー関数を実装
   - _Requirements: 5_
 
 ### Phase 4: L2 Curve Calibration Problem (pricer_models)
 
-- [ ] 4. カーブキャリブレーション問題の実装
-- [ ] 4.1 CurveCalibrationProblem構造体の実装
-  - キャリブレーション商品群とカーブテンプレートを保持
-  - カーブノードベクトルからカーブオブジェクトを再構築するbuild_curve()実装
-  - 商品の満期順ソート機能
+- [x] 4. カーブキャリブレーション問題の実装
+- [x] 4.1 CurveCalibrationProblem構造体の実装
+  - GlobalBootstrapper内でキャリブレーション問題を直接解決
+  - `build_curve()` メソッドでピラーとディスカウントファクターからカーブを構築
+  - 商品の満期順ソートおよび重複除去機能
   - _Requirements: 4_
   - _Contracts: CurveCalibrationProblem Service_
 
-- [ ] 4.2 SystemOfEquationsトレイト実装
-  - evaluate(): 各商品の残差をベクトルとして収集
-  - jacobian(): 各商品のjacobian_rowを行として構築
-  - dimension(): 商品数（=カーブノード数）を返却
+- [x] 4.2 SystemOfEquationsトレイト実装
+  - `compute_residuals()`: 各商品のpricing_errorをベクトルとして収集
+  - `compute_jacobian()`: 有限差分法でJacobian行列を構築
+  - ピラー数（=商品数）でシステム次元を決定
   - _Requirements: 4_
 
 ### Phase 5: L2 GlobalBootstrapper (pricer_models)
 
-- [ ] 5. グローバルブートストラッパーの実装
-- [ ] 5.1 GlobalBootstrapper構造体と設定の実装
-  - GlobalBootstrapConfig（ソルバー設定、Jacobian逆行列格納フラグ）
-  - BootstrapResult（カーブ、反復回数、収束フラグ、Jacobian逆行列）
-  - コンストラクタとcalibrateメソッドのシグネチャ実装
+- [x] 5. グローバルブートストラッパーの実装
+- [x] 5.1 GlobalBootstrapper構造体と設定の実装
+  - `GlobalBootstrapConfig`（tolerance, param_tolerance, max_iterations, jacobian_epsilon, store_jacobian_inverse）
+  - `GlobalBootstrapResult`（curve, pillars, discount_factors, residual_norm, iterations, converged, jacobian_inverse）
+  - `default()`, `fast()`, `high_precision()` プリセット実装
   - _Requirements: 8_
   - _Contracts: GlobalBootstrapper Service_
 
-- [ ] 5.2 calibrateメソッドの実装
-  - CurveCalibrationProblemの構築
-  - MultidimensionalNewtonSolverの呼び出し
-  - SolverResultからBootstrapResultへの変換
-  - エラーハンドリングとログ出力
+- [x] 5.2 calibrateメソッドの実装
+  - 商品からピラーを抽出しソート・重複除去
+  - log(DF)パラメータ化でNewton反復を実行
+  - 収束時にJacobian逆行列を計算（AAD用）
+  - SolverErrorによるエラーハンドリング
   - _Requirements: 8_
 
 - [ ] 5.3 SequentialBootstrapperの置換

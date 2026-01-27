@@ -342,6 +342,15 @@ pub enum MarketDataError {
         description: String,
     },
 
+    /// Invalid value for a field.
+    #[error("Invalid value for {field}: {reason}")]
+    InvalidValue {
+        /// The name of the field with the invalid value
+        field: String,
+        /// Description of why the value is invalid
+        reason: String,
+    },
+
     /// Feature not implemented for this curve type.
     #[error("Feature not implemented: {feature}")]
     NotImplemented {

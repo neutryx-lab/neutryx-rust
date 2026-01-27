@@ -86,7 +86,7 @@ pub enum ShadowAadError {
 /// # Example
 ///
 /// ```rust
-/// use pricer_risk::enzyme::binder::ActivityMask;
+/// use pricer_risk::greeks::ad::binder::ActivityMask;
 ///
 /// // All active (default)
 /// let mask = ActivityMask::default();
@@ -184,8 +184,8 @@ impl ActivityMask {
 /// # Example
 ///
 /// ```rust
-/// use pricer_risk::enzyme::binder::RiskResult;
-/// use pricer_risk::enzyme::shadow::SimpleYieldCurve;
+/// use pricer_risk::greeks::ad::binder::RiskResult;
+/// use pricer_risk::greeks::ad::shadow::SimpleYieldCurve;
 ///
 /// // After AAD calculation
 /// let result = RiskResult {

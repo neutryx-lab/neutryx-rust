@@ -19,7 +19,7 @@
 //! # Usage
 //!
 //! ```rust
-//! use pricer_risk::enzyme::reverse::{ReverseAD, GammaAD};
+//! use pricer_risk::greeks::ad::reverse::{ReverseAD, GammaAD};
 //!
 //! // Compute all first-order Greeks
 //! let greeks = ReverseAD::new(
@@ -81,7 +81,7 @@ pub struct GreeksResult<T: Float> {
 /// # Examples
 ///
 /// ```rust
-/// use pricer_risk::enzyme::reverse::ReverseAD;
+/// use pricer_risk::greeks::ad::reverse::ReverseAD;
 ///
 /// let greeks = ReverseAD::new(10.45, 0.637, 55.0, 37.5, -6.41);
 /// println!("Price: {}, Delta: {}", greeks.price, greeks.delta);
@@ -170,7 +170,7 @@ impl<T: Float> Default for ReverseAD<T> {
 /// # Examples
 ///
 /// ```rust
-/// use pricer_risk::enzyme::reverse::GammaAD;
+/// use pricer_risk::greeks::ad::reverse::GammaAD;
 ///
 /// let gamma = GammaAD::new(0.0188);
 /// println!("Gamma: {}", gamma.gamma);

@@ -28,8 +28,8 @@
 //! # Example
 //!
 //! ```rust
-//! use pricer_risk::enzyme::parallel::{ParallelGreeksComputer, ParallelGreeksConfig};
-//! use pricer_risk::enzyme::loops::AdjointAccumulator;
+//! use pricer_risk::greeks::ad::parallel::{ParallelGreeksComputer, ParallelGreeksConfig};
+//! use pricer_risk::greeks::ad::loops::AdjointAccumulator;
 //! use rayon::prelude::*;
 //!
 //! // Create parallel computer

@@ -16,7 +16,7 @@
 //! # Usage
 //!
 //! ```rust,ignore
-//! use pricer_risk::enzyme::checkpoint_ad::{CheckpointedAD, CheckpointADConfig};
+//! use pricer_risk::greeks::ad::checkpoint_ad::{CheckpointedAD, CheckpointADConfig};
 //! use pricer_pricing::checkpoint::CheckpointStrategy;
 //!
 //! let config = CheckpointADConfig::new(252, CheckpointStrategy::binomial_optimal(252, 16));

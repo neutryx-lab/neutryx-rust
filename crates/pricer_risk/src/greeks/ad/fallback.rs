@@ -21,8 +21,8 @@
 //! # Usage
 //!
 //! ```rust
-//! use pricer_risk::enzyme::fallback::{FallbackResolver, FallbackConfig};
-//! use pricer_risk::enzyme::greeks::GreeksMode as EnzymeMode;
+//! use pricer_risk::greeks::ad::fallback::{FallbackResolver, FallbackConfig};
+//! use pricer_risk::greeks::ad::enzyme_greeks::GreeksMode as EnzymeMode;
 //!
 //! let config = FallbackConfig::default();
 //! let resolver = FallbackResolver::new(config);
@@ -36,7 +36,7 @@
 //! let resolved = resolver.resolve_mode(EnzymeMode::Auto);
 //! ```
 
-use super::greeks::GreeksMode as EnzymeGreeksMode;
+use super::enzyme_greeks::GreeksMode as EnzymeGreeksMode;
 
 // Local definitions (previously from crate::greeks)
 

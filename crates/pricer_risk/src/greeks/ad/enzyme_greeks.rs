@@ -8,7 +8,7 @@
 //! # Usage
 //!
 //! ```rust,no_run
-//! use pricer_risk::enzyme::greeks::{GreeksEnzyme, GreeksMode, EnzymeGreeksResult};
+//! use pricer_risk::greeks::ad::enzyme_greeks::{GreeksEnzyme, GreeksMode, EnzymeGreeksResult};
 //! use pricer_pricing::methods::mc::{GbmParams, PayoffParams, MonteCarloPricer, MonteCarloConfig};
 //!
 //! let config = MonteCarloConfig::builder()

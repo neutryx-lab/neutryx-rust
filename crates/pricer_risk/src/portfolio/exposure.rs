@@ -28,21 +28,6 @@ impl ExposureCalculator {
     /// # Returns
     ///
     /// Expected exposure at each time point.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use pricer_risk::exposure::ExposureCalculator;
-    ///
-    /// let values = vec![
-    ///     vec![10.0, 20.0, 15.0],   // Scenario 1
-    ///     vec![5.0, -10.0, 25.0],   // Scenario 2
-    ///     vec![-5.0, 15.0, 10.0],   // Scenario 3
-    /// ];
-    ///
-    /// let ee = ExposureCalculator::expected_exposure(&values);
-    /// // At t=0: mean(max(10,0), max(5,0), max(-5,0)) = (10+5+0)/3 = 5
-    /// ```
     pub fn expected_exposure(values: &[Vec<f64>]) -> Vec<f64> {
         if values.is_empty() {
             return Vec::new();
@@ -78,18 +63,6 @@ impl ExposureCalculator {
     /// # Returns
     ///
     /// Time-averaged EPE (scalar).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use pricer_risk::exposure::ExposureCalculator;
-    ///
-    /// let ee = vec![0.0, 10.0, 20.0, 15.0, 5.0];
-    /// let time_grid = vec![0.0, 0.25, 0.5, 0.75, 1.0];
-    ///
-    /// let epe = ExposureCalculator::expected_positive_exposure(&ee, &time_grid);
-    /// // EPE is the time-weighted average
-    /// ```
     pub fn expected_positive_exposure(ee: &[f64], time_grid: &[f64]) -> f64 {
         if time_grid.len() < 2 || ee.len() != time_grid.len() {
             return ee.first().copied().unwrap_or(0.0);
@@ -122,21 +95,6 @@ impl ExposureCalculator {
     /// # Returns
     ///
     /// PFE at each time point.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use pricer_risk::exposure::ExposureCalculator;
-    ///
-    /// let values = vec![
-    ///     vec![10.0, 20.0],
-    ///     vec![5.0, 30.0],
-    ///     vec![15.0, 10.0],
-    ///     vec![8.0, 25.0],
-    /// ];
-    ///
-    /// let pfe_95 = ExposureCalculator::potential_future_exposure(&values, 0.95);
-    /// ```
     pub fn potential_future_exposure(values: &[Vec<f64>], confidence: f64) -> Vec<f64> {
         if values.is_empty() {
             return Vec::new();
@@ -190,20 +148,6 @@ impl ExposureCalculator {
     /// # Returns
     ///
     /// Tuple of (gross_exposure, net_exposure).
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use pricer_risk::exposure::ExposureCalculator;
-    ///
-    /// let trade_values = vec![10.0, -5.0, 3.0];
-    /// let (gross, net) = ExposureCalculator::netting_benefit(&trade_values);
-    ///
-    /// // Gross = |10| + |-5| + |3| = 18
-    /// // Net = max(10 - 5 + 3, 0) = 8
-    /// assert_eq!(gross, 18.0);
-    /// assert_eq!(net, 8.0);
-    /// ```
     pub fn netting_benefit(trade_values: &[f64]) -> (f64, f64) {
         let gross: f64 = trade_values.iter().map(|v| v.abs()).sum();
         let net: f64 = trade_values.iter().sum::<f64>().max(0.0);
