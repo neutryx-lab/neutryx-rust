@@ -46,8 +46,6 @@ pub enum CoreGreeksMode {
     /// Bump-and-revalue using finite differences.
     #[default]
     BumpRevalue,
-    /// Forward-mode AD using num-dual library.
-    NumDual,
 }
 
 /// Configuration for Greeks calculation.

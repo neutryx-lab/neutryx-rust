@@ -16,8 +16,8 @@
 
 ## Tasks
 
-- [ ] 1. 市場データ管理機能をcontextモジュールに集約する
-- [ ] 1.1 MarketProviderとIndexedMarketをcontextモジュールとして再構成する
+- [x] 1. 市場データ管理機能をcontextモジュールに集約する
+- [x] 1.1 MarketProviderとIndexedMarketをcontextモジュールとして再構成する
   - 遅延解決機能を持つMarketProviderを新しい場所に配置する
   - IndexedMarketとIndexCurveMapperを統合し、レートインデックスによるキーイングアクセスを提供する
   - TradeIndexRequirementsとMarketValidatorを同一モジュールに配置する
@@ -30,17 +30,18 @@
   - thiserrorを使用した一貫したエラーメッセージを提供する
   - _Requirements: 5.4_
 
-- [ ] 1.3 後方互換性のためのre-exportを設定する
-  - 旧パスからの型アクセスを維持するためのpub useを追加する
-  - deprecation警告を適切に設定する
+- [x] 1.3 後方互換性のためのre-exportを設定する（旧モジュール削除により不要）
+  - ~~旧パスからの型アクセスを維持するためのpub useを追加する~~
+  - ~~deprecation警告を適切に設定する~~
+  - _Note: 旧モジュール(index_mapper.rs, indexed_market.rs, provider.rs, requirements.rs, validator.rs)は削除済み_
   - _Requirements: 6.1, 6.2_
 
 - [ ] 2. カーブ関連機能をcurvesモジュールに統合する
-- [ ] 2.1 (P) FXカーブ機能を統合する
-  - FxCurveトレイトとSimpleFxCurve、CalibratedFxCurveを単一ファイルに統合する
-  - FxForwardCurveBuilderを含める
-  - Strike、ForwardPoints等の関連型を整理する
-  - 命名規則をcurves/の他ファイルと統一する（traits.rs、flat.rs等のパターン）
+- [x] 2.1 (P) FXカーブ機能を統合する
+  - FxCurveトレイト、SimpleFxCurve、CalibratedFxCurveをcurves/fx.rsに統合済み
+  - FxForwardCurveBuilder、FxSwapData、XccySwapDataを含めた
+  - ForwardPointsをcurves/fx.rsに移動済み（Strike、Volはvol関連のためtypes.rsに残置）
+  - fx_calibration/curve.rs、builder.rsは削除済み
   - _Requirements: 4.1, 1.3_
 
 - [ ] 2.2 ブートストラップ機能を統合する

@@ -65,9 +65,6 @@ jobs:
       - name: Test (stable crates)
         run: cargo test --workspace --exclude pricer_pricing --exclude pricer_risk --exclude demo_gui
 
-      - name: Test with num-dual feature
-        run: cargo test -p pricer_core --features num-dual-mode
-
   # ============================================================================
   # Nightly Rust: L3, L4 (pricer_pricing, pricer_risk, demo_gui)
   # Linux only (Enzyme requires LLVM infrastructure)
@@ -151,7 +148,7 @@ jobs:
           if [ "${{ steps.enzyme-check.outputs.enzyme_available }}" == "true" ]; then
             echo "✓ CI ran with native autodiff (Enzyme)"
           else
-            echo "⚠ CI ran with num-dual fallback (Enzyme not available)"
+            echo "⚠ CI ran with bump-and-revalue fallback (Enzyme not available)"
             echo "  This is expected - Enzyme distribution is platform/version dependent"
           fi
 

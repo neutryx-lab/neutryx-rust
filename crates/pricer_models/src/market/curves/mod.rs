@@ -1,4 +1,4 @@
-//! Curve abstractions for interest rate and credit risk calculations.
+//! Curve abstractions for interest rate, credit risk, and FX calculations.
 //!
 //! This module provides:
 //! - [`YieldCurve`]: Generic trait for discount factor and rate calculations
@@ -13,11 +13,17 @@
 //!   calculations
 //! - [`HazardRateCurve`]: Interpolated hazard rate curve implementation
 //! - [`FlatHazardRateCurve`]: Constant hazard rate curve implementation
+//! - [`FxCurve`]: Generic trait for FX forward curve operations
+//! - [`SimpleFxCurve`]: Simple FX curve using interest rate parity
+//! - [`CalibratedFxCurve`]: Calibrated FX curve with interpolated forward
+//!   points
+//! - [`FxForwardCurveBuilder`]: Builder for constructing calibrated FX curves
 
 mod credit;
 mod curve_enum;
 mod curve_set;
 mod flat;
+mod fx;
 mod interpolated;
 mod traits;
 
@@ -25,5 +31,9 @@ pub use credit::{CreditCurve, FlatHazardRateCurve, HazardRateCurve};
 pub use curve_enum::{CurveEnum, CurveName};
 pub use curve_set::CurveSet;
 pub use flat::FlatCurve;
+pub use fx::{
+    CalibratedFxCurve, ExtrapolationPolicy, ForwardPoints, FxCurve, FxCurveError,
+    FxForwardCurveBuilder, FxSwapData, SimpleFxCurve, XccySwapData,
+};
 pub use interpolated::{CurveInterpolation, InterpolatedCurve};
 pub use traits::YieldCurve;

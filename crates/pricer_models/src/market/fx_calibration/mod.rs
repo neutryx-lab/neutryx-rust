@@ -16,9 +16,7 @@
 //! - [`FxCalibrationError`]: Error types for calibration operations
 //! - Newtypes: [`Strike`], [`Vol`], [`ForwardPoints`], [`ExpiryInterpolation`]
 
-mod builder;
 mod config;
-mod curve;
 mod error;
 mod fx_market_builder;
 mod lazy_surface;
@@ -27,9 +25,12 @@ mod surface;
 mod types;
 mod vol_builder;
 
-pub use builder::{FxForwardCurveBuilder, FxSwapData, XccySwapData};
+// Re-export curve types from curves/fx module
+pub use crate::market::curves::{
+    CalibratedFxCurve, ExtrapolationPolicy, ForwardPoints, FxCurve, FxCurveError,
+    FxForwardCurveBuilder, FxSwapData, SimpleFxCurve, XccySwapData,
+};
 pub use config::FxVolSurfaceConfig;
-pub use curve::{CalibratedFxCurve, ExtrapolationPolicy, FxCurve, FxCurveError, SimpleFxCurve};
 pub use error::FxCalibrationError;
 pub use fx_market_builder::{FxMarket, FxMarketBuilder, FxMarketDiagnostics, FxMarketError};
 pub use lazy_surface::{CacheStats, LazyFxVolSurface};
@@ -40,7 +41,8 @@ pub use sensitivity::{
 pub use surface::{
     CalibratedFxVolSurface, CalibratedSmile, SabrParameters, VolSmile, VolSurfaceError,
 };
-pub use types::{ExpiryInterpolation, ForwardPoints, Strike, Vol};
+// ForwardPoints is now exported from curves/fx module (re-exported above)
+pub use types::{ExpiryInterpolation, Strike, Vol};
 pub use vol_builder::{
     CalibrationDiagnostics, CalibrationError, ExpiryDiagnostics, FxVolSurfaceBuilder, VolQuote,
     VolQuoteType,

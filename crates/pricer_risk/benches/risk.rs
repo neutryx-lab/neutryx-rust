@@ -462,14 +462,14 @@ fn bench_aad_vs_bump_comparison(c: &mut Criterion) {
         });
     });
 
-    // NumDual mode (analytical when available)
-    group.bench_function("numdual_10Y", |b| {
+    // BumpRevalue mode variant for comparison
+    group.bench_function("bump_revalue_10Y_v2", |b| {
         b.iter(|| {
             calculator.compute_greeks_by_factor(
                 black_box(&swap),
                 black_box(&curves),
                 black_box(valuation_date),
-                black_box(GreeksMode::NumDual),
+                black_box(GreeksMode::BumpRevalue),
             )
         });
     });

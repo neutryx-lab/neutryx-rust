@@ -1043,7 +1043,7 @@ impl<T: Float> Differentiable for HestonModel<T> {}
 // Task 3.4: StochasticModelトレイト実装
 // ================================================================
 
-use crate::models::stochastic::{EquityModel, StochasticModel, TwoFactorState};
+use crate::stochastic::stochastic::{EquityModel, StochasticModel, TwoFactorState};
 
 /// HestonModelのStochasticModelトレイト実装
 ///
@@ -1207,7 +1207,7 @@ impl From<HestonError> for pricer_core::types::PricingError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::stochastic::StochasticState;
+    use crate::stochastic::stochastic::StochasticState;
 
     // ================================================================
     // Task 3.1: HestonParams構造体とエラー型のテスト (TDD)
@@ -2219,7 +2219,7 @@ mod tests {
     // Task 3.4: StochasticModelトレイト実装のテスト (TDD - RED phase)
     // ================================================================
 
-    use crate::models::stochastic::{StochasticModel, TwoFactorState};
+    use crate::stochastic::stochastic::{StochasticModel, TwoFactorState};
 
     // テスト: State型が(T, T)として定義されている
     #[test]

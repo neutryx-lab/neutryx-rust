@@ -139,83 +139,7 @@ impl std::fmt::Display for Vol {
     }
 }
 
-// ============================================================================
-// ForwardPoints Newtype
-// ============================================================================
-
-/// Forward points for FX forward rate calculation.
-///
-/// Forward points represent the difference between forward and spot rates,
-/// quoted with a scaling factor. Provides convenience methods for forward
-/// rate calculation.
-///
-/// # Example
-///
-/// ```rust
-/// use pricer_models::market::fx_calibration::ForwardPoints;
-///
-/// // EURUSD: 50 points with scaling factor 10000
-/// let points = ForwardPoints::new(50.0, 10000.0);
-/// let forward = points.to_forward_rate(1.1000);
-/// assert!((forward - 1.1050).abs() < 1e-10);
-/// ```
-#[derive(Debug, Clone, Copy, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct ForwardPoints {
-    /// Raw points value.
-    points: f64,
-    /// Scaling factor (e.g., 10000 for EURUSD, 100 for USDJPY).
-    scaling_factor: f64,
-}
-
-impl ForwardPoints {
-    /// Creates new forward points with explicit scaling factor.
-    #[must_use]
-    pub fn new(points: f64, scaling_factor: f64) -> Self {
-        Self {
-            points,
-            scaling_factor,
-        }
-    }
-
-    /// Creates forward points for EURUSD-like pairs (scaling = 10000).
-    #[must_use]
-    pub fn for_major_pairs(points: f64) -> Self { Self::new(points, 10000.0) }
-
-    /// Creates forward points for USDJPY-like pairs (scaling = 100).
-    #[must_use]
-    pub fn for_jpy_pairs(points: f64) -> Self { Self::new(points, 100.0) }
-
-    /// Returns the raw points value.
-    #[inline]
-    #[must_use]
-    pub fn points(&self) -> f64 { self.points }
-
-    /// Returns the scaling factor.
-    #[inline]
-    #[must_use]
-    pub fn scaling_factor(&self) -> f64 { self.scaling_factor }
-
-    /// Calculates forward rate from spot rate.
-    ///
-    /// Formula: F = S + points / scaling_factor
-    #[inline]
-    #[must_use]
-    pub fn to_forward_rate(&self, spot: f64) -> f64 { spot + self.points / self.scaling_factor }
-
-    /// Calculates points from spot and forward rates.
-    #[must_use]
-    pub fn from_rates(spot: f64, forward: f64, scaling_factor: f64) -> Self {
-        let points = (forward - spot) * scaling_factor;
-        Self::new(points, scaling_factor)
-    }
-}
-
-impl std::fmt::Display for ForwardPoints {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:.1} pts", self.points)
-    }
-}
+// Note: ForwardPoints has been moved to curves/fx.rs
 
 // ============================================================================
 // ExpiryInterpolation Enum
@@ -362,42 +286,7 @@ mod tests {
         assert_eq!(vol.to_string(), "12.34%");
     }
 
-    // === ForwardPoints Tests ===
-
-    #[test]
-    fn test_forward_points_new() {
-        let fp = ForwardPoints::new(50.0, 10000.0);
-        assert!((fp.points() - 50.0).abs() < 1e-10);
-        assert!((fp.scaling_factor() - 10000.0).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_forward_points_to_forward_rate_eurusd() {
-        let fp = ForwardPoints::for_major_pairs(50.0);
-        let forward = fp.to_forward_rate(1.1000);
-        // F = 1.1000 + 50/10000 = 1.1050
-        assert!((forward - 1.1050).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_forward_points_to_forward_rate_usdjpy() {
-        let fp = ForwardPoints::for_jpy_pairs(-25.0);
-        let forward = fp.to_forward_rate(150.0);
-        // F = 150.0 + (-25)/100 = 149.75
-        assert!((forward - 149.75).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_forward_points_from_rates() {
-        let fp = ForwardPoints::from_rates(1.1000, 1.1050, 10000.0);
-        assert!((fp.points() - 50.0).abs() < 1e-10);
-    }
-
-    #[test]
-    fn test_forward_points_display() {
-        let fp = ForwardPoints::new(50.5, 10000.0);
-        assert_eq!(fp.to_string(), "50.5 pts");
-    }
+    // Note: ForwardPoints tests have been moved to curves/fx.rs
 
     // === ExpiryInterpolation Tests ===
 

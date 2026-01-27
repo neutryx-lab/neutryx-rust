@@ -2224,18 +2224,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "num-dual"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0ba622fc86ea74f6682d06848487fb7444d010726ec70addf16737c6b7f1c20"
-dependencies = [
- "approx",
- "nalgebra 0.32.6",
- "num-traits",
- "simba 0.8.1",
-]
-
-[[package]]
 name = "num-integer"
 version = "0.1.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2551,7 +2539,6 @@ dependencies = [
  "levenberg-marquardt",
  "nalgebra 0.33.2",
  "ndarray",
- "num-dual",
  "num-traits",
  "proptest",
  "rand 0.8.5",

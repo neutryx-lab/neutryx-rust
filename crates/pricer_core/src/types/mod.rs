@@ -1,8 +1,6 @@
 //! Core numeric, time, and financial types.
 //!
 //! This module provides:
-//! - `dual`: Dual number type integration with num-dual for automatic
-//!   differentiation (when `num-dual-mode` feature is enabled)
 //! - `traced`: Execution trace types for computation graph extraction (when
 //!   `execution-trace` feature is enabled)
 //! - `time`: Time utilities (`DayCountConvention`, `time_to_maturity`) for
@@ -17,8 +15,6 @@
 //! `BusinessDayConvention`), import directly from `infra_master`.
 
 pub mod currency_pair;
-#[cfg(feature = "num-dual-mode")]
-pub mod dual;
 pub mod error;
 pub mod time;
 #[cfg(feature = "execution-trace")]

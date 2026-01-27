@@ -49,7 +49,7 @@
 
 use pricer_core::traits::{priceable::Differentiable, Float};
 
-use crate::models::stochastic::{RatesModel, SingleState, StochasticModel};
+use crate::stochastic::stochastic::{RatesModel, SingleState, StochasticModel};
 
 /// CIR model parameters.
 ///

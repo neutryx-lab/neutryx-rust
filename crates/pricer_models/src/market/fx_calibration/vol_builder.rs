@@ -24,8 +24,8 @@ use thiserror::Error;
 
 use super::{
     config::FxVolSurfaceConfig,
-    curve::FxCurve,
     surface::{CalibratedFxVolSurface, CalibratedSmile, SabrParameters, VolSurfaceError},
+    FxCurve,
 };
 
 // ============================================================================
@@ -566,7 +566,7 @@ mod tests {
     use infra_master::Currency;
 
     use super::*;
-    use crate::market::{curves::FlatCurve, fx_calibration::curve::SimpleFxCurve};
+    use crate::market::curves::{FlatCurve, SimpleFxCurve};
 
     fn make_test_fx_curve() -> Arc<dyn FxCurve<f64> + Send + Sync> {
         let pair = CurrencyPair::new(Currency::EUR, Currency::USD);

@@ -8,7 +8,6 @@ authors.workspace = true
 
 [dependencies]
 num-traits.workspace = true
-num-dual = { workspace = true, optional = true }
 chrono = { workspace = true, features = [] }
 thiserror.workspace = true
 serde = { workspace = true, features = ["derive"], optional = true }
@@ -35,8 +34,7 @@ name = "core"
 harness = false
 
 [features]
-default = ["num-dual-mode", "serde", "equity", "parallel", "external-numerics"]
-num-dual-mode = ["dep:num-dual"]  # Verification mode with dual numbers
+default = ["serde", "equity", "parallel", "external-numerics"]
 enzyme-mode = []                   # Production mode (Enzyme AD)
 execution-trace = []               # Execution trace mode for computation graph extraction
 serde = ["dep:serde", "chrono/serde", "infra_master/serde"]  # Serialisation support

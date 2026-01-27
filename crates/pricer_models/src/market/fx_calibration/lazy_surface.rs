@@ -301,7 +301,8 @@ mod tests {
     use super::*;
     use crate::market::{
         curves::FlatCurve,
-        fx_calibration::{curve::SimpleFxCurve, FxCurve},
+        curves::SimpleFxCurve,
+        fx_calibration::FxCurve,
     };
 
     fn make_test_builder() -> FxVolSurfaceBuilder<f64> {

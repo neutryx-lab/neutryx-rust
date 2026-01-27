@@ -51,17 +51,6 @@ fn test_traits_module_exports() {
     assert_eq!(generic_sqrt(4.0_f64), 2.0);
 }
 
-/// Test that DualNumber type is accessible when feature is enabled.
-#[cfg(feature = "num-dual-mode")]
-#[test]
-fn test_dual_module_export() {
-    use pricer_core::types::dual::DualNumber;
-
-    let dual = DualNumber::new(3.0, 1.0);
-    assert_eq!(dual.re, 3.0);
-    assert_eq!(dual.eps, 1.0);
-}
-
 /// Test that math module is correctly structured.
 #[test]
 fn test_math_module_structure() {

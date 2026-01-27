@@ -518,44 +518,16 @@ impl ForwardModeVegaCalculator {
     /// 許容誤差を取得。
     pub fn tolerance(&self) -> f64 { self.tolerance }
 
-    /// Forward mode ADでVegaを計算（ジェネリック版）。
-    ///
-    /// pricing_fnがDualNumber対応の場合、exact derivativeを計算。
-    ///
-    /// # Type Parameters
-    ///
-    /// * `D` - Dual number型（DualNum<f64>を実装）
-    /// * `F` - Pricing関数 fn(D) -> D
+    /// Vegaを計算（bump-and-revalue法）。
     ///
     /// # Arguments
     ///
     /// * `vol` - 基準ボラティリティ
-    /// * `pricing_fn` - DualNumber対応のpricing関数
+    /// * `pricing_fn` - pricing関数
     ///
     /// # Returns
     ///
     /// (price, vega) のタプル
-    #[cfg(feature = "num-dual-mode")]
-    pub fn compute_vega_ad<F>(&self, vol: f64, pricing_fn: F) -> (f64, f64)
-    where
-        F: Fn(num_dual::Dual64) -> num_dual::Dual64,
-    {
-        use num_dual::DualNum;
-
-        // Create dual number with derivative = 1.0
-        let vol_dual = num_dual::Dual64::from(vol).derivative();
-
-        // Compute price with AD
-        let result = pricing_fn(vol_dual);
-
-        // Extract price and derivative
-        (result.re(), result.eps)
-    }
-
-    /// Forward mode ADでVegaを計算（f64フォールバック版）。
-    ///
-    /// num-dual-mode featureが無効の場合、bump-and-revalueにフォールバック。
-    #[cfg(not(feature = "num-dual-mode"))]
     pub fn compute_vega_ad<F>(&self, vol: f64, pricing_fn: F) -> (f64, f64)
     where
         F: Fn(f64) -> f64,

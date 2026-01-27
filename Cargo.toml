@@ -37,7 +37,6 @@ authors = ["Neutryx Lab"]
 [workspace.dependencies]
 # Core numeric types
 num-traits = "0.2"
-num-dual = "0.9"
 
 # Linear algebra
 ndarray = "0.16"

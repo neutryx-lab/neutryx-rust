@@ -49,8 +49,10 @@ pub mod analytical;
 pub mod compiler;
 pub mod demo;
 mod direction_ext;
+pub mod formulas;
 pub mod market;
 pub mod models;
+pub mod stochastic;
 
 // Re-export instrument types from infra_master for backwards compatibility
 // This replaces the former pricer_models::instruments module

@@ -41,7 +41,7 @@ use pricer_core::traits::{priceable::Differentiable, Float};
 
 use crate::{
     market::curves::{FlatCurve, YieldCurve},
-    models::stochastic::{RatesModel, SingleState, StochasticModel},
+    stochastic::stochastic::{RatesModel, SingleState, StochasticModel},
 };
 
 // ================================================================

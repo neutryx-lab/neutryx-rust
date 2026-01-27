@@ -16,7 +16,7 @@ The workspace enforces a strict unidirectional data flow that mirrors alphabetic
 - **Multi-Asset Class Instruments**: Rates (IRS, Swaption, Cap/Floor), FX (options, barriers, forwards), Equity (vanilla, exotic), Credit (CDS), Commodity
 - **High-Performance Greeks**: Enzyme LLVM-level AD for C++-competitive differentiation with AAD vs Bump-and-Revalue comparison
 - **IRS Greeks Workflow**: Complete interest rate swap Greeks calculation with lazy evaluation and performance benchmarking
-- **Dual-Mode Verification**: Parallel Enzyme and num-dual backends for correctness validation
+- **Dual-Mode Verification**: Enzyme and bump-and-revalue backends for correctness validation
 - **Monte Carlo Pricing**: Path-dependent options with workspace buffers and checkpointing
 - **Analytical Solutions**: Black-Scholes, Garman-Kohlhagen, Kemna-Vorst, barrier formulas
 - **XVA & Risk Analytics**: CVA, DVA, FVA calculations with exposure metrics (EE, EPE, PFE, EEPE, ENE)
@@ -41,7 +41,7 @@ The workspace enforces a strict unidirectional data flow that mirrors alphabetic
 - **Tier-1 Bank Ready**: Comprehensive asset class coverage for production trading desks
 - **Unidirectional Data Flow**: A-I-P-S architecture ensures clear separation of concerns
 - **Isolation of Experimental Code**: Enzyme confined to pricer_pricing, keeping 75% of codebase production-stable
-- **Correctness First**: Built-in verification through dual AD backends (Enzyme + num-dual)
+- **Correctness First**: Built-in verification through dual AD backends (Enzyme + bump-and-revalue)
 - **Differentiability by Design**: Smooth approximations replace discontinuities throughout
 - **Performance Without Compromise**: Static dispatch and LLVM optimisation for zero-cost abstractions
 

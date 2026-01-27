@@ -200,7 +200,6 @@ ir/         → Pricing Kernel Intermediate Representation (SIMD/Enzyme-optimise
 
 traits/     → Priceable, Differentiable, Float, core abstractions
 types/
-├── dual.rs          → Dual numbers (num-dual) for AD
 ├── time.rs          → DayCountConvention, time_to_maturity for financial calculations
 ├── currency_pair.rs → FxRate type for FX rate representation (deprecated alias: CurrencyPair)
 └── error.rs         → Structured error types (PricingError, SolverError, InterpolationError, CalibrationError)
@@ -694,7 +693,7 @@ use super::types::DualNumber;
 ## Code Organisation Principles
 
 1. **A-I-P-S Data Flow**: Unidirectional dependencies from Adapter → Infra → Pricer → Service
-2. **Feature Flag Isolation**: pricer_core supports both `num-dual-mode` (default) and `enzyme-mode`
+2. **Feature Flag Isolation**: pricer_core supports `enzyme-mode` for advanced AD
 3. **Static Dispatch**: Prefer `enum` over `Box<dyn Trait>` for Enzyme optimisation
 4. **Smooth by Default**: All discontinuous functions have smooth approximations
 5. **Test Co-Location**: Unit tests in same file as implementation (`#[cfg(test)]`)

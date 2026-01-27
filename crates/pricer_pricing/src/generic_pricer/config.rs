@@ -20,8 +20,6 @@ pub enum GreeksMode {
     /// Bump-and-revalue using finite differences.
     #[default]
     BumpRevalue,
-    /// Forward-mode AD using num-dual library.
-    NumDual,
     /// Enzyme LLVM-level automatic differentiation.
     #[cfg(feature = "enzyme-ad")]
     EnzymeAAD,
@@ -598,12 +596,12 @@ mod tests {
     #[test]
     fn test_pricer_config_builder() {
         let config = PricerConfig::builder()
-            .greeks_mode(GreeksMode::NumDual)
+            .greeks_mode(GreeksMode::BumpRevalue)
             .use_thread_local_buffers(false)
             .build()
             .unwrap();
 
-        assert_eq!(config.greeks_config.mode, GreeksMode::NumDual);
+        assert_eq!(config.greeks_config.mode, GreeksMode::BumpRevalue);
         assert!(!config.use_thread_local_buffers);
     }
 

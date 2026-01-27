@@ -31,7 +31,7 @@ S: Service   → service_cli, service_gateway, service_python
 ## Key Libraries
 
 ### Core
-- **Numeric**: `num-traits`, `num-dual` (verification mode)
+- **Numeric**: `num-traits`
 - **Linear Algebra**: `nalgebra` (optional `linalg` feature, matrix operations, decompositions)
 - **Optimisation**: `argmin`, `argmin-math` (optional, L-BFGS, Nelder-Mead via feature-gated wrappers)
 - **Parallelisation**: `rayon` (portfolio-level parallelism)
@@ -84,7 +84,7 @@ S: Service   → service_cli, service_gateway, service_python
 ### Testing
 
 - Unit tests per module (traits, smoothing, instruments)
-- Verification tests: Enzyme vs num-dual for correctness
+- Verification tests: Enzyme vs bump-and-revalue for correctness
 - Benchmarks: `criterion` for performance regression tracking
 
 ### Differentiability Requirements
@@ -128,7 +128,7 @@ docker run -it neutryx-enzyme
 | **Pricer Layer Hierarchy** | L1→L2→L3→L4 with Enzyme AD in L4 (pricer_risk) for risk integration |
 | **Static Dispatch (enum)** | Enzyme performs better with concrete types than trait objects |
 | **StochasticModel Trait** | Unified interface for stochastic processes with enum-based dispatch |
-| **Dual-Mode Verification** | Enzyme (performance) + num-dual (correctness) for validation |
+| **Dual-Mode Verification** | Enzyme (performance) + bump-and-revalue (correctness) for validation |
 | **Smooth Approximations** | Replace all discontinuities (if/max) with differentiable functions |
 | **3-Stage Rocket Pattern** | Definition (L2) → Linking (PricingContext) → Execution (pure kernel); zero HashMap lookups in hot path |
 | **IndexedMarket Pattern** | Market data keyed by `RateIndex`/`CurrencyPair` not strings; `TradeIndexRequirements` trait declares dependencies; `MarketValidator` checks completeness |
@@ -137,7 +137,7 @@ docker run -it neutryx-enzyme
 | **LSMC Regression** | Longstaff-Schwartz Monte Carlo for Bermudan exercise; Cholesky-based regression, forward/backward pass, continuation value estimation |
 | **Shadow Object Pattern** | Reverse mode AAD uses shadow buffers for gradient accumulation; `binder.rs` orchestrates market data → portfolio Greeks flow |
 | **Feature Flag Coordination** | Features propagate through dependency chain (demo→frictional_bank→pricer_pricing) enabling modular compilation for different deployment scenarios |
-| **Feature Flags** | `num-dual-mode` (default), `enzyme-mode`, `serde` for serialisation; Asset classes: `equity` (default), `rates`, `credit`, `fx`, `commodity`, `exotic`; Convenience: `all`; Integration: `l1l2-integration` |
+| **Feature Flags** | `enzyme-mode`, `serde` for serialisation; Asset classes: `equity` (default), `rates`, `credit`, `fx`, `commodity`, `exotic`; Convenience: `all`; Integration: `l1l2-integration` |
 
 ## Performance Optimisation
 

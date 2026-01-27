@@ -24,9 +24,6 @@ all = ["equity", "rates", "credit", "fx", "commodity", "exotic"]
 # Serialisation support
 serde = ["dep:serde", "dep:serde_json", "pricer_core/serde", "infra_master/serde"]
 
-# AD (Automatic Differentiation) support - forwards to pricer_core
-num-dual-mode = ["pricer_core/num-dual-mode"]
-
 # Parallel processing for multi-curve bootstrapping
 parallel = ["dep:rayon"]
 

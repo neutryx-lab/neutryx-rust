@@ -12,10 +12,10 @@ use thiserror::Error;
 
 use super::{
     config::FxVolSurfaceConfig,
-    curve::{FxCurve, SimpleFxCurve},
     lazy_surface::LazyFxVolSurface,
     surface::CalibratedFxVolSurface,
     vol_builder::{CalibrationDiagnostics, CalibrationError, FxVolSurfaceBuilder, VolQuote},
+    FxCurve, SimpleFxCurve,
 };
 use crate::market::{
     calibration::bootstrapping::{BootstrapInstrument, CurveEngine, CurveEngineError},
@@ -165,7 +165,7 @@ impl<T: Float + Send + Sync + 'static> FxMarket<T> {
     pub fn spot_rate(&self) -> T { self.fx_curve.spot_rate() }
 
     /// Returns the forward rate at a given time.
-    pub fn forward_rate(&self, t: T) -> Result<T, super::curve::FxCurveError> {
+    pub fn forward_rate(&self, t: T) -> Result<T, super::FxCurveError> {
         self.fx_curve.forward_rate(t)
     }
 }

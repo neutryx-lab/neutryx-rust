@@ -14,7 +14,7 @@ use num_traits::Float;
 use pricer_core::math::numeric::from_f64;
 use thiserror::Error;
 
-use super::{config::FxVolSurfaceConfig, curve::FxCurve, types::Strike};
+use super::{config::FxVolSurfaceConfig, types::Strike, FxCurve};
 use crate::market::{surfaces::VolatilitySurface, volcube::InterpolationMethod};
 
 // ============================================================================
@@ -776,7 +776,7 @@ mod tests {
     use infra_master::Currency;
 
     use super::*;
-    use crate::market::{curves::FlatCurve, fx_calibration::curve::SimpleFxCurve};
+    use crate::market::curves::{FlatCurve, SimpleFxCurve};
 
     fn make_test_fx_curve() -> Arc<dyn FxCurve<f64> + Send + Sync> {
         let pair = CurrencyPair::new(Currency::EUR, Currency::USD);

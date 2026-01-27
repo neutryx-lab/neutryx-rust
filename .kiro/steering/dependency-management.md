@@ -33,11 +33,10 @@ tower-http = { workspace = true }  # Additional features: tower-http = { workspa
 
 ## Feature Flags Architecture
 
-### AD Mode Selection (Mutually Exclusive)
+### AD Mode Selection
 ```toml
 [features]
-default = ["num-dual-mode"]
-num-dual-mode = []      # Verification mode (dual numbers)
+default = []
 enzyme-mode = []        # Production mode (LLVM Enzyme)
 ```
 
