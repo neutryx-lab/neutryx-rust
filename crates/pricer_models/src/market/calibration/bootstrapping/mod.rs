@@ -12,11 +12,10 @@
 //! - `BootstrappedCurve<T>`: Result curve implementing `YieldCurve<T>`
 //! - `MultiCurveBuilder<T>`: OIS discount + tenor curve construction
 //!
-//! ## AAD Support
+//! ## Sensitivity Support
 //!
-//! When the `num-dual-mode` feature is enabled, the bootstrapper
-//! computes sensitivities using the implicit function theorem,
-//! avoiding recording solver iterations in the AD tape.
+//! The bootstrapper computes sensitivities using bump-and-revalue
+//! finite differences for yield curve risk calculations.
 
 mod adapter;
 mod adjoint_solver;
@@ -57,9 +56,7 @@ pub use multi_curve::{
     CurveDependency, CurveSet, MultiCurveBuilder, ParallelCurveSetBuilder, Tenor,
 };
 pub use result_cache::{CacheStats, CurveKey, CurveResultCache};
-pub use sensitivity::{
-    BootstrapResultWithSensitivities, SensitivityBootstrapper, SensitivityVerification,
-};
+pub use sensitivity::{BootstrapResultWithSensitivities, SensitivityBootstrapper};
 
 /// Result of curve bootstrapping.
 #[derive(Debug, Clone)]

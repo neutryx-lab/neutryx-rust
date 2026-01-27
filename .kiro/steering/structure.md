@@ -384,7 +384,7 @@ graph/           → Computation graph extraction (D3.js-compatible JSON for DAG
 **Greeks Module** (Phase 4+, Implemented):
 
 - `GreeksConfig`: Configuration for bump widths and calculation modes (builder pattern)
-- `GreeksMode`: Calculation mode selection (BumpAndRevalue, AAD, NumDual)
+- `GreeksMode`: Calculation mode selection (BumpAndRevalue, EnzymeAAD)
 - `GreeksResult<T>`: Generic result type for Greeks calculations (AD-compatible)
 
 **IRS Greeks Workflow** (Phase 5+, Implemented):

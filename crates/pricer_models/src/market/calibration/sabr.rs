@@ -31,6 +31,7 @@ use pricer_core::traits::calibration::{
 };
 
 use super::{ModelCalibrator, ModelCalibratorConfig};
+use crate::formulas::sabr_implied_vol::{SabrImpliedVolParams, sabr_implied_vol_with_options};
 
 /// SABR smile point for calibration.
 ///
@@ -440,12 +441,14 @@ pub fn calibrate_sabr_fixed_beta(
 }
 
 // =============================================================================
-// Hagan formula implementation
+// Hagan formula implementation (using formulas::sabr_implied_vol)
 // =============================================================================
 
 /// SABR implied volatility using Hagan formula.
 ///
-/// This is the standard approximation from Hagan et al. (2002).
+/// This is a thin wrapper around `formulas::sabr_implied_vol` for calibration use.
+/// Falls back to a small floor value on error to maintain numerical stability
+/// during optimisation.
 fn sabr_hagan_vol(
     forward: f64,
     strike: f64,
@@ -455,60 +458,18 @@ fn sabr_hagan_vol(
     rho: f64,
     nu: f64,
 ) -> f64 {
-    let eps = 1e-10;
+    let params = SabrImpliedVolParams {
+        forward,
+        alpha,
+        beta,
+        nu,
+        rho,
+        maturity: expiry,
+    };
 
-    // Handle near-ATM case
-    if (forward - strike).abs() < eps * forward {
-        return sabr_atm_vol(forward, expiry, alpha, beta, rho, nu);
-    }
-
-    let one_minus_beta = 1.0 - beta;
-    let log_fk = (forward / strike).ln();
-    let fk_mid = (forward * strike).powf(one_minus_beta / 2.0);
-
-    // z = (nu/alpha) * (FK)^((1-beta)/2) * ln(F/K)
-    let z = (nu / alpha) * fk_mid * log_fk;
-
-    // chi(z) = ln[(sqrt(1-2*rho*z+z^2)+z-rho)/(1-rho)]
-    let sqrt_term = (1.0 - 2.0 * rho * z + z * z).sqrt();
-    let chi_z = ((sqrt_term + z - rho) / (1.0 - rho)).ln();
-
-    // Handle chi(z) near zero
-    let z_over_chi = if chi_z.abs() < eps { 1.0 } else { z / chi_z };
-
-    // Denominator from log-moneyness expansion
-    let log_fk_2 = log_fk * log_fk;
-    let log_fk_4 = log_fk_2 * log_fk_2;
-    let one_minus_beta_2 = one_minus_beta * one_minus_beta;
-    let one_minus_beta_4 = one_minus_beta_2 * one_minus_beta_2;
-
-    let denom = 1.0 + one_minus_beta_2 * log_fk_2 / 24.0 + one_minus_beta_4 * log_fk_4 / 1920.0;
-
-    // Higher-order corrections
-    let term1 = one_minus_beta_2 * alpha * alpha / (24.0 * fk_mid * fk_mid);
-    let term2 = 0.25 * rho * beta * nu * alpha / fk_mid;
-    let term3 = (2.0 - 3.0 * rho * rho) * nu * nu / 24.0;
-
-    let higher_order = 1.0 + (term1 + term2 + term3) * expiry;
-
-    // Final volatility
-    (alpha / fk_mid) * z_over_chi * higher_order / denom
-}
-
-/// SABR ATM volatility approximation.
-fn sabr_atm_vol(forward: f64, expiry: f64, alpha: f64, beta: f64, rho: f64, nu: f64) -> f64 {
-    let one_minus_beta = 1.0 - beta;
-    let f_pow = forward.powf(one_minus_beta);
-
-    // Base ATM vol
-    let vol_0 = alpha / f_pow;
-
-    // Higher-order ATM corrections
-    let term1 = one_minus_beta * one_minus_beta * alpha * alpha / (24.0 * f_pow * f_pow);
-    let term2 = 0.25 * rho * beta * nu * alpha / f_pow;
-    let term3 = (2.0 - 3.0 * rho * rho) * nu * nu / 24.0;
-
-    vol_0 * (1.0 + (term1 + term2 + term3) * expiry)
+    // Use the centralized formulas implementation
+    // On error, return a small floor value to maintain numerical stability
+    sabr_implied_vol_with_options(&params, strike, 0.01, 1e-10).unwrap_or(1e-6)
 }
 
 #[cfg(test)]

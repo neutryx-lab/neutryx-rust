@@ -52,12 +52,9 @@
 //! ```
 
 use num_traits::Float;
-use pricer_core::math::numeric::from_f64;
+use pricer_core::math::{distributions::{norm_cdf, norm_pdf}, numeric::from_f64};
 
-use super::{
-    distributions::{norm_cdf, norm_pdf},
-    error::AnalyticalError,
-};
+use super::error::AnalyticalError;
 use crate::instruments::FxOptionType;
 
 /// Parameters for the Garman-Kohlhagen model.

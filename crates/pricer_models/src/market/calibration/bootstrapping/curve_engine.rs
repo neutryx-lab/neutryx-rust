@@ -361,67 +361,6 @@ impl CurveEngine<f64> {
 
         Ok(result)
     }
-
-    /// Build a curve with AAD-based sensitivities.
-    ///
-    /// Uses the implicit function theorem for efficient sensitivity
-    /// computation without recording solver iterations in the AD tape.
-    ///
-    /// # Arguments
-    ///
-    /// * `definition` - Curve definition
-    /// * `rates` - Market rates
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(result)` - Curve with sensitivity matrix
-    /// * `Err(e)` - If construction fails
-    ///
-    /// # Feature
-    ///
-    /// Requires `num-dual-mode` feature to be enabled.
-    #[cfg(feature = "num-dual-mode")]
-    pub fn build_curve_with_aad_sensitivities(
-        &self,
-        definition: &CurveDefinition,
-        rates: &[(InstrumentTenor, f64)],
-    ) -> Result<BootstrapResultWithSensitivities, CurveEngineError> {
-        let instruments = InstrumentAdapter::convert(definition, rates)?;
-
-        let bootstrapper = SensitivityBootstrapper::new(self.bootstrap_config.clone());
-        let result = bootstrapper
-            .bootstrap_with_sensitivities(&instruments)
-            .map_err(CurveEngineError::Bootstrap)?;
-
-        Ok(result)
-    }
-
-    /// Verify sensitivity calculations between AAD and bump-and-revalue.
-    ///
-    /// # Arguments
-    ///
-    /// * `definition` - Curve definition
-    /// * `rates` - Market rates
-    /// * `tolerance` - Maximum acceptable relative difference
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(verification)` - Verification results including max differences
-    /// * `Err(e)` - If bootstrapping fails
-    #[cfg(feature = "num-dual-mode")]
-    pub fn verify_sensitivities(
-        &self,
-        definition: &CurveDefinition,
-        rates: &[(InstrumentTenor, f64)],
-        tolerance: f64,
-    ) -> Result<super::sensitivity::SensitivityVerification, CurveEngineError> {
-        let instruments = InstrumentAdapter::convert(definition, rates)?;
-
-        let bootstrapper = SensitivityBootstrapper::new(self.bootstrap_config.clone());
-        bootstrapper
-            .verify_sensitivities(&instruments, tolerance)
-            .map_err(CurveEngineError::Bootstrap)
-    }
 }
 
 /// Builder for `CurveEngine` with fluent API.
