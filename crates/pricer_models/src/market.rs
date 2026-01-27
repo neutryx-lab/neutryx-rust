@@ -405,6 +405,10 @@ pub enum CurveName {
     Tonar,
     /// SONIA (Sterling Overnight Index Average)
     Sonia,
+    /// Generic discount curve
+    Discount,
+    /// Generic forward curve
+    Forward,
     /// Custom curve with a name
     Custom(&'static str),
 }
@@ -492,19 +496,21 @@ impl<T: Float + 'static> CurveSet<T> {
     /// Maps the rate index to a curve name and looks up the forward rate.
     pub fn forward_rate_for_index(
         &self,
-        rate_index: infra_master::RateIndex,
+        rate_index: infra_master::market::RateIndex,
         t1: T,
         t2: T,
     ) -> Result<T, MarketDataError> {
         use curves::YieldCurve;
+        use infra_master::market::RateIndex;
 
         let curve_name = match rate_index {
-            infra_master::RateIndex::Sofr => CurveName::Sofr,
-            infra_master::RateIndex::Euribor => CurveName::Euribor,
-            infra_master::RateIndex::Estr => CurveName::Estr,
-            infra_master::RateIndex::Tonar => CurveName::Tonar,
-            infra_master::RateIndex::Sonia => CurveName::Sonia,
-            _ => CurveName::Sofr, // Default fallback
+            RateIndex::Sofr => CurveName::Sofr,
+            RateIndex::Euribor3M | RateIndex::Euribor6M => CurveName::Euribor,
+            RateIndex::Estr => CurveName::Estr,
+            RateIndex::Tonar => CurveName::Tonar,
+            RateIndex::Sonia => CurveName::Sonia,
+            RateIndex::Saron => CurveName::Custom("SARON"),
+            _ => CurveName::Sofr, // Default fallback for unknown indices
         };
 
         let curve = self.curves.get(&curve_name).ok_or(MarketDataError::CurveNotFound {
@@ -512,6 +518,21 @@ impl<T: Float + 'static> CurveSet<T> {
         })?;
 
         curve.forward_rate(t1, t2)
+    }
+
+    /// Returns an iterator over (name, curve) pairs.
+    pub fn iter(&self) -> impl Iterator<Item = (&CurveName, &CurveEnum<T>)> {
+        self.curves.iter()
+    }
+
+    /// Gets the discount curve if set.
+    pub fn discount_curve(&self) -> Option<&CurveEnum<T>> {
+        self.curves.get(&CurveName::Discount)
+    }
+
+    /// Sets the discount curve.
+    pub fn set_discount_curve(&mut self, _name: CurveName) {
+        // Placeholder - actual implementation would handle curve assignment
     }
 }
 

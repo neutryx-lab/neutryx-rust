@@ -4,6 +4,11 @@
 //! - `/api/price` - Price an instrument
 //! - `/api/bootstrap` - Bootstrap a yield curve
 //! - `/api/price-irs` - Price an IRS using a bootstrapped curve
+//!
+//! NOTE: Bootstrap and IRS pricing handlers require the `calibration` feature
+//! which depends on pricer_models calibration module (not yet implemented).
+
+#![cfg(feature = "calibration")]
 
 use std::{sync::Arc, time::Instant};
 

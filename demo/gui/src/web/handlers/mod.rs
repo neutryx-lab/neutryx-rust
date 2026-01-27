@@ -43,6 +43,7 @@ pub mod curves;
 pub mod events;
 pub mod exposure;
 pub mod fxcurve;
+#[cfg(feature = "calibration")]
 pub mod fxvol;
 pub mod generic_pricer;
 pub mod graphs;
@@ -53,9 +54,12 @@ pub mod jobs;
 pub mod market;
 pub mod portfolio;
 pub mod pricer_graph;
+#[cfg(feature = "calibration")]
 pub mod pricing;
+#[cfg(feature = "calibration")]
 pub mod risk;
 pub mod risk_engine;
+#[cfg(feature = "calibration")]
 pub mod scenario_analysis;
 pub mod scenarios;
 pub mod trades;
@@ -98,8 +102,10 @@ pub use portfolio::{
     PriceRequestItem, TradeData,
 };
 // Pricing module - handlers from pricing.rs, types from types module
+#[cfg(feature = "calibration")]
 pub use pricing::{bootstrap_curve, price_instrument, price_irs};
 // Risk module - handlers from risk.rs, types from types module
+#[cfg(feature = "calibration")]
 pub use risk::{get_risk_metrics, risk_aad, risk_bump, risk_compare, RiskMetricsResponse};
 // Scenarios module
 pub use scenarios::{run_scenario, ScenarioRequest, ScenarioResponse};

@@ -18,6 +18,10 @@
 //!
 //! - Requirement 10: FX VolSurface専用機能
 //! - Requirement 11: FX VolSurface バックエンドAPI
+//!
+//! NOTE: These handlers require the `calibration` feature.
+
+#![cfg(feature = "calibration")]
 
 use std::{collections::HashMap, path::PathBuf, str::FromStr, sync::Arc, time::Instant};
 

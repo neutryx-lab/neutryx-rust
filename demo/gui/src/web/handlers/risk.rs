@@ -5,6 +5,10 @@
 //! - Bump-and-revalue risk (`/api/risk/bump`)
 //! - AAD risk (`/api/risk/aad`)
 //! - Risk comparison (`/api/risk/compare`)
+//!
+//! NOTE: These handlers require the `calibration` feature.
+
+#![cfg(feature = "calibration")]
 
 use std::{sync::Arc, time::Instant};
 

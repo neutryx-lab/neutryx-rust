@@ -6,7 +6,11 @@
 //! - Memory footprint with cached curves
 //!
 //! Run with: `cargo bench --bench curve_bootstrap`
+//!
+//! NOTE: This benchmark is feature-gated because the CurveEngine and related
+//! types from the calibration module are planned but not yet implemented.
 
+#![cfg(feature = "curve-engine")]
 #![allow(missing_docs)]
 
 use std::{sync::Arc, thread};

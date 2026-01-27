@@ -17,6 +17,9 @@ enzyme-ad = ["pricer_risk/enzyme-ad"]
 openapi = ["utoipa", "utoipa-swagger-ui"]
 # L1/L2 integration feature - disables standalone pricer mode
 l1l2-integration = ["pricer_pricing/l1l2-integration"]
+# Advanced calibration features (curve bootstrap engine, FX vol surface)
+# These handlers depend on pricer_models calibration module which is not yet implemented
+calibration = []
 
 [dependencies]
 # Infra layer

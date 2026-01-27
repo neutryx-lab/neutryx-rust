@@ -11,6 +11,10 @@
 //! - Task 6.2: シナリオ実行 API の実装
 //! - Task 6.3: シナリオパラメータ調整 UI の実装
 //! - Task 6.4: シナリオ比較結果 UI の実装
+//!
+//! NOTE: These handlers require the `calibration` feature.
+
+#![cfg(feature = "calibration")]
 
 use std::{sync::Arc, time::Instant};
 
