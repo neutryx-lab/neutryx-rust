@@ -6,7 +6,9 @@
 //! # Examples
 //!
 //! ```ignore
-//! use pricer_models::market::{MarketValidator, IndexedMarket, TradeIndexRequirements};
+//! use pricer_models::market::context::{
+//!     MarketValidator, IndexedMarket, TradeIndexRequirements,
+//! };
 //!
 //! let validator = MarketValidator::new();
 //! let result = validator.validate(&trade, &market);
@@ -21,7 +23,8 @@ use std::collections::HashSet;
 use infra_master::trade::IndexRequirement;
 use num_traits::Float;
 
-use super::{IndexedMarket, MarketDataError, TradeIndexRequirements};
+use super::{IndexedMarket, TradeIndexRequirements};
+use crate::market::MarketDataError;
 
 // ============================================================================
 // ValidationReport
@@ -292,7 +295,7 @@ mod tests {
     use infra_master::{trade::instrument_def::CurrencyPair, Currency, Date, RateIndex};
 
     use super::*;
-    use crate::market::{curves::FlatCurve, IndexedMarketBuilder};
+    use crate::market::{curves::FlatCurve, context::IndexedMarketBuilder};
 
     // Mock implementations for testing
     struct MockTrade {

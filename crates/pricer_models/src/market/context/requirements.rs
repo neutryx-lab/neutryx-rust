@@ -6,7 +6,7 @@
 //! # Examples
 //!
 //! ```ignore
-//! use pricer_models::market::TradeIndexRequirements;
+//! use pricer_models::market::context::TradeIndexRequirements;
 //! use infra_master::trade::IndexRequirement;
 //!
 //! impl TradeIndexRequirements for MyTrade {
@@ -21,7 +21,8 @@
 use infra_master::trade::IndexRequirement;
 use num_traits::Float;
 
-use super::{IndexedMarket, MarketDataError};
+use super::IndexedMarket;
+use crate::market::MarketDataError;
 
 /// Trait for determining required market indices.
 ///
@@ -172,7 +173,7 @@ mod tests {
     use infra_master::{trade::instrument_def::CurrencyPair, Currency, Date, RateIndex};
 
     use super::*;
-    use crate::market::{curves::FlatCurve, IndexedMarketBuilder};
+    use crate::market::{curves::FlatCurve, context::IndexedMarketBuilder};
 
     // Test implementation for a simple fixed leg
     struct MockFixedLeg {

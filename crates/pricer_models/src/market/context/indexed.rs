@@ -1,8 +1,10 @@
-//! Index-keyed market data container.
+//! Index-keyed market data container and mapping utilities.
 //!
-//! This module provides [`IndexedMarket`], a container that stores market data
-//! (curves, volatility cubes, FX curves, FX vol surfaces) keyed by their
-//! logical index types (`RateIndex`, `CurrencyPair`) rather than string names.
+//! This module provides:
+//! - [`IndexedMarket`]: Container for market data keyed by logical indices
+//! - [`IndexedMarketBuilder`]: Builder for constructing `IndexedMarket` instances
+//! - [`IndexCurveMapper`]: Trait for mapping rate indices to curve names
+//! - [`DefaultIndexCurveMapper`]: Default implementation of index mapping
 //!
 //! # Architecture
 //!
@@ -18,7 +20,7 @@
 //! # Examples
 //!
 //! ```ignore
-//! use pricer_models::market::{IndexedMarket, IndexedMarketBuilder};
+//! use pricer_models::market::context::{IndexedMarket, IndexedMarketBuilder};
 //! use infra_master::{RateIndex, Date};
 //!
 //! let market = IndexedMarketBuilder::new()
@@ -36,14 +38,107 @@ use std::{collections::HashMap, sync::Arc};
 use infra_master::{trade::instrument_def::CurrencyPair, Date, RateIndex};
 use num_traits::Float;
 
-use super::{
-    curves::{CurveSet, YieldCurve},
+use crate::market::{
+    curves::{CurveName, CurveSet, YieldCurve},
     error::{MarketBuildError, MarketDataError},
     fx_calibration::FxCurve,
-    index_mapper::IndexCurveMapper,
     surfaces::VolatilitySurface,
     volcube::VolCube,
 };
+
+// ============================================================================
+// IndexCurveMapper
+// ============================================================================
+
+/// Trait for mapping rate indices to curve names.
+///
+/// This trait provides the interface for converting a `RateIndex`
+/// to the corresponding `CurveName` used to retrieve yield curves
+/// from a `CurveSet`.
+///
+/// # Implementors
+///
+/// The default implementation [`DefaultIndexCurveMapper`] provides
+/// standard mappings for all supported rate indices.
+///
+/// # Example
+///
+/// ```
+/// use pricer_models::market::context::{IndexCurveMapper, DefaultIndexCurveMapper};
+/// use pricer_models::market::curves::CurveName;
+/// use infra_master::RateIndex;
+///
+/// let mapper = DefaultIndexCurveMapper;
+/// let curve_name = mapper.map_to_curve(RateIndex::Sofr).unwrap();
+/// assert_eq!(curve_name, CurveName::Sofr);
+/// ```
+pub trait IndexCurveMapper {
+    /// Maps a rate index to its corresponding curve name.
+    ///
+    /// # Arguments
+    ///
+    /// * `index` - The rate index to map
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(CurveName)` - The corresponding curve name
+    /// * `Err(MarketDataError::UnsupportedIndex)` - If the index is not
+    ///   supported
+    fn map_to_curve(&self, index: RateIndex) -> Result<CurveName, MarketDataError>;
+}
+
+/// Default implementation of `IndexCurveMapper`.
+///
+/// Provides standard mappings from rate indices to curve names:
+///
+/// | Rate Index | Curve Name |
+/// |------------|------------|
+/// | SOFR | Sofr |
+/// | TONAR | Tonar |
+/// | ESTR | Estr |
+/// | SONIA | Sonia |
+/// | SARON | Saron |
+/// | EURIBOR 3M | Euribor |
+/// | EURIBOR 6M | Euribor |
+///
+/// # Example
+///
+/// ```
+/// use pricer_models::market::context::{IndexCurveMapper, DefaultIndexCurveMapper};
+/// use pricer_models::market::curves::CurveName;
+/// use infra_master::RateIndex;
+///
+/// let mapper = DefaultIndexCurveMapper;
+///
+/// // All EURIBOR tenors map to the same curve
+/// assert_eq!(
+///     mapper.map_to_curve(RateIndex::Euribor3M).unwrap(),
+///     CurveName::Euribor
+/// );
+/// assert_eq!(
+///     mapper.map_to_curve(RateIndex::Euribor6M).unwrap(),
+///     CurveName::Euribor
+/// );
+/// ```
+#[derive(Debug, Clone, Copy, Default)]
+pub struct DefaultIndexCurveMapper;
+
+impl IndexCurveMapper for DefaultIndexCurveMapper {
+    fn map_to_curve(&self, index: RateIndex) -> Result<CurveName, MarketDataError> {
+        match index {
+            RateIndex::Sofr => Ok(CurveName::Sofr),
+            RateIndex::Tonar => Ok(CurveName::Tonar),
+            RateIndex::Estr => Ok(CurveName::Estr),
+            RateIndex::Sonia => Ok(CurveName::Sonia),
+            RateIndex::Saron => Ok(CurveName::Saron),
+            RateIndex::Euribor3M | RateIndex::Euribor6M => Ok(CurveName::Euribor),
+            // Handle any future variants as unsupported
+            _ => Err(MarketDataError::UnsupportedIndex {
+                index: format!("{:?}", index),
+            }),
+        }
+    }
+}
 
 // ============================================================================
 // IndexedMarket
@@ -64,7 +159,7 @@ use super::{
 /// # Examples
 ///
 /// ```ignore
-/// use pricer_models::market::IndexedMarket;
+/// use pricer_models::market::context::IndexedMarket;
 /// use infra_master::RateIndex;
 ///
 /// // Check if index is available
@@ -125,7 +220,7 @@ impl<T: Float> IndexedMarket<T> {
     pub fn valuation_date(&self) -> Date { self.valuation_date }
 
     // ========================================
-    // Curve Access (Task 2.2)
+    // Curve Access
     // ========================================
 
     /// Returns the yield curve for the given rate index.
@@ -202,7 +297,7 @@ impl<T: Float> IndexedMarket<T> {
     }
 
     // ========================================
-    // VolCube Access (Task 2.3)
+    // VolCube Access
     // ========================================
 
     /// Returns the volatility cube for the given rate index.
@@ -231,7 +326,7 @@ impl<T: Float> IndexedMarket<T> {
     }
 
     // ========================================
-    // FX Access (Task 2.4)
+    // FX Access
     // ========================================
 
     /// Returns the FX forward curve for the given currency pair.
@@ -295,7 +390,7 @@ impl<T: Float> IndexedMarket<T> {
     }
 
     // ========================================
-    // Index Availability Methods (Task 2.5)
+    // Index Availability Methods
     // ========================================
 
     /// Returns `true` if a curve exists for the given rate index.
@@ -348,7 +443,7 @@ impl<T: Float> IndexedMarket<T> {
 /// # Examples
 ///
 /// ```ignore
-/// use pricer_models::market::IndexedMarketBuilder;
+/// use pricer_models::market::context::IndexedMarketBuilder;
 /// use infra_master::{RateIndex, Date};
 ///
 /// let market = IndexedMarketBuilder::new()
@@ -522,7 +617,98 @@ mod tests {
     use crate::market::{curves::FlatCurve, surfaces::FlatVol};
 
     // ========================================
-    // Builder Tests (Task 3)
+    // IndexCurveMapper Tests
+    // ========================================
+
+    #[test]
+    fn test_sofr_mapping() {
+        let mapper = DefaultIndexCurveMapper;
+        assert_eq!(
+            mapper.map_to_curve(RateIndex::Sofr).unwrap(),
+            CurveName::Sofr
+        );
+    }
+
+    #[test]
+    fn test_tonar_mapping() {
+        let mapper = DefaultIndexCurveMapper;
+        assert_eq!(
+            mapper.map_to_curve(RateIndex::Tonar).unwrap(),
+            CurveName::Tonar
+        );
+    }
+
+    #[test]
+    fn test_sonia_mapping() {
+        let mapper = DefaultIndexCurveMapper;
+        assert_eq!(
+            mapper.map_to_curve(RateIndex::Sonia).unwrap(),
+            CurveName::Sonia
+        );
+    }
+
+    #[test]
+    fn test_saron_mapping() {
+        let mapper = DefaultIndexCurveMapper;
+        assert_eq!(
+            mapper.map_to_curve(RateIndex::Saron).unwrap(),
+            CurveName::Saron
+        );
+    }
+
+    #[test]
+    fn test_estr_mapping() {
+        let mapper = DefaultIndexCurveMapper;
+        assert_eq!(
+            mapper.map_to_curve(RateIndex::Estr).unwrap(),
+            CurveName::Estr
+        );
+    }
+
+    #[test]
+    fn test_euribor_3m_mapping() {
+        let mapper = DefaultIndexCurveMapper;
+        assert_eq!(
+            mapper.map_to_curve(RateIndex::Euribor3M).unwrap(),
+            CurveName::Euribor
+        );
+    }
+
+    #[test]
+    fn test_euribor_6m_mapping() {
+        let mapper = DefaultIndexCurveMapper;
+        assert_eq!(
+            mapper.map_to_curve(RateIndex::Euribor6M).unwrap(),
+            CurveName::Euribor
+        );
+    }
+
+    #[test]
+    fn test_all_rate_indices_covered() {
+        let mapper = DefaultIndexCurveMapper;
+
+        // Test all variants are mapped (none should fail)
+        let indices = [
+            RateIndex::Sofr,
+            RateIndex::Tonar,
+            RateIndex::Estr,
+            RateIndex::Sonia,
+            RateIndex::Saron,
+            RateIndex::Euribor3M,
+            RateIndex::Euribor6M,
+        ];
+
+        for index in indices {
+            assert!(
+                mapper.map_to_curve(index).is_ok(),
+                "Index {:?} should be mapped",
+                index
+            );
+        }
+    }
+
+    // ========================================
+    // Builder Tests
     // ========================================
 
     #[test]
@@ -583,7 +769,7 @@ mod tests {
     }
 
     // ========================================
-    // Curve Access Tests (Task 2.2)
+    // Curve Access Tests
     // ========================================
 
     #[test]
@@ -647,7 +833,7 @@ mod tests {
     }
 
     // ========================================
-    // FX Access Tests (Task 2.4)
+    // FX Access Tests
     // ========================================
 
     #[test]
@@ -683,7 +869,7 @@ mod tests {
     }
 
     // ========================================
-    // Availability Methods Tests (Task 2.5)
+    // Availability Methods Tests
     // ========================================
 
     #[test]
@@ -755,7 +941,7 @@ mod tests {
 }
 
 // ============================================================================
-// Phase 6: Integration Tests (Task 6.1 - 6.3)
+// Integration Tests
 // ============================================================================
 
 #[cfg(test)]
@@ -769,18 +955,18 @@ mod integration_tests {
     use crate::market::{
         curves::{CurveEnum, CurveName, CurveSet, FlatCurve, YieldCurve},
         fx_calibration::SimpleFxCurve,
-        indexed_market::{IndexedMarket, IndexedMarketBuilder},
         surfaces::FlatVol,
         volcube::{VolCubeCache, VolCubeConfig, VolCubeKey, VolInstrument},
-        DefaultIndexCurveMapper,
     };
 
+    use super::{DefaultIndexCurveMapper, IndexedMarket, IndexedMarketBuilder};
+
     // ========================================
-    // Task 6.1: CurveSet Fallback Integration Tests
+    // CurveSet Fallback Integration Tests
     // ========================================
 
     /// Test that IndexedMarket access produces same results as CurveSet direct
-    /// access. Requirements: 4.1, 4.2
+    /// access.
     #[test]
     fn test_curveset_indexed_market_result_consistency() {
         let date = Date::from_ymd(2025, 1, 15).unwrap();
@@ -831,7 +1017,6 @@ mod integration_tests {
     }
 
     /// Test forward_rate_for_index compatibility with IndexedMarket.
-    /// Requirements: 4.1, 4.2
     #[test]
     fn test_forward_rate_for_index_compatibility() {
         let date = Date::from_ymd(2025, 1, 15).unwrap();
@@ -927,11 +1112,10 @@ mod integration_tests {
     }
 
     // ========================================
-    // Task 6.2: VolCubeCache Integration Tests
+    // VolCubeCache Integration Tests
     // ========================================
 
     /// Test VolCubeCache lookup and insert operations.
-    /// Requirements: 4.2
     #[test]
     fn test_volcube_cache_basic_operations() {
         let cache: VolCubeCache<String> = VolCubeCache::new(10);
@@ -1026,11 +1210,10 @@ mod integration_tests {
     }
 
     // ========================================
-    // Task 6.3: MarketProvider FxCurve Integration Tests
+    // FxCurve Integration Tests
     // ========================================
 
     /// Test FX curve access via CurrencyPair.
-    /// Requirements: 4.3, 4.4
     #[test]
     fn test_fx_curve_currency_pair_access() {
         let date = Date::from_ymd(2025, 1, 15).unwrap();

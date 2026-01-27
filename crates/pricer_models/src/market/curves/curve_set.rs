@@ -490,7 +490,7 @@ impl<T: Float> CurveSet<T> {
         &self,
         index: infra_master::RateIndex,
     ) -> Result<&CurveEnum<T>, MarketDataError> {
-        use crate::market::index_mapper::{DefaultIndexCurveMapper, IndexCurveMapper};
+        use crate::market::context::{DefaultIndexCurveMapper, IndexCurveMapper};
 
         let mapper = DefaultIndexCurveMapper;
         let curve_name = mapper.map_to_curve(index)?;

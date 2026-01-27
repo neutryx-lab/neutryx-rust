@@ -22,7 +22,7 @@
 //!
 //! ```rust
 //! use infra_master::Currency;
-//! use pricer_models::market::MarketProvider;
+//! use pricer_models::market::context::MarketProvider;
 //!
 //! let provider = MarketProvider::new();
 //!
