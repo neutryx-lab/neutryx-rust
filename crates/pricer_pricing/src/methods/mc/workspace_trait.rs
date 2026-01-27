@@ -168,7 +168,7 @@ pub trait PathWorkspaceTrait: Send + Sync {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mc::PathWorkspace;
+    use crate::methods::mc::PathWorkspace;
 
     #[test]
     fn test_path_workspace_trait_num_paths() {

@@ -58,19 +58,6 @@
 //!
 //! Without the feature flag, pricer_pricing remains fully isolated.
 //!
-//! ## Usage Example
-//!
-//! ```rust
-//! use pricer_pricing::verify::{square, square_gradient};
-//!
-//! // Function value
-//! let value = square(3.0);
-//! assert_eq!(value, 9.0);
-//!
-//! // Gradient verification (placeholder in Phase 3.0)
-//! let gradient = square_gradient(3.0);
-//! assert!((gradient - 6.0).abs() < 1e-10);
-//! ```
 //!
 //! ## Installation
 //!
@@ -106,16 +93,9 @@
 // Allow unknown lints for clippy compatibility across versions
 #![allow(unknown_lints)]
 
-// Phase 3.0: Core modules
-pub mod verify;
-
 // Phase 4: L1/L2 integration tests (conditional compilation)
 #[cfg(all(test, feature = "l1l2-integration"))]
 mod integration_tests;
-
-// Demo: Pricing context for lazy-arc-pricing-kernel demonstration
-#[cfg(feature = "l1l2-integration")]
-pub mod context;
 
 // Pricing Kernel IR runtime engine (Phase 4: L1/L2 integration)
 #[cfg(feature = "l1l2-integration")]
@@ -127,20 +107,11 @@ pub mod numeric;
 // Phase 3.1a: Random number generation infrastructure
 pub mod rng;
 
-// Phase 3.2: Monte Carlo kernel with Enzyme AD integration
-pub mod mc;
-
-// Phase 4: Path-dependent options and checkpointing
-pub mod path_dependent;
+// Pricing methods (Monte Carlo, Tree, Path-dependent)
+pub mod methods;
 
 // Phase 4: Checkpointing for memory-efficient AD
 pub mod checkpoint;
-
-// Phase 4: Analytical solutions for verification
-pub mod analytical;
-
-// Thread-local buffer pool for allocation-free simulation
-pub mod pool;
 
 // Computation graph visualisation data structures
 pub mod graph;
@@ -148,21 +119,16 @@ pub mod graph;
 // Generic Pricer Engine - unified pricing API
 pub mod generic_pricer;
 
-// Tree-based pricing methods (Binomial/Trinomial)
-pub mod tree;
-
 // Unified pricing result types
 pub mod result;
 
-// Pricing method dispatcher
-pub mod dispatcher;
-
 // Re-export commonly used items for convenience
-pub use dispatcher::{DispatcherConfig, PricingMethodDispatcher};
 pub use graph::{
     ComputationGraph, GraphBuilder, GraphEdge, GraphError, GraphExtractable, GraphMetadata,
     GraphNode, GraphNodeUpdate, NodeGroup, NodeType, SimpleGraphExtractor,
 };
-pub use mc::{GbmParams, Greek, MonteCarloConfig, MonteCarloPricer, PayoffParams, PricingResult};
+pub use methods::mc::{
+    GbmParams, Greek, MonteCarloConfig, MonteCarloPricer, PayoffParams, PricingResult,
+};
+pub use methods::tree::{BinomialTree, CrrParams, TreeConfig, TreeMethod, TreeType};
 pub use result::{PricingMetadata, TreeTypeMetadata, UnifiedGreeks, UnifiedPricingResult};
-pub use tree::{BinomialTree, CrrParams, TreeConfig, TreeMethod, TreeType};

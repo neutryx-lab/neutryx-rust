@@ -192,6 +192,7 @@ DimensionMismatch { expected: usize, got: usize },
 - `pricer_core`に金融ロジックを含めてはならない
 - AAD統合は`pricer_risk`レイヤーで行う
 - nalgebra依存はOK（既に使用）
+- **後方互換性は不要** - 既存APIの維持は考慮しない
 
 **Research Needed:**
 - [ ] Enzyme `#[enzyme_rules]` の現在のサポート状況
@@ -215,10 +216,10 @@ DimensionMismatch { expected: usize, got: usize },
 **Trade-offs:**
 - ✅ 既存パターン踏襲、学習コスト低
 - ✅ solversモジュール内の一貫性維持
+- ✅ 既存コードの直接置換が可能（後方互換性不要）
 - ❌ 既存テストへの影響確認必要
-- ❌ BootstrapInstrument変更は破壊的変更
 
-**推奨度:** ⭐⭐⭐⭐
+**推奨度:** ⭐⭐⭐⭐⭐
 
 ### Option B: 新規コンポーネント作成
 
@@ -229,37 +230,32 @@ DimensionMismatch { expected: usize, got: usize },
 
 **適用条件:**
 - 明確な責務分離が必要
-- 既存コードへの影響を最小化したい
 
 **Trade-offs:**
 - ✅ クリーンな責務分離
-- ✅ 既存コードへの影響なし
 - ✅ 独立したテストが容易
 - ❌ ファイル数増加
-- ❌ 重複コードのリスク（BootstrapInstrumentとCalibrationInstrument）
 
-**推奨度:** ⭐⭐⭐⭐⭐
+**推奨度:** ⭐⭐⭐⭐
 
-### Option C: ハイブリッドアプローチ
+### Option C: 段階的実装
 
 **段階的実装:**
 1. **Phase 1:** 新規 `systems/` モジュールでソルバーコア実装
-2. **Phase 2:** `CalibrationInstrument` トレイトを新規作成、`BootstrapInstrument` を実装
-3. **Phase 3:** `GlobalBootstrapper` を `SequentialBootstrapper` と並行配置
+2. **Phase 2:** `CalibrationInstrument` トレイトを新規作成
+3. **Phase 3:** `GlobalBootstrapper` 実装（SequentialBootstrapperを置換）
 4. **Phase 4:** AAD統合（Enzyme custom rule または fallback）
 
 **適用条件:**
 - 段階的リリースが求められる
-- 後方互換性の維持が必須
 
 **Trade-offs:**
 - ✅ リスク分散
 - ✅ 各段階で検証可能
-- ✅ 後方互換性維持
 - ❌ 計画の複雑化
 - ❌ 中間状態の管理コスト
 
-**推奨度:** ⭐⭐⭐⭐
+**推奨度:** ⭐⭐⭐
 
 ---
 
@@ -274,7 +270,7 @@ DimensionMismatch { expected: usize, got: usize },
 | SolverResult構造体 | S | 単純なデータ構造 |
 | CalibrationInstrument トレイト | S | 既存BootstrapInstrument参照 |
 | CurveCalibrationProblem | M | SystemOfEquations実装、商品評価 |
-| GlobalBootstrapper | M | 既存APIとの互換性維持 |
+| GlobalBootstrapper | M | SequentialBootstrapperを置換 |
 | ImplicitSolver (AAD) | L | Enzyme統合、カスタム勾配ルール |
 | テストスイート | M | 単体・統合・ベンチマーク |
 
@@ -286,7 +282,6 @@ DimensionMismatch { expected: usize, got: usize },
 |-----------|--------|--------|
 | Enzyme custom rule APIの不確実性 | High | Finite difference fallback を先行実装 |
 | nalgebra Float制約とAD互換性 | Medium | RealFieldバウンドで統一 |
-| 既存SequentialBootstrapperとの結果差異 | Medium | 比較テストを早期実装 |
 | パフォーマンス要件達成 | Medium | ベンチマークを継続的に実行 |
 
 **総合リスク: Medium-High**（AAD統合の不確実性による）
@@ -297,13 +292,13 @@ DimensionMismatch { expected: usize, got: usize },
 
 ### 推奨アプローチ
 
-**Option B（新規コンポーネント作成）** を推奨
+**Option A（既存コンポーネント拡張）** を推奨
 
 **理由:**
-1. 既存の`SequentialBootstrapper`との共存が可能
-2. クリーンなレイヤー分離（Math → Model → Risk）
-3. AAD統合を独立モジュールとして段階的に実装可能
-4. テストの独立性確保
+1. 後方互換性不要のため、既存コードを直接置換可能
+2. 既存solversパターンに準拠し一貫性維持
+3. SequentialBootstrapperをGlobalBootstrapperで直接置換
+4. ファイル数を最小限に抑制
 
 ### 設計フェーズでの調査項目
 
@@ -321,7 +316,7 @@ DimensionMismatch { expected: usize, got: usize },
 
 4. **CalibrationInstrumentの詳細設計**
    - Dual-curve対応の引数設計
-   - 既存`BootstrapInstrument`との関係
+   - `BootstrapInstrument`を`CalibrationInstrument`で置換
 
 ### Key Decisions
 
@@ -329,5 +324,5 @@ DimensionMismatch { expected: usize, got: usize },
 |----------|------|------|
 | Jacobian格納形式 | LU分解 + explicit inverse | メモリ効率とAAD互換性のバランス |
 | 数値Jacobianデフォルト | 有効 | 開発速度優先、後で解析的Jacobian追加可 |
-| 後方互換性 | feature flagで切替 | 段階的移行を可能に |
-| テスト戦略 | Sequential vs Global 比較テスト必須 | 数値的一貫性の検証 |
+| SequentialBootstrapper | 削除・置換 | 後方互換性不要のため |
+| テスト戦略 | 既存テストをGlobal版に移行 | 数値的一貫性の検証 |

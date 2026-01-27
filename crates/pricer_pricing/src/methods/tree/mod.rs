@@ -142,9 +142,7 @@
 //!
 //! # See Also
 //!
-//! - [`crate::dispatcher::PricingMethodDispatcher`] - Unified pricing
-//!   dispatcher
-//! - [`crate::mc::MonteCarloPricer`] - Monte Carlo pricing for path-dependent
+//! - [`crate::methods::mc::MonteCarloPricer`] - Monte Carlo pricing for path-dependent
 //!   options
 
 mod binomial;

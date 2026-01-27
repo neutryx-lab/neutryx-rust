@@ -30,7 +30,7 @@
 //! println!("All passed: {}", result.all_passed());
 //! ```
 
-use pricer_pricing::mc::{GbmParams, MonteCarloConfig, MonteCarloPricer, PayoffParams};
+use pricer_pricing::methods::mc::{GbmParams, MonteCarloConfig, MonteCarloPricer, PayoffParams};
 
 use super::greeks::{EnzymeGreeksResult, GreeksEnzyme, GreeksMode};
 

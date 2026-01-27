@@ -1232,7 +1232,7 @@ fn bench_tree_type_comparison(c: &mut Criterion) {
 // Memory Layout Benchmarks (mc-memory-layout-optimisation)
 // ============================================================================
 
-use pricer_pricing::mc::{
+use pricer_pricing::methods::mc::{
     layout_config::{PathLayout, PathLayoutConfig, StreamingConfig},
     workspace_enum::WorkspaceEnum,
     workspace_trait::PathWorkspaceTrait,

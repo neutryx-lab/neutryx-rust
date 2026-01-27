@@ -721,7 +721,7 @@ mod tests {
 
     #[test]
     fn test_trinomial_vs_binomial_consistency() {
-        use crate::tree::BinomialTree;
+        use crate::methods::tree::BinomialTree;
 
         let spot = 100.0;
         let strike = 100.0;

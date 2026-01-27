@@ -24,11 +24,12 @@
   - モジュールドキュメント（`//!`コメント）を追加する
   - _Requirements: 5.1, 5.2, 5.3_
 
-- [ ] 1.2 (P) 統合エラー型を設計・実装する
+- [x] 1.2 (P) 統合エラー型を設計・実装する
   - MarketErrorをルートとした階層的エラー型を作成する（CurveError, SurfaceError, ContextError）
   - 既存の16種類のエラー型を3種類のサブエラーに統合する
   - thiserrorを使用した一貫したエラーメッセージを提供する
   - _Requirements: 5.4_
+  - _Completed: 51テストパス、MarketError/CurveError/SurfaceError/ContextError実装済み_
 
 - [x] 1.3 後方互換性のためのre-exportを設定する（旧モジュール削除により不要）
   - ~~旧パスからの型アクセスを維持するためのpub useを追加する~~
@@ -114,11 +115,12 @@
   - _Requirements: 1.5, 2.4_
 
 - [ ] 5. 検証とドキュメント更新を行う
-- [ ] 5.1 全体テストとビルドを検証する
+- [x] 5.1 全体テストとビルドを検証する
   - cargo test --workspaceで全テストがパスすることを確認する
   - cargo clippy --workspaceで警告がないことを確認する
   - cargo doc --workspaceでドキュメント生成が成功することを確認する
   - _Requirements: 6.3, 6.4_
+  - _Completed: 2136+テストパス、ビルド成功、clippy警告1件（minor）_
 
 - [ ] 5.2 demo/guiの動作確認を行う
   - demo/gui/src/web/handlers/fxcurve.rsが正常に動作することを確認する

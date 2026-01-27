@@ -32,8 +32,19 @@
 //! - Payoff functions with smooth approximations
 //! - Stochastic models (GBM, Heston, etc.)
 //! - Market data structures (curves, surfaces)
-//! - Analytical formulas for validation
+//! - Closed-form pricing formulas (Black-Scholes, Bachelier, SABR Hagan)
 //! - Model calibration to market data
+//!
+//! ## Module Organisation
+//!
+//! - [`stochastic`] - Stochastic process models (GBM, Heston, Hull-White, CIR)
+//! - [`formulas`] - Closed-form pricing formulas (Black-Scholes, Bachelier, SABR Hagan)
+//! - [`market`] - Market data structures (curves, surfaces, vol cubes)
+//! - [`compiler`] - Instrument compilation for pricing engines
+//!
+//! ### Deprecated Modules
+//!
+//! - [`analytical`] - Deprecated, use [`formulas`] instead
 //!
 //! ## Design Principles
 //!
@@ -47,11 +58,9 @@
 
 pub mod analytical;
 pub mod compiler;
-pub mod demo;
 mod direction_ext;
 pub mod formulas;
 pub mod market;
-pub mod models;
 pub mod stochastic;
 
 // Re-export instrument types from infra_master for backwards compatibility

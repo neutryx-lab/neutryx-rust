@@ -26,8 +26,8 @@ use crate::{
     checkpoint::{
         CheckpointManager, CheckpointResult, CheckpointStrategy, MemoryBudget, SimulationState,
     },
-    mc::{workspace_checkpoint::CheckpointWorkspace, GbmParams, MonteCarloConfig, PricingResult},
-    path_dependent::{PathObserverState, PathPayoffType},
+    methods::mc::{workspace_checkpoint::CheckpointWorkspace, GbmParams, MonteCarloConfig, PricingResult},
+    methods::path_dependent::{PathObserverState, PathPayoffType},
     rng::PricerRng,
 };
 
@@ -112,7 +112,7 @@ impl CheckpointPricer {
     /// # Errors
     ///
     /// Returns error if configuration is invalid.
-    pub fn new(config: CheckpointPricingConfig) -> Result<Self, crate::mc::MonteCarloConfigError> {
+    pub fn new(config: CheckpointPricingConfig) -> Result<Self, crate::methods::mc::MonteCarloConfigError> {
         config.mc_config.validate()?;
 
         let n_paths = config.mc_config.n_paths();

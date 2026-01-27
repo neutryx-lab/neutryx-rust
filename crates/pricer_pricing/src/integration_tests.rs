@@ -55,10 +55,7 @@ mod tests {
 
 #[cfg(all(test, feature = "l1l2-integration"))]
 mod pricer_models_tests {
-    use pricer_models::models::{
-        stochastic::{SingleState, StochasticModel, StochasticState},
-        StochasticModelEnum,
-    };
+    use pricer_models::stochastic::{SingleState, StochasticModel, StochasticModelEnum, StochasticState};
 
     /// Test that StochasticModel trait from pricer_models is accessible.
     #[test]
@@ -183,7 +180,7 @@ mod instrument_tests {
 mod yield_curve_tests {
     use pricer_models::market::curves::{FlatCurve, YieldCurve};
 
-    use crate::mc::{GbmParams, MonteCarloConfig, MonteCarloPricer, PayoffParams};
+    use crate::methods::mc::{GbmParams, MonteCarloConfig, MonteCarloPricer, PayoffParams};
 
     /// Test that FlatCurve is accessible and can be used for discounting.
     #[test]
@@ -251,7 +248,7 @@ mod yield_curve_tests {
     /// Test pricing with Greeks using YieldCurve.
     #[test]
     fn test_price_with_greeks_and_curve() {
-        use crate::mc::Greek;
+        use crate::methods::mc::Greek;
 
         let config = MonteCarloConfig::builder()
             .n_paths(10_000)

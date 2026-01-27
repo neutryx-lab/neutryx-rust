@@ -32,7 +32,7 @@ use super::{
     workspace::PathWorkspace,
 };
 use crate::{
-    path_dependent::{PathObserver, PathPayoffType},
+    methods::path_dependent::{PathObserver, PathPayoffType},
     rng::PricerRng,
 };
 

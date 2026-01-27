@@ -635,7 +635,6 @@ mod tests {
     #[cfg(feature = "rates")]
     mod rates_tests {
         use super::*;
-        use crate::market::curves::FlatCurve;
 
         #[test]
         fn test_model_enum_hull_white_creation() {

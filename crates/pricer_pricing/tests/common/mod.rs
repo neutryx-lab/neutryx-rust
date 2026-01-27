@@ -3,7 +3,7 @@
 //! This module provides shared test utilities to reduce code duplication
 //! across integration tests.
 
-use pricer_pricing::mc::GbmParams;
+use pricer_pricing::methods::mc::GbmParams;
 
 /// Standard GBM parameters for option pricing tests.
 ///
@@ -37,8 +37,8 @@ pub fn standard_params() -> (f64, f64, f64, f64, f64, f64) {
 /// - 252 steps (daily observations)
 /// - Fixed seed for reproducibility
 #[allow(dead_code)]
-pub fn standard_mc_config() -> pricer_pricing::mc::MonteCarloConfig {
-    pricer_pricing::mc::MonteCarloConfig::builder()
+pub fn standard_mc_config() -> pricer_pricing::methods::mc::MonteCarloConfig {
+    pricer_pricing::methods::mc::MonteCarloConfig::builder()
         .n_paths(10_000)
         .n_steps(252)
         .seed(42)
@@ -53,8 +53,8 @@ pub fn standard_mc_config() -> pricer_pricing::mc::MonteCarloConfig {
 /// - 252 steps (daily observations)
 /// - Fixed seed for reproducibility
 #[allow(dead_code)]
-pub fn high_accuracy_mc_config() -> pricer_pricing::mc::MonteCarloConfig {
-    pricer_pricing::mc::MonteCarloConfig::builder()
+pub fn high_accuracy_mc_config() -> pricer_pricing::methods::mc::MonteCarloConfig {
+    pricer_pricing::methods::mc::MonteCarloConfig::builder()
         .n_paths(100_000)
         .n_steps(252)
         .seed(42)

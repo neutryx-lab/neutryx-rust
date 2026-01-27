@@ -122,7 +122,6 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(rustdoc::private_intra_doc_links)]
 
-pub mod demo;
 pub mod engine;
 /// Enzyme autodiff bindings for risk calculations.
 ///
@@ -132,8 +131,6 @@ pub mod engine;
 pub mod enzyme;
 pub mod exposure;
 pub mod greeks;
-pub mod irs_greeks;
-pub mod parallel;
 pub mod portfolio;
 pub mod scenarios;
 pub mod soa;
@@ -152,21 +149,6 @@ pub use exposure::ExposureCalculator;
 pub use greeks::{
     GreeksConfig, GreeksConfigBuilder, GreeksConfigError, GreeksError, GreeksMode, GreeksResult,
 };
-pub use irs_greeks::{
-    BenchmarkConfig, BenchmarkError, BenchmarkRunner, DeltaBenchmarkResult, FullBenchmarkResult,
-    IrsDeltaResult, IrsGreeksCalculator, IrsGreeksConfig, IrsGreeksError, IrsGreeksResult,
-    IrsLazyEvaluator, PvBenchmarkResult, ScalabilityResult, SingleDeltaBenchmarkResult, SwapId,
-    SwapParams, TenorPoint, TimingStats,
-};
-pub use parallel::{
-    create_shared_monitor, MemoryMonitor, MemoryMonitorConfig, MemoryStats, ParallelConfig,
-    SharedMemoryMonitor, DEFAULT_BATCH_SIZE,
-};
-// TODO: Re-enable when rates instruments are restored
-// pub use parallel::{
-//     ParallelGreeksConfig, ParallelGreeksError, ParallelGreeksStats,
-//     ParallelPortfolioGreeksCalculator, PortfolioGreeksResult,
-// };
 pub use portfolio::{
     CollateralAgreement, Counterparty, CounterpartyId, CreditParams, CreditRating, NettingSet,
     NettingSetId, Portfolio, PortfolioBuilder, PortfolioError, Trade, TradeBuilder, TradeId,

@@ -9,7 +9,7 @@
 //!
 //! ```rust,no_run
 //! use pricer_risk::enzyme::greeks::{GreeksEnzyme, GreeksMode, EnzymeGreeksResult};
-//! use pricer_pricing::mc::{GbmParams, PayoffParams, MonteCarloPricer, MonteCarloConfig};
+//! use pricer_pricing::methods::mc::{GbmParams, PayoffParams, MonteCarloPricer, MonteCarloConfig};
 //!
 //! let config = MonteCarloConfig::builder()
 //!     .n_paths(10_000)
@@ -27,7 +27,7 @@
 //! println!("Price: {:.4}, Delta: {:.4}", result.price, result.delta);
 //! ```
 
-use pricer_pricing::mc::{GbmParams, MonteCarloPricer, PayoffParams, PricingResult};
+use pricer_pricing::methods::mc::{GbmParams, MonteCarloPricer, PayoffParams, PricingResult};
 
 // Local definition (previously from crate::greeks)
 
@@ -702,7 +702,7 @@ fn compute_rho_fd(
 
 #[cfg(test)]
 mod tests {
-    use pricer_pricing::mc::MonteCarloConfig;
+    use pricer_pricing::methods::mc::MonteCarloConfig;
 
     use super::*;
 

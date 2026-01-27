@@ -19,7 +19,7 @@
 
 use num_traits::Float;
 
-use crate::path_dependent::{PathObserver, PathObserverState};
+use crate::methods::path_dependent::{PathObserver, PathObserverState};
 
 /// Extended workspace with checkpoint and path-dependent support.
 ///

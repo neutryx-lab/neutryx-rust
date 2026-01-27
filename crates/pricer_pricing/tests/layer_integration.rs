@@ -58,11 +58,11 @@ fn test_yield_curve_import() {
 // L2 Integration Tests (pricer_models)
 // =============================================================================
 
-/// Test: pricer_models::models::stochastic is accessible
+/// Test: pricer_models::stochastic is accessible
 /// Requirement: 4.2
 #[test]
 fn test_stochastic_model_import() {
-    use pricer_models::models::stochastic::{SingleState, StochasticState};
+    use pricer_models::stochastic::{SingleState, StochasticState};
 
     let state = SingleState(100.0_f64);
     assert_eq!(state.get(0), Some(100.0));
