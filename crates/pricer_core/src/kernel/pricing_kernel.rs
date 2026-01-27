@@ -47,7 +47,7 @@ use super::{aligned_buffer::AlignedBuffer, error::CompileError};
 /// # Examples
 ///
 /// ```
-/// use pricer_core::ir::PricingKernel;
+/// use pricer_core::kernel::PricingKernel;
 ///
 /// // Create a kernel from vectors (validates length invariant)
 /// let kernel = PricingKernel::new(

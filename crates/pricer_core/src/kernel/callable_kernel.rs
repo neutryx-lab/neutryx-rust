@@ -14,7 +14,7 @@
 //! # Example
 //!
 //! ```
-//! use pricer_core::ir::{CallableKernel, CallableBlock, ExerciseDef, ExerciseStyle, PricingKernel};
+//! use pricer_core::kernel::{CallableKernel, CallableBlock, ExerciseDef, ExerciseStyle, PricingKernel};
 //!
 //! // Create a simple Bermudan swaption with 2 exercise dates
 //! let kernel = CallableKernel::new(
@@ -77,7 +77,7 @@ impl std::fmt::Display for ExerciseStyle {
 /// # Examples
 ///
 /// ```
-/// use pricer_core::ir::{ExerciseDef, ExerciseStyle};
+/// use pricer_core::kernel::{ExerciseDef, ExerciseStyle};
 ///
 /// let exercise = ExerciseDef {
 ///     exercise_date: 19365,
@@ -145,7 +145,7 @@ impl ExerciseDef {
 /// # Examples
 ///
 /// ```
-/// use pricer_core::ir::{CallableBlock, ExerciseDef, ExerciseStyle, PricingKernel};
+/// use pricer_core::kernel::{CallableBlock, ExerciseDef, ExerciseStyle, PricingKernel};
 ///
 /// let block = CallableBlock {
 ///     start_date: 19000,
@@ -242,7 +242,7 @@ impl CallableBlock {
 /// # Examples
 ///
 /// ```
-/// use pricer_core::ir::{CallableKernel, CallableBlock, ExerciseDef, ExerciseStyle, PricingKernel};
+/// use pricer_core::kernel::{CallableKernel, CallableBlock, ExerciseDef, ExerciseStyle, PricingKernel};
 ///
 /// let kernel = CallableKernel::new(
 ///     vec![

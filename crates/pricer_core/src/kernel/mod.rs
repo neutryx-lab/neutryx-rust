@@ -2,9 +2,9 @@
 // for custom memory allocation with guaranteed 64-byte alignment.
 #![allow(unsafe_code)]
 
-//! Pricing Kernel Intermediate Representation (IR) module.
+//! Pricing Kernel module.
 //!
-//! This module provides the data structures for the PricingKernel IR,
+//! This module provides the data structures for PricingKernel,
 //! which transforms hierarchical `Trade` definitions into SoA (Structure of
 //! Arrays) format optimised for SIMD operations and Enzyme automatic
 //! differentiation.
@@ -16,21 +16,21 @@
 //!    ↓
 //! Compiler: TradeCompiler (date calculation, holiday adjustment, schedule expansion)
 //!    ↓
-//! IR: PricingKernel (flattened f64 and usize arrays)
+//! Kernel: PricingKernel (flattened f64 and usize arrays)
 //! ```
 //!
 //! # Components
 //!
 //! - [`AlignedBuffer`]: 64-byte aligned heap buffer for SIMD efficiency
 //! - [`PricingKernel`]: SoA cashflow representation for linear products
-//! - [`ScriptKernel`]: Event-driven IR for path-dependent products
-//! - [`CallableKernel`]: Block-structured IR for callable/Bermudan products
+//! - [`ScriptKernel`]: Event-driven kernel for path-dependent products
+//! - [`CallableKernel`]: Block-structured kernel for callable/Bermudan products
 //! - [`CompileError`]: Structured compilation error types
 //!
 //! # Example
 //!
 //! ```
-//! use pricer_core::ir::{AlignedBuffer, PricingKernel};
+//! use pricer_core::kernel::{AlignedBuffer, PricingKernel};
 //!
 //! // Create aligned buffer for payment dates
 //! let payment_dates: AlignedBuffer<i32> = AlignedBuffer::from_vec(vec![19000, 19180, 19365]);

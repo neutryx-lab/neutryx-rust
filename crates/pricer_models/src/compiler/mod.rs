@@ -32,7 +32,7 @@ pub use callable::{CallableCompiler, Cashflow, CashflowSchedule};
 pub use exotic::ExoticCompiler;
 pub use index_mapper::{CmsIndex, ForwardIndexType, IndexMapper};
 pub use linear::LinearProductsCompiler;
-use pricer_core::ir::{CompileError, PricingKernel};
+use pricer_core::kernel::{CompileError, PricingKernel};
 pub use xccy::XCcyCompiler;
 
 /// Trait for compiling `Trade` definitions into `PricingKernel` IR.
@@ -92,7 +92,7 @@ pub trait TradeCompiler<T> {
         I: IntoIterator<Item = &'a T>,
         T: 'a,
     {
-        use pricer_core::ir::PricingKernelBuilder;
+        use pricer_core::kernel::PricingKernelBuilder;
 
         let mut builder = PricingKernelBuilder::new();
         let mut trade_count = 0;

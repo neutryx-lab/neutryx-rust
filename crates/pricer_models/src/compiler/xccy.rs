@@ -32,7 +32,7 @@ use infra_master::{
     Currency, Date,
 };
 use pricer_core::{
-    ir::{CompileError, PricingKernel, PricingKernelBuilder},
+    kernel::{CompileError, PricingKernel, PricingKernelBuilder},
     types::FxPair,
 };
 

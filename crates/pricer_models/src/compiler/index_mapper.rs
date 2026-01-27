@@ -29,7 +29,7 @@
 use std::collections::HashMap;
 
 use infra_master::{time::Tenor, Currency, RateIndex};
-use pricer_core::{ir::CompileError, types::FxPair};
+use pricer_core::{kernel::CompileError, types::FxPair};
 
 /// CMS (Constant Maturity Swap) index definition.
 ///

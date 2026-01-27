@@ -26,7 +26,7 @@
 //! - **No Runtime Type Dispatch**: Uses match on `ScriptOp` variants
 //! - **Enzyme AD Compatible**: Uses only primitive types
 
-use pricer_core::ir::{BarrierType, ScriptKernel, ScriptOp};
+use pricer_core::kernel::{BarrierType, ScriptKernel, ScriptOp};
 
 use super::provider::CurveProvider;
 
@@ -208,7 +208,7 @@ impl ExecutionState {
 ///
 /// ```ignore
 /// use pricer_pricing::kernel::{ScriptEngine, FlatSpotProvider};
-/// use pricer_core::ir::ScriptKernel;
+/// use pricer_core::kernel::ScriptKernel;
 ///
 /// let kernel = /* compiled script kernel */;
 /// let provider = FlatSpotProvider::new(0.05, 0.03, 100.0);
@@ -628,7 +628,7 @@ impl TraceStep {
 
 #[cfg(test)]
 mod tests {
-    use pricer_core::ir::ScriptKernelBuilder;
+    use pricer_core::kernel::ScriptKernelBuilder;
 
     use super::*;
 

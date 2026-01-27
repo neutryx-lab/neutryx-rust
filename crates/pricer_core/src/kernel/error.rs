@@ -14,7 +14,7 @@ use thiserror::Error;
 /// # Examples
 ///
 /// ```
-/// use pricer_core::ir::CompileError;
+/// use pricer_core::kernel::CompileError;
 ///
 /// let err = CompileError::UnsupportedInstrument("CreditLinkedNote".to_string());
 /// assert!(err.to_string().contains("CreditLinkedNote"));

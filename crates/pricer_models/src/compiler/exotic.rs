@@ -21,7 +21,7 @@
 //! ```
 
 use infra_master::{trade::Payoff, Currency, Date};
-use pricer_core::ir::{BarrierType, CompileError, ScriptKernel, ScriptKernelBuilder, ScriptOp};
+use pricer_core::kernel::{BarrierType, CompileError, ScriptKernel, ScriptKernelBuilder, ScriptOp};
 
 use super::IndexMapper;
 
@@ -358,7 +358,7 @@ impl ExoticCompiler {
 #[cfg(test)]
 mod tests {
     use infra_master::Currency;
-    use pricer_core::ir::BarrierType;
+    use pricer_core::kernel::BarrierType;
 
     use super::*;
 

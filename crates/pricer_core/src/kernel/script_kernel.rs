@@ -29,7 +29,7 @@
 //! # Example
 //!
 //! ```
-//! use pricer_core::ir::{ScriptKernel, ScriptOp, BarrierType, ScriptKernelBuilder};
+//! use pricer_core::kernel::{ScriptKernel, ScriptOp, BarrierType, ScriptKernelBuilder};
 //!
 //! // Create a simple barrier option script
 //! let mut builder = ScriptKernelBuilder::new();
@@ -363,7 +363,7 @@ impl std::fmt::Display for BarrierType {
 /// # Example
 ///
 /// ```
-/// use pricer_core::ir::{ScriptKernelBuilder, ScriptOp, BarrierType};
+/// use pricer_core::kernel::{ScriptKernelBuilder, ScriptOp, BarrierType};
 ///
 /// let mut builder = ScriptKernelBuilder::new();
 /// let barrier_idx = builder.add_constant(105.0);  // Barrier at 105

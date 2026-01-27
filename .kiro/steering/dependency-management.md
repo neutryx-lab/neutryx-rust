@@ -58,14 +58,14 @@ all = ["equity", "rates", "credit", "fx", "commodity", "exotic"]
 ```toml
 # Features propagate through dependency chain
 l1l2-integration = ["dep:pricer_core", "dep:pricer_models"]
-enzyme-ad = ["dep:llvm-sys", "pricer_pricing/enzyme-ad"]
+enzyme-ad = ["dep:llvm-sys", "pricer_risk/enzyme-ad"]
 ```
 
 ## Heavy Dependencies (Optional)
 
 | Dependency | Crate | Feature | Impact |
 |------------|-------|---------|--------|
-| `llvm-sys` | pricer_pricing | `enzyme-ad` | ~500KB, LLVM 18 required |
+| `llvm-sys` | pricer_risk | `enzyme-ad` | ~500KB, LLVM 18 required |
 | `parquet` + `arrow` | adapter_loader | `parquet` | ~200KB, Arrow ecosystem |
 | `sqlx` | infra_store | `postgres` | ~100KB, async SQL |
 | `pyo3` | service_python | always | ~300KB, Python bindings |

@@ -2,7 +2,7 @@
 
 実装状況と今後の開発項目を追跡するドキュメント。
 
-_Updated: 2026-01-26_ — 42 completed specs; 1 active spec (pricing-kernel-ir 71%)
+_Updated: 2026-01-27_ — 42 completed specs; 1 active spec (pricing-kernel-ir 100%)
 
 ---
 
@@ -178,7 +178,7 @@ Codebase redundancy cleanup performed:
 
 | Spec | Description | Status |
 |------|-------------|--------|
-| pricing-kernel-ir | PricingKernel IR, TradeCompiler, IndexMapper, CallableKernel | implementing (22/31 tasks, 71%) |
+| pricing-kernel-ir | PricingKernel IR, TradeCompiler, IndexMapper, CallableKernel, LSMC, CMS | implementing (31/31 tasks, 100%) |
 
 ## Recommended Next Steps
 
@@ -192,6 +192,8 @@ Codebase redundancy cleanup performed:
 
 | Date | Change |
 |------|--------|
+| 2026-01-27 | pricing-kernel-ir: Task 8.1 CMSインデックス統合 completed. LinearProductsCompiler now handles IndexType::SwapRate → CmsIndex. 4 new tests added. pricing-kernel-ir now 100% (31/31 tasks) |
+| 2026-01-27 | Steering sync: Added kernel/ module (LinearEngine, ScriptEngine, CallableEngine, LSMC) to structure.md, CallableCompiler to compiler/, CallableKernel to ir/. pricing-kernel-ir now 97% (30/31 tasks, CMS remaining) |
 | 2026-01-26 | Closed 3 completed specs: shadow-object-aad (16 tasks), external-numerics-migration (30 tasks), mc-memory-layout-optimisation (21 tasks). Total: 42 specs. 1 active: pricing-kernel-ir (71%) |
 | 2026-01-26 | Steering sync: Added IR module (PricingKernel, AlignedBuffer, ScriptKernel), compiler module (TradeCompiler, IndexMapper), enzyme extensions (shadow, kernel, binder). 4 active specs: pricing-kernel-ir (implementing), shadow-object-aad, external-numerics-migration, mc-memory-layout-optimisation |
 | 2026-01-26 | Codebase redundancy cleanup: Fixed tokio versions, removed dead code/unused modules, added test fixtures, documented app.js refactor plan |

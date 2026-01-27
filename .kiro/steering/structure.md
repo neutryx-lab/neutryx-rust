@@ -195,6 +195,7 @@ ir/         → Pricing Kernel Intermediate Representation (SIMD/Enzyme-optimise
 ├── aligned_buffer.rs → 64-byte aligned heap buffer (AlignedBuffer<T>)
 ├── pricing_kernel.rs → SoA cashflow representation (PricingKernel, PricingKernelBuilder)
 ├── script_kernel.rs  → Event-driven IR for path-dependent (ScriptKernel, ScriptOp, BarrierType)
+├── callable_kernel.rs → Block-structured IR for Bermudan (CallableKernel, CallableBlock, ExerciseDef)
 └── error.rs          → Compilation errors (CompileError)
 
 traits/     → Priceable, Differentiable, Float, core abstractions
@@ -287,7 +288,8 @@ compiler/     → Trade compiler for IR generation
   ├── index_mapper.rs → IndexMapper (RateIndex/Currency → numeric ID)
   ├── linear.rs       → LinearProductsCompiler (IRS, Bond, FRA)
   ├── xccy.rs         → XCcyCompiler (cross-currency swaps)
-  └── exotic.rs       → ExoticCompiler (barriers, Asians)
+  ├── exotic.rs       → ExoticCompiler (barriers, Asians)
+  └── callable.rs     → CallableCompiler (Bermudan swaptions, block-partitioned)
 
 schedules/    → Payment schedule generation (Frequency, Period, ScheduleBuilder)
 analytical/   → Closed-form solutions (Black-Scholes, Garman-Kohlhagen)
@@ -321,6 +323,14 @@ analytical/      → Closed-form solutions (geometric Asian, barrier options)
 greeks/          → Greeks calculation types (GreeksConfig, GreeksMode, GreeksResult<T>)
 pool/            → Thread-local buffer pool (ThreadLocalPool, PooledBuffer, PoolStats)
 tree/            → Tree-based pricing methods (Binomial/Trinomial)
+kernel/          → IR-based pricing engines (static dispatch, SIMD-friendly)
+  ├── engine.rs         → LinearEngine (branchless PV calculation for PricingKernel)
+  ├── script_engine.rs  → ScriptEngine (event-driven execution for ScriptKernel)
+  ├── callable_engine.rs → CallableEngine (forward/backward pass for Bermudan)
+  ├── lsmc.rs           → Longstaff-Schwartz Monte Carlo regression (LSMCRegressor)
+  ├── provider.rs       → CurveProvider trait implementations
+  ├── context.rs        → KernelContext for static dispatch market data access
+  └── integration.rs    → Full pipeline integration (Trade→IR→PV)
   ├── binomial.rs   → CRR binomial tree (BinomialTree, CrrParams)
   ├── trinomial.rs  → Kamrad-Ritchken trinomial tree (TrinomialTree, KrParams)
   ├── config.rs     → TreeConfig, TreeConfigBuilder, TreeType
@@ -691,5 +701,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-26_ — Added IR module (PricingKernel, AlignedBuffer), compiler module (TradeCompiler, IndexMapper), enzyme extensions (shadow, kernel, binder)
+_Updated: 2026-01-27_ — Added kernel/ module (LinearEngine, ScriptEngine, CallableEngine, LSMC), CallableCompiler, CallableKernel
 _Document patterns, not file trees. New files following patterns should not require updates_

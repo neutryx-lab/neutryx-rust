@@ -6,13 +6,16 @@
 use std::sync::Arc;
 
 use infra_master::{
-    time::{BusinessDayConvention, Calendar, CalendarId, ConcreteCalendar},
+    time::{BusinessDayConvention, Calendar, CalendarId, ConcreteCalendar, Tenor},
     trade::{IndexType, Payoff, Trade},
-    Date,
+    Currency, Date,
 };
-use pricer_core::ir::{CompileError, PricingKernel, PricingKernelBuilder};
+use pricer_core::kernel::{CompileError, PricingKernel, PricingKernelBuilder};
 
-use super::{index_mapper::IndexMapper, TradeCompiler};
+use super::{
+    index_mapper::{CmsIndex, IndexMapper},
+    TradeCompiler,
+};
 
 /// Compiler for linear products (IRS, Bonds, FRAs).
 ///
@@ -236,6 +239,19 @@ impl LinearProductsCompiler {
                 let fwd_index_id = match index {
                     IndexType::Rate(rate_index) => {
                         self.mapper.get_or_register_forward_index(*rate_index)
+                    }
+                    IndexType::SwapRate { currency, tenor } => {
+                        // CMS (Constant Maturity Swap) index
+                        // Parse currency and tenor strings to create CmsIndex
+                        let ccy = currency
+                            .parse::<Currency>()
+                            .map_err(|_| CompileError::UnknownCurrency(currency.clone()))?;
+                        let swap_tenor = tenor
+                            .parse::<Tenor>()
+                            .map_err(|e| CompileError::InvalidSchedule(e))?;
+
+                        let cms_index = CmsIndex::new(ccy, swap_tenor);
+                        self.mapper.get_or_register_cms_index(cms_index)
                     }
                     _ => {
                         return Err(CompileError::UnsupportedPayoff(format!(
@@ -1024,5 +1040,211 @@ mod tests {
         assert!(debug_str.contains("LinearProductsCompiler"));
         assert!(debug_str.contains("has_calendar: true"));
         assert!(debug_str.contains("ModifiedFollowing"));
+    }
+
+    // === Task 8.1: CMS Index Integration Tests ===
+
+    /// Creates a CMS floating leg (10Y USD CMS rate).
+    fn create_cms_floating_leg() -> Leg {
+        let cashflows = vec![
+            Cashflow::new(
+                CashflowType::Coupon,
+                Date::from_ymd(2025, 6, 30).unwrap(),
+                Date::from_ymd(2025, 1, 1).unwrap(),
+                Date::from_ymd(2025, 6, 30).unwrap(),
+                0.5,
+                10_000_000.0,
+                Payoff::Linear {
+                    index: IndexType::SwapRate {
+                        currency: "USD".to_string(),
+                        tenor: "10Y".to_string(),
+                    },
+                    spread: 0.002, // 20bp spread
+                    multiplier: 1.0,
+                },
+                Currency::USD,
+            ),
+            Cashflow::new(
+                CashflowType::Coupon,
+                Date::from_ymd(2025, 12, 31).unwrap(),
+                Date::from_ymd(2025, 7, 1).unwrap(),
+                Date::from_ymd(2025, 12, 31).unwrap(),
+                0.5,
+                10_000_000.0,
+                Payoff::Linear {
+                    index: IndexType::SwapRate {
+                        currency: "USD".to_string(),
+                        tenor: "10Y".to_string(),
+                    },
+                    spread: 0.002,
+                    multiplier: 1.0,
+                },
+                Currency::USD,
+            ),
+        ];
+
+        Leg::new(
+            cashflows,
+            Direction::Receiver,
+            LegType::Floating,
+            Currency::USD,
+        )
+    }
+
+    #[test]
+    fn test_compile_cms_leg() {
+        let mapper = IndexMapper::new();
+        let mut compiler = LinearProductsCompiler::new(mapper);
+
+        let trade = Trade::new(
+            "CMS001",
+            vec![create_cms_floating_leg()],
+            infra_master::trade::TradeType::Generic,
+        );
+
+        let kernel = compiler.compile_with_registration(&trade).unwrap();
+
+        // Should have 2 cashflows
+        assert_eq!(kernel.len(), 2);
+
+        // CMS leg should have gearing = 1.0 (floating)
+        for i in 0..kernel.len() {
+            assert!(
+                (kernel.gearings[i] - 1.0).abs() < 1e-10,
+                "CMS cashflow gearing should be 1.0"
+            );
+            assert_ne!(
+                kernel.fwd_index_ids[i], 0,
+                "CMS cashflow should use real index (not dummy)"
+            );
+            assert!(
+                (kernel.spreads[i] - 0.002).abs() < 1e-10,
+                "CMS spread should be 0.002 (20bp)"
+            );
+        }
+
+        // CMS index should be registered
+        assert!(
+            compiler.mapper().cms_index_count() >= 1,
+            "CMS index should be registered"
+        );
+    }
+
+    #[test]
+    fn test_compile_cms_index_registered() {
+        use crate::compiler::CmsIndex;
+        use infra_master::time::Tenor;
+
+        let mapper = IndexMapper::new();
+        let mut compiler = LinearProductsCompiler::new(mapper);
+
+        let trade = Trade::new(
+            "CMS002",
+            vec![create_cms_floating_leg()],
+            infra_master::trade::TradeType::Generic,
+        );
+
+        compiler.compile_with_registration(&trade).unwrap();
+
+        // Should be able to find the 10Y USD CMS index
+        let cms10y = CmsIndex::new(Currency::USD, Tenor::TenYears);
+        assert!(
+            compiler.mapper().get_cms_index_id(cms10y).is_some(),
+            "10Y USD CMS index should be registered"
+        );
+    }
+
+    #[test]
+    fn test_compile_cms_5y_eur() {
+        use crate::compiler::CmsIndex;
+        use infra_master::time::Tenor;
+
+        let mapper = IndexMapper::new();
+        let mut compiler = LinearProductsCompiler::new(mapper);
+
+        // Create a 5Y EUR CMS leg
+        let cashflows = vec![Cashflow::new(
+            CashflowType::Coupon,
+            Date::from_ymd(2025, 6, 30).unwrap(),
+            Date::from_ymd(2025, 1, 1).unwrap(),
+            Date::from_ymd(2025, 6, 30).unwrap(),
+            0.5,
+            10_000_000.0,
+            Payoff::Linear {
+                index: IndexType::SwapRate {
+                    currency: "EUR".to_string(),
+                    tenor: "5Y".to_string(),
+                },
+                spread: 0.0,
+                multiplier: 0.8, // 80% gearing
+            },
+            Currency::EUR,
+        )];
+
+        let leg = Leg::new(
+            cashflows,
+            Direction::Receiver,
+            LegType::Floating,
+            Currency::EUR,
+        );
+
+        let trade =
+            Trade::new("CMS_EUR001", vec![leg], infra_master::trade::TradeType::Generic);
+
+        let kernel = compiler.compile_with_registration(&trade).unwrap();
+
+        // Verify gearing is preserved
+        assert!(
+            (kernel.gearings[0] - 0.8).abs() < 1e-10,
+            "CMS gearing should be 0.8"
+        );
+
+        // 5Y EUR CMS index should be registered
+        let cms5y_eur = CmsIndex::new(Currency::EUR, Tenor::FiveYears);
+        assert!(
+            compiler.mapper().get_cms_index_id(cms5y_eur).is_some(),
+            "5Y EUR CMS index should be registered"
+        );
+    }
+
+    #[test]
+    fn test_cms_and_ibor_share_id_space() {
+        use crate::compiler::CmsIndex;
+        use infra_master::time::Tenor;
+
+        let mapper = IndexMapper::new();
+        let mut compiler = LinearProductsCompiler::new(mapper);
+
+        // First compile a regular IBOR leg
+        let ibor_trade = Trade::new(
+            "IBOR001",
+            vec![create_floating_leg()],
+            infra_master::trade::TradeType::Generic,
+        );
+        compiler.compile_with_registration(&ibor_trade).unwrap();
+
+        let sofr_id = compiler
+            .mapper()
+            .get_forward_index_id(RateIndex::Sofr)
+            .expect("SOFR should be registered");
+
+        // Then compile a CMS leg
+        let cms_trade = Trade::new(
+            "CMS003",
+            vec![create_cms_floating_leg()],
+            infra_master::trade::TradeType::Generic,
+        );
+        compiler.compile_with_registration(&cms_trade).unwrap();
+
+        let cms10y = CmsIndex::new(Currency::USD, Tenor::TenYears);
+        let cms_id = compiler
+            .mapper()
+            .get_cms_index_id(cms10y)
+            .expect("CMS should be registered");
+
+        // CMS and IBOR should use different IDs
+        assert_ne!(sofr_id, cms_id, "CMS and IBOR should have different IDs");
+        // CMS ID should be greater (registered after IBOR)
+        assert!(cms_id > sofr_id, "CMS ID should be > IBOR ID");
     }
 }

@@ -11,7 +11,7 @@
 #![allow(missing_docs)]
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-use pricer_core::ir::PricingKernel;
+use pricer_core::kernel::PricingKernel;
 use pricer_pricing::kernel::{FlatCurveProvider, KernelContext, LinearEngine};
 
 /// Creates a realistic IRS-like pricing kernel.

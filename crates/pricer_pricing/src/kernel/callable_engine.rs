@@ -12,7 +12,7 @@
 //!
 //! ```ignore
 //! use pricer_pricing::kernel::{CallableEngine, CallableContext, KernelContext};
-//! use pricer_core::ir::CallableKernel;
+//! use pricer_core::kernel::CallableKernel;
 //!
 //! let kernel = /* compiled callable kernel */;
 //! let context = KernelContext::new(&curves);
@@ -21,7 +21,7 @@
 //! let npv = CallableEngine::price(&kernel, &context, &paths);
 //! ```
 
-use pricer_core::ir::{CallableBlock, CallableKernel, PricingKernel};
+use pricer_core::kernel::{CallableBlock, CallableKernel, PricingKernel};
 
 use super::{
     days_to_years,
@@ -629,7 +629,7 @@ pub struct ExerciseDecision {
 
 #[cfg(test)]
 mod tests {
-    use pricer_core::ir::{CallableBlock, CallableKernel, ExerciseDef, PricingKernel};
+    use pricer_core::kernel::{CallableBlock, CallableKernel, ExerciseDef, PricingKernel};
 
     use super::*;
 

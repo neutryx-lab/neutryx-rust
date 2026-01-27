@@ -14,7 +14,7 @@
 //!
 //! ```ignore
 //! use pricer_models::compiler::{CallableCompiler, IndexMapper};
-//! use pricer_core::ir::CallableKernel;
+//! use pricer_core::kernel::CallableKernel;
 //!
 //! let mut mapper = IndexMapper::new();
 //! let compiler = CallableCompiler::new(&mut mapper);
@@ -26,7 +26,7 @@
 //! )?;
 //! ```
 
-use pricer_core::ir::{
+use pricer_core::kernel::{
     CallableBlock, CallableKernel, CallableKernelBuilder, CompileError, ExerciseDef, ExerciseStyle,
     PricingKernel, PricingKernelBuilder,
 };

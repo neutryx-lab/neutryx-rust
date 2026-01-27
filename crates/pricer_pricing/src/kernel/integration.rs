@@ -10,7 +10,7 @@ mod tests {
         },
         Currency, Date, RateIndex,
     };
-    use pricer_core::ir::PricingKernelBuilder;
+    use pricer_core::kernel::PricingKernelBuilder;
     use pricer_models::compiler::{IndexMapper, LinearProductsCompiler, TradeCompiler};
 
     use super::super::{context::KernelContext, engine::LinearEngine, provider::FlatCurveProvider};
@@ -376,7 +376,7 @@ mod tests {
         /// difference.
         fn discount_rate_sensitivity(
             &self,
-            kernel: &pricer_core::ir::PricingKernel,
+            kernel: &pricer_core::kernel::PricingKernel,
             base_discount_rate: f64,
             forward_rate: f64,
         ) -> f64 {
@@ -400,7 +400,7 @@ mod tests {
         /// difference.
         fn forward_rate_sensitivity(
             &self,
-            kernel: &pricer_core::ir::PricingKernel,
+            kernel: &pricer_core::kernel::PricingKernel,
             discount_rate: f64,
             base_forward_rate: f64,
         ) -> f64 {
@@ -531,7 +531,7 @@ mod tests {
     #[test]
     fn test_enzyme_ad_fixed_leg_analytical() {
         // Create a pure fixed kernel
-        let kernel = pricer_core::ir::PricingKernel::new(
+        let kernel = pricer_core::kernel::PricingKernel::new(
             vec![365],         // payment 1 year from now
             vec![0],           // fixing date (not used)
             vec![1.0],         // year fraction
@@ -588,7 +588,7 @@ mod tests {
     #[test]
     fn test_enzyme_ad_floating_leg_analytical() {
         // Create a pure floating kernel
-        let kernel = pricer_core::ir::PricingKernel::new(
+        let kernel = pricer_core::kernel::PricingKernel::new(
             vec![365],         // payment 1 year from now
             vec![0],           // fixing date
             vec![1.0],         // year fraction
@@ -669,7 +669,7 @@ mod tests {
         //   because the function is smooth and branchless.
 
         // Create a test to verify the kernel structure is appropriate
-        let kernel = pricer_core::ir::PricingKernel::new(
+        let kernel = pricer_core::kernel::PricingKernel::new(
             vec![365, 730],
             vec![0, 365],
             vec![0.5, 0.5],

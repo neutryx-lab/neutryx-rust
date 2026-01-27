@@ -52,7 +52,7 @@ pub const ALIGNMENT: usize = 64;
 /// # Examples
 ///
 /// ```
-/// use pricer_core::ir::AlignedBuffer;
+/// use pricer_core::kernel::AlignedBuffer;
 ///
 /// // Create a buffer with 1000 f64 elements
 /// let buffer: AlignedBuffer<f64> = AlignedBuffer::with_capacity(1000);
@@ -96,7 +96,7 @@ impl<T: Clone + Default> AlignedBuffer<T> {
     /// # Examples
     ///
     /// ```
-    /// use pricer_core::ir::AlignedBuffer;
+    /// use pricer_core::kernel::AlignedBuffer;
     ///
     /// let buffer: AlignedBuffer<f64> = AlignedBuffer::with_capacity(100);
     /// assert_eq!(buffer.len(), 100);
@@ -152,7 +152,7 @@ impl<T: Clone + Default> AlignedBuffer<T> {
     /// # Examples
     ///
     /// ```
-    /// use pricer_core::ir::AlignedBuffer;
+    /// use pricer_core::kernel::AlignedBuffer;
     ///
     /// let data = vec![1.0, 2.0, 3.0, 4.0];
     /// let buffer: AlignedBuffer<f64> = AlignedBuffer::from_vec(data);
@@ -187,7 +187,7 @@ impl<T: Clone + Default> AlignedBuffer<T> {
     /// # Examples
     ///
     /// ```
-    /// use pricer_core::ir::AlignedBuffer;
+    /// use pricer_core::kernel::AlignedBuffer;
     ///
     /// let data = [1.0, 2.0, 3.0];
     /// let buffer: AlignedBuffer<f64> = AlignedBuffer::from_slice(&data);
@@ -233,7 +233,7 @@ impl<T> AlignedBuffer<T> {
     /// # Examples
     ///
     /// ```
-    /// use pricer_core::ir::AlignedBuffer;
+    /// use pricer_core::kernel::AlignedBuffer;
     ///
     /// let buffer: AlignedBuffer<f64> = AlignedBuffer::with_capacity(100);
     /// assert!(buffer.is_aligned());
