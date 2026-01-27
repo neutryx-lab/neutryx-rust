@@ -72,6 +72,8 @@ serde = ["dep:serde", "dep:serde_json"]
 enzyme-ad = []
 # SIMD-aligned memory buffers for AVX-512 optimisation
 simd-aligned = ["dep:aligned-vec"]
+# VolCube support (requires volcube feature in pricer_models)
+volcube = ["l1l2-integration", "pricer_models/volcube"]
 
 [lints]
 workspace = true

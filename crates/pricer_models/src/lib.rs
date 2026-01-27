@@ -39,7 +39,7 @@
 //!
 //! - [`stochastic`] - Stochastic process models (GBM, Heston, Hull-White, CIR)
 //! - [`analytic`] - Analytical pricing with instrument wrappers
-//! - [`calibration`] - Yield curve bootstrapping and market data calibration
+//! - [`builder`] - Yield curve bootstrapping and market data calibration
 //! - [`compiler`] - Instrument compilation for pricing engines
 //!
 //! ## Analytical Formulas
@@ -58,7 +58,7 @@
 #![deny(rustdoc::private_intra_doc_links)]
 
 pub mod analytic;
-pub mod calibration;
+pub mod builder;
 pub mod compiler;
 mod direction_ext;
 pub mod market;

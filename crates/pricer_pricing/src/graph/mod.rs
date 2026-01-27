@@ -35,7 +35,7 @@ mod error;
 mod extractor;
 mod types;
 
-#[cfg(feature = "l1l2-integration")]
+#[cfg(feature = "volcube")]
 mod volcube_extractor;
 
 pub use error::GraphError;
@@ -47,7 +47,7 @@ pub use types::{
     ComputationGraph, GraphEdge, GraphMetadata, GraphNode, GraphNodeUpdate, NodeGroup, NodeType,
     PortfolioComputationGraph, PortfolioGraphMetadata,
 };
-#[cfg(feature = "l1l2-integration")]
+#[cfg(feature = "volcube")]
 pub use volcube_extractor::VolCubeGraphExtractor;
 
 #[cfg(test)]

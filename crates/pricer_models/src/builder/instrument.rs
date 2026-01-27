@@ -8,7 +8,7 @@
 use num_traits::Float;
 
 use crate::market::curves::{
-    CalibrationInstrument as CalibrationInstrumentEnum, Frequency, YieldCurve,
+    MarketInstrument, Frequency, YieldCurve,
 };
 use crate::market::MarketDataError;
 use pricer_core::math::numeric::from_usize;
@@ -42,10 +42,10 @@ pub trait CalibrationInstrument<T: Float>: Clone {
 }
 
 // =============================================================================
-// Implementation for CalibrationInstrumentEnum
+// Implementation for MarketInstrument
 // =============================================================================
 
-impl<T: Float> CalibrationInstrument<T> for CalibrationInstrumentEnum<T> {
+impl<T: Float> CalibrationInstrument<T> for MarketInstrument<T> {
     fn market_rate(&self) -> T {
         self.rate()
     }
@@ -78,11 +78,11 @@ impl<T: Float> CalibrationInstrument<T> for CalibrationInstrumentEnum<T> {
     }
 
     fn maturity(&self) -> T {
-        CalibrationInstrumentEnum::maturity(self)
+        MarketInstrument::maturity(self)
     }
 
     fn instrument_type(&self) -> &'static str {
-        CalibrationInstrumentEnum::instrument_type(self)
+        MarketInstrument::instrument_type(self)
     }
 }
 
@@ -208,23 +208,23 @@ mod tests {
 
     #[test]
     fn test_calibration_instrument_market_rate() {
-        let ois: CalibrationInstrumentEnum<f64> = CalibrationInstrumentEnum::ois(5.0, 0.03);
+        let ois: MarketInstrument<f64> = MarketInstrument::ois(5.0, 0.03);
         assert_relative_eq!(ois.market_rate(), 0.03, epsilon = 1e-10);
 
-        let irs: CalibrationInstrumentEnum<f64> = CalibrationInstrumentEnum::irs(10.0, 0.035);
+        let irs: MarketInstrument<f64> = MarketInstrument::irs(10.0, 0.035);
         assert_relative_eq!(irs.market_rate(), 0.035, epsilon = 1e-10);
     }
 
     #[test]
     fn test_calibration_instrument_maturity() {
-        let ois: CalibrationInstrumentEnum<f64> = CalibrationInstrumentEnum::ois(5.0, 0.03);
+        let ois: MarketInstrument<f64> = MarketInstrument::ois(5.0, 0.03);
         assert_relative_eq!(
             CalibrationInstrument::maturity(&ois),
             5.0,
             epsilon = 1e-10
         );
 
-        let fra: CalibrationInstrumentEnum<f64> = CalibrationInstrumentEnum::fra(0.5, 1.0, 0.025);
+        let fra: MarketInstrument<f64> = MarketInstrument::fra(0.5, 1.0, 0.025);
         assert_relative_eq!(
             CalibrationInstrument::maturity(&fra),
             1.0,
@@ -234,17 +234,17 @@ mod tests {
 
     #[test]
     fn test_calibration_instrument_type() {
-        let ois: CalibrationInstrumentEnum<f64> = CalibrationInstrumentEnum::ois(5.0, 0.03);
+        let ois: MarketInstrument<f64> = MarketInstrument::ois(5.0, 0.03);
         assert_eq!(CalibrationInstrument::instrument_type(&ois), "OIS");
 
-        let irs: CalibrationInstrumentEnum<f64> = CalibrationInstrumentEnum::irs(10.0, 0.035);
+        let irs: MarketInstrument<f64> = MarketInstrument::irs(10.0, 0.035);
         assert_eq!(CalibrationInstrument::instrument_type(&irs), "IRS");
     }
 
     #[test]
     fn test_theoretical_rate_ois() {
         let curve = create_test_curve();
-        let ois: CalibrationInstrumentEnum<f64> = CalibrationInstrumentEnum::ois(1.0, 0.03);
+        let ois: MarketInstrument<f64> = MarketInstrument::ois(1.0, 0.03);
         let theoretical = ois.theoretical_rate(&curve).unwrap();
 
         assert_relative_eq!(theoretical, 0.0305, epsilon = 1e-3);
@@ -254,7 +254,7 @@ mod tests {
     #[test]
     fn test_theoretical_rate_fra() {
         let curve = create_test_curve();
-        let fra: CalibrationInstrumentEnum<f64> = CalibrationInstrumentEnum::fra(0.5, 1.0, 0.03);
+        let fra: MarketInstrument<f64> = MarketInstrument::fra(0.5, 1.0, 0.03);
         let theoretical = fra.theoretical_rate(&curve).unwrap();
 
         assert_relative_eq!(theoretical, 0.03, epsilon = 5e-3);
@@ -264,11 +264,11 @@ mod tests {
     fn test_pricing_error() {
         let curve = create_test_curve();
 
-        let ois: CalibrationInstrumentEnum<f64> = CalibrationInstrumentEnum::ois(1.0, 0.03);
+        let ois: MarketInstrument<f64> = MarketInstrument::ois(1.0, 0.03);
         let error = ois.pricing_error(&curve).unwrap();
         assert!(error.abs() < 0.01, "expected small error, got {}", error);
 
-        let ois_higher: CalibrationInstrumentEnum<f64> = CalibrationInstrumentEnum::ois(1.0, 0.04);
+        let ois_higher: MarketInstrument<f64> = MarketInstrument::ois(1.0, 0.04);
         let error_higher = ois_higher.pricing_error(&curve).unwrap();
         assert!(error_higher < 0.0, "expected negative error");
     }
@@ -282,7 +282,7 @@ mod tests {
 
     #[test]
     fn test_calibration_instrument_clone() {
-        let ois: CalibrationInstrumentEnum<f64> = CalibrationInstrumentEnum::ois(5.0, 0.03);
+        let ois: MarketInstrument<f64> = MarketInstrument::ois(5.0, 0.03);
         let cloned = ois.clone();
         assert_relative_eq!(ois.market_rate(), cloned.market_rate(), epsilon = 1e-15);
     }

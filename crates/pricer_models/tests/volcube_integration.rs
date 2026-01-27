@@ -6,6 +6,11 @@
 //! - Curve→VolCube calibration dependency
 //! - Quote update→cache invalidation
 //! - AAD Vega calculation accuracy
+//!
+//! NOTE: This test file is feature-gated behind the `volcube` feature
+//! because the volcube module is planned but not yet implemented.
+
+#![cfg(feature = "volcube")]
 
 use chrono::NaiveDate;
 use pricer_models::market::volcube::{

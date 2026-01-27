@@ -30,6 +30,9 @@ parallel = ["dep:rayon"]
 # Global bootstrapping with multi-dimensional Newton solver
 global-bootstrap = ["pricer_core/linalg"]
 
+# VolCube calibration (planned feature, not yet implemented)
+volcube = []
+
 # Advanced volatility model features
 local-vol = []
 stochastic-local-vol = ["local-vol"]

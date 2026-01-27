@@ -383,6 +383,169 @@ pub mod curves {
             }
         }
     }
+
+    // Re-export from parent module for compatibility with curves:: path
+    pub use super::{CurveEnum, CurveName, CurveSet};
+}
+
+// =============================================================================
+// Curve Identification and Collections
+// =============================================================================
+
+/// Named curve identifiers for common rate indices.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum CurveName {
+    /// SOFR (Secured Overnight Financing Rate)
+    Sofr,
+    /// EURIBOR (Euro Interbank Offered Rate)
+    Euribor,
+    /// ESTR (Euro Short-Term Rate)
+    Estr,
+    /// TONAR (Tokyo Overnight Average Rate) / TONA
+    Tonar,
+    /// SONIA (Sterling Overnight Index Average)
+    Sonia,
+    /// Custom curve with a name
+    Custom(&'static str),
+}
+
+/// Enum wrapper for different curve types (static dispatch).
+#[derive(Debug, Clone)]
+pub enum CurveEnum<T: Float> {
+    /// Flat curve with constant rate.
+    Flat(curves::FlatCurve<T>),
+    /// Bootstrapped curve from market instruments.
+    Bootstrapped(curves::BootstrappedCurve<T>),
+}
+
+impl<T: Float> CurveEnum<T> {
+    /// Creates a flat curve with the given rate.
+    pub fn flat(rate: T) -> Self {
+        Self::Flat(curves::FlatCurve::new(rate))
+    }
+
+    /// Creates a bootstrapped curve.
+    pub fn bootstrapped(curve: curves::BootstrappedCurve<T>) -> Self {
+        Self::Bootstrapped(curve)
+    }
+}
+
+impl<T: Float> curves::YieldCurve<T> for CurveEnum<T> {
+    fn discount_factor(&self, t: T) -> Result<T, MarketDataError> {
+        match self {
+            Self::Flat(c) => c.discount_factor(t),
+            Self::Bootstrapped(c) => c.discount_factor(t),
+        }
+    }
+
+    fn zero_rate(&self, t: T) -> Result<T, MarketDataError> {
+        match self {
+            Self::Flat(c) => c.zero_rate(t),
+            Self::Bootstrapped(c) => c.zero_rate(t),
+        }
+    }
+
+    fn forward_rate(&self, t1: T, t2: T) -> Result<T, MarketDataError> {
+        match self {
+            Self::Flat(c) => c.forward_rate(t1, t2),
+            Self::Bootstrapped(c) => c.forward_rate(t1, t2),
+        }
+    }
+}
+
+/// A collection of named yield curves.
+#[derive(Debug, Clone, Default)]
+pub struct CurveSet<T: Float> {
+    curves: std::collections::HashMap<CurveName, CurveEnum<T>>,
+}
+
+impl<T: Float + 'static> CurveSet<T> {
+    /// Creates a new empty curve set.
+    pub fn new() -> Self {
+        Self {
+            curves: std::collections::HashMap::new(),
+        }
+    }
+
+    /// Inserts a curve with the given name.
+    pub fn insert(&mut self, name: CurveName, curve: CurveEnum<T>) {
+        self.curves.insert(name, curve);
+    }
+
+    /// Gets a curve by name.
+    pub fn get(&self, name: &CurveName) -> Option<&CurveEnum<T>> {
+        self.curves.get(name)
+    }
+
+    /// Returns the number of curves.
+    pub fn len(&self) -> usize {
+        self.curves.len()
+    }
+
+    /// Returns true if the set is empty.
+    pub fn is_empty(&self) -> bool {
+        self.curves.is_empty()
+    }
+
+    /// Computes the forward rate for a rate index between two times.
+    ///
+    /// Maps the rate index to a curve name and looks up the forward rate.
+    pub fn forward_rate_for_index(
+        &self,
+        rate_index: infra_master::RateIndex,
+        t1: T,
+        t2: T,
+    ) -> Result<T, MarketDataError> {
+        use curves::YieldCurve;
+
+        let curve_name = match rate_index {
+            infra_master::RateIndex::Sofr => CurveName::Sofr,
+            infra_master::RateIndex::Euribor => CurveName::Euribor,
+            infra_master::RateIndex::Estr => CurveName::Estr,
+            infra_master::RateIndex::Tonar => CurveName::Tonar,
+            infra_master::RateIndex::Sonia => CurveName::Sonia,
+            _ => CurveName::Sofr, // Default fallback
+        };
+
+        let curve = self.curves.get(&curve_name).ok_or(MarketDataError::CurveNotFound {
+            name: format!("{:?}", rate_index),
+        })?;
+
+        curve.forward_rate(t1, t2)
+    }
+}
+
+// =============================================================================
+// Market Provider (Placeholder)
+// =============================================================================
+
+/// Market data provider for pricing operations.
+///
+/// This is a placeholder type that will be fully implemented
+/// when the market data infrastructure is complete.
+#[derive(Debug, Clone, Default)]
+pub struct MarketProvider {
+    curve_set: CurveSet<f64>,
+}
+
+impl MarketProvider {
+    /// Creates a new market provider.
+    pub fn new() -> Self {
+        Self {
+            curve_set: CurveSet::new(),
+        }
+    }
+
+    /// Gets a curve for the given currency.
+    pub fn get_curve(&self, _currency: infra_master::market::Currency) -> Option<&CurveEnum<f64>> {
+        // Placeholder: return first available curve or None
+        self.curve_set.curves.values().next()
+    }
+
+    /// Returns the curve set.
+    pub fn curve_set(&self) -> &CurveSet<f64> {
+        &self.curve_set
+    }
 }
 
 // Re-export commonly used types at module level

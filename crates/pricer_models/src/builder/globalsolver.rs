@@ -23,15 +23,15 @@
 //! ## Example
 //!
 //! ```ignore
-//! use pricer_models::market::calibration::bootstrapping::{
+//! use pricer_models::builder::{
 //!     GlobalBootstrapper, GlobalBootstrapConfig, CalibrationInstrument,
 //! };
 //!
 //! let instruments = vec![
-//!     CalibrationInstrument::ois(1.0, 0.03),
-//!     CalibrationInstrument::ois(2.0, 0.035),
-//!     CalibrationInstrument::ois(5.0, 0.04),
-//!     CalibrationInstrument::ois(10.0, 0.045),
+//!     MarketInstrument::ois(1.0, 0.03),
+//!     MarketInstrument::ois(2.0, 0.035),
+//!     MarketInstrument::ois(5.0, 0.04),
+//!     MarketInstrument::ois(10.0, 0.045),
 //! ];
 //!
 //! let config = GlobalBootstrapConfig::default();
@@ -47,7 +47,7 @@ use pricer_core::math::linalg::{DMatrix, LinearAlgebraError, RealField, lu_solve
 use pricer_core::math::numeric::from_f64;
 use pricer_core::types::SolverError;
 
-use crate::calibration::CalibrationInstrument;
+use super::CalibrationInstrument;
 use crate::market::curves::{BootstrapInterpolation, BootstrappedCurve};
 
 // =============================================================================
@@ -439,15 +439,15 @@ fn vector_norm<T: Float>(v: &[T]) -> T {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::market::curves::CalibrationInstrument;
+    use crate::market::curves::MarketInstrument;
     use approx::assert_relative_eq;
 
-    fn create_test_instruments() -> Vec<CalibrationInstrument<f64>> {
+    fn create_test_instruments() -> Vec<MarketInstrument<f64>> {
         vec![
-            CalibrationInstrument::ois(1.0, 0.03),
-            CalibrationInstrument::ois(2.0, 0.032),
-            CalibrationInstrument::ois(5.0, 0.035),
-            CalibrationInstrument::ois(10.0, 0.04),
+            MarketInstrument::ois(1.0, 0.03),
+            MarketInstrument::ois(2.0, 0.032),
+            MarketInstrument::ois(5.0, 0.035),
+            MarketInstrument::ois(10.0, 0.04),
         ]
     }
 
@@ -531,7 +531,7 @@ mod tests {
 
     #[test]
     fn test_calibrate_empty_instruments_error() {
-        let instruments: Vec<CalibrationInstrument<f64>> = vec![];
+        let instruments: Vec<MarketInstrument<f64>> = vec![];
         let bootstrapper = GlobalBootstrapper::<f64>::with_defaults();
 
         let result = bootstrapper.calibrate(&instruments);
@@ -545,7 +545,7 @@ mod tests {
 
     #[test]
     fn test_calibrate_single_instrument() {
-        let instruments = vec![CalibrationInstrument::ois(5.0, 0.03)];
+        let instruments = vec![MarketInstrument::ois(5.0, 0.03)];
         let bootstrapper = GlobalBootstrapper::<f64>::with_defaults();
 
         let result = bootstrapper.calibrate(&instruments).unwrap();
@@ -562,11 +562,11 @@ mod tests {
     fn test_calibrate_upward_sloping_curve() {
         // Upward sloping rate curve
         let instruments = vec![
-            CalibrationInstrument::ois(1.0, 0.02),
-            CalibrationInstrument::ois(2.0, 0.025),
-            CalibrationInstrument::ois(5.0, 0.03),
-            CalibrationInstrument::ois(10.0, 0.035),
-            CalibrationInstrument::ois(30.0, 0.04),
+            MarketInstrument::ois(1.0, 0.02),
+            MarketInstrument::ois(2.0, 0.025),
+            MarketInstrument::ois(5.0, 0.03),
+            MarketInstrument::ois(10.0, 0.035),
+            MarketInstrument::ois(30.0, 0.04),
         ];
 
         let bootstrapper = GlobalBootstrapper::<f64>::with_defaults();
@@ -590,10 +590,10 @@ mod tests {
     fn test_calibrate_inverted_curve() {
         // Inverted rate curve
         let instruments = vec![
-            CalibrationInstrument::ois(1.0, 0.05),
-            CalibrationInstrument::ois(2.0, 0.045),
-            CalibrationInstrument::ois(5.0, 0.04),
-            CalibrationInstrument::ois(10.0, 0.035),
+            MarketInstrument::ois(1.0, 0.05),
+            MarketInstrument::ois(2.0, 0.045),
+            MarketInstrument::ois(5.0, 0.04),
+            MarketInstrument::ois(10.0, 0.035),
         ];
 
         let bootstrapper = GlobalBootstrapper::<f64>::with_defaults();

@@ -1,21 +1,21 @@
-//! Calibration module for yield curve bootstrapping and market data calibration.
+//! Curve builder module for yield curve bootstrapping and market data calibration.
 
 use pricer_core::types::SolverError;
 use thiserror::Error;
 
 use crate::market::MarketDataError;
 
-mod calibration_instrument;
-mod curve_builder;
+mod bootstrap;
 mod error;
+mod instrument;
 #[cfg(feature = "global-bootstrap")]
-mod global_bootstrapper;
+mod globalsolver;
 
-pub use calibration_instrument::CalibrationInstrument;
-pub use curve_builder::{BootstrapConfig, CurveBootstrapper, InterpolationMethod};
+pub use bootstrap::{BootstrapConfig, CurveBootstrapper, InterpolationMethod};
 pub use error::CalibrationError;
+pub use instrument::CalibrationInstrument;
 #[cfg(feature = "global-bootstrap")]
-pub use global_bootstrapper::{GlobalBootstrapConfig, GlobalBootstrapResult, GlobalBootstrapper};
+pub use globalsolver::{GlobalBootstrapConfig, GlobalBootstrapResult, GlobalBootstrapper};
 
 // =============================================================================
 // Bootstrap Error and Result Types

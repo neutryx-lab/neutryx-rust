@@ -4,7 +4,11 @@
 //! - VolCube volatility lookup throughput
 //! - Cache lookup performance
 //! - Probability density calculation
+//!
+//! NOTE: This benchmark is feature-gated behind the `volcube` feature
+//! because the volcube module is planned but not yet implemented.
 
+#![cfg(feature = "volcube")]
 #![allow(missing_docs)]
 
 use std::sync::Arc;
