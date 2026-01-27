@@ -223,6 +223,9 @@
       "Bash(python3:*)",
       "Bash(where tokei:*)",
       "Read(//c/Users/khosh/Codes/neutryx-rust/**)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\khosh\\Codes\\neutryx-rust\\crates\\pricer_models\\src\\market\\calibration"
     ]
   }
 }
