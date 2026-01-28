@@ -146,14 +146,10 @@ impl MarketEvent {
     }
 
     /// Check if this is a central bank event.
-    pub fn is_central_bank_event(&self) -> bool {
-        self.event_type == EventType::CentralBankMeeting
-    }
+    pub fn is_central_bank_event(&self) -> bool { self.event_type == EventType::CentralBankMeeting }
 
     /// Check if this is an economic release.
-    pub fn is_economic_release(&self) -> bool {
-        self.event_type == EventType::EconomicRelease
-    }
+    pub fn is_economic_release(&self) -> bool { self.event_type == EventType::EconomicRelease }
 
     /// Check if this event has high importance or above.
     pub fn is_high_impact(&self) -> bool {
@@ -203,11 +199,7 @@ mod tests {
         .with_region("United States")
         .with_time("08:30")
         .with_timezone("America/New_York")
-        .with_economic_data(
-            Some("200K".to_string()),
-            Some("180K".to_string()),
-            None,
-        );
+        .with_economic_data(Some("200K".to_string()), Some("180K".to_string()), None);
 
         assert_eq!(event.currency, Some("USD".to_string()));
         assert!(event.is_economic_release());

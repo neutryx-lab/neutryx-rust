@@ -21,9 +21,9 @@
 use super::{
     // Common
     AsianOption,
-    BasketOption,
     // Rates
     BasisSwap,
+    BasketOption,
     CapFloor,
     // Credit
     Cds,
@@ -45,13 +45,13 @@ use super::{
     EquityVanillaOption,
     Fra,
     Frn,
+    Futures,
     // FX
     FxBarrierOption,
     FxForward,
     FxSpot,
     FxSwap,
     FxVanillaOption,
-    Futures,
     InflationSwap,
     InstrumentDefinition,
     InstrumentError,
@@ -276,7 +276,8 @@ impl InstrumentExpander for Fra {
         let year_fraction = self.year_fraction();
 
         // FRA has a single settlement cashflow at the fixing date
-        // The payoff is (floating - strike) * notional * year_fraction / (1 + floating * yf)
+        // The payoff is (floating - strike) * notional * year_fraction / (1 + floating
+        // * yf)
         let settlement_cf = Cashflow::new(
             CashflowType::Settlement,
             self.fixing_date,
@@ -466,12 +467,12 @@ impl InstrumentExpander for BasisSwap {
         }
 
         // Determine directions: Payer pays leg1, receives leg2
-        let (leg1_direction, leg2_direction) =
-            if self.payer_receiver == super::PayerReceiver::Payer {
-                (Direction::Payer, Direction::Receiver)
-            } else {
-                (Direction::Receiver, Direction::Payer)
-            };
+        let (leg1_direction, leg2_direction) = if self.payer_receiver == super::PayerReceiver::Payer
+        {
+            (Direction::Payer, Direction::Receiver)
+        } else {
+            (Direction::Receiver, Direction::Payer)
+        };
 
         let leg1 = Leg::new(
             leg1_cashflows,

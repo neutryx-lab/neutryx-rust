@@ -14,10 +14,10 @@
 #![allow(missing_docs)]
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use infra_master::trade::{
-    ExerciseStyle, InstrumentParams, PayoffType, PricingInstrument, VanillaOption,
+use infra_master::{
+    trade::{ExerciseStyle, InstrumentParams, PayoffType, PricingInstrument, VanillaOption},
+    Currency,
 };
-use infra_master::Currency;
 use nalgebra::{DMatrix, DVector};
 use pricer_risk::{
     compute_cva, compute_dva, generate_flat_discount_factors,
@@ -58,13 +58,7 @@ fn bench_cva_calculation(c: &mut Criterion) {
         let time_grid = generate_time_grid(n_times, 5.0);
 
         group.bench_function(format!("cva_{}", n_times), |b| {
-            b.iter(|| {
-                compute_cva(
-                    black_box(&ee),
-                    black_box(&time_grid),
-                    black_box(&credit),
-                )
-            });
+            b.iter(|| compute_cva(black_box(&ee), black_box(&time_grid), black_box(&credit)));
         });
     }
 
@@ -170,7 +164,8 @@ fn bench_discount_factors(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmark ImplicitSolver curve sensitivity computation (Implicit Function Theorem).
+/// Benchmark ImplicitSolver curve sensitivity computation (Implicit Function
+/// Theorem).
 ///
 /// Requirements Coverage:
 /// - Requirement 10: AAD performance (5x speedup vs bump-and-revalue)
@@ -195,8 +190,11 @@ fn bench_implicit_solver(c: &mut Criterion) {
             |b, (j_inv, adjoint)| {
                 b.iter(|| {
                     black_box(
-                        ImplicitSolver::compute_curve_sensitivities(black_box(j_inv), black_box(adjoint))
-                            .unwrap(),
+                        ImplicitSolver::compute_curve_sensitivities(
+                            black_box(j_inv),
+                            black_box(adjoint),
+                        )
+                        .unwrap(),
                     )
                 });
             },

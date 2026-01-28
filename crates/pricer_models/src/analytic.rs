@@ -1,7 +1,8 @@
 //! Analytical pricing utilities with instrument integration.
 //!
 //! This module provides:
-//! - Re-exports of pure mathematical formulas from `pricer_core::math::formulas`
+//! - Re-exports of pure mathematical formulas from
+//!   `pricer_core::math::formulas`
 //! - Error types with `PricingError` conversion
 //! - Convenience methods for pricing instruments
 //!
@@ -18,26 +19,30 @@
 //! `VanillaOption` and other instrument types.
 
 use num_traits::Float;
-use thiserror::Error;
-
-use pricer_core::types::PricingError;
-
-use crate::instruments::{FxOptionType, PayoffType, VanillaOption};
-
 // Re-export pure math formulas from pricer_core
 pub use pricer_core::math::formulas::{
-    // Black-Scholes
-    BlackScholes,
+    // Garman-Kohlhagen
+    fx_call_price,
+    fx_put_price,
+    // SABR
+    sabr_atm_vol,
+    sabr_implied_vol,
+    sabr_implied_vol_with_floor,
     // Bachelier
     Bachelier,
-    // Garman-Kohlhagen
-    fx_call_price, fx_put_price, GarmanKohlhagen, GarmanKohlhagenParams,
-    // SABR
-    sabr_atm_vol, sabr_implied_vol, sabr_implied_vol_with_floor,
-    SabrImpliedVolError, SabrImpliedVolParams,
+    // Black-Scholes
+    BlackScholes,
     // Error
     FormulaError,
+    GarmanKohlhagen,
+    GarmanKohlhagenParams,
+    SabrImpliedVolError,
+    SabrImpliedVolParams,
 };
+use pricer_core::types::PricingError;
+use thiserror::Error;
+
+use crate::instruments::{FxOptionType, PayoffType, VanillaOption};
 
 /// Analytical pricing errors with instrument context.
 ///
@@ -46,7 +51,8 @@ pub use pricer_core::math::formulas::{
 ///
 /// # Variants
 /// - `FormulaError`: Wrapped error from pure formula calculation
-/// - `UnsupportedExerciseStyle`: Exercise style not supported by analytical model
+/// - `UnsupportedExerciseStyle`: Exercise style not supported by analytical
+///   model
 ///
 /// # Examples
 /// ```
@@ -78,9 +84,7 @@ impl From<AnalyticalError> for PricingError {
                 FormulaError::InvalidVolatility { .. } | FormulaError::InvalidSpot { .. } => {
                     PricingError::InvalidInput(e.to_string())
                 }
-                FormulaError::InvalidExpiry { .. } => {
-                    PricingError::InvalidInput(e.to_string())
-                }
+                FormulaError::InvalidExpiry { .. } => PricingError::InvalidInput(e.to_string()),
                 FormulaError::NumericalInstability { .. } => {
                     PricingError::NumericalInstability(e.to_string())
                 }

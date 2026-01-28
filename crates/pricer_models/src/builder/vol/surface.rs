@@ -26,9 +26,9 @@
 //! ```
 
 use std::collections::BTreeMap;
-use num_traits::Float;
 
 use infra_master::trade::instrument_def::FxVolConvention;
+use num_traits::Float;
 use pricer_core::math::formulas::fx_delta::delta_to_strike;
 
 use super::{
@@ -73,9 +73,7 @@ pub struct FxVolBuilder<T: Float> {
 }
 
 impl<T: Float> Default for FxVolBuilder<T> {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl<T: Float> FxVolBuilder<T> {
@@ -152,12 +150,17 @@ impl<T: Float> FxVolBuilder<T> {
         &mut self,
         slice: DeltaVolSlice<T>,
     ) -> Result<&mut Self, CalibrationError> {
-        let fx_curve = self.fx_curve.as_ref().ok_or_else(|| CalibrationError::MissingInput {
-            field: "fx_curve".to_string(),
-        })?;
-        let convention = self.convention.ok_or_else(|| CalibrationError::MissingInput {
-            field: "convention".to_string(),
-        })?;
+        let fx_curve = self
+            .fx_curve
+            .as_ref()
+            .ok_or_else(|| CalibrationError::MissingInput {
+                field: "fx_curve".to_string(),
+            })?;
+        let convention = self
+            .convention
+            .ok_or_else(|| CalibrationError::MissingInput {
+                field: "convention".to_string(),
+            })?;
 
         let spot = fx_curve.spot();
         let expiry = slice.expiry;
@@ -183,7 +186,8 @@ impl<T: Float> FxVolBuilder<T> {
         let key = OrderedFloat(expiry);
 
         for dv in delta_vols {
-            // Convert delta (as decimal) to signed delta (positive for call, negative for put)
+            // Convert delta (as decimal) to signed delta (positive for call, negative for
+            // put)
             let signed_delta = if dv.is_call { dv.delta } else { -dv.delta };
 
             // Convert delta to strike
@@ -200,10 +204,12 @@ impl<T: Float> FxVolBuilder<T> {
                 message: format!("delta_to_strike failed: {}", e),
             })?;
 
-            self.slices
-                .entry(key)
-                .or_default()
-                .push(VolQuote::new(strike, dv.volatility, forward, expiry));
+            self.slices.entry(key).or_default().push(VolQuote::new(
+                strike,
+                dv.volatility,
+                forward,
+                expiry,
+            ));
         }
 
         Ok(self)
@@ -232,7 +238,11 @@ impl<T: Float> FxVolBuilder<T> {
         // Sort expiries
         expiries.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
-        Ok(FxVolResult { expiries, params, diagnostics })
+        Ok(FxVolResult {
+            expiries,
+            params,
+            diagnostics,
+        })
     }
 }
 
@@ -258,14 +268,10 @@ impl<T: Float> FxVolResult<T> {
     }
 
     /// Returns the number of calibrated slices.
-    pub fn num_slices(&self) -> usize {
-        self.params.len()
-    }
+    pub fn num_slices(&self) -> usize { self.params.len() }
 
     /// Gets all expiries.
-    pub fn expiries(&self) -> &[T] {
-        &self.expiries
-    }
+    pub fn expiries(&self) -> &[T] { &self.expiries }
 
     /// Gets diagnostics for a specific expiry.
     pub fn get_diagnostics(&self, expiry: T) -> Option<&SliceCalibrationDiagnostics> {
@@ -273,14 +279,10 @@ impl<T: Float> FxVolResult<T> {
     }
 
     /// Returns true if all slices converged.
-    pub fn all_converged(&self) -> bool {
-        self.diagnostics.values().all(|d| d.converged)
-    }
+    pub fn all_converged(&self) -> bool { self.diagnostics.values().all(|d| d.converged) }
 
     /// Returns true if all slices have acceptable fit quality.
-    pub fn all_acceptable(&self) -> bool {
-        self.diagnostics.values().all(|d| d.is_acceptable())
-    }
+    pub fn all_acceptable(&self) -> bool { self.diagnostics.values().all(|d| d.is_acceptable()) }
 
     /// Returns any warnings from calibration across all slices.
     pub fn warnings(&self) -> Vec<(T, &str)> {
@@ -394,8 +396,7 @@ mod tests {
 
     #[test]
     fn test_fxvol_builder_with_fx_curve_and_convention() {
-        use infra_master::Currency;
-        use infra_master::trade::instrument_def::CurrencyPair;
+        use infra_master::{trade::instrument_def::CurrencyPair, Currency};
 
         let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
         let fx_curve = FxCurveEnum::irp_flat(1.10, 0.03, 0.01, pair);
@@ -423,8 +424,7 @@ mod tests {
 
     #[test]
     fn test_fxvol_builder_add_delta_vol_slice_success() {
-        use infra_master::Currency;
-        use infra_master::trade::instrument_def::CurrencyPair;
+        use infra_master::{trade::instrument_def::CurrencyPair, Currency};
 
         let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
         let fx_curve = FxCurveEnum::irp_flat(1.10, 0.03, 0.01, pair);
@@ -436,11 +436,11 @@ mod tests {
 
         // Add a delta vol slice with ATM, 25D RR, 25D BF
         let slice: DeltaVolSlice<f64> = DeltaVolSlice::new_with_25d(
-            0.10,   // atm
-            0.01,   // rr_25d
-            0.005,  // bf_25d
-            0.25,   // expiry
-            1.10,   // forward
+            0.10,  // atm
+            0.01,  // rr_25d
+            0.005, // bf_25d
+            0.25,  // expiry
+            1.10,  // forward
         );
 
         let result = builder.add_delta_vol_slice(slice);
@@ -453,8 +453,7 @@ mod tests {
 
     #[test]
     fn test_fxvol_builder_full_pipeline_with_delta_slices() {
-        use infra_master::Currency;
-        use infra_master::trade::instrument_def::CurrencyPair;
+        use infra_master::{trade::instrument_def::CurrencyPair, Currency};
 
         let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
         let fx_curve = FxCurveEnum::irp_flat(1.10, 0.03, 0.01, pair);
@@ -466,11 +465,11 @@ mod tests {
 
         // Add delta vol slice
         let slice: DeltaVolSlice<f64> = DeltaVolSlice::new_with_25d(
-            0.10,   // atm (10%)
-            0.01,   // rr_25d (1%)
-            0.005,  // bf_25d (0.5%)
-            0.25,   // expiry (3 months)
-            1.10,   // forward
+            0.10,  // atm (10%)
+            0.01,  // rr_25d (1%)
+            0.005, // bf_25d (0.5%)
+            0.25,  // expiry (3 months)
+            1.10,  // forward
         );
 
         builder.add_delta_vol_slice(slice).unwrap();

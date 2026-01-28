@@ -40,39 +40,25 @@ impl CentralBank {
     }
 
     /// Federal Reserve (United States).
-    pub fn fed() -> Self {
-        Self::new("FED", "Federal Reserve", "USD", "United States")
-    }
+    pub fn fed() -> Self { Self::new("FED", "Federal Reserve", "USD", "United States") }
 
     /// European Central Bank.
-    pub fn ecb() -> Self {
-        Self::new("ECB", "European Central Bank", "EUR", "Eurozone")
-    }
+    pub fn ecb() -> Self { Self::new("ECB", "European Central Bank", "EUR", "Eurozone") }
 
     /// Bank of Japan.
-    pub fn boj() -> Self {
-        Self::new("BOJ", "Bank of Japan", "JPY", "Japan")
-    }
+    pub fn boj() -> Self { Self::new("BOJ", "Bank of Japan", "JPY", "Japan") }
 
     /// Bank of England.
-    pub fn boe() -> Self {
-        Self::new("BOE", "Bank of England", "GBP", "United Kingdom")
-    }
+    pub fn boe() -> Self { Self::new("BOE", "Bank of England", "GBP", "United Kingdom") }
 
     /// Swiss National Bank.
-    pub fn snb() -> Self {
-        Self::new("SNB", "Swiss National Bank", "CHF", "Switzerland")
-    }
+    pub fn snb() -> Self { Self::new("SNB", "Swiss National Bank", "CHF", "Switzerland") }
 
     /// Reserve Bank of Australia.
-    pub fn rba() -> Self {
-        Self::new("RBA", "Reserve Bank of Australia", "AUD", "Australia")
-    }
+    pub fn rba() -> Self { Self::new("RBA", "Reserve Bank of Australia", "AUD", "Australia") }
 
     /// Bank of Canada.
-    pub fn boc() -> Self {
-        Self::new("BOC", "Bank of Canada", "CAD", "Canada")
-    }
+    pub fn boc() -> Self { Self::new("BOC", "Bank of Canada", "CAD", "Canada") }
 }
 
 impl std::fmt::Display for CentralBank {

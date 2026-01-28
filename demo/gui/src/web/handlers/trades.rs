@@ -27,10 +27,10 @@ use infra_master::{
     trade::{
         convention::ConventionSet,
         instrument_def::{
-            BasisSwap, CrossCurrencyBasisSwap, CurrencyPair, Deposit, EquityForward,
-            EquityUnderlying, EquityVanillaOption, ExerciseStyle, Fra, FxForward, FxVanillaOption,
-            Futures, InstrumentExpander, InterestRateSwap, Ois, PayerReceiver, XccyBasisConvention,
-            XccyLeg, BasisSpread,
+            BasisSpread, BasisSwap, CrossCurrencyBasisSwap, CurrencyPair, Deposit, EquityForward,
+            EquityUnderlying, EquityVanillaOption, ExerciseStyle, Fra, Futures, FxForward,
+            FxVanillaOption, InstrumentExpander, InterestRateSwap, Ois, PayerReceiver,
+            XccyBasisConvention, XccyLeg,
         },
         AssetClass, OptionType,
     },
@@ -651,7 +651,9 @@ fn expand_deposit(request: &TradeExpandRequest) -> Result<TradeExpandResponse, T
 
     let trade = deposit
         .expand_to_trade(trade_id_str.clone(), valuation_date, &conventions)
-        .map_err(|e| TradeExpandError::schedule_error(&format!("Deposit expansion error: {:?}", e)))?;
+        .map_err(|e| {
+            TradeExpandError::schedule_error(&format!("Deposit expansion error: {:?}", e))
+        })?;
 
     Ok(convert_trade_to_dto(trade, &trade_id_str, "Deposit"))
 }
@@ -729,7 +731,9 @@ fn expand_futures(request: &TradeExpandRequest) -> Result<TradeExpandResponse, T
 
     let trade = futures
         .expand_to_trade(trade_id_str.clone(), valuation_date, &conventions)
-        .map_err(|e| TradeExpandError::schedule_error(&format!("Futures expansion error: {:?}", e)))?;
+        .map_err(|e| {
+            TradeExpandError::schedule_error(&format!("Futures expansion error: {:?}", e))
+        })?;
 
     Ok(convert_trade_to_dto(trade, &trade_id_str, "Futures"))
 }
@@ -1028,7 +1032,9 @@ fn expand_basis_swap(
 
     let trade = basis_swap
         .expand_to_trade(trade_id_str.clone(), valuation_date, &conventions)
-        .map_err(|e| TradeExpandError::schedule_error(&format!("BasisSwap expansion error: {:?}", e)))?;
+        .map_err(|e| {
+            TradeExpandError::schedule_error(&format!("BasisSwap expansion error: {:?}", e))
+        })?;
 
     Ok(convert_trade_to_dto(trade, &trade_id_str, "BasisSwap"))
 }
@@ -1112,7 +1118,9 @@ fn expand_fx_forward(
 
     let trade = fx_forward
         .expand_to_trade(trade_id_str.clone(), valuation_date, &conventions)
-        .map_err(|e| TradeExpandError::schedule_error(&format!("FxForward expansion error: {:?}", e)))?;
+        .map_err(|e| {
+            TradeExpandError::schedule_error(&format!("FxForward expansion error: {:?}", e))
+        })?;
 
     Ok(convert_trade_to_dto(trade, &trade_id_str, "FxForward"))
 }
@@ -1157,9 +1165,15 @@ fn expand_fx_option(request: &TradeExpandRequest) -> Result<TradeExpandResponse,
 
     let trade = fx_option
         .expand_to_trade(trade_id_str.clone(), valuation_date, &conventions)
-        .map_err(|e| TradeExpandError::schedule_error(&format!("FxOption expansion error: {:?}", e)))?;
+        .map_err(|e| {
+            TradeExpandError::schedule_error(&format!("FxOption expansion error: {:?}", e))
+        })?;
 
-    Ok(convert_trade_to_dto(trade, &trade_id_str, &format!("FxOption({})", option_type_str)))
+    Ok(convert_trade_to_dto(
+        trade,
+        &trade_id_str,
+        &format!("FxOption({})", option_type_str),
+    ))
 }
 
 /// Expands a Cross-Currency Swap instrument using infra_master.
@@ -1178,7 +1192,8 @@ fn expand_cross_currency_swap(
 
     let start_date = parse_date(&params.expiry)?;
     // Default 5Y maturity
-    let maturity = Tenor::FiveYears.add_to_date(start_date, infra_master::time::EndOfMonthRule::Adjust);
+    let maturity =
+        Tenor::FiveYears.add_to_date(start_date, infra_master::time::EndOfMonthRule::Adjust);
     let domestic_ccy = parse_currency(&params.base_currency)?;
     let foreign_ccy = parse_currency(&params.quote_currency)?;
     let domestic_index = currency_to_rate_index(&params.base_currency);
@@ -1204,7 +1219,11 @@ fn expand_cross_currency_swap(
         .expand_to_trade(trade_id_str.clone(), valuation_date, &conventions)
         .map_err(|e| TradeExpandError::schedule_error(&format!("XCCY expansion error: {:?}", e)))?;
 
-    Ok(convert_trade_to_dto(trade, &trade_id_str, "CrossCurrencySwap"))
+    Ok(convert_trade_to_dto(
+        trade,
+        &trade_id_str,
+        "CrossCurrencySwap",
+    ))
 }
 
 // =============================================================================
@@ -1251,12 +1270,20 @@ fn expand_equity_vanilla_option(
 
     let trade = eq_option
         .expand_to_trade(trade_id_str.clone(), valuation_date, &conventions)
-        .map_err(|e| TradeExpandError::schedule_error(&format!("EquityVanillaOption expansion error: {:?}", e)))?;
+        .map_err(|e| {
+            TradeExpandError::schedule_error(&format!(
+                "EquityVanillaOption expansion error: {:?}",
+                e
+            ))
+        })?;
 
     Ok(convert_trade_to_dto(
         trade,
         &trade_id_str,
-        &format!("EquityVanillaOption({} on {})", option_type_str, params.underlying),
+        &format!(
+            "EquityVanillaOption({} on {})",
+            option_type_str, params.underlying
+        ),
     ))
 }
 
@@ -1293,7 +1320,9 @@ fn expand_equity_forward(
 
     let trade = eq_forward
         .expand_to_trade(trade_id_str.clone(), valuation_date, &conventions)
-        .map_err(|e| TradeExpandError::schedule_error(&format!("EquityForward expansion error: {:?}", e)))?;
+        .map_err(|e| {
+            TradeExpandError::schedule_error(&format!("EquityForward expansion error: {:?}", e))
+        })?;
 
     Ok(convert_trade_to_dto(
         trade,

@@ -139,16 +139,6 @@ pub use greeks::ad::{gradient, gradient_with_step, ADMode, Activity};
 pub use greeks::{
     GreeksConfig, GreeksConfigBuilder, GreeksConfigError, GreeksError, GreeksMode, GreeksResult,
 };
-pub use portfolio::{
-    CollateralAgreement, Counterparty, CounterpartyId, CreditParams, CreditRating,
-    ExposureCalculator, NettingSet, NettingSetId, Portfolio, PortfolioBuilder, PortfolioError,
-    Trade, TradeBuilder, TradeId,
-};
-pub use scenarios::{
-    AggregationMethod, BumpScenario, CurveShiftError, CurveShiftSpec, CurveShiftType, CurveShifter,
-    GreeksAggregator, GreeksResultByFactor, PortfolioGreeks, PresetScenario, PresetScenarioType,
-    RiskFactorId, RiskFactorShift, Scenario, ScenarioEngine, ScenarioPnL, ScenarioResult,
-};
 // TODO: Re-enable when rates instruments are restored
 // pub use scenarios::{
 //     BucketDv01Calculator, BucketDv01Config, BucketDv01Entry, BucketDv01Error,
@@ -159,5 +149,16 @@ pub use scenarios::{
 pub use portfolio::xva::{
     compute_cva, compute_cva_with_survival, compute_dva, compute_dva_with_survival, compute_fba,
     compute_fca, compute_fva, generate_flat_discount_factors, CounterpartyXva, ExposureSoA,
-    FundingParams, NettingSetXva, OwnCreditParams, PortfolioXva, XvaCalculator, XvaConfig, XvaError,
+    FundingParams, NettingSetXva, OwnCreditParams, PortfolioXva, XvaCalculator, XvaConfig,
+    XvaError,
+};
+pub use portfolio::{
+    CollateralAgreement, Counterparty, CounterpartyId, CreditParams, CreditRating,
+    ExposureCalculator, NettingSet, NettingSetId, Portfolio, PortfolioBuilder, PortfolioError,
+    Trade, TradeBuilder, TradeId,
+};
+pub use scenarios::{
+    AggregationMethod, BumpScenario, CurveShiftError, CurveShiftSpec, CurveShiftType, CurveShifter,
+    GreeksAggregator, GreeksResultByFactor, PortfolioGreeks, PresetScenario, PresetScenarioType,
+    RiskFactorId, RiskFactorShift, Scenario, ScenarioEngine, ScenarioPnL, ScenarioResult,
 };

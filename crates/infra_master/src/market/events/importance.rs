@@ -56,9 +56,7 @@ impl EventImportance {
 }
 
 impl Default for EventImportance {
-    fn default() -> Self {
-        Self::Medium
-    }
+    fn default() -> Self { Self::Medium }
 }
 
 impl std::fmt::Display for EventImportance {

@@ -17,7 +17,10 @@
 use num_traits::Float;
 
 use super::error::FormulaError;
-use crate::math::{distributions::{norm_cdf, norm_pdf}, numeric::from_f64};
+use crate::math::{
+    distributions::{norm_cdf, norm_pdf},
+    numeric::from_f64,
+};
 
 /// Bachelier (normal) model for European option pricing.
 ///

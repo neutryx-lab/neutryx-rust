@@ -1,13 +1,15 @@
 //! Sequential curve bootstrapping implementation.
 //!
-//! This module provides a sequential (pillar-by-pillar) approach to curve calibration,
-//! where each discount factor is solved iteratively using the previous pillars.
+//! This module provides a sequential (pillar-by-pillar) approach to curve
+//! calibration, where each discount factor is solved iteratively using the
+//! previous pillars.
 //!
 //! ## Algorithm
 //!
 //! For each instrument in maturity order:
 //! 1. Fix all previous discount factors
-//! 2. Use Newton-Raphson to find the discount factor that prices this instrument correctly
+//! 2. Use Newton-Raphson to find the discount factor that prices this
+//!    instrument correctly
 //! 3. Build an intermediate curve with all solved discount factors
 //! 4. Proceed to the next instrument
 //!
@@ -22,8 +24,10 @@
 
 use pricer_core::math::solvers::{NewtonRaphsonSolver, SolverConfig};
 
-use crate::builder::{BootstrapError, BootstrapResult, CalibrationInstrument};
-use crate::market::curves::{BootstrapInterpolation, BootstrappedCurve};
+use crate::{
+    builder::{BootstrapError, BootstrapResult, CalibrationInstrument},
+    market::curves::{BootstrapInterpolation, BootstrappedCurve},
+};
 
 // =============================================================================
 // Configuration
@@ -137,14 +141,10 @@ impl CurveBootstrapper {
     }
 
     /// Create a new curve bootstrapper with custom configuration.
-    pub fn with_config(config: BootstrapConfig) -> Self {
-        Self { config }
-    }
+    pub fn with_config(config: BootstrapConfig) -> Self { Self { config } }
 
     /// Returns the configuration.
-    pub fn config(&self) -> &BootstrapConfig {
-        &self.config
-    }
+    pub fn config(&self) -> &BootstrapConfig { &self.config }
 
     /// Bootstrap a curve from calibration instruments.
     ///
@@ -165,7 +165,8 @@ impl CurveBootstrapper {
     /// # Errors
     ///
     /// - `BootstrapError::InsufficientData` if no instruments provided
-    /// - `BootstrapError::ConvergenceFailure` if Newton-Raphson fails to converge
+    /// - `BootstrapError::ConvergenceFailure` if Newton-Raphson fails to
+    ///   converge
     pub fn bootstrap_instruments<I>(
         &self,
         instruments: &[I],
@@ -340,9 +341,7 @@ impl CurveBootstrapper {
 }
 
 impl Default for CurveBootstrapper {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 // =============================================================================
@@ -351,9 +350,10 @@ impl Default for CurveBootstrapper {
 
 #[cfg(test)]
 mod tests {
+    use approx::assert_relative_eq;
+
     use super::*;
     use crate::market::curves::{MarketInstrument, YieldCurve};
-    use approx::assert_relative_eq;
 
     #[test]
     fn test_simple_bootstrap() {
@@ -525,11 +525,7 @@ mod tests {
 
         let bootstrapper = CurveBootstrapper::new();
         let result = bootstrapper.bootstrap_instruments(&instruments);
-        assert!(
-            result.is_ok(),
-            "Mixed bootstrap failed: {:?}",
-            result.err()
-        );
+        assert!(result.is_ok(), "Mixed bootstrap failed: {:?}", result.err());
 
         let result = result.unwrap();
         assert_eq!(result.pillars.len(), 3);

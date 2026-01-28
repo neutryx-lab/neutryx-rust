@@ -2,8 +2,10 @@
 //!
 //! This module provides yield curve calibration algorithms:
 //!
-//! - **Sequential bootstrapping** ([`bootstrap`]): Solve one pillar at a time
-//! - **Global calibration** ([`global`]): Solve all pillars simultaneously
+//! - **Sequential bootstrapping** ([`CurveBootstrapper`]): Solve one pillar at
+//!   a time
+//! - **Global calibration** (`GlobalBootstrapper`): Solve all pillars
+//!   simultaneously (feature-gated)
 //!
 //! ## Choosing a Method
 //!
@@ -24,7 +26,6 @@ mod global;
 // =============================================================================
 
 pub use bootstrap::{BootstrapConfig, CurveBootstrapper, InterpolationMethod};
-
 #[cfg(feature = "global-bootstrap")]
 pub use global::{GlobalBootstrapConfig, GlobalBootstrapResult, GlobalBootstrapper};
 

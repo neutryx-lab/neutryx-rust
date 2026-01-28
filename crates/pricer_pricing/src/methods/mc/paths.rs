@@ -418,9 +418,9 @@ pub fn terminal_prices_generic(workspace: &WorkspaceEnum) -> Vec<f64> {
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
+    use pricer_core::math::rng::PricerRng;
 
     use super::*;
-    use pricer_core::math::rng::PricerRng;
 
     fn setup_workspace_with_randoms(n_paths: usize, n_steps: usize, seed: u64) -> PathWorkspace {
         let mut workspace = PathWorkspace::new(n_paths, n_steps);

@@ -13,8 +13,10 @@
 use std::{sync::Arc, time::Instant};
 
 use axum::{extract::State, http::StatusCode, Json};
-use pricer_models::builder::{BootstrapConfig, BootstrapError, CurveBootstrapper};
-use pricer_models::market::curves::MarketInstrument;
+use pricer_models::{
+    builder::{BootstrapConfig, BootstrapError, CurveBootstrapper},
+    market::curves::MarketInstrument,
+};
 use serde::Serialize;
 use uuid::Uuid;
 

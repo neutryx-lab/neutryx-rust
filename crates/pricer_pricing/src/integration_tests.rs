@@ -55,7 +55,9 @@ mod tests {
 
 #[cfg(all(test, feature = "l1l2-integration"))]
 mod pricer_models_tests {
-    use pricer_models::stochastic::{SingleState, StochasticModel, StochasticModelEnum, StochasticState};
+    use pricer_models::stochastic::{
+        SingleState, StochasticModel, StochasticModelEnum, StochasticState,
+    };
 
     /// Test that StochasticModel trait from pricer_models is accessible.
     #[test]

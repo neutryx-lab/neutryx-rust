@@ -137,10 +137,9 @@ pub use config::SolverConfig;
 #[cfg(feature = "external-numerics")]
 pub use external::solve_lm_external;
 pub use levenberg_marquardt::{LMConfig, LMResult, LevenbergMarquardtSolver};
-pub use newton_raphson::NewtonRaphsonSolver;
-
 // Multi-dimensional solver exports (requires linalg feature)
 #[cfg(feature = "linalg")]
 pub use multidim_newton::{
     MultidimNewtonConfig, MultidimSolverResult, MultidimensionalNewtonSolver, SystemOfEquations,
 };
+pub use newton_raphson::NewtonRaphsonSolver;

@@ -53,9 +53,13 @@
 use nalgebra::{DMatrix, DVector, RealField};
 use num_traits::Float;
 
-use crate::math::linalg::{inverse, lu_solve, LinearAlgebraError};
-use crate::math::numeric::from_f64;
-use crate::types::SolverError;
+use crate::{
+    math::{
+        linalg::{inverse, lu_solve, LinearAlgebraError},
+        numeric::from_f64,
+    },
+    types::SolverError,
+};
 
 // =============================================================================
 // SystemOfEquations Trait
@@ -69,7 +73,8 @@ use crate::types::SolverError;
 ///
 /// # Type Parameters
 ///
-/// * `T` - Floating-point type satisfying `RealField + Copy` for AD compatibility
+/// * `T` - Floating-point type satisfying `RealField + Copy` for AD
+///   compatibility
 ///
 /// # Example
 ///
@@ -135,13 +140,15 @@ pub trait SystemOfEquations<T: RealField + Copy + Float> {
     ///
     /// # Default Implementation
     ///
-    /// If not overridden, falls back to [`jacobian_numerical`](Self::jacobian_numerical)
-    /// with epsilon = 1e-8.
+    /// If not overridden, falls back to
+    /// [`jacobian_numerical`](Self::jacobian_numerical) with epsilon =
+    /// 1e-8.
     fn jacobian(&self, x: &DVector<T>) -> Result<DMatrix<T>, SolverError> {
         self.jacobian_numerical(x, from_f64(1e-8))
     }
 
-    /// Computes a numerical approximation to the Jacobian via finite differences.
+    /// Computes a numerical approximation to the Jacobian via finite
+    /// differences.
     ///
     /// Uses forward differences: J[i,j] ≈ (F_i(x + ε*e_j) - F_i(x)) / ε
     ///
@@ -354,16 +361,12 @@ impl<T: RealField + Copy> MultidimSolverResult<T> {
     }
 
     /// Check if the Jacobian inverse is available.
-    pub fn has_jacobian_inverse(&self) -> bool {
-        self.jacobian_inverse.is_some()
-    }
+    pub fn has_jacobian_inverse(&self) -> bool { self.jacobian_inverse.is_some() }
 
     /// Get the Jacobian inverse, returning an error if not available.
     pub fn jacobian_inverse_or_err(&self) -> Result<&DMatrix<T>, SolverError> {
         self.jacobian_inverse.as_ref().ok_or_else(|| {
-            SolverError::NumericalInstability(
-                "Jacobian inverse not available".to_string(),
-            )
+            SolverError::NumericalInstability("Jacobian inverse not available".to_string())
         })
     }
 }
@@ -412,19 +415,13 @@ pub struct MultidimensionalNewtonSolver<T: RealField + Copy> {
 
 impl<T: RealField + Copy + Float> MultidimensionalNewtonSolver<T> {
     /// Create a new solver with the given configuration.
-    pub fn new(config: MultidimNewtonConfig<T>) -> Self {
-        Self { config }
-    }
+    pub fn new(config: MultidimNewtonConfig<T>) -> Self { Self { config } }
 
     /// Create a solver with default configuration.
-    pub fn with_defaults() -> Self {
-        Self::new(MultidimNewtonConfig::default())
-    }
+    pub fn with_defaults() -> Self { Self::new(MultidimNewtonConfig::default()) }
 
     /// Get the solver configuration.
-    pub fn config(&self) -> &MultidimNewtonConfig<T> {
-        &self.config
-    }
+    pub fn config(&self) -> &MultidimNewtonConfig<T> { &self.config }
 
     /// Solve the system of equations F(x) = 0.
     ///
@@ -436,7 +433,8 @@ impl<T: RealField + Copy + Float> MultidimensionalNewtonSolver<T> {
     /// # Returns
     ///
     /// * `Ok(MultidimSolverResult<T>)` - Solution and convergence information
-    /// * `Err(SolverError)` - If the solver fails (singular Jacobian, max iterations)
+    /// * `Err(SolverError)` - If the solver fails (singular Jacobian, max
+    ///   iterations)
     ///
     /// # Errors
     ///
@@ -537,8 +535,9 @@ impl<T: RealField + Copy + Float> MultidimensionalNewtonSolver<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     // Simple linear system: Ax - b = 0
     struct LinearSystem {
@@ -547,9 +546,7 @@ mod tests {
     }
 
     impl SystemOfEquations<f64> for LinearSystem {
-        fn dimension(&self) -> usize {
-            self.b.len()
-        }
+        fn dimension(&self) -> usize { self.b.len() }
 
         fn evaluate(&self, x: &DVector<f64>) -> Result<DVector<f64>, SolverError> {
             Ok(&self.a * x - &self.b)
@@ -564,9 +561,7 @@ mod tests {
     struct QuadraticSystem;
 
     impl SystemOfEquations<f64> for QuadraticSystem {
-        fn dimension(&self) -> usize {
-            2
-        }
+        fn dimension(&self) -> usize { 2 }
 
         fn evaluate(&self, x: &DVector<f64>) -> Result<DVector<f64>, SolverError> {
             if x.len() != 2 {
@@ -594,9 +589,7 @@ mod tests {
     struct NumericalJacobianSystem;
 
     impl SystemOfEquations<f64> for NumericalJacobianSystem {
-        fn dimension(&self) -> usize {
-            2
-        }
+        fn dimension(&self) -> usize { 2 }
 
         fn evaluate(&self, x: &DVector<f64>) -> Result<DVector<f64>, SolverError> {
             Ok(DVector::from_vec(vec![
@@ -626,7 +619,8 @@ mod tests {
 
         assert_eq!(f.len(), 2);
         assert_relative_eq!(f[0], 1.0 + 2.0 - 3.0, epsilon = 1e-10); // x² + y - 3 = 0
-        assert_relative_eq!(f[1], 1.0 + 4.0 - 5.0, epsilon = 1e-10); // x + y² - 5 = 0
+        assert_relative_eq!(f[1], 1.0 + 4.0 - 5.0, epsilon = 1e-10); // x + y² -
+                                                                     // 5 = 0
     }
 
     #[test]
@@ -701,13 +695,8 @@ mod tests {
         let solution = DVector::from_vec(vec![1.0, 2.0]);
         let jacobian_inverse = DMatrix::identity(2, 2);
 
-        let result = MultidimSolverResult::new(
-            solution.clone(),
-            1e-12,
-            5,
-            true,
-            Some(jacobian_inverse),
-        );
+        let result =
+            MultidimSolverResult::new(solution.clone(), 1e-12, 5, true, Some(jacobian_inverse));
 
         assert_eq!(result.solution, solution);
         assert!(result.converged);
@@ -813,7 +802,10 @@ mod tests {
         assert!(result.is_err());
         assert!(matches!(
             result.unwrap_err(),
-            SolverError::DimensionMismatch { expected: 2, got: 3 }
+            SolverError::DimensionMismatch {
+                expected: 2,
+                got: 3
+            }
         ));
     }
 

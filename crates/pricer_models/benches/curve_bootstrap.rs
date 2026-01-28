@@ -18,7 +18,7 @@ use std::{sync::Arc, thread};
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use pricer_models::market::{
     calibration::bootstrapping::{
-        CalibrationInstrument, BootstrappedCurve, CurveDefinition, CurveEngine, CurveEngineBuilder,
+        BootstrappedCurve, CalibrationInstrument, CurveDefinition, CurveEngine, CurveEngineBuilder,
         CurveKey, CurveResultCache, GenericBootstrapConfig, InstrumentTenor,
         SequentialBootstrapper,
     },

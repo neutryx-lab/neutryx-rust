@@ -306,7 +306,8 @@ pub fn sabr_implied_vol_with_options<T: Float>(
 
 /// Computes SABR implied volatility with a floor.
 ///
-/// If the computed volatility is below the floor, returns the floor value instead.
+/// If the computed volatility is below the floor, returns the floor value
+/// instead.
 ///
 /// # Arguments
 ///
@@ -617,7 +618,10 @@ mod tests {
     #[test]
     fn test_params_invalid_forward() {
         let params = SabrImpliedVolParams::new(0.0, 0.2, 0.5, 0.4, -0.3, 1.0);
-        assert!(matches!(params, Err(SabrImpliedVolError::InvalidForward(_))));
+        assert!(matches!(
+            params,
+            Err(SabrImpliedVolError::InvalidForward(_))
+        ));
     }
 
     #[test]
@@ -728,7 +732,12 @@ mod tests {
         let iv_110 = sabr_implied_vol(&params, 110.0).unwrap();
 
         // With negative rho, OTM puts (K < F) should have higher vol
-        assert!(iv_90 > iv_110, "Expected negative skew: iv_90={} > iv_110={}", iv_90, iv_110);
+        assert!(
+            iv_90 > iv_110,
+            "Expected negative skew: iv_90={} > iv_110={}",
+            iv_90,
+            iv_110
+        );
 
         // All implied vols should be positive and reasonable
         assert!(iv_90 > 0.0);

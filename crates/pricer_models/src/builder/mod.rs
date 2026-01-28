@@ -1,4 +1,5 @@
-//! Builder module for yield curves, volatility surfaces, and market data calibration.
+//! Builder module for yield curves, volatility surfaces, and market data
+//! calibration.
 //!
 //! ## Module Structure
 //!
@@ -24,9 +25,9 @@
 //!
 //! | Pattern | Module | Description |
 //! |---------|--------|-------------|
-//! | Sequential | [`curve::bootstrap`] | Solve one pillar at a time (curves) |
+//! | Sequential | [`CurveBootstrapper`] | Solve one pillar at a time (curves) |
 //! | Slice-wise | [`vol`] | Calibrate each slice independently (vol surfaces) |
-//! | Global | [`curve::global`] | Solve all parameters simultaneously (curves) |
+//! | Global | `GlobalBootstrapper` | Solve all parameters simultaneously (curves, feature-gated) |
 
 use pricer_core::types::SolverError;
 use thiserror::Error;
@@ -60,35 +61,26 @@ pub mod vol;
 // Public Re-exports: Shared Infrastructure
 // =============================================================================
 
+// =============================================================================
+// Public Re-exports: Curve Calibration
+// =============================================================================
+pub use curve::{BootstrapConfig, CurveBootstrapper, InterpolationMethod};
+#[cfg(feature = "global-bootstrap")]
+pub use curve::{GlobalBootstrapConfig, GlobalBootstrapResult, GlobalBootstrapper};
 pub use error::CalibrationError;
 pub use grid::CalibrationGrid;
 pub use instrument::CalibrationInstrument;
-
 #[cfg(feature = "global-bootstrap")]
 pub use matrix::{CalibrationMatrix, CalibrationMatrixBuilder, InterpolationMatrix};
 #[cfg(feature = "global-bootstrap")]
 pub use problem::{CalibrationProblem, CalibrationProblemConfig, JacobianMethod};
-
-// =============================================================================
-// Public Re-exports: Curve Calibration
-// =============================================================================
-
-pub use curve::{BootstrapConfig, CurveBootstrapper, InterpolationMethod};
-
-#[cfg(feature = "global-bootstrap")]
-pub use curve::{GlobalBootstrapConfig, GlobalBootstrapResult, GlobalBootstrapper};
-
 // =============================================================================
 // Public Re-exports: Vol Calibration
 // =============================================================================
-
 pub use vol::{
-    DeltaVol, DeltaVolSlice,
-    FxVolBuilder, FxVolResult,
-    OrderedFloat,
-    SabrBounds, SabrParams, SabrSliceCalibrator,
-    SliceCalibrationConfig, SliceCalibrationDiagnostics, SliceCalibrationResult, SliceCalibrator,
-    VolCubeBuilder, VolCubeResult, VolQuote,
+    DeltaVol, DeltaVolSlice, FxVolBuilder, FxVolResult, OrderedFloat, SabrBounds, SabrParams,
+    SabrSliceCalibrator, SliceCalibrationConfig, SliceCalibrationDiagnostics,
+    SliceCalibrationResult, SliceCalibrator, VolCubeBuilder, VolCubeResult, VolQuote,
 };
 
 // =============================================================================

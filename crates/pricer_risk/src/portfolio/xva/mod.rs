@@ -66,12 +66,11 @@ use std::collections::HashMap;
 pub use cva::{compute_cva, compute_cva_with_survival};
 pub use dva::{compute_dva, compute_dva_with_survival};
 pub use error::XvaError;
+pub use exposure_soa::ExposureSoA;
 pub use fva::{compute_fba, compute_fca, compute_fva};
 pub use params::{FundingParams, OwnCreditParams};
 use rayon::prelude::*;
 pub use result::{CounterpartyXva, NettingSetXva, PortfolioXva};
-
-pub use exposure_soa::ExposureSoA;
 
 use crate::portfolio::{CounterpartyId, CreditParams, NettingSetId, Portfolio};
 

@@ -6,12 +6,14 @@
 //! # Components
 //!
 //! - `CalibrationMatrix<T>`: General-purpose calibration matrix (N × M)
-//! - `InterpolationMatrix<T>`: Maps pillar values to grid points via interpolation
+//! - `InterpolationMatrix<T>`: Maps pillar values to grid points via
+//!   interpolation
 
 use num_traits::Float;
-
-use pricer_core::math::linalg::{DMatrix, RealField};
-use pricer_core::math::numeric::from_f64;
+use pricer_core::math::{
+    linalg::{DMatrix, RealField},
+    numeric::from_f64,
+};
 
 use super::grid::CalibrationGrid;
 
@@ -68,14 +70,10 @@ impl<T: Float + RealField + Copy> CalibrationMatrix<T> {
     }
 
     /// Get the underlying matrix.
-    pub fn matrix(&self) -> &DMatrix<T> {
-        &self.matrix
-    }
+    pub fn matrix(&self) -> &DMatrix<T> { &self.matrix }
 
     /// Get a mutable reference to the underlying matrix.
-    pub fn matrix_mut(&mut self) -> &mut DMatrix<T> {
-        &mut self.matrix
-    }
+    pub fn matrix_mut(&mut self) -> &mut DMatrix<T> { &mut self.matrix }
 
     /// Set a value at (row, col).
     pub fn set(&mut self, row: usize, col: usize, value: T) {
@@ -94,14 +92,10 @@ impl<T: Float + RealField + Copy> CalibrationMatrix<T> {
     }
 
     /// Get the number of rows.
-    pub fn num_rows(&self) -> usize {
-        self.num_rows
-    }
+    pub fn num_rows(&self) -> usize { self.num_rows }
 
     /// Get the number of columns.
-    pub fn num_cols(&self) -> usize {
-        self.num_cols
-    }
+    pub fn num_cols(&self) -> usize { self.num_cols }
 
     /// Check if a specific value is non-zero.
     pub fn is_nonzero(&self, row: usize, col: usize) -> bool {
@@ -113,9 +107,7 @@ impl<T: Float + RealField + Copy> CalibrationMatrix<T> {
     /// Get all values in a row.
     pub fn get_row(&self, row: usize) -> Option<Vec<T>> {
         if row < self.num_rows {
-            Some((0..self.num_cols)
-                .map(|j| self.matrix[(row, j)])
-                .collect())
+            Some((0..self.num_cols).map(|j| self.matrix[(row, j)]).collect())
         } else {
             None
         }
@@ -124,9 +116,7 @@ impl<T: Float + RealField + Copy> CalibrationMatrix<T> {
     /// Get all values in a column.
     pub fn get_col(&self, col: usize) -> Option<Vec<T>> {
         if col < self.num_cols {
-            Some((0..self.num_rows)
-                .map(|i| self.matrix[(i, col)])
-                .collect())
+            Some((0..self.num_rows).map(|i| self.matrix[(i, col)]).collect())
         } else {
             None
         }
@@ -149,14 +139,10 @@ impl<T: Float + RealField + Copy> CalibrationMatrix<T> {
     }
 
     /// Get the number of instruments (alias for `num_rows()`).
-    pub fn num_instruments(&self) -> usize {
-        self.num_rows
-    }
+    pub fn num_instruments(&self) -> usize { self.num_rows }
 
     /// Get the number of dates (alias for `num_cols()`).
-    pub fn num_dates(&self) -> usize {
-        self.num_cols
-    }
+    pub fn num_dates(&self) -> usize { self.num_cols }
 
     /// Check if a cashflow exists (alias for `is_nonzero()`).
     pub fn has_cashflow(&self, instrument_idx: usize, date_idx: usize) -> bool {
@@ -169,9 +155,7 @@ impl<T: Float + RealField + Copy> CalibrationMatrix<T> {
     }
 
     /// Get all cashflows at a date (alias for `get_col()`).
-    pub fn get_date_cashflows(&self, date_idx: usize) -> Option<Vec<T>> {
-        self.get_col(date_idx)
-    }
+    pub fn get_date_cashflows(&self, date_idx: usize) -> Option<Vec<T>> { self.get_col(date_idx) }
 }
 
 // =============================================================================
@@ -210,7 +194,8 @@ impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
     ///
     /// # Returns
     ///
-    /// An interpolation matrix W where W[j,k] is the weight of pillar k for point j.
+    /// An interpolation matrix W where W[j,k] is the weight of pillar k for
+    /// point j.
     pub fn from_pillars(pillars: &[T], grid: &CalibrationGrid<T>) -> Self {
         let points = grid.points();
         let num_points = points.len();
@@ -270,24 +255,16 @@ impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
     }
 
     /// Get the underlying matrix.
-    pub fn matrix(&self) -> &DMatrix<T> {
-        &self.matrix
-    }
+    pub fn matrix(&self) -> &DMatrix<T> { &self.matrix }
 
     /// Get the number of grid points.
-    pub fn num_points(&self) -> usize {
-        self.num_points
-    }
+    pub fn num_points(&self) -> usize { self.num_points }
 
     /// Alias for `num_points()` - backward compatibility.
-    pub fn num_dates(&self) -> usize {
-        self.num_points
-    }
+    pub fn num_dates(&self) -> usize { self.num_points }
 
     /// Get the number of pillars.
-    pub fn num_pillars(&self) -> usize {
-        self.num_pillars
-    }
+    pub fn num_pillars(&self) -> usize { self.num_pillars }
 
     /// Interpolate values from pillar values.
     ///
@@ -361,9 +338,7 @@ impl<T: Float> CalibrationMatrixBuilder<T> {
 }
 
 impl<T: Float> Default for CalibrationMatrixBuilder<T> {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 // =============================================================================
@@ -372,8 +347,9 @@ impl<T: Float> Default for CalibrationMatrixBuilder<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     #[test]
     fn test_calibration_matrix_zeros() {
@@ -508,8 +484,8 @@ mod tests {
 
     #[test]
     fn test_calibration_matrix_builder() {
-        let builder: CalibrationMatrixBuilder<f64> = CalibrationMatrixBuilder::new()
-            .with_tolerance(1e-8);
+        let builder: CalibrationMatrixBuilder<f64> =
+            CalibrationMatrixBuilder::new().with_tolerance(1e-8);
 
         assert!(builder.tolerance > 0.0);
     }

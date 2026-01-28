@@ -13,11 +13,13 @@
 #![cfg(feature = "global-bootstrap")]
 
 use approx::assert_relative_eq;
-use pricer_models::builder::{
-    CalibrationInstrument, CalibrationProblem, GlobalBootstrapConfig, GlobalBootstrapper,
-    JacobianMethod,
+use pricer_models::{
+    builder::{
+        CalibrationInstrument, CalibrationProblem, GlobalBootstrapConfig, GlobalBootstrapper,
+        JacobianMethod,
+    },
+    market::curves::MarketInstrument,
 };
-use pricer_models::market::curves::MarketInstrument;
 
 // =============================================================================
 // Task 6.1: OIS Curve Construction Integration Test
@@ -121,7 +123,9 @@ fn test_ois_curve_construction_with_problem() {
     let config = GlobalBootstrapConfig::default();
     let bootstrapper = GlobalBootstrapper::new(config);
 
-    let result = bootstrapper.calibrate_with_problem(instruments.clone()).unwrap();
+    let result = bootstrapper
+        .calibrate_with_problem(instruments.clone())
+        .unwrap();
 
     assert!(result.converged);
 
@@ -129,12 +133,7 @@ fn test_ois_curve_construction_with_problem() {
     if let Some(errors) = &result.pricing_errors {
         for (i, error) in errors.iter().enumerate() {
             let e: f64 = *error;
-            assert!(
-                e.abs() < 1e-8,
-                "Instrument {} has pricing error {}",
-                i,
-                e
-            );
+            assert!(e.abs() < 1e-8, "Instrument {} has pricing error {}", i, e);
         }
     }
 }
@@ -187,7 +186,8 @@ fn test_fra_only_curve() {
 // Task 6.3: Jacobian Consistency Verification
 // =============================================================================
 
-/// Verify that finite difference and central difference Jacobians are consistent.
+/// Verify that finite difference and central difference Jacobians are
+/// consistent.
 #[test]
 fn test_jacobian_finite_vs_central_difference() {
     let instruments: Vec<MarketInstrument<f64>> = vec![
@@ -248,7 +248,11 @@ fn test_calibrated_result_satisfies_constraints() {
     let problem = CalibrationProblem::new(instruments.clone()).unwrap();
 
     // Get log(DF) from result
-    let log_df: Vec<f64> = result.discount_factors.iter().map(|df: &f64| df.ln()).collect();
+    let log_df: Vec<f64> = result
+        .discount_factors
+        .iter()
+        .map(|df: &f64| df.ln())
+        .collect();
 
     // Compute residuals at the solution
     let curve = problem.build_curve(&log_df).unwrap();
@@ -256,12 +260,7 @@ fn test_calibrated_result_satisfies_constraints() {
 
     // All residuals should be near zero
     for (i, r) in residuals.iter().enumerate() {
-        assert!(
-            r.abs() < 1e-8,
-            "Residual {} = {} exceeds tolerance",
-            i,
-            r
-        );
+        assert!(r.abs() < 1e-8, "Residual {} = {} exceeds tolerance", i, r);
     }
 }
 

@@ -25,8 +25,9 @@
 //! let result = engine.run(params);
 //! ```
 
-use super::{aligned_buffer::AlignedPathBuffer, layout_config::StreamingConfig, paths::GbmParams};
 use pricer_core::math::rng::PricerRng;
+
+use super::{aligned_buffer::AlignedPathBuffer, layout_config::StreamingConfig, paths::GbmParams};
 
 /// Result of streaming Monte Carlo simulation.
 #[derive(Clone, Debug, Default)]
@@ -940,11 +941,12 @@ mod tests {
         // Compare streaming result with batch result
         // They should produce statistically similar results with same seed
 
+        use pricer_core::math::rng::PricerRng;
+
         use super::super::{
             layout_config::PathLayout, paths::generate_gbm_paths_generic,
             workspace_enum::WorkspaceEnum, workspace_trait::PathWorkspaceTrait,
         };
-        use pricer_core::math::rng::PricerRng;
 
         let n_paths = 10_000;
         let n_steps = 20;

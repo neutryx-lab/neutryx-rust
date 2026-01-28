@@ -1,6 +1,8 @@
-//! Market data structures for yield curves, volatility surfaces, and calibration.
+//! Market data structures for yield curves, volatility surfaces, and
+//! calibration.
 //!
-//! This module provides the core market data types used throughout the pricing library.
+//! This module provides the core market data types used throughout the pricing
+//! library.
 
 use num_traits::Float;
 use pricer_core::math::numeric::from_f64;
@@ -98,14 +100,10 @@ pub mod curves {
 
     impl<T: Float> FlatCurve<T> {
         /// Creates a new flat curve with the given rate.
-        pub fn new(rate: T) -> Self {
-            Self { rate }
-        }
+        pub fn new(rate: T) -> Self { Self { rate } }
 
         /// Returns the constant rate.
-        pub fn rate(&self) -> T {
-            self.rate
-        }
+        pub fn rate(&self) -> T { self.rate }
     }
 
     impl<T: Float> YieldCurve<T> for FlatCurve<T> {
@@ -118,9 +116,7 @@ pub mod curves {
             Ok((-self.rate * t).exp())
         }
 
-        fn zero_rate(&self, _t: T) -> Result<T, MarketDataError> {
-            Ok(self.rate)
-        }
+        fn zero_rate(&self, _t: T) -> Result<T, MarketDataError> { Ok(self.rate) }
 
         fn forward_rate(&self, t1: T, t2: T) -> Result<T, MarketDataError> {
             if t2 <= t1 {
@@ -241,9 +237,7 @@ pub mod curves {
         }
 
         /// Creates a FRA instrument.
-        pub fn fra(start: T, end: T, rate: T) -> Self {
-            Self::Fra { start, end, rate }
-        }
+        pub fn fra(start: T, end: T, rate: T) -> Self { Self::Fra { start, end, rate } }
 
         /// Creates a Future instrument.
         pub fn future(maturity: T, rate: T) -> Self {
@@ -321,14 +315,10 @@ pub mod curves {
         }
 
         /// Returns the pillar maturities.
-        pub fn pillars(&self) -> &[T] {
-            &self.pillars
-        }
+        pub fn pillars(&self) -> &[T] { &self.pillars }
 
         /// Returns the discount factors.
-        pub fn discount_factors(&self) -> &[T] {
-            &self.discount_factors
-        }
+        pub fn discount_factors(&self) -> &[T] { &self.discount_factors }
     }
 
     impl<T: Float> YieldCurve<T> for BootstrappedCurve<T> {
@@ -436,14 +426,10 @@ pub enum CurveEnum<T: Float> {
 
 impl<T: Float> CurveEnum<T> {
     /// Creates a flat curve with the given rate.
-    pub fn flat(rate: T) -> Self {
-        Self::Flat(curves::FlatCurve::new(rate))
-    }
+    pub fn flat(rate: T) -> Self { Self::Flat(curves::FlatCurve::new(rate)) }
 
     /// Creates a bootstrapped curve.
-    pub fn bootstrapped(curve: curves::BootstrappedCurve<T>) -> Self {
-        Self::Bootstrapped(curve)
-    }
+    pub fn bootstrapped(curve: curves::BootstrappedCurve<T>) -> Self { Self::Bootstrapped(curve) }
 }
 
 impl<T: Float> curves::YieldCurve<T> for CurveEnum<T> {
@@ -489,19 +475,13 @@ impl<T: Float + 'static> CurveSet<T> {
     }
 
     /// Gets a curve by name.
-    pub fn get(&self, name: &CurveName) -> Option<&CurveEnum<T>> {
-        self.curves.get(name)
-    }
+    pub fn get(&self, name: &CurveName) -> Option<&CurveEnum<T>> { self.curves.get(name) }
 
     /// Returns the number of curves.
-    pub fn len(&self) -> usize {
-        self.curves.len()
-    }
+    pub fn len(&self) -> usize { self.curves.len() }
 
     /// Returns true if the set is empty.
-    pub fn is_empty(&self) -> bool {
-        self.curves.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.curves.is_empty() }
 
     /// Computes the forward rate for a rate index between two times.
     ///
@@ -525,22 +505,21 @@ impl<T: Float + 'static> CurveSet<T> {
             _ => CurveName::Sofr, // Default fallback for unknown indices
         };
 
-        let curve = self.curves.get(&curve_name).ok_or(MarketDataError::CurveNotFound {
-            name: format!("{:?}", rate_index),
-        })?;
+        let curve = self
+            .curves
+            .get(&curve_name)
+            .ok_or(MarketDataError::CurveNotFound {
+                name: format!("{:?}", rate_index),
+            })?;
 
         curve.forward_rate(t1, t2)
     }
 
     /// Returns an iterator over (name, curve) pairs.
-    pub fn iter(&self) -> impl Iterator<Item = (&CurveName, &CurveEnum<T>)> {
-        self.curves.iter()
-    }
+    pub fn iter(&self) -> impl Iterator<Item = (&CurveName, &CurveEnum<T>)> { self.curves.iter() }
 
     /// Gets the discount curve if set.
-    pub fn discount_curve(&self) -> Option<&CurveEnum<T>> {
-        self.curves.get(&CurveName::Discount)
-    }
+    pub fn discount_curve(&self) -> Option<&CurveEnum<T>> { self.curves.get(&CurveName::Discount) }
 
     /// Sets the discount curve.
     pub fn set_discount_curve(&mut self, _name: CurveName) {
@@ -576,9 +555,7 @@ impl MarketProvider {
     }
 
     /// Returns the curve set.
-    pub fn curve_set(&self) -> &CurveSet<f64> {
-        &self.curve_set
-    }
+    pub fn curve_set(&self) -> &CurveSet<f64> { &self.curve_set }
 }
 
 // =============================================================================
@@ -587,13 +564,14 @@ impl MarketProvider {
 
 /// FX forward curve traits and implementations.
 pub mod fx_curves {
-    use super::*;
-    use super::curves::YieldCurve;
     use infra_master::trade::instrument_def::CurrencyPair;
+
+    use super::{curves::YieldCurve, *};
 
     /// Trait for FX forward curves providing forward rates.
     ///
-    /// An FX forward curve represents the term structure of forward exchange rates.
+    /// An FX forward curve represents the term structure of forward exchange
+    /// rates.
     ///
     /// # Type Parameters
     ///
@@ -626,7 +604,8 @@ pub mod fx_curves {
         /// # Arguments
         ///
         /// * `spot` - Spot exchange rate
-        /// * `forward_points_per_year` - Forward points per year (F/S - 1 per year)
+        /// * `forward_points_per_year` - Forward points per year (F/S - 1 per
+        ///   year)
         /// * `currency_pair` - Currency pair
         pub fn new(spot: T, forward_points_per_year: T, currency_pair: CurrencyPair) -> Self {
             Self {
@@ -638,9 +617,7 @@ pub mod fx_curves {
     }
 
     impl<T: Float> FxCurve<T> for FlatFxCurve<T> {
-        fn spot(&self) -> T {
-            self.spot
-        }
+        fn spot(&self) -> T { self.spot }
 
         fn forward_rate(&self, t: T) -> Result<T, MarketDataError> {
             if t < T::zero() {
@@ -652,9 +629,7 @@ pub mod fx_curves {
             Ok(self.spot * (self.forward_points_per_year * t).exp())
         }
 
-        fn currency_pair(&self) -> CurrencyPair {
-            self.currency_pair
-        }
+        fn currency_pair(&self) -> CurrencyPair { self.currency_pair }
     }
 
     /// An FX forward curve based on Interest Rate Parity (IRP).
@@ -695,20 +670,14 @@ pub mod fx_curves {
         }
 
         /// Returns a reference to the domestic yield curve.
-        pub fn domestic_curve(&self) -> &D {
-            &self.domestic_curve
-        }
+        pub fn domestic_curve(&self) -> &D { &self.domestic_curve }
 
         /// Returns a reference to the foreign yield curve.
-        pub fn foreign_curve(&self) -> &F {
-            &self.foreign_curve
-        }
+        pub fn foreign_curve(&self) -> &F { &self.foreign_curve }
     }
 
     impl<T: Float, D: YieldCurve<T>, F: YieldCurve<T>> FxCurve<T> for IrpFxCurve<T, D, F> {
-        fn spot(&self) -> T {
-            self.spot
-        }
+        fn spot(&self) -> T { self.spot }
 
         fn forward_rate(&self, t: T) -> Result<T, MarketDataError> {
             if t < T::zero() {
@@ -733,9 +702,7 @@ pub mod fx_curves {
             Ok(self.spot * df_for / df_dom)
         }
 
-        fn currency_pair(&self) -> CurrencyPair {
-            self.currency_pair
-        }
+        fn currency_pair(&self) -> CurrencyPair { self.currency_pair }
     }
 
     // Re-export from parent module
@@ -760,7 +727,11 @@ impl<T: Float> FxCurveEnum<T> {
         forward_points_per_year: T,
         currency_pair: infra_master::trade::instrument_def::CurrencyPair,
     ) -> Self {
-        Self::Flat(fx_curves::FlatFxCurve::new(spot, forward_points_per_year, currency_pair))
+        Self::Flat(fx_curves::FlatFxCurve::new(
+            spot,
+            forward_points_per_year,
+            currency_pair,
+        ))
     }
 
     /// Creates an IRP-based FX curve from flat yield curves.
@@ -772,7 +743,12 @@ impl<T: Float> FxCurveEnum<T> {
     ) -> Self {
         let dom_curve = curves::FlatCurve::new(domestic_rate);
         let for_curve = curves::FlatCurve::new(foreign_rate);
-        Self::IrpFlat(fx_curves::IrpFxCurve::new(spot, dom_curve, for_curve, currency_pair))
+        Self::IrpFlat(fx_curves::IrpFxCurve::new(
+            spot,
+            dom_curve,
+            for_curve,
+            currency_pair,
+        ))
     }
 
     /// Creates an IRP-based FX curve from generic yield curves.
@@ -782,7 +758,12 @@ impl<T: Float> FxCurveEnum<T> {
         foreign_curve: CurveEnum<T>,
         currency_pair: infra_master::trade::instrument_def::CurrencyPair,
     ) -> Self {
-        Self::IrpGeneric(fx_curves::IrpFxCurve::new(spot, domestic_curve, foreign_curve, currency_pair))
+        Self::IrpGeneric(fx_curves::IrpFxCurve::new(
+            spot,
+            domestic_curve,
+            foreign_curve,
+            currency_pair,
+        ))
     }
 }
 
@@ -846,8 +827,7 @@ mod tests {
 
     #[test]
     fn test_flat_fx_curve() {
-        use infra_master::trade::instrument_def::CurrencyPair;
-        use infra_master::Currency;
+        use infra_master::{trade::instrument_def::CurrencyPair, Currency};
 
         let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
         let fwd_pts = 0.02_f64; // 2% forward points per year
@@ -865,8 +845,7 @@ mod tests {
 
     #[test]
     fn test_irp_fx_curve() {
-        use infra_master::trade::instrument_def::CurrencyPair;
-        use infra_master::Currency;
+        use infra_master::{trade::instrument_def::CurrencyPair, Currency};
 
         let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
         let dom_curve = FlatCurve::new(0.03_f64); // USD rate
@@ -889,8 +868,7 @@ mod tests {
 
     #[test]
     fn test_fx_curve_enum_irp_flat() {
-        use infra_master::trade::instrument_def::CurrencyPair;
-        use infra_master::Currency;
+        use infra_master::{trade::instrument_def::CurrencyPair, Currency};
 
         let pair = CurrencyPair::new(Currency::USD, Currency::JPY);
         let fx_curve = FxCurveEnum::irp_flat(150.0, 0.05, 0.01, pair);
@@ -903,8 +881,7 @@ mod tests {
 
     #[test]
     fn test_fx_curve_currency_pair() {
-        use infra_master::trade::instrument_def::CurrencyPair;
-        use infra_master::Currency;
+        use infra_master::{trade::instrument_def::CurrencyPair, Currency};
 
         let pair = CurrencyPair::new(Currency::GBP, Currency::USD);
         let fx_curve: FxCurveEnum<f64> = FxCurveEnum::flat(1.25, 0.01, pair);
@@ -914,8 +891,7 @@ mod tests {
 
     #[test]
     fn test_irp_fx_curve_with_negative_spread() {
-        use infra_master::trade::instrument_def::CurrencyPair;
-        use infra_master::Currency;
+        use infra_master::{trade::instrument_def::CurrencyPair, Currency};
 
         // Case where foreign rate > domestic rate (forward < spot)
         let pair = CurrencyPair::new(Currency::USD, Currency::JPY);

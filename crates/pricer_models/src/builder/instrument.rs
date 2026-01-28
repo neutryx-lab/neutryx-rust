@@ -6,12 +6,12 @@
 //! solves all discount factors simultaneously.
 
 use num_traits::Float;
-
-use crate::market::curves::{
-    MarketInstrument, Frequency, YieldCurve,
-};
-use crate::market::MarketDataError;
 use pricer_core::math::numeric::from_usize;
+
+use crate::market::{
+    curves::{Frequency, MarketInstrument, YieldCurve},
+    MarketDataError,
+};
 
 /// Trait for instruments used in global curve calibration.
 ///
@@ -46,9 +46,7 @@ pub trait CalibrationInstrument<T: Float>: Clone {
 // =============================================================================
 
 impl<T: Float> CalibrationInstrument<T> for MarketInstrument<T> {
-    fn market_rate(&self) -> T {
-        self.rate()
-    }
+    fn market_rate(&self) -> T { self.rate() }
 
     fn theoretical_rate<C: YieldCurve<T>>(&self, curve: &C) -> Result<T, MarketDataError> {
         match self {
@@ -77,13 +75,9 @@ impl<T: Float> CalibrationInstrument<T> for MarketInstrument<T> {
         }
     }
 
-    fn maturity(&self) -> T {
-        MarketInstrument::maturity(self)
-    }
+    fn maturity(&self) -> T { MarketInstrument::maturity(self) }
 
-    fn instrument_type(&self) -> &'static str {
-        MarketInstrument::instrument_type(self)
-    }
+    fn instrument_type(&self) -> &'static str { MarketInstrument::instrument_type(self) }
 }
 
 // =============================================================================
@@ -189,9 +183,10 @@ fn compute_fra_rate<T: Float, C: YieldCurve<T>>(
 
 #[cfg(test)]
 mod tests {
+    use approx::assert_relative_eq;
+
     use super::*;
     use crate::market::curves::{BootstrapInterpolation, BootstrappedCurve};
-    use approx::assert_relative_eq;
 
     fn create_test_curve() -> BootstrappedCurve<f64> {
         let pillars = vec![0.25, 0.5, 1.0, 2.0, 5.0, 10.0];
@@ -218,18 +213,10 @@ mod tests {
     #[test]
     fn test_calibration_instrument_maturity() {
         let ois: MarketInstrument<f64> = MarketInstrument::ois(5.0, 0.03);
-        assert_relative_eq!(
-            CalibrationInstrument::maturity(&ois),
-            5.0,
-            epsilon = 1e-10
-        );
+        assert_relative_eq!(CalibrationInstrument::maturity(&ois), 5.0, epsilon = 1e-10);
 
         let fra: MarketInstrument<f64> = MarketInstrument::fra(0.5, 1.0, 0.025);
-        assert_relative_eq!(
-            CalibrationInstrument::maturity(&fra),
-            1.0,
-            epsilon = 1e-10
-        );
+        assert_relative_eq!(CalibrationInstrument::maturity(&fra), 1.0, epsilon = 1e-10);
     }
 
     #[test]

@@ -53,7 +53,10 @@
 use num_traits::Float;
 
 use super::error::FormulaError;
-use crate::math::{distributions::{norm_cdf, norm_pdf}, numeric::from_f64};
+use crate::math::{
+    distributions::{norm_cdf, norm_pdf},
+    numeric::from_f64,
+};
 
 /// Parameters for the Garman-Kohlhagen model.
 ///
@@ -226,8 +229,7 @@ impl<T: Float> GarmanKohlhagen<T> {
 
         if is_call {
             // C = S * e^(-rf*T) * N(d1) - K * e^(-rd*T) * N(d2)
-            self.params.spot * self.df_foreign * nd1
-                - self.params.strike * self.df_domestic * nd2
+            self.params.spot * self.df_foreign * nd1 - self.params.strike * self.df_domestic * nd2
         } else {
             // P = K * e^(-rd*T) * N(-d2) - S * e^(-rf*T) * N(-d1)
             let nd1_neg = norm_cdf(-self.d1);
@@ -239,15 +241,11 @@ impl<T: Float> GarmanKohlhagen<T> {
 
     /// Computes European call option price.
     #[inline]
-    pub fn price_call(&self) -> T {
-        self.price(true)
-    }
+    pub fn price_call(&self) -> T { self.price(true) }
 
     /// Computes European put option price.
     #[inline]
-    pub fn price_put(&self) -> T {
-        self.price(false)
-    }
+    pub fn price_put(&self) -> T { self.price(false) }
 
     /// Computes Delta.
     ///
@@ -332,10 +330,8 @@ impl<T: Float> GarmanKohlhagen<T> {
         } else {
             let nd1_neg = T::one() - nd1;
             let nd2_neg = T::one() - nd2;
-            let term2 =
-                -self.params.rate_foreign * self.params.spot * self.df_foreign * nd1_neg;
-            let term3 =
-                self.params.rate_domestic * self.params.strike * self.df_domestic * nd2_neg;
+            let term2 = -self.params.rate_foreign * self.params.spot * self.df_foreign * nd1_neg;
+            let term3 = self.params.rate_domestic * self.params.strike * self.df_domestic * nd2_neg;
             (term1 + term2 + term3) / days_per_year
         }
     }

@@ -87,9 +87,7 @@ fn test_empty_buffer() {
 /// Verifies that SobolPlaceholder::new panics with appropriate message.
 #[test]
 #[should_panic(expected = "Sobol sequence not implemented")]
-fn test_sobol_placeholder_panics() {
-    let _ = SobolPlaceholder::new(10);
-}
+fn test_sobol_placeholder_panics() { let _ = SobolPlaceholder::new(10); }
 
 // ============================================================================
 // Large Batch Performance Verification

@@ -1,37 +1,40 @@
 //! Volatility surface and cube calibration module.
 //!
-//! This module provides slice-wise calibration for volatility surfaces and cubes:
+//! This module provides slice-wise calibration for volatility surfaces and
+//! cubes:
 //!
-//! - **FX volatility surface** ([`surface`]): 2D (expiry × strike)
-//! - **Swaption volatility cube** ([`cube`]): 3D (expiry × tenor × strike)
+//! - **FX volatility surface** ([`FxVolBuilder`]): 2D (expiry × strike)
+//! - **Swaption volatility cube** ([`VolCubeBuilder`]): 3D (expiry × tenor ×
+//!   strike)
 //!
 //! ## Calibration Pattern
 //!
-//! Unlike global curve calibration, vol surfaces use **slice-wise** calibration:
+//! Unlike global curve calibration, vol surfaces use **slice-wise**
+//! calibration:
 //!
 //! 1. Calibrate each expiry/tenor slice independently
 //! 2. Aggregate calibrated slices into a complete surface/cube
 //!
 //! This approach is efficient because slices are independent.
 
-mod surface;
 mod cube;
+mod surface;
 
-use num_traits::Float;
 use std::cmp::Ordering;
 
-use pricer_core::math::formulas::sabr::{sabr_implied_vol, SabrImpliedVolParams};
-use pricer_core::math::numeric::from_f64;
-use pricer_core::math::solvers::{LMConfig, LevenbergMarquardtSolver};
-
-use super::error::CalibrationError;
-
+pub use cube::{VolCubeBuilder, VolCubeResult};
+use num_traits::Float;
+use pricer_core::math::{
+    formulas::sabr::{sabr_implied_vol, SabrImpliedVolParams},
+    numeric::from_f64,
+    solvers::{LMConfig, LevenbergMarquardtSolver},
+};
 // =============================================================================
 // Re-exports
 // =============================================================================
-
 pub use surface::{FxVolBuilder, FxVolResult};
-pub use cube::{VolCubeBuilder, VolCubeResult};
+
+use super::error::CalibrationError;
 
 // =============================================================================
 // Slice Calibration Diagnostics
@@ -95,14 +98,10 @@ impl SliceCalibrationDiagnostics {
     /// Returns true if the fit quality is acceptable.
     ///
     /// Uses RMSE threshold of 0.0001 (1 basis point for volatility).
-    pub fn is_acceptable(&self) -> bool {
-        self.converged && self.rmse < 0.0001
-    }
+    pub fn is_acceptable(&self) -> bool { self.converged && self.rmse < 0.0001 }
 
     /// Returns true if there are any warnings.
-    pub fn has_warnings(&self) -> bool {
-        !self.warnings.is_empty()
-    }
+    pub fn has_warnings(&self) -> bool { !self.warnings.is_empty() }
 }
 
 impl Default for SliceCalibrationDiagnostics {
@@ -135,7 +134,8 @@ pub struct SliceCalibrationResult<P> {
 ///
 /// The SABR model is defined by:
 /// - `alpha` (α): Initial volatility level
-/// - `beta` (β): CEV exponent (typically fixed, e.g., 0.5 for normal-like, 1.0 for log-normal)
+/// - `beta` (β): CEV exponent (typically fixed, e.g., 0.5 for normal-like, 1.0
+///   for log-normal)
 /// - `rho` (ρ): Correlation between spot and volatility (-1 < ρ < 1)
 /// - `nu` (ν): Volatility of volatility
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -153,7 +153,12 @@ pub struct SabrParams<T: Float> {
 impl<T: Float> SabrParams<T> {
     /// Creates new SABR parameters.
     pub fn new(alpha: T, beta: T, rho: T, nu: T) -> Self {
-        Self { alpha, beta, rho, nu }
+        Self {
+            alpha,
+            beta,
+            rho,
+            nu,
+        }
     }
 
     /// Creates parameters with typical defaults for rates.
@@ -219,9 +224,7 @@ impl<T: Float> SabrParams<T> {
 }
 
 impl<T: Float> Default for SabrParams<T> {
-    fn default() -> Self {
-        Self::default_rates(from_f64(0.03))
-    }
+    fn default() -> Self { Self::default_rates(from_f64(0.03)) }
 }
 
 // =============================================================================
@@ -254,12 +257,12 @@ impl<T: Float> Default for SabrBounds<T> {
 
 impl<T: Float> SabrBounds<T> {
     /// Creates new SABR bounds.
-    pub fn new(
-        alpha_bounds: (T, T),
-        rho_bounds: (T, T),
-        nu_bounds: (T, T),
-    ) -> Self {
-        Self { alpha_bounds, rho_bounds, nu_bounds }
+    pub fn new(alpha_bounds: (T, T), rho_bounds: (T, T), nu_bounds: (T, T)) -> Self {
+        Self {
+            alpha_bounds,
+            rho_bounds,
+            nu_bounds,
+        }
     }
 
     /// Creates bounds suitable for rates (swaptions).
@@ -304,9 +307,12 @@ impl<T: Float> SabrBounds<T> {
 
     /// Checks if parameters are within bounds.
     pub fn is_valid(&self, alpha: T, rho: T, nu: T) -> bool {
-        alpha >= self.alpha_bounds.0 && alpha <= self.alpha_bounds.1
-            && rho >= self.rho_bounds.0 && rho <= self.rho_bounds.1
-            && nu >= self.nu_bounds.0 && nu <= self.nu_bounds.1
+        alpha >= self.alpha_bounds.0
+            && alpha <= self.alpha_bounds.1
+            && rho >= self.rho_bounds.0
+            && rho <= self.rho_bounds.1
+            && nu >= self.nu_bounds.0
+            && nu <= self.nu_bounds.1
     }
 }
 
@@ -337,14 +343,24 @@ impl<T: Float> VolQuote<T> {
     /// * `forward` - Forward rate/price at this expiry
     /// * `expiry` - Time to expiry in years
     pub fn new(strike: T, volatility: T, forward: T, expiry: T) -> Self {
-        Self { strike, volatility, forward, expiry }
+        Self {
+            strike,
+            volatility,
+            forward,
+            expiry,
+        }
     }
 
     /// Creates a new volatility quote without expiry (backwards compatible).
     ///
     /// Sets expiry to T::one() as default.
     pub fn new_without_expiry(strike: T, volatility: T, forward: T) -> Self {
-        Self { strike, volatility, forward, expiry: T::one() }
+        Self {
+            strike,
+            volatility,
+            forward,
+            expiry: T::one(),
+        }
     }
 }
 
@@ -558,8 +574,7 @@ impl<T: Float> SliceCalibrator<T> for SabrSliceCalibrator<T> {
                         maturity: expiry,
                     };
 
-                    let model_vol = sabr_implied_vol(&sabr_params, strike)
-                        .unwrap_or(market_vol);
+                    let model_vol = sabr_implied_vol(&sabr_params, strike).unwrap_or(market_vol);
 
                     model_vol - market_vol
                 })
@@ -614,7 +629,10 @@ impl<T: Float> SliceCalibrator<T> for SabrSliceCalibrator<T> {
 
         params.validate()?;
 
-        Ok(SliceCalibrationResult { params, diagnostics })
+        Ok(SliceCalibrationResult {
+            params,
+            diagnostics,
+        })
     }
 }
 
@@ -629,9 +647,7 @@ pub struct OrderedFloat<T: Float>(pub T);
 impl<T: Float> Eq for OrderedFloat<T> {}
 
 impl<T: Float> PartialOrd for OrderedFloat<T> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
 }
 
 impl<T: Float> Ord for OrderedFloat<T> {
@@ -791,11 +807,13 @@ impl<T: Float> DeltaVolSlice<T> {
         result
     }
 
-    /// Converts to strike-based volatility quotes using the given delta-strike converter.
+    /// Converts to strike-based volatility quotes using the given delta-strike
+    /// converter.
     ///
     /// # Arguments
     ///
-    /// * `delta_to_strike` - A closure that converts (delta, is_call, vol) to strike
+    /// * `delta_to_strike` - A closure that converts (delta, is_call, vol) to
+    ///   strike
     ///
     /// # Returns
     ///
@@ -871,7 +889,8 @@ mod tests {
         assert!((quote.strike - 0.03).abs() < 1e-10);
         assert!((quote.volatility - 0.2).abs() < 1e-10);
         assert!((quote.forward - 0.03).abs() < 1e-10);
-        assert!((quote.expiry - 1.0).abs() < 1e-10); // Default expiry = T::one()
+        assert!((quote.expiry - 1.0).abs() < 1e-10); // Default expiry =
+                                                     // T::one()
     }
 
     #[test]
@@ -910,9 +929,9 @@ mod tests {
 
         // Values outside bounds get clamped
         let (a, r, n) = bounds.clamp(0.0001, -0.99, 5.0);
-        assert!((a - 0.001).abs() < 1e-10);  // Clamped to lower bound
+        assert!((a - 0.001).abs() < 1e-10); // Clamped to lower bound
         assert!((r - (-0.95)).abs() < 1e-10); // Clamped to lower bound
-        assert!((n - 3.0).abs() < 1e-10);     // Clamped to upper bound
+        assert!((n - 3.0).abs() < 1e-10); // Clamped to upper bound
     }
 
     #[test]
@@ -921,8 +940,8 @@ mod tests {
 
         assert!(bounds.is_valid(0.1, -0.3, 0.5));
         assert!(!bounds.is_valid(0.0001, -0.3, 0.5)); // alpha too low
-        assert!(!bounds.is_valid(0.1, -0.99, 0.5));   // rho too low
-        assert!(!bounds.is_valid(0.1, -0.3, 5.0));    // nu too high
+        assert!(!bounds.is_valid(0.1, -0.99, 0.5)); // rho too low
+        assert!(!bounds.is_valid(0.1, -0.3, 5.0)); // nu too high
     }
 
     #[test]
@@ -936,8 +955,8 @@ mod tests {
     #[test]
     fn test_slice_config_with_bounds() {
         let custom_bounds = SabrBounds::new((0.01, 0.5), (-0.8, 0.8), (0.1, 1.5));
-        let config: SliceCalibrationConfig<f64> = SliceCalibrationConfig::rates()
-            .with_bounds(custom_bounds);
+        let config: SliceCalibrationConfig<f64> =
+            SliceCalibrationConfig::rates().with_bounds(custom_bounds);
 
         assert!((config.bounds.alpha_bounds.0 - 0.01).abs() < 1e-10);
         assert!((config.bounds.rho_bounds.1 - 0.8).abs() < 1e-10);
@@ -945,8 +964,8 @@ mod tests {
 
     #[test]
     fn test_slice_config_with_initial_params() {
-        let config: SliceCalibrationConfig<f64> = SliceCalibrationConfig::rates()
-            .with_initial_params(0.05, -0.5, 0.6);
+        let config: SliceCalibrationConfig<f64> =
+            SliceCalibrationConfig::rates().with_initial_params(0.05, -0.5, 0.6);
 
         assert!((config.initial_alpha - 0.05).abs() < 1e-10);
         assert!((config.initial_rho - (-0.5)).abs() < 1e-10);
@@ -972,11 +991,11 @@ mod tests {
     fn test_delta_vol_slice_with_25d() {
         // ATM = 10%, RR_25D = 1% (call - put), BF_25D = 0.5%
         let slice: DeltaVolSlice<f64> = DeltaVolSlice::new_with_25d(
-            0.10,   // atm
-            0.01,   // rr_25d (call vol - put vol)
-            0.005,  // bf_25d
-            1.0,    // expiry
-            1.10,   // forward
+            0.10,  // atm
+            0.01,  // rr_25d (call vol - put vol)
+            0.005, // bf_25d
+            1.0,   // expiry
+            1.10,  // forward
         );
 
         let vols = slice.to_delta_vols();
@@ -987,51 +1006,67 @@ mod tests {
         assert!((vols[0].volatility - 0.10).abs() < 1e-10);
 
         // 25D Call: ATM + BF + RR/2 = 0.10 + 0.005 + 0.005 = 0.11
-        let call_25d = vols.iter().find(|v| v.is_call && (v.delta - 0.25).abs() < 1e-10).unwrap();
+        let call_25d = vols
+            .iter()
+            .find(|v| v.is_call && (v.delta - 0.25).abs() < 1e-10)
+            .unwrap();
         assert!((call_25d.volatility - 0.11).abs() < 1e-10);
 
         // 25D Put: ATM + BF - RR/2 = 0.10 + 0.005 - 0.005 = 0.10
-        let put_25d = vols.iter().find(|v| !v.is_call && (v.delta - 0.25).abs() < 1e-10).unwrap();
+        let put_25d = vols
+            .iter()
+            .find(|v| !v.is_call && (v.delta - 0.25).abs() < 1e-10)
+            .unwrap();
         assert!((put_25d.volatility - 0.10).abs() < 1e-10);
     }
 
     #[test]
     fn test_delta_vol_slice_with_10d_25d() {
         let slice: DeltaVolSlice<f64> = DeltaVolSlice::new_with_10d_25d(
-            0.10,   // atm
-            0.01,   // rr_25d
-            0.005,  // bf_25d
-            0.02,   // rr_10d
-            0.01,   // bf_10d
-            1.0,    // expiry
-            1.10,   // forward
+            0.10,  // atm
+            0.01,  // rr_25d
+            0.005, // bf_25d
+            0.02,  // rr_10d
+            0.01,  // bf_10d
+            1.0,   // expiry
+            1.10,  // forward
         );
 
         let vols = slice.to_delta_vols();
         assert_eq!(vols.len(), 5); // ATM + 2×25D + 2×10D
 
         // 10D Call: ATM + BF_10D + RR_10D/2 = 0.10 + 0.01 + 0.01 = 0.12
-        let call_10d = vols.iter().find(|v| v.is_call && (v.delta - 0.1).abs() < 1e-10).unwrap();
+        let call_10d = vols
+            .iter()
+            .find(|v| v.is_call && (v.delta - 0.1).abs() < 1e-10)
+            .unwrap();
         assert!((call_10d.volatility - 0.12).abs() < 1e-10);
 
         // 10D Put: ATM + BF_10D - RR_10D/2 = 0.10 + 0.01 - 0.01 = 0.10
-        let put_10d = vols.iter().find(|v| !v.is_call && (v.delta - 0.1).abs() < 1e-10).unwrap();
+        let put_10d = vols
+            .iter()
+            .find(|v| !v.is_call && (v.delta - 0.1).abs() < 1e-10)
+            .unwrap();
         assert!((put_10d.volatility - 0.10).abs() < 1e-10);
     }
 
     #[test]
     fn test_delta_vol_slice_to_strike_quotes() {
         let slice: DeltaVolSlice<f64> = DeltaVolSlice::new_with_25d(
-            0.10,   // atm
-            0.01,   // rr_25d
-            0.005,  // bf_25d
-            1.0,    // expiry
-            1.10,   // forward
+            0.10,  // atm
+            0.01,  // rr_25d
+            0.005, // bf_25d
+            1.0,   // expiry
+            1.10,  // forward
         );
 
         // Simple delta-to-strike function for testing (returns forward + delta offset)
         let delta_to_strike = |delta: f64, is_call: bool, _vol: f64| -> f64 {
-            let offset = if is_call { 0.1 * (0.5 - delta) } else { -0.1 * (0.5 - delta) };
+            let offset = if is_call {
+                0.1 * (0.5 - delta)
+            } else {
+                -0.1 * (0.5 - delta)
+            };
             1.10 + offset
         };
 
@@ -1054,14 +1089,20 @@ mod tests {
 
         // RR = call - put
         let rr_25d = vol_25d_call - vol_25d_put; // 0.02
-        // BF = (call + put)/2 - atm
+                                                 // BF = (call + put)/2 - atm
         let bf_25d = (vol_25d_call + vol_25d_put) / 2.0 - atm; // 0.005
 
         let slice: DeltaVolSlice<f64> = DeltaVolSlice::new_with_25d(atm, rr_25d, bf_25d, 1.0, 1.10);
         let vols = slice.to_delta_vols();
 
-        let call_25d = vols.iter().find(|v| v.is_call && (v.delta - 0.25).abs() < 1e-10).unwrap();
-        let put_25d = vols.iter().find(|v| !v.is_call && (v.delta - 0.25).abs() < 1e-10).unwrap();
+        let call_25d = vols
+            .iter()
+            .find(|v| v.is_call && (v.delta - 0.25).abs() < 1e-10)
+            .unwrap();
+        let put_25d = vols
+            .iter()
+            .find(|v| !v.is_call && (v.delta - 0.25).abs() < 1e-10)
+            .unwrap();
 
         assert!((call_25d.volatility - vol_25d_call).abs() < 1e-10);
         assert!((put_25d.volatility - vol_25d_put).abs() < 1e-10);
@@ -1097,8 +1138,7 @@ mod tests {
 
     #[test]
     fn test_diagnostics_with_warning() {
-        let diag = SliceCalibrationDiagnostics::new(true, 10, 1e-8, 3)
-            .with_warning("Test warning");
+        let diag = SliceCalibrationDiagnostics::new(true, 10, 1e-8, 3).with_warning("Test warning");
 
         assert!(diag.has_warnings());
         assert_eq!(diag.warnings.len(), 1);
@@ -1137,7 +1177,10 @@ mod tests {
         let params: SabrParams<f64> = SabrParams::new(0.1, 1.0, -0.2, 0.3);
         let diagnostics = SliceCalibrationDiagnostics::new(true, 15, 1e-10, 5);
 
-        let result = SliceCalibrationResult { params, diagnostics };
+        let result = SliceCalibrationResult {
+            params,
+            diagnostics,
+        };
 
         assert!((result.params.alpha - 0.1).abs() < 1e-10);
         assert!(result.diagnostics.converged);
@@ -1186,7 +1229,7 @@ mod tests {
 
         // Create ATM quote and some smile quotes
         let quotes = vec![
-            VolQuote::new(forward, atm_vol, forward, 1.0),  // ATM
+            VolQuote::new(forward, atm_vol, forward, 1.0), // ATM
             VolQuote::new(forward * 0.95, 0.105, forward, 1.0), // OTM put
             VolQuote::new(forward * 1.05, 0.102, forward, 1.0), // OTM call
         ];
@@ -1198,7 +1241,8 @@ mod tests {
         assert!(
             (result.params.alpha - atm_vol).abs() < atm_vol * 0.5,
             "Alpha {} should be close to ATM vol {}",
-            result.params.alpha, atm_vol
+            result.params.alpha,
+            atm_vol
         );
     }
 
@@ -1214,7 +1258,7 @@ mod tests {
         let _expected_alpha = atm_vol * forward.powf(0.5);
 
         let quotes = vec![
-            VolQuote::new(forward, atm_vol, forward, 5.0),  // ATM
+            VolQuote::new(forward, atm_vol, forward, 5.0), // ATM
             VolQuote::new(forward - 0.01, 0.22, forward, 5.0), // OTM put
             VolQuote::new(forward + 0.01, 0.21, forward, 5.0), // OTM call
         ];
@@ -1222,14 +1266,8 @@ mod tests {
         let result = calibrator.calibrate_slice(&quotes, &rates_config).unwrap();
 
         // Allow reasonable deviation for rates
-        assert!(
-            result.params.alpha > 0.0,
-            "Alpha should be positive"
-        );
-        assert!(
-            result.params.alpha < 1.0,
-            "Alpha should be less than 1.0"
-        );
+        assert!(result.params.alpha > 0.0, "Alpha should be positive");
+        assert!(result.params.alpha < 1.0, "Alpha should be less than 1.0");
     }
 
     // =========================================================================
@@ -1248,9 +1286,9 @@ mod tests {
         let forward = 1.10;
         let expiry = 0.25;
         let quotes = vec![
-            VolQuote::new(1.05, 0.095, forward, expiry),  // 25D put
-            VolQuote::new(1.10, 0.085, forward, expiry),  // ATM
-            VolQuote::new(1.15, 0.092, forward, expiry),  // 25D call
+            VolQuote::new(1.05, 0.095, forward, expiry), // 25D put
+            VolQuote::new(1.10, 0.085, forward, expiry), // ATM
+            VolQuote::new(1.15, 0.092, forward, expiry), // 25D call
         ];
 
         let result = calibrator.calibrate_slice(&quotes, &config).unwrap();
@@ -1274,7 +1312,9 @@ mod tests {
             assert!(
                 error_bp < 50.0,
                 "Model vol {} vs market vol {}: error {}bp exceeds 50bp limit",
-                model_vol, market_vol, error_bp
+                model_vol,
+                market_vol,
+                error_bp
             );
         }
     }
@@ -1290,9 +1330,9 @@ mod tests {
         let forward = 0.03; // 3% swap rate
         let expiry = 1.0;
         let quotes = vec![
-            VolQuote::new(0.02, 0.25, forward, expiry),   // 100bp OTM put
-            VolQuote::new(0.03, 0.20, forward, expiry),   // ATM
-            VolQuote::new(0.04, 0.22, forward, expiry),   // 100bp OTM call
+            VolQuote::new(0.02, 0.25, forward, expiry), // 100bp OTM put
+            VolQuote::new(0.03, 0.20, forward, expiry), // ATM
+            VolQuote::new(0.04, 0.22, forward, expiry), // 100bp OTM call
         ];
 
         let result = calibrator.calibrate_slice(&quotes, &config).unwrap();
@@ -1316,7 +1356,9 @@ mod tests {
             assert!(
                 error_bp < 50.0,
                 "Model vol {} vs market vol {}: error {}bp exceeds 50bp limit",
-                model_vol, market_vol, error_bp
+                model_vol,
+                market_vol,
+                error_bp
             );
         }
     }
@@ -1388,9 +1430,15 @@ mod tests {
         // α > 0
         assert!(params.alpha > 0.0, "alpha should be positive");
         // 0 ≤ β ≤ 1
-        assert!(params.beta >= 0.0 && params.beta <= 1.0, "beta should be in [0, 1]");
+        assert!(
+            params.beta >= 0.0 && params.beta <= 1.0,
+            "beta should be in [0, 1]"
+        );
         // -1 < ρ < 1
-        assert!(params.rho > -1.0 && params.rho < 1.0, "rho should be in (-1, 1)");
+        assert!(
+            params.rho > -1.0 && params.rho < 1.0,
+            "rho should be in (-1, 1)"
+        );
         // ν > 0
         assert!(params.nu > 0.0, "nu should be positive");
 
@@ -1449,14 +1497,14 @@ mod tests {
         let config = SliceCalibrationConfig::rates();
 
         // Typical 5Y x 5Y swaption smile
-        let forward = 0.025;  // 2.5% swap rate
+        let forward = 0.025; // 2.5% swap rate
         let expiry = 5.0;
         let quotes = vec![
-            VolQuote::new(0.015, 0.35, forward, expiry),  // 100bp OTM put
-            VolQuote::new(0.020, 0.30, forward, expiry),  // 50bp OTM put
-            VolQuote::new(0.025, 0.25, forward, expiry),  // ATM
-            VolQuote::new(0.030, 0.27, forward, expiry),  // 50bp OTM call
-            VolQuote::new(0.035, 0.30, forward, expiry),  // 100bp OTM call
+            VolQuote::new(0.015, 0.35, forward, expiry), // 100bp OTM put
+            VolQuote::new(0.020, 0.30, forward, expiry), // 50bp OTM put
+            VolQuote::new(0.025, 0.25, forward, expiry), // ATM
+            VolQuote::new(0.030, 0.27, forward, expiry), // 50bp OTM call
+            VolQuote::new(0.035, 0.30, forward, expiry), // 100bp OTM call
         ];
 
         let result = calibrator.calibrate_slice(&quotes, &config).unwrap();
@@ -1494,17 +1542,20 @@ mod tests {
         assert!(
             (result1.params.alpha - result2.params.alpha).abs() < 1e-12,
             "Alpha not reproducible: {} vs {}",
-            result1.params.alpha, result2.params.alpha
+            result1.params.alpha,
+            result2.params.alpha
         );
         assert!(
             (result1.params.rho - result2.params.rho).abs() < 1e-12,
             "Rho not reproducible: {} vs {}",
-            result1.params.rho, result2.params.rho
+            result1.params.rho,
+            result2.params.rho
         );
         assert!(
             (result1.params.nu - result2.params.nu).abs() < 1e-12,
             "Nu not reproducible: {} vs {}",
-            result1.params.nu, result2.params.nu
+            result1.params.nu,
+            result2.params.nu
         );
 
         // Also check third run
@@ -1579,7 +1630,12 @@ mod tests {
 
         // Verify each slice has valid parameters
         for ((exp, ten), params) in &result.params {
-            assert!(params.validate().is_ok(), "Params at ({}, {}) invalid", exp.0, ten.0);
+            assert!(
+                params.validate().is_ok(),
+                "Params at ({}, {}) invalid",
+                exp.0,
+                ten.0
+            );
         }
     }
 }

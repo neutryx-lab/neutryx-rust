@@ -284,10 +284,12 @@ impl GenericPricer {
         let leg_currency = leg.currency;
 
         // Get discount curve for the leg currency
-        let curve = self.market.get_curve(leg_currency)
-            .ok_or_else(|| PricingError::market_data_resolution(
-                format!("No curve found for currency {:?}", leg_currency)
-            ))?;
+        let curve = self.market.get_curve(leg_currency).ok_or_else(|| {
+            PricingError::market_data_resolution(format!(
+                "No curve found for currency {:?}",
+                leg_currency
+            ))
+        })?;
 
         // Get FX rate (1.0 if same currency)
         let fx_rate = if leg_currency == reporting_currency {

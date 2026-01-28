@@ -23,12 +23,11 @@ use axum::{
     response::IntoResponse,
     Json,
 };
+// Re-export core event types from infra_master
+pub use infra_master::market::events::{CentralBank, EventImportance, EventType, MarketEvent};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{error, info};
-
-// Re-export core event types from infra_master
-pub use infra_master::market::events::{CentralBank, EventImportance, EventType, MarketEvent};
 
 // =============================================================================
 // API Request/Response Types

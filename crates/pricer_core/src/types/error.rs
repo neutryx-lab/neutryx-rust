@@ -14,11 +14,11 @@ use thiserror::Error;
 
 // Import math errors for From implementations
 use crate::math::distributions::DistributionError;
+#[cfg(feature = "linalg")]
+use crate::math::linalg::LinearAlgebraError;
 use crate::math::{
     fitting::FittingError, integrators::IntegrationError, optimisers::OptimisationError,
 };
-#[cfg(feature = "linalg")]
-use crate::math::linalg::LinearAlgebraError;
 
 /// Categorised pricing errors.
 ///
@@ -119,7 +119,8 @@ pub enum InterpolationError {
 /// - `MaxIterationsExceeded`: Solver failed to converge within iteration limit
 /// - `DerivativeNearZero`: Derivative too small for Newton-Raphson
 /// - `NoBracket`: Function values at bracket endpoints have same sign
-/// - `SingularJacobian`: Jacobian matrix is singular (multi-dimensional solvers)
+/// - `SingularJacobian`: Jacobian matrix is singular (multi-dimensional
+///   solvers)
 /// - `DimensionMismatch`: Input/output dimensions do not match expected values
 /// - `NumericalInstability`: General numerical instability
 /// - `External`: Error from external crate (argmin, roots, levenberg-marquardt)
@@ -161,7 +162,8 @@ pub enum SolverError {
         b: f64,
     },
 
-    /// Jacobian matrix is singular or near-singular (multi-dimensional solvers).
+    /// Jacobian matrix is singular or near-singular (multi-dimensional
+    /// solvers).
     ///
     /// This occurs when the Jacobian matrix cannot be inverted, typically
     /// indicating the problem is ill-conditioned or the current iterate
@@ -205,9 +207,9 @@ impl From<LinearAlgebraError> for SolverError {
             LinearAlgebraError::NotPositiveDefinite => {
                 SolverError::NumericalInstability("Matrix is not positive definite".to_string())
             }
-            LinearAlgebraError::NotSquare { rows, cols } => SolverError::NumericalInstability(
-                format!("Matrix is not square: {rows}x{cols}"),
-            ),
+            LinearAlgebraError::NotSquare { rows, cols } => {
+                SolverError::NumericalInstability(format!("Matrix is not square: {rows}x{cols}"))
+            }
             LinearAlgebraError::DimensionMismatch { expected, got } => {
                 SolverError::NumericalInstability(format!(
                     "Dimension mismatch: expected {expected}, got {got}"
@@ -485,11 +487,9 @@ impl From<SolverError> for CalibrationError {
                 "No bracket found between {} and {}",
                 a, b
             )),
-            SolverError::SingularJacobian { min_pivot } => {
-                CalibrationError::numerical_instability(format!(
-                    "Singular Jacobian matrix: min pivot = {min_pivot:.2e}"
-                ))
-            }
+            SolverError::SingularJacobian { min_pivot } => CalibrationError::numerical_instability(
+                format!("Singular Jacobian matrix: min pivot = {min_pivot:.2e}"),
+            ),
             SolverError::DimensionMismatch { expected, got } => {
                 CalibrationError::invalid_parameter(format!(
                     "Dimension mismatch: expected {expected}, got {got}"

@@ -49,9 +49,9 @@
 // Submodules
 pub mod binder;
 pub mod checkpoint_ad;
+pub mod enzyme_greeks;
 pub mod fallback;
 pub mod forward;
-pub mod enzyme_greeks;
 pub mod implicit_solver;
 pub mod kernel;
 pub mod loops;

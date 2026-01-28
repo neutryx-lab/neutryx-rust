@@ -102,7 +102,6 @@ pub enum CalibrationError {
     },
 
     // --- Global Solver Errors (Requirement 2.5, 9.1, 9.2, 9.4) ---
-
     /// No instruments provided for calibration.
     ///
     /// Requirement 2.5: The Calibration Problem shall return this error
@@ -149,7 +148,9 @@ pub enum CalibrationError {
     ///
     /// Requirement 2.6: The Calibration Problem shall verify that
     /// instrument count matches parameter count.
-    #[error("商品数とパラメータ数が一致しません (instruments: {instruments}, parameters: {parameters})")]
+    #[error(
+        "商品数とパラメータ数が一致しません (instruments: {instruments}, parameters: {parameters})"
+    )]
     DimensionMismatch {
         /// Number of instruments
         instruments: usize,
@@ -237,9 +238,7 @@ impl CalibrationError {
     }
 
     /// Create a no instruments error.
-    pub fn no_instruments() -> Self {
-        CalibrationError::NoInstruments
-    }
+    pub fn no_instruments() -> Self { CalibrationError::NoInstruments }
 
     /// Create a singular Jacobian error.
     pub fn singular_jacobian(condition_number: f64) -> Self {
@@ -248,11 +247,17 @@ impl CalibrationError {
 
     /// Create a divergence error.
     pub fn divergence(iteration: usize, residual: f64) -> Self {
-        CalibrationError::Divergence { iteration, residual }
+        CalibrationError::Divergence {
+            iteration,
+            residual,
+        }
     }
 
     /// Create an instrument evaluation failed error.
-    pub fn instrument_evaluation_failed(instrument_index: usize, message: impl Into<String>) -> Self {
+    pub fn instrument_evaluation_failed(
+        instrument_index: usize,
+        message: impl Into<String>,
+    ) -> Self {
         CalibrationError::InstrumentEvaluationFailed {
             instrument_index,
             message: message.into(),
@@ -376,11 +381,12 @@ impl From<CalibrationError> for pricer_core::types::PricingError {
                     "Jacobian matrix is singular (condition number: {condition_number:.2e})"
                 ))
             }
-            CalibrationError::Divergence { iteration, residual } => {
-                PricingError::NumericalInstability(format!(
-                    "Solver diverged at iteration {iteration} (residual: {residual:.6e})"
-                ))
-            }
+            CalibrationError::Divergence {
+                iteration,
+                residual,
+            } => PricingError::NumericalInstability(format!(
+                "Solver diverged at iteration {iteration} (residual: {residual:.6e})"
+            )),
             CalibrationError::InstrumentEvaluationFailed {
                 instrument_index,
                 message,
@@ -505,7 +511,11 @@ mod tests {
         let msg = format!("{}", err);
         assert!(msg.contains("発散"));
         assert!(msg.contains("50"));
-        if let CalibrationError::Divergence { iteration, residual } = err {
+        if let CalibrationError::Divergence {
+            iteration,
+            residual,
+        } = err
+        {
             assert_eq!(iteration, 50);
             assert!((residual - 1.5e3).abs() < 1e-10);
         } else {
@@ -520,7 +530,11 @@ mod tests {
         assert!(msg.contains("3"));
         assert!(msg.contains("評価"));
         assert!(msg.contains("NaN"));
-        if let CalibrationError::InstrumentEvaluationFailed { instrument_index, message } = err {
+        if let CalibrationError::InstrumentEvaluationFailed {
+            instrument_index,
+            message,
+        } = err
+        {
             assert_eq!(instrument_index, 3);
             assert!(message.contains("NaN"));
         } else {
@@ -535,7 +549,11 @@ mod tests {
         assert!(msg.contains("5"));
         assert!(msg.contains("3"));
         assert!(msg.contains("一致しません"));
-        if let CalibrationError::DimensionMismatch { instruments, parameters } = err {
+        if let CalibrationError::DimensionMismatch {
+            instruments,
+            parameters,
+        } = err
+        {
             assert_eq!(instruments, 5);
             assert_eq!(parameters, 3);
         } else {

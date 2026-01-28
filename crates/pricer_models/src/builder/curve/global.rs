@@ -21,15 +21,21 @@
 //! | Stability | Stable for well-ordered instruments | May require damping for ill-conditioned |
 
 use num_traits::Float;
+use pricer_core::{
+    math::{
+        linalg::{lu_solve, DMatrix, LinearAlgebraError, RealField},
+        numeric::from_f64,
+    },
+    types::SolverError,
+};
 
-use pricer_core::math::linalg::{DMatrix, LinearAlgebraError, RealField, lu_solve};
-use pricer_core::math::numeric::from_f64;
-use pricer_core::types::SolverError;
-
-use crate::builder::{CalibrationInstrument, CalibrationProblem, CalibrationProblemConfig};
-use crate::builder::problem::JacobianMethod;
-use crate::market::curves::{BootstrapInterpolation, BootstrappedCurve};
-
+use crate::{
+    builder::{
+        problem::JacobianMethod, CalibrationInstrument, CalibrationProblem,
+        CalibrationProblemConfig,
+    },
+    market::curves::{BootstrapInterpolation, BootstrappedCurve},
+};
 
 // =============================================================================
 // Configuration
@@ -252,14 +258,10 @@ pub struct GlobalBootstrapResult<T: Float> {
 
 impl<T: Float> GlobalBootstrapResult<T> {
     /// Check if the Jacobian inverse is available.
-    pub fn has_jacobian_inverse(&self) -> bool {
-        self.jacobian_inverse.is_some()
-    }
+    pub fn has_jacobian_inverse(&self) -> bool { self.jacobian_inverse.is_some() }
 
     /// Check if the residual history is available.
-    pub fn has_residual_history(&self) -> bool {
-        self.residual_history.is_some()
-    }
+    pub fn has_residual_history(&self) -> bool { self.residual_history.is_some() }
 
     /// Get the maximum pricing error across all instruments.
     pub fn max_pricing_error(&self) -> Option<T> {
@@ -302,19 +304,13 @@ pub struct GlobalBootstrapper<T: Float> {
 
 impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
     /// Create a new global bootstrapper with the given configuration.
-    pub fn new(config: GlobalBootstrapConfig<T>) -> Self {
-        Self { config }
-    }
+    pub fn new(config: GlobalBootstrapConfig<T>) -> Self { Self { config } }
 
     /// Create a bootstrapper with default configuration.
-    pub fn with_defaults() -> Self {
-        Self::new(GlobalBootstrapConfig::default())
-    }
+    pub fn with_defaults() -> Self { Self::new(GlobalBootstrapConfig::default()) }
 
     /// Get the configuration.
-    pub fn config(&self) -> &GlobalBootstrapConfig<T> {
-        &self.config
-    }
+    pub fn config(&self) -> &GlobalBootstrapConfig<T> { &self.config }
 
     /// Calibrate a yield curve from the given instruments.
     pub fn calibrate<I: CalibrationInstrument<T>>(
@@ -531,11 +527,7 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
     }
 
     /// Solve the linear system J * x = b.
-    fn solve_linear_system(
-        &self,
-        j: &DMatrix<T>,
-        b: &[T],
-    ) -> Result<Vec<T>, SolverError> {
+    fn solve_linear_system(&self, j: &DMatrix<T>, b: &[T]) -> Result<Vec<T>, SolverError> {
         lu_solve(j, b).map_err(|e: LinearAlgebraError| e.into())
     }
 
@@ -556,7 +548,9 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
 
         let problem_config = CalibrationProblemConfig::from(&self.config);
         let problem = CalibrationProblem::with_config(instruments.clone(), problem_config)
-            .map_err(|e| SolverError::NumericalInstability(format!("Problem creation failed: {e}")))?;
+            .map_err(|e| {
+                SolverError::NumericalInstability(format!("Problem creation failed: {e}"))
+            })?;
 
         let solver_config: MultidimNewtonConfig<T> = MultidimNewtonConfig {
             tolerance: self.config.tolerance,
@@ -606,9 +600,10 @@ fn vector_norm<T: Float>(v: &[T]) -> T {
 
 #[cfg(test)]
 mod tests {
+    use approx::assert_relative_eq;
+
     use super::*;
     use crate::market::curves::MarketInstrument;
-    use approx::assert_relative_eq;
 
     fn create_test_instruments() -> Vec<MarketInstrument<f64>> {
         vec![

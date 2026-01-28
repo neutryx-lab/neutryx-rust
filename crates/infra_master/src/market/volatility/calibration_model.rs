@@ -50,15 +50,13 @@ impl CalibrationModel {
     }
 
     /// Check if this model is currently enabled/implemented.
-    pub fn is_enabled(&self) -> bool {
-        matches!(self, Self::Sabr)
-    }
+    pub fn is_enabled(&self) -> bool { matches!(self, Self::Sabr) }
 
     /// Get the number of parameters for this model.
     pub fn parameter_count(&self) -> usize {
         match self {
-            Self::Sabr => 4,          // alpha, beta, rho, nu
-            Self::Svi => 5,           // a, b, rho, m, sigma
+            Self::Sabr => 4,            // alpha, beta, rho, nu
+            Self::Svi => 5,             // a, b, rho, m, sigma
             Self::LocalVolatility => 0, // Non-parametric
         }
     }
@@ -74,7 +72,11 @@ impl CalibrationModel {
 
     /// Returns only enabled/implemented models.
     pub fn enabled() -> Vec<CalibrationModel> {
-        Self::all().iter().copied().filter(|m| m.is_enabled()).collect()
+        Self::all()
+            .iter()
+            .copied()
+            .filter(|m| m.is_enabled())
+            .collect()
     }
 }
 

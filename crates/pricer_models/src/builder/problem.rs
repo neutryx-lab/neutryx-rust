@@ -9,11 +9,14 @@
 //! - **Vol surface calibration**: Solve for SABR parameters at each slice
 
 use num_traits::Float;
-
-use pricer_core::math::linalg::{DMatrix, DVector, RealField};
-use pricer_core::math::numeric::from_f64;
-use pricer_core::math::solvers::SystemOfEquations;
-use pricer_core::types::SolverError;
+use pricer_core::{
+    math::{
+        linalg::{DMatrix, DVector, RealField},
+        numeric::from_f64,
+        solvers::SystemOfEquations,
+    },
+    types::SolverError,
+};
 
 use super::{CalibrationError, CalibrationInstrument};
 use crate::market::curves::{BootstrapInterpolation, BootstrappedCurve};
@@ -142,19 +145,13 @@ where
     }
 
     /// Get the instruments.
-    pub fn instruments(&self) -> &[I] {
-        &self.instruments
-    }
+    pub fn instruments(&self) -> &[I] { &self.instruments }
 
     /// Get the pillars.
-    pub fn pillars(&self) -> &[T] {
-        &self.pillars
-    }
+    pub fn pillars(&self) -> &[T] { &self.pillars }
 
     /// Get the configuration.
-    pub fn config(&self) -> &CalibrationProblemConfig<T> {
-        &self.config
-    }
+    pub fn config(&self) -> &CalibrationProblemConfig<T> { &self.config }
 
     /// Build a yield curve from log discount factors.
     ///
@@ -193,9 +190,9 @@ where
         let mut residuals = Vec::with_capacity(self.instruments.len());
 
         for (idx, instrument) in self.instruments.iter().enumerate() {
-            let error = instrument.pricing_error(curve).map_err(|e| {
-                CalibrationError::instrument_evaluation_failed(idx, e.to_string())
-            })?;
+            let error = instrument
+                .pricing_error(curve)
+                .map_err(|e| CalibrationError::instrument_evaluation_failed(idx, e.to_string()))?;
             residuals.push(error);
         }
 
@@ -235,7 +232,9 @@ where
             log_df_pert[j] = log_df_pert[j] + eps;
 
             let curve_pert = self.build_curve(&log_df_pert).map_err(|e| {
-                CalibrationError::numerical_instability(format!("Failed to build perturbed curve: {e}"))
+                CalibrationError::numerical_instability(format!(
+                    "Failed to build perturbed curve: {e}"
+                ))
             })?;
             let f_pert = self.compute_residuals(&curve_pert)?;
 
@@ -292,9 +291,7 @@ where
     }
 
     /// Create an initial guess DVector for the solver.
-    pub fn initial_guess_vector(&self) -> DVector<T> {
-        DVector::from_vec(self.initial_guess())
-    }
+    pub fn initial_guess_vector(&self) -> DVector<T> { DVector::from_vec(self.initial_guess()) }
 }
 
 // =============================================================================
@@ -306,9 +303,7 @@ where
     T: Float + RealField + Copy,
     I: CalibrationInstrument<T> + Clone,
 {
-    fn dimension(&self) -> usize {
-        self.instruments.len()
-    }
+    fn dimension(&self) -> usize { self.instruments.len() }
 
     fn evaluate(&self, x: &DVector<T>) -> Result<DVector<T>, SolverError> {
         let log_df: Vec<T> = x.iter().copied().collect();
@@ -326,19 +321,11 @@ where
         let log_df: Vec<T> = x.iter().copied().collect();
 
         let jacobian = match self.config.jacobian_method {
-            JacobianMethod::Analytical => {
-                self.compute_jacobian_finite_diff(&log_df)
-            }
-            JacobianMethod::FiniteDifference => {
-                self.compute_jacobian_finite_diff(&log_df)
-            }
-            JacobianMethod::CentralDifference => {
-                self.compute_jacobian_central_diff(&log_df)
-            }
+            JacobianMethod::Analytical => self.compute_jacobian_finite_diff(&log_df),
+            JacobianMethod::FiniteDifference => self.compute_jacobian_finite_diff(&log_df),
+            JacobianMethod::CentralDifference => self.compute_jacobian_central_diff(&log_df),
             #[cfg(feature = "enzyme-ad")]
-            JacobianMethod::AutomaticDifferentiation => {
-                self.compute_jacobian_finite_diff(&log_df)
-            }
+            JacobianMethod::AutomaticDifferentiation => self.compute_jacobian_finite_diff(&log_df),
         };
 
         jacobian.map_err(|e| {
@@ -353,9 +340,10 @@ where
 
 #[cfg(test)]
 mod tests {
+    use approx::assert_relative_eq;
+
     use super::*;
     use crate::market::curves::{MarketInstrument, YieldCurve};
-    use approx::assert_relative_eq;
 
     fn create_test_instruments() -> Vec<MarketInstrument<f64>> {
         vec![
@@ -455,7 +443,10 @@ mod tests {
 
         let problem = CalibrationProblem::with_config(instruments, config).unwrap();
 
-        assert_eq!(problem.config().jacobian_method, JacobianMethod::CentralDifference);
+        assert_eq!(
+            problem.config().jacobian_method,
+            JacobianMethod::CentralDifference
+        );
         assert_relative_eq!(problem.config().jacobian_epsilon, 1e-6, epsilon = 1e-15);
     }
 

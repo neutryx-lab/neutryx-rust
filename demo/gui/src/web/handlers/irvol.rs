@@ -16,6 +16,8 @@ use axum::{
     response::IntoResponse,
     Json,
 };
+// Re-export volatility types from infra_master
+pub use infra_master::market::volatility::{StrikeType, VolQuoteType};
 use infra_master::market::Currency;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -24,9 +26,6 @@ use tracing::info;
 use uuid::Uuid;
 
 use crate::web::AppState;
-
-// Re-export volatility types from infra_master
-pub use infra_master::market::volatility::{StrikeType, VolQuoteType};
 
 // =============================================================================
 // Swaption Vol Quote Entry

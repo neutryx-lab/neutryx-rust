@@ -1132,8 +1132,9 @@ mod tests {
 
     #[test]
     fn test_compile_cms_index_registered() {
-        use crate::compiler::CmsIndex;
         use infra_master::time::Tenor;
+
+        use crate::compiler::CmsIndex;
 
         let mapper = IndexMapper::new();
         let mut compiler = LinearProductsCompiler::new(mapper);
@@ -1156,8 +1157,9 @@ mod tests {
 
     #[test]
     fn test_compile_cms_5y_eur() {
-        use crate::compiler::CmsIndex;
         use infra_master::time::Tenor;
+
+        use crate::compiler::CmsIndex;
 
         let mapper = IndexMapper::new();
         let mut compiler = LinearProductsCompiler::new(mapper);
@@ -1188,8 +1190,11 @@ mod tests {
             Currency::EUR,
         );
 
-        let trade =
-            Trade::new("CMS_EUR001", vec![leg], infra_master::trade::TradeType::Generic);
+        let trade = Trade::new(
+            "CMS_EUR001",
+            vec![leg],
+            infra_master::trade::TradeType::Generic,
+        );
 
         let kernel = compiler.compile_with_registration(&trade).unwrap();
 
@@ -1209,8 +1214,9 @@ mod tests {
 
     #[test]
     fn test_cms_and_ibor_share_id_space() {
-        use crate::compiler::CmsIndex;
         use infra_master::time::Tenor;
+
+        use crate::compiler::CmsIndex;
 
         let mapper = IndexMapper::new();
         let mut compiler = LinearProductsCompiler::new(mapper);

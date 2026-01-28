@@ -602,7 +602,8 @@ impl RiskEngine {
     ///
     /// * `scenario` - The scenario to execute
     /// * `base_value` - The base portfolio value (before stress)
-    /// * `pricer` - Function that returns the stressed value given scenario name
+    /// * `pricer` - Function that returns the stressed value given scenario
+    ///   name
     ///
     /// # Returns
     ///
@@ -625,7 +626,8 @@ impl RiskEngine {
     /// # Arguments
     ///
     /// * `base_value` - The base portfolio value
-    /// * `pricer` - Function that returns the stressed value given scenario name
+    /// * `pricer` - Function that returns the stressed value given scenario
+    ///   name
     ///
     /// # Returns
     ///
@@ -676,7 +678,8 @@ impl RiskEngine {
     /// # Arguments
     ///
     /// * `portfolio` - The portfolio to price
-    /// * `pricer_fn` - Function that takes a trade reference and returns a price
+    /// * `pricer_fn` - Function that takes a trade reference and returns a
+    ///   price
     ///
     /// # Returns
     ///
@@ -697,12 +700,14 @@ impl RiskEngine {
         portfolio.price_all_trades(pricer_fn)
     }
 
-    /// Aggregates values by netting set using the provided aggregation function.
+    /// Aggregates values by netting set using the provided aggregation
+    /// function.
     ///
     /// # Arguments
     ///
     /// * `portfolio` - The portfolio to aggregate
-    /// * `agg_fn` - Function that takes a slice of trades and returns an aggregated value
+    /// * `agg_fn` - Function that takes a slice of trades and returns an
+    ///   aggregated value
     ///
     /// # Returns
     ///
@@ -723,7 +728,8 @@ impl RiskEngine {
     /// # Arguments
     ///
     /// * `portfolio` - The portfolio to price
-    /// * `pricer_fn` - Function that takes a trade reference and returns a price
+    /// * `pricer_fn` - Function that takes a trade reference and returns a
+    ///   price
     ///
     /// # Returns
     ///
@@ -732,9 +738,7 @@ impl RiskEngine {
     where
         F: Fn(&Trade) -> f64 + Sync,
     {
-        self.price_portfolio(portfolio, pricer_fn)
-            .values()
-            .sum()
+        self.price_portfolio(portfolio, pricer_fn).values().sum()
     }
 
     /// Returns a mutable reference to the internal scenario engine.

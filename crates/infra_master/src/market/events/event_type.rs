@@ -87,8 +87,14 @@ mod tests {
 
     #[test]
     fn test_display_name() {
-        assert_eq!(EventType::CentralBankMeeting.display_name(), "Central Bank Meeting");
-        assert_eq!(EventType::EconomicRelease.display_name(), "Economic Release");
+        assert_eq!(
+            EventType::CentralBankMeeting.display_name(),
+            "Central Bank Meeting"
+        );
+        assert_eq!(
+            EventType::EconomicRelease.display_name(),
+            "Economic Release"
+        );
         assert_eq!(EventType::Holiday.display_name(), "Holiday");
     }
 

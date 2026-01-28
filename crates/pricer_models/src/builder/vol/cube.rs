@@ -1,14 +1,15 @@
 //! Swaption volatility cube calibration.
 //!
-//! This module provides `VolCubeBuilder` for calibrating swaption volatility cubes
-//! using slice-wise SABR calibration.
+//! This module provides `VolCubeBuilder` for calibrating swaption volatility
+//! cubes using slice-wise SABR calibration.
 
 use std::collections::BTreeMap;
+
 use num_traits::Float;
 
 use super::{
-    CalibrationError, OrderedFloat, SabrParams, SabrSliceCalibrator,
-    SliceCalibrationConfig, SliceCalibrationDiagnostics, SliceCalibrator, VolQuote,
+    CalibrationError, OrderedFloat, SabrParams, SabrSliceCalibrator, SliceCalibrationConfig,
+    SliceCalibrationDiagnostics, SliceCalibrator, VolQuote,
 };
 
 // =============================================================================
@@ -43,9 +44,7 @@ pub struct VolCubeBuilder<T: Float> {
 }
 
 impl<T: Float> Default for VolCubeBuilder<T> {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl<T: Float> VolCubeBuilder<T> {
@@ -151,38 +150,30 @@ pub struct VolCubeResult<T: Float> {
 impl<T: Float> VolCubeResult<T> {
     /// Gets parameters for a specific (expiry, tenor) point.
     pub fn get(&self, expiry: T, tenor: T) -> Option<&SabrParams<T>> {
-        self.params.get(&(OrderedFloat(expiry), OrderedFloat(tenor)))
+        self.params
+            .get(&(OrderedFloat(expiry), OrderedFloat(tenor)))
     }
 
     /// Returns the number of calibrated slices.
-    pub fn num_slices(&self) -> usize {
-        self.params.len()
-    }
+    pub fn num_slices(&self) -> usize { self.params.len() }
 
     /// Gets all expiries.
-    pub fn expiries(&self) -> &[T] {
-        &self.expiries
-    }
+    pub fn expiries(&self) -> &[T] { &self.expiries }
 
     /// Gets all tenors.
-    pub fn tenors(&self) -> &[T] {
-        &self.tenors
-    }
+    pub fn tenors(&self) -> &[T] { &self.tenors }
 
     /// Gets diagnostics for a specific (expiry, tenor) point.
     pub fn get_diagnostics(&self, expiry: T, tenor: T) -> Option<&SliceCalibrationDiagnostics> {
-        self.diagnostics.get(&(OrderedFloat(expiry), OrderedFloat(tenor)))
+        self.diagnostics
+            .get(&(OrderedFloat(expiry), OrderedFloat(tenor)))
     }
 
     /// Returns true if all slices converged.
-    pub fn all_converged(&self) -> bool {
-        self.diagnostics.values().all(|d| d.converged)
-    }
+    pub fn all_converged(&self) -> bool { self.diagnostics.values().all(|d| d.converged) }
 
     /// Returns true if all slices have acceptable fit quality.
-    pub fn all_acceptable(&self) -> bool {
-        self.diagnostics.values().all(|d| d.is_acceptable())
-    }
+    pub fn all_acceptable(&self) -> bool { self.diagnostics.values().all(|d| d.is_acceptable()) }
 
     /// Returns any warnings from calibration across all slices.
     pub fn warnings(&self) -> Vec<(T, T, &str)> {
@@ -264,7 +255,7 @@ mod tests {
         let cube = result.unwrap();
         assert_eq!(cube.num_slices(), 3);
         assert_eq!(cube.expiries().len(), 2); // 1Y, 5Y
-        assert_eq!(cube.tenors().len(), 2);   // 5Y, 10Y
+        assert_eq!(cube.tenors().len(), 2); // 5Y, 10Y
     }
 
     #[test]

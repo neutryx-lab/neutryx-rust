@@ -146,34 +146,22 @@ impl UnifiedPricingResult {
     }
 
     /// Returns the delta if computed.
-    pub fn delta(&self) -> Option<f64> {
-        self.greeks.as_ref().and_then(|g| g.delta)
-    }
+    pub fn delta(&self) -> Option<f64> { self.greeks.as_ref().and_then(|g| g.delta) }
 
     /// Returns the gamma if computed.
-    pub fn gamma(&self) -> Option<f64> {
-        self.greeks.as_ref().and_then(|g| g.gamma)
-    }
+    pub fn gamma(&self) -> Option<f64> { self.greeks.as_ref().and_then(|g| g.gamma) }
 
     /// Returns the vega if computed.
-    pub fn vega(&self) -> Option<f64> {
-        self.greeks.as_ref().and_then(|g| g.vega)
-    }
+    pub fn vega(&self) -> Option<f64> { self.greeks.as_ref().and_then(|g| g.vega) }
 
     /// Returns the theta if computed.
-    pub fn theta(&self) -> Option<f64> {
-        self.greeks.as_ref().and_then(|g| g.theta)
-    }
+    pub fn theta(&self) -> Option<f64> { self.greeks.as_ref().and_then(|g| g.theta) }
 
     /// Returns the rho if computed.
-    pub fn rho(&self) -> Option<f64> {
-        self.greeks.as_ref().and_then(|g| g.rho)
-    }
+    pub fn rho(&self) -> Option<f64> { self.greeks.as_ref().and_then(|g| g.rho) }
 
     /// Returns true if this result includes Greeks.
-    pub fn has_greeks(&self) -> bool {
-        self.greeks.as_ref().is_some_and(|g| g.has_any())
-    }
+    pub fn has_greeks(&self) -> bool { self.greeks.as_ref().is_some_and(|g| g.has_any()) }
 
     /// Returns the standard error (Monte Carlo only).
     pub fn standard_error(&self) -> Option<f64> {

@@ -19,8 +19,10 @@
 use std::{sync::Arc, time::Instant};
 
 use axum::{extract::State, http::StatusCode, Json};
-use pricer_models::builder::{BootstrapConfig, CurveBootstrapper};
-use pricer_models::market::curves::MarketInstrument;
+use pricer_models::{
+    builder::{BootstrapConfig, CurveBootstrapper},
+    market::curves::MarketInstrument,
+};
 use uuid::Uuid;
 
 use super::types::{

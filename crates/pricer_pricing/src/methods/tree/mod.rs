@@ -142,8 +142,8 @@
 //!
 //! # See Also
 //!
-//! - [`crate::methods::mc::MonteCarloPricer`] - Monte Carlo pricing for path-dependent
-//!   options
+//! - [`crate::methods::mc::MonteCarloPricer`] - Monte Carlo pricing for
+//!   path-dependent options
 
 mod binomial;
 mod config;

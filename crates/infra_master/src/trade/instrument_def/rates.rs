@@ -594,14 +594,13 @@ impl Deposit {
 
     /// Returns the year fraction for the deposit period.
     #[must_use]
-    pub fn year_fraction(&self) -> f64 {
-        (self.end_date() - self.start_date) as f64 / 360.0
-    }
+    pub fn year_fraction(&self) -> f64 { (self.end_date() - self.start_date) as f64 / 360.0 }
 }
 
 /// Forward Rate Agreement (FRA).
 ///
-/// A contract to exchange a fixed rate for a floating rate over a future period.
+/// A contract to exchange a fixed rate for a floating rate over a future
+/// period.
 ///
 /// # Example
 ///
@@ -672,9 +671,7 @@ impl Fra {
 
     /// Returns the year fraction for the FRA period.
     #[must_use]
-    pub fn year_fraction(&self) -> f64 {
-        (self.end_date() - self.start_date) as f64 / 360.0
-    }
+    pub fn year_fraction(&self) -> f64 { (self.end_date() - self.start_date) as f64 / 360.0 }
 }
 
 /// Interest Rate Futures contract.

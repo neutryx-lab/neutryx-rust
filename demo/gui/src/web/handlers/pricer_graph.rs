@@ -78,7 +78,8 @@ pub struct PricerGraphErrorResponse {
 // Sample Pricing Functions
 // =============================================================================
 
-/// Execute a sample pricing calculation using TracedFloat and pricer_core's BlackScholes.
+/// Execute a sample pricing calculation using TracedFloat and pricer_core's
+/// BlackScholes.
 fn execute_sample_pricing() -> ExecutionTrace {
     // Set up trace context
     let trace = Rc::new(RefCell::new(ExecutionTrace::new()));

@@ -37,8 +37,10 @@ use chrono::NaiveDate;
 pub use infra_master::trade::instrument_def::DeltaType;
 use infra_master::{market::Currency, trade::instrument_def::CurrencyPair};
 use pricer_core::math::formulas::fx_delta::delta_to_strike as core_delta_to_strike;
-use pricer_models::builder::{DeltaVolSlice, FxVolBuilder, FxVolResult, SliceCalibrationConfig};
-use pricer_models::market::FxCurveEnum;
+use pricer_models::{
+    builder::{DeltaVolSlice, FxVolBuilder, FxVolResult, SliceCalibrationConfig},
+    market::FxCurveEnum,
+};
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use uuid::Uuid;
@@ -1475,9 +1477,9 @@ pub async fn calibrate_surface(
         };
 
         // Add delta vol slice (handles RR/BF to strike conversion internally)
-        builder.add_delta_vol_slice(slice).map_err(|e| {
-            ApiError::internal(format!("Failed to add delta vol slice: {}", e))
-        })?;
+        builder
+            .add_delta_vol_slice(slice)
+            .map_err(|e| ApiError::internal(format!("Failed to add delta vol slice: {}", e)))?;
     }
 
     // Calibrate SABR parameters
@@ -1519,7 +1521,14 @@ pub async fn calibrate_surface(
                 .find(|q| (q.expiry - expiry).abs() < 0.01)
                 .map(|q| q.atm_vol)
                 .unwrap_or(0.1);
-            (atm * forward.powf(1.0 - request.sabr_beta), request.sabr_beta, -0.2, 0.3, 0.0, 0)
+            (
+                atm * forward.powf(1.0 - request.sabr_beta),
+                request.sabr_beta,
+                -0.2,
+                0.3,
+                0.0,
+                0,
+            )
         };
 
         max_residual = max_residual.max(residual);

@@ -33,6 +33,14 @@ use axum::{
     extract::{Path, Query, State},
     Json,
 };
+// Re-export calibration types from infra_master
+pub use infra_master::market::volatility::{CalibrationModel, StrikeAxisType};
+use pricer_core::math::formulas::sabr::{
+    sabr_implied_vol as core_sabr_implied_vol, SabrImpliedVolParams,
+};
+use pricer_models::builder::vol::{
+    SabrSliceCalibrator, SliceCalibrationConfig, SliceCalibrator, VolQuote,
+};
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use uuid::Uuid;
@@ -41,12 +49,6 @@ use crate::web::{
     error::{ApiError, ApiResult},
     AppState,
 };
-
-use pricer_core::math::formulas::sabr::{sabr_implied_vol as core_sabr_implied_vol, SabrImpliedVolParams};
-use pricer_models::builder::vol::{SabrSliceCalibrator, SliceCalibrationConfig, SliceCalibrator, VolQuote};
-
-// Re-export calibration types from infra_master
-pub use infra_master::market::volatility::{CalibrationModel, StrikeAxisType};
 
 // =============================================================================
 // Instrument Data Structures
@@ -849,8 +851,8 @@ pub async fn calibrate(
                 rho,
                 maturity: expiry,
             };
-            let model_vol = core_sabr_implied_vol(&sabr_params, inst.strike)
-                .unwrap_or(inst.implied_vol);
+            let model_vol =
+                core_sabr_implied_vol(&sabr_params, inst.strike).unwrap_or(inst.implied_vol);
             let error = model_vol - inst.implied_vol;
 
             total_error += error * error;
@@ -1091,12 +1093,11 @@ pub async fn get_density(
         let fallback_vol = params.alpha / forward.powf(1.0 - params.beta);
 
         // Compute density using central difference
-        let vol_mid = core_sabr_implied_vol(&sabr_params_density, strike)
-            .unwrap_or(fallback_vol);
-        let vol_low = core_sabr_implied_vol(&sabr_params_density, strike - h)
-            .unwrap_or(fallback_vol);
-        let vol_high = core_sabr_implied_vol(&sabr_params_density, strike + h)
-            .unwrap_or(fallback_vol);
+        let vol_mid = core_sabr_implied_vol(&sabr_params_density, strike).unwrap_or(fallback_vol);
+        let vol_low =
+            core_sabr_implied_vol(&sabr_params_density, strike - h).unwrap_or(fallback_vol);
+        let vol_high =
+            core_sabr_implied_vol(&sabr_params_density, strike + h).unwrap_or(fallback_vol);
 
         let c_low = black_call_price(strike - h, forward, query.expiry, vol_low, rate);
         let c_mid = black_call_price(strike, forward, query.expiry, vol_mid, rate);
@@ -1344,14 +1345,12 @@ fn calibrate_sabr_slice(
     // Convert instruments to VolQuote format for the calibrator
     let quotes: Vec<VolQuote<f64>> = instruments
         .iter()
-        .map(|inst| {
-            VolQuote::new(inst.strike, inst.implied_vol, forward, expiry)
-        })
+        .map(|inst| VolQuote::new(inst.strike, inst.implied_vol, forward, expiry))
         .collect();
 
     // Configure the calibrator for rates
-    let config: SliceCalibrationConfig<f64> = SliceCalibrationConfig::rates()
-        .with_initial_params(0.03, -0.3, 0.4);
+    let config: SliceCalibrationConfig<f64> =
+        SliceCalibrationConfig::rates().with_initial_params(0.03, -0.3, 0.4);
 
     // Run calibration
     let calibrator = SabrSliceCalibrator::new();

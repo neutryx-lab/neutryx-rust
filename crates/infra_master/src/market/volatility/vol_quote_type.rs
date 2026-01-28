@@ -48,14 +48,10 @@ impl VolQuoteType {
     }
 
     /// Check if this type uses percentage units.
-    pub fn is_percentage(&self) -> bool {
-        matches!(self, Self::Lognormal | Self::ShiftedLognormal)
-    }
+    pub fn is_percentage(&self) -> bool { matches!(self, Self::Lognormal | Self::ShiftedLognormal) }
 
     /// Check if this type requires a shift parameter.
-    pub fn requires_shift(&self) -> bool {
-        matches!(self, Self::ShiftedLognormal)
-    }
+    pub fn requires_shift(&self) -> bool { matches!(self, Self::ShiftedLognormal) }
 
     /// Returns all volatility quote type variants.
     pub fn all() -> &'static [VolQuoteType] {

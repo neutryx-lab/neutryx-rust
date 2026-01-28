@@ -6,14 +6,15 @@ use axum::{
     extract::{Path, Query, State},
     Json,
 };
+use pricer_models::{
+    builder::{
+        BootstrapConfig, BootstrapError, CurveBootstrapper,
+        InterpolationMethod as BuilderInterpolation,
+    },
+    market::curves::MarketInstrument,
+};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-
-use pricer_models::builder::{
-    BootstrapConfig, BootstrapError, CurveBootstrapper,
-    InterpolationMethod as BuilderInterpolation,
-};
-use pricer_models::market::curves::MarketInstrument;
 
 use crate::web::{
     error::{ApiError, ApiResult},
@@ -760,12 +761,8 @@ fn convert_bootstrap_error(error: &BootstrapError) -> ApiError {
             ),
             "instruments",
         ),
-        BootstrapError::Solver(e) => {
-            ApiError::calculation(format!("Solver error: {}", e))
-        }
-        BootstrapError::MarketData(e) => {
-            ApiError::calculation(format!("Market data error: {}", e))
-        }
+        BootstrapError::Solver(e) => ApiError::calculation(format!("Solver error: {}", e)),
+        BootstrapError::MarketData(e) => ApiError::calculation(format!("Market data error: {}", e)),
         BootstrapError::InvalidInput(msg) => ApiError::validation(msg.clone(), "instruments"),
     }
 }

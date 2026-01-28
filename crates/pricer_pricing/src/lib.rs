@@ -120,16 +120,15 @@ pub mod generic_pricer;
 pub mod result;
 
 // Re-export pricing method submodules for convenient access
-pub use methods::mc;
-pub use methods::path_dependent;
-
 // Re-export commonly used items for convenience
 pub use graph::{
     ComputationGraph, GraphBuilder, GraphEdge, GraphError, GraphExtractable, GraphMetadata,
     GraphNode, GraphNodeUpdate, NodeGroup, NodeType, SimpleGraphExtractor,
 };
-pub use methods::mc::{
-    GbmParams, Greek, MonteCarloConfig, MonteCarloPricer, PayoffParams, PricingResult,
+pub use methods::{
+    mc,
+    mc::{GbmParams, Greek, MonteCarloConfig, MonteCarloPricer, PayoffParams, PricingResult},
+    path_dependent,
+    tree::{BinomialTree, CrrParams, TreeConfig, TreeMethod, TreeType},
 };
-pub use methods::tree::{BinomialTree, CrrParams, TreeConfig, TreeMethod, TreeType};
 pub use result::{PricingMetadata, TreeTypeMetadata, UnifiedGreeks, UnifiedPricingResult};

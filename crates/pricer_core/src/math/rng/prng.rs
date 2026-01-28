@@ -86,9 +86,7 @@ impl PricerRng {
     /// assert_eq!(rng.seed(), 42);
     /// ```
     #[inline]
-    pub fn seed(&self) -> u64 {
-        self.seed
-    }
+    pub fn seed(&self) -> u64 { self.seed }
 
     /// Generates a single uniform random value in [0, 1).
     ///
@@ -106,9 +104,7 @@ impl PricerRng {
     /// assert!(value >= 0.0 && value < 1.0);
     /// ```
     #[inline]
-    pub fn gen_uniform(&mut self) -> f64 {
-        self.inner.gen()
-    }
+    pub fn gen_uniform(&mut self) -> f64 { self.inner.gen() }
 
     /// Generates a single standard normal variate (mean=0, std=1).
     ///
@@ -131,9 +127,7 @@ impl PricerRng {
     /// // Value is from standard normal distribution
     /// ```
     #[inline]
-    pub fn gen_normal(&mut self) -> f64 {
-        StandardNormal.sample(&mut self.inner)
-    }
+    pub fn gen_normal(&mut self) -> f64 { StandardNormal.sample(&mut self.inner) }
 
     /// Fills the buffer with uniform random values in [0, 1).
     ///

@@ -1,7 +1,8 @@
 //! Calibration grid for unified axis management.
 //!
 //! This module provides `CalibrationGrid<T>` which manages a unified axis
-//! (time, strike, tenor, etc.) for calibration, collecting and de-duplicating points.
+//! (time, strike, tenor, etc.) for calibration, collecting and de-duplicating
+//! points.
 //!
 //! # Usage
 //!
@@ -47,9 +48,7 @@ pub struct CalibrationGrid<T: Float> {
 
 impl<T: Float> CalibrationGrid<T> {
     /// Create an empty grid with default tolerance.
-    pub fn new() -> Self {
-        Self::with_tolerance(T::from(1e-10).unwrap())
-    }
+    pub fn new() -> Self { Self::with_tolerance(T::from(1e-10).unwrap()) }
 
     /// Create an empty grid with specified tolerance.
     pub fn with_tolerance(tolerance: T) -> Self {
@@ -92,9 +91,8 @@ impl<T: Float> CalibrationGrid<T> {
         }
 
         self.points.push(point);
-        self.points.sort_by(|a, b| {
-            a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)
-        });
+        self.points
+            .sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     }
 
     /// Add multiple points to the grid.
@@ -105,21 +103,24 @@ impl<T: Float> CalibrationGrid<T> {
             }
         }
 
-        self.points.sort_by(|a, b| {
-            a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal)
-        });
+        self.points
+            .sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     }
 
     /// Check if a point exists in the grid (within tolerance).
     pub fn contains(&self, point: T) -> bool {
-        self.points.iter().any(|&p| Float::abs(p - point) < self.tolerance)
+        self.points
+            .iter()
+            .any(|&p| Float::abs(p - point) < self.tolerance)
     }
 
     /// Get the index of a point.
     ///
     /// Returns `None` if the point is not in the grid.
     pub fn get_index(&self, point: T) -> Option<usize> {
-        self.points.iter().position(|&p| Float::abs(p - point) < self.tolerance)
+        self.points
+            .iter()
+            .position(|&p| Float::abs(p - point) < self.tolerance)
     }
 
     /// Get interpolation indices and weight for a point.
@@ -159,45 +160,29 @@ impl<T: Float> CalibrationGrid<T> {
     }
 
     /// Get the value at a given index.
-    pub fn get(&self, index: usize) -> Option<T> {
-        self.points.get(index).copied()
-    }
+    pub fn get(&self, index: usize) -> Option<T> { self.points.get(index).copied() }
 
     /// Get all points in the grid.
-    pub fn points(&self) -> &[T] {
-        &self.points
-    }
+    pub fn points(&self) -> &[T] { &self.points }
 
     /// Alias for `points()` - useful for time-based grids.
-    pub fn times(&self) -> &[T] {
-        &self.points
-    }
+    pub fn times(&self) -> &[T] { &self.points }
 
     /// Get the number of points in the grid.
-    pub fn len(&self) -> usize {
-        self.points.len()
-    }
+    pub fn len(&self) -> usize { self.points.len() }
 
     /// Check if the grid is empty.
-    pub fn is_empty(&self) -> bool {
-        self.points.is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.points.is_empty() }
 
     /// Get the minimum value in the grid.
-    pub fn min(&self) -> Option<T> {
-        self.points.first().copied()
-    }
+    pub fn min(&self) -> Option<T> { self.points.first().copied() }
 
     /// Get the maximum value in the grid.
-    pub fn max(&self) -> Option<T> {
-        self.points.last().copied()
-    }
+    pub fn max(&self) -> Option<T> { self.points.last().copied() }
 }
 
 impl<T: Float> Default for CalibrationGrid<T> {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 // =============================================================================
@@ -206,8 +191,9 @@ impl<T: Float> Default for CalibrationGrid<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     #[test]
     fn test_empty_grid() {

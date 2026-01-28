@@ -106,13 +106,13 @@ pub struct CurveSensitivities<T: RealField + Copy> {
 impl<T: RealField + Copy> CurveSensitivities<T> {
     /// Create new curve sensitivities from a sensitivity vector.
     pub fn new(market_sensitivities: DVector<T>) -> Self {
-        Self { market_sensitivities }
+        Self {
+            market_sensitivities,
+        }
     }
 
     /// Get the dimension (number of market sensitivities).
-    pub fn dimension(&self) -> usize {
-        self.market_sensitivities.len()
-    }
+    pub fn dimension(&self) -> usize { self.market_sensitivities.len() }
 
     /// Check if all sensitivities are finite.
     pub fn is_finite(&self) -> bool
@@ -127,7 +127,8 @@ impl<T: RealField + Copy> CurveSensitivities<T> {
 // ImplicitSolver
 // =============================================================================
 
-/// Solver for computing curve sensitivities using the Implicit Function Theorem.
+/// Solver for computing curve sensitivities using the Implicit Function
+/// Theorem.
 ///
 /// This struct provides methods for computing sensitivities of calibrated
 /// parameters to market inputs, enabling efficient gradient computation in
@@ -313,7 +314,8 @@ impl ImplicitSolver {
                     Ok(sens) => (sens, false), // Used implicit FT
                     Err(_) => {
                         // Dimension mismatch, fall back to FD
-                        let sens = Self::compute_curve_sensitivities_fd(loss_fn, curve_nodes, epsilon);
+                        let sens =
+                            Self::compute_curve_sensitivities_fd(loss_fn, curve_nodes, epsilon);
                         (sens, true)
                     }
                 }
@@ -333,8 +335,9 @@ impl ImplicitSolver {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use approx::assert_relative_eq;
+
+    use super::*;
 
     // =========================================================================
     // CurveSensitivities Tests
@@ -654,7 +657,11 @@ mod tests {
                 fd_sens.market_sensitivities[i],
                 epsilon = 1e-4
             );
-            assert_relative_eq!(implicit_sens.market_sensitivities[i], coeffs[i], epsilon = 1e-10);
+            assert_relative_eq!(
+                implicit_sens.market_sensitivities[i],
+                coeffs[i],
+                epsilon = 1e-10
+            );
         }
     }
 
@@ -724,7 +731,8 @@ mod tests {
             }
         });
 
-        // Simulated portfolio DV01 to curve nodes (decreasing sensitivity to longer tenors)
+        // Simulated portfolio DV01 to curve nodes (decreasing sensitivity to longer
+        // tenors)
         let adjoint = DVector::from_fn(n, |i, _| 1000.0 * (-0.1 * i as f64).exp());
 
         // Compute sensitivities using Implicit FT
@@ -781,11 +789,11 @@ mod tests {
 
         // Step 2: Portfolio valuation gives adjoint (DV01 to curve nodes)
         let portfolio_dv01_to_nodes = DVector::from_vec(vec![
-            500.0,  // DV01 to 1Y node
-            300.0,  // DV01 to 2Y node
-            200.0,  // DV01 to 3Y node
-            150.0,  // DV01 to 5Y node
-            100.0,  // DV01 to 10Y node
+            500.0, // DV01 to 1Y node
+            300.0, // DV01 to 2Y node
+            200.0, // DV01 to 3Y node
+            150.0, // DV01 to 5Y node
+            100.0, // DV01 to 10Y node
         ]);
 
         // Step 3: Compute DV01 to market quotes using ImplicitSolver

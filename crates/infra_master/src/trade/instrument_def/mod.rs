@@ -446,9 +446,9 @@ impl InstrumentDefinition {
             InstrumentDefinition::FxVanillaOption(o) => o.validate(),
             InstrumentDefinition::FxBarrierOption(b) => b.validate(),
             InstrumentDefinition::FxSwap(s) => s.validate(),
-            InstrumentDefinition::CrossCurrencyBasisSwap(x) => {
-                x.validate().map_err(|e| InstrumentError::invalid_parameter(&e.to_string()))
-            }
+            InstrumentDefinition::CrossCurrencyBasisSwap(x) => x
+                .validate()
+                .map_err(|e| InstrumentError::invalid_parameter(&e.to_string())),
 
             // Equity
             InstrumentDefinition::EquityForward(f) => f.validate(),

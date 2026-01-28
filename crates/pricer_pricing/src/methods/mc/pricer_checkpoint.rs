@@ -22,14 +22,19 @@
 //!
 //! Optimal checkpoint interval for √n checkpoints gives O(√n) memory.
 
+use pricer_core::math::rng::PricerRng;
+
 use crate::{
     checkpoint::{
         CheckpointManager, CheckpointResult, CheckpointStrategy, MemoryBudget, SimulationState,
     },
-    methods::mc::{workspace_checkpoint::CheckpointWorkspace, GbmParams, MonteCarloConfig, PricingResult},
-    methods::path_dependent::{PathObserverState, PathPayoffType},
+    methods::{
+        mc::{
+            workspace_checkpoint::CheckpointWorkspace, GbmParams, MonteCarloConfig, PricingResult,
+        },
+        path_dependent::{PathObserverState, PathPayoffType},
+    },
 };
-use pricer_core::math::rng::PricerRng;
 
 /// Configuration for checkpoint-enabled pricing.
 ///
@@ -112,7 +117,9 @@ impl CheckpointPricer {
     /// # Errors
     ///
     /// Returns error if configuration is invalid.
-    pub fn new(config: CheckpointPricingConfig) -> Result<Self, crate::methods::mc::MonteCarloConfigError> {
+    pub fn new(
+        config: CheckpointPricingConfig,
+    ) -> Result<Self, crate::methods::mc::MonteCarloConfigError> {
         config.mc_config.validate()?;
 
         let n_paths = config.mc_config.n_paths();

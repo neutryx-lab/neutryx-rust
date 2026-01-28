@@ -126,9 +126,7 @@ impl LowDiscrepancySequence for SobolPlaceholder {
         unimplemented!("Sobol sequence not implemented in the current phase")
     }
 
-    fn reset(&mut self) {
-        unimplemented!("Sobol sequence not implemented in the current phase")
-    }
+    fn reset(&mut self) { unimplemented!("Sobol sequence not implemented in the current phase") }
 
     fn skip(&mut self, _n: usize) {
         unimplemented!("Sobol sequence not implemented in the current phase")
