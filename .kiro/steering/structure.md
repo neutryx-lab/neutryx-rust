@@ -547,37 +547,35 @@ api_client.rs    → HTTP client for service communication
 web/             → Web server module (feature-gated)
   ├── main.rs         → Web dashboard entry point
   ├── mod.rs          → Router configuration, middleware, AppState
-  ├── handlers.rs     → Legacy REST API handlers (pricing, portfolio, XVA, Greeks)
   │
-  │   Pattern: *_handlers.rs + *_types.rs for each feature domain
-  │   ────────────────────────────────────────────────────────
-  ├── curve_builder_handlers.rs → Curve Builder API (/api/curves/*)
-  ├── curve_builder_types.rs    → Curve Builder type definitions
-  ├── volcube_handlers.rs       → IR VolCube API (/api/volcube/*)
-  ├── volcube_types.rs          → IR VolCube type definitions
-  ├── irvol_handlers.rs         → IR Vol Surface API (/api/irvol/*)
-  ├── irvol_types.rs            → IR Vol type definitions
-  ├── fxvol_handlers.rs         → FX Vol Surface API (/api/fxvol/calibrate, /api/fxvol/surface)
-  ├── fxvol_types.rs            → FX Vol type definitions (FxCalibrateRequest, FxSurfaceResponse)
-  ├── fxcurve_handlers.rs       → FX Curve API (/api/fxcurve/build)
-  ├── fxcurve_types.rs          → FX Curve type definitions
-  ├── trade_handlers.rs         → Trade expansion API (/api/trades/*)
-  ├── trade_types.rs            → Trade type definitions
-  ├── market_handlers.rs        → Market data API (/api/market/*)
-  ├── market_types.rs           → Market data types
-  ├── market_data.rs            → Market data module
-  ├── generic_pricer_handlers.rs → Generic Pricer API (/api/pricer/*)
-  ├── risk_engine_handlers.rs   → Risk Engine API (/api/risk/*)
-  ├── risk_engine_types.rs      → Risk Engine type definitions
+  ├── handlers/       → REST API handlers (feature-organised)
+  │   ├── mod.rs          → Handler module exports
+  │   ├── types.rs        → Consolidated API type definitions
+  │   ├── curves.rs       → Curve Builder API (/api/curves/*)
+  │   ├── volcube.rs      → IR VolCube API (/api/volcube/*)
+  │   ├── irvol.rs        → IR Vol Surface API (/api/irvol/*)
+  │   ├── fxvol.rs        → FX Vol Surface API (/api/fxvol/*)
+  │   ├── fxcurve.rs      → FX Curve API (/api/fxcurve/*)
+  │   ├── trades.rs       → Trade expansion API (/api/trades/*)
+  │   ├── market.rs       → Market data API (/api/market/*)
+  │   ├── generic_pricer.rs → Generic Pricer API (/api/pricer/*)
+  │   ├── risk_engine.rs  → Risk Engine API (/api/risk/*)
+  │   ├── scenario_analysis.rs → Scenario analysis endpoints
+  │   ├── pricing.rs      → Pricing endpoints
+  │   ├── greeks.rs       → Greeks calculation endpoints
+  │   ├── portfolio.rs    → Portfolio management endpoints
+  │   ├── graphs.rs       → Computation graph endpoints
+  │   ├── events.rs       → Market event handling
+  │   └── health.rs       → Health check endpoints
   │
-  ├── scenario_handlers.rs → Scenario analysis endpoints (presets, run, compare)
+  ├── state/          → Application state management
   ├── pricing_service.rs  → Pricing service integration
   ├── schedule_utils.rs   → Schedule generation utilities
-  ├── websocket.rs    → WebSocket real-time updates (FxVolSurfaceUpdateEvent)
+  ├── websocket.rs    → WebSocket real-time updates
   ├── jobs.rs         → Async job manager for background processing
   ├── metrics.rs      → Prometheus-style metrics collection
   ├── openapi.rs      → OpenAPI/Swagger UI (feature = "openapi")
-  ├── pricer_types.rs → Shared type definitions
+  ├── market_data.rs  → Market data module
   └── error.rs        → API error handling (ApiError, ApiResult)
 static/          → Web assets (HTML, CSS, JS)
 ```
@@ -590,13 +588,12 @@ static/          → Web assets (HTML, CSS, JS)
 - Feature-gated compilation (default TUI, optional web)
 
 **Web Features**:
-- REST API handlers (2000+ LOC)
+- REST API handlers (`web/handlers/` - feature-organised modules)
 - Computation graph visualisation (`/api/graph` endpoint)
 - Performance metrics collection (API response times, WebSocket latency)
 - CORS and Content Security Policy headers
 - Environment-based configuration (`FB_CORS_ORIGINS`, `FB_CSP`)
 - OpenAPI/Swagger documentation (`feature = "openapi"`, `web/openapi.rs`)
-- Scenario analysis handlers (`web/scenario_handlers.rs`) - preset scenarios, comparison
 - Async job management (`web/jobs.rs`) - background processing for long-running tasks
 - Prometheus-style metrics export (`web/metrics.rs`)
 
@@ -687,5 +684,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-28_ — builder/ restructured: shared infra (grid, matrix, problem), curve/ (bootstrap, global), vol/ (surface, cube)
+_Updated: 2026-01-28_ — demo/gui handlers reorganised into handlers/ subdirectory with consolidated types
 _Document patterns, not file trees. New files following patterns should not require updates_

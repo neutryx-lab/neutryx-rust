@@ -21,10 +21,12 @@ use axum::{
     http::StatusCode,
     Json,
 };
-use num_traits::Float;
-use pricer_core::types::{
-    clear_trace_context, export_graph, set_trace_context, D3Graph, DetailLevel, ExecutionTrace,
-    TracedFloat,
+use pricer_core::{
+    math::formulas::BlackScholes,
+    types::{
+        clear_trace_context, export_graph, set_trace_context, D3Graph, DetailLevel, ExecutionTrace,
+        TracedFloat,
+    },
 };
 use serde::{Deserialize, Serialize};
 
@@ -76,31 +78,7 @@ pub struct PricerGraphErrorResponse {
 // Sample Pricing Functions
 // =============================================================================
 
-/// Black-Scholes d1 calculation using generic Float trait.
-fn calculate_d1<T: Float>(spot: T, strike: T, rate: T, vol: T, time: T) -> T {
-    let numerator = (spot / strike).ln() + (rate + vol * vol / T::from(2.0).unwrap()) * time;
-    let denominator = vol * time.sqrt();
-    numerator / denominator
-}
-
-/// Black-Scholes d2 calculation.
-fn calculate_d2<T: Float>(d1: T, vol: T, time: T) -> T { d1 - vol * time.sqrt() }
-
-/// Simplified Black-Scholes call price calculation.
-/// Uses a simplified approximation of the normal CDF.
-fn calculate_call_price<T: Float>(spot: T, strike: T, rate: T, vol: T, time: T) -> T {
-    let d1 = calculate_d1(spot, strike, rate, vol, time);
-    let d2 = calculate_d2(d1, vol, time);
-
-    // Simplified normal CDF approximation: 0.5 * (1 + x / sqrt(1 + x^2))
-    let n_d1 = T::from(0.5).unwrap() * (T::one() + d1 / (T::one() + d1 * d1).sqrt());
-    let n_d2 = T::from(0.5).unwrap() * (T::one() + d2 / (T::one() + d2 * d2).sqrt());
-
-    let discount = (-rate * time).exp();
-    spot * n_d1 - strike * discount * n_d2
-}
-
-/// Execute a sample pricing calculation using TracedFloat.
+/// Execute a sample pricing calculation using TracedFloat and pricer_core's BlackScholes.
 fn execute_sample_pricing() -> ExecutionTrace {
     // Set up trace context
     let trace = Rc::new(RefCell::new(ExecutionTrace::new()));
@@ -116,19 +94,22 @@ fn execute_sample_pricing() -> ExecutionTrace {
     let vol = TracedFloat::input(0.2, "vol");
     let time = TracedFloat::input(1.0, "time");
 
+    // Create BlackScholes model using pricer_core (TracedFloat implements Float)
+    let bs = BlackScholes::new(spot, rate, vol).expect("Valid BS parameters");
+
     // Calculate d1
     trace.borrow_mut().enter_scope("calculate_d1");
-    let d1 = calculate_d1(spot, strike, rate, vol, time);
+    let _d1 = bs.d1(strike, time);
     trace.borrow_mut().exit_scope();
 
     // Calculate d2
     trace.borrow_mut().enter_scope("calculate_d2");
-    let _d2 = calculate_d2(d1, vol, time);
+    let _d2 = bs.d2(strike, time);
     trace.borrow_mut().exit_scope();
 
     // Calculate price
     trace.borrow_mut().enter_scope("calculate_price");
-    let _price = calculate_call_price(spot, strike, rate, vol, time);
+    let _price = bs.price_call(strike, time);
     trace.borrow_mut().exit_scope();
 
     // Exit main scope
@@ -276,8 +257,10 @@ mod tests {
     }
 
     #[test]
-    fn test_calculate_d1() {
-        let d1 = calculate_d1(100.0_f64, 100.0, 0.05, 0.2, 1.0);
+    fn test_black_scholes_d1() {
+        // Using pricer_core::math::formulas::BlackScholes instead of local function
+        let bs = BlackScholes::new(100.0_f64, 0.05, 0.2).unwrap();
+        let d1 = bs.d1(100.0, 1.0);
         // d1 should be positive for ATM option with positive rate
         assert!(d1 > 0.0);
     }

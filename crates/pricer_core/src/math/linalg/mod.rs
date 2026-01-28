@@ -143,7 +143,6 @@ pub fn ones<T: RealField + Copy>(nrows: usize, ncols: usize) -> Matrix<T> {
 /// * `diag` - Diagonal elements
 #[must_use]
 pub fn diagonal<T: RealField + Copy>(diag: &[T]) -> Matrix<T> {
-    let n = diag.len();
     let v = DVector::from_column_slice(diag);
     DMatrix::from_diagonal(&v)
 }
