@@ -7,6 +7,9 @@ use axum::{
     Json,
 };
 use chrono::{Local, NaiveDate};
+// Conditional imports for global bootstrap with jump calibration
+#[cfg(feature = "global-bootstrap")]
+use pricer_models::builder::{GlobalBootstrapConfig, GlobalBootstrapper, JumpPillar};
 use pricer_models::{
     builder::{
         BootstrapConfig, BootstrapError, CurveBootstrapper,
@@ -14,10 +17,6 @@ use pricer_models::{
     },
     market::curves::MarketInstrument,
 };
-
-// Conditional imports for global bootstrap with jump calibration
-#[cfg(feature = "global-bootstrap")]
-use pricer_models::builder::{GlobalBootstrapConfig, GlobalBootstrapper, JumpPillar};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -787,15 +786,12 @@ pub async fn build_curve(
 
             let global_bootstrapper = GlobalBootstrapper::new(global_config);
 
-            match global_bootstrapper.calibrate_with_jumps(&market_instruments, jump_pillars.clone())
+            match global_bootstrapper
+                .calibrate_with_jumps(&market_instruments, jump_pillars.clone())
             {
                 Ok(result) => {
-                    jump_fallback_used = Some(
-                        result
-                            .realised_jumps
-                            .as_ref()
-                            .is_some_and(|j| j.is_empty()),
-                    );
+                    jump_fallback_used =
+                        Some(result.realised_jumps.as_ref().is_some_and(|j| j.is_empty()));
 
                     // Extract realised jumps for response
                     if let Some(ref calibrated_jumps) = result.realised_jumps {
@@ -972,10 +968,7 @@ fn parse_and_validate_cb_events(
 
         // Parse the event date
         let event_date = NaiveDate::parse_from_str(&event.date, "%Y-%m-%d").map_err(|e| {
-            ApiError::validation(
-                format!("Invalid date '{}': {}", event.date, e),
-                "cb_events",
-            )
+            ApiError::validation(format!("Invalid date '{}': {}", event.date, e), "cb_events")
         })?;
 
         // Calculate time to event in years

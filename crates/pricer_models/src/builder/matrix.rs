@@ -352,15 +352,14 @@ impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
     /// # Returns
     ///
     /// An interpolation matrix that treats jump times as segment boundaries.
-    pub fn with_jump_pillars(
-        pillars: &[T],
-        jump_times: &[T],
-        grid: &CalibrationGrid<T>,
-    ) -> Self {
+    pub fn with_jump_pillars(pillars: &[T], jump_times: &[T], grid: &CalibrationGrid<T>) -> Self {
         // Merge pillars and jump times into sorted unique list
         let mut all_breaks: Vec<T> = pillars.to_vec();
         for &jt in jump_times {
-            if !all_breaks.iter().any(|&p| Float::abs(p - jt) < from_f64::<T>(1e-10)) {
+            if !all_breaks
+                .iter()
+                .any(|&p| Float::abs(p - jt) < from_f64::<T>(1e-10))
+            {
                 all_breaks.push(jt);
             }
         }
@@ -406,8 +405,8 @@ impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
             // Calculate cumulative jump effect for all jumps before time t
             let jump_adjustment = self.calculate_jump_adjustment(t, jumps);
 
-            // Apply adjustment: log(DF_adjusted) = log(DF_smooth) + log(1 - cumulative_jump_effect)
-            // For small jumps, log(1 - x) ≈ -x
+            // Apply adjustment: log(DF_adjusted) = log(DF_smooth) + log(1 -
+            // cumulative_jump_effect) For small jumps, log(1 - x) ≈ -x
             result.push(base_log_df + jump_adjustment);
         }
 
@@ -666,7 +665,8 @@ mod tests {
     fn test_interpolation_with_jump_pillars() {
         let pillars = vec![1.0, 2.0, 5.0];
         let jump_times = vec![0.5, 1.5]; // Jump at 6M and 18M
-        let grid: CalibrationGrid<f64> = CalibrationGrid::from_points(vec![0.5, 1.0, 1.5, 2.0, 5.0]);
+        let grid: CalibrationGrid<f64> =
+            CalibrationGrid::from_points(vec![0.5, 1.0, 1.5, 2.0, 5.0]);
 
         let interp = InterpolationMatrix::with_jump_pillars(&pillars, &jump_times, &grid);
 

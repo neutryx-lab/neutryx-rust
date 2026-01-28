@@ -347,37 +347,32 @@ impl<T: Float> GlobalBootstrapResult<T> {
     }
 
     /// Check if this result includes jump calibration.
-    pub fn has_jumps(&self) -> bool {
-        self.realised_jumps
-            .as_ref()
-            .is_some_and(|j| !j.is_empty())
-    }
+    pub fn has_jumps(&self) -> bool { self.realised_jumps.as_ref().is_some_and(|j| !j.is_empty()) }
 
     /// Get the number of calibrated jumps.
-    pub fn num_jumps(&self) -> usize {
-        self.realised_jumps.as_ref().map_or(0, |j| j.len())
-    }
+    pub fn num_jumps(&self) -> usize { self.realised_jumps.as_ref().map_or(0, |j| j.len()) }
 
     /// Get the realised jump values in basis points.
     pub fn realised_jumps_bps(&self) -> Option<Vec<(T, T)>> {
         self.realised_jumps.as_ref().map(|jumps| {
             jumps
                 .iter()
-                .filter_map(|j| j.realised_jump.map(|r| (j.time, JumpPillar::rate_to_bps(r))))
+                .filter_map(|j| {
+                    j.realised_jump
+                        .map(|r| (j.time, JumpPillar::rate_to_bps(r)))
+                })
                 .collect()
         })
     }
 
     /// Get the total cumulative jump effect in basis points.
     pub fn total_jump_bps(&self) -> T {
-        self.realised_jumps
-            .as_ref()
-            .map_or(T::zero(), |jumps| {
-                jumps
-                    .iter()
-                    .filter_map(|j| j.realised_jump)
-                    .fold(T::zero(), |acc, r| acc + JumpPillar::rate_to_bps(r))
-            })
+        self.realised_jumps.as_ref().map_or(T::zero(), |jumps| {
+            jumps
+                .iter()
+                .filter_map(|j| j.realised_jump)
+                .fold(T::zero(), |acc, r| acc + JumpPillar::rate_to_bps(r))
+        })
     }
 }
 
@@ -564,7 +559,7 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
             self.config.interpolation,
             self.config.allow_extrapolation,
         )
-        .map_err(|e| SolverError::NumericalInstability(e))
+        .map_err(SolverError::NumericalInstability)
     }
 
     /// Compute the residual vector (pricing errors).
@@ -723,13 +718,16 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
 
         // Create CalibrationProblem with jumps
         let problem_config = CalibrationProblemConfig::from(&self.config);
-        let problem =
-            CalibrationProblem::with_jumps(instruments.to_vec(), jump_pillars.clone(), problem_config)
-                .map_err(|e| {
-                    SolverError::NumericalInstability(format!(
-                        "Failed to create calibration problem with jumps: {e}"
-                    ))
-                })?;
+        let problem = CalibrationProblem::with_jumps(
+            instruments.to_vec(),
+            jump_pillars.clone(),
+            problem_config,
+        )
+        .map_err(|e| {
+            SolverError::NumericalInstability(format!(
+                "Failed to create calibration problem with jumps: {e}"
+            ))
+        })?;
 
         // Initial guess including jump parameters
         let mut x = problem.initial_guess_with_jumps();
@@ -774,7 +772,13 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
 
             // Check convergence
             if residual_norm < self.config.tolerance {
-                return self.finalize_jump_result(&problem, &x, residual_norm, iter, residual_history);
+                return self.finalize_jump_result(
+                    &problem,
+                    &x,
+                    residual_norm,
+                    iter,
+                    residual_history,
+                );
             }
 
             // Compute Jacobian with jumps
@@ -786,9 +790,10 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
             let neg_residuals: Vec<T> = residuals.iter().map(|&r| -r).collect();
 
             // The Jacobian is n_instruments × total_params, but we need to solve
-            // for the total_params variables. For overdetermined systems (n_instruments > total_params),
-            // we would use least squares. For square systems, we use LU.
-            // Currently, we assume square system (n_instruments == n_pillars).
+            // for the total_params variables. For overdetermined systems (n_instruments >
+            // total_params), we would use least squares. For square systems, we
+            // use LU. Currently, we assume square system (n_instruments ==
+            // n_pillars).
             let delta = if n_instruments == total_params {
                 self.solve_linear_system(&jacobian, &neg_residuals)?
             } else {
@@ -799,7 +804,13 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
             // Check parameter convergence
             let param_change = vector_norm(&delta);
             if param_change < self.config.param_tolerance {
-                return self.finalize_jump_result(&problem, &x, residual_norm, iter, residual_history);
+                return self.finalize_jump_result(
+                    &problem,
+                    &x,
+                    residual_norm,
+                    iter,
+                    residual_history,
+                );
             }
 
             // Update parameters with optional damping for jumps
@@ -933,7 +944,9 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
 
         for jp in jump_pillars {
             // Check if this jump time is already in the merged list
-            let existing_idx = merged.iter().position(|&t| Float::abs(t - jp.time) < tolerance);
+            let existing_idx = merged
+                .iter()
+                .position(|&t| Float::abs(t - jp.time) < tolerance);
 
             match existing_idx {
                 Some(idx) => {
@@ -1254,7 +1267,8 @@ mod tests {
 
         assert_eq!(merged.len(), 5); // Only one 0.5, plus 3.0 added
         assert_eq!(merged, vec![0.5, 1.0, 2.0, 3.0, 5.0]);
-        assert_eq!(indices, vec![0, 3]); // First jump at index 0 (existing), second at 3
+        assert_eq!(indices, vec![0, 3]); // First jump at index 0 (existing),
+                                         // second at 3
     }
 
     #[test]
@@ -1263,7 +1277,9 @@ mod tests {
         let bootstrapper = GlobalBootstrapper::<f64>::with_defaults();
 
         // Empty jump list should fall back to regular calibration
-        let result = bootstrapper.calibrate_with_jumps(&instruments, vec![]).unwrap();
+        let result = bootstrapper
+            .calibrate_with_jumps(&instruments, vec![])
+            .unwrap();
 
         assert!(result.converged);
         assert!(!result.has_jumps());

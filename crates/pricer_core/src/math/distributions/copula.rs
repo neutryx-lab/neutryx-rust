@@ -444,11 +444,7 @@ impl MultiGaussianCopula {
     /// Estimates P(X₁ ≤ a₁, ..., Xₙ ≤ aₙ) where X ~ N(0, Σ).
     ///
     /// Uses the Cholesky decomposition: X = L * Z where Z ~ N(0, I).
-    fn multivariate_normal_cdf_mc(
-        &self,
-        a: &[f64],
-        seed: Option<u64>,
-    ) -> f64 {
+    fn multivariate_normal_cdf_mc(&self, a: &[f64], seed: Option<u64>) -> f64 {
         use rand::prelude::*;
         use rand_distr::StandardNormal;
 

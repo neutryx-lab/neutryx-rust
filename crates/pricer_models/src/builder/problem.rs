@@ -406,9 +406,7 @@ where
     /// # Returns
     ///
     /// Slice of log discount factors.
-    pub fn extract_log_df<'a>(&self, params: &'a [T]) -> &'a [T] {
-        &params[..self.pillars.len()]
-    }
+    pub fn extract_log_df<'a>(&self, params: &'a [T]) -> &'a [T] { &params[..self.pillars.len()] }
 
     /// Extract jump values from an extended parameter vector.
     ///
@@ -419,9 +417,7 @@ where
     /// # Returns
     ///
     /// Slice of jump values (absolute rate).
-    pub fn extract_jumps<'a>(&self, params: &'a [T]) -> &'a [T] {
-        &params[self.pillars.len()..]
-    }
+    pub fn extract_jumps<'a>(&self, params: &'a [T]) -> &'a [T] { &params[self.pillars.len()..] }
 
     /// Build a yield curve with jump adjustments applied.
     ///
@@ -517,7 +513,10 @@ where
     /// # Returns
     ///
     /// Extended Jacobian matrix.
-    pub fn compute_jacobian_with_jumps(&self, params: &[T]) -> Result<DMatrix<T>, CalibrationError> {
+    pub fn compute_jacobian_with_jumps(
+        &self,
+        params: &[T],
+    ) -> Result<DMatrix<T>, CalibrationError> {
         let n = self.instruments.len();
         let m = self.pillars.len();
         let k = self.jump_pillars.len();
@@ -868,8 +867,8 @@ mod tests {
     fn test_problem_cumulative_jump_factor() {
         let instruments = create_test_instruments();
         let jumps = vec![
-            JumpPillar::new(0.5, 100.0),  // 1% at 0.5y
-            JumpPillar::new(1.5, 50.0),   // 0.5% at 1.5y
+            JumpPillar::new(0.5, 100.0), // 1% at 0.5y
+            JumpPillar::new(1.5, 50.0),  // 0.5% at 1.5y
         ];
         let config = CalibrationProblemConfig::default();
 
@@ -918,10 +917,26 @@ mod tests {
 
         assert_eq!(realised.len(), 2);
         assert!(realised[0].is_calibrated());
-        assert_relative_eq!(realised[0].realised_jump_rate().unwrap(), 0.003, epsilon = 1e-10);
-        assert_relative_eq!(realised[0].realised_jump_bps().unwrap(), 30.0, epsilon = 1e-6);
-        assert_relative_eq!(realised[1].realised_jump_rate().unwrap(), -0.002, epsilon = 1e-10);
-        assert_relative_eq!(realised[1].realised_jump_bps().unwrap(), -20.0, epsilon = 1e-6);
+        assert_relative_eq!(
+            realised[0].realised_jump_rate().unwrap(),
+            0.003,
+            epsilon = 1e-10
+        );
+        assert_relative_eq!(
+            realised[0].realised_jump_bps().unwrap(),
+            30.0,
+            epsilon = 1e-6
+        );
+        assert_relative_eq!(
+            realised[1].realised_jump_rate().unwrap(),
+            -0.002,
+            epsilon = 1e-10
+        );
+        assert_relative_eq!(
+            realised[1].realised_jump_bps().unwrap(),
+            -20.0,
+            epsilon = 1e-6
+        );
     }
 
     #[test]
