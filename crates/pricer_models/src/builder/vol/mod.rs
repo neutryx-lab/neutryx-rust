@@ -590,11 +590,12 @@ impl<T: Float> SliceCalibrator<T> for SabrSliceCalibrator<T> {
         let initial_params = vec![initial_alpha, initial_rho, initial_nu];
 
         // Solve
-        let result = solver.solve(residuals, initial_params).map_err(|e| {
-            CalibrationError::SolverError {
-                message: e.to_string(),
-            }
-        })?;
+        let result =
+            solver
+                .solve(residuals, initial_params)
+                .map_err(|e| CalibrationError::SolverError {
+                    message: e.to_string(),
+                })?;
 
         // Extract and clamp final parameters
         let final_alpha = result.params[0].clamp(alpha_lo, alpha_hi);

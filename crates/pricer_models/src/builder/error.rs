@@ -175,6 +175,34 @@ pub enum CalibrationError {
         /// Name of the missing field
         field: String,
     },
+
+    // --- Jump Calibration Errors (Requirement 6.4) ---
+    /// Jump calibration failed.
+    ///
+    /// The jump-aware calibration did not converge or produced invalid results.
+    /// This may trigger fallback to non-jump calibration if enabled.
+    #[error("ジャンプキャリブレーションに失敗しました: {message} (iterations: {iterations}, residual: {residual:.6e})")]
+    JumpCalibrationFailed {
+        /// Description of the failure
+        message: String,
+        /// Final residual at failure
+        residual: f64,
+        /// Number of iterations performed
+        iterations: usize,
+    },
+
+    /// Invalid jump parameter.
+    ///
+    /// A jump pillar has invalid parameters (e.g., out of range, invalid date).
+    #[error("無効なジャンプパラメータ: 日付 {date}, 値 {value:.4}bps - {reason}")]
+    InvalidJumpParameter {
+        /// Jump date in years or date string
+        date: String,
+        /// Jump value in basis points
+        value: f64,
+        /// Reason for invalidity
+        reason: String,
+    },
 }
 
 impl CalibrationError {
@@ -279,6 +307,32 @@ impl CalibrationError {
         }
     }
 
+    /// Create a jump calibration failed error.
+    pub fn jump_calibration_failed(
+        message: impl Into<String>,
+        residual: f64,
+        iterations: usize,
+    ) -> Self {
+        CalibrationError::JumpCalibrationFailed {
+            message: message.into(),
+            residual,
+            iterations,
+        }
+    }
+
+    /// Create an invalid jump parameter error.
+    pub fn invalid_jump_parameter(
+        date: impl Into<String>,
+        value: f64,
+        reason: impl Into<String>,
+    ) -> Self {
+        CalibrationError::InvalidJumpParameter {
+            date: date.into(),
+            value,
+            reason: reason.into(),
+        }
+    }
+
     /// Check if this is a recoverable error.
     ///
     /// Recoverable errors might succeed with different initial parameters
@@ -288,6 +342,7 @@ impl CalibrationError {
             self,
             CalibrationError::ConvergenceFailure { .. }
                 | CalibrationError::NumericalInstability { .. }
+                | CalibrationError::JumpCalibrationFailed { .. }
         )
     }
 }
@@ -405,6 +460,20 @@ impl From<CalibrationError> for pricer_core::types::PricingError {
             CalibrationError::MissingInput { field } => {
                 PricingError::InvalidInput(format!("Missing required input: {field}"))
             }
+            CalibrationError::JumpCalibrationFailed {
+                message,
+                residual,
+                iterations,
+            } => PricingError::NumericalInstability(format!(
+                "Jump calibration failed: {message} (iterations: {iterations}, residual: {residual:.6e})"
+            )),
+            CalibrationError::InvalidJumpParameter {
+                date,
+                value,
+                reason,
+            } => PricingError::InvalidInput(format!(
+                "Invalid jump parameter at {date}: {value:.4}bps - {reason}"
+            )),
         }
     }
 }
@@ -576,5 +645,86 @@ mod tests {
     fn test_divergence_is_recoverable() {
         // Divergence might be recoverable with different initial values
         assert!(!CalibrationError::divergence(10, 100.0).is_recoverable());
+    }
+
+    // --- Tests for jump calibration errors (Requirement 6.4) ---
+
+    #[test]
+    fn test_jump_calibration_failed_error() {
+        let err = CalibrationError::jump_calibration_failed("convergence failure", 1.5e-3, 50);
+        let msg = format!("{}", err);
+        assert!(msg.contains("ジャンプ"));
+        assert!(msg.contains("50"));
+        assert!(msg.contains("1.5"));
+        if let CalibrationError::JumpCalibrationFailed {
+            message,
+            residual,
+            iterations,
+        } = err
+        {
+            assert_eq!(message, "convergence failure");
+            assert!((residual - 1.5e-3).abs() < 1e-10);
+            assert_eq!(iterations, 50);
+        } else {
+            panic!("Expected JumpCalibrationFailed error");
+        }
+    }
+
+    #[test]
+    fn test_invalid_jump_parameter_error() {
+        let err = CalibrationError::invalid_jump_parameter("0.5Y", 150.0, "exceeds ±100bps limit");
+        let msg = format!("{}", err);
+        assert!(msg.contains("0.5Y"));
+        assert!(msg.contains("150"));
+        assert!(msg.contains("exceeds"));
+        if let CalibrationError::InvalidJumpParameter {
+            date,
+            value,
+            reason,
+        } = err
+        {
+            assert_eq!(date, "0.5Y");
+            assert!((value - 150.0).abs() < 1e-10);
+            assert!(reason.contains("exceeds"));
+        } else {
+            panic!("Expected InvalidJumpParameter error");
+        }
+    }
+
+    #[test]
+    fn test_jump_calibration_failed_is_recoverable() {
+        // Jump calibration failure is recoverable (can fallback to non-jump)
+        assert!(CalibrationError::jump_calibration_failed("test", 0.01, 10).is_recoverable());
+    }
+
+    #[test]
+    fn test_invalid_jump_parameter_is_not_recoverable() {
+        // Invalid jump parameter is not recoverable
+        assert!(!CalibrationError::invalid_jump_parameter("0.5Y", 150.0, "out of range")
+            .is_recoverable());
+    }
+
+    #[test]
+    fn test_jump_calibration_to_pricing_error() {
+        use pricer_core::types::PricingError;
+
+        let err = CalibrationError::jump_calibration_failed("test failure", 0.01, 25);
+        let pricing_err: PricingError = err.into();
+        assert!(matches!(pricing_err, PricingError::NumericalInstability(_)));
+        if let PricingError::NumericalInstability(msg) = pricing_err {
+            assert!(msg.contains("Jump"));
+        }
+    }
+
+    #[test]
+    fn test_invalid_jump_to_pricing_error() {
+        use pricer_core::types::PricingError;
+
+        let err = CalibrationError::invalid_jump_parameter("2024-06-01", -120.0, "too large");
+        let pricing_err: PricingError = err.into();
+        assert!(matches!(pricing_err, PricingError::InvalidInput(_)));
+        if let PricingError::InvalidInput(msg) = pricing_err {
+            assert!(msg.contains("Invalid jump"));
+        }
     }
 }

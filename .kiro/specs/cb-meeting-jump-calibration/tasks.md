@@ -25,16 +25,16 @@
   - _Requirements: 2.1, 7.5_
   - _Contracts: JumpConfig State_
 
-- [ ] 3. GlobalBootstrapConfigの拡張
-- [ ] 3.1 GlobalBootstrapConfigにジャンプ設定フィールドを追加
+- [x] 3. GlobalBootstrapConfigの拡張
+- [x] 3.1 GlobalBootstrapConfigにジャンプ設定フィールドを追加
   - `jump_config: Option<JumpConfig<T>>`フィールドを追加
   - `with_jump_config`および`with_jumps`ビルダーメソッドを追加
   - 既存の設定フィールドとメソッドを変更しない
   - _Requirements: 7.5_
   - _Contracts: GlobalBootstrapConfig State_
 
-- [ ] 4. CalibrationErrorへのジャンプ関連エラーバリアント追加
-- [ ] 4.1 (P) ジャンプカリブレーション用エラーバリアントを追加
+- [x] 4. CalibrationErrorへのジャンプ関連エラーバリアント追加
+- [x] 4.1 (P) ジャンプカリブレーション用エラーバリアントを追加
   - `JumpCalibrationFailed`バリアント（メッセージ、最終残差、イテレーション数）を追加
   - `InvalidJumpParameter`バリアント（日付、値、理由）を追加
   - 既存のエラーバリアントとの整合性を維持

@@ -239,7 +239,8 @@ impl<T: Float> GlobalBootstrapConfig<T> {
 
     /// Set jump pillars directly (convenience method).
     ///
-    /// Creates a `JumpConfig` with the provided pillars and enables jump calibration.
+    /// Creates a `JumpConfig` with the provided pillars and enables jump
+    /// calibration.
     ///
     /// # Arguments
     ///
@@ -250,18 +251,10 @@ impl<T: Float> GlobalBootstrapConfig<T> {
     }
 
     /// Check if jump calibration is configured and active.
-    pub fn has_jumps(&self) -> bool {
-        self.jump_config
-            .as_ref()
-            .is_some_and(|jc| jc.is_active())
-    }
+    pub fn has_jumps(&self) -> bool { self.jump_config.as_ref().is_some_and(|jc| jc.is_active()) }
 
     /// Get the number of configured jump pillars.
-    pub fn num_jumps(&self) -> usize {
-        self.jump_config
-            .as_ref()
-            .map_or(0, |jc| jc.num_jumps())
-    }
+    pub fn num_jumps(&self) -> usize { self.jump_config.as_ref().map_or(0, |jc| jc.num_jumps()) }
 }
 
 // Conversion to CalibrationProblemConfig
@@ -852,10 +845,8 @@ mod tests {
 
     #[test]
     fn test_config_with_jump_config() {
-        let jump_config = JumpConfig::with_pillars(vec![
-            JumpPillar::new(0.5, 25.0),
-            JumpPillar::new(1.0, 25.0),
-        ]);
+        let jump_config =
+            JumpConfig::with_pillars(vec![JumpPillar::new(0.5, 25.0), JumpPillar::new(1.0, 25.0)]);
 
         let config: GlobalBootstrapConfig<f64> =
             GlobalBootstrapConfig::default().with_jump_config(jump_config);
