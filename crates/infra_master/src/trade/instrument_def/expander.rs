@@ -1249,7 +1249,7 @@ impl InstrumentExpander for CrossCurrencyBasisSwap {
 
         // Validate the instrument first
         self.validate()
-            .map_err(|e| InstrumentError::invalid_parameter(&e.to_string()))?;
+            .map_err(|e| InstrumentError::invalid_parameter(e.to_string()))?;
 
         // Generate payment dates for domestic leg
         let domestic_dates = generate_payment_dates(

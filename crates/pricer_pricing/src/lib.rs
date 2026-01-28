@@ -129,6 +129,7 @@ pub use methods::{
     mc,
     mc::{GbmParams, Greek, MonteCarloConfig, MonteCarloPricer, PayoffParams, PricingResult},
     path_dependent,
+    tree,
     tree::{BinomialTree, CrrParams, TreeConfig, TreeMethod, TreeType},
 };
 pub use result::{PricingMetadata, TreeTypeMetadata, UnifiedGreeks, UnifiedPricingResult};

@@ -448,7 +448,7 @@ impl InstrumentDefinition {
             InstrumentDefinition::FxSwap(s) => s.validate(),
             InstrumentDefinition::CrossCurrencyBasisSwap(x) => x
                 .validate()
-                .map_err(|e| InstrumentError::invalid_parameter(&e.to_string())),
+                .map_err(|e| InstrumentError::invalid_parameter(e.to_string())),
 
             // Equity
             InstrumentDefinition::EquityForward(f) => f.validate(),
