@@ -23,8 +23,7 @@ members = [
     # "crates/service_python",
 
     # --- Demo Layer (WebApp) ---
-    # TODO: demo/gui temporarily disabled - depends on calibration module not yet implemented
-    # "demo/gui",
+    "demo/gui",
 ]
 resolver = "2"
 

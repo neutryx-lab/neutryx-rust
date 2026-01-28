@@ -347,6 +347,18 @@ pub mod curves {
                 });
             }
 
+            // Handle single-pillar curve: flat rate extrapolation
+            if n == 1 {
+                let t1 = self.pillars[0];
+                let df1 = self.discount_factors[0];
+                if t1 > T::zero() && df1 > T::zero() {
+                    // Derive zero rate and extrapolate: df(t) = exp(-r * t) where r = -ln(df1)/t1
+                    let r = -df1.ln() / t1;
+                    return Ok((-r * t).exp());
+                }
+                return Ok(df1);
+            }
+
             // Find interpolation interval
             let mut i = 0;
             while i < n - 1 && self.pillars[i + 1] < t {

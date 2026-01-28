@@ -1,0 +1,33 @@
+//! Curve calibration module.
+//!
+//! This module provides yield curve calibration algorithms:
+//!
+//! - **Sequential bootstrapping** ([`bootstrap`]): Solve one pillar at a time
+//! - **Global calibration** ([`global`]): Solve all pillars simultaneously
+//!
+//! ## Choosing a Method
+//!
+//! | Aspect | Sequential | Global |
+//! |--------|------------|--------|
+//! | Speed | O(n) solves | O(1) solve, O(n³) per iteration |
+//! | Robustness | May fail with overlapping instruments | Handles any structure |
+//! | AAD | Per-pillar implicit differentiation | Full J⁻¹ available |
+//! | Use case | Simple curves, real-time | Complex curves, risk systems |
+
+mod bootstrap;
+
+#[cfg(feature = "global-bootstrap")]
+mod global;
+
+// =============================================================================
+// Re-exports
+// =============================================================================
+
+pub use bootstrap::{BootstrapConfig, CurveBootstrapper, InterpolationMethod};
+
+#[cfg(feature = "global-bootstrap")]
+pub use global::{GlobalBootstrapConfig, GlobalBootstrapResult, GlobalBootstrapper};
+
+// Re-export JacobianMethod from problem module for convenience
+#[cfg(feature = "global-bootstrap")]
+pub use super::problem::JacobianMethod;

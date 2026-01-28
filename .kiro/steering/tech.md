@@ -135,6 +135,7 @@ docker run -it neutryx-enzyme
 | **IR Compilation Pattern** | Trade (hierarchical) → TradeCompiler → PricingKernel (SoA, 64-byte aligned); `IndexMapper` converts indices to numeric IDs for SIMD-friendly access |
 | **Kernel Engine Hierarchy** | LinearEngine (PricingKernel), ScriptEngine (ScriptKernel), CallableEngine (CallableKernel) with static dispatch via `CurveProvider<T>` trait |
 | **LSMC Regression** | Longstaff-Schwartz Monte Carlo for Bermudan exercise; Cholesky-based regression, forward/backward pass, continuation value estimation |
+| **Calibration Patterns** | Sequential (`curve::bootstrap`), Global (`curve::global`, feature-gated), Slice-wise (`vol::surface`, `vol::cube`) in `pricer_models::builder` |
 | **Shadow Object Pattern** | Reverse mode AAD uses shadow buffers for gradient accumulation; `binder.rs` orchestrates market data → portfolio Greeks flow |
 | **Feature Flag Coordination** | Features propagate through dependency chain (demo→frictional_bank→pricer_pricing) enabling modular compilation for different deployment scenarios |
 | **Feature Flags** | `enzyme-mode`, `serde` for serialisation; Asset classes: `equity` (default), `rates`, `credit`, `fx`, `commodity`, `exotic`; Convenience: `all`; Integration: `l1l2-integration` |
@@ -173,5 +174,5 @@ docker run -it neutryx-enzyme
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-27_ — Added Kernel Engine Hierarchy, LSMC Regression patterns
+_Updated: 2026-01-28_ — Added Calibration Patterns (Sequential, Slice-wise, Global)
 _Document standards and patterns, not every dependency_

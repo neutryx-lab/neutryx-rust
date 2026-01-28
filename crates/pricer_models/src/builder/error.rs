@@ -100,6 +100,62 @@ pub enum CalibrationError {
         /// Description of the gradient computation failure
         message: String,
     },
+
+    // --- Global Solver Errors (Requirement 2.5, 9.1, 9.2, 9.4) ---
+
+    /// No instruments provided for calibration.
+    ///
+    /// Requirement 2.5: The Calibration Problem shall return this error
+    /// if the instrument list is empty.
+    #[error("キャリブレーション商品が指定されていません")]
+    NoInstruments,
+
+    /// Jacobian matrix is singular.
+    ///
+    /// Requirement 9.1: If Jacobian matrix is singular, the Global Solver
+    /// shall return this error with condition number information.
+    #[error("Jacobian行列が特異です (condition number: {condition_number:.2e})")]
+    SingularJacobian {
+        /// Condition number of the matrix (estimate)
+        condition_number: f64,
+    },
+
+    /// Solver diverged during iteration.
+    ///
+    /// Requirement 9.2: If the solver diverges (residual increases),
+    /// the Global Solver shall return this error.
+    #[error("ソルバーが発散しました (iteration: {iteration}, residual: {residual:.6e})")]
+    Divergence {
+        /// Iteration at which divergence was detected
+        iteration: usize,
+        /// Residual value at divergence
+        residual: f64,
+    },
+
+    /// Instrument evaluation failed.
+    ///
+    /// Requirement 9.4: If computing the theoretical price for an instrument
+    /// fails, the Calibration Problem shall return this error identifying the
+    /// specific instrument.
+    #[error("商品 {instrument_index} の評価に失敗しました: {message}")]
+    InstrumentEvaluationFailed {
+        /// Index of the failed instrument (0-based)
+        instrument_index: usize,
+        /// Description of the failure
+        message: String,
+    },
+
+    /// Dimension mismatch between instruments and parameters.
+    ///
+    /// Requirement 2.6: The Calibration Problem shall verify that
+    /// instrument count matches parameter count.
+    #[error("商品数とパラメータ数が一致しません (instruments: {instruments}, parameters: {parameters})")]
+    DimensionMismatch {
+        /// Number of instruments
+        instruments: usize,
+        /// Number of parameters
+        parameters: usize,
+    },
 }
 
 impl CalibrationError {
@@ -159,6 +215,37 @@ impl CalibrationError {
     pub fn gradient_error(message: impl Into<String>) -> Self {
         CalibrationError::GradientError {
             message: message.into(),
+        }
+    }
+
+    /// Create a no instruments error.
+    pub fn no_instruments() -> Self {
+        CalibrationError::NoInstruments
+    }
+
+    /// Create a singular Jacobian error.
+    pub fn singular_jacobian(condition_number: f64) -> Self {
+        CalibrationError::SingularJacobian { condition_number }
+    }
+
+    /// Create a divergence error.
+    pub fn divergence(iteration: usize, residual: f64) -> Self {
+        CalibrationError::Divergence { iteration, residual }
+    }
+
+    /// Create an instrument evaluation failed error.
+    pub fn instrument_evaluation_failed(instrument_index: usize, message: impl Into<String>) -> Self {
+        CalibrationError::InstrumentEvaluationFailed {
+            instrument_index,
+            message: message.into(),
+        }
+    }
+
+    /// Create a dimension mismatch error.
+    pub fn dimension_mismatch(instruments: usize, parameters: usize) -> Self {
+        CalibrationError::DimensionMismatch {
+            instruments,
+            parameters,
         }
     }
 
@@ -256,6 +343,31 @@ impl From<CalibrationError> for pricer_core::types::PricingError {
             CalibrationError::GradientError { message } => {
                 PricingError::NumericalInstability(format!("Gradient error: {message}"))
             }
+            CalibrationError::NoInstruments => {
+                PricingError::InvalidInput("No instruments provided for calibration".to_string())
+            }
+            CalibrationError::SingularJacobian { condition_number } => {
+                PricingError::NumericalInstability(format!(
+                    "Jacobian matrix is singular (condition number: {condition_number:.2e})"
+                ))
+            }
+            CalibrationError::Divergence { iteration, residual } => {
+                PricingError::NumericalInstability(format!(
+                    "Solver diverged at iteration {iteration} (residual: {residual:.6e})"
+                ))
+            }
+            CalibrationError::InstrumentEvaluationFailed {
+                instrument_index,
+                message,
+            } => PricingError::NumericalInstability(format!(
+                "Instrument {instrument_index} evaluation failed: {message}"
+            )),
+            CalibrationError::DimensionMismatch {
+                instruments,
+                parameters,
+            } => PricingError::InvalidInput(format!(
+                "Dimension mismatch: {instruments} instruments vs {parameters} parameters"
+            )),
         }
     }
 }
@@ -331,5 +443,89 @@ mod tests {
         let calib_err = CalibrationError::invalid_market_data("negative price");
         let pricing_err: PricingError = calib_err.into();
         assert!(matches!(pricing_err, PricingError::InvalidInput(_)));
+    }
+
+    // --- Tests for new error types (Requirements 2.5, 9.1, 9.2, 9.4) ---
+
+    #[test]
+    fn test_no_instruments_error() {
+        let err = CalibrationError::no_instruments();
+        let msg = format!("{}", err);
+        assert!(msg.contains("商品"));
+        assert!(matches!(err, CalibrationError::NoInstruments));
+    }
+
+    #[test]
+    fn test_singular_jacobian_error() {
+        let err = CalibrationError::singular_jacobian(1e16);
+        let msg = format!("{}", err);
+        assert!(msg.contains("Jacobian"));
+        assert!(msg.contains("1.00e16") || msg.contains("1e16"));
+        if let CalibrationError::SingularJacobian { condition_number } = err {
+            assert!((condition_number - 1e16).abs() < 1e10);
+        } else {
+            panic!("Expected SingularJacobian error");
+        }
+    }
+
+    #[test]
+    fn test_divergence_error() {
+        let err = CalibrationError::divergence(50, 1.5e3);
+        let msg = format!("{}", err);
+        assert!(msg.contains("発散"));
+        assert!(msg.contains("50"));
+        if let CalibrationError::Divergence { iteration, residual } = err {
+            assert_eq!(iteration, 50);
+            assert!((residual - 1.5e3).abs() < 1e-10);
+        } else {
+            panic!("Expected Divergence error");
+        }
+    }
+
+    #[test]
+    fn test_instrument_evaluation_failed_error() {
+        let err = CalibrationError::instrument_evaluation_failed(3, "discount factor is NaN");
+        let msg = format!("{}", err);
+        assert!(msg.contains("3"));
+        assert!(msg.contains("評価"));
+        assert!(msg.contains("NaN"));
+        if let CalibrationError::InstrumentEvaluationFailed { instrument_index, message } = err {
+            assert_eq!(instrument_index, 3);
+            assert!(message.contains("NaN"));
+        } else {
+            panic!("Expected InstrumentEvaluationFailed error");
+        }
+    }
+
+    #[test]
+    fn test_dimension_mismatch_error() {
+        let err = CalibrationError::dimension_mismatch(5, 3);
+        let msg = format!("{}", err);
+        assert!(msg.contains("5"));
+        assert!(msg.contains("3"));
+        assert!(msg.contains("一致しません"));
+        if let CalibrationError::DimensionMismatch { instruments, parameters } = err {
+            assert_eq!(instruments, 5);
+            assert_eq!(parameters, 3);
+        } else {
+            panic!("Expected DimensionMismatch error");
+        }
+    }
+
+    #[test]
+    fn test_no_instruments_is_not_recoverable() {
+        assert!(!CalibrationError::no_instruments().is_recoverable());
+    }
+
+    #[test]
+    fn test_singular_jacobian_is_recoverable() {
+        // Singular Jacobian might be recoverable with damping
+        assert!(!CalibrationError::singular_jacobian(1e16).is_recoverable());
+    }
+
+    #[test]
+    fn test_divergence_is_recoverable() {
+        // Divergence might be recoverable with different initial values
+        assert!(!CalibrationError::divergence(10, 100.0).is_recoverable());
     }
 }

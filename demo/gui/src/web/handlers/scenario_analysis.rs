@@ -19,9 +19,8 @@
 use std::{sync::Arc, time::Instant};
 
 use axum::{extract::State, http::StatusCode, Json};
-use pricer_models::market::calibration::bootstrapping::{
-    CalibrationInstrument, GenericBootstrapConfig, SequentialBootstrapper,
-};
+use pricer_models::builder::{BootstrapConfig, CurveBootstrapper};
+use pricer_models::market::curves::MarketInstrument;
 use uuid::Uuid;
 
 use super::types::{
@@ -391,12 +390,12 @@ fn calculate_scenario_stressed_npv(
     payment_frequency: &PaymentFrequency,
 ) -> f64 {
     // Build instruments from shifted par rates
-    let instruments: Vec<CalibrationInstrument<f64>> = shifted_par_rates
+    let instruments: Vec<MarketInstrument<f64>> = shifted_par_rates
         .iter()
         .filter_map(|pr| {
             parse_tenor_to_years(&pr.tenor)
                 .ok()
-                .map(|years| CalibrationInstrument::ois(years, pr.rate))
+                .map(|years| MarketInstrument::ois(years, pr.rate))
         })
         .collect();
 
@@ -405,10 +404,10 @@ fn calculate_scenario_stressed_npv(
     }
 
     // Bootstrap with shifted rates
-    let config: GenericBootstrapConfig<f64> = GenericBootstrapConfig::default();
-    let bootstrapper = SequentialBootstrapper::new(config);
+    let config = BootstrapConfig::default();
+    let bootstrapper = CurveBootstrapper::with_config(config);
 
-    match bootstrapper.bootstrap(&instruments) {
+    match bootstrapper.bootstrap_instruments(&instruments) {
         Ok(curve_data) => {
             // Calculate NPV with the shifted curve
             let stressed_curve = CachedCurve::new(

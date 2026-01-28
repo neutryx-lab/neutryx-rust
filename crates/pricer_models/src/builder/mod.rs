@@ -1,34 +1,87 @@
 //! Builder module for yield curves, volatility surfaces, and market data calibration.
 //!
+//! ## Module Structure
+//!
+//! ```text
+//! builder/
+//! ├── Shared Infrastructure
+//! │   ├── grid.rs      - CalibrationGrid for axis management
+//! │   ├── matrix.rs    - CalibrationMatrix, InterpolationMatrix
+//! │   ├── problem.rs   - CalibrationProblem for solver integration
+//! │   ├── error.rs     - CalibrationError types
+//! │   └── instrument.rs - CalibrationInstrument trait
+//! │
+//! ├── curve/           - Yield curve calibration
+//! │   ├── bootstrap.rs - Sequential bootstrapping
+//! │   └── global.rs    - Global calibration (feature-gated)
+//! │
+//! └── vol/             - Volatility calibration
+//!     ├── surface.rs   - FX vol surfaces (2D)
+//!     └── cube.rs      - Swaption vol cubes (3D)
+//! ```
+//!
 //! ## Calibration Patterns
 //!
 //! | Pattern | Module | Description |
 //! |---------|--------|-------------|
-//! | Sequential | [`bootstrap`] | Solve one pillar at a time (curves) |
-//! | Slice-wise | [`paramsurface`] | Calibrate each slice independently, then aggregate (vol surfaces) |
-//! | Global | [`globalsolver`] | Solve all parameters simultaneously (curves) |
+//! | Sequential | [`curve::bootstrap`] | Solve one pillar at a time (curves) |
+//! | Slice-wise | [`vol`] | Calibrate each slice independently (vol surfaces) |
+//! | Global | [`curve::global`] | Solve all parameters simultaneously (curves) |
 
 use pricer_core::types::SolverError;
 use thiserror::Error;
 
 use crate::market::MarketDataError;
 
-mod bootstrap;
-mod error;
-mod instrument;
-mod paramsurface;
-#[cfg(feature = "global-bootstrap")]
-mod globalsolver;
+// =============================================================================
+// Shared Infrastructure Modules
+// =============================================================================
 
-pub use bootstrap::{BootstrapConfig, CurveBootstrapper, InterpolationMethod};
+mod error;
+mod grid;
+mod instrument;
+mod matrix;
+mod problem;
+
+// =============================================================================
+// Calibration Submodules
+// =============================================================================
+
+/// Curve calibration (sequential and global bootstrapping).
+pub mod curve;
+
+/// Volatility surface and cube calibration.
+pub mod vol;
+
+// =============================================================================
+// Public Re-exports: Shared Infrastructure
+// =============================================================================
+
 pub use error::CalibrationError;
+pub use grid::CalibrationGrid;
 pub use instrument::CalibrationInstrument;
-pub use paramsurface::{
-    FxVolBuilder, FxVolResult, SabrParams, SabrSliceCalibrator, SliceCalibrationConfig,
-    SliceCalibrator, VolCubeBuilder, VolCubeResult, VolQuote,
-};
+pub use matrix::{CalibrationMatrix, CalibrationMatrixBuilder, InterpolationMatrix};
+pub use problem::{CalibrationProblem, CalibrationProblemConfig, JacobianMethod};
+
+// =============================================================================
+// Public Re-exports: Curve Calibration
+// =============================================================================
+
+pub use curve::{BootstrapConfig, CurveBootstrapper, InterpolationMethod};
+
 #[cfg(feature = "global-bootstrap")]
-pub use globalsolver::{GlobalBootstrapConfig, GlobalBootstrapResult, GlobalBootstrapper};
+pub use curve::{GlobalBootstrapConfig, GlobalBootstrapResult, GlobalBootstrapper};
+
+// =============================================================================
+// Public Re-exports: Vol Calibration
+// =============================================================================
+
+pub use vol::{
+    FxVolBuilder, FxVolResult,
+    SabrParams, SabrSliceCalibrator,
+    SliceCalibrationConfig, SliceCalibrator,
+    VolCubeBuilder, VolCubeResult, VolQuote,
+};
 
 // =============================================================================
 // Bootstrap Error and Result Types

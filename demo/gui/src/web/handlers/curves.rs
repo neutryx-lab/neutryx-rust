@@ -9,6 +9,12 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use pricer_models::builder::{
+    BootstrapConfig, BootstrapError, CurveBootstrapper,
+    InterpolationMethod as BuilderInterpolation,
+};
+use pricer_models::market::curves::MarketInstrument;
+
 use crate::web::{
     error::{ApiError, ApiResult},
     AppState,
@@ -60,6 +66,16 @@ impl InterpolationMethod {
 
     /// Check if this method is recommended.
     pub fn is_recommended(&self) -> bool { matches!(self, Self::LinearOnLogDf) }
+
+    /// Convert to pricer_models builder interpolation method.
+    fn to_builder_interpolation(&self) -> BuilderInterpolation {
+        match self {
+            Self::LinearOnZeroRate => BuilderInterpolation::Linear,
+            Self::LinearOnLogDf => BuilderInterpolation::LogLinear,
+            Self::CubicSplineOnZeroRate => BuilderInterpolation::CubicSpline,
+            Self::MonotonicOnZeroRate => BuilderInterpolation::LogLinear, // Fallback
+        }
+    }
 }
 
 /// Bootstrap method for curve construction.
@@ -235,6 +251,28 @@ pub struct InstrumentInput {
     pub tenor: String,
     /// Par rate
     pub rate: f64,
+}
+
+impl InstrumentInput {
+    /// Convert to a MarketInstrument for bootstrapping.
+    fn to_market_instrument(&self) -> MarketInstrument<f64> {
+        let tenor_years = parse_tenor_years(&self.tenor);
+        let instrument_type = self.instrument_type.to_lowercase();
+
+        match instrument_type.as_str() {
+            "deposit" | "depo" => MarketInstrument::ois(tenor_years, self.rate),
+            "ois" => MarketInstrument::ois(tenor_years, self.rate),
+            "swap" | "irs" => MarketInstrument::irs(tenor_years, self.rate),
+            "fra" => {
+                // For FRA, assume 3M forward period from the tenor
+                let start = tenor_years;
+                let end = start + 0.25; // 3M forward
+                MarketInstrument::fra(start, end, self.rate)
+            }
+            "future" | "futures" => MarketInstrument::future(tenor_years, self.rate),
+            _ => MarketInstrument::ois(tenor_years, self.rate), // Default to OIS
+        }
+    }
 }
 
 /// Response for `POST /api/curves/build`.
@@ -551,6 +589,7 @@ pub async fn build_curve(
 ) -> ApiResult<CurveBuildResponse> {
     let start = Instant::now();
 
+    // Validate input
     if request.instruments.is_empty() {
         return Err(ApiError::validation(
             "At least one instrument is required",
@@ -570,10 +609,7 @@ pub async fn build_curve(
         }
     }
 
-    let mut pillars: Vec<f64> = Vec::new();
-    let mut discount_factors: Vec<f64> = Vec::new();
-    let mut zero_rates: Vec<f64> = Vec::new();
-
+    // Sort instruments by tenor
     let mut sorted_instruments = request.instruments.clone();
     sorted_instruments.sort_by(|a, b| {
         let ta = parse_tenor_years(&a.tenor);
@@ -581,21 +617,40 @@ pub async fn build_curve(
         ta.partial_cmp(&tb).unwrap_or(std::cmp::Ordering::Equal)
     });
 
-    for inst in &sorted_instruments {
-        let tenor_years = parse_tenor_years(&inst.tenor);
-        let rate = inst.rate;
-        let df = 1.0 / (1.0 + rate * tenor_years);
-        let zero_rate = if tenor_years > 0.0 {
-            -df.ln() / tenor_years
-        } else {
-            rate
-        };
+    // Convert to MarketInstrument for bootstrapping
+    let market_instruments: Vec<MarketInstrument<f64>> = sorted_instruments
+        .iter()
+        .map(|inst| inst.to_market_instrument())
+        .collect();
 
-        pillars.push(tenor_years);
-        discount_factors.push(df);
-        zero_rates.push(zero_rate);
-    }
+    // Configure the bootstrapper
+    let config = BootstrapConfig::new(request.tolerance, request.max_iterations)
+        .with_interpolation(request.interpolation.to_builder_interpolation());
 
+    // Run the bootstrapper
+    let bootstrapper = CurveBootstrapper::with_config(config);
+    let result = bootstrapper
+        .bootstrap_instruments(&market_instruments)
+        .map_err(|e| convert_bootstrap_error(&e))?;
+
+    // Extract results
+    let pillars = result.pillars;
+    let discount_factors = result.discount_factors;
+
+    // Calculate zero rates from discount factors
+    let zero_rates: Vec<f64> = pillars
+        .iter()
+        .zip(discount_factors.iter())
+        .map(|(&t, &df)| {
+            if t > 0.0 && df > 0.0 {
+                -df.ln() / t
+            } else {
+                0.0
+            }
+        })
+        .collect();
+
+    // Cache the curve
     let curve_id = Uuid::new_v4();
 
     use super::types::{CachedCurve, ParRateInput};
@@ -619,6 +674,7 @@ pub async fn build_curve(
 
     let build_time_ms = start.elapsed().as_secs_f64() * 1000.0;
 
+    // Build response parameters for visualisation
     let parameters: Vec<CurveParameter> = pillars
         .iter()
         .enumerate()
@@ -662,6 +718,56 @@ pub async fn build_curve(
     };
 
     Ok(Json(response))
+}
+
+/// Convert BootstrapError to ApiError.
+fn convert_bootstrap_error(error: &BootstrapError) -> ApiError {
+    match error {
+        BootstrapError::ConvergenceFailure {
+            maturity,
+            residual,
+            iterations,
+        } => ApiError::calculation(format!(
+            "Bootstrap convergence failure at maturity {:.4}Y: residual {:.2e} after {} iterations",
+            maturity, residual, iterations
+        )),
+        BootstrapError::InsufficientData { required, provided } => ApiError::validation(
+            format!(
+                "Insufficient data: {} instruments required, {} provided",
+                required, provided
+            ),
+            "instruments",
+        ),
+        BootstrapError::NegativeRate { maturity, rate } => ApiError::calculation(format!(
+            "Negative rate {:.6} at maturity {:.4}Y",
+            rate, maturity
+        )),
+        BootstrapError::ArbitrageDetected { maturity } => ApiError::calculation(format!(
+            "Arbitrage detected at maturity {:.4}Y (non-monotonic curve)",
+            maturity
+        )),
+        BootstrapError::DuplicateMaturity { maturity } => ApiError::validation(
+            format!("Duplicate maturity: {:.4}Y", maturity),
+            "instruments",
+        ),
+        BootstrapError::InvalidMaturity {
+            maturity,
+            max_maturity,
+        } => ApiError::validation(
+            format!(
+                "Invalid maturity {:.4}Y (max: {:.4}Y)",
+                maturity, max_maturity
+            ),
+            "instruments",
+        ),
+        BootstrapError::Solver(e) => {
+            ApiError::calculation(format!("Solver error: {}", e))
+        }
+        BootstrapError::MarketData(e) => {
+            ApiError::calculation(format!("Market data error: {}", e))
+        }
+        BootstrapError::InvalidInput(msg) => ApiError::validation(msg.clone(), "instruments"),
+    }
 }
 
 /// Handler for `GET /api/curves/{curveId}/parameters`.

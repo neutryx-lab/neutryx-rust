@@ -22,10 +22,7 @@ use std::{sync::Arc, time::Instant};
 
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use infra_config::{BumpSizes, GreekType, GreeksMethod, RiskConfig, SecondOrderMode};
-use pricer_models::{
-    analytic::{GarmanKohlhagen, GarmanKohlhagenParams},
-    instruments::FxOptionType,
-};
+use pricer_models::analytic::{GarmanKohlhagen, GarmanKohlhagenParams};
 use pricer_risk::{greeks::GreeksResult, RiskEngine, RiskEngineConfig, RiskError};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -841,12 +838,7 @@ fn gk_price(
     match params {
         Ok(p) => {
             let model = GarmanKohlhagen::new(p);
-            let opt_type = if is_call {
-                FxOptionType::Call
-            } else {
-                FxOptionType::Put
-            };
-            model.price(opt_type)
+            model.price(is_call)
         }
         Err(_) => 0.0, // Return 0 on invalid params
     }

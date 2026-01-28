@@ -528,6 +528,407 @@ impl Ois {
     pub fn tenor_years(&self) -> f64 { (self.end_date - self.start_date) as f64 / 365.0 }
 }
 
+// ============================================================================
+// Simple Money Market Instruments
+// ============================================================================
+
+/// Deposit (money market deposit).
+///
+/// A simple fixed-rate deposit instrument with a single payment at maturity.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use infra_master::trade::instrument_def::Deposit;
+/// use infra_master::{Currency, Date, Tenor};
+///
+/// let deposit = Deposit {
+///     start_date: Date::from_ymd(2025, 1, 15).unwrap(),
+///     tenor: Tenor::ThreeMonths,
+///     rate: 0.045,
+///     notional: 10_000_000.0,
+///     currency: Currency::USD,
+/// };
+/// ```
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct Deposit {
+    /// Start date of the deposit.
+    pub start_date: Date,
+    /// Tenor of the deposit.
+    pub tenor: Tenor,
+    /// Fixed rate (as decimal, e.g., 0.045 for 4.5%).
+    pub rate: f64,
+    /// Notional amount.
+    pub notional: f64,
+    /// Currency.
+    pub currency: Currency,
+}
+
+impl Deposit {
+    /// Validates the deposit parameters.
+    ///
+    /// # Errors
+    ///
+    /// Returns `InstrumentError` if validation fails.
+    pub fn validate(&self) -> Result<(), InstrumentError> {
+        if self.notional <= 0.0 {
+            return Err(InstrumentError::invalid_parameter(
+                "Notional must be positive",
+            ));
+        }
+        if self.rate < -0.1 || self.rate > 0.5 {
+            return Err(InstrumentError::invalid_parameter(
+                "Rate must be between -10% and 50%",
+            ));
+        }
+        Ok(())
+    }
+
+    /// Returns the end date (maturity) of the deposit.
+    #[must_use]
+    pub fn end_date(&self) -> Date {
+        self.tenor
+            .add_to_date(self.start_date, EndOfMonthRule::Adjust)
+    }
+
+    /// Returns the year fraction for the deposit period.
+    #[must_use]
+    pub fn year_fraction(&self) -> f64 {
+        (self.end_date() - self.start_date) as f64 / 360.0
+    }
+}
+
+/// Forward Rate Agreement (FRA).
+///
+/// A contract to exchange a fixed rate for a floating rate over a future period.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use infra_master::trade::instrument_def::Fra;
+/// use infra_master::{Currency, Date, RateIndex, Tenor};
+///
+/// let fra = Fra {
+///     fixing_date: Date::from_ymd(2025, 3, 15).unwrap(),
+///     start_date: Date::from_ymd(2025, 3, 17).unwrap(),
+///     tenor: Tenor::ThreeMonths,
+///     strike: 0.04,
+///     notional: 10_000_000.0,
+///     currency: Currency::USD,
+///     rate_index: RateIndex::Sofr,
+/// };
+/// ```
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct Fra {
+    /// Fixing date for the floating rate.
+    pub fixing_date: Date,
+    /// Start date of the FRA period.
+    pub start_date: Date,
+    /// Tenor of the FRA period.
+    pub tenor: Tenor,
+    /// Strike rate (fixed rate).
+    pub strike: f64,
+    /// Notional amount.
+    pub notional: f64,
+    /// Currency.
+    pub currency: Currency,
+    /// Rate index for the floating leg.
+    pub rate_index: RateIndex,
+}
+
+impl Fra {
+    /// Validates the FRA parameters.
+    ///
+    /// # Errors
+    ///
+    /// Returns `InstrumentError` if validation fails.
+    pub fn validate(&self) -> Result<(), InstrumentError> {
+        if self.notional <= 0.0 {
+            return Err(InstrumentError::invalid_parameter(
+                "Notional must be positive",
+            ));
+        }
+        if self.strike < -0.1 || self.strike > 0.5 {
+            return Err(InstrumentError::invalid_parameter(
+                "Strike must be between -10% and 50%",
+            ));
+        }
+        if self.start_date < self.fixing_date {
+            return Err(InstrumentError::invalid_date(
+                "Start date must be on or after fixing date",
+            ));
+        }
+        Ok(())
+    }
+
+    /// Returns the end date of the FRA period.
+    #[must_use]
+    pub fn end_date(&self) -> Date {
+        self.tenor
+            .add_to_date(self.start_date, EndOfMonthRule::Adjust)
+    }
+
+    /// Returns the year fraction for the FRA period.
+    #[must_use]
+    pub fn year_fraction(&self) -> f64 {
+        (self.end_date() - self.start_date) as f64 / 360.0
+    }
+}
+
+/// Interest Rate Futures contract.
+///
+/// A standardised exchange-traded contract on short-term interest rates.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use infra_master::trade::instrument_def::Futures;
+/// use infra_master::{Currency, Date, RateIndex, Tenor};
+///
+/// let futures = Futures {
+///     expiry_date: Date::from_ymd(2025, 6, 18).unwrap(),
+///     underlying_tenor: Tenor::ThreeMonths,
+///     price: 95.50,
+///     notional: 1_000_000.0,
+///     currency: Currency::USD,
+///     rate_index: RateIndex::Sofr,
+/// };
+/// ```
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct Futures {
+    /// Expiry/delivery date of the futures contract.
+    pub expiry_date: Date,
+    /// Tenor of the underlying rate.
+    pub underlying_tenor: Tenor,
+    /// Futures price (100 - implied rate).
+    pub price: f64,
+    /// Contract notional.
+    pub notional: f64,
+    /// Currency.
+    pub currency: Currency,
+    /// Underlying rate index.
+    pub rate_index: RateIndex,
+}
+
+impl Futures {
+    /// Validates the futures parameters.
+    ///
+    /// # Errors
+    ///
+    /// Returns `InstrumentError` if validation fails.
+    pub fn validate(&self) -> Result<(), InstrumentError> {
+        if self.notional <= 0.0 {
+            return Err(InstrumentError::invalid_parameter(
+                "Notional must be positive",
+            ));
+        }
+        if self.price < 80.0 || self.price > 110.0 {
+            return Err(InstrumentError::invalid_parameter(
+                "Price must be between 80 and 110 (implied rate -10% to 20%)",
+            ));
+        }
+        Ok(())
+    }
+
+    /// Returns the implied rate from the futures price.
+    #[must_use]
+    pub fn implied_rate(&self) -> f64 { (100.0 - self.price) / 100.0 }
+
+    /// Returns the end date of the underlying period.
+    #[must_use]
+    pub fn underlying_end_date(&self) -> Date {
+        self.underlying_tenor
+            .add_to_date(self.expiry_date, EndOfMonthRule::Adjust)
+    }
+
+    /// Returns the year fraction for the underlying period.
+    #[must_use]
+    pub fn year_fraction(&self) -> f64 {
+        (self.underlying_end_date() - self.expiry_date) as f64 / 360.0
+    }
+}
+
+// ============================================================================
+// Interest Rate Swaps
+// ============================================================================
+
+/// Interest Rate Swap (IRS).
+///
+/// A standard fixed-for-floating interest rate swap where one party pays
+/// a fixed rate and receives a floating rate (or vice versa).
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use infra_master::trade::instrument_def::{InterestRateSwap, PayerReceiver};
+/// use infra_master::{Currency, Date, Frequency, RateIndex, Tenor};
+///
+/// let irs = InterestRateSwap {
+///     start_date: Date::from_ymd(2025, 1, 15).unwrap(),
+///     tenor: Tenor::FiveYears,
+///     fixed_rate: 0.04,
+///     spread: 0.0,
+///     notional: 10_000_000.0,
+///     currency: Currency::USD,
+///     payer_receiver: PayerReceiver::Payer,
+///     fixed_frequency: Frequency::SemiAnnual,
+///     float_frequency: Frequency::Quarterly,
+///     rate_index: RateIndex::Sofr,
+/// };
+/// ```
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct InterestRateSwap {
+    /// Start date of the swap.
+    pub start_date: Date,
+    /// Tenor of the swap.
+    pub tenor: Tenor,
+    /// Fixed rate (as decimal, e.g., 0.04 for 4%).
+    pub fixed_rate: f64,
+    /// Spread over the floating rate index.
+    pub spread: f64,
+    /// Notional amount.
+    pub notional: f64,
+    /// Currency.
+    pub currency: Currency,
+    /// Payer or Receiver of the fixed leg.
+    pub payer_receiver: PayerReceiver,
+    /// Payment frequency for the fixed leg.
+    pub fixed_frequency: Frequency,
+    /// Payment frequency for the floating leg.
+    pub float_frequency: Frequency,
+    /// Rate index for the floating leg.
+    pub rate_index: RateIndex,
+}
+
+impl InterestRateSwap {
+    /// Validates the IRS parameters.
+    ///
+    /// # Errors
+    ///
+    /// Returns `InstrumentError` if validation fails.
+    pub fn validate(&self) -> Result<(), InstrumentError> {
+        if self.notional <= 0.0 {
+            return Err(InstrumentError::invalid_parameter(
+                "Notional must be positive",
+            ));
+        }
+        if self.fixed_rate < -0.1 || self.fixed_rate > 0.5 {
+            return Err(InstrumentError::invalid_parameter(
+                "Fixed rate must be between -10% and 50%",
+            ));
+        }
+        if self.tenor.to_months() == 0 {
+            return Err(InstrumentError::invalid_parameter(
+                "Swap tenor must be at least 1 month",
+            ));
+        }
+        Ok(())
+    }
+
+    /// Returns the end date of the swap.
+    #[must_use]
+    pub fn end_date(&self) -> Date {
+        self.tenor
+            .add_to_date(self.start_date, EndOfMonthRule::Adjust)
+    }
+
+    /// Returns true if this is a payer swap (pay fixed, receive floating).
+    #[must_use]
+    pub fn is_payer(&self) -> bool { self.payer_receiver == PayerReceiver::Payer }
+
+    /// Returns the swap tenor in years (approximate).
+    #[must_use]
+    pub fn tenor_years(&self) -> f64 { (self.end_date() - self.start_date) as f64 / 365.0 }
+}
+
+/// Basis Swap.
+///
+/// A swap where both legs are floating, typically referencing different
+/// rate indices or tenors (e.g., 3M SOFR vs 6M SOFR, or SOFR vs Fed Funds).
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use infra_master::trade::instrument_def::{BasisSwap, PayerReceiver};
+/// use infra_master::{Currency, Date, Frequency, RateIndex, Tenor};
+///
+/// let basis = BasisSwap {
+///     start_date: Date::from_ymd(2025, 1, 15).unwrap(),
+///     tenor: Tenor::FiveYears,
+///     notional: 10_000_000.0,
+///     currency: Currency::USD,
+///     payer_receiver: PayerReceiver::Payer,
+///     leg1_index: RateIndex::Sofr,
+///     leg1_spread: 0.0,
+///     leg1_frequency: Frequency::Quarterly,
+///     leg2_index: RateIndex::FedFunds,
+///     leg2_spread: 0.001,
+///     leg2_frequency: Frequency::Quarterly,
+/// };
+/// ```
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct BasisSwap {
+    /// Start date of the swap.
+    pub start_date: Date,
+    /// Tenor of the swap.
+    pub tenor: Tenor,
+    /// Notional amount.
+    pub notional: f64,
+    /// Currency.
+    pub currency: Currency,
+    /// Direction (Payer pays leg1, receives leg2).
+    pub payer_receiver: PayerReceiver,
+    /// Rate index for leg 1.
+    pub leg1_index: RateIndex,
+    /// Spread for leg 1.
+    pub leg1_spread: f64,
+    /// Payment frequency for leg 1.
+    pub leg1_frequency: Frequency,
+    /// Rate index for leg 2.
+    pub leg2_index: RateIndex,
+    /// Spread for leg 2.
+    pub leg2_spread: f64,
+    /// Payment frequency for leg 2.
+    pub leg2_frequency: Frequency,
+}
+
+impl BasisSwap {
+    /// Validates the basis swap parameters.
+    ///
+    /// # Errors
+    ///
+    /// Returns `InstrumentError` if validation fails.
+    pub fn validate(&self) -> Result<(), InstrumentError> {
+        if self.notional <= 0.0 {
+            return Err(InstrumentError::invalid_parameter(
+                "Notional must be positive",
+            ));
+        }
+        if self.tenor.to_months() == 0 {
+            return Err(InstrumentError::invalid_parameter(
+                "Swap tenor must be at least 1 month",
+            ));
+        }
+        Ok(())
+    }
+
+    /// Returns the end date of the swap.
+    #[must_use]
+    pub fn end_date(&self) -> Date {
+        self.tenor
+            .add_to_date(self.start_date, EndOfMonthRule::Adjust)
+    }
+
+    /// Returns the swap tenor in years (approximate).
+    #[must_use]
+    pub fn tenor_years(&self) -> f64 { (self.end_date() - self.start_date) as f64 / 365.0 }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

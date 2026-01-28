@@ -86,7 +86,10 @@ pub use fx_vol::{
     FxVolInstrumentError,
 };
 // Rates instruments
-pub use rates::{CapFloor, CapFloorType, CmsSwap, Frn, InflationSwap, Ois, SwapType, Swaption};
+pub use rates::{
+    BasisSwap, CapFloor, CapFloorType, CmsSwap, Deposit, Fra, Frn, Futures, InflationSwap,
+    InterestRateSwap, Ois, SwapType, Swaption,
+};
 // XCCY instruments
 pub use xccy::{
     BasisSpread, CrossCurrencyBasisSwap, NotionalExchange, SpreadLeg, XccyBasisConvention, XccyLeg,
@@ -137,6 +140,18 @@ pub use xccy::{
 #[non_exhaustive]
 pub enum InstrumentDefinition {
     // === Rates ===
+    /// Money market deposit.
+    Deposit(Deposit),
+    /// Forward Rate Agreement.
+    Fra(Fra),
+    /// Interest rate futures.
+    Futures(Futures),
+    /// Interest Rate Swap (fixed-for-floating).
+    InterestRateSwap(InterestRateSwap),
+    /// Basis Swap (floating-for-floating).
+    BasisSwap(BasisSwap),
+    /// Overnight Index Swap (OIS) with daily compounding.
+    Ois(Ois),
     /// Swaption (option on interest rate swap).
     Swaption(Swaption),
     /// Interest rate cap or floor.
@@ -147,8 +162,6 @@ pub enum InstrumentDefinition {
     CmsSwap(CmsSwap),
     /// Inflation-linked swap.
     InflationSwap(InflationSwap),
-    /// Overnight Index Swap (OIS) with daily compounding.
-    Ois(Ois),
 
     // === FX ===
     /// FX spot transaction.
@@ -161,6 +174,8 @@ pub enum InstrumentDefinition {
     FxBarrierOption(FxBarrierOption),
     /// FX swap (short-term, near/far legs).
     FxSwap(FxSwap),
+    /// Cross-currency basis swap.
+    CrossCurrencyBasisSwap(CrossCurrencyBasisSwap),
 
     // === Equity ===
     /// Equity forward.
@@ -231,19 +246,25 @@ impl InstrumentDefinition {
     pub fn asset_class(&self) -> AssetClass {
         match self {
             // Rates
-            InstrumentDefinition::Swaption(_)
+            InstrumentDefinition::Deposit(_)
+            | InstrumentDefinition::Fra(_)
+            | InstrumentDefinition::Futures(_)
+            | InstrumentDefinition::InterestRateSwap(_)
+            | InstrumentDefinition::BasisSwap(_)
+            | InstrumentDefinition::Ois(_)
+            | InstrumentDefinition::Swaption(_)
             | InstrumentDefinition::CapFloor(_)
             | InstrumentDefinition::Frn(_)
             | InstrumentDefinition::CmsSwap(_)
-            | InstrumentDefinition::InflationSwap(_)
-            | InstrumentDefinition::Ois(_) => AssetClass::Rates,
+            | InstrumentDefinition::InflationSwap(_) => AssetClass::Rates,
 
             // FX
             InstrumentDefinition::FxSpot(_)
             | InstrumentDefinition::FxForward(_)
             | InstrumentDefinition::FxVanillaOption(_)
             | InstrumentDefinition::FxBarrierOption(_)
-            | InstrumentDefinition::FxSwap(_) => AssetClass::Fx,
+            | InstrumentDefinition::FxSwap(_)
+            | InstrumentDefinition::CrossCurrencyBasisSwap(_) => AssetClass::Fx,
 
             // Equity
             InstrumentDefinition::EquityForward(_)
@@ -308,11 +329,14 @@ impl InstrumentDefinition {
         matches!(
             self,
             // Rates swaps
-            InstrumentDefinition::CmsSwap(_)
-                | InstrumentDefinition::InflationSwap(_)
+            InstrumentDefinition::InterestRateSwap(_)
+                | InstrumentDefinition::BasisSwap(_)
                 | InstrumentDefinition::Ois(_)
+                | InstrumentDefinition::CmsSwap(_)
+                | InstrumentDefinition::InflationSwap(_)
                 // FX swaps
                 | InstrumentDefinition::FxSwap(_)
+                | InstrumentDefinition::CrossCurrencyBasisSwap(_)
                 // Equity swaps
                 | InstrumentDefinition::EquitySwap(_)
                 // Credit (CDS is a swap)
@@ -404,12 +428,17 @@ impl InstrumentDefinition {
     pub fn validate(&self) -> Result<(), InstrumentError> {
         match self {
             // Rates
+            InstrumentDefinition::Deposit(d) => d.validate(),
+            InstrumentDefinition::Fra(f) => f.validate(),
+            InstrumentDefinition::Futures(f) => f.validate(),
+            InstrumentDefinition::InterestRateSwap(s) => s.validate(),
+            InstrumentDefinition::BasisSwap(b) => b.validate(),
+            InstrumentDefinition::Ois(o) => o.validate(),
             InstrumentDefinition::Swaption(s) => s.validate(),
             InstrumentDefinition::CapFloor(c) => c.validate(),
             InstrumentDefinition::Frn(f) => f.validate(),
             InstrumentDefinition::CmsSwap(c) => c.validate(),
             InstrumentDefinition::InflationSwap(i) => i.validate(),
-            InstrumentDefinition::Ois(o) => o.validate(),
 
             // FX
             InstrumentDefinition::FxSpot(s) => s.validate(),
@@ -417,6 +446,9 @@ impl InstrumentDefinition {
             InstrumentDefinition::FxVanillaOption(o) => o.validate(),
             InstrumentDefinition::FxBarrierOption(b) => b.validate(),
             InstrumentDefinition::FxSwap(s) => s.validate(),
+            InstrumentDefinition::CrossCurrencyBasisSwap(x) => {
+                x.validate().map_err(|e| InstrumentError::invalid_parameter(&e.to_string()))
+            }
 
             // Equity
             InstrumentDefinition::EquityForward(f) => f.validate(),
@@ -446,17 +478,23 @@ impl InstrumentDefinition {
 impl std::fmt::Display for InstrumentDefinition {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let name = match self {
+            InstrumentDefinition::Deposit(_) => "Deposit",
+            InstrumentDefinition::Fra(_) => "FRA",
+            InstrumentDefinition::Futures(_) => "Futures",
+            InstrumentDefinition::InterestRateSwap(_) => "IRS",
+            InstrumentDefinition::BasisSwap(_) => "BasisSwap",
+            InstrumentDefinition::Ois(_) => "OIS",
             InstrumentDefinition::Swaption(_) => "Swaption",
             InstrumentDefinition::CapFloor(_) => "CapFloor",
             InstrumentDefinition::Frn(_) => "FRN",
             InstrumentDefinition::CmsSwap(_) => "CMSSwap",
             InstrumentDefinition::InflationSwap(_) => "InflationSwap",
-            InstrumentDefinition::Ois(_) => "OIS",
             InstrumentDefinition::FxSpot(_) => "FXSpot",
             InstrumentDefinition::FxForward(_) => "FXForward",
             InstrumentDefinition::FxVanillaOption(_) => "FXVanillaOption",
             InstrumentDefinition::FxBarrierOption(_) => "FXBarrierOption",
             InstrumentDefinition::FxSwap(_) => "FXSwap",
+            InstrumentDefinition::CrossCurrencyBasisSwap(_) => "XCCY",
             InstrumentDefinition::EquityForward(_) => "EquityForward",
             InstrumentDefinition::EquityVanillaOption(_) => "EquityVanillaOption",
             InstrumentDefinition::EquityBarrierOption(_) => "EquityBarrierOption",

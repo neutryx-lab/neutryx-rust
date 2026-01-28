@@ -13,9 +13,8 @@
 use std::{sync::Arc, time::Instant};
 
 use axum::{extract::State, http::StatusCode, Json};
-use pricer_models::market::calibration::bootstrapping::{
-    BootstrapError, CalibrationInstrument, GenericBootstrapConfig, SequentialBootstrapper,
-};
+use pricer_models::builder::{BootstrapConfig, BootstrapError, CurveBootstrapper};
+use pricer_models::market::curves::MarketInstrument;
 use serde::Serialize;
 use uuid::Uuid;
 
@@ -134,19 +133,19 @@ fn calculate_irs_legs(
 
 /// Bootstrap a curve from par rates (helper for bump-and-revalue).
 fn bootstrap_from_par_rates(par_rates: &[ParRateInput]) -> Result<CachedCurve, BootstrapError> {
-    let instruments: Result<Vec<CalibrationInstrument<f64>>, _> = par_rates
+    let instruments: Result<Vec<MarketInstrument<f64>>, _> = par_rates
         .iter()
         .map(|pr| {
-            parse_tenor_to_years(&pr.tenor).map(|years| CalibrationInstrument::ois(years, pr.rate))
+            parse_tenor_to_years(&pr.tenor).map(|years| MarketInstrument::ois(years, pr.rate))
         })
         .collect();
 
     let instruments = instruments
         .map_err(|_| BootstrapError::InvalidInput("Failed to parse tenor".to_string()))?;
 
-    let config: GenericBootstrapConfig<f64> = GenericBootstrapConfig::default();
-    let bootstrapper = SequentialBootstrapper::new(config);
-    let result = bootstrapper.bootstrap(&instruments)?;
+    let config = BootstrapConfig::default();
+    let bootstrapper = CurveBootstrapper::with_config(config);
+    let result = bootstrapper.bootstrap_instruments(&instruments)?;
 
     let zero_rates = CachedCurve::calculate_zero_rates(&result.pillars, &result.discount_factors);
 

@@ -12,7 +12,7 @@ path = "src/web/main.rs"
 [features]
 # L1/L2 integration is default because pricer_risk (in workspace) requires it
 # This disables the standalone GenericPricer handlers
-default = ["l1l2-integration"]
+default = ["l1l2-integration", "calibration"]
 enzyme-ad = ["pricer_risk/enzyme-ad"]
 openapi = ["utoipa", "utoipa-swagger-ui"]
 # L1/L2 integration feature - disables standalone pricer mode

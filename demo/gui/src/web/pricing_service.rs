@@ -11,10 +11,7 @@
 //! - **Error mapping**: Maps crate errors to HTTP-friendly error types
 //! - **API stability**: Provides a stable interface for handlers
 
-use pricer_models::{
-    analytic::{BlackScholes, GarmanKohlhagen, GarmanKohlhagenParams},
-    instruments::FxOptionType,
-};
+use pricer_models::analytic::{BlackScholes, GarmanKohlhagen, GarmanKohlhagenParams};
 
 /// Result of Black-Scholes pricing.
 #[derive(Debug, Clone)]
@@ -237,27 +234,21 @@ pub fn price_fx_option(
     let model = GarmanKohlhagen::new(params);
 
     // Determine option type
-    let option_type = if is_call {
-        FxOptionType::Call
-    } else {
-        FxOptionType::Put
-    };
-
     // Calculate price using crate method
-    let price = model.price(option_type);
+    let price = model.price(is_call);
 
     // Calculate Greeks if requested using crate methods
     let greeks = if compute_greeks {
         Some(GkGreeksData {
-            delta: model.delta(option_type),
+            delta: model.delta(is_call),
             gamma: model.gamma(),
             // Crate already returns vega in per-1% format
             vega: model.vega(),
             // Crate already returns theta in per-day format
-            theta: model.theta(option_type),
+            theta: model.theta(is_call),
             // Crate already returns rho in per-1% format
-            rho_domestic: model.rho_domestic(option_type),
-            rho_foreign: model.rho_foreign(option_type),
+            rho_domestic: model.rho_domestic(is_call),
+            rho_foreign: model.rho_foreign(is_call),
         })
     } else {
         None

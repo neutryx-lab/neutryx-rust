@@ -37,6 +37,15 @@ pub enum SettlementType {
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum TradeType {
+    /// Money market deposit.
+    Deposit,
+
+    /// Forward Rate Agreement.
+    Fra,
+
+    /// Interest rate futures.
+    Futures,
+
     /// Interest rate swap.
     Swap,
 

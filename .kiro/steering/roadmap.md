@@ -2,7 +2,7 @@
 
 実装状況と今後の開発項目を追跡するドキュメント。
 
-_Updated: 2026-01-27_ — 42 completed specs; 1 active spec (pricing-kernel-ir 100%)
+_Updated: 2026-01-28_ — 44 completed specs; no active specs; demo/gui temporarily disabled
 
 ---
 
@@ -54,6 +54,8 @@ _Updated: 2026-01-27_ — 42 completed specs; 1 active spec (pricing-kernel-ir 1
 | shadow-object-aad | Shadow trait, slice-based kernels, AAD binder layer (16 tasks) | 2026-01-26 |
 | external-numerics-migration | argmin/levenberg-marquardt integration, external-numerics feature (30 tasks) | 2026-01-26 |
 | mc-memory-layout-optimisation | PathLayout, AlignedPathBuffer, TimeStepFirstWorkspace, StreamingEngine (21 tasks) | 2026-01-26 |
+| pricing-kernel-ir | PricingKernel IR, TradeCompiler, IndexMapper, CallableKernel, LSMC, CMS (31 tasks, 137 tests) | 2026-01-28 |
+| curve-global-solver | Global curve calibration solver with Newton-Raphson, Jacobian computation, AAD preparation (7 task groups, 422 tests) | 2026-01-28 |
 
 ### Layer Implementation Status
 
@@ -176,9 +178,11 @@ Codebase redundancy cleanup performed:
 
 ### Active Specifications (In Progress)
 
-| Spec | Description | Status |
-|------|-------------|--------|
-| pricing-kernel-ir | PricingKernel IR, TradeCompiler, IndexMapper, CallableKernel, LSMC, CMS | implementing (31/31 tasks, 100%) |
+No active specifications. All tracked specs have been completed.
+
+### Temporary Status Notes
+
+- **demo/gui**: Temporarily disabled due to calibration module refactoring. Feature-gated handlers added for calibration-dependent endpoints. Will be re-enabled after `builder/paramsurface` stabilisation.
 
 ## Recommended Next Steps
 
@@ -192,6 +196,8 @@ Codebase redundancy cleanup performed:
 
 | Date | Change |
 |------|--------|
+| 2026-01-28 | curve-global-solver completed: Global curve calibration with Newton-Raphson, CurveCalibrationProblem (SystemOfEquations), GlobalTimeGrid, CashflowMatrix, Jacobian inverse storage for AAD. 7 task groups, 422 total tests (377 unit + 14 integration + 31 doc). Total: 44 specs |
+| 2026-01-28 | Steering sync: pricing-kernel-ir completed (43 total). Updated structure.md (pricer_models: builder/ calibration module with paramsurface, simplified market.rs). demo/gui temporarily disabled for calibration refactor. |
 | 2026-01-27 | pricing-kernel-ir: Task 8.1 CMSインデックス統合 completed. LinearProductsCompiler now handles IndexType::SwapRate → CmsIndex. 4 new tests added. pricing-kernel-ir now 100% (31/31 tasks) |
 | 2026-01-27 | Steering sync: Added kernel/ module (LinearEngine, ScriptEngine, CallableEngine, LSMC) to structure.md, CallableCompiler to compiler/, CallableKernel to ir/. pricing-kernel-ir now 97% (30/31 tasks, CMS remaining) |
 | 2026-01-26 | Closed 3 completed specs: shadow-object-aad (16 tasks), external-numerics-migration (30 tasks), mc-memory-layout-optimisation (21 tasks). Total: 42 specs. 1 active: pricing-kernel-ir (71%) |

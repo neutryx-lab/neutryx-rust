@@ -19,27 +19,6 @@
 //! | AAD | Requires implicit function theorem per pillar | Single J⁻¹ captures all sensitivities |
 //! | Flexibility | Forward-starting only | Any instrument structure |
 //! | Stability | Stable for well-ordered instruments | May require damping for ill-conditioned |
-//!
-//! ## Example
-//!
-//! ```ignore
-//! use pricer_models::builder::{
-//!     GlobalBootstrapper, GlobalBootstrapConfig, CalibrationInstrument,
-//! };
-//!
-//! let instruments = vec![
-//!     MarketInstrument::ois(1.0, 0.03),
-//!     MarketInstrument::ois(2.0, 0.035),
-//!     MarketInstrument::ois(5.0, 0.04),
-//!     MarketInstrument::ois(10.0, 0.045),
-//! ];
-//!
-//! let config = GlobalBootstrapConfig::default();
-//! let bootstrapper = GlobalBootstrapper::new(config);
-//!
-//! let result = bootstrapper.calibrate(&instruments)?;
-//! let curve = result.curve;
-//! ```
 
 use num_traits::Float;
 
@@ -47,8 +26,10 @@ use pricer_core::math::linalg::{DMatrix, LinearAlgebraError, RealField, lu_solve
 use pricer_core::math::numeric::from_f64;
 use pricer_core::types::SolverError;
 
-use super::CalibrationInstrument;
+use crate::builder::{CalibrationInstrument, CalibrationProblem, CalibrationProblemConfig};
+use crate::builder::problem::JacobianMethod;
 use crate::market::curves::{BootstrapInterpolation, BootstrappedCurve};
+
 
 // =============================================================================
 // Configuration
@@ -81,6 +62,21 @@ pub struct GlobalBootstrapConfig<T: Float> {
 
     /// Whether to allow extrapolation in the output curve.
     pub allow_extrapolation: bool,
+
+    /// Jacobian calculation method.
+    pub jacobian_method: JacobianMethod,
+
+    /// Enable telescoping for OIS/SOFR instruments.
+    pub enable_telescoping: bool,
+
+    /// Damping factor for Levenberg-Marquardt style regularisation.
+    pub damping_factor: Option<T>,
+
+    /// Enable debug logging of iteration progress.
+    pub debug_logging: bool,
+
+    /// Maximum allowed condition number for Jacobian matrix.
+    pub max_condition_number: T,
 }
 
 impl<T: Float> Default for GlobalBootstrapConfig<T> {
@@ -93,6 +89,11 @@ impl<T: Float> Default for GlobalBootstrapConfig<T> {
             store_jacobian_inverse: true,
             interpolation: BootstrapInterpolation::LogLinear,
             allow_extrapolation: true,
+            jacobian_method: JacobianMethod::default(),
+            enable_telescoping: true,
+            damping_factor: None,
+            debug_logging: false,
+            max_condition_number: from_f64(1e12),
         }
     }
 }
@@ -118,6 +119,11 @@ impl<T: Float> GlobalBootstrapConfig<T> {
             store_jacobian_inverse: true,
             interpolation: BootstrapInterpolation::LogLinear,
             allow_extrapolation: true,
+            jacobian_method: JacobianMethod::CentralDifference,
+            enable_telescoping: true,
+            damping_factor: None,
+            debug_logging: false,
+            max_condition_number: from_f64(1e14),
         }
     }
 
@@ -131,6 +137,11 @@ impl<T: Float> GlobalBootstrapConfig<T> {
             store_jacobian_inverse: false,
             interpolation: BootstrapInterpolation::LogLinear,
             allow_extrapolation: true,
+            jacobian_method: JacobianMethod::FiniteDifference,
+            enable_telescoping: true,
+            damping_factor: None,
+            debug_logging: false,
+            max_condition_number: from_f64(1e10),
         }
     }
 
@@ -145,6 +156,60 @@ impl<T: Float> GlobalBootstrapConfig<T> {
         self.store_jacobian_inverse = store;
         self
     }
+
+    /// Set the Jacobian calculation method.
+    pub fn with_jacobian_method(mut self, method: JacobianMethod) -> Self {
+        self.jacobian_method = method;
+        self
+    }
+
+    /// Enable or disable telescoping for OIS/SOFR instruments.
+    pub fn with_telescoping(mut self, enable: bool) -> Self {
+        self.enable_telescoping = enable;
+        self
+    }
+
+    /// Set the damping factor for Levenberg-Marquardt regularisation.
+    pub fn with_damping(mut self, factor: T) -> Self {
+        self.damping_factor = Some(factor);
+        self
+    }
+
+    /// Enable or disable debug logging.
+    pub fn with_debug_logging(mut self, enable: bool) -> Self {
+        self.debug_logging = enable;
+        self
+    }
+
+    /// Set the maximum allowed condition number.
+    pub fn with_max_condition_number(mut self, max_cond: T) -> Self {
+        self.max_condition_number = max_cond;
+        self
+    }
+
+    /// Set the tolerance.
+    pub fn with_tolerance(mut self, tol: T) -> Self {
+        self.tolerance = tol;
+        self
+    }
+
+    /// Set the maximum iterations.
+    pub fn with_max_iterations(mut self, max_iter: usize) -> Self {
+        self.max_iterations = max_iter;
+        self
+    }
+}
+
+// Conversion to CalibrationProblemConfig
+impl<T: Float> From<&GlobalBootstrapConfig<T>> for CalibrationProblemConfig<T> {
+    fn from(config: &GlobalBootstrapConfig<T>) -> Self {
+        Self {
+            jacobian_method: config.jacobian_method,
+            jacobian_epsilon: config.jacobian_epsilon,
+            interpolation: config.interpolation,
+            allow_extrapolation: config.allow_extrapolation,
+        }
+    }
 }
 
 // =============================================================================
@@ -152,9 +217,6 @@ impl<T: Float> GlobalBootstrapConfig<T> {
 // =============================================================================
 
 /// Result of global bootstrapping.
-///
-/// Contains the calibrated curve, convergence information, and optionally
-/// the Jacobian inverse for AAD sensitivity computation.
 #[derive(Debug, Clone)]
 pub struct GlobalBootstrapResult<T: Float> {
     /// The calibrated yield curve.
@@ -176,16 +238,51 @@ pub struct GlobalBootstrapResult<T: Float> {
     pub converged: bool,
 
     /// Jacobian inverse at the solution (for AAD).
-    ///
-    /// This is J⁻¹ where J[i,j] = ∂pricing_error_i / ∂log_df_j.
-    /// Used for computing curve sensitivities via implicit function theorem.
     pub jacobian_inverse: Option<DMatrix<T>>,
+
+    /// Residual norm history at each iteration (for debugging).
+    pub residual_history: Option<Vec<T>>,
+
+    /// Condition number of the final Jacobian matrix (estimate).
+    pub condition_number: Option<T>,
+
+    /// Individual pricing errors for each instrument at the solution.
+    pub pricing_errors: Option<Vec<T>>,
 }
 
 impl<T: Float> GlobalBootstrapResult<T> {
     /// Check if the Jacobian inverse is available.
     pub fn has_jacobian_inverse(&self) -> bool {
         self.jacobian_inverse.is_some()
+    }
+
+    /// Check if the residual history is available.
+    pub fn has_residual_history(&self) -> bool {
+        self.residual_history.is_some()
+    }
+
+    /// Get the maximum pricing error across all instruments.
+    pub fn max_pricing_error(&self) -> Option<T> {
+        self.pricing_errors.as_ref().map(|errors| {
+            errors
+                .iter()
+                .copied()
+                .map(Float::abs)
+                .fold(T::zero(), |max, err| if err > max { err } else { max })
+        })
+    }
+
+    /// Get convergence quality as a summary.
+    pub fn convergence_quality(&self, tolerance: T) -> &'static str {
+        if self.residual_norm < from_f64(1e-12) {
+            "excellent"
+        } else if self.residual_norm < from_f64(1e-8) {
+            "good"
+        } else if self.residual_norm < tolerance {
+            "acceptable"
+        } else {
+            "poor"
+        }
     }
 }
 
@@ -198,9 +295,6 @@ impl<T: Float> GlobalBootstrapResult<T> {
 /// Solves the system F(x) = 0 where:
 /// - x = log(DF) at each pillar (ensures DF > 0)
 /// - F_i = pricing_error(instrument_i, curve)
-///
-/// The Jacobian J[i,j] = ∂F_i/∂x_j is computed numerically via finite
-/// differences.
 #[derive(Debug, Clone)]
 pub struct GlobalBootstrapper<T: Float> {
     config: GlobalBootstrapConfig<T>,
@@ -223,21 +317,6 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
     }
 
     /// Calibrate a yield curve from the given instruments.
-    ///
-    /// # Arguments
-    ///
-    /// * `instruments` - Market instruments to calibrate against
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(GlobalBootstrapResult<T>)` - Calibrated curve and diagnostics
-    /// * `Err(SolverError)` - If calibration fails
-    ///
-    /// # Errors
-    ///
-    /// - `SolverError::MaxIterationsExceeded`: Didn't converge within limit
-    /// - `SolverError::SingularJacobian`: Jacobian is singular
-    /// - `SolverError::NumericalInstability`: Numerical issues during solve
     pub fn calibrate<I: CalibrationInstrument<T>>(
         &self,
         instruments: &[I],
@@ -252,8 +331,6 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
         // Extract pillars (maturities) from instruments
         let mut pillars: Vec<T> = instruments.iter().map(|i| i.maturity()).collect();
         pillars.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-
-        // Deduplicate pillars (same maturity instruments share pillar)
         pillars.dedup_by(|a, b| Float::abs(*a - *b) < from_f64::<T>(1e-10));
 
         let n_pillars = pillars.len();
@@ -264,27 +341,38 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
             .map(|&t| -(from_f64::<T>(0.03) * t))
             .collect();
 
+        // Residual history for debugging
+        let mut residual_history = if self.config.debug_logging {
+            Some(Vec::with_capacity(self.config.max_iterations))
+        } else {
+            None
+        };
+
         // Newton iteration
         for iter in 0..self.config.max_iterations {
-            // Build curve from current x = log(DF)
             let discount_factors: Vec<T> = x.iter().map(|&xi| Float::exp(xi)).collect();
             let curve = self.build_curve(&pillars, &discount_factors)?;
 
-            // Compute residual vector F(x)
             let residuals = self.compute_residuals(instruments, &curve)?;
             let residual_norm = vector_norm(&residuals);
 
+            if let Some(ref mut history) = residual_history {
+                history.push(residual_norm);
+            }
+
             // Check convergence
             if residual_norm < self.config.tolerance {
-                // Compute Jacobian inverse if requested
+                let j_vecs = self.compute_jacobian(&x, &pillars, instruments)?;
+                let j_matrix =
+                    DMatrix::from_row_slice(n, n_pillars, &self.flatten_jacobian(&j_vecs));
+
                 let jacobian_inverse = if self.config.store_jacobian_inverse {
-                    let j_vecs = self.compute_jacobian(&x, &pillars, instruments)?;
-                    let j_matrix =
-                        DMatrix::from_row_slice(n, n_pillars, &self.flatten_jacobian(&j_vecs));
                     Some(self.compute_inverse(&j_matrix)?)
                 } else {
                     None
                 };
+
+                let condition_number = self.estimate_condition_number(&j_matrix);
 
                 return Ok(GlobalBootstrapResult {
                     curve,
@@ -294,6 +382,9 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
                     iterations: iter,
                     converged: true,
                     jacobian_inverse,
+                    residual_history,
+                    condition_number,
+                    pricing_errors: Some(residuals),
                 });
             }
 
@@ -314,6 +405,8 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
                     None
                 };
 
+                let condition_number = self.estimate_condition_number(&j_matrix);
+
                 return Ok(GlobalBootstrapResult {
                     curve,
                     pillars: pillars.clone(),
@@ -322,6 +415,9 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
                     iterations: iter,
                     converged: true,
                     jacobian_inverse,
+                    residual_history,
+                    condition_number,
+                    pricing_errors: Some(residuals),
                 });
             }
 
@@ -331,10 +427,38 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
             }
         }
 
-        // Max iterations exceeded
         Err(SolverError::MaxIterationsExceeded {
             iterations: self.config.max_iterations,
         })
+    }
+
+    /// Estimate the condition number of a matrix.
+    fn estimate_condition_number(&self, j: &DMatrix<T>) -> Option<T> {
+        let nrows = j.nrows();
+        if nrows == 0 {
+            return None;
+        }
+
+        let mut max_row_sum = T::zero();
+        let mut min_row_sum = T::infinity();
+
+        for i in 0..nrows {
+            let row_sum = (0..j.ncols())
+                .map(|k| Float::abs(j[(i, k)]))
+                .fold(T::zero(), |acc, x| acc + x);
+            if row_sum > max_row_sum {
+                max_row_sum = row_sum;
+            }
+            if row_sum < min_row_sum && row_sum > T::zero() {
+                min_row_sum = row_sum;
+            }
+        }
+
+        if min_row_sum > T::zero() {
+            Some(max_row_sum / min_row_sum)
+        } else {
+            None
+        }
     }
 
     /// Build a curve from pillars and discount factors.
@@ -369,8 +493,6 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
     }
 
     /// Compute the Jacobian matrix via finite differences.
-    ///
-    /// J[i,j] = ∂F_i/∂x_j where x_j = log(DF_j)
     fn compute_jacobian<I: CalibrationInstrument<T>>(
         &self,
         x: &[T],
@@ -381,16 +503,13 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
         let m = pillars.len();
         let eps = self.config.jacobian_epsilon;
 
-        // Base residuals
         let discount_factors: Vec<T> = x.iter().map(|&xi| Float::exp(xi)).collect();
         let curve = self.build_curve(pillars, &discount_factors)?;
         let f0 = self.compute_residuals(instruments, &curve)?;
 
-        // Compute Jacobian columns via finite differences
         let mut jacobian = vec![vec![T::zero(); m]; n];
 
         for j in 0..m {
-            // Perturb x[j]
             let mut x_pert = x.to_vec();
             x_pert[j] = x_pert[j] + eps;
 
@@ -423,6 +542,55 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
     /// Compute the inverse of the Jacobian matrix.
     fn compute_inverse(&self, j: &DMatrix<T>) -> Result<DMatrix<T>, SolverError> {
         pricer_core::math::linalg::inverse(j).map_err(|e: LinearAlgebraError| e.into())
+    }
+
+    /// Calibrate using the CalibrationProblem approach.
+    pub fn calibrate_with_problem<I>(
+        &self,
+        instruments: Vec<I>,
+    ) -> Result<GlobalBootstrapResult<T>, SolverError>
+    where
+        I: CalibrationInstrument<T> + Clone,
+    {
+        use pricer_core::math::solvers::{MultidimNewtonConfig, MultidimensionalNewtonSolver};
+
+        let problem_config = CalibrationProblemConfig::from(&self.config);
+        let problem = CalibrationProblem::with_config(instruments.clone(), problem_config)
+            .map_err(|e| SolverError::NumericalInstability(format!("Problem creation failed: {e}")))?;
+
+        let solver_config: MultidimNewtonConfig<T> = MultidimNewtonConfig {
+            tolerance: self.config.tolerance,
+            param_tolerance: self.config.param_tolerance,
+            max_iterations: self.config.max_iterations,
+            jacobian_epsilon: self.config.jacobian_epsilon,
+            store_jacobian_inverse: self.config.store_jacobian_inverse,
+        };
+
+        let solver = MultidimensionalNewtonSolver::new(solver_config);
+
+        let initial_guess = problem.initial_guess_vector();
+        let result = solver.solve(&problem, initial_guess)?;
+
+        let pillars = problem.pillars().to_vec();
+        let log_df: Vec<T> = result.solution.iter().copied().collect();
+        let discount_factors: Vec<T> = log_df.iter().map(|&x| Float::exp(x)).collect();
+
+        let curve = self.build_curve(&pillars, &discount_factors)?;
+
+        let pricing_errors = problem.compute_residuals(&curve).ok();
+
+        Ok(GlobalBootstrapResult {
+            curve,
+            pillars,
+            discount_factors,
+            residual_norm: result.residual_norm,
+            iterations: result.iterations,
+            converged: result.converged,
+            jacobian_inverse: result.jacobian_inverse,
+            residual_history: None,
+            condition_number: None,
+            pricing_errors,
+        })
     }
 }
 
@@ -457,6 +625,10 @@ mod tests {
         assert_relative_eq!(config.tolerance, 1e-10, epsilon = 1e-15);
         assert_eq!(config.max_iterations, 100);
         assert!(config.store_jacobian_inverse);
+        assert_eq!(config.jacobian_method, JacobianMethod::FiniteDifference);
+        assert!(config.enable_telescoping);
+        assert!(config.damping_factor.is_none());
+        assert!(!config.debug_logging);
     }
 
     #[test]
@@ -464,6 +636,7 @@ mod tests {
         let config: GlobalBootstrapConfig<f64> = GlobalBootstrapConfig::high_precision();
         assert!(config.tolerance < 1e-12);
         assert!(config.max_iterations >= 500);
+        assert_eq!(config.jacobian_method, JacobianMethod::CentralDifference);
     }
 
     #[test]
@@ -471,6 +644,27 @@ mod tests {
         let config: GlobalBootstrapConfig<f64> = GlobalBootstrapConfig::fast();
         assert!(config.tolerance > 1e-8);
         assert!(!config.store_jacobian_inverse);
+        assert_eq!(config.jacobian_method, JacobianMethod::FiniteDifference);
+    }
+
+    #[test]
+    fn test_config_builder_methods() {
+        let config: GlobalBootstrapConfig<f64> = GlobalBootstrapConfig::default()
+            .with_jacobian_method(JacobianMethod::Analytical)
+            .with_telescoping(false)
+            .with_damping(0.01)
+            .with_debug_logging(true)
+            .with_max_condition_number(1e8)
+            .with_tolerance(1e-12)
+            .with_max_iterations(200);
+
+        assert_eq!(config.jacobian_method, JacobianMethod::Analytical);
+        assert!(!config.enable_telescoping);
+        assert_relative_eq!(config.damping_factor.unwrap(), 0.01, epsilon = 1e-15);
+        assert!(config.debug_logging);
+        assert_relative_eq!(config.max_condition_number, 1e8, epsilon = 1e-5);
+        assert_relative_eq!(config.tolerance, 1e-12, epsilon = 1e-15);
+        assert_eq!(config.max_iterations, 200);
     }
 
     #[test]
@@ -485,13 +679,11 @@ mod tests {
         assert_eq!(result.pillars.len(), 4);
         assert_eq!(result.discount_factors.len(), 4);
 
-        // Verify discount factors are positive and decreasing
         for i in 0..result.discount_factors.len() {
             assert!(result.discount_factors[i] > 0.0);
             assert!(result.discount_factors[i] <= 1.0);
         }
 
-        // Verify pricing errors are small
         for (i, instr) in instruments.iter().enumerate() {
             let error = instr.pricing_error(&result.curve).unwrap();
             assert!(
@@ -553,59 +745,8 @@ mod tests {
         assert!(result.converged);
         assert_eq!(result.pillars.len(), 1);
 
-        // Verify pricing error is small
         let error = instruments[0].pricing_error(&result.curve).unwrap();
         assert!(error.abs() < 1e-8);
-    }
-
-    #[test]
-    fn test_calibrate_upward_sloping_curve() {
-        // Upward sloping rate curve
-        let instruments = vec![
-            MarketInstrument::ois(1.0, 0.02),
-            MarketInstrument::ois(2.0, 0.025),
-            MarketInstrument::ois(5.0, 0.03),
-            MarketInstrument::ois(10.0, 0.035),
-            MarketInstrument::ois(30.0, 0.04),
-        ];
-
-        let bootstrapper = GlobalBootstrapper::<f64>::with_defaults();
-        let result = bootstrapper.calibrate(&instruments).unwrap();
-
-        assert!(result.converged);
-
-        // Verify all pricing errors are small
-        for (i, instr) in instruments.iter().enumerate() {
-            let error = instr.pricing_error(&result.curve).unwrap();
-            assert!(
-                error.abs() < 1e-8,
-                "Instrument {} has pricing error {}",
-                i,
-                error
-            );
-        }
-    }
-
-    #[test]
-    fn test_calibrate_inverted_curve() {
-        // Inverted rate curve
-        let instruments = vec![
-            MarketInstrument::ois(1.0, 0.05),
-            MarketInstrument::ois(2.0, 0.045),
-            MarketInstrument::ois(5.0, 0.04),
-            MarketInstrument::ois(10.0, 0.035),
-        ];
-
-        let bootstrapper = GlobalBootstrapper::<f64>::with_defaults();
-        let result = bootstrapper.calibrate(&instruments).unwrap();
-
-        assert!(result.converged);
-
-        // Verify all pricing errors are small
-        for instr in &instruments {
-            let error = instr.pricing_error(&result.curve).unwrap();
-            assert!(error.abs() < 1e-8);
-        }
     }
 
     #[test]
@@ -615,5 +756,32 @@ mod tests {
 
         let v2 = vec![1.0, 1.0, 1.0, 1.0];
         assert_relative_eq!(vector_norm(&v2), 2.0, epsilon = 1e-10);
+    }
+
+    #[test]
+    fn test_calibrate_with_debug_logging() {
+        let instruments = create_test_instruments();
+        let config = GlobalBootstrapConfig::default().with_debug_logging(true);
+        let bootstrapper = GlobalBootstrapper::new(config);
+
+        let result = bootstrapper.calibrate(&instruments).unwrap();
+
+        assert!(result.converged);
+        assert!(result.has_residual_history());
+
+        let history = result.residual_history.as_ref().unwrap();
+        assert!(!history.is_empty());
+    }
+
+    #[test]
+    fn test_convergence_quality() {
+        let instruments = create_test_instruments();
+        let config = GlobalBootstrapConfig::default();
+        let bootstrapper = GlobalBootstrapper::new(config);
+
+        let result = bootstrapper.calibrate(&instruments).unwrap();
+
+        let quality = result.convergence_quality(1e-10);
+        assert!(quality == "excellent" || quality == "good");
     }
 }

@@ -13,9 +13,8 @@
 use std::{sync::Arc, time::Instant};
 
 use axum::{extract::State, http::StatusCode, Json};
-use pricer_models::market::calibration::bootstrapping::{
-    BootstrapError, CalibrationInstrument, GenericBootstrapConfig, SequentialBootstrapper,
-};
+use pricer_models::builder::{BootstrapConfig, BootstrapError, CurveBootstrapper};
+use pricer_models::market::curves::MarketInstrument;
 use uuid::Uuid;
 
 use super::types::{
@@ -530,11 +529,11 @@ pub async fn bootstrap_curve(
         ));
     }
 
-    let instruments: Result<Vec<CalibrationInstrument<f64>>, _> = request
+    let instruments: Result<Vec<MarketInstrument<f64>>, _> = request
         .par_rates
         .iter()
         .map(|pr| {
-            parse_tenor_to_years(&pr.tenor).map(|years| CalibrationInstrument::ois(years, pr.rate))
+            parse_tenor_to_years(&pr.tenor).map(|years| MarketInstrument::ois(years, pr.rate))
         })
         .collect();
 
@@ -548,10 +547,10 @@ pub async fn bootstrap_curve(
         }
     };
 
-    let config: GenericBootstrapConfig<f64> = GenericBootstrapConfig::default();
-    let bootstrapper = SequentialBootstrapper::new(config);
+    let config = BootstrapConfig::default();
+    let bootstrapper = CurveBootstrapper::with_config(config);
 
-    let result = match bootstrapper.bootstrap(&instruments) {
+    let result = match bootstrapper.bootstrap_instruments(&instruments) {
         Ok(r) => r,
         Err(bootstrap_error) => {
             return Err(convert_bootstrap_error(bootstrap_error));

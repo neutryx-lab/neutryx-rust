@@ -219,116 +219,78 @@ types/
 **Structure**:
 
 ```text
-instruments/  → Financial instrument definitions
-  ├── equity/   → Equity options (VanillaOption, Forward)
-  ├── rates/    → Interest rate instruments (IRS, Swaption, FixedLeg, FloatingLeg)
-  ├── credit/   → Credit instruments (CDS, CDX)
-  ├── fx/       → FX instruments (FxForward, FxOption)
-  └── mod.rs    → InstrumentEnum for static dispatch
+analytic.rs       → Analytical pricing with instrument integration (re-exports pricer_core formulas)
 
-market/       → Market data structures and calibration
-  ├── mod.rs          → Module root with public API re-exports
-  ├── error.rs        → Unified error types (MarketError, CurveError, SurfaceError, ContextError)
+builder/          → Yield curve bootstrapping and market data calibration
+  ├── Shared Infrastructure
+  │   ├── grid.rs         → CalibrationGrid for axis management
+  │   ├── matrix.rs       → CalibrationMatrix, InterpolationMatrix
+  │   ├── problem.rs      → CalibrationProblem (SystemOfEquations impl), JacobianMethod
+  │   ├── error.rs        → CalibrationError, BootstrapError types
+  │   └── instrument.rs   → CalibrationInstrument trait
   │
-  ├── context/        → Market data management (reorganised from root-level files)
-  │   ├── mod.rs          → Module exports
-  │   ├── provider.rs     → MarketProvider for lazy market data resolution (Arc-cached)
-  │   ├── indexed.rs      → IndexedMarket<T> + IndexCurveMapper (RateIndex→Curve keyed access)
-  │   ├── requirements.rs → TradeIndexRequirements trait (declares required market indices)
-  │   └── validator.rs    → MarketValidator, ValidationReport (validates market completeness)
+  ├── curve/              → Yield curve calibration
+  │   ├── bootstrap.rs    → Sequential bootstrapping (CurveBootstrapper, BootstrapConfig)
+  │   └── global.rs       → Global calibration (feature = "global-bootstrap")
+  │                         GlobalBootstrapper, GlobalBootstrapConfig, GlobalBootstrapResult
   │
-  ├── curves/         → Yield and FX curves
-  │   ├── mod.rs          → Module exports (YieldCurve, FxCurve, CurveEnum)
-  │   ├── traits.rs       → YieldCurve trait definition
-  │   ├── flat.rs         → FlatCurve implementation
-  │   ├── interpolated.rs → InterpolatedCurve with pillar-based interpolation
-  │   ├── credit.rs       → CreditCurve, HazardRateCurve, FlatHazardRateCurve
-  │   ├── curve_set.rs    → CurveSet container for multiple named curves
-  │   ├── curve_enum.rs   → CurveEnum for static dispatch, CurveName enumeration
-  │   └── fx.rs           → FX curves (consolidated): FxCurve trait, SimpleFxCurve,
-  │                         CalibratedFxCurve, FxForwardCurveBuilder, FxSwapData, XccySwapData
-  │
-  ├── surfaces/       → Volatility surfaces
-  │   ├── mod.rs          → Module exports
-  │   ├── traits.rs       → VolatilitySurface trait definition
-  │   ├── flat.rs         → FlatVol implementation
-  │   ├── interpolated.rs → InterpolatedVolSurface with grid interpolation
-  │   ├── fx.rs           → FxVolatilitySurface (delta-expiry grid), FxDeltaPoint
-  │   ├── volcube_slice.rs → VolCubeSlice adapter (3D cube → 2D surface)
-  │   └── vol_surface_enum.rs → VolSurfaceEnum for static dispatch
-  │
-  ├── volcube/        → IR volatility cube (SABR calibration, lazy evaluation, caching)
-  │   ├── mod.rs          → Module exports
-  │   ├── cube.rs         → VolCube core with expiry/tenor grid
-  │   ├── engine.rs       → VolCubeCalibrationEngine for full cube calibration
-  │   ├── calibrator.rs   → SABR calibration engine (per-slice)
-  │   ├── sabr_surface.rs → SABR surface construction
-  │   ├── interpolator.rs → VolCubeInterpolator trait (Flat, Linear)
-  │   ├── lazy_evaluator.rs → VolLazyEvaluator for on-demand calibration
-  │   ├── cache.rs        → SharedVolCubeCache, VolCubeCache, CacheStats
-  │   ├── vega.rs         → Vega calculation (adjoint/forward mode)
-  │   ├── calibration_graph.rs → CalibrationGraph for dependency management
-  │   ├── breeden_litzenberger.rs → Risk-neutral density extraction
-  │   ├── config.rs       → VolCubeConfig (interpolation, extrapolation, SABR settings)
-  │   ├── quote.rs        → VolQuote, VolQuoteSet for market data representation
-  │   ├── types.rs        → VolInstrument, SabrParams, InstrumentId
-  │   ├── error.rs        → VolCubeError
-  │   └── builder.rs      → VolCubeBuilder for construction
-  │
-  ├── fx_calibration/ → FX volatility surface calibration
-  │   ├── mod.rs          → Module exports (re-exports curves/fx types)
-  │   ├── types.rs        → Strike, Vol newtypes; ExpiryInterpolation
-  │   ├── config.rs       → FxVolSurfaceConfig with SABR settings and presets
-  │   ├── error.rs        → FxCalibrationError (12 variants)
-  │   ├── surface.rs      → CalibratedFxVolSurface, VolSmile, SabrParameters
-  │   ├── vol_builder.rs  → FxVolSurfaceBuilder with SABR calibration
-  │   ├── lazy_surface.rs → LazyFxVolSurface for deferred calibration
-  │   ├── sensitivity.rs  → VolSurfaceSensitivity for AAD computation graph
-  │   └── fx_market_builder.rs → FxMarketBuilder orchestration (curves + vol surface)
-  │
-  ├── fx_density.rs   → FxDensityCalculator, DeltaType, DensityStatistics
-  │
-  └── calibration/    → Model and curve calibration
-      ├── mod.rs          → Module exports
-      ├── bootstrapping/  → Multi-curve yield curve construction (AAD-enabled)
-      │   ├── engine.rs       → BootstrapEngine with Adjoint AD
-      │   ├── curve_engine.rs → CurveBootstrapEngine
-      │   ├── adjoint_solver.rs → Adjoint solver for sensitivities
-      │   ├── multi_curve.rs  → OIS/LIBOR multi-curve framework
-      │   ├── sensitivity.rs  → Curve sensitivity calculations
-      │   ├── cache.rs        → Bootstrap result caching
-      │   └── config.rs       → Bootstrap configuration
-      ├── heston.rs       → Heston model calibrator
-      ├── sabr.rs         → SABR model calibrator
-      ├── hull_white.rs   → Hull-White model calibrator
-      └── swaption_calibrator.rs → Swaption vol calibrator
+  └── vol/                → Volatility surface/cube calibration
+      ├── surface.rs      → FX vol surfaces (2D), SabrSliceCalibrator, FxVolBuilder
+      └── cube.rs         → Swaption vol cubes (3D), VolCubeBuilder
 
-models/       → Stochastic models with unified trait interface
-  ├── equity/   → Equity models: GBM, Heston, SABR (feature-gated)
-  ├── rates/    → Interest rate models: Hull-White, CIR (feature-gated)
-  └── hybrid/   → Correlated multi-factor models (feature-gated)
-
-compiler/     → Trade compiler for IR generation
+compiler/         → Trade compiler for IR generation
+  ├── mod.rs          → Module exports
   ├── index_mapper.rs → IndexMapper (RateIndex/Currency → numeric ID)
-  ├── linear.rs       → LinearProductsCompiler (IRS, Bond, FRA)
+  ├── linear.rs       → LinearProductsCompiler (IRS, Bond, FRA, CMS)
   ├── xccy.rs         → XCcyCompiler (cross-currency swaps)
   ├── exotic.rs       → ExoticCompiler (barriers, Asians)
   └── callable.rs     → CallableCompiler (Bermudan swaptions, block-partitioned)
 
-schedules/    → Payment schedule generation (Frequency, Period, ScheduleBuilder)
-analytical/   → Closed-form solutions (Black-Scholes, Garman-Kohlhagen)
-demo.rs       → Demo types for 3-stage rocket: ModelEnum, InstrumentEnum, CurveEnum, VolSurfaceEnum
+market.rs         → Market data structures (single-file module with inline submodules)
+  └── curves::        → YieldCurve trait, FlatCurve, BootstrappedCurve, MarketInstrument
+      CurveEnum       → Static dispatch wrapper (Flat, Bootstrapped)
+      CurveName       → Named curve identifiers (Sofr, Euribor, Estr, Tonar, Sonia)
+      CurveSet        → Named curve collection (CurveName → CurveEnum)
+      MarketProvider  → Market data provider placeholder
+
+stochastic/       → Stochastic process models
+  ├── mod.rs          → Module exports, StochasticModel trait
+  ├── model_enum.rs   → StochasticModelEnum for static dispatch
+  ├── gbm.rs          → Geometric Brownian Motion
+  ├── heston.rs       → Heston stochastic volatility
+  ├── hull_white.rs   → Hull-White interest rate model
+  ├── cir.rs          → Cox-Ingersoll-Ross model
+  ├── correlated.rs   → Correlated multi-factor models
+  ├── validation.rs   → Model parameter validation
+  └── error.rs        → StochasticModelError
+
+instruments/      → Re-exports from infra_master::trade for backwards compatibility
 ```
+
+**Calibration Patterns** (documented in `builder/mod.rs`):
+
+| Pattern | Module | Description |
+|---------|--------|-------------|
+| Sequential | `curve::bootstrap` | Solve one pillar at a time (yield curves) |
+| Slice-wise | `vol::surface`, `vol::cube` | Calibrate each slice independently (vol surfaces/cubes) |
+| Global | `curve::global` | Solve all parameters simultaneously via Newton-Raphson (feature-gated) |
+
+**Shared Infrastructure** (`builder/`):
+- `CalibrationGrid`: Axis management for time/strike dimensions
+- `CalibrationMatrix`: N×M matrix representation for instrument cashflows
+- `InterpolationMatrix`: Maps pillar discount factors to cashflow dates via log-linear interpolation
+- `CalibrationProblem`: Implements `SystemOfEquations<T>` for MultidimensionalNewtonSolver
+- `JacobianMethod`: Finite Difference, Central Difference, or Automatic Differentiation (AAD feature-gated)
+
+**Global Curve Calibration** (`curve::global`, feature = "global-bootstrap"):
+- AAD Preparation: Stores J⁻¹ in `GlobalBootstrapResult` for implicit function theorem (∂x*/∂m = J⁻¹)
 
 **Key Principles**:
 
-- **Market data consolidation**: All market data (curves, surfaces, calibration, provider) resides in `market/` module
-- **IndexedMarket Pattern**: Market data keyed by logical indices (`RateIndex`, `CurrencyPair`) not strings; `TradeIndexRequirements` declares needed indices
 - **TradeCompiler Pattern**: `TradeCompiler<T>` trait compiles Trade → PricingKernel IR; `IndexMapper` maps indices to numeric IDs
 - **StochasticModel Trait**: Unified interface for stochastic processes (`evolve_step`, `initial_state`, `brownian_dim`)
 - **StochasticModelEnum**: Static dispatch enum wrapping concrete models (GBM, Heston, SABR, Hull-White, CIR)
 - **CalibrationEngine**: Uses `pricer_core::math::solvers` for parameter optimisation
-- **Feature-Flag Models**: Each model category gated by feature (equity, rates, credit, fx)
 - **Static Dispatch**: Enum-based dispatch for Enzyme compatibility
 
 ### pricer_pricing (L3)
@@ -725,5 +687,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-27_ — Documented market/ module reorganisation (context/, curves/fx.rs consolidation)
+_Updated: 2026-01-28_ — builder/ restructured: shared infra (grid, matrix, problem), curve/ (bootstrap, global), vol/ (surface, cube)
 _Document patterns, not file trees. New files following patterns should not require updates_

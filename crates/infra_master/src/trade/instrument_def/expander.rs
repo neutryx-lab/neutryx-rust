@@ -23,6 +23,7 @@ use super::{
     AsianOption,
     BasketOption,
     // Rates
+    BasisSwap,
     CapFloor,
     // Credit
     Cds,
@@ -34,11 +35,15 @@ use super::{
     CommodityForward,
     CommoditySwap,
     CommodityVanillaOption,
+    // XCCY
+    CrossCurrencyBasisSwap,
+    Deposit,
     // Equity
     EquityBarrierOption,
     EquityForward,
     EquitySwap,
     EquityVanillaOption,
+    Fra,
     Frn,
     // FX
     FxBarrierOption,
@@ -46,9 +51,11 @@ use super::{
     FxSpot,
     FxSwap,
     FxVanillaOption,
+    Futures,
     InflationSwap,
     InstrumentDefinition,
     InstrumentError,
+    InterestRateSwap,
     LookbackOption,
     NtdBasket,
     Ois,
@@ -108,6 +115,24 @@ impl InstrumentExpander for InstrumentDefinition {
 
         match self {
             // === Rates ===
+            InstrumentDefinition::Deposit(d) => {
+                d.expand_to_trade(trade_id, valuation_date, conventions)
+            }
+            InstrumentDefinition::Fra(f) => {
+                f.expand_to_trade(trade_id, valuation_date, conventions)
+            }
+            InstrumentDefinition::Futures(f) => {
+                f.expand_to_trade(trade_id, valuation_date, conventions)
+            }
+            InstrumentDefinition::InterestRateSwap(s) => {
+                s.expand_to_trade(trade_id, valuation_date, conventions)
+            }
+            InstrumentDefinition::BasisSwap(b) => {
+                b.expand_to_trade(trade_id, valuation_date, conventions)
+            }
+            InstrumentDefinition::Ois(o) => {
+                o.expand_to_trade(trade_id, valuation_date, conventions)
+            }
             InstrumentDefinition::Swaption(s) => {
                 s.expand_to_trade(trade_id, valuation_date, conventions)
             }
@@ -122,9 +147,6 @@ impl InstrumentExpander for InstrumentDefinition {
             }
             InstrumentDefinition::InflationSwap(i) => {
                 i.expand_to_trade(trade_id, valuation_date, conventions)
-            }
-            InstrumentDefinition::Ois(o) => {
-                o.expand_to_trade(trade_id, valuation_date, conventions)
             }
 
             // === FX ===
@@ -142,6 +164,9 @@ impl InstrumentExpander for InstrumentDefinition {
             }
             InstrumentDefinition::FxSwap(s) => {
                 s.expand_to_trade(trade_id, valuation_date, conventions)
+            }
+            InstrumentDefinition::CrossCurrencyBasisSwap(x) => {
+                x.expand_to_trade(trade_id, valuation_date, conventions)
             }
 
             // === Equity ===
@@ -204,6 +229,267 @@ impl InstrumentExpander for InstrumentDefinition {
 // ============================================================================
 // Rates Instrument Expansion
 // ============================================================================
+
+impl InstrumentExpander for Deposit {
+    fn expand_to_trade(
+        &self,
+        trade_id: impl Into<TradeId>,
+        _valuation_date: Date,
+        _conventions: &ConventionSet,
+    ) -> Result<Trade, InstrumentError> {
+        let end_date = self.end_date();
+        let year_fraction = self.year_fraction();
+
+        // Create a single cashflow at maturity
+        let cashflow = Cashflow::new(
+            CashflowType::Coupon,
+            end_date,
+            self.start_date,
+            end_date,
+            year_fraction,
+            self.notional,
+            Payoff::fixed(self.rate),
+            self.currency,
+        );
+
+        let leg = Leg::new(
+            vec![cashflow],
+            Direction::Receiver,
+            LegType::Fixed,
+            self.currency,
+        );
+
+        Ok(Trade::new(trade_id, vec![leg], TradeType::Deposit))
+    }
+}
+
+impl InstrumentExpander for Fra {
+    fn expand_to_trade(
+        &self,
+        trade_id: impl Into<TradeId>,
+        _valuation_date: Date,
+        _conventions: &ConventionSet,
+    ) -> Result<Trade, InstrumentError> {
+        use crate::trade::IndexType;
+
+        let end_date = self.end_date();
+        let year_fraction = self.year_fraction();
+
+        // FRA has a single settlement cashflow at the fixing date
+        // The payoff is (floating - strike) * notional * year_fraction / (1 + floating * yf)
+        let settlement_cf = Cashflow::new(
+            CashflowType::Settlement,
+            self.fixing_date,
+            self.start_date,
+            end_date,
+            year_fraction,
+            self.notional,
+            Payoff::floating(IndexType::Rate(self.rate_index)),
+            self.currency,
+        );
+
+        let leg = Leg::new(
+            vec![settlement_cf],
+            Direction::Receiver,
+            LegType::Floating,
+            self.currency,
+        );
+
+        Ok(Trade::new(trade_id, vec![leg], TradeType::Fra))
+    }
+}
+
+impl InstrumentExpander for Futures {
+    fn expand_to_trade(
+        &self,
+        trade_id: impl Into<TradeId>,
+        _valuation_date: Date,
+        _conventions: &ConventionSet,
+    ) -> Result<Trade, InstrumentError> {
+        use crate::trade::IndexType;
+
+        let year_fraction = self.year_fraction();
+
+        // Futures has a single settlement at expiry
+        let settlement_cf = Cashflow::new(
+            CashflowType::Settlement,
+            self.expiry_date,
+            self.expiry_date,
+            self.underlying_end_date(),
+            year_fraction,
+            self.notional,
+            Payoff::floating(IndexType::Rate(self.rate_index)),
+            self.currency,
+        );
+
+        let leg = Leg::new(
+            vec![settlement_cf],
+            Direction::Receiver,
+            LegType::Floating,
+            self.currency,
+        );
+
+        Ok(Trade::new(trade_id, vec![leg], TradeType::Futures))
+    }
+}
+
+impl InstrumentExpander for InterestRateSwap {
+    fn expand_to_trade(
+        &self,
+        trade_id: impl Into<TradeId>,
+        _valuation_date: Date,
+        _conventions: &ConventionSet,
+    ) -> Result<Trade, InstrumentError> {
+        use crate::trade::IndexType;
+
+        let end_date = self.end_date();
+
+        // Generate fixed leg payment dates
+        let fixed_dates = generate_payment_dates(self.start_date, end_date, self.fixed_frequency);
+
+        // Generate floating leg payment dates
+        let float_dates = generate_payment_dates(self.start_date, end_date, self.float_frequency);
+
+        // Generate fixed leg cashflows
+        let fixed_cashflows = generate_fixed_leg_cashflows(
+            &fixed_dates,
+            self.start_date,
+            self.fixed_rate,
+            self.notional,
+            self.currency,
+        );
+
+        // Generate floating leg cashflows
+        let mut floating_cashflows = Vec::new();
+        for i in 0..float_dates.len().saturating_sub(1) {
+            let accrual_start = float_dates[i];
+            let accrual_end = float_dates[i + 1];
+            let year_fraction = (accrual_end - accrual_start) as f64 / 360.0;
+
+            let cf = Cashflow::new(
+                CashflowType::Coupon,
+                accrual_end,
+                accrual_start,
+                accrual_end,
+                year_fraction,
+                self.notional,
+                Payoff::floating(IndexType::Rate(self.rate_index)),
+                self.currency,
+            );
+            floating_cashflows.push(cf);
+        }
+
+        // Determine directions based on payer/receiver
+        let (fixed_direction, floating_direction) = if self.is_payer() {
+            (Direction::Payer, Direction::Receiver)
+        } else {
+            (Direction::Receiver, Direction::Payer)
+        };
+
+        let fixed_leg = Leg::new(
+            fixed_cashflows,
+            fixed_direction,
+            LegType::Fixed,
+            self.currency,
+        );
+
+        let floating_leg = Leg::new(
+            floating_cashflows,
+            floating_direction,
+            LegType::Floating,
+            self.currency,
+        );
+
+        Ok(Trade::new(
+            trade_id,
+            vec![fixed_leg, floating_leg],
+            TradeType::Swap,
+        ))
+    }
+}
+
+impl InstrumentExpander for BasisSwap {
+    fn expand_to_trade(
+        &self,
+        trade_id: impl Into<TradeId>,
+        _valuation_date: Date,
+        _conventions: &ConventionSet,
+    ) -> Result<Trade, InstrumentError> {
+        use crate::trade::IndexType;
+
+        let end_date = self.end_date();
+
+        // Generate leg1 payment dates
+        let leg1_dates = generate_payment_dates(self.start_date, end_date, self.leg1_frequency);
+
+        // Generate leg2 payment dates
+        let leg2_dates = generate_payment_dates(self.start_date, end_date, self.leg2_frequency);
+
+        // Generate leg1 cashflows
+        let mut leg1_cashflows = Vec::new();
+        for i in 0..leg1_dates.len().saturating_sub(1) {
+            let accrual_start = leg1_dates[i];
+            let accrual_end = leg1_dates[i + 1];
+            let year_fraction = (accrual_end - accrual_start) as f64 / 360.0;
+
+            let cf = Cashflow::new(
+                CashflowType::Coupon,
+                accrual_end,
+                accrual_start,
+                accrual_end,
+                year_fraction,
+                self.notional,
+                Payoff::floating(IndexType::Rate(self.leg1_index)),
+                self.currency,
+            );
+            leg1_cashflows.push(cf);
+        }
+
+        // Generate leg2 cashflows
+        let mut leg2_cashflows = Vec::new();
+        for i in 0..leg2_dates.len().saturating_sub(1) {
+            let accrual_start = leg2_dates[i];
+            let accrual_end = leg2_dates[i + 1];
+            let year_fraction = (accrual_end - accrual_start) as f64 / 360.0;
+
+            let cf = Cashflow::new(
+                CashflowType::Coupon,
+                accrual_end,
+                accrual_start,
+                accrual_end,
+                year_fraction,
+                self.notional,
+                Payoff::floating(IndexType::Rate(self.leg2_index)),
+                self.currency,
+            );
+            leg2_cashflows.push(cf);
+        }
+
+        // Determine directions: Payer pays leg1, receives leg2
+        let (leg1_direction, leg2_direction) =
+            if self.payer_receiver == super::PayerReceiver::Payer {
+                (Direction::Payer, Direction::Receiver)
+            } else {
+                (Direction::Receiver, Direction::Payer)
+            };
+
+        let leg1 = Leg::new(
+            leg1_cashflows,
+            leg1_direction,
+            LegType::Floating,
+            self.currency,
+        );
+
+        let leg2 = Leg::new(
+            leg2_cashflows,
+            leg2_direction,
+            LegType::Floating,
+            self.currency,
+        );
+
+        Ok(Trade::new(trade_id, vec![leg1, leg2], TradeType::Swap))
+    }
+}
 
 impl InstrumentExpander for Swaption {
     fn expand_to_trade(
@@ -946,6 +1232,96 @@ impl InstrumentExpander for FxSwap {
         Ok(Trade::new(
             trade_id,
             vec![near_pay_leg, near_receive_leg, far_receive_leg, far_pay_leg],
+            TradeType::Swap,
+        ))
+    }
+}
+
+impl InstrumentExpander for CrossCurrencyBasisSwap {
+    fn expand_to_trade(
+        &self,
+        trade_id: impl Into<TradeId>,
+        _valuation_date: Date,
+        _conventions: &ConventionSet,
+    ) -> Result<Trade, InstrumentError> {
+        use crate::trade::IndexType;
+
+        // Validate the instrument first
+        self.validate()
+            .map_err(|e| InstrumentError::invalid_parameter(&e.to_string()))?;
+
+        // Generate payment dates for domestic leg
+        let domestic_dates = generate_payment_dates(
+            self.start_date,
+            self.maturity,
+            self.domestic_leg.payment_frequency,
+        );
+
+        // Generate payment dates for foreign leg
+        let foreign_dates = generate_payment_dates(
+            self.start_date,
+            self.maturity,
+            self.foreign_leg.payment_frequency,
+        );
+
+        // Generate domestic leg cashflows (floating)
+        let mut domestic_cashflows = Vec::new();
+        for i in 0..domestic_dates.len().saturating_sub(1) {
+            let accrual_start = domestic_dates[i];
+            let accrual_end = domestic_dates[i + 1];
+            let year_fraction = (accrual_end - accrual_start) as f64 / 360.0;
+
+            let cf = Cashflow::new(
+                CashflowType::Coupon,
+                accrual_end,
+                accrual_start,
+                accrual_end,
+                year_fraction,
+                self.notional,
+                Payoff::floating(IndexType::Rate(self.domestic_leg.rate_index)),
+                self.domestic_currency,
+            );
+            domestic_cashflows.push(cf);
+        }
+
+        // Generate foreign leg cashflows (floating with basis spread)
+        let mut foreign_cashflows = Vec::new();
+        for i in 0..foreign_dates.len().saturating_sub(1) {
+            let accrual_start = foreign_dates[i];
+            let accrual_end = foreign_dates[i + 1];
+            let year_fraction = (accrual_end - accrual_start) as f64 / 360.0;
+
+            // Note: basis spread would be applied here in practice
+            let cf = Cashflow::new(
+                CashflowType::Coupon,
+                accrual_end,
+                accrual_start,
+                accrual_end,
+                year_fraction,
+                self.notional, // Foreign notional would be FX-adjusted in practice
+                Payoff::floating(IndexType::Rate(self.foreign_leg.rate_index)),
+                self.foreign_currency,
+            );
+            foreign_cashflows.push(cf);
+        }
+
+        let domestic_leg = Leg::new(
+            domestic_cashflows,
+            Direction::Payer,
+            LegType::Floating,
+            self.domestic_currency,
+        );
+
+        let foreign_leg = Leg::new(
+            foreign_cashflows,
+            Direction::Receiver,
+            LegType::Floating,
+            self.foreign_currency,
+        );
+
+        Ok(Trade::new(
+            trade_id,
+            vec![domestic_leg, foreign_leg],
             TradeType::Swap,
         ))
     }
