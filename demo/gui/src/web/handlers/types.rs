@@ -5256,6 +5256,8 @@ mod tests {
 
         #[test]
         fn test_cache_overwrite_existing() {
+            use pricer_models::market::curves::{BootstrapInterpolation, BootstrappedCurve};
+
             let cache = BootstrapCurveCache::new();
             let curve_id = Uuid::new_v4();
 
@@ -5264,7 +5266,14 @@ mod tests {
                 tenor: "1Y".to_string(),
                 rate: 0.03,
             }];
-            let curve1 = CachedCurve::new(vec![1.0], vec![0.97], vec![0.0304], par_rates1);
+            let inner_curve1 = BootstrappedCurve::new(
+                vec![1.0],
+                vec![0.97],
+                BootstrapInterpolation::LogLinear,
+                true,
+            )
+            .unwrap();
+            let curve1 = CachedCurve::new(inner_curve1, par_rates1);
             cache.add(curve_id, curve1);
             assert_eq!(cache.len(), 1);
 
@@ -5279,17 +5288,19 @@ mod tests {
                     rate: 0.031,
                 },
             ];
-            let curve2 = CachedCurve::new(
+            let inner_curve2 = BootstrappedCurve::new(
                 vec![1.0, 2.0],
                 vec![0.97, 0.94],
-                vec![0.0304, 0.0309],
-                par_rates2,
-            );
+                BootstrapInterpolation::LogLinear,
+                true,
+            )
+            .unwrap();
+            let curve2 = CachedCurve::new(inner_curve2, par_rates2);
             cache.add(curve_id, curve2);
 
             assert_eq!(cache.len(), 1);
             let retrieved = cache.get(&curve_id).unwrap();
-            assert_eq!(retrieved.pillars.len(), 2);
+            assert_eq!(retrieved.pillars().len(), 2);
         }
 
         #[test]

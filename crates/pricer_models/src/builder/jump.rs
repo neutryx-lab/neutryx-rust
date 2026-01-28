@@ -5,7 +5,8 @@
 //!
 //! # Key Types
 //!
-//! - [`JumpPillar`]: Represents a jump at a specific date with expected/realised values
+//! - [`JumpPillar`]: Represents a jump at a specific date with
+//!   expected/realised values
 //! - [`JumpConfig`]: Configuration for jump-aware calibration
 //!
 //! # Requirements Coverage
@@ -283,7 +284,11 @@ impl<T: Float> JumpConfig<T> {
     /// Get jump pillars sorted by time.
     pub fn sorted_pillars(&self) -> Vec<JumpPillar<T>> {
         let mut pillars = self.jump_pillars.clone();
-        pillars.sort_by(|a, b| a.time.partial_cmp(&b.time).unwrap_or(std::cmp::Ordering::Equal));
+        pillars.sort_by(|a, b| {
+            a.time
+                .partial_cmp(&b.time)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         pillars
     }
 
@@ -295,7 +300,11 @@ impl<T: Float> JumpConfig<T> {
             // Check time is positive
             if pillar.time <= T::zero() {
                 return Err(CalibrationError::InvalidMarketData {
-                    message: format!("Jump pillar {} has non-positive time: {:?}", i, pillar.time),
+                    message: format!(
+                        "Jump pillar {} has non-positive time: {}",
+                        i,
+                        pillar.time.to_f64().unwrap_or(0.0)
+                    ),
                 });
             }
 
@@ -349,9 +358,17 @@ mod tests {
     #[test]
     fn test_jump_pillar_bps_conversion() {
         assert_relative_eq!(JumpPillar::<f64>::bps_to_rate(100.0), 0.01, epsilon = 1e-10);
-        assert_relative_eq!(JumpPillar::<f64>::bps_to_rate(-50.0), -0.005, epsilon = 1e-10);
+        assert_relative_eq!(
+            JumpPillar::<f64>::bps_to_rate(-50.0),
+            -0.005,
+            epsilon = 1e-10
+        );
         assert_relative_eq!(JumpPillar::<f64>::rate_to_bps(0.01), 100.0, epsilon = 1e-10);
-        assert_relative_eq!(JumpPillar::<f64>::rate_to_bps(-0.005), -50.0, epsilon = 1e-10);
+        assert_relative_eq!(
+            JumpPillar::<f64>::rate_to_bps(-0.005),
+            -50.0,
+            epsilon = 1e-10
+        );
     }
 
     #[test]
@@ -361,7 +378,11 @@ mod tests {
 
         pillar.set_realised_jump(0.0030);
         assert!(pillar.is_calibrated());
-        assert_relative_eq!(pillar.realised_jump_rate().unwrap(), 0.0030, epsilon = 1e-10);
+        assert_relative_eq!(
+            pillar.realised_jump_rate().unwrap(),
+            0.0030,
+            epsilon = 1e-10
+        );
         assert_relative_eq!(pillar.realised_jump_bps().unwrap(), 30.0, epsilon = 1e-10);
     }
 
@@ -404,10 +425,8 @@ mod tests {
 
     #[test]
     fn test_jump_config_with_pillars() {
-        let config: JumpConfig<f64> = JumpConfig::with_pillars(vec![
-            JumpPillar::new(0.5, 25.0),
-            JumpPillar::new(1.0, 25.0),
-        ]);
+        let config: JumpConfig<f64> =
+            JumpConfig::with_pillars(vec![JumpPillar::new(0.5, 25.0), JumpPillar::new(1.0, 25.0)]);
 
         assert!(config.enabled);
         assert_eq!(config.num_jumps(), 2);
@@ -467,8 +486,7 @@ mod tests {
 
     #[test]
     fn test_jump_config_validate_out_of_range() {
-        let config: JumpConfig<f64> =
-            JumpConfig::with_pillars(vec![JumpPillar::new(0.5, 150.0)]);
+        let config: JumpConfig<f64> = JumpConfig::with_pillars(vec![JumpPillar::new(0.5, 150.0)]);
 
         let result = config.validate();
         assert!(result.is_err());
@@ -480,8 +498,7 @@ mod tests {
 
     #[test]
     fn test_jump_config_validate_negative_time() {
-        let config: JumpConfig<f64> =
-            JumpConfig::with_pillars(vec![JumpPillar::new(-0.5, 25.0)]);
+        let config: JumpConfig<f64> = JumpConfig::with_pillars(vec![JumpPillar::new(-0.5, 25.0)]);
 
         let result = config.validate();
         assert!(result.is_err());

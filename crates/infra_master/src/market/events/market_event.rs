@@ -159,8 +159,8 @@ impl MarketEvent {
     ///
     /// # Arguments
     ///
-    /// * `bps` - Expected jump size in basis points (-100 to +100).
-    ///   Positive indicates rate hike, negative indicates rate cut.
+    /// * `bps` - Expected jump size in basis points (-100 to +100). Positive
+    ///   indicates rate hike, negative indicates rate cut.
     pub fn with_expected_jump_bps(mut self, bps: f64) -> Self {
         self.expected_jump_bps = Some(bps);
         self

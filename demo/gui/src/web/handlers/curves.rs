@@ -628,7 +628,8 @@ pub async fn build_curve(
     let config = BootstrapConfig::new(request.tolerance, request.max_iterations)
         .with_interpolation(request.interpolation.to_builder_interpolation());
 
-    // Run the bootstrapper using bootstrap_to_curve to get BootstrappedCurve directly
+    // Run the bootstrapper using bootstrap_to_curve to get BootstrappedCurve
+    // directly
     let bootstrapper = CurveBootstrapper::with_config(config);
     let curve = bootstrapper
         .bootstrap_to_curve(&market_instruments)

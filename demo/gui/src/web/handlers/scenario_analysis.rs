@@ -430,9 +430,7 @@ fn calculate_scenario_stressed_npv(
 ///
 /// Delegates to the underlying `CachedCurve::discount_factor` method
 /// which uses the `YieldCurve` trait implementation.
-fn interpolate_df(curve: &CachedCurve, t: f64) -> f64 {
-    curve.discount_factor(t)
-}
+fn interpolate_df(curve: &CachedCurve, t: f64) -> f64 { curve.discount_factor(t) }
 
 // =============================================================================
 // Tests
@@ -557,9 +555,13 @@ mod tests {
     #[test]
     fn test_interpolate_df_at_zero() {
         use pricer_models::market::curves::{BootstrapInterpolation, BootstrappedCurve};
-        let inner_curve =
-            BootstrappedCurve::new(vec![1.0], vec![0.97], BootstrapInterpolation::LogLinear, true)
-                .unwrap();
+        let inner_curve = BootstrappedCurve::new(
+            vec![1.0],
+            vec![0.97],
+            BootstrapInterpolation::LogLinear,
+            true,
+        )
+        .unwrap();
         let curve = CachedCurve::new(inner_curve, vec![]);
         // At t=0, discount factor should be 1.0
         let df = interpolate_df(&curve, 0.0);
@@ -569,9 +571,13 @@ mod tests {
     #[test]
     fn test_interpolate_df_single_pillar() {
         use pricer_models::market::curves::{BootstrapInterpolation, BootstrappedCurve};
-        let inner_curve =
-            BootstrappedCurve::new(vec![1.0], vec![0.97], BootstrapInterpolation::LogLinear, true)
-                .unwrap();
+        let inner_curve = BootstrappedCurve::new(
+            vec![1.0],
+            vec![0.97],
+            BootstrapInterpolation::LogLinear,
+            true,
+        )
+        .unwrap();
         let curve = CachedCurve::new(inner_curve, vec![]);
         let df = interpolate_df(&curve, 1.0);
         assert!((df - 0.97).abs() < 1e-10);
