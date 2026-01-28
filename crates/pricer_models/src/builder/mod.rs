@@ -43,6 +43,8 @@ mod grid;
 mod instrument;
 
 #[cfg(feature = "global-bootstrap")]
+mod jump;
+#[cfg(feature = "global-bootstrap")]
 mod matrix;
 #[cfg(feature = "global-bootstrap")]
 mod problem;
@@ -72,6 +74,8 @@ pub use grid::CalibrationGrid;
 pub use instrument::CalibrationInstrument;
 #[cfg(feature = "global-bootstrap")]
 pub use matrix::{CalibrationMatrix, CalibrationMatrixBuilder, InterpolationMatrix};
+#[cfg(feature = "global-bootstrap")]
+pub use jump::{JumpConfig, JumpPillar};
 #[cfg(feature = "global-bootstrap")]
 pub use problem::{CalibrationProblem, CalibrationProblemConfig, JacobianMethod};
 // =============================================================================

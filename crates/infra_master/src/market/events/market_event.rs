@@ -58,6 +58,15 @@ pub struct MarketEvent {
     /// Tags for filtering.
     #[cfg_attr(feature = "serde", serde(default))]
     pub tags: Vec<String>,
+    /// Expected jump size in basis points for CB meeting events.
+    ///
+    /// Positive value indicates rate hike expectation.
+    /// Range: -100.0 to +100.0 bps.
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Option::is_none")
+    )]
+    pub expected_jump_bps: Option<f64>,
 }
 
 impl MarketEvent {
@@ -87,6 +96,7 @@ impl MarketEvent {
             actual: None,
             source: source.into(),
             tags: Vec::new(),
+            expected_jump_bps: None,
         }
     }
 
@@ -144,6 +154,25 @@ impl MarketEvent {
         self.tags = tags;
         self
     }
+
+    /// Set the expected jump size in basis points for CB meeting events.
+    ///
+    /// # Arguments
+    ///
+    /// * `bps` - Expected jump size in basis points (-100 to +100).
+    ///   Positive indicates rate hike, negative indicates rate cut.
+    pub fn with_expected_jump_bps(mut self, bps: f64) -> Self {
+        self.expected_jump_bps = Some(bps);
+        self
+    }
+
+    /// Get the expected jump size in basis points.
+    ///
+    /// Returns `None` if not set, or the expected jump in bps.
+    pub fn expected_jump_bps(&self) -> Option<f64> { self.expected_jump_bps }
+
+    /// Check if this event has an expected jump defined.
+    pub fn has_expected_jump(&self) -> bool { self.expected_jump_bps.is_some() }
 
     /// Check if this is a central bank event.
     pub fn is_central_bank_event(&self) -> bool { self.event_type == EventType::CentralBankMeeting }
@@ -219,5 +248,52 @@ mod tests {
         let display = format!("{}", event);
         assert!(display.contains("2024-12-25"));
         assert!(display.contains("Christmas Day"));
+    }
+
+    #[test]
+    fn test_expected_jump_bps() {
+        // Test without expected jump
+        let event = MarketEvent::new(
+            "FOMC-2024-03",
+            EventType::CentralBankMeeting,
+            "FOMC Interest Rate Decision",
+            "2024-03-20",
+            EventImportance::Critical,
+            "Bloomberg",
+        );
+        assert!(event.expected_jump_bps().is_none());
+        assert!(!event.has_expected_jump());
+
+        // Test with expected jump (rate hike)
+        let event_with_jump = event.with_expected_jump_bps(25.0);
+        assert_eq!(event_with_jump.expected_jump_bps(), Some(25.0));
+        assert!(event_with_jump.has_expected_jump());
+
+        // Test with negative jump (rate cut)
+        let event_cut = MarketEvent::new(
+            "ECB-2024-04",
+            EventType::CentralBankMeeting,
+            "ECB Rate Decision",
+            "2024-04-11",
+            EventImportance::Critical,
+            "Reuters",
+        )
+        .with_expected_jump_bps(-25.0);
+        assert_eq!(event_cut.expected_jump_bps(), Some(-25.0));
+    }
+
+    #[test]
+    fn test_expected_jump_bps_zero() {
+        let event = MarketEvent::new(
+            "BOJ-2024-01",
+            EventType::CentralBankMeeting,
+            "BOJ Policy Decision",
+            "2024-01-23",
+            EventImportance::High,
+            "Nikkei",
+        )
+        .with_expected_jump_bps(0.0);
+        assert_eq!(event.expected_jump_bps(), Some(0.0));
+        assert!(event.has_expected_jump());
     }
 }

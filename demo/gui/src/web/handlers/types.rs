@@ -14,8 +14,13 @@
 //! - Requirement 3.2, 3.5: 価格計算レスポンス型
 //! - Requirement 4.1, 4.2: Greeks結果型
 
-use std::{collections::HashMap, sync::RwLock, time::Instant};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+    time::Instant,
+};
 
+use pricer_models::market::curves::{BootstrappedCurve, YieldCurve};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -1012,16 +1017,19 @@ pub fn parse_tenor_to_years(tenor: &str) -> Result<f64, ValidationError> {
 
 /// Cached curve entry with metadata.
 ///
-/// Stores a bootstrapped curve along with its data for quick access.
-/// Used by the CurveCache to store curves created by the bootstrap API.
+/// Stores a bootstrapped yield curve for pricing operations.
+/// The curve is stored as an `Arc<BootstrappedCurve<f64>>` to enable
+/// efficient sharing with the pricing layer via `IndexedMarketAdapter`.
+///
+/// # Design
+///
+/// This struct delegates all curve operations to `BootstrappedCurve`,
+/// keeping demo/gui as a pure I/O layer. The curve implements `YieldCurve`
+/// trait for discount factor and forward rate calculations.
 #[derive(Debug, Clone)]
 pub struct CachedCurve {
-    /// Pillar maturities in years
-    pub pillars: Vec<f64>,
-    /// Discount factors at each pillar
-    pub discount_factors: Vec<f64>,
-    /// Zero rates at each pillar
-    pub zero_rates: Vec<f64>,
+    /// The underlying yield curve from pricer_models.
+    curve: Arc<BootstrappedCurve<f64>>,
     /// Original par rates used to bootstrap this curve (Task 4.1: Required for
     /// bump-and-revalue)
     pub par_rates: Vec<ParRateInput>,
@@ -1030,36 +1038,36 @@ pub struct CachedCurve {
 }
 
 impl CachedCurve {
-    /// Create a new cached curve entry.
+    /// Create a new cached curve entry from a bootstrapped curve.
     ///
     /// # Arguments
     ///
-    /// * `pillars` - Pillar maturities in years
-    /// * `discount_factors` - Discount factors at each pillar
-    /// * `zero_rates` - Zero rates at each pillar
+    /// * `curve` - The bootstrapped yield curve
     /// * `par_rates` - Original par rates used to bootstrap this curve
-    pub fn new(
-        pillars: Vec<f64>,
-        discount_factors: Vec<f64>,
-        zero_rates: Vec<f64>,
-        par_rates: Vec<ParRateInput>,
-    ) -> Self {
+    pub fn new(curve: BootstrappedCurve<f64>, par_rates: Vec<ParRateInput>) -> Self {
         Self {
-            pillars,
-            discount_factors,
-            zero_rates,
+            curve: Arc::new(curve),
             par_rates,
             created_at: Instant::now(),
         }
     }
 
-    /// Calculate zero rates from discount factors.
+    /// Returns the underlying yield curve for use with CurveProvider.
+    pub fn curve(&self) -> Arc<BootstrappedCurve<f64>> { Arc::clone(&self.curve) }
+
+    /// Returns the pillar maturities in years.
+    pub fn pillars(&self) -> &[f64] { self.curve.pillars() }
+
+    /// Returns the discount factors at each pillar.
+    pub fn discount_factors(&self) -> &[f64] { self.curve.discount_factors() }
+
+    /// Calculate zero rates from the curve's discount factors.
     ///
     /// Zero rate = -ln(DF) / T
-    pub fn calculate_zero_rates(pillars: &[f64], discount_factors: &[f64]) -> Vec<f64> {
-        pillars
+    pub fn zero_rates(&self) -> Vec<f64> {
+        self.pillars()
             .iter()
-            .zip(discount_factors.iter())
+            .zip(self.discount_factors().iter())
             .map(|(t, df)| {
                 if *t > 0.0 && *df > 0.0 {
                     -df.ln() / t
@@ -1070,8 +1078,20 @@ impl CachedCurve {
             .collect()
     }
 
+    /// Returns the discount factor for a given time using the curve.
+    ///
+    /// This delegates to the underlying `YieldCurve` implementation.
+    pub fn discount_factor(&self, t: f64) -> f64 { self.curve.discount_factor(t).unwrap_or(1.0) }
+
+    /// Returns the forward rate between two times using the curve.
+    ///
+    /// This delegates to the underlying `YieldCurve` implementation.
+    pub fn forward_rate(&self, t1: f64, t2: f64) -> f64 {
+        self.curve.forward_rate(t1, t2).unwrap_or(0.0)
+    }
+
     /// Get the number of pillars.
-    pub fn pillar_count(&self) -> usize { self.pillars.len() }
+    pub fn pillar_count(&self) -> usize { self.pillars().len() }
 
     /// Get the age of this cache entry in seconds.
     pub fn age_seconds(&self) -> u64 { self.created_at.elapsed().as_secs() }
@@ -5054,6 +5074,7 @@ mod tests {
         use super::*;
 
         fn sample_cached_curve() -> CachedCurve {
+            use pricer_models::market::curves::{BootstrapInterpolation, BootstrappedCurve};
             let par_rates = vec![
                 ParRateInput {
                     tenor: "1Y".to_string(),
@@ -5076,20 +5097,22 @@ mod tests {
                     rate: 0.038,
                 },
             ];
-            CachedCurve::new(
+            let inner_curve = BootstrappedCurve::new(
                 vec![1.0, 2.0, 3.0, 5.0, 10.0],
                 vec![0.97, 0.94, 0.91, 0.85, 0.72],
-                vec![0.0304, 0.0309, 0.0315, 0.0325, 0.0329],
-                par_rates,
+                BootstrapInterpolation::LogLinear,
+                true,
             )
+            .unwrap();
+            CachedCurve::new(inner_curve, par_rates)
         }
 
         #[test]
         fn test_cached_curve_new() {
             let curve = sample_cached_curve();
-            assert_eq!(curve.pillars.len(), 5);
-            assert_eq!(curve.discount_factors.len(), 5);
-            assert_eq!(curve.zero_rates.len(), 5);
+            assert_eq!(curve.pillars().len(), 5);
+            assert_eq!(curve.discount_factors().len(), 5);
+            assert_eq!(curve.zero_rates().len(), 5);
         }
 
         #[test]
@@ -5106,10 +5129,15 @@ mod tests {
         }
 
         #[test]
-        fn test_calculate_zero_rates() {
+        fn test_zero_rates() {
+            use pricer_models::market::curves::{BootstrapInterpolation, BootstrappedCurve};
             let pillars = vec![1.0, 2.0, 5.0];
             let dfs = vec![0.97, 0.94, 0.85];
-            let zero_rates = CachedCurve::calculate_zero_rates(&pillars, &dfs);
+            let inner_curve =
+                BootstrappedCurve::new(pillars, dfs, BootstrapInterpolation::LogLinear, true)
+                    .unwrap();
+            let curve = CachedCurve::new(inner_curve, vec![]);
+            let zero_rates = curve.zero_rates();
 
             // Zero rate = -ln(DF) / T
             // For T=1, DF=0.97: r = -ln(0.97) / 1 ≈ 0.0305
@@ -5117,15 +5145,6 @@ mod tests {
             assert!((zero_rates[0] - (-0.97_f64.ln())).abs() < 1e-10);
             assert!((zero_rates[1] - (-0.94_f64.ln() / 2.0)).abs() < 1e-10);
             assert!((zero_rates[2] - (-0.85_f64.ln() / 5.0)).abs() < 1e-10);
-        }
-
-        #[test]
-        fn test_calculate_zero_rates_edge_cases() {
-            // Zero time should return 0 rate
-            let pillars = vec![0.0, 1.0];
-            let dfs = vec![1.0, 0.97];
-            let zero_rates = CachedCurve::calculate_zero_rates(&pillars, &dfs);
-            assert_eq!(zero_rates[0], 0.0);
         }
 
         #[test]

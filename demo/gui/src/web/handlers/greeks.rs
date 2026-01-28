@@ -154,7 +154,7 @@ fn calculate_irs_npv(cached_curve: &CachedCurve, request: &GreeksCompareRequest)
     let fixed_rate = request.fixed_rate;
     let tenor_years = request.tenor_years;
 
-    let discount_rate = cached_curve.zero_rates.last().copied().unwrap_or(0.03);
+    let discount_rate = cached_curve.zero_rates().last().copied().unwrap_or(0.03);
 
     let payments_per_year = request.payment_frequency.periods_per_year() as f64;
     let num_payments = (tenor_years * payments_per_year) as i32;
@@ -232,7 +232,7 @@ fn calculate_irs_npv_with_rate_shift(
     let fixed_rate = request.fixed_rate;
     let tenor_years = request.tenor_years;
 
-    let base_rate = cached_curve.zero_rates.last().copied().unwrap_or(0.03);
+    let base_rate = cached_curve.zero_rates().last().copied().unwrap_or(0.03);
     let discount_rate = base_rate + shift;
 
     let payments_per_year = request.payment_frequency.periods_per_year() as f64;
@@ -275,7 +275,7 @@ fn calculate_irs_npv_with_tenor_shift(
     let fixed_rate = request.fixed_rate;
     let swap_tenor_years = request.tenor_years;
 
-    let base_rate = cached_curve.zero_rates.last().copied().unwrap_or(0.03);
+    let base_rate = cached_curve.zero_rates().last().copied().unwrap_or(0.03);
 
     let payments_per_year = request.payment_frequency.periods_per_year() as f64;
     let num_payments = (swap_tenor_years * payments_per_year) as i32;
@@ -519,7 +519,7 @@ pub async fn greeks_first_order(
     let delta = dv01;
     let rho = dv01;
 
-    let discount_rate = cached_curve.zero_rates.last().copied().unwrap_or(0.03);
+    let discount_rate = cached_curve.zero_rates().last().copied().unwrap_or(0.03);
     let theta = -npv * discount_rate / 365.0;
     let vega = 0.0;
 

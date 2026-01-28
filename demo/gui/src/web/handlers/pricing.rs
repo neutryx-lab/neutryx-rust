@@ -233,6 +233,9 @@ fn convert_bootstrap_error(error: BootstrapError) -> (StatusCode, Json<IrsBootst
 }
 
 /// Calculate IRS leg present values using a cached curve.
+///
+/// Delegates discount factor and forward rate calculations to the
+/// underlying `BootstrappedCurve` via `CachedCurve` methods.
 fn calculate_irs_legs(
     curve: &CachedCurve,
     notional: f64,
@@ -254,75 +257,20 @@ fn calculate_irs_legs(
             break;
         }
 
-        let df = interpolate_discount_factor(curve, payment_time);
+        // Delegate to CachedCurve which uses YieldCurve trait
+        let df = curve.discount_factor(payment_time);
 
         let fixed_cashflow = notional * fixed_rate * period_years;
         fixed_leg_pv += fixed_cashflow * df;
 
         let prev_time = (i - 1) as f64 * period_years;
-        let forward_rate = calculate_forward_rate(curve, prev_time, payment_time);
-        let float_cashflow = notional * forward_rate * period_years;
+        // Delegate to CachedCurve which uses YieldCurve trait
+        let fwd_rate = curve.forward_rate(prev_time, payment_time);
+        let float_cashflow = notional * fwd_rate * period_years;
         float_leg_pv += float_cashflow * df;
     }
 
     (fixed_leg_pv, float_leg_pv)
-}
-
-/// Interpolate discount factor from cached curve (log-linear interpolation).
-pub fn interpolate_discount_factor(curve: &CachedCurve, t: f64) -> f64 {
-    if t <= 0.0 {
-        return 1.0;
-    }
-
-    let pillars = &curve.pillars;
-    let dfs = &curve.discount_factors;
-
-    if pillars.is_empty() {
-        return 1.0;
-    }
-
-    if t <= pillars[0] {
-        let r = -dfs[0].ln() / pillars[0];
-        return (-r * t).exp();
-    }
-
-    if t >= *pillars.last().unwrap() {
-        let n = pillars.len();
-        let r = -dfs[n - 1].ln() / pillars[n - 1];
-        return (-r * t).exp();
-    }
-
-    let mut lo = 0;
-    for (i, &p) in pillars.iter().enumerate() {
-        if p <= t {
-            lo = i;
-        }
-    }
-
-    let t1 = pillars[lo];
-    let t2 = pillars[lo + 1];
-    let df1 = dfs[lo];
-    let df2 = dfs[lo + 1];
-
-    let w = (t - t1) / (t2 - t1);
-    let log_df = df1.ln() * (1.0 - w) + df2.ln() * w;
-    log_df.exp()
-}
-
-/// Calculate forward rate between two times.
-pub fn calculate_forward_rate(curve: &CachedCurve, t1: f64, t2: f64) -> f64 {
-    if t2 <= t1 {
-        return 0.0;
-    }
-
-    let df1 = interpolate_discount_factor(curve, t1);
-    let df2 = interpolate_discount_factor(curve, t2);
-
-    if df2 <= 0.0 {
-        return 0.0;
-    }
-
-    (df1 / df2 - 1.0) / (t2 - t1)
 }
 
 // =============================================================================
@@ -552,34 +500,35 @@ pub async fn bootstrap_curve(
     let config = BootstrapConfig::default();
     let bootstrapper = CurveBootstrapper::with_config(config);
 
-    let result = match bootstrapper.bootstrap_instruments(&instruments) {
-        Ok(r) => r,
+    // Use bootstrap_to_curve to get BootstrappedCurve directly
+    let curve = match bootstrapper.bootstrap_to_curve(&instruments) {
+        Ok(c) => c,
         Err(bootstrap_error) => {
             return Err(convert_bootstrap_error(bootstrap_error));
         }
     };
 
-    let zero_rates = CachedCurve::calculate_zero_rates(&result.pillars, &result.discount_factors);
+    // Create CachedCurve with the BootstrappedCurve
+    let cached_curve = CachedCurve::new(curve, request.par_rates.clone());
 
-    let cached_curve = CachedCurve::new(
-        result.pillars.clone(),
-        result.discount_factors.clone(),
-        zero_rates.clone(),
-        request.par_rates.clone(),
-    );
+    // Extract data for API response from the cached curve
+    let pillars = cached_curve.pillars().to_vec();
+    let discount_factors = cached_curve.discount_factors().to_vec();
+    let zero_rates = cached_curve.zero_rates();
+    let tenor_count = pillars.len();
+
     let curve_id = Uuid::new_v4();
     state.curve_cache.add(curve_id, cached_curve);
 
     let processing_time_ms = start.elapsed().as_secs_f64() * 1000.0;
-    let tenor_count = result.pillars.len();
     let curve_id_str = curve_id.to_string();
 
     broadcast_bootstrap_complete(&state, &curve_id_str, tenor_count, processing_time_ms);
 
     Ok(Json(BootstrapResponse {
         curve_id: curve_id_str,
-        pillars: result.pillars,
-        discount_factors: result.discount_factors,
+        pillars,
+        discount_factors,
         zero_rates,
         processing_time_ms,
     }))

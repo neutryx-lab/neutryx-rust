@@ -628,34 +628,15 @@ pub async fn build_curve(
     let config = BootstrapConfig::new(request.tolerance, request.max_iterations)
         .with_interpolation(request.interpolation.to_builder_interpolation());
 
-    // Run the bootstrapper
+    // Run the bootstrapper using bootstrap_to_curve to get BootstrappedCurve directly
     let bootstrapper = CurveBootstrapper::with_config(config);
-    let result = bootstrapper
-        .bootstrap_instruments(&market_instruments)
+    let curve = bootstrapper
+        .bootstrap_to_curve(&market_instruments)
         .map_err(|e| convert_bootstrap_error(&e))?;
-
-    // Extract results
-    let pillars = result.pillars;
-    let discount_factors = result.discount_factors;
-
-    // Calculate zero rates from discount factors
-    let zero_rates: Vec<f64> = pillars
-        .iter()
-        .zip(discount_factors.iter())
-        .map(|(&t, &df)| {
-            if t > 0.0 && df > 0.0 {
-                -df.ln() / t
-            } else {
-                0.0
-            }
-        })
-        .collect();
-
-    // Cache the curve
-    let curve_id = Uuid::new_v4();
 
     use super::types::{CachedCurve, ParRateInput};
 
+    // Create par_rates for CachedCurve (needed for bump-and-revalue)
     let par_rates: Vec<ParRateInput> = sorted_instruments
         .iter()
         .map(|i| ParRateInput {
@@ -664,13 +645,16 @@ pub async fn build_curve(
         })
         .collect();
 
-    let cached_curve = CachedCurve::new(
-        pillars.clone(),
-        discount_factors.clone(),
-        zero_rates.clone(),
-        par_rates,
-    );
+    // Create CachedCurve with the BootstrappedCurve
+    let cached_curve = CachedCurve::new(curve, par_rates);
 
+    // Extract data for API response from the cached curve
+    let pillars = cached_curve.pillars().to_vec();
+    let discount_factors = cached_curve.discount_factors().to_vec();
+    let zero_rates = cached_curve.zero_rates();
+
+    // Cache the curve
+    let curve_id = Uuid::new_v4();
     state.curve_cache.add(curve_id, cached_curve);
 
     let build_time_ms = start.elapsed().as_secs_f64() * 1000.0;
@@ -888,8 +872,8 @@ fn interpolate_df(curve: &super::types::CachedCurve, t: f64) -> f64 {
         return 1.0;
     }
 
-    let pillars = &curve.pillars;
-    let dfs = &curve.discount_factors;
+    let pillars = &curve.pillars();
+    let dfs = &curve.discount_factors();
 
     if pillars.is_empty() {
         return 1.0;
@@ -926,8 +910,8 @@ fn interpolate_df(curve: &super::types::CachedCurve, t: f64) -> f64 {
 
 fn interpolate_zero_rate(curve: &super::types::CachedCurve, t: f64) -> f64 {
     if t <= 0.0 {
-        if !curve.zero_rates.is_empty() {
-            return curve.zero_rates[0];
+        if !curve.zero_rates().is_empty() {
+            return curve.zero_rates()[0];
         }
         return 0.0;
     }

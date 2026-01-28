@@ -9,13 +9,14 @@ use serde::{Deserialize, Serialize};
 /// Importance level of a market event.
 ///
 /// Indicates the expected market impact of an event.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "lowercase"))]
 pub enum EventImportance {
     /// Low importance - minimal market impact expected.
     Low,
     /// Medium importance - moderate market impact possible.
+    #[default]
     Medium,
     /// High importance - significant market moving potential.
     High,
@@ -53,10 +54,6 @@ impl EventImportance {
             EventImportance::Critical,
         ]
     }
-}
-
-impl Default for EventImportance {
-    fn default() -> Self { Self::Medium }
 }
 
 impl std::fmt::Display for EventImportance {

@@ -20,14 +20,10 @@ use pricer_models::{
 use serde::Serialize;
 use uuid::Uuid;
 
-use super::{
-    pricing::{calculate_forward_rate, interpolate_discount_factor},
-    types::{
-        parse_tenor_to_years, validate_risk_request, CachedCurve, DeltaResult,
-        IrsBootstrapErrorResponse, ParRateInput, PaymentFrequency, RiskAadResponse,
-        RiskBumpResponse, RiskCompareResponse, RiskMethodResult, RiskRequest, TimingComparison,
-        TimingStats,
-    },
+use super::types::{
+    parse_tenor_to_years, validate_risk_request, CachedCurve, DeltaResult,
+    IrsBootstrapErrorResponse, ParRateInput, PaymentFrequency, RiskAadResponse, RiskBumpResponse,
+    RiskCompareResponse, RiskMethodResult, RiskRequest, TimingComparison, TimingStats,
 };
 use crate::web::{websocket::broadcast_risk_complete, AppState};
 
@@ -98,6 +94,9 @@ fn calculate_timing_stats(samples: &[u64], total_us: u64) -> TimingStats {
 }
 
 /// Calculate IRS leg present values using a cached curve.
+///
+/// Delegates discount factor and forward rate calculations to the
+/// underlying `BootstrappedCurve` via `CachedCurve` methods.
 fn calculate_irs_legs(
     curve: &CachedCurve,
     notional: f64,
@@ -119,14 +118,16 @@ fn calculate_irs_legs(
             break;
         }
 
-        let df = interpolate_discount_factor(curve, payment_time);
+        // Delegate to CachedCurve which uses YieldCurve trait
+        let df = curve.discount_factor(payment_time);
 
         let fixed_cashflow = notional * fixed_rate * period_years;
         fixed_leg_pv += fixed_cashflow * df;
 
         let prev_time = (i - 1) as f64 * period_years;
-        let forward_rate = calculate_forward_rate(curve, prev_time, payment_time);
-        let float_cashflow = notional * forward_rate * period_years;
+        // Delegate to CachedCurve which uses YieldCurve trait
+        let fwd_rate = curve.forward_rate(prev_time, payment_time);
+        let float_cashflow = notional * fwd_rate * period_years;
         float_leg_pv += float_cashflow * df;
     }
 
@@ -147,16 +148,11 @@ fn bootstrap_from_par_rates(par_rates: &[ParRateInput]) -> Result<CachedCurve, B
 
     let config = BootstrapConfig::default();
     let bootstrapper = CurveBootstrapper::with_config(config);
-    let result = bootstrapper.bootstrap_instruments(&instruments)?;
 
-    let zero_rates = CachedCurve::calculate_zero_rates(&result.pillars, &result.discount_factors);
+    // Use bootstrap_to_curve to get BootstrappedCurve directly
+    let curve = bootstrapper.bootstrap_to_curve(&instruments)?;
 
-    Ok(CachedCurve::new(
-        result.pillars,
-        result.discount_factors,
-        zero_rates,
-        par_rates.to_vec(),
-    ))
+    Ok(CachedCurve::new(curve, par_rates.to_vec()))
 }
 
 /// Compute Deltas using bump-and-revalue mode.

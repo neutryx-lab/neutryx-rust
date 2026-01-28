@@ -409,18 +409,10 @@ fn calculate_scenario_stressed_npv(
     let config = BootstrapConfig::default();
     let bootstrapper = CurveBootstrapper::with_config(config);
 
-    match bootstrapper.bootstrap_instruments(&instruments) {
-        Ok(curve_data) => {
+    match bootstrapper.bootstrap_to_curve(&instruments) {
+        Ok(curve) => {
             // Calculate NPV with the shifted curve
-            let stressed_curve = CachedCurve::new(
-                curve_data.pillars.clone(),
-                curve_data.discount_factors.clone(),
-                CachedCurve::calculate_zero_rates(
-                    &curve_data.pillars,
-                    &curve_data.discount_factors,
-                ),
-                shifted_par_rates.to_vec(),
-            );
+            let stressed_curve = CachedCurve::new(curve, shifted_par_rates.to_vec());
 
             calculate_irs_npv(
                 &stressed_curve,
@@ -435,42 +427,11 @@ fn calculate_scenario_stressed_npv(
 }
 
 /// Interpolate discount factor from curve at time t.
+///
+/// Delegates to the underlying `CachedCurve::discount_factor` method
+/// which uses the `YieldCurve` trait implementation.
 fn interpolate_df(curve: &CachedCurve, t: f64) -> f64 {
-    if curve.pillars.is_empty() {
-        return 1.0;
-    }
-
-    // Find bracketing pillars
-    let mut lower_idx = 0;
-    let mut upper_idx = curve.pillars.len() - 1;
-
-    for (i, &pillar) in curve.pillars.iter().enumerate() {
-        if pillar <= t {
-            lower_idx = i;
-        }
-        if pillar >= t && i < upper_idx {
-            upper_idx = i;
-            break;
-        }
-    }
-
-    if lower_idx == upper_idx {
-        return curve.discount_factors[lower_idx];
-    }
-
-    // Linear interpolation in log space
-    let t_lower = curve.pillars[lower_idx];
-    let t_upper = curve.pillars[upper_idx];
-    let df_lower = curve.discount_factors[lower_idx];
-    let df_upper = curve.discount_factors[upper_idx];
-
-    if (t_upper - t_lower).abs() < 1e-10 {
-        return df_lower;
-    }
-
-    let weight = (t - t_lower) / (t_upper - t_lower);
-    let log_df = (1.0 - weight) * df_lower.ln() + weight * df_upper.ln();
-    log_df.exp()
+    curve.discount_factor(t)
 }
 
 // =============================================================================
@@ -594,22 +555,39 @@ mod tests {
     // =========================================================================
 
     #[test]
-    fn test_interpolate_df_empty_curve() {
-        let curve = CachedCurve::new(vec![], vec![], vec![], vec![]);
-        let df = interpolate_df(&curve, 1.0);
+    fn test_interpolate_df_at_zero() {
+        use pricer_models::market::curves::{BootstrapInterpolation, BootstrappedCurve};
+        let inner_curve =
+            BootstrappedCurve::new(vec![1.0], vec![0.97], BootstrapInterpolation::LogLinear, true)
+                .unwrap();
+        let curve = CachedCurve::new(inner_curve, vec![]);
+        // At t=0, discount factor should be 1.0
+        let df = interpolate_df(&curve, 0.0);
         assert!((df - 1.0).abs() < 1e-10);
     }
 
     #[test]
     fn test_interpolate_df_single_pillar() {
-        let curve = CachedCurve::new(vec![1.0], vec![0.97], vec![0.03], vec![]);
+        use pricer_models::market::curves::{BootstrapInterpolation, BootstrappedCurve};
+        let inner_curve =
+            BootstrappedCurve::new(vec![1.0], vec![0.97], BootstrapInterpolation::LogLinear, true)
+                .unwrap();
+        let curve = CachedCurve::new(inner_curve, vec![]);
         let df = interpolate_df(&curve, 1.0);
         assert!((df - 0.97).abs() < 1e-10);
     }
 
     #[test]
     fn test_interpolate_df_interpolation() {
-        let curve = CachedCurve::new(vec![1.0, 2.0], vec![0.97, 0.94], vec![0.03, 0.03], vec![]);
+        use pricer_models::market::curves::{BootstrapInterpolation, BootstrappedCurve};
+        let inner_curve = BootstrappedCurve::new(
+            vec![1.0, 2.0],
+            vec![0.97, 0.94],
+            BootstrapInterpolation::LogLinear,
+            true,
+        )
+        .unwrap();
+        let curve = CachedCurve::new(inner_curve, vec![]);
         let df = interpolate_df(&curve, 1.5);
         // Should be between 0.94 and 0.97
         assert!(df > 0.94 && df < 0.97);
