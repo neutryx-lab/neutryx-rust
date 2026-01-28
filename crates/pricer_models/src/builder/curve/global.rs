@@ -31,8 +31,9 @@ use pricer_core::{
 
 use crate::{
     builder::{
-        problem::JacobianMethod, CalibrationInstrument, CalibrationProblem,
-        CalibrationProblemConfig,
+        jump::{JumpConfig, JumpPillar},
+        problem::JacobianMethod,
+        CalibrationInstrument, CalibrationProblem, CalibrationProblemConfig,
     },
     market::curves::{BootstrapInterpolation, BootstrappedCurve},
 };
@@ -46,7 +47,7 @@ use crate::{
 /// # Type Parameters
 ///
 /// * `T` - Floating-point type for tolerance values
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct GlobalBootstrapConfig<T: Float> {
     /// Convergence tolerance for residual norm (||F(x)||).
     pub tolerance: T,
@@ -83,6 +84,12 @@ pub struct GlobalBootstrapConfig<T: Float> {
 
     /// Maximum allowed condition number for Jacobian matrix.
     pub max_condition_number: T,
+
+    /// Jump configuration for CB meeting dates.
+    ///
+    /// When set, the bootstrapper will calibrate additional jump parameters
+    /// at the specified central bank meeting dates.
+    pub jump_config: Option<JumpConfig<T>>,
 }
 
 impl<T: Float> Default for GlobalBootstrapConfig<T> {
@@ -100,6 +107,7 @@ impl<T: Float> Default for GlobalBootstrapConfig<T> {
             damping_factor: None,
             debug_logging: false,
             max_condition_number: from_f64(1e12),
+            jump_config: None,
         }
     }
 }
@@ -130,6 +138,7 @@ impl<T: Float> GlobalBootstrapConfig<T> {
             damping_factor: None,
             debug_logging: false,
             max_condition_number: from_f64(1e14),
+            jump_config: None,
         }
     }
 
@@ -148,6 +157,7 @@ impl<T: Float> GlobalBootstrapConfig<T> {
             damping_factor: None,
             debug_logging: false,
             max_condition_number: from_f64(1e10),
+            jump_config: None,
         }
     }
 
@@ -203,6 +213,54 @@ impl<T: Float> GlobalBootstrapConfig<T> {
     pub fn with_max_iterations(mut self, max_iter: usize) -> Self {
         self.max_iterations = max_iter;
         self
+    }
+
+    /// Set the jump configuration for CB meeting dates.
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - Jump configuration with meeting dates and expected jumps
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use pricer_models::builder::{GlobalBootstrapConfig, JumpConfig, JumpPillar};
+    ///
+    /// let config = GlobalBootstrapConfig::default()
+    ///     .with_jump_config(JumpConfig::with_pillars(vec![
+    ///         JumpPillar::new(0.5, 25.0),
+    ///         JumpPillar::new(1.0, 25.0),
+    ///     ]));
+    /// ```
+    pub fn with_jump_config(mut self, config: JumpConfig<T>) -> Self {
+        self.jump_config = Some(config);
+        self
+    }
+
+    /// Set jump pillars directly (convenience method).
+    ///
+    /// Creates a `JumpConfig` with the provided pillars and enables jump calibration.
+    ///
+    /// # Arguments
+    ///
+    /// * `pillars` - Vector of jump pillars at CB meeting dates
+    pub fn with_jumps(mut self, pillars: Vec<JumpPillar<T>>) -> Self {
+        self.jump_config = Some(JumpConfig::with_pillars(pillars));
+        self
+    }
+
+    /// Check if jump calibration is configured and active.
+    pub fn has_jumps(&self) -> bool {
+        self.jump_config
+            .as_ref()
+            .is_some_and(|jc| jc.is_active())
+    }
+
+    /// Get the number of configured jump pillars.
+    pub fn num_jumps(&self) -> usize {
+        self.jump_config
+            .as_ref()
+            .map_or(0, |jc| jc.num_jumps())
     }
 }
 
@@ -778,5 +836,71 @@ mod tests {
 
         let quality = result.convergence_quality(1e-10);
         assert!(quality == "excellent" || quality == "good");
+    }
+
+    // =========================================================================
+    // Jump Configuration Tests
+    // =========================================================================
+
+    #[test]
+    fn test_config_default_no_jumps() {
+        let config: GlobalBootstrapConfig<f64> = GlobalBootstrapConfig::default();
+        assert!(config.jump_config.is_none());
+        assert!(!config.has_jumps());
+        assert_eq!(config.num_jumps(), 0);
+    }
+
+    #[test]
+    fn test_config_with_jump_config() {
+        let jump_config = JumpConfig::with_pillars(vec![
+            JumpPillar::new(0.5, 25.0),
+            JumpPillar::new(1.0, 25.0),
+        ]);
+
+        let config: GlobalBootstrapConfig<f64> =
+            GlobalBootstrapConfig::default().with_jump_config(jump_config);
+
+        assert!(config.jump_config.is_some());
+        assert!(config.has_jumps());
+        assert_eq!(config.num_jumps(), 2);
+    }
+
+    #[test]
+    fn test_config_with_jumps_convenience() {
+        let config: GlobalBootstrapConfig<f64> = GlobalBootstrapConfig::default().with_jumps(vec![
+            JumpPillar::new(0.25, 25.0),
+            JumpPillar::new(0.5, 25.0),
+            JumpPillar::new(1.0, 25.0),
+        ]);
+
+        assert!(config.has_jumps());
+        assert_eq!(config.num_jumps(), 3);
+
+        let jump_config = config.jump_config.unwrap();
+        assert!(jump_config.enabled);
+        assert_eq!(jump_config.jump_pillars.len(), 3);
+    }
+
+    #[test]
+    fn test_config_with_empty_jumps() {
+        let config: GlobalBootstrapConfig<f64> =
+            GlobalBootstrapConfig::default().with_jumps(vec![]);
+
+        // Empty jump list should not activate jumps
+        assert!(!config.has_jumps());
+        assert_eq!(config.num_jumps(), 0);
+    }
+
+    #[test]
+    fn test_config_with_disabled_jump_config() {
+        let jump_config = JumpConfig::with_pillars(vec![JumpPillar::new(0.5, 25.0)]).disable();
+
+        let config: GlobalBootstrapConfig<f64> =
+            GlobalBootstrapConfig::default().with_jump_config(jump_config);
+
+        // Jump config exists but is disabled
+        assert!(config.jump_config.is_some());
+        assert!(!config.has_jumps()); // Not active because disabled
+        assert_eq!(config.num_jumps(), 1); // But pillars still counted
     }
 }

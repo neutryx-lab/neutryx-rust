@@ -200,7 +200,7 @@ fn parse_date_diff_years(reference: &str, target: &str) -> Result<f64, Calibrati
 /// assert!(config.enabled);
 /// assert_eq!(config.jump_pillars.len(), 2);
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct JumpConfig<T: Float> {
     /// Enable jump calibration.
     pub enabled: bool,

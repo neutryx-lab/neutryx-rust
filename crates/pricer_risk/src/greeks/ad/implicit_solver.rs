@@ -48,7 +48,7 @@
 //! let sensitivities = ImplicitSolver::compute_curve_sensitivities(
 //!     &jacobian_inverse,
 //!     &adjoint_x,
-//! );
+//! ).unwrap();
 //!
 //! assert_eq!(sensitivities.market_sensitivities.len(), 2);
 //! ```

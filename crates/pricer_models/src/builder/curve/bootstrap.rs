@@ -61,8 +61,8 @@ impl BootstrapConfig {
     /// Creates a new configuration with specified tolerance and max iterations.
     pub fn new(tolerance: f64, max_iterations: usize) -> Self {
         Self {
-            tolerance,
             max_iterations,
+            tolerance,
             ..Default::default()
         }
     }
@@ -94,7 +94,7 @@ pub enum InterpolationMethod {
 
 impl InterpolationMethod {
     /// Converts to the curve module's interpolation enum.
-    fn to_bootstrap_interpolation(&self) -> BootstrapInterpolation {
+    fn to_bootstrap_interpolation(self) -> BootstrapInterpolation {
         match self {
             Self::Linear => BootstrapInterpolation::Linear,
             Self::LogLinear => BootstrapInterpolation::LogLinear,

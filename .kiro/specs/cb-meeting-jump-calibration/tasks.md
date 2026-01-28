@@ -10,15 +10,15 @@
   - _Requirements: 1.2, 7.3_
   - _Contracts: MarketEvent State_
 
-- [ ] 2. ジャンプピラーとジャンプ設定の構造体定義
-- [ ] 2.1 (P) JumpPillar構造体の実装
+- [x] 2. ジャンプピラーとジャンプ設定の構造体定義
+- [x] 2.1 (P) JumpPillar構造体の実装
   - ジャンプ日付（年分数）、期待ジャンプ幅、実現ジャンプ幅、パラメータインデックスを保持
   - bps→absolute rate変換メソッド（0.0001倍）を実装
   - 日付文字列から年分数への変換コンストラクタを実装
   - _Requirements: 2.1_
   - _Contracts: JumpPillar State_
 
-- [ ] 2.2 (P) JumpConfig構造体の実装
+- [x] 2.2 (P) JumpConfig構造体の実装
   - ジャンプ機能有効/無効フラグ、ジャンプピラーリスト、フォールバック設定を保持
   - Builder patternでwith_*メソッドを提供
   - Default traitでデフォルト無効（enabled: false）を設定

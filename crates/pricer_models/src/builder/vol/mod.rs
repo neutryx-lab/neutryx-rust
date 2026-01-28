@@ -528,9 +528,7 @@ impl<T: Float> SliceCalibrator<T> for SabrSliceCalibrator<T> {
         // Initial alpha: σ_ATM * F^(1-β)
         let forward_f64 = atm_quote.forward.to_f64().unwrap_or(0.03);
         let atm_vol_f64 = atm_quote.volatility.to_f64().unwrap_or(0.2);
-        let initial_alpha = (atm_vol_f64 * forward_f64.powf(1.0 - beta))
-            .max(0.001)
-            .min(1.0);
+        let initial_alpha = (atm_vol_f64 * forward_f64.powf(1.0 - beta)).clamp(0.001, 1.0);
 
         let initial_rho = config.initial_rho.to_f64().unwrap_or(-0.3);
         let initial_nu = config.initial_nu.to_f64().unwrap_or(0.4);
@@ -592,7 +590,7 @@ impl<T: Float> SliceCalibrator<T> for SabrSliceCalibrator<T> {
         let initial_params = vec![initial_alpha, initial_rho, initial_nu];
 
         // Solve
-        let result = solver.solve(&residuals, initial_params).map_err(|e| {
+        let result = solver.solve(residuals, initial_params).map_err(|e| {
             CalibrationError::SolverError {
                 message: e.to_string(),
             }

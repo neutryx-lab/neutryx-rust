@@ -5168,10 +5168,10 @@ mod tests {
             let retrieved = cache.get(&curve_id);
             assert!(retrieved.is_some());
             let retrieved_curve = retrieved.unwrap();
-            assert_eq!(retrieved_curve.pillars.len(), curve.pillars.len());
+            assert_eq!(retrieved_curve.pillars().len(), curve.pillars().len());
             assert_eq!(
-                retrieved_curve.discount_factors.len(),
-                curve.discount_factors.len()
+                retrieved_curve.discount_factors().len(),
+                curve.discount_factors().len()
             );
         }
 
