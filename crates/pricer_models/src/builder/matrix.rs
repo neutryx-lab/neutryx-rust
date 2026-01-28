@@ -312,6 +312,152 @@ impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
 }
 
 // =============================================================================
+// Jump-Aware Interpolation Extensions
+// =============================================================================
+
+/// Jump pillar information for interpolation.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct JumpInfo<T: Float> {
+    /// Time to jump in years.
+    pub time: T,
+    /// Jump size in absolute rate (not bps).
+    pub jump_rate: T,
+}
+
+impl<T: Float> JumpInfo<T> {
+    /// Create a new jump info.
+    pub fn new(time: T, jump_rate: T) -> Self { Self { time, jump_rate } }
+
+    /// Create from time and basis points.
+    pub fn from_bps(time: T, jump_bps: T) -> Self {
+        Self {
+            time,
+            jump_rate: jump_bps * from_f64::<T>(0.0001),
+        }
+    }
+}
+
+impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
+    /// Create an interpolation matrix with jump pillars as segment boundaries.
+    ///
+    /// Jump pillars create discontinuities in the forward rate curve.
+    /// This method ensures interpolation respects those boundaries.
+    ///
+    /// # Arguments
+    ///
+    /// * `pillars` - Regular curve pillars (sorted)
+    /// * `jump_times` - Jump pillar times (sorted)
+    /// * `grid` - Calibration grid with all points
+    ///
+    /// # Returns
+    ///
+    /// An interpolation matrix that treats jump times as segment boundaries.
+    pub fn with_jump_pillars(
+        pillars: &[T],
+        jump_times: &[T],
+        grid: &CalibrationGrid<T>,
+    ) -> Self {
+        // Merge pillars and jump times into sorted unique list
+        let mut all_breaks: Vec<T> = pillars.to_vec();
+        for &jt in jump_times {
+            if !all_breaks.iter().any(|&p| Float::abs(p - jt) < from_f64::<T>(1e-10)) {
+                all_breaks.push(jt);
+            }
+        }
+        all_breaks.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+
+        // Use standard interpolation with enhanced break points
+        Self::from_pillars(&all_breaks, grid)
+    }
+
+    /// Interpolate log discount factors with jump adjustments.
+    ///
+    /// Applies jump effects multiplicatively to discount factors:
+    /// DF(t) = DF_smooth(t) × Π(1 - jump_i × Δt_i) for all jumps before t
+    ///
+    /// # Arguments
+    ///
+    /// * `log_df_pillars` - log(DF) at regular pillars
+    /// * `jumps` - Jump information (time and size)
+    /// * `grid_points` - Times at which to evaluate
+    ///
+    /// # Returns
+    ///
+    /// Adjusted log(DF) values at each grid point.
+    pub fn interpolate_with_jumps(
+        &self,
+        log_df_pillars: &[T],
+        jumps: &[JumpInfo<T>],
+        grid_points: &[T],
+    ) -> Vec<T> {
+        // First, get smooth interpolated values
+        let smooth_log_df = self.interpolate_log_df(log_df_pillars);
+
+        if jumps.is_empty() {
+            return smooth_log_df;
+        }
+
+        // Apply cumulative jump adjustments
+        let mut result = Vec::with_capacity(grid_points.len());
+
+        for (i, &t) in grid_points.iter().enumerate() {
+            let base_log_df = smooth_log_df[i];
+
+            // Calculate cumulative jump effect for all jumps before time t
+            let jump_adjustment = self.calculate_jump_adjustment(t, jumps);
+
+            // Apply adjustment: log(DF_adjusted) = log(DF_smooth) + log(1 - cumulative_jump_effect)
+            // For small jumps, log(1 - x) ≈ -x
+            result.push(base_log_df + jump_adjustment);
+        }
+
+        result
+    }
+
+    /// Calculate the cumulative jump adjustment for a given time.
+    ///
+    /// For a forward rate jump Δf at time t_j, the discount factor effect is:
+    /// DF(t) = DF_smooth(t) × exp(-Δf × (t - t_j)) for t > t_j
+    fn calculate_jump_adjustment(&self, t: T, jumps: &[JumpInfo<T>]) -> T {
+        let mut adjustment = T::zero();
+
+        for jump in jumps {
+            if jump.time < t {
+                // Time from jump to current point
+                let dt = t - jump.time;
+                // Forward rate jump affects DF as: -Δf × dt
+                adjustment = adjustment - jump.jump_rate * dt;
+            }
+        }
+
+        adjustment
+    }
+
+    /// Interpolate discount factors with jump adjustments.
+    ///
+    /// # Arguments
+    ///
+    /// * `log_df_pillars` - log(DF) at regular pillars
+    /// * `jumps` - Jump information (time and size)
+    /// * `grid_points` - Times at which to evaluate
+    ///
+    /// # Returns
+    ///
+    /// Adjusted discount factors at each grid point.
+    pub fn interpolate_df_with_jumps(
+        &self,
+        log_df_pillars: &[T],
+        jumps: &[JumpInfo<T>],
+        grid_points: &[T],
+    ) -> Vec<T> {
+        self.interpolate_with_jumps(log_df_pillars, jumps, grid_points)
+            .into_iter()
+            .map(Float::exp)
+            .collect()
+    }
+}
+
+// =============================================================================
 // CalibrationMatrixBuilder
 // =============================================================================
 
@@ -499,5 +645,106 @@ mod tests {
         assert_eq!(matrix.num_instruments(), 2);
         assert_eq!(matrix.num_dates(), 3);
         assert!(matrix.has_cashflow(0, 1));
+    }
+
+    // =========================================================================
+    // Jump-Aware Interpolation Tests
+    // =========================================================================
+
+    #[test]
+    fn test_jump_info_creation() {
+        let jump = JumpInfo::new(0.5, 0.0025);
+        assert_relative_eq!(jump.time, 0.5, epsilon = 1e-10);
+        assert_relative_eq!(jump.jump_rate, 0.0025, epsilon = 1e-10);
+
+        let jump_bps = JumpInfo::from_bps(1.0, 25.0);
+        assert_relative_eq!(jump_bps.time, 1.0, epsilon = 1e-10);
+        assert_relative_eq!(jump_bps.jump_rate, 0.0025, epsilon = 1e-10);
+    }
+
+    #[test]
+    fn test_interpolation_with_jump_pillars() {
+        let pillars = vec![1.0, 2.0, 5.0];
+        let jump_times = vec![0.5, 1.5]; // Jump at 6M and 18M
+        let grid: CalibrationGrid<f64> = CalibrationGrid::from_points(vec![0.5, 1.0, 1.5, 2.0, 5.0]);
+
+        let interp = InterpolationMatrix::with_jump_pillars(&pillars, &jump_times, &grid);
+
+        // Should have 5 grid points
+        assert_eq!(interp.num_points(), 5);
+        // Should have 5 "pillars" (3 regular + 2 jump times)
+        assert_eq!(interp.num_pillars(), 5);
+    }
+
+    #[test]
+    fn test_interpolate_with_jumps_no_jumps() {
+        let pillars = vec![1.0, 2.0];
+        let grid: CalibrationGrid<f64> = CalibrationGrid::from_points(vec![1.0, 1.5, 2.0]);
+        let interp = InterpolationMatrix::from_pillars(&pillars, &grid);
+
+        let log_df_pillars = vec![-0.03, -0.06];
+        let jumps: Vec<JumpInfo<f64>> = vec![];
+        let grid_points = vec![1.0, 1.5, 2.0];
+
+        let result = interp.interpolate_with_jumps(&log_df_pillars, &jumps, &grid_points);
+
+        // Without jumps, should be same as regular interpolation
+        assert_relative_eq!(result[0], -0.03, epsilon = 1e-10);
+        assert_relative_eq!(result[1], -0.045, epsilon = 1e-10);
+        assert_relative_eq!(result[2], -0.06, epsilon = 1e-10);
+    }
+
+    #[test]
+    fn test_interpolate_with_jumps_single_jump() {
+        let pillars = vec![1.0, 2.0];
+        let grid: CalibrationGrid<f64> = CalibrationGrid::from_points(vec![0.5, 1.0, 1.5, 2.0]);
+        let interp = InterpolationMatrix::from_pillars(&pillars, &grid);
+
+        let log_df_pillars = vec![-0.03, -0.06];
+        // 25bps jump at 0.5Y
+        let jumps = vec![JumpInfo::from_bps(0.5, 25.0)];
+        let grid_points = vec![0.5, 1.0, 1.5, 2.0];
+
+        let result = interp.interpolate_with_jumps(&log_df_pillars, &jumps, &grid_points);
+
+        // At t=0.5: No adjustment (jump happens at this time, effect starts after)
+        // At t=1.0: Adjustment for dt=0.5 from jump at 0.5
+        // At t=1.5: Adjustment for dt=1.0 from jump at 0.5
+        // At t=2.0: Adjustment for dt=1.5 from jump at 0.5
+
+        // Jump effect: -0.0025 × (t - 0.5) for t > 0.5
+        let smooth_log_df = interp.interpolate(&log_df_pillars);
+
+        // Before jump - no effect
+        assert_relative_eq!(result[0], smooth_log_df[0], epsilon = 1e-10);
+
+        // After jump - should see effect
+        let expected_1 = smooth_log_df[1] - 0.0025 * 0.5; // dt = 0.5
+        assert_relative_eq!(result[1], expected_1, epsilon = 1e-10);
+
+        let expected_1_5 = smooth_log_df[2] - 0.0025 * 1.0; // dt = 1.0
+        assert_relative_eq!(result[2], expected_1_5, epsilon = 1e-10);
+    }
+
+    #[test]
+    fn test_interpolate_df_with_jumps() {
+        let pillars = vec![1.0, 2.0];
+        let grid: CalibrationGrid<f64> = CalibrationGrid::from_points(vec![1.0, 2.0]);
+        let interp = InterpolationMatrix::from_pillars(&pillars, &grid);
+
+        let log_df_pillars = vec![-0.03, -0.06];
+        let jumps = vec![JumpInfo::from_bps(0.5, 25.0)];
+        let grid_points = vec![1.0, 2.0];
+
+        let df_result = interp.interpolate_df_with_jumps(&log_df_pillars, &jumps, &grid_points);
+
+        // Should get positive discount factors
+        assert!(df_result[0] > 0.0 && df_result[0] < 1.0);
+        assert!(df_result[1] > 0.0 && df_result[1] < 1.0);
+
+        // Jump should make DF smaller (higher forward rates)
+        let df_no_jump = interp.interpolate_df(&log_df_pillars);
+        assert!(df_result[0] < df_no_jump[0]);
+        assert!(df_result[1] < df_no_jump[1]);
     }
 }

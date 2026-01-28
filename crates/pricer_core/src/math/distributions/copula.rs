@@ -436,7 +436,7 @@ impl MultiGaussianCopula {
 
         // Use Monte Carlo to estimate P(X₁ ≤ a₁, ..., Xₙ ≤ aₙ)
         // where (X₁, ..., Xₙ) ~ N(0, Σ)
-        self.multivariate_normal_cdf_mc(&a, seed)
+        Ok(self.multivariate_normal_cdf_mc(&a, seed))
     }
 
     /// Monte Carlo estimation of multivariate normal CDF.
@@ -448,7 +448,7 @@ impl MultiGaussianCopula {
         &self,
         a: &[f64],
         seed: Option<u64>,
-    ) -> Result<f64, DistributionError> {
+    ) -> f64 {
         use rand::prelude::*;
         use rand_distr::StandardNormal;
 
@@ -479,7 +479,7 @@ impl MultiGaussianCopula {
             }
         }
 
-        Ok(count as f64 / self.num_samples as f64)
+        count as f64 / self.num_samples as f64
     }
 }
 

@@ -14,8 +14,6 @@
 //!
 //! NOTE: These handlers require the `calibration` feature.
 
-#![cfg(feature = "calibration")]
-
 use std::{sync::Arc, time::Instant};
 
 use axum::{extract::State, http::StatusCode, Json};

@@ -673,7 +673,7 @@ fn expand_fra(request: &TradeExpandRequest) -> Result<TradeExpandResponse, Trade
     let start = parse_date(&params.start_date)?;
     let tenor = parse_tenor(&params.tenor)?;
     let ccy = parse_currency(&params.currency)?;
-    let rate_index = parse_rate_index(&params.rate_index, &params.currency);
+    let rate_index = parse_rate_index(params.rate_index.as_deref(), &params.currency);
 
     let fra = Fra {
         fixing_date: start,
@@ -973,7 +973,7 @@ fn parse_tenor(tenor_str: &str) -> Result<Tenor, TradeExpandError> {
 }
 
 /// Helper: Parse rate index from string or use default for currency.
-fn parse_rate_index(rate_index: &Option<String>, currency: &str) -> RateIndex {
+fn parse_rate_index(rate_index: Option<&str>, currency: &str) -> RateIndex {
     if let Some(idx) = rate_index {
         // Try to parse the rate index string
         match idx.to_uppercase().as_str() {
@@ -1009,7 +1009,7 @@ fn expand_basis_swap(
     let start = parse_date(&params.start_date)?;
     let tenor = parse_tenor(&params.tenor)?;
     let ccy = parse_currency(&params.currency)?;
-    let rate_index = parse_rate_index(&params.rate_index, &params.currency);
+    let rate_index = parse_rate_index(params.rate_index.as_deref(), &params.currency);
     let freq = parse_frequency(&params.payment_frequency);
 
     let basis_swap = BasisSwap {
@@ -1054,7 +1054,7 @@ fn expand_irs(request: &TradeExpandRequest) -> Result<TradeExpandResponse, Trade
     let start = parse_date(&params.start_date)?;
     let tenor = parse_tenor(&params.tenor)?;
     let ccy = parse_currency(&params.currency)?;
-    let rate_index = parse_rate_index(&params.rate_index, &params.currency);
+    let rate_index = parse_rate_index(params.rate_index.as_deref(), &params.currency);
     let freq = parse_frequency(&params.payment_frequency);
 
     let irs = InterestRateSwap {
@@ -1341,7 +1341,6 @@ fn generate_trade_id(prefix: &str) -> String {
     format!("{}-{}", prefix, &uuid.to_string()[..8])
 }
 
-/// Converts schedule periods to cashflow DTOs.
 // =============================================================================
 // Task 4.2: Instruments Metadata
 // =============================================================================

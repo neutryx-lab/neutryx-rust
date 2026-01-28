@@ -232,10 +232,7 @@ impl CurveBootstrapper {
                 };
 
                 // Compute pricing error
-                match instrument.pricing_error(&curve) {
-                    Ok(err) => err,
-                    Err(_) => f64::MAX,
-                }
+                instrument.pricing_error(&curve).unwrap_or(f64::MAX)
             };
 
             // Numerical derivative using finite difference

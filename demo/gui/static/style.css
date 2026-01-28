@@ -11883,6 +11883,242 @@ body.light-theme .cb-meeting-toggle .toggle-label:hover {
 }
 
 /* ============================================
+   Jump Calibration Settings (Task 11)
+   ============================================ */
+
+.jump-settings-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.jump-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.jump-header .toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: rgba(99, 102, 241, 0.1);
+    transition: background 0.2s;
+}
+
+.jump-header .toggle-label:hover {
+    background: rgba(99, 102, 241, 0.2);
+}
+
+.jump-header .toggle-label input[type="checkbox"] {
+    accent-color: var(--primary);
+}
+
+.jump-hint {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.cb-events-container {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.cb-events-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.cb-events-header .btn-icon {
+    margin-left: auto;
+}
+
+.cb-events-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.cb-events-list .placeholder-text {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 12px;
+}
+
+.cb-event-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+}
+
+.cb-event-date {
+    padding: 4px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--text-primary);
+    font-size: 12px;
+}
+
+.cb-event-bps {
+    width: 70px;
+    padding: 4px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--text-primary);
+    font-size: 12px;
+    text-align: right;
+}
+
+.cb-event-unit {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.cb-event-cb {
+    padding: 4px 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--text-muted);
+    font-size: 11px;
+}
+
+.btn-icon {
+    padding: 4px 8px;
+    border: none;
+    border-radius: 4px;
+    background: rgba(99, 102, 241, 0.2);
+    color: var(--primary);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-icon:hover {
+    background: rgba(99, 102, 241, 0.3);
+}
+
+.btn-icon.btn-danger {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.btn-icon.btn-danger:hover {
+    background: rgba(239, 68, 68, 0.3);
+}
+
+/* Jump Results Panel */
+.jump-results-panel {
+    background: rgba(16, 185, 129, 0.05);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 12px;
+}
+
+.jump-results-panel h4 {
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0 0 12px 0;
+    color: #10b981;
+}
+
+.jump-results-panel h4 i {
+    margin-right: 6px;
+}
+
+.jump-warnings {
+    background: rgba(245, 158, 11, 0.1);
+    border-left: 3px solid #f59e0b;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+    font-size: 12px;
+    color: #f59e0b;
+}
+
+.jump-fallback-notice {
+    background: rgba(99, 102, 241, 0.1);
+    border-left: 3px solid var(--primary);
+    padding: 8px 12px;
+    margin-bottom: 10px;
+    font-size: 12px;
+    color: var(--primary);
+}
+
+.jump-results-table {
+    width: 100%;
+    font-size: 12px;
+    border-collapse: collapse;
+}
+
+.jump-results-table th,
+.jump-results-table td {
+    padding: 6px 8px;
+    text-align: right;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.jump-results-table th {
+    text-align: right;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.jump-results-table th:first-child,
+.jump-results-table td:first-child {
+    text-align: left;
+}
+
+.jump-results-table td.positive {
+    color: #10b981;
+}
+
+.jump-results-table td.negative {
+    color: #ef4444;
+}
+
+.jump-results-table tfoot td {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    font-weight: 600;
+}
+
+/* Light theme overrides */
+body.light-theme .cb-events-container {
+    background: rgba(0, 0, 0, 0.03);
+}
+
+body.light-theme .cb-event-row {
+    background: rgba(0, 0, 0, 0.02);
+}
+
+body.light-theme .cb-event-date,
+body.light-theme .cb-event-bps,
+body.light-theme .cb-event-cb {
+    background: white;
+    border-color: #e2e8f0;
+}
+
+body.light-theme .jump-results-panel {
+    background: rgba(16, 185, 129, 0.03);
+    border-color: rgba(16, 185, 129, 0.15);
+}
+
+/* ============================================
    Market Data Viewer (market-data-viewer-webapp)
    ============================================ */
 

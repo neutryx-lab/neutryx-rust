@@ -700,8 +700,10 @@ mod tests {
     #[test]
     fn test_invalid_jump_parameter_is_not_recoverable() {
         // Invalid jump parameter is not recoverable
-        assert!(!CalibrationError::invalid_jump_parameter("0.5Y", 150.0, "out of range")
-            .is_recoverable());
+        assert!(
+            !CalibrationError::invalid_jump_parameter("0.5Y", 150.0, "out of range")
+                .is_recoverable()
+        );
     }
 
     #[test]

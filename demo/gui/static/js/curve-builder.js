@@ -11,7 +11,10 @@ const curveBuilder = {
         originalInstruments: [],
         builders: null,
         buildResult: null,
-        hasChanges: false
+        hasChanges: false,
+        // Task 11: CB Meeting jump calibration state
+        enableJumps: false,
+        cbEvents: []  // Array of {date: string, expectedJumpBps: number, centralBank?: string}
     },
 
     /**
@@ -83,7 +86,13 @@ const curveBuilder = {
         parameterTableContainer: null,
         errorContainer: null,
         errorMessage: null,
-        loadingOverlay: null
+        loadingOverlay: null,
+        // Task 11: Jump calibration UI elements
+        jumpSettingsContainer: null,
+        enableJumpsToggle: null,
+        cbEventsContainer: null,
+        addCbEventBtn: null,
+        jumpResultsContainer: null
     },
 
     // Central bank meeting dates cache
@@ -199,6 +208,12 @@ const curveBuilder = {
         this.elements.loadingOverlay = document.getElementById('curve-builder-loading');
         this.elements.exportCsvBtn = document.getElementById('export-csv-btn');
         this.elements.exportJsonBtn = document.getElementById('export-json-btn');
+        // Task 11: Cache jump calibration UI elements
+        this.elements.jumpSettingsContainer = document.getElementById('jump-settings-container');
+        this.elements.enableJumpsToggle = document.getElementById('enable-jumps-toggle');
+        this.elements.cbEventsContainer = document.getElementById('cb-events-container');
+        this.elements.addCbEventBtn = document.getElementById('add-cb-event-btn');
+        this.elements.jumpResultsContainer = document.getElementById('jump-results-container');
     },
 
     attachEventListeners() {
@@ -382,6 +397,229 @@ const curveBuilder = {
                 el.addEventListener('change', () => this.showRebuildNotification());
             }
         });
+
+        // Task 11: Render jump calibration settings
+        this.renderJumpSettings();
+    },
+
+    /**
+     * Task 11.1: Renders the CB Meeting jump calibration settings panel.
+     */
+    renderJumpSettings() {
+        const container = this.elements.jumpSettingsContainer || document.getElementById('jump-settings-container');
+        if (!container) {
+            console.warn('[CurveBuilder] jump-settings-container not found');
+            return;
+        }
+
+        // Get currency from selected index
+        const currency = this.state.selectedIndex?.split('-')[0]?.toUpperCase() || 'USD';
+        const centralBank = this.getCentralBankName(currency);
+
+        const html = `
+            <div class="jump-settings-panel">
+                <div class="jump-header">
+                    <label class="toggle-label">
+                        <input type="checkbox" id="enable-jumps-toggle" ${this.state.enableJumps ? 'checked' : ''}>
+                        <span><i class="fas fa-landmark"></i> CB Meeting Jump Calibration</span>
+                    </label>
+                    <span class="jump-hint">(Requires Global Bootstrap)</span>
+                </div>
+                <div id="cb-events-container" class="cb-events-container" style="display: ${this.state.enableJumps ? 'block' : 'none'};">
+                    <div class="cb-events-header">
+                        <span>Expected Rate Changes</span>
+                        <button type="button" id="add-cb-event-btn" class="btn-icon" title="Add CB Event">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        <button type="button" id="load-cb-meetings-btn" class="btn-icon" title="Load from Calendar">
+                            <i class="fas fa-calendar-alt"></i>
+                        </button>
+                    </div>
+                    <div id="cb-events-list" class="cb-events-list">
+                        ${this.renderCbEventsList()}
+                    </div>
+                </div>
+                <div id="jump-results-container" class="jump-results-container" style="display: none;"></div>
+            </div>
+        `;
+        container.innerHTML = html;
+
+        // Attach event listeners
+        const enableToggle = document.getElementById('enable-jumps-toggle');
+        if (enableToggle) {
+            enableToggle.addEventListener('change', (e) => {
+                this.state.enableJumps = e.target.checked;
+                const eventsContainer = document.getElementById('cb-events-container');
+                if (eventsContainer) {
+                    eventsContainer.style.display = this.state.enableJumps ? 'block' : 'none';
+                }
+                // Switch to global bootstrap if enabling jumps
+                if (this.state.enableJumps) {
+                    const bootstrapSelect = document.getElementById('bootstrap-method');
+                    if (bootstrapSelect) {
+                        bootstrapSelect.value = 'global';
+                    }
+                }
+                this.showRebuildNotification();
+            });
+        }
+
+        const addBtn = document.getElementById('add-cb-event-btn');
+        if (addBtn) {
+            addBtn.addEventListener('click', () => this.addCbEvent());
+        }
+
+        const loadBtn = document.getElementById('load-cb-meetings-btn');
+        if (loadBtn) {
+            loadBtn.addEventListener('click', () => this.loadCbMeetingsFromCalendar());
+        }
+    },
+
+    /**
+     * Get central bank name for a currency.
+     */
+    getCentralBankName(currency) {
+        const cbNames = {
+            'USD': 'Fed',
+            'EUR': 'ECB',
+            'GBP': 'BoE',
+            'JPY': 'BoJ',
+            'CHF': 'SNB',
+            'AUD': 'RBA',
+            'CAD': 'BoC',
+            'NZD': 'RBNZ'
+        };
+        return cbNames[currency] || currency;
+    },
+
+    /**
+     * Task 11.1: Renders the list of CB events.
+     */
+    renderCbEventsList() {
+        if (this.state.cbEvents.length === 0) {
+            return '<p class="placeholder-text">No CB events configured. Click + to add, or load from calendar.</p>';
+        }
+
+        return this.state.cbEvents.map((event, idx) => `
+            <div class="cb-event-row" data-index="${idx}">
+                <input type="date" class="cb-event-date" value="${event.date}" data-field="date">
+                <input type="number" class="cb-event-bps" value="${event.expectedJumpBps}"
+                       step="0.1" min="-100" max="100" placeholder="bps" data-field="expectedJumpBps">
+                <span class="cb-event-unit">bps</span>
+                <input type="text" class="cb-event-cb" value="${event.centralBank || ''}"
+                       placeholder="CB" data-field="centralBank" style="width: 50px;">
+                <button type="button" class="btn-icon btn-danger remove-cb-event" title="Remove">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `).join('');
+    },
+
+    /**
+     * Task 11.1: Adds a new CB event to the list.
+     */
+    addCbEvent() {
+        // Default to next available meeting date if calendar is loaded
+        const currency = this.state.selectedIndex?.split('-')[0]?.toUpperCase() || 'USD';
+        const meetings = this.getCentralBankMeetingsInRange(currency, new Date(), 1);
+
+        let defaultDate = '';
+        if (meetings.length > 0) {
+            const nextMeeting = meetings.find(m =>
+                !this.state.cbEvents.some(e => e.date === m.date.toISOString().split('T')[0])
+            );
+            if (nextMeeting) {
+                defaultDate = nextMeeting.date.toISOString().split('T')[0];
+            }
+        }
+        if (!defaultDate) {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 30);
+            defaultDate = tomorrow.toISOString().split('T')[0];
+        }
+
+        this.state.cbEvents.push({
+            date: defaultDate,
+            expectedJumpBps: 25.0,
+            centralBank: this.getCentralBankName(currency)
+        });
+
+        this.updateCbEventsList();
+        this.showRebuildNotification();
+    },
+
+    /**
+     * Task 11.1: Loads CB meetings from the calendar into the events list.
+     */
+    loadCbMeetingsFromCalendar() {
+        const currency = this.state.selectedIndex?.split('-')[0]?.toUpperCase() || 'USD';
+        const meetings = this.getCentralBankMeetingsInRange(currency, new Date(), 1);
+
+        if (meetings.length === 0) {
+            this.showError(`No upcoming CB meetings found for ${currency}`);
+            return;
+        }
+
+        // Add meetings that aren't already in the list
+        const centralBank = this.getCentralBankName(currency);
+        let added = 0;
+
+        meetings.forEach(meeting => {
+            const dateStr = meeting.date.toISOString().split('T')[0];
+            if (!this.state.cbEvents.some(e => e.date === dateStr)) {
+                this.state.cbEvents.push({
+                    date: dateStr,
+                    expectedJumpBps: 0.0,  // No change expected by default
+                    centralBank: centralBank
+                });
+                added++;
+            }
+        });
+
+        if (added > 0) {
+            // Sort by date
+            this.state.cbEvents.sort((a, b) => new Date(a.date) - new Date(b.date));
+            this.updateCbEventsList();
+            this.showRebuildNotification();
+        }
+    },
+
+    /**
+     * Task 11.1: Updates the CB events list UI.
+     */
+    updateCbEventsList() {
+        const listContainer = document.getElementById('cb-events-list');
+        if (!listContainer) return;
+
+        listContainer.innerHTML = this.renderCbEventsList();
+
+        // Attach event listeners to inputs
+        listContainer.querySelectorAll('.cb-event-row').forEach(row => {
+            const idx = parseInt(row.dataset.index);
+
+            row.querySelectorAll('input').forEach(input => {
+                input.addEventListener('change', (e) => {
+                    const field = e.target.dataset.field;
+                    let value = e.target.value;
+
+                    if (field === 'expectedJumpBps') {
+                        value = parseFloat(value) || 0;
+                    }
+
+                    this.state.cbEvents[idx][field] = value;
+                    this.showRebuildNotification();
+                });
+            });
+
+            const removeBtn = row.querySelector('.remove-cb-event');
+            if (removeBtn) {
+                removeBtn.addEventListener('click', () => {
+                    this.state.cbEvents.splice(idx, 1);
+                    this.updateCbEventsList();
+                    this.showRebuildNotification();
+                });
+            }
+        });
     },
 
     renderInstrumentTable() {
@@ -461,6 +699,7 @@ const curveBuilder = {
         const interpolationMethod = document.getElementById('interpolation-method')?.value || 'linear_on_log_df';
         const bootstrapMethod = document.getElementById('bootstrap-method')?.value || 'sequential';
 
+        // Task 11: Build request with CB events if jump calibration is enabled
         const request = {
             index: this.state.selectedIndex,
             instruments: this.state.instruments.map(inst => ({
@@ -471,7 +710,16 @@ const curveBuilder = {
                 frequency: inst.frequency
             })),
             interpolationMethod,
-            bootstrapMethod
+            bootstrapMethod,
+            // Include jump calibration parameters
+            enableJumps: this.state.enableJumps && bootstrapMethod === 'global',
+            cbEvents: this.state.enableJumps && this.state.cbEvents.length > 0
+                ? this.state.cbEvents.map(e => ({
+                    date: e.date,
+                    expectedJumpBps: e.expectedJumpBps,
+                    centralBank: e.centralBank || undefined
+                }))
+                : undefined
         };
 
         try {
@@ -494,8 +742,16 @@ const curveBuilder = {
             this.renderBuildResult();
             this.renderParameterCurve();
 
+            // Task 11.2: Show jump warnings if any
+            if (this.state.buildResult.jumpWarnings?.length > 0) {
+                console.warn('[CurveBuilder] Jump warnings:', this.state.buildResult.jumpWarnings);
+            }
+
             if (typeof Logger !== 'undefined') {
-                Logger.info('CurveBuilder', 'Curve built successfully', { index: this.state.selectedIndex });
+                Logger.info('CurveBuilder', 'Curve built successfully', {
+                    index: this.state.selectedIndex,
+                    hasJumps: !!this.state.buildResult.realizedJumps
+                });
             }
         } catch (error) {
             this.showError('Build failed: ' + error.message);
@@ -541,6 +797,89 @@ const curveBuilder = {
                 </div>
             `;
         }
+
+        // Task 12.1: Render jump calibration results
+        this.renderJumpResults();
+    },
+
+    /**
+     * Task 12.1: Renders the jump calibration results panel.
+     */
+    renderJumpResults() {
+        const container = document.getElementById('jump-results-container');
+        if (!container) return;
+
+        const result = this.state.buildResult;
+        if (!result?.realizedJumps || result.realizedJumps.length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+
+        container.style.display = 'block';
+
+        // Calculate total expected and realised jumps
+        const totalExpected = result.realizedJumps.reduce((sum, j) => sum + j.expectedBps, 0);
+        const totalRealised = result.realizedJumps.reduce((sum, j) => sum + j.realizedBps, 0);
+
+        const warningsHtml = result.jumpWarnings?.length > 0
+            ? `<div class="jump-warnings">
+                   <i class="fas fa-exclamation-triangle"></i>
+                   ${result.jumpWarnings.join('<br>')}
+               </div>`
+            : '';
+
+        const fallbackHtml = result.jumpFallbackUsed
+            ? `<div class="jump-fallback-notice">
+                   <i class="fas fa-info-circle"></i>
+                   Jump calibration fell back to standard bootstrap
+               </div>`
+            : '';
+
+        const html = `
+            <div class="jump-results-panel">
+                <h4><i class="fas fa-chart-line"></i> Realised Jumps</h4>
+                ${warningsHtml}
+                ${fallbackHtml}
+                <table class="jump-results-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>CB</th>
+                            <th>Expected (bps)</th>
+                            <th>Realised (bps)</th>
+                            <th>Diff (bps)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${result.realizedJumps.map(jump => {
+                            const diff = jump.realizedBps - jump.expectedBps;
+                            const diffClass = diff > 0 ? 'positive' : (diff < 0 ? 'negative' : '');
+                            return `
+                                <tr>
+                                    <td>${jump.date}</td>
+                                    <td>${jump.centralBank || '-'}</td>
+                                    <td>${jump.expectedBps.toFixed(1)}</td>
+                                    <td>${jump.realizedBps.toFixed(2)}</td>
+                                    <td class="${diffClass}">${diff >= 0 ? '+' : ''}${diff.toFixed(2)}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="2"><strong>Total</strong></td>
+                            <td><strong>${totalExpected.toFixed(1)}</strong></td>
+                            <td><strong>${totalRealised.toFixed(2)}</strong></td>
+                            <td class="${totalRealised - totalExpected > 0 ? 'positive' : 'negative'}">
+                                <strong>${(totalRealised - totalExpected >= 0 ? '+' : '')}${(totalRealised - totalExpected).toFixed(2)}</strong>
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        `;
+
+        container.innerHTML = html;
     },
 
     /**

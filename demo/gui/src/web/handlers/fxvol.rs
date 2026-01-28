@@ -21,8 +21,6 @@
 //!
 //! NOTE: These handlers require the `calibration` feature.
 
-#![cfg(feature = "calibration")]
-
 use std::{collections::HashMap, path::PathBuf, str::FromStr, sync::Arc, time::Instant};
 
 use axum::{

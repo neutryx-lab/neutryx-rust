@@ -320,7 +320,7 @@ impl GenericPricer {
                 .map_err(|e| PricingError::market_data_resolution(format!("{:?}", e)))?;
 
             // Calculate cashflow amount using PayoffEvaluator
-            let cf_amount = self.evaluate_cashflow_amount(cf, valuation_date, &curve_set)?;
+            let cf_amount = self.evaluate_cashflow_amount(cf, valuation_date, curve_set)?;
             let cf_pv_original = cf_amount * df;
             let cf_pv = cf_pv_original * fx_rate;
 

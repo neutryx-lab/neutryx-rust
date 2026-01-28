@@ -8,8 +8,6 @@
 //! NOTE: Bootstrap and IRS pricing handlers require the `calibration` feature
 //! which depends on pricer_models calibration module (not yet implemented).
 
-#![cfg(feature = "calibration")]
-
 use std::{sync::Arc, time::Instant};
 
 use axum::{extract::State, http::StatusCode, Json};

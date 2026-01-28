@@ -6,6 +6,7 @@ use axum::{
     extract::{Path, Query, State},
     Json,
 };
+use chrono::{Local, NaiveDate};
 use pricer_models::{
     builder::{
         BootstrapConfig, BootstrapError, CurveBootstrapper,
@@ -13,6 +14,10 @@ use pricer_models::{
     },
     market::curves::MarketInstrument,
 };
+
+// Conditional imports for global bootstrap with jump calibration
+#[cfg(feature = "global-bootstrap")]
+use pricer_models::builder::{GlobalBootstrapConfig, GlobalBootstrapper, JumpPillar};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -69,7 +74,7 @@ impl InterpolationMethod {
     pub fn is_recommended(&self) -> bool { matches!(self, Self::LinearOnLogDf) }
 
     /// Convert to pricer_models builder interpolation method.
-    fn to_builder_interpolation(&self) -> BuilderInterpolation {
+    fn to_builder_interpolation(self) -> BuilderInterpolation {
         match self {
             Self::LinearOnZeroRate => BuilderInterpolation::Linear,
             Self::LinearOnLogDf => BuilderInterpolation::LogLinear,
@@ -88,6 +93,81 @@ pub enum BootstrapMethod {
     Sequential,
     /// Global optimization (all instruments simultaneously)
     Global,
+}
+
+// =============================================================================
+// CB Meeting Jump Types (Task 9.1, 9.2, 9.3)
+// =============================================================================
+
+/// CB meeting event input.
+///
+/// Represents a central bank meeting date with expected jump size.
+/// Used in curve calibration requests to enable jump-aware bootstrapping.
+///
+/// # Requirements Coverage
+///
+/// - Requirement 1.5: JSON format for cb_events
+/// - Requirement 4.2: Event parsing with date and expected jump
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CbEventInput {
+    /// Meeting date in ISO format (YYYY-MM-DD).
+    pub date: String,
+    /// Expected jump in basis points (-100 to +100).
+    pub expected_jump_bps: f64,
+    /// Central bank code (optional, for display).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub central_bank: Option<String>,
+}
+
+impl CbEventInput {
+    /// Validate the CB event input.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` if valid, `Err(String)` with validation error message.
+    pub fn validate(&self) -> Result<(), String> {
+        // Validate date format (ISO 8601)
+        if NaiveDate::parse_from_str(&self.date, "%Y-%m-%d").is_err() {
+            return Err(format!(
+                "Invalid date format '{}': expected YYYY-MM-DD",
+                self.date
+            ));
+        }
+
+        // Validate jump range (±100bps)
+        if self.expected_jump_bps < -100.0 || self.expected_jump_bps > 100.0 {
+            return Err(format!(
+                "Expected jump {} bps is out of range (-100 to +100)",
+                self.expected_jump_bps
+            ));
+        }
+
+        Ok(())
+    }
+}
+
+/// Realised jump information in calibration response.
+///
+/// Contains the details of a calibrated jump at a CB meeting date.
+///
+/// # Requirements Coverage
+///
+/// - Requirement 4.3: Response includes realised jump values
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RealizedJumpInfo {
+    /// Meeting date in ISO format.
+    pub date: String,
+    /// Central bank code (if provided).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub central_bank: Option<String>,
+    /// Expected jump in basis points (input).
+    pub expected_bps: f64,
+    /// Realised jump in basis points (calibrated).
+    pub realized_bps: f64,
+    /// Time to jump in years.
+    pub time_years: f64,
 }
 
 impl BootstrapMethod {
@@ -218,6 +298,11 @@ impl From<InstrumentFileEntry> for InstrumentInfo {
 }
 
 /// Request for `POST /api/curves/build`.
+///
+/// # Requirements Coverage
+///
+/// - Requirement 4.1: cb_events optional parameter
+/// - Requirement 7.2: New parameters are optional for backward compatibility
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CurveBuildRequest {
@@ -237,6 +322,18 @@ pub struct CurveBuildRequest {
     /// Maximum iterations for solver
     #[serde(default = "default_max_iterations")]
     pub max_iterations: usize,
+    /// CB meeting events with expected jumps (Task 9.1).
+    ///
+    /// When provided, the bootstrapper will include jump parameters
+    /// at these dates during calibration.
+    #[serde(default)]
+    pub cb_events: Option<Vec<CbEventInput>>,
+    /// Enable jump calibration (Task 9.1).
+    ///
+    /// When true and cb_events are provided, the global bootstrapper
+    /// will calibrate jump parameters at CB meeting dates.
+    #[serde(default)]
+    pub enable_jumps: bool,
 }
 
 fn default_tolerance() -> f64 { 1e-10 }
@@ -277,6 +374,10 @@ impl InstrumentInput {
 }
 
 /// Response for `POST /api/curves/build`.
+///
+/// # Requirements Coverage
+///
+/// - Requirement 4.3: Response includes realised jump values
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CurveBuildResponse {
@@ -300,6 +401,23 @@ pub struct CurveBuildResponse {
     pub build_time_ms: f64,
     /// Number of instruments used
     pub instrument_count: usize,
+    /// Realised jumps after calibration (Task 9.3).
+    ///
+    /// Present only when jump calibration was enabled and completed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub realized_jumps: Option<Vec<RealizedJumpInfo>>,
+    /// Whether jump calibration fallback was used (Task 9.3).
+    ///
+    /// True if jump calibration failed and the system fell back
+    /// to non-jump calibration.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub jump_fallback_used: Option<bool>,
+    /// Jump-related warnings (Task 9.3).
+    ///
+    /// Warnings generated during jump calibration, such as
+    /// events outside instrument tenor range.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub jump_warnings: Vec<String>,
 }
 
 /// A single curve parameter point for visualisation.
@@ -584,6 +702,12 @@ pub async fn get_builders() -> ApiResult<BuilderListResponse> {
 }
 
 /// Handler for `POST /api/curves/build`.
+///
+/// # Task Coverage
+///
+/// - Task 10.1: CB Meeting parameter parsing and validation
+/// - Task 10.2: JumpPillar conversion and range filtering
+/// - Task 10.3: GlobalBootstrapper call integration
 pub async fn build_curve(
     State(state): State<Arc<AppState>>,
     Json(request): Json<CurveBuildRequest>,
@@ -624,18 +748,117 @@ pub async fn build_curve(
         .map(|inst| inst.to_market_instrument())
         .collect();
 
-    // Configure the bootstrapper
-    let config = BootstrapConfig::new(request.tolerance, request.max_iterations)
-        .with_interpolation(request.interpolation.to_builder_interpolation());
-
-    // Run the bootstrapper using bootstrap_to_curve to get BootstrappedCurve
-    // directly
-    let bootstrapper = CurveBootstrapper::with_config(config);
-    let curve = bootstrapper
-        .bootstrap_to_curve(&market_instruments)
-        .map_err(|e| convert_bootstrap_error(&e))?;
-
     use super::types::{CachedCurve, ParRateInput};
+
+    // Variables to store jump calibration results
+    let mut realized_jumps: Option<Vec<RealizedJumpInfo>> = None;
+    let mut jump_fallback_used: Option<bool> = None;
+    let mut jump_warnings: Vec<String> = Vec::new();
+
+    // Build curve - with jump calibration when global-bootstrap feature is enabled
+    #[cfg(feature = "global-bootstrap")]
+    let curve = {
+        // Get max tenor for filtering CB events
+        let max_tenor = sorted_instruments
+            .last()
+            .map(|i| parse_tenor_years(&i.tenor))
+            .unwrap_or(0.0);
+
+        // Task 10.1: Parse and validate CB events
+        let jump_pillars = if request.enable_jumps {
+            parse_and_validate_cb_events(&request.cb_events, max_tenor, &mut jump_warnings)?
+        } else {
+            Vec::new()
+        };
+
+        // Determine if we should use global bootstrap with jumps
+        let use_jump_calibration = request.enable_jumps
+            && !jump_pillars.is_empty()
+            && request.bootstrap_method == BootstrapMethod::Global;
+
+        if use_jump_calibration {
+            // Use GlobalBootstrapper with jump calibration
+            let global_config = GlobalBootstrapConfig::default()
+                .with_tolerance(request.tolerance)
+                .with_max_iterations(request.max_iterations)
+                .with_interpolation(
+                    pricer_models::market::curves::BootstrapInterpolation::LogLinear,
+                );
+
+            let global_bootstrapper = GlobalBootstrapper::new(global_config);
+
+            match global_bootstrapper.calibrate_with_jumps(&market_instruments, jump_pillars.clone())
+            {
+                Ok(result) => {
+                    jump_fallback_used = Some(
+                        result
+                            .realised_jumps
+                            .as_ref()
+                            .is_some_and(|j| j.is_empty()),
+                    );
+
+                    // Extract realised jumps for response
+                    if let Some(ref calibrated_jumps) = result.realised_jumps {
+                        let cb_events_ref = request.cb_events.as_ref();
+                        let empty_vec = Vec::new();
+                        let events = cb_events_ref.unwrap_or(&empty_vec);
+                        realized_jumps = Some(
+                            calibrated_jumps
+                                .iter()
+                                .zip(events.iter())
+                                .map(|(jp, input)| RealizedJumpInfo {
+                                    date: input.date.clone(),
+                                    central_bank: input.central_bank.clone(),
+                                    expected_bps: input.expected_jump_bps,
+                                    realized_bps: jp.realised_jump_bps().unwrap_or(0.0),
+                                    time_years: jp.time,
+                                })
+                                .collect(),
+                        );
+                    }
+
+                    result.curve
+                }
+                Err(e) => {
+                    // Fallback to sequential bootstrap
+                    jump_warnings.push(format!(
+                        "Jump calibration failed: {}. Falling back to sequential bootstrap.",
+                        e
+                    ));
+                    jump_fallback_used = Some(true);
+
+                    let config = BootstrapConfig::new(request.tolerance, request.max_iterations)
+                        .with_interpolation(request.interpolation.to_builder_interpolation());
+                    let bootstrapper = CurveBootstrapper::with_config(config);
+                    bootstrapper
+                        .bootstrap_to_curve(&market_instruments)
+                        .map_err(|e| convert_bootstrap_error(&e))?
+                }
+            }
+        } else {
+            // Standard sequential bootstrapping
+            let config = BootstrapConfig::new(request.tolerance, request.max_iterations)
+                .with_interpolation(request.interpolation.to_builder_interpolation());
+
+            let bootstrapper = CurveBootstrapper::with_config(config);
+            bootstrapper
+                .bootstrap_to_curve(&market_instruments)
+                .map_err(|e| convert_bootstrap_error(&e))?
+        }
+    };
+
+    // Fallback when global-bootstrap feature is not enabled
+    #[cfg(not(feature = "global-bootstrap"))]
+    let curve = {
+        // Standard sequential bootstrapping only
+        let config = BootstrapConfig::new(request.tolerance, request.max_iterations)
+            .with_interpolation(request.interpolation.to_builder_interpolation());
+
+        let bootstrapper = CurveBootstrapper::with_config(config);
+        bootstrapper
+            .bootstrap_to_curve(&market_instruments)
+            .map_err(|e| convert_bootstrap_error(&e))?
+    };
 
     // Create par_rates for CachedCurve (needed for bump-and-revalue)
     let par_rates: Vec<ParRateInput> = sorted_instruments
@@ -701,9 +924,93 @@ pub async fn build_curve(
         zero_rates,
         build_time_ms,
         instrument_count: sorted_instruments.len(),
+        realized_jumps,
+        jump_fallback_used,
+        jump_warnings,
     };
 
     Ok(Json(response))
+}
+
+/// Parse and validate CB events, converting to JumpPillars.
+///
+/// # Task Coverage
+///
+/// - Task 10.1: Date format validation (ISO 8601), numeric validation
+/// - Task 10.2: JumpPillar conversion, range filtering
+///
+/// # Arguments
+///
+/// * `cb_events` - Optional vector of CB event inputs
+/// * `max_tenor` - Maximum instrument tenor for filtering
+/// * `warnings` - Vector to collect warnings for out-of-range events
+///
+/// # Returns
+///
+/// Vector of `JumpPillar` for in-range events.
+#[cfg(feature = "global-bootstrap")]
+fn parse_and_validate_cb_events(
+    cb_events: &Option<Vec<CbEventInput>>,
+    max_tenor: f64,
+    warnings: &mut Vec<String>,
+) -> Result<Vec<JumpPillar<f64>>, ApiError> {
+    let events = match cb_events {
+        Some(events) if !events.is_empty() => events,
+        _ => return Ok(Vec::new()),
+    };
+
+    // Use today as reference date for year fraction calculation
+    let today = Local::now().naive_local().date();
+
+    let mut jump_pillars = Vec::with_capacity(events.len());
+
+    for event in events {
+        // Task 10.1: Validate each event
+        event
+            .validate()
+            .map_err(|msg| ApiError::validation(msg, "cb_events"))?;
+
+        // Parse the event date
+        let event_date = NaiveDate::parse_from_str(&event.date, "%Y-%m-%d").map_err(|e| {
+            ApiError::validation(
+                format!("Invalid date '{}': {}", event.date, e),
+                "cb_events",
+            )
+        })?;
+
+        // Calculate time to event in years
+        let days_to_event = (event_date - today).num_days();
+        let time_years = days_to_event as f64 / 365.0;
+
+        // Task 10.2: Filter out events outside instrument tenor range
+        if time_years <= 0.0 {
+            warnings.push(format!(
+                "CB event on {} is in the past, ignoring",
+                event.date
+            ));
+            continue;
+        }
+
+        if time_years > max_tenor {
+            warnings.push(format!(
+                "CB event on {} ({:.2}Y) exceeds max instrument tenor ({:.2}Y), ignoring",
+                event.date, time_years, max_tenor
+            ));
+            continue;
+        }
+
+        // Create JumpPillar
+        jump_pillars.push(JumpPillar::new(time_years, event.expected_jump_bps));
+    }
+
+    // Sort by time
+    jump_pillars.sort_by(|a, b| {
+        a.time
+            .partial_cmp(&b.time)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    Ok(jump_pillars)
 }
 
 /// Convert BootstrapError to ApiError.
@@ -949,5 +1256,141 @@ mod tests {
         let loader = CurveDataLoader::default_path();
         let result = loader.load_instruments("nonexistent-index");
         assert!(result.is_err());
+    }
+
+    // =========================================================================
+    // Task 9: CB Event Input Tests
+    // =========================================================================
+
+    #[test]
+    fn test_cb_event_input_valid() {
+        let event = CbEventInput {
+            date: "2025-03-15".to_string(),
+            expected_jump_bps: 25.0,
+            central_bank: Some("Fed".to_string()),
+        };
+        assert!(event.validate().is_ok());
+    }
+
+    #[test]
+    fn test_cb_event_input_invalid_date() {
+        let event = CbEventInput {
+            date: "invalid-date".to_string(),
+            expected_jump_bps: 25.0,
+            central_bank: None,
+        };
+        let result = event.validate();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid date format"));
+    }
+
+    #[test]
+    fn test_cb_event_input_jump_out_of_range() {
+        // Test positive out of range
+        let event = CbEventInput {
+            date: "2025-03-15".to_string(),
+            expected_jump_bps: 150.0,
+            central_bank: None,
+        };
+        let result = event.validate();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("out of range"));
+
+        // Test negative out of range
+        let event = CbEventInput {
+            date: "2025-03-15".to_string(),
+            expected_jump_bps: -150.0,
+            central_bank: None,
+        };
+        let result = event.validate();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_cb_event_input_boundary_values() {
+        // Test -100bps (valid)
+        let event = CbEventInput {
+            date: "2025-03-15".to_string(),
+            expected_jump_bps: -100.0,
+            central_bank: None,
+        };
+        assert!(event.validate().is_ok());
+
+        // Test +100bps (valid)
+        let event = CbEventInput {
+            date: "2025-03-15".to_string(),
+            expected_jump_bps: 100.0,
+            central_bank: None,
+        };
+        assert!(event.validate().is_ok());
+    }
+
+    #[test]
+    fn test_cb_event_input_serialization() {
+        let event = CbEventInput {
+            date: "2025-03-15".to_string(),
+            expected_jump_bps: 25.0,
+            central_bank: Some("Fed".to_string()),
+        };
+
+        let json = serde_json::to_string(&event).unwrap();
+        assert!(json.contains("\"date\":\"2025-03-15\""));
+        assert!(json.contains("\"expectedJumpBps\":25.0"));
+        assert!(json.contains("\"centralBank\":\"Fed\""));
+    }
+
+    #[test]
+    fn test_cb_event_input_deserialization() {
+        let json = r#"{
+            "date": "2025-06-18",
+            "expectedJumpBps": -25.0,
+            "centralBank": "ECB"
+        }"#;
+
+        let event: CbEventInput = serde_json::from_str(json).unwrap();
+        assert_eq!(event.date, "2025-06-18");
+        assert!((event.expected_jump_bps - (-25.0)).abs() < 1e-10);
+        assert_eq!(event.central_bank, Some("ECB".to_string()));
+    }
+
+    #[test]
+    fn test_realized_jump_info_serialization() {
+        let jump = RealizedJumpInfo {
+            date: "2025-03-15".to_string(),
+            central_bank: Some("Fed".to_string()),
+            expected_bps: 25.0,
+            realized_bps: 23.5,
+            time_years: 0.125,
+        };
+
+        let json = serde_json::to_string(&jump).unwrap();
+        assert!(json.contains("\"date\":\"2025-03-15\""));
+        assert!(json.contains("\"expectedBps\":25.0"));
+        assert!(json.contains("\"realizedBps\":23.5"));
+    }
+
+    // =========================================================================
+    // Task 10: parse_and_validate_cb_events Tests
+    // =========================================================================
+
+    #[cfg(feature = "global-bootstrap")]
+    mod jump_calibration_tests {
+        use super::*;
+
+        #[test]
+        fn test_parse_cb_events_empty() {
+            let mut warnings = Vec::new();
+            let result = parse_and_validate_cb_events(&None, 1.0, &mut warnings);
+            assert!(result.is_ok());
+            assert!(result.unwrap().is_empty());
+        }
+
+        #[test]
+        fn test_parse_cb_events_empty_vec() {
+            let mut warnings = Vec::new();
+            let result = parse_and_validate_cb_events(&Some(Vec::new()), 1.0, &mut warnings);
+            assert!(result.is_ok());
+            assert!(result.unwrap().is_empty());
+        }
     }
 }
