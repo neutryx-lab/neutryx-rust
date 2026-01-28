@@ -1,6 +1,12 @@
 //! IR Volatility (Swaption Vol) API handlers and types for the WebApp.
 //!
 //! Provides REST API endpoints for IR volatility surface operations.
+//!
+//! # Type Mapping
+//!
+//! Core volatility types are defined in `infra_master::market::volatility`:
+//! - [`VolQuoteType`]: How volatility is quoted (Normal, Lognormal, Shifted)
+//! - [`StrikeType`]: Strike convention (Absolute, Relative, Moneyness, Delta)
 
 use std::{collections::HashMap, sync::Arc};
 
@@ -19,59 +25,8 @@ use uuid::Uuid;
 
 use crate::web::AppState;
 
-// =============================================================================
-// Vol Type Enum
-// =============================================================================
-
-/// Volatility quote type for swaptions.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "snake_case")]
-pub enum VolQuoteType {
-    /// Normal (Bachelier) volatility in basis points.
-    #[default]
-    Normal,
-    /// Lognormal (Black) volatility in percentage.
-    Lognormal,
-    /// Shifted Lognormal volatility.
-    ShiftedLognormal,
-}
-
-impl VolQuoteType {
-    /// Get the display name for this vol type.
-    pub fn display_name(&self) -> &'static str {
-        match self {
-            Self::Normal => "Normal (bp)",
-            Self::Lognormal => "Lognormal (%)",
-            Self::ShiftedLognormal => "Shifted Lognormal",
-        }
-    }
-
-    /// Get the unit string.
-    pub fn unit(&self) -> &'static str {
-        match self {
-            Self::Normal => "bp",
-            Self::Lognormal => "%",
-            Self::ShiftedLognormal => "%",
-        }
-    }
-}
-
-// =============================================================================
-// Strike Type Enum
-// =============================================================================
-
-/// Strike convention for swaption volatility quotes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "snake_case")]
-pub enum StrikeType {
-    /// Absolute strike rate (e.g., 2.5% = 0.025).
-    #[default]
-    Absolute,
-    /// Relative to ATM forward (e.g., +50bp, -100bp).
-    RelativeToAtm,
-    /// Moneyness (K/F ratio).
-    Moneyness,
-}
+// Re-export volatility types from infra_master
+pub use infra_master::market::volatility::{StrikeType, VolQuoteType};
 
 // =============================================================================
 // Swaption Vol Quote Entry

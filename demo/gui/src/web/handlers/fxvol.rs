@@ -36,7 +36,9 @@ use chrono::NaiveDate;
 /// Re-export DeltaType from infra_master.
 pub use infra_master::trade::instrument_def::DeltaType;
 use infra_master::{market::Currency, trade::instrument_def::CurrencyPair};
-use pricer_models::builder::{FxVolBuilder, SliceCalibrationConfig};
+use pricer_core::math::formulas::fx_delta::delta_to_strike as core_delta_to_strike;
+use pricer_models::builder::{DeltaVolSlice, FxVolBuilder, FxVolResult, SliceCalibrationConfig};
+use pricer_models::market::FxCurveEnum;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use uuid::Uuid;
@@ -1318,7 +1320,9 @@ fn volatility_at_strike(
     interpolate_delta_vol(vols, approx_delta)
 }
 
-/// Convert delta to strike using Garman-Kohlhagen.
+/// Convert delta to strike using the core library implementation.
+///
+/// This delegates to `pricer_core::math::formulas::fx_delta::delta_to_strike`.
 fn delta_to_strike(
     delta: f64,
     spot: f64,
@@ -1328,91 +1332,21 @@ fn delta_to_strike(
     volatility: f64,
     delta_type: DeltaType,
 ) -> f64 {
-    let rate_diff = domestic_rate - foreign_rate;
-    let forward = spot * (rate_diff * expiry).exp();
-    let sqrt_t = expiry.sqrt();
-
-    // Inverse normal CDF approximation
-    fn norm_inv(p: f64) -> f64 {
-        let a1 = -39.6968302866538;
-        let a2 = 220.946098424521;
-        let a3 = -275.928510446969;
-        let a4 = 138.357751867269;
-        let a5 = -30.6647980661472;
-        let a6 = 2.50662827463100;
-
-        let b1 = -54.4760987982241;
-        let b2 = 161.585836858041;
-        let b3 = -155.698979859887;
-        let b4 = 66.8013118877197;
-        let b5 = -13.2806815528857;
-
-        let c1 = -7.78489400243029e-03;
-        let c2 = -0.322396458041136;
-        let c3 = -2.40075827716184;
-        let c4 = -2.54973253934373;
-        let c5 = 4.37466414146497;
-        let c6 = 2.93816398269878;
-
-        let d1 = 7.78469570904146e-03;
-        let d2 = 0.32246712907004;
-        let d3 = 2.445134137143;
-        let d4 = 3.75440866190742;
-
-        let p_low = 0.02425;
-        let p_high = 1.0 - p_low;
-
-        if p < p_low {
-            let q = (-2.0 * p.ln()).sqrt();
-            (((((c1 * q + c2) * q + c3) * q + c4) * q + c5) * q + c6)
-                / ((((d1 * q + d2) * q + d3) * q + d4) * q + 1.0)
-        } else if p <= p_high {
-            let q = p - 0.5;
-            let r = q * q;
-            (((((a1 * r + a2) * r + a3) * r + a4) * r + a5) * r + a6) * q
-                / (((((b1 * r + b2) * r + b3) * r + b4) * r + b5) * r + 1.0)
-        } else {
-            let q = (-2.0 * (1.0 - p).ln()).sqrt();
-            -(((((c1 * q + c2) * q + c3) * q + c4) * q + c5) * q + c6)
-                / ((((d1 * q + d2) * q + d3) * q + d4) * q + 1.0)
-        }
-    }
-
-    let is_call = delta > 0.0;
-    let abs_delta = delta.abs();
-
-    // Different formulas based on delta type
-    let d1 = match delta_type {
-        DeltaType::SpotDelta => {
-            let disc_foreign = (-foreign_rate * expiry).exp();
-            let adj_delta = abs_delta / disc_foreign;
-            if is_call {
-                norm_inv(adj_delta)
-            } else {
-                -norm_inv(adj_delta)
-            }
-        }
-        DeltaType::ForwardDelta => {
-            if is_call {
-                norm_inv(abs_delta)
-            } else {
-                norm_inv(abs_delta) - 1.0
-            }
-        }
-        DeltaType::PremiumAdjusted => {
-            // Simplified - use spot delta formula as approximation
-            let disc_foreign = (-foreign_rate * expiry).exp();
-            let adj_delta = abs_delta / disc_foreign;
-            if is_call {
-                norm_inv(adj_delta)
-            } else {
-                -norm_inv(adj_delta)
-            }
-        }
-    };
-
-    // K = F * exp(-d1 * sigma * sqrt(T) + 0.5 * sigma^2 * T)
-    forward * (-d1 * volatility * sqrt_t + 0.5 * volatility * volatility * expiry).exp()
+    // Use the core implementation which handles all delta types correctly
+    core_delta_to_strike(
+        delta,
+        spot,
+        domestic_rate,
+        foreign_rate,
+        expiry,
+        volatility,
+        delta_type,
+    )
+    .unwrap_or_else(|_| {
+        // Fallback: calculate forward and use ATM strike
+        let rate_diff = domestic_rate - foreign_rate;
+        spot * (rate_diff * expiry).exp()
+    })
 }
 
 /// Black call price.
@@ -1492,91 +1426,91 @@ pub async fn calibrate_surface(
             )
         })?;
 
-    // Parse currency pair (for validation only)
-    let _currency_pair = parse_currency_pair(&request.currency_pair)?;
+    // Parse currency pair
+    let currency_pair = parse_currency_pair(&request.currency_pair)?;
 
     // Calculate forward rate using interest rate parity
     let rate_diff = request.domestic_rate - request.foreign_rate;
 
-    // Build FxVolBuilder with quotes converted from RR/BF to strike/vol
-    let config = SliceCalibrationConfig::fx();
-    let mut builder = FxVolBuilder::with_config(config);
+    // Create FX curve for delta-strike conversions
+    let fx_curve = FxCurveEnum::irp_flat(
+        request.spot,
+        request.domestic_rate,
+        request.foreign_rate,
+        currency_pair,
+    );
 
+    // Get convention for delta type (default EURUSD convention for now)
+    let convention = infra_master::trade::instrument_def::FxVolConvention::eurusd();
+
+    // Build FxVolBuilder with FX curve and convention
+    let config = SliceCalibrationConfig::fx();
+    let mut builder = FxVolBuilder::with_config(config)
+        .with_fx_curve(fx_curve)
+        .with_convention(convention);
+
+    // Add delta vol slices using the new API
     for quote in &request.quotes {
         let forward = request.spot * (rate_diff * quote.expiry).exp();
-        let delta_vols = quote.to_delta_vols();
 
-        // Add ATM quote
-        builder.add_quote(quote.expiry, forward, delta_vols.atm, forward);
-
-        // Add 25D quotes
-        let strike_25d_call = delta_to_strike(
-            0.25,
-            request.spot,
-            request.domestic_rate,
-            request.foreign_rate,
-            quote.expiry,
-            delta_vols.vol_25d_call,
-            DeltaType::SpotDelta,
-        );
-        let strike_25d_put = delta_to_strike(
-            -0.25,
-            request.spot,
-            request.domestic_rate,
-            request.foreign_rate,
-            quote.expiry,
-            delta_vols.vol_25d_put,
-            DeltaType::SpotDelta,
-        );
-        builder.add_quote(quote.expiry, strike_25d_call, delta_vols.vol_25d_call, forward);
-        builder.add_quote(quote.expiry, strike_25d_put, delta_vols.vol_25d_put, forward);
-
-        // Add 10D quotes if available
-        if let (Some(vol_10d_call), Some(vol_10d_put)) =
-            (delta_vols.vol_10d_call, delta_vols.vol_10d_put)
-        {
-            let strike_10d_call = delta_to_strike(
-                0.10,
-                request.spot,
-                request.domestic_rate,
-                request.foreign_rate,
+        // Create DeltaVolSlice from quote
+        let slice = if let (Some(rr_10d), Some(bf_10d)) = (quote.rr_10d, quote.bf_10d) {
+            DeltaVolSlice::new_with_10d_25d(
+                quote.atm_vol,
+                quote.rr_25d,
+                quote.bf_25d,
+                rr_10d,
+                bf_10d,
                 quote.expiry,
-                vol_10d_call,
-                DeltaType::SpotDelta,
-            );
-            let strike_10d_put = delta_to_strike(
-                -0.10,
-                request.spot,
-                request.domestic_rate,
-                request.foreign_rate,
+                forward,
+            )
+        } else {
+            DeltaVolSlice::new_with_25d(
+                quote.atm_vol,
+                quote.rr_25d,
+                quote.bf_25d,
                 quote.expiry,
-                vol_10d_put,
-                DeltaType::SpotDelta,
-            );
-            builder.add_quote(quote.expiry, strike_10d_call, vol_10d_call, forward);
-            builder.add_quote(quote.expiry, strike_10d_put, vol_10d_put, forward);
-        }
+                forward,
+            )
+        };
+
+        // Add delta vol slice (handles RR/BF to strike conversion internally)
+        builder.add_delta_vol_slice(slice).map_err(|e| {
+            ApiError::internal(format!("Failed to add delta vol slice: {}", e))
+        })?;
     }
 
     // Calibrate SABR parameters
-    let calibration_result = builder
+    let calibration_result: FxVolResult<f64> = builder
         .calibrate()
         .map_err(|e| ApiError::internal(format!("Calibration failed: {}", e)))?;
 
-    // Map calibration result to response format
-    let mut warnings = Vec::new();
+    // Map calibration result to response format using diagnostics
+    let mut warnings: Vec<String> = calibration_result
+        .warnings()
+        .into_iter()
+        .map(|(exp, msg)| format!("Expiry {:.2}Y: {}", exp, msg))
+        .collect();
+
     let mut sabr_params = Vec::new();
     let mut max_residual = 0.0_f64;
     let mut total_residual = 0.0_f64;
 
-    // Extract SABR parameters from calibrated slices
+    // Extract SABR parameters and diagnostics from calibrated slices
     for &expiry in &calibration_result.expiries {
         let forward = request.spot * (rate_diff * expiry).exp();
         let label = expiry_to_label(expiry);
 
         let params = calibration_result.get(expiry);
-        let (alpha, beta, rho, nu) = if let Some(p) = params {
-            (p.alpha, p.beta, p.rho, p.nu)
+        let diag = calibration_result.get_diagnostics(expiry);
+
+        let (alpha, beta, rho, nu, residual, iterations) = if let Some(p) = params {
+            let (res, iters) = if let Some(d) = diag {
+                (d.final_residual_ss, d.iterations)
+            } else {
+                (0.0, 0)
+            };
+            (p.alpha, p.beta, p.rho, p.nu, res, iters)
         } else {
             // Fallback to default SABR params
             let atm = request
@@ -1585,11 +1519,9 @@ pub async fn calibrate_surface(
                 .find(|q| (q.expiry - expiry).abs() < 0.01)
                 .map(|q| q.atm_vol)
                 .unwrap_or(0.1);
-            (atm * forward.powf(1.0 - request.sabr_beta), request.sabr_beta, -0.2, 0.3)
+            (atm * forward.powf(1.0 - request.sabr_beta), request.sabr_beta, -0.2, 0.3, 0.0, 0)
         };
 
-        // Residual is not directly available from FxVolResult, use 0.0 as placeholder
-        let residual = 0.0;
         max_residual = max_residual.max(residual);
         total_residual += residual;
 
@@ -1602,7 +1534,7 @@ pub async fn calibrate_surface(
             nu,
             forward,
             residual,
-            iterations: 0,
+            iterations,
         });
     }
 
@@ -1613,10 +1545,10 @@ pub async fn calibrate_surface(
         0.0
     };
 
-    // Check convergence (simplified: assume converged if we got results)
-    let converged = !sabr_params.is_empty();
+    // Check convergence using diagnostics
+    let converged = calibration_result.all_converged();
     if !converged {
-        warnings.push("Calibration produced no results".to_string());
+        warnings.push("One or more slices did not converge".to_string());
     }
 
     // Generate surface ID and cache

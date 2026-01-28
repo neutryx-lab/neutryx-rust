@@ -40,10 +40,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use uuid::Uuid;
 
-use crate::web::{
-    schedule_utils::{generate_schedule, SchedulePeriod},
-    AppState,
-};
+use crate::web::AppState;
 
 // =============================================================================
 // Rate Index Validation (using infra_master::RateIndex)
@@ -624,7 +621,7 @@ fn validate_equity_params(params: &EquityParams) -> Result<(), TradeExpandError>
 // Task 3.1: Rates Instrument Expansion
 // =============================================================================
 
-/// Expands a Deposit instrument.
+/// Expands a Deposit instrument using infra_master.
 fn expand_deposit(request: &TradeExpandRequest) -> Result<TradeExpandResponse, TradeExpandError> {
     let params = match &request.params {
         InstrumentParamsUnion::Rates(p) => p,
@@ -636,36 +633,30 @@ fn expand_deposit(request: &TradeExpandRequest) -> Result<TradeExpandResponse, T
         }
     };
 
-    let trade_id = generate_trade_id("DEP");
+    let start = parse_date(&params.start_date)?;
+    let tenor = parse_tenor(&params.tenor)?;
+    let ccy = parse_currency(&params.currency)?;
 
-    // Single cashflow at maturity
-    let schedule = generate_schedule(&params.start_date, &params.tenor, "Annual", "Act360")
-        .map_err(|e| TradeExpandError::schedule_error(&e.message))?;
-
-    let cashflows = schedule_to_cashflows(&schedule, params.notional, params.rate, "Fixed", None);
-
-    let leg = LegDto {
-        leg_number: 1,
-        direction: "Receiver".to_string(),
-        currency: params.currency.clone(),
-        leg_type: "Fixed".to_string(),
-        rate_index: None, // Deposits don't have a rate index
-        cashflows,
+    let deposit = Deposit {
+        start_date: start,
+        tenor,
+        rate: params.rate,
+        notional: params.notional,
+        currency: ccy,
     };
 
-    Ok(TradeExpandResponse {
-        trade_id,
-        trade_type: "Deposit".to_string(),
-        legs: vec![leg],
-        metadata: TradeMetadataDto {
-            total_legs: 1,
-            total_cashflows: schedule.len(),
-            processing_time_ms: 0.0,
-        },
-    })
+    let conventions = ConventionSet::default();
+    let valuation_date = Date::today();
+    let trade_id_str = generate_trade_id("DEP");
+
+    let trade = deposit
+        .expand_to_trade(trade_id_str.clone(), valuation_date, &conventions)
+        .map_err(|e| TradeExpandError::schedule_error(&format!("Deposit expansion error: {:?}", e)))?;
+
+    Ok(convert_trade_to_dto(trade, &trade_id_str, "Deposit"))
 }
 
-/// Expands a FRA instrument.
+/// Expands a FRA instrument using infra_master.
 fn expand_fra(request: &TradeExpandRequest) -> Result<TradeExpandResponse, TradeExpandError> {
     let params = match &request.params {
         InstrumentParamsUnion::Rates(p) => p,
@@ -677,50 +668,33 @@ fn expand_fra(request: &TradeExpandRequest) -> Result<TradeExpandResponse, Trade
         }
     };
 
-    let trade_id = generate_trade_id("FRA");
+    let start = parse_date(&params.start_date)?;
+    let tenor = parse_tenor(&params.tenor)?;
+    let ccy = parse_currency(&params.currency)?;
+    let rate_index = parse_rate_index(&params.rate_index, &params.currency);
 
-    // Determine rate index (use provided or default based on currency)
-    let rate_index = params
-        .rate_index
-        .clone()
-        .unwrap_or_else(|| default_rate_index_for_currency(&params.currency).to_string());
-
-    // FRA has a single settlement cashflow
-    let cashflows = vec![CashflowDto {
-        payment_date: params.start_date.clone(), // Settlement at start
-        accrual_start: params.start_date.clone(),
-        accrual_end: params.start_date.clone(), // Will be calculated
-        year_fraction: 0.25,                    // Typically 3M
+    let fra = Fra {
+        fixing_date: start,
+        start_date: start,
+        tenor,
+        strike: params.rate,
         notional: params.notional,
-        payoff_type: "Linear".to_string(),
-        rate: Some(params.rate),
-        spread: None,
-        rate_index: Some(rate_index.clone()),
-        daily_accruals: None,
-    }];
-
-    let leg = LegDto {
-        leg_number: 1,
-        direction: "Receiver".to_string(),
-        currency: params.currency.clone(),
-        leg_type: "Floating".to_string(),
-        rate_index: Some(rate_index),
-        cashflows,
+        currency: ccy,
+        rate_index,
     };
 
-    Ok(TradeExpandResponse {
-        trade_id,
-        trade_type: "FRA".to_string(),
-        legs: vec![leg],
-        metadata: TradeMetadataDto {
-            total_legs: 1,
-            total_cashflows: 1,
-            processing_time_ms: 0.0,
-        },
-    })
+    let conventions = ConventionSet::default();
+    let valuation_date = Date::today();
+    let trade_id_str = generate_trade_id("FRA");
+
+    let trade = fra
+        .expand_to_trade(trade_id_str.clone(), valuation_date, &conventions)
+        .map_err(|e| TradeExpandError::schedule_error(&format!("FRA expansion error: {:?}", e)))?;
+
+    Ok(convert_trade_to_dto(trade, &trade_id_str, "FRA"))
 }
 
-/// Expands a Futures instrument.
+/// Expands a Futures instrument using infra_master.
 fn expand_futures(request: &TradeExpandRequest) -> Result<TradeExpandResponse, TradeExpandError> {
     let params = match &request.params {
         InstrumentParamsUnion::Rates(p) => p,
@@ -732,47 +706,32 @@ fn expand_futures(request: &TradeExpandRequest) -> Result<TradeExpandResponse, T
         }
     };
 
-    let trade_id = generate_trade_id("FUT");
+    let expiry = parse_date(&params.start_date)?;
+    let tenor = parse_tenor(&params.tenor)?;
+    let ccy = parse_currency(&params.currency)?;
+    let rate_index = currency_to_rate_index(&params.currency);
 
-    // Determine rate index (use provided or default based on currency)
-    let rate_index = params
-        .rate_index
-        .clone()
-        .unwrap_or_else(|| default_rate_index_for_currency(&params.currency).to_string());
+    // Convert rate to price (price = 100 - rate * 100)
+    let price = 100.0 - params.rate * 100.0;
 
-    // Futures have a single settlement
-    let cashflows = vec![CashflowDto {
-        payment_date: params.start_date.clone(),
-        accrual_start: params.start_date.clone(),
-        accrual_end: params.start_date.clone(),
-        year_fraction: 0.25,
+    let futures = Futures {
+        expiry_date: expiry,
+        underlying_tenor: tenor,
+        price,
         notional: params.notional,
-        payoff_type: "Linear".to_string(),
-        rate: Some(params.rate),
-        spread: None,
-        rate_index: Some(rate_index.clone()),
-        daily_accruals: None,
-    }];
-
-    let leg = LegDto {
-        leg_number: 1,
-        direction: "Receiver".to_string(),
-        currency: params.currency.clone(),
-        leg_type: "Floating".to_string(),
-        rate_index: Some(rate_index),
-        cashflows,
+        currency: ccy,
+        rate_index,
     };
 
-    Ok(TradeExpandResponse {
-        trade_id,
-        trade_type: "Futures".to_string(),
-        legs: vec![leg],
-        metadata: TradeMetadataDto {
-            total_legs: 1,
-            total_cashflows: 1,
-            processing_time_ms: 0.0,
-        },
-    })
+    let conventions = ConventionSet::default();
+    let valuation_date = Date::today();
+    let trade_id_str = generate_trade_id("FUT");
+
+    let trade = futures
+        .expand_to_trade(trade_id_str.clone(), valuation_date, &conventions)
+        .map_err(|e| TradeExpandError::schedule_error(&format!("Futures expansion error: {:?}", e)))?;
+
+    Ok(convert_trade_to_dto(trade, &trade_id_str, "Futures"))
 }
 
 /// Expands an OIS instrument using Infra-master's OIS expansion logic.
@@ -840,7 +799,7 @@ fn expand_ois(request: &TradeExpandRequest) -> Result<TradeExpandResponse, Trade
 /// Helper: Extracts rate index string from IndexType.
 fn extract_rate_index_string(index: &infra_master::trade::IndexType) -> Option<String> {
     match index {
-        infra_master::trade::IndexType::Rate(ri) => Some(format!("{:?}", ri)),
+        infra_master::trade::IndexType::Rate(ri) => Some(ri.api_code().to_string()),
         _ => None,
     }
 }
@@ -1002,7 +961,34 @@ fn parse_frequency(freq: &str) -> Frequency {
     }
 }
 
+/// Helper: Parse tenor string to Tenor.
+fn parse_tenor(tenor_str: &str) -> Result<Tenor, TradeExpandError> {
+    tenor_str
+        .parse()
+        .map_err(|_| TradeExpandError::validation("tenor", "Invalid tenor format"))
+}
+
+/// Helper: Parse rate index from string or use default for currency.
+fn parse_rate_index(rate_index: &Option<String>, currency: &str) -> RateIndex {
+    if let Some(idx) = rate_index {
+        // Try to parse the rate index string
+        match idx.to_uppercase().as_str() {
+            "SOFR" => RateIndex::Sofr,
+            "TONAR" | "TONA" => RateIndex::Tonar,
+            "ESTR" | "ESTER" => RateIndex::Estr,
+            "EURIBOR3M" => RateIndex::Euribor3M,
+            "EURIBOR6M" => RateIndex::Euribor6M,
+            "SONIA" => RateIndex::Sonia,
+            "SARON" => RateIndex::Saron,
+            _ => currency_to_rate_index(currency),
+        }
+    } else {
+        currency_to_rate_index(currency)
+    }
+}
+
 /// Expands a BasisSwap instrument.
+/// Expands a BasisSwap instrument using infra_master.
 fn expand_basis_swap(
     request: &TradeExpandRequest,
 ) -> Result<TradeExpandResponse, TradeExpandError> {
@@ -1016,70 +1002,38 @@ fn expand_basis_swap(
         }
     };
 
-    let trade_id = generate_trade_id("BSW");
+    let start = parse_date(&params.start_date)?;
+    let tenor = parse_tenor(&params.tenor)?;
+    let ccy = parse_currency(&params.currency)?;
+    let rate_index = parse_rate_index(&params.rate_index, &params.currency);
+    let freq = parse_frequency(&params.payment_frequency);
 
-    let schedule = generate_schedule(
-        &params.start_date,
-        &params.tenor,
-        &params.payment_frequency,
-        &params.day_count,
-    )
-    .map_err(|e| TradeExpandError::schedule_error(&e.message))?;
-
-    let spread = params.spread.unwrap_or(0.0);
-
-    // Determine rate index (use provided or default based on currency)
-    let rate_index = params
-        .rate_index
-        .clone()
-        .unwrap_or_else(|| default_rate_index_for_currency(&params.currency).to_string());
-
-    // Two floating legs
-    let leg1 = LegDto {
-        leg_number: 1,
-        direction: "Receiver".to_string(),
-        currency: params.currency.clone(),
-        leg_type: "Floating".to_string(),
-        rate_index: Some(rate_index.clone()),
-        cashflows: schedule_to_cashflows(
-            &schedule,
-            params.notional,
-            spread,
-            "Linear",
-            Some(&rate_index),
-        ),
+    let basis_swap = BasisSwap {
+        start_date: start,
+        tenor,
+        notional: params.notional,
+        currency: ccy,
+        payer_receiver: PayerReceiver::Payer,
+        leg1_index: rate_index,
+        leg1_spread: params.spread.unwrap_or(0.0),
+        leg1_frequency: freq,
+        leg2_index: rate_index,
+        leg2_spread: 0.0,
+        leg2_frequency: freq,
     };
 
-    let leg2 = LegDto {
-        leg_number: 2,
-        direction: "Payer".to_string(),
-        currency: params.currency.clone(),
-        leg_type: "Floating".to_string(),
-        rate_index: Some(rate_index.clone()),
-        cashflows: schedule_to_cashflows(
-            &schedule,
-            params.notional,
-            0.0,
-            "Linear",
-            Some(&rate_index),
-        ),
-    };
+    let conventions = ConventionSet::default();
+    let valuation_date = Date::today();
+    let trade_id_str = generate_trade_id("BSW");
 
-    let total_cf = leg1.cashflows.len() + leg2.cashflows.len();
+    let trade = basis_swap
+        .expand_to_trade(trade_id_str.clone(), valuation_date, &conventions)
+        .map_err(|e| TradeExpandError::schedule_error(&format!("BasisSwap expansion error: {:?}", e)))?;
 
-    Ok(TradeExpandResponse {
-        trade_id,
-        trade_type: "BasisSwap".to_string(),
-        legs: vec![leg1, leg2],
-        metadata: TradeMetadataDto {
-            total_legs: 2,
-            total_cashflows: total_cf,
-            processing_time_ms: 0.0,
-        },
-    })
+    Ok(convert_trade_to_dto(trade, &trade_id_str, "BasisSwap"))
 }
 
-/// Expands an IRS instrument.
+/// Expands an IRS instrument using infra_master.
 fn expand_irs(request: &TradeExpandRequest) -> Result<TradeExpandResponse, TradeExpandError> {
     let params = match &request.params {
         InstrumentParamsUnion::Swap(p) => p,
@@ -1091,68 +1045,41 @@ fn expand_irs(request: &TradeExpandRequest) -> Result<TradeExpandResponse, Trade
         }
     };
 
-    let trade_id = generate_trade_id("IRS");
+    let start = parse_date(&params.start_date)?;
+    let tenor = parse_tenor(&params.tenor)?;
+    let ccy = parse_currency(&params.currency)?;
+    let rate_index = parse_rate_index(&params.rate_index, &params.currency);
+    let freq = parse_frequency(&params.payment_frequency);
 
-    let schedule = generate_schedule(
-        &params.start_date,
-        &params.tenor,
-        &params.payment_frequency,
-        &params.day_count,
-    )
-    .map_err(|e| TradeExpandError::schedule_error(&e.message))?;
-
-    let fixed_rate = params.fixed_rate.unwrap_or(0.0);
-
-    // Determine rate index for floating leg (use provided or default based on
-    // currency)
-    let rate_index = params
-        .rate_index
-        .clone()
-        .unwrap_or_else(|| default_rate_index_for_currency(&params.currency).to_string());
-
-    let fixed_leg = LegDto {
-        leg_number: 1,
-        direction: "Receiver".to_string(),
-        currency: params.currency.clone(),
-        leg_type: "Fixed".to_string(),
-        rate_index: None, // Fixed leg has no rate index
-        cashflows: schedule_to_cashflows(&schedule, params.notional, fixed_rate, "Fixed", None),
+    let irs = InterestRateSwap {
+        start_date: start,
+        tenor,
+        fixed_rate: params.fixed_rate.unwrap_or(0.0),
+        spread: params.spread.unwrap_or(0.0),
+        notional: params.notional,
+        currency: ccy,
+        payer_receiver: PayerReceiver::Payer,
+        fixed_frequency: freq,
+        float_frequency: freq,
+        rate_index,
     };
 
-    let floating_leg = LegDto {
-        leg_number: 2,
-        direction: "Payer".to_string(),
-        currency: params.currency.clone(),
-        leg_type: "Floating".to_string(),
-        rate_index: Some(rate_index.clone()),
-        cashflows: schedule_to_cashflows(
-            &schedule,
-            params.notional,
-            params.spread.unwrap_or(0.0),
-            "Linear",
-            Some(&rate_index),
-        ),
-    };
+    let conventions = ConventionSet::default();
+    let valuation_date = Date::today();
+    let trade_id_str = generate_trade_id("IRS");
 
-    let total_cf = fixed_leg.cashflows.len() + floating_leg.cashflows.len();
+    let trade = irs
+        .expand_to_trade(trade_id_str.clone(), valuation_date, &conventions)
+        .map_err(|e| TradeExpandError::schedule_error(&format!("IRS expansion error: {:?}", e)))?;
 
-    Ok(TradeExpandResponse {
-        trade_id,
-        trade_type: "IRS".to_string(),
-        legs: vec![fixed_leg, floating_leg],
-        metadata: TradeMetadataDto {
-            total_legs: 2,
-            total_cashflows: total_cf,
-            processing_time_ms: 0.0,
-        },
-    })
+    Ok(convert_trade_to_dto(trade, &trade_id_str, "IRS"))
 }
 
 // =============================================================================
 // Task 3.2: FX Instrument Expansion
 // =============================================================================
 
-/// Expands an FX Forward instrument.
+/// Expands an FX Forward instrument using infra_master.
 fn expand_fx_forward(
     request: &TradeExpandRequest,
 ) -> Result<TradeExpandResponse, TradeExpandError> {
@@ -1166,63 +1093,31 @@ fn expand_fx_forward(
         }
     };
 
-    let trade_id = generate_trade_id("FXF");
+    let delivery_date = parse_date(&params.expiry)?;
+    let base_ccy = parse_currency(&params.base_currency)?;
+    let quote_ccy = parse_currency(&params.quote_currency)?;
     let forward_rate = params.forward_rate.unwrap_or(params.spot_rate);
 
-    // FX Forward: exchange base currency for quote currency at maturity
-    let base_leg = LegDto {
-        leg_number: 1,
-        direction: "Payer".to_string(),
-        currency: params.base_currency.clone(),
-        leg_type: "Principal".to_string(),
-        rate_index: None, // FX Forward has no rate index
-        cashflows: vec![CashflowDto {
-            payment_date: params.expiry.clone(),
-            accrual_start: params.expiry.clone(),
-            accrual_end: params.expiry.clone(),
-            year_fraction: 0.0,
-            notional: params.notional,
-            payoff_type: "Fixed".to_string(),
-            rate: Some(1.0),
-            spread: None,
-            rate_index: None,
-            daily_accruals: None,
-        }],
+    let fx_forward = FxForward {
+        currency_pair: CurrencyPair::new(base_ccy, quote_ccy),
+        forward_rate,
+        settlement_date: delivery_date,
+        notional: params.notional,
+        notional_currency: base_ccy,
     };
 
-    let quote_leg = LegDto {
-        leg_number: 2,
-        direction: "Receiver".to_string(),
-        currency: params.quote_currency.clone(),
-        leg_type: "Principal".to_string(),
-        rate_index: None,
-        cashflows: vec![CashflowDto {
-            payment_date: params.expiry.clone(),
-            accrual_start: params.expiry.clone(),
-            accrual_end: params.expiry.clone(),
-            year_fraction: 0.0,
-            notional: params.notional * forward_rate,
-            payoff_type: "Fixed".to_string(),
-            rate: Some(forward_rate),
-            spread: None,
-            rate_index: None,
-            daily_accruals: None,
-        }],
-    };
+    let conventions = ConventionSet::default();
+    let valuation_date = Date::today();
+    let trade_id_str = generate_trade_id("FXF");
 
-    Ok(TradeExpandResponse {
-        trade_id,
-        trade_type: "FxForward".to_string(),
-        legs: vec![base_leg, quote_leg],
-        metadata: TradeMetadataDto {
-            total_legs: 2,
-            total_cashflows: 2,
-            processing_time_ms: 0.0,
-        },
-    })
+    let trade = fx_forward
+        .expand_to_trade(trade_id_str.clone(), valuation_date, &conventions)
+        .map_err(|e| TradeExpandError::schedule_error(&format!("FxForward expansion error: {:?}", e)))?;
+
+    Ok(convert_trade_to_dto(trade, &trade_id_str, "FxForward"))
 }
 
-/// Expands an FX Option instrument.
+/// Expands an FX Option instrument using infra_master.
 fn expand_fx_option(request: &TradeExpandRequest) -> Result<TradeExpandResponse, TradeExpandError> {
     let params = match &request.params {
         InstrumentParamsUnion::Fx(p) => p,
@@ -1234,43 +1129,40 @@ fn expand_fx_option(request: &TradeExpandRequest) -> Result<TradeExpandResponse,
         }
     };
 
-    let trade_id = generate_trade_id("FXO");
-    let option_type = params.option_type.as_deref().unwrap_or("call");
+    let expiry = parse_date(&params.expiry)?;
+    let base_ccy = parse_currency(&params.base_currency)?;
+    let quote_ccy = parse_currency(&params.quote_currency)?;
     let strike = params.strike.unwrap_or(params.spot_rate);
-
-    let leg = LegDto {
-        leg_number: 1,
-        direction: "Receiver".to_string(),
-        currency: params.quote_currency.clone(),
-        leg_type: "CapFloor".to_string(),
-        rate_index: None, // FX Option has no rate index
-        cashflows: vec![CashflowDto {
-            payment_date: params.expiry.clone(),
-            accrual_start: params.expiry.clone(),
-            accrual_end: params.expiry.clone(),
-            year_fraction: 0.0,
-            notional: params.notional,
-            payoff_type: "VanillaOption".to_string(),
-            rate: Some(strike),
-            spread: None,
-            rate_index: None,
-            daily_accruals: None,
-        }],
+    let option_type_str = params.option_type.as_deref().unwrap_or("call");
+    let option_type = if option_type_str.to_lowercase() == "put" {
+        OptionType::Put
+    } else {
+        OptionType::Call
     };
 
-    Ok(TradeExpandResponse {
-        trade_id,
-        trade_type: format!("FxOption({})", option_type),
-        legs: vec![leg],
-        metadata: TradeMetadataDto {
-            total_legs: 1,
-            total_cashflows: 1,
-            processing_time_ms: 0.0,
-        },
-    })
+    let fx_option = FxVanillaOption {
+        currency_pair: CurrencyPair::new(base_ccy, quote_ccy),
+        strike,
+        expiry,
+        delivery_date: expiry, // Assume same day delivery
+        option_type,
+        exercise_style: ExerciseStyle::European,
+        notional: params.notional,
+        notional_currency: base_ccy,
+    };
+
+    let conventions = ConventionSet::default();
+    let valuation_date = Date::today();
+    let trade_id_str = generate_trade_id("FXO");
+
+    let trade = fx_option
+        .expand_to_trade(trade_id_str.clone(), valuation_date, &conventions)
+        .map_err(|e| TradeExpandError::schedule_error(&format!("FxOption expansion error: {:?}", e)))?;
+
+    Ok(convert_trade_to_dto(trade, &trade_id_str, &format!("FxOption({})", option_type_str)))
 }
 
-/// Expands a Cross-Currency Swap instrument.
+/// Expands a Cross-Currency Swap instrument using infra_master.
 fn expand_cross_currency_swap(
     request: &TradeExpandRequest,
 ) -> Result<TradeExpandResponse, TradeExpandError> {
@@ -1284,72 +1176,42 @@ fn expand_cross_currency_swap(
         }
     };
 
-    let trade_id = generate_trade_id("CCS");
+    let start_date = parse_date(&params.expiry)?;
+    // Default 5Y maturity
+    let maturity = Tenor::FiveYears.add_to_date(start_date, infra_master::time::EndOfMonthRule::Adjust);
+    let domestic_ccy = parse_currency(&params.base_currency)?;
+    let foreign_ccy = parse_currency(&params.quote_currency)?;
+    let domestic_index = currency_to_rate_index(&params.base_currency);
+    let foreign_index = currency_to_rate_index(&params.quote_currency);
 
-    // Assume quarterly payments for 5 years as default
-    let schedule = generate_schedule(
-        &params.expiry, // Use expiry as start for simplicity
-        "5Y",
-        "Quarterly",
-        "Act360",
-    )
-    .map_err(|e| TradeExpandError::schedule_error(&e.message))?;
-
-    let forward_rate = params.forward_rate.unwrap_or(params.spot_rate);
-
-    // Determine rate indices for each currency leg
-    let base_rate_index = default_rate_index_for_currency(&params.base_currency);
-    let quote_rate_index = default_rate_index_for_currency(&params.quote_currency);
-
-    let base_leg = LegDto {
-        leg_number: 1,
-        direction: "Payer".to_string(),
-        currency: params.base_currency.clone(),
-        leg_type: "Floating".to_string(),
-        rate_index: Some(base_rate_index.to_string()),
-        cashflows: schedule_to_cashflows(
-            &schedule,
-            params.notional,
-            0.0,
-            "Linear",
-            Some(base_rate_index),
-        ),
+    let xccy = CrossCurrencyBasisSwap {
+        domestic_currency: domestic_ccy,
+        foreign_currency: foreign_ccy,
+        notional: params.notional,
+        start_date,
+        maturity,
+        domestic_leg: XccyLeg::new(domestic_ccy, domestic_index, Frequency::Quarterly),
+        foreign_leg: XccyLeg::new(foreign_ccy, foreign_index, Frequency::Quarterly),
+        basis_spread: BasisSpread::zero(),
+        convention: XccyBasisConvention::default(),
     };
 
-    let quote_leg = LegDto {
-        leg_number: 2,
-        direction: "Receiver".to_string(),
-        currency: params.quote_currency.clone(),
-        leg_type: "Floating".to_string(),
-        rate_index: Some(quote_rate_index.to_string()),
-        cashflows: schedule_to_cashflows(
-            &schedule,
-            params.notional * forward_rate,
-            0.0,
-            "Linear",
-            Some(quote_rate_index),
-        ),
-    };
+    let conventions = ConventionSet::default();
+    let valuation_date = Date::today();
+    let trade_id_str = generate_trade_id("CCS");
 
-    let total_cf = base_leg.cashflows.len() + quote_leg.cashflows.len();
+    let trade = xccy
+        .expand_to_trade(trade_id_str.clone(), valuation_date, &conventions)
+        .map_err(|e| TradeExpandError::schedule_error(&format!("XCCY expansion error: {:?}", e)))?;
 
-    Ok(TradeExpandResponse {
-        trade_id,
-        trade_type: "CrossCurrencySwap".to_string(),
-        legs: vec![base_leg, quote_leg],
-        metadata: TradeMetadataDto {
-            total_legs: 2,
-            total_cashflows: total_cf,
-            processing_time_ms: 0.0,
-        },
-    })
+    Ok(convert_trade_to_dto(trade, &trade_id_str, "CrossCurrencySwap"))
 }
 
 // =============================================================================
 // Task 3.3: Equity Instrument Expansion
 // =============================================================================
 
-/// Expands an Equity Vanilla Option instrument.
+/// Expands an Equity Vanilla Option instrument using infra_master.
 fn expand_equity_vanilla_option(
     request: &TradeExpandRequest,
 ) -> Result<TradeExpandResponse, TradeExpandError> {
@@ -1363,45 +1225,42 @@ fn expand_equity_vanilla_option(
         }
     };
 
-    let trade_id = generate_trade_id("EQO");
-    let option_type = params.option_type.as_deref().unwrap_or("call");
-
-    let leg = LegDto {
-        leg_number: 1,
-        direction: "Receiver".to_string(),
-        currency: "USD".to_string(), // Default to USD for equity
-        leg_type: "CapFloor".to_string(),
-        rate_index: None, // Equity option has no rate index
-        cashflows: vec![CashflowDto {
-            payment_date: params.expiry.clone(),
-            accrual_start: params.expiry.clone(),
-            accrual_end: params.expiry.clone(),
-            year_fraction: 0.0,
-            notional: params.spot_price, // Use spot as notional reference
-            payoff_type: "VanillaOption".to_string(),
-            rate: Some(params.strike),
-            spread: None,
-            rate_index: None,
-            daily_accruals: None,
-        }],
+    let expiry = parse_date(&params.expiry)?;
+    let option_type_str = params.option_type.as_deref().unwrap_or("call");
+    let option_type = if option_type_str.to_lowercase() == "put" {
+        OptionType::Put
+    } else {
+        OptionType::Call
     };
 
-    Ok(TradeExpandResponse {
-        trade_id,
-        trade_type: format!(
-            "EquityVanillaOption({} on {})",
-            option_type, params.underlying
-        ),
-        legs: vec![leg],
-        metadata: TradeMetadataDto {
-            total_legs: 1,
-            total_cashflows: 1,
-            processing_time_ms: 0.0,
+    let eq_option = EquityVanillaOption {
+        underlying: EquityUnderlying::Index {
+            name: params.underlying.clone(),
         },
-    })
+        strike: params.strike,
+        expiry,
+        option_type,
+        exercise_style: ExerciseStyle::European,
+        notional: params.spot_price,
+        currency: Currency::USD,
+    };
+
+    let conventions = ConventionSet::default();
+    let valuation_date = Date::today();
+    let trade_id_str = generate_trade_id("EQO");
+
+    let trade = eq_option
+        .expand_to_trade(trade_id_str.clone(), valuation_date, &conventions)
+        .map_err(|e| TradeExpandError::schedule_error(&format!("EquityVanillaOption expansion error: {:?}", e)))?;
+
+    Ok(convert_trade_to_dto(
+        trade,
+        &trade_id_str,
+        &format!("EquityVanillaOption({} on {})", option_type_str, params.underlying),
+    ))
 }
 
-/// Expands an Equity Forward instrument.
+/// Expands an Equity Forward instrument using infra_master.
 fn expand_equity_forward(
     request: &TradeExpandRequest,
 ) -> Result<TradeExpandResponse, TradeExpandError> {
@@ -1415,43 +1274,32 @@ fn expand_equity_forward(
         }
     };
 
-    let trade_id = generate_trade_id("EQF");
+    let settlement_date = parse_date(&params.expiry)?;
     let direction = params.direction.as_deref().unwrap_or("long");
 
-    let leg = LegDto {
-        leg_number: 1,
-        direction: if direction == "long" {
-            "Receiver".to_string()
-        } else {
-            "Payer".to_string()
+    let eq_forward = EquityForward {
+        underlying: EquityUnderlying::Index {
+            name: params.underlying.clone(),
         },
-        currency: "USD".to_string(),
-        leg_type: "Generic".to_string(),
-        rate_index: None, // Equity forward has no rate index
-        cashflows: vec![CashflowDto {
-            payment_date: params.expiry.clone(),
-            accrual_start: params.expiry.clone(),
-            accrual_end: params.expiry.clone(),
-            year_fraction: 0.0,
-            notional: params.spot_price,
-            payoff_type: "Linear".to_string(),
-            rate: Some(params.strike),
-            spread: None,
-            rate_index: None, // Equity forward has no rate index
-            daily_accruals: None,
-        }],
+        forward_price: params.strike,
+        settlement_date,
+        notional: params.spot_price,
+        currency: Currency::USD,
     };
 
-    Ok(TradeExpandResponse {
-        trade_id,
-        trade_type: format!("EquityForward({} on {})", direction, params.underlying),
-        legs: vec![leg],
-        metadata: TradeMetadataDto {
-            total_legs: 1,
-            total_cashflows: 1,
-            processing_time_ms: 0.0,
-        },
-    })
+    let conventions = ConventionSet::default();
+    let valuation_date = Date::today();
+    let trade_id_str = generate_trade_id("EQF");
+
+    let trade = eq_forward
+        .expand_to_trade(trade_id_str.clone(), valuation_date, &conventions)
+        .map_err(|e| TradeExpandError::schedule_error(&format!("EquityForward expansion error: {:?}", e)))?;
+
+    Ok(convert_trade_to_dto(
+        trade,
+        &trade_id_str,
+        &format!("EquityForward({} on {})", direction, params.underlying),
+    ))
 }
 
 // =============================================================================
@@ -1465,35 +1313,6 @@ fn generate_trade_id(prefix: &str) -> String {
 }
 
 /// Converts schedule periods to cashflow DTOs.
-fn schedule_to_cashflows(
-    schedule: &[SchedulePeriod],
-    notional: f64,
-    rate: f64,
-    payoff_type: &str,
-    rate_index: Option<&str>,
-) -> Vec<CashflowDto> {
-    schedule
-        .iter()
-        .map(|period| CashflowDto {
-            payment_date: period.payment_date.clone(),
-            accrual_start: period.start_date.clone(),
-            accrual_end: period.end_date.clone(),
-            year_fraction: period.year_fraction,
-            notional,
-            payoff_type: payoff_type.to_string(),
-            rate: if rate != 0.0 { Some(rate) } else { None },
-            spread: None,
-            // Include rate_index for Linear payoffs (floating legs)
-            rate_index: if payoff_type == "Linear" {
-                rate_index.map(|s| s.to_string())
-            } else {
-                None
-            },
-            daily_accruals: None,
-        })
-        .collect()
-}
-
 // =============================================================================
 // Task 4.2: Instruments Metadata
 // =============================================================================

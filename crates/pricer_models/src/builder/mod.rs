@@ -40,7 +40,10 @@ use crate::market::MarketDataError;
 mod error;
 mod grid;
 mod instrument;
+
+#[cfg(feature = "global-bootstrap")]
 mod matrix;
+#[cfg(feature = "global-bootstrap")]
 mod problem;
 
 // =============================================================================
@@ -60,7 +63,10 @@ pub mod vol;
 pub use error::CalibrationError;
 pub use grid::CalibrationGrid;
 pub use instrument::CalibrationInstrument;
+
+#[cfg(feature = "global-bootstrap")]
 pub use matrix::{CalibrationMatrix, CalibrationMatrixBuilder, InterpolationMatrix};
+#[cfg(feature = "global-bootstrap")]
 pub use problem::{CalibrationProblem, CalibrationProblemConfig, JacobianMethod};
 
 // =============================================================================
@@ -77,9 +83,11 @@ pub use curve::{GlobalBootstrapConfig, GlobalBootstrapResult, GlobalBootstrapper
 // =============================================================================
 
 pub use vol::{
+    DeltaVol, DeltaVolSlice,
     FxVolBuilder, FxVolResult,
-    SabrParams, SabrSliceCalibrator,
-    SliceCalibrationConfig, SliceCalibrator,
+    OrderedFloat,
+    SabrBounds, SabrParams, SabrSliceCalibrator,
+    SliceCalibrationConfig, SliceCalibrationDiagnostics, SliceCalibrationResult, SliceCalibrator,
     VolCubeBuilder, VolCubeResult, VolQuote,
 };
 

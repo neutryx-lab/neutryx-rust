@@ -8,7 +8,7 @@ use num_traits::Float;
 
 use super::{
     CalibrationError, OrderedFloat, SabrParams, SabrSliceCalibrator,
-    SliceCalibrationConfig, SliceCalibrator, VolQuote,
+    SliceCalibrationConfig, SliceCalibrationDiagnostics, SliceCalibrator, VolQuote,
 };
 
 // =============================================================================
@@ -87,7 +87,7 @@ impl<T: Float> VolCubeBuilder<T> {
         self.slices
             .entry(key)
             .or_default()
-            .push(VolQuote::new(strike, volatility, forward));
+            .push(VolQuote::new(strike, volatility, forward, expiry));
         self
     }
 
@@ -103,10 +103,12 @@ impl<T: Float> VolCubeBuilder<T> {
         let mut expiries = Vec::new();
         let mut tenors = Vec::new();
         let mut params = BTreeMap::new();
+        let mut diagnostics = BTreeMap::new();
 
         for ((exp, ten), quotes) in &self.slices {
-            let calibrated = self.calibrator.calibrate_slice(quotes, &self.config)?;
-            params.insert((*exp, *ten), calibrated);
+            let result = self.calibrator.calibrate_slice(quotes, &self.config)?;
+            params.insert((*exp, *ten), result.params);
+            diagnostics.insert((*exp, *ten), result.diagnostics);
 
             if !expiries.contains(&exp.0) {
                 expiries.push(exp.0);
@@ -124,6 +126,7 @@ impl<T: Float> VolCubeBuilder<T> {
             expiries,
             tenors,
             params,
+            diagnostics,
         })
     }
 }
@@ -141,6 +144,8 @@ pub struct VolCubeResult<T: Float> {
     pub tenors: Vec<T>,
     /// Calibrated SABR parameters indexed by (expiry, tenor)
     pub params: BTreeMap<(OrderedFloat<T>, OrderedFloat<T>), SabrParams<T>>,
+    /// Calibration diagnostics indexed by (expiry, tenor)
+    pub diagnostics: BTreeMap<(OrderedFloat<T>, OrderedFloat<T>), SliceCalibrationDiagnostics>,
 }
 
 impl<T: Float> VolCubeResult<T> {
@@ -162,6 +167,45 @@ impl<T: Float> VolCubeResult<T> {
     /// Gets all tenors.
     pub fn tenors(&self) -> &[T] {
         &self.tenors
+    }
+
+    /// Gets diagnostics for a specific (expiry, tenor) point.
+    pub fn get_diagnostics(&self, expiry: T, tenor: T) -> Option<&SliceCalibrationDiagnostics> {
+        self.diagnostics.get(&(OrderedFloat(expiry), OrderedFloat(tenor)))
+    }
+
+    /// Returns true if all slices converged.
+    pub fn all_converged(&self) -> bool {
+        self.diagnostics.values().all(|d| d.converged)
+    }
+
+    /// Returns true if all slices have acceptable fit quality.
+    pub fn all_acceptable(&self) -> bool {
+        self.diagnostics.values().all(|d| d.is_acceptable())
+    }
+
+    /// Returns any warnings from calibration across all slices.
+    pub fn warnings(&self) -> Vec<(T, T, &str)> {
+        let mut result = Vec::new();
+        for ((exp, ten), diag) in &self.diagnostics {
+            for warning in &diag.warnings {
+                result.push((exp.0, ten.0, warning.as_str()));
+            }
+        }
+        result
+    }
+
+    /// Returns the maximum RMSE across all slices.
+    pub fn max_rmse(&self) -> f64 {
+        self.diagnostics
+            .values()
+            .map(|d| d.rmse)
+            .fold(0.0, f64::max)
+    }
+
+    /// Returns the total number of iterations across all slices.
+    pub fn total_iterations(&self) -> usize {
+        self.diagnostics.values().map(|d| d.iterations).sum()
     }
 }
 
@@ -199,16 +243,20 @@ mod tests {
     fn test_volcube_builder_multiple_slices() {
         let mut builder: VolCubeBuilder<f64> = VolCubeBuilder::new();
 
-        // 1Y x 5Y
+        // 1Y x 5Y (3 quotes minimum for SABR calibration)
         builder.add_quote(1.0, 5.0, 0.03, 0.2, 0.03);
         builder.add_quote(1.0, 5.0, 0.02, 0.22, 0.03);
+        builder.add_quote(1.0, 5.0, 0.04, 0.21, 0.03);
 
-        // 1Y x 10Y
+        // 1Y x 10Y (3 quotes)
         builder.add_quote(1.0, 10.0, 0.03, 0.19, 0.03);
         builder.add_quote(1.0, 10.0, 0.02, 0.21, 0.03);
+        builder.add_quote(1.0, 10.0, 0.04, 0.20, 0.03);
 
-        // 5Y x 5Y
+        // 5Y x 5Y (3 quotes)
         builder.add_quote(5.0, 5.0, 0.03, 0.18, 0.03);
+        builder.add_quote(5.0, 5.0, 0.02, 0.20, 0.03);
+        builder.add_quote(5.0, 5.0, 0.04, 0.19, 0.03);
 
         let result = builder.calibrate();
         assert!(result.is_ok());
@@ -224,7 +272,10 @@ mod tests {
         let config = SliceCalibrationConfig::rates();
         let mut builder: VolCubeBuilder<f64> = VolCubeBuilder::with_config(config);
 
+        // Need 3 quotes minimum for SABR calibration
         builder.add_quote(1.0, 5.0, 0.03, 0.2, 0.03);
+        builder.add_quote(1.0, 5.0, 0.02, 0.22, 0.03);
+        builder.add_quote(1.0, 5.0, 0.04, 0.21, 0.03);
 
         let result = builder.calibrate();
         assert!(result.is_ok());
@@ -233,8 +284,14 @@ mod tests {
     #[test]
     fn test_volcube_result_get() {
         let mut builder: VolCubeBuilder<f64> = VolCubeBuilder::new();
+        // 1Y x 5Y (3 quotes)
         builder.add_quote(1.0, 5.0, 0.03, 0.2, 0.03);
+        builder.add_quote(1.0, 5.0, 0.02, 0.22, 0.03);
+        builder.add_quote(1.0, 5.0, 0.04, 0.21, 0.03);
+        // 2Y x 10Y (3 quotes)
         builder.add_quote(2.0, 10.0, 0.03, 0.19, 0.03);
+        builder.add_quote(2.0, 10.0, 0.02, 0.21, 0.03);
+        builder.add_quote(2.0, 10.0, 0.04, 0.20, 0.03);
 
         let cube = builder.calibrate().unwrap();
 
@@ -247,9 +304,11 @@ mod tests {
     fn test_volcube_add_slice() {
         let mut builder: VolCubeBuilder<f64> = VolCubeBuilder::new();
 
+        // Need 3 quotes minimum for SABR calibration
         let quotes = vec![
-            VolQuote::new(0.03, 0.2, 0.03),
-            VolQuote::new(0.02, 0.22, 0.03),
+            VolQuote::new(0.03, 0.2, 0.03, 1.0),
+            VolQuote::new(0.02, 0.22, 0.03, 1.0),
+            VolQuote::new(0.04, 0.21, 0.03, 1.0),
         ];
 
         builder.add_slice(1.0, 5.0, quotes);

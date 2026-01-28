@@ -36,6 +36,9 @@ use crate::web::{
     AppState,
 };
 
+use pricer_core::math::formulas::sabr::{sabr_implied_vol as core_sabr_implied_vol, SabrImpliedVolParams};
+use pricer_models::builder::vol::{SabrSliceCalibrator, SliceCalibrationConfig, SliceCalibrator, VolQuote};
+
 // =============================================================================
 // Calibration Model Enums
 // =============================================================================
@@ -868,8 +871,8 @@ pub async fn calibrate(
         let avg_forward =
             instruments.iter().map(|i| i.forward).sum::<f64>() / instruments.len() as f64;
 
-        // Simple SABR calibration (simplified for demo)
-        let (alpha, rho, nu) = calibrate_sabr_simple(instruments, beta, avg_forward);
+        // SABR calibration using pricer_models::builder::vol
+        let (alpha, rho, nu) = calibrate_sabr_slice(instruments, beta, avg_forward, expiry);
 
         parameters.push(SabrParamsOutput {
             expiry,
@@ -883,8 +886,16 @@ pub async fn calibrate(
 
         // Calculate fit quality for each instrument
         for inst in instruments.iter() {
-            let model_vol =
-                sabr_implied_vol(inst.strike, avg_forward, expiry, alpha, beta, rho, nu);
+            let sabr_params = SabrImpliedVolParams {
+                forward: avg_forward,
+                alpha,
+                beta,
+                nu,
+                rho,
+                maturity: expiry,
+            };
+            let model_vol = core_sabr_implied_vol(&sabr_params, inst.strike)
+                .unwrap_or(inst.implied_vol);
             let error = model_vol - inst.implied_vol;
 
             total_error += error * error;
@@ -1023,15 +1034,16 @@ pub async fn get_smile(
         let strike = strike_min + i as f64 * strike_step;
         strikes.push(strike);
 
-        let vol = sabr_implied_vol(
-            strike,
+        let sabr_params_vol = SabrImpliedVolParams {
             forward,
-            query.expiry,
-            params.alpha,
-            params.beta,
-            params.rho,
-            params.nu,
-        );
+            alpha: params.alpha,
+            beta: params.beta,
+            nu: params.nu,
+            rho: params.rho,
+            maturity: query.expiry,
+        };
+        let vol = core_sabr_implied_vol(&sabr_params_vol, strike)
+            .unwrap_or(params.alpha / forward.powf(1.0 - params.beta));
         model_vols.push(vol);
     }
 
@@ -1112,34 +1124,24 @@ pub async fn get_density(
         let strike = strike_min + i as f64 * strike_step;
         strikes.push(strike);
 
+        // Build SABR params once for this slice
+        let sabr_params_density = SabrImpliedVolParams {
+            forward,
+            alpha: params.alpha,
+            beta: params.beta,
+            nu: params.nu,
+            rho: params.rho,
+            maturity: query.expiry,
+        };
+        let fallback_vol = params.alpha / forward.powf(1.0 - params.beta);
+
         // Compute density using central difference
-        let vol_mid = sabr_implied_vol(
-            strike,
-            forward,
-            query.expiry,
-            params.alpha,
-            params.beta,
-            params.rho,
-            params.nu,
-        );
-        let vol_low = sabr_implied_vol(
-            strike - h,
-            forward,
-            query.expiry,
-            params.alpha,
-            params.beta,
-            params.rho,
-            params.nu,
-        );
-        let vol_high = sabr_implied_vol(
-            strike + h,
-            forward,
-            query.expiry,
-            params.alpha,
-            params.beta,
-            params.rho,
-            params.nu,
-        );
+        let vol_mid = core_sabr_implied_vol(&sabr_params_density, strike)
+            .unwrap_or(fallback_vol);
+        let vol_low = core_sabr_implied_vol(&sabr_params_density, strike - h)
+            .unwrap_or(fallback_vol);
+        let vol_high = core_sabr_implied_vol(&sabr_params_density, strike + h)
+            .unwrap_or(fallback_vol);
 
         let c_low = black_call_price(strike - h, forward, query.expiry, vol_low, rate);
         let c_mid = black_call_price(strike, forward, query.expiry, vol_mid, rate);
@@ -1310,15 +1312,16 @@ pub async fn get_surface(
         let row: Vec<f64> = strikes
             .iter()
             .map(|&strike| {
-                sabr_implied_vol(
-                    strike,
-                    params.forward,
-                    expiry,
-                    params.alpha,
-                    params.beta,
-                    params.rho,
-                    params.nu,
-                )
+                let sabr_params_surf = SabrImpliedVolParams {
+                    forward: params.forward,
+                    alpha: params.alpha,
+                    beta: params.beta,
+                    nu: params.nu,
+                    rho: params.rho,
+                    maturity: expiry,
+                };
+                core_sabr_implied_vol(&sabr_params_surf, strike)
+                    .unwrap_or(params.alpha / params.forward.powf(1.0 - params.beta))
             })
             .collect();
 
@@ -1351,238 +1354,70 @@ pub async fn get_surface(
 // Helper Functions
 // =============================================================================
 
-/// SABR calibration using iterative least-squares optimization.
+/// SABR calibration using pricer_models::builder::vol::SabrSliceCalibrator.
 ///
-/// Uses Levenberg-Marquardt style optimization with multi-start to find optimal
-/// (alpha, rho, nu) that minimises the sum of squared errors between model and
-/// market volatilities.
-fn calibrate_sabr_simple(
+/// Delegates to the production SABR calibrator from pricer_models which uses
+/// Levenberg-Marquardt optimisation for robust calibration.
+fn calibrate_sabr_slice(
     instruments: &[&SwaptionInstrument],
     beta: f64,
     forward: f64,
+    expiry: f64,
 ) -> (f64, f64, f64) {
     if instruments.is_empty() {
-        return (0.2 * forward.powf(1.0 - beta), 0.0, 0.3);
+        // Fallback for empty instruments
+        return (0.2 * forward.powf(1.0 - beta), -0.3, 0.4);
     }
 
-    // Find ATM instrument for initial guess
-    let atm_inst = instruments
-        .iter()
-        .min_by(|a, b| {
-            (a.strike - forward)
-                .abs()
-                .partial_cmp(&(b.strike - forward).abs())
-                .unwrap_or(std::cmp::Ordering::Equal)
-        })
-        .unwrap();
-
-    // Initial guess for alpha from ATM vol (accounting for f^(1-beta) scaling)
-    let f_mid = forward.powf(1.0 - beta);
-    let alpha_init = (atm_inst.implied_vol * f_mid).max(0.001);
-
-    // Estimate rho from skew direction
-    let low_strikes: Vec<_> = instruments.iter().filter(|i| i.strike < forward).collect();
-    let high_strikes: Vec<_> = instruments.iter().filter(|i| i.strike > forward).collect();
-    let rho_init = if !low_strikes.is_empty() && !high_strikes.is_empty() {
-        let avg_low_vol =
-            low_strikes.iter().map(|i| i.implied_vol).sum::<f64>() / low_strikes.len() as f64;
-        let avg_high_vol =
-            high_strikes.iter().map(|i| i.implied_vol).sum::<f64>() / high_strikes.len() as f64;
-        let skew = avg_low_vol - avg_high_vol;
-        // Negative skew (higher vol at low strikes) -> negative rho
-        (-skew * 5.0 / atm_inst.implied_vol).clamp(-0.8, 0.8)
-    } else {
-        0.0
-    };
-
-    // Estimate nu from smile curvature
-    let nu_init = if instruments.len() >= 3 {
-        let wing_vols: Vec<f64> = instruments
+    if instruments.len() < 3 {
+        // Fall back to simple estimation for insufficient quotes
+        // Need at least 3 quotes for proper SABR calibration
+        let atm_inst = instruments
             .iter()
-            .filter(|i| (i.strike - forward).abs() > forward * 0.15)
-            .map(|i| i.implied_vol)
-            .collect();
-        if !wing_vols.is_empty() {
-            let avg_wing = wing_vols.iter().sum::<f64>() / wing_vols.len() as f64;
-            let curvature = (avg_wing - atm_inst.implied_vol).max(0.0);
-            (curvature * 10.0 / atm_inst.implied_vol + 0.2).clamp(0.1, 2.0)
-        } else {
-            0.4
-        }
-    } else {
-        0.4
-    };
-
-    // Objective function: sum of squared weighted errors
-    let objective = |a: f64, r: f64, n: f64| -> f64 {
-        instruments
-            .iter()
-            .map(|inst| {
-                let model_vol = sabr_implied_vol(inst.strike, forward, inst.expiry, a, beta, r, n);
-                if model_vol <= 0.0 || model_vol.is_nan() {
-                    return 1e10;
-                }
-                let err = (model_vol - inst.implied_vol) * inst.weight;
-                err * err
+            .min_by(|a, b| {
+                (a.strike - forward)
+                    .abs()
+                    .partial_cmp(&(b.strike - forward).abs())
+                    .unwrap_or(std::cmp::Ordering::Equal)
             })
-            .sum()
-    };
-
-    // Start optimization directly from estimated initial values
-    // For swaptions, rho is typically negative - bias initial guess accordingly
-    let rho_start = rho_init.min(-0.1); // Ensure we start from negative rho
-
-    let (alpha, rho, nu, _) = optimize_sabr(alpha_init, rho_start, nu_init, &objective);
-
-    (alpha, rho, nu)
-}
-
-/// Run LM-style optimization from a starting point.
-fn optimize_sabr<F>(
-    mut alpha: f64,
-    mut rho: f64,
-    mut nu: f64,
-    objective: &F,
-) -> (f64, f64, f64, f64)
-where
-    F: Fn(f64, f64, f64) -> f64,
-{
-    let max_iterations = 150;
-    let tolerance = 1e-12;
-    let mut lambda = 0.001;
-
-    for _ in 0..max_iterations {
-        let current_obj = objective(alpha, rho, nu);
-        if current_obj.is_nan() || current_obj.is_infinite() {
-            break;
-        }
-
-        let h = 1e-7;
-        let grad_alpha =
-            (objective(alpha + h, rho, nu) - objective(alpha - h, rho, nu)) / (2.0 * h);
-        let grad_rho = (objective(alpha, rho + h, nu) - objective(alpha, rho - h, nu)) / (2.0 * h);
-        let grad_nu = (objective(alpha, rho, nu + h) - objective(alpha, rho, nu - h)) / (2.0 * h);
-
-        // Skip if gradients are NaN
-        if grad_alpha.is_nan() || grad_rho.is_nan() || grad_nu.is_nan() {
-            break;
-        }
-
-        let hess_alpha = (objective(alpha + h, rho, nu) - 2.0 * current_obj
-            + objective(alpha - h, rho, nu))
-            / (h * h);
-        let hess_rho = (objective(alpha, rho + h, nu) - 2.0 * current_obj
-            + objective(alpha, rho - h, nu))
-            / (h * h);
-        let hess_nu = (objective(alpha, rho, nu + h) - 2.0 * current_obj
-            + objective(alpha, rho, nu - h))
-            / (h * h);
-
-        let d_alpha = -grad_alpha / (hess_alpha.abs().max(1e-8) + lambda);
-        let d_rho = -grad_rho / (hess_rho.abs().max(1e-8) + lambda);
-        let d_nu = -grad_nu / (hess_nu.abs().max(1e-8) + lambda);
-
-        let mut step = 1.0;
-        let mut new_alpha = alpha;
-        let mut new_rho = rho;
-        let mut new_nu = nu;
-        let mut accepted = false;
-
-        for _ in 0..20 {
-            new_alpha = (alpha + step * d_alpha).clamp(0.001, 1.0);
-            new_rho = (rho + step * d_rho).clamp(-0.95, 0.95);
-            new_nu = (nu + step * d_nu).clamp(0.05, 3.0);
-
-            let new_obj = objective(new_alpha, new_rho, new_nu);
-            if !new_obj.is_nan() && new_obj < current_obj {
-                lambda = (lambda * 0.7).max(1e-10);
-                accepted = true;
-                break;
-            }
-            step *= 0.5;
-        }
-
-        if !accepted {
-            lambda = (lambda * 2.0).min(1e4);
-            continue;
-        }
-
-        let improvement = (alpha - new_alpha).abs() + (rho - new_rho).abs() + (nu - new_nu).abs();
-        alpha = new_alpha;
-        rho = new_rho;
-        nu = new_nu;
-
-        if improvement < tolerance {
-            break;
-        }
+            .unwrap();
+        let f_mid = forward.powf(1.0 - beta);
+        let alpha = (atm_inst.implied_vol * f_mid).clamp(0.001, 1.0);
+        return (alpha, -0.3, 0.4);
     }
 
-    let final_obj = objective(alpha, rho, nu);
-    (alpha, rho, nu, final_obj)
-}
+    // Convert instruments to VolQuote format for the calibrator
+    let quotes: Vec<VolQuote<f64>> = instruments
+        .iter()
+        .map(|inst| {
+            VolQuote::new(inst.strike, inst.implied_vol, forward, expiry)
+        })
+        .collect();
 
-/// SABR implied volatility approximation (Hagan formula).
-fn sabr_implied_vol(
-    strike: f64,
-    forward: f64,
-    expiry: f64,
-    alpha: f64,
-    beta: f64,
-    rho: f64,
-    nu: f64,
-) -> f64 {
-    if strike <= 0.0 || forward <= 0.0 || expiry <= 0.0 || alpha <= 0.0 {
-        return 0.0;
+    // Configure the calibrator for rates
+    let config: SliceCalibrationConfig<f64> = SliceCalibrationConfig::rates()
+        .with_initial_params(0.03, -0.3, 0.4);
+
+    // Run calibration
+    let calibrator = SabrSliceCalibrator::new();
+    match calibrator.calibrate_slice(&quotes, &config) {
+        Ok(result) => (result.params.alpha, result.params.rho, result.params.nu),
+        Err(_) => {
+            // Fallback on calibration failure
+            let atm_inst = instruments
+                .iter()
+                .min_by(|a, b| {
+                    (a.strike - forward)
+                        .abs()
+                        .partial_cmp(&(b.strike - forward).abs())
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                })
+                .unwrap();
+            let f_mid = forward.powf(1.0 - beta);
+            let alpha = (atm_inst.implied_vol * f_mid).clamp(0.001, 1.0);
+            (alpha, -0.3, 0.4)
+        }
     }
-
-    let eps = 1e-10;
-    let one_minus_beta = 1.0 - beta;
-
-    // ATM case
-    if (strike - forward).abs() < eps {
-        let f_mid = forward.powf(one_minus_beta);
-        let term1 = alpha / f_mid;
-        let term2 = (one_minus_beta.powi(2) * alpha.powi(2)) / (24.0 * f_mid.powi(2));
-        let term3 = rho * beta * nu * alpha / (4.0 * f_mid);
-        let term4 = (2.0 - 3.0 * rho.powi(2)) * nu.powi(2) / 24.0;
-        return term1 * (1.0 + (term2 + term3 + term4) * expiry);
-    }
-
-    // General case (Hagan et al. 2002)
-    let log_fk = (forward / strike).ln();
-    let fk_mid = (forward * strike).powf(one_minus_beta / 2.0);
-    let z = (nu / alpha) * fk_mid * log_fk;
-
-    // x(z) = (sqrt(1 - 2*rho*z + z^2) + z - rho) / (1 - rho)
-    // The ratio z/ln(x(z)) appears in the formula; when z→0, x(z)→1, so we need
-    // L'Hopital
-    let x_z = ((1.0 - 2.0 * rho * z + z * z).sqrt() + z - rho) / (1.0 - rho);
-    let x_z_ratio = if (x_z - 1.0).abs() < eps {
-        // When x_z ≈ 1, ln(x_z) ≈ 0, use limit: z/ln(x_z) → 1 as z→0
-        1.0
-    } else {
-        z / x_z.ln()
-    };
-
-    let prefix = alpha
-        / (fk_mid
-            * (1.0
-                + one_minus_beta.powi(2) * log_fk.powi(2) / 24.0
-                + one_minus_beta.powi(4) * log_fk.powi(4) / 1920.0));
-
-    let term2 = (one_minus_beta.powi(2) * alpha.powi(2)) / (24.0 * fk_mid.powi(2));
-    let term3 = rho * beta * nu * alpha / (4.0 * fk_mid);
-    let term4 = (2.0 - 3.0 * rho.powi(2)) * nu.powi(2) / 24.0;
-
-    let result = prefix * x_z_ratio * (1.0 + (term2 + term3 + term4) * expiry);
-
-    // Safeguard: ensure non-negative, finite result
-    if result.is_nan() || result.is_infinite() || result < 0.0 {
-        // Fallback to simple ATM-like approximation
-        return (alpha / fk_mid).max(0.001);
-    }
-
-    result
 }
 
 /// Black call price for density calculation.
@@ -1675,14 +1510,15 @@ mod tests {
     #[test]
     fn test_sabr_implied_vol_atm() {
         let forward = 0.03;
-        let vol = sabr_implied_vol(
-            forward, // ATM
-            forward, 1.0,  // 1Y expiry
-            0.04, // alpha
-            0.5,  // beta
-            -0.2, // rho
-            0.3,  // nu
-        );
+        let sabr_params = SabrImpliedVolParams {
+            forward,
+            alpha: 0.04,
+            beta: 0.5,
+            nu: 0.3,
+            rho: -0.2,
+            maturity: 1.0,
+        };
+        let vol = core_sabr_implied_vol(&sabr_params, forward).unwrap_or(0.0);
 
         assert!(vol > 0.0);
         assert!(vol < 1.0);
@@ -1691,9 +1527,18 @@ mod tests {
     #[test]
     fn test_sabr_implied_vol_otm() {
         let forward = 0.03;
-        let vol_low = sabr_implied_vol(0.02, forward, 1.0, 0.04, 0.5, -0.2, 0.3);
-        let vol_atm = sabr_implied_vol(forward, forward, 1.0, 0.04, 0.5, -0.2, 0.3);
-        let vol_high = sabr_implied_vol(0.04, forward, 1.0, 0.04, 0.5, -0.2, 0.3);
+        let sabr_params = SabrImpliedVolParams {
+            forward,
+            alpha: 0.04,
+            beta: 0.5,
+            nu: 0.3,
+            rho: -0.2,
+            maturity: 1.0,
+        };
+
+        let vol_low = core_sabr_implied_vol(&sabr_params, 0.02).unwrap_or(0.0);
+        let vol_atm = core_sabr_implied_vol(&sabr_params, forward).unwrap_or(0.0);
+        let vol_high = core_sabr_implied_vol(&sabr_params, 0.04).unwrap_or(0.0);
 
         // With negative rho, SABR produces a skew (not a smile):
         // - low strikes have higher vol (negative correlation effect)
@@ -1703,7 +1548,7 @@ mod tests {
     }
 
     #[test]
-    fn test_calibrate_sabr_simple() {
+    fn test_calibrate_sabr_slice() {
         let instruments = vec![
             SwaptionInstrument::new(1.0, 5.0, 0.02, 0.25, 0.03),
             SwaptionInstrument::new(1.0, 5.0, 0.03, 0.20, 0.03),
@@ -1711,7 +1556,7 @@ mod tests {
         ];
 
         let refs: Vec<&SwaptionInstrument> = instruments.iter().collect();
-        let (alpha, rho, nu) = calibrate_sabr_simple(&refs, 0.5, 0.03);
+        let (alpha, rho, nu) = calibrate_sabr_slice(&refs, 0.5, 0.03, 1.0);
 
         assert!(alpha > 0.0);
         assert!(rho > -1.0 && rho < 1.0);

@@ -6,6 +6,14 @@
 //! - Market holidays
 //!
 //! All data is loaded from JSON files in `demo/data/input/events/`.
+//!
+//! # Type Mapping
+//!
+//! Core event types are defined in `infra_master::market::events`:
+//! - [`EventType`]: Classification of market events
+//! - [`EventImportance`]: Importance/impact level
+//! - [`CentralBank`]: Central bank identifier
+//! - [`MarketEvent`]: Complete event structure
 
 use std::path::PathBuf;
 
@@ -19,128 +27,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{error, info};
 
-// =============================================================================
-// Event Types
-// =============================================================================
-
-/// Type of market event.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum EventType {
-    /// Central Bank policy meeting
-    CentralBankMeeting,
-    /// Economic data release (GDP, CPI, NFP, etc.)
-    EconomicRelease,
-    /// Market holiday
-    Holiday,
-    /// Important news or announcement
-    News,
-    /// Options/Futures expiry
-    Expiry,
-    /// Other market event
-    Other,
-}
-
-impl EventType {
-    /// Get display name for the event type.
-    pub fn display_name(&self) -> &'static str {
-        match self {
-            Self::CentralBankMeeting => "Central Bank Meeting",
-            Self::EconomicRelease => "Economic Release",
-            Self::Holiday => "Holiday",
-            Self::News => "News",
-            Self::Expiry => "Expiry",
-            Self::Other => "Other",
-        }
-    }
-
-    /// Get icon name for the event type.
-    pub fn icon(&self) -> &'static str {
-        match self {
-            Self::CentralBankMeeting => "fa-landmark",
-            Self::EconomicRelease => "fa-chart-bar",
-            Self::Holiday => "fa-calendar-times",
-            Self::News => "fa-newspaper",
-            Self::Expiry => "fa-hourglass-end",
-            Self::Other => "fa-info-circle",
-        }
-    }
-}
-
-/// Importance level of an event.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum EventImportance {
-    /// Low importance
-    Low,
-    /// Medium importance
-    Medium,
-    /// High importance (market moving)
-    High,
-    /// Critical importance (major policy decision)
-    Critical,
-}
-
-/// Central Bank identifier.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CentralBank {
-    /// Bank code (e.g., "FED", "ECB", "BOJ", "BOE")
-    pub code: String,
-    /// Full name
-    pub name: String,
-    /// Associated currency
-    pub currency: String,
-    /// Country or region
-    pub region: String,
-}
-
-/// A market event.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MarketEvent {
-    /// Unique event ID
-    pub id: String,
-    /// Event type
-    pub event_type: EventType,
-    /// Event title/name
-    pub title: String,
-    /// Event description (optional)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    /// Event date (ISO 8601 date: YYYY-MM-DD)
-    pub date: String,
-    /// Event time (optional, HH:MM format in local time)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub time: Option<String>,
-    /// Timezone (e.g., "America/New_York", "Europe/London")
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub timezone: Option<String>,
-    /// Associated currency (e.g., "USD", "EUR")
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub currency: Option<String>,
-    /// Associated region/country
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub region: Option<String>,
-    /// Importance level
-    pub importance: EventImportance,
-    /// Central bank info (for CB meetings)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub central_bank: Option<CentralBank>,
-    /// Previous value (for economic releases)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub previous: Option<String>,
-    /// Forecast/consensus value
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub forecast: Option<String>,
-    /// Actual value (if released)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub actual: Option<String>,
-    /// Source of the event data
-    pub source: String,
-    /// Tags for filtering
-    #[serde(default)]
-    pub tags: Vec<String>,
-}
+// Re-export core event types from infra_master
+pub use infra_master::market::events::{CentralBank, EventImportance, EventType, MarketEvent};
 
 // =============================================================================
 // API Request/Response Types
@@ -427,18 +315,9 @@ pub async fn get_event_types() -> impl IntoResponse {
     let loader = EventsDataLoader::new();
     let events = loader.load_all_events();
 
-    let types = vec![
-        EventType::CentralBankMeeting,
-        EventType::EconomicRelease,
-        EventType::Holiday,
-        EventType::News,
-        EventType::Expiry,
-        EventType::Other,
-    ];
-
-    let type_infos: Vec<EventTypeInfo> = types
-        .into_iter()
-        .map(|t| {
+    let type_infos: Vec<EventTypeInfo> = EventType::all()
+        .iter()
+        .map(|&t| {
             let count = events.iter().filter(|e| e.event_type == t).count();
             EventTypeInfo {
                 value: t,

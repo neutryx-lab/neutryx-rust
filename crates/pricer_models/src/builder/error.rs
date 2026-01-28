@@ -156,6 +156,24 @@ pub enum CalibrationError {
         /// Number of parameters
         parameters: usize,
     },
+
+    /// Solver error from pricer_core.
+    ///
+    /// Wraps errors from the underlying numerical solver.
+    #[error("ソルバーエラー: {message}")]
+    SolverError {
+        /// Error message from the solver
+        message: String,
+    },
+
+    /// Missing required input.
+    ///
+    /// A required field was not provided to the builder.
+    #[error("必須入力が不足しています: {field}")]
+    MissingInput {
+        /// Name of the missing field
+        field: String,
+    },
 }
 
 impl CalibrationError {
@@ -246,6 +264,13 @@ impl CalibrationError {
         CalibrationError::DimensionMismatch {
             instruments,
             parameters,
+        }
+    }
+
+    /// Create a solver error.
+    pub fn solver_error(message: impl Into<String>) -> Self {
+        CalibrationError::SolverError {
+            message: message.into(),
         }
     }
 
@@ -368,6 +393,12 @@ impl From<CalibrationError> for pricer_core::types::PricingError {
             } => PricingError::InvalidInput(format!(
                 "Dimension mismatch: {instruments} instruments vs {parameters} parameters"
             )),
+            CalibrationError::SolverError { message } => {
+                PricingError::NumericalInstability(format!("Solver error: {message}"))
+            }
+            CalibrationError::MissingInput { field } => {
+                PricingError::InvalidInput(format!("Missing required input: {field}"))
+            }
         }
     }
 }

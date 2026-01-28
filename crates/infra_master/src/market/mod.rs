@@ -118,6 +118,10 @@ mod rate_type;
 mod ticker;
 mod validation;
 
+// Submodules for extended market data types
+pub mod events;
+pub mod volatility;
+
 // Compounding methods
 pub use compounding::CompoundingMethod;
 // Core types
