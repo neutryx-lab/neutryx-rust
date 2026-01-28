@@ -470,7 +470,7 @@ fn generate_instrument_graph(currency: &str, index_type: &str) -> InstrumentGrap
             label: format!("{} {}", index_type, tenor),
             group: "instrument".to_string(),
             value: Some(0.04 + 0.001 * tenors.iter().position(|t| t == tenor).unwrap() as f64),
-            tenor: Some(tenor.to_string()),
+            tenor: Some((*tenor).to_string()),
         });
 
         links.push(GraphEdgeResponse {

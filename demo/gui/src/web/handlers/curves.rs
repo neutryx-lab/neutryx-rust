@@ -765,7 +765,7 @@ pub async fn build_curve(
 
         // Task 10.1: Parse and validate CB events
         let jump_pillars = if request.enable_jumps {
-            parse_and_validate_cb_events(&request.cb_events, max_tenor, &mut jump_warnings)?
+            parse_and_validate_cb_events(request.cb_events.as_ref(), max_tenor, &mut jump_warnings)?
         } else {
             Vec::new()
         };
@@ -946,7 +946,7 @@ pub async fn build_curve(
 /// Vector of `JumpPillar` for in-range events.
 #[cfg(feature = "global-bootstrap")]
 fn parse_and_validate_cb_events(
-    cb_events: &Option<Vec<CbEventInput>>,
+    cb_events: Option<&Vec<CbEventInput>>,
     max_tenor: f64,
     warnings: &mut Vec<String>,
 ) -> Result<Vec<JumpPillar<f64>>, ApiError> {
@@ -1373,7 +1373,7 @@ mod tests {
         #[test]
         fn test_parse_cb_events_empty() {
             let mut warnings = Vec::new();
-            let result = parse_and_validate_cb_events(&None, 1.0, &mut warnings);
+            let result = parse_and_validate_cb_events(None, 1.0, &mut warnings);
             assert!(result.is_ok());
             assert!(result.unwrap().is_empty());
         }
@@ -1381,7 +1381,8 @@ mod tests {
         #[test]
         fn test_parse_cb_events_empty_vec() {
             let mut warnings = Vec::new();
-            let result = parse_and_validate_cb_events(&Some(Vec::new()), 1.0, &mut warnings);
+            let empty_vec = Vec::new();
+            let result = parse_and_validate_cb_events(Some(&empty_vec), 1.0, &mut warnings);
             assert!(result.is_ok());
             assert!(result.unwrap().is_empty());
         }

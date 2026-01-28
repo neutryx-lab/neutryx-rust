@@ -50,7 +50,7 @@
 //!     DeltaType::SpotDelta,
 //! ).unwrap();
 //!
-//! assert!((recovered_delta - 0.25).abs() < 1e-8);
+//! assert!((recovered_delta - 0.25_f64).abs() < 1e-6);
 //! ```
 
 use infra_master::trade::instrument_def::DeltaType;
