@@ -20,6 +20,12 @@
 //! - Requirement 3: VolCubeキャリブレーション設定
 //! - Requirement 4: キャリブレーション結果パラメータ表示
 //! - Requirement 8: バックエンドAPI実装
+//!
+//! # Type Mapping
+//!
+//! Core calibration types are defined in `infra_master::market::volatility`:
+//! - [`CalibrationModel`]: Parametric model for fitting (SABR, SVI, LocalVol)
+//! - [`StrikeAxisType`]: Strike axis for visualisation
 
 use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Instant};
 
@@ -39,59 +45,8 @@ use crate::web::{
 use pricer_core::math::formulas::sabr::{sabr_implied_vol as core_sabr_implied_vol, SabrImpliedVolParams};
 use pricer_models::builder::vol::{SabrSliceCalibrator, SliceCalibrationConfig, SliceCalibrator, VolQuote};
 
-// =============================================================================
-// Calibration Model Enums
-// =============================================================================
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "snake_case")]
-pub enum CalibrationModel {
-    #[default]
-    Sabr,
-    Svi,
-    LocalVolatility,
-}
-
-impl CalibrationModel {
-    pub fn display_name(&self) -> &'static str {
-        match self {
-            Self::Sabr => "SABR",
-            Self::Svi => "SVI",
-            Self::LocalVolatility => "Local Volatility",
-        }
-    }
-
-    pub fn description(&self) -> &'static str {
-        match self {
-            Self::Sabr => "Stochastic Alpha Beta Rho - standard for rates",
-            Self::Svi => "Stochastic Volatility Inspired - popular for equity",
-            Self::LocalVolatility => "Dupire's local volatility - arbitrage-free",
-        }
-    }
-
-    pub fn is_enabled(&self) -> bool { matches!(self, Self::Sabr) }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "snake_case")]
-pub enum StrikeAxisType {
-    #[default]
-    Absolute,
-    Moneyness,
-    LogMoneyness,
-    Delta,
-}
-
-impl StrikeAxisType {
-    pub fn display_name(&self) -> &'static str {
-        match self {
-            Self::Absolute => "Absolute Strike",
-            Self::Moneyness => "Moneyness (K/F)",
-            Self::LogMoneyness => "Log-Moneyness",
-            Self::Delta => "Delta",
-        }
-    }
-}
+// Re-export calibration types from infra_master
+pub use infra_master::market::volatility::{CalibrationModel, StrikeAxisType};
 
 // =============================================================================
 // Instrument Data Structures
