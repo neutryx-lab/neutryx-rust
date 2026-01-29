@@ -241,7 +241,7 @@ impl<T: RealField + Copy + Float> LinearSolveStrategy<T> for LowerTriangularStra
         let n = matrix.nrows();
         for i in 0..n {
             for j in (i + 1)..n {
-                if matrix[(i, j)].abs() > self.tolerance {
+                if Float::abs(matrix[(i, j)]) > self.tolerance {
                     return Err(LinearAlgebraError::InvalidInput(format!(
                         "Matrix is not lower triangular: element ({}, {}) = {:?}",
                         i,

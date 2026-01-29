@@ -43,6 +43,8 @@ mod grid;
 mod instrument;
 
 #[cfg(feature = "global-bootstrap")]
+mod engine;
+#[cfg(feature = "global-bootstrap")]
 mod jump;
 #[cfg(feature = "global-bootstrap")]
 mod matrix;
@@ -69,6 +71,11 @@ pub mod vol;
 pub use curve::{BootstrapConfig, CurveBootstrapper, InterpolationMethod};
 #[cfg(feature = "global-bootstrap")]
 pub use curve::{GlobalBootstrapConfig, GlobalBootstrapResult, GlobalBootstrapper};
+#[cfg(feature = "global-bootstrap")]
+pub use engine::{
+    CalibrationEngine, CalibrationEngineConfig, CalibrationResult, GlobalCalibrationEngine,
+    SequentialCalibrationEngine,
+};
 pub use error::CalibrationError;
 pub use grid::CalibrationGrid;
 pub use instrument::CalibrationInstrument;
