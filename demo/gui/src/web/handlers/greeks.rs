@@ -805,9 +805,9 @@ mod tests {
 
     #[test]
     fn test_norm_cdf() {
-        assert!((norm_cdf(0.0) - 0.5).abs() < 1e-6);
-        assert!(norm_cdf(3.0) > 0.99);
-        assert!(norm_cdf(-3.0) < 0.01);
+        assert!((norm_cdf(0.0_f64) - 0.5).abs() < 1e-6);
+        assert!(norm_cdf(3.0_f64) > 0.99);
+        assert!(norm_cdf(-3.0_f64) < 0.01);
     }
 
     #[test]

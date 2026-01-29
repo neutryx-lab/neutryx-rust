@@ -24,6 +24,7 @@ use uuid::Uuid;
 
 use crate::web::{
     error::{ApiError, ApiResult},
+    market_data::get_config,
     AppState,
 };
 
@@ -1116,8 +1117,20 @@ pub async fn get_indices() -> ApiResult<Vec<String>> {
 /// Handler for `GET /api/curves/central-bank-meetings`.
 /// Transforms the events array into a currency-keyed meetings object for
 /// frontend consumption.
+///
+/// Uses the shared config from `market_data_config.json` for file paths.
 pub async fn get_central_bank_meetings() -> ApiResult<serde_json::Value> {
-    let file_path = std::path::PathBuf::from("demo/data/input/events/central_bank_meetings.json");
+    let config = get_config();
+    let default_path = "demo/data/input/events/central_bank_meetings.json";
+    let file_path = PathBuf::from(
+        config
+            .paths
+            .events
+            .as_ref()
+            .and_then(|e| e.central_bank_meetings.as_ref())
+            .map(String::as_str)
+            .unwrap_or(default_path),
+    );
 
     if !file_path.exists() {
         return Ok(Json(serde_json::json!({ "meetings": {} })));

@@ -49,7 +49,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{error, info};
 
-use crate::web::market_data::{get_convention, get_conventions_list, MarketDataCache};
+use crate::web::market_data::{get_config, get_convention, get_conventions_list, MarketDataCache};
 
 // =============================================================================
 // Market Data API DTO Types
@@ -459,8 +459,8 @@ pub async fn export_rates_json(
 // Events API Types and Handlers
 // =============================================================================
 
-/// Path to the events data directory.
-const EVENTS_DATA_DIR: &str = "demo/data/input/events";
+/// Default path to the events data directory (fallback).
+const DEFAULT_EVENTS_DIR: &str = "demo/data/input/events";
 
 /// Query parameters for events list.
 #[derive(Debug, Clone, Deserialize)]
@@ -540,22 +540,51 @@ pub struct CentralBanksResponse {
 // =============================================================================
 
 /// Configuration for loading events data from files.
+///
+/// Uses paths from the shared `market_data_config.json` configuration file.
 pub struct EventsDataLoader {
-    /// Base directory for events data files.
-    data_dir: PathBuf,
+    /// Path to central_banks.json.
+    central_banks_path: PathBuf,
+    /// Path to central_bank_meetings.json.
+    cb_meetings_path: PathBuf,
+    /// Path to economic_releases.json.
+    economic_releases_path: PathBuf,
+    /// Path to holidays.json.
+    holidays_path: PathBuf,
 }
 
 impl EventsDataLoader {
-    /// Create a new data loader with the default data directory.
+    /// Create a new data loader using paths from the shared config.
     pub fn new() -> Self {
+        let config = get_config();
+        let default_dir = PathBuf::from(DEFAULT_EVENTS_DIR);
+
+        // Use config paths if available, otherwise fall back to defaults
+        let events = config.paths.events.unwrap_or_default();
+
         Self {
-            data_dir: PathBuf::from(EVENTS_DATA_DIR),
+            central_banks_path: events
+                .central_banks
+                .map(PathBuf::from)
+                .unwrap_or_else(|| default_dir.join("central_banks.json")),
+            cb_meetings_path: events
+                .central_bank_meetings
+                .map(PathBuf::from)
+                .unwrap_or_else(|| default_dir.join("central_bank_meetings.json")),
+            economic_releases_path: events
+                .economic_releases
+                .map(PathBuf::from)
+                .unwrap_or_else(|| default_dir.join("economic_releases.json")),
+            holidays_path: events
+                .holidays
+                .map(PathBuf::from)
+                .unwrap_or_else(|| default_dir.join("holidays.json")),
         }
     }
 
     /// Load central banks list from file.
     pub fn load_central_banks(&self) -> Vec<CentralBank> {
-        let path = self.data_dir.join("central_banks.json");
+        let path = &self.central_banks_path;
         match std::fs::read_to_string(&path) {
             Ok(content) => {
                 #[derive(Deserialize)]
@@ -585,10 +614,9 @@ impl EventsDataLoader {
         }
     }
 
-    /// Load events from a specific file.
-    fn load_events_file(&self, filename: &str) -> Vec<MarketEvent> {
-        let path = self.data_dir.join(filename);
-        match std::fs::read_to_string(&path) {
+    /// Load events from a specific file path.
+    fn load_events_from_path(&self, path: &std::path::Path) -> Vec<MarketEvent> {
+        match std::fs::read_to_string(path) {
             Ok(content) => {
                 #[derive(Deserialize)]
                 struct EventsFile {
@@ -600,13 +628,13 @@ impl EventsDataLoader {
                         data.events
                     }
                     Err(e) => {
-                        error!("Failed to parse {}: {}", filename, e);
+                        error!("Failed to parse {:?}: {}", path, e);
                         Vec::new()
                     }
                 }
             }
             Err(e) => {
-                error!("Failed to read {}: {}", filename, e);
+                error!("Failed to read {:?}: {}", path, e);
                 Vec::new()
             }
         }
@@ -616,10 +644,10 @@ impl EventsDataLoader {
     pub fn load_all_events(&self) -> Vec<MarketEvent> {
         let mut all_events = Vec::new();
 
-        // Load events from each category file
-        all_events.extend(self.load_events_file("central_bank_meetings.json"));
-        all_events.extend(self.load_events_file("economic_releases.json"));
-        all_events.extend(self.load_events_file("holidays.json"));
+        // Load events from each category file using config paths
+        all_events.extend(self.load_events_from_path(&self.cb_meetings_path));
+        all_events.extend(self.load_events_from_path(&self.economic_releases_path));
+        all_events.extend(self.load_events_from_path(&self.holidays_path));
 
         // Sort by date
         all_events.sort_by(|a, b| a.date.cmp(&b.date));

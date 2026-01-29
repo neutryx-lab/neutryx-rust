@@ -9,7 +9,8 @@ use std::{
     sync::atomic::{AtomicI64, Ordering},
 };
 
-use infra_master::time::{Date, EndOfMonthRule, Tenor};
+use infra_master::time::{Date, EndOfMonthRule, Frequency, Tenor};
+use pricer_core::math::rng::PricerRng;
 use serde::Deserialize;
 
 use super::handlers::market::{
@@ -26,46 +27,61 @@ use super::handlers::market::{
 const CONFIG_FILE: &str = "demo/data/input/market_data_config.json";
 
 /// Market data configuration loaded from JSON.
-#[derive(Debug, Deserialize)]
-struct MarketDataConfig {
-    paths: DataPaths,
-    defaults: ConfigDefaults,
-    convention_mapping: ConventionMappingConfig,
+#[derive(Debug, Clone, Deserialize)]
+pub struct MarketDataConfig {
+    pub paths: DataPaths,
+    pub defaults: ConfigDefaults,
+    pub convention_mapping: ConventionMappingConfig,
 }
 
 /// File paths configuration.
-#[derive(Debug, Deserialize)]
-struct DataPaths {
-    rates: String,
-    fx_spots: String,
-    fx_forwards: String,
-    xccy_basis: String,
-    conventions: String,
+#[derive(Debug, Clone, Deserialize)]
+pub struct DataPaths {
+    pub rates: String,
+    pub fx_spots: String,
+    pub fx_forwards: String,
+    pub xccy_basis: String,
+    pub conventions: String,
+    #[serde(default)]
+    pub events: Option<EventsPaths>,
+}
+
+/// Events file paths configuration.
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct EventsPaths {
+    #[serde(default)]
+    pub central_banks: Option<String>,
+    #[serde(default)]
+    pub central_bank_meetings: Option<String>,
+    #[serde(default)]
+    pub economic_releases: Option<String>,
+    #[serde(default)]
+    pub holidays: Option<String>,
 }
 
 /// Default values configuration.
-#[derive(Debug, Deserialize)]
-struct ConfigDefaults {
-    source: String,
-    quote_type: String,
-    staleness_threshold_ms: i64,
+#[derive(Debug, Clone, Deserialize)]
+pub struct ConfigDefaults {
+    pub source: String,
+    pub quote_type: String,
+    pub staleness_threshold_ms: i64,
 }
 
 /// Convention mapping configuration.
-#[derive(Debug, Deserialize)]
-struct ConventionMappingConfig {
-    patterns: Vec<ConventionPattern>,
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct ConventionMappingConfig {
+    pub patterns: Vec<ConventionPattern>,
 }
 
 /// Pattern for convention lookup.
-#[derive(Debug, Deserialize)]
-struct ConventionPattern {
-    currency: String,
-    rate_type: String,
+#[derive(Debug, Clone, Deserialize)]
+pub struct ConventionPattern {
+    pub currency: String,
+    pub rate_type: String,
     #[serde(default)]
-    convention_suffix: Option<String>,
+    pub convention_suffix: Option<String>,
     #[serde(default)]
-    convention_id: Option<String>,
+    pub convention_id: Option<String>,
 }
 
 // =============================================================================
@@ -160,8 +176,11 @@ fn load_config() -> Option<MarketDataConfig> {
     serde_json::from_str(&content).ok()
 }
 
-/// Gets the default config or falls back to hardcoded paths.
-fn get_config() -> MarketDataConfig {
+/// Gets the market data config, falling back to defaults if file not found.
+///
+/// This function is public so that other modules (e.g., market.rs) can
+/// share the same configuration for data file paths.
+pub fn get_config() -> MarketDataConfig {
     load_config().unwrap_or_else(|| MarketDataConfig {
         paths: DataPaths {
             rates: "demo/data/input/rates/market_quotes.json".to_string(),
@@ -169,6 +188,18 @@ fn get_config() -> MarketDataConfig {
             fx_forwards: "demo/data/input/fx/fx_forwards.json".to_string(),
             xccy_basis: "demo/data/input/fx/xccy_basis.json".to_string(),
             conventions: "demo/data/input/conventions/conventions.json".to_string(),
+            events: Some(EventsPaths {
+                central_banks: Some(
+                    "demo/data/input/events/central_banks.json".to_string(),
+                ),
+                central_bank_meetings: Some(
+                    "demo/data/input/events/central_bank_meetings.json".to_string(),
+                ),
+                economic_releases: Some(
+                    "demo/data/input/events/economic_releases.json".to_string(),
+                ),
+                holidays: Some("demo/data/input/events/holidays.json".to_string()),
+            }),
         },
         defaults: ConfigDefaults {
             source: "Internal".to_string(),
@@ -295,9 +326,11 @@ impl MarketDataCache {
     pub async fn refresh(&self) {
         let now_ms = chrono::Utc::now().timestamp_millis();
         let mut rates = self.rates.write().await;
+        let mut rng = PricerRng::from_seed(now_ms as u64);
 
         for rate in rates.iter_mut() {
-            let perturbation = (pseudo_random(rate.timestamp) % 10) as f64 / 10000.0 - 0.0005;
+            // Small perturbation: +/- 0.5 bps using pricer_core RNG
+            let perturbation = rng.gen_uniform() * 0.001 - 0.0005;
             rate.value += perturbation;
             rate.timestamp = now_ms;
         }
@@ -675,37 +708,46 @@ fn get_convention_for_rate(
 // =============================================================================
 
 /// Generates instrument information for a given rate.
+///
+/// Uses `infra_master::time::Tenor` for date calculations and
+/// `infra_master::time::Frequency` for payment frequencies.
 fn generate_instrument_for_rate(rate: &MarketRateResponse) -> Option<InstrumentResponse> {
-    let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
-    let end_date = calculate_end_date(&today, &rate.tenor)?;
+    let today = Date::today();
+    let end_date = calculate_end_date(today, &rate.tenor)?;
 
     match rate.rate_type.as_str() {
         "Deposit" => Some(InstrumentResponse {
             instrument_type: "Deposit".to_string(),
             currency: rate.currency.clone(),
-            start_date: today,
-            end_date,
+            start_date: today.to_string(),
+            end_date: end_date.to_string(),
             rate: rate.value,
             parameters: HashMap::new(),
         }),
         "Swap" => Some(InstrumentResponse {
             instrument_type: "ParSwap".to_string(),
             currency: rate.currency.clone(),
-            start_date: today,
-            end_date,
+            start_date: today.to_string(),
+            end_date: end_date.to_string(),
             rate: rate.value,
             parameters: {
                 let mut params = HashMap::new();
-                params.insert("fixedFrequency".to_string(), serde_json::json!("Annual"));
-                params.insert("floatFrequency".to_string(), serde_json::json!("Quarterly"));
+                params.insert(
+                    "fixedFrequency".to_string(),
+                    serde_json::json!(Frequency::Annual.to_string()),
+                );
+                params.insert(
+                    "floatFrequency".to_string(),
+                    serde_json::json!(Frequency::Quarterly.to_string()),
+                );
                 params
             },
         }),
         "Ois" => Some(InstrumentResponse {
             instrument_type: "OisSwap".to_string(),
             currency: rate.currency.clone(),
-            start_date: today,
-            end_date,
+            start_date: today.to_string(),
+            end_date: end_date.to_string(),
             rate: rate.value,
             parameters: {
                 let mut params = HashMap::new();
@@ -722,26 +764,15 @@ fn generate_instrument_for_rate(rate: &MarketRateResponse) -> Option<InstrumentR
 /// Calculates end date from start date and tenor string.
 ///
 /// Uses `infra_master::time::Tenor` for tenor parsing and date arithmetic.
-fn calculate_end_date(start_date: &str, tenor_str: &str) -> Option<String> {
-    let date = Date::parse(start_date).ok()?;
-
+fn calculate_end_date(start_date: Date, tenor_str: &str) -> Option<Date> {
     // Handle SPOT separately (T+2)
     if tenor_str.eq_ignore_ascii_case("SPOT") {
-        return Some((date + 2).to_string());
+        return Some(start_date + 2);
     }
 
     // Parse tenor using infra_master's Tenor type
     let tenor: Tenor = tenor_str.parse().ok()?;
-    let end_date = tenor.add_to_date(date, EndOfMonthRule::Adjust);
-    Some(end_date.to_string())
-}
-
-/// Simple pseudo-random number generator for perturbations.
-fn pseudo_random(seed: i64) -> i64 {
-    let a: i64 = 1103515245;
-    let c: i64 = 12345;
-    let m: i64 = 2147483648;
-    ((seed.wrapping_mul(a).wrapping_add(c)) % m).abs()
+    Some(tenor.add_to_date(start_date, EndOfMonthRule::Adjust))
 }
 
 // =============================================================================
@@ -834,31 +865,28 @@ mod tests {
 
         #[test]
         fn test_calculate_end_date_uses_tenor() {
-            // Use dynamic date (today) to verify calculation works
             let today = Date::today();
-            let start = today.to_string();
 
             // Test various tenors return Some (valid result)
             for tenor in ["ON", "1W", "1M", "3M", "1Y", "5Y", "10Y", "SPOT"] {
-                let result = calculate_end_date(&start, tenor);
+                let result = calculate_end_date(today, tenor);
                 assert!(result.is_some(), "Failed for tenor: {}", tenor);
             }
         }
 
         #[test]
         fn test_calculate_end_date_invalid_tenor() {
-            let today = Date::today().to_string();
-            let result = calculate_end_date(&today, "INVALID");
+            let today = Date::today();
+            let result = calculate_end_date(today, "INVALID");
             assert!(result.is_none());
         }
 
         #[test]
         fn test_calculate_end_date_relative_order() {
-            // Verify that longer tenors produce later dates
-            let today = Date::today().to_string();
+            let today = Date::today();
 
-            let end_1m = calculate_end_date(&today, "1M").unwrap();
-            let end_1y = calculate_end_date(&today, "1Y").unwrap();
+            let end_1m = calculate_end_date(today, "1M").unwrap();
+            let end_1y = calculate_end_date(today, "1Y").unwrap();
 
             // 1Y should be after 1M
             assert!(end_1y > end_1m);
