@@ -31,9 +31,14 @@
 pub use nalgebra::{Cholesky, DMatrix, DVector, RealField, LU, QR, SVD};
 
 mod error;
+mod strategy;
 mod wrappers;
 
 pub use error::LinearAlgebraError;
+pub use strategy::{
+    forward_substitution, lower_triangular_inverse, LinearSolveStrategy, LowerTriangularStrategy,
+    LUStrategy,
+};
 pub use wrappers::{
     cholesky, cholesky_solve, determinant, frobenius_norm, inverse, lu_decompose, lu_solve,
     mat_mat_mul, mat_vec_mul, qr_decompose, qr_solve, svd_solve, trace,

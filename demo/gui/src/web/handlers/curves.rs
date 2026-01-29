@@ -404,6 +404,31 @@ pub struct CurveBuildResponse {
     /// events outside instrument tenor range.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub jump_warnings: Vec<String>,
+    /// Jacobian inverse matrix from Global Bootstrap calibration.
+    ///
+    /// Present only when Global Bootstrap method is used and
+    /// `store_jacobian_inverse` is enabled. Used for AAD sensitivity
+    /// computation via implicit function theorem.
+    ///
+    /// Format: Row-major 2D array where J⁻¹[i][j] = ∂log(DF_i)/∂(market_rate_j)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub jacobian_inverse: Option<JacobianInverseData>,
+}
+
+/// Jacobian inverse matrix data for API response.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JacobianInverseData {
+    /// Number of rows (pillars).
+    pub rows: usize,
+    /// Number of columns (instruments).
+    pub cols: usize,
+    /// Matrix data in row-major order (rows × cols).
+    pub data: Vec<Vec<f64>>,
+    /// Row labels (pillar tenors in years).
+    pub row_labels: Vec<f64>,
+    /// Column labels (instrument tenors in years).
+    pub col_labels: Vec<f64>,
 }
 
 /// A single curve parameter point for visualisation.
@@ -732,6 +757,7 @@ pub async fn build_curve(
     let mut realized_jumps: Option<Vec<RealizedJumpInfo>> = None;
     let mut jump_fallback_used: Option<bool> = None;
     let mut jump_warnings: Vec<String> = Vec::new();
+    let mut jacobian_inverse_data: Option<JacobianInverseData> = None;
 
     // Build curve - with jump calibration when global-bootstrap feature is enabled
     #[cfg(feature = "global-bootstrap")]
@@ -790,6 +816,28 @@ pub async fn build_curve(
                                 })
                                 .collect(),
                         );
+                    }
+
+                    // Extract Jacobian inverse for AAD sensitivity display
+                    if let Some(ref j_inv) = result.jacobian_inverse {
+                        let rows = j_inv.nrows();
+                        let cols = j_inv.ncols();
+                        let data: Vec<Vec<f64>> = (0..rows)
+                            .map(|i| (0..cols).map(|j| j_inv[(i, j)]).collect())
+                            .collect();
+                        let row_labels: Vec<f64> = result.pillars.iter().map(|&t| t).collect();
+                        // Use filtered specs for column labels (instrument tenors)
+                        let col_labels: Vec<f64> = filtered_specs
+                            .iter()
+                            .filter_map(|s| s.tenor_years().ok())
+                            .collect();
+                        jacobian_inverse_data = Some(JacobianInverseData {
+                            rows,
+                            cols,
+                            data,
+                            row_labels,
+                            col_labels,
+                        });
                     }
 
                     result.curve
@@ -902,6 +950,7 @@ pub async fn build_curve(
         realized_jumps,
         jump_fallback_used,
         jump_warnings,
+        jacobian_inverse: jacobian_inverse_data,
     };
 
     Ok(Json(response))
