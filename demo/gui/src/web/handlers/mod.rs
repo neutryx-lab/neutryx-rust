@@ -40,7 +40,6 @@
 pub mod benchmarks;
 pub mod config;
 pub mod curves;
-pub mod events;
 pub mod exposure;
 pub mod fxcurve;
 #[cfg(feature = "calibration")]

@@ -2,11 +2,13 @@
 
 use std::{path::PathBuf, sync::Arc, time::Instant};
 
+use adapter_loader::parse_tenor_string;
 use axum::{
     extract::{Path, Query, State},
     Json,
 };
 use chrono::{Local, NaiveDate};
+use pricer_models::market::curves::YieldCurve;
 // Conditional imports for global bootstrap with jump calibration
 #[cfg(feature = "global-bootstrap")]
 use pricer_models::builder::{GlobalBootstrapConfig, GlobalBootstrapper, JumpPillar};
@@ -351,9 +353,11 @@ pub struct InstrumentInput {
 }
 
 impl InstrumentInput {
+    /// Parse tenor string into year fraction.
+    fn tenor_years(&self) -> Result<f64, String> { parse_tenor_string(&self.tenor) }
+
     /// Convert to a MarketInstrument for bootstrapping.
-    fn to_market_instrument(&self) -> MarketInstrument<f64> {
-        let tenor_years = parse_tenor_years(&self.tenor);
+    fn to_market_instrument(&self, tenor_years: f64) -> MarketInstrument<f64> {
         let instrument_type = self.instrument_type.to_lowercase();
 
         match instrument_type.as_str() {
@@ -733,18 +737,30 @@ pub async fn build_curve(
         }
     }
 
+    // Parse tenor years and validate
+    let mut instruments_with_tenors: Vec<(&InstrumentInput, f64)> = Vec::new();
+    for inst in &request.instruments {
+        let tenor_years = inst
+            .tenor_years()
+            .map_err(|e| ApiError::validation(e, "tenor"))?;
+        instruments_with_tenors.push((inst, tenor_years));
+    }
+
     // Sort instruments by tenor
-    let mut sorted_instruments = request.instruments.clone();
-    sorted_instruments.sort_by(|a, b| {
-        let ta = parse_tenor_years(&a.tenor);
-        let tb = parse_tenor_years(&b.tenor);
-        ta.partial_cmp(&tb).unwrap_or(std::cmp::Ordering::Equal)
+    instruments_with_tenors.sort_by(|a, b| {
+        a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal)
     });
 
     // Convert to MarketInstrument for bootstrapping
-    let market_instruments: Vec<MarketInstrument<f64>> = sorted_instruments
+    let market_instruments: Vec<MarketInstrument<f64>> = instruments_with_tenors
         .iter()
-        .map(|inst| inst.to_market_instrument())
+        .map(|(inst, tenor_years)| inst.to_market_instrument(*tenor_years))
+        .collect();
+
+    // Keep sorted instruments for later use
+    let sorted_instruments: Vec<_> = instruments_with_tenors
+        .iter()
+        .map(|(inst, _)| (*inst).clone())
         .collect();
 
     use super::types::{CachedCurve, ParRateInput};
@@ -757,11 +773,8 @@ pub async fn build_curve(
     // Build curve - with jump calibration when global-bootstrap feature is enabled
     #[cfg(feature = "global-bootstrap")]
     let curve = {
-        // Get max tenor for filtering CB events
-        let max_tenor = sorted_instruments
-            .last()
-            .map(|i| parse_tenor_years(&i.tenor))
-            .unwrap_or(0.0);
+        // Get max tenor for filtering CB events (from already parsed tenors)
+        let max_tenor = instruments_with_tenors.last().map(|(_, t)| *t).unwrap_or(0.0);
 
         // Task 10.1: Parse and validate CB events
         let jump_pillars = if request.enable_jumps {
@@ -1066,15 +1079,18 @@ pub async fn get_parameters(
         .get(&uuid)
         .ok_or_else(|| ApiError::not_found("Curve", &curve_id))?;
 
+    // Use the YieldCurve trait methods from the underlying BootstrappedCurve
+    let curve = cached_curve.curve();
+
     let mut data = Vec::new();
     let mut t = query.start_year;
 
     while t <= query.end_year {
         let value = match query.r#type {
-            ParameterType::DiscountFactor => interpolate_df(&cached_curve, t),
-            ParameterType::ZeroRate => interpolate_zero_rate(&cached_curve, t),
+            ParameterType::DiscountFactor => curve.discount_factor(t).unwrap_or(1.0),
+            ParameterType::ZeroRate => curve.zero_rate(t).unwrap_or(0.0),
             ParameterType::ForwardRate => {
-                interpolate_forward_rate(&cached_curve, t, query.grid_interval)
+                curve.forward_rate(t, t + query.grid_interval).unwrap_or(0.0)
             }
         };
 
@@ -1148,100 +1164,17 @@ pub async fn get_central_bank_meetings() -> ApiResult<serde_json::Value> {
     Ok(Json(serde_json::json!({ "meetings": meetings })))
 }
 
-// =============================================================================
-// Helper Functions
-// =============================================================================
-
-fn parse_tenor_years(tenor: &str) -> f64 {
-    let tenor = tenor.to_uppercase();
-
-    if let Some(num) = tenor.strip_suffix('Y') {
-        num.parse::<f64>().unwrap_or(0.0)
-    } else if let Some(num) = tenor.strip_suffix('M') {
-        num.parse::<f64>().unwrap_or(0.0) / 12.0
-    } else if let Some(num) = tenor.strip_suffix('W') {
-        num.parse::<f64>().unwrap_or(0.0) / 52.0
-    } else if let Some(num) = tenor.strip_suffix('D') {
-        num.parse::<f64>().unwrap_or(0.0) / 365.0
-    } else {
-        tenor.parse::<f64>().unwrap_or(0.0)
-    }
-}
-
-fn interpolate_df(curve: &super::types::CachedCurve, t: f64) -> f64 {
-    if t <= 0.0 {
-        return 1.0;
-    }
-
-    let pillars = &curve.pillars();
-    let dfs = &curve.discount_factors();
-
-    if pillars.is_empty() {
-        return 1.0;
-    }
-
-    if t <= pillars[0] {
-        let log_df = dfs[0].ln() * t / pillars[0];
-        return log_df.exp();
-    }
-
-    if t >= *pillars.last().unwrap() {
-        let n = pillars.len();
-        let log_df_last = dfs[n - 1].ln();
-        let log_df_prev = dfs[n - 2].ln();
-        let slope = (log_df_last - log_df_prev) / (pillars[n - 1] - pillars[n - 2]);
-        let log_df = log_df_last + slope * (t - pillars[n - 1]);
-        return log_df.exp();
-    }
-
-    for i in 1..pillars.len() {
-        if t <= pillars[i] {
-            let t0 = pillars[i - 1];
-            let t1 = pillars[i];
-            let log_df0 = dfs[i - 1].ln();
-            let log_df1 = dfs[i].ln();
-            let w = (t - t0) / (t1 - t0);
-            let log_df = log_df0 + w * (log_df1 - log_df0);
-            return log_df.exp();
-        }
-    }
-
-    1.0
-}
-
-fn interpolate_zero_rate(curve: &super::types::CachedCurve, t: f64) -> f64 {
-    if t <= 0.0 {
-        if !curve.zero_rates().is_empty() {
-            return curve.zero_rates()[0];
-        }
-        return 0.0;
-    }
-
-    let df = interpolate_df(curve, t);
-    -df.ln() / t
-}
-
-fn interpolate_forward_rate(curve: &super::types::CachedCurve, t: f64, interval: f64) -> f64 {
-    let df_t = interpolate_df(curve, t);
-    let df_t_dt = interpolate_df(curve, t + interval);
-
-    if interval > 0.0 && df_t_dt > 0.0 {
-        (df_t / df_t_dt - 1.0) / interval
-    } else {
-        interpolate_zero_rate(curve, t)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_tenor_years() {
-        assert!((parse_tenor_years("1Y") - 1.0).abs() < 1e-10);
-        assert!((parse_tenor_years("6M") - 0.5).abs() < 1e-10);
-        assert!((parse_tenor_years("3M") - 0.25).abs() < 1e-10);
-        assert!((parse_tenor_years("1W") - 1.0 / 52.0).abs() < 1e-10);
+    fn test_parse_tenor_string() {
+        // Uses adapter_loader::parse_tenor_string
+        assert!((parse_tenor_string("1Y").unwrap() - 1.0).abs() < 1e-10);
+        assert!((parse_tenor_string("6M").unwrap() - 0.5).abs() < 1e-10);
+        assert!((parse_tenor_string("3M").unwrap() - 0.25).abs() < 1e-10);
+        assert!((parse_tenor_string("1W").unwrap() - 1.0 / 52.0).abs() < 1e-10);
     }
 
     #[test]

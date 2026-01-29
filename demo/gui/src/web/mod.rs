@@ -500,6 +500,16 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/instruments", get(handlers::trades::get_instruments));
 
     // Market Data API routes (market-data-viewer-webapp Task 3.5)
+    // Events are now integrated under /api/market/events
+    let events_routes = Router::new()
+        .route("/", get(handlers::market::get_events))
+        .route("/types", get(handlers::market::get_event_types))
+        .route(
+            "/central-banks",
+            get(handlers::market::get_central_banks_list),
+        )
+        .route("/:id", get(handlers::market::get_event_detail));
+
     let market_routes = Router::new()
         .route("/indices", get(handlers::market::get_indices))
         .route("/rates", get(handlers::market::get_market_rates))
@@ -519,6 +529,7 @@ pub fn build_router(state: Arc<AppState>) -> Router {
         .route("/config", get(handlers::market::get_market_config))
         .route("/export/csv", get(handlers::market::export_rates_csv))
         .route("/export/json", get(handlers::market::export_rates_json))
+        .nest("/events", events_routes)
         .with_state(state.market_data_cache.clone());
 
     let api_routes = api_routes.nest("/market", market_routes);
@@ -613,17 +624,6 @@ pub fn build_router(state: Arc<AppState>) -> Router {
 
     let api_routes = api_routes.nest("/irvol", irvol_routes);
 
-    // Events API routes (market-data-viewer-webapp Events)
-    let events_routes = Router::new()
-        .route("/", get(handlers::events::get_events))
-        .route("/types", get(handlers::events::get_event_types))
-        .route(
-            "/central-banks",
-            get(handlers::events::get_central_banks_list),
-        )
-        .route("/:id", get(handlers::events::get_event_detail));
-
-    let api_routes = api_routes.nest("/events", events_routes);
 
     // FxCurve API routes (fx-vol-surface-calibration Task 13.1)
     let fxcurve_routes = Router::new()
