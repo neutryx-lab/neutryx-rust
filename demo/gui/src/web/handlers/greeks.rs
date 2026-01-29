@@ -27,72 +27,12 @@ use super::types::{
     IrsBootstrapErrorResponse, OptionType, SecondOrderGreeksRequest, SecondOrderGreeksResponse,
     TenorDiff, TimeseriesSeries, TimingComparison, TimingStats, BUCKET_TENORS,
 };
+use pricer_core::math::distributions::{norm_cdf, norm_pdf};
+
 use crate::web::AppState;
-
-// =============================================================================
-// Helper Functions
-// =============================================================================
-
-/// Standard normal cumulative distribution function (CDF).
-fn norm_cdf(x: f64) -> f64 {
-    let a1 = 0.254829592;
-    let a2 = -0.284496736;
-    let a3 = 1.421413741;
-    let a4 = -1.453152027;
-    let a5 = 1.061405429;
-    let p = 0.3275911;
-
-    let sign = if x < 0.0 { -1.0 } else { 1.0 };
-    let x = x.abs() / std::f64::consts::SQRT_2;
-
-    let t = 1.0 / (1.0 + p * x);
-    let y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * (-x * x).exp();
-
-    0.5 * (1.0 + sign * y)
-}
-
-/// Standard normal probability density function (PDF).
-fn norm_pdf(x: f64) -> f64 { (-0.5 * x * x).exp() / (2.0 * std::f64::consts::PI).sqrt() }
 
 /// Default tolerance for Greeks comparison (relative error percentage).
 const DEFAULT_TOLERANCE_PCT: f64 = 0.01; // 1%
-
-/// Calculate timing statistics from samples.
-fn calculate_timing_stats(samples: &[u64], total_us: u64) -> TimingStats {
-    if samples.is_empty() {
-        return TimingStats {
-            mean_us: 0.0,
-            std_dev_us: 0.0,
-            min_us: 0.0,
-            max_us: 0.0,
-            total_ms: total_us as f64 / 1000.0,
-        };
-    }
-
-    let n = samples.len() as f64;
-    let mean: f64 = samples.iter().map(|&x| x as f64).sum::<f64>() / n;
-
-    let variance = samples
-        .iter()
-        .map(|&x| {
-            let diff = x as f64 - mean;
-            diff * diff
-        })
-        .sum::<f64>()
-        / n;
-
-    let std_dev = variance.sqrt();
-    let min = *samples.iter().min().unwrap_or(&0) as f64;
-    let max = *samples.iter().max().unwrap_or(&0) as f64;
-
-    TimingStats {
-        mean_us: mean,
-        std_dev_us: std_dev,
-        min_us: min,
-        max_us: max,
-        total_ms: total_us as f64 / 1000.0,
-    }
-}
 
 /// Compute Greeks using Bump-and-Revalue method.
 fn compute_greeks_bump_mode(
@@ -148,27 +88,14 @@ fn compute_greeks_aad_mode(
     (aad_deltas, aad_timing)
 }
 
-/// Calculate simplified IRS NPV.
+/// Calculate IRS NPV using the curve's discount factors and forward rates.
 fn calculate_irs_npv(cached_curve: &CachedCurve, request: &GreeksCompareRequest) -> f64 {
-    let notional = request.notional;
-    let fixed_rate = request.fixed_rate;
-    let tenor_years = request.tenor_years;
-
-    let discount_rate = cached_curve.zero_rates().last().copied().unwrap_or(0.03);
-
-    let payments_per_year = request.payment_frequency.periods_per_year() as f64;
-    let num_payments = (tenor_years * payments_per_year) as i32;
-
-    let payment_amount = notional * fixed_rate / payments_per_year;
-
-    let mut pv = 0.0;
-    for i in 1..=num_payments {
-        let t = i as f64 / payments_per_year;
-        let df = (-discount_rate * t).exp();
-        pv += payment_amount * df;
-    }
-
-    pv
+    cached_curve.calculate_irs_npv(
+        request.notional,
+        request.fixed_rate,
+        request.tenor_years,
+        request.payment_frequency,
+    )
 }
 
 /// Calculate differences between Bump and AAD results.
@@ -397,7 +324,7 @@ pub async fn greeks_compare(
     let (bump_deltas, bump_timing_samples) = compute_greeks_bump_mode(&cached_curve, &request);
     let bump_total_us = bump_start.elapsed().as_micros() as u64;
     let bump_dv01: f64 = bump_deltas.iter().map(|d| d.delta).sum::<f64>().abs();
-    let bump_timing = calculate_timing_stats(&bump_timing_samples, bump_total_us);
+    let bump_timing = TimingStats::from_samples(&bump_timing_samples, bump_total_us);
 
     let bump_npv = calculate_irs_npv(&cached_curve, &request);
 
@@ -415,7 +342,7 @@ pub async fn greeks_compare(
     let (aad_deltas, aad_timing_samples) = compute_greeks_aad_mode(&cached_curve, &request);
     let aad_total_us = aad_start.elapsed().as_micros() as u64;
     let aad_dv01: f64 = aad_deltas.iter().map(|d| d.delta).sum::<f64>().abs();
-    let aad_timing = calculate_timing_stats(&aad_timing_samples, aad_total_us);
+    let aad_timing = TimingStats::from_samples(&aad_timing_samples, aad_total_us);
 
     let aad_npv = bump_npv;
 
@@ -511,7 +438,7 @@ pub async fn greeks_first_order(
     };
 
     let total_us = start_time.elapsed().as_micros() as u64;
-    let timing = calculate_timing_stats(&timing_samples, total_us);
+    let timing = TimingStats::from_samples(&timing_samples, total_us);
 
     let npv = calculate_irs_npv(&cached_curve, &compare_request);
 

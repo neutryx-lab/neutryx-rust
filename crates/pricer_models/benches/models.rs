@@ -11,7 +11,10 @@ use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criteri
 use infra_master::trade::{
     ExerciseStyle, InstrumentParams, PayoffType, PricingInstrument, VanillaOption,
 };
-use pricer_core::math::{distributions::{norm_cdf, norm_pdf}, smoothing::smooth_max};
+use pricer_core::math::{
+    distributions::{norm_cdf, norm_pdf},
+    smoothing::smooth_max,
+};
 use pricer_models::stochastic::{GBMModel, GBMParams, StochasticModel};
 
 /// Benchmark normal distribution CDF computation.

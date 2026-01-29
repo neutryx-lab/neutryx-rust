@@ -345,6 +345,9 @@ fn calculate_stressed_npv(
 }
 
 /// Calculate IRS NPV with the given curve.
+///
+/// Uses CachedCurve::calculate_irs_npv for consistent valuation.
+/// Note: Returns payer perspective (float - fixed).
 fn calculate_irs_npv(
     curve: &CachedCurve,
     notional: f64,
@@ -352,31 +355,7 @@ fn calculate_irs_npv(
     tenor_years: f64,
     payment_frequency: &PaymentFrequency,
 ) -> f64 {
-    // Get payment frequency as number of payments per year
-    let payments_per_year = payment_frequency.periods_per_year();
-
-    let period = 1.0 / payments_per_year as f64;
-    let num_periods = (tenor_years * payments_per_year as f64).round() as usize;
-
-    // Calculate fixed leg PV
-    let mut fixed_leg_pv = 0.0;
-    let fixed_coupon = notional * fixed_rate * period;
-
-    for i in 1..=num_periods {
-        let t = i as f64 * period;
-        let df = interpolate_df(curve, t);
-        fixed_leg_pv += fixed_coupon * df;
-    }
-
-    // Add notional at maturity
-    let maturity_df = interpolate_df(curve, tenor_years);
-    fixed_leg_pv += notional * maturity_df;
-
-    // Calculate floating leg PV (par swap assumption: floating leg PV = notional)
-    let float_leg_pv = notional * 1.0; // At par, floating leg starts at notional
-
-    // NPV = Fixed Leg PV - Float Leg PV (from receiver perspective)
-    fixed_leg_pv - float_leg_pv
+    curve.calculate_irs_npv(notional, fixed_rate, tenor_years, *payment_frequency)
 }
 
 /// Calculate IRS NPV with stressed par rates.
@@ -423,12 +402,6 @@ fn calculate_scenario_stressed_npv(
         Err(_) => 0.0,
     }
 }
-
-/// Interpolate discount factor from curve at time t.
-///
-/// Delegates to the underlying `CachedCurve::discount_factor` method
-/// which uses the `YieldCurve` trait implementation.
-fn interpolate_df(curve: &CachedCurve, t: f64) -> f64 { curve.discount_factor(t) }
 
 // =============================================================================
 // Tests
@@ -547,11 +520,11 @@ mod tests {
     }
 
     // =========================================================================
-    // Helper Function Tests
+    // CachedCurve Tests
     // =========================================================================
 
     #[test]
-    fn test_interpolate_df_at_zero() {
+    fn test_discount_factor_at_zero() {
         use pricer_models::market::curves::{BootstrapInterpolation, BootstrappedCurve};
         let inner_curve = BootstrappedCurve::new(
             vec![1.0],
@@ -562,12 +535,12 @@ mod tests {
         .unwrap();
         let curve = CachedCurve::new(inner_curve, vec![]);
         // At t=0, discount factor should be 1.0
-        let df = interpolate_df(&curve, 0.0);
+        let df = curve.discount_factor(0.0);
         assert!((df - 1.0).abs() < 1e-10);
     }
 
     #[test]
-    fn test_interpolate_df_single_pillar() {
+    fn test_discount_factor_single_pillar() {
         use pricer_models::market::curves::{BootstrapInterpolation, BootstrappedCurve};
         let inner_curve = BootstrappedCurve::new(
             vec![1.0],
@@ -577,12 +550,12 @@ mod tests {
         )
         .unwrap();
         let curve = CachedCurve::new(inner_curve, vec![]);
-        let df = interpolate_df(&curve, 1.0);
+        let df = curve.discount_factor(1.0);
         assert!((df - 0.97).abs() < 1e-10);
     }
 
     #[test]
-    fn test_interpolate_df_interpolation() {
+    fn test_discount_factor_interpolation() {
         use pricer_models::market::curves::{BootstrapInterpolation, BootstrappedCurve};
         let inner_curve = BootstrappedCurve::new(
             vec![1.0, 2.0],
@@ -592,7 +565,7 @@ mod tests {
         )
         .unwrap();
         let curve = CachedCurve::new(inner_curve, vec![]);
-        let df = interpolate_df(&curve, 1.5);
+        let df = curve.discount_factor(1.5);
         // Should be between 0.94 and 0.97
         assert!(df > 0.94 && df < 0.97);
     }

@@ -34,24 +34,6 @@ use crate::web::{
 // Helper Functions
 // =============================================================================
 
-/// Simple IRS pricing (demo approximation).
-fn irs_price(notional: f64, fixed_rate: f64, tenor: f64, market_rate: f64) -> f64 {
-    let pv01 = tenor * 0.9;
-    notional * (fixed_rate - market_rate) * pv01
-}
-
-/// IRS Greeks (simplified for demo).
-fn irs_greeks(notional: f64, tenor: f64) -> GreeksData {
-    let dv01 = notional * tenor * 0.0001 * 0.9;
-    GreeksData {
-        delta: dv01,
-        gamma: 0.0,
-        vega: 0.0,
-        theta: 0.0,
-        rho: dv01,
-    }
-}
-
 /// Validate equity option parameters.
 fn validate_equity_params(params: &EquityOptionParams) -> Result<(), (String, String)> {
     if params.spot <= 0.0 {
@@ -119,22 +101,6 @@ fn validate_fx_params(params: &FxOptionParams) -> Result<(), (String, String)> {
     Ok(())
 }
 
-/// Validate IRS parameters.
-fn validate_irs_params(params: &IrsParams) -> Result<(), (String, String)> {
-    if params.notional <= 0.0 {
-        return Err((
-            "notional".to_string(),
-            "Notional must be positive".to_string(),
-        ));
-    }
-    if params.tenor_years <= 0.0 {
-        return Err((
-            "tenorYears".to_string(),
-            "Tenor must be positive".to_string(),
-        ));
-    }
-    Ok(())
-}
 
 /// Convert BootstrapError to HTTP error response.
 fn convert_bootstrap_error(error: BootstrapError) -> (StatusCode, Json<IrsBootstrapErrorResponse>) {
@@ -381,30 +347,17 @@ pub async fn price_instrument(
             (result.price, greeks)
         }
 
-        (InstrumentType::Irs, InstrumentParams::Irs(params)) => {
-            if let Err((field, message)) = validate_irs_params(params) {
-                return Err((
-                    StatusCode::BAD_REQUEST,
-                    Json(PricingErrorResponse {
-                        error_type: "ValidationError".to_string(),
-                        message,
-                        field: Some(field),
-                    }),
-                ));
-            }
-
-            let pv = irs_price(
-                params.notional,
-                params.fixed_rate,
-                params.tenor_years,
-                market_rate,
-            );
-            let greeks = if request.compute_greeks {
-                Some(irs_greeks(params.notional, params.tenor_years))
-            } else {
-                None
-            };
-            (pv, greeks)
+        (InstrumentType::Irs, InstrumentParams::Irs(_)) => {
+            // IRS pricing via /api/price is not supported in demo GUI.
+            // Use /api/bootstrap and /api/price-irs for IRS pricing with bootstrapped curves.
+            return Err((
+                StatusCode::UNPROCESSABLE_ENTITY,
+                Json(PricingErrorResponse {
+                    error_type: "NotSupported".to_string(),
+                    message: "IRS pricing via /api/price is not supported. Use /api/bootstrap and /api/price-irs instead.".to_string(),
+                    field: None,
+                }),
+            ));
         }
 
         _ => {
@@ -624,11 +577,5 @@ mod tests {
             option_type: OptionType::Call,
         };
         assert!(validate_equity_params(&params).is_err());
-    }
-
-    #[test]
-    fn test_irs_price() {
-        let pv = irs_price(10_000_000.0, 0.05, 5.0, 0.04);
-        assert!(pv > 0.0);
     }
 }

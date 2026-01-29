@@ -481,6 +481,45 @@ pub struct TimingStats {
     pub total_ms: f64,
 }
 
+impl TimingStats {
+    /// Calculate timing statistics from samples.
+    pub fn from_samples(samples: &[u64], total_us: u64) -> Self {
+        if samples.is_empty() {
+            return Self {
+                mean_us: 0.0,
+                std_dev_us: 0.0,
+                min_us: 0.0,
+                max_us: 0.0,
+                total_ms: total_us as f64 / 1000.0,
+            };
+        }
+
+        let n = samples.len() as f64;
+        let mean: f64 = samples.iter().map(|&x| x as f64).sum::<f64>() / n;
+
+        let variance = samples
+            .iter()
+            .map(|&x| {
+                let diff = x as f64 - mean;
+                diff * diff
+            })
+            .sum::<f64>()
+            / n;
+
+        let std_dev = variance.sqrt();
+        let min = *samples.iter().min().unwrap_or(&0) as f64;
+        let max = *samples.iter().max().unwrap_or(&0) as f64;
+
+        Self {
+            mean_us: mean,
+            std_dev_us: std_dev,
+            min_us: min,
+            max_us: max,
+            total_ms: total_us as f64 / 1000.0,
+        }
+    }
+}
+
 /// Risk calculation result for a single method (Bump or AAD).
 ///
 /// Contains all delta values and timing information for one calculation method.
@@ -1095,6 +1134,72 @@ impl CachedCurve {
 
     /// Get the age of this cache entry in seconds.
     pub fn age_seconds(&self) -> u64 { self.created_at.elapsed().as_secs() }
+
+    /// Calculate IRS leg present values using this curve.
+    ///
+    /// Computes both fixed and floating leg PVs for an interest rate swap.
+    /// Uses the curve's discount factors and forward rates for accurate valuation.
+    ///
+    /// # Arguments
+    ///
+    /// * `notional` - The notional principal amount
+    /// * `fixed_rate` - The fixed leg coupon rate (as decimal, e.g., 0.05 for 5%)
+    /// * `tenor_years` - The swap maturity in years
+    /// * `frequency` - Payment frequency for both legs
+    ///
+    /// # Returns
+    ///
+    /// A tuple of (fixed_leg_pv, float_leg_pv)
+    pub fn calculate_irs_legs(
+        &self,
+        notional: f64,
+        fixed_rate: f64,
+        tenor_years: f64,
+        frequency: PaymentFrequency,
+    ) -> (f64, f64) {
+        let payments_per_year = frequency.periods_per_year() as f64;
+        let period_years = 1.0 / payments_per_year;
+        let num_periods = (tenor_years * payments_per_year).ceil() as usize;
+
+        let mut fixed_leg_pv = 0.0;
+        let mut float_leg_pv = 0.0;
+
+        for i in 1..=num_periods {
+            let payment_time = i as f64 * period_years;
+
+            if payment_time > tenor_years + 0.001 {
+                break;
+            }
+
+            let df = self.discount_factor(payment_time);
+
+            // Fixed leg cashflow
+            let fixed_cashflow = notional * fixed_rate * period_years;
+            fixed_leg_pv += fixed_cashflow * df;
+
+            // Float leg cashflow (using forward rates)
+            let prev_time = (i - 1) as f64 * period_years;
+            let fwd_rate = self.forward_rate(prev_time, payment_time);
+            let float_cashflow = notional * fwd_rate * period_years;
+            float_leg_pv += float_cashflow * df;
+        }
+
+        (fixed_leg_pv, float_leg_pv)
+    }
+
+    /// Calculate IRS NPV (from payer's perspective: float - fixed).
+    ///
+    /// Convenience method that computes `float_leg_pv - fixed_leg_pv`.
+    pub fn calculate_irs_npv(
+        &self,
+        notional: f64,
+        fixed_rate: f64,
+        tenor_years: f64,
+        frequency: PaymentFrequency,
+    ) -> f64 {
+        let (fixed_pv, float_pv) = self.calculate_irs_legs(notional, fixed_rate, tenor_years, frequency);
+        float_pv - fixed_pv
+    }
 }
 
 /// In-memory cache for bootstrapped curves.

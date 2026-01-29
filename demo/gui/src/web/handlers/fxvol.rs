@@ -1351,6 +1351,8 @@ fn delta_to_strike(
 
 /// Black call price.
 fn black_call_price(strike: f64, forward: f64, expiry: f64, vol: f64, rate: f64) -> f64 {
+    use pricer_core::math::distributions::norm_cdf;
+
     if strike <= 0.0 || forward <= 0.0 || expiry <= 0.0 || vol <= 0.0 {
         return 0.0;
     }
@@ -1360,24 +1362,6 @@ fn black_call_price(strike: f64, forward: f64, expiry: f64, vol: f64, rate: f64)
     let d2 = d1 - vol * sqrt_t;
 
     let df = (-rate * expiry).exp();
-
-    fn norm_cdf(x: f64) -> f64 {
-        // Abramowitz and Stegun approximation for cumulative normal distribution
-        let a1 = 0.254829592;
-        let a2 = -0.284496736;
-        let a3 = 1.421413741;
-        let a4 = -1.453152027;
-        let a5 = 1.061405429;
-        let p = 0.3275911;
-
-        let sign = if x < 0.0 { -1.0 } else { 1.0 };
-        let x_abs = x.abs() / std::f64::consts::SQRT_2;
-
-        let t = 1.0 / (1.0 + p * x_abs);
-        let y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * (-x_abs * x_abs).exp();
-
-        0.5 * (1.0 + sign * y)
-    }
 
     df * (forward * norm_cdf(d1) - strike * norm_cdf(d2))
 }

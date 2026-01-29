@@ -54,84 +54,6 @@ pub struct RiskMetricsResponse {
 // Helper Functions
 // =============================================================================
 
-/// Calculate timing statistics from samples.
-fn calculate_timing_stats(samples: &[u64], total_us: u64) -> TimingStats {
-    if samples.is_empty() {
-        return TimingStats {
-            mean_us: 0.0,
-            std_dev_us: 0.0,
-            min_us: 0.0,
-            max_us: 0.0,
-            total_ms: total_us as f64 / 1000.0,
-        };
-    }
-
-    let n = samples.len() as f64;
-    let mean: f64 = samples.iter().map(|&x| x as f64).sum::<f64>() / n;
-
-    let variance = samples
-        .iter()
-        .map(|&x| {
-            let diff = x as f64 - mean;
-            diff * diff
-        })
-        .sum::<f64>()
-        / n;
-
-    let std_dev = variance.sqrt();
-    let min = *samples.iter().min().unwrap_or(&0) as f64;
-    let max = *samples.iter().max().unwrap_or(&0) as f64;
-
-    TimingStats {
-        mean_us: mean,
-        std_dev_us: std_dev,
-        min_us: min,
-        max_us: max,
-        total_ms: total_us as f64 / 1000.0,
-    }
-}
-
-/// Calculate IRS leg present values using a cached curve.
-///
-/// Delegates discount factor and forward rate calculations to the
-/// underlying `BootstrappedCurve` via `CachedCurve` methods.
-fn calculate_irs_legs(
-    curve: &CachedCurve,
-    notional: f64,
-    fixed_rate: f64,
-    tenor_years: f64,
-    frequency: PaymentFrequency,
-) -> (f64, f64) {
-    let payments_per_year = frequency.periods_per_year() as f64;
-    let period_years = 1.0 / payments_per_year;
-    let num_periods = (tenor_years * payments_per_year).ceil() as usize;
-
-    let mut fixed_leg_pv = 0.0;
-    let mut float_leg_pv = 0.0;
-
-    for i in 1..=num_periods {
-        let payment_time = i as f64 * period_years;
-
-        if payment_time > tenor_years + 0.001 {
-            break;
-        }
-
-        // Delegate to CachedCurve which uses YieldCurve trait
-        let df = curve.discount_factor(payment_time);
-
-        let fixed_cashflow = notional * fixed_rate * period_years;
-        fixed_leg_pv += fixed_cashflow * df;
-
-        let prev_time = (i - 1) as f64 * period_years;
-        // Delegate to CachedCurve which uses YieldCurve trait
-        let fwd_rate = curve.forward_rate(prev_time, payment_time);
-        let float_cashflow = notional * fwd_rate * period_years;
-        float_leg_pv += float_cashflow * df;
-    }
-
-    (fixed_leg_pv, float_leg_pv)
-}
-
 /// Bootstrap a curve from par rates (helper for bump-and-revalue).
 fn bootstrap_from_par_rates(par_rates: &[ParRateInput]) -> Result<CachedCurve, BootstrapError> {
     let instruments: Result<Vec<MarketInstrument<f64>>, _> = par_rates
@@ -158,8 +80,7 @@ fn compute_deltas_bump_mode(
     cached_curve: &CachedCurve,
     request: &RiskRequest,
 ) -> (Vec<DeltaResult>, Vec<u64>) {
-    let (base_fixed_pv, base_float_pv) = calculate_irs_legs(
-        cached_curve,
+    let (base_fixed_pv, base_float_pv) = cached_curve.calculate_irs_legs(
         request.notional,
         request.fixed_rate,
         request.tenor_years,
@@ -191,8 +112,7 @@ fn compute_deltas_bump_mode(
             }
         };
 
-        let (bumped_fixed_pv, bumped_float_pv) = calculate_irs_legs(
-            &bumped_curve,
+        let (bumped_fixed_pv, bumped_float_pv) = bumped_curve.calculate_irs_legs(
             request.notional,
             request.fixed_rate,
             request.tenor_years,
@@ -222,8 +142,7 @@ fn compute_deltas_aad_mode(
 ) -> (Vec<DeltaResult>, Vec<u64>) {
     let start = Instant::now();
 
-    let (base_fixed_pv, base_float_pv) = calculate_irs_legs(
-        cached_curve,
+    let (base_fixed_pv, base_float_pv) = cached_curve.calculate_irs_legs(
         request.notional,
         request.fixed_rate,
         request.tenor_years,
@@ -251,8 +170,7 @@ fn compute_deltas_aad_mode(
             }
         };
 
-        let (bumped_fixed_pv, bumped_float_pv) = calculate_irs_legs(
-            &bumped_curve,
+        let (bumped_fixed_pv, bumped_float_pv) = bumped_curve.calculate_irs_legs(
             request.notional,
             request.fixed_rate,
             request.tenor_years,
@@ -353,8 +271,7 @@ pub async fn risk_bump(
         }
     };
 
-    let (base_fixed_pv, base_float_pv) = calculate_irs_legs(
-        &cached_curve,
+    let (base_fixed_pv, base_float_pv) = cached_curve.calculate_irs_legs(
         request.notional,
         request.fixed_rate,
         request.tenor_years,
@@ -386,8 +303,7 @@ pub async fn risk_bump(
             }
         };
 
-        let (bumped_fixed_pv, bumped_float_pv) = calculate_irs_legs(
-            &bumped_curve,
+        let (bumped_fixed_pv, bumped_float_pv) = bumped_curve.calculate_irs_legs(
             request.notional,
             request.fixed_rate,
             request.tenor_years,
@@ -409,7 +325,7 @@ pub async fn risk_bump(
 
     let dv01: f64 = deltas.iter().map(|d| d.delta).sum();
 
-    let timing = calculate_timing_stats(&timing_samples, total_start.elapsed().as_micros() as u64);
+    let timing = TimingStats::from_samples(&timing_samples, total_start.elapsed().as_micros() as u64);
 
     broadcast_risk_complete(&state, &request.curve_id, "bump", dv01, None);
 
@@ -474,7 +390,7 @@ pub async fn risk_aad(
 
     let dv01: f64 = deltas.iter().map(|d| d.delta).sum();
 
-    let timing = calculate_timing_stats(&timing_samples, total_start.elapsed().as_micros() as u64);
+    let timing = TimingStats::from_samples(&timing_samples, total_start.elapsed().as_micros() as u64);
 
     broadcast_risk_complete(&state, &request.curve_id, "aad", dv01, None);
 
@@ -530,7 +446,7 @@ pub async fn risk_compare(
     let (bump_deltas, bump_timing_samples) = compute_deltas_bump_mode(&cached_curve, &request);
     let bump_total_us = bump_start.elapsed().as_micros() as u64;
     let bump_dv01: f64 = bump_deltas.iter().map(|d| d.delta).sum();
-    let bump_timing = calculate_timing_stats(&bump_timing_samples, bump_total_us);
+    let bump_timing = TimingStats::from_samples(&bump_timing_samples, bump_total_us);
 
     let bump_result = RiskMethodResult {
         deltas: bump_deltas,
@@ -548,7 +464,7 @@ pub async fn risk_compare(
         let (aad_deltas, aad_timing_samples) = compute_deltas_aad_mode(&cached_curve, &request);
         let aad_total_us = aad_start.elapsed().as_micros() as u64;
         let aad_dv01: f64 = aad_deltas.iter().map(|d| d.delta).sum();
-        let aad_timing = calculate_timing_stats(&aad_timing_samples, aad_total_us);
+        let aad_timing = TimingStats::from_samples(&aad_timing_samples, aad_total_us);
 
         let result = RiskMethodResult {
             deltas: aad_deltas,
@@ -658,7 +574,7 @@ mod tests {
 
     #[test]
     fn test_timing_stats_empty() {
-        let stats = calculate_timing_stats(&[], 1000);
+        let stats = TimingStats::from_samples(&[], 1000);
         assert_eq!(stats.mean_us, 0.0);
         assert_eq!(stats.total_ms, 1.0);
     }
