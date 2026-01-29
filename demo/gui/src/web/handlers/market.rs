@@ -542,6 +542,7 @@ pub struct CentralBanksResponse {
 /// Configuration for loading events data from files.
 ///
 /// Uses paths from the shared `market_data_config.json` configuration file.
+#[allow(clippy::struct_field_names)]
 pub struct EventsDataLoader {
     /// Path to central_banks.json.
     central_banks_path: PathBuf,
@@ -585,7 +586,7 @@ impl EventsDataLoader {
     /// Load central banks list from file.
     pub fn load_central_banks(&self) -> Vec<CentralBank> {
         let path = &self.central_banks_path;
-        match std::fs::read_to_string(&path) {
+        match std::fs::read_to_string(path) {
             Ok(content) => {
                 #[derive(Deserialize)]
                 #[serde(rename_all = "camelCase")]

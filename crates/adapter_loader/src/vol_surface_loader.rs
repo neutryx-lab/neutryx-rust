@@ -505,6 +505,8 @@ impl VolSurfaceLoader {
 
 /// Parse a tenor string (e.g., "1Y", "6M", "3M") to years.
 ///
+/// This is a convenience wrapper around `infra_master::time::parse_tenor_to_years`.
+///
 /// # Arguments
 ///
 /// * `s` - Tenor string
@@ -513,39 +515,13 @@ impl VolSurfaceLoader {
 ///
 /// Tenor in years, or error if parsing fails.
 pub fn parse_tenor_string(s: &str) -> Result<f64, String> {
-    let s = s.trim().to_uppercase();
-
-    if s.ends_with('Y') {
-        let num_str = &s[..s.len() - 1];
-        num_str
-            .parse::<f64>()
-            .map_err(|_| format!("Invalid tenor format: {}", s))
-    } else if s.ends_with('M') {
-        let num_str = &s[..s.len() - 1];
-        num_str
-            .parse::<f64>()
-            .map(|m| m / 12.0)
-            .map_err(|_| format!("Invalid tenor format: {}", s))
-    } else if s.ends_with('W') {
-        let num_str = &s[..s.len() - 1];
-        num_str
-            .parse::<f64>()
-            .map(|w| w / 52.0)
-            .map_err(|_| format!("Invalid tenor format: {}", s))
-    } else if s.ends_with('D') {
-        let num_str = &s[..s.len() - 1];
-        num_str
-            .parse::<f64>()
-            .map(|d| d / 365.0)
-            .map_err(|_| format!("Invalid tenor format: {}", s))
-    } else {
-        // Try parsing as a plain number (years)
-        s.parse::<f64>()
-            .map_err(|_| format!("Invalid tenor format: {}", s))
-    }
+    infra_master::time::parse_tenor_to_years(s)
 }
 
 /// Convert expiry string to NaiveDate.
+///
+/// This is a convenience wrapper around `infra_master::time::parse_expiry_to_date`
+/// that works with `chrono::NaiveDate`.
 ///
 /// Supports:
 /// - ISO date format: "2027-01-25"
@@ -556,20 +532,13 @@ pub fn parse_tenor_string(s: &str) -> Result<f64, String> {
 /// * `expiry_str` - Expiry string
 /// * `as_of_date` - Reference date for tenor-based expiry
 pub fn parse_expiry_string(expiry_str: &str, as_of_date: NaiveDate) -> Result<NaiveDate, String> {
-    // Try ISO date format first
-    if let Ok(date) = NaiveDate::parse_from_str(expiry_str, "%Y-%m-%d") {
-        return Ok(date);
-    }
-
-    // Try tenor format
-    let years = parse_tenor_string(expiry_str)?;
-    let days = (years * 365.0).round() as i64;
-    as_of_date
-        .checked_add_signed(chrono::Duration::days(days))
-        .ok_or_else(|| format!("Date overflow for expiry: {}", expiry_str))
+    let as_of_date = infra_master::time::Date::from(as_of_date);
+    infra_master::time::parse_expiry_to_date(expiry_str, as_of_date).map(|d| d.into_inner())
 }
 
 /// Parse FRA tenor string in "NxM" format (e.g., "3x6", "3X6M", "3Mx6M").
+///
+/// This is a convenience re-export of `infra_master::time::parse_fra_tenor`.
 ///
 /// FRA tenors represent forward rate agreements with a start and end period.
 /// Common formats include:
@@ -597,52 +566,7 @@ pub fn parse_expiry_string(expiry_str: &str, as_of_date: NaiveDate) -> Result<Na
 /// assert!((end - 0.5).abs() < 1e-10);    // 6M = 0.5Y
 /// ```
 pub fn parse_fra_tenor(tenor: &str) -> Option<(f64, f64)> {
-    let tenor = tenor.trim().to_uppercase();
-
-    // Find the 'X' separator
-    let x_pos = tenor.find('X')?;
-    if x_pos == 0 || x_pos == tenor.len() - 1 {
-        return None;
-    }
-
-    let start_part = &tenor[..x_pos];
-    let end_part = &tenor[x_pos + 1..];
-
-    // Parse start period
-    let start_months = parse_fra_period(start_part)?;
-
-    // Parse end period
-    let end_months = parse_fra_period(end_part)?;
-
-    if end_months <= start_months {
-        return None;
-    }
-
-    Some((start_months / 12.0, end_months / 12.0))
-}
-
-/// Parse a single FRA period part (e.g., "3", "3M", "12M").
-///
-/// # Arguments
-///
-/// * `s` - Period string (with or without 'M' suffix)
-///
-/// # Returns
-///
-/// Period in months, or `None` if parsing fails.
-fn parse_fra_period(s: &str) -> Option<f64> {
-    let s = s.trim();
-    if s.is_empty() {
-        return None;
-    }
-
-    // If ends with 'M', strip it and parse as months
-    if let Some(stripped) = s.strip_suffix('M') {
-        stripped.parse::<f64>().ok()
-    } else {
-        // Assume it's already in months
-        s.parse::<f64>().ok()
-    }
+    infra_master::time::parse_fra_tenor(tenor)
 }
 
 // =============================================================================
@@ -678,7 +602,9 @@ mod tests {
 
     #[test]
     fn test_parse_tenor_weeks() {
-        assert!((parse_tenor_string("1W").unwrap() - 1.0 / 52.0).abs() < 1e-10);
+        // Standard tenor "1W" uses days-based calculation from Tenor enum
+        assert!((parse_tenor_string("1W").unwrap() - 7.0 / 365.0).abs() < 1e-10);
+        // Custom week tenors use weeks-based calculation (w / 52.0)
         assert!((parse_tenor_string("4W").unwrap() - 4.0 / 52.0).abs() < 1e-10);
     }
 

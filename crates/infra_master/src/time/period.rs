@@ -342,20 +342,30 @@ impl Tenor {
     /// Returns all tenor codes in their canonical order.
     ///
     /// # Examples
+    /// Returns all tenor codes in canonical order, including common FRA tenors.
+    ///
+    /// FRA tenors (NxM format) are sorted by their end month (maturity),
+    /// placed after the standard tenor of the same maturity:
+    /// - 1x4 (ends at 4M) → between 3M and 6M
+    /// - 3x6 (ends at 6M) → after 6M
+    /// - 6x9 (ends at 9M) → after 9M
+    /// - 9x12 (ends at 12M) → before 1Y
+    ///
+    /// # Examples
     ///
     /// ```
     /// use infra_master::time::Tenor;
     ///
     /// let codes = Tenor::all_codes();
     /// assert_eq!(codes[0], "ON");
-    /// assert_eq!(codes[3], "1M");
-    /// assert_eq!(codes[8], "1Y");
+    /// assert!(codes.contains(&"1x4"));
+    /// assert!(codes.contains(&"3x6"));
     /// ```
     #[must_use]
-    pub const fn all_codes() -> [&'static str; 17] {
+    pub const fn all_codes() -> [&'static str; 21] {
         [
-            "ON", "1W", "2W", "1M", "2M", "3M", "6M", "9M", "1Y", "2Y", "3Y", "5Y", "7Y", "10Y",
-            "15Y", "20Y", "30Y",
+            "ON", "1W", "2W", "1M", "2M", "3M", "1x4", "6M", "3x6", "9M", "6x9", "9x12", "1Y", "2Y",
+            "3Y", "5Y", "7Y", "10Y", "15Y", "20Y", "30Y",
         ]
     }
 
@@ -425,6 +435,42 @@ impl Tenor {
             Tenor::FifteenYears => 180,
             Tenor::TwentyYears => 240,
             Tenor::ThirtyYears => 360,
+        }
+    }
+
+    /// Returns the tenor as a fraction of a year.
+    ///
+    /// Uses 365 days per year for day-based tenors and 12 months per year.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use infra_master::time::Tenor;
+    ///
+    /// assert!((Tenor::Overnight.to_years() - 1.0/365.0).abs() < 1e-10);
+    /// assert!((Tenor::ThreeMonths.to_years() - 0.25).abs() < 1e-10);
+    /// assert!((Tenor::OneYear.to_years() - 1.0).abs() < 1e-10);
+    /// ```
+    #[must_use]
+    pub fn to_years(&self) -> f64 {
+        match self {
+            Tenor::Overnight => 1.0 / 365.0,
+            Tenor::OneWeek => 7.0 / 365.0,
+            Tenor::TwoWeeks => 14.0 / 365.0,
+            Tenor::OneMonth => 1.0 / 12.0,
+            Tenor::TwoMonths => 2.0 / 12.0,
+            Tenor::ThreeMonths => 3.0 / 12.0,
+            Tenor::SixMonths => 6.0 / 12.0,
+            Tenor::NineMonths => 9.0 / 12.0,
+            Tenor::OneYear => 1.0,
+            Tenor::TwoYears => 2.0,
+            Tenor::ThreeYears => 3.0,
+            Tenor::FiveYears => 5.0,
+            Tenor::SevenYears => 7.0,
+            Tenor::TenYears => 10.0,
+            Tenor::FifteenYears => 15.0,
+            Tenor::TwentyYears => 20.0,
+            Tenor::ThirtyYears => 30.0,
         }
     }
 
@@ -628,6 +674,200 @@ impl FromStr for Tenor {
             _ => Err(format!("Unknown tenor: {}", s)),
         }
     }
+}
+
+/// Parses any tenor string to years.
+///
+/// This function handles:
+/// - Standard tenors: ON, 1W, 1M, 1Y, etc.
+/// - Arbitrary tenors: 4M, 18M, 15Y, etc.
+/// - Special tenors: O/N, T/N, S/N, SPOT
+/// - Day-based: 1D, 30D, etc.
+///
+/// # Arguments
+///
+/// * `s` - Tenor string to parse
+///
+/// # Returns
+///
+/// Tenor value in years, or error if parsing fails.
+///
+/// # Examples
+///
+/// ```
+/// use infra_master::time::parse_tenor_to_years;
+///
+/// assert!((parse_tenor_to_years("ON").unwrap() - 1.0/365.0).abs() < 1e-10);
+/// assert!((parse_tenor_to_years("3M").unwrap() - 0.25).abs() < 1e-10);
+/// assert!((parse_tenor_to_years("1Y").unwrap() - 1.0).abs() < 1e-10);
+/// assert!((parse_tenor_to_years("18M").unwrap() - 1.5).abs() < 1e-10);
+/// ```
+pub fn parse_tenor_to_years(s: &str) -> Result<f64, String> {
+    let s = s.trim().to_uppercase();
+
+    // Try standard Tenor first
+    if let Ok(tenor) = s.parse::<Tenor>() {
+        return Ok(tenor.to_years());
+    }
+
+    // Handle special tenors not in Tenor enum
+    match s.as_str() {
+        "T/N" | "TN" => return Ok(2.0 / 365.0),
+        "S/N" | "SN" | "SPOT" => return Ok(2.0 / 365.0),
+        _ => {}
+    }
+
+    // Parse arbitrary tenors: NxY, NxM, NxW, NxD
+    if s.ends_with('Y') {
+        let num_str = &s[..s.len() - 1];
+        return num_str
+            .parse::<f64>()
+            .map_err(|_| format!("Invalid tenor format: {}", s));
+    }
+
+    if s.ends_with('M') {
+        let num_str = &s[..s.len() - 1];
+        return num_str
+            .parse::<f64>()
+            .map(|m| m / 12.0)
+            .map_err(|_| format!("Invalid tenor format: {}", s));
+    }
+
+    if s.ends_with('W') {
+        let num_str = &s[..s.len() - 1];
+        return num_str
+            .parse::<f64>()
+            .map(|w| w / 52.0)
+            .map_err(|_| format!("Invalid tenor format: {}", s));
+    }
+
+    if s.ends_with('D') {
+        let num_str = &s[..s.len() - 1];
+        return num_str
+            .parse::<f64>()
+            .map(|d| d / 365.0)
+            .map_err(|_| format!("Invalid tenor format: {}", s));
+    }
+
+    // Try parsing as a plain number (years)
+    s.parse::<f64>()
+        .map_err(|_| format!("Invalid tenor format: {}", s))
+}
+
+/// Parse FRA tenor string in "NxM" format (e.g., "3x6", "3X6M", "3Mx6M").
+///
+/// FRA tenors represent forward rate agreements with a start and end period.
+/// Common formats include:
+/// - "3x6" - 3 months to 6 months
+/// - "6x12" - 6 months to 12 months
+/// - "3Mx6M" - 3 months to 6 months (explicit month suffix)
+///
+/// # Arguments
+///
+/// * `tenor` - FRA tenor string
+///
+/// # Returns
+///
+/// `Some((start_years, end_years))` if successful, `None` otherwise.
+///
+/// # Examples
+///
+/// ```
+/// use infra_master::time::parse_fra_tenor;
+///
+/// let result = parse_fra_tenor("3x6");
+/// assert!(result.is_some());
+/// let (start, end) = result.unwrap();
+/// assert!((start - 0.25).abs() < 1e-10); // 3M = 0.25Y
+/// assert!((end - 0.5).abs() < 1e-10);    // 6M = 0.5Y
+/// ```
+pub fn parse_fra_tenor(tenor: &str) -> Option<(f64, f64)> {
+    let tenor = tenor.trim().to_uppercase();
+
+    // Find the 'X' separator
+    let x_pos = tenor.find('X')?;
+    if x_pos == 0 || x_pos == tenor.len() - 1 {
+        return None;
+    }
+
+    let start_part = &tenor[..x_pos];
+    let end_part = &tenor[x_pos + 1..];
+
+    // Parse start period
+    let start_months = parse_fra_period(start_part)?;
+
+    // Parse end period
+    let end_months = parse_fra_period(end_part)?;
+
+    if end_months <= start_months {
+        return None;
+    }
+
+    Some((start_months / 12.0, end_months / 12.0))
+}
+
+/// Parse a single FRA period part (e.g., "3", "3M", "12M").
+///
+/// # Arguments
+///
+/// * `s` - Period string (with or without 'M' suffix)
+///
+/// # Returns
+///
+/// Period in months, or `None` if parsing fails.
+fn parse_fra_period(s: &str) -> Option<f64> {
+    let s = s.trim();
+    if s.is_empty() {
+        return None;
+    }
+
+    // If ends with 'M', strip it and parse as months
+    if let Some(stripped) = s.strip_suffix('M') {
+        stripped.parse::<f64>().ok()
+    } else {
+        // Assume it's already in months
+        s.parse::<f64>().ok()
+    }
+}
+
+/// Parse expiry string to Date.
+///
+/// Supports:
+/// - ISO date format: "2027-01-25"
+/// - Tenor from as_of_date: "1Y", "6M", etc.
+///
+/// # Arguments
+///
+/// * `expiry_str` - Expiry string
+/// * `as_of_date` - Reference date for tenor-based expiry
+///
+/// # Examples
+///
+/// ```
+/// use infra_master::time::{Date, parse_expiry_to_date};
+///
+/// let as_of = Date::from_ymd(2024, 1, 1).unwrap();
+/// let date = parse_expiry_to_date("2024-06-01", as_of).unwrap();
+/// assert_eq!(date, Date::from_ymd(2024, 6, 1).unwrap());
+///
+/// let date = parse_expiry_to_date("1Y", as_of).unwrap();
+/// assert_eq!(date, Date::from_ymd(2025, 1, 1).unwrap());
+/// ```
+pub fn parse_expiry_to_date(expiry_str: &str, as_of_date: Date) -> Result<Date, String> {
+    // Try ISO date format first
+    if let Ok(date) = Date::from_str(expiry_str) {
+        return Ok(date);
+    }
+
+    // Try tenor format
+    let years = parse_tenor_to_years(expiry_str)?;
+    let days = (years * 365.0).round() as i64;
+
+    as_of_date
+        .into_inner()
+        .checked_add_signed(chrono::Duration::days(days))
+        .map(Date::from)
+        .ok_or_else(|| format!("Date overflow for expiry: {}", expiry_str))
 }
 
 impl fmt::Display for Tenor {

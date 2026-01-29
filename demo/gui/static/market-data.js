@@ -39,22 +39,25 @@ const marketDataViewer = (() => {
     let TENOR_ORDER = {};
 
     /**
-     * Compares two tenor strings using INFRA_MASTER Tenor enum order.
+     * Compares two tenor strings using INFRA_MASTER Tenor order from API.
+     * The TENOR_ORDER map includes FRA tenors in their correct positions.
      * Falls back to string comparison for unknown tenors.
      */
     function compareTenor(a, b) {
         const aUpper = String(a).toUpperCase();
         const bUpper = String(b).toUpperCase();
+
         const aOrder = TENOR_ORDER[aUpper];
         const bOrder = TENOR_ORDER[bUpper];
 
-        // Both known tenors
+        // Both known tenors: use TENOR_ORDER
         if (aOrder !== undefined && bOrder !== undefined) {
             return aOrder - bOrder;
         }
         // Unknown tenor goes to the end
         if (aOrder === undefined && bOrder !== undefined) return 1;
         if (aOrder !== undefined && bOrder === undefined) return -1;
+
         // Both unknown: fallback to string comparison
         return aUpper.localeCompare(bUpper);
     }
@@ -79,20 +82,10 @@ const marketDataViewer = (() => {
             config.tenorOrder.forEach((tenor, index) => {
                 TENOR_ORDER[tenor.toUpperCase()] = index;
             });
-            // Add alternative notation for Overnight
-            if (TENOR_ORDER['ON'] !== undefined) {
-                TENOR_ORDER['O/N'] = TENOR_ORDER['ON'];
-            }
 
             log('Market config loaded:', Object.keys(TENOR_ORDER).length, 'tenors');
         } catch (error) {
-            log('Failed to load market config:', error);
-            // Fallback to default order if API fails
-            TENOR_ORDER = {
-                'ON': 0, 'O/N': 0, '1W': 1, '2W': 2, '1M': 3, '2M': 4, '3M': 5,
-                '6M': 6, '9M': 7, '1Y': 8, '2Y': 9, '3Y': 10, '5Y': 11, '7Y': 12,
-                '10Y': 13, '15Y': 14, '20Y': 15, '30Y': 16
-            };
+            logError('Failed to load market config:', error);
         }
     }
 
