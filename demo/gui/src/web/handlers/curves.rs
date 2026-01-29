@@ -706,8 +706,14 @@ pub async fn build_curve(
     // Validate rates using adapter_loader
     validate_rates(&specs, -0.10, 0.50).map_err(|e| convert_parse_error(&e))?;
 
+    // Filter duplicate maturities - when multiple instruments have the same
+    // effective maturity (e.g., FRA 3x6 and Future 6M both at 0.5Y), keep only
+    // the highest priority instrument
+    let filtered_specs = filter_duplicate_maturities(specs);
+
     // Parse instruments using adapter_loader (handles sorting by tenor)
-    let market_instruments = parse_instruments(&specs).map_err(|e| convert_parse_error(&e))?;
+    let market_instruments =
+        parse_instruments(&filtered_specs).map_err(|e| convert_parse_error(&e))?;
 
     // Keep original instruments for par rates (sorted to match market_instruments)
     let mut sorted_instruments = request.instruments.clone();
@@ -1039,6 +1045,80 @@ fn convert_parse_error(error: &InstrumentParseError) -> ApiError {
             ApiError::validation("At least one instrument is required", "instruments")
         }
     }
+}
+
+/// Get the priority of an instrument type for duplicate maturity resolution.
+///
+/// Lower numbers have higher priority. When multiple instruments have the same
+/// maturity, the one with the highest priority (lowest number) will be selected.
+///
+/// Priority order (highest to lowest):
+/// 1. deposit - Most direct short-term rate
+/// 2. ois - Overnight index swap, highly liquid
+/// 3. swap/irs - Standard benchmark instruments
+/// 4. fra - Forward rate agreements
+/// 5. future - Futures (may require convexity adjustment)
+fn instrument_type_priority(instrument_type: &str) -> u8 {
+    match instrument_type.to_lowercase().as_str() {
+        "deposit" | "depo" => 1,
+        "ois" => 2,
+        "swap" | "irs" => 3,
+        "fra" => 4,
+        "future" | "futures" => 5,
+        _ => 6,
+    }
+}
+
+/// Filter duplicate maturities from instruments, keeping the highest priority
+/// instrument for each maturity.
+///
+/// This function resolves conflicts when multiple instruments have the same
+/// effective maturity (e.g., FRA 3x6 and Future 6M both mature at 0.5Y).
+///
+/// # Arguments
+///
+/// * `specs` - Vector of instrument specifications
+///
+/// # Returns
+///
+/// A filtered vector with at most one instrument per maturity, selected by
+/// priority.
+fn filter_duplicate_maturities(specs: Vec<InstrumentSpec>) -> Vec<InstrumentSpec> {
+    use std::collections::HashMap;
+
+    const MATURITY_TOLERANCE: f64 = 1e-6;
+
+    // Group instruments by maturity (rounded to avoid floating point issues)
+    let mut maturity_groups: HashMap<i64, Vec<InstrumentSpec>> = HashMap::new();
+
+    for spec in specs {
+        if let Ok(tenor) = spec.tenor_years() {
+            // Round to 6 decimal places for grouping (1e-6 year ≈ 31 seconds)
+            let key = (tenor * 1_000_000.0).round() as i64;
+            maturity_groups.entry(key).or_default().push(spec);
+        }
+    }
+
+    // Select the highest priority instrument from each group
+    let mut result: Vec<InstrumentSpec> = Vec::with_capacity(maturity_groups.len());
+
+    for (_key, mut group) in maturity_groups {
+        // Sort by priority (ascending = higher priority first)
+        group.sort_by_key(|s| instrument_type_priority(&s.instrument_type));
+        // Take the first (highest priority) instrument
+        if let Some(best) = group.into_iter().next() {
+            result.push(best);
+        }
+    }
+
+    // Sort by maturity for consistent output
+    result.sort_by(|a, b| {
+        let ta = a.tenor_years().unwrap_or(0.0);
+        let tb = b.tenor_years().unwrap_or(0.0);
+        ta.partial_cmp(&tb).unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    result
 }
 
 /// Handler for `GET /api/curves/{curveId}/parameters`.
