@@ -5,7 +5,8 @@
 //! Newton-Raphson system:
 //!
 //! - **LUStrategy**: Full dense matrix, O(n³) - used by Global Bootstrap
-//! - **LowerTriangularStrategy**: Exploits triangular structure, O(n²) - used by Sequential Bootstrap
+//! - **LowerTriangularStrategy**: Exploits triangular structure, O(n²) - used
+//!   by Sequential Bootstrap
 //!
 //! ## Mathematical Background
 //!
@@ -18,8 +19,8 @@
 //! The difference lies in the Jacobian structure:
 //!
 //! - **Global**: Dense Jacobian, requires LU decomposition
-//! - **Sequential**: Lower triangular Jacobian (when instruments sorted by maturity),
-//!   can use fast forward substitution
+//! - **Sequential**: Lower triangular Jacobian (when instruments sorted by
+//!   maturity), can use fast forward substitution
 //!
 //! ## AAD Integration
 //!
@@ -31,11 +32,13 @@
 
 use num_traits::Float;
 use pricer_core::math::{
-    linalg::{DMatrix, LinearSolveStrategy, LowerTriangularStrategy, LUStrategy, RealField},
+    linalg::{DMatrix, LUStrategy, LinearSolveStrategy, LowerTriangularStrategy, RealField},
     numeric::from_f64,
 };
 
-use super::{CalibrationError, CalibrationInstrument, CalibrationProblem, CalibrationProblemConfig};
+use super::{
+    CalibrationError, CalibrationInstrument, CalibrationProblem, CalibrationProblemConfig,
+};
 use crate::{
     builder::jump::JumpPillar,
     market::curves::{BootstrapInterpolation, BootstrappedCurve},
@@ -201,7 +204,8 @@ impl<T: Float + RealField + Copy> CalibrationEngine<T, LUStrategy<T>> {
 }
 
 impl<T: Float + RealField + Copy> CalibrationEngine<T, LowerTriangularStrategy<T>> {
-    /// Create a new engine with lower triangular strategy (for Sequential Bootstrap).
+    /// Create a new engine with lower triangular strategy (for Sequential
+    /// Bootstrap).
     pub fn with_triangular_strategy(config: CalibrationEngineConfig<T>) -> Self {
         Self {
             config,
@@ -221,14 +225,10 @@ where
     }
 
     /// Get the configuration.
-    pub fn config(&self) -> &CalibrationEngineConfig<T> {
-        &self.config
-    }
+    pub fn config(&self) -> &CalibrationEngineConfig<T> { &self.config }
 
     /// Get the strategy name.
-    pub fn strategy_name(&self) -> &'static str {
-        self.strategy.name()
-    }
+    pub fn strategy_name(&self) -> &'static str { self.strategy.name() }
 
     /// Calibrate a curve from instruments.
     ///
@@ -239,7 +239,10 @@ where
     /// # Returns
     ///
     /// Calibration result containing the curve and diagnostics.
-    pub fn calibrate<I>(&mut self, instruments: &[I]) -> Result<CalibrationResult<T>, CalibrationError>
+    pub fn calibrate<I>(
+        &mut self,
+        instruments: &[I],
+    ) -> Result<CalibrationResult<T>, CalibrationError>
     where
         I: CalibrationInstrument<T> + Clone,
     {
@@ -357,7 +360,9 @@ where
 
             // Decompose and solve
             self.strategy.decompose(&jacobian).map_err(|e| {
-                CalibrationError::numerical_instability(format!("Jacobian decomposition failed: {e}"))
+                CalibrationError::numerical_instability(format!(
+                    "Jacobian decomposition failed: {e}"
+                ))
             })?;
 
             let delta = self.strategy.solve(&residuals).map_err(|e| {
@@ -476,7 +481,9 @@ where
 
             // Decompose and solve
             self.strategy.decompose(&jacobian).map_err(|e| {
-                CalibrationError::numerical_instability(format!("Jacobian decomposition failed: {e}"))
+                CalibrationError::numerical_instability(format!(
+                    "Jacobian decomposition failed: {e}"
+                ))
             })?;
 
             let delta = self.strategy.solve(&residuals).map_err(|e| {
@@ -594,7 +601,10 @@ mod tests {
         if result.is_ok() {
             let result = result.unwrap();
             assert!(result.converged);
-            assert_eq!(result.strategy_name, "Forward Substitution (Lower Triangular)");
+            assert_eq!(
+                result.strategy_name,
+                "Forward Substitution (Lower Triangular)"
+            );
         }
     }
 

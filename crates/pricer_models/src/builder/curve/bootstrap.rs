@@ -336,7 +336,8 @@ impl CurveBootstrapper {
         self.bootstrap_instruments(&instruments)
     }
 
-    /// Bootstrap with Jacobian inverse computation using GlobalCalibrationEngine.
+    /// Bootstrap with Jacobian inverse computation using
+    /// GlobalCalibrationEngine.
     ///
     /// This method uses the unified `CalibrationEngine<LUStrategy>` internally
     /// to compute the Jacobian inverse, which is useful for AAD-based
@@ -357,12 +358,17 @@ impl CurveBootstrapper {
     pub fn bootstrap_with_jacobian<I>(
         &self,
         instruments: &[I],
-    ) -> Result<(BootstrappedCurve<f64>, Option<pricer_core::math::linalg::DMatrix<f64>>), BootstrapError>
+    ) -> Result<
+        (
+            BootstrappedCurve<f64>,
+            Option<pricer_core::math::linalg::DMatrix<f64>>,
+        ),
+        BootstrapError,
+    >
     where
         I: CalibrationInstrument<f64> + Clone,
     {
         use crate::builder::engine::{CalibrationEngine, CalibrationEngineConfig};
-        use crate::market::curves::BootstrapInterpolation;
 
         let engine_config = CalibrationEngineConfig {
             tolerance: self.config.tolerance,
@@ -378,9 +384,9 @@ impl CurveBootstrapper {
 
         let mut engine = CalibrationEngine::with_lu_strategy(engine_config);
 
-        let result = engine.calibrate(instruments).map_err(|e| {
-            BootstrapError::InvalidInput(format!("CalibrationEngine failed: {e}"))
-        })?;
+        let result = engine
+            .calibrate(instruments)
+            .map_err(|e| BootstrapError::InvalidInput(format!("CalibrationEngine failed: {e}")))?;
 
         if !result.converged {
             return Err(BootstrapError::ConvergenceFailure {

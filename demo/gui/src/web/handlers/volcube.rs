@@ -673,7 +673,8 @@ impl VolCubeDataLoader {
 
     /// Convert IrVolFile (new format) to VolCubeFile (API format).
     ///
-    /// Extracts lognormal quotes and converts them to SwaptionInstrument format.
+    /// Extracts lognormal quotes and converts them to SwaptionInstrument
+    /// format.
     fn convert_ir_vol_to_volcube(&self, index: &str, ir_vol: &IrVolFile) -> VolCubeFile {
         let mut instruments = Vec::new();
 

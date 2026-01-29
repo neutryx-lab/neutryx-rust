@@ -92,7 +92,10 @@ const curveBuilder = {
         enableJumpsToggle: null,
         cbEventsContainer: null,
         addCbEventBtn: null,
-        jumpResultsContainer: null
+        jumpResultsContainer: null,
+        // Jacobian inverse display elements
+        jacobianInverseSection: null,
+        jacobianInverseContainer: null
     },
 
     // Central bank meeting dates cache
@@ -214,6 +217,9 @@ const curveBuilder = {
         this.elements.cbEventsContainer = document.getElementById('cb-events-container');
         this.elements.addCbEventBtn = document.getElementById('add-cb-event-btn');
         this.elements.jumpResultsContainer = document.getElementById('jump-results-container');
+        // Jacobian inverse elements
+        this.elements.jacobianInverseSection = document.getElementById('jacobian-inverse-section');
+        this.elements.jacobianInverseContainer = document.getElementById('jacobian-inverse-container');
     },
 
     attachEventListeners() {
@@ -800,6 +806,9 @@ const curveBuilder = {
 
         // Task 12.1: Render jump calibration results
         this.renderJumpResults();
+
+        // Render Jacobian inverse matrix if available
+        this.renderJacobianInverse();
     },
 
     /**
@@ -876,6 +885,101 @@ const curveBuilder = {
                         </tr>
                     </tfoot>
                 </table>
+            </div>
+        `;
+
+        container.innerHTML = html;
+    },
+
+    /**
+     * Renders the Jacobian inverse matrix display.
+     * Shows how calibrated rates (r*) change with respect to market inputs (m).
+     * Matrix element J⁻¹[i,j] represents ∂r*_i/∂m_j
+     */
+    renderJacobianInverse() {
+        const section = this.elements.jacobianInverseSection || document.getElementById('jacobian-inverse-section');
+        const container = this.elements.jacobianInverseContainer || document.getElementById('jacobian-inverse-container');
+
+        if (!section || !container) {
+            console.warn('[CurveBuilder] Jacobian inverse container not found');
+            return;
+        }
+
+        const result = this.state.buildResult;
+        if (!result?.jacobian_inverse?.data || result.jacobian_inverse.data.length === 0) {
+            section.style.display = 'none';
+            return;
+        }
+
+        section.style.display = 'block';
+
+        const { rows, cols, data, row_labels, col_labels } = result.jacobian_inverse;
+
+        // Build the matrix table with heatmap coloring
+        const minVal = Math.min(...data.flat());
+        const maxVal = Math.max(...data.flat());
+        const absMax = Math.max(Math.abs(minVal), Math.abs(maxVal));
+
+        // Helper function to get cell color based on value (diverging color scale)
+        const getCellColor = (value) => {
+            if (absMax === 0) return 'transparent';
+            const normalised = value / absMax; // -1 to 1
+            if (normalised >= 0) {
+                // Positive: blue scale
+                return `rgba(99, 102, 241, ${0.1 + normalised * 0.6})`;
+            } else {
+                // Negative: red scale
+                return `rgba(239, 68, 68, ${0.1 - normalised * 0.6})`;
+            }
+        };
+
+        // Format cell value with appropriate precision
+        const formatValue = (value) => {
+            if (Math.abs(value) < 0.0001) return '0';
+            if (Math.abs(value) < 0.01) return value.toExponential(2);
+            return value.toFixed(4);
+        };
+
+        // Generate column headers (market instrument tenors)
+        const colHeaders = col_labels.map(tenor => `<th class="jacobian-col-header">${this.formatTenor(tenor)}</th>`).join('');
+
+        // Generate rows
+        const tableRows = data.map((row, i) => {
+            const rowLabel = this.formatTenor(row_labels[i]);
+            const cells = row.map((value, j) => {
+                const bgColor = getCellColor(value);
+                const textColor = Math.abs(value) > absMax * 0.5 ? '#fff' : '#8b8b9a';
+                return `<td class="jacobian-cell" style="background-color: ${bgColor}; color: ${textColor};" title="∂r*(${rowLabel})/∂m(${this.formatTenor(col_labels[j])}) = ${value.toFixed(6)}">${formatValue(value)}</td>`;
+            }).join('');
+            return `<tr><th class="jacobian-row-header">${rowLabel}</th>${cells}</tr>`;
+        }).join('');
+
+        const html = `
+            <div class="jacobian-inverse-panel">
+                <div class="jacobian-info">
+                    <span class="jacobian-dimensions">${rows} × ${cols}</span>
+                    <span class="jacobian-tooltip" title="Jacobian inverse J⁻¹ shows sensitivity of calibrated rates to market inputs. Element [i,j] = ∂r*_i/∂m_j">
+                        <i class="fas fa-info-circle"></i>
+                    </span>
+                </div>
+                <div class="jacobian-legend">
+                    <span class="legend-negative"><i class="fas fa-minus-circle"></i> Negative</span>
+                    <span class="legend-zero">Zero</span>
+                    <span class="legend-positive"><i class="fas fa-plus-circle"></i> Positive</span>
+                </div>
+                <div class="jacobian-table-wrapper">
+                    <table class="jacobian-matrix-table">
+                        <thead>
+                            <tr>
+                                <th class="jacobian-corner">r* \\ m</th>
+                                ${colHeaders}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tableRows}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         `;
 

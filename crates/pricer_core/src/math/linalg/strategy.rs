@@ -4,8 +4,8 @@
 //! the same calibration algorithm to use different matrix structures:
 //!
 //! - **LU Strategy**: Full dense matrix with O(n^3) LU decomposition
-//! - **Lower Triangular Strategy**: Exploits lower triangular structure for O(n^2)
-//!   forward substitution (used by sequential bootstrap)
+//! - **Lower Triangular Strategy**: Exploits lower triangular structure for
+//!   O(n^2) forward substitution (used by sequential bootstrap)
 //!
 //! ## Mathematical Background
 //!
@@ -16,8 +16,8 @@
 //! The Jacobian structure depends on the calibration approach:
 //!
 //! - **Global Bootstrap**: Dense Jacobian, requires full LU decomposition
-//! - **Sequential Bootstrap**: Lower triangular Jacobian (when instruments
-//!   are sorted by maturity), can use fast forward substitution
+//! - **Sequential Bootstrap**: Lower triangular Jacobian (when instruments are
+//!   sorted by maturity), can use fast forward substitution
 //!
 //! ## AAD Integration
 //!
@@ -128,9 +128,7 @@ pub struct LUStrategy<T: RealField + Copy> {
 }
 
 impl<T: RealField + Copy> Default for LUStrategy<T> {
-    fn default() -> Self {
-        Self { matrix: None }
-    }
+    fn default() -> Self { Self { matrix: None } }
 }
 
 impl<T: RealField + Copy + Float> LinearSolveStrategy<T> for LUStrategy<T> {
@@ -164,9 +162,7 @@ impl<T: RealField + Copy + Float> LinearSolveStrategy<T> for LUStrategy<T> {
             .ok_or(LinearAlgebraError::SingularMatrix)
     }
 
-    fn name(&self) -> &'static str {
-        "LU Decomposition"
-    }
+    fn name(&self) -> &'static str { "LU Decomposition" }
 }
 
 // =============================================================================
@@ -255,9 +251,7 @@ impl<T: RealField + Copy + Float> LinearSolveStrategy<T> for LowerTriangularStra
         Ok(())
     }
 
-    fn name(&self) -> &'static str {
-        "Forward Substitution (Lower Triangular)"
-    }
+    fn name(&self) -> &'static str { "Forward Substitution (Lower Triangular)" }
 }
 
 // =============================================================================

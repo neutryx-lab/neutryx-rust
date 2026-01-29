@@ -322,10 +322,9 @@ impl<T: Float> GlobalBootstrapResult<T> {
     /// Create from a CalibrationResult.
     ///
     /// This allows using the new unified `CalibrationEngine` while
-    /// maintaining compatibility with existing code expecting `GlobalBootstrapResult`.
-    pub fn from_calibration_result(
-        result: super::super::engine::CalibrationResult<T>,
-    ) -> Self {
+    /// maintaining compatibility with existing code expecting
+    /// `GlobalBootstrapResult`.
+    pub fn from_calibration_result(result: super::super::engine::CalibrationResult<T>) -> Self {
         Self {
             curve: result.curve,
             pillars: result.pillars,
@@ -481,9 +480,13 @@ impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
 
         let mut engine = CalibrationEngine::with_lu_strategy(engine_config);
 
-        let result = engine.calibrate_with_jumps(instruments, jump_pillars).map_err(|e| {
-            SolverError::NumericalInstability(format!("CalibrationEngine with jumps failed: {e}"))
-        })?;
+        let result = engine
+            .calibrate_with_jumps(instruments, jump_pillars)
+            .map_err(|e| {
+                SolverError::NumericalInstability(format!(
+                    "CalibrationEngine with jumps failed: {e}"
+                ))
+            })?;
 
         Ok(GlobalBootstrapResult::from_calibration_result(result))
     }
