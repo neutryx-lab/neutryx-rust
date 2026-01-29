@@ -118,10 +118,11 @@ struct ConventionsFile {
     conventions: HashMap<String, ConventionData>,
 }
 
-/// Rates grouped by type (deposit, ois, swap).
+/// Rates grouped by type (deposit, fra, ois, swap).
 #[derive(Debug, Deserialize)]
 struct RatesByType {
     deposit: Option<Vec<RateData>>,
+    fra: Option<Vec<RateData>>,
     ois: Option<Vec<RateData>>,
     swap: Option<Vec<RateData>>,
 }
@@ -525,6 +526,23 @@ fn convert_currency_rates(
                 currency: currency.to_string(),
                 tenor: r.tenor.clone(),
                 rate_type: "Deposit".to_string(),
+                value: r.value,
+                quote_type: quote_type.to_string(),
+                timestamp,
+                source: source.to_string(),
+                is_stale: false,
+                rate_index: r.index.clone(),
+            });
+        }
+    }
+
+    if let Some(ref fras) = rates_by_type.fra {
+        for r in fras {
+            rates.push(MarketRateResponse {
+                id: format!("{}-{}-FRA", currency, r.tenor),
+                currency: currency.to_string(),
+                tenor: r.tenor.clone(),
+                rate_type: "Fra".to_string(),
                 value: r.value,
                 quote_type: quote_type.to_string(),
                 timestamp,

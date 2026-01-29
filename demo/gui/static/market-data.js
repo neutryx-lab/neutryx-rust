@@ -1294,9 +1294,9 @@ const marketDataViewer = (() => {
         }
         state.sortDirection = 'asc';
 
-        // Reset filter to "All" when switching asset classes
+        // Set default currency to USD when switching asset classes
         if (elements.currencyFilter) {
-            elements.currencyFilter.value = '';
+            elements.currencyFilter.value = 'USD';
         }
 
         updateAssetClassToggle();
@@ -1355,7 +1355,7 @@ const marketDataViewer = (() => {
     function getAssetClassRateTypes(assetClass) {
         switch (assetClass) {
             case 'Rates':
-                return ['deposit', 'swap', 'ois', 'xccybasis'];
+                return ['deposit', 'swap', 'ois', 'fra', 'xccybasis'];
             case 'FX':
                 return ['fxspot', 'fxforward'];
             case 'IRVol':
@@ -1372,12 +1372,9 @@ const marketDataViewer = (() => {
     // ===========================================
 
     function buildQueryParams() {
-        const params = new URLSearchParams();
-        const currency = elements.currencyFilter?.value;
-
-        if (currency) params.set('currency', currency);
-
-        return params.toString() ? `?${params.toString()}` : '';
+        // Load all data and filter on frontend for better UX
+        // (no server-side currency filtering)
+        return '';
     }
 
     function applyFilters() {
