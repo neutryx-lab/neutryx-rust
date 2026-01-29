@@ -1138,12 +1138,14 @@ impl CachedCurve {
     /// Calculate IRS leg present values using this curve.
     ///
     /// Computes both fixed and floating leg PVs for an interest rate swap.
-    /// Uses the curve's discount factors and forward rates for accurate valuation.
+    /// Uses the curve's discount factors and forward rates for accurate
+    /// valuation.
     ///
     /// # Arguments
     ///
     /// * `notional` - The notional principal amount
-    /// * `fixed_rate` - The fixed leg coupon rate (as decimal, e.g., 0.05 for 5%)
+    /// * `fixed_rate` - The fixed leg coupon rate (as decimal, e.g., 0.05 for
+    ///   5%)
     /// * `tenor_years` - The swap maturity in years
     /// * `frequency` - Payment frequency for both legs
     ///
@@ -1197,7 +1199,8 @@ impl CachedCurve {
         tenor_years: f64,
         frequency: PaymentFrequency,
     ) -> f64 {
-        let (fixed_pv, float_pv) = self.calculate_irs_legs(notional, fixed_rate, tenor_years, frequency);
+        let (fixed_pv, float_pv) =
+            self.calculate_irs_legs(notional, fixed_rate, tenor_years, frequency);
         float_pv - fixed_pv
     }
 }

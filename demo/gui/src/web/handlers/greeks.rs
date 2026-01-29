@@ -15,6 +15,7 @@ use axum::{
     http::StatusCode,
     Json,
 };
+use pricer_core::math::distributions::{norm_cdf, norm_pdf};
 use uuid::Uuid;
 
 use super::types::{
@@ -27,8 +28,6 @@ use super::types::{
     IrsBootstrapErrorResponse, OptionType, SecondOrderGreeksRequest, SecondOrderGreeksResponse,
     TenorDiff, TimeseriesSeries, TimingComparison, TimingStats, BUCKET_TENORS,
 };
-use pricer_core::math::distributions::{norm_cdf, norm_pdf};
-
 use crate::web::AppState;
 
 /// Default tolerance for Greeks comparison (relative error percentage).

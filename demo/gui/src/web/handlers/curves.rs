@@ -2,20 +2,21 @@
 
 use std::{path::PathBuf, sync::Arc, time::Instant};
 
-use adapter_loader::{
-    parse_instruments, validate_rates, InstrumentParseError, InstrumentSpec,
-};
+use adapter_loader::{parse_instruments, validate_rates, InstrumentParseError, InstrumentSpec};
 use axum::{
     extract::{Path, Query, State},
     Json,
 };
 use chrono::{Local, NaiveDate};
-use pricer_models::market::curves::YieldCurve;
 // Conditional imports for global bootstrap with jump calibration
 #[cfg(feature = "global-bootstrap")]
 use pricer_models::builder::{GlobalBootstrapConfig, GlobalBootstrapper, JumpPillar};
-use pricer_models::builder::{
-    BootstrapConfig, BootstrapError, CurveBootstrapper, InterpolationMethod as BuilderInterpolation,
+use pricer_models::{
+    builder::{
+        BootstrapConfig, BootstrapError, CurveBootstrapper,
+        InterpolationMethod as BuilderInterpolation,
+    },
+    market::curves::YieldCurve,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -1064,9 +1065,9 @@ pub async fn get_parameters(
         let value = match query.r#type {
             ParameterType::DiscountFactor => curve.discount_factor(t).unwrap_or(1.0),
             ParameterType::ZeroRate => curve.zero_rate(t).unwrap_or(0.0),
-            ParameterType::ForwardRate => {
-                curve.forward_rate(t, t + query.grid_interval).unwrap_or(0.0)
-            }
+            ParameterType::ForwardRate => curve
+                .forward_rate(t, t + query.grid_interval)
+                .unwrap_or(0.0),
         };
 
         data.push(ParameterPoint { tenor: t, value });

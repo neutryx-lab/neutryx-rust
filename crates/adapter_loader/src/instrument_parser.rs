@@ -172,7 +172,8 @@ impl std::error::Error for InstrumentParseError {}
 // Functions
 // =============================================================================
 
-/// Parse a collection of instrument specifications into `MarketInstrument` instances.
+/// Parse a collection of instrument specifications into `MarketInstrument`
+/// instances.
 ///
 /// The instruments are sorted by tenor (maturity) before being returned.
 ///
@@ -205,7 +206,8 @@ pub fn parse_instruments(
     }
 
     // Parse and collect with tenor for sorting
-    let mut instruments_with_tenors: Vec<(MarketInstrument<f64>, f64)> = Vec::with_capacity(specs.len());
+    let mut instruments_with_tenors: Vec<(MarketInstrument<f64>, f64)> =
+        Vec::with_capacity(specs.len());
 
     for spec in specs {
         let instrument = spec.to_market_instrument()?;
@@ -214,12 +216,14 @@ pub fn parse_instruments(
     }
 
     // Sort by tenor
-    instruments_with_tenors.sort_by(|a, b| {
-        a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal)
-    });
+    instruments_with_tenors
+        .sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
     // Extract just the instruments
-    Ok(instruments_with_tenors.into_iter().map(|(i, _)| i).collect())
+    Ok(instruments_with_tenors
+        .into_iter()
+        .map(|(i, _)| i)
+        .collect())
 }
 
 /// Validate instrument rate is within acceptable range.
@@ -384,8 +388,9 @@ mod tests {
         assert_eq!(instruments.len(), 3);
 
         // Should be sorted: 1M (deposit), 3x6 (FRA ends at 6M), 1Y (OIS)
-        // Actually FRA 3x6 has end at 0.5Y, deposit 1M is ~0.083Y, OIS 1Y is 1.0Y
-        // So order should be: deposit (0.083), FRA (0.5), OIS (1.0)
+        // Actually FRA 3x6 has end at 0.5Y, deposit 1M is ~0.083Y, OIS 1Y is
+        // 1.0Y So order should be: deposit (0.083), FRA (0.5), OIS
+        // (1.0)
     }
 
     #[test]
@@ -393,7 +398,10 @@ mod tests {
         let specs: Vec<InstrumentSpec> = vec![];
         let result = parse_instruments(&specs);
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), InstrumentParseError::EmptyInstruments));
+        assert!(matches!(
+            result.unwrap_err(),
+            InstrumentParseError::EmptyInstruments
+        ));
     }
 
     #[test]

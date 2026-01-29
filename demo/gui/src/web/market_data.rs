@@ -189,9 +189,7 @@ pub fn get_config() -> MarketDataConfig {
             xccy_basis: "demo/data/input/fx/xccy_basis.json".to_string(),
             conventions: "demo/data/input/conventions/conventions.json".to_string(),
             events: Some(EventsPaths {
-                central_banks: Some(
-                    "demo/data/input/events/central_banks.json".to_string(),
-                ),
+                central_banks: Some("demo/data/input/events/central_banks.json".to_string()),
                 central_bank_meetings: Some(
                     "demo/data/input/events/central_bank_meetings.json".to_string(),
                 ),
@@ -307,7 +305,8 @@ impl MarketDataCache {
             })
     }
 
-    /// Gets detailed information for a rate including instrument and convention.
+    /// Gets detailed information for a rate including instrument and
+    /// convention.
     pub async fn get_rate_detail(&self, rate_id: &str) -> Option<MarketRateDetailResponse> {
         let rate = self.get_rate(rate_id).await?;
         let instrument = generate_instrument_for_rate(&rate);
@@ -649,7 +648,8 @@ fn format_field_value(value: &serde_json::Value) -> String {
     }
 }
 
-/// Gets convention for a rate based on currency, rate type, and config patterns.
+/// Gets convention for a rate based on currency, rate type, and config
+/// patterns.
 fn get_convention_for_rate(
     rate: &MarketRateResponse,
     conventions: &HashMap<String, ConventionData>,

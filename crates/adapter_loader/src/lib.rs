@@ -47,6 +47,11 @@ mod vol_surface_loader;
 pub use csa::{CsaTerms, NettingSet};
 pub use csv_loader::CsvLoader;
 pub use error::LoaderError;
+// Curve builder support (requires curve-builder feature)
+#[cfg(feature = "curve-builder")]
+pub use instrument_parser::{
+    parse_instruments, validate_rate, validate_rates, InstrumentParseError, InstrumentSpec,
+};
 pub use json_loader::{
     CsaLoader, CurveData, CurvePoint, FxSpotData, JsonLoader, MarketData, MarketLoader,
     TradeLoader, VolPoint, VolSurfaceData,
@@ -54,12 +59,6 @@ pub use json_loader::{
 pub use vol_surface_loader::{
     parse_expiry_string, parse_fra_tenor, parse_tenor_string, CapFloorVolCsvRow, QuoteTypeJson,
     StrikeValue, SwaptionVolCsvRow, TenorValue, VolQuoteJson, VolQuoteSetJson, VolSurfaceLoader,
-};
-
-// Curve builder support (requires curve-builder feature)
-#[cfg(feature = "curve-builder")]
-pub use instrument_parser::{
-    parse_instruments, validate_rate, validate_rates, InstrumentParseError, InstrumentSpec,
 };
 
 /// Prelude module for convenient imports

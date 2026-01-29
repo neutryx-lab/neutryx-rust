@@ -325,7 +325,8 @@ pub async fn risk_bump(
 
     let dv01: f64 = deltas.iter().map(|d| d.delta).sum();
 
-    let timing = TimingStats::from_samples(&timing_samples, total_start.elapsed().as_micros() as u64);
+    let timing =
+        TimingStats::from_samples(&timing_samples, total_start.elapsed().as_micros() as u64);
 
     broadcast_risk_complete(&state, &request.curve_id, "bump", dv01, None);
 
@@ -390,7 +391,8 @@ pub async fn risk_aad(
 
     let dv01: f64 = deltas.iter().map(|d| d.delta).sum();
 
-    let timing = TimingStats::from_samples(&timing_samples, total_start.elapsed().as_micros() as u64);
+    let timing =
+        TimingStats::from_samples(&timing_samples, total_start.elapsed().as_micros() as u64);
 
     broadcast_risk_complete(&state, &request.curve_id, "aad", dv01, None);
 

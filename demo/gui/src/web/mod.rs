@@ -624,7 +624,6 @@ pub fn build_router(state: Arc<AppState>) -> Router {
 
     let api_routes = api_routes.nest("/irvol", irvol_routes);
 
-
     // FxCurve API routes (fx-vol-surface-calibration Task 13.1)
     let fxcurve_routes = Router::new()
         .route("/build", post(handlers::fxcurve::build_fx_curve))

@@ -101,7 +101,6 @@ fn validate_fx_params(params: &FxOptionParams) -> Result<(), (String, String)> {
     Ok(())
 }
 
-
 /// Convert BootstrapError to HTTP error response.
 fn convert_bootstrap_error(error: BootstrapError) -> (StatusCode, Json<IrsBootstrapErrorResponse>) {
     match error {
@@ -349,7 +348,8 @@ pub async fn price_instrument(
 
         (InstrumentType::Irs, InstrumentParams::Irs(_)) => {
             // IRS pricing via /api/price is not supported in demo GUI.
-            // Use /api/bootstrap and /api/price-irs for IRS pricing with bootstrapped curves.
+            // Use /api/bootstrap and /api/price-irs for IRS pricing with bootstrapped
+            // curves.
             return Err((
                 StatusCode::UNPROCESSABLE_ENTITY,
                 Json(PricingErrorResponse {
