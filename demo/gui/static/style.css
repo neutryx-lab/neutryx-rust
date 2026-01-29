@@ -12536,6 +12536,7 @@ body.light-theme .asset-toggle-btn:hover {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    min-height: 0; /* Allow flexbox child to shrink and enable scrolling */
 }
 
 .rates-panel .panel-header {

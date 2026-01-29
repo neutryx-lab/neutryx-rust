@@ -20,7 +20,7 @@ use uuid::Uuid;
 use super::types::{
     parse_tenor_to_years, validate_irs_pricing_request, validate_par_rates, BootstrapRequest,
     BootstrapResponse, CachedCurve, DemoMarketData, EquityOptionParams, FxOptionParams, GreeksData,
-    InstrumentParams, InstrumentType, IrsBootstrapErrorResponse, IrsParams, IrsPricingRequest,
+    InstrumentParams, InstrumentType, IrsBootstrapErrorResponse, IrsPricingRequest,
     IrsPricingResponse, OptionType, PaymentFrequency, PricingErrorResponse, PricingRequest,
     PricingResponse,
 };
@@ -254,7 +254,7 @@ pub async fn price_instrument(
         now.timestamp_subsec_nanos() % 10000
     );
 
-    let market_rate = DemoMarketData::get_curve_rate(request.market_data.as_ref());
+    let _market_rate = DemoMarketData::get_curve_rate(request.market_data.as_ref());
 
     let (pv, greeks) = match (&request.instrument_type, &request.params) {
         (InstrumentType::EquityVanillaOption, InstrumentParams::EquityOption(params)) => {

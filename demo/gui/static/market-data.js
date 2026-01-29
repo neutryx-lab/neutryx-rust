@@ -767,8 +767,8 @@ const marketDataViewer = (() => {
 
         try {
             // Load event types
-            log('Fetching event types from /api/events/types...');
-            const typesResp = await fetch('/api/events/types');
+            log('Fetching event types from /api/market/events/types...');
+            const typesResp = await fetch('/api/market/events/types');
             if (typesResp.ok) {
                 const typesData = await typesResp.json();
                 log(`Received event types: ${JSON.stringify(typesData)}`);
@@ -778,8 +778,8 @@ const marketDataViewer = (() => {
             }
 
             // Load all events
-            log('Fetching events from /api/events...');
-            const eventsResp = await fetch('/api/events');
+            log('Fetching events from /api/market/events...');
+            const eventsResp = await fetch('/api/market/events');
             if (!eventsResp.ok) {
                 throw new Error(`Failed to fetch events: ${eventsResp.status} ${eventsResp.statusText}`);
             }

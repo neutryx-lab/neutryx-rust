@@ -225,7 +225,8 @@
       "Read(//c/Users/khosh/Codes/neutryx-rust/**)",
       "Bash(sort:*)",
       "Bash(xargs:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(git -C \"c:/Users/khosh/Codes/neutryx-rust\" diff crates/adapter_loader/src/vol_surface_loader.rs)"
     ],
     "additionalDirectories": [
       "c:\\Users\\khosh\\Codes\\neutryx-rust\\crates\\pricer_models\\src\\market\\calibration"

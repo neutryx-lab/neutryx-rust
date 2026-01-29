@@ -20,7 +20,7 @@ use uuid::Uuid;
 
 use super::types::{
     parse_tenor_to_years, validate_risk_request, CachedCurve, DeltaResult,
-    IrsBootstrapErrorResponse, ParRateInput, PaymentFrequency, RiskAadResponse, RiskBumpResponse,
+    IrsBootstrapErrorResponse, ParRateInput, RiskAadResponse, RiskBumpResponse,
     RiskCompareResponse, RiskMethodResult, RiskRequest, TimingComparison, TimingStats,
 };
 use crate::web::{websocket::broadcast_risk_complete, AppState};

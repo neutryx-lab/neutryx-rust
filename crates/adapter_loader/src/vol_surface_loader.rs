@@ -637,8 +637,8 @@ fn parse_fra_period(s: &str) -> Option<f64> {
     }
 
     // If ends with 'M', strip it and parse as months
-    if s.ends_with('M') {
-        s[..s.len() - 1].parse::<f64>().ok()
+    if let Some(stripped) = s.strip_suffix('M') {
+        stripped.parse::<f64>().ok()
     } else {
         // Assume it's already in months
         s.parse::<f64>().ok()
