@@ -2,7 +2,9 @@
 
 use std::{path::PathBuf, sync::Arc, time::Instant};
 
-use adapter_loader::{parse_fra_tenor, parse_tenor_string};
+use adapter_loader::{
+    parse_instruments, validate_rates, InstrumentParseError, InstrumentSpec,
+};
 use axum::{
     extract::{Path, Query, State},
     Json,
@@ -12,12 +14,8 @@ use pricer_models::market::curves::YieldCurve;
 // Conditional imports for global bootstrap with jump calibration
 #[cfg(feature = "global-bootstrap")]
 use pricer_models::builder::{GlobalBootstrapConfig, GlobalBootstrapper, JumpPillar};
-use pricer_models::{
-    builder::{
-        BootstrapConfig, BootstrapError, CurveBootstrapper,
-        InterpolationMethod as BuilderInterpolation,
-    },
-    market::curves::MarketInstrument,
+use pricer_models::builder::{
+    BootstrapConfig, BootstrapError, CurveBootstrapper, InterpolationMethod as BuilderInterpolation,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -354,30 +352,9 @@ pub struct InstrumentInput {
 }
 
 impl InstrumentInput {
-    /// Parse tenor string into year fraction.
-    fn tenor_years(&self) -> Result<f64, String> { parse_tenor_string(&self.tenor) }
-
-    /// Convert to a MarketInstrument for bootstrapping.
-    fn to_market_instrument(&self, tenor_years: f64) -> MarketInstrument<f64> {
-        let instrument_type = self.instrument_type.to_lowercase();
-
-        match instrument_type.as_str() {
-            "deposit" | "depo" => MarketInstrument::ois(tenor_years, self.rate),
-            "ois" => MarketInstrument::ois(tenor_years, self.rate),
-            "swap" | "irs" => MarketInstrument::irs(tenor_years, self.rate),
-            "fra" => {
-                // Parse FRA tenor in "NxM" format (e.g., "3x6", "6x12")
-                if let Some((start, end)) = parse_fra_tenor(&self.tenor) {
-                    MarketInstrument::fra(start, end, self.rate)
-                } else {
-                    // Fallback: treat tenor as end date, start at 0
-                    // This handles cases like "6M" meaning a 0x6M FRA
-                    MarketInstrument::fra(0.0, tenor_years, self.rate)
-                }
-            }
-            "future" | "futures" => MarketInstrument::future(tenor_years, self.rate),
-            _ => MarketInstrument::ois(tenor_years, self.rate), // Default to OIS
-        }
+    /// Convert to an `InstrumentSpec` for use with `parse_instruments`.
+    fn to_spec(&self) -> InstrumentSpec {
+        InstrumentSpec::new(&self.instrument_type, &self.tenor, self.rate)
     }
 }
 
@@ -722,51 +699,22 @@ pub async fn build_curve(
 ) -> ApiResult<CurveBuildResponse> {
     let start = Instant::now();
 
-    // Validate input
-    if request.instruments.is_empty() {
-        return Err(ApiError::validation(
-            "At least one instrument is required",
-            "instruments",
-        ));
-    }
+    // Convert to InstrumentSpec for parsing
+    let specs: Vec<InstrumentSpec> = request.instruments.iter().map(|i| i.to_spec()).collect();
 
-    for inst in &request.instruments {
-        if inst.rate < -0.10 || inst.rate > 0.50 {
-            return Err(ApiError::validation(
-                format!(
-                    "Rate {} for {} is out of range (-10% to +50%)",
-                    inst.rate, inst.tenor
-                ),
-                "rate",
-            ));
-        }
-    }
+    // Validate rates using adapter_loader
+    validate_rates(&specs, -0.10, 0.50).map_err(|e| convert_parse_error(&e))?;
 
-    // Parse tenor years and validate
-    let mut instruments_with_tenors: Vec<(&InstrumentInput, f64)> = Vec::new();
-    for inst in &request.instruments {
-        let tenor_years = inst
-            .tenor_years()
-            .map_err(|e| ApiError::validation(e, "tenor"))?;
-        instruments_with_tenors.push((inst, tenor_years));
-    }
+    // Parse instruments using adapter_loader (handles sorting by tenor)
+    let market_instruments = parse_instruments(&specs).map_err(|e| convert_parse_error(&e))?;
 
-    // Sort instruments by tenor
-    instruments_with_tenors.sort_by(|a, b| {
-        a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal)
+    // Keep original instruments for par rates (sorted to match market_instruments)
+    let mut sorted_instruments = request.instruments.clone();
+    sorted_instruments.sort_by(|a, b| {
+        let ta = a.to_spec().tenor_years().unwrap_or(0.0);
+        let tb = b.to_spec().tenor_years().unwrap_or(0.0);
+        ta.partial_cmp(&tb).unwrap_or(std::cmp::Ordering::Equal)
     });
-
-    // Convert to MarketInstrument for bootstrapping
-    let market_instruments: Vec<MarketInstrument<f64>> = instruments_with_tenors
-        .iter()
-        .map(|(inst, tenor_years)| inst.to_market_instrument(*tenor_years))
-        .collect();
-
-    // Keep sorted instruments for later use
-    let sorted_instruments: Vec<_> = instruments_with_tenors
-        .iter()
-        .map(|(inst, _)| (*inst).clone())
-        .collect();
 
     use super::types::{CachedCurve, ParRateInput};
 
@@ -778,8 +726,11 @@ pub async fn build_curve(
     // Build curve - with jump calibration when global-bootstrap feature is enabled
     #[cfg(feature = "global-bootstrap")]
     let curve = {
-        // Get max tenor for filtering CB events (from already parsed tenors)
-        let max_tenor = instruments_with_tenors.last().map(|(_, t)| *t).unwrap_or(0.0);
+        // Get max tenor for filtering CB events
+        let max_tenor = specs
+            .iter()
+            .filter_map(|s| s.tenor_years().ok())
+            .fold(0.0_f64, |a, b| a.max(b));
 
         // Task 10.1: Parse and validate CB events
         let jump_pillars = if request.enable_jumps {
@@ -1070,6 +1021,25 @@ fn convert_bootstrap_error(error: &BootstrapError) -> ApiError {
     }
 }
 
+/// Convert InstrumentParseError to ApiError.
+fn convert_parse_error(error: &InstrumentParseError) -> ApiError {
+    match error {
+        InstrumentParseError::InvalidTenor { tenor, reason } => {
+            ApiError::validation(format!("Invalid tenor '{}': {}", tenor, reason), "tenor")
+        }
+        InstrumentParseError::UnknownType { instrument_type } => ApiError::validation(
+            format!("Unknown instrument type: {}", instrument_type),
+            "instrumentType",
+        ),
+        InstrumentParseError::InvalidRate { rate, reason } => {
+            ApiError::validation(format!("Invalid rate {}: {}", rate, reason), "rate")
+        }
+        InstrumentParseError::EmptyInstruments => {
+            ApiError::validation("At least one instrument is required", "instruments")
+        }
+    }
+}
+
 /// Handler for `GET /api/curves/{curveId}/parameters`.
 pub async fn get_parameters(
     State(state): State<Arc<AppState>>,
@@ -1183,6 +1153,9 @@ pub async fn get_central_bank_meetings() -> ApiResult<serde_json::Value> {
 
 #[cfg(test)]
 mod tests {
+    use adapter_loader::{parse_fra_tenor, parse_tenor_string};
+    use pricer_models::market::curves::MarketInstrument;
+
     use super::*;
 
     #[test]
@@ -1229,14 +1202,10 @@ mod tests {
 
     #[test]
     fn test_fra_to_market_instrument() {
-        // Test FRA with proper "3x6" format
-        let input = InstrumentInput {
-            instrument_type: "fra".to_string(),
-            tenor: "3x6".to_string(),
-            rate: 0.025,
-        };
-        let instrument = input.to_market_instrument(0.5); // tenor_years ignored for FRA
-        // The instrument should use parsed values (0.25, 0.5), not the passed tenor_years
+        // Test FRA with proper "3x6" format using InstrumentSpec
+        let spec = InstrumentSpec::new("fra", "3x6", 0.025);
+        let instrument = spec.to_market_instrument().unwrap();
+
         match instrument {
             MarketInstrument::Fra { start, end, rate } => {
                 assert!((start - 0.25).abs() < 1e-10);
@@ -1247,13 +1216,9 @@ mod tests {
         }
 
         // Test FRA fallback with standard tenor (e.g., "6M" treated as 0x6M)
-        let input = InstrumentInput {
-            instrument_type: "fra".to_string(),
-            tenor: "6M".to_string(),
-            rate: 0.028,
-        };
-        let tenor_years = input.tenor_years().unwrap();
-        let instrument = input.to_market_instrument(tenor_years);
+        let spec = InstrumentSpec::new("fra", "6M", 0.028);
+        let instrument = spec.to_market_instrument().unwrap();
+
         match instrument {
             MarketInstrument::Fra { start, end, rate } => {
                 assert!((start - 0.0).abs() < 1e-10); // Start at 0

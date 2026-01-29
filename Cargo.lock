@@ -41,6 +41,7 @@ dependencies = [
  "glob",
  "infra_master",
  "parquet",
+ "pricer_models",
  "serde",
  "serde_json",
  "tempfile",

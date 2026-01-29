@@ -28,7 +28,7 @@ global-bootstrap = ["pricer_models/global-bootstrap"]
 infra_master = { path = "../../crates/infra_master", features = ["serde"] }
 
 # Adapter layer
-adapter_loader = { path = "../../crates/adapter_loader" }
+adapter_loader = { path = "../../crates/adapter_loader", features = ["curve-builder"] }
 
 # Pricer layer
 pricer_core = { path = "../../crates/pricer_core", features = ["execution-trace", "serde"] }

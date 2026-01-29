@@ -39,6 +39,8 @@
 mod csa;
 mod csv_loader;
 mod error;
+#[cfg(feature = "curve-builder")]
+mod instrument_parser;
 mod json_loader;
 mod vol_surface_loader;
 
@@ -52,6 +54,12 @@ pub use json_loader::{
 pub use vol_surface_loader::{
     parse_expiry_string, parse_fra_tenor, parse_tenor_string, CapFloorVolCsvRow, QuoteTypeJson,
     StrikeValue, SwaptionVolCsvRow, TenorValue, VolQuoteJson, VolQuoteSetJson, VolSurfaceLoader,
+};
+
+// Curve builder support (requires curve-builder feature)
+#[cfg(feature = "curve-builder")]
+pub use instrument_parser::{
+    parse_instruments, validate_rate, validate_rates, InstrumentParseError, InstrumentSpec,
 };
 
 /// Prelude module for convenient imports
