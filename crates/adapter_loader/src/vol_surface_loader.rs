@@ -505,7 +505,8 @@ impl VolSurfaceLoader {
 
 /// Parse a tenor string (e.g., "1Y", "6M", "3M") to years.
 ///
-/// This is a convenience wrapper around `infra_master::time::parse_tenor_to_years`.
+/// This is a convenience wrapper around
+/// `infra_master::time::parse_tenor_to_years`.
 ///
 /// # Arguments
 ///
@@ -520,8 +521,9 @@ pub fn parse_tenor_string(s: &str) -> Result<f64, String> {
 
 /// Convert expiry string to NaiveDate.
 ///
-/// This is a convenience wrapper around `infra_master::time::parse_expiry_to_date`
-/// that works with `chrono::NaiveDate`.
+/// This is a convenience wrapper around
+/// `infra_master::time::parse_expiry_to_date` that works with
+/// `chrono::NaiveDate`.
 ///
 /// Supports:
 /// - ISO date format: "2027-01-25"

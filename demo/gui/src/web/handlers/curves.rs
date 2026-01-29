@@ -1053,7 +1053,8 @@ fn convert_parse_error(error: &InstrumentParseError) -> ApiError {
 /// Get the priority of an instrument type for duplicate maturity resolution.
 ///
 /// Lower numbers have higher priority. When multiple instruments have the same
-/// maturity, the one with the highest priority (lowest number) will be selected.
+/// maturity, the one with the highest priority (lowest number) will be
+/// selected.
 ///
 /// Priority order (highest to lowest):
 /// 1. deposit - Most direct short-term rate
