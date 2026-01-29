@@ -224,7 +224,8 @@
       "Bash(where tokei:*)",
       "Read(//c/Users/khosh/Codes/neutryx-rust/**)",
       "Bash(sort:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(cd:*)"
     ],
     "additionalDirectories": [
       "c:\\Users\\khosh\\Codes\\neutryx-rust\\crates\\pricer_models\\src\\market\\calibration"

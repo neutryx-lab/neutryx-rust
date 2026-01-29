@@ -107,7 +107,7 @@ pub trait CurveProvider {
 /// ```
 /// # #[cfg(feature = "l1l2-integration")]
 /// # {
-/// use pricer_pricing::kernel::FlatCurveProvider;
+/// use pricer_pricing::kernel::{CurveProvider, FlatCurveProvider};
 ///
 /// // Create provider with 5% discount rate and 3% forward rate
 /// let provider = FlatCurveProvider::new(0.05, 0.03);
