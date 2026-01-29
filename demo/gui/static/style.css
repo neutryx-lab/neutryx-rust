@@ -11132,7 +11132,7 @@ body.light-theme .irs-loading-overlay {
 
 /* Instrument Table */
 .instrument-table-wrapper {
-    max-height: 300px;
+    max-height: 500px;
     overflow-y: auto;
     border: 1px solid var(--border-color);
     border-radius: 8px;

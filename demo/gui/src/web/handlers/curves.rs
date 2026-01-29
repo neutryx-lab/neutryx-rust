@@ -176,7 +176,7 @@ impl BootstrapMethod {
     pub fn display_name(&self) -> &'static str {
         match self {
             Self::Sequential => "Sequential",
-            Self::Global => "Global (Coming Soon)",
+            Self::Global => "Global",
         }
     }
 
@@ -189,7 +189,7 @@ impl BootstrapMethod {
     }
 
     /// Check if this method is currently available.
-    pub fn is_enabled(&self) -> bool { matches!(self, Self::Sequential) }
+    pub fn is_enabled(&self) -> bool { matches!(self, Self::Sequential | Self::Global) }
 }
 
 /// Parameter type for curve output.
@@ -785,6 +785,7 @@ pub async fn build_curve(
             let global_config = GlobalBootstrapConfig::default()
                 .with_tolerance(request.tolerance)
                 .with_max_iterations(request.max_iterations)
+                .with_jacobian_inverse(true)
                 .with_interpolation(
                     pricer_models::market::curves::BootstrapInterpolation::LogLinear,
                 );
@@ -858,15 +859,99 @@ pub async fn build_curve(
                         .map_err(|e| convert_bootstrap_error(&e))?
                 }
             }
+        } else if request.bootstrap_method == BootstrapMethod::Global {
+            // Global Bootstrap without jumps - still return Jacobian inverse
+            let global_config = GlobalBootstrapConfig::default()
+                .with_tolerance(request.tolerance)
+                .with_max_iterations(request.max_iterations)
+                .with_jacobian_inverse(true)
+                .with_interpolation(
+                    pricer_models::market::curves::BootstrapInterpolation::LogLinear,
+                );
+
+            let global_bootstrapper = GlobalBootstrapper::new(global_config);
+
+            match global_bootstrapper.calibrate(&market_instruments) {
+                Ok(result) => {
+                    // Extract Jacobian inverse for AAD sensitivity display
+                    if let Some(ref j_inv) = result.jacobian_inverse {
+                        let rows = j_inv.nrows();
+                        let cols = j_inv.ncols();
+                        let data: Vec<Vec<f64>> = (0..rows)
+                            .map(|i| (0..cols).map(|j| j_inv[(i, j)]).collect())
+                            .collect();
+                        let row_labels: Vec<f64> = result.pillars.iter().map(|&t| t).collect();
+                        let col_labels: Vec<f64> = filtered_specs
+                            .iter()
+                            .filter_map(|s| s.tenor_years().ok())
+                            .collect();
+                        jacobian_inverse_data = Some(JacobianInverseData {
+                            rows,
+                            cols,
+                            data,
+                            row_labels,
+                            col_labels,
+                        });
+                    }
+
+                    result.curve
+                }
+                Err(e) => {
+                    // Fallback to sequential bootstrap
+                    jump_warnings.push(format!(
+                        "Global bootstrap failed: {}. Falling back to sequential bootstrap.",
+                        e
+                    ));
+
+                    let config = BootstrapConfig::new(request.tolerance, request.max_iterations)
+                        .with_interpolation(request.interpolation.to_builder_interpolation());
+                    let bootstrapper = CurveBootstrapper::with_config(config);
+                    bootstrapper
+                        .bootstrap_to_curve(&market_instruments)
+                        .map_err(|e| convert_bootstrap_error(&e))?
+                }
+            }
         } else {
-            // Standard sequential bootstrapping
+            // Standard sequential bootstrapping with Jacobian inverse
             let config = BootstrapConfig::new(request.tolerance, request.max_iterations)
                 .with_interpolation(request.interpolation.to_builder_interpolation());
 
             let bootstrapper = CurveBootstrapper::with_config(config);
-            bootstrapper
-                .bootstrap_to_curve(&market_instruments)
-                .map_err(|e| convert_bootstrap_error(&e))?
+
+            // Try to get Jacobian inverse (may fail if matrix isn't lower triangular)
+            match bootstrapper.bootstrap_with_jacobian(&market_instruments) {
+                Ok((curve, Some(j_inv))) => {
+                    let rows = j_inv.nrows();
+                    let cols = j_inv.ncols();
+                    let data: Vec<Vec<f64>> = (0..rows)
+                        .map(|i| (0..cols).map(|j| j_inv[(i, j)]).collect())
+                        .collect();
+                    // For sequential bootstrap, pillars = instrument tenors
+                    let row_labels: Vec<f64> = filtered_specs
+                        .iter()
+                        .filter_map(|s| s.tenor_years().ok())
+                        .collect();
+                    let col_labels = row_labels.clone();
+                    jacobian_inverse_data = Some(JacobianInverseData {
+                        rows,
+                        cols,
+                        data,
+                        row_labels,
+                        col_labels,
+                    });
+                    curve
+                }
+                Ok((curve, None)) => {
+                    // Jacobian computation failed but curve is valid
+                    curve
+                }
+                Err(_) => {
+                    // Fall back to standard bootstrap without Jacobian
+                    bootstrapper
+                        .bootstrap_to_curve(&market_instruments)
+                        .map_err(|e| convert_bootstrap_error(&e))?
+                }
+            }
         }
     };
 
