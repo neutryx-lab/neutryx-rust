@@ -11061,14 +11061,19 @@ body.light-theme .irs-loading-overlay {
     padding-bottom: 0;
 }
 
-/* Index Selection Card - slightly larger */
+/* Index Selection Card - auto height to show all fields */
 #index-section {
     padding-top: 8px;
     padding-bottom: 24px;
+    flex-shrink: 0;
+    height: auto;
+    overflow: visible;
 }
 
 #index-selector-container {
     margin-top: 8px;
+    height: auto;
+    overflow: visible;
 }
 
 #index-selector-container select {

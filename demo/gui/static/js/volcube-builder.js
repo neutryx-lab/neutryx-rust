@@ -271,12 +271,12 @@ const volcubeBuilder = {
         if (!this.elements.indexSelector) return;
 
         const indices = this.state.swaptionIndices.indices || this.state.swaptionIndices;
-        const defaultIndex = 'usd-sofr-swaption';
+        const defaultIndex = 'usd'; // Currency-based selection
 
         this.elements.indexSelector.innerHTML = `
-            <option value="">Select index...</option>
+            <option value="">Select currency...</option>
             ${indices.map(idx => `
-                <option value="${idx.id}" ${idx.id === defaultIndex ? 'selected' : ''}>${idx.name || idx.id.toUpperCase()}</option>
+                <option value="${idx.id}" ${idx.id === defaultIndex ? 'selected' : ''}>${idx.name || idx.currency || idx.id.toUpperCase()}</option>
             `).join('')}
         `;
 
