@@ -569,6 +569,82 @@ pub fn parse_expiry_string(expiry_str: &str, as_of_date: NaiveDate) -> Result<Na
         .ok_or_else(|| format!("Date overflow for expiry: {}", expiry_str))
 }
 
+/// Parse FRA tenor string in "NxM" format (e.g., "3x6", "3X6M", "3Mx6M").
+///
+/// FRA tenors represent forward rate agreements with a start and end period.
+/// Common formats include:
+/// - "3x6" - 3 months to 6 months
+/// - "6x12" - 6 months to 12 months
+/// - "3Mx6M" - 3 months to 6 months (explicit month suffix)
+///
+/// # Arguments
+///
+/// * `tenor` - FRA tenor string
+///
+/// # Returns
+///
+/// `Some((start_years, end_years))` if successful, `None` otherwise.
+///
+/// # Example
+///
+/// ```
+/// use adapter_loader::parse_fra_tenor;
+///
+/// let result = parse_fra_tenor("3x6");
+/// assert!(result.is_some());
+/// let (start, end) = result.unwrap();
+/// assert!((start - 0.25).abs() < 1e-10); // 3M = 0.25Y
+/// assert!((end - 0.5).abs() < 1e-10);    // 6M = 0.5Y
+/// ```
+pub fn parse_fra_tenor(tenor: &str) -> Option<(f64, f64)> {
+    let tenor = tenor.trim().to_uppercase();
+
+    // Find the 'X' separator
+    let x_pos = tenor.find('X')?;
+    if x_pos == 0 || x_pos == tenor.len() - 1 {
+        return None;
+    }
+
+    let start_part = &tenor[..x_pos];
+    let end_part = &tenor[x_pos + 1..];
+
+    // Parse start period
+    let start_months = parse_fra_period(start_part)?;
+
+    // Parse end period
+    let end_months = parse_fra_period(end_part)?;
+
+    if end_months <= start_months {
+        return None;
+    }
+
+    Some((start_months / 12.0, end_months / 12.0))
+}
+
+/// Parse a single FRA period part (e.g., "3", "3M", "12M").
+///
+/// # Arguments
+///
+/// * `s` - Period string (with or without 'M' suffix)
+///
+/// # Returns
+///
+/// Period in months, or `None` if parsing fails.
+fn parse_fra_period(s: &str) -> Option<f64> {
+    let s = s.trim();
+    if s.is_empty() {
+        return None;
+    }
+
+    // If ends with 'M', strip it and parse as months
+    if s.ends_with('M') {
+        s[..s.len() - 1].parse::<f64>().ok()
+    } else {
+        // Assume it's already in months
+        s.parse::<f64>().ok()
+    }
+}
+
 // =============================================================================
 // Tests
 // =============================================================================
@@ -622,6 +698,68 @@ mod tests {
     fn test_parse_tenor_case_insensitive() {
         assert!((parse_tenor_string("1y").unwrap() - 1.0).abs() < 1e-10);
         assert!((parse_tenor_string("6m").unwrap() - 0.5).abs() < 1e-10);
+    }
+
+    // -------------------------------------------------------------------------
+    // FRA Tenor Parsing Tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_parse_fra_tenor_3x6() {
+        let result = parse_fra_tenor("3x6");
+        assert!(result.is_some());
+        let (start, end) = result.unwrap();
+        assert!((start - 0.25).abs() < 1e-10); // 3M = 0.25Y
+        assert!((end - 0.5).abs() < 1e-10); // 6M = 0.5Y
+    }
+
+    #[test]
+    fn test_parse_fra_tenor_6x12() {
+        let result = parse_fra_tenor("6x12");
+        assert!(result.is_some());
+        let (start, end) = result.unwrap();
+        assert!((start - 0.5).abs() < 1e-10); // 6M = 0.5Y
+        assert!((end - 1.0).abs() < 1e-10); // 12M = 1.0Y
+    }
+
+    #[test]
+    fn test_parse_fra_tenor_with_suffix() {
+        // Test "3Mx6M" format
+        let result = parse_fra_tenor("3Mx6M");
+        assert!(result.is_some());
+        let (start, end) = result.unwrap();
+        assert!((start - 0.25).abs() < 1e-10);
+        assert!((end - 0.5).abs() < 1e-10);
+
+        // Test "1Mx4M" format
+        let result = parse_fra_tenor("1Mx4M");
+        assert!(result.is_some());
+        let (start, end) = result.unwrap();
+        assert!((start - 1.0 / 12.0).abs() < 1e-10);
+        assert!((end - 4.0 / 12.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_parse_fra_tenor_case_insensitive() {
+        assert!(parse_fra_tenor("3X6").is_some());
+        assert!(parse_fra_tenor("3x6").is_some());
+        assert!(parse_fra_tenor("3X6M").is_some());
+    }
+
+    #[test]
+    fn test_parse_fra_tenor_invalid() {
+        // Not FRA format
+        assert!(parse_fra_tenor("6M").is_none());
+        assert!(parse_fra_tenor("1Y").is_none());
+
+        // Invalid: end <= start
+        assert!(parse_fra_tenor("6x3").is_none());
+        assert!(parse_fra_tenor("12x6").is_none());
+
+        // Invalid: empty parts
+        assert!(parse_fra_tenor("x6").is_none());
+        assert!(parse_fra_tenor("3x").is_none());
+        assert!(parse_fra_tenor("").is_none());
     }
 
     // -------------------------------------------------------------------------

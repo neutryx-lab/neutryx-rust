@@ -50,8 +50,8 @@ pub use json_loader::{
     TradeLoader, VolPoint, VolSurfaceData,
 };
 pub use vol_surface_loader::{
-    parse_expiry_string, parse_tenor_string, CapFloorVolCsvRow, QuoteTypeJson, StrikeValue,
-    SwaptionVolCsvRow, TenorValue, VolQuoteJson, VolQuoteSetJson, VolSurfaceLoader,
+    parse_expiry_string, parse_fra_tenor, parse_tenor_string, CapFloorVolCsvRow, QuoteTypeJson,
+    StrikeValue, SwaptionVolCsvRow, TenorValue, VolQuoteJson, VolQuoteSetJson, VolSurfaceLoader,
 };
 
 /// Prelude module for convenient imports

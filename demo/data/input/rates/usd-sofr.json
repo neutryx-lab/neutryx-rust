@@ -1,76 +1,153 @@
 {
   "index": "usd-sofr",
   "currency": "USD",
-  "reference_date": "2026-01-23",
+  "reference_date": "2026-01-29",
   "instruments": [
+    {
+      "type": "deposit",
+      "tenor": "O/N",
+      "tenor_years": 0.00274,
+      "rate": 0.0433,
+      "frequency": "annual",
+      "description": "SOFR overnight fixing"
+    },
+    {
+      "type": "deposit",
+      "tenor": "1W",
+      "tenor_years": 0.01923,
+      "rate": 0.0432,
+      "frequency": "annual"
+    },
+    {
+      "type": "deposit",
+      "tenor": "2W",
+      "tenor_years": 0.03846,
+      "rate": 0.0431,
+      "frequency": "annual"
+    },
     {
       "type": "deposit",
       "tenor": "1M",
       "tenor_years": 0.0833,
-      "rate": 0.0525,
+      "rate": 0.0430,
       "frequency": "annual"
     },
     {
-      "type": "deposit",
+      "type": "fra",
+      "tenor": "1x4",
+      "tenor_years": 0.3333,
+      "rate": 0.0420,
+      "frequency": "quarterly",
+      "description": "1x4 FRA (1M start, 4M end)"
+    },
+    {
+      "type": "fra",
+      "tenor": "3x6",
+      "tenor_years": 0.5,
+      "rate": 0.0405,
+      "frequency": "quarterly",
+      "description": "3x6 FRA (3M start, 6M end)"
+    },
+    {
+      "type": "fra",
+      "tenor": "6x9",
+      "tenor_years": 0.75,
+      "rate": 0.0385,
+      "frequency": "quarterly",
+      "description": "6x9 FRA (6M start, 9M end)"
+    },
+    {
+      "type": "fra",
+      "tenor": "9x12",
+      "tenor_years": 1.0,
+      "rate": 0.0368,
+      "frequency": "quarterly",
+      "description": "9x12 FRA (9M start, 12M end)"
+    },
+    {
+      "type": "future",
       "tenor": "3M",
       "tenor_years": 0.25,
-      "rate": 0.0518,
-      "frequency": "annual"
+      "rate": 0.0415,
+      "frequency": "quarterly",
+      "description": "3M SOFR future (IMM Mar)"
     },
     {
-      "type": "deposit",
+      "type": "future",
       "tenor": "6M",
       "tenor_years": 0.5,
-      "rate": 0.0510,
-      "frequency": "annual"
+      "rate": 0.0395,
+      "frequency": "quarterly",
+      "description": "3M SOFR future (IMM Jun)"
     },
     {
       "type": "ois",
       "tenor": "1Y",
       "tenor_years": 1.0,
-      "rate": 0.0480,
+      "rate": 0.0358,
+      "frequency": "annual"
+    },
+    {
+      "type": "ois",
+      "tenor": "18M",
+      "tenor_years": 1.5,
+      "rate": 0.0348,
       "frequency": "annual"
     },
     {
       "type": "ois",
       "tenor": "2Y",
       "tenor_years": 2.0,
-      "rate": 0.0425,
+      "rate": 0.0340,
       "frequency": "annual"
     },
     {
       "type": "ois",
       "tenor": "3Y",
       "tenor_years": 3.0,
-      "rate": 0.0415,
+      "rate": 0.0335,
+      "frequency": "annual"
+    },
+    {
+      "type": "ois",
+      "tenor": "4Y",
+      "tenor_years": 4.0,
+      "rate": 0.0338,
       "frequency": "annual"
     },
     {
       "type": "ois",
       "tenor": "5Y",
       "tenor_years": 5.0,
-      "rate": 0.0405,
+      "rate": 0.0342,
       "frequency": "annual"
     },
     {
       "type": "ois",
       "tenor": "7Y",
       "tenor_years": 7.0,
-      "rate": 0.0400,
+      "rate": 0.0355,
       "frequency": "annual"
     },
     {
       "type": "ois",
       "tenor": "10Y",
       "tenor_years": 10.0,
-      "rate": 0.0398,
+      "rate": 0.0375,
+      "frequency": "annual"
+    },
+    {
+      "type": "ois",
+      "tenor": "12Y",
+      "tenor_years": 12.0,
+      "rate": 0.0385,
       "frequency": "annual"
     },
     {
       "type": "ois",
       "tenor": "15Y",
       "tenor_years": 15.0,
-      "rate": 0.0402,
+      "rate": 0.0398,
       "frequency": "annual"
     },
     {
@@ -82,9 +159,16 @@
     },
     {
       "type": "ois",
+      "tenor": "25Y",
+      "tenor_years": 25.0,
+      "rate": 0.0415,
+      "frequency": "annual"
+    },
+    {
+      "type": "ois",
       "tenor": "30Y",
       "tenor_years": 30.0,
-      "rate": 0.0415,
+      "rate": 0.0418,
       "frequency": "annual"
     }
   ]

@@ -2,7 +2,7 @@
 
 use std::{path::PathBuf, sync::Arc, time::Instant};
 
-use adapter_loader::parse_tenor_string;
+use adapter_loader::{parse_fra_tenor, parse_tenor_string};
 use axum::{
     extract::{Path, Query, State},
     Json,
@@ -366,10 +366,14 @@ impl InstrumentInput {
             "ois" => MarketInstrument::ois(tenor_years, self.rate),
             "swap" | "irs" => MarketInstrument::irs(tenor_years, self.rate),
             "fra" => {
-                // For FRA, assume 3M forward period from the tenor
-                let start = tenor_years;
-                let end = start + 0.25; // 3M forward
-                MarketInstrument::fra(start, end, self.rate)
+                // Parse FRA tenor in "NxM" format (e.g., "3x6", "6x12")
+                if let Some((start, end)) = parse_fra_tenor(&self.tenor) {
+                    MarketInstrument::fra(start, end, self.rate)
+                } else {
+                    // Fallback: treat tenor as end date, start at 0
+                    // This handles cases like "6M" meaning a 0x6M FRA
+                    MarketInstrument::fra(0.0, tenor_years, self.rate)
+                }
             }
             "future" | "futures" => MarketInstrument::future(tenor_years, self.rate),
             _ => MarketInstrument::ois(tenor_years, self.rate), // Default to OIS
@@ -1188,6 +1192,76 @@ mod tests {
         assert!((parse_tenor_string("6M").unwrap() - 0.5).abs() < 1e-10);
         assert!((parse_tenor_string("3M").unwrap() - 0.25).abs() < 1e-10);
         assert!((parse_tenor_string("1W").unwrap() - 1.0 / 52.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_fra_tenor_parsing() {
+        // Test "3x6" format (3M start, 6M end)
+        let result = parse_fra_tenor("3x6");
+        assert!(result.is_some());
+        let (start, end) = result.unwrap();
+        assert!((start - 0.25).abs() < 1e-10); // 3M = 0.25Y
+        assert!((end - 0.5).abs() < 1e-10); // 6M = 0.5Y
+
+        // Test "6x12" format
+        let result = parse_fra_tenor("6x12");
+        assert!(result.is_some());
+        let (start, end) = result.unwrap();
+        assert!((start - 0.5).abs() < 1e-10); // 6M = 0.5Y
+        assert!((end - 1.0).abs() < 1e-10); // 12M = 1.0Y
+
+        // Test "3Mx6M" format
+        let result = parse_fra_tenor("3Mx6M");
+        assert!(result.is_some());
+        let (start, end) = result.unwrap();
+        assert!((start - 0.25).abs() < 1e-10);
+        assert!((end - 0.5).abs() < 1e-10);
+
+        // Test case insensitivity
+        assert!(parse_fra_tenor("3X6").is_some());
+
+        // Test invalid formats
+        assert!(parse_fra_tenor("6M").is_none()); // Not FRA format
+
+        // Test invalid: end <= start
+        assert!(parse_fra_tenor("6x3").is_none());
+    }
+
+    #[test]
+    fn test_fra_to_market_instrument() {
+        // Test FRA with proper "3x6" format
+        let input = InstrumentInput {
+            instrument_type: "fra".to_string(),
+            tenor: "3x6".to_string(),
+            rate: 0.025,
+        };
+        let instrument = input.to_market_instrument(0.5); // tenor_years ignored for FRA
+        // The instrument should use parsed values (0.25, 0.5), not the passed tenor_years
+        match instrument {
+            MarketInstrument::Fra { start, end, rate } => {
+                assert!((start - 0.25).abs() < 1e-10);
+                assert!((end - 0.5).abs() < 1e-10);
+                assert!((rate - 0.025).abs() < 1e-10);
+            }
+            _ => panic!("Expected FRA instrument"),
+        }
+
+        // Test FRA fallback with standard tenor (e.g., "6M" treated as 0x6M)
+        let input = InstrumentInput {
+            instrument_type: "fra".to_string(),
+            tenor: "6M".to_string(),
+            rate: 0.028,
+        };
+        let tenor_years = input.tenor_years().unwrap();
+        let instrument = input.to_market_instrument(tenor_years);
+        match instrument {
+            MarketInstrument::Fra { start, end, rate } => {
+                assert!((start - 0.0).abs() < 1e-10); // Start at 0
+                assert!((end - 0.5).abs() < 1e-10); // End at 6M
+                assert!((rate - 0.028).abs() < 1e-10);
+            }
+            _ => panic!("Expected FRA instrument"),
+        }
     }
 
     #[test]
