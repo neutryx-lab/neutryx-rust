@@ -715,13 +715,16 @@ pub async fn build_curve(
     let market_instruments =
         parse_instruments(&filtered_specs).map_err(|e| convert_parse_error(&e))?;
 
-    // Keep original instruments for par rates (sorted to match market_instruments)
-    let mut sorted_instruments = request.instruments.clone();
-    sorted_instruments.sort_by(|a, b| {
-        let ta = a.to_spec().tenor_years().unwrap_or(0.0);
-        let tb = b.to_spec().tenor_years().unwrap_or(0.0);
-        ta.partial_cmp(&tb).unwrap_or(std::cmp::Ordering::Equal)
-    });
+    // Convert filtered_specs back to InstrumentInput for par rates
+    // This ensures par_rates match the filtered market_instruments
+    let sorted_instruments: Vec<InstrumentInput> = filtered_specs
+        .iter()
+        .map(|spec| InstrumentInput {
+            instrument_type: spec.instrument_type.clone(),
+            tenor: spec.tenor.clone(),
+            rate: spec.rate,
+        })
+        .collect();
 
     use super::types::{CachedCurve, ParRateInput};
 
@@ -733,8 +736,8 @@ pub async fn build_curve(
     // Build curve - with jump calibration when global-bootstrap feature is enabled
     #[cfg(feature = "global-bootstrap")]
     let curve = {
-        // Get max tenor for filtering CB events
-        let max_tenor = specs
+        // Get max tenor for filtering CB events (use filtered specs)
+        let max_tenor = filtered_specs
             .iter()
             .filter_map(|s| s.tenor_years().ok())
             .fold(0.0_f64, |a, b| a.max(b));
@@ -1086,8 +1089,6 @@ fn instrument_type_priority(instrument_type: &str) -> u8 {
 fn filter_duplicate_maturities(specs: Vec<InstrumentSpec>) -> Vec<InstrumentSpec> {
     use std::collections::HashMap;
 
-    const MATURITY_TOLERANCE: f64 = 1e-6;
-
     // Group instruments by maturity (rounded to avoid floating point issues)
     let mut maturity_groups: HashMap<i64, Vec<InstrumentSpec>> = HashMap::new();
 
@@ -1315,6 +1316,82 @@ mod tests {
         let loader = CurveDataLoader::default_path();
         let result = loader.load_instruments("nonexistent-index");
         assert!(result.is_err());
+    }
+
+    // =========================================================================
+    // Duplicate Maturity Filter Tests
+    // =========================================================================
+
+    #[test]
+    fn test_instrument_type_priority() {
+        assert!(instrument_type_priority("deposit") < instrument_type_priority("ois"));
+        assert!(instrument_type_priority("ois") < instrument_type_priority("fra"));
+        assert!(instrument_type_priority("fra") < instrument_type_priority("future"));
+        assert!(instrument_type_priority("DEPOSIT") < instrument_type_priority("OIS"));
+        assert!(instrument_type_priority("swap") < instrument_type_priority("fra"));
+    }
+
+    #[test]
+    fn test_filter_duplicate_maturities_keeps_higher_priority() {
+        // FRA 3x6 and Future 6M both have maturity 0.5Y
+        // FRA (priority 4) should be preferred over Future (priority 5)
+        let specs = vec![
+            InstrumentSpec::new("fra", "3x6", 0.0405),
+            InstrumentSpec::new("future", "6M", 0.0395),
+        ];
+
+        let filtered = filter_duplicate_maturities(specs);
+
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].instrument_type, "fra");
+        assert!((filtered[0].rate - 0.0405).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_filter_duplicate_maturities_preserves_unique() {
+        // All instruments have unique maturities
+        let specs = vec![
+            InstrumentSpec::new("deposit", "1M", 0.0430),
+            InstrumentSpec::new("fra", "3x6", 0.0405),
+            InstrumentSpec::new("ois", "1Y", 0.0358),
+        ];
+
+        let filtered = filter_duplicate_maturities(specs);
+
+        assert_eq!(filtered.len(), 3);
+    }
+
+    #[test]
+    fn test_filter_duplicate_maturities_sorted_by_maturity() {
+        // Test that output is sorted by maturity
+        let specs = vec![
+            InstrumentSpec::new("ois", "1Y", 0.0358),
+            InstrumentSpec::new("deposit", "1M", 0.0430),
+            InstrumentSpec::new("fra", "3x6", 0.0405),
+        ];
+
+        let filtered = filter_duplicate_maturities(specs);
+
+        assert_eq!(filtered.len(), 3);
+        // Should be sorted: 1M (0.0833), 3x6 (0.5), 1Y (1.0)
+        assert_eq!(filtered[0].tenor, "1M");
+        assert_eq!(filtered[1].tenor, "3x6");
+        assert_eq!(filtered[2].tenor, "1Y");
+    }
+
+    #[test]
+    fn test_filter_duplicate_maturities_ois_vs_swap_at_1y() {
+        // OIS 1Y and FRA 9x12 both have maturity 1.0Y
+        // OIS (priority 2) should be preferred over FRA (priority 4)
+        let specs = vec![
+            InstrumentSpec::new("fra", "9x12", 0.0368),
+            InstrumentSpec::new("ois", "1Y", 0.0358),
+        ];
+
+        let filtered = filter_duplicate_maturities(specs);
+
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].instrument_type, "ois");
     }
 
     // =========================================================================
