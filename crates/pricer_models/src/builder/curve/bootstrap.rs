@@ -335,6 +335,63 @@ impl CurveBootstrapper {
 
         self.bootstrap_instruments(&instruments)
     }
+
+    /// Bootstrap with Jacobian inverse computation using GlobalCalibrationEngine.
+    ///
+    /// This method uses the unified `CalibrationEngine<LUStrategy>` internally
+    /// to compute the Jacobian inverse, which is useful for AAD-based
+    /// sensitivity calculation via implicit function theorem.
+    ///
+    /// Note: This method is only available when the `global-bootstrap` feature
+    /// is enabled, as it uses the same infrastructure as GlobalBootstrapper.
+    ///
+    /// # Arguments
+    ///
+    /// * `instruments` - Slice of calibration instruments
+    ///
+    /// # Returns
+    ///
+    /// A tuple of (curve, jacobian_inverse) where jacobian_inverse is
+    /// Some(DMatrix) if computation succeeded, None otherwise.
+    #[cfg(feature = "global-bootstrap")]
+    pub fn bootstrap_with_jacobian<I>(
+        &self,
+        instruments: &[I],
+    ) -> Result<(BootstrappedCurve<f64>, Option<pricer_core::math::linalg::DMatrix<f64>>), BootstrapError>
+    where
+        I: CalibrationInstrument<f64> + Clone,
+    {
+        use crate::builder::engine::{CalibrationEngine, CalibrationEngineConfig};
+        use crate::market::curves::BootstrapInterpolation;
+
+        let engine_config = CalibrationEngineConfig {
+            tolerance: self.config.tolerance,
+            param_tolerance: self.config.tolerance,
+            max_iterations: self.config.max_iterations,
+            jacobian_epsilon: self.config.fd_epsilon,
+            store_jacobian_inverse: true,
+            interpolation: self.config.interpolation.to_bootstrap_interpolation(),
+            allow_extrapolation: true,
+            damping_factor: None,
+            debug_logging: false,
+        };
+
+        let mut engine = CalibrationEngine::with_lu_strategy(engine_config);
+
+        let result = engine.calibrate(instruments).map_err(|e| {
+            BootstrapError::InvalidInput(format!("CalibrationEngine failed: {e}"))
+        })?;
+
+        if !result.converged {
+            return Err(BootstrapError::ConvergenceFailure {
+                maturity: result.pillars.last().copied().unwrap_or(0.0),
+                residual: result.residual_norm,
+                iterations: result.iterations,
+            });
+        }
+
+        Ok((result.curve, result.jacobian_inverse))
+    }
 }
 
 impl Default for CurveBootstrapper {

@@ -319,6 +319,28 @@ impl<T: Float> GlobalBootstrapResult<T> {
     /// Check if the Jacobian inverse is available.
     pub fn has_jacobian_inverse(&self) -> bool { self.jacobian_inverse.is_some() }
 
+    /// Create from a CalibrationResult.
+    ///
+    /// This allows using the new unified `CalibrationEngine` while
+    /// maintaining compatibility with existing code expecting `GlobalBootstrapResult`.
+    pub fn from_calibration_result(
+        result: super::super::engine::CalibrationResult<T>,
+    ) -> Self {
+        Self {
+            curve: result.curve,
+            pillars: result.pillars,
+            discount_factors: result.discount_factors,
+            residual_norm: result.residual_norm,
+            iterations: result.iterations,
+            converged: result.converged,
+            jacobian_inverse: result.jacobian_inverse,
+            residual_history: result.residual_history,
+            condition_number: None, // Not computed by CalibrationEngine
+            pricing_errors: None,   // Not computed by CalibrationEngine
+            realised_jumps: result.realised_jumps,
+        }
+    }
+
     /// Check if the residual history is available.
     pub fn has_residual_history(&self) -> bool { self.residual_history.is_some() }
 
@@ -393,6 +415,78 @@ pub struct GlobalBootstrapper<T: Float> {
 impl<T: RealField + Float + Copy> GlobalBootstrapper<T> {
     /// Create a new global bootstrapper with the given configuration.
     pub fn new(config: GlobalBootstrapConfig<T>) -> Self { Self { config } }
+
+    /// Calibrate using the unified CalibrationEngine.
+    ///
+    /// This method provides an alternative implementation using the
+    /// `CalibrationEngine<LUStrategy>`, which shares the same linear
+    /// algebra infrastructure with sequential bootstrap.
+    ///
+    /// # Arguments
+    ///
+    /// * `instruments` - Market instruments to calibrate
+    ///
+    /// # Returns
+    ///
+    /// `GlobalBootstrapResult` compatible with existing code.
+    pub fn calibrate_with_engine<I: CalibrationInstrument<T> + Clone>(
+        &self,
+        instruments: &[I],
+    ) -> Result<GlobalBootstrapResult<T>, SolverError> {
+        use super::super::engine::{CalibrationEngine, CalibrationEngineConfig};
+
+        let engine_config = CalibrationEngineConfig {
+            tolerance: self.config.tolerance,
+            param_tolerance: self.config.param_tolerance,
+            max_iterations: self.config.max_iterations,
+            jacobian_epsilon: self.config.jacobian_epsilon,
+            store_jacobian_inverse: self.config.store_jacobian_inverse,
+            interpolation: self.config.interpolation,
+            allow_extrapolation: self.config.allow_extrapolation,
+            damping_factor: self.config.damping_factor,
+            debug_logging: self.config.debug_logging,
+        };
+
+        let mut engine = CalibrationEngine::with_lu_strategy(engine_config);
+
+        let result = engine.calibrate(instruments).map_err(|e| {
+            SolverError::NumericalInstability(format!("CalibrationEngine failed: {e}"))
+        })?;
+
+        Ok(GlobalBootstrapResult::from_calibration_result(result))
+    }
+
+    /// Calibrate with jumps using the unified CalibrationEngine.
+    ///
+    /// This method provides an alternative implementation for jump calibration
+    /// using `CalibrationEngine<LUStrategy>`.
+    pub fn calibrate_with_jumps_engine<I: CalibrationInstrument<T> + Clone>(
+        &self,
+        instruments: &[I],
+        jump_pillars: Vec<JumpPillar<T>>,
+    ) -> Result<GlobalBootstrapResult<T>, SolverError> {
+        use super::super::engine::{CalibrationEngine, CalibrationEngineConfig};
+
+        let engine_config = CalibrationEngineConfig {
+            tolerance: self.config.tolerance,
+            param_tolerance: self.config.param_tolerance,
+            max_iterations: self.config.max_iterations,
+            jacobian_epsilon: self.config.jacobian_epsilon,
+            store_jacobian_inverse: self.config.store_jacobian_inverse,
+            interpolation: self.config.interpolation,
+            allow_extrapolation: self.config.allow_extrapolation,
+            damping_factor: self.config.damping_factor,
+            debug_logging: self.config.debug_logging,
+        };
+
+        let mut engine = CalibrationEngine::with_lu_strategy(engine_config);
+
+        let result = engine.calibrate_with_jumps(instruments, jump_pillars).map_err(|e| {
+            SolverError::NumericalInstability(format!("CalibrationEngine with jumps failed: {e}"))
+        })?;
+
+        Ok(GlobalBootstrapResult::from_calibration_result(result))
+    }
 
     /// Create a bootstrapper with default configuration.
     pub fn with_defaults() -> Self { Self::new(GlobalBootstrapConfig::default()) }

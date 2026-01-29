@@ -30,12 +30,9 @@
 //! ```
 
 use num_traits::Float;
-use pricer_core::{
-    math::{
-        linalg::{DMatrix, LinearSolveStrategy, LowerTriangularStrategy, LUStrategy, RealField},
-        numeric::from_f64,
-    },
-    types::SolverError,
+use pricer_core::math::{
+    linalg::{DMatrix, LinearSolveStrategy, LowerTriangularStrategy, LUStrategy, RealField},
+    numeric::from_f64,
 };
 
 use super::{CalibrationError, CalibrationInstrument, CalibrationProblem, CalibrationProblemConfig};
@@ -424,7 +421,6 @@ where
         I: CalibrationInstrument<T> + Clone,
     {
         let mut params = problem.initial_guess_with_jumps();
-        let n_pillars = problem.pillars().len();
 
         let mut residual_history = if self.config.debug_logging {
             Some(Vec::with_capacity(self.config.max_iterations))
@@ -444,11 +440,7 @@ where
             let residuals = problem.compute_residuals_with_jumps(&params)?;
 
             // Compute residual norm
-            residual_norm = residuals
-                .iter()
-                .map(|&r| r * r)
-                .fold(T::zero(), |acc, r| acc + r)
-                ;
+            residual_norm = vec_norm(&residuals);
 
             if let Some(ref mut history) = residual_history {
                 history.push(residual_norm);
@@ -500,11 +492,7 @@ where
             }
 
             // Check parameter convergence
-            let param_change: T = delta
-                .iter()
-                .map(|&d| d * d)
-                .fold(T::zero(), |acc, d| acc + d)
-                ;
+            let param_change: T = vec_norm(&delta);
 
             if param_change < self.config.param_tolerance {
                 converged = true;

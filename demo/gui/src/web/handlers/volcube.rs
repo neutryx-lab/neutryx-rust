@@ -97,6 +97,69 @@ pub struct VolCubeFile {
 }
 
 // =============================================================================
+// IR Vol File Structure (new unified format)
+// =============================================================================
+
+/// IR Vol file format with quotes array (unified currency files).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IrVolFile {
+    pub metadata: IrVolMetadata,
+    pub quotes: Vec<IrVolQuote>,
+    #[serde(default)]
+    pub smile_parameters: Option<IrVolSmileParameters>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IrVolMetadata {
+    pub currency: String,
+    #[serde(default)]
+    pub vol_type: String,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub source: String,
+    #[serde(default)]
+    pub last_updated: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IrVolQuote {
+    pub expiry: String,
+    pub tenor: String,
+    pub atm_vol: f64,
+    #[serde(default)]
+    pub vol_type: String,
+    #[serde(default)]
+    pub forward: Option<f64>,
+    #[serde(default)]
+    pub smile: Vec<IrVolSmilePoint>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IrVolSmilePoint {
+    pub strike_offset_bp: f64,
+    pub vol: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IrVolSmileParameters {
+    pub model: String,
+    #[serde(default)]
+    pub default_alpha: Option<f64>,
+    #[serde(default)]
+    pub default_beta: Option<f64>,
+    #[serde(default)]
+    pub default_rho: Option<f64>,
+    #[serde(default)]
+    pub default_nu: Option<f64>,
+}
+
+// =============================================================================
 // SABR Configuration
 // =============================================================================
 
@@ -532,35 +595,36 @@ impl VolCubeDataLoader {
     /// Create a VolCubeDataLoader with the default path.
     pub fn default_path() -> Self { Self::new(PathBuf::from("demo/data/input/irvol")) }
 
-    /// Get the list of available swaption indices.
+    /// Get the list of available swaption indices (currency-based).
     ///
     /// # Requirements Coverage
     ///
-    /// - Requirement 9.2, 9.3: USD-SOFR-Swaption, EUR-ESTR-Swaptionをサポート
+    /// - Requirement 9.2, 9.3: USD, EUR, GBP, JPY currencies supported
+    ///
+    /// Scans for currency files (e.g., `usd.json`, `eur.json`) containing
+    /// `volType: "lognormal"` quotes suitable for SABR calibration.
     pub fn available_indices(&self) -> Vec<VolCubeIndexInfo> {
         let mut indices = Vec::new();
 
-        if let Ok(entries) = std::fs::read_dir(&self.base_path) {
-            for entry in entries.flatten() {
-                if let Some(name) = entry.file_name().to_str() {
-                    // Only include swaption files (not FX files)
-                    if name.ends_with("-swaption.json") {
-                        let id = name.trim_end_matches(".json").to_string();
-                        let display_name = id.replace('-', " ").to_uppercase();
+        // Supported currency files with lognormal swaption data
+        let currencies = [
+            ("usd", "USD", "USD SOFR Swaption"),
+            ("eur", "EUR", "EUR ESTR Swaption"),
+            ("gbp", "GBP", "GBP SONIA Swaption"),
+            ("jpy", "JPY", "JPY TONA Swaption"),
+        ];
 
-                        let currency = if id.starts_with("usd") {
-                            "USD"
-                        } else if id.starts_with("eur") {
-                            "EUR"
-                        } else if id.starts_with("jpy") {
-                            "JPY"
-                        } else {
-                            "Other"
-                        };
-
+        for (id, currency, name) in currencies {
+            let file_path = self.base_path.join(format!("{}.json", id));
+            if file_path.exists() {
+                // Check if file contains lognormal quotes
+                if let Ok(content) = std::fs::read_to_string(&file_path) {
+                    if content.contains(r#""volType": "lognormal""#)
+                        || content.contains(r#""volType":"lognormal""#)
+                    {
                         indices.push(VolCubeIndexInfo {
-                            id,
-                            name: display_name,
+                            id: id.to_string(),
+                            name: name.to_string(),
                             asset_class: "swaption".to_string(),
                             currency: currency.to_string(),
                         });
@@ -569,20 +633,18 @@ impl VolCubeDataLoader {
             }
         }
 
-        // Sort for consistent ordering
-        indices.sort_by(|a, b| a.id.cmp(&b.id));
         indices
     }
 
-    /// Load instruments for the specified index.
+    /// Load instruments for the specified index (currency).
     ///
     /// # Arguments
     ///
-    /// * `index` - The index identifier (e.g., "usd-sofr-swaption")
+    /// * `index` - The currency identifier (e.g., "usd", "eur")
     ///
     /// # Returns
     ///
-    /// The instrument file contents if found and valid.
+    /// The instrument file contents converted to `VolCubeFile` format.
     ///
     /// # Errors
     ///
@@ -597,10 +659,62 @@ impl VolCubeDataLoader {
         let content = std::fs::read_to_string(&file_path)
             .map_err(|e| VolCubeDataError::IoError(e.to_string()))?;
 
+        // Try to parse as new IrVolFile format first
+        if let Ok(ir_vol_file) = serde_json::from_str::<IrVolFile>(&content) {
+            return Ok(self.convert_ir_vol_to_volcube(index, &ir_vol_file));
+        }
+
+        // Fallback to legacy VolCubeFile format
         let file: VolCubeFile = serde_json::from_str(&content)
             .map_err(|e| VolCubeDataError::ParseError(e.to_string()))?;
 
         Ok(file)
+    }
+
+    /// Convert IrVolFile (new format) to VolCubeFile (API format).
+    ///
+    /// Extracts lognormal quotes and converts them to SwaptionInstrument format.
+    fn convert_ir_vol_to_volcube(&self, index: &str, ir_vol: &IrVolFile) -> VolCubeFile {
+        let mut instruments = Vec::new();
+
+        for quote in &ir_vol.quotes {
+            // Only process lognormal quotes (calibration-ready)
+            if quote.vol_type != "lognormal" {
+                continue;
+            }
+
+            let expiry = parse_tenor_to_years(&quote.expiry);
+            let tenor = parse_tenor_to_years(&quote.tenor);
+            let forward = quote.forward.unwrap_or(0.03);
+
+            // Add ATM point
+            instruments.push(SwaptionInstrument::new(
+                expiry,
+                tenor,
+                forward, // ATM strike = forward
+                quote.atm_vol,
+                forward,
+            ));
+
+            // Add smile points
+            for smile_point in &quote.smile {
+                let strike = forward + smile_point.strike_offset_bp / 10000.0;
+                instruments.push(SwaptionInstrument::new(
+                    expiry,
+                    tenor,
+                    strike,
+                    smile_point.vol,
+                    forward,
+                ));
+            }
+        }
+
+        VolCubeFile {
+            index: index.to_string(),
+            reference_date: ir_vol.metadata.last_updated.clone(),
+            dependent_curves: vec![],
+            instruments,
+        }
     }
 
     /// Save instruments to file.
@@ -1371,6 +1485,24 @@ fn calibrate_sabr_slice(
             let alpha = (atm_inst.implied_vol * f_mid).clamp(0.001, 1.0);
             (alpha, -0.3, 0.4)
         }
+    }
+}
+
+/// Parse tenor string (e.g., "1Y", "6M", "2W") to years.
+fn parse_tenor_to_years(tenor: &str) -> f64 {
+    let tenor = tenor.trim().to_uppercase();
+
+    if let Some(num_str) = tenor.strip_suffix('Y') {
+        num_str.parse::<f64>().unwrap_or(1.0)
+    } else if let Some(num_str) = tenor.strip_suffix('M') {
+        num_str.parse::<f64>().unwrap_or(1.0) / 12.0
+    } else if let Some(num_str) = tenor.strip_suffix('W') {
+        num_str.parse::<f64>().unwrap_or(1.0) / 52.0
+    } else if let Some(num_str) = tenor.strip_suffix('D') {
+        num_str.parse::<f64>().unwrap_or(1.0) / 365.0
+    } else {
+        // Try parsing as plain number (assume years)
+        tenor.parse::<f64>().unwrap_or(1.0)
     }
 }
 
