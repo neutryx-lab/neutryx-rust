@@ -2158,6 +2158,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "neutryx"
+version = "0.1.0"
+dependencies = [
+ "approx",
+ "infra_config",
+ "infra_master",
+ "infra_store",
+ "pricer_core",
+ "pricer_models",
+ "pricer_pricing",
+ "pricer_risk",
+]
+
+[[package]]
 name = "nom"
 version = "7.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"

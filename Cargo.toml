@@ -1,3 +1,97 @@
+[package]
+name = "neutryx"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Unified facade crate for Neutryx derivatives pricing library"
+
+[dependencies]
+# --- Infra Layer (always included) ---
+infra_master = { path = "crates/infra_master" }
+
+# --- Infra Layer (optional) ---
+infra_config = { path = "crates/infra_config", optional = true }
+infra_store = { path = "crates/infra_store", optional = true }
+
+# --- Pricer Layer (optional) ---
+pricer_core = { path = "crates/pricer_core", optional = true }
+pricer_models = { path = "crates/pricer_models", optional = true }
+pricer_pricing = { path = "crates/pricer_pricing", optional = true }
+pricer_risk = { path = "crates/pricer_risk", optional = true }
+
+[features]
+default = ["full"]
+
+# Minimal: Master data only (dates, currencies, trade definitions)
+minimal = []
+
+# Analytics: Curve building, models, analytical pricing
+analytics = [
+    "dep:pricer_core",
+    "dep:pricer_models",
+    "pricer_core/serde",
+    "pricer_models/serde",
+]
+
+# Full: Complete pricing and risk functionality
+full = [
+    "analytics",
+    "dep:infra_config",
+    "dep:pricer_pricing",
+    "dep:pricer_risk",
+    "pricer_pricing/l1l2-integration",
+    "pricer_pricing/serde",
+    "pricer_risk/serde",
+]
+
+# Storage backends (optional)
+storage = ["dep:infra_store"]
+postgres = ["storage", "infra_store/postgres"]
+
+# Serialisation support
+serde = [
+    "infra_master/serde",
+    "pricer_core?/serde",
+    "pricer_models?/serde",
+    "pricer_pricing?/serde",
+    "pricer_risk?/serde",
+]
+
+# All asset classes
+all-assets = [
+    "pricer_core?/all",
+    "pricer_models?/all",
+]
+
+# Global bootstrap with multi-dimensional Newton solver
+global-bootstrap = ["pricer_models?/global-bootstrap"]
+
+# Parallel processing
+parallel = [
+    "pricer_core?/parallel",
+    "pricer_models?/parallel",
+]
+
+# VolCube calibration
+volcube = ["pricer_pricing?/volcube"]
+
+# Enzyme automatic differentiation (requires nightly + LLVM 18)
+enzyme-ad = [
+    "pricer_pricing?/enzyme-ad",
+    "pricer_risk?/enzyme-ad",
+]
+
+[dev-dependencies]
+approx.workspace = true
+
+[lints]
+workspace = true
+
+# =============================================================================
+# Workspace Configuration
+# =============================================================================
 [workspace]
 members = [
     # --- A: Adapter Layer (Input) ---
