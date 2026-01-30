@@ -136,6 +136,7 @@ docker run -it neutryx-enzyme
 | **Kernel Engine Hierarchy** | LinearEngine (PricingKernel), ScriptEngine (ScriptKernel), CallableEngine (CallableKernel) with static dispatch via `CurveProvider<T>` trait |
 | **LSMC Regression** | Longstaff-Schwartz Monte Carlo for Bermudan exercise; Cholesky-based regression, forward/backward pass, continuation value estimation |
 | **Calibration Patterns** | Sequential (`curve::bootstrap`), Global (`curve::global`, feature-gated), Slice-wise (`vol::surface`, `vol::cube`) in `pricer_models::builder` |
+| **Linear Solve Strategy** | Pluggable matrix solve strategies (`LUStrategy`, `LowerTriangularStrategy`) enable O(n²) vs O(n³) complexity; both store J⁻¹ for AAD via implicit function theorem |
 | **Shadow Object Pattern** | Reverse mode AAD uses shadow buffers for gradient accumulation; `binder.rs` orchestrates market data → portfolio Greeks flow |
 | **Feature Flag Coordination** | Features propagate through dependency chain (demo→frictional_bank→pricer_pricing) enabling modular compilation for different deployment scenarios |
 | **Feature Flags** | `enzyme-mode`, `serde` for serialisation; Asset classes: `equity` (default), `rates`, `credit`, `fx`, `commodity`, `exotic`; Convenience: `all`; Integration: `l1l2-integration` |
@@ -174,5 +175,5 @@ docker run -it neutryx-enzyme
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-28_ — Added Calibration Patterns (Sequential, Slice-wise, Global)
+_Updated: 2026-01-30_ — Added Linear Solve Strategy Pattern (LU, LowerTriangular for AAD)
 _Document standards and patterns, not every dependency_

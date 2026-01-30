@@ -190,6 +190,9 @@ math/
 ├── fitting/          → Curve fitting (least_squares, gaussian)
 ├── mesh/             → Grid generation (grid_1d, grid_2d)
 └── linalg/           → Linear algebra (feature-gated, nalgebra wrappers)
+    ├── strategy.rs   → LinearSolveStrategy trait (LU, LowerTriangular) for pluggable solve strategies
+    ├── wrappers.rs   → nalgebra wrappers (cholesky, lu, qr, svd)
+    └── error.rs      → LinearAlgebraError types
 
 ir/         → Pricing Kernel Intermediate Representation (SIMD/Enzyme-optimised)
 ├── aligned_buffer.rs → 64-byte aligned heap buffer (AlignedBuffer<T>)
@@ -551,6 +554,8 @@ web/             → Web server module (feature-gated)
   ├── handlers/       → REST API handlers (feature-organised)
   │   ├── mod.rs          → Handler module exports
   │   ├── types.rs        → Consolidated API type definitions
+  │   ├── config.rs       → Handler configuration and utilities
+  │   ├── health.rs       → Health check endpoints
   │   ├── curves.rs       → Curve Builder API (/api/curves/*)
   │   ├── volcube.rs      → IR VolCube API (/api/volcube/*)
   │   ├── irvol.rs        → IR Vol Surface API (/api/irvol/*)
@@ -561,12 +566,15 @@ web/             → Web server module (feature-gated)
   │   ├── generic_pricer.rs → Generic Pricer API (/api/pricer/*)
   │   ├── risk_engine.rs  → Risk Engine API (/api/risk/*)
   │   ├── scenario_analysis.rs → Scenario analysis endpoints
-  │   ├── pricing.rs      → Pricing endpoints
-  │   ├── greeks.rs       → Greeks calculation endpoints
+  │   ├── pricing.rs      → Pricing endpoints (feature = "calibration")
+  │   ├── greeks.rs       → Greeks calculation endpoints (feature = "calibration")
+  │   ├── risk.rs         → XVA and risk metric calculations (feature = "calibration")
   │   ├── portfolio.rs    → Portfolio management endpoints
   │   ├── graphs.rs       → Computation graph endpoints
-  │   ├── events.rs       → Market event handling
-  │   └── health.rs       → Health check endpoints
+  │   ├── pricer_graph.rs → Pricing kernel computation graph extraction
+  │   ├── exposure.rs     → Exposure calculation and metrics
+  │   ├── scenarios.rs    → Scenario management and analysis
+  │   └── benchmarks.rs   → Performance benchmark comparison endpoints
   │
   ├── state/          → Application state management
   ├── pricing_service.rs  → Pricing service integration
@@ -684,5 +692,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-28_ — demo/gui handlers reorganised into handlers/ subdirectory with consolidated types
+_Updated: 2026-01-30_ — Added linear solve strategies (linalg/strategy.rs), updated handlers list (7 new handlers: config, risk, exposure, scenarios, pricer_graph, benchmarks)
 _Document patterns, not file trees. New files following patterns should not require updates_
