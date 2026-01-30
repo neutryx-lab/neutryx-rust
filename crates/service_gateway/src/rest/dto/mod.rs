@@ -7,6 +7,8 @@ mod curves;
 mod pricing;
 
 // Feature-gated DTO modules
+#[cfg(feature = "demo")]
+pub mod demo;
 #[cfg(feature = "models")]
 pub mod models;
 #[cfg(feature = "risk")]
@@ -21,6 +23,9 @@ pub use curves::*;
 pub use pricing::*;
 
 // Feature-gated re-exports (public API, may not be used internally)
+#[cfg(feature = "demo")]
+#[allow(unused_imports)]
+pub use demo::*;
 #[cfg(feature = "models")]
 #[allow(unused_imports)]
 pub use models::*;

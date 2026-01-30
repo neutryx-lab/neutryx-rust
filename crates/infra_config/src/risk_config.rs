@@ -7,8 +7,9 @@ use serde::{Deserialize, Serialize};
 use crate::ConfigError;
 
 /// Greeks calculation method selection.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default, strum::VariantNames)]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum GreeksMethod {
     /// Automatic Differentiation (Enzyme-based AAD).
     /// Requires `enzyme-ad` feature to be enabled.
@@ -19,8 +20,9 @@ pub enum GreeksMethod {
 }
 
 /// Greek sensitivity types.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, strum::VariantNames)]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum GreekType {
     /// ∂V/∂S - Sensitivity to spot price.
     Delta,
@@ -131,8 +133,9 @@ impl BumpSizes {
 }
 
 /// Second-order Greeks calculation mode.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default, strum::VariantNames)]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum SecondOrderMode {
     /// Calculate second-order Greeks in parallel (faster).
     #[default]
@@ -165,8 +168,9 @@ pub struct MarketShift {
 }
 
 /// Type of market shift.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default, strum::VariantNames)]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum ShiftType {
     /// Absolute shift (additive).
     #[default]

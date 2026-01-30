@@ -204,6 +204,10 @@ dashmap = "6.0"
 ordered-float = "4.0"
 parking_lot = "0.12"
 
+# Enum utilities
+strum = { version = "0.26", features = ["derive"] }
+strum_macros = "0.26"
+
 [profile.release]
 lto = true
 codegen-units = 1

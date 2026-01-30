@@ -37,6 +37,71 @@ pub fn create_full_router(app_state: Arc<AppState>, ws_state: Arc<WsAppState>) -
         .merge(ws_routes(ws_state))
 }
 
+/// Create demo router with demo_gui integration (feature = "demo")
+///
+/// This router includes:
+/// - Demo API endpoints at /api/*
+/// - API v1 endpoints at /api/v1/*
+/// - Static file serving from demo/gui/static/
+#[cfg(feature = "demo")]
+pub fn create_demo_router(state: Arc<AppState>) -> Router {
+    use tower_http::services::{ServeDir, ServeFile};
+
+    let router = Router::new()
+        .route("/health", get(handlers::health))
+        .nest("/api", demo_api_routes(state.clone()))
+        .nest("/api/v1", api_v1_routes(state));
+
+    // Add static file serving with SPA fallback
+    let serve_dir = ServeDir::new("demo/gui/static")
+        .not_found_service(ServeFile::new("demo/gui/static/index.html"));
+
+    router
+        .nest_service("/static", ServeDir::new("demo/gui/static"))
+        .fallback_service(serve_dir)
+}
+
+/// Demo API routes (feature = "demo")
+#[cfg(feature = "demo")]
+fn demo_api_routes(state: Arc<AppState>) -> Router {
+    Router::new()
+        // Configuration
+        .route("/config", get(handlers::demo::get_config))
+        // Instruments
+        .route("/instruments", get(handlers::demo::get_instruments))
+        // Trade expansion
+        .route("/trade/expand", post(handlers::demo::expand_trade))
+        // Pricing
+        .route("/pricer/price", post(handlers::demo::price_trade))
+        .route("/pricer/greeks", post(handlers::demo::calculate_greeks))
+        // Curves (demo endpoints + existing)
+        .route("/curves", get(handlers::demo::get_available_curves))
+        .route("/curves/build", post(handlers::build_curve))
+        .route("/curves/discount-factor", post(handlers::get_discount_factor))
+        .route("/curves/forward-rate", post(handlers::get_forward_rate))
+        // Market data
+        .route("/market/rates", get(handlers::demo::get_market_rates))
+        .route("/market/config", get(handlers::demo::get_market_config))
+        .route("/market/rates/refresh", post(handlers::demo::refresh_market_rates))
+        .route("/market/rates/:rate_id", get(handlers::demo::get_rate_detail))
+        .route("/market/conventions", get(handlers::demo::get_conventions))
+        .route("/market/conventions/:id", get(handlers::demo::get_convention_detail))
+        .route("/market/events", get(handlers::demo::get_events))
+        .route("/market/events/types", get(handlers::demo::get_event_types))
+        .route("/market/export/csv", get(handlers::demo::export_market_csv))
+        .route("/market/export/json", get(handlers::demo::export_market_json))
+        // IR Volatility
+        .route("/irvol/currencies", get(handlers::demo::get_ir_vol_currencies))
+        .route("/irvol/quotes/:currency", get(handlers::demo::get_ir_vol_quotes))
+        // FX Volatility
+        .route("/fxvol/pairs", get(handlers::demo::get_fx_vol_pairs))
+        .route("/fxvol/quotes/:pair", get(handlers::demo::get_fx_vol_quotes))
+        // Pricing endpoints
+        .route("/price", post(handlers::price_instrument))
+        .route("/price/batch", post(handlers::price_portfolio))
+        .with_state(state)
+}
+
 fn ws_routes(state: Arc<WsAppState>) -> Router {
     Router::new()
         .route("/ws", get(ws_handlers::ws_handler))

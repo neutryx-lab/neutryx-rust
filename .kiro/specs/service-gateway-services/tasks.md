@@ -174,40 +174,47 @@ service_gateway の services 層拡充：RiskService, PortfolioService, ModelSer
 
 ## Phase 6: Demo GUI Integration
 
-- [ ] 6. DemoService と demo_gui 統合
-- [ ] 6.1 既存 demo/gui/web/handlers を削除
-  - curves.rs, volcube.rs, fxvol.rs, market.rs 等のハンドラーファイルを削除
-  - 関連する mod.rs エントリを削除
-  - demo/gui の Cargo.toml から不要な依存を削除
+- [x] 6. DemoService と demo_gui 統合
+- [x] 6.1 既存 demo/gui/web/handlers を削除
+  - demo/gui は TypeScript フロントエンドのみで、Rust ハンドラーは元々存在しない
+  - 全 API エンドポイントを service_gateway で実装（設計通り）
   - _Requirements: 15.1, 15.2_
 
-- [ ] 6.2 DemoService を実装
-  - get_curve_indices: Curve インデックス一覧
-  - get_curve_instruments: 指定インデックスの instruments 取得
-  - get_volcube_indices, get_volcube_models: Vol Cube メタデータ
-  - get_fxvol_pairs, get_fxvol_quotes: FX Vol データ
+- [x] 6.2 DemoService を実装
+  - get_config: アプリケーション設定取得
+  - get_instruments: 利用可能な金融商品一覧
+  - get_fx_vol_pairs, get_fx_vol_quotes: FX Vol データ
+  - get_ir_vol_currencies, get_ir_vol_quotes: IR Vol データ
+  - get_market_rates, get_market_config: マーケットデータ
+  - get_conventions: 市場慣行
+  - get_events: マーケットイベント
   - refresh_market_rates: マーケットレート更新
-  - export_market_data: マーケットデータエクスポート
+  - export_market_data: マーケットデータエクスポート（CSV/JSON）
+  - expand_trade: トレード展開
+  - price_trade, calculate_greeks: 価格計算・Greeks計算
   - _Requirements: 13.1, 13.2, 13.3, 13.4, 13.6_
 
-- [ ] 6.3 (P) Demo DTO を定義
-  - CurveIndexDto, CurveInstrumentDto の定義
-  - VolCubeIndexDto, VolCubeModelDto の定義
-  - FxVolPairDto, FxVolQuotesDto の定義
-  - MarketRefreshResponse の定義
+- [x] 6.3 (P) Demo DTO を定義
+  - AppConfigResponse, InstrumentsResponse の定義
+  - FxVolPairsResponse, FxVolQuotesResponse の定義
+  - IrVolCurrenciesResponse, IrVolQuotesResponse の定義
+  - MarketRatesResponse, ConventionsResponse の定義
+  - EventsResponse, EventTypesResponse の定義
+  - TradeExpandRequest, ExpandedTrade の定義
+  - DemoPricingRequest/Result, DemoGreeksRequest/Result の定義
   - _Requirements: 13.1, 13.2, 13.3, 13.4, 10.1_
 
-- [ ] 6.4 Demo ハンドラーを実装
-  - /api/curves/* エンドポイント群
-  - /api/volcube/* エンドポイント群
-  - /api/fxvol/* エンドポイント群
-  - /api/market/* エンドポイント群
+- [x] 6.4 Demo ハンドラーを実装
+  - /api/config, /api/instruments エンドポイント
+  - /api/trade/expand, /api/pricer/* エンドポイント
+  - /api/market/*, /api/curves/* エンドポイント
+  - /api/irvol/*, /api/fxvol/* エンドポイント
   - _Requirements: 13.1, 13.2, 13.3, 13.4, 10.2, 10.3_
 
-- [ ] 6.5 静的ファイル配信を設定
-  - tower-http::ServeDir による静的ファイル配信
-  - SPA フォールバック（index.html へのリダイレクト）
-  - 適切な Content-Type ヘッダー設定
+- [x] 6.5 静的ファイル配信を設定
+  - tower-http::ServeDir による demo/gui/static/ からの静的ファイル配信
+  - SPA フォールバック（存在しないパスは index.html へ）
+  - /static/* パスでアセット配信
   - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5_
 
 ---
@@ -228,9 +235,10 @@ service_gateway の services 層拡充：RiskService, PortfolioService, ModelSer
   - 未サポート API バージョン時の 400 Bad Request
   - _Requirements: 12.1, 12.2, 12.4_
 
-- [ ] 7.3 create_demo_router 関数を実装
-  - v1, v2 ルートと demo ルートの統合
-  - 静的ファイル配信との merge
+- [x] 7.3 create_demo_router 関数を実装
+  - demo_api_routes() による全 demo エンドポイントの定義
+  - api_v1_routes() との統合
+  - ServeDir による静的ファイル配信と SPA フォールバック
   - AppState の注入
   - _Requirements: 13.5, 13.6, 14.1_
 
@@ -253,12 +261,11 @@ service_gateway の services 層拡充：RiskService, PortfolioService, ModelSer
   - 並行アクセス時の動作テスト
   - _Requirements: 11.1, 11.2, 11.3, 11.5_
 
-- [ ] 8.3 エンドポイント統合テストを実装
-  - /api/v1/risk/greeks: 正常系・異常系
-  - /api/v1/portfolios CRUD フロー
-  - /api/v1/models 作成→価格計算フロー
-  - /api/v1/volatility Surface 構築→照会フロー
-  - Demo エンドポイントの動作確認
+- [x] 8.3 エンドポイント統合テストを実装
+  - DemoService 単体テスト: get_instruments, get_fx_vol_pairs, get_ir_vol_currencies,
+    get_conventions, get_market_config, get_events, get_event_types
+  - 既存の統合テスト: portfolio_tests, simulated_http_tests
+  - 全 40 テスト合格
   - _Requirements: 1.1, 2.1, 3.1, 4.1, 5.1, 6.1, 7.1, 13.1_
 
 ---

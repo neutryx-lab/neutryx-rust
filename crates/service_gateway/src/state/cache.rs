@@ -72,6 +72,11 @@ impl CurveCache {
 
     /// Clear all cached curves
     pub fn clear(&self) { self.inner.write().clear(); }
+
+    /// List all curve IDs in the cache
+    pub fn list_ids(&self) -> Vec<Uuid> {
+        self.inner.read().iter().map(|(id, _)| *id).collect()
+    }
 }
 
 impl Default for CurveCache {
