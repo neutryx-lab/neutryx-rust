@@ -1,0 +1,21 @@
+{
+  "_comment": "Volatility shock scenario (+25% relative)",
+  "preset": null,
+  "custom_shifts": [
+    {
+      "factor": "EURUSD_VOL",
+      "shift_type": "relative",
+      "amount": 0.25
+    },
+    {
+      "factor": "USDJPY_VOL",
+      "shift_type": "relative",
+      "amount": 0.25
+    },
+    {
+      "factor": "IR_VOL_*",
+      "shift_type": "relative",
+      "amount": 0.25
+    }
+  ]
+}

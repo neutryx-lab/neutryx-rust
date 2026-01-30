@@ -1,0 +1,10 @@
+{
+  "_comment": "Currency to rate index mapping",
+  "mapping": {
+    "USD": "SOFR",
+    "EUR": "EURIBOR3M",
+    "GBP": "SONIA",
+    "JPY": "TONAR",
+    "CHF": "SARON"
+  }
+}

@@ -1,7 +1,8 @@
 //! Configuration API handlers and types.
 //!
 //! This module provides REST API handlers for the Configuration API
-//! and all related types.
+//! and all related types. Configuration values are loaded from JSON files
+//! in `demo/data/config/`.
 //!
 //! # Endpoints
 //!
@@ -12,14 +13,218 @@
 //! | GET    | /api/config/defaults | Get default values only     |
 
 use std::collections::HashMap;
+use std::sync::OnceLock;
 
 use axum::Json;
-use infra_config::{BumpSizes, GreekType};
+use infra_config::GreekType;
 use infra_master::{
     market::Currency,
     time::{DayCounter, Frequency, Tenor},
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+
+/// Path to GUI defaults configuration file.
+const GUI_DEFAULTS_PATH: &str = "demo/data/config/gui_defaults.json";
+/// Path to rate index mapping configuration file.
+const RATE_INDEX_MAPPING_PATH: &str = "demo/data/config/rate_index_mapping.json";
+
+/// Cached configuration loaded from JSON files.
+static LOADED_CONFIG: OnceLock<LoadedConfig> = OnceLock::new();
+
+// =============================================================================
+// JSON File Loading
+// =============================================================================
+
+/// Configuration loaded from JSON files.
+#[derive(Debug, Clone)]
+struct LoadedConfig {
+    defaults: DefaultValues,
+    rate_index_mapping: HashMap<String, String>,
+}
+
+/// Raw JSON structure for gui_defaults.json.
+#[derive(Debug, Clone, Deserialize)]
+struct RawGuiDefaults {
+    pricing: RawPricingDefaults,
+    monte_carlo: RawMonteCarloDefaults,
+    bump_sizes: RawBumpSizeDefaults,
+    pricer: RawPricerDefaults,
+    curve: RawCurveDefaults,
+    expansion: RawExpansionDefaults,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct RawPricingDefaults {
+    curve_rate: f64,
+    volatility: f64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct RawMonteCarloDefaults {
+    num_paths: usize,
+    num_steps: usize,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct RawBumpSizeDefaults {
+    rate: f64,
+    spot: f64,
+    vol: f64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct RawPricerDefaults {
+    equity: RawEquityDefaults,
+    fx: RawFxDefaults,
+    irs: RawIrsDefaults,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct RawEquityDefaults {
+    spot: f64,
+    strike: f64,
+    expiry_years: f64,
+    volatility: f64,
+    rate: f64,
+    option_type: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct RawFxDefaults {
+    spot: f64,
+    strike: f64,
+    expiry_years: f64,
+    volatility: f64,
+    domestic_rate: f64,
+    foreign_rate: f64,
+    option_type: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct RawIrsDefaults {
+    notional: f64,
+    fixed_rate: f64,
+    tenor_years: u32,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct RawCurveDefaults {
+    notional: f64,
+    fixed_rate: f64,
+    tenor_years: u32,
+    interpolation: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct RawExpansionDefaults {
+    rates: RawRatesExpansionDefaults,
+    swap: RawSwapExpansionDefaults,
+    fx: RawFxExpansionDefaults,
+    equity: RawEquityExpansionDefaults,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct RawRatesExpansionDefaults {
+    currency: String,
+    tenor: String,
+    rate: f64,
+    notional: f64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct RawSwapExpansionDefaults {
+    currency: String,
+    tenor: String,
+    fixed_rate: f64,
+    spread: f64,
+    notional: f64,
+    payment_frequency: String,
+    day_count: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct RawFxExpansionDefaults {
+    base_currency: String,
+    quote_currency: String,
+    spot_rate: f64,
+    forward_rate: f64,
+    notional: f64,
+    option_type: String,
+    volatility: f64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct RawEquityExpansionDefaults {
+    underlying: String,
+    spot_price: f64,
+    strike: f64,
+    volatility: f64,
+    risk_free_rate: f64,
+    option_type: String,
+    direction: String,
+}
+
+/// Raw JSON structure for rate_index_mapping.json.
+#[derive(Debug, Clone, Deserialize)]
+struct RawRateIndexMapping {
+    mapping: HashMap<String, String>,
+}
+
+/// Load configuration from JSON files, with fallback to embedded defaults.
+fn load_config() -> LoadedConfig {
+    let defaults = load_gui_defaults().unwrap_or_else(|e| {
+        tracing::warn!("Failed to load {}: {}, using embedded defaults", GUI_DEFAULTS_PATH, e);
+        DefaultValues::embedded_default()
+    });
+
+    let rate_index_mapping = load_rate_index_mapping().unwrap_or_else(|e| {
+        tracing::warn!("Failed to load {}: {}, using embedded defaults", RATE_INDEX_MAPPING_PATH, e);
+        embedded_rate_index_mapping()
+    });
+
+    LoadedConfig {
+        defaults,
+        rate_index_mapping,
+    }
+}
+
+/// Load GUI defaults from JSON file.
+fn load_gui_defaults() -> Result<DefaultValues, String> {
+    let content = std::fs::read_to_string(GUI_DEFAULTS_PATH)
+        .map_err(|e| format!("Failed to read file: {}", e))?;
+
+    let raw: RawGuiDefaults = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse JSON: {}", e))?;
+
+    Ok(DefaultValues::from_raw(raw))
+}
+
+/// Load rate index mapping from JSON file.
+fn load_rate_index_mapping() -> Result<HashMap<String, String>, String> {
+    let content = std::fs::read_to_string(RATE_INDEX_MAPPING_PATH)
+        .map_err(|e| format!("Failed to read file: {}", e))?;
+
+    let raw: RawRateIndexMapping = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse JSON: {}", e))?;
+
+    Ok(raw.mapping)
+}
+
+/// Embedded fallback for rate index mapping.
+fn embedded_rate_index_mapping() -> HashMap<String, String> {
+    let mut map = HashMap::new();
+    map.insert("USD".to_string(), "SOFR".to_string());
+    map.insert("EUR".to_string(), "EURIBOR3M".to_string());
+    map.insert("GBP".to_string(), "SONIA".to_string());
+    map.insert("JPY".to_string(), "TONAR".to_string());
+    map.insert("CHF".to_string(), "SARON".to_string());
+    map
+}
+
+/// Get or initialize the cached configuration.
+fn get_config_cached() -> &'static LoadedConfig {
+    LOADED_CONFIG.get_or_init(load_config)
+}
 
 // =============================================================================
 // Enum Values Types
@@ -260,7 +465,7 @@ pub struct EquityDefaults {
     pub expiry_years: f64,
     pub volatility: f64,
     pub rate: f64,
-    pub option_type: &'static str,
+    pub option_type: String,
 }
 
 /// FX option defaults.
@@ -274,7 +479,7 @@ pub struct FxDefaults {
     pub volatility: f64,
     pub domestic_rate: f64,
     pub foreign_rate: f64,
-    pub option_type: &'static str,
+    pub option_type: String,
 }
 
 /// IRS defaults.
@@ -295,7 +500,7 @@ pub struct CurveDefaults {
     pub notional: f64,
     pub fixed_rate: f64,
     pub tenor_years: u32,
-    pub interpolation: &'static str,
+    pub interpolation: String,
 }
 
 /// Trade expansion defaults.
@@ -314,8 +519,8 @@ pub struct ExpansionDefaults {
 #[serde(rename_all = "camelCase")]
 #[allow(missing_docs)]
 pub struct RatesExpansionDefaults {
-    pub currency: &'static str,
-    pub tenor: &'static str,
+    pub currency: String,
+    pub tenor: String,
     pub rate: f64,
     pub notional: f64,
 }
@@ -325,13 +530,13 @@ pub struct RatesExpansionDefaults {
 #[serde(rename_all = "camelCase")]
 #[allow(missing_docs)]
 pub struct SwapExpansionDefaults {
-    pub currency: &'static str,
-    pub tenor: &'static str,
+    pub currency: String,
+    pub tenor: String,
     pub fixed_rate: f64,
     pub spread: f64,
     pub notional: f64,
-    pub payment_frequency: &'static str,
-    pub day_count: &'static str,
+    pub payment_frequency: String,
+    pub day_count: String,
 }
 
 /// FX expansion defaults.
@@ -339,12 +544,12 @@ pub struct SwapExpansionDefaults {
 #[serde(rename_all = "camelCase")]
 #[allow(missing_docs)]
 pub struct FxExpansionDefaults {
-    pub base_currency: &'static str,
-    pub quote_currency: &'static str,
+    pub base_currency: String,
+    pub quote_currency: String,
     pub spot_rate: f64,
     pub forward_rate: f64,
     pub notional: f64,
-    pub option_type: &'static str,
+    pub option_type: String,
     pub volatility: f64,
 }
 
@@ -353,19 +558,102 @@ pub struct FxExpansionDefaults {
 #[serde(rename_all = "camelCase")]
 #[allow(missing_docs)]
 pub struct EquityExpansionDefaults {
-    pub underlying: &'static str,
+    pub underlying: String,
     pub spot_price: f64,
     pub strike: f64,
     pub volatility: f64,
     pub risk_free_rate: f64,
-    pub option_type: &'static str,
-    pub direction: &'static str,
+    pub option_type: String,
+    pub direction: String,
 }
 
-impl Default for DefaultValues {
-    fn default() -> Self {
-        let bump_sizes = BumpSizes::default();
+impl DefaultValues {
+    /// Convert from raw JSON structure.
+    fn from_raw(raw: RawGuiDefaults) -> Self {
+        Self {
+            pricing: PricingDefaults {
+                curve_rate: raw.pricing.curve_rate,
+                volatility: raw.pricing.volatility,
+            },
+            monte_carlo: MonteCarloDefaults {
+                num_paths: raw.monte_carlo.num_paths,
+                num_steps: raw.monte_carlo.num_steps,
+            },
+            bump_sizes: BumpSizeDefaults {
+                rate: raw.bump_sizes.rate,
+                spot: raw.bump_sizes.spot,
+                vol: raw.bump_sizes.vol,
+            },
+            pricer: PricerDefaults {
+                equity: EquityDefaults {
+                    spot: raw.pricer.equity.spot,
+                    strike: raw.pricer.equity.strike,
+                    expiry_years: raw.pricer.equity.expiry_years,
+                    volatility: raw.pricer.equity.volatility,
+                    rate: raw.pricer.equity.rate,
+                    option_type: raw.pricer.equity.option_type,
+                },
+                fx: FxDefaults {
+                    spot: raw.pricer.fx.spot,
+                    strike: raw.pricer.fx.strike,
+                    expiry_years: raw.pricer.fx.expiry_years,
+                    volatility: raw.pricer.fx.volatility,
+                    domestic_rate: raw.pricer.fx.domestic_rate,
+                    foreign_rate: raw.pricer.fx.foreign_rate,
+                    option_type: raw.pricer.fx.option_type,
+                },
+                irs: IrsDefaults {
+                    notional: raw.pricer.irs.notional,
+                    fixed_rate: raw.pricer.irs.fixed_rate,
+                    tenor_years: raw.pricer.irs.tenor_years,
+                },
+            },
+            curve: CurveDefaults {
+                notional: raw.curve.notional,
+                fixed_rate: raw.curve.fixed_rate,
+                tenor_years: raw.curve.tenor_years,
+                interpolation: raw.curve.interpolation,
+            },
+            expansion: ExpansionDefaults {
+                rates: RatesExpansionDefaults {
+                    currency: raw.expansion.rates.currency,
+                    tenor: raw.expansion.rates.tenor,
+                    rate: raw.expansion.rates.rate,
+                    notional: raw.expansion.rates.notional,
+                },
+                swap: SwapExpansionDefaults {
+                    currency: raw.expansion.swap.currency,
+                    tenor: raw.expansion.swap.tenor,
+                    fixed_rate: raw.expansion.swap.fixed_rate,
+                    spread: raw.expansion.swap.spread,
+                    notional: raw.expansion.swap.notional,
+                    payment_frequency: raw.expansion.swap.payment_frequency,
+                    day_count: raw.expansion.swap.day_count,
+                },
+                fx: FxExpansionDefaults {
+                    base_currency: raw.expansion.fx.base_currency,
+                    quote_currency: raw.expansion.fx.quote_currency,
+                    spot_rate: raw.expansion.fx.spot_rate,
+                    forward_rate: raw.expansion.fx.forward_rate,
+                    notional: raw.expansion.fx.notional,
+                    option_type: raw.expansion.fx.option_type,
+                    volatility: raw.expansion.fx.volatility,
+                },
+                equity: EquityExpansionDefaults {
+                    underlying: raw.expansion.equity.underlying,
+                    spot_price: raw.expansion.equity.spot_price,
+                    strike: raw.expansion.equity.strike,
+                    volatility: raw.expansion.equity.volatility,
+                    risk_free_rate: raw.expansion.equity.risk_free_rate,
+                    option_type: raw.expansion.equity.option_type,
+                    direction: raw.expansion.equity.direction,
+                },
+            },
+        }
+    }
 
+    /// Embedded default values (fallback when JSON file is not available).
+    fn embedded_default() -> Self {
         Self {
             pricing: PricingDefaults {
                 curve_rate: 0.05,
@@ -376,9 +664,9 @@ impl Default for DefaultValues {
                 num_steps: 252,
             },
             bump_sizes: BumpSizeDefaults {
-                rate: bump_sizes.rate,
-                spot: bump_sizes.spot,
-                vol: bump_sizes.vol,
+                rate: 0.0001,
+                spot: 0.01,
+                vol: 0.01,
             },
             pricer: PricerDefaults {
                 equity: EquityDefaults {
@@ -387,7 +675,7 @@ impl Default for DefaultValues {
                     expiry_years: 1.0,
                     volatility: 0.20,
                     rate: 0.05,
-                    option_type: "call",
+                    option_type: "call".to_string(),
                 },
                 fx: FxDefaults {
                     spot: 1.10,
@@ -396,7 +684,7 @@ impl Default for DefaultValues {
                     volatility: 0.10,
                     domestic_rate: 0.05,
                     foreign_rate: 0.02,
-                    option_type: "call",
+                    option_type: "call".to_string(),
                 },
                 irs: IrsDefaults {
                     notional: 1_000_000.0,
@@ -408,44 +696,50 @@ impl Default for DefaultValues {
                 notional: 10_000_000.0,
                 fixed_rate: 0.03,
                 tenor_years: 5,
-                interpolation: "linear_on_log_df",
+                interpolation: "linear_on_log_df".to_string(),
             },
             expansion: ExpansionDefaults {
                 rates: RatesExpansionDefaults {
-                    currency: "USD",
-                    tenor: "1Y",
+                    currency: "USD".to_string(),
+                    tenor: "1Y".to_string(),
                     rate: 0.035,
                     notional: 10_000_000.0,
                 },
                 swap: SwapExpansionDefaults {
-                    currency: "USD",
-                    tenor: "5Y",
+                    currency: "USD".to_string(),
+                    tenor: "5Y".to_string(),
                     fixed_rate: 0.03,
                     spread: 0.0,
                     notional: 10_000_000.0,
-                    payment_frequency: "SemiAnnual",
-                    day_count: "Actual365Fixed",
+                    payment_frequency: "SemiAnnual".to_string(),
+                    day_count: "Actual365Fixed".to_string(),
                 },
                 fx: FxExpansionDefaults {
-                    base_currency: "EUR",
-                    quote_currency: "USD",
+                    base_currency: "EUR".to_string(),
+                    quote_currency: "USD".to_string(),
                     spot_rate: 1.085,
                     forward_rate: 1.09,
                     notional: 1_000_000.0,
-                    option_type: "call",
+                    option_type: "call".to_string(),
                     volatility: 0.10,
                 },
                 equity: EquityExpansionDefaults {
-                    underlying: "AAPL",
+                    underlying: "AAPL".to_string(),
                     spot_price: 180.0,
                     strike: 185.0,
                     volatility: 0.25,
                     risk_free_rate: 0.05,
-                    option_type: "call",
-                    direction: "long",
+                    option_type: "call".to_string(),
+                    direction: "long".to_string(),
                 },
             },
         }
+    }
+}
+
+impl Default for DefaultValues {
+    fn default() -> Self {
+        get_config_cached().defaults.clone()
     }
 }
 
@@ -453,15 +747,9 @@ impl Default for DefaultValues {
 // Rate Index Mapping
 // =============================================================================
 
-/// Build rate index by currency mapping.
-pub fn build_rate_index_by_currency() -> HashMap<&'static str, &'static str> {
-    let mut map = HashMap::new();
-    map.insert("USD", "SOFR");
-    map.insert("EUR", "EURIBOR3M");
-    map.insert("GBP", "SONIA");
-    map.insert("JPY", "TONAR");
-    map.insert("CHF", "SARON");
-    map
+/// Build rate index by currency mapping from JSON file.
+pub fn build_rate_index_by_currency() -> HashMap<String, String> {
+    get_config_cached().rate_index_mapping.clone()
 }
 
 // =============================================================================
@@ -477,7 +765,7 @@ pub struct ConfigResponse {
     /// Default values.
     pub defaults: DefaultValues,
     /// Rate index by currency mapping.
-    pub rate_index_by_currency: HashMap<&'static str, &'static str>,
+    pub rate_index_by_currency: HashMap<String, String>,
 }
 
 impl ConfigResponse {
@@ -556,8 +844,8 @@ mod tests {
     }
 
     #[test]
-    fn test_default_values() {
-        let defaults = DefaultValues::default();
+    fn test_embedded_default_values() {
+        let defaults = DefaultValues::embedded_default();
         assert!((defaults.pricing.curve_rate - 0.05).abs() < f64::EPSILON);
         assert_eq!(defaults.monte_carlo.num_paths, 10_000);
     }
@@ -567,7 +855,7 @@ mod tests {
         let config = ConfigResponse::build();
         assert!(!config.enums.currency.is_empty());
         assert!(!config.rate_index_by_currency.is_empty());
-        assert_eq!(config.rate_index_by_currency.get("USD"), Some(&"SOFR"));
+        assert_eq!(config.rate_index_by_currency.get("USD"), Some(&"SOFR".to_string()));
     }
 
     #[test]

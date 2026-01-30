@@ -1,0 +1,47 @@
+{
+  "_comment": "Master configuration file for Neutryx demo",
+  "engine": {
+    "thread_pool_size": 8,
+    "memory_limit_mb": 2048,
+    "mc_paths": 10000,
+    "checkpointing_enabled": false
+  },
+  "database": {
+    "url": "",
+    "max_connections": 10,
+    "connection_timeout_secs": 30
+  },
+  "service": {
+    "rest": {
+      "enabled": true,
+      "addr": "0.0.0.0:8080"
+    },
+    "grpc": {
+      "enabled": false,
+      "addr": "0.0.0.0:50051"
+    }
+  },
+  "logging": {
+    "level": "info",
+    "output_dir": "demo/data/output"
+  },
+  "pricing": {
+    "valuation_date": "2026-01-30",
+    "reporting_currency": "USD",
+    "pricing_method": "analytical",
+    "market_data_path": "demo/data/input/rates/market_quotes.json",
+    "trade_data_path": "demo/data/input/demo_portfolio.json",
+    "csa_data_path": "demo/data/input/netting_sets.json",
+    "parallel_enabled": true
+  },
+  "risk": {
+    "greeks_method": "bump",
+    "bump_sizes": {
+      "rate": 0.0001,
+      "vol": 0.01,
+      "spot": 0.01
+    },
+    "target_greeks": ["delta", "gamma", "vega", "theta", "rho"],
+    "second_order_mode": "parallel"
+  }
+}

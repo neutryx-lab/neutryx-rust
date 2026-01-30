@@ -826,7 +826,7 @@ pub async fn build_curve(
                         let data: Vec<Vec<f64>> = (0..rows)
                             .map(|i| (0..cols).map(|j| j_inv[(i, j)]).collect())
                             .collect();
-                        let row_labels: Vec<f64> = result.pillars.iter().copied().collect();
+                        let row_labels: Vec<f64> = result.pillars.clone();
                         // Use filtered specs for column labels (instrument tenors)
                         let col_labels: Vec<f64> = filtered_specs
                             .iter()
@@ -880,7 +880,7 @@ pub async fn build_curve(
                         let data: Vec<Vec<f64>> = (0..rows)
                             .map(|i| (0..cols).map(|j| j_inv[(i, j)]).collect())
                             .collect();
-                        let row_labels: Vec<f64> = result.pillars.iter().copied().collect();
+                        let row_labels: Vec<f64> = result.pillars.clone();
                         let col_labels: Vec<f64> = filtered_specs
                             .iter()
                             .filter_map(|s| s.tenor_years().ok())

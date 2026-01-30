@@ -1,0 +1,10 @@
+{
+  "_comment": "Pricing configuration for Neutryx demo",
+  "valuation_date": "2026-01-30",
+  "reporting_currency": "USD",
+  "pricing_method": "analytical",
+  "market_data_path": "demo/data/input/rates/market_quotes.json",
+  "trade_data_path": "demo/data/input/demo_portfolio.json",
+  "csa_data_path": "demo/data/input/netting_sets.json",
+  "parallel_enabled": true
+}

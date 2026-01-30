@@ -1,0 +1,15 @@
+{
+  "_comment": "Monte Carlo pricing configuration",
+  "valuation_date": "2026-01-30",
+  "reporting_currency": "USD",
+  "pricing_method": "monte_carlo",
+  "monte_carlo": {
+    "num_paths": 100000,
+    "num_steps": 252,
+    "seed": 42
+  },
+  "market_data_path": "demo/data/input/rates/market_quotes.json",
+  "trade_data_path": "demo/data/input/demo_portfolio.json",
+  "csa_data_path": "demo/data/input/netting_sets.json",
+  "parallel_enabled": true
+}
