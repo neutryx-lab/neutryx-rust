@@ -25,7 +25,8 @@
 //! - `full` (default) - Complete pricing and risk functionality
 //! - `serde` - Serialisation support across all crates
 //! - `global-bootstrap` - Multi-dimensional Newton solver for curve calibration
-//! - `enzyme-ad` - Enzyme automatic differentiation (requires nightly + LLVM 18)
+//! - `enzyme-ad` - Enzyme automatic differentiation (requires nightly + LLVM
+//!   18)
 //!
 //! ## Module Structure
 //!
@@ -45,26 +46,23 @@
 // Infra Layer (I) - Always available
 // =============================================================================
 
-/// Static master data: dates, currencies, calendars, trade definitions.
-///
-/// This module provides the foundational types used throughout Neutryx:
-/// - [`Date`](master::Date), [`Calendar`](master::Calendar), [`DayCounter`](master::DayCounter)
-/// - [`Currency`](master::Currency), [`RateIndex`](master::RateIndex)
-/// - Trade builders and ID types
-pub use infra_master as master;
-
 /// System configuration: pricing parameters, risk settings, service config.
 #[cfg(feature = "full")]
 pub use infra_config as config;
-
+/// Static master data: dates, currencies, calendars, trade definitions.
+///
+/// This module provides the foundational types used throughout Neutryx:
+/// - [`Date`](master::Date), [`Calendar`](master::Calendar),
+///   [`DayCounter`](master::DayCounter)
+/// - [`Currency`](master::Currency), [`RateIndex`](master::RateIndex)
+/// - Trade builders and ID types
+pub use infra_master as master;
 /// Persistence layer: database backends, storage traits.
 #[cfg(feature = "storage")]
 pub use infra_store as store;
-
 // =============================================================================
 // Pricer Layer (P) - Feature-gated
 // =============================================================================
-
 /// Mathematical foundation: smoothing functions, kernels, numerical traits.
 ///
 /// Layer 1 of the pricing stack, providing:
@@ -73,7 +71,6 @@ pub use infra_store as store;
 /// - Numerical traits for generic computation
 #[cfg(feature = "analytics")]
 pub use pricer_core as core;
-
 /// Financial models: yield curves, volatility surfaces, stochastic processes.
 ///
 /// Layer 2 of the pricing stack, providing:
@@ -82,7 +79,6 @@ pub use pricer_core as core;
 /// - Stochastic models (GBM, Heston, Hull-White)
 #[cfg(feature = "analytics")]
 pub use pricer_models as models;
-
 /// Pricing engines: Monte Carlo, binomial trees, analytical formulas.
 ///
 /// Layer 3 of the pricing stack, providing:
@@ -91,7 +87,6 @@ pub use pricer_models as models;
 /// - Computation graph for automatic differentiation
 #[cfg(feature = "full")]
 pub use pricer_pricing as pricing;
-
 /// Risk analytics: Greeks, XVA, scenario analysis.
 ///
 /// Layer 4 (application layer) of the pricing stack, providing:

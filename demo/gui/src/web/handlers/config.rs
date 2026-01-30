@@ -12,8 +12,7 @@
 //! | GET    | /api/config/enums | Get Enum values only           |
 //! | GET    | /api/config/defaults | Get default values only     |
 
-use std::collections::HashMap;
-use std::sync::OnceLock;
+use std::{collections::HashMap, sync::OnceLock};
 
 use axum::Json;
 use infra_config::GreekType;
@@ -173,12 +172,20 @@ struct RawRateIndexMapping {
 /// Load configuration from JSON files, with fallback to embedded defaults.
 fn load_config() -> LoadedConfig {
     let defaults = load_gui_defaults().unwrap_or_else(|e| {
-        tracing::warn!("Failed to load {}: {}, using embedded defaults", GUI_DEFAULTS_PATH, e);
+        tracing::warn!(
+            "Failed to load {}: {}, using embedded defaults",
+            GUI_DEFAULTS_PATH,
+            e
+        );
         DefaultValues::embedded_default()
     });
 
     let rate_index_mapping = load_rate_index_mapping().unwrap_or_else(|e| {
-        tracing::warn!("Failed to load {}: {}, using embedded defaults", RATE_INDEX_MAPPING_PATH, e);
+        tracing::warn!(
+            "Failed to load {}: {}, using embedded defaults",
+            RATE_INDEX_MAPPING_PATH,
+            e
+        );
         embedded_rate_index_mapping()
     });
 
@@ -193,8 +200,8 @@ fn load_gui_defaults() -> Result<DefaultValues, String> {
     let content = std::fs::read_to_string(GUI_DEFAULTS_PATH)
         .map_err(|e| format!("Failed to read file: {}", e))?;
 
-    let raw: RawGuiDefaults = serde_json::from_str(&content)
-        .map_err(|e| format!("Failed to parse JSON: {}", e))?;
+    let raw: RawGuiDefaults =
+        serde_json::from_str(&content).map_err(|e| format!("Failed to parse JSON: {}", e))?;
 
     Ok(DefaultValues::from_raw(raw))
 }
@@ -204,8 +211,8 @@ fn load_rate_index_mapping() -> Result<HashMap<String, String>, String> {
     let content = std::fs::read_to_string(RATE_INDEX_MAPPING_PATH)
         .map_err(|e| format!("Failed to read file: {}", e))?;
 
-    let raw: RawRateIndexMapping = serde_json::from_str(&content)
-        .map_err(|e| format!("Failed to parse JSON: {}", e))?;
+    let raw: RawRateIndexMapping =
+        serde_json::from_str(&content).map_err(|e| format!("Failed to parse JSON: {}", e))?;
 
     Ok(raw.mapping)
 }
@@ -222,9 +229,7 @@ fn embedded_rate_index_mapping() -> HashMap<String, String> {
 }
 
 /// Get or initialize the cached configuration.
-fn get_config_cached() -> &'static LoadedConfig {
-    LOADED_CONFIG.get_or_init(load_config)
-}
+fn get_config_cached() -> &'static LoadedConfig { LOADED_CONFIG.get_or_init(load_config) }
 
 // =============================================================================
 // Enum Values Types
@@ -738,9 +743,7 @@ impl DefaultValues {
 }
 
 impl Default for DefaultValues {
-    fn default() -> Self {
-        get_config_cached().defaults.clone()
-    }
+    fn default() -> Self { get_config_cached().defaults.clone() }
 }
 
 // =============================================================================
@@ -855,7 +858,10 @@ mod tests {
         let config = ConfigResponse::build();
         assert!(!config.enums.currency.is_empty());
         assert!(!config.rate_index_by_currency.is_empty());
-        assert_eq!(config.rate_index_by_currency.get("USD"), Some(&"SOFR".to_string()));
+        assert_eq!(
+            config.rate_index_by_currency.get("USD"),
+            Some(&"SOFR".to_string())
+        );
     }
 
     #[test]
