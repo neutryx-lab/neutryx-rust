@@ -1,18 +1,23 @@
-//! Pricing service wrapping GenericPricer facade
+//! Pricing service - API layer delegating to pricer_core
 //!
-//! Provides high-level pricing operations using pricer_pricing.
+//! This service acts as a thin API layer, delegating all pricing logic
+//! to the pricer_core crate. It handles request/response transformation
+//! and timing measurement only.
 
 use std::time::Instant;
 
-use pricer_core::math::distributions::{norm_cdf, norm_pdf};
+use pricer_core::math::formulas::{
+    forward::{Forward, ForwardParams},
+    garman_kohlhagen::{GarmanKohlhagen, GarmanKohlhagenParams},
+};
 
 use crate::error::ServerError;
 use crate::rest::dto::{
-    GreeksResponse, InstrumentType, PricingRequest, PricingResponse,
-    PortfolioInstrumentResult, PortfolioPricingRequest, PortfolioPricingResponse,
+    GreeksResponse, InstrumentType, PortfolioInstrumentResult, PortfolioPricingRequest,
+    PortfolioPricingResponse, PricingRequest, PricingResponse,
 };
 
-/// Service for pricing instruments using pricer_pricing facade
+/// Service for pricing instruments - delegates to pricer_core
 pub struct PricingService;
 
 impl PricingService {
@@ -20,11 +25,11 @@ impl PricingService {
     pub fn price_instrument(request: &PricingRequest) -> Result<PricingResponse, ServerError> {
         let start = Instant::now();
 
-        let price = match request.instrument_type {
+        let (price, greeks) = match request.instrument_type {
             InstrumentType::VanillaOption | InstrumentType::EuropeanOption => {
                 Self::price_vanilla_option(request)?
             }
-            InstrumentType::Forward => Self::price_forward(request)?,
+            InstrumentType::Forward => (Self::price_forward(request)?, None),
             InstrumentType::Swap => {
                 return Err(ServerError::InvalidRequest(
                     "Swap pricing requires curve bootstrap - use /api/v1/curves/build first"
@@ -37,12 +42,6 @@ impl PricingService {
                         .to_string(),
                 ));
             }
-        };
-
-        let greeks = if request.compute_greeks {
-            Some(Self::compute_greeks(request)?)
-        } else {
-            None
         };
 
         let elapsed = start.elapsed();
@@ -100,127 +99,58 @@ impl PricingService {
         })
     }
 
-    /// Price a vanilla European option using Black-Scholes
-    fn price_vanilla_option(request: &PricingRequest) -> Result<f64, ServerError> {
-        let s = request.spot;
-        let k = request.strike;
-        let t = request.expiry;
-        let r = request.rate;
-        let q = request.dividend_yield;
-        let sigma = request.volatility;
+    /// Price a vanilla European option using GarmanKohlhagen (Merton model with dividend yield)
+    ///
+    /// Delegates to pricer_core::math::formulas::garman_kohlhagen.
+    /// GarmanKohlhagen with rate_domestic=r and rate_foreign=q is mathematically
+    /// equivalent to the Merton model for equity options with continuous dividends.
+    fn price_vanilla_option(
+        request: &PricingRequest,
+    ) -> Result<(f64, Option<GreeksResponse>), ServerError> {
+        // Build GarmanKohlhagen params: rate_domestic=r, rate_foreign=dividend_yield
+        let params = GarmanKohlhagenParams::new(
+            request.spot,
+            request.strike,
+            request.rate,           // domestic rate = risk-free rate
+            request.dividend_yield, // foreign rate = dividend yield (Merton equivalence)
+            request.volatility,
+            request.expiry,
+        )
+        .map_err(|e| ServerError::InvalidRequest(e.to_string()))?;
 
-        if t <= 0.0 {
-            return Err(ServerError::InvalidRequest(
-                "Expiry must be positive".to_string(),
-            ));
-        }
-        if sigma <= 0.0 {
-            return Err(ServerError::InvalidRequest(
-                "Volatility must be positive".to_string(),
-            ));
-        }
-        if s <= 0.0 {
-            return Err(ServerError::InvalidRequest(
-                "Spot must be positive".to_string(),
-            ));
-        }
-        if k <= 0.0 {
-            return Err(ServerError::InvalidRequest(
-                "Strike must be positive".to_string(),
-            ));
-        }
+        let model = GarmanKohlhagen::new(params);
+        let price = model.price(request.is_call);
 
-        // Using pricer_core's norm_cdf
-        let sqrt_t = t.sqrt();
-        let d1 = ((s / k).ln() + (r - q + 0.5 * sigma * sigma) * t) / (sigma * sqrt_t);
-        let d2 = d1 - sigma * sqrt_t;
-
-        let price = if request.is_call {
-            s * (-q * t).exp() * norm_cdf(d1) - k * (-r * t).exp() * norm_cdf(d2)
+        let greeks = if request.compute_greeks {
+            Some(GreeksResponse {
+                delta: model.delta(request.is_call),
+                gamma: model.gamma(),
+                vega: model.vega(),
+                theta: model.theta(request.is_call),
+                rho: model.rho_domestic(request.is_call),
+            })
         } else {
-            k * (-r * t).exp() * norm_cdf(-d2) - s * (-q * t).exp() * norm_cdf(-d1)
+            None
         };
 
-        Ok(price)
+        Ok((price, greeks))
     }
 
     /// Price a forward contract
+    ///
+    /// Delegates to pricer_core::math::formulas::forward.
     fn price_forward(request: &PricingRequest) -> Result<f64, ServerError> {
-        let s = request.spot;
-        let k = request.strike;
-        let t = request.expiry;
-        let r = request.rate;
-        let q = request.dividend_yield;
+        let params = ForwardParams::new(
+            request.spot,
+            request.strike,
+            request.rate,
+            request.dividend_yield,
+            request.expiry,
+        )
+        .map_err(|e| ServerError::InvalidRequest(e.to_string()))?;
 
-        if t <= 0.0 {
-            return Err(ServerError::InvalidRequest(
-                "Expiry must be positive".to_string(),
-            ));
-        }
-
-        // Forward price: (S * e^((r-q)*T) - K) * e^(-r*T)
-        let forward_price = s * ((r - q) * t).exp();
-        let pv = (forward_price - k) * (-r * t).exp();
-
-        Ok(pv)
-    }
-
-    /// Compute Greeks using analytical formulas
-    fn compute_greeks(request: &PricingRequest) -> Result<GreeksResponse, ServerError> {
-        let s = request.spot;
-        let k = request.strike;
-        let t = request.expiry;
-        let r = request.rate;
-        let q = request.dividend_yield;
-        let sigma = request.volatility;
-
-        let sqrt_t = t.sqrt();
-        let d1 = ((s / k).ln() + (r - q + 0.5 * sigma * sigma) * t) / (sigma * sqrt_t);
-        let d2 = d1 - sigma * sqrt_t;
-
-        let e_qt = (-q * t).exp();
-        let e_rt = (-r * t).exp();
-
-        // Delta
-        let delta = if request.is_call {
-            e_qt * norm_cdf(d1)
-        } else {
-            -e_qt * norm_cdf(-d1)
-        };
-
-        // Gamma (same for call and put)
-        let gamma = e_qt * norm_pdf(d1) / (s * sigma * sqrt_t);
-
-        // Vega (same for call and put, per 1% move = 0.01)
-        let vega = s * e_qt * norm_pdf(d1) * sqrt_t * 0.01;
-
-        // Theta (per day)
-        let theta = if request.is_call {
-            (-s * e_qt * norm_pdf(d1) * sigma / (2.0 * sqrt_t)
-                - r * k * e_rt * norm_cdf(d2)
-                + q * s * e_qt * norm_cdf(d1))
-                / 365.0
-        } else {
-            (-s * e_qt * norm_pdf(d1) * sigma / (2.0 * sqrt_t)
-                + r * k * e_rt * norm_cdf(-d2)
-                - q * s * e_qt * norm_cdf(-d1))
-                / 365.0
-        };
-
-        // Rho (per 1% move = 0.01)
-        let rho = if request.is_call {
-            k * t * e_rt * norm_cdf(d2) * 0.01
-        } else {
-            -k * t * e_rt * norm_cdf(-d2) * 0.01
-        };
-
-        Ok(GreeksResponse {
-            delta,
-            gamma,
-            vega,
-            theta,
-            rho,
-        })
+        let model = Forward::new(params);
+        Ok(model.present_value())
     }
 }
 
