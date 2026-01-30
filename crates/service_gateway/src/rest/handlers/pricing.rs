@@ -4,11 +4,13 @@
 
 use axum::Json;
 
-use crate::error::ServerError;
-use crate::rest::dto::{
-    PortfolioPricingRequest, PortfolioPricingResponse, PricingRequest, PricingResponse,
+use crate::{
+    error::ServerError,
+    rest::dto::{
+        PortfolioPricingRequest, PortfolioPricingResponse, PricingRequest, PricingResponse,
+    },
+    services::PricingService,
 };
-use crate::services::PricingService;
 
 /// Price a single instrument
 ///

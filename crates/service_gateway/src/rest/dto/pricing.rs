@@ -39,9 +39,7 @@ pub struct PricingRequest {
     pub compute_greeks: bool,
 }
 
-fn default_is_call() -> bool {
-    true
-}
+fn default_is_call() -> bool { true }
 
 /// Greeks computed for an instrument
 #[derive(Debug, Clone, Serialize)]

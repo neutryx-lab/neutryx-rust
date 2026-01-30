@@ -151,9 +151,7 @@ pub fn continuous_forward_rate<T: Float>(df_start: T, df_end: T, tau: T) -> T {
 /// assert!((df - (-0.05_f64).exp()).abs() < 1e-10);
 /// ```
 #[inline]
-pub fn df_from_zero_rate<T: Float>(rate: T, time: T) -> T {
-    (-rate * time).exp()
-}
+pub fn df_from_zero_rate<T: Float>(rate: T, time: T) -> T { (-rate * time).exp() }
 
 #[cfg(test)]
 mod tests {

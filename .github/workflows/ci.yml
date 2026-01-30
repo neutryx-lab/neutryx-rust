@@ -57,16 +57,16 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Clippy (stable crates)
-        run: cargo clippy --workspace --exclude pricer_pricing --exclude pricer_risk --exclude demo_gui -- -D warnings
+        run: cargo clippy --workspace --exclude pricer_pricing --exclude pricer_risk -- -D warnings
 
       - name: Build (stable crates)
-        run: cargo build --workspace --exclude pricer_pricing --exclude pricer_risk --exclude demo_gui
+        run: cargo build --workspace --exclude pricer_pricing --exclude pricer_risk
 
       - name: Test (stable crates)
-        run: cargo test --workspace --exclude pricer_pricing --exclude pricer_risk --exclude demo_gui
+        run: cargo test --workspace --exclude pricer_pricing --exclude pricer_risk
 
   # ============================================================================
-  # Nightly Rust: L3, L4 (pricer_pricing, pricer_risk, demo_gui)
+  # Nightly Rust: L3, L4 (pricer_pricing, pricer_risk)
   # Linux only (Enzyme requires LLVM infrastructure)
   # ============================================================================
   nightly-kernel:
@@ -166,15 +166,6 @@ jobs:
         run: |
           cargo +nightly clippy -p pricer_risk -- -D warnings
 
-      # demo_gui depends on pricer_risk
-      - name: Build demo_gui
-        run: |
-          cargo +nightly build -p demo_gui
-
-      - name: Clippy demo_gui
-        run: |
-          cargo +nightly clippy -p demo_gui -- -D warnings
-
   # ============================================================================
   # Integration Tests (Full Stack)
   # ============================================================================
@@ -240,7 +231,7 @@ jobs:
       - name: Generate coverage report
         run: |
           cargo llvm-cov --workspace --exclude pricer_pricing \
-            --exclude pricer_risk --exclude demo_gui \
+            --exclude pricer_risk \
             --lcov --output-path lcov.info
 
       - name: Upload coverage to Codecov
@@ -441,7 +432,7 @@ jobs:
             ${{ runner.os }}-cargo-docs-
 
       - name: Build documentation (stable crates)
-        run: cargo doc --workspace --exclude pricer_pricing --exclude pricer_risk --exclude demo_gui --no-deps
+        run: cargo doc --workspace --exclude pricer_pricing --exclude pricer_risk --no-deps
         env:
           RUSTDOCFLAGS: "-D warnings"
 
@@ -449,7 +440,7 @@ jobs:
         run: |
           echo "Documentation built successfully for stable crates"
           echo "Checking for documentation completeness..."
-          cargo doc --workspace --exclude pricer_pricing --exclude pricer_risk --exclude demo_gui --no-deps 2>&1 | \
+          cargo doc --workspace --exclude pricer_pricing --exclude pricer_risk --no-deps 2>&1 | \
             grep -c "warning:" || echo "No documentation warnings found"
 
       - name: Upload documentation

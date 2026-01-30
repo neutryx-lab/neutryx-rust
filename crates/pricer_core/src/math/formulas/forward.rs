@@ -149,9 +149,7 @@ impl<T: Float> Forward<T> {
 
     /// Returns a reference to the parameters.
     #[inline]
-    pub fn params(&self) -> &ForwardParams<T> {
-        &self.params
-    }
+    pub fn params(&self) -> &ForwardParams<T> { &self.params }
 
     /// Computes the forward price.
     ///
@@ -187,9 +185,7 @@ impl<T: Float> Forward<T> {
     ///
     /// The delta of the forward contract.
     #[inline]
-    pub fn delta(&self) -> T {
-        self.df_div
-    }
+    pub fn delta(&self) -> T { self.df_div }
 
     /// Computes Gamma (∂²PV/∂S²).
     ///
@@ -199,9 +195,7 @@ impl<T: Float> Forward<T> {
     ///
     /// Zero (forwards have no gamma).
     #[inline]
-    pub fn gamma(&self) -> T {
-        T::zero()
-    }
+    pub fn gamma(&self) -> T { T::zero() }
 
     /// Computes Theta (∂PV/∂t).
     ///
@@ -224,9 +218,7 @@ impl<T: Float> Forward<T> {
     ///
     /// The rho (sensitivity to rate changes).
     #[inline]
-    pub fn rho(&self) -> T {
-        self.params.strike * self.params.expiry * self.df_rate
-    }
+    pub fn rho(&self) -> T { self.params.strike * self.params.expiry * self.df_rate }
 }
 
 /// Convenience function to compute forward price.
@@ -437,7 +429,11 @@ mod tests {
         let model1 = Forward::new(params);
         let model2 = model1.clone();
 
-        assert_relative_eq!(model1.forward_price(), model2.forward_price(), epsilon = 1e-10);
+        assert_relative_eq!(
+            model1.forward_price(),
+            model2.forward_price(),
+            epsilon = 1e-10
+        );
 
         let debug_str = format!("{:?}", model1);
         assert!(debug_str.contains("Forward"));

@@ -11,10 +11,12 @@ use pricer_core::math::formulas::{
     garman_kohlhagen::{GarmanKohlhagen, GarmanKohlhagenParams},
 };
 
-use crate::error::ServerError;
-use crate::rest::dto::{
-    GreeksResponse, InstrumentType, PortfolioInstrumentResult, PortfolioPricingRequest,
-    PortfolioPricingResponse, PricingRequest, PricingResponse,
+use crate::{
+    error::ServerError,
+    rest::dto::{
+        GreeksResponse, InstrumentType, PortfolioInstrumentResult, PortfolioPricingRequest,
+        PortfolioPricingResponse, PricingRequest, PricingResponse,
+    },
 };
 
 /// Service for pricing instruments - delegates to pricer_core
@@ -99,11 +101,13 @@ impl PricingService {
         })
     }
 
-    /// Price a vanilla European option using GarmanKohlhagen (Merton model with dividend yield)
+    /// Price a vanilla European option using GarmanKohlhagen (Merton model with
+    /// dividend yield)
     ///
     /// Delegates to pricer_core::math::formulas::garman_kohlhagen.
-    /// GarmanKohlhagen with rate_domestic=r and rate_foreign=q is mathematically
-    /// equivalent to the Merton model for equity options with continuous dividends.
+    /// GarmanKohlhagen with rate_domestic=r and rate_foreign=q is
+    /// mathematically equivalent to the Merton model for equity options
+    /// with continuous dividends.
     fn price_vanilla_option(
         request: &PricingRequest,
     ) -> Result<(f64, Option<GreeksResponse>), ServerError> {

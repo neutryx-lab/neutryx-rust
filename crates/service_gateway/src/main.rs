@@ -73,9 +73,7 @@ async fn main() -> Result<()> {
 
         // Create new AppState for v2 endpoints
         let app_state = Arc::new(AppState::new());
-        info!(
-            "AppState initialised with curve cache (max 100) and fxvol cache (max 20)"
-        );
+        info!("AppState initialised with curve cache (max 100) and fxvol cache (max 20)");
 
         // Initialise graph state with sample portfolio for v1 compatibility
         let graph_state = match GraphAppState::new_with_sample(50, 5) {

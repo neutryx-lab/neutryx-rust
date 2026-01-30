@@ -2,22 +2,23 @@
 //!
 //! Provides high-level curve building operations using pricer_models.
 
-use std::sync::Arc;
-use std::time::Instant;
+use std::{sync::Arc, time::Instant};
 
 use adapter_loader::{parse_instruments, validate_rates, InstrumentSpec};
 use pricer_core::math::formulas::{simple_forward_rate, zero_rate_from_df};
-use pricer_models::builder::{
-    BootstrapConfig, CurveBootstrapper, InterpolationMethod as BuilderInterpolation,
+use pricer_models::{
+    builder::{BootstrapConfig, CurveBootstrapper, InterpolationMethod as BuilderInterpolation},
+    market::YieldCurve,
 };
-use pricer_models::market::YieldCurve;
 
-use crate::error::ServerError;
-use crate::rest::dto::{
-    BootstrapMethod, CurveBuildRequest, CurveBuildResponse, CurvePillar, DiscountFactorRequest,
-    DiscountFactorResponse, ForwardRateRequest, ForwardRateResponse, InterpolationMethod,
+use crate::{
+    error::ServerError,
+    rest::dto::{
+        BootstrapMethod, CurveBuildRequest, CurveBuildResponse, CurvePillar, DiscountFactorRequest,
+        DiscountFactorResponse, ForwardRateRequest, ForwardRateResponse, InterpolationMethod,
+    },
+    state::{AppState, InstrumentInput},
 };
-use crate::state::{AppState, InstrumentInput};
 
 /// Service for building and querying yield curves
 pub struct CurveService;
@@ -42,14 +43,12 @@ impl CurveService {
             .collect();
 
         // Validate rates
-        validate_rates(&specs, -0.10, 0.50).map_err(|e| {
-            ServerError::InvalidRequest(format!("Rate validation failed: {e}"))
-        })?;
+        validate_rates(&specs, -0.10, 0.50)
+            .map_err(|e| ServerError::InvalidRequest(format!("Rate validation failed: {e}")))?;
 
         // Parse instruments using adapter_loader
-        let market_instruments = parse_instruments(&specs).map_err(|e| {
-            ServerError::InvalidRequest(format!("Instrument parsing failed: {e}"))
-        })?;
+        let market_instruments = parse_instruments(&specs)
+            .map_err(|e| ServerError::InvalidRequest(format!("Instrument parsing failed: {e}")))?;
 
         // Convert interpolation method
         let interpolation = match request.interpolation {
@@ -128,10 +127,9 @@ impl CurveService {
             .parse()
             .map_err(|_| ServerError::InvalidRequest("Invalid curve_id format".to_string()))?;
 
-        let entry = state
-            .curve_cache
-            .get(&curve_id)
-            .ok_or_else(|| ServerError::NotFound(format!("Curve {} not found", request.curve_id)))?;
+        let entry = state.curve_cache.get(&curve_id).ok_or_else(|| {
+            ServerError::NotFound(format!("Curve {} not found", request.curve_id))
+        })?;
 
         let df = entry
             .curve
@@ -157,10 +155,9 @@ impl CurveService {
             .parse()
             .map_err(|_| ServerError::InvalidRequest("Invalid curve_id format".to_string()))?;
 
-        let entry = state
-            .curve_cache
-            .get(&curve_id)
-            .ok_or_else(|| ServerError::NotFound(format!("Curve {} not found", request.curve_id)))?;
+        let entry = state.curve_cache.get(&curve_id).ok_or_else(|| {
+            ServerError::NotFound(format!("Curve {} not found", request.curve_id))
+        })?;
 
         if request.end_time <= request.start_time {
             return Err(ServerError::InvalidRequest(
@@ -192,9 +189,7 @@ impl CurveService {
 mod tests {
     use super::*;
 
-    fn create_test_state() -> Arc<AppState> {
-        Arc::new(AppState::new())
-    }
+    fn create_test_state() -> Arc<AppState> { Arc::new(AppState::new()) }
 
     #[test]
     fn test_build_simple_curve() {

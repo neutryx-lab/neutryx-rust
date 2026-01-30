@@ -167,7 +167,7 @@ impl<T: Float + RealField + Copy> CalibrationMatrix<T> {
 /// An M×P matrix W where:
 /// - M = number of grid points
 /// - P = number of pillars
-/// - W[j,k] = interpolation weight for pillar k contributing to grid point j
+/// - W\[j,k\] = interpolation weight for pillar k contributing to grid point j
 ///
 /// For log-linear interpolation:
 /// - log(DF(t)) = (1-w) * log(DF(t_k)) + w * log(DF(t_{k+1}))
@@ -194,7 +194,7 @@ impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
     ///
     /// # Returns
     ///
-    /// An interpolation matrix W where W[j,k] is the weight of pillar k for
+    /// An interpolation matrix W where W\[j,k\] is the weight of pillar k for
     /// point j.
     pub fn from_pillars(pillars: &[T], grid: &CalibrationGrid<T>) -> Self {
         let points = grid.points();

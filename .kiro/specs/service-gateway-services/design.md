@@ -160,6 +160,7 @@ sequenceDiagram
 | 12.1-12.4 | APIバージョニング | Router | - | - |
 | 13.1-13.6 | Demo GUI統合 | DemoService, DemoHandler | Demo DTOs | - |
 | 14.1-14.5 | 静的ファイル配信 | ServeDir, ServeFile | - | - |
+| 15.1-15.5 | Demo GUI依存制約 | service_gateway facade | - | - |
 
 ## Components and Interfaces
 
@@ -801,6 +802,27 @@ fn api_v1_routes(state: Arc<AppState>) -> Router {
 
 demo_gui フロントエンド（React/TypeScript）と service_gateway を統合し、単一サーバーでデモ環境を提供する。
 
+### Dependency Constraint
+
+**重要**: demo_gui は service_gateway のみを参照し、他の crates（pricer_*, infra_*, adapter_*）を直接参照しない。
+
+```text
+demo_gui ──→ service_gateway ──→ pricer_*
+                              ├─→ infra_*
+                              └─→ adapter_*
+```
+
+**設計原則**:
+- service_gateway が全機能のファサードとして機能
+- demo_gui は service_gateway の DTO のみを使用
+- A-I-P-S アーキテクチャの依存方向を維持
+- 将来の demo_gui 要件は service_gateway への機能追加で対応
+
+**Migration Decision** (2026-01-30):
+- `demo/gui/web/handlers/` 配下の既存ハンドラーは**削除**
+- 全 API エンドポイントを service_gateway で新規実装
+- demo/gui はフロントエンド（静的ファイル）のみを保持
+
 ### Architecture
 
 ```mermaid
@@ -1047,3 +1069,4 @@ pub fn create_demo_router(state: Arc<AppState>) -> Router {
 |-------------|---------|------------|------------|-------|
 | 13.1-13.6 | Demo GUI 統合 | DemoService, DemoHandler | Demo DTOs | - |
 | 14.1-14.5 | 静的ファイル配信 | ServeDir, ServeFile | - | - |
+| 15.1-15.5 | Demo GUI 依存制約 | service_gateway facade | - | - |

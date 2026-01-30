@@ -281,7 +281,7 @@ where
 
     /// Compute the Jacobian matrix using finite differences.
     ///
-    /// J[i,j] = ∂F_i/∂x_j where x_j = log(DF_j)
+    /// J\[i,j\] = ∂F_i/∂x_j where x_j = log(DF_j)
     ///
     /// # Arguments
     ///
@@ -504,7 +504,7 @@ where
     /// - m = number of pillars
     /// - k = number of jump pillars
     ///
-    /// J[i,j] = ∂F_i/∂x_j where x = [log(DF), jumps]
+    /// J\[i,j\] = ∂F_i/∂x_j where x = \[log(DF), jumps\]
     ///
     /// # Arguments
     ///

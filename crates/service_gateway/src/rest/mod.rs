@@ -13,12 +13,11 @@ mod handlers;
 mod ws_handlers;
 
 // Re-export new handlers
+// Re-export existing types for backwards compatibility
+pub use graph_handlers::GraphAppState;
 pub use handlers::{
     build_curve, get_discount_factor, get_forward_rate, health, price_instrument, price_portfolio,
 };
-
-// Re-export existing types for backwards compatibility
-pub use graph_handlers::GraphAppState;
 pub use ws_handlers::WsAppState;
 
 use crate::state::AppState;

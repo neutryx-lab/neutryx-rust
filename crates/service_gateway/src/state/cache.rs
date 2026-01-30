@@ -49,40 +49,26 @@ impl CurveCache {
     }
 
     /// Get a curve by ID
-    pub fn get(&self, id: &Uuid) -> Option<CurveEntry> {
-        self.inner.write().get(id).cloned()
-    }
+    pub fn get(&self, id: &Uuid) -> Option<CurveEntry> { self.inner.write().get(id).cloned() }
 
     /// Check if a curve exists
-    pub fn contains(&self, id: &Uuid) -> bool {
-        self.inner.read().contains(id)
-    }
+    pub fn contains(&self, id: &Uuid) -> bool { self.inner.read().contains(id) }
 
     /// Remove a curve from the cache
-    pub fn remove(&self, id: &Uuid) -> Option<CurveEntry> {
-        self.inner.write().pop(id)
-    }
+    pub fn remove(&self, id: &Uuid) -> Option<CurveEntry> { self.inner.write().pop(id) }
 
     /// Get the number of cached curves
-    pub fn len(&self) -> usize {
-        self.inner.read().len()
-    }
+    pub fn len(&self) -> usize { self.inner.read().len() }
 
     /// Check if the cache is empty
-    pub fn is_empty(&self) -> bool {
-        self.inner.read().is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.inner.read().is_empty() }
 
     /// Clear all cached curves
-    pub fn clear(&self) {
-        self.inner.write().clear();
-    }
+    pub fn clear(&self) { self.inner.write().clear(); }
 }
 
 impl Default for CurveCache {
-    fn default() -> Self {
-        Self::new(100)
-    }
+    fn default() -> Self { Self::new(100) }
 }
 
 /// Cache for FX volatility surfaces
@@ -125,30 +111,20 @@ impl FxVolCache {
     }
 
     /// Get an FX vol surface by ID
-    pub fn get(&self, id: &Uuid) -> Option<FxVolEntry> {
-        self.inner.write().get(id).cloned()
-    }
+    pub fn get(&self, id: &Uuid) -> Option<FxVolEntry> { self.inner.write().get(id).cloned() }
 
     /// Get the number of cached surfaces
-    pub fn len(&self) -> usize {
-        self.inner.read().len()
-    }
+    pub fn len(&self) -> usize { self.inner.read().len() }
 
     /// Check if the cache is empty
-    pub fn is_empty(&self) -> bool {
-        self.inner.read().is_empty()
-    }
+    pub fn is_empty(&self) -> bool { self.inner.read().is_empty() }
 
     /// Clear all cached surfaces
-    pub fn clear(&self) {
-        self.inner.write().clear();
-    }
+    pub fn clear(&self) { self.inner.write().clear(); }
 }
 
 impl Default for FxVolCache {
-    fn default() -> Self {
-        Self::new(20)
-    }
+    fn default() -> Self { Self::new(20) }
 }
 
 #[cfg(test)]

@@ -4,12 +4,9 @@
 
 mod cache;
 
-pub use cache::{
-    CurveCache, CurveEntry, FxVolCache, FxVolEntry, InstrumentInput, SabrParams,
-};
-
 use std::sync::Arc;
 
+pub use cache::{CurveCache, CurveEntry, FxVolCache, FxVolEntry, InstrumentInput, SabrParams};
 use pricer_pricing::generic_pricer::{GenericPricer, ModelConfig, PricerConfig};
 
 /// Application state shared across all handlers
@@ -54,7 +51,5 @@ impl AppState {
 }
 
 impl Default for AppState {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }

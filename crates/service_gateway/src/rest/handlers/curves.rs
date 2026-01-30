@@ -6,13 +6,15 @@ use std::sync::Arc;
 
 use axum::{extract::State, Json};
 
-use crate::error::ServerError;
-use crate::rest::dto::{
-    CurveBuildRequest, CurveBuildResponse, DiscountFactorRequest, DiscountFactorResponse,
-    ForwardRateRequest, ForwardRateResponse,
+use crate::{
+    error::ServerError,
+    rest::dto::{
+        CurveBuildRequest, CurveBuildResponse, DiscountFactorRequest, DiscountFactorResponse,
+        ForwardRateRequest, ForwardRateResponse,
+    },
+    services::CurveService,
+    state::AppState,
 };
-use crate::services::CurveService;
-use crate::state::AppState;
 
 /// Build a yield curve from market instruments
 ///

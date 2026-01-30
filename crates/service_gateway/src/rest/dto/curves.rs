@@ -58,13 +58,9 @@ pub struct CurveBuildRequest {
     pub max_iterations: usize,
 }
 
-fn default_tolerance() -> f64 {
-    1e-10
-}
+fn default_tolerance() -> f64 { 1e-10 }
 
-fn default_max_iterations() -> usize {
-    100
-}
+fn default_max_iterations() -> usize { 100 }
 
 /// Pillar point in a bootstrapped curve
 #[derive(Debug, Clone, Serialize)]
@@ -150,9 +146,7 @@ pub struct BucketDv01Request {
     pub bump_size_bps: f64,
 }
 
-fn default_bump_bps() -> f64 {
-    1.0
-}
+fn default_bump_bps() -> f64 { 1.0 }
 
 /// Single bucket DV01 result
 #[derive(Debug, Clone, Serialize)]
