@@ -6,6 +6,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use adapter_loader::{parse_instruments, validate_rates, InstrumentSpec};
+use pricer_core::math::formulas::{simple_forward_rate, zero_rate_from_df};
 use pricer_models::builder::{
     BootstrapConfig, CurveBootstrapper, InterpolationMethod as BuilderInterpolation,
 };
@@ -13,11 +14,10 @@ use pricer_models::market::YieldCurve;
 
 use crate::error::ServerError;
 use crate::rest::dto::{
-    BootstrapMethod, CurveBuildRequest, CurveBuildResponse, CurveInstrumentInput,
-    CurvePillar, DiscountFactorRequest, DiscountFactorResponse, ForwardRateRequest,
-    ForwardRateResponse, InterpolationMethod,
+    BootstrapMethod, CurveBuildRequest, CurveBuildResponse, CurvePillar, DiscountFactorRequest,
+    DiscountFactorResponse, ForwardRateRequest, ForwardRateResponse, InterpolationMethod,
 };
-use crate::state::{AppState, CurveEntry, InstrumentInput};
+use crate::state::{AppState, InstrumentInput};
 
 /// Service for building and querying yield curves
 pub struct CurveService;
@@ -85,17 +85,10 @@ impl CurveService {
             .pillars()
             .iter()
             .zip(curve.discount_factors().iter())
-            .map(|(time, df)| {
-                let zero_rate = if *time > 0.0 {
-                    -df.ln() / time
-                } else {
-                    0.0
-                };
-                CurvePillar {
-                    time: *time,
-                    discount_factor: *df,
-                    zero_rate,
-                }
+            .map(|(time, df)| CurvePillar {
+                time: *time,
+                discount_factor: *df,
+                zero_rate: zero_rate_from_df(*df, *time),
             })
             .collect();
 
@@ -144,11 +137,7 @@ impl CurveService {
             .curve
             .discount_factor(request.time)
             .map_err(|e| ServerError::Pricing(format!("Failed to compute discount factor: {e}")))?;
-        let zero_rate = if request.time > 0.0 {
-            -df.ln() / request.time
-        } else {
-            0.0
-        };
+        let zero_rate = zero_rate_from_df(df, request.time);
 
         Ok(DiscountFactorResponse {
             curve_id: request.curve_id.clone(),
@@ -188,9 +177,7 @@ impl CurveService {
             .discount_factor(request.end_time)
             .map_err(|e| ServerError::Pricing(format!("Failed to compute end DF: {e}")))?;
         let tau = request.end_time - request.start_time;
-
-        // Simple compounding forward rate: F = (DF_start / DF_end - 1) / tau
-        let forward_rate = (df_start / df_end - 1.0) / tau;
+        let forward_rate = simple_forward_rate(df_start, df_end, tau);
 
         Ok(ForwardRateResponse {
             curve_id: request.curve_id.clone(),

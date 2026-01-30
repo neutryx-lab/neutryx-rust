@@ -158,6 +158,8 @@ sequenceDiagram
 | 10.1-10.5 | 一貫パターン | 全Services/Handlers/DTOs | - | - |
 | 11.1-11.5 | AppState拡張 | AppState, 新キャッシュ | - | - |
 | 12.1-12.4 | APIバージョニング | Router | - | - |
+| 13.1-13.6 | Demo GUI統合 | DemoService, DemoHandler | Demo DTOs | - |
+| 14.1-14.5 | 静的ファイル配信 | ServeDir, ServeFile | - | - |
 
 ## Components and Interfaces
 
@@ -790,3 +792,258 @@ fn api_v1_routes(state: Arc<AppState>) -> Router {
     router.with_state(state)
 }
 ```
+
+---
+
+## Demo GUI Integration
+
+### Overview
+
+demo_gui フロントエンド（React/TypeScript）と service_gateway を統合し、単一サーバーでデモ環境を提供する。
+
+### Architecture
+
+```mermaid
+graph TB
+    subgraph service_gateway
+        R[Router]
+        SS[Static Server]
+        DS[DemoService]
+    end
+
+    subgraph "Demo Endpoints"
+        CE[/api/curves/*]
+        VE[/api/volcube/*]
+        FE[/api/fxvol/*]
+        ME[/api/market/*]
+    end
+
+    subgraph "Static Assets"
+        SA[demo/gui/static/]
+    end
+
+    R --> SS
+    R --> DS
+    DS --> CE
+    DS --> VE
+    DS --> FE
+    DS --> ME
+    SS --> SA
+```
+
+### DemoService
+
+| Field | Detail |
+|-------|--------|
+| Intent | demo_gui フロントエンドが使用する API エンドポイントを提供 |
+| Requirements | 13.1-13.6, 14.1-14.5 |
+
+**Responsibilities & Constraints**
+- Curve builder 操作（indices 一覧、instruments 取得、curve 構築）
+- Vol Cube 操作（indices 一覧、models 取得、calibration）
+- FX Vol 操作（pairs 一覧、quotes 取得）
+- Market data 操作（rates refresh、export）
+
+**Dependencies**
+- Outbound: CurveService — Curve 構築 (P0)
+- Outbound: VolatilityService — Vol 操作 (P0)
+- Outbound: pricer_models::builder — Vol builders (P1)
+
+##### Service Interface
+
+```rust
+#[cfg(feature = "demo")]
+pub struct DemoService;
+
+#[cfg(feature = "demo")]
+impl DemoService {
+    /// Curve indices 一覧
+    pub fn get_curve_indices(
+        state: &Arc<AppState>,
+    ) -> Result<Vec<CurveIndexDto>, ServerError>;
+
+    /// Curve instruments 取得
+    pub fn get_curve_instruments(
+        index: &str,
+        state: &Arc<AppState>,
+    ) -> Result<Vec<CurveInstrumentDto>, ServerError>;
+
+    /// Vol Cube indices 一覧
+    pub fn get_volcube_indices(
+        state: &Arc<AppState>,
+    ) -> Result<Vec<VolCubeIndexDto>, ServerError>;
+
+    /// Vol Cube models 取得
+    pub fn get_volcube_models(
+        state: &Arc<AppState>,
+    ) -> Result<Vec<VolCubeModelDto>, ServerError>;
+
+    /// FX Vol pairs 一覧
+    pub fn get_fxvol_pairs(
+        state: &Arc<AppState>,
+    ) -> Result<Vec<FxVolPairDto>, ServerError>;
+
+    /// FX Vol quotes 取得
+    pub fn get_fxvol_quotes(
+        pair: &str,
+        state: &Arc<AppState>,
+    ) -> Result<FxVolQuotesDto, ServerError>;
+
+    /// Market rates refresh
+    pub fn refresh_market_rates(
+        state: &Arc<AppState>,
+    ) -> Result<MarketRefreshResponse, ServerError>;
+
+    /// Market data export
+    pub fn export_market_data(
+        format: &str,
+        state: &Arc<AppState>,
+    ) -> Result<Vec<u8>, ServerError>;
+}
+```
+
+##### Demo API Contract
+
+| Method | Endpoint | Request | Response | Errors |
+|--------|----------|---------|----------|--------|
+| GET | /api/curves/indices | - | `Vec<CurveIndexDto>` | 500 |
+| GET | /api/curves/instruments/{index} | - | `Vec<CurveInstrumentDto>` | 404, 500 |
+| POST | /api/curves/build | `CurveBuildRequest` | `CurveBuildResponse` | 400, 422, 500 |
+| GET | /api/volcube/indices | - | `Vec<VolCubeIndexDto>` | 500 |
+| GET | /api/volcube/models | - | `Vec<VolCubeModelDto>` | 500 |
+| GET | /api/volcube/instruments/{index} | - | `Vec<VolCubeInstrumentDto>` | 404, 500 |
+| POST | /api/volcube/calibrate | `VolCubeCalibrateRequest` | `VolCubeCalibrateResponse` | 400, 422, 500 |
+| GET | /api/fxvol/pairs | - | `Vec<FxVolPairDto>` | 500 |
+| GET | /api/fxvol/quotes/{pair} | - | `FxVolQuotesDto` | 404, 500 |
+| POST | /api/market/rates/refresh | - | `MarketRefreshResponse` | 500 |
+| GET | /api/market/export/{format} | - | Binary | 400, 500 |
+
+### Demo DTOs (rest/dto/demo.rs)
+
+```rust
+#[derive(Debug, Clone, Serialize)]
+pub struct CurveIndexDto {
+    pub index: String,
+    pub currency: String,
+    pub tenor_type: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CurveInstrumentDto {
+    pub tenor: String,
+    pub rate: f64,
+    pub instrument_type: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct VolCubeIndexDto {
+    pub index: String,
+    pub currency: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct VolCubeModelDto {
+    pub model: String,
+    pub description: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct FxVolPairDto {
+    pub pair: String,
+    pub base: String,
+    pub quote: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct FxVolQuotesDto {
+    pub pair: String,
+    pub quotes: Vec<VolQuoteDto>,
+    pub spot: f64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct MarketRefreshResponse {
+    pub refreshed_at: String,
+    pub curves_updated: usize,
+    pub surfaces_updated: usize,
+}
+```
+
+### Static File Serving
+
+```rust
+use tower_http::services::ServeDir;
+
+#[cfg(feature = "demo")]
+fn static_routes() -> Router {
+    Router::new()
+        .nest_service("/", ServeDir::new("demo/gui/static")
+            .fallback(ServeFile::new("demo/gui/static/index.html")))
+}
+```
+
+### Feature Flags Configuration (Updated)
+
+```toml
+[features]
+default = ["rest"]
+rest = []
+grpc = []
+
+# Service features
+risk = ["pricer_risk"]
+models = ["pricer_models/equity", "pricer_models/rates", "pricer_pricing"]
+volatility = ["pricer_models/serde"]
+
+# Demo feature
+demo = ["tower-http"]
+
+# Full bundle
+full = ["rest", "risk", "models", "volatility", "demo"]
+```
+
+### Demo Router Extension
+
+```rust
+#[cfg(feature = "demo")]
+fn demo_routes(state: Arc<AppState>) -> Router {
+    Router::new()
+        // Curve endpoints
+        .route("/curves/indices", get(demo_handlers::get_curve_indices))
+        .route("/curves/instruments/:index", get(demo_handlers::get_curve_instruments))
+        .route("/curves/build", post(demo_handlers::build_curve))
+        // Vol Cube endpoints
+        .route("/volcube/indices", get(demo_handlers::get_volcube_indices))
+        .route("/volcube/models", get(demo_handlers::get_volcube_models))
+        .route("/volcube/instruments/:index", get(demo_handlers::get_volcube_instruments))
+        .route("/volcube/calibrate", post(demo_handlers::calibrate_volcube))
+        // FX Vol endpoints
+        .route("/fxvol/pairs", get(demo_handlers::get_fxvol_pairs))
+        .route("/fxvol/quotes/:pair", get(demo_handlers::get_fxvol_quotes))
+        // Market data endpoints
+        .route("/market/rates/refresh", post(demo_handlers::refresh_market_rates))
+        .route("/market/export/:format", get(demo_handlers::export_market_data))
+        .with_state(state)
+}
+
+pub fn create_demo_router(state: Arc<AppState>) -> Router {
+    let mut router = Router::new()
+        .nest("/api", demo_routes(state.clone()))
+        .nest("/api/v1", api_v1_routes(state.clone()))
+        .nest("/api/v2", api_v2_routes(state));
+
+    #[cfg(feature = "demo")]
+    {
+        router = router.merge(static_routes());
+    }
+
+    router
+}
+```
+
+### Requirements Traceability (Updated)
+
+| Requirement | Summary | Components | Interfaces | Flows |
+|-------------|---------|------------|------------|-------|
+| 13.1-13.6 | Demo GUI 統合 | DemoService, DemoHandler | Demo DTOs | - |
+| 14.1-14.5 | 静的ファイル配信 | ServeDir, ServeFile | - | - |

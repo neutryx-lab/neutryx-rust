@@ -147,6 +147,40 @@ service_gateway services層の充実化 - pricer_risk/pricer_pricing/pricer_mode
 3. The service_gateway shall OpenAPI仕様でAPIバージョンを記載する
 4. If 未サポートのAPIバージョンが指定された場合, the service_gateway shall 400 Bad Request を返却する
 
+### Requirement 13: Demo GUI 統合
+
+**Objective:** As a 開発者, I want service_gateway が demo_gui のフロントエンドと API を統合して提供したい, so that 単一サーバーで完結したデモ環境を構築できる
+
+#### Acceptance Criteria
+1. The service_gateway shall /api/curves/* エンドポイント群（indices, instruments, build）を提供する
+2. The service_gateway shall /api/volcube/* エンドポイント群（indices, models, instruments, calibrate）を提供する
+3. The service_gateway shall /api/fxvol/* エンドポイント群（pairs, quotes）を提供する
+4. The service_gateway shall /api/market/* エンドポイント群（rates/refresh, export）を提供する
+5. The service_gateway shall demo/gui/static/ ディレクトリから静的ファイルを配信する
+6. Where demo feature が有効な場合, the service_gateway shall DemoService をコンパイルに含める
+
+### Requirement 14: 静的ファイル配信
+
+**Objective:** As a フロントエンド開発者, I want service_gateway から直接 React アプリを配信したい, so that 開発・デモ時に追加のサーバー設定が不要になる
+
+#### Acceptance Criteria
+1. The service_gateway shall / ルートで index.html を配信する
+2. The service_gateway shall /static/* 配下で CSS/JS/アセットを配信する
+3. The service_gateway shall SPA フォールバック（存在しないパスは index.html へリダイレクト）を実装する
+4. If 静的ファイルが見つからない場合, the service_gateway shall 404 Not Found を返却する
+5. The service_gateway shall 適切な Content-Type ヘッダーを設定する
+
+### Requirement 15: Demo GUI 依存制約
+
+**Objective:** As a アーキテクト, I want demo_gui が service_gateway のみを参照する, so that A-I-P-S アーキテクチャを維持し依存方向を一貫させる
+
+#### Acceptance Criteria
+1. The demo_gui shall Cargo.toml で service_gateway のみを依存に持つ（pricer_*/infra_*/adapter_* を直接参照しない）
+2. The service_gateway shall demo_gui が必要とする全ての機能をファサードとして公開する
+3. The demo_gui shall pricer_* crates の型を直接使用しない（service_gateway の DTO を使用する）
+4. The service_gateway shall demo feature 配下で demo_gui 用 API を完結させる
+5. If demo_gui が新機能を必要とする場合, the service_gateway shall 対応する Service/Handler を追加する
+
 ## Non-Functional Requirements
 
 ### NFR-1: パフォーマンス
