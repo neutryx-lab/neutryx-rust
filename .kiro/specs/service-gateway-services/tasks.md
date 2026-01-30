@@ -7,20 +7,20 @@ service_gateway の services 層拡充：RiskService, PortfolioService, ModelSer
 
 ## Phase 1: Foundation Infrastructure
 
-- [ ] 1. Feature Flags と基盤設定
-- [ ] 1.1 Feature flags を Cargo.toml に設定
+- [x] 1. Feature Flags と基盤設定
+- [x] 1.1 Feature flags を Cargo.toml に設定
   - `risk`, `models`, `volatility`, `demo`, `full` features を定義
   - pricer_* crates との依存関係を設定
   - `tower-http` を demo feature の依存に追加
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
 
-- [ ] 1.2 (P) ServerError にドメイン別 variant を追加
+- [x] 1.2 (P) ServerError にドメイン別 variant を追加
   - Risk, Portfolio, Model, Volatility のエラー variant を定義
   - pricer_risk, pricer_models からの自動変換（From 実装）を追加
   - HTTP ステータスコードへのマッピングを実装
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
 
-- [ ] 1.3 (P) 新規キャッシュ構造体を実装
+- [x] 1.3 (P) 新規キャッシュ構造体を実装
   - PortfolioCache: Portfolio インスタンスの LRU キャッシュ
   - ModelCache: StochasticModel 設定の LRU キャッシュ
   - VolSurfaceCache: Vol Surface/Cube の LRU キャッシュ
@@ -28,7 +28,7 @@ service_gateway の services 層拡充：RiskService, PortfolioService, ModelSer
   - parking_lot::RwLock による並行アクセス保護
   - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5_
 
-- [ ] 1.4 AppState を新規キャッシュで拡張
+- [x] 1.4 AppState を新規キャッシュで拡張
   - PortfolioCache, ModelCache, VolSurfaceCache フィールドを追加
   - 各キャッシュを対応する feature flag で条件付きコンパイル
   - コンストラクタでキャッシュサイズ設定を受け付ける
@@ -54,8 +54,8 @@ service_gateway の services 層拡充：RiskService, PortfolioService, ModelSer
   - 不正シナリオ定義時のエラーハンドリング
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 2.3 (P) Risk DTO を定義
-  - GreeksRequest/GreeksResponse の定義
+- [x] 2.3 (P) Risk DTO を定義
+  - GreeksRequest/RiskGreeksResponse の定義
   - GreeksModeDto, GreekTypeDto の enum 定義
   - ScenarioRequest/ScenarioResponse の定義
   - ScenarioDefinition（Preset/Custom）の tagged enum
@@ -88,7 +88,7 @@ service_gateway の services 層拡充：RiskService, PortfolioService, ModelSer
   - 一部トレード失敗時のエラー配列返却
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
-- [ ] 3.3 (P) Portfolio DTO を定義
+- [x] 3.3 (P) Portfolio DTO を定義
   - CreatePortfolioRequest/Response の定義
   - GetPortfolioResponse の定義
   - AddTradesRequest/Response の定義
@@ -125,8 +125,8 @@ service_gateway の services 層拡充：RiskService, PortfolioService, ModelSer
   - 存在しない model_id 時の NotFound エラー
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [ ] 4.3 (P) Model DTO を定義
-  - CreateModelRequest（tagged enum: GBM/Heston/HullWhite/CIR）の定義
+- [x] 4.3 (P) Model DTO を定義
+  - CreateModelRequest（tagged enum: GBM/Heston/HullWhite/CIR/SABR）の定義
   - CreateModelResponse, GetModelResponse の定義
   - ModelPricingRequest/Response の定義
   - PricingMethodDto（Analytical/MonteCarlo/Tree）の定義
@@ -157,11 +157,11 @@ service_gateway の services 層拡充：RiskService, PortfolioService, ModelSer
   - 存在しない surface_id 時の NotFound エラー
   - _Requirements: 7.3_
 
-- [ ] 5.3 (P) Volatility DTO を定義
+- [x] 5.3 (P) Volatility DTO を定義
   - BuildFxVolSurfaceRequest/Response の定義
   - BuildVolCubeRequest/Response の定義
   - GetImpliedVolRequest/Response の定義
-  - VolQuoteDto, SabrParamsDto の定義
+  - VolQuoteDto, SabrCalibrationDto の定義
   - _Requirements: 7.1, 7.2, 7.3, 10.1_
 
 - [ ] 5.4 Volatility ハンドラーを実装
@@ -246,7 +246,7 @@ service_gateway の services 層拡充：RiskService, PortfolioService, ModelSer
   - VolatilityService: Surface 構築、補間のテスト
   - _Requirements: 10.5_
 
-- [ ] 8.2 キャッシュ層の単体テストを実装
+- [x] 8.2 キャッシュ層の単体テストを実装
   - PortfolioCache: add/get/update/remove 操作のテスト
   - ModelCache: add/get/remove 操作のテスト
   - VolSurfaceCache: add/get/remove 操作のテスト

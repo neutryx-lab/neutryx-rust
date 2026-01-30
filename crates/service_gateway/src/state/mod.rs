@@ -9,15 +9,13 @@ use std::sync::Arc;
 
 // Re-export common cache types
 pub use cache::{CurveCache, FxVolCache, InstrumentInput, SabrParams};
-
+#[cfg(feature = "models")]
+pub use cache::{ModelCache, ModelEntry, ModelType};
 // Feature-gated re-exports
 #[cfg(feature = "risk")]
 pub use cache::{PortfolioCache, PortfolioEntry};
-#[cfg(feature = "models")]
-pub use cache::{ModelCache, ModelEntry, ModelType};
 #[cfg(feature = "volatility")]
 pub use cache::{VolSurfaceCache, VolSurfaceEntry, VolSurfaceType};
-
 use pricer_pricing::generic_pricer::{GenericPricer, ModelConfig, PricerConfig};
 
 /// Configuration for AppState cache sizes
@@ -63,7 +61,6 @@ pub struct AppState {
     pub pricer: Arc<GenericPricer>,
 
     // Feature-gated caches (Requirement 11)
-
     /// Cache for portfolios (risk feature)
     #[cfg(feature = "risk")]
     pub portfolio_cache: PortfolioCache,
@@ -77,9 +74,7 @@ pub struct AppState {
 
 impl AppState {
     /// Create a new application state with default configuration
-    pub fn new() -> Self {
-        Self::with_config(AppStateConfig::default())
-    }
+    pub fn new() -> Self { Self::with_config(AppStateConfig::default()) }
 
     /// Create application state with custom configuration
     pub fn with_config(config: AppStateConfig) -> Self {

@@ -14,8 +14,9 @@ use pricer_models::{
 use crate::{
     error::ServerError,
     rest::dto::{
-        BootstrapMethod, CurveBuildRequest, CurveBuildResponse, CurvePillar, DiscountFactorRequest,
-        DiscountFactorResponse, ForwardRateRequest, ForwardRateResponse, InterpolationMethod,
+        BootstrapMethod, CurveBuildRequest, CurveBuildResponse, CurveInstrumentInput, CurvePillar,
+        DiscountFactorRequest, DiscountFactorResponse, ForwardRateRequest, ForwardRateResponse,
+        InterpolationMethod,
     },
     state::{AppState, InstrumentInput},
 };

@@ -101,9 +101,9 @@ pub struct GreeksResultDto {
     pub per_trade: Option<Vec<GreekResult>>,
 }
 
-/// Response for Greeks calculation
+/// Response for portfolio Greeks calculation (Risk domain)
 #[derive(Debug, Clone, Serialize)]
-pub struct GreeksResponse {
+pub struct RiskGreeksResponse {
     /// Portfolio ID
     pub portfolio_id: String,
     /// Aggregated Greeks
@@ -237,11 +237,15 @@ mod tests {
 
     #[test]
     fn test_scenario_definition_preset() {
-        let json = r#"{"type": "preset", "preset_type": "parallel_up_100bp"}"#;
+        // Note: snake_case doesn't add underscores before numbers
+        let json = r#"{"type": "preset", "preset_type": "parallel_up100bp"}"#;
         let scenario: ScenarioDefinition = serde_json::from_str(json).unwrap();
         match scenario {
             ScenarioDefinition::Preset { preset_type } => {
-                assert!(matches!(preset_type, PresetScenarioTypeDto::ParallelUp100bp));
+                assert!(matches!(
+                    preset_type,
+                    PresetScenarioTypeDto::ParallelUp100bp
+                ));
             }
             _ => panic!("Expected Preset scenario"),
         }
@@ -268,8 +272,8 @@ mod tests {
     }
 
     #[test]
-    fn test_greeks_response_serialisation() {
-        let response = GreeksResponse {
+    fn test_risk_greeks_response_serialisation() {
+        let response = RiskGreeksResponse {
             portfolio_id: "test-123".to_string(),
             greeks: GreeksResultDto {
                 delta: 1000.0,

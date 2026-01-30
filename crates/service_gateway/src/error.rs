@@ -39,7 +39,6 @@ pub enum ServerError {
     Internal(String),
 
     // Domain-specific error variants (Requirement 9)
-
     /// Risk calculation error (Greeks, scenarios)
     #[error("Risk error: {0}")]
     Risk(String),

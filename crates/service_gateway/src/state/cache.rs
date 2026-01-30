@@ -179,9 +179,7 @@ impl PortfolioCache {
     }
 
     /// Get a portfolio by ID
-    pub fn get(&self, id: &Uuid) -> Option<PortfolioEntry> {
-        self.inner.write().get(id).cloned()
-    }
+    pub fn get(&self, id: &Uuid) -> Option<PortfolioEntry> { self.inner.write().get(id).cloned() }
 
     /// Update a portfolio in the cache
     pub fn update(&self, id: &Uuid, entry: PortfolioEntry) -> bool {
@@ -354,9 +352,7 @@ impl VolSurfaceCache {
     }
 
     /// Get a vol surface by ID
-    pub fn get(&self, id: &Uuid) -> Option<VolSurfaceEntry> {
-        self.inner.write().get(id).cloned()
-    }
+    pub fn get(&self, id: &Uuid) -> Option<VolSurfaceEntry> { self.inner.write().get(id).cloned() }
 
     /// Remove a vol surface from the cache
     pub fn remove(&self, id: &Uuid) -> Option<VolSurfaceEntry> { self.inner.write().pop(id) }

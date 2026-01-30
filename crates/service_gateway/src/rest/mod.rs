@@ -59,4 +59,3 @@ fn portfolio_routes(state: Arc<GraphAppState>) -> Router {
         .route("/trades", get(graph_handlers::get_portfolio_trades))
         .with_state(state)
 }
-
