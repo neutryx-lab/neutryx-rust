@@ -1,6 +1,6 @@
 //! Pricing handlers
 //!
-//! Thin handlers delegating to PricingService.
+//! Thin handlers delegating to `PricingService`.
 
 use axum::Json;
 

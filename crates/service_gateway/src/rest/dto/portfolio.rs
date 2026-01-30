@@ -1,6 +1,6 @@
 //! Portfolio-related DTOs for CRUD and aggregation operations
 //!
-//! Request/Response types for PortfolioService endpoints.
+//! Request/Response types for `PortfolioService` endpoints.
 
 use serde::{Deserialize, Serialize};
 
@@ -37,7 +37,7 @@ pub struct NettingSetDto {
 pub struct TradeDto {
     /// Unique trade identifier
     pub trade_id: String,
-    /// Trade type (e.g., "irs", "fx_forward", "equity_option")
+    /// Trade type (e.g., "irs", "fx\_forward", "equity\_option")
     pub trade_type: String,
     /// Counterparty ID
     pub counterparty_id: String,
@@ -60,6 +60,7 @@ pub struct TradeDto {
 
 /// Request to create a new portfolio
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)] // Fields accessed via serde deserialization
 pub struct CreatePortfolioRequest {
     /// Portfolio name (optional)
     #[serde(default)]
@@ -111,6 +112,7 @@ pub struct GetPortfolioResponse {
 
 /// Request to add trades to a portfolio
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)] // Fields accessed via serde deserialization
 pub struct AddTradesRequest {
     /// Trades to add
     pub trades: Vec<TradeDto>,
@@ -133,6 +135,7 @@ pub struct AddTradesResponse {
 
 /// Request for portfolio Greeks calculation
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)] // Fields accessed via serde deserialization
 pub struct PortfolioGreeksRequest {
     /// Greek types to calculate (defaults to all first-order)
     #[serde(default = "default_greek_types")]

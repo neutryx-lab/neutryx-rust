@@ -1,6 +1,6 @@
 //! Curve handlers
 //!
-//! Thin handlers delegating to CurveService.
+//! Thin handlers delegating to `CurveService`.
 
 use std::sync::Arc;
 

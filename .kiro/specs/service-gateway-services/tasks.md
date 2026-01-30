@@ -38,15 +38,15 @@ service_gateway の services 層拡充：RiskService, PortfolioService, ModelSer
 
 ## Phase 2: Risk Domain Services
 
-- [ ] 2. RiskService 実装
-- [ ] 2.1 Greeks 計算機能を実装
+- [x] 2. RiskService 実装
+- [x] 2.1 Greeks 計算機能を実装
   - pricer_risk::RiskEngine を使用した Greeks 計算ロジック
   - BumpAndRevalue モードのサポート
   - EnzymeAAD モードのサポート（enzyme-ad feature 条件付き）
   - 計算時間の計測とレスポンスへの含有
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
 
-- [ ] 2.2 シナリオ分析機能を実装
+- [x] 2.2 シナリオ分析機能を実装
   - pricer_risk::ScenarioEngine を使用したシナリオ P&L 計算
   - PresetScenario（定義済みシナリオ）のサポート
   - BumpScenario（カスタムシナリオ）のサポート
@@ -61,7 +61,7 @@ service_gateway の services 層拡充：RiskService, PortfolioService, ModelSer
   - ScenarioDefinition（Preset/Custom）の tagged enum
   - _Requirements: 1.1, 2.1, 10.1_
 
-- [ ] 2.4 Risk ハンドラーを実装
+- [x] 2.4 Risk ハンドラーを実装
   - POST /api/v1/risk/greeks ハンドラー
   - POST /api/v1/risk/scenarios ハンドラー
   - リクエストバリデーションとエラーレスポンス
@@ -71,8 +71,8 @@ service_gateway の services 層拡充：RiskService, PortfolioService, ModelSer
 
 ## Phase 3: Portfolio Domain Services
 
-- [ ] 3. PortfolioService 実装
-- [ ] 3.1 Portfolio CRUD 操作を実装
+- [x] 3. PortfolioService 実装
+- [x] 3.1 Portfolio CRUD 操作を実装
   - create_portfolio: 新規ポートフォリオ作成と ID 返却
   - get_portfolio: キャッシュからのポートフォリオ取得
   - add_trades: 既存ポートフォリオへのトレード追加
@@ -80,7 +80,7 @@ service_gateway の services 層拡充：RiskService, PortfolioService, ModelSer
   - 存在しない portfolio_id 時の NotFound エラー
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
 
-- [ ] 3.2 Portfolio 集計機能を実装
+- [x] 3.2 Portfolio 集計機能を実装
   - price_portfolio: 全トレードの現在価値合計
   - compute_portfolio_greeks: 集約 Greeks 計算
   - Counterparty/NettingSet 別集計
@@ -96,7 +96,7 @@ service_gateway の services 層拡充：RiskService, PortfolioService, ModelSer
   - TradeDto, CounterpartyDto, NettingSetDto の定義
   - _Requirements: 3.1, 4.1, 10.1_
 
-- [ ] 3.4 Portfolio ハンドラーを実装
+- [x] 3.4 Portfolio ハンドラーを実装
   - POST /api/v1/portfolios ハンドラー
   - GET /api/v1/portfolios/{id} ハンドラー
   - PUT /api/v1/portfolios/{id}/trades ハンドラー
@@ -109,15 +109,15 @@ service_gateway の services 層拡充：RiskService, PortfolioService, ModelSer
 
 ## Phase 4: Model Domain Services
 
-- [ ] 4. ModelService 実装
-- [ ] 4.1 確率モデル設定機能を実装
+- [x] 4. ModelService 実装
+- [x] 4.1 確率モデル設定機能を実装
   - create_model: StochasticModelEnum インスタンス生成とキャッシュ保存
   - get_model: モデル設定詳細の取得
   - GBM, Heston, HullWhite, CIR, SABR モデルのサポート
   - パラメータバリデーションとエラーハンドリング
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 4.2 モデルベース価格計算機能を実装
+- [x] 4.2 モデルベース価格計算機能を実装
   - price_with_model: 指定モデルでの価格計算
   - Monte Carlo pricing (MonteCarloPricer) のサポート
   - Tree pricing (TreeMethod) のサポート
@@ -133,7 +133,7 @@ service_gateway の services 層拡充：RiskService, PortfolioService, ModelSer
   - GbmParamsDto, HestonParamsDto 等のパラメータ DTO
   - _Requirements: 5.1, 6.1, 10.1_
 
-- [ ] 4.4 Model ハンドラーを実装
+- [x] 4.4 Model ハンドラーを実装
   - POST /api/v1/models ハンドラー
   - GET /api/v1/models/{id} ハンドラー
   - POST /api/v1/models/{id}/price ハンドラー
@@ -143,15 +143,15 @@ service_gateway の services 層拡充：RiskService, PortfolioService, ModelSer
 
 ## Phase 5: Volatility Domain Services
 
-- [ ] 5. VolatilityService 実装
-- [ ] 5.1 Vol Surface/Cube 構築機能を実装
+- [x] 5. VolatilityService 実装
+- [x] 5.1 Vol Surface/Cube 構築機能を実装
   - build_fx_vol_surface: FxVolBuilder による FX Vol Surface 構築
   - build_vol_cube: VolCubeBuilder による Vol Cube 構築
   - SABR calibration 結果（alpha, beta, rho, nu）のレスポンス含有
   - キャリブレーション非収束時のエラーハンドリング
   - _Requirements: 7.1, 7.2, 7.4, 7.5_
 
-- [ ] 5.2 Implied Vol 照会機能を実装
+- [x] 5.2 Implied Vol 照会機能を実装
   - get_implied_vol: 指定 expiry/strike の補間ボラティリティ取得
   - キャッシュからの Surface/Cube 取得
   - 存在しない surface_id 時の NotFound エラー
@@ -164,7 +164,7 @@ service_gateway の services 層拡充：RiskService, PortfolioService, ModelSer
   - VolQuoteDto, SabrCalibrationDto の定義
   - _Requirements: 7.1, 7.2, 7.3, 10.1_
 
-- [ ] 5.4 Volatility ハンドラーを実装
+- [x] 5.4 Volatility ハンドラーを実装
   - POST /api/v1/volatility/fx-surface ハンドラー
   - POST /api/v1/volatility/cube ハンドラー
   - POST /api/v1/volatility/{id}/implied-vol ハンドラー
@@ -214,15 +214,15 @@ service_gateway の services 層拡充：RiskService, PortfolioService, ModelSer
 
 ## Phase 7: Router Integration & API Versioning
 
-- [ ] 7. Router 統合と API バージョニング
-- [ ] 7.1 Feature-gated ルーター構成を実装
+- [x] 7. Router 統合と API バージョニング
+- [x] 7.1 Feature-gated ルーター構成を実装
   - risk feature 有効時: /api/v1/risk/*, /api/v1/portfolios/* ルート追加
   - models feature 有効時: /api/v1/models/* ルート追加
   - volatility feature 有効時: /api/v1/volatility/* ルート追加
   - demo feature 有効時: /api/* demo ルートと静的ファイル配信追加
   - _Requirements: 8.2, 8.3, 8.4, 8.5_
 
-- [ ] 7.2 API バージョニングを実装
+- [x] 7.2 API バージョニングを実装
   - 全エンドポイントを /api/v1/ プレフィックス配下に配置
   - X-API-Version レスポンスヘッダーの追加
   - 未サポート API バージョン時の 400 Bad Request
@@ -238,8 +238,8 @@ service_gateway の services 層拡充：RiskService, PortfolioService, ModelSer
 
 ## Phase 8: Testing & Validation
 
-- [ ] 8. テストとバリデーション
-- [ ] 8.1 サービス層の単体テストを実装
+- [x] 8. テストとバリデーション
+- [x] 8.1 サービス層の単体テストを実装
   - RiskService: Greeks 計算、シナリオ実行のテスト
   - PortfolioService: CRUD 操作、集計計算のテスト
   - ModelService: モデル作成、パラメータバリデーションのテスト

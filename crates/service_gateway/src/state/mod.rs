@@ -1,4 +1,4 @@
-//! Application state management for service_gateway
+//! Application state management for `service_gateway`
 //!
 //! Provides shared state including caches, pricers, and risk engines.
 //! Feature-gated caches are included based on enabled features.
@@ -7,19 +7,26 @@ mod cache;
 
 use std::sync::Arc;
 
-// Re-export common cache types
-pub use cache::{CurveCache, FxVolCache, InstrumentInput, SabrParams};
+// Re-export common cache types (SabrParams used by FxVolEntry in public API)
+pub use cache::{CurveCache, FxVolCache, InstrumentInput};
+#[allow(unused_imports)]
+pub use cache::SabrParams;
+
+// Feature-gated re-exports (public API, may not be used internally)
 #[cfg(feature = "models")]
+#[allow(unused_imports)]
 pub use cache::{ModelCache, ModelEntry, ModelType};
-// Feature-gated re-exports
 #[cfg(feature = "risk")]
+#[allow(unused_imports)]
 pub use cache::{PortfolioCache, PortfolioEntry};
 #[cfg(feature = "volatility")]
+#[allow(unused_imports)]
 pub use cache::{VolSurfaceCache, VolSurfaceEntry, VolSurfaceType};
 use pricer_pricing::generic_pricer::{GenericPricer, ModelConfig, PricerConfig};
 
-/// Configuration for AppState cache sizes
+/// Configuration for `AppState` cache sizes
 #[derive(Debug, Clone)]
+#[allow(clippy::struct_field_names)] // Intentional: all fields are cache sizes
 pub struct AppStateConfig {
     /// Curve cache capacity
     pub curve_cache_size: usize,
@@ -104,10 +111,13 @@ impl AppState {
     }
 
     /// Create application state with custom cache sizes (legacy API)
+    #[allow(clippy::needless_update)] // Feature-gated fields need default values
     pub fn with_cache_sizes(curve_cache_size: usize, fxvol_cache_size: usize) -> Self {
-        let mut config = AppStateConfig::default();
-        config.curve_cache_size = curve_cache_size;
-        config.fxvol_cache_size = fxvol_cache_size;
+        let config = AppStateConfig {
+            curve_cache_size,
+            fxvol_cache_size,
+            ..AppStateConfig::default()
+        };
         Self::with_config(config)
     }
 }

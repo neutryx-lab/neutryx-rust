@@ -1,6 +1,6 @@
 //! Risk-related DTOs for Greeks and Scenario analysis
 //!
-//! Request/Response types for RiskService endpoints.
+//! Request/Response types for `RiskService` endpoints.
 
 use serde::{Deserialize, Serialize};
 
@@ -44,6 +44,7 @@ pub enum GreekTypeDto {
 
 /// Request for Greeks calculation
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)] // Fields accessed via serde deserialization
 pub struct GreeksRequest {
     /// Portfolio ID to calculate Greeks for
     pub portfolio_id: String,
@@ -187,6 +188,7 @@ pub enum ScenarioDefinition {
 
 /// Request for scenario analysis
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)] // Fields accessed via serde deserialization
 pub struct ScenarioRequest {
     /// Portfolio ID to analyze
     pub portfolio_id: String,

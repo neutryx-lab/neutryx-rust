@@ -1,6 +1,6 @@
 //! Model-related DTOs for stochastic model configuration and pricing
 //!
-//! Request/Response types for ModelService endpoints.
+//! Request/Response types for `ModelService` endpoints.
 
 use serde::{Deserialize, Serialize};
 
@@ -72,6 +72,7 @@ pub struct SabrParamsDto {
 /// Request to create a new model
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "model_type", rename_all = "snake_case")]
+#[allow(dead_code)] // Fields accessed via serde deserialization
 pub enum CreateModelRequest {
     /// Geometric Brownian Motion
     Gbm {
@@ -231,6 +232,7 @@ pub enum InstrumentDto {
 
 /// Request for model-based pricing
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)] // Fields accessed via serde deserialization
 pub struct ModelPricingRequest {
     /// Pricing method to use
     #[serde(default)]

@@ -1,7 +1,7 @@
-//! Pricing service - API layer delegating to pricer_core
+//! Pricing service - API layer delegating to `pricer_core`
 //!
 //! This service acts as a thin API layer, delegating all pricing logic
-//! to the pricer_core crate. It handles request/response transformation
+//! to the `pricer_core` crate. It handles request/response transformation
 //! and timing measurement only.
 
 use std::time::Instant;
@@ -19,7 +19,7 @@ use crate::{
     },
 };
 
-/// Service for pricing instruments - delegates to pricer_core
+/// Service for pricing instruments - delegates to `pricer_core`
 pub struct PricingService;
 
 impl PricingService {
@@ -56,6 +56,7 @@ impl PricingService {
     }
 
     /// Price a portfolio of instruments
+    #[allow(clippy::unnecessary_wraps)] // Consistent API signature; may return errors in future
     pub fn price_portfolio(
         request: &PortfolioPricingRequest,
     ) -> Result<PortfolioPricingResponse, ServerError> {
@@ -101,11 +102,11 @@ impl PricingService {
         })
     }
 
-    /// Price a vanilla European option using GarmanKohlhagen (Merton model with
+    /// Price a vanilla European option using `GarmanKohlhagen` (Merton model with
     /// dividend yield)
     ///
-    /// Delegates to pricer_core::math::formulas::garman_kohlhagen.
-    /// GarmanKohlhagen with rate_domestic=r and rate_foreign=q is
+    /// Delegates to `pricer_core::math::formulas::garman_kohlhagen`.
+    /// `GarmanKohlhagen` with `rate_domestic=r` and `rate_foreign=q` is
     /// mathematically equivalent to the Merton model for equity options
     /// with continuous dividends.
     fn price_vanilla_option(
@@ -142,7 +143,7 @@ impl PricingService {
 
     /// Price a forward contract
     ///
-    /// Delegates to pricer_core::math::formulas::forward.
+    /// Delegates to `pricer_core::math::formulas::forward`.
     fn price_forward(request: &PricingRequest) -> Result<f64, ServerError> {
         let params = ForwardParams::new(
             request.spot,

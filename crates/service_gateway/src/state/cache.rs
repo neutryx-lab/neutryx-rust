@@ -1,10 +1,11 @@
-//! Cache implementations for service_gateway
+//! Cache implementations for `service_gateway`
 //!
 //! Provides LRU caches for bootstrapped curves, volatility surfaces,
 //! portfolios, models, and vol surfaces/cubes.
 
 use std::num::NonZeroUsize;
 
+#[cfg(any(feature = "models", feature = "risk", feature = "volatility"))]
 use chrono::{DateTime, Utc};
 use lru::LruCache;
 use parking_lot::RwLock;

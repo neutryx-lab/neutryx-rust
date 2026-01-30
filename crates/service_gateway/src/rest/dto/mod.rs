@@ -18,13 +18,18 @@ pub mod volatility;
 
 // Re-export common DTOs
 pub use curves::*;
-#[cfg(feature = "models")]
-pub use models::*;
-// Feature-gated re-exports
-#[cfg(feature = "risk")]
-pub use portfolio::*;
 pub use pricing::*;
+
+// Feature-gated re-exports (public API, may not be used internally)
+#[cfg(feature = "models")]
+#[allow(unused_imports)]
+pub use models::*;
 #[cfg(feature = "risk")]
+#[allow(unused_imports)]
+pub use portfolio::*;
+#[cfg(feature = "risk")]
+#[allow(unused_imports)]
 pub use risk::*;
 #[cfg(feature = "volatility")]
+#[allow(unused_imports)]
 pub use volatility::*;

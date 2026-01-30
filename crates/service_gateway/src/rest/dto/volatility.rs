@@ -1,6 +1,6 @@
 //! Volatility-related DTOs for Vol Surface/Cube operations
 //!
-//! Request/Response types for VolatilityService endpoints.
+//! Request/Response types for `VolatilityService` endpoints.
 
 use serde::{Deserialize, Serialize};
 
@@ -61,6 +61,7 @@ pub struct SabrCalibrationDto {
 
 /// Request to build an FX volatility surface
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)] // Fields accessed via serde deserialization
 pub struct BuildFxVolSurfaceRequest {
     /// Currency pair (e.g., "USDJPY", "EURUSD")
     pub currency_pair: String,
@@ -116,6 +117,7 @@ pub struct CalibrationQualityDto {
 
 /// Request to build a volatility cube (IR swaptions)
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)] // Fields accessed via serde deserialization
 pub struct BuildVolCubeRequest {
     /// Index name (e.g., "USD-SOFR", "EUR-ESTR")
     pub index: String,
@@ -135,6 +137,7 @@ pub struct BuildVolCubeRequest {
 
 /// Smile quotes for vol cube calibration
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)] // Fields accessed via serde deserialization
 pub struct VolCubeSmileQuotes {
     /// Strike offsets from ATM (e.g., [-200bp, -100bp, +100bp, +200bp])
     pub strike_offsets_bp: Vec<f64>,
@@ -167,6 +170,7 @@ pub struct BuildVolCubeResponse {
 
 /// Request to get implied volatility
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)] // Fields accessed via serde deserialization
 pub struct GetImpliedVolRequest {
     /// Expiry in years
     pub expiry: f64,
@@ -220,7 +224,7 @@ pub struct GetImpliedVolResponse {
 pub struct VolSurfaceInfoDto {
     /// Surface ID
     pub surface_id: String,
-    /// Surface type (fx_surface, ir_cube, equity_surface)
+    /// Surface type (`fx_surface`, `ir_cube`, `equity_surface`)
     pub surface_type: String,
     /// Underlying identifier
     pub underlying: String,

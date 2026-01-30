@@ -1,6 +1,6 @@
-//! Curve service wrapping CurveBootstrapper facade
+//! Curve service wrapping `CurveBootstrapper` facade
 //!
-//! Provides high-level curve building operations using pricer_models.
+//! Provides high-level curve building operations using `pricer_models`.
 
 use std::{sync::Arc, time::Instant};
 
@@ -14,12 +14,14 @@ use pricer_models::{
 use crate::{
     error::ServerError,
     rest::dto::{
-        BootstrapMethod, CurveBuildRequest, CurveBuildResponse, CurveInstrumentInput, CurvePillar,
+        BootstrapMethod, CurveBuildRequest, CurveBuildResponse, CurvePillar,
         DiscountFactorRequest, DiscountFactorResponse, ForwardRateRequest, ForwardRateResponse,
         InterpolationMethod,
     },
     state::{AppState, InstrumentInput},
 };
+#[cfg(test)]
+use crate::rest::dto::CurveInstrumentInput;
 
 /// Service for building and querying yield curves
 pub struct CurveService;
