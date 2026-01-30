@@ -746,7 +746,7 @@ const curveBuilder = {
             this.state.buildResult = await response.json();
             this.hideRebuildNotification();
             this.renderBuildResult();
-            this.renderParameterCurve();
+            await this.renderParameterCurve();
 
             // Task 11.2: Show jump warnings if any
             if (this.state.buildResult.jumpWarnings?.length > 0) {
@@ -987,156 +987,24 @@ const curveBuilder = {
     },
 
     /**
-     * Generates curve data points with specified granularity.
-     * @param {Array} params - Original curve parameters (pillar points)
-     * @param {number} startYear - Start of range in years
-     * @param {number} endYear - End of range in years
-     * @param {string} granularity - 'daily', 'weekly', or 'monthly'
-     * @returns {Array} Generated data points
+     * Fetches interpolated chart data from the backend API.
+     * All interpolation is performed server-side using the curve's interpolation method.
+     * @param {string} curveId - The curve UUID
+     * @param {string} range - 'short' or 'long'
+     * @returns {Promise<Object>} Chart data response with data array
      */
-    generateCurveData(params, startYear, endYear, granularity) {
-        const data = [];
-        let step;
-
-        switch (granularity) {
-            case 'daily':
-                step = 1 / 365; // 1 day
-                break;
-            case 'weekly':
-                step = 1 / 52; // 1 week
-                break;
-            case 'monthly':
-            default:
-                step = 1 / 12; // 1 month
-                break;
+    async fetchChartData(curveId, range = 'short') {
+        const response = await fetch(`/api/curves/${curveId}/chart-data?range=${range}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch chart data: ${response.status}`);
         }
-
-        // Sort params by tenor
-        const sortedParams = [...params].sort((a, b) => a.tenorYears - b.tenorYears);
-
-        for (let t = startYear; t <= endYear + step / 2; t += step) {
-            const point = this.interpolateAtTenor(sortedParams, t);
-            data.push(point);
-        }
-
-        return data;
+        return response.json();
     },
 
-    /**
-     * Interpolates curve values at a given tenor using log-linear interpolation.
-     * @param {Array} params - Sorted curve parameters
-     * @param {number} t - Tenor in years
-     * @returns {Object} Interpolated point
-     */
-    interpolateAtTenor(params, t) {
-        if (params.length === 0) {
-            return { tenorYears: t, discountFactor: 1, zeroRate: 0, forwardRate: 0 };
-        }
+    async renderParameterCurve() {
+        if (!this.state.buildResult?.curveId) return;
 
-        // Handle edge cases
-        if (t <= 0) {
-            return { tenorYears: t, discountFactor: 1, zeroRate: params[0]?.zeroRate || 0, forwardRate: params[0]?.zeroRate || 0 };
-        }
-
-        if (t <= params[0].tenorYears) {
-            // Extrapolate from first point
-            const logDf = Math.log(params[0].discountFactor) * t / params[0].tenorYears;
-            const df = Math.exp(logDf);
-            const zr = -logDf / t;
-            return { tenorYears: t, discountFactor: df, zeroRate: zr, forwardRate: zr };
-        }
-
-        if (t >= params[params.length - 1].tenorYears) {
-            // Extrapolate from last two points
-            const n = params.length;
-            const logDfLast = Math.log(params[n - 1].discountFactor);
-            const logDfPrev = Math.log(params[n - 2].discountFactor);
-            const slope = (logDfLast - logDfPrev) / (params[n - 1].tenorYears - params[n - 2].tenorYears);
-            const logDf = logDfLast + slope * (t - params[n - 1].tenorYears);
-            const df = Math.exp(logDf);
-            const zr = -logDf / t;
-            return { tenorYears: t, discountFactor: df, zeroRate: zr, forwardRate: zr };
-        }
-
-        // Find bracketing points and interpolate
-        for (let i = 1; i < params.length; i++) {
-            if (t <= params[i].tenorYears) {
-                const t0 = params[i - 1].tenorYears;
-                const t1 = params[i].tenorYears;
-                const logDf0 = Math.log(params[i - 1].discountFactor);
-                const logDf1 = Math.log(params[i].discountFactor);
-
-                // Log-linear interpolation
-                const w = (t - t0) / (t1 - t0);
-                const logDf = logDf0 + w * (logDf1 - logDf0);
-                const df = Math.exp(logDf);
-                const zr = -logDf / t;
-
-                // Forward rate
-                const fr = (logDf0 - logDf1) / (t1 - t0);
-
-                return { tenorYears: t, discountFactor: df, zeroRate: zr, forwardRate: fr };
-            }
-        }
-
-        return { tenorYears: t, discountFactor: 1, zeroRate: 0, forwardRate: 0 };
-    },
-
-    /**
-     * Generates short-term curve data at specific tenor points.
-     * X-axis: 0, 1W, 2W, 3W, 1M, 2M, 3M, 4M, 5M, 6M, 7M, 8M, 9M, 10M, 11M, 1Y
-     * @param {Array} params - Original curve parameters
-     * @returns {Array} Data points at specific tenors
-     */
-    generateShortTermData(params) {
-        // Specific tenor points in years: 0, 1W, 2W, 3W, then 1M to 12M
-        const tenorPoints = [
-            0,           // 0
-            1/52,        // 1W
-            2/52,        // 2W
-            3/52,        // 3W
-            1/12,        // 1M
-            2/12,        // 2M
-            3/12,        // 3M
-            4/12,        // 4M
-            5/12,        // 5M
-            6/12,        // 6M
-            7/12,        // 7M
-            8/12,        // 8M
-            9/12,        // 9M
-            10/12,       // 10M
-            11/12,       // 11M
-            1.0          // 1Y
-        ];
-
-        const sortedParams = [...params].sort((a, b) => a.tenorYears - b.tenorYears);
-        return tenorPoints.map(t => this.interpolateAtTenor(sortedParams, t));
-    },
-
-    /**
-     * Generates long-term curve data at yearly intervals.
-     * X-axis: 0, 1Y, 2Y, 3Y, ... up to max tenor (default 30Y)
-     * @param {Array} params - Original curve parameters
-     * @returns {Array} Data points at yearly intervals
-     */
-    generateLongTermData(params) {
-        // Get max tenor from params, default to 30
-        const maxTenor = Math.max(...params.map(p => p.tenorYears), 30);
-        const maxYear = Math.ceil(maxTenor);
-
-        // Generate yearly points: 0, 1, 2, ... maxYear
-        const tenorPoints = [];
-        for (let y = 0; y <= maxYear; y++) {
-            tenorPoints.push(y);
-        }
-
-        const sortedParams = [...params].sort((a, b) => a.tenorYears - b.tenorYears);
-        return tenorPoints.map(t => this.interpolateAtTenor(sortedParams, t));
-    },
-
-    renderParameterCurve() {
-        if (!this.state.buildResult?.parameters) return;
-
+        const curveId = this.state.buildResult.curveId;
         const params = this.state.buildResult.parameters;
 
         // Hide placeholder, show charts
@@ -1169,14 +1037,34 @@ const curveBuilder = {
         // Render tabs
         this.renderParameterTabs();
 
-        // Generate data for both charts
-        const shortTermData = this.generateShortTermData(params);
-        const longTermData = this.generateLongTermData(params);
+        // Fetch interpolated chart data from backend API
+        let shortTermData = [];
+        let longTermData = [];
 
-        console.log('[CurveBuilder] Generated data:', {
-            shortTermPoints: shortTermData.length,
-            longTermPoints: longTermData.length
-        });
+        try {
+            const [shortResponse, longResponse] = await Promise.all([
+                this.fetchChartData(curveId, 'short'),
+                this.fetchChartData(curveId, 'long')
+            ]);
+            shortTermData = shortResponse.data;
+            longTermData = longResponse.data;
+
+            console.log('[CurveBuilder] Fetched chart data from API:', {
+                shortTermPoints: shortTermData.length,
+                longTermPoints: longTermData.length
+            });
+        } catch (error) {
+            console.error('[CurveBuilder] Failed to fetch chart data:', error);
+            // Fallback: use pillar data directly if API fails
+            shortTermData = params.map(p => ({
+                tenorYears: p.tenorYears,
+                tenorLabel: this.formatTenor(p.tenorYears),
+                discountFactor: p.discountFactor,
+                zeroRate: p.zeroRate,
+                forwardRate: p.forwardRate || 0
+            }));
+            longTermData = shortTermData;
+        }
 
         // Get currency from index (e.g., "usd-sofr" -> "USD")
         const currency = this.state.selectedIndex?.split('-')[0]?.toUpperCase() || 'USD';
@@ -1219,6 +1107,7 @@ const curveBuilder = {
 
     /**
      * Renders the short-term curve chart (0-1Y).
+     * Data is pre-computed by the backend API.
      */
     renderShortTermChart(data, cbMeetings = []) {
         if (!this.elements.parameterChartShort) return;
@@ -1230,7 +1119,8 @@ const curveBuilder = {
             this.chartShort.destroy();
         }
 
-        const tenors = data.map(p => this.formatTenor(p.tenorYears));
+        // Use tenorLabel from API response (fallback to formatTenor for backwards compatibility)
+        const tenors = data.map(p => p.tenorLabel || this.formatTenor(p.tenorYears));
         const zeroRates = data.map(p => (p.zeroRate * 100));
         const discountFactors = data.map(p => p.discountFactor);
         const forwardRates = data.map(p => ((p.forwardRate || 0) * 100));
@@ -1388,6 +1278,7 @@ const curveBuilder = {
 
     /**
      * Renders the long-term curve chart (0-30Y).
+     * Data is pre-computed by the backend API.
      */
     renderLongTermChart(data) {
         if (!this.elements.parameterChartLong) return;
@@ -1399,7 +1290,8 @@ const curveBuilder = {
             this.chartLong.destroy();
         }
 
-        const tenors = data.map(p => this.formatTenor(p.tenorYears));
+        // Use tenorLabel from API response (fallback to formatTenor for backwards compatibility)
+        const tenors = data.map(p => p.tenorLabel || this.formatTenor(p.tenorYears));
         const discountFactors = data.map(p => p.discountFactor);
         const zeroRates = data.map(p => (p.zeroRate * 100));
         const forwardRates = data.map(p => ((p.forwardRate || 0) * 100));

@@ -754,6 +754,89 @@ pub fn parse_tenor_to_years(s: &str) -> Result<f64, String> {
         .map_err(|_| format!("Invalid tenor format: {}", s))
 }
 
+/// Formats a year fraction as a human-readable tenor string.
+///
+/// This is the reverse operation of [`parse_tenor_to_years`].
+///
+/// The function attempts to find the most natural representation:
+/// - 0.0 → "0"
+/// - 1/365 → "O/N" (overnight)
+/// - 1/52 → "1W" (1 week)
+/// - 1/12 → "1M" (1 month)
+/// - 0.5 → "6M"
+/// - 1.0 → "1Y"
+/// - 2.5 → "2.50Y"
+///
+/// # Arguments
+///
+/// * `years` - Tenor in decimal years
+///
+/// # Returns
+///
+/// Human-readable tenor string.
+///
+/// # Examples
+///
+/// ```
+/// use infra_master::time::format_years_as_tenor;
+///
+/// assert_eq!(format_years_as_tenor(0.0), "0");
+/// assert_eq!(format_years_as_tenor(1.0 / 52.0), "1W");
+/// assert_eq!(format_years_as_tenor(0.25), "3M");
+/// assert_eq!(format_years_as_tenor(1.0), "1Y");
+/// assert_eq!(format_years_as_tenor(10.0), "10Y");
+/// ```
+#[must_use]
+pub fn format_years_as_tenor(years: f64) -> String {
+    // Handle zero and near-zero values
+    if years.abs() < 0.001 {
+        return "0".to_string();
+    }
+
+    // Check for exact year values (integers)
+    if years >= 1.0 && (years - years.round()).abs() < 0.001 {
+        return format!("{}Y", years.round() as i32);
+    }
+
+    // Convert to weeks for very short tenors (up to 4 weeks)
+    let weeks = years * 52.0;
+    let rounded_weeks = weeks.round();
+    if rounded_weeks >= 1.0 && rounded_weeks <= 4.0 && (weeks - rounded_weeks).abs() < 0.5 {
+        return format!("{}W", rounded_weeks as i32);
+    }
+
+    // Convert to months
+    let months = years * 12.0;
+    let rounded_months = months.round();
+
+    // Check if it's a clean month value (within 0.1 month tolerance)
+    if rounded_months > 0.0 && (months - rounded_months).abs() < 0.1 {
+        if rounded_months >= 12.0 && rounded_months as i32 % 12 == 0 {
+            return format!("{}Y", rounded_months as i32 / 12);
+        }
+        return format!("{}M", rounded_months as i32);
+    }
+
+    // Convert to days for overnight/short tenors
+    let days = years * 365.0;
+    if days < 7.0 && days > 0.0 {
+        let rounded_days = days.round() as i32;
+        if rounded_days == 1 {
+            return "O/N".to_string();
+        }
+        if rounded_days > 0 {
+            return format!("{}D", rounded_days);
+        }
+    }
+
+    // Fallback: show years with reasonable precision
+    if years < 1.0 {
+        format!("{:.1}M", years * 12.0)
+    } else {
+        format!("{:.2}Y", years)
+    }
+}
+
 /// Parse FRA tenor string in "NxM" format (e.g., "3x6", "3X6M", "3Mx6M").
 ///
 /// FRA tenors represent forward rate agreements with a start and end period.

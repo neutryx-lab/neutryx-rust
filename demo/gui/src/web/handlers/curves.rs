@@ -3,6 +3,7 @@
 use std::{path::PathBuf, sync::Arc, time::Instant};
 
 use adapter_loader::{parse_instruments, validate_rates, InstrumentParseError, InstrumentSpec};
+use infra_master::time::format_years_as_tenor;
 use axum::{
     extract::{Path, Query, State},
     Json,
@@ -1303,6 +1304,163 @@ pub async fn get_indices() -> ApiResult<Vec<String>> {
     let mut indices = loader.available_indices();
     indices.retain(|idx| !idx.contains("market_quotes"));
     Ok(Json(indices))
+}
+
+// =============================================================================
+// Chart Data Types and Handlers
+// =============================================================================
+
+/// Range type for chart data.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum ChartRange {
+    /// Short-term range (0-1Y): 0, 1W, 2W, 3W, 1M-12M
+    #[default]
+    Short,
+    /// Long-term range (0-30Y): yearly intervals
+    Long,
+}
+
+/// Query parameters for `GET /api/curves/{curveId}/chart-data`.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct ChartDataQuery {
+    /// Range type (short or long)
+    #[serde(default)]
+    pub range: ChartRange,
+}
+
+/// Single data point for chart display.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChartDataPoint {
+    /// Tenor in years
+    pub tenor_years: f64,
+    /// Formatted tenor label (e.g., "1M", "2Y")
+    pub tenor_label: String,
+    /// Discount factor at this tenor
+    pub discount_factor: f64,
+    /// Zero rate at this tenor (continuously compounded)
+    pub zero_rate: f64,
+    /// Forward rate at this tenor
+    pub forward_rate: f64,
+}
+
+/// Response for `GET /api/curves/{curveId}/chart-data`.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChartDataResponse {
+    /// Curve identifier
+    pub curve_id: String,
+    /// Range type used
+    pub range: String,
+    /// Data points for chart display
+    pub data: Vec<ChartDataPoint>,
+    /// Pillar points from original curve (for reference)
+    pub pillars: Vec<f64>,
+}
+
+/// Gets the tenor points for short-term chart (0-1Y).
+fn short_term_tenors() -> Vec<f64> {
+    vec![
+        0.0,           // 0
+        1.0 / 52.0,    // 1W
+        2.0 / 52.0,    // 2W
+        3.0 / 52.0,    // 3W
+        1.0 / 12.0,    // 1M
+        2.0 / 12.0,    // 2M
+        3.0 / 12.0,    // 3M
+        4.0 / 12.0,    // 4M
+        5.0 / 12.0,    // 5M
+        6.0 / 12.0,    // 6M
+        7.0 / 12.0,    // 7M
+        8.0 / 12.0,    // 8M
+        9.0 / 12.0,    // 9M
+        10.0 / 12.0,   // 10M
+        11.0 / 12.0,   // 11M
+        1.0,           // 1Y
+    ]
+}
+
+/// Gets the tenor points for long-term chart (0-maxY).
+fn long_term_tenors(max_tenor: f64) -> Vec<f64> {
+    let max_year = max_tenor.ceil() as i32;
+    (0..=max_year).map(|y| y as f64).collect()
+}
+
+/// Handler for `GET /api/curves/{curveId}/chart-data`.
+///
+/// Returns interpolated curve data at predefined tenor points for chart display.
+/// The frontend no longer needs to perform interpolation - all data is computed
+/// server-side using the curve's interpolation method.
+pub async fn get_chart_data(
+    State(state): State<Arc<AppState>>,
+    Path(curve_id): Path<String>,
+    Query(query): Query<ChartDataQuery>,
+) -> ApiResult<ChartDataResponse> {
+    let uuid = Uuid::parse_str(&curve_id)
+        .map_err(|_| ApiError::validation("Invalid curve ID format", "curveId"))?;
+
+    let cached_curve = state
+        .curve_cache
+        .get(&uuid)
+        .ok_or_else(|| ApiError::not_found("Curve", &curve_id))?;
+
+    let curve = cached_curve.curve();
+    let pillars = cached_curve.pillars().to_vec();
+
+    // Get tenor points based on range
+    let tenor_points = match query.range {
+        ChartRange::Short => short_term_tenors(),
+        ChartRange::Long => {
+            let max_tenor = pillars.last().copied().unwrap_or(30.0);
+            long_term_tenors(max_tenor.max(30.0))
+        }
+    };
+
+    // Calculate interpolated values at each tenor point
+    let data: Vec<ChartDataPoint> = tenor_points
+        .iter()
+        .enumerate()
+        .map(|(i, &t)| {
+            let df = curve.discount_factor(t).unwrap_or(1.0);
+            let zr = curve.zero_rate(t).unwrap_or(0.0);
+
+            // Forward rate: use instantaneous forward or calculate from DFs
+            let fr = if i > 0 {
+                let t_prev = tenor_points[i - 1];
+                let df_prev = curve.discount_factor(t_prev).unwrap_or(1.0);
+                let dt = t - t_prev;
+                if dt > 0.0 && df > 0.0 && df_prev > 0.0 {
+                    (df_prev.ln() - df.ln()) / dt
+                } else {
+                    zr
+                }
+            } else {
+                zr
+            };
+
+            ChartDataPoint {
+                tenor_years: t,
+                tenor_label: format_years_as_tenor(t),
+                discount_factor: df,
+                zero_rate: zr,
+                forward_rate: fr,
+            }
+        })
+        .collect();
+
+    let range_str = match query.range {
+        ChartRange::Short => "short",
+        ChartRange::Long => "long",
+    };
+
+    Ok(Json(ChartDataResponse {
+        curve_id,
+        range: range_str.to_string(),
+        data,
+        pillars,
+    }))
 }
 
 /// Handler for `GET /api/curves/central-bank-meetings`.

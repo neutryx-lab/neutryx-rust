@@ -546,6 +546,10 @@ pub fn build_router(state: Arc<AppState>) -> Router {
             "/:curve_id/parameters",
             get(handlers::curves::get_parameters),
         )
+        .route(
+            "/:curve_id/chart-data",
+            get(handlers::curves::get_chart_data),
+        )
         .route("/indices", get(handlers::curves::get_indices))
         .route(
             "/central-bank-meetings",

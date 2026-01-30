@@ -78,7 +78,7 @@ pub use day_counters::DayCounter;
 pub use error::TimeError;
 pub use frequency::Frequency;
 pub use period::{
-    parse_expiry_to_date, parse_fra_tenor, parse_tenor_to_years, AccrualPeriod, EndOfMonthRule,
-    Period, Tenor, TimeUnit,
+    format_years_as_tenor, parse_expiry_to_date, parse_fra_tenor, parse_tenor_to_years,
+    AccrualPeriod, EndOfMonthRule, Period, Tenor, TimeUnit,
 };
 pub use types::Date;
