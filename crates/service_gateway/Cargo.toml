@@ -39,16 +39,20 @@ serde_json = "1.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
-# Internal dependencies (following A-I-P-S: S depends on P, I)
-# Note: Adapter dependencies should be added when data loading is implemented
+# Internal dependencies (following A-I-P-S: S depends on P, I, A)
 pricer_core = { path = "../pricer_core" }
-pricer_models = { path = "../pricer_models" }
+pricer_models = { path = "../pricer_models", features = ["serde", "global-bootstrap"] }
 pricer_pricing = { path = "../pricer_pricing" }
-# TODO: pricer_risk temporarily disabled - needs refactoring
-# pricer_risk = { path = "../pricer_risk" }
+pricer_risk = { path = "../pricer_risk" }
+adapter_loader = { path = "../adapter_loader", features = ["curve-builder"] }
 infra_config = { path = "../infra_config" }
-infra_master = { path = "../infra_master" }
+infra_master = { path = "../infra_master", features = ["serde"] }
 infra_store = { path = "../infra_store" }
+
+# Caching
+lru = "0.12"
+uuid = { version = "1", features = ["v4"] }
+parking_lot = "0.12"
 
 [build-dependencies]
 tonic-build = "0.12"

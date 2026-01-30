@@ -111,13 +111,9 @@ members = [
     "crates/pricer_risk",
 
     # --- S: Service Layer (Output) ---
-    # TODO: Service crates temporarily disabled - depend on pricer_risk which needs refactoring
     # "crates/service_cli",
-    # "crates/service_gateway",
+    "crates/service_gateway",
     # "crates/service_python",
-
-    # --- Demo Layer (WebApp) ---
-    "demo/gui",
 ]
 resolver = "2"
 
