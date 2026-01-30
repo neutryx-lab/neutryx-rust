@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FrictionalBank Dashboard</title>
+    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Skip Link for Accessibility -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container" role="alert" aria-live="polite"></div>
+
+    <!-- Main Navigation -->
+    <nav class="main-nav">
+        <div class="nav-brand">
+            <i class="fas fa-landmark"></i>
+            <span>FrictionalBank</span>
+        </div>
+        <div class="nav-items">
+            <button class="nav-item active" data-view="dashboard-view">
+                <i class="fas fa-chart-line"></i>
+                <span>Dashboard</span>
+            </button>
+            <button class="nav-item" data-view="market-data-view">
+                <i class="fas fa-database"></i>
+                <span>Market Data</span>
+            </button>
+            <button class="nav-item" data-view="curve-builder-view">
+                <i class="fas fa-project-diagram"></i>
+                <span>Curve Builder</span>
+            </button>
+            <button class="nav-item" data-view="volcube-calibration-view">
+                <i class="fas fa-cube"></i>
+                <span>VolCube</span>
+            </button>
+            <button class="nav-item" data-view="pricer-view">
+                <i class="fas fa-calculator"></i>
+                <span>Pricer</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main id="main-content" class="main-content">
+        <!-- Dashboard View -->
+        <section id="dashboard-view" class="view active">
+            <div class="view-header">
+                <h1>Dashboard</h1>
+            </div>
+            <div class="dashboard-grid">
+                <div class="dashboard-card">
+                    <h3><i class="fas fa-chart-pie"></i> Portfolio Summary</h3>
+                    <p>View your portfolio analytics</p>
+                </div>
+                <div class="dashboard-card">
+                    <h3><i class="fas fa-exclamation-triangle"></i> Risk Metrics</h3>
+                    <p>Monitor risk exposure</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Market Data View -->
+        <section id="market-data-view" class="view">
+            <div class="view-header">
+                <h1>Market Data</h1>
+                <div class="view-actions">
+                    <div id="market-asset-class-toggle" class="asset-toggle">
+                        <button class="asset-toggle-btn active" data-asset="Rates">Rates</button>
+                        <button class="asset-toggle-btn" data-asset="FX">FX</button>
+                        <button class="asset-toggle-btn" data-asset="IRVol">IR Vol</button>
+                        <button class="asset-toggle-btn" data-asset="FXVol">FX Vol</button>
+                        <button class="asset-toggle-btn" data-asset="Events">Events</button>
+                    </div>
+                    <select id="market-currency-filter" class="fancy-select">
+                        <option value="">All Currencies</option>
+                        <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                        <option value="GBP">GBP</option>
+                        <option value="JPY">JPY</option>
+                    </select>
+                    <button id="market-refresh-btn" class="icon-btn">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="market-stats">
+                <span class="stat-badge">Total: <span id="market-stats-total">0</span></span>
+                <span class="stat-badge">Live: <span id="market-stats-live">0</span></span>
+                <span class="stat-badge">Displayed: <span id="market-stats-displayed">0</span></span>
+            </div>
+            <div class="market-content">
+                <div id="market-loading" class="loading-overlay" style="display: none;">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </div>
+                <div id="market-placeholder" class="placeholder">
+                    <i class="fas fa-database"></i>
+                    <p>Loading market data...</p>
+                </div>
+                <table id="market-rates-table" class="data-table">
+                    <thead>
+                        <tr>
+                            <th class="sortable" data-sort="id">ID</th>
+                            <th class="sortable" data-sort="currency">Currency</th>
+                            <th class="sortable" data-sort="tenor">Tenor</th>
+                            <th class="sortable" data-sort="rateType">Type</th>
+                            <th class="sortable numeric" data-sort="value">Value</th>
+                            <th>Index</th>
+                            <th>Source</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="market-rates-tbody"></tbody>
+                </table>
+            </div>
+            <div id="market-detail-panel" class="detail-panel">
+                <button id="close-detail-panel" class="close-btn"><i class="fas fa-times"></i></button>
+                <div id="market-detail-content"></div>
+            </div>
+            <div id="conventions-grid" class="conventions-grid"></div>
+        </section>
+
+        <!-- Curve Builder View -->
+        <section id="curve-builder-view" class="view">
+            <div class="view-header">
+                <h1>Curve Builder</h1>
+            </div>
+            <div class="curve-builder-layout">
+                <div class="curve-controls">
+                    <div id="index-selector-container"></div>
+                    <div id="builder-settings-container"></div>
+                    <div class="action-buttons">
+                        <button id="build-curve-btn" class="primary-btn">
+                            <i class="fas fa-hammer"></i> Build Curve
+                        </button>
+                        <button id="reset-rates-btn" class="secondary-btn">
+                            <i class="fas fa-undo"></i> Reset
+                        </button>
+                        <button id="export-rates-btn" class="secondary-btn">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                    </div>
+                    <div id="changes-indicator" class="changes-indicator" style="display: none;">
+                        <i class="fas fa-exclamation-circle"></i> Unsaved changes
+                    </div>
+                </div>
+                <div id="instrument-table-container" class="instrument-table"></div>
+                <div id="build-status" class="build-status"></div>
+                <div id="build-summary" class="build-summary"></div>
+            </div>
+        </section>
+
+        <!-- VolCube Calibration View -->
+        <section id="volcube-calibration-view" class="view">
+            <div class="view-header">
+                <h1>VolCube Calibration</h1>
+            </div>
+            <div id="volcube-asset-tabs" class="volcube-tabs"></div>
+            <div class="volcube-layout">
+                <div id="volcube-swaption-panel" class="volcube-panel">
+                    <div class="volcube-controls">
+                        <select id="volcube-index-selector" class="fancy-select"></select>
+                        <input type="date" id="volcube-reference-date" class="fancy-input">
+                        <div id="volcube-calib-settings"></div>
+                    </div>
+                    <div id="volcube-instruments-table"></div>
+                </div>
+                <div id="volcube-fx-panel" class="volcube-panel" style="display: none;">
+                    <div class="volcube-controls">
+                        <select id="fxvol-pair-selector" class="fancy-select"></select>
+                        <input type="number" id="fxvol-spot" placeholder="Spot" class="fancy-input">
+                        <input type="number" id="fxvol-domestic-rate" placeholder="Domestic Rate (%)" class="fancy-input">
+                        <input type="number" id="fxvol-foreign-rate" placeholder="Foreign Rate (%)" class="fancy-input">
+                    </div>
+                    <div id="fxvol-quotes-table"></div>
+                </div>
+                <div class="volcube-actions">
+                    <button id="volcube-calibrate-btn" class="primary-btn">
+                        <i class="fas fa-cogs"></i> Calibrate
+                    </button>
+                    <button id="volcube-export-csv" class="secondary-btn">
+                        <i class="fas fa-file-csv"></i> CSV
+                    </button>
+                    <button id="volcube-export-json" class="secondary-btn">
+                        <i class="fas fa-file-code"></i> JSON
+                    </button>
+                </div>
+                <div id="volcube-results-container" class="volcube-results"></div>
+            </div>
+        </section>
+
+        <!-- Pricer View -->
+        <section id="pricer-view" class="view">
+            <div class="view-header">
+                <h1>Generic Pricer</h1>
+            </div>
+            <div class="pricer-layout">
+                <div class="pricer-section">
+                    <h3>Instrument</h3>
+                    <select id="pricer-instrument-type" class="fancy-select"></select>
+                    <div id="pricer-parameter-form" class="pricer-parameter-form"></div>
+                </div>
+                <div class="pricer-section">
+                    <h3>Valuation</h3>
+                    <input type="date" id="pricer-valuation-date" class="fancy-input">
+                    <select id="pricer-reporting-ccy" class="fancy-select">
+                        <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                        <option value="GBP">GBP</option>
+                        <option value="JPY">JPY</option>
+                    </select>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="pricer-use-defaults" checked>
+                        Use Default Model Config
+                    </label>
+                    <div id="pricer-model-config-fields" style="display: none;">
+                        <input type="number" id="pricer-num-paths" value="10000" placeholder="Paths">
+                        <input type="number" id="pricer-num-steps" value="100" placeholder="Steps">
+                        <input type="number" id="pricer-seed" placeholder="Seed (optional)">
+                    </div>
+                </div>
+                <div class="pricer-section">
+                    <h3>Greeks Settings</h3>
+                    <div class="pricer-form-group">
+                        <label>Rate Bump (bps)</label>
+                        <input type="number" id="pricer-rate-bump" value="1" class="fancy-input">
+                    </div>
+                    <div class="pricer-form-group">
+                        <label>FX Bump (%)</label>
+                        <input type="number" id="pricer-fx-bump" value="1" class="fancy-input">
+                    </div>
+                </div>
+                <div class="pricer-actions">
+                    <button id="pricer-expand-cf-btn" class="secondary-btn">
+                        <i class="fas fa-expand"></i> Expand CF
+                    </button>
+                    <button id="pricer-reset-cf-btn" class="secondary-btn">
+                        <i class="fas fa-undo"></i> Reset
+                    </button>
+                    <button id="pricer-calculate-btn" class="primary-btn">
+                        <i class="fas fa-play"></i> Price & Risks
+                    </button>
+                </div>
+                <div id="pricer-cf-table-container" class="pricer-cf-table">
+                    <p class="pricer-placeholder">Click "Expand CF" to view cashflows</p>
+                </div>
+                <div class="pricer-results">
+                    <div id="pricer-pv-result"></div>
+                    <div id="pricer-leg-breakdown"></div>
+                    <div id="pricer-greeks-result"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- TypeScript Application -->
+    <script type="module" src="/src/main.ts"></script>
+
+    <!-- External Libraries (CDN) -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js" defer></script>
+</body>
+</html>

@@ -11,6 +11,8 @@ P: Pricer    → pricer_core (L1), pricer_models (L2), pricer_pricing (L3), pric
 S: Service   → service_cli, service_gateway, service_python
 ```
 
+**Neutryx Facade Crate**: The workspace root (`neutryx` crate) provides a unified entry point for external consumers, re-exporting all underlying crates with intuitive aliases (`master`, `config`, `core`, `models`, `pricing`, `risk`). Feature flags (`minimal`, `analytics`, `full`) control which layers are included.
+
 > **Note**: `pricer_optimiser` (L2.5) was removed in 2026-01. Its functionality consolidated: market data (curves, surfaces, bootstrapping, provider) → `pricer_models::market`, calibration engine → `pricer_models::market::calibration`.
 
 **Dependency Rules**:
@@ -175,5 +177,5 @@ docker run -it neutryx-enzyme
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-30_ — Added Linear Solve Strategy Pattern (LU, LowerTriangular for AAD)
+_Updated: 2026-01-30_ — Added Neutryx facade crate pattern, Linear Solve Strategy Pattern
 _Document standards and patterns, not every dependency_

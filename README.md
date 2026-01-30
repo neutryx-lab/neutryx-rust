@@ -63,6 +63,32 @@ neutryx-rust/
 
 ## 🚀 Quick Start
 
+### Using the Neutryx Facade Crate
+
+The easiest way to use Neutryx is through the unified facade crate:
+
+```toml
+[dependencies]
+neutryx = { path = "." }  # or from crates.io when published
+```
+
+```rust
+use neutryx::prelude::*;
+use neutryx::models::market::YieldCurve;
+
+// Access dates, currencies, and trade definitions
+let date = Date::from_ymd(2024, 1, 15).unwrap();
+let usd = Currency::USD;
+
+// Build yield curves and price derivatives
+// ... see documentation for full examples
+```
+
+**Feature Tiers**:
+- `minimal` — Master data only (dates, currencies, trade definitions)
+- `analytics` — Curve building, models, analytical pricing
+- `full` (default) — Complete pricing and risk functionality
+
 ### Prerequisites
 
 - **Rust**: Stable (for most crates) + Nightly (for pricer_risk with enzyme-ad feature)
@@ -275,7 +301,7 @@ cargo bench
 - [ ] **Phase 11**: Service Layer Enhancement - gRPC, Python bindings expansion
 - [ ] **Phase 12**: Production hardening - docs, benchmarks, CI/CD
 
-## 📊 Completed Specifications (39 Total)
+## 📊 Completed Specifications (44 Total)
 
 | Specification | Description | Date |
 |---------------|-------------|------|
@@ -318,6 +344,11 @@ cargo bench
 | ir-vol-cube-calibration | IR VolCube calibration engine with SABR, AAD Vega | 2026-01 |
 | pricer-pricing-architecture | Tree pricing (Binomial/Trinomial), UnifiedPricingResult | 2026-01 |
 | market-index-keyed-access | IndexedMarket, TradeIndexRequirements, MarketValidator | 2026-01 |
+| shadow-object-aad | Shadow trait, slice-based kernels, AAD binder layer | 2026-01 |
+| external-numerics-migration | argmin/levenberg-marquardt integration | 2026-01 |
+| mc-memory-layout-optimisation | PathLayout, AlignedPathBuffer, StreamingEngine | 2026-01 |
+| pricing-kernel-ir | PricingKernel IR, TradeCompiler, IndexMapper, LSMC, CMS | 2026-01 |
+| curve-global-solver | Global curve calibration with Newton-Raphson (422 tests) | 2026-01 |
 
 ## 📊 Performance Targets
 
@@ -352,4 +383,4 @@ cargo test --workspace --exclude pricer_pricing
 
 ---
 
-**Status**: ✅ A-I-P-S architecture complete | ✅ Enzyme AD integration (L4) | ✅ Stochastic models (Heston, SABR, Hull-White) | ✅ Curve & Vol Surface Calibration (FX/IR) | ✅ 39 specifications complete
+**Status**: ✅ A-I-P-S architecture complete | ✅ Neutryx facade crate | ✅ Enzyme AD integration (L4) | ✅ Stochastic models (Heston, SABR, Hull-White) | ✅ Curve & Vol Surface Calibration (FX/IR) | ✅ 44 specifications complete

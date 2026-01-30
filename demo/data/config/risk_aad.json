@@ -1,6 +1,0 @@
-{
-  "_comment": "Risk/Greeks configuration (AAD method - requires enzyme-ad feature)",
-  "greeks_method": "aad",
-  "target_greeks": ["delta", "gamma", "vega", "theta", "rho", "vanna", "volga"],
-  "second_order_mode": "parallel"
-}

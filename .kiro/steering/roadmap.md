@@ -2,7 +2,7 @@
 
 実装状況と今後の開発項目を追跡するドキュメント。
 
-_Updated: 2026-01-30_ — Steering sync: Linear Solve Strategies, handlers update; 44 completed specs; no active specs; demo/gui temporarily disabled
+_Updated: 2026-01-30_ — Steering sync: Neutryx facade crate (unified entry point, module aliases, feature tiers); 44 completed specs; no active specs
 
 ---
 
@@ -196,7 +196,7 @@ No active specifications. All tracked specs have been completed.
 
 | Date | Change |
 |------|--------|
-| 2026-01-30 | Steering sync: Added Linear Solve Strategy Pattern (LU, LowerTriangular) to tech.md and structure.md. Updated handlers list (7 new handlers). No new specs. |
+| 2026-01-30 | Steering sync: Added Neutryx facade crate pattern (unified entry point, module aliases, feature tiers, prelude). Updated structure.md and tech.md. |
 | 2026-01-28 | curve-global-solver completed: Global curve calibration with Newton-Raphson, CurveCalibrationProblem (SystemOfEquations), GlobalTimeGrid, CashflowMatrix, Jacobian inverse storage for AAD. 7 task groups, 422 total tests (377 unit + 14 integration + 31 doc). Total: 44 specs |
 | 2026-01-28 | Steering sync: pricing-kernel-ir completed (43 total). Updated structure.md (pricer_models: builder/ calibration module with paramsurface, simplified market.rs). demo/gui temporarily disabled for calibration refactor. |
 | 2026-01-27 | pricing-kernel-ir: Task 8.1 CMSインデックス統合 completed. LinearProductsCompiler now handles IndexType::SwapRate → CmsIndex. 4 new tests added. pricing-kernel-ir now 100% (31/31 tasks) |

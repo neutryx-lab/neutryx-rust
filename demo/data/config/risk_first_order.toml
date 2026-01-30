@@ -1,0 +1,10 @@
+# Risk configuration - First-order Greeks only (faster)
+
+greeks_method = "bump"
+target_greeks = ["delta", "vega", "theta", "rho"]
+second_order_mode = "serial"
+
+[bump_sizes]
+rate = 0.0001
+vol = 0.01
+spot = 0.01

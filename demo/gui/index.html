@@ -3102,25 +3102,26 @@
     <!-- Celebration Particles -->
     <div class="celebration-container" id="celebration"></div>
 
-    <!-- Configuration -->
-    <script src="config.js"></script>
-    <script src="js/config-loader.js"></script>
+    <!--
+      TypeScript Migration Complete!
+      ==============================
+      The frontend has been migrated to TypeScript with Vite.
 
-    <!-- Libraries -->
+      Development:
+        cd demo/gui/static && npm install && npm run dev
+
+      Production Build:
+        cd demo/gui/static && npm run build
+        (outputs to demo/gui/dist)
+    -->
+
+    <!-- Libraries (CDN) -->
     <script src="vendor/logger.js"></script>
     <script src="vendor/chart.umd.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js" defer></script>
-
-    <!-- Legacy Application (will be gradually migrated) -->
-    <script src="app.js?v=5" defer></script>
-
-    <!-- Feature Modules -->
-    <script src="js/market-data.js?v=3" defer></script>
-    <script src="js/curve-builder.js?v=11" defer></script>
-    <script src="js/pricer.js?v=11" defer></script>
-    <script src="js/volcube-builder.js?v=11" defer></script>
-
-    <!-- Plotly.js for 3D Surface (volcube-calibration-ui Task 5.3) -->
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js" defer></script>
+
+    <!-- TypeScript Application (Vite) -->
+    <script type="module" src="static/src/main.ts"></script>
 </body>
 </html>

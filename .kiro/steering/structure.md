@@ -5,6 +5,37 @@
 **A-I-P-S Unidirectional Data Flow**:
 The workspace structure enforces a strict unidirectional data flow that mirrors the alphabetical order of the directory names (**A**dapter → **I**nfra → **P**ricer → **S**ervice). This logical progression ensures that the file system itself acts as an architectural map, guiding developers from data ingestion to computation and finally to delivery.
 
+## Neutryx Facade Crate
+
+**Location**: Workspace root (`/src/`)
+**Purpose**: Unified entry point for external consumers
+
+The `neutryx` crate provides a single dependency that re-exports all underlying crates with intuitive aliases:
+
+```rust
+use neutryx::prelude::*;  // Common types (Date, Currency, Trade, etc.)
+use neutryx::models::market::YieldCurve;  // pricer_models access
+use neutryx::risk::XvaCalculator;  // pricer_risk access
+```
+
+**Module Aliases**:
+| Alias | Underlying Crate | Description |
+|-------|-----------------|-------------|
+| `master` | infra_master | Static data (dates, currencies, trades) |
+| `config` | infra_config | System configuration |
+| `store` | infra_store | Persistence layer |
+| `core` | pricer_core | Mathematical foundation |
+| `models` | pricer_models | Financial models |
+| `pricing` | pricer_pricing | Pricing engines |
+| `risk` | pricer_risk | Risk analytics |
+
+**Feature Tiers**:
+- `minimal` — Master data only (dates, currencies, trade definitions)
+- `analytics` — Curve building, models, analytical pricing
+- `full` (default) — Complete pricing and risk functionality
+
+**Prelude**: `neutryx::prelude` exports the most frequently used types for quick onboarding.
+
 ```text
 A: Adapter   → Ingestion and normalisation of external data (The Raw Inputs)
 I: Infra     → System-wide definitions, persistence, and configuration (The Foundation)
@@ -692,5 +723,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-30_ — Added linear solve strategies (linalg/strategy.rs), updated handlers list (7 new handlers: config, risk, exposure, scenarios, pricer_graph, benchmarks)
+_Updated: 2026-01-30_ — Added Neutryx facade crate pattern (unified entry point, module aliases, feature tiers, prelude)
 _Document patterns, not file trees. New files following patterns should not require updates_
