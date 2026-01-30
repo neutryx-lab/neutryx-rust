@@ -14,7 +14,7 @@ use crate::{
 
 /// Price a single instrument
 ///
-/// POST /api/v2/price
+/// POST /api/price
 pub async fn price_instrument(
     Json(request): Json<PricingRequest>,
 ) -> Result<Json<PricingResponse>, ServerError> {
@@ -24,7 +24,7 @@ pub async fn price_instrument(
 
 /// Price a portfolio of instruments
 ///
-/// POST /api/v2/price/batch
+/// POST /api/price/batch
 pub async fn price_portfolio(
     Json(request): Json<PortfolioPricingRequest>,
 ) -> Result<Json<PortfolioPricingResponse>, ServerError> {

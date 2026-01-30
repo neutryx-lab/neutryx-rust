@@ -18,7 +18,7 @@ use crate::{
 
 /// Build a yield curve from market instruments
 ///
-/// POST /api/v2/curves/build
+/// POST /api/curves/build
 pub async fn build_curve(
     State(state): State<Arc<AppState>>,
     Json(request): Json<CurveBuildRequest>,
@@ -29,7 +29,7 @@ pub async fn build_curve(
 
 /// Get discount factor from a cached curve
 ///
-/// POST /api/v2/curves/discount-factor
+/// POST /api/curves/discount-factor
 pub async fn get_discount_factor(
     State(state): State<Arc<AppState>>,
     Json(request): Json<DiscountFactorRequest>,
@@ -40,7 +40,7 @@ pub async fn get_discount_factor(
 
 /// Get forward rate from a cached curve
 ///
-/// POST /api/v2/curves/forward-rate
+/// POST /api/curves/forward-rate
 pub async fn get_forward_rate(
     State(state): State<Arc<AppState>>,
     Json(request): Json<ForwardRateRequest>,

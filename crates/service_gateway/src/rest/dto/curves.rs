@@ -131,6 +131,7 @@ pub struct ForwardRateResponse {
 }
 
 /// Request to compute bucket DV01
+#[allow(dead_code)]
 #[derive(Debug, Clone, Deserialize)]
 pub struct BucketDv01Request {
     /// Curve ID from previous build

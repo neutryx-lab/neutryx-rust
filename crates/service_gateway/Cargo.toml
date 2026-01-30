@@ -53,6 +53,7 @@ infra_store = { path = "../infra_store" }
 lru = "0.12"
 uuid = { version = "1", features = ["v4"] }
 parking_lot = "0.12"
+chrono = { version = "0.4", features = ["serde"] }
 
 [build-dependencies]
 tonic-build = "0.12"
@@ -63,6 +64,16 @@ default = ["rest"]
 rest = []
 # Enable gRPC API (Tonic)
 grpc = []
+# Enable Risk Service (Greeks, Scenarios, Portfolio)
+risk = []
+# Enable Model Service (Stochastic models, pricing)
+models = []
+# Enable Volatility Service (Vol Surface, Cube)
+volatility = []
+# Enable Demo GUI integration
+demo = []
+# Full bundle with all services
+full = ["rest", "risk", "models", "volatility", "demo"]
 
 [dev-dependencies]
 reqwest = { version = "0.12", features = ["json"] }
