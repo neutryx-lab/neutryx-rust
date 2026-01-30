@@ -255,5 +255,52 @@ HullWhite(HullWhiteModel<T>),
 
 ---
 
+## 7. 設計フェーズ決定事項
+
+### 7.1 採用アプローチ
+
+**Option A（段階的移行）を採用**
+
+段階的移行により、各フェーズでのテスト・検証を可能にし、問題発生時の影響範囲を限定する。
+
+### 7.2 移行順序（確定）
+
+| Phase | 対象 | クレート | 理由 |
+|-------|------|---------|------|
+| 1 | 依存関係追加 | workspace | 基盤整備 |
+| 2 | `CurveEnum` | pricer_models | 最もシンプル、Enzyme 非依存 |
+| 3 | `FxCurveEnum` | pricer_models | CurveEnum と類似構造 |
+| 4 | `WorkspaceEnum` | pricer_pricing | ジェネリクスなし、テスト容易 |
+| 5 | `PathPayoffType` | pricer_pricing | Enzyme AD 検証後に移行 |
+| 6 | Enzyme AD 検証 | - | 最終検証 |
+| 7 | 品質確認 | - | CI/CD パイプライン |
+
+### 7.3 要件修正
+
+**Requirement 3（StochasticModelEnum）を除外**
+
+Gap Analysis で判明した技術的制約（関連型非サポート）により、Requirement 3 は実現不可能と判断。要件ドキュメントには除外の理由を明記し、将来的な `enum_delegate` 等の代替手段を検討する余地を残す。
+
+### 7.4 アーキテクチャ決定
+
+| 決定事項 | 選択 | 理由 |
+|---------|------|------|
+| マクロ適用順序 | トレイト先、Enum 後 | `enum_dispatch` の仕様要件 |
+| ジェネリクス構文 | `#[enum_dispatch(Trait<T>)]` | 公式ドキュメント準拠 |
+| inherent methods 維持 | `is_asian()` 等 | トレイト化不要、現行設計維持 |
+| ロールバック戦略 | 手動 impl 復元 | 移行前コードを Git 履歴から復元可能 |
+
+### 7.5 リスク軽減策
+
+| リスク | 軽減策 |
+|-------|-------|
+| Enzyme AD 非互換 | Phase 5 後に検証、問題時は Phase 4,5 をロールバック |
+| コンパイルエラー | 各 Phase で `cargo build --workspace` 実行 |
+| テスト失敗 | 各 Phase で `cargo test --workspace` 実行 |
+| 性能劣化 | `criterion` ベンチマークで移行前後を比較 |
+
+---
+
 *作成日: 2026-01-30*
 *分析者: Claude*
+*設計フェーズ更新: 2026-01-30*

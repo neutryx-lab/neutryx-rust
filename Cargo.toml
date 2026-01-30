@@ -208,6 +208,9 @@ parking_lot = "0.12"
 strum = { version = "0.26", features = ["derive"] }
 strum_macros = "0.26"
 
+# Builder pattern
+bon = "3.8"
+
 [profile.release]
 lto = true
 codegen-units = 1

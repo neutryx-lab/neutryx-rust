@@ -11,7 +11,7 @@
 ### Goals
 
 - derive_more v2.1.1 をワークスペース依存関係として追加
-- ID 型 10 種に Display, From derive を適用（ボイラープレート削減）
+- ID 型 9 種に Display, From derive を適用（ボイラープレート削減）
 - 数値型 NewType に算術演算 derive を適用
 - Enzyme AD との互換性を維持
 - steering ドキュメントに使用ガイドラインを追加
@@ -444,7 +444,9 @@ flowchart LR
 
 **対象**:
 - `crates/infra_master/src/ids.rs`: マクロ簡略化
-- TradeId, PortfolioId, BookId, RateId 移行
+- TradeId, PortfolioId, BookId 移行
+
+> **Note**: `RateId` は複合構造体（複数フィールド）であり NewType パターンではないため、移行対象外。
 
 **検証**:
 - `cargo build --workspace`

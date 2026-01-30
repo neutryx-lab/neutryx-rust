@@ -11,6 +11,7 @@
 
 #[cfg(feature = "serde")]
 use serde::Serialize;
+use thiserror::Error;
 
 // =============================================================================
 // GraphError Enumeration (Task 1.3)
@@ -39,23 +40,26 @@ use serde::Serialize;
 /// let error = GraphError::Timeout;
 /// assert_eq!(error.http_status_code(), 500);
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Error, Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize))]
 #[cfg_attr(feature = "serde", serde(tag = "error_type", content = "message"))]
 pub enum GraphError {
     /// The specified trade ID was not found.
     ///
     /// Maps to HTTP 404 Not Found.
+    #[error("Trade '{0}' not found")]
     TradeNotFound(String),
 
     /// Graph extraction failed due to an internal error.
     ///
     /// Maps to HTTP 500 Internal Server Error.
+    #[error("Graph extraction failed: {0}")]
     ExtractionFailed(String),
 
     /// Graph extraction timed out (exceeded 500ms limit).
     ///
     /// Maps to HTTP 500 Internal Server Error.
+    #[error("Graph extraction timed out (exceeded 500ms limit)")]
     Timeout,
 }
 
@@ -88,23 +92,5 @@ impl GraphError {
     /// # Returns
     ///
     /// A descriptive error message suitable for API responses.
-    pub fn message(&self) -> String {
-        match self {
-            GraphError::TradeNotFound(trade_id) => {
-                format!("Trade '{}' not found", trade_id)
-            }
-            GraphError::ExtractionFailed(reason) => {
-                format!("Graph extraction failed: {}", reason)
-            }
-            GraphError::Timeout => "Graph extraction timed out (exceeded 500ms limit)".to_string(),
-        }
-    }
+    pub fn message(&self) -> String { self.to_string() }
 }
-
-impl std::fmt::Display for GraphError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.message())
-    }
-}
-
-impl std::error::Error for GraphError {}

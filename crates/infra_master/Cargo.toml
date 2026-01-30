@@ -17,6 +17,9 @@ thiserror.workspace = true
 # Serialisation
 serde = { workspace = true, optional = true }
 
+# Builder pattern
+bon = { workspace = true }
+
 [features]
 default = []
 serde = ["dep:serde"]

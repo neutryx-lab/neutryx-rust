@@ -8,7 +8,7 @@
 - derive_more 最新バージョン: **2.1.1**
 - 必要な features: `from`, `display`, `as_ref` (ID 型), `add`, `mul` (数値型)
 - Enzyme AD との互換性: proc-macro 生成コードは静的展開のため **互換性あり**
-- 移行対象: 10 型、移行除外: 4 型（カスタムロジック）
+- 移行対象: 10 型、移行除外: 5 型（カスタムロジック/複合構造体）
 
 ---
 
@@ -204,7 +204,7 @@ derive_more = { version = "2", features = ["full"] }
 | `BookId` | 2 | `Display`, `From` |
 | `BasisSpread` | 3 | `Display`, `From`, `Add`, `Sub` |
 
-### 移行除外（4 型）
+### 移行除外（5 型）
 
 | 型 | 理由 |
 |----|------|
@@ -212,6 +212,7 @@ derive_more = { version = "2", features = ["full"] }
 | `Delta` | バリデーションロジック (0 < delta <= 50) |
 | `LegalEntityId` | LEI 形式検証ロジック (20 文字) |
 | `Date` | 日付演算カスタムロジック |
+| `RateId` | NewType ではない（複合構造体: currency, tenor, rate_type, rate_index） |
 
 ---
 

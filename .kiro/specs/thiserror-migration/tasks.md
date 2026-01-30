@@ -3,7 +3,7 @@
 ## Tasks
 
 - [ ] 1. GraphError の thiserror 移行
-- [ ] 1.1 thiserror マクロの導入と #[error] 属性の追加
+- [x] 1.1 thiserror マクロの導入と #[error] 属性の追加
   - `use thiserror::Error;` をファイル先頭に追加
   - derive マクロに `Error` を追加 (`#[derive(Error, Debug, Clone)]`)
   - 各バリアントに `#[error("...")]` 属性を追加
@@ -13,7 +13,7 @@
   - 既存の serde 属性は維持
   - _Requirements: 1.1, 1.2, 4.1, 4.4_
 
-- [ ] 1.2 手動 impl の削除と message() メソッドの更新
+- [x] 1.2 手動 impl の削除と message() メソッドの更新
   - `impl std::fmt::Display for GraphError` ブロックを削除
   - `impl std::error::Error for GraphError {}` 行を削除
   - `message()` メソッドを `self.to_string()` を返すラッパーに変更
