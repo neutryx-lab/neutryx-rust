@@ -127,7 +127,7 @@ pub trait SystemOfEquations<T: RealField + Copy + Float> {
     /// Computes the Jacobian matrix J(x) = ∂F/∂x.
     ///
     /// For a system of n equations in n unknowns, the Jacobian is an n×n matrix
-    /// where J[i,j] = ∂F_i/∂x_j.
+    /// where J\[i,j\] = ∂F_i/∂x_j.
     ///
     /// # Arguments
     ///
@@ -150,7 +150,7 @@ pub trait SystemOfEquations<T: RealField + Copy + Float> {
     /// Computes a numerical approximation to the Jacobian via finite
     /// differences.
     ///
-    /// Uses forward differences: J[i,j] ≈ (F_i(x + ε*e_j) - F_i(x)) / ε
+    /// Uses forward differences: J\[i,j\] ≈ (F_i(x + ε*e_j) - F_i(x)) / ε
     ///
     /// # Arguments
     ///
