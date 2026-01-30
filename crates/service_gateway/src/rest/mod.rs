@@ -110,6 +110,8 @@ fn ws_routes(state: Arc<WsAppState>) -> Router {
 
 fn api_routes(state: Arc<AppState>) -> Router {
     Router::new()
+        // Configuration endpoint (no state required)
+        .route("/config", get(handlers::get_config))
         // Pricing endpoints
         .route("/price", post(handlers::price_instrument))
         .route("/price/batch", post(handlers::price_portfolio))
@@ -123,6 +125,8 @@ fn api_routes(state: Arc<AppState>) -> Router {
 /// API v1 routes with feature-gated services
 fn api_v1_routes(state: Arc<AppState>) -> Router {
     let mut router = Router::new()
+        // Configuration endpoint (always available, no state required)
+        .route("/config", get(handlers::get_config))
         // Pricing endpoints (always available)
         .route("/price", post(handlers::price_instrument))
         .route("/price/batch", post(handlers::price_portfolio))

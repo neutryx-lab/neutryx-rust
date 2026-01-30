@@ -1,4 +1,5 @@
 {
+  "_deprecated": "This file is deprecated. Use GET /api/config endpoint instead, which returns infra_config::AppConfig with enums from Rust source.",
   "_comment": "Enum values for GUI dropdowns (reference only - actual values from crates)",
   "quote_type": ["Bid", "Ask", "Mid", "Last"],
   "asset_class": ["rates", "fx", "equity", "credit", "commodity"],

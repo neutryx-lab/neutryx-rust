@@ -1,4 +1,5 @@
 {
+  "_deprecated": "This file is deprecated. Use GET /api/config endpoint instead, which returns infra_config::CurrencyRateIndexMap via rateIndexByCurrency field.",
   "_comment": "Currency to rate index mapping",
   "mapping": {
     "USD": "SOFR",

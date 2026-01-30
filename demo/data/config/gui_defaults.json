@@ -1,4 +1,5 @@
 {
+  "_deprecated": "This file is deprecated. Use GET /api/config endpoint instead, which returns infra_config::AppConfig with defaults from Rust source.",
   "_comment": "GUI default values for pricing forms (extracted from demo/gui config handler)",
   "pricing": {
     "curve_rate": 0.05,
