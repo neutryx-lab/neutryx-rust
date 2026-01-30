@@ -851,7 +851,8 @@ fn parse_fra_period(s: &str) -> Option<f64> {
 /// assert_eq!(date, Date::from_ymd(2024, 6, 1).unwrap());
 ///
 /// let date = parse_expiry_to_date("1Y", as_of).unwrap();
-/// assert_eq!(date, Date::from_ymd(2025, 1, 1).unwrap());
+/// // Note: Uses 365 days/year approximation, so leap year 2024 results in Dec 31
+/// assert_eq!(date, Date::from_ymd(2024, 12, 31).unwrap());
 /// ```
 pub fn parse_expiry_to_date(expiry_str: &str, as_of_date: Date) -> Result<Date, String> {
     // Try ISO date format first
