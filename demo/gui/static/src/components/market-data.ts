@@ -5,12 +5,10 @@
 
 import type {
   MarketRate,
-  Convention,
   MarketDataState,
   AssetClass,
   IrVolQuoteFlat,
   FxVolQuoteFlat,
-  MarketEvent,
 } from '@/types';
 import {
   fetchMarketRates,
@@ -30,7 +28,6 @@ import {
   formatRate,
   formatVol,
   formatVolBps,
-  formatTimestamp,
   escapeHtml,
 } from '@/utils/format';
 import { getElementById, showToast } from '@/utils/dom';

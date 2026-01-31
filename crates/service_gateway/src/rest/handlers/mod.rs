@@ -22,8 +22,7 @@ mod volatility;
 pub use config::*;
 pub use curves::*;
 // Feature-gated re-exports
-#[cfg(feature = "demo")]
-pub use demo::*;
+// Note: demo handlers are accessed via handlers::demo::* prefix, not re-exported here
 pub use health::*;
 #[cfg(feature = "models")]
 pub use models::*;

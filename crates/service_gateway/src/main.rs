@@ -94,15 +94,25 @@ async fn main() -> Result<()> {
             }
         };
 
-        // Create WebSocket state wrapping graph state
-        let ws_state = Arc::new(WsAppState::new(graph_state));
-        info!("WebSocket endpoint enabled at /ws");
+        // Use demo router when demo feature is enabled, otherwise full router
+        #[cfg(feature = "demo")]
+        let app = {
+            // Demo mode doesn't use WebSocket/graph state
+            let _ = graph_state;
+            info!("Demo GUI mode enabled - serving static files from demo/gui/dist/");
+            info!("Demo API endpoints available at /api/*");
+            rest::create_demo_router(app_state)
+        };
 
-        // Use the full router with both v1 and v2 endpoints
-        let app = rest::create_full_router(app_state, ws_state);
-
-        info!("API v2 endpoints available at /api/v2/*");
-        info!("Legacy v1 endpoints available at /api/v1/*");
+        #[cfg(not(feature = "demo"))]
+        let app = {
+            // Create WebSocket state wrapping graph state
+            let ws_state = Arc::new(WsAppState::new(graph_state));
+            info!("WebSocket endpoint enabled at /ws");
+            info!("API v2 endpoints available at /api/v2/*");
+            info!("Legacy v1 endpoints available at /api/v1/*");
+            rest::create_full_router(app_state, ws_state)
+        };
 
         let listener = tokio::net::TcpListener::bind(addr).await?;
         axum::serve(listener, app).await?;

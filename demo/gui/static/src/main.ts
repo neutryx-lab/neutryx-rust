@@ -4,10 +4,7 @@
  */
 
 import { ConfigLoader } from '@/services/config-loader';
-import { initPricer } from '@/components/pricer';
-import { initMarketData } from '@/components/market-data';
-import { initCurveBuilder } from '@/components/curve-builder';
-import { initVolcubeBuilder } from '@/components/volcube-builder';
+import { initPricer, initMarketData, initCurveBuilder, initVolcubeBuilder } from '@/components';
 import { createScopedLogger } from '@/utils/logger';
 
 const log = createScopedLogger('App');
@@ -16,15 +13,7 @@ const log = createScopedLogger('App');
 // Global Configuration
 // =============================================================================
 
-declare global {
-  interface Window {
-    __FB_CONFIG__: {
-      debugMode: boolean;
-      logLevel: string;
-    };
-  }
-}
-
+// Types are defined in @/types/index.ts
 // Initialize global config
 window.__FB_CONFIG__ = {
   debugMode: false,
@@ -60,7 +49,12 @@ const viewInitializers: Record<ViewId, () => Promise<void>> = {
   },
 };
 
+// Track current view for state management (exported for external access)
 let currentView: ViewId | null = null;
+
+export function getCurrentView(): ViewId | null {
+  return currentView;
+}
 
 function navigateTo(viewId: string): void {
   const views = document.querySelectorAll('.view');

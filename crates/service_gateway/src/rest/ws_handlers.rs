@@ -8,6 +8,9 @@
 //!
 //! - 5.1: `select_trades` event handler
 //! - 5.2: `subgraph_update` broadcast
+//!
+//! Note: This module is only used when `demo` feature is disabled.
+#![allow(dead_code)]
 
 use std::{collections::HashSet, sync::Arc};
 

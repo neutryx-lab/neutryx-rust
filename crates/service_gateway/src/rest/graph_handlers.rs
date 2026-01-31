@@ -3,6 +3,9 @@
 //! Provides endpoints for Portfolio-level computation graph extraction
 //! with shared node deduplication and subgraph filtering.
 //!
+//! Note: This module is only used when `demo` feature is disabled.
+#![allow(dead_code)]
+//!
 //! # Endpoints
 //!
 //! - `GET /api/v1/portfolio/graph` - Extract Portfolio computation graph

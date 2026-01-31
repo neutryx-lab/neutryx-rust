@@ -2,6 +2,10 @@
 //!
 //! These DTOs match the TypeScript API types defined in:
 //! `demo/gui/static/src/types/api.ts`
+//!
+//! Note: Fields are used for serde serialisation/deserialisation,
+//! not read directly in Rust code.
+#![allow(dead_code)]
 
 use serde::{Deserialize, Serialize};
 

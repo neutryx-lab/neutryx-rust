@@ -6,16 +6,12 @@
 import type {
   Instrument,
   ExpandedTrade,
-  TradeLeg,
-  PricingResult,
-  GreeksResult,
   PricerState,
-  CashflowEdit,
 } from '@/types';
 import { fetchInstruments, expandTrade, priceTrade, calculateGreeks } from '@/services/api';
 import { createScopedLogger } from '@/utils/logger';
 import { formatCurrency, formatNumberCompact, parseFormattedNumber, escapeHtml } from '@/utils/format';
-import { getElementById, showToast } from '@/utils/dom';
+import { getElementById } from '@/utils/dom';
 
 const log = createScopedLogger('GenericPricer');
 

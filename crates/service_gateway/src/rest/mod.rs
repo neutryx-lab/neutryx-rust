@@ -29,7 +29,8 @@ pub fn create_router_with_state(state: Arc<AppState>) -> Router {
         .nest("/api/v1", api_v1_routes(state))
 }
 
-/// Create the full router with all features
+/// Create the full router with all features (used when demo feature is disabled)
+#[cfg(not(feature = "demo"))]
 pub fn create_full_router(app_state: Arc<AppState>, ws_state: Arc<WsAppState>) -> Router {
     let graph_state = ws_state.graph_state.clone();
     Router::new()
@@ -45,7 +46,8 @@ pub fn create_full_router(app_state: Arc<AppState>, ws_state: Arc<WsAppState>) -
 /// This router includes:
 /// - Demo API endpoints at /api/*
 /// - API v1 endpoints at /api/v1/*
-/// - Static file serving from demo/gui/static/
+/// - Static file serving from demo/gui/dist/ (Vite build output)
+/// - Data file serving from demo/data/input/
 #[cfg(feature = "demo")]
 pub fn create_demo_router(state: Arc<AppState>) -> Router {
     use tower_http::services::{ServeDir, ServeFile};
@@ -55,12 +57,16 @@ pub fn create_demo_router(state: Arc<AppState>) -> Router {
         .nest("/api", demo_api_routes(state.clone()))
         .nest("/api/v1", api_v1_routes(state));
 
-    // Add static file serving with SPA fallback
-    let serve_dir = ServeDir::new("demo/gui/static")
-        .not_found_service(ServeFile::new("demo/gui/static/index.html"));
+    // Serve built assets from demo/gui/dist/ directory
+    let serve_dir = ServeDir::new("demo/gui/dist")
+        .not_found_service(ServeFile::new("demo/gui/dist/index.html"));
+
+    // Serve data files for frontend to fetch
+    let data_dir = ServeDir::new("demo/data/input");
 
     router
-        .nest_service("/static", ServeDir::new("demo/gui/static"))
+        .nest_service("/assets", ServeDir::new("demo/gui/dist/assets"))
+        .nest_service("/data/input", data_dir)
         .fallback_service(serve_dir)
 }
 
@@ -105,6 +111,7 @@ fn demo_api_routes(state: Arc<AppState>) -> Router {
         .with_state(state)
 }
 
+#[cfg(not(feature = "demo"))]
 fn ws_routes(state: Arc<WsAppState>) -> Router {
     Router::new()
         .route("/ws", get(ws_handlers::ws_handler))
@@ -182,6 +189,7 @@ fn api_v1_routes(state: Arc<AppState>) -> Router {
     router.with_state(state)
 }
 
+#[cfg(not(feature = "demo"))]
 fn portfolio_routes(state: Arc<GraphAppState>) -> Router {
     Router::new()
         .route("/graph", get(graph_handlers::get_portfolio_graph))
