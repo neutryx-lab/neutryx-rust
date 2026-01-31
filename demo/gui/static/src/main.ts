@@ -3,6 +3,9 @@
  * TypeScript + Vite build
  */
 
+// Import global styles
+import '../../style.css';
+
 import { ConfigLoader } from '@/services/config-loader';
 import { initPricer, initMarketData, initCurveBuilder, initVolcubeBuilder } from '@/components';
 import { createScopedLogger } from '@/utils/logger';
@@ -26,17 +29,38 @@ window.__FB_CONFIG__ = {
 
 type ViewId =
   | 'dashboard-view'
+  | 'portfolio-view'
+  | 'risk-view'
+  | 'exposure-view'
+  | 'scenarios-view'
   | 'market-data-view'
+  | 'trade-expansion-view'
   | 'curve-builder-view'
   | 'volcube-calibration-view'
-  | 'pricer-view';
+  | 'pricer-view'
+  | 'graph-view';
 
 const viewInitializers: Record<ViewId, () => Promise<void>> = {
   'dashboard-view': async () => {
     log.debug('Dashboard view activated');
   },
+  'portfolio-view': async () => {
+    log.debug('Portfolio view activated');
+  },
+  'risk-view': async () => {
+    log.debug('Risk view activated');
+  },
+  'exposure-view': async () => {
+    log.debug('Exposure view activated');
+  },
+  'scenarios-view': async () => {
+    log.debug('Scenarios view activated');
+  },
   'market-data-view': async () => {
     await initMarketData();
+  },
+  'trade-expansion-view': async () => {
+    log.debug('Trade expansion view activated');
   },
   'curve-builder-view': async () => {
     await initCurveBuilder();
@@ -46,6 +70,9 @@ const viewInitializers: Record<ViewId, () => Promise<void>> = {
   },
   'pricer-view': async () => {
     await initPricer();
+  },
+  'graph-view': async () => {
+    log.debug('Graph view activated');
   },
 };
 
@@ -140,14 +167,40 @@ window.showToast = showToast;
 // =============================================================================
 
 function setupNavigation(): void {
+  // Handle nav item clicks
   document.querySelectorAll('.nav-item').forEach((item) => {
-    item.addEventListener('click', () => {
+    item.addEventListener('click', (e) => {
+      e.preventDefault();
       const viewId = (item as HTMLElement).dataset.view;
       if (viewId) {
         navigateTo(viewId);
       }
     });
   });
+
+  // Handle logo click
+  const logo = document.querySelector('.logo[data-view]');
+  if (logo) {
+    logo.addEventListener('click', (e) => {
+      e.preventDefault();
+      const viewId = (logo as HTMLElement).dataset.view;
+      if (viewId) {
+        navigateTo(viewId);
+      }
+    });
+  }
+
+  // Handle accordion toggle
+  const accordion = document.getElementById('analysis-accordion');
+  const accordionBtn = document.getElementById('analysis-accordion-btn');
+  if (accordion && accordionBtn) {
+    // Start with accordion open
+    accordion.classList.add('expanded');
+
+    accordionBtn.addEventListener('click', () => {
+      accordion.classList.toggle('expanded');
+    });
+  }
 
   // Handle keyboard navigation
   document.addEventListener('keydown', (e) => {
