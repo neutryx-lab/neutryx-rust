@@ -1,6 +1,10 @@
 //! Trade definition types.
 //!
 //! This module provides the main Trade struct and related types.
+//!
+//! Uses `bon::Builder` for fluent construction with compile-time safety.
+
+use bon::Builder;
 
 use super::{
     cashflow::Cashflow,
@@ -34,7 +38,7 @@ pub enum SettlementType {
 }
 
 /// Type of trade.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum TradeType {
     /// Money market deposit.
@@ -74,6 +78,7 @@ pub enum TradeType {
     FxForward,
 
     /// Generic trade (catch-all).
+    #[default]
     Generic,
 }
 
@@ -142,32 +147,53 @@ impl TradeMetadata {
 /// A financial trade.
 ///
 /// Represents a complete trade as a collection of legs with metadata.
-#[derive(Debug, Clone, PartialEq)]
+///
+/// Uses `bon::Builder` for fluent construction with compile-time safety.
+///
+/// # Examples
+///
+/// ```ignore
+/// use infra_master::trade::{Trade, TradeType, Leg};
+///
+/// let trade = Trade::builder()
+///     .id("TRADE001")
+///     .legs(vec![fixed_leg, floating_leg])
+///     .trade_type(TradeType::Swap)
+///     .build();
+/// ```
+#[derive(Debug, Clone, PartialEq, Builder)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Trade {
     /// Unique identifier for this trade.
+    #[builder(into)]
     pub id: TradeId,
     /// Legs comprising this trade.
+    #[builder(default)]
     legs: Vec<Leg>,
     /// Type of trade.
+    #[builder(default)]
     pub trade_type: TradeType,
     /// Additional metadata.
+    #[builder(default)]
     pub metadata: TradeMetadata,
 }
 
 impl Trade {
     /// Creates a new trade.
+    ///
+    /// Convenience constructor. For full control, use `Trade::builder()`.
     #[must_use]
     pub fn new(id: impl Into<TradeId>, legs: Vec<Leg>, trade_type: TradeType) -> Self {
-        Self {
-            id: id.into(),
-            legs,
-            trade_type,
-            metadata: TradeMetadata::default(),
-        }
+        Self::builder()
+            .id(id)
+            .legs(legs)
+            .trade_type(trade_type)
+            .build()
     }
 
     /// Creates a new trade with metadata.
+    ///
+    /// Convenience constructor. For full control, use `Trade::builder()`.
     #[must_use]
     pub fn with_metadata(
         id: impl Into<TradeId>,
@@ -175,12 +201,12 @@ impl Trade {
         trade_type: TradeType,
         metadata: TradeMetadata,
     ) -> Self {
-        Self {
-            id: id.into(),
-            legs,
-            trade_type,
-            metadata,
-        }
+        Self::builder()
+            .id(id)
+            .legs(legs)
+            .trade_type(trade_type)
+            .metadata(metadata)
+            .build()
     }
 
     /// Returns an iterator over all legs in this trade.

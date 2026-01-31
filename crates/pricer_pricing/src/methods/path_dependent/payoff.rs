@@ -2,7 +2,11 @@
 //!
 //! This module defines the core trait for path-dependent payoff calculations
 //! and the observation type flags that specify what statistics are needed.
+//!
+//! The `#[enum_dispatch]` attribute is used to auto-generate the trait
+//! implementation for `PathPayoffType`, eliminating boilerplate match statements.
 
+use enum_dispatch::enum_dispatch;
 use num_traits::Float;
 
 use super::PathObserver;
@@ -129,6 +133,7 @@ impl ObservationType {
 ///     }
 /// }
 /// ```
+#[enum_dispatch]
 pub trait PathDependentPayoff<T: Float>: Send + Sync {
     /// Computes the payoff from path statistics.
     ///

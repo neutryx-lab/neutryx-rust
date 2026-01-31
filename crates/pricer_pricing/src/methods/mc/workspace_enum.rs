@@ -23,9 +23,11 @@
 //! assert_eq!(workspace.layout(), PathLayout::TimeStepFirst);
 //! ```
 
+use enum_dispatch::enum_dispatch;
+
 use super::{
     layout_config::PathLayout, workspace::PathWorkspace,
-    workspace_timestep_first::TimeStepFirstWorkspace, workspace_trait::PathWorkspaceTrait,
+    workspace_timestep_first::TimeStepFirstWorkspace,
 };
 
 /// Static dispatch enum for workspace implementations.
@@ -54,6 +56,10 @@ use super::{
 /// let mut ws = WorkspaceEnum::timestep_first(100, 10);
 /// assert_eq!(ws.layout(), PathLayout::TimeStepFirst);
 /// ```
+///
+/// Uses `enum_dispatch` to automatically implement `PathWorkspaceTrait`
+/// by forwarding method calls to the inner variant types.
+#[enum_dispatch(PathWorkspaceTrait)]
 pub enum WorkspaceEnum {
     /// Traditional path-first layout: `[path][step]`
     PathFirst(PathWorkspace),
@@ -188,146 +194,14 @@ impl WorkspaceEnum {
     }
 }
 
-impl PathWorkspaceTrait for WorkspaceEnum {
-    #[inline]
-    fn num_paths(&self) -> usize {
-        match self {
-            Self::PathFirst(ws) => ws.num_paths(),
-            Self::TimeStepFirst(ws) => ws.num_paths(),
-        }
-    }
-
-    #[inline]
-    fn num_steps(&self) -> usize {
-        match self {
-            Self::PathFirst(ws) => ws.num_steps(),
-            Self::TimeStepFirst(ws) => ws.num_steps(),
-        }
-    }
-
-    #[inline]
-    fn layout(&self) -> PathLayout {
-        match self {
-            Self::PathFirst(ws) => ws.layout(),
-            Self::TimeStepFirst(ws) => ws.layout(),
-        }
-    }
-
-    #[inline]
-    fn get_path_value(&self, path_idx: usize, step_idx: usize) -> f64 {
-        match self {
-            Self::PathFirst(ws) => ws.get_path_value(path_idx, step_idx),
-            Self::TimeStepFirst(ws) => ws.get_path_value(path_idx, step_idx),
-        }
-    }
-
-    #[inline]
-    fn set_path_value(&mut self, path_idx: usize, step_idx: usize, value: f64) {
-        match self {
-            Self::PathFirst(ws) => ws.set_path_value(path_idx, step_idx, value),
-            Self::TimeStepFirst(ws) => ws.set_path_value(path_idx, step_idx, value),
-        }
-    }
-
-    #[inline]
-    fn get_step_slice(&self, step_idx: usize) -> Option<&[f64]> {
-        match self {
-            Self::PathFirst(ws) => ws.get_step_slice(step_idx),
-            Self::TimeStepFirst(ws) => ws.get_step_slice(step_idx),
-        }
-    }
-
-    #[inline]
-    fn get_step_slice_mut(&mut self, step_idx: usize) -> Option<&mut [f64]> {
-        match self {
-            Self::PathFirst(ws) => ws.get_step_slice_mut(step_idx),
-            Self::TimeStepFirst(ws) => ws.get_step_slice_mut(step_idx),
-        }
-    }
-
-    #[inline]
-    fn get_path_slice(&self, path_idx: usize) -> Option<&[f64]> {
-        match self {
-            Self::PathFirst(ws) => ws.get_path_slice(path_idx),
-            Self::TimeStepFirst(ws) => ws.get_path_slice(path_idx),
-        }
-    }
-
-    #[inline]
-    fn get_path_slice_mut(&mut self, path_idx: usize) -> Option<&mut [f64]> {
-        match self {
-            Self::PathFirst(ws) => ws.get_path_slice_mut(path_idx),
-            Self::TimeStepFirst(ws) => ws.get_path_slice_mut(path_idx),
-        }
-    }
-
-    fn clear(&mut self) {
-        match self {
-            Self::PathFirst(ws) => ws.clear(),
-            Self::TimeStepFirst(ws) => ws.clear(),
-        }
-    }
-
-    #[inline]
-    fn memory_usage(&self) -> usize {
-        match self {
-            Self::PathFirst(ws) => ws.memory_usage(),
-            Self::TimeStepFirst(ws) => ws.memory_usage(),
-        }
-    }
-
-    #[inline]
-    fn randoms(&self) -> &[f64] {
-        match self {
-            Self::PathFirst(ws) => ws.randoms(),
-            Self::TimeStepFirst(ws) => ws.randoms(),
-        }
-    }
-
-    #[inline]
-    fn randoms_mut(&mut self) -> &mut [f64] {
-        match self {
-            Self::PathFirst(ws) => ws.randoms_mut(),
-            Self::TimeStepFirst(ws) => ws.randoms_mut(),
-        }
-    }
-
-    #[inline]
-    fn payoffs(&self) -> &[f64] {
-        match self {
-            Self::PathFirst(ws) => ws.payoffs(),
-            Self::TimeStepFirst(ws) => ws.payoffs(),
-        }
-    }
-
-    #[inline]
-    fn payoffs_mut(&mut self) -> &mut [f64] {
-        match self {
-            Self::PathFirst(ws) => ws.payoffs_mut(),
-            Self::TimeStepFirst(ws) => ws.payoffs_mut(),
-        }
-    }
-
-    #[inline]
-    fn paths(&self) -> &[f64] {
-        match self {
-            Self::PathFirst(ws) => ws.paths(),
-            Self::TimeStepFirst(ws) => ws.paths(),
-        }
-    }
-
-    #[inline]
-    fn paths_mut(&mut self) -> &mut [f64] {
-        match self {
-            Self::PathFirst(ws) => ws.paths_mut(),
-            Self::TimeStepFirst(ws) => ws.paths_mut(),
-        }
-    }
-}
+// NOTE: `impl PathWorkspaceTrait for WorkspaceEnum` is now auto-generated
+// by the `#[enum_dispatch(PathWorkspaceTrait)]` attribute on the enum definition.
+// This eliminates ~130 lines of boilerplate match statements.
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::methods::mc::workspace_trait::PathWorkspaceTrait;
 
     #[test]
     fn test_workspace_enum_new_path_first() {

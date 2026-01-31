@@ -107,6 +107,37 @@ Avoid `features = ["full"]`. Specify needed features explicitly:
 | Sync primitives | `sync` |
 | Signal handling | `signal` |
 
+## Builder Pattern Dependencies
+
+| Crate | Version | Purpose |
+|-------|---------|---------|
+| `bon` | 3.8 | Builder pattern auto-generation via `#[derive(bon::Builder)]` |
+| `strum` | 0.26 | Enum utilities (Display, EnumIter, EnumString) |
+
+**bon usage pattern**:
+```rust
+use bon::Builder;
+
+#[derive(Builder)]
+pub struct Book {
+    #[builder(into)]
+    book_id: BookId,
+    #[builder(into)]
+    name: String,
+    #[builder(into, default)]
+    description: Option<String>,
+    #[builder(default)]
+    book_type: BookType,
+}
+
+// Usage: Book::builder().book_id("BOOK001").name("Trading").build()
+```
+
+**Key attributes**:
+- `#[builder(into)]` — Accepts `impl Into<T>` for ergonomic API
+- `#[builder(default)]` — Uses `Default::default()` if not specified
+- `#[builder(default = expr)]` — Custom default value
+
 ## Adding New Dependencies
 
 1. **Check workspace**: Does similar dependency exist?

@@ -16,6 +16,9 @@ infra_master = { path = "../infra_master", optional = true, features = ["serde"]
 # Infra configuration for config-driven pricing (always enabled for BumpSizes)
 infra_config = { path = "../infra_config" }
 
+# Enum dispatch for static trait forwarding
+enum_dispatch.workspace = true
+
 # Basic numeric traits
 num-traits.workspace = true
 

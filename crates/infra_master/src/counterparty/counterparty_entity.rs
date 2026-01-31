@@ -2,9 +2,13 @@
 //!
 //! This module defines the CounterParty entity representing a trading
 //! counterparty with credit information.
+//!
+//! Uses `bon::Builder` for fluent construction with compile-time safety.
 
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::return_self_not_must_use)]
+
+use bon::Builder;
 
 use super::{CounterPartyId, CreditParams, CreditRating, LegalEntityId};
 
@@ -69,12 +73,16 @@ impl std::fmt::Display for CounterPartySector {
 /// Represents a trading counterparty with identification information,
 /// sector classification, and optional credit parameters.
 ///
+/// Uses `bon::Builder` for fluent construction with compile-time safety.
+///
 /// # Examples
 ///
 /// ```
 /// use infra_master::counterparty::{CounterParty, CounterPartySector, CreditRating};
 ///
-/// let cp = CounterParty::builder("CP001", "Acme Bank")
+/// let cp = CounterParty::builder()
+///     .counterparty_id("CP001")
+///     .name("Acme Bank")
 ///     .sector(CounterPartySector::Banking)
 ///     .country("US")
 ///     .rating(CreditRating::APlus)
@@ -83,24 +91,30 @@ impl std::fmt::Display for CounterPartySector {
 /// assert_eq!(cp.name(), "Acme Bank");
 /// assert_eq!(cp.sector(), CounterPartySector::Banking);
 /// ```
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Builder)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CounterParty {
+    /// Unique identifier for this counterparty.
+    #[builder(into)]
     counterparty_id: CounterPartyId,
+    /// Human-readable name.
+    #[builder(into)]
     name: String,
+    /// Legal Entity Identifier (LEI).
     lei: Option<LegalEntityId>,
+    /// Sector classification.
+    #[builder(default)]
     sector: CounterPartySector,
+    /// ISO 3166-1 alpha-2 country code.
+    #[builder(into)]
     country: Option<String>,
+    /// Credit rating.
     rating: Option<CreditRating>,
+    /// Credit parameters (hazard rate, recovery rate).
     credit_params: Option<CreditParams>,
 }
 
 impl CounterParty {
-    /// Creates a new CounterParty builder.
-    pub fn builder(id: impl Into<CounterPartyId>, name: impl Into<String>) -> CounterPartyBuilder {
-        CounterPartyBuilder::new(id, name)
-    }
-
     /// Returns the counterparty ID.
     pub fn id(&self) -> &CounterPartyId { &self.counterparty_id }
 
@@ -139,79 +153,6 @@ impl CounterParty {
     }
 }
 
-// ============================================================================
-// CounterPartyBuilder
-// ============================================================================
-
-/// Builder for [`CounterParty`].
-#[derive(Clone, Debug)]
-pub struct CounterPartyBuilder {
-    counterparty_id: CounterPartyId,
-    name: String,
-    lei: Option<LegalEntityId>,
-    sector: CounterPartySector,
-    country: Option<String>,
-    rating: Option<CreditRating>,
-    credit_params: Option<CreditParams>,
-}
-
-impl CounterPartyBuilder {
-    /// Creates a new builder with required fields.
-    pub fn new(id: impl Into<CounterPartyId>, name: impl Into<String>) -> Self {
-        Self {
-            counterparty_id: id.into(),
-            name: name.into(),
-            lei: None,
-            sector: CounterPartySector::default(),
-            country: None,
-            rating: None,
-            credit_params: None,
-        }
-    }
-
-    /// Sets the Legal Entity Identifier.
-    pub fn lei(mut self, lei: LegalEntityId) -> Self {
-        self.lei = Some(lei);
-        self
-    }
-
-    /// Sets the sector.
-    pub fn sector(mut self, sector: CounterPartySector) -> Self {
-        self.sector = sector;
-        self
-    }
-
-    /// Sets the country code (ISO 3166-1 alpha-2).
-    pub fn country(mut self, country: impl Into<String>) -> Self {
-        self.country = Some(country.into());
-        self
-    }
-
-    /// Sets the credit rating.
-    pub fn rating(mut self, rating: CreditRating) -> Self {
-        self.rating = Some(rating);
-        self
-    }
-
-    /// Sets the credit parameters.
-    pub fn credit_params(mut self, params: CreditParams) -> Self {
-        self.credit_params = Some(params);
-        self
-    }
-
-    /// Builds the CounterParty.
-    pub fn build(self) -> CounterParty {
-        CounterParty {
-            counterparty_id: self.counterparty_id,
-            name: self.name,
-            lei: self.lei,
-            sector: self.sector,
-            country: self.country,
-            rating: self.rating,
-            credit_params: self.credit_params,
-        }
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -234,7 +175,10 @@ mod tests {
 
     #[test]
     fn test_counterparty_builder_minimal() {
-        let cp = CounterParty::builder("CP001", "Test Bank").build();
+        let cp = CounterParty::builder()
+            .counterparty_id("CP001")
+            .name("Test Bank")
+            .build();
 
         assert_eq!(cp.id().as_str(), "CP001");
         assert_eq!(cp.name(), "Test Bank");
@@ -250,7 +194,9 @@ mod tests {
         let lei = LegalEntityId::new_unchecked("529900T8BM49AURSDO55");
         let params = CreditParams::from_rating(CreditRating::APlus, 0.4).unwrap();
 
-        let cp = CounterParty::builder("CP001", "Acme Bank")
+        let cp = CounterParty::builder()
+            .counterparty_id("CP001")
+            .name("Acme Bank")
             .lei(lei)
             .sector(CounterPartySector::Banking)
             .country("US")
@@ -270,24 +216,33 @@ mod tests {
 
     #[test]
     fn test_counterparty_is_investment_grade() {
-        let cp_ig = CounterParty::builder("CP001", "IG Bank")
+        let cp_ig = CounterParty::builder()
+            .counterparty_id("CP001")
+            .name("IG Bank")
             .rating(CreditRating::APlus)
             .build();
         assert_eq!(cp_ig.is_investment_grade(), Some(true));
 
-        let cp_hy = CounterParty::builder("CP002", "HY Corp")
+        let cp_hy = CounterParty::builder()
+            .counterparty_id("CP002")
+            .name("HY Corp")
             .rating(CreditRating::Bb)
             .build();
         assert_eq!(cp_hy.is_investment_grade(), Some(false));
 
-        let cp_none = CounterParty::builder("CP003", "Unrated Corp").build();
+        let cp_none = CounterParty::builder()
+            .counterparty_id("CP003")
+            .name("Unrated Corp")
+            .build();
         assert_eq!(cp_none.is_investment_grade(), None);
     }
 
     #[test]
     fn test_counterparty_hazard_rate_from_params() {
         let params = CreditParams::new(0.02, 0.4).unwrap();
-        let cp = CounterParty::builder("CP001", "Test")
+        let cp = CounterParty::builder()
+            .counterparty_id("CP001")
+            .name("Test")
             .credit_params(params)
             .build();
 
@@ -296,7 +251,9 @@ mod tests {
 
     #[test]
     fn test_counterparty_hazard_rate_from_rating() {
-        let cp = CounterParty::builder("CP001", "Test")
+        let cp = CounterParty::builder()
+            .counterparty_id("CP001")
+            .name("Test")
             .rating(CreditRating::Bbb)
             .build();
 
@@ -310,7 +267,9 @@ mod tests {
     fn test_counterparty_hazard_rate_params_takes_precedence() {
         // When both params and rating are set, params should take precedence
         let params = CreditParams::new(0.05, 0.4).unwrap();
-        let cp = CounterParty::builder("CP001", "Test")
+        let cp = CounterParty::builder()
+            .counterparty_id("CP001")
+            .name("Test")
             .rating(CreditRating::Aaa) // Would give ~0.0001
             .credit_params(params) // But we override with 0.05
             .build();
@@ -320,7 +279,10 @@ mod tests {
 
     #[test]
     fn test_counterparty_hazard_rate_none() {
-        let cp = CounterParty::builder("CP001", "Test").build();
+        let cp = CounterParty::builder()
+            .counterparty_id("CP001")
+            .name("Test")
+            .build();
         assert!(cp.hazard_rate().is_none());
     }
 }

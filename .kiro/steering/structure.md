@@ -489,15 +489,28 @@ main.rs     → Entry point with clap argument parsing
 
 ```text
 rest/
-├── handlers.rs       → Core API handlers (price, batch, calibrate, exposure)
+├── handlers/         → REST API handlers
+│   ├── mod.rs            → Handler module exports
+│   ├── demo.rs           → Demo endpoints (curves, volcube, pricing, risk)
+│   └── ...               → Feature-specific handlers
+├── dto/              → Data Transfer Objects
+│   ├── mod.rs            → DTO module exports
+│   ├── demo.rs           → Demo request/response types
+│   └── ...               → Domain-specific DTOs
 ├── graph_handlers.rs → Portfolio graph REST handlers (subgraph extraction, caching)
 ├── ws_handlers.rs    → WebSocket handlers (real-time graph updates)
 └── mod.rs            → Router configuration (with/without WebSocket state)
-grpc/       → Tonic service implementations (skeleton)
-config.rs   → Server configuration
-error.rs    → Structured error types (ServerError)
-main.rs     → Server entry point
+services/         → Business logic services
+├── mod.rs            → Service module exports
+├── demo_service.rs   → Demo orchestration service (curves, pricing, risk)
+└── cache.rs          → Feature-gated caching infrastructure
+grpc/             → Tonic service implementations (skeleton)
+config.rs         → Server configuration
+error.rs          → Structured error types (ServerError)
+main.rs           → Server entry point with static file serving
 ```
+
+**Architecture**: Handler → Service → Pricer Layer pattern separates HTTP concerns from business logic.
 
 **REST API Endpoints**:
 - `/health` - Health check
@@ -507,9 +520,12 @@ main.rs     → Server entry point
 - `/api/v1/exposure` - Exposure calculation
 - `/api/v1/portfolio/graph` - Portfolio computation graph (D3.js-compatible)
 - `/api/v1/portfolio/trades` - Portfolio trade listing with filters
+- `/api/demo/*` - Demo dashboard endpoints (curves, volcube, pricing, risk, greeks)
 
 **WebSocket Endpoint**:
 - `/ws` - Real-time graph updates (select_trades, subgraph_update events)
+
+**Static File Serving**: Serves demo GUI frontend from `demo/gui/static/` when compiled with `demo` feature.
 
 ### service_python
 
@@ -616,7 +632,17 @@ web/             → Web server module (feature-gated)
   ├── openapi.rs      → OpenAPI/Swagger UI (feature = "openapi")
   ├── market_data.rs  → Market data module
   └── error.rs        → API error handling (ApiError, ApiResult)
-static/          → Web assets (HTML, CSS, JS)
+static/          → Web dashboard frontend (TypeScript + Vite)
+  ├── index.html      → Dashboard HTML entry point
+  ├── package.json    → Node.js dependencies
+  ├── tsconfig.json   → TypeScript configuration
+  ├── vite.config.ts  → Vite build configuration
+  └── src/            → TypeScript source
+      ├── main.ts           → Application entry point
+      ├── components/       → UI components (curve-builder, pricer, volcube-builder, market-data)
+      ├── services/         → API client services (api.ts, config-loader.ts)
+      ├── types/            → TypeScript type definitions (api.ts)
+      └── utils/            → Utilities (dom.ts, format.ts, logger.ts)
 ```
 
 **Dual-Mode Architecture**:
@@ -723,5 +749,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-30_ — Added Neutryx facade crate pattern (unified entry point, module aliases, feature tiers, prelude)
+_Updated: 2026-01-31_ — TypeScript frontend (demo/gui/static), service_gateway services layer (Handler→Service→Pricer)
 _Document patterns, not file trees. New files following patterns should not require updates_

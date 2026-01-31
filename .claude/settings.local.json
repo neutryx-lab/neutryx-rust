@@ -226,7 +226,8 @@
       "Bash(sort:*)",
       "Bash(xargs:*)",
       "Bash(cd:*)",
-      "Bash(git -C \"c:/Users/khosh/Codes/neutryx-rust\" diff crates/adapter_loader/src/vol_surface_loader.rs)"
+      "Bash(git -C \"c:/Users/khosh/Codes/neutryx-rust\" diff crates/adapter_loader/src/vol_surface_loader.rs)",
+      "Bash(powershell -Command \"Get-ChildItem -Path ''crates'' -Directory | ForEach-Object { $name = $_Name; $count = \\(Get-ChildItem -Path $_FullName -Recurse -Filter ''*.rs'' | Get-Content | Measure-Object -Line\\).Lines; Write-Output \\(''{0,-30} {1,8} 行'' -f $name, $count\\) } | Sort-Object { [int]\\($_-split ''\\\\s+''\\)[-2] } -Descending\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\khosh\\Codes\\neutryx-rust\\crates\\pricer_models\\src\\market\\calibration"

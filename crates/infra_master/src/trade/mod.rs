@@ -24,11 +24,11 @@
 //! # Example
 //!
 //! ```rust,ignore
-//! use infra_master::trade::{TradeBuilder, Direction, LegType, TradeType};
+//! use infra_master::trade::{Trade, Direction, LegType, TradeType};
 //!
-//! let trade = TradeBuilder::new("SWAP001")
-//!     .add_leg(fixed_leg)
-//!     .add_leg(float_leg)
+//! let trade = Trade::builder()
+//!     .id("SWAP001")
+//!     .legs(vec![fixed_leg, float_leg])
 //!     .trade_type(TradeType::Swap)
 //!     .build();
 //! ```
@@ -55,7 +55,9 @@ pub mod convention;
 pub mod instrument_def;
 
 pub use book_assignment::{BookTransferReason, TradeBookAssignment, TradeBookHistory};
-pub use builder::{LegBuilder, TradeBuilder};
+#[allow(deprecated)]
+pub use builder::LegBuilder;
+pub use builder::{LegConfig, LegConfigBuilder};
 pub use cashflow::{Cashflow, CashflowType, DailyAccrual};
 pub use direction::{SwapDirection, TradeDirection};
 pub use error::TradeError;
@@ -70,6 +72,6 @@ pub use pricing_instrument::{
     ExerciseStyle, Forward, ForwardDirection, FxOptionType, InstrumentParams, PayoffType,
     PricingInstrument, VanillaOption,
 };
-pub use trade::{ExerciseType, SettlementType, Trade, TradeMetadata, TradeType};
+pub use trade::{ExerciseType, SettlementType, Trade, TradeBuilder, TradeMetadata, TradeType};
 
 pub use crate::ids::TradeId;

@@ -34,7 +34,7 @@ use super::{
     },
     workspace::PathWorkspace,
 };
-use crate::methods::path_dependent::{PathObserver, PathPayoffType};
+use crate::methods::path_dependent::{PathDependentPayoff, PathObserver, PathPayoffType};
 
 /// Greek type for selection.
 ///

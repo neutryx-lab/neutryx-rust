@@ -13,8 +13,16 @@
 //! The trait uses associated types rather than generic parameters to enable
 //! static dispatch via [`WorkspaceEnum`], avoiding trait object overhead
 //! in hot paths while maintaining Enzyme AD compatibility.
+//!
+//! The `#[enum_dispatch]` attribute is used to auto-generate the trait
+//! implementation for `WorkspaceEnum`, eliminating boilerplate match statements.
 
-use super::layout_config::PathLayout;
+use enum_dispatch::enum_dispatch;
+
+use super::{
+    layout_config::PathLayout, workspace::PathWorkspace, workspace_enum::WorkspaceEnum,
+    workspace_timestep_first::TimeStepFirstWorkspace,
+};
 
 /// Trait for workspace implementations providing path storage.
 ///
@@ -47,6 +55,7 @@ use super::layout_config::PathLayout;
 ///     workspace.set_path_value(i, 0, 100.0);
 /// }
 /// ```
+#[enum_dispatch]
 pub trait PathWorkspaceTrait: Send + Sync {
     /// Returns the number of simulation paths.
     fn num_paths(&self) -> usize;

@@ -53,12 +53,14 @@ pub enum MarketDataError {
 /// Yield curve traits and implementations.
 pub mod curves {
     use super::*;
+    use enum_dispatch::enum_dispatch;
 
     /// Trait for yield curves providing discount factors and rates.
     ///
     /// # Type Parameters
     ///
     /// * `T` - Floating-point type (e.g., `f64`) for AD compatibility
+    #[enum_dispatch]
     pub trait YieldCurve<T: Float> {
         /// Returns the discount factor for time `t` (in years).
         fn discount_factor(&self, t: T) -> Result<T, MarketDataError>;
@@ -386,8 +388,29 @@ pub mod curves {
         }
     }
 
+    /// Enum wrapper for different curve types (static dispatch).
+    ///
+    /// Uses `enum_dispatch` to automatically implement `YieldCurve<T>` trait
+    /// by forwarding method calls to the inner variant types.
+    #[derive(Debug, Clone)]
+    #[enum_dispatch(YieldCurve<T>)]
+    pub enum CurveEnum<T: Float> {
+        /// Flat curve with constant rate.
+        Flat(FlatCurve<T>),
+        /// Bootstrapped curve from market instruments.
+        Bootstrapped(BootstrappedCurve<T>),
+    }
+
+    impl<T: Float> CurveEnum<T> {
+        /// Creates a flat curve with the given rate.
+        pub fn flat(rate: T) -> Self { Self::Flat(FlatCurve::new(rate)) }
+
+        /// Creates a bootstrapped curve.
+        pub fn bootstrapped(curve: BootstrappedCurve<T>) -> Self { Self::Bootstrapped(curve) }
+    }
+
     // Re-export from parent module for compatibility with curves:: path
-    pub use super::{CurveEnum, CurveName, CurveSet};
+    pub use super::{CurveName, CurveSet};
 }
 
 // =============================================================================
@@ -415,45 +438,8 @@ pub enum CurveName {
     Custom(&'static str),
 }
 
-/// Enum wrapper for different curve types (static dispatch).
-#[derive(Debug, Clone)]
-pub enum CurveEnum<T: Float> {
-    /// Flat curve with constant rate.
-    Flat(curves::FlatCurve<T>),
-    /// Bootstrapped curve from market instruments.
-    Bootstrapped(curves::BootstrappedCurve<T>),
-}
-
-impl<T: Float> CurveEnum<T> {
-    /// Creates a flat curve with the given rate.
-    pub fn flat(rate: T) -> Self { Self::Flat(curves::FlatCurve::new(rate)) }
-
-    /// Creates a bootstrapped curve.
-    pub fn bootstrapped(curve: curves::BootstrappedCurve<T>) -> Self { Self::Bootstrapped(curve) }
-}
-
-impl<T: Float> curves::YieldCurve<T> for CurveEnum<T> {
-    fn discount_factor(&self, t: T) -> Result<T, MarketDataError> {
-        match self {
-            Self::Flat(c) => c.discount_factor(t),
-            Self::Bootstrapped(c) => c.discount_factor(t),
-        }
-    }
-
-    fn zero_rate(&self, t: T) -> Result<T, MarketDataError> {
-        match self {
-            Self::Flat(c) => c.zero_rate(t),
-            Self::Bootstrapped(c) => c.zero_rate(t),
-        }
-    }
-
-    fn forward_rate(&self, t1: T, t2: T) -> Result<T, MarketDataError> {
-        match self {
-            Self::Flat(c) => c.forward_rate(t1, t2),
-            Self::Bootstrapped(c) => c.forward_rate(t1, t2),
-        }
-    }
-}
+// Re-export CurveEnum from curves module for backwards compatibility
+pub use curves::CurveEnum;
 
 /// A collection of named yield curves.
 #[derive(Debug, Clone, Default)]
@@ -564,6 +550,7 @@ impl MarketProvider {
 
 /// FX forward curve traits and implementations.
 pub mod fx_curves {
+    use enum_dispatch::enum_dispatch;
     use infra_master::trade::instrument_def::CurrencyPair;
 
     use super::{curves::YieldCurve, *};
@@ -576,6 +563,7 @@ pub mod fx_curves {
     /// # Type Parameters
     ///
     /// * `T` - Floating-point type (e.g., `f64`) for AD compatibility
+    #[enum_dispatch]
     pub trait FxCurve<T: Float> {
         /// Returns the spot exchange rate.
         fn spot(&self) -> T;
@@ -705,93 +693,56 @@ pub mod fx_curves {
         fn currency_pair(&self) -> CurrencyPair { self.currency_pair }
     }
 
-    // Re-export from parent module
-    pub use super::FxCurveEnum;
-}
+    // Import CurveEnum from curves module for use in FxCurveEnum
+    use super::curves::{CurveEnum, FlatCurve};
 
-/// Enum wrapper for different FX curve types (static dispatch).
-#[derive(Debug, Clone)]
-pub enum FxCurveEnum<T: Float> {
-    /// Flat FX curve with constant forward points.
-    Flat(fx_curves::FlatFxCurve<T>),
-    /// IRP-based FX curve using FlatCurve for both legs.
-    IrpFlat(fx_curves::IrpFxCurve<T, curves::FlatCurve<T>, curves::FlatCurve<T>>),
-    /// IRP-based FX curve using CurveEnum for both legs.
-    IrpGeneric(fx_curves::IrpFxCurve<T, CurveEnum<T>, CurveEnum<T>>),
-}
-
-impl<T: Float> FxCurveEnum<T> {
-    /// Creates a flat FX curve.
-    pub fn flat(
-        spot: T,
-        forward_points_per_year: T,
-        currency_pair: infra_master::trade::instrument_def::CurrencyPair,
-    ) -> Self {
-        Self::Flat(fx_curves::FlatFxCurve::new(
-            spot,
-            forward_points_per_year,
-            currency_pair,
-        ))
+    /// Enum wrapper for different FX curve types (static dispatch).
+    ///
+    /// Uses `enum_dispatch` to automatically implement `FxCurve<T>` trait
+    /// by forwarding method calls to the inner variant types.
+    #[derive(Debug, Clone)]
+    #[enum_dispatch(FxCurve<T>)]
+    pub enum FxCurveEnum<T: Float> {
+        /// Flat FX curve with constant forward points.
+        Flat(FlatFxCurve<T>),
+        /// IRP-based FX curve using FlatCurve for both legs.
+        IrpFlat(IrpFxCurve<T, FlatCurve<T>, FlatCurve<T>>),
+        /// IRP-based FX curve using CurveEnum for both legs.
+        IrpGeneric(IrpFxCurve<T, CurveEnum<T>, CurveEnum<T>>),
     }
 
-    /// Creates an IRP-based FX curve from flat yield curves.
-    pub fn irp_flat(
-        spot: T,
-        domestic_rate: T,
-        foreign_rate: T,
-        currency_pair: infra_master::trade::instrument_def::CurrencyPair,
-    ) -> Self {
-        let dom_curve = curves::FlatCurve::new(domestic_rate);
-        let for_curve = curves::FlatCurve::new(foreign_rate);
-        Self::IrpFlat(fx_curves::IrpFxCurve::new(
-            spot,
-            dom_curve,
-            for_curve,
-            currency_pair,
-        ))
-    }
-
-    /// Creates an IRP-based FX curve from generic yield curves.
-    pub fn irp_generic(
-        spot: T,
-        domestic_curve: CurveEnum<T>,
-        foreign_curve: CurveEnum<T>,
-        currency_pair: infra_master::trade::instrument_def::CurrencyPair,
-    ) -> Self {
-        Self::IrpGeneric(fx_curves::IrpFxCurve::new(
-            spot,
-            domestic_curve,
-            foreign_curve,
-            currency_pair,
-        ))
-    }
-}
-
-impl<T: Float> fx_curves::FxCurve<T> for FxCurveEnum<T> {
-    fn spot(&self) -> T {
-        match self {
-            Self::Flat(c) => c.spot(),
-            Self::IrpFlat(c) => c.spot(),
-            Self::IrpGeneric(c) => c.spot(),
+    impl<T: Float> FxCurveEnum<T> {
+        /// Creates a flat FX curve.
+        pub fn flat(spot: T, forward_points_per_year: T, currency_pair: CurrencyPair) -> Self {
+            Self::Flat(FlatFxCurve::new(spot, forward_points_per_year, currency_pair))
         }
-    }
 
-    fn forward_rate(&self, t: T) -> Result<T, MarketDataError> {
-        match self {
-            Self::Flat(c) => c.forward_rate(t),
-            Self::IrpFlat(c) => c.forward_rate(t),
-            Self::IrpGeneric(c) => c.forward_rate(t),
+        /// Creates an IRP-based FX curve from flat yield curves.
+        pub fn irp_flat(
+            spot: T,
+            domestic_rate: T,
+            foreign_rate: T,
+            currency_pair: CurrencyPair,
+        ) -> Self {
+            let dom_curve = FlatCurve::new(domestic_rate);
+            let for_curve = FlatCurve::new(foreign_rate);
+            Self::IrpFlat(IrpFxCurve::new(spot, dom_curve, for_curve, currency_pair))
         }
-    }
 
-    fn currency_pair(&self) -> infra_master::trade::instrument_def::CurrencyPair {
-        match self {
-            Self::Flat(c) => c.currency_pair(),
-            Self::IrpFlat(c) => c.currency_pair(),
-            Self::IrpGeneric(c) => c.currency_pair(),
+        /// Creates an IRP-based FX curve from generic yield curves.
+        pub fn irp_generic(
+            spot: T,
+            domestic_curve: CurveEnum<T>,
+            foreign_curve: CurveEnum<T>,
+            currency_pair: CurrencyPair,
+        ) -> Self {
+            Self::IrpGeneric(IrpFxCurve::new(spot, domestic_curve, foreign_curve, currency_pair))
         }
     }
 }
+
+// Re-export FxCurveEnum from fx_curves module for backwards compatibility
+pub use fx_curves::FxCurveEnum;
 
 // Re-export commonly used types at module level
 pub use curves::{

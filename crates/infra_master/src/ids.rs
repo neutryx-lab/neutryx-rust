@@ -26,7 +26,7 @@
 
 #![allow(clippy::must_use_candidate)]
 
-use std::fmt;
+use derive_more::{AsRef, Display, From};
 
 // Re-export counterparty IDs for unified access
 pub use crate::counterparty::{CcpId, CounterPartyId, LegalEntityId, NettingSetId};
@@ -36,13 +36,17 @@ pub use crate::counterparty::{CcpId, CounterPartyId, LegalEntityId, NettingSetId
 // ============================================================================
 
 /// Macro to define a type-safe ID with standard implementations.
+///
+/// Uses `derive_more` for Display, From<String>, and AsRef<str> implementations.
+/// Provides `new()` and `as_str()` convenience methods.
 macro_rules! define_id {
     (
         $(#[$meta:meta])*
         $name:ident
     ) => {
         $(#[$meta])*
-        #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+        #[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Display, From, AsRef)]
+        #[as_ref(str)]
         #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         #[cfg_attr(feature = "serde", serde(transparent))]
         pub struct $name(String);
@@ -58,24 +62,6 @@ macro_rules! define_id {
             #[inline]
             pub fn as_str(&self) -> &str {
                 &self.0
-            }
-        }
-
-        impl fmt::Display for $name {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                write!(f, "{}", self.0)
-            }
-        }
-
-        impl AsRef<str> for $name {
-            fn as_ref(&self) -> &str {
-                &self.0
-            }
-        }
-
-        impl From<String> for $name {
-            fn from(s: String) -> Self {
-                Self(s)
             }
         }
 

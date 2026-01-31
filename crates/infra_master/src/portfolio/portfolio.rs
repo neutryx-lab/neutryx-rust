@@ -1,11 +1,13 @@
 //! Portfolio definition and builder.
 //!
 //! This module provides the PortfolioDefinition struct representing a portfolio
-//! and its builder for fluent construction with validation.
+//! and its builder for fluent construction with validation using `bon`.
 
 use std::collections::HashSet;
 
-use super::{PortfolioBookMapping, PortfolioMetadata, PortfolioScope};
+use bon::Builder;
+
+use super::{PortfolioBookMapping, PortfolioScope};
 use crate::{
     error::PortfolioError,
     ids::{BookId, PortfolioId},
@@ -22,13 +24,18 @@ use crate::{
 /// regulatory reporting purposes. Supports hierarchical portfolios
 /// through parent-child relationships.
 ///
+/// Uses `bon::Builder` for fluent construction with compile-time safety.
+///
 /// # Examples
 ///
 /// ```
 /// use infra_master::portfolio::{PortfolioDefinition, PortfolioScope};
 /// use infra_master::market::Currency;
 ///
-/// let portfolio = PortfolioDefinition::builder("P001", "Main Portfolio", Currency::USD)
+/// let portfolio = PortfolioDefinition::builder()
+///     .portfolio_id("P001")
+///     .name("Main Portfolio")
+///     .reporting_currency(Currency::USD)
 ///     .description("Primary trading portfolio")
 ///     .scope(PortfolioScope::Regulatory)
 ///     .build();
@@ -36,45 +43,33 @@ use crate::{
 /// assert_eq!(portfolio.portfolio_id().as_str(), "P001");
 /// assert_eq!(portfolio.name(), "Main Portfolio");
 /// ```
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Builder)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
 pub struct PortfolioDefinition {
+    /// Unique identifier for this portfolio.
+    #[builder(into)]
     portfolio_id: PortfolioId,
+    /// Human-readable name for this portfolio.
+    #[builder(into)]
     name: String,
+    /// Reporting currency for portfolio-level calculations.
+    reporting_currency: Currency,
+    /// Optional description of the portfolio's purpose.
+    #[builder(into)]
     description: Option<String>,
+    /// Parent portfolio ID for hierarchical structures.
+    #[builder(into)]
     parent_portfolio_id: Option<PortfolioId>,
+    /// Books assigned to this portfolio.
+    #[builder(default)]
     book_ids: Vec<BookId>,
-    metadata: PortfolioMetadata,
+    /// Portfolio scope classification.
+    #[builder(default)]
+    scope: PortfolioScope,
 }
 
 impl PortfolioDefinition {
-    /// Creates a new portfolio builder.
-    ///
-    /// # Arguments
-    ///
-    /// * `id` - Unique identifier for the portfolio
-    /// * `name` - Human-readable name for the portfolio
-    /// * `reporting_currency` - Currency for portfolio-level reporting
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use infra_master::portfolio::PortfolioDefinition;
-    /// use infra_master::market::Currency;
-    ///
-    /// let portfolio = PortfolioDefinition::builder("P001", "Main Portfolio", Currency::USD)
-    ///     .build();
-    /// ```
-    #[must_use]
-    pub fn builder(
-        id: impl Into<PortfolioId>,
-        name: impl Into<String>,
-        reporting_currency: Currency,
-    ) -> PortfolioBuilder {
-        PortfolioBuilder::new(id, name, reporting_currency)
-    }
-
     /// Returns the portfolio's unique identifier.
     #[inline]
     #[must_use]
@@ -100,20 +95,15 @@ impl PortfolioDefinition {
     #[must_use]
     pub fn book_ids(&self) -> &[BookId] { &self.book_ids }
 
-    /// Returns the portfolio's metadata.
-    #[inline]
-    #[must_use]
-    pub fn metadata(&self) -> &PortfolioMetadata { &self.metadata }
-
     /// Returns the reporting currency.
     #[inline]
     #[must_use]
-    pub fn reporting_currency(&self) -> Currency { self.metadata.reporting_currency() }
+    pub fn reporting_currency(&self) -> Currency { self.reporting_currency }
 
     /// Returns the portfolio scope.
     #[inline]
     #[must_use]
-    pub fn scope(&self) -> PortfolioScope { self.metadata.scope() }
+    pub fn scope(&self) -> PortfolioScope { self.scope }
 
     /// Returns true if this portfolio has a parent.
     #[inline]
@@ -132,163 +122,27 @@ impl PortfolioDefinition {
             .map(|book_id| PortfolioBookMapping::new(self.portfolio_id.clone(), book_id.clone()))
             .collect()
     }
-}
 
-// ============================================================================
-// PortfolioBuilder
-// ============================================================================
-
-/// Builder for constructing PortfolioDefinition instances.
-///
-/// Provides a fluent API for setting portfolio properties before construction.
-/// Includes validation for referential integrity.
-///
-/// # Examples
-///
-/// ```
-/// use infra_master::portfolio::{PortfolioDefinition, PortfolioScope};
-/// use infra_master::market::Currency;
-///
-/// let portfolio = PortfolioDefinition::builder("P001", "Main Portfolio", Currency::USD)
-///     .description("Primary trading portfolio")
-///     .scope(PortfolioScope::Regulatory)
-///     .add_book("B001")
-///     .add_book("B002")
-///     .build();
-///
-/// assert_eq!(portfolio.book_ids().len(), 2);
-/// ```
-#[derive(Clone, Debug)]
-pub struct PortfolioBuilder {
-    portfolio_id: PortfolioId,
-    name: String,
-    description: Option<String>,
-    parent_portfolio_id: Option<PortfolioId>,
-    book_ids: Vec<BookId>,
-    metadata: PortfolioMetadata,
-}
-
-impl PortfolioBuilder {
-    /// Creates a new portfolio builder with required fields.
-    ///
-    /// # Arguments
-    ///
-    /// * `id` - Unique identifier for the portfolio
-    /// * `name` - Human-readable name for the portfolio
-    /// * `reporting_currency` - Currency for portfolio-level reporting
-    #[must_use]
-    pub fn new(
-        id: impl Into<PortfolioId>,
-        name: impl Into<String>,
-        reporting_currency: Currency,
-    ) -> Self {
-        Self {
-            portfolio_id: id.into(),
-            name: name.into(),
-            description: None,
-            parent_portfolio_id: None,
-            book_ids: Vec::new(),
-            metadata: PortfolioMetadata::new(reporting_currency),
-        }
-    }
-
-    /// Sets the portfolio's description.
-    #[must_use]
-    pub fn description(mut self, description: impl Into<String>) -> Self {
-        self.description = Some(description.into());
-        self
-    }
-
-    /// Sets the parent portfolio ID.
-    #[must_use]
-    pub fn parent(mut self, parent_id: impl Into<PortfolioId>) -> Self {
-        self.parent_portfolio_id = Some(parent_id.into());
-        self
-    }
-
-    /// Sets the portfolio scope.
-    #[must_use]
-    pub fn scope(mut self, scope: PortfolioScope) -> Self {
-        self.metadata = self.metadata.with_scope(scope);
-        self
-    }
-
-    /// Adds a book to the portfolio.
-    #[must_use]
-    pub fn add_book(mut self, book_id: impl Into<BookId>) -> Self {
-        let id = book_id.into();
-        if !self.book_ids.contains(&id) {
-            self.book_ids.push(id);
-        }
-        self
-    }
-
-    /// Adds multiple books to the portfolio.
-    #[must_use]
-    pub fn add_books(mut self, book_ids: impl IntoIterator<Item = impl Into<BookId>>) -> Self {
-        for book_id in book_ids {
-            let id = book_id.into();
-            if !self.book_ids.contains(&id) {
-                self.book_ids.push(id);
-            }
-        }
-        self
-    }
-
-    /// Sets the portfolio's metadata.
-    #[must_use]
-    pub fn metadata(mut self, metadata: PortfolioMetadata) -> Self {
-        self.metadata = metadata;
-        self
-    }
-
-    /// Builds the PortfolioDefinition instance.
-    ///
-    /// This method consumes the builder and returns a fully constructed
-    /// portfolio.
-    #[must_use]
-    pub fn build(self) -> PortfolioDefinition {
-        PortfolioDefinition {
-            portfolio_id: self.portfolio_id,
-            name: self.name,
-            description: self.description,
-            parent_portfolio_id: self.parent_portfolio_id,
-            book_ids: self.book_ids,
-            metadata: self.metadata,
-        }
-    }
-
-    /// Builds with validation against a set of known book IDs.
-    ///
-    /// Returns an error if any referenced book ID is not in the known set.
+    /// Validates book references against a known set of book IDs.
     ///
     /// # Errors
     ///
-    /// Returns [`PortfolioError::InvalidBookReference`] if a book ID is not
-    /// found.
-    pub fn build_validated(
-        self,
-        known_book_ids: &HashSet<BookId>,
-    ) -> Result<PortfolioDefinition, PortfolioError> {
+    /// Returns [`PortfolioError::InvalidBookReference`] if a book ID is not found.
+    pub fn validate_books(&self, known_book_ids: &HashSet<BookId>) -> Result<(), PortfolioError> {
         for book_id in &self.book_ids {
             if !known_book_ids.contains(book_id) {
                 return Err(PortfolioError::InvalidBookReference(book_id.to_string()));
             }
         }
-        Ok(self.build())
+        Ok(())
     }
 
-    /// Builds with circular reference detection.
-    ///
-    /// Validates that setting a parent portfolio does not create a cycle.
+    /// Validates hierarchy to detect circular references.
     ///
     /// # Errors
     ///
     /// Returns [`PortfolioError::CircularReference`] if a cycle is detected.
-    pub fn build_with_hierarchy_validation<F>(
-        self,
-        get_parent: F,
-    ) -> Result<PortfolioDefinition, PortfolioError>
+    pub fn validate_hierarchy<F>(&self, get_parent: F) -> Result<(), PortfolioError>
     where
         F: Fn(&PortfolioId) -> Option<PortfolioId>,
     {
@@ -308,9 +162,10 @@ impl PortfolioBuilder {
                 current = get_parent(&id);
             }
         }
-        Ok(self.build())
+        Ok(())
     }
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -322,8 +177,11 @@ mod tests {
 
     #[test]
     fn test_portfolio_builder_minimal() {
-        let portfolio =
-            PortfolioDefinition::builder("P001", "Test Portfolio", Currency::USD).build();
+        let portfolio = PortfolioDefinition::builder()
+            .portfolio_id("P001")
+            .name("Test Portfolio")
+            .reporting_currency(Currency::USD)
+            .build();
         assert_eq!(portfolio.portfolio_id().as_str(), "P001");
         assert_eq!(portfolio.name(), "Test Portfolio");
         assert_eq!(portfolio.reporting_currency(), Currency::USD);
@@ -334,7 +192,10 @@ mod tests {
 
     #[test]
     fn test_portfolio_builder_with_description() {
-        let portfolio = PortfolioDefinition::builder("P001", "Test Portfolio", Currency::EUR)
+        let portfolio = PortfolioDefinition::builder()
+            .portfolio_id("P001")
+            .name("Test Portfolio")
+            .reporting_currency(Currency::EUR)
             .description("A test portfolio")
             .build();
         assert_eq!(portfolio.description(), Some("A test portfolio"));
@@ -342,8 +203,11 @@ mod tests {
 
     #[test]
     fn test_portfolio_builder_with_parent() {
-        let portfolio = PortfolioDefinition::builder("P002", "Child Portfolio", Currency::GBP)
-            .parent("P001")
+        let portfolio = PortfolioDefinition::builder()
+            .portfolio_id("P002")
+            .name("Child Portfolio")
+            .reporting_currency(Currency::GBP)
+            .parent_portfolio_id("P001")
             .build();
         assert!(portfolio.has_parent());
         assert_eq!(portfolio.parent_portfolio_id().unwrap().as_str(), "P001");
@@ -351,17 +215,22 @@ mod tests {
 
     #[test]
     fn test_portfolio_builder_with_scope() {
-        let portfolio = PortfolioDefinition::builder("P001", "Test Portfolio", Currency::USD)
+        let portfolio = PortfolioDefinition::builder()
+            .portfolio_id("P001")
+            .name("Test Portfolio")
+            .reporting_currency(Currency::USD)
             .scope(PortfolioScope::Regulatory)
             .build();
         assert_eq!(portfolio.scope(), PortfolioScope::Regulatory);
     }
 
     #[test]
-    fn test_portfolio_builder_add_book() {
-        let portfolio = PortfolioDefinition::builder("P001", "Test Portfolio", Currency::USD)
-            .add_book("B001")
-            .add_book("B002")
+    fn test_portfolio_builder_with_books() {
+        let portfolio = PortfolioDefinition::builder()
+            .portfolio_id("P001")
+            .name("Test Portfolio")
+            .reporting_currency(Currency::USD)
+            .book_ids(vec![BookId::new("B001"), BookId::new("B002")])
             .build();
         assert_eq!(portfolio.book_ids().len(), 2);
         assert!(portfolio.contains_book(&BookId::new("B001")));
@@ -369,30 +238,14 @@ mod tests {
     }
 
     #[test]
-    fn test_portfolio_builder_add_book_dedup() {
-        let portfolio = PortfolioDefinition::builder("P001", "Test Portfolio", Currency::USD)
-            .add_book("B001")
-            .add_book("B001") // Duplicate
-            .add_book("B002")
-            .build();
-        assert_eq!(portfolio.book_ids().len(), 2);
-    }
-
-    #[test]
-    fn test_portfolio_builder_add_books() {
-        let portfolio = PortfolioDefinition::builder("P001", "Test Portfolio", Currency::USD)
-            .add_books(["B001", "B002", "B003"])
-            .build();
-        assert_eq!(portfolio.book_ids().len(), 3);
-    }
-
-    #[test]
     fn test_portfolio_builder_full_chain() {
-        let portfolio = PortfolioDefinition::builder("P001", "Main Portfolio", Currency::USD)
+        let portfolio = PortfolioDefinition::builder()
+            .portfolio_id("P001")
+            .name("Main Portfolio")
+            .reporting_currency(Currency::USD)
             .description("Primary trading portfolio")
             .scope(PortfolioScope::Legal)
-            .add_book("B001")
-            .add_book("B002")
+            .book_ids(vec![BookId::new("B001"), BookId::new("B002")])
             .build();
 
         assert_eq!(portfolio.portfolio_id().as_str(), "P001");
@@ -404,10 +257,17 @@ mod tests {
 
     #[test]
     fn test_portfolio_has_parent() {
-        let with_parent = PortfolioDefinition::builder("P002", "Child", Currency::USD)
-            .parent("P001")
+        let with_parent = PortfolioDefinition::builder()
+            .portfolio_id("P002")
+            .name("Child")
+            .reporting_currency(Currency::USD)
+            .parent_portfolio_id("P001")
             .build();
-        let without_parent = PortfolioDefinition::builder("P001", "Parent", Currency::USD).build();
+        let without_parent = PortfolioDefinition::builder()
+            .portfolio_id("P001")
+            .name("Parent")
+            .reporting_currency(Currency::USD)
+            .build();
 
         assert!(with_parent.has_parent());
         assert!(!without_parent.has_parent());
@@ -415,8 +275,11 @@ mod tests {
 
     #[test]
     fn test_portfolio_contains_book() {
-        let portfolio = PortfolioDefinition::builder("P001", "Test", Currency::USD)
-            .add_book("B001")
+        let portfolio = PortfolioDefinition::builder()
+            .portfolio_id("P001")
+            .name("Test")
+            .reporting_currency(Currency::USD)
+            .book_ids(vec![BookId::new("B001")])
             .build();
 
         assert!(portfolio.contains_book(&BookId::new("B001")));
@@ -425,9 +288,11 @@ mod tests {
 
     #[test]
     fn test_portfolio_book_mappings() {
-        let portfolio = PortfolioDefinition::builder("P001", "Test", Currency::USD)
-            .add_book("B001")
-            .add_book("B002")
+        let portfolio = PortfolioDefinition::builder()
+            .portfolio_id("P001")
+            .name("Test")
+            .reporting_currency(Currency::USD)
+            .book_ids(vec![BookId::new("B001"), BookId::new("B002")])
             .build();
 
         let mappings = portfolio.book_mappings();
@@ -439,9 +304,12 @@ mod tests {
 
     #[test]
     fn test_portfolio_clone() {
-        let portfolio = PortfolioDefinition::builder("P001", "Test", Currency::EUR)
+        let portfolio = PortfolioDefinition::builder()
+            .portfolio_id("P001")
+            .name("Test")
+            .reporting_currency(Currency::EUR)
             .description("Test desc")
-            .add_book("B001")
+            .book_ids(vec![BookId::new("B001")])
             .build();
         let cloned = portfolio.clone();
         assert_eq!(cloned.portfolio_id().as_str(), "P001");
@@ -453,29 +321,34 @@ mod tests {
     // ========================================================================
 
     #[test]
-    fn test_portfolio_build_validated_success() {
+    fn test_portfolio_validate_books_success() {
         let mut known_books = HashSet::new();
         known_books.insert(BookId::new("B001"));
         known_books.insert(BookId::new("B002"));
 
-        let result = PortfolioDefinition::builder("P001", "Test", Currency::USD)
-            .add_book("B001")
-            .add_book("B002")
-            .build_validated(&known_books);
+        let portfolio = PortfolioDefinition::builder()
+            .portfolio_id("P001")
+            .name("Test")
+            .reporting_currency(Currency::USD)
+            .book_ids(vec![BookId::new("B001"), BookId::new("B002")])
+            .build();
 
-        assert!(result.is_ok());
+        assert!(portfolio.validate_books(&known_books).is_ok());
     }
 
     #[test]
-    fn test_portfolio_build_validated_invalid_book() {
+    fn test_portfolio_validate_books_invalid() {
         let mut known_books = HashSet::new();
         known_books.insert(BookId::new("B001"));
 
-        let result = PortfolioDefinition::builder("P001", "Test", Currency::USD)
-            .add_book("B001")
-            .add_book("B999") // Unknown book
-            .build_validated(&known_books);
+        let portfolio = PortfolioDefinition::builder()
+            .portfolio_id("P001")
+            .name("Test")
+            .reporting_currency(Currency::USD)
+            .book_ids(vec![BookId::new("B001"), BookId::new("B999")])
+            .build();
 
+        let result = portfolio.validate_books(&known_books);
         assert!(result.is_err());
         match result {
             Err(PortfolioError::InvalidBookReference(id)) => assert_eq!(id, "B999"),
@@ -484,42 +357,52 @@ mod tests {
     }
 
     #[test]
-    fn test_portfolio_build_with_hierarchy_validation_success() {
-        // No parent - should succeed
-        let result = PortfolioDefinition::builder("P001", "Test", Currency::USD)
-            .build_with_hierarchy_validation(|_| None);
+    fn test_portfolio_validate_hierarchy_success() {
+        let portfolio = PortfolioDefinition::builder()
+            .portfolio_id("P001")
+            .name("Test")
+            .reporting_currency(Currency::USD)
+            .build();
+
+        assert!(portfolio.validate_hierarchy(|_| None).is_ok());
+    }
+
+    #[test]
+    fn test_portfolio_validate_hierarchy_valid_parent() {
+        let portfolio = PortfolioDefinition::builder()
+            .portfolio_id("P002")
+            .name("Child")
+            .reporting_currency(Currency::USD)
+            .parent_portfolio_id("P001")
+            .build();
+
+        let result = portfolio.validate_hierarchy(|id| {
+            if id.as_str() == "P001" {
+                None
+            } else {
+                None
+            }
+        });
 
         assert!(result.is_ok());
     }
 
     #[test]
-    fn test_portfolio_build_with_hierarchy_validation_valid_parent() {
-        // P001 has no parent, P002 has P001 as parent - should succeed
-        let result = PortfolioDefinition::builder("P002", "Child", Currency::USD)
-            .parent("P001")
-            .build_with_hierarchy_validation(|id| {
-                if id.as_str() == "P001" {
-                    None // P001 has no parent
-                } else {
-                    None
-                }
-            });
+    fn test_portfolio_validate_hierarchy_circular() {
+        let portfolio = PortfolioDefinition::builder()
+            .portfolio_id("P001")
+            .name("Test")
+            .reporting_currency(Currency::USD)
+            .parent_portfolio_id("P002")
+            .build();
 
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_portfolio_build_with_hierarchy_validation_circular() {
-        // P001 -> P002 -> P001 would create a cycle
-        let result = PortfolioDefinition::builder("P001", "Test", Currency::USD)
-            .parent("P002")
-            .build_with_hierarchy_validation(|id| {
-                if id.as_str() == "P002" {
-                    Some(PortfolioId::new("P001")) // P002's parent is P001
-                } else {
-                    None
-                }
-            });
+        let result = portfolio.validate_hierarchy(|id| {
+            if id.as_str() == "P002" {
+                Some(PortfolioId::new("P001"))
+            } else {
+                None
+            }
+        });
 
         assert!(result.is_err());
         match result {
@@ -531,40 +414,24 @@ mod tests {
         }
     }
 
-    // ========================================================================
-    // PortfolioBuilder tests
-    // ========================================================================
-
-    #[test]
-    fn test_portfolio_builder_new() {
-        let builder = PortfolioBuilder::new("P001", "Test", Currency::USD);
-        let portfolio = builder.build();
-        assert_eq!(portfolio.portfolio_id().as_str(), "P001");
-    }
-
-    #[test]
-    fn test_portfolio_builder_clone() {
-        let builder = PortfolioDefinition::builder("P001", "Test", Currency::USD)
-            .description("Test desc")
-            .add_book("B001");
-        let cloned = builder.clone();
-        let portfolio = cloned.build();
-        assert_eq!(portfolio.description(), Some("Test desc"));
-    }
-
     #[test]
     fn test_portfolio_id_from_string() {
-        let portfolio =
-            PortfolioDefinition::builder("P001".to_string(), "Test Portfolio", Currency::USD)
-                .build();
+        let portfolio = PortfolioDefinition::builder()
+            .portfolio_id("P001".to_string())
+            .name("Test Portfolio")
+            .reporting_currency(Currency::USD)
+            .build();
         assert_eq!(portfolio.portfolio_id().as_str(), "P001");
     }
 
     #[test]
     fn test_portfolio_id_from_portfolio_id() {
         let portfolio_id = PortfolioId::new("P001");
-        let portfolio =
-            PortfolioDefinition::builder(portfolio_id, "Test Portfolio", Currency::USD).build();
+        let portfolio = PortfolioDefinition::builder()
+            .portfolio_id(portfolio_id)
+            .name("Test Portfolio")
+            .reporting_currency(Currency::USD)
+            .build();
         assert_eq!(portfolio.portfolio_id().as_str(), "P001");
     }
 }

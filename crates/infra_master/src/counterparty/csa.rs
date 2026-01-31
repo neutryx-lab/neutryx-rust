@@ -2,11 +2,15 @@
 //!
 //! This module defines types for CSA contractual terms governing collateral
 //! exchange between counterparties.
+//!
+//! Uses `bon::Builder` for fluent construction with compile-time safety.
 
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::return_self_not_must_use)]
 
 use std::collections::HashMap;
+
+use bon::Builder;
 
 use super::CounterPartyError;
 use crate::Currency;
@@ -138,6 +142,8 @@ impl CollateralHaircut {
 /// thresholds, minimum transfer amounts, margin period of risk, and eligible
 /// collateral.
 ///
+/// Uses `bon::Builder` for fluent construction with compile-time safety.
+///
 /// # Examples
 ///
 /// ```
@@ -154,39 +160,48 @@ impl CollateralHaircut {
 ///
 /// assert_eq!(csa.threshold(), 1_000_000.0);
 /// ```
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Builder)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CsaTerms {
     /// Threshold amount (below which no collateral is posted).
+    #[builder(default)]
     threshold: f64,
     /// Minimum Transfer Amount.
+    #[builder(default)]
     mta: f64,
     /// Independent Amount (initial margin-like).
+    #[builder(default)]
     independent_amount: f64,
-    /// Margin Period of Risk in business days.
+    /// Margin Period of Risk in business days. Defaults to 10.
+    #[builder(default = 10)]
     mpor_days: u32,
-    /// Margin currency.
+    /// Margin currency. Defaults to USD.
+    #[builder(default = Currency::USD)]
     margin_currency: Currency,
     /// Currency-specific thresholds (overrides base threshold).
+    #[builder(default)]
     currency_thresholds: HashMap<Currency, f64>,
-    /// Eligible collateral types.
+    /// Eligible collateral types. Defaults to Cash only.
+    #[builder(default = vec![EligibleCollateral::Cash])]
     eligible_collateral: Vec<EligibleCollateral>,
     /// Collateral haircuts.
+    #[builder(default)]
     haircuts: Vec<CollateralHaircut>,
     /// Rehypothecation allowed.
+    #[builder(default)]
     rehypothecation: bool,
     /// Segregation type.
+    #[builder(default)]
     segregation: SegregationType,
     /// Margin call frequency.
+    #[builder(default)]
     call_frequency: CallFrequency,
     /// Dispute threshold.
+    #[builder(default)]
     dispute_threshold: f64,
 }
 
 impl CsaTerms {
-    /// Creates a new CSA terms builder.
-    pub fn builder() -> CsaTermsBuilder { CsaTermsBuilder::default() }
-
     /// Returns the base threshold amount.
     pub fn threshold(&self) -> f64 { self.threshold }
 
@@ -249,146 +264,9 @@ impl CsaTerms {
 }
 
 impl Default for CsaTerms {
-    fn default() -> Self {
-        Self {
-            threshold: 0.0,
-            mta: 0.0,
-            independent_amount: 0.0,
-            mpor_days: 10,
-            margin_currency: Currency::USD,
-            currency_thresholds: HashMap::new(),
-            eligible_collateral: vec![EligibleCollateral::Cash],
-            haircuts: Vec::new(),
-            rehypothecation: false,
-            segregation: SegregationType::default(),
-            call_frequency: CallFrequency::default(),
-            dispute_threshold: 0.0,
-        }
-    }
+    fn default() -> Self { Self::builder().build() }
 }
 
-// ============================================================================
-// CsaTermsBuilder
-// ============================================================================
-
-/// Builder for [`CsaTerms`].
-#[derive(Clone, Debug, Default)]
-pub struct CsaTermsBuilder {
-    threshold: f64,
-    mta: f64,
-    independent_amount: f64,
-    mpor_days: u32,
-    margin_currency: Option<Currency>,
-    currency_thresholds: HashMap<Currency, f64>,
-    eligible_collateral: Vec<EligibleCollateral>,
-    haircuts: Vec<CollateralHaircut>,
-    rehypothecation: bool,
-    segregation: SegregationType,
-    call_frequency: CallFrequency,
-    dispute_threshold: f64,
-}
-
-impl CsaTermsBuilder {
-    /// Sets the base threshold amount.
-    pub fn threshold(mut self, v: f64) -> Self {
-        self.threshold = v;
-        self
-    }
-
-    /// Sets the Minimum Transfer Amount.
-    pub fn mta(mut self, v: f64) -> Self {
-        self.mta = v;
-        self
-    }
-
-    /// Sets the Independent Amount.
-    pub fn independent_amount(mut self, v: f64) -> Self {
-        self.independent_amount = v;
-        self
-    }
-
-    /// Sets the Margin Period of Risk in business days.
-    pub fn mpor_days(mut self, v: u32) -> Self {
-        self.mpor_days = v;
-        self
-    }
-
-    /// Sets the margin currency.
-    pub fn margin_currency(mut self, v: Currency) -> Self {
-        self.margin_currency = Some(v);
-        self
-    }
-
-    /// Adds a currency-specific threshold.
-    pub fn currency_threshold(mut self, ccy: Currency, threshold: f64) -> Self {
-        self.currency_thresholds.insert(ccy, threshold);
-        self
-    }
-
-    /// Sets the eligible collateral types.
-    pub fn eligible_collateral(mut self, v: Vec<EligibleCollateral>) -> Self {
-        self.eligible_collateral = v;
-        self
-    }
-
-    /// Adds a collateral haircut.
-    pub fn haircut(mut self, h: CollateralHaircut) -> Self {
-        self.haircuts.push(h);
-        self
-    }
-
-    /// Sets whether rehypothecation is allowed.
-    pub fn rehypothecation(mut self, v: bool) -> Self {
-        self.rehypothecation = v;
-        self
-    }
-
-    /// Sets the segregation type.
-    pub fn segregation(mut self, v: SegregationType) -> Self {
-        self.segregation = v;
-        self
-    }
-
-    /// Sets the margin call frequency.
-    pub fn call_frequency(mut self, v: CallFrequency) -> Self {
-        self.call_frequency = v;
-        self
-    }
-
-    /// Sets the dispute threshold.
-    pub fn dispute_threshold(mut self, v: f64) -> Self {
-        self.dispute_threshold = v;
-        self
-    }
-
-    /// Builds the CSA terms.
-    pub fn build(self) -> CsaTerms {
-        let eligible_collateral = if self.eligible_collateral.is_empty() {
-            vec![EligibleCollateral::Cash]
-        } else {
-            self.eligible_collateral
-        };
-
-        CsaTerms {
-            threshold: self.threshold,
-            mta: self.mta,
-            independent_amount: self.independent_amount,
-            mpor_days: if self.mpor_days == 0 {
-                10
-            } else {
-                self.mpor_days
-            },
-            margin_currency: self.margin_currency.unwrap_or(Currency::USD),
-            currency_thresholds: self.currency_thresholds,
-            eligible_collateral,
-            haircuts: self.haircuts,
-            rehypothecation: self.rehypothecation,
-            segregation: self.segregation,
-            call_frequency: self.call_frequency,
-            dispute_threshold: self.dispute_threshold,
-        }
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -505,10 +383,13 @@ mod tests {
 
     #[test]
     fn test_csa_terms_currency_threshold() {
+        let mut thresholds = HashMap::new();
+        thresholds.insert(Currency::EUR, 500_000.0);
+        thresholds.insert(Currency::JPY, 100_000_000.0);
+
         let csa = CsaTerms::builder()
             .threshold(1_000_000.0)
-            .currency_threshold(Currency::EUR, 500_000.0)
-            .currency_threshold(Currency::JPY, 100_000_000.0)
+            .currency_thresholds(thresholds)
             .build();
 
         assert!((csa.threshold_for_currency(&Currency::USD) - 1_000_000.0).abs() < f64::EPSILON);
@@ -539,8 +420,10 @@ mod tests {
     #[test]
     fn test_csa_terms_haircuts() {
         let csa = CsaTerms::builder()
-            .haircut(CollateralHaircut::new(EligibleCollateral::GovernmentBonds, 0.02).unwrap())
-            .haircut(CollateralHaircut::new(EligibleCollateral::CorporateBonds, 0.10).unwrap())
+            .haircuts(vec![
+                CollateralHaircut::new(EligibleCollateral::GovernmentBonds, 0.02).unwrap(),
+                CollateralHaircut::new(EligibleCollateral::CorporateBonds, 0.10).unwrap(),
+            ])
             .build();
 
         assert_eq!(csa.haircuts().len(), 2);

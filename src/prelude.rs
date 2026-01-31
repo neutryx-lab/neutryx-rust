@@ -44,8 +44,8 @@ pub use infra_master::trade::{SwapDirection, TradeDirection};
 // Book & Portfolio Types (always available)
 // =============================================================================
 pub use infra_master::{
-    Book, BookBuilder, BookMetadata, BookOwnership, BookType, PortfolioBuilder,
-    PortfolioDefinition, PortfolioMetadata, PortfolioScope, RegulatoryBookType,
+    Book, BookBuilder, BookMetadata, BookOwnership, BookType, PortfolioDefinition,
+    PortfolioDefinitionBuilder, PortfolioMetadata, PortfolioScope, RegulatoryBookType,
 };
 // =============================================================================
 // Error Types (always available)

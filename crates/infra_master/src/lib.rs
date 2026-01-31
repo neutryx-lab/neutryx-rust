@@ -73,7 +73,8 @@ pub use ids::{BookId, CounterpartyId, IssuerId, PortfolioId, TradeId};
 pub use market::{Currency, RateIndex};
 // Portfolio module types
 pub use portfolio::{
-    PortfolioBookMapping, PortfolioBuilder, PortfolioDefinition, PortfolioMetadata, PortfolioScope,
+    PortfolioBookMapping, PortfolioDefinition, PortfolioDefinitionBuilder, PortfolioMetadata,
+    PortfolioScope,
 };
 // Re-export commonly used types at crate root for convenience
 // Time module types
@@ -96,8 +97,8 @@ pub mod prelude {
         ids::{BookId, CounterpartyId, IssuerId, PortfolioId, TradeId},
         market::{Currency, RateIndex},
         portfolio::{
-            PortfolioBookMapping, PortfolioBuilder, PortfolioDefinition, PortfolioMetadata,
-            PortfolioScope,
+            PortfolioBookMapping, PortfolioDefinition, PortfolioDefinitionBuilder,
+            PortfolioMetadata, PortfolioScope,
         },
         time::{
             AccrualPeriod, BusinessDayConvention, Calendar, CalendarId, ConcreteCalendar, Date,

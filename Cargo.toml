@@ -211,6 +211,12 @@ strum_macros = "0.26"
 # Builder pattern
 bon = "3.8"
 
+# Enum dispatch for static trait forwarding
+enum_dispatch = "0.3"
+
+# Newtype derive utilities
+derive_more = { version = "2", features = ["from", "display", "as_ref", "add", "mul"] }
+
 [profile.release]
 lto = true
 codegen-units = 1

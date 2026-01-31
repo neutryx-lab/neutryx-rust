@@ -68,6 +68,7 @@ S: Service   → service_cli, service_gateway, service_python
 - **Web**: `axum`, `tower-http` (REST API and HTTP server)
 - **WebSocket**: `tokio-tungstenite` (real-time dashboard)
 - **Visualisation**: D3.js-compatible JSON graph export (computation DAG)
+- **Frontend**: TypeScript, Vite (demo dashboard with component-based architecture)
 
 ## Development Standards
 
@@ -177,5 +178,5 @@ docker run -it neutryx-enzyme
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-30_ — Added Neutryx facade crate pattern, Linear Solve Strategy Pattern
+_Updated: 2026-01-31_ — Added TypeScript/Vite frontend for demo dashboard
 _Document standards and patterns, not every dependency_

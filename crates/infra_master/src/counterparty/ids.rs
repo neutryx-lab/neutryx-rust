@@ -7,6 +7,8 @@
 
 use std::fmt;
 
+use derive_more::{AsRef, Display, From};
+
 use super::CounterPartyError;
 
 // ============================================================================
@@ -26,7 +28,8 @@ use super::CounterPartyError;
 /// let id = CounterPartyId::new("CP001");
 /// assert_eq!(id.as_str(), "CP001");
 /// ```
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Display, From, AsRef)]
+#[as_ref(str)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct CounterPartyId(String);
@@ -37,18 +40,6 @@ impl CounterPartyId {
 
     /// Returns the ID as a string slice.
     pub fn as_str(&self) -> &str { &self.0 }
-}
-
-impl fmt::Display for CounterPartyId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.0) }
-}
-
-impl AsRef<str> for CounterPartyId {
-    fn as_ref(&self) -> &str { &self.0 }
-}
-
-impl From<String> for CounterPartyId {
-    fn from(s: String) -> Self { Self(s) }
 }
 
 impl From<&str> for CounterPartyId {
@@ -142,7 +133,8 @@ impl AsRef<str> for LegalEntityId {
 /// let id = NettingSetId::new("NS001");
 /// assert_eq!(id.as_str(), "NS001");
 /// ```
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Display, From, AsRef)]
+#[as_ref(str)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct NettingSetId(String);
@@ -153,18 +145,6 @@ impl NettingSetId {
 
     /// Returns the ID as a string slice.
     pub fn as_str(&self) -> &str { &self.0 }
-}
-
-impl fmt::Display for NettingSetId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.0) }
-}
-
-impl AsRef<str> for NettingSetId {
-    fn as_ref(&self) -> &str { &self.0 }
-}
-
-impl From<String> for NettingSetId {
-    fn from(s: String) -> Self { Self(s) }
 }
 
 impl From<&str> for NettingSetId {
@@ -188,7 +168,8 @@ impl From<&str> for NettingSetId {
 /// let id = CcpId::new("LCH");
 /// assert_eq!(id.as_str(), "LCH");
 /// ```
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Display, From, AsRef)]
+#[as_ref(str)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct CcpId(String);
@@ -199,18 +180,6 @@ impl CcpId {
 
     /// Returns the ID as a string slice.
     pub fn as_str(&self) -> &str { &self.0 }
-}
-
-impl fmt::Display for CcpId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.0) }
-}
-
-impl AsRef<str> for CcpId {
-    fn as_ref(&self) -> &str { &self.0 }
-}
-
-impl From<String> for CcpId {
-    fn from(s: String) -> Self { Self(s) }
 }
 
 impl From<&str> for CcpId {
@@ -234,7 +203,8 @@ impl From<&str> for CcpId {
 /// let id = IsdaAgreementId::new("ISDA001");
 /// assert_eq!(id.as_str(), "ISDA001");
 /// ```
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Display, From, AsRef)]
+#[as_ref(str)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct IsdaAgreementId(String);
@@ -245,18 +215,6 @@ impl IsdaAgreementId {
 
     /// Returns the ID as a string slice.
     pub fn as_str(&self) -> &str { &self.0 }
-}
-
-impl fmt::Display for IsdaAgreementId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.0) }
-}
-
-impl AsRef<str> for IsdaAgreementId {
-    fn as_ref(&self) -> &str { &self.0 }
-}
-
-impl From<String> for IsdaAgreementId {
-    fn from(s: String) -> Self { Self(s) }
 }
 
 impl From<&str> for IsdaAgreementId {
@@ -280,7 +238,8 @@ impl From<&str> for IsdaAgreementId {
 /// let id = VariationMarginAgreementId::new("VMA001");
 /// assert_eq!(id.as_str(), "VMA001");
 /// ```
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Display, From, AsRef)]
+#[as_ref(str)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct VariationMarginAgreementId(String);
@@ -291,18 +250,6 @@ impl VariationMarginAgreementId {
 
     /// Returns the ID as a string slice.
     pub fn as_str(&self) -> &str { &self.0 }
-}
-
-impl fmt::Display for VariationMarginAgreementId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.0) }
-}
-
-impl AsRef<str> for VariationMarginAgreementId {
-    fn as_ref(&self) -> &str { &self.0 }
-}
-
-impl From<String> for VariationMarginAgreementId {
-    fn from(s: String) -> Self { Self(s) }
 }
 
 impl From<&str> for VariationMarginAgreementId {
@@ -326,7 +273,8 @@ impl From<&str> for VariationMarginAgreementId {
 /// let id = CrossBookNettingAgreementId::new("CBNA001");
 /// assert_eq!(id.as_str(), "CBNA001");
 /// ```
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Display, From, AsRef)]
+#[as_ref(str)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 pub struct CrossBookNettingAgreementId(String);
@@ -337,18 +285,6 @@ impl CrossBookNettingAgreementId {
 
     /// Returns the ID as a string slice.
     pub fn as_str(&self) -> &str { &self.0 }
-}
-
-impl fmt::Display for CrossBookNettingAgreementId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.0) }
-}
-
-impl AsRef<str> for CrossBookNettingAgreementId {
-    fn as_ref(&self) -> &str { &self.0 }
-}
-
-impl From<String> for CrossBookNettingAgreementId {
-    fn from(s: String) -> Self { Self(s) }
 }
 
 impl From<&str> for CrossBookNettingAgreementId {

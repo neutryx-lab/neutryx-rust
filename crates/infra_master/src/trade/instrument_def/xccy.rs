@@ -3,6 +3,8 @@
 //! This module provides definitions for cross-currency basis swaps (XCCY),
 //! used for constructing medium to long-term FX forward curves.
 
+use derive_more::{Add, Sub};
+
 use crate::{Currency, Date, Frequency, RateIndex};
 
 // ============================================================================
@@ -14,6 +16,8 @@ use crate::{Currency, Date, Frequency, RateIndex};
 /// The basis spread is quoted in basis points (bps) and applied to one leg
 /// of the cross-currency swap (typically the foreign leg).
 ///
+/// Supports arithmetic operations: `+` and `-` for combining spreads.
+///
 /// # Example
 ///
 /// ```rust
@@ -22,8 +26,14 @@ use crate::{Currency, Date, Frequency, RateIndex};
 /// // -15 bps basis spread
 /// let spread = BasisSpread::from_bps(-15.0);
 /// assert!((spread.as_decimal() - (-0.0015)).abs() < 1e-10);
+///
+/// // Arithmetic operations
+/// let s1 = BasisSpread::from_bps(10.0);
+/// let s2 = BasisSpread::from_bps(5.0);
+/// let combined = s1 + s2; // 15 bps
+/// assert!((combined.bps() - 15.0).abs() < 1e-10);
 /// ```
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Add, Sub)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BasisSpread(f64);
 
@@ -411,6 +421,47 @@ mod tests {
         assert!((spread.bps()).abs() < 1e-10);
     }
 
+    #[test]
+    fn test_basis_spread_add() {
+        let s1 = BasisSpread::from_bps(10.0);
+        let s2 = BasisSpread::from_bps(5.0);
+        let result = s1 + s2;
+        assert!((result.bps() - 15.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_basis_spread_sub() {
+        let s1 = BasisSpread::from_bps(10.0);
+        let s2 = BasisSpread::from_bps(3.0);
+        let result = s1 - s2;
+        assert!((result.bps() - 7.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_basis_spread_add_negative() {
+        let s1 = BasisSpread::from_bps(-15.0);
+        let s2 = BasisSpread::from_bps(5.0);
+        let result = s1 + s2;
+        assert!((result.bps() - (-10.0)).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_basis_spread_add_identity() {
+        let s = BasisSpread::from_bps(10.0);
+        let zero = BasisSpread::zero();
+        let result = s + zero;
+        assert!((result.bps() - 10.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_basis_spread_commutativity() {
+        let s1 = BasisSpread::from_bps(10.0);
+        let s2 = BasisSpread::from_bps(5.0);
+        let r1 = s1 + s2;
+        let r2 = s2 + s1;
+        assert!((r1.bps() - r2.bps()).abs() < 1e-10);
+    }
+
     // === XccyTenor Tests ===
 
     #[test]
@@ -532,5 +583,69 @@ mod tests {
         assert!(display.contains("USD/EUR"));
         assert!(display.contains("XCCY"));
         assert!(display.contains("-15.0 bps"));
+    }
+}
+
+// ============================================================================
+// Property-Based Tests
+// ============================================================================
+
+#[cfg(test)]
+mod proptests {
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        /// Tests that BasisSpread addition is commutative: a + b == b + a
+        #[test]
+        fn test_basis_spread_add_commutativity(a in -1000.0..1000.0f64, b in -1000.0..1000.0f64) {
+            let bs_a = BasisSpread::from_bps(a);
+            let bs_b = BasisSpread::from_bps(b);
+            let result1 = bs_a + bs_b;
+            let result2 = bs_b + bs_a;
+            prop_assert!((result1.bps() - result2.bps()).abs() < 1e-10);
+        }
+
+        /// Tests that BasisSpread addition is associative: (a + b) + c == a + (b + c)
+        #[test]
+        fn test_basis_spread_add_associativity(
+            a in -1000.0..1000.0f64,
+            b in -1000.0..1000.0f64,
+            c in -1000.0..1000.0f64
+        ) {
+            let bs_a = BasisSpread::from_bps(a);
+            let bs_b = BasisSpread::from_bps(b);
+            let bs_c = BasisSpread::from_bps(c);
+            let lhs = (bs_a + bs_b) + bs_c;
+            let rhs = bs_a + (bs_b + bs_c);
+            // Note: f64 precision limits require approx comparison
+            prop_assert!((lhs.bps() - rhs.bps()).abs() < 1e-10);
+        }
+
+        /// Tests that zero is the identity element for addition: a + 0 == a
+        #[test]
+        fn test_basis_spread_add_identity(a in -1000.0..1000.0f64) {
+            let bs_a = BasisSpread::from_bps(a);
+            let zero = BasisSpread::zero();
+            let result = bs_a + zero;
+            prop_assert!((result.bps() - a).abs() < 1e-10);
+        }
+
+        /// Tests that subtraction is the inverse of addition: (a + b) - b == a
+        #[test]
+        fn test_basis_spread_add_sub_inverse(a in -1000.0..1000.0f64, b in -1000.0..1000.0f64) {
+            let bs_a = BasisSpread::from_bps(a);
+            let bs_b = BasisSpread::from_bps(b);
+            let result = (bs_a + bs_b) - bs_b;
+            prop_assert!((result.bps() - a).abs() < 1e-10);
+        }
+
+        /// Tests that Display formatting is correct for any value
+        #[test]
+        fn test_basis_spread_display_format(a in -1000.0..1000.0f64) {
+            let bs = BasisSpread::from_bps(a);
+            let display = bs.to_string();
+            prop_assert!(display.ends_with(" bps"));
+        }
     }
 }

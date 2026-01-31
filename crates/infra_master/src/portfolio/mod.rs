@@ -3,6 +3,8 @@
 //! This module provides comprehensive types for managing portfolios,
 //! including portfolio definitions, book mappings, and hierarchy management.
 //!
+//! Uses `bon::Builder` for fluent construction with compile-time safety.
+//!
 //! # Module Structure
 //!
 //! - `portfolio`: PortfolioDefinition entity and builder
@@ -13,12 +15,15 @@
 //! ```
 //! use infra_master::portfolio::{PortfolioDefinition, PortfolioScope};
 //! use infra_master::market::Currency;
+//! use infra_master::ids::BookId;
 //!
-//! let portfolio = PortfolioDefinition::builder("P001", "Main Portfolio", Currency::USD)
+//! let portfolio = PortfolioDefinition::builder()
+//!     .portfolio_id("P001")
+//!     .name("Main Portfolio")
+//!     .reporting_currency(Currency::USD)
 //!     .description("Primary trading portfolio")
 //!     .scope(PortfolioScope::Regulatory)
-//!     .add_book("B001")
-//!     .add_book("B002")
+//!     .book_ids(vec![BookId::new("B001"), BookId::new("B002")])
 //!     .build();
 //!
 //! assert_eq!(portfolio.name(), "Main Portfolio");
@@ -34,7 +39,7 @@ pub use types::*;
 /// Prelude for commonly used portfolio types.
 pub mod prelude {
     pub use super::{
-        PortfolioBookMapping, PortfolioBuilder, PortfolioDefinition, PortfolioMetadata,
+        PortfolioBookMapping, PortfolioDefinition, PortfolioDefinitionBuilder, PortfolioMetadata,
         PortfolioScope,
     };
 }
