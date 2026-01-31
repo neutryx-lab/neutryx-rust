@@ -52,8 +52,9 @@ pub enum MarketDataError {
 
 /// Yield curve traits and implementations.
 pub mod curves {
-    use super::*;
     use enum_dispatch::enum_dispatch;
+
+    use super::*;
 
     /// Trait for yield curves providing discount factors and rates.
     ///
@@ -714,7 +715,11 @@ pub mod fx_curves {
     impl<T: Float> FxCurveEnum<T> {
         /// Creates a flat FX curve.
         pub fn flat(spot: T, forward_points_per_year: T, currency_pair: CurrencyPair) -> Self {
-            Self::Flat(FlatFxCurve::new(spot, forward_points_per_year, currency_pair))
+            Self::Flat(FlatFxCurve::new(
+                spot,
+                forward_points_per_year,
+                currency_pair,
+            ))
         }
 
         /// Creates an IRP-based FX curve from flat yield curves.
@@ -736,19 +741,22 @@ pub mod fx_curves {
             foreign_curve: CurveEnum<T>,
             currency_pair: CurrencyPair,
         ) -> Self {
-            Self::IrpGeneric(IrpFxCurve::new(spot, domestic_curve, foreign_curve, currency_pair))
+            Self::IrpGeneric(IrpFxCurve::new(
+                spot,
+                domestic_curve,
+                foreign_curve,
+                currency_pair,
+            ))
         }
     }
 }
 
 // Re-export FxCurveEnum from fx_curves module for backwards compatibility
-pub use fx_curves::FxCurveEnum;
-
 // Re-export commonly used types at module level
 pub use curves::{
     BootstrapInterpolation, BootstrappedCurve, FlatCurve, Frequency, MarketInstrument, YieldCurve,
 };
-pub use fx_curves::{FlatFxCurve, FxCurve, IrpFxCurve};
+pub use fx_curves::{FlatFxCurve, FxCurve, FxCurveEnum, IrpFxCurve};
 
 #[cfg(test)]
 mod tests {

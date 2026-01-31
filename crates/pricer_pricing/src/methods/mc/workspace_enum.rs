@@ -195,8 +195,8 @@ impl WorkspaceEnum {
 }
 
 // NOTE: `impl PathWorkspaceTrait for WorkspaceEnum` is now auto-generated
-// by the `#[enum_dispatch(PathWorkspaceTrait)]` attribute on the enum definition.
-// This eliminates ~130 lines of boilerplate match statements.
+// by the `#[enum_dispatch(PathWorkspaceTrait)]` attribute on the enum
+// definition. This eliminates ~130 lines of boilerplate match statements.
 
 #[cfg(test)]
 mod tests {

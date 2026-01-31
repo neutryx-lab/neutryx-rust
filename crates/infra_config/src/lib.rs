@@ -44,10 +44,9 @@ pub use settings::{
 /// Prelude module for convenient imports
 pub mod prelude {
     pub use crate::{
-        AppConfig, BumpSizes, ConfigError, CurrencyRateIndexMap, DatabaseConfig,
-        DefaultsRegistry, EngineConfig, EnumRegistry, GreekType, GreeksMethod, GrpcConfig,
-        LoggingConfig, MarketShift, MonteCarloParams, PricingConfig, PricingMethod, RestConfig,
-        RiskConfig, ScenarioConfig, SecondOrderMode, ServiceConfig, Settings, ShiftType,
-        TreeParams, TreeType,
+        AppConfig, BumpSizes, ConfigError, CurrencyRateIndexMap, DatabaseConfig, DefaultsRegistry,
+        EngineConfig, EnumRegistry, GreekType, GreeksMethod, GrpcConfig, LoggingConfig,
+        MarketShift, MonteCarloParams, PricingConfig, PricingMethod, RestConfig, RiskConfig,
+        ScenarioConfig, SecondOrderMode, ServiceConfig, Settings, ShiftType, TreeParams, TreeType,
     };
 }

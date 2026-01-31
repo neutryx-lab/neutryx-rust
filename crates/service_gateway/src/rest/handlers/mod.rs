@@ -21,16 +21,15 @@ mod volatility;
 
 pub use config::*;
 pub use curves::*;
-pub use health::*;
-pub use pricing::*;
-
 // Feature-gated re-exports
 #[cfg(feature = "demo")]
 pub use demo::*;
+pub use health::*;
 #[cfg(feature = "models")]
 pub use models::*;
 #[cfg(feature = "risk")]
 pub use portfolio::*;
+pub use pricing::*;
 #[cfg(feature = "risk")]
 pub use risk::*;
 #[cfg(feature = "volatility")]

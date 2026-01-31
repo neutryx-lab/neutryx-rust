@@ -2,13 +2,13 @@
 
 実装状況と今後の開発項目を追跡するドキュメント。
 
-_Updated: 2026-01-31_ — Steering sync: TypeScript frontend (demo/gui/static), service_gateway services layer, 6 new specs; 45 completed specs; 2 active specs
+_Updated: 2026-01-31_ — Steering sync: Added enum_dispatch pattern, derive-more-newtype-migration completed; 46 completed specs; 2 active specs
 
 ---
 
 ## Current State Summary
 
-### Completed Specifications (45)
+### Completed Specifications (46)
 
 | Spec | Description | Completed |
 |------|-------------|-----------|
@@ -59,6 +59,7 @@ _Updated: 2026-01-31_ — Steering sync: TypeScript frontend (demo/gui/static), 
 | config-consolidation | Configuration centralisation (workspace, handler config, environment) | 2026-01-30 |
 | service-gateway-services | Service layer architecture (Handler → Service → Pricer pattern, demo endpoints) | 2026-01-31 |
 | thiserror-migration | thiserror macro migration for error types | 2026-01-31 |
+| derive-more-newtype-migration | Newtype derive utilities (From, Display, AsRef) with derive_more | 2026-01-31 |
 
 ### Layer Implementation Status
 
@@ -184,8 +185,13 @@ Codebase redundancy cleanup performed:
 | Spec | Phase | Description |
 |------|-------|-------------|
 | boilerplate-reduction | implementation | Reduce boilerplate across codebase |
-| enum-dispatch-migration | design-generated | Migrate to enum_dispatch for performance |
-| derive-more-newtype-migration | design-generated | Migrate newtypes to derive_more |
+| enum-dispatch-migration | tasks-generated | Migrate to enum_dispatch for performance |
+
+### Recently Completed
+
+| Spec | Completed | Description |
+|------|-----------|-------------|
+| derive-more-newtype-migration | 2026-01-31 | Migrate newtypes to derive_more |
 
 ### Temporary Status Notes
 
@@ -203,7 +209,8 @@ Codebase redundancy cleanup performed:
 
 | Date | Change |
 |------|--------|
-| 2026-01-31 | Steering sync: TypeScript frontend infrastructure (demo/gui/static with Vite, component-based architecture), service_gateway services layer (Handler→Service→Pricer pattern, demo endpoints, feature-gated caches), 3 new completed specs (config-consolidation, service-gateway-services, thiserror-migration), 3 active specs (boilerplate-reduction, enum-dispatch-migration, derive-more-newtype-migration). Total: 48 specs |
+| 2026-01-31 | Steering sync: Added `enum_dispatch` pattern to tech.md and dependency-management.md, derive-more-newtype-migration completed. Total: 46 completed specs, 2 active specs (boilerplate-reduction, enum-dispatch-migration) |
+| 2026-01-31 | Steering sync: TypeScript frontend infrastructure (demo/gui/static with Vite, component-based architecture), service_gateway services layer (Handler→Service→Pricer pattern, demo endpoints, feature-gated caches), 3 new completed specs (config-consolidation, service-gateway-services, thiserror-migration). Total: 48 specs |
 | 2026-01-30 | Steering sync: Added Neutryx facade crate pattern (unified entry point, module aliases, feature tiers, prelude). Updated structure.md and tech.md. |
 | 2026-01-28 | curve-global-solver completed: Global curve calibration with Newton-Raphson, CurveCalibrationProblem (SystemOfEquations), GlobalTimeGrid, CashflowMatrix, Jacobian inverse storage for AAD. 7 task groups, 422 total tests (377 unit + 14 integration + 31 doc). Total: 44 specs |
 | 2026-01-28 | Steering sync: pricing-kernel-ir completed (43 total). Updated structure.md (pricer_models: builder/ calibration module with paramsurface, simplified market.rs). demo/gui temporarily disabled for calibration refactor. |

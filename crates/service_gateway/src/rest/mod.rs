@@ -3,9 +3,12 @@
 use std::sync::Arc;
 
 use axum::{
-    routing::{delete, get, post, put},
+    routing::get,
+    routing::post,
     Router,
 };
+#[cfg(feature = "risk")]
+use axum::routing::{delete, put};
 
 pub mod dto;
 mod graph_handlers;
@@ -123,6 +126,7 @@ fn api_routes(state: Arc<AppState>) -> Router {
 }
 
 /// API v1 routes with feature-gated services
+#[allow(unused_mut)]
 fn api_v1_routes(state: Arc<AppState>) -> Router {
     let mut router = Router::new()
         // Configuration endpoint (always available, no state required)
@@ -164,9 +168,15 @@ fn api_v1_routes(state: Arc<AppState>) -> Router {
     #[cfg(feature = "volatility")]
     {
         router = router
-            .route("/volatility/fx-surface", post(handlers::build_fx_vol_surface))
+            .route(
+                "/volatility/fx-surface",
+                post(handlers::build_fx_vol_surface),
+            )
             .route("/volatility/cube", post(handlers::build_vol_cube))
-            .route("/volatility/:id/implied-vol", post(handlers::get_implied_vol));
+            .route(
+                "/volatility/:id/implied-vol",
+                post(handlers::get_implied_vol),
+            );
     }
 
     router.with_state(state)

@@ -4,7 +4,8 @@
 //! and the observation type flags that specify what statistics are needed.
 //!
 //! The `#[enum_dispatch]` attribute is used to auto-generate the trait
-//! implementation for `PathPayoffType`, eliminating boilerplate match statements.
+//! implementation for `PathPayoffType`, eliminating boilerplate match
+//! statements.
 
 use enum_dispatch::enum_dispatch;
 use num_traits::Float;

@@ -193,9 +193,10 @@ impl RiskService {
 
 #[cfg(all(test, feature = "risk"))]
 mod tests {
+    use chrono::Utc;
+
     use super::*;
     use crate::state::{AppStateConfig, PortfolioEntry};
-    use chrono::Utc;
 
     fn create_test_state() -> Arc<AppState> {
         let config = AppStateConfig {
@@ -323,7 +324,10 @@ mod tests {
 
         let result = RiskService::run_scenarios(&request, &state);
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), ServerError::InvalidRequest(_)));
+        assert!(matches!(
+            result.unwrap_err(),
+            ServerError::InvalidRequest(_)
+        ));
     }
 
     #[test]

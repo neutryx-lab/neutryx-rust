@@ -99,8 +99,9 @@ impl LegConfig {
     ///
     /// # Errors
     ///
-    /// Returns `TradeError::InvalidSchedule` if schedule has fewer than 2 dates.
-    /// Returns `TradeError::InvalidNotional` if notional is negative.
+    /// Returns `TradeError::InvalidSchedule` if schedule has fewer than 2
+    /// dates. Returns `TradeError::InvalidNotional` if notional is
+    /// negative.
     pub fn validate(&self) -> Result<(), TradeError> {
         if self.schedule.len() < 2 {
             return Err(TradeError::InvalidSchedule(
@@ -282,12 +283,13 @@ impl LegBuilder {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ids::{CounterpartyId, PortfolioId};
-    use crate::trade::{Trade, TradeMetadata, TradeType};
+    use crate::{
+        ids::{CounterpartyId, PortfolioId},
+        trade::{Trade, TradeMetadata, TradeType},
+    };
 
     fn sample_schedule() -> Vec<Date> {
         vec![
@@ -588,10 +590,7 @@ mod tests {
             .with_counterparty("BANK01")
             .with_portfolio("RATES");
 
-        let trade = Trade::builder()
-            .id("TRADE002")
-            .metadata(metadata)
-            .build();
+        let trade = Trade::builder().id("TRADE002").metadata(metadata).build();
 
         assert_eq!(
             trade.metadata.counterparty,

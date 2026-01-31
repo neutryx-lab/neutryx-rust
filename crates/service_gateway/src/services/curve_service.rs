@@ -11,17 +11,16 @@ use pricer_models::{
     market::YieldCurve,
 };
 
+#[cfg(test)]
+use crate::rest::dto::CurveInstrumentInput;
 use crate::{
     error::ServerError,
     rest::dto::{
-        BootstrapMethod, CurveBuildRequest, CurveBuildResponse, CurvePillar,
-        DiscountFactorRequest, DiscountFactorResponse, ForwardRateRequest, ForwardRateResponse,
-        InterpolationMethod,
+        BootstrapMethod, CurveBuildRequest, CurveBuildResponse, CurvePillar, DiscountFactorRequest,
+        DiscountFactorResponse, ForwardRateRequest, ForwardRateResponse, InterpolationMethod,
     },
     state::{AppState, InstrumentInput},
 };
-#[cfg(test)]
-use crate::rest::dto::CurveInstrumentInput;
 
 /// Service for building and querying yield curves
 pub struct CurveService;

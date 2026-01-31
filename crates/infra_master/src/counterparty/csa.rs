@@ -267,7 +267,6 @@ impl Default for CsaTerms {
     fn default() -> Self { Self::builder().build() }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

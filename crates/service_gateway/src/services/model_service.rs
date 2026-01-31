@@ -38,8 +38,13 @@ impl ModelService {
                 (ModelType::Gbm, name.clone(), json, validation)
             }
             CreateModelRequest::Heston { name, params } => {
-                let validation =
-                    Self::validate_heston(params.v0, params.kappa, params.theta, params.sigma, params.rho);
+                let validation = Self::validate_heston(
+                    params.v0,
+                    params.kappa,
+                    params.theta,
+                    params.sigma,
+                    params.rho,
+                );
                 let json = serde_json::to_string(params)
                     .map_err(|e| ServerError::Internal(format!("Serialisation error: {e}")))?;
                 (ModelType::Heston, name.clone(), json, validation)
@@ -58,7 +63,8 @@ impl ModelService {
                 (ModelType::Cir, name.clone(), json, validation)
             }
             CreateModelRequest::Sabr { name, params } => {
-                let validation = Self::validate_sabr(params.alpha, params.beta, params.rho, params.nu);
+                let validation =
+                    Self::validate_sabr(params.alpha, params.beta, params.rho, params.nu);
                 let json = serde_json::to_string(params)
                     .map_err(|e| ServerError::Internal(format!("Serialisation error: {e}")))?;
                 (ModelType::Sabr, name.clone(), json, validation)
@@ -67,9 +73,7 @@ impl ModelService {
 
         // Check if validation failed
         if !validation.valid {
-            return Err(ServerError::InvalidRequest(
-                validation.errors.join("; "),
-            ));
+            return Err(ServerError::InvalidRequest(validation.errors.join("; ")));
         }
 
         let entry = ModelEntry {
@@ -200,7 +204,12 @@ impl ModelService {
                     request.num_paths.unwrap_or(10_000),
                 )?;
                 // Asian options typically worth less than vanilla
-                (p * 0.85, Some(g), Some(request.num_paths.unwrap_or(10_000)), Some(p * 0.02))
+                (
+                    p * 0.85,
+                    Some(g),
+                    Some(request.num_paths.unwrap_or(10_000)),
+                    Some(p * 0.02),
+                )
             }
             InstrumentDto::BarrierOption {
                 spot,
@@ -221,7 +230,12 @@ impl ModelService {
                     request.num_paths.unwrap_or(10_000),
                 )?;
                 // Barrier options typically worth less
-                (p * 0.7, Some(g), Some(request.num_paths.unwrap_or(10_000)), Some(p * 0.03))
+                (
+                    p * 0.7,
+                    Some(g),
+                    Some(request.num_paths.unwrap_or(10_000)),
+                    Some(p * 0.03),
+                )
             }
         };
 
@@ -324,8 +338,16 @@ impl ModelService {
     }
 
     /// Black-Scholes formula
-    fn black_scholes(spot: f64, strike: f64, maturity: f64, r: f64, vol: f64, is_call: bool) -> f64 {
-        let d1 = ((spot / strike).ln() + (r + vol * vol / 2.0) * maturity) / (vol * maturity.sqrt());
+    fn black_scholes(
+        spot: f64,
+        strike: f64,
+        maturity: f64,
+        r: f64,
+        vol: f64,
+        is_call: bool,
+    ) -> f64 {
+        let d1 =
+            ((spot / strike).ln() + (r + vol * vol / 2.0) * maturity) / (vol * maturity.sqrt());
         let d2 = d1 - vol * maturity.sqrt();
 
         let df = (-r * maturity).exp();
@@ -360,7 +382,13 @@ impl ModelService {
     }
 
     /// Validate Heston parameters
-    fn validate_heston(v0: f64, kappa: f64, theta: f64, sigma: f64, rho: f64) -> ModelValidationDto {
+    fn validate_heston(
+        v0: f64,
+        kappa: f64,
+        theta: f64,
+        sigma: f64,
+        rho: f64,
+    ) -> ModelValidationDto {
         let mut errors = vec![];
         let mut warnings = vec![];
 
@@ -485,14 +513,10 @@ fn rand_simple() -> f64 {
 }
 
 /// Standard normal CDF approximation
-fn normal_cdf(x: f64) -> f64 {
-    0.5 * (1.0 + erf(x / std::f64::consts::SQRT_2))
-}
+fn normal_cdf(x: f64) -> f64 { 0.5 * (1.0 + erf(x / std::f64::consts::SQRT_2)) }
 
 /// Standard normal PDF
-fn normal_pdf(x: f64) -> f64 {
-    (-x * x / 2.0).exp() / (2.0 * std::f64::consts::PI).sqrt()
-}
+fn normal_pdf(x: f64) -> f64 { (-x * x / 2.0).exp() / (2.0 * std::f64::consts::PI).sqrt() }
 
 /// Error function approximation
 fn erf(x: f64) -> f64 {
@@ -588,7 +612,10 @@ mod tests {
 
         let result = ModelService::create_model(&request, &state);
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), ServerError::InvalidRequest(_)));
+        assert!(matches!(
+            result.unwrap_err(),
+            ServerError::InvalidRequest(_)
+        ));
     }
 
     #[test]

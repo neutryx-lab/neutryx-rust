@@ -10,7 +10,9 @@ use serde::{Deserialize, Serialize};
 use crate::ConfigError;
 
 /// Pricing calculation method selection.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default, strum::VariantNames)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default, strum::VariantNames,
+)]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 pub enum PricingMethod {
@@ -24,7 +26,9 @@ pub enum PricingMethod {
 }
 
 /// Tree type selection for tree-based pricing methods.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default, strum::VariantNames)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default, strum::VariantNames,
+)]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 pub enum TreeType {

@@ -7,7 +7,9 @@ use serde::{Deserialize, Serialize};
 use crate::ConfigError;
 
 /// Greeks calculation method selection.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default, strum::VariantNames)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default, strum::VariantNames,
+)]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 pub enum GreeksMethod {
@@ -133,7 +135,9 @@ impl BumpSizes {
 }
 
 /// Second-order Greeks calculation mode.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default, strum::VariantNames)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default, strum::VariantNames,
+)]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 pub enum SecondOrderMode {
@@ -168,7 +172,9 @@ pub struct MarketShift {
 }
 
 /// Type of market shift.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default, strum::VariantNames)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default, strum::VariantNames,
+)]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 pub enum ShiftType {

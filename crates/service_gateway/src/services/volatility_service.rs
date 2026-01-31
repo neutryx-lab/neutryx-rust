@@ -46,8 +46,10 @@ impl VolatilityService {
         }
 
         // Group quotes by expiry for slice-wise calibration
-        let mut expiry_quotes: std::collections::BTreeMap<u64, Vec<&crate::rest::dto::VolQuoteDto>> =
-            std::collections::BTreeMap::new();
+        let mut expiry_quotes: std::collections::BTreeMap<
+            u64,
+            Vec<&crate::rest::dto::VolQuoteDto>,
+        > = std::collections::BTreeMap::new();
 
         for quote in &request.quotes {
             // Use integer key for grouping (expiry * 1000 to handle floating point)
@@ -163,7 +165,11 @@ impl VolatilityService {
         }
 
         // Parse tenors to years
-        let expiry_years: Vec<f64> = request.expiries.iter().map(|t| Self::parse_tenor(t)).collect();
+        let expiry_years: Vec<f64> = request
+            .expiries
+            .iter()
+            .map(|t| Self::parse_tenor(t))
+            .collect();
 
         // Calibrate SABR for each (expiry, tenor) cell
         let mut sabr_params = Vec::new();
@@ -320,7 +326,12 @@ impl VolatilityService {
         // Estimate rho from risk reversal if available
         let rho = quotes
             .iter()
-            .find(|q| matches!(q.quote_type, crate::rest::dto::VolQuoteTypeDto::RiskReversal))
+            .find(|q| {
+                matches!(
+                    q.quote_type,
+                    crate::rest::dto::VolQuoteTypeDto::RiskReversal
+                )
+            })
             .map(|q| (q.vol / atm_vol).clamp(-0.9, 0.9))
             .unwrap_or(0.0);
 
@@ -569,10 +580,7 @@ mod tests {
             index: "USD-SOFR".to_string(),
             expiries: vec!["1Y".to_string(), "2Y".to_string()],
             tenors: vec!["1Y".to_string(), "5Y".to_string(), "10Y".to_string()],
-            atm_vols: vec![
-                vec![0.20, 0.22, 0.24],
-                vec![0.21, 0.23, 0.25],
-            ],
+            atm_vols: vec![vec![0.20, 0.22, 0.24], vec![0.21, 0.23, 0.25]],
             smile_quotes: None,
             beta: 0.5,
         };
@@ -604,7 +612,8 @@ mod tests {
             foreign_rate: 0.01,
             beta: 0.5,
         };
-        let build_response = VolatilityService::build_fx_vol_surface(&build_request, &state).unwrap();
+        let build_response =
+            VolatilityService::build_fx_vol_surface(&build_request, &state).unwrap();
 
         // Query implied vol using normalised moneyness (ATM = 1.0)
         let request = GetImpliedVolRequest {

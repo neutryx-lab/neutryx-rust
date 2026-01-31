@@ -7,14 +7,14 @@ use std::{collections::HashMap, path::Path, sync::Arc, time::Instant};
 use crate::{
     error::ServerError,
     rest::dto::demo::{
-        AppConfigResponse, AvailableCurvesResponse, Convention, ConventionField,
+        AppConfigResponse, AvailableCurvesResponse, Cashflow, Convention, ConventionField,
         ConventionsResponse, DemoGreeksRequest, DemoGreeksResult, DemoPricingRequest,
-        DemoPricingResult, EnumValue, EventType, EventTypesResponse, EventsResponse,
-        ExpandedTrade, ExportFormat, FieldType, FxVolPair, FxVolPairsResponse, FxVolQuote,
-        FxVolQuotesResponse, Importance, InstrumentDef, InstrumentsResponse, IrVolCurrenciesResponse,
-        IrVolCurrency, IrVolQuote, IrVolQuotesResponse, MarketConfigResponse, MarketEvent,
-        MarketRate, MarketRateDetailResponse, MarketRatesResponse, ParameterDef, Cashflow,
-        SmilePoint, TradeExpandRequest, TradeLeg, TradeMetadata,
+        DemoPricingResult, EnumValue, EventType, EventTypesResponse, EventsResponse, ExpandedTrade,
+        ExportFormat, FieldType, FxVolPair, FxVolPairsResponse, FxVolQuote, FxVolQuotesResponse,
+        Importance, InstrumentDef, InstrumentsResponse, IrVolCurrenciesResponse, IrVolCurrency,
+        IrVolQuote, IrVolQuotesResponse, MarketConfigResponse, MarketEvent, MarketRate,
+        MarketRateDetailResponse, MarketRatesResponse, ParameterDef, SmilePoint,
+        TradeExpandRequest, TradeLeg, TradeMetadata,
     },
     state::AppState,
 };
@@ -386,12 +386,7 @@ impl DemoService {
         let base_pv: f64 = request
             .legs
             .iter()
-            .map(|leg| {
-                leg.cashflows
-                    .iter()
-                    .map(|cf| cf.amount * 0.98)
-                    .sum::<f64>()
-            })
+            .map(|leg| leg.cashflows.iter().map(|cf| cf.amount * 0.98).sum::<f64>())
             .sum();
 
         let delta = base_pv * (request.bump_sizes.rate_bump_bp / 10000.0);
@@ -412,10 +407,12 @@ impl DemoService {
     /// Get market rates
     pub fn get_market_rates(_state: &Arc<AppState>) -> Result<MarketRatesResponse, ServerError> {
         let rates_path = Path::new("demo/data/input/rates/market_quotes.json");
-        let content = std::fs::read_to_string(rates_path)
-            .map_err(|e| ServerError::Internal(format!("Failed to read market_quotes.json: {e}")))?;
-        let data: serde_json::Value = serde_json::from_str(&content)
-            .map_err(|e| ServerError::Internal(format!("Failed to parse market_quotes.json: {e}")))?;
+        let content = std::fs::read_to_string(rates_path).map_err(|e| {
+            ServerError::Internal(format!("Failed to read market_quotes.json: {e}"))
+        })?;
+        let data: serde_json::Value = serde_json::from_str(&content).map_err(|e| {
+            ServerError::Internal(format!("Failed to parse market_quotes.json: {e}"))
+        })?;
 
         let mut rates = Vec::new();
         let timestamp = chrono::Utc::now().to_rfc3339();
@@ -426,8 +423,10 @@ impl DemoService {
                     for (rate_type, quotes) in rate_types_obj {
                         if let Some(quotes_arr) = quotes.as_array() {
                             for quote in quotes_arr {
-                                let tenor = quote.get("tenor").and_then(|t| t.as_str()).unwrap_or("");
-                                let value = quote.get("value").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                                let tenor =
+                                    quote.get("tenor").and_then(|t| t.as_str()).unwrap_or("");
+                                let value =
+                                    quote.get("value").and_then(|v| v.as_f64()).unwrap_or(0.0);
                                 let index = quote.get("index").and_then(|i| i.as_str());
 
                                 rates.push(MarketRate {
@@ -612,12 +611,10 @@ impl DemoService {
         let path = Path::new(&file_path);
 
         if path.exists() {
-            let content = std::fs::read_to_string(path).map_err(|e| {
-                ServerError::Internal(format!("Failed to read IR vol file: {e}"))
-            })?;
-            let data: serde_json::Value = serde_json::from_str(&content).map_err(|e| {
-                ServerError::Internal(format!("Failed to parse IR vol file: {e}"))
-            })?;
+            let content = std::fs::read_to_string(path)
+                .map_err(|e| ServerError::Internal(format!("Failed to read IR vol file: {e}")))?;
+            let data: serde_json::Value = serde_json::from_str(&content)
+                .map_err(|e| ServerError::Internal(format!("Failed to parse IR vol file: {e}")))?;
 
             let mut quotes = Vec::new();
             if let Some(quotes_arr) = data.get("quotes").and_then(|q| q.as_array()) {
@@ -883,8 +880,9 @@ impl DemoService {
                 Ok(csv.into_bytes())
             }
             ExportFormat::Json => {
-                let json = serde_json::to_vec(&rates_response)
-                    .map_err(|e| ServerError::Internal(format!("JSON serialization failed: {e}")))?;
+                let json = serde_json::to_vec(&rates_response).map_err(|e| {
+                    ServerError::Internal(format!("JSON serialization failed: {e}"))
+                })?;
                 Ok(json)
             }
         }
@@ -895,9 +893,7 @@ impl DemoService {
 mod tests {
     use super::*;
 
-    fn create_test_state() -> Arc<AppState> {
-        Arc::new(AppState::new())
-    }
+    fn create_test_state() -> Arc<AppState> { Arc::new(AppState::new()) }
 
     #[test]
     fn test_get_instruments() {

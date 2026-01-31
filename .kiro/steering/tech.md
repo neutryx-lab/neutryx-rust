@@ -130,6 +130,7 @@ docker run -it neutryx-enzyme
 | **A-I-P-S Architecture** | Unidirectional data flow from Adapters through Infrastructure and Pricing to Services |
 | **Pricer Layer Hierarchy** | L1→L2→L3→L4 with Enzyme AD in L4 (pricer_risk) for risk integration |
 | **Static Dispatch (enum)** | Enzyme performs better with concrete types than trait objects |
+| **enum_dispatch Pattern** | Use `#[enum_dispatch]` macro for zero-cost trait dispatch via enums; apply to traits like `YieldCurve<T>`, `PathDependentPayoff` where multiple implementations exist |
 | **StochasticModel Trait** | Unified interface for stochastic processes with enum-based dispatch |
 | **Dual-Mode Verification** | Enzyme (performance) + bump-and-revalue (correctness) for validation |
 | **Smooth Approximations** | Replace all discontinuities (if/max) with differentiable functions |
@@ -178,5 +179,5 @@ docker run -it neutryx-enzyme
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-31_ — Added TypeScript/Vite frontend for demo dashboard
+_Updated: 2026-01-31_ — Added enum_dispatch pattern for zero-cost trait dispatch
 _Document standards and patterns, not every dependency_

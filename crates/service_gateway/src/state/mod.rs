@@ -7,11 +7,10 @@ mod cache;
 
 use std::sync::Arc;
 
-// Re-export common cache types (SabrParams used by FxVolEntry in public API)
-pub use cache::{CurveCache, FxVolCache, InstrumentInput};
 #[allow(unused_imports)]
 pub use cache::SabrParams;
-
+// Re-export common cache types (SabrParams used by FxVolEntry in public API)
+pub use cache::{CurveCache, FxVolCache, InstrumentInput};
 // Feature-gated re-exports (public API, may not be used internally)
 #[cfg(feature = "models")]
 #[allow(unused_imports)]

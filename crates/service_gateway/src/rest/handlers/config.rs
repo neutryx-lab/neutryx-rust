@@ -18,9 +18,7 @@ use infra_config::AppConfig;
 /// # Responses
 ///
 /// - 200 OK: Returns `AppConfig` as JSON
-pub async fn get_config() -> Json<AppConfig> {
-    Json(AppConfig::build())
-}
+pub async fn get_config() -> Json<AppConfig> { Json(AppConfig::build()) }
 
 #[cfg(test)]
 mod tests {

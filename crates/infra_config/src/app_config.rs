@@ -105,9 +105,7 @@ impl CurrencyRateIndexMap {
 
     /// Returns the rate index for a given currency code.
     #[must_use]
-    pub fn get(&self, currency: &str) -> Option<&String> {
-        self.mapping.get(currency)
-    }
+    pub fn get(&self, currency: &str) -> Option<&String> { self.mapping.get(currency) }
 
     /// Returns the mapping as a JSON object.
     ///

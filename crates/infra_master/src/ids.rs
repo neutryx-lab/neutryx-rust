@@ -37,8 +37,8 @@ pub use crate::counterparty::{CcpId, CounterPartyId, LegalEntityId, NettingSetId
 
 /// Macro to define a type-safe ID with standard implementations.
 ///
-/// Uses `derive_more` for Display, From<String>, and AsRef<str> implementations.
-/// Provides `new()` and `as_str()` convenience methods.
+/// Uses `derive_more` for Display, From<String>, and AsRef<str>
+/// implementations. Provides `new()` and `as_str()` convenience methods.
 macro_rules! define_id {
     (
         $(#[$meta:meta])*

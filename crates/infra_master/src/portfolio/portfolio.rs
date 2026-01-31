@@ -127,7 +127,8 @@ impl PortfolioDefinition {
     ///
     /// # Errors
     ///
-    /// Returns [`PortfolioError::InvalidBookReference`] if a book ID is not found.
+    /// Returns [`PortfolioError::InvalidBookReference`] if a book ID is not
+    /// found.
     pub fn validate_books(&self, known_book_ids: &HashSet<BookId>) -> Result<(), PortfolioError> {
         for book_id in &self.book_ids {
             if !known_book_ids.contains(book_id) {
@@ -165,7 +166,6 @@ impl PortfolioDefinition {
         Ok(())
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -376,13 +376,8 @@ mod tests {
             .parent_portfolio_id("P001")
             .build();
 
-        let result = portfolio.validate_hierarchy(|id| {
-            if id.as_str() == "P001" {
-                None
-            } else {
-                None
-            }
-        });
+        let result =
+            portfolio.validate_hierarchy(|id| if id.as_str() == "P001" { None } else { None });
 
         assert!(result.is_ok());
     }

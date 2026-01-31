@@ -102,8 +102,8 @@ impl PricingService {
         })
     }
 
-    /// Price a vanilla European option using `GarmanKohlhagen` (Merton model with
-    /// dividend yield)
+    /// Price a vanilla European option using `GarmanKohlhagen` (Merton model
+    /// with dividend yield)
     ///
     /// Delegates to `pricer_core::math::formulas::garman_kohlhagen`.
     /// `GarmanKohlhagen` with `rate_domestic=r` and `rate_foreign=q` is

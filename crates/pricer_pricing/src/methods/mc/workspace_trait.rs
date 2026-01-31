@@ -15,7 +15,8 @@
 //! in hot paths while maintaining Enzyme AD compatibility.
 //!
 //! The `#[enum_dispatch]` attribute is used to auto-generate the trait
-//! implementation for `WorkspaceEnum`, eliminating boilerplate match statements.
+//! implementation for `WorkspaceEnum`, eliminating boilerplate match
+//! statements.
 
 use enum_dispatch::enum_dispatch;
 

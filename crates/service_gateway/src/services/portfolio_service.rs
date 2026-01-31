@@ -62,10 +62,9 @@ impl PortfolioService {
             .parse()
             .map_err(|_| ServerError::InvalidRequest("Invalid portfolio_id format".to_string()))?;
 
-        let entry = state
-            .portfolio_cache
-            .get(&id)
-            .ok_or_else(|| ServerError::NotFound(format!("Portfolio {} not found", portfolio_id)))?;
+        let entry = state.portfolio_cache.get(&id).ok_or_else(|| {
+            ServerError::NotFound(format!("Portfolio {} not found", portfolio_id))
+        })?;
 
         Ok(GetPortfolioResponse {
             portfolio_id: portfolio_id.to_string(),
@@ -88,10 +87,9 @@ impl PortfolioService {
             .parse()
             .map_err(|_| ServerError::InvalidRequest("Invalid portfolio_id format".to_string()))?;
 
-        let mut entry = state
-            .portfolio_cache
-            .get(&id)
-            .ok_or_else(|| ServerError::NotFound(format!("Portfolio {} not found", portfolio_id)))?;
+        let mut entry = state.portfolio_cache.get(&id).ok_or_else(|| {
+            ServerError::NotFound(format!("Portfolio {} not found", portfolio_id))
+        })?;
 
         let trades_added = request.trades.len();
 
@@ -114,18 +112,14 @@ impl PortfolioService {
     }
 
     /// Delete a portfolio
-    pub fn delete_portfolio(
-        portfolio_id: &str,
-        state: &Arc<AppState>,
-    ) -> Result<(), ServerError> {
+    pub fn delete_portfolio(portfolio_id: &str, state: &Arc<AppState>) -> Result<(), ServerError> {
         let id: uuid::Uuid = portfolio_id
             .parse()
             .map_err(|_| ServerError::InvalidRequest("Invalid portfolio_id format".to_string()))?;
 
-        state
-            .portfolio_cache
-            .remove(&id)
-            .ok_or_else(|| ServerError::NotFound(format!("Portfolio {} not found", portfolio_id)))?;
+        state.portfolio_cache.remove(&id).ok_or_else(|| {
+            ServerError::NotFound(format!("Portfolio {} not found", portfolio_id))
+        })?;
 
         Ok(())
     }
@@ -141,10 +135,9 @@ impl PortfolioService {
             .parse()
             .map_err(|_| ServerError::InvalidRequest("Invalid portfolio_id format".to_string()))?;
 
-        let entry = state
-            .portfolio_cache
-            .get(&id)
-            .ok_or_else(|| ServerError::NotFound(format!("Portfolio {} not found", portfolio_id)))?;
+        let entry = state.portfolio_cache.get(&id).ok_or_else(|| {
+            ServerError::NotFound(format!("Portfolio {} not found", portfolio_id))
+        })?;
 
         // Simulate pricing - in real implementation would use pricer_risk::RiskEngine
         let trade_pvs: Vec<TradePvDto> = entry
@@ -188,10 +181,9 @@ impl PortfolioService {
             .parse()
             .map_err(|_| ServerError::InvalidRequest("Invalid portfolio_id format".to_string()))?;
 
-        let entry = state
-            .portfolio_cache
-            .get(&id)
-            .ok_or_else(|| ServerError::NotFound(format!("Portfolio {} not found", portfolio_id)))?;
+        let entry = state.portfolio_cache.get(&id).ok_or_else(|| {
+            ServerError::NotFound(format!("Portfolio {} not found", portfolio_id))
+        })?;
 
         let trade_count = entry.trade_count;
 
@@ -255,10 +247,7 @@ impl PortfolioService {
 #[cfg(all(test, feature = "risk"))]
 mod tests {
     use super::*;
-    use crate::{
-        rest::dto::TradeDto,
-        state::AppStateConfig,
-    };
+    use crate::{rest::dto::TradeDto, state::AppStateConfig};
 
     fn create_test_state() -> Arc<AppState> {
         let config = AppStateConfig {
@@ -329,8 +318,7 @@ mod tests {
     fn test_get_portfolio_not_found() {
         let state = create_test_state();
 
-        let result =
-            PortfolioService::get_portfolio(&uuid::Uuid::new_v4().to_string(), &state);
+        let result = PortfolioService::get_portfolio(&uuid::Uuid::new_v4().to_string(), &state);
 
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), ServerError::NotFound(_)));

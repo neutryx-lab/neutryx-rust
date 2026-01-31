@@ -107,12 +107,14 @@ Avoid `features = ["full"]`. Specify needed features explicitly:
 | Sync primitives | `sync` |
 | Signal handling | `signal` |
 
-## Builder Pattern Dependencies
+## Builder Pattern & Enum Utilities
 
 | Crate | Version | Purpose |
 |-------|---------|---------|
 | `bon` | 3.8 | Builder pattern auto-generation via `#[derive(bon::Builder)]` |
 | `strum` | 0.26 | Enum utilities (Display, EnumIter, EnumString) |
+| `enum_dispatch` | 0.3 | Zero-cost trait dispatch via enum wrappers |
+| `derive_more` | 2 | Newtype derive utilities (From, Display, AsRef, Add, Mul) |
 
 **bon usage pattern**:
 ```rust
@@ -137,6 +139,30 @@ pub struct Book {
 - `#[builder(into)]` — Accepts `impl Into<T>` for ergonomic API
 - `#[builder(default)]` — Uses `Default::default()` if not specified
 - `#[builder(default = expr)]` — Custom default value
+
+**enum_dispatch usage pattern**:
+```rust
+use enum_dispatch::enum_dispatch;
+
+#[enum_dispatch]
+pub trait YieldCurve<T> {
+    fn discount_factor(&self, t: T) -> Result<T, Error>;
+}
+
+#[enum_dispatch(YieldCurve<T>)]
+pub enum CurveEnum<T> {
+    Flat(FlatCurve<T>),
+    Bootstrapped(BootstrappedCurve<T>),
+}
+// Now CurveEnum<T>::discount_factor() dispatches without vtable overhead
+```
+
+**When to use enum_dispatch**:
+- Traits with multiple implementations (>2)
+- Hot paths requiring zero-cost dispatch
+- Enzyme AD compatibility (concrete types preferred)
+
+**derive_more for newtypes**: See `ai_rules.md` for ID type and numeric type patterns.
 
 ## Adding New Dependencies
 
@@ -164,4 +190,5 @@ cargo tree -e features
 
 ---
 _Created: 2026-01-19_
+_Updated: 2026-01-31_ — Added enum_dispatch and derive_more patterns
 _Patterns over lists; optimise for single compilation of each dependency_

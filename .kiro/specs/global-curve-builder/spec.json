@@ -1,9 +1,9 @@
 {
   "feature_name": "global-curve-builder",
   "created_at": "2026-01-27T00:00:00Z",
-  "updated_at": "2026-01-27T00:00:00Z",
+  "updated_at": "2026-01-31T00:00:00Z",
   "language": "ja",
-  "phase": "tasks-generated",
+  "phase": "implementation-complete",
   "approvals": {
     "requirements": {
       "generated": true,

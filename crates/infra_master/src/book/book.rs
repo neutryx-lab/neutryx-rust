@@ -108,7 +108,6 @@ impl Book {
     pub fn is_banking(&self) -> bool { self.book_type.is_banking() }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -119,10 +118,7 @@ mod tests {
 
     #[test]
     fn test_book_builder_minimal() {
-        let book = Book::builder()
-            .book_id("BOOK001")
-            .name("Test Book")
-            .build();
+        let book = Book::builder().book_id("BOOK001").name("Test Book").build();
         assert_eq!(book.book_id().as_str(), "BOOK001");
         assert_eq!(book.name(), "Test Book");
         assert_eq!(book.book_type(), BookType::Trading); // Default
@@ -270,10 +266,7 @@ mod tests {
     #[test]
     fn test_book_id_from_book_id() {
         let book_id = BookId::new("BOOK001");
-        let book = Book::builder()
-            .book_id(book_id)
-            .name("Test Book")
-            .build();
+        let book = Book::builder().book_id(book_id).name("Test Book").build();
         assert_eq!(book.book_id().as_str(), "BOOK001");
     }
 }

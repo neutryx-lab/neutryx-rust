@@ -592,8 +592,9 @@ mod tests {
 
 #[cfg(test)]
 mod proptests {
-    use super::*;
     use proptest::prelude::*;
+
+    use super::*;
 
     proptest! {
         /// Tests that BasisSpread addition is commutative: a + b == b + a

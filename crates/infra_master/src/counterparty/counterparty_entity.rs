@@ -153,7 +153,6 @@ impl CounterParty {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
