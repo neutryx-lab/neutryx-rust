@@ -236,8 +236,19 @@ textarea:focus {
    Common Panel Styles (Shared across views)
    ============================================ */
 
-/* Panel Header - unified style for all view panels */
-.panel-header {
+/* ===========================================
+   UNIFIED HEADER SYSTEM
+   All headers share this base pattern.
+   Use modifier classes for size variations.
+   =========================================== */
+
+/* Base header - works for panel-header, bento-header, modal-header, drawer-header, section-header */
+.panel-header,
+.bento-header,
+.modal-header,
+.drawer-header,
+.section-header,
+.card-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -246,7 +257,19 @@ textarea:focus {
     flex-shrink: 0;
 }
 
-.panel-header h3 {
+/* Header title - works with h2, h3, h4 */
+.panel-header h2,
+.panel-header h3,
+.panel-header h4,
+.bento-header h2,
+.bento-header h3,
+.modal-header h2,
+.modal-header h3,
+.drawer-header h2,
+.drawer-header h3,
+.section-header h2,
+.section-header h3,
+.card-header h3 {
     margin: 0;
     font-size: 0.95rem;
     font-weight: 600;
@@ -256,25 +279,107 @@ textarea:focus {
     gap: 8px;
 }
 
-.panel-header h3 i {
+/* Header icon color */
+.panel-header h3 i,
+.bento-header h3 i,
+.modal-header h2 i,
+.drawer-header h3 i,
+.section-header h3 i,
+.card-header h3 i {
     color: var(--primary);
     font-size: 0.9rem;
 }
 
-.panel-header .panel-actions {
+/* Header actions container */
+.panel-header .panel-actions,
+.bento-header .bento-actions,
+.modal-header .modal-actions,
+.drawer-header .drawer-actions,
+.section-header .section-actions,
+.card-header .card-actions {
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
-/* Panel Content */
-.panel-content {
+/* Header size modifiers */
+.panel-header.lg,
+.bento-header.lg,
+.section-header.lg {
+    padding: 18px 20px;
+}
+
+.panel-header.lg h3,
+.bento-header.lg h3,
+.section-header.lg h3 {
+    font-size: 1.1rem;
+}
+
+.panel-header.sm,
+.bento-header.sm,
+.section-header.sm {
+    padding: 10px 12px;
+}
+
+.panel-header.sm h3,
+.bento-header.sm h3,
+.section-header.sm h3 {
+    font-size: 0.85rem;
+}
+
+/* Modal/Drawer specific - larger by default */
+.modal-header {
+    padding: 20px 24px;
+}
+
+.modal-header h2 {
+    font-size: 1.25rem;
+    gap: 12px;
+}
+
+.drawer-header {
+    padding: 20px;
+}
+
+.drawer-header h3 {
+    font-size: 1.1rem;
+    gap: 10px;
+}
+
+/* No border variant */
+.panel-header.no-border,
+.bento-header.no-border,
+.section-header.no-border {
+    border-bottom: none;
+    margin-bottom: 16px;
+}
+
+/* ===========================================
+   UNIFIED CONTENT SECTIONS
+   =========================================== */
+
+.panel-content,
+.bento-content,
+.modal-body,
+.drawer-body,
+.card-content {
     padding: 16px;
     flex: 1;
     overflow-y: auto;
 }
 
-/* Common Form Group */
+.modal-body {
+    padding: 24px;
+}
+
+.drawer-body {
+    padding: 20px;
+}
+
+/* ===========================================
+   UNIFIED FORM STYLES
+   =========================================== */
+
 .form-group {
     display: flex;
     flex-direction: column;
@@ -289,21 +394,39 @@ textarea:focus {
     letter-spacing: 0.3px;
 }
 
-/* Common Data Table */
-.data-table {
+.form-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
+/* ===========================================
+   UNIFIED TABLE STYLES
+   All tables use this base pattern.
+   =========================================== */
+
+.data-table,
+.styled-table {
     width: 100%;
     border-collapse: collapse;
     font-size: 0.8rem;
 }
 
 .data-table th,
-.data-table td {
+.data-table td,
+.styled-table th,
+.styled-table td {
     padding: 10px 12px;
     text-align: left;
     border-bottom: 1px solid var(--glass-border);
 }
 
-.data-table th {
+.data-table th,
+.styled-table th {
     background: rgba(255, 255, 255, 0.02);
     color: var(--text-secondary);
     font-weight: 500;
@@ -313,17 +436,39 @@ textarea:focus {
     white-space: nowrap;
 }
 
-.data-table tbody tr:hover {
+.data-table tbody tr:hover,
+.styled-table tbody tr:hover {
     background: rgba(99, 102, 241, 0.05);
 }
 
-.data-table td.number {
+.data-table td.number,
+.styled-table td.number {
     text-align: right;
     font-family: 'SF Mono', 'Consolas', monospace;
-    font-size: 0.8rem;
 }
 
-/* Common View Container */
+/* Sticky header table */
+.data-table.sticky th,
+.styled-table.sticky th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg-primary);
+}
+
+/* Compact table */
+.data-table.compact th,
+.data-table.compact td,
+.styled-table.compact th,
+.styled-table.compact td {
+    padding: 6px 8px;
+    font-size: 0.75rem;
+}
+
+/* ===========================================
+   UNIFIED VIEW CONTAINER
+   =========================================== */
+
 .view-container {
     display: flex;
     flex-direction: column;
@@ -332,7 +477,6 @@ textarea:focus {
     height: 100%;
 }
 
-/* Common View Header */
 .view-header {
     display: flex;
     justify-content: space-between;
@@ -364,7 +508,10 @@ textarea:focus {
     gap: 8px;
 }
 
-/* Common 2-Column Grid Layout */
+/* ===========================================
+   UNIFIED GRID LAYOUTS
+   =========================================== */
+
 .two-column-grid {
     display: grid;
     grid-template-columns: 380px 1fr;
@@ -373,13 +520,30 @@ textarea:focus {
     min-height: 0;
 }
 
+.three-column-grid {
+    display: grid;
+    grid-template-columns: 320px 1fr 300px;
+    gap: var(--gap);
+    flex: 1;
+    min-height: 0;
+}
+
+@media (max-width: 1200px) {
+    .three-column-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 @media (max-width: 1024px) {
     .two-column-grid {
         grid-template-columns: 1fr;
     }
 }
 
-/* Common Badge Styles */
+/* ===========================================
+   UNIFIED BADGE STYLES
+   =========================================== */
+
 .badge {
     display: inline-block;
     padding: 2px 8px;
@@ -390,28 +554,22 @@ textarea:focus {
     color: var(--primary);
 }
 
-.badge.success {
-    background: rgba(16, 185, 129, 0.1);
-    color: var(--success);
-}
+.badge.success { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+.badge.warning { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+.badge.danger { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+.badge.info { background: rgba(59, 130, 246, 0.1); color: var(--info, #3b82f6); }
+.badge.purple { background: rgba(139, 92, 246, 0.15); color: var(--purple); }
 
-.badge.warning {
-    background: rgba(245, 158, 11, 0.1);
-    color: var(--warning);
-}
+/* ===========================================
+   UNIFIED PLACEHOLDER STYLES
+   =========================================== */
 
-.badge.danger {
-    background: rgba(239, 68, 68, 0.1);
-    color: var(--danger);
-}
-
-/* Common Placeholder */
 .placeholder {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 40px;
+    padding: 40px 20px;
     color: var(--text-muted);
     gap: 12px;
     text-align: center;
@@ -427,12 +585,78 @@ textarea:focus {
     font-size: 0.9rem;
 }
 
+.placeholder.sm {
+    padding: 20px;
+}
+
+.placeholder.sm i {
+    font-size: 1.5rem;
+}
+
+.placeholder.lg {
+    padding: 60px 40px;
+}
+
+.placeholder.lg i {
+    font-size: 3rem;
+}
+
 .placeholder.error {
     color: var(--danger);
 }
 
 .placeholder.error i {
     color: var(--danger);
+}
+
+.placeholder.fill {
+    height: 100%;
+    min-height: 200px;
+}
+
+/* ===========================================
+   UNIFIED CLOSE BUTTON
+   =========================================== */
+
+.close-btn {
+    padding: 6px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-btn:hover {
+    color: var(--text-primary);
+}
+
+/* ===========================================
+   UNIFIED STAT DISPLAY
+   =========================================== */
+
+.stat-row {
+    display: flex;
+    gap: 16px;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.8rem;
+}
+
+.stat-label {
+    color: var(--text-muted);
+}
+
+.stat-value {
+    color: var(--text-primary);
+    font-weight: 500;
 }
 
 /* ============================================
@@ -1259,37 +1483,17 @@ body.light-theme .glass-heavy {
     grid-column: span 4;
 }
 
-/* Bento Content */
+/* Bento overrides - uses unified header system */
 .bento-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
     padding: 16px 20px;
-    border-bottom: 1px solid var(--glass-border);
 }
 
 .bento-header h3 {
     font-size: 0.875rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: var(--text-primary);
-}
-
-.bento-header h3 i {
-    color: var(--primary);
-}
-
-.bento-actions {
-    display: flex;
-    gap: 6px;
 }
 
 .bento-content {
     padding: 20px;
-    display: flex;
-    flex-direction: column;
     height: 100%;
 }
 
@@ -4739,26 +4943,7 @@ kbd {
     transform: translateX(0);
 }
 
-.drawer-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 20px;
-    border-bottom: 1px solid var(--glass-border);
-}
-
-.drawer-header h3 {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 1.1rem;
-}
-
-.drawer-body {
-    flex: 1;
-    overflow-y: auto;
-    padding: 20px;
-}
+/* drawer-header, drawer-body now use unified styles */
 
 .drawer-section {
     margin-bottom: 24px;
@@ -6822,26 +7007,7 @@ kbd {
     transform: translateY(0);
 }
 
-.modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 20px 24px;
-    border-bottom: 1px solid var(--glass-border);
-}
-
-.modal-header h2 {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-size: 1.25rem;
-}
-
-.modal-body {
-    flex: 1;
-    overflow-y: auto;
-    padding: 24px;
-}
+/* modal-header, modal-body now use unified styles */
 
 .modal-footer {
     display: flex;

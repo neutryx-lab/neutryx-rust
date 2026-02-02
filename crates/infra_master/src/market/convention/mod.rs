@@ -26,6 +26,7 @@ mod capfloor;
 mod cds;
 mod commodity;
 mod convention_set;
+mod deposit;
 mod equity;
 mod fra;
 mod futures;
@@ -34,12 +35,14 @@ mod fx_option;
 mod inflation;
 mod swap;
 mod swaption;
+mod xccy_basis;
 
 pub use bond::BondConvention;
 pub use capfloor::CapFloorConvention;
 pub use cds::CdsConvention;
 pub use commodity::{CommodityConvention, DeliveryConvention, PriceQuotation};
 pub use convention_set::ConventionSet;
+pub use deposit::DepositConvention;
 pub use equity::{DividendConvention, EquityConvention, EquitySettlementType};
 pub use fra::FraConvention;
 pub use futures::FuturesConvention;
@@ -48,3 +51,4 @@ pub use fx_option::{CutOffTime, DeltaConvention, FxOptionConvention, PremiumCurr
 pub use inflation::{InflationIndex, InflationInterpolation, InflationSwapConvention};
 pub use swap::{SwapConvention, SwapLegConvention};
 pub use swaption::{SettlementConvention, SwaptionConvention};
+pub use xccy_basis::{BasisSpreadLeg, XCcyBasisConvention, XCcyLegConvention};

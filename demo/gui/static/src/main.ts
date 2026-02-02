@@ -7,7 +7,7 @@
 import '../../style.css';
 
 import { ConfigLoader } from '@/services/config-loader';
-import { initPricer, initMarketData, initCurveBuilder, initVolcubeBuilder, initExposure, initDashboard, initScenarios, initTradeExpansion } from '@/components';
+import { initPricer, initMarketData, initCurveBuilder, initVolcubeBuilder, initExposure, initDashboard, initScenarios, initTradeExpansion, initPortfolio } from '@/components';
 import { createScopedLogger } from '@/utils/logger';
 
 const log = createScopedLogger('App');
@@ -60,7 +60,7 @@ const viewInitializers: Record<ViewId, () => Promise<void>> = {
     await initDashboard();
   },
   'portfolio-view': async () => {
-    log.debug('Portfolio view activated');
+    await initPortfolio();
   },
   'risk-view': async () => {
     log.debug('Risk view activated');
