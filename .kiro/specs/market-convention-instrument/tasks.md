@@ -136,8 +136,8 @@
   - 各通貨に必要な tenor が含まれていることを確認
   - _Requirements: 5_
 
-- [ ] 9. REST API ハンドラー実装
-- [ ] 9.1 Rate → Instrument エンドポイント
+- [x] 9. REST API ハンドラー実装
+- [x] 9.1 Rate → Instrument エンドポイント
   - GET /api/market/rates/{rate_id}/instrument を実装
   - rate_id から MarketRate を取得し、ConventionRegistry 経由で MarketInstrument を構築
   - valuation_date クエリパラメータをサポート（デフォルト: 今日）
@@ -146,7 +146,7 @@
   - API テスト作成
   - _Requirements: 10_
 
-- [ ] 9.2 Rate → Cashflows エンドポイント
+- [x] 9.2 Rate → Cashflows エンドポイント
   - GET /api/market/rates/{rate_id}/cashflows を実装
   - MarketInstrument.to_trade() を呼び出して CF 展開
   - 各 leg を legType, direction, cashflows 配列で返す
@@ -155,7 +155,7 @@
   - API テスト作成
   - _Requirements: 10_
 
-- [ ] 9.3 (P) RateIndex エンドポイント群
+- [x] 9.3 (P) RateIndex エンドポイント群
   - GET /api/market/indices: 全 RateIndex を metadata と association counts 付きで返す
   - GET /api/market/indices/{code}: 単一 Index の詳細と associated rates/conventions を返す
   - GET /api/market/indices/{code}/rates: Index に関連する全 MarketRate を返す

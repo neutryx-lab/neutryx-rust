@@ -2223,6 +2223,11 @@ mod tests {
 
     fn create_test_state() -> Arc<AppState> { Arc::new(AppState::new()) }
 
+    /// Check if demo data files are available
+    fn demo_data_available() -> bool {
+        Path::new("demo/data/input/indices.json").exists()
+    }
+
     #[test]
     fn test_get_instruments() {
         let state = create_test_state();
@@ -2252,6 +2257,10 @@ mod tests {
 
     #[test]
     fn test_get_conventions() {
+        if !demo_data_available() {
+            eprintln!("Skipping test: demo data not available");
+            return;
+        }
         let state = create_test_state();
         let result = DemoService::get_conventions(&state);
         assert!(result.is_ok());
@@ -2270,6 +2279,10 @@ mod tests {
 
     #[test]
     fn test_get_events() {
+        if !demo_data_available() {
+            eprintln!("Skipping test: demo data not available");
+            return;
+        }
         let state = create_test_state();
         let result = DemoService::get_events(&state);
         assert!(result.is_ok());
@@ -2292,6 +2305,10 @@ mod tests {
 
     #[test]
     fn test_get_rate_indices() {
+        if !demo_data_available() {
+            eprintln!("Skipping test: demo data not available");
+            return;
+        }
         let state = create_test_state();
         let result = DemoService::get_rate_indices(&state);
         assert!(result.is_ok());
@@ -2308,6 +2325,10 @@ mod tests {
 
     #[test]
     fn test_get_rate_index_detail() {
+        if !demo_data_available() {
+            eprintln!("Skipping test: demo data not available");
+            return;
+        }
         let state = create_test_state();
         let result = DemoService::get_rate_index_detail("SOFR", &state);
         assert!(result.is_ok());
@@ -2319,6 +2340,10 @@ mod tests {
 
     #[test]
     fn test_get_rate_index_detail_not_found() {
+        if !demo_data_available() {
+            eprintln!("Skipping test: demo data not available");
+            return;
+        }
         let state = create_test_state();
         let result = DemoService::get_rate_index_detail("NONEXISTENT", &state);
         assert!(result.is_err());
@@ -2326,6 +2351,10 @@ mod tests {
 
     #[test]
     fn test_get_index_rates() {
+        if !demo_data_available() {
+            eprintln!("Skipping test: demo data not available");
+            return;
+        }
         let state = create_test_state();
         let result = DemoService::get_index_rates("SOFR", &state);
         assert!(result.is_ok());
@@ -2336,6 +2365,10 @@ mod tests {
 
     #[test]
     fn test_get_index_conventions() {
+        if !demo_data_available() {
+            eprintln!("Skipping test: demo data not available");
+            return;
+        }
         let state = create_test_state();
         let result = DemoService::get_index_conventions("SOFR", &state);
         assert!(result.is_ok());

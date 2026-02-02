@@ -9,6 +9,10 @@ import type {
   AssetClass,
   IrVolQuoteFlat,
   FxVolQuoteFlat,
+  RateIndexInfo,
+  RateInstrumentResponse,
+  RateCashflowsResponse,
+  LegCashflows,
 } from '@/types';
 import {
   fetchMarketRates,
@@ -22,6 +26,10 @@ import {
   fetchFxVolQuotes,
   fetchEvents,
   fetchEventTypes,
+  fetchRateIndices,
+  fetchRateIndexDetail,
+  fetchRateInstrument,
+  fetchRateCashflows,
 } from '@/services/api';
 import { createScopedLogger } from '@/utils/logger';
 import {
@@ -38,7 +46,17 @@ const log = createScopedLogger('MarketDataViewer');
 // State
 // =============================================================================
 
-const state: MarketDataState = {
+// Extended state with indices and cashflows
+interface ExtendedMarketDataState extends MarketDataState {
+  rateIndices: RateIndexInfo[];
+  selectedIndexCode: string | null;
+  selectedRateInstrument: RateInstrumentResponse | null;
+  selectedRateCashflows: RateCashflowsResponse | null;
+  isLoadingInstrument: boolean;
+  isLoadingCashflows: boolean;
+}
+
+const state: ExtendedMarketDataState = {
   rates: [],
   filteredRates: [],
   selectedRateId: null,
@@ -61,6 +79,13 @@ const state: MarketDataState = {
   filteredEvents: [],
   eventTypes: [],
   selectedEventId: null,
+  // New state for market-convention-instrument
+  rateIndices: [],
+  selectedIndexCode: null,
+  selectedRateInstrument: null,
+  selectedRateCashflows: null,
+  isLoadingInstrument: false,
+  isLoadingCashflows: false,
 };
 
 let elements: Record<string, HTMLElement | null> = {};
@@ -316,6 +341,75 @@ async function loadEventsData(): Promise<void> {
     showToast('Failed to load events data', 'error');
   } finally {
     showLoading(false);
+  }
+}
+
+// =============================================================================
+// Rate Index & Instrument Loading
+// =============================================================================
+
+async function loadRateIndices(): Promise<void> {
+  try {
+    const data = await fetchRateIndices();
+    state.rateIndices = data.indices || [];
+    renderRateIndicesPanel();
+    log.info(`Loaded ${state.rateIndices.length} rate indices`);
+  } catch (error) {
+    log.error('Failed to load rate indices', error);
+  }
+}
+
+async function loadRateInstrument(rateId: string): Promise<void> {
+  state.isLoadingInstrument = true;
+  state.selectedRateInstrument = null;
+  updateInstrumentLoadingState();
+
+  try {
+    const instrument = await fetchRateInstrument(rateId);
+    state.selectedRateInstrument = instrument;
+    renderInstrumentDetails();
+    log.info(`Loaded instrument for ${rateId}`);
+  } catch (error) {
+    log.error(`Failed to load instrument for ${rateId}`, error);
+    state.selectedRateInstrument = null;
+    renderInstrumentError();
+  } finally {
+    state.isLoadingInstrument = false;
+    updateInstrumentLoadingState();
+  }
+}
+
+async function loadRateCashflows(rateId: string): Promise<void> {
+  state.isLoadingCashflows = true;
+  state.selectedRateCashflows = null;
+  updateCashflowsLoadingState();
+
+  try {
+    const cashflows = await fetchRateCashflows(rateId);
+    state.selectedRateCashflows = cashflows;
+    renderCashflowsPanel();
+    log.info(`Loaded cashflows for ${rateId}: ${cashflows.legs.length} legs`);
+  } catch (error) {
+    log.error(`Failed to load cashflows for ${rateId}`, error);
+    state.selectedRateCashflows = null;
+    renderCashflowsError();
+  } finally {
+    state.isLoadingCashflows = false;
+    updateCashflowsLoadingState();
+  }
+}
+
+function updateInstrumentLoadingState(): void {
+  const container = document.getElementById('instrument-details');
+  if (container) {
+    container.classList.toggle('loading', state.isLoadingInstrument);
+  }
+}
+
+function updateCashflowsLoadingState(): void {
+  const container = document.getElementById('cashflows-panel');
+  if (container) {
+    container.classList.toggle('loading', state.isLoadingCashflows);
   }
 }
 

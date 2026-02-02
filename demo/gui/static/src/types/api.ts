@@ -210,6 +210,99 @@ export interface ConventionsResponse {
 }
 
 // =============================================================================
+// Rate Instrument Types (market-convention-instrument)
+// =============================================================================
+
+export interface RateInstrumentResponse {
+  rateId: string;
+  rateValue: number;
+  instrumentType: string;
+  convention?: ConventionDetail;
+  effectiveDate: DateString;
+  maturityDate: DateString;
+  notional: number;
+  processingTimeMs: number;
+}
+
+export interface ConventionDetail {
+  conventionType: string;
+  dayCount?: string;
+  frequency?: string;
+  businessDayConvention?: string;
+  spotLag?: number;
+  calendar?: string;
+}
+
+export interface RateCashflowsResponse {
+  rateId: string;
+  legs: LegCashflows[];
+  processingTimeMs: number;
+}
+
+export interface LegCashflows {
+  legType: string;
+  direction: string;
+  currency: Currency;
+  rateIndex?: string;
+  cashflows: CashflowDetail[];
+}
+
+export interface CashflowDetail {
+  paymentDate: DateString;
+  accrualStart: DateString;
+  accrualEnd: DateString;
+  yearFraction: number;
+  notional: number;
+  rate?: number;
+  spread?: number;
+  payoffType: string;
+}
+
+// =============================================================================
+// Rate Index Types (market-convention-instrument)
+// =============================================================================
+
+export interface RateIndexInfo {
+  code: string;
+  name: string;
+  currency: Currency;
+  tenor: Tenor;
+  dayCounter?: string;
+  isOvernight: boolean;
+  associatedRatesCount: number;
+  associatedConventionsCount: number;
+}
+
+export interface RateIndicesResponse {
+  indices: RateIndexInfo[];
+}
+
+export interface RateIndexDetailResponse {
+  code: string;
+  name: string;
+  currency: Currency;
+  tenor: Tenor;
+  metadata?: RateIndexMetadata;
+  associatedRates: string[];
+  associatedConventions: string[];
+}
+
+export interface RateIndexMetadata {
+  fixingLag?: number;
+  settlementLag?: number;
+  compoundingMethod?: string;
+  fixingCalendar?: string;
+}
+
+export interface IndexRatesResponse {
+  rates: MarketRate[];
+}
+
+export interface IndexConventionsResponse {
+  conventions: Convention[];
+}
+
+// =============================================================================
 // IR Volatility Types
 // =============================================================================
 

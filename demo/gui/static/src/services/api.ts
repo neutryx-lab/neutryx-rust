@@ -27,6 +27,12 @@ import type {
   CurveBuilderResponse,
   PortfolioGraphResponse,
   TradeListResponse,
+  RateInstrumentResponse,
+  RateCashflowsResponse,
+  RateIndicesResponse,
+  RateIndexDetailResponse,
+  IndexRatesResponse,
+  IndexConventionsResponse,
 } from '@/types';
 
 const API_BASE = '/api';
@@ -111,6 +117,48 @@ export async function fetchRateDetail(rateId: string): Promise<{
 
 export async function refreshMarketRates(): Promise<void> {
   await fetch(`${API_BASE}/market/rates/refresh`, { method: 'POST' });
+}
+
+// =============================================================================
+// Rate Instrument API (market-convention-instrument)
+// =============================================================================
+
+export async function fetchRateInstrument(rateId: string): Promise<RateInstrumentResponse> {
+  return fetchJson<RateInstrumentResponse>(
+    `${API_BASE}/market/rates/${encodeURIComponent(rateId)}/instrument`
+  );
+}
+
+export async function fetchRateCashflows(rateId: string): Promise<RateCashflowsResponse> {
+  return fetchJson<RateCashflowsResponse>(
+    `${API_BASE}/market/rates/${encodeURIComponent(rateId)}/cashflows`
+  );
+}
+
+// =============================================================================
+// Rate Index API (market-convention-instrument)
+// =============================================================================
+
+export async function fetchRateIndices(): Promise<RateIndicesResponse> {
+  return fetchJson<RateIndicesResponse>(`${API_BASE}/market/indices`);
+}
+
+export async function fetchRateIndexDetail(code: string): Promise<RateIndexDetailResponse> {
+  return fetchJson<RateIndexDetailResponse>(
+    `${API_BASE}/market/indices/${encodeURIComponent(code)}`
+  );
+}
+
+export async function fetchIndexRates(code: string): Promise<IndexRatesResponse> {
+  return fetchJson<IndexRatesResponse>(
+    `${API_BASE}/market/indices/${encodeURIComponent(code)}/rates`
+  );
+}
+
+export async function fetchIndexConventions(code: string): Promise<IndexConventionsResponse> {
+  return fetchJson<IndexConventionsResponse>(
+    `${API_BASE}/market/indices/${encodeURIComponent(code)}/conventions`
+  );
 }
 
 // =============================================================================
