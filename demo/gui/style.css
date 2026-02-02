@@ -255,7 +255,8 @@ textarea:focus {
 
 .card-header,
 .panel-header,
-.bento-header {
+.bento-header,
+.chart-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -266,7 +267,8 @@ textarea:focus {
 
 .card-header h3,
 .panel-header h3,
-.bento-header h3 {
+.bento-header h3,
+.chart-header h3 {
     margin: 0;
     font-size: 0.95rem;
     font-weight: 600;
@@ -278,14 +280,16 @@ textarea:focus {
 
 .card-header h3 i,
 .panel-header h3 i,
-.bento-header h3 i {
+.bento-header h3 i,
+.chart-header h3 i {
     color: var(--primary);
     font-size: 0.9rem;
 }
 
 .card-actions,
 .panel-actions,
-.bento-actions {
+.bento-actions,
+.chart-actions {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -432,16 +436,21 @@ textarea:focus {
 
 /* ===========================================
    SECTION HEADER (No card, just header)
+   Also covers: heatmap-header, xva-compact-header
    =========================================== */
 
-.section-header {
+.section-header,
+.heatmap-header,
+.xva-compact-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 16px;
+    margin-bottom: 8px;
     flex-wrap: wrap;
     gap: 8px;
 }
+
+.section-header { margin-bottom: 16px; }
 
 .section-header h3 {
     margin: 0;
@@ -582,6 +591,76 @@ textarea:focus {
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+/* ===========================================
+   UNIFIED PAGE HEADER (Full-width view headers)
+   Replaces: trade-expansion-header, irs-bootstrap-header,
+   curve-builder-header, vol-calib-header, model-calib-header,
+   pricer-header, market-data-header
+   =========================================== */
+
+.page-header,
+.trade-expansion-header,
+.irs-bootstrap-header,
+.curve-builder-header,
+.vol-calib-header,
+.model-calib-header,
+.pricer-header {
+    padding: 1.5rem;
+    border-radius: var(--radius-lg);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.page-title h2,
+.trade-expansion-title h2,
+.irs-header-title h2,
+.curve-builder-title h2,
+.vol-calib-title h2,
+.model-calib-title h2,
+.pricer-title h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+}
+
+.page-title h2 i,
+.trade-expansion-title h2 i,
+.irs-header-title h2 i,
+.curve-builder-title h2 i,
+.vol-calib-title h2 i,
+.model-calib-title h2 i,
+.pricer-title h2 i {
+    color: var(--primary);
+}
+
+.page-title p,
+.trade-expansion-title p,
+.irs-header-title p,
+.curve-builder-title p,
+.vol-calib-title p,
+.model-calib-title p,
+.pricer-title p {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    margin: 0.25rem 0 0;
+}
+
+.page-actions,
+.trade-expansion-actions,
+.curve-builder-actions,
+.vol-calib-actions,
+.pricer-actions {
+    display: flex;
+    gap: 0.75rem;
 }
 
 /* ===========================================
@@ -2963,12 +3042,8 @@ body.light-theme .glass-heavy {
     max-width: 320px;
 }
 
-.heatmap-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-}
+/* heatmap-header uses unified .section-header base */
+.heatmap-header { margin-bottom: 0.5rem; }
 
 .heatmap-header h4 {
     font-size: 0.8rem;
@@ -5479,12 +5554,8 @@ kbd {
 .xva-compact-item.fva { border-left-color: var(--warning); }
 .xva-compact-item.total { border-left-color: var(--primary); }
 
-.xva-compact-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 4px;
-}
+/* xva-compact-header uses unified .section-header base */
+.xva-compact-header { margin-bottom: 4px; }
 
 .xva-compact-label {
     font-size: 0.7rem;
@@ -5766,19 +5837,9 @@ kbd {
     padding: 0;
 }
 
+/* chart-header uses panel-header base, with padding override */
 .chart-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
     padding: 16px 20px;
-    border-bottom: 1px solid var(--glass-border);
-}
-
-.chart-header h3 {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.95rem;
 }
 
 .zoom-controls {
@@ -6311,9 +6372,7 @@ kbd {
     color: var(--success);
 }
 
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
+/* @keyframes spin defined once globally */
 
 /* Scenario Results Grid */
 .scenario-results-grid {
@@ -7954,10 +8013,6 @@ body.light-theme .fancy-select {
     border-top-color: var(--primary);
     border-radius: 50%;
     animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
 }
 
 .loading-message {
@@ -9601,10 +9656,6 @@ body.reduce-motion .primary-btn:hover {
     margin: 0 auto 12px;
 }
 
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
 .loading-message {
     font-size: 0.875rem;
     color: var(--text-secondary);
@@ -10042,34 +10093,7 @@ body.light-theme .history-item {
     padding: 1.5rem;
 }
 
-.trade-expansion-header {
-    padding: 1.5rem;
-    border-radius: var(--radius-lg);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1rem;
-}
-
-.trade-expansion-actions {
-    display: flex;
-    gap: 0.75rem;
-}
-
-.trade-expansion-title h2 {
-    margin: 0 0 0.5rem 0;
-    font-size: 1.5rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.trade-expansion-title p {
-    margin: 0;
-    color: var(--text-secondary);
-}
+/* trade-expansion-header, actions, title - uses unified .page-header base */
 
 .trade-expansion-layout,
 .trade-expansion-grid {
@@ -10895,36 +10919,7 @@ body.light-theme .daily-accruals-table th {
     min-height: calc(100vh - 140px);
 }
 
-/* Header with Step Indicator */
-.irs-bootstrap-header {
-    padding: 1.5rem;
-    border-radius: var(--radius-lg);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1rem;
-}
-
-.irs-header-title h2 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.irs-header-title h2 i {
-    color: var(--primary);
-}
-
-.irs-header-title p {
-    margin: 0.25rem 0 0;
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-}
+/* irs-bootstrap-header, irs-header-title - uses unified .page-header base */
 
 /* Step Indicator (Task 7.5) */
 .step-indicator {
@@ -11528,10 +11523,6 @@ body.light-theme .daily-accruals-table th {
     animation: spin 1s linear infinite;
 }
 
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
 #irs-loading-text {
     font-size: 0.875rem;
     color: var(--text-secondary);
@@ -11652,46 +11643,12 @@ body.light-theme .delta-table tbody tr:hover {
     position: relative;
 }
 
-.curve-builder-header {
-    padding: 1.5rem;
-    border-radius: var(--radius-lg);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1rem;
-}
-
-.curve-builder-title h2 {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin: 0;
-}
-
-.curve-builder-title h2 i {
-    color: var(--primary);
-}
-
-.curve-builder-title p {
-    color: var(--text-muted);
-    font-size: 0.875rem;
-    margin-top: 0.25rem;
-    margin-bottom: 0;
-}
+/* curve-builder-header, title, actions - uses unified .page-header base */
 
 .curve-builder-header-right {
     display: flex;
     align-items: center;
     gap: 1rem;
-}
-
-.curve-builder-actions {
-    display: flex;
-    gap: 0.75rem;
 }
 
 /* Rebuild Notification */
@@ -12389,6 +12346,7 @@ body.light-theme .delta-table tbody tr:hover {
 /* Loading Overlay - uses unified styles, adds border-radius */
 .curve-builder-loading-overlay { border-radius: 12px; }
 
+/* loading-spinner uses similar pattern to irs-spinner */
 .loading-spinner {
     display: flex;
     flex-direction: column;
@@ -12400,16 +12358,6 @@ body.light-theme .delta-table tbody tr:hover {
 .loading-spinner .spinner-ring {
     width: 40px;
     height: 40px;
-    border: 3px solid var(--border-color);
-    border-top-color: var(--primary);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
 }
 
 /* Responsive */
@@ -13402,23 +13350,19 @@ body.light-theme .asset-toggle-btn:hover {
 }
 
 /* rates-panel overrides - uses base .panel-header styles */
-.rates-panel .panel-header {
+/* rates-panel and detail-panel share same header overrides */
+.rates-panel .panel-header,
+.detail-panel .panel-header {
     padding: 14px 18px;
 }
 
-.rates-panel .panel-header h3 {
+.rates-panel .panel-header h3,
+.detail-panel .panel-header h3 {
     font-size: 1rem;
 }
 
-/* stat-item, stat-label, stat-value now use unified styles */
-.rate-stats {
-    display: flex;
-    gap: 16px;
-}
-
-.stat-value.stale-count {
-    color: var(--warning);
-}
+.rate-stats { display: flex; gap: 16px; }
+.stat-value.stale-count { color: var(--warning); }
 
 /* Table Container */
 .table-container {
@@ -13593,10 +13537,6 @@ body.light-theme .asset-toggle-btn:hover {
     animation: spin 1s linear infinite;
 }
 
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
 /* Detail Panel */
 .detail-panel {
     display: flex;
@@ -13604,26 +13544,10 @@ body.light-theme .asset-toggle-btn:hover {
     overflow: hidden;
 }
 
-/* detail-panel overrides - uses base .panel-header styles */
-.detail-panel .panel-header {
-    padding: 14px 18px;
-}
+/* detail-panel header icon color override */
+.detail-panel .panel-header h3 i { color: var(--accent); }
 
-.detail-panel .panel-header h3 {
-    font-size: 1rem;
-}
-
-.detail-panel .panel-header h3 i {
-    color: var(--accent);
-}
-
-/* close-btn now uses unified styles */
-
-.detail-content {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px;
-}
+/* detail-content uses panel-content, already styled */
 
 /* detail-placeholder - uses base .placeholder styles, with height override */
 .detail-placeholder {
@@ -13874,39 +13798,7 @@ body.light-theme .export-menu {
     margin: 0 auto;
 }
 
-.vol-calib-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--space-lg);
-    flex-wrap: wrap;
-    gap: var(--space-md);
-}
-
-.vol-calib-title h2 {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    gap: var(--space-sm);
-}
-
-.vol-calib-title h2 i {
-    color: var(--primary);
-}
-
-.vol-calib-title p {
-    color: var(--text-muted);
-    font-size: 0.875rem;
-    margin-top: var(--space-xs);
-}
-
-.vol-calib-actions {
-    display: flex;
-    align-items: center;
-    gap: var(--space-md);
-}
+/* vol-calib-header, title, actions - uses unified .page-header base */
 
 .vol-calib-grid {
     display: grid;
@@ -14195,37 +14087,7 @@ body.light-theme .chart-placeholder {
     height: 100%;
 }
 
-/* Header */
-.model-calib-header {
-    padding: 1.5rem;
-    border-radius: var(--radius-lg);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1rem;
-}
-
-.model-calib-title h2 {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin: 0;
-}
-
-.model-calib-title h2 i {
-    color: var(--primary);
-}
-
-.model-calib-title p {
-    color: var(--text-muted);
-    font-size: 0.875rem;
-    margin-top: 0.25rem;
-    margin-bottom: 0;
-}
+/* model-calib-header, title - uses unified .page-header base */
 
 /* Main Grid - Input & Results */
 .model-calib-grid {
@@ -14315,36 +14177,7 @@ body.light-theme .chart-placeholder {
     height: 100%;
 }
 
-/* Header */
-.pricer-header {
-    padding: 1.5rem;
-    border-radius: var(--radius-lg);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1rem;
-}
-
-.pricer-title h2 {
-    font-size: 1.5rem;
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin: 0;
-}
-
-.pricer-title p {
-    margin: 0.25rem 0 0;
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-}
-
-.pricer-actions {
-    display: flex;
-    gap: 0.75rem;
-}
+/* pricer-header, title, actions - uses unified .page-header base */
 
 /* Main Grid - 2 Panel Layout */
 .pricer-grid {

@@ -46,16 +46,23 @@ pub fn create_full_router(app_state: Arc<AppState>, ws_state: Arc<WsAppState>) -
 /// This router includes:
 /// - Demo API endpoints at /api/*
 /// - API v1 endpoints at /api/v1/*
+/// - Portfolio graph endpoints at /api/portfolio/*
 /// - Static file serving from demo/gui/dist/ (Vite build output)
 /// - Data file serving from demo/data/input/
 #[cfg(feature = "demo")]
 pub fn create_demo_router(state: Arc<AppState>) -> Router {
     use tower_http::services::{ServeDir, ServeFile};
 
+    // Create graph state for portfolio graph endpoints
+    let graph_state = Arc::new(
+        GraphAppState::default_sample().expect("Failed to create graph state"),
+    );
+
     let router = Router::new()
         .route("/health", get(handlers::health))
         .nest("/api", demo_api_routes(state.clone()))
-        .nest("/api/v1", api_v1_routes(state));
+        .nest("/api/v1", api_v1_routes(state))
+        .nest("/api/portfolio", demo_portfolio_routes(graph_state));
 
     // Serve built assets from demo/gui/dist/ directory
     let serve_dir = ServeDir::new("demo/gui/dist")
@@ -199,6 +206,15 @@ fn api_v1_routes(state: Arc<AppState>) -> Router {
 
 #[cfg(not(feature = "demo"))]
 fn portfolio_routes(state: Arc<GraphAppState>) -> Router {
+    Router::new()
+        .route("/graph", get(graph_handlers::get_portfolio_graph))
+        .route("/trades", get(graph_handlers::get_portfolio_trades))
+        .with_state(state)
+}
+
+/// Portfolio routes for demo mode (feature = "demo")
+#[cfg(feature = "demo")]
+fn demo_portfolio_routes(state: Arc<GraphAppState>) -> Router {
     Router::new()
         .route("/graph", get(graph_handlers::get_portfolio_graph))
         .route("/trades", get(graph_handlers::get_portfolio_trades))

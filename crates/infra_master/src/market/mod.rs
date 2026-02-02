@@ -108,6 +108,7 @@ mod compounding;
 mod currency;
 mod data_source;
 mod error;
+mod event_instrument;
 mod mapper;
 mod quote_type;
 mod rate;
@@ -145,3 +146,5 @@ pub use rate_type::RateType;
 pub use ticker::TickerMapping;
 // Validation
 pub use validation::{RateValidator, StandardRateValidator};
+// Event instruments
+pub use event_instrument::EventInstrument;

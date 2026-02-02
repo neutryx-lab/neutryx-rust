@@ -388,3 +388,60 @@ export interface NettingSet {
   counterpartyId: string;
   csaType?: string;
 }
+
+// =============================================================================
+// Graph Types
+// =============================================================================
+
+export interface GraphNode {
+  id: string;
+  type: string;
+  label: string;
+  value?: number;
+  is_sensitivity_target: boolean;
+  group: string;
+  trade_ids: string[];
+}
+
+export interface GraphEdge {
+  source: string;
+  target: string;
+  weight?: number;
+}
+
+export interface GraphMetadata {
+  node_count: number;
+  edge_count: number;
+  depth: number;
+  generated_at: string;
+  trade_count: number;
+  shared_node_count: number;
+  optimisation_ratio: number;
+  large_graph_warning?: boolean;
+}
+
+export interface PortfolioGraphResponse {
+  nodes: GraphNode[];
+  links: GraphEdge[];
+  metadata: GraphMetadata;
+}
+
+export interface TradeSummary {
+  id: string;
+  instrument_type: string;
+  currency: string;
+  notional: number;
+  expiry: number;
+}
+
+export interface TradeStatistics {
+  total_count: number;
+  by_instrument_type: Record<string, number>;
+  by_currency: Record<string, number>;
+  total_notional: number;
+}
+
+export interface TradeListResponse {
+  trades: TradeSummary[];
+  statistics: TradeStatistics;
+}

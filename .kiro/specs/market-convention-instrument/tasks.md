@@ -11,14 +11,14 @@
 
 ### Phase 1: Convention Module Migration
 
-- [ ] 1. Convention モジュールを market/ に移動
-- [ ] 1.1 market/convention ディレクトリ作成とファイルコピー
+- [x] 1. Convention モジュールを market/ に移動
+- [x] 1.1 market/convention ディレクトリ作成とファイルコピー
   - trade/convention/ 配下の全ファイルを market/convention/ にコピー
   - market/mod.rs に `pub mod convention;` を追加
   - cargo build で正常にコンパイルされることを確認
   - _Requirements: 13_
 
-- [ ] 1.2 trade/convention の deprecation 付き re-export 設定
+- [x] 1.2 trade/convention の deprecation 付き re-export 設定
   - trade/convention/mod.rs を deprecation 警告付き re-export に変更
   - `#[deprecated(since = "0.x.0", note = "Use infra_master::market::convention instead")]` を追加
   - 既存の外部参照が警告付きでコンパイル成功することを確認
@@ -28,52 +28,52 @@
 
 ### Phase 2: New Types Implementation
 
-- [ ] 2. 新規 Convention 型の実装
-- [ ] 2.1 (P) DepositConvention の実装
+- [x] 2. 新規 Convention 型の実装
+- [x] 2.1 (P) DepositConvention の実装
   - 短期預金商品の Convention 型を定義
   - day_count, calendar, business_day_convention, spot_lag フィールドを含む
   - 各通貨のデフォルト値を提供するファクトリメソッドを実装
   - 単体テスト作成
   - _Requirements: 1_
 
-- [ ] 2.2 (P) XCcyBasisConvention の実装
+- [x] 2.2 (P) XCcyBasisConvention の実装
   - クロスカレンシーベーシススワップの Convention 型を新規作成
   - 両通貨の leg convention と basis spread 慣行を定義
   - USD/JPY, EUR/USD 等の主要ペアのデフォルト値を実装
   - 単体テスト作成
   - _Requirements: 1_
 
-- [ ] 2.3 (P) FxSwapConvention の実装
+- [x] 2.3 (P) FxSwapConvention の実装
   - FX スワップの Convention 型を新規作成
   - near leg と far leg の settlement 慣行を定義
   - 主要通貨ペアのデフォルト値を実装
   - 単体テスト作成
   - _Requirements: 1_
 
-- [ ] 3. MarketConvention enum の実装
-- [ ] 3.1 MarketConvention enum 定義
+- [x] 3. MarketConvention enum の実装
+- [x] 3.1 MarketConvention enum 定義
   - Deposit, Swap, Ois, Fra, Futures, XCcyBasis, FxForward, FxSwap の variant を持つ enum を定義
   - serde の tag 属性で snake_case シリアライズを設定
   - instrument_type_name() メソッドで商品種別名を返す
   - 単体テスト作成
   - _Requirements: 1_
 
-- [ ] 3.2 for_rate_id() ファクトリメソッド実装
+- [x] 3.2 for_rate_id() ファクトリメソッド実装
   - RateId から適切な MarketConvention を導出するロジックを実装
   - 通貨と RateType の組み合わせに基づいて Convention を選択
   - 対応する Convention がない場合は None を返す
   - 全 (Currency, RateType) 組み合わせのテスト作成
   - _Requirements: 1_
 
-- [ ] 4. MarketInstrument 型の実装
-- [ ] 4.1 MarketInstrument struct 定義
+- [x] 4. MarketInstrument 型の実装
+- [x] 4.1 MarketInstrument struct 定義
   - rate_id, rate_value, convention, valuation_date, effective_date, maturity_date, notional フィールドを定義
   - new() コンストラクタで tenor から effective/maturity date を計算
   - 無効な rate value や convention の場合は MarketInstrumentError を返す
   - 単体テスト作成
   - _Requirements: 2_
 
-- [ ] 4.2 to_trade() メソッド実装
+- [x] 4.2 to_trade() メソッド実装
   - MarketInstrument を CF 展開された Trade に変換
   - Swap/OIS の場合は fixed leg と floating leg を生成
   - Deposit/FRA の場合は単一 leg を生成
@@ -83,23 +83,23 @@
   - 各商品種別の CF 展開テスト作成
   - _Requirements: 2_
 
-- [ ] 5. ConventionRegistry の実装
-- [ ] 5.1 ConventionRegistry struct と JSON パース
+- [x] 5. ConventionRegistry の実装
+- [x] 5.1 ConventionRegistry struct と JSON パース
   - (Currency, RateType) → MarketConvention の HashMap を内部に持つ struct を定義
   - from_json() で conventions.json をパースして Registry を構築
   - JSON スキーマ検証と行/列情報付きエラーを返す
   - 単体テスト作成（正常/異常 JSON）
   - _Requirements: 6, 12_
 
-- [ ] 5.2 Registry ルックアップとキー列挙
+- [x] 5.2 Registry ルックアップとキー列挙
   - get(currency, rate_type) で O(1) ルックアップを提供
   - keys() で登録済み全キーを列挙するイテレータを返す
   - len() で登録数を返す
   - ルックアップとキー列挙のテスト作成
   - _Requirements: 12_
 
-- [ ] 6. MarketRateSet 拡張
-- [ ] 6.1 to_instruments() メソッド実装
+- [x] 6. MarketRateSet 拡張
+- [x] 6.1 to_instruments() メソッド実装
   - MarketRateSet に to_instruments(valuation_date) メソッドを追加
   - 各 MarketRate を ConventionRegistry 経由で MarketInstrument に変換
   - Convention が見つからない rate はスキップして warning ログ
@@ -108,8 +108,8 @@
   - 一括変換とソートのテスト作成
   - _Requirements: 3_
 
-- [ ] 7. EventInstrument の実装
-- [ ] 7.1 (P) EventInstrument struct と impact_on_curve()
+- [x] 7. EventInstrument の実装
+- [x] 7.1 (P) EventInstrument struct と impact_on_curve()
   - event_date, event_type, expected_spread, confidence, rate_index フィールドを定義
   - impact_on_curve() は expected_spread をそのまま返す（将来拡張用のプレースホルダー）
   - from_historical() コンストラクタを提供（CentralBankMeeting からの変換）
@@ -120,15 +120,15 @@
 
 ### Phase 3: Demo Data & API
 
-- [ ] 8. Demo データファイル作成
-- [ ] 8.1 (P) conventions.json 作成
+- [x] 8. Demo データファイル作成
+- [x] 8.1 (P) conventions.json 作成
   - USD, EUR, GBP, JPY の全 (Currency, RateType) 組み合わせの Convention を定義
   - 各 Convention に spot_lag, day_count, payment_frequency, business_day_convention, fixing_calendar, roll_convention を含める
   - Futures の IMM 日付等、tenor 固有のオーバーライドを定義
   - JSON スキーマ検証に合格することを確認
   - _Requirements: 6_
 
-- [ ] 8.2 (P) 追加通貨の rates ファイル作成
+- [x] 8.2 (P) 追加通貨の rates ファイル作成
   - CHF (SARON-based): deposit, swap の rates ファイル作成
   - AUD (RBA Cash Rate-based): deposit, swap の rates ファイル作成
   - CAD (CORRA-based): deposit, swap の rates ファイル作成

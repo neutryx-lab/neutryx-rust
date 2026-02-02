@@ -900,7 +900,7 @@
 
             <!-- Scenarios View -->
             <section id="scenarios-view" class="view">
-                <div class="view-container scenarios-container">
+                <div class="view-container">
                     <!-- View Header with Type Selector -->
                     <div class="view-header glass scenario-type-bar">
                         <div class="scenario-types">
@@ -1032,10 +1032,9 @@
 
             <!-- Market Data View -->
             <section id="market-data-view" class="view">
-                <div class="market-data-container">
-                    <div class="market-data-header glass-card">
-                        <div class="market-data-header-row">
-                            <div class="market-data-title">
+                <div class="view-container">
+                    <div class="view-header glass-card">
+                        <div class="view-title">
                                 <i class="fas fa-chart-area"></i>
                                 <h2>Market Data Viewer</h2>
                             </div>
@@ -1144,7 +1143,7 @@
 
             <!-- Trade Expansion View -->
             <section id="trade-expansion-view" class="view">
-                <div class="view-container trade-expansion-container">
+                <div class="view-container">
                     <div class="view-header glass">
                         <div class="view-title">
                             <i class="fas fa-expand-arrows-alt"></i>
@@ -1156,7 +1155,7 @@
                             </button>
                         </div>
                     </div>
-                    <div class="two-column-grid trade-expansion-grid">
+                    <div class="two-column-grid">
                         <div class="trade-input-panel glass-card">
                             <div class="panel-header">
                                 <h3><i class="fas fa-file-contract"></i> Trade Definition</h3>
@@ -1217,13 +1216,13 @@
 
             <!-- Curve Builder View -->
             <section id="curve-builder-view" class="view">
-                <div class="view-container curve-builder-layout">
-                    <div class="view-header glass-card curve-builder-header">
+                <div class="view-container">
+                    <div class="view-header glass-card">
                         <div class="view-title">
                             <i class="fas fa-project-diagram"></i>
                             <h2>Curve Builder</h2>
                         </div>
-                        <div class="view-actions curve-builder-controls">
+                        <div class="view-actions">
                             <div id="index-selector-container"></div>
                             <div id="builder-settings-container"></div>
                             <button id="build-curve-btn" class="primary-btn">
@@ -1231,7 +1230,7 @@
                             </button>
                         </div>
                     </div>
-                    <div class="two-column-grid curve-builder-grid">
+                    <div class="two-column-grid">
                         <div class="instruments-panel glass-card">
                             <div class="panel-header">
                                 <h3><i class="fas fa-list"></i> Instruments</h3>
@@ -1266,13 +1265,13 @@
 
             <!-- VolCube Calibration View -->
             <section id="volcube-calibration-view" class="view">
-                <div class="model-calib-container">
-                    <div class="model-calib-header glass">
-                        <div class="model-calib-title">
+                <div class="view-container">
+                    <div class="view-header glass">
+                        <div class="view-title">
                             <i class="fas fa-cube"></i>
                             <h2>VolCube Calibration</h2>
                         </div>
-                        <div class="volcube-header-actions">
+                        <div class="view-actions">
                             <div id="volcube-asset-tabs" class="volcube-tabs"></div>
                             <button id="volcube-calibrate-btn" class="primary-btn">
                                 <i class="fas fa-cogs"></i> Calibrate
@@ -1287,8 +1286,8 @@
                             </div>
                         </div>
                     </div>
-                    <div class="model-calib-grid">
-                        <div class="model-calib-input-panel glass">
+                    <div class="two-column-grid">
+                        <div class="card glass">
                             <div id="volcube-swaption-panel">
                                 <div class="volcube-form-grid">
                                     <div class="volcube-form-group">
@@ -1334,13 +1333,13 @@
 
             <!-- Pricer View -->
             <section id="pricer-view" class="view">
-                <div class="pricer-container">
-                    <div class="pricer-header glass-card">
-                        <div class="pricer-title">
+                <div class="view-container">
+                    <div class="view-header glass-card">
+                        <div class="view-title">
                             <i class="fas fa-calculator"></i>
                             <h2>Generic Pricer</h2>
                         </div>
-                        <div class="pricer-actions">
+                        <div class="view-actions">
                             <button id="pricer-expand-cf-btn" class="secondary-btn">
                                 <i class="fas fa-expand"></i> Expand CF
                             </button>
@@ -1352,8 +1351,8 @@
                             </button>
                         </div>
                     </div>
-                    <div class="pricer-layout">
-                        <div class="pricer-input-panel glass-card">
+                    <div class="two-column-grid">
+                        <div class="card glass-card">
                             <div class="pricer-section">
                                 <h3><i class="fas fa-file-contract"></i> Instrument</h3>
                                 <div class="pricer-form-group">

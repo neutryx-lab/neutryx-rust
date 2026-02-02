@@ -25,6 +25,8 @@ import type {
   EventTypesResponse,
   CurveBuilderRequest,
   CurveBuilderResponse,
+  PortfolioGraphResponse,
+  TradeListResponse,
 } from '@/types';
 
 const API_BASE = '/api';
@@ -201,4 +203,21 @@ export async function exportRatesJson(): Promise<Blob> {
   const response = await fetch(`${API_BASE}/market/export/json`);
   if (!response.ok) throw new Error('Export failed');
   return response.blob();
+}
+
+// =============================================================================
+// Portfolio Graph API
+// =============================================================================
+
+const PORTFOLIO_API_BASE = '/api/portfolio';
+
+export async function fetchPortfolioGraph(tradeIds?: string[]): Promise<PortfolioGraphResponse> {
+  const params = tradeIds && tradeIds.length > 0
+    ? `?trade_ids=${tradeIds.join(',')}`
+    : '';
+  return fetchJson<PortfolioGraphResponse>(`${PORTFOLIO_API_BASE}/graph${params}`);
+}
+
+export async function fetchPortfolioTrades(): Promise<TradeListResponse> {
+  return fetchJson<TradeListResponse>(`${PORTFOLIO_API_BASE}/trades`);
 }

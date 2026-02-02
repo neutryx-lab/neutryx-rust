@@ -161,6 +161,78 @@
         "calendar": "London"
       }
     },
+    "CHF-SARON-OIS": {
+      "type": "OisConvention",
+      "currency": "CHF",
+      "is_default": true,
+      "fields": {
+        "index": "SARON",
+        "day_count": "ACT/360",
+        "payment_frequency": "Annual",
+        "business_day_convention": "Modified Following",
+        "settlement_days": 2,
+        "calendar": "Zurich"
+      }
+    },
+    "CHF-DEPO": {
+      "type": "DepositConvention",
+      "currency": "CHF",
+      "is_default": true,
+      "fields": {
+        "day_count": "ACT/360",
+        "business_day_convention": "Modified Following",
+        "settlement_days": 2,
+        "calendar": "Zurich"
+      }
+    },
+    "AUD-AONIA-OIS": {
+      "type": "OisConvention",
+      "currency": "AUD",
+      "is_default": true,
+      "fields": {
+        "index": "AONIA",
+        "day_count": "ACT/365F",
+        "payment_frequency": "Annual",
+        "business_day_convention": "Modified Following",
+        "settlement_days": 1,
+        "calendar": "Sydney"
+      }
+    },
+    "AUD-DEPO": {
+      "type": "DepositConvention",
+      "currency": "AUD",
+      "is_default": true,
+      "fields": {
+        "day_count": "ACT/365F",
+        "business_day_convention": "Modified Following",
+        "settlement_days": 1,
+        "calendar": "Sydney"
+      }
+    },
+    "CAD-CORRA-OIS": {
+      "type": "OisConvention",
+      "currency": "CAD",
+      "is_default": true,
+      "fields": {
+        "index": "CORRA",
+        "day_count": "ACT/365F",
+        "payment_frequency": "Annual",
+        "business_day_convention": "Modified Following",
+        "settlement_days": 1,
+        "calendar": "Toronto"
+      }
+    },
+    "CAD-DEPO": {
+      "type": "DepositConvention",
+      "currency": "CAD",
+      "is_default": true,
+      "fields": {
+        "day_count": "ACT/365F",
+        "business_day_convention": "Modified Following",
+        "settlement_days": 1,
+        "calendar": "Toronto"
+      }
+    },
     "FX-SPOT": {
       "type": "FxConvention",
       "currency": "USD",
@@ -318,6 +390,110 @@
         "cut_time": "NY 10:00",
         "calendar": "London + New York"
       }
+    },
+    "USD-FRA": {
+      "type": "FraConvention",
+      "currency": "USD",
+      "is_default": true,
+      "fields": {
+        "index": "SOFR",
+        "day_count": "ACT/360",
+        "business_day_convention": "Modified Following",
+        "settlement_days": 2,
+        "calendar": "New York",
+        "payment_lag": 2
+      }
+    },
+    "EUR-FRA": {
+      "type": "FraConvention",
+      "currency": "EUR",
+      "is_default": true,
+      "fields": {
+        "index": "EURIBOR6M",
+        "day_count": "ACT/360",
+        "business_day_convention": "Modified Following",
+        "settlement_days": 2,
+        "calendar": "TARGET",
+        "payment_lag": 2
+      }
+    },
+    "GBP-FRA": {
+      "type": "FraConvention",
+      "currency": "GBP",
+      "is_default": true,
+      "fields": {
+        "index": "SONIA",
+        "day_count": "ACT/365F",
+        "business_day_convention": "Modified Following",
+        "settlement_days": 0,
+        "calendar": "London",
+        "payment_lag": 0
+      }
+    },
+    "JPY-FRA": {
+      "type": "FraConvention",
+      "currency": "JPY",
+      "is_default": true,
+      "fields": {
+        "index": "TONA",
+        "day_count": "ACT/365F",
+        "business_day_convention": "Modified Following",
+        "settlement_days": 2,
+        "calendar": "Tokyo",
+        "payment_lag": 2
+      }
+    },
+    "USD-FUTURES": {
+      "type": "FuturesConvention",
+      "currency": "USD",
+      "is_default": true,
+      "fields": {
+        "index": "SOFR",
+        "day_count": "ACT/360",
+        "contract_size": 1000000,
+        "tick_size": 0.0025,
+        "imm_dates": true,
+        "calendar": "CME"
+      }
+    },
+    "EUR-FUTURES": {
+      "type": "FuturesConvention",
+      "currency": "EUR",
+      "is_default": true,
+      "fields": {
+        "index": "EURIBOR3M",
+        "day_count": "ACT/360",
+        "contract_size": 1000000,
+        "tick_size": 0.005,
+        "imm_dates": true,
+        "calendar": "ICE"
+      }
+    },
+    "GBP-FUTURES": {
+      "type": "FuturesConvention",
+      "currency": "GBP",
+      "is_default": true,
+      "fields": {
+        "index": "SONIA",
+        "day_count": "ACT/365F",
+        "contract_size": 500000,
+        "tick_size": 0.005,
+        "imm_dates": true,
+        "calendar": "ICE"
+      }
+    },
+    "JPY-FUTURES": {
+      "type": "FuturesConvention",
+      "currency": "JPY",
+      "is_default": true,
+      "fields": {
+        "index": "TONA",
+        "day_count": "ACT/365F",
+        "contract_size": 100000000,
+        "tick_size": 0.005,
+        "imm_dates": true,
+        "calendar": "TFX"
+      }
     }
   },
   "instruments": {
@@ -332,6 +508,14 @@
     "swap": {
       "description": "Interest Rate Swap",
       "fields": ["currency", "tenor", "rate", "index", "start_date", "end_date", "notional", "fixed_leg_frequency", "float_leg_frequency", "fixed_leg_day_count", "float_leg_day_count"]
+    },
+    "fra": {
+      "description": "Forward Rate Agreement",
+      "fields": ["currency", "tenor", "rate", "index", "fixing_date", "start_date", "end_date", "notional", "payment_lag"]
+    },
+    "futures": {
+      "description": "Interest Rate Futures",
+      "fields": ["currency", "contract_month", "price", "index", "expiry_date", "contract_size", "tick_size"]
     },
     "xccy_basis": {
       "description": "Cross Currency Basis Swap",

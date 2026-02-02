@@ -29,8 +29,15 @@
 use std::{collections::HashMap, time::Duration};
 
 use super::{
-    data_source::SourcePriority, error::MarketRateError, mapper::InstrumentMapper,
-    quote_type::QuoteType, rate::MarketRate, rate_id::RateId, rate_type::RateType,
+    convention::MarketConvention,
+    data_source::SourcePriority,
+    error::MarketRateError,
+    instrument::MarketInstrument,
+    mapper::InstrumentMapper,
+    quote_type::QuoteType,
+    rate::MarketRate,
+    rate_id::RateId,
+    rate_type::RateType,
 };
 use crate::{market::Currency, time::Date, trade::Instrument};
 
@@ -629,6 +636,136 @@ impl MarketRateSet {
         valuation_date: Date,
     ) -> Vec<Instrument> {
         let (instruments, _) = self.to_instruments(mapper, valuation_date);
+        instruments
+    }
+
+    /// Converts market rates to `MarketInstrument` using `MarketConvention`.
+    ///
+    /// This method creates `MarketInstrument` instances from the rates in
+    /// this set, using the appropriate `MarketConvention` for each rate.
+    /// The resulting instruments are sorted by maturity date.
+    ///
+    /// Rates that have no matching convention are skipped with a warning.
+    ///
+    /// # Arguments
+    ///
+    /// * `valuation_date` - The valuation date for instrument calculations
+    /// * `notional` - Default notional amount for all instruments
+    ///
+    /// # Returns
+    ///
+    /// A tuple of `(instruments, skipped_ids)` where:
+    /// - `instruments` are successfully created `MarketInstrument`s, sorted by maturity
+    /// - `skipped_ids` are rate IDs that had no matching convention
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use infra_master::market::{
+    ///     MarketRateSet, MarketRate, RateId, RateType, QuoteType, DataSource, Currency
+    /// };
+    /// use infra_master::time::{Date, Tenor};
+    ///
+    /// let mut rate_set = MarketRateSet::new();
+    ///
+    /// let dep_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+    /// let dep = MarketRate::new(dep_id, QuoteType::Mid, 0.05, 1700000000000, DataSource::Bloomberg).unwrap();
+    /// rate_set.insert(dep);
+    ///
+    /// let swap_id = RateId::new(Currency::USD, Tenor::FiveYears, RateType::Swap);
+    /// let swap = MarketRate::new(swap_id, QuoteType::Mid, 0.045, 1700000000000, DataSource::Bloomberg).unwrap();
+    /// rate_set.insert(swap);
+    ///
+    /// let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
+    /// let (instruments, skipped) = rate_set.to_market_instruments(valuation_date, 1_000_000.0);
+    ///
+    /// assert_eq!(instruments.len(), 2);
+    /// assert!(skipped.is_empty());
+    /// // Instruments are sorted by maturity
+    /// assert!(instruments[0].maturity_date <= instruments[1].maturity_date);
+    /// ```
+    #[must_use]
+    pub fn to_market_instruments(
+        &self,
+        valuation_date: Date,
+        notional: f64,
+    ) -> (Vec<MarketInstrument>, Vec<RateId>) {
+        let mut instruments = Vec::new();
+        let mut skipped_ids = Vec::new();
+
+        // Collect unique rate IDs (ignoring quote type)
+        let mut processed_ids = std::collections::HashSet::new();
+
+        for rate in self.rates.values() {
+            // Skip if we've already processed this rate ID
+            if processed_ids.contains(&rate.id) {
+                continue;
+            }
+            processed_ids.insert(rate.id.clone());
+
+            // Get the mid value (prefer direct mid, then compute from bid/ask)
+            let mid_value = match self.get_mid_rate(&rate.id) {
+                Some(v) => v,
+                None => continue, // Skip if no mid available
+            };
+
+            // Try to get a convention for this rate
+            let convention = match MarketConvention::for_rate_id(&rate.id) {
+                Some(c) => c,
+                None => {
+                    skipped_ids.push(rate.id.clone());
+                    continue;
+                }
+            };
+
+            // Create the MarketInstrument
+            match MarketInstrument::new(rate.id.clone(), mid_value, convention, valuation_date, notional) {
+                Ok(instrument) => instruments.push(instrument),
+                Err(_) => skipped_ids.push(rate.id.clone()),
+            }
+        }
+
+        // Sort by maturity date
+        instruments.sort_by_key(|i| i.maturity_date);
+
+        (instruments, skipped_ids)
+    }
+
+    /// Converts market rates to `MarketInstrument`, returning only successful conversions.
+    ///
+    /// This is a convenience method that ignores conversion errors.
+    /// Use [`to_market_instruments`](Self::to_market_instruments) if you need to handle
+    /// skipped rates.
+    ///
+    /// # Arguments
+    ///
+    /// * `valuation_date` - The valuation date for instrument calculations
+    /// * `notional` - Default notional amount for all instruments
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use infra_master::market::{
+    ///     MarketRateSet, MarketRate, RateId, RateType, QuoteType, DataSource, Currency
+    /// };
+    /// use infra_master::time::{Date, Tenor};
+    ///
+    /// let mut rate_set = MarketRateSet::new();
+    /// let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+    /// let rate = MarketRate::new(rate_id, QuoteType::Mid, 0.05, 1700000000000, DataSource::Bloomberg).unwrap();
+    /// rate_set.insert(rate);
+    ///
+    /// let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
+    /// let instruments = rate_set.to_market_instruments_lossy(valuation_date, 1_000_000.0);
+    /// assert_eq!(instruments.len(), 1);
+    /// ```
+    #[must_use]
+    pub fn to_market_instruments_lossy(
+        &self,
+        valuation_date: Date,
+        notional: f64,
+    ) -> Vec<MarketInstrument> {
+        let (instruments, _) = self.to_market_instruments(valuation_date, notional);
         instruments
     }
 }
@@ -1480,5 +1617,184 @@ mod tests {
 
         assert_eq!(instruments.len(), 6);
         assert!(errors.is_empty());
+    }
+
+    // to_market_instruments tests
+
+    #[test]
+    fn test_to_market_instruments_basic() {
+        let mut rate_set = MarketRateSet::new();
+
+        rate_set.insert(create_rate(
+            Currency::USD,
+            Tenor::ThreeMonths,
+            RateType::Deposit,
+            QuoteType::Mid,
+            0.05,
+            1700000000000,
+            DataSource::Bloomberg,
+        ));
+
+        rate_set.insert(create_rate(
+            Currency::USD,
+            Tenor::FiveYears,
+            RateType::Swap,
+            QuoteType::Mid,
+            0.045,
+            1700000000000,
+            DataSource::Bloomberg,
+        ));
+
+        let vd = Date::from_ymd(2024, 1, 15).unwrap();
+        let (instruments, skipped) = rate_set.to_market_instruments(vd, 1_000_000.0);
+
+        assert_eq!(instruments.len(), 2);
+        assert!(skipped.is_empty());
+    }
+
+    #[test]
+    fn test_to_market_instruments_sorted_by_maturity() {
+        let mut rate_set = MarketRateSet::new();
+
+        // Insert in reverse order (longer tenor first)
+        rate_set.insert(create_rate(
+            Currency::USD,
+            Tenor::TenYears,
+            RateType::Swap,
+            QuoteType::Mid,
+            0.04,
+            1700000000000,
+            DataSource::Bloomberg,
+        ));
+
+        rate_set.insert(create_rate(
+            Currency::USD,
+            Tenor::ThreeMonths,
+            RateType::Deposit,
+            QuoteType::Mid,
+            0.05,
+            1700000000000,
+            DataSource::Bloomberg,
+        ));
+
+        rate_set.insert(create_rate(
+            Currency::USD,
+            Tenor::FiveYears,
+            RateType::Swap,
+            QuoteType::Mid,
+            0.045,
+            1700000000000,
+            DataSource::Bloomberg,
+        ));
+
+        let vd = Date::from_ymd(2024, 1, 15).unwrap();
+        let (instruments, _) = rate_set.to_market_instruments(vd, 1_000_000.0);
+
+        // Check sorted by maturity
+        assert_eq!(instruments.len(), 3);
+        for i in 0..(instruments.len() - 1) {
+            assert!(
+                instruments[i].maturity_date <= instruments[i + 1].maturity_date,
+                "Instruments should be sorted by maturity"
+            );
+        }
+    }
+
+    #[test]
+    fn test_to_market_instruments_skips_unmappable() {
+        let mut rate_set = MarketRateSet::new();
+
+        // Mappable: Deposit
+        rate_set.insert(create_rate(
+            Currency::USD,
+            Tenor::ThreeMonths,
+            RateType::Deposit,
+            QuoteType::Mid,
+            0.05,
+            1700000000000,
+            DataSource::Bloomberg,
+        ));
+
+        // Unmappable: Vol (no convention)
+        rate_set.insert(create_rate(
+            Currency::USD,
+            Tenor::OneYear,
+            RateType::Vol,
+            QuoteType::Mid,
+            0.2,
+            1700000000000,
+            DataSource::Bloomberg,
+        ));
+
+        let vd = Date::from_ymd(2024, 1, 15).unwrap();
+        let (instruments, skipped) = rate_set.to_market_instruments(vd, 1_000_000.0);
+
+        assert_eq!(instruments.len(), 1);
+        assert_eq!(skipped.len(), 1);
+        assert!(matches!(skipped[0].rate_type, RateType::Vol));
+    }
+
+    #[test]
+    fn test_to_market_instruments_lossy() {
+        let mut rate_set = MarketRateSet::new();
+
+        rate_set.insert(create_rate(
+            Currency::USD,
+            Tenor::ThreeMonths,
+            RateType::Deposit,
+            QuoteType::Mid,
+            0.05,
+            1700000000000,
+            DataSource::Bloomberg,
+        ));
+
+        rate_set.insert(create_rate(
+            Currency::USD,
+            Tenor::OneYear,
+            RateType::Vol,
+            QuoteType::Mid,
+            0.2,
+            1700000000000,
+            DataSource::Bloomberg,
+        ));
+
+        let vd = Date::from_ymd(2024, 1, 15).unwrap();
+        let instruments = rate_set.to_market_instruments_lossy(vd, 1_000_000.0);
+
+        // Only the deposit is returned, vol is skipped silently
+        assert_eq!(instruments.len(), 1);
+    }
+
+    #[test]
+    fn test_to_market_instruments_empty_set() {
+        let rate_set = MarketRateSet::new();
+        let vd = Date::from_ymd(2024, 1, 15).unwrap();
+
+        let (instruments, skipped) = rate_set.to_market_instruments(vd, 1_000_000.0);
+
+        assert!(instruments.is_empty());
+        assert!(skipped.is_empty());
+    }
+
+    #[test]
+    fn test_to_market_instruments_preserves_rate_value() {
+        let mut rate_set = MarketRateSet::new();
+
+        rate_set.insert(create_rate(
+            Currency::USD,
+            Tenor::ThreeMonths,
+            RateType::Deposit,
+            QuoteType::Mid,
+            0.0525,
+            1700000000000,
+            DataSource::Bloomberg,
+        ));
+
+        let vd = Date::from_ymd(2024, 1, 15).unwrap();
+        let instruments = rate_set.to_market_instruments_lossy(vd, 2_000_000.0);
+
+        assert_eq!(instruments.len(), 1);
+        assert!((instruments[0].rate_value - 0.0525).abs() < 1e-10);
+        assert!((instruments[0].notional - 2_000_000.0).abs() < 1e-10);
     }
 }

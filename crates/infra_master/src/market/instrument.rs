@@ -9,6 +9,7 @@ use thiserror::Error;
 use super::convention::MarketConvention;
 use super::{Currency, RateId, RateType};
 use crate::time::{Date, Tenor};
+use crate::trade::{Cashflow, CashflowType, Direction, Leg, LegType, Payoff, Trade, TradeType};
 
 /// Errors that can occur when creating or expanding market instruments.
 #[derive(Error, Debug, Clone, PartialEq)]
@@ -330,12 +331,254 @@ impl MarketInstrument {
     pub fn is_ois(&self) -> bool {
         self.convention.is_ois()
     }
+
+    /// Converts this market instrument to a CF-expanded Trade.
+    ///
+    /// This method generates a full Trade structure with legs and cashflows
+    /// based on the instrument's convention and rate value.
+    ///
+    /// # Returns
+    ///
+    /// A `Trade` with appropriate legs and cashflows, or an error if
+    /// the expansion fails.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use infra_master::market::{Currency, RateId, RateType};
+    /// use infra_master::market::convention::{MarketConvention, DepositConvention};
+    /// use infra_master::market::instrument::MarketInstrument;
+    /// use infra_master::time::{Date, Tenor};
+    ///
+    /// let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+    /// let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
+    /// let convention = MarketConvention::Deposit(DepositConvention::usd());
+    ///
+    /// let instrument = MarketInstrument::new(
+    ///     rate_id,
+    ///     0.05,
+    ///     convention,
+    ///     valuation_date,
+    ///     1_000_000.0,
+    /// ).unwrap();
+    ///
+    /// let trade = instrument.to_trade().unwrap();
+    /// assert_eq!(trade.legs().count(), 1);
+    /// ```
+    pub fn to_trade(&self) -> Result<Trade, MarketInstrumentError> {
+        let trade_id = format!(
+            "MI_{}_{}_{:?}",
+            self.rate_id.currency.code(),
+            self.rate_id.tenor.code(),
+            self.rate_id.rate_type
+        );
+
+        match &self.convention {
+            MarketConvention::Deposit(_) => self.expand_deposit(&trade_id),
+            MarketConvention::Swap(_) | MarketConvention::Ois(_) => self.expand_swap(&trade_id),
+            MarketConvention::Fra(_) => self.expand_fra(&trade_id),
+            MarketConvention::Futures(_) => self.expand_futures(&trade_id),
+            MarketConvention::XCcyBasis(_) => Err(MarketInstrumentError::UnsupportedConvention {
+                convention_type: "XCcyBasis".to_string(),
+                reason: "Cross-currency basis swap expansion not yet implemented".to_string(),
+            }),
+            MarketConvention::FxForward(_) => Err(MarketInstrumentError::UnsupportedConvention {
+                convention_type: "FxForward".to_string(),
+                reason: "FX forward expansion not yet implemented".to_string(),
+            }),
+            MarketConvention::FxSwap(_) => Err(MarketInstrumentError::UnsupportedConvention {
+                convention_type: "FxSwap".to_string(),
+                reason: "FX swap expansion not yet implemented".to_string(),
+            }),
+        }
+    }
+
+    /// Expands a deposit instrument to a trade.
+    fn expand_deposit(&self, trade_id: &str) -> Result<Trade, MarketInstrumentError> {
+        // A deposit has a single cashflow at maturity
+        let cashflow = Cashflow::new(
+            CashflowType::Coupon,
+            self.maturity_date,
+            self.effective_date,
+            self.maturity_date,
+            self.year_fraction(),
+            self.notional,
+            Payoff::Fixed {
+                rate: self.rate_value,
+            },
+            self.currency(),
+        );
+
+        let leg = Leg::new(
+            vec![cashflow],
+            Direction::Receiver,
+            LegType::Fixed,
+            self.currency(),
+        );
+
+        Ok(Trade::new(trade_id, vec![leg], TradeType::Deposit))
+    }
+
+    /// Expands a swap or OIS instrument to a trade.
+    fn expand_swap(&self, trade_id: &str) -> Result<Trade, MarketInstrumentError> {
+        // Generate a simple annual schedule for demonstration
+        // In production, this would use the convention's frequency and calendar
+        let schedule = self.generate_annual_schedule();
+
+        if schedule.len() < 2 {
+            return Err(MarketInstrumentError::InvalidDate {
+                reason: "Schedule must have at least 2 dates".to_string(),
+            });
+        }
+
+        // Fixed leg: pay fixed rate
+        let mut fixed_cashflows = Vec::new();
+        for window in schedule.windows(2) {
+            let (start, end) = (window[0], window[1]);
+            let yf = (end - start) as f64 / 365.0;
+
+            fixed_cashflows.push(Cashflow::new(
+                CashflowType::Coupon,
+                end,
+                start,
+                end,
+                yf,
+                self.notional,
+                Payoff::Fixed {
+                    rate: self.rate_value,
+                },
+                self.currency(),
+            ));
+        }
+
+        let fixed_leg = Leg::new(
+            fixed_cashflows,
+            Direction::Payer,
+            LegType::Fixed,
+            self.currency(),
+        );
+
+        // Floating leg: receive floating rate (index + 0 spread)
+        let mut floating_cashflows = Vec::new();
+        for window in schedule.windows(2) {
+            let (start, end) = (window[0], window[1]);
+            let yf = (end - start) as f64 / 365.0;
+
+            // Use a generic index type for the floating leg
+            let index = crate::trade::IndexType::Rate(crate::market::RateIndex::Sofr);
+
+            floating_cashflows.push(Cashflow::new(
+                CashflowType::Coupon,
+                end,
+                start,
+                end,
+                yf,
+                self.notional,
+                Payoff::Linear {
+                    index,
+                    spread: 0.0,
+                    multiplier: 1.0,
+                },
+                self.currency(),
+            ));
+        }
+
+        let floating_leg = Leg::new(
+            floating_cashflows,
+            Direction::Receiver,
+            LegType::Floating,
+            self.currency(),
+        );
+
+        let trade_type = if self.convention.is_ois() {
+            TradeType::Swap // OIS is a type of swap
+        } else {
+            TradeType::Swap
+        };
+
+        Ok(Trade::new(trade_id, vec![fixed_leg, floating_leg], trade_type))
+    }
+
+    /// Expands a FRA instrument to a trade.
+    fn expand_fra(&self, trade_id: &str) -> Result<Trade, MarketInstrumentError> {
+        // FRA has a single settlement at effective date based on rate difference
+        let cashflow = Cashflow::new(
+            CashflowType::Settlement,
+            self.effective_date,
+            self.effective_date,
+            self.maturity_date,
+            self.year_fraction(),
+            self.notional,
+            Payoff::Fixed {
+                rate: self.rate_value,
+            },
+            self.currency(),
+        );
+
+        let leg = Leg::new(
+            vec![cashflow],
+            Direction::Receiver,
+            LegType::Fixed,
+            self.currency(),
+        );
+
+        Ok(Trade::new(trade_id, vec![leg], TradeType::Fra))
+    }
+
+    /// Expands a futures instrument to a trade.
+    fn expand_futures(&self, trade_id: &str) -> Result<Trade, MarketInstrumentError> {
+        // Futures have daily margining, simplified as a single settlement
+        let cashflow = Cashflow::new(
+            CashflowType::Settlement,
+            self.maturity_date,
+            self.effective_date,
+            self.maturity_date,
+            self.year_fraction(),
+            self.notional,
+            Payoff::Fixed {
+                rate: self.rate_value,
+            },
+            self.currency(),
+        );
+
+        let leg = Leg::new(
+            vec![cashflow],
+            Direction::Receiver,
+            LegType::Fixed,
+            self.currency(),
+        );
+
+        Ok(Trade::new(trade_id, vec![leg], TradeType::Futures))
+    }
+
+    /// Generates an annual schedule from effective to maturity date.
+    fn generate_annual_schedule(&self) -> Vec<Date> {
+        let mut schedule = vec![self.effective_date];
+        let mut current = self.effective_date;
+
+        // Add dates at annual intervals
+        while current < self.maturity_date {
+            // Add approximately one year (365 days)
+            current = current + 365;
+            if current <= self.maturity_date {
+                schedule.push(current);
+            }
+        }
+
+        // Always include maturity date
+        if schedule.last() != Some(&self.maturity_date) {
+            schedule.push(self.maturity_date);
+        }
+
+        schedule
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::market::convention::{DepositConvention, FraConvention, SwapConvention};
+    use crate::trade::{LegType, Payoff, TradeType};
 
     #[test]
     fn test_market_instrument_new_deposit() {
@@ -576,5 +819,126 @@ mod tests {
             }
             _ => panic!("Expected NoConvention error"),
         }
+    }
+
+    // to_trade() tests
+
+    #[test]
+    fn test_to_trade_deposit() {
+        let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+        let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
+        let convention = MarketConvention::Deposit(DepositConvention::usd());
+
+        let instrument =
+            MarketInstrument::new(rate_id, 0.05, convention, valuation_date, 1_000_000.0).unwrap();
+
+        let trade = instrument.to_trade().unwrap();
+
+        let legs: Vec<_> = trade.legs().collect();
+        assert_eq!(legs.len(), 1);
+        assert!(matches!(trade.trade_type, TradeType::Deposit));
+
+        let leg = legs[0];
+        assert_eq!(leg.cashflows().count(), 1);
+        assert!(matches!(leg.leg_type, LegType::Fixed));
+    }
+
+    #[test]
+    fn test_to_trade_swap() {
+        let rate_id = RateId::new(Currency::USD, Tenor::FiveYears, RateType::Swap);
+        let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
+        let convention = MarketConvention::Swap(SwapConvention::usd_sofr());
+
+        let instrument =
+            MarketInstrument::new(rate_id, 0.045, convention, valuation_date, 10_000_000.0)
+                .unwrap();
+
+        let trade = instrument.to_trade().unwrap();
+
+        // Swap has 2 legs: fixed and floating
+        let legs: Vec<_> = trade.legs().collect();
+        assert_eq!(legs.len(), 2);
+        assert!(matches!(trade.trade_type, TradeType::Swap));
+
+        // Verify we have both fixed and floating legs
+        let has_fixed = legs.iter().any(|l| matches!(l.leg_type, LegType::Fixed));
+        let has_floating = legs.iter().any(|l| matches!(l.leg_type, LegType::Floating));
+        assert!(has_fixed, "Should have fixed leg");
+        assert!(has_floating, "Should have floating leg");
+    }
+
+    #[test]
+    fn test_to_trade_ois() {
+        let rate_id = RateId::new(Currency::USD, Tenor::OneYear, RateType::Ois);
+        let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
+        let convention = MarketConvention::Ois(SwapConvention::usd_sofr());
+
+        let instrument =
+            MarketInstrument::new(rate_id, 0.052, convention, valuation_date, 5_000_000.0).unwrap();
+
+        let trade = instrument.to_trade().unwrap();
+
+        // OIS also has 2 legs
+        assert_eq!(trade.legs().count(), 2);
+    }
+
+    #[test]
+    fn test_to_trade_fra() {
+        let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Fra);
+        let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
+        let convention = MarketConvention::Fra(FraConvention::usd_sofr());
+
+        let instrument =
+            MarketInstrument::new(rate_id, 0.051, convention, valuation_date, 2_000_000.0).unwrap();
+
+        let trade = instrument.to_trade().unwrap();
+
+        assert_eq!(trade.legs().count(), 1);
+        assert!(matches!(trade.trade_type, TradeType::Fra));
+    }
+
+    #[test]
+    fn test_to_trade_unsupported_xccy() {
+        use crate::market::convention::XCcyBasisConvention;
+
+        let rate_id = RateId::new(Currency::USD, Tenor::FiveYears, RateType::BasisSwap);
+        let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
+        let convention = MarketConvention::XCcyBasis(XCcyBasisConvention::usd_jpy());
+
+        let instrument =
+            MarketInstrument::new(rate_id, 0.0025, convention, valuation_date, 100_000_000.0)
+                .unwrap();
+
+        let result = instrument.to_trade();
+        assert!(result.is_err());
+
+        match result.unwrap_err() {
+            MarketInstrumentError::UnsupportedConvention {
+                convention_type, ..
+            } => {
+                assert_eq!(convention_type, "XCcyBasis");
+            }
+            _ => panic!("Expected UnsupportedConvention error"),
+        }
+    }
+
+    #[test]
+    fn test_to_trade_cashflow_values() {
+        let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+        let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
+        let convention = MarketConvention::Deposit(DepositConvention::usd());
+
+        let instrument =
+            MarketInstrument::new(rate_id, 0.05, convention, valuation_date, 1_000_000.0).unwrap();
+
+        let trade = instrument.to_trade().unwrap();
+        let legs: Vec<_> = trade.legs().collect();
+        let cashflows: Vec<_> = legs[0].cashflows().collect();
+        let cf = cashflows[0];
+
+        // Verify cashflow properties
+        assert_eq!(cf.notional, 1_000_000.0);
+        assert!(cf.year_fraction > 0.0);
+        assert!(matches!(cf.payoff, Payoff::Fixed { rate } if (rate - 0.05).abs() < 1e-10));
     }
 }
