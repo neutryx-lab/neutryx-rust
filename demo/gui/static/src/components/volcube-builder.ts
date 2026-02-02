@@ -273,7 +273,7 @@ function renderCalibSettings(): void {
   if (!elements.calibSettings) return;
 
   elements.calibSettings.innerHTML = `
-    <div class="calib-setting">
+    <div class="form-group">
       <label>Model</label>
       <select id="calib-model-selector" class="fancy-select">
         ${state.swaptionModels.map((m) => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('')}
@@ -287,7 +287,7 @@ function renderInstrumentsTable(): void {
 
   if (state.swaptionInstruments.length === 0) {
     elements.instrumentsTable.innerHTML = `
-      <div class="empty-state">
+      <div class="placeholder">
         <i class="fas fa-cube"></i>
         <p>Select an index to load instruments</p>
       </div>
@@ -327,7 +327,7 @@ function renderFxQuotesTable(): void {
 
   if (state.fxQuotes.length === 0) {
     elements.fxQuotesTable.innerHTML = `
-      <div class="empty-state">
+      <div class="placeholder">
         <i class="fas fa-exchange-alt"></i>
         <p>Select a pair to load quotes</p>
       </div>
@@ -492,27 +492,27 @@ function renderCalibrationResult(): void {
 
   const result = state.calibrationResult;
   elements.resultsContainer.innerHTML = `
-    <div class="calib-result">
+    <div class="card compact">
       <h4><i class="fas fa-check-circle"></i> Calibration Result</h4>
-      <div class="result-item">
-        <span class="label">Model:</span>
-        <span class="value">${escapeHtml(result.model)}</span>
+      <div class="stat-row">
+        <span class="stat-label">Model:</span>
+        <span class="stat-value">${escapeHtml(result.model)}</span>
       </div>
-      <div class="result-item">
-        <span class="label">Instruments:</span>
-        <span class="value">${result.metadata.instrumentCount}</span>
+      <div class="stat-row">
+        <span class="stat-label">Instruments:</span>
+        <span class="stat-value">${result.metadata.instrumentCount}</span>
       </div>
-      <div class="result-item">
-        <span class="label">Processing Time:</span>
-        <span class="value">${result.metadata.processingTimeMs.toFixed(2)} ms</span>
+      <div class="stat-row">
+        <span class="stat-label">Processing Time:</span>
+        <span class="stat-value">${result.metadata.processingTimeMs.toFixed(2)} ms</span>
       </div>
       <h5>Parameters</h5>
       ${Object.entries(result.parameters)
         .map(
           ([key, value]) => `
-        <div class="result-item">
-          <span class="label">${escapeHtml(key)}:</span>
-          <span class="value">${(value as number).toFixed(6)}</span>
+        <div class="stat-row">
+          <span class="stat-label">${escapeHtml(key)}:</span>
+          <span class="stat-value">${(value as number).toFixed(6)}</span>
         </div>
       `
         )

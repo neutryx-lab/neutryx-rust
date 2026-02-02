@@ -1,6 +1,11 @@
 /**
  * Trade Expansion View Module
  * Handles trade expansion and cashflow generation
+ *
+ * @deprecated This view is deprecated and will be removed in a future version.
+ * Cashflow expansion functionality has been integrated into the MarketData view.
+ * Use the MarketData view's Rate Detail and CF Expansion panels instead.
+ * The underlying API endpoint (/api/trades/expand) remains available.
  */
 
 import { createScopedLogger } from '@/utils/logger';

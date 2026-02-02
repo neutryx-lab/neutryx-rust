@@ -134,11 +134,7 @@
                             <span>Market Data</span>
                             <div class="nav-indicator"></div>
                         </a>
-                        <a href="#" class="nav-item nav-sub-item" data-view="trade-expansion-view">
-                            <div class="nav-icon"><i class="fas fa-expand-arrows-alt"></i></div>
-                            <span>Trade Expand</span>
-                            <div class="nav-indicator"></div>
-                        </a>
+                        <!-- Trade Expansion removed - now integrated into Market Data view -->
                         <a href="#" class="nav-item nav-sub-item" data-view="curve-builder-view">
                             <div class="nav-icon"><i class="fas fa-chart-line"></i></div>
                             <span>Curve Builder</span>
@@ -1127,6 +1123,43 @@
                                     <p>Select a rate to view details</p>
                                 </div>
                             </div>
+                            <!-- Instrument Details Section -->
+                            <div class="instrument-details-section" id="instrument-details">
+                                <div class="placeholder instrument-placeholder">
+                                    <i class="fas fa-cubes"></i>
+                                    <p>Instrument details will appear here</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rate Indices Panel -->
+                    <div class="indices-section">
+                        <div class="card glass-card">
+                            <div class="panel-header">
+                                <h3><i class="fas fa-chart-line"></i> Rate Indices</h3>
+                            </div>
+                            <div class="rate-indices-container" id="rate-indices-panel">
+                                <div class="placeholder indices-placeholder">
+                                    <i class="fas fa-database"></i>
+                                    <p>Loading rate indices...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cashflows Panel -->
+                    <div class="cashflows-section">
+                        <div class="card glass-card">
+                            <div class="panel-header">
+                                <h3><i class="fas fa-money-bill-wave"></i> Cashflow Expansion</h3>
+                            </div>
+                            <div class="cashflows-container" id="cashflows-panel">
+                                <div class="placeholder cashflows-placeholder">
+                                    <i class="fas fa-expand-arrows-alt"></i>
+                                    <p>Select a rate to view its cashflows</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -1560,6 +1593,19 @@
             </div>
         </main>
     </div>
+
+    <!-- D3.js Libraries (required for AD Graph visualization) -->
+    <script src="../vendor/d3-array.min.js"></script>
+    <script src="../vendor/d3-dispatch.min.js"></script>
+    <script src="../vendor/d3-color.min.js"></script>
+    <script src="../vendor/d3-interpolate.min.js"></script>
+    <script src="../vendor/d3-timer.min.js"></script>
+    <script src="../vendor/d3-ease.min.js"></script>
+    <script src="../vendor/d3-selection.min.js"></script>
+    <script src="../vendor/d3-quadtree.min.js"></script>
+    <script src="../vendor/d3-drag.min.js"></script>
+    <script src="../vendor/d3-zoom.min.js"></script>
+    <script src="../vendor/d3-force.min.js"></script>
 
     <!-- TypeScript Application -->
     <script type="module" src="/src/main.ts"></script>

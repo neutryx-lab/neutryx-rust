@@ -27,7 +27,6 @@ import {
   fetchEvents,
   fetchEventTypes,
   fetchRateIndices,
-  fetchRateIndexDetail,
   fetchRateInstrument,
   fetchRateCashflows,
 } from '@/services/api';
@@ -857,10 +856,263 @@ function renderConventions(): void {
   elements.conventionsGrid.innerHTML = html;
 }
 
+// =============================================================================
+// Rate Index & Instrument Rendering
+// =============================================================================
+
+function renderRateIndicesPanel(): void {
+  const container = document.getElementById('rate-indices-panel');
+  if (!container) return;
+
+  if (state.rateIndices.length === 0) {
+    container.innerHTML = `
+      <div class="indices-empty">
+        <i class="fas fa-database"></i>
+        <p>No rate indices available</p>
+      </div>
+    `;
+    return;
+  }
+
+  const html = `
+    <div class="indices-list">
+      ${state.rateIndices.map(index => `
+        <div class="index-item ${state.selectedIndexCode === index.code ? 'selected' : ''}"
+             data-index-code="${escapeHtml(index.code)}">
+          <div class="index-header">
+            <span class="index-code">${escapeHtml(index.code)}</span>
+            <span class="index-currency">${escapeHtml(index.currency)}</span>
+            ${index.isOvernight ? '<span class="overnight-badge">O/N RFR</span>' : ''}
+          </div>
+          <div class="index-details">
+            <span class="index-tenor">${escapeHtml(index.tenor)}</span>
+            ${index.dayCounter ? `<span class="index-daycount">${escapeHtml(index.dayCounter)}</span>` : ''}
+          </div>
+          <div class="index-counts">
+            <span class="rate-count" title="Associated rates">
+              <i class="fas fa-chart-line"></i> ${index.associatedRatesCount}
+            </span>
+            <span class="convention-count" title="Associated conventions">
+              <i class="fas fa-cog"></i> ${index.associatedConventionsCount}
+            </span>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  container.innerHTML = html;
+
+  // Bind click events
+  container.querySelectorAll('.index-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const code = (item as HTMLElement).dataset.indexCode || '';
+      selectRateIndex(code);
+    });
+  });
+}
+
+function selectRateIndex(code: string): void {
+  state.selectedIndexCode = code;
+  renderRateIndicesPanel();
+
+  // Highlight rates associated with this index
+  highlightIndexRates(code);
+  log.info(`Selected index: ${code}`);
+}
+
+function highlightIndexRates(indexCode: string): void {
+  const tbody = elements.ratesTbody;
+  if (!tbody) return;
+
+  tbody.querySelectorAll('tr').forEach(row => {
+    const rateId = (row as HTMLElement).dataset.rateId || '';
+    const rate = state.rates.find(r => r.id === rateId);
+    const isAssociated = rate?.rateIndex === indexCode;
+    row.classList.toggle('index-highlight', isAssociated);
+  });
+}
+
+function renderInstrumentDetails(): void {
+  const container = document.getElementById('instrument-details');
+  if (!container || !state.selectedRateInstrument) return;
+
+  const inst = state.selectedRateInstrument;
+  const conv = inst.convention;
+
+  container.innerHTML = `
+    <div class="instrument-section">
+      <h4>Instrument Details</h4>
+      <div class="detail-grid">
+        <div class="detail-row">
+          <span class="detail-label">Type</span>
+          <span class="detail-value">${escapeHtml(inst.instrumentType)}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Effective Date</span>
+          <span class="detail-value">${escapeHtml(inst.effectiveDate)}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Maturity Date</span>
+          <span class="detail-value">${escapeHtml(inst.maturityDate)}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Notional</span>
+          <span class="detail-value">${inst.notional.toLocaleString()}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Processing Time</span>
+          <span class="detail-value">${inst.processingTimeMs.toFixed(2)}ms</span>
+        </div>
+      </div>
+    </div>
+    ${conv ? `
+    <div class="convention-section">
+      <h4>Convention</h4>
+      <div class="detail-grid">
+        <div class="detail-row">
+          <span class="detail-label">Type</span>
+          <span class="detail-value">${escapeHtml(conv.conventionType)}</span>
+        </div>
+        ${conv.dayCount ? `
+        <div class="detail-row">
+          <span class="detail-label">Day Count</span>
+          <span class="detail-value">${escapeHtml(conv.dayCount)}</span>
+        </div>
+        ` : ''}
+        ${conv.frequency ? `
+        <div class="detail-row">
+          <span class="detail-label">Frequency</span>
+          <span class="detail-value">${escapeHtml(conv.frequency)}</span>
+        </div>
+        ` : ''}
+        ${conv.businessDayConvention ? `
+        <div class="detail-row">
+          <span class="detail-label">Business Day Convention</span>
+          <span class="detail-value">${escapeHtml(conv.businessDayConvention)}</span>
+        </div>
+        ` : ''}
+        ${conv.spotLag !== undefined ? `
+        <div class="detail-row">
+          <span class="detail-label">Spot Lag</span>
+          <span class="detail-value">T+${conv.spotLag}</span>
+        </div>
+        ` : ''}
+        ${conv.calendar ? `
+        <div class="detail-row">
+          <span class="detail-label">Calendar</span>
+          <span class="detail-value">${escapeHtml(conv.calendar)}</span>
+        </div>
+        ` : ''}
+      </div>
+    </div>
+    ` : `
+    <div class="convention-section">
+      <div class="no-convention">
+        <i class="fas fa-exclamation-triangle"></i>
+        <span>Convention not available</span>
+      </div>
+    </div>
+    `}
+  `;
+}
+
+function renderInstrumentError(): void {
+  const container = document.getElementById('instrument-details');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="instrument-error">
+      <i class="fas fa-exclamation-circle"></i>
+      <span>Failed to load instrument details</span>
+    </div>
+  `;
+}
+
+function renderCashflowsPanel(): void {
+  const container = document.getElementById('cashflows-panel');
+  if (!container || !state.selectedRateCashflows) return;
+
+  const cf = state.selectedRateCashflows;
+
+  container.innerHTML = `
+    <div class="cashflows-header">
+      <h4>Cashflows</h4>
+      <span class="processing-time">${cf.processingTimeMs.toFixed(2)}ms</span>
+    </div>
+    ${cf.legs.map((leg, idx) => renderLegCashflows(leg, idx)).join('')}
+  `;
+}
+
+function renderLegCashflows(leg: LegCashflows, index: number): string {
+  const directionClass = leg.direction.toLowerCase() === 'payer' ? 'payer' : 'receiver';
+
+  return `
+    <div class="cashflow-leg ${directionClass}">
+      <div class="leg-header" data-leg-index="${index}">
+        <span class="leg-type">${escapeHtml(leg.legType)}</span>
+        <span class="leg-direction ${directionClass}">${escapeHtml(leg.direction)}</span>
+        <span class="leg-currency">${escapeHtml(leg.currency)}</span>
+        ${leg.rateIndex ? `<span class="leg-index">${escapeHtml(leg.rateIndex)}</span>` : ''}
+        <i class="fas fa-chevron-down collapse-icon"></i>
+      </div>
+      <div class="cashflow-table-container">
+        <table class="cashflow-table">
+          <thead>
+            <tr>
+              <th>Payment Date</th>
+              <th>Accrual Start</th>
+              <th>Accrual End</th>
+              <th>Year Fraction</th>
+              <th>Notional</th>
+              <th>Rate/Spread</th>
+              <th>Type</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${leg.cashflows.map(cf => `
+              <tr>
+                <td>${escapeHtml(cf.paymentDate)}</td>
+                <td>${escapeHtml(cf.accrualStart)}</td>
+                <td>${escapeHtml(cf.accrualEnd)}</td>
+                <td class="numeric">${cf.yearFraction.toFixed(6)}</td>
+                <td class="numeric">${cf.notional.toLocaleString()}</td>
+                <td class="numeric">
+                  ${cf.rate !== undefined ? formatRate(cf.rate, 'swap') : ''}
+                  ${cf.spread !== undefined ? `+${(cf.spread * 10000).toFixed(0)}bp` : ''}
+                </td>
+                <td>${escapeHtml(cf.payoffType)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function renderCashflowsError(): void {
+  const container = document.getElementById('cashflows-panel');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="cashflows-error">
+      <i class="fas fa-exclamation-circle"></i>
+      <span>Failed to load cashflows</span>
+    </div>
+  `;
+}
+
 function selectRate(rateId: string): void {
   state.selectedRateId = rateId;
+  state.selectedRateInstrument = null;
+  state.selectedRateCashflows = null;
   updateTableSelection();
   renderDetailPanel();
+
+  // Load instrument and cashflows in parallel
+  void loadRateInstrument(rateId);
+  void loadRateCashflows(rateId);
 }
 
 function renderDetailPanel(): void {
@@ -939,6 +1191,7 @@ export async function init(): Promise<void> {
   await loadConfig();
   void loadRates();
   void loadConventions();
+  void loadRateIndices();
   state.isInitialised = true;
   log.info('Market Data Viewer initialised');
 }

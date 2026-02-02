@@ -2442,4 +2442,103 @@ mod tests {
         let yf_gbp = DemoService::calculate_year_fraction(start, end, "GBP");
         assert!((yf_gbp - 181.0 / 365.0).abs() < 1e-10);
     }
+
+    // =========================================================================
+    // Rate Instrument and Cashflow API tests
+    // =========================================================================
+
+    #[test]
+    fn test_get_rate_instrument_usd_swap() {
+        if !demo_data_available() {
+            eprintln!("Skipping test: demo data not available");
+            return;
+        }
+        let state = create_test_state();
+        let result = DemoService::get_rate_instrument("USD_SWAP_5Y", &state);
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        assert_eq!(response.rate_id, "USD_SWAP_5Y");
+        assert_eq!(response.instrument_type, "Swap");
+        assert!(response.convention.is_some());
+        assert!(response.notional > 0.0);
+        assert!(response.processing_time_ms >= 0.0);
+    }
+
+    #[test]
+    fn test_get_rate_instrument_usd_deposit() {
+        if !demo_data_available() {
+            eprintln!("Skipping test: demo data not available");
+            return;
+        }
+        let state = create_test_state();
+        let result = DemoService::get_rate_instrument("USD_DEPOSIT_3M", &state);
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        assert_eq!(response.rate_id, "USD_DEPOSIT_3M");
+        assert_eq!(response.instrument_type, "Deposit");
+    }
+
+    #[test]
+    fn test_get_rate_instrument_not_found() {
+        if !demo_data_available() {
+            eprintln!("Skipping test: demo data not available");
+            return;
+        }
+        let state = create_test_state();
+        let result = DemoService::get_rate_instrument("NONEXISTENT_RATE", &state);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_get_rate_cashflows_swap() {
+        if !demo_data_available() {
+            eprintln!("Skipping test: demo data not available");
+            return;
+        }
+        let state = create_test_state();
+        let result = DemoService::get_rate_cashflows("USD_SWAP_5Y", &state);
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        assert_eq!(response.rate_id, "USD_SWAP_5Y");
+        // Swap should have 2 legs (fixed and floating)
+        assert_eq!(response.legs.len(), 2);
+
+        // Check leg properties
+        let has_fixed = response.legs.iter().any(|l| l.leg_type == "Fixed");
+        let has_floating = response.legs.iter().any(|l| l.leg_type == "Floating");
+        assert!(has_fixed, "Should have fixed leg");
+        assert!(has_floating, "Should have floating leg");
+
+        // Each leg should have cashflows
+        for leg in &response.legs {
+            assert!(!leg.cashflows.is_empty(), "Leg should have cashflows");
+        }
+    }
+
+    #[test]
+    fn test_get_rate_cashflows_deposit() {
+        if !demo_data_available() {
+            eprintln!("Skipping test: demo data not available");
+            return;
+        }
+        let state = create_test_state();
+        let result = DemoService::get_rate_cashflows("USD_DEPOSIT_3M", &state);
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        // Deposit should have 1 leg
+        assert_eq!(response.legs.len(), 1);
+        // Deposit leg should have 1 cashflow
+        assert_eq!(response.legs[0].cashflows.len(), 1);
+    }
+
+    #[test]
+    fn test_get_rate_cashflows_not_found() {
+        if !demo_data_available() {
+            eprintln!("Skipping test: demo data not available");
+            return;
+        }
+        let state = create_test_state();
+        let result = DemoService::get_rate_cashflows("NONEXISTENT_RATE", &state);
+        assert!(result.is_err());
+    }
 }

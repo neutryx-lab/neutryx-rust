@@ -294,3 +294,216 @@ mod simulated_http_tests {
         builder.build(Some(trade_id.to_string()))
     }
 }
+
+// ============================================================================
+// Market Instrument Pipeline Integration Tests
+// ============================================================================
+
+#[cfg(test)]
+mod market_instrument_integration_tests {
+    use infra_master::market::convention::{
+        ConventionRegistry, DepositConvention, FraConvention, MarketConvention, SwapConvention,
+    };
+    use infra_master::market::instrument::MarketInstrument;
+    use infra_master::market::{Currency, RateId, RateType};
+    use infra_master::time::{Date, Tenor};
+    use infra_master::trade::{LegType, TradeType};
+
+    /// Test full pipeline: Rate → Convention lookup → Instrument → Trade
+    #[test]
+    fn test_convention_to_instrument_to_trade_pipeline_deposit() {
+        let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+        let convention = MarketConvention::Deposit(DepositConvention::usd());
+        let valuation_date = Date::from_ymd(2025, 1, 15).unwrap();
+
+        // Step 1: Create instrument from convention
+        let instrument =
+            MarketInstrument::new(rate_id.clone(), 0.05, convention, valuation_date, 1_000_000.0)
+                .expect("Failed to create instrument");
+
+        // Verify instrument properties
+        assert_eq!(instrument.instrument_type_name(), "Deposit");
+        assert_eq!(instrument.currency(), Currency::USD);
+        assert_eq!(instrument.tenor(), Tenor::ThreeMonths);
+
+        // Step 2: Expand to trade
+        let trade = instrument.to_trade().expect("Failed to expand trade");
+
+        // Verify trade structure
+        assert!(matches!(trade.trade_type, TradeType::Deposit));
+        assert_eq!(trade.legs().count(), 1);
+
+        // Verify leg has cashflows
+        let legs: Vec<_> = trade.legs().collect();
+        assert_eq!(legs[0].cashflows().count(), 1);
+    }
+
+    /// Test full pipeline for swap instruments
+    #[test]
+    fn test_convention_to_instrument_to_trade_pipeline_swap() {
+        let rate_id = RateId::new(Currency::USD, Tenor::FiveYears, RateType::Swap);
+        let convention = MarketConvention::Swap(SwapConvention::usd_sofr());
+        let valuation_date = Date::from_ymd(2025, 1, 15).unwrap();
+
+        // Step 1: Create instrument
+        let instrument =
+            MarketInstrument::new(rate_id.clone(), 0.04, convention, valuation_date, 10_000_000.0)
+                .expect("Failed to create instrument");
+
+        assert_eq!(instrument.instrument_type_name(), "Swap");
+        assert!(instrument.is_swap());
+
+        // Step 2: Expand to trade
+        let trade = instrument.to_trade().expect("Failed to expand trade");
+
+        // Verify trade structure
+        assert!(matches!(trade.trade_type, TradeType::Swap));
+        let legs: Vec<_> = trade.legs().collect();
+        assert_eq!(legs.len(), 2, "Swap should have 2 legs");
+
+        // Verify leg types
+        let has_fixed = legs.iter().any(|l| matches!(l.leg_type, LegType::Fixed));
+        let has_floating = legs.iter().any(|l| matches!(l.leg_type, LegType::Floating));
+        assert!(has_fixed, "Should have fixed leg");
+        assert!(has_floating, "Should have floating leg");
+
+        // Verify cashflows exist
+        for leg in &legs {
+            assert!(leg.cashflows().count() > 0, "Each leg should have cashflows");
+        }
+    }
+
+    /// Test full pipeline for FRA instruments
+    #[test]
+    fn test_convention_to_instrument_to_trade_pipeline_fra() {
+        let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Fra);
+        let convention = MarketConvention::Fra(FraConvention::usd_sofr());
+        let valuation_date = Date::from_ymd(2025, 1, 15).unwrap();
+
+        let instrument =
+            MarketInstrument::new(rate_id, 0.045, convention, valuation_date, 5_000_000.0)
+                .expect("Failed to create instrument");
+
+        let trade = instrument.to_trade().expect("Failed to expand trade");
+
+        assert!(matches!(trade.trade_type, TradeType::Fra));
+        assert_eq!(trade.legs().count(), 1);
+    }
+
+    /// Test ConventionRegistry lookup and instrument creation
+    #[test]
+    fn test_convention_registry_lookup() {
+        let mut registry = ConventionRegistry::new();
+        registry.register(
+            Currency::USD,
+            RateType::Deposit,
+            MarketConvention::Deposit(DepositConvention::usd()),
+        );
+        registry.register(
+            Currency::USD,
+            RateType::Swap,
+            MarketConvention::Swap(SwapConvention::usd_sofr()),
+        );
+
+        // Lookup should succeed for registered conventions
+        assert!(registry.get(Currency::USD, RateType::Deposit).is_some());
+        assert!(registry.get(Currency::USD, RateType::Swap).is_some());
+
+        // Lookup should fail for unregistered conventions
+        assert!(registry.get(Currency::EUR, RateType::Deposit).is_none());
+    }
+
+    /// Test multiple currency conventions
+    #[test]
+    fn test_multi_currency_conventions() {
+        let valuation_date = Date::from_ymd(2025, 1, 15).unwrap();
+
+        let currencies = [
+            (Currency::USD, DepositConvention::usd()),
+            (Currency::EUR, DepositConvention::eur()),
+            (Currency::GBP, DepositConvention::gbp()),
+            (Currency::JPY, DepositConvention::jpy()),
+        ];
+
+        for (currency, conv) in currencies {
+            let rate_id = RateId::new(currency, Tenor::ThreeMonths, RateType::Deposit);
+            let convention = MarketConvention::Deposit(conv);
+
+            let instrument =
+                MarketInstrument::new(rate_id, 0.05, convention, valuation_date, 1_000_000.0)
+                    .expect(&format!("Failed to create {} instrument", currency));
+
+            assert_eq!(instrument.currency(), currency);
+
+            let trade = instrument.to_trade().expect(&format!(
+                "Failed to expand {} trade",
+                currency
+            ));
+            assert_eq!(trade.legs().count(), 1);
+        }
+    }
+
+    /// Test error handling for invalid rate values
+    #[test]
+    fn test_invalid_rate_value_error() {
+        let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+        let convention = MarketConvention::Deposit(DepositConvention::usd());
+        let valuation_date = Date::from_ymd(2025, 1, 15).unwrap();
+
+        // NaN should fail
+        let result_nan =
+            MarketInstrument::new(rate_id.clone(), f64::NAN, convention.clone(), valuation_date, 1_000_000.0);
+        assert!(result_nan.is_err());
+
+        // Infinity should fail
+        let result_inf =
+            MarketInstrument::new(rate_id, f64::INFINITY, convention, valuation_date, 1_000_000.0);
+        assert!(result_inf.is_err());
+    }
+
+    /// Test that valid year fractions are calculated
+    #[test]
+    fn test_year_fraction_calculation() {
+        let tenors = [
+            (Tenor::ThreeMonths, 0.25, 0.1),
+            (Tenor::SixMonths, 0.5, 0.1),
+            (Tenor::OneYear, 1.0, 0.1),
+            (Tenor::FiveYears, 5.0, 0.5),
+        ];
+
+        for (tenor, expected_yf, tolerance) in tenors {
+            let rate_id = RateId::new(Currency::USD, tenor, RateType::Deposit);
+            let convention = MarketConvention::Deposit(DepositConvention::usd());
+            let valuation_date = Date::from_ymd(2025, 1, 15).unwrap();
+
+            let instrument =
+                MarketInstrument::new(rate_id, 0.05, convention, valuation_date, 1_000_000.0)
+                    .expect("Failed to create instrument");
+
+            let yf = instrument.year_fraction();
+            assert!(
+                (yf - expected_yf).abs() < tolerance,
+                "Year fraction for {:?} should be ~{}, got {}",
+                tenor,
+                expected_yf,
+                yf
+            );
+        }
+    }
+
+    /// Test instrument clone and equality
+    #[test]
+    fn test_instrument_clone_and_equality() {
+        let rate_id = RateId::new(Currency::USD, Tenor::OneYear, RateType::Swap);
+        let convention = MarketConvention::Swap(SwapConvention::usd_sofr());
+        let valuation_date = Date::from_ymd(2025, 1, 15).unwrap();
+
+        let instrument =
+            MarketInstrument::new(rate_id, 0.04, convention, valuation_date, 10_000_000.0).unwrap();
+
+        let cloned = instrument.clone();
+        assert_eq!(instrument, cloned);
+        assert_eq!(instrument.rate_value, cloned.rate_value);
+        assert_eq!(instrument.notional, cloned.notional);
+    }
+}

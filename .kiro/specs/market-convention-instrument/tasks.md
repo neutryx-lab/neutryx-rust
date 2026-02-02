@@ -169,8 +169,8 @@
 
 ### Phase 4: GUI Updates
 
-- [ ] 10. MarketData 画面の拡張
-- [ ] 10.1 Index パネルの追加
+- [x] 10. MarketData 画面の拡張
+- [x] 10.1 Index パネルの追加
   - MarketData view に RateIndex 一覧パネルを追加
   - 各 Index に name, code, currency, tenor, dayCounter, compounding method を表示
   - associated rates count と conventions count を表示
@@ -181,7 +181,7 @@
   - 関連 Rate クリックで Rate detail view に遷移
   - _Requirements: 14_
 
-- [ ] 10.2 Rate Detail パネルの拡張
+- [x] 10.2 Rate Detail パネルの拡張
   - Rate 選択時に Convention 詳細を表示（day_count, frequency, calendar, settlement）
   - Instrument 情報（effective_date, maturity_date, notional）を表示
   - Convention が見つからない場合は "Convention not available" を表示
@@ -189,7 +189,7 @@
   - ローディングインジケータを表示
   - _Requirements: 7_
 
-- [ ] 10.3 CF Expansion パネルの追加
+- [x] 10.3 CF Expansion パネルの追加
   - Rate 選択時に自動的に CF 展開を実行し下部に表示
   - Payment Date, Accrual Start, Accrual End, Year Fraction, Notional, Rate/Spread, Payoff Type 列を持つテーブル
   - 複数 leg がある場合は collapsible セクションで表示
@@ -198,15 +198,15 @@
   - 500ms 以内に展開完了するようパフォーマンス最適化
   - _Requirements: 8_
 
-- [ ] 10.4 Convention 検索機能の追加
+- [x] 10.4 Convention 検索機能の追加
   - MarketData view に Convention ブラウザパネルを追加
   - 通貨フィルタと rate type フィルタを提供
   - 選択した Convention の詳細を detail パネルに表示
   - マッチする Convention 数を表示
   - _Requirements: 11_
 
-- [ ] 11. TradeExpand 画面の廃止
-- [ ] 11.1 Navigation 削除とリダイレクト設定
+- [x] 11. TradeExpand 画面の廃止
+- [x] 11.1 Navigation 削除とリダイレクト設定
   - main.ts から trade-expansion-view の navigation item を削除
   - viewInitializers から trade-expansion-view を削除
   - TradeExpand への外部リンクを MarketData view にリダイレクト

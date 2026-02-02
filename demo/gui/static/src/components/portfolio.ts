@@ -79,7 +79,7 @@ let initialised = false;
 // Utility Functions
 // =============================================================================
 
-function formatCurrency(value: number, currency: string = 'USD'): string {
+function formatCurrency(value: number, _currency: string = 'USD'): string {
   const absValue = Math.abs(value);
   if (absValue >= 1_000_000) {
     return `$${(value / 1_000_000).toFixed(1)}M`;
@@ -187,7 +187,7 @@ function renderPortfolioTable(): void {
     return;
   }
 
-  const rows = state.trades.map((trade, index) => {
+  const rows = state.trades.map((trade) => {
     const risk = getRiskLevel(trade.pv, trade.notional);
     const pvClass = trade.pv >= 0 ? 'positive' : 'negative';
     // Mock values for delta and vega - these would normally come from pricing

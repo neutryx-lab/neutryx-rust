@@ -244,7 +244,7 @@ function renderParameterForm(instrument: Instrument): void {
 
   if (requiredParams.length === 0 && optionalParams.length === 0) {
     formContainer.innerHTML = `
-      <div class="param-notice">
+      <div class="placeholder sm">
         <i class="fas fa-info-circle"></i>
         <span>This instrument has no configurable parameters.</span>
       </div>
@@ -254,13 +254,13 @@ function renderParameterForm(instrument: Instrument): void {
 
   state.instrumentParams = {};
 
-  let html = '<div class="param-form-grid">';
+  let html = '<div class="form-grid">';
   requiredParams.forEach((param) => {
     html += renderParameterField(param, true);
   });
 
   if (optionalParams.length > 0) {
-    html += `<div class="param-section-divider"><span>Optional Parameters</span></div>`;
+    html += `<div class="section-divider"><span>Optional Parameters</span></div>`;
     optionalParams.forEach((param) => {
       html += renderParameterField(param, false);
     });
@@ -339,7 +339,7 @@ function renderParameterField(param: Instrument['requiredParams'][0], isRequired
   }
 
   return `
-    <div class="param-field">
+    <div class="form-group">
       <label for="${escapeHtml(name)}">${escapeHtml(label)}${requiredMark}</label>
       ${inputHtml}
     </div>
@@ -707,7 +707,7 @@ async function price(): Promise<void> {
 function showPricingError(message: string): void {
   if (elements.pvResult) {
     elements.pvResult.innerHTML = `
-      <div class="pricer-error-card">
+      <div class="error-card">
         <div class="error-icon"><i class="fas fa-exclamation-triangle"></i></div>
         <div class="error-message">Pricing failed: ${escapeHtml(message)}</div>
       </div>
@@ -790,7 +790,7 @@ function showGreeksError(message: string): void {
   const container = elements.greeksResult || getElementById('pricer-greeks-result');
   if (container) {
     container.innerHTML = `
-      <div class="pricer-error-card">
+      <div class="error-card">
         <div class="error-icon"><i class="fas fa-exclamation-triangle"></i></div>
         <div class="error-message">Greeks calculation failed: ${escapeHtml(message)}</div>
       </div>

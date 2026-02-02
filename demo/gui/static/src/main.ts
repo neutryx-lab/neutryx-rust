@@ -7,7 +7,7 @@
 import '../../style.css';
 
 import { ConfigLoader } from '@/services/config-loader';
-import { initPricer, initMarketData, initCurveBuilder, initVolcubeBuilder, initExposure, initDashboard, initScenarios, initTradeExpansion, initPortfolio, initGraph } from '@/components';
+import { initPricer, initMarketData, initCurveBuilder, initVolcubeBuilder, initExposure, initDashboard, initScenarios, initPortfolio, initGraph } from '@/components';
 import { createScopedLogger } from '@/utils/logger';
 
 const log = createScopedLogger('App');
@@ -75,7 +75,10 @@ const viewInitializers: Record<ViewId, () => Promise<void>> = {
     await initMarketData();
   },
   'trade-expansion-view': async () => {
-    await initTradeExpansion();
+    // DEPRECATED: Trade expansion is now integrated into MarketData view
+    // Redirect to market-data-view
+    log.info('Trade expansion deprecated, redirecting to market-data-view');
+    navigateTo('market-data-view');
   },
   'curve-builder-view': async () => {
     await initCurveBuilder();
