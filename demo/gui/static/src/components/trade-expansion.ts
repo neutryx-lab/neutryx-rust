@@ -68,7 +68,7 @@ function getElements(): void {
 function renderPlaceholder(): void {
   if (!elements.cashflowsContainer) return;
   elements.cashflowsContainer.innerHTML = `
-    <div class="table-placeholder">
+    <div class="placeholder">
       <i class="fas fa-expand-arrows-alt"></i>
       <p>Click Expand to generate cashflows</p>
     </div>
@@ -78,7 +78,7 @@ function renderPlaceholder(): void {
 function renderLoading(): void {
   if (!elements.cashflowsContainer) return;
   elements.cashflowsContainer.innerHTML = `
-    <div class="table-placeholder">
+    <div class="placeholder">
       <i class="fas fa-spinner fa-spin"></i>
       <p>Expanding trade...</p>
     </div>
@@ -88,7 +88,7 @@ function renderLoading(): void {
 function renderError(message: string): void {
   if (!elements.cashflowsContainer) return;
   elements.cashflowsContainer.innerHTML = `
-    <div class="table-placeholder error">
+    <div class="placeholder error">
       <i class="fas fa-exclamation-triangle"></i>
       <p>${message}</p>
     </div>
@@ -180,10 +180,20 @@ function renderCashflowRow(cf: Cashflow): string {
 // API Calls
 // =============================================================================
 
+// Map frontend trade types to backend instrument types
+const INSTRUMENT_TYPE_MAP: Record<string, string> = {
+  swap: 'IRS',
+  fra: 'IRS',
+  cap: 'IRS',
+  swaption: 'IRS',
+  fxforward: 'FxForward',
+};
+
 async function handleExpand(): Promise<void> {
   if (state.isLoading) return;
 
   const tradeType = elements.tradeType?.value || 'swap';
+  const instrumentType = INSTRUMENT_TYPE_MAP[tradeType] || 'IRS';
   const notional = parseFloat(elements.notional?.value || '10000000');
   const currency = elements.currency?.value || 'USD';
   const tenor = elements.tenor?.value || '5Y';
@@ -198,7 +208,7 @@ async function handleExpand(): Promise<void> {
 
   try {
     const request = {
-      instrumentType: tradeType,
+      instrumentType,
       params: {
         type: tradeType,
         notional,

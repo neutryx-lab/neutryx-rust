@@ -213,7 +213,7 @@ function showPlaceholder(): void {
   }
 
   container.innerHTML = `
-    <div class="chart-placeholder">
+    <div class="placeholder">
       <i class="fas fa-chart-bar"></i>
       <p>Run scenarios to view results</p>
     </div>

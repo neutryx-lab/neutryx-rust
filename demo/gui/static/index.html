@@ -970,124 +970,130 @@
 
             <!-- Scenarios View -->
             <section id="scenarios-view" class="view">
-                <!-- Scenario Type Selector -->
-                <div class="scenario-type-bar glass">
-                    <div class="scenario-types">
-                        <button class="scenario-type-btn active" data-type="parametric">
-                            <i class="fas fa-sliders-h"></i>
-                            <span>Parametric</span>
-                        </button>
-                        <button class="scenario-type-btn" data-type="historical">
-                            <i class="fas fa-history"></i>
-                            <span>Historical</span>
-                        </button>
-                        <button class="scenario-type-btn" data-type="reverse">
-                            <i class="fas fa-undo"></i>
-                            <span>Reverse Stress</span>
-                        </button>
-                    </div>
-                    <div class="scenario-actions">
-                        <button class="icon-btn" id="save-scenario" title="Save Scenario"><i class="fas fa-save"></i></button>
-                        <button class="icon-btn" id="load-scenario" title="Load Scenario"><i class="fas fa-folder-open"></i></button>
-                        <button class="primary-btn" id="run-scenarios">
-                            <i class="fas fa-play"></i> Run Scenarios
-                        </button>
-                    </div>
-                </div>
-
-                <div class="scenarios-layout">
-                    <!-- Scenario List Panel -->
-                    <div class="scenario-list-panel glass-card">
-                        <div class="panel-header">
-                            <h3><i class="fas fa-list"></i> Scenarios</h3>
-                            <button class="icon-btn" id="add-scenario" title="Add Scenario">
-                                <i class="fas fa-plus"></i>
+                <div class="view-container scenarios-container">
+                    <!-- View Header with Type Selector -->
+                    <div class="view-header glass scenario-type-bar">
+                        <div class="scenario-types">
+                            <button class="scenario-type-btn active" data-type="parametric">
+                                <i class="fas fa-sliders-h"></i>
+                                <span>Parametric</span>
+                            </button>
+                            <button class="scenario-type-btn" data-type="historical">
+                                <i class="fas fa-history"></i>
+                                <span>Historical</span>
+                            </button>
+                            <button class="scenario-type-btn" data-type="reverse">
+                                <i class="fas fa-undo"></i>
+                                <span>Reverse Stress</span>
                             </button>
                         </div>
-                        <div class="scenario-list" id="scenario-list">
-                            <div class="scenario-item active">
-                                <div class="scenario-info">
-                                    <span class="scenario-name">Base Case</span>
-                                    <span class="scenario-desc">Current market conditions</span>
-                                </div>
-                                <span class="scenario-pnl positive">$0</span>
-                            </div>
-                            <div class="scenario-item">
-                                <div class="scenario-info">
-                                    <span class="scenario-name">Rates +100bp</span>
-                                    <span class="scenario-desc">Parallel shift up</span>
-                                </div>
-                                <span class="scenario-pnl negative">-$2.4M</span>
-                            </div>
-                            <div class="scenario-item">
-                                <div class="scenario-info">
-                                    <span class="scenario-name">Rates -100bp</span>
-                                    <span class="scenario-desc">Parallel shift down</span>
-                                </div>
-                                <span class="scenario-pnl positive">+$1.8M</span>
-                            </div>
-                            <div class="scenario-item">
-                                <div class="scenario-info">
-                                    <span class="scenario-name">Vol +25%</span>
-                                    <span class="scenario-desc">Volatility increase</span>
-                                </div>
-                                <span class="scenario-pnl positive">+$650K</span>
-                            </div>
-                            <div class="scenario-item">
-                                <div class="scenario-info">
-                                    <span class="scenario-name">FX Stress</span>
-                                    <span class="scenario-desc">USD +10% vs all</span>
-                                </div>
-                                <span class="scenario-pnl negative">-$890K</span>
-                            </div>
-                            <div class="scenario-item">
-                                <div class="scenario-info">
-                                    <span class="scenario-name">2008 Crisis</span>
-                                    <span class="scenario-desc">Historical replay</span>
-                                </div>
-                                <span class="scenario-pnl negative">-$5.2M</span>
-                            </div>
+                        <div class="view-actions">
+                            <button class="icon-btn" id="save-scenario" title="Save Scenario"><i class="fas fa-save"></i></button>
+                            <button class="icon-btn" id="load-scenario" title="Load Scenario"><i class="fas fa-folder-open"></i></button>
+                            <button class="primary-btn" id="run-scenarios">
+                                <i class="fas fa-play"></i> Run Scenarios
+                            </button>
                         </div>
                     </div>
 
-                    <!-- Scenario Results Panel -->
-                    <div class="scenario-results-panel glass-card">
-                        <div class="panel-header">
-                            <h3><i class="fas fa-chart-bar"></i> Results</h3>
-                        </div>
-                        <div id="scenario-chart" class="chart-container">
-                            <div class="chart-placeholder">
-                                <i class="fas fa-chart-bar"></i>
-                                <p>Select and run scenarios to view results</p>
+                    <div class="scenarios-layout">
+                        <!-- Scenario List Panel -->
+                        <div class="scenario-list-panel glass-card">
+                            <div class="panel-header">
+                                <h3><i class="fas fa-list"></i> Scenarios</h3>
+                                <div class="panel-actions">
+                                    <button class="icon-btn" id="add-scenario" title="Add Scenario">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="panel-content scenario-list" id="scenario-list">
+                                <div class="scenario-item active">
+                                    <div class="scenario-info">
+                                        <span class="scenario-name">Base Case</span>
+                                        <span class="scenario-desc">Current market conditions</span>
+                                    </div>
+                                    <span class="scenario-pnl positive">$0</span>
+                                </div>
+                                <div class="scenario-item">
+                                    <div class="scenario-info">
+                                        <span class="scenario-name">Rates +100bp</span>
+                                        <span class="scenario-desc">Parallel shift up</span>
+                                    </div>
+                                    <span class="scenario-pnl negative">-$2.4M</span>
+                                </div>
+                                <div class="scenario-item">
+                                    <div class="scenario-info">
+                                        <span class="scenario-name">Rates -100bp</span>
+                                        <span class="scenario-desc">Parallel shift down</span>
+                                    </div>
+                                    <span class="scenario-pnl positive">+$1.8M</span>
+                                </div>
+                                <div class="scenario-item">
+                                    <div class="scenario-info">
+                                        <span class="scenario-name">Vol +25%</span>
+                                        <span class="scenario-desc">Volatility increase</span>
+                                    </div>
+                                    <span class="scenario-pnl positive">+$650K</span>
+                                </div>
+                                <div class="scenario-item">
+                                    <div class="scenario-info">
+                                        <span class="scenario-name">FX Stress</span>
+                                        <span class="scenario-desc">USD +10% vs all</span>
+                                    </div>
+                                    <span class="scenario-pnl negative">-$890K</span>
+                                </div>
+                                <div class="scenario-item">
+                                    <div class="scenario-info">
+                                        <span class="scenario-name">2008 Crisis</span>
+                                        <span class="scenario-desc">Historical replay</span>
+                                    </div>
+                                    <span class="scenario-pnl negative">-$5.2M</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Scenario Parameters Panel -->
-                    <div class="scenario-params-panel glass-card">
-                        <div class="panel-header">
-                            <h3><i class="fas fa-cogs"></i> Parameters</h3>
+                        <!-- Scenario Results Panel -->
+                        <div class="scenario-results-panel glass-card">
+                            <div class="panel-header">
+                                <h3><i class="fas fa-chart-bar"></i> Results</h3>
+                            </div>
+                            <div class="panel-content">
+                                <div id="scenario-chart" class="chart-container">
+                                    <div class="placeholder">
+                                        <i class="fas fa-chart-bar"></i>
+                                        <p>Select and run scenarios to view results</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="scenario-params">
-                            <div class="param-group">
-                                <label>Rate Shift (bps)</label>
-                                <input type="range" min="-200" max="200" value="100" class="param-slider">
-                                <span class="param-value">+100</span>
+
+                        <!-- Scenario Parameters Panel -->
+                        <div class="scenario-params-panel glass-card">
+                            <div class="panel-header">
+                                <h3><i class="fas fa-cogs"></i> Parameters</h3>
                             </div>
-                            <div class="param-group">
-                                <label>Vol Shift (%)</label>
-                                <input type="range" min="-50" max="50" value="0" class="param-slider">
-                                <span class="param-value">0</span>
-                            </div>
-                            <div class="param-group">
-                                <label>FX Shift (%)</label>
-                                <input type="range" min="-20" max="20" value="0" class="param-slider">
-                                <span class="param-value">0</span>
-                            </div>
-                            <div class="param-group">
-                                <label>Credit Spread (bps)</label>
-                                <input type="range" min="-100" max="100" value="0" class="param-slider">
-                                <span class="param-value">0</span>
+                            <div class="panel-content scenario-params">
+                                <div class="param-group">
+                                    <label>Rate Shift (bps)</label>
+                                    <input type="range" min="-200" max="200" value="100" class="param-slider">
+                                    <span class="param-value">+100</span>
+                                </div>
+                                <div class="param-group">
+                                    <label>Vol Shift (%)</label>
+                                    <input type="range" min="-50" max="50" value="0" class="param-slider">
+                                    <span class="param-value">0</span>
+                                </div>
+                                <div class="param-group">
+                                    <label>FX Shift (%)</label>
+                                    <input type="range" min="-20" max="20" value="0" class="param-slider">
+                                    <span class="param-value">0</span>
+                                </div>
+                                <div class="param-group">
+                                    <label>Credit Spread (bps)</label>
+                                    <input type="range" min="-100" max="100" value="0" class="param-slider">
+                                    <span class="param-value">0</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1208,54 +1214,57 @@
 
             <!-- Trade Expansion View -->
             <section id="trade-expansion-view" class="view">
-                <div class="trade-expansion-container">
-                    <div class="trade-expansion-header glass">
-                        <div class="trade-expansion-title">
-                            <h2><i class="fas fa-project-diagram"></i> Trade Expansion</h2>
+                <div class="view-container trade-expansion-container">
+                    <div class="view-header glass">
+                        <div class="view-title">
+                            <i class="fas fa-expand-arrows-alt"></i>
+                            <h2>Trade Expansion</h2>
                         </div>
-                        <div class="trade-expansion-controls">
+                        <div class="view-actions">
                             <button id="expand-trade-btn" class="primary-btn">
-                                <i class="fas fa-expand-arrows-alt"></i> Expand
+                                <i class="fas fa-play"></i> Expand
                             </button>
                         </div>
                     </div>
-                    <div class="trade-expansion-grid">
+                    <div class="two-column-grid trade-expansion-grid">
                         <div class="trade-input-panel glass-card">
                             <div class="panel-header">
                                 <h3><i class="fas fa-file-contract"></i> Trade Definition</h3>
                             </div>
-                            <div class="trade-form" id="trade-expansion-form">
-                                <div class="form-group">
-                                    <label for="trade-type">Trade Type</label>
-                                    <select id="trade-type" class="fancy-select">
-                                        <option value="swap">Interest Rate Swap</option>
-                                        <option value="fra">FRA</option>
-                                        <option value="cap">Cap/Floor</option>
-                                        <option value="swaption">Swaption</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label for="trade-notional">Notional</label>
-                                    <input type="number" id="trade-notional" value="10000000" class="fancy-input">
-                                </div>
-                                <div class="form-group">
-                                    <label for="trade-currency">Currency</label>
-                                    <select id="trade-currency" class="fancy-select">
-                                        <option value="USD">USD</option>
-                                        <option value="EUR">EUR</option>
-                                        <option value="GBP">GBP</option>
-                                        <option value="JPY">JPY</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label for="trade-tenor">Tenor</label>
-                                    <select id="trade-tenor" class="fancy-select">
-                                        <option value="1Y">1 Year</option>
-                                        <option value="2Y">2 Years</option>
-                                        <option value="5Y" selected>5 Years</option>
-                                        <option value="10Y">10 Years</option>
-                                        <option value="30Y">30 Years</option>
-                                    </select>
+                            <div class="panel-content">
+                                <div class="trade-form" id="trade-expansion-form">
+                                    <div class="form-group">
+                                        <label for="trade-type">Trade Type</label>
+                                        <select id="trade-type" class="fancy-select">
+                                            <option value="swap">Interest Rate Swap</option>
+                                            <option value="fra">FRA</option>
+                                            <option value="cap">Cap/Floor</option>
+                                            <option value="swaption">Swaption</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="trade-notional">Notional</label>
+                                        <input type="number" id="trade-notional" value="10000000" class="fancy-input">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="trade-currency">Currency</label>
+                                        <select id="trade-currency" class="fancy-select">
+                                            <option value="USD">USD</option>
+                                            <option value="EUR">EUR</option>
+                                            <option value="GBP">GBP</option>
+                                            <option value="JPY">JPY</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="trade-tenor">Tenor</label>
+                                        <select id="trade-tenor" class="fancy-select">
+                                            <option value="1Y">1 Year</option>
+                                            <option value="2Y">2 Years</option>
+                                            <option value="5Y" selected>5 Years</option>
+                                            <option value="10Y">10 Years</option>
+                                            <option value="30Y">30 Years</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1263,10 +1272,12 @@
                             <div class="panel-header">
                                 <h3><i class="fas fa-money-bill-wave"></i> Cashflows</h3>
                             </div>
-                            <div id="expansion-cashflows" class="cashflow-table">
-                                <div class="table-placeholder">
-                                    <i class="fas fa-expand-arrows-alt"></i>
-                                    <p>Click Expand to generate cashflows</p>
+                            <div class="panel-content">
+                                <div id="expansion-cashflows" class="cashflow-results">
+                                    <div class="placeholder">
+                                        <i class="fas fa-expand-arrows-alt"></i>
+                                        <p>Click Expand to generate cashflows</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1276,25 +1287,25 @@
 
             <!-- Curve Builder View -->
             <section id="curve-builder-view" class="view">
-                <div class="curve-builder-layout">
-                    <div class="curve-builder-header glass-card">
-                        <div class="curve-builder-title">
+                <div class="view-container curve-builder-layout">
+                    <div class="view-header glass-card curve-builder-header">
+                        <div class="view-title">
                             <i class="fas fa-project-diagram"></i>
                             <h2>Curve Builder</h2>
                         </div>
-                        <div class="curve-builder-controls">
+                        <div class="view-actions curve-builder-controls">
                             <div id="index-selector-container"></div>
                             <div id="builder-settings-container"></div>
+                            <button id="build-curve-btn" class="primary-btn">
+                                <i class="fas fa-hammer"></i> Build Curve
+                            </button>
                         </div>
                     </div>
-                    <div class="curve-builder-grid">
+                    <div class="two-column-grid curve-builder-grid">
                         <div class="instruments-panel glass-card">
                             <div class="panel-header">
                                 <h3><i class="fas fa-list"></i> Instruments</h3>
                                 <div class="panel-actions">
-                                    <button id="build-curve-btn" class="primary-btn">
-                                        <i class="fas fa-hammer"></i> Build Curve
-                                    </button>
                                     <button id="reset-rates-btn" class="secondary-btn">
                                         <i class="fas fa-undo"></i> Reset
                                     </button>
@@ -1303,17 +1314,21 @@
                                     </button>
                                 </div>
                             </div>
-                            <div id="instrument-table-container" class="instrument-table"></div>
-                            <div id="changes-indicator" class="changes-indicator" style="display: none;">
-                                <i class="fas fa-exclamation-circle"></i> Unsaved changes
+                            <div class="panel-content">
+                                <div id="instrument-table-container" class="instrument-table"></div>
+                                <div id="changes-indicator" class="changes-indicator" style="display: none;">
+                                    <i class="fas fa-exclamation-circle"></i> Unsaved changes
+                                </div>
                             </div>
                         </div>
                         <div class="results-panel glass-card">
                             <div class="panel-header">
                                 <h3><i class="fas fa-chart-line"></i> Build Results</h3>
                             </div>
-                            <div id="build-status" class="build-status"></div>
-                            <div id="build-summary" class="build-summary"></div>
+                            <div class="panel-content">
+                                <div id="build-status" class="build-status"></div>
+                                <div id="build-summary" class="build-summary"></div>
+                            </div>
                         </div>
                     </div>
                 </div>

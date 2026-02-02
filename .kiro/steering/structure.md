@@ -639,7 +639,7 @@ static/          → Web dashboard frontend (TypeScript + Vite)
   ├── vite.config.ts  → Vite build configuration
   └── src/            → TypeScript source
       ├── main.ts           → Application entry point
-      ├── components/       → UI components (curve-builder, pricer, volcube-builder, market-data)
+      ├── components/       → UI components (curve-builder, pricer, volcube-builder, market-data, exposure, dashboard, scenarios, trade-expansion)
       ├── services/         → API client services (api.ts, config-loader.ts)
       ├── types/            → TypeScript type definitions (api.ts)
       └── utils/            → Utilities (dom.ts, format.ts, logger.ts)
@@ -749,5 +749,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-31_ — TypeScript frontend (demo/gui/static), service_gateway services layer (Handler→Service→Pricer)
+_Updated: 2026-02-02_ — Added exposure, dashboard, scenarios, trade-expansion components to frontend
 _Document patterns, not file trees. New files following patterns should not require updates_

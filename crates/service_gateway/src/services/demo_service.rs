@@ -939,6 +939,45 @@ impl DemoService {
     pub fn get_ir_vol_currencies(
         _state: &Arc<AppState>,
     ) -> Result<IrVolCurrenciesResponse, ServerError> {
+        // Read from indices.json
+        let indices_path = Path::new("demo/data/input/indices.json");
+        if indices_path.exists() {
+            let content = std::fs::read_to_string(indices_path)
+                .map_err(|e| ServerError::Internal(format!("Failed to read indices.json: {e}")))?;
+            let indices: serde_json::Value = serde_json::from_str(&content)
+                .map_err(|e| ServerError::Internal(format!("Failed to parse indices.json: {e}")))?;
+
+            if let Some(irvol_items) = indices
+                .get("indices")
+                .and_then(|i| i.get("irvol"))
+                .and_then(|f| f.get("items"))
+                .and_then(|i| i.as_array())
+            {
+                let currencies: Vec<IrVolCurrency> = irvol_items
+                    .iter()
+                    .filter_map(|item| {
+                        item.get("currency")
+                            .and_then(|c| c.as_str())
+                            .map(|currency| IrVolCurrency {
+                                currency: currency.to_string(),
+                            })
+                    })
+                    .collect();
+
+                // Remove duplicates (keep first occurrence)
+                let mut seen = std::collections::HashSet::new();
+                let unique_currencies: Vec<IrVolCurrency> = currencies
+                    .into_iter()
+                    .filter(|c| seen.insert(c.currency.clone()))
+                    .collect();
+
+                return Ok(IrVolCurrenciesResponse {
+                    currencies: unique_currencies,
+                });
+            }
+        }
+
+        // Fallback to hardcoded list
         Ok(IrVolCurrenciesResponse {
             currencies: vec![
                 IrVolCurrency {

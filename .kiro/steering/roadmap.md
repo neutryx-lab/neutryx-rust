@@ -2,13 +2,13 @@
 
 実装状況と今後の開発項目を追跡するドキュメント。
 
-_Updated: 2026-01-31_ — Steering sync: Added enum_dispatch pattern, derive-more-newtype-migration completed; 46 completed specs; 2 active specs
+_Updated: 2026-02-02_ — Steering sync: boilerplate-reduction and enum-dispatch-migration completed; 48 completed specs; 3 active specs (fxvol-calibration-migration, models-module-refactor, pricer-computation-graph)
 
 ---
 
 ## Current State Summary
 
-### Completed Specifications (46)
+### Completed Specifications (48)
 
 | Spec | Description | Completed |
 |------|-------------|-----------|
@@ -60,6 +60,8 @@ _Updated: 2026-01-31_ — Steering sync: Added enum_dispatch pattern, derive-mor
 | service-gateway-services | Service layer architecture (Handler → Service → Pricer pattern, demo endpoints) | 2026-01-31 |
 | thiserror-migration | thiserror macro migration for error types | 2026-01-31 |
 | derive-more-newtype-migration | Newtype derive utilities (From, Display, AsRef) with derive_more | 2026-01-31 |
+| boilerplate-reduction | Reduce boilerplate across codebase (bon builder, derive patterns) | 2026-02-01 |
+| enum-dispatch-migration | Migrate to enum_dispatch for zero-cost trait dispatch | 2026-02-01 |
 
 ### Layer Implementation Status
 
@@ -184,13 +186,22 @@ Codebase redundancy cleanup performed:
 
 | Spec | Phase | Description |
 |------|-------|-------------|
-| boilerplate-reduction | implementation | Reduce boilerplate across codebase |
-| enum-dispatch-migration | tasks-generated | Migrate to enum_dispatch for performance |
+| fxvol-calibration-migration | tasks-generated | Migrate FX vol calibration module |
+| models-module-refactor | tasks-generated | Refactor pricer_models module structure |
+| pricer-computation-graph | tasks-generated | Computation graph extraction for pricer |
+
+### Initialized Specifications (Pending Requirements)
+
+| Spec | Created | Description |
+|------|---------|-------------|
+| market-convention-instrument | 2026-02-02 | Market convention and instrument definitions |
 
 ### Recently Completed
 
 | Spec | Completed | Description |
 |------|-----------|-------------|
+| boilerplate-reduction | 2026-02-01 | Reduce boilerplate with bon builder and derive patterns |
+| enum-dispatch-migration | 2026-02-01 | Migrate to enum_dispatch for zero-cost trait dispatch |
 | derive-more-newtype-migration | 2026-01-31 | Migrate newtypes to derive_more |
 
 ### Temporary Status Notes
@@ -209,6 +220,7 @@ Codebase redundancy cleanup performed:
 
 | Date | Change |
 |------|--------|
+| 2026-02-02 | Steering sync: boilerplate-reduction and enum-dispatch-migration completed. Active specs: fxvol-calibration-migration, models-module-refactor, pricer-computation-graph. New: market-convention-instrument (initialized). Total: 48 specs |
 | 2026-01-31 | Steering sync: Added `enum_dispatch` pattern to tech.md and dependency-management.md, derive-more-newtype-migration completed. Total: 46 completed specs, 2 active specs (boilerplate-reduction, enum-dispatch-migration) |
 | 2026-01-31 | Steering sync: TypeScript frontend infrastructure (demo/gui/static with Vite, component-based architecture), service_gateway services layer (Handler→Service→Pricer pattern, demo endpoints, feature-gated caches), 3 new completed specs (config-consolidation, service-gateway-services, thiserror-migration). Total: 48 specs |
 | 2026-01-30 | Steering sync: Added Neutryx facade crate pattern (unified entry point, module aliases, feature tiers, prelude). Updated structure.md and tech.md. |
