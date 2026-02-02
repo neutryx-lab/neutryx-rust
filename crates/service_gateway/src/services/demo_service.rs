@@ -12,10 +12,11 @@ use crate::{
         DemoGreeksRequest, DemoGreeksResult, DemoPricingRequest, DemoPricingResult, EnumValue,
         EventType, EventTypesResponse, EventsResponse, ExpandedTrade, ExportFormat, FieldType,
         FxVolPair, FxVolPairsResponse, FxVolQuote, FxVolQuotesResponse, Importance, InstrumentDef,
-        InstrumentsResponse, IrVolCurrenciesResponse, IrVolCurrency, IrVolQuote, IrVolQuotesResponse,
-        MarketConfigResponse, MarketEvent, MarketRate, MarketRateDetailResponse, MarketRatesResponse,
-        ParameterDef, SmilePoint, SwaptionInstrument, TradeExpandRequest, TradeLeg, TradeMetadata,
-        VolcubeIndicesResponse, VolcubeInstrumentsResponse, VolcubeModelsResponse,
+        InstrumentsResponse, IrVolCurrenciesResponse, IrVolCurrency, IrVolQuote,
+        IrVolQuotesResponse, MarketConfigResponse, MarketEvent, MarketRate,
+        MarketRateDetailResponse, MarketRatesResponse, ParameterDef, SmilePoint,
+        SwaptionInstrument, TradeExpandRequest, TradeLeg, TradeMetadata, VolcubeIndicesResponse,
+        VolcubeInstrumentsResponse, VolcubeModelsResponse,
     },
     state::AppState,
 };
@@ -418,6 +419,7 @@ impl DemoService {
         let mut rates = Vec::new();
         let timestamp = chrono::Utc::now().to_rfc3339();
 
+        // Load IR rates
         if let Some(rates_by_currency) = data.get("rates").and_then(|r| r.as_object()) {
             for (currency, rate_types) in rates_by_currency {
                 if let Some(rate_types_obj) = rate_types.as_object() {
@@ -444,6 +446,33 @@ impl DemoService {
                                 });
                             }
                         }
+                    }
+                }
+            }
+        }
+
+        // Load FX spot rates
+        let fx_path = Path::new("demo/data/input/fx/fx_spots.json");
+        if let Ok(fx_content) = std::fs::read_to_string(fx_path) {
+            if let Ok(fx_data) = serde_json::from_str::<serde_json::Value>(&fx_content) {
+                if let Some(spots) = fx_data.get("spots").and_then(|s| s.as_array()) {
+                    for spot in spots {
+                        let pair = spot.get("pair").and_then(|p| p.as_str()).unwrap_or("");
+                        let value = spot.get("value").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                        let base_ccy = if pair.len() >= 3 { &pair[..3] } else { pair };
+
+                        rates.push(MarketRate {
+                            id: format!("FX-{}", pair),
+                            currency: base_ccy.to_string(),
+                            tenor: "SPOT".to_string(),
+                            rate_type: "fx_spot".to_string(),
+                            value,
+                            rate_index: None,
+                            quote_type: Some("Mid".to_string()),
+                            source: "Internal".to_string(),
+                            timestamp: timestamp.clone(),
+                            is_stale: false,
+                        });
                     }
                 }
             }
@@ -489,11 +518,127 @@ impl DemoService {
             .find(|r| r.id == rate_id)
             .ok_or_else(|| ServerError::NotFound(format!("Rate {} not found", rate_id)))?;
 
+        // Build instrument description based on rate type
+        let instrument = Self::build_instrument_description(&rate);
+
+        // Find matching convention
+        let convention = Self::find_convention_for_rate(&rate, state);
+
         Ok(MarketRateDetailResponse {
             rate,
-            instrument: None,
-            convention: None,
+            instrument,
+            convention,
         })
+    }
+
+    /// Build instrument description for a rate
+    fn build_instrument_description(rate: &MarketRate) -> Option<serde_json::Value> {
+        let description = match rate.rate_type.as_str() {
+            "deposit" => serde_json::json!({
+                "type": "Money Market Deposit",
+                "description": format!(
+                    "{} {} deposit rate. A money market instrument representing the cost of \
+                     borrowing or lending {} for the {} period.",
+                    rate.currency, rate.tenor, rate.currency, rate.tenor
+                ),
+                "usage": "Used for short-end curve construction and discounting",
+                "quoteConvention": "Simple rate, typically ACT/360 (USD/EUR) or ACT/365F (GBP/JPY)",
+                "settlementDays": if rate.currency == "GBP" { 0 } else { 2 }
+            }),
+            "ois" => serde_json::json!({
+                "type": "Overnight Index Swap",
+                "description": format!(
+                    "{} {} OIS rate. An interest rate swap where the floating leg pays the \
+                     compounded overnight rate ({}) versus a fixed rate.",
+                    rate.currency, rate.tenor,
+                    rate.rate_index.as_deref().unwrap_or("overnight index")
+                ),
+                "usage": "Primary instrument for building risk-free discount curves",
+                "quoteConvention": "Par swap rate quoted as annual rate",
+                "index": rate.rate_index.clone()
+            }),
+            "swap" => serde_json::json!({
+                "type": "Interest Rate Swap",
+                "description": format!(
+                    "{} {} IRS rate. A vanilla interest rate swap exchanging fixed rate payments \
+                     for floating rate payments indexed to {}.",
+                    rate.currency, rate.tenor,
+                    rate.rate_index.as_deref().unwrap_or("floating index")
+                ),
+                "usage": "Key instrument for yield curve construction at longer tenors",
+                "quoteConvention": "Par swap rate, fixed leg vs floating leg",
+                "index": rate.rate_index.clone()
+            }),
+            "fra" => serde_json::json!({
+                "type": "Forward Rate Agreement",
+                "description": format!(
+                    "{} {} FRA. A forward contract to exchange a fixed rate for a floating rate \
+                     on a notional amount for the specified period.",
+                    rate.currency, rate.tenor
+                ),
+                "usage": "Used for constructing the forward curve between deposit and swap tenors",
+                "quoteConvention": "FRA rate quoted as simple forward rate",
+                "index": rate.rate_index.clone()
+            }),
+            "fx_spot" => {
+                let pair = rate.id.strip_prefix("FX-").unwrap_or(&rate.id);
+                let base = if pair.len() >= 3 { &pair[..3] } else { "" };
+                let quote = if pair.len() >= 6 { &pair[3..6] } else { "" };
+                serde_json::json!({
+                    "type": "FX Spot Rate",
+                    "description": format!(
+                        "{}/{} spot exchange rate. The current market rate to exchange {} for {}. \
+                         Quote convention: 1 {} = {} {}.",
+                        base, quote, base, quote, base, rate.value, quote
+                    ),
+                    "usage": "Used for FX conversions, cross-currency discounting, and FX derivative pricing",
+                    "quoteConvention": format!("{}/{} (1 {} = x {})", base, quote, base, quote),
+                    "settlementDays": 2
+                })
+            }
+            _ => return None,
+        };
+        Some(description)
+    }
+
+    /// Find matching convention for a rate
+    fn find_convention_for_rate(rate: &MarketRate, state: &Arc<AppState>) -> Option<Convention> {
+        let conventions_result = Self::get_conventions(state).ok()?;
+
+        // Try to find exact match first
+        let convention_id = match rate.rate_type.as_str() {
+            "deposit" => format!("{}-DEPO", rate.currency),
+            "ois" => format!(
+                "{}-{}-OIS",
+                rate.currency,
+                rate.rate_index.as_deref().unwrap_or("OIS")
+            ),
+            "swap" => {
+                let index = rate.rate_index.as_deref().unwrap_or("SWAP");
+                format!("{}-{}-SWAP", rate.currency, index)
+            }
+            "fx_spot" => "FX-SPOT".to_string(),
+            _ => return None,
+        };
+
+        // Try exact match
+        if let Some(conv) = conventions_result
+            .conventions
+            .iter()
+            .find(|c| c.id == convention_id)
+        {
+            return Some(conv.clone());
+        }
+
+        // Try currency match with default
+        conventions_result
+            .conventions
+            .into_iter()
+            .find(|c| {
+                c.currency == rate.currency
+                    && c.convention_type.to_lowercase().contains(&rate.rate_type)
+                    && c.is_default == Some(true)
+            })
     }
 
     /// Refresh market rates (mock - just returns success)
@@ -508,57 +653,71 @@ impl DemoService {
 
     /// Get conventions
     pub fn get_conventions(_state: &Arc<AppState>) -> Result<ConventionsResponse, ServerError> {
-        // Return hardcoded conventions
-        let conventions = vec![
-            Convention {
-                id: "USD-OIS".to_string(),
-                convention_type: "OIS".to_string(),
-                currency: "USD".to_string(),
-                is_default: Some(true),
-                fields: Some(vec![
-                    ConventionField {
-                        label: "Day Count".to_string(),
-                        value: "ACT/360".to_string(),
-                    },
-                    ConventionField {
-                        label: "Payment Frequency".to_string(),
-                        value: "Annual".to_string(),
-                    },
-                ]),
-            },
-            Convention {
-                id: "EUR-OIS".to_string(),
-                convention_type: "OIS".to_string(),
-                currency: "EUR".to_string(),
-                is_default: Some(true),
-                fields: Some(vec![
-                    ConventionField {
-                        label: "Day Count".to_string(),
-                        value: "ACT/360".to_string(),
-                    },
-                    ConventionField {
-                        label: "Payment Frequency".to_string(),
-                        value: "Annual".to_string(),
-                    },
-                ]),
-            },
-            Convention {
-                id: "USD-SWAP".to_string(),
-                convention_type: "Swap".to_string(),
-                currency: "USD".to_string(),
-                is_default: Some(true),
-                fields: Some(vec![
-                    ConventionField {
-                        label: "Fixed Day Count".to_string(),
-                        value: "30/360".to_string(),
-                    },
-                    ConventionField {
-                        label: "Float Day Count".to_string(),
-                        value: "ACT/360".to_string(),
-                    },
-                ]),
-            },
-        ];
+        let conv_path = Path::new("demo/data/input/conventions/conventions.json");
+        let content = std::fs::read_to_string(conv_path)
+            .map_err(|e| ServerError::Internal(format!("Failed to read conventions.json: {e}")))?;
+        let data: serde_json::Value = serde_json::from_str(&content)
+            .map_err(|e| ServerError::Internal(format!("Failed to parse conventions.json: {e}")))?;
+
+        let mut conventions = Vec::new();
+
+        if let Some(conv_obj) = data.get("conventions").and_then(|c| c.as_object()) {
+            for (id, conv) in conv_obj {
+                let convention_type = conv
+                    .get("type")
+                    .and_then(|t| t.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let currency = conv
+                    .get("currency")
+                    .and_then(|c| c.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let is_default = conv.get("is_default").and_then(|d| d.as_bool());
+
+                // Convert fields object to ConventionField vec
+                let fields = conv.get("fields").and_then(|f| f.as_object()).map(|obj| {
+                    obj.iter()
+                        .map(|(key, value)| ConventionField {
+                            label: key
+                                .replace('_', " ")
+                                .split_whitespace()
+                                .map(|w| {
+                                    let mut c = w.chars();
+                                    match c.next() {
+                                        None => String::new(),
+                                        Some(f) => {
+                                            f.to_uppercase().collect::<String>() + c.as_str()
+                                        }
+                                    }
+                                })
+                                .collect::<Vec<_>>()
+                                .join(" "),
+                            value: value.as_str().map(String::from).unwrap_or_else(|| {
+                                if let Some(n) = value.as_i64() {
+                                    n.to_string()
+                                } else if let Some(n) = value.as_f64() {
+                                    n.to_string()
+                                } else {
+                                    value.to_string()
+                                }
+                            }),
+                        })
+                        .collect()
+                });
+
+                conventions.push(Convention {
+                    id: id.clone(),
+                    convention_type,
+                    currency,
+                    is_default,
+                    fields,
+                });
+            }
+        }
+
+        // Sort conventions by id for consistency
+        conventions.sort_by(|a, b| a.id.cmp(&b.id));
 
         Ok(ConventionsResponse { conventions })
     }
@@ -767,55 +926,146 @@ impl DemoService {
 
     /// Get market events
     pub fn get_events(_state: &Arc<AppState>) -> Result<EventsResponse, ServerError> {
-        // Return mock events
-        Ok(EventsResponse {
-            events: vec![
-                MarketEvent {
-                    id: "fed-2026-02".to_string(),
-                    date: "2026-02-15".to_string(),
-                    event_type: EventType::CentralBankMeeting,
-                    title: "FOMC Meeting".to_string(),
-                    description: Some("Federal Reserve FOMC meeting".to_string()),
-                    currency: Some("USD".to_string()),
-                    region: Some("US".to_string()),
-                    importance: Importance::Critical,
-                    time: Some("14:00".to_string()),
-                    timezone: Some("America/New_York".to_string()),
-                    source: "Federal Reserve".to_string(),
-                    tags: Some(vec!["monetary_policy".to_string()]),
-                    central_bank: Some(crate::rest::dto::demo::CentralBank {
-                        name: "Federal Reserve".to_string(),
-                        code: "FED".to_string(),
-                        currency: "USD".to_string(),
-                    }),
-                    previous: None,
-                    forecast: None,
-                    actual: None,
-                },
-                MarketEvent {
-                    id: "ecb-2026-02".to_string(),
-                    date: "2026-02-20".to_string(),
-                    event_type: EventType::CentralBankMeeting,
-                    title: "ECB Meeting".to_string(),
-                    description: Some("European Central Bank meeting".to_string()),
-                    currency: Some("EUR".to_string()),
-                    region: Some("EU".to_string()),
-                    importance: Importance::Critical,
-                    time: Some("13:45".to_string()),
-                    timezone: Some("Europe/Frankfurt".to_string()),
-                    source: "ECB".to_string(),
-                    tags: Some(vec!["monetary_policy".to_string()]),
-                    central_bank: Some(crate::rest::dto::demo::CentralBank {
-                        name: "European Central Bank".to_string(),
-                        code: "ECB".to_string(),
-                        currency: "EUR".to_string(),
-                    }),
-                    previous: None,
-                    forecast: None,
-                    actual: None,
-                },
-            ],
-        })
+        let mut events = Vec::new();
+
+        // Helper to parse event type from string
+        fn parse_event_type(s: &str) -> EventType {
+            match s {
+                "central_bank_meeting" => EventType::CentralBankMeeting,
+                "economic_release" => EventType::EconomicRelease,
+                "holiday" => EventType::Holiday,
+                "news" => EventType::News,
+                "expiry" => EventType::Expiry,
+                _ => EventType::Other,
+            }
+        }
+
+        // Helper to parse importance from string
+        fn parse_importance(s: &str) -> Importance {
+            match s.to_lowercase().as_str() {
+                "critical" => Importance::Critical,
+                "high" => Importance::High,
+                "medium" => Importance::Medium,
+                _ => Importance::Low,
+            }
+        }
+
+        // Helper to parse event from JSON value
+        fn parse_event(event: &serde_json::Value) -> Option<MarketEvent> {
+            let id = event.get("id")?.as_str()?.to_string();
+            let date = event.get("date")?.as_str()?.to_string();
+            let event_type_str = event.get("eventType")?.as_str()?;
+            let title = event.get("title")?.as_str()?.to_string();
+
+            let central_bank = event.get("centralBank").and_then(|cb| {
+                Some(crate::rest::dto::demo::CentralBank {
+                    name: cb.get("name")?.as_str()?.to_string(),
+                    code: cb.get("code")?.as_str()?.to_string(),
+                    currency: cb.get("currency")?.as_str()?.to_string(),
+                })
+            });
+
+            let tags = event.get("tags").and_then(|t| t.as_array()).map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect()
+            });
+
+            Some(MarketEvent {
+                id,
+                date,
+                event_type: parse_event_type(event_type_str),
+                title,
+                description: event
+                    .get("description")
+                    .and_then(|d| d.as_str())
+                    .map(String::from),
+                currency: event
+                    .get("currency")
+                    .and_then(|c| c.as_str())
+                    .map(String::from),
+                region: event
+                    .get("region")
+                    .and_then(|r| r.as_str())
+                    .map(String::from),
+                importance: event
+                    .get("importance")
+                    .and_then(|i| i.as_str())
+                    .map(parse_importance)
+                    .unwrap_or(Importance::Medium),
+                time: event.get("time").and_then(|t| t.as_str()).map(String::from),
+                timezone: event
+                    .get("timezone")
+                    .and_then(|t| t.as_str())
+                    .map(String::from),
+                source: event
+                    .get("source")
+                    .and_then(|s| s.as_str())
+                    .unwrap_or("Internal")
+                    .to_string(),
+                tags,
+                central_bank,
+                previous: event
+                    .get("previous")
+                    .and_then(|p| p.as_str())
+                    .map(String::from),
+                forecast: event
+                    .get("forecast")
+                    .and_then(|f| f.as_str())
+                    .map(String::from),
+                actual: event
+                    .get("actual")
+                    .and_then(|a| a.as_str())
+                    .map(String::from),
+            })
+        }
+
+        // Load central bank meetings
+        let cb_path = Path::new("demo/data/input/events/central_bank_meetings.json");
+        if let Ok(content) = std::fs::read_to_string(cb_path) {
+            if let Ok(data) = serde_json::from_str::<serde_json::Value>(&content) {
+                if let Some(event_arr) = data.get("events").and_then(|e| e.as_array()) {
+                    for event in event_arr {
+                        if let Some(parsed) = parse_event(event) {
+                            events.push(parsed);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Load economic releases
+        let econ_path = Path::new("demo/data/input/events/economic_releases.json");
+        if let Ok(content) = std::fs::read_to_string(econ_path) {
+            if let Ok(data) = serde_json::from_str::<serde_json::Value>(&content) {
+                if let Some(event_arr) = data.get("events").and_then(|e| e.as_array()) {
+                    for event in event_arr {
+                        if let Some(parsed) = parse_event(event) {
+                            events.push(parsed);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Load holidays
+        let hol_path = Path::new("demo/data/input/events/holidays.json");
+        if let Ok(content) = std::fs::read_to_string(hol_path) {
+            if let Ok(data) = serde_json::from_str::<serde_json::Value>(&content) {
+                if let Some(event_arr) = data.get("events").and_then(|e| e.as_array()) {
+                    for event in event_arr {
+                        if let Some(parsed) = parse_event(event) {
+                            events.push(parsed);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Sort events by date
+        events.sort_by(|a, b| a.date.cmp(&b.date));
+
+        Ok(EventsResponse { events })
     }
 
     /// Get event types
@@ -884,10 +1134,12 @@ impl DemoService {
     ) -> Result<CurveInstrumentsResponse, ServerError> {
         // Load market quotes and filter by index
         let rates_path = Path::new("demo/data/input/rates/market_quotes.json");
-        let content = std::fs::read_to_string(rates_path)
-            .map_err(|e| ServerError::Internal(format!("Failed to read market_quotes.json: {e}")))?;
-        let data: serde_json::Value = serde_json::from_str(&content)
-            .map_err(|e| ServerError::Internal(format!("Failed to parse market_quotes.json: {e}")))?;
+        let content = std::fs::read_to_string(rates_path).map_err(|e| {
+            ServerError::Internal(format!("Failed to read market_quotes.json: {e}"))
+        })?;
+        let data: serde_json::Value = serde_json::from_str(&content).map_err(|e| {
+            ServerError::Internal(format!("Failed to parse market_quotes.json: {e}"))
+        })?;
 
         // Map index to currency
         let currency = match index {
@@ -913,7 +1165,8 @@ impl DemoService {
                                     .and_then(|t| t.as_str())
                                     .unwrap_or("")
                                     .to_string();
-                                let rate = quote.get("value").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                                let rate =
+                                    quote.get("value").and_then(|v| v.as_f64()).unwrap_or(0.0);
 
                                 instruments.push(CurveInstrument {
                                     instrument_type: rate_type.clone(),
@@ -936,7 +1189,9 @@ impl DemoService {
     // =========================================================================
 
     /// Get volcube indices (swaption currencies)
-    pub fn get_volcube_indices(_state: &Arc<AppState>) -> Result<VolcubeIndicesResponse, ServerError> {
+    pub fn get_volcube_indices(
+        _state: &Arc<AppState>,
+    ) -> Result<VolcubeIndicesResponse, ServerError> {
         // Load from indices.json
         let indices_path = Path::new("demo/data/input/indices.json");
         let content = std::fs::read_to_string(indices_path)
@@ -962,7 +1217,9 @@ impl DemoService {
     }
 
     /// Get available volcube calibration models
-    pub fn get_volcube_models(_state: &Arc<AppState>) -> Result<VolcubeModelsResponse, ServerError> {
+    pub fn get_volcube_models(
+        _state: &Arc<AppState>,
+    ) -> Result<VolcubeModelsResponse, ServerError> {
         Ok(VolcubeModelsResponse {
             models: vec![
                 "SABR".to_string(),
@@ -978,9 +1235,9 @@ impl DemoService {
         currency: &str,
         _state: &Arc<AppState>,
     ) -> Result<VolcubeInstrumentsResponse, ServerError> {
-        // Load IR vol data
-        let vol_path = Path::new("demo/data/input/vol/swaption")
-            .join(format!("{}_swaption_vol.json", currency.to_lowercase()));
+        // Load IR vol data from irvol directory
+        let vol_path =
+            Path::new("demo/data/input/irvol").join(format!("{}.json", currency.to_lowercase()));
 
         let content = std::fs::read_to_string(&vol_path).map_err(|_| {
             ServerError::NotFound(format!("Swaption vol data not found for: {}", currency))
@@ -1002,7 +1259,8 @@ impl DemoService {
                     .and_then(|t| t.as_str())
                     .unwrap_or("")
                     .to_string();
-                let vol = quote.get("vol").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                // Use atmVol field from the data
+                let vol = quote.get("atmVol").and_then(|v| v.as_f64()).unwrap_or(0.0);
 
                 instruments.push(SwaptionInstrument {
                     expiry,

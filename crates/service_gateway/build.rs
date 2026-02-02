@@ -1,7 +1,6 @@
 //! Build script for `service_gateway`.
 
-use std::path::Path;
-use std::process::Command;
+use std::{path::Path, process::Command};
 
 /// Entry point for build script.
 fn main() {
@@ -23,7 +22,10 @@ fn build_demo_gui() {
 
     // Skip if static directory doesn't exist
     if !gui_static_dir.exists() {
-        println!("cargo:warning=Demo GUI source not found at {:?}", gui_static_dir);
+        println!(
+            "cargo:warning=Demo GUI source not found at {:?}",
+            gui_static_dir
+        );
         return;
     }
 

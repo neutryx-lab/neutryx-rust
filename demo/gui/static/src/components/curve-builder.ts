@@ -309,18 +309,23 @@ function renderBuildResult(): void {
   }
 
   if (elements.buildSummary) {
+    // Support both old metadata format and new flat format from backend
+    const instrumentCount = state.buildResult.instrument_count ?? state.buildResult.metadata?.instrumentCount ?? 0;
+    const interpolation = state.buildResult.interpolation ?? state.buildResult.metadata?.interpolation ?? 'Linear';
+    const processingTimeMs = state.buildResult.calculation_time_ms ?? state.buildResult.metadata?.processingTimeMs ?? 0;
+
     elements.buildSummary.innerHTML = `
       <div class="summary-item">
         <span class="label">Instruments:</span>
-        <span class="value">${state.buildResult.metadata.instrumentCount}</span>
+        <span class="value">${instrumentCount}</span>
       </div>
       <div class="summary-item">
         <span class="label">Interpolation:</span>
-        <span class="value">${escapeHtml(state.buildResult.metadata.interpolation)}</span>
+        <span class="value">${escapeHtml(String(interpolation))}</span>
       </div>
       <div class="summary-item">
         <span class="label">Processing Time:</span>
-        <span class="value">${state.buildResult.metadata.processingTimeMs.toFixed(2)} ms</span>
+        <span class="value">${Number(processingTimeMs).toFixed(2)} ms</span>
       </div>
     `;
   }

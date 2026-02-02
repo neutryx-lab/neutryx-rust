@@ -2,13 +2,12 @@
 
 use std::sync::Arc;
 
-use axum::{
-    routing::get,
-    routing::post,
-    Router,
-};
 #[cfg(feature = "risk")]
 use axum::routing::{delete, put};
+use axum::{
+    routing::{get, post},
+    Router,
+};
 
 pub mod dto;
 mod graph_handlers;
@@ -29,7 +28,8 @@ pub fn create_router_with_state(state: Arc<AppState>) -> Router {
         .nest("/api/v1", api_v1_routes(state))
 }
 
-/// Create the full router with all features (used when demo feature is disabled)
+/// Create the full router with all features (used when demo feature is
+/// disabled)
 #[cfg(not(feature = "demo"))]
 pub fn create_full_router(app_state: Arc<AppState>, ws_state: Arc<WsAppState>) -> Router {
     let graph_state = ws_state.graph_state.clone();

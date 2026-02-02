@@ -5,7 +5,6 @@
 //!
 //! Note: This module is only used when `demo` feature is disabled.
 #![allow(dead_code)]
-//!
 //! # Endpoints
 //!
 //! - `GET /api/v1/portfolio/graph` - Extract Portfolio computation graph
