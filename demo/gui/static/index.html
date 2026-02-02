@@ -229,7 +229,7 @@
             <section id="dashboard-view" class="view active">
                 <div class="bento-grid">
                     <!-- Large PV Card -->
-                    <div class="bento-item bento-wide glass-card" data-tilt>
+                    <div class="card dashboard bento-wide" data-tilt>
                         <div class="card-glow"></div>
                         <div class="bento-content">
                             <div class="metric-header">
@@ -265,7 +265,7 @@
                     </div>
 
                     <!-- Risk Breakdown (DV01/Gamma/Vega) -->
-                    <div class="bento-item bento-wide glass-card" data-tilt>
+                    <div class="card dashboard bento-wide" data-tilt>
                         <div class="bento-header">
                             <h3><i class="fas fa-th"></i> Risk Attribution</h3>
                         </div>
@@ -289,7 +289,7 @@
                     </div>
 
                     <!-- Exposure Chart -->
-                    <div class="bento-item bento-large glass-card" data-tilt role="figure" aria-labelledby="exposure-chart-title" aria-describedby="exposure-chart-desc">
+                    <div class="card dashboard bento-large" data-tilt role="figure" aria-labelledby="exposure-chart-title" aria-describedby="exposure-chart-desc">
                         <div class="bento-header">
                             <h3 id="exposure-chart-title"><i class="fas fa-chart-area" aria-hidden="true"></i> Exposure Profile</h3>
                             <div class="bento-actions">
@@ -327,7 +327,7 @@
                     </div>
 
                     <!-- Quick Actions -->
-                    <div class="bento-item bento-tall glass-card">
+                    <div class="card dashboard bento-tall">
                         <div class="bento-header">
                             <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
                         </div>
@@ -360,7 +360,7 @@
                     </div>
 
                     <!-- XVA Metrics -->
-                    <div class="bento-item glass-card" data-tilt>
+                    <div class="card dashboard" data-tilt>
                         <div class="bento-header">
                             <h3><i class="fas fa-shield-alt"></i> XVA Metrics</h3>
                         </div>
@@ -463,7 +463,7 @@
                 </div>
 
                 <!-- Table View -->
-                <div class="portfolio-table-wrapper glass-card" id="table-view">
+                <div class="portfolio-table-wrapper card" id="table-view">
                     <table class="portfolio-table" id="portfolio-table" aria-label="Portfolio trades table">
                         <caption class="visually-hidden">Portfolio trades with risk metrics</caption>
                         <thead>
@@ -587,7 +587,7 @@
                 </div>
 
                 <!-- Risk Attribution Grid -->
-                <div class="risk-attribution-panel glass-card">
+                <div class="risk-attribution-panel card">
                     <div class="bento-header">
                         <h3><i class="fas fa-th"></i> Risk Attribution Grid</h3>
                         <div class="bento-actions">
@@ -681,7 +681,7 @@
 
                 <!-- Bottom Row -->
                 <div class="risk-bottom-row">
-                    <div class="bento-item glass-card">
+                    <div class="card dashboard">
                         <div class="bento-header">
                             <h3><i class="fas fa-tachometer-alt"></i> Limit Utilization</h3>
                         </div>
@@ -718,7 +718,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="bento-item glass-card">
+                    <div class="card dashboard">
                         <div class="bento-header">
                             <h3><i class="fas fa-shield-alt"></i> XVA Metrics</h3>
                         </div>
@@ -791,7 +791,7 @@
 
                 <div class="bento-grid exposure-grid">
                     <!-- Counterparty Exposure Table -->
-                    <div class="bento-item bento-full glass-card">
+                    <div class="card dashboard bento-full">
                         <div class="bento-header">
                             <h3><i class="fas fa-users"></i> Counterparty Exposure</h3>
                             <div class="bento-actions">
@@ -819,7 +819,7 @@
                     </div>
 
                     <!-- Exposure Stats Cards -->
-                    <div class="bento-item glass-card">
+                    <div class="card dashboard">
                         <div class="bento-header">
                             <h3><i class="fas fa-info-circle"></i> Key Statistics</h3>
                         </div>
@@ -852,7 +852,7 @@
                     </div>
 
                     <!-- Main Exposure Chart -->
-                    <div class="bento-item bento-large glass-card">
+                    <div class="card dashboard bento-large">
                         <div class="bento-header">
                             <h3><i class="fas fa-chart-area"></i> Exposure Time Series</h3>
                             <div class="bento-actions">
@@ -924,7 +924,7 @@
 
                     <div class="scenarios-layout">
                         <!-- Scenario List Panel -->
-                        <div class="card glass-card">
+                        <div class="card">
                             <div class="panel-header">
                                 <h3><i class="fas fa-list"></i> Scenarios</h3>
                                 <div class="panel-actions">
@@ -980,7 +980,7 @@
                         </div>
 
                         <!-- Scenario Results Panel -->
-                        <div class="card glass-card">
+                        <div class="card">
                             <div class="panel-header">
                                 <h3><i class="fas fa-chart-bar"></i> Results</h3>
                             </div>
@@ -995,7 +995,7 @@
                         </div>
 
                         <!-- Scenario Parameters Panel -->
-                        <div class="card glass-card">
+                        <div class="card">
                             <div class="panel-header">
                                 <h3><i class="fas fa-cogs"></i> Parameters</h3>
                             </div>
@@ -1079,7 +1079,7 @@
                     </div>
 
                     <div class="two-column-grid">
-                        <div class="card glass-card">
+                        <div class="card">
                             <div class="panel-header">
                                 <h3><i class="fas fa-table"></i> Market Rates</h3>
                             </div>
@@ -1110,7 +1110,7 @@
                             </div>
                         </div>
 
-                        <div class="card glass-card" id="market-detail-panel">
+                        <div class="card" id="market-detail-panel">
                             <div class="panel-header">
                                 <h3><i class="fas fa-info-circle"></i> Rate Detail</h3>
                                 <button class="close-btn" id="close-detail-panel" title="Close">
@@ -1135,7 +1135,7 @@
 
                     <!-- Rate Indices Panel -->
                     <div class="indices-section">
-                        <div class="card glass-card">
+                        <div class="card">
                             <div class="panel-header">
                                 <h3><i class="fas fa-chart-line"></i> Rate Indices</h3>
                             </div>
@@ -1150,7 +1150,7 @@
 
                     <!-- Cashflows Panel -->
                     <div class="cashflows-section">
-                        <div class="card glass-card">
+                        <div class="card">
                             <div class="panel-header">
                                 <h3><i class="fas fa-money-bill-wave"></i> Cashflow Expansion</h3>
                             </div>
@@ -1164,7 +1164,7 @@
                     </div>
 
                     <div class="conventions-section">
-                        <div class="card glass-card">
+                        <div class="card">
                             <div class="panel-header">
                                 <h3><i class="fas fa-book"></i> Market Conventions</h3>
                             </div>
@@ -1264,7 +1264,7 @@
                         </div>
                     </div>
                     <div class="two-column-grid">
-                        <div class="card glass-card">
+                        <div class="card">
                             <div class="panel-header">
                                 <h3><i class="fas fa-list"></i> Instruments</h3>
                                 <div class="panel-actions">
@@ -1283,7 +1283,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="card glass-card">
+                        <div class="card">
                             <div class="panel-header">
                                 <h3><i class="fas fa-chart-line"></i> Build Results</h3>
                             </div>
@@ -1385,7 +1385,7 @@
                         </div>
                     </div>
                     <div class="two-column-grid">
-                        <div class="card glass-card">
+                        <div class="card">
                             <div class="pricer-section">
                                 <h3><i class="fas fa-file-contract"></i> Instrument</h3>
                                 <div class="pricer-form-group">

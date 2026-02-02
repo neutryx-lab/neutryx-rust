@@ -246,19 +246,24 @@ textarea:focus {
    ============================================ */
 
 /* ===========================================
-   CARD TYPE 1: .card (Basic Panel)
-   Use for: Standard content containers
-   Replaces: glass-card, bento-box, panel
+   3 CARD PATTERNS:
+   1. .card - Standard panels, forms, tables
+   2. .card.compact - Dense sidebars, lists
+   3. .card.dashboard - KPI cards with hover effects
    =========================================== */
 
 .card,
 .glass-card {
     background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-lg);
+    box-shadow: var(--glass-shadow);
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    position: relative;
 }
 
 .card-header,
@@ -332,16 +337,27 @@ textarea:focus {
 }
 
 /* ===========================================
-   CARD TYPE 3: .card.metric
-   Use for: KPIs, numbers, stats
+   PATTERN 3: .card.dashboard
+   Use for: Dashboard KPI cards, bento items
+   Features: Hover lift, glow effect, metrics
    =========================================== */
 
-.card.metric {
-    padding: 16px;
-    text-align: center;
+.card.dashboard {
+    transition: transform var(--transition-normal), box-shadow var(--transition-normal);
 }
 
-.card.metric .metric-value {
+.card.dashboard:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg), var(--shadow-glow);
+}
+
+.card.dashboard:hover .card-glow {
+    opacity: 0.1;
+}
+
+/* Dashboard metric typography */
+.card.dashboard .metric-value,
+.metric-value {
     font-size: 1.75rem;
     font-weight: 700;
     font-family: 'SF Mono', 'Consolas', monospace;
@@ -349,53 +365,33 @@ textarea:focus {
     line-height: 1.2;
 }
 
-.card.metric .metric-label {
+.card.dashboard .metric-label,
+.metric-label {
     font-size: 0.75rem;
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-top: 4px;
 }
 
-.card.metric .metric-change {
-    font-size: 0.8rem;
-    margin-top: 8px;
-}
+.metric-change { font-size: 0.8rem; }
+.metric-change.positive { color: var(--success); }
+.metric-change.negative { color: var(--danger); }
 
-.card.metric .metric-change.positive { color: var(--success); }
-.card.metric .metric-change.negative { color: var(--danger); }
-
-/* ===========================================
-   CARD TYPE 4: .card.interactive
-   Use for: Clickable cards, list items
-   =========================================== */
-
-.card.interactive {
-    cursor: pointer;
-    transition: all var(--transition-fast);
-}
-
-.card.interactive:hover {
-    border-color: var(--primary);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-}
-
-.card.interactive.selected,
-.card.interactive.active {
+/* Interactive card state */
+.card.selected,
+.card.active {
     border-color: var(--primary);
     background: rgba(99, 102, 241, 0.05);
 }
 
 /* ===========================================
-   CARD TYPE 5: .card.overlay (Modal/Drawer)
-   Use for: Modals, drawers, dialogs
+   Overlays: Modal, Drawer (separate from cards)
    =========================================== */
 
-.card.overlay,
 .modal,
 .drawer-content {
     background: var(--glass-bg);
+    backdrop-filter: blur(20px);
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-lg);
 }
@@ -1192,22 +1188,7 @@ body.light-theme .gradient-orb {
     border: 1px solid var(--glass-border);
 }
 
-.glass-card {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--glass-shadow);
-    position: relative;
-    overflow: hidden;
-    transition: transform var(--transition-normal), box-shadow var(--transition-normal);
-}
-
-.glass-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg), var(--shadow-glow);
-}
+/* Note: .glass-card is defined in unified card system above */
 
 .glass-heavy {
     background: rgba(15, 15, 25, 0.95);
@@ -1236,10 +1217,6 @@ body.light-theme .glass-heavy {
 .card-glow.green { background: radial-gradient(circle at center, var(--success) 0%, transparent 70%); }
 .card-glow.orange { background: radial-gradient(circle at center, var(--warning) 0%, transparent 70%); }
 .card-glow.purple { background: radial-gradient(circle at center, var(--purple) 0%, transparent 70%); }
-
-.glass-card:hover .card-glow {
-    opacity: 0.1;
-}
 
 /* ============================================
    Command Palette
@@ -8243,10 +8220,6 @@ body.light-theme .fancy-select {
 }
 
 /* Skeleton overlays for cards */
-.bento-item {
-    position: relative;
-}
-
 .skeleton-overlay {
     position: absolute;
     inset: 0;

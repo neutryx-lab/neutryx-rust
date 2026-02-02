@@ -48,9 +48,6 @@ mod trade;
 // Existing calibration instruments (for backward compatibility)
 mod instrument;
 
-/// Market conventions for standardised financial instruments.
-pub mod convention;
-
 /// Standard instrument definitions for all asset classes.
 pub mod instrument_def;
 

@@ -7,7 +7,7 @@
 //!
 //! ```rust,ignore
 //! use infra_master::trade::instrument_def::{InstrumentDefinition, InstrumentExpander, FxSpot};
-//! use infra_master::trade::convention::ConventionSet;
+//! use infra_master::market::convention::ConventionSet;
 //! use infra_master::Date;
 //!
 //! let fx_spot = FxSpot { /* ... */ };
@@ -64,10 +64,8 @@ use super::{
 };
 use crate::{
     ids::TradeId,
-    trade::{
-        convention::ConventionSet, Cashflow, CashflowType, Direction, Leg, LegType, Payoff, Trade,
-        TradeType,
-    },
+    market::convention::ConventionSet,
+    trade::{Cashflow, CashflowType, Direction, Leg, LegType, Payoff, Trade, TradeType},
     Date,
 };
 

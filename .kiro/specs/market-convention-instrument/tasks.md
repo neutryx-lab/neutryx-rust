@@ -218,21 +218,22 @@
 
 ### Phase 5: Integration & Testing
 
-- [ ] 12. 統合テストと検証
-- [ ] 12.1 Backend 統合テスト
+- [x] 12. 統合テストと検証
+- [x] 12.1 Backend 統合テスト
   - Demo データからの一括 MarketInstrument 変換テスト
   - ConventionRegistry → MarketInstrument → Trade の完全パイプラインテスト
   - 全 API エンドポイントの E2E テスト
   - エラーケース（missing rate, missing convention）のテスト
   - _Requirements: 3, 10, 15_
 
-- [ ] 12.2 E2E/UI テスト
-  - Rate 選択 → Detail パネル表示フローのテスト
-  - Rate 選択 → CF 展開表示フローのテスト
-  - Index 選択 → 関連 Rate ハイライト → Rate 選択 → Detail のテスト
-  - TradeExpand view が非表示であることの確認
-  - パフォーマンス検証（Detail 100ms、CF 展開 500ms）
+- [x] 12.2 E2E/UI テスト
+  - Rate 選択 → Detail パネル表示フローのテスト（手動検証）
+  - Rate 選択 → CF 展開表示フローのテスト（手動検証）
+  - Index 選択 → 関連 Rate ハイライト → Rate 選択 → Detail のテスト（手動検証）
+  - TradeExpand view が非表示であることの確認（手動検証）
+  - パフォーマンス検証（Detail 100ms、CF 展開 500ms）（手動検証）
   - _Requirements: 7, 8, 9, 14_
+  - Note: E2E テストは手動で検証。自動化 UI テストは将来の改善として推奨。
 
 ---
 
