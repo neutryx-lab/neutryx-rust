@@ -18,10 +18,11 @@ use crate::{
         CurveIndicesResponse, CurveInstrumentsResponse, DemoGreeksRequest, DemoGreeksResult,
         DemoPricingRequest, DemoPricingResult, EventTypesResponse, EventsResponse, ExpandedTrade,
         ExportFormat, FxVolCalibrateRequest, FxVolPairsResponse, FxVolQuotesResponse,
-        InstrumentsResponse, IrVolCurrenciesResponse, IrVolQuotesResponse, MarketConfigResponse,
-        MarketRateDetailResponse, MarketRatesResponse, TradeExpandRequest, VolcubeCalibrateRequest,
-        VolcubeCalibrateResponse, VolcubeIndicesResponse, VolcubeInstrumentsResponse,
-        VolcubeModelsResponse,
+        IndexConventionsResponse, IndexRatesResponse, InstrumentsResponse, IrVolCurrenciesResponse,
+        IrVolQuotesResponse, MarketConfigResponse, MarketRateDetailResponse, MarketRatesResponse,
+        RateCashflowsResponse, RateIndexDetailResponse, RateIndicesResponse, RateInstrumentResponse,
+        TradeExpandRequest, VolcubeCalibrateRequest, VolcubeCalibrateResponse,
+        VolcubeIndicesResponse, VolcubeInstrumentsResponse, VolcubeModelsResponse,
     },
     services::DemoService,
     state::AppState,
@@ -376,4 +377,77 @@ pub async fn export_market_json(
         .map_err(|e| ServerError::Internal(format!("Failed to build response: {e}")))?;
 
     Ok(response)
+}
+
+// =============================================================================
+// Rate Instrument API (market-convention-instrument)
+// =============================================================================
+
+/// Get instrument details for a rate
+///
+/// GET /api/market/rates/:rate_id/instrument
+pub async fn get_rate_instrument(
+    State(state): State<Arc<AppState>>,
+    Path(rate_id): Path<String>,
+) -> Result<Json<RateInstrumentResponse>, ServerError> {
+    let response = DemoService::get_rate_instrument(&rate_id, &state)?;
+    Ok(Json(response))
+}
+
+/// Get cashflows for a rate instrument
+///
+/// GET /api/market/rates/:rate_id/cashflows
+pub async fn get_rate_cashflows(
+    State(state): State<Arc<AppState>>,
+    Path(rate_id): Path<String>,
+) -> Result<Json<RateCashflowsResponse>, ServerError> {
+    let response = DemoService::get_rate_cashflows(&rate_id, &state)?;
+    Ok(Json(response))
+}
+
+// =============================================================================
+// Rate Index API (market-convention-instrument)
+// =============================================================================
+
+/// Get all rate indices
+///
+/// GET /api/market/indices
+pub async fn get_rate_indices(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<RateIndicesResponse>, ServerError> {
+    let response = DemoService::get_rate_indices(&state)?;
+    Ok(Json(response))
+}
+
+/// Get rate index detail
+///
+/// GET /api/market/indices/:code
+pub async fn get_rate_index_detail(
+    State(state): State<Arc<AppState>>,
+    Path(code): Path<String>,
+) -> Result<Json<RateIndexDetailResponse>, ServerError> {
+    let response = DemoService::get_rate_index_detail(&code, &state)?;
+    Ok(Json(response))
+}
+
+/// Get rates for a rate index
+///
+/// GET /api/market/indices/:code/rates
+pub async fn get_index_rates(
+    State(state): State<Arc<AppState>>,
+    Path(code): Path<String>,
+) -> Result<Json<IndexRatesResponse>, ServerError> {
+    let response = DemoService::get_index_rates(&code, &state)?;
+    Ok(Json(response))
+}
+
+/// Get conventions for a rate index
+///
+/// GET /api/market/indices/:code/conventions
+pub async fn get_index_conventions(
+    State(state): State<Arc<AppState>>,
+    Path(code): Path<String>,
+) -> Result<Json<IndexConventionsResponse>, ServerError> {
+    let response = DemoService::get_index_conventions(&code, &state)?;
+    Ok(Json(response))
 }

@@ -107,7 +107,16 @@ fn demo_api_routes(state: Arc<AppState>) -> Router {
         .route("/market/rates", get(handlers::demo::get_market_rates))
         .route("/market/config", get(handlers::demo::get_market_config))
         .route("/market/rates/refresh", post(handlers::demo::refresh_market_rates))
+        // Rate instrument/cashflow endpoints (more specific paths first)
+        .route("/market/rates/:rate_id/instrument", get(handlers::demo::get_rate_instrument))
+        .route("/market/rates/:rate_id/cashflows", get(handlers::demo::get_rate_cashflows))
         .route("/market/rates/:rate_id", get(handlers::demo::get_rate_detail))
+        // Rate indices endpoints
+        .route("/market/indices", get(handlers::demo::get_rate_indices))
+        .route("/market/indices/:code/rates", get(handlers::demo::get_index_rates))
+        .route("/market/indices/:code/conventions", get(handlers::demo::get_index_conventions))
+        .route("/market/indices/:code", get(handlers::demo::get_rate_index_detail))
+        // Conventions
         .route("/market/conventions", get(handlers::demo::get_conventions))
         .route("/market/conventions/:id", get(handlers::demo::get_convention_detail))
         .route("/market/events", get(handlers::demo::get_events))

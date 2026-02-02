@@ -2,7 +2,7 @@
 
 実装状況と今後の開発項目を追跡するドキュメント。
 
-_Updated: 2026-02-02_ — Steering sync: boilerplate-reduction and enum-dispatch-migration completed; 48 completed specs; 3 active specs (fxvol-calibration-migration, models-module-refactor, pricer-computation-graph)
+_Updated: 2026-02-02_ — Steering sync: market-convention-instrument advanced (ConventionRegistry, EventInstrument, D3.js graph); 48 completed specs; 4 active specs
 
 ---
 
@@ -186,15 +186,10 @@ Codebase redundancy cleanup performed:
 
 | Spec | Phase | Description |
 |------|-------|-------------|
+| market-convention-instrument | tasks-generated | Market convention registry, EventInstrument, D3.js graph visualisation |
 | fxvol-calibration-migration | tasks-generated | Migrate FX vol calibration module |
 | models-module-refactor | tasks-generated | Refactor pricer_models module structure |
 | pricer-computation-graph | tasks-generated | Computation graph extraction for pricer |
-
-### Initialized Specifications (Pending Requirements)
-
-| Spec | Created | Description |
-|------|---------|-------------|
-| market-convention-instrument | 2026-02-02 | Market convention and instrument definitions |
 
 ### Recently Completed
 
@@ -220,7 +215,7 @@ Codebase redundancy cleanup performed:
 
 | Date | Change |
 |------|--------|
-| 2026-02-02 | Steering sync: boilerplate-reduction and enum-dispatch-migration completed. Active specs: fxvol-calibration-migration, models-module-refactor, pricer-computation-graph. New: market-convention-instrument (initialized). Total: 48 specs |
+| 2026-02-02 | Steering sync: market-convention-instrument advanced to tasks-generated (ConventionRegistry, EventInstrument, D3.js graph). 4 active specs. Added Convention Registry Pattern to tech.md. Total: 48 specs |
 | 2026-01-31 | Steering sync: Added `enum_dispatch` pattern to tech.md and dependency-management.md, derive-more-newtype-migration completed. Total: 46 completed specs, 2 active specs (boilerplate-reduction, enum-dispatch-migration) |
 | 2026-01-31 | Steering sync: TypeScript frontend infrastructure (demo/gui/static with Vite, component-based architecture), service_gateway services layer (Handler→Service→Pricer pattern, demo endpoints, feature-gated caches), 3 new completed specs (config-consolidation, service-gateway-services, thiserror-migration). Total: 48 specs |
 | 2026-01-30 | Steering sync: Added Neutryx facade crate pattern (unified entry point, module aliases, feature tiers, prelude). Updated structure.md and tech.md. |

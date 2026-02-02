@@ -119,7 +119,7 @@ time/              → Time-related primitives
   ├── period.rs         → Period definitions (Period)
   └── types.rs          → Date type and business day conventions
 
-market/            → Market data references and rate infrastructure
+market/            → Market data references, rate infrastructure, and conventions
   ├── currency.rs       → ISO 4217 currency codes (Currency enum with metadata)
   ├── rate_index.rs     → Rate index definitions (RateIndex)
   ├── rate.rs           → Rate values (Rate, RateQuote)
@@ -130,7 +130,10 @@ market/            → Market data references and rate infrastructure
   ├── quote_type.rs     → Quote types (Bid, Ask, Mid)
   ├── data_source.rs    → Data source definitions
   ├── mapper.rs         → Rate/Ticker mapping
-  └── validation.rs     → Market data validation
+  ├── validation.rs     → Market data validation
+  ├── event_instrument.rs → EventInstrument for curve impact analysis (CB meetings, jumps)
+  ├── instrument.rs     → MarketInstrument trait and implementations
+  └── convention/       → Convention registry (ConventionRegistry, per-asset conventions)
 
 counterparty/      → Counterparty, netting, and XVA configuration
   ├── csa.rs            → CSA terms (CsaTerms)
@@ -164,7 +167,7 @@ trade/             → Trade representation (CF-expanded format)
   ├── pricing_instrument.rs → Pricing instrument types (VanillaOption, Forward)
   ├── book_assignment.rs → Trade-to-Book assignment
   ├── builder.rs        → Builder API (TradeBuilder, LegBuilder)
-  └── convention/       → Market conventions (swap, swaption, fx, equity, credit, commodity, etc.)
+  └── convention/       → Trade conventions (deprecated, migrated to market/convention/)
 
   instrument_def/   → Standard instrument definitions (multi-asset catalogue)
     ├── rates.rs        → Rates instruments (Swaption, CapFloor, Frn, CmsSwap, InflationSwap)
@@ -639,7 +642,7 @@ static/          → Web dashboard frontend (TypeScript + Vite)
   ├── vite.config.ts  → Vite build configuration
   └── src/            → TypeScript source
       ├── main.ts           → Application entry point
-      ├── components/       → UI components (curve-builder, pricer, volcube-builder, market-data, exposure, dashboard, scenarios, trade-expansion)
+      ├── components/       → UI components (curve-builder, pricer, volcube-builder, market-data, exposure, dashboard, scenarios, trade-expansion, portfolio, graph)
       ├── services/         → API client services (api.ts, config-loader.ts)
       ├── types/            → TypeScript type definitions (api.ts)
       └── utils/            → Utilities (dom.ts, format.ts, logger.ts)
@@ -749,5 +752,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-02-02_ — Added exposure, dashboard, scenarios, trade-expansion components to frontend
+_Updated: 2026-02-02_ — Added market/convention/ (ConventionRegistry), EventInstrument, portfolio/graph frontend modules
 _Document patterns, not file trees. New files following patterns should not require updates_

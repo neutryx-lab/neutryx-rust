@@ -22,6 +22,8 @@ The workspace enforces a strict unidirectional data flow that mirrors alphabetic
 - **XVA & Risk Analytics**: CVA, DVA, FVA calculations with exposure metrics (EE, EPE, PFE, EEPE, ENE)
 - **Market Data Infrastructure**: AD-compatible yield curves and volatility surfaces with interpolation
 - **Index-Keyed Market Access**: `IndexedMarket` container with `RateIndex`/`CurrencyPair` keyed lookups, `TradeIndexRequirements` for dependency declaration
+- **Convention Registry**: Standardised market conventions (`ConventionRegistry`, per-currency `ConventionSet`) for swap, swaption, FX, inflation, cross-currency products
+- **Event Instruments**: `EventInstrument` for curve impact analysis (central bank meetings, expected rate jumps)
 - **Model Calibration**: Heston, SABR, Hull-White calibration with Levenberg-Marquardt optimisation
 - **FX Market Calibration**: FX forward curves (FX swaps, XCCY basis swaps), FX volatility surfaces with SABR calibration
 - **Interest Rate Models**: Hull-White, Cox-Ingersoll-Ross (CIR) with mean reversion
@@ -47,5 +49,5 @@ The workspace enforces a strict unidirectional data flow that mirrors alphabetic
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-26_ — Added IndexedMarket (index-keyed market access pattern)
+_Updated: 2026-02-02_ — Added Convention Registry and EventInstrument capabilities
 _Focus on patterns and purpose, not exhaustive feature lists_

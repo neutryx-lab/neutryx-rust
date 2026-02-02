@@ -8,17 +8,19 @@ use crate::{
     error::ServerError,
     rest::dto::demo::{
         AppConfigResponse, AvailableCurvesResponse, CalibrationMetadata, CalibrationParameters,
-        Cashflow, Convention, ConventionField, ConventionsResponse, CurveIndicesResponse,
-        CurveInstrument, CurveInstrumentsResponse, DemoGreeksRequest, DemoGreeksResult,
-        DemoPricingRequest, DemoPricingResult, EnumValue, EventType, EventTypesResponse,
-        EventsResponse, ExpandedTrade, ExportFormat, FieldType, FxVolCalibrateRequest, FxVolPair,
-        FxVolPairsResponse, FxVolQuote, FxVolQuotesResponse, Importance, InstrumentDef,
+        Cashflow, CashflowDetail, Convention, ConventionDetail, ConventionField,
+        ConventionsResponse, CurveIndicesResponse, CurveInstrument, CurveInstrumentsResponse,
+        DemoGreeksRequest, DemoGreeksResult, DemoPricingRequest, DemoPricingResult, EnumValue,
+        EventType, EventTypesResponse, EventsResponse, ExpandedTrade, ExportFormat, FieldType,
+        FxVolCalibrateRequest, FxVolPair, FxVolPairsResponse, FxVolQuote, FxVolQuotesResponse,
+        Importance, IndexConventionsResponse, IndexRatesResponse, InstrumentDef,
         InstrumentsResponse, IrVolCurrenciesResponse, IrVolCurrency, IrVolQuote,
-        IrVolQuotesResponse, MarketConfigResponse, MarketEvent, MarketRate,
-        MarketRateDetailResponse, MarketRatesResponse, ParameterDef, SmilePoint,
-        SwaptionInstrument, TradeExpandRequest, TradeLeg, TradeMetadata, VolcubeCalibrateRequest,
-        VolcubeCalibrateResponse, VolcubeIndicesResponse, VolcubeInstrumentsResponse,
-        VolcubeModelsResponse,
+        IrVolQuotesResponse, LegCashflows, MarketConfigResponse, MarketEvent, MarketRate,
+        MarketRateDetailResponse, MarketRatesResponse, ParameterDef, RateCashflowsResponse,
+        RateIndexDetailResponse, RateIndexInfo, RateIndexMetadata, RateIndicesResponse,
+        RateInstrumentResponse, SmilePoint, SwaptionInstrument, TradeExpandRequest, TradeLeg,
+        TradeMetadata, VolcubeCalibrateRequest, VolcubeCalibrateResponse, VolcubeIndicesResponse,
+        VolcubeInstrumentsResponse, VolcubeModelsResponse,
     },
     state::AppState,
 };
@@ -1647,6 +1649,571 @@ impl DemoService {
                 Ok(json)
             }
         }
+    }
+
+    // =========================================================================
+    // Rate Instrument API (market-convention-instrument)
+    // =========================================================================
+
+    /// Get instrument details for a rate
+    ///
+    /// Creates a MarketInstrument from the rate and returns its details.
+    pub fn get_rate_instrument(
+        rate_id: &str,
+        state: &Arc<AppState>,
+    ) -> Result<RateInstrumentResponse, ServerError> {
+        let start = Instant::now();
+
+        // Get the rate detail
+        let rate_detail = Self::get_rate_detail(rate_id, state)?;
+        let rate = &rate_detail.rate;
+
+        // Calculate dates from tenor
+        let valuation_date = chrono::Utc::now().date_naive();
+        let (effective_date, maturity_date) = Self::calculate_dates_from_tenor(
+            &rate.tenor,
+            &rate.currency,
+            valuation_date,
+        );
+
+        // Build convention detail from the rate's convention
+        let convention = rate_detail.convention.map(|conv| {
+            let mut day_count = None;
+            let mut frequency = None;
+            let mut business_day_convention = None;
+            let mut spot_lag = None;
+            let mut calendar = None;
+
+            if let Some(fields) = &conv.fields {
+                for field in fields {
+                    match field.label.to_lowercase().as_str() {
+                        "day count" | "daycount" | "day counter" => {
+                            day_count = Some(field.value.clone());
+                        }
+                        "frequency" | "payment frequency" => {
+                            frequency = Some(field.value.clone());
+                        }
+                        "business day convention" | "bdc" => {
+                            business_day_convention = Some(field.value.clone());
+                        }
+                        "spot lag" | "settlement days" => {
+                            spot_lag = field.value.parse().ok();
+                        }
+                        "calendar" | "calendars" => {
+                            calendar = Some(field.value.clone());
+                        }
+                        _ => {}
+                    }
+                }
+            }
+
+            ConventionDetail {
+                convention_type: conv.convention_type,
+                day_count,
+                frequency,
+                business_day_convention,
+                spot_lag,
+                calendar,
+            }
+        });
+
+        // Map rate type to instrument type
+        let instrument_type = match rate.rate_type.as_str() {
+            "deposit" => "Money Market Deposit",
+            "ois" => "Overnight Index Swap",
+            "swap" => "Interest Rate Swap",
+            "fra" => "Forward Rate Agreement",
+            "future" => "Interest Rate Future",
+            "fxspot" => "FX Spot",
+            "fxforward" => "FX Forward",
+            "xccybasis" => "Cross-Currency Basis Swap",
+            other => other,
+        };
+
+        let elapsed = start.elapsed();
+
+        Ok(RateInstrumentResponse {
+            rate_id: rate.id.clone(),
+            rate_value: rate.value,
+            instrument_type: instrument_type.to_string(),
+            convention,
+            effective_date: effective_date.to_string(),
+            maturity_date: maturity_date.to_string(),
+            notional: 1_000_000.0, // Default notional
+            processing_time_ms: elapsed.as_secs_f64() * 1000.0,
+        })
+    }
+
+    /// Get cashflows for a rate instrument
+    ///
+    /// Expands the instrument to a trade and returns the cashflows.
+    pub fn get_rate_cashflows(
+        rate_id: &str,
+        state: &Arc<AppState>,
+    ) -> Result<RateCashflowsResponse, ServerError> {
+        let start = Instant::now();
+
+        // Get the rate detail
+        let rate_detail = Self::get_rate_detail(rate_id, state)?;
+        let rate = &rate_detail.rate;
+
+        // Calculate dates from tenor
+        let valuation_date = chrono::Utc::now().date_naive();
+        let (effective_date, maturity_date) = Self::calculate_dates_from_tenor(
+            &rate.tenor,
+            &rate.currency,
+            valuation_date,
+        );
+
+        // Generate cashflows based on rate type
+        let legs = match rate.rate_type.as_str() {
+            "deposit" => {
+                // Single cashflow at maturity
+                vec![LegCashflows {
+                    leg_type: "Fixed".to_string(),
+                    direction: "Receiver".to_string(),
+                    currency: rate.currency.clone(),
+                    rate_index: None,
+                    cashflows: vec![CashflowDetail {
+                        payment_date: maturity_date.to_string(),
+                        accrual_start: effective_date.to_string(),
+                        accrual_end: maturity_date.to_string(),
+                        year_fraction: Self::calculate_year_fraction(
+                            effective_date,
+                            maturity_date,
+                            &rate.currency,
+                        ),
+                        notional: 1_000_000.0,
+                        rate: Some(rate.value),
+                        spread: None,
+                        payoff_type: "Fixed".to_string(),
+                    }],
+                }]
+            }
+            "ois" | "swap" => {
+                // Fixed and floating legs
+                let year_fraction = Self::calculate_year_fraction(
+                    effective_date,
+                    maturity_date,
+                    &rate.currency,
+                );
+                vec![
+                    LegCashflows {
+                        leg_type: "Fixed".to_string(),
+                        direction: "Payer".to_string(),
+                        currency: rate.currency.clone(),
+                        rate_index: None,
+                        cashflows: vec![CashflowDetail {
+                            payment_date: maturity_date.to_string(),
+                            accrual_start: effective_date.to_string(),
+                            accrual_end: maturity_date.to_string(),
+                            year_fraction,
+                            notional: 1_000_000.0,
+                            rate: Some(rate.value),
+                            spread: None,
+                            payoff_type: "Fixed".to_string(),
+                        }],
+                    },
+                    LegCashflows {
+                        leg_type: "Floating".to_string(),
+                        direction: "Receiver".to_string(),
+                        currency: rate.currency.clone(),
+                        rate_index: rate.rate_index.clone(),
+                        cashflows: vec![CashflowDetail {
+                            payment_date: maturity_date.to_string(),
+                            accrual_start: effective_date.to_string(),
+                            accrual_end: maturity_date.to_string(),
+                            year_fraction,
+                            notional: 1_000_000.0,
+                            rate: None,
+                            spread: Some(0.0),
+                            payoff_type: "Linear".to_string(),
+                        }],
+                    },
+                ]
+            }
+            "fra" => {
+                // Single FRA cashflow
+                vec![LegCashflows {
+                    leg_type: "FRA".to_string(),
+                    direction: "Payer".to_string(),
+                    currency: rate.currency.clone(),
+                    rate_index: rate.rate_index.clone(),
+                    cashflows: vec![CashflowDetail {
+                        payment_date: effective_date.to_string(),
+                        accrual_start: effective_date.to_string(),
+                        accrual_end: maturity_date.to_string(),
+                        year_fraction: Self::calculate_year_fraction(
+                            effective_date,
+                            maturity_date,
+                            &rate.currency,
+                        ),
+                        notional: 1_000_000.0,
+                        rate: Some(rate.value),
+                        spread: None,
+                        payoff_type: "FRA".to_string(),
+                    }],
+                }]
+            }
+            _ => {
+                // Default single cashflow
+                vec![LegCashflows {
+                    leg_type: "Unknown".to_string(),
+                    direction: "Unknown".to_string(),
+                    currency: rate.currency.clone(),
+                    rate_index: None,
+                    cashflows: vec![CashflowDetail {
+                        payment_date: maturity_date.to_string(),
+                        accrual_start: effective_date.to_string(),
+                        accrual_end: maturity_date.to_string(),
+                        year_fraction: Self::calculate_year_fraction(
+                            effective_date,
+                            maturity_date,
+                            &rate.currency,
+                        ),
+                        notional: 1_000_000.0,
+                        rate: Some(rate.value),
+                        spread: None,
+                        payoff_type: "Other".to_string(),
+                    }],
+                }]
+            }
+        };
+
+        let elapsed = start.elapsed();
+
+        Ok(RateCashflowsResponse {
+            rate_id: rate.id.clone(),
+            legs,
+            processing_time_ms: elapsed.as_secs_f64() * 1000.0,
+        })
+    }
+
+    /// Calculate dates from tenor
+    fn calculate_dates_from_tenor(
+        tenor: &str,
+        currency: &str,
+        valuation_date: chrono::NaiveDate,
+    ) -> (chrono::NaiveDate, chrono::NaiveDate) {
+        // Spot lag: T+2 for most currencies, T+0 for GBP
+        let spot_lag = if currency == "GBP" { 0 } else { 2 };
+        let effective_date = valuation_date + chrono::Duration::days(spot_lag);
+
+        // Parse tenor and calculate maturity
+        let maturity_date = match tenor.to_uppercase().as_str() {
+            "ON" | "O/N" => effective_date + chrono::Duration::days(1),
+            "TN" | "T/N" => effective_date + chrono::Duration::days(1),
+            "1W" => effective_date + chrono::Duration::weeks(1),
+            "2W" => effective_date + chrono::Duration::weeks(2),
+            "3W" => effective_date + chrono::Duration::weeks(3),
+            "1M" => Self::add_months(effective_date, 1),
+            "2M" => Self::add_months(effective_date, 2),
+            "3M" => Self::add_months(effective_date, 3),
+            "4M" => Self::add_months(effective_date, 4),
+            "5M" => Self::add_months(effective_date, 5),
+            "6M" => Self::add_months(effective_date, 6),
+            "9M" => Self::add_months(effective_date, 9),
+            "1Y" => Self::add_months(effective_date, 12),
+            "18M" => Self::add_months(effective_date, 18),
+            "2Y" => Self::add_months(effective_date, 24),
+            "3Y" => Self::add_months(effective_date, 36),
+            "4Y" => Self::add_months(effective_date, 48),
+            "5Y" => Self::add_months(effective_date, 60),
+            "6Y" => Self::add_months(effective_date, 72),
+            "7Y" => Self::add_months(effective_date, 84),
+            "8Y" => Self::add_months(effective_date, 96),
+            "9Y" => Self::add_months(effective_date, 108),
+            "10Y" => Self::add_months(effective_date, 120),
+            "12Y" => Self::add_months(effective_date, 144),
+            "15Y" => Self::add_months(effective_date, 180),
+            "20Y" => Self::add_months(effective_date, 240),
+            "25Y" => Self::add_months(effective_date, 300),
+            "30Y" => Self::add_months(effective_date, 360),
+            "40Y" => Self::add_months(effective_date, 480),
+            "50Y" => Self::add_months(effective_date, 600),
+            "SPOT" => effective_date,
+            _ => {
+                // Try to parse numeric tenor
+                if let Some(years) = tenor.strip_suffix('Y').and_then(|s| s.parse::<i32>().ok()) {
+                    Self::add_months(effective_date, years * 12)
+                } else if let Some(months) = tenor.strip_suffix('M').and_then(|s| s.parse::<i32>().ok()) {
+                    Self::add_months(effective_date, months)
+                } else if let Some(weeks) = tenor.strip_suffix('W').and_then(|s| s.parse::<i64>().ok()) {
+                    effective_date + chrono::Duration::weeks(weeks)
+                } else if let Some(days) = tenor.strip_suffix('D').and_then(|s| s.parse::<i64>().ok()) {
+                    effective_date + chrono::Duration::days(days)
+                } else {
+                    // Default to 1 year
+                    Self::add_months(effective_date, 12)
+                }
+            }
+        };
+
+        (effective_date, maturity_date)
+    }
+
+    /// Add months to a date
+    fn add_months(date: chrono::NaiveDate, months: i32) -> chrono::NaiveDate {
+        use chrono::Datelike;
+
+        let total_months = date.month0() as i32 + months;
+        let years_to_add = total_months / 12;
+        let new_month = (total_months % 12) as u32 + 1;
+        let new_year = date.year() + years_to_add;
+
+        // Handle end-of-month
+        let max_day = match new_month {
+            2 => {
+                if new_year % 4 == 0 && (new_year % 100 != 0 || new_year % 400 == 0) {
+                    29
+                } else {
+                    28
+                }
+            }
+            4 | 6 | 9 | 11 => 30,
+            _ => 31,
+        };
+        let new_day = std::cmp::min(date.day(), max_day);
+
+        chrono::NaiveDate::from_ymd_opt(new_year, new_month, new_day)
+            .unwrap_or(date)
+    }
+
+    /// Calculate year fraction
+    fn calculate_year_fraction(
+        start: chrono::NaiveDate,
+        end: chrono::NaiveDate,
+        currency: &str,
+    ) -> f64 {
+        let days = (end - start).num_days() as f64;
+        // ACT/360 for USD, EUR; ACT/365F for GBP, JPY
+        let year_basis = if currency == "GBP" || currency == "JPY" {
+            365.0
+        } else {
+            360.0
+        };
+        days / year_basis
+    }
+
+    // =========================================================================
+    // Rate Index API (market-convention-instrument)
+    // =========================================================================
+
+    /// Get all rate indices
+    pub fn get_rate_indices(state: &Arc<AppState>) -> Result<RateIndicesResponse, ServerError> {
+        // Load from indices.json
+        let indices_path = Path::new("demo/data/input/indices.json");
+        let content = std::fs::read_to_string(indices_path)
+            .map_err(|e| ServerError::Internal(format!("Failed to read indices.json: {e}")))?;
+        let data: serde_json::Value = serde_json::from_str(&content)
+            .map_err(|e| ServerError::Internal(format!("Failed to parse indices.json: {e}")))?;
+
+        let mut indices = Vec::new();
+
+        if let Some(rate_items) = data
+            .get("indices")
+            .and_then(|i| i.get("rates"))
+            .and_then(|r| r.get("items"))
+            .and_then(|i| i.as_array())
+        {
+            // Get market rates to count associations
+            let rates_response = Self::get_market_rates(state).ok();
+            let conventions_response = Self::get_conventions(state).ok();
+
+            for item in rate_items {
+                let index_code = item
+                    .get("index")
+                    .and_then(|i| i.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let currency = item
+                    .get("currency")
+                    .and_then(|c| c.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let tenor = item
+                    .get("tenor")
+                    .and_then(|t| t.as_str())
+                    .unwrap_or("O/N")
+                    .to_string();
+                let day_counter = item
+                    .get("dayCounter")
+                    .and_then(|d| d.as_str())
+                    .map(String::from);
+                let is_overnight = item
+                    .get("isOvernight")
+                    .and_then(|o| o.as_bool())
+                    .unwrap_or(tenor == "O/N" || tenor == "ON");
+
+                // Count associated rates
+                let associated_rates_count = rates_response
+                    .as_ref()
+                    .map(|r| {
+                        r.rates
+                            .iter()
+                            .filter(|rate| {
+                                rate.rate_index.as_deref() == Some(&index_code)
+                                    || rate.currency == currency
+                            })
+                            .count()
+                    })
+                    .unwrap_or(0);
+
+                // Count associated conventions
+                let associated_conventions_count = conventions_response
+                    .as_ref()
+                    .map(|c| {
+                        c.conventions
+                            .iter()
+                            .filter(|conv| conv.currency == currency)
+                            .count()
+                    })
+                    .unwrap_or(0);
+
+                // Build display name
+                let name = format!("{} ({})", index_code, currency);
+
+                indices.push(RateIndexInfo {
+                    code: index_code,
+                    name,
+                    currency,
+                    tenor,
+                    day_counter,
+                    is_overnight,
+                    associated_rates_count,
+                    associated_conventions_count,
+                });
+            }
+        }
+
+        Ok(RateIndicesResponse { indices })
+    }
+
+    /// Get rate index detail
+    pub fn get_rate_index_detail(
+        code: &str,
+        state: &Arc<AppState>,
+    ) -> Result<RateIndexDetailResponse, ServerError> {
+        // Load from indices.json
+        let indices_path = Path::new("demo/data/input/indices.json");
+        let content = std::fs::read_to_string(indices_path)
+            .map_err(|e| ServerError::Internal(format!("Failed to read indices.json: {e}")))?;
+        let data: serde_json::Value = serde_json::from_str(&content)
+            .map_err(|e| ServerError::Internal(format!("Failed to parse indices.json: {e}")))?;
+
+        // Find the index
+        let rate_items = data
+            .get("indices")
+            .and_then(|i| i.get("rates"))
+            .and_then(|r| r.get("items"))
+            .and_then(|i| i.as_array())
+            .ok_or_else(|| ServerError::NotFound(format!("Index {} not found", code)))?;
+
+        let item = rate_items
+            .iter()
+            .find(|i| {
+                i.get("index")
+                    .and_then(|idx| idx.as_str())
+                    .map(|s| s == code)
+                    .unwrap_or(false)
+            })
+            .ok_or_else(|| ServerError::NotFound(format!("Index {} not found", code)))?;
+
+        let currency = item
+            .get("currency")
+            .and_then(|c| c.as_str())
+            .unwrap_or("")
+            .to_string();
+        let tenor = item
+            .get("tenor")
+            .and_then(|t| t.as_str())
+            .unwrap_or("O/N")
+            .to_string();
+        let name = format!("{} ({})", code, currency);
+
+        // Build metadata
+        let metadata = Some(RateIndexMetadata {
+            fixing_lag: item.get("fixingLag").and_then(|f| f.as_u64()).map(|f| f as u32),
+            settlement_lag: item.get("settlementLag").and_then(|s| s.as_u64()).map(|s| s as u32),
+            compounding_method: item
+                .get("compoundingMethod")
+                .and_then(|c| c.as_str())
+                .map(String::from),
+            fixing_calendar: item
+                .get("fixingCalendar")
+                .and_then(|c| c.as_str())
+                .map(String::from),
+        });
+
+        // Get associated rates
+        let rates_response = Self::get_market_rates(state)?;
+        let associated_rates: Vec<String> = rates_response
+            .rates
+            .iter()
+            .filter(|rate| {
+                rate.rate_index.as_deref() == Some(code) || rate.currency == currency
+            })
+            .map(|r| r.id.clone())
+            .collect();
+
+        // Get associated conventions
+        let conventions_response = Self::get_conventions(state)?;
+        let associated_conventions: Vec<String> = conventions_response
+            .conventions
+            .iter()
+            .filter(|conv| conv.currency == currency)
+            .map(|c| c.id.clone())
+            .collect();
+
+        Ok(RateIndexDetailResponse {
+            code: code.to_string(),
+            name,
+            currency,
+            tenor,
+            metadata,
+            associated_rates,
+            associated_conventions,
+        })
+    }
+
+    /// Get rates for a rate index
+    pub fn get_index_rates(
+        code: &str,
+        state: &Arc<AppState>,
+    ) -> Result<IndexRatesResponse, ServerError> {
+        // First, get the index to find its currency
+        let index_detail = Self::get_rate_index_detail(code, state)?;
+
+        // Get all rates and filter by index
+        let rates_response = Self::get_market_rates(state)?;
+        let rates: Vec<MarketRate> = rates_response
+            .rates
+            .into_iter()
+            .filter(|rate| {
+                rate.rate_index.as_deref() == Some(code) || rate.currency == index_detail.currency
+            })
+            .collect();
+
+        Ok(IndexRatesResponse { rates })
+    }
+
+    /// Get conventions for a rate index
+    pub fn get_index_conventions(
+        code: &str,
+        state: &Arc<AppState>,
+    ) -> Result<IndexConventionsResponse, ServerError> {
+        // First, get the index to find its currency
+        let index_detail = Self::get_rate_index_detail(code, state)?;
+
+        // Get all conventions and filter by currency
+        let conventions_response = Self::get_conventions(state)?;
+        let conventions: Vec<Convention> = conventions_response
+            .conventions
+            .into_iter()
+            .filter(|conv| conv.currency == index_detail.currency)
+            .collect();
+
+        Ok(IndexConventionsResponse { conventions })
     }
 }
 

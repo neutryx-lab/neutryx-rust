@@ -618,6 +618,195 @@ pub enum ExportFormat {
 }
 
 // =============================================================================
+// Rate Instrument Types (market-convention-instrument)
+// =============================================================================
+
+/// Rate instrument response
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RateInstrumentResponse {
+    /// Rate identifier
+    pub rate_id: String,
+    /// Rate value
+    pub rate_value: f64,
+    /// Instrument type name
+    pub instrument_type: String,
+    /// Convention details
+    pub convention: Option<ConventionDetail>,
+    /// Effective date
+    pub effective_date: String,
+    /// Maturity date
+    pub maturity_date: String,
+    /// Notional amount
+    pub notional: f64,
+    /// Processing time in milliseconds
+    pub processing_time_ms: f64,
+}
+
+/// Convention detail for instrument response
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConventionDetail {
+    /// Convention type
+    pub convention_type: String,
+    /// Day count convention
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub day_count: Option<String>,
+    /// Payment frequency
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub frequency: Option<String>,
+    /// Business day convention
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub business_day_convention: Option<String>,
+    /// Settlement days (spot lag)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub spot_lag: Option<u32>,
+    /// Calendar
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub calendar: Option<String>,
+}
+
+/// Rate cashflows response
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RateCashflowsResponse {
+    /// Rate identifier
+    pub rate_id: String,
+    /// Legs with cashflows
+    pub legs: Vec<LegCashflows>,
+    /// Processing time in milliseconds
+    pub processing_time_ms: f64,
+}
+
+/// Leg with cashflows
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LegCashflows {
+    /// Leg type (Fixed, Floating)
+    pub leg_type: String,
+    /// Direction (Payer, Receiver)
+    pub direction: String,
+    /// Currency
+    pub currency: String,
+    /// Rate index (for floating legs)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rate_index: Option<String>,
+    /// Cashflows
+    pub cashflows: Vec<CashflowDetail>,
+}
+
+/// Cashflow detail
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CashflowDetail {
+    /// Payment date
+    pub payment_date: String,
+    /// Accrual start date
+    pub accrual_start: String,
+    /// Accrual end date
+    pub accrual_end: String,
+    /// Year fraction
+    pub year_fraction: f64,
+    /// Notional amount
+    pub notional: f64,
+    /// Fixed rate (for fixed legs)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rate: Option<f64>,
+    /// Spread (for floating legs)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub spread: Option<f64>,
+    /// Payoff type
+    pub payoff_type: String,
+}
+
+// =============================================================================
+// Rate Index Types (market-convention-instrument)
+// =============================================================================
+
+/// Rate index info
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RateIndexInfo {
+    /// Index code (e.g., "SOFR", "ESTR")
+    pub code: String,
+    /// Display name
+    pub name: String,
+    /// Currency
+    pub currency: String,
+    /// Tenor (e.g., "O/N", "3M")
+    pub tenor: String,
+    /// Day counter
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub day_counter: Option<String>,
+    /// Is overnight RFR
+    pub is_overnight: bool,
+    /// Number of associated market rates
+    pub associated_rates_count: usize,
+    /// Number of associated conventions
+    pub associated_conventions_count: usize,
+}
+
+/// Rate indices response
+#[derive(Debug, Clone, Serialize)]
+pub struct RateIndicesResponse {
+    /// List of rate indices
+    pub indices: Vec<RateIndexInfo>,
+}
+
+/// Rate index detail response
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RateIndexDetailResponse {
+    /// Index code
+    pub code: String,
+    /// Display name
+    pub name: String,
+    /// Currency
+    pub currency: String,
+    /// Tenor
+    pub tenor: String,
+    /// Index metadata
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<RateIndexMetadata>,
+    /// Associated rate IDs
+    pub associated_rates: Vec<String>,
+    /// Associated convention IDs
+    pub associated_conventions: Vec<String>,
+}
+
+/// Rate index metadata
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RateIndexMetadata {
+    /// Fixing lag in days
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fixing_lag: Option<u32>,
+    /// Settlement lag in days
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub settlement_lag: Option<u32>,
+    /// Compounding method
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub compounding_method: Option<String>,
+    /// Fixing calendar
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fixing_calendar: Option<String>,
+}
+
+/// Index rates response
+#[derive(Debug, Clone, Serialize)]
+pub struct IndexRatesResponse {
+    /// List of market rates for this index
+    pub rates: Vec<MarketRate>,
+}
+
+/// Index conventions response
+#[derive(Debug, Clone, Serialize)]
+pub struct IndexConventionsResponse {
+    /// List of conventions using this index
+    pub conventions: Vec<Convention>,
+}
+
+// =============================================================================
 // Tests
 // =============================================================================
 

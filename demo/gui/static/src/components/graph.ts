@@ -96,10 +96,10 @@ const elements: GraphElements = {
 };
 
 // D3 simulation and SVG references
-let svg: d3.Selection<SVGSVGElement, unknown, null, undefined> | null = null;
+let svg: d3.Selection<SVGSVGElement, unknown, HTMLElement, undefined> | null = null;
 let simulation: d3.Simulation<D3Node, D3Link> | null = null;
 let zoomBehavior: d3.ZoomBehavior<SVGSVGElement, unknown> | null = null;
-let mainGroup: d3.Selection<SVGGElement, unknown, null, undefined> | null = null;
+let mainGroup: d3.Selection<SVGGElement, unknown, SVGSVGElement, undefined> | null = null;
 
 // =============================================================================
 // Colour Schemes
@@ -117,7 +117,8 @@ const nodeColours: Record<string, string> = {
   default: '#94a3b8',    // Gray
 };
 
-const groupColours: Record<string, string> = {
+// Group colours - exported for legend rendering
+export const groupColours: Record<string, string> = {
   Sensitivity: '#4ade80',
   Intermediate: '#60a5fa',
   Output: '#f87171',
@@ -303,7 +304,7 @@ function renderGraph(): void {
       .on('start', dragStarted)
       .on('drag', dragged)
       .on('end', dragEnded))
-    .on('click', (event: MouseEvent, d: D3Node) => selectNode(d));
+    .on('click', (_event: Event, d: D3Node) => selectNode(d));
 
   // Node circles
   node.append('circle')

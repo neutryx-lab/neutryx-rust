@@ -144,6 +144,7 @@ docker run -it neutryx-enzyme
 | **Shadow Object Pattern** | Reverse mode AAD uses shadow buffers for gradient accumulation; `binder.rs` orchestrates market data → portfolio Greeks flow |
 | **Feature Flag Coordination** | Features propagate through dependency chain (demo→frictional_bank→pricer_pricing) enabling modular compilation for different deployment scenarios |
 | **Feature Flags** | `enzyme-mode`, `serde` for serialisation; Asset classes: `equity` (default), `rates`, `credit`, `fx`, `commodity`, `exotic`; Convenience: `all`; Integration: `l1l2-integration` |
+| **Convention Registry Pattern** | `ConventionRegistry` with `ConventionKey` lookup; `ConventionSet` bundles per-currency conventions; `EventInstrument` models expected rate jumps at CB meetings |
 
 ## Performance Optimisation
 
@@ -179,5 +180,5 @@ docker run -it neutryx-enzyme
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-31_ — Added enum_dispatch pattern for zero-cost trait dispatch
+_Updated: 2026-02-02_ — Added Convention Registry Pattern (ConventionRegistry, ConventionSet, EventInstrument)
 _Document standards and patterns, not every dependency_
