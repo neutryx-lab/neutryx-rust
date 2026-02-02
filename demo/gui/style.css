@@ -12441,25 +12441,43 @@ body.light-theme .jacobian-row-header {
     max-height: calc(100vh - var(--header-height));
 }
 
+/* Market Data view-container: scrollable with flex layout */
+#market-data-view > .view-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 16px;
+    gap: 16px;
+}
+
+/* Market Data header: don't shrink, auto height */
+#market-data-view .view-header.card {
+    flex-shrink: 0;
+}
+
 /* Market Data Grid - swap columns: table gets more space, detail panel is narrower */
 #market-data-view .two-column-grid {
     grid-template-columns: 1fr 380px;
-    grid-template-rows: 1fr;
-    min-height: 400px;
+    flex: 0 0 auto;
+    min-height: 500px;
+    height: 60vh;
+    max-height: 800px;
 }
 
 #market-data-view .two-column-grid > .card {
     min-height: 0;
-    height: 100%;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
-
 
 #market-data-view .table-container {
     flex: 1;
     overflow: auto;
-    min-height: 200px;
+    min-height: 0;
 }
 
 /* Market Data - uses unified .view-container, .view-header */

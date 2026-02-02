@@ -96,7 +96,7 @@ impl MarketInstrumentError {
 /// ```rust
 /// use infra_master::market::{Currency, RateId, RateType};
 /// use infra_master::market::convention::{MarketConvention, DepositConvention};
-/// use infra_master::market::instrument::MarketInstrument;
+/// use infra_master::market::MarketInstrument;
 /// use infra_master::time::{Date, Tenor};
 ///
 /// let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
@@ -157,7 +157,7 @@ impl MarketInstrument {
     /// ```rust
     /// use infra_master::market::{Currency, RateId, RateType};
     /// use infra_master::market::convention::{MarketConvention, SwapConvention};
-    /// use infra_master::market::instrument::MarketInstrument;
+    /// use infra_master::market::MarketInstrument;
     /// use infra_master::time::{Date, Tenor};
     ///
     /// let rate_id = RateId::new(Currency::USD, Tenor::FiveYears, RateType::Swap);
@@ -347,7 +347,7 @@ impl MarketInstrument {
     /// ```rust
     /// use infra_master::market::{Currency, RateId, RateType};
     /// use infra_master::market::convention::{MarketConvention, DepositConvention};
-    /// use infra_master::market::instrument::MarketInstrument;
+    /// use infra_master::market::MarketInstrument;
     /// use infra_master::time::{Date, Tenor};
     ///
     /// let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
