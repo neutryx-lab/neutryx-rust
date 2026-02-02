@@ -23,11 +23,19 @@ interface CurveInstrument {
 }
 
 interface BuildResult {
-  curveId: string;
-  discountFactors: Array<{ date: string; yearFraction: number; value: number }>;
-  zeroRates: Array<{ date: string; yearFraction: number; rate: number }>;
-  forwardRates: Array<{ startDate: string; endDate: string; rate: number }>;
-  metadata: {
+  // Fields from backend (snake_case)
+  curve_id?: string;
+  instrument_count?: number;
+  interpolation?: string;
+  calculation_time_ms?: number;
+  pillars?: Array<{ time: number; discount_factor: number; zero_rate: number }>;
+  converged?: boolean;
+  // Legacy fields (camelCase) for compatibility
+  curveId?: string;
+  discountFactors?: Array<{ date: string; yearFraction: number; value: number }>;
+  zeroRates?: Array<{ date: string; yearFraction: number; rate: number }>;
+  forwardRates?: Array<{ startDate: string; endDate: string; rate: number }>;
+  metadata?: {
     instrumentCount: number;
     interpolation: string;
     processingTimeMs: number;

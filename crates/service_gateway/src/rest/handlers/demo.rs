@@ -17,10 +17,11 @@ use crate::{
         AppConfigResponse, AvailableCurvesResponse, Convention, ConventionsResponse,
         CurveIndicesResponse, CurveInstrumentsResponse, DemoGreeksRequest, DemoGreeksResult,
         DemoPricingRequest, DemoPricingResult, EventTypesResponse, EventsResponse, ExpandedTrade,
-        ExportFormat, FxVolPairsResponse, FxVolQuotesResponse, InstrumentsResponse,
-        IrVolCurrenciesResponse, IrVolQuotesResponse, MarketConfigResponse,
-        MarketRateDetailResponse, MarketRatesResponse, TradeExpandRequest, VolcubeIndicesResponse,
-        VolcubeInstrumentsResponse, VolcubeModelsResponse,
+        ExportFormat, FxVolCalibrateRequest, FxVolPairsResponse, FxVolQuotesResponse,
+        InstrumentsResponse, IrVolCurrenciesResponse, IrVolQuotesResponse, MarketConfigResponse,
+        MarketRateDetailResponse, MarketRatesResponse, TradeExpandRequest, VolcubeCalibrateRequest,
+        VolcubeCalibrateResponse, VolcubeIndicesResponse, VolcubeInstrumentsResponse,
+        VolcubeModelsResponse,
     },
     services::DemoService,
     state::AppState,
@@ -306,6 +307,28 @@ pub async fn get_volcube_instruments(
     Path(currency): Path<String>,
 ) -> Result<Json<VolcubeInstrumentsResponse>, ServerError> {
     let response = DemoService::get_volcube_instruments(&currency, &state)?;
+    Ok(Json(response))
+}
+
+/// Calibrate volcube (swaption vol surface)
+///
+/// POST /api/volcube/calibrate
+pub async fn calibrate_volcube(
+    State(state): State<Arc<AppState>>,
+    Json(request): Json<VolcubeCalibrateRequest>,
+) -> Result<Json<VolcubeCalibrateResponse>, ServerError> {
+    let response = DemoService::calibrate_volcube(&request, &state)?;
+    Ok(Json(response))
+}
+
+/// Calibrate FX vol surface
+///
+/// POST /api/fxvol/calibrate
+pub async fn calibrate_fxvol(
+    State(state): State<Arc<AppState>>,
+    Json(request): Json<FxVolCalibrateRequest>,
+) -> Result<Json<VolcubeCalibrateResponse>, ServerError> {
+    let response = DemoService::calibrate_fxvol(&request, &state)?;
     Ok(Json(response))
 }
 

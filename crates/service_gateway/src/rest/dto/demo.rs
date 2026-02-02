@@ -560,6 +560,51 @@ pub struct VolcubeInstrumentsResponse {
     pub instruments: Vec<SwaptionInstrument>,
 }
 
+/// Volcube calibration request
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VolcubeCalibrateRequest {
+    pub index: String,
+    pub reference_date: Option<String>,
+    pub model: Option<String>,
+}
+
+/// Volcube calibration response
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VolcubeCalibrateResponse {
+    pub model: String,
+    pub metadata: CalibrationMetadata,
+    pub parameters: CalibrationParameters,
+}
+
+/// FX vol calibration request
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FxVolCalibrateRequest {
+    pub pair: String,
+    pub spot: f64,
+    pub domestic_rate: f64,
+    pub foreign_rate: f64,
+}
+
+/// Calibration metadata
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CalibrationMetadata {
+    pub instrument_count: usize,
+    pub processing_time_ms: f64,
+}
+
+/// Calibration parameters (SABR model)
+#[derive(Debug, Clone, Serialize)]
+pub struct CalibrationParameters {
+    pub alpha: f64,
+    pub beta: f64,
+    pub rho: f64,
+    pub nu: f64,
+}
+
 // =============================================================================
 // Export Types
 // =============================================================================

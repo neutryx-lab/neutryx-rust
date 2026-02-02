@@ -94,6 +94,8 @@ fn demo_api_routes(state: Arc<AppState>) -> Router {
         .route("/volcube/indices", get(handlers::demo::get_volcube_indices))
         .route("/volcube/models", get(handlers::demo::get_volcube_models))
         .route("/volcube/instruments/:currency", get(handlers::demo::get_volcube_instruments))
+        .route("/volcube/calibrate", post(handlers::demo::calibrate_volcube))
+        .route("/fxvol/calibrate", post(handlers::demo::calibrate_fxvol))
         // Market data
         .route("/market/rates", get(handlers::demo::get_market_rates))
         .route("/market/config", get(handlers::demo::get_market_config))

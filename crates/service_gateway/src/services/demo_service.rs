@@ -7,16 +7,18 @@ use std::{collections::HashMap, path::Path, sync::Arc, time::Instant};
 use crate::{
     error::ServerError,
     rest::dto::demo::{
-        AppConfigResponse, AvailableCurvesResponse, Cashflow, Convention, ConventionField,
-        ConventionsResponse, CurveIndicesResponse, CurveInstrument, CurveInstrumentsResponse,
-        DemoGreeksRequest, DemoGreeksResult, DemoPricingRequest, DemoPricingResult, EnumValue,
-        EventType, EventTypesResponse, EventsResponse, ExpandedTrade, ExportFormat, FieldType,
-        FxVolPair, FxVolPairsResponse, FxVolQuote, FxVolQuotesResponse, Importance, InstrumentDef,
+        AppConfigResponse, AvailableCurvesResponse, CalibrationMetadata, CalibrationParameters,
+        Cashflow, Convention, ConventionField, ConventionsResponse, CurveIndicesResponse,
+        CurveInstrument, CurveInstrumentsResponse, DemoGreeksRequest, DemoGreeksResult,
+        DemoPricingRequest, DemoPricingResult, EnumValue, EventType, EventTypesResponse,
+        EventsResponse, ExpandedTrade, ExportFormat, FieldType, FxVolCalibrateRequest, FxVolPair,
+        FxVolPairsResponse, FxVolQuote, FxVolQuotesResponse, Importance, InstrumentDef,
         InstrumentsResponse, IrVolCurrenciesResponse, IrVolCurrency, IrVolQuote,
         IrVolQuotesResponse, MarketConfigResponse, MarketEvent, MarketRate,
         MarketRateDetailResponse, MarketRatesResponse, ParameterDef, SmilePoint,
-        SwaptionInstrument, TradeExpandRequest, TradeLeg, TradeMetadata, VolcubeIndicesResponse,
-        VolcubeInstrumentsResponse, VolcubeModelsResponse,
+        SwaptionInstrument, TradeExpandRequest, TradeLeg, TradeMetadata, VolcubeCalibrateRequest,
+        VolcubeCalibrateResponse, VolcubeIndicesResponse, VolcubeInstrumentsResponse,
+        VolcubeModelsResponse,
     },
     state::AppState,
 };
@@ -1273,6 +1275,107 @@ impl DemoService {
         }
 
         Ok(VolcubeInstrumentsResponse { instruments })
+    }
+
+    /// Calibrate volcube (swaption vol surface)
+    pub fn calibrate_volcube(
+        request: &VolcubeCalibrateRequest,
+        _state: &Arc<AppState>,
+    ) -> Result<VolcubeCalibrateResponse, ServerError> {
+        let start = std::time::Instant::now();
+
+        // Load vol data to get instrument count
+        let vol_path = Path::new("demo/data/input/irvol")
+            .join(format!("{}.json", request.index.to_lowercase()));
+
+        let content = std::fs::read_to_string(&vol_path).map_err(|_| {
+            ServerError::NotFound(format!("Vol data not found for: {}", request.index))
+        })?;
+        let data: serde_json::Value = serde_json::from_str(&content)
+            .map_err(|e| ServerError::Internal(format!("Failed to parse vol data: {e}")))?;
+
+        let instrument_count = data
+            .get("quotes")
+            .and_then(|q| q.as_array())
+            .map(|arr| arr.len())
+            .unwrap_or(0);
+
+        // Get SABR parameters from the file or use defaults
+        let params = data.get("smileParameters");
+        let alpha = params
+            .and_then(|p| p.get("defaultAlpha"))
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.02);
+        let beta = params
+            .and_then(|p| p.get("defaultBeta"))
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.5);
+        let rho = params
+            .and_then(|p| p.get("defaultRho"))
+            .and_then(|v| v.as_f64())
+            .unwrap_or(-0.15);
+        let nu = params
+            .and_then(|p| p.get("defaultNu"))
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.4);
+
+        let elapsed = start.elapsed();
+        let model = request.model.clone().unwrap_or_else(|| "SABR".to_string());
+
+        Ok(VolcubeCalibrateResponse {
+            model,
+            metadata: CalibrationMetadata {
+                instrument_count,
+                processing_time_ms: elapsed.as_secs_f64() * 1000.0,
+            },
+            parameters: CalibrationParameters {
+                alpha,
+                beta,
+                rho,
+                nu,
+            },
+        })
+    }
+
+    /// Calibrate FX vol surface
+    pub fn calibrate_fxvol(
+        request: &FxVolCalibrateRequest,
+        _state: &Arc<AppState>,
+    ) -> Result<VolcubeCalibrateResponse, ServerError> {
+        let start = std::time::Instant::now();
+
+        // Load FX vol data
+        let vol_path =
+            Path::new("demo/data/input/fxvol").join(format!("{}.json", request.pair.to_lowercase()));
+
+        let content = std::fs::read_to_string(&vol_path).map_err(|_| {
+            ServerError::NotFound(format!("FX vol data not found for: {}", request.pair))
+        })?;
+        let data: serde_json::Value = serde_json::from_str(&content)
+            .map_err(|e| ServerError::Internal(format!("Failed to parse FX vol data: {e}")))?;
+
+        let instrument_count = data
+            .get("smiles")
+            .and_then(|s| s.as_array())
+            .map(|arr| arr.len())
+            .unwrap_or(0);
+
+        let elapsed = start.elapsed();
+
+        // Mock SABR parameters for FX vol
+        Ok(VolcubeCalibrateResponse {
+            model: "SABR".to_string(),
+            metadata: CalibrationMetadata {
+                instrument_count,
+                processing_time_ms: elapsed.as_secs_f64() * 1000.0,
+            },
+            parameters: CalibrationParameters {
+                alpha: 0.15,
+                beta: 0.5,
+                rho: -0.20,
+                nu: 0.35,
+            },
+        })
     }
 
     // =========================================================================
