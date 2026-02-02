@@ -1567,10 +1567,10 @@ body.light-theme .glass-heavy {
     border-radius: 50%;
 }
 
-.legend-dot.pfe { background: var(--warning); }
-.legend-dot.ee { background: var(--primary); }
-.legend-dot.epe { background: var(--success); }
-.legend-dot.ene { background: var(--danger); }
+.legend-dot.pfe { background: #ef4444; }
+.legend-dot.ee { background: #3b82f6; }
+.legend-dot.epe { background: #10b981; }
+.legend-dot.ene { background: #8b5cf6; }
 
 .legend-value {
     font-size: 0.75rem;
@@ -2437,6 +2437,7 @@ body.light-theme .glass-heavy {
     box-sizing: border-box;
 }
 
+/* risk-attribution-panel - uses base .bento-header styles with overrides */
 .risk-attribution-panel .bento-header {
     margin-bottom: 1rem;
 }
@@ -2444,13 +2445,6 @@ body.light-theme .glass-heavy {
 .risk-attribution-panel .bento-header h3 {
     font-size: 1.25rem;
     font-weight: 700;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.risk-attribution-panel .bento-header h3 i {
-    color: var(--primary);
 }
 
 .risk-attribution-summary {
@@ -3028,34 +3022,7 @@ body.light-theme .glass-heavy {
     color: var(--danger);
 }
 
-/* Scenario Panel Headers */
-.scenario-list-panel .panel-header,
-.scenario-results-panel .panel-header,
-.scenario-params-panel .panel-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 14px 16px;
-    border-bottom: 1px solid var(--glass-border);
-    flex-shrink: 0;
-}
-
-.scenario-list-panel .panel-header h3,
-.scenario-results-panel .panel-header h3,
-.scenario-params-panel .panel-header h3 {
-    margin: 0;
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.scenario-list-panel .panel-header h3 i {
-    color: var(--primary);
-}
-
+/* Scenario Panel Headers - icon color overrides only (base styles in Common Panel Styles) */
 .scenario-results-panel .panel-header h3 i {
     color: var(--accent);
 }
@@ -3071,23 +3038,15 @@ body.light-theme .glass-heavy {
     padding: 16px;
 }
 
+/* chart-placeholder - uses base .placeholder styles, with overrides */
 .scenario-results-panel .chart-placeholder {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
     height: 100%;
-    color: var(--text-muted);
-    gap: 12px;
+    padding: 20px;
 }
 
 .scenario-results-panel .chart-placeholder i {
     font-size: 3rem;
     opacity: 0.3;
-}
-
-.scenario-results-panel .chart-placeholder p {
-    font-size: 0.9rem;
 }
 
 .scenario-controls {
@@ -3220,16 +3179,10 @@ body.light-theme .glass-heavy {
     overflow-y: auto;
 }
 
+/* results-placeholder - uses base .placeholder styles, with overrides */
 .results-placeholder {
     flex: 1;
     min-height: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    gap: 12px;
-    padding: 40px;
 }
 
 .placeholder-icon {
@@ -11655,25 +11608,10 @@ body.light-theme .irs-loading-overlay {
 }
 
 
+/* curve-section - uses base .section-header styles with overrides */
 .curve-section .section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     margin-bottom: 12px;
-}
-
-.curve-section .section-header h3 {
-    margin: 0;
-    font-size: 1rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.curve-section .section-header h3 i {
-    color: var(--primary);
-    font-size: 0.9rem;
+    flex-wrap: nowrap;
 }
 
 .curve-section .section-actions {
@@ -13301,26 +13239,13 @@ body.light-theme .asset-toggle-btn:hover {
     min-height: 0; /* Allow flexbox child to shrink and enable scrolling */
 }
 
+/* rates-panel overrides - uses base .panel-header styles */
 .rates-panel .panel-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     padding: 14px 18px;
-    border-bottom: 1px solid var(--glass-border);
 }
 
 .rates-panel .panel-header h3 {
-    margin: 0;
     font-size: 1rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.rates-panel .panel-header h3 i {
-    color: var(--primary);
 }
 
 .rate-stats {
@@ -13532,22 +13457,13 @@ body.light-theme .asset-toggle-btn:hover {
     overflow: hidden;
 }
 
+/* detail-panel overrides - uses base .panel-header styles */
 .detail-panel .panel-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     padding: 14px 18px;
-    border-bottom: 1px solid var(--glass-border);
 }
 
 .detail-panel .panel-header h3 {
-    margin: 0;
     font-size: 1rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    gap: 8px;
 }
 
 .detail-panel .panel-header h3 i {
@@ -13573,20 +13489,10 @@ body.light-theme .asset-toggle-btn:hover {
     padding: 16px;
 }
 
+/* detail-placeholder - uses base .placeholder styles, with height override */
 .detail-placeholder {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
     height: 100%;
-    color: var(--text-muted);
-    gap: 12px;
-    text-align: center;
-}
-
-.detail-placeholder i {
-    font-size: 2.5rem;
-    opacity: 0.4;
+    padding: 20px;
 }
 
 /* Rate detail sections */
@@ -13658,11 +13564,18 @@ body.light-theme .asset-toggle-btn:hover {
     padding: 16px;
 }
 
+/* conventions-panel overrides - uses base .panel-header styles */
 .conventions-panel .panel-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    border-bottom: none;
     margin-bottom: 16px;
+}
+
+.conventions-panel .panel-header h3 {
+    font-size: 1rem;
+}
+
+.conventions-panel .panel-header h3 i {
+    color: var(--purple);
 }
 
 .convention-stats .stat-value {
@@ -13682,38 +13595,12 @@ body.light-theme .asset-toggle-btn:hover {
 }
 
 .convention-detail-panel .panel-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    border-bottom: none;
     margin-bottom: 16px;
 }
 
 .convention-detail-panel .panel-header h3 {
-    margin: 0;
     font-size: 1rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.convention-detail-panel .panel-header h3 i {
-    color: var(--primary);
-}
-
-.conventions-panel .panel-header h3 {
-    margin: 0;
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.conventions-panel .panel-header h3 i {
-    color: var(--purple);
 }
 
 .conventions-grid {

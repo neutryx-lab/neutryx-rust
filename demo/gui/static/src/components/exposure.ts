@@ -37,7 +37,7 @@ interface ExposureState {
 const state: ExposureState = {
   chart: null,
   data: [],
-  visibleSeries: new Set(['pfe', 'ee', 'epe']),
+  visibleSeries: new Set(['pfe', 'ee', 'epe', 'ene']),
   selectedTimeRange: '10y',
 };
 
@@ -156,6 +156,7 @@ function createChartConfig(data: ExposureDataPoint[]) {
           },
         },
         y: {
+          beginAtZero: false,
           grid: {
             color: 'rgba(255, 255, 255, 0.05)',
           },

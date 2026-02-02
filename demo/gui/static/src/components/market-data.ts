@@ -773,7 +773,7 @@ function renderDetailPanel(): void {
   if (!state.selectedRateId) {
     if (elements.detailContent) {
       elements.detailContent.innerHTML = `
-        <div class="detail-placeholder">
+        <div class="placeholder detail-placeholder">
           <i class="fas fa-hand-pointer"></i>
           <p>Select a rate to view details</p>
         </div>

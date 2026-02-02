@@ -119,6 +119,7 @@ mod ticker;
 mod validation;
 
 // Submodules for extended market data types
+pub mod convention;
 pub mod events;
 pub mod volatility;
 
