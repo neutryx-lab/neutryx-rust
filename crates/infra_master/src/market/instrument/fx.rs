@@ -9,43 +9,8 @@ use super::{
 };
 use crate::{trade::OptionType, Currency, Date};
 
-/// Currency pair representation.
-///
-/// Represents a pair of currencies for FX transactions.
-/// Convention: Base/Quote, e.g., EUR/USD means EUR is base, USD is quote.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct CurrencyPair {
-    /// Base currency (first in the pair).
-    pub base: Currency,
-    /// Quote currency (second in the pair).
-    pub quote: Currency,
-}
-
-impl CurrencyPair {
-    /// Creates a new currency pair.
-    #[must_use]
-    pub fn new(base: Currency, quote: Currency) -> Self { Self { base, quote } }
-
-    /// Returns the inverse currency pair.
-    #[must_use]
-    pub fn inverse(&self) -> Self {
-        Self {
-            base: self.quote,
-            quote: self.base,
-        }
-    }
-
-    /// Returns the pair as a string (e.g., "EUR/USD").
-    #[must_use]
-    pub fn to_string_pair(&self) -> String { format!("{}/{}", self.base.code(), self.quote.code()) }
-}
-
-impl std::fmt::Display for CurrencyPair {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}/{}", self.base.code(), self.quote.code())
-    }
-}
+// Re-export CurrencyPair from market module
+pub use crate::market::CurrencyPair;
 
 /// FX spot transaction.
 ///
@@ -527,28 +492,11 @@ pub enum FxSwapError {
 mod tests {
     use super::*;
 
-    fn make_test_currency_pair() -> CurrencyPair { CurrencyPair::new(Currency::EUR, Currency::USD) }
-
-    #[test]
-    fn test_currency_pair_new() {
-        let pair = make_test_currency_pair();
-        assert_eq!(pair.base, Currency::EUR);
-        assert_eq!(pair.quote, Currency::USD);
+    fn make_test_currency_pair() -> CurrencyPair {
+        CurrencyPair::new(Currency::EUR, Currency::USD)
     }
 
-    #[test]
-    fn test_currency_pair_inverse() {
-        let pair = make_test_currency_pair();
-        let inverse = pair.inverse();
-        assert_eq!(inverse.base, Currency::USD);
-        assert_eq!(inverse.quote, Currency::EUR);
-    }
-
-    #[test]
-    fn test_currency_pair_display() {
-        let pair = make_test_currency_pair();
-        assert_eq!(pair.to_string(), "EUR/USD");
-    }
+    // CurrencyPair tests are now in market/currency_pair.rs
 
     #[test]
     fn test_fx_spot_validate_success() {

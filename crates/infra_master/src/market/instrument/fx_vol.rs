@@ -4,8 +4,9 @@
 //! ATM, Butterfly (BF), Risk Reversal (RR), and Delta-quoted options.
 //! These instruments are used for calibrating FX volatility surfaces.
 
-use super::{error::InstrumentError, CurrencyPair};
+use super::error::InstrumentError;
 use crate::{
+    market::CurrencyPair,
     time::{CalendarId, DayCounter},
     trade::OptionType,
     Currency, Date,

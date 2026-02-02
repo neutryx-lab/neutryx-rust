@@ -262,8 +262,9 @@ textarea:focus {
     box-shadow: var(--glass-shadow);
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow: auto;
     position: relative;
+    min-height: 0; /* Allow flex shrinking */
 }
 
 .card-header,
@@ -1885,12 +1886,7 @@ body.light-theme .glass-heavy {
     grid-template-columns: 1fr;
 }
 
-.bento-item {
-    position: relative;
-    transition: transform var(--transition-normal);
-}
-
-/* Bento Sizes */
+/* Bento Sizes - used with .card.dashboard */
 .bento-wide {
     grid-column: span 2;
 }
@@ -2365,7 +2361,7 @@ body.light-theme .glass-heavy {
     max-width: 100%;
 }
 
-.portfolio-table-wrapper.glass-card {
+.portfolio-table-wrapper.card {
     overflow-x: auto;
     overflow-y: hidden;
     overscroll-behavior-x: contain;
@@ -7637,17 +7633,13 @@ body.light-theme .fancy-select {
 
 /* --- 1. Micro-interactions --- */
 
-/* Subtle hover effect (no lift) */
-.bento-card,
-.glass-card,
+/* Subtle hover effect for non-dashboard cards */
 .metric-card,
 .exposure-card,
 .summary-card {
     transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-.bento-card:hover,
-.glass-card:hover,
 .metric-card:hover {
     border-color: rgba(99, 102, 241, 0.3);
     box-shadow: 0 0 20px rgba(99, 102, 241, 0.1);
@@ -9865,7 +9857,7 @@ a:not(.nav-item):not(.skip-link):hover {
         animation: none;
     }
 
-    .glass-card:hover {
+    .card.dashboard:hover {
         transform: none;
     }
 
@@ -9888,7 +9880,7 @@ body.reduce-motion .gradient-orb {
     animation: none;
 }
 
-body.reduce-motion .glass-card:hover,
+body.reduce-motion .card.dashboard:hover,
 body.reduce-motion .primary-btn:hover {
     transform: none;
 }
@@ -11535,23 +11527,23 @@ body.light-theme .delta-table tbody tr:hover {
     overflow: hidden;
 }
 
-/* Result Cards (glass-card style) */
-.curve-builder-results-panel .glass-card {
+/* Result Cards */
+.curve-builder-results-panel .card {
     min-width: 0;
     overflow: hidden;
     display: flex;
     flex-direction: column;
 }
 
-.curve-builder-results-panel .glass-card:hover {
+.curve-builder-results-panel .card:hover {
     transform: none;
 }
 
-.curve-builder-results-panel .glass-card.wide {
+.curve-builder-results-panel .card.wide {
     flex: 1;
 }
 
-.curve-builder-results-panel .glass-card .bento-content {
+.curve-builder-results-panel .card .bento-content {
     flex: 1;
     overflow: auto;
 }
@@ -12447,6 +12439,27 @@ body.light-theme .jacobian-row-header {
     padding: 0;
     height: calc(100vh - var(--header-height));
     max-height: calc(100vh - var(--header-height));
+}
+
+/* Market Data Grid - swap columns: table gets more space, detail panel is narrower */
+#market-data-view .two-column-grid {
+    grid-template-columns: 1fr 380px;
+    grid-template-rows: 1fr;
+    min-height: 400px;
+}
+
+#market-data-view .two-column-grid > .card {
+    min-height: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+
+#market-data-view .table-container {
+    flex: 1;
+    overflow: auto;
+    min-height: 200px;
 }
 
 /* Market Data - uses unified .view-container, .view-header */

@@ -49,7 +49,14 @@ mod trade;
 mod instrument;
 
 /// Standard instrument definitions for all asset classes.
-pub mod instrument_def;
+///
+/// **DEPRECATED**: Use `infra_master::market::instrument` instead.
+/// This module re-exports from `market::instrument` for backward compatibility.
+#[deprecated(since = "0.2.0", note = "Use infra_master::market::instrument instead")]
+pub mod instrument_def {
+    //! Re-exports from `market::instrument` for backward compatibility.
+    pub use crate::market::instrument::*;
+}
 
 pub use book_assignment::{BookTransferReason, TradeBookAssignment, TradeBookHistory};
 #[allow(deprecated)]
@@ -61,8 +68,8 @@ pub use error::TradeError;
 pub use index::{IndexObservation, IndexType};
 pub use index_requirement::IndexRequirement;
 pub use instrument::Instrument;
-// Re-export common types from instrument_def
-pub use instrument_def::AssetClass;
+// Re-export common types from market::instrument
+pub use crate::market::instrument::AssetClass;
 pub use leg::{Direction, Leg, LegType};
 pub use payoff::{OptionType, Payoff};
 pub use pricing_instrument::{

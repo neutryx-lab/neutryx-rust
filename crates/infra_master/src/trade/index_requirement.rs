@@ -7,8 +7,7 @@
 //!
 //! ```
 //! use infra_master::trade::IndexRequirement;
-//! use infra_master::market::RateIndex;
-//! use infra_master::trade::instrument_def::CurrencyPair;
+//! use infra_master::market::{RateIndex, CurrencyPair};
 //! use infra_master::Currency;
 //!
 //! // Rate curve requirement
@@ -21,7 +20,7 @@
 //! assert!(fx_req.is_fx_curve());
 //! ```
 
-use crate::{market::RateIndex, trade::instrument_def::CurrencyPair};
+use crate::market::{CurrencyPair, RateIndex};
 
 /// Requirement for a market index needed by a Trade or Cashflow.
 ///
@@ -44,7 +43,7 @@ use crate::{market::RateIndex, trade::instrument_def::CurrencyPair};
 /// ```
 /// use infra_master::trade::IndexRequirement;
 /// use infra_master::market::RateIndex;
-/// use infra_master::trade::instrument_def::CurrencyPair;
+/// use infra_master::market::CurrencyPair;
 /// use infra_master::Currency;
 ///
 /// // A floating leg requires a rate curve
@@ -119,7 +118,7 @@ impl IndexRequirement {
     ///
     /// ```
     /// use infra_master::trade::IndexRequirement;
-    /// use infra_master::trade::instrument_def::CurrencyPair;
+    /// use infra_master::market::CurrencyPair;
     /// use infra_master::Currency;
     ///
     /// let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
@@ -135,7 +134,7 @@ impl IndexRequirement {
     ///
     /// ```
     /// use infra_master::trade::IndexRequirement;
-    /// use infra_master::trade::instrument_def::CurrencyPair;
+    /// use infra_master::market::CurrencyPair;
     /// use infra_master::Currency;
     ///
     /// let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
@@ -173,7 +172,7 @@ impl IndexRequirement {
     ///
     /// ```
     /// use infra_master::trade::IndexRequirement;
-    /// use infra_master::trade::instrument_def::CurrencyPair;
+    /// use infra_master::market::CurrencyPair;
     /// use infra_master::Currency;
     ///
     /// let pair = CurrencyPair::new(Currency::EUR, Currency::USD);

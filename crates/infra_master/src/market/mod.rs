@@ -106,10 +106,12 @@
 
 mod compounding;
 mod currency;
+mod currency_pair;
 mod data_source;
 mod error;
 mod event_instrument;
 mod mapper;
+mod market_instrument;
 mod quote_type;
 mod rate;
 mod rate_id;
@@ -122,6 +124,7 @@ mod validation;
 // Submodules for extended market data types
 pub mod convention;
 pub mod events;
+/// Standard instrument definitions for all asset classes.
 pub mod instrument;
 pub mod volatility;
 
@@ -129,6 +132,7 @@ pub mod volatility;
 pub use compounding::CompoundingMethod;
 // Core types
 pub use currency::Currency;
+pub use currency_pair::CurrencyPair;
 // Quote and rate types
 pub use data_source::{DataSource, SourcePriority};
 // Error types
@@ -148,3 +152,5 @@ pub use ticker::TickerMapping;
 pub use validation::{RateValidator, StandardRateValidator};
 // Event instruments
 pub use event_instrument::EventInstrument;
+// Market instrument (for curve calibration)
+pub use market_instrument::{MarketInstrument, MarketInstrumentError};

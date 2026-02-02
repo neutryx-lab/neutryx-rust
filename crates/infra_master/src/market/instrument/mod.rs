@@ -20,7 +20,7 @@
 //! # Example
 //!
 //! ```rust
-//! use infra_master::trade::instrument_def::{
+//! use infra_master::market::instrument::{
 //!     InstrumentDefinition, AssetClass, Swaption, PayerReceiver,
 //! };
 //! use infra_master::trade::{ExerciseType, SettlementType};
@@ -117,7 +117,7 @@ pub use xccy::{
 /// # Example
 ///
 /// ```rust
-/// use infra_master::trade::instrument_def::{
+/// use infra_master::market::instrument::{
 ///     InstrumentDefinition, AssetClass, FxSpot, CurrencyPair,
 /// };
 /// use infra_master::{Currency, Date};
@@ -222,7 +222,7 @@ impl InstrumentDefinition {
     /// # Example
     ///
     /// ```rust
-    /// use infra_master::trade::instrument_def::{
+    /// use infra_master::market::instrument::{
     ///     InstrumentDefinition, AssetClass, Swaption, PayerReceiver,
     /// };
     /// use infra_master::trade::{ExerciseType, SettlementType};
@@ -409,7 +409,7 @@ impl InstrumentDefinition {
     /// # Example
     ///
     /// ```rust
-    /// use infra_master::trade::instrument_def::{
+    /// use infra_master::market::instrument::{
     ///     InstrumentDefinition, FxSpot, CurrencyPair,
     /// };
     /// use infra_master::{Currency, Date};

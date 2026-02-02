@@ -6,7 +6,7 @@
 //! # Example
 //!
 //! ```rust,ignore
-//! use infra_master::trade::instrument_def::{InstrumentDefinition, InstrumentExpander, FxSpot};
+//! use infra_master::market::instrument::{InstrumentDefinition, InstrumentExpander, FxSpot};
 //! use infra_master::market::convention::ConventionSet;
 //! use infra_master::Date;
 //!
@@ -1874,13 +1874,11 @@ mod tests {
         *,
     };
     use crate::{
-        trade::{
-            convention::{
-                CdsConvention, EquityConvention, FxConvention, FxOptionConvention,
-                InflationSwapConvention, SwapConvention, SwaptionConvention,
-            },
-            ExerciseType, SettlementType,
+        market::convention::{
+            CdsConvention, EquityConvention, FxConvention, FxOptionConvention,
+            InflationSwapConvention, SwapConvention, SwaptionConvention,
         },
+        trade::{ExerciseType, SettlementType},
         Currency, Tenor,
     };
 
