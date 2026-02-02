@@ -233,22 +233,29 @@ textarea:focus {
 }
 
 /* ============================================
-   Common Panel Styles (Shared across views)
+   UNIFIED DESIGN SYSTEM
+   5 Card Types + Common Components
    ============================================ */
 
 /* ===========================================
-   UNIFIED HEADER SYSTEM
-   All headers share this base pattern.
-   Use modifier classes for size variations.
+   CARD TYPE 1: .card (Basic Panel)
+   Use for: Standard content containers
+   Replaces: glass-card, bento-box, panel
    =========================================== */
 
-/* Base header - works for panel-header, bento-header, modal-header, drawer-header, section-header */
+.card,
+.glass-card {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.card-header,
 .panel-header,
-.bento-header,
-.modal-header,
-.drawer-header,
-.section-header,
-.card-header {
+.bento-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -257,19 +264,9 @@ textarea:focus {
     flex-shrink: 0;
 }
 
-/* Header title - works with h2, h3, h4 */
-.panel-header h2,
+.card-header h3,
 .panel-header h3,
-.panel-header h4,
-.bento-header h2,
-.bento-header h3,
-.modal-header h2,
-.modal-header h3,
-.drawer-header h2,
-.drawer-header h3,
-.section-header h2,
-.section-header h3,
-.card-header h3 {
+.bento-header h3 {
     margin: 0;
     font-size: 0.95rem;
     font-weight: 600;
@@ -279,101 +276,192 @@ textarea:focus {
     gap: 8px;
 }
 
-/* Header icon color */
+.card-header h3 i,
 .panel-header h3 i,
-.bento-header h3 i,
-.modal-header h2 i,
-.drawer-header h3 i,
-.section-header h3 i,
-.card-header h3 i {
+.bento-header h3 i {
     color: var(--primary);
     font-size: 0.9rem;
 }
 
-/* Header actions container */
-.panel-header .panel-actions,
-.bento-header .bento-actions,
-.modal-header .modal-actions,
-.drawer-header .drawer-actions,
-.section-header .section-actions,
-.card-header .card-actions {
+.card-actions,
+.panel-actions,
+.bento-actions {
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
-/* Header size modifiers */
-.panel-header.lg,
-.bento-header.lg,
-.section-header.lg {
-    padding: 18px 20px;
-}
-
-.panel-header.lg h3,
-.bento-header.lg h3,
-.section-header.lg h3 {
-    font-size: 1.1rem;
-}
-
-.panel-header.sm,
-.bento-header.sm,
-.section-header.sm {
-    padding: 10px 12px;
-}
-
-.panel-header.sm h3,
-.bento-header.sm h3,
-.section-header.sm h3 {
-    font-size: 0.85rem;
-}
-
-/* Modal/Drawer specific - larger by default */
-.modal-header {
-    padding: 20px 24px;
-}
-
-.modal-header h2 {
-    font-size: 1.25rem;
-    gap: 12px;
-}
-
-.drawer-header {
-    padding: 20px;
-}
-
-.drawer-header h3 {
-    font-size: 1.1rem;
-    gap: 10px;
-}
-
-/* No border variant */
-.panel-header.no-border,
-.bento-header.no-border,
-.section-header.no-border {
-    border-bottom: none;
-    margin-bottom: 16px;
-}
-
-/* ===========================================
-   UNIFIED CONTENT SECTIONS
-   =========================================== */
-
+.card-content,
 .panel-content,
-.bento-content,
-.modal-body,
-.drawer-body,
-.card-content {
+.bento-content {
     padding: 16px;
     flex: 1;
     overflow-y: auto;
 }
 
-.modal-body {
-    padding: 24px;
+/* ===========================================
+   CARD TYPE 2: .card.compact
+   Use for: Dense information, sidebars
+   =========================================== */
+
+.card.compact .card-header,
+.card.compact .panel-header {
+    padding: 10px 12px;
 }
 
+.card.compact .card-header h3,
+.card.compact .panel-header h3 {
+    font-size: 0.85rem;
+}
+
+.card.compact .card-content,
+.card.compact .panel-content {
+    padding: 12px;
+}
+
+/* ===========================================
+   CARD TYPE 3: .card.metric
+   Use for: KPIs, numbers, stats
+   =========================================== */
+
+.card.metric {
+    padding: 16px;
+    text-align: center;
+}
+
+.card.metric .metric-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    font-family: 'SF Mono', 'Consolas', monospace;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+.card.metric .metric-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+}
+
+.card.metric .metric-change {
+    font-size: 0.8rem;
+    margin-top: 8px;
+}
+
+.card.metric .metric-change.positive { color: var(--success); }
+.card.metric .metric-change.negative { color: var(--danger); }
+
+/* ===========================================
+   CARD TYPE 4: .card.interactive
+   Use for: Clickable cards, list items
+   =========================================== */
+
+.card.interactive {
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.card.interactive:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.card.interactive.selected,
+.card.interactive.active {
+    border-color: var(--primary);
+    background: rgba(99, 102, 241, 0.05);
+}
+
+/* ===========================================
+   CARD TYPE 5: .card.overlay (Modal/Drawer)
+   Use for: Modals, drawers, dialogs
+   =========================================== */
+
+.card.overlay,
+.modal,
+.drawer-content {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+}
+
+.modal-header,
+.drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--glass-border);
+    flex-shrink: 0;
+}
+
+.modal-header h2,
+.drawer-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-header h2 i,
+.drawer-header h3 i {
+    color: var(--primary);
+}
+
+.modal-body,
 .drawer-body {
-    padding: 20px;
+    padding: 24px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.modal-footer,
+.drawer-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 24px;
+    border-top: 1px solid var(--glass-border);
+}
+
+/* ===========================================
+   SECTION HEADER (No card, just header)
+   =========================================== */
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.section-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.section-header h3 i {
+    color: var(--primary);
+    font-size: 0.9rem;
+}
+
+.section-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 /* ===========================================
@@ -406,27 +494,22 @@ textarea:focus {
 
 /* ===========================================
    UNIFIED TABLE STYLES
-   All tables use this base pattern.
    =========================================== */
 
-.data-table,
-.styled-table {
+.data-table {
     width: 100%;
     border-collapse: collapse;
     font-size: 0.8rem;
 }
 
 .data-table th,
-.data-table td,
-.styled-table th,
-.styled-table td {
+.data-table td {
     padding: 10px 12px;
     text-align: left;
     border-bottom: 1px solid var(--glass-border);
 }
 
-.data-table th,
-.styled-table th {
+.data-table th {
     background: rgba(255, 255, 255, 0.02);
     color: var(--text-secondary);
     font-weight: 500;
@@ -436,31 +519,24 @@ textarea:focus {
     white-space: nowrap;
 }
 
-.data-table tbody tr:hover,
-.styled-table tbody tr:hover {
+.data-table tbody tr:hover {
     background: rgba(99, 102, 241, 0.05);
 }
 
-.data-table td.number,
-.styled-table td.number {
+.data-table td.number {
     text-align: right;
     font-family: 'SF Mono', 'Consolas', monospace;
 }
 
-/* Sticky header table */
-.data-table.sticky th,
-.styled-table.sticky th {
+.data-table.sticky th {
     position: sticky;
     top: 0;
     z-index: 10;
     background: var(--bg-primary);
 }
 
-/* Compact table */
 .data-table.compact th,
-.data-table.compact td,
-.styled-table.compact th,
-.styled-table.compact td {
+.data-table.compact td {
     padding: 6px 8px;
     font-size: 0.75rem;
 }
@@ -585,34 +661,13 @@ textarea:focus {
     font-size: 0.9rem;
 }
 
-.placeholder.sm {
-    padding: 20px;
-}
-
-.placeholder.sm i {
-    font-size: 1.5rem;
-}
-
-.placeholder.lg {
-    padding: 60px 40px;
-}
-
-.placeholder.lg i {
-    font-size: 3rem;
-}
-
-.placeholder.error {
-    color: var(--danger);
-}
-
-.placeholder.error i {
-    color: var(--danger);
-}
-
-.placeholder.fill {
-    height: 100%;
-    min-height: 200px;
-}
+.placeholder.sm { padding: 20px; }
+.placeholder.sm i { font-size: 1.5rem; }
+.placeholder.lg { padding: 60px 40px; }
+.placeholder.lg i { font-size: 3rem; }
+.placeholder.fill { height: 100%; min-height: 200px; }
+.placeholder.error { color: var(--danger); }
+.placeholder.error i { color: var(--danger); }
 
 /* ===========================================
    UNIFIED CLOSE BUTTON
@@ -657,6 +712,29 @@ textarea:focus {
 .stat-value {
     color: var(--text-primary);
     font-weight: 500;
+}
+
+/* ===========================================
+   LEG HEADER (Trade legs unified)
+   =========================================== */
+
+.leg-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1rem;
+    font-size: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.leg-header.payer {
+    background: linear-gradient(90deg, rgba(239, 68, 68, 0.15) 0%, transparent 100%);
+    border-left: 3px solid var(--danger);
+}
+
+.leg-header.receiver {
+    background: linear-gradient(90deg, rgba(16, 185, 129, 0.15) 0%, transparent 100%);
+    border-left: 3px solid var(--success);
 }
 
 /* ============================================
@@ -1483,19 +1561,10 @@ body.light-theme .glass-heavy {
     grid-column: span 4;
 }
 
-/* Bento overrides - uses unified header system */
-.bento-header {
-    padding: 16px 20px;
-}
-
-.bento-header h3 {
-    font-size: 0.875rem;
-}
-
-.bento-content {
-    padding: 20px;
-    height: 100%;
-}
+/* Bento overrides - uses unified styles, only padding differs */
+.bento-header { padding: 16px 20px; }
+.bento-header h3 { font-size: 0.875rem; }
+.bento-content { padding: 20px; height: 100%; }
 
 /* ============================================
    Metric Cards
@@ -9550,24 +9619,7 @@ body.light-theme .loading-state-overlay {
     padding: 1.5rem;
 }
 
-.pricer-header {
-    padding: 1.5rem;
-    border-radius: var(--radius-lg);
-}
-
-.pricer-header h2 {
-    margin: 0 0 0.5rem 0;
-    font-size: 1.5rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.pricer-header p {
-    margin: 0;
-    color: var(--text-secondary);
-}
+/* pricer-header defined later in Trade Expansion section */
 
 .pricer-layout {
     display: grid;
@@ -9577,7 +9629,7 @@ body.light-theme .loading-state-overlay {
     min-height: 0;
 }
 
-/* Form Panel */
+/* Form Panel - uses unified .form-group styles */
 .pricer-form-panel {
     padding: 1.5rem;
     border-radius: var(--radius-lg);
@@ -9589,39 +9641,20 @@ body.light-theme .loading-state-overlay {
 .pricer-form-panel h3 {
     margin: 0 0 1rem 0;
     font-size: 1rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--text-primary);
 }
 
-.pricer-form {
-    display: none;
-}
+.pricer-form { display: none; }
+.pricer-form.active { display: block; }
 
-.pricer-form.active {
-    display: block;
-}
-
-.form-row {
+.pricer-form-panel .form-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 1rem;
     margin-bottom: 1rem;
 }
 
-.pricer-form-panel .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.pricer-form-panel label {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--text-secondary);
-}
+.pricer-form-panel .form-group { gap: 0.5rem; }
+.pricer-form-panel label { font-size: 0.875rem; text-transform: none; }
 
 .pricer-form-panel input[type="number"] {
     padding: 0.75rem 1rem;
@@ -10526,13 +10559,12 @@ body.light-theme .history-item {
     border-left: 3px solid var(--success);
 }
 
-.leg-header {
-    display: flex;
+/* cashflow leg-header - scoped to cashflow context */
+.cashflow-leg .leg-header {
     justify-content: space-between;
-    align-items: center;
-    padding: 0.75rem 1rem;
     background: rgba(255, 255, 255, 0.02);
     border-bottom: 1px solid var(--border-color);
+    border-radius: 0;
 }
 
 .leg-title {
@@ -10990,10 +11022,9 @@ body.light-theme .daily-accruals-table th {
     display: none;
 }
 
+/* section-header overrides - uses unified header with no-border variant */
 .section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    border-bottom: none;
     margin-bottom: 1rem;
     flex-wrap: wrap;
     gap: 0.5rem;
@@ -11001,17 +11032,6 @@ body.light-theme .daily-accruals-table th {
 
 .section-header h3 {
     font-size: 1rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.section-header h3 i {
-    color: var(--primary);
-    font-size: 0.875rem;
 }
 
 .section-status {
@@ -11335,19 +11355,13 @@ body.light-theme .daily-accruals-table th {
     gap: 0.375rem;
 }
 
+/* pricing-placeholder - uses unified .placeholder with sm variant */
 .pricing-placeholder {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.75rem;
     padding: 2rem;
-    color: var(--text-secondary);
 }
 
 .pricing-placeholder i {
     font-size: 2rem;
-    opacity: 0.5;
 }
 
 /* Delta Table (Task 9.1) */
@@ -11472,19 +11486,9 @@ body.light-theme .daily-accruals-table th {
     font-size: 0.875rem;
 }
 
+/* risk-placeholder - uses unified .placeholder */
 .risk-placeholder {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.75rem;
     padding: 3rem;
-    color: var(--text-secondary);
-}
-
-.risk-placeholder i {
-    font-size: 2.5rem;
-    opacity: 0.5;
 }
 
 /* Loading Overlay (Task 7.5) */
@@ -13414,25 +13418,10 @@ body.light-theme .asset-toggle-btn:hover {
     font-size: 1rem;
 }
 
+/* stat-item, stat-label, stat-value now use unified styles */
 .rate-stats {
     display: flex;
     gap: 16px;
-}
-
-.stat-item {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 0.8rem;
-}
-
-.stat-label {
-    color: var(--text-muted);
-}
-
-.stat-value {
-    color: var(--text-primary);
-    font-weight: 500;
 }
 
 .stat-value.stale-count {
@@ -13636,18 +13625,7 @@ body.light-theme .asset-toggle-btn:hover {
     color: var(--accent);
 }
 
-.close-btn {
-    padding: 6px;
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    transition: color var(--transition-fast);
-}
-
-.close-btn:hover {
-    color: var(--text-primary);
-}
+/* close-btn now uses unified styles */
 
 .detail-content {
     flex: 1;
@@ -14080,25 +14058,15 @@ body.light-theme .export-menu {
     text-align: right;
 }
 
-/* Results Panel */
+/* Results Panel - vol-calib-placeholder uses unified .placeholder.lg */
 .vol-calib-placeholder {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
     padding: 3rem;
-    color: var(--text-muted);
-    text-align: center;
 }
 
 .vol-calib-placeholder i {
     font-size: 3rem;
     margin-bottom: 1rem;
     opacity: 0.3;
-}
-
-.vol-calib-placeholder p {
-    font-size: 1rem;
 }
 
 .vol-calib-params,
@@ -14855,25 +14823,7 @@ body.light-theme .chart-placeholder {
     margin-bottom: 1.5rem;
 }
 
-.leg-header {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem 1rem;
-    border-radius: var(--radius-md) var(--radius-md) 0 0;
-    font-size: 0.8125rem;
-    flex-wrap: wrap;
-}
-
-.leg-header.payer {
-    background: rgba(239, 68, 68, 0.1);
-    border-left: 3px solid var(--error);
-}
-
-.leg-header.receiver {
-    background: rgba(16, 185, 129, 0.1);
-    border-left: 3px solid var(--success);
-}
+/* leg-header uses unified styles */
 
 .leg-number {
     font-weight: 700;
@@ -15021,24 +14971,7 @@ body.light-theme .chart-placeholder {
     border: 1px solid var(--glass-border);
 }
 
-.leg-header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.625rem 1rem;
-    font-size: 0.75rem;
-    flex-wrap: wrap;
-}
-
-.leg-header.payer {
-    background: linear-gradient(90deg, rgba(239, 68, 68, 0.15) 0%, transparent 100%);
-    border-left: 3px solid var(--error);
-}
-
-.leg-header.receiver {
-    background: linear-gradient(90deg, rgba(16, 185, 129, 0.15) 0%, transparent 100%);
-    border-left: 3px solid var(--success);
-}
+/* leg-header uses unified styles from design system */
 
 .leg-badge {
     display: flex;

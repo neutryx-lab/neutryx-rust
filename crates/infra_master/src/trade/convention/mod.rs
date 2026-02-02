@@ -200,3 +200,27 @@ pub use crate::market::convention::XCcyBasisConvention;
     note = "Moved to infra_master::market::convention. Please update your imports."
 )]
 pub use crate::market::convention::XCcyLegConvention;
+
+#[deprecated(
+    since = "0.8.0",
+    note = "Moved to infra_master::market::convention. Please update your imports."
+)]
+pub use crate::market::convention::FxSettlementType;
+
+#[deprecated(
+    since = "0.8.0",
+    note = "Moved to infra_master::market::convention. Please update your imports."
+)]
+pub use crate::market::convention::FxSwapConvention;
+
+#[deprecated(
+    since = "0.8.0",
+    note = "Moved to infra_master::market::convention. Please update your imports."
+)]
+pub use crate::market::convention::NearLegType;
+
+#[deprecated(
+    since = "0.8.0",
+    note = "Moved to infra_master::market::convention. Please update your imports."
+)]
+pub use crate::market::convention::MarketConvention;
