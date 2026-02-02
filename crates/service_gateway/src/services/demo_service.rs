@@ -421,7 +421,7 @@ impl DemoService {
         let mut rates = Vec::new();
         let timestamp = chrono::Utc::now().to_rfc3339();
 
-        // Load IR rates
+        // Load IR rates from market_quotes.json
         if let Some(rates_by_currency) = data.get("rates").and_then(|r| r.as_object()) {
             for (currency, rate_types) in rates_by_currency {
                 if let Some(rate_types_obj) = rate_types.as_object() {
@@ -453,6 +453,62 @@ impl DemoService {
             }
         }
 
+        // Load individual curve files (usd-sofr.json, eur-estr.json, jpy-tona.json)
+        let curve_files = ["usd-sofr.json", "eur-estr.json", "jpy-tona.json"];
+        for file in &curve_files {
+            let curve_path = Path::new("demo/data/input/rates").join(file);
+            if let Ok(curve_content) = std::fs::read_to_string(&curve_path) {
+                if let Ok(curve_data) = serde_json::from_str::<serde_json::Value>(&curve_content) {
+                    let currency = curve_data
+                        .get("currency")
+                        .and_then(|c| c.as_str())
+                        .unwrap_or("");
+                    let index_name = curve_data
+                        .get("index")
+                        .and_then(|i| i.as_str())
+                        .unwrap_or("");
+
+                    if let Some(instruments) =
+                        curve_data.get("instruments").and_then(|i| i.as_array())
+                    {
+                        for instr in instruments {
+                            let instr_type = instr
+                                .get("type")
+                                .and_then(|t| t.as_str())
+                                .unwrap_or("unknown");
+                            let tenor =
+                                instr.get("tenor").and_then(|t| t.as_str()).unwrap_or("");
+                            let rate = instr.get("rate").and_then(|r| r.as_f64()).unwrap_or(0.0);
+
+                            let id = format!("{}-{}-{}-{}", currency, index_name, instr_type, tenor);
+
+                            // Skip if we already have this rate (from market_quotes.json)
+                            if rates.iter().any(|r| {
+                                r.currency == currency
+                                    && r.tenor == tenor
+                                    && r.rate_type == instr_type
+                            }) {
+                                continue;
+                            }
+
+                            rates.push(MarketRate {
+                                id,
+                                currency: currency.to_string(),
+                                tenor: tenor.to_string(),
+                                rate_type: instr_type.to_string(),
+                                value: rate,
+                                rate_index: Some(index_name.to_uppercase()),
+                                quote_type: Some("Mid".to_string()),
+                                source: "Internal".to_string(),
+                                timestamp: timestamp.clone(),
+                                is_stale: false,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
         // Load FX spot rates
         let fx_path = Path::new("demo/data/input/fx/fx_spots.json");
         if let Ok(fx_content) = std::fs::read_to_string(fx_path) {
@@ -467,7 +523,7 @@ impl DemoService {
                             id: format!("FX-{}", pair),
                             currency: base_ccy.to_string(),
                             tenor: "SPOT".to_string(),
-                            rate_type: "fx_spot".to_string(),
+                            rate_type: "fxspot".to_string(),
                             value,
                             rate_index: None,
                             quote_type: Some("Mid".to_string()),
@@ -475,6 +531,73 @@ impl DemoService {
                             timestamp: timestamp.clone(),
                             is_stale: false,
                         });
+                    }
+                }
+            }
+        }
+
+        // Load FX forward points
+        let fx_fwd_path = Path::new("demo/data/input/fx/fx_forwards.json");
+        if let Ok(fx_fwd_content) = std::fs::read_to_string(fx_fwd_path) {
+            if let Ok(fx_fwd_data) = serde_json::from_str::<serde_json::Value>(&fx_fwd_content) {
+                if let Some(forwards) = fx_fwd_data.get("forwards").and_then(|f| f.as_object()) {
+                    for (pair, tenors) in forwards {
+                        let base_ccy = if pair.len() >= 3 { &pair[..3] } else { pair };
+                        if let Some(tenors_arr) = tenors.as_array() {
+                            for fwd in tenors_arr {
+                                let tenor =
+                                    fwd.get("tenor").and_then(|t| t.as_str()).unwrap_or("");
+                                let points =
+                                    fwd.get("points").and_then(|p| p.as_f64()).unwrap_or(0.0);
+
+                                rates.push(MarketRate {
+                                    id: format!("FX-{}-FWD-{}", pair, tenor),
+                                    currency: base_ccy.to_string(),
+                                    tenor: tenor.to_string(),
+                                    rate_type: "fxforward".to_string(),
+                                    value: points,
+                                    rate_index: Some(pair.clone()),
+                                    quote_type: Some("Mid".to_string()),
+                                    source: "Internal".to_string(),
+                                    timestamp: timestamp.clone(),
+                                    is_stale: false,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Load cross-currency basis swaps
+        let xccy_path = Path::new("demo/data/input/fx/xccy_basis.json");
+        if let Ok(xccy_content) = std::fs::read_to_string(xccy_path) {
+            if let Ok(xccy_data) = serde_json::from_str::<serde_json::Value>(&xccy_content) {
+                if let Some(basis) = xccy_data.get("basis").and_then(|b| b.as_object()) {
+                    for (pair, tenors) in basis {
+                        let base_ccy = if pair.len() >= 3 { &pair[..3] } else { pair };
+                        if let Some(tenors_arr) = tenors.as_array() {
+                            for spread in tenors_arr {
+                                let tenor =
+                                    spread.get("tenor").and_then(|t| t.as_str()).unwrap_or("");
+                                let value =
+                                    spread.get("value").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                                let index = spread.get("index").and_then(|i| i.as_str());
+
+                                rates.push(MarketRate {
+                                    id: format!("XCCY-{}-{}", pair, tenor),
+                                    currency: base_ccy.to_string(),
+                                    tenor: tenor.to_string(),
+                                    rate_type: "xccybasis".to_string(),
+                                    value,
+                                    rate_index: index.map(String::from),
+                                    quote_type: Some("Mid".to_string()),
+                                    source: "Internal".to_string(),
+                                    timestamp: timestamp.clone(),
+                                    is_stale: false,
+                                });
+                            }
+                        }
                     }
                 }
             }
@@ -582,7 +705,19 @@ impl DemoService {
                 "quoteConvention": "FRA rate quoted as simple forward rate",
                 "index": rate.rate_index.clone()
             }),
-            "fx_spot" => {
+            "future" => serde_json::json!({
+                "type": "Interest Rate Future",
+                "description": format!(
+                    "{} {} interest rate future. A standardised exchange-traded contract \
+                     on the future value of an interest rate index ({}).",
+                    rate.currency, rate.tenor,
+                    rate.rate_index.as_deref().unwrap_or("rate index")
+                ),
+                "usage": "Used for curve construction and hedging interest rate exposure",
+                "quoteConvention": "Price = 100 - Rate (IMM convention)",
+                "index": rate.rate_index.clone()
+            }),
+            "fxspot" => {
                 let pair = rate.id.strip_prefix("FX-").unwrap_or(&rate.id);
                 let base = if pair.len() >= 3 { &pair[..3] } else { "" };
                 let quote = if pair.len() >= 6 { &pair[3..6] } else { "" };
@@ -598,6 +733,45 @@ impl DemoService {
                     "settlementDays": 2
                 })
             }
+            "fxforward" => {
+                let pair = rate.rate_index.as_deref().unwrap_or("");
+                let base = if pair.len() >= 3 { &pair[..3] } else { "" };
+                let quote = if pair.len() >= 6 { &pair[3..6] } else { "" };
+                serde_json::json!({
+                    "type": "FX Forward Points",
+                    "description": format!(
+                        "{}/{} {} forward points. The difference between the forward rate and \
+                         spot rate, quoted in pips. Points: {} pips.",
+                        base, quote, rate.tenor, rate.value
+                    ),
+                    "usage": "Used for FX forward pricing and cross-currency curve construction",
+                    "quoteConvention": "Forward points in pips (1 pip = 0.0001 for most pairs)",
+                    "settlementDays": 2,
+                    "pair": pair
+                })
+            }
+            "xccybasis" => {
+                let pair = rate.id
+                    .strip_prefix("XCCY-")
+                    .and_then(|s| s.rsplit_once('-'))
+                    .map(|(p, _)| p)
+                    .unwrap_or("");
+                let base = if pair.len() >= 3 { &pair[..3] } else { "" };
+                let quote = if pair.len() >= 6 { &pair[3..6] } else { "" };
+                serde_json::json!({
+                    "type": "Cross-Currency Basis Swap",
+                    "description": format!(
+                        "{}/{} {} cross-currency basis swap spread. The spread added to one leg \
+                         of a cross-currency swap to equate the present values. Index: {}.",
+                        base, quote, rate.tenor,
+                        rate.rate_index.as_deref().unwrap_or("N/A")
+                    ),
+                    "usage": "Used for cross-currency curve construction and hedging FX funding basis risk",
+                    "quoteConvention": "Basis spread in decimal (e.g., -0.001 = -10bp)",
+                    "index": rate.rate_index.clone(),
+                    "pair": pair
+                })
+            }
             _ => return None,
         };
         Some(description)
@@ -609,27 +783,47 @@ impl DemoService {
 
         // Try to find exact match first
         let convention_id = match rate.rate_type.as_str() {
-            "deposit" => format!("{}-DEPO", rate.currency),
-            "ois" => format!(
+            "deposit" => Some(format!("{}-DEPO", rate.currency)),
+            "ois" => Some(format!(
                 "{}-{}-OIS",
                 rate.currency,
                 rate.rate_index.as_deref().unwrap_or("OIS")
-            ),
+            )),
             "swap" => {
                 let index = rate.rate_index.as_deref().unwrap_or("SWAP");
-                format!("{}-{}-SWAP", rate.currency, index)
+                Some(format!("{}-{}-SWAP", rate.currency, index))
             }
-            "fx_spot" => "FX-SPOT".to_string(),
-            _ => return None,
+            "fra" | "future" => {
+                // FRA and futures use the same OIS convention for the underlying index
+                Some(format!(
+                    "{}-{}-OIS",
+                    rate.currency,
+                    rate.rate_index.as_deref().unwrap_or("OIS")
+                ))
+            }
+            "fxspot" => Some("FX-SPOT".to_string()),
+            "fxforward" => Some("FX-SPOT".to_string()),
+            "xccybasis" => {
+                // Extract pair from rate_index (e.g., "ESTR/SOFR" -> XCCY-EURUSD)
+                let pair = rate.id
+                    .strip_prefix("XCCY-")
+                    .and_then(|s| s.rsplit_once('-'))
+                    .map(|(p, _)| p)
+                    .unwrap_or("");
+                Some(format!("XCCY-{}", pair))
+            }
+            _ => None,
         };
 
-        // Try exact match
-        if let Some(conv) = conventions_result
-            .conventions
-            .iter()
-            .find(|c| c.id == convention_id)
-        {
-            return Some(conv.clone());
+        if let Some(id) = convention_id {
+            // Try exact match
+            if let Some(conv) = conventions_result
+                .conventions
+                .iter()
+                .find(|c| c.id == id)
+            {
+                return Some(conv.clone());
+            }
         }
 
         // Try currency match with default

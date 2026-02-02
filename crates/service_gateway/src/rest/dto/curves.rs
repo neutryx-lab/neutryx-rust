@@ -28,6 +28,7 @@ pub enum BootstrapMethod {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CurveInstrumentInput {
     /// Instrument type (e.g., "deposit", "fra", "swap")
+    #[serde(alias = "type")]
     pub instrument_type: String,
     /// Tenor string (e.g., "1M", "3M", "1Y")
     pub tenor: String,
@@ -40,7 +41,8 @@ pub struct CurveInstrumentInput {
 pub struct CurveBuildRequest {
     /// Index name (e.g., "USD-SOFR", "EUR-EURIBOR-6M")
     pub index: String,
-    /// Currency code
+    /// Currency code (optional, extracted from index if not provided)
+    #[serde(default)]
     pub currency: String,
     /// Market instruments for bootstrapping
     pub instruments: Vec<CurveInstrumentInput>,

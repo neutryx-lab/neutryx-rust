@@ -485,7 +485,7 @@ function applyFilters(): void {
 function getAssetClassRateTypes(assetClass: AssetClass): string[] {
   switch (assetClass) {
     case 'Rates':
-      return ['deposit', 'swap', 'ois', 'fra', 'xccybasis'];
+      return ['deposit', 'swap', 'ois', 'fra', 'future', 'xccybasis'];
     case 'FX':
       return ['fxspot', 'fxforward'];
     default:

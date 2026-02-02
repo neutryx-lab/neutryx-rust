@@ -7,7 +7,7 @@
 import '../../style.css';
 
 import { ConfigLoader } from '@/services/config-loader';
-import { initPricer, initMarketData, initCurveBuilder, initVolcubeBuilder } from '@/components';
+import { initPricer, initMarketData, initCurveBuilder, initVolcubeBuilder, initExposure, initDashboard, initScenarios, initTradeExpansion } from '@/components';
 import { createScopedLogger } from '@/utils/logger';
 
 const log = createScopedLogger('App');
@@ -57,7 +57,7 @@ const viewTitles: Record<ViewId, { title: string; breadcrumb: string }> = {
 
 const viewInitializers: Record<ViewId, () => Promise<void>> = {
   'dashboard-view': async () => {
-    log.debug('Dashboard view activated');
+    await initDashboard();
   },
   'portfolio-view': async () => {
     log.debug('Portfolio view activated');
@@ -66,16 +66,16 @@ const viewInitializers: Record<ViewId, () => Promise<void>> = {
     log.debug('Risk view activated');
   },
   'exposure-view': async () => {
-    log.debug('Exposure view activated');
+    await initExposure();
   },
   'scenarios-view': async () => {
-    log.debug('Scenarios view activated');
+    await initScenarios();
   },
   'market-data-view': async () => {
     await initMarketData();
   },
   'trade-expansion-view': async () => {
-    log.debug('Trade expansion view activated');
+    await initTradeExpansion();
   },
   'curve-builder-view': async () => {
     await initCurveBuilder();

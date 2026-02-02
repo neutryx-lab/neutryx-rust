@@ -944,11 +944,8 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="chart-container large" id="exposure-chart">
-                            <div class="chart-placeholder">
-                                <i class="fas fa-chart-area"></i>
-                                <p>Exposure chart will be rendered here</p>
-                            </div>
+                        <div class="chart-container large" id="exposure-view-chart-container">
+                            <canvas id="exposure-view-chart"></canvas>
                         </div>
                         <div class="chart-legend interactive">
                             <div class="legend-item active" data-series="pfe">
@@ -998,7 +995,7 @@
                     </div>
                 </div>
 
-                <div class="scenarios-grid">
+                <div class="scenarios-layout">
                     <!-- Scenario List Panel -->
                     <div class="scenario-list-panel glass-card">
                         <div class="panel-header">
