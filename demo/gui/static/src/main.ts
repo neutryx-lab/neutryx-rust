@@ -40,6 +40,21 @@ type ViewId =
   | 'pricer-view'
   | 'graph-view';
 
+// View titles for header/breadcrumb
+const viewTitles: Record<ViewId, { title: string; breadcrumb: string }> = {
+  'dashboard-view': { title: 'Dashboard', breadcrumb: 'Overview' },
+  'portfolio-view': { title: 'Portfolio', breadcrumb: 'Portfolio Management' },
+  'risk-view': { title: 'Risk', breadcrumb: 'Risk Analytics' },
+  'exposure-view': { title: 'Exposure', breadcrumb: 'Exposure Analysis' },
+  'scenarios-view': { title: 'Scenarios', breadcrumb: 'Scenario Analysis' },
+  'market-data-view': { title: 'Market Data', breadcrumb: 'Market Data' },
+  'trade-expansion-view': { title: 'Trade Expansion', breadcrumb: 'Trade Expansion' },
+  'curve-builder-view': { title: 'Curve Builder', breadcrumb: 'Curve Builder' },
+  'volcube-calibration-view': { title: 'Vol Cube', breadcrumb: 'Vol Cube Calibration' },
+  'pricer-view': { title: 'Pricer', breadcrumb: 'Instrument Pricer' },
+  'graph-view': { title: 'Graph', breadcrumb: 'Computation Graph' },
+};
+
 const viewInitializers: Record<ViewId, () => Promise<void>> = {
   'dashboard-view': async () => {
     log.debug('Dashboard view activated');
@@ -102,6 +117,15 @@ function navigateTo(viewId: string): void {
   });
 
   currentView = viewId as ViewId;
+
+  // Update header title and breadcrumb
+  const titles = viewTitles[viewId as ViewId];
+  if (titles) {
+    const pageTitle = document.getElementById('page-title');
+    const breadcrumb = document.getElementById('breadcrumb-current');
+    if (pageTitle) pageTitle.textContent = titles.title;
+    if (breadcrumb) breadcrumb.textContent = titles.breadcrumb;
+  }
 
   // Initialize view if needed
   const initializer = viewInitializers[viewId as ViewId];

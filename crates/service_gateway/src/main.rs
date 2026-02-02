@@ -50,10 +50,13 @@ pub use state::AppState;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Initialise tracing
+    // Initialise tracing with sensible defaults
     tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::layer())
-        .with(tracing_subscriber::EnvFilter::from_default_env())
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
+        )
         .init();
 
     info!("Starting Neutryx Server...");

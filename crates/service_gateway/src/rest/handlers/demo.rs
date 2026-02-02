@@ -15,10 +15,12 @@ use crate::{
     error::ServerError,
     rest::dto::demo::{
         AppConfigResponse, AvailableCurvesResponse, Convention, ConventionsResponse,
-        DemoGreeksRequest, DemoGreeksResult, DemoPricingRequest, DemoPricingResult,
-        EventTypesResponse, EventsResponse, ExpandedTrade, ExportFormat, FxVolPairsResponse,
-        FxVolQuotesResponse, InstrumentsResponse, IrVolCurrenciesResponse, IrVolQuotesResponse,
-        MarketConfigResponse, MarketRateDetailResponse, MarketRatesResponse, TradeExpandRequest,
+        CurveIndicesResponse, CurveInstrumentsResponse, DemoGreeksRequest, DemoGreeksResult,
+        DemoPricingRequest, DemoPricingResult, EventTypesResponse, EventsResponse, ExpandedTrade,
+        ExportFormat, FxVolPairsResponse, FxVolQuotesResponse, InstrumentsResponse,
+        IrVolCurrenciesResponse, IrVolQuotesResponse, MarketConfigResponse,
+        MarketRateDetailResponse, MarketRatesResponse, TradeExpandRequest, VolcubeIndicesResponse,
+        VolcubeInstrumentsResponse, VolcubeModelsResponse,
     },
     services::DemoService,
     state::AppState,
@@ -248,6 +250,62 @@ pub async fn get_available_curves(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<AvailableCurvesResponse>, ServerError> {
     let response = DemoService::get_available_curves(&state)?;
+    Ok(Json(response))
+}
+
+/// Get curve indices for bootstrapping
+///
+/// GET /api/curves/indices
+pub async fn get_curve_indices(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<CurveIndicesResponse>, ServerError> {
+    let response = DemoService::get_curve_indices(&state)?;
+    Ok(Json(response))
+}
+
+/// Get instruments for a specific curve index
+///
+/// GET /api/curves/instruments/:index
+pub async fn get_curve_instruments(
+    State(state): State<Arc<AppState>>,
+    Path(index): Path<String>,
+) -> Result<Json<CurveInstrumentsResponse>, ServerError> {
+    let response = DemoService::get_curve_instruments(&index, &state)?;
+    Ok(Json(response))
+}
+
+// =============================================================================
+// Volcube API
+// =============================================================================
+
+/// Get volcube indices (swaption currencies)
+///
+/// GET /api/volcube/indices
+pub async fn get_volcube_indices(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<VolcubeIndicesResponse>, ServerError> {
+    let response = DemoService::get_volcube_indices(&state)?;
+    Ok(Json(response))
+}
+
+/// Get available calibration models
+///
+/// GET /api/volcube/models
+pub async fn get_volcube_models(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<VolcubeModelsResponse>, ServerError> {
+    let response = DemoService::get_volcube_models(&state)?;
+    Ok(Json(response))
+}
+
+/// Get swaption instruments for volcube calibration
+///
+/// GET /api/volcube/instruments/:currency
+pub async fn get_volcube_instruments(
+    State(state): State<Arc<AppState>>,
+    Path(currency): Path<String>,
+) -> Result<Json<VolcubeInstrumentsResponse>, ServerError> {
+    let response = DemoService::get_volcube_instruments(&currency, &state)?;
     Ok(Json(response))
 }
 

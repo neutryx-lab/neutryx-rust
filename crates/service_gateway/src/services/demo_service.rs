@@ -8,13 +8,14 @@ use crate::{
     error::ServerError,
     rest::dto::demo::{
         AppConfigResponse, AvailableCurvesResponse, Cashflow, Convention, ConventionField,
-        ConventionsResponse, DemoGreeksRequest, DemoGreeksResult, DemoPricingRequest,
-        DemoPricingResult, EnumValue, EventType, EventTypesResponse, EventsResponse, ExpandedTrade,
-        ExportFormat, FieldType, FxVolPair, FxVolPairsResponse, FxVolQuote, FxVolQuotesResponse,
-        Importance, InstrumentDef, InstrumentsResponse, IrVolCurrenciesResponse, IrVolCurrency,
-        IrVolQuote, IrVolQuotesResponse, MarketConfigResponse, MarketEvent, MarketRate,
-        MarketRateDetailResponse, MarketRatesResponse, ParameterDef, SmilePoint,
-        TradeExpandRequest, TradeLeg, TradeMetadata,
+        ConventionsResponse, CurveIndicesResponse, CurveInstrument, CurveInstrumentsResponse,
+        DemoGreeksRequest, DemoGreeksResult, DemoPricingRequest, DemoPricingResult, EnumValue,
+        EventType, EventTypesResponse, EventsResponse, ExpandedTrade, ExportFormat, FieldType,
+        FxVolPair, FxVolPairsResponse, FxVolQuote, FxVolQuotesResponse, Importance, InstrumentDef,
+        InstrumentsResponse, IrVolCurrenciesResponse, IrVolCurrency, IrVolQuote, IrVolQuotesResponse,
+        MarketConfigResponse, MarketEvent, MarketRate, MarketRateDetailResponse, MarketRatesResponse,
+        ParameterDef, SmilePoint, SwaptionInstrument, TradeExpandRequest, TradeLeg, TradeMetadata,
+        VolcubeIndicesResponse, VolcubeInstrumentsResponse, VolcubeModelsResponse,
     },
     state::AppState,
 };
@@ -848,6 +849,172 @@ impl DemoService {
             .collect();
 
         Ok(AvailableCurvesResponse { curves })
+    }
+
+    /// Get curve indices for bootstrapping
+    pub fn get_curve_indices(_state: &Arc<AppState>) -> Result<CurveIndicesResponse, ServerError> {
+        // Load from indices.json
+        let indices_path = Path::new("demo/data/input/indices.json");
+        let content = std::fs::read_to_string(indices_path)
+            .map_err(|e| ServerError::Internal(format!("Failed to read indices.json: {e}")))?;
+        let data: serde_json::Value = serde_json::from_str(&content)
+            .map_err(|e| ServerError::Internal(format!("Failed to parse indices.json: {e}")))?;
+
+        let indices: Vec<String> = data
+            .get("indices")
+            .and_then(|i| i.get("rates"))
+            .and_then(|r| r.get("items"))
+            .and_then(|i| i.as_array())
+            .map(|items| {
+                items
+                    .iter()
+                    .filter_map(|item| item.get("index").and_then(|i| i.as_str()))
+                    .map(String::from)
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        Ok(CurveIndicesResponse { indices })
+    }
+
+    /// Get instruments for a specific curve index
+    pub fn get_curve_instruments(
+        index: &str,
+        _state: &Arc<AppState>,
+    ) -> Result<CurveInstrumentsResponse, ServerError> {
+        // Load market quotes and filter by index
+        let rates_path = Path::new("demo/data/input/rates/market_quotes.json");
+        let content = std::fs::read_to_string(rates_path)
+            .map_err(|e| ServerError::Internal(format!("Failed to read market_quotes.json: {e}")))?;
+        let data: serde_json::Value = serde_json::from_str(&content)
+            .map_err(|e| ServerError::Internal(format!("Failed to parse market_quotes.json: {e}")))?;
+
+        // Map index to currency
+        let currency = match index {
+            "SOFR" => "USD",
+            "ESTR" => "EUR",
+            "TONA" => "JPY",
+            "SONIA" => "GBP",
+            _ => return Err(ServerError::NotFound(format!("Unknown index: {}", index))),
+        };
+
+        let mut instruments = Vec::new();
+
+        if let Some(rates_by_currency) = data.get("rates").and_then(|r| r.as_object()) {
+            if let Some(rate_types) = rates_by_currency.get(currency).and_then(|r| r.as_object()) {
+                for (rate_type, quotes) in rate_types {
+                    if let Some(quotes_arr) = quotes.as_array() {
+                        for quote in quotes_arr {
+                            let quote_index = quote.get("index").and_then(|i| i.as_str());
+                            // Filter by index if specified in quote, or include all if no index
+                            if quote_index.is_none() || quote_index == Some(index) {
+                                let tenor = quote
+                                    .get("tenor")
+                                    .and_then(|t| t.as_str())
+                                    .unwrap_or("")
+                                    .to_string();
+                                let rate = quote.get("value").and_then(|v| v.as_f64()).unwrap_or(0.0);
+
+                                instruments.push(CurveInstrument {
+                                    instrument_type: rate_type.clone(),
+                                    tenor,
+                                    rate,
+                                    enabled: true,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(CurveInstrumentsResponse { instruments })
+    }
+
+    // =========================================================================
+    // Volcube API
+    // =========================================================================
+
+    /// Get volcube indices (swaption currencies)
+    pub fn get_volcube_indices(_state: &Arc<AppState>) -> Result<VolcubeIndicesResponse, ServerError> {
+        // Load from indices.json
+        let indices_path = Path::new("demo/data/input/indices.json");
+        let content = std::fs::read_to_string(indices_path)
+            .map_err(|e| ServerError::Internal(format!("Failed to read indices.json: {e}")))?;
+        let data: serde_json::Value = serde_json::from_str(&content)
+            .map_err(|e| ServerError::Internal(format!("Failed to parse indices.json: {e}")))?;
+
+        let indices: Vec<String> = data
+            .get("indices")
+            .and_then(|i| i.get("irvol"))
+            .and_then(|r| r.get("items"))
+            .and_then(|i| i.as_array())
+            .map(|items| {
+                items
+                    .iter()
+                    .filter_map(|item| item.get("currency").and_then(|c| c.as_str()))
+                    .map(String::from)
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        Ok(VolcubeIndicesResponse { indices })
+    }
+
+    /// Get available volcube calibration models
+    pub fn get_volcube_models(_state: &Arc<AppState>) -> Result<VolcubeModelsResponse, ServerError> {
+        Ok(VolcubeModelsResponse {
+            models: vec![
+                "SABR".to_string(),
+                "SABR-LMM".to_string(),
+                "Heston".to_string(),
+                "Local Vol".to_string(),
+            ],
+        })
+    }
+
+    /// Get swaption instruments for volcube calibration
+    pub fn get_volcube_instruments(
+        currency: &str,
+        _state: &Arc<AppState>,
+    ) -> Result<VolcubeInstrumentsResponse, ServerError> {
+        // Load IR vol data
+        let vol_path = Path::new("demo/data/input/vol/swaption")
+            .join(format!("{}_swaption_vol.json", currency.to_lowercase()));
+
+        let content = std::fs::read_to_string(&vol_path).map_err(|_| {
+            ServerError::NotFound(format!("Swaption vol data not found for: {}", currency))
+        })?;
+        let data: serde_json::Value = serde_json::from_str(&content)
+            .map_err(|e| ServerError::Internal(format!("Failed to parse vol data: {e}")))?;
+
+        let mut instruments = Vec::new();
+
+        if let Some(quotes) = data.get("quotes").and_then(|q| q.as_array()) {
+            for quote in quotes {
+                let expiry = quote
+                    .get("expiry")
+                    .and_then(|e| e.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let tenor = quote
+                    .get("tenor")
+                    .and_then(|t| t.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let vol = quote.get("vol").and_then(|v| v.as_f64()).unwrap_or(0.0);
+
+                instruments.push(SwaptionInstrument {
+                    expiry,
+                    tenor,
+                    strike: "ATM".to_string(),
+                    vol,
+                    enabled: true,
+                });
+            }
+        }
+
+        Ok(VolcubeInstrumentsResponse { instruments })
     }
 
     // =========================================================================

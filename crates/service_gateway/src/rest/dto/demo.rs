@@ -506,6 +506,60 @@ pub struct AvailableCurvesResponse {
     pub curves: Vec<String>,
 }
 
+/// Curve indices response
+#[derive(Debug, Clone, Serialize)]
+pub struct CurveIndicesResponse {
+    pub indices: Vec<String>,
+}
+
+/// Curve instrument for bootstrapping
+#[derive(Debug, Clone, Serialize)]
+pub struct CurveInstrument {
+    #[serde(rename = "type")]
+    pub instrument_type: String,
+    pub tenor: String,
+    pub rate: f64,
+    pub enabled: bool,
+}
+
+/// Curve instruments response
+#[derive(Debug, Clone, Serialize)]
+pub struct CurveInstrumentsResponse {
+    pub instruments: Vec<CurveInstrument>,
+}
+
+// =============================================================================
+// Volcube Types
+// =============================================================================
+
+/// Volcube indices response
+#[derive(Debug, Clone, Serialize)]
+pub struct VolcubeIndicesResponse {
+    pub indices: Vec<String>,
+}
+
+/// Volcube calibration models response
+#[derive(Debug, Clone, Serialize)]
+pub struct VolcubeModelsResponse {
+    pub models: Vec<String>,
+}
+
+/// Swaption instrument for volcube
+#[derive(Debug, Clone, Serialize)]
+pub struct SwaptionInstrument {
+    pub expiry: String,
+    pub tenor: String,
+    pub strike: String,
+    pub vol: f64,
+    pub enabled: bool,
+}
+
+/// Volcube instruments response
+#[derive(Debug, Clone, Serialize)]
+pub struct VolcubeInstrumentsResponse {
+    pub instruments: Vec<SwaptionInstrument>,
+}
+
 // =============================================================================
 // Export Types
 // =============================================================================

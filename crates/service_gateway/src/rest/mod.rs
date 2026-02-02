@@ -85,9 +85,15 @@ fn demo_api_routes(state: Arc<AppState>) -> Router {
         .route("/pricer/greeks", post(handlers::demo::calculate_greeks))
         // Curves (demo endpoints + existing)
         .route("/curves", get(handlers::demo::get_available_curves))
+        .route("/curves/indices", get(handlers::demo::get_curve_indices))
+        .route("/curves/instruments/:index", get(handlers::demo::get_curve_instruments))
         .route("/curves/build", post(handlers::build_curve))
         .route("/curves/discount-factor", post(handlers::get_discount_factor))
         .route("/curves/forward-rate", post(handlers::get_forward_rate))
+        // Volcube
+        .route("/volcube/indices", get(handlers::demo::get_volcube_indices))
+        .route("/volcube/models", get(handlers::demo::get_volcube_models))
+        .route("/volcube/instruments/:currency", get(handlers::demo::get_volcube_instruments))
         // Market data
         .route("/market/rates", get(handlers::demo::get_market_rates))
         .route("/market/config", get(handlers::demo::get_market_config))
