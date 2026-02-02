@@ -737,6 +737,33 @@ textarea:focus {
     border-left: 3px solid var(--success);
 }
 
+/* ===========================================
+   UNIFIED LOADING OVERLAY
+   =========================================== */
+
+.loading-overlay,
+.irs-loading-overlay,
+.curve-builder-loading-overlay,
+.volcube-loading-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 10, 15, 0.8);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.loading-overlay { position: fixed; z-index: 10000; }
+
+body.light-theme .loading-overlay,
+body.light-theme .irs-loading-overlay,
+body.light-theme .curve-builder-loading-overlay,
+body.light-theme .volcube-loading-overlay {
+    background: rgba(248, 250, 252, 0.9);
+}
+
 /* ============================================
    Animated Background
    ============================================ */
@@ -3171,6 +3198,7 @@ body.light-theme .glass-heavy {
     min-height: 0;
 }
 
+/* Scenario panels - all use card base with flex column */
 .scenario-panel,
 .scenario-list-panel,
 .scenario-results-panel,
@@ -3179,20 +3207,10 @@ body.light-theme .glass-heavy {
     display: flex;
     flex-direction: column;
     border-radius: var(--radius-lg);
-}
-
-.scenario-list-panel {
-    min-height: 0;
-    max-height: 100%;
-}
-
-.scenario-results-panel {
     min-height: 0;
 }
 
-.scenario-params-panel {
-    min-height: 0;
-}
+.scenario-list-panel { max-height: 100%; }
 
 .scenario-params {
     padding: 16px;
@@ -11491,18 +11509,8 @@ body.light-theme .daily-accruals-table th {
     padding: 3rem;
 }
 
-/* Loading Overlay (Task 7.5) */
-.irs-loading-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(10, 10, 15, 0.8);
-    backdrop-filter: blur(4px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-    border-radius: inherit;
-}
+/* Loading Overlay - uses unified styles, adds border-radius inherit */
+.irs-loading-overlay { border-radius: inherit; }
 
 .irs-spinner {
     display: flex;
@@ -11628,9 +11636,7 @@ body.light-theme .delta-table tbody tr:hover {
     background: #f8fafc;
 }
 
-body.light-theme .irs-loading-overlay {
-    background: rgba(248, 250, 252, 0.9);
-}
+/* irs-loading-overlay light-theme uses unified styles */
 
 /* ============================================
    Curve Builder View (curve-builder-webapp)
@@ -12380,20 +12386,8 @@ body.light-theme .irs-loading-overlay {
     font-family: 'JetBrains Mono', monospace;
 }
 
-/* Loading Overlay */
-.curve-builder-loading-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-    border-radius: 12px;
-}
+/* Loading Overlay - uses unified styles, adds border-radius */
+.curve-builder-loading-overlay { border-radius: 12px; }
 
 .loading-spinner {
     display: flex;
@@ -12464,9 +12458,7 @@ body.light-theme .parameter-table th {
     background: #f8fafc;
 }
 
-body.light-theme .curve-builder-loading-overlay {
-    background: rgba(248, 250, 252, 0.9);
-}
+/* curve-builder-loading-overlay light-theme uses unified styles */
 
 /* Parameter Tabs Row (with CB Meeting toggle) */
 .param-tabs-row {
@@ -13703,24 +13695,30 @@ body.light-theme .asset-toggle-btn:hover {
     }
 }
 
-/* Conventions Panel */
-.conventions-panel {
+/* Conventions Panels - unified overrides */
+.conventions-panel,
+.convention-detail-panel {
     padding: 16px;
 }
 
-/* conventions-panel overrides - uses base .panel-header styles */
-.conventions-panel .panel-header {
+.convention-detail-panel {
+    height: fit-content;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.conventions-panel .panel-header,
+.convention-detail-panel .panel-header {
     border-bottom: none;
     margin-bottom: 16px;
 }
 
-.conventions-panel .panel-header h3 {
+.conventions-panel .panel-header h3,
+.convention-detail-panel .panel-header h3 {
     font-size: 1rem;
 }
 
-.conventions-panel .panel-header h3 i {
-    color: var(--purple);
-}
+.conventions-panel .panel-header h3 i { color: var(--purple); }
 
 .convention-stats .stat-value {
     background: var(--surface);
@@ -13728,23 +13726,6 @@ body.light-theme .asset-toggle-btn:hover {
     border-radius: var(--radius-sm);
     font-size: 0.75rem;
     color: var(--text-secondary);
-}
-
-/* Convention Detail Panel */
-.convention-detail-panel {
-    padding: 16px;
-    height: fit-content;
-    max-height: 400px;
-    overflow-y: auto;
-}
-
-.convention-detail-panel .panel-header {
-    border-bottom: none;
-    margin-bottom: 16px;
-}
-
-.convention-detail-panel .panel-header h3 {
-    font-size: 1rem;
 }
 
 .conventions-grid {
@@ -15602,20 +15583,8 @@ body.light-theme .chart-placeholder {
     font-family: 'SF Mono', 'Consolas', monospace;
 }
 
-/* Loading Overlay */
-.volcube-loading-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(10, 10, 15, 0.8);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-    border-radius: var(--radius-lg);
-}
+/* Loading Overlay - uses unified styles, adds border-radius */
+.volcube-loading-overlay { border-radius: var(--radius-lg); }
 
 /* Responsive */
 @media (max-width: 768px) {

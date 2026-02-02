@@ -121,6 +121,7 @@ mod validation;
 // Submodules for extended market data types
 pub mod convention;
 pub mod events;
+pub mod instrument;
 pub mod volatility;
 
 // Compounding methods

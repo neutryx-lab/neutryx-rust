@@ -35,6 +35,7 @@ mod fx_option;
 mod fx_swap;
 mod inflation;
 mod market_convention;
+mod registry;
 mod swap;
 mod swaption;
 mod xccy_basis;
@@ -53,6 +54,7 @@ pub use fx_option::{CutOffTime, DeltaConvention, FxOptionConvention, PremiumCurr
 pub use fx_swap::{FxSettlementType, FxSwapConvention, NearLegType};
 pub use inflation::{InflationIndex, InflationInterpolation, InflationSwapConvention};
 pub use market_convention::MarketConvention;
+pub use registry::{ConventionKey, ConventionRegistry, RegistryError};
 pub use swap::{SwapConvention, SwapLegConvention};
 pub use swaption::{SettlementConvention, SwaptionConvention};
 pub use xccy_basis::{BasisSpreadLeg, XCcyBasisConvention, XCcyLegConvention};
