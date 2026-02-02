@@ -2285,4 +2285,128 @@ mod tests {
         let types = result.unwrap();
         assert!(!types.types.is_empty());
     }
+
+    // =========================================================================
+    // Rate Instrument API tests
+    // =========================================================================
+
+    #[test]
+    fn test_get_rate_indices() {
+        let state = create_test_state();
+        let result = DemoService::get_rate_indices(&state);
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        assert!(!response.indices.is_empty());
+
+        // Check that SOFR index exists
+        let sofr = response.indices.iter().find(|i| i.code == "SOFR");
+        assert!(sofr.is_some());
+        let sofr = sofr.unwrap();
+        assert_eq!(sofr.currency, "USD");
+        assert!(sofr.is_overnight);
+    }
+
+    #[test]
+    fn test_get_rate_index_detail() {
+        let state = create_test_state();
+        let result = DemoService::get_rate_index_detail("SOFR", &state);
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        assert_eq!(response.code, "SOFR");
+        assert_eq!(response.currency, "USD");
+        assert!(response.metadata.is_some());
+    }
+
+    #[test]
+    fn test_get_rate_index_detail_not_found() {
+        let state = create_test_state();
+        let result = DemoService::get_rate_index_detail("NONEXISTENT", &state);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_get_index_rates() {
+        let state = create_test_state();
+        let result = DemoService::get_index_rates("SOFR", &state);
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        // Should have some rates associated
+        assert!(!response.rates.is_empty());
+    }
+
+    #[test]
+    fn test_get_index_conventions() {
+        let state = create_test_state();
+        let result = DemoService::get_index_conventions("SOFR", &state);
+        assert!(result.is_ok());
+        let response = result.unwrap();
+        // Should have some conventions associated
+        assert!(!response.conventions.is_empty());
+    }
+
+    #[test]
+    fn test_calculate_dates_from_tenor() {
+        use chrono::NaiveDate;
+
+        let valuation_date = NaiveDate::from_ymd_opt(2025, 1, 15).unwrap();
+
+        // Test overnight tenor
+        let (eff, mat) = DemoService::calculate_dates_from_tenor("ON", "USD", valuation_date);
+        assert_eq!(eff, NaiveDate::from_ymd_opt(2025, 1, 17).unwrap()); // T+2
+        assert_eq!(mat, NaiveDate::from_ymd_opt(2025, 1, 18).unwrap()); // T+3
+
+        // Test 1M tenor
+        let (eff, mat) = DemoService::calculate_dates_from_tenor("1M", "USD", valuation_date);
+        assert_eq!(eff, NaiveDate::from_ymd_opt(2025, 1, 17).unwrap());
+        assert_eq!(mat, NaiveDate::from_ymd_opt(2025, 2, 17).unwrap());
+
+        // Test 1Y tenor
+        let (eff, mat) = DemoService::calculate_dates_from_tenor("1Y", "USD", valuation_date);
+        assert_eq!(eff, NaiveDate::from_ymd_opt(2025, 1, 17).unwrap());
+        assert_eq!(mat, NaiveDate::from_ymd_opt(2026, 1, 17).unwrap());
+
+        // Test GBP with T+0 spot lag
+        let (eff, _) = DemoService::calculate_dates_from_tenor("1M", "GBP", valuation_date);
+        assert_eq!(eff, NaiveDate::from_ymd_opt(2025, 1, 15).unwrap()); // T+0
+    }
+
+    #[test]
+    fn test_add_months() {
+        use chrono::NaiveDate;
+
+        let date = NaiveDate::from_ymd_opt(2025, 1, 15).unwrap();
+
+        assert_eq!(
+            DemoService::add_months(date, 1),
+            NaiveDate::from_ymd_opt(2025, 2, 15).unwrap()
+        );
+
+        assert_eq!(
+            DemoService::add_months(date, 12),
+            NaiveDate::from_ymd_opt(2026, 1, 15).unwrap()
+        );
+
+        // End of month handling
+        let date_eom = NaiveDate::from_ymd_opt(2025, 1, 31).unwrap();
+        assert_eq!(
+            DemoService::add_months(date_eom, 1),
+            NaiveDate::from_ymd_opt(2025, 2, 28).unwrap() // Feb has 28 days in 2025
+        );
+    }
+
+    #[test]
+    fn test_calculate_year_fraction() {
+        use chrono::NaiveDate;
+
+        let start = NaiveDate::from_ymd_opt(2025, 1, 1).unwrap();
+        let end = NaiveDate::from_ymd_opt(2025, 7, 1).unwrap();
+
+        // USD uses ACT/360
+        let yf_usd = DemoService::calculate_year_fraction(start, end, "USD");
+        assert!((yf_usd - 181.0 / 360.0).abs() < 1e-10);
+
+        // GBP uses ACT/365F
+        let yf_gbp = DemoService::calculate_year_fraction(start, end, "GBP");
+        assert!((yf_gbp - 181.0 / 365.0).abs() < 1e-10);
+    }
 }
