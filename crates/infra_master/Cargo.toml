@@ -16,6 +16,7 @@ thiserror.workspace = true
 
 # Serialisation
 serde = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
 
 # Builder pattern
 bon = { workspace = true }
@@ -25,7 +26,7 @@ derive_more = { workspace = true }
 
 [features]
 default = []
-serde = ["dep:serde"]
+serde = ["dep:serde", "dep:serde_json"]
 
 [dev-dependencies]
 approx.workspace = true

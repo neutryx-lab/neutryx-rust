@@ -29,6 +29,7 @@ export interface ViewMeta {
   breadcrumb: string;
   icon: string;
   navGroup?: 'main' | 'analytics' | 'tools';
+  [key: string]: unknown;
 }
 
 const routes: RouteRecordRaw[] = [

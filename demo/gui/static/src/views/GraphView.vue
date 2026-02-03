@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
-import * as d3 from 'd3';
+// D3 is loaded via CDN - using global namespace
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+declare const d3: any;
 
 // Types
 interface GraphNode {
@@ -148,9 +150,9 @@ function renderGraph() {
     .attr('class', 'graph-svg');
 
   // Zoom behaviour
-  zoomBehavior = d3.zoom<SVGSVGElement, unknown>()
+  zoomBehavior = d3.zoom()
     .scaleExtent([0.1, 4])
-    .on('zoom', (event) => {
+    .on('zoom', (event: { transform: { toString: () => string } }) => {
       mainGroup?.attr('transform', event.transform.toString());
     });
 
@@ -181,9 +183,9 @@ function renderGraph() {
   }));
 
   // Create simulation
-  simulation = d3.forceSimulation<D3Node>(d3Nodes)
-    .force('link', d3.forceLink<D3Node, D3Link>(d3Links)
-      .id(d => d.id)
+  simulation = d3.forceSimulation(d3Nodes)
+    .force('link', d3.forceLink(d3Links)
+      .id((d: D3Node) => d.id)
       .distance(80))
     .force('charge', d3.forceManyBody().strength(-300))
     .force('center', d3.forceCenter(width / 2, height / 2))
@@ -209,17 +211,17 @@ function renderGraph() {
     .enter()
     .append('g')
     .attr('class', 'graph-node')
-    .call(d3.drag<SVGGElement, D3Node>()
+    .call(d3.drag()
       .on('start', dragStarted)
       .on('drag', dragged)
       .on('end', dragEnded))
-    .on('click', (_event, d) => selectNodeHandler(d));
+    .on('click', (_event: Event, d: D3Node) => selectNodeHandler(d));
 
   // Node circles
   node.append('circle')
-    .attr('r', d => d.is_sensitivity_target ? 12 : 10)
-    .attr('fill', d => nodeColours[d.type] || nodeColours.default)
-    .attr('stroke', d => d.is_sensitivity_target ? '#fff' : 'none')
+    .attr('r', (d: D3Node) => d.is_sensitivity_target ? 12 : 10)
+    .attr('fill', (d: D3Node) => nodeColours[d.type] || nodeColours.default)
+    .attr('stroke', (d: D3Node) => d.is_sensitivity_target ? '#fff' : 'none')
     .attr('stroke-width', 2)
     .attr('class', 'node-circle');
 
@@ -229,33 +231,33 @@ function renderGraph() {
     .attr('dy', 4)
     .attr('fill', '#e2e8f0')
     .attr('font-size', '11px')
-    .text(d => d.label);
+    .text((d: D3Node) => d.label);
 
   // Tick handler
   simulation.on('tick', () => {
     link
-      .attr('x1', d => (d.source as D3Node).x ?? 0)
-      .attr('y1', d => (d.source as D3Node).y ?? 0)
-      .attr('x2', d => (d.target as D3Node).x ?? 0)
-      .attr('y2', d => (d.target as D3Node).y ?? 0);
+      .attr('x1', (d: D3Link) => (d.source as D3Node).x ?? 0)
+      .attr('y1', (d: D3Link) => (d.source as D3Node).y ?? 0)
+      .attr('x2', (d: D3Link) => (d.target as D3Node).x ?? 0)
+      .attr('y2', (d: D3Link) => (d.target as D3Node).y ?? 0);
 
-    node.attr('transform', d => `translate(${d.x ?? 0},${d.y ?? 0})`);
+    node.attr('transform', (d: D3Node) => `translate(${d.x ?? 0},${d.y ?? 0})`);
   });
 }
 
 // Drag handlers
-function dragStarted(event: d3.D3DragEvent<SVGGElement, D3Node, D3Node>, d: D3Node) {
+function dragStarted(event: { active: number; x: number; y: number }, d: D3Node) {
   if (!event.active) simulation?.alphaTarget(0.3).restart();
   d.fx = d.x;
   d.fy = d.y;
 }
 
-function dragged(event: d3.D3DragEvent<SVGGElement, D3Node, D3Node>, d: D3Node) {
+function dragged(event: { x: number; y: number }, d: D3Node) {
   d.fx = event.x;
   d.fy = event.y;
 }
 
-function dragEnded(event: d3.D3DragEvent<SVGGElement, D3Node, D3Node>, d: D3Node) {
+function dragEnded(event: { active: number }, d: D3Node) {
   if (!event.active) simulation?.alphaTarget(0);
   d.fx = null;
   d.fy = null;

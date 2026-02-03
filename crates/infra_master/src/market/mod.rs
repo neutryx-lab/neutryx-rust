@@ -107,17 +107,21 @@
 mod compounding;
 mod currency;
 mod currency_pair;
+mod curve_definition;
 mod data_source;
 mod error;
 mod event_instrument;
+mod instrument_def;
 mod mapper;
 mod market_instrument;
 mod quote_type;
 mod rate;
 mod rate_id;
 mod rate_index;
+mod rate_index_def;
 mod rate_set;
 mod rate_type;
+mod registry;
 mod ticker;
 mod validation;
 
@@ -154,3 +158,11 @@ pub use validation::{RateValidator, StandardRateValidator};
 pub use event_instrument::EventInstrument;
 // Market instrument (for curve calibration)
 pub use market_instrument::{MarketInstrument, MarketInstrumentError};
+
+// Curve construction definitions
+pub use curve_definition::{CalibrationMethod, CurveDefError, CurveDefinition, InterpolationMethod};
+pub use instrument_def::{InstrumentConventions, InstrumentDefError, InstrumentDefinition};
+pub use rate_index_def::{IndexConventions, RateIndexDefError, RateIndexDefinition};
+pub use registry::{DefinitionRegistry, RegistryError};
+#[cfg(feature = "serde")]
+pub use registry::DefinitionBundle;
