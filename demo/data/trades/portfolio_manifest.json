@@ -35,15 +35,6 @@
       "commodity": [
         "fpml/commodity/comswap_brent_001.xml"
       ]
-    },
-    "json": {
-      "format": "Custom JSON",
-      "description": "Extended JSON format for all trade types (legacy/demo)",
-      "rates": "rates/trades.json",
-      "fx": "fx/trades.json",
-      "equity": "equity/trades.json",
-      "credit": "credit/trades.json",
-      "commodity": "commodity/trades.json"
     }
   },
   "entity_sources": {
@@ -82,14 +73,13 @@
     ]
   },
   "statistics": {
-    "fpml_trades": 11,
-    "json_trades": 82,
+    "total_trades": 11,
     "by_asset_class": {
-      "Rates": {"fpml": 3, "json": 17},
-      "FX": {"fpml": 3, "json": 17},
-      "Equity": {"fpml": 1, "json": 16},
-      "Credit": {"fpml": 2, "json": 14},
-      "Commodity": {"fpml": 2, "json": 18}
+      "Rates": 3,
+      "FX": 3,
+      "Equity": 1,
+      "Credit": 2,
+      "Commodity": 2
     },
     "currencies": ["USD", "EUR", "GBP", "JPY", "CHF"],
     "counterparties": 12,
