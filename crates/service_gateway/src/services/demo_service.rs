@@ -532,7 +532,7 @@ impl DemoService {
                             tenor: "SPOT".to_string(),
                             rate_type: "fxspot".to_string(),
                             value,
-                            rate_index: None,
+                            rate_index: Some(pair.to_string()),
                             quote_type: Some("Mid".to_string()),
                             source: "Internal".to_string(),
                             timestamp: timestamp.clone(),

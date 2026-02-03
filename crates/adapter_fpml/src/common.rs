@@ -301,36 +301,16 @@ pub fn parse_trade_header(xml: &str) -> Result<TradeHeader, FpmlError> {
 
 /// Find the counterparty from the list of party references.
 ///
+/// Returns the party ID (partyReference href value) directly, e.g., "GOLDMAN", "BARCLAYS".
 /// Assumes our bank ID starts with "FB" or contains "FrictionalBank".
-fn find_counterparty(party_refs: &[String], all_parties: &[Party]) -> Option<String> {
+fn find_counterparty(party_refs: &[String], _all_parties: &[Party]) -> Option<String> {
     for party_ref in party_refs {
         // Skip our own bank
         if party_ref.starts_with("FB") || party_ref.contains("FRICTIONAL") {
             continue;
         }
-
-        // Find the party definition
-        for party in all_parties {
-            if party.id == *party_ref {
-                if let Some(ref name) = party.name {
-                    return Some(name.clone());
-                }
-                // Fall back to party_id if name not available
-                if let Some(ref pid) = party.party_id {
-                    return Some(pid.clone());
-                }
-                return Some(party.id.clone());
-            }
-        }
-    }
-
-    // If no counterparty found, try to get any non-FB party
-    for party in all_parties {
-        if !party.id.starts_with("FB") && !party.id.contains("FRICTIONAL") {
-            if let Some(ref name) = party.name {
-                return Some(name.clone());
-            }
-        }
+        // Return the party reference ID directly (e.g., "GOLDMAN", "BARCLAYS")
+        return Some(party_ref.clone());
     }
 
     None

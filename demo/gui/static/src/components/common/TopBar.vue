@@ -128,15 +128,12 @@ onUnmounted(() => {
 <template>
   <header class="top-bar fixed top-0 right-0 left-[var(--sidebar-width)] h-16 z-40">
     <div class="top-bar-inner h-full flex items-center justify-between px-6 bg-[var(--glass-bg)] backdrop-blur-[20px] border-b border-[var(--glass-border)]">
-      <!-- Left: Breadcrumb & Title -->
-      <div class="header-left flex items-center gap-4">
-        <div class="breadcrumb flex items-center gap-2 text-sm">
-          <RouterLink to="/dashboard" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
-            <i class="fas fa-home"></i>
-          </RouterLink>
-          <i class="fas fa-chevron-right text-[var(--text-muted)] text-xs"></i>
-          <span class="text-[var(--text-secondary)]">{{ breadcrumb }}</span>
-        </div>
+      <!-- Left: Title -->
+      <div class="header-left flex items-center gap-3">
+        <RouterLink to="/dashboard" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+          <i class="fas fa-home"></i>
+        </RouterLink>
+        <i class="fas fa-chevron-right text-[var(--text-muted)] text-xs"></i>
         <h1 class="page-title text-lg font-semibold text-[var(--text-primary)]">
           {{ title }}
         </h1>

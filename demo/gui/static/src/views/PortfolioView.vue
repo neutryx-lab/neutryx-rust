@@ -20,8 +20,8 @@ const filters = ref({
   book: '',
   counterparty: '',
   currency: '',
-  notionalMin: '',
-  notionalMax: '',
+  maturityStart: '',
+  maturityEnd: '',
 });
 
 // Sorting state
@@ -57,11 +57,11 @@ const filteredTrades = computed(() => {
     if (filters.value.currency && trade.currency !== filters.value.currency) {
       return false;
     }
-    // Notional range filters
-    if (filters.value.notionalMin && trade.notional < Number(filters.value.notionalMin)) {
+    // Maturity range filters
+    if (filters.value.maturityStart && trade.maturity && trade.maturity < filters.value.maturityStart) {
       return false;
     }
-    if (filters.value.notionalMax && trade.notional > Number(filters.value.notionalMax)) {
+    if (filters.value.maturityEnd && trade.maturity && trade.maturity > filters.value.maturityEnd) {
       return false;
     }
     return true;
@@ -166,8 +166,8 @@ function clearFilters() {
     book: '',
     counterparty: '',
     currency: '',
-    notionalMin: '',
-    notionalMax: '',
+    maturityStart: '',
+    maturityEnd: '',
   };
 }
 
@@ -240,10 +240,10 @@ onMounted(() => loadData());
 
       <!-- Filter Panel -->
       <Transition name="slide">
-        <div v-if="showFilters" class="filter-panel mb-4 p-4 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)]">
-          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div v-if="showFilters" class="filter-panel mb-4 p-4 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] overflow-hidden">
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             <!-- Trade ID -->
-            <div>
+            <div class="min-w-0">
               <label class="block text-xs text-[var(--text-muted)] mb-1">Trade ID</label>
               <input
                 v-model="filters.id"
@@ -253,9 +253,9 @@ onMounted(() => loadData());
               />
             </div>
 
-            <!-- Instrument Type -->
-            <div>
-              <label class="block text-xs text-[var(--text-muted)] mb-1">Instrument Type</label>
+            <!-- Type -->
+            <div class="min-w-0">
+              <label class="block text-xs text-[var(--text-muted)] mb-1">Type</label>
               <select v-model="filters.instrument_type" class="filter-input">
                 <option value="">All</option>
                 <option v-for="opt in filterOptions.instrumentTypes" :key="opt" :value="opt">{{ opt }}</option>
@@ -263,7 +263,7 @@ onMounted(() => loadData());
             </div>
 
             <!-- Book -->
-            <div>
+            <div class="min-w-0">
               <label class="block text-xs text-[var(--text-muted)] mb-1">Book</label>
               <select v-model="filters.book" class="filter-input">
                 <option value="">All</option>
@@ -272,7 +272,7 @@ onMounted(() => loadData());
             </div>
 
             <!-- Counterparty -->
-            <div>
+            <div class="min-w-0">
               <label class="block text-xs text-[var(--text-muted)] mb-1">Counterparty</label>
               <select v-model="filters.counterparty" class="filter-input">
                 <option value="">All</option>
@@ -281,7 +281,7 @@ onMounted(() => loadData());
             </div>
 
             <!-- Currency -->
-            <div>
+            <div class="min-w-0">
               <label class="block text-xs text-[var(--text-muted)] mb-1">Currency</label>
               <select v-model="filters.currency" class="filter-input">
                 <option value="">All</option>
@@ -289,21 +289,19 @@ onMounted(() => loadData());
               </select>
             </div>
 
-            <!-- Notional Range -->
-            <div>
-              <label class="block text-xs text-[var(--text-muted)] mb-1">Notional Range</label>
-              <div class="flex gap-1">
+            <!-- Maturity Range - spans 2 columns on larger screens -->
+            <div class="min-w-0 col-span-2 md:col-span-2 lg:col-span-2">
+              <label class="block text-xs text-[var(--text-muted)] mb-1">Maturity Range</label>
+              <div class="flex gap-2">
                 <input
-                  v-model="filters.notionalMin"
-                  type="number"
-                  placeholder="Min"
-                  class="filter-input w-1/2"
+                  v-model="filters.maturityStart"
+                  type="date"
+                  class="filter-input flex-1 min-w-0"
                 />
                 <input
-                  v-model="filters.notionalMax"
-                  type="number"
-                  placeholder="Max"
-                  class="filter-input w-1/2"
+                  v-model="filters.maturityEnd"
+                  type="date"
+                  class="filter-input flex-1 min-w-0"
                 />
               </div>
             </div>
@@ -345,7 +343,7 @@ onMounted(() => loadData());
                 Trade ID <i class="fas" :class="getSortIcon('id')"></i>
               </th>
               <th class="p-3 sortable-header" @click="handleSort('instrument_type')">
-                Instrument Type <i class="fas" :class="getSortIcon('instrument_type')"></i>
+                Type <i class="fas" :class="getSortIcon('instrument_type')"></i>
               </th>
               <th class="p-3 sortable-header" @click="handleSort('book')">
                 Book <i class="fas" :class="getSortIcon('book')"></i>
@@ -481,6 +479,21 @@ onMounted(() => loadData());
 
 .filter-input::placeholder {
   color: var(--text-muted);
+}
+
+/* Date input adjustments */
+.filter-input[type="date"] {
+  padding: 0.375rem 0.5rem;
+  min-width: 0;
+}
+
+.filter-input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.filter-input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
 }
 
 /* Slide transition */

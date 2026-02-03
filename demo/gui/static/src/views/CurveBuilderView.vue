@@ -1,14 +1,59 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
+import { Chart, registerables } from 'chart.js';
+
+Chart.register(...registerables);
 
 // Types
-interface CurveInstrument {
+interface CurveConfig {
+  name: string;
+  description?: string;
+  rateIndex: string;
+  instruments: string[];
+  calibrationMethod: string;
+  interpolation: string;
+  allowExtrapolation: boolean;
+}
+
+interface CurvesData {
+  metadata: {
+    description: string;
+    version: string;
+    sections: Record<string, string>;
+  };
+  curves: CurveConfig[];
+}
+
+interface RateInstrument {
+  type: string;
+  tenor: string;
+  tenor_years: number;
+  rate: number;
+  frequency?: string;
+  description?: string;
+}
+
+interface RateData {
+  index: string;
+  currency: string;
+  reference_date: string;
+  instruments: RateInstrument[];
+}
+
+interface DisplayInstrument {
   id: string;
   type: string;
   tenor: string;
   tenorYears: number;
   rate: number;
   enabled: boolean;
+  originalRate: number;
+}
+
+interface CurvePillar {
+  time: number;
+  discount_factor: number;
+  zero_rate: number;
 }
 
 interface BuildResult {
@@ -16,64 +61,259 @@ interface BuildResult {
   instrument_count?: number;
   interpolation?: string;
   calculation_time_ms?: number;
-  pillars?: Array<{ time: number; discount_factor: number; zero_rate: number }>;
+  pillars?: CurvePillar[];
   converged?: boolean;
 }
 
 // State
-const indices = ref<string[]>([]);
-const selectedIndex = ref<string>('');
-const instruments = ref<CurveInstrument[]>([]);
-const originalInstruments = ref<CurveInstrument[]>([]);
+const curvesConfig = ref<CurvesData | null>(null);
+const selectedCurveName = ref<string>('');
+const selectedCurve = ref<CurveConfig | null>(null);
+const rateData = ref<RateData | null>(null);
+const instruments = ref<DisplayInstrument[]>([]);
 const buildResult = ref<BuildResult | null>(null);
+const isLoading = ref(false);
 const isBuilding = ref(false);
-const enableJumps = ref(false);
+const loadError = ref<string | null>(null);
+
+// Build settings (editable)
+const calibrationMethod = ref<string>('sequential');
+const interpolation = ref<string>('loglinear');
+const allowExtrapolation = ref<boolean>(true);
+
+// Chart
+const chartCanvas = ref<HTMLCanvasElement | null>(null);
+let chartInstance: Chart | null = null;
+const chartType = ref<'zero_rate' | 'discount_factor'>('zero_rate');
+
+// Options for build settings
+const calibrationMethods = ['sequential', 'global', 'bootstrap'];
+const interpolationMethods = ['linear', 'loglinear', 'cubic', 'monotone_cubic', 'flat_forward'];
 
 // Computed
-const hasChanges = computed(() =>
-  JSON.stringify(instruments.value) !== JSON.stringify(originalInstruments.value)
-);
+const curveOptions = computed(() => {
+  if (!curvesConfig.value) return [];
+  return curvesConfig.value.curves.map(c => ({
+    name: c.name,
+    rateIndex: c.rateIndex,
+  }));
+});
 
 const enabledInstruments = computed(() =>
   instruments.value.filter(inst => inst.enabled)
 );
 
+const hasChanges = computed(() => {
+  if (!selectedCurve.value) return false;
+
+  // Check if any rate changed
+  const rateChanged = instruments.value.some(inst => inst.rate !== inst.originalRate);
+
+  // Check if build settings changed
+  const settingsChanged =
+    calibrationMethod.value !== selectedCurve.value.calibrationMethod ||
+    interpolation.value !== selectedCurve.value.interpolation ||
+    allowExtrapolation.value !== selectedCurve.value.allowExtrapolation;
+
+  return rateChanged || settingsChanged;
+});
+
 const summaryStats = computed(() => [
-  { label: 'Total Instruments', value: instruments.value.length, icon: 'fa-list-alt', color: '#3b82f6' },
-  { label: 'Enabled', value: enabledInstruments.value.length, icon: 'fa-check-circle', color: '#10b981' },
+  { label: 'Instruments', value: `${enabledInstruments.value.length}/${instruments.value.length}`, icon: 'fa-list-alt', color: '#3b82f6' },
   { label: 'Avg Rate', value: enabledInstruments.value.length > 0
       ? `${(enabledInstruments.value.reduce((sum, i) => sum + i.rate, 0) / enabledInstruments.value.length * 100).toFixed(2)}%`
       : '-', icon: 'fa-percent', color: '#8b5cf6' },
+  { label: 'Interpolation', value: interpolation.value, icon: 'fa-wave-square', color: '#10b981' },
   { label: 'Status', value: buildResult.value ? 'Built' : 'Pending', icon: 'fa-info-circle', color: buildResult.value ? '#10b981' : '#f59e0b' },
 ]);
 
+// Chart functions
+function updateChart() {
+  if (!chartCanvas.value || !buildResult.value?.pillars) return;
+
+  const pillars = buildResult.value.pillars;
+  const labels = pillars.map(p => p.time.toFixed(2));
+  const data = chartType.value === 'zero_rate'
+    ? pillars.map(p => p.zero_rate * 100)
+    : pillars.map(p => p.discount_factor);
+
+  if (chartInstance) {
+    chartInstance.destroy();
+  }
+
+  const ctx = chartCanvas.value.getContext('2d');
+  if (!ctx) return;
+
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: chartType.value === 'zero_rate' ? 'Zero Rate (%)' : 'Discount Factor',
+        data,
+        borderColor: '#6366f1',
+        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.3,
+        pointRadius: 3,
+        pointBackgroundColor: '#6366f1',
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false,
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          titleColor: '#fff',
+          bodyColor: '#fff',
+          callbacks: {
+            title: (items) => `Time: ${items[0].label}Y`,
+            label: (item) => {
+              const value = item.raw as number;
+              return chartType.value === 'zero_rate'
+                ? `Zero Rate: ${value.toFixed(4)}%`
+                : `DF: ${value.toFixed(6)}`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: 'Time (Years)',
+            color: 'rgba(255, 255, 255, 0.6)',
+          },
+          ticks: { color: 'rgba(255, 255, 255, 0.6)' },
+          grid: { color: 'rgba(255, 255, 255, 0.1)' },
+        },
+        y: {
+          title: {
+            display: true,
+            text: chartType.value === 'zero_rate' ? 'Zero Rate (%)' : 'Discount Factor',
+            color: 'rgba(255, 255, 255, 0.6)',
+          },
+          ticks: { color: 'rgba(255, 255, 255, 0.6)' },
+          grid: { color: 'rgba(255, 255, 255, 0.1)' },
+        },
+      },
+    },
+  });
+}
+
 // API calls
-async function loadIndices() {
+async function loadCurvesConfig() {
+  loadError.value = null;
   try {
-    const response = await fetch('/api/curves/indices');
-    if (!response.ok) throw new Error('Failed to load indices');
-    const data = await response.json();
-    indices.value = data.indices || [];
+    const response = await fetch('/data/config/curves.json');
+    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    curvesConfig.value = await response.json();
   } catch (error) {
-    console.error('Failed to load indices:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Failed to load curves config:', message);
+    loadError.value = `Failed to load curves: ${message}`;
   }
 }
 
-async function loadInstruments(index: string) {
+async function loadRateData(rateIndex: string) {
   try {
-    const response = await fetch(`/api/curves/instruments/${index}`);
-    if (!response.ok) throw new Error('Failed to load instruments');
-    const data = await response.json();
-    instruments.value = data.instruments || [];
-    originalInstruments.value = JSON.parse(JSON.stringify(instruments.value));
-    buildResult.value = null;
+    // Convert rate index to file name (e.g., "USD-SOFR" -> "usd-sofr")
+    const fileName = rateIndex.toLowerCase().replace('_', '-');
+    const response = await fetch(`/data/input/rates/${fileName}.json`);
+    if (!response.ok) throw new Error(`Failed to load rate data for ${rateIndex}`);
+    rateData.value = await response.json();
   } catch (error) {
-    console.error('Failed to load instruments:', error);
+    console.error('Failed to load rate data:', error);
+    rateData.value = null;
+  }
+}
+
+function buildInstrumentId(type: string, tenor: string, currency: string): string {
+  const typeMap: Record<string, string> = {
+    'deposit': 'Depo',
+    'ois': 'OIS',
+    'fra': 'FRA',
+    'future': 'Future',
+    'swap': 'Swap',
+  };
+  const typeLabel = typeMap[type] || type.toUpperCase();
+  return `${currency}-${typeLabel}-${tenor}`;
+}
+
+function loadInstrumentsForCurve() {
+  if (!selectedCurve.value || !rateData.value) {
+    instruments.value = [];
+    return;
+  }
+
+  const curveInstrumentIds = new Set(selectedCurve.value.instruments);
+  const currency = rateData.value.currency;
+
+  // Build display instruments from rate data
+  const displayInstruments: DisplayInstrument[] = [];
+
+  for (const rateInst of rateData.value.instruments) {
+    const id = buildInstrumentId(rateInst.type, rateInst.tenor, currency);
+
+    displayInstruments.push({
+      id,
+      type: rateInst.type,
+      tenor: rateInst.tenor,
+      tenorYears: rateInst.tenor_years,
+      rate: rateInst.rate,
+      originalRate: rateInst.rate,
+      enabled: curveInstrumentIds.has(id),
+    });
+  }
+
+  // Sort by tenor years
+  displayInstruments.sort((a, b) => a.tenorYears - b.tenorYears);
+
+  instruments.value = displayInstruments;
+}
+
+async function onCurveSelected() {
+  if (!selectedCurveName.value || !curvesConfig.value) {
+    selectedCurve.value = null;
+    instruments.value = [];
+    buildResult.value = null;
+    return;
+  }
+
+  isLoading.value = true;
+
+  try {
+    // Find selected curve config
+    const curve = curvesConfig.value.curves.find(c => c.name === selectedCurveName.value);
+    if (!curve) return;
+
+    selectedCurve.value = curve;
+
+    // Set build settings from curve config
+    calibrationMethod.value = curve.calibrationMethod;
+    interpolation.value = curve.interpolation;
+    allowExtrapolation.value = curve.allowExtrapolation;
+
+    // Load rate data for this curve's rate index
+    await loadRateData(curve.rateIndex);
+
+    // Build instruments list
+    loadInstrumentsForCurve();
+
+    // Clear previous build result
+    buildResult.value = null;
+  } finally {
+    isLoading.value = false;
   }
 }
 
 async function buildCurve() {
-  if (!selectedIndex.value || enabledInstruments.value.length === 0) return;
+  if (!selectedCurve.value || enabledInstruments.value.length === 0) return;
 
   isBuilding.value = true;
   try {
@@ -81,13 +321,17 @@ async function buildCurve() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        index: selectedIndex.value,
+        curveName: selectedCurve.value.name,
+        rateIndex: selectedCurve.value.rateIndex,
         instruments: enabledInstruments.value.map(inst => ({
+          id: inst.id,
           type: inst.type,
           tenor: inst.tenor,
           rate: inst.rate,
         })),
-        enableJumps: enableJumps.value,
+        calibrationMethod: calibrationMethod.value,
+        interpolation: interpolation.value,
+        allowExtrapolation: allowExtrapolation.value,
       }),
     });
 
@@ -97,7 +341,15 @@ async function buildCurve() {
     }
 
     buildResult.value = await response.json();
-    originalInstruments.value = JSON.parse(JSON.stringify(instruments.value));
+
+    // Update original rates after successful build
+    instruments.value.forEach(inst => {
+      inst.originalRate = inst.rate;
+    });
+
+    // Update chart
+    await nextTick();
+    updateChart();
   } catch (error) {
     console.error('Build failed:', error);
   } finally {
@@ -105,17 +357,27 @@ async function buildCurve() {
   }
 }
 
-function resetRates() {
-  instruments.value = JSON.parse(JSON.stringify(originalInstruments.value));
+function resetSettings() {
+  if (!selectedCurve.value) return;
+
+  // Reset build settings
+  calibrationMethod.value = selectedCurve.value.calibrationMethod;
+  interpolation.value = selectedCurve.value.interpolation;
+  allowExtrapolation.value = selectedCurve.value.allowExtrapolation;
+
+  // Reset rates
+  instruments.value.forEach(inst => {
+    inst.rate = inst.originalRate;
+  });
 }
 
 function exportRates() {
   if (instruments.value.length === 0) return;
 
   const csv = [
-    'Type,Tenor,Rate,Enabled',
+    'ID,Type,Tenor,Rate(%),Enabled',
     ...instruments.value.map(
-      inst => `${inst.type},${inst.tenor},${(inst.rate * 100).toFixed(4)},${inst.enabled}`
+      inst => `${inst.id},${inst.type},${inst.tenor},${(inst.rate * 100).toFixed(4)},${inst.enabled}`
     ),
   ].join('\n');
 
@@ -123,7 +385,7 @@ function exportRates() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `curve_instruments_${selectedIndex.value || 'unknown'}.csv`;
+  a.download = `curve_instruments_${selectedCurveName.value || 'unknown'}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -142,21 +404,34 @@ function toggleAll(enabled: boolean) {
   instruments.value.forEach(inst => inst.enabled = enabled);
 }
 
-// Watch for index selection change
-watch(selectedIndex, (newIndex) => {
-  if (newIndex) {
-    loadInstruments(newIndex);
+// Watch for curve selection change
+watch(selectedCurveName, () => {
+  onCurveSelected();
+});
+
+// Watch for chart type change
+watch(chartType, () => {
+  if (buildResult.value?.pillars) {
+    updateChart();
   }
 });
 
-// Initialize
-loadIndices();
+// Lifecycle
+onMounted(() => {
+  loadCurvesConfig();
+});
+
+onUnmounted(() => {
+  if (chartInstance) {
+    chartInstance.destroy();
+  }
+});
 </script>
 
 <template>
   <div class="curve-builder-view">
     <!-- Summary Stats -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       <div
         v-for="stat in summaryStats"
         :key="stat.label"
@@ -165,177 +440,219 @@ loadIndices();
         <div class="flex items-start justify-between">
           <div>
             <p class="text-sm text-[var(--text-muted)] mb-1">{{ stat.label }}</p>
-            <p class="text-2xl font-semibold text-[var(--text-primary)]">{{ stat.value }}</p>
+            <p class="text-xl font-semibold text-[var(--text-primary)]">{{ stat.value }}</p>
           </div>
           <div
-            class="w-10 h-10 rounded-lg flex items-center justify-center"
+            class="w-9 h-9 rounded-lg flex items-center justify-center"
             :style="{ backgroundColor: `${stat.color}1a` }"
           >
-            <i :class="['fas', stat.icon]" :style="{ color: stat.color }"></i>
+            <i :class="['fas', stat.icon, 'text-sm']" :style="{ color: stat.color }"></i>
           </div>
         </div>
       </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- Left Panel: Index Selection & Settings -->
-      <div class="space-y-6">
-        <!-- Index Selector -->
-        <div class="glass-card p-6">
-          <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Index Selection</h3>
+      <!-- Left Panel: Settings -->
+      <div class="space-y-4">
+        <!-- Curve Selector -->
+        <div class="glass-card p-5">
+          <h3 class="text-base font-semibold text-[var(--text-primary)] mb-3">Curve Selection</h3>
+
+          <!-- Error Message -->
+          <div v-if="loadError" class="mb-3 p-2 rounded bg-red-500/20 border border-red-500/50">
+            <p class="text-xs text-red-400">{{ loadError }}</p>
+          </div>
+
           <select
-            v-model="selectedIndex"
-            class="w-full px-4 py-2.5 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+            v-model="selectedCurveName"
+            :disabled="!curvesConfig"
+            class="w-full px-3 py-2 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)] disabled:opacity-50"
           >
-            <option value="">Select index...</option>
-            <option v-for="idx in indices" :key="idx" :value="idx">{{ idx }}</option>
+            <option value="">{{ curvesConfig ? 'Select curve...' : 'Loading...' }}</option>
+            <option v-for="curve in curveOptions" :key="curve.name" :value="curve.name">
+              {{ curve.name }}
+            </option>
           </select>
+
+          <div v-if="selectedCurve" class="mt-3 text-sm">
+            <div class="flex justify-between text-xs">
+              <span class="text-[var(--text-muted)]">Rate Index:</span>
+              <span class="text-[var(--text-primary)] font-medium">{{ selectedCurve.rateIndex }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Instruments Table (Compact) -->
+        <div class="glass-card p-5">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-base font-semibold text-[var(--text-primary)]">Instruments</h3>
+            <div v-if="instruments.length > 0" class="flex gap-1">
+              <button
+                class="px-2 py-1 text-xs rounded bg-[var(--surface)] text-[var(--text-muted)] hover:bg-[var(--surface-hover)]"
+                @click="toggleAll(true)"
+              >All</button>
+              <button
+                class="px-2 py-1 text-xs rounded bg-[var(--surface)] text-[var(--text-muted)] hover:bg-[var(--surface-hover)]"
+                @click="toggleAll(false)"
+              >None</button>
+            </div>
+          </div>
+
+          <div v-if="isLoading" class="text-center py-8">
+            <i class="fas fa-spinner fa-spin text-[var(--primary)]"></i>
+          </div>
+
+          <div v-else-if="instruments.length === 0" class="text-center py-8 text-[var(--text-muted)] text-sm">
+            Select a curve
+          </div>
+
+          <div v-else class="max-h-64 overflow-y-auto space-y-1">
+            <div
+              v-for="(inst, idx) in instruments"
+              :key="inst.id"
+              :class="[
+                'flex items-center gap-2 px-2 py-1.5 rounded text-sm',
+                inst.enabled ? 'bg-[var(--surface)]' : 'opacity-40'
+              ]"
+            >
+              <input
+                type="checkbox"
+                :checked="inst.enabled"
+                class="w-3.5 h-3.5 rounded border-[var(--glass-border)]"
+                @change="toggleEnabled(idx)"
+              >
+              <span class="flex-1 font-mono text-xs text-[var(--text-secondary)] truncate">{{ inst.id }}</span>
+              <input
+                type="number"
+                :value="(inst.rate * 100).toFixed(2)"
+                step="0.01"
+                class="w-16 px-1.5 py-0.5 text-right text-xs rounded bg-[var(--glass-bg)] border border-[var(--glass-border)] text-[var(--text-primary)]"
+                @change="updateRate(idx, ($event.target as HTMLInputElement).value)"
+              >
+            </div>
+          </div>
         </div>
 
         <!-- Build Settings -->
-        <div class="glass-card p-6">
-          <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Build Settings</h3>
-          <label class="flex items-center gap-3 cursor-pointer">
-            <input
-              v-model="enableJumps"
-              type="checkbox"
-              class="w-5 h-5 rounded border-[var(--glass-border)] bg-[var(--surface)] text-[var(--primary)] focus:ring-[var(--primary)]"
-            >
-            <span class="text-sm text-[var(--text-secondary)]">Enable CB Event Jumps</span>
-          </label>
+        <div class="glass-card p-5">
+          <h3 class="text-base font-semibold text-[var(--text-primary)] mb-3">Build Settings</h3>
+          <div class="space-y-3">
+            <div>
+              <label class="block text-xs text-[var(--text-muted)] mb-1">Calibration</label>
+              <select
+                v-model="calibrationMethod"
+                class="w-full px-2 py-1.5 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm"
+              >
+                <option v-for="m in calibrationMethods" :key="m" :value="m">{{ m }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs text-[var(--text-muted)] mb-1">Interpolation</label>
+              <select
+                v-model="interpolation"
+                class="w-full px-2 py-1.5 rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm"
+              >
+                <option v-for="m in interpolationMethods" :key="m" :value="m">{{ m }}</option>
+              </select>
+            </div>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input v-model="allowExtrapolation" type="checkbox" class="w-4 h-4 rounded">
+              <span class="text-sm text-[var(--text-secondary)]">Extrapolation</span>
+            </label>
+          </div>
         </div>
 
         <!-- Actions -->
-        <div class="glass-card p-6">
-          <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Actions</h3>
-          <div class="space-y-3">
+        <div class="glass-card p-5">
+          <button
+            :disabled="!selectedCurve || enabledInstruments.length === 0 || isBuilding"
+            class="w-full px-4 py-2.5 rounded-lg bg-[var(--primary)] text-white font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            @click="buildCurve"
+          >
+            <i :class="['fas', isBuilding ? 'fa-spinner fa-spin' : 'fa-hammer']"></i>
+            {{ isBuilding ? 'Building...' : 'Build Curve' }}
+          </button>
+          <div class="grid grid-cols-2 gap-2 mt-2">
             <button
-              :disabled="!selectedIndex || enabledInstruments.length === 0 || isBuilding"
-              class="w-full px-4 py-2.5 rounded-lg bg-[var(--primary)] text-white font-medium transition-all duration-200 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              @click="buildCurve"
+              :disabled="!hasChanges"
+              class="px-3 py-1.5 rounded bg-[var(--surface)] text-[var(--text-secondary)] text-sm hover:bg-[var(--surface-hover)] disabled:opacity-50"
+              @click="resetSettings"
             >
-              <i :class="['fas', isBuilding ? 'fa-spinner fa-spin' : 'fa-hammer']"></i>
-              {{ isBuilding ? 'Building...' : 'Build Curve' }}
+              <i class="fas fa-undo mr-1"></i>Reset
             </button>
-            <div class="grid grid-cols-2 gap-3">
-              <button
-                :disabled="!hasChanges"
-                class="px-4 py-2 rounded-lg bg-[var(--surface)] text-[var(--text-secondary)] font-medium transition-all duration-200 hover:bg-[var(--surface-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
-                @click="resetRates"
-              >
-                <i class="fas fa-undo mr-2"></i>Reset
-              </button>
-              <button
-                :disabled="instruments.length === 0"
-                class="px-4 py-2 rounded-lg bg-[var(--surface)] text-[var(--text-secondary)] font-medium transition-all duration-200 hover:bg-[var(--surface-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
-                @click="exportRates"
-              >
-                <i class="fas fa-download mr-2"></i>Export
-              </button>
-            </div>
+            <button
+              :disabled="instruments.length === 0"
+              class="px-3 py-1.5 rounded bg-[var(--surface)] text-[var(--text-secondary)] text-sm hover:bg-[var(--surface-hover)] disabled:opacity-50"
+              @click="exportRates"
+            >
+              <i class="fas fa-download mr-1"></i>Export
+            </button>
           </div>
 
-          <!-- Changes Indicator -->
-          <div v-if="hasChanges" class="mt-4 p-3 rounded-lg bg-[#f59e0b1a] border border-[var(--warning)]">
-            <p class="text-sm text-[var(--warning)] flex items-center gap-2">
+          <div v-if="hasChanges" class="mt-3 p-2 rounded bg-[#f59e0b1a] border border-[var(--warning)]">
+            <p class="text-xs text-[var(--warning)] flex items-center gap-1">
               <i class="fas fa-exclamation-triangle"></i>
-              Unsaved changes - rebuild required
+              Rebuild required
             </p>
-          </div>
-        </div>
-
-        <!-- Build Result -->
-        <div v-if="buildResult" class="glass-card p-6">
-          <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4 flex items-center gap-2">
-            <i class="fas fa-check-circle text-[var(--success)]"></i>
-            Build Complete
-          </h3>
-          <div class="space-y-2">
-            <div class="flex justify-between text-sm">
-              <span class="text-[var(--text-muted)]">Instruments:</span>
-              <span class="text-[var(--text-primary)] font-medium">{{ buildResult.instrument_count }}</span>
-            </div>
-            <div class="flex justify-between text-sm">
-              <span class="text-[var(--text-muted)]">Interpolation:</span>
-              <span class="text-[var(--text-primary)] font-medium">{{ buildResult.interpolation }}</span>
-            </div>
-            <div class="flex justify-between text-sm">
-              <span class="text-[var(--text-muted)]">Processing Time:</span>
-              <span class="text-[var(--text-primary)] font-medium">{{ buildResult.calculation_time_ms?.toFixed(2) }} ms</span>
-            </div>
           </div>
         </div>
       </div>
 
-      <!-- Right Panel: Instruments Table -->
+      <!-- Right Panel: Curve Chart -->
       <div class="lg:col-span-2">
-        <div class="glass-card p-6">
+        <div class="glass-card p-6 h-full">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-[var(--text-primary)]">Market Instruments</h3>
-            <div v-if="instruments.length > 0" class="flex gap-2">
+            <h3 class="text-lg font-semibold text-[var(--text-primary)]">Yield Curve</h3>
+            <div v-if="buildResult?.pillars" class="flex gap-2">
               <button
-                class="px-3 py-1.5 text-xs rounded-lg bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] transition-colors"
-                @click="toggleAll(true)"
+                :class="[
+                  'px-3 py-1.5 text-xs rounded-lg transition-colors',
+                  chartType === 'zero_rate' ? 'bg-[var(--primary)] text-white' : 'bg-[var(--surface)] text-[var(--text-secondary)]'
+                ]"
+                @click="chartType = 'zero_rate'"
               >
-                Enable All
+                Zero Rate
               </button>
               <button
-                class="px-3 py-1.5 text-xs rounded-lg bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] transition-colors"
-                @click="toggleAll(false)"
+                :class="[
+                  'px-3 py-1.5 text-xs rounded-lg transition-colors',
+                  chartType === 'discount_factor' ? 'bg-[var(--primary)] text-white' : 'bg-[var(--surface)] text-[var(--text-secondary)]'
+                ]"
+                @click="chartType = 'discount_factor'"
               >
-                Disable All
+                Discount Factor
               </button>
             </div>
           </div>
 
           <!-- Empty State -->
-          <div v-if="instruments.length === 0" class="text-center py-12">
-            <i class="fas fa-chart-line text-4xl text-[var(--text-muted)] mb-4"></i>
-            <p class="text-[var(--text-muted)]">Select an index to load instruments</p>
+          <div v-if="!buildResult" class="flex flex-col items-center justify-center h-80 text-[var(--text-muted)]">
+            <i class="fas fa-chart-line text-5xl mb-4 opacity-30"></i>
+            <p class="text-sm">Build a curve to see the chart</p>
           </div>
 
-          <!-- Instruments Table -->
-          <div v-else class="overflow-x-auto">
-            <table class="w-full">
-              <thead>
-                <tr class="border-b border-[var(--glass-border)]">
-                  <th class="text-left py-3 px-4 text-sm font-medium text-[var(--text-muted)]">Type</th>
-                  <th class="text-left py-3 px-4 text-sm font-medium text-[var(--text-muted)]">Tenor</th>
-                  <th class="text-right py-3 px-4 text-sm font-medium text-[var(--text-muted)]">Rate (%)</th>
-                  <th class="text-center py-3 px-4 text-sm font-medium text-[var(--text-muted)]">Enabled</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="(inst, idx) in instruments"
-                  :key="inst.id"
-                  :class="[
-                    'border-b border-[var(--glass-border)] transition-colors',
-                    inst.enabled ? 'hover:bg-[var(--surface-hover)]' : 'opacity-50'
-                  ]"
-                >
-                  <td class="py-3 px-4 text-sm text-[var(--text-primary)]">{{ inst.type }}</td>
-                  <td class="py-3 px-4 text-sm text-[var(--text-secondary)]">{{ inst.tenor }}</td>
-                  <td class="py-3 px-4">
-                    <input
-                      type="number"
-                      :value="(inst.rate * 100).toFixed(4)"
-                      step="0.0001"
-                      class="w-24 px-2 py-1 text-right text-sm rounded bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
-                      @change="updateRate(idx, ($event.target as HTMLInputElement).value)"
-                    >
-                  </td>
-                  <td class="py-3 px-4 text-center">
-                    <input
-                      type="checkbox"
-                      :checked="inst.enabled"
-                      class="w-4 h-4 rounded border-[var(--glass-border)] bg-[var(--surface)] text-[var(--primary)] focus:ring-[var(--primary)]"
-                      @change="toggleEnabled(idx)"
-                    >
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <!-- Chart -->
+          <div v-else class="h-80">
+            <canvas ref="chartCanvas"></canvas>
+          </div>
+
+          <!-- Build Info -->
+          <div v-if="buildResult" class="mt-4 pt-4 border-t border-[var(--glass-border)]">
+            <div class="grid grid-cols-3 gap-4 text-sm">
+              <div>
+                <span class="text-[var(--text-muted)]">Instruments:</span>
+                <span class="ml-2 text-[var(--text-primary)] font-medium">{{ buildResult.instrument_count }}</span>
+              </div>
+              <div>
+                <span class="text-[var(--text-muted)]">Interpolation:</span>
+                <span class="ml-2 text-[var(--text-primary)] font-medium">{{ buildResult.interpolation }}</span>
+              </div>
+              <div>
+                <span class="text-[var(--text-muted)]">Time:</span>
+                <span class="ml-2 text-[var(--text-primary)] font-medium">{{ buildResult.calculation_time_ms?.toFixed(2) }} ms</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -42,7 +42,7 @@ const routes: RouteRecordRaw[] = [
     component: DashboardView,
     meta: {
       title: 'Dashboard',
-      breadcrumb: 'Overview',
+      breadcrumb: 'Dashboard',
       icon: 'fa-tachometer-alt',
       navGroup: 'main',
     } as ViewMeta,
@@ -53,7 +53,7 @@ const routes: RouteRecordRaw[] = [
     component: PortfolioView,
     meta: {
       title: 'Portfolio',
-      breadcrumb: 'Portfolio Management',
+      breadcrumb: 'Portfolio',
       icon: 'fa-wallet',
       navGroup: 'main',
     } as ViewMeta,
@@ -64,7 +64,7 @@ const routes: RouteRecordRaw[] = [
     component: RiskView,
     meta: {
       title: 'Risk',
-      breadcrumb: 'Risk Analytics',
+      breadcrumb: 'Risk',
       icon: 'fa-chart-pie',
       navGroup: 'main',
     } as ViewMeta,
@@ -75,7 +75,7 @@ const routes: RouteRecordRaw[] = [
     component: ExposureView,
     meta: {
       title: 'Exposure',
-      breadcrumb: 'Exposure Analysis',
+      breadcrumb: 'Exposure',
       icon: 'fa-layer-group',
       navGroup: 'analytics',
     } as ViewMeta,
@@ -86,7 +86,7 @@ const routes: RouteRecordRaw[] = [
     component: ScenariosView,
     meta: {
       title: 'Scenarios',
-      breadcrumb: 'Scenario Analysis',
+      breadcrumb: 'Scenarios',
       icon: 'fa-flask',
       navGroup: 'analytics',
     } as ViewMeta,
@@ -119,7 +119,7 @@ const routes: RouteRecordRaw[] = [
     component: VolcubeBuilderView,
     meta: {
       title: 'Vol Cube',
-      breadcrumb: 'Vol Cube Calibration',
+      breadcrumb: 'Vol Cube',
       icon: 'fa-cube',
       navGroup: 'tools',
     } as ViewMeta,
@@ -130,7 +130,7 @@ const routes: RouteRecordRaw[] = [
     component: PricerView,
     meta: {
       title: 'Pricer',
-      breadcrumb: 'Instrument Pricer',
+      breadcrumb: 'Pricer',
       icon: 'fa-calculator',
       navGroup: 'tools',
     } as ViewMeta,
@@ -141,7 +141,7 @@ const routes: RouteRecordRaw[] = [
     component: GraphView,
     meta: {
       title: 'Graph',
-      breadcrumb: 'Computation Graph',
+      breadcrumb: 'Graph',
       icon: 'fa-project-diagram',
       navGroup: 'tools',
     } as ViewMeta,

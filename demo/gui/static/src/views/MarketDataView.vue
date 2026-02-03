@@ -59,7 +59,7 @@ const selectedRateId = ref<string | null>(null);
 const selectedIrVolId = ref<string | null>(null);
 const selectedFxVolId = ref<string | null>(null);
 const currencyFilter = ref('');
-const sortColumn = ref('tenor');
+const sortColumn = ref('id');
 const sortDirection = ref<'asc' | 'desc'>('asc');
 const isLoading = ref(false);
 const lastUpdated = ref<Date | null>(null);
@@ -87,6 +87,7 @@ const filteredRates = computed(() => {
     const aVal = a[sortColumn.value as keyof MarketRate];
     const bVal = b[sortColumn.value as keyof MarketRate];
     if (sortColumn.value === 'value') return (Number(aVal) - Number(bVal)) * dir;
+    if (sortColumn.value === 'tenor') return (tenorToOrder(String(aVal)) - tenorToOrder(String(bVal))) * dir;
     return String(aVal || '').localeCompare(String(bVal || '')) * dir;
   });
   return result;
@@ -135,7 +136,25 @@ const selectedRate = computed(() => rates.value.find(r => r.id === selectedRateI
 const selectedIrVol = computed(() => irVolQuotes.value.find(q => q.id === selectedIrVolId.value) || null);
 const selectedFxVol = computed(() => fxVolQuotes.value.find(q => q.id === selectedFxVolId.value) || null);
 
+// Tenor ordering
+const TENOR_ORDER = [
+  'ON', 'TN', 'SN',
+  '1D', '2D', '3D',
+  '1W', '2W', '3W',
+  '1M', '1x4', '2M', '2x5', '3M', '3x6', '4M', '4x7', '5M', '5x8', '6M', '6x9',
+  '7M', '7x10', '8M', '8x11', '9M', '9x12',
+  '1Y', '12x15', '12x18', '15M', '18M',
+  '2Y', '3Y', '4Y', '5Y', '6Y', '7Y', '8Y', '9Y', '10Y',
+  '12Y', '15Y', '20Y', '25Y', '30Y', '40Y', '50Y',
+] as const;
+
 // Utility functions
+function tenorToOrder(tenor: string): number {
+  if (!tenor) return TENOR_ORDER.length;
+  const index = TENOR_ORDER.indexOf(tenor.toUpperCase() as typeof TENOR_ORDER[number]);
+  return index >= 0 ? index : TENOR_ORDER.length;
+}
+
 function formatRate(value: number, rateType: string): string {
   if (rateType === 'fxspot' || rateType === 'fxforward') return value.toFixed(4);
   return `${(value * 100).toFixed(4)}%`;
@@ -179,12 +198,12 @@ async function loadRates() {
 async function loadIrVolData() {
   isLoading.value = true;
   try {
-    const currenciesRes = await fetch('/api/volatility/ir/currencies');
+    const currenciesRes = await fetch('/api/irvol/currencies');
     const currenciesData = await currenciesRes.json();
     const allQuotes: IrVolQuote[] = [];
 
     for (const curr of currenciesData.currencies || []) {
-      const quotesRes = await fetch(`/api/volatility/ir/quotes/${curr.currency}`);
+      const quotesRes = await fetch(`/api/irvol/quotes/${curr.currency}`);
       if (quotesRes.ok) {
         const quotesData = await quotesRes.json();
         for (const q of quotesData.quotes || []) {
@@ -212,12 +231,12 @@ async function loadIrVolData() {
 async function loadFxVolData() {
   isLoading.value = true;
   try {
-    const pairsRes = await fetch('/api/volatility/fx/pairs');
+    const pairsRes = await fetch('/api/fxvol/pairs');
     const pairsData = await pairsRes.json();
     const allQuotes: FxVolQuote[] = [];
 
     for (const pairInfo of pairsData.pairs || []) {
-      const quotesRes = await fetch(`/api/volatility/fx/quotes/${pairInfo.pair}`);
+      const quotesRes = await fetch(`/api/fxvol/quotes/${pairInfo.pair}`);
       if (quotesRes.ok) {
         const quotesData = await quotesRes.json();
         for (const q of quotesData.quotes || []) {
@@ -462,7 +481,8 @@ onMounted(() => {
                     <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Currency</th>
                     <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Expiry</th>
                     <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Tenor</th>
-                    <th class="text-right py-3 px-3 text-xs font-medium text-[var(--text-muted)]">ATM Vol</th>
+                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Strike</th>
+                    <th class="text-right py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Vol</th>
                     <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Type</th>
                     <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Source</th>
                   </tr>
@@ -477,6 +497,7 @@ onMounted(() => {
                     <td class="py-3 px-3 text-[var(--text-primary)]">{{ quote.currency }}</td>
                     <td class="py-3 px-3 text-[var(--text-secondary)]">{{ quote.expiry }}</td>
                     <td class="py-3 px-3 text-[var(--text-secondary)]">{{ quote.tenor }}</td>
+                    <td class="py-3 px-3"><span class="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 text-xs">ATM</span></td>
                     <td class="py-3 px-3 text-right font-mono text-[var(--text-primary)]">{{ formatVol(quote.atmVol) }}</td>
                     <td class="py-3 px-3 text-[var(--text-secondary)]">{{ quote.volType }}</td>
                     <td class="py-3 px-3 text-[var(--text-muted)]">{{ quote.source }}</td>
@@ -568,11 +589,11 @@ onMounted(() => {
         <div class="glass-card p-6">
           <!-- Rate Details (Rates/FX) -->
           <template v-if="assetClass === 'Rates' || assetClass === 'FX'">
-            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Rate Details</h3>
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Instrument Details</h3>
 
             <div v-if="!selectedRate" class="text-center py-8">
               <i class="fas fa-hand-pointer text-3xl text-[var(--text-muted)] mb-4"></i>
-              <p class="text-[var(--text-muted)]">Select a rate to view details</p>
+              <p class="text-[var(--text-muted)]">Select an instrument to view details</p>
             </div>
 
             <template v-else>
@@ -619,11 +640,11 @@ onMounted(() => {
 
           <!-- IR Vol Details -->
           <template v-else-if="assetClass === 'IRVol'">
-            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">IR Vol Instrument</h3>
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Instrument Details</h3>
 
             <div v-if="!selectedIrVol" class="text-center py-8">
               <i class="fas fa-hand-pointer text-3xl text-[var(--text-muted)] mb-4"></i>
-              <p class="text-[var(--text-muted)]">Select a quote to view details</p>
+              <p class="text-[var(--text-muted)]">Select an instrument to view details</p>
             </div>
 
             <template v-else>
@@ -681,11 +702,11 @@ onMounted(() => {
 
           <!-- FX Vol Details -->
           <template v-else-if="assetClass === 'FXVol'">
-            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">FX Vol Instrument</h3>
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Instrument Details</h3>
 
             <div v-if="!selectedFxVol" class="text-center py-8">
               <i class="fas fa-hand-pointer text-3xl text-[var(--text-muted)] mb-4"></i>
-              <p class="text-[var(--text-muted)]">Select a quote to view details</p>
+              <p class="text-[var(--text-muted)]">Select an instrument to view details</p>
             </div>
 
             <template v-else>
@@ -754,7 +775,7 @@ onMounted(() => {
 
           <!-- Events (no detail panel) -->
           <template v-else-if="assetClass === 'Events'">
-            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Event Info</h3>
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Instrument Details</h3>
             <div class="text-center py-8">
               <i class="fas fa-calendar-alt text-3xl text-[var(--text-muted)] mb-4"></i>
               <p class="text-[var(--text-muted)]">Event details shown in table</p>
