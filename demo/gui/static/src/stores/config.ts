@@ -65,14 +65,7 @@ export const useConfigStore = defineStore('config', () => {
 
   // Apply theme to document body
   function applyTheme() {
-    const body = document.body;
-    body.classList.remove('light-theme', 'oled-theme');
-
-    if (theme.value === 'light') {
-      body.classList.add('light-theme');
-    } else if (theme.value === 'oled') {
-      body.classList.add('oled-theme');
-    }
+    document.documentElement.dataset.theme = theme.value;
   }
 
   // Apply accent color

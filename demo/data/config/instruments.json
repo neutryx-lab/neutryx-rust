@@ -130,52 +130,92 @@
       "rateIndex": "EUR-EURIBOR6M"
     },
     {
-      "id": "USD-FOMC-2024-03",
+      "id": "FED-2026-01",
       "currency": "USD",
       "convention": "USD-SOFR-EVENT",
       "tenor": "EVENT",
-      "eventDate": "2024-03-20",
+      "eventDate": "2026-01-28",
       "rateIndex": "USD-SOFR"
     },
     {
-      "id": "USD-FOMC-2024-05",
+      "id": "FED-2026-02",
       "currency": "USD",
       "convention": "USD-SOFR-EVENT",
       "tenor": "EVENT",
-      "eventDate": "2024-05-01",
+      "eventDate": "2026-03-18",
       "rateIndex": "USD-SOFR"
     },
     {
-      "id": "USD-FOMC-2024-06",
+      "id": "FED-2026-03",
       "currency": "USD",
       "convention": "USD-SOFR-EVENT",
       "tenor": "EVENT",
-      "eventDate": "2024-06-12",
+      "eventDate": "2026-05-06",
       "rateIndex": "USD-SOFR"
     },
     {
-      "id": "EUR-ECB-2024-03",
+      "id": "FED-2026-04",
+      "currency": "USD",
+      "convention": "USD-SOFR-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-06-17",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "ECB-2026-01",
       "currency": "EUR",
       "convention": "EUR-ESTR-EVENT",
       "tenor": "EVENT",
-      "eventDate": "2024-03-07",
+      "eventDate": "2026-01-22",
       "rateIndex": "EUR-ESTR"
     },
     {
-      "id": "EUR-ECB-2024-04",
+      "id": "ECB-2026-02",
       "currency": "EUR",
       "convention": "EUR-ESTR-EVENT",
       "tenor": "EVENT",
-      "eventDate": "2024-04-11",
+      "eventDate": "2026-03-05",
       "rateIndex": "EUR-ESTR"
     },
     {
-      "id": "GBP-BOE-2024-03",
+      "id": "ECB-2026-03",
+      "currency": "EUR",
+      "convention": "EUR-ESTR-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-04-16",
+      "rateIndex": "EUR-ESTR"
+    },
+    {
+      "id": "BOE-2026-01",
       "currency": "GBP",
       "convention": "GBP-SONIA-EVENT",
       "tenor": "EVENT",
-      "eventDate": "2024-03-21",
+      "eventDate": "2026-02-05",
       "rateIndex": "GBP-SONIA"
+    },
+    {
+      "id": "BOE-2026-02",
+      "currency": "GBP",
+      "convention": "GBP-SONIA-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-03-19",
+      "rateIndex": "GBP-SONIA"
+    },
+    {
+      "id": "USD-TOY-2025",
+      "currency": "USD",
+      "convention": "USD-SOFR-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2025-12-31",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "EUR-TOY-2025",
+      "currency": "EUR",
+      "convention": "EUR-ESTR-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2025-12-31",
+      "rateIndex": "EUR-ESTR"
     }
   ]
 }

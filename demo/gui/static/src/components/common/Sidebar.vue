@@ -31,8 +31,9 @@ const toolsNavItems = computed(() =>
   }))
 );
 
-// Accordion state for analytics section
+// Accordion state for sections
 const analyticsExpanded = ref(true);
+const toolsExpanded = ref(true);
 
 function isActive(path: string): boolean {
   return route.path === path;
@@ -115,30 +116,37 @@ function navigateTo(name: string) {
           </Transition>
         </div>
 
-        <!-- Tools Section -->
+        <!-- Tools Section (Accordion) -->
         <div class="mt-4">
-          <div class="section-header px-6 py-2 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-            Tools
-          </div>
-          <ul class="nav-list px-3 space-y-1">
-            <li
-              v-for="item in toolsNavItems"
-              :key="item.name"
-              class="nav-item"
-            >
-              <button
-                :class="[
-                  'nav-link w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200',
-                  'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)]',
-                  { 'active bg-[var(--surface)] text-[var(--primary)]': isActive(item.path) }
-                ]"
-                @click="navigateTo(item.name)"
+          <button
+            class="accordion-header w-full flex items-center justify-between px-6 py-2 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]"
+            @click="toolsExpanded = !toolsExpanded"
+          >
+            <span>Tools</span>
+            <i :class="['fas fa-chevron-down transition-transform duration-200', { 'rotate-180': !toolsExpanded }]"></i>
+          </button>
+
+          <Transition name="accordion">
+            <ul v-show="toolsExpanded" class="nav-list px-3 space-y-1">
+              <li
+                v-for="item in toolsNavItems"
+                :key="item.name"
+                class="nav-item"
               >
-                <i :class="['fas', item.icon, 'w-5 text-center']"></i>
-                <span class="text-sm font-medium">{{ item.title }}</span>
-              </button>
-            </li>
-          </ul>
+                <button
+                  :class="[
+                    'nav-link w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200',
+                    'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)]',
+                    { 'active bg-[var(--surface)] text-[var(--primary)]': isActive(item.path) }
+                  ]"
+                  @click="navigateTo(item.name)"
+                >
+                  <i :class="['fas', item.icon, 'w-5 text-center']"></i>
+                  <span class="text-sm font-medium">{{ item.title }}</span>
+                </button>
+              </li>
+            </ul>
+          </Transition>
         </div>
       </nav>
 

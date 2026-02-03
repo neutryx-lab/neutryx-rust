@@ -283,6 +283,61 @@ impl InstrumentDefinition {
         }
     }
 
+    /// Creates an event instrument definition from an `EventInstrument`.
+    ///
+    /// This provides a conversion path from event data loaded via
+    /// `MarketEvent` → `EventInstrument::from_historical()` to an
+    /// `InstrumentDefinition` that can be registered in a `DefinitionRegistry`.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Unique identifier for the instrument
+    /// * `event` - The `EventInstrument` to convert
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use infra_master::market::{InstrumentDefinition, EventInstrument, RateIndex, Currency, RateType};
+    /// use infra_master::market::events::EventType;
+    /// use infra_master::time::Date;
+    ///
+    /// let event = EventInstrument::new(
+    ///     Date::from_ymd(2024, 3, 20).unwrap(),
+    ///     EventType::CentralBankMeeting,
+    ///     25.0,
+    ///     0.85,
+    ///     RateIndex::Sofr,
+    /// );
+    ///
+    /// let def = InstrumentDefinition::from_event_instrument("USD-FOMC-2024-03", &event);
+    /// assert_eq!(def.rate_type(), RateType::Event);
+    /// assert_eq!(def.event_date, Some("2024-03-20".to_string()));
+    /// ```
+    #[must_use]
+    pub fn from_event_instrument(
+        id: impl Into<String>,
+        event: &super::EventInstrument,
+    ) -> Self {
+        let event_date = event.event_date();
+        let date_str = format!(
+            "{:04}-{:02}-{:02}",
+            event_date.year(),
+            event_date.month(),
+            event_date.day()
+        );
+
+        Self {
+            id: id.into(),
+            currency: event.rate_index().currency(),
+            convention: None,
+            rate_type_override: Some(RateType::Event),
+            tenor: "EVENT".into(),
+            rate_index: Some(event.rate_index().code().to_string()),
+            conventions: None,
+            event_date: Some(date_str),
+        }
+    }
+
     /// Returns the rate type for this instrument.
     ///
     /// If a convention is set, derives the rate type from the convention name.
@@ -1208,6 +1263,31 @@ mod tests {
         assert_eq!(def.id, "USD-FOMC-2024-03");
         assert_eq!(def.rate_type(), RateType::Event);
         assert_eq!(def.event_date, Some("2024-03-20".to_string()));
+        assert!(def.validate().is_ok());
+    }
+
+    #[test]
+    fn test_from_event_instrument() {
+        use crate::market::events::EventType;
+        use crate::market::{EventInstrument, RateIndex};
+        use crate::time::Date;
+
+        let event = EventInstrument::new(
+            Date::from_ymd(2024, 3, 20).unwrap(),
+            EventType::CentralBankMeeting,
+            25.0,
+            0.85,
+            RateIndex::Sofr,
+        );
+
+        let def = InstrumentDefinition::from_event_instrument("USD-FOMC-2024-03", &event);
+
+        assert_eq!(def.id, "USD-FOMC-2024-03");
+        assert_eq!(def.currency, Currency::USD);
+        assert_eq!(def.rate_type(), RateType::Event);
+        assert_eq!(def.event_date, Some("2024-03-20".to_string()));
+        assert_eq!(def.rate_index, Some("SOFR".to_string()));
+        assert!(def.is_event());
         assert!(def.validate().is_ok());
     }
 }

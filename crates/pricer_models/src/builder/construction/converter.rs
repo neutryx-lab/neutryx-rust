@@ -1,7 +1,7 @@
 //! Definition to MarketInstrument converter.
 //!
-//! This module converts `InstrumentDefinition` from infra_master to
-//! `MarketInstrument<f64>` used by the pricer_models calibration engine.
+//! This module converts `InstrumentDefinition` and `EventInstrument` from
+//! infra_master to `MarketInstrument<f64>` used by the pricer_models calibration engine.
 //!
 //! Note: Currently uses `f64` as the bootstrapper only supports `f64`.
 

@@ -86,6 +86,8 @@
         "currency": "USD",
         "region": "United States"
       },
+      "expectedRateBp": -25,
+      "impliedProbability": 0.55,
       "source": "Federal Reserve",
       "tags": ["fomc", "rates", "policy"]
     },
@@ -186,6 +188,8 @@
         "currency": "USD",
         "region": "United States"
       },
+      "expectedRateBp": 0,
+      "impliedProbability": 0.85,
       "source": "Federal Reserve",
       "tags": ["fomc", "rates", "policy"]
     },
@@ -206,6 +210,8 @@
         "currency": "USD",
         "region": "United States"
       },
+      "expectedRateBp": -25,
+      "impliedProbability": 0.42,
       "source": "Federal Reserve",
       "tags": ["fomc", "rates", "policy"]
     },
@@ -266,6 +272,8 @@
         "currency": "EUR",
         "region": "Eurozone"
       },
+      "expectedRateBp": -25,
+      "impliedProbability": 0.88,
       "source": "European Central Bank",
       "tags": ["ecb", "rates", "policy"]
     },
@@ -286,6 +294,8 @@
         "currency": "EUR",
         "region": "Eurozone"
       },
+      "expectedRateBp": -25,
+      "impliedProbability": 0.72,
       "source": "European Central Bank",
       "tags": ["ecb", "rates", "policy"]
     },
@@ -426,6 +436,8 @@
         "currency": "EUR",
         "region": "Eurozone"
       },
+      "expectedRateBp": 0,
+      "impliedProbability": 0.75,
       "source": "European Central Bank",
       "tags": ["ecb", "rates", "policy"]
     },
@@ -486,6 +498,8 @@
         "currency": "JPY",
         "region": "Japan"
       },
+      "expectedRateBp": 25,
+      "impliedProbability": 0.45,
       "source": "Bank of Japan",
       "tags": ["boj", "rates", "policy"]
     },
@@ -646,6 +660,8 @@
         "currency": "JPY",
         "region": "Japan"
       },
+      "expectedRateBp": 0,
+      "impliedProbability": 0.68,
       "source": "Bank of Japan",
       "tags": ["boj", "rates", "policy"]
     },
@@ -686,6 +702,8 @@
         "currency": "GBP",
         "region": "United Kingdom"
       },
+      "expectedRateBp": -25,
+      "impliedProbability": 0.82,
       "source": "Bank of England",
       "tags": ["boe", "rates", "policy"]
     },
@@ -846,6 +864,8 @@
         "currency": "GBP",
         "region": "United Kingdom"
       },
+      "expectedRateBp": 0,
+      "impliedProbability": 0.72,
       "source": "Bank of England",
       "tags": ["boe", "rates", "policy"]
     },
