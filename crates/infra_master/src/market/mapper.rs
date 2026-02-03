@@ -295,7 +295,7 @@ impl InstrumentMapper for StandardInstrumentMapper {
             RateType::Swap => Ok(self.map_swap(rate, valuation_date)),
             RateType::Ois => Ok(self.map_ois(rate, valuation_date)),
             RateType::BasisSwap => Ok(self.map_basis_swap(rate, valuation_date)),
-            RateType::FxSpot | RateType::FxForward | RateType::Vol => {
+            RateType::FxSpot | RateType::FxForward | RateType::Vol | RateType::Event => {
                 Err(MarketRateError::unsupported_rate_type(rate.id.rate_type))
             }
         }

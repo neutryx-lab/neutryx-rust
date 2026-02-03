@@ -31,6 +31,9 @@ pub struct ConstructionConfig {
     pub strict_mode: bool,
     /// Finite difference epsilon for numerical derivative.
     pub fd_epsilon: f64,
+    /// Reference date for Event instruments (year, month, day).
+    /// Required when calibrating curves with Event instruments.
+    pub reference_date: Option<(i32, u32, u32)>,
 }
 
 impl Default for ConstructionConfig {
@@ -41,6 +44,7 @@ impl Default for ConstructionConfig {
             quote_type: QuoteType::Mid,
             strict_mode: true,
             fd_epsilon: 1e-6,
+            reference_date: None,
         }
     }
 }
@@ -80,6 +84,13 @@ impl ConstructionConfig {
     #[must_use]
     pub fn with_fd_epsilon(mut self, epsilon: f64) -> Self {
         self.fd_epsilon = epsilon;
+        self
+    }
+
+    /// Sets the reference date for Event instruments.
+    #[must_use]
+    pub fn with_reference_date(mut self, year: i32, month: u32, day: u32) -> Self {
+        self.reference_date = Some((year, month, day));
         self
     }
 }
@@ -223,7 +234,7 @@ impl CurveConstructionEngine {
             match rate_value {
                 Some(value) => {
                     // Convert to MarketInstrument<f64>
-                    let instrument = definition_to_instrument(def, value)?;
+                    let instrument = definition_to_instrument(def, value, self.config.reference_date)?;
                     instruments.push(instrument);
                 }
                 None => {

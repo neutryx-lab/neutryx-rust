@@ -161,7 +161,7 @@ pub use market_instrument::{MarketInstrument, MarketInstrumentError};
 
 // Curve construction definitions
 pub use curve_definition::{CalibrationMethod, CurveDefError, CurveDefinition, InterpolationMethod};
-pub use instrument_def::{InstrumentConventions, InstrumentDefError, InstrumentDefinition};
+pub use instrument_def::{InstrumentConventions, InstrumentDefError, InstrumentDefinition, InstrumentTemplate};
 pub use rate_index_def::{IndexConventions, RateIndexDefError, RateIndexDefinition};
 pub use registry::{DefinitionRegistry, RegistryError};
 #[cfg(feature = "serde")]

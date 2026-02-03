@@ -1,5 +1,7 @@
 {
-  "description": "Central bank policy rate decision meeting dates",
+  "description": "Central bank policy rate decision meeting dates with expected rate changes",
+  "asOfDate": "2026-02-03",
+  "unit": "bp",
   "events": [
     {
       "id": "FED-2025-01",
@@ -18,6 +20,8 @@
         "currency": "USD",
         "region": "United States"
       },
+      "expectedRateBp": 0,
+      "impliedProbability": 0.92,
       "source": "Federal Reserve",
       "tags": ["fomc", "rates", "policy"]
     },
@@ -38,6 +42,8 @@
         "currency": "USD",
         "region": "United States"
       },
+      "expectedRateBp": -25,
+      "impliedProbability": 0.65,
       "source": "Federal Reserve",
       "tags": ["fomc", "rates", "policy"]
     },
@@ -58,6 +64,8 @@
         "currency": "USD",
         "region": "United States"
       },
+      "expectedRateBp": 0,
+      "impliedProbability": 0.78,
       "source": "Federal Reserve",
       "tags": ["fomc", "rates", "policy"]
     },

@@ -218,6 +218,13 @@ pub mod curves {
             /// Convexity adjustment
             convexity_adjustment: T,
         },
+        /// Central bank meeting or scheduled event (rate jump)
+        Event {
+            /// Time to event date in years
+            maturity: T,
+            /// Expected rate jump (absolute rate, not bps)
+            expected_jump: T,
+        },
     }
 
     impl<T: Float> MarketInstrument<T> {
@@ -251,13 +258,42 @@ pub mod curves {
             }
         }
 
-        /// Returns the market-quoted rate.
+        /// Creates an Event instrument (rate jump).
+        ///
+        /// # Arguments
+        ///
+        /// * `maturity` - Time to event date in years
+        /// * `expected_jump_bps` - Expected rate jump in basis points
+        pub fn event(maturity: T, expected_jump_bps: T) -> Self {
+            // Convert basis points to absolute rate
+            let expected_jump = expected_jump_bps * from_f64::<T>(0.0001);
+            Self::Event {
+                maturity,
+                expected_jump,
+            }
+        }
+
+        /// Creates an Event instrument with absolute rate jump.
+        ///
+        /// # Arguments
+        ///
+        /// * `maturity` - Time to event date in years
+        /// * `expected_jump` - Expected rate jump in absolute terms
+        pub fn event_with_rate(maturity: T, expected_jump: T) -> Self {
+            Self::Event {
+                maturity,
+                expected_jump,
+            }
+        }
+
+        /// Returns the market-quoted rate (or expected jump for Event).
         pub fn rate(&self) -> T {
             match self {
                 Self::Ois { rate, .. } => *rate,
                 Self::Irs { rate, .. } => *rate,
                 Self::Fra { rate, .. } => *rate,
                 Self::Future { rate, .. } => *rate,
+                Self::Event { expected_jump, .. } => *expected_jump,
             }
         }
 
@@ -268,6 +304,7 @@ pub mod curves {
                 Self::Irs { maturity, .. } => *maturity,
                 Self::Fra { end, .. } => *end,
                 Self::Future { maturity, .. } => *maturity,
+                Self::Event { maturity, .. } => *maturity,
             }
         }
 
@@ -278,6 +315,20 @@ pub mod curves {
                 Self::Irs { .. } => "IRS",
                 Self::Fra { .. } => "FRA",
                 Self::Future { .. } => "Future",
+                Self::Event { .. } => "Event",
+            }
+        }
+
+        /// Returns true if this is an Event instrument.
+        pub fn is_event(&self) -> bool {
+            matches!(self, Self::Event { .. })
+        }
+
+        /// Returns the expected jump for Event instruments, None otherwise.
+        pub fn expected_jump(&self) -> Option<T> {
+            match self {
+                Self::Event { expected_jump, .. } => Some(*expected_jump),
+                _ => None,
             }
         }
     }

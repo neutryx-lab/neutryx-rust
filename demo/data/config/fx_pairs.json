@@ -1,0 +1,19 @@
+{
+  "$schema": "./schemas/fx_pairs.schema.json",
+  "metadata": {
+    "description": "FX currency pair definitions for spot and forward rates",
+    "version": "1.0"
+  },
+  "fxPairs": [
+    { "id": "EURUSD", "baseCurrency": "EUR", "quoteCurrency": "USD", "displayName": "EUR/USD" },
+    { "id": "USDJPY", "baseCurrency": "USD", "quoteCurrency": "JPY", "displayName": "USD/JPY" },
+    { "id": "GBPUSD", "baseCurrency": "GBP", "quoteCurrency": "USD", "displayName": "GBP/USD" },
+    { "id": "EURGBP", "baseCurrency": "EUR", "quoteCurrency": "GBP", "displayName": "EUR/GBP" },
+    { "id": "EURJPY", "baseCurrency": "EUR", "quoteCurrency": "JPY", "displayName": "EUR/JPY" },
+    { "id": "GBPJPY", "baseCurrency": "GBP", "quoteCurrency": "JPY", "displayName": "GBP/JPY" },
+    { "id": "AUDUSD", "baseCurrency": "AUD", "quoteCurrency": "USD", "displayName": "AUD/USD" },
+    { "id": "USDCAD", "baseCurrency": "USD", "quoteCurrency": "CAD", "displayName": "USD/CAD" },
+    { "id": "USDCHF", "baseCurrency": "USD", "quoteCurrency": "CHF", "displayName": "USD/CHF" },
+    { "id": "NZDUSD", "baseCurrency": "NZD", "quoteCurrency": "USD", "displayName": "NZD/USD" }
+  ]
+}

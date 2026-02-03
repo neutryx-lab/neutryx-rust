@@ -72,6 +72,8 @@ impl<T: Float> CalibrationInstrument<T> for MarketInstrument<T> {
                 let fra_rate = compute_fra_rate::<T, C>(T::zero(), *maturity, curve)?;
                 Ok(fra_rate + *convexity_adjustment)
             }
+
+            Self::Event { maturity, .. } => compute_event_jump::<T, C>(*maturity, curve),
         }
     }
 
@@ -175,6 +177,35 @@ fn compute_fra_rate<T: Float, C: YieldCurve<T>>(
     }
 
     Ok((df_start / df_end - T::one()) / tau)
+}
+
+/// Compute the instantaneous forward rate jump at an event date.
+///
+/// For central bank meetings and scheduled events, we measure the
+/// difference in instantaneous forward rates just before and after
+/// the event time. This is computed as:
+///
+///   jump = f(t+ε) - f(t-ε)
+///
+/// where f(t) is the instantaneous forward rate at time t.
+fn compute_event_jump<T: Float, C: YieldCurve<T>>(
+    maturity: T,
+    curve: &C,
+) -> Result<T, MarketDataError> {
+    use pricer_core::math::numeric::from_f64;
+
+    // Small time step for numerical differentiation
+    let dt = from_f64::<T>(1e-5);
+
+    // Ensure we don't go negative for very short maturities
+    let t_before = if maturity > dt { maturity - dt } else { T::zero() };
+    let t_after = maturity + dt;
+
+    // Compute forward rates just before and after the event
+    let rate_before = curve.forward_rate(t_before, maturity)?;
+    let rate_after = curve.forward_rate(maturity, t_after)?;
+
+    Ok(rate_after - rate_before)
 }
 
 // =============================================================================

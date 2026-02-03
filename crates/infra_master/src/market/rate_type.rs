@@ -38,6 +38,9 @@ use std::fmt;
 /// 3. **Volatility** (tertiary):
 ///    - `Vol` - Implied volatility quotes
 ///
+/// 4. **Events** (curve jump instruments):
+///    - `Event` - Central bank meetings, scheduled events
+///
 /// # Adding New Variants
 ///
 /// When adding new rate types, place them within the appropriate asset class
@@ -82,6 +85,10 @@ pub enum RateType {
     // === Volatility ===
     /// Volatility quote (implied vol for options).
     Vol,
+
+    // === Events ===
+    /// Central bank meeting or scheduled market event (rate jump).
+    Event,
 }
 
 impl RateType {
@@ -108,6 +115,7 @@ impl RateType {
             RateType::FxSpot => "FXSPOT",
             RateType::FxForward => "FXFWD",
             RateType::Vol => "VOL",
+            RateType::Event => "EVENT",
         }
     }
 
@@ -161,6 +169,19 @@ impl RateType {
     /// ```
     #[must_use]
     pub const fn is_volatility(&self) -> bool { matches!(self, RateType::Vol) }
+
+    /// Returns true if this is an event type (rate jump).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use infra_master::market::RateType;
+    ///
+    /// assert!(RateType::Event.is_event());
+    /// assert!(!RateType::Swap.is_event());
+    /// ```
+    #[must_use]
+    pub const fn is_event(&self) -> bool { matches!(self, RateType::Event) }
 }
 
 impl fmt::Display for RateType {
@@ -185,8 +206,9 @@ mod tests {
             RateType::FxSpot,
             RateType::FxForward,
             RateType::Vol,
+            RateType::Event,
         ];
-        assert_eq!(all_types.len(), 9);
+        assert_eq!(all_types.len(), 10);
     }
 
     #[test]
@@ -200,6 +222,7 @@ mod tests {
         assert_eq!(RateType::FxSpot.code(), "FXSPOT");
         assert_eq!(RateType::FxForward.code(), "FXFWD");
         assert_eq!(RateType::Vol.code(), "VOL");
+        assert_eq!(RateType::Event.code(), "EVENT");
     }
 
     #[test]
@@ -221,6 +244,7 @@ mod tests {
         assert!(!RateType::FxSpot.is_interest_rate());
         assert!(!RateType::FxForward.is_interest_rate());
         assert!(!RateType::Vol.is_interest_rate());
+        assert!(!RateType::Event.is_interest_rate());
     }
 
     #[test]
@@ -231,6 +255,7 @@ mod tests {
         assert!(!RateType::Deposit.is_fx());
         assert!(!RateType::Swap.is_fx());
         assert!(!RateType::Vol.is_fx());
+        assert!(!RateType::Event.is_fx());
     }
 
     #[test]
@@ -239,6 +264,16 @@ mod tests {
 
         assert!(!RateType::Deposit.is_volatility());
         assert!(!RateType::FxSpot.is_volatility());
+        assert!(!RateType::Event.is_volatility());
+    }
+
+    #[test]
+    fn test_is_event() {
+        assert!(RateType::Event.is_event());
+
+        assert!(!RateType::Deposit.is_event());
+        assert!(!RateType::Swap.is_event());
+        assert!(!RateType::Vol.is_event());
     }
 
     #[test]

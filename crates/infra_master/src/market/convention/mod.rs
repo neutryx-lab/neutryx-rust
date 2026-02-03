@@ -26,6 +26,7 @@ mod capfloor;
 mod cds;
 mod commodity;
 mod convention_set;
+mod convention_template;
 mod deposit;
 mod equity;
 mod fra;
@@ -58,3 +59,6 @@ pub use registry::{ConventionKey, ConventionRegistry, RegistryError};
 pub use swap::{SwapConvention, SwapLegConvention};
 pub use swaption::{SettlementConvention, SwaptionConvention};
 pub use xccy_basis::{BasisSpreadLeg, XCcyBasisConvention, XCcyLegConvention};
+
+// Template support for bulk convention generation
+pub use convention_template::{ConventionBundle, ConventionTemplate, CurrencyDefaults};

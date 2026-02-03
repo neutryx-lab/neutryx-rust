@@ -38,7 +38,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use super::curve_definition::{CurveDefError, CurveDefinition};
-use super::instrument_def::{InstrumentDefError, InstrumentDefinition};
+use super::instrument_def::{InstrumentDefError, InstrumentDefinition, InstrumentTemplate};
 use super::rate_index_def::{RateIndexDefError, RateIndexDefinition};
 
 /// Error type for registry operations.
@@ -116,11 +116,39 @@ pub struct DefinitionRegistry {
 }
 
 /// JSON-serializable bundle of all definitions for loading.
+///
+/// Supports both individual instrument definitions and templates.
+/// Templates are expanded to individual instruments during loading.
+///
+/// # Example JSON
+///
+/// ```json
+/// {
+///   "templates": [
+///     {
+///       "idPattern": "{currency}-OIS-{tenor}",
+///       "currency": "USD",
+///       "convention": "USD-SOFR-OIS",
+///       "rateIndex": "USD-SOFR",
+///       "tenors": ["1M", "3M", "6M", "1Y", "5Y", "10Y", "30Y"]
+///     }
+///   ],
+///   "instruments": [
+///     { "id": "USD-Custom", "currency": "USD", "convention": "USD-DEPO", "tenor": "O/N" }
+///   ],
+///   "rateIndices": [...],
+///   "curves": [...]
+/// }
+/// ```
 #[cfg(feature = "serde")]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DefinitionBundle {
-    /// Instrument definitions
+    /// Instrument templates for bulk generation
+    #[serde(default)]
+    pub templates: Vec<InstrumentTemplate>,
+
+    /// Individual instrument definitions
     #[serde(default)]
     pub instruments: Vec<InstrumentDefinition>,
 
@@ -131,6 +159,34 @@ pub struct DefinitionBundle {
     /// Curve definitions
     #[serde(default)]
     pub curves: Vec<CurveDefinition>,
+}
+
+#[cfg(feature = "serde")]
+impl DefinitionBundle {
+    /// Expands all templates and returns the combined list of instruments.
+    ///
+    /// This includes both individually defined instruments and those
+    /// generated from templates.
+    #[must_use]
+    pub fn expand_instruments(&self) -> Vec<InstrumentDefinition> {
+        let mut result = Vec::new();
+
+        // First, expand all templates
+        for template in &self.templates {
+            result.extend(template.expand());
+        }
+
+        // Then add individual instruments
+        result.extend(self.instruments.iter().cloned());
+
+        result
+    }
+
+    /// Returns the total count of instruments after template expansion.
+    #[must_use]
+    pub fn total_instrument_count(&self) -> usize {
+        self.templates.iter().map(|t| t.count()).sum::<usize>() + self.instruments.len()
+    }
 }
 
 impl DefinitionRegistry {
@@ -321,14 +377,26 @@ impl DefinitionRegistry {
 
     /// Loads definitions from a JSON bundle.
     ///
-    /// Registers all definitions in order: instruments, rate indices, then curves.
+    /// Registers all definitions in order:
+    /// 1. Instruments from templates (expanded)
+    /// 2. Individual instruments
+    /// 3. Rate indices
+    /// 4. Curves
     ///
     /// # Errors
     ///
     /// Returns error if any definition fails validation or registration.
     #[cfg(feature = "serde")]
     pub fn load_bundle(&mut self, bundle: DefinitionBundle) -> Result<(), RegistryError> {
-        // Register instruments first
+        // First, expand and register instruments from templates
+        for template in &bundle.templates {
+            template.validate()?;
+            for inst in template.expand() {
+                self.register_instrument(inst)?;
+            }
+        }
+
+        // Then register individual instruments
         for inst in bundle.instruments {
             self.register_instrument(inst)?;
         }
@@ -526,13 +594,14 @@ mod tests {
     #[cfg(feature = "serde")]
     #[test]
     fn test_load_from_json() {
+        // Using convention-based format (preferred)
         let json = r#"{
             "instruments": [
-                { "id": "USD-Depo-ON", "currency": "USD", "rateType": "Deposit", "tenor": "O/N" },
-                { "id": "USD-OIS-5Y", "currency": "USD", "rateType": "Ois", "tenor": "5Y", "rateIndex": "USD-SOFR" }
+                { "id": "USD-Depo-ON", "currency": "USD", "convention": "USD-DEPO", "tenor": "O/N" },
+                { "id": "USD-OIS-5Y", "currency": "USD", "convention": "USD-SOFR-OIS", "tenor": "5Y", "rateIndex": "USD-SOFR" }
             ],
             "rateIndices": [
-                { "id": "USD-SOFR", "currency": "USD", "indexType": "Sofr", "isOvernight": true }
+                { "id": "USD-SOFR", "currency": "USD", "indexType": "Sofr", "tenor": "O/N" }
             ],
             "curves": [
                 {
@@ -550,6 +619,37 @@ mod tests {
 
         let curve = registry.get_curve("USD-SOFR-Discount").unwrap();
         assert_eq!(curve.instruments.len(), 2);
+
+        // Verify rate type is correctly derived from convention
+        let depo = registry.get_instrument("USD-Depo-ON").unwrap();
+        assert_eq!(depo.rate_type(), RateType::Deposit);
+        let ois = registry.get_instrument("USD-OIS-5Y").unwrap();
+        assert_eq!(ois.rate_type(), RateType::Ois);
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_load_from_json_legacy_format() {
+        // Legacy format with rateType field (backwards compatible)
+        let json = r#"{
+            "instruments": [
+                { "id": "USD-Depo-ON", "currency": "USD", "rateTypeOverride": "Deposit", "tenor": "O/N" }
+            ],
+            "rateIndices": [
+                { "id": "USD-SOFR", "currency": "USD", "indexType": "Sofr", "tenor": "O/N" }
+            ],
+            "curves": [
+                {
+                    "name": "USD-SOFR-Discount",
+                    "rateIndex": "USD-SOFR",
+                    "instruments": ["USD-Depo-ON"]
+                }
+            ]
+        }"#;
+
+        let registry = DefinitionRegistry::load_from_json(json).unwrap();
+        let depo = registry.get_instrument("USD-Depo-ON").unwrap();
+        assert_eq!(depo.rate_type(), RateType::Deposit);
     }
 
     #[cfg(feature = "serde")]
@@ -558,7 +658,7 @@ mod tests {
         // Missing rate index reference
         let json = r#"{
             "instruments": [
-                { "id": "USD-Depo-ON", "currency": "USD", "rateType": "Deposit", "tenor": "O/N" }
+                { "id": "USD-Depo-ON", "currency": "USD", "convention": "USD-DEPO", "tenor": "O/N" }
             ],
             "rateIndices": [],
             "curves": [
@@ -572,5 +672,128 @@ mod tests {
 
         let result = DefinitionRegistry::load_from_json(json);
         assert!(result.is_err());
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_load_from_json_with_templates() {
+        let json = r#"{
+            "templates": [
+                {
+                    "idPattern": "{currency}-OIS-{tenor}",
+                    "currency": "USD",
+                    "convention": "USD-SOFR-OIS",
+                    "rateIndex": "USD-SOFR",
+                    "tenors": ["1M", "3M", "6M", "1Y", "5Y"]
+                },
+                {
+                    "idPattern": "{currency}-Depo-{tenor}",
+                    "currency": "USD",
+                    "convention": "USD-DEPO",
+                    "rateIndex": "USD-SOFR",
+                    "tenors": ["O/N", "1W"]
+                }
+            ],
+            "instruments": [
+                { "id": "USD-Custom", "currency": "USD", "convention": "USD-DEPO", "tenor": "2W" }
+            ],
+            "rateIndices": [
+                { "id": "USD-SOFR", "currency": "USD", "indexType": "Sofr", "tenor": "O/N" }
+            ],
+            "curves": [
+                {
+                    "name": "USD-SOFR-Discount",
+                    "rateIndex": "USD-SOFR",
+                    "instruments": ["USD-Depo-O/N", "USD-OIS-1M", "USD-OIS-5Y"]
+                }
+            ]
+        }"#;
+
+        let registry = DefinitionRegistry::load_from_json(json).unwrap();
+
+        // 5 OIS + 2 Depo (from templates) + 1 Custom = 8 instruments
+        assert_eq!(registry.instrument_count(), 8);
+
+        // Check template-generated instruments
+        let ois_1m = registry.get_instrument("USD-OIS-1M").unwrap();
+        assert_eq!(ois_1m.rate_type(), RateType::Ois);
+        assert_eq!(ois_1m.rate_index, Some("USD-SOFR".to_string()));
+
+        let ois_5y = registry.get_instrument("USD-OIS-5Y").unwrap();
+        assert_eq!(ois_5y.tenor, "5Y");
+
+        let depo_on = registry.get_instrument("USD-Depo-O/N").unwrap();
+        assert_eq!(depo_on.rate_type(), RateType::Deposit);
+
+        // Check individual instrument
+        let custom = registry.get_instrument("USD-Custom").unwrap();
+        assert_eq!(custom.tenor, "2W");
+
+        // Check curve references work
+        let curve = registry.get_curve("USD-SOFR-Discount").unwrap();
+        assert_eq!(curve.instruments.len(), 3);
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_definition_bundle_expand_instruments() {
+        use super::InstrumentTemplate;
+
+        let bundle = DefinitionBundle {
+            templates: vec![
+                InstrumentTemplate::new(
+                    "{currency}-OIS-{tenor}",
+                    Currency::USD,
+                    "USD-SOFR-OIS",
+                    vec!["1M".into(), "3M".into(), "6M".into()],
+                ),
+            ],
+            instruments: vec![
+                InstrumentDefinition::from_convention(
+                    "USD-Custom",
+                    Currency::USD,
+                    "USD-DEPO",
+                    "O/N",
+                ),
+            ],
+            rate_indices: vec![],
+            curves: vec![],
+        };
+
+        assert_eq!(bundle.total_instrument_count(), 4);
+
+        let expanded = bundle.expand_instruments();
+        assert_eq!(expanded.len(), 4);
+        assert_eq!(expanded[0].id, "USD-OIS-1M");
+        assert_eq!(expanded[1].id, "USD-OIS-3M");
+        assert_eq!(expanded[2].id, "USD-OIS-6M");
+        assert_eq!(expanded[3].id, "USD-Custom");
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_load_from_json_fra_templates() {
+        let json = r#"{
+            "templates": [
+                {
+                    "idPattern": "{currency}-FRA-{tenor}",
+                    "currency": "USD",
+                    "convention": "USD-FRA",
+                    "rateIndex": "USD-SOFR",
+                    "tenors": ["1x4", "3x6", "6x9"]
+                }
+            ],
+            "rateIndices": [
+                { "id": "USD-SOFR", "currency": "USD", "indexType": "Sofr", "tenor": "O/N" }
+            ],
+            "curves": []
+        }"#;
+
+        let registry = DefinitionRegistry::load_from_json(json).unwrap();
+        assert_eq!(registry.instrument_count(), 3);
+
+        let fra = registry.get_instrument("USD-FRA-1x4").unwrap();
+        assert_eq!(fra.rate_type(), RateType::Fra);
+        assert_eq!(fra.tenor, "1x4");
     }
 }

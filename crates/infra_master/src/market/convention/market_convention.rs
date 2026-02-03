@@ -155,7 +155,7 @@ impl MarketConvention {
             RateType::FxSpot | RateType::FxForward => {
                 Self::fx_convention_for_currency(rate_id.currency)
             }
-            RateType::Vol => None, // Volatility doesn't have a standard convention
+            RateType::Vol | RateType::Event => None, // No standard convention
         }
     }
 

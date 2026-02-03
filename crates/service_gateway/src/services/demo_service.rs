@@ -35,18 +35,25 @@ impl DemoService {
 
     /// Get application configuration
     pub fn get_config(_state: &Arc<AppState>) -> Result<AppConfigResponse, ServerError> {
-        // Load from indices.json
-        let indices_path = Path::new("demo/data/input/indices.json");
-        let indices_content = std::fs::read_to_string(indices_path)
-            .map_err(|e| ServerError::Internal(format!("Failed to read indices.json: {e}")))?;
-        let indices: serde_json::Value = serde_json::from_str(&indices_content)
-            .map_err(|e| ServerError::Internal(format!("Failed to parse indices.json: {e}")))?;
+        // Load currencies from config
+        let currencies_path = Path::new("demo/data/config/currencies.json");
+        let currencies_content = std::fs::read_to_string(currencies_path)
+            .map_err(|e| ServerError::Internal(format!("Failed to read currencies.json: {e}")))?;
+        let currencies_data: serde_json::Value = serde_json::from_str(&currencies_content)
+            .map_err(|e| ServerError::Internal(format!("Failed to parse currencies.json: {e}")))?;
+
+        // Load rate indices from config
+        let rate_indices_path = Path::new("demo/data/config/rate_indices.json");
+        let rate_indices_content = std::fs::read_to_string(rate_indices_path)
+            .map_err(|e| ServerError::Internal(format!("Failed to read rate_indices.json: {e}")))?;
+        let rate_indices_data: serde_json::Value = serde_json::from_str(&rate_indices_content)
+            .map_err(|e| ServerError::Internal(format!("Failed to parse rate_indices.json: {e}")))?;
 
         // Build enums
         let mut enums: HashMap<String, Vec<EnumValue>> = HashMap::new();
 
-        // Add currencies from indices
-        if let Some(currencies) = indices.get("currencies").and_then(|c| c.as_array()) {
+        // Add currencies
+        if let Some(currencies) = currencies_data.get("currencies").and_then(|c| c.as_array()) {
             let currency_values: Vec<EnumValue> = currencies
                 .iter()
                 .filter_map(|c| {
@@ -59,22 +66,20 @@ impl DemoService {
         }
 
         // Add rate indices
-        if let Some(rates_indices) = indices
-            .get("indices")
-            .and_then(|i| i.get("rates"))
-            .and_then(|r| r.get("items"))
+        if let Some(rate_indices) = rate_indices_data
+            .get("rateIndices")
             .and_then(|i| i.as_array())
         {
-            let index_values: Vec<EnumValue> = rates_indices
+            let index_values: Vec<EnumValue> = rate_indices
                 .iter()
-                .filter_map(|i| Some(EnumValue::Simple(i.get("index")?.as_str()?.to_string())))
+                .filter_map(|i| Some(EnumValue::Simple(i.get("indexType")?.as_str()?.to_string())))
                 .collect();
             enums.insert("rateIndices".to_string(), index_values);
         }
 
-        // Build rate_index_by_currency
+        // Build rate_index_by_currency from currencies.json
         let mut rate_index_by_currency: HashMap<String, String> = HashMap::new();
-        if let Some(currencies) = indices.get("currencies").and_then(|c| c.as_array()) {
+        if let Some(currencies) = currencies_data.get("currencies").and_then(|c| c.as_array()) {
             for currency in currencies {
                 if let (Some(code), Some(index)) = (
                     currency.get("code").and_then(|c| c.as_str()),
@@ -941,20 +946,15 @@ impl DemoService {
     pub fn get_ir_vol_currencies(
         _state: &Arc<AppState>,
     ) -> Result<IrVolCurrenciesResponse, ServerError> {
-        // Read from indices.json
-        let indices_path = Path::new("demo/data/input/indices.json");
-        if indices_path.exists() {
-            let content = std::fs::read_to_string(indices_path)
-                .map_err(|e| ServerError::Internal(format!("Failed to read indices.json: {e}")))?;
-            let indices: serde_json::Value = serde_json::from_str(&content)
-                .map_err(|e| ServerError::Internal(format!("Failed to parse indices.json: {e}")))?;
+        // Read from vol_surfaces.json
+        let vol_path = Path::new("demo/data/config/vol_surfaces.json");
+        if vol_path.exists() {
+            let content = std::fs::read_to_string(vol_path)
+                .map_err(|e| ServerError::Internal(format!("Failed to read vol_surfaces.json: {e}")))?;
+            let vol_data: serde_json::Value = serde_json::from_str(&content)
+                .map_err(|e| ServerError::Internal(format!("Failed to parse vol_surfaces.json: {e}")))?;
 
-            if let Some(irvol_items) = indices
-                .get("indices")
-                .and_then(|i| i.get("irvol"))
-                .and_then(|f| f.get("items"))
-                .and_then(|i| i.as_array())
-            {
+            if let Some(irvol_items) = vol_data.get("irVol").and_then(|i| i.as_array()) {
                 let currencies: Vec<IrVolCurrency> = irvol_items
                     .iter()
                     .filter_map(|item| {
@@ -1076,20 +1076,15 @@ impl DemoService {
 
     /// Get FX vol pairs
     pub fn get_fx_vol_pairs(_state: &Arc<AppState>) -> Result<FxVolPairsResponse, ServerError> {
-        // Read from indices.json
-        let indices_path = Path::new("demo/data/input/indices.json");
-        if indices_path.exists() {
-            let content = std::fs::read_to_string(indices_path)
-                .map_err(|e| ServerError::Internal(format!("Failed to read indices.json: {e}")))?;
-            let indices: serde_json::Value = serde_json::from_str(&content)
-                .map_err(|e| ServerError::Internal(format!("Failed to parse indices.json: {e}")))?;
+        // Read from vol_surfaces.json
+        let vol_path = Path::new("demo/data/config/vol_surfaces.json");
+        if vol_path.exists() {
+            let content = std::fs::read_to_string(vol_path)
+                .map_err(|e| ServerError::Internal(format!("Failed to read vol_surfaces.json: {e}")))?;
+            let vol_data: serde_json::Value = serde_json::from_str(&content)
+                .map_err(|e| ServerError::Internal(format!("Failed to parse vol_surfaces.json: {e}")))?;
 
-            if let Some(fxvol_items) = indices
-                .get("indices")
-                .and_then(|i| i.get("fxvol"))
-                .and_then(|f| f.get("items"))
-                .and_then(|i| i.as_array())
-            {
+            if let Some(fxvol_items) = vol_data.get("fxVol").and_then(|i| i.as_array()) {
                 let pairs: Vec<FxVolPair> = fxvol_items
                     .iter()
                     .filter_map(|item| {
@@ -1340,22 +1335,20 @@ impl DemoService {
 
     /// Get curve indices for bootstrapping
     pub fn get_curve_indices(_state: &Arc<AppState>) -> Result<CurveIndicesResponse, ServerError> {
-        // Load from indices.json
-        let indices_path = Path::new("demo/data/input/indices.json");
-        let content = std::fs::read_to_string(indices_path)
-            .map_err(|e| ServerError::Internal(format!("Failed to read indices.json: {e}")))?;
+        // Load from rate_indices.json
+        let rate_indices_path = Path::new("demo/data/config/rate_indices.json");
+        let content = std::fs::read_to_string(rate_indices_path)
+            .map_err(|e| ServerError::Internal(format!("Failed to read rate_indices.json: {e}")))?;
         let data: serde_json::Value = serde_json::from_str(&content)
-            .map_err(|e| ServerError::Internal(format!("Failed to parse indices.json: {e}")))?;
+            .map_err(|e| ServerError::Internal(format!("Failed to parse rate_indices.json: {e}")))?;
 
         let indices: Vec<String> = data
-            .get("indices")
-            .and_then(|i| i.get("rates"))
-            .and_then(|r| r.get("items"))
+            .get("rateIndices")
             .and_then(|i| i.as_array())
             .map(|items| {
                 items
                     .iter()
-                    .filter_map(|item| item.get("index").and_then(|i| i.as_str()))
+                    .filter_map(|item| item.get("indexType").and_then(|i| i.as_str()))
                     .map(String::from)
                     .collect()
             })
@@ -1429,17 +1422,15 @@ impl DemoService {
     pub fn get_volcube_indices(
         _state: &Arc<AppState>,
     ) -> Result<VolcubeIndicesResponse, ServerError> {
-        // Load from indices.json
-        let indices_path = Path::new("demo/data/input/indices.json");
-        let content = std::fs::read_to_string(indices_path)
-            .map_err(|e| ServerError::Internal(format!("Failed to read indices.json: {e}")))?;
+        // Load from vol_surfaces.json
+        let vol_path = Path::new("demo/data/config/vol_surfaces.json");
+        let content = std::fs::read_to_string(vol_path)
+            .map_err(|e| ServerError::Internal(format!("Failed to read vol_surfaces.json: {e}")))?;
         let data: serde_json::Value = serde_json::from_str(&content)
-            .map_err(|e| ServerError::Internal(format!("Failed to parse indices.json: {e}")))?;
+            .map_err(|e| ServerError::Internal(format!("Failed to parse vol_surfaces.json: {e}")))?;
 
         let indices: Vec<String> = data
-            .get("indices")
-            .and_then(|i| i.get("irvol"))
-            .and_then(|r| r.get("items"))
+            .get("irVol")
             .and_then(|i| i.as_array())
             .map(|items| {
                 items
@@ -2001,28 +1992,23 @@ impl DemoService {
 
     /// Get all rate indices
     pub fn get_rate_indices(state: &Arc<AppState>) -> Result<RateIndicesResponse, ServerError> {
-        // Load from indices.json
-        let indices_path = Path::new("demo/data/input/indices.json");
-        let content = std::fs::read_to_string(indices_path)
-            .map_err(|e| ServerError::Internal(format!("Failed to read indices.json: {e}")))?;
+        // Load from rate_indices.json
+        let rate_indices_path = Path::new("demo/data/config/rate_indices.json");
+        let content = std::fs::read_to_string(rate_indices_path)
+            .map_err(|e| ServerError::Internal(format!("Failed to read rate_indices.json: {e}")))?;
         let data: serde_json::Value = serde_json::from_str(&content)
-            .map_err(|e| ServerError::Internal(format!("Failed to parse indices.json: {e}")))?;
+            .map_err(|e| ServerError::Internal(format!("Failed to parse rate_indices.json: {e}")))?;
 
         let mut indices = Vec::new();
 
-        if let Some(rate_items) = data
-            .get("indices")
-            .and_then(|i| i.get("rates"))
-            .and_then(|r| r.get("items"))
-            .and_then(|i| i.as_array())
-        {
+        if let Some(rate_items) = data.get("rateIndices").and_then(|i| i.as_array()) {
             // Get market rates to count associations
             let rates_response = Self::get_market_rates(state).ok();
             let conventions_response = Self::get_conventions(state).ok();
 
             for item in rate_items {
                 let index_code = item
-                    .get("index")
+                    .get("indexType")
                     .and_then(|i| i.as_str())
                     .unwrap_or("")
                     .to_string();
@@ -2040,10 +2026,7 @@ impl DemoService {
                     .get("dayCounter")
                     .and_then(|d| d.as_str())
                     .map(String::from);
-                let is_overnight = item
-                    .get("isOvernight")
-                    .and_then(|o| o.as_bool())
-                    .unwrap_or(tenor == "O/N" || tenor == "ON");
+                let is_overnight = tenor == "O/N" || tenor == "ON";
 
                 // Count associated rates
                 let associated_rates_count = rates_response
@@ -2094,25 +2077,23 @@ impl DemoService {
         code: &str,
         state: &Arc<AppState>,
     ) -> Result<RateIndexDetailResponse, ServerError> {
-        // Load from indices.json
-        let indices_path = Path::new("demo/data/input/indices.json");
-        let content = std::fs::read_to_string(indices_path)
-            .map_err(|e| ServerError::Internal(format!("Failed to read indices.json: {e}")))?;
+        // Load from rate_indices.json
+        let rate_indices_path = Path::new("demo/data/config/rate_indices.json");
+        let content = std::fs::read_to_string(rate_indices_path)
+            .map_err(|e| ServerError::Internal(format!("Failed to read rate_indices.json: {e}")))?;
         let data: serde_json::Value = serde_json::from_str(&content)
-            .map_err(|e| ServerError::Internal(format!("Failed to parse indices.json: {e}")))?;
+            .map_err(|e| ServerError::Internal(format!("Failed to parse rate_indices.json: {e}")))?;
 
         // Find the index
         let rate_items = data
-            .get("indices")
-            .and_then(|i| i.get("rates"))
-            .and_then(|r| r.get("items"))
+            .get("rateIndices")
             .and_then(|i| i.as_array())
             .ok_or_else(|| ServerError::NotFound(format!("Index {} not found", code)))?;
 
         let item = rate_items
             .iter()
             .find(|i| {
-                i.get("index")
+                i.get("indexType")
                     .and_then(|idx| idx.as_str())
                     .map(|s| s == code)
                     .unwrap_or(false)
@@ -2131,16 +2112,17 @@ impl DemoService {
             .to_string();
         let name = format!("{} ({})", code, currency);
 
-        // Build metadata
+        // Build metadata from conventions field
+        let conventions = item.get("conventions");
         let metadata = Some(RateIndexMetadata {
-            fixing_lag: item.get("fixingLag").and_then(|f| f.as_u64()).map(|f| f as u32),
-            settlement_lag: item.get("settlementLag").and_then(|s| s.as_u64()).map(|s| s as u32),
-            compounding_method: item
-                .get("compoundingMethod")
+            fixing_lag: conventions.and_then(|c| c.get("fixingLag")).and_then(|f| f.as_u64()).map(|f| f as u32),
+            settlement_lag: conventions.and_then(|c| c.get("settlementLag")).and_then(|s| s.as_u64()).map(|s| s as u32),
+            compounding_method: conventions
+                .and_then(|c| c.get("compoundingMethod"))
                 .and_then(|c| c.as_str())
                 .map(String::from),
-            fixing_calendar: item
-                .get("fixingCalendar")
+            fixing_calendar: conventions
+                .and_then(|c| c.get("fixingCalendar"))
                 .and_then(|c| c.as_str())
                 .map(String::from),
         });
@@ -2225,7 +2207,7 @@ mod tests {
 
     /// Check if demo data files are available
     fn demo_data_available() -> bool {
-        Path::new("demo/data/input/indices.json").exists()
+        Path::new("demo/data/config/rate_indices.json").exists()
     }
 
     #[test]

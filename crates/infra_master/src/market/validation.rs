@@ -188,7 +188,8 @@ impl RateValidator for StandardRateValidator {
             | RateType::Futures
             | RateType::Swap
             | RateType::Ois
-            | RateType::BasisSwap => self.validate_interest_rate(value),
+            | RateType::BasisSwap
+            | RateType::Event => self.validate_interest_rate(value),
 
             // FX types
             RateType::FxSpot | RateType::FxForward => self.validate_fx_rate(value),
