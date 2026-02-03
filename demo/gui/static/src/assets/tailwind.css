@@ -6,6 +6,10 @@
 /* CSS Variables - Dark theme (default) */
 :root,
 [data-theme="dark"] {
+  /* Layout */
+  --sidebar-width: 240px;
+  --header-height: 64px;
+
   /* Primary colours */
   --primary: #6366f1;
   --primary-light: #818cf8;
@@ -32,6 +36,7 @@
   --success: #22c55e;
   --warning: #f59e0b;
   --error: #ef4444;
+  --danger: #ef4444;
   --info: #3b82f6;
 
   /* Glass morphism */
