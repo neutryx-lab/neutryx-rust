@@ -123,6 +123,7 @@ fn demo_api_routes(state: Arc<AppState>) -> Router {
         .route("/market/conventions/:id", get(handlers::demo::get_convention_detail))
         .route("/market/events", get(handlers::demo::get_events))
         .route("/market/events/types", get(handlers::demo::get_event_types))
+        .route("/market/holidays", get(handlers::demo::get_holidays))
         .route("/market/export/csv", get(handlers::demo::export_market_csv))
         .route("/market/export/json", get(handlers::demo::export_market_json))
         // IR Volatility

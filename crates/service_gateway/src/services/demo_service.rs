@@ -13,8 +13,8 @@ use crate::{
         DemoGreeksRequest, DemoGreeksResult, DemoPricingRequest, DemoPricingResult, EnumValue,
         EventType, EventTypesResponse, EventsResponse, ExpandedTrade, ExportFormat, FieldType,
         FxVolCalibrateRequest, FxVolPair, FxVolPairsResponse, FxVolQuote, FxVolQuotesResponse,
-        Importance, IndexConventionsResponse, IndexRatesResponse, InstrumentDef,
-        InstrumentsResponse, IrVolCurrenciesResponse, IrVolCurrency, IrVolQuote,
+        Holiday, HolidaysResponse, Importance, IndexConventionsResponse, IndexRatesResponse,
+        InstrumentDef, InstrumentsResponse, IrVolCurrenciesResponse, IrVolCurrency, IrVolQuote,
         IrVolQuotesResponse, LegCashflows, MarketConfigResponse, MarketEvent, MarketRate,
         MarketRateDetailResponse, MarketRatesResponse, ParameterDef, RateCashflowsResponse,
         RateIndexDetailResponse, RateIndexInfo, RateIndexMetadata, RateIndicesResponse,
@@ -1280,20 +1280,6 @@ impl DemoService {
             }
         }
 
-        // Load holidays
-        let hol_path = Path::new("demo/data/input/events/holidays.json");
-        if let Ok(content) = std::fs::read_to_string(hol_path) {
-            if let Ok(data) = serde_json::from_str::<serde_json::Value>(&content) {
-                if let Some(event_arr) = data.get("events").and_then(|e| e.as_array()) {
-                    for event in event_arr {
-                        if let Some(parsed) = parse_event(event) {
-                            events.push(parsed);
-                        }
-                    }
-                }
-            }
-        }
-
         // Sort events by date
         events.sort_by(|a, b| a.date.cmp(&b.date));
 
@@ -1312,6 +1298,85 @@ impl DemoService {
                 "other".to_string(),
             ],
         })
+    }
+
+    /// Get market holidays
+    pub fn get_holidays(_state: &Arc<AppState>) -> Result<HolidaysResponse, ServerError> {
+        let mut holidays = Vec::new();
+
+        // Helper to parse importance from string
+        fn parse_importance(s: &str) -> Importance {
+            match s.to_lowercase().as_str() {
+                "critical" => Importance::Critical,
+                "high" => Importance::High,
+                "medium" => Importance::Medium,
+                _ => Importance::Low,
+            }
+        }
+
+        // Helper to parse holiday from JSON value
+        fn parse_holiday(event: &serde_json::Value) -> Option<Holiday> {
+            let id = event.get("id")?.as_str()?.to_string();
+            let date = event.get("date")?.as_str()?.to_string();
+            let title = event.get("title")?.as_str()?.to_string();
+            let region = event
+                .get("region")
+                .and_then(|r| r.as_str())
+                .unwrap_or("Unknown")
+                .to_string();
+            let currency = event.get("currency").and_then(|c| c.as_str()).map(String::from);
+            let importance = event
+                .get("importance")
+                .and_then(|i| i.as_str())
+                .map(parse_importance)
+                .unwrap_or(Importance::Medium);
+            let source = event.get("source").and_then(|s| s.as_str()).map(String::from);
+
+            // Determine holiday type from tags or default to "bank"
+            let holiday_type = event
+                .get("tags")
+                .and_then(|t| t.as_array())
+                .and_then(|arr| {
+                    if arr.iter().any(|v| v.as_str() == Some("market-closed")) {
+                        Some("market".to_string())
+                    } else if arr.iter().any(|v| v.as_str() == Some("settlement-closed")) {
+                        Some("settlement".to_string())
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or_else(|| "bank".to_string());
+
+            Some(Holiday {
+                id,
+                date,
+                name: title,
+                country: region,
+                currency,
+                holiday_type,
+                importance,
+                source,
+            })
+        }
+
+        // Load holidays from dedicated file
+        let hol_path = Path::new("demo/data/input/holidays.json");
+        if let Ok(content) = std::fs::read_to_string(hol_path) {
+            if let Ok(data) = serde_json::from_str::<serde_json::Value>(&content) {
+                if let Some(event_arr) = data.get("events").and_then(|e| e.as_array()) {
+                    for event in event_arr {
+                        if let Some(holiday) = parse_holiday(event) {
+                            holidays.push(holiday);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Sort holidays by date
+        holidays.sort_by(|a, b| a.date.cmp(&b.date));
+
+        Ok(HolidaysResponse { holidays })
     }
 
     // =========================================================================

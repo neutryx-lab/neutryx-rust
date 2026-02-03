@@ -496,6 +496,29 @@ pub struct EventTypesResponse {
     pub types: Vec<String>,
 }
 
+/// Holiday data
+#[derive(Debug, Clone, Serialize)]
+pub struct Holiday {
+    pub id: String,
+    pub date: String,
+    pub name: String,
+    pub country: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub currency: Option<String>,
+    /// Holiday type: "bank", "market", "settlement"
+    #[serde(rename = "type")]
+    pub holiday_type: String,
+    pub importance: Importance,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+}
+
+/// Holidays response
+#[derive(Debug, Clone, Serialize)]
+pub struct HolidaysResponse {
+    pub holidays: Vec<Holiday>,
+}
+
 // =============================================================================
 // Curves Types (additional to existing curves module)
 // =============================================================================

@@ -18,11 +18,12 @@ use crate::{
         CurveIndicesResponse, CurveInstrumentsResponse, DemoGreeksRequest, DemoGreeksResult,
         DemoPricingRequest, DemoPricingResult, EventTypesResponse, EventsResponse, ExpandedTrade,
         ExportFormat, FxVolCalibrateRequest, FxVolPairsResponse, FxVolQuotesResponse,
-        IndexConventionsResponse, IndexRatesResponse, InstrumentsResponse, IrVolCurrenciesResponse,
-        IrVolQuotesResponse, MarketConfigResponse, MarketRateDetailResponse, MarketRatesResponse,
-        RateCashflowsResponse, RateIndexDetailResponse, RateIndicesResponse, RateInstrumentResponse,
-        TradeExpandRequest, VolcubeCalibrateRequest, VolcubeCalibrateResponse,
-        VolcubeIndicesResponse, VolcubeInstrumentsResponse, VolcubeModelsResponse,
+        HolidaysResponse, IndexConventionsResponse, IndexRatesResponse, InstrumentsResponse,
+        IrVolCurrenciesResponse, IrVolQuotesResponse, MarketConfigResponse,
+        MarketRateDetailResponse, MarketRatesResponse, RateCashflowsResponse,
+        RateIndexDetailResponse, RateIndicesResponse, RateInstrumentResponse, TradeExpandRequest,
+        VolcubeCalibrateRequest, VolcubeCalibrateResponse, VolcubeIndicesResponse,
+        VolcubeInstrumentsResponse, VolcubeModelsResponse,
     },
     services::DemoService,
     state::AppState,
@@ -238,6 +239,16 @@ pub async fn get_event_types(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<EventTypesResponse>, ServerError> {
     let response = DemoService::get_event_types(&state)?;
+    Ok(Json(response))
+}
+
+/// Get market holidays
+///
+/// GET /api/market/holidays
+pub async fn get_holidays(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<HolidaysResponse>, ServerError> {
+    let response = DemoService::get_holidays(&state)?;
     Ok(Json(response))
 }
 
