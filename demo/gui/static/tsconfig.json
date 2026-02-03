@@ -13,6 +13,9 @@
     "isolatedModules": true,
     "noEmit": true,
 
+    /* Vue 3 Support */
+    "jsx": "preserve",
+
     /* Linting */
     "strict": true,
     "noUnusedLocals": true,
@@ -26,8 +29,12 @@
       "@/types/*": ["src/types/*"],
       "@/services/*": ["src/services/*"],
       "@/components/*": ["src/components/*"],
-      "@/utils/*": ["src/utils/*"]
+      "@/utils/*": ["src/utils/*"],
+      "@/stores/*": ["src/stores/*"],
+      "@/composables/*": ["src/composables/*"],
+      "@/views/*": ["src/views/*"],
+      "@/router/*": ["src/router/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.vue"]
 }

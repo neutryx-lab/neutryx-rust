@@ -1,0 +1,9 @@
+/* Import existing CSS variables from legacy stylesheet first */
+@import '../../../style.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Note: Custom component classes using CSS variables directly
+   since Tailwind theme extensions require build-time configuration */
