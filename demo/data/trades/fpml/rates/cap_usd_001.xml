@@ -11,13 +11,14 @@
     <tradeHeader>
       <partyTradeIdentifier>
         <partyReference href="FB_NA"/>
-        <tradeId tradeIdScheme="http://www.frictionalbank.com/trade-id">CAP-USD-001</tradeId>
+        <tradeId tradeIdScheme="http://www.frictionalbank.com/trade-id">T10003-01</tradeId>
       </partyTradeIdentifier>
       <partyTradeIdentifier>
         <partyReference href="MORGAN_STANLEY"/>
         <tradeId tradeIdScheme="http://www.morganstanley.com/trade-id">MS-2024-CAP-98765</tradeId>
       </partyTradeIdentifier>
       <tradeDate>2024-07-01</tradeDate>
+      <book>RATES_NA</book>
     </tradeHeader>
     <capFloor>
       <buyerPartyReference href="FB_NA"/>

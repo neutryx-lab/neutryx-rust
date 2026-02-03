@@ -11,13 +11,14 @@
     <tradeHeader>
       <partyTradeIdentifier>
         <partyReference href="FB_NA"/>
-        <tradeId tradeIdScheme="http://www.frictionalbank.com/trade-id">CDXIG-001</tradeId>
+        <tradeId tradeIdScheme="http://www.frictionalbank.com/trade-id">T40002-01</tradeId>
       </partyTradeIdentifier>
       <partyTradeIdentifier>
         <partyReference href="GOLDMAN"/>
         <tradeId tradeIdScheme="http://www.goldmansachs.com/trade-id">GS-2024-CDX-44444</tradeId>
       </partyTradeIdentifier>
       <tradeDate>2024-09-20</tradeDate>
+      <book>CREDIT_IG</book>
     </tradeHeader>
     <creditDefaultSwap>
       <generalTerms>

@@ -244,9 +244,16 @@ pub struct TradeHeader {
     pub trade_date: Option<Date>,
     /// Party references.
     pub parties: Vec<String>,
+    /// Counterparty name (extracted from party definitions).
+    pub counterparty: Option<String>,
+    /// Book identifier (if available).
+    pub book: Option<String>,
 }
 
 /// Parse trade header from FpML.
+///
+/// Extracts trade ID, date, party references, and resolves the counterparty
+/// from the party definitions in the document.
 pub fn parse_trade_header(xml: &str) -> Result<TradeHeader, FpmlError> {
     let nav = XmlNavigator::new(xml);
 
@@ -274,11 +281,59 @@ pub fn parse_trade_header(xml: &str) -> Result<TradeHeader, FpmlError> {
         }
     }
 
+    // Parse all party definitions to resolve counterparty
+    let all_parties = parse_parties(xml);
+
+    // Find counterparty (party that is not "our" bank - FB_NA, FrictionalBank, etc.)
+    let counterparty = find_counterparty(&parties, &all_parties);
+
+    // Extract book from tradeIdentifierExtension if present
+    let book = nav.find_text("book").or_else(|| nav.find_text("bookId"));
+
     Ok(TradeHeader {
         trade_id,
         trade_date,
         parties,
+        counterparty,
+        book,
     })
+}
+
+/// Find the counterparty from the list of party references.
+///
+/// Assumes our bank ID starts with "FB" or contains "FrictionalBank".
+fn find_counterparty(party_refs: &[String], all_parties: &[Party]) -> Option<String> {
+    for party_ref in party_refs {
+        // Skip our own bank
+        if party_ref.starts_with("FB") || party_ref.contains("FRICTIONAL") {
+            continue;
+        }
+
+        // Find the party definition
+        for party in all_parties {
+            if party.id == *party_ref {
+                if let Some(ref name) = party.name {
+                    return Some(name.clone());
+                }
+                // Fall back to party_id if name not available
+                if let Some(ref pid) = party.party_id {
+                    return Some(pid.clone());
+                }
+                return Some(party.id.clone());
+            }
+        }
+    }
+
+    // If no counterparty found, try to get any non-FB party
+    for party in all_parties {
+        if !party.id.starts_with("FB") && !party.id.contains("FRICTIONAL") {
+            if let Some(ref name) = party.name {
+                return Some(name.clone());
+            }
+        }
+    }
+
+    None
 }
 
 #[cfg(test)]

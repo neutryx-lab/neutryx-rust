@@ -78,12 +78,12 @@ async fn main() -> Result<()> {
         let app_state = Arc::new(AppState::new());
         info!("AppState initialised with curve cache (max 100) and fxvol cache (max 20)");
 
-        // Initialise graph state with sample portfolio for v1 compatibility
+        // Initialise graph state by loading FpML trades
         let graph_state = match GraphAppState::new_with_sample(50, 5) {
             Ok(state) => {
                 info!(
-                    "Sample portfolio created with {} trades",
-                    state.portfolio.trade_count()
+                    "Loaded {} FpML trades from demo/data/trades/fpml/",
+                    state.trade_count()
                 );
                 Arc::new(state)
             }

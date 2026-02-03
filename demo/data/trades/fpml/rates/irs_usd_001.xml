@@ -11,13 +11,14 @@
     <tradeHeader>
       <partyTradeIdentifier>
         <partyReference href="FB_NA"/>
-        <tradeId tradeIdScheme="http://www.frictionalbank.com/trade-id">IRS-USD-001</tradeId>
+        <tradeId tradeIdScheme="http://www.frictionalbank.com/trade-id">T10001-01</tradeId>
       </partyTradeIdentifier>
       <partyTradeIdentifier>
         <partyReference href="GOLDMAN"/>
         <tradeId tradeIdScheme="http://www.goldmansachs.com/trade-id">GS-2024-IRD-12345</tradeId>
       </partyTradeIdentifier>
       <tradeDate>2024-06-15</tradeDate>
+      <book>RATES_NA</book>
     </tradeHeader>
     <swap>
       <!-- Fixed Leg (Payer) -->

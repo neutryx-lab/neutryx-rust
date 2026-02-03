@@ -6,7 +6,7 @@
 //! - Swaptions
 //! - Cap/Floor
 
-use crate::common::{parse_date, parse_decimal, XmlNavigator};
+use crate::common::{parse_date, parse_decimal, parse_trade_header, XmlNavigator};
 use crate::error::FpmlError;
 use infra_master::{
     trade::{
@@ -20,16 +20,8 @@ use infra_master::{
 pub fn parse_swap(xml: &str) -> Result<Trade, FpmlError> {
     let nav = XmlNavigator::new(xml);
 
-    // Extract trade ID
-    let trade_id = nav
-        .find_text("tradeId")
-        .ok_or_else(|| FpmlError::MissingElement("tradeId".to_string()))?;
-
-    // Extract trade date
-    let trade_date = nav
-        .find_text("tradeDate")
-        .map(|d| parse_date(&d))
-        .transpose()?;
+    // Parse trade header (includes counterparty resolution)
+    let header = parse_trade_header(xml)?;
 
     // Extract swap section
     let swap_section = nav
@@ -49,13 +41,19 @@ pub fn parse_swap(xml: &str) -> Result<Trade, FpmlError> {
     // Determine if this is OIS or regular swap based on floating rate index
     let trade_type = determine_swap_type(&legs);
 
-    let metadata = TradeMetadata {
-        trade_date,
-        ..Default::default()
-    };
+    let mut metadata = TradeMetadata::new();
+    if let Some(td) = header.trade_date {
+        metadata = metadata.with_trade_date(td);
+    }
+    if let Some(cp) = header.counterparty {
+        metadata = metadata.with_counterparty(cp);
+    }
+    if let Some(book) = header.book {
+        metadata = metadata.with_book(book);
+    }
 
     Ok(Trade::builder()
-        .id(trade_id)
+        .id(header.trade_id)
         .legs(legs)
         .trade_type(trade_type)
         .metadata(metadata)
@@ -216,14 +214,8 @@ fn parse_currency(s: &str) -> Currency {
 pub fn parse_swaption(xml: &str) -> Result<Trade, FpmlError> {
     let nav = XmlNavigator::new(xml);
 
-    let trade_id = nav
-        .find_text("tradeId")
-        .ok_or_else(|| FpmlError::MissingElement("tradeId".to_string()))?;
-
-    let trade_date = nav
-        .find_text("tradeDate")
-        .map(|d| parse_date(&d))
-        .transpose()?;
+    // Parse trade header (includes counterparty resolution)
+    let header = parse_trade_header(xml)?;
 
     // Extract swaption section
     let swaption_section = nav
@@ -265,7 +257,7 @@ pub fn parse_swaption(xml: &str) -> Result<Trade, FpmlError> {
     let underlying_swap = if let Some(swap_section) = swaption_nav.extract_section("swap") {
         parse_swap(&format!(
             "<trade><tradeHeader><tradeId>{}</tradeId></tradeHeader>{}</trade>",
-            trade_id, swap_section
+            header.trade_id, swap_section
         ))?
     } else {
         return Err(FpmlError::MissingElement("underlying swap".to_string()));
@@ -277,16 +269,22 @@ pub fn parse_swaption(xml: &str) -> Result<Trade, FpmlError> {
         settlement_type,
     };
 
-    let metadata = TradeMetadata {
-        trade_date,
-        ..Default::default()
-    };
+    let mut metadata = TradeMetadata::new();
+    if let Some(td) = header.trade_date {
+        metadata = metadata.with_trade_date(td);
+    }
+    if let Some(cp) = header.counterparty {
+        metadata = metadata.with_counterparty(cp);
+    }
+    if let Some(book) = header.book {
+        metadata = metadata.with_book(book);
+    }
 
     // Get legs from underlying swap
     let legs: Vec<Leg> = underlying_swap.legs().cloned().collect();
 
     Ok(Trade::builder()
-        .id(trade_id)
+        .id(header.trade_id)
         .legs(legs)
         .trade_type(trade_type)
         .metadata(metadata)
@@ -297,14 +295,8 @@ pub fn parse_swaption(xml: &str) -> Result<Trade, FpmlError> {
 pub fn parse_cap_floor(xml: &str) -> Result<Trade, FpmlError> {
     let nav = XmlNavigator::new(xml);
 
-    let trade_id = nav
-        .find_text("tradeId")
-        .ok_or_else(|| FpmlError::MissingElement("tradeId".to_string()))?;
-
-    let trade_date = nav
-        .find_text("tradeDate")
-        .map(|d| parse_date(&d))
-        .transpose()?;
+    // Parse trade header (includes counterparty resolution)
+    let header = parse_trade_header(xml)?;
 
     // Extract capFloor section
     let capfloor_section = nav
@@ -366,13 +358,19 @@ pub fn parse_cap_floor(xml: &str) -> Result<Trade, FpmlError> {
 
     let leg = Leg::new(cashflows, Direction::Receiver, LegType::CapFloor, currency);
 
-    let metadata = TradeMetadata {
-        trade_date,
-        ..Default::default()
-    };
+    let mut metadata = TradeMetadata::new();
+    if let Some(td) = header.trade_date {
+        metadata = metadata.with_trade_date(td);
+    }
+    if let Some(cp) = header.counterparty {
+        metadata = metadata.with_counterparty(cp);
+    }
+    if let Some(book) = header.book {
+        metadata = metadata.with_book(book);
+    }
 
     Ok(Trade::builder()
-        .id(trade_id)
+        .id(header.trade_id)
         .legs(vec![leg])
         .trade_type(TradeType::CapFloor)
         .metadata(metadata)

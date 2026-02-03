@@ -11,6 +11,10 @@ server = "run -p service_gateway --bin neutryx-server"
 # Launch TUI Dashboard: cargo tui (TODO: implement demo_tui crate)
 # tui = "run -p demo_gui --bin demo-tui"
 #
+# Development with hot reloading (frontend changes reflected immediately):
+#   .\dev [-clean] [-nobuild]
+#   Access:  http://localhost:5173 (Vite proxies API to :8080)
+#
 # Build Optimization:
 # - target-cpu=native: Uses CPU-specific instructions (AVX2/AVX-512) for maximum performance
 # - Works with LTO and codegen-units=1 from Cargo.toml [profile.release]

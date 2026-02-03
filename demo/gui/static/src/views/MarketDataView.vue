@@ -56,6 +56,8 @@ const irVolQuotes = ref<IrVolQuote[]>([]);
 const fxVolQuotes = ref<FxVolQuote[]>([]);
 const events = ref<MarketEvent[]>([]);
 const selectedRateId = ref<string | null>(null);
+const selectedIrVolId = ref<string | null>(null);
+const selectedFxVolId = ref<string | null>(null);
 const currencyFilter = ref('');
 const sortColumn = ref('tenor');
 const sortDirection = ref<'asc' | 'desc'>('asc');
@@ -130,6 +132,8 @@ const summaryStats = computed(() => {
 });
 
 const selectedRate = computed(() => rates.value.find(r => r.id === selectedRateId.value) || null);
+const selectedIrVol = computed(() => irVolQuotes.value.find(q => q.id === selectedIrVolId.value) || null);
+const selectedFxVol = computed(() => fxVolQuotes.value.find(q => q.id === selectedFxVolId.value) || null);
 
 // Utility functions
 function formatRate(value: number, rateType: string): string {
@@ -275,6 +279,14 @@ function selectRate(rateId: string) {
   selectedRateId.value = selectedRateId.value === rateId ? null : rateId;
 }
 
+function selectIrVol(quoteId: string) {
+  selectedIrVolId.value = selectedIrVolId.value === quoteId ? null : quoteId;
+}
+
+function selectFxVol(quoteId: string) {
+  selectedFxVolId.value = selectedFxVolId.value === quoteId ? null : quoteId;
+}
+
 async function exportData(format: 'csv' | 'json') {
   try {
     const response = await fetch(`/api/market/export/${format}`);
@@ -296,6 +308,8 @@ async function exportData(format: 'csv' | 'json') {
 // Watch asset class changes
 watch(assetClass, (newClass) => {
   selectedRateId.value = null;
+  selectedIrVolId.value = null;
+  selectedFxVolId.value = null;
   if (newClass === 'IRVol' && irVolQuotes.value.length === 0) loadIrVolData();
   else if (newClass === 'FXVol' && fxVolQuotes.value.length === 0) loadFxVolData();
   else if (newClass === 'Events' && events.value.length === 0) loadEventsData();
@@ -454,7 +468,12 @@ onMounted(() => {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="quote in irVolQuotes" :key="quote.id" class="border-b border-[var(--glass-border)] hover:bg-[var(--surface-hover)] transition-colors">
+                  <tr
+                    v-for="quote in irVolQuotes"
+                    :key="quote.id"
+                    :class="['border-b border-[var(--glass-border)] cursor-pointer transition-colors', selectedIrVolId === quote.id ? 'bg-[var(--primary)]/10' : 'hover:bg-[var(--surface-hover)]']"
+                    @click="selectIrVol(quote.id)"
+                  >
                     <td class="py-3 px-3 text-[var(--text-primary)]">{{ quote.currency }}</td>
                     <td class="py-3 px-3 text-[var(--text-secondary)]">{{ quote.expiry }}</td>
                     <td class="py-3 px-3 text-[var(--text-secondary)]">{{ quote.tenor }}</td>
@@ -487,7 +506,12 @@ onMounted(() => {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="quote in fxVolQuotes" :key="quote.id" class="border-b border-[var(--glass-border)] hover:bg-[var(--surface-hover)] transition-colors">
+                  <tr
+                    v-for="quote in fxVolQuotes"
+                    :key="quote.id"
+                    :class="['border-b border-[var(--glass-border)] cursor-pointer transition-colors', selectedFxVolId === quote.id ? 'bg-[var(--primary)]/10' : 'hover:bg-[var(--surface-hover)]']"
+                    @click="selectFxVol(quote.id)"
+                  >
                     <td class="py-3 px-3 text-[var(--text-primary)] font-medium">{{ quote.pair }}</td>
                     <td class="py-3 px-3 text-[var(--text-secondary)]">{{ quote.expiryLabel }}</td>
                     <td class="py-3 px-3 text-right font-mono text-[var(--text-primary)]">{{ formatVol(quote.atmVol) }}</td>
@@ -542,51 +566,198 @@ onMounted(() => {
       <!-- Detail Panel -->
       <div>
         <div class="glass-card p-6">
-          <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Rate Details</h3>
+          <!-- Rate Details (Rates/FX) -->
+          <template v-if="assetClass === 'Rates' || assetClass === 'FX'">
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Rate Details</h3>
 
-          <div v-if="!selectedRate" class="text-center py-8">
-            <i class="fas fa-hand-pointer text-3xl text-[var(--text-muted)] mb-4"></i>
-            <p class="text-[var(--text-muted)]">Select a rate to view details</p>
-          </div>
+            <div v-if="!selectedRate" class="text-center py-8">
+              <i class="fas fa-hand-pointer text-3xl text-[var(--text-muted)] mb-4"></i>
+              <p class="text-[var(--text-muted)]">Select a rate to view details</p>
+            </div>
 
-          <template v-else>
-            <div class="space-y-3">
-              <div class="flex justify-between text-sm">
-                <span class="text-[var(--text-muted)]">ID</span>
-                <span class="text-[var(--text-primary)] font-mono">{{ selectedRate.id }}</span>
+            <template v-else>
+              <div class="space-y-3">
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">ID</span>
+                  <span class="text-[var(--text-primary)] font-mono">{{ selectedRate.id }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Currency</span>
+                  <span class="text-[var(--text-primary)]">{{ selectedRate.currency }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Tenor</span>
+                  <span class="text-[var(--text-primary)]">{{ selectedRate.tenor }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Type</span>
+                  <span class="text-[var(--text-primary)]">{{ selectedRate.rateType }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Value</span>
+                  <span :class="['font-mono', selectedRate.value >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]']">
+                    {{ formatRate(selectedRate.value, selectedRate.rateType) }}
+                  </span>
+                </div>
+                <div v-if="selectedRate.rateIndex" class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Index</span>
+                  <span class="text-[var(--text-primary)]">{{ selectedRate.rateIndex }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Source</span>
+                  <span class="text-[var(--text-primary)]">{{ selectedRate.source }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Status</span>
+                  <span :class="selectedRate.isStale ? 'text-yellow-400' : 'text-green-400'">
+                    {{ selectedRate.isStale ? 'Stale' : 'Live' }}
+                  </span>
+                </div>
               </div>
-              <div class="flex justify-between text-sm">
-                <span class="text-[var(--text-muted)]">Currency</span>
-                <span class="text-[var(--text-primary)]">{{ selectedRate.currency }}</span>
+            </template>
+          </template>
+
+          <!-- IR Vol Details -->
+          <template v-else-if="assetClass === 'IRVol'">
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">IR Vol Instrument</h3>
+
+            <div v-if="!selectedIrVol" class="text-center py-8">
+              <i class="fas fa-hand-pointer text-3xl text-[var(--text-muted)] mb-4"></i>
+              <p class="text-[var(--text-muted)]">Select a quote to view details</p>
+            </div>
+
+            <template v-else>
+              <div class="space-y-3">
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Instrument Type</span>
+                  <span class="text-[var(--text-primary)]">Swaption Vol</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Currency</span>
+                  <span class="text-[var(--text-primary)]">{{ selectedIrVol.currency }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Expiry</span>
+                  <span class="text-[var(--text-primary)]">{{ selectedIrVol.expiry }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Tenor</span>
+                  <span class="text-[var(--text-primary)]">{{ selectedIrVol.tenor }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">ATM Vol</span>
+                  <span class="text-[var(--text-primary)] font-mono">{{ formatVol(selectedIrVol.atmVol) }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Vol Type</span>
+                  <span class="text-[var(--text-primary)]">{{ selectedIrVol.volType }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Source</span>
+                  <span class="text-[var(--text-primary)]">{{ selectedIrVol.source }}</span>
+                </div>
               </div>
-              <div class="flex justify-between text-sm">
-                <span class="text-[var(--text-muted)]">Tenor</span>
-                <span class="text-[var(--text-primary)]">{{ selectedRate.tenor }}</span>
+
+              <!-- Underlying Instrument -->
+              <div class="mt-6 pt-4 border-t border-[var(--glass-border)]">
+                <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Underlying Instrument</h4>
+                <div class="space-y-2 text-xs">
+                  <div class="flex justify-between">
+                    <span class="text-[var(--text-muted)]">Type</span>
+                    <span class="text-[var(--text-primary)]">Interest Rate Swap</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-[var(--text-muted)]">Swap Tenor</span>
+                    <span class="text-[var(--text-primary)]">{{ selectedIrVol.tenor }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-[var(--text-muted)]">Index</span>
+                    <span class="text-[var(--text-primary)]">{{ selectedIrVol.currency === 'USD' ? 'SOFR' : selectedIrVol.currency === 'EUR' ? 'EURIBOR' : selectedIrVol.currency + ' OIS' }}</span>
+                  </div>
+                </div>
               </div>
-              <div class="flex justify-between text-sm">
-                <span class="text-[var(--text-muted)]">Type</span>
-                <span class="text-[var(--text-primary)]">{{ selectedRate.rateType }}</span>
+            </template>
+          </template>
+
+          <!-- FX Vol Details -->
+          <template v-else-if="assetClass === 'FXVol'">
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">FX Vol Instrument</h3>
+
+            <div v-if="!selectedFxVol" class="text-center py-8">
+              <i class="fas fa-hand-pointer text-3xl text-[var(--text-muted)] mb-4"></i>
+              <p class="text-[var(--text-muted)]">Select a quote to view details</p>
+            </div>
+
+            <template v-else>
+              <div class="space-y-3">
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Instrument Type</span>
+                  <span class="text-[var(--text-primary)]">FX Option Vol</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Currency Pair</span>
+                  <span class="text-[var(--text-primary)]">{{ selectedFxVol.pair }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Expiry</span>
+                  <span class="text-[var(--text-primary)]">{{ selectedFxVol.expiryLabel }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">ATM Vol</span>
+                  <span class="text-[var(--text-primary)] font-mono">{{ formatVol(selectedFxVol.atmVol) }}</span>
+                </div>
               </div>
-              <div class="flex justify-between text-sm">
-                <span class="text-[var(--text-muted)]">Value</span>
-                <span :class="['font-mono', selectedRate.value >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]']">
-                  {{ formatRate(selectedRate.value, selectedRate.rateType) }}
-                </span>
+
+              <!-- Smile Data -->
+              <div class="mt-6 pt-4 border-t border-[var(--glass-border)]">
+                <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Smile Parameters</h4>
+                <div class="space-y-2 text-xs">
+                  <div class="flex justify-between">
+                    <span class="text-[var(--text-muted)]">25D Risk Reversal</span>
+                    <span :class="['font-mono', selectedFxVol.rr25d >= 0 ? 'text-[var(--text-primary)]' : 'text-[var(--danger)]']">{{ formatVolBps(selectedFxVol.rr25d) }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-[var(--text-muted)]">25D Butterfly</span>
+                    <span class="text-[var(--text-primary)] font-mono">{{ formatVolBps(selectedFxVol.bf25d) }}</span>
+                  </div>
+                  <div v-if="selectedFxVol.rr10d !== undefined" class="flex justify-between">
+                    <span class="text-[var(--text-muted)]">10D Risk Reversal</span>
+                    <span :class="['font-mono', (selectedFxVol.rr10d ?? 0) >= 0 ? 'text-[var(--text-primary)]' : 'text-[var(--danger)]']">{{ formatVolBps(selectedFxVol.rr10d) }}</span>
+                  </div>
+                  <div v-if="selectedFxVol.bf10d !== undefined" class="flex justify-between">
+                    <span class="text-[var(--text-muted)]">10D Butterfly</span>
+                    <span class="text-[var(--text-primary)] font-mono">{{ formatVolBps(selectedFxVol.bf10d) }}</span>
+                  </div>
+                </div>
               </div>
-              <div v-if="selectedRate.rateIndex" class="flex justify-between text-sm">
-                <span class="text-[var(--text-muted)]">Index</span>
-                <span class="text-[var(--text-primary)]">{{ selectedRate.rateIndex }}</span>
+
+              <!-- Underlying Instrument -->
+              <div class="mt-4 pt-4 border-t border-[var(--glass-border)]">
+                <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Underlying Instrument</h4>
+                <div class="space-y-2 text-xs">
+                  <div class="flex justify-between">
+                    <span class="text-[var(--text-muted)]">Type</span>
+                    <span class="text-[var(--text-primary)]">FX Vanilla Option</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-[var(--text-muted)]">Base Currency</span>
+                    <span class="text-[var(--text-primary)]">{{ selectedFxVol.pair.slice(0, 3) }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-[var(--text-muted)]">Quote Currency</span>
+                    <span class="text-[var(--text-primary)]">{{ selectedFxVol.pair.slice(3, 6) }}</span>
+                  </div>
+                </div>
               </div>
-              <div class="flex justify-between text-sm">
-                <span class="text-[var(--text-muted)]">Source</span>
-                <span class="text-[var(--text-primary)]">{{ selectedRate.source }}</span>
-              </div>
-              <div class="flex justify-between text-sm">
-                <span class="text-[var(--text-muted)]">Status</span>
-                <span :class="selectedRate.isStale ? 'text-yellow-400' : 'text-green-400'">
-                  {{ selectedRate.isStale ? 'Stale' : 'Live' }}
-                </span>
-              </div>
+            </template>
+          </template>
+
+          <!-- Events (no detail panel) -->
+          <template v-else-if="assetClass === 'Events'">
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Event Info</h3>
+            <div class="text-center py-8">
+              <i class="fas fa-calendar-alt text-3xl text-[var(--text-muted)] mb-4"></i>
+              <p class="text-[var(--text-muted)]">Event details shown in table</p>
             </div>
           </template>
         </div>

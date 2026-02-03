@@ -11,13 +11,14 @@
     <tradeHeader>
       <partyTradeIdentifier>
         <partyReference href="FB_NA"/>
-        <tradeId tradeIdScheme="http://www.frictionalbank.com/trade-id">SWPTN-USD-001</tradeId>
+        <tradeId tradeIdScheme="http://www.frictionalbank.com/trade-id">T10002-01</tradeId>
       </partyTradeIdentifier>
       <partyTradeIdentifier>
         <partyReference href="GOLDMAN"/>
         <tradeId tradeIdScheme="http://www.goldmansachs.com/trade-id">GS-2024-OPT-54321</tradeId>
       </partyTradeIdentifier>
       <tradeDate>2024-08-15</tradeDate>
+      <book>RATES_NA</book>
     </tradeHeader>
     <swaption>
       <buyerPartyReference href="FB_NA"/>

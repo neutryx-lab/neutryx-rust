@@ -11,13 +11,14 @@
     <tradeHeader>
       <partyTradeIdentifier>
         <partyReference href="FB_NA"/>
-        <tradeId tradeIdScheme="http://www.frictionalbank.com/trade-id">EQOPT-AAPL-001</tradeId>
+        <tradeId tradeIdScheme="http://www.frictionalbank.com/trade-id">T30001-01</tradeId>
       </partyTradeIdentifier>
       <partyTradeIdentifier>
         <partyReference href="MORGAN_STANLEY"/>
         <tradeId tradeIdScheme="http://www.morganstanley.com/trade-id">MS-2024-EQO-55555</tradeId>
       </partyTradeIdentifier>
       <tradeDate>2024-11-01</tradeDate>
+      <book>EQUITY_DERIVS</book>
     </tradeHeader>
     <equityOption>
       <buyerPartyReference href="FB_NA"/>

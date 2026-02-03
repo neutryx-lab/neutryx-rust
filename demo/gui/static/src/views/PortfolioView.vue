@@ -11,6 +11,66 @@ const trades = ref<TradeSummary[]>([]);
 const statistics = ref<TradeStatistics | null>(null);
 const isLoading = ref(false);
 const selectedTrades = ref<Set<string>>(new Set());
+const showFilters = ref(false);
+
+// Filter state
+const filters = ref({
+  id: '',
+  instrument_type: '',
+  book: '',
+  counterparty: '',
+  currency: '',
+  notionalMin: '',
+  notionalMax: '',
+});
+
+// Sorting state
+type SortKey = 'id' | 'instrument_type' | 'counterparty' | 'book' | 'currency' | 'notional' | 'maturity';
+const sortKey = ref<SortKey>('id');
+const sortOrder = ref<'asc' | 'desc'>('asc');
+
+// Computed - filter options (unique values from data)
+const filterOptions = computed(() => ({
+  instrumentTypes: [...new Set(trades.value.map(t => t.instrument_type))].sort(),
+  books: [...new Set(trades.value.map(t => t.book))].sort(),
+  counterparties: [...new Set(trades.value.map(t => t.counterparty))].sort(),
+  currencies: [...new Set(trades.value.map(t => t.currency))].sort(),
+}));
+
+// Computed - filtered trades
+const filteredTrades = computed(() => {
+  return trades.value.filter(trade => {
+    // Text filters (case-insensitive contains)
+    if (filters.value.id && !trade.id.toLowerCase().includes(filters.value.id.toLowerCase())) {
+      return false;
+    }
+    // Dropdown filters (exact match)
+    if (filters.value.instrument_type && trade.instrument_type !== filters.value.instrument_type) {
+      return false;
+    }
+    if (filters.value.book && trade.book !== filters.value.book) {
+      return false;
+    }
+    if (filters.value.counterparty && trade.counterparty !== filters.value.counterparty) {
+      return false;
+    }
+    if (filters.value.currency && trade.currency !== filters.value.currency) {
+      return false;
+    }
+    // Notional range filters
+    if (filters.value.notionalMin && trade.notional < Number(filters.value.notionalMin)) {
+      return false;
+    }
+    if (filters.value.notionalMax && trade.notional > Number(filters.value.notionalMax)) {
+      return false;
+    }
+    return true;
+  });
+});
+
+const activeFilterCount = computed(() => {
+  return Object.values(filters.value).filter(v => v !== '').length;
+});
 
 // Computed
 const totalNotional = computed(() => statistics.value?.total_notional ?? 0);
@@ -31,6 +91,28 @@ const summaryStats = computed(() => [
   },
 ]);
 
+const sortedTrades = computed(() => {
+  const sorted = [...filteredTrades.value];
+  sorted.sort((a, b) => {
+    let aVal: string | number = a[sortKey.value];
+    let bVal: string | number = b[sortKey.value];
+
+    // Handle numeric sorting for notional
+    if (sortKey.value === 'notional') {
+      aVal = Number(aVal);
+      bVal = Number(bVal);
+    } else {
+      aVal = String(aVal).toLowerCase();
+      bVal = String(bVal).toLowerCase();
+    }
+
+    if (aVal < bVal) return sortOrder.value === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortOrder.value === 'asc' ? 1 : -1;
+    return 0;
+  });
+  return sorted;
+});
+
 // Utility functions
 function formatCurrency(value: number): string {
   const absValue = Math.abs(value);
@@ -42,11 +124,9 @@ function formatCurrency(value: number): string {
   return `$${value.toFixed(0)}`;
 }
 
-function formatExpiry(expiry: number): string {
-  if (expiry >= 1) {
-    return `${expiry.toFixed(1)}Y`;
-  }
-  return `${(expiry * 12).toFixed(0)}M`;
+function formatMaturity(maturity: string): string {
+  if (!maturity || maturity === 'N/A') return 'N/A';
+  return maturity;
 }
 
 function toggleTradeSelection(id: string) {
@@ -63,6 +143,36 @@ function selectAllTrades() {
   } else {
     selectedTrades.value = new Set(trades.value.map(t => t.id));
   }
+}
+
+function handleSort(key: SortKey) {
+  if (sortKey.value === key) {
+    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
+  } else {
+    sortKey.value = key;
+    sortOrder.value = 'asc';
+  }
+}
+
+function getSortIcon(key: SortKey): string {
+  if (sortKey.value !== key) return 'fa-sort';
+  return sortOrder.value === 'asc' ? 'fa-sort-up' : 'fa-sort-down';
+}
+
+function clearFilters() {
+  filters.value = {
+    id: '',
+    instrument_type: '',
+    book: '',
+    counterparty: '',
+    currency: '',
+    notionalMin: '',
+    notionalMax: '',
+  };
+}
+
+function toggleFilters() {
+  showFilters.value = !showFilters.value;
 }
 
 async function loadData() {
@@ -109,13 +219,107 @@ onMounted(() => loadData());
     <!-- Trade Table -->
     <div class="glass-card p-6 mb-6">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold text-[var(--text-primary)]">FpML Trades</h3>
+        <h3 class="text-lg font-semibold text-[var(--text-primary)]">Transaction View</h3>
         <div class="flex items-center gap-2">
+          <button
+            class="btn-secondary text-sm"
+            :class="{ 'bg-[var(--primary)]/20 border-[var(--primary)]': showFilters || activeFilterCount > 0 }"
+            @click="toggleFilters"
+          >
+            <i class="fas fa-filter mr-2"></i>
+            Filter
+            <span v-if="activeFilterCount > 0" class="ml-1 px-1.5 py-0.5 rounded-full bg-[var(--primary)] text-white text-xs">
+              {{ activeFilterCount }}
+            </span>
+          </button>
           <button class="btn-secondary text-sm" @click="loadData" :disabled="isLoading">
             <i class="fas fa-sync-alt mr-2" :class="{ 'animate-spin': isLoading }"></i>Refresh
           </button>
         </div>
       </div>
+
+      <!-- Filter Panel -->
+      <Transition name="slide">
+        <div v-if="showFilters" class="filter-panel mb-4 p-4 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)]">
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <!-- Trade ID -->
+            <div>
+              <label class="block text-xs text-[var(--text-muted)] mb-1">Trade ID</label>
+              <input
+                v-model="filters.id"
+                type="text"
+                placeholder="Search..."
+                class="filter-input"
+              />
+            </div>
+
+            <!-- Instrument Type -->
+            <div>
+              <label class="block text-xs text-[var(--text-muted)] mb-1">Instrument Type</label>
+              <select v-model="filters.instrument_type" class="filter-input">
+                <option value="">All</option>
+                <option v-for="opt in filterOptions.instrumentTypes" :key="opt" :value="opt">{{ opt }}</option>
+              </select>
+            </div>
+
+            <!-- Book -->
+            <div>
+              <label class="block text-xs text-[var(--text-muted)] mb-1">Book</label>
+              <select v-model="filters.book" class="filter-input">
+                <option value="">All</option>
+                <option v-for="opt in filterOptions.books" :key="opt" :value="opt">{{ opt }}</option>
+              </select>
+            </div>
+
+            <!-- Counterparty -->
+            <div>
+              <label class="block text-xs text-[var(--text-muted)] mb-1">Counterparty</label>
+              <select v-model="filters.counterparty" class="filter-input">
+                <option value="">All</option>
+                <option v-for="opt in filterOptions.counterparties" :key="opt" :value="opt">{{ opt }}</option>
+              </select>
+            </div>
+
+            <!-- Currency -->
+            <div>
+              <label class="block text-xs text-[var(--text-muted)] mb-1">Currency</label>
+              <select v-model="filters.currency" class="filter-input">
+                <option value="">All</option>
+                <option v-for="opt in filterOptions.currencies" :key="opt" :value="opt">{{ opt }}</option>
+              </select>
+            </div>
+
+            <!-- Notional Range -->
+            <div>
+              <label class="block text-xs text-[var(--text-muted)] mb-1">Notional Range</label>
+              <div class="flex gap-1">
+                <input
+                  v-model="filters.notionalMin"
+                  type="number"
+                  placeholder="Min"
+                  class="filter-input w-1/2"
+                />
+                <input
+                  v-model="filters.notionalMax"
+                  type="number"
+                  placeholder="Max"
+                  class="filter-input w-1/2"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="flex justify-end mt-3">
+            <button
+              v-if="activeFilterCount > 0"
+              class="text-sm text-[var(--primary)] hover:underline"
+              @click="clearFilters"
+            >
+              <i class="fas fa-times mr-1"></i>Clear all filters
+            </button>
+          </div>
+        </div>
+      </Transition>
 
       <div v-if="isLoading" class="flex items-center justify-center py-12">
         <i class="fas fa-spinner fa-spin text-2xl text-[var(--primary)]"></i>
@@ -137,19 +341,38 @@ onMounted(() => loadData());
                   @change="selectAllTrades"
                 />
               </th>
-              <th class="p-3">Trade ID</th>
-              <th class="p-3">Instrument Type</th>
-              <th class="p-3">Currency</th>
-              <th class="p-3 text-right">Notional</th>
-              <th class="p-3 text-right">Expiry</th>
+              <th class="p-3 sortable-header" @click="handleSort('id')">
+                Trade ID <i class="fas" :class="getSortIcon('id')"></i>
+              </th>
+              <th class="p-3 sortable-header" @click="handleSort('instrument_type')">
+                Instrument Type <i class="fas" :class="getSortIcon('instrument_type')"></i>
+              </th>
+              <th class="p-3 sortable-header" @click="handleSort('book')">
+                Book <i class="fas" :class="getSortIcon('book')"></i>
+              </th>
+              <th class="p-3 sortable-header" @click="handleSort('counterparty')">
+                Counterparty <i class="fas" :class="getSortIcon('counterparty')"></i>
+              </th>
+              <th class="p-3 sortable-header" @click="handleSort('currency')">
+                Currency <i class="fas" :class="getSortIcon('currency')"></i>
+              </th>
+              <th class="p-3 text-right sortable-header" @click="handleSort('notional')">
+                Notional <i class="fas" :class="getSortIcon('notional')"></i>
+              </th>
+              <th class="p-3 text-right sortable-header" @click="handleSort('maturity')">
+                Maturity <i class="fas" :class="getSortIcon('maturity')"></i>
+              </th>
               <th class="p-3"></th>
             </tr>
           </thead>
           <tbody>
             <tr
-              v-for="trade in trades"
+              v-for="trade in sortedTrades"
               :key="trade.id"
-              class="border-b border-[var(--glass-border)] hover:bg-[var(--surface-hover)] transition-colors"
+              :class="[
+                'border-b border-[var(--glass-border)] hover:bg-[var(--surface-hover)] transition-colors',
+                selectedTrades.has(trade.id) ? 'bg-[var(--primary)]/10' : ''
+              ]"
             >
               <td class="p-3">
                 <input
@@ -164,9 +387,11 @@ onMounted(() => loadData());
                   {{ trade.instrument_type }}
                 </span>
               </td>
+              <td class="p-3 text-sm text-[var(--text-secondary)]">{{ trade.book }}</td>
+              <td class="p-3 text-sm text-[var(--text-secondary)]">{{ trade.counterparty }}</td>
               <td class="p-3 text-sm text-[var(--text-secondary)]">{{ trade.currency }}</td>
               <td class="p-3 text-sm text-right text-[var(--text-primary)]">{{ formatCurrency(trade.notional) }}</td>
-              <td class="p-3 text-sm text-right text-[var(--text-muted)]">{{ formatExpiry(trade.expiry) }}</td>
+              <td class="p-3 text-sm text-right text-[var(--text-muted)]">{{ formatMaturity(trade.maturity) }}</td>
               <td class="p-3">
                 <button class="text-[var(--text-muted)] hover:text-[var(--text-primary)]">
                   <i class="fas fa-ellipsis-v"></i>
@@ -178,47 +403,14 @@ onMounted(() => loadData());
       </div>
 
       <div class="flex items-center justify-between mt-4 text-sm text-[var(--text-muted)]">
-        <span>Showing {{ trades.length }} trades</span>
+        <span>
+          Showing {{ sortedTrades.length }} of {{ trades.length }} trades
+          <span v-if="activeFilterCount > 0" class="text-[var(--primary)]">(filtered)</span>
+        </span>
         <span>{{ selectedTrades.size }} selected</span>
       </div>
     </div>
 
-    <!-- Statistics Breakdown -->
-    <div v-if="statistics" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <!-- By Instrument Type -->
-      <div class="glass-card p-6">
-        <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">By Instrument Type</h3>
-        <div class="space-y-3">
-          <div
-            v-for="(count, type) in statistics.by_instrument_type"
-            :key="type"
-            class="flex items-center justify-between"
-          >
-            <span class="text-sm text-[var(--text-secondary)]">{{ type }}</span>
-            <span class="px-2 py-1 rounded text-xs font-medium bg-[var(--surface)] text-[var(--text-primary)]">
-              {{ count }}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <!-- By Currency -->
-      <div class="glass-card p-6">
-        <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">By Currency</h3>
-        <div class="space-y-3">
-          <div
-            v-for="(count, currency) in statistics.by_currency"
-            :key="currency"
-            class="flex items-center justify-between"
-          >
-            <span class="text-sm text-[var(--text-secondary)]">{{ currency }}</span>
-            <span class="px-2 py-1 rounded text-xs font-medium bg-[var(--surface)] text-[var(--text-primary)]">
-              {{ count }}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -245,5 +437,71 @@ onMounted(() => loadData());
 
 .btn-secondary:hover {
   background: var(--surface-hover);
+}
+
+.sortable-header {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.2s;
+}
+
+.sortable-header:hover {
+  color: var(--text-primary);
+}
+
+.sortable-header i {
+  margin-left: 0.25rem;
+  font-size: 0.75rem;
+  opacity: 0.5;
+}
+
+.sortable-header:hover i,
+.sortable-header i.fa-sort-up,
+.sortable-header i.fa-sort-down {
+  opacity: 1;
+}
+
+/* Filter inputs */
+.filter-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  border-radius: 0.375rem;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.filter-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+.filter-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Slide transition */
+.slide-enter-active,
+.slide-leave-active {
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+
+.slide-enter-from,
+.slide-leave-to {
+  opacity: 0;
+  max-height: 0;
+  margin-bottom: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.slide-enter-to,
+.slide-leave-from {
+  opacity: 1;
+  max-height: 200px;
 }
 </style>

@@ -3431,6 +3431,7 @@ dependencies = [
 name = "service_gateway"
 version = "0.1.0"
 dependencies = [
+ "adapter_fpml",
  "adapter_loader",
  "anyhow",
  "axum",

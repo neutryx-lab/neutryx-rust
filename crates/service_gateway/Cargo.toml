@@ -45,6 +45,7 @@ pricer_models = { path = "../pricer_models", features = ["serde", "global-bootst
 pricer_pricing = { path = "../pricer_pricing" }
 pricer_risk = { path = "../pricer_risk" }
 adapter_loader = { path = "../adapter_loader", features = ["curve-builder"] }
+adapter_fpml = { path = "../adapter_fpml" }
 infra_config = { path = "../infra_config" }
 infra_master = { path = "../infra_master", features = ["serde"] }
 infra_store = { path = "../infra_store" }

@@ -11,13 +11,14 @@
     <tradeHeader>
       <partyTradeIdentifier>
         <partyReference href="FB_EUROPE"/>
-        <tradeId tradeIdScheme="http://www.frictionalbank.com/trade-id">FXFWD-EURUSD-001</tradeId>
+        <tradeId tradeIdScheme="http://www.frictionalbank.com/trade-id">T20001-01</tradeId>
       </partyTradeIdentifier>
       <partyTradeIdentifier>
         <partyReference href="BNP"/>
         <tradeId tradeIdScheme="http://www.bnpparibas.com/trade-id">BNP-2025-FX-11111</tradeId>
       </partyTradeIdentifier>
       <tradeDate>2025-01-15</tradeDate>
+      <book>FX_G10</book>
     </tradeHeader>
     <fxSingleLeg>
       <exchangedCurrency1>

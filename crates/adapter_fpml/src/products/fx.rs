@@ -5,7 +5,7 @@
 //! - FX Swap (fxSwap)
 //! - FX Option (fxOption)
 
-use crate::common::{parse_date, parse_decimal, XmlNavigator};
+use crate::common::{parse_date, parse_decimal, parse_trade_header, XmlNavigator};
 use crate::error::FpmlError;
 use infra_master::{
     trade::{
@@ -19,14 +19,8 @@ use infra_master::{
 pub fn parse_fx_forward(xml: &str) -> Result<Trade, FpmlError> {
     let nav = XmlNavigator::new(xml);
 
-    let trade_id = nav
-        .find_text("tradeId")
-        .ok_or_else(|| FpmlError::MissingElement("tradeId".to_string()))?;
-
-    let trade_date = nav
-        .find_text("tradeDate")
-        .map(|d| parse_date(&d))
-        .transpose()?;
+    // Parse trade header (includes counterparty resolution)
+    let header = parse_trade_header(xml)?;
 
     // Extract fxSingleLeg section
     let fx_section = nav
@@ -115,13 +109,19 @@ pub fn parse_fx_forward(xml: &str) -> Result<Trade, FpmlError> {
         currency2,
     );
 
-    let metadata = TradeMetadata {
-        trade_date,
-        ..Default::default()
-    };
+    let mut metadata = TradeMetadata::new();
+    if let Some(td) = header.trade_date {
+        metadata = metadata.with_trade_date(td);
+    }
+    if let Some(cp) = header.counterparty {
+        metadata = metadata.with_counterparty(cp);
+    }
+    if let Some(book) = header.book {
+        metadata = metadata.with_book(book);
+    }
 
     Ok(Trade::builder()
-        .id(trade_id)
+        .id(header.trade_id)
         .legs(vec![leg1, leg2])
         .trade_type(TradeType::FxForward)
         .metadata(metadata)
@@ -132,14 +132,8 @@ pub fn parse_fx_forward(xml: &str) -> Result<Trade, FpmlError> {
 pub fn parse_fx_swap(xml: &str) -> Result<Trade, FpmlError> {
     let nav = XmlNavigator::new(xml);
 
-    let trade_id = nav
-        .find_text("tradeId")
-        .ok_or_else(|| FpmlError::MissingElement("tradeId".to_string()))?;
-
-    let trade_date = nav
-        .find_text("tradeDate")
-        .map(|d| parse_date(&d))
-        .transpose()?;
+    // Parse trade header (includes counterparty resolution)
+    let header = parse_trade_header(xml)?;
 
     // Extract fxSwap section
     let fx_section = nav
@@ -232,13 +226,19 @@ pub fn parse_fx_swap(xml: &str) -> Result<Trade, FpmlError> {
         ));
     }
 
-    let metadata = TradeMetadata {
-        trade_date,
-        ..Default::default()
-    };
+    let mut metadata = TradeMetadata::new();
+    if let Some(td) = header.trade_date {
+        metadata = metadata.with_trade_date(td);
+    }
+    if let Some(cp) = header.counterparty {
+        metadata = metadata.with_counterparty(cp);
+    }
+    if let Some(book) = header.book {
+        metadata = metadata.with_book(book);
+    }
 
     Ok(Trade::builder()
-        .id(trade_id)
+        .id(header.trade_id)
         .legs(legs)
         .trade_type(TradeType::FxSwap)
         .metadata(metadata)
@@ -249,14 +249,8 @@ pub fn parse_fx_swap(xml: &str) -> Result<Trade, FpmlError> {
 pub fn parse_fx_option(xml: &str) -> Result<Trade, FpmlError> {
     let nav = XmlNavigator::new(xml);
 
-    let trade_id = nav
-        .find_text("tradeId")
-        .ok_or_else(|| FpmlError::MissingElement("tradeId".to_string()))?;
-
-    let trade_date = nav
-        .find_text("tradeDate")
-        .map(|d| parse_date(&d))
-        .transpose()?;
+    // Parse trade header (includes counterparty resolution)
+    let header = parse_trade_header(xml)?;
 
     // Extract fxOption section
     let option_section = nav
@@ -358,13 +352,19 @@ pub fn parse_fx_option(xml: &str) -> Result<Trade, FpmlError> {
         expiry_date,
     };
 
-    let metadata = TradeMetadata {
-        trade_date,
-        ..Default::default()
-    };
+    let mut metadata = TradeMetadata::new();
+    if let Some(td) = header.trade_date {
+        metadata = metadata.with_trade_date(td);
+    }
+    if let Some(cp) = header.counterparty {
+        metadata = metadata.with_counterparty(cp);
+    }
+    if let Some(book) = header.book {
+        metadata = metadata.with_book(book);
+    }
 
     Ok(Trade::builder()
-        .id(trade_id)
+        .id(header.trade_id)
         .legs(vec![leg])
         .trade_type(trade_type)
         .metadata(metadata)

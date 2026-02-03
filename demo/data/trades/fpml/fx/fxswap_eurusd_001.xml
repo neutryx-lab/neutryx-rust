@@ -11,13 +11,14 @@
     <tradeHeader>
       <partyTradeIdentifier>
         <partyReference href="FB_NA"/>
-        <tradeId tradeIdScheme="http://www.frictionalbank.com/trade-id">FXSWAP-EURUSD-001</tradeId>
+        <tradeId tradeIdScheme="http://www.frictionalbank.com/trade-id">T20003-01</tradeId>
       </partyTradeIdentifier>
       <partyTradeIdentifier>
         <partyReference href="GOLDMAN"/>
         <tradeId tradeIdScheme="http://www.goldmansachs.com/trade-id">GS-2025-FXS-22222</tradeId>
       </partyTradeIdentifier>
       <tradeDate>2025-02-01</tradeDate>
+      <book>FX_G10</book>
     </tradeHeader>
     <fxSwap>
       <!-- Near Leg: Buy EUR, Sell USD -->

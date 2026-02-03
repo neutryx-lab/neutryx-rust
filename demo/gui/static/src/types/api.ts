@@ -524,7 +524,12 @@ export interface TradeSummary {
   instrument_type: string;
   currency: string;
   notional: number;
-  expiry: number;
+  /** Maturity date (last cashflow date) as ISO 8601 string, e.g., "2025-07-15" */
+  maturity: string;
+  /** Counterparty name */
+  counterparty: string;
+  /** Trading book */
+  book: string;
 }
 
 export interface TradeStatistics {

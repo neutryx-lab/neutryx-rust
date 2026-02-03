@@ -11,13 +11,14 @@
     <tradeHeader>
       <partyTradeIdentifier>
         <partyReference href="FB_UK"/>
-        <tradeId tradeIdScheme="http://www.frictionalbank.com/trade-id">COMSWAP-BRENT-001</tradeId>
+        <tradeId tradeIdScheme="http://www.frictionalbank.com/trade-id">T50001-01</tradeId>
       </partyTradeIdentifier>
       <partyTradeIdentifier>
         <partyReference href="BARCLAYS"/>
         <tradeId tradeIdScheme="http://www.barclays.com/trade-id">BARC-2024-COM-66666</tradeId>
       </partyTradeIdentifier>
       <tradeDate>2024-07-01</tradeDate>
+      <book>COMMODITIES</book>
     </tradeHeader>
     <commoditySwap>
       <effectiveDate>

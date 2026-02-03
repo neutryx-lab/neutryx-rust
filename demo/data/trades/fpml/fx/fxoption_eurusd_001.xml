@@ -11,13 +11,14 @@
     <tradeHeader>
       <partyTradeIdentifier>
         <partyReference href="FB_NA"/>
-        <tradeId tradeIdScheme="http://www.frictionalbank.com/trade-id">FXOPT-EURUSD-001</tradeId>
+        <tradeId tradeIdScheme="http://www.frictionalbank.com/trade-id">T20002-01</tradeId>
       </partyTradeIdentifier>
       <partyTradeIdentifier>
         <partyReference href="GOLDMAN"/>
         <tradeId tradeIdScheme="http://www.goldmansachs.com/trade-id">GS-2024-FXO-77777</tradeId>
       </partyTradeIdentifier>
       <tradeDate>2024-10-15</tradeDate>
+      <book>FX_G10</book>
     </tradeHeader>
     <fxOption>
       <buyerPartyReference href="FB_NA"/>

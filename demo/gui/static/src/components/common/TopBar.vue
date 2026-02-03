@@ -6,7 +6,7 @@ import { useToast } from '@/composables/useToast';
 const props = defineProps<{
   title: string;
   breadcrumb: string;
-});
+}>();
 
 const configStore = useConfigStore();
 const toast = useToast();
