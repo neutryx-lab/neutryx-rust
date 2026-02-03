@@ -1,0 +1,1013 @@
+{
+  "$schema": "./schemas/instruments.schema.json",
+  "metadata": {
+    "description": "Instrument definitions for curve calibration",
+    "version": "1.0",
+    "sections": {
+      "USD": "USD Instruments (SOFR-based)",
+      "EUR": "EUR Instruments (ESTR + EURIBOR)",
+      "GBP": "GBP Instruments (SONIA-based)",
+      "JPY": "JPY Instruments (TONA-based)",
+      "CHF": "CHF Instruments (SARON-based)"
+    }
+  },
+  "instruments": [
+    {
+      "id": "USD-Depo-ON",
+      "currency": "USD",
+      "rateType": "Deposit",
+      "tenor": "O/N",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-Depo-TN",
+      "currency": "USD",
+      "rateType": "Deposit",
+      "tenor": "T/N",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-Depo-1W",
+      "currency": "USD",
+      "rateType": "Deposit",
+      "tenor": "1W",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-Depo-2W",
+      "currency": "USD",
+      "rateType": "Deposit",
+      "tenor": "2W",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-Depo-1M",
+      "currency": "USD",
+      "rateType": "Deposit",
+      "tenor": "1M",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-Depo-2M",
+      "currency": "USD",
+      "rateType": "Deposit",
+      "tenor": "2M",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-Depo-3M",
+      "currency": "USD",
+      "rateType": "Deposit",
+      "tenor": "3M",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-OIS-1M",
+      "currency": "USD",
+      "rateType": "Ois",
+      "tenor": "1M",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-OIS-3M",
+      "currency": "USD",
+      "rateType": "Ois",
+      "tenor": "3M",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-OIS-6M",
+      "currency": "USD",
+      "rateType": "Ois",
+      "tenor": "6M",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-OIS-9M",
+      "currency": "USD",
+      "rateType": "Ois",
+      "tenor": "9M",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-OIS-1Y",
+      "currency": "USD",
+      "rateType": "Ois",
+      "tenor": "1Y",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-OIS-18M",
+      "currency": "USD",
+      "rateType": "Ois",
+      "tenor": "18M",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-OIS-2Y",
+      "currency": "USD",
+      "rateType": "Ois",
+      "tenor": "2Y",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-OIS-3Y",
+      "currency": "USD",
+      "rateType": "Ois",
+      "tenor": "3Y",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-OIS-4Y",
+      "currency": "USD",
+      "rateType": "Ois",
+      "tenor": "4Y",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-OIS-5Y",
+      "currency": "USD",
+      "rateType": "Ois",
+      "tenor": "5Y",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-OIS-6Y",
+      "currency": "USD",
+      "rateType": "Ois",
+      "tenor": "6Y",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-OIS-7Y",
+      "currency": "USD",
+      "rateType": "Ois",
+      "tenor": "7Y",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-OIS-10Y",
+      "currency": "USD",
+      "rateType": "Ois",
+      "tenor": "10Y",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-OIS-12Y",
+      "currency": "USD",
+      "rateType": "Ois",
+      "tenor": "12Y",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-OIS-15Y",
+      "currency": "USD",
+      "rateType": "Ois",
+      "tenor": "15Y",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-OIS-20Y",
+      "currency": "USD",
+      "rateType": "Ois",
+      "tenor": "20Y",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-OIS-25Y",
+      "currency": "USD",
+      "rateType": "Ois",
+      "tenor": "25Y",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-OIS-30Y",
+      "currency": "USD",
+      "rateType": "Ois",
+      "tenor": "30Y",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-OIS-40Y",
+      "currency": "USD",
+      "rateType": "Ois",
+      "tenor": "40Y",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-OIS-50Y",
+      "currency": "USD",
+      "rateType": "Ois",
+      "tenor": "50Y",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-FRA-1x4",
+      "currency": "USD",
+      "rateType": "Fra",
+      "tenor": "1x4",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-FRA-2x5",
+      "currency": "USD",
+      "rateType": "Fra",
+      "tenor": "2x5",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-FRA-3x6",
+      "currency": "USD",
+      "rateType": "Fra",
+      "tenor": "3x6",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-FRA-6x9",
+      "currency": "USD",
+      "rateType": "Fra",
+      "tenor": "6x9",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "USD-FRA-9x12",
+      "currency": "USD",
+      "rateType": "Fra",
+      "tenor": "9x12",
+      "rateIndex": "USD-SOFR"
+    },
+    {
+      "id": "EUR-Depo-ON",
+      "currency": "EUR",
+      "rateType": "Deposit",
+      "tenor": "O/N",
+      "rateIndex": "EUR-ESTR"
+    },
+    {
+      "id": "EUR-Depo-TN",
+      "currency": "EUR",
+      "rateType": "Deposit",
+      "tenor": "T/N",
+      "rateIndex": "EUR-ESTR"
+    },
+    {
+      "id": "EUR-Depo-1W",
+      "currency": "EUR",
+      "rateType": "Deposit",
+      "tenor": "1W",
+      "rateIndex": "EUR-ESTR"
+    },
+    {
+      "id": "EUR-Depo-1M",
+      "currency": "EUR",
+      "rateType": "Deposit",
+      "tenor": "1M",
+      "rateIndex": "EUR-ESTR"
+    },
+    {
+      "id": "EUR-Depo-3M",
+      "currency": "EUR",
+      "rateType": "Deposit",
+      "tenor": "3M",
+      "rateIndex": "EUR-EURIBOR3M"
+    },
+    {
+      "id": "EUR-Depo-6M",
+      "currency": "EUR",
+      "rateType": "Deposit",
+      "tenor": "6M",
+      "rateIndex": "EUR-EURIBOR6M"
+    },
+    {
+      "id": "EUR-OIS-1M",
+      "currency": "EUR",
+      "rateType": "Ois",
+      "tenor": "1M",
+      "rateIndex": "EUR-ESTR"
+    },
+    {
+      "id": "EUR-OIS-3M",
+      "currency": "EUR",
+      "rateType": "Ois",
+      "tenor": "3M",
+      "rateIndex": "EUR-ESTR"
+    },
+    {
+      "id": "EUR-OIS-6M",
+      "currency": "EUR",
+      "rateType": "Ois",
+      "tenor": "6M",
+      "rateIndex": "EUR-ESTR"
+    },
+    {
+      "id": "EUR-OIS-9M",
+      "currency": "EUR",
+      "rateType": "Ois",
+      "tenor": "9M",
+      "rateIndex": "EUR-ESTR"
+    },
+    {
+      "id": "EUR-OIS-1Y",
+      "currency": "EUR",
+      "rateType": "Ois",
+      "tenor": "1Y",
+      "rateIndex": "EUR-ESTR"
+    },
+    {
+      "id": "EUR-OIS-18M",
+      "currency": "EUR",
+      "rateType": "Ois",
+      "tenor": "18M",
+      "rateIndex": "EUR-ESTR"
+    },
+    {
+      "id": "EUR-OIS-2Y",
+      "currency": "EUR",
+      "rateType": "Ois",
+      "tenor": "2Y",
+      "rateIndex": "EUR-ESTR"
+    },
+    {
+      "id": "EUR-OIS-3Y",
+      "currency": "EUR",
+      "rateType": "Ois",
+      "tenor": "3Y",
+      "rateIndex": "EUR-ESTR"
+    },
+    {
+      "id": "EUR-OIS-4Y",
+      "currency": "EUR",
+      "rateType": "Ois",
+      "tenor": "4Y",
+      "rateIndex": "EUR-ESTR"
+    },
+    {
+      "id": "EUR-OIS-5Y",
+      "currency": "EUR",
+      "rateType": "Ois",
+      "tenor": "5Y",
+      "rateIndex": "EUR-ESTR"
+    },
+    {
+      "id": "EUR-OIS-6Y",
+      "currency": "EUR",
+      "rateType": "Ois",
+      "tenor": "6Y",
+      "rateIndex": "EUR-ESTR"
+    },
+    {
+      "id": "EUR-OIS-7Y",
+      "currency": "EUR",
+      "rateType": "Ois",
+      "tenor": "7Y",
+      "rateIndex": "EUR-ESTR"
+    },
+    {
+      "id": "EUR-OIS-10Y",
+      "currency": "EUR",
+      "rateType": "Ois",
+      "tenor": "10Y",
+      "rateIndex": "EUR-ESTR"
+    },
+    {
+      "id": "EUR-OIS-12Y",
+      "currency": "EUR",
+      "rateType": "Ois",
+      "tenor": "12Y",
+      "rateIndex": "EUR-ESTR"
+    },
+    {
+      "id": "EUR-OIS-15Y",
+      "currency": "EUR",
+      "rateType": "Ois",
+      "tenor": "15Y",
+      "rateIndex": "EUR-ESTR"
+    },
+    {
+      "id": "EUR-OIS-20Y",
+      "currency": "EUR",
+      "rateType": "Ois",
+      "tenor": "20Y",
+      "rateIndex": "EUR-ESTR"
+    },
+    {
+      "id": "EUR-OIS-25Y",
+      "currency": "EUR",
+      "rateType": "Ois",
+      "tenor": "25Y",
+      "rateIndex": "EUR-ESTR"
+    },
+    {
+      "id": "EUR-OIS-30Y",
+      "currency": "EUR",
+      "rateType": "Ois",
+      "tenor": "30Y",
+      "rateIndex": "EUR-ESTR"
+    },
+    {
+      "id": "EUR-OIS-40Y",
+      "currency": "EUR",
+      "rateType": "Ois",
+      "tenor": "40Y",
+      "rateIndex": "EUR-ESTR"
+    },
+    {
+      "id": "EUR-OIS-50Y",
+      "currency": "EUR",
+      "rateType": "Ois",
+      "tenor": "50Y",
+      "rateIndex": "EUR-ESTR"
+    },
+    {
+      "id": "EUR-Swap-2Y",
+      "currency": "EUR",
+      "rateType": "Swap",
+      "tenor": "2Y",
+      "rateIndex": "EUR-EURIBOR6M",
+      "conventions": {
+        "paymentFrequency": "SemiAnnually"
+      }
+    },
+    {
+      "id": "EUR-Swap-3Y",
+      "currency": "EUR",
+      "rateType": "Swap",
+      "tenor": "3Y",
+      "rateIndex": "EUR-EURIBOR6M",
+      "conventions": {
+        "paymentFrequency": "SemiAnnually"
+      }
+    },
+    {
+      "id": "EUR-Swap-5Y",
+      "currency": "EUR",
+      "rateType": "Swap",
+      "tenor": "5Y",
+      "rateIndex": "EUR-EURIBOR6M",
+      "conventions": {
+        "paymentFrequency": "SemiAnnually"
+      }
+    },
+    {
+      "id": "EUR-Swap-7Y",
+      "currency": "EUR",
+      "rateType": "Swap",
+      "tenor": "7Y",
+      "rateIndex": "EUR-EURIBOR6M",
+      "conventions": {
+        "paymentFrequency": "SemiAnnually"
+      }
+    },
+    {
+      "id": "EUR-Swap-10Y",
+      "currency": "EUR",
+      "rateType": "Swap",
+      "tenor": "10Y",
+      "rateIndex": "EUR-EURIBOR6M",
+      "conventions": {
+        "paymentFrequency": "SemiAnnually"
+      }
+    },
+    {
+      "id": "EUR-Swap-15Y",
+      "currency": "EUR",
+      "rateType": "Swap",
+      "tenor": "15Y",
+      "rateIndex": "EUR-EURIBOR6M",
+      "conventions": {
+        "paymentFrequency": "SemiAnnually"
+      }
+    },
+    {
+      "id": "EUR-Swap-20Y",
+      "currency": "EUR",
+      "rateType": "Swap",
+      "tenor": "20Y",
+      "rateIndex": "EUR-EURIBOR6M",
+      "conventions": {
+        "paymentFrequency": "SemiAnnually"
+      }
+    },
+    {
+      "id": "EUR-Swap-30Y",
+      "currency": "EUR",
+      "rateType": "Swap",
+      "tenor": "30Y",
+      "rateIndex": "EUR-EURIBOR6M",
+      "conventions": {
+        "paymentFrequency": "SemiAnnually"
+      }
+    },
+    {
+      "id": "EUR-FRA-1x4",
+      "currency": "EUR",
+      "rateType": "Fra",
+      "tenor": "1x4",
+      "rateIndex": "EUR-EURIBOR3M"
+    },
+    {
+      "id": "EUR-FRA-3x6",
+      "currency": "EUR",
+      "rateType": "Fra",
+      "tenor": "3x6",
+      "rateIndex": "EUR-EURIBOR3M"
+    },
+    {
+      "id": "EUR-FRA-6x9",
+      "currency": "EUR",
+      "rateType": "Fra",
+      "tenor": "6x9",
+      "rateIndex": "EUR-EURIBOR3M"
+    },
+    {
+      "id": "EUR-FRA-6x12",
+      "currency": "EUR",
+      "rateType": "Fra",
+      "tenor": "6x12",
+      "rateIndex": "EUR-EURIBOR6M"
+    },
+    {
+      "id": "GBP-Depo-ON",
+      "currency": "GBP",
+      "rateType": "Deposit",
+      "tenor": "O/N",
+      "rateIndex": "GBP-SONIA"
+    },
+    {
+      "id": "GBP-Depo-TN",
+      "currency": "GBP",
+      "rateType": "Deposit",
+      "tenor": "T/N",
+      "rateIndex": "GBP-SONIA"
+    },
+    {
+      "id": "GBP-Depo-1W",
+      "currency": "GBP",
+      "rateType": "Deposit",
+      "tenor": "1W",
+      "rateIndex": "GBP-SONIA"
+    },
+    {
+      "id": "GBP-Depo-1M",
+      "currency": "GBP",
+      "rateType": "Deposit",
+      "tenor": "1M",
+      "rateIndex": "GBP-SONIA"
+    },
+    {
+      "id": "GBP-OIS-1M",
+      "currency": "GBP",
+      "rateType": "Ois",
+      "tenor": "1M",
+      "rateIndex": "GBP-SONIA"
+    },
+    {
+      "id": "GBP-OIS-3M",
+      "currency": "GBP",
+      "rateType": "Ois",
+      "tenor": "3M",
+      "rateIndex": "GBP-SONIA"
+    },
+    {
+      "id": "GBP-OIS-6M",
+      "currency": "GBP",
+      "rateType": "Ois",
+      "tenor": "6M",
+      "rateIndex": "GBP-SONIA"
+    },
+    {
+      "id": "GBP-OIS-9M",
+      "currency": "GBP",
+      "rateType": "Ois",
+      "tenor": "9M",
+      "rateIndex": "GBP-SONIA"
+    },
+    {
+      "id": "GBP-OIS-1Y",
+      "currency": "GBP",
+      "rateType": "Ois",
+      "tenor": "1Y",
+      "rateIndex": "GBP-SONIA"
+    },
+    {
+      "id": "GBP-OIS-18M",
+      "currency": "GBP",
+      "rateType": "Ois",
+      "tenor": "18M",
+      "rateIndex": "GBP-SONIA"
+    },
+    {
+      "id": "GBP-OIS-2Y",
+      "currency": "GBP",
+      "rateType": "Ois",
+      "tenor": "2Y",
+      "rateIndex": "GBP-SONIA"
+    },
+    {
+      "id": "GBP-OIS-3Y",
+      "currency": "GBP",
+      "rateType": "Ois",
+      "tenor": "3Y",
+      "rateIndex": "GBP-SONIA"
+    },
+    {
+      "id": "GBP-OIS-4Y",
+      "currency": "GBP",
+      "rateType": "Ois",
+      "tenor": "4Y",
+      "rateIndex": "GBP-SONIA"
+    },
+    {
+      "id": "GBP-OIS-5Y",
+      "currency": "GBP",
+      "rateType": "Ois",
+      "tenor": "5Y",
+      "rateIndex": "GBP-SONIA"
+    },
+    {
+      "id": "GBP-OIS-6Y",
+      "currency": "GBP",
+      "rateType": "Ois",
+      "tenor": "6Y",
+      "rateIndex": "GBP-SONIA"
+    },
+    {
+      "id": "GBP-OIS-7Y",
+      "currency": "GBP",
+      "rateType": "Ois",
+      "tenor": "7Y",
+      "rateIndex": "GBP-SONIA"
+    },
+    {
+      "id": "GBP-OIS-10Y",
+      "currency": "GBP",
+      "rateType": "Ois",
+      "tenor": "10Y",
+      "rateIndex": "GBP-SONIA"
+    },
+    {
+      "id": "GBP-OIS-12Y",
+      "currency": "GBP",
+      "rateType": "Ois",
+      "tenor": "12Y",
+      "rateIndex": "GBP-SONIA"
+    },
+    {
+      "id": "GBP-OIS-15Y",
+      "currency": "GBP",
+      "rateType": "Ois",
+      "tenor": "15Y",
+      "rateIndex": "GBP-SONIA"
+    },
+    {
+      "id": "GBP-OIS-20Y",
+      "currency": "GBP",
+      "rateType": "Ois",
+      "tenor": "20Y",
+      "rateIndex": "GBP-SONIA"
+    },
+    {
+      "id": "GBP-OIS-25Y",
+      "currency": "GBP",
+      "rateType": "Ois",
+      "tenor": "25Y",
+      "rateIndex": "GBP-SONIA"
+    },
+    {
+      "id": "GBP-OIS-30Y",
+      "currency": "GBP",
+      "rateType": "Ois",
+      "tenor": "30Y",
+      "rateIndex": "GBP-SONIA"
+    },
+    {
+      "id": "GBP-OIS-40Y",
+      "currency": "GBP",
+      "rateType": "Ois",
+      "tenor": "40Y",
+      "rateIndex": "GBP-SONIA"
+    },
+    {
+      "id": "GBP-OIS-50Y",
+      "currency": "GBP",
+      "rateType": "Ois",
+      "tenor": "50Y",
+      "rateIndex": "GBP-SONIA"
+    },
+    {
+      "id": "JPY-Depo-ON",
+      "currency": "JPY",
+      "rateType": "Deposit",
+      "tenor": "O/N",
+      "rateIndex": "JPY-TONA"
+    },
+    {
+      "id": "JPY-Depo-TN",
+      "currency": "JPY",
+      "rateType": "Deposit",
+      "tenor": "T/N",
+      "rateIndex": "JPY-TONA"
+    },
+    {
+      "id": "JPY-Depo-1W",
+      "currency": "JPY",
+      "rateType": "Deposit",
+      "tenor": "1W",
+      "rateIndex": "JPY-TONA"
+    },
+    {
+      "id": "JPY-Depo-1M",
+      "currency": "JPY",
+      "rateType": "Deposit",
+      "tenor": "1M",
+      "rateIndex": "JPY-TONA"
+    },
+    {
+      "id": "JPY-OIS-1M",
+      "currency": "JPY",
+      "rateType": "Ois",
+      "tenor": "1M",
+      "rateIndex": "JPY-TONA"
+    },
+    {
+      "id": "JPY-OIS-3M",
+      "currency": "JPY",
+      "rateType": "Ois",
+      "tenor": "3M",
+      "rateIndex": "JPY-TONA"
+    },
+    {
+      "id": "JPY-OIS-6M",
+      "currency": "JPY",
+      "rateType": "Ois",
+      "tenor": "6M",
+      "rateIndex": "JPY-TONA"
+    },
+    {
+      "id": "JPY-OIS-9M",
+      "currency": "JPY",
+      "rateType": "Ois",
+      "tenor": "9M",
+      "rateIndex": "JPY-TONA"
+    },
+    {
+      "id": "JPY-OIS-1Y",
+      "currency": "JPY",
+      "rateType": "Ois",
+      "tenor": "1Y",
+      "rateIndex": "JPY-TONA"
+    },
+    {
+      "id": "JPY-OIS-18M",
+      "currency": "JPY",
+      "rateType": "Ois",
+      "tenor": "18M",
+      "rateIndex": "JPY-TONA"
+    },
+    {
+      "id": "JPY-OIS-2Y",
+      "currency": "JPY",
+      "rateType": "Ois",
+      "tenor": "2Y",
+      "rateIndex": "JPY-TONA"
+    },
+    {
+      "id": "JPY-OIS-3Y",
+      "currency": "JPY",
+      "rateType": "Ois",
+      "tenor": "3Y",
+      "rateIndex": "JPY-TONA"
+    },
+    {
+      "id": "JPY-OIS-4Y",
+      "currency": "JPY",
+      "rateType": "Ois",
+      "tenor": "4Y",
+      "rateIndex": "JPY-TONA"
+    },
+    {
+      "id": "JPY-OIS-5Y",
+      "currency": "JPY",
+      "rateType": "Ois",
+      "tenor": "5Y",
+      "rateIndex": "JPY-TONA"
+    },
+    {
+      "id": "JPY-OIS-6Y",
+      "currency": "JPY",
+      "rateType": "Ois",
+      "tenor": "6Y",
+      "rateIndex": "JPY-TONA"
+    },
+    {
+      "id": "JPY-OIS-7Y",
+      "currency": "JPY",
+      "rateType": "Ois",
+      "tenor": "7Y",
+      "rateIndex": "JPY-TONA"
+    },
+    {
+      "id": "JPY-OIS-10Y",
+      "currency": "JPY",
+      "rateType": "Ois",
+      "tenor": "10Y",
+      "rateIndex": "JPY-TONA"
+    },
+    {
+      "id": "JPY-OIS-12Y",
+      "currency": "JPY",
+      "rateType": "Ois",
+      "tenor": "12Y",
+      "rateIndex": "JPY-TONA"
+    },
+    {
+      "id": "JPY-OIS-15Y",
+      "currency": "JPY",
+      "rateType": "Ois",
+      "tenor": "15Y",
+      "rateIndex": "JPY-TONA"
+    },
+    {
+      "id": "JPY-OIS-20Y",
+      "currency": "JPY",
+      "rateType": "Ois",
+      "tenor": "20Y",
+      "rateIndex": "JPY-TONA"
+    },
+    {
+      "id": "JPY-OIS-25Y",
+      "currency": "JPY",
+      "rateType": "Ois",
+      "tenor": "25Y",
+      "rateIndex": "JPY-TONA"
+    },
+    {
+      "id": "JPY-OIS-30Y",
+      "currency": "JPY",
+      "rateType": "Ois",
+      "tenor": "30Y",
+      "rateIndex": "JPY-TONA"
+    },
+    {
+      "id": "JPY-OIS-40Y",
+      "currency": "JPY",
+      "rateType": "Ois",
+      "tenor": "40Y",
+      "rateIndex": "JPY-TONA"
+    },
+    {
+      "id": "CHF-Depo-ON",
+      "currency": "CHF",
+      "rateType": "Deposit",
+      "tenor": "O/N",
+      "rateIndex": "CHF-SARON"
+    },
+    {
+      "id": "CHF-Depo-TN",
+      "currency": "CHF",
+      "rateType": "Deposit",
+      "tenor": "T/N",
+      "rateIndex": "CHF-SARON"
+    },
+    {
+      "id": "CHF-Depo-1W",
+      "currency": "CHF",
+      "rateType": "Deposit",
+      "tenor": "1W",
+      "rateIndex": "CHF-SARON"
+    },
+    {
+      "id": "CHF-Depo-1M",
+      "currency": "CHF",
+      "rateType": "Deposit",
+      "tenor": "1M",
+      "rateIndex": "CHF-SARON"
+    },
+    {
+      "id": "CHF-OIS-1M",
+      "currency": "CHF",
+      "rateType": "Ois",
+      "tenor": "1M",
+      "rateIndex": "CHF-SARON"
+    },
+    {
+      "id": "CHF-OIS-3M",
+      "currency": "CHF",
+      "rateType": "Ois",
+      "tenor": "3M",
+      "rateIndex": "CHF-SARON"
+    },
+    {
+      "id": "CHF-OIS-6M",
+      "currency": "CHF",
+      "rateType": "Ois",
+      "tenor": "6M",
+      "rateIndex": "CHF-SARON"
+    },
+    {
+      "id": "CHF-OIS-9M",
+      "currency": "CHF",
+      "rateType": "Ois",
+      "tenor": "9M",
+      "rateIndex": "CHF-SARON"
+    },
+    {
+      "id": "CHF-OIS-1Y",
+      "currency": "CHF",
+      "rateType": "Ois",
+      "tenor": "1Y",
+      "rateIndex": "CHF-SARON"
+    },
+    {
+      "id": "CHF-OIS-18M",
+      "currency": "CHF",
+      "rateType": "Ois",
+      "tenor": "18M",
+      "rateIndex": "CHF-SARON"
+    },
+    {
+      "id": "CHF-OIS-2Y",
+      "currency": "CHF",
+      "rateType": "Ois",
+      "tenor": "2Y",
+      "rateIndex": "CHF-SARON"
+    },
+    {
+      "id": "CHF-OIS-3Y",
+      "currency": "CHF",
+      "rateType": "Ois",
+      "tenor": "3Y",
+      "rateIndex": "CHF-SARON"
+    },
+    {
+      "id": "CHF-OIS-4Y",
+      "currency": "CHF",
+      "rateType": "Ois",
+      "tenor": "4Y",
+      "rateIndex": "CHF-SARON"
+    },
+    {
+      "id": "CHF-OIS-5Y",
+      "currency": "CHF",
+      "rateType": "Ois",
+      "tenor": "5Y",
+      "rateIndex": "CHF-SARON"
+    },
+    {
+      "id": "CHF-OIS-6Y",
+      "currency": "CHF",
+      "rateType": "Ois",
+      "tenor": "6Y",
+      "rateIndex": "CHF-SARON"
+    },
+    {
+      "id": "CHF-OIS-7Y",
+      "currency": "CHF",
+      "rateType": "Ois",
+      "tenor": "7Y",
+      "rateIndex": "CHF-SARON"
+    },
+    {
+      "id": "CHF-OIS-10Y",
+      "currency": "CHF",
+      "rateType": "Ois",
+      "tenor": "10Y",
+      "rateIndex": "CHF-SARON"
+    },
+    {
+      "id": "CHF-OIS-12Y",
+      "currency": "CHF",
+      "rateType": "Ois",
+      "tenor": "12Y",
+      "rateIndex": "CHF-SARON"
+    },
+    {
+      "id": "CHF-OIS-15Y",
+      "currency": "CHF",
+      "rateType": "Ois",
+      "tenor": "15Y",
+      "rateIndex": "CHF-SARON"
+    },
+    {
+      "id": "CHF-OIS-20Y",
+      "currency": "CHF",
+      "rateType": "Ois",
+      "tenor": "20Y",
+      "rateIndex": "CHF-SARON"
+    },
+    {
+      "id": "CHF-OIS-25Y",
+      "currency": "CHF",
+      "rateType": "Ois",
+      "tenor": "25Y",
+      "rateIndex": "CHF-SARON"
+    },
+    {
+      "id": "CHF-OIS-30Y",
+      "currency": "CHF",
+      "rateType": "Ois",
+      "tenor": "30Y",
+      "rateIndex": "CHF-SARON"
+    }
+  ]
+}

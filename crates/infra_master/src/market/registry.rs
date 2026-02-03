@@ -529,7 +529,7 @@ mod tests {
         let json = r#"{
             "instruments": [
                 { "id": "USD-Depo-ON", "currency": "USD", "rateType": "Deposit", "tenor": "O/N" },
-                { "id": "USD-OIS-5Y", "currency": "USD", "rateType": "OIS", "tenor": "5Y", "rateIndex": "USD-SOFR" }
+                { "id": "USD-OIS-5Y", "currency": "USD", "rateType": "Ois", "tenor": "5Y", "rateIndex": "USD-SOFR" }
             ],
             "rateIndices": [
                 { "id": "USD-SOFR", "currency": "USD", "indexType": "Sofr", "isOvernight": true }

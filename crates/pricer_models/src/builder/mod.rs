@@ -58,6 +58,9 @@ mod problem;
 /// Curve calibration (sequential and global bootstrapping).
 pub mod curve;
 
+/// Curve construction from definitions and market data.
+pub mod construction;
+
 /// Volatility surface and cube calibration.
 pub mod vol;
 
@@ -85,6 +88,13 @@ pub use jump::{JumpConfig, JumpPillar};
 pub use matrix::{CalibrationMatrix, CalibrationMatrixBuilder, InterpolationMatrix};
 #[cfg(feature = "global-bootstrap")]
 pub use problem::{CalibrationProblem, CalibrationProblemConfig, JacobianMethod};
+// =============================================================================
+// Public Re-exports: Curve Construction
+// =============================================================================
+pub use construction::{
+    ConstructionConfig, ConstructionError, ConstructionResult, CurveConstructionEngine,
+};
+
 // =============================================================================
 // Public Re-exports: Vol Calibration
 // =============================================================================

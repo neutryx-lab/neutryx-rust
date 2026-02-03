@@ -21,7 +21,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::market::{CompoundingMethod, Currency, RateIndex};
-use crate::time::{CalendarId, DayCounter};
+use crate::time::{CalendarId, DayCounter, Tenor};
 
 /// Rate index definition for curve construction.
 ///
@@ -44,9 +44,8 @@ pub struct RateIndexDefinition {
     /// Index type from the enum
     pub index_type: RateIndex,
 
-    /// Whether this is an overnight index (RFR)
-    #[cfg_attr(feature = "serde", serde(default))]
-    pub is_overnight: bool,
+    /// Tenor of the index (e.g., O/N for SOFR, 6M for EURIBOR6M)
+    pub tenor: Tenor,
 
     /// Convention overrides (optional, defaults derived from index_type)
     #[cfg_attr(feature = "serde", serde(default, skip_serializing_if = "Option::is_none"))]
@@ -129,7 +128,7 @@ impl RateIndexDefinition {
             name: None,
             currency,
             index_type,
-            is_overnight: index_type.is_overnight(),
+            tenor: index_type.tenor(),
             conventions: None,
         }
     }
@@ -141,11 +140,24 @@ impl RateIndexDefinition {
         self
     }
 
+    /// Sets the tenor explicitly.
+    #[must_use]
+    pub fn with_tenor(mut self, tenor: Tenor) -> Self {
+        self.tenor = tenor;
+        self
+    }
+
     /// Sets the conventions override.
     #[must_use]
     pub fn with_conventions(mut self, conventions: IndexConventions) -> Self {
         self.conventions = Some(conventions);
         self
+    }
+
+    /// Returns true if this is an overnight index.
+    #[must_use]
+    pub fn is_overnight(&self) -> bool {
+        self.tenor == Tenor::Overnight
     }
 
     /// Validates the rate index definition.
@@ -283,7 +295,8 @@ mod tests {
         assert_eq!(def.id, "USD-SOFR");
         assert_eq!(def.currency, Currency::USD);
         assert_eq!(def.index_type, RateIndex::Sofr);
-        assert!(def.is_overnight);
+        assert_eq!(def.tenor, Tenor::Overnight);
+        assert!(def.is_overnight());
         assert!(def.name.is_none());
         assert!(def.conventions.is_none());
     }
@@ -300,7 +313,16 @@ mod tests {
     fn test_rate_index_definition_term_index() {
         let def = RateIndexDefinition::new("EUR-EURIBOR3M", Currency::EUR, RateIndex::Euribor3M);
 
-        assert!(!def.is_overnight);
+        assert!(!def.is_overnight());
+        assert_eq!(def.tenor, Tenor::ThreeMonths);
+    }
+
+    #[test]
+    fn test_rate_index_definition_euribor6m() {
+        let def = RateIndexDefinition::new("EUR-EURIBOR6M", Currency::EUR, RateIndex::Euribor6M);
+
+        assert!(!def.is_overnight());
+        assert_eq!(def.tenor, Tenor::SixMonths);
     }
 
     #[test]
@@ -372,19 +394,38 @@ mod tests {
 
     #[cfg(feature = "serde")]
     #[test]
-    fn test_serde_from_json() {
+    fn test_serde_from_json_overnight() {
         let json = r#"{
             "id": "EUR-ESTR",
             "currency": "EUR",
             "indexType": "Estr",
-            "isOvernight": true
+            "tenor": "O/N"
         }"#;
 
         let def: RateIndexDefinition = serde_json::from_str(json).unwrap();
         assert_eq!(def.id, "EUR-ESTR");
         assert_eq!(def.currency, Currency::EUR);
         assert_eq!(def.index_type, RateIndex::Estr);
-        assert!(def.is_overnight);
+        assert_eq!(def.tenor, Tenor::Overnight);
+        assert!(def.is_overnight());
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_serde_from_json_term() {
+        let json = r#"{
+            "id": "EUR-EURIBOR6M",
+            "currency": "EUR",
+            "indexType": "Euribor6M",
+            "tenor": "6M"
+        }"#;
+
+        let def: RateIndexDefinition = serde_json::from_str(json).unwrap();
+        assert_eq!(def.id, "EUR-EURIBOR6M");
+        assert_eq!(def.currency, Currency::EUR);
+        assert_eq!(def.index_type, RateIndex::Euribor6M);
+        assert_eq!(def.tenor, Tenor::SixMonths);
+        assert!(!def.is_overnight());
     }
 
     #[cfg(feature = "serde")]
@@ -394,7 +435,7 @@ mod tests {
             "id": "USD-SOFR",
             "currency": "USD",
             "indexType": "Sofr",
-            "isOvernight": true,
+            "tenor": "O/N",
             "conventions": {
                 "dayCount": "Actual365Fixed",
                 "compounding": "Compounded",
@@ -411,5 +452,15 @@ mod tests {
         assert_eq!(conv.day_count, Some(DayCounter::Actual365Fixed));
         assert_eq!(conv.compounding, Some(CompoundingMethod::Compounded));
         assert_eq!(conv.fixing_lag, Some(1));
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_serde_tenor_serializes_as_code() {
+        let def = RateIndexDefinition::new("EUR-EURIBOR6M", Currency::EUR, RateIndex::Euribor6M);
+        let json = serde_json::to_string(&def).unwrap();
+
+        // Should serialize tenor as "6M", not "SixMonths"
+        assert!(json.contains(r#""tenor":"6M""#));
     }
 }

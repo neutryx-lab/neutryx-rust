@@ -60,11 +60,15 @@ const searchResults = ref<GraphNode[]>([]);
 const searchIndex = ref(0);
 const isLoading = ref(false);
 
-// D3 references
-let svg: d3.Selection<SVGSVGElement, unknown, null, undefined> | null = null;
-let simulation: d3.Simulation<D3Node, D3Link> | null = null;
-let zoomBehavior: d3.ZoomBehavior<SVGSVGElement, unknown> | null = null;
-let mainGroup: d3.Selection<SVGGElement, unknown, null, undefined> | null = null;
+// D3 references (any types due to CDN loading)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let svg: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let simulation: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let zoomBehavior: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let mainGroup: any = null;
 
 // Node colours
 const nodeColours: Record<string, string> = {

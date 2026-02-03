@@ -41,6 +41,9 @@ pub enum SettlementType {
 #[derive(Debug, Clone, PartialEq, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum TradeType {
+    // ========================================
+    // Rates
+    // ========================================
     /// Money market deposit.
     Deposit,
 
@@ -52,6 +55,15 @@ pub enum TradeType {
 
     /// Interest rate swap.
     Swap,
+
+    /// Overnight Index Swap.
+    Ois,
+
+    /// Basis swap (float-float).
+    BasisSwap,
+
+    /// Cross-currency swap.
+    CrossCurrencySwap,
 
     /// Swaption (option on a swap).
     Swaption {
@@ -74,18 +86,209 @@ pub enum TradeType {
     /// Cap or floor.
     CapFloor,
 
+    // ========================================
+    // FX
+    // ========================================
+    /// FX spot transaction.
+    FxSpot,
+
     /// FX forward or spot.
     FxForward,
+
+    /// FX swap (near + far legs).
+    FxSwap,
+
+    /// FX option (vanilla).
+    FxOption {
+        /// Option type (Call/Put).
+        option_type: super::OptionType,
+        /// Strike price.
+        strike: f64,
+        /// Exercise style.
+        exercise_type: ExerciseType,
+        /// Settlement method.
+        settlement_type: SettlementType,
+        /// Expiry date.
+        expiry_date: Date,
+    },
+
+    /// FX barrier option.
+    FxBarrierOption {
+        /// Option type (Call/Put).
+        option_type: super::OptionType,
+        /// Strike price.
+        strike: f64,
+        /// Barrier level.
+        barrier: f64,
+        /// Barrier type.
+        barrier_type: BarrierType,
+        /// Exercise style.
+        exercise_type: ExerciseType,
+        /// Expiry date.
+        expiry_date: Date,
+    },
+
+    // ========================================
+    // Equity
+    // ========================================
+    /// Equity forward.
+    EquityForward {
+        /// Underlying equity ticker/identifier.
+        underlyer: String,
+        /// Forward price.
+        forward_price: f64,
+        /// Settlement date.
+        settlement_date: Date,
+    },
+
+    /// Equity option (vanilla).
+    EquityOption {
+        /// Underlying equity ticker/identifier.
+        underlyer: String,
+        /// Option type (Call/Put).
+        option_type: super::OptionType,
+        /// Strike price.
+        strike: f64,
+        /// Exercise style.
+        exercise_type: ExerciseType,
+        /// Settlement method.
+        settlement_type: SettlementType,
+        /// Expiry date.
+        expiry_date: Date,
+        /// Number of shares per contract.
+        contract_multiplier: f64,
+    },
+
+    /// Equity swap (total return swap).
+    EquitySwap {
+        /// Underlying equity/index.
+        underlyer: String,
+    },
+
+    // ========================================
+    // Credit
+    // ========================================
+    /// Credit default swap (single name).
+    CreditDefaultSwap {
+        /// Reference entity name.
+        reference_entity: String,
+        /// Reference entity identifier (RED code).
+        entity_id: Option<String>,
+        /// Protection buyer or seller.
+        protection_side: ProtectionSide,
+    },
+
+    /// Credit default swap index (CDX, iTraxx).
+    CreditDefaultSwapIndex {
+        /// Index name (e.g., "CDX.NA.IG").
+        index_name: String,
+        /// Index series.
+        series: u32,
+        /// Index version.
+        version: Option<u32>,
+        /// Protection buyer or seller.
+        protection_side: ProtectionSide,
+    },
+
+    /// Credit default swap option.
+    CreditDefaultSwapOption {
+        /// Underlying CDS reference entity.
+        reference_entity: String,
+        /// Option type (payer/receiver).
+        option_type: super::OptionType,
+        /// Exercise style.
+        exercise_type: ExerciseType,
+        /// Expiry date.
+        expiry_date: Date,
+    },
+
+    // ========================================
+    // Commodity
+    // ========================================
+    /// Commodity forward.
+    CommodityForward {
+        /// Commodity name/code.
+        commodity: String,
+        /// Delivery date.
+        delivery_date: Date,
+        /// Forward price.
+        forward_price: f64,
+        /// Quantity.
+        quantity: f64,
+        /// Quantity unit (e.g., "BBL", "MT").
+        quantity_unit: String,
+    },
+
+    /// Commodity swap.
+    CommoditySwap {
+        /// Commodity name/code.
+        commodity: String,
+        /// Fixed price.
+        fixed_price: f64,
+        /// Price unit.
+        price_unit: String,
+        /// Total quantity.
+        total_quantity: f64,
+        /// Quantity unit.
+        quantity_unit: String,
+    },
+
+    /// Commodity option.
+    CommodityOption {
+        /// Commodity name/code.
+        commodity: String,
+        /// Option type (Call/Put).
+        option_type: super::OptionType,
+        /// Strike price.
+        strike: f64,
+        /// Exercise style.
+        exercise_type: ExerciseType,
+        /// Expiry date.
+        expiry_date: Date,
+        /// Quantity.
+        quantity: f64,
+        /// Quantity unit.
+        quantity_unit: String,
+    },
 
     /// Generic trade (catch-all).
     #[default]
     Generic,
 }
 
+/// Barrier type for barrier options.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum BarrierType {
+    /// Up-and-in: option activates when price goes above barrier.
+    UpAndIn,
+    /// Up-and-out: option deactivates when price goes above barrier.
+    UpAndOut,
+    /// Down-and-in: option activates when price goes below barrier.
+    DownAndIn,
+    /// Down-and-out: option deactivates when price goes below barrier.
+    DownAndOut,
+}
+
+/// Protection side for credit derivatives.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum ProtectionSide {
+    /// Protection buyer (pays premium, receives protection).
+    Buyer,
+    /// Protection seller (receives premium, provides protection).
+    Seller,
+}
+
 impl TradeType {
-    /// Returns true if this is a swap.
+    /// Returns true if this is a swap (IRS, OIS, or basis).
     #[must_use]
-    pub fn is_swap(&self) -> bool { matches!(self, TradeType::Swap) }
+    pub fn is_swap(&self) -> bool {
+        matches!(
+            self,
+            TradeType::Swap | TradeType::Ois | TradeType::BasisSwap
+        )
+    }
 
     /// Returns true if this is a swaption.
     #[must_use]
@@ -94,6 +297,67 @@ impl TradeType {
     /// Returns true if this is a bond.
     #[must_use]
     pub fn is_bond(&self) -> bool { matches!(self, TradeType::Bond { .. }) }
+
+    /// Returns true if this is an FX product.
+    #[must_use]
+    pub fn is_fx(&self) -> bool {
+        matches!(
+            self,
+            TradeType::FxSpot
+                | TradeType::FxForward
+                | TradeType::FxSwap
+                | TradeType::FxOption { .. }
+                | TradeType::FxBarrierOption { .. }
+        )
+    }
+
+    /// Returns true if this is an equity product.
+    #[must_use]
+    pub fn is_equity(&self) -> bool {
+        matches!(
+            self,
+            TradeType::EquityForward { .. }
+                | TradeType::EquityOption { .. }
+                | TradeType::EquitySwap { .. }
+        )
+    }
+
+    /// Returns true if this is a credit product.
+    #[must_use]
+    pub fn is_credit(&self) -> bool {
+        matches!(
+            self,
+            TradeType::CreditDefaultSwap { .. }
+                | TradeType::CreditDefaultSwapIndex { .. }
+                | TradeType::CreditDefaultSwapOption { .. }
+        )
+    }
+
+    /// Returns true if this is a commodity product.
+    #[must_use]
+    pub fn is_commodity(&self) -> bool {
+        matches!(
+            self,
+            TradeType::CommodityForward { .. }
+                | TradeType::CommoditySwap { .. }
+                | TradeType::CommodityOption { .. }
+        )
+    }
+
+    /// Returns true if this is an option.
+    #[must_use]
+    pub fn is_option(&self) -> bool {
+        matches!(
+            self,
+            TradeType::Swaption { .. }
+                | TradeType::CapFloor
+                | TradeType::FxOption { .. }
+                | TradeType::FxBarrierOption { .. }
+                | TradeType::EquityOption { .. }
+                | TradeType::CreditDefaultSwapOption { .. }
+                | TradeType::CommodityOption { .. }
+        )
+    }
 }
 
 /// Trade metadata.

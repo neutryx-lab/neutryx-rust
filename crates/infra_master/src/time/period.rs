@@ -265,38 +265,55 @@ pub enum EndOfMonthRule {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Tenor {
     /// Overnight (O/N)
+    #[cfg_attr(feature = "serde", serde(rename = "O/N"))]
     Overnight,
     /// One week (1W)
+    #[cfg_attr(feature = "serde", serde(rename = "1W"))]
     OneWeek,
     /// Two weeks (2W)
+    #[cfg_attr(feature = "serde", serde(rename = "2W"))]
     TwoWeeks,
     /// One month (1M)
+    #[cfg_attr(feature = "serde", serde(rename = "1M"))]
     OneMonth,
     /// Two months (2M)
+    #[cfg_attr(feature = "serde", serde(rename = "2M"))]
     TwoMonths,
     /// Three months (3M)
+    #[cfg_attr(feature = "serde", serde(rename = "3M"))]
     ThreeMonths,
     /// Six months (6M)
+    #[cfg_attr(feature = "serde", serde(rename = "6M"))]
     SixMonths,
     /// Nine months (9M)
+    #[cfg_attr(feature = "serde", serde(rename = "9M"))]
     NineMonths,
     /// One year (1Y)
+    #[cfg_attr(feature = "serde", serde(rename = "1Y"))]
     OneYear,
     /// Two years (2Y)
+    #[cfg_attr(feature = "serde", serde(rename = "2Y"))]
     TwoYears,
     /// Three years (3Y)
+    #[cfg_attr(feature = "serde", serde(rename = "3Y"))]
     ThreeYears,
     /// Five years (5Y)
+    #[cfg_attr(feature = "serde", serde(rename = "5Y"))]
     FiveYears,
     /// Seven years (7Y)
+    #[cfg_attr(feature = "serde", serde(rename = "7Y"))]
     SevenYears,
     /// Ten years (10Y)
+    #[cfg_attr(feature = "serde", serde(rename = "10Y"))]
     TenYears,
     /// Fifteen years (15Y)
+    #[cfg_attr(feature = "serde", serde(rename = "15Y"))]
     FifteenYears,
     /// Twenty years (20Y)
+    #[cfg_attr(feature = "serde", serde(rename = "20Y"))]
     TwentyYears,
     /// Thirty years (30Y)
+    #[cfg_attr(feature = "serde", serde(rename = "30Y"))]
     ThirtyYears,
 }
 

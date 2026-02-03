@@ -24,12 +24,11 @@ export type ViewId =
   | 'pricer'
   | 'graph';
 
-export interface ViewMeta {
+export interface ViewMeta extends Record<string | symbol, unknown> {
   title: string;
   breadcrumb: string;
   icon: string;
   navGroup?: 'main' | 'analytics' | 'tools';
-  [key: string]: unknown;
 }
 
 const routes: RouteRecordRaw[] = [

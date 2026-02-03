@@ -424,7 +424,7 @@ mod tests {
         let json = r#"{
             "id": "USD-OIS-5Y",
             "currency": "USD",
-            "rateType": "OIS",
+            "rateType": "Ois",
             "tenor": "5Y",
             "rateIndex": "USD-SOFR",
             "conventions": {

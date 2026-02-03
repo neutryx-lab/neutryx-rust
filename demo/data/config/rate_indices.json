@@ -1,0 +1,69 @@
+{
+  "$schema": "./schemas/rate_indices.schema.json",
+  "metadata": {
+    "description": "Rate index definitions for curve construction",
+    "version": "1.0"
+  },
+  "rateIndices": [
+    {
+      "id": "USD-SOFR",
+      "name": "Secured Overnight Financing Rate",
+      "currency": "USD",
+      "indexType": "Sofr",
+      "tenor": "O/N"
+    },
+    {
+      "id": "EUR-ESTR",
+      "name": "Euro Short-Term Rate",
+      "currency": "EUR",
+      "indexType": "Estr",
+      "tenor": "O/N"
+    },
+    {
+      "id": "EUR-EURIBOR3M",
+      "name": "Euro Interbank Offered Rate 3M",
+      "currency": "EUR",
+      "indexType": "Euribor3M",
+      "tenor": "3M",
+      "conventions": {
+        "fixingLag": 2,
+        "settlementLag": 2
+      }
+    },
+    {
+      "id": "EUR-EURIBOR6M",
+      "name": "Euro Interbank Offered Rate 6M",
+      "currency": "EUR",
+      "indexType": "Euribor6M",
+      "tenor": "6M",
+      "conventions": {
+        "fixingLag": 2,
+        "settlementLag": 2
+      }
+    },
+    {
+      "id": "GBP-SONIA",
+      "name": "Sterling Overnight Index Average",
+      "currency": "GBP",
+      "indexType": "Sonia",
+      "tenor": "O/N",
+      "conventions": {
+        "settlementLag": 0
+      }
+    },
+    {
+      "id": "JPY-TONA",
+      "name": "Tokyo Overnight Average Rate",
+      "currency": "JPY",
+      "indexType": "Tonar",
+      "tenor": "O/N"
+    },
+    {
+      "id": "CHF-SARON",
+      "name": "Swiss Average Rate Overnight",
+      "currency": "CHF",
+      "indexType": "Saron",
+      "tenor": "O/N"
+    }
+  ]
+}

@@ -17,7 +17,7 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'index-vue.html'),
+        main: resolve(__dirname, 'index.html'),
       },
       output: {
         manualChunks: {

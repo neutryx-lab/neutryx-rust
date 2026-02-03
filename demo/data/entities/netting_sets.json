@@ -1,0 +1,246 @@
+{
+  "metadata": {
+    "description": "Netting set definitions with CSA/collateral terms",
+    "schema_version": "2.0",
+    "last_updated": "2026-02-03T00:00:00Z"
+  },
+  "netting_sets": [
+    {
+      "id": "NS-GS-001",
+      "counterparty_id": "CPTY-001",
+      "agreement_type": "ISDA",
+      "agreement_date": "2020-01-15",
+      "governing_law": "English",
+      "csa": {
+        "type": "Variation Margin",
+        "threshold_self": 0,
+        "threshold_cpty": 0,
+        "mta_self": 500000,
+        "mta_cpty": 500000,
+        "rounding": 100000,
+        "eligible_collateral": ["USD Cash", "EUR Cash", "UST", "Bunds"],
+        "haircuts": {
+          "USD Cash": 0.0,
+          "EUR Cash": 0.0,
+          "UST": 0.02,
+          "Bunds": 0.02
+        },
+        "margin_call_frequency": "Daily",
+        "valuation_agent": "Self"
+      },
+      "status": "Active"
+    },
+    {
+      "id": "NS-GS-002",
+      "counterparty_id": "CPTY-001",
+      "agreement_type": "ISDA",
+      "agreement_date": "2021-06-01",
+      "governing_law": "English",
+      "csa": {
+        "type": "Initial Margin + Variation Margin",
+        "im_model": "ISDA SIMM",
+        "threshold_self": 0,
+        "threshold_cpty": 0,
+        "mta_self": 100000,
+        "mta_cpty": 100000,
+        "rounding": 10000,
+        "eligible_collateral": ["USD Cash", "EUR Cash"],
+        "haircuts": {
+          "USD Cash": 0.0,
+          "EUR Cash": 0.0
+        },
+        "margin_call_frequency": "Daily",
+        "valuation_agent": "Self"
+      },
+      "status": "Active"
+    },
+    {
+      "id": "NS-JPM-001",
+      "counterparty_id": "CPTY-002",
+      "agreement_type": "ISDA",
+      "agreement_date": "2019-03-20",
+      "governing_law": "New York",
+      "csa": {
+        "type": "Variation Margin",
+        "threshold_self": 0,
+        "threshold_cpty": 0,
+        "mta_self": 250000,
+        "mta_cpty": 250000,
+        "rounding": 50000,
+        "eligible_collateral": ["USD Cash", "UST"],
+        "haircuts": {
+          "USD Cash": 0.0,
+          "UST": 0.02
+        },
+        "margin_call_frequency": "Daily",
+        "valuation_agent": "Self"
+      },
+      "status": "Active"
+    },
+    {
+      "id": "NS-MS-001",
+      "counterparty_id": "CPTY-003",
+      "agreement_type": "ISDA",
+      "agreement_date": "2020-07-10",
+      "governing_law": "English",
+      "csa": {
+        "type": "Variation Margin",
+        "threshold_self": 1000000,
+        "threshold_cpty": 1000000,
+        "mta_self": 500000,
+        "mta_cpty": 500000,
+        "rounding": 100000,
+        "eligible_collateral": ["USD Cash", "EUR Cash", "GBP Cash"],
+        "haircuts": {
+          "USD Cash": 0.0,
+          "EUR Cash": 0.0,
+          "GBP Cash": 0.0
+        },
+        "margin_call_frequency": "Daily",
+        "valuation_agent": "Cpty"
+      },
+      "status": "Active"
+    },
+    {
+      "id": "NS-BARC-001",
+      "counterparty_id": "CPTY-004",
+      "agreement_type": "ISDA",
+      "agreement_date": "2018-11-05",
+      "governing_law": "English",
+      "csa": {
+        "type": "Variation Margin",
+        "threshold_self": 0,
+        "threshold_cpty": 0,
+        "mta_self": 500000,
+        "mta_cpty": 500000,
+        "rounding": 100000,
+        "eligible_collateral": ["GBP Cash", "EUR Cash", "Gilts"],
+        "haircuts": {
+          "GBP Cash": 0.0,
+          "EUR Cash": 0.0,
+          "Gilts": 0.025
+        },
+        "margin_call_frequency": "Daily",
+        "valuation_agent": "Self"
+      },
+      "status": "Active"
+    },
+    {
+      "id": "NS-DB-001",
+      "counterparty_id": "CPTY-005",
+      "agreement_type": "ISDA",
+      "agreement_date": "2019-09-15",
+      "governing_law": "English",
+      "csa": {
+        "type": "Variation Margin",
+        "threshold_self": 2000000,
+        "threshold_cpty": 2000000,
+        "mta_self": 1000000,
+        "mta_cpty": 1000000,
+        "rounding": 100000,
+        "eligible_collateral": ["EUR Cash", "Bunds"],
+        "haircuts": {
+          "EUR Cash": 0.0,
+          "Bunds": 0.02
+        },
+        "margin_call_frequency": "Daily",
+        "valuation_agent": "Self"
+      },
+      "status": "Active"
+    },
+    {
+      "id": "NS-BNP-001",
+      "counterparty_id": "CPTY-006",
+      "agreement_type": "ISDA",
+      "agreement_date": "2020-02-28",
+      "governing_law": "French",
+      "csa": {
+        "type": "Variation Margin",
+        "threshold_self": 0,
+        "threshold_cpty": 0,
+        "mta_self": 500000,
+        "mta_cpty": 500000,
+        "rounding": 100000,
+        "eligible_collateral": ["EUR Cash", "USD Cash", "OATs"],
+        "haircuts": {
+          "EUR Cash": 0.0,
+          "USD Cash": 0.0,
+          "OATs": 0.02
+        },
+        "margin_call_frequency": "Daily",
+        "valuation_agent": "Cpty"
+      },
+      "status": "Active"
+    },
+    {
+      "id": "NS-HSBC-001",
+      "counterparty_id": "CPTY-007",
+      "agreement_type": "ISDA",
+      "agreement_date": "2019-05-20",
+      "governing_law": "English",
+      "csa": {
+        "type": "Initial Margin + Variation Margin",
+        "im_model": "ISDA SIMM",
+        "threshold_self": 0,
+        "threshold_cpty": 0,
+        "mta_self": 100000,
+        "mta_cpty": 100000,
+        "rounding": 10000,
+        "eligible_collateral": ["USD Cash", "GBP Cash"],
+        "haircuts": {
+          "USD Cash": 0.0,
+          "GBP Cash": 0.0
+        },
+        "margin_call_frequency": "Daily",
+        "valuation_agent": "Self"
+      },
+      "status": "Active"
+    },
+    {
+      "id": "NS-CITI-001",
+      "counterparty_id": "CPTY-008",
+      "agreement_type": "ISDA",
+      "agreement_date": "2018-08-10",
+      "governing_law": "New York",
+      "csa": {
+        "type": "Variation Margin",
+        "threshold_self": 0,
+        "threshold_cpty": 0,
+        "mta_self": 250000,
+        "mta_cpty": 250000,
+        "rounding": 50000,
+        "eligible_collateral": ["USD Cash"],
+        "haircuts": {
+          "USD Cash": 0.0
+        },
+        "margin_call_frequency": "Daily",
+        "valuation_agent": "Self"
+      },
+      "status": "Active"
+    },
+    {
+      "id": "NS-NOM-001",
+      "counterparty_id": "CPTY-010",
+      "agreement_type": "ISDA",
+      "agreement_date": "2021-01-15",
+      "governing_law": "English",
+      "csa": {
+        "type": "Variation Margin",
+        "threshold_self": 5000000,
+        "threshold_cpty": 5000000,
+        "mta_self": 1000000,
+        "mta_cpty": 1000000,
+        "rounding": 100000,
+        "eligible_collateral": ["JPY Cash", "USD Cash", "JGBs"],
+        "haircuts": {
+          "JPY Cash": 0.0,
+          "USD Cash": 0.0,
+          "JGBs": 0.03
+        },
+        "margin_call_frequency": "Daily",
+        "valuation_agent": "Cpty"
+      },
+      "status": "Active"
+    }
+  ]
+}

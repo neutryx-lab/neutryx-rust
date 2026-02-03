@@ -76,6 +76,9 @@ pub use pricing_instrument::{
     ExerciseStyle, Forward, ForwardDirection, FxOptionType, InstrumentParams, PayoffType,
     PricingInstrument, VanillaOption,
 };
-pub use trade::{ExerciseType, SettlementType, Trade, TradeBuilder, TradeMetadata, TradeType};
+pub use trade::{
+    BarrierType, ExerciseType, ProtectionSide, SettlementType, Trade, TradeBuilder, TradeMetadata,
+    TradeType,
+};
 
 pub use crate::ids::TradeId;

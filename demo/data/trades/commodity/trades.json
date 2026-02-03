@@ -1,0 +1,469 @@
+{
+  "metadata": {
+    "description": "Sample commodity derivative trades",
+    "asset_class": "Commodity",
+    "schema_version": "2.0",
+    "last_updated": "2026-02-03T00:00:00Z"
+  },
+  "trades": [
+    {
+      "id": "COMFWD-BRENT-001",
+      "type": "CommodityForward",
+      "trade_date": "2024-11-15",
+      "delivery_date": "2025-06-15",
+      "counterparty_id": "CPTY-004",
+      "netting_set_id": "NS-BARC-001",
+      "book": "COMMODITIES",
+      "underlying": {
+        "type": "Energy",
+        "commodity": "Crude Oil",
+        "grade": "Brent",
+        "delivery_location": "North Sea"
+      },
+      "buy_sell": "Buy",
+      "quantity": 50000,
+      "quantity_unit": "barrels",
+      "forward_price": 78.50,
+      "currency": "USD",
+      "settlement_type": "Cash"
+    },
+    {
+      "id": "COMFWD-WTI-001",
+      "type": "CommodityForward",
+      "trade_date": "2025-01-10",
+      "delivery_date": "2025-12-15",
+      "counterparty_id": "CPTY-001",
+      "netting_set_id": "NS-GS-001",
+      "book": "COMMODITIES",
+      "underlying": {
+        "type": "Energy",
+        "commodity": "Crude Oil",
+        "grade": "WTI",
+        "delivery_location": "Cushing, OK"
+      },
+      "buy_sell": "Sell",
+      "quantity": 100000,
+      "quantity_unit": "barrels",
+      "forward_price": 75.25,
+      "currency": "USD",
+      "settlement_type": "Cash"
+    },
+    {
+      "id": "COMFWD-GOLD-001",
+      "type": "CommodityForward",
+      "trade_date": "2024-10-01",
+      "delivery_date": "2025-04-01",
+      "counterparty_id": "CPTY-007",
+      "netting_set_id": "NS-HSBC-001",
+      "book": "COMMODITIES",
+      "underlying": {
+        "type": "Metals",
+        "commodity": "Gold",
+        "grade": "Fine Gold 99.5%",
+        "delivery_location": "London"
+      },
+      "buy_sell": "Buy",
+      "quantity": 5000,
+      "quantity_unit": "troy ounces",
+      "forward_price": 2050.00,
+      "currency": "USD",
+      "settlement_type": "Physical"
+    },
+    {
+      "id": "COMFWD-NG-001",
+      "type": "CommodityForward",
+      "trade_date": "2025-01-20",
+      "delivery_date": "2025-10-01",
+      "counterparty_id": "CPTY-002",
+      "netting_set_id": "NS-JPM-001",
+      "book": "COMMODITIES",
+      "underlying": {
+        "type": "Energy",
+        "commodity": "Natural Gas",
+        "grade": "Henry Hub",
+        "delivery_location": "Louisiana"
+      },
+      "buy_sell": "Buy",
+      "quantity": 1000000,
+      "quantity_unit": "MMBtu",
+      "forward_price": 3.25,
+      "currency": "USD",
+      "settlement_type": "Cash"
+    },
+    {
+      "id": "COMFWD-COPPER-001",
+      "type": "CommodityForward",
+      "trade_date": "2024-12-05",
+      "delivery_date": "2025-06-05",
+      "counterparty_id": "CPTY-004",
+      "netting_set_id": "NS-BARC-001",
+      "book": "COMMODITIES",
+      "underlying": {
+        "type": "Metals",
+        "commodity": "Copper",
+        "grade": "Grade A",
+        "delivery_location": "LME Warehouse"
+      },
+      "buy_sell": "Sell",
+      "quantity": 500,
+      "quantity_unit": "metric tonnes",
+      "forward_price": 8750.00,
+      "currency": "USD",
+      "settlement_type": "Physical"
+    },
+    {
+      "id": "COMSWAP-BRENT-001",
+      "type": "CommoditySwap",
+      "trade_date": "2024-07-01",
+      "effective_date": "2024-08-01",
+      "maturity_date": "2025-07-31",
+      "counterparty_id": "CPTY-004",
+      "netting_set_id": "NS-BARC-001",
+      "book": "COMMODITIES",
+      "underlying": {
+        "type": "Energy",
+        "commodity": "Crude Oil",
+        "grade": "Brent",
+        "price_source": "Platts"
+      },
+      "fixed_leg": {
+        "price": 80.00,
+        "currency": "USD",
+        "quantity_per_period": 25000,
+        "quantity_unit": "barrels"
+      },
+      "floating_leg": {
+        "price_index": "Platts Dated Brent",
+        "currency": "USD",
+        "quantity_per_period": 25000,
+        "quantity_unit": "barrels"
+      },
+      "payment_frequency": "Monthly",
+      "settlement_type": "Cash"
+    },
+    {
+      "id": "COMSWAP-NG-001",
+      "type": "CommoditySwap",
+      "trade_date": "2024-09-15",
+      "effective_date": "2024-11-01",
+      "maturity_date": "2026-10-31",
+      "counterparty_id": "CPTY-001",
+      "netting_set_id": "NS-GS-001",
+      "book": "COMMODITIES",
+      "underlying": {
+        "type": "Energy",
+        "commodity": "Natural Gas",
+        "grade": "Henry Hub",
+        "price_source": "NYMEX"
+      },
+      "fixed_leg": {
+        "price": 3.50,
+        "currency": "USD",
+        "quantity_per_period": 100000,
+        "quantity_unit": "MMBtu"
+      },
+      "floating_leg": {
+        "price_index": "NYMEX Henry Hub Last Day",
+        "currency": "USD",
+        "quantity_per_period": 100000,
+        "quantity_unit": "MMBtu"
+      },
+      "payment_frequency": "Monthly",
+      "settlement_type": "Cash"
+    },
+    {
+      "id": "COMSWAP-GOLD-001",
+      "type": "CommoditySwap",
+      "trade_date": "2025-01-05",
+      "effective_date": "2025-02-01",
+      "maturity_date": "2027-01-31",
+      "counterparty_id": "CPTY-007",
+      "netting_set_id": "NS-HSBC-001",
+      "book": "COMMODITIES",
+      "underlying": {
+        "type": "Metals",
+        "commodity": "Gold",
+        "grade": "Fine Gold",
+        "price_source": "LBMA"
+      },
+      "fixed_leg": {
+        "price": 2000.00,
+        "currency": "USD",
+        "quantity_per_period": 1000,
+        "quantity_unit": "troy ounces"
+      },
+      "floating_leg": {
+        "price_index": "LBMA Gold PM",
+        "currency": "USD",
+        "quantity_per_period": 1000,
+        "quantity_unit": "troy ounces"
+      },
+      "payment_frequency": "Quarterly",
+      "settlement_type": "Cash"
+    },
+    {
+      "id": "COMOPT-WTI-001",
+      "type": "CommodityVanillaOption",
+      "trade_date": "2024-10-15",
+      "expiry_date": "2025-04-15",
+      "counterparty_id": "CPTY-001",
+      "netting_set_id": "NS-GS-001",
+      "book": "COMMODITIES",
+      "underlying": {
+        "type": "Energy",
+        "commodity": "Crude Oil",
+        "grade": "WTI",
+        "contract": "NYMEX CL"
+      },
+      "option_type": "Call",
+      "exercise_style": "European",
+      "buy_sell": "Buy",
+      "quantity": 100000,
+      "quantity_unit": "barrels",
+      "strike": 80.00,
+      "currency": "USD",
+      "premium": {
+        "amount": 350000,
+        "currency": "USD",
+        "payment_date": "2024-10-17"
+      }
+    },
+    {
+      "id": "COMOPT-BRENT-001",
+      "type": "CommodityVanillaOption",
+      "trade_date": "2025-01-10",
+      "expiry_date": "2025-07-10",
+      "counterparty_id": "CPTY-004",
+      "netting_set_id": "NS-BARC-001",
+      "book": "COMMODITIES",
+      "underlying": {
+        "type": "Energy",
+        "commodity": "Crude Oil",
+        "grade": "Brent",
+        "contract": "ICE Brent"
+      },
+      "option_type": "Put",
+      "exercise_style": "European",
+      "buy_sell": "Buy",
+      "quantity": 50000,
+      "quantity_unit": "barrels",
+      "strike": 70.00,
+      "currency": "USD",
+      "premium": {
+        "amount": 175000,
+        "currency": "USD",
+        "payment_date": "2025-01-14"
+      }
+    },
+    {
+      "id": "COMOPT-GOLD-001",
+      "type": "CommodityVanillaOption",
+      "trade_date": "2024-11-20",
+      "expiry_date": "2025-11-20",
+      "counterparty_id": "CPTY-007",
+      "netting_set_id": "NS-HSBC-001",
+      "book": "COMMODITIES",
+      "underlying": {
+        "type": "Metals",
+        "commodity": "Gold",
+        "grade": "Fine Gold",
+        "contract": "COMEX GC"
+      },
+      "option_type": "Call",
+      "exercise_style": "American",
+      "buy_sell": "Buy",
+      "quantity": 10000,
+      "quantity_unit": "troy ounces",
+      "strike": 2100.00,
+      "currency": "USD",
+      "premium": {
+        "amount": 850000,
+        "currency": "USD",
+        "payment_date": "2024-11-22"
+      }
+    },
+    {
+      "id": "COMOPT-NG-001",
+      "type": "CommodityVanillaOption",
+      "trade_date": "2025-01-15",
+      "expiry_date": "2025-10-15",
+      "counterparty_id": "CPTY-002",
+      "netting_set_id": "NS-JPM-001",
+      "book": "COMMODITIES",
+      "underlying": {
+        "type": "Energy",
+        "commodity": "Natural Gas",
+        "grade": "Henry Hub",
+        "contract": "NYMEX NG"
+      },
+      "option_type": "Call",
+      "exercise_style": "European",
+      "buy_sell": "Sell",
+      "quantity": 500000,
+      "quantity_unit": "MMBtu",
+      "strike": 4.00,
+      "currency": "USD",
+      "premium": {
+        "amount": 125000,
+        "currency": "USD",
+        "payment_date": "2025-01-17"
+      }
+    },
+    {
+      "id": "COMASIAN-WTI-001",
+      "type": "CommodityAsianOption",
+      "trade_date": "2024-08-01",
+      "expiry_date": "2025-07-31",
+      "counterparty_id": "CPTY-001",
+      "netting_set_id": "NS-GS-001",
+      "book": "COMMODITIES",
+      "underlying": {
+        "type": "Energy",
+        "commodity": "Crude Oil",
+        "grade": "WTI",
+        "price_source": "NYMEX"
+      },
+      "option_type": "Call",
+      "buy_sell": "Buy",
+      "quantity": 200000,
+      "quantity_unit": "barrels",
+      "strike": 77.00,
+      "averaging": {
+        "type": "Arithmetic",
+        "frequency": "Monthly",
+        "price_index": "NYMEX WTI Front Month"
+      },
+      "currency": "USD",
+      "premium": {
+        "amount": 425000,
+        "currency": "USD",
+        "payment_date": "2024-08-05"
+      }
+    },
+    {
+      "id": "COMASIAN-BRENT-001",
+      "type": "CommodityAsianOption",
+      "trade_date": "2025-01-08",
+      "expiry_date": "2025-12-31",
+      "counterparty_id": "CPTY-004",
+      "netting_set_id": "NS-BARC-001",
+      "book": "COMMODITIES",
+      "underlying": {
+        "type": "Energy",
+        "commodity": "Crude Oil",
+        "grade": "Brent",
+        "price_source": "Platts"
+      },
+      "option_type": "Put",
+      "buy_sell": "Buy",
+      "quantity": 100000,
+      "quantity_unit": "barrels",
+      "strike": 72.00,
+      "averaging": {
+        "type": "Arithmetic",
+        "frequency": "Weekly",
+        "price_index": "Platts Dated Brent"
+      },
+      "currency": "USD",
+      "premium": {
+        "amount": 285000,
+        "currency": "USD",
+        "payment_date": "2025-01-10"
+      }
+    },
+    {
+      "id": "COMSPREAD-CRACK-001",
+      "type": "SpreadOption",
+      "trade_date": "2024-09-01",
+      "expiry_date": "2025-06-30",
+      "counterparty_id": "CPTY-001",
+      "netting_set_id": "NS-GS-001",
+      "book": "COMMODITIES",
+      "spread_type": "Crack Spread",
+      "leg1": {
+        "commodity": "Heating Oil",
+        "grade": "NYMEX HO",
+        "quantity": 42000,
+        "quantity_unit": "gallons"
+      },
+      "leg2": {
+        "commodity": "Crude Oil",
+        "grade": "WTI",
+        "quantity": 1000,
+        "quantity_unit": "barrels"
+      },
+      "option_type": "Call",
+      "buy_sell": "Buy",
+      "strike_spread": 15.00,
+      "currency": "USD",
+      "premium": {
+        "amount": 225000,
+        "currency": "USD",
+        "payment_date": "2024-09-05"
+      }
+    },
+    {
+      "id": "COMSPREAD-BRENT-WTI-001",
+      "type": "SpreadOption",
+      "trade_date": "2025-01-20",
+      "expiry_date": "2025-07-20",
+      "counterparty_id": "CPTY-004",
+      "netting_set_id": "NS-BARC-001",
+      "book": "COMMODITIES",
+      "spread_type": "Inter-Commodity",
+      "leg1": {
+        "commodity": "Crude Oil",
+        "grade": "Brent",
+        "quantity": 50000,
+        "quantity_unit": "barrels"
+      },
+      "leg2": {
+        "commodity": "Crude Oil",
+        "grade": "WTI",
+        "quantity": 50000,
+        "quantity_unit": "barrels"
+      },
+      "option_type": "Call",
+      "buy_sell": "Buy",
+      "strike_spread": 5.00,
+      "currency": "USD",
+      "premium": {
+        "amount": 175000,
+        "currency": "USD",
+        "payment_date": "2025-01-22"
+      }
+    },
+    {
+      "id": "COMSPREAD-SPARK-001",
+      "type": "SpreadOption",
+      "trade_date": "2024-11-01",
+      "expiry_date": "2025-08-31",
+      "counterparty_id": "CPTY-002",
+      "netting_set_id": "NS-JPM-001",
+      "book": "COMMODITIES",
+      "spread_type": "Spark Spread",
+      "leg1": {
+        "commodity": "Electricity",
+        "market": "PJM West Hub",
+        "quantity": 100,
+        "quantity_unit": "MWh"
+      },
+      "leg2": {
+        "commodity": "Natural Gas",
+        "grade": "Henry Hub",
+        "quantity": 800,
+        "quantity_unit": "MMBtu",
+        "heat_rate": 8.0
+      },
+      "option_type": "Call",
+      "buy_sell": "Buy",
+      "strike_spread": 20.00,
+      "currency": "USD",
+      "premium": {
+        "amount": 95000,
+        "currency": "USD",
+        "payment_date": "2024-11-05"
+      }
+    }
+  ]
+}
