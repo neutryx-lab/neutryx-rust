@@ -48,6 +48,23 @@ interface DisplayInstrument {
   rate: number;
   enabled: boolean;
   originalRate: number;
+  eventDate?: string; // For EVENT type instruments
+}
+
+// instruments.json types
+interface InstrumentConfig {
+  id: string;
+  currency: string;
+  convention: string;
+  tenor: string;
+  rateIndex: string;
+  eventDate?: string;
+}
+
+interface InstrumentsData {
+  metadata: Record<string, unknown>;
+  templates: unknown[];
+  instruments: InstrumentConfig[];
 }
 
 interface CurvePillar {
@@ -67,6 +84,7 @@ interface BuildResult {
 
 // State
 const curvesConfig = ref<CurvesData | null>(null);
+const instrumentsConfig = ref<InstrumentsData | null>(null);
 const selectedCurveName = ref<string>('');
 const selectedCurve = ref<CurveConfig | null>(null);
 const rateData = ref<RateData | null>(null);
@@ -118,14 +136,20 @@ const hasChanges = computed(() => {
   return rateChanged || settingsChanged;
 });
 
-const summaryStats = computed(() => [
-  { label: 'Instruments', value: `${enabledInstruments.value.length}/${instruments.value.length}`, icon: 'fa-list-alt', color: '#3b82f6' },
-  { label: 'Avg Rate', value: enabledInstruments.value.length > 0
-      ? `${(enabledInstruments.value.reduce((sum, i) => sum + i.rate, 0) / enabledInstruments.value.length * 100).toFixed(2)}%`
-      : '-', icon: 'fa-percent', color: '#8b5cf6' },
-  { label: 'Interpolation', value: interpolation.value, icon: 'fa-wave-square', color: '#10b981' },
-  { label: 'Status', value: buildResult.value ? 'Built' : 'Pending', icon: 'fa-info-circle', color: buildResult.value ? '#10b981' : '#f59e0b' },
-]);
+const summaryStats = computed(() => {
+  // Exclude event instruments from average rate calculation
+  const rateInstruments = enabledInstruments.value.filter(i => i.type !== 'event');
+  const eventCount = enabledInstruments.value.filter(i => i.type === 'event').length;
+
+  return [
+    { label: 'Instruments', value: `${enabledInstruments.value.length}/${instruments.value.length}${eventCount > 0 ? ` (${eventCount} events)` : ''}`, icon: 'fa-list-alt', color: '#3b82f6' },
+    { label: 'Avg Rate', value: rateInstruments.length > 0
+        ? `${(rateInstruments.reduce((sum, i) => sum + i.rate, 0) / rateInstruments.length * 100).toFixed(2)}%`
+        : '-', icon: 'fa-percent', color: '#8b5cf6' },
+    { label: 'Interpolation', value: interpolation.value, icon: 'fa-wave-square', color: '#10b981' },
+    { label: 'Status', value: buildResult.value ? 'Built' : 'Pending', icon: 'fa-info-circle', color: buildResult.value ? '#10b981' : '#f59e0b' },
+  ];
+});
 
 // Chart functions
 function updateChart() {
@@ -220,6 +244,16 @@ async function loadCurvesConfig() {
   }
 }
 
+async function loadInstrumentsConfig() {
+  try {
+    const response = await fetch('/data/config/instruments.json');
+    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    instrumentsConfig.value = await response.json();
+  } catch (error) {
+    console.error('Failed to load instruments config:', error);
+  }
+}
+
 async function loadRateData(rateIndex: string) {
   try {
     // Convert rate index to file name (e.g., "USD-SOFR" -> "usd-sofr")
@@ -251,10 +285,10 @@ function loadInstrumentsForCurve() {
     return;
   }
 
-  const curveInstrumentIds = new Set(selectedCurve.value.instruments);
   const currency = rateData.value.currency;
+  const referenceDate = new Date(rateData.value.reference_date);
 
-  // Build display instruments from rate data
+  // Build display instruments from rate data - all enabled by default
   const displayInstruments: DisplayInstrument[] = [];
 
   for (const rateInst of rateData.value.instruments) {
@@ -267,8 +301,36 @@ function loadInstrumentsForCurve() {
       tenorYears: rateInst.tenor_years,
       rate: rateInst.rate,
       originalRate: rateInst.rate,
-      enabled: curveInstrumentIds.has(id),
+      enabled: true, // All instruments enabled by default
     });
+  }
+
+  // Add EVENT instruments from instruments config
+  if (instrumentsConfig.value && selectedCurve.value.instruments) {
+    const curveInstrumentIds = new Set(selectedCurve.value.instruments);
+
+    for (const instConfig of instrumentsConfig.value.instruments) {
+      // Only include EVENT instruments that are in the curve definition
+      if (instConfig.tenor === 'EVENT' && curveInstrumentIds.has(instConfig.id)) {
+        // Calculate tenor years from event date
+        const eventDate = new Date(instConfig.eventDate || '');
+        const tenorYears = (eventDate.getTime() - referenceDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+
+        // Skip past events
+        if (tenorYears < 0) continue;
+
+        displayInstruments.push({
+          id: instConfig.id,
+          type: 'event',
+          tenor: 'EVENT',
+          tenorYears,
+          rate: 0, // Events don't have rates, they represent jump dates
+          originalRate: 0,
+          enabled: true,
+          eventDate: instConfig.eventDate,
+        });
+      }
+    }
   }
 
   // Sort by tenor years
@@ -328,6 +390,7 @@ async function buildCurve() {
           type: inst.type,
           tenor: inst.tenor,
           rate: inst.rate,
+          eventDate: inst.eventDate, // Include event date for EVENT instruments
         })),
         calibrationMethod: calibrationMethod.value,
         interpolation: interpolation.value,
@@ -375,9 +438,9 @@ function exportRates() {
   if (instruments.value.length === 0) return;
 
   const csv = [
-    'ID,Type,Tenor,Rate(%),Enabled',
+    'ID,Type,Tenor,Rate(%),EventDate,Enabled',
     ...instruments.value.map(
-      inst => `${inst.id},${inst.type},${inst.tenor},${(inst.rate * 100).toFixed(4)},${inst.enabled}`
+      inst => `${inst.id},${inst.type},${inst.tenor},${inst.type === 'event' ? '' : (inst.rate * 100).toFixed(4)},${inst.eventDate || ''},${inst.enabled}`
     ),
   ].join('\n');
 
@@ -417,8 +480,12 @@ watch(chartType, () => {
 });
 
 // Lifecycle
-onMounted(() => {
-  loadCurvesConfig();
+onMounted(async () => {
+  await Promise.all([loadCurvesConfig(), loadInstrumentsConfig()]);
+  // Set default selection to USD-SOFR-Discount
+  if (curvesConfig.value?.curves.some(c => c.name === 'USD-SOFR-Discount')) {
+    selectedCurveName.value = 'USD-SOFR-Discount';
+  }
 });
 
 onUnmounted(() => {
@@ -513,7 +580,8 @@ onUnmounted(() => {
               :key="inst.id"
               :class="[
                 'flex items-center gap-2 px-2 py-1.5 rounded text-sm',
-                inst.enabled ? 'bg-[var(--surface)]' : 'opacity-40'
+                inst.enabled ? 'bg-[var(--surface)]' : 'opacity-40',
+                inst.type === 'event' ? 'border-l-2 border-amber-500' : ''
               ]"
             >
               <input
@@ -522,8 +590,16 @@ onUnmounted(() => {
                 class="w-3.5 h-3.5 rounded border-[var(--glass-border)]"
                 @change="toggleEnabled(idx)"
               >
-              <span class="flex-1 font-mono text-xs text-[var(--text-secondary)] truncate">{{ inst.id }}</span>
+              <span class="flex-1 font-mono text-xs text-[var(--text-secondary)] truncate" :title="inst.id">{{ inst.id }}</span>
+              <!-- Event instruments show date instead of rate -->
+              <span
+                v-if="inst.type === 'event'"
+                class="px-1.5 py-0.5 text-xs rounded bg-amber-500/20 text-amber-400 font-mono"
+                :title="'Event Date'"
+              >{{ inst.eventDate }}</span>
+              <!-- Regular instruments show rate input -->
               <input
+                v-else
                 type="number"
                 :value="(inst.rate * 100).toFixed(2)"
                 step="0.01"

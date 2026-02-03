@@ -2,7 +2,16 @@
 import { ref, computed, watch, onMounted } from 'vue';
 
 // Types
-type AssetClass = 'Rates' | 'FX' | 'IRVol' | 'FXVol' | 'Events';
+type AssetClass = 'Rates' | 'FX' | 'IRVol' | 'FXVol' | 'Events' | 'Holidays';
+
+interface Holiday {
+  id: string;
+  date: string;
+  name: string;
+  country: string;
+  currency?: string;
+  type: string; // 'bank', 'market', 'settlement'
+}
 
 interface MarketRate {
   id: string;
@@ -15,6 +24,19 @@ interface MarketRate {
   isStale: boolean;
 }
 
+// Individual IR Vol instrument
+interface IrVolInstrument {
+  id: string;
+  currency: string;
+  expiry: string;
+  tenor: string;
+  strike: string; // 'ATM', '-50bp', '+50bp', etc.
+  vol: number;
+  volType: string;
+  source: string;
+}
+
+// IR Vol quote with all smile instruments
 interface IrVolQuote {
   id: string;
   currency: string;
@@ -23,8 +45,21 @@ interface IrVolQuote {
   atmVol: number;
   volType: string;
   source: string;
+  // Individual instruments for this grid point
+  instruments: IrVolInstrument[];
 }
 
+// Individual FX Vol instrument
+interface FxVolInstrument {
+  id: string;
+  pair: string;
+  expiry: number;
+  expiryLabel: string;
+  strike: string; // 'ATM', '25D Call', '25D Put', '10D Call', '10D Put'
+  vol: number;
+}
+
+// FX Vol quote with all smile instruments
 interface FxVolQuote {
   id: string;
   pair: string;
@@ -35,6 +70,8 @@ interface FxVolQuote {
   bf25d: number;
   rr10d?: number;
   bf10d?: number;
+  // Individual instruments for this grid point
+  instruments: FxVolInstrument[];
 }
 
 interface MarketEvent {
@@ -55,6 +92,7 @@ const rates = ref<MarketRate[]>([]);
 const irVolQuotes = ref<IrVolQuote[]>([]);
 const fxVolQuotes = ref<FxVolQuote[]>([]);
 const events = ref<MarketEvent[]>([]);
+const holidays = ref<Holiday[]>([]);
 const selectedRateId = ref<string | null>(null);
 const selectedIrVolId = ref<string | null>(null);
 const selectedFxVolId = ref<string | null>(null);
@@ -65,7 +103,7 @@ const isLoading = ref(false);
 const lastUpdated = ref<Date | null>(null);
 
 // Computed
-const assetClasses: AssetClass[] = ['Rates', 'FX', 'IRVol', 'FXVol', 'Events'];
+const assetClasses: AssetClass[] = ['Rates', 'FX', 'IRVol', 'FXVol', 'Events', 'Holidays'];
 
 const filteredRates = computed(() => {
   let result = rates.value;
@@ -121,6 +159,14 @@ const summaryStats = computed(() => {
       { label: 'Total Events', value: events.value.length, icon: 'fa-calendar', color: '#3b82f6' },
       { label: 'Upcoming', value: events.value.filter(e => new Date(e.date) >= new Date()).length, icon: 'fa-hourglass-half', color: '#f59e0b' },
       { label: 'Regions', value: new Set(events.value.map(e => e.region).filter(Boolean)).size, icon: 'fa-globe', color: '#8b5cf6' },
+      { label: 'Status', value: 'Live', icon: 'fa-check-circle', color: '#10b981' },
+    ];
+  }
+  if (assetClass.value === 'Holidays') {
+    return [
+      { label: 'Total Holidays', value: holidays.value.length, icon: 'fa-calendar-day', color: '#3b82f6' },
+      { label: 'Upcoming', value: holidays.value.filter(h => new Date(h.date) >= new Date()).length, icon: 'fa-hourglass-half', color: '#f59e0b' },
+      { label: 'Countries', value: new Set(holidays.value.map(h => h.country)).size, icon: 'fa-flag', color: '#8b5cf6' },
       { label: 'Status', value: 'Live', icon: 'fa-check-circle', color: '#10b981' },
     ];
   }
@@ -207,14 +253,69 @@ async function loadIrVolData() {
       if (quotesRes.ok) {
         const quotesData = await quotesRes.json();
         for (const q of quotesData.quotes || []) {
+          const baseId = `${curr.currency}-${q.expiry}-${q.tenor}`;
+          const volType = quotesData.volType || 'Normal';
+          const source = quotesData.source || 'Demo';
+
+          // Create individual instruments for this grid point
+          const instruments: IrVolInstrument[] = [];
+
+          // ATM instrument (always present)
+          instruments.push({
+            id: `${baseId}-ATM`,
+            currency: curr.currency,
+            expiry: q.expiry,
+            tenor: q.tenor,
+            strike: 'ATM',
+            vol: q.atmVol,
+            volType,
+            source,
+          });
+
+          // Add smile instruments if available (strike offsets)
+          if (q.smile && Array.isArray(q.smile)) {
+            for (const smilePoint of q.smile) {
+              instruments.push({
+                id: `${baseId}-${smilePoint.strike}`,
+                currency: curr.currency,
+                expiry: q.expiry,
+                tenor: q.tenor,
+                strike: smilePoint.strike,
+                vol: smilePoint.vol,
+                volType,
+                source,
+              });
+            }
+          } else {
+            // Generate typical smile points if not provided (demo data)
+            const smileOffsets = ['-100bp', '-50bp', '+50bp', '+100bp'];
+            for (const offset of smileOffsets) {
+              // Generate smile vol with typical skew pattern
+              const offsetBp = parseInt(offset.replace('bp', '').replace('+', ''));
+              const skewAdjust = offsetBp * 0.00002; // Small skew adjustment
+              const smileVol = q.atmVol + Math.abs(offsetBp) * 0.00001 + (offsetBp < 0 ? skewAdjust : -skewAdjust);
+              instruments.push({
+                id: `${baseId}-${offset}`,
+                currency: curr.currency,
+                expiry: q.expiry,
+                tenor: q.tenor,
+                strike: offset,
+                vol: smileVol,
+                volType,
+                source,
+              });
+            }
+          }
+
           allQuotes.push({
-            id: `${curr.currency}-${q.expiry}-${q.tenor}`,
+            id: baseId,
             currency: curr.currency,
             expiry: q.expiry,
             tenor: q.tenor,
             atmVol: q.atmVol,
-            volType: quotesData.volType || 'Normal',
-            source: quotesData.source || 'Demo',
+            volType,
+            source,
+            instruments,
           });
         }
       }
@@ -240,16 +341,79 @@ async function loadFxVolData() {
       if (quotesRes.ok) {
         const quotesData = await quotesRes.json();
         for (const q of quotesData.quotes || []) {
-          allQuotes.push({
-            id: `${pairInfo.pair}-${q.expiry}`,
+          const baseId = `${pairInfo.pair}-${q.expiry}`;
+          const expLabel = expiryToLabel(q.expiry);
+
+          // Create individual instruments from RR/BF conventions
+          const instruments: FxVolInstrument[] = [];
+
+          // ATM instrument
+          instruments.push({
+            id: `${baseId}-ATM`,
             pair: pairInfo.pair,
             expiry: q.expiry,
-            expiryLabel: expiryToLabel(q.expiry),
+            expiryLabel: expLabel,
+            strike: 'ATM',
+            vol: q.atmVol,
+          });
+
+          // 25D instruments (Call = ATM + RR/2 + BF, Put = ATM - RR/2 + BF)
+          const vol25dCall = q.atmVol + (q.rr25d / 2) + q.bf25d;
+          const vol25dPut = q.atmVol - (q.rr25d / 2) + q.bf25d;
+
+          instruments.push({
+            id: `${baseId}-25D-Call`,
+            pair: pairInfo.pair,
+            expiry: q.expiry,
+            expiryLabel: expLabel,
+            strike: '25D Call',
+            vol: vol25dCall,
+          });
+
+          instruments.push({
+            id: `${baseId}-25D-Put`,
+            pair: pairInfo.pair,
+            expiry: q.expiry,
+            expiryLabel: expLabel,
+            strike: '25D Put',
+            vol: vol25dPut,
+          });
+
+          // 10D instruments (if available)
+          if (q.rr10d !== undefined && q.bf10d !== undefined) {
+            const vol10dCall = q.atmVol + (q.rr10d / 2) + q.bf10d;
+            const vol10dPut = q.atmVol - (q.rr10d / 2) + q.bf10d;
+
+            instruments.push({
+              id: `${baseId}-10D-Call`,
+              pair: pairInfo.pair,
+              expiry: q.expiry,
+              expiryLabel: expLabel,
+              strike: '10D Call',
+              vol: vol10dCall,
+            });
+
+            instruments.push({
+              id: `${baseId}-10D-Put`,
+              pair: pairInfo.pair,
+              expiry: q.expiry,
+              expiryLabel: expLabel,
+              strike: '10D Put',
+              vol: vol10dPut,
+            });
+          }
+
+          allQuotes.push({
+            id: baseId,
+            pair: pairInfo.pair,
+            expiry: q.expiry,
+            expiryLabel: expLabel,
             atmVol: q.atmVol,
             rr25d: q.rr25d,
             bf25d: q.bf25d,
             rr10d: q.rr10d,
             bf10d: q.bf10d,
+            instruments,
           });
         }
       }
@@ -269,10 +433,43 @@ async function loadEventsData() {
     const response = await fetch('/api/market/events');
     if (!response.ok) throw new Error('Failed to load events');
     const data = await response.json();
-    events.value = data.events || [];
+    // Filter out holidays from events
+    events.value = (data.events || []).filter((e: MarketEvent) => e.eventType !== 'Holiday');
     lastUpdated.value = new Date();
   } catch (error) {
     console.error('Failed to load events:', error);
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+async function loadHolidaysData() {
+  isLoading.value = true;
+  try {
+    const response = await fetch('/api/market/holidays');
+    if (!response.ok) {
+      // Fallback: try to get holidays from events endpoint
+      const eventsRes = await fetch('/api/market/events');
+      if (eventsRes.ok) {
+        const data = await eventsRes.json();
+        // Filter holidays from events
+        const holidayEvents = (data.events || []).filter((e: MarketEvent) => e.eventType === 'Holiday');
+        holidays.value = holidayEvents.map((e: MarketEvent) => ({
+          id: e.id,
+          date: e.date,
+          name: e.title,
+          country: e.region || 'Unknown',
+          currency: e.currency,
+          type: 'bank',
+        }));
+      }
+    } else {
+      const data = await response.json();
+      holidays.value = data.holidays || [];
+    }
+    lastUpdated.value = new Date();
+  } catch (error) {
+    console.error('Failed to load holidays:', error);
   } finally {
     isLoading.value = false;
   }
@@ -282,6 +479,7 @@ async function refresh() {
   if (assetClass.value === 'IRVol') await loadIrVolData();
   else if (assetClass.value === 'FXVol') await loadFxVolData();
   else if (assetClass.value === 'Events') await loadEventsData();
+  else if (assetClass.value === 'Holidays') await loadHolidaysData();
   else await loadRates();
 }
 
@@ -332,6 +530,7 @@ watch(assetClass, (newClass) => {
   if (newClass === 'IRVol' && irVolQuotes.value.length === 0) loadIrVolData();
   else if (newClass === 'FXVol' && fxVolQuotes.value.length === 0) loadFxVolData();
   else if (newClass === 'Events' && events.value.length === 0) loadEventsData();
+  else if (newClass === 'Holidays' && holidays.value.length === 0) loadHolidaysData();
 });
 
 // Initialize
@@ -408,7 +607,7 @@ onMounted(() => {
         <div class="glass-card p-6">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-semibold text-[var(--text-primary)]">
-              {{ assetClass === 'IRVol' ? 'IR Volatility' : assetClass === 'FXVol' ? 'FX Volatility' : assetClass === 'Events' ? 'Market Events' : 'Market Rates' }}
+              {{ assetClass === 'IRVol' ? 'IR Volatility' : assetClass === 'FXVol' ? 'FX Volatility' : assetClass === 'Events' ? 'Market Events' : assetClass === 'Holidays' ? 'Market Holidays' : 'Market Rates' }}
             </h3>
             <span v-if="lastUpdated" class="text-xs text-[var(--text-muted)]">
               Updated: {{ lastUpdated.toLocaleTimeString() }}
@@ -581,6 +780,43 @@ onMounted(() => {
               </table>
             </div>
           </template>
+
+          <!-- Holidays Table -->
+          <template v-else-if="assetClass === 'Holidays'">
+            <div v-if="holidays.length === 0" class="text-center py-12">
+              <i class="fas fa-calendar-day text-4xl text-[var(--text-muted)] mb-4"></i>
+              <p class="text-[var(--text-muted)]">No holidays available</p>
+            </div>
+            <div v-else class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="border-b border-[var(--glass-border)]">
+                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Date</th>
+                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Name</th>
+                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Country</th>
+                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Currency</th>
+                    <th class="text-left py-3 px-3 text-xs font-medium text-[var(--text-muted)]">Type</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="holiday in holidays" :key="holiday.id" class="border-b border-[var(--glass-border)] hover:bg-[var(--surface-hover)] transition-colors">
+                    <td class="py-3 px-3 text-[var(--text-primary)] font-mono">{{ holiday.date }}</td>
+                    <td class="py-3 px-3 text-[var(--text-primary)]">{{ holiday.name }}</td>
+                    <td class="py-3 px-3 text-[var(--text-secondary)]">{{ holiday.country }}</td>
+                    <td class="py-3 px-3 text-[var(--text-secondary)]">{{ holiday.currency || '-' }}</td>
+                    <td class="py-3 px-3">
+                      <span :class="[
+                        'px-2 py-0.5 rounded text-xs',
+                        holiday.type === 'bank' ? 'bg-blue-500/10 text-blue-400' :
+                        holiday.type === 'market' ? 'bg-purple-500/10 text-purple-400' :
+                        'bg-orange-500/10 text-orange-400'
+                      ]">{{ holiday.type }}</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </template>
         </div>
       </div>
 
@@ -648,11 +884,8 @@ onMounted(() => {
             </div>
 
             <template v-else>
-              <div class="space-y-3">
-                <div class="flex justify-between text-sm">
-                  <span class="text-[var(--text-muted)]">Instrument Type</span>
-                  <span class="text-[var(--text-primary)]">Swaption Vol</span>
-                </div>
+              <!-- Grid Point Info -->
+              <div class="space-y-2 mb-4">
                 <div class="flex justify-between text-sm">
                   <span class="text-[var(--text-muted)]">Currency</span>
                   <span class="text-[var(--text-primary)]">{{ selectedIrVol.currency }}</span>
@@ -666,30 +899,44 @@ onMounted(() => {
                   <span class="text-[var(--text-primary)]">{{ selectedIrVol.tenor }}</span>
                 </div>
                 <div class="flex justify-between text-sm">
-                  <span class="text-[var(--text-muted)]">ATM Vol</span>
-                  <span class="text-[var(--text-primary)] font-mono">{{ formatVol(selectedIrVol.atmVol) }}</span>
-                </div>
-                <div class="flex justify-between text-sm">
                   <span class="text-[var(--text-muted)]">Vol Type</span>
                   <span class="text-[var(--text-primary)]">{{ selectedIrVol.volType }}</span>
                 </div>
-                <div class="flex justify-between text-sm">
-                  <span class="text-[var(--text-muted)]">Source</span>
-                  <span class="text-[var(--text-primary)]">{{ selectedIrVol.source }}</span>
+              </div>
+
+              <!-- All Instruments List -->
+              <div class="border-t border-[var(--glass-border)] pt-4">
+                <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">
+                  Instruments ({{ selectedIrVol.instruments.length }})
+                </h4>
+                <div class="space-y-2 max-h-80 overflow-y-auto">
+                  <div
+                    v-for="inst in selectedIrVol.instruments"
+                    :key="inst.id"
+                    class="p-3 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)]"
+                  >
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="text-xs font-mono text-[var(--text-muted)]">{{ inst.id }}</span>
+                      <span :class="[
+                        'px-2 py-0.5 rounded text-xs',
+                        inst.strike === 'ATM' ? 'bg-blue-500/10 text-blue-400' : 'bg-purple-500/10 text-purple-400'
+                      ]">{{ inst.strike }}</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                      <span class="text-[var(--text-muted)]">Volatility</span>
+                      <span class="text-[var(--text-primary)] font-mono">{{ formatVol(inst.vol) }}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <!-- Underlying Instrument -->
-              <div class="mt-6 pt-4 border-t border-[var(--glass-border)]">
-                <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Underlying Instrument</h4>
-                <div class="space-y-2 text-xs">
+              <!-- Underlying Info -->
+              <div class="mt-4 pt-4 border-t border-[var(--glass-border)]">
+                <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-2">Underlying</h4>
+                <div class="text-xs space-y-1">
                   <div class="flex justify-between">
                     <span class="text-[var(--text-muted)]">Type</span>
                     <span class="text-[var(--text-primary)]">Interest Rate Swap</span>
-                  </div>
-                  <div class="flex justify-between">
-                    <span class="text-[var(--text-muted)]">Swap Tenor</span>
-                    <span class="text-[var(--text-primary)]">{{ selectedIrVol.tenor }}</span>
                   </div>
                   <div class="flex justify-between">
                     <span class="text-[var(--text-muted)]">Index</span>
@@ -710,11 +957,8 @@ onMounted(() => {
             </div>
 
             <template v-else>
-              <div class="space-y-3">
-                <div class="flex justify-between text-sm">
-                  <span class="text-[var(--text-muted)]">Instrument Type</span>
-                  <span class="text-[var(--text-primary)]">FX Option Vol</span>
-                </div>
+              <!-- Grid Point Info -->
+              <div class="space-y-2 mb-4">
                 <div class="flex justify-between text-sm">
                   <span class="text-[var(--text-muted)]">Currency Pair</span>
                   <span class="text-[var(--text-primary)]">{{ selectedFxVol.pair }}</span>
@@ -723,49 +967,49 @@ onMounted(() => {
                   <span class="text-[var(--text-muted)]">Expiry</span>
                   <span class="text-[var(--text-primary)]">{{ selectedFxVol.expiryLabel }}</span>
                 </div>
-                <div class="flex justify-between text-sm">
-                  <span class="text-[var(--text-muted)]">ATM Vol</span>
-                  <span class="text-[var(--text-primary)] font-mono">{{ formatVol(selectedFxVol.atmVol) }}</span>
+              </div>
+
+              <!-- All Instruments List -->
+              <div class="border-t border-[var(--glass-border)] pt-4">
+                <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">
+                  Instruments ({{ selectedFxVol.instruments.length }})
+                </h4>
+                <div class="space-y-2 max-h-80 overflow-y-auto">
+                  <div
+                    v-for="inst in selectedFxVol.instruments"
+                    :key="inst.id"
+                    class="p-3 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)]"
+                  >
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="text-xs font-mono text-[var(--text-muted)]">{{ inst.id }}</span>
+                      <span :class="[
+                        'px-2 py-0.5 rounded text-xs',
+                        inst.strike === 'ATM' ? 'bg-blue-500/10 text-blue-400' :
+                        inst.strike.includes('Call') ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
+                      ]">{{ inst.strike }}</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                      <span class="text-[var(--text-muted)]">Volatility</span>
+                      <span class="text-[var(--text-primary)] font-mono">{{ formatVol(inst.vol) }}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <!-- Smile Data -->
-              <div class="mt-6 pt-4 border-t border-[var(--glass-border)]">
-                <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Smile Parameters</h4>
-                <div class="space-y-2 text-xs">
-                  <div class="flex justify-between">
-                    <span class="text-[var(--text-muted)]">25D Risk Reversal</span>
-                    <span :class="['font-mono', selectedFxVol.rr25d >= 0 ? 'text-[var(--text-primary)]' : 'text-[var(--danger)]']">{{ formatVolBps(selectedFxVol.rr25d) }}</span>
-                  </div>
-                  <div class="flex justify-between">
-                    <span class="text-[var(--text-muted)]">25D Butterfly</span>
-                    <span class="text-[var(--text-primary)] font-mono">{{ formatVolBps(selectedFxVol.bf25d) }}</span>
-                  </div>
-                  <div v-if="selectedFxVol.rr10d !== undefined" class="flex justify-between">
-                    <span class="text-[var(--text-muted)]">10D Risk Reversal</span>
-                    <span :class="['font-mono', (selectedFxVol.rr10d ?? 0) >= 0 ? 'text-[var(--text-primary)]' : 'text-[var(--danger)]']">{{ formatVolBps(selectedFxVol.rr10d) }}</span>
-                  </div>
-                  <div v-if="selectedFxVol.bf10d !== undefined" class="flex justify-between">
-                    <span class="text-[var(--text-muted)]">10D Butterfly</span>
-                    <span class="text-[var(--text-primary)] font-mono">{{ formatVolBps(selectedFxVol.bf10d) }}</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Underlying Instrument -->
+              <!-- Underlying Info -->
               <div class="mt-4 pt-4 border-t border-[var(--glass-border)]">
-                <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Underlying Instrument</h4>
-                <div class="space-y-2 text-xs">
+                <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-2">Underlying</h4>
+                <div class="text-xs space-y-1">
                   <div class="flex justify-between">
                     <span class="text-[var(--text-muted)]">Type</span>
                     <span class="text-[var(--text-primary)]">FX Vanilla Option</span>
                   </div>
                   <div class="flex justify-between">
-                    <span class="text-[var(--text-muted)]">Base Currency</span>
+                    <span class="text-[var(--text-muted)]">Base</span>
                     <span class="text-[var(--text-primary)]">{{ selectedFxVol.pair.slice(0, 3) }}</span>
                   </div>
                   <div class="flex justify-between">
-                    <span class="text-[var(--text-muted)]">Quote Currency</span>
+                    <span class="text-[var(--text-muted)]">Quote</span>
                     <span class="text-[var(--text-primary)]">{{ selectedFxVol.pair.slice(3, 6) }}</span>
                   </div>
                 </div>
@@ -775,10 +1019,19 @@ onMounted(() => {
 
           <!-- Events (no detail panel) -->
           <template v-else-if="assetClass === 'Events'">
-            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Instrument Details</h3>
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Event Details</h3>
             <div class="text-center py-8">
               <i class="fas fa-calendar-alt text-3xl text-[var(--text-muted)] mb-4"></i>
               <p class="text-[var(--text-muted)]">Event details shown in table</p>
+            </div>
+          </template>
+
+          <!-- Holidays (no detail panel) -->
+          <template v-else-if="assetClass === 'Holidays'">
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Holiday Details</h3>
+            <div class="text-center py-8">
+              <i class="fas fa-calendar-day text-3xl text-[var(--text-muted)] mb-4"></i>
+              <p class="text-[var(--text-muted)]">Holiday details shown in table</p>
             </div>
           </template>
         </div>
