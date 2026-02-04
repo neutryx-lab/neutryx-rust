@@ -93,6 +93,7 @@ const buildResult = ref<BuildResult | null>(null);
 const isLoading = ref(false);
 const isBuilding = ref(false);
 const loadError = ref<string | null>(null);
+const buildError = ref<string | null>(null);
 
 // Build settings (editable)
 const calibrationMethod = ref<string>('sequential');
@@ -378,23 +379,32 @@ async function buildCurve() {
   if (!selectedCurve.value || enabledInstruments.value.length === 0) return;
 
   isBuilding.value = true;
+  buildError.value = null;
   try {
+    // Map frontend interpolation values to backend snake_case format
+    const interpolationMap: Record<string, string> = {
+      'linear': 'linear',
+      'loglinear': 'log_linear',
+      'cubic': 'cubic_spline',
+      'monotone_cubic': 'cubic_spline',
+      'flat_forward': 'linear',
+    };
+
     const response = await fetch('/api/curves/build', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        curveName: selectedCurve.value.name,
-        rateIndex: selectedCurve.value.rateIndex,
-        instruments: enabledInstruments.value.map(inst => ({
-          id: inst.id,
-          type: inst.type,
-          tenor: inst.tenor,
-          rate: inst.rate,
-          eventDate: inst.eventDate, // Include event date for EVENT instruments
-        })),
-        calibrationMethod: calibrationMethod.value,
-        interpolation: interpolation.value,
-        allowExtrapolation: allowExtrapolation.value,
+        index: selectedCurve.value.rateIndex,
+        currency: rateData.value?.currency || 'USD',
+        instruments: enabledInstruments.value
+          .filter(inst => inst.type.toLowerCase() !== 'event') // Exclude EVENT instruments
+          .map(inst => ({
+            instrument_type: inst.type.toLowerCase(),
+            tenor: inst.tenor,
+            rate: inst.rate,
+          })),
+        bootstrap_method: calibrationMethod.value,
+        interpolation: interpolationMap[interpolation.value] || 'log_linear',
       }),
     });
 
@@ -414,7 +424,9 @@ async function buildCurve() {
     await nextTick();
     updateChart();
   } catch (error) {
-    console.error('Build failed:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Build failed:', message);
+    buildError.value = message;
   } finally {
     isBuilding.value = false;
   }
@@ -702,8 +714,16 @@ onUnmounted(() => {
             </div>
           </div>
 
+          <!-- Build Error -->
+          <div v-if="buildError" class="mb-4 p-3 rounded-lg bg-red-500/20 border border-red-500/50">
+            <p class="text-sm text-red-400 flex items-center gap-2">
+              <i class="fas fa-exclamation-circle"></i>
+              {{ buildError }}
+            </p>
+          </div>
+
           <!-- Empty State -->
-          <div v-if="!buildResult" class="flex flex-col items-center justify-center h-80 text-[var(--text-muted)]">
+          <div v-if="!buildResult && !buildError" class="flex flex-col items-center justify-center h-80 text-[var(--text-muted)]">
             <i class="fas fa-chart-line text-5xl mb-4 opacity-30"></i>
             <p class="text-sm">Build a curve to see the chart</p>
           </div>

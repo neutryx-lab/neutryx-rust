@@ -67,8 +67,12 @@ S: Service   → service_cli, service_gateway, service_python
 - **TUI**: `ratatui`, `crossterm` (FrictionalBank TUI)
 - **Web**: `axum`, `tower-http` (REST API and HTTP server)
 - **WebSocket**: `tokio-tungstenite` (real-time dashboard)
-- **Visualisation**: D3.js-compatible JSON graph export (computation DAG)
-- **Frontend**: TypeScript, Vite (demo dashboard with component-based architecture)
+- **Visualisation**: D3.js-compatible JSON graph export (computation DAG), Chart.js for charts
+- **Frontend**: Vue 3 + Pinia + Tailwind CSS + Vite (demo dashboard with SFC architecture)
+  - `vue` + `vue-router`: Component-based SPA with routing
+  - `pinia`: State management
+  - `tailwindcss`: Utility-first CSS
+  - `chart.js`: Interactive charts and visualisations
 
 ## Development Standards
 
@@ -145,6 +149,9 @@ docker run -it neutryx-enzyme
 | **Feature Flag Coordination** | Features propagate through dependency chain (demo→frictional_bank→pricer_pricing) enabling modular compilation for different deployment scenarios |
 | **Feature Flags** | `enzyme-mode`, `serde` for serialisation; Asset classes: `equity` (default), `rates`, `credit`, `fx`, `commodity`, `exotic`; Convenience: `all`; Integration: `l1l2-integration` |
 | **Convention Registry Pattern** | `ConventionRegistry` with `ConventionKey` lookup; `ConventionSet` bundles per-currency conventions; `EventInstrument` models expected rate jumps at CB meetings |
+| **ConventionTemplate Pattern** | `ConventionTemplate` generates multiple conventions across currencies from compact JSON with `{currency}`, `{index}` placeholders; reduces configuration duplication |
+| **CurveDefinition Pattern** | `CurveDefinition` specifies curve recipes (rate_index, instruments[], calibration_method, interpolation); `CurveRegistry` resolves references at runtime |
+| **MarketInstrument Pattern** | `MarketInstrument` combines rate data + convention → CF-expandable Trade; bridges market quotes to pricing |
 
 ## Performance Optimisation
 
@@ -180,5 +187,5 @@ docker run -it neutryx-enzyme
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-02-02_ — Added Convention Registry Pattern (ConventionRegistry, ConventionSet, EventInstrument)
+_Updated: 2026-02-04_ — Vue 3 frontend migration (Vue + Pinia + Tailwind), CurveDefinition/ConventionTemplate/MarketInstrument patterns
 _Document standards and patterns, not every dependency_

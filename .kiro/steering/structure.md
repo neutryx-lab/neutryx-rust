@@ -132,8 +132,11 @@ market/            → Market data references, rate infrastructure, and conventi
   ├── mapper.rs         → Rate/Ticker mapping
   ├── validation.rs     → Market data validation
   ├── event_instrument.rs → EventInstrument for curve impact analysis (CB meetings, jumps)
-  ├── instrument.rs     → MarketInstrument trait and implementations
+  ├── market_instrument.rs → MarketInstrument type for CF-expandable instruments
+  ├── curve_definition.rs → CurveDefinition for yield curve construction recipes
+  ├── registry.rs       → CurveRegistry, InstrumentDefinitionRegistry for configuration lookup
   └── convention/       → Convention registry (ConventionRegistry, per-asset conventions)
+      └── convention_template.rs → ConventionTemplate for bulk convention generation
 
 counterparty/      → Counterparty, netting, and XVA configuration
   ├── csa.rs            → CSA terms (CsaTerms)
@@ -635,17 +638,21 @@ web/             → Web server module (feature-gated)
   ├── openapi.rs      → OpenAPI/Swagger UI (feature = "openapi")
   ├── market_data.rs  → Market data module
   └── error.rs        → API error handling (ApiError, ApiResult)
-static/          → Web dashboard frontend (TypeScript + Vite)
+static/          → Web dashboard frontend (Vue 3 + Pinia + Tailwind + Vite)
   ├── index.html      → Dashboard HTML entry point
-  ├── package.json    → Node.js dependencies
+  ├── package.json    → Node.js dependencies (vue, pinia, vue-router, chart.js, tailwindcss)
   ├── tsconfig.json   → TypeScript configuration
-  ├── vite.config.ts  → Vite build configuration
-  └── src/            → TypeScript source
-      ├── main.ts           → Application entry point
-      ├── components/       → UI components (curve-builder, pricer, volcube-builder, market-data, exposure, dashboard, scenarios, trade-expansion, portfolio, graph)
-      ├── services/         → API client services (api.ts, config-loader.ts)
+  ├── vite.config.ts  → Vite build configuration with Vue plugin
+  └── src/            → Vue 3 source
+      ├── main.ts           → Application entry point (Vue app setup)
+      ├── App.vue           → Root Vue component
+      ├── views/            → Page components (CurveBuilderView, MarketDataView, PortfolioView, PricerView, etc.)
+      ├── components/       → Reusable components (common/AppLayout, Sidebar, TopBar, ToastContainer)
+      ├── stores/           → Pinia state management (config.ts)
+      ├── router/           → Vue Router configuration (index.ts)
+      ├── services/         → API client services (api.ts)
       ├── types/            → TypeScript type definitions (api.ts)
-      └── utils/            → Utilities (dom.ts, format.ts, logger.ts)
+      └── assets/           → Static assets (tailwind.css)
 ```
 
 **Dual-Mode Architecture**:
@@ -752,5 +759,5 @@ use super::types::DualNumber;
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-02-02_ — Added market/convention/ (ConventionRegistry), EventInstrument, portfolio/graph frontend modules
+_Updated: 2026-02-04_ — Vue 3 frontend migration, CurveDefinition/ConventionTemplate/MarketInstrument modules, CurveRegistry
 _Document patterns, not file trees. New files following patterns should not require updates_

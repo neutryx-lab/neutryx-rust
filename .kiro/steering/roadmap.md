@@ -2,7 +2,7 @@
 
 実装状況と今後の開発項目を追跡するドキュメント。
 
-_Updated: 2026-02-02_ — Steering sync: market-convention-instrument advanced (ConventionRegistry, EventInstrument, D3.js graph); 48 completed specs; 4 active specs
+_Updated: 2026-02-04_ — Steering sync: Vue 3 frontend migration, CurveDefinition/ConventionTemplate patterns; 48 completed specs; 4 active specs
 
 ---
 
@@ -215,6 +215,7 @@ Codebase redundancy cleanup performed:
 
 | Date | Change |
 |------|--------|
+| 2026-02-04 | Steering sync: Vue 3 frontend migration (Vue + Pinia + Tailwind CSS), CurveDefinition/ConventionTemplate/MarketInstrument patterns, CurveRegistry. 4 active specs unchanged. Total: 48 specs |
 | 2026-02-02 | Steering sync: market-convention-instrument advanced to tasks-generated (ConventionRegistry, EventInstrument, D3.js graph). 4 active specs. Added Convention Registry Pattern to tech.md. Total: 48 specs |
 | 2026-01-31 | Steering sync: Added `enum_dispatch` pattern to tech.md and dependency-management.md, derive-more-newtype-migration completed. Total: 46 completed specs, 2 active specs (boilerplate-reduction, enum-dispatch-migration) |
 | 2026-01-31 | Steering sync: TypeScript frontend infrastructure (demo/gui/static with Vite, component-based architecture), service_gateway services layer (Handler→Service→Pricer pattern, demo endpoints, feature-gated caches), 3 new completed specs (config-consolidation, service-gateway-services, thiserror-migration). Total: 48 specs |
