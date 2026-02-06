@@ -50,10 +50,10 @@ impl CurveService {
             if i.instrument_type.to_lowercase() == "event" {
                 // Handle Event instruments
                 if let Some(ref event_date_str) = i.event_date {
-                    let event_date =
-                        chrono::NaiveDate::parse_from_str(event_date_str, "%Y-%m-%d").map_err(
-                            |e| ServerError::InvalidRequest(format!("Invalid event_date: {e}")),
-                        )?;
+                    let event_date = chrono::NaiveDate::parse_from_str(event_date_str, "%Y-%m-%d")
+                        .map_err(|e| {
+                            ServerError::InvalidRequest(format!("Invalid event_date: {e}"))
+                        })?;
 
                     // Calculate time to event in years
                     let days = (event_date - reference_date).num_days();
@@ -84,33 +84,36 @@ impl CurveService {
             .map_err(|e| ServerError::InvalidRequest(format!("Rate validation failed: {e}")))?;
 
         // Parse regular instruments using adapter_loader
-        let mut market_instruments = if regular_specs.is_empty() {
-            Vec::new()
-        } else {
-            parse_instruments(&regular_specs)
-                .map_err(|e| ServerError::InvalidRequest(format!("Instrument parsing failed: {e}")))?
-        };
-
-        // Add Event instruments
-        market_instruments.extend(event_instruments);
-
-        // Sort all instruments by maturity
-        market_instruments.sort_by(|a, b| {
-            a.maturity()
-                .partial_cmp(&b.maturity())
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
-
-        // Must have at least one non-event instrument
-        let has_rate_instrument = market_instruments
-            .iter()
-            .any(|inst| !inst.is_event());
-
-        if !has_rate_instrument {
+        let market_instruments = if regular_specs.is_empty() {
             return Err(ServerError::InvalidRequest(
                 "At least one non-event instrument is required".to_string(),
             ));
-        }
+        } else {
+            parse_instruments(&regular_specs).map_err(|e| {
+                ServerError::InvalidRequest(format!("Instrument parsing failed: {e}"))
+            })?
+        };
+
+        // Convert event instruments to jump data for curve
+        // Jump format: (time, cumulative_offset) where offset is in log(df) space
+        // A rate hike (positive spike) decreases df, so offset = -spike
+        let mut jumps: Vec<(f64, f64)> = event_instruments
+            .iter()
+            .filter_map(|inst| inst.expected_jump().map(|jump| (inst.maturity(), jump)))
+            .collect();
+
+        // Sort jumps by time and calculate cumulative offsets
+        jumps.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+        let mut cumulative = 0.0;
+        let jump_data: Vec<(f64, f64)> = jumps
+            .into_iter()
+            .map(|(time, jump)| {
+                // Convert rate jump to log-space offset: offset = -jump (rate hike decreases
+                // df)
+                cumulative -= jump;
+                (time, cumulative)
+            })
+            .collect();
 
         // Convert interpolation method
         let interpolation = match request.interpolation {
@@ -120,7 +123,7 @@ impl CurveService {
         };
 
         // Build curve using pricer_models CurveBootstrapper
-        let curve = match request.bootstrap_method {
+        let base_curve = match request.bootstrap_method {
             BootstrapMethod::Sequential => {
                 let config = BootstrapConfig::new(request.tolerance, request.max_iterations)
                     .with_interpolation(interpolation);
@@ -139,6 +142,13 @@ impl CurveService {
                     .bootstrap_to_curve(&market_instruments)
                     .map_err(|e| ServerError::Pricing(format!("Global bootstrap failed: {e}")))?
             }
+        };
+
+        // Apply jump data to the curve if there are events
+        let curve = if jump_data.is_empty() {
+            base_curve
+        } else {
+            base_curve.with_jumps(jump_data)
         };
 
         // Extract pillar data (bootstrap nodes)

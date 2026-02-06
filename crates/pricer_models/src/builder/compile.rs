@@ -528,7 +528,8 @@ impl<T: Float> CalibrationInstrument<T> for CompiledInstrument<T> {
                 // Event instruments (CB meetings, year-end turns) represent discrete jumps.
                 // The market_rate stores the expected_rate_spike.
                 // For calibration purposes, an Event applies a jump at its event date;
-                // the theoretical rate is simply the stored spike value (no curve calculation needed).
+                // the theoretical rate is simply the stored spike value (no curve calculation
+                // needed).
                 Ok(self.market_rate)
             }
         }

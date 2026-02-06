@@ -35,15 +35,18 @@ use crate::vol_surface_loader::{parse_fra_tenor, parse_tenor_string};
 /// typically loaded from JSON files or API requests.
 #[derive(Debug, Clone, PartialEq)]
 pub struct InstrumentSpec {
-    /// Instrument type (e.g., "deposit", "ois", "fra", "swap", "future", "event").
+    /// Instrument type (e.g., "deposit", "ois", "fra", "swap", "future",
+    /// "event").
     pub instrument_type: String,
-    /// Tenor string (e.g., "1M", "1Y", "3x6" for FRA). Optional for Event instruments.
+    /// Tenor string (e.g., "1M", "1Y", "3x6" for FRA). Optional for Event
+    /// instruments.
     pub tenor: String,
     /// Market-quoted rate (as decimal, e.g., 0.0430 for 4.30%).
     pub rate: f64,
     /// Event date in ISO format (YYYY-MM-DD). Only used for Event instruments.
     pub event_date: Option<String>,
-    /// Expected rate spike for Event instruments (as decimal, e.g., -0.0025 for -25bp).
+    /// Expected rate spike for Event instruments (as decimal, e.g., -0.0025 for
+    /// -25bp).
     pub expected_rate_spike: Option<f64>,
 }
 
@@ -64,7 +67,8 @@ impl InstrumentSpec {
     /// # Arguments
     ///
     /// * `event_date` - Event date in ISO format (YYYY-MM-DD)
-    /// * `expected_rate_spike` - Expected rate spike (as decimal, e.g., -0.0025 for -25bp)
+    /// * `expected_rate_spike` - Expected rate spike (as decimal, e.g., -0.0025
+    ///   for -25bp)
     pub fn event(event_date: impl Into<String>, expected_rate_spike: f64) -> Self {
         Self {
             instrument_type: "event".to_string(),

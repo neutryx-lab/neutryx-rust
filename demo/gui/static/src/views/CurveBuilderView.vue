@@ -151,15 +151,11 @@ const hasChanges = computed(() => {
 });
 
 const summaryStats = computed(() => {
-  // Exclude event instruments from average rate calculation
-  const rateInstruments = enabledInstruments.value.filter(i => i.type !== 'event');
   const eventCount = enabledInstruments.value.filter(i => i.type === 'event').length;
 
   return [
     { label: 'Instruments', value: `${enabledInstruments.value.length}/${instruments.value.length}${eventCount > 0 ? ` (${eventCount} events)` : ''}`, icon: 'fa-list-alt', color: '#3b82f6' },
-    { label: 'Avg Rate', value: rateInstruments.length > 0
-        ? `${(rateInstruments.reduce((sum, i) => sum + i.rate, 0) / rateInstruments.length * 100).toFixed(2)}%`
-        : '-', icon: 'fa-percent', color: '#8b5cf6' },
+    { label: 'Valuation Date', value: rateData.value?.reference_date || '-', icon: 'fa-calendar', color: '#8b5cf6' },
     { label: 'Interpolation', value: interpolation.value, icon: 'fa-wave-square', color: '#10b981' },
     { label: 'Status', value: buildResult.value ? 'Built' : 'Pending', icon: 'fa-info-circle', color: buildResult.value ? '#10b981' : '#f59e0b' },
   ];
