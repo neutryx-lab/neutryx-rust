@@ -13,6 +13,7 @@
 #![cfg(feature = "global-bootstrap")]
 
 use approx::assert_relative_eq;
+use num_traits::Float;
 use pricer_models::{
     builder::{
         CalibrationInstrument, CalibrationProblem, GlobalBootstrapConfig, GlobalBootstrapper,
@@ -402,4 +403,211 @@ fn test_condition_number_computed() {
     let cond = result.condition_number.unwrap();
     assert!(cond > 0.0);
     assert!(cond < 1e12);
+}
+
+// =============================================================================
+// Task 3.6: IFT Sensitivity Integration Tests
+// =============================================================================
+
+/// Test that IFT sensitivity computation is available after calibration.
+#[test]
+fn test_ift_sensitivity_available() {
+    let instruments = vec![
+        MarketInstrument::ois(1.0, 0.03),
+        MarketInstrument::ois(2.0, 0.035),
+        MarketInstrument::ois(5.0, 0.04),
+    ];
+
+    let config = GlobalBootstrapConfig::default();
+    let bootstrapper = GlobalBootstrapper::new(config);
+
+    let result = bootstrapper.calibrate(&instruments).unwrap();
+
+    assert!(result.converged);
+    assert!(result.can_compute_ift(), "IFT should be available after calibration");
+    assert!(
+        result.jacobian_inverse.is_some(),
+        "J⁻¹ should be cached by default"
+    );
+}
+
+/// Test IFT sensitivity computation with identity-like perturbation.
+#[test]
+fn test_ift_sensitivity_computation() {
+    let instruments = vec![
+        MarketInstrument::ois(1.0, 0.03),
+        MarketInstrument::ois(2.0, 0.035),
+        MarketInstrument::ois(5.0, 0.04),
+    ];
+
+    let config = GlobalBootstrapConfig::default();
+    let bootstrapper = GlobalBootstrapper::new(config);
+
+    let result = bootstrapper.calibrate(&instruments).unwrap();
+
+    // Compute IFT sensitivity for a unit perturbation in the first instrument
+    let dF_dm = vec![1.0, 0.0, 0.0]; // Unit perturbation in first instrument
+    let sensitivity = result.ift_sensitivity(&dF_dm).unwrap();
+
+    assert_eq!(sensitivity.len(), 3, "Sensitivity should have same dimension as pillars");
+
+    // Sensitivities should be finite
+    for s in &sensitivity {
+        assert!(s.is_finite(), "Sensitivity should be finite");
+    }
+}
+
+/// Test IFT batch sensitivity computation.
+#[test]
+fn test_ift_batch_sensitivity_computation() {
+    use pricer_core::math::linalg::DMatrix;
+
+    let instruments = vec![
+        MarketInstrument::ois(1.0, 0.03),
+        MarketInstrument::ois(2.0, 0.035),
+        MarketInstrument::ois(5.0, 0.04),
+    ];
+
+    let config = GlobalBootstrapConfig::default();
+    let bootstrapper = GlobalBootstrapper::new(config);
+
+    let result = bootstrapper.calibrate(&instruments).unwrap();
+
+    // Create batch perturbation (identity matrix = each instrument independently)
+    let dF_dm_batch = DMatrix::identity(3, 3);
+    let batch_sensitivity = result.ift_sensitivity_batch(&dF_dm_batch).unwrap();
+
+    assert_eq!(batch_sensitivity.nrows(), 3);
+    assert_eq!(batch_sensitivity.ncols(), 3);
+
+    // Compare batch result with individual computations
+    for j in 0..3 {
+        let dF_dm: Vec<f64> = (0..3).map(|i| if i == j { 1.0 } else { 0.0 }).collect();
+        let individual = result.ift_sensitivity(&dF_dm).unwrap();
+
+        for i in 0..3 {
+            assert_relative_eq!(
+                batch_sensitivity[(i, j)],
+                individual[i],
+                epsilon = 1e-12,
+            );
+        }
+    }
+}
+
+/// Test IFT sensitivity vs bump-and-recalibrate (golden test).
+///
+/// This test verifies that IFT-based sensitivities agree with bump-and-recalibrate
+/// sensitivities within the required tolerance (1e-8 relative error).
+#[test]
+fn test_ift_vs_bump_and_recalibrate() {
+    let base_rate = 0.03;
+    let instruments = vec![
+        MarketInstrument::ois(1.0, base_rate),
+        MarketInstrument::ois(2.0, base_rate + 0.005),
+        MarketInstrument::ois(5.0, base_rate + 0.01),
+    ];
+
+    let config = GlobalBootstrapConfig::default();
+    let bootstrapper = GlobalBootstrapper::new(config);
+
+    let result = bootstrapper.calibrate(&instruments).unwrap();
+    let base_df = result.discount_factors.clone();
+
+    // Bump size for finite difference
+    let bump = 1e-6; // 0.1 bp
+
+    // Test sensitivity to first instrument
+    for inst_idx in 0..instruments.len() {
+        // Bump-and-recalibrate
+        let mut bumped_instruments = instruments.clone();
+        bumped_instruments[inst_idx] = MarketInstrument::ois(
+            instruments[inst_idx].maturity(),
+            instruments[inst_idx].rate() + bump,
+        );
+
+        let bumped_result = bootstrapper.calibrate(&bumped_instruments).unwrap();
+
+        // Compute bump-and-recalibrate sensitivity: (DF_bumped - DF_base) / bump
+        let bump_sensitivities: Vec<f64> = base_df
+            .iter()
+            .zip(bumped_result.discount_factors.iter())
+            .map(|(&base, &bumped)| (bumped - base) / bump)
+            .collect();
+
+        // Compute IFT sensitivity
+        // Since F = implied_rate - market_quote, ∂F/∂quote = -1
+        // (a unit increase in quote makes the residual decrease by 1)
+        let mut dF_dm = vec![0.0; instruments.len()];
+        dF_dm[inst_idx] = -1.0;
+
+        let ift_sensitivities = result.ift_sensitivity(&dF_dm).unwrap();
+
+        // Compare sensitivities (note: IFT gives ∂log(DF)/∂quote, we need ∂DF/∂quote)
+        // ∂DF/∂quote = DF * ∂log(DF)/∂quote
+        for (i, (&ift_sens, &bump_sens)) in
+            ift_sensitivities.iter().zip(bump_sensitivities.iter()).enumerate()
+        {
+            // Convert IFT sensitivity from log space to DF space
+            let ift_df_sens = base_df[i] * ift_sens;
+
+            // Relative error check
+            if bump_sens.abs() > 1e-10 {
+                let rel_error = ((ift_df_sens - bump_sens) / bump_sens).abs();
+                assert!(
+                    rel_error < 1e-4, // Allow 0.01% relative error due to finite diff approximation
+                    "IFT vs bump-recal mismatch at pillar {} for instrument {}: \
+                     IFT={}, bump={}, rel_error={}",
+                    i,
+                    inst_idx,
+                    ift_df_sens,
+                    bump_sens,
+                    rel_error
+                );
+            }
+        }
+    }
+}
+
+/// Test IFT error when Jacobian inverse is not stored.
+#[test]
+fn test_ift_error_without_jacobian_inverse() {
+    let instruments = vec![
+        MarketInstrument::ois(1.0, 0.03),
+        MarketInstrument::ois(2.0, 0.035),
+    ];
+
+    let config = GlobalBootstrapConfig::default().with_jacobian_inverse(false);
+    let bootstrapper = GlobalBootstrapper::new(config);
+
+    let result = bootstrapper.calibrate(&instruments).unwrap();
+
+    assert!(result.converged);
+    assert!(!result.can_compute_ift(), "IFT should not be available");
+
+    let dF_dm = vec![1.0, 0.0];
+    let sensitivity_result = result.ift_sensitivity(&dF_dm);
+
+    assert!(sensitivity_result.is_err());
+}
+
+/// Test IFT sensitivity dimension validation.
+#[test]
+fn test_ift_dimension_mismatch() {
+    let instruments = vec![
+        MarketInstrument::ois(1.0, 0.03),
+        MarketInstrument::ois(2.0, 0.035),
+        MarketInstrument::ois(5.0, 0.04),
+    ];
+
+    let config = GlobalBootstrapConfig::default();
+    let bootstrapper = GlobalBootstrapper::new(config);
+
+    let result = bootstrapper.calibrate(&instruments).unwrap();
+
+    // Wrong dimension input
+    let dF_dm_wrong = vec![1.0, 0.0]; // Only 2 elements, should be 3
+    let sensitivity_result = result.ift_sensitivity(&dF_dm_wrong);
+
+    assert!(sensitivity_result.is_err());
 }

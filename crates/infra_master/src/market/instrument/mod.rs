@@ -52,6 +52,7 @@ mod credit;
 mod equity;
 mod fx;
 mod fx_vol;
+mod ir_vol;
 mod rates;
 mod xccy;
 
@@ -88,10 +89,14 @@ pub use fx_vol::{
     CutOffTime, Delta, DeltaType, FxVolConvention, FxVolInstrument, FxVolInstrumentBuilder,
     FxVolInstrumentError,
 };
+// IR Vol instruments
+pub use ir_vol::{
+    CapFloor, CapFloorBuilder, CapFloorType, IrVolInstrument, IrVolInstrumentError, Swaption,
+    SwaptionBuilder,
+};
 // Rates instruments
 pub use rates::{
-    BasisSwap, CapFloor, CapFloorType, CmsSwap, Deposit, Fra, Frn, Futures, InflationSwap,
-    InterestRateSwap, Ois, SwapType, Swaption,
+    BasisSwap, CmsSwap, Deposit, Fra, Frn, Futures, InflationSwap, InterestRateSwap, Ois, SwapType,
 };
 // XCCY instruments
 pub use xccy::{
