@@ -342,7 +342,7 @@ fn map_bootstrap_error(err: BootstrapError) -> ConstructionError {
 mod tests {
     use infra_domain::{
         market::{
-            Currency, DataSource, MarketRate, RateId, RateIndex, RateIndexDefinition, RateType,
+            Currency, DataSource, MarketQuote, QuoteId, RateIndex, RateIndexDefinition, RateType,
         },
         time::Tenor,
     };
@@ -363,7 +363,7 @@ mod tests {
         ];
 
         for inst in instruments {
-            registry.register_instrument(inst);
+            let _ = registry.register_instrument(inst);
         }
 
         // Register rate index
@@ -402,9 +402,9 @@ mod tests {
         ];
 
         for (tenor, rate_type, value) in data {
-            let rate_id = RateId::new(Currency::USD, tenor, rate_type);
+            let rate_id = QuoteId::new(Currency::USD, tenor, rate_type);
             let rate =
-                MarketRate::new(rate_id, QuoteType::Mid, value, ts, DataSource::Bloomberg).unwrap();
+                MarketQuote::new(rate_id, QuoteType::Mid, value, ts, DataSource::Bloomberg).unwrap();
             rates.insert(rate);
         }
 
@@ -476,7 +476,7 @@ mod tests {
         let mut registry = DefinitionRegistry::new();
 
         // Register instrument with no corresponding market rate
-        registry.register_instrument(InstrumentDefinition::new(
+        let _ = registry.register_instrument(InstrumentDefinition::new(
             "USD-OIS-30Y",
             Currency::USD,
             RateType::Ois,
@@ -523,9 +523,9 @@ mod tests {
         ];
 
         for (tenor, rate_type, value) in data {
-            let rate_id = RateId::new(Currency::USD, tenor, rate_type);
+            let rate_id = QuoteId::new(Currency::USD, tenor, rate_type);
             let rate =
-                MarketRate::new(rate_id, QuoteType::Mid, value, ts, DataSource::Bloomberg).unwrap();
+                MarketQuote::new(rate_id, QuoteType::Mid, value, ts, DataSource::Bloomberg).unwrap();
             market_rates.insert(rate);
         }
 
@@ -551,7 +551,7 @@ mod tests {
             InstrumentDefinition::new("EUR-OIS-1Y", Currency::EUR, RateType::Ois, "1Y"),
         ];
         for inst in eur_instruments {
-            registry.register_instrument(inst);
+            let _ = registry.register_instrument(inst);
         }
 
         let estr = RateIndexDefinition::new("EUR-ESTR", Currency::EUR, RateIndex::Estr);
@@ -569,8 +569,8 @@ mod tests {
         let ts = 1700000000000_i64;
 
         market_rates.insert(
-            MarketRate::new(
-                RateId::new(Currency::EUR, Tenor::Overnight, RateType::Deposit),
+            MarketQuote::new(
+                QuoteId::new(Currency::EUR, Tenor::Overnight, RateType::Deposit),
                 QuoteType::Mid,
                 0.0390,
                 ts,
@@ -579,8 +579,8 @@ mod tests {
             .unwrap(),
         );
         market_rates.insert(
-            MarketRate::new(
-                RateId::new(Currency::EUR, Tenor::OneYear, RateType::Ois),
+            MarketQuote::new(
+                QuoteId::new(Currency::EUR, Tenor::OneYear, RateType::Ois),
                 QuoteType::Mid,
                 0.0350,
                 ts,

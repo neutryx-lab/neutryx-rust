@@ -1227,7 +1227,7 @@ mod tests {
     use infra_domain::{
         market::{
             convention::{DepositConvention, FraConvention, SwapConvention},
-            Currency, RateId, RateType,
+            Currency, QuoteId, RateType,
         },
         time::Tenor,
     };
@@ -1246,7 +1246,7 @@ mod tests {
         let valuation_date = create_test_valuation_date();
         let compiler: InstrumentCompiler<f64> = InstrumentCompiler::new(valuation_date);
 
-        let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+        let rate_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
         let convention = MarketConvention::Deposit(DepositConvention::usd());
         let instrument =
             InfraMasterInstrument::new(rate_id, 0.05, convention, valuation_date, 1_000_000.0)
@@ -1263,7 +1263,7 @@ mod tests {
         let valuation_date = create_test_valuation_date();
         let compiler: InstrumentCompiler<f64> = InstrumentCompiler::new(valuation_date);
 
-        let rate_id = RateId::new(Currency::USD, Tenor::FiveYears, RateType::Swap);
+        let rate_id = QuoteId::new(Currency::USD, Tenor::FiveYears, RateType::Swap);
         let convention = MarketConvention::Swap(SwapConvention::usd_sofr());
         let instrument =
             InfraMasterInstrument::new(rate_id, 0.045, convention, valuation_date, 10_000_000.0)
@@ -1280,7 +1280,7 @@ mod tests {
         let valuation_date = create_test_valuation_date();
         let compiler: InstrumentCompiler<f64> = InstrumentCompiler::new(valuation_date);
 
-        let rate_id = RateId::new(Currency::USD, Tenor::OneYear, RateType::Ois);
+        let rate_id = QuoteId::new(Currency::USD, Tenor::OneYear, RateType::Ois);
         let convention = MarketConvention::Ois(SwapConvention::usd_sofr());
         let instrument =
             InfraMasterInstrument::new(rate_id, 0.052, convention, valuation_date, 5_000_000.0)
@@ -1295,7 +1295,7 @@ mod tests {
         let valuation_date = create_test_valuation_date();
         let compiler: InstrumentCompiler<f64> = InstrumentCompiler::new(valuation_date);
 
-        let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Fra);
+        let rate_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Fra);
         let convention = MarketConvention::Fra(FraConvention::usd_sofr());
         let instrument =
             InfraMasterInstrument::new(rate_id, 0.051, convention, valuation_date, 2_000_000.0)
@@ -1312,7 +1312,7 @@ mod tests {
         let valuation_date = create_test_valuation_date();
         let compiler: InstrumentCompiler<f64> = InstrumentCompiler::new(valuation_date);
 
-        let rate_id = RateId::new(Currency::USD, Tenor::FiveYears, RateType::BasisSwap);
+        let rate_id = QuoteId::new(Currency::USD, Tenor::FiveYears, RateType::BasisSwap);
         let convention = MarketConvention::XCcyBasis(XCcyBasisConvention::usd_jpy());
         let instrument =
             InfraMasterInstrument::new(rate_id, 0.0025, convention, valuation_date, 100_000_000.0)
@@ -1337,7 +1337,7 @@ mod tests {
 
         let instruments = vec![
             InfraMasterInstrument::new(
-                RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit),
+                QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit),
                 0.05,
                 MarketConvention::Deposit(DepositConvention::usd()),
                 valuation_date,
@@ -1345,7 +1345,7 @@ mod tests {
             )
             .unwrap(),
             InfraMasterInstrument::new(
-                RateId::new(Currency::USD, Tenor::OneYear, RateType::Ois),
+                QuoteId::new(Currency::USD, Tenor::OneYear, RateType::Ois),
                 0.052,
                 MarketConvention::Ois(SwapConvention::usd_sofr()),
                 valuation_date,
@@ -1367,7 +1367,7 @@ mod tests {
         let compiler: InstrumentCompiler<f64> = InstrumentCompiler::new(future_valuation);
 
         // Create instrument with normal dates (maturity in 2024)
-        let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+        let rate_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
         let convention = MarketConvention::Deposit(DepositConvention::usd());
         let instrument_date = Date::from_ymd(2024, 1, 15).unwrap();
 

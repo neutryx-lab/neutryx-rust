@@ -11,6 +11,7 @@
 //! - Task 6.3: Jacobian consistency verification
 
 #![cfg(feature = "global-bootstrap")]
+#![allow(non_snake_case)]
 
 use approx::assert_relative_eq;
 use num_traits::Float;

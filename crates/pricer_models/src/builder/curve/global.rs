@@ -1344,6 +1344,7 @@ fn vector_norm<T: Float>(v: &[T]) -> T {
 // =============================================================================
 
 #[cfg(test)]
+#[allow(non_snake_case)]
 mod tests {
     use approx::assert_relative_eq;
 
@@ -1593,6 +1594,7 @@ mod tests {
     // Jump calibration tests
     // =========================================================================
 
+    #[allow(dead_code)]
     fn create_jump_pillars() -> Vec<JumpPillar<f64>> {
         vec![
             JumpPillar::new(0.5, 25.0),  // 25bps at 6 months

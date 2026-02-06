@@ -14,7 +14,7 @@ fn test_parse_irs_usd() {
 
     let trade = FpmlParser::parse(&xml).expect("Failed to parse IRS");
 
-    assert_eq!(trade.id.as_str(), "IRS-USD-001");
+    assert_eq!(trade.id.as_str(), "T10001-01");
     assert!(trade.trade_type.is_swap());
     assert_eq!(trade.num_legs(), 2);
 }
@@ -26,7 +26,7 @@ fn test_parse_swaption() {
 
     let trade = FpmlParser::parse(&xml).expect("Failed to parse swaption");
 
-    assert_eq!(trade.id.as_str(), "SWPTN-USD-001");
+    assert_eq!(trade.id.as_str(), "T10002-01");
     assert!(trade.trade_type.is_swaption());
 }
 
@@ -37,7 +37,7 @@ fn test_parse_cap() {
 
     let trade = FpmlParser::parse(&xml).expect("Failed to parse cap");
 
-    assert_eq!(trade.id.as_str(), "CAP-USD-001");
+    assert_eq!(trade.id.as_str(), "T10003-01");
     assert!(matches!(
         trade.trade_type,
         infra_domain::trade::TradeType::CapFloor
@@ -51,7 +51,7 @@ fn test_parse_fx_forward() {
 
     let trade = FpmlParser::parse(&xml).expect("Failed to parse FX forward");
 
-    assert_eq!(trade.id.as_str(), "FXFWD-EURUSD-001");
+    assert_eq!(trade.id.as_str(), "T20001-01");
     assert!(trade.trade_type.is_fx());
 }
 
@@ -62,7 +62,7 @@ fn test_parse_fx_swap() {
 
     let trade = FpmlParser::parse(&xml).expect("Failed to parse FX swap");
 
-    assert_eq!(trade.id.as_str(), "FXSWAP-EURUSD-001");
+    assert_eq!(trade.id.as_str(), "T20003-01");
     assert!(trade.trade_type.is_fx());
 }
 
@@ -73,7 +73,7 @@ fn test_parse_fx_option() {
 
     let trade = FpmlParser::parse(&xml).expect("Failed to parse FX option");
 
-    assert_eq!(trade.id.as_str(), "FXOPT-EURUSD-001");
+    assert_eq!(trade.id.as_str(), "T20002-01");
     assert!(trade.trade_type.is_fx());
     assert!(trade.trade_type.is_option());
 }
@@ -85,7 +85,7 @@ fn test_parse_equity_option() {
 
     let trade = FpmlParser::parse(&xml).expect("Failed to parse equity option");
 
-    assert_eq!(trade.id.as_str(), "EQOPT-AAPL-001");
+    assert_eq!(trade.id.as_str(), "T30001-01");
     assert!(trade.trade_type.is_equity());
     assert!(trade.trade_type.is_option());
 }
@@ -97,7 +97,7 @@ fn test_parse_cds() {
 
     let trade = FpmlParser::parse(&xml).expect("Failed to parse CDS");
 
-    assert_eq!(trade.id.as_str(), "CDS-IBM-001");
+    assert_eq!(trade.id.as_str(), "T40001-01");
     assert!(trade.trade_type.is_credit());
 }
 
@@ -108,7 +108,7 @@ fn test_parse_cdx() {
 
     let trade = FpmlParser::parse(&xml).expect("Failed to parse CDX");
 
-    assert_eq!(trade.id.as_str(), "CDXIG-001");
+    assert_eq!(trade.id.as_str(), "T40002-01");
     assert!(trade.trade_type.is_credit());
 }
 
@@ -119,6 +119,6 @@ fn test_parse_commodity_swap() {
 
     let trade = FpmlParser::parse(&xml).expect("Failed to parse commodity swap");
 
-    assert_eq!(trade.id.as_str(), "COMSWAP-BRENT-001");
+    assert_eq!(trade.id.as_str(), "T50001-01");
     assert!(trade.trade_type.is_commodity());
 }
