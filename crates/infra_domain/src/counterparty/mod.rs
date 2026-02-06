@@ -20,7 +20,9 @@
 //! use infra_domain::counterparty::prelude::*;
 //!
 //! // Create a counterparty with credit rating
-//! let cp = CounterParty::builder("CP001", "Acme Bank")
+//! let cp = CounterParty::builder()
+//!     .counterparty_id("CP001")
+//!     .name("Acme Bank")
 //!     .sector(CounterPartySector::Banking)
 //!     .rating(CreditRating::APlus)
 //!     .build();
