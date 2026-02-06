@@ -338,6 +338,231 @@ impl std::fmt::Display for JumpPillar {
     }
 }
 
+// =============================================================================
+// JumpPillarBuilder
+// =============================================================================
+
+use crate::market::RateIndex;
+
+/// Builder for creating JumpPillars from EventInstruments.
+///
+/// Provides filtering capabilities to select relevant events for curve
+/// construction based on rate index, date range, and confidence threshold.
+///
+/// # Examples
+///
+/// ```
+/// use infra_master::market::definition::JumpPillarBuilder;
+/// use infra_master::market::{EventInstrument, RateIndex};
+/// use infra_master::market::events::EventType;
+/// use infra_master::time::Date;
+///
+/// let events = vec![
+///     EventInstrument::new(
+///         Date::from_ymd(2024, 3, 20).unwrap(),
+///         EventType::CentralBankMeeting,
+///         25.0,
+///         0.85,
+///         RateIndex::Sofr,
+///     ),
+///     EventInstrument::new(
+///         Date::from_ymd(2024, 6, 12).unwrap(),
+///         EventType::CentralBankMeeting,
+///         -25.0,
+///         0.70,
+///         RateIndex::Estr,
+///     ),
+/// ];
+///
+/// // Build pillars for SOFR only
+/// let pillars = JumpPillarBuilder::new(events)
+///     .with_rate_index(RateIndex::Sofr)
+///     .with_min_confidence(0.5)
+///     .build();
+///
+/// assert_eq!(pillars.len(), 1);
+/// ```
+#[derive(Debug, Clone)]
+pub struct JumpPillarBuilder {
+    events: Vec<EventInstrument>,
+    rate_index_filter: Option<RateIndex>,
+    date_range: Option<(Date, Date)>,
+    min_confidence: f64,
+}
+
+impl JumpPillarBuilder {
+    /// Creates a new builder with the given events.
+    ///
+    /// # Arguments
+    ///
+    /// * `events` - List of EventInstruments to process
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use infra_master::market::definition::JumpPillarBuilder;
+    /// use infra_master::market::EventInstrument;
+    ///
+    /// let builder = JumpPillarBuilder::new(vec![]);
+    /// let pillars = builder.build();
+    /// assert!(pillars.is_empty());
+    /// ```
+    #[must_use]
+    pub fn new(events: Vec<EventInstrument>) -> Self {
+        Self {
+            events,
+            rate_index_filter: None,
+            date_range: None,
+            min_confidence: 0.0,
+        }
+    }
+
+    /// Filters events to only include those matching the specified rate index.
+    ///
+    /// # Arguments
+    ///
+    /// * `index` - The rate index to filter by
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use infra_master::market::definition::JumpPillarBuilder;
+    /// use infra_master::market::RateIndex;
+    ///
+    /// let builder = JumpPillarBuilder::new(vec![])
+    ///     .with_rate_index(RateIndex::Sofr);
+    /// ```
+    #[must_use]
+    pub fn with_rate_index(mut self, index: RateIndex) -> Self {
+        self.rate_index_filter = Some(index);
+        self
+    }
+
+    /// Filters events to only include those within the specified date range.
+    ///
+    /// Both start and end dates are inclusive.
+    ///
+    /// # Arguments
+    ///
+    /// * `start` - Start date of the range (inclusive)
+    /// * `end` - End date of the range (inclusive)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use infra_master::market::definition::JumpPillarBuilder;
+    /// use infra_master::time::Date;
+    ///
+    /// let builder = JumpPillarBuilder::new(vec![])
+    ///     .with_date_range(
+    ///         Date::from_ymd(2024, 1, 1).unwrap(),
+    ///         Date::from_ymd(2024, 12, 31).unwrap(),
+    ///     );
+    /// ```
+    #[must_use]
+    pub fn with_date_range(mut self, start: Date, end: Date) -> Self {
+        self.date_range = Some((start, end));
+        self
+    }
+
+    /// Filters events to only include those with confidence at or above the threshold.
+    ///
+    /// # Arguments
+    ///
+    /// * `threshold` - Minimum confidence level (0.0 to 1.0)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use infra_master::market::definition::JumpPillarBuilder;
+    ///
+    /// let builder = JumpPillarBuilder::new(vec![])
+    ///     .with_min_confidence(0.7);
+    /// ```
+    #[must_use]
+    pub fn with_min_confidence(mut self, threshold: f64) -> Self {
+        self.min_confidence = threshold.clamp(0.0, 1.0);
+        self
+    }
+
+    /// Builds the filtered and sorted list of JumpPillars.
+    ///
+    /// Applies all configured filters and returns JumpPillars sorted by
+    /// jump_date in ascending order.
+    ///
+    /// # Returns
+    ///
+    /// A vector of JumpPillar sorted by date (ascending).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use infra_master::market::definition::JumpPillarBuilder;
+    /// use infra_master::market::{EventInstrument, RateIndex};
+    /// use infra_master::market::events::EventType;
+    /// use infra_master::time::Date;
+    ///
+    /// let events = vec![
+    ///     EventInstrument::new(
+    ///         Date::from_ymd(2024, 6, 12).unwrap(),
+    ///         EventType::CentralBankMeeting,
+    ///         25.0,
+    ///         0.90,
+    ///         RateIndex::Sofr,
+    ///     ),
+    ///     EventInstrument::new(
+    ///         Date::from_ymd(2024, 3, 20).unwrap(),
+    ///         EventType::CentralBankMeeting,
+    ///         25.0,
+    ///         0.80,
+    ///         RateIndex::Sofr,
+    ///     ),
+    /// ];
+    ///
+    /// let pillars = JumpPillarBuilder::new(events).build();
+    ///
+    /// // Results are sorted by date
+    /// assert_eq!(pillars.len(), 2);
+    /// assert!(pillars[0].jump_date() < pillars[1].jump_date());
+    /// ```
+    #[must_use]
+    pub fn build(self) -> Vec<JumpPillar> {
+        let mut pillars: Vec<JumpPillar> = self
+            .events
+            .iter()
+            .filter(|event| {
+                // Rate index filter
+                if let Some(index) = self.rate_index_filter {
+                    if event.rate_index() != index {
+                        return false;
+                    }
+                }
+
+                // Date range filter
+                if let Some((start, end)) = self.date_range {
+                    let date = event.event_date();
+                    if date < start || date > end {
+                        return false;
+                    }
+                }
+
+                // Confidence threshold filter
+                if event.confidence() < self.min_confidence {
+                    return false;
+                }
+
+                true
+            })
+            .map(JumpPillar::from_event_instrument)
+            .collect();
+
+        // Sort by jump_date ascending
+        pillars.sort_by(|a, b| a.jump_date().cmp(&b.jump_date()));
+
+        pillars
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -549,5 +774,160 @@ mod tests {
 
         let jump: JumpPillar = serde_json::from_str(json).unwrap();
         assert!(jump.event_reference().is_none());
+    }
+
+    // =========================================================================
+    // JumpPillarBuilder Tests
+    // =========================================================================
+
+    fn make_event(date: Date, spread: f64, confidence: f64, index: RateIndex) -> EventInstrument {
+        EventInstrument::new(date, EventType::CentralBankMeeting, spread, confidence, index)
+    }
+
+    #[test]
+    fn test_builder_empty_input() {
+        let pillars = JumpPillarBuilder::new(vec![]).build();
+        assert!(pillars.is_empty());
+    }
+
+    #[test]
+    fn test_builder_no_filters() {
+        let events = vec![
+            make_event(Date::from_ymd(2024, 3, 20).unwrap(), 25.0, 0.85, RateIndex::Sofr),
+            make_event(Date::from_ymd(2024, 6, 12).unwrap(), 25.0, 0.70, RateIndex::Estr),
+        ];
+
+        let pillars = JumpPillarBuilder::new(events).build();
+
+        assert_eq!(pillars.len(), 2);
+    }
+
+    #[test]
+    fn test_builder_rate_index_filter() {
+        let events = vec![
+            make_event(Date::from_ymd(2024, 3, 20).unwrap(), 25.0, 0.85, RateIndex::Sofr),
+            make_event(Date::from_ymd(2024, 6, 12).unwrap(), 25.0, 0.70, RateIndex::Estr),
+            make_event(Date::from_ymd(2024, 9, 18).unwrap(), 25.0, 0.80, RateIndex::Sofr),
+        ];
+
+        let pillars = JumpPillarBuilder::new(events)
+            .with_rate_index(RateIndex::Sofr)
+            .build();
+
+        assert_eq!(pillars.len(), 2);
+        // Verify all are SOFR (by checking they are not the ESTR one)
+        assert_eq!(pillars[0].jump_date(), Date::from_ymd(2024, 3, 20).unwrap());
+        assert_eq!(pillars[1].jump_date(), Date::from_ymd(2024, 9, 18).unwrap());
+    }
+
+    #[test]
+    fn test_builder_date_range_filter() {
+        let events = vec![
+            make_event(Date::from_ymd(2024, 1, 15).unwrap(), 25.0, 0.85, RateIndex::Sofr),
+            make_event(Date::from_ymd(2024, 3, 20).unwrap(), 25.0, 0.85, RateIndex::Sofr),
+            make_event(Date::from_ymd(2024, 6, 12).unwrap(), 25.0, 0.70, RateIndex::Sofr),
+            make_event(Date::from_ymd(2024, 9, 18).unwrap(), 25.0, 0.80, RateIndex::Sofr),
+        ];
+
+        let pillars = JumpPillarBuilder::new(events)
+            .with_date_range(
+                Date::from_ymd(2024, 3, 1).unwrap(),
+                Date::from_ymd(2024, 6, 30).unwrap(),
+            )
+            .build();
+
+        assert_eq!(pillars.len(), 2);
+        assert_eq!(pillars[0].jump_date(), Date::from_ymd(2024, 3, 20).unwrap());
+        assert_eq!(pillars[1].jump_date(), Date::from_ymd(2024, 6, 12).unwrap());
+    }
+
+    #[test]
+    fn test_builder_min_confidence_filter() {
+        let events = vec![
+            make_event(Date::from_ymd(2024, 3, 20).unwrap(), 25.0, 0.90, RateIndex::Sofr),
+            make_event(Date::from_ymd(2024, 6, 12).unwrap(), 25.0, 0.50, RateIndex::Sofr),
+            make_event(Date::from_ymd(2024, 9, 18).unwrap(), 25.0, 0.75, RateIndex::Sofr),
+        ];
+
+        let pillars = JumpPillarBuilder::new(events)
+            .with_min_confidence(0.75)
+            .build();
+
+        assert_eq!(pillars.len(), 2);
+        assert_eq!(pillars[0].jump_date(), Date::from_ymd(2024, 3, 20).unwrap());
+        assert_eq!(pillars[1].jump_date(), Date::from_ymd(2024, 9, 18).unwrap());
+    }
+
+    #[test]
+    fn test_builder_combined_filters() {
+        let events = vec![
+            make_event(Date::from_ymd(2024, 1, 15).unwrap(), 25.0, 0.90, RateIndex::Sofr),
+            make_event(Date::from_ymd(2024, 3, 20).unwrap(), 25.0, 0.85, RateIndex::Sofr),
+            make_event(Date::from_ymd(2024, 3, 25).unwrap(), 25.0, 0.50, RateIndex::Sofr), // Low confidence
+            make_event(Date::from_ymd(2024, 6, 12).unwrap(), 25.0, 0.70, RateIndex::Estr), // Wrong index
+            make_event(Date::from_ymd(2024, 9, 18).unwrap(), 25.0, 0.80, RateIndex::Sofr),
+            make_event(Date::from_ymd(2024, 12, 1).unwrap(), 25.0, 0.85, RateIndex::Sofr), // Outside range
+        ];
+
+        let pillars = JumpPillarBuilder::new(events)
+            .with_rate_index(RateIndex::Sofr)
+            .with_date_range(
+                Date::from_ymd(2024, 3, 1).unwrap(),
+                Date::from_ymd(2024, 10, 31).unwrap(),
+            )
+            .with_min_confidence(0.70)
+            .build();
+
+        assert_eq!(pillars.len(), 2);
+        assert_eq!(pillars[0].jump_date(), Date::from_ymd(2024, 3, 20).unwrap());
+        assert_eq!(pillars[1].jump_date(), Date::from_ymd(2024, 9, 18).unwrap());
+    }
+
+    #[test]
+    fn test_builder_sorted_by_date() {
+        let events = vec![
+            make_event(Date::from_ymd(2024, 9, 18).unwrap(), 25.0, 0.80, RateIndex::Sofr),
+            make_event(Date::from_ymd(2024, 3, 20).unwrap(), 25.0, 0.85, RateIndex::Sofr),
+            make_event(Date::from_ymd(2024, 6, 12).unwrap(), 25.0, 0.70, RateIndex::Sofr),
+        ];
+
+        let pillars = JumpPillarBuilder::new(events).build();
+
+        assert_eq!(pillars.len(), 3);
+        // Verify ascending order
+        assert!(pillars[0].jump_date() < pillars[1].jump_date());
+        assert!(pillars[1].jump_date() < pillars[2].jump_date());
+    }
+
+    #[test]
+    fn test_builder_preserves_event_data() {
+        let events = vec![
+            make_event(Date::from_ymd(2024, 3, 20).unwrap(), 50.0, 0.90, RateIndex::Sofr),
+        ];
+
+        let pillars = JumpPillarBuilder::new(events).build();
+
+        assert_eq!(pillars.len(), 1);
+        assert_eq!(pillars[0].expected_jump_bps(), 50.0);
+        assert_eq!(pillars[0].confidence(), 0.90);
+    }
+
+    #[test]
+    fn test_builder_min_confidence_clamping() {
+        let events = vec![
+            make_event(Date::from_ymd(2024, 3, 20).unwrap(), 25.0, 0.50, RateIndex::Sofr),
+        ];
+
+        // Confidence below 0 should be clamped
+        let pillars = JumpPillarBuilder::new(events.clone())
+            .with_min_confidence(-0.5)
+            .build();
+        assert_eq!(pillars.len(), 1);
+
+        // Confidence above 1 should be clamped
+        let pillars = JumpPillarBuilder::new(events)
+            .with_min_confidence(1.5)
+            .build();
+        assert_eq!(pillars.len(), 0); // 0.50 < 1.0
     }
 }

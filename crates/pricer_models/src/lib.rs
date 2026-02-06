@@ -61,6 +61,7 @@ pub mod analytic;
 pub mod builder;
 pub mod compiler;
 mod direction_ext;
+pub mod jump;
 pub mod market;
 pub mod stochastic;
 

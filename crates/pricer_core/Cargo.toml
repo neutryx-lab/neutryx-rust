@@ -15,6 +15,7 @@ infra_master = { path = "../infra_master" }
 rayon = { workspace = true, optional = true }
 ndarray = { workspace = true, optional = true }
 nalgebra = { workspace = true, optional = true }
+nalgebra-sparse = { workspace = true, optional = true }
 rand = { workspace = true, optional = true }
 rand_distr = { workspace = true, optional = true }
 
@@ -41,6 +42,7 @@ serde = ["dep:serde", "chrono/serde", "infra_master/serde"]  # Serialisation sup
 parallel = ["dep:rayon"]           # Parallel bootstrapping support
 rng = ["dep:rand", "dep:rand_distr"]  # Random number generation (PRNG, QMC placeholders)
 linalg = ["dep:ndarray", "dep:nalgebra", "rng"]  # Linear algebra support (includes multi-dimensional copula)
+sparse = ["linalg", "dep:nalgebra-sparse"]  # Sparse matrix support (CSR/CSC, SparseLU)
 external-numerics = ["dep:argmin", "dep:argmin-math", "dep:levenberg-marquardt", "dep:nalgebra"]  # External optimisation libraries
 
 # Asset class features (trades/instruments)

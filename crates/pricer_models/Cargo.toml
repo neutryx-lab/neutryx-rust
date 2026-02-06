@@ -30,6 +30,9 @@ parallel = ["dep:rayon"]
 # Global bootstrapping with multi-dimensional Newton solver
 global-bootstrap = ["pricer_core/linalg"]
 
+# Sparse matrix support for large-scale calibration problems
+sparse = ["global-bootstrap", "pricer_core/sparse"]
+
 # VolCube calibration (planned feature, not yet implemented)
 volcube = []
 
@@ -78,6 +81,11 @@ harness = false
 [[bench]]
 name = "indexed_market"
 harness = false
+
+[[bench]]
+name = "instrument_compile"
+harness = false
+required-features = ["global-bootstrap"]
 
 [lints]
 workspace = true

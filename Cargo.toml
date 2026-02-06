@@ -131,6 +131,7 @@ num-traits = "0.2"
 # Linear algebra
 ndarray = "0.16"
 nalgebra = "0.33"
+nalgebra-sparse = "0.10"
 
 # Random number generation
 rand = "0.8"

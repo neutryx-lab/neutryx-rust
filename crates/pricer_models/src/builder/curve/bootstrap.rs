@@ -405,6 +405,127 @@ impl Default for CurveBootstrapper {
 }
 
 // =============================================================================
+// Jump-Aware Bootstrap Extensions
+// =============================================================================
+
+impl CurveBootstrapper {
+    /// Bootstrap a curve with jump data.
+    ///
+    /// This method bootstraps a yield curve and attaches jump information
+    /// for modelling rate discontinuities at central bank meeting dates.
+    ///
+    /// # Arguments
+    ///
+    /// * `instruments` - Slice of calibration instruments
+    /// * `jumps` - Pre-computed jump data as (time, cumulative_offset) pairs
+    ///
+    /// # Returns
+    ///
+    /// A `BootstrappedCurve` with jump data attached.
+    pub fn bootstrap_to_curve_with_jumps<I>(
+        &self,
+        instruments: &[I],
+        jumps: &[(f64, f64)],
+    ) -> Result<BootstrappedCurve<f64>, BootstrapError>
+    where
+        I: CalibrationInstrument<f64> + Clone,
+    {
+        // First, perform regular bootstrap
+        let curve = self.bootstrap_to_curve(instruments)?;
+
+        // Attach jumps to the curve
+        if jumps.is_empty() {
+            Ok(curve)
+        } else {
+            Ok(curve.with_jumps(jumps.to_vec()))
+        }
+    }
+
+    /// Bootstrap a curve with JumpPillar definitions.
+    ///
+    /// This method converts JumpPillars to curve-compatible format and
+    /// bootstraps a yield curve with the jump information attached.
+    ///
+    /// # Arguments
+    ///
+    /// * `instruments` - Slice of calibration instruments
+    /// * `jump_pillars` - Slice of JumpPillar definitions
+    /// * `valuation_date` - Valuation date for year fraction calculation
+    /// * `day_counter` - Day count convention for year fraction calculation
+    ///
+    /// # Returns
+    ///
+    /// A `BootstrappedCurve` with jump data attached.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use pricer_models::builder::{CurveBootstrapper, CalibrationInstrument};
+    /// use pricer_models::market::curves::MarketInstrument;
+    /// use infra_master::market::definition::JumpPillar;
+    /// use infra_master::time::{Date, DayCounter};
+    ///
+    /// let valuation = Date::from_ymd(2024, 1, 1).unwrap();
+    /// let jump = JumpPillar::new(
+    ///     Date::from_ymd(2024, 6, 12).unwrap(),
+    ///     25.0,  // 25 bps
+    ///     0.8,   // 80% confidence
+    /// );
+    ///
+    /// let instruments = vec![
+    ///     MarketInstrument::ois(1.0, 0.03),
+    ///     MarketInstrument::ois(2.0, 0.035),
+    /// ];
+    ///
+    /// let bootstrapper = CurveBootstrapper::new();
+    /// let curve = bootstrapper.bootstrap_to_curve_with_jump_pillars(
+    ///     &instruments,
+    ///     &[jump],
+    ///     valuation,
+    ///     DayCounter::Actual365Fixed,
+    /// ).unwrap();
+    ///
+    /// assert!(curve.has_jumps());
+    /// ```
+    pub fn bootstrap_to_curve_with_jump_pillars<I>(
+        &self,
+        instruments: &[I],
+        jump_pillars: &[infra_master::market::definition::JumpPillar],
+        valuation_date: infra_master::time::Date,
+        day_counter: infra_master::time::DayCounter,
+    ) -> Result<BootstrappedCurve<f64>, BootstrapError>
+    where
+        I: CalibrationInstrument<f64> + Clone,
+    {
+        use crate::market::jumps::convert_jump_pillars_to_tuples;
+
+        // Convert JumpPillars to (time, cumulative_offset) tuples
+        let jumps = convert_jump_pillars_to_tuples(jump_pillars, valuation_date, day_counter);
+
+        // Debug logging (if enabled in the future)
+        #[cfg(feature = "debug-logging")]
+        {
+            if !jumps.is_empty() {
+                eprintln!(
+                    "[CurveBootstrapper] Applying {} jumps to curve",
+                    jumps.len()
+                );
+                for (t, offset) in &jumps {
+                    eprintln!(
+                        "  - Jump at t={:.4}: cumulative_offset={:.6} ({:.2} bps)",
+                        t,
+                        offset,
+                        offset * 10000.0
+                    );
+                }
+            }
+        }
+
+        self.bootstrap_to_curve_with_jumps(instruments, &jumps)
+    }
+}
+
+// =============================================================================
 // Tests
 // =============================================================================
 
@@ -610,6 +731,193 @@ mod tests {
                 inst.instrument_type(),
                 error
             );
+        }
+    }
+
+    // =========================================================================
+    // Jump-Aware Bootstrap Tests
+    // =========================================================================
+
+    #[test]
+    fn test_bootstrap_to_curve_with_jumps_no_jumps() {
+        // When no jumps are provided, should behave same as regular bootstrap
+        let instruments = vec![
+            MarketInstrument::ois(1.0, 0.03),
+            MarketInstrument::ois(2.0, 0.035),
+        ];
+
+        let bootstrapper = CurveBootstrapper::new();
+        let curve = bootstrapper.bootstrap_to_curve_with_jumps(&instruments, &[]);
+
+        assert!(curve.is_ok(), "Bootstrap failed: {:?}", curve.err());
+        let curve = curve.unwrap();
+
+        assert!(!curve.has_jumps());
+        let df_1y = curve.discount_factor(1.0).unwrap();
+        assert!(df_1y > 0.0 && df_1y < 1.0);
+    }
+
+    #[test]
+    fn test_bootstrap_to_curve_with_jumps_single_jump() {
+        let instruments = vec![
+            MarketInstrument::ois(1.0, 0.03),
+            MarketInstrument::ois(2.0, 0.035),
+        ];
+
+        // Single jump: 25 bps at t=0.5
+        let jumps: Vec<(f64, f64)> = vec![(0.5, -0.0025)];
+
+        let bootstrapper = CurveBootstrapper::new();
+        let curve = bootstrapper.bootstrap_to_curve_with_jumps(&instruments, &jumps);
+
+        assert!(curve.is_ok(), "Bootstrap failed: {:?}", curve.err());
+        let curve = curve.unwrap();
+
+        assert!(curve.has_jumps());
+        assert_eq!(curve.jumps().len(), 1);
+
+        // Left and right limits at jump should differ
+        use pricer_core::types::Limit;
+        let df_left = curve.discount_factor_with_limit(0.5, Limit::Left).unwrap();
+        let df_right = curve.discount_factor_with_limit(0.5, Limit::Right).unwrap();
+        assert!(df_right < df_left);
+    }
+
+    #[test]
+    fn test_bootstrap_to_curve_with_jumps_multiple_jumps() {
+        let instruments = vec![
+            MarketInstrument::ois(1.0, 0.03),
+            MarketInstrument::ois(2.0, 0.035),
+            MarketInstrument::ois(5.0, 0.04),
+        ];
+
+        // Two jumps: 25 bps at t=0.25, another 25 bps at t=0.75
+        let jumps: Vec<(f64, f64)> = vec![
+            (0.25, -0.0025),   // First jump cumulative
+            (0.75, -0.005),    // Second jump cumulative (including first)
+        ];
+
+        let bootstrapper = CurveBootstrapper::new();
+        let curve = bootstrapper.bootstrap_to_curve_with_jumps(&instruments, &jumps);
+
+        assert!(curve.is_ok(), "Bootstrap failed: {:?}", curve.err());
+        let curve = curve.unwrap();
+
+        assert!(curve.has_jumps());
+        assert_eq!(curve.jumps().len(), 2);
+
+        // After all jumps, should have cumulative offset
+        let df = curve.discount_factor(1.0).unwrap();
+        assert!(df > 0.0 && df < 1.0);
+    }
+
+    #[test]
+    fn test_bootstrap_to_curve_with_jumps_backward_compatible() {
+        // Ensure instruments without jumps still price correctly
+        let instruments = vec![
+            MarketInstrument::ois(1.0, 0.03),
+            MarketInstrument::ois(2.0, 0.035),
+        ];
+
+        let bootstrapper = CurveBootstrapper::new();
+
+        // Regular bootstrap
+        let curve_regular = bootstrapper.bootstrap_to_curve(&instruments).unwrap();
+
+        // Jump-aware bootstrap with no jumps
+        let curve_with_jumps = bootstrapper
+            .bootstrap_to_curve_with_jumps(&instruments, &[])
+            .unwrap();
+
+        // Discount factors should match
+        let df1_reg = curve_regular.discount_factor(1.0).unwrap();
+        let df1_jump = curve_with_jumps.discount_factor(1.0).unwrap();
+        assert_relative_eq!(df1_reg, df1_jump, epsilon = 1e-10);
+
+        let df2_reg = curve_regular.discount_factor(2.0).unwrap();
+        let df2_jump = curve_with_jumps.discount_factor(2.0).unwrap();
+        assert_relative_eq!(df2_reg, df2_jump, epsilon = 1e-10);
+    }
+
+    #[test]
+    fn test_bootstrap_to_curve_with_jumps_structure() {
+        // Verify that jumps are correctly applied to the curve structure.
+        // Note: With jumps applied AFTER bootstrap, the instruments will NOT
+        // reprice exactly because the jumps modify the discount factors.
+        // This is expected behavior - the curve captures the jump structure
+        // while maintaining a calibrated base curve.
+        let instruments = vec![
+            MarketInstrument::ois(1.0, 0.03),
+            MarketInstrument::ois(2.0, 0.035),
+        ];
+
+        let jumps: Vec<(f64, f64)> = vec![(0.5, -0.0025)];
+
+        let bootstrapper = CurveBootstrapper::new();
+        let curve = bootstrapper
+            .bootstrap_to_curve_with_jumps(&instruments, &jumps)
+            .unwrap();
+
+        // Verify jump structure is in place
+        assert!(curve.has_jumps());
+        assert_eq!(curve.jumps().len(), 1);
+        assert_eq!(curve.jumps()[0], (0.5, -0.0025));
+
+        // Verify discount factors are affected by the jump
+        use pricer_core::types::Limit;
+        let df_at_jump_left = curve.discount_factor_with_limit(0.5, Limit::Left).unwrap();
+        let df_at_jump_right = curve.discount_factor_with_limit(0.5, Limit::Right).unwrap();
+
+        // Right limit should be lower due to negative offset
+        assert!(df_at_jump_right < df_at_jump_left);
+    }
+
+    #[test]
+    fn test_bootstrap_to_curve_with_jumps_from_definition() {
+        use infra_master::market::definition::JumpPillar;
+        use infra_master::time::{Date, DayCounter};
+
+        let valuation = Date::from_ymd(2024, 1, 1).unwrap();
+
+        // Create a simple curve definition with a jump
+        let jump = JumpPillar::new(
+            Date::from_ymd(2024, 6, 12).unwrap(),  // ~0.45 years
+            25.0,   // 25 bps
+            0.8,    // 80% confidence
+        );
+
+        let instruments = vec![
+            MarketInstrument::ois(1.0, 0.03),
+            MarketInstrument::ois(2.0, 0.035),
+        ];
+
+        let bootstrapper = CurveBootstrapper::new();
+        let curve = bootstrapper.bootstrap_to_curve_with_jump_pillars(
+            &instruments,
+            &[jump],
+            valuation,
+            DayCounter::Actual365Fixed,
+        );
+
+        assert!(curve.is_ok(), "Bootstrap failed: {:?}", curve.err());
+        let curve = curve.unwrap();
+
+        assert!(curve.has_jumps());
+        assert_eq!(curve.jumps().len(), 1);
+    }
+
+    #[test]
+    fn test_bootstrap_to_curve_with_jumps_empty_instruments() {
+        let instruments: Vec<MarketInstrument<f64>> = vec![];
+        let jumps: Vec<(f64, f64)> = vec![(0.5, -0.0025)];
+
+        let bootstrapper = CurveBootstrapper::new();
+        let result = bootstrapper.bootstrap_to_curve_with_jumps(&instruments, &jumps);
+
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            BootstrapError::InsufficientData { .. } => {}
+            other => panic!("Expected InsufficientData error, got {:?}", other),
         }
     }
 }

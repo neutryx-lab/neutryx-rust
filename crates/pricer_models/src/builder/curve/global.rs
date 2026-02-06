@@ -23,7 +23,7 @@
 use num_traits::Float;
 use pricer_core::{
     math::{
-        linalg::{lu_solve, DMatrix, LinearAlgebraError, RealField},
+        linalg::{lu_solve, DMatrix, DVector, LinearAlgebraError, RealField},
         numeric::from_f64,
     },
     types::SolverError,
@@ -31,6 +31,7 @@ use pricer_core::{
 
 use crate::{
     builder::{
+        error::IftError,
         jump::{JumpConfig, JumpPillar},
         problem::JacobianMethod,
         CalibrationInstrument, CalibrationProblem, CalibrationProblemConfig,
@@ -394,6 +395,173 @@ impl<T: Float> GlobalBootstrapResult<T> {
                 .filter_map(|j| j.realised_jump)
                 .fold(T::zero(), |acc, r| acc + JumpPillar::rate_to_bps(r))
         })
+    }
+
+    // =========================================================================
+    // IFT (Implicit Function Theorem) Sensitivity Methods
+    // =========================================================================
+
+    /// Check if IFT sensitivity computation is possible.
+    ///
+    /// Returns `true` if the Jacobian inverse is cached and the calibration
+    /// converged, which are prerequisites for IFT-based sensitivity calculation.
+    ///
+    /// # Requirement: 3.2
+    pub fn can_compute_ift(&self) -> bool { self.jacobian_inverse.is_some() && self.converged }
+
+    /// Compute IFT sensitivity for a single market parameter.
+    ///
+    /// Uses the Implicit Function Theorem to compute the sensitivity of
+    /// calibrated parameters to a change in market inputs:
+    ///
+    /// ```text
+    /// ∂x*/∂m = -J⁻¹ · ∂F/∂m
+    /// ```
+    ///
+    /// where:
+    /// - `x*` are the calibrated discount factors (log space)
+    /// - `m` is the market parameter being perturbed
+    /// - `J⁻¹` is the cached inverse Jacobian from calibration
+    /// - `∂F/∂m` is the sensitivity of residuals to the market parameter
+    ///
+    /// # Arguments
+    ///
+    /// * `dF_dm` - Sensitivity of residual function to market parameter,
+    ///             length must equal number of pillars/instruments.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<T>)` - Sensitivity ∂x*/∂m for each pillar
+    /// * `Err(IftError::NoJacobianInverse)` - If J⁻¹ is not cached
+    /// * `Err(IftError::DimensionMismatch)` - If dF_dm has wrong length
+    ///
+    /// # Requirement: 3.1, 3.2
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// // After calibration with store_jacobian_inverse=true
+    /// let result = bootstrapper.calibrate(&instruments)?;
+    ///
+    /// // Sensitivity of residuals to a 1bp parallel shift in OIS quotes
+    /// let dF_dm = vec![0.0001; result.pillars.len()];
+    /// let sensitivity = result.ift_sensitivity(&dF_dm)?;
+    /// ```
+    pub fn ift_sensitivity(&self, dF_dm: &[T]) -> Result<Vec<T>, IftError>
+    where
+        T: RealField,
+    {
+        // Check if J⁻¹ is available
+        let j_inv = self
+            .jacobian_inverse
+            .as_ref()
+            .ok_or(IftError::NoJacobianInverse)?;
+
+        // Check dimensions
+        let n = j_inv.nrows();
+        if dF_dm.len() != n {
+            return Err(IftError::DimensionMismatch {
+                expected: n,
+                got: dF_dm.len(),
+            });
+        }
+
+        // Compute ∂x*/∂m = -J⁻¹ · ∂F/∂m
+        let dF_dm_vec = DVector::from_column_slice(dF_dm);
+        let result_vec = j_inv * dF_dm_vec;
+
+        // Negate: ∂x*/∂m = -J⁻¹ · ∂F/∂m
+        let sensitivity: Vec<T> = result_vec.iter().map(|&x| -x).collect();
+
+        // Check for NaN or Inf in result
+        for (i, &val) in sensitivity.iter().enumerate() {
+            if !val.is_finite() {
+                return Err(IftError::NumericalError {
+                    message: format!("Non-finite value at index {i}"),
+                });
+            }
+        }
+
+        Ok(sensitivity)
+    }
+
+    /// Compute IFT sensitivity for multiple market parameters in batch.
+    ///
+    /// Efficiently computes sensitivities for multiple market parameters
+    /// using a single matrix-matrix multiplication:
+    ///
+    /// ```text
+    /// ∂x*/∂M = -J⁻¹ · ∂F/∂M
+    /// ```
+    ///
+    /// where `∂F/∂M` is a matrix with each column representing the
+    /// sensitivity to a different market parameter.
+    ///
+    /// # Arguments
+    ///
+    /// * `dF_dm_batch` - Matrix of sensitivities, shape (n_instruments, n_params).
+    ///                   Each column is ∂F/∂m_i for market parameter i.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(DMatrix<T>)` - Sensitivity matrix ∂x*/∂M, shape (n_pillars, n_params)
+    /// * `Err(IftError::NoJacobianInverse)` - If J⁻¹ is not cached
+    /// * `Err(IftError::BatchDimensionMismatch)` - If rows don't match n_instruments
+    ///
+    /// # Requirement: 3.3
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// // Compute sensitivity to multiple market parameters at once
+    /// let n_pillars = result.pillars.len();
+    /// let n_params = 3;
+    ///
+    /// // Sensitivities for 3 different market parameters
+    /// let dF_dm_batch = DMatrix::from_fn(n_pillars, n_params, |i, j| {
+    ///     // Sensitivity of instrument i to market param j
+    ///     0.0001 * (j as f64 + 1.0)
+    /// });
+    ///
+    /// let sensitivities = result.ift_sensitivity_batch(&dF_dm_batch)?;
+    /// ```
+    pub fn ift_sensitivity_batch(&self, dF_dm_batch: &DMatrix<T>) -> Result<DMatrix<T>, IftError>
+    where
+        T: RealField,
+    {
+        // Check if J⁻¹ is available
+        let j_inv = self
+            .jacobian_inverse
+            .as_ref()
+            .ok_or(IftError::NoJacobianInverse)?;
+
+        // Check row dimensions
+        let n = j_inv.nrows();
+        if dF_dm_batch.nrows() != n {
+            return Err(IftError::BatchDimensionMismatch {
+                expected: n,
+                got: dF_dm_batch.nrows(),
+            });
+        }
+
+        // Compute ∂x*/∂M = -J⁻¹ · ∂F/∂M using matrix multiplication
+        let result_matrix = j_inv * dF_dm_batch;
+
+        // Negate the result
+        let negated = -result_matrix;
+
+        // Check for NaN or Inf in result
+        for (idx, &val) in negated.iter().enumerate() {
+            if !val.is_finite() {
+                let row = idx % negated.nrows();
+                let col = idx / negated.nrows();
+                return Err(IftError::NumericalError {
+                    message: format!("Non-finite value at ({row}, {col})"),
+                });
+            }
+        }
+
+        Ok(negated)
     }
 }
 
@@ -1436,5 +1604,223 @@ mod tests {
         assert!(!result.has_jumps());
         assert_eq!(result.num_jumps(), 0);
         assert_eq!(result.total_jump_bps(), 0.0);
+    }
+
+    // =========================================================================
+    // IFT Sensitivity Tests (Requirement 3.1-3.5)
+    // =========================================================================
+
+    #[test]
+    fn test_can_compute_ift_with_jacobian_inverse() {
+        let instruments = create_test_instruments();
+        let config = GlobalBootstrapConfig::default().with_jacobian_inverse(true);
+        let bootstrapper = GlobalBootstrapper::new(config);
+
+        let result = bootstrapper.calibrate(&instruments).unwrap();
+
+        assert!(result.converged);
+        assert!(result.has_jacobian_inverse());
+        assert!(result.can_compute_ift());
+    }
+
+    #[test]
+    fn test_can_compute_ift_without_jacobian_inverse() {
+        let instruments = create_test_instruments();
+        let config = GlobalBootstrapConfig::fast(); // Does not store J⁻¹
+        let bootstrapper = GlobalBootstrapper::new(config);
+
+        let result = bootstrapper.calibrate(&instruments).unwrap();
+
+        assert!(result.converged);
+        assert!(!result.has_jacobian_inverse());
+        assert!(!result.can_compute_ift());
+    }
+
+    #[test]
+    fn test_ift_sensitivity_basic() {
+        let instruments = create_test_instruments();
+        let config = GlobalBootstrapConfig::default().with_jacobian_inverse(true);
+        let bootstrapper = GlobalBootstrapper::new(config);
+
+        let result = bootstrapper.calibrate(&instruments).unwrap();
+
+        // Sensitivity of residuals to a 1bp parallel shift
+        let n = result.pillars.len();
+        let dF_dm: Vec<f64> = vec![0.0001; n]; // 1bp shift
+
+        let sensitivity = result.ift_sensitivity(&dF_dm).unwrap();
+
+        assert_eq!(sensitivity.len(), n);
+        // All sensitivities should be finite
+        for &s in &sensitivity {
+            assert!(s.is_finite());
+        }
+    }
+
+    #[test]
+    fn test_ift_sensitivity_no_jacobian_inverse() {
+        let instruments = create_test_instruments();
+        let config = GlobalBootstrapConfig::fast(); // No J⁻¹ stored
+        let bootstrapper = GlobalBootstrapper::new(config);
+
+        let result = bootstrapper.calibrate(&instruments).unwrap();
+
+        let dF_dm = vec![0.0001; result.pillars.len()];
+        let err = result.ift_sensitivity(&dF_dm).unwrap_err();
+
+        assert!(matches!(err, super::super::super::IftError::NoJacobianInverse));
+    }
+
+    #[test]
+    fn test_ift_sensitivity_dimension_mismatch() {
+        let instruments = create_test_instruments();
+        let config = GlobalBootstrapConfig::default().with_jacobian_inverse(true);
+        let bootstrapper = GlobalBootstrapper::new(config);
+
+        let result = bootstrapper.calibrate(&instruments).unwrap();
+
+        // Wrong length: 2 instead of 4
+        let dF_dm = vec![0.0001, 0.0001];
+        let err = result.ift_sensitivity(&dF_dm).unwrap_err();
+
+        match err {
+            super::super::super::IftError::DimensionMismatch { expected, got } => {
+                assert_eq!(expected, 4);
+                assert_eq!(got, 2);
+            }
+            _ => panic!("Expected DimensionMismatch error"),
+        }
+    }
+
+    #[test]
+    fn test_ift_sensitivity_batch_basic() {
+        let instruments = create_test_instruments();
+        let config = GlobalBootstrapConfig::default().with_jacobian_inverse(true);
+        let bootstrapper = GlobalBootstrapper::new(config);
+
+        let result = bootstrapper.calibrate(&instruments).unwrap();
+
+        let n = result.pillars.len();
+        let n_params = 3;
+
+        // Create batch sensitivity matrix
+        let dF_dm_batch = DMatrix::from_fn(n, n_params, |i, j| 0.0001 * ((i + j + 1) as f64));
+
+        let sensitivities = result.ift_sensitivity_batch(&dF_dm_batch).unwrap();
+
+        assert_eq!(sensitivities.nrows(), n);
+        assert_eq!(sensitivities.ncols(), n_params);
+
+        // All values should be finite
+        for &val in sensitivities.iter() {
+            assert!(val.is_finite());
+        }
+    }
+
+    #[test]
+    fn test_ift_sensitivity_batch_no_jacobian_inverse() {
+        let instruments = create_test_instruments();
+        let config = GlobalBootstrapConfig::fast();
+        let bootstrapper = GlobalBootstrapper::new(config);
+
+        let result = bootstrapper.calibrate(&instruments).unwrap();
+
+        let dF_dm_batch = DMatrix::from_element(result.pillars.len(), 2, 0.0001);
+        let err = result.ift_sensitivity_batch(&dF_dm_batch).unwrap_err();
+
+        assert!(matches!(err, super::super::super::IftError::NoJacobianInverse));
+    }
+
+    #[test]
+    fn test_ift_sensitivity_batch_dimension_mismatch() {
+        let instruments = create_test_instruments();
+        let config = GlobalBootstrapConfig::default().with_jacobian_inverse(true);
+        let bootstrapper = GlobalBootstrapper::new(config);
+
+        let result = bootstrapper.calibrate(&instruments).unwrap();
+
+        // Wrong number of rows: 2 instead of 4
+        let dF_dm_batch = DMatrix::from_element(2, 3, 0.0001);
+        let err = result.ift_sensitivity_batch(&dF_dm_batch).unwrap_err();
+
+        match err {
+            super::super::super::IftError::BatchDimensionMismatch { expected, got } => {
+                assert_eq!(expected, 4);
+                assert_eq!(got, 2);
+            }
+            _ => panic!("Expected BatchDimensionMismatch error"),
+        }
+    }
+
+    #[test]
+    fn test_ift_sensitivity_single_vs_batch_consistency() {
+        let instruments = create_test_instruments();
+        let config = GlobalBootstrapConfig::default().with_jacobian_inverse(true);
+        let bootstrapper = GlobalBootstrapper::new(config);
+
+        let result = bootstrapper.calibrate(&instruments).unwrap();
+
+        let n = result.pillars.len();
+
+        // Single sensitivity
+        let dF_dm = vec![0.0001; n];
+        let single_result = result.ift_sensitivity(&dF_dm).unwrap();
+
+        // Same as batch with 1 column
+        let dF_dm_batch = DMatrix::from_column_slice(n, 1, &dF_dm);
+        let batch_result = result.ift_sensitivity_batch(&dF_dm_batch).unwrap();
+
+        // Results should match
+        for i in 0..n {
+            assert_relative_eq!(single_result[i], batch_result[(i, 0)], epsilon = 1e-14);
+        }
+    }
+
+    #[test]
+    fn test_ift_sensitivity_linearity() {
+        let instruments = create_test_instruments();
+        let config = GlobalBootstrapConfig::default().with_jacobian_inverse(true);
+        let bootstrapper = GlobalBootstrapper::new(config);
+
+        let result = bootstrapper.calibrate(&instruments).unwrap();
+
+        let n = result.pillars.len();
+
+        // dF1 and dF2
+        let dF1: Vec<f64> = vec![0.0001; n];
+        let dF2: Vec<f64> = (0..n).map(|i| 0.0002 * (i + 1) as f64).collect();
+
+        // Combined: dF1 + dF2
+        let dF_combined: Vec<f64> = dF1.iter().zip(&dF2).map(|(&a, &b)| a + b).collect();
+
+        // Compute sensitivities
+        let sens1 = result.ift_sensitivity(&dF1).unwrap();
+        let sens2 = result.ift_sensitivity(&dF2).unwrap();
+        let sens_combined = result.ift_sensitivity(&dF_combined).unwrap();
+
+        // IFT should be linear: sens(dF1 + dF2) = sens(dF1) + sens(dF2)
+        for i in 0..n {
+            let expected = sens1[i] + sens2[i];
+            assert_relative_eq!(sens_combined[i], expected, epsilon = 1e-12);
+        }
+    }
+
+    #[test]
+    fn test_ift_sensitivity_zero_input() {
+        let instruments = create_test_instruments();
+        let config = GlobalBootstrapConfig::default().with_jacobian_inverse(true);
+        let bootstrapper = GlobalBootstrapper::new(config);
+
+        let result = bootstrapper.calibrate(&instruments).unwrap();
+
+        let n = result.pillars.len();
+        let dF_dm = vec![0.0; n];
+
+        let sensitivity = result.ift_sensitivity(&dF_dm).unwrap();
+
+        // Zero input should give zero output
+        for &s in &sensitivity {
+            assert_relative_eq!(s, 0.0, epsilon = 1e-15);
+        }
     }
 }

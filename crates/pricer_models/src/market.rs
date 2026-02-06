@@ -334,6 +334,9 @@ pub mod curves {
     }
 
     /// A bootstrapped yield curve with pillar discount factors.
+    ///
+    /// Supports jump-aware interpolation for modelling rate discontinuities
+    /// at central bank meeting dates.
     #[derive(Debug, Clone)]
     pub struct BootstrappedCurve<T: Float> {
         /// Pillar maturities in years.
@@ -344,6 +347,20 @@ pub mod curves {
         interpolation: BootstrapInterpolation,
         /// Whether to allow extrapolation.
         allow_extrapolation: bool,
+        /// Jump events: (time, cumulative_offset) pairs.
+        /// The offset is in log-space: adjusted_df = df * exp(cumulative_offset)
+        jumps: Vec<(T, T)>,
+    }
+
+    /// Decomposition of a forward rate into continuous and jump components.
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    pub struct ForwardRateDecomposition<T> {
+        /// Continuous component of the forward rate.
+        pub continuous: T,
+        /// Jump component of the forward rate.
+        pub jump: T,
+        /// Total forward rate (continuous + jump).
+        pub total: T,
     }
 
     impl<T: Float> BootstrappedCurve<T> {
@@ -365,7 +382,38 @@ pub mod curves {
                 discount_factors,
                 interpolation,
                 allow_extrapolation,
+                jumps: Vec::new(),
             })
+        }
+
+        /// Adds jump data to the curve.
+        ///
+        /// # Arguments
+        ///
+        /// * `jumps` - Vector of (time, cumulative_offset) pairs.
+        ///   The offset is in log-space: adjusted_df = df * exp(cumulative_offset)
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// use pricer_models::market::curves::{BootstrappedCurve, BootstrapInterpolation};
+        ///
+        /// let pillars: Vec<f64> = vec![0.25, 0.5, 1.0];
+        /// let dfs: Vec<f64> = pillars.iter().map(|&t| (-0.03_f64 * t).exp()).collect();
+        /// let curve = BootstrappedCurve::new(
+        ///     pillars,
+        ///     dfs,
+        ///     BootstrapInterpolation::LogLinear,
+        ///     true,
+        /// )
+        /// .unwrap()
+        /// .with_jumps(vec![(0.25, -0.0025)]);
+        ///
+        /// assert!(curve.has_jumps());
+        /// ```
+        pub fn with_jumps(mut self, jumps: Vec<(T, T)>) -> Self {
+            self.jumps = jumps;
+            self
         }
 
         /// Returns the pillar maturities.
@@ -373,10 +421,79 @@ pub mod curves {
 
         /// Returns the discount factors.
         pub fn discount_factors(&self) -> &[T] { &self.discount_factors }
-    }
 
-    impl<T: Float> YieldCurve<T> for BootstrappedCurve<T> {
-        fn discount_factor(&self, t: T) -> Result<T, MarketDataError> {
+        /// Returns true if the curve has jump data.
+        pub fn has_jumps(&self) -> bool { !self.jumps.is_empty() }
+
+        /// Returns the jump data.
+        pub fn jumps(&self) -> &[(T, T)] { &self.jumps }
+
+        /// Returns the cumulative jump offset at time `t`.
+        ///
+        /// Uses binary search for O(log n) lookup.
+        fn cumulative_offset_at(&self, t: T) -> T {
+            if self.jumps.is_empty() {
+                return T::zero();
+            }
+
+            let idx = self.jumps.partition_point(|(jump_t, _)| *jump_t <= t);
+            if idx == 0 {
+                T::zero()
+            } else {
+                self.jumps[idx - 1].1
+            }
+        }
+
+        /// Returns the cumulative jump offset just before time `t` (left limit).
+        fn cumulative_offset_before(&self, t: T) -> T {
+            if self.jumps.is_empty() {
+                return T::zero();
+            }
+
+            let idx = self.jumps.partition_point(|(jump_t, _)| *jump_t < t);
+            if idx == 0 {
+                T::zero()
+            } else {
+                self.jumps[idx - 1].1
+            }
+        }
+
+        /// Returns the discount factor with limit specification.
+        ///
+        /// # Arguments
+        ///
+        /// * `t` - Time in years
+        /// * `limit` - Limit specification (Left, Right, or Continuous)
+        ///
+        /// # Returns
+        ///
+        /// The discount factor at time `t` with the specified limit handling.
+        pub fn discount_factor_with_limit(
+            &self,
+            t: T,
+            limit: pricer_core::types::Limit,
+        ) -> Result<T, MarketDataError> {
+            use pricer_core::types::Limit;
+
+            // Get base discount factor (without jump adjustment)
+            let base_df = self.discount_factor_base(t)?;
+
+            if self.jumps.is_empty() {
+                return Ok(base_df);
+            }
+
+            // Get the appropriate offset based on limit
+            let offset = match limit {
+                Limit::Left => self.cumulative_offset_before(t),
+                Limit::Right | Limit::Continuous => self.cumulative_offset_at(t),
+            };
+
+            // Apply offset: adjusted_df = base_df * exp(offset)
+            Ok(base_df * offset.exp())
+        }
+
+        /// Base discount factor calculation (without jump adjustment).
+        fn discount_factor_base(&self, t: T) -> Result<T, MarketDataError> {
             if t <= T::zero() {
                 return Ok(T::one());
             }
@@ -391,12 +508,11 @@ pub mod curves {
                 });
             }
 
-            // Handle single-pillar curve: flat rate extrapolation
+            // Handle single-pillar curve
             if n == 1 {
                 let t1 = self.pillars[0];
                 let df1 = self.discount_factors[0];
                 if t1 > T::zero() && df1 > T::zero() {
-                    // Derive zero rate and extrapolate: df(t) = exp(-r * t) where r = -ln(df1)/t1
                     let r = -df1.ln() / t1;
                     return Ok((-r * t).exp());
                 }
@@ -410,7 +526,6 @@ pub mod curves {
             }
 
             if i >= n - 1 {
-                // Extrapolation: use last segment
                 i = n - 2;
             }
 
@@ -427,16 +542,91 @@ pub mod curves {
 
             match self.interpolation {
                 BootstrapInterpolation::Linear => Ok(df1 * (T::one() - w) + df2 * w),
-                BootstrapInterpolation::LogLinear => {
-                    let log_df = df1.ln() * (T::one() - w) + df2.ln() * w;
-                    Ok(log_df.exp())
-                }
-                BootstrapInterpolation::CubicSpline => {
-                    // Simplified: fall back to log-linear
+                BootstrapInterpolation::LogLinear | BootstrapInterpolation::CubicSpline => {
                     let log_df = df1.ln() * (T::one() - w) + df2.ln() * w;
                     Ok(log_df.exp())
                 }
             }
+        }
+
+        /// Returns the forward rate with limit specification.
+        ///
+        /// # Arguments
+        ///
+        /// * `t1` - Start time in years
+        /// * `t2` - End time in years
+        /// * `limit` - Limit specification for handling jumps
+        pub fn forward_rate_with_limit(
+            &self,
+            t1: T,
+            t2: T,
+            limit: pricer_core::types::Limit,
+        ) -> Result<T, MarketDataError> {
+            let df1 = if t1 <= T::zero() {
+                T::one()
+            } else {
+                self.discount_factor_with_limit(t1, limit)?
+            };
+            let df2 = self.discount_factor_with_limit(t2, limit)?;
+            let tau = t2 - t1;
+
+            if tau <= T::zero() {
+                return Err(MarketDataError::InvalidInput {
+                    message: "t2 must be greater than t1".to_string(),
+                });
+            }
+
+            Ok((df1 / df2 - T::one()) / tau)
+        }
+
+        /// Decomposes the forward rate into continuous and jump components.
+        ///
+        /// # Arguments
+        ///
+        /// * `t1` - Start time in years
+        /// * `t2` - End time in years
+        pub fn decompose_forward_rate(
+            &self,
+            t1: T,
+            t2: T,
+        ) -> Result<ForwardRateDecomposition<T>, MarketDataError> {
+            use pricer_core::types::Limit;
+
+            let tau = t2 - t1;
+            if tau <= T::zero() {
+                return Err(MarketDataError::InvalidInput {
+                    message: "t2 must be greater than t1".to_string(),
+                });
+            }
+
+            // Total rate (with jumps)
+            let total = self.forward_rate_with_limit(t1, t2, Limit::Continuous)?;
+
+            // Continuous rate (without jumps applied in forward calculation)
+            // We compute this by getting the base forward rate
+            let df1_base = if t1 <= T::zero() {
+                T::one()
+            } else {
+                self.discount_factor_base(t1)?
+            };
+            let df2_base = self.discount_factor_base(t2)?;
+            let continuous = (df1_base / df2_base - T::one()) / tau;
+
+            // Jump component
+            let jump = total - continuous;
+
+            Ok(ForwardRateDecomposition {
+                continuous,
+                jump,
+                total,
+            })
+        }
+    }
+
+    impl<T: Float> YieldCurve<T> for BootstrappedCurve<T> {
+        fn discount_factor(&self, t: T) -> Result<T, MarketDataError> {
+            // Default behavior uses Continuous limit (includes jumps, right-limit)
+            self.discount_factor_with_limit(t, pricer_core::types::Limit::Continuous)
         }
     }
 
@@ -809,9 +999,391 @@ pub use curves::{
 };
 pub use fx_curves::{FlatFxCurve, FxCurve, FxCurveEnum, IrpFxCurve};
 
+// =============================================================================
+// Jump Conversion Utilities
+// =============================================================================
+
+/// Utilities for converting JumpPillar definitions to curve-compatible format.
+pub mod jumps {
+    use infra_master::market::definition::JumpPillar;
+    use infra_master::time::{Date, DayCounter};
+
+    /// A jump entry for use in bootstrapped curves.
+    ///
+    /// Contains the time of the jump (in years from valuation date) and
+    /// the cumulative offset to apply to the log of the discount factor.
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    pub struct JumpEntry {
+        /// Time of the jump in years from valuation date.
+        pub time: f64,
+        /// Cumulative offset in log(df) space.
+        ///
+        /// Positive values decrease the discount factor (rate hike).
+        pub cumulative_offset: f64,
+    }
+
+    impl JumpEntry {
+        /// Creates a new jump entry.
+        #[must_use]
+        pub fn new(time: f64, cumulative_offset: f64) -> Self {
+            Self {
+                time,
+                cumulative_offset,
+            }
+        }
+
+        /// Returns the time of the jump.
+        #[must_use]
+        pub fn time(&self) -> f64 {
+            self.time
+        }
+
+        /// Returns the cumulative offset.
+        #[must_use]
+        pub fn cumulative_offset(&self) -> f64 {
+            self.cumulative_offset
+        }
+
+        /// Converts to a tuple (time, cumulative_offset).
+        #[must_use]
+        pub fn to_tuple(&self) -> (f64, f64) {
+            (self.time, self.cumulative_offset)
+        }
+    }
+
+    /// Converts JumpPillars to a vector of JumpEntry for use in bootstrapped curves.
+    ///
+    /// # Arguments
+    ///
+    /// * `pillars` - Slice of JumpPillar definitions
+    /// * `valuation_date` - The valuation date (time = 0)
+    /// * `day_counter` - Day count convention for year fraction calculation
+    ///
+    /// # Returns
+    ///
+    /// A vector of JumpEntry sorted by time, with cumulative offsets.
+    /// The offset is calculated as: sum of (weighted_jump_bps / 10000) for all
+    /// previous jumps, applied in log(discount_factor) space.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use pricer_models::market::jumps::convert_jump_pillars;
+    /// use infra_master::market::definition::JumpPillar;
+    /// use infra_master::time::{Date, DayCounter};
+    ///
+    /// let valuation = Date::from_ymd(2024, 1, 1).unwrap();
+    /// let pillars = vec![
+    ///     JumpPillar::new(Date::from_ymd(2024, 3, 20).unwrap(), 25.0, 0.8),
+    /// ];
+    ///
+    /// let entries = convert_jump_pillars(&pillars, valuation, DayCounter::Actual365Fixed);
+    /// assert_eq!(entries.len(), 1);
+    /// ```
+    #[must_use]
+    pub fn convert_jump_pillars(
+        pillars: &[JumpPillar],
+        valuation_date: Date,
+        day_counter: DayCounter,
+    ) -> Vec<JumpEntry> {
+        if pillars.is_empty() {
+            return Vec::new();
+        }
+
+        // Convert to (time, weighted_jump_rate) and sort by time
+        let mut entries: Vec<(f64, f64)> = pillars
+            .iter()
+            .filter_map(|p| {
+                let time = day_counter.year_fraction(valuation_date, p.jump_date());
+                // Only include future jumps (time > 0)
+                if time > 0.0 {
+                    // Convert weighted bps to log-space offset: -bps / 10000
+                    // Negative because rate hike (positive bps) decreases discount factor
+                    let jump_offset = -p.weighted_jump_bps() / 10_000.0;
+                    Some((time, jump_offset))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // Sort by time
+        entries.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+
+        // Calculate cumulative offsets
+        let mut cumulative = 0.0;
+        entries
+            .into_iter()
+            .map(|(time, jump_offset)| {
+                cumulative += jump_offset;
+                JumpEntry::new(time, cumulative)
+            })
+            .collect()
+    }
+
+    /// Converts JumpPillars to a vector of (time, cumulative_offset) tuples.
+    ///
+    /// This is a convenience wrapper around [`convert_jump_pillars`] that returns
+    /// tuples instead of [`JumpEntry`] structs.
+    ///
+    /// # Arguments
+    ///
+    /// * `pillars` - Slice of JumpPillar definitions
+    /// * `valuation_date` - The valuation date (time = 0)
+    /// * `day_counter` - Day count convention for year fraction calculation
+    ///
+    /// # Returns
+    ///
+    /// A vector of (time, cumulative_offset) tuples sorted by time.
+    #[must_use]
+    pub fn convert_jump_pillars_to_tuples(
+        pillars: &[JumpPillar],
+        valuation_date: Date,
+        day_counter: DayCounter,
+    ) -> Vec<(f64, f64)> {
+        convert_jump_pillars(pillars, valuation_date, day_counter)
+            .into_iter()
+            .map(|e| e.to_tuple())
+            .collect()
+    }
+
+    /// Finds the cumulative jump offset at a given time.
+    ///
+    /// Uses binary search for O(log n) performance.
+    ///
+    /// # Arguments
+    ///
+    /// * `jumps` - Sorted slice of JumpEntry
+    /// * `t` - Time to query
+    ///
+    /// # Returns
+    ///
+    /// The cumulative offset at time `t`. Returns 0.0 if `t` is before all jumps.
+    #[must_use]
+    pub fn cumulative_offset_at(jumps: &[JumpEntry], t: f64) -> f64 {
+        if jumps.is_empty() {
+            return 0.0;
+        }
+
+        // Binary search for the last jump with time <= t
+        match jumps.binary_search_by(|j| {
+            j.time
+                .partial_cmp(&t)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        }) {
+            Ok(idx) => jumps[idx].cumulative_offset,
+            Err(idx) => {
+                if idx == 0 {
+                    0.0
+                } else {
+                    jumps[idx - 1].cumulative_offset
+                }
+            }
+        }
+    }
+
+    /// Finds the cumulative jump offset at a given time, excluding the jump at that time.
+    ///
+    /// This is useful for calculating the left limit (pre-jump value).
+    ///
+    /// # Arguments
+    ///
+    /// * `jumps` - Sorted slice of JumpEntry
+    /// * `t` - Time to query
+    ///
+    /// # Returns
+    ///
+    /// The cumulative offset just before time `t`.
+    #[must_use]
+    pub fn cumulative_offset_before(jumps: &[JumpEntry], t: f64) -> f64 {
+        if jumps.is_empty() {
+            return 0.0;
+        }
+
+        // Find the last jump with time < t
+        let idx = jumps.partition_point(|j| j.time < t);
+        if idx == 0 {
+            0.0
+        } else {
+            jumps[idx - 1].cumulative_offset
+        }
+    }
+
+    /// Checks if there is a jump at the given time.
+    ///
+    /// # Arguments
+    ///
+    /// * `jumps` - Sorted slice of JumpEntry
+    /// * `t` - Time to query
+    /// * `tolerance` - Time tolerance for equality comparison (default: 1e-10)
+    ///
+    /// # Returns
+    ///
+    /// True if there is a jump within the tolerance of time `t`.
+    #[must_use]
+    pub fn has_jump_at(jumps: &[JumpEntry], t: f64, tolerance: f64) -> bool {
+        jumps.iter().any(|j| (j.time - t).abs() < tolerance)
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        fn test_valuation_date() -> Date {
+            Date::from_ymd(2024, 1, 1).unwrap()
+        }
+
+        #[test]
+        fn test_convert_empty_pillars() {
+            let entries = convert_jump_pillars(&[], test_valuation_date(), DayCounter::Actual365Fixed);
+            assert!(entries.is_empty());
+        }
+
+        #[test]
+        fn test_convert_single_pillar() {
+            let valuation = test_valuation_date();
+            let jump_date = Date::from_ymd(2024, 3, 20).unwrap();
+            let pillars = vec![JumpPillar::new(jump_date, 25.0, 0.8)];
+
+            let entries = convert_jump_pillars(&pillars, valuation, DayCounter::Actual365Fixed);
+
+            assert_eq!(entries.len(), 1);
+            // Time should be approximately 79 days / 365 ≈ 0.2164
+            let expected_time = DayCounter::Actual365Fixed.year_fraction(valuation, jump_date);
+            assert!((entries[0].time - expected_time).abs() < 1e-10);
+            // Weighted jump: 25 * 0.8 = 20 bps → -0.002 (negative for rate hike)
+            assert!((entries[0].cumulative_offset - (-0.002)).abs() < 1e-10);
+        }
+
+        #[test]
+        fn test_convert_multiple_pillars_sorted() {
+            let valuation = test_valuation_date();
+            let pillars = vec![
+                JumpPillar::new(Date::from_ymd(2024, 6, 12).unwrap(), -25.0, 0.6),
+                JumpPillar::new(Date::from_ymd(2024, 3, 20).unwrap(), 25.0, 0.8),
+            ];
+
+            let entries = convert_jump_pillars(&pillars, valuation, DayCounter::Actual365Fixed);
+
+            assert_eq!(entries.len(), 2);
+            // Should be sorted by time
+            assert!(entries[0].time < entries[1].time);
+            // First jump (March): 25 * 0.8 = 20 bps → -0.002 (negative for rate hike)
+            assert!((entries[0].cumulative_offset - (-0.002)).abs() < 1e-10);
+            // Second jump (June): cumulative = -0.002 + -(-25) * 0.6 / 10000 = -0.002 + 0.0015 = -0.0005
+            assert!((entries[1].cumulative_offset - (-0.0005)).abs() < 1e-10);
+        }
+
+        #[test]
+        fn test_convert_filters_past_jumps() {
+            let valuation = Date::from_ymd(2024, 6, 1).unwrap();
+            let pillars = vec![
+                JumpPillar::new(Date::from_ymd(2024, 3, 20).unwrap(), 25.0, 0.8), // Past
+                JumpPillar::new(Date::from_ymd(2024, 9, 18).unwrap(), 50.0, 0.7), // Future
+            ];
+
+            let entries = convert_jump_pillars(&pillars, valuation, DayCounter::Actual365Fixed);
+
+            assert_eq!(entries.len(), 1);
+            // Only future jump should be included: 50 * 0.7 = 35 bps → -0.0035
+            assert!((entries[0].cumulative_offset - (-0.0035)).abs() < 1e-10);
+        }
+
+        #[test]
+        fn test_cumulative_offset_at() {
+            let entries = vec![
+                JumpEntry::new(0.25, 0.002),
+                JumpEntry::new(0.50, 0.0035),
+                JumpEntry::new(0.75, 0.006),
+            ];
+
+            // Before all jumps
+            assert_eq!(cumulative_offset_at(&entries, 0.1), 0.0);
+
+            // At first jump
+            assert!((cumulative_offset_at(&entries, 0.25) - 0.002).abs() < 1e-10);
+
+            // Between first and second jump
+            assert!((cumulative_offset_at(&entries, 0.4) - 0.002).abs() < 1e-10);
+
+            // At second jump
+            assert!((cumulative_offset_at(&entries, 0.50) - 0.0035).abs() < 1e-10);
+
+            // After all jumps
+            assert!((cumulative_offset_at(&entries, 1.0) - 0.006).abs() < 1e-10);
+        }
+
+        #[test]
+        fn test_cumulative_offset_at_empty() {
+            let entries: Vec<JumpEntry> = vec![];
+            assert_eq!(cumulative_offset_at(&entries, 0.5), 0.0);
+        }
+
+        #[test]
+        fn test_cumulative_offset_before() {
+            let entries = vec![
+                JumpEntry::new(0.25, 0.002),
+                JumpEntry::new(0.50, 0.0035),
+            ];
+
+            // Before all jumps
+            assert_eq!(cumulative_offset_before(&entries, 0.1), 0.0);
+
+            // At first jump (should return 0, not 0.002)
+            assert_eq!(cumulative_offset_before(&entries, 0.25), 0.0);
+
+            // Between jumps
+            assert!((cumulative_offset_before(&entries, 0.4) - 0.002).abs() < 1e-10);
+
+            // At second jump (should return first jump's offset)
+            assert!((cumulative_offset_before(&entries, 0.50) - 0.002).abs() < 1e-10);
+        }
+
+        #[test]
+        fn test_has_jump_at() {
+            let entries = vec![
+                JumpEntry::new(0.25, 0.002),
+                JumpEntry::new(0.50, 0.0035),
+            ];
+
+            assert!(has_jump_at(&entries, 0.25, 1e-10));
+            assert!(has_jump_at(&entries, 0.50, 1e-10));
+            assert!(!has_jump_at(&entries, 0.30, 1e-10));
+            assert!(!has_jump_at(&entries, 0.0, 1e-10));
+        }
+
+        #[test]
+        fn test_jump_entry_methods() {
+            let entry = JumpEntry::new(0.25, 0.002);
+
+            assert_eq!(entry.time(), 0.25);
+            assert_eq!(entry.cumulative_offset(), 0.002);
+            assert_eq!(entry.to_tuple(), (0.25, 0.002));
+        }
+
+        #[test]
+        fn test_convert_to_tuples() {
+            let valuation = test_valuation_date();
+            let pillars = vec![
+                JumpPillar::new(Date::from_ymd(2024, 3, 20).unwrap(), 25.0, 0.8),
+            ];
+
+            let tuples = convert_jump_pillars_to_tuples(&pillars, valuation, DayCounter::Actual365Fixed);
+
+            assert_eq!(tuples.len(), 1);
+            // 25 * 0.8 = 20 bps → -0.002 (negative for rate hike)
+            assert!((tuples[0].1 - (-0.002)).abs() < 1e-10);
+        }
+    }
+}
+
+// Re-export jump utilities
+pub use jumps::{convert_jump_pillars, convert_jump_pillars_to_tuples, JumpEntry};
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pricer_core::types::Limit;
 
     #[test]
     fn test_flat_curve_discount_factor() {
@@ -829,6 +1401,262 @@ mod tests {
 
         let df = curve.discount_factor(1.5).unwrap();
         assert!(df > 0.0 && df < 1.0);
+    }
+
+    // =========================================================================
+    // Jump-Aware BootstrappedCurve Tests
+    // =========================================================================
+
+    #[test]
+    fn test_bootstrapped_curve_no_jumps_same_as_base() {
+        // Without jumps, discount_factor should be the same as base
+        let pillars = vec![0.25_f64, 0.5, 1.0, 2.0];
+        let dfs: Vec<f64> = pillars.iter().map(|&t| (-0.03 * t).exp()).collect();
+        let curve = BootstrappedCurve::new(
+            pillars.clone(),
+            dfs.clone(),
+            BootstrapInterpolation::LogLinear,
+            true,
+        )
+        .unwrap();
+
+        // No jumps - all limits should give same result
+        let df_cont = curve.discount_factor_with_limit(0.75, Limit::Continuous).unwrap();
+        let df_left = curve.discount_factor_with_limit(0.75, Limit::Left).unwrap();
+        let df_right = curve.discount_factor_with_limit(0.75, Limit::Right).unwrap();
+
+        assert!((df_cont - df_left).abs() < 1e-12);
+        assert!((df_cont - df_right).abs() < 1e-12);
+        assert!(!curve.has_jumps());
+    }
+
+    #[test]
+    fn test_bootstrapped_curve_single_jump_left_right_limit() {
+        // Create curve with a single jump at t=0.5
+        let pillars = vec![0.25_f64, 0.5, 1.0];
+        let dfs: Vec<f64> = pillars.iter().map(|&t| (-0.03 * t).exp()).collect();
+
+        // Jump: 25 bps rate hike at t=0.5
+        // In log-space, offset = -0.0025 (negative because rate hike decreases DF)
+        let jump_offset = -0.0025_f64;
+        let jumps = vec![(0.5_f64, jump_offset)];
+
+        let curve = BootstrappedCurve::new(
+            pillars,
+            dfs,
+            BootstrapInterpolation::LogLinear,
+            true,
+        )
+        .unwrap()
+        .with_jumps(jumps);
+
+        assert!(curve.has_jumps());
+        assert_eq!(curve.jumps().len(), 1);
+
+        // At jump point t=0.5
+        let df_left = curve.discount_factor_with_limit(0.5, Limit::Left).unwrap();
+        let df_right = curve.discount_factor_with_limit(0.5, Limit::Right).unwrap();
+
+        // Left limit: before jump (offset = 0)
+        // Right limit: after jump (offset = -0.0025)
+        // df_right = df_base * exp(-0.0025) < df_left
+        assert!(df_right < df_left);
+
+        // The difference should be exp(-0.0025)
+        let ratio = df_right / df_left;
+        assert!((ratio - jump_offset.exp()).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_bootstrapped_curve_multiple_jumps_cumulative() {
+        let pillars = vec![0.25_f64, 0.5, 0.75, 1.0];
+        let dfs: Vec<f64> = pillars.iter().map(|&t| (-0.03 * t).exp()).collect();
+
+        // Two jumps: 25 bps at t=0.3, 25 bps at t=0.6
+        // Cumulative offsets: first = -0.0025, second = -0.005
+        let jumps = vec![
+            (0.3_f64, -0.0025),
+            (0.6_f64, -0.005),
+        ];
+
+        let curve = BootstrappedCurve::new(
+            pillars,
+            dfs,
+            BootstrapInterpolation::LogLinear,
+            true,
+        )
+        .unwrap()
+        .with_jumps(jumps);
+
+        // Before any jump (t=0.2)
+        let df_before = curve.discount_factor_with_limit(0.2, Limit::Continuous).unwrap();
+        let base_df_at_02 = (-0.03 * 0.2_f64).exp();
+        assert!((df_before - base_df_at_02).abs() < 1e-6);
+
+        // Between jumps (t=0.4) - should have first jump's offset applied
+        let df_between_cont = curve.discount_factor_with_limit(0.4, Limit::Continuous).unwrap();
+        let df_between_left = curve.discount_factor_with_limit(0.4, Limit::Left).unwrap();
+        // Both should have the first jump's offset (no jump at t=0.4)
+        assert!((df_between_cont - df_between_left).abs() < 1e-12);
+
+        // After all jumps (t=0.8) - should have cumulative offset of -0.005
+        let df_after_left = curve.discount_factor_with_limit(0.8, Limit::Left).unwrap();
+        let df_after_right = curve.discount_factor_with_limit(0.8, Limit::Right).unwrap();
+
+        // Both should have the same offset at t=0.8 (no jump at that point)
+        assert!((df_after_left - df_after_right).abs() < 1e-12);
+    }
+
+    #[test]
+    fn test_bootstrapped_curve_forward_rate_with_limit() {
+        let pillars = vec![0.25_f64, 0.5, 1.0];
+        let dfs: Vec<f64> = pillars.iter().map(|&t| (-0.03 * t).exp()).collect();
+
+        // Jump at t=0.5
+        let jumps = vec![(0.5_f64, -0.0025)];
+
+        let curve = BootstrappedCurve::new(
+            pillars,
+            dfs,
+            BootstrapInterpolation::LogLinear,
+            true,
+        )
+        .unwrap()
+        .with_jumps(jumps);
+
+        // Forward rate spanning the jump
+        let fwd_rate = curve.forward_rate_with_limit(0.25, 0.75, Limit::Continuous).unwrap();
+
+        // Forward rate should be computable
+        assert!(fwd_rate.is_finite());
+
+        // Verify consistency: fwd_rate = (df1/df2 - 1) / tau
+        let df1 = curve.discount_factor_with_limit(0.25, Limit::Continuous).unwrap();
+        let df2 = curve.discount_factor_with_limit(0.75, Limit::Continuous).unwrap();
+        let expected_fwd = (df1 / df2 - 1.0) / 0.5;
+
+        assert!((fwd_rate - expected_fwd).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_bootstrapped_curve_decompose_forward_rate() {
+        let pillars = vec![0.25_f64, 0.5, 0.75, 1.0];
+        let dfs: Vec<f64> = pillars.iter().map(|&t| (-0.03 * t).exp()).collect();
+
+        // Jump at t=0.5
+        let jump_offset = -0.0025_f64;
+        let jumps = vec![(0.5_f64, jump_offset)];
+
+        let curve = BootstrappedCurve::new(
+            pillars,
+            dfs,
+            BootstrapInterpolation::LogLinear,
+            true,
+        )
+        .unwrap()
+        .with_jumps(jumps);
+
+        // Decompose forward rate spanning the jump
+        let decomp = curve.decompose_forward_rate(0.25, 0.75).unwrap();
+
+        // total = continuous + jump
+        assert!((decomp.total - (decomp.continuous + decomp.jump)).abs() < 1e-10);
+
+        // Jump component should be non-zero when spanning a jump
+        assert!(decomp.jump.abs() > 1e-10);
+    }
+
+    #[test]
+    fn test_bootstrapped_curve_decompose_forward_rate_no_jump_in_range() {
+        let pillars = vec![0.25_f64, 0.5, 0.75, 1.0];
+        let dfs: Vec<f64> = pillars.iter().map(|&t| (-0.03 * t).exp()).collect();
+
+        // Jump at t=0.5
+        let jumps = vec![(0.5_f64, -0.0025)];
+
+        let curve = BootstrappedCurve::new(
+            pillars,
+            dfs,
+            BootstrapInterpolation::LogLinear,
+            true,
+        )
+        .unwrap()
+        .with_jumps(jumps);
+
+        // Forward rate in range without jump (0.6 to 0.8)
+        let decomp = curve.decompose_forward_rate(0.6, 0.8).unwrap();
+
+        // Jump component should be ~0 since we're past the jump and both ends
+        // have the same cumulative offset
+        assert!(decomp.jump.abs() < 1e-10);
+        assert!((decomp.total - decomp.continuous).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_bootstrapped_curve_with_jumps_builder() {
+        let pillars = vec![0.25_f64, 0.5, 1.0];
+        let dfs: Vec<f64> = pillars.iter().map(|&t| (-0.03 * t).exp()).collect();
+
+        let curve = BootstrappedCurve::new(
+            pillars,
+            dfs,
+            BootstrapInterpolation::LogLinear,
+            true,
+        )
+        .unwrap()
+        .with_jumps(vec![(0.5, -0.0025)]);
+
+        assert!(curve.has_jumps());
+        assert_eq!(curve.jumps().len(), 1);
+        assert_eq!(curve.jumps()[0], (0.5, -0.0025));
+    }
+
+    #[test]
+    fn test_bootstrapped_curve_default_discount_factor_uses_continuous() {
+        let pillars = vec![0.25_f64, 0.5, 1.0];
+        let dfs: Vec<f64> = pillars.iter().map(|&t| (-0.03 * t).exp()).collect();
+
+        let jumps = vec![(0.5_f64, -0.0025)];
+
+        let curve = BootstrappedCurve::new(
+            pillars,
+            dfs,
+            BootstrapInterpolation::LogLinear,
+            true,
+        )
+        .unwrap()
+        .with_jumps(jumps);
+
+        // Default discount_factor should use Continuous limit
+        let df_default = curve.discount_factor(0.75).unwrap();
+        let df_continuous = curve.discount_factor_with_limit(0.75, Limit::Continuous).unwrap();
+
+        assert!((df_default - df_continuous).abs() < 1e-12);
+    }
+
+    #[test]
+    fn test_bootstrapped_curve_forward_rate_consistency_with_zero_rate() {
+        // Test that forward_rate computed from DFs matches the expected formula
+        let pillars = vec![0.25_f64, 0.5, 1.0, 2.0];
+        let rate = 0.03_f64;
+        let dfs: Vec<f64> = pillars.iter().map(|&t| (-rate * t).exp()).collect();
+
+        let curve = BootstrappedCurve::new(
+            pillars,
+            dfs,
+            BootstrapInterpolation::LogLinear,
+            true,
+        )
+        .unwrap();
+
+        // For a flat rate curve, forward rate should equal the zero rate
+        let fwd = curve.forward_rate_with_limit(0.5, 1.0, Limit::Continuous).unwrap();
+
+        // Forward rate formula: (df1/df2 - 1) / tau
+        // For continuous compounding: should be close to rate
+        // Actual: (exp(-r*t1) / exp(-r*t2) - 1) / (t2-t1) = (exp(r*(t2-t1)) - 1) / (t2-t1)
+        let expected = ((rate * 0.5).exp() - 1.0) / 0.5;
+        assert!((fwd - expected).abs() < 1e-10);
     }
 
     // =========================================================================

@@ -12,6 +12,8 @@ default = []
 serde = ["dep:serde"]
 # Enzyme AD feature for actual Enzyme integration (requires nightly Rust and LLVM 18)
 enzyme-ad = ["dep:llvm-sys"]
+# Global bootstrap integration for IFT-based curve sensitivities
+global-bootstrap = ["pricer_models/global-bootstrap"]
 
 [dependencies]
 infra_config = { path = "../infra_config" }

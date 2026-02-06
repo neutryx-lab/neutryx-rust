@@ -609,6 +609,166 @@ where
 }
 
 // =============================================================================
+// CompiledInstrument Integration (Requirement 2, 4)
+// =============================================================================
+
+use crate::builder::compile::CompiledInstrument;
+
+impl<T> CalibrationProblem<T, CompiledInstrument<T>>
+where
+    T: Float + RealField + Copy,
+{
+    /// Create a new calibration problem from compiled instruments.
+    ///
+    /// # Requirement 2.1
+    ///
+    /// When `from_compiled()` is called, the Builder shall construct a
+    /// CalibrationProblem from pre-compiled instruments.
+    ///
+    /// # Requirement 2.2
+    ///
+    /// The CalibrationProblem shall hold references to compiled instruments
+    /// and not re-compile during iteration.
+    ///
+    /// # Arguments
+    ///
+    /// * `instruments` - Pre-compiled instruments
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Self)` - Calibration problem with compiled instruments
+    /// * `Err(CalibrationError)` - If validation fails
+    pub fn from_compiled(
+        instruments: Vec<CompiledInstrument<T>>,
+    ) -> Result<Self, CalibrationError> {
+        Self::from_compiled_with_config(instruments, CalibrationProblemConfig::default())
+    }
+
+    /// Create a new calibration problem from compiled instruments with custom config.
+    ///
+    /// # Arguments
+    ///
+    /// * `instruments` - Pre-compiled instruments
+    /// * `config` - Calibration configuration
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Self)` - Calibration problem with compiled instruments
+    /// * `Err(CalibrationError)` - If validation fails
+    pub fn from_compiled_with_config(
+        instruments: Vec<CompiledInstrument<T>>,
+        config: CalibrationProblemConfig<T>,
+    ) -> Result<Self, CalibrationError> {
+        if instruments.is_empty() {
+            return Err(CalibrationError::no_instruments());
+        }
+
+        // Extract and sort pillars (maturities)
+        let mut pillars: Vec<T> = instruments.iter().map(|i| i.maturity()).collect();
+        pillars.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+
+        // Deduplicate pillars
+        pillars.dedup_by(|a, b| Float::abs(*a - *b) < from_f64(1e-10));
+
+        // Log compilation info (Requirement 2.3)
+        #[cfg(feature = "tracing")]
+        {
+            let total_cashflows: usize = instruments.iter().map(|i| i.num_cashflows()).sum();
+            tracing::info!(
+                instruments = instruments.len(),
+                cashflows = total_cashflows,
+                pillars = pillars.len(),
+                "Calibration problem created from compiled instruments"
+            );
+        }
+
+        // Dimension check: enforce square system for now
+        if instruments.len() != pillars.len() {
+            return Err(CalibrationError::dimension_mismatch(
+                instruments.len(),
+                pillars.len(),
+            ));
+        }
+
+        Ok(Self {
+            instruments,
+            pillars,
+            config,
+            jump_pillars: Vec::new(),
+        })
+    }
+
+    /// Get the total number of cashflows across all compiled instruments.
+    ///
+    /// Useful for logging and diagnostics.
+    pub fn total_cashflows(&self) -> usize {
+        self.instruments.iter().map(|i| i.num_cashflows()).sum()
+    }
+
+    /// Create a calibration problem from market instruments.
+    ///
+    /// # Requirement 2.1
+    ///
+    /// When `from_market_instruments()` is called, the Builder shall compile
+    /// all MarketInstruments to CompiledInstruments.
+    ///
+    /// # Requirement 2.3
+    ///
+    /// When compilation is complete, the System shall log the number of
+    /// instruments, total cashflows, and compile time.
+    ///
+    /// # Requirement 2.4
+    ///
+    /// If a compile error occurs, the Builder shall propagate the error
+    /// without leaving partially compiled state.
+    ///
+    /// # Arguments
+    ///
+    /// * `market_instruments` - Resolved market instruments from infra_master
+    /// * `valuation_date` - The valuation date for compilation
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Self)` - Calibration problem with compiled instruments
+    /// * `Err(CompileError)` - If any instrument fails to compile
+    pub fn from_market_instruments(
+        market_instruments: &[infra_master::market::MarketInstrument],
+        valuation_date: infra_master::time::Date,
+    ) -> Result<Self, crate::builder::compile::CompileError> {
+        use crate::builder::compile::InstrumentCompiler;
+
+        // Create compiler
+        let compiler: InstrumentCompiler<T> = InstrumentCompiler::new(valuation_date);
+
+        // Compile all instruments (Requirement 2.4: fail-fast, no partial state)
+        let start_time = std::time::Instant::now();
+        let compiled = compiler.compile_batch(market_instruments)?;
+        let compile_duration = start_time.elapsed();
+
+        // Log compilation info (Requirement 2.3)
+        #[cfg(feature = "tracing")]
+        {
+            let total_cashflows: usize = compiled.iter().map(|i| i.num_cashflows()).sum();
+            tracing::info!(
+                instruments = compiled.len(),
+                cashflows = total_cashflows,
+                compile_time_ms = compile_duration.as_millis(),
+                "Compiled instruments for calibration"
+            );
+        }
+        let _ = compile_duration; // Suppress unused warning when tracing is disabled
+
+        // Create calibration problem
+        Self::from_compiled(compiled).map_err(|e| {
+            crate::builder::compile::CompileError::InvalidConvention {
+                index: 0,
+                rate_id: format!("CalibrationError: {}", e),
+            }
+        })
+    }
+}
+
+// =============================================================================
 // SystemOfEquations Implementation
 // =============================================================================
 
@@ -967,5 +1127,255 @@ mod tests {
         assert_relative_eq!(jp[0].time, 0.5, epsilon = 1e-10);
         assert_relative_eq!(jp[1].time, 1.0, epsilon = 1e-10);
         assert_relative_eq!(jp[2].time, 1.5, epsilon = 1e-10);
+    }
+
+    // =========================================================================
+    // CompiledInstrument Integration Tests (Requirement 2, 4)
+    // =========================================================================
+
+    use crate::builder::compile::{CompiledInstrument, InstrumentType};
+
+    fn create_compiled_instruments() -> Vec<CompiledInstrument<f64>> {
+        vec![
+            CompiledInstrument::deposit(0.03, 1.0).unwrap(),
+            CompiledInstrument::deposit(0.035, 2.0).unwrap(),
+            CompiledInstrument::deposit(0.04, 5.0).unwrap(),
+        ]
+    }
+
+    #[test]
+    fn test_from_compiled_creation() {
+        let instruments = create_compiled_instruments();
+        let problem = CalibrationProblem::from_compiled(instruments).unwrap();
+
+        assert_eq!(problem.dimension(), 3);
+        assert_eq!(problem.instruments().len(), 3);
+        assert_eq!(problem.pillars().len(), 3);
+    }
+
+    #[test]
+    fn test_from_compiled_empty_instruments() {
+        let instruments: Vec<CompiledInstrument<f64>> = vec![];
+        let result = CalibrationProblem::from_compiled(instruments);
+
+        assert!(result.is_err());
+        assert!(matches!(
+            result.unwrap_err(),
+            CalibrationError::NoInstruments
+        ));
+    }
+
+    #[test]
+    fn test_from_compiled_total_cashflows() {
+        let instruments = create_compiled_instruments();
+        let problem = CalibrationProblem::from_compiled(instruments).unwrap();
+
+        // Each deposit has 1 cashflow
+        assert_eq!(problem.total_cashflows(), 3);
+    }
+
+    #[test]
+    fn test_from_compiled_with_config() {
+        let instruments = create_compiled_instruments();
+        let config = CalibrationProblemConfig {
+            jacobian_method: JacobianMethod::CentralDifference,
+            jacobian_epsilon: 1e-6,
+            interpolation: BootstrapInterpolation::LogLinear,
+            allow_extrapolation: true,
+        };
+
+        let problem =
+            CalibrationProblem::from_compiled_with_config(instruments, config).unwrap();
+
+        assert_eq!(
+            problem.config().jacobian_method,
+            JacobianMethod::CentralDifference
+        );
+        assert_relative_eq!(problem.config().jacobian_epsilon, 1e-6, epsilon = 1e-15);
+    }
+
+    #[test]
+    fn test_from_compiled_initial_guess() {
+        let instruments = create_compiled_instruments();
+        let problem = CalibrationProblem::from_compiled(instruments).unwrap();
+
+        let guess = problem.initial_guess();
+        assert_eq!(guess.len(), 3);
+
+        // Initial guess: log(DF) = -0.03 * t
+        assert_relative_eq!(guess[0], -0.03, epsilon = 1e-10);
+        assert_relative_eq!(guess[1], -0.06, epsilon = 1e-10);
+        assert_relative_eq!(guess[2], -0.15, epsilon = 1e-10);
+    }
+
+    #[test]
+    fn test_from_compiled_build_curve() {
+        let instruments = create_compiled_instruments();
+        let problem = CalibrationProblem::from_compiled(instruments).unwrap();
+
+        let log_df = problem.initial_guess();
+        let curve = problem.build_curve(&log_df).unwrap();
+
+        let df_1y = curve.discount_factor(1.0).unwrap();
+        let df_2y = curve.discount_factor(2.0).unwrap();
+        let df_5y = curve.discount_factor(5.0).unwrap();
+
+        assert_relative_eq!(df_1y, (-0.03f64).exp(), epsilon = 1e-8);
+        assert_relative_eq!(df_2y, (-0.06f64).exp(), epsilon = 1e-8);
+        assert_relative_eq!(df_5y, (-0.15f64).exp(), epsilon = 1e-8);
+    }
+
+    #[test]
+    fn test_from_compiled_evaluate() {
+        let instruments = create_compiled_instruments();
+        let problem = CalibrationProblem::from_compiled(instruments).unwrap();
+
+        let x = problem.initial_guess_vector();
+        let residuals = problem.evaluate(&x).unwrap();
+
+        assert_eq!(residuals.len(), 3);
+    }
+
+    #[test]
+    fn test_from_compiled_jacobian() {
+        let instruments = create_compiled_instruments();
+        let problem = CalibrationProblem::from_compiled(instruments).unwrap();
+
+        let x = problem.initial_guess_vector();
+        let jacobian = problem.jacobian(&x).unwrap();
+
+        assert_eq!(jacobian.nrows(), 3);
+        assert_eq!(jacobian.ncols(), 3);
+
+        let max_elem: f64 = jacobian.iter().map(|&x| x.abs()).fold(0.0, f64::max);
+        assert!(max_elem > 0.0);
+    }
+
+    #[test]
+    fn test_from_compiled_with_swap_instruments() {
+        // Test with different instrument types
+        let instruments: Vec<CompiledInstrument<f64>> = vec![
+            CompiledInstrument::deposit(0.03, 0.25).unwrap(),
+            CompiledInstrument::fra(0.032, 0.25, 0.5).unwrap(),
+            CompiledInstrument::new(
+                InstrumentType::Swap,
+                0.035,
+                2.0,
+                vec![1.0, 2.0],
+                vec![1.0, 1.0],
+                vec![1.0, 1.0],
+                Some(0.035),
+            )
+            .unwrap(),
+        ];
+
+        let problem = CalibrationProblem::from_compiled(instruments).unwrap();
+        assert_eq!(problem.dimension(), 3);
+        // Total cashflows: deposit=1, fra=2, swap=2
+        assert_eq!(problem.total_cashflows(), 5);
+    }
+
+    // =========================================================================
+    // from_market_instruments Tests (Requirement 2)
+    // =========================================================================
+
+    use infra_master::market::convention::{DepositConvention, FraConvention, SwapConvention};
+    use infra_master::market::{
+        convention::MarketConvention, Currency, MarketInstrument as InfraMasterInstrument, RateId,
+        RateType,
+    };
+    use infra_master::time::{Date, Tenor};
+
+    fn create_infra_market_instruments() -> (Vec<InfraMasterInstrument>, Date) {
+        let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
+
+        let instruments = vec![
+            InfraMasterInstrument::new(
+                RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit),
+                0.05,
+                MarketConvention::Deposit(DepositConvention::usd()),
+                valuation_date,
+                1_000_000.0,
+            )
+            .unwrap(),
+            InfraMasterInstrument::new(
+                RateId::new(Currency::USD, Tenor::OneYear, RateType::Ois),
+                0.052,
+                MarketConvention::Ois(SwapConvention::usd_sofr()),
+                valuation_date,
+                5_000_000.0,
+            )
+            .unwrap(),
+            InfraMasterInstrument::new(
+                RateId::new(Currency::USD, Tenor::FiveYears, RateType::Swap),
+                0.055,
+                MarketConvention::Swap(SwapConvention::usd_sofr()),
+                valuation_date,
+                10_000_000.0,
+            )
+            .unwrap(),
+        ];
+
+        (instruments, valuation_date)
+    }
+
+    #[test]
+    fn test_from_market_instruments_creation() {
+        let (instruments, valuation_date) = create_infra_market_instruments();
+        let problem: CalibrationProblem<f64, CompiledInstrument<f64>> =
+            CalibrationProblem::from_market_instruments(&instruments, valuation_date).unwrap();
+
+        assert_eq!(problem.dimension(), 3);
+        assert_eq!(problem.instruments().len(), 3);
+    }
+
+    #[test]
+    fn test_from_market_instruments_empty() {
+        let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
+        let instruments: Vec<InfraMasterInstrument> = vec![];
+
+        let result: Result<CalibrationProblem<f64, CompiledInstrument<f64>>, _> =
+            CalibrationProblem::from_market_instruments(&instruments, valuation_date);
+
+        // Should fail because no instruments
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_from_market_instruments_evaluate() {
+        let (instruments, valuation_date) = create_infra_market_instruments();
+        let problem: CalibrationProblem<f64, CompiledInstrument<f64>> =
+            CalibrationProblem::from_market_instruments(&instruments, valuation_date).unwrap();
+
+        let x = problem.initial_guess_vector();
+        let residuals = problem.evaluate(&x).unwrap();
+
+        assert_eq!(residuals.len(), 3);
+    }
+
+    #[test]
+    fn test_from_market_instruments_jacobian() {
+        let (instruments, valuation_date) = create_infra_market_instruments();
+        let problem: CalibrationProblem<f64, CompiledInstrument<f64>> =
+            CalibrationProblem::from_market_instruments(&instruments, valuation_date).unwrap();
+
+        let x = problem.initial_guess_vector();
+        let jacobian = problem.jacobian(&x).unwrap();
+
+        assert_eq!(jacobian.nrows(), 3);
+        assert_eq!(jacobian.ncols(), 3);
+
+        let max_elem: f64 = jacobian.iter().map(|&x| x.abs()).fold(0.0, f64::max);
+        assert!(max_elem > 0.0);
+    }
+
+    #[test]
+    fn test_from_market_instruments_cashflows() {
+        let (instruments, valuation_date) = create_infra_market_instruments();
+        let problem: CalibrationProblem<f64, CompiledInstrument<f64>> =
+            CalibrationProblem::from_market_instruments(&instruments, valuation_date).unwrap();
+
+        // Should have more than 3 cashflows (deposit=1, OIS=1, swap=5)
+        assert!(problem.total_cashflows() > 3);
     }
 }

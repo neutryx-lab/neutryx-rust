@@ -2,29 +2,29 @@
 
 ## Phase 1: 疎行列基盤構築
 
-- [ ] 1. 疎行列モジュールのセットアップと基本型定義
+- [x] 1. 疎行列モジュールのセットアップと基本型定義
 
-- [ ] 1.1 (P) 疎行列ライブラリ依存関係と feature flag の追加
+- [x] 1.1 (P) 疎行列ライブラリ依存関係と feature flag の追加
   - pricer_core に nalgebra-sparse 依存関係を追加
   - `sparse` feature flag を定義し、オプション依存として設定
   - 既存の linalg モジュールとの feature 連携を確認
   - _Requirements: 4.1, 6.1_
 
-- [ ] 1.2 疎行列型エイリアスと変換ユーティリティの実装
+- [x] 1.2 疎行列型エイリアスと変換ユーティリティの実装
   - CSR/CSC 疎行列型のエイリアス定義
   - 密行列から疎行列への変換関数（threshold パラメータ付き）
   - 疎行列から密行列への逆変換関数
   - スパース率計算ユーティリティの実装
   - _Requirements: 4.1_
 
-- [ ] 1.3 SparseLUStrategy の LinearSolveStrategy trait 実装
+- [x] 1.3 SparseLUStrategy の LinearSolveStrategy trait 実装
   - 既存 LUStrategy と同一インターフェースでの疎行列 LU 分解
   - CSR フォーマット行列の分解とキャッシュ機構
   - スパース率閾値による自動選択ロジック（70% 以上で効果的）
   - decompose, solve, inverse メソッドの実装
   - _Requirements: 4.1, 4.3, 4.4_
 
-- [ ] 1.4 疎行列演算の単体テスト
+- [x] 1.4 疎行列演算の単体テスト
   - CSR 変換の正確性検証
   - SparseLUStrategy と LUStrategy の数値的等価性テスト
   - スパース率計算の境界値テスト
@@ -70,19 +70,19 @@
 
 - [ ] 3. IFT による市場感度抽出機能
 
-- [ ] 3.1 GlobalBootstrapResult への IFT 感度メソッド追加
+- [x] 3.1 GlobalBootstrapResult への IFT 感度メソッド追加
   - ift_sensitivity メソッドの実装（∂x*/∂m = -J⁻¹ · ∂F/∂m）
   - J⁻¹ 未キャッシュ時の明確なエラー返却
   - can_compute_ift ヘルパーメソッドの追加
   - _Requirements: 3.1, 3.2, 3.4_
 
-- [ ] 3.2 バッチ市場パラメータ感度計算
+- [x] 3.2 バッチ市場パラメータ感度計算
   - ift_sensitivity_batch メソッドの実装
   - 複数パラメータを単一行列-行列演算で処理
   - 次元不整合エラーのハンドリング
   - _Requirements: 3.3_
 
-- [ ] 3.3 IftError エラー型の定義
+- [x] 3.3 IftError エラー型の定義
   - NoJacobianInverse エラー（再キャリブレーション指示付き）
   - DimensionMismatch エラー（期待値と実際値の報告）
   - thiserror による構造化エラー実装

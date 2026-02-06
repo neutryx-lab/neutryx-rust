@@ -11,7 +11,7 @@
 
 use num_traits::Float;
 use pricer_core::math::{
-    linalg::{DMatrix, RealField},
+    linalg::{DMatrix, DVector, RealField},
     numeric::from_f64,
 };
 
@@ -308,6 +308,55 @@ impl<T: Float + RealField + Copy> InterpolationMatrix<T> {
             .into_iter()
             .map(Float::exp)
             .collect()
+    }
+
+    // =========================================================================
+    // Requirement 4: Vector Product Methods for Efficient DF Computation
+    // =========================================================================
+
+    /// Compute all cashflow DFs from pillar DFs using vector product.
+    ///
+    /// # Requirement 4.1
+    ///
+    /// When `apply()` is called, the System shall compute all cashflow date
+    /// DFs from pillar DFs using vector multiplication.
+    ///
+    /// # Requirement 4.3
+    ///
+    /// The apply operation shall use contiguous memory layout suitable for
+    /// SIMD optimisation.
+    ///
+    /// # Arguments
+    ///
+    /// * `pillar_dfs` - Discount factors at pillar dates as DVector
+    ///
+    /// # Returns
+    ///
+    /// Interpolated discount factors at all cashflow dates as DVector.
+    pub fn apply(&self, pillar_dfs: &DVector<T>) -> DVector<T> {
+        // Use matrix-vector multiplication for efficiency
+        // Result: cashflow_dfs = W * pillar_dfs
+        &self.matrix * pillar_dfs
+    }
+
+    /// Compute all cashflow DFs using log-linear interpolation.
+    ///
+    /// # Requirement 4.5
+    ///
+    /// When log-linear interpolation is specified, the System shall compute
+    /// interpolation coefficients in log(DF) space.
+    ///
+    /// # Arguments
+    ///
+    /// * `pillar_log_dfs` - log(DF) at pillar dates as DVector
+    ///
+    /// # Returns
+    ///
+    /// Discount factors at all cashflow dates as DVector (not log(DF)).
+    pub fn apply_log_linear(&self, pillar_log_dfs: &DVector<T>) -> DVector<T> {
+        // Interpolate in log space, then exponentiate
+        let log_result = &self.matrix * pillar_log_dfs;
+        log_result.map(|x| Float::exp(x))
     }
 }
 
@@ -746,5 +795,106 @@ mod tests {
         let df_no_jump = interp.interpolate_df(&log_df_pillars);
         assert!(df_result[0] < df_no_jump[0]);
         assert!(df_result[1] < df_no_jump[1]);
+    }
+
+    // =========================================================================
+    // apply() and apply_log_linear() Tests (Requirement 4)
+    // =========================================================================
+
+    #[test]
+    fn test_apply_basic() {
+        let pillars = vec![1.0, 2.0];
+        let grid: CalibrationGrid<f64> = CalibrationGrid::from_points(vec![1.0, 1.5, 2.0]);
+        let interp = InterpolationMatrix::from_pillars(&pillars, &grid);
+
+        // Test with discount factors directly
+        let pillar_dfs = DVector::from_vec(vec![0.97, 0.94]);
+        let result = interp.apply(&pillar_dfs);
+
+        assert_eq!(result.len(), 3);
+        // At t=1.0: DF should be 0.97 (pillar 0)
+        assert_relative_eq!(result[0], 0.97, epsilon = 1e-10);
+        // At t=1.5: DF should be 0.5*0.97 + 0.5*0.94 = 0.955
+        assert_relative_eq!(result[1], 0.955, epsilon = 1e-10);
+        // At t=2.0: DF should be 0.94 (pillar 1)
+        assert_relative_eq!(result[2], 0.94, epsilon = 1e-10);
+    }
+
+    #[test]
+    fn test_apply_consistency_with_interpolate() {
+        let pillars = vec![1.0, 2.0, 5.0];
+        let grid: CalibrationGrid<f64> =
+            CalibrationGrid::from_points(vec![0.5, 1.0, 1.5, 2.0, 3.0, 5.0]);
+        let interp = InterpolationMatrix::from_pillars(&pillars, &grid);
+
+        let pillar_values = vec![0.97, 0.94, 0.85];
+
+        // Compare apply() with interpolate()
+        let vec_result = interp.interpolate(&pillar_values);
+        let dvec_result = interp.apply(&DVector::from_vec(pillar_values));
+
+        for (&v1, v2) in vec_result.iter().zip(dvec_result.iter()) {
+            assert_relative_eq!(v1, *v2, epsilon = 1e-10);
+        }
+    }
+
+    #[test]
+    fn test_apply_log_linear_basic() {
+        let pillars = vec![1.0, 2.0];
+        let grid: CalibrationGrid<f64> = CalibrationGrid::from_points(vec![1.0, 1.5, 2.0]);
+        let interp = InterpolationMatrix::from_pillars(&pillars, &grid);
+
+        let pillar_log_dfs = DVector::from_vec(vec![-0.03, -0.06]);
+        let result = interp.apply_log_linear(&pillar_log_dfs);
+
+        assert_eq!(result.len(), 3);
+
+        // Result should be discount factors, not log(DF)
+        assert!(result[0] > 0.0 && result[0] < 1.0);
+        assert!(result[1] > 0.0 && result[1] < 1.0);
+        assert!(result[2] > 0.0 && result[2] < 1.0);
+
+        // At t=1.0: DF should be exp(-0.03)
+        assert_relative_eq!(result[0], (-0.03f64).exp(), epsilon = 1e-10);
+        // At t=2.0: DF should be exp(-0.06)
+        assert_relative_eq!(result[2], (-0.06f64).exp(), epsilon = 1e-10);
+    }
+
+    #[test]
+    fn test_apply_log_linear_consistency_with_interpolate_df() {
+        let pillars = vec![1.0, 2.0, 5.0];
+        let grid: CalibrationGrid<f64> =
+            CalibrationGrid::from_points(vec![1.0, 1.5, 2.0, 3.0, 5.0]);
+        let interp = InterpolationMatrix::from_pillars(&pillars, &grid);
+
+        let log_df_pillars = vec![-0.03, -0.06, -0.15];
+
+        // Compare apply_log_linear() with interpolate_df()
+        let vec_result = interp.interpolate_df(&log_df_pillars);
+        let dvec_result = interp.apply_log_linear(&DVector::from_vec(log_df_pillars));
+
+        for (&v1, v2) in vec_result.iter().zip(dvec_result.iter()) {
+            assert_relative_eq!(v1, *v2, epsilon = 1e-10);
+        }
+    }
+
+    #[test]
+    fn test_apply_simd_friendly_layout() {
+        // Verify that the matrix layout is contiguous and suitable for SIMD
+        let pillars = vec![1.0, 2.0, 5.0, 10.0];
+        let grid: CalibrationGrid<f64> =
+            CalibrationGrid::from_points(vec![1.0, 2.0, 3.0, 5.0, 7.0, 10.0]);
+        let interp = InterpolationMatrix::from_pillars(&pillars, &grid);
+
+        // The matrix should be column-major (nalgebra default)
+        // This is suitable for SIMD operations on columns
+        let matrix = interp.matrix();
+        assert_eq!(matrix.nrows(), 6);
+        assert_eq!(matrix.ncols(), 4);
+
+        // Matrix-vector multiplication should work efficiently
+        let pillar_dfs = DVector::from_vec(vec![0.97, 0.94, 0.85, 0.75]);
+        let result = interp.apply(&pillar_dfs);
+        assert_eq!(result.len(), 6);
     }
 }

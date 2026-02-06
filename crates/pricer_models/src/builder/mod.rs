@@ -80,7 +80,7 @@ pub use engine::{
     CalibrationEngine, CalibrationEngineConfig, CalibrationResult, GlobalCalibrationEngine,
     SequentialCalibrationEngine,
 };
-pub use error::CalibrationError;
+pub use error::{CalibrationError, IftError};
 pub use grid::CalibrationGrid;
 pub use instrument::CalibrationInstrument;
 #[cfg(feature = "global-bootstrap")]
@@ -108,7 +108,7 @@ pub use vol::{
 // =============================================================================
 // Public Re-exports: Instrument Compilation (Requirement 1, 8)
 // =============================================================================
-pub use compile::{CompileError, CompiledInstrument, InstrumentType};
+pub use compile::{CompileError, CompiledInstrument, InstrumentCompiler, InstrumentType};
 
 // =============================================================================
 // Bootstrap Error and Result Types

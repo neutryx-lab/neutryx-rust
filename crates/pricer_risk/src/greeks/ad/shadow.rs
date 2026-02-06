@@ -370,6 +370,56 @@ impl Shadow for SimpleMarketData {
 }
 
 // =============================================================================
+// GlobalBootstrapResult Shadow Implementation (Requirement 7.3)
+// =============================================================================
+
+#[cfg(feature = "global-bootstrap")]
+mod global_bootstrap_shadow {
+    use super::Shadow;
+    use pricer_models::builder::GlobalBootstrapResult;
+
+    /// Shadow implementation for GlobalBootstrapResult<f64>.
+    ///
+    /// This enables IFT-based curve sensitivity computation within the AAD
+    /// framework. The implementation distinguishes between:
+    ///
+    /// - **Active inputs** (zeroed): discount_factors, residual_norm, pricing_errors
+    /// - **Const inputs** (preserved): curve, jacobian_inverse, pillars, iterations, etc.
+    ///
+    /// The `jacobian_inverse` is treated as const because it represents the
+    /// fixed system response at calibration time and is used for IFT computation.
+    ///
+    /// # Requirement: 7.3
+    impl Shadow for GlobalBootstrapResult<f64> {
+        fn zero_out(&mut self) {
+            // Active inputs: discount_factors (differentiable calibration outputs)
+            self.discount_factors.zero_out();
+
+            // Active: residual_norm (scalar output)
+            self.residual_norm = 0.0;
+
+            // Active: pricing_errors (per-instrument residuals)
+            if let Some(ref mut errors) = self.pricing_errors {
+                errors.zero_out();
+            }
+
+            // The following are CONST (not zeroed):
+            // - curve: Reconstructed from discount_factors, not independent
+            // - jacobian_inverse: Fixed at calibration time, used for IFT
+            // - pillars: Time points (non-differentiable)
+            // - iterations: Solver metadata (non-differentiable)
+            // - converged: Boolean flag (non-differentiable)
+            // - residual_history: Diagnostic data (non-differentiable)
+            // - condition_number: Diagnostic data (non-differentiable)
+            // - realised_jumps: Jump calibration metadata (non-differentiable)
+        }
+    }
+}
+
+#[cfg(feature = "global-bootstrap")]
+pub use global_bootstrap_shadow::*;
+
+// =============================================================================
 // Tests
 // =============================================================================
 
@@ -773,5 +823,150 @@ mod tests {
         d_market.discount_curve.rates[0] = 1.5;
 
         assert_eq!(d_market.discount_curve.rates[0], 1.5);
+    }
+
+    // =========================================================================
+    // GlobalBootstrapResult Shadow tests (Requirement 7.3)
+    // =========================================================================
+
+    #[cfg(feature = "global-bootstrap")]
+    mod global_bootstrap_tests {
+        use super::*;
+        use nalgebra::DMatrix;
+        use pricer_models::builder::GlobalBootstrapResult;
+        use pricer_models::market::curves::{BootstrapInterpolation, BootstrappedCurve};
+
+        fn create_test_result() -> GlobalBootstrapResult<f64> {
+            let pillars = vec![1.0, 2.0, 5.0];
+            let discount_factors = vec![0.97, 0.94, 0.85];
+            let curve = BootstrappedCurve::new(
+                pillars.clone(),
+                discount_factors.clone(),
+                BootstrapInterpolation::LogLinear,
+                true,
+            )
+            .unwrap();
+
+            GlobalBootstrapResult {
+                curve,
+                pillars,
+                discount_factors,
+                residual_norm: 1e-10,
+                iterations: 5,
+                converged: true,
+                jacobian_inverse: Some(DMatrix::identity(3, 3)),
+                residual_history: Some(vec![1e-4, 1e-6, 1e-8, 1e-10]),
+                condition_number: Some(100.0),
+                pricing_errors: Some(vec![1e-10, 2e-10, 3e-10]),
+                realised_jumps: None,
+            }
+        }
+
+        #[test]
+        fn test_global_bootstrap_result_zero_out() {
+            // Requirement 7.3: Shadow trait for GlobalBootstrapResult
+            let mut result = create_test_result();
+
+            // Store original const values
+            let original_pillars = result.pillars.clone();
+            let original_iterations = result.iterations;
+            let original_jacobian = result.jacobian_inverse.clone();
+
+            result.zero_out();
+
+            // Active inputs are zeroed
+            assert_eq!(result.discount_factors, vec![0.0, 0.0, 0.0]);
+            assert_eq!(result.residual_norm, 0.0);
+            assert_eq!(result.pricing_errors, Some(vec![0.0, 0.0, 0.0]));
+
+            // Const inputs are preserved
+            assert_eq!(result.pillars, original_pillars);
+            assert_eq!(result.iterations, original_iterations);
+            assert_eq!(result.jacobian_inverse, original_jacobian);
+            assert!(result.converged);
+        }
+
+        #[test]
+        fn test_global_bootstrap_result_create_shadow() {
+            let original = create_test_result();
+            let shadow = original.create_shadow();
+
+            // Active inputs zeroed in shadow
+            assert_eq!(shadow.discount_factors, vec![0.0, 0.0, 0.0]);
+            assert_eq!(shadow.residual_norm, 0.0);
+            assert_eq!(shadow.pricing_errors, Some(vec![0.0, 0.0, 0.0]));
+
+            // Original unchanged
+            assert_eq!(original.discount_factors, vec![0.97, 0.94, 0.85]);
+            assert!((original.residual_norm - 1e-10).abs() < 1e-15);
+            assert_eq!(original.pricing_errors, Some(vec![1e-10, 2e-10, 3e-10]));
+
+            // Structure preserved
+            assert_eq!(shadow.pillars.len(), original.pillars.len());
+            assert_eq!(shadow.iterations, original.iterations);
+        }
+
+        #[test]
+        fn test_global_bootstrap_result_jacobian_inverse_preserved() {
+            // Jacobian inverse must be const for IFT computation
+            let mut result = create_test_result();
+            let original_j_inv = result.jacobian_inverse.clone();
+
+            result.zero_out();
+
+            // J⁻¹ is preserved (const)
+            assert_eq!(result.jacobian_inverse, original_j_inv);
+        }
+
+        #[test]
+        fn test_global_bootstrap_result_no_pricing_errors() {
+            let pillars = vec![1.0, 2.0];
+            let discount_factors = vec![0.97, 0.94];
+            let curve = BootstrappedCurve::new(
+                pillars.clone(),
+                discount_factors.clone(),
+                BootstrapInterpolation::LogLinear,
+                true,
+            )
+            .unwrap();
+
+            let mut result = GlobalBootstrapResult {
+                curve,
+                pillars,
+                discount_factors,
+                residual_norm: 1e-10,
+                iterations: 3,
+                converged: true,
+                jacobian_inverse: None,
+                residual_history: None,
+                condition_number: None,
+                pricing_errors: None, // No pricing errors
+                realised_jumps: None,
+            };
+
+            // Should not panic when pricing_errors is None
+            result.zero_out();
+
+            assert_eq!(result.discount_factors, vec![0.0, 0.0]);
+            assert_eq!(result.residual_norm, 0.0);
+            assert!(result.pricing_errors.is_none());
+        }
+
+        #[test]
+        fn test_global_bootstrap_result_gradient_accumulation() {
+            // Simulate gradient accumulation workflow
+            let original = create_test_result();
+            let mut d_result = original.create_shadow();
+
+            // Simulate reverse-mode AD gradient accumulation
+            d_result.discount_factors[0] = 0.5; // ∂L/∂DF_0
+            d_result.discount_factors[1] = 0.3; // ∂L/∂DF_1
+            d_result.discount_factors[2] = 0.2; // ∂L/∂DF_2
+
+            // Gradients are accessible at same indices
+            assert_eq!(d_result.discount_factors[0], 0.5);
+            assert_eq!(d_result.discount_factors[1], 0.3);
+            assert_eq!(d_result.discount_factors[2], 0.2);
+        }
     }
 }

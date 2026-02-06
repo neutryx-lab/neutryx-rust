@@ -24,10 +24,19 @@
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
+use super::JumpPillar;
+use crate::time::Date;
+
 /// Curve definition - the recipe for building a yield curve.
 ///
 /// References [`InstrumentDefinition`]s and [`RateIndexDefinition`] by their IDs
 /// to specify which instruments and index to use for curve construction.
+///
+/// # Jump Pillars
+///
+/// Jump pillars can be added to model rate discontinuities at specific dates
+/// (e.g., central bank meetings). When present, the curve builder will apply
+/// discrete jumps at these dates during interpolation.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
@@ -40,6 +49,13 @@ pub struct CurveDefinition {
 
     /// List of InstrumentDefinition.id references
     pub instruments: Vec<String>,
+
+    /// Jump pillars for rate discontinuities (e.g., central bank meetings)
+    #[cfg_attr(
+        feature = "serde",
+        serde(default, skip_serializing_if = "Vec::is_empty")
+    )]
+    pub jump_pillars: Vec<JumpPillar>,
 
     /// Calibration method
     #[cfg_attr(feature = "serde", serde(default))]
@@ -85,7 +101,7 @@ pub enum InterpolationMethod {
 }
 
 /// Error type for curve definition validation.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum CurveDefError {
     /// Missing required field
     MissingField(&'static str),
@@ -97,6 +113,22 @@ pub enum CurveDefError {
     UnknownInstrument(String),
     /// Duplicate instrument in the list
     DuplicateInstrument(String),
+    /// Duplicate jump pillar date
+    DuplicateJumpDate(Date),
+    /// Invalid confidence value for jump pillar
+    InvalidConfidence {
+        /// The date of the problematic jump pillar
+        date: Date,
+        /// The invalid confidence value
+        value: f64,
+    },
+    /// Jump would cause negative discount factor
+    JumpWouldCauseNegativeDF {
+        /// The date of the problematic jump pillar
+        date: Date,
+        /// The jump size in basis points
+        jump_bps: f64,
+    },
 }
 
 impl std::fmt::Display for CurveDefError {
@@ -107,6 +139,21 @@ impl std::fmt::Display for CurveDefError {
             Self::UnknownRateIndex(id) => write!(f, "Unknown rate index: {}", id),
             Self::UnknownInstrument(id) => write!(f, "Unknown instrument: {}", id),
             Self::DuplicateInstrument(id) => write!(f, "Duplicate instrument: {}", id),
+            Self::DuplicateJumpDate(date) => write!(f, "Duplicate jump pillar date: {}", date),
+            Self::InvalidConfidence { date, value } => {
+                write!(
+                    f,
+                    "Invalid confidence {} for jump pillar at {}: must be in [0.0, 1.0]",
+                    value, date
+                )
+            }
+            Self::JumpWouldCauseNegativeDF { date, jump_bps } => {
+                write!(
+                    f,
+                    "Jump of {}bp at {} would cause negative discount factor",
+                    jump_bps, date
+                )
+            }
         }
     }
 }
@@ -131,6 +178,7 @@ impl CurveDefinition {
             name: name.into(),
             rate_index: rate_index.into(),
             instruments,
+            jump_pillars: Vec::new(),
             calibration_method: CalibrationMethod::default(),
             interpolation: InterpolationMethod::default(),
             allow_extrapolation: true,
@@ -165,6 +213,72 @@ impl CurveDefinition {
         self
     }
 
+    /// Sets the jump pillars for rate discontinuities.
+    ///
+    /// # Arguments
+    ///
+    /// * `pillars` - List of JumpPillar definitions
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use infra_master::market::definition::{CurveDefinition, JumpPillar};
+    /// use infra_master::time::Date;
+    ///
+    /// let pillars = vec![
+    ///     JumpPillar::new(Date::from_ymd(2024, 3, 20).unwrap(), 25.0, 0.85),
+    /// ];
+    ///
+    /// let curve = CurveDefinition::new("USD-SOFR", "USD-SOFR", vec!["USD-OIS-1Y".to_string()])
+    ///     .with_jump_pillars(pillars);
+    ///
+    /// assert!(curve.has_jumps());
+    /// ```
+    #[must_use]
+    pub fn with_jump_pillars(mut self, pillars: Vec<JumpPillar>) -> Self {
+        self.jump_pillars = pillars;
+        self
+    }
+
+    /// Adds a single jump pillar to the definition.
+    ///
+    /// # Arguments
+    ///
+    /// * `pillar` - The JumpPillar to add
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use infra_master::market::definition::{CurveDefinition, JumpPillar};
+    /// use infra_master::time::Date;
+    ///
+    /// let curve = CurveDefinition::new("USD-SOFR", "USD-SOFR", vec!["USD-OIS-1Y".to_string()])
+    ///     .with_jump_pillar(JumpPillar::new(
+    ///         Date::from_ymd(2024, 3, 20).unwrap(),
+    ///         25.0,
+    ///         0.85,
+    ///     ));
+    ///
+    /// assert_eq!(curve.jump_pillar_count(), 1);
+    /// ```
+    #[must_use]
+    pub fn with_jump_pillar(mut self, pillar: JumpPillar) -> Self {
+        self.jump_pillars.push(pillar);
+        self
+    }
+
+    /// Returns the number of jump pillars in the definition.
+    #[must_use]
+    pub fn jump_pillar_count(&self) -> usize {
+        self.jump_pillars.len()
+    }
+
+    /// Returns true if the definition has any jump pillars.
+    #[must_use]
+    pub fn has_jumps(&self) -> bool {
+        !self.jump_pillars.is_empty()
+    }
+
     /// Validates the curve definition (basic validation only).
     ///
     /// For full validation including reference checking, use
@@ -186,11 +300,57 @@ impl CurveDefinition {
             return Err(CurveDefError::NoInstruments);
         }
 
-        // Check for duplicates
+        // Check for duplicate instruments
         let mut seen = std::collections::HashSet::new();
         for inst_id in &self.instruments {
             if !seen.insert(inst_id) {
                 return Err(CurveDefError::DuplicateInstrument(inst_id.clone()));
+            }
+        }
+
+        // Validate jump pillars
+        self.validate_jump_pillars()?;
+
+        Ok(())
+    }
+
+    /// Validates the jump pillars.
+    ///
+    /// Checks for:
+    /// - Duplicate dates
+    /// - Invalid confidence values (outside [0.0, 1.0])
+    /// - Jumps that would cause negative discount factors
+    fn validate_jump_pillars(&self) -> Result<(), CurveDefError> {
+        if self.jump_pillars.is_empty() {
+            return Ok(());
+        }
+
+        let mut seen_dates = std::collections::HashSet::new();
+
+        for pillar in &self.jump_pillars {
+            // Check for duplicate dates
+            if !seen_dates.insert(pillar.jump_date()) {
+                return Err(CurveDefError::DuplicateJumpDate(pillar.jump_date()));
+            }
+
+            // Confidence is clamped in JumpPillar::new, but check if the raw value
+            // was provided outside the valid range (for extra safety)
+            let confidence = pillar.confidence();
+            if !(0.0..=1.0).contains(&confidence) {
+                return Err(CurveDefError::InvalidConfidence {
+                    date: pillar.jump_date(),
+                    value: confidence,
+                });
+            }
+
+            // Check for extreme jumps that would cause negative discount factors
+            // A jump of more than ~10000 bps (100%) would be problematic
+            let jump_bps = pillar.expected_jump_bps();
+            if jump_bps.abs() > 10000.0 {
+                return Err(CurveDefError::JumpWouldCauseNegativeDF {
+                    date: pillar.jump_date(),
+                    jump_bps,
+                });
             }
         }
 
@@ -384,5 +544,137 @@ mod tests {
         assert_eq!(curve.calibration_method, CalibrationMethod::Sequential);
         assert_eq!(curve.interpolation, InterpolationMethod::LogLinear);
         assert!(curve.allow_extrapolation);
+        // jump_pillars should default to empty
+        assert!(curve.jump_pillars.is_empty());
+    }
+
+    // =========================================================================
+    // Jump Pillar Tests
+    // =========================================================================
+
+    #[test]
+    fn test_with_jump_pillars() {
+        let pillars = vec![
+            JumpPillar::new(Date::from_ymd(2024, 3, 20).unwrap(), 25.0, 0.85),
+            JumpPillar::new(Date::from_ymd(2024, 6, 12).unwrap(), -25.0, 0.70),
+        ];
+
+        let curve = CurveDefinition::new("USD-SOFR", "USD-SOFR", vec!["USD-OIS-1Y".to_string()])
+            .with_jump_pillars(pillars);
+
+        assert_eq!(curve.jump_pillar_count(), 2);
+        assert!(curve.has_jumps());
+    }
+
+    #[test]
+    fn test_with_jump_pillar() {
+        let curve = CurveDefinition::new("USD-SOFR", "USD-SOFR", vec!["USD-OIS-1Y".to_string()])
+            .with_jump_pillar(JumpPillar::new(
+                Date::from_ymd(2024, 3, 20).unwrap(),
+                25.0,
+                0.85,
+            ))
+            .with_jump_pillar(JumpPillar::new(
+                Date::from_ymd(2024, 6, 12).unwrap(),
+                -25.0,
+                0.70,
+            ));
+
+        assert_eq!(curve.jump_pillar_count(), 2);
+    }
+
+    #[test]
+    fn test_has_jumps_empty() {
+        let curve = CurveDefinition::new("USD-SOFR", "USD-SOFR", vec!["USD-OIS-1Y".to_string()]);
+        assert!(!curve.has_jumps());
+    }
+
+    #[test]
+    fn test_validate_with_valid_jump_pillars() {
+        let curve = CurveDefinition::new("USD-SOFR", "USD-SOFR", vec!["USD-OIS-1Y".to_string()])
+            .with_jump_pillar(JumpPillar::new(
+                Date::from_ymd(2024, 3, 20).unwrap(),
+                25.0,
+                0.85,
+            ));
+
+        assert!(curve.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_duplicate_jump_date() {
+        let curve = CurveDefinition::new("USD-SOFR", "USD-SOFR", vec!["USD-OIS-1Y".to_string()])
+            .with_jump_pillar(JumpPillar::new(
+                Date::from_ymd(2024, 3, 20).unwrap(),
+                25.0,
+                0.85,
+            ))
+            .with_jump_pillar(JumpPillar::new(
+                Date::from_ymd(2024, 3, 20).unwrap(), // Duplicate date
+                -25.0,
+                0.70,
+            ));
+
+        assert!(matches!(
+            curve.validate(),
+            Err(CurveDefError::DuplicateJumpDate(_))
+        ));
+    }
+
+    #[test]
+    fn test_validate_extreme_jump() {
+        let curve = CurveDefinition::new("USD-SOFR", "USD-SOFR", vec!["USD-OIS-1Y".to_string()])
+            .with_jump_pillar(JumpPillar::new(
+                Date::from_ymd(2024, 3, 20).unwrap(),
+                20000.0, // 200% - too extreme
+                0.85,
+            ));
+
+        assert!(matches!(
+            curve.validate(),
+            Err(CurveDefError::JumpWouldCauseNegativeDF { .. })
+        ));
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_serde_with_jump_pillars() {
+        let curve = CurveDefinition::new("USD-SOFR", "USD-SOFR", vec!["USD-OIS-1Y".to_string()])
+            .with_jump_pillar(JumpPillar::new(
+                Date::from_ymd(2024, 3, 20).unwrap(),
+                25.0,
+                0.85,
+            ));
+
+        let json = serde_json::to_string(&curve).unwrap();
+        let parsed: CurveDefinition = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(curve, parsed);
+        assert_eq!(parsed.jump_pillar_count(), 1);
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_serde_empty_jump_pillars_omitted() {
+        let curve = CurveDefinition::new("USD-SOFR", "USD-SOFR", vec!["USD-OIS-1Y".to_string()]);
+
+        let json = serde_json::to_string(&curve).unwrap();
+        // jump_pillars should not appear in JSON when empty
+        assert!(!json.contains("jumpPillars"));
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_serde_backward_compatibility() {
+        // Old JSON without jumpPillars should deserialize correctly
+        let json = r#"{
+            "name": "USD-SOFR",
+            "rateIndex": "USD-SOFR",
+            "instruments": ["USD-OIS-1Y"]
+        }"#;
+
+        let curve: CurveDefinition = serde_json::from_str(json).unwrap();
+        assert!(!curve.has_jumps());
+        assert!(curve.validate().is_ok());
     }
 }

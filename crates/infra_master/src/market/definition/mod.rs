@@ -56,7 +56,7 @@ mod vol_surface;
 pub use curve::{CalibrationMethod, CurveDefError, CurveDefinition, InterpolationMethod};
 
 // Jump pillar definitions
-pub use jump_pillar::JumpPillar;
+pub use jump_pillar::{JumpPillar, JumpPillarBuilder};
 
 // Vol surface definitions
 pub use vol_surface::{CalibrationModel, StrikeAxisType};

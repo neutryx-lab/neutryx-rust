@@ -1,6 +1,6 @@
-//! CDS convention definitions.
+//! Credit convention definitions.
 //!
-//! This module provides types for credit default swap conventions.
+//! This module provides types for credit-related conventions including CDS.
 
 use crate::time::{BusinessDayConvention, CalendarId, DayCounter, Frequency};
 

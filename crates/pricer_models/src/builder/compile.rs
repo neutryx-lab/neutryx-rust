@@ -1193,4 +1193,191 @@ mod tests {
         // For a flat curve, par swap rate should be close to the zero rate
         assert_relative_eq!(theoretical, 0.04, epsilon = 5e-3);
     }
+
+    // =========================================================================
+    // InstrumentCompiler Tests (Requirements 3.1-3.5)
+    // =========================================================================
+
+    use infra_master::market::convention::{DepositConvention, FraConvention, SwapConvention};
+    use infra_master::market::{Currency, RateId, RateType};
+    use infra_master::time::Tenor;
+
+    fn create_test_valuation_date() -> Date {
+        Date::from_ymd(2024, 1, 15).unwrap()
+    }
+
+    #[test]
+    fn test_instrument_compiler_new() {
+        let valuation_date = create_test_valuation_date();
+        let compiler: InstrumentCompiler<f64> = InstrumentCompiler::new(valuation_date);
+        assert_eq!(compiler.valuation_date(), valuation_date);
+    }
+
+    #[test]
+    fn test_compile_deposit() {
+        let valuation_date = create_test_valuation_date();
+        let compiler: InstrumentCompiler<f64> = InstrumentCompiler::new(valuation_date);
+
+        let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+        let convention = MarketConvention::Deposit(DepositConvention::usd());
+        let instrument = InfraMasterInstrument::new(
+            rate_id,
+            0.05,
+            convention,
+            valuation_date,
+            1_000_000.0,
+        )
+        .unwrap();
+
+        let compiled = compiler.compile(&instrument, 0).unwrap();
+        assert_eq!(compiled.get_instrument_type(), InstrumentType::Deposit);
+        assert!((CalibInstrument::market_rate(&compiled) - 0.05).abs() < 1e-10);
+        assert!(compiled.cashflow_times().len() >= 1);
+    }
+
+    #[test]
+    fn test_compile_swap() {
+        let valuation_date = create_test_valuation_date();
+        let compiler: InstrumentCompiler<f64> = InstrumentCompiler::new(valuation_date);
+
+        let rate_id = RateId::new(Currency::USD, Tenor::FiveYears, RateType::Swap);
+        let convention = MarketConvention::Swap(SwapConvention::usd_sofr());
+        let instrument = InfraMasterInstrument::new(
+            rate_id,
+            0.045,
+            convention,
+            valuation_date,
+            10_000_000.0,
+        )
+        .unwrap();
+
+        let compiled = compiler.compile(&instrument, 0).unwrap();
+        assert_eq!(compiled.get_instrument_type(), InstrumentType::Swap);
+        assert!((CalibInstrument::market_rate(&compiled) - 0.045).abs() < 1e-10);
+        assert!(compiled.cashflow_times().len() >= 1);
+    }
+
+    #[test]
+    fn test_compile_ois() {
+        let valuation_date = create_test_valuation_date();
+        let compiler: InstrumentCompiler<f64> = InstrumentCompiler::new(valuation_date);
+
+        let rate_id = RateId::new(Currency::USD, Tenor::OneYear, RateType::Ois);
+        let convention = MarketConvention::Ois(SwapConvention::usd_sofr());
+        let instrument = InfraMasterInstrument::new(
+            rate_id,
+            0.052,
+            convention,
+            valuation_date,
+            5_000_000.0,
+        )
+        .unwrap();
+
+        let compiled = compiler.compile(&instrument, 0).unwrap();
+        assert_eq!(compiled.get_instrument_type(), InstrumentType::Ois);
+    }
+
+    #[test]
+    fn test_compile_fra() {
+        let valuation_date = create_test_valuation_date();
+        let compiler: InstrumentCompiler<f64> = InstrumentCompiler::new(valuation_date);
+
+        let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Fra);
+        let convention = MarketConvention::Fra(FraConvention::usd_sofr());
+        let instrument = InfraMasterInstrument::new(
+            rate_id,
+            0.051,
+            convention,
+            valuation_date,
+            2_000_000.0,
+        )
+        .unwrap();
+
+        let compiled = compiler.compile(&instrument, 0).unwrap();
+        assert_eq!(compiled.get_instrument_type(), InstrumentType::Fra);
+    }
+
+    #[test]
+    fn test_compile_unsupported_xccy() {
+        use infra_master::market::convention::XCcyBasisConvention;
+
+        let valuation_date = create_test_valuation_date();
+        let compiler: InstrumentCompiler<f64> = InstrumentCompiler::new(valuation_date);
+
+        let rate_id = RateId::new(Currency::USD, Tenor::FiveYears, RateType::BasisSwap);
+        let convention = MarketConvention::XCcyBasis(XCcyBasisConvention::usd_jpy());
+        let instrument = InfraMasterInstrument::new(
+            rate_id,
+            0.0025,
+            convention,
+            valuation_date,
+            100_000_000.0,
+        )
+        .unwrap();
+
+        let result = compiler.compile(&instrument, 0);
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            CompileError::UnsupportedInstrument { instrument_type, .. } => {
+                assert_eq!(instrument_type, "XCcyBasis");
+            }
+            _ => panic!("Expected UnsupportedInstrument error"),
+        }
+    }
+
+    #[test]
+    fn test_compile_batch() {
+        let valuation_date = create_test_valuation_date();
+        let compiler: InstrumentCompiler<f64> = InstrumentCompiler::new(valuation_date);
+
+        let instruments = vec![
+            InfraMasterInstrument::new(
+                RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit),
+                0.05,
+                MarketConvention::Deposit(DepositConvention::usd()),
+                valuation_date,
+                1_000_000.0,
+            )
+            .unwrap(),
+            InfraMasterInstrument::new(
+                RateId::new(Currency::USD, Tenor::OneYear, RateType::Ois),
+                0.052,
+                MarketConvention::Ois(SwapConvention::usd_sofr()),
+                valuation_date,
+                5_000_000.0,
+            )
+            .unwrap(),
+        ];
+
+        let compiled = compiler.compile_batch(&instruments).unwrap();
+        assert_eq!(compiled.len(), 2);
+        assert_eq!(compiled[0].get_instrument_type(), InstrumentType::Deposit);
+        assert_eq!(compiled[1].get_instrument_type(), InstrumentType::Ois);
+    }
+
+    #[test]
+    fn test_compile_invalid_maturity() {
+        // Use a future valuation date to make the instrument's maturity in the past
+        let future_valuation = Date::from_ymd(2025, 6, 15).unwrap();
+        let compiler: InstrumentCompiler<f64> = InstrumentCompiler::new(future_valuation);
+
+        // Create instrument with normal dates (maturity in 2024)
+        let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+        let convention = MarketConvention::Deposit(DepositConvention::usd());
+        let instrument_date = Date::from_ymd(2024, 1, 15).unwrap();
+
+        let instrument = InfraMasterInstrument::new(
+            rate_id,
+            0.05,
+            convention,
+            instrument_date,
+            1_000_000.0,
+        )
+        .unwrap();
+
+        // The instrument's maturity (around 2024-04) is before the compiler's valuation date (2025-06)
+        let result = compiler.compile(&instrument, 0);
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), CompileError::InvalidMaturity { .. }));
+    }
 }
