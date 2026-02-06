@@ -403,8 +403,8 @@ mod tests {
 
         for (tenor, rate_type, value) in data {
             let rate_id = QuoteId::new(Currency::USD, tenor, rate_type);
-            let rate =
-                MarketQuote::new(rate_id, QuoteType::Mid, value, ts, DataSource::Bloomberg).unwrap();
+            let rate = MarketQuote::new(rate_id, QuoteType::Mid, value, ts, DataSource::Bloomberg)
+                .unwrap();
             rates.insert(rate);
         }
 
@@ -524,8 +524,8 @@ mod tests {
 
         for (tenor, rate_type, value) in data {
             let rate_id = QuoteId::new(Currency::USD, tenor, rate_type);
-            let rate =
-                MarketQuote::new(rate_id, QuoteType::Mid, value, ts, DataSource::Bloomberg).unwrap();
+            let rate = MarketQuote::new(rate_id, QuoteType::Mid, value, ts, DataSource::Bloomberg)
+                .unwrap();
             market_rates.insert(rate);
         }
 
