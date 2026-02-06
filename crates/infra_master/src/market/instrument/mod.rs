@@ -55,6 +55,9 @@ mod fx_vol;
 mod rates;
 mod xccy;
 
+/// Market convention definitions for all asset classes.
+pub mod convention;
+
 // Re-exports
 // Commodity instruments
 pub use commodity::{

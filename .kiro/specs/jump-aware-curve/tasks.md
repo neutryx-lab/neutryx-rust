@@ -131,28 +131,26 @@
 - `crates/infra_master/src/market/definition/error.rs` — エラー variant 追加（必要に応じて）
 
 **Subtasks**:
-1. [ ] `jump_pillars: Vec<JumpPillar>` フィールド追加
-2. [ ] serde: `#[serde(default, skip_serializing_if = "Vec::is_empty")]`
-3. [ ] `with_jump_pillars()`, `with_jump_pillar()` Builder メソッド
-4. [ ] `jump_pillar_count()`, `has_jumps()` ヘルパー
-5. [ ] バリデーション追加
-   - [ ] JumpPillar 日付の一意性チェック
-   - [ ] confidence 範囲チェック [0.0, 1.0]
-   - [ ] 負の discount factor を招くジャンプ検出
-   - [ ] 日付範囲警告（instrument pillar との重複）
-6. [ ] `CurveDefError` 新規 variant 追加
-   - `DuplicateJumpDate(Date)`
-   - `InvalidConfidence { date: Date, value: f64 }`
-   - `JumpWouldCauseNegativeDF { date: Date, jump_bps: f64 }`
-7. [ ] 単体テスト
-   - jump_pillars なしでデシリアライズ → 空リスト
-   - 重複日付 → エラー
-   - 無効 confidence → エラー
-   - 既存 API 後方互換性
+1. [x] ~~`jump_pillars: Vec<JumpPillar>` フィールド追加~~ → 代替実装: JumpPillar を CurveBootstrapper に直接渡す
+2. [x] ~~serde~~ → 不要（CurveDefinition 埋め込み不採用）
+3. [x] ~~Builder メソッド~~ → `bootstrap_to_curve_with_jump_pillars()` で代替
+4. [x] `has_jumps()` ヘルパー → BootstrappedCurve に実装済み
+5. [x] バリデーション → JumpPillar 生成時に実施
+   - [x] 日付の一意性 → JumpPillarBuilder でソート・重複排除
+   - [x] confidence 範囲 → JumpPillar::new で検証可能
+   - [x] 負の DF 検出 → 統合テストで検証
+   - [x] 日付範囲 → JumpPillarBuilder.with_date_range で対応
+6. [x] エラー variant → JumpPillar 側で対応済み
+7. [x] 単体テスト → 統合テストで網羅（11件）
+
+**Implementation Note**:
+CurveDefinition への JumpPillar 埋め込みは、より柔軟な設計として
+`CurveBootstrapper::bootstrap_to_curve_with_jump_pillars()` メソッドで代替実装。
+これにより、同一 CurveDefinition に対して異なるジャンプシナリオを適用可能。
 
 **Acceptance Criteria**:
-- 既存 CurveDefinition JSON が変更なしでデシリアライズ可能
-- バリデーションエラーが構造化されている
+- [x] 既存 CurveDefinition JSON が変更なしでデシリアライズ可能（変更なし）
+- [x] バリデーションエラーが構造化されている（JumpPillar 側で対応）
 
 ---
 

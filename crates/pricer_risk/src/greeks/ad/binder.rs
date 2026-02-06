@@ -859,3 +859,539 @@ mod tests {
         assert!(err4.to_string().contains("Invalid market data"));
     }
 }
+
+// =============================================================================
+// GlobalBootstrapResult Integration (Task 3.5)
+// =============================================================================
+
+#[cfg(feature = "global-bootstrap")]
+mod global_bootstrap_integration {
+    use super::*;
+    use pricer_models::builder::{GlobalBootstrapResult, IftError};
+
+    // =========================================================================
+    // Error Types
+    // =========================================================================
+
+    /// Error type for IFT-based risk calculations.
+    #[derive(Debug, Error, Clone, PartialEq)]
+    pub enum IftRiskError {
+        /// IFT computation error (forwarded from GlobalBootstrapResult).
+        #[error("IFT computation error: {0}")]
+        IftError(#[from] IftError),
+
+        /// Curve mismatch - trade references different curve than provided.
+        #[error("Curve mismatch: trade expects {expected}, got {actual}")]
+        CurveMismatch {
+            /// Expected curve identifier
+            expected: String,
+            /// Actual curve identifier
+            actual: String,
+        },
+
+        /// Empty trade batch provided.
+        #[error("Empty trade batch")]
+        EmptyBatch,
+
+        /// Dimension mismatch in batch processing.
+        #[error("Batch dimension mismatch: {message}")]
+        BatchDimensionMismatch {
+            /// Error message
+            message: String,
+        },
+
+        /// Shadow AAD error during computation.
+        #[error("Shadow AAD error: {0}")]
+        ShadowAadError(#[from] ShadowAadError),
+    }
+
+    // =========================================================================
+    // Result Types
+    // =========================================================================
+
+    /// Result of IFT-based curve sensitivity calculation.
+    #[derive(Debug, Clone)]
+    pub struct IftRiskResult {
+        /// Present value of the trade.
+        pub pv: f64,
+
+        /// Sensitivity of PV to each pillar DF (∂PV/∂DF_i).
+        pub df_sensitivities: Vec<f64>,
+
+        /// Sensitivity of PV to each market input (∂PV/∂quote_j).
+        /// Computed via IFT: ∂PV/∂quote = ∂PV/∂DF · ∂DF/∂quote
+        pub market_sensitivities: Vec<f64>,
+    }
+
+    /// Result of batched IFT risk calculation across multiple trades.
+    #[derive(Debug, Clone)]
+    pub struct BatchIftRiskResult {
+        /// Individual trade results.
+        pub trade_results: Vec<IftRiskResult>,
+
+        /// Aggregated market sensitivities across all trades.
+        pub total_market_sensitivities: Vec<f64>,
+
+        /// Total PV across all trades.
+        pub total_pv: f64,
+    }
+
+    // =========================================================================
+    // Trade Abstraction for IFT
+    // =========================================================================
+
+    /// Trait for trades that can compute sensitivities to discount factors.
+    ///
+    /// This is required for IFT-based sensitivity propagation.
+    pub trait IftTrade {
+        /// Compute the present value and sensitivities to discount factors.
+        ///
+        /// # Arguments
+        ///
+        /// * `discount_factors` - Discount factors at each pillar
+        /// * `pillars` - Pillar maturities in years
+        ///
+        /// # Returns
+        ///
+        /// Tuple of (pv, sensitivities) where sensitivities[i] = ∂PV/∂DF_i
+        fn compute_with_df_sensitivities(
+            &self,
+            discount_factors: &[f64],
+            pillars: &[f64],
+        ) -> (f64, Vec<f64>);
+    }
+
+    // =========================================================================
+    // MarketRiskCalculator Extension
+    // =========================================================================
+
+    impl MarketRiskCalculator {
+        /// Calculate IFT-based market risk using GlobalBootstrapResult.
+        ///
+        /// Uses the Implicit Function Theorem to propagate sensitivities:
+        /// ```text
+        /// ∂PV/∂quote = ∂PV/∂DF · ∂DF/∂quote
+        ///            = ∂PV/∂DF · (-J⁻¹ · ∂F/∂quote)
+        /// ```
+        ///
+        /// # Arguments
+        ///
+        /// * `bootstrap_result` - Calibration result with cached J⁻¹
+        /// * `trade` - Trade implementing IftTrade
+        /// * `dF_dquote` - Sensitivity of residuals to market quotes (n_instruments × n_quotes)
+        ///
+        /// # Returns
+        ///
+        /// IftRiskResult with PV and sensitivities to both DFs and market quotes.
+        ///
+        /// # Requirements Coverage
+        ///
+        /// - AC7.1: Accept GlobalBootstrapResult as input
+        /// - AC7.2: Use cached J⁻¹ for sensitivity calculation
+        pub fn calculate_ift_risk<T: IftTrade>(
+            &self,
+            bootstrap_result: &GlobalBootstrapResult<f64>,
+            trade: &T,
+            dF_dquote: &[Vec<f64>],
+        ) -> Result<IftRiskResult, IftRiskError> {
+            // Check IFT availability
+            if !bootstrap_result.can_compute_ift() {
+                return Err(IftRiskError::IftError(IftError::NoJacobianInverse));
+            }
+
+            // Compute PV and DF sensitivities
+            let (pv, df_sensitivities) = trade.compute_with_df_sensitivities(
+                &bootstrap_result.discount_factors,
+                &bootstrap_result.pillars,
+            );
+
+            // Compute market sensitivities via IFT
+            // ∂PV/∂quote_j = Σ_i (∂PV/∂DF_i) · (∂DF_i/∂quote_j)
+            // where ∂DF/∂quote = -J⁻¹ · ∂F/∂quote
+            let mut market_sensitivities = Vec::with_capacity(dF_dquote.len());
+
+            for dF_dq in dF_dquote {
+                // Get ∂DF/∂quote_j using IFT
+                let df_dquote = bootstrap_result.ift_sensitivity(dF_dq)?;
+
+                // Chain rule: ∂PV/∂quote_j = ∂PV/∂DF · ∂DF/∂quote_j
+                let market_sens: f64 = df_sensitivities
+                    .iter()
+                    .zip(df_dquote.iter())
+                    .map(|(&dpv_ddf, &ddf_dq)| dpv_ddf * ddf_dq)
+                    .sum();
+
+                market_sensitivities.push(market_sens);
+            }
+
+            Ok(IftRiskResult {
+                pv,
+                df_sensitivities,
+                market_sensitivities,
+            })
+        }
+
+        /// Calculate batched IFT risk for multiple trades sharing the same curve.
+        ///
+        /// This is more efficient than calling `calculate_ift_risk` for each trade
+        /// because the IFT computation (J⁻¹ · ∂F/∂quote) is performed once and
+        /// reused across all trades.
+        ///
+        /// # Arguments
+        ///
+        /// * `bootstrap_result` - Calibration result with cached J⁻¹
+        /// * `trades` - Vector of trades implementing IftTrade
+        /// * `dF_dquote` - Sensitivity of residuals to market quotes (n_instruments × n_quotes)
+        ///
+        /// # Returns
+        ///
+        /// BatchIftRiskResult with individual trade results and aggregated sensitivities.
+        ///
+        /// # Requirements Coverage
+        ///
+        /// - AC7.4: Batch curve sensitivities across trades sharing the same curve
+        pub fn calculate_batch_ift_risk<T: IftTrade>(
+            &self,
+            bootstrap_result: &GlobalBootstrapResult<f64>,
+            trades: &[T],
+            dF_dquote: &[Vec<f64>],
+        ) -> Result<BatchIftRiskResult, IftRiskError> {
+            if trades.is_empty() {
+                return Err(IftRiskError::EmptyBatch);
+            }
+
+            // Check IFT availability
+            if !bootstrap_result.can_compute_ift() {
+                return Err(IftRiskError::IftError(IftError::NoJacobianInverse));
+            }
+
+            // Pre-compute ∂DF/∂quote for all market parameters (shared across trades)
+            let n_quotes = dF_dquote.len();
+            let mut df_dquote_cache: Vec<Vec<f64>> = Vec::with_capacity(n_quotes);
+
+            for dF_dq in dF_dquote {
+                let df_dquote = bootstrap_result.ift_sensitivity(dF_dq)?;
+                df_dquote_cache.push(df_dquote);
+            }
+
+            // Process each trade
+            let mut trade_results = Vec::with_capacity(trades.len());
+            let mut total_pv = 0.0;
+            let mut total_market_sensitivities = vec![0.0; n_quotes];
+
+            for trade in trades {
+                // Compute PV and DF sensitivities
+                let (pv, df_sensitivities) = trade.compute_with_df_sensitivities(
+                    &bootstrap_result.discount_factors,
+                    &bootstrap_result.pillars,
+                );
+
+                total_pv += pv;
+
+                // Compute market sensitivities using cached ∂DF/∂quote
+                let mut market_sensitivities = Vec::with_capacity(n_quotes);
+
+                for (j, df_dquote) in df_dquote_cache.iter().enumerate() {
+                    let market_sens: f64 = df_sensitivities
+                        .iter()
+                        .zip(df_dquote.iter())
+                        .map(|(&dpv_ddf, &ddf_dq)| dpv_ddf * ddf_dq)
+                        .sum();
+
+                    market_sensitivities.push(market_sens);
+                    total_market_sensitivities[j] += market_sens;
+                }
+
+                trade_results.push(IftRiskResult {
+                    pv,
+                    df_sensitivities,
+                    market_sensitivities,
+                });
+            }
+
+            Ok(BatchIftRiskResult {
+                trade_results,
+                total_market_sensitivities,
+                total_pv,
+            })
+        }
+
+        /// Check if IFT-based risk calculation is available.
+        ///
+        /// Returns true if the bootstrap result has a cached Jacobian inverse.
+        #[inline]
+        pub fn can_compute_ift_risk(&self, bootstrap_result: &GlobalBootstrapResult<f64>) -> bool {
+            bootstrap_result.can_compute_ift()
+        }
+    }
+
+    // =========================================================================
+    // Tests
+    // =========================================================================
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use pricer_core::math::linalg::DMatrix;
+        use pricer_models::market::curves::{BootstrapInterpolation, BootstrappedCurve};
+
+        // Mock trade for testing
+        struct MockIrsTrade {
+            notional: f64,
+            fixed_rate: f64,
+            n_periods: usize,
+        }
+
+        impl MockIrsTrade {
+            fn new(notional: f64, fixed_rate: f64, n_periods: usize) -> Self {
+                Self {
+                    notional,
+                    fixed_rate,
+                    n_periods,
+                }
+            }
+        }
+
+        impl IftTrade for MockIrsTrade {
+            fn compute_with_df_sensitivities(
+                &self,
+                discount_factors: &[f64],
+                _pillars: &[f64],
+            ) -> (f64, Vec<f64>) {
+                // Simplified IRS PV: PV = Notional * Σ(DF_i * (floating - fixed) * dt)
+                // Assume dt = 1.0 and floating = 3%
+                let floating_rate = 0.03;
+                let spread = floating_rate - self.fixed_rate;
+
+                let n = discount_factors.len().min(self.n_periods);
+                let mut pv = 0.0;
+                let mut sensitivities = vec![0.0; discount_factors.len()];
+
+                for (i, &df) in discount_factors.iter().take(n).enumerate() {
+                    pv += self.notional * df * spread;
+                    sensitivities[i] = self.notional * spread;
+                }
+
+                (pv, sensitivities)
+            }
+        }
+
+        // Helper to create a mock GlobalBootstrapResult
+        fn create_mock_bootstrap_result(
+            n_pillars: usize,
+            with_jacobian: bool,
+        ) -> GlobalBootstrapResult<f64> {
+            let pillars: Vec<f64> = (1..=n_pillars).map(|i| i as f64).collect();
+            let discount_factors: Vec<f64> = pillars
+                .iter()
+                .map(|&t| (-0.03 * t).exp())
+                .collect();
+
+            let jacobian_inverse = if with_jacobian {
+                Some(DMatrix::identity(n_pillars, n_pillars))
+            } else {
+                None
+            };
+
+            let curve = BootstrappedCurve::new(
+                pillars.clone(),
+                discount_factors.clone(),
+                BootstrapInterpolation::LogLinear,
+                true,
+            )
+            .unwrap();
+
+            GlobalBootstrapResult {
+                curve,
+                pillars,
+                discount_factors,
+                residual_norm: 1e-12,
+                iterations: 5,
+                converged: true,
+                jacobian_inverse,
+                residual_history: None,
+                condition_number: Some(10.0),
+                pricing_errors: None,
+                realised_jumps: None,
+            }
+        }
+
+        // =====================================================================
+        // Task 3.5 Tests: MarketRiskCalculator GlobalBootstrapResult Integration
+        // =====================================================================
+
+        #[test]
+        fn test_calculate_ift_risk_basic() {
+            // RED: Test IFT risk calculation with valid inputs
+            let calc = MarketRiskCalculator::default();
+            let result = create_mock_bootstrap_result(3, true);
+            let trade = MockIrsTrade::new(1_000_000.0, 0.02, 3);
+
+            // dF/dquote for 3 market quotes (identity for simplicity)
+            let dF_dquote = vec![
+                vec![1.0, 0.0, 0.0],
+                vec![0.0, 1.0, 0.0],
+                vec![0.0, 0.0, 1.0],
+            ];
+
+            let risk_result = calc.calculate_ift_risk(&result, &trade, &dF_dquote);
+
+            assert!(risk_result.is_ok());
+            let risk = risk_result.unwrap();
+            assert!(risk.pv.abs() > 0.0);
+            assert_eq!(risk.df_sensitivities.len(), 3);
+            assert_eq!(risk.market_sensitivities.len(), 3);
+        }
+
+        #[test]
+        fn test_calculate_ift_risk_no_jacobian_inverse() {
+            // Test error when J⁻¹ is not available
+            let calc = MarketRiskCalculator::default();
+            let result = create_mock_bootstrap_result(3, false); // No jacobian
+            let trade = MockIrsTrade::new(1_000_000.0, 0.02, 3);
+            let dF_dquote = vec![vec![1.0, 0.0, 0.0]];
+
+            let risk_result = calc.calculate_ift_risk(&result, &trade, &dF_dquote);
+
+            assert!(matches!(
+                risk_result,
+                Err(IftRiskError::IftError(IftError::NoJacobianInverse))
+            ));
+        }
+
+        #[test]
+        fn test_calculate_ift_risk_dimension_mismatch() {
+            // Test error when dF_dquote has wrong dimension
+            let calc = MarketRiskCalculator::default();
+            let result = create_mock_bootstrap_result(3, true);
+            let trade = MockIrsTrade::new(1_000_000.0, 0.02, 3);
+
+            // Wrong dimension: 2 elements instead of 3
+            let dF_dquote = vec![vec![1.0, 0.0]];
+
+            let risk_result = calc.calculate_ift_risk(&result, &trade, &dF_dquote);
+
+            assert!(matches!(
+                risk_result,
+                Err(IftRiskError::IftError(IftError::DimensionMismatch { .. }))
+            ));
+        }
+
+        #[test]
+        fn test_calculate_batch_ift_risk_basic() {
+            // Test batch IFT risk calculation
+            let calc = MarketRiskCalculator::default();
+            let result = create_mock_bootstrap_result(3, true);
+
+            let trades = vec![
+                MockIrsTrade::new(1_000_000.0, 0.02, 3),
+                MockIrsTrade::new(2_000_000.0, 0.025, 3),
+                MockIrsTrade::new(500_000.0, 0.03, 3),
+            ];
+
+            let dF_dquote = vec![
+                vec![1.0, 0.0, 0.0],
+                vec![0.0, 1.0, 0.0],
+                vec![0.0, 0.0, 1.0],
+            ];
+
+            let batch_result = calc.calculate_batch_ift_risk(&result, &trades, &dF_dquote);
+
+            assert!(batch_result.is_ok());
+            let batch = batch_result.unwrap();
+            assert_eq!(batch.trade_results.len(), 3);
+            assert_eq!(batch.total_market_sensitivities.len(), 3);
+
+            // Total PV should be sum of individual PVs
+            let sum_pv: f64 = batch.trade_results.iter().map(|r| r.pv).sum();
+            assert!((batch.total_pv - sum_pv).abs() < 1e-10);
+        }
+
+        #[test]
+        fn test_calculate_batch_ift_risk_empty_batch() {
+            // Test error on empty batch
+            let calc = MarketRiskCalculator::default();
+            let result = create_mock_bootstrap_result(3, true);
+            let trades: Vec<MockIrsTrade> = vec![];
+            let dF_dquote = vec![vec![1.0, 0.0, 0.0]];
+
+            let batch_result = calc.calculate_batch_ift_risk(&result, &trades, &dF_dquote);
+
+            assert!(matches!(batch_result, Err(IftRiskError::EmptyBatch)));
+        }
+
+        #[test]
+        fn test_calculate_batch_ift_risk_aggregation() {
+            // Test that batch aggregation is correct
+            let calc = MarketRiskCalculator::default();
+            let result = create_mock_bootstrap_result(3, true);
+
+            let trades = vec![
+                MockIrsTrade::new(1_000_000.0, 0.02, 3),
+                MockIrsTrade::new(1_000_000.0, 0.02, 3), // Same trade
+            ];
+
+            let dF_dquote = vec![vec![1.0, 0.0, 0.0]];
+
+            let batch_result = calc.calculate_batch_ift_risk(&result, &trades, &dF_dquote).unwrap();
+
+            // Total market sensitivity should be 2x individual
+            let individual_sens = batch_result.trade_results[0].market_sensitivities[0];
+            let total_sens = batch_result.total_market_sensitivities[0];
+            assert!((total_sens - 2.0 * individual_sens).abs() < 1e-10);
+        }
+
+        #[test]
+        fn test_can_compute_ift_risk() {
+            let calc = MarketRiskCalculator::default();
+
+            let result_with_jac = create_mock_bootstrap_result(3, true);
+            assert!(calc.can_compute_ift_risk(&result_with_jac));
+
+            let result_without_jac = create_mock_bootstrap_result(3, false);
+            assert!(!calc.can_compute_ift_risk(&result_without_jac));
+        }
+
+        #[test]
+        fn test_ift_risk_chain_rule_correctness() {
+            // Verify the chain rule: ∂PV/∂quote = ∂PV/∂DF · ∂DF/∂quote
+            let calc = MarketRiskCalculator::default();
+            let result = create_mock_bootstrap_result(3, true);
+            let trade = MockIrsTrade::new(1_000_000.0, 0.02, 3);
+
+            // With identity Jacobian, ∂DF/∂quote should equal -dF_dquote
+            let dF_dquote = vec![vec![0.01, 0.0, 0.0]]; // 1bp shift in first quote
+
+            let risk = calc.calculate_ift_risk(&result, &trade, &dF_dquote).unwrap();
+
+            // ∂PV/∂quote[0] should equal -∂PV/∂DF[0] * 0.01 (with identity J⁻¹)
+            let expected = -risk.df_sensitivities[0] * 0.01;
+            assert!(
+                (risk.market_sensitivities[0] - expected).abs() < 1e-10,
+                "Chain rule verification failed: got {}, expected {}",
+                risk.market_sensitivities[0],
+                expected
+            );
+        }
+
+        #[test]
+        fn test_ift_risk_error_display() {
+            // Test error Display implementations
+            let err1 = IftRiskError::IftError(IftError::NoJacobianInverse);
+            assert!(err1.to_string().contains("IFT computation error"));
+
+            let err2 = IftRiskError::EmptyBatch;
+            assert!(err2.to_string().contains("Empty trade batch"));
+
+            let err3 = IftRiskError::CurveMismatch {
+                expected: "USD-OIS".to_string(),
+                actual: "EUR-OIS".to_string(),
+            };
+            assert!(err3.to_string().contains("Curve mismatch"));
+        }
+    }
+}
+
+// Re-export for global-bootstrap feature
+#[cfg(feature = "global-bootstrap")]
+pub use global_bootstrap_integration::*;

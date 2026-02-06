@@ -306,7 +306,7 @@ impl SwapIndex {
                 underlying_index: RateIndex::Sofr,
                 fixed_frequency: Tenor::SixMonths,
                 float_frequency: Tenor::ThreeMonths,
-                fixed_day_counter: DayCounter::Thirty360,
+                fixed_day_counter: DayCounter::Thirty360Bond,
                 float_day_counter: DayCounter::Actual360,
                 settlement_lag: 2,
                 calendar: CalendarId::NewYork,
@@ -315,7 +315,7 @@ impl SwapIndex {
                 underlying_index: RateIndex::Estr,
                 fixed_frequency: Tenor::OneYear,
                 float_frequency: Tenor::SixMonths,
-                fixed_day_counter: DayCounter::Thirty360,
+                fixed_day_counter: DayCounter::Thirty360Bond,
                 float_day_counter: DayCounter::Actual360,
                 settlement_lag: 2,
                 calendar: CalendarId::Target,
@@ -342,7 +342,7 @@ impl SwapIndex {
                 underlying_index: RateIndex::Saron,
                 fixed_frequency: Tenor::OneYear,
                 float_frequency: Tenor::SixMonths,
-                fixed_day_counter: DayCounter::Thirty360,
+                fixed_day_counter: DayCounter::Thirty360Bond,
                 float_day_counter: DayCounter::Actual360,
                 settlement_lag: 2,
                 calendar: CalendarId::Target, // Swiss calendar not yet defined
@@ -477,7 +477,7 @@ mod tests {
         assert_eq!(metadata.underlying_index, RateIndex::Sofr);
         assert_eq!(metadata.fixed_frequency, Tenor::SixMonths);
         assert_eq!(metadata.float_frequency, Tenor::ThreeMonths);
-        assert_eq!(metadata.fixed_day_counter, DayCounter::Thirty360);
+        assert_eq!(metadata.fixed_day_counter, DayCounter::Thirty360Bond);
         assert_eq!(metadata.float_day_counter, DayCounter::Actual360);
         assert_eq!(metadata.settlement_lag, 2);
         assert_eq!(metadata.calendar, CalendarId::NewYork);

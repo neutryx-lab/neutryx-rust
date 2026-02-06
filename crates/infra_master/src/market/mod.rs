@@ -12,12 +12,11 @@
 //!
 //! - [`core`]: Fundamental types (Currency, CurrencyPair, RateType, CompoundingMethod)
 //! - [`quote`]: Market quote management (MarketRate, RateId, MarketRateSet)
-//! - [`index`]: Rate index definitions (RateIndex, IndexMetadata)
+//! - [`index`]: Index definitions (RateIndex, FxIndex, SwapIndex)
 //! - [`source`]: Data sources and mapping (DataSource, TickerMapping, InstrumentMapper)
 //! - [`definition`]: Curve/surface definitions (CurveDefinition, CalibrationModel)
-//! - [`convention`]: Market conventions
 //! - [`events`]: Economic calendar events
-//! - [`instrument`]: Financial instrument definitions
+//! - [`instrument`]: Financial instrument definitions (includes conventions via `instrument::convention`)
 //!
 //! # Examples
 //!
@@ -39,15 +38,13 @@
 
 /// Fundamental market types (Currency, CurrencyPair, RateType, CompoundingMethod).
 pub mod core;
-/// Rate index definitions (RateIndex, IndexMetadata).
+/// Index definitions (RateIndex, FxIndex, SwapIndex).
 pub mod index;
 /// Market quote management (MarketRate, RateId, MarketRateSet).
 pub mod quote;
 /// Data sources and mapping (DataSource, TickerMapping, InstrumentMapper).
 pub mod source;
 
-/// Market conventions.
-pub mod convention;
 /// Market object definitions (curves, vol surfaces, instruments, rate indices).
 pub mod definition;
 /// Economic calendar and market events.
@@ -70,8 +67,9 @@ mod registry;
 // Core types
 pub use core::{CompoundingMethod, Currency, CurrencyPair, RateType};
 
-// Rate index
-pub use index::{IndexMetadata, RateIndex};
+// Index types
+pub use index::{FxFixingSource, FxIndex, FxIndexMetadata, IndexMetadata, RateIndex};
+pub use index::{SwapIndex, SwapIndexMetadata};
 
 // Quote types
 pub use quote::{MarketRate, MarketRateError, MarketRateSet, QuoteType, RateId};
@@ -100,3 +98,6 @@ pub use definition::{
     InstrumentTemplate, InterpolationMethod, RateIndexDefError, RateIndexDefinition,
     StrikeAxisType,
 };
+
+// Convention module (re-exported from instrument module for backward compatibility)
+pub use instrument::convention;

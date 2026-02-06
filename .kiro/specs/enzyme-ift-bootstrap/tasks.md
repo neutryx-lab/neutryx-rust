@@ -88,13 +88,13 @@
   - thiserror による構造化エラー実装
   - _Requirements: 3.4_
 
-- [ ] 3.4 (P) GlobalBootstrapResult の Shadow trait 実装
+- [x] 3.4 (P) GlobalBootstrapResult の Shadow trait 実装
   - AAD 勾配蓄積のための zero_out メソッド実装
   - active input（discount_factors）とconst（jacobian_inverse）の区別
   - 既存 Shadow 実装パターンとの整合性確保
   - _Requirements: 7.3_
 
-- [ ] 3.5 MarketRiskCalculator への GlobalBootstrapResult 統合
+- [x] 3.5 MarketRiskCalculator への GlobalBootstrapResult 統合
   - GlobalBootstrapResult を入力として受け付ける機能追加
   - キャッシュ済み J⁻¹ を用いた感度計算
   - 同一カーブを共有するトレード間のバッチ処理
