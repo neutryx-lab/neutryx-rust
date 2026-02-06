@@ -1,4 +1,15 @@
-# --- Stage 1: Build ---
+# --- Stage 1: Build Frontend ---
+FROM node:20-slim AS frontend-builder
+
+WORKDIR /app/demo/gui/static
+
+COPY demo/gui/static/package*.json ./
+RUN npm ci
+
+COPY demo/gui/static/ ./
+RUN npm run build
+
+# --- Stage 2: Build Backend ---
 FROM rust:1.84-slim-bookworm AS builder
 
 WORKDIR /app
@@ -10,35 +21,32 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY . .
 
-RUN cargo build --release -p demo_gui --bin demo-web
+# Copy built frontend from previous stage
+COPY --from=frontend-builder /app/demo/gui/dist ./demo/gui/dist
 
-# --- Stage 2: Runtime ---
+RUN cargo build --release -p service_gateway --features demo --bin neutryx-server
+
+# --- Stage 3: Runtime ---
 FROM debian:bookworm-slim
 
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app/target/release/demo-web ./demo-web
-# Copy static files to the path expected by the code
-COPY --from=builder /app/demo/gui/static ./demo/gui/static
+COPY --from=builder /app/target/release/neutryx-server ./neutryx-server
+# Copy Vite build output to the path expected by the code
+COPY --from=builder /app/demo/gui/dist ./demo/gui/dist
 # Copy data files for nest_service("/data/input", ServeDir::new("demo/data/input"))
 COPY --from=builder /app/demo/data/input ./demo/data/input
 
 # Verify critical files exist (build will fail if missing)
 # This helps catch file path issues before deployment
-RUN echo "=== Verifying static files ===" && \
-    ls -la ./demo/gui/static/ && \
-    test -f ./demo/gui/static/index.html || (echo "ERROR: index.html missing" && exit 1) && \
-    test -f ./demo/gui/static/app.js || (echo "ERROR: app.js missing" && exit 1) && \
-    test -f ./demo/gui/static/config.js || (echo "ERROR: config.js missing" && exit 1) && \
-    test -f ./demo/gui/static/style.css || (echo "ERROR: style.css missing" && exit 1) && \
-    echo "=== Verifying js directory ===" && \
-    test -d ./demo/gui/static/js || (echo "ERROR: js directory missing" && exit 1) && \
-    ls -la ./demo/gui/static/js/ && \
-    test -f ./demo/gui/static/js/curve-builder.js || (echo "ERROR: curve-builder.js missing" && exit 1) && \
-    test -f ./demo/gui/static/js/pricer.js || (echo "ERROR: pricer.js missing" && exit 1) && \
-    test -f ./demo/gui/static/js/volcube-builder.js || (echo "ERROR: volcube-builder.js missing" && exit 1) && \
+RUN echo "=== Verifying Vite build output ===" && \
+    ls -la ./demo/gui/dist/ && \
+    test -f ./demo/gui/dist/index.html || (echo "ERROR: index.html missing" && exit 1) && \
+    echo "=== Verifying assets directory ===" && \
+    test -d ./demo/gui/dist/assets || (echo "ERROR: assets directory missing" && exit 1) && \
+    ls -la ./demo/gui/dist/assets/ && \
     echo "=== Verifying data files ===" && \
     ls -la ./demo/data/input/ && \
     test -f ./demo/data/input/demo_portfolio.json || (echo "ERROR: demo_portfolio.json missing" && exit 1) && \
@@ -64,4 +72,4 @@ ENV FB_OPEN_BROWSER=false
 RUN useradd -m appuser
 USER appuser
 
-CMD ["./demo-web"]
+CMD ["./neutryx-server"]
