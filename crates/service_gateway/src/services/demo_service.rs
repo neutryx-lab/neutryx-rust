@@ -4,6 +4,8 @@
 
 use std::{collections::HashMap, path::Path, sync::Arc, time::Instant};
 
+use infra_domain::time::format_years_as_tenor;
+
 use crate::{
     error::ServerError,
     rest::dto::demo::{
@@ -1130,8 +1132,10 @@ impl DemoService {
             let mut quotes = Vec::new();
             if let Some(quotes_arr) = data.get("quotes").and_then(|q| q.as_array()) {
                 for quote in quotes_arr {
+                    let expiry = quote.get("expiry").and_then(|e| e.as_f64()).unwrap_or(0.0);
                     quotes.push(FxVolQuote {
-                        expiry: quote.get("expiry").and_then(|e| e.as_f64()).unwrap_or(0.0),
+                        expiry,
+                        expiry_label: format_years_as_tenor(expiry),
                         atm_vol: quote.get("atmVol").and_then(|v| v.as_f64()).unwrap_or(0.0),
                         rr25d: quote.get("rr25d").and_then(|v| v.as_f64()).unwrap_or(0.0),
                         bf25d: quote.get("bf25d").and_then(|v| v.as_f64()).unwrap_or(0.0),

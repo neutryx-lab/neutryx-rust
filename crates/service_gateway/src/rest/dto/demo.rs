@@ -400,6 +400,8 @@ pub struct FxVolPairsResponse {
 #[serde(rename_all = "camelCase")]
 pub struct FxVolQuote {
     pub expiry: f64,
+    /// Human-readable label for the expiry (e.g., "9M", "15M", "1Y")
+    pub expiry_label: String,
     pub atm_vol: f64,
     pub rr25d: f64,
     pub bf25d: f64,
@@ -902,6 +904,7 @@ mod tests {
     fn test_fx_vol_quote_serialization() {
         let quote = FxVolQuote {
             expiry: 0.25,
+            expiry_label: "3M".to_string(),
             atm_vol: 0.10,
             rr25d: -0.005,
             bf25d: 0.002,
@@ -911,6 +914,7 @@ mod tests {
         let json = serde_json::to_string(&quote).unwrap();
         assert!(json.contains("atmVol"));
         assert!(json.contains("rr25d"));
+        assert!(json.contains("expiryLabel"));
     }
 
     #[test]

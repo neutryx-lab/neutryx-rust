@@ -84,6 +84,9 @@ interface MarketEvent {
   importance: string;
   time?: string;
   source: string;
+  previous?: string;
+  forecast?: string;
+  actual?: string;
 }
 
 // State
@@ -96,6 +99,8 @@ const holidays = ref<Holiday[]>([]);
 const selectedRateId = ref<string | null>(null);
 const selectedIrVolId = ref<string | null>(null);
 const selectedFxVolId = ref<string | null>(null);
+const selectedEventId = ref<string | null>(null);
+const selectedHolidayId = ref<string | null>(null);
 const currencyFilter = ref('');
 const sortColumn = ref('id');
 const sortDirection = ref<'asc' | 'desc'>('asc');
@@ -135,6 +140,59 @@ const currencies = computed(() => {
   const set = new Set<string>();
   rates.value.forEach(r => set.add(r.currency));
   return Array.from(set).sort();
+});
+
+// Currency options for IRVol tab
+const irVolCurrencies = computed(() => {
+  const set = new Set<string>();
+  irVolQuotes.value.forEach(q => set.add(q.currency));
+  return Array.from(set).sort();
+});
+
+// Pair options for FXVol tab
+const fxVolPairs = computed(() => {
+  const set = new Set<string>();
+  fxVolQuotes.value.forEach(q => set.add(q.pair));
+  return Array.from(set).sort();
+});
+
+// Currency options for Events tab
+const eventCurrencies = computed(() => {
+  const set = new Set<string>();
+  events.value.forEach(e => {
+    if (e.currency) set.add(e.currency);
+  });
+  return Array.from(set).sort();
+});
+
+// Currency options for Holidays tab
+const holidayCurrencies = computed(() => {
+  const set = new Set<string>();
+  holidays.value.forEach(h => {
+    if (h.currency) set.add(h.currency);
+  });
+  return Array.from(set).sort();
+});
+
+// Filtered data for each tab
+const filteredIrVolQuotes = computed(() => {
+  if (!currencyFilter.value) return irVolQuotes.value;
+  return irVolQuotes.value.filter(q => q.currency.toLowerCase() === currencyFilter.value.toLowerCase());
+});
+
+const filteredFxVolQuotes = computed(() => {
+  if (!currencyFilter.value) return fxVolQuotes.value;
+  return fxVolQuotes.value.filter(q => q.pair.toLowerCase() === currencyFilter.value.toLowerCase());
+});
+
+const filteredEvents = computed(() => {
+  if (!currencyFilter.value) return events.value;
+  return events.value.filter(e => e.currency?.toLowerCase() === currencyFilter.value.toLowerCase());
+});
+
+const filteredHolidays = computed(() => {
+  if (!currencyFilter.value) return holidays.value;
+  return holidays.value.filter(h => h.currency?.toLowerCase() === currencyFilter.value.toLowerCase());
 });
 
 const summaryStats = computed(() => {
@@ -181,6 +239,8 @@ const summaryStats = computed(() => {
 const selectedRate = computed(() => rates.value.find(r => r.id === selectedRateId.value) || null);
 const selectedIrVol = computed(() => irVolQuotes.value.find(q => q.id === selectedIrVolId.value) || null);
 const selectedFxVol = computed(() => fxVolQuotes.value.find(q => q.id === selectedFxVolId.value) || null);
+const selectedEvent = computed(() => events.value.find(e => e.id === selectedEventId.value) || null);
+const selectedHoliday = computed(() => holidays.value.find(h => h.id === selectedHolidayId.value) || null);
 
 // Tenor ordering
 const TENOR_ORDER = [
@@ -213,16 +273,6 @@ function formatVol(vol: number): string {
 function formatVolBps(vol?: number): string {
   if (vol === undefined) return '-';
   return `${(vol * 10000).toFixed(1)} bps`;
-}
-
-function expiryToLabel(expiry: number): string {
-  if (expiry < 0.05) return '1W';
-  if (expiry < 0.125) return '1M';
-  if (expiry < 0.33) return '3M';
-  if (expiry < 0.54) return '6M';
-  if (expiry < 1.5) return '1Y';
-  if (expiry < 2.5) return '2Y';
-  return `${Math.round(expiry)}Y`;
 }
 
 // API calls
@@ -342,7 +392,8 @@ async function loadFxVolData() {
         const quotesData = await quotesRes.json();
         for (const q of quotesData.quotes || []) {
           const baseId = `${pairInfo.pair}-${q.expiry}`;
-          const expLabel = expiryToLabel(q.expiry);
+          // Use API-provided expiry_label (strict conversion from infra_domain)
+          const expLabel = q.expiryLabel;
 
           // Create individual instruments from RR/BF conventions
           const instruments: FxVolInstrument[] = [];
@@ -504,6 +555,14 @@ function selectFxVol(quoteId: string) {
   selectedFxVolId.value = selectedFxVolId.value === quoteId ? null : quoteId;
 }
 
+function selectEvent(eventId: string) {
+  selectedEventId.value = selectedEventId.value === eventId ? null : eventId;
+}
+
+function selectHoliday(holidayId: string) {
+  selectedHolidayId.value = selectedHolidayId.value === holidayId ? null : holidayId;
+}
+
 async function exportData(format: 'csv' | 'json') {
   try {
     const response = await fetch(`/api/market/export/${format}`);
@@ -527,6 +586,9 @@ watch(assetClass, (newClass) => {
   selectedRateId.value = null;
   selectedIrVolId.value = null;
   selectedFxVolId.value = null;
+  selectedEventId.value = null;
+  selectedHolidayId.value = null;
+  currencyFilter.value = '';
   if (newClass === 'IRVol' && irVolQuotes.value.length === 0) loadIrVolData();
   else if (newClass === 'FXVol' && fxVolQuotes.value.length === 0) loadFxVolData();
   else if (newClass === 'Events' && events.value.length === 0) loadEventsData();
@@ -574,6 +636,7 @@ onMounted(() => {
         </button>
       </div>
       <div class="flex items-center gap-3">
+        <!-- Currency filter for Rates/FX -->
         <select
           v-if="assetClass === 'Rates' || assetClass === 'FX'"
           v-model="currencyFilter"
@@ -581,6 +644,42 @@ onMounted(() => {
         >
           <option value="">All Currencies</option>
           <option v-for="ccy in currencies" :key="ccy" :value="ccy">{{ ccy }}</option>
+        </select>
+        <!-- Currency filter for IRVol -->
+        <select
+          v-if="assetClass === 'IRVol'"
+          v-model="currencyFilter"
+          class="px-4 py-2 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+        >
+          <option value="">All Currencies</option>
+          <option v-for="ccy in irVolCurrencies" :key="ccy" :value="ccy">{{ ccy }}</option>
+        </select>
+        <!-- Pair filter for FXVol -->
+        <select
+          v-if="assetClass === 'FXVol'"
+          v-model="currencyFilter"
+          class="px-4 py-2 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+        >
+          <option value="">All Pairs</option>
+          <option v-for="pair in fxVolPairs" :key="pair" :value="pair">{{ pair }}</option>
+        </select>
+        <!-- Currency filter for Events -->
+        <select
+          v-if="assetClass === 'Events'"
+          v-model="currencyFilter"
+          class="px-4 py-2 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+        >
+          <option value="">All Currencies</option>
+          <option v-for="ccy in eventCurrencies" :key="ccy" :value="ccy">{{ ccy }}</option>
+        </select>
+        <!-- Currency filter for Holidays -->
+        <select
+          v-if="assetClass === 'Holidays'"
+          v-model="currencyFilter"
+          class="px-4 py-2 rounded-lg bg-[var(--surface)] border border-[var(--glass-border)] text-[var(--text-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+        >
+          <option value="">All Currencies</option>
+          <option v-for="ccy in holidayCurrencies" :key="ccy" :value="ccy">{{ ccy }}</option>
         </select>
         <button
           class="px-4 py-2 rounded-lg bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] transition-colors flex items-center gap-2"
@@ -669,7 +768,7 @@ onMounted(() => {
 
           <!-- IR Vol Table -->
           <template v-else-if="assetClass === 'IRVol'">
-            <div v-if="irVolQuotes.length === 0" class="text-center py-12">
+            <div v-if="filteredIrVolQuotes.length === 0" class="text-center py-12">
               <i class="fas fa-chart-area text-4xl text-[var(--text-muted)] mb-4"></i>
               <p class="text-[var(--text-muted)]">No IR volatility data available</p>
             </div>
@@ -688,7 +787,7 @@ onMounted(() => {
                 </thead>
                 <tbody>
                   <tr
-                    v-for="quote in irVolQuotes"
+                    v-for="quote in filteredIrVolQuotes"
                     :key="quote.id"
                     :class="['border-b border-[var(--glass-border)] cursor-pointer transition-colors', selectedIrVolId === quote.id ? 'bg-[var(--primary)]/10' : 'hover:bg-[var(--surface-hover)]']"
                     @click="selectIrVol(quote.id)"
@@ -708,7 +807,7 @@ onMounted(() => {
 
           <!-- FX Vol Table -->
           <template v-else-if="assetClass === 'FXVol'">
-            <div v-if="fxVolQuotes.length === 0" class="text-center py-12">
+            <div v-if="filteredFxVolQuotes.length === 0" class="text-center py-12">
               <i class="fas fa-exchange-alt text-4xl text-[var(--text-muted)] mb-4"></i>
               <p class="text-[var(--text-muted)]">No FX volatility data available</p>
             </div>
@@ -727,7 +826,7 @@ onMounted(() => {
                 </thead>
                 <tbody>
                   <tr
-                    v-for="quote in fxVolQuotes"
+                    v-for="quote in filteredFxVolQuotes"
                     :key="quote.id"
                     :class="['border-b border-[var(--glass-border)] cursor-pointer transition-colors', selectedFxVolId === quote.id ? 'bg-[var(--primary)]/10' : 'hover:bg-[var(--surface-hover)]']"
                     @click="selectFxVol(quote.id)"
@@ -747,7 +846,7 @@ onMounted(() => {
 
           <!-- Events Table -->
           <template v-else-if="assetClass === 'Events'">
-            <div v-if="events.length === 0" class="text-center py-12">
+            <div v-if="filteredEvents.length === 0" class="text-center py-12">
               <i class="fas fa-calendar-alt text-4xl text-[var(--text-muted)] mb-4"></i>
               <p class="text-[var(--text-muted)]">No events available</p>
             </div>
@@ -764,14 +863,19 @@ onMounted(() => {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="event in events" :key="event.id" class="border-b border-[var(--glass-border)] hover:bg-[var(--surface-hover)] transition-colors">
+                  <tr
+                    v-for="event in filteredEvents"
+                    :key="event.id"
+                    :class="['border-b border-[var(--glass-border)] cursor-pointer transition-colors', selectedEventId === event.id ? 'bg-[var(--primary)]/10' : 'hover:bg-[var(--surface-hover)]']"
+                    @click="selectEvent(event.id)"
+                  >
                     <td class="py-3 px-3 text-[var(--text-primary)] font-mono">{{ event.date }}</td>
                     <td class="py-3 px-3"><span class="px-2 py-0.5 rounded bg-[var(--primary)]/10 text-[var(--primary)] text-xs">{{ event.eventType }}</span></td>
                     <td class="py-3 px-3 text-[var(--text-primary)]">{{ event.title }}</td>
                     <td class="py-3 px-3 text-[var(--text-secondary)]">{{ event.currency || '-' }}</td>
                     <td class="py-3 px-3 text-[var(--text-secondary)]">{{ event.region || '-' }}</td>
                     <td class="py-3 px-3 text-center">
-                      <span :class="['px-2 py-0.5 rounded text-xs', event.importance === 'High' ? 'bg-red-500/10 text-red-400' : event.importance === 'Medium' ? 'bg-yellow-500/10 text-yellow-400' : 'bg-green-500/10 text-green-400']">
+                      <span :class="['px-2 py-0.5 rounded text-xs', event.importance === 'High' || event.importance === 'critical' ? 'bg-red-500/10 text-red-400' : event.importance === 'Medium' || event.importance === 'medium' ? 'bg-yellow-500/10 text-yellow-400' : 'bg-green-500/10 text-green-400']">
                         {{ event.importance }}
                       </span>
                     </td>
@@ -783,7 +887,7 @@ onMounted(() => {
 
           <!-- Holidays Table -->
           <template v-else-if="assetClass === 'Holidays'">
-            <div v-if="holidays.length === 0" class="text-center py-12">
+            <div v-if="filteredHolidays.length === 0" class="text-center py-12">
               <i class="fas fa-calendar-day text-4xl text-[var(--text-muted)] mb-4"></i>
               <p class="text-[var(--text-muted)]">No holidays available</p>
             </div>
@@ -799,7 +903,12 @@ onMounted(() => {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="holiday in holidays" :key="holiday.id" class="border-b border-[var(--glass-border)] hover:bg-[var(--surface-hover)] transition-colors">
+                  <tr
+                    v-for="holiday in filteredHolidays"
+                    :key="holiday.id"
+                    :class="['border-b border-[var(--glass-border)] cursor-pointer transition-colors', selectedHolidayId === holiday.id ? 'bg-[var(--primary)]/10' : 'hover:bg-[var(--surface-hover)]']"
+                    @click="selectHoliday(holiday.id)"
+                  >
                     <td class="py-3 px-3 text-[var(--text-primary)] font-mono">{{ holiday.date }}</td>
                     <td class="py-3 px-3 text-[var(--text-primary)]">{{ holiday.name }}</td>
                     <td class="py-3 px-3 text-[var(--text-secondary)]">{{ holiday.country }}</td>
@@ -969,12 +1078,39 @@ onMounted(() => {
                 </div>
               </div>
 
+              <!-- Market Rate Section -->
+              <div class="border-t border-[var(--glass-border)] pt-4 mb-4">
+                <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Market Rate</h4>
+                <div class="space-y-2">
+                  <div class="flex justify-between text-sm">
+                    <span class="text-[var(--text-muted)]">ATM Vol</span>
+                    <span class="text-[var(--text-primary)] font-mono">{{ formatVol(selectedFxVol.atmVol) }}</span>
+                  </div>
+                  <div class="flex justify-between text-sm">
+                    <span class="text-[var(--text-muted)]">25D RR</span>
+                    <span class="text-[var(--text-primary)] font-mono">{{ formatVolBps(selectedFxVol.rr25d) }}</span>
+                  </div>
+                  <div class="flex justify-between text-sm">
+                    <span class="text-[var(--text-muted)]">25D BF</span>
+                    <span class="text-[var(--text-primary)] font-mono">{{ formatVolBps(selectedFxVol.bf25d) }}</span>
+                  </div>
+                  <div v-if="selectedFxVol.rr10d !== undefined" class="flex justify-between text-sm">
+                    <span class="text-[var(--text-muted)]">10D RR</span>
+                    <span class="text-[var(--text-primary)] font-mono">{{ formatVolBps(selectedFxVol.rr10d) }}</span>
+                  </div>
+                  <div v-if="selectedFxVol.bf10d !== undefined" class="flex justify-between text-sm">
+                    <span class="text-[var(--text-muted)]">10D BF</span>
+                    <span class="text-[var(--text-primary)] font-mono">{{ formatVolBps(selectedFxVol.bf10d) }}</span>
+                  </div>
+                </div>
+              </div>
+
               <!-- All Instruments List -->
               <div class="border-t border-[var(--glass-border)] pt-4">
                 <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">
-                  Instruments ({{ selectedFxVol.instruments.length }})
+                  Smile Instruments ({{ selectedFxVol.instruments.length }})
                 </h4>
-                <div class="space-y-2 max-h-80 overflow-y-auto">
+                <div class="space-y-2 max-h-60 overflow-y-auto">
                   <div
                     v-for="inst in selectedFxVol.instruments"
                     :key="inst.id"
@@ -1017,22 +1153,135 @@ onMounted(() => {
             </template>
           </template>
 
-          <!-- Events (no detail panel) -->
+          <!-- Events Details -->
           <template v-else-if="assetClass === 'Events'">
             <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Event Details</h3>
-            <div class="text-center py-8">
-              <i class="fas fa-calendar-alt text-3xl text-[var(--text-muted)] mb-4"></i>
-              <p class="text-[var(--text-muted)]">Event details shown in table</p>
+
+            <div v-if="!selectedEvent" class="text-center py-8">
+              <i class="fas fa-hand-pointer text-3xl text-[var(--text-muted)] mb-4"></i>
+              <p class="text-[var(--text-muted)]">Select an event to view details</p>
             </div>
+
+            <template v-else>
+              <div class="space-y-3">
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">ID</span>
+                  <span class="text-[var(--text-primary)] font-mono text-xs">{{ selectedEvent.id }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Date</span>
+                  <span class="text-[var(--text-primary)]">{{ selectedEvent.date }}</span>
+                </div>
+                <div v-if="selectedEvent.time" class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Time</span>
+                  <span class="text-[var(--text-primary)]">{{ selectedEvent.time }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Type</span>
+                  <span class="px-2 py-0.5 rounded bg-[var(--primary)]/10 text-[var(--primary)] text-xs">{{ selectedEvent.eventType }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Title</span>
+                  <span class="text-[var(--text-primary)] text-right max-w-[60%]">{{ selectedEvent.title }}</span>
+                </div>
+                <div v-if="selectedEvent.currency" class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Currency</span>
+                  <span class="text-[var(--text-primary)]">{{ selectedEvent.currency }}</span>
+                </div>
+                <div v-if="selectedEvent.region" class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Region</span>
+                  <span class="text-[var(--text-primary)]">{{ selectedEvent.region }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Importance</span>
+                  <span :class="['px-2 py-0.5 rounded text-xs', selectedEvent.importance === 'High' || selectedEvent.importance === 'critical' ? 'bg-red-500/10 text-red-400' : selectedEvent.importance === 'Medium' || selectedEvent.importance === 'medium' ? 'bg-yellow-500/10 text-yellow-400' : 'bg-green-500/10 text-green-400']">
+                    {{ selectedEvent.importance }}
+                  </span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Source</span>
+                  <span class="text-[var(--text-primary)]">{{ selectedEvent.source }}</span>
+                </div>
+              </div>
+
+              <!-- Economic Data (if available) -->
+              <div v-if="selectedEvent.previous || selectedEvent.forecast || selectedEvent.actual" class="mt-4 pt-4 border-t border-[var(--glass-border)]">
+                <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Economic Data</h4>
+                <div class="space-y-2">
+                  <div v-if="selectedEvent.previous" class="flex justify-between text-sm">
+                    <span class="text-[var(--text-muted)]">Previous</span>
+                    <span class="text-[var(--text-primary)] font-mono">{{ selectedEvent.previous }}</span>
+                  </div>
+                  <div v-if="selectedEvent.forecast" class="flex justify-between text-sm">
+                    <span class="text-[var(--text-muted)]">Forecast</span>
+                    <span class="text-[var(--text-primary)] font-mono">{{ selectedEvent.forecast }}</span>
+                  </div>
+                  <div v-if="selectedEvent.actual" class="flex justify-between text-sm">
+                    <span class="text-[var(--text-muted)]">Actual</span>
+                    <span class="text-[var(--text-primary)] font-mono">{{ selectedEvent.actual }}</span>
+                  </div>
+                </div>
+              </div>
+            </template>
           </template>
 
-          <!-- Holidays (no detail panel) -->
+          <!-- Holidays Details -->
           <template v-else-if="assetClass === 'Holidays'">
             <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Holiday Details</h3>
-            <div class="text-center py-8">
-              <i class="fas fa-calendar-day text-3xl text-[var(--text-muted)] mb-4"></i>
-              <p class="text-[var(--text-muted)]">Holiday details shown in table</p>
+
+            <div v-if="!selectedHoliday" class="text-center py-8">
+              <i class="fas fa-hand-pointer text-3xl text-[var(--text-muted)] mb-4"></i>
+              <p class="text-[var(--text-muted)]">Select a holiday to view details</p>
             </div>
+
+            <template v-else>
+              <div class="space-y-3">
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">ID</span>
+                  <span class="text-[var(--text-primary)] font-mono text-xs">{{ selectedHoliday.id }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Date</span>
+                  <span class="text-[var(--text-primary)]">{{ selectedHoliday.date }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Name</span>
+                  <span class="text-[var(--text-primary)] text-right max-w-[60%]">{{ selectedHoliday.name }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Country</span>
+                  <span class="text-[var(--text-primary)]">{{ selectedHoliday.country }}</span>
+                </div>
+                <div v-if="selectedHoliday.currency" class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Currency</span>
+                  <span class="text-[var(--text-primary)]">{{ selectedHoliday.currency }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-[var(--text-muted)]">Type</span>
+                  <span :class="[
+                    'px-2 py-0.5 rounded text-xs',
+                    selectedHoliday.type === 'bank' ? 'bg-blue-500/10 text-blue-400' :
+                    selectedHoliday.type === 'market' ? 'bg-purple-500/10 text-purple-400' :
+                    'bg-orange-500/10 text-orange-400'
+                  ]">{{ selectedHoliday.type }}</span>
+                </div>
+              </div>
+
+              <!-- Calendar Impact -->
+              <div class="mt-4 pt-4 border-t border-[var(--glass-border)]">
+                <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-3">Calendar Impact</h4>
+                <div class="space-y-2 text-xs">
+                  <div class="flex justify-between">
+                    <span class="text-[var(--text-muted)]">Settlement</span>
+                    <span class="text-[var(--text-primary)]">{{ selectedHoliday.type === 'settlement' || selectedHoliday.type === 'bank' ? 'Affected' : 'Not Affected' }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-[var(--text-muted)]">Market Trading</span>
+                    <span class="text-[var(--text-primary)]">{{ selectedHoliday.type === 'market' || selectedHoliday.type === 'bank' ? 'Closed' : 'Open' }}</span>
+                  </div>
+                </div>
+              </div>
+            </template>
           </template>
         </div>
       </div>
