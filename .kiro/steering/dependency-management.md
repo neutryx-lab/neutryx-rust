@@ -33,11 +33,10 @@ tower-http = { workspace = true }  # Additional features: tower-http = { workspa
 
 ## Feature Flags Architecture
 
-### AD Mode Selection (Mutually Exclusive)
+### AD Mode Selection
 ```toml
 [features]
-default = ["num-dual-mode"]
-num-dual-mode = []      # Verification mode (dual numbers)
+default = []
 enzyme-mode = []        # Production mode (LLVM Enzyme)
 ```
 
@@ -58,14 +57,14 @@ all = ["equity", "rates", "credit", "fx", "commodity", "exotic"]
 ```toml
 # Features propagate through dependency chain
 l1l2-integration = ["dep:pricer_core", "dep:pricer_models"]
-enzyme-ad = ["dep:llvm-sys", "pricer_pricing/enzyme-ad"]
+enzyme-ad = ["dep:llvm-sys", "pricer_risk/enzyme-ad"]
 ```
 
 ## Heavy Dependencies (Optional)
 
 | Dependency | Crate | Feature | Impact |
 |------------|-------|---------|--------|
-| `llvm-sys` | pricer_pricing | `enzyme-ad` | ~500KB, LLVM 18 required |
+| `llvm-sys` | pricer_risk | `enzyme-ad` | ~500KB, LLVM 18 required |
 | `parquet` + `arrow` | adapter_loader | `parquet` | ~200KB, Arrow ecosystem |
 | `sqlx` | infra_store | `postgres` | ~100KB, async SQL |
 | `pyo3` | service_python | always | ~300KB, Python bindings |
@@ -108,6 +107,63 @@ Avoid `features = ["full"]`. Specify needed features explicitly:
 | Sync primitives | `sync` |
 | Signal handling | `signal` |
 
+## Builder Pattern & Enum Utilities
+
+| Crate | Version | Purpose |
+|-------|---------|---------|
+| `bon` | 3.8 | Builder pattern auto-generation via `#[derive(bon::Builder)]` |
+| `strum` | 0.26 | Enum utilities (Display, EnumIter, EnumString) |
+| `enum_dispatch` | 0.3 | Zero-cost trait dispatch via enum wrappers |
+| `derive_more` | 2 | Newtype derive utilities (From, Display, AsRef, Add, Mul) |
+
+**bon usage pattern**:
+```rust
+use bon::Builder;
+
+#[derive(Builder)]
+pub struct Book {
+    #[builder(into)]
+    book_id: BookId,
+    #[builder(into)]
+    name: String,
+    #[builder(into, default)]
+    description: Option<String>,
+    #[builder(default)]
+    book_type: BookType,
+}
+
+// Usage: Book::builder().book_id("BOOK001").name("Trading").build()
+```
+
+**Key attributes**:
+- `#[builder(into)]` — Accepts `impl Into<T>` for ergonomic API
+- `#[builder(default)]` — Uses `Default::default()` if not specified
+- `#[builder(default = expr)]` — Custom default value
+
+**enum_dispatch usage pattern**:
+```rust
+use enum_dispatch::enum_dispatch;
+
+#[enum_dispatch]
+pub trait YieldCurve<T> {
+    fn discount_factor(&self, t: T) -> Result<T, Error>;
+}
+
+#[enum_dispatch(YieldCurve<T>)]
+pub enum CurveEnum<T> {
+    Flat(FlatCurve<T>),
+    Bootstrapped(BootstrappedCurve<T>),
+}
+// Now CurveEnum<T>::discount_factor() dispatches without vtable overhead
+```
+
+**When to use enum_dispatch**:
+- Traits with multiple implementations (>2)
+- Hot paths requiring zero-cost dispatch
+- Enzyme AD compatibility (concrete types preferred)
+
+**derive_more for newtypes**: See `ai_rules.md` for ID type and numeric type patterns.
+
 ## Adding New Dependencies
 
 1. **Check workspace**: Does similar dependency exist?
@@ -134,4 +190,5 @@ cargo tree -e features
 
 ---
 _Created: 2026-01-19_
+_Updated: 2026-01-31_ — Added enum_dispatch and derive_more patterns
 _Patterns over lists; optimise for single compilation of each dependency_

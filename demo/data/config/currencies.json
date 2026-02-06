@@ -1,0 +1,17 @@
+{
+  "$schema": "./schemas/currencies.schema.json",
+  "metadata": {
+    "description": "Currency master data with associated rate indices and calendars",
+    "version": "1.0"
+  },
+  "currencies": [
+    { "code": "USD", "name": "US Dollar", "index": "SOFR", "calendar": "New York" },
+    { "code": "EUR", "name": "Euro", "index": "ESTR", "calendar": "TARGET" },
+    { "code": "JPY", "name": "Japanese Yen", "index": "TONA", "calendar": "Tokyo" },
+    { "code": "GBP", "name": "British Pound", "index": "SONIA", "calendar": "London" },
+    { "code": "AUD", "name": "Australian Dollar", "index": "AONIA", "calendar": "Sydney" },
+    { "code": "CAD", "name": "Canadian Dollar", "index": "CORRA", "calendar": "Toronto" },
+    { "code": "CHF", "name": "Swiss Franc", "index": "SARON", "calendar": "Zurich" },
+    { "code": "NZD", "name": "New Zealand Dollar", "index": "OCR", "calendar": "Wellington" }
+  ]
+}

@@ -3,8 +3,8 @@
 //! Task 8.1: Verify that all public modules and types are correctly exported
 //! and accessible via absolute paths.
 //!
-//! Note: Tests for infra_master types (Date, Currency, DayCounter,
-//! BusinessDayConvention) should be in infra_master crate. This file tests
+//! Note: Tests for infra_domain types (Date, Currency, DayCounter,
+//! BusinessDayConvention) should be in infra_domain crate. This file tests
 //! pricer_core-specific exports only.
 
 use chrono::NaiveDate;
@@ -51,17 +51,6 @@ fn test_traits_module_exports() {
     assert_eq!(generic_sqrt(4.0_f64), 2.0);
 }
 
-/// Test that DualNumber type is accessible when feature is enabled.
-#[cfg(feature = "num-dual-mode")]
-#[test]
-fn test_dual_module_export() {
-    use pricer_core::types::dual::DualNumber;
-
-    let dual = DualNumber::new(3.0, 1.0);
-    assert_eq!(dual.re, 3.0);
-    assert_eq!(dual.eps, 1.0);
-}
-
 /// Test that math module is correctly structured.
 #[test]
 fn test_math_module_structure() {
@@ -73,7 +62,7 @@ fn test_math_module_structure() {
 
 /// Test that all DayCountConvention variants are accessible.
 /// Note: This tests pricer_core's own DayCountConvention type, not
-/// infra_master's.
+/// infra_domain's.
 #[test]
 fn test_day_count_convention_variants() {
     use pricer_core::types::time::DayCountConvention;
@@ -104,7 +93,7 @@ fn test_error_types_exports() {
 /// Test that FxRate is accessible.
 #[test]
 fn test_fx_rate_exports() {
-    use infra_master::Currency;
+    use infra_domain::Currency;
     use pricer_core::types::FxRate;
 
     let pair: FxRate<f64> = FxRate::new(Currency::EUR, Currency::USD, 1.10).unwrap();
@@ -124,7 +113,7 @@ fn test_time_module_exports() {
     assert!((ttm - 0.4986).abs() < 0.001);
 
     // Test time_to_maturity_dates with Date
-    use infra_master::Date;
+    use infra_domain::Date;
     let start = Date::from_ymd(2024, 1, 1).unwrap();
     let end = Date::from_ymd(2024, 7, 1).unwrap();
     let ttm_dates = time_to_maturity_dates(start, end);

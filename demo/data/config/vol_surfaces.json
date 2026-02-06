@@ -1,0 +1,19 @@
+{
+  "$schema": "./schemas/vol_surfaces.schema.json",
+  "metadata": {
+    "description": "Volatility surface definitions for interest rates and FX",
+    "version": "1.0"
+  },
+  "irVol": [
+    { "id": "usd", "currency": "USD", "type": "swaption", "volType": "normal", "displayName": "USD Swaption Vol" },
+    { "id": "eur", "currency": "EUR", "type": "swaption", "volType": "normal", "displayName": "EUR Swaption Vol" },
+    { "id": "jpy", "currency": "JPY", "type": "swaption", "volType": "normal", "displayName": "JPY Swaption Vol" },
+    { "id": "gbp", "currency": "GBP", "type": "swaption", "volType": "normal", "displayName": "GBP Swaption Vol" },
+    { "id": "usd-sofr-swaption", "currency": "USD", "type": "volcube", "volType": "lognormal", "displayName": "USD SOFR Swaption Cube" },
+    { "id": "eur-estr-swaption", "currency": "EUR", "type": "volcube", "volType": "lognormal", "displayName": "EUR ESTR Swaption Cube" }
+  ],
+  "fxVol": [
+    { "id": "eurusd", "currencyPair": "EURUSD", "volType": "lognormal", "displayName": "EUR/USD Vol Surface" },
+    { "id": "usdjpy", "currencyPair": "USDJPY", "volType": "lognormal", "displayName": "USD/JPY Vol Surface" }
+  ]
+}

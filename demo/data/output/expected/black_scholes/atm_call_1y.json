@@ -1,0 +1,24 @@
+{
+  "description": "ATM Call option, 1Y expiry, Black-Scholes pricing",
+  "input": {
+    "spot": 100.0,
+    "strike": 100.0,
+    "expiry_years": 1.0,
+    "rate": 0.05,
+    "volatility": 0.2,
+    "option_type": "call"
+  },
+  "output": {
+    "price": 10.4506,
+    "greeks": {
+      "delta": 0.6368,
+      "gamma": 0.0188,
+      "vega": 0.3752,
+      "theta": -0.0175,
+      "rho": 0.5323
+    }
+  },
+  "source": "pricer_models::analytical::BlackScholes",
+  "generated_at": "2026-01-25T00:00:00Z",
+  "notes": "Reference values calculated using BlackScholes crate implementation"
+}

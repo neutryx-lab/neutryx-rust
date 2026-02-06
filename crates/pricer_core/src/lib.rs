@@ -40,8 +40,8 @@
 //! - Dual number type integration (`types::dual`)
 //! - Traits for pricing and differentiability (`traits`)
 //! - Time types: `Date`, `DayCounter`, `BusinessDayConvention` (re-exported
-//!   from `infra_master`)
-//! - Currency types: `Currency` (re-exported from `infra_master`)
+//!   from `infra_domain`)
+//! - Currency types: `Currency` (re-exported from `infra_domain`)
 //! - Convenience: `DayCountConvention` wrapper for common day count conventions
 //! - Error types: `PricingError`, `DateError`, `CurrencyError` (`types::error`)
 //!
@@ -51,7 +51,7 @@
 //! dependencies:
 //! - num-traits: Traits for generic numerical computation
 //! - num-dual: Dual number types and automatic differentiation (optional)
-//! - infra_master: Authoritative source for Date, Currency, DayCounter
+//! - infra_domain: Authoritative source for Date, Currency, DayCounter
 //! - serde: Serialisation support (optional)
 //!
 //! ## Stable Rust Toolchain
@@ -63,14 +63,14 @@
 //!
 //! ```rust
 //! use pricer_core::math::smoothing::smooth_max;
-//! use infra_master::{Date, Currency, DayCounter};
+//! use infra_domain::{Date, Currency, DayCounter};
 //!
-//! // Date operations (from infra_master)
+//! // Date operations (from infra_domain)
 //! let start = Date::from_ymd(2024, 1, 1).unwrap();
 //! let end = Date::from_ymd(2024, 7, 1).unwrap();
 //! let year_fraction = DayCounter::Actual365Fixed.year_fraction(start, end);
 //!
-//! // Currency information (from infra_master)
+//! // Currency information (from infra_domain)
 //! let usd = Currency::USD;
 //! assert_eq!(usd.code(), "USD");
 //! assert_eq!(usd.decimal_places(), 2);
@@ -91,6 +91,7 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(rustdoc::private_intra_doc_links)]
 
+pub mod kernel;
 pub mod math;
 pub mod traits;
 pub mod types;

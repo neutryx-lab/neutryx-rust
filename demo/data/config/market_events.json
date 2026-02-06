@@ -1,0 +1,62 @@
+{
+  "$schema": "./schemas/market_events.schema.json",
+  "metadata": {
+    "description": "Market events and calendar definitions",
+    "version": "1.1"
+  },
+  "eventTypes": [
+    {
+      "id": "central_bank_meeting",
+      "type": "monetary_policy",
+      "displayName": "Central Bank Meetings",
+      "description": "Central bank policy rate decisions (FOMC, ECB, BOJ, etc.)"
+    },
+    {
+      "id": "turn_of_year",
+      "type": "turn",
+      "displayName": "Turn of Year",
+      "description": "Year-end rate spike due to balance sheet constraints and regulatory reporting"
+    },
+    {
+      "id": "turn_of_quarter",
+      "type": "turn",
+      "displayName": "Turn of Quarter",
+      "description": "Quarter-end rate spike due to balance sheet window dressing"
+    },
+    {
+      "id": "turn_of_month",
+      "type": "turn",
+      "displayName": "Turn of Month",
+      "description": "Month-end rate spike due to funding pressures"
+    }
+  ],
+  "turnDefinitions": {
+    "description": "Standard turn event patterns for curve calibration",
+    "turns": [
+      {
+        "id": "TOY",
+        "name": "Turn of Year",
+        "periodType": "year_end",
+        "typicalSpikeBp": { "min": 5, "max": 25 },
+        "durationDays": 1,
+        "affectedIndices": ["SOFR", "ESTR", "SONIA", "TONA", "SARON"]
+      },
+      {
+        "id": "TOQ",
+        "name": "Turn of Quarter",
+        "periodType": "quarter_end",
+        "typicalSpikeBp": { "min": 2, "max": 10 },
+        "durationDays": 1,
+        "affectedIndices": ["SOFR", "ESTR", "SONIA", "TONA", "SARON"]
+      },
+      {
+        "id": "TOM",
+        "name": "Turn of Month",
+        "periodType": "month_end",
+        "typicalSpikeBp": { "min": 0, "max": 5 },
+        "durationDays": 1,
+        "affectedIndices": ["SOFR", "ESTR"]
+      }
+    ]
+  }
+}

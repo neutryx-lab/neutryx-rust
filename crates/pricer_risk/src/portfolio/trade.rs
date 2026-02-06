@@ -3,7 +3,7 @@
 //! This module provides the Trade structure that wraps instruments
 //! with metadata for portfolio management.
 
-use infra_master::{
+use infra_domain::{
     trade::{PayoffType, PricingInstrument},
     Currency,
 };
@@ -19,8 +19,8 @@ use super::ids::{CounterpartyId, NettingSetId, TradeId};
 ///
 /// ```
 /// use pricer_risk::portfolio::{Trade, TradeId, CounterpartyId, NettingSetId};
-/// use infra_master::Currency;
-/// use infra_master::trade::{
+/// use infra_domain::Currency;
+/// use infra_domain::trade::{
 ///     PricingInstrument, VanillaOption, InstrumentParams, PayoffType, ExerciseStyle,
 /// };
 ///
@@ -242,7 +242,7 @@ impl TradeBuilder {
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
-    use infra_master::trade::{
+    use infra_domain::trade::{
         ExerciseStyle, Forward, ForwardDirection, InstrumentParams, VanillaOption,
     };
 

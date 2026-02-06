@@ -6,10 +6,10 @@
 
 | コンポーネント | ファイル | 現状 |
 |---------------|---------|------|
-| **RateIndex** | `infra_master/src/market/rate_index.rs` | ✅ 基本実装あり（SOFR, TONAR, EURIBOR3M/6M, SONIA, SARON）。currency(), tenor(), day_counter(), name(), code() メソッド提供 |
-| **IndexType** | `infra_master/src/trade/index.rs` | ✅ Rate, SwapRate, Fx, Equity, Inflation, Commodity バリアント |
-| **IndexObservation** | `infra_master/src/trade/index.rs` | ⚠️ 基本構造のみ（observation_lag, fixing_source）。compounding_method, reset_frequency 欠落 |
-| **Payoff** | `infra_master/src/trade/payoff.rs` | ✅ Fixed, Linear, VanillaOption, Digital。required_index() メソッドあり |
+| **RateIndex** | `infra_domain/src/market/rate_index.rs` | ✅ 基本実装あり（SOFR, TONAR, EURIBOR3M/6M, SONIA, SARON）。currency(), tenor(), day_counter(), name(), code() メソッド提供 |
+| **IndexType** | `infra_domain/src/trade/index.rs` | ✅ Rate, SwapRate, Fx, Equity, Inflation, Commodity バリアント |
+| **IndexObservation** | `infra_domain/src/trade/index.rs` | ⚠️ 基本構造のみ（observation_lag, fixing_source）。compounding_method, reset_frequency 欠落 |
+| **Payoff** | `infra_domain/src/trade/payoff.rs` | ✅ Fixed, Linear, VanillaOption, Digital。required_index() メソッドあり |
 | **CurveName** | `pricer_models/src/market/curves/curve_enum.rs` | ✅ Ois, Sofr, Tonar, Euribor, Forward, Discount, Custom |
 | **CurveSet** | `pricer_models/src/market/curves/curve_set.rs` | ⚠️ CurveName でのみ検索可能。RateIndex → CurveName マッピングなし |
 | **GenericPricer** | `pricer_pricing/src/generic_pricer/pricer.rs` | ❌ cf.payoff を完全に無視。cf_amount = year_fraction × notional のみ |
@@ -77,15 +77,15 @@ pub fn compounding_method(&self) -> CompoundingMethod
 
 - **アルゴリズムロジック**: OIS 複利計算、Black/Bachelier オプション評価
 - **データモデル変更**: RateIndex, IndexObservation への新規フィールド追加
-- **統合ポイント**: infra_master → pricer_models → pricer_pricing → demo/gui の4層
+- **統合ポイント**: infra_domain → pricer_models → pricer_pricing → demo/gui の4層
 
 ## 3. 実装アプローチオプション
 
 ### Option A: 既存コンポーネント拡張
 
 **拡張対象ファイル:**
-- `infra_master/src/market/rate_index.rs` - IndexMetadata 追加
-- `infra_master/src/trade/index.rs` - IndexObservation 強化
+- `infra_domain/src/market/rate_index.rs` - IndexMetadata 追加
+- `infra_domain/src/trade/index.rs` - IndexObservation 強化
 - `pricer_models/src/market/curves/curve_set.rs` - get_curve_for_index() 追加
 - `pricer_pricing/src/generic_pricer/pricer.rs` - price_leg() 内で Payoff 評価
 - `demo/gui/src/web/trade_types.rs` - rate_index フィールド追加
@@ -135,7 +135,7 @@ pub fn compounding_method(&self) -> CompoundingMethod
 ### 工数見積もり: **L (1-2週間)**
 
 **根拠:**
-- 4層（infra_master → pricer_models → pricer_pricing → demo）にまたがる変更
+- 4層（infra_domain → pricer_models → pricer_pricing → demo）にまたがる変更
 - OIS 複利計算、Cap/Floor 評価の数学的ロジック
 - AD（自動微分）互換性の維持
 - 広範なテストカバレッジ
@@ -158,7 +158,7 @@ pub fn compounding_method(&self) -> CompoundingMethod
 
 ### 設計時に調査が必要な項目
 
-1. **Research Needed**: CalendarId の定義場所と形式（infra_master 内の既存カレンダー実装確認）
+1. **Research Needed**: CalendarId の定義場所と形式（infra_domain 内の既存カレンダー実装確認）
 2. **Research Needed**: Black/Bachelier 評価の既存実装確認（pricer_core に存在するか）
 3. **Research Needed**: MarketProvider の Vol サーフェス取得 API の有無
 

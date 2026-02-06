@@ -6,7 +6,7 @@
 //!
 //! **Requires the `l1l2-integration` feature.**
 
-use infra_master::trade::{IndexType, OptionType, Payoff};
+use infra_domain::trade::{IndexType, OptionType, Payoff};
 use num_traits::Float;
 use pricer_models::market::CurveSet;
 
@@ -26,7 +26,7 @@ use super::error::PricingError;
 /// ```
 /// use pricer_pricing::generic_pricer::PayoffEvaluator;
 /// use pricer_models::market::curves::{CurveSet, CurveName, CurveEnum};
-/// use infra_master::trade::Payoff;
+/// use infra_domain::trade::Payoff;
 ///
 /// let mut curves = CurveSet::new();
 /// curves.insert(CurveName::Sofr, CurveEnum::flat(0.035_f64));
@@ -199,6 +199,22 @@ impl<'a, T: Float + 'static> PayoffEvaluator<'a, T> {
                     T::zero()
                 }
             }
+            OptionType::DigitalCall => {
+                // Digital call: 1 if rate > strike, else 0
+                if fwd_rate > strike_t {
+                    T::one()
+                } else {
+                    T::zero()
+                }
+            }
+            OptionType::DigitalPut => {
+                // Digital put: 1 if rate < strike, else 0
+                if fwd_rate < strike_t {
+                    T::one()
+                } else {
+                    T::zero()
+                }
+            }
         };
 
         Ok(notional * intrinsic * year_fraction)
@@ -207,7 +223,7 @@ impl<'a, T: Float + 'static> PayoffEvaluator<'a, T> {
 
 #[cfg(test)]
 mod tests {
-    use infra_master::RateIndex;
+    use infra_domain::RateIndex;
     use pricer_models::market::curves::{CurveEnum, CurveName};
     use OptionType;
 

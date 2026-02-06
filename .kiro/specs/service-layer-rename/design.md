@@ -56,7 +56,7 @@ graph TB
 
     subgraph I_Infra[I: Infra Layer]
         Config[infra_config]
-        Master[infra_master]
+        Master[infra_domain]
         Store[infra_store]
     end
 
@@ -294,13 +294,13 @@ flowchart TD
 ```text
 変更前: A-I-P-R
 A: Adapter   → adapter_feeds, adapter_fpml, adapter_loader
-I: Infra     → infra_config, infra_master, infra_store
+I: Infra     → infra_config, infra_domain, infra_store
 P: Pricer    → pricer_core, pricer_models, pricer_optimiser, pricer_pricing, pricer_risk
 R: Runtime   → runtime_cli, runtime_python, runtime_server
 
 変更後: A-I-P-S
 A: Adapter   → adapter_feeds, adapter_fpml, adapter_loader
-I: Infra     → infra_config, infra_master, infra_store
+I: Infra     → infra_config, infra_domain, infra_store
 P: Pricer    → pricer_core, pricer_models, pricer_optimiser, pricer_pricing, pricer_risk
 S: Service   → service_cli, service_gateway, service_python
 ```

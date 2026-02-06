@@ -1,0 +1,88 @@
+{
+  "metadata": {
+    "description": "Portfolio manifest - references all trade files by asset class",
+    "schema_version": "3.0",
+    "last_updated": "2026-02-03T00:00:00Z",
+    "fpml_version": "5.12"
+  },
+  "portfolio": {
+    "name": "FrictionalBank Demo Portfolio",
+    "base_currency": "USD",
+    "valuation_date": "2026-02-03"
+  },
+  "trade_sources": {
+    "fpml": {
+      "format": "FpML 5.12 XML",
+      "description": "Production-ready FpML 5.x compliant trade representations",
+      "parties": "fpml/parties/parties.xml",
+      "rates": [
+        "fpml/rates/irs_usd_001.xml",
+        "fpml/rates/swaption_usd_001.xml",
+        "fpml/rates/cap_usd_001.xml"
+      ],
+      "fx": [
+        "fpml/fx/fxforward_eurusd_001.xml",
+        "fpml/fx/fxoption_eurusd_001.xml",
+        "fpml/fx/fxswap_eurusd_001.xml"
+      ],
+      "equity": [
+        "fpml/equity/eqoption_aapl_001.xml"
+      ],
+      "credit": [
+        "fpml/credit/cds_ibm_001.xml",
+        "fpml/credit/cdx_ig_001.xml"
+      ],
+      "commodity": [
+        "fpml/commodity/comswap_brent_001.xml"
+      ]
+    }
+  },
+  "entity_sources": {
+    "counterparties": "../entities/counterparties.json",
+    "netting_sets": "../entities/netting_sets.json",
+    "legal_entities": "../entities/legal_entities.json"
+  },
+  "fpml_products": {
+    "rates": [
+      {"fpml_element": "swap", "description": "Interest Rate Swap"},
+      {"fpml_element": "swaption", "description": "Swaption"},
+      {"fpml_element": "capFloor", "description": "Cap/Floor"},
+      {"fpml_element": "fra", "description": "Forward Rate Agreement"}
+    ],
+    "fx": [
+      {"fpml_element": "fxSingleLeg", "description": "FX Spot/Forward"},
+      {"fpml_element": "fxSwap", "description": "FX Swap"},
+      {"fpml_element": "fxOption", "description": "FX Vanilla Option"},
+      {"fpml_element": "fxDigitalOption", "description": "FX Digital Option"},
+      {"fpml_element": "fxBarrierOption", "description": "FX Barrier Option"}
+    ],
+    "equity": [
+      {"fpml_element": "equityOption", "description": "Equity Option"},
+      {"fpml_element": "equityForward", "description": "Equity Forward"},
+      {"fpml_element": "equitySwap", "description": "Equity Swap"},
+      {"fpml_element": "returnSwap", "description": "Total Return Swap"}
+    ],
+    "credit": [
+      {"fpml_element": "creditDefaultSwap", "description": "CDS / CDS Index"},
+      {"fpml_element": "creditDefaultSwapOption", "description": "CDS Option"}
+    ],
+    "commodity": [
+      {"fpml_element": "commoditySwap", "description": "Commodity Swap"},
+      {"fpml_element": "commodityOption", "description": "Commodity Option"},
+      {"fpml_element": "commodityForward", "description": "Commodity Forward"}
+    ]
+  },
+  "statistics": {
+    "total_trades": 11,
+    "by_asset_class": {
+      "Rates": 3,
+      "FX": 3,
+      "Equity": 1,
+      "Credit": 2,
+      "Commodity": 2
+    },
+    "currencies": ["USD", "EUR", "GBP", "JPY", "CHF"],
+    "counterparties": 12,
+    "netting_sets": 10
+  }
+}

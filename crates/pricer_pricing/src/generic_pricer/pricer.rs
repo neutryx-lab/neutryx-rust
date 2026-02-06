@@ -12,7 +12,7 @@
 //!    `get_pv_simple()`.
 //!
 //! 2. **Integrated mode** (with `l1l2-integration` feature): Uses
-//!    `infra_master` types and `MarketProvider`. Use `new()` and `get_pv()`.
+//!    `infra_domain` types and `MarketProvider`. Use `new()` and `get_pv()`.
 
 #[cfg(feature = "l1l2-integration")]
 use std::sync::Arc;
@@ -20,7 +20,9 @@ use std::sync::Arc;
 #[cfg(feature = "l1l2-integration")]
 use chrono::Datelike;
 #[cfg(feature = "l1l2-integration")]
-use infra_master::{
+use infra_config::{PricingConfig, PricingMethod};
+#[cfg(feature = "l1l2-integration")]
+use infra_domain::{
     market::Currency,
     time::Date,
     trade::{Leg, Trade},
@@ -30,8 +32,6 @@ use pricer_models::market::{MarketProvider, YieldCurve};
 
 // Standalone types - always available
 use super::config::DefaultCurrency;
-#[cfg(feature = "l1l2-integration")]
-use super::ois_calculator::{DailyAccrual, OisCalculator};
 #[cfg(feature = "l1l2-integration")]
 use super::payoff_evaluator::PayoffEvaluator;
 #[cfg(feature = "l1l2-integration")]
@@ -99,6 +99,129 @@ impl GenericPricer {
         }
     }
 
+    /// Creates a new GenericPricer from a PricingConfig.
+    ///
+    /// This factory method converts `infra_config::PricingConfig` to the
+    /// internal `ModelConfig` and `PricerConfig` structures, selecting the
+    /// appropriate pricing method based on configuration.
+    ///
+    /// # Arguments
+    ///
+    /// * `market` - Arc-shared market data provider
+    /// * `config` - Configuration from infra_config
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// use infra_config::PricingConfig;
+    /// use pricer_pricing::generic_pricer::GenericPricer;
+    ///
+    /// let pricing_config = PricingConfig::from_toml_str(toml_str)?;
+    /// let pricer = GenericPricer::from_config(market, &pricing_config)?;
+    /// ```
+    #[cfg(feature = "l1l2-integration")]
+    pub fn from_config(
+        market: Arc<MarketProvider>,
+        config: &PricingConfig,
+    ) -> Result<Self, PricingError> {
+        use super::config::{ModelConfigBuilder, PricerConfigBuilder};
+
+        // Convert Monte Carlo parameters if specified
+        let mut model_builder = ModelConfigBuilder::default();
+        if let Some(ref mc_params) = config.monte_carlo {
+            model_builder = model_builder
+                .num_paths(mc_params.num_paths)
+                .num_steps(mc_params.num_steps);
+            if let Some(seed) = mc_params.seed {
+                model_builder = model_builder.seed(seed);
+            }
+        }
+
+        let model_config = model_builder
+            .build()
+            .map_err(|e| PricingError::InvalidInput {
+                reason: format!("Invalid model configuration: {}", e),
+            })?;
+
+        // Convert currency string to Currency enum
+        let currency: Currency =
+            config
+                .reporting_currency
+                .parse()
+                .map_err(|_| PricingError::InvalidInput {
+                    reason: format!("Invalid currency code: {}", config.reporting_currency),
+                })?;
+
+        let pricer_config = PricerConfigBuilder::default()
+            .default_currency(currency)
+            .use_thread_local_buffers(config.parallel_enabled)
+            .build()
+            .map_err(|e| PricingError::InvalidInput {
+                reason: format!("Invalid pricer configuration: {}", e),
+            })?;
+
+        Ok(Self {
+            market,
+            model_config,
+            pricer_config,
+        })
+    }
+
+    /// Returns the pricing method from config (Analytical or MonteCarlo).
+    #[cfg(feature = "l1l2-integration")]
+    pub fn pricing_method_from_config(config: &PricingConfig) -> PricingMethod {
+        config.pricing_method
+    }
+
+    /// Prices a trade using configuration settings.
+    ///
+    /// This is a convenience method that extracts valuation date and
+    /// reporting currency from the PricingConfig and delegates to `get_pv()`.
+    ///
+    /// # Arguments
+    ///
+    /// * `trade` - The trade to price
+    /// * `config` - Pricing configuration containing valuation date and
+    ///   currency
+    ///
+    /// # Returns
+    ///
+    /// `PricingResult` containing total PV, leg-level breakdown, and metadata.
+    ///
+    /// # Errors
+    ///
+    /// Returns `PricingError` if:
+    /// - Required market data is missing
+    /// - Currency code is invalid
+    /// - The instrument type is not supported
+    #[cfg(feature = "l1l2-integration")]
+    pub fn price_with_config(
+        &self,
+        trade: &Trade,
+        config: &PricingConfig,
+    ) -> Result<PricingResult, PricingError> {
+        // Convert valuation date from NaiveDate to Date
+        let valuation_date = Date::from_ymd(
+            config.valuation_date.year(),
+            config.valuation_date.month(),
+            config.valuation_date.day(),
+        )
+        .map_err(|e| PricingError::InvalidInput {
+            reason: format!("Invalid valuation date: {}", e),
+        })?;
+
+        // Parse reporting currency
+        let reporting_currency: Currency =
+            config
+                .reporting_currency
+                .parse()
+                .map_err(|_| PricingError::InvalidInput {
+                    reason: format!("Invalid currency code: {}", config.reporting_currency),
+                })?;
+
+        self.get_pv(trade, valuation_date, reporting_currency)
+    }
+
     /// Returns a reference to the model configuration.
     pub fn model_config(&self) -> &ModelConfig { &self.model_config }
 
@@ -161,7 +284,12 @@ impl GenericPricer {
         let leg_currency = leg.currency;
 
         // Get discount curve for the leg currency
-        let curve = self.market.get_curve(leg_currency);
+        let curve = self.market.get_curve(leg_currency).ok_or_else(|| {
+            PricingError::market_data_resolution(format!(
+                "No curve found for currency {:?}",
+                leg_currency
+            ))
+        })?;
 
         // Get FX rate (1.0 if same currency)
         let fx_rate = if leg_currency == reporting_currency {
@@ -192,7 +320,7 @@ impl GenericPricer {
                 .map_err(|e| PricingError::market_data_resolution(format!("{:?}", e)))?;
 
             // Calculate cashflow amount using PayoffEvaluator
-            let cf_amount = self.evaluate_cashflow_amount(cf, valuation_date, &curve_set)?;
+            let cf_amount = self.evaluate_cashflow_amount(cf, valuation_date, curve_set)?;
             let cf_pv_original = cf_amount * df;
             let cf_pv = cf_pv_original * fx_rate;
 
@@ -223,37 +351,16 @@ impl GenericPricer {
     }
 
     /// Evaluates the cashflow amount based on its payoff type.
-    ///
-    /// For OIS cashflows with daily accruals, uses OisCalculator for
-    /// compounding. For other cashflows, uses PayoffEvaluator.
     #[cfg(feature = "l1l2-integration")]
     fn evaluate_cashflow_amount(
         &self,
-        cf: &infra_master::trade::Cashflow,
+        cf: &infra_domain::trade::Cashflow,
         valuation_date: Date,
         curve_set: &pricer_models::market::curves::CurveSet<f64>,
     ) -> Result<f64, PricingError> {
         let notional = cf.notional;
         let year_fraction = cf.year_fraction;
 
-        // Check if this is an OIS cashflow with daily accruals
-        if let Some(daily_accruals) = cf.daily_accruals() {
-            if !daily_accruals.is_empty() {
-                // Convert infra_master DailyAccrual to ois_calculator DailyAccrual
-                let accruals: Vec<DailyAccrual> = daily_accruals
-                    .iter()
-                    .map(|a| DailyAccrual::new(a.overnight_rate, a.day_fraction))
-                    .collect();
-
-                // Calculate compounded rate
-                let compounded_rate = OisCalculator::compound_rate::<f64>(&accruals);
-
-                // Apply notional to get the cashflow amount
-                return Ok(notional * compounded_rate);
-            }
-        }
-
-        // For non-OIS cashflows or OIS without daily accruals, use PayoffEvaluator
         let evaluator = PayoffEvaluator::new(curve_set);
 
         // Calculate time parameters for forward rate calculation
@@ -273,7 +380,7 @@ impl GenericPricer {
     /// `evaluate_cashflow_amount` method extracts notional from `cf.notional`.
     #[cfg(feature = "l1l2-integration")]
     #[allow(dead_code)]
-    fn get_notional_for_cashflow(&self, _cf: &infra_master::trade::Cashflow, _leg: &Leg) -> f64 {
+    fn get_notional_for_cashflow(&self, _cf: &infra_domain::trade::Cashflow, _leg: &Leg) -> f64 {
         // TODO: Extract notional from cashflow/leg based on cashflow type
         // For now, return a default notional
         1_000_000.0
@@ -517,7 +624,9 @@ mod tests {
 
     #[test]
     fn test_generic_pricer_creation() {
+        #[cfg(not(feature = "l1l2-integration"))]
         let model_config = ModelConfigBuilder::default().build().unwrap();
+        #[cfg(not(feature = "l1l2-integration"))]
         let pricer_config = PricerConfigBuilder::default().build().unwrap();
 
         #[cfg(not(feature = "l1l2-integration"))]

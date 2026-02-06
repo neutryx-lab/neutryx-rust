@@ -1,0 +1,135 @@
+{
+  "metadata": {
+    "description": "Internal legal entity definitions for booking and reporting",
+    "schema_version": "2.0",
+    "last_updated": "2026-02-03T00:00:00Z"
+  },
+  "legal_entities": [
+    {
+      "id": "LE-001",
+      "legal_name": "FrictionalBank N.A.",
+      "short_name": "FB NA",
+      "lei": "549300EXAMPLE0001NA",
+      "country": "US",
+      "regulatory_capital_regime": "Basel III",
+      "functional_currency": "USD",
+      "books": ["USD-RATES", "USD-FX", "USD-EQ", "USD-CREDIT"]
+    },
+    {
+      "id": "LE-002",
+      "legal_name": "FrictionalBank Europe GmbH",
+      "short_name": "FB Europe",
+      "lei": "549300EXAMPLE0002EU",
+      "country": "DE",
+      "regulatory_capital_regime": "CRR/CRD",
+      "functional_currency": "EUR",
+      "books": ["EUR-RATES", "EUR-FX", "EUR-CREDIT"]
+    },
+    {
+      "id": "LE-003",
+      "legal_name": "FrictionalBank UK Limited",
+      "short_name": "FB UK",
+      "lei": "549300EXAMPLE0003UK",
+      "country": "GB",
+      "regulatory_capital_regime": "PRA",
+      "functional_currency": "GBP",
+      "books": ["GBP-RATES", "GBP-FX", "GBP-CREDIT", "COMMODITIES"]
+    },
+    {
+      "id": "LE-004",
+      "legal_name": "FrictionalBank Japan K.K.",
+      "short_name": "FB Japan",
+      "lei": "549300EXAMPLE0004JP",
+      "country": "JP",
+      "regulatory_capital_regime": "JFSA",
+      "functional_currency": "JPY",
+      "books": ["JPY-RATES", "JPY-FX", "ASIA-EQ"]
+    }
+  ],
+  "books": {
+    "USD-RATES": {
+      "legal_entity": "LE-001",
+      "asset_class": "Rates",
+      "currencies": ["USD"],
+      "description": "USD Interest Rate Derivatives"
+    },
+    "USD-FX": {
+      "legal_entity": "LE-001",
+      "asset_class": "FX",
+      "currencies": ["USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD"],
+      "description": "FX Derivatives - Americas"
+    },
+    "USD-EQ": {
+      "legal_entity": "LE-001",
+      "asset_class": "Equity",
+      "currencies": ["USD"],
+      "description": "US Equity Derivatives"
+    },
+    "USD-CREDIT": {
+      "legal_entity": "LE-001",
+      "asset_class": "Credit",
+      "currencies": ["USD"],
+      "description": "USD Credit Derivatives"
+    },
+    "EUR-RATES": {
+      "legal_entity": "LE-002",
+      "asset_class": "Rates",
+      "currencies": ["EUR", "CHF"],
+      "description": "EUR Interest Rate Derivatives"
+    },
+    "EUR-FX": {
+      "legal_entity": "LE-002",
+      "asset_class": "FX",
+      "currencies": ["EUR", "USD", "GBP", "CHF"],
+      "description": "FX Derivatives - EMEA"
+    },
+    "EUR-CREDIT": {
+      "legal_entity": "LE-002",
+      "asset_class": "Credit",
+      "currencies": ["EUR"],
+      "description": "EUR Credit Derivatives"
+    },
+    "GBP-RATES": {
+      "legal_entity": "LE-003",
+      "asset_class": "Rates",
+      "currencies": ["GBP"],
+      "description": "GBP Interest Rate Derivatives"
+    },
+    "GBP-FX": {
+      "legal_entity": "LE-003",
+      "asset_class": "FX",
+      "currencies": ["GBP", "USD", "EUR"],
+      "description": "FX Derivatives - UK"
+    },
+    "GBP-CREDIT": {
+      "legal_entity": "LE-003",
+      "asset_class": "Credit",
+      "currencies": ["GBP", "EUR"],
+      "description": "GBP/EUR Credit Derivatives"
+    },
+    "COMMODITIES": {
+      "legal_entity": "LE-003",
+      "asset_class": "Commodity",
+      "currencies": ["USD", "GBP"],
+      "description": "Commodity Derivatives"
+    },
+    "JPY-RATES": {
+      "legal_entity": "LE-004",
+      "asset_class": "Rates",
+      "currencies": ["JPY"],
+      "description": "JPY Interest Rate Derivatives"
+    },
+    "JPY-FX": {
+      "legal_entity": "LE-004",
+      "asset_class": "FX",
+      "currencies": ["JPY", "USD", "EUR"],
+      "description": "FX Derivatives - Asia"
+    },
+    "ASIA-EQ": {
+      "legal_entity": "LE-004",
+      "asset_class": "Equity",
+      "currencies": ["JPY", "HKD", "SGD"],
+      "description": "Asia Equity Derivatives"
+    }
+  }
+}

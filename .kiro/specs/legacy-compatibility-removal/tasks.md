@@ -4,21 +4,21 @@
 
 - [x] 1. Deprecated convention モジュールの削除
 - [x] 1.1 deprecated モジュールファイルとディレクトリを削除
-  - infra_master から後方互換性シムを完全に削除
+  - infra_domain から後方互換性シムを完全に削除
   - lib.rs からモジュール宣言と関連ドキュメントコメントを削除
   - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
 - [x] 2. pricer_core クロスレイヤー re-export の削除
-- [x] 2.1 (P) types/mod.rs から infra_master re-export を削除
+- [x] 2.1 (P) types/mod.rs から infra_domain re-export を削除
   - BusinessDayConvention, Currency, Date, DayCounter の re-export 文を削除
   - _Requirements: 2.1_
 
-- [x] 2.2 (P) types/time.rs から infra_master re-export を削除
+- [x] 2.2 (P) types/time.rs から infra_domain re-export を削除
   - BusinessDayConvention, Date, DayCounter の re-export 文を削除
   - DayCountConvention 型は pricer_core 独自型として保持
   - _Requirements: 2.2, 2.5_
 
-- [x] 2.3 (P) types/error.rs から infra_master re-export を削除
+- [x] 2.3 (P) types/error.rs から infra_domain re-export を削除
   - CurrencyError, DateError の re-export 文を削除
   - _Requirements: 2.3_
 
@@ -28,7 +28,7 @@
 
 - [x] 3. pricer_models クロスレイヤー re-export の削除
 - [x] 3.1 lib.rs から SwapDirection, TradeDirection の re-export を削除
-  - infra_master 型の re-export 文を削除
+  - infra_domain 型の re-export 文を削除
   - SwapDirectionExt, TradeDirectionExt trait の re-export は保持
   - _Requirements: 3.1, 3.2_
 
@@ -38,7 +38,7 @@
 
 - [x] 4. 責務外テストの削除
 - [x] 4.1 module_exports.rs から責務違反テスト関数を削除
-  - infra_master 型をテストするテスト関数を削除
+  - infra_domain 型をテストするテスト関数を削除
   - pricer_core 独自機能のテストは保持
   - 削除後にファイルが空になる場合はファイル自体を削除
   - _Requirements: 4.1, 4.2_
@@ -49,13 +49,13 @@
   - _Requirements: 4.3_
 
 - [x] 5. pricer_models 重複型定義の削除
-- [x] 5.1 BusinessDayAdjustment enum を削除し infra_master 型に置換
+- [x] 5.1 BusinessDayAdjustment enum を削除し infra_domain 型に置換
   - date_utils.rs から BusinessDayAdjustment 定義を削除
   - DateCalculator で BusinessDayConvention を使用するよう修正
   - Following, ModifiedFollowing, Preceding のマッピングを適用
   - _Requirements: 5.1, 5.2, 5.5_
 
-- [x] 5.2 DayCount enum を削除し infra_master 型に置換
+- [x] 5.2 DayCount enum を削除し infra_domain 型に置換
   - date_utils.rs から DayCount 定義を削除
   - DateCalculator で DayCounter を使用するよう修正
   - Act360 → Actual360, Act365Fixed → Actual365Fixed, Thirty360 → Thirty360Bond のマッピングを適用
@@ -70,7 +70,7 @@
 - [x] 6.1 currency_pair.rs で CurrencyPair<T> を FxRate<T> にリネーム
   - 構造体名を変更
   - 関連する impl ブロックと trait 実装を更新
-  - ドキュメントコメントで infra_master::CurrencyPair との違いを明記
+  - ドキュメントコメントで infra_domain::CurrencyPair との違いを明記
   - deprecated 型エイリアス CurrencyPair<T> = FxRate<T> を追加（後方互換性）
   - _Requirements: 6.1, 6.2, 6.4_
 
@@ -80,7 +80,7 @@
   - _Requirements: 6.3_
 
 - [x] 10. ID Newtype パターンの統一（Stringly Typed 解消）
-- [x] 10.1 infra_master::ids モジュールを新設
+- [x] 10.1 infra_domain::ids モジュールを新設
   - src/ids.rs を作成
   - define_id! マクロで共通実装を生成
   - TradeId, CounterpartyId, PortfolioId, BookId, IssuerId を定義
@@ -88,7 +88,7 @@
   - 各型に Clone, Debug, Default, PartialEq, Eq, Hash, Display, From<&str>, From<String> を実装
   - _Requirements: 10.1, 10.2_
 
-- [x] 10.2 infra_master::lib.rs で ids モジュールを公開
+- [x] 10.2 infra_domain::lib.rs で ids モジュールを公開
   - `pub mod ids;` を追加
   - prelude と root で ID 型を re-export
   - _Requirements: 10.8_
@@ -118,26 +118,26 @@
 
 - [x] 10.7 pricer_risk::portfolio::ids を re-export 方式に変更
   - 既存の TradeId, CounterpartyId, NettingSetId 定義を削除
-  - infra_master::ids からの re-export に置き換え
+  - infra_domain::ids からの re-export に置き換え
   - テストが依然としてパスすることを確認
   - _Requirements: 10.6_
 
-- [x] 10.8 infra_master テスト検証
+- [x] 10.8 infra_domain テスト検証
   - 全 878 テストがパス
   - _Requirements: 10.7_
 
 - [x] 7. 依存コードのインポート更新
 - [x] 7.1 pricer_risk クレートのインポートを更新
-  - pricer_core::types からのインポートを infra_master に変更
+  - pricer_core::types からのインポートを infra_domain に変更
   - Date, Currency, DayCounter, BusinessDayConvention を直接インポート
   - _Requirements: 7.1, 7.2, 7.3, 7.4_
 
 - [x] 7.2 (P) service_cli クレートのインポートを更新
-  - infra_master から型を直接インポートするよう変更
+  - infra_domain から型を直接インポートするよう変更
   - _Requirements: 7.1, 7.2, 7.3, 7.4_
 
 - [x] 7.3 (P) adapter_feeds クレートのインポートを更新
-  - infra_master から型を直接インポートするよう変更
+  - infra_domain から型を直接インポートするよう変更
   - _Requirements: 7.1, 7.2, 7.3, 7.4_
 
 - [x] 7.4 その他の依存クレートを検証・更新
@@ -153,7 +153,7 @@
   - 各クレートの責務境界を明確化
   - _Requirements: 8.1, 8.2, 8.4_
 
-- [x] 8.2 infra_master::convention への参照を削除
+- [x] 8.2 infra_domain::convention への参照を削除
   - 削除されたモジュールへの言及を全て除去
   - _Requirements: 8.3_
 
@@ -164,7 +164,7 @@
   - _Requirements: 9.1, 9.3_
 
 - [x] 9.2 ワークスペース全体のテスト検証
-  - 主要クレートのテストパス（infra_master::ids の外部変更による既存テストエラーは別問題）
+  - 主要クレートのテストパス（infra_domain::ids の外部変更による既存テストエラーは別問題）
   - deprecated 警告が残っていないことを確認
   - _Requirements: 9.2, 9.5_
 

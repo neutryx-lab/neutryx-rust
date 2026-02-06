@@ -26,7 +26,7 @@
 │  ┌─────────────┐     ┌─────────────────────────────────┐       │
 │  │   Adapter   │────▶│         Infra Layer             │       │
 │  │  (FpML等)   │     │  ┌───────────────────────────┐  │       │
-│  └─────────────┘     │  │      infra_master         │  │       │
+│  └─────────────┘     │  │      infra_domain         │  │       │
 │                      │  │  ┌─────────────────────┐  │  │       │
 │                      │  │  │   convention/       │  │  │       │
 │                      │  │  │   (市場規約)        │  │  │       │
@@ -998,7 +998,7 @@ pub enum TradeError {
 
 **Design Decisions:**
 
-1. **thiserror 使用**: 既存の `infra_master` パターンに従う。
+1. **thiserror 使用**: 既存の `infra_domain` パターンに従う。
 
 2. **構造化エラー**: `MismatchedCurrency` のように、デバッグに必要な情報を保持。
 
@@ -1090,7 +1090,7 @@ pub enum TradeError {
 ## File Structure
 
 ```text
-crates/infra_master/src/
+crates/infra_domain/src/
 ├── lib.rs                   # Module declarations + re-exports
 ├── error.rs                 # MasterDataError (既存)
 ├── date.rs                  # Date (既存)
@@ -1174,7 +1174,7 @@ pub mod prelude {
 
 ### Integration Tests
 
-`crates/infra_master/tests/`:
+`crates/infra_domain/tests/`:
 
 1. **trade_construction.rs**: Builder API で様々な Trade を構築
 2. **convention_integration.rs**: Convention + Instrument → Trade のラウンドトリップ
@@ -1207,4 +1207,4 @@ pub mod prelude {
 - Requirements Document: `.kiro/specs/trade-instrument-module/requirements.md`
 - Research Document: `.kiro/specs/trade-instrument-module/research.md`
 - Steering Documents: `.kiro/steering/product.md`, `.kiro/steering/tech.md`, `.kiro/steering/structure.md`
-- Existing Code: `crates/infra_master/src/` (Date, Period, Currency, RateIndex, etc.)
+- Existing Code: `crates/infra_domain/src/` (Date, Period, Currency, RateIndex, etc.)

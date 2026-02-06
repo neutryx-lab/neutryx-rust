@@ -15,11 +15,11 @@
 //! - **Dynamic aggregation**: `group_by_currency()` aggregates from leg data on
 //!   demand
 
-// Re-export infra_master types when l1l2-integration is enabled
+// Re-export infra_domain types when l1l2-integration is enabled
 #[cfg(feature = "l1l2-integration")]
-pub use infra_master::trade::Direction;
+pub use infra_domain::trade::Direction;
 #[cfg(feature = "l1l2-integration")]
-use infra_master::{market::Currency, time::Date};
+use infra_domain::{market::Currency, time::Date};
 
 // ============================================================================
 // Standalone types (always available for demo/testing without full L1/L2)

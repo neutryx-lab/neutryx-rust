@@ -49,7 +49,7 @@
   - Instrument仕様リストを含める
   - 参照コンベンション（SwapConvention）を保持
   - Instrument仕様を満期順にソートするメソッドを提供
-  - infra_masterのRateIndexとの互換性を確保
+  - infra_domainのRateIndexとの互換性を確保
   - _Requirements: 1.1, 1.4, 1.6_
 
 - [x] 3.3 カーブ定義のシリアライゼーションを実装する
@@ -61,8 +61,8 @@
 
 - [x] 4. Instrument変換アダプターの実装
 - [x] 4.1 OISとIRS Instrumentの変換を実装する
-  - `infra_master::trade::convention::SwapConvention`からOIS用`BootstrapInstrument`を生成
-  - IRS用にFixed LegとFloat Legのキャッシュフロースケジュールを`infra_master::trade::Cashflow`で展開
+  - `infra_domain::trade::convention::SwapConvention`からOIS用`BootstrapInstrument`を生成
+  - IRS用にFixed LegとFloat Legのキャッシュフロースケジュールを`infra_domain::trade::Cashflow`で展開
   - コンベンション（DayCount, BDC, PaymentFrequency）を適用
   - _Requirements: 3.1, 3.2, 3.3_
 

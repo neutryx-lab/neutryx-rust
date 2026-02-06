@@ -1,0 +1,22 @@
+{
+  "feature_name": "fx-vol-surface-calibration",
+  "created_at": "2026-01-25T19:37:21Z",
+  "updated_at": "2026-01-31T00:00:00Z",
+  "language": "ja",
+  "phase": "completed",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "ready_for_implementation": true
+}

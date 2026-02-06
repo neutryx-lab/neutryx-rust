@@ -1,0 +1,26 @@
+{
+  "description": "EURUSD Call option, 1Y expiry, Garman-Kohlhagen pricing",
+  "input": {
+    "spot": 1.10,
+    "strike": 1.12,
+    "expiry_years": 1.0,
+    "domestic_rate": 0.03,
+    "foreign_rate": 0.01,
+    "volatility": 0.15,
+    "option_type": "call"
+  },
+  "output": {
+    "price": 0.0416,
+    "greeks": {
+      "delta": 0.4234,
+      "gamma": 2.5821,
+      "vega": 0.0042,
+      "theta": -0.0001,
+      "rho_domestic": 0.0047,
+      "rho_foreign": -0.0047
+    }
+  },
+  "source": "pricer_models::analytical::GarmanKohlhagen",
+  "generated_at": "2026-01-25T00:00:00Z",
+  "notes": "Reference values calculated using GarmanKohlhagen crate implementation"
+}

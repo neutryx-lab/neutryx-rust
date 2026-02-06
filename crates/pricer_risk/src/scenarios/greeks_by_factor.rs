@@ -12,11 +12,30 @@
 use std::collections::HashMap;
 
 use pricer_core::traits::Float;
-use pricer_pricing::greeks::{GreeksMode, GreeksResult};
 #[cfg(feature = "serde")]
-use serde::Serialize;
+use serde::{ser::SerializeMap, Serialize, Serializer};
 
 use super::RiskFactorId;
+use crate::greeks::{GreeksMode, GreeksResult};
+
+/// Custom serializer for HashMap<RiskFactorId, GreeksResult<T>>.
+/// Converts RiskFactorId keys to strings using their Display implementation.
+#[cfg(feature = "serde")]
+fn serialize_by_factor<S, T>(
+    map: &HashMap<RiskFactorId, GreeksResult<T>>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+    T: Float + Serialize,
+    GreeksResult<T>: Serialize,
+{
+    let mut ser_map = serializer.serialize_map(Some(map.len()))?;
+    for (key, value) in map {
+        ser_map.serialize_entry(&key.to_string(), value)?;
+    }
+    ser_map.end()
+}
 
 /// Greeks calculation results organised by risk factor.
 ///
@@ -33,7 +52,7 @@ use super::RiskFactorId;
 ///
 /// ```rust
 /// use pricer_risk::scenarios::{GreeksResultByFactor, RiskFactorId};
-/// use pricer_pricing::greeks::{GreeksMode, GreeksResult};
+/// use pricer_risk::greeks::{GreeksMode, GreeksResult};
 ///
 /// // Create results for different risk factors
 /// let mut results = GreeksResultByFactor::<f64>::new(GreeksMode::BumpRevalue);
@@ -58,8 +77,13 @@ use super::RiskFactorId;
 /// - Requirement 1.1, 1.2, 1.3, 1.5
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize))]
+#[cfg_attr(
+    feature = "serde",
+    serde(bound(serialize = "T: Float + Serialize, GreeksResult<T>: Serialize"))
+)]
 pub struct GreeksResultByFactor<T: Float> {
     /// Greeks results keyed by risk factor.
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_by_factor"))]
     by_factor: HashMap<RiskFactorId, GreeksResult<T>>,
 
     /// Computation mode used (AAD or Bump).
@@ -80,7 +104,7 @@ impl<T: Float> GreeksResultByFactor<T> {
     ///
     /// ```rust
     /// use pricer_risk::scenarios::GreeksResultByFactor;
-    /// use pricer_pricing::greeks::GreeksMode;
+    /// use pricer_risk::greeks::GreeksMode;
     ///
     /// let results = GreeksResultByFactor::<f64>::new(GreeksMode::BumpRevalue);
     /// assert!(results.is_empty());
@@ -228,7 +252,7 @@ impl<T: Float> GreeksResultByFactor<T> {
     ///
     /// ```rust
     /// use pricer_risk::scenarios::{GreeksResultByFactor, RiskFactorId};
-    /// use pricer_pricing::greeks::{GreeksMode, GreeksResult};
+    /// use pricer_risk::greeks::{GreeksMode, GreeksResult};
     ///
     /// let mut results = GreeksResultByFactor::<f64>::new(GreeksMode::BumpRevalue);
     ///
@@ -398,10 +422,10 @@ mod tests {
 
     #[test]
     fn test_greeks_result_by_factor_with_capacity() {
-        let results = GreeksResultByFactor::<f64>::with_capacity(GreeksMode::NumDual, 10);
+        let results = GreeksResultByFactor::<f64>::with_capacity(GreeksMode::BumpRevalue, 10);
 
         assert!(results.is_empty());
-        assert_eq!(results.mode(), GreeksMode::NumDual);
+        assert_eq!(results.mode(), GreeksMode::BumpRevalue);
     }
 
     #[test]
@@ -547,10 +571,10 @@ mod tests {
             GreeksResult::new(100.0, 0.1),
         );
 
-        let results = GreeksResultByFactor::from_map(map, GreeksMode::NumDual, 2_000_000);
+        let results = GreeksResultByFactor::from_map(map, GreeksMode::BumpRevalue, 2_000_000);
 
         assert_eq!(results.len(), 1);
-        assert_eq!(results.mode(), GreeksMode::NumDual);
+        assert_eq!(results.mode(), GreeksMode::BumpRevalue);
         assert_eq!(results.computation_time_ns(), 2_000_000);
     }
 

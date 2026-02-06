@@ -28,6 +28,9 @@
 #![allow(clippy::needless_borrows_for_generic_args)]
 #![allow(clippy::no_effect_underscore_binding)]
 #![allow(clippy::cast_possible_wrap)]
+// Enzyme AD: Enable autodiff feature when enzyme-ad feature is active
+// This requires nightly Rust (nightly-2025-01-15) with Enzyme LLVM plugin
+#![cfg_attr(feature = "enzyme-ad", feature(autodiff))]
 
 //! # Pricer Risk (L4: Application)
 //!
@@ -79,8 +82,8 @@
 //!     PortfolioBuilder, Trade, TradeId, Counterparty, CounterpartyId,
 //!     NettingSet, NettingSetId, CreditParams,
 //! };
-//! use infra_master::Currency;
-//! use infra_master::trade::{
+//! use infra_domain::Currency;
+//! use infra_domain::trade::{
 //!     PricingInstrument, VanillaOption, InstrumentParams, PayoffType, ExerciseStyle,
 //! };
 //!
@@ -119,33 +122,22 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(rustdoc::private_intra_doc_links)]
 
-pub mod demo;
-pub mod exposure;
-pub mod parallel;
+pub mod engine;
+pub mod greeks;
 pub mod portfolio;
 pub mod scenarios;
-pub mod soa;
-pub mod xva;
 
 // Re-export commonly used types
-pub use exposure::ExposureCalculator;
-pub use parallel::{
-    create_shared_monitor, MemoryMonitor, MemoryMonitorConfig, MemoryStats, ParallelConfig,
-    SharedMemoryMonitor, DEFAULT_BATCH_SIZE,
+// Risk Engine facade
+pub use engine::{
+    AggregatedGreeks, ComputedGreeks, ExecutionStats, FailedCalculation, PartialGreeksResult,
+    PerformanceMetrics, PortfolioRiskResult, RiskEngine, RiskEngineConfig, RiskError, RiskResult,
+    ScenarioGreeksResult, ScenarioPortfolioResult,
 };
-// TODO: Re-enable when rates instruments are restored
-// pub use parallel::{
-//     ParallelGreeksConfig, ParallelGreeksError, ParallelGreeksStats,
-//     ParallelPortfolioGreeksCalculator, PortfolioGreeksResult,
-// };
-pub use portfolio::{
-    CollateralAgreement, Counterparty, CounterpartyId, CreditParams, CreditRating, NettingSet,
-    NettingSetId, Portfolio, PortfolioBuilder, PortfolioError, Trade, TradeBuilder, TradeId,
-};
-pub use scenarios::{
-    AggregationMethod, BumpScenario, CurveShiftError, CurveShiftSpec, CurveShiftType, CurveShifter,
-    GreeksAggregator, GreeksResultByFactor, PortfolioGreeks, PresetScenario, PresetScenarioType,
-    RiskFactorId, RiskFactorShift, Scenario, ScenarioEngine, ScenarioPnL, ScenarioResult,
+// AD types (automatic differentiation)
+pub use greeks::ad::{gradient, gradient_with_step, ADMode, Activity};
+pub use greeks::{
+    GreeksConfig, GreeksConfigBuilder, GreeksConfigError, GreeksError, GreeksMode, GreeksResult,
 };
 // TODO: Re-enable when rates instruments are restored
 // pub use scenarios::{
@@ -154,9 +146,19 @@ pub use scenarios::{
 //     IrsGreeksByFactorCalculator, KeyRateDurationEntry, KeyRateDurationResult,
 //     STANDARD_TENOR_LABELS, STANDARD_TENOR_POINTS,
 // };
-pub use soa::{ExposureSoA, TradeSoA};
-pub use xva::{
+pub use portfolio::xva::{
     compute_cva, compute_cva_with_survival, compute_dva, compute_dva_with_survival, compute_fba,
-    compute_fca, compute_fva, generate_flat_discount_factors, CounterpartyXva, FundingParams,
-    NettingSetXva, OwnCreditParams, PortfolioXva, XvaCalculator, XvaConfig, XvaError,
+    compute_fca, compute_fva, generate_flat_discount_factors, CounterpartyXva, ExposureSoA,
+    FundingParams, NettingSetXva, OwnCreditParams, PortfolioXva, XvaCalculator, XvaConfig,
+    XvaError,
+};
+pub use portfolio::{
+    CollateralAgreement, Counterparty, CounterpartyId, CreditParams, CreditRating,
+    ExposureCalculator, NettingSet, NettingSetId, Portfolio, PortfolioBuilder, PortfolioError,
+    Trade, TradeBuilder, TradeId,
+};
+pub use scenarios::{
+    AggregationMethod, BumpScenario, CurveShiftError, CurveShiftSpec, CurveShiftType, CurveShifter,
+    GreeksAggregator, GreeksResultByFactor, PortfolioGreeks, PresetScenario, PresetScenarioType,
+    RiskFactorId, RiskFactorShift, Scenario, ScenarioEngine, ScenarioPnL, ScenarioResult,
 };

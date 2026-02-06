@@ -7,12 +7,12 @@
 //! # Note
 //!
 //! For core time types (`Date`, `BusinessDayConvention`, `DayCounter`),
-//! import directly from `infra_master`.
+//! import directly from `infra_domain`.
 //!
 //! # Examples
 //!
 //! ```
-//! use infra_master::Date;
+//! use infra_domain::Date;
 //! use pricer_core::types::time::DayCountConvention;
 //!
 //! let start = Date::from_ymd(2024, 1, 1).unwrap();
@@ -25,12 +25,12 @@
 
 use std::{fmt, str::FromStr};
 
-use infra_master::{Date, DayCounter};
+use infra_domain::{Date, DayCounter};
 
 /// Day Count Convention (year fraction convention).
 ///
 /// A simplified subset of day count conventions commonly used in derivatives.
-/// For the full set of conventions, use `infra_master::DayCounter` directly.
+/// For the full set of conventions, use `infra_domain::DayCounter` directly.
 ///
 /// # Variants
 /// - `ActualActual365`: Actual days / 365 (equivalent to
@@ -100,13 +100,13 @@ impl DayCountConvention {
         }
     }
 
-    /// Convert to the underlying `infra_master::DayCounter`.
+    /// Convert to the underlying `infra_domain::DayCounter`.
     ///
     /// # Examples
     ///
     /// ```
     /// use pricer_core::types::time::DayCountConvention;
-    /// use infra_master::DayCounter;
+    /// use infra_domain::DayCounter;
     ///
     /// let dcc = DayCountConvention::ActualActual365;
     /// let dc: DayCounter = dcc.into();
@@ -136,7 +136,7 @@ impl DayCountConvention {
     ///
     /// ```
     /// use pricer_core::types::time::DayCountConvention;
-    /// use infra_master::Date;
+    /// use infra_domain::Date;
     ///
     /// let start = Date::from_ymd(2024, 1, 1).unwrap();
     /// let end = Date::from_ymd(2024, 7, 1).unwrap();
@@ -294,7 +294,7 @@ pub fn time_to_maturity(start: chrono::NaiveDate, end: chrono::NaiveDate) -> f64
 ///
 /// ```
 /// use pricer_core::types::time::time_to_maturity_dates;
-/// use infra_master::Date;
+/// use infra_domain::Date;
 ///
 /// let valuation_date = Date::from_ymd(2024, 1, 1).unwrap();
 /// let maturity_date = Date::from_ymd(2025, 1, 1).unwrap();
@@ -421,7 +421,7 @@ mod tests {
         time_to_maturity(start, end);
     }
 
-    // Date tests using infra_master::Date
+    // Date tests using infra_domain::Date
 
     #[test]
     fn test_date_from_ymd_valid() {

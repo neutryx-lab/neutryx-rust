@@ -22,6 +22,10 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
+    # Override target-cpu=native from .cargo/config.toml for CI portability
+    # This ensures tests don't use CPU-specific instructions that may not be available on all runners
+    env:
+      RUSTFLAGS: ""
 
     steps:
       - uses: actions/checkout@v4
@@ -53,19 +57,16 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Clippy (stable crates)
-        run: cargo clippy --workspace --exclude pricer_pricing --exclude pricer_risk --exclude demo_gui -- -D warnings
+        run: cargo clippy --workspace --exclude pricer_pricing --exclude pricer_risk -- -D warnings
 
       - name: Build (stable crates)
-        run: cargo build --workspace --exclude pricer_pricing --exclude pricer_risk --exclude demo_gui
+        run: cargo build --workspace --exclude pricer_pricing --exclude pricer_risk
 
       - name: Test (stable crates)
-        run: cargo test --workspace --exclude pricer_pricing --exclude pricer_risk --exclude demo_gui
-
-      - name: Test with num-dual feature
-        run: cargo test -p pricer_core --features num-dual-mode
+        run: cargo test --workspace --exclude pricer_pricing --exclude pricer_risk
 
   # ============================================================================
-  # Nightly Rust: L3, L4 (pricer_pricing, pricer_risk, demo_gui)
+  # Nightly Rust: L3, L4 (pricer_pricing, pricer_risk)
   # Linux only (Enzyme requires LLVM infrastructure)
   # ============================================================================
   nightly-kernel:
@@ -147,7 +148,7 @@ jobs:
           if [ "${{ steps.enzyme-check.outputs.enzyme_available }}" == "true" ]; then
             echo "✓ CI ran with native autodiff (Enzyme)"
           else
-            echo "⚠ CI ran with num-dual fallback (Enzyme not available)"
+            echo "⚠ CI ran with bump-and-revalue fallback (Enzyme not available)"
             echo "  This is expected - Enzyme distribution is platform/version dependent"
           fi
 
@@ -164,15 +165,6 @@ jobs:
       - name: Clippy pricer_risk
         run: |
           cargo +nightly clippy -p pricer_risk -- -D warnings
-
-      # demo_gui depends on pricer_risk
-      - name: Build demo_gui
-        run: |
-          cargo +nightly build -p demo_gui
-
-      - name: Clippy demo_gui
-        run: |
-          cargo +nightly clippy -p demo_gui -- -D warnings
 
   # ============================================================================
   # Integration Tests (Full Stack)
@@ -222,6 +214,8 @@ jobs:
     name: Code Coverage
     runs-on: ubuntu-latest
     needs: [stable-layers]
+    env:
+      RUSTFLAGS: ""
 
     steps:
       - uses: actions/checkout@v4
@@ -237,7 +231,7 @@ jobs:
       - name: Generate coverage report
         run: |
           cargo llvm-cov --workspace --exclude pricer_pricing \
-            --exclude pricer_risk --exclude demo_gui \
+            --exclude pricer_risk \
             --lcov --output-path lcov.info
 
       - name: Upload coverage to Codecov
@@ -256,6 +250,8 @@ jobs:
     name: Benchmarks (Criterion)
     runs-on: ubuntu-latest
     needs: [stable-layers]
+    env:
+      RUSTFLAGS: ""
 
     steps:
       - uses: actions/checkout@v4
@@ -338,7 +334,7 @@ jobs:
         id: parse-results
         run: |
           # Extract regression information from iai output
-          if grep -q "Performance has regressed" iai-output.txt; then
+          if grep -q "Performance has regressed" iai-output.txt 2>/dev/null; then
             echo "regression_detected=true" >> $GITHUB_OUTPUT
             echo "::warning::Performance regression detected in iai-callgrind benchmarks"
           else
@@ -346,8 +342,9 @@ jobs:
             echo "::notice::Iai-callgrind benchmarks completed successfully"
           fi
 
-          # Count benchmarks
-          TOTAL=$(grep -c "engine_iai::" iai-output.txt || echo "0")
+          # Count benchmarks (avoid capturing both grep output and fallback echo)
+          TOTAL=$(grep -c "engine_iai::" iai-output.txt 2>/dev/null || true)
+          TOTAL=${TOTAL:-0}
           echo "total_benchmarks=$TOTAL" >> $GITHUB_OUTPUT
 
       - name: Check regression threshold
@@ -435,7 +432,7 @@ jobs:
             ${{ runner.os }}-cargo-docs-
 
       - name: Build documentation (stable crates)
-        run: cargo doc --workspace --exclude pricer_pricing --exclude pricer_risk --exclude demo_gui --no-deps
+        run: cargo doc --workspace --exclude pricer_pricing --exclude pricer_risk --no-deps
         env:
           RUSTDOCFLAGS: "-D warnings"
 
@@ -443,7 +440,7 @@ jobs:
         run: |
           echo "Documentation built successfully for stable crates"
           echo "Checking for documentation completeness..."
-          cargo doc --workspace --exclude pricer_pricing --exclude pricer_risk --exclude demo_gui --no-deps 2>&1 | \
+          cargo doc --workspace --exclude pricer_pricing --exclude pricer_risk --no-deps 2>&1 | \
             grep -c "warning:" || echo "No documentation warnings found"
 
       - name: Upload documentation

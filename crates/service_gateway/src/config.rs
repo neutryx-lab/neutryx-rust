@@ -12,7 +12,6 @@ pub use infra_config::Settings;
 /// Provides convenient access to gateway-specific settings from the unified
 /// `Settings` struct.
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct ServerConfig {
     /// Enable REST API
     pub rest_enabled: bool,
@@ -21,8 +20,10 @@ pub struct ServerConfig {
     /// Enable gRPC API
     pub grpc_enabled: bool,
     /// gRPC address (reserved for future gRPC implementation)
+    #[allow(dead_code)]
     pub grpc_addr: String,
     /// Number of worker threads (reserved for future thread pool configuration)
+    #[allow(dead_code)]
     pub workers: usize,
 }
 

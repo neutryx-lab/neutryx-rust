@@ -1,0 +1,1293 @@
+{
+  "description": "Central bank policy rate decision meeting dates with expected rate changes",
+  "asOfDate": "2026-02-03",
+  "unit": "bp",
+  "events": [
+    {
+      "id": "FED-2025-01",
+      "eventType": "central_bank_meeting",
+      "title": "FOMC Interest Rate Decision",
+      "description": "Federal Open Market Committee policy rate decision and statement",
+      "date": "2025-01-29",
+      "time": "14:00",
+      "timezone": "America/New_York",
+      "currency": "USD",
+      "region": "United States",
+      "importance": "critical",
+      "centralBank": {
+        "code": "FED",
+        "name": "Federal Reserve",
+        "currency": "USD",
+        "region": "United States"
+      },
+      "expectedRateBp": 0,
+      "impliedProbability": 0.92,
+      "source": "Federal Reserve",
+      "tags": ["fomc", "rates", "policy"]
+    },
+    {
+      "id": "FED-2025-02",
+      "eventType": "central_bank_meeting",
+      "title": "FOMC Interest Rate Decision",
+      "description": "Federal Open Market Committee policy rate decision and statement",
+      "date": "2025-03-19",
+      "time": "14:00",
+      "timezone": "America/New_York",
+      "currency": "USD",
+      "region": "United States",
+      "importance": "critical",
+      "centralBank": {
+        "code": "FED",
+        "name": "Federal Reserve",
+        "currency": "USD",
+        "region": "United States"
+      },
+      "expectedRateBp": -25,
+      "impliedProbability": 0.65,
+      "source": "Federal Reserve",
+      "tags": ["fomc", "rates", "policy"]
+    },
+    {
+      "id": "FED-2025-03",
+      "eventType": "central_bank_meeting",
+      "title": "FOMC Interest Rate Decision",
+      "description": "Federal Open Market Committee policy rate decision and statement",
+      "date": "2025-05-07",
+      "time": "14:00",
+      "timezone": "America/New_York",
+      "currency": "USD",
+      "region": "United States",
+      "importance": "critical",
+      "centralBank": {
+        "code": "FED",
+        "name": "Federal Reserve",
+        "currency": "USD",
+        "region": "United States"
+      },
+      "expectedRateBp": 0,
+      "impliedProbability": 0.78,
+      "source": "Federal Reserve",
+      "tags": ["fomc", "rates", "policy"]
+    },
+    {
+      "id": "FED-2025-04",
+      "eventType": "central_bank_meeting",
+      "title": "FOMC Interest Rate Decision",
+      "description": "Federal Open Market Committee policy rate decision and statement",
+      "date": "2025-06-18",
+      "time": "14:00",
+      "timezone": "America/New_York",
+      "currency": "USD",
+      "region": "United States",
+      "importance": "critical",
+      "centralBank": {
+        "code": "FED",
+        "name": "Federal Reserve",
+        "currency": "USD",
+        "region": "United States"
+      },
+      "expectedRateBp": -25,
+      "impliedProbability": 0.55,
+      "source": "Federal Reserve",
+      "tags": ["fomc", "rates", "policy"]
+    },
+    {
+      "id": "FED-2025-05",
+      "eventType": "central_bank_meeting",
+      "title": "FOMC Interest Rate Decision",
+      "description": "Federal Open Market Committee policy rate decision and statement",
+      "date": "2025-07-30",
+      "time": "14:00",
+      "timezone": "America/New_York",
+      "currency": "USD",
+      "region": "United States",
+      "importance": "critical",
+      "centralBank": {
+        "code": "FED",
+        "name": "Federal Reserve",
+        "currency": "USD",
+        "region": "United States"
+      },
+      "source": "Federal Reserve",
+      "tags": ["fomc", "rates", "policy"]
+    },
+    {
+      "id": "FED-2025-06",
+      "eventType": "central_bank_meeting",
+      "title": "FOMC Interest Rate Decision",
+      "description": "Federal Open Market Committee policy rate decision and statement",
+      "date": "2025-09-17",
+      "time": "14:00",
+      "timezone": "America/New_York",
+      "currency": "USD",
+      "region": "United States",
+      "importance": "critical",
+      "centralBank": {
+        "code": "FED",
+        "name": "Federal Reserve",
+        "currency": "USD",
+        "region": "United States"
+      },
+      "source": "Federal Reserve",
+      "tags": ["fomc", "rates", "policy"]
+    },
+    {
+      "id": "FED-2025-07",
+      "eventType": "central_bank_meeting",
+      "title": "FOMC Interest Rate Decision",
+      "description": "Federal Open Market Committee policy rate decision and statement",
+      "date": "2025-11-05",
+      "time": "14:00",
+      "timezone": "America/New_York",
+      "currency": "USD",
+      "region": "United States",
+      "importance": "critical",
+      "centralBank": {
+        "code": "FED",
+        "name": "Federal Reserve",
+        "currency": "USD",
+        "region": "United States"
+      },
+      "source": "Federal Reserve",
+      "tags": ["fomc", "rates", "policy"]
+    },
+    {
+      "id": "FED-2025-08",
+      "eventType": "central_bank_meeting",
+      "title": "FOMC Interest Rate Decision",
+      "description": "Federal Open Market Committee policy rate decision and statement",
+      "date": "2025-12-17",
+      "time": "14:00",
+      "timezone": "America/New_York",
+      "currency": "USD",
+      "region": "United States",
+      "importance": "critical",
+      "centralBank": {
+        "code": "FED",
+        "name": "Federal Reserve",
+        "currency": "USD",
+        "region": "United States"
+      },
+      "source": "Federal Reserve",
+      "tags": ["fomc", "rates", "policy"]
+    },
+    {
+      "id": "FED-2026-01",
+      "eventType": "central_bank_meeting",
+      "title": "FOMC Interest Rate Decision",
+      "description": "Federal Open Market Committee policy rate decision and statement",
+      "date": "2026-01-28",
+      "time": "14:00",
+      "timezone": "America/New_York",
+      "currency": "USD",
+      "region": "United States",
+      "importance": "critical",
+      "centralBank": {
+        "code": "FED",
+        "name": "Federal Reserve",
+        "currency": "USD",
+        "region": "United States"
+      },
+      "expectedRateBp": 0,
+      "impliedProbability": 0.85,
+      "source": "Federal Reserve",
+      "tags": ["fomc", "rates", "policy"]
+    },
+    {
+      "id": "FED-2026-02",
+      "eventType": "central_bank_meeting",
+      "title": "FOMC Interest Rate Decision",
+      "description": "Federal Open Market Committee policy rate decision and statement",
+      "date": "2026-03-18",
+      "time": "14:00",
+      "timezone": "America/New_York",
+      "currency": "USD",
+      "region": "United States",
+      "importance": "critical",
+      "centralBank": {
+        "code": "FED",
+        "name": "Federal Reserve",
+        "currency": "USD",
+        "region": "United States"
+      },
+      "expectedRateBp": -25,
+      "impliedProbability": 0.42,
+      "source": "Federal Reserve",
+      "tags": ["fomc", "rates", "policy"]
+    },
+    {
+      "id": "FED-2026-03",
+      "eventType": "central_bank_meeting",
+      "title": "FOMC Interest Rate Decision",
+      "description": "Federal Open Market Committee policy rate decision and statement",
+      "date": "2026-05-06",
+      "time": "14:00",
+      "timezone": "America/New_York",
+      "currency": "USD",
+      "region": "United States",
+      "importance": "critical",
+      "centralBank": {
+        "code": "FED",
+        "name": "Federal Reserve",
+        "currency": "USD",
+        "region": "United States"
+      },
+      "source": "Federal Reserve",
+      "tags": ["fomc", "rates", "policy"]
+    },
+    {
+      "id": "FED-2026-04",
+      "eventType": "central_bank_meeting",
+      "title": "FOMC Interest Rate Decision",
+      "description": "Federal Open Market Committee policy rate decision and statement",
+      "date": "2026-06-17",
+      "time": "14:00",
+      "timezone": "America/New_York",
+      "currency": "USD",
+      "region": "United States",
+      "importance": "critical",
+      "centralBank": {
+        "code": "FED",
+        "name": "Federal Reserve",
+        "currency": "USD",
+        "region": "United States"
+      },
+      "source": "Federal Reserve",
+      "tags": ["fomc", "rates", "policy"]
+    },
+    {
+      "id": "ECB-2025-01",
+      "eventType": "central_bank_meeting",
+      "title": "ECB Interest Rate Decision",
+      "description": "European Central Bank monetary policy decision and press conference",
+      "date": "2025-01-30",
+      "time": "13:45",
+      "timezone": "Europe/Frankfurt",
+      "currency": "EUR",
+      "region": "Eurozone",
+      "importance": "critical",
+      "centralBank": {
+        "code": "ECB",
+        "name": "European Central Bank",
+        "currency": "EUR",
+        "region": "Eurozone"
+      },
+      "expectedRateBp": -25,
+      "impliedProbability": 0.88,
+      "source": "European Central Bank",
+      "tags": ["ecb", "rates", "policy"]
+    },
+    {
+      "id": "ECB-2025-02",
+      "eventType": "central_bank_meeting",
+      "title": "ECB Interest Rate Decision",
+      "description": "European Central Bank monetary policy decision and press conference",
+      "date": "2025-03-06",
+      "time": "13:45",
+      "timezone": "Europe/Frankfurt",
+      "currency": "EUR",
+      "region": "Eurozone",
+      "importance": "critical",
+      "centralBank": {
+        "code": "ECB",
+        "name": "European Central Bank",
+        "currency": "EUR",
+        "region": "Eurozone"
+      },
+      "expectedRateBp": -25,
+      "impliedProbability": 0.72,
+      "source": "European Central Bank",
+      "tags": ["ecb", "rates", "policy"]
+    },
+    {
+      "id": "ECB-2025-03",
+      "eventType": "central_bank_meeting",
+      "title": "ECB Interest Rate Decision",
+      "description": "European Central Bank monetary policy decision and press conference",
+      "date": "2025-04-17",
+      "time": "13:45",
+      "timezone": "Europe/Frankfurt",
+      "currency": "EUR",
+      "region": "Eurozone",
+      "importance": "critical",
+      "centralBank": {
+        "code": "ECB",
+        "name": "European Central Bank",
+        "currency": "EUR",
+        "region": "Eurozone"
+      },
+      "source": "European Central Bank",
+      "tags": ["ecb", "rates", "policy"]
+    },
+    {
+      "id": "ECB-2025-04",
+      "eventType": "central_bank_meeting",
+      "title": "ECB Interest Rate Decision",
+      "description": "European Central Bank monetary policy decision and press conference",
+      "date": "2025-06-05",
+      "time": "13:45",
+      "timezone": "Europe/Frankfurt",
+      "currency": "EUR",
+      "region": "Eurozone",
+      "importance": "critical",
+      "centralBank": {
+        "code": "ECB",
+        "name": "European Central Bank",
+        "currency": "EUR",
+        "region": "Eurozone"
+      },
+      "source": "European Central Bank",
+      "tags": ["ecb", "rates", "policy"]
+    },
+    {
+      "id": "ECB-2025-05",
+      "eventType": "central_bank_meeting",
+      "title": "ECB Interest Rate Decision",
+      "description": "European Central Bank monetary policy decision and press conference",
+      "date": "2025-07-17",
+      "time": "13:45",
+      "timezone": "Europe/Frankfurt",
+      "currency": "EUR",
+      "region": "Eurozone",
+      "importance": "critical",
+      "centralBank": {
+        "code": "ECB",
+        "name": "European Central Bank",
+        "currency": "EUR",
+        "region": "Eurozone"
+      },
+      "source": "European Central Bank",
+      "tags": ["ecb", "rates", "policy"]
+    },
+    {
+      "id": "ECB-2025-06",
+      "eventType": "central_bank_meeting",
+      "title": "ECB Interest Rate Decision",
+      "description": "European Central Bank monetary policy decision and press conference",
+      "date": "2025-09-11",
+      "time": "13:45",
+      "timezone": "Europe/Frankfurt",
+      "currency": "EUR",
+      "region": "Eurozone",
+      "importance": "critical",
+      "centralBank": {
+        "code": "ECB",
+        "name": "European Central Bank",
+        "currency": "EUR",
+        "region": "Eurozone"
+      },
+      "source": "European Central Bank",
+      "tags": ["ecb", "rates", "policy"]
+    },
+    {
+      "id": "ECB-2025-07",
+      "eventType": "central_bank_meeting",
+      "title": "ECB Interest Rate Decision",
+      "description": "European Central Bank monetary policy decision and press conference",
+      "date": "2025-10-30",
+      "time": "13:45",
+      "timezone": "Europe/Frankfurt",
+      "currency": "EUR",
+      "region": "Eurozone",
+      "importance": "critical",
+      "centralBank": {
+        "code": "ECB",
+        "name": "European Central Bank",
+        "currency": "EUR",
+        "region": "Eurozone"
+      },
+      "source": "European Central Bank",
+      "tags": ["ecb", "rates", "policy"]
+    },
+    {
+      "id": "ECB-2025-08",
+      "eventType": "central_bank_meeting",
+      "title": "ECB Interest Rate Decision",
+      "description": "European Central Bank monetary policy decision and press conference",
+      "date": "2025-12-11",
+      "time": "13:45",
+      "timezone": "Europe/Frankfurt",
+      "currency": "EUR",
+      "region": "Eurozone",
+      "importance": "critical",
+      "centralBank": {
+        "code": "ECB",
+        "name": "European Central Bank",
+        "currency": "EUR",
+        "region": "Eurozone"
+      },
+      "source": "European Central Bank",
+      "tags": ["ecb", "rates", "policy"]
+    },
+    {
+      "id": "ECB-2026-01",
+      "eventType": "central_bank_meeting",
+      "title": "ECB Interest Rate Decision",
+      "description": "European Central Bank monetary policy decision and press conference",
+      "date": "2026-01-22",
+      "time": "13:45",
+      "timezone": "Europe/Frankfurt",
+      "currency": "EUR",
+      "region": "Eurozone",
+      "importance": "critical",
+      "centralBank": {
+        "code": "ECB",
+        "name": "European Central Bank",
+        "currency": "EUR",
+        "region": "Eurozone"
+      },
+      "expectedRateBp": 0,
+      "impliedProbability": 0.75,
+      "source": "European Central Bank",
+      "tags": ["ecb", "rates", "policy"]
+    },
+    {
+      "id": "ECB-2026-02",
+      "eventType": "central_bank_meeting",
+      "title": "ECB Interest Rate Decision",
+      "description": "European Central Bank monetary policy decision and press conference",
+      "date": "2026-03-05",
+      "time": "13:45",
+      "timezone": "Europe/Frankfurt",
+      "currency": "EUR",
+      "region": "Eurozone",
+      "importance": "critical",
+      "centralBank": {
+        "code": "ECB",
+        "name": "European Central Bank",
+        "currency": "EUR",
+        "region": "Eurozone"
+      },
+      "source": "European Central Bank",
+      "tags": ["ecb", "rates", "policy"]
+    },
+    {
+      "id": "ECB-2026-03",
+      "eventType": "central_bank_meeting",
+      "title": "ECB Interest Rate Decision",
+      "description": "European Central Bank monetary policy decision and press conference",
+      "date": "2026-04-16",
+      "time": "13:45",
+      "timezone": "Europe/Frankfurt",
+      "currency": "EUR",
+      "region": "Eurozone",
+      "importance": "critical",
+      "centralBank": {
+        "code": "ECB",
+        "name": "European Central Bank",
+        "currency": "EUR",
+        "region": "Eurozone"
+      },
+      "source": "European Central Bank",
+      "tags": ["ecb", "rates", "policy"]
+    },
+    {
+      "id": "BOJ-2025-01",
+      "eventType": "central_bank_meeting",
+      "title": "BOJ Monetary Policy Decision",
+      "description": "Bank of Japan monetary policy meeting and outlook report",
+      "date": "2025-01-24",
+      "time": "12:00",
+      "timezone": "Asia/Tokyo",
+      "currency": "JPY",
+      "region": "Japan",
+      "importance": "critical",
+      "centralBank": {
+        "code": "BOJ",
+        "name": "Bank of Japan",
+        "currency": "JPY",
+        "region": "Japan"
+      },
+      "expectedRateBp": 25,
+      "impliedProbability": 0.45,
+      "source": "Bank of Japan",
+      "tags": ["boj", "rates", "policy"]
+    },
+    {
+      "id": "BOJ-2025-02",
+      "eventType": "central_bank_meeting",
+      "title": "BOJ Monetary Policy Decision",
+      "description": "Bank of Japan monetary policy meeting and outlook report",
+      "date": "2025-03-14",
+      "time": "12:00",
+      "timezone": "Asia/Tokyo",
+      "currency": "JPY",
+      "region": "Japan",
+      "importance": "critical",
+      "centralBank": {
+        "code": "BOJ",
+        "name": "Bank of Japan",
+        "currency": "JPY",
+        "region": "Japan"
+      },
+      "source": "Bank of Japan",
+      "tags": ["boj", "rates", "policy"]
+    },
+    {
+      "id": "BOJ-2025-03",
+      "eventType": "central_bank_meeting",
+      "title": "BOJ Monetary Policy Decision",
+      "description": "Bank of Japan monetary policy meeting and outlook report",
+      "date": "2025-04-25",
+      "time": "12:00",
+      "timezone": "Asia/Tokyo",
+      "currency": "JPY",
+      "region": "Japan",
+      "importance": "critical",
+      "centralBank": {
+        "code": "BOJ",
+        "name": "Bank of Japan",
+        "currency": "JPY",
+        "region": "Japan"
+      },
+      "source": "Bank of Japan",
+      "tags": ["boj", "rates", "policy"]
+    },
+    {
+      "id": "BOJ-2025-04",
+      "eventType": "central_bank_meeting",
+      "title": "BOJ Monetary Policy Decision",
+      "description": "Bank of Japan monetary policy meeting and outlook report",
+      "date": "2025-06-13",
+      "time": "12:00",
+      "timezone": "Asia/Tokyo",
+      "currency": "JPY",
+      "region": "Japan",
+      "importance": "critical",
+      "centralBank": {
+        "code": "BOJ",
+        "name": "Bank of Japan",
+        "currency": "JPY",
+        "region": "Japan"
+      },
+      "source": "Bank of Japan",
+      "tags": ["boj", "rates", "policy"]
+    },
+    {
+      "id": "BOJ-2025-05",
+      "eventType": "central_bank_meeting",
+      "title": "BOJ Monetary Policy Decision",
+      "description": "Bank of Japan monetary policy meeting and outlook report",
+      "date": "2025-07-31",
+      "time": "12:00",
+      "timezone": "Asia/Tokyo",
+      "currency": "JPY",
+      "region": "Japan",
+      "importance": "critical",
+      "centralBank": {
+        "code": "BOJ",
+        "name": "Bank of Japan",
+        "currency": "JPY",
+        "region": "Japan"
+      },
+      "source": "Bank of Japan",
+      "tags": ["boj", "rates", "policy"]
+    },
+    {
+      "id": "BOJ-2025-06",
+      "eventType": "central_bank_meeting",
+      "title": "BOJ Monetary Policy Decision",
+      "description": "Bank of Japan monetary policy meeting and outlook report",
+      "date": "2025-09-19",
+      "time": "12:00",
+      "timezone": "Asia/Tokyo",
+      "currency": "JPY",
+      "region": "Japan",
+      "importance": "critical",
+      "centralBank": {
+        "code": "BOJ",
+        "name": "Bank of Japan",
+        "currency": "JPY",
+        "region": "Japan"
+      },
+      "source": "Bank of Japan",
+      "tags": ["boj", "rates", "policy"]
+    },
+    {
+      "id": "BOJ-2025-07",
+      "eventType": "central_bank_meeting",
+      "title": "BOJ Monetary Policy Decision",
+      "description": "Bank of Japan monetary policy meeting and outlook report",
+      "date": "2025-10-31",
+      "time": "12:00",
+      "timezone": "Asia/Tokyo",
+      "currency": "JPY",
+      "region": "Japan",
+      "importance": "critical",
+      "centralBank": {
+        "code": "BOJ",
+        "name": "Bank of Japan",
+        "currency": "JPY",
+        "region": "Japan"
+      },
+      "source": "Bank of Japan",
+      "tags": ["boj", "rates", "policy"]
+    },
+    {
+      "id": "BOJ-2025-08",
+      "eventType": "central_bank_meeting",
+      "title": "BOJ Monetary Policy Decision",
+      "description": "Bank of Japan monetary policy meeting and outlook report",
+      "date": "2025-12-19",
+      "time": "12:00",
+      "timezone": "Asia/Tokyo",
+      "currency": "JPY",
+      "region": "Japan",
+      "importance": "critical",
+      "centralBank": {
+        "code": "BOJ",
+        "name": "Bank of Japan",
+        "currency": "JPY",
+        "region": "Japan"
+      },
+      "source": "Bank of Japan",
+      "tags": ["boj", "rates", "policy"]
+    },
+    {
+      "id": "BOJ-2026-01",
+      "eventType": "central_bank_meeting",
+      "title": "BOJ Monetary Policy Decision",
+      "description": "Bank of Japan monetary policy meeting and outlook report",
+      "date": "2026-01-23",
+      "time": "12:00",
+      "timezone": "Asia/Tokyo",
+      "currency": "JPY",
+      "region": "Japan",
+      "importance": "critical",
+      "centralBank": {
+        "code": "BOJ",
+        "name": "Bank of Japan",
+        "currency": "JPY",
+        "region": "Japan"
+      },
+      "expectedRateBp": 0,
+      "impliedProbability": 0.68,
+      "source": "Bank of Japan",
+      "tags": ["boj", "rates", "policy"]
+    },
+    {
+      "id": "BOJ-2026-02",
+      "eventType": "central_bank_meeting",
+      "title": "BOJ Monetary Policy Decision",
+      "description": "Bank of Japan monetary policy meeting and outlook report",
+      "date": "2026-03-13",
+      "time": "12:00",
+      "timezone": "Asia/Tokyo",
+      "currency": "JPY",
+      "region": "Japan",
+      "importance": "critical",
+      "centralBank": {
+        "code": "BOJ",
+        "name": "Bank of Japan",
+        "currency": "JPY",
+        "region": "Japan"
+      },
+      "source": "Bank of Japan",
+      "tags": ["boj", "rates", "policy"]
+    },
+    {
+      "id": "BOE-2025-01",
+      "eventType": "central_bank_meeting",
+      "title": "BOE Interest Rate Decision",
+      "description": "Bank of England Monetary Policy Committee rate decision",
+      "date": "2025-02-06",
+      "time": "12:00",
+      "timezone": "Europe/London",
+      "currency": "GBP",
+      "region": "United Kingdom",
+      "importance": "critical",
+      "centralBank": {
+        "code": "BOE",
+        "name": "Bank of England",
+        "currency": "GBP",
+        "region": "United Kingdom"
+      },
+      "expectedRateBp": -25,
+      "impliedProbability": 0.82,
+      "source": "Bank of England",
+      "tags": ["boe", "rates", "policy"]
+    },
+    {
+      "id": "BOE-2025-02",
+      "eventType": "central_bank_meeting",
+      "title": "BOE Interest Rate Decision",
+      "description": "Bank of England Monetary Policy Committee rate decision",
+      "date": "2025-03-20",
+      "time": "12:00",
+      "timezone": "Europe/London",
+      "currency": "GBP",
+      "region": "United Kingdom",
+      "importance": "critical",
+      "centralBank": {
+        "code": "BOE",
+        "name": "Bank of England",
+        "currency": "GBP",
+        "region": "United Kingdom"
+      },
+      "source": "Bank of England",
+      "tags": ["boe", "rates", "policy"]
+    },
+    {
+      "id": "BOE-2025-03",
+      "eventType": "central_bank_meeting",
+      "title": "BOE Interest Rate Decision",
+      "description": "Bank of England Monetary Policy Committee rate decision",
+      "date": "2025-05-08",
+      "time": "12:00",
+      "timezone": "Europe/London",
+      "currency": "GBP",
+      "region": "United Kingdom",
+      "importance": "critical",
+      "centralBank": {
+        "code": "BOE",
+        "name": "Bank of England",
+        "currency": "GBP",
+        "region": "United Kingdom"
+      },
+      "source": "Bank of England",
+      "tags": ["boe", "rates", "policy"]
+    },
+    {
+      "id": "BOE-2025-04",
+      "eventType": "central_bank_meeting",
+      "title": "BOE Interest Rate Decision",
+      "description": "Bank of England Monetary Policy Committee rate decision",
+      "date": "2025-06-19",
+      "time": "12:00",
+      "timezone": "Europe/London",
+      "currency": "GBP",
+      "region": "United Kingdom",
+      "importance": "critical",
+      "centralBank": {
+        "code": "BOE",
+        "name": "Bank of England",
+        "currency": "GBP",
+        "region": "United Kingdom"
+      },
+      "source": "Bank of England",
+      "tags": ["boe", "rates", "policy"]
+    },
+    {
+      "id": "BOE-2025-05",
+      "eventType": "central_bank_meeting",
+      "title": "BOE Interest Rate Decision",
+      "description": "Bank of England Monetary Policy Committee rate decision",
+      "date": "2025-08-07",
+      "time": "12:00",
+      "timezone": "Europe/London",
+      "currency": "GBP",
+      "region": "United Kingdom",
+      "importance": "critical",
+      "centralBank": {
+        "code": "BOE",
+        "name": "Bank of England",
+        "currency": "GBP",
+        "region": "United Kingdom"
+      },
+      "source": "Bank of England",
+      "tags": ["boe", "rates", "policy"]
+    },
+    {
+      "id": "BOE-2025-06",
+      "eventType": "central_bank_meeting",
+      "title": "BOE Interest Rate Decision",
+      "description": "Bank of England Monetary Policy Committee rate decision",
+      "date": "2025-09-18",
+      "time": "12:00",
+      "timezone": "Europe/London",
+      "currency": "GBP",
+      "region": "United Kingdom",
+      "importance": "critical",
+      "centralBank": {
+        "code": "BOE",
+        "name": "Bank of England",
+        "currency": "GBP",
+        "region": "United Kingdom"
+      },
+      "source": "Bank of England",
+      "tags": ["boe", "rates", "policy"]
+    },
+    {
+      "id": "BOE-2025-07",
+      "eventType": "central_bank_meeting",
+      "title": "BOE Interest Rate Decision",
+      "description": "Bank of England Monetary Policy Committee rate decision",
+      "date": "2025-11-06",
+      "time": "12:00",
+      "timezone": "Europe/London",
+      "currency": "GBP",
+      "region": "United Kingdom",
+      "importance": "critical",
+      "centralBank": {
+        "code": "BOE",
+        "name": "Bank of England",
+        "currency": "GBP",
+        "region": "United Kingdom"
+      },
+      "source": "Bank of England",
+      "tags": ["boe", "rates", "policy"]
+    },
+    {
+      "id": "BOE-2025-08",
+      "eventType": "central_bank_meeting",
+      "title": "BOE Interest Rate Decision",
+      "description": "Bank of England Monetary Policy Committee rate decision",
+      "date": "2025-12-18",
+      "time": "12:00",
+      "timezone": "Europe/London",
+      "currency": "GBP",
+      "region": "United Kingdom",
+      "importance": "critical",
+      "centralBank": {
+        "code": "BOE",
+        "name": "Bank of England",
+        "currency": "GBP",
+        "region": "United Kingdom"
+      },
+      "source": "Bank of England",
+      "tags": ["boe", "rates", "policy"]
+    },
+    {
+      "id": "BOE-2026-01",
+      "eventType": "central_bank_meeting",
+      "title": "BOE Interest Rate Decision",
+      "description": "Bank of England Monetary Policy Committee rate decision",
+      "date": "2026-02-05",
+      "time": "12:00",
+      "timezone": "Europe/London",
+      "currency": "GBP",
+      "region": "United Kingdom",
+      "importance": "critical",
+      "centralBank": {
+        "code": "BOE",
+        "name": "Bank of England",
+        "currency": "GBP",
+        "region": "United Kingdom"
+      },
+      "expectedRateBp": 0,
+      "impliedProbability": 0.72,
+      "source": "Bank of England",
+      "tags": ["boe", "rates", "policy"]
+    },
+    {
+      "id": "BOE-2026-02",
+      "eventType": "central_bank_meeting",
+      "title": "BOE Interest Rate Decision",
+      "description": "Bank of England Monetary Policy Committee rate decision",
+      "date": "2026-03-19",
+      "time": "12:00",
+      "timezone": "Europe/London",
+      "currency": "GBP",
+      "region": "United Kingdom",
+      "importance": "critical",
+      "centralBank": {
+        "code": "BOE",
+        "name": "Bank of England",
+        "currency": "GBP",
+        "region": "United Kingdom"
+      },
+      "source": "Bank of England",
+      "tags": ["boe", "rates", "policy"]
+    },
+    {
+      "id": "SNB-2025-01",
+      "eventType": "central_bank_meeting",
+      "title": "SNB Monetary Policy Assessment",
+      "description": "Swiss National Bank quarterly monetary policy assessment",
+      "date": "2025-03-20",
+      "time": "09:30",
+      "timezone": "Europe/Zurich",
+      "currency": "CHF",
+      "region": "Switzerland",
+      "importance": "high",
+      "centralBank": {
+        "code": "SNB",
+        "name": "Swiss National Bank",
+        "currency": "CHF",
+        "region": "Switzerland"
+      },
+      "source": "Swiss National Bank",
+      "tags": ["snb", "rates", "policy"]
+    },
+    {
+      "id": "SNB-2025-02",
+      "eventType": "central_bank_meeting",
+      "title": "SNB Monetary Policy Assessment",
+      "description": "Swiss National Bank quarterly monetary policy assessment",
+      "date": "2025-06-19",
+      "time": "09:30",
+      "timezone": "Europe/Zurich",
+      "currency": "CHF",
+      "region": "Switzerland",
+      "importance": "high",
+      "centralBank": {
+        "code": "SNB",
+        "name": "Swiss National Bank",
+        "currency": "CHF",
+        "region": "Switzerland"
+      },
+      "source": "Swiss National Bank",
+      "tags": ["snb", "rates", "policy"]
+    },
+    {
+      "id": "SNB-2025-03",
+      "eventType": "central_bank_meeting",
+      "title": "SNB Monetary Policy Assessment",
+      "description": "Swiss National Bank quarterly monetary policy assessment",
+      "date": "2025-09-25",
+      "time": "09:30",
+      "timezone": "Europe/Zurich",
+      "currency": "CHF",
+      "region": "Switzerland",
+      "importance": "high",
+      "centralBank": {
+        "code": "SNB",
+        "name": "Swiss National Bank",
+        "currency": "CHF",
+        "region": "Switzerland"
+      },
+      "source": "Swiss National Bank",
+      "tags": ["snb", "rates", "policy"]
+    },
+    {
+      "id": "SNB-2025-04",
+      "eventType": "central_bank_meeting",
+      "title": "SNB Monetary Policy Assessment",
+      "description": "Swiss National Bank quarterly monetary policy assessment",
+      "date": "2025-12-11",
+      "time": "09:30",
+      "timezone": "Europe/Zurich",
+      "currency": "CHF",
+      "region": "Switzerland",
+      "importance": "high",
+      "centralBank": {
+        "code": "SNB",
+        "name": "Swiss National Bank",
+        "currency": "CHF",
+        "region": "Switzerland"
+      },
+      "source": "Swiss National Bank",
+      "tags": ["snb", "rates", "policy"]
+    },
+    {
+      "id": "RBA-2025-01",
+      "eventType": "central_bank_meeting",
+      "title": "RBA Interest Rate Decision",
+      "description": "Reserve Bank of Australia monetary policy decision",
+      "date": "2025-02-18",
+      "time": "14:30",
+      "timezone": "Australia/Sydney",
+      "currency": "AUD",
+      "region": "Australia",
+      "importance": "high",
+      "centralBank": {
+        "code": "RBA",
+        "name": "Reserve Bank of Australia",
+        "currency": "AUD",
+        "region": "Australia"
+      },
+      "source": "Reserve Bank of Australia",
+      "tags": ["rba", "rates", "policy"]
+    },
+    {
+      "id": "RBA-2025-02",
+      "eventType": "central_bank_meeting",
+      "title": "RBA Interest Rate Decision",
+      "description": "Reserve Bank of Australia monetary policy decision",
+      "date": "2025-04-01",
+      "time": "14:30",
+      "timezone": "Australia/Sydney",
+      "currency": "AUD",
+      "region": "Australia",
+      "importance": "high",
+      "centralBank": {
+        "code": "RBA",
+        "name": "Reserve Bank of Australia",
+        "currency": "AUD",
+        "region": "Australia"
+      },
+      "source": "Reserve Bank of Australia",
+      "tags": ["rba", "rates", "policy"]
+    },
+    {
+      "id": "RBA-2025-03",
+      "eventType": "central_bank_meeting",
+      "title": "RBA Interest Rate Decision",
+      "description": "Reserve Bank of Australia monetary policy decision",
+      "date": "2025-05-20",
+      "time": "14:30",
+      "timezone": "Australia/Sydney",
+      "currency": "AUD",
+      "region": "Australia",
+      "importance": "high",
+      "centralBank": {
+        "code": "RBA",
+        "name": "Reserve Bank of Australia",
+        "currency": "AUD",
+        "region": "Australia"
+      },
+      "source": "Reserve Bank of Australia",
+      "tags": ["rba", "rates", "policy"]
+    },
+    {
+      "id": "RBA-2025-04",
+      "eventType": "central_bank_meeting",
+      "title": "RBA Interest Rate Decision",
+      "description": "Reserve Bank of Australia monetary policy decision",
+      "date": "2025-07-08",
+      "time": "14:30",
+      "timezone": "Australia/Sydney",
+      "currency": "AUD",
+      "region": "Australia",
+      "importance": "high",
+      "centralBank": {
+        "code": "RBA",
+        "name": "Reserve Bank of Australia",
+        "currency": "AUD",
+        "region": "Australia"
+      },
+      "source": "Reserve Bank of Australia",
+      "tags": ["rba", "rates", "policy"]
+    },
+    {
+      "id": "RBA-2025-05",
+      "eventType": "central_bank_meeting",
+      "title": "RBA Interest Rate Decision",
+      "description": "Reserve Bank of Australia monetary policy decision",
+      "date": "2025-08-12",
+      "time": "14:30",
+      "timezone": "Australia/Sydney",
+      "currency": "AUD",
+      "region": "Australia",
+      "importance": "high",
+      "centralBank": {
+        "code": "RBA",
+        "name": "Reserve Bank of Australia",
+        "currency": "AUD",
+        "region": "Australia"
+      },
+      "source": "Reserve Bank of Australia",
+      "tags": ["rba", "rates", "policy"]
+    },
+    {
+      "id": "RBA-2025-06",
+      "eventType": "central_bank_meeting",
+      "title": "RBA Interest Rate Decision",
+      "description": "Reserve Bank of Australia monetary policy decision",
+      "date": "2025-09-30",
+      "time": "14:30",
+      "timezone": "Australia/Sydney",
+      "currency": "AUD",
+      "region": "Australia",
+      "importance": "high",
+      "centralBank": {
+        "code": "RBA",
+        "name": "Reserve Bank of Australia",
+        "currency": "AUD",
+        "region": "Australia"
+      },
+      "source": "Reserve Bank of Australia",
+      "tags": ["rba", "rates", "policy"]
+    },
+    {
+      "id": "RBA-2025-07",
+      "eventType": "central_bank_meeting",
+      "title": "RBA Interest Rate Decision",
+      "description": "Reserve Bank of Australia monetary policy decision",
+      "date": "2025-11-04",
+      "time": "14:30",
+      "timezone": "Australia/Sydney",
+      "currency": "AUD",
+      "region": "Australia",
+      "importance": "high",
+      "centralBank": {
+        "code": "RBA",
+        "name": "Reserve Bank of Australia",
+        "currency": "AUD",
+        "region": "Australia"
+      },
+      "source": "Reserve Bank of Australia",
+      "tags": ["rba", "rates", "policy"]
+    },
+    {
+      "id": "RBA-2025-08",
+      "eventType": "central_bank_meeting",
+      "title": "RBA Interest Rate Decision",
+      "description": "Reserve Bank of Australia monetary policy decision",
+      "date": "2025-12-09",
+      "time": "14:30",
+      "timezone": "Australia/Sydney",
+      "currency": "AUD",
+      "region": "Australia",
+      "importance": "high",
+      "centralBank": {
+        "code": "RBA",
+        "name": "Reserve Bank of Australia",
+        "currency": "AUD",
+        "region": "Australia"
+      },
+      "source": "Reserve Bank of Australia",
+      "tags": ["rba", "rates", "policy"]
+    },
+    {
+      "id": "BOC-2025-01",
+      "eventType": "central_bank_meeting",
+      "title": "BOC Interest Rate Decision",
+      "description": "Bank of Canada interest rate decision and monetary policy report",
+      "date": "2025-01-29",
+      "time": "10:00",
+      "timezone": "America/Toronto",
+      "currency": "CAD",
+      "region": "Canada",
+      "importance": "high",
+      "centralBank": {
+        "code": "BOC",
+        "name": "Bank of Canada",
+        "currency": "CAD",
+        "region": "Canada"
+      },
+      "source": "Bank of Canada",
+      "tags": ["boc", "rates", "policy"]
+    },
+    {
+      "id": "BOC-2025-02",
+      "eventType": "central_bank_meeting",
+      "title": "BOC Interest Rate Decision",
+      "description": "Bank of Canada interest rate decision and monetary policy report",
+      "date": "2025-03-12",
+      "time": "10:00",
+      "timezone": "America/Toronto",
+      "currency": "CAD",
+      "region": "Canada",
+      "importance": "high",
+      "centralBank": {
+        "code": "BOC",
+        "name": "Bank of Canada",
+        "currency": "CAD",
+        "region": "Canada"
+      },
+      "source": "Bank of Canada",
+      "tags": ["boc", "rates", "policy"]
+    },
+    {
+      "id": "BOC-2025-03",
+      "eventType": "central_bank_meeting",
+      "title": "BOC Interest Rate Decision",
+      "description": "Bank of Canada interest rate decision and monetary policy report",
+      "date": "2025-04-16",
+      "time": "10:00",
+      "timezone": "America/Toronto",
+      "currency": "CAD",
+      "region": "Canada",
+      "importance": "high",
+      "centralBank": {
+        "code": "BOC",
+        "name": "Bank of Canada",
+        "currency": "CAD",
+        "region": "Canada"
+      },
+      "source": "Bank of Canada",
+      "tags": ["boc", "rates", "policy"]
+    },
+    {
+      "id": "BOC-2025-04",
+      "eventType": "central_bank_meeting",
+      "title": "BOC Interest Rate Decision",
+      "description": "Bank of Canada interest rate decision and monetary policy report",
+      "date": "2025-06-04",
+      "time": "10:00",
+      "timezone": "America/Toronto",
+      "currency": "CAD",
+      "region": "Canada",
+      "importance": "high",
+      "centralBank": {
+        "code": "BOC",
+        "name": "Bank of Canada",
+        "currency": "CAD",
+        "region": "Canada"
+      },
+      "source": "Bank of Canada",
+      "tags": ["boc", "rates", "policy"]
+    },
+    {
+      "id": "BOC-2025-05",
+      "eventType": "central_bank_meeting",
+      "title": "BOC Interest Rate Decision",
+      "description": "Bank of Canada interest rate decision and monetary policy report",
+      "date": "2025-07-16",
+      "time": "10:00",
+      "timezone": "America/Toronto",
+      "currency": "CAD",
+      "region": "Canada",
+      "importance": "high",
+      "centralBank": {
+        "code": "BOC",
+        "name": "Bank of Canada",
+        "currency": "CAD",
+        "region": "Canada"
+      },
+      "source": "Bank of Canada",
+      "tags": ["boc", "rates", "policy"]
+    },
+    {
+      "id": "BOC-2025-06",
+      "eventType": "central_bank_meeting",
+      "title": "BOC Interest Rate Decision",
+      "description": "Bank of Canada interest rate decision and monetary policy report",
+      "date": "2025-09-03",
+      "time": "10:00",
+      "timezone": "America/Toronto",
+      "currency": "CAD",
+      "region": "Canada",
+      "importance": "high",
+      "centralBank": {
+        "code": "BOC",
+        "name": "Bank of Canada",
+        "currency": "CAD",
+        "region": "Canada"
+      },
+      "source": "Bank of Canada",
+      "tags": ["boc", "rates", "policy"]
+    },
+    {
+      "id": "BOC-2025-07",
+      "eventType": "central_bank_meeting",
+      "title": "BOC Interest Rate Decision",
+      "description": "Bank of Canada interest rate decision and monetary policy report",
+      "date": "2025-10-22",
+      "time": "10:00",
+      "timezone": "America/Toronto",
+      "currency": "CAD",
+      "region": "Canada",
+      "importance": "high",
+      "centralBank": {
+        "code": "BOC",
+        "name": "Bank of Canada",
+        "currency": "CAD",
+        "region": "Canada"
+      },
+      "source": "Bank of Canada",
+      "tags": ["boc", "rates", "policy"]
+    },
+    {
+      "id": "BOC-2025-08",
+      "eventType": "central_bank_meeting",
+      "title": "BOC Interest Rate Decision",
+      "description": "Bank of Canada interest rate decision and monetary policy report",
+      "date": "2025-12-10",
+      "time": "10:00",
+      "timezone": "America/Toronto",
+      "currency": "CAD",
+      "region": "Canada",
+      "importance": "high",
+      "centralBank": {
+        "code": "BOC",
+        "name": "Bank of Canada",
+        "currency": "CAD",
+        "region": "Canada"
+      },
+      "source": "Bank of Canada",
+      "tags": ["boc", "rates", "policy"]
+    }
+  ]
+}

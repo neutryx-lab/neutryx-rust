@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  FpML 5.x Party Definitions
+  These parties are referenced by href in trade documents
+-->
+<parties xmlns="http://www.fpml.org/FpML-5/confirmation"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://www.fpml.org/FpML-5/confirmation fpml-main-5-12.xsd">
+
+  <!-- Internal Legal Entities -->
+  <party id="FB_NA">
+    <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">549300EXAMPLE0001NA</partyId>
+    <partyName>FrictionalBank N.A.</partyName>
+    <country>US</country>
+  </party>
+
+  <party id="FB_EUROPE">
+    <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">549300EXAMPLE0002EU</partyId>
+    <partyName>FrictionalBank Europe GmbH</partyName>
+    <country>DE</country>
+  </party>
+
+  <party id="FB_UK">
+    <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">549300EXAMPLE0003UK</partyId>
+    <partyName>FrictionalBank UK Limited</partyName>
+    <country>GB</country>
+  </party>
+
+  <party id="FB_JAPAN">
+    <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">549300EXAMPLE0004JP</partyId>
+    <partyName>FrictionalBank Japan K.K.</partyName>
+    <country>JP</country>
+  </party>
+
+  <!-- Counterparties -->
+  <party id="GOLDMAN">
+    <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">W22LROWP2IHZNBB6K528</partyId>
+    <partyName>Goldman Sachs International</partyName>
+    <country>US</country>
+  </party>
+
+  <party id="JPMORGAN">
+    <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">7H6GLXDRUGQFU57RNE97</partyId>
+    <partyName>JPMorgan Chase Bank, N.A.</partyName>
+    <country>US</country>
+  </party>
+
+  <party id="MORGAN_STANLEY">
+    <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">4PQUHN3JPFGFNF3BB653</partyId>
+    <partyName>Morgan Stanley &amp; Co. International plc</partyName>
+    <country>US</country>
+  </party>
+
+  <party id="BARCLAYS">
+    <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">G5GSEF7VJP5I7OUK5573</partyId>
+    <partyName>Barclays Bank PLC</partyName>
+    <country>GB</country>
+  </party>
+
+  <party id="DEUTSCHE">
+    <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">7LTWFZYICNSX8D621K86</partyId>
+    <partyName>Deutsche Bank AG</partyName>
+    <country>DE</country>
+  </party>
+
+  <party id="BNP">
+    <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">R0MUWSFPU8MPRO8K5P83</partyId>
+    <partyName>BNP Paribas SA</partyName>
+    <country>FR</country>
+  </party>
+
+  <party id="HSBC">
+    <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">MP6I5ZYZBEU3UXPYFY54</partyId>
+    <partyName>HSBC Bank plc</partyName>
+    <country>GB</country>
+  </party>
+
+  <party id="CITI">
+    <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">E57ODZWZ7FF32TWEFA76</partyId>
+    <partyName>Citibank, N.A.</partyName>
+    <country>US</country>
+  </party>
+
+  <party id="UBS">
+    <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">BFM8T61CT2L1QCEMIK50</partyId>
+    <partyName>UBS AG</partyName>
+    <country>CH</country>
+  </party>
+
+  <party id="NOMURA">
+    <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">DGQCSV2PHVF7I2743539</partyId>
+    <partyName>Nomura International plc</partyName>
+    <country>JP</country>
+  </party>
+
+  <party id="SOCGEN">
+    <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">O2RNE8IBXP4R0TD8PU41</partyId>
+    <partyName>Société Générale SA</partyName>
+    <country>FR</country>
+  </party>
+
+</parties>

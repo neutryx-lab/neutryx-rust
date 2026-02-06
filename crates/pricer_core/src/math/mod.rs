@@ -15,7 +15,9 @@
 //! - `optimisers`: Optimisation algorithms (Nelder-Mead, L-BFGS)
 //! - `fitting`: Curve fitting and regression analysis
 //! - `mesh`: Grid generation for numerical methods
+//! - `formulas`: Closed-form pricing formulas (Black-Scholes, Bachelier, SABR)
 //! - `linalg`: Linear algebra operations (requires `linalg` feature)
+//! - `rng`: Random number generation (requires `rng` feature)
 
 // Allow standard mathematical single-letter variable names (a, b, c, x, y, etc.)
 // which are conventional in numerical computing and interpolation algorithms.
@@ -25,6 +27,7 @@
 pub mod calculus;
 pub mod distributions;
 pub mod fitting;
+pub mod formulas;
 pub mod integrators;
 pub mod interpolators;
 pub mod mesh;
@@ -36,3 +39,6 @@ pub mod utilities;
 
 #[cfg(feature = "linalg")]
 pub mod linalg;
+
+#[cfg(feature = "rng")]
+pub mod rng;

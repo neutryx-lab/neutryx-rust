@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  FpML 5.12 Interest Rate Cap
+  USD 5Y Cap @ 5.00% on SOFR
+-->
+<dataDocument xmlns="http://www.fpml.org/FpML-5/confirmation"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://www.fpml.org/FpML-5/confirmation fpml-main-5-12.xsd"
+              fpmlVersion="5-12">
+  <trade>
+    <tradeHeader>
+      <partyTradeIdentifier>
+        <partyReference href="FB_NA"/>
+        <tradeId tradeIdScheme="http://www.frictionalbank.com/trade-id">T10003-01</tradeId>
+      </partyTradeIdentifier>
+      <partyTradeIdentifier>
+        <partyReference href="MORGAN_STANLEY"/>
+        <tradeId tradeIdScheme="http://www.morganstanley.com/trade-id">MS-2024-CAP-98765</tradeId>
+      </partyTradeIdentifier>
+      <tradeDate>2024-07-01</tradeDate>
+      <book>RATES_NA</book>
+    </tradeHeader>
+    <capFloor>
+      <buyerPartyReference href="FB_NA"/>
+      <sellerPartyReference href="MORGAN_STANLEY"/>
+      <capFloorStream>
+        <payerPartyReference href="MORGAN_STANLEY"/>
+        <receiverPartyReference href="FB_NA"/>
+        <calculationPeriodDates id="capCalcPeriods">
+          <effectiveDate>
+            <unadjustedDate>2024-07-03</unadjustedDate>
+            <dateAdjustments>
+              <businessDayConvention>MODFOLLOWING</businessDayConvention>
+              <businessCenters>
+                <businessCenter>USNY</businessCenter>
+              </businessCenters>
+            </dateAdjustments>
+          </effectiveDate>
+          <terminationDate>
+            <unadjustedDate>2029-07-03</unadjustedDate>
+            <dateAdjustments>
+              <businessDayConvention>MODFOLLOWING</businessDayConvention>
+              <businessCenters>
+                <businessCenter>USNY</businessCenter>
+              </businessCenters>
+            </dateAdjustments>
+          </terminationDate>
+          <calculationPeriodDatesAdjustments>
+            <businessDayConvention>MODFOLLOWING</businessDayConvention>
+            <businessCenters>
+              <businessCenter>USNY</businessCenter>
+            </businessCenters>
+          </calculationPeriodDatesAdjustments>
+          <calculationPeriodFrequency>
+            <periodMultiplier>3</periodMultiplier>
+            <period>M</period>
+            <rollConvention>3</rollConvention>
+          </calculationPeriodFrequency>
+        </calculationPeriodDates>
+        <paymentDates>
+          <calculationPeriodDatesReference href="capCalcPeriods"/>
+          <paymentFrequency>
+            <periodMultiplier>3</periodMultiplier>
+            <period>M</period>
+          </paymentFrequency>
+          <payRelativeTo>CalculationPeriodEndDate</payRelativeTo>
+          <paymentDatesAdjustments>
+            <businessDayConvention>MODFOLLOWING</businessDayConvention>
+            <businessCenters>
+              <businessCenter>USNY</businessCenter>
+            </businessCenters>
+          </paymentDatesAdjustments>
+        </paymentDates>
+        <resetDates id="capResetDates">
+          <calculationPeriodDatesReference href="capCalcPeriods"/>
+          <resetRelativeTo>CalculationPeriodStartDate</resetRelativeTo>
+          <fixingDates>
+            <periodMultiplier>-2</periodMultiplier>
+            <period>D</period>
+            <dayType>Business</dayType>
+            <businessDayConvention>NONE</businessDayConvention>
+            <businessCenters>
+              <businessCenter>USNY</businessCenter>
+            </businessCenters>
+            <dateRelativeTo href="capResetDates"/>
+          </fixingDates>
+          <resetFrequency>
+            <periodMultiplier>3</periodMultiplier>
+            <period>M</period>
+          </resetFrequency>
+          <resetDatesAdjustments>
+            <businessDayConvention>MODFOLLOWING</businessDayConvention>
+            <businessCenters>
+              <businessCenter>USNY</businessCenter>
+            </businessCenters>
+          </resetDatesAdjustments>
+        </resetDates>
+        <calculationPeriodAmount>
+          <calculation>
+            <notionalSchedule>
+              <notionalStepSchedule>
+                <initialValue>30000000</initialValue>
+                <currency>USD</currency>
+              </notionalStepSchedule>
+            </notionalSchedule>
+            <floatingRateCalculation>
+              <floatingRateIndex>USD-SOFR-COMPOUND</floatingRateIndex>
+              <capRateSchedule>
+                <initialValue>0.0500</initialValue>
+              </capRateSchedule>
+            </floatingRateCalculation>
+            <dayCountFraction>ACT/360</dayCountFraction>
+          </calculation>
+        </calculationPeriodAmount>
+      </capFloorStream>
+      <premium>
+        <payerPartyReference href="FB_NA"/>
+        <receiverPartyReference href="MORGAN_STANLEY"/>
+        <paymentAmount>
+          <currency>USD</currency>
+          <amount>425000</amount>
+        </paymentAmount>
+        <paymentDate>
+          <unadjustedDate>2024-07-05</unadjustedDate>
+          <dateAdjustments>
+            <businessDayConvention>FOLLOWING</businessDayConvention>
+            <businessCenters>
+              <businessCenter>USNY</businessCenter>
+            </businessCenters>
+          </dateAdjustments>
+        </paymentDate>
+      </premium>
+    </capFloor>
+  </trade>
+  <party id="FB_NA">
+    <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">549300EXAMPLE0001NA</partyId>
+    <partyName>FrictionalBank N.A.</partyName>
+  </party>
+  <party id="MORGAN_STANLEY">
+    <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">4PQUHN3JPFGFNF3BB653</partyId>
+    <partyName>Morgan Stanley &amp; Co. International plc</partyName>
+  </party>
+</dataDocument>

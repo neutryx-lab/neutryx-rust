@@ -10,7 +10,7 @@
 
 ### 主要なギャップ
 1. **Index-Curve Definition**: Index→Instrument集合のマッピングが未実装
-2. **infra_master統合**: `BootstrapInstrument`が`infra_master::trade`と非統合
+2. **infra_domain統合**: `BootstrapInstrument`が`infra_domain::trade`と非統合
 3. **結果キャッシュ**: LRUベースの構築済みカーブキャッシュが未実装
 4. **設定シリアライゼーション**: serde対応が部分的
 
@@ -28,7 +28,7 @@
 | ギャップレベル | **HIGH** - 新規実装が必要 |
 
 **既存コード:**
-- `infra_master::trade::index.rs` に `IndexType`, `RateIndex` が定義済み
+- `infra_domain::trade::index.rs` に `IndexType`, `RateIndex` が定義済み
 - `RateIndex`: SOFR, Euribor3M, Euribor6M, Tonar, Sonia, Tibor3M, Tibor6M, Estr
 
 **ギャップ:**
@@ -38,7 +38,7 @@
 
 **統合ポイント:**
 - `SwapConvention::usd_sofr()`, `SwapConvention::eur_euribor_6m()` 等の既存コンベンション
-- `infra_master::trade::convention` モジュール
+- `infra_domain::trade::convention` モジュール
 
 **設計考慮事項:**
 ```rust
@@ -103,7 +103,7 @@ pub enum BootstrapInstrument<T: Float> {
 }
 ```
 
-**infra_master側（[swap.rs](crates/infra_master/src/trade/convention/swap.rs)）:**
+**infra_domain側（[swap.rs](crates/infra_domain/src/trade/convention/swap.rs)）:**
 ```rust
 pub struct SwapConvention {
     pub fixed_leg: SwapLegConvention,
@@ -114,12 +114,12 @@ pub struct SwapConvention {
 ```
 
 **ギャップ:**
-- `BootstrapInstrument`は`infra_master`のコンベンションを使用していない
+- `BootstrapInstrument`は`infra_domain`のコンベンションを使用していない
 - キャッシュフロー展開（`Cashflow`型）との連携がない
 - Futures のConvexity調整がハードコード
 
 **必要な作業:**
-- `infra_master::trade::instrument_def` → `BootstrapInstrument` 変換器
+- `infra_domain::trade::instrument_def` → `BootstrapInstrument` 変換器
 - `SwapConvention`からキャッシュフロースケジュール生成
 - `InstrumentExpander`との統合
 
@@ -290,7 +290,7 @@ pub enum BootstrapError {
 | ギャップレベル | **MEDIUM** - serde対応の追加が必要 |
 
 **既存コード:**
-- `infra_master`の多くの型に`#[cfg_attr(feature = "serde", derive(...))]`あり
+- `infra_domain`の多くの型に`#[cfg_attr(feature = "serde", derive(...))]`あり
 - `GenericBootstrapConfig`にはserde deriveなし
 - `BootstrapInterpolation`にもserde deriveなし
 
@@ -313,7 +313,7 @@ pub enum BootstrapError {
 - 既存ユーザーへの影響最小
 
 **デメリット:**
-- `infra_master`との統合にAdapterパターンが必要
+- `infra_domain`との統合にAdapterパターンが必要
 - クレート境界を跨ぐ設計が複雑化
 
 **新規ファイル:**
@@ -321,7 +321,7 @@ pub enum BootstrapError {
 crates/pricer_models/src/market/calibration/bootstrapping/
 ├── definition.rs    # CurveDefinition, InstrumentSpec
 ├── result_cache.rs  # CurveResultCache (LRU)
-└── adapter.rs       # infra_master → BootstrapInstrument 変換
+└── adapter.rs       # infra_domain → BootstrapInstrument 変換
 ```
 
 ### Option B: 新規サブモジュール作成
@@ -338,7 +338,7 @@ crates/pricer_models/src/market/calibration/bootstrapping/
 
 ### Option C: Adapterクレート新設
 
-**概要:** `adapter_curve` クレートを新設し、`infra_master` ↔ `pricer_models` の橋渡し
+**概要:** `adapter_curve` クレートを新設し、`infra_domain` ↔ `pricer_models` の橋渡し
 
 **メリット:**
 - A-I-P-S依存ルールに完全準拠
@@ -377,7 +377,7 @@ crates/pricer_models/src/market/calibration/bootstrapping/
    - serde対応追加
 
 2. **Phase 2: 統合層**
-   - `infra_master` → `BootstrapInstrument` アダプター
+   - `infra_domain` → `BootstrapInstrument` アダプター
    - `SwapConvention`からのキャッシュフロー展開
 
 3. **Phase 3: キャッシュ実装**
@@ -409,6 +409,6 @@ crates/pricer_models/src/market/calibration/bootstrapping/
 | [bootstrapping/cache.rs](crates/pricer_models/src/market/calibration/bootstrapping/cache.rs) | Req 7 | 新規必要 |
 | [bootstrapping/error.rs](crates/pricer_models/src/market/calibration/bootstrapping/error.rs) | Req 9 | 完了 |
 | [market/curves/traits.rs](crates/pricer_models/src/market/curves/traits.rs) | Req 5 | 軽微拡張 |
-| [infra_master/trade/index.rs](crates/infra_master/src/trade/index.rs) | Req 1 | 参照 |
-| [infra_master/trade/convention/swap.rs](crates/infra_master/src/trade/convention/swap.rs) | Req 1, 3 | 参照 |
-| [infra_master/trade/cashflow.rs](crates/infra_master/src/trade/cashflow.rs) | Req 3 | 参照 |
+| [infra_domain/trade/index.rs](crates/infra_domain/src/trade/index.rs) | Req 1 | 参照 |
+| [infra_domain/trade/convention/swap.rs](crates/infra_domain/src/trade/convention/swap.rs) | Req 1, 3 | 参照 |
+| [infra_domain/trade/cashflow.rs](crates/infra_domain/src/trade/cashflow.rs) | Req 3 | 参照 |

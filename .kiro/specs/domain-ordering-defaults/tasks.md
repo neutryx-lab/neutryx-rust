@@ -6,7 +6,7 @@
 
 ---
 
-- [x] 1. Frequency enum の並び順変更（infra_master）
+- [x] 1. Frequency enum の並び順変更（infra_domain）
 - [x] 1.1 (P) Frequency variant 順序を高頻度→低頻度に変更
   - 現在の `Annual → SemiAnnual → Quarterly → Monthly → Weekly → Daily` を逆順に並べ替え
   - `Daily → Weekly → Monthly → Quarterly → SemiAnnual → Annual` の順序で variant を定義
@@ -23,7 +23,7 @@
 ---
 
 - [x] 2. Frequency enum 同期（pricer_models）
-- [x] 2.1 pricer_models の Frequency を infra_master と同期
+- [x] 2.1 pricer_models の Frequency を infra_domain と同期
   - `pricer_models::market::calibration::bootstrapping::instrument::Frequency` の variant 順序を変更
   - `Annual → SemiAnnual → Quarterly → Monthly → Daily` を `Daily → Monthly → Quarterly → SemiAnnual → Annual` に変更
   - 注意: pricer_models 版には `Weekly` が存在しない
@@ -99,7 +99,7 @@
 
 - [x] 7. 回帰テスト・検証
 - [x] 7.1 ワークスペース全体テスト実行
-  - `cargo test -p infra_master` で 207 テスト通過を確認
+  - `cargo test -p infra_domain` で 207 テスト通過を確認
   - `cargo test -p pricer_models` で関連テスト通過を確認
   - 注: clippy は既存の無関係な警告あり（本変更とは無関係）
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 7.3_

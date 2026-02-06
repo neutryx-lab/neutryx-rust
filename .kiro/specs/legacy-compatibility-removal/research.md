@@ -6,7 +6,7 @@
 - **Key Findings**:
   - `pricer_core::types` の re-export を使用するファイルは12件（主に pricer_risk）
   - `pricer_models` の重複型は内部使用のみ（外部参照なし）
-  - `infra_master::convention` は使用箇所ゼロで安全に削除可能
+  - `infra_domain::convention` は使用箇所ゼロで安全に削除可能
 
 ## Research Log
 
@@ -17,7 +17,7 @@
   - 12ファイルが `pricer_core::types::{Date, Currency, DayCounter, BusinessDayConvention}` を使用
   - 主な依存先: `pricer_risk` (7件), `service_cli` (1件), `adapter_feeds` (1件)
   - `pricer_models::provider.rs` が唯一の L2 内依存
-- **Implications**: 各ファイルで import 文を `infra_master::` に更新必要
+- **Implications**: 各ファイルで import 文を `infra_domain::` に更新必要
 
 ### date_utils 重複型の調査
 - **Context**: `BusinessDayAdjustment` と `DayCount` の使用状況
@@ -25,14 +25,14 @@
 - **Findings**:
   - `bootstrapping::mod.rs` で re-export されているが、外部から参照なし
   - `DateCalculator` 構造体内での内部使用のみ
-  - `infra_master::DayCounter` と機能的に同等
+  - `infra_domain::DayCounter` と機能的に同等
 - **Implications**: 削除は API 互換性に影響なし
 
 ### CurrencyPair 命名衝突の調査
 - **Context**: 2つの同名型の共存状況
 - **Sources Consulted**: コードベース検索、型定義の比較
 - **Findings**:
-  - `infra_master::trade::instrument_def::fx::CurrencyPair`: spot rate なし、instrument 定義用
+  - `infra_domain::trade::instrument_def::fx::CurrencyPair`: spot rate なし、instrument 定義用
   - `pricer_core::types::currency_pair::CurrencyPair<T>`: spot rate あり、AD 対応 pricing 用
   - `pricer_core` 版は外部で使用されていない（re-export されていたが削除対象）
 - **Implications**: `pricer_core` 版を `FxRate<T>` にリネームして役割を明確化
@@ -50,8 +50,8 @@
 - **Context**: 依存関係を考慮した安全な削除順序が必要
 - **Alternatives Considered**:
   1. 下流から上流（pricer_risk → pricer_core）
-  2. 上流から下流（infra_master → pricer_core → pricer_models）
-- **Selected Approach**: 上流から下流（infra_master から開始）
+  2. 上流から下流（infra_domain → pricer_core → pricer_models）
+- **Selected Approach**: 上流から下流（infra_domain から開始）
 - **Rationale**:
   - 依存される側を先に修正することで、各段階でビルドが通る
   - deprecated モジュール削除 → re-export 削除 → 依存コード更新の順
@@ -67,7 +67,7 @@
 - **Selected Approach**: `FxRate<T>`
 - **Rationale**:
   - 簡潔で用途が明確
-  - `infra_master::CurrencyPair` との区別が容易
+  - `infra_domain::CurrencyPair` との区別が容易
   - AD 対応のジェネリック型であることが名前から推測可能
 - **Trade-offs**: 「Rate」は通常スカラー値を想起させるが、ペア情報も含む型名としては許容範囲
 

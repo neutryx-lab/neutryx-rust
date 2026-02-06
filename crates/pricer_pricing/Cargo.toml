@@ -8,15 +8,16 @@ repository.workspace = true
 authors.workspace = true
 
 [dependencies]
-# Phase 4: Optional L1/L2 integration
-# pricer_core with default-features=false to avoid num-dual (use enzyme-mode)
-pricer_core = { path = "../pricer_core", optional = true, default-features = false }
+# pricer_core for rng module (always enabled) and optional L1/L2 integration
+pricer_core = { path = "../pricer_core", default-features = false, features = ["rng"] }
 pricer_models = { path = "../pricer_models", optional = true, features = ["rates"] }
 # Infra layer for shared types (Currency, Date, Direction) when l1l2-integration is enabled
-infra_master = { path = "../infra_master", optional = true }
+infra_domain = { path = "../infra_domain", optional = true, features = ["serde"] }
+# Infra configuration for config-driven pricing (always enabled for BumpSizes)
+infra_config = { path = "../infra_config" }
 
-# LLVM 18 bindings for Enzyme support
-llvm-sys = { version = "180", features = ["prefer-dynamic"], optional = true }
+# Enum dispatch for static trait forwarding
+enum_dispatch.workspace = true
 
 # Basic numeric traits
 num-traits.workspace = true
@@ -27,16 +28,15 @@ chrono = { workspace = true, optional = true }
 # Error handling
 thiserror.workspace = true
 
-# Random number generation (Phase 3.1a: RNG infrastructure)
-rand.workspace = true
-rand_distr.workspace = true
-
 # Parallel processing (Phase 4: Thread-local workspace)
 rayon.workspace = true
 
 # Serialization (optional)
 serde = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
+
+# Aligned memory allocation (optional, for SIMD optimisation)
+aligned-vec = { version = "0.5", optional = true }
 
 [dev-dependencies]
 approx.workspace = true
@@ -56,6 +56,11 @@ harness = false
 name = "engine_iai"
 harness = false
 
+[[bench]]
+name = "kernel_batch"
+harness = false
+required-features = ["l1l2-integration"]
+
 [build-dependencies]
 # Future: For linking Enzyme LLVM plugin
 # cc = "1.0"
@@ -63,11 +68,15 @@ harness = false
 [features]
 default = []
 # Phase 4: L1/L2 integration for smoothing functions, YieldCurve, Instrument
-l1l2-integration = ["dep:pricer_core", "dep:pricer_models", "dep:infra_master", "dep:chrono"]
-# Enzyme AD feature for actual Enzyme integration (works with or without l1l2-integration)
-enzyme-ad = ["dep:llvm-sys"]
+l1l2-integration = ["pricer_core/serde", "pricer_core/equity", "dep:pricer_models", "dep:infra_domain", "dep:chrono"]
 # Serialization support for GreeksResult
 serde = ["dep:serde", "dep:serde_json"]
+# Enzyme automatic differentiation (future: LLVM plugin integration)
+enzyme-ad = []
+# SIMD-aligned memory buffers for AVX-512 optimisation
+simd-aligned = ["dep:aligned-vec"]
+# VolCube support (requires volcube feature in pricer_models)
+volcube = ["l1l2-integration", "pricer_models/volcube"]
 
 [lints]
 workspace = true

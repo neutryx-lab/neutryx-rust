@@ -312,6 +312,7 @@ impl CurveShifter {
     ///
     /// For flat curves, this creates new flat curves at the shifted level.
     /// For non-flat curves, the shift is applied at a reference tenor (1Y).
+    #[allow(deprecated)] // Using CurveSet internal access for curve manipulation
     pub fn apply_shift(curves: &CurveSet<f64>, shift: CurveShiftType) -> CurveSet<f64> {
         let mut shifted = CurveSet::new();
         let max_tenor = 30.0; // Standard max tenor for interpolation
@@ -338,6 +339,7 @@ impl CurveShifter {
     }
 
     /// Applies a shift to a specific curve in the set.
+    #[allow(deprecated)] // Using CurveSet internal access for curve manipulation
     pub fn apply_shift_to_curve(
         curves: &CurveSet<f64>,
         curve_name: CurveName,

@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Purpose**: 本機能は`infra_master`クレート内にCounterParty（取引相手先）とネッティングセット情報を管理するための包括的なモジュール構造を提供する。
+**Purpose**: 本機能は`infra_domain`クレート内にCounterParty（取引相手先）とネッティングセット情報を管理するための包括的なモジュール構造を提供する。
 
 **Users**: XVA計算担当者、リスク管理者、コラテラル管理担当者が、取引相手先のクレジットリスク評価、担保管理、Exposure計算の基礎データとして使用する。
 
@@ -27,19 +27,19 @@
 ### Existing Architecture Analysis
 
 **現行実装**:
-- `crates/infra_master/src/counterparty.rs`: `CsaTerms`, `NettingSetConfig`を単一ファイルで定義
+- `crates/infra_domain/src/counterparty.rs`: `CsaTerms`, `NettingSetConfig`を単一ファイルで定義
 - `crates/pricer_risk/src/portfolio/`: `CounterpartyId`, `NettingSetId`, `CreditRating`, `CreditParams`, `Counterparty`を独自定義
 
 **技術的負債**:
-- ID型が`pricer_risk`と`infra_master`で重複
-- CSA条件が`infra_master::CsaTerms`と`pricer_risk::CollateralAgreement`で二重定義
+- ID型が`pricer_risk`と`infra_domain`で重複
+- CSA条件が`infra_domain::CsaTerms`と`pricer_risk::CollateralAgreement`で二重定義
 - クレジットパラメータが`pricer_risk`にのみ存在
 
 ### Architecture Pattern & Boundary Map
 
 ```mermaid
 graph TB
-    subgraph infra_master["infra_master (Foundation)"]
+    subgraph infra_domain["infra_domain (Foundation)"]
         subgraph counterparty["counterparty/"]
             mod_rs["mod.rs"]
             counterparty_rs["counterparty.rs"]
@@ -1026,12 +1026,12 @@ classDiagram
 - `pricer_risk`互換: `CreditParams`メソッド結果比較
 
 ### Backward Compatibility Tests
-- 既存の`infra_master::CsaTerms`パスからのアクセス
-- 既存の`infra_master::NettingSetConfig`パスからのアクセス
+- 既存の`infra_domain::CsaTerms`パスからのアクセス
+- 既存の`infra_domain::NettingSetConfig`パスからのアクセス
 
 ## Migration Strategy
 
-### Phase 1: infra_master構築（本仕様）
+### Phase 1: infra_domain構築（本仕様）
 
 1. `counterparty/`フォルダ作成
 2. 既存`counterparty.rs`の型を新モジュールに移行
@@ -1040,8 +1040,8 @@ classDiagram
 
 ### Phase 2: pricer_risk統合（将来）
 
-1. `pricer_risk::portfolio::ids`を`infra_master`からの再エクスポートに変更
-2. `pricer_risk::portfolio::counterparty::CreditRating`を`infra_master`から再エクスポート
+1. `pricer_risk::portfolio::ids`を`infra_domain`からの再エクスポートに変更
+2. `pricer_risk::portfolio::counterparty::CreditRating`を`infra_domain`から再エクスポート
 3. デモ・テストコードの更新
 
 ```mermaid
@@ -1052,7 +1052,7 @@ flowchart LR
     end
 
     subgraph Phase2["Phase 2 (将来)"]
-        D[pricer_risk ID型] --> E[infra_master 再エクスポート]
+        D[pricer_risk ID型] --> E[infra_domain 再エクスポート]
     end
 
     Phase1 --> Phase2

@@ -1,0 +1,23 @@
+{
+  "description": "5Y Payer IRS, simplified pricing",
+  "input": {
+    "notional": 10000000.0,
+    "fixed_rate": 0.03,
+    "tenor_years": 5.0,
+    "market_rate": 0.025,
+    "payment_frequency": "annual"
+  },
+  "output": {
+    "price": 225000.0,
+    "greeks": {
+      "dv01": 4500.0,
+      "gamma": 0.0,
+      "vega": 0.0,
+      "theta": 0.0,
+      "rho": 4500.0
+    }
+  },
+  "source": "demo_gui::handlers::irs_price (simplified)",
+  "generated_at": "2026-01-25T00:00:00Z",
+  "notes": "Simplified IRS pricing formula. Future: delegate to pricer_pricing::generic_pricer::GenericPricer"
+}

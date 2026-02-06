@@ -3,6 +3,8 @@
 //! Provides endpoints for Portfolio-level computation graph extraction
 //! with shared node deduplication and subgraph filtering.
 //!
+//! Note: This module is only used when `demo` feature is disabled.
+#![allow(dead_code)]
 //! # Endpoints
 //!
 //! - `GET /api/v1/portfolio/graph` - Extract Portfolio computation graph
@@ -17,18 +19,21 @@
 
 use std::{
     collections::HashMap,
+    fs,
+    path::Path,
     sync::Arc,
     time::{Duration, Instant},
 };
 
+use adapter_fpml::FpmlParser;
 use axum::{
     extract::{Query, State},
     Json,
 };
+use infra_domain::trade::{Trade as FpmlTrade, TradeType};
 use pricer_pricing::graph::{
     ComputationGraph, PortfolioComputationGraph, PortfolioGraphExtractable, PortfolioGraphExtractor,
 };
-use pricer_risk::portfolio::{Portfolio, SamplePortfolioBuilder, TradeId};
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 
@@ -112,7 +117,13 @@ pub struct TradeSummaryDto {
     pub instrument_type: String,
     pub currency: String,
     pub notional: f64,
-    pub expiry: f64,
+    /// Maturity date (last cashflow date) as ISO 8601 string, e.g.,
+    /// "2025-07-15"
+    pub maturity: String,
+    /// Counterparty name
+    pub counterparty: String,
+    /// Trading book
+    pub book: String,
 }
 
 /// Trade list response
@@ -137,8 +148,8 @@ pub struct TradeStatisticsDto {
 
 /// Shared application state for graph handlers
 pub struct GraphAppState {
-    /// Cached sample portfolio
-    pub portfolio: Portfolio,
+    /// `FpML` trades loaded from files
+    pub trades: Vec<FpmlTrade>,
     /// Graph cache with TTL
     pub graph_cache: RwLock<GraphCache>,
     /// Cache TTL in seconds
@@ -225,32 +236,88 @@ impl GraphCache {
 }
 
 impl GraphAppState {
-    /// Create a new app state with a sample portfolio
+    /// Create a new app state by loading `FpML` trades from the demo directory.
     ///
     /// # Errors
     ///
-    /// Returns `ServerError::Internal` if the sample portfolio fails to build.
-    pub fn new_with_sample(trade_count: usize, cache_ttl_secs: u64) -> Result<Self, ServerError> {
-        let portfolio = SamplePortfolioBuilder::new()
-            .with_trade_count(trade_count)
-            .build()
-            .map_err(|e| {
-                ServerError::Internal(format!("Failed to create sample portfolio: {e}"))
-            })?;
+    /// Returns `ServerError::Internal` if loading `FpML` files fails.
+    pub fn new_with_sample(_trade_count: usize, cache_ttl_secs: u64) -> Result<Self, ServerError> {
+        let trades = load_fpml_trades()
+            .map_err(|e| ServerError::Internal(format!("Failed to load FpML trades: {e}")))?;
+
+        tracing::info!(
+            "Loaded {} FpML trades from demo/data/trades/fpml/",
+            trades.len()
+        );
 
         Ok(Self {
-            portfolio,
+            trades,
             graph_cache: RwLock::new(GraphCache::new(cache_ttl_secs)),
             cache_ttl_secs,
         })
     }
 
-    /// Create with default settings (50 trades, 5 second cache)
+    /// Create with default settings (loads all `FpML` files, 5 second cache)
     ///
     /// # Errors
     ///
-    /// Returns `ServerError::Internal` if the sample portfolio fails to build.
-    pub fn default_sample() -> Result<Self, ServerError> { Self::new_with_sample(50, 5) }
+    /// Returns `ServerError::Internal` if loading `FpML` files fails.
+    pub fn default_sample() -> Result<Self, ServerError> { Self::new_with_sample(0, 5) }
+
+    /// Returns the number of loaded trades.
+    pub fn trade_count(&self) -> usize { self.trades.len() }
+}
+
+/// Load all `FpML` trades from the demo/data/trades/fpml/ directory.
+fn load_fpml_trades() -> Result<Vec<FpmlTrade>, String> {
+    let base_path = Path::new("demo/data/trades/fpml");
+
+    if !base_path.exists() {
+        return Err(format!("FpML directory not found: {}", base_path.display()));
+    }
+
+    let mut trades = Vec::new();
+
+    // Directories to scan for FpML files
+    let subdirs = ["rates", "fx", "equity", "credit", "commodity"];
+
+    for subdir in &subdirs {
+        let dir_path = base_path.join(subdir);
+        if !dir_path.exists() {
+            continue;
+        }
+
+        if let Ok(entries) = fs::read_dir(&dir_path) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.extension().is_some_and(|ext| ext == "xml") {
+                    match load_fpml_file(&path) {
+                        Ok(trade) => {
+                            tracing::debug!("Loaded FpML trade: {} from {:?}", trade.id, path);
+                            trades.push(trade);
+                        }
+                        Err(e) => {
+                            tracing::warn!("Failed to parse FpML file {:?}: {}", path, e);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if trades.is_empty() {
+        return Err("No FpML trades found".to_string());
+    }
+
+    Ok(trades)
+}
+
+/// Load a single `FpML` file.
+fn load_fpml_file(path: &Path) -> Result<FpmlTrade, String> {
+    let xml = fs::read_to_string(path)
+        .map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
+
+    FpmlParser::parse(&xml).map_err(|e| format!("Failed to parse {}: {}", path.display(), e))
 }
 
 // ============================================================================
@@ -304,7 +371,7 @@ pub async fn get_portfolio_graph(
 
     // Extract graph with timeout protection
     let graph = tokio::time::timeout(Duration::from_millis(timeout_ms), async {
-        extract_portfolio_graph(&state.portfolio, trade_ids.as_deref())
+        extract_fpml_portfolio_graph(&state.trades, trade_ids.as_deref())
     })
     .await
     .map_err(|_| ServerError::Timeout("Graph extraction timed out (>500ms)".to_string()))?
@@ -367,26 +434,16 @@ pub async fn get_portfolio_trades(
     State(state): State<Arc<GraphAppState>>,
     Query(params): Query<TradeListQueryParams>,
 ) -> Result<Json<TradeListResponse>, ServerError> {
-    let portfolio = &state.portfolio;
+    let all_trades = &state.trades;
 
     let mut trades: Vec<TradeSummaryDto> = Vec::new();
     let mut by_instrument_type: HashMap<String, usize> = HashMap::new();
     let mut by_currency: HashMap<String, usize> = HashMap::new();
     let mut total_notional = 0.0;
 
-    for trade in portfolio.trades() {
-        let instrument_type = if trade.is_vanilla() {
-            "vanilla"
-        } else if trade.is_forward() {
-            "forward"
-        } else if trade.is_swap() {
-            "swap"
-        } else {
-            "other"
-        }
-        .to_string();
-
-        let currency = format!("{:?}", trade.currency());
+    for trade in all_trades {
+        let instrument_type = get_instrument_type_name(&trade.trade_type);
+        let (currency, notional, maturity, counterparty, book) = get_trade_details(trade);
 
         // Apply filters
         if let Some(ref filter_type) = params.instrument_type {
@@ -396,7 +453,7 @@ pub async fn get_portfolio_trades(
                     .entry(instrument_type.clone())
                     .or_insert(0) += 1;
                 *by_currency.entry(currency.clone()).or_insert(0) += 1;
-                total_notional += trade.notional();
+                total_notional += notional;
                 continue;
             }
         }
@@ -406,7 +463,7 @@ pub async fn get_portfolio_trades(
                     .entry(instrument_type.clone())
                     .or_insert(0) += 1;
                 *by_currency.entry(currency.clone()).or_insert(0) += 1;
-                total_notional += trade.notional();
+                total_notional += notional;
                 continue;
             }
         }
@@ -416,20 +473,22 @@ pub async fn get_portfolio_trades(
             .entry(instrument_type.clone())
             .or_insert(0) += 1;
         *by_currency.entry(currency.clone()).or_insert(0) += 1;
-        total_notional += trade.notional();
+        total_notional += notional;
 
         trades.push(TradeSummaryDto {
-            id: trade.id().to_string(),
+            id: trade.id.to_string(),
             instrument_type,
             currency,
-            notional: trade.notional(),
-            expiry: trade.expiry(),
+            notional,
+            maturity,
+            counterparty,
+            book,
         });
     }
 
     Ok(Json(TradeListResponse {
         statistics: TradeStatisticsDto {
-            total_count: portfolio.trade_count(),
+            total_count: all_trades.len(),
             by_instrument_type,
             by_currency,
             total_notional,
@@ -438,13 +497,89 @@ pub async fn get_portfolio_trades(
     }))
 }
 
+/// Get a human-readable instrument type name from `TradeType`.
+fn get_instrument_type_name(trade_type: &TradeType) -> String {
+    match trade_type {
+        TradeType::Deposit => "Deposit".to_string(),
+        TradeType::Fra => "FRA".to_string(),
+        TradeType::Futures => "Futures".to_string(),
+        TradeType::Swap => "IRS".to_string(),
+        TradeType::Ois => "OIS".to_string(),
+        TradeType::BasisSwap => "Basis Swap".to_string(),
+        TradeType::CrossCurrencySwap => "XCCY Swap".to_string(),
+        TradeType::Swaption { .. } => "Swaption".to_string(),
+        TradeType::Bond { .. } => "Bond".to_string(),
+        TradeType::CapFloor => "Cap/Floor".to_string(),
+        TradeType::FxSpot => "FX Spot".to_string(),
+        TradeType::FxForward => "FX Forward".to_string(),
+        TradeType::FxSwap => "FX Swap".to_string(),
+        TradeType::FxOption { .. } => "FX Option".to_string(),
+        TradeType::FxBarrierOption { .. } => "FX Barrier".to_string(),
+        TradeType::EquityForward { .. } => "Equity Forward".to_string(),
+        TradeType::EquityOption { .. } => "Equity Option".to_string(),
+        TradeType::EquitySwap { .. } => "Equity Swap".to_string(),
+        TradeType::CreditDefaultSwap { .. } => "CDS".to_string(),
+        TradeType::CreditDefaultSwapIndex { .. } => "CDX".to_string(),
+        TradeType::CreditDefaultSwapOption { .. } => "CDS Option".to_string(),
+        TradeType::CommodityForward { .. } => "Commodity Fwd".to_string(),
+        TradeType::CommoditySwap { .. } => "Commodity Swap".to_string(),
+        TradeType::CommodityOption { .. } => "Commodity Opt".to_string(),
+        TradeType::Generic => "Generic".to_string(),
+    }
+}
+
+/// Extract currency, notional, maturity date, counterparty, and book from an
+/// `FpML` trade.
+fn get_trade_details(trade: &FpmlTrade) -> (String, f64, String, String, String) {
+    // Get currency and notional from first leg
+    let (currency, notional) = trade
+        .first_leg()
+        .map(|leg| {
+            let curr = format!("{:?}", leg.currency);
+            let notl = leg
+                .cashflows()
+                .next()
+                .map(|cf| cf.notional.abs())
+                .unwrap_or(0.0);
+            (curr, notl)
+        })
+        .unwrap_or_else(|| ("USD".to_string(), 0.0));
+
+    // Get maturity as the last cashflow payment date (formatted as ISO 8601)
+    let maturity = trade
+        .all_cashflows()
+        .map(|cf| cf.payment_date)
+        .max()
+        .map(|last_date| last_date.to_string())
+        .unwrap_or_else(|| "N/A".to_string());
+
+    // Get counterparty from metadata
+    let counterparty = trade
+        .metadata
+        .counterparty
+        .as_ref()
+        .map(|cp| cp.as_str().to_string())
+        .unwrap_or_else(|| "Unknown".to_string());
+
+    // Get book from metadata
+    let book = trade
+        .metadata
+        .book
+        .as_ref()
+        .map(|b| b.as_str().to_string())
+        .unwrap_or_else(|| "Unassigned".to_string());
+
+    (currency, notional, maturity, counterparty, book)
+}
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
 
-/// Extract portfolio graph, optionally filtered to specific trades
-fn extract_portfolio_graph(
-    portfolio: &Portfolio,
+/// Extract portfolio graph from `FpML` trades, optionally filtered to specific
+/// trades
+fn extract_fpml_portfolio_graph(
+    trades: &[FpmlTrade],
     trade_ids: Option<&[String]>,
 ) -> Result<PortfolioComputationGraph, pricer_pricing::graph::GraphError> {
     let extractor = PortfolioGraphExtractor::new()
@@ -455,20 +590,13 @@ fn extract_portfolio_graph(
     let mut trade_graphs: HashMap<String, ComputationGraph> = HashMap::new();
 
     // Get all trade IDs
-    let all_trade_ids: Vec<String> = portfolio
-        .trade_ids()
-        .map(std::string::ToString::to_string)
-        .collect();
+    let all_trade_ids: Vec<String> = trades.iter().map(|t| t.id.to_string()).collect();
 
-    // For each trade, create a mock graph (since we don't have real pricing
-    // context) In production, this would come from the actual pricing engine
-    for trade_id in &all_trade_ids {
-        let trade = portfolio.trade(&TradeId::new(trade_id));
-        if let Some(trade) = trade {
-            // Create a simplified graph for the trade
-            let graph = create_trade_graph(trade_id, trade);
-            trade_graphs.insert(trade_id.clone(), graph);
-        }
+    // For each trade, create a graph based on its type
+    for trade in trades {
+        let trade_id = trade.id.to_string();
+        let graph = create_fpml_trade_graph(&trade_id, trade);
+        trade_graphs.insert(trade_id, graph);
     }
 
     // Extract the full portfolio graph
@@ -482,21 +610,39 @@ fn extract_portfolio_graph(
     }
 }
 
-/// Create a simplified computation graph for a trade
-pub(crate) fn create_trade_graph(
-    trade_id: &str,
-    trade: &pricer_risk::portfolio::Trade,
-) -> ComputationGraph {
+/// Create a simplified computation graph for an `FpML` trade
+fn create_fpml_trade_graph(trade_id: &str, trade: &FpmlTrade) -> ComputationGraph {
     use pricer_pricing::graph::{GraphBuilder, GraphEdge, GraphNode, NodeGroup, NodeType};
 
     let mut builder = GraphBuilder::with_capacity(10, 15);
 
     // Determine sensitivity params based on trade type
-    let params = if trade.is_vanilla() {
-        vec!["spot", "vol", "rate", "strike"]
-    } else {
-        // Forward and other trade types use spot and rate
-        vec!["spot", "rate"]
+    let params = match &trade.trade_type {
+        TradeType::Swap | TradeType::Ois | TradeType::BasisSwap => {
+            vec!["rate", "spread"]
+        }
+        TradeType::Swaption { .. } => {
+            vec!["rate", "vol", "strike"]
+        }
+        TradeType::CapFloor => {
+            vec!["rate", "vol", "strike"]
+        }
+        TradeType::FxForward | TradeType::FxSpot | TradeType::FxSwap => {
+            vec!["spot", "rate_dom", "rate_for"]
+        }
+        TradeType::FxOption { .. } | TradeType::FxBarrierOption { .. } => {
+            vec!["spot", "vol", "rate_dom", "rate_for", "strike"]
+        }
+        TradeType::EquityOption { .. } => {
+            vec!["spot", "vol", "rate", "div", "strike"]
+        }
+        TradeType::CreditDefaultSwap { .. } | TradeType::CreditDefaultSwapIndex { .. } => {
+            vec!["spread", "recovery", "rate"]
+        }
+        TradeType::CommoditySwap { .. } => {
+            vec!["price", "rate"]
+        }
+        _ => vec!["rate"],
     };
 
     // Create input nodes
@@ -637,10 +783,13 @@ mod tests {
     }
 
     #[test]
-    fn test_app_state_creation() {
-        let state = GraphAppState::new_with_sample(10, 5);
-        assert!(state.is_ok());
-        let state = state.unwrap();
-        assert_eq!(state.portfolio.trade_count(), 10);
+    fn test_instrument_type_name() {
+        assert_eq!(get_instrument_type_name(&TradeType::Swap), "IRS");
+        assert_eq!(get_instrument_type_name(&TradeType::Ois), "OIS");
+        assert_eq!(
+            get_instrument_type_name(&TradeType::FxForward),
+            "FX Forward"
+        );
+        assert_eq!(get_instrument_type_name(&TradeType::CapFloor), "Cap/Floor");
     }
 }

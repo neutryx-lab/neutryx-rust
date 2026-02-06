@@ -13,7 +13,7 @@
 
 ### Frequency Enum 並び順調査
 - **Context**: 要件1で高頻度→低頻度の順序を要求
-- **Sources Consulted**: `crates/infra_master/src/time/frequency.rs`
+- **Sources Consulted**: `crates/infra_domain/src/time/frequency.rs`
 - **Findings**:
   - 現在: `Annual → SemiAnnual → Quarterly → Monthly → Weekly → Daily`（低頻度→高頻度）
   - 要求: `Daily → Weekly → Monthly → Quarterly → SemiAnnual → Annual`（高頻度→低頻度）
@@ -23,7 +23,7 @@
 
 ### RateType Enum 並び順調査
 - **Context**: 要件2でアセットクラス別グループ化を要求
-- **Sources Consulted**: `crates/infra_master/src/market/rate_type.rs`
+- **Sources Consulted**: `crates/infra_domain/src/market/rate_type.rs`
 - **Findings**:
   - 現在: `Deposit → Fra → Futures → Swap → Ois → BasisSwap → FxSpot → FxForward → Vol`
   - 既にアセットクラス別にグループ化されている（金利商品 → FX → ボラティリティ）
@@ -85,9 +85,9 @@
 - **Follow-up**: ドキュメントで新 variant 追加位置をガイド
 
 ### Decision: pricer_models::Frequency 重複解消
-- **Context**: `infra_master` と `pricer_models` に別々の `Frequency` 定義
+- **Context**: `infra_domain` と `pricer_models` に別々の `Frequency` 定義
 - **Alternatives Considered**:
-  1. `pricer_models` の定義を削除し `infra_master` を re-export
+  1. `pricer_models` の定義を削除し `infra_domain` を re-export
   2. 両方を維持し順序を同期
 - **Selected Approach**: オプション2（両方維持、順序同期）
 - **Rationale**: `pricer_models::Frequency` は bootstrapping 専用で `Weekly` が欠落。用途が異なる。

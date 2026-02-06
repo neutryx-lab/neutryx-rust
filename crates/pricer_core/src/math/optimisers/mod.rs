@@ -25,6 +25,11 @@
 //! - [`OptimisationResult`]: Contains optimal parameters, value, and metadata
 //! - [`OptimisationError`]: Error types for optimisation failures
 //!
+//! ## Feature Flags
+//!
+//! - `external-numerics`: Uses battle-tested external implementations (argmin)
+//!   instead of internal implementations. Enabled by default.
+//!
 //! ## Example
 //!
 //! ```ignore
@@ -51,8 +56,18 @@ mod lbfgs;
 mod nelder_mead;
 mod result;
 
+// External implementations (argmin wrappers)
+#[cfg(feature = "external-numerics")]
+mod external;
+
 pub use config::{LbfgsConfig, NelderMeadConfig, OptimisationConfig};
 pub use error::OptimisationError;
+// External implementations (available when external-numerics is enabled)
+#[cfg(feature = "external-numerics")]
+pub use external::{
+    minimize_lbfgs_external, minimize_lbfgs_numerical_external, minimize_nelder_mead_external,
+};
+// Internal implementations (fallback when external-numerics is disabled)
 pub use lbfgs::{minimize_lbfgs, minimize_lbfgs_numerical};
 pub use nelder_mead::minimize_nelder_mead;
 pub use result::OptimisationResult;

@@ -31,9 +31,20 @@
 pub use nalgebra::{Cholesky, DMatrix, DVector, RealField, LU, QR, SVD};
 
 mod error;
+#[cfg(feature = "sparse")]
+pub mod sparse;
+#[cfg(feature = "sparse")]
+mod sparse_strategy;
+mod strategy;
 mod wrappers;
 
 pub use error::LinearAlgebraError;
+#[cfg(feature = "sparse")]
+pub use sparse_strategy::SparseLUStrategy;
+pub use strategy::{
+    forward_substitution, lower_triangular_inverse, LUStrategy, LinearSolveStrategy,
+    LowerTriangularStrategy,
+};
 pub use wrappers::{
     cholesky, cholesky_solve, determinant, frobenius_norm, inverse, lu_decompose, lu_solve,
     mat_mat_mul, mat_vec_mul, qr_decompose, qr_solve, svd_solve, trace,
@@ -143,7 +154,6 @@ pub fn ones<T: RealField + Copy>(nrows: usize, ncols: usize) -> Matrix<T> {
 /// * `diag` - Diagonal elements
 #[must_use]
 pub fn diagonal<T: RealField + Copy>(diag: &[T]) -> Matrix<T> {
-    let n = diag.len();
     let v = DVector::from_column_slice(diag);
     DMatrix::from_diagonal(&v)
 }

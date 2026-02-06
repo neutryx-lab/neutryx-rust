@@ -2,7 +2,7 @@
 
 ## Introduction
 
-本仕様は、`infra_master::trade::instrument`モジュールを拡充し、Tier-1銀行のトレーディングデスクで使用される定型金融商品を全資産クラス（Rates、FX、Equity、Credit、Commodity）にわたって包括的に定義することを目的とする。
+本仕様は、`infra_domain::trade::instrument`モジュールを拡充し、Tier-1銀行のトレーディングデスクで使用される定型金融商品を全資産クラス（Rates、FX、Equity、Credit、Commodity）にわたって包括的に定義することを目的とする。
 
 各商品定義は、既存の`Trade` → `Vec<Leg>` → `Vec<Cashflow>`（CF展開）アーキテクチャと統合され、価格計算・リスク管理パイプラインで利用可能となる。
 
@@ -85,7 +85,7 @@
 4. When エキゾチック商品のCF展開が要求された場合, the instrument module shall 経路依存ペイオフを表現する拡張`Payoff`バリアントを使用する。
 5. If CF展開に必要な市場慣行データが不足している場合, then the instrument module shall `InstrumentError`でエラー内容を明示する。
 6. The instrument module shall CF展開の結果が既存の`Trade::all_cashflows()`メソッドで正しく列挙されることを保証する。
-7. The instrument module shall `infra_master::convention`モジュールの市場慣行定義を活用してCF展開を行う。
+7. The instrument module shall `infra_domain::convention`モジュールの市場慣行定義を活用してCF展開を行う。
 
 ### Requirement 7: 商品定義のデータ構造
 

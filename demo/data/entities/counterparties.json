@@ -1,0 +1,261 @@
+{
+  "metadata": {
+    "description": "Counterparty master data with credit ratings and risk limits",
+    "schema_version": "2.0",
+    "last_updated": "2026-02-03T00:00:00Z"
+  },
+  "counterparties": [
+    {
+      "id": "CPTY-001",
+      "legal_name": "Goldman Sachs International",
+      "short_name": "Goldman Sachs",
+      "lei": "W22LROWP2IHZNBB6K528",
+      "country": "US",
+      "sector": "Financial",
+      "credit": {
+        "rating_sp": "A+",
+        "rating_moodys": "A1",
+        "rating_fitch": "A+",
+        "pd_1y": 0.0005,
+        "lgd": 0.45
+      },
+      "limits": {
+        "gross_exposure_limit": 100000000,
+        "net_exposure_limit": 50000000,
+        "settlement_limit": 25000000
+      },
+      "status": "Active"
+    },
+    {
+      "id": "CPTY-002",
+      "legal_name": "JPMorgan Chase Bank, N.A.",
+      "short_name": "JP Morgan",
+      "lei": "7H6GLXDRUGQFU57RNE97",
+      "country": "US",
+      "sector": "Financial",
+      "credit": {
+        "rating_sp": "A+",
+        "rating_moodys": "Aa2",
+        "rating_fitch": "AA-",
+        "pd_1y": 0.0003,
+        "lgd": 0.45
+      },
+      "limits": {
+        "gross_exposure_limit": 150000000,
+        "net_exposure_limit": 75000000,
+        "settlement_limit": 40000000
+      },
+      "status": "Active"
+    },
+    {
+      "id": "CPTY-003",
+      "legal_name": "Morgan Stanley & Co. International plc",
+      "short_name": "Morgan Stanley",
+      "lei": "4PQUHN3JPFGFNF3BB653",
+      "country": "US",
+      "sector": "Financial",
+      "credit": {
+        "rating_sp": "A-",
+        "rating_moodys": "A1",
+        "rating_fitch": "A",
+        "pd_1y": 0.0006,
+        "lgd": 0.45
+      },
+      "limits": {
+        "gross_exposure_limit": 80000000,
+        "net_exposure_limit": 40000000,
+        "settlement_limit": 20000000
+      },
+      "status": "Active"
+    },
+    {
+      "id": "CPTY-004",
+      "legal_name": "Barclays Bank PLC",
+      "short_name": "Barclays",
+      "lei": "G5GSEF7VJP5I7OUK5573",
+      "country": "GB",
+      "sector": "Financial",
+      "credit": {
+        "rating_sp": "A",
+        "rating_moodys": "A1",
+        "rating_fitch": "A+",
+        "pd_1y": 0.0005,
+        "lgd": 0.45
+      },
+      "limits": {
+        "gross_exposure_limit": 70000000,
+        "net_exposure_limit": 35000000,
+        "settlement_limit": 18000000
+      },
+      "status": "Active"
+    },
+    {
+      "id": "CPTY-005",
+      "legal_name": "Deutsche Bank AG",
+      "short_name": "Deutsche Bank",
+      "lei": "7LTWFZYICNSX8D621K86",
+      "country": "DE",
+      "sector": "Financial",
+      "credit": {
+        "rating_sp": "A-",
+        "rating_moodys": "A2",
+        "rating_fitch": "A-",
+        "pd_1y": 0.0008,
+        "lgd": 0.45
+      },
+      "limits": {
+        "gross_exposure_limit": 60000000,
+        "net_exposure_limit": 30000000,
+        "settlement_limit": 15000000
+      },
+      "status": "Active"
+    },
+    {
+      "id": "CPTY-006",
+      "legal_name": "BNP Paribas SA",
+      "short_name": "BNP Paribas",
+      "lei": "R0MUWSFPU8MPRO8K5P83",
+      "country": "FR",
+      "sector": "Financial",
+      "credit": {
+        "rating_sp": "A+",
+        "rating_moodys": "Aa3",
+        "rating_fitch": "A+",
+        "pd_1y": 0.0004,
+        "lgd": 0.45
+      },
+      "limits": {
+        "gross_exposure_limit": 90000000,
+        "net_exposure_limit": 45000000,
+        "settlement_limit": 22000000
+      },
+      "status": "Active"
+    },
+    {
+      "id": "CPTY-007",
+      "legal_name": "HSBC Bank plc",
+      "short_name": "HSBC",
+      "lei": "MP6I5ZYZBEU3UXPYFY54",
+      "country": "GB",
+      "sector": "Financial",
+      "credit": {
+        "rating_sp": "A+",
+        "rating_moodys": "A1",
+        "rating_fitch": "A+",
+        "pd_1y": 0.0004,
+        "lgd": 0.45
+      },
+      "limits": {
+        "gross_exposure_limit": 85000000,
+        "net_exposure_limit": 42000000,
+        "settlement_limit": 21000000
+      },
+      "status": "Active"
+    },
+    {
+      "id": "CPTY-008",
+      "legal_name": "Citibank, N.A.",
+      "short_name": "Citi",
+      "lei": "E57ODZWZ7FF32TWEFA76",
+      "country": "US",
+      "sector": "Financial",
+      "credit": {
+        "rating_sp": "A+",
+        "rating_moodys": "Aa3",
+        "rating_fitch": "A+",
+        "pd_1y": 0.0004,
+        "lgd": 0.45
+      },
+      "limits": {
+        "gross_exposure_limit": 100000000,
+        "net_exposure_limit": 50000000,
+        "settlement_limit": 25000000
+      },
+      "status": "Active"
+    },
+    {
+      "id": "CPTY-009",
+      "legal_name": "UBS AG",
+      "short_name": "UBS",
+      "lei": "BFM8T61CT2L1QCEMIK50",
+      "country": "CH",
+      "sector": "Financial",
+      "credit": {
+        "rating_sp": "A+",
+        "rating_moodys": "Aa3",
+        "rating_fitch": "A+",
+        "pd_1y": 0.0004,
+        "lgd": 0.45
+      },
+      "limits": {
+        "gross_exposure_limit": 80000000,
+        "net_exposure_limit": 40000000,
+        "settlement_limit": 20000000
+      },
+      "status": "Active"
+    },
+    {
+      "id": "CPTY-010",
+      "legal_name": "Nomura International plc",
+      "short_name": "Nomura",
+      "lei": "DGQCSV2PHVF7I2743539",
+      "country": "JP",
+      "sector": "Financial",
+      "credit": {
+        "rating_sp": "A-",
+        "rating_moodys": "A3",
+        "rating_fitch": "A-",
+        "pd_1y": 0.0007,
+        "lgd": 0.45
+      },
+      "limits": {
+        "gross_exposure_limit": 50000000,
+        "net_exposure_limit": 25000000,
+        "settlement_limit": 12000000
+      },
+      "status": "Active"
+    },
+    {
+      "id": "CPTY-011",
+      "legal_name": "Société Générale SA",
+      "short_name": "SocGen",
+      "lei": "O2RNE8IBXP4R0TD8PU41",
+      "country": "FR",
+      "sector": "Financial",
+      "credit": {
+        "rating_sp": "A",
+        "rating_moodys": "A1",
+        "rating_fitch": "A",
+        "pd_1y": 0.0005,
+        "lgd": 0.45
+      },
+      "limits": {
+        "gross_exposure_limit": 65000000,
+        "net_exposure_limit": 32000000,
+        "settlement_limit": 16000000
+      },
+      "status": "Active"
+    },
+    {
+      "id": "CPTY-012",
+      "legal_name": "Credit Suisse International",
+      "short_name": "Credit Suisse",
+      "lei": "E58DKGMJYYBER7WJIS47",
+      "country": "CH",
+      "sector": "Financial",
+      "credit": {
+        "rating_sp": "BBB+",
+        "rating_moodys": "Baa1",
+        "rating_fitch": "BBB+",
+        "pd_1y": 0.0015,
+        "lgd": 0.45
+      },
+      "limits": {
+        "gross_exposure_limit": 40000000,
+        "net_exposure_limit": 20000000,
+        "settlement_limit": 10000000
+      },
+      "status": "Active"
+    }
+  ]
+}

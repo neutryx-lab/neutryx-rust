@@ -1,0 +1,12 @@
+# Tree-based pricing configuration (Binomial/Trinomial)
+
+valuation_date = "2026-01-30"
+reporting_currency = "USD"
+pricing_method = "tree"
+market_data_path = "demo/data/input/rates/market_quotes.json"
+trade_data_path = "demo/data/input/demo_portfolio.json"
+parallel_enabled = true
+
+[tree_params]
+num_steps = 200
+tree_type = "binomial"

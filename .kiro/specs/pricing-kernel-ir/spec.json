@@ -1,0 +1,93 @@
+{
+  "feature_name": "pricing-kernel-ir",
+  "created_at": "2026-01-26T20:15:00+09:00",
+  "updated_at": "2026-01-27T12:00:00+09:00",
+  "language": "ja",
+  "phase": "completed",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "ready_for_implementation": true,
+  "implementation_progress": {
+    "phase1_mvp": {
+      "status": "completed",
+      "completed_tasks": [
+        "1.1 AlignedBuffer実装",
+        "1.2 PricingKernel構造体定義",
+        "1.3 CompileError型定義",
+        "2.1 TradeCompilerトレイト定義",
+        "2.2 IndexMapper実装",
+        "3.1 LinearProductsCompiler基本実装",
+        "3.2 IRS固有コンパイルロジック",
+        "3.3 Bond/FRAコンパイルロジック",
+        "4.1 CurveProviderトレイト定義",
+        "4.2 KernelContext実装",
+        "5.1 price_kernel基本実装",
+        "5.2 days_to_yearsヘルパー",
+        "6.1 統合テスト作成",
+        "6.2 AlignedBufferアラインメント検証"
+      ],
+      "pending_tasks": [
+        "3.4 カレンダー・休日調整統合",
+        "4.3 MarketProvider参照実装",
+        "6.3 Enzyme AD互換性検証"
+      ],
+      "test_results": {
+        "pricer_core_ir": "68 tests passed",
+        "pricer_models_compiler": "32 tests passed",
+        "pricer_pricing_kernel": "53 tests passed"
+      }
+    },
+    "phase2_extension": {
+      "status": "completed",
+      "completed_tasks": [
+        "7.1 XCcyCompiler実装",
+        "7.2 コラテラル・ファンディング通貨対応",
+        "8.1 CMSインデックス統合",
+        "9.1 ScriptKernel構造体定義",
+        "9.2 ExoticCompiler（Barrier/Asian）",
+        "9.3 ScriptEngine実装"
+      ],
+      "test_results": {
+        "cms_integration": "4 tests passed"
+      }
+    },
+    "phase3_callable": {
+      "status": "completed",
+      "completed_tasks": [
+        "10.1 CallableKernel構造体定義",
+        "10.2 CallableCompiler実装",
+        "11.1 Forward Pass実装",
+        "11.2 LSMCRegressor実装",
+        "11.3 Backward Pass実装"
+      ],
+      "test_results": {
+        "callable_engine": "23 tests passed",
+        "lsmc": "15 tests passed"
+      }
+    },
+    "phase4_optimization": {
+      "status": "completed",
+      "completed_tasks": [
+        "12.1 バッチ評価ベンチマーク",
+        "12.2 SIMD検証",
+        "12.3 Rayon並列化統合"
+      ],
+      "test_results": {
+        "kernel_total": "137 tests passed",
+        "batch_pricing": "6 tests passed"
+      }
+    }
+  }
+}

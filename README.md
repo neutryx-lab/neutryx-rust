@@ -28,14 +28,14 @@ neutryx-rust/
 │   │
 │   │   # --- I: Infra Layer (Foundation) ---
 │   ├── infra_config/         # System configuration & environment management
-│   ├── infra_master/         # Static master data (Calendars, Currencies, ISINs)
+│   ├── infra_domain/         # Static master data (Calendars, Currencies, ISINs)
 │   ├── infra_store/          # Persistence & State (SQLx, Redis, TimeScale)
 │   │
 │   │   # --- P: Pricer Layer (The Kernel) ---
-│   ├── pricer_core/          # L1: Math, Market Data, Bootstrapping (Stable)
-│   ├── pricer_models/        # L2: Instruments, Stochastic Models & Calibration
-│   ├── pricer_pricing/       # L3: AD Engine (Enzyme) & Monte Carlo Kernel
-│   ├── pricer_risk/          # L4: Risk Analytics, XVA & Portfolio Aggregation
+│   ├── pricer_core/          # L1: Math (smoothing, solvers, integrators), Types, Traits
+│   ├── pricer_models/        # L2: Instruments, Market (curves, surfaces, calibration), Models
+│   ├── pricer_pricing/       # L3: Monte Carlo, Tree Pricing, RNG, Greeks
+│   ├── pricer_risk/          # L4: Portfolio, XVA, Scenarios, Enzyme AD
 │   │
 │   │   # --- S: Service Layer (Output) ---
 │   ├── service_cli/          # Command Line Operations (Batch/Ops)
@@ -49,8 +49,10 @@ neutryx-rust/
 |-------|--------|---------|------|--------|
 | **A**dapter | adapter_* | External data ingestion | Stable | No |
 | **I**nfra | infra_* | Configuration, persistence | Stable | No |
-| **P**ricer | pricer_* | Quantitative computation | Mixed | L3 only |
+| **P**ricer | pricer_* | Quantitative computation | Mixed | L4 only |
 | **S**ervice | service_* | User interfaces | Stable | No |
+
+> **Note**: Enzyme AD has been moved from pricer_pricing (L3) to pricer_risk (L4) for better integration with portfolio-level risk calculations.
 
 ### Dependency Rules
 
@@ -61,10 +63,36 @@ neutryx-rust/
 
 ## 🚀 Quick Start
 
+### Using the Neutryx Facade Crate
+
+The easiest way to use Neutryx is through the unified facade crate:
+
+```toml
+[dependencies]
+neutryx = { path = "." }  # or from crates.io when published
+```
+
+```rust
+use neutryx::prelude::*;
+use neutryx::models::market::YieldCurve;
+
+// Access dates, currencies, and trade definitions
+let date = Date::from_ymd(2024, 1, 15).unwrap();
+let usd = Currency::USD;
+
+// Build yield curves and price derivatives
+// ... see documentation for full examples
+```
+
+**Feature Tiers**:
+- `minimal` — Master data only (dates, currencies, trade definitions)
+- `analytics` — Curve building, models, analytical pricing
+- `full` (default) — Complete pricing and risk functionality
+
 ### Prerequisites
 
-- **Rust**: Stable (for most crates) + Nightly (for pricer_pricing)
-- **LLVM 18**: Required for Enzyme
+- **Rust**: Stable (for most crates) + Nightly (for pricer_risk with enzyme-ad feature)
+- **LLVM 18**: Required for Enzyme AD
 - **Docker**: Recommended for reproducible builds
 
 ### Install Rust
@@ -85,7 +113,7 @@ cargo build --workspace --exclude pricer_pricing
 cargo test --workspace --exclude pricer_pricing
 ```
 
-### Build with Enzyme (pricer_pricing)
+### Build with Enzyme (pricer_risk)
 
 #### Option 1: Docker (Recommended)
 
@@ -106,12 +134,12 @@ docker run -it neutryx-enzyme
 # Verify installation
 ./scripts/verify_enzyme.sh
 
-# Build pricer_pricing with Enzyme
+# Build pricer_risk with Enzyme AD
 export RUSTFLAGS="-C llvm-args=-load=/usr/local/lib/LLVMEnzyme-18.so"
-cargo +nightly build -p pricer_pricing
+cargo +nightly build -p pricer_risk --features enzyme-ad
 
 # Run tests
-cargo +nightly test -p pricer_pricing
+cargo +nightly test -p pricer_risk --features enzyme-ad
 ```
 
 ### CLI Usage
@@ -201,25 +229,25 @@ After startup, open `http://localhost:8080` in your browser.
 - **[System Design Document](docs/design/SDD.md)**: Architecture details
 - **API Docs**: `cargo doc --open` (stable crates)
 
-> **Note**: The `pricer_optimiser` crate (L2.5) was removed in 2026-01. Bootstrapping and market data provider functionality has been consolidated into `pricer_core::market_data`, and calibration engine into `pricer_models::calibration`.
+> **Note**: The `pricer_optimiser` crate (L2.5) was removed in 2026-01. Market data (curves, surfaces, bootstrapping, provider) has been consolidated into `pricer_models::market`, and calibration engine into `pricer_models::market::calibration`. Enzyme AD has been moved from `pricer_pricing` (L3) to `pricer_risk` (L4).
 
 ## 🧪 Testing
 
 ### Unit Tests
 
 ```bash
-# Stable crates
-cargo test --workspace --exclude pricer_pricing
+# Stable crates (most of the workspace)
+cargo test --workspace
 
-# Pricer kernel (requires Enzyme)
-cargo +nightly test -p pricer_pricing
+# With Enzyme AD (requires nightly + LLVM 18)
+cargo +nightly test -p pricer_risk --features enzyme-ad
 ```
 
 ### Verification Tests
 
 ```bash
 # Dual-mode: Enzyme vs num-dual
-cargo +nightly test -p pricer_pricing --test verification
+cargo +nightly test -p pricer_risk --features enzyme-ad --test verification
 ```
 
 ### Benchmarks
@@ -243,33 +271,37 @@ cargo bench
 - **pricer_core**:
   - `num-dual-mode` (default): Verification with dual numbers
   - `enzyme-mode`: Production mode (f64 only)
+  - `linalg`: Linear algebra support (nalgebra wrappers)
 - **pricer_models**:
-  - `equity` (default): Equity models (GBM)
+  - `equity` (default): Equity models (GBM, Heston, SABR)
   - `rates`: Interest rate models (Hull-White, CIR)
   - `credit`: Credit models
-  - `fx`: FX models
+  - `fx`: FX models and calibration
   - `commodity`: Commodity models
   - `exotic`: Exotic derivatives
   - `all`: Enable all asset classes
 - **pricer_pricing**:
-  - `enzyme-ad`: Enable Enzyme automatic differentiation
-  - `num-dual-fallback`: Fallback to num-dual for verification
+  - `l1l2-integration`: Full L1/L2 access for IRS Greeks workflow
+- **pricer_risk**:
+  - `enzyme-ad`: Enable Enzyme automatic differentiation (requires nightly)
 
 ## 🎯 Roadmap
 
-- [x] **Phase 0**: Workspace scaffolding (Completed)
-- [x] **Phase 1**: Foundation (L1) - types, traits, smoothing
+- [x] **Phase 0**: Workspace scaffolding
+- [x] **Phase 1**: Foundation (L1) - types, traits, smoothing, math library
 - [x] **Phase 2**: Business logic (L2) - instruments, stochastic models (Heston, SABR, Hull-White)
-- [x] **Phase 3**: Enzyme integration (L3) - AD bindings, `#[autodiff]` macro, Greeks computation
-- [x] **Phase 4**: Monte Carlo kernel - path-dependent options, checkpointing
-- [x] **Phase 5**: Risk Analytics (L4) - XVA (CVA, DVA, FVA), exposure metrics, scenarios
+- [x] **Phase 3**: Enzyme integration - AD bindings, `#[autodiff]` macro, Greeks computation
+- [x] **Phase 4**: Monte Carlo kernel - path-dependent options, checkpointing, tree pricing
+- [x] **Phase 5**: Risk Analytics (L4) - XVA, exposure metrics, scenarios, Enzyme AD (moved to L4)
 - [x] **Phase 6**: A-I-P-S Architecture - adapters, infra, service layers
-- [x] **Phase 7**: Architecture Refactoring - pricer_optimiser removal, infra_master consolidation
-- [ ] **Phase 8**: Exotic Options - Barriers, Asians, Lookbacks, Digitals
-- [ ] **Phase 9**: Service Layer Enhancement - gRPC, Python bindings expansion
-- [ ] **Phase 10**: Production hardening - docs, benchmarks, CI/CD
+- [x] **Phase 7**: Architecture Refactoring - pricer_optimiser removal, infra_domain consolidation
+- [x] **Phase 8**: Calibration Infrastructure - curve bootstrapping, FX/IR vol surface calibration, SABR
+- [x] **Phase 9**: IndexedMarket Pattern - index-keyed market access, TradeIndexRequirements
+- [ ] **Phase 10**: Exotic Options - Barriers, Asians, Lookbacks, Digitals
+- [ ] **Phase 11**: Service Layer Enhancement - gRPC, Python bindings expansion
+- [ ] **Phase 12**: Production hardening - docs, benchmarks, CI/CD
 
-## 📊 Completed Specifications
+## 📊 Completed Specifications (44 Total)
 
 | Specification | Description | Date |
 |---------------|-------------|------|
@@ -290,8 +322,33 @@ cargo bench
 | advanced-sensitivity-webapp | Advanced sensitivity analysis for web dashboard | 2026-01 |
 | codebase-cleanup-optimisation | Codebase cleanup and optimisation | 2026-01 |
 | portfolio-graph-optimisation | Portfolio Graph REST API and WebSocket handlers | 2026-01 |
-| infra-primitives-migration | Financial primitives migration to infra_master | 2026-01 |
+| infra-primitives-migration | Financial primitives migration to infra_domain | 2026-01 |
 | model-architecture-refactoring | pricer_optimiser removal, consolidation | 2026-01 |
+| counterparty-netting-module | Counterparty and netting set data structures | 2026-01 |
+| financial-time-module | Financial time primitives (calendars, frequencies) | 2026-01 |
+| trade-instrument-module | Trade/Instrument module with CF-expanded architecture | 2026-01 |
+| pricer-core-math-library | Comprehensive math library (distributions, integrators, optimisers) | 2026-01 |
+| codebase-simplification | Code deduplication, API surface minimisation | 2026-01 |
+| standard-instrument-catalogue | Standard instrument definitions (Rates, FX, Equity, Credit, Commodity) | 2026-01 |
+| domain-ordering-defaults | Domain enum ordering and documentation | 2026-01 |
+| portfolio-book-model | Portfolio/Book organisation model with XVA/Exposure/Netting support | 2026-01 |
+| curve-builder-webapp | Curve Builder WebApp with instrument editing | 2026-01 |
+| generic-pricer-engine | Generic Pricer engine with market provider integration | 2026-01 |
+| demo-webapp-pricer | Demo WebApp Pricer with daily accruals display | 2026-01 |
+| volcube-calibration-ui | VolCube/FxVol calibration UI with SABR, 3D surface | 2026-01 |
+| curve-bootstrap-engine | Multi-curve yield curve bootstrapping engine (537 tests) | 2026-01 |
+| legacy-compatibility-removal | Legacy code removal and ID type safety | 2026-01 |
+| rate-index-pricing-integration | RateIndex pricing integration across L1/L2/L3 layers | 2026-01 |
+| fx-vol-surface-calibration | FX curve + vol surface calibration with SABR (139 tests) | 2026-01 |
+| move-enzyme-to-pricer-risk | Enzyme AD module moved from L3 to L4 | 2026-01 |
+| ir-vol-cube-calibration | IR VolCube calibration engine with SABR, AAD Vega | 2026-01 |
+| pricer-pricing-architecture | Tree pricing (Binomial/Trinomial), UnifiedPricingResult | 2026-01 |
+| market-index-keyed-access | IndexedMarket, TradeIndexRequirements, MarketValidator | 2026-01 |
+| shadow-object-aad | Shadow trait, slice-based kernels, AAD binder layer | 2026-01 |
+| external-numerics-migration | argmin/levenberg-marquardt integration | 2026-01 |
+| mc-memory-layout-optimisation | PathLayout, AlignedPathBuffer, StreamingEngine | 2026-01 |
+| pricing-kernel-ir | PricingKernel IR, TradeCompiler, IndexMapper, LSMC, CMS | 2026-01 |
+| curve-global-solver | Global curve calibration with Newton-Raphson (422 tests) | 2026-01 |
 
 ## 📊 Performance Targets
 
@@ -326,4 +383,4 @@ cargo test --workspace --exclude pricer_pricing
 
 ---
 
-**Status**: ✅ A-I-P-S architecture complete | ✅ Enzyme AD integration complete | ✅ Stochastic models (Heston, SABR, Hull-White) | ✅ 19 specifications complete | 🚧 Core module refactoring in progress
+**Status**: ✅ A-I-P-S architecture complete | ✅ Neutryx facade crate | ✅ Enzyme AD integration (L4) | ✅ Stochastic models (Heston, SABR, Hull-White) | ✅ Curve & Vol Surface Calibration (FX/IR) | ✅ 44 specifications complete

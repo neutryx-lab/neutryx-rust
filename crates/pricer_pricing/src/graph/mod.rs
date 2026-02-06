@@ -35,6 +35,9 @@ mod error;
 mod extractor;
 mod types;
 
+#[cfg(feature = "volcube")]
+mod volcube_extractor;
+
 pub use error::GraphError;
 pub use extractor::{
     GraphBuilder, GraphExtractable, PortfolioGraphExtractable, PortfolioGraphExtractor,
@@ -44,6 +47,8 @@ pub use types::{
     ComputationGraph, GraphEdge, GraphMetadata, GraphNode, GraphNodeUpdate, NodeGroup, NodeType,
     PortfolioComputationGraph, PortfolioGraphMetadata,
 };
+#[cfg(feature = "volcube")]
+pub use volcube_extractor::VolCubeGraphExtractor;
 
 #[cfg(test)]
 mod tests {

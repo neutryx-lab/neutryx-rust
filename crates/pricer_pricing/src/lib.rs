@@ -58,19 +58,6 @@
 //!
 //! Without the feature flag, pricer_pricing remains fully isolated.
 //!
-//! ## Usage Example
-//!
-//! ```rust
-//! use pricer_pricing::verify::{square, square_gradient};
-//!
-//! // Function value
-//! let value = square(3.0);
-//! assert_eq!(value, 9.0);
-//!
-//! // Gradient verification (placeholder in Phase 3.0)
-//! let gradient = square_gradient(3.0);
-//! assert!((gradient - 6.0).abs() < 1e-10);
-//! ```
 //!
 //! ## Installation
 //!
@@ -100,61 +87,28 @@
 //!   system (enzyme-ad feature)
 //! - **Optional L1/L2**: Use `--features l1l2-integration` to enable
 //!   pricer_core/pricer_models
-// Enzyme AD: Enable autodiff feature when enzyme-ad feature is active
-// This requires nightly Rust (nightly-2025-01-15) with Enzyme LLVM plugin
-// Requirement 1.1: #![feature(autodiff)] を有効化する仕組み
-// Requirement 1.2: enzyme-ad feature が無効時は stable Rust でコンパイル可能
-#![cfg_attr(feature = "enzyme-ad", feature(autodiff))]
 #![deny(missing_docs)]
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(rustdoc::private_intra_doc_links)]
 // Allow unknown lints for clippy compatibility across versions
 #![allow(unknown_lints)]
 
-// Phase 3.0: Core modules
-pub mod verify;
-
-// Phase 3.0: Enzyme autodiff infrastructure (placeholder implementation)
-pub mod enzyme;
-
-// Phase 3.0: Enzyme gradient verification tests
-mod verify_enzyme;
-
 // Phase 4: L1/L2 integration tests (conditional compilation)
 #[cfg(all(test, feature = "l1l2-integration"))]
 mod integration_tests;
 
-// Demo: Pricing context for lazy-arc-pricing-kernel demonstration
+// Pricing Kernel IR runtime engine (Phase 4: L1/L2 integration)
 #[cfg(feature = "l1l2-integration")]
-pub mod context;
+pub mod kernel;
 
 // Numeric conversion utilities (standalone, no l1l2-integration dependency)
 pub mod numeric;
 
-// Phase 3.1a: Random number generation infrastructure
-pub mod rng;
-
-// Phase 3.2: Monte Carlo kernel with Enzyme AD integration
-pub mod mc;
-
-// Phase 4: Path-dependent options and checkpointing
-pub mod path_dependent;
+// Pricing methods (Monte Carlo, Tree, Path-dependent)
+pub mod methods;
 
 // Phase 4: Checkpointing for memory-efficient AD
 pub mod checkpoint;
-
-// Phase 4: Analytical solutions for verification
-pub mod analytical;
-
-// Greeks calculation types and configuration
-pub mod greeks;
-
-// IRS-specific Greeks calculation (AAD demo)
-#[cfg(feature = "l1l2-integration")]
-pub mod irs_greeks;
-
-// Thread-local buffer pool for allocation-free simulation
-pub mod pool;
 
 // Computation graph visualisation data structures
 pub mod graph;
@@ -162,21 +116,19 @@ pub mod graph;
 // Generic Pricer Engine - unified pricing API
 pub mod generic_pricer;
 
+// Unified pricing result types
+pub mod result;
+
+// Re-export pricing method submodules for convenient access
 // Re-export commonly used items for convenience
-pub use enzyme::{gradient, gradient_with_step, ADMode, Activity};
 pub use graph::{
     ComputationGraph, GraphBuilder, GraphEdge, GraphError, GraphExtractable, GraphMetadata,
     GraphNode, GraphNodeUpdate, NodeGroup, NodeType, SimpleGraphExtractor,
 };
-pub use greeks::{GreeksConfig, GreeksConfigError, GreeksError, GreeksMode, GreeksResult};
-// Re-export IRS Greeks types when l1l2-integration is enabled
-#[cfg(feature = "l1l2-integration")]
-pub use irs_greeks::{
-    BenchmarkConfig, BenchmarkError, BenchmarkRunner, CacheKey, CacheState, CacheStats,
-    CachedResult, DeltaBenchmarkResult, DependencyGraph, ExposureProfile, FullBenchmarkResult,
-    IrsDeltaResult, IrsGreeksCalculator, IrsGreeksConfig, IrsGreeksError, IrsGreeksResult,
-    IrsLazyEvaluator, PvBenchmarkResult, ScalabilityResult, SingleDeltaBenchmarkResult, SwapId,
-    SwapParams, TenorPoint, TimingStats, XvaCreditParams, XvaDemoConfig, XvaDemoError,
-    XvaDemoRunner, XvaResult, XvaSensitivityBenchmark,
+pub use methods::{
+    mc,
+    mc::{GbmParams, Greek, MonteCarloConfig, MonteCarloPricer, PayoffParams, PricingResult},
+    path_dependent, tree,
+    tree::{BinomialTree, CrrParams, TreeConfig, TreeMethod, TreeType},
 };
-pub use mc::{GbmParams, Greek, MonteCarloConfig, MonteCarloPricer, PayoffParams, PricingResult};
+pub use result::{PricingMetadata, TreeTypeMetadata, UnifiedGreeks, UnifiedPricingResult};

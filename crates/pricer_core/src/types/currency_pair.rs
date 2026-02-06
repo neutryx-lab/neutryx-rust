@@ -5,8 +5,8 @@
 //!
 //! # Note
 //!
-//! `FxRate<T>` is distinct from `infra_master::CurrencyPair`:
-//! - `infra_master::CurrencyPair`: Instrument definition (no spot rate, no AD
+//! `FxRate<T>` is distinct from `infra_domain::CurrencyPair`:
+//! - `infra_domain::CurrencyPair`: Instrument definition (no spot rate, no AD
 //!   support)
 //! - `FxRate<T>`: Pricing type (includes spot rate, supports AD via generic
 //!   `T`)
@@ -14,7 +14,7 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::Currency;
+//! use infra_domain::Currency;
 //! use pricer_core::types::FxRate;
 //!
 //! // Create a USD/JPY FX rate
@@ -31,7 +31,7 @@
 
 use std::fmt;
 
-use infra_master::{Currency, CurrencyError};
+use infra_domain::{Currency, CurrencyError};
 use num_traits::Float;
 
 /// An FX rate for foreign exchange calculations.
@@ -43,15 +43,15 @@ use num_traits::Float;
 ///
 /// * `T` - Floating-point type implementing `Float` (e.g., `f64`, `Dual64`)
 ///
-/// # Distinction from `infra_master::CurrencyPair`
+/// # Distinction from `infra_domain::CurrencyPair`
 ///
-/// - `infra_master::CurrencyPair`: Instrument definition (static, no spot rate)
+/// - `infra_domain::CurrencyPair`: Instrument definition (static, no spot rate)
 /// - `FxRate<T>`: Pricing type (dynamic spot rate, AD-compatible)
 ///
 /// # Examples
 ///
 /// ```
-/// use infra_master::Currency;
+/// use infra_domain::Currency;
 /// use pricer_core::types::FxRate;
 ///
 /// // EUR/USD = 1.10 means 1 EUR = 1.10 USD
@@ -86,7 +86,7 @@ impl<T: Float> FxRate<T> {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::Currency;
+    /// use infra_domain::Currency;
     /// use pricer_core::types::FxRate;
     ///
     /// let rate = FxRate::new(Currency::EUR, Currency::USD, 1.10).unwrap();
@@ -107,7 +107,7 @@ impl<T: Float> FxRate<T> {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::Currency;
+    /// use infra_domain::Currency;
     /// use pricer_core::types::FxRate;
     ///
     /// let rate = FxRate::new(Currency::EUR, Currency::USD, 1.10).unwrap();
@@ -121,7 +121,7 @@ impl<T: Float> FxRate<T> {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::Currency;
+    /// use infra_domain::Currency;
     /// use pricer_core::types::FxRate;
     ///
     /// let rate = FxRate::new(Currency::EUR, Currency::USD, 1.10).unwrap();
@@ -135,7 +135,7 @@ impl<T: Float> FxRate<T> {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::Currency;
+    /// use infra_domain::Currency;
     /// use pricer_core::types::FxRate;
     ///
     /// let rate = FxRate::new(Currency::EUR, Currency::USD, 1.10).unwrap();
@@ -149,7 +149,7 @@ impl<T: Float> FxRate<T> {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::Currency;
+    /// use infra_domain::Currency;
     /// use pricer_core::types::FxRate;
     ///
     /// let rate = FxRate::new(Currency::EUR, Currency::USD, 1.10).unwrap();
@@ -170,7 +170,7 @@ impl<T: Float> FxRate<T> {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::Currency;
+    /// use infra_domain::Currency;
     /// use pricer_core::types::FxRate;
     ///
     /// let mut rate = FxRate::new(Currency::EUR, Currency::USD, 1.10).unwrap();
@@ -192,7 +192,7 @@ impl<T: Float> FxRate<T> {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::Currency;
+    /// use infra_domain::Currency;
     /// use pricer_core::types::FxRate;
     ///
     /// let eurusd: FxRate<f64> = FxRate::new(Currency::EUR, Currency::USD, 1.10).unwrap();
@@ -223,7 +223,7 @@ impl<T: Float> FxRate<T> {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::Currency;
+    /// use infra_domain::Currency;
     /// use pricer_core::types::FxRate;
     ///
     /// // EUR/USD = 1.10
@@ -249,7 +249,7 @@ impl<T: Float> FxRate<T> {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::Currency;
+    /// use infra_domain::Currency;
     /// use pricer_core::types::FxRate;
     ///
     /// // EUR/USD = 1.10
@@ -267,7 +267,7 @@ impl<T: Float> FxRate<T> {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::Currency;
+    /// use infra_domain::Currency;
     /// use pricer_core::types::FxRate;
     ///
     /// let rate = FxRate::new(Currency::EUR, Currency::USD, 1.10).unwrap();
@@ -303,6 +303,152 @@ impl<T: Float> std::hash::Hash for FxRate<T> {
 /// Deprecated type alias for backward compatibility.
 #[deprecated(since = "0.9.0", note = "renamed to FxRate")]
 pub type CurrencyPair<T> = FxRate<T>;
+
+/// A simple FX pair identifier (without spot rate).
+///
+/// Used as a key for FX index mapping in `IndexMapper`. Unlike `FxRate<T>`,
+/// this type doesn't carry a spot rate, making it suitable for use as
+/// a HashMap key or index identifier.
+///
+/// # Convention
+///
+/// BASE/QUOTE means converting from BASE to QUOTE currency.
+/// For example, EUR/USD means 1 EUR = X USD.
+///
+/// # Examples
+///
+/// ```
+/// use infra_domain::Currency;
+/// use pricer_core::types::FxPair;
+///
+/// let eurusd = FxPair::new(Currency::EUR, Currency::USD);
+/// assert_eq!(eurusd.base(), Currency::EUR);
+/// assert_eq!(eurusd.quote(), Currency::USD);
+/// assert_eq!(eurusd.code(), "EUR/USD");
+///
+/// // EUR/USD and USD/EUR are different pairs
+/// let usdeur = FxPair::new(Currency::USD, Currency::EUR);
+/// assert_ne!(eurusd, usdeur);
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct FxPair {
+    /// Base currency (the numerator in the exchange rate)
+    base: Currency,
+    /// Quote currency (the denominator in the exchange rate)
+    quote: Currency,
+}
+
+impl FxPair {
+    /// Creates a new FX pair.
+    ///
+    /// # Arguments
+    ///
+    /// * `base` - The base currency
+    /// * `quote` - The quote currency
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use infra_domain::Currency;
+    /// use pricer_core::types::FxPair;
+    ///
+    /// let pair = FxPair::new(Currency::EUR, Currency::USD);
+    /// assert_eq!(pair.base(), Currency::EUR);
+    /// ```
+    #[must_use]
+    pub fn new(base: Currency, quote: Currency) -> Self { Self { base, quote } }
+
+    /// Returns the base currency.
+    #[inline]
+    #[must_use]
+    pub fn base(&self) -> Currency { self.base }
+
+    /// Returns the quote currency.
+    #[inline]
+    #[must_use]
+    pub fn quote(&self) -> Currency { self.quote }
+
+    /// Returns the currency pair code in standard format (BASE/QUOTE).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use infra_domain::Currency;
+    /// use pricer_core::types::FxPair;
+    ///
+    /// let pair = FxPair::new(Currency::EUR, Currency::USD);
+    /// assert_eq!(pair.code(), "EUR/USD");
+    /// ```
+    #[must_use]
+    pub fn code(&self) -> String { format!("{}/{}", self.base.code(), self.quote.code()) }
+
+    /// Creates an inverted FX pair (swaps base and quote).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use infra_domain::Currency;
+    /// use pricer_core::types::FxPair;
+    ///
+    /// let eurusd = FxPair::new(Currency::EUR, Currency::USD);
+    /// let usdeur = eurusd.invert();
+    /// assert_eq!(usdeur.base(), Currency::USD);
+    /// assert_eq!(usdeur.quote(), Currency::EUR);
+    /// ```
+    #[must_use]
+    pub fn invert(&self) -> Self {
+        Self {
+            base: self.quote,
+            quote: self.base,
+        }
+    }
+
+    /// Checks if this pair contains the given currency.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use infra_domain::Currency;
+    /// use pricer_core::types::FxPair;
+    ///
+    /// let pair = FxPair::new(Currency::EUR, Currency::USD);
+    /// assert!(pair.contains(Currency::EUR));
+    /// assert!(pair.contains(Currency::USD));
+    /// assert!(!pair.contains(Currency::JPY));
+    /// ```
+    #[inline]
+    #[must_use]
+    pub fn contains(&self, currency: Currency) -> bool {
+        self.base == currency || self.quote == currency
+    }
+
+    /// Checks if this is a same-currency pair (base == quote).
+    ///
+    /// Note: Such pairs are typically invalid for FX operations
+    /// but can be useful for validation.
+    #[inline]
+    #[must_use]
+    pub fn is_same_currency(&self) -> bool { self.base == self.quote }
+}
+
+impl fmt::Display for FxPair {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}/{}", self.base.code(), self.quote.code())
+    }
+}
+
+impl Default for FxPair {
+    /// Returns a dummy FX pair (USD/USD) for use as a placeholder.
+    ///
+    /// Note: This creates a same-currency pair which is typically invalid
+    /// for actual FX operations.
+    fn default() -> Self {
+        Self {
+            base: Currency::USD,
+            quote: Currency::USD,
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -475,5 +621,85 @@ mod tests {
         let rate: CurrencyPair<f64> =
             CurrencyPair::new(Currency::EUR, Currency::USD, 1.10).unwrap();
         assert_eq!(rate.base(), Currency::EUR);
+    }
+
+    // =========================================================================
+    // FxPair Tests
+    // =========================================================================
+
+    #[test]
+    fn test_fx_pair_new() {
+        let pair = FxPair::new(Currency::EUR, Currency::USD);
+        assert_eq!(pair.base(), Currency::EUR);
+        assert_eq!(pair.quote(), Currency::USD);
+    }
+
+    #[test]
+    fn test_fx_pair_code() {
+        let pair = FxPair::new(Currency::USD, Currency::JPY);
+        assert_eq!(pair.code(), "USD/JPY");
+    }
+
+    #[test]
+    fn test_fx_pair_invert() {
+        let eurusd = FxPair::new(Currency::EUR, Currency::USD);
+        let usdeur = eurusd.invert();
+        assert_eq!(usdeur.base(), Currency::USD);
+        assert_eq!(usdeur.quote(), Currency::EUR);
+    }
+
+    #[test]
+    fn test_fx_pair_contains() {
+        let pair = FxPair::new(Currency::EUR, Currency::USD);
+        assert!(pair.contains(Currency::EUR));
+        assert!(pair.contains(Currency::USD));
+        assert!(!pair.contains(Currency::JPY));
+    }
+
+    #[test]
+    fn test_fx_pair_equality() {
+        let pair1 = FxPair::new(Currency::EUR, Currency::USD);
+        let pair2 = FxPair::new(Currency::EUR, Currency::USD);
+        let pair3 = FxPair::new(Currency::USD, Currency::EUR);
+
+        assert_eq!(pair1, pair2);
+        assert_ne!(pair1, pair3);
+    }
+
+    #[test]
+    fn test_fx_pair_hash() {
+        use std::collections::HashSet;
+
+        let pair1 = FxPair::new(Currency::EUR, Currency::USD);
+        let pair2 = FxPair::new(Currency::EUR, Currency::USD);
+        let pair3 = FxPair::new(Currency::USD, Currency::JPY);
+
+        let mut set = HashSet::new();
+        set.insert(pair1);
+        set.insert(pair2); // Same as pair1
+        set.insert(pair3);
+
+        assert_eq!(set.len(), 2);
+    }
+
+    #[test]
+    fn test_fx_pair_display() {
+        let pair = FxPair::new(Currency::EUR, Currency::USD);
+        assert_eq!(format!("{}", pair), "EUR/USD");
+    }
+
+    #[test]
+    fn test_fx_pair_is_same_currency() {
+        let valid = FxPair::new(Currency::EUR, Currency::USD);
+        let invalid = FxPair::new(Currency::USD, Currency::USD);
+
+        assert!(!valid.is_same_currency());
+        assert!(invalid.is_same_currency());
+    }
+
+    #[test]
+    fn test_fx_pair_default() {
+        let pair = FxPair::default();
+        assert!(pair.is_same_currency());
     }
 }

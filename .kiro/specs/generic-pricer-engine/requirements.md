@@ -57,11 +57,11 @@
 
 ### Requirement 5: 商品インターフェース
 
-**Objective:** As a クオンツ開発者, I want `infra_master::trade` のTrade構造および `pricer_models::instruments` のInstrument定義と統合できる, so that 既存の商品定義を再利用できる
+**Objective:** As a クオンツ開発者, I want `infra_domain::trade` のTrade構造および `pricer_models::instruments` のInstrument定義と統合できる, so that 既存の商品定義を再利用できる
 
 #### Acceptance Criteria
 
-1. The Generic Pricer Engine shall `infra_master::trade::Trade`（CF-expanded形式）を入力として受け取る
+1. The Generic Pricer Engine shall `infra_domain::trade::Trade`（CF-expanded形式）を入力として受け取る
 2. The Generic Pricer Engine shall `pricer_models::instruments::InstrumentEnum` を入力として受け取る
 3. When `Trade` が入力されたとき, the Generic Pricer Engine shall Leg/Cashflow構造をパースしてプライシングする
 4. The Generic Pricer Engine shall 静的ディスパッチ（enum）を使用してEnzyme最適化を維持する
@@ -73,7 +73,7 @@
 
 #### Acceptance Criteria
 
-1. The Generic Pricer Engine shall `infra_master::market::Currency` 列挙型をサポートする
+1. The Generic Pricer Engine shall `infra_domain::market::Currency` 列挙型をサポートする
 2. When 商品通貨と出力通貨が異なるとき, the Generic Pricer Engine shall `MarketProvider` から為替レートを取得してPVを換算する
 3. The Generic Pricer Engine shall `PricingResult<T>` を階層構造（Trade → Leg → Cashflow）で設計し、任意のレベルでPV内訳にアクセスできる
 4. The Generic Pricer Engine shall 各Leg/Cashflowの元通貨を保持し、`PricingResult::group_by_currency()`で通貨別PV内訳を取得できる
@@ -89,7 +89,7 @@
 
 #### Acceptance Criteria
 
-1. The Generic Pricer Engine shall `infra_master::time` の `Calendar`、`DayCountConvention`、`Frequency` をサポートする
+1. The Generic Pricer Engine shall `infra_domain::time` の `Calendar`、`DayCountConvention`、`Frequency` をサポートする
 2. When 評価日が休日の場合, the Generic Pricer Engine shall 設定された営業日調整（Following、ModifiedFollowing等）を適用する
 3. The Generic Pricer Engine shall time_to_maturity計算に `DayCountConvention` を使用する
 4. While フォワードレート計算中, the Generic Pricer Engine shall カーブのテナー構造に基づいて適切な日付補間を行う

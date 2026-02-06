@@ -39,12 +39,12 @@ Instrument (マーケット用規格化商品)
 
 ## 2. Directory Structure (Minimalist Approach)
 
-`crates/infra_master/src/` 配下に `trade/` サブモジュールを追加する。
+`crates/infra_domain/src/` 配下に `trade/` サブモジュールを追加する。
 
-既存の `infra_master` アセット（`Date`, `Period`, `RateIndex`, `Direction` など）を再利用し、新規定義は `trade/` に集約する。
+既存の `infra_domain` アセット（`Date`, `Period`, `RateIndex`, `Direction` など）を再利用し、新規定義は `trade/` に集約する。
 
 ```text
-crates/infra_master/src/
+crates/infra_domain/src/
 ├── lib.rs                   # Module definition & re-exports (既存)
 ├── date.rs                  # Date type (既存)
 ├── period.rs                # Period type (既存)
@@ -862,12 +862,12 @@ pub struct InMemoryFixingStore {
 
 #### Acceptance Criteria
 
-1. The `IndexType` enum shall include a `Rate(RateIndex)` variant that wraps the existing `infra_master::RateIndex`.
+1. The `IndexType` enum shall include a `Rate(RateIndex)` variant that wraps the existing `infra_domain::RateIndex`.
 2. The `IndexType` enum shall include variants for `SwapRate`, `Fx`, `Equity`, `Inflation`, and `Commodity` index types.
-3. When an `IndexType::Rate` variant is created, the `infra_master` module shall provide an `impl From<RateIndex> for IndexType` conversion.
+3. When an `IndexType::Rate` variant is created, the `infra_domain` module shall provide an `impl From<RateIndex> for IndexType` conversion.
 4. The `IndexObservation` struct shall contain `index_type: IndexType`, `observation_lag: Period`, and optional `fixing_source: Option<String>`.
 5. The `IndexType` enum shall derive `Debug`, `Clone`, `PartialEq`, `Eq`, and `Hash` traits.
-6. Where the `serde` feature is enabled, the `infra_master` module shall derive `Serialize` and `Deserialize` for `IndexType` and `IndexObservation`.
+6. Where the `serde` feature is enabled, the `infra_domain` module shall derive `Serialize` and `Deserialize` for `IndexType` and `IndexObservation`.
 
 ---
 
@@ -899,7 +899,7 @@ pub struct InMemoryFixingStore {
 3. When `is_fixed(ref_date)` is called on a `Cashflow` with `Payoff::Fixed`, the method shall return `true`.
 4. When `is_future(ref_date)` is called, the method shall return `true` if `payment_date > ref_date`.
 5. The `Cashflow` struct shall derive `Debug` and `Clone` traits.
-6. Where the `serde` feature is enabled, the `infra_master` module shall derive `Serialize` and `Deserialize` for `Cashflow` and `CashflowType`.
+6. Where the `serde` feature is enabled, the `infra_domain` module shall derive `Serialize` and `Deserialize` for `Cashflow` and `CashflowType`.
 
 ---
 
@@ -991,7 +991,7 @@ pub struct InMemoryFixingStore {
 
 ### Requirement 9: 既存型との統合
 
-**Objective:** 開発者として、`infra_master` の既存型（Date, Period, Currency, RateIndex, DayCountConvention, Calendar）を再利用したい。これにより、型の重複を避け、一貫性を保てる。
+**Objective:** 開発者として、`infra_domain` の既存型（Date, Period, Currency, RateIndex, DayCountConvention, Calendar）を再利用したい。これにより、型の重複を避け、一貫性を保てる。
 
 #### Acceptance Criteria
 
@@ -1023,7 +1023,7 @@ pub struct InMemoryFixingStore {
 
 #### Acceptance Criteria
 
-1. The `convention/` module shall be located under `crates/infra_master/src/convention/`.
+1. The `convention/` module shall be located under `crates/infra_domain/src/convention/`.
 2. The `SwapLegConvention` struct shall contain `day_count: DayCountConvention`, `payment_frequency: Frequency`, `calendar: CalendarId`, `business_day_convention: BusinessDayConvention`, and `payment_lag: i32`.
 3. The `SwapConvention` struct shall contain `fixed_leg: SwapLegConvention`, `float_leg: SwapLegConvention`, `float_index: RateIndex`, and `spot_lag: i32`.
 4. The `FraConvention` struct shall contain `day_count: DayCountConvention`, `calendar: CalendarId`, `business_day_convention: BusinessDayConvention`, and `index: RateIndex`.

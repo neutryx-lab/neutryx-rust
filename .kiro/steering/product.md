@@ -16,12 +16,16 @@ The workspace enforces a strict unidirectional data flow that mirrors alphabetic
 - **Multi-Asset Class Instruments**: Rates (IRS, Swaption, Cap/Floor), FX (options, barriers, forwards), Equity (vanilla, exotic), Credit (CDS), Commodity
 - **High-Performance Greeks**: Enzyme LLVM-level AD for C++-competitive differentiation with AAD vs Bump-and-Revalue comparison
 - **IRS Greeks Workflow**: Complete interest rate swap Greeks calculation with lazy evaluation and performance benchmarking
-- **Dual-Mode Verification**: Parallel Enzyme and num-dual backends for correctness validation
+- **Dual-Mode Verification**: Enzyme and bump-and-revalue backends for correctness validation
 - **Monte Carlo Pricing**: Path-dependent options with workspace buffers and checkpointing
 - **Analytical Solutions**: Black-Scholes, Garman-Kohlhagen, Kemna-Vorst, barrier formulas
 - **XVA & Risk Analytics**: CVA, DVA, FVA calculations with exposure metrics (EE, EPE, PFE, EEPE, ENE)
 - **Market Data Infrastructure**: AD-compatible yield curves and volatility surfaces with interpolation
+- **Index-Keyed Market Access**: `IndexedMarket` container with `RateIndex`/`CurrencyPair` keyed lookups, `TradeIndexRequirements` for dependency declaration
+- **Convention Registry**: Standardised market conventions (`ConventionRegistry`, per-currency `ConventionSet`) for swap, swaption, FX, inflation, cross-currency products
+- **Event Instruments**: `EventInstrument` for curve impact analysis (central bank meetings, expected rate jumps)
 - **Model Calibration**: Heston, SABR, Hull-White calibration with Levenberg-Marquardt optimisation
+- **FX Market Calibration**: FX forward curves (FX swaps, XCCY basis swaps), FX volatility surfaces with SABR calibration
 - **Interest Rate Models**: Hull-White, Cox-Ingersoll-Ross (CIR) with mean reversion
 - **Portfolio Analytics**: Parallelised portfolio-level computations with SoA optimisation
 - **Computation Graph Visualisation**: D3.js-compatible DAG export for debugging and understanding pricing workflows
@@ -39,11 +43,11 @@ The workspace enforces a strict unidirectional data flow that mirrors alphabetic
 - **Tier-1 Bank Ready**: Comprehensive asset class coverage for production trading desks
 - **Unidirectional Data Flow**: A-I-P-S architecture ensures clear separation of concerns
 - **Isolation of Experimental Code**: Enzyme confined to pricer_pricing, keeping 75% of codebase production-stable
-- **Correctness First**: Built-in verification through dual AD backends (Enzyme + num-dual)
+- **Correctness First**: Built-in verification through dual AD backends (Enzyme + bump-and-revalue)
 - **Differentiability by Design**: Smooth approximations replace discontinuities throughout
 - **Performance Without Compromise**: Static dispatch and LLVM optimisation for zero-cost abstractions
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-15_ — Added IRS Greeks workflow, computation graph visualisation, cloud deployment
+_Updated: 2026-02-02_ — Added Convention Registry and EventInstrument capabilities
 _Focus on patterns and purpose, not exhaustive feature lists_

@@ -22,22 +22,41 @@ exotic = ["equity"]  # Exotic products typically extend equity derivatives
 all = ["equity", "rates", "credit", "fx", "commodity", "exotic"]
 
 # Serialisation support
-serde = ["dep:serde", "dep:serde_json", "pricer_core/serde", "infra_master/serde"]
-
-# AD (Automatic Differentiation) support - forwards to pricer_core
-num-dual-mode = ["pricer_core/num-dual-mode"]
+serde = ["dep:serde", "dep:serde_json", "pricer_core/serde", "infra_domain/serde"]
 
 # Parallel processing for multi-curve bootstrapping
 parallel = ["dep:rayon"]
+
+# Global bootstrapping with multi-dimensional Newton solver
+global-bootstrap = ["pricer_core/linalg"]
+
+# Sparse matrix support for large-scale calibration problems
+sparse = ["global-bootstrap", "pricer_core/sparse"]
+
+# VolCube calibration (planned feature, not yet implemented)
+volcube = []
 
 # Advanced volatility model features
 local-vol = []
 stochastic-local-vol = ["local-vol"]
 advanced-vol-models = ["local-vol", "stochastic-local-vol"]
 
+# Automatic differentiation (Enzyme AD)
+# Requires nightly Rust toolchain with Enzyme support.
+# Enables AD-based Jacobian computation with automatic fallback to finite differences.
+# Feature gates: compute_jacobian_with_stability_check, compute_jacobian_enzyme_with_fallback
+enzyme-ad = ["global-bootstrap"]
+
+# Debug logging for internal diagnostics (development only)
+debug-logging = []
+
+# Tracing support for diagnostic logging
+tracing = []
+
 [dependencies]
 pricer_core = { path = "../pricer_core" }
-infra_master = { path = "../infra_master" }
+infra_domain = { path = "../infra_domain" }
+enum_dispatch.workspace = true
 num-traits.workspace = true
 chrono.workspace = true
 serde = { workspace = true, optional = true }
@@ -45,6 +64,7 @@ serde_json = { workspace = true, optional = true }
 thiserror.workspace = true
 rayon = { workspace = true, optional = true }
 lru.workspace = true
+dashmap.workspace = true
 ordered-float.workspace = true
 parking_lot.workspace = true
 
@@ -66,6 +86,20 @@ harness = false
 [[bench]]
 name = "volcube"
 harness = false
+
+[[bench]]
+name = "indexed_market"
+harness = false
+
+[[bench]]
+name = "instrument_compile"
+harness = false
+required-features = ["global-bootstrap"]
+
+[[bench]]
+name = "numerical_stability"
+harness = false
+required-features = ["global-bootstrap"]
 
 [lints]
 workspace = true

@@ -8,6 +8,9 @@
 //!
 //! - 5.1: `select_trades` event handler
 //! - 5.2: `subgraph_update` broadcast
+//!
+//! Note: This module is only used when `demo` feature is disabled.
+#![allow(dead_code)]
 
 use std::{collections::HashSet, sync::Arc};
 
@@ -271,26 +274,22 @@ fn extract_subgraph_for_ws(
     use std::collections::HashMap;
 
     use pricer_pricing::graph::{PortfolioGraphExtractable, PortfolioGraphExtractor};
-    use pricer_risk::portfolio::TradeId;
 
-    let portfolio = &state.portfolio;
+    let trades = &state.trades;
     let extractor = PortfolioGraphExtractor::new()
         .with_timeout(500)
         .with_capacity(5_000, 10_000);
 
-    // Build trade graphs
-    let all_trade_ids: Vec<String> = portfolio
-        .trade_ids()
-        .map(std::string::ToString::to_string)
-        .collect();
+    // Build trade graphs from FpML trades
+    let all_trade_ids: Vec<String> = trades.iter().map(|t| t.id.to_string()).collect();
 
     let mut trade_graphs: HashMap<String, pricer_pricing::graph::ComputationGraph> = HashMap::new();
 
-    for trade_id in &all_trade_ids {
-        if let Some(trade) = portfolio.trade(&TradeId::new(trade_id)) {
-            let graph = super::graph_handlers::create_trade_graph(trade_id, trade);
-            trade_graphs.insert(trade_id.clone(), graph);
-        }
+    for trade in trades {
+        let trade_id = trade.id.to_string();
+        // Create a simplified graph for the trade
+        let graph = create_ws_trade_graph(&trade_id);
+        trade_graphs.insert(trade_id, graph);
     }
 
     // Extract full graph
@@ -341,7 +340,7 @@ fn extract_subgraph_for_ws(
         node_count: nodes.len(),
         edge_count: edges.len(),
         selected_trade_count: if trade_ids.is_empty() {
-            portfolio.trade_count()
+            trades.len()
         } else {
             trade_ids.len()
         },
@@ -353,6 +352,44 @@ fn extract_subgraph_for_ws(
         edges,
         metadata,
     })
+}
+
+/// Create a simplified computation graph for WebSocket updates.
+fn create_ws_trade_graph(trade_id: &str) -> pricer_pricing::graph::ComputationGraph {
+    use pricer_pricing::graph::{GraphBuilder, GraphEdge, GraphNode, NodeGroup, NodeType};
+
+    let mut builder = GraphBuilder::with_capacity(5, 5);
+
+    // Create simplified nodes for WebSocket updates
+    let input_id = format!("{trade_id}_input");
+    builder.add_node(GraphNode {
+        id: input_id.clone(),
+        node_type: NodeType::Input,
+        label: "rate".to_string(),
+        value: None,
+        is_sensitivity_target: true,
+        group: NodeGroup::Sensitivity,
+        trade_ids: vec![trade_id.to_string()],
+    });
+
+    let output_id = format!("{trade_id}_price");
+    builder.add_node(GraphNode {
+        id: output_id.clone(),
+        node_type: NodeType::Output,
+        label: "price".to_string(),
+        value: None,
+        is_sensitivity_target: false,
+        group: NodeGroup::Output,
+        trade_ids: vec![trade_id.to_string()],
+    });
+
+    builder.add_edge(GraphEdge {
+        source: input_id,
+        target: output_id,
+        weight: None,
+    });
+
+    builder.build(Some(trade_id.to_string()))
 }
 
 /// Simple UUID-like string generator

@@ -1,0 +1,22 @@
+{
+  "feature_name": "market-index-keyed-access",
+  "created_at": "2026-01-26T12:00:00Z",
+  "updated_at": "2026-01-26T22:00:00Z",
+  "language": "ja",
+  "phase": "completed",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "ready_for_implementation": true
+}

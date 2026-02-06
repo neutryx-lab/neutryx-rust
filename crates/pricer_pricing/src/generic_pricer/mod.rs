@@ -40,9 +40,7 @@
 mod batch;
 mod config;
 mod error;
-mod greeks_calculator;
 mod kernel;
-mod ois_calculator;
 #[cfg(feature = "l1l2-integration")]
 mod payoff_evaluator;
 mod pricer;
@@ -50,20 +48,17 @@ mod result;
 
 #[cfg(not(feature = "l1l2-integration"))]
 pub use batch::SimpleTrade;
-pub use batch::{BatchPricer, BatchPricingResult, BatchStats, TradeId};
+pub use batch::{BatchPricer, BatchPricingResult, BatchStats, ExecutionStats, TradeId};
+#[cfg(feature = "l1l2-integration")]
+pub use batch::{PortfolioAggregations, PortfolioPricer, PortfolioPricingResult};
 // Always export DefaultCurrency for standalone pricing
 pub use config::DefaultCurrency;
 pub use config::{ModelConfig, ModelConfigBuilder, PricerConfig, PricerConfigBuilder};
 pub use error::{ConfigError, PricingError};
-pub use greeks_calculator::{
-    calculate_delta, calculate_fx_delta, calculate_gamma, calculate_theta, calculate_vega,
-    BumpAndRevalueCalculator, BumpSizes, TradeGreeks,
-};
 pub use kernel::{
     price_cashflow, price_cashflow_stream, BusinessDayConvention, DayCountConvention,
     DiscountCalculator, Frequency,
 };
-pub use ois_calculator::{DailyAccrual, OisCalculator};
 #[cfg(feature = "l1l2-integration")]
 pub use payoff_evaluator::PayoffEvaluator;
 pub use pricer::GenericPricer;

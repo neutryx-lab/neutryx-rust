@@ -1,6 +1,6 @@
 //! CSA (Credit Support Annex) terms and netting set configuration.
 //!
-//! This module re-exports types from `infra_master::counterparty`.
+//! This module re-exports types from `infra_domain::counterparty`.
 //!
 //! # Example
 //!
@@ -17,8 +17,8 @@
 //!     .unwrap();
 //! ```
 
-// Re-export from infra_master::counterparty
-pub use infra_master::counterparty::{CsaTerms, NettingSet};
+// Re-export from infra_domain::counterparty
+pub use infra_domain::counterparty::{CsaTerms, NettingSet};
 
 #[cfg(test)]
 mod tests {

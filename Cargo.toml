@@ -1,3 +1,97 @@
+[package]
+name = "neutryx"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Unified facade crate for Neutryx derivatives pricing library"
+
+[dependencies]
+# --- Infra Layer (always included) ---
+infra_domain = { path = "crates/infra_domain" }
+
+# --- Infra Layer (optional) ---
+infra_config = { path = "crates/infra_config", optional = true }
+infra_store = { path = "crates/infra_store", optional = true }
+
+# --- Pricer Layer (optional) ---
+pricer_core = { path = "crates/pricer_core", optional = true }
+pricer_models = { path = "crates/pricer_models", optional = true }
+pricer_pricing = { path = "crates/pricer_pricing", optional = true }
+pricer_risk = { path = "crates/pricer_risk", optional = true }
+
+[features]
+default = ["full"]
+
+# Minimal: Master data only (dates, currencies, trade definitions)
+minimal = []
+
+# Analytics: Curve building, models, analytical pricing
+analytics = [
+    "dep:pricer_core",
+    "dep:pricer_models",
+    "pricer_core/serde",
+    "pricer_models/serde",
+]
+
+# Full: Complete pricing and risk functionality
+full = [
+    "analytics",
+    "dep:infra_config",
+    "dep:pricer_pricing",
+    "dep:pricer_risk",
+    "pricer_pricing/l1l2-integration",
+    "pricer_pricing/serde",
+    "pricer_risk/serde",
+]
+
+# Storage backends (optional)
+storage = ["dep:infra_store"]
+postgres = ["storage", "infra_store/postgres"]
+
+# Serialisation support
+serde = [
+    "infra_domain/serde",
+    "pricer_core?/serde",
+    "pricer_models?/serde",
+    "pricer_pricing?/serde",
+    "pricer_risk?/serde",
+]
+
+# All asset classes
+all-assets = [
+    "pricer_core?/all",
+    "pricer_models?/all",
+]
+
+# Global bootstrap with multi-dimensional Newton solver
+global-bootstrap = ["pricer_models?/global-bootstrap"]
+
+# Parallel processing
+parallel = [
+    "pricer_core?/parallel",
+    "pricer_models?/parallel",
+]
+
+# VolCube calibration
+volcube = ["pricer_pricing?/volcube"]
+
+# Enzyme automatic differentiation (requires nightly + LLVM 18)
+enzyme-ad = [
+    "pricer_pricing?/enzyme-ad",
+    "pricer_risk?/enzyme-ad",
+]
+
+[dev-dependencies]
+approx.workspace = true
+
+[lints]
+workspace = true
+
+# =============================================================================
+# Workspace Configuration
+# =============================================================================
 [workspace]
 members = [
     # --- A: Adapter Layer (Input) ---
@@ -7,7 +101,7 @@ members = [
 
     # --- I: Infra Layer (Foundation) ---
     "crates/infra_config",
-    "crates/infra_master",
+    "crates/infra_domain",
     "crates/infra_store",
 
     # --- P: Pricer Layer (The Kernel) ---
@@ -17,13 +111,9 @@ members = [
     "crates/pricer_risk",
 
     # --- S: Service Layer (Output) ---
-    # TODO: Service crates temporarily disabled - depend on pricer_risk which needs refactoring
     # "crates/service_cli",
-    # "crates/service_gateway",
+    "crates/service_gateway",
     # "crates/service_python",
-
-    # --- Demo Layer (WebApp) ---
-    "demo/gui",
 ]
 resolver = "2"
 
@@ -37,11 +127,10 @@ authors = ["Neutryx Lab"]
 [workspace.dependencies]
 # Core numeric types
 num-traits = "0.2"
-num-dual = "0.9"
 
 # Linear algebra
-ndarray = "0.16"
 nalgebra = "0.33"
+nalgebra-sparse = "0.10"
 
 # Random number generation
 rand = "0.8"
@@ -98,6 +187,7 @@ sqlx = { version = "0.8", features = ["runtime-tokio", "postgres"] }
 # Optimisation
 argmin = "0.10"
 argmin-math = { version = "0.4", features = ["nalgebra_latest"] }
+levenberg-marquardt = "0.14"
 
 # Testing
 approx = "0.5"
@@ -110,8 +200,22 @@ num_cpus = "1.16"
 
 # Caching
 lru = "0.12"
+dashmap = "6.0"
 ordered-float = "4.0"
 parking_lot = "0.12"
+
+# Enum utilities
+strum = { version = "0.26", features = ["derive"] }
+strum_macros = "0.26"
+
+# Builder pattern
+bon = "3.8"
+
+# Enum dispatch for static trait forwarding
+enum_dispatch = "0.3"
+
+# Newtype derive utilities
+derive_more = { version = "2", features = ["from", "display", "as_ref", "add", "mul"] }
 
 [profile.release]
 lto = true

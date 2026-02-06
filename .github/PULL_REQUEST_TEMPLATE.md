@@ -42,7 +42,7 @@
 ### Infra Layer
 
 - [ ] infra_config
-- [ ] infra_master
+- [ ] infra_domain
 - [ ] infra_store
 
 ### Adapter Layer

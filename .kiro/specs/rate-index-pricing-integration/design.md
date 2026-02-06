@@ -6,7 +6,7 @@
 
 **Users**: クオンツ開発者および API ユーザーが、SOFR/SONIA/EURIBOR などの金利指標に基づくスワップ、キャップ、フロア商品の正確なプライシングに使用する。
 
-**Impact**: 現在 GenericPricer が無視している `Payoff` を正しく評価し、インデックスからカーブへのマッピングを通じてフォワードレートを取得する。4層（infra_master → pricer_models → pricer_pricing → demo/gui）にまたがる変更となる。
+**Impact**: 現在 GenericPricer が無視している `Payoff` を正しく評価し、インデックスからカーブへのマッピングを通じてフォワードレートを取得する。4層（infra_domain → pricer_models → pricer_pricing → demo/gui）にまたがる変更となる。
 
 ### Goals
 
@@ -33,7 +33,7 @@
 - `Float` トレイト境界による `f64`/`Dual64` 両対応
 
 **既存のドメイン境界**:
-- `infra_master`: 静的マスターデータ（RateIndex, IndexType, Payoff）
+- `infra_domain`: 静的マスターデータ（RateIndex, IndexType, Payoff）
 - `pricer_models`: マーケットデータ構造（CurveSet, YieldCurve）
 - `pricer_pricing`: プライシングエンジン（GenericPricer）
 - `demo/gui`: REST API と DTO
@@ -46,7 +46,7 @@
 
 ```mermaid
 graph TB
-    subgraph "I: infra_master"
+    subgraph "I: infra_domain"
         RI[RateIndex<br/>+metadata]
         IO[IndexObservation<br/>+compounding]
         PO[Payoff<br/>Fixed/Linear/Option]
@@ -85,7 +85,7 @@ graph TB
 
 **Architecture Integration**:
 - **Selected pattern**: ハイブリッドアプローチ（既存拡張 + 新規コンポーネント）
-- **Domain boundaries**: infra_master（定義）→ pricer_models（マッピング）→ pricer_pricing（評価）の責任分離
+- **Domain boundaries**: infra_domain（定義）→ pricer_models（マッピング）→ pricer_pricing（評価）の責任分離
 - **Existing patterns preserved**: A-I-P-S 依存フロー、静的ディスパッチ、Float トレイト境界
 - **New components rationale**: PayoffEvaluator（評価ロジック分離）、IndexCurveMapper（マッピング集約）
 - **Steering compliance**: 一方向依存、British English 命名
@@ -94,7 +94,7 @@ graph TB
 
 | Layer | Choice / Version | Role in Feature | Notes |
 |-------|------------------|-----------------|-------|
-| Core Types | infra_master | RateIndex, IndexObservation 定義 | 既存 crate 拡張 |
+| Core Types | infra_domain | RateIndex, IndexObservation 定義 | 既存 crate 拡張 |
 | Market Data | pricer_models | IndexCurveMapper, CurveSet 拡張 | L2 レイヤー |
 | Pricing Engine | pricer_pricing | PayoffEvaluator, OisCalculator | L3 レイヤー、l1l2-integration feature |
 | API/DTO | demo/gui | SwapParams, LegDto, CashflowDto | web feature 必須 |
@@ -170,9 +170,9 @@ flowchart LR
 
 | Component | Domain/Layer | Intent | Req Coverage | Key Dependencies | Contracts |
 |-----------|--------------|--------|--------------|------------------|-----------|
-| IndexMetadata | infra_master | フィクシングパラメータ集約 | 1 | RateIndex | - |
-| CompoundingMethod | infra_master | コンパウンディング方式列挙 | 1, 2 | - | - |
-| IndexObservation | infra_master | 観測パラメータ拡張 | 2 | CompoundingMethod, Frequency | - |
+| IndexMetadata | infra_domain | フィクシングパラメータ集約 | 1 | RateIndex | - |
+| CompoundingMethod | infra_domain | コンパウンディング方式列挙 | 1, 2 | - | - |
+| IndexObservation | infra_domain | 観測パラメータ拡張 | 2 | CompoundingMethod, Frequency | - |
 | IndexCurveMapper | pricer_models | RateIndex→CurveName 変換 | 3 | RateIndex, CurveName | Service |
 | CurveSet | pricer_models | インデックス対応カーブ取得 | 3, 4 | IndexCurveMapper, YieldCurve | Service |
 | PayoffEvaluator | pricer_pricing | Payoff 評価ロジック | 5, 7 | CurveSet, IndexCurveMapper | Service |
@@ -181,7 +181,7 @@ flowchart LR
 | SwapParams | demo/gui | 入力 DTO | 8 | - | API |
 | LegDto, CashflowDto | demo/gui | 出力 DTO | 9 | - | API |
 
-### I: infra_master
+### I: infra_domain
 
 #### IndexMetadata
 
@@ -763,7 +763,7 @@ pub enum PricingError {
 
 ### Migration Strategy
 
-**Phase 1: infra_master 拡張**
+**Phase 1: infra_domain 拡張**
 - IndexMetadata, CompoundingMethod 追加
 - IndexObservation 拡張（後方互換性維持）
 - 既存テスト通過確認

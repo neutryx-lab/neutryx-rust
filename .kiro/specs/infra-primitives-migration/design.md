@@ -5,16 +5,16 @@
 **Purpose**: 本設計はA-I-P-Sアーキテクチャの依存関係ルール違反を解消し、基本型（primitives）とマスターデータ型を適切なレイヤーに配置することで、コードベース全体の一貫性と保守性を向上させる。
 
 **Users**:
-- Neutryx開発者（全レイヤー）がinfra_masterから基本型を安全にインポート可能になる
+- Neutryx開発者（全レイヤー）がinfra_domainから基本型を安全にインポート可能になる
 - Adapterレイヤー開発者がCurrency, RateIndex等のマスターデータに直接アクセス可能になる
 
-**Impact**: pricer_core、pricer_models、infra_masterの3クレートに渡る型定義の再配置。後方互換性は再エクスポートにより維持。
+**Impact**: pricer_core、pricer_models、infra_domainの3クレートに渡る型定義の再配置。後方互換性は再エクスポートにより維持。
 
 ### Goals
 - A-I-P-Sアーキテクチャルール「InfraはPricerに依存しない」の完全遵守
 - `DayCountConvention`の重複定義解消と統一
-- 基本型（Currency, Date, BusinessDayConvention）のinfra_masterへの集約
-- マスターデータ型（RateIndex, Frequency, Period, Direction）のinfra_masterへの移動
+- 基本型（Currency, Date, BusinessDayConvention）のinfra_domainへの集約
+- マスターデータ型（RateIndex, Frequency, Period, Direction）のinfra_domainへの移動
 - 後方互換性維持による段階的移行パスの提供
 
 ### Non-Goals
@@ -29,14 +29,14 @@
 
 **現在のA-I-P-S依存関係**:
 ```
-infra_master: 依存なし（独立）
+infra_domain: 依存なし（独立）
 pricer_core: 依存なし（L1基盤）
 pricer_models: pricer_core に依存（L2）
 ```
 
 **問題点**:
-1. `Currency`, `Date`等がpricer_coreに定義 → infra_masterから使用不可
-2. `DayCountConvention`がpricer_coreとinfra_masterの両方に存在（重複）
+1. `Currency`, `Date`等がpricer_coreに定義 → infra_domainから使用不可
+2. `DayCountConvention`がpricer_coreとinfra_domainの両方に存在（重複）
 3. `RateIndex`, `Frequency`等がpricer_modelsに定義 → Adapterから使用不可
 
 ### Architecture Pattern & Boundary Map
@@ -58,7 +58,7 @@ graph TB
     end
 
     subgraph Infra["I: Infra Layer"]
-        Master[infra_master]
+        Master[infra_domain]
         Config[infra_config]
         Store[infra_store]
     end
@@ -89,7 +89,7 @@ graph TB
 
 **Architecture Integration**:
 - **Selected pattern**: Direct Move + Re-export（型移動と後方互換性再エクスポート）
-- **Domain boundaries**: infra_masterが基本型の単一ソース、pricer_coreは再エクスポートのみ
+- **Domain boundaries**: infra_domainが基本型の単一ソース、pricer_coreは再エクスポートのみ
 - **Existing patterns preserved**: A-I-P-S一方向依存、静的ディスパッチ、フィーチャーフラグ分離
 - **New components rationale**: `Tenor`型新規追加（RateIndexの依存先として必要）
 - **Steering compliance**: structure.md、tech.mdの原則を維持
@@ -111,18 +111,18 @@ graph TB
 sequenceDiagram
     participant User as Developer Code
     participant PC as pricer_core
-    participant IM as infra_master
+    participant IM as infra_domain
 
     Note over User,IM: Phase 1後のインポートパス
 
     User->>PC: use pricer_core::types::Currency
-    PC->>IM: pub use infra_master::Currency
+    PC->>IM: pub use infra_domain::Currency
     IM-->>PC: Currency type
     PC-->>User: Currency (with deprecation warning)
 
     Note over User,IM: 推奨パス（直接インポート）
 
-    User->>IM: use infra_master::Currency
+    User->>IM: use infra_domain::Currency
     IM-->>User: Currency type (no warning)
 ```
 
@@ -130,7 +130,7 @@ sequenceDiagram
 
 | Requirement | Summary | Components | Interfaces | Flows |
 |-------------|---------|------------|------------|-------|
-| 1.1-1.5 | 基本型のinfra_master移動 | Currency, Date, DayCountConvention, BusinessDayConvention | infra_master public API | 型インポート |
+| 1.1-1.5 | 基本型のinfra_domain移動 | Currency, Date, DayCountConvention, BusinessDayConvention | infra_domain public API | 型インポート |
 | 2.1-2.4 | DayCountConvention統一 | DayCountConvention | year_fraction() | 日数計算 |
 | 3.1-3.5 | pricer_core再エクスポート | pricer_core::types | deprecated re-exports | インポート解決 |
 | 4.1-4.4 | エラー型移動 | DateError, CurrencyError | Result types | エラーハンドリング |
@@ -148,20 +148,20 @@ sequenceDiagram
 
 | Component | Domain/Layer | Intent | Req Coverage | Key Dependencies | Contracts |
 |-----------|--------------|--------|--------------|------------------|-----------|
-| Currency | infra_master | ISO 4217通貨コード表現 | 1.1, 12.1 | None (P0) | Service |
-| Date | infra_master | 型安全な日付ラッパー | 1.2, 5.1 | chrono (P0) | Service |
-| DayCountConvention | infra_master | 日数計算規約 | 1.3, 2.1-2.4 | Date (P0) | Service |
-| BusinessDayConvention | infra_master | 営業日調整規約 | 1.4, 5.2 | None (P0) | Service |
-| DateError | infra_master | 日付エラー型 | 4.1, 4.3 | thiserror (P0) | Service |
-| CurrencyError | infra_master | 通貨エラー型 | 4.2, 4.4 | thiserror (P0) | Service |
-| Tenor | infra_master | 金融期間表現 | 13.1-13.4 | Date (P1) | Service |
-| RateIndex | infra_master | ベンチマーク金利指標 | 8.1-8.5 | Currency, Tenor, DayCountConvention (P1) | Service |
-| Frequency | infra_master | 支払頻度 | 9.1-9.4 | None (P0) | Service |
-| Period | infra_master | 単一accrual期間 | 10.1-10.4 | Date, DayCountConvention (P1) | Service |
-| TradeDirection | infra_master | 汎用取引方向 | 11.1-11.2 | None (P0) | Service |
-| SwapDirection | infra_master | スワップ取引方向 | 11.2 | None (P0) | Service |
+| Currency | infra_domain | ISO 4217通貨コード表現 | 1.1, 12.1 | None (P0) | Service |
+| Date | infra_domain | 型安全な日付ラッパー | 1.2, 5.1 | chrono (P0) | Service |
+| DayCountConvention | infra_domain | 日数計算規約 | 1.3, 2.1-2.4 | Date (P0) | Service |
+| BusinessDayConvention | infra_domain | 営業日調整規約 | 1.4, 5.2 | None (P0) | Service |
+| DateError | infra_domain | 日付エラー型 | 4.1, 4.3 | thiserror (P0) | Service |
+| CurrencyError | infra_domain | 通貨エラー型 | 4.2, 4.4 | thiserror (P0) | Service |
+| Tenor | infra_domain | 金融期間表現 | 13.1-13.4 | Date (P1) | Service |
+| RateIndex | infra_domain | ベンチマーク金利指標 | 8.1-8.5 | Currency, Tenor, DayCountConvention (P1) | Service |
+| Frequency | infra_domain | 支払頻度 | 9.1-9.4 | None (P0) | Service |
+| Period | infra_domain | 単一accrual期間 | 10.1-10.4 | Date, DayCountConvention (P1) | Service |
+| TradeDirection | infra_domain | 汎用取引方向 | 11.1-11.2 | None (P0) | Service |
+| SwapDirection | infra_domain | スワップ取引方向 | 11.2 | None (P0) | Service |
 
-### infra_master Layer
+### infra_domain Layer
 
 #### Currency
 
@@ -262,7 +262,7 @@ impl Display for Date { /* YYYY-MM-DD */ }
 **Responsibilities & Constraints**
 - 7種類のISDA標準day count conventionをサポート
 - year fraction計算メソッド提供
-- pricer_core版とinfra_master版の統合
+- pricer_core版とinfra_domain版の統合
 
 **Dependencies**
 - Inbound: None
@@ -542,7 +542,7 @@ impl Period {
 - Long/Shortの汎用方向
 - PayFixed/ReceiveFixedのスワップ方向
 - 相互変換トレイト
-- **Note**: `sign()`等の計算メソッドはinfra_masterには含めない（num_traits依存を避けるため）。pricer_modelsの再エクスポート側で拡張実装を提供
+- **Note**: `sign()`等の計算メソッドはinfra_domainには含めない（num_traits依存を避けるため）。pricer_modelsの再エクスポート側で拡張実装を提供
 
 **Dependencies**
 - Inbound: pricer_models (re-export with extension)
@@ -551,9 +551,9 @@ impl Period {
 
 **Contracts**: Service [x]
 
-##### Service Interface (infra_master)
+##### Service Interface (infra_domain)
 ```rust
-// infra_master: 基本enum定義のみ（計算メソッドなし）
+// infra_domain: 基本enum定義のみ（計算メソッドなし）
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum TradeDirection {
@@ -575,7 +575,7 @@ impl From<SwapDirection> for TradeDirection { /* PayFixed -> Short, ReceiveFixed
 ##### Extension Interface (pricer_models)
 ```rust
 // pricer_models: 計算メソッドを拡張トレイトで提供
-pub use infra_master::{TradeDirection, SwapDirection};
+pub use infra_domain::{TradeDirection, SwapDirection};
 
 pub trait TradeDirectionExt {
     fn sign<T: num_traits::Float>(&self) -> T;
@@ -614,30 +614,30 @@ impl SwapDirectionExt for SwapDirection {
 | Requirements | 3.1-3.5 |
 
 **Implementation Notes**
-- Integration: `pub use infra_master::{Currency, Date, ...};`を`#[deprecated]`付きで提供
+- Integration: `pub use infra_domain::{Currency, Date, ...};`を`#[deprecated]`付きで提供
 - Validation: コンパイル時deprecation警告
 - Risks: 移行期間後の削除タイミング決定が必要
 
 ```rust
 // crates/pricer_core/src/types/mod.rs
 
-#[deprecated(since = "0.9.0", note = "Use infra_master::Currency instead")]
-pub use infra_master::Currency;
+#[deprecated(since = "0.9.0", note = "Use infra_domain::Currency instead")]
+pub use infra_domain::Currency;
 
-#[deprecated(since = "0.9.0", note = "Use infra_master::Date instead")]
-pub use infra_master::Date;
+#[deprecated(since = "0.9.0", note = "Use infra_domain::Date instead")]
+pub use infra_domain::Date;
 
-#[deprecated(since = "0.9.0", note = "Use infra_master::DayCountConvention instead")]
-pub use infra_master::DayCountConvention;
+#[deprecated(since = "0.9.0", note = "Use infra_domain::DayCountConvention instead")]
+pub use infra_domain::DayCountConvention;
 
-#[deprecated(since = "0.9.0", note = "Use infra_master::BusinessDayConvention instead")]
-pub use infra_master::BusinessDayConvention;
+#[deprecated(since = "0.9.0", note = "Use infra_domain::BusinessDayConvention instead")]
+pub use infra_domain::BusinessDayConvention;
 
-#[deprecated(since = "0.9.0", note = "Use infra_master::DateError instead")]
-pub use infra_master::DateError;
+#[deprecated(since = "0.9.0", note = "Use infra_domain::DateError instead")]
+pub use infra_domain::DateError;
 
-#[deprecated(since = "0.9.0", note = "Use infra_master::CurrencyError instead")]
-pub use infra_master::CurrencyError;
+#[deprecated(since = "0.9.0", note = "Use infra_domain::CurrencyError instead")]
+pub use infra_domain::CurrencyError;
 ```
 
 ## Data Models
@@ -726,7 +726,7 @@ classDiagram
 ### Error Types
 
 ```rust
-// infra_master::error
+// infra_domain::error
 
 use thiserror::Error;
 
@@ -774,17 +774,17 @@ flowchart TD
     B --> C[Phase 3: 再エクスポート設定]
     C --> D[Phase 4: 検証とCI更新]
 
-    A1[Currency → infra_master] --> A
-    A2[Date → infra_master] --> A
+    A1[Currency → infra_domain] --> A
+    A2[Date → infra_domain] --> A
     A3[DayCountConvention 統合] --> A
-    A4[BusinessDayConvention → infra_master] --> A
-    A5[DateError, CurrencyError → infra_master] --> A
+    A4[BusinessDayConvention → infra_domain] --> A
+    A5[DateError, CurrencyError → infra_domain] --> A
 
     B1[Tenor 新規追加] --> B
-    B2[RateIndex → infra_master] --> B
-    B3[Frequency → infra_master] --> B
-    B4[Period → infra_master] --> B
-    B5[TradeDirection → infra_master] --> B
+    B2[RateIndex → infra_domain] --> B
+    B3[Frequency → infra_domain] --> B
+    B4[Period → infra_domain] --> B
+    B5[TradeDirection → infra_domain] --> B
 
     C1[pricer_core deprecated re-exports] --> C
     C2[pricer_models deprecated re-exports] --> C
@@ -798,7 +798,7 @@ flowchart TD
 
 1. **Phase 1: 基盤型移動**（最初に実行、他の型の依存先）
    - Rollback trigger: ビルド失敗、テスト失敗
-   - Validation: `cargo build -p infra_master`, `cargo test -p infra_master`
+   - Validation: `cargo build -p infra_domain`, `cargo test -p infra_domain`
 
 2. **Phase 2: マスターデータ型移動**（Phase 1完了後）
    - Rollback trigger: pricer_modelsのビルド失敗
@@ -810,4 +810,4 @@ flowchart TD
 
 4. **Phase 4: 検証とCI更新**
    - Rollback trigger: 依存関係ルール違反
-   - Validation: `cargo tree -p infra_master`で禁止依存なし
+   - Validation: `cargo tree -p infra_domain`で禁止依存なし

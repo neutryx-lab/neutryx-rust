@@ -1,0 +1,309 @@
+{
+  "metadata": {
+    "description": "Trading conventions for various instruments",
+    "version": "2.0",
+    "note": "Template-based format for reduced redundancy"
+  },
+  "currencyDefaults": {
+    "USD": {
+      "dayCount": "ACT/360",
+      "settlementDays": 2,
+      "calendar": "New York",
+      "index": "SOFR",
+      "businessDayConvention": "Modified Following"
+    },
+    "EUR": {
+      "dayCount": "ACT/360",
+      "settlementDays": 2,
+      "calendar": "TARGET",
+      "index": "ESTR",
+      "businessDayConvention": "Modified Following"
+    },
+    "GBP": {
+      "dayCount": "ACT/365F",
+      "settlementDays": 0,
+      "calendar": "London",
+      "index": "SONIA",
+      "businessDayConvention": "Modified Following"
+    },
+    "JPY": {
+      "dayCount": "ACT/365F",
+      "settlementDays": 2,
+      "calendar": "Tokyo",
+      "index": "TONA",
+      "businessDayConvention": "Modified Following"
+    },
+    "CHF": {
+      "dayCount": "ACT/360",
+      "settlementDays": 2,
+      "calendar": "Zurich",
+      "index": "SARON",
+      "businessDayConvention": "Modified Following"
+    },
+    "AUD": {
+      "dayCount": "ACT/365F",
+      "settlementDays": 1,
+      "calendar": "Sydney",
+      "index": "AONIA",
+      "businessDayConvention": "Modified Following"
+    },
+    "CAD": {
+      "dayCount": "ACT/365F",
+      "settlementDays": 1,
+      "calendar": "Toronto",
+      "index": "CORRA",
+      "businessDayConvention": "Modified Following"
+    }
+  },
+  "typeDefaults": {
+    "OisConvention": {
+      "payment_frequency": "Annual"
+    },
+    "SwaptionConvention": {
+      "vol_type": "Normal",
+      "vol_unit": "bp",
+      "settlement": "Cash",
+      "exercise_style": "European",
+      "underlying_tenor": "Swap"
+    },
+    "FuturesConvention": {
+      "imm_dates": true
+    }
+  },
+  "templates": [
+    {
+      "type": "OisConvention",
+      "idPattern": "{currency}-{index}-OIS",
+      "currencies": ["USD", "EUR", "GBP", "JPY", "CHF", "AUD", "CAD"],
+      "isDefault": true
+    },
+    {
+      "type": "DepositConvention",
+      "idPattern": "{currency}-DEPO",
+      "currencies": ["USD", "EUR", "GBP", "JPY", "CHF", "AUD", "CAD"],
+      "isDefault": true
+    },
+    {
+      "type": "FraConvention",
+      "idPattern": "{currency}-FRA",
+      "currencies": ["USD", "GBP", "JPY"],
+      "isDefault": true,
+      "fields": {
+        "payment_lag": 2
+      },
+      "overrides": {
+        "GBP": { "payment_lag": 0 }
+      }
+    },
+    {
+      "type": "FuturesConvention",
+      "idPattern": "{currency}-FUTURES",
+      "currencies": ["USD", "EUR", "GBP", "JPY"],
+      "isDefault": true,
+      "fields": {
+        "contract_size": 1000000,
+        "tick_size": 0.005
+      },
+      "overrides": {
+        "USD": { "tick_size": 0.0025, "calendar": "CME" },
+        "EUR": { "calendar": "ICE", "index": "EURIBOR3M" },
+        "GBP": { "contract_size": 500000, "calendar": "ICE" },
+        "JPY": { "contract_size": 100000000, "calendar": "TFX" }
+      }
+    },
+    {
+      "type": "SwaptionConvention",
+      "idPattern": "{currency}-SWAPTION",
+      "currencies": ["USD", "EUR", "JPY", "GBP"],
+      "isDefault": true,
+      "fields": {
+        "underlying_index": "{index}"
+      },
+      "overrides": {
+        "EUR": { "underlying_index": "EURIBOR" },
+        "JPY": { "underlying_index": "TIBOR" }
+      }
+    }
+  ],
+  "conventions": {
+    "USD-SOFR-SWAP": {
+      "type": "SwapConvention",
+      "currency": "USD",
+      "is_default": true,
+      "fields": {
+        "fixed_leg_day_count": "ACT/360",
+        "fixed_leg_frequency": "Annual",
+        "float_leg_index": "SOFR",
+        "float_leg_day_count": "ACT/360",
+        "float_leg_frequency": "Annual",
+        "business_day_convention": "Modified Following",
+        "settlement_days": 2,
+        "calendar": "New York"
+      }
+    },
+    "EUR-EURIBOR-SWAP": {
+      "type": "SwapConvention",
+      "currency": "EUR",
+      "is_default": true,
+      "fields": {
+        "fixed_leg_day_count": "30/360",
+        "fixed_leg_frequency": "Annual",
+        "float_leg_index": "EURIBOR6M",
+        "float_leg_day_count": "ACT/360",
+        "float_leg_frequency": "Semi-Annual",
+        "business_day_convention": "Modified Following",
+        "settlement_days": 2,
+        "calendar": "TARGET"
+      }
+    },
+    "EUR-FRA": {
+      "type": "FraConvention",
+      "currency": "EUR",
+      "is_default": true,
+      "fields": {
+        "index": "EURIBOR6M",
+        "day_count": "ACT/360",
+        "business_day_convention": "Modified Following",
+        "settlement_days": 2,
+        "calendar": "TARGET",
+        "payment_lag": 2
+      }
+    },
+    "JPY-TIBOR-SWAP": {
+      "type": "SwapConvention",
+      "currency": "JPY",
+      "is_default": true,
+      "fields": {
+        "fixed_leg_day_count": "ACT/365F",
+        "fixed_leg_frequency": "Semi-Annual",
+        "float_leg_index": "TIBOR3M",
+        "float_leg_day_count": "ACT/365F",
+        "float_leg_frequency": "Quarterly",
+        "business_day_convention": "Modified Following",
+        "settlement_days": 2,
+        "calendar": "Tokyo"
+      }
+    },
+    "GBP-SONIA-SWAP": {
+      "type": "SwapConvention",
+      "currency": "GBP",
+      "is_default": true,
+      "fields": {
+        "fixed_leg_day_count": "ACT/365F",
+        "fixed_leg_frequency": "Annual",
+        "float_leg_index": "SONIA",
+        "float_leg_day_count": "ACT/365F",
+        "float_leg_frequency": "Annual",
+        "business_day_convention": "Modified Following",
+        "settlement_days": 0,
+        "calendar": "London"
+      }
+    },
+    "FX-SPOT": {
+      "type": "FxConvention",
+      "currency": "USD",
+      "is_default": true,
+      "fields": {
+        "settlement_days": 2,
+        "business_day_convention": "Following",
+        "calendar": "New York + London"
+      }
+    },
+    "USD-CAPFLOOR": {
+      "type": "CapFloorConvention",
+      "currency": "USD",
+      "is_default": true,
+      "fields": {
+        "vol_type": "Normal",
+        "vol_unit": "bp",
+        "underlying_index": "SOFR",
+        "cap_frequency": "Quarterly",
+        "settlement": "T+2"
+      }
+    },
+    "XCCY-EURUSD": {
+      "type": "XccyBasisConvention",
+      "currency": "EUR",
+      "is_default": true,
+      "fields": {
+        "base_currency": "EUR",
+        "quote_currency": "USD",
+        "base_index": "ESTR",
+        "quote_index": "SOFR",
+        "spread_on": "base",
+        "payment_frequency": "Quarterly",
+        "notional_exchange": "Both",
+        "settlement_days": 2
+      }
+    },
+    "XCCY-USDJPY": {
+      "type": "XccyBasisConvention",
+      "currency": "USD",
+      "is_default": true,
+      "fields": {
+        "base_currency": "USD",
+        "quote_currency": "JPY",
+        "base_index": "SOFR",
+        "quote_index": "TONA",
+        "spread_on": "quote",
+        "payment_frequency": "Quarterly",
+        "notional_exchange": "Both",
+        "settlement_days": 2
+      }
+    },
+    "XCCY-GBPUSD": {
+      "type": "XccyBasisConvention",
+      "currency": "GBP",
+      "is_default": true,
+      "fields": {
+        "base_currency": "GBP",
+        "quote_currency": "USD",
+        "base_index": "SONIA",
+        "quote_index": "SOFR",
+        "spread_on": "base",
+        "payment_frequency": "Quarterly",
+        "notional_exchange": "Both",
+        "settlement_days": 2
+      }
+    },
+    "EURUSD-FXOPTION": {
+      "type": "FxOptionConvention",
+      "currency": "EUR",
+      "is_default": true,
+      "fields": {
+        "delta_type": "Spot Delta",
+        "vol_quote_style": "ATM + RR/BF",
+        "premium_currency": "USD",
+        "settlement": "T+2",
+        "cut_time": "NY 10:00",
+        "calendar": "New York + TARGET"
+      }
+    },
+    "USDJPY-FXOPTION": {
+      "type": "FxOptionConvention",
+      "currency": "USD",
+      "is_default": true,
+      "fields": {
+        "delta_type": "Spot Delta",
+        "vol_quote_style": "ATM + RR/BF",
+        "premium_currency": "JPY",
+        "settlement": "T+2",
+        "cut_time": "Tokyo 15:00",
+        "calendar": "Tokyo + New York"
+      }
+    },
+    "GBPUSD-FXOPTION": {
+      "type": "FxOptionConvention",
+      "currency": "GBP",
+      "is_default": true,
+      "fields": {
+        "delta_type": "Spot Delta",
+        "vol_quote_style": "ATM + RR/BF",
+        "premium_currency": "USD",
+        "settlement": "T+2",
+        "cut_time": "NY 10:00",
+        "calendar": "London + New York"
+      }
+    }
+  }
+}

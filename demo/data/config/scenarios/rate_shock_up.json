@@ -1,0 +1,21 @@
+{
+  "_comment": "Parallel rate shock scenario (+100bp)",
+  "preset": null,
+  "custom_shifts": [
+    {
+      "factor": "USD_SOFR_*",
+      "shift_type": "absolute",
+      "amount": 0.01
+    },
+    {
+      "factor": "EUR_ESTR_*",
+      "shift_type": "absolute",
+      "amount": 0.01
+    },
+    {
+      "factor": "JPY_TONA_*",
+      "shift_type": "absolute",
+      "amount": 0.01
+    }
+  ]
+}

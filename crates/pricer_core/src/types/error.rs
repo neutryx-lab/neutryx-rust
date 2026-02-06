@@ -6,7 +6,7 @@
 //! - `SolverError`: Errors from root-finding solvers
 //! - `CalibrationError`: Errors from model calibration
 //!
-//! For `DateError` and `CurrencyError`, import directly from `infra_master`.
+//! For `DateError` and `CurrencyError`, import directly from `infra_domain`.
 
 use std::fmt;
 
@@ -14,6 +14,8 @@ use thiserror::Error;
 
 // Import math errors for From implementations
 use crate::math::distributions::DistributionError;
+#[cfg(feature = "linalg")]
+use crate::math::linalg::LinearAlgebraError;
 use crate::math::{
     fitting::FittingError, integrators::IntegrationError, optimisers::OptimisationError,
 };
@@ -117,7 +119,11 @@ pub enum InterpolationError {
 /// - `MaxIterationsExceeded`: Solver failed to converge within iteration limit
 /// - `DerivativeNearZero`: Derivative too small for Newton-Raphson
 /// - `NoBracket`: Function values at bracket endpoints have same sign
+/// - `SingularJacobian`: Jacobian matrix is singular (multi-dimensional
+///   solvers)
+/// - `DimensionMismatch`: Input/output dimensions do not match expected values
 /// - `NumericalInstability`: General numerical instability
+/// - `External`: Error from external crate (argmin, roots, levenberg-marquardt)
 ///
 /// # Examples
 /// ```
@@ -125,6 +131,10 @@ pub enum InterpolationError {
 ///
 /// let err = SolverError::MaxIterationsExceeded { iterations: 100 };
 /// assert!(format!("{}", err).contains("100 iterations"));
+///
+/// // Multi-dimensional solver errors
+/// let err = SolverError::SingularJacobian { min_pivot: 1e-15 };
+/// assert!(format!("{}", err).contains("Singular Jacobian"));
 /// ```
 #[derive(Error, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -152,9 +162,67 @@ pub enum SolverError {
         b: f64,
     },
 
+    /// Jacobian matrix is singular or near-singular (multi-dimensional
+    /// solvers).
+    ///
+    /// This occurs when the Jacobian matrix cannot be inverted, typically
+    /// indicating the problem is ill-conditioned or the current iterate
+    /// is at a singular point.
+    #[error("Singular Jacobian: min pivot = {min_pivot:.2e}")]
+    SingularJacobian {
+        /// Smallest pivot value encountered during LU decomposition
+        min_pivot: f64,
+    },
+
+    /// Dimension mismatch between input and expected values.
+    ///
+    /// This occurs when the residual vector or Jacobian matrix dimensions
+    /// do not match the expected problem dimension.
+    #[error("Dimension mismatch: expected {expected}, got {got}")]
+    DimensionMismatch {
+        /// Expected dimension
+        expected: usize,
+        /// Actual dimension received
+        got: usize,
+    },
+
     /// Numerical instability during computation.
     #[error("Numerical instability: {0}")]
     NumericalInstability(String),
+
+    /// External crate error (argmin, roots, levenberg-marquardt, etc.).
+    #[error("External solver error: {0}")]
+    External(String),
+}
+
+/// Convert linear algebra errors to solver errors.
+///
+/// This conversion enables seamless error propagation from linear algebra
+/// operations (matrix decomposition, inversion) to solver error handling.
+#[cfg(feature = "linalg")]
+impl From<LinearAlgebraError> for SolverError {
+    fn from(err: LinearAlgebraError) -> Self {
+        match err {
+            LinearAlgebraError::SingularMatrix => SolverError::SingularJacobian { min_pivot: 0.0 },
+            LinearAlgebraError::NotPositiveDefinite => {
+                SolverError::NumericalInstability("Matrix is not positive definite".to_string())
+            }
+            LinearAlgebraError::NotSquare { rows, cols } => {
+                SolverError::NumericalInstability(format!("Matrix is not square: {rows}x{cols}"))
+            }
+            LinearAlgebraError::DimensionMismatch { expected, got } => {
+                SolverError::NumericalInstability(format!(
+                    "Dimension mismatch: expected {expected}, got {got}"
+                ))
+            }
+            LinearAlgebraError::DecompositionFailed(msg) => {
+                SolverError::NumericalInstability(format!("Decomposition failed: {msg}"))
+            }
+            LinearAlgebraError::InvalidInput(msg) => {
+                SolverError::NumericalInstability(format!("Invalid input: {msg}"))
+            }
+        }
+    }
 }
 
 /// Calibration error kind.
@@ -419,6 +487,17 @@ impl From<SolverError> for CalibrationError {
                 "No bracket found between {} and {}",
                 a, b
             )),
+            SolverError::SingularJacobian { min_pivot } => CalibrationError::numerical_instability(
+                format!("Singular Jacobian matrix: min pivot = {min_pivot:.2e}"),
+            ),
+            SolverError::DimensionMismatch { expected, got } => {
+                CalibrationError::invalid_parameter(format!(
+                    "Dimension mismatch: expected {expected}, got {got}"
+                ))
+            }
+            SolverError::External(msg) => {
+                CalibrationError::numerical_instability(format!("External solver error: {msg}"))
+            }
         }
     }
 }
@@ -453,6 +532,9 @@ impl From<OptimisationError> for CalibrationError {
             OptimisationError::LineSearchError(msg) => {
                 CalibrationError::numerical_instability(format!("Line search failed: {msg}"))
             }
+            OptimisationError::External(msg) => CalibrationError::numerical_instability(format!(
+                "External optimisation error: {msg}"
+            )),
         }
     }
 }
@@ -750,7 +832,7 @@ mod tests {
         assert_eq!(err1, err2);
     }
 
-    // Note: DateError and CurrencyError tests are in infra_master
+    // Note: DateError and CurrencyError tests are in infra_domain
 
     // InterpolationError tests
 
@@ -805,7 +887,89 @@ mod tests {
         assert_eq!(err1, err2);
     }
 
-    // SolverError tests
+    // SolverError tests - Multi-dimensional solver extensions (Task 1.1)
+
+    #[test]
+    fn test_solver_error_singular_jacobian_display() {
+        let err = SolverError::SingularJacobian { min_pivot: 1e-15 };
+        let display = format!("{err}");
+        assert!(display.contains("Singular Jacobian"));
+        // Format is {:.2e} so we check for the scientific notation
+        assert!(display.contains("1.00e-15"));
+    }
+
+    #[test]
+    fn test_solver_error_dimension_mismatch_display() {
+        let err = SolverError::DimensionMismatch {
+            expected: 10,
+            got: 5,
+        };
+        let display = format!("{err}");
+        assert!(display.contains("Dimension mismatch"));
+        assert!(display.contains("10"));
+        assert!(display.contains("5"));
+    }
+
+    #[cfg(feature = "linalg")]
+    #[test]
+    fn test_solver_error_from_linear_algebra_singular() {
+        use crate::math::linalg::LinearAlgebraError;
+        let la_err = LinearAlgebraError::SingularMatrix;
+        let solver_err: SolverError = la_err.into();
+        assert!(matches!(solver_err, SolverError::SingularJacobian { .. }));
+    }
+
+    #[cfg(feature = "linalg")]
+    #[test]
+    fn test_solver_error_from_linear_algebra_dimension_mismatch() {
+        use crate::math::linalg::LinearAlgebraError;
+        let la_err = LinearAlgebraError::DimensionMismatch {
+            expected: "3x3".to_string(),
+            got: "2x3".to_string(),
+        };
+        let solver_err: SolverError = la_err.into();
+        assert!(matches!(solver_err, SolverError::NumericalInstability(_)));
+    }
+
+    #[test]
+    fn test_solver_error_singular_jacobian_clone_and_equality() {
+        let err1 = SolverError::SingularJacobian { min_pivot: 1e-12 };
+        let err2 = err1.clone();
+        assert_eq!(err1, err2);
+    }
+
+    #[test]
+    fn test_solver_error_dimension_mismatch_clone_and_equality() {
+        let err1 = SolverError::DimensionMismatch {
+            expected: 5,
+            got: 3,
+        };
+        let err2 = err1.clone();
+        assert_eq!(err1, err2);
+    }
+
+    #[test]
+    fn test_calibration_error_from_singular_jacobian() {
+        let solver_err = SolverError::SingularJacobian { min_pivot: 1e-14 };
+        let calib_err: CalibrationError = solver_err.into();
+        assert!(calib_err.is_numerical_instability());
+        assert!(calib_err.message.as_ref().unwrap().contains("Singular"));
+    }
+
+    #[test]
+    fn test_calibration_error_from_dimension_mismatch() {
+        let solver_err = SolverError::DimensionMismatch {
+            expected: 10,
+            got: 5,
+        };
+        let calib_err: CalibrationError = solver_err.into();
+        assert!(matches!(
+            calib_err.kind,
+            CalibrationErrorKind::InvalidParameter(_)
+        ));
+    }
+
+    // Original SolverError tests
 
     #[test]
     fn test_solver_error_max_iterations_display() {
@@ -851,6 +1015,13 @@ mod tests {
         let err1 = SolverError::NoBracket { a: 0.0, b: 1.0 };
         let err2 = err1.clone();
         assert_eq!(err1, err2);
+    }
+
+    #[test]
+    fn test_solver_error_external_display() {
+        let err = SolverError::External("levenberg-marquardt failed".to_string());
+        assert!(format!("{}", err).contains("External"));
+        assert!(format!("{}", err).contains("levenberg-marquardt"));
     }
 
     // CalibrationError tests
@@ -987,6 +1158,22 @@ mod tests {
         let solver_err = SolverError::NoBracket { a: 0.0, b: 1.0 };
         let calib_err: CalibrationError = solver_err.into();
         assert!(calib_err.is_numerical_instability());
+    }
+
+    #[test]
+    fn test_calibration_error_from_solver_external() {
+        let solver_err = SolverError::External("roots crate error".to_string());
+        let calib_err: CalibrationError = solver_err.into();
+        assert!(calib_err.is_numerical_instability());
+        assert!(calib_err.message.as_ref().unwrap().contains("External"));
+    }
+
+    #[test]
+    fn test_calibration_error_from_optimisation_external() {
+        let opt_err = OptimisationError::External("argmin error".to_string());
+        let calib_err: CalibrationError = opt_err.into();
+        assert!(calib_err.is_numerical_instability());
+        assert!(calib_err.message.as_ref().unwrap().contains("External"));
     }
 
     #[test]
