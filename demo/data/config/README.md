@@ -11,6 +11,9 @@ config/
 ├── settings.toml              # Master configuration (TOML)
 ├── instruments.json           # Instrument definitions for curve calibration
 ├── curves.json                # Curve definitions and calibration settings
+├── vol_surfaces.json          # Volatility surface definitions (basic)
+├── vol_construction.json      # Volatility surface/cube construction settings
+├── vol_instruments.json       # Volatility calibration instrument definitions
 ├── pricing.json               # Analytical pricing config
 ├── pricing_monte_carlo.json   # Monte Carlo pricing config
 ├── pricing_tree.json          # Tree-based pricing config
