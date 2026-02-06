@@ -73,8 +73,9 @@ fn test_stochastic_model_import() {
 /// Requirement: 4.2, 4.3
 #[test]
 fn test_instrument_enum_import() {
-    use pricer_models::instruments::{
-        Direction, ExerciseStyle, Forward, Instrument, InstrumentParams, PayoffType, VanillaOption,
+    use infra_domain::trade::{
+        ExerciseStyle, Forward, ForwardDirection as Direction, InstrumentParams, PayoffType,
+        PricingInstrument as Instrument, VanillaOption,
     };
 
     // Create vanilla option
@@ -103,8 +104,8 @@ fn test_instrument_enum_import() {
 #[test]
 fn test_l1_l2_combined_usage() {
     use pricer_core::math::smoothing::smooth_max;
-    use pricer_models::instruments::{
-        ExerciseStyle, Instrument, InstrumentParams, PayoffType, VanillaOption,
+    use infra_domain::trade::{
+        ExerciseStyle, InstrumentParams, PayoffType, PricingInstrument as Instrument, VanillaOption,
     };
 
     // Create option using L2

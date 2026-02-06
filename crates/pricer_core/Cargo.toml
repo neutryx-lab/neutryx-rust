@@ -13,7 +13,6 @@ thiserror.workspace = true
 serde = { workspace = true, features = ["derive"], optional = true }
 infra_domain = { path = "../infra_domain" }
 rayon = { workspace = true, optional = true }
-ndarray = { workspace = true, optional = true }
 nalgebra = { workspace = true, optional = true }
 nalgebra-sparse = { workspace = true, optional = true }
 rand = { workspace = true, optional = true }
@@ -41,7 +40,7 @@ execution-trace = []               # Execution trace mode for computation graph 
 serde = ["dep:serde", "chrono/serde", "infra_domain/serde"]  # Serialisation support
 parallel = ["dep:rayon"]           # Parallel bootstrapping support
 rng = ["dep:rand", "dep:rand_distr"]  # Random number generation (PRNG, QMC placeholders)
-linalg = ["dep:ndarray", "dep:nalgebra", "rng"]  # Linear algebra support (includes multi-dimensional copula)
+linalg = ["dep:nalgebra", "rng"]  # Linear algebra support (includes multi-dimensional copula)
 sparse = ["linalg", "dep:nalgebra-sparse"]  # Sparse matrix support (CSR/CSC, SparseLU)
 external-numerics = ["dep:argmin", "dep:argmin-math", "dep:levenberg-marquardt", "dep:nalgebra"]  # External optimisation libraries
 

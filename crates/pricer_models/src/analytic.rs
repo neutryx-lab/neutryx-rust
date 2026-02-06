@@ -42,7 +42,7 @@ pub use pricer_core::math::formulas::{
 use pricer_core::types::PricingError;
 use thiserror::Error;
 
-use crate::instruments::{FxOptionType, PayoffType, VanillaOption};
+use infra_domain::trade::{FxOptionType, PayoffType, VanillaOption};
 
 /// Analytical pricing errors with instrument context.
 ///
@@ -254,7 +254,7 @@ impl<T: Float> GarmanKohlhagenExt<T> for GarmanKohlhagen<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::instruments::{ExerciseStyle, InstrumentParams};
+    use infra_domain::trade::{ExerciseStyle, InstrumentParams};
 
     #[test]
     fn test_black_scholes_price_option_call() {

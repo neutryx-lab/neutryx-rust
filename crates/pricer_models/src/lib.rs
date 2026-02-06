@@ -65,20 +65,6 @@ pub mod jump;
 pub mod market;
 pub mod stochastic;
 
-// Re-export instrument types from infra_domain for backwards compatibility
-// This replaces the former pricer_models::instruments module
-pub mod instruments {
-    //! Lightweight instrument definitions for analytical pricing models.
-    //!
-    //! This module re-exports types from `infra_domain::trade` for backwards
-    //! compatibility. For full instrument definitions, see
-    //! `infra_domain::trade`.
-
-    pub use infra_domain::trade::{
-        ExerciseStyle, Forward, ForwardDirection as Direction, FxOptionType, InstrumentParams,
-        PayoffType, PricingInstrument as Instrument, VanillaOption,
-    };
-}
 
 // Re-export extension traits for direction types (infra_domain types not
 // re-exported)
