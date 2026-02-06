@@ -404,7 +404,7 @@ where
         if nrows == ncols {
             for i in 0..nrows {
                 let diag_val = jacobian[(i, i)];
-                if diag_val.abs() < zero_threshold {
+                if Float::abs(diag_val) < zero_threshold {
                     return JacobianQuality::warning("Near-zero diagonal element detected");
                 }
             }
@@ -676,6 +676,65 @@ where
                 pillar
             })
             .collect()
+    }
+
+    // =========================================================================
+    // AD Instability Helper Methods (Task 4.4, Requirement 5.4)
+    // =========================================================================
+
+    /// Compute variance between two Jacobian matrices.
+    ///
+    /// Calculates the mean squared difference between corresponding elements.
+    /// Used to detect AD instability by comparing AD Jacobian with finite difference.
+    pub fn compute_jacobian_variance(&self, j1: &DMatrix<T>, j2: &DMatrix<T>) -> T {
+        let n = j1.nrows();
+        let m = j1.ncols();
+
+        if n != j2.nrows() || m != j2.ncols() {
+            return from_f64(f64::INFINITY);
+        }
+
+        if n == 0 || m == 0 {
+            return from_f64(0.0);
+        }
+
+        let mut sum_sq_diff: T = from_f64(0.0);
+        let mut count: T = from_f64(0.0);
+
+        for i in 0..n {
+            for j in 0..m {
+                let diff = j1[(i, j)] - j2[(i, j)];
+                sum_sq_diff = sum_sq_diff + diff * diff;
+                count = count + from_f64(1.0);
+            }
+        }
+
+        if count > from_f64(0.0) {
+            sum_sq_diff / count
+        } else {
+            from_f64(0.0)
+        }
+    }
+
+    /// Check if AD fallback should be triggered based on variance.
+    ///
+    /// # Arguments
+    ///
+    /// * `ad_jacobian` - Jacobian computed via Enzyme AD
+    /// * `fd_jacobian` - Jacobian computed via finite difference
+    /// * `threshold` - Variance threshold (default 1e6)
+    ///
+    /// # Returns
+    ///
+    /// (should_fallback, variance)
+    pub fn should_fallback_from_ad(
+        &self,
+        ad_jacobian: &DMatrix<T>,
+        fd_jacobian: &DMatrix<T>,
+        threshold: T,
+    ) -> (bool, T) {
+        let variance = self.compute_jacobian_variance(ad_jacobian, fd_jacobian);
+        (variance > threshold, variance)
     }
 }
 
@@ -1081,6 +1140,79 @@ where
         }
         result
     }
+
+    // =========================================================================
+    // AD Instability Auto-Fallback (Task 4.4)
+    // =========================================================================
+
+    /// Compute Jacobian with stability check and auto-fallback.
+    ///
+    /// # Requirement: 5.4
+    ///
+    /// Compares Enzyme AD Jacobian with finite difference approximation.
+    /// If variance exceeds threshold (1e6), automatically falls back to
+    /// central difference method for improved numerical stability.
+    ///
+    /// # Arguments
+    ///
+    /// * `log_df` - Log discount factors
+    ///
+    /// # Returns
+    ///
+    /// Tuple of (Jacobian matrix, NumericalDiagnostics)
+    pub fn compute_jacobian_with_stability_check(
+        &self,
+        log_df: &[T],
+    ) -> Result<(DMatrix<T>, super::error::NumericalDiagnostics<T>), CalibrationError> {
+        use super::error::NumericalDiagnostics;
+
+        let variance_threshold: T = from_f64(1e6);
+        let mut diagnostics = NumericalDiagnostics::new();
+
+        // Try Enzyme AD computation first
+        let enzyme_result = self.try_compute_jacobian_enzyme(log_df);
+
+        match enzyme_result {
+            Ok(enzyme_jacobian) => {
+                // Compute finite difference Jacobian for comparison
+                let fd_jacobian = self.compute_jacobian_finite_diff(log_df)?;
+
+                // Calculate variance between AD and FD
+                let variance = self.compute_jacobian_variance(&enzyme_jacobian, &fd_jacobian);
+                diagnostics.ad_variance = Some(variance);
+
+                if variance > variance_threshold {
+                    // AD is unstable, fall back to central difference
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!(
+                        variance = %variance.to_f64().unwrap_or(0.0),
+                        threshold = %variance_threshold.to_f64().unwrap_or(0.0),
+                        "AD Jacobian variance exceeds threshold, falling back to central difference"
+                    );
+
+                    diagnostics.ad_fallback_used = true;
+                    let central_jacobian = self.compute_jacobian_central_diff(log_df)?;
+                    Ok((central_jacobian, diagnostics))
+                } else {
+                    // AD is stable, use it
+                    Ok((enzyme_jacobian, diagnostics))
+                }
+            }
+            Err(e) => {
+                // AD failed entirely, fall back to central difference
+                #[cfg(feature = "tracing")]
+                tracing::warn!(
+                    error = %e,
+                    "Enzyme AD Jacobian failed, falling back to central difference"
+                );
+
+                diagnostics.ad_fallback_used = true;
+                let central_jacobian = self.compute_jacobian_central_diff(log_df)?;
+                Ok((central_jacobian, diagnostics))
+            }
+        }
+    }
+
 }
 
 // =============================================================================
@@ -1652,5 +1784,107 @@ mod tests {
 
         // Should have more than 3 cashflows (deposit=1, OIS=1, swap=5)
         assert!(problem.total_cashflows() > 3);
+    }
+
+    // =========================================================================
+    // AD Instability Auto-Fallback Tests (Task 4.4, Requirement 5.4)
+    // =========================================================================
+
+    #[test]
+    fn test_compute_jacobian_variance_identical() {
+        let instruments = create_compiled_instruments();
+        let problem = CalibrationProblem::from_compiled(instruments).unwrap();
+
+        let x = problem.initial_guess_vector();
+        let jacobian1 = problem.jacobian(&x).unwrap();
+        let jacobian2 = jacobian1.clone();
+
+        let variance = problem.compute_jacobian_variance(&jacobian1, &jacobian2);
+        assert_relative_eq!(variance, 0.0, epsilon = 1e-15);
+    }
+
+    #[test]
+    fn test_compute_jacobian_variance_different() {
+        let instruments = create_compiled_instruments();
+        let problem = CalibrationProblem::from_compiled(instruments).unwrap();
+
+        let x = problem.initial_guess_vector();
+        let jacobian1 = problem.jacobian(&x).unwrap();
+
+        // Create a perturbed Jacobian
+        let mut jacobian2 = jacobian1.clone();
+        for i in 0..jacobian2.nrows() {
+            for j in 0..jacobian2.ncols() {
+                jacobian2[(i, j)] += 0.01; // Add 0.01 to each element
+            }
+        }
+
+        let variance = problem.compute_jacobian_variance(&jacobian1, &jacobian2);
+        // Mean squared diff = 0.01^2 = 0.0001
+        assert_relative_eq!(variance, 0.0001, epsilon = 1e-10);
+    }
+
+    #[test]
+    fn test_should_fallback_from_ad_below_threshold() {
+        let instruments = create_compiled_instruments();
+        let problem = CalibrationProblem::from_compiled(instruments).unwrap();
+
+        let x = problem.initial_guess_vector();
+        let jacobian1 = problem.jacobian(&x).unwrap();
+        let jacobian2 = jacobian1.clone();
+
+        let threshold = 1e6;
+        let (should_fallback, variance) = problem.should_fallback_from_ad(&jacobian1, &jacobian2, threshold);
+
+        assert!(!should_fallback);
+        assert!(variance < threshold);
+    }
+
+    #[test]
+    fn test_should_fallback_from_ad_above_threshold() {
+        let instruments = create_compiled_instruments();
+        let problem = CalibrationProblem::from_compiled(instruments).unwrap();
+
+        let x = problem.initial_guess_vector();
+        let jacobian1 = problem.jacobian(&x).unwrap();
+
+        // Create a very different Jacobian to trigger fallback
+        let mut jacobian2 = jacobian1.clone();
+        for i in 0..jacobian2.nrows() {
+            for j in 0..jacobian2.ncols() {
+                jacobian2[(i, j)] += 1000.0; // Add large perturbation
+            }
+        }
+
+        let threshold = 1e6;
+        let (should_fallback, variance) = problem.should_fallback_from_ad(&jacobian1, &jacobian2, threshold);
+
+        // Variance = mean((1000)^2) = 1e6
+        assert!(should_fallback);
+        assert_relative_eq!(variance, 1e6, epsilon = 1e-6);
+    }
+
+    #[test]
+    #[cfg(feature = "enzyme-ad")]
+    fn test_compute_jacobian_with_stability_check() {
+        let instruments = create_compiled_instruments();
+        let problem = CalibrationProblem::from_compiled(instruments).unwrap();
+
+        let x = problem.initial_guess_vector();
+        let result = problem.compute_jacobian_with_stability_check(&x);
+
+        // Should succeed (may use fallback depending on whether Enzyme AD is available)
+        assert!(result.is_ok());
+        let (jacobian, diagnostics) = result.unwrap();
+
+        // Jacobian should be valid
+        assert_eq!(jacobian.nrows(), 3);
+        assert_eq!(jacobian.ncols(), 3);
+
+        // Diagnostics should be populated
+        // If AD fallback was used, the ad_fallback_used flag should be true
+        // and possibly ad_variance might be set
+        // We don't assert specific values as they depend on runtime
+        assert!(!diagnostics.ad_variance.is_some() || diagnostics.ad_variance.unwrap() >= 0.0);
     }
 }

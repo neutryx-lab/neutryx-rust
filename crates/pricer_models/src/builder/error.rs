@@ -350,7 +350,7 @@ impl<T: Float> NumericalDiagnostics<T> {
     /// Generate a summary string for logging.
     pub fn summary(&self) -> String
     where
-        T: std::fmt::Display,
+        T: std::fmt::Display + std::fmt::LowerExp,
     {
         let cond_str = self
             .condition_number
@@ -480,7 +480,7 @@ where
     if nrows == ncols {
         for i in 0..nrows {
             let diag_val = jacobian[(i, i)];
-            if diag_val.abs() < zero_threshold {
+            if Float::abs(diag_val) < zero_threshold {
                 diagnostics.record_near_zero_diagonal();
             }
         }
@@ -523,7 +523,7 @@ where
 
     for i in 0..nrows {
         let row_sum = (0..jacobian.ncols())
-            .map(|j| jacobian[(i, j)].abs())
+            .map(|j| Float::abs(jacobian[(i, j)]))
             .fold(T::zero(), |acc, x| acc + x);
 
         if row_sum > max_row_sum {

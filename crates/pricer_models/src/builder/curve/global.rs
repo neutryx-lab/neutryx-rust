@@ -91,6 +91,22 @@ pub struct GlobalBootstrapConfig<T: Float> {
     /// When set, the bootstrapper will calibrate additional jump parameters
     /// at the specified central bank meeting dates.
     pub jump_config: Option<JumpConfig<T>>,
+
+    /// Variance threshold for AD instability detection.
+    ///
+    /// When comparing AD Jacobian with finite difference approximation,
+    /// if the variance exceeds this threshold, the system falls back to
+    /// central difference method. Default: 1e6.
+    #[cfg(feature = "enzyme-ad")]
+    pub ad_variance_threshold: T,
+
+    /// Checkpointing interval for AD gradient computation.
+    ///
+    /// Specifies how often to checkpoint during reverse-mode AD.
+    /// Lower values use more memory but reduce re-computation.
+    /// Default: None (no checkpointing).
+    #[cfg(feature = "enzyme-ad")]
+    pub ad_checkpoint_interval: Option<usize>,
 }
 
 impl<T: Float> Default for GlobalBootstrapConfig<T> {
@@ -109,6 +125,10 @@ impl<T: Float> Default for GlobalBootstrapConfig<T> {
             debug_logging: false,
             max_condition_number: from_f64(1e12),
             jump_config: None,
+            #[cfg(feature = "enzyme-ad")]
+            ad_variance_threshold: from_f64(1e6),
+            #[cfg(feature = "enzyme-ad")]
+            ad_checkpoint_interval: None,
         }
     }
 }
@@ -140,6 +160,10 @@ impl<T: Float> GlobalBootstrapConfig<T> {
             debug_logging: false,
             max_condition_number: from_f64(1e14),
             jump_config: None,
+            #[cfg(feature = "enzyme-ad")]
+            ad_variance_threshold: from_f64(1e8), // Higher threshold for high-precision
+            #[cfg(feature = "enzyme-ad")]
+            ad_checkpoint_interval: None,
         }
     }
 
@@ -159,6 +183,10 @@ impl<T: Float> GlobalBootstrapConfig<T> {
             debug_logging: false,
             max_condition_number: from_f64(1e10),
             jump_config: None,
+            #[cfg(feature = "enzyme-ad")]
+            ad_variance_threshold: from_f64(1e6),
+            #[cfg(feature = "enzyme-ad")]
+            ad_checkpoint_interval: None,
         }
     }
 

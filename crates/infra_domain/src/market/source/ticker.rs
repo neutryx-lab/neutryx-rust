@@ -1,18 +1,18 @@
 //! Ticker mapping for external data sources.
 //!
 //! This module provides the [`TickerMapping`] type for mapping external
-//! tickers (Reuters RIC, Bloomberg ticker) to internal [`RateId`] identifiers.
+//! tickers (Reuters RIC, Bloomberg ticker) to internal [`QuoteId`] identifiers.
 //!
 //! # Examples
 //!
 //! ```
-//! use infra_domain::market::{TickerMapping, RateId, RateType, Currency};
+//! use infra_domain::market::{TickerMapping, QuoteId, RateType, Currency};
 //! use infra_domain::time::Tenor;
 //!
 //! let mut mapping = TickerMapping::new();
 //!
-//! let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
-//! mapping.register("USD3MD=", rate_id);
+//! let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+//! mapping.register("USD3MD=", quote_id);
 //!
 //! assert!(mapping.contains("USD3MD="));
 //! assert!(mapping.lookup("USD3MD=").is_some());
@@ -21,20 +21,20 @@
 use std::collections::HashMap;
 
 use crate::{
-    market::{core::{Currency, RateType}, quote::RateId},
+    market::{core::{Currency, RateType}, quote::QuoteId},
     time::Tenor,
 };
 
 /// Mapping from external tickers to internal rate identifiers.
 ///
 /// Provides a bidirectional mapping between external data provider tickers
-/// (such as Reuters RICs or Bloomberg tickers) and internal [`RateId`]
+/// (such as Reuters RICs or Bloomberg tickers) and internal [`QuoteId`]
 /// identifiers.
 ///
 /// # Examples
 ///
 /// ```
-/// use infra_domain::market::{TickerMapping, RateId, RateType, Currency};
+/// use infra_domain::market::{TickerMapping, QuoteId, RateType, Currency};
 /// use infra_domain::time::Tenor;
 ///
 /// // Create with default mappings for major currencies
@@ -42,13 +42,13 @@ use crate::{
 ///
 /// // Or create an empty mapping and register custom tickers
 /// let mut custom = TickerMapping::new();
-/// let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Swap);
-/// custom.register("USSW3M Curncy", rate_id);
+/// let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Swap);
+/// custom.register("USSW3M Curncy", quote_id);
 /// ```
 #[derive(Debug, Clone, Default)]
 pub struct TickerMapping {
-    /// Mapping from ticker string to RateId.
-    mapping: HashMap<String, RateId>,
+    /// Mapping from ticker string to QuoteId.
+    mapping: HashMap<String, QuoteId>,
 }
 
 impl TickerMapping {
@@ -89,125 +89,125 @@ impl TickerMapping {
         // USD Deposits
         mapping.register(
             "USD1MD=",
-            RateId::new(Currency::USD, Tenor::OneMonth, RateType::Deposit),
+            QuoteId::new(Currency::USD, Tenor::OneMonth, RateType::Deposit),
         );
         mapping.register(
             "USD3MD=",
-            RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit),
+            QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit),
         );
         mapping.register(
             "USD6MD=",
-            RateId::new(Currency::USD, Tenor::SixMonths, RateType::Deposit),
+            QuoteId::new(Currency::USD, Tenor::SixMonths, RateType::Deposit),
         );
 
         // USD Swaps
         mapping.register(
             "USSW1 Curncy",
-            RateId::new(Currency::USD, Tenor::OneYear, RateType::Swap),
+            QuoteId::new(Currency::USD, Tenor::OneYear, RateType::Swap),
         );
         mapping.register(
             "USSW2 Curncy",
-            RateId::new(Currency::USD, Tenor::TwoYears, RateType::Swap),
+            QuoteId::new(Currency::USD, Tenor::TwoYears, RateType::Swap),
         );
         mapping.register(
             "USSW5 Curncy",
-            RateId::new(Currency::USD, Tenor::FiveYears, RateType::Swap),
+            QuoteId::new(Currency::USD, Tenor::FiveYears, RateType::Swap),
         );
         mapping.register(
             "USSW10 Curncy",
-            RateId::new(Currency::USD, Tenor::TenYears, RateType::Swap),
+            QuoteId::new(Currency::USD, Tenor::TenYears, RateType::Swap),
         );
 
         // EUR Deposits
         mapping.register(
             "EUR1MD=",
-            RateId::new(Currency::EUR, Tenor::OneMonth, RateType::Deposit),
+            QuoteId::new(Currency::EUR, Tenor::OneMonth, RateType::Deposit),
         );
         mapping.register(
             "EUR3MD=",
-            RateId::new(Currency::EUR, Tenor::ThreeMonths, RateType::Deposit),
+            QuoteId::new(Currency::EUR, Tenor::ThreeMonths, RateType::Deposit),
         );
         mapping.register(
             "EUR6MD=",
-            RateId::new(Currency::EUR, Tenor::SixMonths, RateType::Deposit),
+            QuoteId::new(Currency::EUR, Tenor::SixMonths, RateType::Deposit),
         );
 
         // EUR Swaps
         mapping.register(
             "EUSW1 Curncy",
-            RateId::new(Currency::EUR, Tenor::OneYear, RateType::Swap),
+            QuoteId::new(Currency::EUR, Tenor::OneYear, RateType::Swap),
         );
         mapping.register(
             "EUSW2 Curncy",
-            RateId::new(Currency::EUR, Tenor::TwoYears, RateType::Swap),
+            QuoteId::new(Currency::EUR, Tenor::TwoYears, RateType::Swap),
         );
         mapping.register(
             "EUSW5 Curncy",
-            RateId::new(Currency::EUR, Tenor::FiveYears, RateType::Swap),
+            QuoteId::new(Currency::EUR, Tenor::FiveYears, RateType::Swap),
         );
         mapping.register(
             "EUSW10 Curncy",
-            RateId::new(Currency::EUR, Tenor::TenYears, RateType::Swap),
+            QuoteId::new(Currency::EUR, Tenor::TenYears, RateType::Swap),
         );
 
         // GBP Deposits
         mapping.register(
             "GBP1MD=",
-            RateId::new(Currency::GBP, Tenor::OneMonth, RateType::Deposit),
+            QuoteId::new(Currency::GBP, Tenor::OneMonth, RateType::Deposit),
         );
         mapping.register(
             "GBP3MD=",
-            RateId::new(Currency::GBP, Tenor::ThreeMonths, RateType::Deposit),
+            QuoteId::new(Currency::GBP, Tenor::ThreeMonths, RateType::Deposit),
         );
 
         // GBP Swaps
         mapping.register(
             "BPSW1 Curncy",
-            RateId::new(Currency::GBP, Tenor::OneYear, RateType::Swap),
+            QuoteId::new(Currency::GBP, Tenor::OneYear, RateType::Swap),
         );
         mapping.register(
             "BPSW5 Curncy",
-            RateId::new(Currency::GBP, Tenor::FiveYears, RateType::Swap),
+            QuoteId::new(Currency::GBP, Tenor::FiveYears, RateType::Swap),
         );
 
         // JPY Deposits
         mapping.register(
             "JPY1MD=",
-            RateId::new(Currency::JPY, Tenor::OneMonth, RateType::Deposit),
+            QuoteId::new(Currency::JPY, Tenor::OneMonth, RateType::Deposit),
         );
         mapping.register(
             "JPY3MD=",
-            RateId::new(Currency::JPY, Tenor::ThreeMonths, RateType::Deposit),
+            QuoteId::new(Currency::JPY, Tenor::ThreeMonths, RateType::Deposit),
         );
 
         // JPY Swaps
         mapping.register(
             "JYSW1 Curncy",
-            RateId::new(Currency::JPY, Tenor::OneYear, RateType::Swap),
+            QuoteId::new(Currency::JPY, Tenor::OneYear, RateType::Swap),
         );
         mapping.register(
             "JYSW5 Curncy",
-            RateId::new(Currency::JPY, Tenor::FiveYears, RateType::Swap),
+            QuoteId::new(Currency::JPY, Tenor::FiveYears, RateType::Swap),
         );
 
         // CHF Deposits
         mapping.register(
             "CHF1MD=",
-            RateId::new(Currency::CHF, Tenor::OneMonth, RateType::Deposit),
+            QuoteId::new(Currency::CHF, Tenor::OneMonth, RateType::Deposit),
         );
         mapping.register(
             "CHF3MD=",
-            RateId::new(Currency::CHF, Tenor::ThreeMonths, RateType::Deposit),
+            QuoteId::new(Currency::CHF, Tenor::ThreeMonths, RateType::Deposit),
         );
 
         // CHF Swaps
         mapping.register(
             "SFSW1 Curncy",
-            RateId::new(Currency::CHF, Tenor::OneYear, RateType::Swap),
+            QuoteId::new(Currency::CHF, Tenor::OneYear, RateType::Swap),
         );
         mapping.register(
             "SFSW5 Curncy",
-            RateId::new(Currency::CHF, Tenor::FiveYears, RateType::Swap),
+            QuoteId::new(Currency::CHF, Tenor::FiveYears, RateType::Swap),
         );
 
         mapping
@@ -218,20 +218,20 @@ impl TickerMapping {
     /// # Arguments
     ///
     /// * `ticker` - The external ticker string
-    /// * `rate_id` - The internal rate identifier
+    /// * `quote_id` - The internal rate identifier
     ///
     /// # Examples
     ///
     /// ```
-    /// use infra_domain::market::{TickerMapping, RateId, RateType, Currency};
+    /// use infra_domain::market::{TickerMapping, QuoteId, RateType, Currency};
     /// use infra_domain::time::Tenor;
     ///
     /// let mut mapping = TickerMapping::new();
-    /// let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
-    /// mapping.register("USD3MD=", rate_id);
+    /// let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+    /// mapping.register("USD3MD=", quote_id);
     /// ```
-    pub fn register(&mut self, ticker: impl Into<String>, rate_id: RateId) {
-        self.mapping.insert(ticker.into(), rate_id);
+    pub fn register(&mut self, ticker: impl Into<String>, quote_id: QuoteId) {
+        self.mapping.insert(ticker.into(), quote_id);
     }
 
     /// Looks up a rate ID by ticker.
@@ -256,7 +256,7 @@ impl TickerMapping {
     /// assert!(mapping.lookup("UNKNOWN").is_none());
     /// ```
     #[must_use]
-    pub fn lookup(&self, ticker: &str) -> Option<&RateId> { self.mapping.get(ticker) }
+    pub fn lookup(&self, ticker: &str) -> Option<&QuoteId> { self.mapping.get(ticker) }
 
     /// Checks if a ticker is registered.
     ///
@@ -314,11 +314,11 @@ impl TickerMapping {
     /// use infra_domain::market::TickerMapping;
     ///
     /// let mapping = TickerMapping::with_defaults();
-    /// for (ticker, rate_id) in mapping.iter() {
-    ///     println!("{} -> {}", ticker, rate_id);
+    /// for (ticker, quote_id) in mapping.iter() {
+    ///     println!("{} -> {}", ticker, quote_id);
     /// }
     /// ```
-    pub fn iter(&self) -> impl Iterator<Item = (&String, &RateId)> { self.mapping.iter() }
+    pub fn iter(&self) -> impl Iterator<Item = (&String, &QuoteId)> { self.mapping.iter() }
 }
 
 #[cfg(test)]
@@ -350,11 +350,11 @@ mod tests {
     fn test_ticker_mapping_register() {
         let mut mapping = TickerMapping::new();
 
-        let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
-        mapping.register("TEST_TICKER", rate_id.clone());
+        let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+        mapping.register("TEST_TICKER", quote_id.clone());
 
         assert!(mapping.contains("TEST_TICKER"));
-        assert_eq!(mapping.lookup("TEST_TICKER"), Some(&rate_id));
+        assert_eq!(mapping.lookup("TEST_TICKER"), Some(&quote_id));
     }
 
     #[test]
@@ -364,10 +364,10 @@ mod tests {
         let result = mapping.lookup("USD3MD=");
         assert!(result.is_some());
 
-        let rate_id = result.unwrap();
-        assert_eq!(rate_id.currency, Currency::USD);
-        assert_eq!(rate_id.tenor, Tenor::ThreeMonths);
-        assert_eq!(rate_id.rate_type, RateType::Deposit);
+        let quote_id = result.unwrap();
+        assert_eq!(quote_id.currency, Currency::USD);
+        assert_eq!(quote_id.tenor, Tenor::ThreeMonths);
+        assert_eq!(quote_id.rate_type, RateType::Deposit);
     }
 
     #[test]
@@ -393,13 +393,13 @@ mod tests {
 
         mapping.register(
             "TICK1",
-            RateId::new(Currency::USD, Tenor::OneMonth, RateType::Deposit),
+            QuoteId::new(Currency::USD, Tenor::OneMonth, RateType::Deposit),
         );
         assert_eq!(mapping.len(), 1);
 
         mapping.register(
             "TICK2",
-            RateId::new(Currency::EUR, Tenor::OneMonth, RateType::Deposit),
+            QuoteId::new(Currency::EUR, Tenor::OneMonth, RateType::Deposit),
         );
         assert_eq!(mapping.len(), 2);
     }
@@ -421,10 +421,10 @@ mod tests {
         assert_eq!(count, mapping.len());
 
         // Verify all entries are valid
-        for (ticker, rate_id) in mapping.iter() {
+        for (ticker, quote_id) in mapping.iter() {
             assert!(!ticker.is_empty());
             assert!(mapping.contains(ticker));
-            assert_eq!(mapping.lookup(ticker), Some(rate_id));
+            assert_eq!(mapping.lookup(ticker), Some(quote_id));
         }
     }
 
@@ -432,15 +432,15 @@ mod tests {
     fn test_ticker_mapping_overwrite() {
         let mut mapping = TickerMapping::new();
 
-        let rate_id1 = RateId::new(Currency::USD, Tenor::OneMonth, RateType::Deposit);
-        let rate_id2 = RateId::new(Currency::EUR, Tenor::OneMonth, RateType::Deposit);
+        let quote_id1 = QuoteId::new(Currency::USD, Tenor::OneMonth, RateType::Deposit);
+        let quote_id2 = QuoteId::new(Currency::EUR, Tenor::OneMonth, RateType::Deposit);
 
-        mapping.register("SAME_TICKER", rate_id1);
-        mapping.register("SAME_TICKER", rate_id2.clone());
+        mapping.register("SAME_TICKER", quote_id1);
+        mapping.register("SAME_TICKER", quote_id2.clone());
 
         // Should have overwritten
         assert_eq!(mapping.len(), 1);
-        assert_eq!(mapping.lookup("SAME_TICKER"), Some(&rate_id2));
+        assert_eq!(mapping.lookup("SAME_TICKER"), Some(&quote_id2));
     }
 
     #[test]
@@ -450,8 +450,8 @@ mod tests {
 
         assert_eq!(original.len(), cloned.len());
 
-        for (ticker, rate_id) in original.iter() {
-            assert_eq!(cloned.lookup(ticker), Some(rate_id));
+        for (ticker, quote_id) in original.iter() {
+            assert_eq!(cloned.lookup(ticker), Some(quote_id));
         }
     }
 

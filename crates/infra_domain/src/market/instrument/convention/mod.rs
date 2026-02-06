@@ -34,6 +34,7 @@ mod rates;
 
 // Infrastructure modules
 mod convention_set;
+#[cfg(feature = "serde")]
 mod convention_template;
 mod market_convention;
 mod registry;
@@ -85,4 +86,5 @@ pub use market_convention::MarketConvention;
 pub use registry::{ConventionKey, ConventionRegistry, RegistryError};
 
 // Template support for bulk convention generation
+#[cfg(feature = "serde")]
 pub use convention_template::{ConventionBundle, ConventionTemplate, CurrencyDefaults};

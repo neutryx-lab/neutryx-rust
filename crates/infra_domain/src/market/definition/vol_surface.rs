@@ -179,6 +179,7 @@ pub struct VolSurfaceDefinition {
     pub allow_extrapolation: bool,
 }
 
+#[cfg(feature = "serde")]
 fn default_true() -> bool {
     true
 }

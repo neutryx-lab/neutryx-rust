@@ -32,7 +32,7 @@ use std::str::FromStr;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-use crate::market::{Currency, RateId, RateType};
+use crate::market::{Currency, QuoteId, RateType};
 use crate::time::{parse_fra_tenor, parse_tenor_to_years, CalendarId, DayCounter, Frequency, Tenor};
 
 /// Instrument definition for curve calibration.
@@ -487,14 +487,14 @@ impl InstrumentDefinition {
         parse_fra_tenor(&self.tenor).is_some()
     }
 
-    /// Converts to a [`RateId`] for lookup in [`MarketRateSet`].
+    /// Converts to a [`QuoteId`] for lookup in [`MarketQuoteSet`].
     ///
     /// # Errors
     ///
     /// Returns error if the tenor cannot be parsed.
-    pub fn to_rate_id(&self) -> Result<RateId, InstrumentDefError> {
+    pub fn to_quote_id(&self) -> Result<QuoteId, InstrumentDefError> {
         let tenor = self.parse_tenor()?;
-        Ok(RateId::new(self.currency, tenor, self.rate_type()))
+        Ok(QuoteId::new(self.currency, tenor, self.rate_type()))
     }
 
     /// Parses the tenor string to a [`Tenor`] enum.
@@ -1063,28 +1063,28 @@ mod tests {
     }
 
     #[test]
-    fn test_to_rate_id() {
+    fn test_to_quote_id() {
         let def = InstrumentDefinition::new("USD-OIS-5Y", Currency::USD, RateType::Ois, "5Y");
-        let rate_id = def.to_rate_id().unwrap();
+        let quote_id = def.to_quote_id().unwrap();
 
-        assert_eq!(rate_id.currency, Currency::USD);
-        assert_eq!(rate_id.rate_type, RateType::Ois);
-        assert_eq!(rate_id.tenor, Tenor::FiveYears);
+        assert_eq!(quote_id.currency, Currency::USD);
+        assert_eq!(quote_id.rate_type, RateType::Ois);
+        assert_eq!(quote_id.tenor, Tenor::FiveYears);
     }
 
     #[test]
-    fn test_to_rate_id_from_convention() {
+    fn test_to_quote_id_from_convention() {
         let def = InstrumentDefinition::from_convention(
             "USD-OIS-5Y",
             Currency::USD,
             "USD-SOFR-OIS",
             "5Y",
         );
-        let rate_id = def.to_rate_id().unwrap();
+        let quote_id = def.to_quote_id().unwrap();
 
-        assert_eq!(rate_id.currency, Currency::USD);
-        assert_eq!(rate_id.rate_type, RateType::Ois);
-        assert_eq!(rate_id.tenor, Tenor::FiveYears);
+        assert_eq!(quote_id.currency, Currency::USD);
+        assert_eq!(quote_id.rate_type, RateType::Ois);
+        assert_eq!(quote_id.tenor, Tenor::FiveYears);
     }
 
     #[test]

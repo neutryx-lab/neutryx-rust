@@ -219,16 +219,16 @@ impl CurveConstructionEngine {
         let mut missing_rates = Vec::new();
 
         for def in instrument_defs {
-            // Convert instrument definition to RateId for lookup
-            let rate_id = def.to_rate_id().map_err(ConstructionError::InstrumentDef)?;
+            // Convert instrument definition to QuoteId for lookup
+            let rate_id = def.to_quote_id().map_err(ConstructionError::InstrumentDef)?;
 
             // Look up the rate in market data
             let rate_value = if self.config.quote_type == QuoteType::Mid {
-                market_rates.get_mid_rate(&rate_id)
+                market_rates.get_mid_quote(&rate_id)
             } else {
                 market_rates
-                    .get_rate(&rate_id, self.config.quote_type)
-                    .map(|r| r.value)
+                    .get_quote(&rate_id, self.config.quote_type)
+                    .map(|q| q.value)
             };
 
             match rate_value {

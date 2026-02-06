@@ -718,7 +718,7 @@ impl MarketQuoteSet {
             };
 
             // Try to get a convention for this quote
-            let convention = match MarketConvention::for_rate_id(&quote.id) {
+            let convention = match MarketConvention::for_quote_id(&quote.id) {
                 Some(c) => c,
                 None => {
                     skipped_ids.push(quote.id.clone());
@@ -792,7 +792,7 @@ pub type MarketRateSet = MarketQuoteSet;
 mod tests {
     use super::*;
     use crate::{
-        market::{DataSource, StandardInstrumentMapper},
+        market::DataSource,
         time::Tenor,
     };
 

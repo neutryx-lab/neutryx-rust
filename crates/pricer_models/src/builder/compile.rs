@@ -595,7 +595,7 @@ impl<T: Float> InstrumentCompiler<T> {
         instrument: &InfraMasterInstrument,
         index: usize,
     ) -> Result<CompiledInstrument<T>, CompileError> {
-        let rate_id = instrument.rate_id.to_string();
+        let rate_id = instrument.quote_id.to_string();
 
         // Check for unsupported instrument types (Requirement 1.5)
         let instrument_type = self.get_instrument_type(&instrument.convention, index)?;

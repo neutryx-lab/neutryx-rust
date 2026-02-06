@@ -54,14 +54,13 @@
 mod curve;
 mod index;
 mod instrument;
-mod jump_pillar;
 mod vol_surface;
 
-// Curve definitions
-pub use curve::{CalibrationMethod, CurveDefError, CurveDefinition, InterpolationMethod};
-
-// Jump pillar definitions
-pub use jump_pillar::{JumpPillar, JumpPillarBuilder};
+// Curve definitions (including JumpPillar types)
+pub use curve::{
+    CalibrationMethod, CurveDefError, CurveDefinition, InterpolationMethod, JumpPillar,
+    JumpPillarBuilder,
+};
 
 // Vol surface definitions
 pub use vol_surface::{

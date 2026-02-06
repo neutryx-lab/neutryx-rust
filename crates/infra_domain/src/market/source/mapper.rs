@@ -1,22 +1,22 @@
-//! Instrument mapping for market rates.
+//! Instrument mapping for market quotes.
 //!
 //! This module provides the [`InstrumentMapper`] trait and
-//! [`StandardInstrumentMapper`] implementation for converting market rates to
+//! [`StandardInstrumentMapper`] implementation for converting market quotes to
 //! trading instruments.
 //!
 //! # Examples
 //!
 //! ```
 //! use infra_domain::market::{
-//!     InstrumentMapper, StandardInstrumentMapper, MarketRate,
-//!     RateId, RateType, QuoteType, DataSource, Currency
+//!     InstrumentMapper, StandardInstrumentMapper, MarketQuote,
+//!     QuoteId, RateType, QuoteType, DataSource, Currency
 //! };
 //! use infra_domain::time::{Date, Tenor};
 //!
 //! let mapper = StandardInstrumentMapper::new();
-//! let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
-//! let rate = MarketRate::new(
-//!     rate_id,
+//! let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+//! let quote = MarketQuote::new(
+//!     quote_id,
 //!     QuoteType::Mid,
 //!     0.05,
 //!     1700000000000,
@@ -24,27 +24,27 @@
 //! ).unwrap();
 //!
 //! let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
-//! let instrument = mapper.map_to_instrument(&rate, valuation_date);
+//! let instrument = mapper.map_to_instrument(&quote, valuation_date);
 //! assert!(instrument.is_ok());
 //! ```
 
 use crate::{
-    market::{core::RateType, quote::{MarketRate, MarketRateError}},
+    market::{core::RateType, quote::{MarketQuote, MarketQuoteError}},
     time::{Date, EndOfMonthRule},
     trade::Instrument,
 };
 
-/// Trait for mapping market rates to instruments.
+/// Trait for mapping market quotes to instruments.
 ///
-/// Implementations of this trait convert [`MarketRate`] quotes to
+/// Implementations of this trait convert [`MarketQuote`] quotes to
 /// [`Instrument`] definitions suitable for curve calibration.
 ///
 /// # Examples
 ///
 /// ```
 /// use infra_domain::market::{
-///     InstrumentMapper, StandardInstrumentMapper, MarketRate,
-///     RateId, RateType, QuoteType, DataSource, Currency
+///     InstrumentMapper, StandardInstrumentMapper, MarketQuote,
+///     QuoteId, RateType, QuoteType, DataSource, Currency
 /// };
 /// use infra_domain::time::{Date, Tenor};
 ///
@@ -53,36 +53,36 @@ use crate::{
 /// impl InstrumentMapper for CustomMapper {
 ///     fn map_to_instrument(
 ///         &self,
-///         rate: &MarketRate,
+///         quote: &MarketQuote,
 ///         valuation_date: Date,
-///     ) -> Result<infra_domain::trade::Instrument, infra_domain::market::MarketRateError> {
+///     ) -> Result<infra_domain::trade::Instrument, infra_domain::market::MarketQuoteError> {
 ///         // Custom mapping logic
-///         StandardInstrumentMapper::new().map_to_instrument(rate, valuation_date)
+///         StandardInstrumentMapper::new().map_to_instrument(quote, valuation_date)
 ///     }
 /// }
 /// ```
 pub trait InstrumentMapper {
-    /// Maps a market rate to an instrument.
+    /// Maps a market quote to an instrument.
     ///
     /// # Arguments
     ///
-    /// * `rate` - The market rate to map
+    /// * `quote` - The market quote to map
     /// * `valuation_date` - The valuation date for calculating instrument dates
     ///
     /// # Errors
     ///
-    /// Returns [`MarketRateError::MappingFailed`] if the rate type cannot be
+    /// Returns [`MarketQuoteError::MappingFailed`] if the rate type cannot be
     /// mapped.
     fn map_to_instrument(
         &self,
-        rate: &MarketRate,
+        quote: &MarketQuote,
         valuation_date: Date,
-    ) -> Result<Instrument, MarketRateError>;
+    ) -> Result<Instrument, MarketQuoteError>;
 }
 
 /// Standard instrument mapper with default conventions.
 ///
-/// Maps market rates to instruments using standard market conventions:
+/// Maps market quotes to instruments using standard market conventions:
 /// - Deposit rates → [`Instrument::Deposit`]
 /// - FRA rates → [`Instrument::Fra`]
 /// - Futures rates → [`Instrument::Futures`] (price = 100 - rate × 100)
@@ -94,16 +94,16 @@ pub trait InstrumentMapper {
 ///
 /// ```
 /// use infra_domain::market::{
-///     InstrumentMapper, StandardInstrumentMapper, MarketRate,
-///     RateId, RateType, QuoteType, DataSource, Currency
+///     InstrumentMapper, StandardInstrumentMapper, MarketQuote,
+///     QuoteId, RateType, QuoteType, DataSource, Currency
 /// };
 /// use infra_domain::time::{Date, Tenor};
 ///
 /// let mapper = StandardInstrumentMapper::new();
 ///
-/// let rate_id = RateId::new(Currency::USD, Tenor::FiveYears, RateType::Swap);
-/// let rate = MarketRate::new(
-///     rate_id,
+/// let quote_id = QuoteId::new(Currency::USD, Tenor::FiveYears, RateType::Swap);
+/// let quote = MarketQuote::new(
+///     quote_id,
 ///     QuoteType::Mid,
 ///     0.045,
 ///     1700000000000,
@@ -111,7 +111,7 @@ pub trait InstrumentMapper {
 /// ).unwrap();
 ///
 /// let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
-/// let instrument = mapper.map_to_instrument(&rate, valuation_date).unwrap();
+/// let instrument = mapper.map_to_instrument(&quote, valuation_date).unwrap();
 ///
 /// assert!(matches!(instrument, infra_domain::trade::Instrument::ParSwap { .. }));
 /// ```
@@ -200,84 +200,84 @@ impl StandardInstrumentMapper {
     }
 
     /// Maps a deposit rate to a Deposit instrument.
-    fn map_deposit(&self, rate: &MarketRate, valuation_date: Date) -> Instrument {
+    fn map_deposit(&self, quote: &MarketQuote, valuation_date: Date) -> Instrument {
         let start_date = self.spot_date(valuation_date);
 
         Instrument::Deposit {
-            currency: rate.id.currency,
+            currency: quote.id.currency,
             start_date,
-            tenor: rate.id.tenor,
-            rate: rate.value,
+            tenor: quote.id.tenor,
+            rate: quote.value,
         }
     }
 
     /// Maps a FRA rate to a Fra instrument.
-    fn map_fra(&self, rate: &MarketRate, valuation_date: Date) -> Instrument {
+    fn map_fra(&self, quote: &MarketQuote, valuation_date: Date) -> Instrument {
         let start_date = self.spot_date(valuation_date);
 
         Instrument::Fra {
-            currency: rate.id.currency,
+            currency: quote.id.currency,
             start_date,
-            tenor: rate.id.tenor,
-            rate: rate.value,
+            tenor: quote.id.tenor,
+            rate: quote.value,
         }
     }
 
     /// Maps a futures rate to a Futures instrument.
     ///
     /// Converts rate to price: price = 100 - rate × 100
-    fn map_futures(&self, rate: &MarketRate, valuation_date: Date) -> Instrument {
+    fn map_futures(&self, quote: &MarketQuote, valuation_date: Date) -> Instrument {
         // For futures, the start date is typically the expiry date
         // which depends on IMM dates. Simplified: use spot + tenor.
-        let expiry = rate
+        let expiry = quote
             .id
             .tenor
             .add_to_date(self.spot_date(valuation_date), self.eom_rule);
 
         // Convert rate to price: price = 100 - rate × 100
         // e.g., 5% rate → price = 95.0
-        let price = 100.0 - rate.value * 100.0;
+        let price = 100.0 - quote.value * 100.0;
 
         Instrument::Futures {
-            currency: rate.id.currency,
+            currency: quote.id.currency,
             expiry,
             price,
         }
     }
 
     /// Maps a swap rate to a ParSwap instrument.
-    fn map_swap(&self, rate: &MarketRate, valuation_date: Date) -> Instrument {
+    fn map_swap(&self, quote: &MarketQuote, valuation_date: Date) -> Instrument {
         let start_date = self.spot_date(valuation_date);
 
         Instrument::ParSwap {
-            currency: rate.id.currency,
+            currency: quote.id.currency,
             start_date,
-            tenor: rate.id.tenor,
-            rate: rate.value,
+            tenor: quote.id.tenor,
+            rate: quote.value,
         }
     }
 
     /// Maps an OIS rate to an Ois instrument.
-    fn map_ois(&self, rate: &MarketRate, valuation_date: Date) -> Instrument {
+    fn map_ois(&self, quote: &MarketQuote, valuation_date: Date) -> Instrument {
         let start_date = self.spot_date(valuation_date);
 
         Instrument::Ois {
-            currency: rate.id.currency,
+            currency: quote.id.currency,
             start_date,
-            tenor: rate.id.tenor,
-            rate: rate.value,
+            tenor: quote.id.tenor,
+            rate: quote.value,
         }
     }
 
     /// Maps a basis swap rate to a BasisSwap instrument.
-    fn map_basis_swap(&self, rate: &MarketRate, valuation_date: Date) -> Instrument {
+    fn map_basis_swap(&self, quote: &MarketQuote, valuation_date: Date) -> Instrument {
         let start_date = self.spot_date(valuation_date);
 
         Instrument::BasisSwap {
-            currency: rate.id.currency,
+            currency: quote.id.currency,
             start_date,
-            tenor: rate.id.tenor,
-            spread: rate.value,
+            tenor: quote.id.tenor,
+            spread: quote.value,
         }
     }
 }
@@ -285,18 +285,18 @@ impl StandardInstrumentMapper {
 impl InstrumentMapper for StandardInstrumentMapper {
     fn map_to_instrument(
         &self,
-        rate: &MarketRate,
+        quote: &MarketQuote,
         valuation_date: Date,
-    ) -> Result<Instrument, MarketRateError> {
-        match rate.id.rate_type {
-            RateType::Deposit => Ok(self.map_deposit(rate, valuation_date)),
-            RateType::Fra => Ok(self.map_fra(rate, valuation_date)),
-            RateType::Futures => Ok(self.map_futures(rate, valuation_date)),
-            RateType::Swap => Ok(self.map_swap(rate, valuation_date)),
-            RateType::Ois => Ok(self.map_ois(rate, valuation_date)),
-            RateType::BasisSwap => Ok(self.map_basis_swap(rate, valuation_date)),
+    ) -> Result<Instrument, MarketQuoteError> {
+        match quote.id.rate_type {
+            RateType::Deposit => Ok(self.map_deposit(quote, valuation_date)),
+            RateType::Fra => Ok(self.map_fra(quote, valuation_date)),
+            RateType::Futures => Ok(self.map_futures(quote, valuation_date)),
+            RateType::Swap => Ok(self.map_swap(quote, valuation_date)),
+            RateType::Ois => Ok(self.map_ois(quote, valuation_date)),
+            RateType::BasisSwap => Ok(self.map_basis_swap(quote, valuation_date)),
             RateType::FxSpot | RateType::FxForward | RateType::Vol | RateType::Event => {
-                Err(MarketRateError::unsupported_rate_type(rate.id.rate_type))
+                Err(MarketQuoteError::unsupported_rate_type(quote.id.rate_type))
             }
         }
     }
@@ -306,14 +306,14 @@ impl InstrumentMapper for StandardInstrumentMapper {
 mod tests {
     use super::*;
     use crate::{
-        market::{Currency, DataSource, QuoteType, RateId},
+        market::{Currency, DataSource, QuoteType, QuoteId},
         time::Tenor,
     };
 
-    fn test_rate(rate_type: RateType, tenor: Tenor, value: f64) -> MarketRate {
-        let rate_id = RateId::new(Currency::USD, tenor, rate_type);
-        MarketRate::new(
-            rate_id,
+    fn test_quote(rate_type: RateType, tenor: Tenor, value: f64) -> MarketQuote {
+        let quote_id = QuoteId::new(Currency::USD, tenor, rate_type);
+        MarketQuote::new(
+            quote_id,
             QuoteType::Mid,
             value,
             1700000000000,
@@ -352,10 +352,10 @@ mod tests {
     #[test]
     fn test_map_deposit() {
         let mapper = StandardInstrumentMapper::new();
-        let rate = test_rate(RateType::Deposit, Tenor::ThreeMonths, 0.05);
+        let quote = test_quote(RateType::Deposit, Tenor::ThreeMonths, 0.05);
         let vd = valuation_date();
 
-        let instrument = mapper.map_to_instrument(&rate, vd).unwrap();
+        let instrument = mapper.map_to_instrument(&quote, vd).unwrap();
 
         match instrument {
             Instrument::Deposit {
@@ -376,10 +376,10 @@ mod tests {
     #[test]
     fn test_map_fra() {
         let mapper = StandardInstrumentMapper::new();
-        let rate = test_rate(RateType::Fra, Tenor::SixMonths, 0.055);
+        let quote = test_quote(RateType::Fra, Tenor::SixMonths, 0.055);
         let vd = valuation_date();
 
-        let instrument = mapper.map_to_instrument(&rate, vd).unwrap();
+        let instrument = mapper.map_to_instrument(&quote, vd).unwrap();
 
         match instrument {
             Instrument::Fra {
@@ -400,10 +400,10 @@ mod tests {
     #[test]
     fn test_map_futures() {
         let mapper = StandardInstrumentMapper::new();
-        let rate = test_rate(RateType::Futures, Tenor::ThreeMonths, 0.045);
+        let quote = test_quote(RateType::Futures, Tenor::ThreeMonths, 0.045);
         let vd = valuation_date();
 
-        let instrument = mapper.map_to_instrument(&rate, vd).unwrap();
+        let instrument = mapper.map_to_instrument(&quote, vd).unwrap();
 
         match instrument {
             Instrument::Futures {
@@ -424,10 +424,10 @@ mod tests {
     #[test]
     fn test_map_swap() {
         let mapper = StandardInstrumentMapper::new();
-        let rate = test_rate(RateType::Swap, Tenor::FiveYears, 0.04);
+        let quote = test_quote(RateType::Swap, Tenor::FiveYears, 0.04);
         let vd = valuation_date();
 
-        let instrument = mapper.map_to_instrument(&rate, vd).unwrap();
+        let instrument = mapper.map_to_instrument(&quote, vd).unwrap();
 
         match instrument {
             Instrument::ParSwap {
@@ -448,10 +448,10 @@ mod tests {
     #[test]
     fn test_map_ois() {
         let mapper = StandardInstrumentMapper::new();
-        let rate = test_rate(RateType::Ois, Tenor::OneYear, 0.035);
+        let quote = test_quote(RateType::Ois, Tenor::OneYear, 0.035);
         let vd = valuation_date();
 
-        let instrument = mapper.map_to_instrument(&rate, vd).unwrap();
+        let instrument = mapper.map_to_instrument(&quote, vd).unwrap();
 
         match instrument {
             Instrument::Ois {
@@ -472,10 +472,10 @@ mod tests {
     #[test]
     fn test_map_basis_swap() {
         let mapper = StandardInstrumentMapper::new();
-        let rate = test_rate(RateType::BasisSwap, Tenor::TenYears, 0.0025);
+        let quote = test_quote(RateType::BasisSwap, Tenor::TenYears, 0.0025);
         let vd = valuation_date();
 
-        let instrument = mapper.map_to_instrument(&rate, vd).unwrap();
+        let instrument = mapper.map_to_instrument(&quote, vd).unwrap();
 
         match instrument {
             Instrument::BasisSwap {
@@ -496,14 +496,14 @@ mod tests {
     #[test]
     fn test_map_fx_spot_fails() {
         let mapper = StandardInstrumentMapper::new();
-        let rate = test_rate(RateType::FxSpot, Tenor::TwoWeeks, 1.1);
+        let quote = test_quote(RateType::FxSpot, Tenor::TwoWeeks, 1.1);
         let vd = valuation_date();
 
-        let result = mapper.map_to_instrument(&rate, vd);
+        let result = mapper.map_to_instrument(&quote, vd);
         assert!(result.is_err());
 
         match result {
-            Err(MarketRateError::MappingFailed { rate_type, .. }) => {
+            Err(MarketQuoteError::MappingFailed { rate_type, .. }) => {
                 assert_eq!(rate_type, RateType::FxSpot);
             }
             _ => panic!("Expected MappingFailed error"),
@@ -513,20 +513,20 @@ mod tests {
     #[test]
     fn test_map_fx_forward_fails() {
         let mapper = StandardInstrumentMapper::new();
-        let rate = test_rate(RateType::FxForward, Tenor::ThreeMonths, 1.105);
+        let quote = test_quote(RateType::FxForward, Tenor::ThreeMonths, 1.105);
         let vd = valuation_date();
 
-        let result = mapper.map_to_instrument(&rate, vd);
+        let result = mapper.map_to_instrument(&quote, vd);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_map_vol_fails() {
         let mapper = StandardInstrumentMapper::new();
-        let rate = test_rate(RateType::Vol, Tenor::OneYear, 0.2);
+        let quote = test_quote(RateType::Vol, Tenor::OneYear, 0.2);
         let vd = valuation_date();
 
-        let result = mapper.map_to_instrument(&rate, vd);
+        let result = mapper.map_to_instrument(&quote, vd);
         assert!(result.is_err());
     }
 
@@ -547,10 +547,10 @@ mod tests {
     #[test]
     fn test_map_deposit_with_custom_settlement() {
         let mapper = StandardInstrumentMapper::new().with_settlement_lag(1);
-        let rate = test_rate(RateType::Deposit, Tenor::OneMonth, 0.05);
+        let quote = test_quote(RateType::Deposit, Tenor::OneMonth, 0.05);
         let vd = valuation_date();
 
-        let instrument = mapper.map_to_instrument(&rate, vd).unwrap();
+        let instrument = mapper.map_to_instrument(&quote, vd).unwrap();
 
         match instrument {
             Instrument::Deposit { start_date, .. } => {
@@ -566,9 +566,9 @@ mod tests {
         let mapper = StandardInstrumentMapper::new();
         let vd = valuation_date();
 
-        let deposit = test_rate(RateType::Deposit, Tenor::ThreeMonths, 0.05);
-        let swap = test_rate(RateType::Swap, Tenor::FiveYears, 0.045);
-        let ois = test_rate(RateType::Ois, Tenor::OneYear, 0.04);
+        let deposit = test_quote(RateType::Deposit, Tenor::ThreeMonths, 0.05);
+        let swap = test_quote(RateType::Swap, Tenor::FiveYears, 0.045);
+        let ois = test_quote(RateType::Ois, Tenor::OneYear, 0.04);
 
         assert!(mapper.map_to_instrument(&deposit, vd).is_ok());
         assert!(mapper.map_to_instrument(&swap, vd).is_ok());
@@ -589,8 +589,8 @@ mod tests {
         ];
 
         for (rate_val, expected_price) in test_cases {
-            let rate = test_rate(RateType::Futures, Tenor::ThreeMonths, rate_val);
-            let instrument = mapper.map_to_instrument(&rate, vd).unwrap();
+            let quote = test_quote(RateType::Futures, Tenor::ThreeMonths, rate_val);
+            let instrument = mapper.map_to_instrument(&quote, vd).unwrap();
 
             match instrument {
                 Instrument::Futures { price, .. } => {
@@ -609,9 +609,9 @@ mod tests {
         let mapper = StandardInstrumentMapper::new();
         let vd = valuation_date();
 
-        let rate_id = RateId::new(Currency::EUR, Tenor::TenYears, RateType::Swap);
-        let rate = MarketRate::new(
-            rate_id,
+        let quote_id = QuoteId::new(Currency::EUR, Tenor::TenYears, RateType::Swap);
+        let quote = MarketQuote::new(
+            quote_id,
             QuoteType::Mid,
             0.025,
             1700000000000,
@@ -619,7 +619,7 @@ mod tests {
         )
         .unwrap();
 
-        let instrument = mapper.map_to_instrument(&rate, vd).unwrap();
+        let instrument = mapper.map_to_instrument(&quote, vd).unwrap();
 
         match instrument {
             Instrument::ParSwap { currency, .. } => {

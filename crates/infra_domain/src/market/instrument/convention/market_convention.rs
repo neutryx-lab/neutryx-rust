@@ -8,7 +8,7 @@ use super::{
     DepositConvention, FraConvention, FuturesConvention, FxConvention, FxSwapConvention,
     SwapConvention, XCcyBasisConvention,
 };
-use crate::market::{Currency, RateId, RateType};
+use crate::market::{Currency, QuoteId, RateType};
 
 /// Unified market convention enum for all instrument types.
 ///
@@ -21,11 +21,11 @@ use crate::market::{Currency, RateId, RateType};
 ///
 /// ```rust
 /// use infra_domain::market::convention::MarketConvention;
-/// use infra_domain::market::{Currency, RateId, RateType};
+/// use infra_domain::market::{Currency, QuoteId, RateType};
 /// use infra_domain::time::Tenor;
 ///
-/// let rate_id = RateId::new(Currency::USD, Tenor::FiveYears, RateType::Swap);
-/// let convention = MarketConvention::for_rate_id(&rate_id);
+/// let quote_id = QuoteId::new(Currency::USD, Tenor::FiveYears, RateType::Swap);
+/// let convention = MarketConvention::for_quote_id(&quote_id);
 /// assert!(convention.is_some());
 /// assert_eq!(convention.unwrap().instrument_type_name(), "Swap");
 /// ```
@@ -104,15 +104,15 @@ impl MarketConvention {
         }
     }
 
-    /// Derives an appropriate `MarketConvention` from a `RateId`.
+    /// Derives an appropriate `MarketConvention` from a `QuoteId`.
     ///
-    /// This method uses the currency and rate type from the `RateId` to
+    /// This method uses the currency and rate type from the `QuoteId` to
     /// determine the appropriate convention. Returns `None` if no
     /// convention is available for the given combination.
     ///
     /// # Arguments
     ///
-    /// * `rate_id` - The rate identifier to derive convention from
+    /// * `quote_id` - The rate identifier to derive convention from
     ///
     /// # Returns
     ///
@@ -123,37 +123,37 @@ impl MarketConvention {
     ///
     /// ```rust
     /// use infra_domain::market::convention::MarketConvention;
-    /// use infra_domain::market::{Currency, RateId, RateType};
+    /// use infra_domain::market::{Currency, QuoteId, RateType};
     /// use infra_domain::time::Tenor;
     ///
     /// // USD Deposit
-    /// let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
-    /// let conv = MarketConvention::for_rate_id(&rate_id);
+    /// let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+    /// let conv = MarketConvention::for_quote_id(&quote_id);
     /// assert!(conv.is_some());
     /// assert_eq!(conv.unwrap().instrument_type_name(), "Deposit");
     ///
     /// // EUR Swap
-    /// let rate_id = RateId::new(Currency::EUR, Tenor::FiveYears, RateType::Swap);
-    /// let conv = MarketConvention::for_rate_id(&rate_id);
+    /// let quote_id = QuoteId::new(Currency::EUR, Tenor::FiveYears, RateType::Swap);
+    /// let conv = MarketConvention::for_quote_id(&quote_id);
     /// assert!(conv.is_some());
     /// assert_eq!(conv.unwrap().instrument_type_name(), "Swap");
     ///
     /// // Vol (no convention available)
-    /// let rate_id = RateId::new(Currency::USD, Tenor::OneYear, RateType::Vol);
-    /// let conv = MarketConvention::for_rate_id(&rate_id);
+    /// let quote_id = QuoteId::new(Currency::USD, Tenor::OneYear, RateType::Vol);
+    /// let conv = MarketConvention::for_quote_id(&quote_id);
     /// assert!(conv.is_none());
     /// ```
     #[must_use]
-    pub fn for_rate_id(rate_id: &RateId) -> Option<Self> {
-        match rate_id.rate_type {
-            RateType::Deposit => Self::deposit_convention_for_currency(rate_id.currency),
-            RateType::Swap => Self::swap_convention_for_currency(rate_id.currency),
-            RateType::Ois => Self::ois_convention_for_currency(rate_id.currency),
-            RateType::Fra => Self::fra_convention_for_currency(rate_id.currency),
-            RateType::Futures => Self::futures_convention_for_currency(rate_id.currency),
+    pub fn for_quote_id(quote_id: &QuoteId) -> Option<Self> {
+        match quote_id.rate_type {
+            RateType::Deposit => Self::deposit_convention_for_currency(quote_id.currency),
+            RateType::Swap => Self::swap_convention_for_currency(quote_id.currency),
+            RateType::Ois => Self::ois_convention_for_currency(quote_id.currency),
+            RateType::Fra => Self::fra_convention_for_currency(quote_id.currency),
+            RateType::Futures => Self::futures_convention_for_currency(quote_id.currency),
             RateType::BasisSwap => None, // Requires currency pair, not single currency
             RateType::FxSpot | RateType::FxForward => {
-                Self::fx_convention_for_currency(rate_id.currency)
+                Self::fx_convention_for_currency(quote_id.currency)
             }
             RateType::Vol | RateType::Event => None, // No standard convention
         }
@@ -322,7 +322,7 @@ mod tests {
     }
 
     #[test]
-    fn test_for_rate_id_deposit() {
+    fn test_for_quote_id_deposit() {
         for currency in [
             Currency::USD,
             Currency::EUR,
@@ -330,72 +330,72 @@ mod tests {
             Currency::JPY,
             Currency::CHF,
         ] {
-            let rate_id = RateId::new(currency, Tenor::ThreeMonths, RateType::Deposit);
-            let conv = MarketConvention::for_rate_id(&rate_id);
+            let quote_id = QuoteId::new(currency, Tenor::ThreeMonths, RateType::Deposit);
+            let conv = MarketConvention::for_quote_id(&quote_id);
             assert!(conv.is_some(), "Deposit convention should exist for {:?}", currency);
             assert!(conv.unwrap().is_deposit());
         }
     }
 
     #[test]
-    fn test_for_rate_id_swap() {
+    fn test_for_quote_id_swap() {
         for currency in [Currency::USD, Currency::EUR, Currency::GBP, Currency::JPY] {
-            let rate_id = RateId::new(currency, Tenor::FiveYears, RateType::Swap);
-            let conv = MarketConvention::for_rate_id(&rate_id);
+            let quote_id = QuoteId::new(currency, Tenor::FiveYears, RateType::Swap);
+            let conv = MarketConvention::for_quote_id(&quote_id);
             assert!(conv.is_some(), "Swap convention should exist for {:?}", currency);
             assert!(conv.unwrap().is_swap());
         }
 
         // CHF swap not implemented
-        let rate_id = RateId::new(Currency::CHF, Tenor::FiveYears, RateType::Swap);
-        assert!(MarketConvention::for_rate_id(&rate_id).is_none());
+        let quote_id = QuoteId::new(Currency::CHF, Tenor::FiveYears, RateType::Swap);
+        assert!(MarketConvention::for_quote_id(&quote_id).is_none());
     }
 
     #[test]
-    fn test_for_rate_id_ois() {
+    fn test_for_quote_id_ois() {
         for currency in [Currency::USD, Currency::EUR, Currency::GBP, Currency::JPY] {
-            let rate_id = RateId::new(currency, Tenor::OneYear, RateType::Ois);
-            let conv = MarketConvention::for_rate_id(&rate_id);
+            let quote_id = QuoteId::new(currency, Tenor::OneYear, RateType::Ois);
+            let conv = MarketConvention::for_quote_id(&quote_id);
             assert!(conv.is_some(), "OIS convention should exist for {:?}", currency);
             assert!(conv.unwrap().is_ois());
         }
     }
 
     #[test]
-    fn test_for_rate_id_fra() {
-        let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Fra);
-        let conv = MarketConvention::for_rate_id(&rate_id);
+    fn test_for_quote_id_fra() {
+        let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Fra);
+        let conv = MarketConvention::for_quote_id(&quote_id);
         assert!(conv.is_some());
         assert!(conv.unwrap().is_fra());
 
-        let rate_id = RateId::new(Currency::EUR, Tenor::ThreeMonths, RateType::Fra);
-        let conv = MarketConvention::for_rate_id(&rate_id);
+        let quote_id = QuoteId::new(Currency::EUR, Tenor::ThreeMonths, RateType::Fra);
+        let conv = MarketConvention::for_quote_id(&quote_id);
         assert!(conv.is_some());
         assert!(conv.unwrap().is_fra());
 
         // GBP FRA not implemented
-        let rate_id = RateId::new(Currency::GBP, Tenor::ThreeMonths, RateType::Fra);
-        assert!(MarketConvention::for_rate_id(&rate_id).is_none());
+        let quote_id = QuoteId::new(Currency::GBP, Tenor::ThreeMonths, RateType::Fra);
+        assert!(MarketConvention::for_quote_id(&quote_id).is_none());
     }
 
     #[test]
-    fn test_for_rate_id_futures() {
-        let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Futures);
-        let conv = MarketConvention::for_rate_id(&rate_id);
+    fn test_for_quote_id_futures() {
+        let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Futures);
+        let conv = MarketConvention::for_quote_id(&quote_id);
         assert!(conv.is_some());
         assert!(conv.unwrap().is_futures());
 
-        let rate_id = RateId::new(Currency::EUR, Tenor::ThreeMonths, RateType::Futures);
-        let conv = MarketConvention::for_rate_id(&rate_id);
+        let quote_id = QuoteId::new(Currency::EUR, Tenor::ThreeMonths, RateType::Futures);
+        let conv = MarketConvention::for_quote_id(&quote_id);
         assert!(conv.is_some());
         assert!(conv.unwrap().is_futures());
     }
 
     #[test]
-    fn test_for_rate_id_fx_forward() {
+    fn test_for_quote_id_fx_forward() {
         for currency in [Currency::USD, Currency::EUR, Currency::GBP, Currency::JPY] {
-            let rate_id = RateId::new(currency, Tenor::ThreeMonths, RateType::FxForward);
-            let conv = MarketConvention::for_rate_id(&rate_id);
+            let quote_id = QuoteId::new(currency, Tenor::ThreeMonths, RateType::FxForward);
+            let conv = MarketConvention::for_quote_id(&quote_id);
             assert!(
                 conv.is_some(),
                 "FX convention should exist for {:?}",
@@ -406,15 +406,15 @@ mod tests {
     }
 
     #[test]
-    fn test_for_rate_id_vol_returns_none() {
-        let rate_id = RateId::new(Currency::USD, Tenor::OneYear, RateType::Vol);
-        assert!(MarketConvention::for_rate_id(&rate_id).is_none());
+    fn test_for_quote_id_vol_returns_none() {
+        let quote_id = QuoteId::new(Currency::USD, Tenor::OneYear, RateType::Vol);
+        assert!(MarketConvention::for_quote_id(&quote_id).is_none());
     }
 
     #[test]
-    fn test_for_rate_id_basis_swap_returns_none() {
-        let rate_id = RateId::new(Currency::USD, Tenor::FiveYears, RateType::BasisSwap);
-        assert!(MarketConvention::for_rate_id(&rate_id).is_none());
+    fn test_for_quote_id_basis_swap_returns_none() {
+        let quote_id = QuoteId::new(Currency::USD, Tenor::FiveYears, RateType::BasisSwap);
+        assert!(MarketConvention::for_quote_id(&quote_id).is_none());
     }
 
     #[test]

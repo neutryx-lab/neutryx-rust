@@ -38,8 +38,8 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use super::definition::{
-    CurveDefError, CurveDefinition, InstrumentDefError, InstrumentDefinition,
-    InstrumentTemplate, RateIndexDefError, RateIndexDefinition,
+    CurveDefError, CurveDefinition, InstrumentDefError, InstrumentDefinition, InstrumentTemplate,
+    RateIndexDefError, RateIndexDefinition,
 };
 
 /// Error type for registry operations.

@@ -7,7 +7,7 @@
 use thiserror::Error;
 
 use super::convention::MarketConvention;
-use super::{Currency, RateId, RateType};
+use super::{Currency, QuoteId, RateType};
 use crate::time::{Date, Tenor};
 use crate::trade::{Cashflow, CashflowType, Direction, Leg, LegType, Payoff, Trade, TradeType};
 
@@ -24,10 +24,10 @@ pub enum MarketInstrumentError {
     },
 
     /// No convention is available for the rate.
-    #[error("No convention available for {rate_id}")]
+    #[error("No convention available for {quote_id}")]
     NoConvention {
         /// The rate ID that has no convention.
-        rate_id: String,
+        quote_id: String,
     },
 
     /// Invalid date calculation.
@@ -75,9 +75,9 @@ impl MarketInstrumentError {
 
     /// Creates an error for missing convention.
     #[must_use]
-    pub fn no_convention(rate_id: &RateId) -> Self {
+    pub fn no_convention(quote_id: &QuoteId) -> Self {
         Self::NoConvention {
-            rate_id: rate_id.to_string(),
+            quote_id: quote_id.to_string(),
         }
     }
 }
@@ -94,17 +94,17 @@ impl MarketInstrumentError {
 /// # Example
 ///
 /// ```rust
-/// use infra_domain::market::{Currency, RateId, RateType};
+/// use infra_domain::market::{Currency, QuoteId, RateType};
 /// use infra_domain::market::convention::{MarketConvention, DepositConvention};
 /// use infra_domain::market::MarketInstrument;
 /// use infra_domain::time::{Date, Tenor};
 ///
-/// let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+/// let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
 /// let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
 /// let convention = MarketConvention::Deposit(DepositConvention::usd());
 ///
 /// let instrument = MarketInstrument::new(
-///     rate_id,
+///     quote_id,
 ///     0.05,  // 5% rate
 ///     convention,
 ///     valuation_date,
@@ -117,7 +117,7 @@ impl MarketInstrumentError {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MarketInstrument {
     /// Unique identifier for the rate.
-    pub rate_id: RateId,
+    pub quote_id: QuoteId,
     /// Rate value (e.g., 0.05 for 5%).
     pub rate_value: f64,
     /// Market convention for this instrument.
@@ -140,7 +140,7 @@ impl MarketInstrument {
     ///
     /// # Arguments
     ///
-    /// * `rate_id` - The rate identifier
+    /// * `quote_id` - The rate identifier
     /// * `rate_value` - The rate value (e.g., 0.05 for 5%)
     /// * `convention` - The market convention to use
     /// * `valuation_date` - The valuation/trade date
@@ -155,17 +155,17 @@ impl MarketInstrument {
     /// # Examples
     ///
     /// ```rust
-    /// use infra_domain::market::{Currency, RateId, RateType};
+    /// use infra_domain::market::{Currency, QuoteId, RateType};
     /// use infra_domain::market::convention::{MarketConvention, SwapConvention};
     /// use infra_domain::market::MarketInstrument;
     /// use infra_domain::time::{Date, Tenor};
     ///
-    /// let rate_id = RateId::new(Currency::USD, Tenor::FiveYears, RateType::Swap);
+    /// let quote_id = QuoteId::new(Currency::USD, Tenor::FiveYears, RateType::Swap);
     /// let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
     /// let convention = MarketConvention::Swap(SwapConvention::usd_sofr());
     ///
     /// let instrument = MarketInstrument::new(
-    ///     rate_id,
+    ///     quote_id,
     ///     0.045,
     ///     convention,
     ///     valuation_date,
@@ -173,7 +173,7 @@ impl MarketInstrument {
     /// ).unwrap();
     /// ```
     pub fn new(
-        rate_id: RateId,
+        quote_id: QuoteId,
         rate_value: f64,
         convention: MarketConvention,
         valuation_date: Date,
@@ -195,10 +195,10 @@ impl MarketInstrument {
         let effective_date = valuation_date + spot_lag as i64;
 
         // Calculate maturity date from tenor
-        let maturity_date = effective_date + rate_id.tenor.to_period();
+        let maturity_date = effective_date + quote_id.tenor.to_period();
 
         Ok(Self {
-            rate_id,
+            quote_id,
             rate_value,
             convention,
             valuation_date,
@@ -215,7 +215,7 @@ impl MarketInstrument {
     ///
     /// # Arguments
     ///
-    /// * `rate_id` - The rate identifier
+    /// * `quote_id` - The rate identifier
     /// * `rate_value` - The rate value
     /// * `convention` - The market convention
     /// * `valuation_date` - The valuation date
@@ -228,7 +228,7 @@ impl MarketInstrument {
     /// Returns an error if the rate value is invalid.
     #[allow(clippy::too_many_arguments)]
     pub fn with_dates(
-        rate_id: RateId,
+        quote_id: QuoteId,
         rate_value: f64,
         convention: MarketConvention,
         valuation_date: Date,
@@ -255,7 +255,7 @@ impl MarketInstrument {
         }
 
         Ok(Self {
-            rate_id,
+            quote_id,
             rate_value,
             convention,
             valuation_date,
@@ -281,19 +281,19 @@ impl MarketInstrument {
     /// Returns the currency of this instrument.
     #[must_use]
     pub fn currency(&self) -> Currency {
-        self.rate_id.currency
+        self.quote_id.currency
     }
 
     /// Returns the tenor of this instrument.
     #[must_use]
     pub fn tenor(&self) -> Tenor {
-        self.rate_id.tenor
+        self.quote_id.tenor
     }
 
     /// Returns the rate type of this instrument.
     #[must_use]
     pub fn rate_type(&self) -> RateType {
-        self.rate_id.rate_type
+        self.quote_id.rate_type
     }
 
     /// Returns the instrument type name.
@@ -345,17 +345,17 @@ impl MarketInstrument {
     /// # Examples
     ///
     /// ```rust
-    /// use infra_domain::market::{Currency, RateId, RateType};
+    /// use infra_domain::market::{Currency, QuoteId, RateType};
     /// use infra_domain::market::convention::{MarketConvention, DepositConvention};
     /// use infra_domain::market::MarketInstrument;
     /// use infra_domain::time::{Date, Tenor};
     ///
-    /// let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+    /// let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
     /// let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
     /// let convention = MarketConvention::Deposit(DepositConvention::usd());
     ///
     /// let instrument = MarketInstrument::new(
-    ///     rate_id,
+    ///     quote_id,
     ///     0.05,
     ///     convention,
     ///     valuation_date,
@@ -368,9 +368,9 @@ impl MarketInstrument {
     pub fn to_trade(&self) -> Result<Trade, MarketInstrumentError> {
         let trade_id = format!(
             "MI_{}_{}_{:?}",
-            self.rate_id.currency.code(),
-            self.rate_id.tenor.code(),
-            self.rate_id.rate_type
+            self.quote_id.currency.code(),
+            self.quote_id.tenor.code(),
+            self.quote_id.rate_type
         );
 
         match &self.convention {
@@ -582,15 +582,15 @@ mod tests {
 
     #[test]
     fn test_market_instrument_new_deposit() {
-        let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+        let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
         let convention = MarketConvention::Deposit(DepositConvention::usd());
 
         let instrument =
-            MarketInstrument::new(rate_id.clone(), 0.05, convention, valuation_date, 1_000_000.0)
+            MarketInstrument::new(quote_id.clone(), 0.05, convention, valuation_date, 1_000_000.0)
                 .unwrap();
 
-        assert_eq!(instrument.rate_id, rate_id);
+        assert_eq!(instrument.quote_id, quote_id);
         assert_eq!(instrument.rate_value, 0.05);
         assert_eq!(instrument.notional, 1_000_000.0);
         assert!(instrument.effective_date > valuation_date);
@@ -599,15 +599,15 @@ mod tests {
 
     #[test]
     fn test_market_instrument_new_swap() {
-        let rate_id = RateId::new(Currency::USD, Tenor::FiveYears, RateType::Swap);
+        let quote_id = QuoteId::new(Currency::USD, Tenor::FiveYears, RateType::Swap);
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
         let convention = MarketConvention::Swap(SwapConvention::usd_sofr());
 
         let instrument =
-            MarketInstrument::new(rate_id.clone(), 0.045, convention, valuation_date, 10_000_000.0)
+            MarketInstrument::new(quote_id.clone(), 0.045, convention, valuation_date, 10_000_000.0)
                 .unwrap();
 
-        assert_eq!(instrument.rate_id, rate_id);
+        assert_eq!(instrument.quote_id, quote_id);
         assert_eq!(instrument.rate_value, 0.045);
         assert!(instrument.is_swap());
         assert!(!instrument.is_deposit());
@@ -615,12 +615,12 @@ mod tests {
 
     #[test]
     fn test_market_instrument_new_ois() {
-        let rate_id = RateId::new(Currency::USD, Tenor::OneYear, RateType::Ois);
+        let quote_id = QuoteId::new(Currency::USD, Tenor::OneYear, RateType::Ois);
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
         let convention = MarketConvention::Ois(SwapConvention::usd_sofr());
 
         let instrument =
-            MarketInstrument::new(rate_id.clone(), 0.052, convention, valuation_date, 5_000_000.0)
+            MarketInstrument::new(quote_id.clone(), 0.052, convention, valuation_date, 5_000_000.0)
                 .unwrap();
 
         assert!(instrument.is_ois());
@@ -629,24 +629,24 @@ mod tests {
 
     #[test]
     fn test_market_instrument_new_fra() {
-        let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Fra);
+        let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Fra);
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
         let convention = MarketConvention::Fra(FraConvention::usd_sofr());
 
         let instrument =
-            MarketInstrument::new(rate_id, 0.051, convention, valuation_date, 2_000_000.0).unwrap();
+            MarketInstrument::new(quote_id, 0.051, convention, valuation_date, 2_000_000.0).unwrap();
 
         assert_eq!(instrument.instrument_type_name(), "FRA");
     }
 
     #[test]
     fn test_market_instrument_invalid_nan() {
-        let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+        let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
         let convention = MarketConvention::Deposit(DepositConvention::usd());
 
         let result =
-            MarketInstrument::new(rate_id, f64::NAN, convention, valuation_date, 1_000_000.0);
+            MarketInstrument::new(quote_id, f64::NAN, convention, valuation_date, 1_000_000.0);
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -659,12 +659,12 @@ mod tests {
 
     #[test]
     fn test_market_instrument_invalid_infinite() {
-        let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+        let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
         let convention = MarketConvention::Deposit(DepositConvention::usd());
 
         let result = MarketInstrument::new(
-            rate_id,
+            quote_id,
             f64::INFINITY,
             convention,
             valuation_date,
@@ -682,14 +682,14 @@ mod tests {
 
     #[test]
     fn test_market_instrument_with_dates() {
-        let rate_id = RateId::new(Currency::EUR, Tenor::OneYear, RateType::Swap);
+        let quote_id = QuoteId::new(Currency::EUR, Tenor::OneYear, RateType::Swap);
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
         let effective_date = Date::from_ymd(2024, 1, 17).unwrap();
         let maturity_date = Date::from_ymd(2025, 1, 17).unwrap();
         let convention = MarketConvention::Swap(SwapConvention::eur_euribor_6m());
 
         let instrument = MarketInstrument::with_dates(
-            rate_id,
+            quote_id,
             0.035,
             convention,
             valuation_date,
@@ -705,14 +705,14 @@ mod tests {
 
     #[test]
     fn test_market_instrument_with_dates_invalid_order() {
-        let rate_id = RateId::new(Currency::EUR, Tenor::OneYear, RateType::Swap);
+        let quote_id = QuoteId::new(Currency::EUR, Tenor::OneYear, RateType::Swap);
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
         let effective_date = Date::from_ymd(2025, 1, 17).unwrap();
         let maturity_date = Date::from_ymd(2024, 1, 17).unwrap(); // Before effective!
         let convention = MarketConvention::Swap(SwapConvention::eur_euribor_6m());
 
         let result = MarketInstrument::with_dates(
-            rate_id,
+            quote_id,
             0.035,
             convention,
             valuation_date,
@@ -732,24 +732,24 @@ mod tests {
 
     #[test]
     fn test_market_instrument_currency() {
-        let rate_id = RateId::new(Currency::GBP, Tenor::TenYears, RateType::Swap);
+        let quote_id = QuoteId::new(Currency::GBP, Tenor::TenYears, RateType::Swap);
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
         let convention = MarketConvention::Swap(SwapConvention::gbp_sonia());
 
         let instrument =
-            MarketInstrument::new(rate_id, 0.04, convention, valuation_date, 10_000_000.0).unwrap();
+            MarketInstrument::new(quote_id, 0.04, convention, valuation_date, 10_000_000.0).unwrap();
 
         assert_eq!(instrument.currency(), Currency::GBP);
     }
 
     #[test]
     fn test_market_instrument_tenor() {
-        let rate_id = RateId::new(Currency::JPY, Tenor::TwoYears, RateType::Ois);
+        let quote_id = QuoteId::new(Currency::JPY, Tenor::TwoYears, RateType::Ois);
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
         let convention = MarketConvention::Ois(SwapConvention::jpy_tonar());
 
         let instrument =
-            MarketInstrument::new(rate_id, 0.001, convention, valuation_date, 100_000_000.0)
+            MarketInstrument::new(quote_id, 0.001, convention, valuation_date, 100_000_000.0)
                 .unwrap();
 
         assert_eq!(instrument.tenor(), Tenor::TwoYears);
@@ -757,24 +757,24 @@ mod tests {
 
     #[test]
     fn test_market_instrument_rate_type() {
-        let rate_id = RateId::new(Currency::USD, Tenor::SixMonths, RateType::Deposit);
+        let quote_id = QuoteId::new(Currency::USD, Tenor::SixMonths, RateType::Deposit);
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
         let convention = MarketConvention::Deposit(DepositConvention::usd());
 
         let instrument =
-            MarketInstrument::new(rate_id, 0.053, convention, valuation_date, 1_000_000.0).unwrap();
+            MarketInstrument::new(quote_id, 0.053, convention, valuation_date, 1_000_000.0).unwrap();
 
         assert_eq!(instrument.rate_type(), RateType::Deposit);
     }
 
     #[test]
     fn test_market_instrument_year_fraction() {
-        let rate_id = RateId::new(Currency::USD, Tenor::OneYear, RateType::Deposit);
+        let quote_id = QuoteId::new(Currency::USD, Tenor::OneYear, RateType::Deposit);
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
         let convention = MarketConvention::Deposit(DepositConvention::usd());
 
         let instrument =
-            MarketInstrument::new(rate_id, 0.05, convention, valuation_date, 1_000_000.0).unwrap();
+            MarketInstrument::new(quote_id, 0.05, convention, valuation_date, 1_000_000.0).unwrap();
 
         // Year fraction should be approximately 1.0 for a 1Y tenor
         let yf = instrument.year_fraction();
@@ -783,12 +783,12 @@ mod tests {
 
     #[test]
     fn test_market_instrument_clone() {
-        let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+        let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
         let convention = MarketConvention::Deposit(DepositConvention::usd());
 
         let instrument =
-            MarketInstrument::new(rate_id, 0.05, convention, valuation_date, 1_000_000.0).unwrap();
+            MarketInstrument::new(quote_id, 0.05, convention, valuation_date, 1_000_000.0).unwrap();
         let cloned = instrument.clone();
 
         assert_eq!(instrument, cloned);
@@ -796,12 +796,12 @@ mod tests {
 
     #[test]
     fn test_market_instrument_debug() {
-        let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+        let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
         let convention = MarketConvention::Deposit(DepositConvention::usd());
 
         let instrument =
-            MarketInstrument::new(rate_id, 0.05, convention, valuation_date, 1_000_000.0).unwrap();
+            MarketInstrument::new(quote_id, 0.05, convention, valuation_date, 1_000_000.0).unwrap();
         let debug_str = format!("{:?}", instrument);
 
         assert!(debug_str.contains("MarketInstrument"));
@@ -810,11 +810,11 @@ mod tests {
 
     #[test]
     fn test_market_instrument_error_no_convention() {
-        let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Vol);
-        let error = MarketInstrumentError::no_convention(&rate_id);
+        let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Vol);
+        let error = MarketInstrumentError::no_convention(&quote_id);
 
         match error {
-            MarketInstrumentError::NoConvention { rate_id: id } => {
+            MarketInstrumentError::NoConvention { quote_id: id } => {
                 assert!(id.contains("USD"));
             }
             _ => panic!("Expected NoConvention error"),
@@ -825,12 +825,12 @@ mod tests {
 
     #[test]
     fn test_to_trade_deposit() {
-        let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+        let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
         let convention = MarketConvention::Deposit(DepositConvention::usd());
 
         let instrument =
-            MarketInstrument::new(rate_id, 0.05, convention, valuation_date, 1_000_000.0).unwrap();
+            MarketInstrument::new(quote_id, 0.05, convention, valuation_date, 1_000_000.0).unwrap();
 
         let trade = instrument.to_trade().unwrap();
 
@@ -845,12 +845,12 @@ mod tests {
 
     #[test]
     fn test_to_trade_swap() {
-        let rate_id = RateId::new(Currency::USD, Tenor::FiveYears, RateType::Swap);
+        let quote_id = QuoteId::new(Currency::USD, Tenor::FiveYears, RateType::Swap);
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
         let convention = MarketConvention::Swap(SwapConvention::usd_sofr());
 
         let instrument =
-            MarketInstrument::new(rate_id, 0.045, convention, valuation_date, 10_000_000.0)
+            MarketInstrument::new(quote_id, 0.045, convention, valuation_date, 10_000_000.0)
                 .unwrap();
 
         let trade = instrument.to_trade().unwrap();
@@ -869,12 +869,12 @@ mod tests {
 
     #[test]
     fn test_to_trade_ois() {
-        let rate_id = RateId::new(Currency::USD, Tenor::OneYear, RateType::Ois);
+        let quote_id = QuoteId::new(Currency::USD, Tenor::OneYear, RateType::Ois);
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
         let convention = MarketConvention::Ois(SwapConvention::usd_sofr());
 
         let instrument =
-            MarketInstrument::new(rate_id, 0.052, convention, valuation_date, 5_000_000.0).unwrap();
+            MarketInstrument::new(quote_id, 0.052, convention, valuation_date, 5_000_000.0).unwrap();
 
         let trade = instrument.to_trade().unwrap();
 
@@ -884,12 +884,12 @@ mod tests {
 
     #[test]
     fn test_to_trade_fra() {
-        let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Fra);
+        let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Fra);
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
         let convention = MarketConvention::Fra(FraConvention::usd_sofr());
 
         let instrument =
-            MarketInstrument::new(rate_id, 0.051, convention, valuation_date, 2_000_000.0).unwrap();
+            MarketInstrument::new(quote_id, 0.051, convention, valuation_date, 2_000_000.0).unwrap();
 
         let trade = instrument.to_trade().unwrap();
 
@@ -901,12 +901,12 @@ mod tests {
     fn test_to_trade_unsupported_xccy() {
         use crate::market::convention::XCcyBasisConvention;
 
-        let rate_id = RateId::new(Currency::USD, Tenor::FiveYears, RateType::BasisSwap);
+        let quote_id = QuoteId::new(Currency::USD, Tenor::FiveYears, RateType::BasisSwap);
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
         let convention = MarketConvention::XCcyBasis(XCcyBasisConvention::usd_jpy());
 
         let instrument =
-            MarketInstrument::new(rate_id, 0.0025, convention, valuation_date, 100_000_000.0)
+            MarketInstrument::new(quote_id, 0.0025, convention, valuation_date, 100_000_000.0)
                 .unwrap();
 
         let result = instrument.to_trade();
@@ -924,12 +924,12 @@ mod tests {
 
     #[test]
     fn test_to_trade_cashflow_values() {
-        let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
+        let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
         let convention = MarketConvention::Deposit(DepositConvention::usd());
 
         let instrument =
-            MarketInstrument::new(rate_id, 0.05, convention, valuation_date, 1_000_000.0).unwrap();
+            MarketInstrument::new(quote_id, 0.05, convention, valuation_date, 1_000_000.0).unwrap();
 
         let trade = instrument.to_trade().unwrap();
         let legs: Vec<_> = trade.legs().collect();

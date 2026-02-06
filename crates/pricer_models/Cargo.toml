@@ -41,8 +41,11 @@ local-vol = []
 stochastic-local-vol = ["local-vol"]
 advanced-vol-models = ["local-vol", "stochastic-local-vol"]
 
-# Automatic differentiation (Enzyme AD) - future extension
-enzyme-ad = []
+# Automatic differentiation (Enzyme AD)
+# Requires nightly Rust toolchain with Enzyme support.
+# Enables AD-based Jacobian computation with automatic fallback to finite differences.
+# Feature gates: compute_jacobian_with_stability_check, compute_jacobian_enzyme_with_fallback
+enzyme-ad = ["global-bootstrap"]
 
 [dependencies]
 pricer_core = { path = "../pricer_core" }

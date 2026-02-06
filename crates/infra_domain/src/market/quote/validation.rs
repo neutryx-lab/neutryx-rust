@@ -70,6 +70,7 @@ pub trait QuoteValidator {
 #[deprecated(since = "0.2.0", note = "Use QuoteValidator instead")]
 pub trait RateValidator: QuoteValidator {}
 
+#[allow(deprecated)]
 impl<T: QuoteValidator> RateValidator for T {}
 
 /// Standard quote validator with reasonable default bounds.
