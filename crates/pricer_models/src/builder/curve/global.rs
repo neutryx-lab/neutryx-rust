@@ -284,6 +284,64 @@ impl<T: Float> GlobalBootstrapConfig<T> {
 
     /// Get the number of configured jump pillars.
     pub fn num_jumps(&self) -> usize { self.jump_config.as_ref().map_or(0, |jc| jc.num_jumps()) }
+
+    // =========================================================================
+    // Enzyme AD Configuration (Task 5.2, Requirement 6.2)
+    // =========================================================================
+
+    /// Enable Automatic Differentiation for Jacobian computation.
+    ///
+    /// Sets the Jacobian method to `AutomaticDifferentiation` and enables
+    /// AD-specific optimisations.
+    ///
+    /// # Requirement: 6.2
+    ///
+    /// This method is only available when the `enzyme-ad` feature is enabled.
+    /// If called without the feature, a compile-time error will occur.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use pricer_models::builder::GlobalBootstrapConfig;
+    ///
+    /// let config = GlobalBootstrapConfig::default()
+    ///     .with_automatic_differentiation();
+    /// ```
+    #[cfg(feature = "enzyme-ad")]
+    pub fn with_automatic_differentiation(mut self) -> Self {
+        self.jacobian_method = JacobianMethod::AutomaticDifferentiation;
+        self
+    }
+
+    /// Set the AD variance threshold for instability detection.
+    ///
+    /// When the variance between AD Jacobian and finite difference
+    /// approximation exceeds this threshold, the system automatically
+    /// falls back to central difference method.
+    ///
+    /// # Arguments
+    ///
+    /// * `threshold` - Variance threshold (default: 1e6)
+    ///
+    /// # Requirement: 5.4
+    #[cfg(feature = "enzyme-ad")]
+    pub fn with_ad_variance_threshold(mut self, threshold: T) -> Self {
+        self.ad_variance_threshold = threshold;
+        self
+    }
+
+    /// Set the AD checkpointing interval.
+    ///
+    /// Controls memory vs re-computation trade-off during reverse-mode AD.
+    ///
+    /// # Arguments
+    ///
+    /// * `interval` - Number of operations between checkpoints
+    #[cfg(feature = "enzyme-ad")]
+    pub fn with_ad_checkpoint_interval(mut self, interval: usize) -> Self {
+        self.ad_checkpoint_interval = Some(interval);
+        self
+    }
 }
 
 // Conversion to CalibrationProblemConfig
