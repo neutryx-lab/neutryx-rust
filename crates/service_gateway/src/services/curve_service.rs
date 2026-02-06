@@ -8,7 +8,7 @@ use adapter_loader::{parse_instruments, validate_rates, InstrumentSpec};
 use pricer_core::math::formulas::{simple_forward_rate, zero_rate_from_df};
 use pricer_models::{
     builder::{BootstrapConfig, CurveBootstrapper, InterpolationMethod as BuilderInterpolation},
-    market::YieldCurve,
+    market::{curves::MarketInstrument, YieldCurve},
 };
 
 #[cfg(test)]
@@ -17,7 +17,8 @@ use crate::{
     error::ServerError,
     rest::dto::{
         BootstrapMethod, CurveBuildRequest, CurveBuildResponse, CurvePillar, DiscountFactorRequest,
-        DiscountFactorResponse, ForwardRateRequest, ForwardRateResponse, InterpolationMethod,
+        DiscountFactorResponse, ForwardRatePoint, ForwardRateRequest, ForwardRateResponse,
+        InterpolationMethod,
     },
     state::{AppState, InstrumentInput},
 };
@@ -33,24 +34,83 @@ impl CurveService {
     ) -> Result<CurveBuildResponse, ServerError> {
         let start = Instant::now();
 
-        // Convert DTO to adapter_loader specs
-        let specs: Vec<InstrumentSpec> = request
-            .instruments
-            .iter()
-            .map(|i| InstrumentSpec {
-                instrument_type: i.instrument_type.clone(),
-                tenor: i.tenor.clone(),
-                rate: i.rate,
-            })
-            .collect();
+        // Parse reference date (default to today if not provided)
+        let reference_date = if let Some(ref date_str) = request.reference_date {
+            chrono::NaiveDate::parse_from_str(date_str, "%Y-%m-%d")
+                .map_err(|e| ServerError::InvalidRequest(format!("Invalid reference_date: {e}")))?
+        } else {
+            chrono::Utc::now().date_naive()
+        };
 
-        // Validate rates
-        validate_rates(&specs, -0.10, 0.50)
+        // Separate regular instruments from events
+        let mut regular_specs: Vec<InstrumentSpec> = Vec::new();
+        let mut event_instruments: Vec<MarketInstrument<f64>> = Vec::new();
+
+        for i in &request.instruments {
+            if i.instrument_type.to_lowercase() == "event" {
+                // Handle Event instruments
+                if let Some(ref event_date_str) = i.event_date {
+                    let event_date =
+                        chrono::NaiveDate::parse_from_str(event_date_str, "%Y-%m-%d").map_err(
+                            |e| ServerError::InvalidRequest(format!("Invalid event_date: {e}")),
+                        )?;
+
+                    // Calculate time to event in years
+                    let days = (event_date - reference_date).num_days();
+                    if days > 0 {
+                        let time_years = days as f64 / 365.0;
+                        let expected_spike = i.expected_rate_spike.unwrap_or(i.rate);
+                        event_instruments.push(MarketInstrument::event_with_rate(
+                            time_years,
+                            expected_spike,
+                        ));
+                    }
+                    // Skip past events (days <= 0)
+                }
+            } else {
+                // Regular instrument
+                regular_specs.push(InstrumentSpec {
+                    instrument_type: i.instrument_type.clone(),
+                    tenor: i.tenor.clone(),
+                    rate: i.rate,
+                    event_date: None,
+                    expected_rate_spike: None,
+                });
+            }
+        }
+
+        // Validate rates for regular instruments only
+        validate_rates(&regular_specs, -0.10, 0.50)
             .map_err(|e| ServerError::InvalidRequest(format!("Rate validation failed: {e}")))?;
 
-        // Parse instruments using adapter_loader
-        let market_instruments = parse_instruments(&specs)
-            .map_err(|e| ServerError::InvalidRequest(format!("Instrument parsing failed: {e}")))?;
+        // Parse regular instruments using adapter_loader
+        let mut market_instruments = if regular_specs.is_empty() {
+            Vec::new()
+        } else {
+            parse_instruments(&regular_specs)
+                .map_err(|e| ServerError::InvalidRequest(format!("Instrument parsing failed: {e}")))?
+        };
+
+        // Add Event instruments
+        market_instruments.extend(event_instruments);
+
+        // Sort all instruments by maturity
+        market_instruments.sort_by(|a, b| {
+            a.maturity()
+                .partial_cmp(&b.maturity())
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+
+        // Must have at least one non-event instrument
+        let has_rate_instrument = market_instruments
+            .iter()
+            .any(|inst| !inst.is_event());
+
+        if !has_rate_instrument {
+            return Err(ServerError::InvalidRequest(
+                "At least one non-event instrument is required".to_string(),
+            ));
+        }
 
         // Convert interpolation method
         let interpolation = match request.interpolation {
@@ -81,7 +141,7 @@ impl CurveService {
             }
         };
 
-        // Extract pillar data
+        // Extract pillar data (bootstrap nodes)
         let pillars: Vec<CurvePillar> = curve
             .pillars()
             .iter()
@@ -90,6 +150,26 @@ impl CurveService {
                 time: *time,
                 discount_factor: *df,
                 zero_rate: zero_rate_from_df(*df, *time),
+            })
+            .collect();
+
+        // Generate forward curve on daily grid using DF ratios
+        let max_time = curve.pillars().last().copied().unwrap_or(1.0);
+        let dt = 1.0 / 365.0; // Daily grid
+
+        // Generate grid from t=0 to max_time, stepping by dt
+        // Use YieldCurve::forward_rate which handles t=0 correctly
+        let num_points = (max_time / dt).floor() as usize;
+        let forward_curve: Vec<ForwardRatePoint> = (0..num_points)
+            .filter_map(|i| {
+                let t = i as f64 * dt;
+                let t_next = t + dt;
+                // Use YieldCurve::forward_rate method directly
+                let fwd = curve.forward_rate(t, t_next).ok()?;
+                Some(ForwardRatePoint {
+                    time: t,
+                    forward_rate: fwd,
+                })
             })
             .collect();
 
@@ -113,6 +193,7 @@ impl CurveService {
             index: request.index.clone(),
             currency: request.currency.clone(),
             pillars,
+            forward_curve,
             instrument_count: request.instruments.len(),
             converged: true,
             calculation_time_ms: elapsed.as_secs_f64() * 1000.0,
@@ -200,21 +281,28 @@ mod tests {
         let request = CurveBuildRequest {
             index: "USD-SOFR".to_string(),
             currency: "USD".to_string(),
+            reference_date: None,
             instruments: vec![
                 CurveInstrumentInput {
                     instrument_type: "deposit".to_string(),
                     tenor: "1M".to_string(),
                     rate: 0.05,
+                    event_date: None,
+                    expected_rate_spike: None,
                 },
                 CurveInstrumentInput {
                     instrument_type: "swap".to_string(),
                     tenor: "1Y".to_string(),
                     rate: 0.052,
+                    event_date: None,
+                    expected_rate_spike: None,
                 },
                 CurveInstrumentInput {
                     instrument_type: "swap".to_string(),
                     tenor: "2Y".to_string(),
                     rate: 0.054,
+                    event_date: None,
+                    expected_rate_spike: None,
                 },
             ],
             interpolation: InterpolationMethod::Linear,
@@ -234,5 +322,50 @@ mod tests {
         for window in response.pillars.windows(2) {
             assert!(window[1].discount_factor <= window[0].discount_factor);
         }
+    }
+
+    #[test]
+    fn test_build_curve_with_event() {
+        let state = create_test_state();
+
+        let request = CurveBuildRequest {
+            index: "USD-SOFR".to_string(),
+            currency: "USD".to_string(),
+            reference_date: Some("2026-01-29".to_string()),
+            instruments: vec![
+                CurveInstrumentInput {
+                    instrument_type: "deposit".to_string(),
+                    tenor: "1M".to_string(),
+                    rate: 0.05,
+                    event_date: None,
+                    expected_rate_spike: None,
+                },
+                CurveInstrumentInput {
+                    instrument_type: "event".to_string(),
+                    tenor: String::new(),
+                    rate: 0.0,
+                    event_date: Some("2026-03-18".to_string()),
+                    expected_rate_spike: Some(-0.0025),
+                },
+                CurveInstrumentInput {
+                    instrument_type: "swap".to_string(),
+                    tenor: "1Y".to_string(),
+                    rate: 0.052,
+                    event_date: None,
+                    expected_rate_spike: None,
+                },
+            ],
+            interpolation: InterpolationMethod::Linear,
+            bootstrap_method: BootstrapMethod::Sequential,
+            tolerance: 1e-10,
+            max_iterations: 100,
+        };
+
+        let response = CurveService::build_curve(&request, &state).unwrap();
+
+        assert!(!response.curve_id.is_empty());
+        assert_eq!(response.instrument_count, 3);
+        assert!(response.converged);
+        assert!(!response.pillars.is_empty());
     }
 }

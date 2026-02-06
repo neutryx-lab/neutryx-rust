@@ -39,6 +39,8 @@ pub enum InstrumentType {
     Fra,
     /// Interest rate futures (with convexity adjustment).
     Futures,
+    /// Event instrument (CB meetings, year-end turns) with expected rate spike.
+    Event,
 }
 
 impl InstrumentType {
@@ -59,6 +61,7 @@ impl InstrumentType {
             Self::Ois => "OIS",
             Self::Fra => "FRA",
             Self::Futures => "Futures",
+            Self::Event => "Event",
         }
     }
 }
@@ -362,6 +365,30 @@ impl<T: Float> CompiledInstrument<T> {
         )
     }
 
+    /// Creates an Event instrument (CB meeting, year-end turn).
+    ///
+    /// # Arguments
+    ///
+    /// * `expected_spike` - Expected rate spike at the event date
+    /// * `event_time` - Event time in year fraction from valuation date
+    pub fn event(expected_spike: T, event_time: T) -> Result<Self, String> {
+        if event_time <= T::zero() {
+            return Err("event_time must be positive".to_string());
+        }
+        // Event instruments have a single point representing the event date
+        // The market_rate field stores the expected rate spike
+        Ok(Self {
+            instrument_type: InstrumentType::Event,
+            market_rate: expected_spike,
+            maturity: event_time,
+            cashflow_times: vec![event_time],
+            year_fractions: vec![T::one()], // Placeholder, not used for Event pricing
+            notionals: vec![T::one()],
+            df_indices: vec![0],
+            fixed_rate: None,
+        })
+    }
+
     /// Returns the instrument type.
     pub fn get_instrument_type(&self) -> InstrumentType { self.instrument_type }
 
@@ -497,6 +524,13 @@ impl<T: Float> CalibrationInstrument<T> for CompiledInstrument<T> {
 
                 Ok((df_start / df_end - T::one()) / tau)
             }
+            InstrumentType::Event => {
+                // Event instruments (CB meetings, year-end turns) represent discrete jumps.
+                // The market_rate stores the expected_rate_spike.
+                // For calibration purposes, an Event applies a jump at its event date;
+                // the theoretical rate is simply the stored spike value (no curve calculation needed).
+                Ok(self.market_rate)
+            }
         }
     }
 
@@ -605,6 +639,12 @@ impl<T: Float> InstrumentCompiler<T> {
             }
             InstrumentType::Futures => {
                 self.compile_futures(instrument, index, maturity_years, &rate_id)
+            }
+            InstrumentType::Event => {
+                // Event instruments should not go through InstrumentCompiler;
+                // they are created directly as MarketInstrument::Event in CurveService.
+                // This path should never be reached since MarketConvention doesn't have Event.
+                Err(CompileError::unsupported_instrument(index, "Event"))
             }
         }
     }

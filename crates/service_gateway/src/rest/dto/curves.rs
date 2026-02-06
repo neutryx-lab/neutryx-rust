@@ -27,13 +27,21 @@ pub enum BootstrapMethod {
 /// Single instrument input for curve building
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CurveInstrumentInput {
-    /// Instrument type (e.g., "deposit", "fra", "swap")
+    /// Instrument type (e.g., "deposit", "fra", "swap", "event")
     #[serde(alias = "type")]
     pub instrument_type: String,
-    /// Tenor string (e.g., "1M", "3M", "1Y")
+    /// Tenor string (e.g., "1M", "3M", "1Y") - optional for event type
+    #[serde(default)]
     pub tenor: String,
-    /// Par rate (as decimal, e.g., 0.05 for 5%)
+    /// Par rate (as decimal, e.g., 0.05 for 5%) - optional for event type
+    #[serde(default)]
     pub rate: f64,
+    /// Event date for CB meetings/turn-of-year (ISO format, e.g., "2026-03-18")
+    #[serde(default)]
+    pub event_date: Option<String>,
+    /// Expected rate spike at event (e.g., -0.0025 for -25bp cut)
+    #[serde(default)]
+    pub expected_rate_spike: Option<f64>,
 }
 
 /// Request to build a yield curve
@@ -44,6 +52,10 @@ pub struct CurveBuildRequest {
     /// Currency code (optional, extracted from index if not provided)
     #[serde(default)]
     pub currency: String,
+    /// Reference date for curve building (ISO format, e.g., "2026-01-29").
+    /// Defaults to today if not provided.
+    #[serde(default)]
+    pub reference_date: Option<String>,
     /// Market instruments for bootstrapping
     pub instruments: Vec<CurveInstrumentInput>,
     /// Interpolation method
@@ -75,6 +87,15 @@ pub struct CurvePillar {
     pub zero_rate: f64,
 }
 
+/// Forward rate point on a daily grid
+#[derive(Debug, Clone, Serialize)]
+pub struct ForwardRatePoint {
+    /// Time in years
+    pub time: f64,
+    /// Forward rate (simple, annualised) for the next day
+    pub forward_rate: f64,
+}
+
 /// Response for curve building
 #[derive(Debug, Clone, Serialize)]
 pub struct CurveBuildResponse {
@@ -84,8 +105,10 @@ pub struct CurveBuildResponse {
     pub index: String,
     /// Currency code
     pub currency: String,
-    /// Pillar points
+    /// Pillar points (bootstrap nodes)
     pub pillars: Vec<CurvePillar>,
+    /// Forward rate curve on daily grid
+    pub forward_curve: Vec<ForwardRatePoint>,
     /// Number of instruments used
     pub instrument_count: usize,
     /// Bootstrap convergence achieved

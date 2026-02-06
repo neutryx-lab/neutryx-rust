@@ -78,12 +78,18 @@ interface CurvePillar {
   zero_rate: number;
 }
 
+interface ForwardRatePoint {
+  time: number;
+  forward_rate: number;
+}
+
 interface BuildResult {
   curve_id?: string;
   instrument_count?: number;
   interpolation?: string;
   calculation_time_ms?: number;
   pillars?: CurvePillar[];
+  forward_curve?: ForwardRatePoint[];
   converged?: boolean;
 }
 
@@ -106,8 +112,10 @@ const interpolation = ref<string>('loglinear');
 const allowExtrapolation = ref<boolean>(true);
 
 // Chart
-const chartCanvas = ref<HTMLCanvasElement | null>(null);
-let chartInstance: Chart | null = null;
+const shortTermChartCanvas = ref<HTMLCanvasElement | null>(null);
+const longTermChartCanvas = ref<HTMLCanvasElement | null>(null);
+let shortTermChartInstance: Chart | null = null;
+let longTermChartInstance: Chart | null = null;
 const chartType = ref<'zero_rate' | 'discount_factor' | 'forward_rate'>('zero_rate');
 
 // Options for build settings
@@ -157,48 +165,145 @@ const summaryStats = computed(() => {
   ];
 });
 
-// Chart functions
-function calculateForwardRates(pillars: CurvePillar[]): number[] {
-  // Calculate instantaneous forward rate from zero rates
-  // F(t) = r(t) + t * dr/dt ≈ (r2*t2 - r1*t1) / (t2 - t1)
-  const forwardRates: number[] = [];
-  for (let i = 0; i < pillars.length; i++) {
-    if (i === 0) {
-      // First point: use the zero rate as approximation
-      forwardRates.push(pillars[0].zero_rate);
-    } else {
-      const t1 = pillars[i - 1].time;
-      const t2 = pillars[i].time;
-      const r1 = pillars[i - 1].zero_rate;
-      const r2 = pillars[i].zero_rate;
-      // Forward rate between t1 and t2
-      const fwd = (r2 * t2 - r1 * t1) / (t2 - t1);
-      forwardRates.push(fwd);
+// Chart helper functions
+function interpolateValue(time: number, pillars: CurvePillar[], type: 'zero_rate' | 'discount_factor'): number {
+  if (pillars.length === 0) return 0;
+  if (time <= pillars[0].time) return type === 'zero_rate' ? pillars[0].zero_rate : pillars[0].discount_factor;
+  if (time >= pillars[pillars.length - 1].time) {
+    return type === 'zero_rate' ? pillars[pillars.length - 1].zero_rate : pillars[pillars.length - 1].discount_factor;
+  }
+
+  // Find surrounding pillars
+  for (let i = 0; i < pillars.length - 1; i++) {
+    if (time >= pillars[i].time && time <= pillars[i + 1].time) {
+      const t0 = pillars[i].time;
+      const t1 = pillars[i + 1].time;
+      const v0 = type === 'zero_rate' ? pillars[i].zero_rate : pillars[i].discount_factor;
+      const v1 = type === 'zero_rate' ? pillars[i + 1].zero_rate : pillars[i + 1].discount_factor;
+      const ratio = (time - t0) / (t1 - t0);
+      return v0 + ratio * (v1 - v0);
     }
   }
-  return forwardRates;
+  return 0;
 }
 
-function updateChart() {
-  if (!chartCanvas.value || !buildResult.value?.pillars) return;
+function interpolateForwardRate(time: number, forwardCurve: ForwardRatePoint[]): number {
+  if (forwardCurve.length === 0) return 0;
+  if (time <= forwardCurve[0].time) return forwardCurve[0].forward_rate;
+  if (time >= forwardCurve[forwardCurve.length - 1].time) {
+    return forwardCurve[forwardCurve.length - 1].forward_rate;
+  }
+
+  for (let i = 0; i < forwardCurve.length - 1; i++) {
+    if (time >= forwardCurve[i].time && time <= forwardCurve[i + 1].time) {
+      const t0 = forwardCurve[i].time;
+      const t1 = forwardCurve[i + 1].time;
+      const v0 = forwardCurve[i].forward_rate;
+      const v1 = forwardCurve[i + 1].forward_rate;
+      const ratio = (time - t0) / (t1 - t0);
+      return v0 + ratio * (v1 - v0);
+    }
+  }
+  return 0;
+}
+
+// Generate grid points for short-term chart (Daily up to 3M, Weekly up to 1Y)
+function generateShortTermGrid(): number[] {
+  const grid: number[] = [];
+  const dayFraction = 1 / 365;
+  const weekFraction = 7 / 365;
+  const threeMonths = 0.25; // 3M in years
+  const oneYear = 1.0;
+
+  // Daily grid up to 3M
+  for (let t = 0; t <= threeMonths; t += dayFraction) {
+    grid.push(t);
+  }
+
+  // Weekly grid from 3M to 1Y
+  for (let t = threeMonths + weekFraction; t <= oneYear; t += weekFraction) {
+    grid.push(t);
+  }
+
+  return grid;
+}
+
+// Generate grid points for long-term chart (Monthly up to 20Y, Yearly from 20Y to 30Y)
+function generateLongTermGrid(): number[] {
+  const grid: number[] = [];
+  const monthFraction = 1 / 12;
+
+  // Monthly grid up to 20Y
+  for (let t = monthFraction; t <= 20; t += monthFraction) {
+    grid.push(t);
+  }
+
+  // Yearly grid from 20Y to 30Y
+  for (let t = 21; t <= 30; t += 1) {
+    grid.push(t);
+  }
+
+  return grid;
+}
+
+function formatTimeLabel(time: number, isShortTerm: boolean): string {
+  if (isShortTerm) {
+    const days = Math.round(time * 365);
+    if (days < 7) return `${days}D`;
+    if (days < 30) return `${Math.round(days / 7)}W`;
+    return `${Math.round(days / 30)}M`;
+  } else {
+    if (time < 1) return `${Math.round(time * 12)}M`;
+    return `${time.toFixed(1)}Y`;
+  }
+}
+
+function createChartOptions(yAxisLabel: string, xAxisLabel: string) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        titleColor: '#fff',
+        bodyColor: '#fff',
+        callbacks: {
+          title: (items: { label: string }[]) => `Time: ${items[0].label}`,
+          label: (item: { raw: unknown }) => {
+            const value = item.raw as number;
+            if (chartType.value === 'zero_rate') {
+              return `Zero Rate: ${value.toFixed(4)}%`;
+            } else if (chartType.value === 'discount_factor') {
+              return `DF: ${value.toFixed(6)}`;
+            } else {
+              return `Forward Rate: ${value.toFixed(4)}%`;
+            }
+          },
+        },
+      },
+    },
+    scales: {
+      x: {
+        title: { display: true, text: xAxisLabel, color: 'rgba(255, 255, 255, 0.6)' },
+        ticks: { color: 'rgba(255, 255, 255, 0.6)', maxTicksLimit: 12 },
+        grid: { color: 'rgba(255, 255, 255, 0.1)' },
+      },
+      y: {
+        title: { display: true, text: yAxisLabel, color: 'rgba(255, 255, 255, 0.6)' },
+        ticks: { color: 'rgba(255, 255, 255, 0.6)' },
+        grid: { color: 'rgba(255, 255, 255, 0.1)' },
+      },
+    },
+  };
+}
+
+// Chart functions
+function updateCharts() {
+  if (!buildResult.value?.pillars) return;
 
   const pillars = buildResult.value.pillars;
-  const labels = pillars.map(p => p.time.toFixed(2));
-  let data: number[];
-  if (chartType.value === 'zero_rate') {
-    data = pillars.map(p => p.zero_rate * 100);
-  } else if (chartType.value === 'discount_factor') {
-    data = pillars.map(p => p.discount_factor);
-  } else {
-    data = calculateForwardRates(pillars).map(r => r * 100);
-  }
-
-  if (chartInstance) {
-    chartInstance.destroy();
-  }
-
-  const ctx = chartCanvas.value.getContext('2d');
-  if (!ctx) return;
+  const forwardCurve = buildResult.value.forward_curve || [];
 
   const chartLabels: Record<string, string> = {
     zero_rate: 'Zero Rate (%)',
@@ -215,70 +320,87 @@ function updateChart() {
   const currentLabel = chartLabels[chartType.value];
   const currentColor = chartColors[chartType.value];
 
-  chartInstance = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [{
-        label: currentLabel,
-        data,
-        borderColor: currentColor,
-        backgroundColor: `${currentColor}1a`,
-        borderWidth: 2,
-        fill: true,
-        tension: 0.3,
-        pointRadius: 3,
-        pointBackgroundColor: currentColor,
-      }],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: false,
+  // Generate grids
+  const shortTermGrid = generateShortTermGrid();
+  const longTermGrid = generateLongTermGrid();
+
+  // Prepare data for short-term chart
+  let shortTermData: number[];
+  if (chartType.value === 'forward_rate') {
+    shortTermData = shortTermGrid.map(t => interpolateForwardRate(t, forwardCurve) * 100);
+  } else if (chartType.value === 'zero_rate') {
+    shortTermData = shortTermGrid.map(t => interpolateValue(t, pillars, 'zero_rate') * 100);
+  } else {
+    shortTermData = shortTermGrid.map(t => interpolateValue(t, pillars, 'discount_factor'));
+  }
+  const shortTermLabels = shortTermGrid.map(t => formatTimeLabel(t, true));
+
+  // Prepare data for long-term chart
+  let longTermData: number[];
+  if (chartType.value === 'forward_rate') {
+    longTermData = longTermGrid.map(t => interpolateForwardRate(t, forwardCurve) * 100);
+  } else if (chartType.value === 'zero_rate') {
+    longTermData = longTermGrid.map(t => interpolateValue(t, pillars, 'zero_rate') * 100);
+  } else {
+    longTermData = longTermGrid.map(t => interpolateValue(t, pillars, 'discount_factor'));
+  }
+  const longTermLabels = longTermGrid.map(t => formatTimeLabel(t, false));
+
+  // Update short-term chart
+  if (shortTermChartCanvas.value) {
+    if (shortTermChartInstance) {
+      shortTermChartInstance.destroy();
+    }
+    const ctx = shortTermChartCanvas.value.getContext('2d');
+    if (ctx) {
+      shortTermChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: shortTermLabels,
+          datasets: [{
+            label: currentLabel,
+            data: shortTermData,
+            borderColor: currentColor,
+            backgroundColor: `${currentColor}1a`,
+            borderWidth: 2,
+            fill: true,
+            tension: 0.3,
+            pointRadius: 1,
+            pointBackgroundColor: currentColor,
+          }],
         },
-        tooltip: {
-          backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          titleColor: '#fff',
-          bodyColor: '#fff',
-          callbacks: {
-            title: (items) => `Time: ${items[0].label}Y`,
-            label: (item) => {
-              const value = item.raw as number;
-              if (chartType.value === 'zero_rate') {
-                return `Zero Rate: ${value.toFixed(4)}%`;
-              } else if (chartType.value === 'discount_factor') {
-                return `DF: ${value.toFixed(6)}`;
-              } else {
-                return `Forward Rate: ${value.toFixed(4)}%`;
-              }
-            },
-          },
+        options: createChartOptions(currentLabel, 'Short Term (0-1Y: Daily→Weekly)'),
+      });
+    }
+  }
+
+  // Update long-term chart
+  if (longTermChartCanvas.value) {
+    if (longTermChartInstance) {
+      longTermChartInstance.destroy();
+    }
+    const ctx = longTermChartCanvas.value.getContext('2d');
+    if (ctx) {
+      longTermChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: longTermLabels,
+          datasets: [{
+            label: currentLabel,
+            data: longTermData,
+            borderColor: currentColor,
+            backgroundColor: `${currentColor}1a`,
+            borderWidth: 2,
+            fill: true,
+            tension: 0.3,
+            pointRadius: 1,
+            pointBackgroundColor: currentColor,
+          }],
         },
-      },
-      scales: {
-        x: {
-          title: {
-            display: true,
-            text: 'Time (Years)',
-            color: 'rgba(255, 255, 255, 0.6)',
-          },
-          ticks: { color: 'rgba(255, 255, 255, 0.6)' },
-          grid: { color: 'rgba(255, 255, 255, 0.1)' },
-        },
-        y: {
-          title: {
-            display: true,
-            text: currentLabel,
-            color: 'rgba(255, 255, 255, 0.6)',
-          },
-          ticks: { color: 'rgba(255, 255, 255, 0.6)' },
-          grid: { color: 'rgba(255, 255, 255, 0.1)' },
-        },
-      },
-    },
-  });
+        options: createChartOptions(currentLabel, 'Long Term (0-30Y: Monthly→Yearly)'),
+      });
+    }
+  }
 }
 
 // API calls
@@ -443,19 +565,33 @@ async function buildCurve() {
       'flat_forward': 'linear',
     };
 
+    // Build instrument payload including events
+    const instrumentPayload = enabledInstruments.value.map(inst => {
+      if (inst.type === 'event') {
+        return {
+          instrument_type: 'event',
+          tenor: '',
+          rate: 0,
+          event_date: inst.eventDate,
+          expected_rate_spike: inst.rate, // rate field stores the spike for events
+        };
+      } else {
+        return {
+          instrument_type: inst.type.toLowerCase(),
+          tenor: inst.tenor,
+          rate: inst.rate,
+        };
+      }
+    });
+
     const response = await fetch('/api/curves/build', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         index: selectedCurve.value.rateIndex,
         currency: rateData.value?.currency || 'USD',
-        instruments: enabledInstruments.value
-          .filter(inst => inst.type.toLowerCase() !== 'event') // Exclude EVENT instruments
-          .map(inst => ({
-            instrument_type: inst.type.toLowerCase(),
-            tenor: inst.tenor,
-            rate: inst.rate,
-          })),
+        reference_date: rateData.value?.reference_date,
+        instruments: instrumentPayload,
         bootstrap_method: calibrationMethod.value,
         interpolation: interpolationMap[interpolation.value] || 'log_linear',
       }),
@@ -473,9 +609,9 @@ async function buildCurve() {
       inst.originalRate = inst.rate;
     });
 
-    // Update chart
+    // Update charts
     await nextTick();
-    updateChart();
+    updateCharts();
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('Build failed:', message);
@@ -545,7 +681,7 @@ watch(selectedCurveName, () => {
 // Watch for chart type change
 watch(chartType, () => {
   if (buildResult.value?.pillars) {
-    updateChart();
+    updateCharts();
   }
 });
 
@@ -559,8 +695,11 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  if (chartInstance) {
-    chartInstance.destroy();
+  if (shortTermChartInstance) {
+    shortTermChartInstance.destroy();
+  }
+  if (longTermChartInstance) {
+    longTermChartInstance.destroy();
   }
 });
 </script>
@@ -800,14 +939,34 @@ onUnmounted(() => {
           </div>
 
           <!-- Empty State -->
-          <div v-if="!buildResult && !buildError" class="flex flex-col items-center justify-center h-80 text-[var(--text-muted)]">
+          <div v-if="!buildResult && !buildError" class="flex flex-col items-center justify-center h-[500px] text-[var(--text-muted)]">
             <i class="fas fa-chart-line text-5xl mb-4 opacity-30"></i>
             <p class="text-sm">Build a curve to see the chart</p>
           </div>
 
-          <!-- Chart -->
-          <div v-else class="h-80">
-            <canvas ref="chartCanvas"></canvas>
+          <!-- Charts: Short-term (top) and Long-term (bottom) -->
+          <div v-else class="space-y-4">
+            <!-- Short-term Chart (0-1Y) -->
+            <div>
+              <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-2">
+                <i class="fas fa-clock text-xs mr-1"></i>
+                Short Term (0-1Y)
+              </h4>
+              <div class="h-48 bg-[var(--surface)] rounded-lg p-2">
+                <canvas ref="shortTermChartCanvas"></canvas>
+              </div>
+            </div>
+
+            <!-- Long-term Chart (0-30Y) -->
+            <div>
+              <h4 class="text-sm font-medium text-[var(--text-secondary)] mb-2">
+                <i class="fas fa-calendar-alt text-xs mr-1"></i>
+                Long Term (0-30Y)
+              </h4>
+              <div class="h-48 bg-[var(--surface)] rounded-lg p-2">
+                <canvas ref="longTermChartCanvas"></canvas>
+              </div>
+            </div>
           </div>
 
           <!-- Build Info -->

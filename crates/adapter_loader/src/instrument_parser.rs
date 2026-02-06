@@ -35,12 +35,16 @@ use crate::vol_surface_loader::{parse_fra_tenor, parse_tenor_string};
 /// typically loaded from JSON files or API requests.
 #[derive(Debug, Clone, PartialEq)]
 pub struct InstrumentSpec {
-    /// Instrument type (e.g., "deposit", "ois", "fra", "swap", "future").
+    /// Instrument type (e.g., "deposit", "ois", "fra", "swap", "future", "event").
     pub instrument_type: String,
-    /// Tenor string (e.g., "1M", "1Y", "3x6" for FRA).
+    /// Tenor string (e.g., "1M", "1Y", "3x6" for FRA). Optional for Event instruments.
     pub tenor: String,
     /// Market-quoted rate (as decimal, e.g., 0.0430 for 4.30%).
     pub rate: f64,
+    /// Event date in ISO format (YYYY-MM-DD). Only used for Event instruments.
+    pub event_date: Option<String>,
+    /// Expected rate spike for Event instruments (as decimal, e.g., -0.0025 for -25bp).
+    pub expected_rate_spike: Option<f64>,
 }
 
 impl InstrumentSpec {
@@ -50,6 +54,24 @@ impl InstrumentSpec {
             instrument_type: instrument_type.into(),
             tenor: tenor.into(),
             rate,
+            event_date: None,
+            expected_rate_spike: None,
+        }
+    }
+
+    /// Create an Event instrument specification.
+    ///
+    /// # Arguments
+    ///
+    /// * `event_date` - Event date in ISO format (YYYY-MM-DD)
+    /// * `expected_rate_spike` - Expected rate spike (as decimal, e.g., -0.0025 for -25bp)
+    pub fn event(event_date: impl Into<String>, expected_rate_spike: f64) -> Self {
+        Self {
+            instrument_type: "event".to_string(),
+            tenor: String::new(),
+            rate: expected_rate_spike,
+            event_date: Some(event_date.into()),
+            expected_rate_spike: Some(expected_rate_spike),
         }
     }
 
@@ -57,7 +79,15 @@ impl InstrumentSpec {
     ///
     /// For FRA instruments, this returns the end date tenor.
     /// For standard instruments, this returns the maturity.
+    /// For Event instruments, this returns 0.0 as a placeholder (actual time
+    /// should be calculated using event_date and reference_date).
     pub fn tenor_years(&self) -> Result<f64, InstrumentParseError> {
+        // For Event instruments, return 0.0 as placeholder
+        // The actual time will be calculated in CurveService using event_date
+        if self.is_event() {
+            return Ok(0.0);
+        }
+
         // For FRA with NxM format, parse and return end tenor
         if self.is_fra() {
             if let Some((_, end)) = parse_fra_tenor(&self.tenor) {
@@ -76,6 +106,12 @@ impl InstrumentSpec {
     fn is_fra(&self) -> bool {
         let t = self.instrument_type.to_lowercase();
         t == "fra"
+    }
+
+    /// Check if this instrument is an Event.
+    fn is_event(&self) -> bool {
+        let t = self.instrument_type.to_lowercase();
+        t == "event"
     }
 
     /// Convert to a `MarketInstrument` for curve calibration.
@@ -113,6 +149,13 @@ impl InstrumentSpec {
             "future" | "futures" => {
                 let tenor_years = self.tenor_years()?;
                 Ok(MarketInstrument::future(tenor_years, self.rate))
+            }
+            "event" => {
+                // For events, we use a placeholder maturity of 0.0
+                // The actual maturity will be calculated in CurveService using the event_date
+                // and reference_date. The rate field holds the expected_rate_spike.
+                let spike = self.expected_rate_spike.unwrap_or(self.rate);
+                Ok(MarketInstrument::event_with_rate(0.0, spike))
             }
             _ => Err(InstrumentParseError::UnknownType {
                 instrument_type: self.instrument_type.clone(),
