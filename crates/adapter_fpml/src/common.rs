@@ -7,6 +7,7 @@ use crate::error::FpmlError;
 use infra_domain::Date;
 
 /// Reads XML content into a string for easier processing.
+#[allow(dead_code)]
 pub fn xml_to_string(xml: &str) -> String {
     xml.to_string()
 }
@@ -122,6 +123,7 @@ impl<'a> XmlNavigator<'a> {
     }
 
     /// Finds all occurrences of an element.
+    #[allow(dead_code)]
     pub fn find_all(&self, element_name: &str) -> Vec<String> {
         let mut results = Vec::new();
         let start_tag = format!("<{}", element_name);

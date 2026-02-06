@@ -147,7 +147,7 @@ pub struct TradeStatisticsDto {
 
 /// Shared application state for graph handlers
 pub struct GraphAppState {
-    /// FpML trades loaded from files
+    /// `FpML` trades loaded from files
     pub trades: Vec<FpmlTrade>,
     /// Graph cache with TTL
     pub graph_cache: RwLock<GraphCache>,
@@ -235,11 +235,11 @@ impl GraphCache {
 }
 
 impl GraphAppState {
-    /// Create a new app state by loading FpML trades from the demo directory.
+    /// Create a new app state by loading `FpML` trades from the demo directory.
     ///
     /// # Errors
     ///
-    /// Returns `ServerError::Internal` if loading FpML files fails.
+    /// Returns `ServerError::Internal` if loading `FpML` files fails.
     pub fn new_with_sample(_trade_count: usize, cache_ttl_secs: u64) -> Result<Self, ServerError> {
         let trades = load_fpml_trades().map_err(|e| {
             ServerError::Internal(format!("Failed to load FpML trades: {e}"))
@@ -254,18 +254,18 @@ impl GraphAppState {
         })
     }
 
-    /// Create with default settings (loads all FpML files, 5 second cache)
+    /// Create with default settings (loads all `FpML` files, 5 second cache)
     ///
     /// # Errors
     ///
-    /// Returns `ServerError::Internal` if loading FpML files fails.
+    /// Returns `ServerError::Internal` if loading `FpML` files fails.
     pub fn default_sample() -> Result<Self, ServerError> { Self::new_with_sample(0, 5) }
 
     /// Returns the number of loaded trades.
     pub fn trade_count(&self) -> usize { self.trades.len() }
 }
 
-/// Load all FpML trades from the demo/data/trades/fpml/ directory.
+/// Load all `FpML` trades from the demo/data/trades/fpml/ directory.
 fn load_fpml_trades() -> Result<Vec<FpmlTrade>, String> {
     let base_path = Path::new("demo/data/trades/fpml");
 
@@ -309,7 +309,7 @@ fn load_fpml_trades() -> Result<Vec<FpmlTrade>, String> {
     Ok(trades)
 }
 
-/// Load a single FpML file.
+/// Load a single `FpML` file.
 fn load_fpml_file(path: &Path) -> Result<FpmlTrade, String> {
     let xml = fs::read_to_string(path)
         .map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
@@ -495,7 +495,7 @@ pub async fn get_portfolio_trades(
     }))
 }
 
-/// Get a human-readable instrument type name from TradeType.
+/// Get a human-readable instrument type name from `TradeType`.
 fn get_instrument_type_name(trade_type: &TradeType) -> String {
     match trade_type {
         TradeType::Deposit => "Deposit".to_string(),
@@ -526,7 +526,7 @@ fn get_instrument_type_name(trade_type: &TradeType) -> String {
     }
 }
 
-/// Extract currency, notional, maturity date, counterparty, and book from an FpML trade.
+/// Extract currency, notional, maturity date, counterparty, and book from an `FpML` trade.
 fn get_trade_details(trade: &FpmlTrade) -> (String, f64, String, String, String) {
     // Get currency and notional from first leg
     let (currency, notional) = trade.first_leg()
@@ -563,7 +563,7 @@ fn get_trade_details(trade: &FpmlTrade) -> (String, f64, String, String, String)
 // Helper Functions
 // ============================================================================
 
-/// Extract portfolio graph from FpML trades, optionally filtered to specific trades
+/// Extract portfolio graph from `FpML` trades, optionally filtered to specific trades
 fn extract_fpml_portfolio_graph(
     trades: &[FpmlTrade],
     trade_ids: Option<&[String]>,
@@ -599,7 +599,7 @@ fn extract_fpml_portfolio_graph(
     }
 }
 
-/// Create a simplified computation graph for an FpML trade
+/// Create a simplified computation graph for an `FpML` trade
 fn create_fpml_trade_graph(trade_id: &str, trade: &FpmlTrade) -> ComputationGraph {
     use pricer_pricing::graph::{GraphBuilder, GraphEdge, GraphNode, NodeGroup, NodeType};
 

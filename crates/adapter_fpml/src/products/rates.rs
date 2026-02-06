@@ -151,6 +151,7 @@ fn parse_swap_stream(xml: &str) -> Result<Leg, FpmlError> {
 }
 
 /// Parse floating rate index from FpML.
+#[allow(clippy::unnecessary_wraps)]
 fn parse_floating_rate_index(nav: &XmlNavigator) -> Result<RateIndex, FpmlError> {
     // Look for floatingRateIndex element
     let index_name = nav

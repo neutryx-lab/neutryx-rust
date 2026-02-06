@@ -50,6 +50,9 @@ enzyme-ad = ["global-bootstrap"]
 # Debug logging for internal diagnostics (development only)
 debug-logging = []
 
+# Tracing support for diagnostic logging
+tracing = []
+
 [dependencies]
 pricer_core = { path = "../pricer_core" }
 infra_domain = { path = "../infra_domain" }

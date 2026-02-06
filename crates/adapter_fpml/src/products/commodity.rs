@@ -142,6 +142,7 @@ pub fn parse_commodity_swap(xml: &str) -> Result<Trade, FpmlError> {
 }
 
 /// Parse a commodity forward from FpML.
+#[allow(dead_code)]
 pub fn parse_commodity_forward(xml: &str) -> Result<Trade, FpmlError> {
     let nav = XmlNavigator::new(xml);
 

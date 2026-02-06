@@ -146,6 +146,7 @@ pub fn parse_equity_option(xml: &str) -> Result<Trade, FpmlError> {
 }
 
 /// Parse an equity forward from FpML.
+#[allow(dead_code)]
 pub fn parse_equity_forward(xml: &str) -> Result<Trade, FpmlError> {
     let nav = XmlNavigator::new(xml);
 

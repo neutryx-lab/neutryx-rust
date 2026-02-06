@@ -1,7 +1,5 @@
 //! Build script for `service_gateway`.
 
-use std::{path::Path, process::Command};
-
 /// Entry point for build script.
 fn main() {
     // gRPC proto compilation will be added when grpc feature is implemented
@@ -15,6 +13,8 @@ fn main() {
 #[cfg(feature = "demo")]
 fn build_demo_gui() {
     use std::fs;
+    use std::path::Path;
+    use std::process::Command;
     use std::time::SystemTime;
 
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();

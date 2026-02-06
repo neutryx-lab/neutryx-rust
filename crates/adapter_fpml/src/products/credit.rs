@@ -178,8 +178,7 @@ pub fn parse_credit_default_swap_index(xml: &str) -> Result<Trade, FpmlError> {
 
     let version: Option<u32> = cds_nav
         .find_text("indexAnnexVersion")
-        .map(|v| v.parse().ok())
-        .flatten();
+        .and_then(|v| v.parse().ok());
 
     // Determine protection side
     let protection_side = if cds_nav.extract_section("buyerPartyReference").is_some() {

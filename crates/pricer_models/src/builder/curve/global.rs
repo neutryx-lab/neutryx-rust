@@ -533,6 +533,7 @@ impl<T: Float> GlobalBootstrapResult<T> {
     /// let dF_dm = vec![0.0001; result.pillars.len()];
     /// let sensitivity = result.ift_sensitivity(&dF_dm)?;
     /// ```
+    #[allow(non_snake_case)]
     pub fn ift_sensitivity(&self, dF_dm: &[T]) -> Result<Vec<T>, IftError>
     where
         T: RealField,
@@ -611,6 +612,7 @@ impl<T: Float> GlobalBootstrapResult<T> {
     ///
     /// let sensitivities = result.ift_sensitivity_batch(&dF_dm_batch)?;
     /// ```
+    #[allow(non_snake_case)]
     pub fn ift_sensitivity_batch(&self, dF_dm_batch: &DMatrix<T>) -> Result<DMatrix<T>, IftError>
     where
         T: RealField,
