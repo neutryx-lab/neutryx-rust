@@ -4,7 +4,7 @@
 //! the entire curve building process from definitions and market rates.
 
 use infra_domain::market::{
-    CurveDefinition, DefinitionRegistry, InstrumentDefinition, MarketRateSet, QuoteType,
+    CurveDefinition, DefinitionRegistry, InstrumentDefinition, MarketQuoteSet, QuoteType,
 };
 
 use crate::{
@@ -115,18 +115,18 @@ pub struct ConstructionResult {
 ///
 /// Orchestrates curve building from:
 /// - `DefinitionRegistry` - Contains instrument, rate index, and curve definitions
-/// - `MarketRateSet` - Contains market rate quotes
+/// - `MarketQuoteSet` - Contains market rate quotes
 ///
 /// # Example
 ///
 /// ```ignore
 /// use pricer_models::builder::construction::{CurveConstructionEngine, ConstructionConfig};
-/// use infra_domain::market::{DefinitionRegistry, MarketRateSet};
+/// use infra_domain::market::{DefinitionRegistry, MarketQuoteSet};
 ///
 /// let registry = DefinitionRegistry::new();
 /// // ... load definitions ...
 ///
-/// let market_rates = MarketRateSet::new();
+/// let market_rates = MarketQuoteSet::new();
 /// // ... load market rates ...
 ///
 /// let engine = CurveConstructionEngine::new(ConstructionConfig::default());
@@ -178,7 +178,7 @@ impl CurveConstructionEngine {
     pub fn build(
         &self,
         registry: &DefinitionRegistry,
-        market_rates: &MarketRateSet,
+        market_rates: &MarketQuoteSet,
         curve_name: &str,
     ) -> Result<ConstructionResult, ConstructionError> {
         // Get curve definition
@@ -211,7 +211,7 @@ impl CurveConstructionEngine {
         &self,
         curve_def: &CurveDefinition,
         instrument_defs: &[&InstrumentDefinition],
-        market_rates: &MarketRateSet,
+        market_rates: &MarketQuoteSet,
     ) -> Result<ConstructionResult, ConstructionError> {
         use crate::market::curves::MarketInstrument;
 
@@ -301,7 +301,7 @@ impl CurveConstructionEngine {
     pub fn build_multi(
         &self,
         registry: &DefinitionRegistry,
-        market_rates: &MarketRateSet,
+        market_rates: &MarketQuoteSet,
         curve_names: &[&str],
     ) -> Vec<Result<ConstructionResult, ConstructionError>> {
         curve_names
@@ -387,8 +387,8 @@ mod tests {
         registry
     }
 
-    fn create_test_market_rates() -> MarketRateSet {
-        let mut rates = MarketRateSet::new();
+    fn create_test_market_rates() -> MarketQuoteSet {
+        let mut rates = MarketQuoteSet::new();
         let ts = 1700000000000_i64;
 
         let data = vec![
@@ -488,7 +488,7 @@ mod tests {
         );
         registry.register_curve(curve).unwrap();
 
-        let market_rates = MarketRateSet::new(); // Empty
+        let market_rates = MarketQuoteSet::new(); // Empty
 
         let engine = CurveConstructionEngine::new(
             ConstructionConfig::default().with_strict_mode(true),
@@ -509,7 +509,7 @@ mod tests {
         let registry = create_test_registry();
 
         // Create rates without the 5Y point
-        let mut market_rates = MarketRateSet::new();
+        let mut market_rates = MarketQuoteSet::new();
         let ts = 1700000000000_i64;
 
         let data = vec![

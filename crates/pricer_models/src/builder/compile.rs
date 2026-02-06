@@ -768,7 +768,7 @@ impl<T: Float> InstrumentCompiler<T> {
         }
 
         // Add final cashflow at maturity
-        if cashflow_times.is_empty() || cashflow_times.last().map(|&x| x) != Some(maturity_years) {
+        if cashflow_times.is_empty() || cashflow_times.last().copied() != Some(maturity_years) {
             let last_yf = if cashflow_times.is_empty() {
                 maturity_years
             } else {

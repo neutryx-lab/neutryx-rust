@@ -47,6 +47,9 @@ advanced-vol-models = ["local-vol", "stochastic-local-vol"]
 # Feature gates: compute_jacobian_with_stability_check, compute_jacobian_enzyme_with_fallback
 enzyme-ad = ["global-bootstrap"]
 
+# Debug logging for internal diagnostics (development only)
+debug-logging = []
+
 [dependencies]
 pricer_core = { path = "../pricer_core" }
 infra_domain = { path = "../infra_domain" }
@@ -87,6 +90,11 @@ harness = false
 
 [[bench]]
 name = "instrument_compile"
+harness = false
+required-features = ["global-bootstrap"]
+
+[[bench]]
+name = "numerical_stability"
 harness = false
 required-features = ["global-bootstrap"]
 

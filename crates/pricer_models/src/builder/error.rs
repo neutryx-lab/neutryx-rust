@@ -157,9 +157,10 @@ impl std::fmt::Display for JacobianQuality {
 /// Type of regularisation applied during calibration.
 ///
 /// # Requirement: 5.2, 5.5
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum RegularisationType<T: Float> {
     /// No regularisation applied.
+    #[default]
     None,
 
     /// Tikhonov regularisation (ridge regression).
@@ -177,10 +178,6 @@ pub enum RegularisationType<T: Float> {
         /// Damping parameter λ
         lambda: T,
     },
-}
-
-impl<T: Float> Default for RegularisationType<T> {
-    fn default() -> Self { RegularisationType::None }
 }
 
 impl<T: Float> RegularisationType<T> {
@@ -564,6 +561,7 @@ pub fn apply_tikhonov_regularisation<T>(
 /// # Requirement: 5.2
 ///
 /// Returns the recommended damping factor if regularisation is needed.
+#[allow(dead_code)]
 pub fn should_apply_regularisation<T: Float>(
     condition_number: T,
     max_condition_number: T,

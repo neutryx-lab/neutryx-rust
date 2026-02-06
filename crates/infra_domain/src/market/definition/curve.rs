@@ -561,7 +561,7 @@ impl JumpPillarBuilder {
             .collect();
 
         // Sort by jump_date ascending
-        pillars.sort_by(|a, b| a.jump_date().cmp(&b.jump_date()));
+        pillars.sort_by_key(|a| a.jump_date());
 
         pillars
     }

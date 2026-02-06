@@ -394,6 +394,7 @@ impl MarketInstrument {
     }
 
     /// Expands a deposit instrument to a trade.
+    #[allow(clippy::unnecessary_wraps)]
     fn expand_deposit(&self, trade_id: &str) -> Result<Trade, MarketInstrumentError> {
         // A deposit has a single cashflow at maturity
         let cashflow = Cashflow::new(
@@ -490,16 +491,14 @@ impl MarketInstrument {
             self.currency(),
         );
 
-        let trade_type = if self.convention.is_ois() {
-            TradeType::Swap // OIS is a type of swap
-        } else {
-            TradeType::Swap
-        };
+        // OIS is a type of swap
+        let trade_type = TradeType::Swap;
 
         Ok(Trade::new(trade_id, vec![fixed_leg, floating_leg], trade_type))
     }
 
     /// Expands a FRA instrument to a trade.
+    #[allow(clippy::unnecessary_wraps)]
     fn expand_fra(&self, trade_id: &str) -> Result<Trade, MarketInstrumentError> {
         // FRA has a single settlement at effective date based on rate difference
         let cashflow = Cashflow::new(
@@ -526,6 +525,7 @@ impl MarketInstrument {
     }
 
     /// Expands a futures instrument to a trade.
+    #[allow(clippy::unnecessary_wraps)]
     fn expand_futures(&self, trade_id: &str) -> Result<Trade, MarketInstrumentError> {
         // Futures have daily margining, simplified as a single settlement
         let cashflow = Cashflow::new(

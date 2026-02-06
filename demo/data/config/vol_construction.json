@@ -1,0 +1,413 @@
+{
+  "$schema": "./schemas/vol_construction.schema.json",
+  "metadata": {
+    "description": "Volatility surface and cube construction configuration",
+    "version": "1.0",
+    "sections": {
+      "fxVolSurfaces": "FX Volatility Surface construction (2D: expiry x strike)",
+      "irVolCubes": "Interest Rate Volatility Cube construction (3D: expiry x tenor x strike)"
+    }
+  },
+
+  "calibrationDefaults": {
+    "sabr": {
+      "maxIterations": 100,
+      "tolerance": 1e-8,
+      "description": "Default SABR calibration settings"
+    },
+    "svi": {
+      "maxIterations": 200,
+      "tolerance": 1e-10,
+      "description": "Default SVI calibration settings (future)"
+    }
+  },
+
+  "fxVolSurfaces": [
+    {
+      "id": "EURUSD-Vol",
+      "currencyPair": "EURUSD",
+      "displayName": "EUR/USD FX Volatility Surface",
+      "description": "EURUSD volatility surface using SABR model with delta quoting",
+
+      "model": "sabr",
+      "volType": "lognormal",
+
+      "strikeAxis": "delta",
+      "deltaType": "spot_delta",
+      "deltaPoints": ["10D_PUT", "25D_PUT", "ATM", "25D_CALL", "10D_CALL"],
+
+      "expiryGrid": ["1W", "2W", "1M", "2M", "3M", "6M", "9M", "1Y", "2Y", "3Y", "5Y"],
+
+      "timeInterpolation": "linear_variance",
+      "strikeInterpolation": "sabr",
+      "allowExtrapolation": true,
+
+      "sabrConfig": {
+        "fixedBeta": 1.0,
+        "initialAlpha": 0.08,
+        "initialRho": -0.20,
+        "initialNu": 0.30,
+        "bounds": {
+          "alphaLower": 0.001,
+          "alphaUpper": 1.0,
+          "rhoLower": -0.95,
+          "rhoUpper": 0.95,
+          "nuLower": 0.05,
+          "nuUpper": 3.0
+        },
+        "maxIterations": 100,
+        "tolerance": 1e-8
+      },
+
+      "quoteConvention": {
+        "style": "ATM_RR_BF",
+        "atmType": "dns",
+        "premiumCurrency": "USD",
+        "cutTime": "NY 10:00",
+        "calendar": "New York + TARGET"
+      },
+
+      "instruments": [
+        "EURUSD-1W-ATM", "EURUSD-1W-25D-RR", "EURUSD-1W-25D-BF", "EURUSD-1W-10D-RR", "EURUSD-1W-10D-BF",
+        "EURUSD-1M-ATM", "EURUSD-1M-25D-RR", "EURUSD-1M-25D-BF", "EURUSD-1M-10D-RR", "EURUSD-1M-10D-BF",
+        "EURUSD-3M-ATM", "EURUSD-3M-25D-RR", "EURUSD-3M-25D-BF", "EURUSD-3M-10D-RR", "EURUSD-3M-10D-BF",
+        "EURUSD-6M-ATM", "EURUSD-6M-25D-RR", "EURUSD-6M-25D-BF", "EURUSD-6M-10D-RR", "EURUSD-6M-10D-BF",
+        "EURUSD-1Y-ATM", "EURUSD-1Y-25D-RR", "EURUSD-1Y-25D-BF", "EURUSD-1Y-10D-RR", "EURUSD-1Y-10D-BF",
+        "EURUSD-2Y-ATM", "EURUSD-2Y-25D-RR", "EURUSD-2Y-25D-BF", "EURUSD-2Y-10D-RR", "EURUSD-2Y-10D-BF"
+      ]
+    },
+    {
+      "id": "USDJPY-Vol",
+      "currencyPair": "USDJPY",
+      "displayName": "USD/JPY FX Volatility Surface",
+      "description": "USDJPY volatility surface using SABR model with delta quoting",
+
+      "model": "sabr",
+      "volType": "lognormal",
+
+      "strikeAxis": "delta",
+      "deltaType": "spot_delta",
+      "deltaPoints": ["10D_PUT", "25D_PUT", "ATM", "25D_CALL", "10D_CALL"],
+
+      "expiryGrid": ["1W", "2W", "1M", "2M", "3M", "6M", "9M", "1Y", "2Y", "3Y", "5Y"],
+
+      "timeInterpolation": "linear_variance",
+      "strikeInterpolation": "sabr",
+      "allowExtrapolation": true,
+
+      "sabrConfig": {
+        "fixedBeta": 1.0,
+        "initialAlpha": 0.10,
+        "initialRho": -0.15,
+        "initialNu": 0.35,
+        "bounds": {
+          "alphaLower": 0.001,
+          "alphaUpper": 1.0,
+          "rhoLower": -0.95,
+          "rhoUpper": 0.95,
+          "nuLower": 0.05,
+          "nuUpper": 3.0
+        },
+        "maxIterations": 100,
+        "tolerance": 1e-8
+      },
+
+      "quoteConvention": {
+        "style": "ATM_RR_BF",
+        "atmType": "dns",
+        "premiumCurrency": "JPY",
+        "cutTime": "Tokyo 15:00",
+        "calendar": "Tokyo + New York"
+      },
+
+      "instruments": [
+        "USDJPY-1W-ATM", "USDJPY-1W-25D-RR", "USDJPY-1W-25D-BF", "USDJPY-1W-10D-RR", "USDJPY-1W-10D-BF",
+        "USDJPY-1M-ATM", "USDJPY-1M-25D-RR", "USDJPY-1M-25D-BF", "USDJPY-1M-10D-RR", "USDJPY-1M-10D-BF",
+        "USDJPY-3M-ATM", "USDJPY-3M-25D-RR", "USDJPY-3M-25D-BF", "USDJPY-3M-10D-RR", "USDJPY-3M-10D-BF",
+        "USDJPY-6M-ATM", "USDJPY-6M-25D-RR", "USDJPY-6M-25D-BF", "USDJPY-6M-10D-RR", "USDJPY-6M-10D-BF",
+        "USDJPY-1Y-ATM", "USDJPY-1Y-25D-RR", "USDJPY-1Y-25D-BF", "USDJPY-1Y-10D-RR", "USDJPY-1Y-10D-BF",
+        "USDJPY-2Y-ATM", "USDJPY-2Y-25D-RR", "USDJPY-2Y-25D-BF", "USDJPY-2Y-10D-RR", "USDJPY-2Y-10D-BF"
+      ]
+    },
+    {
+      "id": "GBPUSD-Vol",
+      "currencyPair": "GBPUSD",
+      "displayName": "GBP/USD FX Volatility Surface",
+      "description": "GBPUSD volatility surface using SABR model",
+
+      "model": "sabr",
+      "volType": "lognormal",
+
+      "strikeAxis": "delta",
+      "deltaType": "spot_delta",
+      "deltaPoints": ["10D_PUT", "25D_PUT", "ATM", "25D_CALL", "10D_CALL"],
+
+      "expiryGrid": ["1W", "1M", "3M", "6M", "1Y", "2Y"],
+
+      "timeInterpolation": "linear_variance",
+      "strikeInterpolation": "sabr",
+      "allowExtrapolation": true,
+
+      "sabrConfig": {
+        "fixedBeta": 1.0,
+        "initialAlpha": 0.09,
+        "initialRho": -0.18,
+        "initialNu": 0.32,
+        "bounds": {
+          "alphaLower": 0.001,
+          "alphaUpper": 1.0,
+          "rhoLower": -0.95,
+          "rhoUpper": 0.95,
+          "nuLower": 0.05,
+          "nuUpper": 3.0
+        }
+      },
+
+      "quoteConvention": {
+        "style": "ATM_RR_BF",
+        "atmType": "dns",
+        "premiumCurrency": "USD",
+        "cutTime": "NY 10:00",
+        "calendar": "London + New York"
+      },
+
+      "instruments": [
+        "GBPUSD-1W-ATM", "GBPUSD-1W-25D-RR", "GBPUSD-1W-25D-BF",
+        "GBPUSD-1M-ATM", "GBPUSD-1M-25D-RR", "GBPUSD-1M-25D-BF",
+        "GBPUSD-3M-ATM", "GBPUSD-3M-25D-RR", "GBPUSD-3M-25D-BF",
+        "GBPUSD-6M-ATM", "GBPUSD-6M-25D-RR", "GBPUSD-6M-25D-BF",
+        "GBPUSD-1Y-ATM", "GBPUSD-1Y-25D-RR", "GBPUSD-1Y-25D-BF",
+        "GBPUSD-2Y-ATM", "GBPUSD-2Y-25D-RR", "GBPUSD-2Y-25D-BF"
+      ]
+    }
+  ],
+
+  "irVolCubes": [
+    {
+      "id": "USD-SOFR-Swaption-Cube",
+      "currency": "USD",
+      "rateIndex": "USD-SOFR",
+      "displayName": "USD SOFR Swaption Volatility Cube",
+      "description": "USD SOFR swaption volatility cube with SABR smile calibration",
+
+      "model": "sabr",
+      "volType": "lognormal",
+
+      "strikeAxis": "absolute",
+      "strikeOffsetBp": [-150, -100, -50, 0, 50, 100, 150],
+
+      "expiryGrid": ["1M", "3M", "6M", "1Y", "2Y", "3Y", "5Y", "7Y", "10Y", "15Y", "20Y", "30Y"],
+      "tenorGrid": ["1Y", "2Y", "3Y", "5Y", "7Y", "10Y", "15Y", "20Y", "25Y", "30Y"],
+
+      "timeInterpolation": "linear_variance",
+      "strikeInterpolation": "sabr",
+      "expiryTenorInterpolation": "bilinear",
+      "allowExtrapolation": true,
+
+      "sabrConfig": {
+        "fixedBeta": 0.5,
+        "initialAlpha": 0.02,
+        "initialRho": -0.30,
+        "initialNu": 0.40,
+        "bounds": {
+          "alphaLower": 0.001,
+          "alphaUpper": 0.5,
+          "rhoLower": -0.90,
+          "rhoUpper": 0.50,
+          "nuLower": 0.05,
+          "nuUpper": 2.0
+        },
+        "maxIterations": 100,
+        "tolerance": 1e-8
+      },
+
+      "shiftConfig": {
+        "enabled": true,
+        "defaultShift": 0.03,
+        "shiftByTenor": {
+          "1Y": 0.02,
+          "2Y": 0.025,
+          "5Y": 0.03,
+          "10Y": 0.03,
+          "30Y": 0.03
+        },
+        "description": "Shift for shifted lognormal SABR in low-rate environment"
+      },
+
+      "quoteConvention": {
+        "style": "ATM_PLUS_STRIKE_OFFSET",
+        "atmType": "forward",
+        "strikeUnit": "bp"
+      },
+
+      "slices": [
+        { "expiry": "1M", "tenor": "1Y", "instruments": ["USD-SOFR-SWN-1Mx1Y-ATM", "USD-SOFR-SWN-1Mx1Y-M100", "USD-SOFR-SWN-1Mx1Y-M50", "USD-SOFR-SWN-1Mx1Y-P50", "USD-SOFR-SWN-1Mx1Y-P100"] },
+        { "expiry": "1M", "tenor": "5Y", "instruments": ["USD-SOFR-SWN-1Mx5Y-ATM", "USD-SOFR-SWN-1Mx5Y-M100", "USD-SOFR-SWN-1Mx5Y-M50", "USD-SOFR-SWN-1Mx5Y-P50", "USD-SOFR-SWN-1Mx5Y-P100"] },
+        { "expiry": "1M", "tenor": "10Y", "instruments": ["USD-SOFR-SWN-1Mx10Y-ATM", "USD-SOFR-SWN-1Mx10Y-M100", "USD-SOFR-SWN-1Mx10Y-M50", "USD-SOFR-SWN-1Mx10Y-P50", "USD-SOFR-SWN-1Mx10Y-P100"] },
+        { "expiry": "1M", "tenor": "30Y", "instruments": ["USD-SOFR-SWN-1Mx30Y-ATM", "USD-SOFR-SWN-1Mx30Y-M100", "USD-SOFR-SWN-1Mx30Y-M50", "USD-SOFR-SWN-1Mx30Y-P50", "USD-SOFR-SWN-1Mx30Y-P100"] },
+        { "expiry": "1Y", "tenor": "1Y", "instruments": ["USD-SOFR-SWN-1Yx1Y-ATM", "USD-SOFR-SWN-1Yx1Y-M100", "USD-SOFR-SWN-1Yx1Y-M50", "USD-SOFR-SWN-1Yx1Y-P50", "USD-SOFR-SWN-1Yx1Y-P100"] },
+        { "expiry": "1Y", "tenor": "5Y", "instruments": ["USD-SOFR-SWN-1Yx5Y-ATM", "USD-SOFR-SWN-1Yx5Y-M150", "USD-SOFR-SWN-1Yx5Y-M100", "USD-SOFR-SWN-1Yx5Y-M50", "USD-SOFR-SWN-1Yx5Y-P50", "USD-SOFR-SWN-1Yx5Y-P100", "USD-SOFR-SWN-1Yx5Y-P150"] },
+        { "expiry": "1Y", "tenor": "10Y", "instruments": ["USD-SOFR-SWN-1Yx10Y-ATM", "USD-SOFR-SWN-1Yx10Y-M150", "USD-SOFR-SWN-1Yx10Y-M100", "USD-SOFR-SWN-1Yx10Y-M50", "USD-SOFR-SWN-1Yx10Y-P50", "USD-SOFR-SWN-1Yx10Y-P100", "USD-SOFR-SWN-1Yx10Y-P150"] },
+        { "expiry": "1Y", "tenor": "30Y", "instruments": ["USD-SOFR-SWN-1Yx30Y-ATM", "USD-SOFR-SWN-1Yx30Y-M100", "USD-SOFR-SWN-1Yx30Y-M50", "USD-SOFR-SWN-1Yx30Y-P50", "USD-SOFR-SWN-1Yx30Y-P100"] },
+        { "expiry": "5Y", "tenor": "5Y", "instruments": ["USD-SOFR-SWN-5Yx5Y-ATM", "USD-SOFR-SWN-5Yx5Y-M200", "USD-SOFR-SWN-5Yx5Y-M150", "USD-SOFR-SWN-5Yx5Y-M100", "USD-SOFR-SWN-5Yx5Y-P100", "USD-SOFR-SWN-5Yx5Y-P150", "USD-SOFR-SWN-5Yx5Y-P200"] },
+        { "expiry": "5Y", "tenor": "10Y", "instruments": ["USD-SOFR-SWN-5Yx10Y-ATM", "USD-SOFR-SWN-5Yx10Y-M200", "USD-SOFR-SWN-5Yx10Y-M100", "USD-SOFR-SWN-5Yx10Y-P100", "USD-SOFR-SWN-5Yx10Y-P200"] },
+        { "expiry": "10Y", "tenor": "5Y", "instruments": ["USD-SOFR-SWN-10Yx5Y-ATM", "USD-SOFR-SWN-10Yx5Y-M200", "USD-SOFR-SWN-10Yx5Y-M100", "USD-SOFR-SWN-10Yx5Y-P100", "USD-SOFR-SWN-10Yx5Y-P200"] },
+        { "expiry": "10Y", "tenor": "10Y", "instruments": ["USD-SOFR-SWN-10Yx10Y-ATM", "USD-SOFR-SWN-10Yx10Y-M230", "USD-SOFR-SWN-10Yx10Y-M180", "USD-SOFR-SWN-10Yx10Y-M130", "USD-SOFR-SWN-10Yx10Y-P70", "USD-SOFR-SWN-10Yx10Y-P120"] }
+      ]
+    },
+    {
+      "id": "EUR-ESTR-Swaption-Cube",
+      "currency": "EUR",
+      "rateIndex": "EUR-ESTR",
+      "displayName": "EUR ESTR Swaption Volatility Cube",
+      "description": "EUR ESTR swaption volatility cube with SABR smile calibration",
+
+      "model": "sabr",
+      "volType": "normal",
+
+      "strikeAxis": "absolute",
+      "strikeOffsetBp": [-100, -50, 0, 50, 100],
+
+      "expiryGrid": ["1M", "3M", "6M", "1Y", "2Y", "5Y", "10Y", "20Y", "30Y"],
+      "tenorGrid": ["1Y", "2Y", "5Y", "10Y", "20Y", "30Y"],
+
+      "timeInterpolation": "linear_variance",
+      "strikeInterpolation": "sabr",
+      "expiryTenorInterpolation": "bilinear",
+      "allowExtrapolation": true,
+
+      "sabrConfig": {
+        "fixedBeta": 0.0,
+        "initialAlpha": 0.006,
+        "initialRho": -0.25,
+        "initialNu": 0.50,
+        "bounds": {
+          "alphaLower": 0.0001,
+          "alphaUpper": 0.1,
+          "rhoLower": -0.90,
+          "rhoUpper": 0.50,
+          "nuLower": 0.05,
+          "nuUpper": 2.0
+        },
+        "maxIterations": 100,
+        "tolerance": 1e-8,
+        "description": "Normal SABR (beta=0) for EUR rates"
+      },
+
+      "quoteConvention": {
+        "style": "ATM_PLUS_STRIKE_OFFSET",
+        "atmType": "forward",
+        "strikeUnit": "bp"
+      },
+
+      "slices": [
+        { "expiry": "1M", "tenor": "1Y", "instruments": ["EUR-ESTR-SWN-1Mx1Y-ATM", "EUR-ESTR-SWN-1Mx1Y-M100", "EUR-ESTR-SWN-1Mx1Y-M50", "EUR-ESTR-SWN-1Mx1Y-P50", "EUR-ESTR-SWN-1Mx1Y-P100"] },
+        { "expiry": "1M", "tenor": "5Y", "instruments": ["EUR-ESTR-SWN-1Mx5Y-ATM", "EUR-ESTR-SWN-1Mx5Y-M100", "EUR-ESTR-SWN-1Mx5Y-M50", "EUR-ESTR-SWN-1Mx5Y-P50", "EUR-ESTR-SWN-1Mx5Y-P100"] },
+        { "expiry": "1M", "tenor": "10Y", "instruments": ["EUR-ESTR-SWN-1Mx10Y-ATM", "EUR-ESTR-SWN-1Mx10Y-M100", "EUR-ESTR-SWN-1Mx10Y-M50", "EUR-ESTR-SWN-1Mx10Y-P50", "EUR-ESTR-SWN-1Mx10Y-P100"] },
+        { "expiry": "1Y", "tenor": "5Y", "instruments": ["EUR-ESTR-SWN-1Yx5Y-ATM", "EUR-ESTR-SWN-1Yx5Y-M100", "EUR-ESTR-SWN-1Yx5Y-M50", "EUR-ESTR-SWN-1Yx5Y-P50", "EUR-ESTR-SWN-1Yx5Y-P100"] },
+        { "expiry": "1Y", "tenor": "10Y", "instruments": ["EUR-ESTR-SWN-1Yx10Y-ATM", "EUR-ESTR-SWN-1Yx10Y-M100", "EUR-ESTR-SWN-1Yx10Y-M50", "EUR-ESTR-SWN-1Yx10Y-P50", "EUR-ESTR-SWN-1Yx10Y-P100"] },
+        { "expiry": "5Y", "tenor": "5Y", "instruments": ["EUR-ESTR-SWN-5Yx5Y-ATM", "EUR-ESTR-SWN-5Yx5Y-M100", "EUR-ESTR-SWN-5Yx5Y-M50", "EUR-ESTR-SWN-5Yx5Y-P50", "EUR-ESTR-SWN-5Yx5Y-P100"] },
+        { "expiry": "10Y", "tenor": "10Y", "instruments": ["EUR-ESTR-SWN-10Yx10Y-ATM", "EUR-ESTR-SWN-10Yx10Y-M100", "EUR-ESTR-SWN-10Yx10Y-M50", "EUR-ESTR-SWN-10Yx10Y-P50", "EUR-ESTR-SWN-10Yx10Y-P100"] }
+      ]
+    },
+    {
+      "id": "GBP-SONIA-Swaption-Cube",
+      "currency": "GBP",
+      "rateIndex": "GBP-SONIA",
+      "displayName": "GBP SONIA Swaption Volatility Cube",
+      "description": "GBP SONIA swaption volatility cube with SABR smile calibration",
+
+      "model": "sabr",
+      "volType": "normal",
+
+      "strikeAxis": "absolute",
+      "strikeOffsetBp": [-100, -50, 0, 50, 100],
+
+      "expiryGrid": ["1M", "3M", "6M", "1Y", "2Y", "5Y", "10Y", "20Y", "30Y"],
+      "tenorGrid": ["1Y", "2Y", "5Y", "10Y", "20Y", "30Y"],
+
+      "timeInterpolation": "linear_variance",
+      "strikeInterpolation": "sabr",
+      "expiryTenorInterpolation": "bilinear",
+      "allowExtrapolation": true,
+
+      "sabrConfig": {
+        "fixedBeta": 0.5,
+        "initialAlpha": 0.015,
+        "initialRho": -0.20,
+        "initialNu": 0.45,
+        "bounds": {
+          "alphaLower": 0.001,
+          "alphaUpper": 0.3,
+          "rhoLower": -0.90,
+          "rhoUpper": 0.50,
+          "nuLower": 0.05,
+          "nuUpper": 2.0
+        }
+      },
+
+      "quoteConvention": {
+        "style": "ATM_PLUS_STRIKE_OFFSET",
+        "atmType": "forward",
+        "strikeUnit": "bp"
+      },
+
+      "slices": [
+        { "expiry": "1M", "tenor": "5Y", "instruments": ["GBP-SONIA-SWN-1Mx5Y-ATM", "GBP-SONIA-SWN-1Mx5Y-M100", "GBP-SONIA-SWN-1Mx5Y-M50", "GBP-SONIA-SWN-1Mx5Y-P50", "GBP-SONIA-SWN-1Mx5Y-P100"] },
+        { "expiry": "1Y", "tenor": "5Y", "instruments": ["GBP-SONIA-SWN-1Yx5Y-ATM", "GBP-SONIA-SWN-1Yx5Y-M100", "GBP-SONIA-SWN-1Yx5Y-M50", "GBP-SONIA-SWN-1Yx5Y-P50", "GBP-SONIA-SWN-1Yx5Y-P100"] },
+        { "expiry": "5Y", "tenor": "5Y", "instruments": ["GBP-SONIA-SWN-5Yx5Y-ATM", "GBP-SONIA-SWN-5Yx5Y-M100", "GBP-SONIA-SWN-5Yx5Y-M50", "GBP-SONIA-SWN-5Yx5Y-P50", "GBP-SONIA-SWN-5Yx5Y-P100"] },
+        { "expiry": "10Y", "tenor": "10Y", "instruments": ["GBP-SONIA-SWN-10Yx10Y-ATM", "GBP-SONIA-SWN-10Yx10Y-M100", "GBP-SONIA-SWN-10Yx10Y-M50", "GBP-SONIA-SWN-10Yx10Y-P50", "GBP-SONIA-SWN-10Yx10Y-P100"] }
+      ]
+    },
+    {
+      "id": "JPY-TONA-Swaption-Cube",
+      "currency": "JPY",
+      "rateIndex": "JPY-TONA",
+      "displayName": "JPY TONA Swaption Volatility Cube",
+      "description": "JPY TONA swaption volatility cube with normal SABR",
+
+      "model": "sabr",
+      "volType": "normal",
+
+      "strikeAxis": "absolute",
+      "strikeOffsetBp": [-100, -50, 0, 50, 100],
+
+      "expiryGrid": ["1M", "3M", "6M", "1Y", "2Y", "5Y", "10Y", "20Y"],
+      "tenorGrid": ["1Y", "2Y", "5Y", "10Y", "20Y", "30Y", "40Y"],
+
+      "timeInterpolation": "linear_variance",
+      "strikeInterpolation": "sabr",
+      "expiryTenorInterpolation": "bilinear",
+      "allowExtrapolation": true,
+
+      "sabrConfig": {
+        "fixedBeta": 0.0,
+        "initialAlpha": 0.004,
+        "initialRho": -0.10,
+        "initialNu": 0.60,
+        "bounds": {
+          "alphaLower": 0.0001,
+          "alphaUpper": 0.05,
+          "rhoLower": -0.90,
+          "rhoUpper": 0.50,
+          "nuLower": 0.05,
+          "nuUpper": 3.0
+        },
+        "description": "Normal SABR (beta=0) for JPY low-rate environment"
+      },
+
+      "quoteConvention": {
+        "style": "ATM_PLUS_STRIKE_OFFSET",
+        "atmType": "forward",
+        "strikeUnit": "bp"
+      },
+
+      "slices": [
+        { "expiry": "1M", "tenor": "5Y", "instruments": ["JPY-TONA-SWN-1Mx5Y-ATM", "JPY-TONA-SWN-1Mx5Y-M100", "JPY-TONA-SWN-1Mx5Y-M50", "JPY-TONA-SWN-1Mx5Y-P50", "JPY-TONA-SWN-1Mx5Y-P100"] },
+        { "expiry": "1Y", "tenor": "5Y", "instruments": ["JPY-TONA-SWN-1Yx5Y-ATM", "JPY-TONA-SWN-1Yx5Y-M100", "JPY-TONA-SWN-1Yx5Y-M50", "JPY-TONA-SWN-1Yx5Y-P50", "JPY-TONA-SWN-1Yx5Y-P100"] },
+        { "expiry": "5Y", "tenor": "5Y", "instruments": ["JPY-TONA-SWN-5Yx5Y-ATM", "JPY-TONA-SWN-5Yx5Y-M100", "JPY-TONA-SWN-5Yx5Y-M50", "JPY-TONA-SWN-5Yx5Y-P50", "JPY-TONA-SWN-5Yx5Y-P100"] },
+        { "expiry": "10Y", "tenor": "10Y", "instruments": ["JPY-TONA-SWN-10Yx10Y-ATM", "JPY-TONA-SWN-10Yx10Y-M100", "JPY-TONA-SWN-10Yx10Y-M50", "JPY-TONA-SWN-10Yx10Y-P50", "JPY-TONA-SWN-10Yx10Y-P100"] }
+      ]
+    }
+  ]
+}

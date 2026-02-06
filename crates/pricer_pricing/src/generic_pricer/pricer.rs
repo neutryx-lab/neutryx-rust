@@ -624,7 +624,9 @@ mod tests {
 
     #[test]
     fn test_generic_pricer_creation() {
+        #[cfg(not(feature = "l1l2-integration"))]
         let model_config = ModelConfigBuilder::default().build().unwrap();
+        #[cfg(not(feature = "l1l2-integration"))]
         let pricer_config = PricerConfigBuilder::default().build().unwrap();
 
         #[cfg(not(feature = "l1l2-integration"))]

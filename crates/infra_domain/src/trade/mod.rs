@@ -54,7 +54,6 @@ mod instrument;
 /// This module re-exports from `market::instrument` for backward compatibility.
 #[deprecated(since = "0.2.0", note = "Use infra_domain::market::instrument instead")]
 pub mod instrument_def {
-    //! Re-exports from `market::instrument` for backward compatibility.
     pub use crate::market::instrument::*;
 }
 

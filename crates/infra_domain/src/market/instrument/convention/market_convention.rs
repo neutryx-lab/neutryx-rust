@@ -160,6 +160,7 @@ impl MarketConvention {
     }
 
     /// Returns a deposit convention for the given currency.
+    #[allow(clippy::unnecessary_wraps)]
     fn deposit_convention_for_currency(currency: Currency) -> Option<Self> {
         let convention = match currency {
             Currency::USD => DepositConvention::usd(),

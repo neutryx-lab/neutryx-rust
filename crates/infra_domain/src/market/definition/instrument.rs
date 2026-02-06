@@ -735,6 +735,7 @@ impl InstrumentTemplate {
     }
 
     /// Expands a single tenor into an [`InstrumentDefinition`].
+    #[allow(clippy::literal_string_with_formatting_args)]
     fn expand_single(&self, tenor: &str) -> InstrumentDefinition {
         let type_short = self.derive_type_short();
         let id = self

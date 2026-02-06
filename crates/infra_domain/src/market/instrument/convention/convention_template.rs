@@ -157,6 +157,7 @@ impl ConventionTemplate {
     }
 
     /// Expands a single currency into a convention.
+    #[allow(clippy::literal_string_with_formatting_args)]
     fn expand_single(
         &self,
         currency: &str,

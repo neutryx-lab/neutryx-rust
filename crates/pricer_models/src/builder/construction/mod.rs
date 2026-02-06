@@ -10,7 +10,7 @@
 //! │                      CurveConstructionEngine                        │
 //! │                                                                     │
 //! │  ┌─────────────────────┐     ┌──────────────────────────────────┐  │
-//! │  │  DefinitionRegistry │     │        MarketRateSet             │  │
+//! │  │  DefinitionRegistry │     │        MarketQuoteSet             │  │
 //! │  │  (infra_domain)     │     │        (infra_domain)            │  │
 //! │  │                     │     │                                  │  │
 //! │  │  - Instruments      │     │  - RateId → MarketRate           │  │
@@ -41,14 +41,14 @@
 //!
 //! ```ignore
 //! use pricer_models::builder::construction::{CurveConstructionEngine, ConstructionConfig};
-//! use infra_domain::market::{DefinitionRegistry, MarketRateSet};
+//! use infra_domain::market::{DefinitionRegistry, MarketQuoteSet};
 //!
 //! // 1. Load definitions from JSON or build programmatically
 //! let registry = DefinitionRegistry::new();
 //! // ... register instruments, rate indices, curves ...
 //!
 //! // 2. Load market rates from external source
-//! let market_rates = MarketRateSet::new();
+//! let market_rates = MarketQuoteSet::new();
 //! // ... insert rates ...
 //!
 //! // 3. Build the curve

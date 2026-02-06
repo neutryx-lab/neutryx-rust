@@ -855,3 +855,214 @@ fn test_jacobian_method_consistency() {
         );
     }
 }
+
+// =============================================================================
+// Phase 6.1: Numerical Stability Integration Tests
+// =============================================================================
+
+/// Test Jacobian quality validation integrated with calibration.
+///
+/// # Requirement: 5.3, 6.1
+#[test]
+fn test_jacobian_quality_validation_integration() {
+    use pricer_models::builder::{JacobianQuality, NumericalDiagnostics};
+
+    // Test NumericalDiagnostics can be created and populated
+    let mut diagnostics = NumericalDiagnostics::<f64>::new();
+    diagnostics.jacobian_quality = JacobianQuality::Good;
+    diagnostics.push_residual(1e-3);
+    diagnostics.push_residual(1e-10);
+
+    // Verify diagnostics work correctly
+    assert_eq!(diagnostics.jacobian_quality, JacobianQuality::Good);
+    assert_eq!(diagnostics.iteration_count(), 2);
+    assert!(diagnostics.final_residual().is_some());
+    assert!(!diagnostics.has_issues());
+}
+
+/// Test condition number recorded during calibration.
+///
+/// # Requirement: 5.1, 6.1
+#[test]
+fn test_condition_number_in_calibration_result() {
+    let instruments: Vec<MarketInstrument<f64>> = vec![
+        MarketInstrument::ois(1.0, 0.03),
+        MarketInstrument::ois(2.0, 0.035),
+        MarketInstrument::ois(5.0, 0.04),
+    ];
+
+    // Configure to store Jacobian inverse (which enables condition number computation)
+    let config = GlobalBootstrapConfig::default()
+        .with_jacobian_inverse(true);
+    let bootstrapper = GlobalBootstrapper::new(config);
+    let result = bootstrapper.calibrate(&instruments).unwrap();
+
+    // Verify calibration converged
+    assert!(result.converged);
+
+    // Condition number should be available in result
+    if let Some(cond) = result.condition_number {
+        assert!(cond > 0.0, "Condition number should be positive");
+        // For a well-conditioned 3x3 OIS problem, condition number should be reasonable
+        assert!(cond < 1e14, "Condition number should not be extremely large");
+    }
+}
+
+/// Test max condition number threshold in configuration.
+///
+/// # Requirement: 5.2, 6.1
+#[test]
+fn test_max_condition_number_config_integration() {
+    let instruments: Vec<MarketInstrument<f64>> = vec![
+        MarketInstrument::ois(1.0, 0.03),
+        MarketInstrument::ois(2.0, 0.035),
+        MarketInstrument::ois(5.0, 0.04),
+    ];
+
+    // Configure with specific max condition number
+    let config = GlobalBootstrapConfig::default()
+        .with_max_condition_number(1e15);
+
+    let bootstrapper = GlobalBootstrapper::new(config);
+    let result = bootstrapper.calibrate(&instruments).unwrap();
+
+    // Should still converge with relaxed condition number threshold
+    assert!(result.converged);
+
+    // Condition number should be recorded if available
+    if let Some(cond) = result.condition_number {
+        assert!(cond > 0.0);
+    }
+}
+
+/// Test Tikhonov regularisation utilities.
+///
+/// # Requirement: 5.2, 6.1
+#[test]
+fn test_tikhonov_regularisation_integration() {
+    use pricer_models::builder::should_apply_regularisation;
+
+    // Test should_apply_regularisation
+    let high_cond: f64 = 1e14;
+    let max_cond: f64 = 1e10;
+    let damping = should_apply_regularisation(high_cond, max_cond);
+    assert!(damping.is_some());
+    assert!(damping.unwrap() > 0.0, "Damping should be positive");
+
+    let low_cond: f64 = 1e6;
+    let no_damping = should_apply_regularisation(low_cond, max_cond);
+    assert!(no_damping.is_none(), "Should not apply regularisation for low condition number");
+}
+
+/// Test NumericalDiagnostics summary generation.
+///
+/// # Requirement: 5.5, 6.1
+#[test]
+fn test_numerical_diagnostics_summary_integration() {
+    use pricer_models::builder::{JacobianQuality, NumericalDiagnostics, RegularisationType};
+
+    let mut diagnostics = NumericalDiagnostics::<f64>::new();
+    diagnostics.condition_number = Some(1e8);
+    diagnostics.push_residual(1e-3);
+    diagnostics.push_residual(1e-6);
+    diagnostics.push_residual(1e-10);
+    diagnostics.jacobian_quality = JacobianQuality::Good;
+    diagnostics.regularisation_applied = RegularisationType::None;
+
+    let summary = diagnostics.summary();
+
+    // Summary should contain key information
+    assert!(summary.contains("Iterations: 3"));
+    assert!(summary.contains("Condition:"));
+    assert!(summary.contains("Quality:"));
+}
+
+/// Test AD variance calculation via JacobianMethod consistency.
+///
+/// # Requirement: 5.4, 6.1
+#[test]
+fn test_jacobian_method_consistency_for_ad_variance() {
+    // This test verifies that different Jacobian methods produce consistent results,
+    // which is the basis for AD variance detection.
+
+    let instruments: Vec<MarketInstrument<f64>> = vec![
+        MarketInstrument::ois(1.0, 0.03),
+        MarketInstrument::ois(2.0, 0.035),
+        MarketInstrument::ois(5.0, 0.04),
+    ];
+
+    // Test with finite difference
+    let config_fd = GlobalBootstrapConfig::default()
+        .with_jacobian_method(JacobianMethod::FiniteDifference);
+    let bootstrapper_fd = GlobalBootstrapper::new(config_fd);
+    let result_fd = bootstrapper_fd.calibrate(&instruments).unwrap();
+
+    // Test with central difference
+    let config_cd = GlobalBootstrapConfig::default()
+        .with_jacobian_method(JacobianMethod::CentralDifference);
+    let bootstrapper_cd = GlobalBootstrapper::new(config_cd);
+    let result_cd = bootstrapper_cd.calibrate(&instruments).unwrap();
+
+    // Both should converge
+    assert!(result_fd.converged);
+    assert!(result_cd.converged);
+
+    // Results should be very similar (low variance)
+    for i in 0..result_fd.discount_factors.len() {
+        let diff = (result_fd.discount_factors[i] - result_cd.discount_factors[i]).abs();
+        assert!(diff < 1e-10, "FD and CD results should be nearly identical");
+    }
+}
+
+/// Test CalibrationProblem variance calculation directly.
+///
+/// # Requirement: 5.4, 6.1
+#[test]
+fn test_calibration_problem_variance_calculation() {
+    let instruments: Vec<MarketInstrument<f64>> = vec![
+        MarketInstrument::ois(1.0, 0.03),
+        MarketInstrument::ois(2.0, 0.035),
+        MarketInstrument::ois(5.0, 0.04),
+    ];
+
+    let problem: CalibrationProblem<f64, _> = CalibrationProblem::new(instruments).unwrap();
+    let x = problem.initial_guess();
+
+    // Compute Jacobian with finite difference
+    let jacobian_fd = problem.compute_jacobian_finite_diff(&x).unwrap();
+
+    // Compute Jacobian with central difference
+    let jacobian_cd = problem.compute_jacobian_central_diff(&x).unwrap();
+
+    // Calculate variance between the two methods
+    let variance = problem.compute_jacobian_variance(&jacobian_fd, &jacobian_cd);
+
+    // Variance should be small for a well-behaved problem
+    assert!(variance < 1e-6, "FD and CD Jacobians should have low variance, got {}", variance);
+}
+
+/// Test should_fallback_from_ad integration.
+///
+/// # Requirement: 5.4, 6.1
+#[test]
+fn test_ad_fallback_decision_integration() {
+    let instruments: Vec<MarketInstrument<f64>> = vec![
+        MarketInstrument::ois(1.0, 0.03),
+        MarketInstrument::ois(2.0, 0.035),
+        MarketInstrument::ois(5.0, 0.04),
+    ];
+
+    let problem: CalibrationProblem<f64, _> = CalibrationProblem::new(instruments).unwrap();
+    let x = problem.initial_guess();
+
+    // Compute two similar Jacobians
+    let jacobian1 = problem.compute_jacobian_finite_diff(&x).unwrap();
+    let jacobian2 = problem.compute_jacobian_central_diff(&x).unwrap();
+
+    let threshold = 1e6;
+    let (should_fallback, variance) = problem.should_fallback_from_ad(&jacobian1, &jacobian2, threshold);
+
+    // For similar Jacobians, should not trigger fallback
+    assert!(!should_fallback, "Should not fallback for similar Jacobians");
+    assert!(variance < threshold);
+}
