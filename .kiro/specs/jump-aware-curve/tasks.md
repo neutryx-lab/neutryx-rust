@@ -21,15 +21,15 @@
 - `crates/pricer_core/src/types/mod.rs` — Limit enum 追加およびエクスポート
 
 **Subtasks**:
-1. [ ] `Limit` enum を定義（Left, Right, Continuous variants）
-2. [ ] `Default` trait 実装（Continuous をデフォルト）
-3. [ ] `Copy`, `Clone`, `Debug`, `PartialEq`, `Eq` derive
-4. [ ] serde feature gate 付き Serialize/Deserialize
-5. [ ] 単体テスト（各 variant の等価性確認）
+1. [x] `Limit` enum を定義（Left, Right, Continuous variants）
+2. [x] `Default` trait 実装（Continuous をデフォルト）
+3. [x] `Copy`, `Clone`, `Debug`, `PartialEq`, `Eq` derive
+4. [x] serde feature gate 付き Serialize/Deserialize
+5. [x] 単体テスト（各 variant の等価性確認）
 
 **Acceptance Criteria**:
-- `Limit::default()` が `Limit::Continuous` を返す
-- serde 有効時に JSON シリアライズ可能
+- [x] `Limit::default()` が `Limit::Continuous` を返す
+- [x] serde 有効時に JSON シリアライズ可能
 
 ---
 
@@ -44,20 +44,20 @@
 - `crates/infra_master/src/market/definition/mod.rs` — エクスポート追加
 
 **Subtasks**:
-1. [ ] `JumpPillar` 構造体定義（jump_date, expected_jump_bps, event_reference, confidence）
-2. [ ] `JumpPillar::new()` コンストラクタ実装
-3. [ ] `with_event_reference()` Builder メソッド
-4. [ ] `from_event_instrument()` 変換コンストラクタ
-5. [ ] アクセサメソッド（jump_date, expected_jump_bps, confidence, weighted_jump_bps）
-6. [ ] serde feature gate 付き Serialize/Deserialize（camelCase）
-7. [ ] 単体テスト
+1. [x] `JumpPillar` 構造体定義（jump_date, expected_jump_bps, event_reference, confidence）
+2. [x] `JumpPillar::new()` コンストラクタ実装
+3. [x] `with_event_reference()` Builder メソッド
+4. [x] `from_event_instrument()` 変換コンストラクタ
+5. [x] アクセサメソッド（jump_date, expected_jump_bps, confidence, weighted_jump_bps）
+6. [x] serde feature gate 付き Serialize/Deserialize（camelCase）
+7. [x] 単体テスト
    - new() でフィールド初期化確認
    - from_event_instrument() 変換ロジック
    - weighted_jump_bps() = expected_jump_bps * confidence
 
 **Acceptance Criteria**:
-- EventInstrument から JumpPillar への変換が正しく動作
-- JSON シリアライズで camelCase フィールド名
+- [x] EventInstrument から JumpPillar への変換が正しく動作
+- [x] JSON シリアライズで camelCase フィールド名
 
 ---
 

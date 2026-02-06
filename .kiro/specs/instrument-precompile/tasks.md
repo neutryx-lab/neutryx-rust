@@ -26,7 +26,7 @@
   - _Requirements: 1.4_
 
 - [ ] 2. CompiledInstrument コア構造の実装
-- [ ] 2.1 事前計算済み商品構造体の定義
+- [x] 2.1 事前計算済み商品構造体の定義
   - CompiledInstrument<T> 構造体を pricer_models::builder モジュールに作成
   - instrument_type、market_rate、maturity、cashflow_times、year_fractions、notionals、df_indices、fixed_rate フィールドを定義
   - cashflow_times()、year_fractions()、notionals() アクセサメソッドを実装
@@ -35,7 +35,7 @@
   - _Requirements: 1.2, 2.5, 3.5_
   - _Contracts: CompiledInstrument State_
 
-- [ ] 2.2 CalibrationInstrument トレイト実装
+- [x] 2.2 CalibrationInstrument トレイト実装
   - CompiledInstrument<T> に CalibrationInstrument<T> トレイトを実装
   - market_rate() は保持値を直接返却
   - theoretical_rate() は DF 取得とベクトル積のみで計算（カレンダー演算なし）

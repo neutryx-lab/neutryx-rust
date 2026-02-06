@@ -6,6 +6,7 @@
 //! - [`VolSurfaceDefinition`]: Specification for volatility surfaces (calibration model, strike type)
 //! - [`InstrumentDefinition`]: Calibration instrument definitions
 //! - [`RateIndexDefinition`]: Benchmark rate index definitions
+//! - [`JumpPillar`]: Rate jump definitions for central bank meetings
 //!
 //! # Architecture
 //!
@@ -47,11 +48,15 @@
 
 mod curve;
 mod instrument;
+mod jump_pillar;
 mod rate_index;
 mod vol_surface;
 
 // Curve definitions
 pub use curve::{CalibrationMethod, CurveDefError, CurveDefinition, InterpolationMethod};
+
+// Jump pillar definitions
+pub use jump_pillar::JumpPillar;
 
 // Vol surface definitions
 pub use vol_surface::{CalibrationModel, StrikeAxisType};

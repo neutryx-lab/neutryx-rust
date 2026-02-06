@@ -8,6 +8,7 @@
 //! - `currency_pair`: FX rate types for foreign exchange calculations
 //! - `error`: Structured error types for pricing, interpolation, solver, and
 //!   calibration operations
+//! - `limit`: Limit enum for jump-aware curve interpolation
 //!
 //! # Note
 //!
@@ -16,6 +17,7 @@
 
 pub mod currency_pair;
 pub mod error;
+pub mod limit;
 pub mod time;
 #[cfg(feature = "execution-trace")]
 pub mod traced;
@@ -31,6 +33,7 @@ pub use currency_pair::{FxPair, FxRate};
 pub use error::{
     CalibrationError, CalibrationErrorKind, InterpolationError, PricingError, SolverError,
 };
+pub use limit::Limit;
 pub use time::{time_to_maturity, time_to_maturity_dates};
 // Re-export execution trace types when feature is enabled
 #[cfg(feature = "execution-trace")]

@@ -19,7 +19,7 @@
 2. The Enzyme AD-computed Jacobian shall produce results within 1e-12 relative tolerance compared to analytical derivatives for polynomial interpolation schemes.
 3. While the `enzyme-ad` feature flag is enabled, the CalibrationProblem shall automatically select Enzyme AD as the default Jacobian method.
 4. If Enzyme AD computation fails due to unsupported operations, the CalibrationProblem shall fall back to finite difference method and log a warning.
-5. The Enzyme AD Jacobian computation shall support all interpolation methods defined in BootstrapInterpolation enum (Flat, Linear, LogLinear, MonotonicCubic, NaturalCubicSpline).
+5. The Enzyme AD Jacobian computation shall support core interpolation methods (Flat, Linear, LogLinear). MonotonicCubic and NaturalCubicSpline support is deferred to Phase 2.
 
 ### Requirement 2: 内挿スキームの微分可能実装
 
