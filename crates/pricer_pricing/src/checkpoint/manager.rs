@@ -349,7 +349,7 @@ impl<T: Float> Default for CheckpointManager<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::path_dependent::PathObserverState;
+    use crate::methods::path_dependent::PathObserverState;
 
     // Helper to create a test state
     fn create_test_state(step: usize, n_paths: usize) -> SimulationState<f64> {

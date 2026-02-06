@@ -4,7 +4,7 @@
 
 ### 1.1 Summary
 
-本設計は、`crates/infra_master/src/` 内の時間関連モジュールを `time/` サブディレクトリに再編成し、金融デリバティブプライシングエンジンの基盤となる時間管理機能を完成させる。既存の 80% 以上の実装を活用しつつ、不足機能（Excel serial 変換、Calendar trait 化、JointCalendar、汎用 Period + TimeUnit）を追加する。
+本設計は、`crates/infra_domain/src/` 内の時間関連モジュールを `time/` サブディレクトリに再編成し、金融デリバティブプライシングエンジンの基盤となる時間管理機能を完成させる。既存の 80% 以上の実装を活用しつつ、不足機能（Excel serial 変換、Calendar trait 化、JointCalendar、汎用 Period + TimeUnit）を追加する。
 
 ### 1.2 Goals
 
@@ -31,7 +31,7 @@
 ### 2.1 Target Directory Structure
 
 ```text
-crates/infra_master/src/
+crates/infra_domain/src/
 ├── lib.rs                    # time モジュール追加 + deprecated re-exports
 ├── time/
 │   ├── mod.rs                # Module definition & re-exports
@@ -142,7 +142,7 @@ impl Date {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::Date;
+    /// use infra_domain::time::Date;
     ///
     /// let date = Date::from_ymd(2024, 1, 1).unwrap();
     /// assert_eq!(date.to_serial(), 45292);
@@ -169,7 +169,7 @@ impl Date {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::Date;
+    /// use infra_domain::time::Date;
     ///
     /// let date = Date::from_serial(45292).unwrap();
     /// assert_eq!(date, Date::from_ymd(2024, 1, 1).unwrap());

@@ -174,7 +174,7 @@ Financial Time Module の実装タスク。3 フェーズ（構造移行 → 機
   - _Requirements: 12_
 
 - [x] 7.2 既存テストの完全パス確認
-  - `cargo test -p infra_master` で全テストがパスすることを確認
+  - `cargo test -p infra_domain` で全テストがパスすることを確認
   - doctests が全てパスすることを確認
   - _Requirements: 13_
 

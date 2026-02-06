@@ -2,7 +2,7 @@
 
 ## 概要
 
-Trade & Instrument Module 設計のための調査結果。既存の `infra_master` パターンを分析し、新しい `trade/` および `convention/` モジュールの設計指針を策定した。
+Trade & Instrument Module 設計のための調査結果。既存の `infra_domain` パターンを分析し、新しい `trade/` および `convention/` モジュールの設計指針を策定した。
 
 ## 調査日時
 
@@ -10,7 +10,7 @@ Trade & Instrument Module 設計のための調査結果。既存の `infra_mast
 
 ## 調査範囲
 
-- `crates/infra_master/src/` 全体のコードパターン
+- `crates/infra_domain/src/` 全体のコードパターン
 - 既存型定義: Date, Period, Currency, DayCount, Calendar, RateIndex, Frequency, Direction
 - エラーハンドリング、ビルダーパターン、Serde 使用パターン
 
@@ -213,7 +213,7 @@ mod tests {
 ### 新モジュール構造
 
 ```text
-crates/infra_master/src/
+crates/infra_domain/src/
 ├── lib.rs              # mod trade; mod convention; pub use ...
 ├── trade/
 │   ├── mod.rs          # サブモジュール宣言 + 再エクスポート
@@ -250,15 +250,15 @@ crates/infra_master/src/
 
 ## 参照ファイル
 
-- `crates/infra_master/src/lib.rs`
-- `crates/infra_master/src/error.rs`
-- `crates/infra_master/src/date.rs`
-- `crates/infra_master/src/currency.rs`
-- `crates/infra_master/src/period.rs`
-- `crates/infra_master/src/day_count.rs`
-- `crates/infra_master/src/calendar.rs`
-- `crates/infra_master/src/rate_index.rs`
-- `crates/infra_master/src/business_day.rs`
-- `crates/infra_master/src/counterparty.rs`
-- `crates/infra_master/src/frequency.rs`
-- `crates/infra_master/src/direction.rs`
+- `crates/infra_domain/src/lib.rs`
+- `crates/infra_domain/src/error.rs`
+- `crates/infra_domain/src/date.rs`
+- `crates/infra_domain/src/currency.rs`
+- `crates/infra_domain/src/period.rs`
+- `crates/infra_domain/src/day_count.rs`
+- `crates/infra_domain/src/calendar.rs`
+- `crates/infra_domain/src/rate_index.rs`
+- `crates/infra_domain/src/business_day.rs`
+- `crates/infra_domain/src/counterparty.rs`
+- `crates/infra_domain/src/frequency.rs`
+- `crates/infra_domain/src/direction.rs`

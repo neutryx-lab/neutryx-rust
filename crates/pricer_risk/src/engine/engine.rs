@@ -1,6 +1,16 @@
 //! Risk engine facade.
 //!
-//! Provides [`RiskEngine`] as the unified entry point for risk calculations.
+//! Provides [`RiskEngine`] as the unified entry point for risk calculations,
+//! scenario analysis, and portfolio operations.
+//!
+//! # Overview
+//!
+//! The `RiskEngine` serves as the **single facade** for all risk-related
+//! computations:
+//!
+//! - **Greeks calculation**: Single trade and portfolio-level Greeks
+//! - **Scenario analysis**: Stress testing and P&L computation
+//! - **Portfolio operations**: Pricing, aggregation, XVA
 //!
 //! # Requirements
 //!
@@ -9,7 +19,7 @@
 //! - Requirement 5.3: AAD/Bump mode selection
 //! - Requirement 5.4: Risk factor identification
 
-use std::time::Instant;
+use std::{collections::HashMap, time::Instant};
 
 use infra_config::{GreekType, GreeksMethod, RiskConfig, SecondOrderMode};
 use rayon::prelude::*;
@@ -20,7 +30,11 @@ use super::{
         ComputedGreeks, FailedCalculation, PerformanceMetrics, PortfolioRiskResult, RiskResult,
     },
 };
-use crate::greeks::{GreeksConfig, GreeksMode, GreeksResult};
+use crate::{
+    greeks::{GreeksConfig, GreeksMode, GreeksResult},
+    portfolio::{NettingSetId, Portfolio, Trade, TradeId},
+    scenarios::{Scenario, ScenarioEngine, ScenarioResult},
+};
 
 /// Configuration for the RiskEngine.
 #[derive(Debug, Clone)]
@@ -76,34 +90,52 @@ impl RiskEngineConfig {
 
 /// Risk calculation engine facade.
 ///
-/// Provides unified access to Greeks computation with support for:
-/// - AAD (Automatic Adjoint Differentiation) via Enzyme
-/// - Bump-and-Revalue (finite difference)
-/// - Parallel portfolio processing
-/// - Configuration-driven calculation
+/// Provides unified access to all risk operations:
+/// - **Greeks computation**: AAD (Enzyme) or Bump-and-Revalue
+/// - **Scenario analysis**: Stress testing and P&L computation
+/// - **Portfolio operations**: Pricing, aggregation by netting set
+///
+/// # Architecture
+///
+/// `RiskEngine` follows the **Facade pattern**, internally delegating to:
+/// - `ScenarioEngine` for scenario execution
+/// - `Portfolio` methods for portfolio-level operations
 ///
 /// # Example
 ///
 /// ```rust,ignore
-/// use pricer_risk::engine::{RiskEngine, RiskEngineConfig};
+/// use pricer_risk::{RiskEngine, RiskEngineConfig, Portfolio};
 /// use infra_config::RiskConfig;
 ///
 /// let config = RiskEngineConfig::new(RiskConfig::default());
 /// let engine = RiskEngine::new(config);
 ///
-/// // Compute Greeks for a single trade
-/// let result = engine.compute_greeks(&trade, &market, valuation_date)?;
-/// println!("Delta: {:?}", result.greeks.delta);
+/// // Greeks calculation
+/// let result = engine.compute_greeks("T001", || Ok(greeks_result))?;
+///
+/// // Scenario analysis
+/// engine.add_scenario(scenario);
+/// let scenario_results = engine.run_all_scenarios(&portfolio, base_pricer)?;
+///
+/// // Portfolio pricing
+/// let prices = engine.price_portfolio(&portfolio, |trade| price_fn(trade));
 /// ```
 #[derive(Debug, Clone)]
 pub struct RiskEngine {
     config: RiskEngineConfig,
+    /// Internal scenario engine for stress testing.
+    scenario_engine: ScenarioEngine<f64>,
 }
 
 #[allow(clippy::result_large_err)]
 impl RiskEngine {
     /// Creates a new RiskEngine with the given configuration.
-    pub fn new(config: RiskEngineConfig) -> Self { Self { config } }
+    pub fn new(config: RiskEngineConfig) -> Self {
+        Self {
+            config,
+            scenario_engine: ScenarioEngine::new(),
+        }
+    }
 
     /// Creates a RiskEngine with default configuration.
     pub fn with_defaults() -> Self { Self::new(RiskEngineConfig::default()) }
@@ -526,6 +558,197 @@ impl RiskEngine {
             result: portfolio_result,
         })
     }
+
+    // =========================================================================
+    // Scenario Engine Delegation (Facade Pattern)
+    // =========================================================================
+
+    /// Adds a scenario to the internal scenario engine.
+    ///
+    /// # Arguments
+    ///
+    /// * `scenario` - The scenario to register
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// use pricer_risk::{RiskEngine, scenarios::{Scenario, BumpScenario, RiskFactorShift}};
+    ///
+    /// let mut engine = RiskEngine::with_defaults();
+    /// let scenario = Scenario::named(
+    ///     "IR +100bp",
+    ///     BumpScenario::new().with_shift(RiskFactorShift::rate_parallel("*", 0.01)),
+    /// );
+    /// engine.add_scenario(scenario);
+    /// ```
+    pub fn add_scenario(&mut self, scenario: Scenario<f64>) {
+        self.scenario_engine.add_scenario(scenario);
+    }
+
+    /// Adds multiple scenarios to the internal scenario engine.
+    pub fn add_scenarios(&mut self, scenarios: impl IntoIterator<Item = Scenario<f64>>) {
+        self.scenario_engine.add_scenarios(scenarios);
+    }
+
+    /// Returns the number of registered scenarios.
+    pub fn scenario_count(&self) -> usize { self.scenario_engine.scenario_count() }
+
+    /// Returns a reference to the registered scenarios.
+    pub fn scenarios(&self) -> &[Scenario<f64>] { self.scenario_engine.scenarios() }
+
+    /// Executes a single scenario against a portfolio.
+    ///
+    /// # Arguments
+    ///
+    /// * `scenario` - The scenario to execute
+    /// * `base_value` - The base portfolio value (before stress)
+    /// * `pricer` - Function that returns the stressed value given scenario
+    ///   name
+    ///
+    /// # Returns
+    ///
+    /// `ScenarioResult` with P&L breakdown.
+    pub fn run_scenario<F>(
+        &mut self,
+        scenario: &Scenario<f64>,
+        base_value: f64,
+        pricer: F,
+    ) -> ScenarioResult<f64>
+    where
+        F: Fn(&str) -> f64,
+    {
+        self.scenario_engine
+            .execute_scenario(scenario, base_value, pricer)
+    }
+
+    /// Executes all registered scenarios against a portfolio.
+    ///
+    /// # Arguments
+    ///
+    /// * `base_value` - The base portfolio value
+    /// * `pricer` - Function that returns the stressed value given scenario
+    ///   name
+    ///
+    /// # Returns
+    ///
+    /// Vector of `ScenarioResult` for all scenarios.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let results = engine.run_all_scenarios(1_000_000.0, |scenario_name| {
+    ///     // Apply scenario and reprice portfolio
+    ///     match scenario_name {
+    ///         "IR +100bp" => 950_000.0,
+    ///         "IR -100bp" => 1_050_000.0,
+    ///         _ => 1_000_000.0,
+    ///     }
+    /// });
+    /// ```
+    pub fn run_all_scenarios<F>(&mut self, base_value: f64, pricer: F) -> Vec<ScenarioResult<f64>>
+    where
+        F: Fn(&str) -> f64,
+    {
+        self.scenario_engine.execute_all(base_value, pricer)
+    }
+
+    /// Returns the worst-case scenario result (largest loss).
+    pub fn worst_case_scenario(&self) -> Option<&ScenarioResult<f64>> {
+        self.scenario_engine.worst_case()
+    }
+
+    /// Returns all scenario results.
+    pub fn scenario_results(&self) -> &[ScenarioResult<f64>] { self.scenario_engine.results() }
+
+    /// Clears all scenario results (keeps scenarios registered).
+    pub fn clear_scenario_results(&mut self) { self.scenario_engine.clear_results(); }
+
+    /// Clears all scenarios and results.
+    pub fn clear_scenarios(&mut self) { self.scenario_engine.clear(); }
+
+    // =========================================================================
+    // Portfolio Operations (Delegation)
+    // =========================================================================
+
+    /// Prices all trades in a portfolio using the provided pricing function.
+    ///
+    /// Leverages Rayon for parallel execution when portfolio size exceeds
+    /// the parallel threshold.
+    ///
+    /// # Arguments
+    ///
+    /// * `portfolio` - The portfolio to price
+    /// * `pricer_fn` - Function that takes a trade reference and returns a
+    ///   price
+    ///
+    /// # Returns
+    ///
+    /// HashMap mapping trade IDs to prices.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let prices = engine.price_portfolio(&portfolio, |trade| {
+    ///     // Monte Carlo or analytical pricing
+    ///     mc_pricer.price(trade.instrument())
+    /// });
+    /// ```
+    pub fn price_portfolio<F>(&self, portfolio: &Portfolio, pricer_fn: F) -> HashMap<TradeId, f64>
+    where
+        F: Fn(&Trade) -> f64 + Sync,
+    {
+        portfolio.price_all_trades(pricer_fn)
+    }
+
+    /// Aggregates values by netting set using the provided aggregation
+    /// function.
+    ///
+    /// # Arguments
+    ///
+    /// * `portfolio` - The portfolio to aggregate
+    /// * `agg_fn` - Function that takes a slice of trades and returns an
+    ///   aggregated value
+    ///
+    /// # Returns
+    ///
+    /// HashMap mapping netting set IDs to aggregated values.
+    pub fn aggregate_by_netting_set<F>(
+        &self,
+        portfolio: &Portfolio,
+        agg_fn: F,
+    ) -> HashMap<NettingSetId, f64>
+    where
+        F: Fn(&[&Trade]) -> f64 + Sync,
+    {
+        portfolio.aggregate_by_netting_set(agg_fn)
+    }
+
+    /// Computes total portfolio value using the provided pricing function.
+    ///
+    /// # Arguments
+    ///
+    /// * `portfolio` - The portfolio to price
+    /// * `pricer_fn` - Function that takes a trade reference and returns a
+    ///   price
+    ///
+    /// # Returns
+    ///
+    /// Total portfolio value (sum of all trade prices).
+    pub fn total_portfolio_value<F>(&self, portfolio: &Portfolio, pricer_fn: F) -> f64
+    where
+        F: Fn(&Trade) -> f64 + Sync,
+    {
+        self.price_portfolio(portfolio, pricer_fn).values().sum()
+    }
+
+    /// Returns a mutable reference to the internal scenario engine.
+    ///
+    /// Use this for advanced scenario operations not exposed through
+    /// the facade methods.
+    pub fn scenario_engine_mut(&mut self) -> &mut ScenarioEngine<f64> { &mut self.scenario_engine }
+
+    /// Returns a reference to the internal scenario engine.
+    pub fn scenario_engine(&self) -> &ScenarioEngine<f64> { &self.scenario_engine }
 }
 
 /// Result of Greeks calculation under a specific scenario.
@@ -820,7 +1043,7 @@ mod tests {
 
     #[test]
     fn test_apply_csa_adjustment_below_threshold() {
-        use infra_master::Currency;
+        use infra_domain::Currency;
 
         use crate::portfolio::CollateralAgreement;
 
@@ -841,7 +1064,7 @@ mod tests {
 
     #[test]
     fn test_apply_csa_adjustment_above_threshold() {
-        use infra_master::Currency;
+        use infra_domain::Currency;
 
         use crate::portfolio::CollateralAgreement;
 
@@ -862,7 +1085,7 @@ mod tests {
 
     #[test]
     fn test_apply_csa_adjustment_with_independent_amount() {
-        use infra_master::Currency;
+        use infra_domain::Currency;
 
         use crate::portfolio::CollateralAgreement;
 
@@ -885,7 +1108,7 @@ mod tests {
     fn test_apply_csa_to_portfolio() {
         use std::collections::HashMap;
 
-        use infra_master::Currency;
+        use infra_domain::Currency;
 
         use crate::portfolio::{CollateralAgreement, CounterpartyId, NettingSet, NettingSetId};
 

@@ -1,0 +1,8 @@
+# AI Fixer dependencies
+# Install with: pip install -r scripts/requirements-ai.txt
+
+# Google Generative AI SDK for Gemini API
+google-generativeai>=0.8.0
+
+# Type hints (for Python < 3.10 compatibility)
+typing-extensions>=4.0.0

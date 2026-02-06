@@ -64,7 +64,7 @@
   - _Requirements: 3.2, 3.3_
 
 - [x] 3.4 カレンダー・休日調整統合
-  - infra_master::Calendarを使用した営業日調整を実装する
+  - infra_domain::Calendarを使用した営業日調整を実装する
   - CalendarCacheによるキャッシュ管理
   - 休日調整適用後の支払日計算
   - _Requirements: 2.4, 9.5_
@@ -136,8 +136,8 @@
   - 割引カーブIDの使い分け
   - _Requirements: 4.5_
 
-- [ ] 8. CMS・凸性調整対応
-- [ ] 8.1 CMSインデックス統合
+- [x] 8. CMS・凸性調整対応
+- [x] 8.1 CMSインデックス統合
   - CMS固有インデックスIDの割り当てを実装する
   - CMSクーポンコンパイル時にCMS用index_idを使用
   - フォワードカーブがCMS凸性調整を透過的に返却

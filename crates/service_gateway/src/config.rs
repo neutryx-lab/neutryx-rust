@@ -20,8 +20,10 @@ pub struct ServerConfig {
     /// Enable gRPC API
     pub grpc_enabled: bool,
     /// gRPC address (reserved for future gRPC implementation)
+    #[allow(dead_code)]
     pub grpc_addr: String,
     /// Number of worker threads (reserved for future thread pool configuration)
+    #[allow(dead_code)]
     pub workers: usize,
 }
 

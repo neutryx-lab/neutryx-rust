@@ -26,6 +26,9 @@ chrono.workspace = true
 # System utilities
 num_cpus.workspace = true
 
+# Enum utilities
+strum.workspace = true
+
 [features]
 default = []
 # Serde is always enabled, but this feature exists for compatibility with

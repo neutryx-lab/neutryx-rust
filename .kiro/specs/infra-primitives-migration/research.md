@@ -4,8 +4,8 @@
 - **Feature**: `infra-primitives-migration`
 - **Discovery Scope**: Complex Integration（既存システムの大規模リファクタリング）
 - **Key Findings**:
-  - `DayCountConvention`が`pricer_core`と`infra_master`の2箇所に重複定義（統合必須）
-  - `pricer_core`の基本型は成熟しており、そのままinfra_masterへ移動可能
+  - `DayCountConvention`が`pricer_core`と`infra_domain`の2箇所に重複定義（統合必須）
+  - `pricer_core`の基本型は成熟しており、そのままinfra_domainへ移動可能
   - Direction型が4箇所に散在（`Direction`, `SwapDirection`, `FxForwardDirection`, `CdsDirection`）
 
 ## Research Log
@@ -15,25 +15,25 @@
 - **Context**: A-I-P-Sルール準拠のため、基本型の移動先を決定
 - **Sources Consulted**:
   - `crates/pricer_core/src/types/time.rs`
-  - `crates/infra_master/src/day_count.rs`
+  - `crates/infra_domain/src/day_count.rs`
 - **Findings**:
   - **pricer_core版**（3 variants）: `ActualActual365`, `ActualActual360`, `Thirty360`
     - `year_fraction(NaiveDate, NaiveDate) -> f64`メソッド
     - `year_fraction_dates(Date, Date) -> f64`メソッド（負値対応）
     - `FromStr`, `Display`, `serde`実装完備
     - 包括的なテスト（property-based含む）
-  - **infra_master版**（7 variants）: `Actual360`, `Actual365Fixed`, `Actual36525`, `ActualActualIsda`, `Thirty360Bond`, `Thirty360European`, `ThirtyE360Isda`
+  - **infra_domain版**（7 variants）: `Actual360`, `Actual365Fixed`, `Actual36525`, `ActualActualIsda`, `Thirty360Bond`, `Thirty360European`, `ThirtyE360Isda`
     - `year_fraction(NaiveDate, NaiveDate) -> f64`のみ
     - `Default`実装あり（`Actual365Fixed`）
     - テストは基本的なもののみ
 - **Implications**:
-  - infra_master版のvariant網羅性が高い（ISDA規格準拠）
+  - infra_domain版のvariant網羅性が高い（ISDA規格準拠）
   - pricer_core版の実装品質が高い（エラーハンドリング、serde、テスト）
-  - **統合戦略**: infra_master版のvariantsにpricer_core版の実装品質を適用
+  - **統合戦略**: infra_domain版のvariantsにpricer_core版の実装品質を適用
 
 ### Currency型の現状分析
 
-- **Context**: `Currency`をinfra_masterへ移動する際の互換性確認
+- **Context**: `Currency`をinfra_domainへ移動する際の互換性確認
 - **Sources Consulted**: `crates/pricer_core/src/types/currency.rs`
 - **Findings**:
   - 5 variants: `USD`, `EUR`, `GBP`, `JPY`, `CHF`
@@ -45,7 +45,7 @@
 
 ### Date型の現状分析
 
-- **Context**: `Date`をinfra_masterへ移動する際の設計確認
+- **Context**: `Date`をinfra_domainへ移動する際の設計確認
 - **Sources Consulted**: `crates/pricer_core/src/types/time.rs`
 - **Findings**:
   - `chrono::NaiveDate`のnewtypeラッパー
@@ -71,7 +71,7 @@
   - `CdsDirection`: `BuyProtection`, `SellProtection`（CDS専用）
   - 各型に`sign<T: Float>() -> T`等のメソッドあり
 - **Implications**:
-  - 汎用`Direction`（Long/Short）はinfra_masterへ移動可能
+  - 汎用`Direction`（Long/Short）はinfra_domainへ移動可能
   - 専用型（SwapDirection等）は商品固有のため移動対象外
   - `From`トレイトで相互変換を提供
 
@@ -84,7 +84,7 @@
   - 各指標に通貨・テナー・DCC情報が暗黙的に関連
   - 明示的なメタデータメソッドは未実装
 - **Implications**:
-  - infra_masterへ移動し、`currency()`, `tenor()`, `day_count_convention()`メソッド追加
+  - infra_domainへ移動し、`currency()`, `tenor()`, `day_count_convention()`メソッド追加
   - `Tenor`型の新規追加が必要（RateIndexの依存先）
 
 ### Frequency型の分析
@@ -100,8 +100,8 @@
 
 | Option | Description | Strengths | Risks / Limitations | Notes |
 |--------|-------------|-----------|---------------------|-------|
-| **Direct Move + Re-export** | 型をinfra_masterへ移動し、pricer_coreから再エクスポート | シンプル、後方互換性維持 | 依存関係の循環リスク | **採用**: pricer_core→infra_masterの依存追加で解決 |
-| Trait Abstraction | 共通トレイトをinfra_masterに定義し、具体型は各クレートに残す | 疎結合 | 複雑、オーバーエンジニアリング | 不採用 |
+| **Direct Move + Re-export** | 型をinfra_domainへ移動し、pricer_coreから再エクスポート | シンプル、後方互換性維持 | 依存関係の循環リスク | **採用**: pricer_core→infra_domainの依存追加で解決 |
+| Trait Abstraction | 共通トレイトをinfra_domainに定義し、具体型は各クレートに残す | 疎結合 | 複雑、オーバーエンジニアリング | 不採用 |
 | New Foundation Crate | `infra_foundation`等の新クレートを作成 | 明確な分離 | クレート数増加、メンテナンス負荷 | 不採用 |
 
 ## Design Decisions
@@ -111,7 +111,7 @@
 - **Context**: 2箇所に異なるvariantsで重複定義されている
 - **Alternatives Considered**:
   1. pricer_core版をそのまま移動（3 variants維持）
-  2. infra_master版を拡張（7 variants維持）
+  2. infra_domain版を拡張（7 variants維持）
   3. 両方を統合した新定義を作成
 - **Selected Approach**: Option 3 - 統合版を作成
 - **Rationale**:
@@ -184,14 +184,14 @@
 
 ### Decision: TradeDirection の sign() メソッド配置
 
-- **Context**: infra_masterの依存関係を軽量に保ちたい
+- **Context**: infra_domainの依存関係を軽量に保ちたい
 - **Alternatives Considered**:
-  1. infra_masterに`num_traits`依存を追加して`sign<T: Float>()`を実装
-  2. infra_masterには基本enumのみ、`sign()`はpricer_modelsで拡張トレイトとして提供
+  1. infra_domainに`num_traits`依存を追加して`sign<T: Float>()`を実装
+  2. infra_domainには基本enumのみ、`sign()`はpricer_modelsで拡張トレイトとして提供
   3. `sign()`を`f64`固定で返す（ジェネリック不要）
 - **Selected Approach**: Option 2 - 拡張トレイトをpricer_modelsで提供
 - **Rationale**:
-  - infra_masterの依存関係を最小限に維持（`num_traits`不要）
+  - infra_domainの依存関係を最小限に維持（`num_traits`不要）
   - 計算ロジックはPricerレイヤーの責務
   - Adapterは方向enumのみ必要、計算は不要
 - **Trade-offs**:

@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  FpML 5.12 Credit Default Swap Index
+  CDX.NA.IG Series 43 - Protection Buy
+-->
+<dataDocument xmlns="http://www.fpml.org/FpML-5/confirmation"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://www.fpml.org/FpML-5/confirmation fpml-main-5-12.xsd"
+              fpmlVersion="5-12">
+  <trade>
+    <tradeHeader>
+      <partyTradeIdentifier>
+        <partyReference href="FB_NA"/>
+        <tradeId tradeIdScheme="http://www.frictionalbank.com/trade-id">T40002-01</tradeId>
+      </partyTradeIdentifier>
+      <partyTradeIdentifier>
+        <partyReference href="GOLDMAN"/>
+        <tradeId tradeIdScheme="http://www.goldmansachs.com/trade-id">GS-2024-CDX-44444</tradeId>
+      </partyTradeIdentifier>
+      <tradeDate>2024-09-20</tradeDate>
+      <book>CREDIT_IG</book>
+    </tradeHeader>
+    <creditDefaultSwap>
+      <generalTerms>
+        <effectiveDate>
+          <unadjustedDate>2024-09-21</unadjustedDate>
+          <dateAdjustments>
+            <businessDayConvention>NONE</businessDayConvention>
+          </dateAdjustments>
+        </effectiveDate>
+        <scheduledTerminationDate>
+          <unadjustedDate>2029-12-20</unadjustedDate>
+          <dateAdjustments>
+            <businessDayConvention>NONE</businessDayConvention>
+          </dateAdjustments>
+        </scheduledTerminationDate>
+        <buyerPartyReference href="FB_NA"/>
+        <sellerPartyReference href="GOLDMAN"/>
+        <dateAdjustments>
+          <businessDayConvention>FOLLOWING</businessDayConvention>
+          <businessCenters>
+            <businessCenter>USNY</businessCenter>
+            <businessCenter>GBLO</businessCenter>
+          </businessCenters>
+        </dateAdjustments>
+        <indexReferenceInformation>
+          <indexName>Dow Jones CDX.NA.IG</indexName>
+          <indexSeries>43</indexSeries>
+          <indexAnnexVersion>1</indexAnnexVersion>
+          <indexAnnexDate>2024-09-20</indexAnnexDate>
+          <indexAnnexSource>Publisher</indexAnnexSource>
+          <excludedReferenceEntity>
+            <entityName>None Specified</entityName>
+          </excludedReferenceEntity>
+          <tranche>
+            <attachmentPoint>0.00</attachmentPoint>
+            <exhaustionPoint>1.00</exhaustionPoint>
+          </tranche>
+          <settledEntityMatrix>
+            <matrixSource>Publisher</matrixSource>
+          </settledEntityMatrix>
+        </indexReferenceInformation>
+      </generalTerms>
+      <feeLeg>
+        <initialPayment>
+          <payerPartyReference href="FB_NA"/>
+          <receiverPartyReference href="GOLDMAN"/>
+          <paymentAmount>
+            <currency>USD</currency>
+            <amount>0</amount>
+          </paymentAmount>
+        </initialPayment>
+        <periodicPayment>
+          <paymentFrequency>
+            <periodMultiplier>3</periodMultiplier>
+            <period>M</period>
+          </paymentFrequency>
+          <firstPeriodStartDate>2024-09-20</firstPeriodStartDate>
+          <firstPaymentDate>2024-12-20</firstPaymentDate>
+          <rollConvention>20</rollConvention>
+          <fixedAmountCalculation>
+            <calculationAmount>
+              <currency>USD</currency>
+              <amount>50000000</amount>
+            </calculationAmount>
+            <fixedRate>0.0055</fixedRate>
+            <dayCountFraction>ACT/360</dayCountFraction>
+          </fixedAmountCalculation>
+        </periodicPayment>
+      </feeLeg>
+      <protectionTerms>
+        <calculationAmount>
+          <currency>USD</currency>
+          <amount>50000000</amount>
+        </calculationAmount>
+        <creditEvents>
+          <bankruptcy>true</bankruptcy>
+          <failureToPay>
+            <applicable>true</applicable>
+            <paymentRequirement>
+              <currency>USD</currency>
+              <amount>1000000</amount>
+            </paymentRequirement>
+          </failureToPay>
+          <restructuring>
+            <applicable>false</applicable>
+          </restructuring>
+          <creditEventNotice>
+            <notifyingParty>
+              <buyerPartyReference href="FB_NA"/>
+              <sellerPartyReference href="GOLDMAN"/>
+            </notifyingParty>
+            <publiclyAvailableInformation>
+              <standardPublicSources>true</standardPublicSources>
+              <specifiedNumber>2</specifiedNumber>
+            </publiclyAvailableInformation>
+          </creditEventNotice>
+        </creditEvents>
+      </protectionTerms>
+    </creditDefaultSwap>
+  </trade>
+  <party id="FB_NA">
+    <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">549300EXAMPLE0001NA</partyId>
+    <partyName>FrictionalBank N.A.</partyName>
+  </party>
+  <party id="GOLDMAN">
+    <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">W22LROWP2IHZNBB6K528</partyId>
+    <partyName>Goldman Sachs International</partyName>
+  </party>
+</dataDocument>

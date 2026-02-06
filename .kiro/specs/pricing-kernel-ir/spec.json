@@ -3,7 +3,7 @@
   "created_at": "2026-01-26T20:15:00+09:00",
   "updated_at": "2026-01-27T12:00:00+09:00",
   "language": "ja",
-  "phase": "implemented",
+  "phase": "completed",
   "approvals": {
     "requirements": {
       "generated": true,
@@ -52,12 +52,16 @@
     "phase2_extension": {
       "status": "completed",
       "completed_tasks": [
-        "7.1 FXQuote/CrossCcyBasis実装",
+        "7.1 XCcyCompiler実装",
+        "7.2 コラテラル・ファンディング通貨対応",
         "8.1 CMSインデックス統合",
         "9.1 ScriptKernel構造体定義",
         "9.2 ExoticCompiler（Barrier/Asian）",
         "9.3 ScriptEngine実装"
-      ]
+      ],
+      "test_results": {
+        "cms_integration": "4 tests passed"
+      }
     },
     "phase3_callable": {
       "status": "completed",

@@ -70,7 +70,7 @@ graph TB
         VolSurfaces[VolSurfaceEnum]
     end
 
-    subgraph infra_master
+    subgraph infra_domain
         PricingInstrument[PricingInstrument T]
     end
 
@@ -229,7 +229,7 @@ sequenceDiagram
 
 **Dependencies**
 - Inbound: `infra_config::PricingConfig` — 設定取得 (P0)
-- Inbound: `infra_master::trade::PricingInstrument<T>` — 商品定義 (P0)
+- Inbound: `infra_domain::trade::PricingInstrument<T>` — 商品定義 (P0)
 - Outbound: `DiscountMethod` — 解析的プライシング (P1)
 - Outbound: `MonteCarloMethod` — MC プライシング (P1)
 - Outbound: `TreeMethod` — Tree プライシング (P1)

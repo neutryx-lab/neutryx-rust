@@ -88,17 +88,17 @@
 2. The Pricer shall `pricer_models::models::StochasticModelEnum` をMonte Carloで使用可能とする
 3. When カーブが必要な場合, the Pricer shall `pricer_models::market::curves::CurveEnum` を使用する
 4. When ボラティリティサーフェスが必要な場合, the Pricer shall `pricer_models::market::surfaces::VolSurfaceEnum` を使用する
-5. The Pricer shall `infra_master::trade::PricingInstrument` を入力として受け付ける
+5. The Pricer shall `infra_domain::trade::PricingInstrument` を入力として受け付ける
 
 ### Requirement 8: 商品定義とPricer連携
 
-**Objective:** As a クオンツ開発者, I want infra_masterの商品定義をPricerで直接利用できる, so that 商品定義とプライシングの一貫性を確保できる
+**Objective:** As a クオンツ開発者, I want infra_domainの商品定義をPricerで直接利用できる, so that 商品定義とプライシングの一貫性を確保できる
 
 #### Acceptance Criteria
-1. The Pricer shall `infra_master::trade::pricing_instrument::PricingInstrument` 型を受け付ける
+1. The Pricer shall `infra_domain::trade::pricing_instrument::PricingInstrument` 型を受け付ける
 2. When VanillaOptionを受信した場合, the Pricer shall 設定に基づいてDiscount/MC/Tree手法を選択する
 3. When Forwardを受信した場合, the Pricer shall Discount手法を優先的に使用する
-4. The Pricer shall `infra_master::instrument_def` の標準商品定義との互換性を持つ
+4. The Pricer shall `infra_domain::instrument_def` の標準商品定義との互換性を持つ
 5. If 未対応の商品タイプの場合, the Pricer shall `PricingError::UnsupportedInstrument` を返却する
 
 ### Requirement 9: エラーハンドリング

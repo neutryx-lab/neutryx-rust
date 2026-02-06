@@ -107,7 +107,7 @@ pub trait CurveProvider {
 /// ```
 /// # #[cfg(feature = "l1l2-integration")]
 /// # {
-/// use pricer_pricing::kernel::FlatCurveProvider;
+/// use pricer_pricing::kernel::{CurveProvider, FlatCurveProvider};
 ///
 /// // Create provider with 5% discount rate and 3% forward rate
 /// let provider = FlatCurveProvider::new(0.05, 0.03);
@@ -210,7 +210,7 @@ impl CurveProvider for FlatCurveProvider {
 /// ```ignore
 /// use pricer_pricing::kernel::{IndexedMarketAdapter, IndexedMarketAdapterBuilder};
 /// use pricer_models::market::{IndexedMarket, FlatCurve};
-/// use infra_master::RateIndex;
+/// use infra_domain::RateIndex;
 ///
 /// let market = /* construct IndexedMarket<f64> */;
 /// let adapter = IndexedMarketAdapterBuilder::new()

@@ -27,7 +27,7 @@
 本機能は既存の enum 定義を修正するリファクタリングであり、アーキテクチャ変更は発生しない。
 
 **影響を受けるクレート**:
-- `infra_master`: `Frequency` enum（time/frequency.rs）
+- `infra_domain`: `Frequency` enum（time/frequency.rs）
 - `pricer_models`: `Frequency` enum（bootstrapping/instrument.rs）、`BootstrapInterpolation` enum
 
 **既存パターン**:
@@ -38,7 +38,7 @@
 
 ```mermaid
 graph LR
-    subgraph infra_master
+    subgraph infra_domain
         Frequency[Frequency enum]
         Tenor[Tenor enum]
         AssetClass[AssetClass enum]
@@ -65,15 +65,15 @@ graph LR
 
 | Layer | Choice / Version | Role in Feature | Notes |
 |-------|------------------|-----------------|-------|
-| Infra | infra_master | Frequency, Tenor, AssetClass, RateType 定義 | 変更対象 |
+| Infra | infra_domain | Frequency, Tenor, AssetClass, RateType 定義 | 変更対象 |
 | Pricer | pricer_models | BootstrapInterpolation, StochasticModelEnum, CurveName 定義 | 一部変更 |
 
 ## Requirements Traceability
 
 | Requirement | Summary | Components | Interfaces | Flows |
 |-------------|---------|------------|------------|-------|
-| 1.1-1.4 | Frequency を高頻度→低頻度順に | Frequency (infra_master, pricer_models) | Ord, periods_per_year() | - |
-| 2.1-2.3 | RateType をアセットクラス別に | RateType (infra_master) | Ord | - |
+| 1.1-1.4 | Frequency を高頻度→低頻度順に | Frequency (infra_domain, pricer_models) | Ord, periods_per_year() | - |
+| 2.1-2.3 | RateType をアセットクラス別に | RateType (infra_domain) | Ord | - |
 | 3.1-3.3 | StochasticModelEnum を複雑度順に | StochasticModelEnum (pricer_models) | Ord | - |
 | 4.1-4.2 | BootstrapInterpolation を使用頻度順に | BootstrapInterpolation (pricer_models) | Default | - |
 | 5.1-5.2 | CurveName を論理グループ順に | CurveName (pricer_models) | Ord | - |
@@ -85,13 +85,13 @@ graph LR
 
 | Component | Domain/Layer | Intent | Req Coverage | Key Dependencies | Contracts |
 |-----------|--------------|--------|--------------|------------------|-----------|
-| Frequency | infra_master/time | 支払頻度定義 | 1.1-1.4 | - | Ord, Display |
-| RateType | infra_master/market | レートタイプ定義 | 2.1-2.3 | - | Ord |
+| Frequency | infra_domain/time | 支払頻度定義 | 1.1-1.4 | - | Ord, Display |
+| RateType | infra_domain/market | レートタイプ定義 | 2.1-2.3 | - | Ord |
 | StochasticModelEnum | pricer_models/models | 確率モデル列挙 | 3.1-3.3 | GBM, Heston, SABR, HW, CIR | Ord |
 | BootstrapInterpolation | pricer_models/market | 補間方式定義 | 4.1-4.2 | - | Default |
 | CurveName | pricer_models/market | カーブ名定義 | 5.1-5.2 | - | Ord |
 
-### infra_master Layer
+### infra_domain Layer
 
 #### Frequency
 
@@ -393,7 +393,7 @@ N/A - リファクタリングのため新規エラーなし。
 - 既存順序が正しい enum（RateType, StochasticModelEnum, CurveName）にドキュメント追加
 
 **Phase 2: Frequency 順序変更**
-- infra_master::Frequency の variant 順序を変更
+- infra_domain::Frequency の variant 順序を変更
 - pricer_models::bootstrapping::Frequency の順序を同期
 
 **Phase 3: BootstrapInterpolation 調整**

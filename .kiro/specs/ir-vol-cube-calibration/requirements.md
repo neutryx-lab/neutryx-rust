@@ -12,10 +12,10 @@
 
 #### Acceptance Criteria
 
-1. The `infra_master::trade::instrument_def::rates` shall EuropeanSwaptionをexpiry、tenor、strike、payer/receiver、exercise_styleフィールドで定義する。
-2. The `infra_master::trade::instrument_def::rates` shall CapFloorをcap_strike、floor_strike、underlying_tenor、payment_frequencyフィールドで定義する。
-3. The `infra_master::trade::convention::swaption` shall USD（SOFR）、EUR（ESTR）、JPY（TONA）のswaption conventionを定義する。
-4. The `infra_master::trade::convention::capfloor` shall USD/EUR/JPYのcap/floor conventionを定義する。
+1. The `infra_domain::trade::instrument_def::rates` shall EuropeanSwaptionをexpiry、tenor、strike、payer/receiver、exercise_styleフィールドで定義する。
+2. The `infra_domain::trade::instrument_def::rates` shall CapFloorをcap_strike、floor_strike、underlying_tenor、payment_frequencyフィールドで定義する。
+3. The `infra_domain::trade::convention::swaption` shall USD（SOFR）、EUR（ESTR）、JPY（TONA）のswaption conventionを定義する。
+4. The `infra_domain::trade::convention::capfloor` shall USD/EUR/JPYのcap/floor conventionを定義する。
 5. When SwaptionまたはCapFloorが構築される, the instrument shall underlying swap/cap scheduleを自動生成する。
 6. If 無効なstrike/expiry/tenor組み合わせが指定された, then the system shall `InstrumentError`を返す。
 7. The instrument definitions shall `serde`によるJSON/TOML serialisation/deserialisationをサポートする。

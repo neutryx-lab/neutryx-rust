@@ -25,7 +25,7 @@ pricer_models = { path = "../pricer_models" }
 pricer_pricing = { path = "../pricer_pricing" }
 pricer_risk = { path = "../pricer_risk" }
 infra_config = { path = "../infra_config" }
-infra_master = { path = "../infra_master" }
+infra_domain = { path = "../infra_domain" }
 
 [features]
 default = []

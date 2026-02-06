@@ -37,7 +37,7 @@
 1. The TradeCompiler trait shall define a `compile` method accepting a `&Trade` and returning `Result<PricingKernel, CompileError>`.
 2. When a Trade with fixed legs is compiled, the TradeCompiler shall expand all payment schedules to individual cashflow entries.
 3. When a Trade with floating legs is compiled, the TradeCompiler shall resolve rate index references to forward index IDs.
-4. When a Trade is compiled, the TradeCompiler shall apply business day adjustments using the calendar from `infra_master`.
+4. When a Trade is compiled, the TradeCompiler shall apply business day adjustments using the calendar from `infra_domain`.
 5. When a Trade is compiled, the TradeCompiler shall pre-compute year fractions based on the specified DayCountConvention.
 6. If a Trade contains an unsupported instrument type, then the TradeCompiler shall return a `CompileError::UnsupportedInstrument`.
 7. If a Trade references an undefined rate index, then the TradeCompiler shall return a `CompileError::UnknownIndex`.
@@ -121,7 +121,7 @@
 2. The PricingKernel shall store pre-computed year fractions (τ) at compile time.
 3. When evaluating, the engine shall compute relative time-to-maturity (`t`) dynamically from valuation date.
 4. The separation shall allow re-evaluation at different valuation dates without recompilation.
-5. The date representation shall be compatible with `infra_master::time` calendar functions.
+5. The date representation shall be compatible with `infra_domain::time` calendar functions.
 
 ### Requirement 10: A-I-P-Sアーキテクチャ適合
 
@@ -133,7 +133,7 @@
 3. The pricing engine integration shall be in `pricer_pricing` (L3) for Monte Carlo and analytical evaluation.
 4. The portfolio-level orchestration shall be in `pricer_risk` (L4) for batched evaluation and risk scenarios.
 5. The PricingKernel shall not depend on any Service (S) or Adapter (A) layer crates.
-6. The TradeCompiler shall use `infra_master` types (Trade, Calendar, DayCountConvention) as input.
+6. The TradeCompiler shall use `infra_domain` types (Trade, Calendar, DayCountConvention) as input.
 7. The design shall follow the 3-stage rocket pattern: Definition (L2) → Linking (Context) → Execution (Kernel).
 
 ### Requirement 11: パフォーマンス最適化

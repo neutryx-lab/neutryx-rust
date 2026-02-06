@@ -6,7 +6,7 @@
 
 **Key Design Decisions**:
 1. **Hybrid Approach**: 既存コンポーネントの拡張と新規モジュール作成の組み合わせ
-2. **A-I-P-S準拠**: インストルメント定義は`infra_master`、計算ロジックは`pricer_models`に配置
+2. **A-I-P-S準拠**: インストルメント定義は`infra_domain`、計算ロジックは`pricer_models`に配置
 3. **Generic `<T: Float>`**: 全コンポーネントでAAD互換性を維持
 4. **Phase-based Implementation**: 4フェーズでリスク分散
 
@@ -111,7 +111,7 @@ Vol Surface (Req 3.2)
 
 | Layer | Components | Crate |
 |-------|------------|-------|
-| **I (Infra)** | FxVolInstrument, FxSwapInstrument, CrossCurrencyBasisSwap, Conventions | `infra_master` |
+| **I (Infra)** | FxVolInstrument, FxSwapInstrument, CrossCurrencyBasisSwap, Conventions | `infra_domain` |
 | **P (Pricer)** | FxCurve, FxVolSurface, Builders, LazyWrappers | `pricer_models` |
 | **S (Service/Demo)** | REST handlers, WebSocket (future) | `demo/gui` |
 
@@ -213,7 +213,7 @@ sequenceDiagram
 
 ### Component: FxVolInstrument
 
-**Location**: `infra_master/src/trade/instrument_def/fx_vol.rs`
+**Location**: `infra_domain/src/trade/instrument_def/fx_vol.rs`
 
 **Intent**: BF/RR/ATMインストルメントを標準的なマーケットコンベンションで表現
 
@@ -300,7 +300,7 @@ impl Default for FxVolConvention {
 
 ### Component: FxSwapInstrument
 
-**Location**: `infra_master/src/trade/instrument_def/fx.rs` (extension)
+**Location**: `infra_domain/src/trade/instrument_def/fx.rs` (extension)
 
 **Intent**: 短期FXフォワードポイント構築のためのFXスワップ表現
 
@@ -364,7 +364,7 @@ impl FxSwapInstrument {
 
 ### Component: CrossCurrencyBasisSwap
 
-**Location**: `infra_master/src/trade/instrument_def/xccy.rs` (new)
+**Location**: `infra_domain/src/trade/instrument_def/xccy.rs` (new)
 
 **Intent**: 中長期FXカーブ構築のためのXCCYベーシススワップ表現
 

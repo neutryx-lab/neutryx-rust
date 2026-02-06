@@ -82,8 +82,8 @@
 //!     PortfolioBuilder, Trade, TradeId, Counterparty, CounterpartyId,
 //!     NettingSet, NettingSetId, CreditParams,
 //! };
-//! use infra_master::Currency;
-//! use infra_master::trade::{
+//! use infra_domain::Currency;
+//! use infra_domain::trade::{
 //!     PricingInstrument, VanillaOption, InstrumentParams, PayoffType, ExerciseStyle,
 //! };
 //!
@@ -122,22 +122,10 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(rustdoc::private_intra_doc_links)]
 
-pub mod demo;
 pub mod engine;
-/// Enzyme autodiff bindings for risk calculations.
-///
-/// This module provides the interface for Enzyme LLVM-level automatic
-/// differentiation. Enzyme operates at the LLVM IR level, enabling
-/// high-performance gradient computation for financial derivative pricing.
-pub mod enzyme;
-pub mod exposure;
 pub mod greeks;
-pub mod irs_greeks;
-pub mod parallel;
 pub mod portfolio;
 pub mod scenarios;
-pub mod soa;
-pub mod xva;
 
 // Re-export commonly used types
 // Risk Engine facade
@@ -146,35 +134,10 @@ pub use engine::{
     PerformanceMetrics, PortfolioRiskResult, RiskEngine, RiskEngineConfig, RiskError, RiskResult,
     ScenarioGreeksResult, ScenarioPortfolioResult,
 };
-// Enzyme AD types
-pub use enzyme::{gradient, gradient_with_step, ADMode, Activity};
-pub use exposure::ExposureCalculator;
+// AD types (automatic differentiation)
+pub use greeks::ad::{gradient, gradient_with_step, ADMode, Activity};
 pub use greeks::{
     GreeksConfig, GreeksConfigBuilder, GreeksConfigError, GreeksError, GreeksMode, GreeksResult,
-};
-pub use irs_greeks::{
-    BenchmarkConfig, BenchmarkError, BenchmarkRunner, DeltaBenchmarkResult, FullBenchmarkResult,
-    IrsDeltaResult, IrsGreeksCalculator, IrsGreeksConfig, IrsGreeksError, IrsGreeksResult,
-    IrsLazyEvaluator, PvBenchmarkResult, ScalabilityResult, SingleDeltaBenchmarkResult, SwapId,
-    SwapParams, TenorPoint, TimingStats,
-};
-pub use parallel::{
-    create_shared_monitor, MemoryMonitor, MemoryMonitorConfig, MemoryStats, ParallelConfig,
-    SharedMemoryMonitor, DEFAULT_BATCH_SIZE,
-};
-// TODO: Re-enable when rates instruments are restored
-// pub use parallel::{
-//     ParallelGreeksConfig, ParallelGreeksError, ParallelGreeksStats,
-//     ParallelPortfolioGreeksCalculator, PortfolioGreeksResult,
-// };
-pub use portfolio::{
-    CollateralAgreement, Counterparty, CounterpartyId, CreditParams, CreditRating, NettingSet,
-    NettingSetId, Portfolio, PortfolioBuilder, PortfolioError, Trade, TradeBuilder, TradeId,
-};
-pub use scenarios::{
-    AggregationMethod, BumpScenario, CurveShiftError, CurveShiftSpec, CurveShiftType, CurveShifter,
-    GreeksAggregator, GreeksResultByFactor, PortfolioGreeks, PresetScenario, PresetScenarioType,
-    RiskFactorId, RiskFactorShift, Scenario, ScenarioEngine, ScenarioPnL, ScenarioResult,
 };
 // TODO: Re-enable when rates instruments are restored
 // pub use scenarios::{
@@ -183,9 +146,19 @@ pub use scenarios::{
 //     IrsGreeksByFactorCalculator, KeyRateDurationEntry, KeyRateDurationResult,
 //     STANDARD_TENOR_LABELS, STANDARD_TENOR_POINTS,
 // };
-pub use soa::{ExposureSoA, TradeSoA};
-pub use xva::{
+pub use portfolio::xva::{
     compute_cva, compute_cva_with_survival, compute_dva, compute_dva_with_survival, compute_fba,
-    compute_fca, compute_fva, generate_flat_discount_factors, CounterpartyXva, FundingParams,
-    NettingSetXva, OwnCreditParams, PortfolioXva, XvaCalculator, XvaConfig, XvaError,
+    compute_fca, compute_fva, generate_flat_discount_factors, CounterpartyXva, ExposureSoA,
+    FundingParams, NettingSetXva, OwnCreditParams, PortfolioXva, XvaCalculator, XvaConfig,
+    XvaError,
+};
+pub use portfolio::{
+    CollateralAgreement, Counterparty, CounterpartyId, CreditParams, CreditRating,
+    ExposureCalculator, NettingSet, NettingSetId, Portfolio, PortfolioBuilder, PortfolioError,
+    Trade, TradeBuilder, TradeId,
+};
+pub use scenarios::{
+    AggregationMethod, BumpScenario, CurveShiftError, CurveShiftSpec, CurveShiftType, CurveShifter,
+    GreeksAggregator, GreeksResultByFactor, PortfolioGreeks, PresetScenario, PresetScenarioType,
+    RiskFactorId, RiskFactorShift, Scenario, ScenarioEngine, ScenarioPnL, ScenarioResult,
 };

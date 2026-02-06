@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  FpML 5.12 FX Vanilla Option
+  EUR/USD 1Y Call Option - EUR 25M, Strike 1.1000
+-->
+<dataDocument xmlns="http://www.fpml.org/FpML-5/confirmation"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://www.fpml.org/FpML-5/confirmation fpml-main-5-12.xsd"
+              fpmlVersion="5-12">
+  <trade>
+    <tradeHeader>
+      <partyTradeIdentifier>
+        <partyReference href="FB_NA"/>
+        <tradeId tradeIdScheme="http://www.frictionalbank.com/trade-id">T20002-01</tradeId>
+      </partyTradeIdentifier>
+      <partyTradeIdentifier>
+        <partyReference href="GOLDMAN"/>
+        <tradeId tradeIdScheme="http://www.goldmansachs.com/trade-id">GS-2024-FXO-77777</tradeId>
+      </partyTradeIdentifier>
+      <tradeDate>2024-10-15</tradeDate>
+      <book>FX_G10</book>
+    </tradeHeader>
+    <fxOption>
+      <buyerPartyReference href="FB_NA"/>
+      <sellerPartyReference href="GOLDMAN"/>
+      <expiryDateTime>
+        <expiryDate>2025-10-15</expiryDate>
+        <expiryTime>
+          <hourMinuteTime>10:00:00</hourMinuteTime>
+          <businessCenter>USNY</businessCenter>
+        </expiryTime>
+      </expiryDateTime>
+      <cutName>NewYork</cutName>
+      <valueDate>2025-10-17</valueDate>
+      <putCurrencyAmount>
+        <currency>USD</currency>
+        <amount>27500000</amount>
+      </putCurrencyAmount>
+      <callCurrencyAmount>
+        <currency>EUR</currency>
+        <amount>25000000</amount>
+      </callCurrencyAmount>
+      <strike>
+        <rate>1.1000</rate>
+        <strikeQuoteBasis>CallCurrencyPerPutCurrency</strikeQuoteBasis>
+      </strike>
+      <spotRate>1.0850</spotRate>
+      <features>
+        <asian>
+          <primaryRateSource>
+            <rateSource>Reuters</rateSource>
+            <rateSourcePage>WMRSPOT01</rateSourcePage>
+          </primaryRateSource>
+        </asian>
+      </features>
+      <premium>
+        <payerPartyReference href="FB_NA"/>
+        <receiverPartyReference href="GOLDMAN"/>
+        <paymentAmount>
+          <currency>USD</currency>
+          <amount>625000</amount>
+        </paymentAmount>
+        <paymentDate>
+          <adjustableDate>
+            <unadjustedDate>2024-10-17</unadjustedDate>
+            <dateAdjustments>
+              <businessDayConvention>FOLLOWING</businessDayConvention>
+              <businessCenters>
+                <businessCenter>USNY</businessCenter>
+                <businessCenter>EUTA</businessCenter>
+              </businessCenters>
+            </dateAdjustments>
+          </adjustableDate>
+        </paymentDate>
+      </premium>
+    </fxOption>
+  </trade>
+  <party id="FB_NA">
+    <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">549300EXAMPLE0001NA</partyId>
+    <partyName>FrictionalBank N.A.</partyName>
+  </party>
+  <party id="GOLDMAN">
+    <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">W22LROWP2IHZNBB6K528</partyId>
+    <partyName>Goldman Sachs International</partyName>
+  </party>
+</dataDocument>

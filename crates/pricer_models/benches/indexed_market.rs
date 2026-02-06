@@ -8,7 +8,7 @@
 #![allow(missing_docs)]
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-use infra_master::{trade::instrument_def::CurrencyPair, Currency, Date, RateIndex};
+use infra_domain::{trade::instrument_def::CurrencyPair, Currency, Date, RateIndex};
 use pricer_models::market::{
     curves::FlatCurve, surfaces::FlatVol, IndexedMarket, IndexedMarketBuilder,
 };

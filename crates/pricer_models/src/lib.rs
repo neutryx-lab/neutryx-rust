@@ -31,9 +31,21 @@
 //! - Instrument definitions (vanilla options, barriers, swaps, etc.)
 //! - Payoff functions with smooth approximations
 //! - Stochastic models (GBM, Heston, etc.)
-//! - Market data structures (curves, surfaces)
-//! - Analytical formulas for validation
+//! - Yield curve bootstrapping and calibration
+//! - Analytical pricing with instrument integration
 //! - Model calibration to market data
+//!
+//! ## Module Organisation
+//!
+//! - [`stochastic`] - Stochastic process models (GBM, Heston, Hull-White, CIR)
+//! - [`analytic`] - Analytical pricing with instrument wrappers
+//! - [`builder`] - Yield curve bootstrapping and market data calibration
+//! - [`compiler`] - Instrument compilation for pricing engines
+//!
+//! ## Analytical Formulas
+//!
+//! Pure mathematical formulas are in `pricer_core::math::formulas`.
+//! The [`analytic`] module re-exports these and adds instrument integration.
 //!
 //! ## Design Principles
 //!
@@ -45,29 +57,15 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(rustdoc::private_intra_doc_links)]
 
-pub mod analytical;
+pub mod analytic;
+pub mod builder;
 pub mod compiler;
-pub mod demo;
 mod direction_ext;
+pub mod jump;
 pub mod market;
-pub mod models;
+pub mod stochastic;
 
-// Re-export instrument types from infra_master for backwards compatibility
-// This replaces the former pricer_models::instruments module
-pub mod instruments {
-    //! Lightweight instrument definitions for analytical pricing models.
-    //!
-    //! This module re-exports types from `infra_master::trade` for backwards
-    //! compatibility. For full instrument definitions, see
-    //! `infra_master::trade`.
-
-    pub use infra_master::trade::{
-        ExerciseStyle, Forward, ForwardDirection as Direction, FxOptionType, InstrumentParams,
-        PayoffType, PricingInstrument as Instrument, VanillaOption,
-    };
-}
-
-// Re-export extension traits for direction types (infra_master types not
+// Re-export extension traits for direction types (infra_domain types not
 // re-exported)
 pub use direction_ext::{SwapDirectionExt, TradeDirectionExt};
 

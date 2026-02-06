@@ -6,7 +6,11 @@
 //! - Memory footprint with cached curves
 //!
 //! Run with: `cargo bench --bench curve_bootstrap`
+//!
+//! NOTE: This benchmark is feature-gated because the CurveEngine and related
+//! types from the calibration module are planned but not yet implemented.
 
+#![cfg(feature = "curve-engine")]
 #![allow(missing_docs)]
 
 use std::{sync::Arc, thread};
@@ -14,7 +18,7 @@ use std::{sync::Arc, thread};
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use pricer_models::market::{
     calibration::bootstrapping::{
-        BootstrapInstrument, BootstrappedCurve, CurveDefinition, CurveEngine, CurveEngineBuilder,
+        BootstrappedCurve, CalibrationInstrument, CurveDefinition, CurveEngine, CurveEngineBuilder,
         CurveKey, CurveResultCache, GenericBootstrapConfig, InstrumentTenor,
         SequentialBootstrapper,
     },
@@ -26,7 +30,7 @@ use pricer_models::market::{
 // ============================================================================
 
 /// Create a standard set of OIS instruments for benchmarking.
-fn create_ois_instruments(n: usize) -> Vec<BootstrapInstrument<f64>> {
+fn create_ois_instruments(n: usize) -> Vec<CalibrationInstrument<f64>> {
     let maturities = [
         0.25, 0.5, 1.0, 2.0, 3.0, 5.0, 7.0, 10.0, 15.0, 20.0, 30.0, 50.0,
     ];
@@ -38,7 +42,7 @@ fn create_ois_instruments(n: usize) -> Vec<BootstrapInstrument<f64>> {
         .enumerate()
         .map(|(i, &t)| {
             let rate = base_rate + (i as f64) * 0.002;
-            BootstrapInstrument::ois(t, rate)
+            CalibrationInstrument::ois(t, rate)
         })
         .collect()
 }
@@ -123,7 +127,7 @@ fn bench_cache_performance(c: &mut Criterion) {
     let sample_curve = create_sample_curve();
     let rates = vec![0.03_f64, 0.032, 0.034, 0.037, 0.039, 0.042];
     let config_hash = 12345_u64;
-    let key = CurveKey::from_rates(infra_master::market::RateIndex::Sofr, &rates, config_hash);
+    let key = CurveKey::from_rates(infra_domain::market::RateIndex::Sofr, &rates, config_hash);
     cache.insert(key.clone(), sample_curve.clone());
 
     // Benchmark cache hit (lookup existing)
@@ -135,7 +139,7 @@ fn bench_cache_performance(c: &mut Criterion) {
 
     // Benchmark cache miss (lookup non-existing)
     let miss_key =
-        CurveKey::from_rates(infra_master::market::RateIndex::Sofr, &[0.05, 0.06], 99999);
+        CurveKey::from_rates(infra_domain::market::RateIndex::Sofr, &[0.05, 0.06], 99999);
     group.bench_function("cache_miss_lookup", |b| {
         b.iter(|| {
             black_box(cache.lookup(black_box(&miss_key)));
@@ -149,7 +153,7 @@ fn bench_cache_performance(c: &mut Criterion) {
         b.iter(|| {
             counter += 1;
             let key = CurveKey::from_rates(
-                infra_master::market::RateIndex::Sofr,
+                infra_domain::market::RateIndex::Sofr,
                 &[counter as f64],
                 counter,
             );
@@ -162,7 +166,7 @@ fn bench_cache_performance(c: &mut Criterion) {
         let rates = [0.03_f64, 0.032, 0.034, 0.037, 0.039, 0.042];
         b.iter(|| {
             black_box(CurveKey::from_rates(
-                infra_master::market::RateIndex::Sofr,
+                infra_domain::market::RateIndex::Sofr,
                 black_box(&rates),
                 black_box(12345_u64),
             ));
@@ -227,7 +231,7 @@ fn bench_parallel_cache_access(c: &mut Criterion) {
     // Pre-populate cache with 100 curves
     for i in 0..100 {
         let key = CurveKey::from_rates(
-            infra_master::market::RateIndex::Sofr,
+            infra_domain::market::RateIndex::Sofr,
             &[i as f64 * 0.001],
             i as u64,
         );
@@ -249,7 +253,7 @@ fn bench_parallel_cache_access(c: &mut Criterion) {
                             let mut total = 0_usize;
                             for i in 0..100 {
                                 let key = CurveKey::from_rates(
-                                    infra_master::market::RateIndex::Sofr,
+                                    infra_domain::market::RateIndex::Sofr,
                                     &[((t * 100 + i) % 100) as f64 * 0.001],
                                     ((t * 100 + i) % 100) as u64,
                                 );
@@ -285,7 +289,7 @@ fn bench_parallel_cache_access(c: &mut Criterion) {
                         handles.push(thread::spawn(move || {
                             for i in 0..50 {
                                 let key = CurveKey::from_rates(
-                                    infra_master::market::RateIndex::Sofr,
+                                    infra_domain::market::RateIndex::Sofr,
                                     &[(t * 1000 + i) as f64 * 0.0001],
                                     (t * 1000 + i) as u64,
                                 );
@@ -331,7 +335,7 @@ fn bench_cache_memory_footprint(c: &mut Criterion) {
                     let cache: CurveResultCache<f64> = CurveResultCache::new(n);
                     for i in 0..n {
                         let key = CurveKey::from_rates(
-                            infra_master::market::RateIndex::Sofr,
+                            infra_domain::market::RateIndex::Sofr,
                             &[i as f64 * 0.001],
                             i as u64,
                         );
@@ -350,7 +354,7 @@ fn bench_cache_memory_footprint(c: &mut Criterion) {
     // Fill the cache
     for i in 0..100 {
         let key = CurveKey::from_rates(
-            infra_master::market::RateIndex::Sofr,
+            infra_domain::market::RateIndex::Sofr,
             &[i as f64 * 0.001],
             i as u64,
         );
@@ -362,7 +366,7 @@ fn bench_cache_memory_footprint(c: &mut Criterion) {
         b.iter(|| {
             counter += 1;
             let key = CurveKey::from_rates(
-                infra_master::market::RateIndex::Sofr,
+                infra_domain::market::RateIndex::Sofr,
                 &[counter as f64 * 0.0001],
                 counter,
             );

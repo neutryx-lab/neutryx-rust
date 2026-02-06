@@ -2,64 +2,32 @@
 //!
 //! Benchmarks cover:
 //! - Portfolio construction with varying trade counts
-//! - Exposure calculation (EE, EPE, PFE)
 //! - CVA/DVA computation
 //! - SoA data structure operations
-//! - IRS Greeks calculation (AAD vs Bump-and-Revalue comparison)
-//! - Parallel portfolio Greeks calculation
+//! - ImplicitSolver AAD curve sensitivity computation
 //!
 //! # Requirements Coverage
 //!
-//! - Requirement 3.1: Rayon parallel processing for 1000+ trades
-//! - Requirement 3.2: AAD vs Bump-and-Revalue speedup (5x target)
 //! - Requirement 3.4: Criterion format benchmark output
+//! - Requirement 10: Performance requirements (AAD 5x speedup)
 
 #![allow(missing_docs)]
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use pricer_core::{
-    market_data::curves::{CurveEnum, CurveName, CurveSet},
-    types::{
-        time::{Date, DayCountConvention},
-        Currency,
-    },
+use infra_domain::{
+    trade::{ExerciseStyle, InstrumentParams, PayoffType, PricingInstrument, VanillaOption},
+    Currency,
 };
-use pricer_models::{
-    instruments::{
-        rates::{FixedLeg, FloatingLeg, InterestRateSwap, RateIndex, SwapDirection},
-        ExerciseStyle, Instrument, InstrumentParams, PayoffType, VanillaOption,
-    },
-    schedules::{Frequency, ScheduleBuilder},
-};
+use nalgebra::{DMatrix, DVector};
 use pricer_risk::{
-    exposure::ExposureCalculator,
-    greeks::GreeksMode,
-    parallel::{ParallelGreeksConfig, ParallelPortfolioGreeksCalculator},
+    compute_cva, compute_dva, generate_flat_discount_factors,
+    greeks::ad::implicit_solver::ImplicitSolver,
     portfolio::{
         Counterparty, CounterpartyId, CreditParams, NettingSet, NettingSetId, PortfolioBuilder,
         Trade, TradeId,
     },
-    scenarios::{GreeksByFactorConfig, IrsGreeksByFactorCalculator},
-    soa::TradeSoA,
-    xva::{compute_cva, compute_dva, generate_flat_discount_factors, OwnCreditParams},
+    OwnCreditParams,
 };
-
-/// Generate synthetic exposure scenarios for benchmarking.
-fn generate_exposure_scenarios(n_scenarios: usize, n_times: usize) -> Vec<Vec<f64>> {
-    (0..n_scenarios)
-        .map(|s| {
-            (0..n_times)
-                .map(|t| {
-                    // Synthetic exposure: starts at 0, peaks mid-life, decays
-                    let mid = n_times as f64 / 2.0;
-                    let t_frac = t as f64;
-                    let base = 100.0 * (1.0 - (t_frac - mid).abs() / mid);
-                    base + (((s * 17 + t * 13) % 100) as f64 - 50.0) * 0.3 // Add noise
-                })
-                .collect()
-        })
-        .collect()
-}
 
 /// Generate time grid for XVA calculations.
 fn generate_time_grid(n_times: usize, maturity: f64) -> Vec<f64> {
@@ -68,76 +36,15 @@ fn generate_time_grid(n_times: usize, maturity: f64) -> Vec<f64> {
         .collect()
 }
 
-/// Benchmark Expected Exposure calculation.
-fn bench_expected_exposure(c: &mut Criterion) {
-    let mut group = c.benchmark_group("expected_exposure");
-
-    // Different scenario/time combinations
-    for (n_scenarios, n_times) in [(100, 50), (1000, 50), (10000, 50), (1000, 252)] {
-        let label = format!("{}scenarios_{}times", n_scenarios, n_times);
-        let values = generate_exposure_scenarios(n_scenarios, n_times);
-
-        group.bench_with_input(BenchmarkId::new("ee", &label), &values, |b, values| {
-            b.iter(|| ExposureCalculator::expected_exposure(black_box(values)));
-        });
-    }
-
-    group.finish();
-}
-
-/// Benchmark EPE (time-weighted) calculation.
-fn bench_expected_positive_exposure(c: &mut Criterion) {
-    let mut group = c.benchmark_group("expected_positive_exposure");
-
-    let values = generate_exposure_scenarios(1000, 50);
-    let ee = ExposureCalculator::expected_exposure(&values);
-    let time_grid = generate_time_grid(50, 5.0);
-
-    group.bench_function("epe_50_times", |b| {
-        b.iter(|| {
-            ExposureCalculator::expected_positive_exposure(black_box(&ee), black_box(&time_grid))
-        });
-    });
-
-    // Longer time grid
-    let values_long = generate_exposure_scenarios(1000, 252);
-    let ee_long = ExposureCalculator::expected_exposure(&values_long);
-    let time_grid_long = generate_time_grid(252, 5.0);
-
-    group.bench_function("epe_252_times", |b| {
-        b.iter(|| {
-            ExposureCalculator::expected_positive_exposure(
-                black_box(&ee_long),
-                black_box(&time_grid_long),
-            )
-        });
-    });
-
-    group.finish();
-}
-
-/// Benchmark PFE calculation (includes sorting per time step).
-fn bench_potential_future_exposure(c: &mut Criterion) {
-    let mut group = c.benchmark_group("potential_future_exposure");
-    group.sample_size(50); // PFE is more expensive due to sorting
-
-    for n_scenarios in [100, 1000, 10000] {
-        let values = generate_exposure_scenarios(n_scenarios, 50);
-        group.bench_with_input(
-            BenchmarkId::new("pfe_95", n_scenarios),
-            &values,
-            |b, values| {
-                b.iter(|| {
-                    ExposureCalculator::potential_future_exposure(
-                        black_box(values),
-                        black_box(0.95),
-                    )
-                });
-            },
-        );
-    }
-
-    group.finish();
+/// Generate synthetic expected exposure profile for benchmarking.
+fn generate_expected_exposure(n_times: usize) -> Vec<f64> {
+    (0..n_times)
+        .map(|t| {
+            let mid = n_times as f64 / 2.0;
+            let t_frac = t as f64;
+            100.0 * (1.0 - (t_frac - mid).abs() / mid)
+        })
+        .collect()
 }
 
 /// Benchmark CVA calculation.
@@ -147,17 +54,12 @@ fn bench_cva_calculation(c: &mut Criterion) {
     let credit = CreditParams::new(0.02, 0.4).unwrap();
 
     for n_times in [50, 100, 252, 500] {
-        let values = generate_exposure_scenarios(1000, n_times);
-        let ee = ExposureCalculator::expected_exposure(&values);
+        let ee = generate_expected_exposure(n_times);
         let time_grid = generate_time_grid(n_times, 5.0);
 
-        group.bench_with_input(
-            BenchmarkId::new("cva", n_times),
-            &(&ee, &time_grid, &credit),
-            |b, (ee, time_grid, credit)| {
-                b.iter(|| compute_cva(black_box(ee), black_box(time_grid), black_box(credit)));
-            },
-        );
+        group.bench_function(format!("cva_{}", n_times), |b| {
+            b.iter(|| compute_cva(black_box(&ee), black_box(&time_grid), black_box(&credit)));
+        });
     }
 
     group.finish();
@@ -167,15 +69,14 @@ fn bench_cva_calculation(c: &mut Criterion) {
 fn bench_dva_calculation(c: &mut Criterion) {
     let mut group = c.benchmark_group("dva_calculation");
 
-    let own_credit = OwnCreditParams::new(0.015, 0.35).unwrap(); // Own credit params
+    let own_credit = OwnCreditParams::new(0.015, 0.35).unwrap();
     let time_grid = generate_time_grid(50, 5.0);
 
-    // Generate negative exposure profile for DVA (we owe counterparty)
-    let neg_values: Vec<Vec<f64>> = generate_exposure_scenarios(1000, 50)
+    // Generate negative exposure profile for DVA
+    let ene: Vec<f64> = generate_expected_exposure(50)
         .into_iter()
-        .map(|v| v.into_iter().map(|x| -x).collect())
+        .map(|x| -x)
         .collect();
-    let ene = ExposureCalculator::expected_exposure(&neg_values);
 
     group.bench_function("dva_50_times", |b| {
         b.iter(|| {
@@ -196,7 +97,6 @@ fn bench_portfolio_construction(c: &mut Criterion) {
 
     for n_trades in [10, 100, 1000] {
         group.bench_with_input(BenchmarkId::new("build", n_trades), &n_trades, |b, &n| {
-            // Pre-create trades outside the benchmark loop
             let credit = CreditParams::new(0.02, 0.4).unwrap();
             let counterparty = Counterparty::new(CounterpartyId::new("CP001"), credit);
             let netting_set =
@@ -219,7 +119,7 @@ fn bench_portfolio_construction(c: &mut Criterion) {
 
                     Trade::new(
                         TradeId::new(format!("T{:05}", i)),
-                        Instrument::Vanilla(option),
+                        PricingInstrument::Vanilla(option),
                         Currency::USD,
                         CounterpartyId::new("CP001"),
                         NettingSetId::new("NS001"),
@@ -245,55 +145,6 @@ fn bench_portfolio_construction(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmark TradeSoA operations.
-fn bench_trade_soa(c: &mut Criterion) {
-    let mut group = c.benchmark_group("trade_soa");
-
-    for n_trades in [100, 1000, 10000] {
-        // Create trades for SoA benchmark (counterparty/netting_set not needed for
-        // TradeSoA)
-        let _credit = CreditParams::new(0.02, 0.4).unwrap();
-
-        let trades: Vec<Trade> = (0..n_trades)
-            .map(|i| {
-                let strike = 90.0 + (i as f64 / n_trades as f64) * 20.0;
-                let params = InstrumentParams::new(strike, 1.0, 1.0).unwrap();
-                let option = VanillaOption::new(
-                    params,
-                    if i % 2 == 0 {
-                        PayoffType::Call
-                    } else {
-                        PayoffType::Put
-                    },
-                    ExerciseStyle::European,
-                    1e-6,
-                );
-
-                Trade::new(
-                    TradeId::new(format!("T{:05}", i)),
-                    Instrument::Vanilla(option),
-                    Currency::USD,
-                    CounterpartyId::new("CP001"),
-                    NettingSetId::new("NS001"),
-                    1_000_000.0,
-                )
-            })
-            .collect();
-
-        // Benchmark SoA creation
-        let trade_refs: Vec<&Trade> = trades.iter().collect();
-        group.bench_with_input(
-            BenchmarkId::new("from_trades", n_trades),
-            &trade_refs,
-            |b, trade_refs| {
-                b.iter(|| TradeSoA::from_trades(black_box(trade_refs)));
-            },
-        );
-    }
-
-    group.finish();
-}
-
 /// Benchmark discount factor generation.
 fn bench_discount_factors(c: &mut Criterion) {
     let mut group = c.benchmark_group("discount_factors");
@@ -313,223 +164,37 @@ fn bench_discount_factors(c: &mut Criterion) {
     group.finish();
 }
 
-// =============================================================================
-// IRS Greeks Benchmarks (Task 3.2)
-// =============================================================================
-
-/// Helper function to create a test IRS swap with given notional and tenor
-fn create_benchmark_swap(notional: f64, tenor_years: u32) -> InterestRateSwap<f64> {
-    let start_date = Date::from_ymd(2025, 1, 15).unwrap();
-    let end_date = Date::from_ymd(2025 + tenor_years as i32, 1, 15).unwrap();
-
-    let fixed_schedule = ScheduleBuilder::new()
-        .start(start_date)
-        .end(end_date)
-        .frequency(Frequency::SemiAnnual)
-        .day_count(DayCountConvention::Thirty360)
-        .build()
-        .unwrap();
-
-    let floating_schedule = ScheduleBuilder::new()
-        .start(start_date)
-        .end(end_date)
-        .frequency(Frequency::Quarterly)
-        .day_count(DayCountConvention::ActualActual360)
-        .build()
-        .unwrap();
-
-    let fixed_leg = FixedLeg::new(fixed_schedule, 0.02, DayCountConvention::Thirty360);
-    let floating_leg = FloatingLeg::new(
-        floating_schedule,
-        0.0,
-        RateIndex::Sofr,
-        DayCountConvention::ActualActual360,
-    );
-
-    InterestRateSwap::new(
-        notional,
-        fixed_leg,
-        floating_leg,
-        Currency::USD,
-        SwapDirection::PayFixed,
-    )
-}
-
-/// Helper function to create test curves
-fn create_benchmark_curves() -> CurveSet<f64> {
-    let mut curves = CurveSet::new();
-    curves.insert(CurveName::Discount, CurveEnum::flat(0.03));
-    curves.insert(CurveName::Forward, CurveEnum::flat(0.035));
-    curves.set_discount_curve(CurveName::Discount);
-    curves
-}
-
-/// Helper function to create multiple test swaps with varying notionals
-fn create_benchmark_swaps(n: usize) -> Vec<InterestRateSwap<f64>> {
-    (0..n)
-        .map(|i| {
-            let notional = 10_000_000.0 * (1.0 + (i % 10) as f64 * 0.1);
-            let tenor = 5 + (i % 5) as u32; // Tenors from 5Y to 9Y
-            create_benchmark_swap(notional, tenor)
-        })
-        .collect()
-}
-
-/// Benchmark IRS Greeks calculation - Bump-and-Revalue method.
+/// Benchmark ImplicitSolver curve sensitivity computation (Implicit Function
+/// Theorem).
 ///
-/// # Requirements Coverage
-///
-/// - Requirement 3.2: Bump-and-Revalue baseline measurement
-fn bench_irs_greeks_bump(c: &mut Criterion) {
-    let mut group = c.benchmark_group("irs_greeks_bump");
-    group.sample_size(30); // Reduce sample size for expensive operations
+/// Requirements Coverage:
+/// - Requirement 10: AAD performance (5x speedup vs bump-and-revalue)
+fn bench_implicit_solver(c: &mut Criterion) {
+    let mut group = c.benchmark_group("implicit_solver");
 
-    let config = GreeksByFactorConfig::new()
-        .with_second_order(false)
-        .with_validation(true);
-    let calculator = IrsGreeksByFactorCalculator::new(config);
-    let curves = create_benchmark_curves();
-    let valuation_date = Date::from_ymd(2025, 1, 15).unwrap();
-
-    // Benchmark different swap tenors
-    for tenor in [5, 10, 15, 20] {
-        let swap = create_benchmark_swap(10_000_000.0, tenor);
-        group.bench_with_input(
-            BenchmarkId::new("first_order", format!("{}Y", tenor)),
-            &swap,
-            |b, swap| {
-                b.iter(|| {
-                    calculator.compute_first_order_greeks(
-                        black_box(swap),
-                        black_box(&curves),
-                        black_box(valuation_date),
-                    )
-                });
-            },
-        );
-    }
-
-    // Benchmark with second-order Greeks
-    let config_gamma = GreeksByFactorConfig::new()
-        .with_second_order(true)
-        .with_validation(true);
-    let calculator_gamma = IrsGreeksByFactorCalculator::new(config_gamma);
-    let swap_5y = create_benchmark_swap(10_000_000.0, 5);
-
-    group.bench_function("second_order_5Y", |b| {
-        b.iter(|| {
-            calculator_gamma.compute_second_order_greeks(
-                black_box(&swap_5y),
-                black_box(&curves),
-                black_box(valuation_date),
-            )
+    // Benchmark compute_curve_sensitivities with different matrix sizes
+    for n in [5, 10, 30, 50] {
+        // Create random Jacobian inverse and adjoint vector
+        let j_inv = DMatrix::from_fn(n, n, |i, j| {
+            if i == j {
+                0.99 - 0.01 * (i as f64)
+            } else {
+                0.01 / ((i as f64 - j as f64).abs() + 1.0)
+            }
         });
-    });
-
-    group.finish();
-}
-
-/// Benchmark AAD vs Bump-and-Revalue comparison.
-///
-/// Note: AAD mode currently falls back to bump-and-revalue when
-/// enzyme-ad feature is not enabled. This benchmark documents
-/// the baseline for comparison when AAD becomes available.
-///
-/// # Requirements Coverage
-///
-/// - Requirement 3.2: AAD vs Bump speedup comparison (target: 5x)
-fn bench_aad_vs_bump_comparison(c: &mut Criterion) {
-    let mut group = c.benchmark_group("aad_vs_bump");
-    group.sample_size(30);
-
-    let config = GreeksByFactorConfig::new()
-        .with_second_order(false)
-        .with_validation(true);
-    let calculator = IrsGreeksByFactorCalculator::new(config);
-    let curves = create_benchmark_curves();
-    let valuation_date = Date::from_ymd(2025, 1, 15).unwrap();
-    let swap = create_benchmark_swap(10_000_000.0, 10);
-
-    // Bump-and-Revalue baseline
-    group.bench_function("bump_10Y", |b| {
-        b.iter(|| {
-            calculator.compute_greeks_by_factor(
-                black_box(&swap),
-                black_box(&curves),
-                black_box(valuation_date),
-                black_box(GreeksMode::BumpRevalue),
-            )
-        });
-    });
-
-    // NumDual mode (analytical when available)
-    group.bench_function("numdual_10Y", |b| {
-        b.iter(|| {
-            calculator.compute_greeks_by_factor(
-                black_box(&swap),
-                black_box(&curves),
-                black_box(valuation_date),
-                black_box(GreeksMode::NumDual),
-            )
-        });
-    });
-
-    group.finish();
-}
-
-/// Benchmark parallel portfolio Greeks calculation.
-///
-/// # Requirements Coverage
-///
-/// - Requirement 3.1: Rayon parallel processing for 1000+ trades
-fn bench_parallel_portfolio_greeks(c: &mut Criterion) {
-    let mut group = c.benchmark_group("parallel_portfolio_greeks");
-    group.sample_size(20); // Portfolio computations are expensive
-
-    let curves = create_benchmark_curves();
-    let valuation_date = Date::from_ymd(2025, 1, 15).unwrap();
-
-    // Benchmark different portfolio sizes
-    for n_trades in [10, 50, 100, 200] {
-        let swaps = create_benchmark_swaps(n_trades);
-
-        // Sequential processing
-        let config_seq = ParallelGreeksConfig::new()
-            .with_batch_size(64)
-            .with_parallel_threshold(10000); // Force sequential
-
-        let calculator_seq = ParallelPortfolioGreeksCalculator::new(config_seq);
+        let adjoint = DVector::from_fn(n, |i, _| 100.0 * (1.0 - i as f64 / n as f64));
 
         group.bench_with_input(
-            BenchmarkId::new("sequential", n_trades),
-            &swaps,
-            |b, swaps| {
+            BenchmarkId::new("implicit_function_theorem", n),
+            &(j_inv.clone(), adjoint.clone()),
+            |b, (j_inv, adjoint)| {
                 b.iter(|| {
-                    calculator_seq.compute_portfolio_greeks_sequential(
-                        black_box(swaps),
-                        black_box(&curves),
-                        black_box(valuation_date),
-                    )
-                });
-            },
-        );
-
-        // Parallel processing
-        let config_par = ParallelGreeksConfig::new()
-            .with_batch_size(32)
-            .with_parallel_threshold(10); // Force parallel
-
-        let calculator_par = ParallelPortfolioGreeksCalculator::new(config_par);
-
-        group.bench_with_input(
-            BenchmarkId::new("parallel", n_trades),
-            &swaps,
-            |b, swaps| {
-                b.iter(|| {
-                    calculator_par.compute_portfolio_greeks_parallel(
-                        black_box(swaps),
-                        black_box(&curves),
-                        black_box(valuation_date),
+                    black_box(
+                        ImplicitSolver::compute_curve_sensitivities(
+                            black_box(j_inv),
+                            black_box(adjoint),
+                        )
+                        .unwrap(),
                     )
                 });
             },
@@ -539,93 +204,92 @@ fn bench_parallel_portfolio_greeks(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmark batch size impact on parallel performance.
-///
-/// # Requirements Coverage
-///
-/// - Requirement 3.1: Optimal batch size tuning
-fn bench_batch_size_tuning(c: &mut Criterion) {
-    let mut group = c.benchmark_group("batch_size_tuning");
-    group.sample_size(20);
+/// Benchmark ImplicitSolver finite difference fallback.
+fn bench_implicit_solver_fd(c: &mut Criterion) {
+    let mut group = c.benchmark_group("implicit_solver_fd");
 
-    let swaps = create_benchmark_swaps(200);
-    let curves = create_benchmark_curves();
-    let valuation_date = Date::from_ymd(2025, 1, 15).unwrap();
+    for n in [5, 10, 30] {
+        // Simple quadratic loss function for testing
+        let nodes = DVector::from_fn(n, |i, _| 0.03 + 0.002 * i as f64);
 
-    // Test different batch sizes
-    for batch_size in [16, 32, 64, 128] {
-        let config = ParallelGreeksConfig::new()
-            .with_batch_size(batch_size)
-            .with_parallel_threshold(10);
-
-        let calculator = ParallelPortfolioGreeksCalculator::new(config);
-
-        group.bench_with_input(BenchmarkId::new("batch", batch_size), &swaps, |b, swaps| {
-            b.iter(|| {
-                calculator.compute_portfolio_greeks_parallel(
-                    black_box(swaps),
-                    black_box(&curves),
-                    black_box(valuation_date),
-                )
-            });
-        });
+        group.bench_with_input(
+            BenchmarkId::new("finite_difference", n),
+            &nodes,
+            |b, nodes| {
+                // Loss function: L(x) = sum(x_i^2)
+                let loss_fn = |x: &DVector<f64>| x.iter().map(|&v| v * v).sum();
+                b.iter(|| {
+                    black_box(ImplicitSolver::compute_curve_sensitivities_fd(
+                        black_box(&loss_fn),
+                        black_box(nodes),
+                        black_box(1e-6),
+                    ))
+                });
+            },
+        );
     }
 
     group.finish();
 }
 
-/// Benchmark portfolio scalability (1000+ trades).
+/// Benchmark ImplicitSolver vs finite difference comparison.
 ///
-/// # Requirements Coverage
-///
-/// - Requirement 3.1: Large portfolio (1000+ trades) performance
-fn bench_large_portfolio_scalability(c: &mut Criterion) {
-    let mut group = c.benchmark_group("large_portfolio_scalability");
-    group.sample_size(10); // Very expensive benchmarks
+/// This demonstrates the speedup of using the Implicit Function Theorem
+/// with pre-computed Jacobian inverse vs bump-and-revalue.
+fn bench_implicit_vs_fd(c: &mut Criterion) {
+    let mut group = c.benchmark_group("implicit_vs_fd_comparison");
 
-    let curves = create_benchmark_curves();
-    let valuation_date = Date::from_ymd(2025, 1, 15).unwrap();
+    let n = 30; // Typical curve pillar count
 
-    // Large portfolio benchmarks
-    for n_trades in [500, 1000] {
-        let swaps = create_benchmark_swaps(n_trades);
+    // Setup Jacobian inverse (from calibration)
+    let j_inv = DMatrix::from_fn(n, n, |i, j| {
+        if i == j {
+            0.99 - 0.01 * (i as f64)
+        } else {
+            0.01 / ((i as f64 - j as f64).abs() + 1.0)
+        }
+    });
+    let adjoint = DVector::from_fn(n, |i, _| 100.0 * (1.0 - i as f64 / n as f64));
+    let nodes = DVector::from_fn(n, |i, _| 0.03 + 0.002 * i as f64);
 
-        let config = ParallelGreeksConfig::new()
-            .with_batch_size(64)
-            .with_parallel_threshold(100)
-            .with_second_order(false);
-
-        let calculator = ParallelPortfolioGreeksCalculator::new(config);
-
-        group.bench_with_input(BenchmarkId::new("trades", n_trades), &swaps, |b, swaps| {
-            b.iter(|| {
-                calculator.compute_portfolio_greeks(
-                    black_box(swaps),
-                    black_box(&curves),
-                    black_box(valuation_date),
-                )
-            });
+    // Implicit Function Theorem approach
+    group.bench_function("implicit_30_nodes", |b| {
+        b.iter(|| {
+            black_box(
+                ImplicitSolver::compute_curve_sensitivities(black_box(&j_inv), black_box(&adjoint))
+                    .unwrap(),
+            )
         });
-    }
+    });
+
+    // Finite difference (bump-and-revalue) approach
+    group.bench_function("finite_diff_30_nodes", |b| {
+        let loss_fn = |x: &DVector<f64>| x.iter().map(|&v| v * v).sum();
+        b.iter(|| {
+            black_box(ImplicitSolver::compute_curve_sensitivities_fd(
+                black_box(&loss_fn),
+                black_box(&nodes),
+                black_box(1e-6),
+            ))
+        });
+    });
 
     group.finish();
 }
 
 criterion_group!(
     benches,
-    bench_expected_exposure,
-    bench_expected_positive_exposure,
-    bench_potential_future_exposure,
     bench_cva_calculation,
     bench_dva_calculation,
     bench_portfolio_construction,
-    bench_trade_soa,
     bench_discount_factors,
-    // Task 3.2: IRS Greeks benchmarks
-    bench_irs_greeks_bump,
-    bench_aad_vs_bump_comparison,
-    bench_parallel_portfolio_greeks,
-    bench_batch_size_tuning,
-    bench_large_portfolio_scalability,
 );
-criterion_main!(benches);
+
+criterion_group!(
+    implicit_solver_benches,
+    bench_implicit_solver,
+    bench_implicit_solver_fd,
+    bench_implicit_vs_fd,
+);
+
+criterion_main!(benches, implicit_solver_benches);

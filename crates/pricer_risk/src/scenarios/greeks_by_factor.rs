@@ -422,10 +422,10 @@ mod tests {
 
     #[test]
     fn test_greeks_result_by_factor_with_capacity() {
-        let results = GreeksResultByFactor::<f64>::with_capacity(GreeksMode::NumDual, 10);
+        let results = GreeksResultByFactor::<f64>::with_capacity(GreeksMode::BumpRevalue, 10);
 
         assert!(results.is_empty());
-        assert_eq!(results.mode(), GreeksMode::NumDual);
+        assert_eq!(results.mode(), GreeksMode::BumpRevalue);
     }
 
     #[test]
@@ -571,10 +571,10 @@ mod tests {
             GreeksResult::new(100.0, 0.1),
         );
 
-        let results = GreeksResultByFactor::from_map(map, GreeksMode::NumDual, 2_000_000);
+        let results = GreeksResultByFactor::from_map(map, GreeksMode::BumpRevalue, 2_000_000);
 
         assert_eq!(results.len(), 1);
-        assert_eq!(results.mode(), GreeksMode::NumDual);
+        assert_eq!(results.mode(), GreeksMode::BumpRevalue);
         assert_eq!(results.computation_time_ns(), 2_000_000);
     }
 

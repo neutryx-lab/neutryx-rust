@@ -1,0 +1,22 @@
+{
+  "_deprecated": "This file is deprecated. Use GET /api/config endpoint instead, which returns infra_config::AppConfig with enums from Rust source.",
+  "_comment": "Enum values for GUI dropdowns (reference only - actual values from crates)",
+  "quote_type": ["Bid", "Ask", "Mid", "Last"],
+  "asset_class": ["rates", "fx", "equity", "credit", "commodity"],
+  "instrument_type": [
+    "equity_vanilla_option",
+    "fx_option",
+    "irs",
+    "deposit",
+    "fra",
+    "futures",
+    "ois",
+    "basis_swap"
+  ],
+  "option_type": ["call", "put"],
+  "greeks_method": ["aad", "bump"],
+  "pricing_method": ["analytical", "monte_carlo", "tree"],
+  "tree_type": ["binomial", "trinomial"],
+  "shift_type": ["absolute", "relative"],
+  "second_order_mode": ["parallel", "serial"]
+}

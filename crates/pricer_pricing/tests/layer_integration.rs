@@ -6,8 +6,8 @@
 //!
 //! Requirements Coverage: 4.1, 4.2, 4.5
 
-// TODO: l1l2-integration feature disabled pending refactoring - instruments moved to infra_master
-#![cfg(all(feature = "l1l2-integration", feature = "__disabled__"))]
+// TODO: l1l2-integration feature disabled pending refactoring - instruments moved to infra_domain
+#![cfg(any())] // Disabled: use cfg(any()) which never matches
 
 // =============================================================================
 // L1 Integration Tests (pricer_core)
@@ -58,11 +58,11 @@ fn test_yield_curve_import() {
 // L2 Integration Tests (pricer_models)
 // =============================================================================
 
-/// Test: pricer_models::models::stochastic is accessible
+/// Test: pricer_models::stochastic is accessible
 /// Requirement: 4.2
 #[test]
 fn test_stochastic_model_import() {
-    use pricer_models::models::stochastic::{SingleState, StochasticState};
+    use pricer_models::stochastic::{SingleState, StochasticState};
 
     let state = SingleState(100.0_f64);
     assert_eq!(state.get(0), Some(100.0));
@@ -73,8 +73,9 @@ fn test_stochastic_model_import() {
 /// Requirement: 4.2, 4.3
 #[test]
 fn test_instrument_enum_import() {
-    use pricer_models::instruments::{
-        Direction, ExerciseStyle, Forward, Instrument, InstrumentParams, PayoffType, VanillaOption,
+    use infra_domain::trade::{
+        ExerciseStyle, Forward, ForwardDirection as Direction, InstrumentParams, PayoffType,
+        PricingInstrument as Instrument, VanillaOption,
     };
 
     // Create vanilla option
@@ -102,10 +103,10 @@ fn test_instrument_enum_import() {
 /// Requirement: 4.1, 4.2
 #[test]
 fn test_l1_l2_combined_usage() {
-    use pricer_core::math::smoothing::smooth_max;
-    use pricer_models::instruments::{
-        ExerciseStyle, Instrument, InstrumentParams, PayoffType, VanillaOption,
+    use infra_domain::trade::{
+        ExerciseStyle, InstrumentParams, PayoffType, PricingInstrument as Instrument, VanillaOption,
     };
+    use pricer_core::math::smoothing::smooth_max;
 
     // Create option using L2
     let params = InstrumentParams::new(100.0_f64, 1.0, 1.0).unwrap();

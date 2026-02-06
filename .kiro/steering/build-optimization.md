@@ -189,7 +189,7 @@ cargo test --features "rates,credit"
 ```bash
 # Enzyme requires LLVM 18 plugin
 export RUSTFLAGS="-C llvm-args=-load=/usr/local/lib/LLVMEnzyme-18.so"
-cargo +nightly build -p pricer_pricing --features enzyme-ad
+cargo +nightly build -p pricer_risk --features enzyme-ad
 ```
 
 **Profile consideration**: Enzyme benefits most from `lto = true` and `codegen-units = 1`.

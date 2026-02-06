@@ -8,14 +8,13 @@ authors.workspace = true
 
 [dependencies]
 num-traits.workspace = true
-num-dual = { workspace = true, optional = true }
 chrono = { workspace = true, features = [] }
 thiserror.workspace = true
 serde = { workspace = true, features = ["derive"], optional = true }
-infra_master = { path = "../infra_master" }
+infra_domain = { path = "../infra_domain" }
 rayon = { workspace = true, optional = true }
-ndarray = { workspace = true, optional = true }
 nalgebra = { workspace = true, optional = true }
+nalgebra-sparse = { workspace = true, optional = true }
 rand = { workspace = true, optional = true }
 rand_distr = { workspace = true, optional = true }
 
@@ -35,13 +34,14 @@ name = "core"
 harness = false
 
 [features]
-default = ["num-dual-mode", "serde", "equity", "parallel", "external-numerics"]
-num-dual-mode = ["dep:num-dual"]  # Verification mode with dual numbers
+default = ["serde", "equity", "parallel", "external-numerics", "rng"]
 enzyme-mode = []                   # Production mode (Enzyme AD)
 execution-trace = []               # Execution trace mode for computation graph extraction
-serde = ["dep:serde", "chrono/serde", "infra_master/serde"]  # Serialisation support
+serde = ["dep:serde", "chrono/serde", "infra_domain/serde"]  # Serialisation support
 parallel = ["dep:rayon"]           # Parallel bootstrapping support
-linalg = ["dep:ndarray", "dep:nalgebra", "dep:rand", "dep:rand_distr"]  # Linear algebra support (includes multi-dimensional copula)
+rng = ["dep:rand", "dep:rand_distr"]  # Random number generation (PRNG, QMC placeholders)
+linalg = ["dep:nalgebra", "rng"]  # Linear algebra support (includes multi-dimensional copula)
+sparse = ["linalg", "dep:nalgebra-sparse"]  # Sparse matrix support (CSR/CSC, SparseLU)
 external-numerics = ["dep:argmin", "dep:argmin-math", "dep:levenberg-marquardt", "dep:nalgebra"]  # External optimisation libraries
 
 # Asset class features (trades/instruments)

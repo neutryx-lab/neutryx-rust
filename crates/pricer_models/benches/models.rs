@@ -8,14 +8,14 @@
 #![allow(missing_docs)]
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use infra_master::trade::{
+use infra_domain::trade::{
     ExerciseStyle, InstrumentParams, PayoffType, PricingInstrument, VanillaOption,
 };
-use pricer_core::math::smoothing::smooth_max;
-use pricer_models::{
-    analytical::distributions::{norm_cdf, norm_pdf},
-    models::{stochastic::StochasticModel, GBMModel, GBMParams},
+use pricer_core::math::{
+    distributions::{norm_cdf, norm_pdf},
+    smoothing::smooth_max,
 };
+use pricer_models::stochastic::{GBMModel, GBMParams, StochasticModel};
 
 /// Benchmark normal distribution CDF computation.
 fn bench_norm_cdf(c: &mut Criterion) {

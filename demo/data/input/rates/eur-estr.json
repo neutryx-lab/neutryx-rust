@@ -1,91 +1,215 @@
 {
   "index": "eur-estr",
   "currency": "EUR",
-  "reference_date": "2026-01-23",
+  "reference_date": "2026-01-29",
   "instruments": [
+    {
+      "type": "deposit",
+      "tenor": "O/N",
+      "tenor_years": 0.00274,
+      "rate": 0.0275,
+      "frequency": "annual",
+      "description": "ESTR overnight fixing (ECB deposit rate)"
+    },
+    {
+      "type": "deposit",
+      "tenor": "1W",
+      "tenor_years": 0.01923,
+      "rate": 0.0274,
+      "frequency": "annual"
+    },
+    {
+      "type": "deposit",
+      "tenor": "2W",
+      "tenor_years": 0.03846,
+      "rate": 0.0272,
+      "frequency": "annual"
+    },
     {
       "type": "deposit",
       "tenor": "1M",
       "tenor_years": 0.0833,
-      "rate": 0.0385,
+      "rate": 0.0268,
       "frequency": "annual"
     },
     {
-      "type": "deposit",
-      "tenor": "3M",
-      "tenor_years": 0.25,
-      "rate": 0.0380,
-      "frequency": "annual"
+      "type": "fra",
+      "tenor": "1x4",
+      "tenor_years": 0.3333,
+      "rate": 0.0255,
+      "frequency": "quarterly",
+      "description": "1x4 FRA"
     },
     {
-      "type": "deposit",
-      "tenor": "6M",
+      "type": "fra",
+      "tenor": "3x6",
       "tenor_years": 0.5,
-      "rate": 0.0365,
-      "frequency": "annual"
+      "rate": 0.0240,
+      "frequency": "quarterly",
+      "description": "3x6 FRA"
+    },
+    {
+      "type": "fra",
+      "tenor": "6x9",
+      "tenor_years": 0.75,
+      "rate": 0.0225,
+      "frequency": "quarterly",
+      "description": "6x9 FRA"
+    },
+    {
+      "type": "fra",
+      "tenor": "9x12",
+      "tenor_years": 1.0,
+      "rate": 0.0212,
+      "frequency": "quarterly",
+      "description": "9x12 FRA"
     },
     {
       "type": "ois",
       "tenor": "1Y",
       "tenor_years": 1.0,
-      "rate": 0.0340,
+      "rate": 0.0205,
+      "frequency": "annual"
+    },
+    {
+      "type": "ois",
+      "tenor": "18M",
+      "tenor_years": 1.5,
+      "rate": 0.0195,
       "frequency": "annual"
     },
     {
       "type": "ois",
       "tenor": "2Y",
       "tenor_years": 2.0,
-      "rate": 0.0285,
+      "rate": 0.0188,
       "frequency": "annual"
     },
     {
       "type": "ois",
       "tenor": "3Y",
       "tenor_years": 3.0,
-      "rate": 0.0275,
+      "rate": 0.0185,
+      "frequency": "annual"
+    },
+    {
+      "type": "ois",
+      "tenor": "4Y",
+      "tenor_years": 4.0,
+      "rate": 0.0190,
       "frequency": "annual"
     },
     {
       "type": "ois",
       "tenor": "5Y",
       "tenor_years": 5.0,
-      "rate": 0.0268,
+      "rate": 0.0198,
       "frequency": "annual"
     },
     {
       "type": "ois",
       "tenor": "7Y",
       "tenor_years": 7.0,
-      "rate": 0.0272,
+      "rate": 0.0218,
       "frequency": "annual"
     },
     {
       "type": "ois",
       "tenor": "10Y",
       "tenor_years": 10.0,
-      "rate": 0.0280,
+      "rate": 0.0245,
+      "frequency": "annual"
+    },
+    {
+      "type": "ois",
+      "tenor": "12Y",
+      "tenor_years": 12.0,
+      "rate": 0.0260,
       "frequency": "annual"
     },
     {
       "type": "ois",
       "tenor": "15Y",
       "tenor_years": 15.0,
-      "rate": 0.0295,
+      "rate": 0.0275,
       "frequency": "annual"
     },
     {
       "type": "ois",
       "tenor": "20Y",
       "tenor_years": 20.0,
-      "rate": 0.0305,
+      "rate": 0.0288,
+      "frequency": "annual"
+    },
+    {
+      "type": "ois",
+      "tenor": "25Y",
+      "tenor_years": 25.0,
+      "rate": 0.0292,
       "frequency": "annual"
     },
     {
       "type": "ois",
       "tenor": "30Y",
       "tenor_years": 30.0,
-      "rate": 0.0310,
+      "rate": 0.0295,
       "frequency": "annual"
+    },
+    {
+      "type": "event",
+      "id": "ECB-2026-02",
+      "event_date": "2026-03-05",
+      "expected_rate_spike": -0.0025,
+      "description": "ECB Meeting - 25bp cut expected"
+    },
+    {
+      "type": "event",
+      "id": "ECB-2026-03",
+      "event_date": "2026-04-16",
+      "expected_rate_spike": -0.0025,
+      "description": "ECB Meeting - 25bp cut expected"
+    },
+    {
+      "type": "event",
+      "id": "ECB-2026-04",
+      "event_date": "2026-06-04",
+      "expected_rate_spike": 0,
+      "description": "ECB Meeting - hold expected"
+    },
+    {
+      "type": "event",
+      "id": "ECB-2026-05",
+      "event_date": "2026-07-16",
+      "expected_rate_spike": -0.0025,
+      "description": "ECB Meeting - 25bp cut expected"
+    },
+    {
+      "type": "event",
+      "id": "ECB-2026-06",
+      "event_date": "2026-09-10",
+      "expected_rate_spike": 0,
+      "description": "ECB Meeting - hold expected"
+    },
+    {
+      "type": "event",
+      "id": "ECB-2026-07",
+      "event_date": "2026-10-29",
+      "expected_rate_spike": -0.0025,
+      "description": "ECB Meeting - 25bp cut expected"
+    },
+    {
+      "type": "event",
+      "id": "ECB-2026-08",
+      "event_date": "2026-12-17",
+      "expected_rate_spike": 0,
+      "description": "ECB Meeting - hold expected"
+    },
+    {
+      "type": "event",
+      "id": "EUR-TOY-2026",
+      "event_date": "2026-12-31",
+      "expected_rate_spike": 0.0005,
+      "description": "Year-end turn - liquidity premium"
     }
   ]
 }

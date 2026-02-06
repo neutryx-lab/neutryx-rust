@@ -1,91 +1,215 @@
 {
   "index": "jpy-tona",
   "currency": "JPY",
-  "reference_date": "2026-01-23",
+  "reference_date": "2026-01-29",
   "instruments": [
+    {
+      "type": "deposit",
+      "tenor": "O/N",
+      "tenor_years": 0.00274,
+      "rate": 0.0050,
+      "frequency": "annual",
+      "description": "TONA overnight fixing (BOJ policy rate)"
+    },
+    {
+      "type": "deposit",
+      "tenor": "1W",
+      "tenor_years": 0.01923,
+      "rate": 0.0052,
+      "frequency": "annual"
+    },
+    {
+      "type": "deposit",
+      "tenor": "2W",
+      "tenor_years": 0.03846,
+      "rate": 0.0055,
+      "frequency": "annual"
+    },
     {
       "type": "deposit",
       "tenor": "1M",
       "tenor_years": 0.0833,
-      "rate": -0.0005,
+      "rate": 0.0060,
       "frequency": "annual"
     },
     {
-      "type": "deposit",
-      "tenor": "3M",
-      "tenor_years": 0.25,
-      "rate": 0.0000,
-      "frequency": "annual"
+      "type": "fra",
+      "tenor": "1x4",
+      "tenor_years": 0.3333,
+      "rate": 0.0072,
+      "frequency": "quarterly",
+      "description": "1x4 FRA"
     },
     {
-      "type": "deposit",
-      "tenor": "6M",
+      "type": "fra",
+      "tenor": "3x6",
       "tenor_years": 0.5,
-      "rate": 0.0015,
-      "frequency": "annual"
+      "rate": 0.0085,
+      "frequency": "quarterly",
+      "description": "3x6 FRA"
+    },
+    {
+      "type": "fra",
+      "tenor": "6x9",
+      "tenor_years": 0.75,
+      "rate": 0.0095,
+      "frequency": "quarterly",
+      "description": "6x9 FRA"
+    },
+    {
+      "type": "fra",
+      "tenor": "9x12",
+      "tenor_years": 1.0,
+      "rate": 0.0105,
+      "frequency": "quarterly",
+      "description": "9x12 FRA"
     },
     {
       "type": "ois",
       "tenor": "1Y",
       "tenor_years": 1.0,
-      "rate": 0.0035,
+      "rate": 0.0095,
+      "frequency": "annual"
+    },
+    {
+      "type": "ois",
+      "tenor": "18M",
+      "tenor_years": 1.5,
+      "rate": 0.0108,
       "frequency": "annual"
     },
     {
       "type": "ois",
       "tenor": "2Y",
       "tenor_years": 2.0,
-      "rate": 0.0055,
+      "rate": 0.0118,
       "frequency": "annual"
     },
     {
       "type": "ois",
       "tenor": "3Y",
       "tenor_years": 3.0,
-      "rate": 0.0065,
+      "rate": 0.0132,
+      "frequency": "annual"
+    },
+    {
+      "type": "ois",
+      "tenor": "4Y",
+      "tenor_years": 4.0,
+      "rate": 0.0145,
       "frequency": "annual"
     },
     {
       "type": "ois",
       "tenor": "5Y",
       "tenor_years": 5.0,
-      "rate": 0.0085,
+      "rate": 0.0158,
       "frequency": "annual"
     },
     {
       "type": "ois",
       "tenor": "7Y",
       "tenor_years": 7.0,
-      "rate": 0.0105,
+      "rate": 0.0178,
       "frequency": "annual"
     },
     {
       "type": "ois",
       "tenor": "10Y",
       "tenor_years": 10.0,
-      "rate": 0.0125,
+      "rate": 0.0198,
+      "frequency": "annual"
+    },
+    {
+      "type": "ois",
+      "tenor": "12Y",
+      "tenor_years": 12.0,
+      "rate": 0.0208,
       "frequency": "annual"
     },
     {
       "type": "ois",
       "tenor": "15Y",
       "tenor_years": 15.0,
-      "rate": 0.0145,
+      "rate": 0.0218,
       "frequency": "annual"
     },
     {
       "type": "ois",
       "tenor": "20Y",
       "tenor_years": 20.0,
-      "rate": 0.0155,
+      "rate": 0.0228,
+      "frequency": "annual"
+    },
+    {
+      "type": "ois",
+      "tenor": "25Y",
+      "tenor_years": 25.0,
+      "rate": 0.0232,
       "frequency": "annual"
     },
     {
       "type": "ois",
       "tenor": "30Y",
       "tenor_years": 30.0,
-      "rate": 0.0160,
+      "rate": 0.0235,
       "frequency": "annual"
+    },
+    {
+      "type": "event",
+      "id": "BOJ-2026-02",
+      "event_date": "2026-03-14",
+      "expected_rate_spike": 0.001,
+      "description": "BOJ Meeting - 10bp hike expected"
+    },
+    {
+      "type": "event",
+      "id": "BOJ-2026-03",
+      "event_date": "2026-05-01",
+      "expected_rate_spike": 0,
+      "description": "BOJ Meeting - hold expected"
+    },
+    {
+      "type": "event",
+      "id": "BOJ-2026-04",
+      "event_date": "2026-06-19",
+      "expected_rate_spike": 0.001,
+      "description": "BOJ Meeting - 10bp hike expected"
+    },
+    {
+      "type": "event",
+      "id": "BOJ-2026-05",
+      "event_date": "2026-07-31",
+      "expected_rate_spike": 0,
+      "description": "BOJ Meeting - hold expected"
+    },
+    {
+      "type": "event",
+      "id": "BOJ-2026-06",
+      "event_date": "2026-09-18",
+      "expected_rate_spike": 0.001,
+      "description": "BOJ Meeting - 10bp hike expected"
+    },
+    {
+      "type": "event",
+      "id": "BOJ-2026-07",
+      "event_date": "2026-10-30",
+      "expected_rate_spike": 0,
+      "description": "BOJ Meeting - hold expected"
+    },
+    {
+      "type": "event",
+      "id": "BOJ-2026-08",
+      "event_date": "2026-12-18",
+      "expected_rate_spike": 0.001,
+      "description": "BOJ Meeting - 10bp hike expected"
+    },
+    {
+      "type": "event",
+      "id": "JPY-TOY-2026",
+      "event_date": "2026-12-31",
+      "expected_rate_spike": 0.0003,
+      "description": "Year-end turn - liquidity premium"
     }
   ]
 }

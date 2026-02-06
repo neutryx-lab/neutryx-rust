@@ -505,6 +505,9 @@ impl VolSurfaceLoader {
 
 /// Parse a tenor string (e.g., "1Y", "6M", "3M") to years.
 ///
+/// This is a convenience wrapper around
+/// `infra_domain::time::parse_tenor_to_years`.
+///
 /// # Arguments
 ///
 /// * `s` - Tenor string
@@ -513,39 +516,14 @@ impl VolSurfaceLoader {
 ///
 /// Tenor in years, or error if parsing fails.
 pub fn parse_tenor_string(s: &str) -> Result<f64, String> {
-    let s = s.trim().to_uppercase();
-
-    if s.ends_with('Y') {
-        let num_str = &s[..s.len() - 1];
-        num_str
-            .parse::<f64>()
-            .map_err(|_| format!("Invalid tenor format: {}", s))
-    } else if s.ends_with('M') {
-        let num_str = &s[..s.len() - 1];
-        num_str
-            .parse::<f64>()
-            .map(|m| m / 12.0)
-            .map_err(|_| format!("Invalid tenor format: {}", s))
-    } else if s.ends_with('W') {
-        let num_str = &s[..s.len() - 1];
-        num_str
-            .parse::<f64>()
-            .map(|w| w / 52.0)
-            .map_err(|_| format!("Invalid tenor format: {}", s))
-    } else if s.ends_with('D') {
-        let num_str = &s[..s.len() - 1];
-        num_str
-            .parse::<f64>()
-            .map(|d| d / 365.0)
-            .map_err(|_| format!("Invalid tenor format: {}", s))
-    } else {
-        // Try parsing as a plain number (years)
-        s.parse::<f64>()
-            .map_err(|_| format!("Invalid tenor format: {}", s))
-    }
+    infra_domain::time::parse_tenor_to_years(s)
 }
 
 /// Convert expiry string to NaiveDate.
+///
+/// This is a convenience wrapper around
+/// `infra_domain::time::parse_expiry_to_date` that works with
+/// `chrono::NaiveDate`.
 ///
 /// Supports:
 /// - ISO date format: "2027-01-25"
@@ -556,17 +534,41 @@ pub fn parse_tenor_string(s: &str) -> Result<f64, String> {
 /// * `expiry_str` - Expiry string
 /// * `as_of_date` - Reference date for tenor-based expiry
 pub fn parse_expiry_string(expiry_str: &str, as_of_date: NaiveDate) -> Result<NaiveDate, String> {
-    // Try ISO date format first
-    if let Ok(date) = NaiveDate::parse_from_str(expiry_str, "%Y-%m-%d") {
-        return Ok(date);
-    }
+    let as_of_date = infra_domain::time::Date::from(as_of_date);
+    infra_domain::time::parse_expiry_to_date(expiry_str, as_of_date).map(|d| d.into_inner())
+}
 
-    // Try tenor format
-    let years = parse_tenor_string(expiry_str)?;
-    let days = (years * 365.0).round() as i64;
-    as_of_date
-        .checked_add_signed(chrono::Duration::days(days))
-        .ok_or_else(|| format!("Date overflow for expiry: {}", expiry_str))
+/// Parse FRA tenor string in "NxM" format (e.g., "3x6", "3X6M", "3Mx6M").
+///
+/// This is a convenience re-export of `infra_domain::time::parse_fra_tenor`.
+///
+/// FRA tenors represent forward rate agreements with a start and end period.
+/// Common formats include:
+/// - "3x6" - 3 months to 6 months
+/// - "6x12" - 6 months to 12 months
+/// - "3Mx6M" - 3 months to 6 months (explicit month suffix)
+///
+/// # Arguments
+///
+/// * `tenor` - FRA tenor string
+///
+/// # Returns
+///
+/// `Some((start_years, end_years))` if successful, `None` otherwise.
+///
+/// # Example
+///
+/// ```
+/// use adapter_loader::parse_fra_tenor;
+///
+/// let result = parse_fra_tenor("3x6");
+/// assert!(result.is_some());
+/// let (start, end) = result.unwrap();
+/// assert!((start - 0.25).abs() < 1e-10); // 3M = 0.25Y
+/// assert!((end - 0.5).abs() < 1e-10);    // 6M = 0.5Y
+/// ```
+pub fn parse_fra_tenor(tenor: &str) -> Option<(f64, f64)> {
+    infra_domain::time::parse_fra_tenor(tenor)
 }
 
 // =============================================================================
@@ -602,7 +604,9 @@ mod tests {
 
     #[test]
     fn test_parse_tenor_weeks() {
-        assert!((parse_tenor_string("1W").unwrap() - 1.0 / 52.0).abs() < 1e-10);
+        // Standard tenor "1W" uses days-based calculation from Tenor enum
+        assert!((parse_tenor_string("1W").unwrap() - 7.0 / 365.0).abs() < 1e-10);
+        // Custom week tenors use weeks-based calculation (w / 52.0)
         assert!((parse_tenor_string("4W").unwrap() - 4.0 / 52.0).abs() < 1e-10);
     }
 
@@ -622,6 +626,68 @@ mod tests {
     fn test_parse_tenor_case_insensitive() {
         assert!((parse_tenor_string("1y").unwrap() - 1.0).abs() < 1e-10);
         assert!((parse_tenor_string("6m").unwrap() - 0.5).abs() < 1e-10);
+    }
+
+    // -------------------------------------------------------------------------
+    // FRA Tenor Parsing Tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_parse_fra_tenor_3x6() {
+        let result = parse_fra_tenor("3x6");
+        assert!(result.is_some());
+        let (start, end) = result.unwrap();
+        assert!((start - 0.25).abs() < 1e-10); // 3M = 0.25Y
+        assert!((end - 0.5).abs() < 1e-10); // 6M = 0.5Y
+    }
+
+    #[test]
+    fn test_parse_fra_tenor_6x12() {
+        let result = parse_fra_tenor("6x12");
+        assert!(result.is_some());
+        let (start, end) = result.unwrap();
+        assert!((start - 0.5).abs() < 1e-10); // 6M = 0.5Y
+        assert!((end - 1.0).abs() < 1e-10); // 12M = 1.0Y
+    }
+
+    #[test]
+    fn test_parse_fra_tenor_with_suffix() {
+        // Test "3Mx6M" format
+        let result = parse_fra_tenor("3Mx6M");
+        assert!(result.is_some());
+        let (start, end) = result.unwrap();
+        assert!((start - 0.25).abs() < 1e-10);
+        assert!((end - 0.5).abs() < 1e-10);
+
+        // Test "1Mx4M" format
+        let result = parse_fra_tenor("1Mx4M");
+        assert!(result.is_some());
+        let (start, end) = result.unwrap();
+        assert!((start - 1.0 / 12.0).abs() < 1e-10);
+        assert!((end - 4.0 / 12.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_parse_fra_tenor_case_insensitive() {
+        assert!(parse_fra_tenor("3X6").is_some());
+        assert!(parse_fra_tenor("3x6").is_some());
+        assert!(parse_fra_tenor("3X6M").is_some());
+    }
+
+    #[test]
+    fn test_parse_fra_tenor_invalid() {
+        // Not FRA format
+        assert!(parse_fra_tenor("6M").is_none());
+        assert!(parse_fra_tenor("1Y").is_none());
+
+        // Invalid: end <= start
+        assert!(parse_fra_tenor("6x3").is_none());
+        assert!(parse_fra_tenor("12x6").is_none());
+
+        // Invalid: empty parts
+        assert!(parse_fra_tenor("x6").is_none());
+        assert!(parse_fra_tenor("3x").is_none());
+        assert!(parse_fra_tenor("").is_none());
     }
 
     // -------------------------------------------------------------------------

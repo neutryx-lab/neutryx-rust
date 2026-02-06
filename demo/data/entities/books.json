@@ -1,0 +1,64 @@
+{
+  "books": [
+    {
+      "bookId": "RATES_NA",
+      "name": "Rates Trading NA",
+      "description": "North America interest rates trading book",
+      "bookType": "Trading",
+      "regulatoryType": "TB",
+      "ownership": {
+        "desk": "Rates",
+        "division": "FICC"
+      },
+      "trades": ["T10001-01", "T10002-01", "T10003-01"]
+    },
+    {
+      "bookId": "FX_G10",
+      "name": "FX G10 Trading",
+      "description": "G10 FX trading book",
+      "bookType": "Trading",
+      "regulatoryType": "TB",
+      "ownership": {
+        "desk": "FX Spot/Forward",
+        "division": "FICC"
+      },
+      "trades": ["T20001-01", "T20002-01", "T20003-01"]
+    },
+    {
+      "bookId": "EQUITY_DERIVS",
+      "name": "Equity Derivatives",
+      "description": "Equity derivatives trading book",
+      "bookType": "Trading",
+      "regulatoryType": "TB",
+      "ownership": {
+        "desk": "Equity Derivatives",
+        "division": "Equities"
+      },
+      "trades": ["T30001-01"]
+    },
+    {
+      "bookId": "CREDIT_IG",
+      "name": "Credit Investment Grade",
+      "description": "Investment grade credit trading book",
+      "bookType": "Trading",
+      "regulatoryType": "TB",
+      "ownership": {
+        "desk": "Credit Trading",
+        "division": "FICC"
+      },
+      "trades": ["T40001-01", "T40002-01"]
+    },
+    {
+      "bookId": "COMMODITIES",
+      "name": "Commodities Trading",
+      "description": "Energy and commodities trading book",
+      "bookType": "Trading",
+      "regulatoryType": "TB",
+      "ownership": {
+        "desk": "Commodities",
+        "division": "FICC"
+      },
+      "trades": ["T50001-01"]
+    }
+  ]
+}

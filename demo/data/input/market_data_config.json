@@ -1,0 +1,48 @@
+{
+  "metadata": {
+    "description": "Configuration for market data file paths and defaults",
+    "version": "1.0"
+  },
+  "paths": {
+    "rates": "demo/data/input/rates/market_quotes.json",
+    "fx_spots": "demo/data/input/fx/fx_spots.json",
+    "fx_forwards": "demo/data/input/fx/fx_forwards.json",
+    "xccy_basis": "demo/data/input/fx/xccy_basis.json",
+    "conventions": "demo/data/input/conventions/conventions.json",
+    "events": {
+      "central_banks": "demo/data/input/events/central_banks.json",
+      "central_bank_meetings": "demo/data/input/events/central_bank_meetings.json",
+      "economic_releases": "demo/data/input/events/economic_releases.json",
+      "holidays": "demo/data/input/events/holidays.json"
+    }
+  },
+  "defaults": {
+    "source": "Internal",
+    "quote_type": "Mid",
+    "staleness_threshold_ms": 300000
+  },
+  "convention_mapping": {
+    "patterns": [
+      {
+        "currency": "*",
+        "rate_type": "Ois",
+        "convention_suffix": "OIS"
+      },
+      {
+        "currency": "*",
+        "rate_type": "Swap",
+        "convention_suffix": "SWAP"
+      },
+      {
+        "currency": "*",
+        "rate_type": "Deposit",
+        "convention_suffix": "DEPO"
+      },
+      {
+        "currency": "*",
+        "rate_type": "FxSpot",
+        "convention_id": "FX-SPOT"
+      }
+    ]
+  }
+}

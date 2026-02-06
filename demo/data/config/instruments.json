@@ -1,0 +1,547 @@
+{
+  "$schema": "./schemas/instruments.schema.json",
+  "metadata": {
+    "description": "Instrument definitions for curve calibration",
+    "version": "2.0",
+    "sections": {
+      "USD": "USD Instruments (SOFR-based)",
+      "EUR": "EUR Instruments (ESTR + EURIBOR)",
+      "GBP": "GBP Instruments (SONIA-based)",
+      "JPY": "JPY Instruments (TONA-based)",
+      "CHF": "CHF Instruments (SARON-based)"
+    }
+  },
+  "templates": [
+    {
+      "idPattern": "{currency}-Depo-{tenor}",
+      "currency": "USD",
+      "convention": "USD-DEPO",
+      "rateIndex": "USD-SOFR",
+      "tenors": ["O/N", "T/N", "1W", "2W", "1M", "2M", "3M"]
+    },
+    {
+      "idPattern": "{currency}-OIS-{tenor}",
+      "currency": "USD",
+      "convention": "USD-SOFR-OIS",
+      "rateIndex": "USD-SOFR",
+      "tenors": ["1M", "3M", "6M", "9M", "1Y", "18M", "2Y", "3Y", "4Y", "5Y", "6Y", "7Y", "10Y", "12Y", "15Y", "20Y", "25Y", "30Y", "40Y", "50Y"]
+    },
+    {
+      "idPattern": "{currency}-FRA-{tenor}",
+      "currency": "USD",
+      "convention": "USD-FRA",
+      "rateIndex": "USD-SOFR",
+      "tenors": ["1x4", "2x5", "3x6", "6x9", "9x12"]
+    },
+    {
+      "idPattern": "{currency}-Depo-{tenor}",
+      "currency": "EUR",
+      "convention": "EUR-DEPO",
+      "rateIndex": "EUR-ESTR",
+      "tenors": ["O/N", "T/N", "1W", "1M"]
+    },
+    {
+      "idPattern": "{currency}-OIS-{tenor}",
+      "currency": "EUR",
+      "convention": "EUR-ESTR-OIS",
+      "rateIndex": "EUR-ESTR",
+      "tenors": ["1M", "3M", "6M", "9M", "1Y", "18M", "2Y", "3Y", "4Y", "5Y", "6Y", "7Y", "10Y", "12Y", "15Y", "20Y", "25Y", "30Y", "40Y", "50Y"]
+    },
+    {
+      "idPattern": "{currency}-Swap-{tenor}",
+      "currency": "EUR",
+      "convention": "EUR-EURIBOR-SWAP",
+      "rateIndex": "EUR-EURIBOR6M",
+      "tenors": ["2Y", "3Y", "5Y", "7Y", "10Y", "15Y", "20Y", "30Y"],
+      "conventions": {
+        "paymentFrequency": "SemiAnnually"
+      }
+    },
+    {
+      "idPattern": "{currency}-FRA-{tenor}",
+      "currency": "EUR",
+      "convention": "EUR-FRA",
+      "rateIndex": "EUR-EURIBOR3M",
+      "tenors": ["1x4", "3x6", "6x9"]
+    },
+    {
+      "idPattern": "{currency}-Depo-{tenor}",
+      "currency": "GBP",
+      "convention": "GBP-DEPO",
+      "rateIndex": "GBP-SONIA",
+      "tenors": ["O/N", "T/N", "1W", "1M"]
+    },
+    {
+      "idPattern": "{currency}-OIS-{tenor}",
+      "currency": "GBP",
+      "convention": "GBP-SONIA-OIS",
+      "rateIndex": "GBP-SONIA",
+      "tenors": ["1M", "3M", "6M", "9M", "1Y", "18M", "2Y", "3Y", "4Y", "5Y", "6Y", "7Y", "10Y", "12Y", "15Y", "20Y", "25Y", "30Y", "40Y", "50Y"]
+    },
+    {
+      "idPattern": "{currency}-Depo-{tenor}",
+      "currency": "JPY",
+      "convention": "JPY-DEPO",
+      "rateIndex": "JPY-TONA",
+      "tenors": ["O/N", "T/N", "1W", "1M"]
+    },
+    {
+      "idPattern": "{currency}-OIS-{tenor}",
+      "currency": "JPY",
+      "convention": "JPY-TONA-OIS",
+      "rateIndex": "JPY-TONA",
+      "tenors": ["1M", "3M", "6M", "9M", "1Y", "18M", "2Y", "3Y", "4Y", "5Y", "6Y", "7Y", "10Y", "12Y", "15Y", "20Y", "25Y", "30Y", "40Y"]
+    },
+    {
+      "idPattern": "{currency}-Depo-{tenor}",
+      "currency": "CHF",
+      "convention": "CHF-DEPO",
+      "rateIndex": "CHF-SARON",
+      "tenors": ["O/N", "T/N", "1W", "1M"]
+    },
+    {
+      "idPattern": "{currency}-OIS-{tenor}",
+      "currency": "CHF",
+      "convention": "CHF-SARON-OIS",
+      "rateIndex": "CHF-SARON",
+      "tenors": ["1M", "3M", "6M", "9M", "1Y", "18M", "2Y", "3Y", "4Y", "5Y", "6Y", "7Y", "10Y", "12Y", "15Y", "20Y", "25Y", "30Y"]
+    }
+  ],
+  "instruments": [
+    {
+      "id": "EUR-Depo-3M",
+      "currency": "EUR",
+      "convention": "EUR-DEPO",
+      "tenor": "3M",
+      "rateIndex": "EUR-EURIBOR3M"
+    },
+    {
+      "id": "EUR-Depo-6M",
+      "currency": "EUR",
+      "convention": "EUR-DEPO",
+      "tenor": "6M",
+      "rateIndex": "EUR-EURIBOR6M"
+    },
+    {
+      "id": "EUR-FRA-6x12",
+      "currency": "EUR",
+      "convention": "EUR-FRA",
+      "tenor": "6x12",
+      "rateIndex": "EUR-EURIBOR6M"
+    },
+    {
+      "id": "FED-2026-01",
+      "currency": "USD",
+      "convention": "USD-SOFR-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-01-28",
+      "rateIndex": "USD-SOFR",
+      "expectedRateSpike": -0.0025
+    },
+    {
+      "id": "FED-2026-02",
+      "currency": "USD",
+      "convention": "USD-SOFR-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-03-18",
+      "rateIndex": "USD-SOFR",
+      "expectedRateSpike": -0.0025
+    },
+    {
+      "id": "FED-2026-03",
+      "currency": "USD",
+      "convention": "USD-SOFR-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-05-06",
+      "rateIndex": "USD-SOFR",
+      "expectedRateSpike": -0.0025
+    },
+    {
+      "id": "FED-2026-04",
+      "currency": "USD",
+      "convention": "USD-SOFR-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-06-17",
+      "rateIndex": "USD-SOFR",
+      "expectedRateSpike": 0
+    },
+    {
+      "id": "FED-2026-05",
+      "currency": "USD",
+      "convention": "USD-SOFR-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-07-29",
+      "rateIndex": "USD-SOFR",
+      "expectedRateSpike": -0.0025
+    },
+    {
+      "id": "FED-2026-06",
+      "currency": "USD",
+      "convention": "USD-SOFR-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-09-16",
+      "rateIndex": "USD-SOFR",
+      "expectedRateSpike": 0
+    },
+    {
+      "id": "FED-2026-07",
+      "currency": "USD",
+      "convention": "USD-SOFR-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-11-04",
+      "rateIndex": "USD-SOFR",
+      "expectedRateSpike": -0.0025
+    },
+    {
+      "id": "FED-2026-08",
+      "currency": "USD",
+      "convention": "USD-SOFR-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-12-16",
+      "rateIndex": "USD-SOFR",
+      "expectedRateSpike": 0
+    },
+    {
+      "id": "ECB-2026-01",
+      "currency": "EUR",
+      "convention": "EUR-ESTR-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-01-22",
+      "rateIndex": "EUR-ESTR",
+      "expectedRateSpike": -0.0025
+    },
+    {
+      "id": "ECB-2026-02",
+      "currency": "EUR",
+      "convention": "EUR-ESTR-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-03-05",
+      "rateIndex": "EUR-ESTR",
+      "expectedRateSpike": -0.0025
+    },
+    {
+      "id": "ECB-2026-03",
+      "currency": "EUR",
+      "convention": "EUR-ESTR-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-04-16",
+      "rateIndex": "EUR-ESTR",
+      "expectedRateSpike": -0.0025
+    },
+    {
+      "id": "ECB-2026-04",
+      "currency": "EUR",
+      "convention": "EUR-ESTR-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-06-04",
+      "rateIndex": "EUR-ESTR",
+      "expectedRateSpike": 0
+    },
+    {
+      "id": "ECB-2026-05",
+      "currency": "EUR",
+      "convention": "EUR-ESTR-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-07-16",
+      "rateIndex": "EUR-ESTR",
+      "expectedRateSpike": -0.0025
+    },
+    {
+      "id": "ECB-2026-06",
+      "currency": "EUR",
+      "convention": "EUR-ESTR-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-09-10",
+      "rateIndex": "EUR-ESTR",
+      "expectedRateSpike": 0
+    },
+    {
+      "id": "ECB-2026-07",
+      "currency": "EUR",
+      "convention": "EUR-ESTR-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-10-29",
+      "rateIndex": "EUR-ESTR",
+      "expectedRateSpike": -0.0025
+    },
+    {
+      "id": "ECB-2026-08",
+      "currency": "EUR",
+      "convention": "EUR-ESTR-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-12-17",
+      "rateIndex": "EUR-ESTR",
+      "expectedRateSpike": 0
+    },
+    {
+      "id": "BOE-2026-01",
+      "currency": "GBP",
+      "convention": "GBP-SONIA-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-02-05",
+      "rateIndex": "GBP-SONIA",
+      "expectedRateSpike": -0.0025
+    },
+    {
+      "id": "BOE-2026-02",
+      "currency": "GBP",
+      "convention": "GBP-SONIA-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-03-19",
+      "rateIndex": "GBP-SONIA",
+      "expectedRateSpike": 0
+    },
+    {
+      "id": "BOE-2026-03",
+      "currency": "GBP",
+      "convention": "GBP-SONIA-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-05-07",
+      "rateIndex": "GBP-SONIA",
+      "expectedRateSpike": -0.0025
+    },
+    {
+      "id": "BOE-2026-04",
+      "currency": "GBP",
+      "convention": "GBP-SONIA-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-06-18",
+      "rateIndex": "GBP-SONIA",
+      "expectedRateSpike": 0
+    },
+    {
+      "id": "BOE-2026-05",
+      "currency": "GBP",
+      "convention": "GBP-SONIA-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-08-06",
+      "rateIndex": "GBP-SONIA",
+      "expectedRateSpike": -0.0025
+    },
+    {
+      "id": "BOE-2026-06",
+      "currency": "GBP",
+      "convention": "GBP-SONIA-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-09-17",
+      "rateIndex": "GBP-SONIA",
+      "expectedRateSpike": 0
+    },
+    {
+      "id": "BOE-2026-07",
+      "currency": "GBP",
+      "convention": "GBP-SONIA-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-11-05",
+      "rateIndex": "GBP-SONIA",
+      "expectedRateSpike": -0.0025
+    },
+    {
+      "id": "BOE-2026-08",
+      "currency": "GBP",
+      "convention": "GBP-SONIA-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-12-17",
+      "rateIndex": "GBP-SONIA",
+      "expectedRateSpike": 0
+    },
+    {
+      "id": "BOJ-2026-01",
+      "currency": "JPY",
+      "convention": "JPY-TONA-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-01-24",
+      "rateIndex": "JPY-TONA",
+      "expectedRateSpike": 0
+    },
+    {
+      "id": "BOJ-2026-02",
+      "currency": "JPY",
+      "convention": "JPY-TONA-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-03-14",
+      "rateIndex": "JPY-TONA",
+      "expectedRateSpike": 0.001
+    },
+    {
+      "id": "BOJ-2026-03",
+      "currency": "JPY",
+      "convention": "JPY-TONA-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-05-01",
+      "rateIndex": "JPY-TONA",
+      "expectedRateSpike": 0
+    },
+    {
+      "id": "BOJ-2026-04",
+      "currency": "JPY",
+      "convention": "JPY-TONA-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-06-19",
+      "rateIndex": "JPY-TONA",
+      "expectedRateSpike": 0.001
+    },
+    {
+      "id": "BOJ-2026-05",
+      "currency": "JPY",
+      "convention": "JPY-TONA-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-07-31",
+      "rateIndex": "JPY-TONA",
+      "expectedRateSpike": 0
+    },
+    {
+      "id": "BOJ-2026-06",
+      "currency": "JPY",
+      "convention": "JPY-TONA-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-09-18",
+      "rateIndex": "JPY-TONA",
+      "expectedRateSpike": 0.001
+    },
+    {
+      "id": "BOJ-2026-07",
+      "currency": "JPY",
+      "convention": "JPY-TONA-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-10-30",
+      "rateIndex": "JPY-TONA",
+      "expectedRateSpike": 0
+    },
+    {
+      "id": "BOJ-2026-08",
+      "currency": "JPY",
+      "convention": "JPY-TONA-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-12-18",
+      "rateIndex": "JPY-TONA",
+      "expectedRateSpike": 0.001
+    },
+    {
+      "id": "SNB-2026-01",
+      "currency": "CHF",
+      "convention": "CHF-SARON-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-03-19",
+      "rateIndex": "CHF-SARON",
+      "expectedRateSpike": -0.0025
+    },
+    {
+      "id": "SNB-2026-02",
+      "currency": "CHF",
+      "convention": "CHF-SARON-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-06-18",
+      "rateIndex": "CHF-SARON",
+      "expectedRateSpike": 0
+    },
+    {
+      "id": "SNB-2026-03",
+      "currency": "CHF",
+      "convention": "CHF-SARON-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-09-17",
+      "rateIndex": "CHF-SARON",
+      "expectedRateSpike": -0.0025
+    },
+    {
+      "id": "SNB-2026-04",
+      "currency": "CHF",
+      "convention": "CHF-SARON-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-12-10",
+      "rateIndex": "CHF-SARON",
+      "expectedRateSpike": 0
+    },
+    {
+      "id": "USD-TOY-2025",
+      "currency": "USD",
+      "convention": "USD-SOFR-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2025-12-31",
+      "rateIndex": "USD-SOFR",
+      "expectedRateSpike": 0.0005
+    },
+    {
+      "id": "EUR-TOY-2025",
+      "currency": "EUR",
+      "convention": "EUR-ESTR-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2025-12-31",
+      "rateIndex": "EUR-ESTR",
+      "expectedRateSpike": 0.0005
+    },
+    {
+      "id": "GBP-TOY-2025",
+      "currency": "GBP",
+      "convention": "GBP-SONIA-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2025-12-31",
+      "rateIndex": "GBP-SONIA",
+      "expectedRateSpike": 0.0005
+    },
+    {
+      "id": "JPY-TOY-2025",
+      "currency": "JPY",
+      "convention": "JPY-TONA-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2025-12-31",
+      "rateIndex": "JPY-TONA",
+      "expectedRateSpike": 0.0003
+    },
+    {
+      "id": "CHF-TOY-2025",
+      "currency": "CHF",
+      "convention": "CHF-SARON-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2025-12-31",
+      "rateIndex": "CHF-SARON",
+      "expectedRateSpike": 0.0005
+    },
+    {
+      "id": "USD-TOY-2026",
+      "currency": "USD",
+      "convention": "USD-SOFR-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-12-31",
+      "rateIndex": "USD-SOFR",
+      "expectedRateSpike": 0.0005
+    },
+    {
+      "id": "EUR-TOY-2026",
+      "currency": "EUR",
+      "convention": "EUR-ESTR-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-12-31",
+      "rateIndex": "EUR-ESTR",
+      "expectedRateSpike": 0.0005
+    },
+    {
+      "id": "GBP-TOY-2026",
+      "currency": "GBP",
+      "convention": "GBP-SONIA-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-12-31",
+      "rateIndex": "GBP-SONIA",
+      "expectedRateSpike": 0.0005
+    },
+    {
+      "id": "JPY-TOY-2026",
+      "currency": "JPY",
+      "convention": "JPY-TONA-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-12-31",
+      "rateIndex": "JPY-TONA",
+      "expectedRateSpike": 0.0003
+    },
+    {
+      "id": "CHF-TOY-2026",
+      "currency": "CHF",
+      "convention": "CHF-SARON-EVENT",
+      "tenor": "EVENT",
+      "eventDate": "2026-12-31",
+      "rateIndex": "CHF-SARON",
+      "expectedRateSpike": 0.0005
+    }
+  ]
+}

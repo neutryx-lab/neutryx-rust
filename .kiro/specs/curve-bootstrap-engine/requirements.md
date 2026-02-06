@@ -1,7 +1,7 @@
 # Requirements Document
 
 ## Introduction
-本ドキュメントは、Curve Bootstrap Engineの要件を定義する。本機能は、Index毎にカーブ構築に必要なInstrument集合と構築方法を設定駆動で定義し、Bootstrapを用いてParameterCurveを生成するエンジンを提供する。既存の`pricer_models/src/market/calibration/bootstrapping/`モジュールを拡張し、`infra_master/src/trade/`の商品定義・キャッシュフロー展開機能と統合することで、汎用的なgetDF/getFwd機能と計算グラフ（Enzyme AD対応）を備えたカーブを構築する。また、同一条件での再構築時にはキャッシュを活用して計算を省略する。
+本ドキュメントは、Curve Bootstrap Engineの要件を定義する。本機能は、Index毎にカーブ構築に必要なInstrument集合と構築方法を設定駆動で定義し、Bootstrapを用いてParameterCurveを生成するエンジンを提供する。既存の`pricer_models/src/market/calibration/bootstrapping/`モジュールを拡張し、`infra_domain/src/trade/`の商品定義・キャッシュフロー展開機能と統合することで、汎用的なgetDF/getFwd機能と計算グラフ（Enzyme AD対応）を備えたカーブを構築する。また、同一条件での再構築時にはキャッシュを活用して計算を省略する。
 
 ## Requirements
 
@@ -14,7 +14,7 @@
 3. The CurveDefinition shall 各Instrumentの満期テナーポイント（例: 1M, 3M, 6M, 1Y, 2Y, ..., 50Y）を定義できる
 4. The CurveDefinition shall Instrument毎のコンベンション参照（DayCount, BusinessDayConvention, PaymentFrequency）を含む
 5. If CurveDefinitionに未知のIndexが指定されたとき, then the CurveEngine shall `UnknownIndex`エラーを返す
-6. The CurveDefinition shall `infra_master::trade::IndexType`と互換性のある型でIndexを識別する
+6. The CurveDefinition shall `infra_domain::trade::IndexType`と互換性のある型でIndexを識別する
 
 ### Requirement 2: Curve Parameter Configuration（カーブパラメータ設定）
 **Objective:** As a クオンツ開発者, I want カーブのパラメータ表現（LogDF, ZeroRate, InstantaneousForward等）と補間器を設定から指定したい, so that 異なるカーブ構築戦略を柔軟に切り替えられる
@@ -29,12 +29,12 @@
 7. If 設定された補間器とパラメータ表現の組み合わせが非対応のとき, then the CurveEngine shall `InvalidConfiguration`エラーを返す
 
 ### Requirement 3: Instrument-to-Cashflow Integration（Instrument-キャッシュフロー統合）
-**Objective:** As a クオンツ開発者, I want Bootstrap用Instrumentを`infra_master::trade`の商品定義とキャッシュフロー展開機能を使って構築したい, so that 商品定義の一貫性を保ちながらカーブ構築に利用できる
+**Objective:** As a クオンツ開発者, I want Bootstrap用Instrumentを`infra_domain::trade`の商品定義とキャッシュフロー展開機能を使って構築したい, so that 商品定義の一貫性を保ちながらカーブ構築に利用できる
 
 #### Acceptance Criteria
-1. The CurveEngine shall `infra_master::trade::instrument_def`のRates商品定義（IRS, OIS, FRA等）からBootstrapInstrumentを生成できる
-2. When OIS定義から生成するとき, the CurveEngine shall `infra_master::trade::convention::swap`のOISコンベンションを適用する
-3. When IRS定義から生成するとき, the CurveEngine shall Fixed LegとFloat Legのキャッシュフロースケジュールを`infra_master::trade::cashflow`を用いて展開する
+1. The CurveEngine shall `infra_domain::trade::instrument_def`のRates商品定義（IRS, OIS, FRA等）からBootstrapInstrumentを生成できる
+2. When OIS定義から生成するとき, the CurveEngine shall `infra_domain::trade::convention::swap`のOISコンベンションを適用する
+3. When IRS定義から生成するとき, the CurveEngine shall Fixed LegとFloat Legのキャッシュフロースケジュールを`infra_domain::trade::cashflow`を用いて展開する
 4. The CurveEngine shall FRA定義から期間（start, end）とレートを抽出しBootstrapInstrumentを生成する
 5. The CurveEngine shall Futures定義から価格と満期を抽出し、Convexity調整を適用してBootstrapInstrumentを生成する
 6. If Instrumentの定義が不完全なとき, then the CurveEngine shall `IncompleteInstrumentDefinition`エラーを返す

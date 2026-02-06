@@ -2,7 +2,7 @@
 
 ## Overview
 
-Trade & Instrument Module の実装タスク。`infra_master` クレート内に `trade/` と `convention/` サブモジュールを追加し、全ての金融取引を CF 展開済みの共通フォーマット（`Trade` → `Vec<Leg>` → `Vec<Cashflow>`）で表現する。
+Trade & Instrument Module の実装タスク。`infra_domain` クレート内に `trade/` と `convention/` サブモジュールを追加し、全ての金融取引を CF 展開済みの共通フォーマット（`Trade` → `Vec<Leg>` → `Vec<Cashflow>`）で表現する。
 
 ---
 
@@ -188,7 +188,7 @@ Trade & Instrument Module の実装タスク。`infra_master` クレート内に
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6_
 
 - [x] 4.2 lib.rs への統合
-  - `infra_master/src/lib.rs` に `mod convention;` と `mod trade;` を追加
+  - `infra_domain/src/lib.rs` に `mod convention;` と `mod trade;` を追加
   - Convention 型の re-export（SwapConvention, SwapLegConvention, FxConvention 等）
   - Trade 型の re-export（Trade, TradeBuilder, Leg, Cashflow, Payoff, Direction 等）
   - prelude モジュールへの追加

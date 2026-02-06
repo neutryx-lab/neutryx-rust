@@ -251,12 +251,12 @@
   - _Requirements: 13.1, 13.2, 13.3_
   - **確認済み**: 既存FxVolatilitySurface（surfaces/fx.rs）とCalibratedFxVolSurface（fx_calibration/surface.rs）は異なる目的で共存可能
 
-- [x] 14.2 infra_masterのFxSwap統合と既存テスト更新
+- [x] 14.2 infra_domainのFxSwap統合と既存テスト更新
   - 既存`FxSwap`と拡張定義の統合（必要な場合）
   - 新APIに対する全既存テストのパスまたは更新確認
   - 公開API破壊時の移行ガイド作成
   - _Requirements: 13.4, 13.5, 13.6_
-  - **確認済み**: infra_master FxSwap（Trade level）とpricer_models fx_calibration（Market level）は異なるレイヤーで共存
+  - **確認済み**: infra_domain FxSwap（Trade level）とpricer_models fx_calibration（Market level）は異なるレイヤーで共存
 
 - [x] 14.3 コードベースの検証とsteeringドキュメント更新
   - `cargo clippy --all-targets`実行と警告解消

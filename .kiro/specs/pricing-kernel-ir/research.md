@@ -71,7 +71,7 @@
 - **Context**: 既存の`IndexedMarket<T>`パターンとの整合性確保
 - **Sources Consulted**:
   - `crates/pricer_models/src/market/indexed_market.rs`（内部コード）
-  - `crates/infra_master/src/trade/index_requirement.rs`（内部コード）
+  - `crates/infra_domain/src/trade/index_requirement.rs`（内部コード）
 - **Findings**:
   - `IndexedMarket<T>`は`RateIndex`/`CurrencyPair`をキーとしたHashMapアクセス
   - `TradeIndexRequirements`トレイトが必要なインデックスを宣言

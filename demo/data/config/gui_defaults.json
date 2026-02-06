@@ -1,0 +1,82 @@
+{
+  "_deprecated": "This file is deprecated. Use GET /api/config endpoint instead, which returns infra_config::AppConfig with defaults from Rust source.",
+  "_comment": "GUI default values for pricing forms (extracted from demo/gui config handler)",
+  "pricing": {
+    "curve_rate": 0.05,
+    "volatility": 0.20
+  },
+  "monte_carlo": {
+    "num_paths": 10000,
+    "num_steps": 252
+  },
+  "bump_sizes": {
+    "rate": 0.0001,
+    "spot": 0.01,
+    "vol": 0.01
+  },
+  "pricer": {
+    "equity": {
+      "spot": 100.0,
+      "strike": 100.0,
+      "expiry_years": 1.0,
+      "volatility": 0.20,
+      "rate": 0.05,
+      "option_type": "call"
+    },
+    "fx": {
+      "spot": 1.10,
+      "strike": 1.10,
+      "expiry_years": 1.0,
+      "volatility": 0.10,
+      "domestic_rate": 0.05,
+      "foreign_rate": 0.02,
+      "option_type": "call"
+    },
+    "irs": {
+      "notional": 1000000.0,
+      "fixed_rate": 0.025,
+      "tenor_years": 5
+    }
+  },
+  "curve": {
+    "notional": 10000000.0,
+    "fixed_rate": 0.03,
+    "tenor_years": 5,
+    "interpolation": "linear_on_log_df"
+  },
+  "expansion": {
+    "rates": {
+      "currency": "USD",
+      "tenor": "1Y",
+      "rate": 0.035,
+      "notional": 10000000.0
+    },
+    "swap": {
+      "currency": "USD",
+      "tenor": "5Y",
+      "fixed_rate": 0.03,
+      "spread": 0.0,
+      "notional": 10000000.0,
+      "payment_frequency": "SemiAnnual",
+      "day_count": "Actual365Fixed"
+    },
+    "fx": {
+      "base_currency": "EUR",
+      "quote_currency": "USD",
+      "spot_rate": 1.085,
+      "forward_rate": 1.09,
+      "notional": 1000000.0,
+      "option_type": "call",
+      "volatility": 0.10
+    },
+    "equity": {
+      "underlying": "AAPL",
+      "spot_price": 180.0,
+      "strike": 185.0,
+      "volatility": 0.25,
+      "risk_free_rate": 0.05,
+      "option_type": "call",
+      "direction": "long"
+    }
+  }
+}

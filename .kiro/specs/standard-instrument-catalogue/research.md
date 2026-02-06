@@ -20,7 +20,7 @@
 - **Findings**:
   - Infra 層は Pricer/Service に依存不可（ルール3）
   - Convention は trade 関連のため `trade/` 配下が適切
-  - 既存 `infra_master/src/convention/` → `infra_master/src/trade/convention/` への移動
+  - 既存 `infra_domain/src/convention/` → `infra_domain/src/trade/convention/` への移動
 - **Implications**: re-export パスの変更が必要、破壊的変更を最小化する migration 戦略
 
 ### 既存パターン分析
@@ -40,7 +40,7 @@
   - `AsianParams`, `BarrierParams`, `LookbackParams` が pricer_pricing に存在
   - `BarrierType` enum（Up/Down, In/Out 組み合わせ）
   - Payoff は `PathDependentPayoff` trait で抽象化
-- **Implications**: infra_master の instrument 定義は pricer_pricing と分離、商品「定義」のみ担当
+- **Implications**: infra_domain の instrument 定義は pricer_pricing と分離、商品「定義」のみ担当
 
 ### CF展開パターン
 - **Context**: InstrumentDefinition → Trade 変換の設計
@@ -117,4 +117,4 @@
 ## References
 - [A-I-P-S Architecture](.kiro/steering/tech.md) — 依存ルール
 - [Project Structure](.kiro/steering/structure.md) — モジュール配置パターン
-- [Trade Architecture](crates/infra_master/src/trade/mod.rs) — CF 展開パターン
+- [Trade Architecture](crates/infra_domain/src/trade/mod.rs) — CF 展開パターン

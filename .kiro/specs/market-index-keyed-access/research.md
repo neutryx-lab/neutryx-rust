@@ -19,8 +19,8 @@
 
 - **Context**: RateIndex, CurrencyPairがHashMapキーとして使用可能か確認
 - **Sources Consulted**:
-  - `infra_master::market::rate_index.rs`
-  - `infra_master::trade::instrument_def::fx.rs`
+  - `infra_domain::market::rate_index.rs`
+  - `infra_domain::trade::instrument_def::fx.rs`
 - **Findings**:
   - `RateIndex`: `#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]` — HashMap互換 ✅
   - `CurrencyPair`: `#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]` — HashMap互換 ✅
@@ -82,9 +82,9 @@
 
 - **Context**: Trade構造体への拡張方法の調査
 - **Sources Consulted**:
-  - `infra_master::trade/trade.rs`
-  - `infra_master::trade/cashflow.rs`
-  - `infra_master::trade/index.rs`
+  - `infra_domain::trade/trade.rs`
+  - `infra_domain::trade/cashflow.rs`
+  - `infra_domain::trade/index.rs`
 - **Findings**:
   - `Trade`: legs: Vec<Leg>, metadata: TradeMetadata
   - `Leg`: cashflows: Vec<Cashflow>, direction: Direction
@@ -94,7 +94,7 @@
   - Cashflow経由でIndexTypeを抽出可能
   - Trade→Vec<Leg>→Vec<Cashflow>→IndexObservation→IndexType
   - trait extension patternで`required_indices()`を追加可能
-  - infra_masterへの直接変更不要
+  - infra_domainへの直接変更不要
 
 ## Architecture Pattern Evaluation
 
@@ -156,11 +156,11 @@
   - (+) 型安全
   - (+) Static dispatch
   - (-) 新規型定義必要
-- **Follow-up**: infra_master::trade::index_requirement.rs に配置
+- **Follow-up**: infra_domain::trade::index_requirement.rs に配置
 
 ## Risks & Mitigations
 
-- **Risk 1: Trade構造体への変更影響** — Mitigation: trait extension patternで`TradeIndexRequirements` traitを定義、infra_master本体への変更不要
+- **Risk 1: Trade構造体への変更影響** — Mitigation: trait extension patternで`TradeIndexRequirements` traitを定義、infra_domain本体への変更不要
 - **Risk 2: VolCubeキャッシュ互換性** — Mitigation: IndexedMarket内部でRateIndex→VolCubeProviderKey変換を実装、既存キャッシュ機構を再利用
 - **Risk 3: パフォーマンス劣化** — Mitigation: HashMap lookupは既にCurveSetで使用済み、追加オーバーヘッドは最小。ベンチマークで検証
 
@@ -169,4 +169,4 @@
 - [pricer_models::market::index_mapper.rs](crates/pricer_models/src/market/index_mapper.rs) — 既存IndexCurveMapper実装
 - [pricer_models::market::curves::curve_set.rs](crates/pricer_models/src/market/curves/curve_set.rs) — 既存CurveSet実装
 - [pricer_models::market::provider.rs](crates/pricer_models/src/market/provider.rs) — 既存MarketProvider実装
-- [infra_master::trade::index.rs](crates/infra_master/src/trade/index.rs) — IndexType, IndexObservation定義
+- [infra_domain::trade::index.rs](crates/infra_domain/src/trade/index.rs) — IndexType, IndexObservation定義

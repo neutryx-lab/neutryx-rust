@@ -1,0 +1,46 @@
+{
+  "_comment": "Yield curve steepening scenario (short rates down, long rates up)",
+  "preset": null,
+  "custom_shifts": [
+    {
+      "factor": "USD_SOFR_1M",
+      "shift_type": "absolute",
+      "amount": -0.005
+    },
+    {
+      "factor": "USD_SOFR_3M",
+      "shift_type": "absolute",
+      "amount": -0.004
+    },
+    {
+      "factor": "USD_SOFR_6M",
+      "shift_type": "absolute",
+      "amount": -0.003
+    },
+    {
+      "factor": "USD_SOFR_1Y",
+      "shift_type": "absolute",
+      "amount": -0.002
+    },
+    {
+      "factor": "USD_SOFR_2Y",
+      "shift_type": "absolute",
+      "amount": 0.0
+    },
+    {
+      "factor": "USD_SOFR_5Y",
+      "shift_type": "absolute",
+      "amount": 0.003
+    },
+    {
+      "factor": "USD_SOFR_10Y",
+      "shift_type": "absolute",
+      "amount": 0.005
+    },
+    {
+      "factor": "USD_SOFR_30Y",
+      "shift_type": "absolute",
+      "amount": 0.007
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Purpose**: 本機能は、Index単位でカーブ構築に必要なInstrument集合を宣言的に定義し、Bootstrap手法でParameterCurveを生成する統合エンジンを提供する。既存の`pricer_models/src/market/calibration/bootstrapping/`モジュールを拡張し、`infra_master::trade`の商品定義・コンベンションと統合することで、設定駆動の汎用カーブ構築を実現する。
+**Purpose**: 本機能は、Index単位でカーブ構築に必要なInstrument集合を宣言的に定義し、Bootstrap手法でParameterCurveを生成する統合エンジンを提供する。既存の`pricer_models/src/market/calibration/bootstrapping/`モジュールを拡張し、`infra_domain::trade`の商品定義・コンベンションと統合することで、設定駆動の汎用カーブ構築を実現する。
 
 **Users**: クオンツ開発者、デリバティブプライサー開発者、リスク計算開発者が、カーブ構築・利用・感度計算に本機能を使用する。
 
@@ -11,7 +11,7 @@
 ### Goals
 
 - Index毎のカーブ定義を設定ファイル（JSON）で宣言的に管理
-- `infra_master::trade`の商品定義・コンベンションとの統合
+- `infra_domain::trade`の商品定義・コンベンションとの統合
 - LRUベースの結果キャッシュによる再計算省略
 - Enzyme AD対応の感度計算（Jacobian行列）
 
@@ -33,12 +33,12 @@
 - `SensitivityBootstrapper`: Implicit Function Theoremによる感度計算
 
 **統合が必要なコンポーネント**:
-- `infra_master::trade::RateIndex`: 金利インデックス定義
-- `infra_master::trade::convention::SwapConvention`: スワップコンベンション
-- `infra_master::trade::Cashflow`: キャッシュフロー表現
+- `infra_domain::trade::RateIndex`: 金利インデックス定義
+- `infra_domain::trade::convention::SwapConvention`: スワップコンベンション
+- `infra_domain::trade::Cashflow`: キャッシュフロー表現
 
 **技術的負債**:
-- `BootstrapInstrument`が`infra_master`のコンベンションを使用していない
+- `BootstrapInstrument`が`infra_domain`のコンベンションを使用していない
 - 結果キャッシュが存在しない（内部最適化キャッシュのみ）
 - serde対応が不完全
 
@@ -65,7 +65,7 @@ graph TB
         CurveSet[CurveSet]
     end
 
-    subgraph Infra Layer - infra_master
+    subgraph Infra Layer - infra_domain
         RateIndex[RateIndex]
         SwapConv[SwapConvention]
         Cashflow[Cashflow]
@@ -96,7 +96,7 @@ graph TB
 - **Existing patterns preserved**: `SequentialBootstrapper`, `BootstrappedCurve`, `MultiCurveBuilder`のAPI維持
 - **New components rationale**:
   - `CurveDefinition`: Index→Instrument集合のマッピング（Req 1）
-  - `InstrumentAdapter`: infra_master→BootstrapInstrument変換（Req 3）
+  - `InstrumentAdapter`: infra_domain→BootstrapInstrument変換（Req 3）
   - `CurveResultCache`: LRU結果キャッシュ（Req 7）
 - **Steering compliance**: A-I-P-S依存ルール維持（Pricer→Infraは許可）
 
@@ -105,7 +105,7 @@ graph TB
 | Layer | Choice / Version | Role in Feature | Notes |
 |-------|------------------|-----------------|-------|
 | Core | `pricer_models` | Bootstrap エンジン、カーブ構築 | 既存モジュール拡張 |
-| Foundation | `infra_master` | RateIndex, SwapConvention, Cashflow参照 | 依存追加（A-I-P-S準拠） |
+| Foundation | `infra_domain` | RateIndex, SwapConvention, Cashflow参照 | 依存追加（A-I-P-S準拠） |
 | Caching | `lru` ^0.12 | LRUキャッシュ実装 | 新規依存 |
 | Concurrency | `parking_lot` ^0.12 | スレッドセーフRwLock | 既存依存活用 |
 | Serialization | `serde` ^1.0 | 設定ファイル読み込み | feature-gated |
@@ -183,7 +183,7 @@ sequenceDiagram
 |-----------|--------------|--------|--------------|------------------|-----------|
 | `CurveDefinition` | Definition | Index→Instrument集合マッピング | 1.1-1.6 | `RateIndex` (P0), `SwapConvention` (P0) | Service, State |
 | `CurveConfig` | Configuration | パラメータ表現・補間器設定 | 2.1-2.7, 10.1-10.6 | `GenericBootstrapConfig` (P0) | Service |
-| `InstrumentAdapter` | Integration | infra_master→BootstrapInstrument変換 | 3.1-3.6 | `SwapConvention` (P0), `Cashflow` (P1) | Service |
+| `InstrumentAdapter` | Integration | infra_domain→BootstrapInstrument変換 | 3.1-3.6 | `SwapConvention` (P0), `Cashflow` (P1) | Service |
 | `CurveResultCache` | Caching | LRU結果キャッシュ | 7.1-7.8 | `lru` (P0), `parking_lot` (P0) | Service, State |
 | `CurveEngine` | Orchestration | カーブ構築オーケストレーション | 全般 | `SequentialBootstrapper` (P0), `CurveResultCache` (P1) | Service |
 | `YieldCurve` trait | Interface | 汎用カーブインターフェース | 5.1-5.7 | - | Service |
@@ -208,8 +208,8 @@ sequenceDiagram
 
 **Dependencies**
 - Inbound: `CurveEngine` — カーブ構築時の定義参照 (P0)
-- Outbound: `infra_master::trade::RateIndex` — Index識別 (P0)
-- Outbound: `infra_master::trade::convention::SwapConvention` — コンベンション参照 (P0)
+- Outbound: `infra_domain::trade::RateIndex` — Index識別 (P0)
+- Outbound: `infra_domain::trade::convention::SwapConvention` — コンベンション参照 (P0)
 
 **Contracts**: Service [x] / State [x]
 
@@ -343,19 +343,19 @@ impl<T: Float> CurveConfig<T> {
 
 | Field | Detail |
 |-------|--------|
-| Intent | infra_masterの商品定義からBootstrapInstrumentへ変換 |
+| Intent | infra_domainの商品定義からBootstrapInstrumentへ変換 |
 | Requirements | 3.1, 3.2, 3.3, 3.4, 3.5, 3.6 |
 
 **Responsibilities & Constraints**
 - `SwapConvention`からOIS/IRS用の`BootstrapInstrument`を生成
-- キャッシュフロースケジュールを`infra_master::trade::Cashflow`で展開
+- キャッシュフロースケジュールを`infra_domain::trade::Cashflow`で展開
 - FRA/Futuresの変換をサポート
 - Convexity調整を適用（Futures）
 
 **Dependencies**
 - Inbound: `CurveEngine` — Instrument変換要求 (P0)
-- Outbound: `infra_master::trade::convention::SwapConvention` — コンベンション参照 (P0)
-- Outbound: `infra_master::trade::Cashflow` — キャッシュフロー展開 (P1)
+- Outbound: `infra_domain::trade::convention::SwapConvention` — コンベンション参照 (P0)
+- Outbound: `infra_domain::trade::Cashflow` — キャッシュフロー展開 (P1)
 - Outbound: `BootstrapInstrument<T>` — 変換先 (P0)
 
 **Contracts**: Service [x]

@@ -19,11 +19,11 @@
   - `pricer_models`: 6型 (HestonError, SABRError, CorrelationError, AnalyticalError, CalibrationError, MarketDataError, BootstrapError)
   - `pricer_pricing`: 9型 (MonteCarloConfigError, CheckpointError, FallbackError, GraphError, GreeksConfigError, IrsGreeksError, BenchmarkError, XvaDemoError)
   - `pricer_risk`: 6型 (XvaError, ParallelGreeksError, PortfolioError, CurveShiftError, GreeksByFactorError, BucketDv01Error)
-  - `infra_master`: 4型 (MasterDataError, DateError, CurrencyError, TimeError, CounterPartyError, TradeError)
+  - `infra_domain`: 4型 (MasterDataError, DateError, CurrencyError, TimeError, CounterPartyError, TradeError)
   - Adapter/Service 層: 6型
 - **Implications**:
   - 共通パターン（InvalidInput, NotConverged, NumericalError）の抽出が可能
-  - DateError, CurrencyError が pricer_core と infra_master で重複
+  - DateError, CurrencyError が pricer_core と infra_domain で重複
   - From 変換チェーンの簡略化が必要
 
 ### 未使用コード調査

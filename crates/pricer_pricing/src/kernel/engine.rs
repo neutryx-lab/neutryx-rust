@@ -23,7 +23,7 @@
 //!
 //! Expected SIMD instructions: vfmadd*, vmulpd, vaddpd
 
-use pricer_core::ir::PricingKernel;
+use pricer_core::kernel::PricingKernel;
 use rayon::prelude::*;
 
 use super::{context::KernelContext, provider::CurveProvider};
@@ -85,7 +85,7 @@ pub fn years_to_days(years: f64, valuation_date_days: i32) -> i32 {
 ///
 /// ```ignore
 /// use pricer_pricing::kernel::{LinearEngine, KernelContext, FlatCurveProvider};
-/// use pricer_core::ir::PricingKernel;
+/// use pricer_core::kernel::PricingKernel;
 ///
 /// let kernel = /* compiled kernel */;
 /// let curves = FlatCurveProvider::new(0.05, 0.03);

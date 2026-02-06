@@ -17,13 +17,13 @@ fn test_greeks_config_default() {
 #[test]
 fn test_greeks_config_builder() {
     let config = GreeksConfig::builder()
-        .mode(GreeksMode::NumDual)
+        .mode(GreeksMode::BumpRevalue)
         .spot_bump_relative(0.02)
         .vol_bump_absolute(0.005)
         .build()
         .unwrap();
 
-    assert_eq!(config.mode, GreeksMode::NumDual);
+    assert_eq!(config.mode, GreeksMode::BumpRevalue);
     assert!((config.spot_bump_relative - 0.02).abs() < 1e-10);
     assert!((config.vol_bump_absolute - 0.005).abs() < 1e-10);
 }

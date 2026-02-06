@@ -58,7 +58,7 @@
                                     │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                        Infra Layer (infra_master)                        │
+│                        Infra Layer (infra_domain)                        │
 │  ┌─────────────────┐    ┌─────────────────┐                             │
 │  │ Swaption        │    │ SwaptionConvention │                          │
 │  │ CapFloor        │    │ CapFloorConvention │                          │
@@ -113,7 +113,7 @@ Market Quotes (JSON/CSV)
 
 ```rust
 use crate::types::CurveName;
-use infra_master::currency::Currency;
+use infra_domain::currency::Currency;
 
 /// VolCubeカリブレーション設定
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1053,7 +1053,7 @@ pub enum LoaderError {
 
 | 要件ID | 設計セクション | コンポーネント |
 |--------|---------------|---------------|
-| Req 1 | 3.2 | VolQuote, infra_master |
+| Req 1 | 3.2 | VolQuote, infra_domain |
 | Req 2 | 3.2, 3.3 | VolQuote, VolCube |
 | Req 3 | 3.1, 3.3 | VolCubeConfig, CalibratorKind |
 | Req 4 | 3.3 | VolCubeCalibrationEngine |

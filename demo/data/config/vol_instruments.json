@@ -1,0 +1,325 @@
+{
+  "$schema": "./schemas/vol_instruments.schema.json",
+  "metadata": {
+    "description": "Volatility calibration instrument definitions for FX and IR vol surfaces",
+    "version": "1.0",
+    "sections": {
+      "fxVolInstruments": "FX option volatility quotes (ATM, RR, BF by delta)",
+      "irVolInstruments": "IR swaption volatility quotes (ATM and strike offsets)"
+    }
+  },
+
+  "fxVolInstruments": [
+    {
+      "$comment": "=== EUR/USD FX Volatility Instruments ===",
+      "currencyPair": "EURUSD",
+      "instruments": [
+        { "id": "EURUSD-1W-ATM", "expiry": "1W", "quoteType": "ATM", "delta": null, "description": "EURUSD 1W ATM volatility" },
+        { "id": "EURUSD-1W-25D-RR", "expiry": "1W", "quoteType": "RR", "delta": 0.25, "description": "EURUSD 1W 25-delta risk reversal" },
+        { "id": "EURUSD-1W-25D-BF", "expiry": "1W", "quoteType": "BF", "delta": 0.25, "description": "EURUSD 1W 25-delta butterfly" },
+        { "id": "EURUSD-1W-10D-RR", "expiry": "1W", "quoteType": "RR", "delta": 0.10, "description": "EURUSD 1W 10-delta risk reversal" },
+        { "id": "EURUSD-1W-10D-BF", "expiry": "1W", "quoteType": "BF", "delta": 0.10, "description": "EURUSD 1W 10-delta butterfly" },
+
+        { "id": "EURUSD-1M-ATM", "expiry": "1M", "quoteType": "ATM", "delta": null },
+        { "id": "EURUSD-1M-25D-RR", "expiry": "1M", "quoteType": "RR", "delta": 0.25 },
+        { "id": "EURUSD-1M-25D-BF", "expiry": "1M", "quoteType": "BF", "delta": 0.25 },
+        { "id": "EURUSD-1M-10D-RR", "expiry": "1M", "quoteType": "RR", "delta": 0.10 },
+        { "id": "EURUSD-1M-10D-BF", "expiry": "1M", "quoteType": "BF", "delta": 0.10 },
+
+        { "id": "EURUSD-3M-ATM", "expiry": "3M", "quoteType": "ATM", "delta": null },
+        { "id": "EURUSD-3M-25D-RR", "expiry": "3M", "quoteType": "RR", "delta": 0.25 },
+        { "id": "EURUSD-3M-25D-BF", "expiry": "3M", "quoteType": "BF", "delta": 0.25 },
+        { "id": "EURUSD-3M-10D-RR", "expiry": "3M", "quoteType": "RR", "delta": 0.10 },
+        { "id": "EURUSD-3M-10D-BF", "expiry": "3M", "quoteType": "BF", "delta": 0.10 },
+
+        { "id": "EURUSD-6M-ATM", "expiry": "6M", "quoteType": "ATM", "delta": null },
+        { "id": "EURUSD-6M-25D-RR", "expiry": "6M", "quoteType": "RR", "delta": 0.25 },
+        { "id": "EURUSD-6M-25D-BF", "expiry": "6M", "quoteType": "BF", "delta": 0.25 },
+        { "id": "EURUSD-6M-10D-RR", "expiry": "6M", "quoteType": "RR", "delta": 0.10 },
+        { "id": "EURUSD-6M-10D-BF", "expiry": "6M", "quoteType": "BF", "delta": 0.10 },
+
+        { "id": "EURUSD-1Y-ATM", "expiry": "1Y", "quoteType": "ATM", "delta": null },
+        { "id": "EURUSD-1Y-25D-RR", "expiry": "1Y", "quoteType": "RR", "delta": 0.25 },
+        { "id": "EURUSD-1Y-25D-BF", "expiry": "1Y", "quoteType": "BF", "delta": 0.25 },
+        { "id": "EURUSD-1Y-10D-RR", "expiry": "1Y", "quoteType": "RR", "delta": 0.10 },
+        { "id": "EURUSD-1Y-10D-BF", "expiry": "1Y", "quoteType": "BF", "delta": 0.10 },
+
+        { "id": "EURUSD-2Y-ATM", "expiry": "2Y", "quoteType": "ATM", "delta": null },
+        { "id": "EURUSD-2Y-25D-RR", "expiry": "2Y", "quoteType": "RR", "delta": 0.25 },
+        { "id": "EURUSD-2Y-25D-BF", "expiry": "2Y", "quoteType": "BF", "delta": 0.25 },
+        { "id": "EURUSD-2Y-10D-RR", "expiry": "2Y", "quoteType": "RR", "delta": 0.10 },
+        { "id": "EURUSD-2Y-10D-BF", "expiry": "2Y", "quoteType": "BF", "delta": 0.10 }
+      ]
+    },
+    {
+      "$comment": "=== USD/JPY FX Volatility Instruments ===",
+      "currencyPair": "USDJPY",
+      "instruments": [
+        { "id": "USDJPY-1W-ATM", "expiry": "1W", "quoteType": "ATM", "delta": null },
+        { "id": "USDJPY-1W-25D-RR", "expiry": "1W", "quoteType": "RR", "delta": 0.25 },
+        { "id": "USDJPY-1W-25D-BF", "expiry": "1W", "quoteType": "BF", "delta": 0.25 },
+        { "id": "USDJPY-1W-10D-RR", "expiry": "1W", "quoteType": "RR", "delta": 0.10 },
+        { "id": "USDJPY-1W-10D-BF", "expiry": "1W", "quoteType": "BF", "delta": 0.10 },
+
+        { "id": "USDJPY-1M-ATM", "expiry": "1M", "quoteType": "ATM", "delta": null },
+        { "id": "USDJPY-1M-25D-RR", "expiry": "1M", "quoteType": "RR", "delta": 0.25 },
+        { "id": "USDJPY-1M-25D-BF", "expiry": "1M", "quoteType": "BF", "delta": 0.25 },
+        { "id": "USDJPY-1M-10D-RR", "expiry": "1M", "quoteType": "RR", "delta": 0.10 },
+        { "id": "USDJPY-1M-10D-BF", "expiry": "1M", "quoteType": "BF", "delta": 0.10 },
+
+        { "id": "USDJPY-3M-ATM", "expiry": "3M", "quoteType": "ATM", "delta": null },
+        { "id": "USDJPY-3M-25D-RR", "expiry": "3M", "quoteType": "RR", "delta": 0.25 },
+        { "id": "USDJPY-3M-25D-BF", "expiry": "3M", "quoteType": "BF", "delta": 0.25 },
+        { "id": "USDJPY-3M-10D-RR", "expiry": "3M", "quoteType": "RR", "delta": 0.10 },
+        { "id": "USDJPY-3M-10D-BF", "expiry": "3M", "quoteType": "BF", "delta": 0.10 },
+
+        { "id": "USDJPY-6M-ATM", "expiry": "6M", "quoteType": "ATM", "delta": null },
+        { "id": "USDJPY-6M-25D-RR", "expiry": "6M", "quoteType": "RR", "delta": 0.25 },
+        { "id": "USDJPY-6M-25D-BF", "expiry": "6M", "quoteType": "BF", "delta": 0.25 },
+        { "id": "USDJPY-6M-10D-RR", "expiry": "6M", "quoteType": "RR", "delta": 0.10 },
+        { "id": "USDJPY-6M-10D-BF", "expiry": "6M", "quoteType": "BF", "delta": 0.10 },
+
+        { "id": "USDJPY-1Y-ATM", "expiry": "1Y", "quoteType": "ATM", "delta": null },
+        { "id": "USDJPY-1Y-25D-RR", "expiry": "1Y", "quoteType": "RR", "delta": 0.25 },
+        { "id": "USDJPY-1Y-25D-BF", "expiry": "1Y", "quoteType": "BF", "delta": 0.25 },
+        { "id": "USDJPY-1Y-10D-RR", "expiry": "1Y", "quoteType": "RR", "delta": 0.10 },
+        { "id": "USDJPY-1Y-10D-BF", "expiry": "1Y", "quoteType": "BF", "delta": 0.10 },
+
+        { "id": "USDJPY-2Y-ATM", "expiry": "2Y", "quoteType": "ATM", "delta": null },
+        { "id": "USDJPY-2Y-25D-RR", "expiry": "2Y", "quoteType": "RR", "delta": 0.25 },
+        { "id": "USDJPY-2Y-25D-BF", "expiry": "2Y", "quoteType": "BF", "delta": 0.25 },
+        { "id": "USDJPY-2Y-10D-RR", "expiry": "2Y", "quoteType": "RR", "delta": 0.10 },
+        { "id": "USDJPY-2Y-10D-BF", "expiry": "2Y", "quoteType": "BF", "delta": 0.10 }
+      ]
+    },
+    {
+      "$comment": "=== GBP/USD FX Volatility Instruments ===",
+      "currencyPair": "GBPUSD",
+      "instruments": [
+        { "id": "GBPUSD-1W-ATM", "expiry": "1W", "quoteType": "ATM", "delta": null },
+        { "id": "GBPUSD-1W-25D-RR", "expiry": "1W", "quoteType": "RR", "delta": 0.25 },
+        { "id": "GBPUSD-1W-25D-BF", "expiry": "1W", "quoteType": "BF", "delta": 0.25 },
+
+        { "id": "GBPUSD-1M-ATM", "expiry": "1M", "quoteType": "ATM", "delta": null },
+        { "id": "GBPUSD-1M-25D-RR", "expiry": "1M", "quoteType": "RR", "delta": 0.25 },
+        { "id": "GBPUSD-1M-25D-BF", "expiry": "1M", "quoteType": "BF", "delta": 0.25 },
+
+        { "id": "GBPUSD-3M-ATM", "expiry": "3M", "quoteType": "ATM", "delta": null },
+        { "id": "GBPUSD-3M-25D-RR", "expiry": "3M", "quoteType": "RR", "delta": 0.25 },
+        { "id": "GBPUSD-3M-25D-BF", "expiry": "3M", "quoteType": "BF", "delta": 0.25 },
+
+        { "id": "GBPUSD-6M-ATM", "expiry": "6M", "quoteType": "ATM", "delta": null },
+        { "id": "GBPUSD-6M-25D-RR", "expiry": "6M", "quoteType": "RR", "delta": 0.25 },
+        { "id": "GBPUSD-6M-25D-BF", "expiry": "6M", "quoteType": "BF", "delta": 0.25 },
+
+        { "id": "GBPUSD-1Y-ATM", "expiry": "1Y", "quoteType": "ATM", "delta": null },
+        { "id": "GBPUSD-1Y-25D-RR", "expiry": "1Y", "quoteType": "RR", "delta": 0.25 },
+        { "id": "GBPUSD-1Y-25D-BF", "expiry": "1Y", "quoteType": "BF", "delta": 0.25 },
+
+        { "id": "GBPUSD-2Y-ATM", "expiry": "2Y", "quoteType": "ATM", "delta": null },
+        { "id": "GBPUSD-2Y-25D-RR", "expiry": "2Y", "quoteType": "RR", "delta": 0.25 },
+        { "id": "GBPUSD-2Y-25D-BF", "expiry": "2Y", "quoteType": "BF", "delta": 0.25 }
+      ]
+    }
+  ],
+
+  "irVolInstruments": [
+    {
+      "$comment": "=== USD SOFR Swaption Volatility Instruments ===",
+      "currency": "USD",
+      "rateIndex": "USD-SOFR",
+      "instrumentType": "swaption",
+      "instruments": [
+        { "id": "USD-SOFR-SWN-1Mx1Y-ATM", "expiry": "1M", "tenor": "1Y", "strikeOffsetBp": 0 },
+        { "id": "USD-SOFR-SWN-1Mx1Y-M100", "expiry": "1M", "tenor": "1Y", "strikeOffsetBp": -100 },
+        { "id": "USD-SOFR-SWN-1Mx1Y-M50", "expiry": "1M", "tenor": "1Y", "strikeOffsetBp": -50 },
+        { "id": "USD-SOFR-SWN-1Mx1Y-P50", "expiry": "1M", "tenor": "1Y", "strikeOffsetBp": 50 },
+        { "id": "USD-SOFR-SWN-1Mx1Y-P100", "expiry": "1M", "tenor": "1Y", "strikeOffsetBp": 100 },
+
+        { "id": "USD-SOFR-SWN-1Mx5Y-ATM", "expiry": "1M", "tenor": "5Y", "strikeOffsetBp": 0 },
+        { "id": "USD-SOFR-SWN-1Mx5Y-M100", "expiry": "1M", "tenor": "5Y", "strikeOffsetBp": -100 },
+        { "id": "USD-SOFR-SWN-1Mx5Y-M50", "expiry": "1M", "tenor": "5Y", "strikeOffsetBp": -50 },
+        { "id": "USD-SOFR-SWN-1Mx5Y-P50", "expiry": "1M", "tenor": "5Y", "strikeOffsetBp": 50 },
+        { "id": "USD-SOFR-SWN-1Mx5Y-P100", "expiry": "1M", "tenor": "5Y", "strikeOffsetBp": 100 },
+
+        { "id": "USD-SOFR-SWN-1Mx10Y-ATM", "expiry": "1M", "tenor": "10Y", "strikeOffsetBp": 0 },
+        { "id": "USD-SOFR-SWN-1Mx10Y-M100", "expiry": "1M", "tenor": "10Y", "strikeOffsetBp": -100 },
+        { "id": "USD-SOFR-SWN-1Mx10Y-M50", "expiry": "1M", "tenor": "10Y", "strikeOffsetBp": -50 },
+        { "id": "USD-SOFR-SWN-1Mx10Y-P50", "expiry": "1M", "tenor": "10Y", "strikeOffsetBp": 50 },
+        { "id": "USD-SOFR-SWN-1Mx10Y-P100", "expiry": "1M", "tenor": "10Y", "strikeOffsetBp": 100 },
+
+        { "id": "USD-SOFR-SWN-1Mx30Y-ATM", "expiry": "1M", "tenor": "30Y", "strikeOffsetBp": 0 },
+        { "id": "USD-SOFR-SWN-1Mx30Y-M100", "expiry": "1M", "tenor": "30Y", "strikeOffsetBp": -100 },
+        { "id": "USD-SOFR-SWN-1Mx30Y-M50", "expiry": "1M", "tenor": "30Y", "strikeOffsetBp": -50 },
+        { "id": "USD-SOFR-SWN-1Mx30Y-P50", "expiry": "1M", "tenor": "30Y", "strikeOffsetBp": 50 },
+        { "id": "USD-SOFR-SWN-1Mx30Y-P100", "expiry": "1M", "tenor": "30Y", "strikeOffsetBp": 100 },
+
+        { "id": "USD-SOFR-SWN-1Yx1Y-ATM", "expiry": "1Y", "tenor": "1Y", "strikeOffsetBp": 0 },
+        { "id": "USD-SOFR-SWN-1Yx1Y-M100", "expiry": "1Y", "tenor": "1Y", "strikeOffsetBp": -100 },
+        { "id": "USD-SOFR-SWN-1Yx1Y-M50", "expiry": "1Y", "tenor": "1Y", "strikeOffsetBp": -50 },
+        { "id": "USD-SOFR-SWN-1Yx1Y-P50", "expiry": "1Y", "tenor": "1Y", "strikeOffsetBp": 50 },
+        { "id": "USD-SOFR-SWN-1Yx1Y-P100", "expiry": "1Y", "tenor": "1Y", "strikeOffsetBp": 100 },
+
+        { "id": "USD-SOFR-SWN-1Yx5Y-ATM", "expiry": "1Y", "tenor": "5Y", "strikeOffsetBp": 0 },
+        { "id": "USD-SOFR-SWN-1Yx5Y-M150", "expiry": "1Y", "tenor": "5Y", "strikeOffsetBp": -150 },
+        { "id": "USD-SOFR-SWN-1Yx5Y-M100", "expiry": "1Y", "tenor": "5Y", "strikeOffsetBp": -100 },
+        { "id": "USD-SOFR-SWN-1Yx5Y-M50", "expiry": "1Y", "tenor": "5Y", "strikeOffsetBp": -50 },
+        { "id": "USD-SOFR-SWN-1Yx5Y-P50", "expiry": "1Y", "tenor": "5Y", "strikeOffsetBp": 50 },
+        { "id": "USD-SOFR-SWN-1Yx5Y-P100", "expiry": "1Y", "tenor": "5Y", "strikeOffsetBp": 100 },
+        { "id": "USD-SOFR-SWN-1Yx5Y-P150", "expiry": "1Y", "tenor": "5Y", "strikeOffsetBp": 150 },
+
+        { "id": "USD-SOFR-SWN-1Yx10Y-ATM", "expiry": "1Y", "tenor": "10Y", "strikeOffsetBp": 0 },
+        { "id": "USD-SOFR-SWN-1Yx10Y-M150", "expiry": "1Y", "tenor": "10Y", "strikeOffsetBp": -150 },
+        { "id": "USD-SOFR-SWN-1Yx10Y-M100", "expiry": "1Y", "tenor": "10Y", "strikeOffsetBp": -100 },
+        { "id": "USD-SOFR-SWN-1Yx10Y-M50", "expiry": "1Y", "tenor": "10Y", "strikeOffsetBp": -50 },
+        { "id": "USD-SOFR-SWN-1Yx10Y-P50", "expiry": "1Y", "tenor": "10Y", "strikeOffsetBp": 50 },
+        { "id": "USD-SOFR-SWN-1Yx10Y-P100", "expiry": "1Y", "tenor": "10Y", "strikeOffsetBp": 100 },
+        { "id": "USD-SOFR-SWN-1Yx10Y-P150", "expiry": "1Y", "tenor": "10Y", "strikeOffsetBp": 150 },
+
+        { "id": "USD-SOFR-SWN-1Yx30Y-ATM", "expiry": "1Y", "tenor": "30Y", "strikeOffsetBp": 0 },
+        { "id": "USD-SOFR-SWN-1Yx30Y-M100", "expiry": "1Y", "tenor": "30Y", "strikeOffsetBp": -100 },
+        { "id": "USD-SOFR-SWN-1Yx30Y-M50", "expiry": "1Y", "tenor": "30Y", "strikeOffsetBp": -50 },
+        { "id": "USD-SOFR-SWN-1Yx30Y-P50", "expiry": "1Y", "tenor": "30Y", "strikeOffsetBp": 50 },
+        { "id": "USD-SOFR-SWN-1Yx30Y-P100", "expiry": "1Y", "tenor": "30Y", "strikeOffsetBp": 100 },
+
+        { "id": "USD-SOFR-SWN-5Yx5Y-ATM", "expiry": "5Y", "tenor": "5Y", "strikeOffsetBp": 0 },
+        { "id": "USD-SOFR-SWN-5Yx5Y-M200", "expiry": "5Y", "tenor": "5Y", "strikeOffsetBp": -200 },
+        { "id": "USD-SOFR-SWN-5Yx5Y-M150", "expiry": "5Y", "tenor": "5Y", "strikeOffsetBp": -150 },
+        { "id": "USD-SOFR-SWN-5Yx5Y-M100", "expiry": "5Y", "tenor": "5Y", "strikeOffsetBp": -100 },
+        { "id": "USD-SOFR-SWN-5Yx5Y-P100", "expiry": "5Y", "tenor": "5Y", "strikeOffsetBp": 100 },
+        { "id": "USD-SOFR-SWN-5Yx5Y-P150", "expiry": "5Y", "tenor": "5Y", "strikeOffsetBp": 150 },
+        { "id": "USD-SOFR-SWN-5Yx5Y-P200", "expiry": "5Y", "tenor": "5Y", "strikeOffsetBp": 200 },
+
+        { "id": "USD-SOFR-SWN-5Yx10Y-ATM", "expiry": "5Y", "tenor": "10Y", "strikeOffsetBp": 0 },
+        { "id": "USD-SOFR-SWN-5Yx10Y-M200", "expiry": "5Y", "tenor": "10Y", "strikeOffsetBp": -200 },
+        { "id": "USD-SOFR-SWN-5Yx10Y-M100", "expiry": "5Y", "tenor": "10Y", "strikeOffsetBp": -100 },
+        { "id": "USD-SOFR-SWN-5Yx10Y-P100", "expiry": "5Y", "tenor": "10Y", "strikeOffsetBp": 100 },
+        { "id": "USD-SOFR-SWN-5Yx10Y-P200", "expiry": "5Y", "tenor": "10Y", "strikeOffsetBp": 200 },
+
+        { "id": "USD-SOFR-SWN-10Yx5Y-ATM", "expiry": "10Y", "tenor": "5Y", "strikeOffsetBp": 0 },
+        { "id": "USD-SOFR-SWN-10Yx5Y-M200", "expiry": "10Y", "tenor": "5Y", "strikeOffsetBp": -200 },
+        { "id": "USD-SOFR-SWN-10Yx5Y-M100", "expiry": "10Y", "tenor": "5Y", "strikeOffsetBp": -100 },
+        { "id": "USD-SOFR-SWN-10Yx5Y-P100", "expiry": "10Y", "tenor": "5Y", "strikeOffsetBp": 100 },
+        { "id": "USD-SOFR-SWN-10Yx5Y-P200", "expiry": "10Y", "tenor": "5Y", "strikeOffsetBp": 200 },
+
+        { "id": "USD-SOFR-SWN-10Yx10Y-ATM", "expiry": "10Y", "tenor": "10Y", "strikeOffsetBp": 0 },
+        { "id": "USD-SOFR-SWN-10Yx10Y-M230", "expiry": "10Y", "tenor": "10Y", "strikeOffsetBp": -230 },
+        { "id": "USD-SOFR-SWN-10Yx10Y-M180", "expiry": "10Y", "tenor": "10Y", "strikeOffsetBp": -180 },
+        { "id": "USD-SOFR-SWN-10Yx10Y-M130", "expiry": "10Y", "tenor": "10Y", "strikeOffsetBp": -130 },
+        { "id": "USD-SOFR-SWN-10Yx10Y-P70", "expiry": "10Y", "tenor": "10Y", "strikeOffsetBp": 70 },
+        { "id": "USD-SOFR-SWN-10Yx10Y-P120", "expiry": "10Y", "tenor": "10Y", "strikeOffsetBp": 120 }
+      ]
+    },
+    {
+      "$comment": "=== EUR ESTR Swaption Volatility Instruments ===",
+      "currency": "EUR",
+      "rateIndex": "EUR-ESTR",
+      "instrumentType": "swaption",
+      "instruments": [
+        { "id": "EUR-ESTR-SWN-1Mx1Y-ATM", "expiry": "1M", "tenor": "1Y", "strikeOffsetBp": 0 },
+        { "id": "EUR-ESTR-SWN-1Mx1Y-M100", "expiry": "1M", "tenor": "1Y", "strikeOffsetBp": -100 },
+        { "id": "EUR-ESTR-SWN-1Mx1Y-M50", "expiry": "1M", "tenor": "1Y", "strikeOffsetBp": -50 },
+        { "id": "EUR-ESTR-SWN-1Mx1Y-P50", "expiry": "1M", "tenor": "1Y", "strikeOffsetBp": 50 },
+        { "id": "EUR-ESTR-SWN-1Mx1Y-P100", "expiry": "1M", "tenor": "1Y", "strikeOffsetBp": 100 },
+
+        { "id": "EUR-ESTR-SWN-1Mx5Y-ATM", "expiry": "1M", "tenor": "5Y", "strikeOffsetBp": 0 },
+        { "id": "EUR-ESTR-SWN-1Mx5Y-M100", "expiry": "1M", "tenor": "5Y", "strikeOffsetBp": -100 },
+        { "id": "EUR-ESTR-SWN-1Mx5Y-M50", "expiry": "1M", "tenor": "5Y", "strikeOffsetBp": -50 },
+        { "id": "EUR-ESTR-SWN-1Mx5Y-P50", "expiry": "1M", "tenor": "5Y", "strikeOffsetBp": 50 },
+        { "id": "EUR-ESTR-SWN-1Mx5Y-P100", "expiry": "1M", "tenor": "5Y", "strikeOffsetBp": 100 },
+
+        { "id": "EUR-ESTR-SWN-1Mx10Y-ATM", "expiry": "1M", "tenor": "10Y", "strikeOffsetBp": 0 },
+        { "id": "EUR-ESTR-SWN-1Mx10Y-M100", "expiry": "1M", "tenor": "10Y", "strikeOffsetBp": -100 },
+        { "id": "EUR-ESTR-SWN-1Mx10Y-M50", "expiry": "1M", "tenor": "10Y", "strikeOffsetBp": -50 },
+        { "id": "EUR-ESTR-SWN-1Mx10Y-P50", "expiry": "1M", "tenor": "10Y", "strikeOffsetBp": 50 },
+        { "id": "EUR-ESTR-SWN-1Mx10Y-P100", "expiry": "1M", "tenor": "10Y", "strikeOffsetBp": 100 },
+
+        { "id": "EUR-ESTR-SWN-1Yx5Y-ATM", "expiry": "1Y", "tenor": "5Y", "strikeOffsetBp": 0 },
+        { "id": "EUR-ESTR-SWN-1Yx5Y-M100", "expiry": "1Y", "tenor": "5Y", "strikeOffsetBp": -100 },
+        { "id": "EUR-ESTR-SWN-1Yx5Y-M50", "expiry": "1Y", "tenor": "5Y", "strikeOffsetBp": -50 },
+        { "id": "EUR-ESTR-SWN-1Yx5Y-P50", "expiry": "1Y", "tenor": "5Y", "strikeOffsetBp": 50 },
+        { "id": "EUR-ESTR-SWN-1Yx5Y-P100", "expiry": "1Y", "tenor": "5Y", "strikeOffsetBp": 100 },
+
+        { "id": "EUR-ESTR-SWN-1Yx10Y-ATM", "expiry": "1Y", "tenor": "10Y", "strikeOffsetBp": 0 },
+        { "id": "EUR-ESTR-SWN-1Yx10Y-M100", "expiry": "1Y", "tenor": "10Y", "strikeOffsetBp": -100 },
+        { "id": "EUR-ESTR-SWN-1Yx10Y-M50", "expiry": "1Y", "tenor": "10Y", "strikeOffsetBp": -50 },
+        { "id": "EUR-ESTR-SWN-1Yx10Y-P50", "expiry": "1Y", "tenor": "10Y", "strikeOffsetBp": 50 },
+        { "id": "EUR-ESTR-SWN-1Yx10Y-P100", "expiry": "1Y", "tenor": "10Y", "strikeOffsetBp": 100 },
+
+        { "id": "EUR-ESTR-SWN-5Yx5Y-ATM", "expiry": "5Y", "tenor": "5Y", "strikeOffsetBp": 0 },
+        { "id": "EUR-ESTR-SWN-5Yx5Y-M100", "expiry": "5Y", "tenor": "5Y", "strikeOffsetBp": -100 },
+        { "id": "EUR-ESTR-SWN-5Yx5Y-M50", "expiry": "5Y", "tenor": "5Y", "strikeOffsetBp": -50 },
+        { "id": "EUR-ESTR-SWN-5Yx5Y-P50", "expiry": "5Y", "tenor": "5Y", "strikeOffsetBp": 50 },
+        { "id": "EUR-ESTR-SWN-5Yx5Y-P100", "expiry": "5Y", "tenor": "5Y", "strikeOffsetBp": 100 },
+
+        { "id": "EUR-ESTR-SWN-10Yx10Y-ATM", "expiry": "10Y", "tenor": "10Y", "strikeOffsetBp": 0 },
+        { "id": "EUR-ESTR-SWN-10Yx10Y-M100", "expiry": "10Y", "tenor": "10Y", "strikeOffsetBp": -100 },
+        { "id": "EUR-ESTR-SWN-10Yx10Y-M50", "expiry": "10Y", "tenor": "10Y", "strikeOffsetBp": -50 },
+        { "id": "EUR-ESTR-SWN-10Yx10Y-P50", "expiry": "10Y", "tenor": "10Y", "strikeOffsetBp": 50 },
+        { "id": "EUR-ESTR-SWN-10Yx10Y-P100", "expiry": "10Y", "tenor": "10Y", "strikeOffsetBp": 100 }
+      ]
+    },
+    {
+      "$comment": "=== GBP SONIA Swaption Volatility Instruments ===",
+      "currency": "GBP",
+      "rateIndex": "GBP-SONIA",
+      "instrumentType": "swaption",
+      "instruments": [
+        { "id": "GBP-SONIA-SWN-1Mx5Y-ATM", "expiry": "1M", "tenor": "5Y", "strikeOffsetBp": 0 },
+        { "id": "GBP-SONIA-SWN-1Mx5Y-M100", "expiry": "1M", "tenor": "5Y", "strikeOffsetBp": -100 },
+        { "id": "GBP-SONIA-SWN-1Mx5Y-M50", "expiry": "1M", "tenor": "5Y", "strikeOffsetBp": -50 },
+        { "id": "GBP-SONIA-SWN-1Mx5Y-P50", "expiry": "1M", "tenor": "5Y", "strikeOffsetBp": 50 },
+        { "id": "GBP-SONIA-SWN-1Mx5Y-P100", "expiry": "1M", "tenor": "5Y", "strikeOffsetBp": 100 },
+
+        { "id": "GBP-SONIA-SWN-1Yx5Y-ATM", "expiry": "1Y", "tenor": "5Y", "strikeOffsetBp": 0 },
+        { "id": "GBP-SONIA-SWN-1Yx5Y-M100", "expiry": "1Y", "tenor": "5Y", "strikeOffsetBp": -100 },
+        { "id": "GBP-SONIA-SWN-1Yx5Y-M50", "expiry": "1Y", "tenor": "5Y", "strikeOffsetBp": -50 },
+        { "id": "GBP-SONIA-SWN-1Yx5Y-P50", "expiry": "1Y", "tenor": "5Y", "strikeOffsetBp": 50 },
+        { "id": "GBP-SONIA-SWN-1Yx5Y-P100", "expiry": "1Y", "tenor": "5Y", "strikeOffsetBp": 100 },
+
+        { "id": "GBP-SONIA-SWN-5Yx5Y-ATM", "expiry": "5Y", "tenor": "5Y", "strikeOffsetBp": 0 },
+        { "id": "GBP-SONIA-SWN-5Yx5Y-M100", "expiry": "5Y", "tenor": "5Y", "strikeOffsetBp": -100 },
+        { "id": "GBP-SONIA-SWN-5Yx5Y-M50", "expiry": "5Y", "tenor": "5Y", "strikeOffsetBp": -50 },
+        { "id": "GBP-SONIA-SWN-5Yx5Y-P50", "expiry": "5Y", "tenor": "5Y", "strikeOffsetBp": 50 },
+        { "id": "GBP-SONIA-SWN-5Yx5Y-P100", "expiry": "5Y", "tenor": "5Y", "strikeOffsetBp": 100 },
+
+        { "id": "GBP-SONIA-SWN-10Yx10Y-ATM", "expiry": "10Y", "tenor": "10Y", "strikeOffsetBp": 0 },
+        { "id": "GBP-SONIA-SWN-10Yx10Y-M100", "expiry": "10Y", "tenor": "10Y", "strikeOffsetBp": -100 },
+        { "id": "GBP-SONIA-SWN-10Yx10Y-M50", "expiry": "10Y", "tenor": "10Y", "strikeOffsetBp": -50 },
+        { "id": "GBP-SONIA-SWN-10Yx10Y-P50", "expiry": "10Y", "tenor": "10Y", "strikeOffsetBp": 50 },
+        { "id": "GBP-SONIA-SWN-10Yx10Y-P100", "expiry": "10Y", "tenor": "10Y", "strikeOffsetBp": 100 }
+      ]
+    },
+    {
+      "$comment": "=== JPY TONA Swaption Volatility Instruments ===",
+      "currency": "JPY",
+      "rateIndex": "JPY-TONA",
+      "instrumentType": "swaption",
+      "instruments": [
+        { "id": "JPY-TONA-SWN-1Mx5Y-ATM", "expiry": "1M", "tenor": "5Y", "strikeOffsetBp": 0 },
+        { "id": "JPY-TONA-SWN-1Mx5Y-M100", "expiry": "1M", "tenor": "5Y", "strikeOffsetBp": -100 },
+        { "id": "JPY-TONA-SWN-1Mx5Y-M50", "expiry": "1M", "tenor": "5Y", "strikeOffsetBp": -50 },
+        { "id": "JPY-TONA-SWN-1Mx5Y-P50", "expiry": "1M", "tenor": "5Y", "strikeOffsetBp": 50 },
+        { "id": "JPY-TONA-SWN-1Mx5Y-P100", "expiry": "1M", "tenor": "5Y", "strikeOffsetBp": 100 },
+
+        { "id": "JPY-TONA-SWN-1Yx5Y-ATM", "expiry": "1Y", "tenor": "5Y", "strikeOffsetBp": 0 },
+        { "id": "JPY-TONA-SWN-1Yx5Y-M100", "expiry": "1Y", "tenor": "5Y", "strikeOffsetBp": -100 },
+        { "id": "JPY-TONA-SWN-1Yx5Y-M50", "expiry": "1Y", "tenor": "5Y", "strikeOffsetBp": -50 },
+        { "id": "JPY-TONA-SWN-1Yx5Y-P50", "expiry": "1Y", "tenor": "5Y", "strikeOffsetBp": 50 },
+        { "id": "JPY-TONA-SWN-1Yx5Y-P100", "expiry": "1Y", "tenor": "5Y", "strikeOffsetBp": 100 },
+
+        { "id": "JPY-TONA-SWN-5Yx5Y-ATM", "expiry": "5Y", "tenor": "5Y", "strikeOffsetBp": 0 },
+        { "id": "JPY-TONA-SWN-5Yx5Y-M100", "expiry": "5Y", "tenor": "5Y", "strikeOffsetBp": -100 },
+        { "id": "JPY-TONA-SWN-5Yx5Y-M50", "expiry": "5Y", "tenor": "5Y", "strikeOffsetBp": -50 },
+        { "id": "JPY-TONA-SWN-5Yx5Y-P50", "expiry": "5Y", "tenor": "5Y", "strikeOffsetBp": 50 },
+        { "id": "JPY-TONA-SWN-5Yx5Y-P100", "expiry": "5Y", "tenor": "5Y", "strikeOffsetBp": 100 },
+
+        { "id": "JPY-TONA-SWN-10Yx10Y-ATM", "expiry": "10Y", "tenor": "10Y", "strikeOffsetBp": 0 },
+        { "id": "JPY-TONA-SWN-10Yx10Y-M100", "expiry": "10Y", "tenor": "10Y", "strikeOffsetBp": -100 },
+        { "id": "JPY-TONA-SWN-10Yx10Y-M50", "expiry": "10Y", "tenor": "10Y", "strikeOffsetBp": -50 },
+        { "id": "JPY-TONA-SWN-10Yx10Y-P50", "expiry": "10Y", "tenor": "10Y", "strikeOffsetBp": 50 },
+        { "id": "JPY-TONA-SWN-10Yx10Y-P100", "expiry": "10Y", "tenor": "10Y", "strikeOffsetBp": 100 }
+      ]
+    }
+  ]
+}

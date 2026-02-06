@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Purpose**: `infra_master`クレートにPortfolioおよびBook定義を実装し、XVA計算（CVA/DVA/FVA/KVA/MVA）、Exposure計算（EE/EPE/PFE/ENE/EEPE）、Netting計算の基盤構造を提供する。
+**Purpose**: `infra_domain`クレートにPortfolioおよびBook定義を実装し、XVA計算（CVA/DVA/FVA/KVA/MVA）、Exposure計算（EE/EPE/PFE/ENE/EEPE）、Netting計算の基盤構造を提供する。
 
 **Users**: XVAデスク、リスク管理者、トレーダー、レポーティングチームがポートフォリオ階層構造とリスク集計機能を利用する。
 
@@ -28,20 +28,20 @@
 ### Existing Architecture Analysis
 
 **Current State**:
-- `infra_master::counterparty`: CounterParty, NettingSet, CsaTerms, MarginTerms（対称条件のみ）
-- `infra_master::ids`: BookId, PortfolioId定義済みだが未統合
-- `infra_master::trade::TradeMetadata`: `book: Option<BookId>`（オプショナル）
+- `infra_domain::counterparty`: CounterParty, NettingSet, CsaTerms, MarginTerms（対称条件のみ）
+- `infra_domain::ids`: BookId, PortfolioId定義済みだが未統合
+- `infra_domain::trade::TradeMetadata`: `book: Option<BookId>`（オプショナル）
 - `pricer_risk::portfolio`: Portfolio, Trade, Counterparty, NettingSet（計算最適化版）
 
 **Integration Points**:
-- `infra_master` → `pricer_risk`: 定義 → 計算用構造体への変換（`From`トレイト）
+- `infra_domain` → `pricer_risk`: 定義 → 計算用構造体への変換（`From`トレイト）
 - TradeMetadata.book_id: 必須化に伴う既存コード更新
 
 ### Architecture Pattern & Boundary Map
 
 ```mermaid
 graph TB
-    subgraph InfraMaster[infra_master Layer]
+    subgraph InfraMaster[infra_domain Layer]
         Book[Book]
         Portfolio[PortfolioDefinition]
         ISDA[IsdaMasterAgreement]
@@ -73,7 +73,7 @@ graph TB
 
 **Architecture Integration**:
 - **Selected pattern**: Reference Graph（ID参照による関係表現）
-- **Domain boundaries**: infra_master（静的定義）/ pricer_risk（計算ロジック）
+- **Domain boundaries**: infra_domain（静的定義）/ pricer_risk（計算ロジック）
 - **Existing patterns preserved**: 型安全ID、Builderパターン、thiserrorエラー型
 - **New components rationale**: CounterpartyPortfolio階層はXVA計算入力構造として必須
 - **Steering compliance**: A-I-P-S階層分離原則維持
@@ -1138,7 +1138,7 @@ erDiagram
 
 ### E2E Tests (pricer_riskとの統合)
 
-- `infra_master::CounterpartyPortfolio` → `pricer_risk`変換
+- `infra_domain::CounterpartyPortfolio` → `pricer_risk`変換
 - XVA計算入力構造の完全性検証
 
 ## Security Considerations
@@ -1154,7 +1154,7 @@ erDiagram
 
 ## Migration Strategy
 
-1. **Phase 1**: `infra_master`に新規構造体追加（Book, PortfolioDefinition, CounterpartyPortfolio等）
+1. **Phase 1**: `infra_domain`に新規構造体追加（Book, PortfolioDefinition, CounterpartyPortfolio等）
 2. **Phase 2**: `TradeMetadata.book`を`Option<BookId>`から`BookId`に変更
 3. **Phase 3**: 既存コード更新（optional book参照箇所）
 4. **Phase 4**: `pricer_risk`との統合（From trait実装）

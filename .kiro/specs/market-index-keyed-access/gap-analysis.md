@@ -4,13 +4,13 @@
 
 ### 1.1 既存アセットの調査
 
-#### Index型定義（infra_master）
+#### Index型定義（infra_domain）
 
 | ファイル | 状態 | 説明 |
 |---------|------|------|
-| `infra_master::market::rate_index.rs` | ✅ 存在 | `RateIndex` enum (SOFR, TONAR, ESTR, EURIBOR3M, EURIBOR6M, SONIA, SARON) with Hash/Eq |
-| `infra_master::trade::index.rs` | ✅ 存在 | `IndexType` enum (Rate, SwapRate, Fx, Equity, Inflation, Commodity) |
-| `infra_master::trade::instrument_def::fx.rs` | ✅ 存在 | `CurrencyPair` struct (base, quote) with Hash/Eq |
+| `infra_domain::market::rate_index.rs` | ✅ 存在 | `RateIndex` enum (SOFR, TONAR, ESTR, EURIBOR3M, EURIBOR6M, SONIA, SARON) with Hash/Eq |
+| `infra_domain::trade::index.rs` | ✅ 存在 | `IndexType` enum (Rate, SwapRate, Fx, Equity, Inflation, Commodity) |
+| `infra_domain::trade::instrument_def::fx.rs` | ✅ 存在 | `CurrencyPair` struct (base, quote) with Hash/Eq |
 | VolatilityIndex型 | ❌ 不在 | Volatility Surface/Cube用のIndex型が未定義 |
 
 #### Curve関連（pricer_models::market）
@@ -131,7 +131,7 @@ RateIndex → IndexCurveMapper → CurveName → CurveSet → CurveEnum
 | Portfolio.required_indices() | ❌ Missing | 中 |
 | MissingIndexエラー | ❌ Missing | 低 |
 
-**Constraint:** infra_master::trade::Trade構造への侵入的変更
+**Constraint:** infra_domain::trade::Trade構造への侵入的変更
 
 ### Requirement 8: 後方互換性
 
@@ -167,7 +167,7 @@ RateIndex → IndexCurveMapper → CurveName → CurveSet → CurveEnum
 
 **新規ファイル:**
 - `pricer_models::market::indexed_market.rs` - 新Market構造体
-- `infra_master::market::volatility_index.rs` - VolatilityIndex型
+- `infra_domain::market::volatility_index.rs` - VolatilityIndex型
 
 **変更内容:**
 1. 新`IndexedMarket<T>`構造体を作成
@@ -190,8 +190,8 @@ RateIndex → IndexCurveMapper → CurveName → CurveSet → CurveEnum
 
 **新規ファイル:**
 - `pricer_models::market::indexed_market.rs` - ファサード
-- `infra_master::market::volatility_index.rs` - VolatilityIndex型
-- `infra_master::trade::index_requirement.rs` - IndexRequirement型
+- `infra_domain::market::volatility_index.rs` - VolatilityIndex型
+- `infra_domain::trade::index_requirement.rs` - IndexRequirement型
 
 **既存ファイル変更:**
 - `pricer_models::market::mod.rs` - re-export追加
@@ -244,13 +244,13 @@ RateIndex → IndexCurveMapper → CurveName → CurveSet → CurveEnum
    - または汎用`VolatilityIndexType` enum
 
 3. **Trade.required_indices()の実装方式**
-   - infra_masterへの直接変更 vs trait extension pattern
+   - infra_domainへの直接変更 vs trait extension pattern
    - `IndexRequirement`型（RateIndex | CurrencyPair | VolatilityIndex）
 
 ### Research Items for Design Phase
 
 1. **VolatilityIndex設計調査**: RateIndex再利用 vs 新型定義
-2. **Trade trait extension**: infra_master変更の影響範囲調査
+2. **Trade trait extension**: infra_domain変更の影響範囲調査
 3. **性能ベンチマーク**: HashMap lookup overhead測定
 
 ---

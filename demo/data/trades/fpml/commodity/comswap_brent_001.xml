@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  FpML 5.12 Commodity Swap
+  Brent Crude Oil Fixed-for-Floating Swap
+-->
+<dataDocument xmlns="http://www.fpml.org/FpML-5/confirmation"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://www.fpml.org/FpML-5/confirmation fpml-main-5-12.xsd"
+              fpmlVersion="5-12">
+  <trade>
+    <tradeHeader>
+      <partyTradeIdentifier>
+        <partyReference href="FB_UK"/>
+        <tradeId tradeIdScheme="http://www.frictionalbank.com/trade-id">T50001-01</tradeId>
+      </partyTradeIdentifier>
+      <partyTradeIdentifier>
+        <partyReference href="BARCLAYS"/>
+        <tradeId tradeIdScheme="http://www.barclays.com/trade-id">BARC-2024-COM-66666</tradeId>
+      </partyTradeIdentifier>
+      <tradeDate>2024-07-01</tradeDate>
+      <book>COMMODITIES</book>
+    </tradeHeader>
+    <commoditySwap>
+      <effectiveDate>
+        <adjustableDate>
+          <unadjustedDate>2024-08-01</unadjustedDate>
+          <dateAdjustments>
+            <businessDayConvention>FOLLOWING</businessDayConvention>
+            <businessCenters>
+              <businessCenter>GBLO</businessCenter>
+            </businessCenters>
+          </dateAdjustments>
+        </adjustableDate>
+      </effectiveDate>
+      <terminationDate>
+        <adjustableDate>
+          <unadjustedDate>2025-07-31</unadjustedDate>
+          <dateAdjustments>
+            <businessDayConvention>FOLLOWING</businessDayConvention>
+            <businessCenters>
+              <businessCenter>GBLO</businessCenter>
+            </businessCenters>
+          </dateAdjustments>
+        </adjustableDate>
+      </terminationDate>
+      <!-- Fixed Leg -->
+      <fixedLeg>
+        <payerPartyReference href="FB_UK"/>
+        <receiverPartyReference href="BARCLAYS"/>
+        <calculationDates>
+          <calculationSchedule>
+            <periodMultiplier>1</periodMultiplier>
+            <period>M</period>
+          </calculationSchedule>
+        </calculationDates>
+        <fixedPrice>
+          <price>80.00</price>
+          <priceCurrency>USD</priceCurrency>
+          <priceUnit>BBL</priceUnit>
+        </fixedPrice>
+        <notionalQuantity>
+          <quantityUnit>BBL</quantityUnit>
+          <quantity>25000</quantity>
+          <quantityFrequency>PerCalculationPeriod</quantityFrequency>
+        </notionalQuantity>
+        <totalNotionalQuantity>300000</totalNotionalQuantity>
+      </fixedLeg>
+      <!-- Floating Leg -->
+      <floatingLeg>
+        <payerPartyReference href="BARCLAYS"/>
+        <receiverPartyReference href="FB_UK"/>
+        <calculationDates>
+          <calculationSchedule>
+            <periodMultiplier>1</periodMultiplier>
+            <period>M</period>
+          </calculationSchedule>
+        </calculationDates>
+        <commodity>
+          <instrumentId instrumentIdScheme="http://www.fpml.org/coding-scheme/commodity-reference-price">OIL-BRENT-IPE</instrumentId>
+          <specifiedPrice>Settlement</specifiedPrice>
+          <deliveryDates>FirstNearby</deliveryDates>
+        </commodity>
+        <notionalQuantity>
+          <quantityUnit>BBL</quantityUnit>
+          <quantity>25000</quantity>
+          <quantityFrequency>PerCalculationPeriod</quantityFrequency>
+        </notionalQuantity>
+        <totalNotionalQuantity>300000</totalNotionalQuantity>
+        <calculation>
+          <pricingDates>
+            <calculationPeriodsReference href="floatCalcPeriods"/>
+            <dayType>CommodityBusiness</dayType>
+            <dayDistribution>All</dayDistribution>
+          </pricingDates>
+          <averagingMethod>Unweighted</averagingMethod>
+        </calculation>
+      </floatingLeg>
+    </commoditySwap>
+  </trade>
+  <party id="FB_UK">
+    <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">549300EXAMPLE0003UK</partyId>
+    <partyName>FrictionalBank UK Limited</partyName>
+  </party>
+  <party id="BARCLAYS">
+    <partyId partyIdScheme="http://www.fpml.org/coding-scheme/external/iso17442">G5GSEF7VJP5I7OUK5573</partyId>
+    <partyName>Barclays Bank PLC</partyName>
+  </party>
+</dataDocument>

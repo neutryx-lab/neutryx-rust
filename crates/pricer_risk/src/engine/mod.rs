@@ -1,66 +1,61 @@
 //! Risk Engine module.
 //!
-//! Provides the unified [`RiskEngine`] facade for Greeks and risk calculations.
+//! Provides the unified [`RiskEngine`] for all risk operations.
 //!
 //! # Overview
 //!
-//! The Risk Engine is the primary entry point for computing sensitivities
-//! (Greeks) on financial instruments. It supports:
+//! The `RiskEngine` is the **single entry point** for:
 //!
-//! - **AAD (Automatic Adjoint Differentiation)**: Fast gradient computation
-//!   using Enzyme LLVM-level AD (requires `enzyme-ad` feature)
-//! - **Bump-and-Revalue**: Traditional finite difference method
-//! - **Parallel Processing**: Rayon-based parallelisation for large portfolios
-//! - **Configuration-Driven**: Flexible configuration via TOML/JSON
+//! - **Greeks calculation**: AAD (Enzyme) or Bump-and-Revalue
+//! - **Scenario analysis**: Stress testing with `ScenarioEngine`
+//! - **Portfolio operations**: Pricing, aggregation, XVA
 //!
 //! # Architecture
 //!
 //! ```text
 //! ┌─────────────────────────────────────────────────────────────┐
-//! │                      RiskEngine                              │
+//! │                        RiskEngine                            │
 //! ├─────────────────────────────────────────────────────────────┤
-//! │  compute_greeks()         - Single trade calculation         │
-//! │  compute_portfolio_greeks() - Portfolio calculation          │
-//! └─────────────────────────────────────────────────────────────┘
-//!                              ↓
-//! ┌─────────────────────────────────────────────────────────────┐
-//! │                      RiskConfig                              │
-//! │  (from infra_config)                                         │
+//! │  Greeks API:                                                │
+//! │    compute_greeks()           - Single trade                │
+//! │    compute_portfolio_greeks() - Portfolio                   │
 //! ├─────────────────────────────────────────────────────────────┤
-//! │  greeks_method:    AAD | Bump                                │
-//! │  bump_sizes:       rate, vol, spot bumps                     │
-//! │  target_greeks:    Delta, Gamma, Vega, etc.                  │
-//! │  second_order_mode: Parallel | Serial                        │
+//! │  Scenario API (delegates to ScenarioEngine):                │
+//! │    add_scenario()             - Register scenario           │
+//! │    run_all_scenarios()        - Execute all                 │
+//! │    worst_case_scenario()      - Get worst P&L               │
+//! ├─────────────────────────────────────────────────────────────┤
+//! │  Portfolio API:                                             │
+//! │    price_portfolio()          - Price all trades            │
+//! │    aggregate_by_netting_set() - Aggregate by NS             │
+//! │    total_portfolio_value()    - Sum of prices               │
 //! └─────────────────────────────────────────────────────────────┘
 //! ```
 //!
 //! # Example
 //!
 //! ```rust,ignore
-//! use pricer_risk::engine::{RiskEngine, RiskEngineConfig};
-//! use infra_config::{RiskConfig, GreeksMethod, GreekType};
-//!
-//! // Create configuration
-//! let risk_config = RiskConfig {
-//!     greeks_method: GreeksMethod::Bump,
-//!     target_greeks: vec![GreekType::Delta, GreekType::Gamma, GreekType::Vega],
-//!     ..Default::default()
-//! };
+//! use pricer_risk::{RiskEngine, RiskEngineConfig};
+//! use pricer_risk::scenarios::{Scenario, BumpScenario, RiskFactorShift};
+//! use infra_config::{RiskConfig, GreeksMethod};
 //!
 //! // Create engine
-//! let engine = RiskEngine::new(RiskEngineConfig::new(risk_config));
+//! let mut engine = RiskEngine::with_defaults();
 //!
-//! // Compute Greeks for a single trade
+//! // === Greeks Calculation ===
 //! let result = engine.compute_greeks("T001", || {
-//!     // Your pricing logic here
-//!     Ok(GreeksResult::new(100.0, 0.01)
-//!         .with_delta(0.5)
-//!         .with_gamma(0.02))
+//!     Ok(GreeksResult::new(100.0, 0.01).with_delta(0.5))
 //! })?;
 //!
-//! println!("Trade: {}", result.trade_id);
-//! println!("PV: {}", result.pv);
-//! println!("Delta: {:?}", result.greeks.delta);
+//! // === Scenario Analysis ===
+//! engine.add_scenario(Scenario::named(
+//!     "IR +100bp",
+//!     BumpScenario::new().with_shift(RiskFactorShift::rate_parallel("*", 0.01)),
+//! ));
+//! let results = engine.run_all_scenarios(1_000_000.0, |name| stressed_value(name));
+//!
+//! // === Portfolio Pricing ===
+//! let prices = engine.price_portfolio(&portfolio, |trade| pricer.price(trade));
 //! ```
 //!
 //! # Requirements Coverage
@@ -70,6 +65,7 @@
 //! - Requirement 5.3: AAD/Bump mode selection
 //! - Requirement 5.4: Risk factor identification
 //! - Requirement 5.5: RiskResult with metrics
+//! - Requirement 10.4: ScenarioEngine integration
 
 mod engine;
 mod error;

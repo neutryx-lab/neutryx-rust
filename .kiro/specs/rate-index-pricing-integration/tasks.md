@@ -2,11 +2,11 @@
 
 ## Task Overview
 
-本実装計画は、RateIndex を Neutryx プライシングパイプライン全体に統合するための作業を定義する。4つのフェーズ（infra_master → pricer_models → pricer_pricing → demo/gui）に沿って、段階的に実装を進める。
+本実装計画は、RateIndex を Neutryx プライシングパイプライン全体に統合するための作業を定義する。4つのフェーズ（infra_domain → pricer_models → pricer_pricing → demo/gui）に沿って、段階的に実装を進める。
 
 ## Tasks
 
-### Phase 1: infra_master 拡張
+### Phase 1: infra_domain 拡張
 
 - [x] 1. コンパウンディング方式の列挙型を追加
 - [x] 1.1 コンパウンディング方式を表す列挙型を作成する
@@ -35,7 +35,7 @@
   - 既存の new(), with_lag(), with_source() メソッドとの後方互換性を維持
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
 
-- [x] 1.4 infra_master の単体テストを追加する
+- [x] 1.4 infra_domain の単体テストを追加する
   - 全 RateIndex バリアントのメタデータ値を検証
   - OIS インデックスと IBOR インデックスのデフォルトコンパウンディング方式を検証
   - IndexObservation のファクトリメソッドの自動設定を検証
@@ -149,7 +149,7 @@
 
 - [x] 5. エンドツーエンド統合と後方互換性検証
 - [x] 5.1 既存テストの回帰テストを実行する
-  - infra_master、pricer_models、pricer_pricing の全既存テストを実行
+  - infra_domain、pricer_models、pricer_pricing の全既存テストを実行
   - テスト失敗がないことを確認
   - 実行時間が 10% 以上悪化していないことを確認
   - _Requirements: 10.1_

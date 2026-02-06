@@ -22,7 +22,7 @@
 //!
 //! ```ignore
 //! use pricer_pricing::kernel::{CurveProvider, KernelContext, LinearEngine};
-//! use pricer_core::ir::PricingKernel;
+//! use pricer_core::kernel::PricingKernel;
 //!
 //! // Create market data provider
 //! let curves = FlatCurveProvider::new(0.05, 0.03);

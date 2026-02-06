@@ -12,7 +12,7 @@
 //!    `get_pv_simple()`.
 //!
 //! 2. **Integrated mode** (with `l1l2-integration` feature): Uses
-//!    `infra_master` types and `MarketProvider`. Use `new()` and `get_pv()`.
+//!    `infra_domain` types and `MarketProvider`. Use `new()` and `get_pv()`.
 
 #[cfg(feature = "l1l2-integration")]
 use std::sync::Arc;
@@ -22,7 +22,7 @@ use chrono::Datelike;
 #[cfg(feature = "l1l2-integration")]
 use infra_config::{PricingConfig, PricingMethod};
 #[cfg(feature = "l1l2-integration")]
-use infra_master::{
+use infra_domain::{
     market::Currency,
     time::Date,
     trade::{Leg, Trade},
@@ -32,8 +32,6 @@ use pricer_models::market::{MarketProvider, YieldCurve};
 
 // Standalone types - always available
 use super::config::DefaultCurrency;
-#[cfg(feature = "l1l2-integration")]
-use super::ois_calculator::{DailyAccrual, OisCalculator};
 #[cfg(feature = "l1l2-integration")]
 use super::payoff_evaluator::PayoffEvaluator;
 #[cfg(feature = "l1l2-integration")]
@@ -286,7 +284,12 @@ impl GenericPricer {
         let leg_currency = leg.currency;
 
         // Get discount curve for the leg currency
-        let curve = self.market.get_curve(leg_currency);
+        let curve = self.market.get_curve(leg_currency).ok_or_else(|| {
+            PricingError::market_data_resolution(format!(
+                "No curve found for currency {:?}",
+                leg_currency
+            ))
+        })?;
 
         // Get FX rate (1.0 if same currency)
         let fx_rate = if leg_currency == reporting_currency {
@@ -317,7 +320,7 @@ impl GenericPricer {
                 .map_err(|e| PricingError::market_data_resolution(format!("{:?}", e)))?;
 
             // Calculate cashflow amount using PayoffEvaluator
-            let cf_amount = self.evaluate_cashflow_amount(cf, valuation_date, &curve_set)?;
+            let cf_amount = self.evaluate_cashflow_amount(cf, valuation_date, curve_set)?;
             let cf_pv_original = cf_amount * df;
             let cf_pv = cf_pv_original * fx_rate;
 
@@ -348,37 +351,16 @@ impl GenericPricer {
     }
 
     /// Evaluates the cashflow amount based on its payoff type.
-    ///
-    /// For OIS cashflows with daily accruals, uses OisCalculator for
-    /// compounding. For other cashflows, uses PayoffEvaluator.
     #[cfg(feature = "l1l2-integration")]
     fn evaluate_cashflow_amount(
         &self,
-        cf: &infra_master::trade::Cashflow,
+        cf: &infra_domain::trade::Cashflow,
         valuation_date: Date,
         curve_set: &pricer_models::market::curves::CurveSet<f64>,
     ) -> Result<f64, PricingError> {
         let notional = cf.notional;
         let year_fraction = cf.year_fraction;
 
-        // Check if this is an OIS cashflow with daily accruals
-        if let Some(daily_accruals) = cf.daily_accruals() {
-            if !daily_accruals.is_empty() {
-                // Convert infra_master DailyAccrual to ois_calculator DailyAccrual
-                let accruals: Vec<DailyAccrual> = daily_accruals
-                    .iter()
-                    .map(|a| DailyAccrual::new(a.overnight_rate, a.day_fraction))
-                    .collect();
-
-                // Calculate compounded rate
-                let compounded_rate = OisCalculator::compound_rate::<f64>(&accruals);
-
-                // Apply notional to get the cashflow amount
-                return Ok(notional * compounded_rate);
-            }
-        }
-
-        // For non-OIS cashflows or OIS without daily accruals, use PayoffEvaluator
         let evaluator = PayoffEvaluator::new(curve_set);
 
         // Calculate time parameters for forward rate calculation
@@ -398,7 +380,7 @@ impl GenericPricer {
     /// `evaluate_cashflow_amount` method extracts notional from `cf.notional`.
     #[cfg(feature = "l1l2-integration")]
     #[allow(dead_code)]
-    fn get_notional_for_cashflow(&self, _cf: &infra_master::trade::Cashflow, _leg: &Leg) -> f64 {
+    fn get_notional_for_cashflow(&self, _cf: &infra_domain::trade::Cashflow, _leg: &Leg) -> f64 {
         // TODO: Extract notional from cashflow/leg based on cashflow type
         // For now, return a default notional
         1_000_000.0
@@ -642,7 +624,9 @@ mod tests {
 
     #[test]
     fn test_generic_pricer_creation() {
+        #[cfg(not(feature = "l1l2-integration"))]
         let model_config = ModelConfigBuilder::default().build().unwrap();
+        #[cfg(not(feature = "l1l2-integration"))]
         let pricer_config = PricerConfigBuilder::default().build().unwrap();
 
         #[cfg(not(feature = "l1l2-integration"))]

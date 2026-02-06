@@ -5,6 +5,37 @@
 **A-I-P-S Unidirectional Data Flow**:
 The workspace structure enforces a strict unidirectional data flow that mirrors the alphabetical order of the directory names (**A**dapter → **I**nfra → **P**ricer → **S**ervice). This logical progression ensures that the file system itself acts as an architectural map, guiding developers from data ingestion to computation and finally to delivery.
 
+## Neutryx Facade Crate
+
+**Location**: Workspace root (`/src/`)
+**Purpose**: Unified entry point for external consumers
+
+The `neutryx` crate provides a single dependency that re-exports all underlying crates with intuitive aliases:
+
+```rust
+use neutryx::prelude::*;  // Common types (Date, Currency, Trade, etc.)
+use neutryx::models::market::YieldCurve;  // pricer_models access
+use neutryx::risk::XvaCalculator;  // pricer_risk access
+```
+
+**Module Aliases**:
+| Alias | Underlying Crate | Description |
+|-------|-----------------|-------------|
+| `master` | infra_domain | Static data (dates, currencies, trades) |
+| `config` | infra_config | System configuration |
+| `store` | infra_store | Persistence layer |
+| `core` | pricer_core | Mathematical foundation |
+| `models` | pricer_models | Financial models |
+| `pricing` | pricer_pricing | Pricing engines |
+| `risk` | pricer_risk | Risk analytics |
+
+**Feature Tiers**:
+- `minimal` — Master data only (dates, currencies, trade definitions)
+- `analytics` — Curve building, models, analytical pricing
+- `full` (default) — Complete pricing and risk functionality
+
+**Prelude**: `neutryx::prelude` exports the most frequently used types for quick onboarding.
+
 ```text
 A: Adapter   → Ingestion and normalisation of external data (The Raw Inputs)
 I: Infra     → System-wide definitions, persistence, and configuration (The Foundation)
@@ -36,7 +67,7 @@ S: Service   → Execution environments and interfaces (The Outputs)
 
 ## A: Adapter Layer (Input)
 
-**Responsibility**: To sanitise external chaos into internal order. This layer depends only on `pricer_core` (for types) and `infra_master` (for identifiers).
+**Responsibility**: To sanitise external chaos into internal order. This layer depends only on `pricer_core` (for types) and `infra_domain` (for identifiers).
 
 ### adapter_feeds
 
@@ -72,9 +103,9 @@ S: Service   → Execution environments and interfaces (The Outputs)
 **Function**: Loads runtime settings (TOML/YAML/Env Vars).
 **Scope**: Defines memory limits for the AD engine, thread pool sizes, and database connection strings.
 
-### infra_master
+### infra_domain
 
-**Location**: `crates/infra_master/src/`
+**Location**: `crates/infra_domain/src/`
 **Purpose**: Static master data and financial primitives
 **Function**: The "Source of Truth" for static finance data.
 **Scope**: Holiday calendars, Day count conventions, Counterparty/CSA data, Financial date and time primitives, Trade structures, Market conventions, Portfolio/Book organisation.
@@ -88,7 +119,7 @@ time/              → Time-related primitives
   ├── period.rs         → Period definitions (Period)
   └── types.rs          → Date type and business day conventions
 
-market/            → Market data references and rate infrastructure
+market/            → Market data references, rate infrastructure, and conventions
   ├── currency.rs       → ISO 4217 currency codes (Currency enum with metadata)
   ├── rate_index.rs     → Rate index definitions (RateIndex)
   ├── rate.rs           → Rate values (Rate, RateQuote)
@@ -99,7 +130,13 @@ market/            → Market data references and rate infrastructure
   ├── quote_type.rs     → Quote types (Bid, Ask, Mid)
   ├── data_source.rs    → Data source definitions
   ├── mapper.rs         → Rate/Ticker mapping
-  └── validation.rs     → Market data validation
+  ├── validation.rs     → Market data validation
+  ├── event_instrument.rs → EventInstrument for curve impact analysis (CB meetings, jumps)
+  ├── market_instrument.rs → MarketInstrument type for CF-expandable instruments
+  ├── curve_definition.rs → CurveDefinition for yield curve construction recipes
+  ├── registry.rs       → CurveRegistry, InstrumentDefinitionRegistry for configuration lookup
+  └── convention/       → Convention registry (ConventionRegistry, per-asset conventions)
+      └── convention_template.rs → ConventionTemplate for bulk convention generation
 
 counterparty/      → Counterparty, netting, and XVA configuration
   ├── csa.rs            → CSA terms (CsaTerms)
@@ -133,7 +170,7 @@ trade/             → Trade representation (CF-expanded format)
   ├── pricing_instrument.rs → Pricing instrument types (VanillaOption, Forward)
   ├── book_assignment.rs → Trade-to-Book assignment
   ├── builder.rs        → Builder API (TradeBuilder, LegBuilder)
-  └── convention/       → Market conventions (swap, swaption, fx, equity, credit, commodity, etc.)
+  └── convention/       → Trade conventions (deprecated, migrated to market/convention/)
 
   instrument_def/   → Standard instrument definitions (multi-asset catalogue)
     ├── rates.rs        → Rates instruments (Swaption, CapFloor, Frn, CmsSwap, InflationSwap)
@@ -147,7 +184,7 @@ trade/             → Trade representation (CF-expanded format)
 ```
 
 **Trade Architecture**: `Trade` → `Vec<Leg>` → `Vec<Cashflow>` (CF-expanded common format)
-**Prelude**: `infra_master::prelude` exports all commonly used types.
+**Prelude**: `infra_domain::prelude` exports all commonly used types.
 
 ### infra_store
 
@@ -190,16 +227,19 @@ math/
 ├── fitting/          → Curve fitting (least_squares, gaussian)
 ├── mesh/             → Grid generation (grid_1d, grid_2d)
 └── linalg/           → Linear algebra (feature-gated, nalgebra wrappers)
+    ├── strategy.rs   → LinearSolveStrategy trait (LU, LowerTriangular) for pluggable solve strategies
+    ├── wrappers.rs   → nalgebra wrappers (cholesky, lu, qr, svd)
+    └── error.rs      → LinearAlgebraError types
 
 ir/         → Pricing Kernel Intermediate Representation (SIMD/Enzyme-optimised)
 ├── aligned_buffer.rs → 64-byte aligned heap buffer (AlignedBuffer<T>)
 ├── pricing_kernel.rs → SoA cashflow representation (PricingKernel, PricingKernelBuilder)
 ├── script_kernel.rs  → Event-driven IR for path-dependent (ScriptKernel, ScriptOp, BarrierType)
+├── callable_kernel.rs → Block-structured IR for Bermudan (CallableKernel, CallableBlock, ExerciseDef)
 └── error.rs          → Compilation errors (CompileError)
 
 traits/     → Priceable, Differentiable, Float, core abstractions
 types/
-├── dual.rs          → Dual numbers (num-dual) for AD
 ├── time.rs          → DayCountConvention, time_to_maturity for financial calculations
 ├── currency_pair.rs → FxRate type for FX rate representation (deprecated alias: CurrencyPair)
 └── error.rs         → Structured error types (PricingError, SolverError, InterpolationError, CalibrationError)
@@ -219,90 +259,78 @@ types/
 **Structure**:
 
 ```text
-instruments/  → Financial instrument definitions
-  ├── equity/   → Equity options (VanillaOption, Forward)
-  ├── rates/    → Interest rate instruments (IRS, Swaption, FixedLeg, FloatingLeg)
-  ├── credit/   → Credit instruments (CDS, CDX)
-  ├── fx/       → FX instruments (FxForward, FxOption)
-  └── mod.rs    → InstrumentEnum for static dispatch
+analytic.rs       → Analytical pricing with instrument integration (re-exports pricer_core formulas)
 
-market/       → Market data structures and calibration
-  ├── curves/        → Yield curves (YieldCurve trait, FlatCurve, InterpolatedCurve, CreditCurve, CurveSet, CurveEnum)
-  ├── surfaces/      → Volatility surfaces (VolatilitySurface trait, FlatVol, InterpolatedVolSurface, FxVolatilitySurface, VolSurfaceEnum, VolCubeSlice)
-  ├── volcube/       → IR volatility cube infrastructure (SABR calibration, lazy evaluation, caching)
-  │   ├── cube.rs         → VolCube core with expiry/tenor grid
-  │   ├── engine.rs       → VolCubeCalibrationEngine for full cube calibration
-  │   ├── calibrator.rs   → SABR calibration engine (per-slice)
-  │   ├── sabr_surface.rs → SABR surface construction
-  │   ├── interpolator.rs → VolCubeInterpolator trait (Flat, Linear)
-  │   ├── lazy_evaluator.rs → VolLazyEvaluator for on-demand calibration
-  │   ├── cache.rs        → SharedVolCubeCache, VolCubeCache, CacheStats
-  │   ├── vega.rs         → Vega calculation (adjoint/forward mode)
-  │   ├── calibration_graph.rs → CalibrationGraph for dependency management
-  │   ├── breeden_litzenberger.rs → Risk-neutral density extraction
-  │   ├── config.rs       → VolCubeConfig (interpolation, extrapolation, SABR settings)
-  │   ├── quote.rs        → VolQuote, VolQuoteSet for market data representation
-  │   ├── types.rs        → VolInstrument, SabrParams, InstrumentId
-  │   ├── graph.rs        → GraphExtractable for D3.js visualisation
-  │   ├── error.rs        → VolCubeError
-  │   └── builder.rs      → VolCubeBuilder for construction
-  ├── fx_calibration/ → FX curve and volatility surface calibration (new)
-  │   ├── types.rs        → Strike, Vol, ForwardPoints newtypes; ExpiryInterpolation
-  │   ├── config.rs       → FxVolSurfaceConfig with SABR settings and presets
-  │   ├── error.rs        → FxCalibrationError (12 variants)
-  │   ├── curve.rs        → FxCurve trait, CalibratedFxCurve, SimpleFxCurve
-  │   ├── builder.rs      → FxForwardCurveBuilder (FX swaps, XCCY basis swaps)
-  │   ├── surface.rs      → CalibratedFxVolSurface, VolSmile, SabrParameters
-  │   ├── vol_builder.rs  → FxVolSurfaceBuilder with SABR calibration
-  │   ├── lazy_surface.rs → LazyFxVolSurface for deferred calibration
-  │   ├── sensitivity.rs  → VolSurfaceSensitivity for AAD computation graph
-  │   └── fx_market_builder.rs → FxMarketBuilder orchestration (curves + vol surface)
-  ├── fx_density.rs  → FxDensityCalculator, DeltaType, DensityStatistics
-  ├── index_mapper.rs → IndexCurveMapper, DefaultIndexCurveMapper
-  ├── calibration/   → Model and curve calibration
-  │   ├── bootstrapping/ → Multi-curve yield curve construction (AAD-enabled)
-  │   │   ├── engine.rs      → BootstrapEngine with Adjoint AD
-  │   │   ├── curve_engine.rs → CurveBootstrapEngine
-  │   │   ├── adjoint_solver.rs → Adjoint solver for sensitivities
-  │   │   ├── multi_curve.rs → OIS/LIBOR multi-curve framework
-  │   │   ├── sensitivity.rs → Curve sensitivity calculations
-  │   │   ├── cache.rs       → Bootstrap result caching
-  │   │   └── config.rs      → Bootstrap configuration
-  │   ├── heston.rs      → Heston model calibrator
-  │   ├── sabr.rs        → SABR model calibrator
-  │   ├── hull_white.rs  → Hull-White model calibrator
-  │   └── swaption_calibrator.rs → Swaption vol calibrator
-  ├── provider.rs    → MarketProvider for lazy market data resolution (Arc-cached, VolCube support)
-  ├── error.rs       → MarketDataError for curve/surface validation
-  ├── indexed_market.rs → IndexedMarket<T> container (RateIndex→Curve, CurrencyPair→FxCurve keyed access)
-  ├── requirements.rs → TradeIndexRequirements trait (declares required market indices)
-  └── validator.rs   → MarketValidator, ValidationReport (validates market completeness)
+builder/          → Yield curve bootstrapping and market data calibration
+  ├── Shared Infrastructure
+  │   ├── grid.rs         → CalibrationGrid for axis management
+  │   ├── matrix.rs       → CalibrationMatrix, InterpolationMatrix
+  │   ├── problem.rs      → CalibrationProblem (SystemOfEquations impl), JacobianMethod
+  │   ├── error.rs        → CalibrationError, BootstrapError types
+  │   └── instrument.rs   → CalibrationInstrument trait
+  │
+  ├── curve/              → Yield curve calibration
+  │   ├── bootstrap.rs    → Sequential bootstrapping (CurveBootstrapper, BootstrapConfig)
+  │   └── global.rs       → Global calibration (feature = "global-bootstrap")
+  │                         GlobalBootstrapper, GlobalBootstrapConfig, GlobalBootstrapResult
+  │
+  └── vol/                → Volatility surface/cube calibration
+      ├── surface.rs      → FX vol surfaces (2D), SabrSliceCalibrator, FxVolBuilder
+      └── cube.rs         → Swaption vol cubes (3D), VolCubeBuilder
 
-models/       → Stochastic models with unified trait interface
-  ├── equity/   → Equity models: GBM, Heston, SABR (feature-gated)
-  ├── rates/    → Interest rate models: Hull-White, CIR (feature-gated)
-  └── hybrid/   → Correlated multi-factor models (feature-gated)
-
-compiler/     → Trade compiler for IR generation
+compiler/         → Trade compiler for IR generation
+  ├── mod.rs          → Module exports
   ├── index_mapper.rs → IndexMapper (RateIndex/Currency → numeric ID)
-  ├── linear.rs       → LinearProductsCompiler (IRS, Bond, FRA)
+  ├── linear.rs       → LinearProductsCompiler (IRS, Bond, FRA, CMS)
   ├── xccy.rs         → XCcyCompiler (cross-currency swaps)
-  └── exotic.rs       → ExoticCompiler (barriers, Asians)
+  ├── exotic.rs       → ExoticCompiler (barriers, Asians)
+  └── callable.rs     → CallableCompiler (Bermudan swaptions, block-partitioned)
 
-schedules/    → Payment schedule generation (Frequency, Period, ScheduleBuilder)
-analytical/   → Closed-form solutions (Black-Scholes, Garman-Kohlhagen)
-demo.rs       → Demo types for 3-stage rocket: ModelEnum, InstrumentEnum, CurveEnum, VolSurfaceEnum
+market.rs         → Market data structures (single-file module with inline submodules)
+  └── curves::        → YieldCurve trait, FlatCurve, BootstrappedCurve, MarketInstrument
+      CurveEnum       → Static dispatch wrapper (Flat, Bootstrapped)
+      CurveName       → Named curve identifiers (Sofr, Euribor, Estr, Tonar, Sonia)
+      CurveSet        → Named curve collection (CurveName → CurveEnum)
+      MarketProvider  → Market data provider placeholder
+
+stochastic/       → Stochastic process models
+  ├── mod.rs          → Module exports, StochasticModel trait
+  ├── model_enum.rs   → StochasticModelEnum for static dispatch
+  ├── gbm.rs          → Geometric Brownian Motion
+  ├── heston.rs       → Heston stochastic volatility
+  ├── hull_white.rs   → Hull-White interest rate model
+  ├── cir.rs          → Cox-Ingersoll-Ross model
+  ├── correlated.rs   → Correlated multi-factor models
+  ├── validation.rs   → Model parameter validation
+  └── error.rs        → StochasticModelError
+
+instruments/      → Re-exports from infra_domain::trade for backwards compatibility
 ```
+
+**Calibration Patterns** (documented in `builder/mod.rs`):
+
+| Pattern | Module | Description |
+|---------|--------|-------------|
+| Sequential | `curve::bootstrap` | Solve one pillar at a time (yield curves) |
+| Slice-wise | `vol::surface`, `vol::cube` | Calibrate each slice independently (vol surfaces/cubes) |
+| Global | `curve::global` | Solve all parameters simultaneously via Newton-Raphson (feature-gated) |
+
+**Shared Infrastructure** (`builder/`):
+- `CalibrationGrid`: Axis management for time/strike dimensions
+- `CalibrationMatrix`: N×M matrix representation for instrument cashflows
+- `InterpolationMatrix`: Maps pillar discount factors to cashflow dates via log-linear interpolation
+- `CalibrationProblem`: Implements `SystemOfEquations<T>` for MultidimensionalNewtonSolver
+- `JacobianMethod`: Finite Difference, Central Difference, or Automatic Differentiation (AAD feature-gated)
+
+**Global Curve Calibration** (`curve::global`, feature = "global-bootstrap"):
+- AAD Preparation: Stores J⁻¹ in `GlobalBootstrapResult` for implicit function theorem (∂x*/∂m = J⁻¹)
 
 **Key Principles**:
 
-- **Market data consolidation**: All market data (curves, surfaces, calibration, provider) resides in `market/` module
-- **IndexedMarket Pattern**: Market data keyed by logical indices (`RateIndex`, `CurrencyPair`) not strings; `TradeIndexRequirements` declares needed indices
 - **TradeCompiler Pattern**: `TradeCompiler<T>` trait compiles Trade → PricingKernel IR; `IndexMapper` maps indices to numeric IDs
 - **StochasticModel Trait**: Unified interface for stochastic processes (`evolve_step`, `initial_state`, `brownian_dim`)
 - **StochasticModelEnum**: Static dispatch enum wrapping concrete models (GBM, Heston, SABR, Hull-White, CIR)
 - **CalibrationEngine**: Uses `pricer_core::math::solvers` for parameter optimisation
-- **Feature-Flag Models**: Each model category gated by feature (equity, rates, credit, fx)
 - **Static Dispatch**: Enum-based dispatch for Enzyme compatibility
 
 ### pricer_pricing (L3)
@@ -321,6 +349,14 @@ analytical/      → Closed-form solutions (geometric Asian, barrier options)
 greeks/          → Greeks calculation types (GreeksConfig, GreeksMode, GreeksResult<T>)
 pool/            → Thread-local buffer pool (ThreadLocalPool, PooledBuffer, PoolStats)
 tree/            → Tree-based pricing methods (Binomial/Trinomial)
+kernel/          → IR-based pricing engines (static dispatch, SIMD-friendly)
+  ├── engine.rs         → LinearEngine (branchless PV calculation for PricingKernel)
+  ├── script_engine.rs  → ScriptEngine (event-driven execution for ScriptKernel)
+  ├── callable_engine.rs → CallableEngine (forward/backward pass for Bermudan)
+  ├── lsmc.rs           → Longstaff-Schwartz Monte Carlo regression (LSMCRegressor)
+  ├── provider.rs       → CurveProvider trait implementations
+  ├── context.rs        → KernelContext for static dispatch market data access
+  └── integration.rs    → Full pipeline integration (Trade→IR→PV)
   ├── binomial.rs   → CRR binomial tree (BinomialTree, CrrParams)
   ├── trinomial.rs  → Kamrad-Ritchken trinomial tree (TrinomialTree, KrParams)
   ├── config.rs     → TreeConfig, TreeConfigBuilder, TreeType
@@ -375,7 +411,7 @@ graph/           → Computation graph extraction (D3.js-compatible JSON for DAG
 **Greeks Module** (Phase 4+, Implemented):
 
 - `GreeksConfig`: Configuration for bump widths and calculation modes (builder pattern)
-- `GreeksMode`: Calculation mode selection (BumpAndRevalue, AAD, NumDual)
+- `GreeksMode`: Calculation mode selection (BumpAndRevalue, EnzymeAAD)
 - `GreeksResult<T>`: Generic result type for Greeks calculations (AD-compatible)
 
 **IRS Greeks Workflow** (Phase 5+, Implemented):
@@ -459,15 +495,28 @@ main.rs     → Entry point with clap argument parsing
 
 ```text
 rest/
-├── handlers.rs       → Core API handlers (price, batch, calibrate, exposure)
+├── handlers/         → REST API handlers
+│   ├── mod.rs            → Handler module exports
+│   ├── demo.rs           → Demo endpoints (curves, volcube, pricing, risk)
+│   └── ...               → Feature-specific handlers
+├── dto/              → Data Transfer Objects
+│   ├── mod.rs            → DTO module exports
+│   ├── demo.rs           → Demo request/response types
+│   └── ...               → Domain-specific DTOs
 ├── graph_handlers.rs → Portfolio graph REST handlers (subgraph extraction, caching)
 ├── ws_handlers.rs    → WebSocket handlers (real-time graph updates)
 └── mod.rs            → Router configuration (with/without WebSocket state)
-grpc/       → Tonic service implementations (skeleton)
-config.rs   → Server configuration
-error.rs    → Structured error types (ServerError)
-main.rs     → Server entry point
+services/         → Business logic services
+├── mod.rs            → Service module exports
+├── demo_service.rs   → Demo orchestration service (curves, pricing, risk)
+└── cache.rs          → Feature-gated caching infrastructure
+grpc/             → Tonic service implementations (skeleton)
+config.rs         → Server configuration
+error.rs          → Structured error types (ServerError)
+main.rs           → Server entry point with static file serving
 ```
+
+**Architecture**: Handler → Service → Pricer Layer pattern separates HTTP concerns from business logic.
 
 **REST API Endpoints**:
 - `/health` - Health check
@@ -477,9 +526,12 @@ main.rs     → Server entry point
 - `/api/v1/exposure` - Exposure calculation
 - `/api/v1/portfolio/graph` - Portfolio computation graph (D3.js-compatible)
 - `/api/v1/portfolio/trades` - Portfolio trade listing with filters
+- `/api/demo/*` - Demo dashboard endpoints (curves, volcube, pricing, risk, greeks)
 
 **WebSocket Endpoint**:
 - `/ws` - Real-time graph updates (select_trades, subgraph_update events)
+
+**Static File Serving**: Serves demo GUI frontend from `demo/gui/static/` when compiled with `demo` feature.
 
 ### service_python
 
@@ -551,39 +603,56 @@ api_client.rs    → HTTP client for service communication
 web/             → Web server module (feature-gated)
   ├── main.rs         → Web dashboard entry point
   ├── mod.rs          → Router configuration, middleware, AppState
-  ├── handlers.rs     → Legacy REST API handlers (pricing, portfolio, XVA, Greeks)
   │
-  │   Pattern: *_handlers.rs + *_types.rs for each feature domain
-  │   ────────────────────────────────────────────────────────
-  ├── curve_builder_handlers.rs → Curve Builder API (/api/curves/*)
-  ├── curve_builder_types.rs    → Curve Builder type definitions
-  ├── volcube_handlers.rs       → IR VolCube API (/api/volcube/*)
-  ├── volcube_types.rs          → IR VolCube type definitions
-  ├── irvol_handlers.rs         → IR Vol Surface API (/api/irvol/*)
-  ├── irvol_types.rs            → IR Vol type definitions
-  ├── fxvol_handlers.rs         → FX Vol Surface API (/api/fxvol/calibrate, /api/fxvol/surface)
-  ├── fxvol_types.rs            → FX Vol type definitions (FxCalibrateRequest, FxSurfaceResponse)
-  ├── fxcurve_handlers.rs       → FX Curve API (/api/fxcurve/build)
-  ├── fxcurve_types.rs          → FX Curve type definitions
-  ├── trade_handlers.rs         → Trade expansion API (/api/trades/*)
-  ├── trade_types.rs            → Trade type definitions
-  ├── market_handlers.rs        → Market data API (/api/market/*)
-  ├── market_types.rs           → Market data types
-  ├── market_data.rs            → Market data module
-  ├── generic_pricer_handlers.rs → Generic Pricer API (/api/pricer/*)
-  ├── risk_engine_handlers.rs   → Risk Engine API (/api/risk/*)
-  ├── risk_engine_types.rs      → Risk Engine type definitions
+  ├── handlers/       → REST API handlers (feature-organised)
+  │   ├── mod.rs          → Handler module exports
+  │   ├── types.rs        → Consolidated API type definitions
+  │   ├── config.rs       → Handler configuration and utilities
+  │   ├── health.rs       → Health check endpoints
+  │   ├── curves.rs       → Curve Builder API (/api/curves/*)
+  │   ├── volcube.rs      → IR VolCube API (/api/volcube/*)
+  │   ├── irvol.rs        → IR Vol Surface API (/api/irvol/*)
+  │   ├── fxvol.rs        → FX Vol Surface API (/api/fxvol/*)
+  │   ├── fxcurve.rs      → FX Curve API (/api/fxcurve/*)
+  │   ├── trades.rs       → Trade expansion API (/api/trades/*)
+  │   ├── market.rs       → Market data API (/api/market/*)
+  │   ├── generic_pricer.rs → Generic Pricer API (/api/pricer/*)
+  │   ├── risk_engine.rs  → Risk Engine API (/api/risk/*)
+  │   ├── scenario_analysis.rs → Scenario analysis endpoints
+  │   ├── pricing.rs      → Pricing endpoints (feature = "calibration")
+  │   ├── greeks.rs       → Greeks calculation endpoints (feature = "calibration")
+  │   ├── risk.rs         → XVA and risk metric calculations (feature = "calibration")
+  │   ├── portfolio.rs    → Portfolio management endpoints
+  │   ├── graphs.rs       → Computation graph endpoints
+  │   ├── pricer_graph.rs → Pricing kernel computation graph extraction
+  │   ├── exposure.rs     → Exposure calculation and metrics
+  │   ├── scenarios.rs    → Scenario management and analysis
+  │   └── benchmarks.rs   → Performance benchmark comparison endpoints
   │
-  ├── scenario_handlers.rs → Scenario analysis endpoints (presets, run, compare)
+  ├── state/          → Application state management
   ├── pricing_service.rs  → Pricing service integration
   ├── schedule_utils.rs   → Schedule generation utilities
-  ├── websocket.rs    → WebSocket real-time updates (FxVolSurfaceUpdateEvent)
+  ├── websocket.rs    → WebSocket real-time updates
   ├── jobs.rs         → Async job manager for background processing
   ├── metrics.rs      → Prometheus-style metrics collection
   ├── openapi.rs      → OpenAPI/Swagger UI (feature = "openapi")
-  ├── pricer_types.rs → Shared type definitions
+  ├── market_data.rs  → Market data module
   └── error.rs        → API error handling (ApiError, ApiResult)
-static/          → Web assets (HTML, CSS, JS)
+static/          → Web dashboard frontend (Vue 3 + Pinia + Tailwind + Vite)
+  ├── index.html      → Dashboard HTML entry point
+  ├── package.json    → Node.js dependencies (vue, pinia, vue-router, chart.js, tailwindcss)
+  ├── tsconfig.json   → TypeScript configuration
+  ├── vite.config.ts  → Vite build configuration with Vue plugin
+  └── src/            → Vue 3 source
+      ├── main.ts           → Application entry point (Vue app setup)
+      ├── App.vue           → Root Vue component
+      ├── views/            → Page components (CurveBuilderView, MarketDataView, PortfolioView, PricerView, etc.)
+      ├── components/       → Reusable components (common/AppLayout, Sidebar, TopBar, ToastContainer)
+      ├── stores/           → Pinia state management (config.ts)
+      ├── router/           → Vue Router configuration (index.ts)
+      ├── services/         → API client services (api.ts)
+      ├── types/            → TypeScript type definitions (api.ts)
+      └── assets/           → Static assets (tailwind.css)
 ```
 
 **Dual-Mode Architecture**:
@@ -594,13 +663,12 @@ static/          → Web assets (HTML, CSS, JS)
 - Feature-gated compilation (default TUI, optional web)
 
 **Web Features**:
-- REST API handlers (2000+ LOC)
+- REST API handlers (`web/handlers/` - feature-organised modules)
 - Computation graph visualisation (`/api/graph` endpoint)
 - Performance metrics collection (API response times, WebSocket latency)
 - CORS and Content Security Policy headers
 - Environment-based configuration (`FB_CORS_ORIGINS`, `FB_CSP`)
 - OpenAPI/Swagger documentation (`feature = "openapi"`, `web/openapi.rs`)
-- Scenario analysis handlers (`web/scenario_handlers.rs`) - preset scenarios, comparison
 - Async job management (`web/jobs.rs`) - background processing for long-running tasks
 - Prometheus-style metrics export (`web/metrics.rs`)
 
@@ -684,12 +752,12 @@ use super::types::DualNumber;
 ## Code Organisation Principles
 
 1. **A-I-P-S Data Flow**: Unidirectional dependencies from Adapter → Infra → Pricer → Service
-2. **Feature Flag Isolation**: pricer_core supports both `num-dual-mode` (default) and `enzyme-mode`
+2. **Feature Flag Isolation**: pricer_core supports `enzyme-mode` for advanced AD
 3. **Static Dispatch**: Prefer `enum` over `Box<dyn Trait>` for Enzyme optimisation
 4. **Smooth by Default**: All discontinuous functions have smooth approximations
 5. **Test Co-Location**: Unit tests in same file as implementation (`#[cfg(test)]`)
 
 ---
 _Created: 2025-12-29_
-_Updated: 2026-01-26_ — Added IR module (PricingKernel, AlignedBuffer), compiler module (TradeCompiler, IndexMapper), enzyme extensions (shadow, kernel, binder)
+_Updated: 2026-02-04_ — Vue 3 frontend migration, CurveDefinition/ConventionTemplate/MarketInstrument modules, CurveRegistry
 _Document patterns, not file trees. New files following patterns should not require updates_

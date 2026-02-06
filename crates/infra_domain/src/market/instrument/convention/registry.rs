@@ -1,0 +1,500 @@
+//! Convention registry for looking up market conventions.
+//!
+//! This module provides the [`ConventionRegistry`] type for managing
+//! and looking up market conventions by currency and rate type.
+
+use std::collections::HashMap;
+
+use super::MarketConvention;
+use crate::market::{Currency, RateType};
+
+/// A key for looking up conventions in the registry.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ConventionKey {
+    /// Currency of the convention.
+    pub currency: Currency,
+    /// Rate type of the convention.
+    pub rate_type: RateType,
+}
+
+impl ConventionKey {
+    /// Creates a new convention key.
+    #[must_use]
+    pub fn new(currency: Currency, rate_type: RateType) -> Self {
+        Self {
+            currency,
+            rate_type,
+        }
+    }
+}
+
+impl std::fmt::Display for ConventionKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} {}", self.currency.code(), self.rate_type.code())
+    }
+}
+
+/// Errors that can occur when working with the convention registry.
+#[derive(Debug, Clone, PartialEq)]
+pub enum RegistryError {
+    /// JSON parsing failed.
+    ParseError(String),
+    /// Invalid convention data.
+    InvalidConvention {
+        /// Key that had the invalid convention.
+        key: String,
+        /// Reason for invalidity.
+        reason: String,
+    },
+    /// Duplicate key in registry.
+    DuplicateKey(String),
+}
+
+impl std::fmt::Display for RegistryError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RegistryError::ParseError(msg) => write!(f, "Parse error: {}", msg),
+            RegistryError::InvalidConvention { key, reason } => {
+                write!(f, "Invalid convention for {}: {}", key, reason)
+            }
+            RegistryError::DuplicateKey(key) => write!(f, "Duplicate key: {}", key),
+        }
+    }
+}
+
+impl std::error::Error for RegistryError {}
+
+/// Registry for market conventions.
+///
+/// Provides O(1) lookup of conventions by (Currency, RateType) pairs.
+/// Can be populated programmatically or from JSON configuration.
+///
+/// # Example
+///
+/// ```rust
+/// use infra_domain::market::convention::{
+///     ConventionRegistry, MarketConvention, DepositConvention,
+/// };
+/// use infra_domain::market::{Currency, RateType};
+///
+/// let mut registry = ConventionRegistry::new();
+/// registry.register(
+///     Currency::USD,
+///     RateType::Deposit,
+///     MarketConvention::Deposit(DepositConvention::usd()),
+/// );
+///
+/// let convention = registry.get(Currency::USD, RateType::Deposit);
+/// assert!(convention.is_some());
+/// ```
+#[derive(Debug, Clone, Default)]
+pub struct ConventionRegistry {
+    conventions: HashMap<ConventionKey, MarketConvention>,
+}
+
+impl ConventionRegistry {
+    /// Creates a new empty registry.
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            conventions: HashMap::new(),
+        }
+    }
+
+    /// Creates a registry with standard conventions for major currencies.
+    ///
+    /// Includes conventions for:
+    /// - USD, EUR, GBP, JPY, CHF
+    /// - Deposit, Swap, OIS, FRA, Futures rate types
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use infra_domain::market::convention::ConventionRegistry;
+    /// use infra_domain::market::{Currency, RateType};
+    ///
+    /// let registry = ConventionRegistry::with_defaults();
+    /// assert!(registry.get(Currency::USD, RateType::Deposit).is_some());
+    /// ```
+    #[must_use]
+    pub fn with_defaults() -> Self {
+        let mut registry = Self::new();
+
+        // Register all default conventions using MarketConvention::for_rate_id
+        let currencies = [
+            Currency::USD,
+            Currency::EUR,
+            Currency::GBP,
+            Currency::JPY,
+            Currency::CHF,
+        ];
+        let rate_types = [
+            RateType::Deposit,
+            RateType::Swap,
+            RateType::Ois,
+            RateType::Fra,
+            RateType::Futures,
+            RateType::FxForward,
+        ];
+
+        for currency in currencies {
+            for rate_type in rate_types {
+                let quote_id = crate::market::QuoteId::new(
+                    currency,
+                    crate::time::Tenor::OneYear, // Tenor doesn't affect convention selection
+                    rate_type,
+                );
+                if let Some(convention) = MarketConvention::for_quote_id(&quote_id) {
+                    registry.register(currency, rate_type, convention);
+                }
+            }
+        }
+
+        registry
+    }
+
+    /// Registers a convention in the registry.
+    ///
+    /// If a convention already exists for the given key, it is replaced.
+    ///
+    /// # Arguments
+    ///
+    /// * `currency` - The currency
+    /// * `rate_type` - The rate type
+    /// * `convention` - The convention to register
+    pub fn register(
+        &mut self,
+        currency: Currency,
+        rate_type: RateType,
+        convention: MarketConvention,
+    ) {
+        let key = ConventionKey::new(currency, rate_type);
+        self.conventions.insert(key, convention);
+    }
+
+    /// Gets a convention from the registry.
+    ///
+    /// Returns `None` if no convention is registered for the given key.
+    ///
+    /// # Arguments
+    ///
+    /// * `currency` - The currency
+    /// * `rate_type` - The rate type
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use infra_domain::market::convention::ConventionRegistry;
+    /// use infra_domain::market::{Currency, RateType};
+    ///
+    /// let registry = ConventionRegistry::with_defaults();
+    ///
+    /// // USD Deposit exists
+    /// assert!(registry.get(Currency::USD, RateType::Deposit).is_some());
+    ///
+    /// // Vol doesn't have a convention
+    /// assert!(registry.get(Currency::USD, RateType::Vol).is_none());
+    /// ```
+    #[must_use]
+    pub fn get(&self, currency: Currency, rate_type: RateType) -> Option<&MarketConvention> {
+        let key = ConventionKey::new(currency, rate_type);
+        self.conventions.get(&key)
+    }
+
+    /// Gets a convention using a key.
+    #[must_use]
+    pub fn get_by_key(&self, key: &ConventionKey) -> Option<&MarketConvention> {
+        self.conventions.get(key)
+    }
+
+    /// Returns true if the registry contains a convention for the given key.
+    #[must_use]
+    pub fn contains(&self, currency: Currency, rate_type: RateType) -> bool {
+        let key = ConventionKey::new(currency, rate_type);
+        self.conventions.contains_key(&key)
+    }
+
+    /// Returns an iterator over all registered keys.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use infra_domain::market::convention::ConventionRegistry;
+    ///
+    /// let registry = ConventionRegistry::with_defaults();
+    /// for key in registry.keys() {
+    ///     println!("{}", key);
+    /// }
+    /// ```
+    pub fn keys(&self) -> impl Iterator<Item = &ConventionKey> { self.conventions.keys() }
+
+    /// Returns an iterator over all registered conventions.
+    pub fn values(&self) -> impl Iterator<Item = &MarketConvention> { self.conventions.values() }
+
+    /// Returns an iterator over all (key, convention) pairs.
+    pub fn iter(&self) -> impl Iterator<Item = (&ConventionKey, &MarketConvention)> {
+        self.conventions.iter()
+    }
+
+    /// Returns the number of registered conventions.
+    #[must_use]
+    pub fn len(&self) -> usize { self.conventions.len() }
+
+    /// Returns true if the registry is empty.
+    #[must_use]
+    pub fn is_empty(&self) -> bool { self.conventions.is_empty() }
+
+    /// Removes a convention from the registry.
+    ///
+    /// Returns the removed convention, or `None` if it wasn't registered.
+    pub fn remove(&mut self, currency: Currency, rate_type: RateType) -> Option<MarketConvention> {
+        let key = ConventionKey::new(currency, rate_type);
+        self.conventions.remove(&key)
+    }
+
+    /// Clears all conventions from the registry.
+    pub fn clear(&mut self) { self.conventions.clear(); }
+
+    /// Returns all currencies that have at least one registered convention.
+    #[must_use]
+    pub fn currencies(&self) -> Vec<Currency> {
+        let mut currencies: Vec<Currency> = self.conventions.keys().map(|k| k.currency).collect();
+        currencies.sort_by_key(|c| c.code());
+        currencies.dedup();
+        currencies
+    }
+
+    /// Returns all rate types that have at least one registered convention.
+    #[must_use]
+    pub fn rate_types(&self) -> Vec<RateType> {
+        let mut rate_types: Vec<RateType> = self.conventions.keys().map(|k| k.rate_type).collect();
+        rate_types.sort_by_key(|rt| rt.code());
+        rate_types.dedup();
+        rate_types
+    }
+
+    /// Returns all conventions for a given currency.
+    pub fn conventions_for_currency(
+        &self,
+        currency: Currency,
+    ) -> impl Iterator<Item = (&RateType, &MarketConvention)> {
+        self.conventions
+            .iter()
+            .filter(move |(k, _)| k.currency == currency)
+            .map(|(k, v)| (&k.rate_type, v))
+    }
+
+    /// Returns all conventions for a given rate type.
+    pub fn conventions_for_rate_type(
+        &self,
+        rate_type: RateType,
+    ) -> impl Iterator<Item = (&Currency, &MarketConvention)> {
+        self.conventions
+            .iter()
+            .filter(move |(k, _)| k.rate_type == rate_type)
+            .map(|(k, v)| (&k.currency, v))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::market::convention::{DepositConvention, SwapConvention};
+
+    #[test]
+    fn test_convention_key_new() {
+        let key = ConventionKey::new(Currency::USD, RateType::Swap);
+        assert_eq!(key.currency, Currency::USD);
+        assert_eq!(key.rate_type, RateType::Swap);
+    }
+
+    #[test]
+    fn test_convention_key_display() {
+        let key = ConventionKey::new(Currency::EUR, RateType::Deposit);
+        assert_eq!(key.to_string(), "EUR DEPO");
+    }
+
+    #[test]
+    fn test_convention_key_equality() {
+        let key1 = ConventionKey::new(Currency::USD, RateType::Swap);
+        let key2 = ConventionKey::new(Currency::USD, RateType::Swap);
+        let key3 = ConventionKey::new(Currency::EUR, RateType::Swap);
+
+        assert_eq!(key1, key2);
+        assert_ne!(key1, key3);
+    }
+
+    #[test]
+    fn test_registry_new() {
+        let registry = ConventionRegistry::new();
+        assert!(registry.is_empty());
+        assert_eq!(registry.len(), 0);
+    }
+
+    #[test]
+    fn test_registry_register_and_get() {
+        let mut registry = ConventionRegistry::new();
+        let convention = MarketConvention::Deposit(DepositConvention::usd());
+
+        registry.register(Currency::USD, RateType::Deposit, convention.clone());
+
+        let retrieved = registry.get(Currency::USD, RateType::Deposit);
+        assert!(retrieved.is_some());
+        assert_eq!(retrieved.unwrap(), &convention);
+    }
+
+    #[test]
+    fn test_registry_get_missing() {
+        let registry = ConventionRegistry::new();
+        assert!(registry.get(Currency::USD, RateType::Deposit).is_none());
+    }
+
+    #[test]
+    fn test_registry_contains() {
+        let mut registry = ConventionRegistry::new();
+        registry.register(
+            Currency::USD,
+            RateType::Deposit,
+            MarketConvention::Deposit(DepositConvention::usd()),
+        );
+
+        assert!(registry.contains(Currency::USD, RateType::Deposit));
+        assert!(!registry.contains(Currency::EUR, RateType::Deposit));
+    }
+
+    #[test]
+    fn test_registry_with_defaults() {
+        let registry = ConventionRegistry::with_defaults();
+
+        // Should have conventions for major currencies
+        assert!(registry.get(Currency::USD, RateType::Deposit).is_some());
+        assert!(registry.get(Currency::EUR, RateType::Deposit).is_some());
+        assert!(registry.get(Currency::GBP, RateType::Deposit).is_some());
+
+        // Should have conventions for common rate types
+        assert!(registry.get(Currency::USD, RateType::Swap).is_some());
+        assert!(registry.get(Currency::USD, RateType::Ois).is_some());
+
+        // Should not have Vol conventions
+        assert!(registry.get(Currency::USD, RateType::Vol).is_none());
+
+        // Total count should be reasonable
+        assert!(registry.len() > 10);
+    }
+
+    #[test]
+    fn test_registry_keys() {
+        let mut registry = ConventionRegistry::new();
+        registry.register(
+            Currency::USD,
+            RateType::Deposit,
+            MarketConvention::Deposit(DepositConvention::usd()),
+        );
+        registry.register(
+            Currency::EUR,
+            RateType::Swap,
+            MarketConvention::Swap(SwapConvention::eur_euribor_6m()),
+        );
+
+        let keys: Vec<_> = registry.keys().collect();
+        assert_eq!(keys.len(), 2);
+    }
+
+    #[test]
+    fn test_registry_iter() {
+        let mut registry = ConventionRegistry::new();
+        registry.register(
+            Currency::USD,
+            RateType::Deposit,
+            MarketConvention::Deposit(DepositConvention::usd()),
+        );
+
+        let items: Vec<_> = registry.iter().collect();
+        assert_eq!(items.len(), 1);
+    }
+
+    #[test]
+    fn test_registry_remove() {
+        let mut registry = ConventionRegistry::new();
+        registry.register(
+            Currency::USD,
+            RateType::Deposit,
+            MarketConvention::Deposit(DepositConvention::usd()),
+        );
+
+        let removed = registry.remove(Currency::USD, RateType::Deposit);
+        assert!(removed.is_some());
+        assert!(registry.get(Currency::USD, RateType::Deposit).is_none());
+    }
+
+    #[test]
+    fn test_registry_clear() {
+        let mut registry = ConventionRegistry::with_defaults();
+        assert!(!registry.is_empty());
+
+        registry.clear();
+        assert!(registry.is_empty());
+    }
+
+    #[test]
+    fn test_registry_currencies() {
+        let registry = ConventionRegistry::with_defaults();
+        let currencies = registry.currencies();
+
+        assert!(currencies.contains(&Currency::USD));
+        assert!(currencies.contains(&Currency::EUR));
+    }
+
+    #[test]
+    fn test_registry_rate_types() {
+        let registry = ConventionRegistry::with_defaults();
+        let rate_types = registry.rate_types();
+
+        assert!(rate_types.contains(&RateType::Deposit));
+        assert!(rate_types.contains(&RateType::Swap));
+    }
+
+    #[test]
+    fn test_registry_conventions_for_currency() {
+        let registry = ConventionRegistry::with_defaults();
+        let usd_conventions: Vec<_> = registry.conventions_for_currency(Currency::USD).collect();
+
+        assert!(!usd_conventions.is_empty());
+        // Should have multiple rate types for USD
+        assert!(usd_conventions.len() >= 3);
+    }
+
+    #[test]
+    fn test_registry_conventions_for_rate_type() {
+        let registry = ConventionRegistry::with_defaults();
+        let deposit_conventions: Vec<_> = registry
+            .conventions_for_rate_type(RateType::Deposit)
+            .collect();
+
+        assert!(!deposit_conventions.is_empty());
+        // Should have deposits for multiple currencies
+        assert!(deposit_conventions.len() >= 3);
+    }
+
+    #[test]
+    fn test_registry_clone() {
+        let registry = ConventionRegistry::with_defaults();
+        let cloned = registry.clone();
+        assert_eq!(registry.len(), cloned.len());
+    }
+
+    #[test]
+    fn test_registry_error_display() {
+        let error = RegistryError::ParseError("Invalid JSON".to_string());
+        assert!(error.to_string().contains("Parse error"));
+
+        let error = RegistryError::InvalidConvention {
+            key: "USD SWAP".to_string(),
+            reason: "missing field".to_string(),
+        };
+        assert!(error.to_string().contains("USD SWAP"));
+
+        let error = RegistryError::DuplicateKey("EUR DEPO".to_string());
+        assert!(error.to_string().contains("Duplicate"));
+    }
+}

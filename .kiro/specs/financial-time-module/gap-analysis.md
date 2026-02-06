@@ -4,7 +4,7 @@
 
 ### 1.1 Key Files and Directory Layout
 
-現在の `crates/infra_master/src/` はフラット構造で、時間関連モジュールは以下のファイルで構成されている：
+現在の `crates/infra_domain/src/` はフラット構造で、時間関連モジュールは以下のファイルで構成されている：
 
 | ファイル | 行数（概算） | 主要型 | テスト数 |
 |---------|-------------|--------|---------|
@@ -42,7 +42,7 @@
 
 ### 1.4 Dependency Hotspots
 
-**infra_master を参照するクレート:**
+**infra_domain を参照するクレート:**
 - `pricer_core::types` - `Date`, `DayCountConvention`, `BusinessDayConvention`, `Currency` を re-export（deprecated 警告付き）
 - `pricer_models` - `SwapDirection`, `TradeDirection` を re-export
 - `adapter_loader::csa` - `CsaTerms`, `NettingSetConfig` を re-export
@@ -54,7 +54,7 @@
 ### 1.5 Integration Surfaces
 
 - **pricer_core::trades::schedules::Period**: 別の `Period` 型が存在（accrual period + day_count）
-- **pricer_core::types::time**: `time_to_maturity`, `time_to_maturity_dates` 関数が infra_master の型に依存
+- **pricer_core::types::time**: `time_to_maturity`, `time_to_maturity_dates` 関数が infra_domain の型に依存
 
 ---
 
@@ -94,8 +94,8 @@
 
 #### Constraints from Existing Architecture
 
-1. **後方互換性**: `pricer_core`, `pricer_models`, `adapter_loader` が infra_master の型を参照
-2. **名前衝突**: `Period` が 2 箇所に存在（`infra_master::Period` と `pricer_core::trades::schedules::Period`）
+1. **後方互換性**: `pricer_core`, `pricer_models`, `adapter_loader` が infra_domain の型を参照
+2. **名前衝突**: `Period` が 2 箇所に存在（`infra_domain::Period` と `pricer_core::trades::schedules::Period`）
 3. **Serde feature**: 新規型も `#[cfg_attr(feature = "serde", ...)]` パターンに従う必要あり
 
 #### Research Needed
@@ -249,7 +249,7 @@
    - `adjust()` のデフォルト実装の範囲
 
 2. **`Period` 名前空間の整理**
-   - `infra_master::time::Period`（汎用）vs `infra_master::time::AccrualPeriod`（計算期間）
+   - `infra_domain::time::Period`（汎用）vs `infra_domain::time::AccrualPeriod`（計算期間）
    - `pricer_core::trades::schedules::Period` との関係
 
 3. **`TimeError` の統合範囲**
@@ -277,7 +277,7 @@
 ## Appendix: Existing Test Coverage
 
 ```text
-infra_master/src/
+infra_domain/src/
 ├── calendar.rs      → 11 tests
 ├── tenor.rs         → 17 tests
 ├── date.rs          → 15 tests

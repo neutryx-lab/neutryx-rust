@@ -5,8 +5,8 @@
 - **Discovery Scope**: Extension（既存`counterparty.rs`をモジュール構造に拡張）
 - **Key Findings**:
   - `pricer_risk`に既存のID型・クレジット型が存在（型重複）
-  - `infra_master`の`time/`、`trade/`、`convention/`モジュールパターンが確立済み
-  - A-I-P-S依存規則に従い、`infra_master`は計算ロジックを持たない
+  - `infra_domain`の`time/`、`trade/`、`convention/`モジュールパターンが確立済み
+  - A-I-P-S依存規則に従い、`infra_domain`は計算ロジックを持たない
 
 ## Research Log
 
@@ -14,28 +14,28 @@
 
 - **Context**: 要件定義に先立ち、既存のCounterParty関連実装を調査
 - **Sources Consulted**:
-  - `crates/infra_master/src/counterparty.rs`
+  - `crates/infra_domain/src/counterparty.rs`
   - `crates/pricer_risk/src/portfolio/counterparty.rs`
   - `crates/pricer_risk/src/portfolio/ids.rs`
   - `crates/pricer_risk/src/portfolio/netting_set.rs`
 - **Findings**:
-  - `infra_master::CsaTerms`: threshold, mta, independent_amount, mpor_days, margin_currency
-  - `infra_master::NettingSetConfig`: id, counterparty_id, csa_terms
+  - `infra_domain::CsaTerms`: threshold, mta, independent_amount, mpor_days, margin_currency
+  - `infra_domain::NettingSetConfig`: id, counterparty_id, csa_terms
   - `pricer_risk::CreditRating`: AAA～D（10段階、+/-なし）
   - `pricer_risk::CreditParams`: hazard_rate, lgd, rating, survival_prob(), default_prob()
   - `pricer_risk::Counterparty`: id, name, credit_params
   - `pricer_risk`のID型: `CounterpartyId`, `NettingSetId`, `TradeId`（新型パターン）
 - **Implications**:
-  - `infra_master`に移行する型は`pricer_risk`の機能を包含しつつ拡張
-  - 後方互換性のため、`pricer_risk`は将来的に`infra_master`から再エクスポート
+  - `infra_domain`に移行する型は`pricer_risk`の機能を包含しつつ拡張
+  - 後方互換性のため、`pricer_risk`は将来的に`infra_domain`から再エクスポート
 
 ### モジュール構造パターンの調査
 
-- **Context**: `infra_master`内の既存モジュール構造を参考にする
+- **Context**: `infra_domain`内の既存モジュール構造を参考にする
 - **Sources Consulted**:
-  - `crates/infra_master/src/time/mod.rs`
-  - `crates/infra_master/src/trade/mod.rs`
-  - `crates/infra_master/src/convention/mod.rs`
+  - `crates/infra_domain/src/time/mod.rs`
+  - `crates/infra_domain/src/trade/mod.rs`
+  - `crates/infra_domain/src/convention/mod.rs`
 - **Findings**:
   - 共通パターン: `mod.rs`でサブモジュールを宣言、`pub use`で再エクスポート
   - エラー型: 各モジュールに専用`error.rs`
@@ -70,7 +70,7 @@
   - `OwnCreditParams`: DVA計算用（hazard_rate, lgd）
   - Exposure計算: `ExposureProfile`でEE/EPE/PFE/EEPEを計算
 - **Implications**:
-  - `infra_master::CreditParams`は同等のメソッドを提供
+  - `infra_domain::CreditParams`は同等のメソッドを提供
   - `ExposureConfig`は設定のみ（計算ロジックは`pricer_risk`に残る）
 
 ## Architecture Pattern Evaluation
@@ -78,8 +78,8 @@
 | Option | Description | Strengths | Risks / Limitations | Notes |
 |--------|-------------|-----------|---------------------|-------|
 | A: 既存拡張 | `counterparty.rs`→`counterparty/`に展開 | 後方互換、既存パターン準拠 | 型重複は解決しない | 最小影響 |
-| B: 統一移行 | `infra_master`構築＋`pricer_risk`即時移行 | Single Source of Truth | APIブレーク、大規模変更 | リスク大 |
-| C: ハイブリッド | Phase 1: `infra_master`構築、Phase 2: 将来移行 | 段階的移行、最小リスク | 一時的型重複 | **推奨** |
+| B: 統一移行 | `infra_domain`構築＋`pricer_risk`即時移行 | Single Source of Truth | APIブレーク、大規模変更 | リスク大 |
+| C: ハイブリッド | Phase 1: `infra_domain`構築、Phase 2: 将来移行 | 段階的移行、最小リスク | 一時的型重複 | **推奨** |
 
 ## Design Decisions
 
@@ -123,7 +123,7 @@
 - **Selected Approach**: `HashMap<Currency, f64>`
 - **Rationale**:
   - 通貨でのルックアップが主なユースケース
-  - `infra_master::Currency`がHashを実装済み
+  - `infra_domain::Currency`がHashを実装済み
   - シンプルな実装
 - **Trade-offs**: serde時の順序不定だが、設定データでは問題なし
 - **Follow-up**: なし
@@ -132,20 +132,20 @@
 
 - **Context**: `pricer_risk`に既存のID型・クレジット型との関係
 - **Alternatives Considered**:
-  1. 即時移行 — `pricer_risk`を`infra_master`依存に変更
+  1. 即時移行 — `pricer_risk`を`infra_domain`依存に変更
   2. 共存 — 両方で独立した型を維持
-  3. 段階的移行 — Phase 1で`infra_master`構築、Phase 2で移行
+  3. 段階的移行 — Phase 1で`infra_domain`構築、Phase 2で移行
 - **Selected Approach**: 段階的移行（Option C）
 - **Rationale**:
   - A-I-P-S依存規則: `P`(ricer)は`I`(nfra)に依存可能
   - 後方互換性を維持しつつ、将来の統合を可能に
   - Phase 1の影響範囲を最小化
 - **Trade-offs**: 一時的な型重複（許容可能）
-- **Follow-up**: Phase 2で`pricer_risk`のID型を`infra_master`からの再エクスポートに変更
+- **Follow-up**: Phase 2で`pricer_risk`のID型を`infra_domain`からの再エクスポートに変更
 
 ## Risks & Mitigations
 
-- **型重複による混乱** — 明確なドキュメントで`infra_master`を正式な定義元と明示
+- **型重複による混乱** — 明確なドキュメントで`infra_domain`を正式な定義元と明示
 - **後方互換性の破壊** — クレートルートからの再エクスポートで既存コードを維持
 - **pricer_risk統合の遅延** — Phase 2として明示的にロードマップに記載
 

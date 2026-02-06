@@ -1,8 +1,6 @@
 //! Core numeric, time, and financial types.
 //!
 //! This module provides:
-//! - `dual`: Dual number type integration with num-dual for automatic
-//!   differentiation (when `num-dual-mode` feature is enabled)
 //! - `traced`: Execution trace types for computation graph extraction (when
 //!   `execution-trace` feature is enabled)
 //! - `time`: Time utilities (`DayCountConvention`, `time_to_maturity`) for
@@ -10,16 +8,16 @@
 //! - `currency_pair`: FX rate types for foreign exchange calculations
 //! - `error`: Structured error types for pricing, interpolation, solver, and
 //!   calibration operations
+//! - `limit`: Limit enum for jump-aware curve interpolation
 //!
 //! # Note
 //!
 //! For core financial types (`Date`, `Currency`, `DayCounter`,
-//! `BusinessDayConvention`), import directly from `infra_master`.
+//! `BusinessDayConvention`), import directly from `infra_domain`.
 
 pub mod currency_pair;
-#[cfg(feature = "num-dual-mode")]
-pub mod dual;
 pub mod error;
+pub mod limit;
 pub mod time;
 #[cfg(feature = "execution-trace")]
 pub mod traced;
@@ -35,6 +33,7 @@ pub use currency_pair::{FxPair, FxRate};
 pub use error::{
     CalibrationError, CalibrationErrorKind, InterpolationError, PricingError, SolverError,
 };
+pub use limit::Limit;
 pub use time::{time_to_maturity, time_to_maturity_dates};
 // Re-export execution trace types when feature is enabled
 #[cfg(feature = "execution-trace")]

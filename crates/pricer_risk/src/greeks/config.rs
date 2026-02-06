@@ -10,7 +10,6 @@
 /// # Variants
 ///
 /// * `BumpRevalue` - Finite differences (bump-and-revalue)
-/// * `NumDual` - Forward-mode AD using num-dual library
 /// * `EnzymeAAD` - Enzyme LLVM-level AAD (requires `enzyme-ad` feature)
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -22,13 +21,6 @@ pub enum GreeksMode {
     /// This is the default mode and works with all payoff types.
     #[default]
     BumpRevalue,
-
-    /// Forward-mode AD using num-dual library.
-    ///
-    /// Uses dual numbers for first-order Greeks and
-    /// hyperdual numbers for second-order Greeks.
-    /// Requires the `num-dual-mode` feature.
-    NumDual,
 
     /// Enzyme LLVM-level automatic differentiation.
     ///
@@ -72,7 +64,7 @@ pub enum GreeksMode {
 /// ```
 #[derive(Clone, Debug)]
 pub struct GreeksConfig {
-    /// Calculation mode (BumpRevalue, NumDual, or EnzymeAAD).
+    /// Calculation mode (BumpRevalue or EnzymeAAD).
     pub mode: GreeksMode,
 
     /// Relative bump for spot price (default: 0.01 = 1%).

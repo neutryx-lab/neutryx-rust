@@ -1,13 +1,13 @@
 //! Extension traits for direction types.
 //!
 //! This module provides extension methods for direction types defined in
-//! `infra_master`. The `sign()` method is provided here to avoid adding
-//! num_traits dependency to infra_master.
+//! `infra_domain`. The `sign()` method is provided here to avoid adding
+//! num_traits dependency to infra_domain.
 //!
 //! # Examples
 //!
 //! ```
-//! use infra_master::{TradeDirection, SwapDirection};
+//! use infra_domain::{TradeDirection, SwapDirection};
 //! use pricer_models::{TradeDirectionExt, SwapDirectionExt};
 //!
 //! let long = TradeDirection::Long;
@@ -17,7 +17,7 @@
 //! assert_eq!(short.sign::<f64>(), -1.0);
 //! ```
 
-use infra_master::{SwapDirection, TradeDirection};
+use infra_domain::{SwapDirection, TradeDirection};
 use num_traits::Float;
 
 /// Extension trait for `TradeDirection` providing numeric sign.
@@ -30,7 +30,7 @@ pub trait TradeDirectionExt {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::TradeDirection;
+    /// use infra_domain::TradeDirection;
     /// use pricer_models::TradeDirectionExt;
     ///
     /// let long = TradeDirection::Long;
@@ -61,7 +61,7 @@ pub trait SwapDirectionExt {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::SwapDirection;
+    /// use infra_domain::SwapDirection;
     /// use pricer_models::SwapDirectionExt;
     ///
     /// let receive = SwapDirection::ReceiveFixed;

@@ -1,6 +1,6 @@
 //! Market quote types and normalisation.
 
-use infra_master::Currency;
+use infra_domain::Currency;
 
 /// Type of market quote
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

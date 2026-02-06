@@ -32,7 +32,7 @@ pricer_pricing = { path = "../pricer_pricing" }
 # TODO: pricer_risk temporarily disabled - needs refactoring
 # pricer_risk = { path = "../pricer_risk" }
 infra_config = { path = "../infra_config" }
-infra_master = { path = "../infra_master" }
+infra_domain = { path = "../infra_domain" }
 infra_store = { path = "../infra_store" }
 
 [[bin]]

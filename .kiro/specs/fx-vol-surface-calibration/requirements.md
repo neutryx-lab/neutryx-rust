@@ -185,7 +185,7 @@ CurveBuilder（イールドカーブブートストラップ）と同様のア�
 1. The implementation shall identify and remove deprecated `FxVolatilitySurface` implementations that are superseded.
 2. When removing code, the implementation shall update all dependent modules to use new API.
 3. The implementation shall remove unused `fxvol_types.rs` and `fxvol_handlers.rs` if functionality is replaced.
-4. The implementation shall consolidate `FxSwap` in `infra_master` with enhanced definition if needed.
+4. The implementation shall consolidate `FxSwap` in `infra_domain` with enhanced definition if needed.
 5. The implementation shall ensure all existing tests pass or are updated for new API.
 6. If code removal would break public API, then the implementation shall provide migration guide in commit message.
 7. The implementation shall run `cargo clippy --all-targets` and `cargo test --workspace` to verify no regressions.

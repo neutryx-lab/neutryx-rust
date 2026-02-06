@@ -2,13 +2,13 @@
 
 実装状況と今後の開発項目を追跡するドキュメント。
 
-_Updated: 2026-01-26_ — 42 completed specs; 1 active spec (pricing-kernel-ir 71%)
+_Updated: 2026-02-04_ — Steering sync: Vue 3 frontend migration, CurveDefinition/ConventionTemplate patterns; 48 completed specs; 4 active specs
 
 ---
 
 ## Current State Summary
 
-### Completed Specifications (42)
+### Completed Specifications (48)
 
 | Spec | Description | Completed |
 |------|-------------|-----------|
@@ -29,7 +29,7 @@ _Updated: 2026-01-26_ — 42 completed specs; 1 active spec (pricing-kernel-ir 7
 | advanced-sensitivity-webapp | Advanced sensitivity analysis for web dashboard | 2026-01-19 |
 | codebase-cleanup-optimisation | Codebase cleanup and optimisation (16 tasks) | 2026-01-19 |
 | portfolio-graph-optimisation | Portfolio Graph REST API and WebSocket handlers | 2026-01-19 |
-| infra-primitives-migration | Financial primitives migration to infra_master | 2026-01-19 |
+| infra-primitives-migration | Financial primitives migration to infra_domain | 2026-01-19 |
 | model-architecture-refactoring | pricer_optimiser removal, consolidation into pricer_core/pricer_models | 2026-01-19 |
 | counterparty-netting-module | Counterparty and netting set data structures | 2026-01-21 |
 | financial-time-module | Financial time primitives (calendars, frequencies, periods) | 2026-01-21 |
@@ -54,6 +54,14 @@ _Updated: 2026-01-26_ — 42 completed specs; 1 active spec (pricing-kernel-ir 7
 | shadow-object-aad | Shadow trait, slice-based kernels, AAD binder layer (16 tasks) | 2026-01-26 |
 | external-numerics-migration | argmin/levenberg-marquardt integration, external-numerics feature (30 tasks) | 2026-01-26 |
 | mc-memory-layout-optimisation | PathLayout, AlignedPathBuffer, TimeStepFirstWorkspace, StreamingEngine (21 tasks) | 2026-01-26 |
+| pricing-kernel-ir | PricingKernel IR, TradeCompiler, IndexMapper, CallableKernel, LSMC, CMS (31 tasks, 137 tests) | 2026-01-28 |
+| curve-global-solver | Global curve calibration solver with Newton-Raphson, Jacobian computation, AAD preparation (7 task groups, 422 tests) | 2026-01-28 |
+| config-consolidation | Configuration centralisation (workspace, handler config, environment) | 2026-01-30 |
+| service-gateway-services | Service layer architecture (Handler → Service → Pricer pattern, demo endpoints) | 2026-01-31 |
+| thiserror-migration | thiserror macro migration for error types | 2026-01-31 |
+| derive-more-newtype-migration | Newtype derive utilities (From, Display, AsRef) with derive_more | 2026-01-31 |
+| boilerplate-reduction | Reduce boilerplate across codebase (bon builder, derive patterns) | 2026-02-01 |
+| enum-dispatch-migration | Migrate to enum_dispatch for zero-cost trait dispatch | 2026-02-01 |
 
 ### Layer Implementation Status
 
@@ -75,7 +83,7 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 | Crate | Status | Notes |
 |-------|--------|-------|
 | infra_config | ✅ | Settings loading (TOML/YAML/Env) |
-| infra_master | ✅ | time/, market/, counterparty/, trade/ (CF-expanded), convention/, instrument_def/ |
+| infra_domain | ✅ | time/, market/, counterparty/, trade/ (CF-expanded), convention/, instrument_def/ |
 | infra_store | 🔶 | Basic traits only, postgres optional |
 
 #### Adapter Layer (A) - Input
@@ -176,9 +184,24 @@ Codebase redundancy cleanup performed:
 
 ### Active Specifications (In Progress)
 
-| Spec | Description | Status |
-|------|-------------|--------|
-| pricing-kernel-ir | PricingKernel IR, TradeCompiler, IndexMapper, CallableKernel | implementing (22/31 tasks, 71%) |
+| Spec | Phase | Description |
+|------|-------|-------------|
+| market-convention-instrument | tasks-generated | Market convention registry, EventInstrument, D3.js graph visualisation |
+| fxvol-calibration-migration | tasks-generated | Migrate FX vol calibration module |
+| models-module-refactor | tasks-generated | Refactor pricer_models module structure |
+| pricer-computation-graph | tasks-generated | Computation graph extraction for pricer |
+
+### Recently Completed
+
+| Spec | Completed | Description |
+|------|-----------|-------------|
+| boilerplate-reduction | 2026-02-01 | Reduce boilerplate with bon builder and derive patterns |
+| enum-dispatch-migration | 2026-02-01 | Migrate to enum_dispatch for zero-cost trait dispatch |
+| derive-more-newtype-migration | 2026-01-31 | Migrate newtypes to derive_more |
+
+### Temporary Status Notes
+
+- **demo/gui**: Temporarily disabled due to calibration module refactoring. Feature-gated handlers added for calibration-dependent endpoints. Will be re-enabled after `builder/paramsurface` stabilisation.
 
 ## Recommended Next Steps
 
@@ -192,6 +215,15 @@ Codebase redundancy cleanup performed:
 
 | Date | Change |
 |------|--------|
+| 2026-02-04 | Steering sync: Vue 3 frontend migration (Vue + Pinia + Tailwind CSS), CurveDefinition/ConventionTemplate/MarketInstrument patterns, CurveRegistry. 4 active specs unchanged. Total: 48 specs |
+| 2026-02-02 | Steering sync: market-convention-instrument advanced to tasks-generated (ConventionRegistry, EventInstrument, D3.js graph). 4 active specs. Added Convention Registry Pattern to tech.md. Total: 48 specs |
+| 2026-01-31 | Steering sync: Added `enum_dispatch` pattern to tech.md and dependency-management.md, derive-more-newtype-migration completed. Total: 46 completed specs, 2 active specs (boilerplate-reduction, enum-dispatch-migration) |
+| 2026-01-31 | Steering sync: TypeScript frontend infrastructure (demo/gui/static with Vite, component-based architecture), service_gateway services layer (Handler→Service→Pricer pattern, demo endpoints, feature-gated caches), 3 new completed specs (config-consolidation, service-gateway-services, thiserror-migration). Total: 48 specs |
+| 2026-01-30 | Steering sync: Added Neutryx facade crate pattern (unified entry point, module aliases, feature tiers, prelude). Updated structure.md and tech.md. |
+| 2026-01-28 | curve-global-solver completed: Global curve calibration with Newton-Raphson, CurveCalibrationProblem (SystemOfEquations), GlobalTimeGrid, CashflowMatrix, Jacobian inverse storage for AAD. 7 task groups, 422 total tests (377 unit + 14 integration + 31 doc). Total: 44 specs |
+| 2026-01-28 | Steering sync: pricing-kernel-ir completed (43 total). Updated structure.md (pricer_models: builder/ calibration module with paramsurface, simplified market.rs). demo/gui temporarily disabled for calibration refactor. |
+| 2026-01-27 | pricing-kernel-ir: Task 8.1 CMSインデックス統合 completed. LinearProductsCompiler now handles IndexType::SwapRate → CmsIndex. 4 new tests added. pricing-kernel-ir now 100% (31/31 tasks) |
+| 2026-01-27 | Steering sync: Added kernel/ module (LinearEngine, ScriptEngine, CallableEngine, LSMC) to structure.md, CallableCompiler to compiler/, CallableKernel to ir/. pricing-kernel-ir now 97% (30/31 tasks, CMS remaining) |
 | 2026-01-26 | Closed 3 completed specs: shadow-object-aad (16 tasks), external-numerics-migration (30 tasks), mc-memory-layout-optimisation (21 tasks). Total: 42 specs. 1 active: pricing-kernel-ir (71%) |
 | 2026-01-26 | Steering sync: Added IR module (PricingKernel, AlignedBuffer, ScriptKernel), compiler module (TradeCompiler, IndexMapper), enzyme extensions (shadow, kernel, binder). 4 active specs: pricing-kernel-ir (implementing), shadow-object-aad, external-numerics-migration, mc-memory-layout-optimisation |
 | 2026-01-26 | Codebase redundancy cleanup: Fixed tokio versions, removed dead code/unused modules, added test fixtures, documented app.js refactor plan |
@@ -212,7 +244,7 @@ Codebase redundancy cleanup performed:
 | 2026-01-22 | Steering sync: codebase-simplification completed (24 total), curve-bootstrap-engine added (requirements phase), standard-instrument-catalogue in implementation |
 | 2026-01-21 | Steering sync: Added codebase-simplification to active specs (tasks awaiting approval) |
 | 2026-01-21 | Steering sync: pricer-core-math-library completed (31/31 tasks), moved to completed specs. Total: 23 specs |
-| 2026-01-21 | Steering sync: pricer_core math expansion (distributions, calculus, utilities, integrators, optimisers, fitting, mesh, linalg), infra_master trade/convention modules, 3 new completed specs |
+| 2026-01-21 | Steering sync: pricer_core math expansion (distributions, calculus, utilities, integrators, optimisers, fitting, mesh, linalg), infra_domain trade/convention modules, 3 new completed specs |
 | 2026-01-20 | Steering sync: market_data moved from pricer_core to pricer_models::market (CI fix), layer status updated |
 | 2026-01-20 | Steering sync: documented pricer_optimiser removal (consolidated into pricer_core/pricer_models), model-architecture-refactoring spec added |
 | 2026-01-19 | Steering sync: infra-primitives-migration completed, total specs: 18, no active specs remaining |

@@ -28,7 +28,7 @@ neutryx-rust/
 │   │
 │   │   # --- I: Infra Layer (Foundation) ---
 │   ├── infra_config/         # System configuration & environment management
-│   ├── infra_master/         # Static master data (Calendars, Currencies, ISINs)
+│   ├── infra_domain/         # Static master data (Calendars, Currencies, ISINs)
 │   ├── infra_store/          # Persistence & State (SQLx, Redis, TimeScale)
 │   │
 │   │   # --- P: Pricer Layer (The Kernel) ---
@@ -62,6 +62,32 @@ neutryx-rust/
 4. **A**dapter crates depend only on **I** (for definitions) or **P** (for target types), never on **S**.
 
 ## 🚀 Quick Start
+
+### Using the Neutryx Facade Crate
+
+The easiest way to use Neutryx is through the unified facade crate:
+
+```toml
+[dependencies]
+neutryx = { path = "." }  # or from crates.io when published
+```
+
+```rust
+use neutryx::prelude::*;
+use neutryx::models::market::YieldCurve;
+
+// Access dates, currencies, and trade definitions
+let date = Date::from_ymd(2024, 1, 15).unwrap();
+let usd = Currency::USD;
+
+// Build yield curves and price derivatives
+// ... see documentation for full examples
+```
+
+**Feature Tiers**:
+- `minimal` — Master data only (dates, currencies, trade definitions)
+- `analytics` — Curve building, models, analytical pricing
+- `full` (default) — Complete pricing and risk functionality
 
 ### Prerequisites
 
@@ -268,14 +294,14 @@ cargo bench
 - [x] **Phase 4**: Monte Carlo kernel - path-dependent options, checkpointing, tree pricing
 - [x] **Phase 5**: Risk Analytics (L4) - XVA, exposure metrics, scenarios, Enzyme AD (moved to L4)
 - [x] **Phase 6**: A-I-P-S Architecture - adapters, infra, service layers
-- [x] **Phase 7**: Architecture Refactoring - pricer_optimiser removal, infra_master consolidation
+- [x] **Phase 7**: Architecture Refactoring - pricer_optimiser removal, infra_domain consolidation
 - [x] **Phase 8**: Calibration Infrastructure - curve bootstrapping, FX/IR vol surface calibration, SABR
 - [x] **Phase 9**: IndexedMarket Pattern - index-keyed market access, TradeIndexRequirements
 - [ ] **Phase 10**: Exotic Options - Barriers, Asians, Lookbacks, Digitals
 - [ ] **Phase 11**: Service Layer Enhancement - gRPC, Python bindings expansion
 - [ ] **Phase 12**: Production hardening - docs, benchmarks, CI/CD
 
-## 📊 Completed Specifications (39 Total)
+## 📊 Completed Specifications (44 Total)
 
 | Specification | Description | Date |
 |---------------|-------------|------|
@@ -296,7 +322,7 @@ cargo bench
 | advanced-sensitivity-webapp | Advanced sensitivity analysis for web dashboard | 2026-01 |
 | codebase-cleanup-optimisation | Codebase cleanup and optimisation | 2026-01 |
 | portfolio-graph-optimisation | Portfolio Graph REST API and WebSocket handlers | 2026-01 |
-| infra-primitives-migration | Financial primitives migration to infra_master | 2026-01 |
+| infra-primitives-migration | Financial primitives migration to infra_domain | 2026-01 |
 | model-architecture-refactoring | pricer_optimiser removal, consolidation | 2026-01 |
 | counterparty-netting-module | Counterparty and netting set data structures | 2026-01 |
 | financial-time-module | Financial time primitives (calendars, frequencies) | 2026-01 |
@@ -318,6 +344,11 @@ cargo bench
 | ir-vol-cube-calibration | IR VolCube calibration engine with SABR, AAD Vega | 2026-01 |
 | pricer-pricing-architecture | Tree pricing (Binomial/Trinomial), UnifiedPricingResult | 2026-01 |
 | market-index-keyed-access | IndexedMarket, TradeIndexRequirements, MarketValidator | 2026-01 |
+| shadow-object-aad | Shadow trait, slice-based kernels, AAD binder layer | 2026-01 |
+| external-numerics-migration | argmin/levenberg-marquardt integration | 2026-01 |
+| mc-memory-layout-optimisation | PathLayout, AlignedPathBuffer, StreamingEngine | 2026-01 |
+| pricing-kernel-ir | PricingKernel IR, TradeCompiler, IndexMapper, LSMC, CMS | 2026-01 |
+| curve-global-solver | Global curve calibration with Newton-Raphson (422 tests) | 2026-01 |
 
 ## 📊 Performance Targets
 
@@ -352,4 +383,4 @@ cargo test --workspace --exclude pricer_pricing
 
 ---
 
-**Status**: ✅ A-I-P-S architecture complete | ✅ Enzyme AD integration (L4) | ✅ Stochastic models (Heston, SABR, Hull-White) | ✅ Curve & Vol Surface Calibration (FX/IR) | ✅ 39 specifications complete
+**Status**: ✅ A-I-P-S architecture complete | ✅ Neutryx facade crate | ✅ Enzyme AD integration (L4) | ✅ Stochastic models (Heston, SABR, Hull-White) | ✅ Curve & Vol Surface Calibration (FX/IR) | ✅ 44 specifications complete
