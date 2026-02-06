@@ -94,7 +94,7 @@ VolatilityCubeカリブレーションの精緻な実装。CurveBuilderのよう
 2. The VolCube shall `pricer_models::market::surfaces`モジュールに配置する
 3. The VolCube shall 既存の`VolatilitySurface<T>`トレイトを拡張または実装する
 4. The VolCubeBuilder shall `pricer_core`の数学ユーティリティ（interpolators, solvers, optimisers）を使用する
-5. The VolCubeBuilder shall `infra_master`の市場データ型（Currency, RateIndex）を参照する
+5. The VolCubeBuilder shall `infra_domain`の市場データ型（Currency, RateIndex）を参照する
 
 ### Requirement 9: テストと検証
 

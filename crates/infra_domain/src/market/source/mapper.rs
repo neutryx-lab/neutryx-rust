@@ -7,11 +7,11 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::market::{
+//! use infra_domain::market::{
 //!     InstrumentMapper, StandardInstrumentMapper, MarketRate,
 //!     RateId, RateType, QuoteType, DataSource, Currency
 //! };
-//! use infra_master::time::{Date, Tenor};
+//! use infra_domain::time::{Date, Tenor};
 //!
 //! let mapper = StandardInstrumentMapper::new();
 //! let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
@@ -42,11 +42,11 @@ use crate::{
 /// # Examples
 ///
 /// ```
-/// use infra_master::market::{
+/// use infra_domain::market::{
 ///     InstrumentMapper, StandardInstrumentMapper, MarketRate,
 ///     RateId, RateType, QuoteType, DataSource, Currency
 /// };
-/// use infra_master::time::{Date, Tenor};
+/// use infra_domain::time::{Date, Tenor};
 ///
 /// struct CustomMapper;
 ///
@@ -55,7 +55,7 @@ use crate::{
 ///         &self,
 ///         rate: &MarketRate,
 ///         valuation_date: Date,
-///     ) -> Result<infra_master::trade::Instrument, infra_master::market::MarketRateError> {
+///     ) -> Result<infra_domain::trade::Instrument, infra_domain::market::MarketRateError> {
 ///         // Custom mapping logic
 ///         StandardInstrumentMapper::new().map_to_instrument(rate, valuation_date)
 ///     }
@@ -93,11 +93,11 @@ pub trait InstrumentMapper {
 /// # Examples
 ///
 /// ```
-/// use infra_master::market::{
+/// use infra_domain::market::{
 ///     InstrumentMapper, StandardInstrumentMapper, MarketRate,
 ///     RateId, RateType, QuoteType, DataSource, Currency
 /// };
-/// use infra_master::time::{Date, Tenor};
+/// use infra_domain::time::{Date, Tenor};
 ///
 /// let mapper = StandardInstrumentMapper::new();
 ///
@@ -113,7 +113,7 @@ pub trait InstrumentMapper {
 /// let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
 /// let instrument = mapper.map_to_instrument(&rate, valuation_date).unwrap();
 ///
-/// assert!(matches!(instrument, infra_master::trade::Instrument::ParSwap { .. }));
+/// assert!(matches!(instrument, infra_domain::trade::Instrument::ParSwap { .. }));
 /// ```
 #[derive(Debug, Clone)]
 pub struct StandardInstrumentMapper {
@@ -137,7 +137,7 @@ impl StandardInstrumentMapper {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::StandardInstrumentMapper;
+    /// use infra_domain::market::StandardInstrumentMapper;
     ///
     /// let mapper = StandardInstrumentMapper::new();
     /// ```
@@ -158,8 +158,8 @@ impl StandardInstrumentMapper {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::StandardInstrumentMapper;
-    /// use infra_master::time::EndOfMonthRule;
+    /// use infra_domain::market::StandardInstrumentMapper;
+    /// use infra_domain::time::EndOfMonthRule;
     ///
     /// let mapper = StandardInstrumentMapper::with_eom_rule(EndOfMonthRule::Preserve);
     /// ```
@@ -180,7 +180,7 @@ impl StandardInstrumentMapper {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::StandardInstrumentMapper;
+    /// use infra_domain::market::StandardInstrumentMapper;
     ///
     /// let mapper = StandardInstrumentMapper::new().with_settlement_lag(1);
     /// ```

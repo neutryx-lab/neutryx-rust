@@ -18,7 +18,7 @@ use crate::trade::instrument_def::InstrumentError;
 /// # Example
 ///
 /// ```rust
-/// use infra_master::market::convention::{ConventionSet, SwapConvention};
+/// use infra_domain::market::convention::{ConventionSet, SwapConvention};
 ///
 /// // Create a convention set using builder pattern
 /// let conventions = ConventionSet::new()

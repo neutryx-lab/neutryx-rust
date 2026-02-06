@@ -40,13 +40,13 @@
 **統合ポイント**:
 - `IndexedMarket<T>` パターン（`pricer_models::market`）
 - `TradeSoA` 既存実装（`pricer_risk::soa`）
-- `Trade/Leg/Cashflow` 定義（`infra_master::trade`）
+- `Trade/Leg/Cashflow` 定義（`infra_domain::trade`）
 
 ### Architecture Pattern & Boundary Map
 
 ```mermaid
 graph TB
-    subgraph InfraMaster["infra_master (I)"]
+    subgraph InfraMaster["infra_domain (I)"]
         Trade[Trade]
         Leg[Leg]
         Cashflow[Cashflow]
@@ -534,7 +534,7 @@ pub enum CompileError {
 
 **Dependencies**
 - Inbound: PortfolioOrchestrator (P0) — コンパイル呼び出し
-- Outbound: infra_master::Trade (P0) — 入力データ
+- Outbound: infra_domain::Trade (P0) — 入力データ
 - Outbound: PricingKernel, ScriptKernel, CallableKernel (P0) — 出力データ
 
 **Contracts**: Service [x]
@@ -579,7 +579,7 @@ pub enum CompiledIR {
 
 **Dependencies**
 - Implements: TradeCompiler (P0)
-- Outbound: infra_master::Calendar (P1) — 休日調整
+- Outbound: infra_domain::Calendar (P1) — 休日調整
 
 **Contracts**: Service [x]
 

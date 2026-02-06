@@ -167,7 +167,7 @@ let risk = RiskConfig::from_json(include_str!("../demo/data/config/risk.json"))?
 ### Rust (Curve Construction)
 
 ```rust
-use infra_master::market::{DefinitionRegistry, MarketRateSet};
+use infra_domain::market::{DefinitionRegistry, MarketRateSet};
 use pricer_models::builder::construction::{CurveConstructionEngine, ConstructionConfig};
 
 // 1. Load instrument definitions from JSON

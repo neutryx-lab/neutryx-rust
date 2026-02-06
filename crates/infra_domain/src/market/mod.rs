@@ -23,7 +23,7 @@
 //! ## Basic Usage
 //!
 //! ```
-//! use infra_master::market::{Currency, RateIndex};
+//! use infra_domain::market::{Currency, RateIndex};
 //!
 //! let usd = Currency::USD;
 //! assert_eq!(usd.code(), "USD");

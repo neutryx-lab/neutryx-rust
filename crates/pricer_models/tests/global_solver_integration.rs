@@ -647,15 +647,7 @@ fn test_enzyme_kernel_interpolation_accuracy() {
         let df_curve = curve.discount_factor(t).unwrap();
         let df_kernel = kernels::discount_factor_log_linear(t, &pillar_times, &log_df);
 
-        assert_relative_eq!(
-            df_kernel,
-            df_curve,
-            epsilon = 1e-12,
-            "Interpolation mismatch at t={}: kernel={}, curve={}",
-            t,
-            df_kernel,
-            df_curve
-        );
+        assert_relative_eq!(df_kernel, df_curve, epsilon = 1e-12);
     }
 }
 
@@ -858,11 +850,7 @@ fn test_jacobian_method_consistency() {
         assert_relative_eq!(
             result_fd.discount_factors[i],
             result_cd.discount_factors[i],
-            epsilon = 1e-8,
-            "DF mismatch at pillar {}: FD={}, CD={}",
-            i,
-            result_fd.discount_factors[i],
-            result_cd.discount_factors[i]
+            epsilon = 1e-8
         );
     }
 }

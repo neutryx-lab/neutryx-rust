@@ -47,7 +47,7 @@ pricer_risk = { path = "../pricer_risk" }
 adapter_loader = { path = "../adapter_loader", features = ["curve-builder"] }
 adapter_fpml = { path = "../adapter_fpml" }
 infra_config = { path = "../infra_config" }
-infra_master = { path = "../infra_master", features = ["serde"] }
+infra_domain = { path = "../infra_domain", features = ["serde"] }
 infra_store = { path = "../infra_store" }
 
 # Caching

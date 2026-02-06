@@ -6,7 +6,7 @@
 //! # Example
 //!
 //! ```rust
-//! use infra_master::market::{CurrencyPair, Currency};
+//! use infra_domain::market::{CurrencyPair, Currency};
 //!
 //! let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
 //! assert_eq!(pair.to_string(), "EUR/USD");

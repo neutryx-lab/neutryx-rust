@@ -15,8 +15,8 @@ derive_more クレートを導入し、New Type パターンにおけるボイ�
   - 全クレートで統一バージョンを使用可能にする
   - _Requirements: 1.1, 1.2, 1.3_
 
-- [x] 1.2 (P) infra_master クレートに derive_more 依存を追加
-  - `crates/infra_master/Cargo.toml` に `derive_more = { workspace = true }` を追加
+- [x] 1.2 (P) infra_domain クレートに derive_more 依存を追加
+  - `crates/infra_domain/Cargo.toml` に `derive_more = { workspace = true }` を追加
   - 既存の serde 依存パターンに合わせる
   - _Requirements: 1.3_
 
@@ -55,8 +55,8 @@ derive_more クレートを導入し、New Type パターンにおけるボイ�
 
 - [x] 3. Phase 1 検証
 - [x] 3.1 ビルド検証と AD 互換性確認
-  - `cargo build -p infra_master --features serde` でビルド確認
-  - `cargo test -p infra_master` でテスト確認
+  - `cargo build -p infra_domain --features serde` でビルド確認
+  - `cargo test -p infra_domain` でテスト確認
   - `cargo build -p pricer_risk --features enzyme-ad` で AD 互換性確認
   - `Box<dyn Trait>` パターンが導入されていないことを確認
   - _Requirements: 6.1, 6.2, 6.3_

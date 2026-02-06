@@ -16,7 +16,7 @@
 //! # Example
 //!
 //! ```rust
-//! use infra_master::market::convention::{SwapConvention, FxConvention, ConventionSet};
+//! use infra_domain::market::convention::{SwapConvention, FxConvention, ConventionSet};
 //!
 //! // Get USD SOFR swap convention
 //! let usd_sofr = SwapConvention::usd_sofr();

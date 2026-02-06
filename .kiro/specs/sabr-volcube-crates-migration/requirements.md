@@ -27,8 +27,8 @@
 - `pricer_core::math::formulas::sabr` - 完全なHagan公式実装
 - `pricer_core::math::solvers::levenberg_marquardt` - 汎用LMソルバー
 - `pricer_models::builder::vol` - VolCubeBuilder（構造のみ、TODO実装）
-- `infra_master::trade::instrument_def::rates` - Swaption定義
-- `infra_master::trade::convention::swaption` - SwaptionConvention
+- `infra_domain::trade::instrument_def::rates` - Swaption定義
+- `infra_domain::trade::convention::swaption` - SwaptionConvention
 
 ---
 

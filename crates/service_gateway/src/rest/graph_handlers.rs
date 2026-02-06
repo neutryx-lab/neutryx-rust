@@ -30,7 +30,7 @@ use axum::{
     extract::{Query, State},
     Json,
 };
-use infra_master::trade::{Trade as FpmlTrade, TradeType};
+use infra_domain::trade::{Trade as FpmlTrade, TradeType};
 use pricer_pricing::graph::{
     ComputationGraph, PortfolioComputationGraph, PortfolioGraphExtractable, PortfolioGraphExtractor,
 };

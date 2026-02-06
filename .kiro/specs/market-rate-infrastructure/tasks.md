@@ -4,7 +4,7 @@
 
 マーケットレートインフラストラクチャの実装タスク。外部データプロバイダーからのレート入力を正規化し、Instrument へマッピングして Pricer レイヤーに提供する。
 
-**対象モジュール**: `crates/infra_master/src/market/`
+**対象モジュール**: `crates/infra_domain/src/market/`
 
 ---
 

@@ -5,7 +5,7 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::market::CompoundingMethod;
+//! use infra_domain::market::CompoundingMethod;
 //!
 //! let method = CompoundingMethod::Compounded;
 //! assert_eq!(method.name(), "Compounded");
@@ -30,7 +30,7 @@ use std::{fmt, str::FromStr};
 /// # Examples
 ///
 /// ```
-/// use infra_master::market::CompoundingMethod;
+/// use infra_domain::market::CompoundingMethod;
 ///
 /// // OIS indices use compounded method
 /// let ois_method = CompoundingMethod::Compounded;
@@ -75,7 +75,7 @@ impl CompoundingMethod {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::CompoundingMethod;
+    /// use infra_domain::market::CompoundingMethod;
     ///
     /// assert_eq!(CompoundingMethod::Simple.name(), "Simple");
     /// assert_eq!(CompoundingMethod::Compounded.name(), "Compounded");
@@ -95,7 +95,7 @@ impl CompoundingMethod {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::CompoundingMethod;
+    /// use infra_domain::market::CompoundingMethod;
     ///
     /// assert!(!CompoundingMethod::Simple.is_compounding());
     /// assert!(CompoundingMethod::Compounded.is_compounding());
@@ -109,7 +109,7 @@ impl CompoundingMethod {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::CompoundingMethod;
+    /// use infra_domain::market::CompoundingMethod;
     ///
     /// assert!(CompoundingMethod::Simple.is_simple());
     /// assert!(!CompoundingMethod::Compounded.is_simple());
@@ -130,7 +130,7 @@ impl FromStr for CompoundingMethod {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::CompoundingMethod;
+    /// use infra_domain::market::CompoundingMethod;
     ///
     /// assert_eq!("Simple".parse::<CompoundingMethod>().unwrap(), CompoundingMethod::Simple);
     /// assert_eq!("compounded".parse::<CompoundingMethod>().unwrap(), CompoundingMethod::Compounded);

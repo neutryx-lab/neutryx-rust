@@ -6,8 +6,8 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::market::{RateId, RateType, Currency, RateIndex};
-//! use infra_master::time::Tenor;
+//! use infra_domain::market::{RateId, RateType, Currency, RateIndex};
+//! use infra_domain::time::Tenor;
 //!
 //! let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Swap);
 //! assert_eq!(rate_id.currency, Currency::USD);
@@ -33,8 +33,8 @@ use crate::{
 /// # Examples
 ///
 /// ```
-/// use infra_master::market::{RateId, RateType, Currency, RateIndex};
-/// use infra_master::time::Tenor;
+/// use infra_domain::market::{RateId, RateType, Currency, RateIndex};
+/// use infra_domain::time::Tenor;
 ///
 /// // Create a rate ID
 /// let rate_id = RateId::new(Currency::USD, Tenor::OneYear, RateType::Ois);
@@ -69,8 +69,8 @@ impl RateId {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{RateId, RateType, Currency};
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::market::{RateId, RateType, Currency};
+    /// use infra_domain::time::Tenor;
     ///
     /// let rate_id = RateId::new(Currency::EUR, Tenor::FiveYears, RateType::Swap);
     /// ```
@@ -95,8 +95,8 @@ impl RateId {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{RateId, RateType, Currency, RateIndex};
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::market::{RateId, RateType, Currency, RateIndex};
+    /// use infra_domain::time::Tenor;
     ///
     /// let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Ois)
     ///     .with_index(RateIndex::Sofr);
@@ -114,8 +114,8 @@ impl RateId {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{RateId, RateType, Currency};
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::market::{RateId, RateType, Currency};
+    /// use infra_domain::time::Tenor;
     ///
     /// let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Swap);
     /// assert_eq!(rate_id.description(), "USD 3M SWAP");

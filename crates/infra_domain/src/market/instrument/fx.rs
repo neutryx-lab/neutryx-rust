@@ -257,7 +257,7 @@ impl FxSwap {
 /// # Example
 ///
 /// ```rust
-/// use infra_master::trade::instrument_def::SwapPoints;
+/// use infra_domain::trade::instrument_def::SwapPoints;
 ///
 /// // EURUSD swap points: 50 pips = 0.0050
 /// let sp = SwapPoints::for_eurusd(50.0);
@@ -414,10 +414,10 @@ impl FxSwapConvention {
 /// # Example
 ///
 /// ```rust
-/// use infra_master::trade::instrument_def::{
+/// use infra_domain::trade::instrument_def::{
 ///     FxSwapInstrument, SwapPoints, FxSwapConvention, CurrencyPair,
 /// };
-/// use infra_master::{Currency, Date};
+/// use infra_domain::{Currency, Date};
 ///
 /// let inst = FxSwapInstrument {
 ///     currency_pair: CurrencyPair::new(Currency::EUR, Currency::USD),

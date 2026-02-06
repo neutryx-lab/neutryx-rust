@@ -68,7 +68,7 @@ enum Instrument {
    - `CurveEnum` (`pricer_models::market`)
    - `PathPayoffType` (`pricer_pricing::path_dependent`)
 2. The migration scope shall Infra 層の以下の Enum を含む（該当する場合）:
-   - `InstrumentType` または同等の Enum (`infra_master::trade`)
+   - `InstrumentType` または同等の Enum (`infra_domain::trade`)
 3. When 対象 Enum を選定する場合, the selection criteria shall 以下を満たすこと:
    - 3つ以上のバリアントを持つ
    - 手動 `match` 文によるトレイト impl が存在する

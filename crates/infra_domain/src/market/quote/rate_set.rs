@@ -6,10 +6,10 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::market::{
+//! use infra_domain::market::{
 //!     MarketRateSet, MarketRate, RateId, RateType, QuoteType, DataSource, Currency
 //! };
-//! use infra_master::time::Tenor;
+//! use infra_domain::time::Tenor;
 //!
 //! let mut rate_set = MarketRateSet::new();
 //!
@@ -51,10 +51,10 @@ use super::{
 /// # Examples
 ///
 /// ```
-/// use infra_master::market::{
+/// use infra_domain::market::{
 ///     MarketRateSet, MarketRate, RateId, RateType, QuoteType, DataSource, Currency
 /// };
-/// use infra_master::time::Tenor;
+/// use infra_domain::time::Tenor;
 ///
 /// let mut rate_set = MarketRateSet::new();
 ///
@@ -88,7 +88,7 @@ impl MarketRateSet {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::MarketRateSet;
+    /// use infra_domain::market::MarketRateSet;
     ///
     /// let rate_set = MarketRateSet::new();
     /// assert!(rate_set.is_empty());
@@ -112,10 +112,10 @@ impl MarketRateSet {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{
+    /// use infra_domain::market::{
     ///     MarketRateSet, MarketRate, RateId, RateType, QuoteType, DataSource, Currency
     /// };
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::time::Tenor;
     ///
     /// let mut rate_set = MarketRateSet::new();
     /// let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
@@ -143,10 +143,10 @@ impl MarketRateSet {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{
+    /// use infra_domain::market::{
     ///     MarketRateSet, MarketRate, RateId, RateType, QuoteType, DataSource, Currency
     /// };
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::time::Tenor;
     ///
     /// let mut rate_set = MarketRateSet::new();
     /// let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
@@ -178,10 +178,10 @@ impl MarketRateSet {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{
+    /// use infra_domain::market::{
     ///     MarketRateSet, MarketRate, RateId, RateType, QuoteType, DataSource, Currency
     /// };
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::time::Tenor;
     ///
     /// let mut rate_set = MarketRateSet::new();
     /// let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
@@ -225,10 +225,10 @@ impl MarketRateSet {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{
+    /// use infra_domain::market::{
     ///     MarketRateSet, MarketRate, RateId, RateType, QuoteType, DataSource, Currency
     /// };
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::time::Tenor;
     ///
     /// let mut rate_set = MarketRateSet::new();
     /// let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
@@ -254,10 +254,10 @@ impl MarketRateSet {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{
+    /// use infra_domain::market::{
     ///     MarketRateSet, MarketRate, RateId, RateType, QuoteType, DataSource, Currency
     /// };
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::time::Tenor;
     ///
     /// let mut rate_set = MarketRateSet::new();
     ///
@@ -297,10 +297,10 @@ impl MarketRateSet {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{
+    /// use infra_domain::market::{
     ///     MarketRateSet, MarketRate, RateId, RateType, QuoteType, DataSource, Currency
     /// };
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::time::Tenor;
     /// use std::time::Duration;
     ///
     /// let mut rate_set = MarketRateSet::new();
@@ -337,7 +337,7 @@ impl MarketRateSet {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::MarketRateSet;
+    /// use infra_domain::market::MarketRateSet;
     ///
     /// let rate_set = MarketRateSet::new();
     /// assert_eq!(rate_set.len(), 0);
@@ -350,7 +350,7 @@ impl MarketRateSet {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::MarketRateSet;
+    /// use infra_domain::market::MarketRateSet;
     ///
     /// let rate_set = MarketRateSet::new();
     /// assert!(rate_set.is_empty());
@@ -368,10 +368,10 @@ impl MarketRateSet {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{
+    /// use infra_domain::market::{
     ///     MarketRateSet, MarketRate, RateId, RateType, QuoteType, DataSource, Currency
     /// };
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::time::Tenor;
     ///
     /// let mut rate_set = MarketRateSet::new();
     ///
@@ -414,10 +414,10 @@ impl MarketRateSet {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{
+    /// use infra_domain::market::{
     ///     MarketRateSet, MarketRate, RateId, RateType, QuoteType, DataSource, Currency
     /// };
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::time::Tenor;
     ///
     /// let mut rate_set = MarketRateSet::new();
     /// let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
@@ -460,11 +460,11 @@ impl MarketRateSet {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{
+    /// use infra_domain::market::{
     ///     MarketRateSet, MarketRate, RateId, RateType, QuoteType,
     ///     DataSource, SourcePriority, Currency
     /// };
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::time::Tenor;
     ///
     /// let mut bloomberg_set = MarketRateSet::new();
     /// let mut reuters_set = MarketRateSet::new();
@@ -531,11 +531,11 @@ impl MarketRateSet {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{
+    /// use infra_domain::market::{
     ///     MarketRateSet, MarketRate, RateId, RateType, QuoteType,
     ///     DataSource, Currency, StandardInstrumentMapper
     /// };
-    /// use infra_master::time::{Date, Tenor};
+    /// use infra_domain::time::{Date, Tenor};
     ///
     /// let mut rate_set = MarketRateSet::new();
     ///
@@ -614,11 +614,11 @@ impl MarketRateSet {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{
+    /// use infra_domain::market::{
     ///     MarketRateSet, MarketRate, RateId, RateType, QuoteType,
     ///     DataSource, Currency, StandardInstrumentMapper
     /// };
-    /// use infra_master::time::{Date, Tenor};
+    /// use infra_domain::time::{Date, Tenor};
     ///
     /// let mut rate_set = MarketRateSet::new();
     /// let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
@@ -663,10 +663,10 @@ impl MarketRateSet {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{
+    /// use infra_domain::market::{
     ///     MarketRateSet, MarketRate, RateId, RateType, QuoteType, DataSource, Currency
     /// };
-    /// use infra_master::time::{Date, Tenor};
+    /// use infra_domain::time::{Date, Tenor};
     ///
     /// let mut rate_set = MarketRateSet::new();
     ///
@@ -747,10 +747,10 @@ impl MarketRateSet {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{
+    /// use infra_domain::market::{
     ///     MarketRateSet, MarketRate, RateId, RateType, QuoteType, DataSource, Currency
     /// };
-    /// use infra_master::time::{Date, Tenor};
+    /// use infra_domain::time::{Date, Tenor};
     ///
     /// let mut rate_set = MarketRateSet::new();
     /// let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);

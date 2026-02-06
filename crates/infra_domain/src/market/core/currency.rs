@@ -6,7 +6,7 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::market::Currency;
+//! use infra_domain::market::Currency;
 //!
 //! let usd = Currency::USD;
 //! assert_eq!(usd.code(), "USD");
@@ -36,7 +36,7 @@ use crate::error::CurrencyError;
 /// # Examples
 ///
 /// ```
-/// use infra_master::market::Currency;
+/// use infra_domain::market::Currency;
 ///
 /// // Get currency code
 /// assert_eq!(Currency::USD.code(), "USD");
@@ -91,7 +91,7 @@ impl Currency {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::Currency;
+    /// use infra_domain::market::Currency;
     ///
     /// let currencies = Currency::all();
     /// assert_eq!(currencies.len(), 5);
@@ -113,7 +113,7 @@ impl Currency {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::Currency;
+    /// use infra_domain::market::Currency;
     ///
     /// let codes = Currency::all_codes();
     /// assert_eq!(codes, ["USD", "EUR", "GBP", "JPY", "CHF"]);
@@ -126,7 +126,7 @@ impl Currency {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::Currency;
+    /// use infra_domain::market::Currency;
     ///
     /// assert_eq!(Currency::USD.code(), "USD");
     /// assert_eq!(Currency::EUR.code(), "EUR");
@@ -150,7 +150,7 @@ impl Currency {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::Currency;
+    /// use infra_domain::market::Currency;
     ///
     /// assert_eq!(Currency::USD.name(), "US Dollar");
     /// assert_eq!(Currency::JPY.name(), "Japanese Yen");
@@ -173,7 +173,7 @@ impl Currency {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::Currency;
+    /// use infra_domain::market::Currency;
     ///
     /// assert_eq!(Currency::USD.decimal_places(), 2);
     /// assert_eq!(Currency::EUR.decimal_places(), 2);
@@ -201,7 +201,7 @@ impl FromStr for Currency {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::Currency;
+    /// use infra_domain::market::Currency;
     ///
     /// let usd: Currency = "USD".parse().unwrap();
     /// assert_eq!(usd, Currency::USD);

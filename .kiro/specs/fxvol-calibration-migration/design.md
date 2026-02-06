@@ -31,7 +31,7 @@
 
 **現在の依存グラフ**:
 ```
-infra_master ← pricer_core ← pricer_models ← demo_gui
+infra_domain ← pricer_core ← pricer_models ← demo_gui
 ```
 
 **A-I-P-S違反の現状**:
@@ -47,7 +47,7 @@ infra_master ← pricer_core ← pricer_models ← demo_gui
 
 ```mermaid
 graph TB
-    subgraph infra_master
+    subgraph infra_domain
         DeltaType[DeltaType]
         FxVolInstrument[FxVolInstrument]
         FxVolConvention[FxVolConvention]
@@ -102,7 +102,7 @@ graph TB
 |-------|------------------|-----------------|-------|
 | Core Math | pricer_core | delta_to_strike, SABR vol | Float ジェネリクス |
 | Models | pricer_models | FxCurve, FxVolBuilder, Calibrator | levenberg-marquardt 使用 |
-| Types | infra_master | DeltaType, FxVolInstrument | 既存型を活用 |
+| Types | infra_domain | DeltaType, FxVolInstrument | 既存型を活用 |
 | Optimisation | levenberg-marquardt crate | SABR parameter fitting | workspace 既存依存 |
 | HTTP | demo_gui (axum) | API endpoints | 薄いハンドラー層 |
 
@@ -191,7 +191,7 @@ sequenceDiagram
 **Dependencies**:
 - Inbound: pricer_models::DeltaVolSlice — デルタ→ストライク変換 (P0)
 - Outbound: distributions::norm_cdf_inv — 逆正規分布 (P0)
-- External: infra_master::DeltaType — デルタタイプ定義 (P0)
+- External: infra_domain::DeltaType — デルタタイプ定義 (P0)
 
 **Contracts**: Service [x]
 

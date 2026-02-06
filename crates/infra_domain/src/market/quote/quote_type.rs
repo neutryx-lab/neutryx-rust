@@ -6,7 +6,7 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::market::QuoteType;
+//! use infra_domain::market::QuoteType;
 //!
 //! let quote = QuoteType::Mid;
 //! assert_eq!(quote, QuoteType::Mid);
@@ -29,7 +29,7 @@ use std::fmt;
 /// # Examples
 ///
 /// ```
-/// use infra_master::market::QuoteType;
+/// use infra_domain::market::QuoteType;
 ///
 /// let bid = QuoteType::Bid;
 /// let ask = QuoteType::Ask;
@@ -63,7 +63,7 @@ impl QuoteType {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::QuoteType;
+    /// use infra_domain::market::QuoteType;
     ///
     /// assert_eq!(QuoteType::Bid.code(), "BID");
     /// assert_eq!(QuoteType::Ask.code(), "ASK");

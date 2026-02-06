@@ -5,7 +5,7 @@ Frictional Bank Web AppのPricer画面をアップデートする。すべての
 
 ## Introduction
 
-本仕様は、Frictional Bank Web Appの Pricer 画面機能を拡張し、すべての対応 Instrument タイプを選択可能にし、ユーザーが入力したパラメータに基づいてキャッシュフロー（CF）展開されたTradeを生成・表示する機能を実現する。現在のPricer画面はEquity Option、FX Option、IRSの3種類に限定されているが、infra_master trade モジュールで定義されているすべての金融商品（Deposit、FRA、Futures、ParSwap、OIS、BasisSwap、CrossCurrencySwap、VanillaOption、Forward等）に対応を拡張する。
+本仕様は、Frictional Bank Web Appの Pricer 画面機能を拡張し、すべての対応 Instrument タイプを選択可能にし、ユーザーが入力したパラメータに基づいてキャッシュフロー（CF）展開されたTradeを生成・表示する機能を実現する。現在のPricer画面はEquity Option、FX Option、IRSの3種類に限定されているが、infra_domain trade モジュールで定義されているすべての金融商品（Deposit、FRA、Futures、ParSwap、OIS、BasisSwap、CrossCurrencySwap、VanillaOption、Forward等）に対応を拡張する。
 
 ---
 
@@ -76,7 +76,7 @@ Frictional Bank Web AppのPricer画面をアップデートする。すべての
 
 1. When ユーザーが「展開」ボタンをクリックした時, the Pricer Backend shall 入力パラメータを検証し、有効な場合はTrade構造を生成する。
 
-2. When Trade生成リクエストを受信した時, the Pricer Backend shall infra_master::trade モジュールのTradeBuilder/LegBuilderを使用してCF展開されたTradeを構築する。
+2. When Trade生成リクエストを受信した時, the Pricer Backend shall infra_domain::trade モジュールのTradeBuilder/LegBuilderを使用してCF展開されたTradeを構築する。
 
 3. When CF展開が完了した時, the Pricer Backend shall 以下の情報を含むレスポンスを返す:
    - Trade ID
@@ -199,5 +199,5 @@ Frictional Bank Web AppのPricer画面をアップデートする。すべての
 
 - フロントエンド: 既存のindex.html、app.jsを拡張
 - バックエンド: demo/gui/web/handlers.rsに新規エンドポイントを追加
-- Trade構造: infra_master::trade モジュールのTradeBuilder、LegBuilder、Cashflow等を使用
+- Trade構造: infra_domain::trade モジュールのTradeBuilder、LegBuilder、Cashflow等を使用
 - 型定義: demo/gui/src/web/pricer_types.rsに新規型を追加

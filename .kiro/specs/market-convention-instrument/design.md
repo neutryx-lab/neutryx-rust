@@ -8,7 +8,7 @@
 - 開発者: 型安全な Rate-Convention-Instrument 変換パイプラインを利用
 - デモユーザー: MarketData 画面での統合的なマーケットデータ閲覧
 
-**Impact:** `infra_master` クレートの market モジュール拡張、convention モジュールの移動、Demo GUI の MarketData 画面強化、TradeExpand 画面の廃止。
+**Impact:** `infra_domain` クレートの market モジュール拡張、convention モジュールの移動、Demo GUI の MarketData 画面強化、TradeExpand 画面の廃止。
 
 ### Goals
 
@@ -30,7 +30,7 @@
 
 ### Existing Architecture Analysis
 
-現在の `infra_master` クレートは以下の構造を持つ:
+現在の `infra_domain` クレートは以下の構造を持つ:
 
 - `market/`: MarketRate, RateId, RateIndex, MarketRateSet 等のマーケットデータ型
 - `trade/convention/`: SwapConvention, FraConvention 等の商品慣行定義
@@ -45,7 +45,7 @@
 
 ```mermaid
 graph TB
-    subgraph "Infra Layer (infra_master)"
+    subgraph "Infra Layer (infra_domain)"
         subgraph "market/"
             RateIndex[RateIndex]
             MarketRate[MarketRate]
@@ -107,7 +107,7 @@ graph TB
 
 | Layer | Choice / Version | Role in Feature | Notes |
 |-------|------------------|-----------------|-------|
-| Backend | Rust (infra_master) | 型定義、変換ロジック | 既存クレート拡張 |
+| Backend | Rust (infra_domain) | 型定義、変換ロジック | 既存クレート拡張 |
 | Data | JSON files | Convention 定義、Demo data | serde による deserialize |
 | Frontend | TypeScript + Vite | MarketData UI 拡張 | 既存コンポーネント改修 |
 | API | Axum REST | 新規エンドポイント | demo/gui/web/ handlers |
@@ -177,10 +177,10 @@ sequenceDiagram
 
 | Component | Domain/Layer | Intent | Req Coverage | Key Dependencies | Contracts |
 |-----------|--------------|--------|--------------|------------------|-----------|
-| MarketConvention | infra_master/market | 商品慣行の統一表現 | 1, 6, 12 | RateIndex, DayCounter | Type |
-| MarketInstrument | infra_master/market | Rate+Convention 結合型 | 2, 3 | MarketConvention, MarketRate | Service |
-| ConventionRegistry | infra_master/market | Convention の JSON 駆動管理 | 6, 11, 12 | serde_json | Service |
-| EventInstrument | infra_master/market | イベントの Instrument 表現 | 4 | RateIndex, Date | Type |
+| MarketConvention | infra_domain/market | 商品慣行の統一表現 | 1, 6, 12 | RateIndex, DayCounter | Type |
+| MarketInstrument | infra_domain/market | Rate+Convention 結合型 | 2, 3 | MarketConvention, MarketRate | Service |
+| ConventionRegistry | infra_domain/market | Convention の JSON 駆動管理 | 6, 11, 12 | serde_json | Service |
+| EventInstrument | infra_domain/market | イベントの Instrument 表現 | 4 | RateIndex, Date | Type |
 | MarketDataView | demo/gui | MarketData 画面 | 7, 8, 9, 14 | API client | State |
 | RateDetailPanel | demo/gui | Rate 詳細表示 | 7 | MarketDataView | UI |
 | CashflowPanel | demo/gui | CF 展開表示 | 8 | MarketDataView | UI |
@@ -189,7 +189,7 @@ sequenceDiagram
 
 ---
 
-### Infra Layer (infra_master)
+### Infra Layer (infra_domain)
 
 #### MarketConvention
 

@@ -6,7 +6,7 @@
 
 ## Overview
 
-**Purpose**: 本機能は、`infra_master::market::MarketInstrument` を静的なキャッシュフロー集合（`CompiledInstrument`）へ事前コンパイルすることで、キャリブレーションループのパフォーマンスを向上させる。
+**Purpose**: 本機能は、`infra_domain::market::MarketInstrument` を静的なキャッシュフロー集合（`CompiledInstrument`）へ事前コンパイルすることで、キャリブレーションループのパフォーマンスを向上させる。
 
 **Users**: 量的開発者およびキャリブレーションエンジンが、カーブキャリブレーション処理で本機能を使用する。
 
@@ -44,7 +44,7 @@
 
 ```mermaid
 graph TB
-    subgraph Infra[infra_master]
+    subgraph Infra[infra_domain]
         MI[MarketInstrument]
         MC[MarketConvention]
     end
@@ -71,7 +71,7 @@ graph TB
 
 **Architecture Integration**:
 - **Selected pattern**: Compiler パターン（既存 `TradeCompiler` を参照）
-- **Domain/feature boundaries**: `InstrumentCompiler` は `pricer_models::builder` に配置し、`infra_master` 型を入力として受け取り、`pricer_models` 固有型を出力
+- **Domain/feature boundaries**: `InstrumentCompiler` は `pricer_models::builder` に配置し、`infra_domain` 型を入力として受け取り、`pricer_models` 固有型を出力
 - **Existing patterns preserved**: `TradeCompiler<T>` トレイトパターン、`CalibrationInstrument<T>` トレイト
 - **New components rationale**: `CompiledInstrument<T>` は事前計算済みキャッシュフローを保持し、イテレーション効率を向上
 - **Steering compliance**: A-I-P-S 依存関係ルールを維持（Pricer → Infra のみ）
@@ -177,7 +177,7 @@ sequenceDiagram
 
 **Dependencies**
 - Inbound: CurveDefinition — コンパイル要求 (P0)
-- External: infra_master::market::MarketInstrument — 入力型 (P0)
+- External: infra_domain::market::MarketInstrument — 入力型 (P0)
 
 **Contracts**: Service [x] / API [ ] / Event [ ] / Batch [ ] / State [ ]
 
@@ -197,7 +197,7 @@ impl<T: Float> InstrumentCompiler<T> {
     /// 単一の MarketInstrument をコンパイル
     pub fn compile(
         &self,
-        instrument: &infra_master::market::MarketInstrument,
+        instrument: &infra_domain::market::MarketInstrument,
     ) -> Result<CompiledInstrument<T>, CompileError>;
 
     /// バッチコンパイル
@@ -206,7 +206,7 @@ impl<T: Float> InstrumentCompiler<T> {
         instruments: I,
     ) -> Result<Vec<CompiledInstrument<T>>, CompileError>
     where
-        I: IntoIterator<Item = &'a infra_master::market::MarketInstrument>;
+        I: IntoIterator<Item = &'a infra_domain::market::MarketInstrument>;
 }
 ```
 

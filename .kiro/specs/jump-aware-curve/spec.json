@@ -24,7 +24,7 @@
       "tasks_total": 8,
       "test_results": {
         "pricer_core": 1071,
-        "infra_master": 1519,
+        "infra_domain": 1519,
         "pricer_models_lib": 508,
         "pricer_models_integration": 11,
         "pricer_models_doc": 37

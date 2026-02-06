@@ -6,8 +6,8 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::market::definition::JumpPillar;
-//! use infra_master::time::Date;
+//! use infra_domain::market::definition::JumpPillar;
+//! use infra_domain::time::Date;
 //!
 //! let jump = JumpPillar::new(
 //!     Date::from_ymd(2024, 3, 20).unwrap(),
@@ -41,8 +41,8 @@ use crate::time::Date;
 /// # Examples
 ///
 /// ```
-/// use infra_master::market::definition::JumpPillar;
-/// use infra_master::time::Date;
+/// use infra_domain::market::definition::JumpPillar;
+/// use infra_domain::time::Date;
 ///
 /// // Create a jump pillar for an expected FOMC rate hike
 /// let jump = JumpPillar::new(
@@ -92,8 +92,8 @@ impl JumpPillar {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::definition::JumpPillar;
-    /// use infra_master::time::Date;
+    /// use infra_domain::market::definition::JumpPillar;
+    /// use infra_domain::time::Date;
     ///
     /// let jump = JumpPillar::new(
     ///     Date::from_ymd(2024, 6, 12).unwrap(),
@@ -120,8 +120,8 @@ impl JumpPillar {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::definition::JumpPillar;
-    /// use infra_master::time::Date;
+    /// use infra_domain::market::definition::JumpPillar;
+    /// use infra_domain::time::Date;
     ///
     /// let jump = JumpPillar::new(
     ///     Date::from_ymd(2024, 3, 20).unwrap(),
@@ -149,10 +149,10 @@ impl JumpPillar {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::definition::JumpPillar;
-    /// use infra_master::market::{EventInstrument, RateIndex};
-    /// use infra_master::market::events::EventType;
-    /// use infra_master::time::Date;
+    /// use infra_domain::market::definition::JumpPillar;
+    /// use infra_domain::market::{EventInstrument, RateIndex};
+    /// use infra_domain::market::events::EventType;
+    /// use infra_domain::time::Date;
     ///
     /// let event = EventInstrument::new(
     ///     Date::from_ymd(2024, 3, 20).unwrap(),
@@ -187,10 +187,10 @@ impl JumpPillar {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::definition::JumpPillar;
-    /// use infra_master::market::{EventInstrument, RateIndex};
-    /// use infra_master::market::events::EventType;
-    /// use infra_master::time::Date;
+    /// use infra_domain::market::definition::JumpPillar;
+    /// use infra_domain::market::{EventInstrument, RateIndex};
+    /// use infra_domain::market::events::EventType;
+    /// use infra_domain::time::Date;
     ///
     /// let event = EventInstrument::new(
     ///     Date::from_ymd(2024, 3, 20).unwrap(),
@@ -240,8 +240,8 @@ impl JumpPillar {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::definition::JumpPillar;
-    /// use infra_master::time::Date;
+    /// use infra_domain::market::definition::JumpPillar;
+    /// use infra_domain::time::Date;
     ///
     /// let jump = JumpPillar::new(
     ///     Date::from_ymd(2024, 3, 20).unwrap(),
@@ -262,8 +262,8 @@ impl JumpPillar {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::definition::JumpPillar;
-    /// use infra_master::time::Date;
+    /// use infra_domain::market::definition::JumpPillar;
+    /// use infra_domain::time::Date;
     ///
     /// let jump = JumpPillar::new(
     ///     Date::from_ymd(2024, 3, 20).unwrap(),
@@ -284,8 +284,8 @@ impl JumpPillar {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::definition::JumpPillar;
-    /// use infra_master::time::Date;
+    /// use infra_domain::market::definition::JumpPillar;
+    /// use infra_domain::time::Date;
     ///
     /// let jump = JumpPillar::new(
     ///     Date::from_ymd(2024, 3, 20).unwrap(),
@@ -352,10 +352,10 @@ use crate::market::RateIndex;
 /// # Examples
 ///
 /// ```
-/// use infra_master::market::definition::JumpPillarBuilder;
-/// use infra_master::market::{EventInstrument, RateIndex};
-/// use infra_master::market::events::EventType;
-/// use infra_master::time::Date;
+/// use infra_domain::market::definition::JumpPillarBuilder;
+/// use infra_domain::market::{EventInstrument, RateIndex};
+/// use infra_domain::market::events::EventType;
+/// use infra_domain::time::Date;
 ///
 /// let events = vec![
 ///     EventInstrument::new(
@@ -400,8 +400,8 @@ impl JumpPillarBuilder {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::definition::JumpPillarBuilder;
-    /// use infra_master::market::EventInstrument;
+    /// use infra_domain::market::definition::JumpPillarBuilder;
+    /// use infra_domain::market::EventInstrument;
     ///
     /// let builder = JumpPillarBuilder::new(vec![]);
     /// let pillars = builder.build();
@@ -426,8 +426,8 @@ impl JumpPillarBuilder {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::definition::JumpPillarBuilder;
-    /// use infra_master::market::RateIndex;
+    /// use infra_domain::market::definition::JumpPillarBuilder;
+    /// use infra_domain::market::RateIndex;
     ///
     /// let builder = JumpPillarBuilder::new(vec![])
     ///     .with_rate_index(RateIndex::Sofr);
@@ -450,8 +450,8 @@ impl JumpPillarBuilder {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::definition::JumpPillarBuilder;
-    /// use infra_master::time::Date;
+    /// use infra_domain::market::definition::JumpPillarBuilder;
+    /// use infra_domain::time::Date;
     ///
     /// let builder = JumpPillarBuilder::new(vec![])
     ///     .with_date_range(
@@ -474,7 +474,7 @@ impl JumpPillarBuilder {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::definition::JumpPillarBuilder;
+    /// use infra_domain::market::definition::JumpPillarBuilder;
     ///
     /// let builder = JumpPillarBuilder::new(vec![])
     ///     .with_min_confidence(0.7);
@@ -497,10 +497,10 @@ impl JumpPillarBuilder {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::definition::JumpPillarBuilder;
-    /// use infra_master::market::{EventInstrument, RateIndex};
-    /// use infra_master::market::events::EventType;
-    /// use infra_master::time::Date;
+    /// use infra_domain::market::definition::JumpPillarBuilder;
+    /// use infra_domain::market::{EventInstrument, RateIndex};
+    /// use infra_domain::market::events::EventType;
+    /// use infra_domain::time::Date;
     ///
     /// let events = vec![
     ///     EventInstrument::new(

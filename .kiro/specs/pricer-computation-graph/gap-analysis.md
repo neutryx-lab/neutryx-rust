@@ -104,7 +104,7 @@ enzyme-mode = []
 
 #### 依存関係
 
-- `pricer_core` → `infra_master` (型定義のみ)
+- `pricer_core` → `infra_domain` (型定義のみ)
 - `pricer_pricing` → `pricer_core`, `pricer_models`
 - `demo/gui` → `pricer_pricing`, `pricer_models`, `pricer_core`
 

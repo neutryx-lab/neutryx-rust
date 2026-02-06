@@ -6,12 +6,12 @@
 
 **Users**: neutryx-rust の開発者が、Trade、Leg、Counterparty 等の構造体を構築する際に、型安全かつ簡潔な Builder API を利用できるようになる。
 
-**Impact**: `infra_master` クレートを中心に31個の手書き Builder を段階的に置き換え、コードベースの一貫性と保守性を向上させる。
+**Impact**: `infra_domain` クレートを中心に31個の手書き Builder を段階的に置き換え、コードベースの一貫性と保守性を向上させる。
 
 ### Goals
 
 - `bon` クレートをワークスペース依存関係に追加し、統一バージョン管理を実現
-- `infra_master` の主要 Builder（Trade、Leg、Book、Portfolio、Counterparty 関連）を bon 化
+- `infra_domain` の主要 Builder（Trade、Leg、Book、Portfolio、Counterparty 関連）を bon 化
 - 既存テストとの互換性を維持しながら移行
 - 約3,000行のボイラープレート削減
 
@@ -59,7 +59,7 @@ graph TB
         WC[Cargo.toml<br>workspace.dependencies]
     end
 
-    subgraph InfraMaster[infra_master]
+    subgraph InfraMaster[infra_domain]
         Book[Book<br>derive Builder]
         Portfolio[Portfolio<br>derive Builder]
         Trade[Trade<br>derive Builder]
@@ -85,7 +85,7 @@ graph TB
 | 項目 | 決定 |
 |------|------|
 | 選択パターン | Derive Macro による Builder 自動生成 |
-| ドメイン境界 | `infra_master` クレート内で完結、外部 API 変更なし |
+| ドメイン境界 | `infra_domain` クレート内で完結、外部 API 変更なし |
 | 既存パターン維持 | `builder()` → setter chain → `build()` の呼び出しパターンは維持 |
 | 新コンポーネント | `LegConfig` 構造体（`LegBuilder` の代替として設計変更） |
 | Steering 準拠 | A-I-P-S 依存ルール順守、Infra 層から段階的に移行 |
@@ -96,7 +96,7 @@ graph TB
 |-------|------------------|-----------------|-------|
 | Build System | Cargo workspace | bon 依存関係管理 | `[workspace.dependencies]` に追加 |
 | Macro Crate | bon ^3.6 | Builder 自動生成 | typestate パターンで型安全性保証 |
-| Target Crate | infra_master | Builder 移行対象 | 14個の Builder を段階的移行 |
+| Target Crate | infra_domain | Builder 移行対象 | 14個の Builder を段階的移行 |
 
 ---
 
@@ -174,14 +174,14 @@ flowchart LR
 | Component | Domain/Layer | Intent | Req Coverage | Key Dependencies | Contracts |
 |-----------|--------------|--------|--------------|------------------|-----------|
 | Cargo.toml (workspace) | Build | bon 依存関係管理 | 1.1, 1.2 | bon ^3.6 (P0) | - |
-| Book | infra_master/book | トレーディングブック定義 | 3.1, 3.2, 4.1 | - | State |
-| Portfolio | infra_master/portfolio | ポートフォリオ定義 | 3.1, 3.2, 4.1 | - | State |
-| CounterParty | infra_master/counterparty | 取引相手定義 | 3.1, 3.2, 4.1 | - | State |
-| CsaTerms | infra_master/counterparty | CSA条件定義 | 3.1, 3.2, 4.1 | - | State |
-| Trade | infra_master/trade | 取引定義 | 2.1, 3.1, 3.2, 4.1 | Leg (P0) | State |
-| LegConfig | infra_master/trade | Leg構築設定 | 2.2, 2.4, 4.2 | - | Service, State |
+| Book | infra_domain/book | トレーディングブック定義 | 3.1, 3.2, 4.1 | - | State |
+| Portfolio | infra_domain/portfolio | ポートフォリオ定義 | 3.1, 3.2, 4.1 | - | State |
+| CounterParty | infra_domain/counterparty | 取引相手定義 | 3.1, 3.2, 4.1 | - | State |
+| CsaTerms | infra_domain/counterparty | CSA条件定義 | 3.1, 3.2, 4.1 | - | State |
+| Trade | infra_domain/trade | 取引定義 | 2.1, 3.1, 3.2, 4.1 | Leg (P0) | State |
+| LegConfig | infra_domain/trade | Leg構築設定 | 2.2, 2.4, 4.2 | - | Service, State |
 
-### infra_master/book
+### infra_domain/book
 
 #### Book
 
@@ -252,7 +252,7 @@ pub struct Book {
 
 ---
 
-### infra_master/trade
+### infra_domain/trade
 
 #### LegConfig
 
@@ -394,11 +394,11 @@ impl LegConfig {
 
 1. **TradeBuilder + LegConfig**: Trade 構築フロー全体の動作確認
 2. **counterparty 階層**: NettingSet → IsdaMasterAgreement → CounterpartyPortfolio の構築フロー
-3. **既存テスト互換性**: `infra_master` の既存テストスイートが全パス
+3. **既存テスト互換性**: `infra_domain` の既存テストスイートが全パス
 
 ### Regression Tests
 
-- 各 Phase 完了後に `cargo test -p infra_master` を実行
+- 各 Phase 完了後に `cargo test -p infra_domain` を実行
 - API 変更を伴う Phase 4 では呼び出し側のテストも更新
 
 ---
@@ -442,7 +442,7 @@ flowchart TB
 
 **検証チェックポイント**:
 - `cargo build --workspace` 成功
-- `cargo test -p infra_master` 全パス
+- `cargo test -p infra_domain` 全パス
 - `cargo clippy --workspace` 警告なし
 
 ---

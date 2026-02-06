@@ -13,9 +13,9 @@
 //! # Example
 //!
 //! ```
-//! use infra_master::portfolio::{PortfolioDefinition, PortfolioScope};
-//! use infra_master::market::Currency;
-//! use infra_master::ids::BookId;
+//! use infra_domain::portfolio::{PortfolioDefinition, PortfolioScope};
+//! use infra_domain::market::Currency;
+//! use infra_domain::ids::BookId;
 //!
 //! let portfolio = PortfolioDefinition::builder()
 //!     .portfolio_id("P001")

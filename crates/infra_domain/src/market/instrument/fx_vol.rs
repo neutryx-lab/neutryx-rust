@@ -404,10 +404,10 @@ impl std::fmt::Display for FxVolInstrument {
 /// # Example
 ///
 /// ```
-/// use infra_master::trade::instrument_def::{
+/// use infra_domain::trade::instrument_def::{
 ///     FxVolInstrumentBuilder, CurrencyPair, Delta, FxVolConvention,
 /// };
-/// use infra_master::{Currency, Date};
+/// use infra_domain::{Currency, Date};
 ///
 /// let inst = FxVolInstrumentBuilder::new(
 ///         CurrencyPair::new(Currency::EUR, Currency::USD),

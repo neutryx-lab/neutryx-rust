@@ -2,9 +2,9 @@
 
 ## Introduction
 
-本仕様は、Neutryx プライシングパイプライン全体における RateIndex（金利指標）の包括的な統合を定義する。現状、RateIndex は infra_master で定義されているが、実際のプライシングプロセスでは使用されていない。GenericPricer は cf.payoff を無視し、MarketProvider は Currency のみでカーブをマッピングしている。本仕様により、変動金利キャッシュフローの正確な評価を実現する。
+本仕様は、Neutryx プライシングパイプライン全体における RateIndex（金利指標）の包括的な統合を定義する。現状、RateIndex は infra_domain で定義されているが、実際のプライシングプロセスでは使用されていない。GenericPricer は cf.payoff を無視し、MarketProvider は Currency のみでカーブをマッピングしている。本仕様により、変動金利キャッシュフローの正確な評価を実現する。
 
-**対象レイヤー**: infra_master (I) → pricer_models (P/L2) → pricer_pricing (P/L3) → demo/gui (D)
+**対象レイヤー**: infra_domain (I) → pricer_models (P/L2) → pricer_pricing (P/L3) → demo/gui (D)
 
 ## Requirements
 

@@ -21,7 +21,7 @@ use neutryx::risk::XvaCalculator;  // pricer_risk access
 **Module Aliases**:
 | Alias | Underlying Crate | Description |
 |-------|-----------------|-------------|
-| `master` | infra_master | Static data (dates, currencies, trades) |
+| `master` | infra_domain | Static data (dates, currencies, trades) |
 | `config` | infra_config | System configuration |
 | `store` | infra_store | Persistence layer |
 | `core` | pricer_core | Mathematical foundation |
@@ -67,7 +67,7 @@ S: Service   → Execution environments and interfaces (The Outputs)
 
 ## A: Adapter Layer (Input)
 
-**Responsibility**: To sanitise external chaos into internal order. This layer depends only on `pricer_core` (for types) and `infra_master` (for identifiers).
+**Responsibility**: To sanitise external chaos into internal order. This layer depends only on `pricer_core` (for types) and `infra_domain` (for identifiers).
 
 ### adapter_feeds
 
@@ -103,9 +103,9 @@ S: Service   → Execution environments and interfaces (The Outputs)
 **Function**: Loads runtime settings (TOML/YAML/Env Vars).
 **Scope**: Defines memory limits for the AD engine, thread pool sizes, and database connection strings.
 
-### infra_master
+### infra_domain
 
-**Location**: `crates/infra_master/src/`
+**Location**: `crates/infra_domain/src/`
 **Purpose**: Static master data and financial primitives
 **Function**: The "Source of Truth" for static finance data.
 **Scope**: Holiday calendars, Day count conventions, Counterparty/CSA data, Financial date and time primitives, Trade structures, Market conventions, Portfolio/Book organisation.
@@ -184,7 +184,7 @@ trade/             → Trade representation (CF-expanded format)
 ```
 
 **Trade Architecture**: `Trade` → `Vec<Leg>` → `Vec<Cashflow>` (CF-expanded common format)
-**Prelude**: `infra_master::prelude` exports all commonly used types.
+**Prelude**: `infra_domain::prelude` exports all commonly used types.
 
 ### infra_store
 
@@ -304,7 +304,7 @@ stochastic/       → Stochastic process models
   ├── validation.rs   → Model parameter validation
   └── error.rs        → StochasticModelError
 
-instruments/      → Re-exports from infra_master::trade for backwards compatibility
+instruments/      → Re-exports from infra_domain::trade for backwards compatibility
 ```
 
 **Calibration Patterns** (documented in `builder/mod.rs`):

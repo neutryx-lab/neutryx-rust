@@ -5,7 +5,7 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::time::TimeError;
+//! use infra_domain::time::TimeError;
 //!
 //! let err = TimeError::InvalidDate { year: 2024, month: 2, day: 30 };
 //! assert_eq!(format!("{}", err), "Invalid date: 2024-02-30");
@@ -30,7 +30,7 @@ use crate::DateError;
 /// # Examples
 ///
 /// ```
-/// use infra_master::time::TimeError;
+/// use infra_domain::time::TimeError;
 ///
 /// let err = TimeError::InvalidDate { year: 2024, month: 2, day: 30 };
 /// assert_eq!(format!("{}", err), "Invalid date: 2024-02-30");

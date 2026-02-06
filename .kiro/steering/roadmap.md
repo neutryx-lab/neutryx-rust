@@ -29,7 +29,7 @@ _Updated: 2026-02-04_ — Steering sync: Vue 3 frontend migration, CurveDefiniti
 | advanced-sensitivity-webapp | Advanced sensitivity analysis for web dashboard | 2026-01-19 |
 | codebase-cleanup-optimisation | Codebase cleanup and optimisation (16 tasks) | 2026-01-19 |
 | portfolio-graph-optimisation | Portfolio Graph REST API and WebSocket handlers | 2026-01-19 |
-| infra-primitives-migration | Financial primitives migration to infra_master | 2026-01-19 |
+| infra-primitives-migration | Financial primitives migration to infra_domain | 2026-01-19 |
 | model-architecture-refactoring | pricer_optimiser removal, consolidation into pricer_core/pricer_models | 2026-01-19 |
 | counterparty-netting-module | Counterparty and netting set data structures | 2026-01-21 |
 | financial-time-module | Financial time primitives (calendars, frequencies, periods) | 2026-01-21 |
@@ -83,7 +83,7 @@ Legend: ✅ Complete | 🔶 Basic/Partial | ❌ Not Started
 | Crate | Status | Notes |
 |-------|--------|-------|
 | infra_config | ✅ | Settings loading (TOML/YAML/Env) |
-| infra_master | ✅ | time/, market/, counterparty/, trade/ (CF-expanded), convention/, instrument_def/ |
+| infra_domain | ✅ | time/, market/, counterparty/, trade/ (CF-expanded), convention/, instrument_def/ |
 | infra_store | 🔶 | Basic traits only, postgres optional |
 
 #### Adapter Layer (A) - Input
@@ -244,7 +244,7 @@ Codebase redundancy cleanup performed:
 | 2026-01-22 | Steering sync: codebase-simplification completed (24 total), curve-bootstrap-engine added (requirements phase), standard-instrument-catalogue in implementation |
 | 2026-01-21 | Steering sync: Added codebase-simplification to active specs (tasks awaiting approval) |
 | 2026-01-21 | Steering sync: pricer-core-math-library completed (31/31 tasks), moved to completed specs. Total: 23 specs |
-| 2026-01-21 | Steering sync: pricer_core math expansion (distributions, calculus, utilities, integrators, optimisers, fitting, mesh, linalg), infra_master trade/convention modules, 3 new completed specs |
+| 2026-01-21 | Steering sync: pricer_core math expansion (distributions, calculus, utilities, integrators, optimisers, fitting, mesh, linalg), infra_domain trade/convention modules, 3 new completed specs |
 | 2026-01-20 | Steering sync: market_data moved from pricer_core to pricer_models::market (CI fix), layer status updated |
 | 2026-01-20 | Steering sync: documented pricer_optimiser removal (consolidated into pricer_core/pricer_models), model-architecture-refactoring spec added |
 | 2026-01-19 | Steering sync: infra-primitives-migration completed, total specs: 18, no active specs remaining |

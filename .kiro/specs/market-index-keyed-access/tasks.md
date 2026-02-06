@@ -5,7 +5,7 @@
 本実装計画は、PricerにおけるMarketデータアクセスをIndex単位で統一化するためのファサード層実装を定義する。
 
 **コンポーネント**: IndexedMarket, IndexedMarketBuilder, IndexRequirement, TradeIndexRequirements, MarketValidator
-**レイヤー**: infra_master::trade (型定義), pricer_models::market (ファサード)
+**レイヤー**: infra_domain::trade (型定義), pricer_models::market (ファサード)
 
 ---
 

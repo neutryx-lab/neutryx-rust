@@ -26,7 +26,7 @@
 - [x] 1.3 Trade 展開リクエスト/レスポンス型の実装
   - TradeExpandRequest（Instrument タイプとパラメータ union）を定義
   - TradeExpandResponse（Trade ID、タイプ、Leg 配列、メタデータ）を定義
-  - LegDto/CashflowDto による infra_master 型からの変換用 DTO を定義
+  - LegDto/CashflowDto による infra_domain 型からの変換用 DTO を定義
   - camelCase による JSON シリアライズ設定
   - _Requirements: 3.3, 5.2, 5.3_
 
@@ -37,7 +37,7 @@
   - 開始日、テナー、支払頻度からスケジュールを計算
   - 月末ルール（EndOfMonthRule）の適用
   - 各種頻度（Monthly、Quarterly、SemiAnnual、Annual）への対応
-  - infra_master::time の Tenor/Frequency 型を活用
+  - infra_domain::time の Tenor/Frequency 型を活用
   - _Requirements: 3.2_
 
 - [x] 2.2 スケジュール生成の単体テスト
@@ -69,7 +69,7 @@
   - EquityForward（Long/Short）の展開ロジックを実装
   - _Requirements: 2.4, 3.1, 3.2_
 
-- [x] 3.4 infra_master 型から DTO への変換ロジック
+- [x] 3.4 infra_domain 型から DTO への変換ロジック
   - Trade → TradeExpandResponse 変換を実装
   - Leg → LegDto 変換を実装
   - Cashflow → CashflowDto 変換を実装
@@ -101,7 +101,7 @@
   - _Requirements: 6.1, 6.2, 6.3_
 
 - [x] 4.3 demo/gui Cargo.toml への依存追加
-  - infra_master の serde feature を有効化
+  - infra_domain の serde feature を有効化
   - 必要な依存関係の追加
   - _Requirements: 5.1_
 

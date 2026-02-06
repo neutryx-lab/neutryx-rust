@@ -59,7 +59,7 @@
   - _Requirements: 2.4, 2.5_
 
 - [x] 2.2 (P) TradeLoader 約定データ読み込みの実装
-  - JSON スキーマから infra_master::trade::Trade への変換
+  - JSON スキーマから infra_domain::trade::Trade への変換
   - load(path) で単一約定ファイル読み込み
   - load_portfolio(path) で複数約定（配列）読み込み
   - 必須フィールド検証（trade_id, instrument, currency）
@@ -74,7 +74,7 @@
   - _Requirements: 2.2_
 
 - [x] 2.4 (P) CsaLoader CSA データ読み込みの実装
-  - JSON から infra_master::counterparty::CsaTerms への変換
+  - JSON から infra_domain::counterparty::CsaTerms への変換
   - 担保通貨、閾値、MTA などのフィールドマッピング
   - _Requirements: 2.3_
 

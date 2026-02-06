@@ -5,7 +5,7 @@
 use crate::common::XmlNavigator;
 use crate::error::FpmlError;
 use crate::products;
-use infra_master::trade::Trade;
+use infra_domain::trade::Trade;
 
 /// FpML parser for trade definitions.
 ///

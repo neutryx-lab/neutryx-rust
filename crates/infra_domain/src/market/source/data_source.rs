@@ -6,7 +6,7 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::market::{DataSource, SourcePriority};
+//! use infra_domain::market::{DataSource, SourcePriority};
 //!
 //! let source = DataSource::Bloomberg;
 //! let priority = SourcePriority::default_priority();
@@ -32,7 +32,7 @@ use std::{cmp::Ordering, fmt};
 /// # Examples
 ///
 /// ```
-/// use infra_master::market::DataSource;
+/// use infra_domain::market::DataSource;
 ///
 /// let source = DataSource::Bloomberg;
 /// assert_eq!(source.code(), "BBG");
@@ -57,7 +57,7 @@ impl DataSource {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::DataSource;
+    /// use infra_domain::market::DataSource;
     ///
     /// assert_eq!(DataSource::Reuters.code(), "RTR");
     /// assert_eq!(DataSource::Bloomberg.code(), "BBG");
@@ -79,7 +79,7 @@ impl DataSource {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::DataSource;
+    /// use infra_domain::market::DataSource;
     ///
     /// assert_eq!(DataSource::Bloomberg.name(), "Bloomberg");
     /// ```
@@ -106,7 +106,7 @@ impl fmt::Display for DataSource {
 /// # Examples
 ///
 /// ```
-/// use infra_master::market::{DataSource, SourcePriority};
+/// use infra_domain::market::{DataSource, SourcePriority};
 /// use std::cmp::Ordering;
 ///
 /// let priority = SourcePriority::default_priority();
@@ -137,7 +137,7 @@ impl SourcePriority {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{DataSource, SourcePriority};
+    /// use infra_domain::market::{DataSource, SourcePriority};
     ///
     /// let priority = SourcePriority::new(vec![
     ///     DataSource::Internal,
@@ -156,7 +156,7 @@ impl SourcePriority {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{DataSource, SourcePriority};
+    /// use infra_domain::market::{DataSource, SourcePriority};
     ///
     /// let priority = SourcePriority::default_priority();
     /// ```
@@ -183,7 +183,7 @@ impl SourcePriority {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{DataSource, SourcePriority};
+    /// use infra_domain::market::{DataSource, SourcePriority};
     /// use std::cmp::Ordering;
     ///
     /// let priority = SourcePriority::default_priority();
@@ -219,7 +219,7 @@ impl SourcePriority {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{DataSource, SourcePriority};
+    /// use infra_domain::market::{DataSource, SourcePriority};
     ///
     /// let priority = SourcePriority::default_priority();
     ///

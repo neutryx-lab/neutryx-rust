@@ -6,7 +6,7 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::time::{Date, DayCounter};
+//! use infra_domain::time::{Date, DayCounter};
 //!
 //! let start = Date::from_ymd(2024, 1, 1).unwrap();
 //! let end = Date::from_ymd(2024, 7, 1).unwrap();
@@ -90,7 +90,7 @@ impl DayCounter {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::DayCounter;
+    /// use infra_domain::time::DayCounter;
     ///
     /// assert_eq!(DayCounter::Actual365Fixed.name(), "ACT/365");
     /// assert_eq!(DayCounter::Actual360.name(), "ACT/360");
@@ -116,7 +116,7 @@ impl DayCounter {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::{Date, DayCounter};
+    /// use infra_domain::time::{Date, DayCounter};
     ///
     /// let start = Date::from_ymd(2024, 1, 1).unwrap();
     /// let end = Date::from_ymd(2024, 7, 1).unwrap();
@@ -155,7 +155,7 @@ impl DayCounter {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::{Date, DayCounter};
+    /// use infra_domain::time::{Date, DayCounter};
     ///
     /// let start = Date::from_ymd(2024, 1, 1).unwrap();
     /// let end = Date::from_ymd(2024, 1, 11).unwrap();

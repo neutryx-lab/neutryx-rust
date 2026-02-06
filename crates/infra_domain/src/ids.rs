@@ -13,7 +13,7 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::ids::{TradeId, PortfolioId, BookId};
+//! use infra_domain::ids::{TradeId, PortfolioId, BookId};
 //!
 //! let trade = TradeId::new("TRADE001");
 //! let portfolio = PortfolioId::new("PORTFOLIO001");
@@ -86,7 +86,7 @@ define_id! {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::ids::TradeId;
+    /// use infra_domain::ids::TradeId;
     ///
     /// let id = TradeId::new("TRADE001");
     /// assert_eq!(id.as_str(), "TRADE001");
@@ -107,7 +107,7 @@ define_id! {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::ids::PortfolioId;
+    /// use infra_domain::ids::PortfolioId;
     ///
     /// let id = PortfolioId::new("PORTFOLIO001");
     /// assert_eq!(id.as_str(), "PORTFOLIO001");
@@ -128,7 +128,7 @@ define_id! {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::ids::BookId;
+    /// use infra_domain::ids::BookId;
     ///
     /// let id = BookId::new("BOOK001");
     /// assert_eq!(id.as_str(), "BOOK001");
@@ -149,7 +149,7 @@ define_id! {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::ids::IssuerId;
+    /// use infra_domain::ids::IssuerId;
     ///
     /// let id = IssuerId::new("ISSUER001");
     /// assert_eq!(id.as_str(), "ISSUER001");

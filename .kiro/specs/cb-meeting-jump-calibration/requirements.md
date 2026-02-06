@@ -120,14 +120,14 @@
 
 ### 既存アーキテクチャとの整合性
 
-- **MarketEvent**: `infra_master::market::events`に`expected_jump_bps: Option<f64>`を追加
+- **MarketEvent**: `infra_domain::market::events`に`expected_jump_bps: Option<f64>`を追加
 - **GlobalBootstrapper**: `pricer_models::builder::curve::global`にジャンプ対応ロジックを追加
 - **CalibrationMatrix**: `pricer_models::builder::matrix`にジャンプピラーフラグを追加
 - **API Handler**: `demo/gui/src/web/handlers/curves.rs`にCB Meetingジャンプパラメータ処理を追加
 
 ### 参照ファイル
 
-- `crates/infra_master/src/market/events/mod.rs` - MarketEvent定義
+- `crates/infra_domain/src/market/events/mod.rs` - MarketEvent定義
 - `crates/pricer_models/src/builder/curve/global.rs` - GlobalBootstrapper
 - `crates/pricer_models/src/builder/matrix.rs` - CalibrationMatrix
 - `demo/gui/src/web/handlers/curves.rs` - REST APIハンドラ

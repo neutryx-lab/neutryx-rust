@@ -26,7 +26,7 @@
 //! assert!(portfolio.trade_count() >= 50);
 //! ```
 
-use infra_master::{
+use infra_domain::{
     trade::{
         ExerciseStyle, Forward, ForwardDirection, InstrumentParams, PayoffType, PricingInstrument,
         VanillaOption,

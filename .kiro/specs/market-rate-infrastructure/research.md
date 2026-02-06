@@ -2,7 +2,7 @@
 
 ---
 **Purpose**: 設計判断の根拠とディスカバリ結果を記録する。
-**Discovery Scope**: Extension（既存 infra_master::market への機能追加）
+**Discovery Scope**: Extension（既存 infra_domain::market への機能追加）
 
 ---
 
@@ -11,7 +11,7 @@
 - **Feature**: `market-rate-infrastructure`
 - **Discovery Scope**: Extension（既存モジュールへの新規型追加）
 - **Key Findings**:
-  1. `adapter_feeds::QuoteType` との重複を解決するため、`infra_master` で `QuoteType` を新規定義し re-export 方式を採用
+  1. `adapter_feeds::QuoteType` との重複を解決するため、`infra_domain` で `QuoteType` を新規定義し re-export 方式を採用
   2. `pricer_models::MarketDataError` との名前衝突を回避するため、`MarketRateError` として命名
   3. 既存の `Instrument` enum（7 バリアント）への直接マッピングが可能
 
@@ -19,14 +19,14 @@
 
 ### QuoteType の配置場所
 
-- **Context**: 要件 1.4 で `QuoteType` を `infra_master` に定義する必要があるが、`adapter_feeds` に既存の同名型が存在
+- **Context**: 要件 1.4 で `QuoteType` を `infra_domain` に定義する必要があるが、`adapter_feeds` に既存の同名型が存在
 - **Sources Consulted**:
   - `adapter_feeds/src/quote.rs` - 既存 `QuoteType` 定義
   - `.kiro/steering/structure.md` - A-I-P-S 依存ルール
 - **Findings**:
   - 既存 `QuoteType` は `Bid`, `Ask`, `Last`, `Mid` の 4 バリアント
-  - A-I-P-S ルールでは `adapter_feeds` は `infra_master` に依存可能
-- **Implications**: `infra_master::market::QuoteType` を正規定義とし、`adapter_feeds` は将来 re-export に移行
+  - A-I-P-S ルールでは `adapter_feeds` は `infra_domain` に依存可能
+- **Implications**: `infra_domain::market::QuoteType` を正規定義とし、`adapter_feeds` は将来 re-export に移行
 
 ### エラー型の命名
 
@@ -43,9 +43,9 @@
 
 - **Context**: 要件 2.1 でレートを一意に識別する `RateId` が必要
 - **Sources Consulted**:
-  - `infra_master::market::Currency` - 通貨型
-  - `infra_master::time::Tenor` - テナー型
-  - `infra_master::market::RateIndex` - 既存レートインデックス
+  - `infra_domain::market::Currency` - 通貨型
+  - `infra_domain::time::Tenor` - テナー型
+  - `infra_domain::market::RateIndex` - 既存レートインデックス
 - **Findings**:
   - `(Currency, Tenor, RateType)` のタプルで論理的に一意性を担保可能
   - `RateIndex`（SOFR, EURIBOR 等）を追加すると更に精緻な識別が可能
@@ -75,19 +75,19 @@
 
 | Option | Description | Strengths | Risks / Limitations | Notes |
 |--------|-------------|-----------|---------------------|-------|
-| Module Extension | 既存 `infra_master::market` にファイル追加 | 既存パターン遵守、依存関係シンプル | ファイル数増加 | **採用** |
-| New Submodule | `infra_master::market::rates` サブモジュール作成 | 責務分離 | 既存 API との整合性 | 見送り |
+| Module Extension | 既存 `infra_domain::market` にファイル追加 | 既存パターン遵守、依存関係シンプル | ファイル数増加 | **採用** |
+| New Submodule | `infra_domain::market::rates` サブモジュール作成 | 責務分離 | 既存 API との整合性 | 見送り |
 | Separate Crate | 新規 `infra_rates` クレート | 完全分離 | オーバーエンジニアリング | 見送り |
 
 ## Design Decisions
 
-### Decision: QuoteType を infra_master で新規定義
+### Decision: QuoteType を infra_domain で新規定義
 
 - **Context**: `adapter_feeds` に既存 `QuoteType` があるが、A-I-P-S 依存ルールでは Infra が正規の定義場所
 - **Alternatives Considered**:
   1. `adapter_feeds::QuoteType` をそのまま使用 — 依存方向違反
   2. 両方に定義 — 重複、混乱の原因
-- **Selected Approach**: `infra_master::market::QuoteType` を新規定義、将来 `adapter_feeds` を更新
+- **Selected Approach**: `infra_domain::market::QuoteType` を新規定義、将来 `adapter_feeds` を更新
 - **Rationale**: A-I-P-S ルール遵守、長期的な型の一貫性確保
 - **Trade-offs**: 短期的に 2 つの `QuoteType` が存在、Phase 2 で統合
 - **Follow-up**: `adapter_feeds` リファクタリングを別仕様として計画
@@ -133,8 +133,8 @@
 
 ## References
 
-- [infra_master::trade::Instrument](crates/infra_master/src/trade/instrument.rs) - マッピング先の型
-- [infra_master::market::RateIndex](crates/infra_master/src/market/rate_index.rs) - 既存レートインデックス
+- [infra_domain::trade::Instrument](crates/infra_domain/src/trade/instrument.rs) - マッピング先の型
+- [infra_domain::market::RateIndex](crates/infra_domain/src/market/rate_index.rs) - 既存レートインデックス
 - [adapter_feeds::QuoteType](crates/adapter_feeds/src/quote.rs) - 既存 QuoteType
 - [pricer_models::MarketDataError](crates/pricer_models/src/market/error.rs) - 既存エラー型
 - [A-I-P-S 依存ルール](../../steering/structure.md) - アーキテクチャ制約

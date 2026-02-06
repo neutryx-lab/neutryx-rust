@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use infra_master::{
+use infra_domain::{
     time::{BusinessDayConvention, Calendar, CalendarId, ConcreteCalendar, Tenor},
     trade::{IndexType, Payoff, Trade},
     Currency, Date,
@@ -38,8 +38,8 @@ use super::{
 ///
 /// ```ignore
 /// use pricer_models::compiler::{LinearProductsCompiler, IndexMapper};
-/// use infra_master::trade::Trade;
-/// use infra_master::time::{CalendarId, BusinessDayConvention};
+/// use infra_domain::trade::Trade;
+/// use infra_domain::time::{CalendarId, BusinessDayConvention};
 ///
 /// let mapper = IndexMapper::with_common_indices();
 /// let compiler = LinearProductsCompiler::new(mapper)
@@ -119,7 +119,7 @@ impl LinearProductsCompiler {
     ///
     /// ```ignore
     /// use pricer_models::compiler::{LinearProductsCompiler, IndexMapper};
-    /// use infra_master::time::{CalendarId, BusinessDayConvention};
+    /// use infra_domain::time::{CalendarId, BusinessDayConvention};
     ///
     /// let compiler = LinearProductsCompiler::new(IndexMapper::new())
     ///     .with_calendar(CalendarId::Target, BusinessDayConvention::ModifiedFollowing);
@@ -307,7 +307,7 @@ impl LinearProductsCompiler {
             // Process each cashflow in the leg
             for cf in leg.cashflows() {
                 // Skip Fee cashflows (not relevant for pricing)
-                if matches!(cf.cf_type, infra_master::trade::CashflowType::Fee) {
+                if matches!(cf.cf_type, infra_domain::trade::CashflowType::Fee) {
                     continue;
                 }
 
@@ -344,7 +344,7 @@ impl LinearProductsCompiler {
 
 #[cfg(test)]
 mod tests {
-    use infra_master::{
+    use infra_domain::{
         trade::{Cashflow, CashflowType, Direction, Leg, LegType, Payoff},
         Currency, RateIndex,
     };
@@ -416,7 +416,7 @@ mod tests {
     }
 
     fn create_test_swap() -> Trade {
-        use infra_master::trade::TradeType;
+        use infra_domain::trade::TradeType;
 
         Trade::new(
             "SWAP001",
@@ -454,7 +454,7 @@ mod tests {
         let trade = Trade::new(
             "FIXED001",
             vec![create_fixed_leg()],
-            infra_master::trade::TradeType::Generic,
+            infra_domain::trade::TradeType::Generic,
         );
 
         let kernel = compiler.compile_with_registration(&trade).unwrap();
@@ -480,7 +480,7 @@ mod tests {
         let trade = Trade::new(
             "FLOAT001",
             vec![create_floating_leg()],
-            infra_master::trade::TradeType::Generic,
+            infra_domain::trade::TradeType::Generic,
         );
 
         let kernel = compiler.compile_with_registration(&trade).unwrap();
@@ -544,7 +544,7 @@ mod tests {
         let mapper = IndexMapper::new();
         let mut compiler = LinearProductsCompiler::new(mapper);
 
-        let empty_trade = Trade::new("EMPTY001", vec![], infra_master::trade::TradeType::Generic);
+        let empty_trade = Trade::new("EMPTY001", vec![], infra_domain::trade::TradeType::Generic);
 
         let result = compiler.compile_with_registration(&empty_trade);
         assert!(result.is_err());
@@ -613,7 +613,7 @@ mod tests {
         let trade = Trade::new(
             "FLOAT001",
             vec![create_floating_leg()],
-            infra_master::trade::TradeType::Generic,
+            infra_domain::trade::TradeType::Generic,
         );
 
         let kernel = compiler.compile_with_registration(&trade).unwrap();
@@ -680,7 +680,7 @@ mod tests {
         let trade = Trade::new(
             "AMORT001",
             vec![create_amortizing_fixed_leg()],
-            infra_master::trade::TradeType::Swap,
+            infra_domain::trade::TradeType::Swap,
         );
 
         let kernel = compiler.compile_with_registration(&trade).unwrap();
@@ -750,7 +750,7 @@ mod tests {
         let trade = Trade::new(
             "BOND001",
             vec![create_bond_with_principal()],
-            infra_master::trade::TradeType::Generic,
+            infra_domain::trade::TradeType::Generic,
         );
 
         let kernel = compiler.compile_with_registration(&trade).unwrap();
@@ -796,7 +796,7 @@ mod tests {
         let trade = Trade::new(
             "FRA001",
             vec![create_fra_settlement()],
-            infra_master::trade::TradeType::Generic,
+            infra_domain::trade::TradeType::Generic,
         );
 
         let kernel = compiler.compile_with_registration(&trade).unwrap();
@@ -813,7 +813,7 @@ mod tests {
 
     // === Task 3.4: Calendar and Business Day Adjustment Tests ===
 
-    use infra_master::time::{BusinessDayConvention, CalendarId, ConcreteCalendar};
+    use infra_domain::time::{BusinessDayConvention, CalendarId, ConcreteCalendar};
 
     #[test]
     fn test_compiler_with_calendar() {
@@ -917,7 +917,7 @@ mod tests {
         let trade = Trade::new(
             "TEST001",
             vec![create_leg_with_weekend_payment()],
-            infra_master::trade::TradeType::Generic,
+            infra_domain::trade::TradeType::Generic,
         );
 
         let kernel_with_cal = compiler_with_cal.compile_with_registration(&trade).unwrap();
@@ -964,7 +964,7 @@ mod tests {
         let trade = Trade::new(
             "MONTHEND001",
             vec![leg],
-            infra_master::trade::TradeType::Generic,
+            infra_domain::trade::TradeType::Generic,
         );
 
         let kernel = compiler.compile_with_registration(&trade).unwrap();
@@ -1009,7 +1009,7 @@ mod tests {
         let trade = Trade::new(
             "XMAS001",
             vec![leg],
-            infra_master::trade::TradeType::Generic,
+            infra_domain::trade::TradeType::Generic,
         );
 
         let kernel = compiler.compile_with_registration(&trade).unwrap();
@@ -1099,7 +1099,7 @@ mod tests {
         let trade = Trade::new(
             "CMS001",
             vec![create_cms_floating_leg()],
-            infra_master::trade::TradeType::Generic,
+            infra_domain::trade::TradeType::Generic,
         );
 
         let kernel = compiler.compile_with_registration(&trade).unwrap();
@@ -1132,7 +1132,7 @@ mod tests {
 
     #[test]
     fn test_compile_cms_index_registered() {
-        use infra_master::time::Tenor;
+        use infra_domain::time::Tenor;
 
         use crate::compiler::CmsIndex;
 
@@ -1142,7 +1142,7 @@ mod tests {
         let trade = Trade::new(
             "CMS002",
             vec![create_cms_floating_leg()],
-            infra_master::trade::TradeType::Generic,
+            infra_domain::trade::TradeType::Generic,
         );
 
         compiler.compile_with_registration(&trade).unwrap();
@@ -1157,7 +1157,7 @@ mod tests {
 
     #[test]
     fn test_compile_cms_5y_eur() {
-        use infra_master::time::Tenor;
+        use infra_domain::time::Tenor;
 
         use crate::compiler::CmsIndex;
 
@@ -1193,7 +1193,7 @@ mod tests {
         let trade = Trade::new(
             "CMS_EUR001",
             vec![leg],
-            infra_master::trade::TradeType::Generic,
+            infra_domain::trade::TradeType::Generic,
         );
 
         let kernel = compiler.compile_with_registration(&trade).unwrap();
@@ -1214,7 +1214,7 @@ mod tests {
 
     #[test]
     fn test_cms_and_ibor_share_id_space() {
-        use infra_master::time::Tenor;
+        use infra_domain::time::Tenor;
 
         use crate::compiler::CmsIndex;
 
@@ -1225,7 +1225,7 @@ mod tests {
         let ibor_trade = Trade::new(
             "IBOR001",
             vec![create_floating_leg()],
-            infra_master::trade::TradeType::Generic,
+            infra_domain::trade::TradeType::Generic,
         );
         compiler.compile_with_registration(&ibor_trade).unwrap();
 
@@ -1238,7 +1238,7 @@ mod tests {
         let cms_trade = Trade::new(
             "CMS003",
             vec![create_cms_floating_leg()],
-            infra_master::trade::TradeType::Generic,
+            infra_domain::trade::TradeType::Generic,
         );
         compiler.compile_with_registration(&cms_trade).unwrap();
 

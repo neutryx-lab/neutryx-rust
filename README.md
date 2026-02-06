@@ -28,7 +28,7 @@ neutryx-rust/
 │   │
 │   │   # --- I: Infra Layer (Foundation) ---
 │   ├── infra_config/         # System configuration & environment management
-│   ├── infra_master/         # Static master data (Calendars, Currencies, ISINs)
+│   ├── infra_domain/         # Static master data (Calendars, Currencies, ISINs)
 │   ├── infra_store/          # Persistence & State (SQLx, Redis, TimeScale)
 │   │
 │   │   # --- P: Pricer Layer (The Kernel) ---
@@ -294,7 +294,7 @@ cargo bench
 - [x] **Phase 4**: Monte Carlo kernel - path-dependent options, checkpointing, tree pricing
 - [x] **Phase 5**: Risk Analytics (L4) - XVA, exposure metrics, scenarios, Enzyme AD (moved to L4)
 - [x] **Phase 6**: A-I-P-S Architecture - adapters, infra, service layers
-- [x] **Phase 7**: Architecture Refactoring - pricer_optimiser removal, infra_master consolidation
+- [x] **Phase 7**: Architecture Refactoring - pricer_optimiser removal, infra_domain consolidation
 - [x] **Phase 8**: Calibration Infrastructure - curve bootstrapping, FX/IR vol surface calibration, SABR
 - [x] **Phase 9**: IndexedMarket Pattern - index-keyed market access, TradeIndexRequirements
 - [ ] **Phase 10**: Exotic Options - Barriers, Asians, Lookbacks, Digitals
@@ -322,7 +322,7 @@ cargo bench
 | advanced-sensitivity-webapp | Advanced sensitivity analysis for web dashboard | 2026-01 |
 | codebase-cleanup-optimisation | Codebase cleanup and optimisation | 2026-01 |
 | portfolio-graph-optimisation | Portfolio Graph REST API and WebSocket handlers | 2026-01 |
-| infra-primitives-migration | Financial primitives migration to infra_master | 2026-01 |
+| infra-primitives-migration | Financial primitives migration to infra_domain | 2026-01 |
 | model-architecture-refactoring | pricer_optimiser removal, consolidation | 2026-01 |
 | counterparty-netting-module | Counterparty and netting set data structures | 2026-01 |
 | financial-time-module | Financial time primitives (calendars, frequencies) | 2026-01 |

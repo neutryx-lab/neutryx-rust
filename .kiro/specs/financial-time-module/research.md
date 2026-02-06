@@ -19,7 +19,7 @@
 ### 1.2 Existing Test Coverage
 
 ```text
-infra_master/src/
+infra_domain/src/
 ├── calendar.rs      → 11 tests (is_business_day, adjust, etc.)
 ├── tenor.rs         → 17 tests (add_to_date, EOM rules)
 ├── date.rs          → 15 tests (from_ymd, parse, arithmetic)
@@ -33,20 +33,20 @@ infra_master/src/
 
 ### 1.3 Dependency Analysis
 
-**infra_master を参照するクレート:**
+**infra_domain を参照するクレート:**
 
 ```text
 pricer_core::types::mod.rs (lines 47-62)
-├── #[deprecated] pub use infra_master::BusinessDayConvention;
-├── #[deprecated] pub use infra_master::Currency;
-├── #[deprecated] pub use infra_master::Date;
-└── #[deprecated] pub use infra_master::DayCountConvention;
+├── #[deprecated] pub use infra_domain::BusinessDayConvention;
+├── #[deprecated] pub use infra_domain::Currency;
+├── #[deprecated] pub use infra_domain::Date;
+└── #[deprecated] pub use infra_domain::DayCountConvention;
 
 pricer_core::trades::schedules::period.rs
 └── 別の Period 型が存在 (day_count フィールド付き)
 
 pricer_models::lib.rs (lines 56-59)
-├── pub use infra_master::{SwapDirection, TradeDirection};
+├── pub use infra_domain::{SwapDirection, TradeDirection};
 └── direction_ext traits
 ```
 
@@ -216,13 +216,13 @@ impl Add<Period> for Date {
 ### 2.5 Period Naming Conflict Resolution
 
 **問題:** `Period` が 2 箇所に存在
-- `infra_master::Period` (accrual period) → `AccrualPeriod` にリネーム
+- `infra_domain::Period` (accrual period) → `AccrualPeriod` にリネーム
 - `pricer_core::trades::schedules::Period` (day_count フィールド付き)
 
 **解決策:**
-1. `infra_master::Period` → `infra_master::time::AccrualPeriod`
-2. 新規 `infra_master::time::Period` = 汎用期間 (length + TimeUnit)
-3. `infra_master::lib.rs` で deprecated alias:
+1. `infra_domain::Period` → `infra_domain::time::AccrualPeriod`
+2. 新規 `infra_domain::time::Period` = 汎用期間 (length + TimeUnit)
+3. `infra_domain::lib.rs` で deprecated alias:
    ```rust
    #[deprecated(since = "0.3.0", note = "Use AccrualPeriod instead")]
    pub type Period = time::AccrualPeriod;
@@ -236,13 +236,13 @@ impl Add<Period> for Date {
 
 **現状 (pricer_core::types::mod.rs):**
 ```rust
-#[deprecated(since = "0.2.0", note = "Use infra_master::Date directly")]
-pub use infra_master::Date;
+#[deprecated(since = "0.2.0", note = "Use infra_domain::Date directly")]
+pub use infra_domain::Date;
 ```
 
 **移行後:**
 ```rust
-// infra_master::lib.rs での re-export を維持
+// infra_domain::lib.rs での re-export を維持
 // pricer_core での deprecated 警告はそのまま
 ```
 
@@ -252,7 +252,7 @@ pub use infra_master::Date;
 - `start`, `end`, `payment` + `day_count` フィールド
 - `year_fraction()` メソッドが `day_count` を内部保持
 
-**infra_master::time::AccrualPeriod:**
+**infra_domain::time::AccrualPeriod:**
 - `start`, `end`, `payment` のみ
 - `year_fraction(day_count)` で外部から渡す
 

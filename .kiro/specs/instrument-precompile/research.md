@@ -29,17 +29,17 @@
   - ただしキャリブレーション用途では `PricingKernel` より軽量な構造が適切
 
 ### 2つの MarketInstrument 型の分析
-- **Context**: infra_master と pricer_models に同名の異なる型が存在
+- **Context**: infra_domain と pricer_models に同名の異なる型が存在
 - **Sources Consulted**:
-  - `infra_master/src/market/market_instrument.rs`
+  - `infra_domain/src/market/market_instrument.rs`
   - `pricer_models/src/market.rs`
 - **Findings**:
-  - `infra_master::market::MarketInstrument`: Convention + Rate → CF-expandable
+  - `infra_domain::market::MarketInstrument`: Convention + Rate → CF-expandable
   - `pricer_models::market::curves::MarketInstrument<T>`: 軽量 enum (Ois, Irs, Fra, etc.)
   - 前者は `to_trade()` でキャッシュフロー展開、後者は `theoretical_rate()` で評価
 - **Implications**:
   - 新しい `CompiledInstrument<T>` 型で両者を橋渡し
-  - infra_master 型からのコンパイル、pricer_models 内での評価
+  - infra_domain 型からのコンパイル、pricer_models 内での評価
 
 ### InterpolationMatrix の現状評価
 - **Context**: 要件 4 で CSR 形式が要求されている
@@ -137,7 +137,7 @@
 - [pricer_models::compiler](../../crates/pricer_models/src/compiler/mod.rs) — TradeCompiler パターン参照
 - [pricer_core::kernel::PricingKernel](../../crates/pricer_core/src/kernel/pricing_kernel.rs) — SoA 設計参照
 - [pricer_models::builder::matrix](../../crates/pricer_models/src/builder/matrix.rs) — 既存 InterpolationMatrix
-- [infra_master::market::MarketInstrument](../../crates/infra_master/src/market/market_instrument.rs) — CF-expandable 型
+- [infra_domain::market::MarketInstrument](../../crates/infra_domain/src/market/market_instrument.rs) — CF-expandable 型
 
 ---
 

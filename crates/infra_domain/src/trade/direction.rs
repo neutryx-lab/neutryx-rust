@@ -7,7 +7,7 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::{TradeDirection, SwapDirection};
+//! use infra_domain::{TradeDirection, SwapDirection};
 //!
 //! let direction = TradeDirection::Long;
 //! let swap_dir: TradeDirection = SwapDirection::ReceiveFixed.into();
@@ -20,12 +20,12 @@
 ///
 /// # Note
 /// The `sign()` method is provided via the `TradeDirectionExt` trait
-/// in `pricer_models` to avoid adding num_traits dependency to infra_master.
+/// in `pricer_models` to avoid adding num_traits dependency to infra_domain.
 ///
 /// # Examples
 ///
 /// ```
-/// use infra_master::TradeDirection;
+/// use infra_domain::TradeDirection;
 ///
 /// let long = TradeDirection::Long;
 /// let short = TradeDirection::Short;
@@ -47,7 +47,7 @@ pub enum TradeDirection {
 /// # Examples
 ///
 /// ```
-/// use infra_master::{SwapDirection, TradeDirection};
+/// use infra_domain::{SwapDirection, TradeDirection};
 ///
 /// let pay_fixed = SwapDirection::PayFixed;
 /// let trade_dir: TradeDirection = pay_fixed.into();

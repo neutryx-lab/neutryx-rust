@@ -10,7 +10,7 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::market::core::{Currency, CurrencyPair, CompoundingMethod, RateType};
+//! use infra_domain::market::core::{Currency, CurrencyPair, CompoundingMethod, RateType};
 //!
 //! let usd = Currency::USD;
 //! assert_eq!(usd.code(), "USD");

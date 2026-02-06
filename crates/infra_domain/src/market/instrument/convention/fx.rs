@@ -180,10 +180,10 @@ impl std::fmt::Display for CutOffTime {
 /// # Example
 ///
 /// ```rust
-/// use infra_master::market::convention::{
+/// use infra_domain::market::convention::{
 ///     FxOptionConvention, PremiumCurrency, DeltaConvention, CutOffTime,
 /// };
-/// use infra_master::time::CalendarId;
+/// use infra_domain::time::CalendarId;
 ///
 /// let conv = FxOptionConvention::g10_standard();
 /// assert_eq!(conv.delta_convention, DeltaConvention::SpotDelta);
@@ -335,7 +335,7 @@ pub enum NearLegType {
 /// # Example
 ///
 /// ```rust
-/// use infra_master::market::convention::{FxSwapConvention, NearLegType};
+/// use infra_domain::market::convention::{FxSwapConvention, NearLegType};
 ///
 /// let conv = FxSwapConvention::usd_jpy();
 /// assert_eq!(conv.near_leg_type, NearLegType::Spot);

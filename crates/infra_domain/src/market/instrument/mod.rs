@@ -20,11 +20,11 @@
 //! # Example
 //!
 //! ```rust
-//! use infra_master::market::instrument::{
+//! use infra_domain::market::instrument::{
 //!     InstrumentDefinition, AssetClass, Swaption, PayerReceiver,
 //! };
-//! use infra_master::trade::{ExerciseType, SettlementType};
-//! use infra_master::{Currency, Date, Tenor};
+//! use infra_domain::trade::{ExerciseType, SettlementType};
+//! use infra_domain::{Currency, Date, Tenor};
 //!
 //! let swaption = Swaption {
 //!     underlying_swap_tenor: Tenor::TenYears,
@@ -125,10 +125,10 @@ pub use xccy::{
 /// # Example
 ///
 /// ```rust
-/// use infra_master::market::instrument::{
+/// use infra_domain::market::instrument::{
 ///     InstrumentDefinition, AssetClass, FxSpot, CurrencyPair,
 /// };
-/// use infra_master::{Currency, Date};
+/// use infra_domain::{Currency, Date};
 ///
 /// let fx_spot = FxSpot {
 ///     currency_pair: CurrencyPair::new(Currency::EUR, Currency::USD),
@@ -230,11 +230,11 @@ impl InstrumentDefinition {
     /// # Example
     ///
     /// ```rust
-    /// use infra_master::market::instrument::{
+    /// use infra_domain::market::instrument::{
     ///     InstrumentDefinition, AssetClass, Swaption, PayerReceiver,
     /// };
-    /// use infra_master::trade::{ExerciseType, SettlementType};
-    /// use infra_master::{Currency, Date, Tenor};
+    /// use infra_domain::trade::{ExerciseType, SettlementType};
+    /// use infra_domain::{Currency, Date, Tenor};
     ///
     /// let swaption = Swaption {
     ///     underlying_swap_tenor: Tenor::TenYears,
@@ -417,10 +417,10 @@ impl InstrumentDefinition {
     /// # Example
     ///
     /// ```rust
-    /// use infra_master::market::instrument::{
+    /// use infra_domain::market::instrument::{
     ///     InstrumentDefinition, FxSpot, CurrencyPair,
     /// };
-    /// use infra_master::{Currency, Date};
+    /// use infra_domain::{Currency, Date};
     ///
     /// let fx_spot = FxSpot {
     ///     currency_pair: CurrencyPair::new(Currency::EUR, Currency::USD),

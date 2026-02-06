@@ -60,7 +60,7 @@ graph TB
         IM[InterpolationMatrix]
     end
 
-    subgraph InfraLayer[Infra Layer - infra_master]
+    subgraph InfraLayer[Infra Layer - infra_domain]
         ME[MarketEvent]
         EI[EventImportance]
     end
@@ -91,7 +91,7 @@ graph TB
 |-------|------------------|-----------------|-------|
 | Backend / Services | Rust + axum | REST APIハンドラ拡張 | 既存スタック維持 |
 | Pricer | pricer_models crate | GlobalBootstrapper拡張 | Newton-Raphson + ジャンプ |
-| Infra | infra_master crate | MarketEvent拡張 | expected_jump_bps追加 |
+| Infra | infra_domain crate | MarketEvent拡張 | expected_jump_bps追加 |
 | Frontend | Vanilla JS + Chart.js | ジャンプマーカー表示 | 既存UI拡張 |
 | Data | JSON files | CB Meetingデータ | 既存スキーマ維持 |
 

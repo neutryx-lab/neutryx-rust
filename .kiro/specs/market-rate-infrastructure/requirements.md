@@ -4,7 +4,7 @@
 
 本仕様は、外部マーケットデータプロバイダー（Reuters、Bloomberg等）からのレート入力を正規化し、適切な Instrument にマッピングして `MarketRateSet` として Pricer レイヤーに提供するインフラストラクチャを定義する。
 
-対象配置: `crates/infra_master/src/market/`
+対象配置: `crates/infra_domain/src/market/`
 
 A-I-P-S アーキテクチャにおいて、本モジュールは **I**nfra レイヤーに属し、**P**ricer レイヤーへの依存は許可されない。Adapter レイヤー（adapter_feeds）が本モジュールの型を使用して外部データを正規化する。
 
@@ -16,10 +16,10 @@ A-I-P-S アーキテクチャにおいて、本モジュールは **I**nfra レ�
 
 #### Acceptance Criteria
 
-1. The `infra_master::market` module shall provide a `MarketRate` struct that encapsulates a single market quote with metadata（レート値、タイムスタンプ、ソース、品質情報）
+1. The `infra_domain::market` module shall provide a `MarketRate` struct that encapsulates a single market quote with metadata（レート値、タイムスタンプ、ソース、品質情報）
 2. When a `MarketRate` is created, the module shall validate that the rate value is within reasonable bounds（非 NaN、非 Infinite、非負でない場合は警告）
-3. The `infra_master::market` module shall provide a `RateType` enum to classify market rates（Deposit, Fra, Futures, Swap, Ois, BasisSwap, FxSpot, FxForward, Vol）
-4. The `infra_master::market` module shall provide a `QuoteType` enum for bid/ask/mid/last classification
+3. The `infra_domain::market` module shall provide a `RateType` enum to classify market rates（Deposit, Fra, Futures, Swap, Ois, BasisSwap, FxSpot, FxForward, Vol）
+4. The `infra_domain::market` module shall provide a `QuoteType` enum for bid/ask/mid/last classification
 5. Where the `serde` feature is enabled, the `MarketRate` struct shall support serialisation and deserialisation
 
 ### Requirement 2: レート識別子システム
@@ -28,10 +28,10 @@ A-I-P-S アーキテクチャにおいて、本モジュールは **I**nfra レ�
 
 #### Acceptance Criteria
 
-1. The `infra_master::market` module shall provide a `RateId` type that uniquely identifies a market rate（通貨、テナー、レートタイプの組み合わせ）
-2. The `infra_master::market` module shall provide a `TickerMapping` struct that maps external tickers（Reuters RIC、Bloomberg ticker）to internal `RateId`
+1. The `infra_domain::market` module shall provide a `RateId` type that uniquely identifies a market rate（通貨、テナー、レートタイプの組み合わせ）
+2. The `infra_domain::market` module shall provide a `TickerMapping` struct that maps external tickers（Reuters RIC、Bloomberg ticker）to internal `RateId`
 3. When a ticker is looked up, the `TickerMapping` shall return `Option<RateId>` for unknown tickers
-4. The `infra_master::market` module shall provide standard ticker mappings for major currencies（USD、EUR、GBP、JPY、CHF）and common rate indices
+4. The `infra_domain::market` module shall provide standard ticker mappings for major currencies（USD、EUR、GBP、JPY、CHF）and common rate indices
 
 ### Requirement 3: マーケットレートセット管理
 
@@ -39,7 +39,7 @@ A-I-P-S アーキテクチャにおいて、本モジュールは **I**nfra レ�
 
 #### Acceptance Criteria
 
-1. The `infra_master::market` module shall provide a `MarketRateSet` struct that holds a collection of `MarketRate` entries keyed by `RateId`
+1. The `infra_domain::market` module shall provide a `MarketRateSet` struct that holds a collection of `MarketRate` entries keyed by `RateId`
 2. When a rate is inserted into `MarketRateSet`, the module shall allow multiple quotes for the same `RateId`（bid/ask/mid を個別に保持）
 3. The `MarketRateSet` shall provide a `get_rate(&RateId, QuoteType) -> Option<&MarketRate>` method for rate lookup
 4. The `MarketRateSet` shall provide a `get_mid_rate(&RateId) -> Option<f64>` convenience method that computes mid from bid/ask if mid is absent
@@ -52,8 +52,8 @@ A-I-P-S アーキテクチャにおいて、本モジュールは **I**nfra レ�
 
 #### Acceptance Criteria
 
-1. The `infra_master::market` module shall provide an `InstrumentMapper` trait with method `map_to_instrument(&MarketRate, &Date) -> Result<Instrument, MappingError>`
-2. The `infra_master::market` module shall provide a `StandardInstrumentMapper` implementation that maps common rate types to `infra_master::trade::Instrument`
+1. The `infra_domain::market` module shall provide an `InstrumentMapper` trait with method `map_to_instrument(&MarketRate, &Date) -> Result<Instrument, MappingError>`
+2. The `infra_domain::market` module shall provide a `StandardInstrumentMapper` implementation that maps common rate types to `infra_domain::trade::Instrument`
 3. When mapping a Deposit rate, the `StandardInstrumentMapper` shall create an `Instrument::Deposit` with correct currency, tenor, and rate
 4. When mapping a ParSwap rate, the `StandardInstrumentMapper` shall create an `Instrument::ParSwap` with correct currency, tenor, and rate
 5. When mapping an OIS rate, the `StandardInstrumentMapper` shall create an `Instrument::Ois` with correct currency, tenor, and rate
@@ -66,11 +66,11 @@ A-I-P-S アーキテクチャにおいて、本モジュールは **I**nfra レ�
 
 #### Acceptance Criteria
 
-1. The `infra_master::market` module shall provide a `MarketDataError` enum with variants for validation failures（InvalidRate, StaleData, MissingRate, MappingError）
+1. The `infra_domain::market` module shall provide a `MarketDataError` enum with variants for validation failures（InvalidRate, StaleData, MissingRate, MappingError）
 2. When a rate value is NaN or Infinite, the validation shall return `MarketDataError::InvalidRate` with the problematic value
 3. When a rate is suspiciously large（e.g., > 100% for interest rates）, the validation shall return `MarketDataError::InvalidRate` with a warning message
-4. The `infra_master::market` module shall provide a `RateValidator` trait for custom validation logic
-5. The `infra_master::market` module shall provide a `StandardRateValidator` implementation with reasonable default bounds per rate type
+4. The `infra_domain::market` module shall provide a `RateValidator` trait for custom validation logic
+5. The `infra_domain::market` module shall provide a `StandardRateValidator` implementation with reasonable default bounds per rate type
 
 ### Requirement 6: データソース抽象化
 
@@ -78,10 +78,10 @@ A-I-P-S アーキテクチャにおいて、本モジュールは **I**nfra レ�
 
 #### Acceptance Criteria
 
-1. The `infra_master::market` module shall provide a `DataSource` enum to identify the origin of market data（Reuters, Bloomberg, Internal, Manual）
-2. The `infra_master::market` module shall provide a `SourcePriority` configuration that defines preference order when multiple sources provide the same rate
+1. The `infra_domain::market` module shall provide a `DataSource` enum to identify the origin of market data（Reuters, Bloomberg, Internal, Manual）
+2. The `infra_domain::market` module shall provide a `SourcePriority` configuration that defines preference order when multiple sources provide the same rate
 3. When multiple sources provide the same rate, the `MarketRateSet` shall use the `SourcePriority` to select the preferred value
-4. The `infra_master::market` module shall provide a `merge(&MarketRateSet, SourcePriority) -> MarketRateSet` function to combine rate sets from different sources
+4. The `infra_domain::market` module shall provide a `merge(&MarketRateSet, SourcePriority) -> MarketRateSet` function to combine rate sets from different sources
 
 ### Requirement 7: Pricer レイヤーへの受け渡し
 
@@ -126,5 +126,5 @@ A-I-P-S アーキテクチャにおいて、本モジュールは **I**nfra レ�
 
 - [structure.md](../../steering/structure.md) - A-I-P-S アーキテクチャ定義
 - [tech.md](../../steering/tech.md) - 技術スタック
-- `infra_master::trade::Instrument` - 既存の Instrument 定義
-- `infra_master::market::RateIndex` - 既存の RateIndex 定義
+- `infra_domain::trade::Instrument` - 既存の Instrument 定義
+- `infra_domain::market::RateIndex` - 既存の RateIndex 定義

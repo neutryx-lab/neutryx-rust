@@ -34,7 +34,7 @@
 - 静的ディスパッチ（enum）でEnzyme最適化を維持
 
 **尊重すべき既存境界**:
-- A-I-P-S依存方向（pricer_pricingはinfra_master、pricer_modelsに依存可、逆は不可）
+- A-I-P-S依存方向（pricer_pricingはinfra_domain、pricer_modelsに依存可、逆は不可）
 - pricer_pricingはnightly Rust + Enzyme必須
 - pricer_modelsのマーケットデータ構造（CurveEnum, VolSurfaceEnum, MarketProvider）
 
@@ -74,7 +74,7 @@ graph TB
     end
 
     subgraph Infra["I: Infra Layer"]
-        Master[infra_master]
+        Master[infra_domain]
         Trade[Trade Leg Cashflow]
         Time[Calendar DayCounter]
         Currency[Currency]
@@ -253,7 +253,7 @@ sequenceDiagram
 | PricerConfig | L3/generic_pricer | プライサー設定 | 4.1-4.5, 6.9 | GreeksConfig(P0), Currency(P1) | State |
 | PricingResult | L3/generic_pricer | 階層的プライシング結果（Leg単位） | 1.4, 6.3-6.7 | LegPricingResult(P0) | State |
 | BatchPricer | L3/generic_pricer | バッチプライシング | 8.1-8.5 | GenericPricer(P0), Rayon(P0) | Service |
-| DateUtils | L3/generic_pricer | 日付計算ヘルパー | 7.1-7.5 | infra_master::time(P0) | Service |
+| DateUtils | L3/generic_pricer | 日付計算ヘルパー | 7.1-7.5 | infra_domain::time(P0) | Service |
 
 **設計変更点**:
 - `GenericPricer`: trait → concrete struct（単一実装で十分）
@@ -671,7 +671,7 @@ erDiagram
 - `BatchPricingResult`: バッチプライシングの結果集約
 
 **Entities**:
-- `Trade`, `Leg`, `Cashflow`（既存、infra_master）
+- `Trade`, `Leg`, `Cashflow`（既存、infra_domain）
 
 **Value Objects**:
 - `ModelConfig`, `PricerConfig`, `CurrencyBreakdown`, `PathDistribution`

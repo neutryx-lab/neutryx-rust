@@ -82,8 +82,8 @@ impl IndexType {
 /// # Examples
 ///
 /// ```
-/// use infra_master::trade::{IndexObservation, IndexType};
-/// use infra_master::{RateIndex, Date};
+/// use infra_domain::trade::{IndexObservation, IndexType};
+/// use infra_domain::{RateIndex, Date};
 ///
 /// // Simple observation with lag
 /// let obs = IndexObservation::new(IndexType::Rate(RateIndex::Sofr))
@@ -99,7 +99,7 @@ impl IndexType {
 ///
 /// // Create from RateIndex with default settings
 /// let sofr_obs = IndexObservation::from_rate_index(RateIndex::Sofr);
-/// assert!(sofr_obs.reset_frequency == infra_master::time::Frequency::Daily);
+/// assert!(sofr_obs.reset_frequency == infra_domain::time::Frequency::Daily);
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -186,10 +186,10 @@ impl IndexObservation {
     /// # Example
     ///
     /// ```
-    /// use infra_master::trade::IndexObservation;
-    /// use infra_master::RateIndex;
-    /// use infra_master::time::Frequency;
-    /// use infra_master::market::CompoundingMethod;
+    /// use infra_domain::trade::IndexObservation;
+    /// use infra_domain::RateIndex;
+    /// use infra_domain::time::Frequency;
+    /// use infra_domain::market::CompoundingMethod;
     ///
     /// let sofr_obs = IndexObservation::from_rate_index(RateIndex::Sofr);
     /// assert_eq!(sofr_obs.reset_frequency, Frequency::Daily);

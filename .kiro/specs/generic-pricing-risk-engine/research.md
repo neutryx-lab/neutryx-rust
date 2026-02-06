@@ -68,7 +68,7 @@
   - `crates/adapter_loader/src/csa.rs`
 - **Findings**:
   - `CsvLoader` 汎用CSV読み込み
-  - `CsaTerms`, `NettingSet` は `infra_master` から再エクスポート
+  - `CsaTerms`, `NettingSet` は `infra_domain` から再エクスポート
   - `LoaderError` 構造化エラー
 - **Implications**: `json/` サブモジュール追加、同様のre-exportパターン適用
 

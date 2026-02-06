@@ -139,7 +139,7 @@
   - mod.rsでの全型再エクスポート確認
   - preludeの完成（全主要型を含む）
   - lib.rsでの後方互換エクスポート（既存パスからのアクセス維持）
-  - infra_master::CsaTerms、infra_master::NettingSetConfigの既存パス維持
+  - infra_domain::CsaTerms、infra_domain::NettingSetConfigの既存パス維持
   - cargo check --all-featuresによるコンパイル確認
   - _Requirements: 1, 11_
 

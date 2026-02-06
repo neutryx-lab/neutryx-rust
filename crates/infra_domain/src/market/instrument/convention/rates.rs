@@ -26,7 +26,7 @@ use crate::time::{BusinessDayConvention, CalendarId, DayCounter, Frequency};
 /// # Example
 ///
 /// ```rust
-/// use infra_master::market::convention::DepositConvention;
+/// use infra_domain::market::convention::DepositConvention;
 ///
 /// let conv = DepositConvention::usd();
 /// assert_eq!(conv.spot_lag, 2);
@@ -699,8 +699,8 @@ pub enum SettlementConvention {
 /// # Example
 ///
 /// ```rust
-/// use infra_master::market::convention::{SwaptionConvention, SettlementConvention};
-/// use infra_master::market::Currency;
+/// use infra_domain::market::convention::{SwaptionConvention, SettlementConvention};
+/// use infra_domain::market::Currency;
 ///
 /// let conv = SwaptionConvention::usd_sofr();
 /// assert_eq!(conv.premium_currency, Currency::USD);
@@ -909,7 +909,7 @@ impl std::fmt::Display for InflationIndex {
 /// # Example
 ///
 /// ```rust
-/// use infra_master::market::convention::{
+/// use infra_domain::market::convention::{
 ///     InflationSwapConvention, InflationIndex, InflationInterpolation,
 /// };
 ///
@@ -1132,7 +1132,7 @@ pub enum BasisSpreadLeg {
 /// # Example
 ///
 /// ```rust
-/// use infra_master::market::convention::XCcyBasisConvention;
+/// use infra_domain::market::convention::XCcyBasisConvention;
 ///
 /// let conv = XCcyBasisConvention::usd_jpy();
 /// assert_eq!(conv.spot_lag, 2);

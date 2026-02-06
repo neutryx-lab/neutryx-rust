@@ -10,7 +10,7 @@
 
 ### 1.1 現在の market モジュール構造
 
-**Location:** `crates/infra_master/src/market/`
+**Location:** `crates/infra_domain/src/market/`
 
 ```
 market/
@@ -34,7 +34,7 @@ market/
 
 ### 1.2 現在の convention モジュール構造
 
-**Location:** `crates/infra_master/src/trade/convention/`
+**Location:** `crates/infra_domain/src/trade/convention/`
 
 ```
 convention/
@@ -219,7 +219,7 @@ const state: MarketDataState = {
 ### 5.1 クレート依存
 
 ```
-service_gateway → pricer_models → infra_master
+service_gateway → pricer_models → infra_domain
               ↓
          demo/gui (API client)
 ```
@@ -228,18 +228,18 @@ service_gateway → pricer_models → infra_master
 
 **Before:**
 ```rust
-use infra_master::trade::convention::SwapConvention;
+use infra_domain::trade::convention::SwapConvention;
 ```
 
 **After:**
 ```rust
-use infra_master::market::convention::SwapConvention;
+use infra_domain::market::convention::SwapConvention;
 ```
 
 **Backward Compatibility:**
 ```rust
 // trade/convention/mod.rs
-#[deprecated(note = "Use infra_master::market::convention instead")]
+#[deprecated(note = "Use infra_domain::market::convention instead")]
 pub use crate::market::convention::*;
 ```
 

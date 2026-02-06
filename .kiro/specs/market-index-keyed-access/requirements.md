@@ -18,7 +18,7 @@ Pricerに渡されるMarketはCurve(含Builder)やVolCube(含Builder)がリス�
 2. The Market module shall FX通貨ペアをキーとしてFxCurveを一意に特定できること
 3. The Market module shall VolatilityIndexを定義し、VolCube/VolSurfaceを一意に特定できること
 4. When 存在しないIndexが指定された場合, the Market module shall 適切なエラー型（IndexNotFound）を返却すること
-5. The infra_master module shall RateIndex、FxIndex、VolatilityIndexのID型を定義すること
+5. The infra_domain module shall RateIndex、FxIndex、VolatilityIndexのID型を定義すること
 
 ### Requirement 2: Curve Index-Keyed Access API
 

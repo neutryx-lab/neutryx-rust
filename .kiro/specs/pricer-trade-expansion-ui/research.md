@@ -9,27 +9,27 @@
 - **Feature**: `pricer-trade-expansion-ui`
 - **Discovery Scope**: Extension（既存システムの拡張）
 - **Key Findings**:
-  - infra_master の serde feature は `optional = true` で定義済み、demo/gui の依存追加で有効化可能
+  - infra_domain の serde feature は `optional = true` で定義済み、demo/gui の依存追加で有効化可能
   - Tenor → Date リスト生成は `Tenor::add_to_date()` と `Frequency::months_per_period()` を組み合わせて実装可能
   - TradeBuilder/LegBuilder は完成済みで、直接使用可能
 
 ## Research Log
 
-### infra_master serde 対応状況
+### infra_domain serde 対応状況
 
 - **Context**: Trade 構造体を JSON シリアライズするために serde 対応が必要
-- **Sources Consulted**: `crates/infra_master/Cargo.toml`, `crates/infra_master/src/trade/*.rs`
+- **Sources Consulted**: `crates/infra_domain/Cargo.toml`, `crates/infra_domain/src/trade/*.rs`
 - **Findings**:
-  - infra_master は `serde = ["dep:serde"]` feature を持つ
+  - infra_domain は `serde = ["dep:serde"]` feature を持つ
   - すべての主要型は `#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]` で定義
   - Trade, Leg, Cashflow, Payoff, Direction, LegType など全型が serde 対応
   - Currency, Date, DayCounter, Frequency, Tenor も serde 対応済み
-- **Implications**: demo/gui の Cargo.toml で `infra_master = { path = "...", features = ["serde"] }` を追加するだけで利用可能
+- **Implications**: demo/gui の Cargo.toml で `infra_domain = { path = "...", features = ["serde"] }` を追加するだけで利用可能
 
 ### スケジュール生成ロジック
 
 - **Context**: LegBuilder は `Vec<Date>` を入力として期待するため、Tenor + Frequency から Date リストを生成する必要がある
-- **Sources Consulted**: `crates/infra_master/src/time/period.rs`, `crates/infra_master/src/time/frequency.rs`
+- **Sources Consulted**: `crates/infra_domain/src/time/period.rs`, `crates/infra_domain/src/time/frequency.rs`
 - **Findings**:
   - `Tenor::add_to_date(date, EndOfMonthRule)` で満期日を計算可能
   - `Frequency::months_per_period()` で支払い間隔を取得可能
@@ -50,13 +50,13 @@
 
 ### demo/gui 依存関係
 
-- **Context**: demo/gui から infra_master を使用するための依存設定
+- **Context**: demo/gui から infra_domain を使用するための依存設定
 - **Sources Consulted**: `demo/gui/Cargo.toml`
 - **Findings**:
   - 現在 `pricer_core`, `pricer_pricing` に依存
-  - `infra_master` への直接依存はなし
+  - `infra_domain` への直接依存はなし
   - A-I-P-S ルール: S レイヤーは I レイヤーに依存可能
-- **Implications**: `infra_master = { path = "../../crates/infra_master", features = ["serde"] }` を追加
+- **Implications**: `infra_domain = { path = "../../crates/infra_domain", features = ["serde"] }` を追加
 
 ## Architecture Pattern Evaluation
 
@@ -82,12 +82,12 @@
 - **Rationale**:
   - pricer_models には bootstrapping 用のスケジュール生成のみ
   - Trade 展開用途にはシンプルな関数で十分
-  - infra_master の Tenor/Frequency/Date を直接使用
+  - infra_domain の Tenor/Frequency/Date を直接使用
 - **Trade-offs**:
   - ✅ 依存関係最小化
   - ✅ 目的特化でシンプル
   - ❌ 重複コードの可能性（軽微）
-- **Follow-up**: 将来的に共通化が必要な場合は infra_master に移動を検討
+- **Follow-up**: 将来的に共通化が必要な場合は infra_domain に移動を検討
 
 ### Decision: Cashflow 表示方式
 
@@ -125,11 +125,11 @@
 ## Risks & Mitigations
 
 - **Risk 1**: スケジュール生成ロジックのバグ（月末処理等） — 単体テストで EndOfMonthRule パターンを網羅
-- **Risk 2**: infra_master 型の serde 非互換 — 実装初期に全型のシリアライズテスト実施
+- **Risk 2**: infra_domain 型の serde 非互換 — 実装初期に全型のシリアライズテスト実施
 - **Risk 3**: 大量 Cashflow 表示時のブラウザパフォーマンス — ページネーション採用 + 必要に応じて遅延ロード
 
 ## References
 
 - [Axum Official Documentation](https://docs.rs/axum/) — REST API 実装パターン
 - [serde.rs Guide](https://serde.rs/) — JSON シリアライズ設計
-- infra_master 内部ドキュメント — Trade/Leg/Cashflow アーキテクチャ
+- infra_domain 内部ドキュメント — Trade/Leg/Cashflow アーキテクチャ

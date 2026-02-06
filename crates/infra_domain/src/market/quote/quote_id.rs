@@ -6,8 +6,8 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::market::{QuoteId, RateType, Currency, RateIndex};
-//! use infra_master::time::Tenor;
+//! use infra_domain::market::{QuoteId, RateType, Currency, RateIndex};
+//! use infra_domain::time::Tenor;
 //!
 //! let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Swap);
 //! assert_eq!(quote_id.currency, Currency::USD);
@@ -33,8 +33,8 @@ use crate::{
 /// # Examples
 ///
 /// ```
-/// use infra_master::market::{QuoteId, RateType, Currency, RateIndex};
-/// use infra_master::time::Tenor;
+/// use infra_domain::market::{QuoteId, RateType, Currency, RateIndex};
+/// use infra_domain::time::Tenor;
 ///
 /// // Create a quote ID
 /// let quote_id = QuoteId::new(Currency::USD, Tenor::OneYear, RateType::Ois);
@@ -69,8 +69,8 @@ impl QuoteId {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{QuoteId, RateType, Currency};
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::market::{QuoteId, RateType, Currency};
+    /// use infra_domain::time::Tenor;
     ///
     /// let quote_id = QuoteId::new(Currency::EUR, Tenor::FiveYears, RateType::Swap);
     /// ```
@@ -95,8 +95,8 @@ impl QuoteId {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{QuoteId, RateType, Currency, RateIndex};
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::market::{QuoteId, RateType, Currency, RateIndex};
+    /// use infra_domain::time::Tenor;
     ///
     /// let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Ois)
     ///     .with_index(RateIndex::Sofr);
@@ -114,8 +114,8 @@ impl QuoteId {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{QuoteId, RateType, Currency};
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::market::{QuoteId, RateType, Currency};
+    /// use infra_domain::time::Tenor;
     ///
     /// let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Swap);
     /// assert_eq!(quote_id.description(), "USD 3M SWAP");

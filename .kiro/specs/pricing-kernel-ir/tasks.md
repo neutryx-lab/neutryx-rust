@@ -64,7 +64,7 @@
   - _Requirements: 3.2, 3.3_
 
 - [x] 3.4 カレンダー・休日調整統合
-  - infra_master::Calendarを使用した営業日調整を実装する
+  - infra_domain::Calendarを使用した営業日調整を実装する
   - CalendarCacheによるキャッシュ管理
   - 休日調整適用後の支払日計算
   - _Requirements: 2.4, 9.5_

@@ -717,9 +717,9 @@ impl PreCalculatedExposurePath {
 /// # Examples
 ///
 /// ```
-/// use infra_master::counterparty::ExposurePathBuilder;
-/// use infra_master::market::Currency;
-/// use infra_master::time::Date;
+/// use infra_domain::counterparty::ExposurePathBuilder;
+/// use infra_domain::market::Currency;
+/// use infra_domain::time::Date;
 ///
 /// let date1 = Date::from_ymd(2025, 6, 30).unwrap();
 /// let date2 = Date::from_ymd(2025, 12, 31).unwrap();

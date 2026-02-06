@@ -6,7 +6,7 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::time::Frequency;
+//! use infra_domain::time::Frequency;
 //!
 //! let freq = Frequency::Quarterly;
 //! assert_eq!(freq.periods_per_year(), 4);
@@ -22,7 +22,7 @@ use std::{fmt, str::FromStr};
 /// # Examples
 ///
 /// ```
-/// use infra_master::time::Frequency;
+/// use infra_domain::time::Frequency;
 ///
 /// let freq = Frequency::SemiAnnual;
 /// assert_eq!(freq.periods_per_year(), 2);
@@ -43,7 +43,7 @@ use std::{fmt, str::FromStr};
 /// # Examples
 ///
 /// ```
-/// use infra_master::time::Frequency;
+/// use infra_domain::time::Frequency;
 ///
 /// // Ordering: Daily is "less than" Weekly (higher frequency first)
 /// assert!(Frequency::Daily < Frequency::Weekly);
@@ -74,7 +74,7 @@ impl Frequency {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::Frequency;
+    /// use infra_domain::time::Frequency;
     ///
     /// assert_eq!(Frequency::Annual.months_per_period(), 12);
     /// assert_eq!(Frequency::SemiAnnual.months_per_period(), 6);
@@ -99,7 +99,7 @@ impl Frequency {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::Frequency;
+    /// use infra_domain::time::Frequency;
     ///
     /// assert_eq!(Frequency::Annual.periods_per_year(), 1);
     /// assert_eq!(Frequency::SemiAnnual.periods_per_year(), 2);

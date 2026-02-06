@@ -8,8 +8,8 @@
 //! # Examples
 //!
 //! ```rust,ignore
-//! use infra_master::{Currency, Date, Period};
-//! use infra_master::trade::{LegConfig, Trade, Direction, LegType, TradeType};
+//! use infra_domain::{Currency, Date, Period};
+//! use infra_domain::trade::{LegConfig, Trade, Direction, LegType, TradeType};
 //!
 //! let schedule = vec![
 //!     Date::from_ymd(2024, 1, 15).unwrap(),
@@ -55,8 +55,8 @@ use crate::{Currency, Date, DayCounter, RateIndex};
 /// # Examples
 ///
 /// ```rust,ignore
-/// use infra_master::{Currency, Date, DayCounter};
-/// use infra_master::trade::{LegConfig, Direction};
+/// use infra_domain::{Currency, Date, DayCounter};
+/// use infra_domain::trade::{LegConfig, Direction};
 ///
 /// let schedule = vec![
 ///     Date::from_ymd(2024, 1, 15).unwrap(),

@@ -6,7 +6,7 @@
 
 **Users**: クオンツ開発者、トレーダー、リスクマネージャーが、商品定義の作成、CF展開、価格計算ワークフローで利用する。
 
-**Impact**: 既存の `infra_master::trade` モジュールを拡張し、`convention/` を `trade/` 配下に統合することで、Trade 関連機能の一元化を実現する。
+**Impact**: 既存の `infra_domain::trade` モジュールを拡張し、`convention/` を `trade/` 配下に統合することで、Trade 関連機能の一元化を実現する。
 
 ### Goals
 - 5資産クラス（Rates、FX、Equity、Credit、Commodity）の標準商品を包括的に定義
@@ -24,10 +24,10 @@
 
 ### Existing Architecture Analysis
 
-現在の `infra_master` 構造:
+現在の `infra_domain` 構造:
 
 ```text
-infra_master/src/
+infra_domain/src/
 ├── convention/          # 市場慣行（現在の位置）
 │   ├── swap.rs, fx.rs, cds.rs, ...
 ├── trade/               # Trade 構造
@@ -44,7 +44,7 @@ infra_master/src/
 
 ```mermaid
 graph TB
-    subgraph InfraMaster[infra_master]
+    subgraph InfraMaster[infra_domain]
         subgraph Trade[trade module]
             InstrumentDef[InstrumentDefinition enum]
             Convention[convention submodule]
@@ -74,7 +74,7 @@ graph TB
 
 **Architecture Integration**:
 - **Selected pattern**: Hierarchical Enum with Submodule Separation
-- **Domain boundaries**: 商品定義（infra_master） ↔ 価格計算（pricer_pricing） を明確分離
+- **Domain boundaries**: 商品定義（infra_domain） ↔ 価格計算（pricer_pricing） を明確分離
 - **Existing patterns preserved**: `Trade` → `Leg` → `Cashflow` CF展開パターン
 - **New components rationale**:
   - `InstrumentDefinition`: 全商品を統一表現
@@ -654,19 +654,19 @@ pub enum InstrumentError {
 ## Migration Strategy
 
 ### Phase 1: Convention 移動
-1. `infra_master/src/convention/` → `infra_master/src/trade/convention/` にファイルコピー
+1. `infra_domain/src/convention/` → `infra_domain/src/trade/convention/` にファイルコピー
 2. `trade/mod.rs` で `pub mod convention;` 追加
-3. 旧パス互換性維持: `infra_master/src/lib.rs` に re-export 追加
+3. 旧パス互換性維持: `infra_domain/src/lib.rs` に re-export 追加
 4. deprecation 警告追加
 
-**Re-export 実装例** (`infra_master/src/lib.rs`):
+**Re-export 実装例** (`infra_domain/src/lib.rs`):
 ```rust
 // 新パス (推奨)
 pub mod trade;
-pub use trade::convention;  // infra_master::convention として利用可能
+pub use trade::convention;  // infra_domain::convention として利用可能
 
 // 旧パスからの re-export (deprecation 付き)
-#[deprecated(since = "0.8.0", note = "Use `infra_master::trade::convention` instead")]
+#[deprecated(since = "0.8.0", note = "Use `infra_domain::trade::convention` instead")]
 pub mod convention_compat {
     pub use crate::trade::convention::*;
 }

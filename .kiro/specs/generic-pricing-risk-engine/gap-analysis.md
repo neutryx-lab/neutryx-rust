@@ -40,7 +40,7 @@
 | `Settings` | `infra_config::settings` | ✅ 実装済み | TOML/YAML/Env統合 |
 | `EngineConfig` | `infra_config::settings` | ✅ 実装済み | thread_pool, memory_limit, mc_paths |
 | `CsvLoader` | `adapter_loader::csv_loader` | ✅ 実装済み | CSV読み込み |
-| `CsaTerms` | `adapter_loader::csa` (re-export) | ✅ 実装済み | infra_masterから再エクスポート |
+| `CsaTerms` | `adapter_loader::csa` (re-export) | ✅ 実装済み | infra_domainから再エクスポート |
 
 #### Demo Web API
 
@@ -69,9 +69,9 @@
 ### 1.3 統合サーフェス
 
 - **MarketProvider**: `pricer_models::market::MarketProvider` (Arc共有)
-- **Trade型**: `infra_master::trade::Trade` (CF-expanded形式)
+- **Trade型**: `infra_domain::trade::Trade` (CF-expanded形式)
 - **Curve/Vol型**: `CurveEnum`, `VolSurfaceEnum` (static dispatch)
-- **CSA型**: `infra_master::counterparty::CsaTerms`
+- **CSA型**: `infra_domain::counterparty::CsaTerms`
 
 ---
 

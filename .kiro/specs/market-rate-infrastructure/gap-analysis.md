@@ -4,7 +4,7 @@
 
 ### 1.1 既存のドメイン関連アセット
 
-#### infra_master::market（対象配置場所）
+#### infra_domain::market（対象配置場所）
 
 | ファイル | 内容 | 再利用可能性 |
 |----------|------|--------------|
@@ -12,13 +12,13 @@
 | `rate_index.rs` | `RateIndex` enum（SOFR, EURIBOR等） | ✅ そのまま使用 |
 | `mod.rs` | モジュール定義 | 🔄 拡張必要 |
 
-#### infra_master::trade（関連アセット）
+#### infra_domain::trade（関連アセット）
 
 | ファイル | 内容 | 関係性 |
 |----------|------|--------|
 | `instrument.rs` | `Instrument` enum（Deposit, FRA, Futures, ParSwap, OIS, BasisSwap, CrossCurrencySwap） | 🔗 マッピング先 |
 
-#### infra_master::time（関連アセット）
+#### infra_domain::time（関連アセット）
 
 | ファイル | 内容 | 関係性 |
 |----------|------|--------|
@@ -55,13 +55,13 @@ A-I-P-S 依存ルール:
 ┌─────────────────────────────────────────────────────────────┐
 │ adapter_feeds (A)                                           │
 │   ↓ depends on                                              │
-│ infra_master::market (I) ← 本仕様の対象                     │
+│ infra_domain::market (I) ← 本仕様の対象                     │
 │   ↓ depends on                                              │
 │ pricer_models::market (P) ← Instrument を消費               │
 └─────────────────────────────────────────────────────────────┘
 
-❌ infra_master は pricer_* に依存してはならない
-❌ infra_master は adapter_* に依存してはならない
+❌ infra_domain は pricer_* に依存してはならない
+❌ infra_domain は adapter_* に依存してはならない
 ```
 
 ---
@@ -75,8 +75,8 @@ A-I-P-S 依存ルール:
 | Req 1: マーケットレート型 | `MarketRate`, `RateType`, `QuoteType` | バリデーション | `adapter_feeds::QuoteType` 部分一致 | **Missing**: `MarketRate`, `RateType` |
 | Req 2: レート識別子 | `RateId`, `TickerMapping` | ルックアップ | なし | **Missing**: 全て新規 |
 | Req 3: レートセット管理 | `MarketRateSet` | CRUD, イテレータ | なし | **Missing**: 全て新規 |
-| Req 4: Instrument マッピング | `InstrumentMapper` trait | 変換 | `infra_master::trade::Instrument` | **Missing**: マッパー |
-| Req 5: バリデーション | `MarketDataError`, `RateValidator` | 検証 | `pricer_models::MarketDataError` 類似 | **Missing**: infra_master 用エラー |
+| Req 4: Instrument マッピング | `InstrumentMapper` trait | 変換 | `infra_domain::trade::Instrument` | **Missing**: マッパー |
+| Req 5: バリデーション | `MarketDataError`, `RateValidator` | 検証 | `pricer_models::MarketDataError` 類似 | **Missing**: infra_domain 用エラー |
 | Req 6: データソース抽象化 | `DataSource`, `SourcePriority` | マージ | なし | **Missing**: 全て新規 |
 | Req 7: Pricer 受け渡し | `to_instruments()`, フィルタ | 変換 | なし | **Missing**: 全て新規 |
 
@@ -87,12 +87,12 @@ A-I-P-S 依存ルール:
 **現状**: `adapter_feeds::QuoteType` が既に存在（Bid, Ask, Last, Mid）
 
 **懸念**:
-- 要件では `infra_master::market` に `QuoteType` を定義する想定
+- 要件では `infra_domain::market` に `QuoteType` を定義する想定
 - 同一概念の型が複数箇所に存在すると混乱の原因
 
 **選択肢**:
-- **A**: `adapter_feeds::QuoteType` を `infra_master` に移動
-- **B**: `infra_master` で新規定義し、`adapter_feeds` から参照
+- **A**: `adapter_feeds::QuoteType` を `infra_domain` に移動
+- **B**: `infra_domain` で新規定義し、`adapter_feeds` から参照
 - **C**: `adapter_feeds` の型をそのまま使用（要件修正）
 
 #### ⚠️ Gap 2: `MarketDataError` の重複
@@ -100,11 +100,11 @@ A-I-P-S 依存ルール:
 **現状**: `pricer_models::market::MarketDataError` が既に存在
 
 **懸念**:
-- 要件では `infra_master::market::MarketDataError` を定義する想定
+- 要件では `infra_domain::market::MarketDataError` を定義する想定
 - 異なるレイヤーに同名エラー型が存在すると変換が複雑化
 
 **選択肢**:
-- **A**: `infra_master` 用に別名（`RateValidationError` 等）を使用
+- **A**: `infra_domain` 用に別名（`RateValidationError` 等）を使用
 - **B**: `pricer_models` のエラーを拡張（依存方向違反の可能性）
 - **C**: 要件のエラー名を変更（`MarketRateError` 等）
 
@@ -136,11 +136,11 @@ A-I-P-S 依存ルール:
 
 ### Option A: 最小拡張アプローチ
 
-**戦略**: 既存の `adapter_feeds` 型を活用し、`infra_master` は最小限の追加
+**戦略**: 既存の `adapter_feeds` 型を活用し、`infra_domain` は最小限の追加
 
 **変更内容**:
 - `adapter_feeds::QuoteType` をそのまま使用
-- `infra_master::market/` に新規ファイル追加:
+- `infra_domain::market/` に新規ファイル追加:
   - `rate.rs` - `MarketRate`, `RateType`, `RateId`
   - `rate_set.rs` - `MarketRateSet`
   - `mapper.rs` - `InstrumentMapper`
@@ -155,10 +155,10 @@ A-I-P-S 依存ルール:
 
 ### Option B: 完全独立アプローチ
 
-**戦略**: `infra_master::market` を完全に自己完結させる
+**戦略**: `infra_domain::market` を完全に自己完結させる
 
 **変更内容**:
-- `infra_master::market/` に全型を新規定義:
+- `infra_domain::market/` に全型を新規定義:
   - `quote_type.rs` - `QuoteType`（新規定義）
   - `rate.rs` - `MarketRate`, `RateType`, `RateId`
   - `rate_set.rs` - `MarketRateSet`
@@ -167,7 +167,7 @@ A-I-P-S 依存ルール:
   - `validation.rs` - `RateValidator`, `StandardRateValidator`
   - `error.rs` - `MarketRateError`（名前変更で重複回避）
   - `source.rs` - `DataSource`, `SourcePriority`
-- `adapter_feeds` を後でリファクタリング（`infra_master` から import）
+- `adapter_feeds` を後でリファクタリング（`infra_domain` から import）
 
 **Trade-offs**:
 - ✅ A-I-P-S 依存ルールに完全準拠
@@ -178,20 +178,20 @@ A-I-P-S 依存ルール:
 
 ### Option C: ハイブリッドアプローチ（推奨）
 
-**戦略**: 共通型を `infra_master` に移動し、既存コードは互換性を維持
+**戦略**: 共通型を `infra_domain` に移動し、既存コードは互換性を維持
 
 **Phase 1（本仕様）**:
-- `infra_master::market/` に新規型を追加
-- `QuoteType` は `infra_master` で定義
-- `adapter_feeds` は `infra_master::market::QuoteType` を re-export
+- `infra_domain::market/` に新規型を追加
+- `QuoteType` は `infra_domain` で定義
+- `adapter_feeds` は `infra_domain::market::QuoteType` を re-export
 
 **Phase 2（将来リファクタリング）**:
-- `adapter_feeds::MarketQuote` を `infra_master` 型を使用するよう更新
+- `adapter_feeds::MarketQuote` を `infra_domain` 型を使用するよう更新
 - `pricer_models::MarketDataError` との統合検討
 
 **変更内容**:
 ```
-infra_master/src/market/
+infra_domain/src/market/
 ├── mod.rs           # 既存（拡張）
 ├── currency.rs      # 既存
 ├── rate_index.rs    # 既存
@@ -247,7 +247,7 @@ infra_master/src/market/
 
 ### 設計フェーズで決定すべき事項
 
-1. **QuoteType の配置決定**: `infra_master` で定義し、`adapter_feeds` から re-export
+1. **QuoteType の配置決定**: `infra_domain` で定義し、`adapter_feeds` から re-export
 2. **エラー型の命名**: `MarketRateError`（`pricer_models::MarketDataError` との衝突回避）
 3. **RateId の構造決計**: `(Currency, Tenor, RateType)` のタプル構造 vs 構造体
 4. **TickerMapping の実装**: 静的マッピング（compile-time）vs 動的マッピング（runtime config）

@@ -9,7 +9,7 @@ description = "Unified facade crate for Neutryx derivatives pricing library"
 
 [dependencies]
 # --- Infra Layer (always included) ---
-infra_master = { path = "crates/infra_master" }
+infra_domain = { path = "crates/infra_domain" }
 
 # --- Infra Layer (optional) ---
 infra_config = { path = "crates/infra_config", optional = true }
@@ -52,7 +52,7 @@ postgres = ["storage", "infra_store/postgres"]
 
 # Serialisation support
 serde = [
-    "infra_master/serde",
+    "infra_domain/serde",
     "pricer_core?/serde",
     "pricer_models?/serde",
     "pricer_pricing?/serde",
@@ -101,7 +101,7 @@ members = [
 
     # --- I: Infra Layer (Foundation) ---
     "crates/infra_config",
-    "crates/infra_master",
+    "crates/infra_domain",
     "crates/infra_store",
 
     # --- P: Pricer Layer (The Kernel) ---

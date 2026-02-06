@@ -6,7 +6,7 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::time::Date;
+//! use infra_domain::time::Date;
 //!
 //! let date = Date::from_ymd(2024, 6, 15).unwrap();
 //! assert_eq!(date.year(), 2024);
@@ -38,7 +38,7 @@ use super::error::TimeError;
 /// # Examples
 ///
 /// ```
-/// use infra_master::time::Date;
+/// use infra_domain::time::Date;
 ///
 /// // Create from year, month, day
 /// let date = Date::from_ymd(2024, 6, 15).unwrap();
@@ -79,7 +79,7 @@ impl Date {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::Date;
+    /// use infra_domain::time::Date;
     ///
     /// // Valid date
     /// let date = Date::from_ymd(2024, 6, 15).unwrap();
@@ -102,7 +102,7 @@ impl Date {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::Date;
+    /// use infra_domain::time::Date;
     ///
     /// let today = Date::today();
     /// // today is the current local date
@@ -121,7 +121,7 @@ impl Date {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::Date;
+    /// use infra_domain::time::Date;
     ///
     /// let date = Date::parse("2024-06-15").unwrap();
     /// assert_eq!(date.year(), 2024);
@@ -142,7 +142,7 @@ impl Date {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::Date;
+    /// use infra_domain::time::Date;
     /// use chrono::Datelike;
     ///
     /// let date = Date::from_ymd(2024, 6, 15).unwrap();
@@ -157,7 +157,7 @@ impl Date {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::Date;
+    /// use infra_domain::time::Date;
     ///
     /// let date = Date::from_ymd(2024, 6, 15).unwrap();
     /// assert_eq!(date.year(), 2024);
@@ -170,7 +170,7 @@ impl Date {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::Date;
+    /// use infra_domain::time::Date;
     ///
     /// let date = Date::from_ymd(2024, 6, 15).unwrap();
     /// assert_eq!(date.month(), 6);
@@ -183,7 +183,7 @@ impl Date {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::Date;
+    /// use infra_domain::time::Date;
     ///
     /// let date = Date::from_ymd(2024, 6, 15).unwrap();
     /// assert_eq!(date.day(), 15);
@@ -196,7 +196,7 @@ impl Date {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::Date;
+    /// use infra_domain::time::Date;
     /// use chrono::NaiveDate;
     ///
     /// let naive = NaiveDate::from_ymd_opt(2024, 6, 15).unwrap();
@@ -221,7 +221,7 @@ impl Date {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::Date;
+    /// use infra_domain::time::Date;
     ///
     /// let date = Date::from_ymd(2024, 1, 1).unwrap();
     /// assert_eq!(date.to_serial(), 45292);
@@ -260,7 +260,7 @@ impl Date {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::Date;
+    /// use infra_domain::time::Date;
     ///
     /// let date = Date::from_serial(45292).unwrap();
     /// assert_eq!(date, Date::from_ymd(2024, 1, 1).unwrap());
@@ -310,7 +310,7 @@ impl Sub for Date {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::Date;
+    /// use infra_domain::time::Date;
     ///
     /// let start = Date::from_ymd(2024, 1, 1).unwrap();
     /// let end = Date::from_ymd(2024, 1, 11).unwrap();
@@ -329,7 +329,7 @@ impl Add<i64> for Date {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::Date;
+    /// use infra_domain::time::Date;
     ///
     /// let start = Date::from_ymd(2024, 1, 1).unwrap();
     /// let end = start + 10;

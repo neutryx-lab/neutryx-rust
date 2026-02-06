@@ -28,7 +28,7 @@
 
 ```text
 A: Adapter   → adapter_feeds, adapter_fpml, adapter_loader
-I: Infra     → infra_config, infra_master, infra_store
+I: Infra     → infra_config, infra_domain, infra_store
 P: Pricer    → pricer_core (L1), pricer_models (L2), pricer_pricing (L3), pricer_risk (L4)
 S: Service   → service_cli, service_gateway, service_python
 ```
@@ -151,7 +151,7 @@ flowchart TD
 | Requirements | 1.1, 1.2, 6.1, 6.2, 6.3, 6.4, 6.5 |
 
 **Responsibilities & Constraints**
-- DateError, CurrencyError の重複解消（infra_master を正とする）
+- DateError, CurrencyError の重複解消（infra_domain を正とする）
 - 共通エラーカテゴリ（InvalidInput, NotConverged, NumericalError）の抽出
 - thiserror を全エラー型で使用
 - A-I-P-S 依存関係ルールの遵守
@@ -167,7 +167,7 @@ flowchart TD
 **エラー型の層別配置**:
 
 ```text
-Infra 層 (infra_master):
+Infra 層 (infra_domain):
 ├── DateError        → 日付操作エラー（正規の定義）
 ├── CurrencyError    → 通貨操作エラー（正規の定義）
 ├── TimeError        → 時間操作エラー
@@ -180,7 +180,7 @@ Pricer Core 層 (pricer_core):
 ├── InterpolationError → 補間エラー
 ├── SolverError      → ソルバーエラー
 └── CalibrationErrorKind → キャリブレーションエラー種別
-    （DateError, CurrencyError は infra_master から re-export）
+    （DateError, CurrencyError は infra_domain から re-export）
 
 Pricer Models 層 (pricer_models):
 ├── MarketDataError  → 市場データエラー
@@ -201,7 +201,7 @@ Pricer Risk 層 (pricer_risk):
 ```
 
 **Implementation Notes**
-- Integration: `pub use infra_master::DateError;` で pricer_core から re-export
+- Integration: `pub use infra_domain::DateError;` で pricer_core から re-export
 - Validation: 全エラー型が `thiserror::Error` を derive していることを確認
 - Risks: 既存コードへの影響（From 変換の更新が必要）
 
@@ -306,7 +306,7 @@ classDiagram
 
 既存の thiserror ベースのエラー処理パターンを維持しつつ、以下を改善:
 
-1. **重複エラー型の解消**: DateError, CurrencyError を infra_master に一元化
+1. **重複エラー型の解消**: DateError, CurrencyError を infra_domain に一元化
 2. **From 変換の簡略化**: 過度に複雑な変換チェーンを整理
 3. **エラーメッセージの一貫性**: 診断情報を含む構造化エラー
 
@@ -355,7 +355,7 @@ classDiagram
 
 ### Phase 1: Infrastructure Layer (infra_*)
 
-1. DateError, CurrencyError を infra_master に一元化
+1. DateError, CurrencyError を infra_domain に一元化
 2. pricer_core から re-export 設定
 3. 全クレートのビルド確認
 4. テスト実行

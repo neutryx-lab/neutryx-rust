@@ -39,7 +39,7 @@ fn test_parse_cap() {
     assert_eq!(trade.id.as_str(), "CAP-USD-001");
     assert!(matches!(
         trade.trade_type,
-        infra_master::trade::TradeType::CapFloor
+        infra_domain::trade::TradeType::CapFloor
     ));
 }
 

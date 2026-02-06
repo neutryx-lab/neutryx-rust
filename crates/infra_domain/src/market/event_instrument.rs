@@ -6,9 +6,9 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::market::{EventInstrument, RateIndex};
-//! use infra_master::market::events::EventType;
-//! use infra_master::time::Date;
+//! use infra_domain::market::{EventInstrument, RateIndex};
+//! use infra_domain::market::events::EventType;
+//! use infra_domain::time::Date;
 //!
 //! let event = EventInstrument::new(
 //!     Date::from_ymd(2024, 3, 20).unwrap(),
@@ -37,9 +37,9 @@ use crate::time::Date;
 /// # Examples
 ///
 /// ```
-/// use infra_master::market::{EventInstrument, RateIndex};
-/// use infra_master::market::events::EventType;
-/// use infra_master::time::Date;
+/// use infra_domain::market::{EventInstrument, RateIndex};
+/// use infra_domain::market::events::EventType;
+/// use infra_domain::time::Date;
 ///
 /// // Create an event for expected FOMC rate hike
 /// let fomc = EventInstrument::new(
@@ -87,9 +87,9 @@ impl EventInstrument {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{EventInstrument, RateIndex};
-    /// use infra_master::market::events::EventType;
-    /// use infra_master::time::Date;
+    /// use infra_domain::market::{EventInstrument, RateIndex};
+    /// use infra_domain::market::events::EventType;
+    /// use infra_domain::time::Date;
     ///
     /// let event = EventInstrument::new(
     ///     Date::from_ymd(2024, 6, 12).unwrap(),
@@ -136,8 +136,8 @@ impl EventInstrument {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{EventInstrument, RateIndex};
-    /// use infra_master::market::events::{MarketEvent, EventType, EventImportance};
+    /// use infra_domain::market::{EventInstrument, RateIndex};
+    /// use infra_domain::market::events::{MarketEvent, EventType, EventImportance};
     ///
     /// let fomc = MarketEvent::new(
     ///     "FOMC-2024-03",
@@ -224,9 +224,9 @@ impl EventInstrument {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{EventInstrument, RateIndex};
-    /// use infra_master::market::events::EventType;
-    /// use infra_master::time::Date;
+    /// use infra_domain::market::{EventInstrument, RateIndex};
+    /// use infra_domain::market::events::EventType;
+    /// use infra_domain::time::Date;
     ///
     /// let event = EventInstrument::new(
     ///     Date::from_ymd(2024, 9, 18).unwrap(),
@@ -258,9 +258,9 @@ impl EventInstrument {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{EventInstrument, RateIndex};
-    /// use infra_master::market::events::EventType;
-    /// use infra_master::time::Date;
+    /// use infra_domain::market::{EventInstrument, RateIndex};
+    /// use infra_domain::market::events::EventType;
+    /// use infra_domain::time::Date;
     ///
     /// let event = EventInstrument::new(
     ///     Date::from_ymd(2024, 9, 18).unwrap(),

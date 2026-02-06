@@ -12,7 +12,7 @@ The workspace enforces a strict unidirectional data flow:
 
 ```text
 A: Adapter   → adapter_feeds, adapter_fpml, adapter_loader
-I: Infra     → infra_config, infra_master, infra_store
+I: Infra     → infra_config, infra_domain, infra_store
 P: Pricer    → pricer_core (L1), pricer_models (L2), pricer_optimiser (L2.5), pricer_pricing (L3), pricer_risk (L4)
 S: Service   → service_cli, service_gateway, service_python
 ```

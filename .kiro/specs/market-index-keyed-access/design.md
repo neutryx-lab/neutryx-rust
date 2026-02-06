@@ -84,7 +84,7 @@ graph TB
 
 **Architecture Integration**:
 - **Selected pattern**: Facade Pattern — 既存コンポーネントをラップして統一API提供
-- **Domain boundaries**: IndexedMarketはpricer_models::market内に配置、infra_masterには最小限の型定義のみ追加
+- **Domain boundaries**: IndexedMarketはpricer_models::market内に配置、infra_domainには最小限の型定義のみ追加
 - **Existing patterns preserved**: CurveSet, IndexCurveMapper, MarketProviderの内部実装は変更なし
 - **New components rationale**: IndexedMarket（統一ファサード）、IndexRequirement（Trade検証用）、MarketValidationError（検証エラー）
 - **Steering compliance**: A-I-P-S依存方向維持、Static dispatch維持
@@ -169,8 +169,8 @@ sequenceDiagram
 |-----------|--------------|--------|--------------|-----------------|-----------|
 | IndexedMarket | pricer_models::market | 統一Market API提供 | 1-5 | CurveSet (P0), VolCubeCache (P1), MarketProvider (P1) | Service |
 | IndexedMarketBuilder | pricer_models::market | IndexedMarket構築 | 6 | CurveBuilder (P1), VolCubeBuilder (P1) | Service |
-| IndexRequirement | infra_master::trade | Trade必要Index型 | 7.3 | RateIndex (P0), CurrencyPair (P0) | - |
-| TradeIndexRequirements | infra_master::trade | Trade Index抽出trait | 7.3 | Trade (P0), Cashflow (P0) | Service |
+| IndexRequirement | infra_domain::trade | Trade必要Index型 | 7.3 | RateIndex (P0), CurrencyPair (P0) | - |
+| TradeIndexRequirements | infra_domain::trade | Trade Index抽出trait | 7.3 | Trade (P0), Cashflow (P0) | Service |
 | MarketValidator | pricer_models::market | Market網羅性検証 | 7.1-7.5 | IndexedMarket (P0), Portfolio (P1) | Service |
 | MarketValidationError | pricer_models::market | 検証エラー型 | 1.4, 7.5 | - | - |
 
@@ -341,7 +341,7 @@ impl<'a, T: Float + Send + Sync> MarketValidator<'a, T> {
 }
 ```
 
-### infra_master::trade
+### infra_domain::trade
 
 #### IndexRequirement
 

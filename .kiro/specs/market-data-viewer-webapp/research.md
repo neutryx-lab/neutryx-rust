@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-本分析は、Frictional Bank Web App 向けマーケットデータ閲覧機能の実装ギャップを調査した結果をまとめる。既存の `infra_master::market` モジュールと `demo/gui` Web インフラを活用することで、大部分の要件を効率的に実装可能である。
+本分析は、Frictional Bank Web App 向けマーケットデータ閲覧機能の実装ギャップを調査した結果をまとめる。既存の `infra_domain::market` モジュールと `demo/gui` Web インフラを活用することで、大部分の要件を効率的に実装可能である。
 
 ### 主要な発見
 
@@ -19,9 +19,9 @@
 
 ## 1. 既存コンポーネント分析
 
-### 1.1 マーケットレートインフラ (`infra_master::market`)
+### 1.1 マーケットレートインフラ (`infra_domain::market`)
 
-**ファイル**: `crates/infra_master/src/market/`
+**ファイル**: `crates/infra_domain/src/market/`
 
 #### 利用可能なコンポーネント
 
@@ -55,9 +55,9 @@ pub fn to_instruments<M: InstrumentMapper>(&self, mapper: &M, valuation_date: Da
 
 **評価**: 基盤は十分に整備されている。`serde` feature が有効な場合、JSON シリアライズもサポート済み。
 
-### 1.2 Convention インフラ (`infra_master::trade::convention`)
+### 1.2 Convention インフラ (`infra_domain::trade::convention`)
 
-**ファイル**: `crates/infra_master/src/trade/convention/`
+**ファイル**: `crates/infra_domain/src/trade/convention/`
 
 #### 利用可能なコンポーネント
 
@@ -299,7 +299,7 @@ let api_routes = Router::new()
 
 ```
 demo/gui
-├── infra_master (既存依存)
+├── infra_domain (既存依存)
 │   ├── market (MarketRate, MarketRateSet, RateIndex)
 │   ├── trade::convention (SwapConvention, FxConvention, ConventionSet)
 │   └── time (Date, Tenor)
@@ -369,12 +369,12 @@ demo/gui
 
 ### 5.2 シリアライゼーション
 
-`infra_master` の `serde` feature を有効にする必要あり:
+`infra_domain` の `serde` feature を有効にする必要あり:
 
 ```toml
 # demo/gui/Cargo.toml
 [dependencies]
-infra_master = { path = "../../crates/infra_master", features = ["serde"] }
+infra_domain = { path = "../../crates/infra_domain", features = ["serde"] }
 ```
 
 ### 5.3 エラーハンドリング
@@ -462,8 +462,8 @@ pub async fn get_market_rate_detail(...) -> Result<Json<...>, StatusCode> {
 
 ## References
 
-- [infra_master/market/rate_set.rs](../../crates/infra_master/src/market/rate_set.rs) - MarketRateSet 実装
-- [infra_master/market/mapper.rs](../../crates/infra_master/src/market/mapper.rs) - StandardInstrumentMapper 実装
-- [infra_master/trade/convention/](../../crates/infra_master/src/trade/convention/) - Convention 定義
+- [infra_domain/market/rate_set.rs](../../crates/infra_domain/src/market/rate_set.rs) - MarketRateSet 実装
+- [infra_domain/market/mapper.rs](../../crates/infra_domain/src/market/mapper.rs) - StandardInstrumentMapper 実装
+- [infra_domain/trade/convention/](../../crates/infra_domain/src/trade/convention/) - Convention 定義
 - [demo/gui/src/web/mod.rs](../../demo/gui/src/web/mod.rs) - Web App インフラ
 - [demo/gui/static/index.html](../../demo/gui/static/index.html) - フロントエンドテンプレート

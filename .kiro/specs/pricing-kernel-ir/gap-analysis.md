@@ -10,13 +10,13 @@
 
 ### 1.1 関連資産の特定
 
-#### Trade階層構造（infra_master）
+#### Trade階層構造（infra_domain）
 
 | ファイル | 役割 | 関連度 |
 |---------|------|-------|
-| [crates/infra_master/src/trade/trade.rs](crates/infra_master/src/trade/trade.rs) | Trade定義（ID, legs, trade_type, metadata） | ⭐⭐⭐ 高 |
-| [crates/infra_master/src/trade/leg.rs](crates/infra_master/src/trade/leg.rs) | Leg定義（cashflows, direction, leg_type, currency） | ⭐⭐⭐ 高 |
-| [crates/infra_master/src/trade/cashflow.rs](crates/infra_master/src/trade/cashflow.rs) | Cashflow定義（payment_date, year_fraction, notional, payoff） | ⭐⭐⭐ 高 |
+| [crates/infra_domain/src/trade/trade.rs](crates/infra_domain/src/trade/trade.rs) | Trade定義（ID, legs, trade_type, metadata） | ⭐⭐⭐ 高 |
+| [crates/infra_domain/src/trade/leg.rs](crates/infra_domain/src/trade/leg.rs) | Leg定義（cashflows, direction, leg_type, currency） | ⭐⭐⭐ 高 |
+| [crates/infra_domain/src/trade/cashflow.rs](crates/infra_domain/src/trade/cashflow.rs) | Cashflow定義（payment_date, year_fraction, notional, payoff） | ⭐⭐⭐ 高 |
 
 **観察**: 階層構造は十分に整理されており、IRへのコンパイルの入力として適切。`Cashflow`には`payment_date`, `year_fraction`, `notional`, `currency`など必要なフィールドが既に存在。
 
@@ -34,7 +34,7 @@
 | ファイル | 役割 | 関連度 |
 |---------|------|-------|
 | [crates/pricer_models/src/market/indexed_market.rs](crates/pricer_models/src/market/indexed_market.rs) | インデックスキーによる市場データアクセス | ⭐⭐⭐ 高 |
-| [crates/infra_master/src/trade/index_requirement.rs](crates/infra_master/src/trade/index_requirement.rs) | TradeIndexRequirements | ⭐⭐ 中 |
+| [crates/infra_domain/src/trade/index_requirement.rs](crates/infra_domain/src/trade/index_requirement.rs) | TradeIndexRequirements | ⭐⭐ 中 |
 
 **観察**: `IndexedMarket<T>`はRateIndex/CurrencyPairをキーとしたHashMapベースのアクセスを提供。`PricingKernel`の`fwd_index_ids`と連携可能。
 

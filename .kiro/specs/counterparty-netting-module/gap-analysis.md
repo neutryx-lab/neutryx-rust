@@ -6,20 +6,20 @@
 
 | ファイル/モジュール | 場所 | 説明 |
 |---------------------|------|------|
-| `counterparty.rs` | `crates/infra_master/src/` | `CsaTerms`, `NettingSetConfig`を定義（現行の実装） |
+| `counterparty.rs` | `crates/infra_domain/src/` | `CsaTerms`, `NettingSetConfig`を定義（現行の実装） |
 | `portfolio/ids.rs` | `crates/pricer_risk/src/` | `CounterpartyId`, `NettingSetId`, `TradeId`の新型パターン |
 | `portfolio/netting_set.rs` | `crates/pricer_risk/src/` | `NettingSet`, `CollateralAgreement`のXVA計算用型 |
 | `portfolio/trade.rs` | `crates/pricer_risk/src/` | `Trade`構造体（CounterpartyId/NettingSetIdを参照） |
-| `csa.rs` | `crates/adapter_loader/src/` | `infra_master`からの再エクスポート |
+| `csa.rs` | `crates/adapter_loader/src/` | `infra_domain`からの再エクスポート |
 | `counterparties.csv` | `demo/data/input/counterparties/` | デモ用取引相手先データ |
 | `netting_sets.csv` | `demo/data/input/counterparties/` | デモ用ネッティングセットデータ |
 
 ### 1.2 既存パターン（time/trade/conventionモジュール参考）
 
-`infra_master`には既にサブモジュールパターンが確立されている：
+`infra_domain`には既にサブモジュールパターンが確立されている：
 
 ```text
-infra_master/src/
+infra_domain/src/
 ├── time/           # 新設モジュール（calendars, day_counters, error, period, types）
 ├── trade/          # 新設モジュール（builder, cashflow, error, index, leg, payoff, trade）
 ├── convention/     # 新設モジュール（swap, fra, futures, capfloor, fx, cds, bond）
@@ -41,7 +41,7 @@ infra_master/src/
 | 依存元 | 使用型 | 備考 |
 |--------|--------|------|
 | `pricer_risk` | `CounterpartyId`, `NettingSetId` | 独自のID型を定義済み（重複あり） |
-| `pricer_risk` | `CollateralAgreement` | CSA条件の拡張版（`infra_master::CsaTerms`とは別） |
+| `pricer_risk` | `CollateralAgreement` | CSA条件の拡張版（`infra_domain::CsaTerms`とは別） |
 | `adapter_loader` | `CsaTerms`, `NettingSetConfig` | 再エクスポートのみ |
 | `demo/inputs` | CSVからの読み込み | `counterparty_id`, `rating`, `sector`等のフィールドあり |
 
@@ -65,7 +65,7 @@ infra_master/src/
 | ギャップ | カテゴリ | 影響度 |
 |----------|----------|--------|
 | `pricer_risk`との型重複 | **Constraint** | 中 - ID型が両クレートで定義されている |
-| CSA条件の二重定義 | **Constraint** | 中 - `infra_master::CsaTerms`と`pricer_risk::CollateralAgreement`が共存 |
+| CSA条件の二重定義 | **Constraint** | 中 - `infra_domain::CsaTerms`と`pricer_risk::CollateralAgreement`が共存 |
 | デモデータのフィールド | **Missing** | 低 - `lei`, `pd_1y`フィールドが要件にない |
 | 格付けの詳細設計 | **Research Needed** | 低 - S&P/Moody's/Fitchの統一スキーム |
 
@@ -85,13 +85,13 @@ infra_master/src/
 **概要**: `counterparty.rs`を`counterparty/`フォルダに展開し、既存型を拡張
 
 **変更対象ファイル**:
-- `crates/infra_master/src/counterparty.rs` → 削除
-- `crates/infra_master/src/counterparty/mod.rs` → 新規作成
-- `crates/infra_master/src/counterparty/csa.rs` → `CsaTerms`移行・拡張
-- `crates/infra_master/src/counterparty/netting_set.rs` → `NettingSetConfig`移行・拡張
-- `crates/infra_master/src/counterparty/counterparty.rs` → `CounterParty`新規
-- `crates/infra_master/src/counterparty/error.rs` → `CounterPartyError`新規
-- `crates/infra_master/src/lib.rs` → 再エクスポート更新
+- `crates/infra_domain/src/counterparty.rs` → 削除
+- `crates/infra_domain/src/counterparty/mod.rs` → 新規作成
+- `crates/infra_domain/src/counterparty/csa.rs` → `CsaTerms`移行・拡張
+- `crates/infra_domain/src/counterparty/netting_set.rs` → `NettingSetConfig`移行・拡張
+- `crates/infra_domain/src/counterparty/counterparty.rs` → `CounterParty`新規
+- `crates/infra_domain/src/counterparty/error.rs` → `CounterPartyError`新規
+- `crates/infra_domain/src/lib.rs` → 再エクスポート更新
 
 **Trade-offs**:
 - ✅ 後方互換性を完全に維持
@@ -101,11 +101,11 @@ infra_master/src/
 
 ### Option B: 新規コンポーネント作成 + 統一
 
-**概要**: `infra_master`に新モジュールを作成し、`pricer_risk`のID型を`infra_master`からの再エクスポートに移行
+**概要**: `infra_domain`に新モジュールを作成し、`pricer_risk`のID型を`infra_domain`からの再エクスポートに移行
 
 **追加変更対象**:
-- `crates/pricer_risk/src/portfolio/ids.rs` → `infra_master`からの再エクスポートに変更
-- `crates/pricer_risk/src/portfolio/netting_set.rs` → `CollateralAgreement`を`infra_master::CsaTerms`ベースに統一
+- `crates/pricer_risk/src/portfolio/ids.rs` → `infra_domain`からの再エクスポートに変更
+- `crates/pricer_risk/src/portfolio/netting_set.rs` → `CollateralAgreement`を`infra_domain::CsaTerms`ベースに統一
 
 **Trade-offs**:
 - ✅ 型の一元管理（Single Source of Truth）
@@ -117,11 +117,11 @@ infra_master/src/
 ### Option C: ハイブリッドアプローチ（推奨）
 
 **概要**:
-- Phase 1: `infra_master`に`counterparty/`モジュールを新設（Option A相当）
-- Phase 2: （将来）`pricer_risk`のID型を`infra_master`からのインポートに段階的移行
+- Phase 1: `infra_domain`に`counterparty/`モジュールを新設（Option A相当）
+- Phase 2: （将来）`pricer_risk`のID型を`infra_domain`からのインポートに段階的移行
 
 **実装戦略**:
-1. `infra_master`に完全な`counterparty/`モジュールを構築
+1. `infra_domain`に完全な`counterparty/`モジュールを構築
 2. `CounterPartyId`/`NettingSetId`を新型パターンで定義
 3. 既存の`CsaTerms`/`NettingSetConfig`は後方互換で維持
 4. `pricer_risk`は**変更しない**（現時点では両方のID型が共存）

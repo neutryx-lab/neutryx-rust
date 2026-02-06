@@ -8,9 +8,9 @@
 
 | コンポーネント | パス | 状態 |
 |--------------|------|------|
-| MarketEvent | `crates/infra_master/src/market/events/market_event.rs` | ✅ 完全 |
-| EventType | `crates/infra_master/src/market/events/event_type.rs` | ✅ CentralBankMeeting対応済 |
-| EventImportance | `crates/infra_master/src/market/events/importance.rs` | ✅ Low/Medium/High/Critical |
+| MarketEvent | `crates/infra_domain/src/market/events/market_event.rs` | ✅ 完全 |
+| EventType | `crates/infra_domain/src/market/events/event_type.rs` | ✅ CentralBankMeeting対応済 |
+| EventImportance | `crates/infra_domain/src/market/events/importance.rs` | ✅ Low/Medium/High/Critical |
 | GlobalBootstrapper | `crates/pricer_models/src/builder/curve/global.rs` | ✅ 788行、Newton-Raphson実装済 |
 | CalibrationProblem | `crates/pricer_models/src/builder/problem.rs` | ✅ SystemOfEquations実装 |
 | CalibrationMatrix | `crates/pricer_models/src/builder/matrix.rs` | ✅ N×Mマトリックス |
@@ -47,7 +47,7 @@
 
 #### 依存方向
 ```text
-infra_master (MarketEvent) → pricer_models (GlobalBootstrapper)
+infra_domain (MarketEvent) → pricer_models (GlobalBootstrapper)
 pricer_models → demo/gui (API Handler)
 ```
 
@@ -113,7 +113,7 @@ pricer_models → demo/gui (API Handler)
 
 | 制約 | 詳細 |
 |-----|------|
-| A-I-P-S依存方向 | infra_master→pricer_modelsの方向のみ |
+| A-I-P-S依存方向 | infra_domain→pricer_modelsの方向のみ |
 | 後方互換性 | 既存APIブレーク禁止 |
 | demo/guiステータス | 現在feature-gated、calibration依存 |
 
@@ -165,7 +165,7 @@ pricer_models → demo/gui (API Handler)
 ### Option C: ハイブリッドアプローチ（推奨）
 
 **フェーズ1: データ層拡張**（影響最小）
-- `MarketEvent`に`expected_jump_bps`追加（infra_master）
+- `MarketEvent`に`expected_jump_bps`追加（infra_domain）
 - `central_bank_meetings.json`スキーマ拡張不要（動的追加）
 
 **フェーズ2: カリブレーション層拡張**

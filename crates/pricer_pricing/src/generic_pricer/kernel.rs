@@ -8,12 +8,12 @@
 //! - Year fraction calculations
 
 #[cfg(feature = "l1l2-integration")]
-use infra_master::time::Date;
+use infra_domain::time::Date;
 
 #[cfg(not(feature = "l1l2-integration"))]
 use super::result::Date;
 
-// Helper functions for Date operations that work with both infra_master::Date
+// Helper functions for Date operations that work with both infra_domain::Date
 // and local Date
 
 /// Returns the number of days between two dates.

@@ -2,7 +2,7 @@
 
 ## Introduction
 
-本仕様書は、`infra_master` における `CurveDefinition` を拡張し、中央銀行会合などのイベントに起因する金利の不連続性（ジャンプ）を曲線構築プロセスで明示的に扱うための要件を定義する。
+本仕様書は、`infra_domain` における `CurveDefinition` を拡張し、中央銀行会合などのイベントに起因する金利の不連続性（ジャンプ）を曲線構築プロセスで明示的に扱うための要件を定義する。
 
 現状、`EventInstrument` や `CentralBankMeeting` などのイベントデータは存在するが、`CurveDefinition` レベルでこれらを「ジャンプピラー」として統合するインターフェースが欠如している。`BootstrapInterpolation` は連続的な内挿を前提としており、政策金利発表日等における不連続性を無視すると、フォワードカーブに不自然な振動が生じる。
 
@@ -11,11 +11,11 @@
 ## Project Description (Input)
 
 金融モデルとしての整合性（Central Bank Jump 等）
-infra_master には CentralBankMeeting などのイベントデータが存在しますが、これを曲線構築の「ジャンプ」として明示的に扱うためのインターフェースが CurveDefinition レベルで統合されていません。
+infra_domain には CentralBankMeeting などのイベントデータが存在しますが、これを曲線構築の「ジャンプ」として明示的に扱うためのインターフェースが CurveDefinition レベルで統合されていません。
 
 課題：不連続性の扱い BootstrapInterpolation は連続的な内挿を前提としている可能性が高く、政策金利発表日などの特定の期日における不連続性（Jump）が無視されると、フォワードカーブに不自然な振動が生じます。
 
-洗練化案：Jump-Aware Curve Definition CurveDefinition に JumpPillar を含む構造を明示的に持たせ、内挿アルゴリズムが特定の日付において「右極限」と「左極限」を分離して扱えるように infra_master の定義を拡張すべきです。これは Kentaro 氏の研究テーマである「PINNs を用いた金融モデル較正」における制約条件付学習とも通底する論点です。
+洗練化案：Jump-Aware Curve Definition CurveDefinition に JumpPillar を含む構造を明示的に持たせ、内挿アルゴリズムが特定の日付において「右極限」と「左極限」を分離して扱えるように infra_domain の定義を拡張すべきです。これは Kentaro 氏の研究テーマである「PINNs を用いた金融モデル較正」における制約条件付学習とも通底する論点です。
 
 ## Requirements
 

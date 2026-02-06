@@ -5,8 +5,8 @@
 //!
 //! # Note
 //!
-//! `FxRate<T>` is distinct from `infra_master::CurrencyPair`:
-//! - `infra_master::CurrencyPair`: Instrument definition (no spot rate, no AD
+//! `FxRate<T>` is distinct from `infra_domain::CurrencyPair`:
+//! - `infra_domain::CurrencyPair`: Instrument definition (no spot rate, no AD
 //!   support)
 //! - `FxRate<T>`: Pricing type (includes spot rate, supports AD via generic
 //!   `T`)
@@ -14,7 +14,7 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::Currency;
+//! use infra_domain::Currency;
 //! use pricer_core::types::FxRate;
 //!
 //! // Create a USD/JPY FX rate
@@ -31,7 +31,7 @@
 
 use std::fmt;
 
-use infra_master::{Currency, CurrencyError};
+use infra_domain::{Currency, CurrencyError};
 use num_traits::Float;
 
 /// An FX rate for foreign exchange calculations.
@@ -43,15 +43,15 @@ use num_traits::Float;
 ///
 /// * `T` - Floating-point type implementing `Float` (e.g., `f64`, `Dual64`)
 ///
-/// # Distinction from `infra_master::CurrencyPair`
+/// # Distinction from `infra_domain::CurrencyPair`
 ///
-/// - `infra_master::CurrencyPair`: Instrument definition (static, no spot rate)
+/// - `infra_domain::CurrencyPair`: Instrument definition (static, no spot rate)
 /// - `FxRate<T>`: Pricing type (dynamic spot rate, AD-compatible)
 ///
 /// # Examples
 ///
 /// ```
-/// use infra_master::Currency;
+/// use infra_domain::Currency;
 /// use pricer_core::types::FxRate;
 ///
 /// // EUR/USD = 1.10 means 1 EUR = 1.10 USD
@@ -86,7 +86,7 @@ impl<T: Float> FxRate<T> {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::Currency;
+    /// use infra_domain::Currency;
     /// use pricer_core::types::FxRate;
     ///
     /// let rate = FxRate::new(Currency::EUR, Currency::USD, 1.10).unwrap();
@@ -107,7 +107,7 @@ impl<T: Float> FxRate<T> {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::Currency;
+    /// use infra_domain::Currency;
     /// use pricer_core::types::FxRate;
     ///
     /// let rate = FxRate::new(Currency::EUR, Currency::USD, 1.10).unwrap();
@@ -121,7 +121,7 @@ impl<T: Float> FxRate<T> {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::Currency;
+    /// use infra_domain::Currency;
     /// use pricer_core::types::FxRate;
     ///
     /// let rate = FxRate::new(Currency::EUR, Currency::USD, 1.10).unwrap();
@@ -135,7 +135,7 @@ impl<T: Float> FxRate<T> {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::Currency;
+    /// use infra_domain::Currency;
     /// use pricer_core::types::FxRate;
     ///
     /// let rate = FxRate::new(Currency::EUR, Currency::USD, 1.10).unwrap();
@@ -149,7 +149,7 @@ impl<T: Float> FxRate<T> {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::Currency;
+    /// use infra_domain::Currency;
     /// use pricer_core::types::FxRate;
     ///
     /// let rate = FxRate::new(Currency::EUR, Currency::USD, 1.10).unwrap();
@@ -170,7 +170,7 @@ impl<T: Float> FxRate<T> {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::Currency;
+    /// use infra_domain::Currency;
     /// use pricer_core::types::FxRate;
     ///
     /// let mut rate = FxRate::new(Currency::EUR, Currency::USD, 1.10).unwrap();
@@ -192,7 +192,7 @@ impl<T: Float> FxRate<T> {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::Currency;
+    /// use infra_domain::Currency;
     /// use pricer_core::types::FxRate;
     ///
     /// let eurusd: FxRate<f64> = FxRate::new(Currency::EUR, Currency::USD, 1.10).unwrap();
@@ -223,7 +223,7 @@ impl<T: Float> FxRate<T> {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::Currency;
+    /// use infra_domain::Currency;
     /// use pricer_core::types::FxRate;
     ///
     /// // EUR/USD = 1.10
@@ -249,7 +249,7 @@ impl<T: Float> FxRate<T> {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::Currency;
+    /// use infra_domain::Currency;
     /// use pricer_core::types::FxRate;
     ///
     /// // EUR/USD = 1.10
@@ -267,7 +267,7 @@ impl<T: Float> FxRate<T> {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::Currency;
+    /// use infra_domain::Currency;
     /// use pricer_core::types::FxRate;
     ///
     /// let rate = FxRate::new(Currency::EUR, Currency::USD, 1.10).unwrap();
@@ -318,7 +318,7 @@ pub type CurrencyPair<T> = FxRate<T>;
 /// # Examples
 ///
 /// ```
-/// use infra_master::Currency;
+/// use infra_domain::Currency;
 /// use pricer_core::types::FxPair;
 ///
 /// let eurusd = FxPair::new(Currency::EUR, Currency::USD);
@@ -349,7 +349,7 @@ impl FxPair {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::Currency;
+    /// use infra_domain::Currency;
     /// use pricer_core::types::FxPair;
     ///
     /// let pair = FxPair::new(Currency::EUR, Currency::USD);
@@ -373,7 +373,7 @@ impl FxPair {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::Currency;
+    /// use infra_domain::Currency;
     /// use pricer_core::types::FxPair;
     ///
     /// let pair = FxPair::new(Currency::EUR, Currency::USD);
@@ -387,7 +387,7 @@ impl FxPair {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::Currency;
+    /// use infra_domain::Currency;
     /// use pricer_core::types::FxPair;
     ///
     /// let eurusd = FxPair::new(Currency::EUR, Currency::USD);
@@ -408,7 +408,7 @@ impl FxPair {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::Currency;
+    /// use infra_domain::Currency;
     /// use pricer_core::types::FxPair;
     ///
     /// let pair = FxPair::new(Currency::EUR, Currency::USD);

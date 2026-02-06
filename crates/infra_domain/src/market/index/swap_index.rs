@@ -5,8 +5,8 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::market::{SwapIndex, Currency, RateIndex};
-//! use infra_master::time::Tenor;
+//! use infra_domain::market::{SwapIndex, Currency, RateIndex};
+//! use infra_domain::time::Tenor;
 //!
 //! let cms10y = SwapIndex::UsdCms10Y;
 //! assert_eq!(cms10y.currency(), Currency::USD);
@@ -48,8 +48,8 @@ pub struct SwapIndexMetadata {
 /// # Examples
 ///
 /// ```
-/// use infra_master::market::{SwapIndex, Currency};
-/// use infra_master::time::Tenor;
+/// use infra_domain::market::{SwapIndex, Currency};
+/// use infra_domain::time::Tenor;
 ///
 /// let eur_cms = SwapIndex::EurCms10Y;
 /// assert_eq!(eur_cms.currency(), Currency::EUR);
@@ -143,7 +143,7 @@ impl SwapIndex {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::SwapIndex;
+    /// use infra_domain::market::SwapIndex;
     ///
     /// assert_eq!(SwapIndex::UsdCms10Y.api_code(), "USD-CMS-10Y");
     /// assert_eq!(SwapIndex::EurCms5Y.api_code(), "EUR-CMS-5Y");
@@ -179,7 +179,7 @@ impl SwapIndex {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{SwapIndex, Currency};
+    /// use infra_domain::market::{SwapIndex, Currency};
     ///
     /// assert_eq!(SwapIndex::UsdCms10Y.currency(), Currency::USD);
     /// assert_eq!(SwapIndex::EurCms10Y.currency(), Currency::EUR);
@@ -200,8 +200,8 @@ impl SwapIndex {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::SwapIndex;
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::market::SwapIndex;
+    /// use infra_domain::time::Tenor;
     ///
     /// assert_eq!(SwapIndex::UsdCms2Y.tenor(), Tenor::TwoYears);
     /// assert_eq!(SwapIndex::UsdCms10Y.tenor(), Tenor::TenYears);
@@ -234,7 +234,7 @@ impl SwapIndex {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{SwapIndex, RateIndex};
+    /// use infra_domain::market::{SwapIndex, RateIndex};
     ///
     /// assert_eq!(SwapIndex::UsdCms10Y.underlying_index(), RateIndex::Sofr);
     /// assert_eq!(SwapIndex::EurCms10Y.underlying_index(), RateIndex::Estr);
@@ -256,7 +256,7 @@ impl SwapIndex {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::SwapIndex;
+    /// use infra_domain::market::SwapIndex;
     ///
     /// assert_eq!(SwapIndex::UsdCms10Y.name(), "USD CMS 10Y");
     /// assert_eq!(SwapIndex::EurCms5Y.name(), "EUR CMS 5Y");
@@ -292,8 +292,8 @@ impl SwapIndex {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{SwapIndex, RateIndex};
-    /// use infra_master::time::{Tenor, DayCounter};
+    /// use infra_domain::market::{SwapIndex, RateIndex};
+    /// use infra_domain::time::{Tenor, DayCounter};
     ///
     /// let metadata = SwapIndex::UsdCms10Y.metadata();
     /// assert_eq!(metadata.underlying_index, RateIndex::Sofr);
@@ -355,8 +355,8 @@ impl SwapIndex {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{SwapIndex, Currency};
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::market::{SwapIndex, Currency};
+    /// use infra_domain::time::Tenor;
     ///
     /// let index = SwapIndex::from_currency_tenor(Currency::USD, Tenor::TenYears);
     /// assert_eq!(index, Some(SwapIndex::UsdCms10Y));

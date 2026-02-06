@@ -33,7 +33,7 @@ pub enum MasterDataError {
 ///
 /// # Examples
 /// ```
-/// use infra_master::DateError;
+/// use infra_domain::DateError;
 ///
 /// let err = DateError::InvalidDate { year: 2024, month: 2, day: 30 };
 /// assert_eq!(format!("{}", err), "Invalid date: 2024-02-30");
@@ -69,7 +69,7 @@ pub enum DateError {
 ///
 /// # Examples
 /// ```
-/// use infra_master::CurrencyError;
+/// use infra_domain::CurrencyError;
 ///
 /// let err = CurrencyError::UnknownCurrency("XYZ".to_string());
 /// assert_eq!(format!("{}", err), "Unknown currency: XYZ");
@@ -112,7 +112,7 @@ impl From<DateError> for MasterDataError {
 ///
 /// # Examples
 /// ```
-/// use infra_master::BookError;
+/// use infra_domain::BookError;
 ///
 /// let err = BookError::DuplicateId("BOOK001".to_string());
 /// assert_eq!(format!("{}", err), "Duplicate BookId: BOOK001");
@@ -147,7 +147,7 @@ pub enum BookError {
 ///
 /// # Examples
 /// ```
-/// use infra_master::PortfolioError;
+/// use infra_domain::PortfolioError;
 ///
 /// let err = PortfolioError::CircularReference("P001".to_string(), "P002".to_string());
 /// assert_eq!(format!("{}", err), "Circular portfolio reference detected: P001 -> P002");
@@ -182,7 +182,7 @@ pub enum PortfolioError {
 ///
 /// # Examples
 /// ```
-/// use infra_master::NettingError;
+/// use infra_domain::NettingError;
 ///
 /// let err = NettingError::CounterpartyMismatch {
 ///     expected: "CP001".to_string(),
@@ -226,7 +226,7 @@ pub enum NettingError {
 ///
 /// # Examples
 /// ```
-/// use infra_master::ExposureError;
+/// use infra_domain::ExposureError;
 ///
 /// let err = ExposureError::InvalidTimeGrid("gaps in grid".to_string());
 /// assert_eq!(format!("{}", err), "Invalid time grid: gaps in grid");
@@ -262,7 +262,7 @@ pub enum ExposureError {
 ///
 /// # Examples
 /// ```
-/// use infra_master::{ValidationError, BookError};
+/// use infra_domain::{ValidationError, BookError};
 ///
 /// let book_err = BookError::DuplicateId("BOOK001".to_string());
 /// let validation_err: ValidationError = book_err.into();

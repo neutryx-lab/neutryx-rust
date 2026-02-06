@@ -1,24 +1,24 @@
 //! Identifier types for portfolio entities.
 //!
-//! This module re-exports ID types from `infra_master::ids` for convenience.
+//! This module re-exports ID types from `infra_domain::ids` for convenience.
 //! All ID types are defined centrally in the Infra layer to ensure type safety
 //! across the entire codebase.
 //!
 //! # Migration Note
 //!
 //! Previously, this module defined its own ID types. As of the legacy
-//! compatibility removal, all ID types are now defined in `infra_master::ids`
+//! compatibility removal, all ID types are now defined in `infra_domain::ids`
 //! and re-exported here for backward compatibility.
 //!
-//! Prefer importing directly from `infra_master::ids` for new code.
+//! Prefer importing directly from `infra_domain::ids` for new code.
 
-// Re-export all ID types from infra_master for backward compatibility.
+// Re-export all ID types from infra_domain for backward compatibility.
 // Some types may not be used internally but are re-exported for public API.
 // Also re-export CounterPartyId for code that uses the CamelCase variant
 #[allow(unused_imports)]
-pub use infra_master::counterparty::CounterPartyId;
+pub use infra_domain::counterparty::CounterPartyId;
 #[allow(unused_imports)]
-pub use infra_master::ids::{
+pub use infra_domain::ids::{
     BookId, CcpId, CounterpartyId, IssuerId, LegalEntityId, NettingSetId, PortfolioId, TradeId,
 };
 

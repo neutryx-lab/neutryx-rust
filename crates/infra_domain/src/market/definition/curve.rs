@@ -7,7 +7,7 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::market::definition::CurveDefinition;
+//! use infra_domain::market::definition::CurveDefinition;
 //!
 //! let curve = CurveDefinition::new(
 //!     "USD-SOFR-Discount",
@@ -222,8 +222,8 @@ impl CurveDefinition {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::definition::{CurveDefinition, JumpPillar};
-    /// use infra_master::time::Date;
+    /// use infra_domain::market::definition::{CurveDefinition, JumpPillar};
+    /// use infra_domain::time::Date;
     ///
     /// let pillars = vec![
     ///     JumpPillar::new(Date::from_ymd(2024, 3, 20).unwrap(), 25.0, 0.85),
@@ -249,8 +249,8 @@ impl CurveDefinition {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::definition::{CurveDefinition, JumpPillar};
-    /// use infra_master::time::Date;
+    /// use infra_domain::market::definition::{CurveDefinition, JumpPillar};
+    /// use infra_domain::time::Date;
     ///
     /// let curve = CurveDefinition::new("USD-SOFR", "USD-SOFR", vec!["USD-OIS-1Y".to_string()])
     ///     .with_jump_pillar(JumpPillar::new(

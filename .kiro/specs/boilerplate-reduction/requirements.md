@@ -2,7 +2,7 @@
 
 ## Introduction
 
-本仕様は、neutryx-rust プロジェクトにおける Rust ボイラープレートコードの削減を目的としています。特に `bon` クレートを活用した Builder パターンの自動生成により、`infra_master` を中心とした手書き Builder 実装を置き換え、コード量の大幅な削減と保守性の向上を実現します。
+本仕様は、neutryx-rust プロジェクトにおける Rust ボイラープレートコードの削減を目的としています。特に `bon` クレートを活用した Builder パターンの自動生成により、`infra_domain` を中心とした手書き Builder 実装を置き換え、コード量の大幅な削減と保守性の向上を実現します。
 
 金融ライブラリの特性（多数の構造体定義、オプショナルフィールド、複雑な初期化ロジック）を踏まえ、`bon` の `#[derive(Builder)]` マクロを導入し、既存の Builder パターンを段階的に移行します。
 
@@ -20,9 +20,9 @@
 
 ---
 
-### Requirement 2: infra_master トレード関連構造体への bon 適用
+### Requirement 2: infra_domain トレード関連構造体への bon 適用
 
-**Objective:** As a 開発者, I want `infra_master::trade` モジュールの主要構造体に `#[derive(Builder)]` を適用する, so that 手書きの `TradeBuilder`, `LegBuilder` 等を削除し、コード量を削減できる。
+**Objective:** As a 開発者, I want `infra_domain::trade` モジュールの主要構造体に `#[derive(Builder)]` を適用する, so that 手書きの `TradeBuilder`, `LegBuilder` 等を削除し、コード量を削減できる。
 
 #### Acceptance Criteria
 
@@ -53,7 +53,7 @@
 
 #### Acceptance Criteria
 
-1. When bon builders replace hand-written builders, all existing unit tests in `infra_master` shall pass without modification (except for import path changes).
+1. When bon builders replace hand-written builders, all existing unit tests in `infra_domain` shall pass without modification (except for import path changes).
 2. When builder method signatures change, the migration shall update all call sites across the workspace.
 3. The migration shall not change the runtime behavior of constructed objects.
 4. While migration is in progress, the workspace shall remain compilable with `cargo build --workspace`.
@@ -74,7 +74,7 @@
 
 ### Requirement 6: 追加の構造体への段階的適用
 
-**Objective:** As a 開発者, I want `infra_master` 以外の適用可能な構造体も特定する, so that 将来のボイラープレート削減の対象を明確化できる。
+**Objective:** As a 開発者, I want `infra_domain` 以外の適用可能な構造体も特定する, so that 将来のボイラープレート削減の対象を明確化できる。
 
 #### Acceptance Criteria
 
@@ -97,7 +97,7 @@
 neutryx-rust のような金融ライブラリの特性（多数の構造体定義、数値計算、複雑なエラー処理）を踏まえ、導入効果が特に高いものを厳選して提案します。
 
 1. bon (次世代ビルダー自動生成)
-現在、infra_master/src/trade/builder.rs などで手書きの Builder パターンを実装されていると思われますが、Rust の手書き Builder は非常にコード量がかさみます。
+現在、infra_domain/src/trade/builder.rs などで手書きの Builder パターンを実装されていると思われますが、Rust の手書き Builder は非常にコード量がかさみます。
 
 bon は2024年に登場した比較的新しいクレートで、従来の derive_builder よりも遥かに強力かつ柔軟で、関数引数や構造体に対して直感的な Builder を自動生成します。
 
@@ -139,4 +139,4 @@ let t = Trade::builder()
     .id("TRD-1")
     .currency("USD") // .into() が自動で効く
     .build();
-bon: Builderパターンの記述量を90%削減できます。特に infra_master 周りで効果絶大です。
+bon: Builderパターンの記述量を90%削減できます。特に infra_domain 周りで効果絶大です。

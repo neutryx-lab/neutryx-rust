@@ -20,7 +20,7 @@
 
 - [x] 1.2 trade/convention の deprecation 付き re-export 設定
   - trade/convention/mod.rs を deprecation 警告付き re-export に変更
-  - `#[deprecated(since = "0.x.0", note = "Use infra_master::market::convention instead")]` を追加
+  - `#[deprecated(since = "0.x.0", note = "Use infra_domain::market::convention instead")]` を追加
   - 既存の外部参照が警告付きでコンパイル成功することを確認
   - _Requirements: 13_
 

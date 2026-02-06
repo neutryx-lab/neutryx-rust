@@ -106,7 +106,7 @@
   - add_instrumentメソッドで単一のFxVolInstrumentを受け取る
   - 同じexpiryのインストゥルメントをBTreeMapでグループ化
   - add_instrumentsメソッドで複数インストゥルメントを一括追加
-  - infra_masterの型定義を直接使用
+  - infra_domainの型定義を直接使用
   - _Requirements: 5.3, 5.4, 5.5, 5.6_
 
 - [ ] 5.3 calibrateメソッドを実装する

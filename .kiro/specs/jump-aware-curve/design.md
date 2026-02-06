@@ -25,8 +25,8 @@
 
 ### Existing Architecture Analysis
 
-- **CurveDefinition**: `infra_master/market/definition/curve.rs` に存在。instruments, calibration_method, interpolation を保持
-- **EventInstrument**: `infra_master/market/event_instrument.rs` に存在。expected_spread, confidence, rate_index を保持
+- **CurveDefinition**: `infra_domain/market/definition/curve.rs` に存在。instruments, calibration_method, interpolation を保持
+- **EventInstrument**: `infra_domain/market/event_instrument.rs` に存在。expected_spread, confidence, rate_index を保持
 - **YieldCurve trait**: `pricer_models/market.rs` で `enum_dispatch` パターン実装済み
 - **CurveBootstrapper**: 逐次ブートストラップで Newton-Raphson ソルバー使用
 
@@ -34,7 +34,7 @@
 
 ```mermaid
 graph TB
-    subgraph infra_master
+    subgraph infra_domain
         CD[CurveDefinition]
         JP[JumpPillar]
         EI[EventInstrument]
@@ -62,7 +62,7 @@ graph TB
 
 **Architecture Integration**:
 - **Selected pattern**: ハイブリッド（定義は新規ファイル、実装は既存拡張）
-- **Domain boundaries**: infra_master（定義）→ pricer_models（実装）の A-I-P-S 依存方向維持
+- **Domain boundaries**: infra_domain（定義）→ pricer_models（実装）の A-I-P-S 依存方向維持
 - **Existing patterns preserved**: Builder パターン、enum_dispatch、serde feature flag
 - **New components rationale**: JumpPillar を分離ファイルとして責務明確化
 - **Steering compliance**: 静的ディスパッチ、後方互換性、British English 命名規則
@@ -127,16 +127,16 @@ sequenceDiagram
 
 | Component | Domain/Layer | Intent | Req Coverage | Key Dependencies | Contracts |
 |-----------|--------------|--------|--------------|------------------|-----------|
-| JumpPillar | infra_master | ジャンプ定義 | 1.3, 1.4, 1.5 | Date, EventInstrument | State |
-| JumpPillarBuilder | infra_master | EventInstrument 変換 | 4.1-4.5 | EventInstrument, RateIndex | Service |
-| CurveDefinition (拡張) | infra_master | 曲線レシピ | 1.1, 1.2, 6.1-6.6 | JumpPillar | State |
+| JumpPillar | infra_domain | ジャンプ定義 | 1.3, 1.4, 1.5 | Date, EventInstrument | State |
+| JumpPillarBuilder | infra_domain | EventInstrument 変換 | 4.1-4.5 | EventInstrument, RateIndex | Service |
+| CurveDefinition (拡張) | infra_domain | 曲線レシピ | 1.1, 1.2, 6.1-6.6 | JumpPillar | State |
 | Limit | pricer_core | 極限指定 | 2.1 | - | State |
 | BootstrappedCurve (拡張) | pricer_models | 曲線実装 | 2.2-2.6, 5.1-5.5 | YieldCurve, Limit | Service |
 | CurveBootstrapper (拡張) | pricer_models | キャリブレーション | 3.1-3.6 | CurveDefinition | Service |
 
 ---
 
-### infra_master::market::definition
+### infra_domain::market::definition
 
 #### JumpPillar
 

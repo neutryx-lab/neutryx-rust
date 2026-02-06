@@ -3,8 +3,8 @@
 //! This module tests the complete flow from JumpPillar definitions through
 //! curve bootstrapping to jump-aware discount factor calculations.
 
-use infra_master::market::definition::JumpPillar;
-use infra_master::time::{Date, DayCounter};
+use infra_domain::market::definition::JumpPillar;
+use infra_domain::time::{Date, DayCounter};
 use pricer_core::types::Limit;
 use pricer_models::builder::CurveBootstrapper;
 use pricer_models::market::curves::{BootstrappedCurve, MarketInstrument, YieldCurve};

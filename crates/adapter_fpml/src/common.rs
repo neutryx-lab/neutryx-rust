@@ -4,7 +4,7 @@
 //! and schedule definitions.
 
 use crate::error::FpmlError;
-use infra_master::Date;
+use infra_domain::Date;
 
 /// Reads XML content into a string for easier processing.
 pub fn xml_to_string(xml: &str) -> String {

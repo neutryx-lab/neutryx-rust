@@ -7,7 +7,7 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::market::{
+//! use infra_domain::market::{
 //!     DefinitionRegistry, InstrumentDefinition, RateIndexDefinition,
 //!     CurveDefinition, Currency, RateType, RateIndex,
 //! };

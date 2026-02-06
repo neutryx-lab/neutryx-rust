@@ -1,11 +1,11 @@
 # Requirements Document
 
 ## Project Description (Input)
-crates\infra_master内のcrates\infra_master\src\marketとcrates\infra_master\src\trade\conventionの再定義を行いたい。マーケットレートには対応するMarketConventionがあり、それと合わせることでTradeExpandできるInstrumentとして定義できる(Eventsも同様に日付とSpreadを持つようなInstrumentとできる)、としたい。現状のdemo_guiを出発点に、あらゆる通貨のdemo\data\inputを正し以下たちに修正して用意し、MarketData画面ではRateを選択すると対応するConvention情報と合わせてInstrumentとしての情報をRateDetailとして表示し、TradeExpand画面を廃止して、MarketData画面下部にそのInsturumentをCFにまで展開して表示するようにする。
+crates\infra_domain内のcrates\infra_domain\src\marketとcrates\infra_domain\src\trade\conventionの再定義を行いたい。マーケットレートには対応するMarketConventionがあり、それと合わせることでTradeExpandできるInstrumentとして定義できる(Eventsも同様に日付とSpreadを持つようなInstrumentとできる)、としたい。現状のdemo_guiを出発点に、あらゆる通貨のdemo\data\inputを正し以下たちに修正して用意し、MarketData画面ではRateを選択すると対応するConvention情報と合わせてInstrumentとしての情報をRateDetailとして表示し、TradeExpand画面を廃止して、MarketData画面下部にそのInsturumentをCFにまで展開して表示するようにする。
 
 ## Introduction
 
-本仕様は `infra_master` クレートにおけるマーケットデータとコンベンションの統合アーキテクチャを定義する。MarketRate と MarketConvention を組み合わせて Instrument として統一的に扱い、demo GUI の MarketData 画面で Rate 選択時に Instrument 詳細とキャッシュフロー展開を表示する機能を実現する。
+本仕様は `infra_domain` クレートにおけるマーケットデータとコンベンションの統合アーキテクチャを定義する。MarketRate と MarketConvention を組み合わせて Instrument として統一的に扱い、demo GUI の MarketData 画面で Rate 選択時に Instrument 詳細とキャッシュフロー展開を表示する機能を実現する。
 
 ### 設計原則: RateIndex と MarketConvention の分離
 
@@ -299,11 +299,11 @@ MarketRate (USD 5Y OIS, rate=3.42%)
 #### Acceptance Criteria
 
 1. The Infra Master shall move all files from `trade/convention/` to `market/convention/`.
-2. When the migration is complete, the module shall be accessible via `infra_master::market::convention::*`.
+2. When the migration is complete, the module shall be accessible via `infra_domain::market::convention::*`.
 3. The Infra Master shall maintain backward compatibility by re-exporting from `trade::convention`:
    ```rust
    // In trade/convention/mod.rs (deprecated)
-   #[deprecated(since = "0.x.0", note = "Use infra_master::market::convention instead")]
+   #[deprecated(since = "0.x.0", note = "Use infra_domain::market::convention instead")]
    pub use crate::market::convention::*;
    ```
 4. The `market/convention/` module shall include all existing convention types:
@@ -314,7 +314,7 @@ MarketRate (USD 5Y OIS, rate=3.42%)
    - `CdsConvention`, `EquityConvention`, `CommodityConvention`
    - `InflationSwapConvention`
    - `ConventionSet`
-5. The `market/` module's public API shall export convention types via `infra_master::market::convention`.
+5. The `market/` module's public API shall export convention types via `infra_domain::market::convention`.
 6. If any crate depends on `trade::convention`, the build shall succeed with deprecation warnings.
 
 ---

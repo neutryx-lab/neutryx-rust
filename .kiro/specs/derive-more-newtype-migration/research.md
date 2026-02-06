@@ -22,8 +22,8 @@
 
 | 型 | 場所 | 算術演算 | バリデーション |
 |---|---|---|---|
-| `Delta(f64)` | `infra_master/trade/instrument_def/fx_vol.rs:167` | なし | あり (0 < delta <= 50) |
-| `BasisSpread(f64)` | `infra_master/trade/instrument_def/xccy.rs:28` | なし | なし |
+| `Delta(f64)` | `infra_domain/trade/instrument_def/fx_vol.rs:167` | なし | あり (0 < delta <= 50) |
+| `BasisSpread(f64)` | `infra_domain/trade/instrument_def/xccy.rs:28` | なし | なし |
 | `TracedFloat` | `pricer_core/types/traced_float.rs:60` | 手動実装 | カスタムロジック |
 | `SimpleDate(i32)` | `pricer_pricing/generic_pricer/result.rs:55` | なし | なし |
 
@@ -31,16 +31,16 @@
 
 | 型 | 場所 | Display | From |
 |---|---|---|---|
-| `CounterPartyId(String)` | `infra_master/counterparty/ids.rs:32` | 手動 | 手動 |
-| `LegalEntityId(String)` | `infra_master/counterparty/ids.rs:91` | 手動 | なし (バリデーションあり) |
-| `NettingSetId(String)` | `infra_master/counterparty/ids.rs:148` | 手動 | 手動 |
-| `CcpId(String)` | `infra_master/counterparty/ids.rs:194` | 手動 | 手動 |
-| `IsdaAgreementId(String)` | `infra_master/counterparty/ids.rs:240` | 手動 | 手動 |
-| `VariationMarginAgreementId(String)` | `infra_master/counterparty/ids.rs:286` | 手動 | 手動 |
-| `CrossBookNettingAgreementId(String)` | `infra_master/counterparty/ids.rs:332` | 手動 | 手動 |
-| `TradeId(String)` | `infra_master/ids.rs` via macro | マクロ | マクロ |
-| `PortfolioId(String)` | `infra_master/ids.rs` via macro | マクロ | マクロ |
-| `BookId(String)` | `infra_master/ids.rs` via macro | マクロ | マクロ |
+| `CounterPartyId(String)` | `infra_domain/counterparty/ids.rs:32` | 手動 | 手動 |
+| `LegalEntityId(String)` | `infra_domain/counterparty/ids.rs:91` | 手動 | なし (バリデーションあり) |
+| `NettingSetId(String)` | `infra_domain/counterparty/ids.rs:148` | 手動 | 手動 |
+| `CcpId(String)` | `infra_domain/counterparty/ids.rs:194` | 手動 | 手動 |
+| `IsdaAgreementId(String)` | `infra_domain/counterparty/ids.rs:240` | 手動 | 手動 |
+| `VariationMarginAgreementId(String)` | `infra_domain/counterparty/ids.rs:286` | 手動 | 手動 |
+| `CrossBookNettingAgreementId(String)` | `infra_domain/counterparty/ids.rs:332` | 手動 | 手動 |
+| `TradeId(String)` | `infra_domain/ids.rs` via macro | マクロ | マクロ |
+| `PortfolioId(String)` | `infra_domain/ids.rs` via macro | マクロ | マクロ |
+| `BookId(String)` | `infra_domain/ids.rs` via macro | マクロ | マクロ |
 
 #### その他の NewType
 
@@ -48,11 +48,11 @@
 |---|---|---|
 | `NodeId(u64)` | `pricer_core/types/traced.rs:36` | 計算グラフ用 |
 | `ScopeId(u64)` | `pricer_core/types/traced.rs:57` | 計算グラフ用 |
-| `Date(NaiveDate)` | `infra_master/time/types.rs:65` | Sub 手動実装 |
+| `Date(NaiveDate)` | `infra_domain/time/types.rs:65` | Sub 手動実装 |
 
 ### 1.2 既存のマクロパターン
 
-`infra_master/src/ids.rs` に `define_id!` マクロが存在し、以下を自動生成:
+`infra_domain/src/ids.rs` に `define_id!` マクロが存在し、以下を自動生成:
 - `new()`, `as_str()` メソッド
 - `Display` 実装
 - `From<String>`, `From<&str>` 実装

@@ -4,7 +4,7 @@
 
 #[cfg(test)]
 mod tests {
-    use infra_master::{
+    use infra_domain::{
         trade::{
             Cashflow, CashflowType, Direction, IndexType, Leg, LegType, Payoff, Trade, TradeType,
         },

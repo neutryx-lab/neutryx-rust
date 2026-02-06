@@ -142,6 +142,6 @@
 - `crates/pricer_models/src/builder/curve/global.rs` — GlobalBootstrapper実装
 - `crates/pricer_models/src/builder/problem.rs` — CalibrationProblem、Jacobian計算
 - `crates/pricer_models/src/builder/matrix.rs` — InterpolationMatrix
-- `crates/infra_master/src/market/events/market_event.rs` — MarketEvent定義
+- `crates/infra_domain/src/market/events/market_event.rs` — MarketEvent定義
 - `demo/gui/src/web/handlers/curves.rs` — REST APIハンドラ
 - gap-analysis.md — 詳細なコンポーネント分析

@@ -9,9 +9,9 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::market::index::{RateIndex, FxIndex, SwapIndex};
-//! use infra_master::market::core::Currency;
-//! use infra_master::time::Tenor;
+//! use infra_domain::market::index::{RateIndex, FxIndex, SwapIndex};
+//! use infra_domain::market::core::Currency;
+//! use infra_domain::time::Tenor;
 //!
 //! // Rate index
 //! let sofr = RateIndex::Sofr;

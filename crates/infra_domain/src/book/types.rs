@@ -18,7 +18,7 @@ use crate::counterparty::LegalEntityId;
 /// # Examples
 ///
 /// ```
-/// use infra_master::book::BookType;
+/// use infra_domain::book::BookType;
 ///
 /// let book_type = BookType::Trading;
 /// assert_eq!(book_type, BookType::default());
@@ -71,7 +71,7 @@ impl BookType {
 /// # Examples
 ///
 /// ```
-/// use infra_master::book::RegulatoryBookType;
+/// use infra_domain::book::RegulatoryBookType;
 ///
 /// let reg_type = RegulatoryBookType::TB;
 /// assert!(reg_type.is_trading_book());
@@ -116,7 +116,7 @@ impl RegulatoryBookType {
 /// # Examples
 ///
 /// ```
-/// use infra_master::book::BookOwnership;
+/// use infra_domain::book::BookOwnership;
 ///
 /// let ownership = BookOwnership::new()
 ///     .with_desk("FX Spot")
@@ -187,7 +187,7 @@ impl BookOwnership {
 /// # Examples
 ///
 /// ```
-/// use infra_master::book::BookMetadata;
+/// use infra_domain::book::BookMetadata;
 ///
 /// let metadata = BookMetadata::new();
 /// assert!(metadata.created_by().is_none());

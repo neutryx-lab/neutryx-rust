@@ -190,7 +190,7 @@ sequenceDiagram
 | PricingConfig | infra_config | 価格計算パラメータ定義 | 1.1-1.5 | Settings (P0) | State |
 | RiskConfig | infra_config | リスク計算パラメータ定義 | 1.1-1.5, 7.1-7.5 | Settings (P0) | State |
 | JsonLoader | adapter_loader | JSONファイル読み込み | 2.1-2.5 | serde_json (P0) | Service |
-| TradeLoader | adapter_loader | 約定データ変換 | 2.1 | infra_master::Trade (P0) | Service |
+| TradeLoader | adapter_loader | 約定データ変換 | 2.1 | infra_domain::Trade (P0) | Service |
 | MarketLoader | adapter_loader | マーケットデータ変換 | 2.2 | pricer_models::Market (P0) | Service |
 | GenericPricer拡張 | pricer_pricing | 設定駆動プライシング | 3.1-3.5 | ModelConfig (P0), MarketProvider (P0) | Service |
 | PortfolioPricer | pricer_pricing | ポートフォリオ並列処理 | 4.1-4.5 | BatchPricer (P0), Rayon (P1) | Service |
@@ -393,12 +393,12 @@ impl JsonLoader {
 | Requirements | 2.1 |
 
 **Responsibilities & Constraints**
-- JSONスキーマから`infra_master::trade::Trade`への変換
+- JSONスキーマから`infra_domain::trade::Trade`への変換
 - 必須フィールド検証（trade_id, instrument, currency）
 
 **Dependencies**
 - Inbound: JsonLoader — ファイル読み込み (P0)
-- Outbound: infra_master::trade — Trade型 (P0)
+- Outbound: infra_domain::trade — Trade型 (P0)
 
 **Contracts**: Service [x]
 

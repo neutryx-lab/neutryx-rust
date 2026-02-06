@@ -922,12 +922,12 @@ impl<T: Float + 'static> CurveSet<T> {
     /// Maps the rate index to a curve name and looks up the forward rate.
     pub fn forward_rate_for_index(
         &self,
-        rate_index: infra_master::market::RateIndex,
+        rate_index: infra_domain::market::RateIndex,
         t1: T,
         t2: T,
     ) -> Result<T, MarketDataError> {
         use curves::YieldCurve;
-        use infra_master::market::RateIndex;
+        use infra_domain::market::RateIndex;
 
         let curve_name = match rate_index {
             RateIndex::Sofr => CurveName::Sofr,
@@ -983,7 +983,7 @@ impl MarketProvider {
     }
 
     /// Gets a curve for the given currency.
-    pub fn get_curve(&self, _currency: infra_master::market::Currency) -> Option<&CurveEnum<f64>> {
+    pub fn get_curve(&self, _currency: infra_domain::market::Currency) -> Option<&CurveEnum<f64>> {
         // Placeholder: return first available curve or None
         self.curve_set.curves.values().next()
     }
@@ -999,7 +999,7 @@ impl MarketProvider {
 /// FX forward curve traits and implementations.
 pub mod fx_curves {
     use enum_dispatch::enum_dispatch;
-    use infra_master::trade::instrument_def::CurrencyPair;
+    use infra_domain::trade::instrument_def::CurrencyPair;
 
     use super::{curves::YieldCurve, *};
 
@@ -1211,8 +1211,8 @@ pub use fx_curves::{FlatFxCurve, FxCurve, FxCurveEnum, IrpFxCurve};
 
 /// Utilities for converting JumpPillar definitions to curve-compatible format.
 pub mod jumps {
-    use infra_master::market::definition::JumpPillar;
-    use infra_master::time::{Date, DayCounter};
+    use infra_domain::market::definition::JumpPillar;
+    use infra_domain::time::{Date, DayCounter};
 
     /// A jump entry for use in bootstrapped curves.
     ///
@@ -1275,8 +1275,8 @@ pub mod jumps {
     ///
     /// ```
     /// use pricer_models::market::jumps::convert_jump_pillars;
-    /// use infra_master::market::definition::JumpPillar;
-    /// use infra_master::time::{Date, DayCounter};
+    /// use infra_domain::market::definition::JumpPillar;
+    /// use infra_domain::time::{Date, DayCounter};
     ///
     /// let valuation = Date::from_ymd(2024, 1, 1).unwrap();
     /// let pillars = vec![
@@ -1871,7 +1871,7 @@ mod tests {
 
     #[test]
     fn test_flat_fx_curve() {
-        use infra_master::{trade::instrument_def::CurrencyPair, Currency};
+        use infra_domain::{trade::instrument_def::CurrencyPair, Currency};
 
         let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
         let fwd_pts = 0.02_f64; // 2% forward points per year
@@ -1889,7 +1889,7 @@ mod tests {
 
     #[test]
     fn test_irp_fx_curve() {
-        use infra_master::{trade::instrument_def::CurrencyPair, Currency};
+        use infra_domain::{trade::instrument_def::CurrencyPair, Currency};
 
         let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
         let dom_curve = FlatCurve::new(0.03_f64); // USD rate
@@ -1912,7 +1912,7 @@ mod tests {
 
     #[test]
     fn test_fx_curve_enum_irp_flat() {
-        use infra_master::{trade::instrument_def::CurrencyPair, Currency};
+        use infra_domain::{trade::instrument_def::CurrencyPair, Currency};
 
         let pair = CurrencyPair::new(Currency::USD, Currency::JPY);
         let fx_curve = FxCurveEnum::irp_flat(150.0, 0.05, 0.01, pair);
@@ -1925,7 +1925,7 @@ mod tests {
 
     #[test]
     fn test_fx_curve_currency_pair() {
-        use infra_master::{trade::instrument_def::CurrencyPair, Currency};
+        use infra_domain::{trade::instrument_def::CurrencyPair, Currency};
 
         let pair = CurrencyPair::new(Currency::GBP, Currency::USD);
         let fx_curve: FxCurveEnum<f64> = FxCurveEnum::flat(1.25, 0.01, pair);
@@ -1935,7 +1935,7 @@ mod tests {
 
     #[test]
     fn test_irp_fx_curve_with_negative_spread() {
-        use infra_master::{trade::instrument_def::CurrencyPair, Currency};
+        use infra_domain::{trade::instrument_def::CurrencyPair, Currency};
 
         // Case where foreign rate > domestic rate (forward < spot)
         let pair = CurrencyPair::new(Currency::USD, Currency::JPY);

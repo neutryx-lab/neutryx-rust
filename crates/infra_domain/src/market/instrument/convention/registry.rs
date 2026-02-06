@@ -72,10 +72,10 @@ impl std::error::Error for RegistryError {}
 /// # Example
 ///
 /// ```rust
-/// use infra_master::market::convention::{
+/// use infra_domain::market::convention::{
 ///     ConventionRegistry, MarketConvention, DepositConvention,
 /// };
-/// use infra_master::market::{Currency, RateType};
+/// use infra_domain::market::{Currency, RateType};
 ///
 /// let mut registry = ConventionRegistry::new();
 /// registry.register(
@@ -110,8 +110,8 @@ impl ConventionRegistry {
     /// # Example
     ///
     /// ```rust
-    /// use infra_master::market::convention::ConventionRegistry;
-    /// use infra_master::market::{Currency, RateType};
+    /// use infra_domain::market::convention::ConventionRegistry;
+    /// use infra_domain::market::{Currency, RateType};
     ///
     /// let registry = ConventionRegistry::with_defaults();
     /// assert!(registry.get(Currency::USD, RateType::Deposit).is_some());
@@ -184,8 +184,8 @@ impl ConventionRegistry {
     /// # Example
     ///
     /// ```rust
-    /// use infra_master::market::convention::ConventionRegistry;
-    /// use infra_master::market::{Currency, RateType};
+    /// use infra_domain::market::convention::ConventionRegistry;
+    /// use infra_domain::market::{Currency, RateType};
     ///
     /// let registry = ConventionRegistry::with_defaults();
     ///
@@ -219,7 +219,7 @@ impl ConventionRegistry {
     /// # Example
     ///
     /// ```rust
-    /// use infra_master::market::convention::ConventionRegistry;
+    /// use infra_domain::market::convention::ConventionRegistry;
     ///
     /// let registry = ConventionRegistry::with_defaults();
     /// for key in registry.keys() {

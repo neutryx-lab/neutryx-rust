@@ -11,7 +11,7 @@ num-traits.workspace = true
 chrono = { workspace = true, features = [] }
 thiserror.workspace = true
 serde = { workspace = true, features = ["derive"], optional = true }
-infra_master = { path = "../infra_master" }
+infra_domain = { path = "../infra_domain" }
 rayon = { workspace = true, optional = true }
 ndarray = { workspace = true, optional = true }
 nalgebra = { workspace = true, optional = true }
@@ -38,7 +38,7 @@ harness = false
 default = ["serde", "equity", "parallel", "external-numerics", "rng"]
 enzyme-mode = []                   # Production mode (Enzyme AD)
 execution-trace = []               # Execution trace mode for computation graph extraction
-serde = ["dep:serde", "chrono/serde", "infra_master/serde"]  # Serialisation support
+serde = ["dep:serde", "chrono/serde", "infra_domain/serde"]  # Serialisation support
 parallel = ["dep:rayon"]           # Parallel bootstrapping support
 rng = ["dep:rand", "dep:rand_distr"]  # Random number generation (PRNG, QMC placeholders)
 linalg = ["dep:ndarray", "dep:nalgebra", "rng"]  # Linear algebra support (includes multi-dimensional copula)

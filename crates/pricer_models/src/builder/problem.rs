@@ -724,7 +724,7 @@ where
     ///
     /// # Arguments
     ///
-    /// * `market_instruments` - Resolved market instruments from infra_master
+    /// * `market_instruments` - Resolved market instruments from infra_domain
     /// * `valuation_date` - The valuation date for compilation
     ///
     /// # Returns
@@ -732,8 +732,8 @@ where
     /// * `Ok(Self)` - Calibration problem with compiled instruments
     /// * `Err(CompileError)` - If any instrument fails to compile
     pub fn from_market_instruments(
-        market_instruments: &[infra_master::market::MarketInstrument],
-        valuation_date: infra_master::time::Date,
+        market_instruments: &[infra_domain::market::MarketInstrument],
+        valuation_date: infra_domain::time::Date,
     ) -> Result<Self, crate::builder::compile::CompileError> {
         use crate::builder::compile::InstrumentCompiler;
 
@@ -1483,12 +1483,12 @@ mod tests {
     // from_market_instruments Tests (Requirement 2)
     // =========================================================================
 
-    use infra_master::market::convention::{DepositConvention, FraConvention, SwapConvention};
-    use infra_master::market::{
+    use infra_domain::market::convention::{DepositConvention, FraConvention, SwapConvention};
+    use infra_domain::market::{
         convention::MarketConvention, Currency, MarketInstrument as InfraMasterInstrument, RateId,
         RateType,
     };
-    use infra_master::time::{Date, Tenor};
+    use infra_domain::time::{Date, Tenor};
 
     fn create_infra_market_instruments() -> (Vec<InfraMasterInstrument>, Date) {
         let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();

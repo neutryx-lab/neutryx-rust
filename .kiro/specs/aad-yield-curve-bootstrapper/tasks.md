@@ -156,7 +156,7 @@ AAD対応イールドカーブ・ブートストラッパーの実装タスク�
   - ACT/360、ACT/365、30/360などデイカウント慣行の適用
   - Following、Modified Following、Precedingの営業日調整
   - スポット日（T+2等）の計算
-  - `infra_master`カレンダー機能との統合
+  - `infra_domain`カレンダー機能との統合
   - `date_utils.rs`に`DateCalculator`として実装完了
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
 

@@ -9,7 +9,7 @@
 //! # Architecture Position
 //!
 //! Part of the **A**dapter layer in the A-I-P-S architecture.
-//! Converts external JSON data into `infra_master` domain types.
+//! Converts external JSON data into `infra_domain` domain types.
 //!
 //! # Example
 //!
@@ -147,7 +147,7 @@ impl JsonLoader {
 
 /// Trade data loader for JSON format.
 ///
-/// Loads trade data from JSON files into `infra_master::trade::Trade`
+/// Loads trade data from JSON files into `infra_domain::trade::Trade`
 /// structures.
 pub struct TradeLoader;
 
@@ -161,7 +161,7 @@ impl TradeLoader {
     /// # Returns
     ///
     /// Deserialized `Trade` instance.
-    pub fn load<P: AsRef<Path>>(path: P) -> Result<infra_master::trade::Trade, LoaderError> {
+    pub fn load<P: AsRef<Path>>(path: P) -> Result<infra_domain::trade::Trade, LoaderError> {
         JsonLoader::load(path)
     }
 
@@ -176,7 +176,7 @@ impl TradeLoader {
     /// Vector of `Trade` instances.
     pub fn load_portfolio<P: AsRef<Path>>(
         path: P,
-    ) -> Result<Vec<infra_master::trade::Trade>, LoaderError> {
+    ) -> Result<Vec<infra_domain::trade::Trade>, LoaderError> {
         JsonLoader::load(path)
     }
 
@@ -189,7 +189,7 @@ impl TradeLoader {
     /// # Returns
     ///
     /// Vector of successfully loaded trades.
-    pub fn load_glob(pattern: &str) -> Result<Vec<infra_master::trade::Trade>, LoaderError> {
+    pub fn load_glob(pattern: &str) -> Result<Vec<infra_domain::trade::Trade>, LoaderError> {
         JsonLoader::load_glob_ok(pattern)
     }
 }
@@ -379,7 +379,7 @@ impl MarketLoader {
 
 /// CSA (Credit Support Annex) data loader for JSON format.
 ///
-/// Loads CSA terms from JSON files into `infra_master::counterparty::CsaTerms`.
+/// Loads CSA terms from JSON files into `infra_domain::counterparty::CsaTerms`.
 pub struct CsaLoader;
 
 impl CsaLoader {
@@ -394,7 +394,7 @@ impl CsaLoader {
     /// `CsaTerms` instance.
     pub fn load<P: AsRef<Path>>(
         path: P,
-    ) -> Result<infra_master::counterparty::CsaTerms, LoaderError> {
+    ) -> Result<infra_domain::counterparty::CsaTerms, LoaderError> {
         JsonLoader::load(path)
     }
 
@@ -409,7 +409,7 @@ impl CsaLoader {
     /// Vector of successfully loaded CSA terms.
     pub fn load_glob(
         pattern: &str,
-    ) -> Result<Vec<infra_master::counterparty::CsaTerms>, LoaderError> {
+    ) -> Result<Vec<infra_domain::counterparty::CsaTerms>, LoaderError> {
         JsonLoader::load_glob_ok(pattern)
     }
 }

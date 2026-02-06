@@ -89,7 +89,7 @@
 
 **変更ファイル**:
 - `crates/pricer_models/src/market/surfaces/fx.rs` (拡張)
-- `crates/infra_master/src/trade/instrument_def/fx.rs` (拡張)
+- `crates/infra_domain/src/trade/instrument_def/fx.rs` (拡張)
 
 **トレードオフ**:
 - ✅ ファイル数最小化
@@ -116,7 +116,7 @@ crates/pricer_models/src/market/
 │   ├── sensitivity.rs        # VolSurfaceSensitivity
 │   └── error.rs              # FxCalibrationError
 
-crates/infra_master/src/trade/instrument_def/
+crates/infra_domain/src/trade/instrument_def/
 ├── fx_vol.rs                 # FxVolInstrument (infra層)
 └── xccy.rs                   # CrossCurrencyBasisSwap
 ```
@@ -133,7 +133,7 @@ crates/infra_master/src/trade/instrument_def/
 **対象**: 段階的実装 + 既存活用
 
 **Phase 1 (Core Types)**:
-- `infra_master`に新規インストルメント型追加
+- `infra_domain`に新規インストルメント型追加
 - 既存`FxSwap`は保持、新規`FxSwapInstrument`追加
 
 **Phase 2 (Builders)**:
@@ -197,7 +197,7 @@ crates/infra_master/src/trade/instrument_def/
 
 ### 推奨アプローチ: Option C (Hybrid)
 
-1. **Phase 1から開始**: `infra_master`にインストルメント型追加（最小リスク、他作業のブロック解除）
+1. **Phase 1から開始**: `infra_domain`にインストルメント型追加（最小リスク、他作業のブロック解除）
 
 2. **SequentialBootstrapper直接活用**: FXカーブ構築に既存ブートストラッパーを90%再利用
 
@@ -228,7 +228,7 @@ crates/infra_master/src/trade/instrument_def/
 | `pricer_models/src/market/fx_density.rs` | Delta-Strike変換 |
 | `pricer_models/src/market/volcube/` | SABR calibration参考 |
 | `pricer_models/src/market/calibration/bootstrapping/` | Bootstrap engine |
-| `infra_master/src/trade/instrument_def/fx.rs` | FxSwap, FxForward |
+| `infra_domain/src/trade/instrument_def/fx.rs` | FxSwap, FxForward |
 | `demo/gui/src/web/fxvol_handlers.rs` | Handler skeleton |
 | `demo/gui/src/web/fxvol_types.rs` | Quote types |
 
@@ -237,7 +237,7 @@ crates/infra_master/src/trade/instrument_def/
 | ファイル | 用途 |
 |---------|------|
 | `pricer_models/src/market/fx_calibration/mod.rs` | FXカリブレーションモジュール |
-| `infra_master/src/trade/instrument_def/fx_vol.rs` | FxVolInstrument |
-| `infra_master/src/trade/instrument_def/xccy.rs` | CrossCurrencyBasisSwap |
+| `infra_domain/src/trade/instrument_def/fx_vol.rs` | FxVolInstrument |
+| `infra_domain/src/trade/instrument_def/xccy.rs` | CrossCurrencyBasisSwap |
 | `demo/gui/src/web/fxcurve_handlers.rs` | FX curve endpoints |
 | `demo/gui/src/web/fxcurve_types.rs` | FX curve types |

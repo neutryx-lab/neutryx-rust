@@ -121,11 +121,11 @@ impl LegConfig {
 
 | 優先度 | クレート | Builder数 | 複雑度 | 移行難易度 |
 |--------|---------|----------|--------|-----------|
-| P0 | infra_master (book, portfolio) | 2 | 低 | 低 |
-| P1 | infra_master (counterparty_entity) | 1 | 低 | 低 |
-| P1 | infra_master (csa) | 1 | 中 | 中 |
-| P2 | infra_master (trade/builder) | 2 | 中 | 中〜高 |
-| P2 | infra_master (counterparty/*) | 8 | 高 | 高 |
+| P0 | infra_domain (book, portfolio) | 2 | 低 | 低 |
+| P1 | infra_domain (counterparty_entity) | 1 | 低 | 低 |
+| P1 | infra_domain (csa) | 1 | 中 | 中 |
+| P2 | infra_domain (trade/builder) | 2 | 中 | 中〜高 |
+| P2 | infra_domain (counterparty/*) | 8 | 高 | 高 |
 | P3 | pricer_pricing (config) | 5 | 低 | 低 |
 | P4 | pricer_core (kernel) | 3 | 高 | 高 |
 | P4 | pricer_models (builder) | 3 | 高 | 要PoC |

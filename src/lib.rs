@@ -56,7 +56,7 @@ pub use infra_config as config;
 ///   [`DayCounter`](master::DayCounter)
 /// - [`Currency`](master::Currency), [`RateIndex`](master::RateIndex)
 /// - Trade builders and ID types
-pub use infra_master as master;
+pub use infra_domain as master;
 /// Persistence layer: database backends, storage traits.
 #[cfg(feature = "storage")]
 pub use infra_store as store;

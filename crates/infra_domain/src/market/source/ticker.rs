@@ -6,8 +6,8 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::market::{TickerMapping, RateId, RateType, Currency};
-//! use infra_master::time::Tenor;
+//! use infra_domain::market::{TickerMapping, RateId, RateType, Currency};
+//! use infra_domain::time::Tenor;
 //!
 //! let mut mapping = TickerMapping::new();
 //!
@@ -34,8 +34,8 @@ use crate::{
 /// # Examples
 ///
 /// ```
-/// use infra_master::market::{TickerMapping, RateId, RateType, Currency};
-/// use infra_master::time::Tenor;
+/// use infra_domain::market::{TickerMapping, RateId, RateType, Currency};
+/// use infra_domain::time::Tenor;
 ///
 /// // Create with default mappings for major currencies
 /// let mapping = TickerMapping::with_defaults();
@@ -57,7 +57,7 @@ impl TickerMapping {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::TickerMapping;
+    /// use infra_domain::market::TickerMapping;
     ///
     /// let mapping = TickerMapping::new();
     /// assert!(mapping.is_empty());
@@ -77,7 +77,7 @@ impl TickerMapping {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::TickerMapping;
+    /// use infra_domain::market::TickerMapping;
     ///
     /// let mapping = TickerMapping::with_defaults();
     /// assert!(!mapping.is_empty());
@@ -223,8 +223,8 @@ impl TickerMapping {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{TickerMapping, RateId, RateType, Currency};
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::market::{TickerMapping, RateId, RateType, Currency};
+    /// use infra_domain::time::Tenor;
     ///
     /// let mut mapping = TickerMapping::new();
     /// let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
@@ -245,7 +245,7 @@ impl TickerMapping {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::TickerMapping;
+    /// use infra_domain::market::TickerMapping;
     ///
     /// let mapping = TickerMapping::with_defaults();
     ///
@@ -267,7 +267,7 @@ impl TickerMapping {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::TickerMapping;
+    /// use infra_domain::market::TickerMapping;
     ///
     /// let mapping = TickerMapping::with_defaults();
     ///
@@ -282,7 +282,7 @@ impl TickerMapping {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::TickerMapping;
+    /// use infra_domain::market::TickerMapping;
     ///
     /// let mapping = TickerMapping::new();
     /// assert_eq!(mapping.len(), 0);
@@ -298,7 +298,7 @@ impl TickerMapping {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::TickerMapping;
+    /// use infra_domain::market::TickerMapping;
     ///
     /// let mapping = TickerMapping::new();
     /// assert!(mapping.is_empty());
@@ -311,7 +311,7 @@ impl TickerMapping {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::TickerMapping;
+    /// use infra_domain::market::TickerMapping;
     ///
     /// let mapping = TickerMapping::with_defaults();
     /// for (ticker, rate_id) in mapping.iter() {

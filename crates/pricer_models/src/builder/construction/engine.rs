@@ -3,7 +3,7 @@
 //! This module provides the [`CurveConstructionEngine`] which orchestrates
 //! the entire curve building process from definitions and market rates.
 
-use infra_master::market::{
+use infra_domain::market::{
     CurveDefinition, DefinitionRegistry, InstrumentDefinition, MarketRateSet, QuoteType,
 };
 
@@ -121,7 +121,7 @@ pub struct ConstructionResult {
 ///
 /// ```ignore
 /// use pricer_models::builder::construction::{CurveConstructionEngine, ConstructionConfig};
-/// use infra_master::market::{DefinitionRegistry, MarketRateSet};
+/// use infra_domain::market::{DefinitionRegistry, MarketRateSet};
 ///
 /// let registry = DefinitionRegistry::new();
 /// // ... load definitions ...
@@ -252,9 +252,9 @@ impl CurveConstructionEngine {
 
         // Convert CurveDefinition interpolation to builder interpolation
         let interpolation = match curve_def.interpolation {
-            infra_master::market::InterpolationMethod::Linear => InterpolationMethod::Linear,
-            infra_master::market::InterpolationMethod::LogLinear => InterpolationMethod::LogLinear,
-            infra_master::market::InterpolationMethod::CubicSpline => {
+            infra_domain::market::InterpolationMethod::Linear => InterpolationMethod::Linear,
+            infra_domain::market::InterpolationMethod::LogLinear => InterpolationMethod::LogLinear,
+            infra_domain::market::InterpolationMethod::CubicSpline => {
                 InterpolationMethod::CubicSpline
             }
         };
@@ -343,10 +343,10 @@ fn map_bootstrap_error(err: BootstrapError) -> ConstructionError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use infra_master::market::{
+    use infra_domain::market::{
         Currency, DataSource, MarketRate, RateId, RateIndexDefinition, RateIndex, RateType,
     };
-    use infra_master::time::Tenor;
+    use infra_domain::time::Tenor;
 
     fn create_test_registry() -> DefinitionRegistry {
         let mut registry = DefinitionRegistry::new();

@@ -11,7 +11,7 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::market::source::{DataSource, SourcePriority};
+//! use infra_domain::market::source::{DataSource, SourcePriority};
 //!
 //! let source = DataSource::Bloomberg;
 //! assert_eq!(source.code(), "BBG");

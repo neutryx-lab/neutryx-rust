@@ -10,13 +10,13 @@
 //! Flat file loaders (CSV/JSON/Parquet) for Neutryx.
 //!
 //! This crate handles bulk loading of CSV, JSON, or Parquet files.
-//! CSA and netting set types are re-exported from `infra_master` for
+//! CSA and netting set types are re-exported from `infra_domain` for
 //! backward compatibility.
 //!
 //! ## Architecture Position
 //!
 //! Part of the **A**dapter layer in the A-I-P-S architecture.
-//! Depends only on `infra_master` (for master data types).
+//! Depends only on `infra_domain` (for master data types).
 //!
 //! ## Example
 //!

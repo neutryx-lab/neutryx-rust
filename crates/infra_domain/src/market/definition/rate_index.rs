@@ -7,8 +7,8 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::market::definition::RateIndexDefinition;
-//! use infra_master::market::{Currency, RateIndex};
+//! use infra_domain::market::definition::RateIndexDefinition;
+//! use infra_domain::market::{Currency, RateIndex};
 //!
 //! // SOFR definition
 //! let sofr = RateIndexDefinition::new("USD-SOFR", Currency::USD, RateIndex::Sofr);

@@ -12,7 +12,7 @@
 
 | モジュール | ファイル | 目的 |
 |-----------|----------|------|
-| `infra_master::market` | `market_instrument.rs` | MarketInstrument (CF-expandable) - `to_trade()` でキャッシュフロー展開 |
+| `infra_domain::market` | `market_instrument.rs` | MarketInstrument (CF-expandable) - `to_trade()` でキャッシュフロー展開 |
 | `pricer_models::market::curves` | `market.rs` | `MarketInstrument<T>` enum (Ois, Irs, Fra, Future, Event) - キャリブレーション用軽量型 |
 | `pricer_models::builder` | `instrument.rs` | `CalibrationInstrument<T>` トレイト |
 | `pricer_models::builder` | `problem.rs` | `CalibrationProblem<T, I>` - Newton 法ソルバー |
@@ -20,7 +20,7 @@
 | `pricer_models::builder::construction` | `engine.rs` | `CurveConstructionEngine` - CurveDefinition からカーブ構築 |
 | `pricer_models::compiler` | `mod.rs` | `TradeCompiler` トレイト - Trade → PricingKernel IR |
 | `pricer_core::kernel` | `pricing_kernel.rs` | `PricingKernel` - SoA IR (64-byte aligned) |
-| `infra_master::market::definition` | `curve.rs` | `CurveDefinition` - カーブ構築レシピ |
+| `infra_domain::market::definition` | `curve.rs` | `CurveDefinition` - カーブ構築レシピ |
 
 ### 1.2 既存パターンの分析
 
@@ -38,7 +38,7 @@ CurveDefinition → CurveConstructionEngine → CurveBootstrapper
 
 #### 2つの MarketInstrument 型
 
-1. **`infra_master::market::MarketInstrument`**
+1. **`infra_domain::market::MarketInstrument`**
    - `MarketConvention` + `Rate` を結合
    - `to_trade()` でキャッシュフロー (Leg, Cashflow) に展開
    - **イテレーション毎にカレンダー演算が発生**
@@ -105,7 +105,7 @@ impl InterpolationMatrix {
 
 #### 課題 1: 2つの MarketInstrument 型の橋渡し
 
-- `infra_master::market::MarketInstrument` (CF-expandable) と
+- `infra_domain::market::MarketInstrument` (CF-expandable) と
 - `pricer_models::market::curves::MarketInstrument<T>` (calibration enum)
 - **解決策**: 新しい `CompiledInstrument` 型を導入し、両者からの変換を提供
 

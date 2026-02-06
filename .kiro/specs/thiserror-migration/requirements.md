@@ -41,11 +41,11 @@ pub enum PricingError {
 |---------|----------|---------|
 | infra_store | src/error.rs | StoreError |
 | infra_config | src/error.rs | ConfigError |
-| infra_master | src/error.rs | MasterDataError, DateError, CurrencyError 等 |
-| infra_master | src/time/error.rs | TimeError |
-| infra_master | src/market/error.rs | MarketRateError |
-| infra_master | src/trade/error.rs | TradeError |
-| infra_master | src/counterparty/error.rs | CounterPartyError |
+| infra_domain | src/error.rs | MasterDataError, DateError, CurrencyError 等 |
+| infra_domain | src/time/error.rs | TimeError |
+| infra_domain | src/market/error.rs | MarketRateError |
+| infra_domain | src/trade/error.rs | TradeError |
+| infra_domain | src/counterparty/error.rs | CounterPartyError |
 | pricer_core | src/types/error.rs | PricingError, SolverError, InterpolationError |
 | pricer_core | src/math/linalg/error.rs | LinearAlgebraError |
 | pricer_core | src/kernel/error.rs | CompileError |

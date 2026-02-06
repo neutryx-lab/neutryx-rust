@@ -11,7 +11,7 @@
 
 - [x] 1.2 旧パス互換性のための re-export 設定
   - lib.rs に `pub use trade::convention;` を追加
-  - 旧パス (`infra_master::convention`) からのアクセスを維持
+  - 旧パス (`infra_domain::convention`) からのアクセスを維持
   - deprecation 警告を追加（0.8.0 で deprecation 予定）
   - _Requirements: 6.7_
 

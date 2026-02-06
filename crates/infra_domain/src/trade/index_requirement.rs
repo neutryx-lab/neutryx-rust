@@ -6,9 +6,9 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::trade::IndexRequirement;
-//! use infra_master::market::{RateIndex, CurrencyPair};
-//! use infra_master::Currency;
+//! use infra_domain::trade::IndexRequirement;
+//! use infra_domain::market::{RateIndex, CurrencyPair};
+//! use infra_domain::Currency;
 //!
 //! // Rate curve requirement
 //! let rate_req = IndexRequirement::RateCurve(RateIndex::Sofr);
@@ -41,10 +41,10 @@ use crate::market::{CurrencyPair, RateIndex};
 /// # Examples
 ///
 /// ```
-/// use infra_master::trade::IndexRequirement;
-/// use infra_master::market::RateIndex;
-/// use infra_master::market::CurrencyPair;
-/// use infra_master::Currency;
+/// use infra_domain::trade::IndexRequirement;
+/// use infra_domain::market::RateIndex;
+/// use infra_domain::market::CurrencyPair;
+/// use infra_domain::Currency;
 ///
 /// // A floating leg requires a rate curve
 /// let sofr_curve = IndexRequirement::RateCurve(RateIndex::Sofr);
@@ -89,8 +89,8 @@ impl IndexRequirement {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::trade::IndexRequirement;
-    /// use infra_master::market::RateIndex;
+    /// use infra_domain::trade::IndexRequirement;
+    /// use infra_domain::market::RateIndex;
     ///
     /// let req = IndexRequirement::RateCurve(RateIndex::Sofr);
     /// assert!(req.is_rate_curve());
@@ -103,8 +103,8 @@ impl IndexRequirement {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::trade::IndexRequirement;
-    /// use infra_master::market::RateIndex;
+    /// use infra_domain::trade::IndexRequirement;
+    /// use infra_domain::market::RateIndex;
     ///
     /// let req = IndexRequirement::SwaptionVol(RateIndex::Sofr);
     /// assert!(req.is_swaption_vol());
@@ -117,9 +117,9 @@ impl IndexRequirement {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::trade::IndexRequirement;
-    /// use infra_master::market::CurrencyPair;
-    /// use infra_master::Currency;
+    /// use infra_domain::trade::IndexRequirement;
+    /// use infra_domain::market::CurrencyPair;
+    /// use infra_domain::Currency;
     ///
     /// let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
     /// let req = IndexRequirement::FxCurve(pair);
@@ -133,9 +133,9 @@ impl IndexRequirement {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::trade::IndexRequirement;
-    /// use infra_master::market::CurrencyPair;
-    /// use infra_master::Currency;
+    /// use infra_domain::trade::IndexRequirement;
+    /// use infra_domain::market::CurrencyPair;
+    /// use infra_domain::Currency;
     ///
     /// let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
     /// let req = IndexRequirement::FxVol(pair);
@@ -149,8 +149,8 @@ impl IndexRequirement {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::trade::IndexRequirement;
-    /// use infra_master::market::RateIndex;
+    /// use infra_domain::trade::IndexRequirement;
+    /// use infra_domain::market::RateIndex;
     ///
     /// let req = IndexRequirement::RateCurve(RateIndex::Sofr);
     /// assert_eq!(req.as_rate_index(), Some(&RateIndex::Sofr));
@@ -171,9 +171,9 @@ impl IndexRequirement {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::trade::IndexRequirement;
-    /// use infra_master::market::CurrencyPair;
-    /// use infra_master::Currency;
+    /// use infra_domain::trade::IndexRequirement;
+    /// use infra_domain::market::CurrencyPair;
+    /// use infra_domain::Currency;
     ///
     /// let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
     /// let req = IndexRequirement::FxCurve(pair);

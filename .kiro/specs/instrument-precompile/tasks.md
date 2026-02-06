@@ -49,7 +49,7 @@
 - [x] 3.1 コンパイラスキャフォールドと検証ロジック
   - InstrumentCompiler<T> 構造体を pricer_models::builder に配置
   - new(valuation_date) コンストラクタを実装
-  - compile() メソッドのシグネチャを定義（infra_master::market::MarketInstrument を入力）
+  - compile() メソッドのシグネチャを定義（infra_domain::market::MarketInstrument を入力）
   - compile_batch() メソッドでバッチ処理をサポート
   - 満期日が評価日より前の場合に InvalidMaturity を返却
   - 負の年率係数に対して InvalidYearFraction を返却

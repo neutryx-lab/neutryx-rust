@@ -77,8 +77,8 @@ pub enum CallFrequency {
 /// # Examples
 ///
 /// ```
-/// use infra_master::counterparty::{CollateralHaircut, EligibleCollateral};
-/// use infra_master::Currency;
+/// use infra_domain::counterparty::{CollateralHaircut, EligibleCollateral};
+/// use infra_domain::Currency;
 ///
 /// // 2% haircut on government bonds
 /// let haircut = CollateralHaircut::new(EligibleCollateral::GovernmentBonds, 0.02).unwrap();
@@ -147,8 +147,8 @@ impl CollateralHaircut {
 /// # Examples
 ///
 /// ```
-/// use infra_master::counterparty::{CsaTerms, EligibleCollateral, CallFrequency};
-/// use infra_master::Currency;
+/// use infra_domain::counterparty::{CsaTerms, EligibleCollateral, CallFrequency};
+/// use infra_domain::Currency;
 ///
 /// let csa = CsaTerms::builder()
 ///     .threshold(1_000_000.0)

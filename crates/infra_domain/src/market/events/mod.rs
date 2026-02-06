@@ -10,7 +10,7 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::market::events::{EventType, EventImportance, MarketEvent, CentralBank};
+//! use infra_domain::market::events::{EventType, EventImportance, MarketEvent, CentralBank};
 //!
 //! // Create a central bank meeting event
 //! let fomc = MarketEvent::new(

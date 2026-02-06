@@ -5,8 +5,8 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::market::{RateIndex, Currency, IndexMetadata, CompoundingMethod};
-//! use infra_master::time::{DayCounter, Tenor, CalendarId};
+//! use infra_domain::market::{RateIndex, Currency, IndexMetadata, CompoundingMethod};
+//! use infra_domain::time::{DayCounter, Tenor, CalendarId};
 //!
 //! let sofr = RateIndex::Sofr;
 //! assert_eq!(sofr.currency(), Currency::USD);
@@ -31,8 +31,8 @@ use crate::{
 /// # Examples
 ///
 /// ```
-/// use infra_master::market::{RateIndex, IndexMetadata, CompoundingMethod};
-/// use infra_master::time::{DayCounter, CalendarId};
+/// use infra_domain::market::{RateIndex, IndexMetadata, CompoundingMethod};
+/// use infra_domain::time::{DayCounter, CalendarId};
 ///
 /// let metadata = RateIndex::Sofr.metadata();
 /// assert_eq!(metadata.compounding_method, CompoundingMethod::Compounded);
@@ -62,7 +62,7 @@ pub struct IndexMetadata {
 /// # Examples
 ///
 /// ```
-/// use infra_master::market::{RateIndex, Currency};
+/// use infra_domain::market::{RateIndex, Currency};
 ///
 /// let euribor = RateIndex::Euribor3M;
 /// assert_eq!(euribor.currency(), Currency::EUR);
@@ -94,7 +94,7 @@ impl RateIndex {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::RateIndex;
+    /// use infra_domain::market::RateIndex;
     ///
     /// let indices = RateIndex::all();
     /// assert_eq!(indices.len(), 7);
@@ -118,7 +118,7 @@ impl RateIndex {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::RateIndex;
+    /// use infra_domain::market::RateIndex;
     ///
     /// let codes = RateIndex::all_codes();
     /// assert!(codes.contains(&"SOFR"));
@@ -142,7 +142,7 @@ impl RateIndex {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::RateIndex;
+    /// use infra_domain::market::RateIndex;
     ///
     /// assert_eq!(RateIndex::Sofr.api_code(), "SOFR");
     /// assert_eq!(RateIndex::Euribor3M.api_code(), "EURIBOR3M");
@@ -165,7 +165,7 @@ impl RateIndex {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{RateIndex, Currency};
+    /// use infra_domain::market::{RateIndex, Currency};
     ///
     /// assert_eq!(RateIndex::default_for_currency(Currency::USD), RateIndex::Sofr);
     /// assert_eq!(RateIndex::default_for_currency(Currency::EUR), RateIndex::Euribor3M);
@@ -186,7 +186,7 @@ impl RateIndex {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{RateIndex, Currency};
+    /// use infra_domain::market::{RateIndex, Currency};
     ///
     /// assert_eq!(RateIndex::Sofr.currency(), Currency::USD);
     /// assert_eq!(RateIndex::Tonar.currency(), Currency::JPY);
@@ -208,8 +208,8 @@ impl RateIndex {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::RateIndex;
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::market::RateIndex;
+    /// use infra_domain::time::Tenor;
     ///
     /// assert_eq!(RateIndex::Sofr.tenor(), Tenor::Overnight);
     /// assert_eq!(RateIndex::Euribor3M.tenor(), Tenor::ThreeMonths);
@@ -229,8 +229,8 @@ impl RateIndex {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::RateIndex;
-    /// use infra_master::time::DayCounter;
+    /// use infra_domain::market::RateIndex;
+    /// use infra_domain::time::DayCounter;
     ///
     /// assert_eq!(RateIndex::Sofr.day_counter(), DayCounter::Actual360);
     /// assert_eq!(RateIndex::Sonia.day_counter(), DayCounter::Actual365Fixed);
@@ -254,7 +254,7 @@ impl RateIndex {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::RateIndex;
+    /// use infra_domain::market::RateIndex;
     ///
     /// assert_eq!(RateIndex::Sofr.name(), "SOFR");
     /// assert_eq!(RateIndex::Euribor3M.name(), "EURIBOR 3M");
@@ -277,7 +277,7 @@ impl RateIndex {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::RateIndex;
+    /// use infra_domain::market::RateIndex;
     ///
     /// assert_eq!(RateIndex::Sofr.code(), "SOFR");
     /// assert_eq!(RateIndex::Euribor3M.code(), "EUR3M");
@@ -300,8 +300,8 @@ impl RateIndex {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{RateIndex, IndexMetadata, CompoundingMethod};
-    /// use infra_master::time::{DayCounter, CalendarId};
+    /// use infra_domain::market::{RateIndex, IndexMetadata, CompoundingMethod};
+    /// use infra_domain::time::{DayCounter, CalendarId};
     ///
     /// let metadata = RateIndex::Sofr.metadata();
     /// assert_eq!(metadata.compounding_method, CompoundingMethod::Compounded);
@@ -360,7 +360,7 @@ impl RateIndex {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::RateIndex;
+    /// use infra_domain::market::RateIndex;
     ///
     /// assert!(RateIndex::Sofr.is_overnight());
     /// assert!(RateIndex::Sonia.is_overnight());
@@ -379,7 +379,7 @@ impl RateIndex {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::RateIndex;
+    /// use infra_domain::market::RateIndex;
     ///
     /// assert!(!RateIndex::Sofr.is_term_index());
     /// assert!(RateIndex::Euribor3M.is_term_index());

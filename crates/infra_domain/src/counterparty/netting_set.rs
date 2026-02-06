@@ -61,7 +61,7 @@ impl std::fmt::Display for NettingType {
 /// # Examples
 ///
 /// ```
-/// use infra_master::counterparty::ExposureConfig;
+/// use infra_domain::counterparty::ExposureConfig;
 ///
 /// let config = ExposureConfig::new()
 ///     .with_time_grid(vec![0.25, 0.5, 1.0, 2.0, 5.0, 10.0])
@@ -267,7 +267,7 @@ impl Default for MporConfig {
 /// # Examples
 ///
 /// ```
-/// use infra_master::counterparty::CollateralizedExposureConfig;
+/// use infra_domain::counterparty::CollateralizedExposureConfig;
 ///
 /// let config = CollateralizedExposureConfig::new()
 ///     .with_eepe_horizon_years(5.0)
@@ -366,7 +366,7 @@ impl Default for CollateralizedExposureConfig {
 /// # Examples
 ///
 /// ```
-/// use infra_master::counterparty::{NettingSet, NettingType, CsaTerms, MarginTerms};
+/// use infra_domain::counterparty::{NettingSet, NettingType, CsaTerms, MarginTerms};
 ///
 /// let ns = NettingSet::builder("NS001", "CP001")
 ///     .netting_type(NettingType::Bilateral)
@@ -611,8 +611,8 @@ impl NettingSetBuilder {
 /// # Examples
 ///
 /// ```
-/// use infra_master::counterparty::{CrossBookNettingAgreement, CounterPartyError};
-/// use infra_master::ids::BookId;
+/// use infra_domain::counterparty::{CrossBookNettingAgreement, CounterPartyError};
+/// use infra_domain::ids::BookId;
 ///
 /// let agreement = CrossBookNettingAgreement::builder("CBNA001", "CP001")
 ///     .add_book("B001")

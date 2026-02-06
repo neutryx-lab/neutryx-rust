@@ -6,9 +6,9 @@
 //! # Example
 //!
 //! ```rust,ignore
-//! use infra_master::market::instrument::{InstrumentDefinition, InstrumentExpander, FxSpot};
-//! use infra_master::market::convention::ConventionSet;
-//! use infra_master::Date;
+//! use infra_domain::market::instrument::{InstrumentDefinition, InstrumentExpander, FxSpot};
+//! use infra_domain::market::convention::ConventionSet;
+//! use infra_domain::Date;
 //!
 //! let fx_spot = FxSpot { /* ... */ };
 //! let instrument = InstrumentDefinition::FxSpot(fx_spot);

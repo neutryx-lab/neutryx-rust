@@ -6,7 +6,7 @@
 //!
 //! Requirements Coverage: 4.1, 4.2, 4.5
 
-// TODO: l1l2-integration feature disabled pending refactoring - instruments moved to infra_master
+// TODO: l1l2-integration feature disabled pending refactoring - instruments moved to infra_domain
 #![cfg(any())] // Disabled: use cfg(any()) which never matches
 
 // =============================================================================

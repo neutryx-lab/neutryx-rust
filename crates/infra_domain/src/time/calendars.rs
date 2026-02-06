@@ -7,7 +7,7 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::time::{Calendar, ConcreteCalendar, CalendarId, Date, BusinessDayConvention};
+//! use infra_domain::time::{Calendar, ConcreteCalendar, CalendarId, Date, BusinessDayConvention};
 //!
 //! let calendar = ConcreteCalendar::get(CalendarId::Target);
 //! let date = Date::from_ymd(2026, 1, 5).unwrap(); // Monday
@@ -38,7 +38,7 @@ use super::types::Date;
 /// # Examples
 ///
 /// ```
-/// use infra_master::time::BusinessDayConvention;
+/// use infra_domain::time::BusinessDayConvention;
 ///
 /// let conv = BusinessDayConvention::ModifiedFollowing;
 /// assert_eq!(conv.name(), "Modified Following");
@@ -84,7 +84,7 @@ impl BusinessDayConvention {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::BusinessDayConvention;
+    /// use infra_domain::time::BusinessDayConvention;
     ///
     /// assert_eq!(BusinessDayConvention::Following.name(), "Following");
     /// assert_eq!(BusinessDayConvention::ModifiedFollowing.name(), "Modified Following");
@@ -106,7 +106,7 @@ impl BusinessDayConvention {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::BusinessDayConvention;
+    /// use infra_domain::time::BusinessDayConvention;
     ///
     /// assert_eq!(BusinessDayConvention::Following.code(), "F");
     /// assert_eq!(BusinessDayConvention::ModifiedFollowing.code(), "MF");
@@ -161,7 +161,7 @@ impl FromStr for BusinessDayConvention {
 /// # Examples
 ///
 /// ```
-/// use infra_master::time::{Calendar, ConcreteCalendar, CalendarId, Date};
+/// use infra_domain::time::{Calendar, ConcreteCalendar, CalendarId, Date};
 ///
 /// let calendar = ConcreteCalendar::get(CalendarId::Target);
 /// let monday = Date::from_ymd(2026, 1, 5).unwrap();
@@ -351,7 +351,7 @@ pub enum JointCalendarRule {
 /// # Examples
 ///
 /// ```
-/// use infra_master::time::{
+/// use infra_domain::time::{
 ///     Calendar, ConcreteCalendar, CalendarId, JointCalendar, JointCalendarRule, Date
 /// };
 ///

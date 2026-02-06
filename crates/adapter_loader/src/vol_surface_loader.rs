@@ -506,7 +506,7 @@ impl VolSurfaceLoader {
 /// Parse a tenor string (e.g., "1Y", "6M", "3M") to years.
 ///
 /// This is a convenience wrapper around
-/// `infra_master::time::parse_tenor_to_years`.
+/// `infra_domain::time::parse_tenor_to_years`.
 ///
 /// # Arguments
 ///
@@ -516,13 +516,13 @@ impl VolSurfaceLoader {
 ///
 /// Tenor in years, or error if parsing fails.
 pub fn parse_tenor_string(s: &str) -> Result<f64, String> {
-    infra_master::time::parse_tenor_to_years(s)
+    infra_domain::time::parse_tenor_to_years(s)
 }
 
 /// Convert expiry string to NaiveDate.
 ///
 /// This is a convenience wrapper around
-/// `infra_master::time::parse_expiry_to_date` that works with
+/// `infra_domain::time::parse_expiry_to_date` that works with
 /// `chrono::NaiveDate`.
 ///
 /// Supports:
@@ -534,13 +534,13 @@ pub fn parse_tenor_string(s: &str) -> Result<f64, String> {
 /// * `expiry_str` - Expiry string
 /// * `as_of_date` - Reference date for tenor-based expiry
 pub fn parse_expiry_string(expiry_str: &str, as_of_date: NaiveDate) -> Result<NaiveDate, String> {
-    let as_of_date = infra_master::time::Date::from(as_of_date);
-    infra_master::time::parse_expiry_to_date(expiry_str, as_of_date).map(|d| d.into_inner())
+    let as_of_date = infra_domain::time::Date::from(as_of_date);
+    infra_domain::time::parse_expiry_to_date(expiry_str, as_of_date).map(|d| d.into_inner())
 }
 
 /// Parse FRA tenor string in "NxM" format (e.g., "3x6", "3X6M", "3Mx6M").
 ///
-/// This is a convenience re-export of `infra_master::time::parse_fra_tenor`.
+/// This is a convenience re-export of `infra_domain::time::parse_fra_tenor`.
 ///
 /// FRA tenors represent forward rate agreements with a start and end period.
 /// Common formats include:
@@ -568,7 +568,7 @@ pub fn parse_expiry_string(expiry_str: &str, as_of_date: NaiveDate) -> Result<Na
 /// assert!((end - 0.5).abs() < 1e-10);    // 6M = 0.5Y
 /// ```
 pub fn parse_fra_tenor(tenor: &str) -> Option<(f64, f64)> {
-    infra_master::time::parse_fra_tenor(tenor)
+    infra_domain::time::parse_fra_tenor(tenor)
 }
 
 // =============================================================================

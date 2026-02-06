@@ -13,7 +13,7 @@ use thiserror::Error;
 /// # Examples
 ///
 /// ```
-/// use infra_master::counterparty::CounterPartyError;
+/// use infra_domain::counterparty::CounterPartyError;
 ///
 /// let err = CounterPartyError::InvalidLei("ABC".to_string());
 /// assert!(err.to_string().contains("20 alphanumeric"));

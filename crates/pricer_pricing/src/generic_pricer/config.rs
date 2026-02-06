@@ -6,7 +6,7 @@
 //!   currency
 
 #[cfg(feature = "l1l2-integration")]
-use infra_master::market::Currency;
+use infra_domain::market::Currency;
 
 use super::error::ConfigError;
 

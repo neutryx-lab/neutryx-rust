@@ -25,7 +25,7 @@
 //!
 //! ```
 //! use pricer_core::math::formulas::fx_delta::{delta_to_strike, strike_to_delta};
-//! use infra_master::trade::instrument_def::DeltaType;
+//! use infra_domain::trade::instrument_def::DeltaType;
 //!
 //! // Convert 25-delta call to strike
 //! let strike = delta_to_strike(
@@ -53,7 +53,7 @@
 //! assert!((recovered_delta - 0.25_f64).abs() < 1e-6);
 //! ```
 
-use infra_master::trade::instrument_def::DeltaType;
+use infra_domain::trade::instrument_def::DeltaType;
 use num_traits::Float;
 
 use super::error::FormulaError;
@@ -93,7 +93,7 @@ use crate::math::{
 ///
 /// ```
 /// use pricer_core::math::formulas::fx_delta::delta_to_strike;
-/// use infra_master::trade::instrument_def::DeltaType;
+/// use infra_domain::trade::instrument_def::DeltaType;
 ///
 /// // 25-delta call, EURUSD style
 /// let k = delta_to_strike(0.25, 1.10, 0.03, 0.01, 1.0, 0.10, DeltaType::SpotDelta).unwrap();
@@ -294,7 +294,7 @@ fn delta_to_strike_premium_adjusted<T: Float>(
 ///
 /// ```
 /// use pricer_core::math::formulas::fx_delta::strike_to_delta;
-/// use infra_master::trade::instrument_def::DeltaType;
+/// use infra_domain::trade::instrument_def::DeltaType;
 ///
 /// let delta = strike_to_delta(1.15, 1.10, 0.03, 0.01, 1.0, 0.10, true, DeltaType::SpotDelta).unwrap();
 /// assert!(delta > 0.0 && delta < 0.5); // OTM call has delta < 0.5

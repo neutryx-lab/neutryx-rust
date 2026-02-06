@@ -14,8 +14,8 @@ use crate::{Currency, Date};
 /// # Example
 ///
 /// ```rust
-/// use infra_master::trade::DailyAccrual;
-/// use infra_master::Date;
+/// use infra_domain::trade::DailyAccrual;
+/// use infra_domain::Date;
 ///
 /// let accrual = DailyAccrual::new(
 ///     Date::from_ymd(2025, 1, 2).unwrap(),

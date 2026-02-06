@@ -62,7 +62,7 @@ demo_gui (Cargo.toml)
 ├── pricer_pricing (generic_pricer, etc.)
 ├── pricer_models (market, curves)
 ├── pricer_core (math, traits)
-└── infra_master (trade, time, market)
+└── infra_domain (trade, time, market)
 ```
 
 ---

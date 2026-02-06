@@ -14,7 +14,7 @@
 //! ## Architecture Position
 //!
 //! Part of the **A**dapter layer in the A-I-P-S architecture.
-//! Depends only on `pricer_core` (for types) and `infra_master` (for
+//! Depends only on `pricer_core` (for types) and `infra_domain` (for
 //! identifiers).
 //!
 //! ## Example

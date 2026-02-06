@@ -6,7 +6,7 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::market::RateType;
+//! use infra_domain::market::RateType;
 //!
 //! let rate_type = RateType::Swap;
 //! assert_eq!(rate_type.code(), "SWAP");
@@ -49,7 +49,7 @@ use std::fmt;
 /// # Examples
 ///
 /// ```
-/// use infra_master::market::RateType;
+/// use infra_domain::market::RateType;
 ///
 /// let swap = RateType::Swap;
 /// assert_eq!(swap.code(), "SWAP");
@@ -97,7 +97,7 @@ impl RateType {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::RateType;
+    /// use infra_domain::market::RateType;
     ///
     /// assert_eq!(RateType::Deposit.code(), "DEPO");
     /// assert_eq!(RateType::Swap.code(), "SWAP");
@@ -124,7 +124,7 @@ impl RateType {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::RateType;
+    /// use infra_domain::market::RateType;
     ///
     /// assert!(RateType::Deposit.is_interest_rate());
     /// assert!(RateType::Swap.is_interest_rate());
@@ -148,7 +148,7 @@ impl RateType {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::RateType;
+    /// use infra_domain::market::RateType;
     ///
     /// assert!(RateType::FxSpot.is_fx());
     /// assert!(RateType::FxForward.is_fx());
@@ -162,7 +162,7 @@ impl RateType {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::RateType;
+    /// use infra_domain::market::RateType;
     ///
     /// assert!(RateType::Vol.is_volatility());
     /// assert!(!RateType::Swap.is_volatility());
@@ -175,7 +175,7 @@ impl RateType {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::RateType;
+    /// use infra_domain::market::RateType;
     ///
     /// assert!(RateType::Event.is_event());
     /// assert!(!RateType::Swap.is_event());

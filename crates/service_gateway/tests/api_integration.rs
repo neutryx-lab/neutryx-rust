@@ -301,13 +301,13 @@ mod simulated_http_tests {
 
 #[cfg(test)]
 mod market_instrument_integration_tests {
-    use infra_master::market::convention::{
+    use infra_domain::market::convention::{
         ConventionRegistry, DepositConvention, FraConvention, MarketConvention, SwapConvention,
     };
-    use infra_master::market::instrument::MarketInstrument;
-    use infra_master::market::{Currency, RateId, RateType};
-    use infra_master::time::{Date, Tenor};
-    use infra_master::trade::{LegType, TradeType};
+    use infra_domain::market::instrument::MarketInstrument;
+    use infra_domain::market::{Currency, RateId, RateType};
+    use infra_domain::time::{Date, Tenor};
+    use infra_domain::trade::{LegType, TradeType};
 
     /// Test full pipeline: Rate → Convention lookup → Instrument → Trade
     #[test]

@@ -4,7 +4,7 @@
 - **Feature**: `portfolio-book-model`
 - **Discovery Scope**: Complex Integration
 - **Key Findings**:
-  - 既存の`infra_master`は型安全なID定義マクロ、Builderパターン、thiserrorエラー型を一貫して使用
+  - 既存の`infra_domain`は型安全なID定義マクロ、Builderパターン、thiserrorエラー型を一貫して使用
   - `pricer_risk::portfolio`はHashMapベースのO(1)ルックアップとRayon並列処理を採用
   - CounterpartyPortfolio階層（CP → ISDA → CSA → Trade）は参照実装に基づく新規設計が必要
 
@@ -12,7 +12,7 @@
 
 ### 既存IDパターンの調査
 - **Context**: BookId, PortfolioIdの定義方法を既存パターンに合わせる必要性
-- **Sources Consulted**: `crates/infra_master/src/ids.rs`, `crates/infra_master/src/counterparty/ids.rs`
+- **Sources Consulted**: `crates/infra_domain/src/ids.rs`, `crates/infra_domain/src/counterparty/ids.rs`
 - **Findings**:
   - `define_id!`マクロで一貫した型安全ID生成
   - 標準derive: `Clone, Debug, Default, PartialEq, Eq, Hash`
@@ -129,14 +129,14 @@
 - **Trade-offs**: Book→NettingSetクエリがO(n)
 
 ### Decision: XVA/Exposure計算構造の配置
-- **Context**: XvaScope, ExposureConfig等をinfra_masterに配置するか
+- **Context**: XvaScope, ExposureConfig等をinfra_domainに配置するか
 - **Alternatives Considered**:
-  1. infra_master: 設定/定義のみ
+  1. infra_domain: 設定/定義のみ
   2. pricer_risk: 計算ロジックと共に
-- **Selected Approach**: infra_master（設定構造体のみ）
+- **Selected Approach**: infra_domain（設定構造体のみ）
 - **Rationale**:
   - A-I-P-S階層分離原則
-  - infra_masterは静的定義、pricer_riskは計算
+  - infra_domainは静的定義、pricer_riskは計算
   - 設定と計算の分離
 - **Trade-offs**: 設定とロジックが分離するため、設定変更時の影響追跡が必要
 

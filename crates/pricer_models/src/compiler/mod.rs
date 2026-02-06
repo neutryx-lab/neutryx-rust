@@ -55,7 +55,7 @@ pub use xccy::XCcyCompiler;
 ///
 /// ```ignore
 /// use pricer_models::compiler::{TradeCompiler, LinearProductsCompiler, IndexMapper};
-/// use infra_master::trade::Trade;
+/// use infra_domain::trade::Trade;
 ///
 /// let index_mapper = IndexMapper::new();
 /// let compiler = LinearProductsCompiler::new(index_mapper);

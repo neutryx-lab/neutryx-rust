@@ -13,7 +13,7 @@
 //! # Example
 //!
 //! ```
-//! use infra_master::book::{Book, BookType, RegulatoryBookType};
+//! use infra_domain::book::{Book, BookType, RegulatoryBookType};
 //!
 //! let book = Book::builder()
 //!     .book_id("BOOK001")

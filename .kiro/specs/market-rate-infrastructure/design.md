@@ -9,7 +9,7 @@
 - カーブ構築用の Instrument セットを自動生成
 - 複数データソースからのレートをマージして一貫したマーケットデータを提供
 
-**Impact**: `infra_master::market` モジュールに 10 個の新規ファイルを追加。既存 API への破壊的変更なし。
+**Impact**: `infra_domain::market` モジュールに 10 個の新規ファイルを追加。既存 API への破壊的変更なし。
 
 ### Goals
 
@@ -32,12 +32,12 @@
 ### Existing Architecture Analysis
 
 **現状**:
-- `infra_master::market` には `Currency` と `RateIndex` のみ存在
-- `infra_master::trade::Instrument` が 7 種類の金融商品を定義済み
+- `infra_domain::market` には `Currency` と `RateIndex` のみ存在
+- `infra_domain::trade::Instrument` が 7 種類の金融商品を定義済み
 - `adapter_feeds::QuoteType` が quote 分類を定義済み（依存方向の観点で移動推奨）
 
 **制約**:
-- A-I-P-S 依存ルール: `infra_master` は `pricer_*` に依存不可
+- A-I-P-S 依存ルール: `infra_domain` は `pricer_*` に依存不可
 - 既存の `MarketDataError`（pricer_models）との名前衝突回避が必要
 
 ### Architecture Pattern & Boundary Map
@@ -49,8 +49,8 @@ graph TB
     end
 
     subgraph Infra_Layer
-        IM[infra_master::market]
-        IT[infra_master::trade]
+        IM[infra_domain::market]
+        IT[infra_domain::trade]
 
         subgraph New_Components
             MR[MarketRate]
@@ -79,7 +79,7 @@ graph TB
 ```
 
 **Architecture Integration**:
-- **Selected pattern**: Module Extension（既存 `infra_master::market` への型追加）
+- **Selected pattern**: Module Extension（既存 `infra_domain::market` への型追加）
 - **Domain boundaries**: レート入力（本仕様）と曲線構築（pricer_models）を明確に分離
 - **Existing patterns preserved**: thiserror エラー、serde feature gate、enum 設計パターン
 - **New components rationale**: 各型は単一責務を持ち、テスト可能な単位として設計
@@ -629,7 +629,7 @@ erDiagram
 ## File Structure
 
 ```text
-crates/infra_master/src/market/
+crates/infra_domain/src/market/
 ├── mod.rs              # 既存（拡張）
 ├── currency.rs         # 既存
 ├── rate_index.rs       # 既存

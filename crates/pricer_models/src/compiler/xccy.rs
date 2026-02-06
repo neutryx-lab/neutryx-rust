@@ -15,7 +15,7 @@
 //!
 //! ```ignore
 //! use pricer_models::compiler::{XCcyCompiler, IndexMapper};
-//! use infra_master::Currency;
+//! use infra_domain::Currency;
 //!
 //! let mapper = IndexMapper::with_common_indices();
 //! let compiler = XCcyCompiler::new(mapper)
@@ -26,7 +26,7 @@
 
 use std::sync::Arc;
 
-use infra_master::{
+use infra_domain::{
     time::{BusinessDayConvention, Calendar, CalendarId, ConcreteCalendar},
     trade::{IndexType, Payoff, Trade},
     Currency, Date,
@@ -59,7 +59,7 @@ use super::{IndexMapper, TradeCompiler};
 ///
 /// ```ignore
 /// use pricer_models::compiler::{XCcyCompiler, IndexMapper};
-/// use infra_master::Currency;
+/// use infra_domain::Currency;
 ///
 /// let mapper = IndexMapper::new();
 /// let compiler = XCcyCompiler::new(mapper)
@@ -336,7 +336,7 @@ impl XCcyCompiler {
             // Process each cashflow in the leg
             for cf in leg.cashflows() {
                 // Skip Fee cashflows
-                if matches!(cf.cf_type, infra_master::trade::CashflowType::Fee) {
+                if matches!(cf.cf_type, infra_domain::trade::CashflowType::Fee) {
                     continue;
                 }
 
@@ -370,7 +370,7 @@ impl XCcyCompiler {
 
 #[cfg(test)]
 mod tests {
-    use infra_master::{
+    use infra_domain::{
         trade::{Cashflow, CashflowType, Direction, Leg, LegType, Payoff, TradeType},
         Currency, RateIndex,
     };
@@ -412,7 +412,7 @@ mod tests {
 
     /// Creates a EUR floating leg.
     fn create_eur_floating_leg() -> Leg {
-        use infra_master::trade::IndexType;
+        use infra_domain::trade::IndexType;
 
         let cashflows = vec![
             Cashflow::new(

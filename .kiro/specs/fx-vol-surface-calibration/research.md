@@ -112,9 +112,9 @@ pub struct SabrParameterSurface<T: Float> {
 
 | Component | Layer | Crate |
 |-----------|-------|-------|
-| `FxVolInstrument` | Infra | `infra_master` |
-| `FxSwapInstrument` | Infra | `infra_master` |
-| `CrossCurrencyBasisSwap` | Infra | `infra_master` |
+| `FxVolInstrument` | Infra | `infra_domain` |
+| `FxSwapInstrument` | Infra | `infra_domain` |
+| `CrossCurrencyBasisSwap` | Infra | `infra_domain` |
 | `FxCurve<T>` trait | Pricer | `pricer_models` |
 | `FxVolSurfaceBuilder` | Pricer | `pricer_models` |
 | `FxMarketBuilder` | Pricer | `pricer_models` |
@@ -142,7 +142,7 @@ pub struct SabrParameterSurface<T: Float> {
 ### 3.2 Selected Pattern: Hybrid with Phased Implementation
 
 ```
-Phase 1: Core Types (infra_master)
+Phase 1: Core Types (infra_domain)
   └── FxVolInstrument, FxSwapInstrument, CrossCurrencyBasisSwap
 
 Phase 2: Builders (pricer_models)
@@ -221,7 +221,7 @@ All required functionality available through existing crates:
 | File | Changes |
 |------|---------|
 | `pricer_models/src/market/surfaces/fx.rs` | Add strike-space methods |
-| `infra_master/src/trade/instrument_def/fx.rs` | Extend FxSwap |
+| `infra_domain/src/trade/instrument_def/fx.rs` | Extend FxSwap |
 
 ### 7.2 Files to Create
 
@@ -231,8 +231,8 @@ All required functionality available through existing crates:
 | `pricer_models/src/market/fx_calibration/instruments.rs` | FxVolInstrument |
 | `pricer_models/src/market/fx_calibration/builder.rs` | Builders |
 | `pricer_models/src/market/fx_calibration/curve.rs` | FxCurve trait |
-| `infra_master/src/trade/instrument_def/fx_vol.rs` | FxVolInstrument |
-| `infra_master/src/trade/instrument_def/xccy.rs` | CrossCurrencyBasisSwap |
+| `infra_domain/src/trade/instrument_def/fx_vol.rs` | FxVolInstrument |
+| `infra_domain/src/trade/instrument_def/xccy.rs` | CrossCurrencyBasisSwap |
 | `demo/gui/src/web/fxcurve_handlers.rs` | FX curve endpoints |
 
 ---
@@ -242,7 +242,7 @@ All required functionality available through existing crates:
 既存コードベースの成熟度が高く、実装リスクは低い。推奨アプローチ（Option C: Hybrid）により、**4フェーズで段階的に機能を追加**し、各フェーズで検証可能な成果物を提供する。
 
 **Next Steps**:
-1. Phase 1: `infra_master`にインストルメント型定義
+1. Phase 1: `infra_domain`にインストルメント型定義
 2. Phase 2: `pricer_models`にビルダー実装
 3. Phase 3: `FxMarketBuilder`でオーケストレーション
 4. Phase 4: WebApp統合とクリーンアップ

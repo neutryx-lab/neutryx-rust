@@ -8,7 +8,7 @@
 - データモデル: `demo/gui/src/web/` （型定義、ハンドラー）
 - フロントエンド: `demo/gui/static/` （HTML/CSS/JS）
 
-本機能は既存の `infra_master::market` モジュール（`MarketRate`, `RateId`, `RateType`, `RateIndex` 等）と `infra_master::trade::convention` モジュール（`SwapConvention`, `FxConvention` 等）を活用し、Web App 上でこれらの情報を統合表示する。
+本機能は既存の `infra_domain::market` モジュール（`MarketRate`, `RateId`, `RateType`, `RateIndex` 等）と `infra_domain::trade::convention` モジュール（`SwapConvention`, `FxConvention` 等）を活用し、Web App 上でこれらの情報を統合表示する。
 
 ## Requirements
 
@@ -164,5 +164,5 @@
 - [structure.md](../../steering/structure.md) - A-I-P-S アーキテクチャ定義
 - [tech.md](../../steering/tech.md) - 技術スタック
 - [market-rate-infrastructure](../market-rate-infrastructure/requirements.md) - マーケットレートインフラ仕様
-- `infra_master::market` - マーケットデータ型定義
-- `infra_master::trade::convention` - コンベンション定義
+- `infra_domain::market` - マーケットデータ型定義
+- `infra_domain::trade::convention` - コンベンション定義

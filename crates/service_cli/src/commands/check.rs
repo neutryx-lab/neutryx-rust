@@ -42,7 +42,7 @@ pub fn run() {
     println!();
     println!("  [I] Infra Layer:");
     println!("    ✓ infra_config");
-    println!("    ✓ infra_master");
+    println!("    ✓ infra_domain");
     println!("    ✓ infra_store");
     println!();
     println!("  [P] Pricer Layer:");

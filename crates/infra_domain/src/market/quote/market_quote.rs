@@ -6,10 +6,10 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::market::{
+//! use infra_domain::market::{
 //!     MarketQuote, QuoteId, RateType, QuoteType, DataSource, Currency
 //! };
-//! use infra_master::time::Tenor;
+//! use infra_domain::time::Tenor;
 //!
 //! let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
 //! let quote = MarketQuote::new(
@@ -44,10 +44,10 @@ use super::{error::MarketQuoteError, quote_type::QuoteType, quote_id::QuoteId};
 /// # Examples
 ///
 /// ```
-/// use infra_master::market::{
+/// use infra_domain::market::{
 ///     MarketQuote, QuoteId, RateType, QuoteType, DataSource, Currency
 /// };
-/// use infra_master::time::Tenor;
+/// use infra_domain::time::Tenor;
 ///
 /// let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
 ///
@@ -106,10 +106,10 @@ impl MarketQuote {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{
+    /// use infra_domain::market::{
     ///     MarketQuote, QuoteId, RateType, QuoteType, DataSource, Currency
     /// };
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::time::Tenor;
     ///
     /// let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
     /// let quote = MarketQuote::new(
@@ -153,10 +153,10 @@ impl MarketQuote {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{
+    /// use infra_domain::market::{
     ///     MarketQuote, QuoteId, RateType, QuoteType, DataSource, Currency
     /// };
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::time::Tenor;
     ///
     /// let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
     /// let quote = MarketQuote::new(
@@ -185,10 +185,10 @@ impl MarketQuote {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{
+    /// use infra_domain::market::{
     ///     MarketQuote, QuoteId, RateType, QuoteType, DataSource, Currency
     /// };
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::time::Tenor;
     ///
     /// let quote_id = QuoteId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
     /// let quote = MarketQuote::new(

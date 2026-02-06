@@ -23,7 +23,7 @@ use super::CounterPartyError;
 /// # Examples
 ///
 /// ```
-/// use infra_master::counterparty::CounterPartyId;
+/// use infra_domain::counterparty::CounterPartyId;
 ///
 /// let id = CounterPartyId::new("CP001");
 /// assert_eq!(id.as_str(), "CP001");
@@ -67,7 +67,7 @@ impl From<&str> for CounterPartyId {
 /// # Examples
 ///
 /// ```
-/// use infra_master::counterparty::LegalEntityId;
+/// use infra_domain::counterparty::LegalEntityId;
 ///
 /// // Valid LEI (20 alphanumeric characters)
 /// let lei = LegalEntityId::new("529900T8BM49AURSDO55").unwrap();
@@ -128,7 +128,7 @@ impl AsRef<str> for LegalEntityId {
 /// # Examples
 ///
 /// ```
-/// use infra_master::counterparty::NettingSetId;
+/// use infra_domain::counterparty::NettingSetId;
 ///
 /// let id = NettingSetId::new("NS001");
 /// assert_eq!(id.as_str(), "NS001");
@@ -163,7 +163,7 @@ impl From<&str> for NettingSetId {
 /// # Examples
 ///
 /// ```
-/// use infra_master::counterparty::CcpId;
+/// use infra_domain::counterparty::CcpId;
 ///
 /// let id = CcpId::new("LCH");
 /// assert_eq!(id.as_str(), "LCH");
@@ -198,7 +198,7 @@ impl From<&str> for CcpId {
 /// # Examples
 ///
 /// ```
-/// use infra_master::counterparty::IsdaAgreementId;
+/// use infra_domain::counterparty::IsdaAgreementId;
 ///
 /// let id = IsdaAgreementId::new("ISDA001");
 /// assert_eq!(id.as_str(), "ISDA001");
@@ -233,7 +233,7 @@ impl From<&str> for IsdaAgreementId {
 /// # Examples
 ///
 /// ```
-/// use infra_master::counterparty::VariationMarginAgreementId;
+/// use infra_domain::counterparty::VariationMarginAgreementId;
 ///
 /// let id = VariationMarginAgreementId::new("VMA001");
 /// assert_eq!(id.as_str(), "VMA001");
@@ -268,7 +268,7 @@ impl From<&str> for VariationMarginAgreementId {
 /// # Examples
 ///
 /// ```
-/// use infra_master::counterparty::CrossBookNettingAgreementId;
+/// use infra_domain::counterparty::CrossBookNettingAgreementId;
 ///
 /// let id = CrossBookNettingAgreementId::new("CBNA001");
 /// assert_eq!(id.as_str(), "CBNA001");

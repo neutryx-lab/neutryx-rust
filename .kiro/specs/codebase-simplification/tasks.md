@@ -11,9 +11,9 @@
 ### Phase 1: Infrastructure Layer
 
 - [x] 1. Infra 層エラー型の一元化
-- [x] 1.1 DateError と CurrencyError を infra_master に統合する
-  - pricer_core の DateError, CurrencyError を infra_master の既存定義に統合
-  - pricer_core から `pub use infra_master::{DateError, CurrencyError};` で re-export
+- [x] 1.1 DateError と CurrencyError を infra_domain に統合する
+  - pricer_core の DateError, CurrencyError を infra_domain の既存定義に統合
+  - pricer_core から `pub use infra_domain::{DateError, CurrencyError};` で re-export
   - 全クレートの import パスを更新
   - From 変換の整合性を確認
   - _Requirements: 1.1, 6.1, 6.2_
@@ -27,7 +27,7 @@
 - [x] 1.3 Phase 1 の検証
   - `cargo test --workspace` で全テストがパスすることを確認
   - `cargo clippy --workspace -- -D warnings` でリント警告がないことを確認
-  - infra_master の公開 API が正しくエクスポートされていることを確認
+  - infra_domain の公開 API が正しくエクスポートされていることを確認
   - _Requirements: 8.1, 9.3_
 
 ---

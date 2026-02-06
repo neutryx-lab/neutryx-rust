@@ -6,7 +6,7 @@
 FXボラティリティサーフェスのキャリブレーションロジックを `demo/gui` から `pricer_core` および `pricer_models` へ移行する。
 
 ### 主要な発見事項
-1. **基盤は80%完成済み**: infra_master の FX vol 型定義、pricer_core の SABR/Garman-Kohlhagen、pricer_models の vol builder 構造が既に存在
+1. **基盤は80%完成済み**: infra_domain の FX vol 型定義、pricer_core の SABR/Garman-Kohlhagen、pricer_models の vol builder 構造が既に存在
 2. **移行が必要なロジック**: demo_gui の `delta_to_strike` 関数、RR/BF 変換ロジック、フォワード計算のインラインコード
 3. **プレースホルダー実装**: `SabrSliceCalibrator::calibrate_slice` は初期推定値を返すのみで、実際の最適化は未実装
 4. **FxCurve が未実装**: Interest Rate Parity に基づく FX フォワードカーブのトレイト/構造体が存在しない
@@ -18,9 +18,9 @@ FXボラティリティサーフェスのキャリブレーションロジック
 
 ## 2. 既存コンポーネント分析
 
-### 2.1 infra_master (100% 完成)
+### 2.1 infra_domain (100% 完成)
 
-**場所**: `crates/infra_master/src/trade/instrument_def/fx_vol.rs`
+**場所**: `crates/infra_domain/src/trade/instrument_def/fx_vol.rs`
 
 | コンポーネント | 状態 | 説明 |
 |---------------|------|------|
@@ -221,17 +221,17 @@ delta_to_strike 関数は demo_gui に実装があるが、pricer_core へ移行
 
 **対応**:
 - 新規関数も `<T: Float>` ジェネリクスを採用
-- infra_master の DeltaType は非ジェネリック（これは問題なし）
+- infra_domain の DeltaType は非ジェネリック（これは問題なし）
 
 ### 4.2 依存関係
 
 **現在の依存グラフ**:
 ```
-infra_master ← pricer_core ← pricer_models ← demo_gui
+infra_domain ← pricer_core ← pricer_models ← demo_gui
 ```
 
 **変更後も同じ**:
-- pricer_core は infra_master の DeltaType を使用（新規依存）
+- pricer_core は infra_domain の DeltaType を使用（新規依存）
 - pricer_models は pricer_core の delta_to_strike を使用
 - demo_gui は pricer_models の FxVolBuilder を使用
 

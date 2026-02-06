@@ -88,7 +88,7 @@ graph TB
 | Backend | Rust Edition 2021 | コア実装 | `pricer_optimiser` クレート |
 | Numeric | `num-traits`, `num-dual` | ジェネリック数値型、Forward-mode AD | `T: Float` 境界 |
 | AD Backend | Enzyme LLVM plugin | Reverse-mode AAD | `enzyme-mode` フィーチャー |
-| Date/Time | `chrono` | 日付計算、営業日調整 | `infra_master` 経由 |
+| Date/Time | `chrono` | 日付計算、営業日調整 | `infra_domain` 経由 |
 | Error Handling | `thiserror` | 構造化エラー型 | `BootstrapError` |
 
 ## System Flows
@@ -174,7 +174,7 @@ sequenceDiagram
 
 **Dependencies**
 - Outbound: `pricer_models::schedules::ScheduleBuilder` — IRS キャッシュフロー生成 (P1)
-- Outbound: `infra_master::calendars::Calendar` — 営業日調整 (P1)
+- Outbound: `infra_domain::calendars::Calendar` — 営業日調整 (P1)
 
 **Contracts**: Service [x]
 

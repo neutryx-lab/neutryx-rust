@@ -8,7 +8,7 @@
 - **リスクマネージャー**: マーケット状況の迅速な把握、データエクスポート
 - **クオンツ開発者**: Instrument/Convention 紐付け情報の確認、カーブ構築の検証
 
-**Impact**: 既存の `demo/gui` Web インフラに新規 API エンドポイントと UI セクションを追加。`infra_master::market` および `infra_master::trade::convention` モジュールを活用し、バックエンドからフロントエンドへの一貫したデータフローを実現する。
+**Impact**: 既存の `demo/gui` Web インフラに新規 API エンドポイントと UI セクションを追加。`infra_domain::market` および `infra_domain::trade::convention` モジュールを活用し、バックエンドからフロントエンドへの一貫したデータフローを実現する。
 
 ### Goals
 
@@ -40,9 +40,9 @@
 - Glass morphism デザインシステム（`index.html`, `style.css`）
 
 **統合ポイント**:
-- `infra_master::market`: `MarketRate`, `MarketRateSet`, `RateId`, `RateType`, `StandardInstrumentMapper`
-- `infra_master::trade::convention`: `SwapConvention`, `FxConvention`, `ConventionSet`
-- `infra_master::time`: `Date`, `Tenor`
+- `infra_domain::market`: `MarketRate`, `MarketRateSet`, `RateId`, `RateType`, `StandardInstrumentMapper`
+- `infra_domain::trade::convention`: `SwapConvention`, `FxConvention`, `ConventionSet`
+- `infra_domain::time`: `Date`, `Tenor`
 
 ### Architecture Pattern & Boundary Map
 
@@ -60,7 +60,7 @@ graph TB
         SampleData[sample_data]
     end
 
-    subgraph InfraMaster[infra_master]
+    subgraph InfraMaster[infra_domain]
         Market[market module]
         Convention[convention module]
         Time[time module]
@@ -90,7 +90,7 @@ graph TB
   - Result-based エラーハンドリング
 - **New components rationale**:
   - 既存の pricer_types.rs / trade_handlers.rs パターンを踏襲した専用モジュール追加
-- **Steering compliance**: A-I-P-S 依存ルール遵守（demo/gui は S 層として I 層の infra_master に依存）
+- **Steering compliance**: A-I-P-S 依存ルール遵守（demo/gui は S 層として I 層の infra_domain に依存）
 
 ### Technology Stack
 
@@ -100,7 +100,7 @@ graph TB
 | Frontend | XLSX.js | CSV/Excel エクスポート | 既存ライブラリ活用 |
 | Backend | Axum 0.7+ | REST API ルーティング | 既存依存 |
 | Backend | Serde | JSON シリアライゼーション | `serde` feature 必須 |
-| Data | infra_master | MarketRateSet, ConventionSet | 既存クレート |
+| Data | infra_domain | MarketRateSet, ConventionSet | 既存クレート |
 | Data | In-memory cache | RwLock<MarketRateSet> | AppState 拡張 |
 
 ---
@@ -116,7 +116,7 @@ sequenceDiagram
     participant Handler as market_handlers
     participant State as AppState
     participant SampleData as sample_data
-    participant InfraMaster as infra_master
+    participant InfraMaster as infra_domain
 
     Browser->>Router: GET /api/market-data/rates?currency=USD
     Router->>Handler: get_market_rates()
@@ -181,7 +181,7 @@ sequenceDiagram
 |-----------|--------------|--------|--------------|------------------|-----------|
 | market_types | Web/DTO | API レスポンス型定義 | 1.1-1.5, 2.1-2.5, 3.1-3.5 | serde (P0) | - |
 | market_handlers | Web/Handler | REST API ハンドラー | 5.1-5.7 | AppState (P0), market_types (P0) | API |
-| sample_data | Web/Data | サンプルレートセット生成 | 1.2 | infra_master::market (P0) | Service |
+| sample_data | Web/Data | サンプルレートセット生成 | 1.2 | infra_domain::market (P0) | Service |
 | Market Data UI | Frontend | データ閲覧画面 | 4.1-4.6, 6.1-6.6 | market_handlers API (P0) | - |
 | Export Module | Frontend | CSV/JSON エクスポート | 7.1-7.5 | XLSX.js (P1) | - |
 
@@ -197,13 +197,13 @@ sequenceDiagram
 | Requirements | 1.1-1.5, 2.1-2.5, 3.1-3.5, 5.4 |
 
 **Responsibilities & Constraints**
-- `infra_master` 型から Web API 用 DTO への変換責務
+- `infra_domain` 型から Web API 用 DTO への変換責務
 - JSON シリアライゼーション（camelCase）
 - フロントエンド JavaScript との互換性確保
 
 **Dependencies**
 - Outbound: `serde` — JSON シリアライズ (P0)
-- Outbound: `infra_master::market` — ドメイン型参照 (P0)
+- Outbound: `infra_domain::market` — ドメイン型参照 (P0)
 
 **Contracts**: Service [x]
 
@@ -394,9 +394,9 @@ pub async fn get_convention_detail(
 - Convention プリセットの紐付け
 
 **Dependencies**
-- Outbound: `infra_master::market` — MarketRateSet, MarketRate (P0)
-- Outbound: `infra_master::trade::convention` — ConventionSet (P0)
-- Outbound: `infra_master::time` — Date, Tenor (P0)
+- Outbound: `infra_domain::market` — MarketRateSet, MarketRate (P0)
+- Outbound: `infra_domain::trade::convention` — ConventionSet (P0)
+- Outbound: `infra_domain::time` — Date, Tenor (P0)
 
 **Contracts**: Service [x]
 
@@ -670,5 +670,5 @@ let api_routes = Router::new()
 ```toml
 # demo/gui/Cargo.toml - serde feature 確認
 [dependencies]
-infra_master = { path = "../../crates/infra_master", features = ["serde"] }
+infra_domain = { path = "../../crates/infra_domain", features = ["serde"] }
 ```

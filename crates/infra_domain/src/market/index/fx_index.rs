@@ -5,8 +5,8 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::market::{FxIndex, Currency};
-//! use infra_master::time::CalendarId;
+//! use infra_domain::market::{FxIndex, Currency};
+//! use infra_domain::time::CalendarId;
 //!
 //! let ecb_eurusd = FxIndex::EcbEurUsd;
 //! assert_eq!(ecb_eurusd.base_currency(), Currency::EUR);
@@ -79,7 +79,7 @@ pub struct FxIndexMetadata {
 /// # Examples
 ///
 /// ```
-/// use infra_master::market::{FxIndex, Currency, FxFixingSource};
+/// use infra_domain::market::{FxIndex, Currency, FxFixingSource};
 ///
 /// let wmr = FxIndex::WmrUsdJpy;
 /// assert_eq!(wmr.base_currency(), Currency::USD);
@@ -137,7 +137,7 @@ impl FxIndex {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::FxIndex;
+    /// use infra_domain::market::FxIndex;
     ///
     /// assert_eq!(FxIndex::EcbEurUsd.api_code(), "ECB-EURUSD");
     /// assert_eq!(FxIndex::WmrUsdJpy.api_code(), "WMR-USDJPY");
@@ -162,7 +162,7 @@ impl FxIndex {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{FxIndex, Currency};
+    /// use infra_domain::market::{FxIndex, Currency};
     ///
     /// assert_eq!(FxIndex::EcbEurUsd.base_currency(), Currency::EUR);
     /// assert_eq!(FxIndex::WmrUsdJpy.base_currency(), Currency::USD);
@@ -183,7 +183,7 @@ impl FxIndex {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{FxIndex, Currency};
+    /// use infra_domain::market::{FxIndex, Currency};
     ///
     /// assert_eq!(FxIndex::EcbEurUsd.quote_currency(), Currency::USD);
     /// assert_eq!(FxIndex::WmrUsdJpy.quote_currency(), Currency::JPY);
@@ -204,7 +204,7 @@ impl FxIndex {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{FxIndex, FxFixingSource};
+    /// use infra_domain::market::{FxIndex, FxFixingSource};
     ///
     /// assert_eq!(FxIndex::EcbEurUsd.source(), FxFixingSource::Ecb);
     /// assert_eq!(FxIndex::WmrUsdJpy.source(), FxFixingSource::WmReuters);
@@ -227,7 +227,7 @@ impl FxIndex {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::FxIndex;
+    /// use infra_domain::market::FxIndex;
     ///
     /// assert_eq!(FxIndex::EcbEurUsd.name(), "ECB EUR/USD");
     /// assert_eq!(FxIndex::WmrUsdJpy.name(), "WMR USD/JPY");
@@ -252,8 +252,8 @@ impl FxIndex {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{FxIndex, FxFixingSource};
-    /// use infra_master::time::CalendarId;
+    /// use infra_domain::market::{FxIndex, FxFixingSource};
+    /// use infra_domain::time::CalendarId;
     ///
     /// let metadata = FxIndex::EcbEurUsd.metadata();
     /// assert_eq!(metadata.source, FxFixingSource::Ecb);

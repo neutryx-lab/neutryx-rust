@@ -1,7 +1,7 @@
 //! Jump pillar utilities for curve construction.
 //!
 //! This module provides utilities for converting [`JumpPillar`] definitions
-//! from `infra_master` into time-based representations suitable for curve
+//! from `infra_domain` into time-based representations suitable for curve
 //! interpolation and bootstrapping.
 //!
 //! # Design Notes
@@ -21,8 +21,8 @@
 //!
 //! ```
 //! use pricer_models::jump::{convert_jump_pillars_to_times, JumpTime};
-//! use infra_master::market::definition::JumpPillar;
-//! use infra_master::time::{Date, DayCounter};
+//! use infra_domain::market::definition::JumpPillar;
+//! use infra_domain::time::{Date, DayCounter};
 //!
 //! let valuation_date = Date::from_ymd(2024, 1, 1).unwrap();
 //! let day_counter = DayCounter::Actual365Fixed;
@@ -38,8 +38,8 @@
 //! assert!(jump_times[0].time < jump_times[1].time);
 //! ```
 
-use infra_master::market::definition::JumpPillar;
-use infra_master::time::{Date, DayCounter};
+use infra_domain::market::definition::JumpPillar;
+use infra_domain::time::{Date, DayCounter};
 use num_traits::Float;
 
 /// A jump event converted to time coordinates.
@@ -96,8 +96,8 @@ impl<T: Float> JumpTime<T> {
 ///
 /// ```
 /// use pricer_models::jump::convert_jump_pillars_to_times;
-/// use infra_master::market::definition::JumpPillar;
-/// use infra_master::time::{Date, DayCounter};
+/// use infra_domain::market::definition::JumpPillar;
+/// use infra_domain::time::{Date, DayCounter};
 ///
 /// let valuation_date = Date::from_ymd(2024, 1, 1).unwrap();
 /// let day_counter = DayCounter::Actual365Fixed;

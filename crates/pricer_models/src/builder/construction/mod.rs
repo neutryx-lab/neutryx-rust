@@ -11,7 +11,7 @@
 //! │                                                                     │
 //! │  ┌─────────────────────┐     ┌──────────────────────────────────┐  │
 //! │  │  DefinitionRegistry │     │        MarketRateSet             │  │
-//! │  │  (infra_master)     │     │        (infra_master)            │  │
+//! │  │  (infra_domain)     │     │        (infra_domain)            │  │
 //! │  │                     │     │                                  │  │
 //! │  │  - Instruments      │     │  - RateId → MarketRate           │  │
 //! │  │  - RateIndices      │     │  - Bid/Ask/Mid quotes            │  │
@@ -41,7 +41,7 @@
 //!
 //! ```ignore
 //! use pricer_models::builder::construction::{CurveConstructionEngine, ConstructionConfig};
-//! use infra_master::market::{DefinitionRegistry, MarketRateSet};
+//! use infra_domain::market::{DefinitionRegistry, MarketRateSet};
 //!
 //! // 1. Load definitions from JSON or build programmatically
 //! let registry = DefinitionRegistry::new();

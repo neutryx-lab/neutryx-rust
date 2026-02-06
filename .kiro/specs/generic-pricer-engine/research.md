@@ -32,9 +32,9 @@
 
 - **Context**: `PricingResult`の階層設計のために既存のトレード構造を分析
 - **Sources Consulted**:
-  - [trade.rs](crates/infra_master/src/trade/trade.rs) - Trade構造
-  - [leg.rs](crates/infra_master/src/trade/leg.rs) - Leg構造（Direction, LegType, Currency）
-  - [cashflow.rs](crates/infra_master/src/trade/cashflow.rs) - Cashflow構造
+  - [trade.rs](crates/infra_domain/src/trade/trade.rs) - Trade構造
+  - [leg.rs](crates/infra_domain/src/trade/leg.rs) - Leg構造（Direction, LegType, Currency）
+  - [cashflow.rs](crates/infra_domain/src/trade/cashflow.rs) - Cashflow構造
 - **Findings**:
   - `Trade` → `Vec<Leg>` → `Vec<Cashflow>` の階層
   - 各`Leg`は`Direction`（Payer/Receiver）、`LegType`、`Currency`を保持
@@ -64,15 +64,15 @@
 
 - **Context**: 日付計算とカレンダー処理の既存実装
 - **Sources Consulted**:
-  - [day_counters.rs](crates/infra_master/src/time/day_counters.rs) - DayCounter実装
-  - [calendars.rs](crates/infra_master/src/time/calendars.rs) - Calendar実装
+  - [day_counters.rs](crates/infra_domain/src/time/day_counters.rs) - DayCounter実装
+  - [calendars.rs](crates/infra_domain/src/time/calendars.rs) - Calendar実装
 - **Findings**:
   - `DayCounter`列挙型でISDA標準のday count conventionを完全サポート
   - `DayCounter::year_fraction(start, end)`で年分数を計算
-  - `infra_master::Date`は`chrono::NaiveDate`のラッパー
+  - `infra_domain::Date`は`chrono::NaiveDate`のラッパー
   - Calendarは休日判定、営業日調整（Following, ModifiedFollowing等）をサポート
 - **Implications**:
-  - Generic Pricer Engineは既存の`infra_master::time`をそのまま利用可能
+  - Generic Pricer Engineは既存の`infra_domain::time`をそのまま利用可能
   - time_to_maturity計算ヘルパーの追加が有用
 
 ### Topic 5: Enzyme AD互換性
@@ -194,7 +194,7 @@
 ## References
 
 - [3-Stage Rocket Pattern](crates/pricer_pricing/src/context.rs) — 既存のPricingContext実装
-- [Trade Structure](crates/infra_master/src/trade/trade.rs) — Trade/Leg/Cashflow階層
+- [Trade Structure](crates/infra_domain/src/trade/trade.rs) — Trade/Leg/Cashflow階層
 - [GreeksConfig](crates/pricer_pricing/src/greeks/config.rs) — 既存のGreeks設定パターン
 - [MarketProvider](crates/pricer_models/src/market/provider.rs) — マーケットデータキャッシュパターン
-- [DayCounter](crates/infra_master/src/time/day_counters.rs) — 日付計算実装
+- [DayCounter](crates/infra_domain/src/time/day_counters.rs) — 日付計算実装

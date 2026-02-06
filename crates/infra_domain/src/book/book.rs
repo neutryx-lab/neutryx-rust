@@ -22,7 +22,7 @@ use crate::ids::BookId;
 /// # Examples
 ///
 /// ```
-/// use infra_master::book::{Book, BookType};
+/// use infra_domain::book::{Book, BookType};
 ///
 /// let book = Book::builder()
 ///     .book_id("BOOK001")

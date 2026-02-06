@@ -8,7 +8,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "approx",
- "infra_master",
+ "infra_domain",
  "pricer_core",
  "serde",
  "thiserror 2.0.18",
@@ -21,7 +21,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "approx",
- "infra_master",
+ "infra_domain",
  "pricer_core",
  "pricer_models",
  "quick-xml",
@@ -39,7 +39,7 @@ dependencies = [
  "chrono",
  "csv",
  "glob",
- "infra_master",
+ "infra_domain",
  "parquet",
  "pricer_models",
  "serde",
@@ -1825,7 +1825,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "infra_master"
+name = "infra_domain"
 version = "0.1.0"
 dependencies = [
  "approx",
@@ -2279,7 +2279,7 @@ version = "0.1.0"
 dependencies = [
  "approx",
  "infra_config",
- "infra_master",
+ "infra_domain",
  "infra_store",
  "pricer_core",
  "pricer_models",
@@ -2718,7 +2718,7 @@ dependencies = [
  "argmin-math",
  "chrono",
  "criterion",
- "infra_master",
+ "infra_domain",
  "levenberg-marquardt",
  "nalgebra 0.33.2",
  "nalgebra-sparse",
@@ -2742,7 +2742,7 @@ dependencies = [
  "criterion",
  "dashmap",
  "enum_dispatch",
- "infra_master",
+ "infra_domain",
  "lru",
  "num-traits",
  "ordered-float 4.6.0",
@@ -2767,7 +2767,7 @@ dependencies = [
  "enum_dispatch",
  "iai-callgrind",
  "infra_config",
- "infra_master",
+ "infra_domain",
  "num-traits",
  "pricer_core",
  "pricer_models",
@@ -2785,7 +2785,7 @@ dependencies = [
  "approx",
  "criterion",
  "infra_config",
- "infra_master",
+ "infra_domain",
  "llvm-sys",
  "nalgebra 0.33.2",
  "num-traits",
@@ -3449,7 +3449,7 @@ dependencies = [
  "chrono",
  "futures-util",
  "infra_config",
- "infra_master",
+ "infra_domain",
  "infra_store",
  "lru",
  "parking_lot",

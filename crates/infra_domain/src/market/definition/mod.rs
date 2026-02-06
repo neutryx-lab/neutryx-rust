@@ -22,7 +22,7 @@
 //! ## Curve Definition
 //!
 //! ```
-//! use infra_master::market::definition::{CurveDefinition, CalibrationMethod};
+//! use infra_domain::market::definition::{CurveDefinition, CalibrationMethod};
 //!
 //! let curve = CurveDefinition::new(
 //!     "USD-SOFR-Discount",
@@ -39,7 +39,7 @@
 //! ## Vol Surface Definition
 //!
 //! ```
-//! use infra_master::market::definition::{CalibrationModel, StrikeAxisType};
+//! use infra_domain::market::definition::{CalibrationModel, StrikeAxisType};
 //!
 //! let model = CalibrationModel::Sabr;
 //! assert!(model.is_enabled());

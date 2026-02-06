@@ -9,7 +9,7 @@
 
 ---
 
-## Phase 1: infra_master 層（定義）
+## Phase 1: infra_domain 層（定義）
 
 ### Task 1: Limit enum の追加（pricer_core）
 
@@ -35,13 +35,13 @@
 
 ### Task 2: JumpPillar 構造体の追加
 
-**Objective**: JumpPillar 構造体を infra_master に追加し、ジャンプ定義を表現する。
+**Objective**: JumpPillar 構造体を infra_domain に追加し、ジャンプ定義を表現する。
 
 **Requirements**: 1.3, 1.4, 1.5
 
 **Files**:
-- `crates/infra_master/src/market/definition/jump_pillar.rs` — 新規作成
-- `crates/infra_master/src/market/definition/mod.rs` — エクスポート追加
+- `crates/infra_domain/src/market/definition/jump_pillar.rs` — 新規作成
+- `crates/infra_domain/src/market/definition/mod.rs` — エクスポート追加
 
 **Subtasks**:
 1. [x] `JumpPillar` 構造体定義（jump_date, expected_jump_bps, event_reference, confidence）
@@ -98,7 +98,7 @@
 **Requirements**: 4.1, 4.2, 4.3, 4.4, 4.5
 
 **Files**:
-- `crates/infra_master/src/market/definition/jump_pillar.rs` — Builder 追加
+- `crates/infra_domain/src/market/definition/jump_pillar.rs` — Builder 追加
 
 **Subtasks**:
 1. [x] `JumpPillarBuilder` 構造体定義
@@ -127,8 +127,8 @@
 **Requirements**: 1.1, 1.2, 6.1-6.6, 7.1-7.5
 
 **Files**:
-- `crates/infra_master/src/market/definition/curve.rs` — フィールド追加
-- `crates/infra_master/src/market/definition/error.rs` — エラー variant 追加（必要に応じて）
+- `crates/infra_domain/src/market/definition/curve.rs` — フィールド追加
+- `crates/infra_domain/src/market/definition/error.rs` — エラー variant 追加（必要に応じて）
 
 **Subtasks**:
 1. [x] ~~`jump_pillars: Vec<JumpPillar>` フィールド追加~~ → 代替実装: JumpPillar を CurveBootstrapper に直接渡す

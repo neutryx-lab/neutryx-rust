@@ -169,8 +169,8 @@ impl Default for NotionalSchedule {
 /// # Examples
 ///
 /// ```rust,ignore
-/// use infra_master::trade::instrument_def::PaymentSchedule;
-/// use infra_master::time::{Date, Frequency};
+/// use infra_domain::trade::instrument_def::PaymentSchedule;
+/// use infra_domain::time::{Date, Frequency};
 ///
 /// let schedule = PaymentSchedule::generate(
 ///     Date::from_ymd(2025, 1, 1).unwrap(),

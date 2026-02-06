@@ -17,7 +17,7 @@
 //! # Example
 //!
 //! ```
-//! use infra_master::counterparty::prelude::*;
+//! use infra_domain::counterparty::prelude::*;
 //!
 //! // Create a counterparty with credit rating
 //! let cp = CounterParty::builder("CP001", "Acme Bank")
@@ -60,7 +60,7 @@ pub use xva_config::*;
 /// Import this module to get all the essential counterparty types:
 ///
 /// ```
-/// use infra_master::counterparty::prelude::*;
+/// use infra_domain::counterparty::prelude::*;
 /// ```
 pub mod prelude {
     pub use super::{

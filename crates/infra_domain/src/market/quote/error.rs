@@ -6,7 +6,7 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::market::{MarketQuoteError, RateType};
+//! use infra_domain::market::{MarketQuoteError, RateType};
 //!
 //! let error = MarketQuoteError::InvalidQuote {
 //!     value: f64::NAN,
@@ -36,7 +36,7 @@ use crate::market::core::RateType;
 /// # Examples
 ///
 /// ```
-/// use infra_master::market::{MarketQuoteError, RateType};
+/// use infra_domain::market::{MarketQuoteError, RateType};
 ///
 /// // Invalid quote error
 /// let error = MarketQuoteError::InvalidQuote {

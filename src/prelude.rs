@@ -26,12 +26,12 @@ pub use infra_config::{
 // =============================================================================
 // ID Types (always available)
 // =============================================================================
-pub use infra_master::ids::{BookId, CounterpartyId, IssuerId, PortfolioId, TradeId};
+pub use infra_domain::ids::{BookId, CounterpartyId, IssuerId, PortfolioId, TradeId};
 // =============================================================================
 // Market Types (always available)
 // =============================================================================
-pub use infra_master::market::{Currency, RateIndex};
-pub use infra_master::time::{
+pub use infra_domain::market::{Currency, RateIndex};
+pub use infra_domain::time::{
     AccrualPeriod, BusinessDayConvention, Calendar, CalendarId, ConcreteCalendar, Date, DayCounter,
     EndOfMonthRule, Frequency, JointCalendar, JointCalendarRule, Period, Tenor, TimeError,
     TimeUnit,
@@ -39,25 +39,25 @@ pub use infra_master::time::{
 // =============================================================================
 // Trade Types (always available)
 // =============================================================================
-pub use infra_master::trade::{SwapDirection, TradeDirection};
+pub use infra_domain::trade::{SwapDirection, TradeDirection};
 // =============================================================================
 // Book & Portfolio Types (always available)
 // =============================================================================
-pub use infra_master::{
+pub use infra_domain::{
     Book, BookBuilder, BookMetadata, BookOwnership, BookType, PortfolioDefinition,
     PortfolioDefinitionBuilder, PortfolioMetadata, PortfolioScope, RegulatoryBookType,
 };
 // =============================================================================
 // Error Types (always available)
 // =============================================================================
-pub use infra_master::{
+pub use infra_domain::{
     BookError, CurrencyError, DateError, ExposureError, MasterDataError, NettingError,
     PortfolioError, ValidationError, ValidationResult,
 };
 // =============================================================================
 // Counterparty Types (always available)
 // =============================================================================
-pub use infra_master::{CsaTerms, NettingSet};
+pub use infra_domain::{CsaTerms, NettingSet};
 // =============================================================================
 // Pricing Result Types (full feature)
 // =============================================================================

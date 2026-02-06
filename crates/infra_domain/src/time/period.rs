@@ -6,7 +6,7 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::time::{Date, Period, TimeUnit, Tenor, EndOfMonthRule};
+//! use infra_domain::time::{Date, Period, TimeUnit, Tenor, EndOfMonthRule};
 //!
 //! // Generic period
 //! let period = Period::months(3);
@@ -30,7 +30,7 @@ use super::{day_counters::DayCounter, types::Date};
 /// # Examples
 ///
 /// ```
-/// use infra_master::time::TimeUnit;
+/// use infra_domain::time::TimeUnit;
 ///
 /// let unit = TimeUnit::Months;
 /// assert_eq!(format!("{}", unit), "M");
@@ -67,7 +67,7 @@ impl fmt::Display for TimeUnit {
 /// # Examples
 ///
 /// ```
-/// use infra_master::time::{Period, TimeUnit, Date};
+/// use infra_domain::time::{Period, TimeUnit, Date};
 ///
 /// let period = Period::new(3, TimeUnit::Months);
 /// assert_eq!(format!("{}", period), "3M");
@@ -95,7 +95,7 @@ impl Period {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::{Period, TimeUnit};
+    /// use infra_domain::time::{Period, TimeUnit};
     ///
     /// let period = Period::days(7);
     /// assert_eq!(period.length, 7);
@@ -109,7 +109,7 @@ impl Period {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::{Period, TimeUnit};
+    /// use infra_domain::time::{Period, TimeUnit};
     ///
     /// let period = Period::weeks(2);
     /// assert_eq!(period.length, 2);
@@ -123,7 +123,7 @@ impl Period {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::{Period, TimeUnit};
+    /// use infra_domain::time::{Period, TimeUnit};
     ///
     /// let period = Period::months(3);
     /// assert_eq!(period.length, 3);
@@ -137,7 +137,7 @@ impl Period {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::{Period, TimeUnit};
+    /// use infra_domain::time::{Period, TimeUnit};
     ///
     /// let period = Period::years(1);
     /// assert_eq!(period.length, 1);
@@ -161,7 +161,7 @@ impl Add<Period> for Date {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::{Date, Period};
+    /// use infra_domain::time::{Date, Period};
     ///
     /// let date = Date::from_ymd(2024, 1, 31).unwrap();
     /// let future = date + Period::months(1);
@@ -213,7 +213,7 @@ impl Add<Period> for Date {
 /// # Examples
 ///
 /// ```
-/// use infra_master::time::{Date, Tenor, EndOfMonthRule};
+/// use infra_domain::time::{Date, Tenor, EndOfMonthRule};
 ///
 /// let date = Date::from_ymd(2024, 1, 31).unwrap();
 ///
@@ -254,7 +254,7 @@ pub enum EndOfMonthRule {
 /// # Examples
 ///
 /// ```
-/// use infra_master::time::Tenor;
+/// use infra_domain::time::Tenor;
 ///
 /// let tenor = Tenor::ThreeMonths;
 /// assert_eq!(tenor.code(), "3M");
@@ -326,7 +326,7 @@ impl Tenor {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::time::Tenor;
     ///
     /// let tenors = Tenor::all();
     /// assert_eq!(tenors[0], Tenor::Overnight);
@@ -371,7 +371,7 @@ impl Tenor {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::time::Tenor;
     ///
     /// let codes = Tenor::all_codes();
     /// assert_eq!(codes[0], "ON");
@@ -391,7 +391,7 @@ impl Tenor {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::time::Tenor;
     ///
     /// assert_eq!(Tenor::Overnight.code(), "ON");
     /// assert_eq!(Tenor::ThreeMonths.code(), "3M");
@@ -427,7 +427,7 @@ impl Tenor {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::time::Tenor;
     ///
     /// assert_eq!(Tenor::Overnight.to_months(), 0);
     /// assert_eq!(Tenor::ThreeMonths.to_months(), 3);
@@ -462,7 +462,7 @@ impl Tenor {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::time::Tenor;
     ///
     /// assert!((Tenor::Overnight.to_years() - 1.0/365.0).abs() < 1e-10);
     /// assert!((Tenor::ThreeMonths.to_years() - 0.25).abs() < 1e-10);
@@ -498,7 +498,7 @@ impl Tenor {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::time::Tenor;
     ///
     /// assert_eq!(Tenor::Overnight.to_days(), 1);
     /// assert_eq!(Tenor::OneWeek.to_days(), 7);
@@ -533,7 +533,7 @@ impl Tenor {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::{Tenor, Period, TimeUnit};
+    /// use infra_domain::time::{Tenor, Period, TimeUnit};
     ///
     /// let period = Tenor::ThreeMonths.to_period();
     /// assert_eq!(period.length, 3);
@@ -567,7 +567,7 @@ impl Tenor {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::{Date, Tenor, EndOfMonthRule};
+    /// use infra_domain::time::{Date, Tenor, EndOfMonthRule};
     ///
     /// let date = Date::from_ymd(2024, 1, 15).unwrap();
     ///
@@ -663,7 +663,7 @@ impl FromStr for Tenor {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::time::Tenor;
     ///
     /// assert_eq!("3M".parse::<Tenor>().unwrap(), Tenor::ThreeMonths);
     /// assert_eq!("1Y".parse::<Tenor>().unwrap(), Tenor::OneYear);
@@ -712,7 +712,7 @@ impl FromStr for Tenor {
 /// # Examples
 ///
 /// ```
-/// use infra_master::time::parse_tenor_to_years;
+/// use infra_domain::time::parse_tenor_to_years;
 ///
 /// assert!((parse_tenor_to_years("ON").unwrap() - 1.0/365.0).abs() < 1e-10);
 /// assert!((parse_tenor_to_years("3M").unwrap() - 0.25).abs() < 1e-10);
@@ -795,7 +795,7 @@ pub fn parse_tenor_to_years(s: &str) -> Result<f64, String> {
 /// # Examples
 ///
 /// ```
-/// use infra_master::time::format_years_as_tenor;
+/// use infra_domain::time::format_years_as_tenor;
 ///
 /// assert_eq!(format_years_as_tenor(0.0), "0");
 /// assert_eq!(format_years_as_tenor(1.0 / 52.0), "1W");
@@ -873,7 +873,7 @@ pub fn format_years_as_tenor(years: f64) -> String {
 /// # Examples
 ///
 /// ```
-/// use infra_master::time::parse_fra_tenor;
+/// use infra_domain::time::parse_fra_tenor;
 ///
 /// let result = parse_fra_tenor("3x6");
 /// assert!(result.is_some());
@@ -944,7 +944,7 @@ fn parse_fra_period(s: &str) -> Option<f64> {
 /// # Examples
 ///
 /// ```
-/// use infra_master::time::{Date, parse_expiry_to_date};
+/// use infra_domain::time::{Date, parse_expiry_to_date};
 ///
 /// let as_of = Date::from_ymd(2024, 1, 1).unwrap();
 /// let date = parse_expiry_to_date("2024-06-01", as_of).unwrap();
@@ -984,7 +984,7 @@ impl fmt::Display for Tenor {
 /// # Examples
 ///
 /// ```
-/// use infra_master::time::{Date, AccrualPeriod, DayCounter};
+/// use infra_domain::time::{Date, AccrualPeriod, DayCounter};
 ///
 /// let start = Date::from_ymd(2024, 1, 1).unwrap();
 /// let end = Date::from_ymd(2024, 7, 1).unwrap();
@@ -1015,7 +1015,7 @@ impl AccrualPeriod {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::{Date, AccrualPeriod};
+    /// use infra_domain::time::{Date, AccrualPeriod};
     ///
     /// let period = AccrualPeriod::new(
     ///     Date::from_ymd(2024, 1, 1).unwrap(),
@@ -1037,7 +1037,7 @@ impl AccrualPeriod {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::{Date, AccrualPeriod};
+    /// use infra_domain::time::{Date, AccrualPeriod};
     ///
     /// let period = AccrualPeriod::new(
     ///     Date::from_ymd(2024, 1, 1).unwrap(),
@@ -1057,7 +1057,7 @@ impl AccrualPeriod {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::time::{Date, AccrualPeriod, DayCounter};
+    /// use infra_domain::time::{Date, AccrualPeriod, DayCounter};
     ///
     /// let period = AccrualPeriod::new(
     ///     Date::from_ymd(2024, 1, 1).unwrap(),

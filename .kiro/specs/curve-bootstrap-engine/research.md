@@ -5,7 +5,7 @@
 - **Discovery Scope**: Extension（既存システムの拡張）
 - **Key Findings**:
   - 既存の`pricer_models/src/market/calibration/bootstrapping/`モジュールに70-80%の基盤が存在
-  - 主要ギャップ: Index-Curve定義、infra_master統合、結果キャッシュの3領域
+  - 主要ギャップ: Index-Curve定義、infra_domain統合、結果キャッシュの3領域
   - A-I-P-S依存ルールに準拠するため、Adapter層ではなくPricer層内で統合を実現
 
 ## Research Log
@@ -25,20 +25,20 @@
   - `BootstrapError`: thiserror構造化エラー完備（Req 9 充足）
 - **Implications**: 新規実装は3領域（定義層、統合層、キャッシュ層）に限定可能
 
-### Topic: infra_masterとの統合アプローチ
+### Topic: infra_domainとの統合アプローチ
 
-- **Context**: A-I-P-S依存ルールを維持しながら`infra_master::trade`の型を活用する方法
+- **Context**: A-I-P-S依存ルールを維持しながら`infra_domain::trade`の型を活用する方法
 - **Sources Consulted**:
   - [steering/structure.md](.kiro/steering/structure.md) - 依存ルール
-  - [infra_master/trade/index.rs](crates/infra_master/src/trade/index.rs)
-  - [infra_master/trade/convention/swap.rs](crates/infra_master/src/trade/convention/swap.rs)
+  - [infra_domain/trade/index.rs](crates/infra_domain/src/trade/index.rs)
+  - [infra_domain/trade/convention/swap.rs](crates/infra_domain/src/trade/convention/swap.rs)
 - **Findings**:
-  - **依存ルール**: Pricerクレートは**I**nfraに依存可能（`pricer_models` → `infra_master`はOK）
+  - **依存ルール**: Pricerクレートは**I**nfraに依存可能（`pricer_models` → `infra_domain`はOK）
   - `RateIndex`: SOFR, Euribor3M/6M, Tonar, Sonia, Tibor, Estr定義済み
   - `SwapConvention`: 通貨別コンベンション（usd_sofr, eur_euribor_6m等）定義済み
   - `InstrumentExpander`: 商品定義からトレード展開機能あり
 - **Implications**:
-  - `pricer_models`から`infra_master`への依存追加は許可される
+  - `pricer_models`から`infra_domain`への依存追加は許可される
   - Adapter層新設は不要、Pricer層内でブリッジを実装
 
 ### Topic: LRUキャッシュライブラリ選定
@@ -159,7 +159,7 @@
 - **Risk 1: Dual型互換性** — `BootstrappedCurve<Dual>`の構築テストをPhase 5で実施。失敗時はジェネリック制約を緩和またはf64専用パスを提供
 - **Risk 2: キャッシュメモリ使用量** — デフォルトLRUサイズを100エントリに制限。設定可能とし運用で調整
 - **Risk 3: RwLock競合** — 高並行ワークロードでの性能劣化をベンチマークで監視。必要に応じて`quick_cache`へ移行
-- **Risk 4: infra_master依存追加** — Cargo.tomlで`infra_master`を`pricer_models`の依存に追加。A-I-P-Sルール上は許可される
+- **Risk 4: infra_domain依存追加** — Cargo.tomlで`infra_domain`を`pricer_models`の依存に追加。A-I-P-Sルール上は許可される
 
 ## References
 

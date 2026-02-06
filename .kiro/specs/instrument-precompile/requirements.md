@@ -2,15 +2,15 @@
 
 ## Project Description (Input)
 ドメインモデルの分離と「コンパイル」プロセスの導入
-infra_master における市場データの定義（レシピ）と、pricer_models における計算用オブジェクト（実行体）の境界が、柔軟性に対してやや冗長、または計算効率を損なう構造になっています。
+infra_domain における市場データの定義（レシピ）と、pricer_models における計算用オブジェクト（実行体）の境界が、柔軟性に対してやや冗長、または計算効率を損なう構造になっています。
 
-課題：MarketInstrument と CalibrationInstrument の重複 infra_master::market::MarketInstrument は、MarketConvention と Rate を結合してキャッシュフローを展開する能力を持ちますが、これをそのまま CalibrationProblem のループ内で評価するのは非効率です。
+課題：MarketInstrument と CalibrationInstrument の重複 infra_domain::market::MarketInstrument は、MarketConvention と Rate を結合してキャッシュフローを展開する能力を持ちますが、これをそのまま CalibrationProblem のループ内で評価するのは非効率です。
 
 洗練化案：Immutable Cashflow Set への事前コンパイル CurveDefinition から CalibrationProblem を生成する際に、全ての MarketInstrument を静的な Trade オブジェクト（キャッシュフロー集合）へ「コンパイル」し、イテレーション中には Curve からの Discount Factor (DF) 取得とベクトル積のみが発生するように最適化すべきです。これにより、イテレーションごとのカレンダー演算やコンベンション参照を排除できます。
 
 ## Introduction
 
-本仕様は、`infra_master::market::MarketInstrument` から `pricer_models` のキャリブレーションループで使用する静的な Trade オブジェクト（Immutable Cashflow Set）への「コンパイル」プロセスを導入するものである。
+本仕様は、`infra_domain::market::MarketInstrument` から `pricer_models` のキャリブレーションループで使用する静的な Trade オブジェクト（Immutable Cashflow Set）への「コンパイル」プロセスを導入するものである。
 
 現在の課題として、`MarketInstrument` は `MarketConvention` と `Rate` を結合してキャッシュフローを展開する能力を持つが、これを `CalibrationProblem` のイテレーションループ内で直接評価すると、毎回カレンダー演算やコンベンション参照が発生し、計算効率を損なう。
 
@@ -64,12 +64,12 @@ infra_master における市場データの定義（レシピ）と、pricer_mod
 
 ### Requirement 5: Domain Separation Enforcement
 
-**Objective:** As a アーキテクト, I want infra_master と pricer_models の責務分離を明確化する, so that 依存関係ルールを維持できる。
+**Objective:** As a アーキテクト, I want infra_domain と pricer_models の責務分離を明確化する, so that 依存関係ルールを維持できる。
 
 #### Acceptance Criteria
 1. The `InstrumentCompiler` shall `pricer_models::builder` モジュールに配置される
-2. The Compiler shall `infra_master::market::MarketInstrument` を入力として受け取り、`pricer_models` 固有の型を出力する
-3. The CompiledInstrument shall `infra_master` の型に依存しない（Date を除く）
+2. The Compiler shall `infra_domain::market::MarketInstrument` を入力として受け取り、`pricer_models` 固有の型を出力する
+3. The CompiledInstrument shall `infra_domain` の型に依存しない（Date を除く）
 4. When コンパイル後, the System shall 元の MarketInstrument への参照を保持しない
 5. The A-I-P-S 依存関係ルール shall 維持される（Pricer は Adapter に依存しない）
 

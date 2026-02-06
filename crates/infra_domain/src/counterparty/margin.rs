@@ -95,7 +95,7 @@ pub enum RoundingDirection {
 /// # Examples
 ///
 /// ```
-/// use infra_master::counterparty::{RoundingRule, RoundingDirection};
+/// use infra_domain::counterparty::{RoundingRule, RoundingDirection};
 ///
 /// let rule = RoundingRule::new(1000.0, RoundingDirection::Up);
 /// assert_eq!(rule.apply(1001.0), 2000.0);
@@ -157,7 +157,7 @@ impl Default for RoundingRule {
 /// # Examples
 ///
 /// ```
-/// use infra_master::counterparty::{VmTerms, CallFrequency, RoundingRule, RoundingDirection};
+/// use infra_domain::counterparty::{VmTerms, CallFrequency, RoundingRule, RoundingDirection};
 ///
 /// let vm = VmTerms::new(CallFrequency::Daily, 1)
 ///     .with_rounding(RoundingRule::new(1000.0, RoundingDirection::Up));
@@ -225,8 +225,8 @@ impl Default for VmTerms {
 /// # Examples
 ///
 /// ```
-/// use infra_master::counterparty::{ImTerms, ImModel, SimmVersion, CallFrequency};
-/// use infra_master::Currency;
+/// use infra_domain::counterparty::{ImTerms, ImModel, SimmVersion, CallFrequency};
+/// use infra_domain::Currency;
 ///
 /// let im = ImTerms::new(ImModel::Simm, Currency::USD)
 ///     .with_simm_version(SimmVersion::V2_7)
@@ -316,8 +316,8 @@ pub struct SimmRiskClassMapping {
 /// # Examples
 ///
 /// ```
-/// use infra_master::counterparty::{MarginTerms, MarginType, VmTerms, ImTerms, ImModel, CallFrequency};
-/// use infra_master::Currency;
+/// use infra_domain::counterparty::{MarginTerms, MarginType, VmTerms, ImTerms, ImModel, CallFrequency};
+/// use infra_domain::Currency;
 ///
 /// // No margin
 /// let no_margin = MarginTerms::no_margin();

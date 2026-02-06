@@ -36,10 +36,10 @@ pub enum EquitySettlementType {
 /// # Example
 ///
 /// ```rust
-/// use infra_master::market::convention::{
+/// use infra_domain::market::convention::{
 ///     EquityConvention, DividendConvention, EquitySettlementType,
 /// };
-/// use infra_master::time::CalendarId;
+/// use infra_domain::time::CalendarId;
 ///
 /// let conv = EquityConvention::us_equity();
 /// assert_eq!(conv.settlement_days, 2);

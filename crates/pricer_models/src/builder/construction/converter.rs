@@ -1,11 +1,11 @@
 //! Definition to MarketInstrument converter.
 //!
 //! This module converts `InstrumentDefinition` and `EventInstrument` from
-//! infra_master to `MarketInstrument<f64>` used by the pricer_models calibration engine.
+//! infra_domain to `MarketInstrument<f64>` used by the pricer_models calibration engine.
 //!
 //! Note: Currently uses `f64` as the bootstrapper only supports `f64`.
 
-use infra_master::market::{InstrumentDefinition, RateType};
+use infra_domain::market::{InstrumentDefinition, RateType};
 
 use crate::market::curves::{Frequency, MarketInstrument};
 
@@ -19,7 +19,7 @@ pub type ReferenceDate = (i32, u32, u32);
 ///
 /// # Arguments
 ///
-/// * `def` - The instrument definition from infra_master
+/// * `def` - The instrument definition from infra_domain
 /// * `rate` - The market rate value
 /// * `reference_date` - Optional reference date for event instruments (year, month, day)
 ///
@@ -189,9 +189,9 @@ fn date_to_days(year: i32, month: u32, day: u32) -> i64 {
     day as i64 + (153 * m + 2) / 5 + 365 * y + y / 4 - y / 100 + y / 400 - 32045
 }
 
-/// Converts infra_master's Frequency to pricer_models's Frequency.
-fn infra_freq_to_pricer_freq(freq: infra_master::time::Frequency) -> Frequency {
-    use infra_master::time::Frequency as InfraFreq;
+/// Converts infra_domain's Frequency to pricer_models's Frequency.
+fn infra_freq_to_pricer_freq(freq: infra_domain::time::Frequency) -> Frequency {
+    use infra_domain::time::Frequency as InfraFreq;
 
     match freq {
         InfraFreq::Daily => Frequency::Daily,
@@ -206,7 +206,7 @@ fn infra_freq_to_pricer_freq(freq: infra_master::time::Frequency) -> Frequency {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use infra_master::market::Currency;
+    use infra_domain::market::Currency;
 
     #[test]
     fn test_convert_deposit() {

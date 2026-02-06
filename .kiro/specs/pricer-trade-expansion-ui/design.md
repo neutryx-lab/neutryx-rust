@@ -6,7 +6,7 @@
 
 **Users**: トレーダーおよびリスクマネージャーが、金融商品の CF 構造を検証・分析するワークフローで利用する。
 
-**Impact**: 現在の Pricer 画面（3 種類の Instrument のみ）を、infra_master で定義されたすべての金融商品（15+ 種類）に拡張する。
+**Impact**: 現在の Pricer 画面（3 種類の Instrument のみ）を、infra_domain で定義されたすべての金融商品（15+ 種類）に拡張する。
 
 ### Goals
 
@@ -79,7 +79,7 @@ graph TB
 |-------|------------------|-----------------|-------|
 | Frontend | HTML5 / JavaScript (ES6+) | 動的フォーム生成、Trade/Cashflow 表示 | 既存 app.js 拡張 |
 | Backend | Axum 0.7.x / Rust | REST API エンドポイント | 既存パターン踏襲 |
-| Data | infra_master (serde feature) | Trade/Leg/Cashflow 構造体 | 新規依存追加 |
+| Data | infra_domain (serde feature) | Trade/Leg/Cashflow 構造体 | 新規依存追加 |
 
 ## System Flows
 
@@ -108,8 +108,8 @@ sequenceDiagram
 ```
 
 **Key Decisions**:
-- スケジュール生成はハンドラ内で実施（infra_master の Tenor/Frequency を使用）
-- Trade 構造は infra_master の型を直接シリアライズ
+- スケジュール生成はハンドラ内で実施（infra_domain の Tenor/Frequency を使用）
+- Trade 構造は infra_domain の型を直接シリアライズ
 
 ## Requirements Traceability
 
@@ -126,9 +126,9 @@ sequenceDiagram
 
 | Component | Domain/Layer | Intent | Req Coverage | Key Dependencies | Contracts |
 |-----------|--------------|--------|--------------|------------------|-----------|
-| TradeHandler | Backend | Trade 展開 API 処理 | 3, 5, 6 | infra_master (P0) | API |
+| TradeHandler | Backend | Trade 展開 API 処理 | 3, 5, 6 | infra_domain (P0) | API |
 | TradeTypes | Backend | API 型定義 | 2, 3, 5, 6 | serde (P0) | - |
-| ScheduleGen | Backend | 支払いスケジュール生成 | 3 | infra_master (P0) | Service |
+| ScheduleGen | Backend | 支払いスケジュール生成 | 3 | infra_domain (P0) | Service |
 | FormGen | Frontend | 動的フォーム生成 | 1, 2 | Instruments API (P1) | - |
 | TradeView | Frontend | Trade/Cashflow 表示 | 4 | - | - |
 
@@ -144,12 +144,12 @@ sequenceDiagram
 **Responsibilities & Constraints**
 - POST /api/trade/expand リクエストを受信し、Trade を生成
 - GET /api/instruments リクエストを受信し、Instrument メタデータを返却
-- infra_master の TradeBuilder/LegBuilder を使用して CF 展開
+- infra_domain の TradeBuilder/LegBuilder を使用して CF 展開
 - 入力バリデーションとエラーハンドリング
 
 **Dependencies**
 - Inbound: Axum router — HTTP リクエスト受信 (P0)
-- Outbound: infra_master::trade — Trade 構造体生成 (P0)
+- Outbound: infra_domain::trade — Trade 構造体生成 (P0)
 - External: なし
 
 **Contracts**: API [x]
@@ -176,7 +176,7 @@ sequenceDiagram
 **Responsibilities & Constraints**
 - 全 Instrument タイプのパラメータ型を定義
 - JSON シリアライズ/デシリアライズ対応（camelCase）
-- TradeExpandResponse は infra_master 型の DTO ラッパー
+- TradeExpandResponse は infra_domain 型の DTO ラッパー
 
 **Dependencies**
 - Inbound: TradeHandler — 型使用 (P0)
@@ -337,7 +337,7 @@ pub struct CashflowDto {
 
 **Dependencies**
 - Inbound: TradeHandler — スケジュール生成呼び出し (P0)
-- External: infra_master::time — Tenor, Frequency, Date (P0)
+- External: infra_domain::time — Tenor, Frequency, Date (P0)
 
 **Contracts**: Service [x]
 
@@ -477,7 +477,7 @@ classDiagram
 - `generate_schedule()`: 各 Tenor/Frequency 組み合わせ、月末ルール処理
 - `TradeExpandRequest` デシリアライズ: 各 Instrument タイプのパラメータ
 - `TradeExpandResponse` シリアライズ: 全フィールドの JSON 変換
-- DTO 変換: infra_master 型 → DTO 変換の正確性
+- DTO 変換: infra_domain 型 → DTO 変換の正確性
 
 ### Integration Tests
 

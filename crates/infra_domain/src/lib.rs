@@ -1,4 +1,4 @@
-// Clippy configuration for infra_master
+// Clippy configuration for infra_domain
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::uninlined_format_args)]
@@ -8,7 +8,7 @@
 #![allow(clippy::unnecessary_map_or)]
 #![cfg_attr(test, allow(clippy::unwrap_used))]
 
-//! # `infra_master`
+//! # `infra_domain`
 //!
 //! Static master data (Calendars, Currencies, ISINs) for Neutryx.
 //!
@@ -34,8 +34,8 @@
 //! ## Example
 //!
 //! ```rust
-//! use infra_master::time::{ConcreteCalendar, CalendarId, Calendar, Date, Frequency};
-//! use infra_master::market::{Currency, RateIndex};
+//! use infra_domain::time::{ConcreteCalendar, CalendarId, Calendar, Date, Frequency};
+//! use infra_domain::market::{Currency, RateIndex};
 //!
 //! let calendar = ConcreteCalendar::get(CalendarId::Target);
 //! let date = Date::from_ymd(2026, 1, 5).unwrap();

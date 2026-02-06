@@ -13,7 +13,7 @@
 //! # Note
 //!
 //! For core financial types (`Date`, `Currency`, `DayCounter`,
-//! `BusinessDayConvention`), import directly from `infra_master`.
+//! `BusinessDayConvention`), import directly from `infra_domain`.
 
 pub mod currency_pair;
 pub mod error;

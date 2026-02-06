@@ -6,7 +6,7 @@
 
 ### 主要な発見
 - **既存の基盤が充実**: `MarketProvider`、`StochasticModelEnum`、`CurveEnum`、`VolSurfaceEnum`等の核心コンポーネントが実装済み
-- **Trade/Leg/Cashflow構造**: `infra_master::trade`に完全なCF-expanded形式が存在
+- **Trade/Leg/Cashflow構造**: `infra_domain::trade`に完全なCF-expanded形式が存在
 - **Greeks計算基盤**: `GreeksConfig`、`GreeksMode`（BumpRevalue、NumDual、EnzymeAAD）が整備済み
 - **エラー型**: `PricingError`、`MarketDataError`が存在、一部拡張が必要
 - **主要ギャップ**: 統合プライサーAPI、通貨換算、バッチプライシング機能
@@ -102,13 +102,13 @@ pub struct PricerConfig {
 
 | 受入基準 | 既存コンポーネント | ギャップ | 作業量 |
 |---------|------------------|---------|--------|
-| Trade入力 | `infra_master::trade::Trade` | **完全実装済み** | None |
+| Trade入力 | `infra_domain::trade::Trade` | **完全実装済み** | None |
 | InstrumentEnum入力 | `pricer_models::instruments` 参照のみ | **InstrumentEnum未実装** | Medium |
 | Leg/Cashflowパース | `Trade::all_cashflows()` 存在 | プライシングロジック必要 | Medium |
 | 静的ディスパッチ | enum使用パターン確立済み | 適用のみ | Small |
 | UnsupportedInstrument | `PricingError::UnsupportedInstrument` 存在 | **利用可能** | None |
 
-**既存構造** ([trade.rs:133-147](crates/infra_master/src/trade/trade.rs#L133-L147)):
+**既存構造** ([trade.rs:133-147](crates/infra_domain/src/trade/trade.rs#L133-L147)):
 ```rust
 pub struct Trade {
     pub id: TradeId,
@@ -122,7 +122,7 @@ pub struct Trade {
 
 | 受入基準 | 既存コンポーネント | ギャップ | 作業量 |
 |---------|------------------|---------|--------|
-| Currency列挙型 | `infra_master::market::Currency` | **完全実装済み** | None |
+| Currency列挙型 | `infra_domain::market::Currency` | **完全実装済み** | None |
 | 為替レート取得 | なし | **FxRateProvider新規作成必要** | Medium |
 | 通貨別PV内訳 | なし | **CurrencyBreakdown新規作成必要** | Small |
 | FxRateNotFound | `MarketDataError` 拡張必要 | **追加必要** | Trivial |
@@ -145,11 +145,11 @@ pub struct CurrencyBreakdown<T: Float> {
 
 | 受入基準 | 既存コンポーネント | ギャップ | 作業量 |
 |---------|------------------|---------|--------|
-| Calendar | `infra_master::time` 参照必要 | 確認必要 | 調査 |
-| DayCountConvention | `infra_master::time` 参照必要 | 確認必要 | 調査 |
+| Calendar | `infra_domain::time` 参照必要 | 確認必要 | 調査 |
+| DayCountConvention | `infra_domain::time` 参照必要 | 確認必要 | 調査 |
 | 営業日調整 | 確認必要 | 確認必要 | 調査 |
 | カーブテナー補間 | `InterpolatedCurve` 存在 | 日付→Year Fractionヘルパー必要 | Small |
-| chrono::NaiveDate | `infra_master::Date` 使用中 | **互換性確認必要** | 調査 |
+| chrono::NaiveDate | `infra_domain::Date` 使用中 | **互換性確認必要** | 調査 |
 
 ### Requirement 8: バッチプライシング
 
@@ -220,7 +220,7 @@ pub struct CurrencyBreakdown<T: Float> {
 
 以下の項目は設計フェーズで追加調査が必要:
 
-1. **infra_master::time モジュール**: Calendar、DayCountConventionの現状確認
+1. **infra_domain::time モジュール**: Calendar、DayCountConventionの現状確認
 2. **InstrumentEnum設計**: 既存の商品定義との統合方針
 3. **為替レート取得**: MarketProviderへのFxRate追加 vs 別Provider
 4. **スレッドローカルバッファ**: rayon並列化との整合性

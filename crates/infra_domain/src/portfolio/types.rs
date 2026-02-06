@@ -22,7 +22,7 @@ use crate::{
 /// # Examples
 ///
 /// ```
-/// use infra_master::portfolio::PortfolioScope;
+/// use infra_domain::portfolio::PortfolioScope;
 ///
 /// let scope = PortfolioScope::Internal;
 /// assert_eq!(scope, PortfolioScope::default());
@@ -75,8 +75,8 @@ impl PortfolioScope {
 /// # Examples
 ///
 /// ```
-/// use infra_master::portfolio::PortfolioMetadata;
-/// use infra_master::market::Currency;
+/// use infra_domain::portfolio::PortfolioMetadata;
+/// use infra_domain::market::Currency;
 ///
 /// let metadata = PortfolioMetadata::new(Currency::USD);
 /// assert_eq!(metadata.reporting_currency(), Currency::USD);
@@ -158,8 +158,8 @@ impl PortfolioMetadata {
 /// # Examples
 ///
 /// ```
-/// use infra_master::portfolio::PortfolioBookMapping;
-/// use infra_master::ids::{PortfolioId, BookId};
+/// use infra_domain::portfolio::PortfolioBookMapping;
+/// use infra_domain::ids::{PortfolioId, BookId};
 ///
 /// let mapping = PortfolioBookMapping::new("P001", "B001");
 /// assert_eq!(mapping.portfolio_id().as_str(), "P001");

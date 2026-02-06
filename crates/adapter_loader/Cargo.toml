@@ -9,7 +9,7 @@ description = "Flat file loaders (CSV/Parquet) and CSA details for Neutryx"
 
 [dependencies]
 # Master data from Infra layer
-infra_master = { path = "../infra_master", features = ["serde"] }
+infra_domain = { path = "../infra_domain", features = ["serde"] }
 
 # Pricer layer for target types (MarketInstrument)
 pricer_models = { path = "../pricer_models", optional = true }
@@ -39,7 +39,7 @@ arrow = { version = "54", optional = true }
 
 [features]
 default = []
-full-serde = ["infra_master/serde"]
+full-serde = ["infra_domain/serde"]
 parquet = ["dep:parquet", "dep:arrow"]
 curve-builder = ["dep:pricer_models"]
 

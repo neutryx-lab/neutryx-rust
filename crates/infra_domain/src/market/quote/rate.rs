@@ -6,10 +6,10 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::market::{
+//! use infra_domain::market::{
 //!     MarketRate, RateId, RateType, QuoteType, DataSource, Currency
 //! };
-//! use infra_master::time::Tenor;
+//! use infra_domain::time::Tenor;
 //!
 //! let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
 //! let rate = MarketRate::new(
@@ -44,10 +44,10 @@ use super::{error::MarketRateError, quote_type::QuoteType, rate_id::RateId};
 /// # Examples
 ///
 /// ```
-/// use infra_master::market::{
+/// use infra_domain::market::{
 ///     MarketRate, RateId, RateType, QuoteType, DataSource, Currency
 /// };
-/// use infra_master::time::Tenor;
+/// use infra_domain::time::Tenor;
 ///
 /// let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
 ///
@@ -106,10 +106,10 @@ impl MarketRate {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{
+    /// use infra_domain::market::{
     ///     MarketRate, RateId, RateType, QuoteType, DataSource, Currency
     /// };
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::time::Tenor;
     ///
     /// let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
     /// let rate = MarketRate::new(
@@ -153,10 +153,10 @@ impl MarketRate {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{
+    /// use infra_domain::market::{
     ///     MarketRate, RateId, RateType, QuoteType, DataSource, Currency
     /// };
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::time::Tenor;
     ///
     /// let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
     /// let rate = MarketRate::new(
@@ -185,10 +185,10 @@ impl MarketRate {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{
+    /// use infra_domain::market::{
     ///     MarketRate, RateId, RateType, QuoteType, DataSource, Currency
     /// };
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::time::Tenor;
     ///
     /// let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
     /// let rate = MarketRate::new(

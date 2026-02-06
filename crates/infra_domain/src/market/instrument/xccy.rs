@@ -21,7 +21,7 @@ use crate::{Currency, Date, Frequency, RateIndex};
 /// # Example
 ///
 /// ```rust
-/// use infra_master::trade::instrument_def::BasisSpread;
+/// use infra_domain::trade::instrument_def::BasisSpread;
 ///
 /// // -15 bps basis spread
 /// let spread = BasisSpread::from_bps(-15.0);
@@ -240,10 +240,10 @@ impl std::fmt::Display for XccyTenor {
 /// # Example
 ///
 /// ```rust
-/// use infra_master::trade::instrument_def::{
+/// use infra_domain::trade::instrument_def::{
 ///     CrossCurrencyBasisSwap, BasisSpread, XccyLeg, XccyBasisConvention,
 /// };
-/// use infra_master::{Currency, Date, Frequency, RateIndex};
+/// use infra_domain::{Currency, Date, Frequency, RateIndex};
 ///
 /// let xccy = CrossCurrencyBasisSwap {
 ///     domestic_currency: Currency::USD,

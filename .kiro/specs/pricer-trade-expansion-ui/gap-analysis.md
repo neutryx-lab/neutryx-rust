@@ -14,10 +14,10 @@
 
 | モジュール | 場所 | 状態 | 関連性 |
 |-----------|------|------|--------|
-| **TradeBuilder/LegBuilder** | `crates/infra_master/src/trade/builder.rs` | ✅ 完成 | CF 展開の核心 |
-| **Instrument enum** | `crates/infra_master/src/trade/instrument.rs` | ✅ 完成 | Deposit, FRA, Futures, ParSwap, OIS, BasisSwap, CrossCurrencySwap |
-| **Cashflow/Leg/Trade** | `crates/infra_master/src/trade/` | ✅ 完成 | Trade 構造体 |
-| **instrument_def** | `crates/infra_master/src/trade/instrument_def/` | ✅ 完成 | Rates, FX, Equity, Credit, Commodity の詳細定義 |
+| **TradeBuilder/LegBuilder** | `crates/infra_domain/src/trade/builder.rs` | ✅ 完成 | CF 展開の核心 |
+| **Instrument enum** | `crates/infra_domain/src/trade/instrument.rs` | ✅ 完成 | Deposit, FRA, Futures, ParSwap, OIS, BasisSwap, CrossCurrencySwap |
+| **Cashflow/Leg/Trade** | `crates/infra_domain/src/trade/` | ✅ 完成 | Trade 構造体 |
+| **instrument_def** | `crates/infra_domain/src/trade/instrument_def/` | ✅ 完成 | Rates, FX, Equity, Credit, Commodity の詳細定義 |
 | **Web handlers** | `demo/gui/src/web/handlers.rs` | 🔶 拡張必要 | 既存 price/bootstrap エンドポイント |
 | **pricer_types** | `demo/gui/src/web/pricer_types.rs` | 🔶 拡張必要 | 現在は EquityVanillaOption, FxOption, IRS のみ |
 
@@ -65,7 +65,7 @@ function handleInstrumentTypeChange(type) {
 |-------------|------|-----------|
 | **REST API ルーティング** | `demo/gui/src/web/mod.rs` | 新規エンドポイント追加 |
 | **型定義** | `pricer_types.rs` | 新規 Instrument 型追加 |
-| **infra_master 依存** | 現在なし | 依存追加必要 |
+| **infra_domain 依存** | 現在なし | 依存追加必要 |
 
 ---
 
@@ -87,7 +87,7 @@ function handleInstrumentTypeChange(type) {
 #### Missing（欠落）
 
 1. **Trade 展開 API エンドポイント** (`POST /api/trade/expand`)
-   - infra_master::trade への依存追加
+   - infra_domain::trade への依存追加
    - TradeBuilder/LegBuilder のラッパー
    - JSON シリアライズ可能なレスポンス型
 
@@ -111,7 +111,7 @@ function handleInstrumentTypeChange(type) {
    - Tenor からの Date リスト生成ロジックが必要
    - **Research Needed**: `pricer_models::schedules` モジュールの活用可能性
 
-2. **infra_master 型の serde 対応**
+2. **infra_domain 型の serde 対応**
    - `feature = "serde"` が必要
    - **Research Needed**: 現在の Cargo.toml 設定確認
 
@@ -126,7 +126,7 @@ function handleInstrumentTypeChange(type) {
    - 既存パターンに従う
 
 2. **serde feature flag**
-   - infra_master の型は `#[cfg_attr(feature = "serde", derive(...))]` で定義
+   - infra_domain の型は `#[cfg_attr(feature = "serde", derive(...))]` で定義
    - demo/gui から使用時に feature 有効化が必要
 
 ---
@@ -202,7 +202,7 @@ function handleInstrumentTypeChange(type) {
 
 **リスク軽減策**:
 - Design フェーズでスケジュール生成アプローチを確定
-- infra_master の serde feature を早期確認
+- infra_domain の serde feature を早期確認
 - Cashflow テーブルはページネーション採用（仮想スクロールより実装容易）
 
 ---
@@ -226,7 +226,7 @@ function handleInstrumentTypeChange(type) {
 
 1. **スケジュール生成アプローチ**
    - Option A: `pricer_models::schedules::ScheduleBuilder` 活用
-   - Option B: infra_master に簡易スケジュール生成追加
+   - Option B: infra_domain に簡易スケジュール生成追加
    - **推奨**: Option A（既存コード再利用）
 
 2. **Cashflow 表示方式**
@@ -241,6 +241,6 @@ function handleInstrumentTypeChange(type) {
 
 ### 調査継続項目
 
-1. infra_master の `serde` feature 有効化状況確認
+1. infra_domain の `serde` feature 有効化状況確認
 2. `pricer_models::schedules` の Tenor → Date リスト変換機能確認
 3. 既存 DayCountConvention, Frequency 型の JSON シリアライズ対応確認

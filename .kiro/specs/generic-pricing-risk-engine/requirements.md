@@ -24,9 +24,9 @@
 
 #### Acceptance Criteria
 
-1. The DataLoader shall load trade data from JSON files and convert to `Trade` structures defined in `infra_master::trade`
+1. The DataLoader shall load trade data from JSON files and convert to `Trade` structures defined in `infra_domain::trade`
 2. The DataLoader shall load market data (curves, volatility surfaces) from JSON files and construct corresponding `CurveEnum`/`VolSurfaceEnum` objects
-3. The DataLoader shall load CSA terms from JSON files and construct `CsaTerms` structures defined in `infra_master::counterparty`
+3. The DataLoader shall load CSA terms from JSON files and construct `CsaTerms` structures defined in `infra_domain::counterparty`
 4. When input file is not found or malformed, the DataLoader shall return descriptive errors with file path and parse location
 5. The DataLoader shall support batch loading of multiple files via glob patterns
 

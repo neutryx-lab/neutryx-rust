@@ -32,7 +32,7 @@ use super::CounterPartyError;
 /// # Examples
 ///
 /// ```
-/// use infra_master::counterparty::CreditRating;
+/// use infra_domain::counterparty::CreditRating;
 ///
 /// let rating = CreditRating::APlus;
 /// assert!(rating.is_investment_grade());
@@ -89,7 +89,7 @@ impl CreditRating {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::counterparty::CreditRating;
+    /// use infra_domain::counterparty::CreditRating;
     ///
     /// assert!(CreditRating::Aaa.is_investment_grade());
     /// assert!(CreditRating::BbbMinus.is_investment_grade());
@@ -106,7 +106,7 @@ impl CreditRating {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::counterparty::CreditRating;
+    /// use infra_domain::counterparty::CreditRating;
     ///
     /// let rate = CreditRating::Bbb.indicative_hazard_rate();
     /// assert!((rate - 0.002).abs() < 1e-10); // ~20 bp
@@ -218,7 +218,7 @@ impl std::fmt::Display for CreditRating {
 /// # Examples
 ///
 /// ```
-/// use infra_master::counterparty::{CreditParams, CreditRating};
+/// use infra_domain::counterparty::{CreditParams, CreditRating};
 ///
 /// // Create from hazard rate and LGD
 /// let params = CreditParams::new(0.01, 0.4).unwrap(); // 100bp hazard, 40% LGD

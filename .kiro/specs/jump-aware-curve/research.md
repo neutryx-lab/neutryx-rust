@@ -14,8 +14,8 @@
 
 - **Context**: JumpPillar を追加するための最適な統合ポイントを特定
 - **Sources Consulted**:
-  - [definition/curve.rs](crates/infra_master/src/market/definition/curve.rs)
-  - [event_instrument.rs](crates/infra_master/src/market/event_instrument.rs)
+  - [definition/curve.rs](crates/infra_domain/src/market/definition/curve.rs)
+  - [event_instrument.rs](crates/infra_domain/src/market/event_instrument.rs)
   - [market.rs](crates/pricer_models/src/market.rs)
 - **Findings**:
   - `CurveDefinition` は Builder パターン (`with_*` メソッド) を採用
@@ -65,8 +65,8 @@
 
 - **Context**: JumpPillar 構造体をどのモジュールに配置するか
 - **Alternatives Considered**:
-  1. `infra_master/market/definition/curve.rs` 内に追加
-  2. 新規 `infra_master/market/definition/jump_pillar.rs` として分離
+  1. `infra_domain/market/definition/curve.rs` 内に追加
+  2. 新規 `infra_domain/market/definition/jump_pillar.rs` として分離
 - **Selected Approach**: Option 2 - 分離ファイルとして作成
 - **Rationale**:
   - curve.rs のサイズ維持
@@ -112,4 +112,4 @@
 
 - [enum_dispatch crate](https://docs.rs/enum_dispatch) — 静的ディスパッチパターン
 - [pricer_models::market](crates/pricer_models/src/market.rs) — YieldCurve trait 定義
-- [infra_master::market::definition](crates/infra_master/src/market/definition/mod.rs) — CurveDefinition モジュール
+- [infra_domain::market::definition](crates/infra_domain/src/market/definition/mod.rs) — CurveDefinition モジュール

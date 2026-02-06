@@ -20,9 +20,9 @@ use crate::market::{Currency, RateId, RateType};
 /// # Example
 ///
 /// ```rust
-/// use infra_master::market::convention::MarketConvention;
-/// use infra_master::market::{Currency, RateId, RateType};
-/// use infra_master::time::Tenor;
+/// use infra_domain::market::convention::MarketConvention;
+/// use infra_domain::market::{Currency, RateId, RateType};
+/// use infra_domain::time::Tenor;
 ///
 /// let rate_id = RateId::new(Currency::USD, Tenor::FiveYears, RateType::Swap);
 /// let convention = MarketConvention::for_rate_id(&rate_id);
@@ -60,7 +60,7 @@ impl MarketConvention {
     /// # Examples
     ///
     /// ```rust
-    /// use infra_master::market::convention::{MarketConvention, DepositConvention};
+    /// use infra_domain::market::convention::{MarketConvention, DepositConvention};
     ///
     /// let conv = MarketConvention::Deposit(DepositConvention::usd());
     /// assert_eq!(conv.instrument_type_name(), "Deposit");
@@ -84,8 +84,8 @@ impl MarketConvention {
     /// # Examples
     ///
     /// ```rust
-    /// use infra_master::market::convention::{MarketConvention, SwapConvention};
-    /// use infra_master::market::RateType;
+    /// use infra_domain::market::convention::{MarketConvention, SwapConvention};
+    /// use infra_domain::market::RateType;
     ///
     /// let conv = MarketConvention::Swap(SwapConvention::usd_sofr());
     /// assert_eq!(conv.rate_type(), RateType::Swap);
@@ -122,9 +122,9 @@ impl MarketConvention {
     /// # Examples
     ///
     /// ```rust
-    /// use infra_master::market::convention::MarketConvention;
-    /// use infra_master::market::{Currency, RateId, RateType};
-    /// use infra_master::time::Tenor;
+    /// use infra_domain::market::convention::MarketConvention;
+    /// use infra_domain::market::{Currency, RateId, RateType};
+    /// use infra_domain::time::Tenor;
     ///
     /// // USD Deposit
     /// let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);

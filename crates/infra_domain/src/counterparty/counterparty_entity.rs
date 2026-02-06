@@ -78,7 +78,7 @@ impl std::fmt::Display for CounterPartySector {
 /// # Examples
 ///
 /// ```
-/// use infra_master::counterparty::{CounterParty, CounterPartySector, CreditRating};
+/// use infra_domain::counterparty::{CounterParty, CounterPartySector, CreditRating};
 ///
 /// let cp = CounterParty::builder()
 ///     .counterparty_id("CP001")

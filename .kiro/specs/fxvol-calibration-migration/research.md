@@ -4,7 +4,7 @@
 - **Feature**: `fxvol-calibration-migration`
 - **Discovery Scope**: Extension（既存システムへの統合型拡張）
 - **Key Findings**:
-  - infra_master の FX vol 型定義は100%完成しており、追加実装不要
+  - infra_domain の FX vol 型定義は100%完成しており、追加実装不要
   - pricer_core の SABR/Garman-Kohlhagen は完成済み、delta_to_strike のみ移植が必要
   - pricer_models の SabrSliceCalibrator はプレースホルダー実装、levenberg-marquardt クレートで置換
   - FxCurve トレイトと IrpFxCurve は新規実装が必要（YieldCurve パターンに準拠）
@@ -83,7 +83,7 @@
 - **Rationale**:
   - GarmanKohlhagen はプライシングモデル、delta_to_strike は変換ユーティリティ
   - 他のモジュール（pricer_models）から直接呼び出し可能
-  - infra_master の DeltaType を引数に取ることで型安全性を確保
+  - infra_domain の DeltaType を引数に取ることで型安全性を確保
 - **Trade-offs**:
   - (+) 独立性が高く再利用可能
   - (-) GarmanKohlhagen との重複計算の可能性
@@ -116,7 +116,7 @@
 - **Rationale**:
   - 既存の FxVolBuilder 構造が適切な拡張ポイントを提供
   - アダプター層は不要な複雑性を追加
-  - infra_master の型を直接受け取ることでAPI使用性が向上
+  - infra_domain の型を直接受け取ることでAPI使用性が向上
 - **Trade-offs**:
   - (+) シンプルなAPI、型安全
   - (-) FxVolBuilder の責務が増加

@@ -20,7 +20,7 @@ use crate::{
 /// # Examples
 ///
 /// ```
-/// use infra_master::trade::BookTransferReason;
+/// use infra_domain::trade::BookTransferReason;
 ///
 /// let reason = BookTransferReason::NewTrade;
 /// assert_eq!(reason, BookTransferReason::default());
@@ -76,8 +76,8 @@ impl BookTransferReason {
 /// # Examples
 ///
 /// ```
-/// use infra_master::trade::TradeBookAssignment;
-/// use infra_master::Date;
+/// use infra_domain::trade::TradeBookAssignment;
+/// use infra_domain::Date;
 ///
 /// let assignment = TradeBookAssignment::new_trade(
 ///     "TRADE001",
@@ -197,8 +197,8 @@ impl TradeBookAssignment {
 /// # Examples
 ///
 /// ```
-/// use infra_master::trade::{TradeBookHistory, TradeBookAssignment, BookTransferReason};
-/// use infra_master::Date;
+/// use infra_domain::trade::{TradeBookHistory, TradeBookAssignment, BookTransferReason};
+/// use infra_domain::Date;
 ///
 /// let mut history = TradeBookHistory::new("TRADE001");
 /// history.add_assignment(TradeBookAssignment::new_trade(

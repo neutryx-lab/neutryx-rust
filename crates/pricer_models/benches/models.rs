@@ -8,7 +8,7 @@
 #![allow(missing_docs)]
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use infra_master::trade::{
+use infra_domain::trade::{
     ExerciseStyle, InstrumentParams, PayoffType, PricingInstrument, VanillaOption,
 };
 use pricer_core::math::{

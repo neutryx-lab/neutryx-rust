@@ -6,20 +6,20 @@
 
 **Users**: Neutryx 開発者が正しいインポートパスを使用し、型定義の重複なく開発できるようになる。
 
-**Impact**: `pricer_core` および `pricer_models` の公開 API から `infra_master` 型の re-export を削除。依存コード（12ファイル）のインポート文を更新。
+**Impact**: `pricer_core` および `pricer_models` の公開 API から `infra_domain` 型の re-export を削除。依存コード（12ファイル）のインポート文を更新。
 
 ### Goals
 
-- deprecated `infra_master::convention` モジュールの完全削除
+- deprecated `infra_domain::convention` モジュールの完全削除
 - クロスレイヤー re-export の排除（P層 → I層）
-- 重複型定義の統一（`DayCount`, `BusinessDayAdjustment` → `infra_master` 型使用）
+- 重複型定義の統一（`DayCount`, `BusinessDayAdjustment` → `infra_domain` 型使用）
 - `CurrencyPair` 名前衝突の解決（`FxRate<T>` へリネーム）
 - 責務外テストの削除
 - **ID 型安全性の統一**: Stringly Typed を Newtype パターンで解消し、ID 取り違えをコンパイル時に検出
 
 ### Non-Goals
 
-- `SpotDateConvention` の `infra_master` 移動（将来の課題として保留）
+- `SpotDateConvention` の `infra_domain` 移動（将来の課題として保留）
 - `pricer_core::types::time::DayCountConvention` の削除（独自の簡略型として保持）
 - 新規機能の追加（ID Newtype 化は既存概念の型安全化であり、新機能ではない）
 
@@ -32,15 +32,15 @@
 ```text
 [現状の違反パターン]
 
-pricer_core (L1) ──pub use──> infra_master (I)  ❌ 層違反
+pricer_core (L1) ──pub use──> infra_domain (I)  ❌ 層違反
      │
-     └── types/mod.rs: pub use infra_master::{Date, Currency, ...}
-     └── types/time.rs: pub use infra_master::{Date, DayCounter, ...}
-     └── types/error.rs: pub use infra_master::{CurrencyError, DateError}
+     └── types/mod.rs: pub use infra_domain::{Date, Currency, ...}
+     └── types/time.rs: pub use infra_domain::{Date, DayCounter, ...}
+     └── types/error.rs: pub use infra_domain::{CurrencyError, DateError}
 
-pricer_models (L2) ──pub use──> infra_master (I)  ❌ 層違反
+pricer_models (L2) ──pub use──> infra_domain (I)  ❌ 層違反
      │
-     └── lib.rs: pub use infra_master::{SwapDirection, TradeDirection}
+     └── lib.rs: pub use infra_domain::{SwapDirection, TradeDirection}
      └── bootstrapping/date_utils.rs: DayCount, BusinessDayAdjustment (重複定義)
 ```
 
@@ -53,7 +53,7 @@ pricer_models (L2) ──pub use──> infra_master (I)  ❌ 層違反
 ```mermaid
 graph TB
     subgraph I[Infra Layer]
-        IM[infra_master]
+        IM[infra_domain]
         IM_Types[Date, Currency, DayCounter, BusinessDayConvention]
         IM_Trade[SwapDirection, TradeDirection, CurrencyPair]
     end
@@ -100,7 +100,7 @@ graph TB
 
 | Requirement | Summary | Components | Interfaces | Flows |
 |-------------|---------|------------|------------|-------|
-| 1.1-1.4 | deprecated convention 削除 | infra_master | N/A | 削除フロー |
+| 1.1-1.4 | deprecated convention 削除 | infra_domain | N/A | 削除フロー |
 | 2.1-2.5 | pricer_core re-export 削除 | pricer_core::types | N/A | import 更新 |
 | 3.1-3.3 | pricer_models re-export 削除 | pricer_models | N/A | import 更新 |
 | 4.1-4.3 | 責務外テスト削除 | pricer_core::tests | N/A | テスト削除 |
@@ -109,25 +109,25 @@ graph TB
 | 7.1-7.9 | 依存コード更新 | 12ファイル | N/A | import 更新 |
 | 8.1-8.4 | ドキュメント更新 | steering | N/A | 記述更新 |
 | 9.1-9.5 | ビルド・テスト検証 | workspace | N/A | 検証フロー |
-| 10.1-10.8 | ID Newtype 統一 | infra_master::ids, trade, pricer_risk | Service | 型置換・統合 |
+| 10.1-10.8 | ID Newtype 統一 | infra_domain::ids, trade, pricer_risk | Service | 型置換・統合 |
 
 ## Components and Interfaces
 
 | Component | Domain/Layer | Intent | Req Coverage | Key Dependencies | Contracts |
 |-----------|--------------|--------|--------------|------------------|-----------|
-| infra_master::convention | I | 削除対象モジュール | 1.1-1.4 | N/A | N/A |
-| pricer_core::types | L1 | re-export 削除対象 | 2.1-2.5 | infra_master | N/A |
-| pricer_models::lib | L2 | re-export 削除対象 | 3.1-3.3 | infra_master | N/A |
+| infra_domain::convention | I | 削除対象モジュール | 1.1-1.4 | N/A | N/A |
+| pricer_core::types | L1 | re-export 削除対象 | 2.1-2.5 | infra_domain | N/A |
+| pricer_models::lib | L2 | re-export 削除対象 | 3.1-3.3 | infra_domain | N/A |
 | pricer_core::tests | L1 | テスト削除対象 | 4.1-4.3 | N/A | N/A |
-| date_utils | L2 | 重複型削除対象 | 5.1-5.6 | infra_master | Service |
-| currency_pair | L1 | リネーム対象 | 6.1-6.4 | infra_master | Service |
-| infra_master::ids | I | ID Newtype 統一 | 10.1-10.8 | N/A | Service |
-| infra_master::trade | I | TradeId/Metadata 更新 | 10.3-10.5 | infra_master::ids | Service |
-| pricer_risk::portfolio::ids | L4 | re-export 化 | 10.6 | infra_master::ids | N/A |
+| date_utils | L2 | 重複型削除対象 | 5.1-5.6 | infra_domain | Service |
+| currency_pair | L1 | リネーム対象 | 6.1-6.4 | infra_domain | Service |
+| infra_domain::ids | I | ID Newtype 統一 | 10.1-10.8 | N/A | Service |
+| infra_domain::trade | I | TradeId/Metadata 更新 | 10.3-10.5 | infra_domain::ids | Service |
+| pricer_risk::portfolio::ids | L4 | re-export 化 | 10.6 | infra_domain::ids | N/A |
 
 ### Infra Layer
 
-#### infra_master::convention（削除対象）
+#### infra_domain::convention（削除対象）
 
 | Field | Detail |
 |-------|--------|
@@ -156,26 +156,26 @@ graph TB
 
 | Field | Detail |
 |-------|--------|
-| Intent | 型モジュールから infra_master re-export を削除 |
+| Intent | 型モジュールから infra_domain re-export を削除 |
 | Requirements | 2.1 |
 
 **削除対象コード**:
 ```rust
 // 削除: Line 36
-pub use infra_master::{BusinessDayConvention, Currency, Date, DayCounter};
+pub use infra_domain::{BusinessDayConvention, Currency, Date, DayCounter};
 ```
 
 #### pricer_core::types::time.rs（re-export 削除）
 
 | Field | Detail |
 |-------|--------|
-| Intent | time モジュールから infra_master re-export を削除 |
+| Intent | time モジュールから infra_domain re-export を削除 |
 | Requirements | 2.2, 2.5 |
 
 **削除対象コード**:
 ```rust
 // 削除: Line 28
-pub use infra_master::{BusinessDayConvention, Date, DayCounter};
+pub use infra_domain::{BusinessDayConvention, Date, DayCounter};
 ```
 
 **保持対象**:
@@ -186,13 +186,13 @@ pub use infra_master::{BusinessDayConvention, Date, DayCounter};
 
 | Field | Detail |
 |-------|--------|
-| Intent | error モジュールから infra_master re-export を削除 |
+| Intent | error モジュールから infra_domain re-export を削除 |
 | Requirements | 2.3 |
 
 **削除対象コード**:
 ```rust
 // 削除: Line 14
-pub use infra_master::{CurrencyError, DateError};
+pub use infra_domain::{CurrencyError, DateError};
 ```
 
 #### pricer_core::types::currency_pair.rs（リネーム）
@@ -208,7 +208,7 @@ pub use infra_master::{CurrencyError, DateError};
 ```rust
 /// FX為替レート（AD対応ジェネリック型）
 ///
-/// `infra_master::CurrencyPair` は instrument 定義用（spot rate なし）、
+/// `infra_domain::CurrencyPair` は instrument 定義用（spot rate なし）、
 /// `FxRate<T>` は pricing 用（spot rate あり、AD 対応）。
 pub struct FxRate<T: Float> {
     base: Currency,
@@ -231,13 +231,13 @@ impl<T: Float> FxRate<T> {
 
 | Field | Detail |
 |-------|--------|
-| Intent | lib.rs から infra_master re-export を削除 |
+| Intent | lib.rs から infra_domain re-export を削除 |
 | Requirements | 3.1, 3.2 |
 
 **削除対象コード**:
 ```rust
 // 削除: Line 57
-pub use infra_master::{SwapDirection, TradeDirection};
+pub use infra_domain::{SwapDirection, TradeDirection};
 ```
 
 **保持対象**:
@@ -250,7 +250,7 @@ pub use direction_ext::{SwapDirectionExt, TradeDirectionExt};
 
 | Field | Detail |
 |-------|--------|
-| Intent | 重複型定義を削除し infra_master 型を使用 |
+| Intent | 重複型定義を削除し infra_domain 型を使用 |
 | Requirements | 5.1, 5.2, 5.3, 5.4, 5.5, 5.6 |
 
 **削除対象**:
@@ -271,7 +271,7 @@ pub use direction_ext::{SwapDirectionExt, TradeDirectionExt};
 
 ##### Service Interface（更新後）
 ```rust
-use infra_master::{BusinessDayConvention, DayCounter};
+use infra_domain::{BusinessDayConvention, DayCounter};
 
 pub struct DateCalculator {
     spot_convention: SpotDateConvention,
@@ -287,7 +287,7 @@ impl DateCalculator {
 
 ### Infra Layer - ID 型統一
 
-#### infra_master::ids（新規モジュール）
+#### infra_domain::ids（新規モジュール）
 
 | Field | Detail |
 |-------|--------|
@@ -355,7 +355,7 @@ define_id!(CcpId, "Unique identifier for a central counterparty.");
 - `Default` は意図的に実装しない（空 ID の暗黙生成を防止）
 - `CounterpartyId` と `NettingSetId` のみ `Default` を実装（既存互換性のため）
 
-#### infra_master::trade::trade.rs（更新）
+#### infra_domain::trade::trade.rs（更新）
 
 | Field | Detail |
 |-------|--------|
@@ -404,16 +404,16 @@ Bond {
 
 | Field | Detail |
 |-------|--------|
-| Intent | 独自定義を削除し infra_master から re-export |
+| Intent | 独自定義を削除し infra_domain から re-export |
 | Requirements | 10.6 |
 
 **更新後**:
 ```rust
 //! Identifier types for portfolio entities.
 //!
-//! Re-exported from infra_master for backward compatibility.
+//! Re-exported from infra_domain for backward compatibility.
 
-pub use infra_master::ids::{CounterpartyId, NettingSetId, TradeId};
+pub use infra_domain::ids::{CounterpartyId, NettingSetId, TradeId};
 ```
 
 ## Data Models
@@ -444,7 +444,7 @@ pub use infra_master::ids::{CounterpartyId, NettingSetId, TradeId};
 
 ### Unit Tests
 - `pricer_core::types::time` テスト更新（DayCountConvention の独自テストは保持）
-- `date_utils` テスト更新（infra_master 型を使用）
+- `date_utils` テスト更新（infra_domain 型を使用）
 
 ### Integration Tests
 - `cargo test --workspace`: 全クレートの回帰テスト
@@ -470,8 +470,8 @@ flowchart TB
 ```
 
 **Phase 10 詳細（ID Newtype 統一）**:
-1. `infra_master::ids` モジュールを新設（全 ID Newtype を定義）
-2. `infra_master::trade::trade.rs` から型エイリアスを削除、`ids` モジュールを使用
+1. `infra_domain::ids` モジュールを新設（全 ID Newtype を定義）
+2. `infra_domain::trade::trade.rs` から型エイリアスを削除、`ids` モジュールを使用
 3. `TradeMetadata` と `TradeType::Bond` を Newtype ID で更新
 4. `pricer_risk::portfolio::ids` を re-export 方式に変更
 5. 依存コード（テスト含む）を更新

@@ -529,12 +529,12 @@ impl<T: Float> CalibrationInstrument<T> for CompiledInstrument<T> {
 
 use std::marker::PhantomData;
 
-use infra_master::market::convention::MarketConvention;
-use infra_master::market::MarketInstrument as InfraMasterInstrument;
-use infra_master::time::Date;
+use infra_domain::market::convention::MarketConvention;
+use infra_domain::market::MarketInstrument as InfraMasterInstrument;
+use infra_domain::time::Date;
 use pricer_core::math::numeric::from_f64;
 
-/// Compiler for converting `infra_master::market::MarketInstrument` to
+/// Compiler for converting `infra_domain::market::MarketInstrument` to
 /// `CompiledInstrument<T>`.
 ///
 /// # Requirement 5.1
@@ -543,7 +543,7 @@ use pricer_core::math::numeric::from_f64;
 ///
 /// # Requirement 5.2
 ///
-/// The Compiler shall receive `infra_master::market::MarketInstrument` as input
+/// The Compiler shall receive `infra_domain::market::MarketInstrument` as input
 /// and output `pricer_models` specific types.
 #[derive(Debug, Clone)]
 pub struct InstrumentCompiler<T: Float> {
@@ -1198,9 +1198,9 @@ mod tests {
     // InstrumentCompiler Tests (Requirements 3.1-3.5)
     // =========================================================================
 
-    use infra_master::market::convention::{DepositConvention, FraConvention, SwapConvention};
-    use infra_master::market::{Currency, RateId, RateType};
-    use infra_master::time::Tenor;
+    use infra_domain::market::convention::{DepositConvention, FraConvention, SwapConvention};
+    use infra_domain::market::{Currency, RateId, RateType};
+    use infra_domain::time::Tenor;
 
     fn create_test_valuation_date() -> Date {
         Date::from_ymd(2024, 1, 15).unwrap()
@@ -1299,7 +1299,7 @@ mod tests {
 
     #[test]
     fn test_compile_unsupported_xccy() {
-        use infra_master::market::convention::XCcyBasisConvention;
+        use infra_domain::market::convention::XCcyBasisConvention;
 
         let valuation_date = create_test_valuation_date();
         let compiler: InstrumentCompiler<f64> = InstrumentCompiler::new(valuation_date);

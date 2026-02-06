@@ -2,7 +2,7 @@
 
 ## Task Overview
 
-本実装計画は`infra_master`クレートにPortfolio/Book定義およびCounterpartyPortfolio階層構造を追加する。XVA計算、Exposure計算、Netting計算の基盤構造を提供する。
+本実装計画は`infra_domain`クレートにPortfolio/Book定義およびCounterpartyPortfolio階層構造を追加する。XVA計算、Exposure計算、Netting計算の基盤構造を提供する。
 
 ---
 
@@ -265,9 +265,9 @@
 ---
 
 - [x] 16. 既存コード統合とFrom trait実装
-- [x] 16.1 infra_master → pricer_risk変換の実装
-  - infra_master::Bookからpricer_risk互換型へのFrom実装
-  - infra_master::CounterpartyPortfolioの変換
+- [x] 16.1 infra_domain → pricer_risk変換の実装
+  - infra_domain::Bookからpricer_risk互換型へのFrom実装
+  - infra_domain::CounterpartyPortfolioの変換
   - 型安全な変換とバリデーション
   - _Requirements: 11.1, 11.3_
 

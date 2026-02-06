@@ -50,9 +50,9 @@ pub enum IrVolInstrumentError {
 /// # Example
 ///
 /// ```rust
-/// use infra_master::market::instrument::{Swaption, PayerReceiver};
-/// use infra_master::trade::{ExerciseType, SettlementType};
-/// use infra_master::{Currency, Date, Tenor};
+/// use infra_domain::market::instrument::{Swaption, PayerReceiver};
+/// use infra_domain::trade::{ExerciseType, SettlementType};
+/// use infra_domain::{Currency, Date, Tenor};
 ///
 /// let swaption = Swaption {
 ///     underlying_swap_tenor: Tenor::TenYears,
@@ -138,8 +138,8 @@ impl Swaption {
     /// # Examples
     ///
     /// ```rust,ignore
-    /// use infra_master::trade::instrument_def::Swaption;
-    /// use infra_master::time::Frequency;
+    /// use infra_domain::trade::instrument_def::Swaption;
+    /// use infra_domain::time::Frequency;
     ///
     /// let swaption = /* ... */;
     /// let schedule = swaption.generate_underlying_schedule(Frequency::Annual, 2)?;
@@ -275,8 +275,8 @@ impl std::fmt::Display for CapFloorType {
 /// # Example
 ///
 /// ```rust
-/// use infra_master::market::instrument::{CapFloor, CapFloorType, NotionalSchedule};
-/// use infra_master::{Currency, Date, Frequency, RateIndex, Tenor};
+/// use infra_domain::market::instrument::{CapFloor, CapFloorType, NotionalSchedule};
+/// use infra_domain::{Currency, Date, Frequency, RateIndex, Tenor};
 ///
 /// let cap = CapFloor {
 ///     cap_floor_type: CapFloorType::Cap,
@@ -386,7 +386,7 @@ impl CapFloor {
     /// # Examples
     ///
     /// ```rust,ignore
-    /// use infra_master::trade::instrument_def::CapFloor;
+    /// use infra_domain::trade::instrument_def::CapFloor;
     ///
     /// let cap = /* ... */;
     /// let schedule = cap.generate_underlying_schedule(2)?;
@@ -564,9 +564,9 @@ impl std::fmt::Display for IrVolInstrument {
 /// # Example
 ///
 /// ```rust
-/// use infra_master::market::instrument::{SwaptionBuilder, PayerReceiver};
-/// use infra_master::trade::{ExerciseType, SettlementType};
-/// use infra_master::{Currency, Date, Tenor};
+/// use infra_domain::market::instrument::{SwaptionBuilder, PayerReceiver};
+/// use infra_domain::trade::{ExerciseType, SettlementType};
+/// use infra_domain::{Currency, Date, Tenor};
 ///
 /// let swaption = SwaptionBuilder::new(
 ///         Date::from_ymd(2026, 1, 15).unwrap(),
@@ -693,8 +693,8 @@ impl SwaptionBuilder {
 /// # Example
 ///
 /// ```rust
-/// use infra_master::market::instrument::{CapFloorBuilder, CapFloorType};
-/// use infra_master::{Currency, Date, Frequency, RateIndex, Tenor};
+/// use infra_domain::market::instrument::{CapFloorBuilder, CapFloorType};
+/// use infra_domain::{Currency, Date, Frequency, RateIndex, Tenor};
 ///
 /// let cap = CapFloorBuilder::new(
 ///         Date::from_ymd(2025, 1, 1).unwrap(),

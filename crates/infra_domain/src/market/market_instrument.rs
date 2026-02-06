@@ -94,10 +94,10 @@ impl MarketInstrumentError {
 /// # Example
 ///
 /// ```rust
-/// use infra_master::market::{Currency, RateId, RateType};
-/// use infra_master::market::convention::{MarketConvention, DepositConvention};
-/// use infra_master::market::MarketInstrument;
-/// use infra_master::time::{Date, Tenor};
+/// use infra_domain::market::{Currency, RateId, RateType};
+/// use infra_domain::market::convention::{MarketConvention, DepositConvention};
+/// use infra_domain::market::MarketInstrument;
+/// use infra_domain::time::{Date, Tenor};
 ///
 /// let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
 /// let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
@@ -155,10 +155,10 @@ impl MarketInstrument {
     /// # Examples
     ///
     /// ```rust
-    /// use infra_master::market::{Currency, RateId, RateType};
-    /// use infra_master::market::convention::{MarketConvention, SwapConvention};
-    /// use infra_master::market::MarketInstrument;
-    /// use infra_master::time::{Date, Tenor};
+    /// use infra_domain::market::{Currency, RateId, RateType};
+    /// use infra_domain::market::convention::{MarketConvention, SwapConvention};
+    /// use infra_domain::market::MarketInstrument;
+    /// use infra_domain::time::{Date, Tenor};
     ///
     /// let rate_id = RateId::new(Currency::USD, Tenor::FiveYears, RateType::Swap);
     /// let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
@@ -345,10 +345,10 @@ impl MarketInstrument {
     /// # Examples
     ///
     /// ```rust
-    /// use infra_master::market::{Currency, RateId, RateType};
-    /// use infra_master::market::convention::{MarketConvention, DepositConvention};
-    /// use infra_master::market::MarketInstrument;
-    /// use infra_master::time::{Date, Tenor};
+    /// use infra_domain::market::{Currency, RateId, RateType};
+    /// use infra_domain::market::convention::{MarketConvention, DepositConvention};
+    /// use infra_domain::market::MarketInstrument;
+    /// use infra_domain::time::{Date, Tenor};
     ///
     /// let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
     /// let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();

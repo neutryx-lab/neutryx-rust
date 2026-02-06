@@ -8,12 +8,12 @@
 //! FpML 5.x XML parser for Neutryx.
 //!
 //! This crate parses FpML trade definitions and converts them directly to
-//! `infra_master::trade::Trade` objects.
+//! `infra_domain::trade::Trade` objects.
 //!
 //! ## Architecture Position
 //!
 //! Part of the **A**dapter layer in the A-I-P-S architecture.
-//! Depends on `infra_master` for trade types and identifiers.
+//! Depends on `infra_domain` for trade types and identifiers.
 //!
 //! ## Supported Products
 //!

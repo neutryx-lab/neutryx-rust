@@ -13,7 +13,7 @@
 - [x] 1. bon クレートをワークスペースに追加
 - [x] 1.1 ワークスペース Cargo.toml に bon 依存関係を追加
   - `[workspace.dependencies]` セクションに `bon = "3.8"` を追加
-  - infra_master クレートの Cargo.toml で `bon = { workspace = true }` を追加
+  - infra_domain クレートの Cargo.toml で `bon = { workspace = true }` を追加
   - `cargo build --workspace` でビルド成功を確認
   - _Requirements: 1.1, 1.2, 1.3_
 
@@ -132,7 +132,7 @@
   - _Requirements: 4.1_
 
 - [x] 8. 呼び出し側のコード更新
-- [x] 8.1 infra_master 内の LegBuilder 呼び出しを更新
+- [x] 8.1 infra_domain 内の LegBuilder 呼び出しを更新
   - LegBuilder を deprecated としてマーク
   - LegConfig を新 API として推奨
   - 後方互換性のため LegBuilder は残す
@@ -146,7 +146,7 @@
 - [x] 8.3 LegBuilder 関連テストの更新と実行
   - 既存の LegBuilder テストに `#[allow(deprecated)]` を追加
   - LegConfig の新 API でのテストケース追加
-  - `cargo test -p infra_master` で全テストがパスすることを確認（1301テスト通過）
+  - `cargo test -p infra_domain` で全テストがパスすることを確認（1301テスト通過）
   - _Requirements: 4.1, 4.3_
 
 ---
@@ -161,8 +161,8 @@
   - _Requirements: 5.1, 5.2_
 
 - [x] 9.2 最終リグレッションテスト
-  - `cargo test -p infra_master` で全テストがパスすることを確認（1301テスト通過）
-  - `cargo clippy -p infra_master` で警告がないことを確認
+  - `cargo test -p infra_domain` で全テストがパスすることを確認（1301テスト通過）
+  - `cargo clippy -p infra_domain` で警告がないことを確認
   - `cargo build -p neutryx` でワークスペース統合ビルドを確認
   - bon 導入前後でランタイム動作が変わっていないことを確認
   - _Requirements: 4.1, 4.3, 4.4_

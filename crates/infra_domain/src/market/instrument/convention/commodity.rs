@@ -42,10 +42,10 @@ pub enum PriceQuotation {
 /// # Example
 ///
 /// ```rust
-/// use infra_master::market::convention::{
+/// use infra_domain::market::convention::{
 ///     CommodityConvention, DeliveryConvention, PriceQuotation,
 /// };
-/// use infra_master::time::CalendarId;
+/// use infra_domain::time::CalendarId;
 ///
 /// let conv = CommodityConvention::wti_crude();
 /// assert_eq!(conv.delivery_convention, DeliveryConvention::Physical);

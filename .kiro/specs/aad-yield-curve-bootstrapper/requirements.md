@@ -83,7 +83,7 @@ Tier-1銀行向けデリバティブ・プライシング・ライブラリと�
 1. The Bootstrapper shall ACT/360、ACT/365、30/360等の主要なデイカウント慣行をサポートする
 2. The Bootstrapper shall 営業日調整（Following、Modified Following、Preceding）をサポートする
 3. When ホリデーカレンダーが指定された場合, the Bootstrapper shall 休日を考慮したキャッシュフロー日付を計算する
-4. The Bootstrapper shall `infra_master`のカレンダー機能と統合する
+4. The Bootstrapper shall `infra_domain`のカレンダー機能と統合する
 5. The Bootstrapper shall スポット日（T+2等）の計算をサポートする
 
 ### Requirement 7: エラー処理と検証

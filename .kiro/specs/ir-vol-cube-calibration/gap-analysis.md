@@ -25,7 +25,7 @@ pricer_models/src/market/
 ├── provider.rs             → MarketProvider（Arc-cached lazy evaluation）
 └── curves/                 → YieldCurve trait, implementations
 
-infra_master/src/trade/
+infra_domain/src/trade/
 ├── instrument_def/
 │   └── rates.rs            → Swaption, CapFloor定義（既存）
 └── convention/
@@ -50,10 +50,10 @@ demo/gui/src/web/
 
 | コンポーネント | 場所 | 再利用可能度 |
 |---------------|------|-------------|
-| `Swaption` struct | infra_master/trade/instrument_def/rates.rs | ✅ 直接利用 |
-| `CapFloor` struct | infra_master/trade/instrument_def/rates.rs | ✅ 直接利用 |
-| `SwaptionConvention` | infra_master/trade/convention/swaption.rs | ✅ 直接利用（SOFR/ESTR/TONAR） |
-| `CapFloorConvention` | infra_master/trade/convention/capfloor.rs | ✅ 拡張可能（JPY追加） |
+| `Swaption` struct | infra_domain/trade/instrument_def/rates.rs | ✅ 直接利用 |
+| `CapFloor` struct | infra_domain/trade/instrument_def/rates.rs | ✅ 直接利用 |
+| `SwaptionConvention` | infra_domain/trade/convention/swaption.rs | ✅ 直接利用（SOFR/ESTR/TONAR） |
+| `CapFloorConvention` | infra_domain/trade/convention/capfloor.rs | ✅ 拡張可能（JPY追加） |
 | `VolCube<T>` | pricer_models/market/volcube/cube.rs | ✅ 拡張可能 |
 | `SabrCalibrator` | pricer_models/market/volcube/calibrator.rs | ✅ 直接利用 |
 | `VolCubeConfig` | pricer_models/market/volcube/config.rs | ✅ 拡張可能 |

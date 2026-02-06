@@ -8,7 +8,7 @@
 //! ```ignore
 //! use pricer_models::builder::vol::{FxVolBuilder, DeltaVolSlice};
 //! use pricer_models::market::{FxCurveEnum, FxCurve};
-//! use infra_master::trade::instrument_def::{FxVolConvention, DeltaType};
+//! use infra_domain::trade::instrument_def::{FxVolConvention, DeltaType};
 //!
 //! // Create builder with FX curve and convention
 //! let fx_curve = FxCurveEnum::irp_flat(1.10, 0.03, 0.01, pair);
@@ -27,7 +27,7 @@
 
 use std::collections::BTreeMap;
 
-use infra_master::trade::instrument_def::FxVolConvention;
+use infra_domain::trade::instrument_def::FxVolConvention;
 use num_traits::Float;
 use pricer_core::math::formulas::fx_delta::delta_to_strike;
 
@@ -396,7 +396,7 @@ mod tests {
 
     #[test]
     fn test_fxvol_builder_with_fx_curve_and_convention() {
-        use infra_master::{trade::instrument_def::CurrencyPair, Currency};
+        use infra_domain::{trade::instrument_def::CurrencyPair, Currency};
 
         let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
         let fx_curve = FxCurveEnum::irp_flat(1.10, 0.03, 0.01, pair);
@@ -424,7 +424,7 @@ mod tests {
 
     #[test]
     fn test_fxvol_builder_add_delta_vol_slice_success() {
-        use infra_master::{trade::instrument_def::CurrencyPair, Currency};
+        use infra_domain::{trade::instrument_def::CurrencyPair, Currency};
 
         let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
         let fx_curve = FxCurveEnum::irp_flat(1.10, 0.03, 0.01, pair);
@@ -453,7 +453,7 @@ mod tests {
 
     #[test]
     fn test_fxvol_builder_full_pipeline_with_delta_slices() {
-        use infra_master::{trade::instrument_def::CurrencyPair, Currency};
+        use infra_domain::{trade::instrument_def::CurrencyPair, Currency};
 
         let pair = CurrencyPair::new(Currency::EUR, Currency::USD);
         let fx_curve = FxCurveEnum::irp_flat(1.10, 0.03, 0.01, pair);

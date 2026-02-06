@@ -2,7 +2,7 @@
 
 ## Introduction
 
-本仕様は、`crates/infra_master/src/` 内の既存時間関連モジュールを `time/` サブディレクトリに再編成し、金融デリバティブプライシングエンジンの基盤となる時間管理機能を完成させる。既存実装の 80% 以上を活用しつつ、不足機能（Excel serial 変換、JointCalendar、Calendar trait 化、汎用 Period + TimeUnit）を追加する。
+本仕様は、`crates/infra_domain/src/` 内の既存時間関連モジュールを `time/` サブディレクトリに再編成し、金融デリバティブプライシングエンジンの基盤となる時間管理機能を完成させる。既存実装の 80% 以上を活用しつつ、不足機能（Excel serial 変換、JointCalendar、Calendar trait 化、汎用 Period + TimeUnit）を追加する。
 
 ### Design Principles
 
@@ -15,7 +15,7 @@
 ### Target Directory Structure
 
 ```text
-crates/infra_master/src/
+crates/infra_domain/src/
 ├── lib.rs                    # time モジュールを追加 + re-exports
 ├── time/
 │   ├── mod.rs                # Module definition & re-exports
@@ -41,11 +41,11 @@ crates/infra_master/src/
 
 #### Acceptance Criteria
 
-1. The infra_master crate shall 既存の `date.rs`, `calendar.rs`, `business_day.rs`, `day_count.rs`, `tenor.rs`, `period.rs` を `time/` サブディレクトリに移動する。
-2. The infra_master crate shall `time/mod.rs` を作成し、すべてのサブモジュールを re-export する。
-3. The infra_master crate shall `lib.rs` にて `pub mod time;` を宣言し、後方互換性のための re-exports を提供する。
-4. When 既存の public API が使用された場合, the infra_master crate shall 非推奨警告（deprecated）を表示しつつ正常に動作する。
-5. The infra_master crate shall 移行後もすべての既存テストがパスする。
+1. The infra_domain crate shall 既存の `date.rs`, `calendar.rs`, `business_day.rs`, `day_count.rs`, `tenor.rs`, `period.rs` を `time/` サブディレクトリに移動する。
+2. The infra_domain crate shall `time/mod.rs` を作成し、すべてのサブモジュールを re-export する。
+3. The infra_domain crate shall `lib.rs` にて `pub mod time;` を宣言し、後方互換性のための re-exports を提供する。
+4. When 既存の public API が使用された場合, the infra_domain crate shall 非推奨警告（deprecated）を表示しつつ正常に動作する。
+5. The infra_domain crate shall 移行後もすべての既存テストがパスする。
 
 ---
 
@@ -203,11 +203,11 @@ crates/infra_master/src/
 
 #### Acceptance Criteria
 
-1. The infra_master crate shall `lib.rs` にて既存の型（`Date`, `DateError`, `DayCountConvention`, `BusinessDayConvention`, `Calendar`, `CalendarId`, `Tenor`, `Period`, `Frequency`）を re-export する。
-2. When 旧名称（`DateError`, `DayCountConvention`）が使用された場合, the infra_master crate shall `#[deprecated]` 警告を表示する。
-3. The infra_master crate shall 新旧両方の型名でコンパイルが成功する。
+1. The infra_domain crate shall `lib.rs` にて既存の型（`Date`, `DateError`, `DayCountConvention`, `BusinessDayConvention`, `Calendar`, `CalendarId`, `Tenor`, `Period`, `Frequency`）を re-export する。
+2. When 旧名称（`DateError`, `DayCountConvention`）が使用された場合, the infra_domain crate shall `#[deprecated]` 警告を表示する。
+3. The infra_domain crate shall 新旧両方の型名でコンパイルが成功する。
 4. The deprecated aliases shall 新しい型へのエイリアスとして実装する。
-5. The infra_master crate shall すべての既存の doctests と integration tests がパスする。
+5. The infra_domain crate shall すべての既存の doctests と integration tests がパスする。
 
 ---
 
@@ -234,7 +234,7 @@ crates/infra_master/src/
 
 ### Implementation Strategy
 
-既存の `crates/infra_master/src/` には以下の時間関連モジュールが実装済み：
+既存の `crates/infra_domain/src/` には以下の時間関連モジュールが実装済み：
 
 | 既存ファイル | 内容 | 状態 |
 |-------------|------|------|
@@ -251,7 +251,7 @@ crates/infra_master/src/
 既存ファイルを `src/time/` サブモジュールに再編成し、仕様書の構造に合わせる：
 
 ```text
-crates/infra_master/src/
+crates/infra_domain/src/
 ├── lib.rs                    # 既存 (time モジュールを追加)
 ├── time/
 │   ├── mod.rs                # 新規: Module definition & re-exports

@@ -29,7 +29,7 @@
 ### Existing Architecture Analysis
 
 **現行パターン**:
-1. `define_id!` マクロによる ID 型生成（`infra_master/src/ids.rs`）
+1. `define_id!` マクロによる ID 型生成（`infra_domain/src/ids.rs`）
 2. 手動トレイト実装（`counterparty/ids.rs` の 7 ID 型）
 3. カスタムロジックを含む算術演算実装（`TracedFloat`）
 
@@ -46,7 +46,7 @@ graph TB
     end
 
     subgraph InfraLayer["I: Infra Layer"]
-        IM[infra_master]
+        IM[infra_domain]
         IDS[ids.rs<br>define_id! macro]
         CPIDS[counterparty/ids.rs<br>6 ID types]
     end
@@ -69,7 +69,7 @@ graph TB
 
 **Architecture Integration**:
 - **Selected pattern**: 既存拡張（Hybrid approach）
-- **Domain boundaries**: derive_more は Infra 層（infra_master）で主に使用、Pricer 層は検証後に導入
+- **Domain boundaries**: derive_more は Infra 層（infra_domain）で主に使用、Pricer 層は検証後に導入
 - **Existing patterns preserved**: `define_id!` マクロは簡略化して維持（`new()`, `as_str()` メソッド生成）
 - **New components rationale**: 新規コンポーネントなし、既存型への derive 追加のみ
 - **Steering compliance**: A-I-P-S 依存方向維持、British English 命名規則遵守
@@ -79,7 +79,7 @@ graph TB
 | Layer | Choice / Version | Role in Feature | Notes |
 |-------|------------------|-----------------|-------|
 | Build | derive_more v2.1.1 | proc-macro トレイト導出 | features: `from`, `display`, `as_ref`, `add`, `mul` |
-| Infra | infra_master | ID 型定義 | 主要移行対象 |
+| Infra | infra_domain | ID 型定義 | 主要移行対象 |
 | Testing | proptest 1.6 | Property-based testing | 既存ワークスペース依存 |
 
 ---
@@ -258,7 +258,7 @@ macro_rules! define_id {
 | Requirements | 2.1-2.5 |
 
 **Responsibilities & Constraints**
-- `infra_master/trade/instrument_def/xccy.rs` に定義
+- `infra_domain/trade/instrument_def/xccy.rs` に定義
 - Add, Sub, Mul, Div, Display, From を derive
 
 **Pattern**
@@ -399,9 +399,9 @@ proptest! {
 Enzyme AD との互換性検証（Phase 1 完了後）:
 
 ```bash
-cargo build -p infra_master --features serde
+cargo build -p infra_domain --features serde
 cargo build -p pricer_risk --features enzyme-ad
-cargo test -p infra_master
+cargo test -p infra_domain
 ```
 
 ---
@@ -430,12 +430,12 @@ flowchart LR
 
 **対象**:
 - `Cargo.toml`: workspace.dependencies 追加
-- `crates/infra_master/Cargo.toml`: derive_more 依存追加
-- `crates/infra_master/src/counterparty/ids.rs`: 6 ID 型移行
+- `crates/infra_domain/Cargo.toml`: derive_more 依存追加
+- `crates/infra_domain/src/counterparty/ids.rs`: 6 ID 型移行
 
 **検証**:
-- `cargo build -p infra_master`
-- `cargo test -p infra_master`
+- `cargo build -p infra_domain`
+- `cargo test -p infra_domain`
 - `cargo build -p pricer_risk --features enzyme-ad`（AD 互換性）
 
 **ロールバック**: Cargo.toml の変更を revert
@@ -443,7 +443,7 @@ flowchart LR
 ### Phase 2: define_id! マクロ簡略化（Medium Risk）
 
 **対象**:
-- `crates/infra_master/src/ids.rs`: マクロ簡略化
+- `crates/infra_domain/src/ids.rs`: マクロ簡略化
 - TradeId, PortfolioId, BookId 移行
 
 > **Note**: `RateId` は複合構造体（複数フィールド）であり NewType パターンではないため、移行対象外。
@@ -457,7 +457,7 @@ flowchart LR
 ### Phase 3: 数値型 + ドキュメント（Low Risk）
 
 **対象**:
-- `crates/infra_master/src/trade/instrument_def/xccy.rs`: BasisSpread
+- `crates/infra_domain/src/trade/instrument_def/xccy.rs`: BasisSpread
 - `.kiro/steering/ai_rules.md`: ガイドライン追加
 - テストファイル追加
 

@@ -97,7 +97,7 @@ graph TB
 |-------|------------------|-----------------|-------|
 | Pricer Core | pricer_core (L1) | SviParams, interpolators, solvers | 既存再利用 |
 | Pricer Models | pricer_models (L2) | volcube/, calibration/, surfaces/ | 新規モジュール配置 |
-| Infra Master | infra_master | Currency, RateIndex, InstrumentId | 市場データ型参照 |
+| Infra Master | infra_domain | Currency, RateIndex, InstrumentId | 市場データ型参照 |
 | Cache | lru, parking_lot | LRU cache, thread-safe access | 既存依存 |
 | Error | thiserror | CalibrationError, MarketDataError | 既存拡張 |
 

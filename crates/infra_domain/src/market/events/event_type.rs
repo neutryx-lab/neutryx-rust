@@ -33,7 +33,7 @@ impl EventType {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::events::EventType;
+    /// use infra_domain::market::events::EventType;
     ///
     /// assert_eq!(EventType::CentralBankMeeting.display_name(), "Central Bank Meeting");
     /// ```

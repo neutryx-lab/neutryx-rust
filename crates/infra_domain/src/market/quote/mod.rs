@@ -11,10 +11,10 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::market::quote::{MarketRate, RateId, MarketRateSet, QuoteType};
-//! use infra_master::market::core::{Currency, RateType};
-//! use infra_master::market::source::DataSource;
-//! use infra_master::time::Tenor;
+//! use infra_domain::market::quote::{MarketRate, RateId, MarketRateSet, QuoteType};
+//! use infra_domain::market::core::{Currency, RateType};
+//! use infra_domain::market::source::DataSource;
+//! use infra_domain::time::Tenor;
 //!
 //! let id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
 //! let rate = MarketRate::new(

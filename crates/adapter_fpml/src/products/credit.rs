@@ -6,7 +6,7 @@
 
 use crate::common::{parse_date, parse_decimal, parse_trade_header, XmlNavigator};
 use crate::error::FpmlError;
-use infra_master::{
+use infra_domain::{
     trade::{
         Cashflow, CashflowType, Direction, Leg, LegType, Payoff, ProtectionSide, Trade,
         TradeMetadata, TradeType,

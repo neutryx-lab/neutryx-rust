@@ -417,7 +417,7 @@ impl TradeMetadata {
 /// # Examples
 ///
 /// ```ignore
-/// use infra_master::trade::{Trade, TradeType, Leg};
+/// use infra_domain::trade::{Trade, TradeType, Leg};
 ///
 /// let trade = Trade::builder()
 ///     .id("TRADE001")

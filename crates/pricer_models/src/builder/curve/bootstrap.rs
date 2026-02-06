@@ -462,8 +462,8 @@ impl CurveBootstrapper {
     /// ```ignore
     /// use pricer_models::builder::{CurveBootstrapper, CalibrationInstrument};
     /// use pricer_models::market::curves::MarketInstrument;
-    /// use infra_master::market::definition::JumpPillar;
-    /// use infra_master::time::{Date, DayCounter};
+    /// use infra_domain::market::definition::JumpPillar;
+    /// use infra_domain::time::{Date, DayCounter};
     ///
     /// let valuation = Date::from_ymd(2024, 1, 1).unwrap();
     /// let jump = JumpPillar::new(
@@ -490,9 +490,9 @@ impl CurveBootstrapper {
     pub fn bootstrap_to_curve_with_jump_pillars<I>(
         &self,
         instruments: &[I],
-        jump_pillars: &[infra_master::market::definition::JumpPillar],
-        valuation_date: infra_master::time::Date,
-        day_counter: infra_master::time::DayCounter,
+        jump_pillars: &[infra_domain::market::definition::JumpPillar],
+        valuation_date: infra_domain::time::Date,
+        day_counter: infra_domain::time::DayCounter,
     ) -> Result<BootstrappedCurve<f64>, BootstrapError>
     where
         I: CalibrationInstrument<f64> + Clone,
@@ -874,8 +874,8 @@ mod tests {
 
     #[test]
     fn test_bootstrap_to_curve_with_jumps_from_definition() {
-        use infra_master::market::definition::JumpPillar;
-        use infra_master::time::{Date, DayCounter};
+        use infra_domain::market::definition::JumpPillar;
+        use infra_domain::time::{Date, DayCounter};
 
         let valuation = Date::from_ymd(2024, 1, 1).unwrap();
 

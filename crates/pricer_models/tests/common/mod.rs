@@ -4,7 +4,7 @@
 //! across integration tests.
 
 use chrono::NaiveDate;
-use infra_master::market::RateIndex;
+use infra_domain::market::RateIndex;
 use pricer_models::market::calibration::bootstrapping::{CurveDefinition, InstrumentSpec, InstrumentTenor};
 
 /// Create a minimal curve definition for testing.

@@ -6,7 +6,7 @@
 //! - `SolverError`: Errors from root-finding solvers
 //! - `CalibrationError`: Errors from model calibration
 //!
-//! For `DateError` and `CurrencyError`, import directly from `infra_master`.
+//! For `DateError` and `CurrencyError`, import directly from `infra_domain`.
 
 use std::fmt;
 
@@ -832,7 +832,7 @@ mod tests {
         assert_eq!(err1, err2);
     }
 
-    // Note: DateError and CurrencyError tests are in infra_master
+    // Note: DateError and CurrencyError tests are in infra_domain
 
     // InterpolationError tests
 

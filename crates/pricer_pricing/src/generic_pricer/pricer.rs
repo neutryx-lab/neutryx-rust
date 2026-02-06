@@ -12,7 +12,7 @@
 //!    `get_pv_simple()`.
 //!
 //! 2. **Integrated mode** (with `l1l2-integration` feature): Uses
-//!    `infra_master` types and `MarketProvider`. Use `new()` and `get_pv()`.
+//!    `infra_domain` types and `MarketProvider`. Use `new()` and `get_pv()`.
 
 #[cfg(feature = "l1l2-integration")]
 use std::sync::Arc;
@@ -22,7 +22,7 @@ use chrono::Datelike;
 #[cfg(feature = "l1l2-integration")]
 use infra_config::{PricingConfig, PricingMethod};
 #[cfg(feature = "l1l2-integration")]
-use infra_master::{
+use infra_domain::{
     market::Currency,
     time::Date,
     trade::{Leg, Trade},
@@ -354,7 +354,7 @@ impl GenericPricer {
     #[cfg(feature = "l1l2-integration")]
     fn evaluate_cashflow_amount(
         &self,
-        cf: &infra_master::trade::Cashflow,
+        cf: &infra_domain::trade::Cashflow,
         valuation_date: Date,
         curve_set: &pricer_models::market::curves::CurveSet<f64>,
     ) -> Result<f64, PricingError> {
@@ -380,7 +380,7 @@ impl GenericPricer {
     /// `evaluate_cashflow_amount` method extracts notional from `cf.notional`.
     #[cfg(feature = "l1l2-integration")]
     #[allow(dead_code)]
-    fn get_notional_for_cashflow(&self, _cf: &infra_master::trade::Cashflow, _leg: &Leg) -> f64 {
+    fn get_notional_for_cashflow(&self, _cf: &infra_domain::trade::Cashflow, _leg: &Leg) -> f64 {
         // TODO: Extract notional from cashflow/leg based on cashflow type
         // For now, return a default notional
         1_000_000.0

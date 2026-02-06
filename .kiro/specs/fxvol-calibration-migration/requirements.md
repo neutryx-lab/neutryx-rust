@@ -6,7 +6,7 @@
 
 **背景**: 現在、キャリブレーションロジックが `demo/gui/src/web/handlers/fxvol.rs` に直接実装されており、A-I-P-Sアーキテクチャ違反となっている。ビジネスロジックは `pricer_models` クレートに、数学的な計算は `pricer_core` クレートに配置すべきである。
 
-**目的**: `demo_gui` を薄いHTTPハンドラー層として再構築し、既存資産（`infra_master::trade::instrument_def::fx_vol`、`pricer_core::math::formulas::sabr`、`pricer_models::builder::vol`）を活用した適切なクレート配置を実現する。
+**目的**: `demo_gui` を薄いHTTPハンドラー層として再構築し、既存資産（`infra_domain::trade::instrument_def::fx_vol`、`pricer_core::math::formulas::sabr`、`pricer_models::builder::vol`）を活用した適切なクレート配置を実現する。
 
 ---
 
@@ -23,7 +23,7 @@
 3. When DeltaType::ForwardDeltaが指定される, the pricer_core shall d1 = Φ⁻¹(delta) を使用してストライクを計算する
 4. When DeltaType::PremiumAdjustedが指定される, the pricer_core shall プレミアム調整項を含むストライク計算を実行する
 5. When strike_to_delta関数が呼び出される, the pricer_core shall ストライク価格からデルタ値を計算する（往復変換をサポート）
-6. The pricer_core shall infra_master::trade::instrument_def::fx_vol::DeltaType を使用する
+6. The pricer_core shall infra_domain::trade::instrument_def::fx_vol::DeltaType を使用する
 
 ---
 
@@ -73,7 +73,7 @@
 
 ### Requirement 5: FxVolBuilder拡張
 
-**Objective:** As a 量的開発者, I want FxVolBuilderがinfra_masterのFxVolInstrumentを直接受け取れるようにしたい, so that 標準化されたインストゥルメント定義からボラティリティサーフェスを構築できる
+**Objective:** As a 量的開発者, I want FxVolBuilderがinfra_domainのFxVolInstrumentを直接受け取れるようにしたい, so that 標準化されたインストゥルメント定義からボラティリティサーフェスを構築できる
 
 #### Acceptance Criteria
 
@@ -82,7 +82,7 @@
 3. When FxVolBuilder::add_instrument()が呼び出される, the FxVolBuilder shall FxVolInstrumentを受け取り、同じexpiryのインストゥルメントをグループ化する
 4. When ATM/RR/BFが揃う, the FxVolBuilder shall DeltaVolSliceを構築し、to_strike_vol_quotesでストライクベースに変換する
 5. When FxVolBuilder::add_instruments()が呼び出される, the FxVolBuilder shall &[FxVolInstrument]を受け取り、各インストゥルメントに対してadd_instrumentを呼ぶ
-6. The FxVolBuilder shall infra_master::trade::instrument_def::{FxVolInstrument, FxVolConvention, DeltaType} を使用する
+6. The FxVolBuilder shall infra_domain::trade::instrument_def::{FxVolInstrument, FxVolConvention, DeltaType} を使用する
 
 ---
 
@@ -112,7 +112,7 @@
 4. When calibrate_surfaceハンドラが実行される, the fxvol handler shall FxVolBuilderを使用してキャリブレーションを実行する
 5. The fxvol handler shall pricer_models::builder::{FxVolBuilder, ...} をインポートする
 6. The fxvol handler shall pricer_models::market::fx_curve::IrpFxCurve をインポートする
-7. The fxvol handler shall infra_master::trade::instrument_def::{FxVolInstrument, FxVolInstrumentBuilder, FxVolConvention, DeltaType} をインポートする
+7. The fxvol handler shall infra_domain::trade::instrument_def::{FxVolInstrument, FxVolInstrumentBuilder, FxVolConvention, DeltaType} をインポートする
 
 ---
 
@@ -142,7 +142,7 @@ The implementation shall キャリブレーション失敗時に適切なCalibra
 
 | 場所 | 型/関数 | 用途 |
 |------|---------|------|
-| infra_master::trade::instrument_def::fx_vol | DeltaType, Delta, FxVolConvention, FxVolInstrument, FxVolInstrumentBuilder | FXボラティリティインストゥルメント定義 |
+| infra_domain::trade::instrument_def::fx_vol | DeltaType, Delta, FxVolConvention, FxVolInstrument, FxVolInstrumentBuilder | FXボラティリティインストゥルメント定義 |
 | pricer_core::math::formulas::sabr | SabrImpliedVolParams, sabr_implied_vol(), sabr_atm_vol() | SABRインプライドボラティリティ計算 |
 | pricer_models::builder::vol | FxVolBuilder, VolCubeBuilder, SabrParams, VolQuote, SliceCalibrationConfig, SabrSliceCalibrator | ボラティリティサーフェス構築 |
 

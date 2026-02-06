@@ -37,7 +37,7 @@ pub fn run() {
     println!("========================================");
     println!();
     println!("[Demo] Demo temporarily disabled - pricer_risk needs refactoring");
-    println!("       to use infra_master::trade types.");
+    println!("       to use infra_domain::trade types.");
     println!();
     println!("========================================");
 }

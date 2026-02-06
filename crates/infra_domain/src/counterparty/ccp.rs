@@ -16,7 +16,7 @@ use super::CcpId;
 /// # Examples
 ///
 /// ```
-/// use infra_master::counterparty::Ccp;
+/// use infra_domain::counterparty::Ccp;
 ///
 /// let ccp = Ccp::new("LCH", "LCH Ltd", true)
 ///     .with_country("GB");

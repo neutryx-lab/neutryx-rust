@@ -17,7 +17,7 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::time::{Date, DayCounter, Period, TimeUnit};
+//! use infra_domain::time::{Date, DayCounter, Period, TimeUnit};
 //!
 //! // Create a date
 //! let date = Date::from_ymd(2024, 6, 15).unwrap();
@@ -36,7 +36,7 @@
 //! # Calendar Operations
 //!
 //! ```
-//! use infra_master::time::{
+//! use infra_domain::time::{
 //!     Calendar, ConcreteCalendar, CalendarId, Date, BusinessDayConvention
 //! };
 //!
@@ -53,7 +53,7 @@
 //! # Excel Serial Conversion
 //!
 //! ```
-//! use infra_master::time::Date;
+//! use infra_domain::time::Date;
 //!
 //! let date = Date::from_ymd(2024, 1, 1).unwrap();
 //! let serial = date.to_serial();
