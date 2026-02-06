@@ -7,7 +7,7 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::market::CurveDefinition;
+//! use infra_master::market::definition::CurveDefinition;
 //!
 //! let curve = CurveDefinition::new(
 //!     "USD-SOFR-Discount",

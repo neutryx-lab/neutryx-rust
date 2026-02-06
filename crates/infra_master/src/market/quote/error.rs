@@ -18,7 +18,7 @@
 
 use thiserror::Error;
 
-use super::rate_type::RateType;
+use crate::market::core::RateType;
 
 /// Errors that can occur during market rate operations.
 ///

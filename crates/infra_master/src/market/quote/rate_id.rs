@@ -17,9 +17,8 @@
 
 use std::fmt;
 
-use super::rate_type::RateType;
 use crate::{
-    market::{Currency, RateIndex},
+    market::{core::{Currency, RateType}, index::RateIndex},
     time::Tenor,
 };
 

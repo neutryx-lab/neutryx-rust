@@ -25,7 +25,9 @@
 //! assert!(validator.validate(&rate).is_ok());
 //! ```
 
-use super::{error::MarketRateError, rate::MarketRate, rate_type::RateType};
+use crate::market::core::RateType;
+
+use super::{error::MarketRateError, rate::MarketRate};
 
 /// Trait for validating market rates.
 ///

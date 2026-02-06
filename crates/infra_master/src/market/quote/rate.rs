@@ -23,9 +23,9 @@
 //! assert_eq!(rate.value, 0.05);
 //! ```
 
-use super::{
-    data_source::DataSource, error::MarketRateError, quote_type::QuoteType, rate_id::RateId,
-};
+use crate::market::source::DataSource;
+
+use super::{error::MarketRateError, quote_type::QuoteType, rate_id::RateId};
 
 /// A single market rate quote with metadata.
 ///

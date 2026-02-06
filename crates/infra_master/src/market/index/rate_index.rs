@@ -20,7 +20,7 @@
 //! ```
 
 use crate::{
-    market::{CompoundingMethod, Currency},
+    market::core::{CompoundingMethod, Currency},
     time::{CalendarId, DayCounter, Tenor},
 };
 

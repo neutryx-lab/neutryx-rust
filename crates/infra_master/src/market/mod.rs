@@ -8,29 +8,16 @@
 //! - Ticker mapping for external data sources
 //! - Instrument mapping for curve calibration
 //!
-//! # Overview
+//! # Module Structure
 //!
-//! ## Core Types
-//!
-//! - [`Currency`]: ISO 4217 currency codes with decimal precision
-//! - [`RateIndex`]: Benchmark interest rate indices (SOFR, EURIBOR, etc.)
-//! - [`RateType`]: Categories of market rates (Deposit, Swap, FX, etc.)
-//! - [`QuoteType`]: Quote types (Bid, Ask, Mid, Last)
-//! - [`DataSource`]: Data provider identification
-//!
-//! ## Rate Management
-//!
-//! - [`RateId`]: Unique identifier for a market rate
-//! - [`MarketRate`]: A single market rate quote with metadata
-//! - [`MarketRateSet`]: Collection of rates with O(1) lookup
-//! - [`TickerMapping`]: External ticker to internal ID mapping
-//!
-//! ## Validation and Mapping
-//!
-//! - [`RateValidator`]: Trait for rate validation
-//! - [`StandardRateValidator`]: Default validation with market bounds
-//! - [`InstrumentMapper`]: Trait for rate-to-instrument conversion
-//! - [`StandardInstrumentMapper`]: Default instrument mapping
+//! - [`core`]: Fundamental types (Currency, CurrencyPair, RateType, CompoundingMethod)
+//! - [`quote`]: Market quote management (MarketRate, RateId, MarketRateSet)
+//! - [`index`]: Rate index definitions (RateIndex, IndexMetadata)
+//! - [`source`]: Data sources and mapping (DataSource, TickerMapping, InstrumentMapper)
+//! - [`definition`]: Curve/surface definitions (CurveDefinition, CalibrationModel)
+//! - [`convention`]: Market conventions
+//! - [`events`]: Economic calendar events
+//! - [`instrument`]: Financial instrument definitions
 //!
 //! # Examples
 //!
@@ -45,124 +32,71 @@
 //! let sofr = RateIndex::Sofr;
 //! assert_eq!(sofr.currency(), Currency::USD);
 //! ```
-//!
-//! ## Creating Market Rates
-//!
-//! ```
-//! use infra_master::market::{
-//!     MarketRate, RateId, RateType, QuoteType, DataSource, Currency
-//! };
-//! use infra_master::time::Tenor;
-//!
-//! let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
-//! let rate = MarketRate::new(
-//!     rate_id,
-//!     QuoteType::Mid,
-//!     0.05,
-//!     1700000000000,
-//!     DataSource::Bloomberg,
-//! ).unwrap();
-//!
-//! assert_eq!(rate.value, 0.05);
-//! ```
-//!
-//! ## Managing Rate Collections
-//!
-//! ```
-//! use infra_master::market::{
-//!     MarketRateSet, MarketRate, RateId, RateType, QuoteType, DataSource, Currency
-//! };
-//! use infra_master::time::Tenor;
-//!
-//! let mut rate_set = MarketRateSet::new();
-//!
-//! let rate_id = RateId::new(Currency::USD, Tenor::ThreeMonths, RateType::Deposit);
-//! let rate = MarketRate::new(rate_id.clone(), QuoteType::Mid, 0.05, 1700000000000, DataSource::Bloomberg).unwrap();
-//!
-//! rate_set.insert(rate);
-//! assert!(rate_set.get_rate(&rate_id, QuoteType::Mid).is_some());
-//! ```
-//!
-//! ## Converting to Instruments
-//!
-//! ```
-//! use infra_master::market::{
-//!     MarketRateSet, MarketRate, RateId, RateType, QuoteType,
-//!     DataSource, Currency, StandardInstrumentMapper
-//! };
-//! use infra_master::time::{Date, Tenor};
-//!
-//! let mut rate_set = MarketRateSet::new();
-//! let rate_id = RateId::new(Currency::USD, Tenor::FiveYears, RateType::Swap);
-//! let rate = MarketRate::new(rate_id, QuoteType::Mid, 0.045, 1700000000000, DataSource::Bloomberg).unwrap();
-//! rate_set.insert(rate);
-//!
-//! let mapper = StandardInstrumentMapper::new();
-//! let valuation_date = Date::from_ymd(2024, 1, 15).unwrap();
-//!
-//! let instruments = rate_set.to_instruments_lossy(&mapper, valuation_date);
-//! assert_eq!(instruments.len(), 1);
-//! ```
 
-mod compounding;
-mod currency;
-mod currency_pair;
-mod curve_definition;
-mod data_source;
-mod error;
-mod event_instrument;
-mod instrument_def;
-mod mapper;
-mod market_instrument;
-mod quote_type;
-mod rate;
-mod rate_id;
-mod rate_index;
-mod rate_index_def;
-mod rate_set;
-mod rate_type;
-mod registry;
-mod ticker;
-mod validation;
+// ============================================================================
+// Organized Submodules
+// ============================================================================
 
-// Submodules for extended market data types
+/// Fundamental market types (Currency, CurrencyPair, RateType, CompoundingMethod).
+pub mod core;
+/// Rate index definitions (RateIndex, IndexMetadata).
+pub mod index;
+/// Market quote management (MarketRate, RateId, MarketRateSet).
+pub mod quote;
+/// Data sources and mapping (DataSource, TickerMapping, InstrumentMapper).
+pub mod source;
+
+/// Market conventions.
 pub mod convention;
+/// Market object definitions (curves, vol surfaces, instruments, rate indices).
+pub mod definition;
+/// Economic calendar and market events.
 pub mod events;
 /// Standard instrument definitions for all asset classes.
 pub mod instrument;
-pub mod volatility;
 
-// Compounding methods
-pub use compounding::CompoundingMethod;
+// ============================================================================
+// Private modules (not yet migrated)
+// ============================================================================
+
+mod event_instrument;
+mod market_instrument;
+mod registry;
+
+// ============================================================================
+// Re-exports for backward compatibility
+// ============================================================================
+
 // Core types
-pub use currency::Currency;
-pub use currency_pair::CurrencyPair;
-// Quote and rate types
-pub use data_source::{DataSource, SourcePriority};
-// Error types
-pub use error::MarketRateError;
-// Instrument mapping
-pub use mapper::{InstrumentMapper, StandardInstrumentMapper};
-pub use quote_type::QuoteType;
-// Market rate and collections
-pub use rate::MarketRate;
-// Rate identification and mapping
-pub use rate_id::RateId;
-pub use rate_index::{IndexMetadata, RateIndex};
-pub use rate_set::MarketRateSet;
-pub use rate_type::RateType;
-pub use ticker::TickerMapping;
-// Validation
-pub use validation::{RateValidator, StandardRateValidator};
+pub use core::{CompoundingMethod, Currency, CurrencyPair, RateType};
+
+// Rate index
+pub use index::{IndexMetadata, RateIndex};
+
+// Quote types
+pub use quote::{MarketRate, MarketRateError, MarketRateSet, QuoteType, RateId};
+pub use quote::{RateValidator, StandardRateValidator};
+pub use quote::{StrikeType, VolQuoteType};
+
+// Data sources
+pub use source::{DataSource, InstrumentMapper, SourcePriority, StandardInstrumentMapper};
+pub use source::TickerMapping;
+
 // Event instruments
 pub use event_instrument::EventInstrument;
+
 // Market instrument (for curve calibration)
 pub use market_instrument::{MarketInstrument, MarketInstrumentError};
 
-// Curve construction definitions
-pub use curve_definition::{CalibrationMethod, CurveDefError, CurveDefinition, InterpolationMethod};
-pub use instrument_def::{InstrumentConventions, InstrumentDefError, InstrumentDefinition, InstrumentTemplate};
-pub use rate_index_def::{IndexConventions, RateIndexDefError, RateIndexDefinition};
+// Registry
 pub use registry::{DefinitionRegistry, RegistryError};
 #[cfg(feature = "serde")]
 pub use registry::DefinitionBundle;
+
+// Definition types (re-exported from definition module)
+pub use definition::{
+    CalibrationMethod, CalibrationModel, CurveDefError, CurveDefinition,
+    IndexConventions, InstrumentConventions, InstrumentDefError, InstrumentDefinition,
+    InstrumentTemplate, InterpolationMethod, RateIndexDefError, RateIndexDefinition,
+    StrikeAxisType,
+};

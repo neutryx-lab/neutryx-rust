@@ -37,9 +37,10 @@ use std::collections::HashMap;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-use super::curve_definition::{CurveDefError, CurveDefinition};
-use super::instrument_def::{InstrumentDefError, InstrumentDefinition, InstrumentTemplate};
-use super::rate_index_def::{RateIndexDefError, RateIndexDefinition};
+use super::definition::{
+    CurveDefError, CurveDefinition, InstrumentDefError, InstrumentDefinition,
+    InstrumentTemplate, RateIndexDefError, RateIndexDefinition,
+};
 
 /// Error type for registry operations.
 #[derive(Debug, Clone)]

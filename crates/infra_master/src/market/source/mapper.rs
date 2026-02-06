@@ -28,8 +28,8 @@
 //! assert!(instrument.is_ok());
 //! ```
 
-use super::{error::MarketRateError, rate::MarketRate, rate_type::RateType};
 use crate::{
+    market::{core::RateType, quote::{MarketRate, MarketRateError}},
     time::{Date, EndOfMonthRule},
     trade::Instrument,
 };

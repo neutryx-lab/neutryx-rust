@@ -28,18 +28,20 @@
 
 use std::{collections::HashMap, time::Duration};
 
-use super::{
-    convention::MarketConvention,
-    data_source::SourcePriority,
-    error::MarketRateError,
-    mapper::InstrumentMapper,
-    market_instrument::MarketInstrument,
-    quote_type::QuoteType,
-    rate::MarketRate,
-    rate_id::RateId,
-    rate_type::RateType,
+use crate::{
+    market::{
+        convention::MarketConvention,
+        core::{Currency, RateType},
+        source::{InstrumentMapper, SourcePriority},
+        MarketInstrument,
+    },
+    time::Date,
+    trade::Instrument,
 };
-use crate::{market::Currency, time::Date, trade::Instrument};
+
+use super::{
+    error::MarketRateError, quote_type::QuoteType, rate::MarketRate, rate_id::RateId,
+};
 
 /// A collection of market rates with O(1) lookup.
 ///

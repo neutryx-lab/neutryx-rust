@@ -20,8 +20,10 @@
 
 use std::collections::HashMap;
 
-use super::{rate_id::RateId, rate_type::RateType};
-use crate::{market::Currency, time::Tenor};
+use crate::{
+    market::{core::{Currency, RateType}, quote::RateId},
+    time::Tenor,
+};
 
 /// Mapping from external tickers to internal rate identifiers.
 ///

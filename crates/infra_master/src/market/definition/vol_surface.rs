@@ -1,7 +1,20 @@
-//! Calibration model definitions.
+//! Volatility surface definition types.
 //!
 //! This module provides the classification of volatility calibration models
-//! used for fitting implied volatility surfaces.
+//! and strike axis types used for fitting implied volatility surfaces.
+//!
+//! # Examples
+//!
+//! ```
+//! use infra_master::market::definition::{CalibrationModel, StrikeAxisType};
+//!
+//! let model = CalibrationModel::Sabr;
+//! assert!(model.is_enabled());
+//! assert_eq!(model.parameter_count(), 4);
+//!
+//! let axis = StrikeAxisType::Delta;
+//! assert_eq!(axis.display_name(), "Delta");
+//! ```
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};

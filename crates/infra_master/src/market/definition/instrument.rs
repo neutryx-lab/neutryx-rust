@@ -7,7 +7,8 @@
 //! # Examples
 //!
 //! ```
-//! use infra_master::market::{InstrumentDefinition, Currency, RateType};
+//! use infra_master::market::definition::{InstrumentDefinition, InstrumentConventions};
+//! use infra_master::market::{Currency, RateType};
 //!
 //! // Deposit instrument
 //! let depo = InstrumentDefinition::new(
@@ -48,7 +49,8 @@ use crate::time::{parse_fra_tenor, parse_tenor_to_years, CalendarId, DayCounter,
 /// # Examples
 ///
 /// ```
-/// use infra_master::market::{InstrumentDefinition, Currency, RateType};
+/// use infra_master::market::definition::InstrumentDefinition;
+/// use infra_master::market::{Currency, RateType};
 ///
 /// // Convention-based definition (preferred)
 /// let ois = InstrumentDefinition::from_convention(
@@ -208,7 +210,8 @@ impl InstrumentDefinition {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{InstrumentDefinition, Currency, RateType};
+    /// use infra_master::market::definition::InstrumentDefinition;
+    /// use infra_master::market::{Currency, RateType};
     ///
     /// let ois = InstrumentDefinition::from_convention(
     ///     "USD-OIS-5Y",
@@ -253,7 +256,8 @@ impl InstrumentDefinition {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{InstrumentDefinition, Currency, RateType};
+    /// use infra_master::market::definition::InstrumentDefinition;
+    /// use infra_master::market::{Currency, RateType};
     ///
     /// let event = InstrumentDefinition::from_event(
     ///     "USD-FOMC-2024-03",
@@ -297,7 +301,8 @@ impl InstrumentDefinition {
     /// # Examples
     ///
     /// ```
-    /// use infra_master::market::{InstrumentDefinition, EventInstrument, RateIndex, Currency, RateType};
+    /// use infra_master::market::definition::InstrumentDefinition;
+    /// use infra_master::market::{EventInstrument, RateIndex, Currency, RateType};
     /// use infra_master::market::events::EventType;
     /// use infra_master::time::Date;
     ///
@@ -316,7 +321,7 @@ impl InstrumentDefinition {
     #[must_use]
     pub fn from_event_instrument(
         id: impl Into<String>,
-        event: &super::EventInstrument,
+        event: &crate::market::EventInstrument,
     ) -> Self {
         let event_date = event.event_date();
         let date_str = format!(
@@ -636,7 +641,8 @@ impl InstrumentConventions {
 /// # Examples
 ///
 /// ```
-/// use infra_master::market::{InstrumentTemplate, Currency};
+/// use infra_master::market::definition::InstrumentTemplate;
+/// use infra_master::market::Currency;
 ///
 /// let template = InstrumentTemplate {
 ///     id_pattern: "{currency}-OIS-{tenor}".to_string(),

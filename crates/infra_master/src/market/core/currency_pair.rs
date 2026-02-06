@@ -15,7 +15,7 @@
 //! assert_eq!(inverse.to_string(), "USD/EUR");
 //! ```
 
-use super::Currency;
+use super::currency::Currency;
 
 /// Currency pair representation.
 ///

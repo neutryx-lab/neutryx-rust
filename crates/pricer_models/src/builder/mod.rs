@@ -38,6 +38,7 @@ use crate::market::MarketDataError;
 // Shared Infrastructure Modules
 // =============================================================================
 
+pub mod compile;
 mod error;
 mod grid;
 mod instrument;
@@ -103,6 +104,11 @@ pub use vol::{
     SabrSliceCalibrator, SliceCalibrationConfig, SliceCalibrationDiagnostics,
     SliceCalibrationResult, SliceCalibrator, VolCubeBuilder, VolCubeResult, VolQuote,
 };
+
+// =============================================================================
+// Public Re-exports: Instrument Compilation (Requirement 1, 8)
+// =============================================================================
+pub use compile::{CompileError, InstrumentType};
 
 // =============================================================================
 // Bootstrap Error and Result Types
