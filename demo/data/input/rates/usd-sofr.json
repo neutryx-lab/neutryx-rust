@@ -170,6 +170,62 @@
       "tenor_years": 30.0,
       "rate": 0.0418,
       "frequency": "annual"
+    },
+    {
+      "type": "event",
+      "id": "FED-2026-02",
+      "event_date": "2026-03-18",
+      "expected_rate_spike": -0.0025,
+      "description": "FOMC Meeting - 25bp cut expected"
+    },
+    {
+      "type": "event",
+      "id": "FED-2026-03",
+      "event_date": "2026-05-06",
+      "expected_rate_spike": -0.0025,
+      "description": "FOMC Meeting - 25bp cut expected"
+    },
+    {
+      "type": "event",
+      "id": "FED-2026-04",
+      "event_date": "2026-06-17",
+      "expected_rate_spike": 0,
+      "description": "FOMC Meeting - hold expected"
+    },
+    {
+      "type": "event",
+      "id": "FED-2026-05",
+      "event_date": "2026-07-29",
+      "expected_rate_spike": -0.0025,
+      "description": "FOMC Meeting - 25bp cut expected"
+    },
+    {
+      "type": "event",
+      "id": "FED-2026-06",
+      "event_date": "2026-09-16",
+      "expected_rate_spike": 0,
+      "description": "FOMC Meeting - hold expected"
+    },
+    {
+      "type": "event",
+      "id": "FED-2026-07",
+      "event_date": "2026-11-04",
+      "expected_rate_spike": -0.0025,
+      "description": "FOMC Meeting - 25bp cut expected"
+    },
+    {
+      "type": "event",
+      "id": "FED-2026-08",
+      "event_date": "2026-12-16",
+      "expected_rate_spike": 0,
+      "description": "FOMC Meeting - hold expected"
+    },
+    {
+      "type": "event",
+      "id": "USD-TOY-2026",
+      "event_date": "2026-12-31",
+      "expected_rate_spike": 0.0005,
+      "description": "Year-end turn - liquidity premium"
     }
   ]
 }

@@ -26,11 +26,15 @@ interface CurvesData {
 
 interface RateInstrument {
   type: string;
-  tenor: string;
-  tenor_years: number;
-  rate: number;
+  tenor?: string;
+  tenor_years?: number;
+  rate?: number;
   frequency?: string;
   description?: string;
+  // For event type instruments
+  id?: string;
+  event_date?: string;
+  expected_rate_spike?: number;
 }
 
 interface RateData {
@@ -59,6 +63,7 @@ interface InstrumentConfig {
   tenor: string;
   rateIndex: string;
   eventDate?: string;
+  expectedRateSpike?: number; // Expected rate jump for CB events (e.g., -0.0025 = -25bp)
 }
 
 interface InstrumentsData {
@@ -103,7 +108,7 @@ const allowExtrapolation = ref<boolean>(true);
 // Chart
 const chartCanvas = ref<HTMLCanvasElement | null>(null);
 let chartInstance: Chart | null = null;
-const chartType = ref<'zero_rate' | 'discount_factor'>('zero_rate');
+const chartType = ref<'zero_rate' | 'discount_factor' | 'forward_rate'>('zero_rate');
 
 // Options for build settings
 const calibrationMethods = ['sequential', 'global', 'bootstrap'];
@@ -153,14 +158,40 @@ const summaryStats = computed(() => {
 });
 
 // Chart functions
+function calculateForwardRates(pillars: CurvePillar[]): number[] {
+  // Calculate instantaneous forward rate from zero rates
+  // F(t) = r(t) + t * dr/dt ≈ (r2*t2 - r1*t1) / (t2 - t1)
+  const forwardRates: number[] = [];
+  for (let i = 0; i < pillars.length; i++) {
+    if (i === 0) {
+      // First point: use the zero rate as approximation
+      forwardRates.push(pillars[0].zero_rate);
+    } else {
+      const t1 = pillars[i - 1].time;
+      const t2 = pillars[i].time;
+      const r1 = pillars[i - 1].zero_rate;
+      const r2 = pillars[i].zero_rate;
+      // Forward rate between t1 and t2
+      const fwd = (r2 * t2 - r1 * t1) / (t2 - t1);
+      forwardRates.push(fwd);
+    }
+  }
+  return forwardRates;
+}
+
 function updateChart() {
   if (!chartCanvas.value || !buildResult.value?.pillars) return;
 
   const pillars = buildResult.value.pillars;
   const labels = pillars.map(p => p.time.toFixed(2));
-  const data = chartType.value === 'zero_rate'
-    ? pillars.map(p => p.zero_rate * 100)
-    : pillars.map(p => p.discount_factor);
+  let data: number[];
+  if (chartType.value === 'zero_rate') {
+    data = pillars.map(p => p.zero_rate * 100);
+  } else if (chartType.value === 'discount_factor') {
+    data = pillars.map(p => p.discount_factor);
+  } else {
+    data = calculateForwardRates(pillars).map(r => r * 100);
+  }
 
   if (chartInstance) {
     chartInstance.destroy();
@@ -169,20 +200,35 @@ function updateChart() {
   const ctx = chartCanvas.value.getContext('2d');
   if (!ctx) return;
 
+  const chartLabels: Record<string, string> = {
+    zero_rate: 'Zero Rate (%)',
+    discount_factor: 'Discount Factor',
+    forward_rate: 'Forward Rate (%)',
+  };
+
+  const chartColors: Record<string, string> = {
+    zero_rate: '#6366f1',
+    discount_factor: '#6366f1',
+    forward_rate: '#10b981',
+  };
+
+  const currentLabel = chartLabels[chartType.value];
+  const currentColor = chartColors[chartType.value];
+
   chartInstance = new Chart(ctx, {
     type: 'line',
     data: {
       labels,
       datasets: [{
-        label: chartType.value === 'zero_rate' ? 'Zero Rate (%)' : 'Discount Factor',
+        label: currentLabel,
         data,
-        borderColor: '#6366f1',
-        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+        borderColor: currentColor,
+        backgroundColor: `${currentColor}1a`,
         borderWidth: 2,
         fill: true,
         tension: 0.3,
         pointRadius: 3,
-        pointBackgroundColor: '#6366f1',
+        pointBackgroundColor: currentColor,
       }],
     },
     options: {
@@ -200,9 +246,13 @@ function updateChart() {
             title: (items) => `Time: ${items[0].label}Y`,
             label: (item) => {
               const value = item.raw as number;
-              return chartType.value === 'zero_rate'
-                ? `Zero Rate: ${value.toFixed(4)}%`
-                : `DF: ${value.toFixed(6)}`;
+              if (chartType.value === 'zero_rate') {
+                return `Zero Rate: ${value.toFixed(4)}%`;
+              } else if (chartType.value === 'discount_factor') {
+                return `DF: ${value.toFixed(6)}`;
+              } else {
+                return `Forward Rate: ${value.toFixed(4)}%`;
+              }
             },
           },
         },
@@ -220,7 +270,7 @@ function updateChart() {
         y: {
           title: {
             display: true,
-            text: chartType.value === 'zero_rate' ? 'Zero Rate (%)' : 'Discount Factor',
+            text: currentLabel,
             color: 'rgba(255, 255, 255, 0.6)',
           },
           ticks: { color: 'rgba(255, 255, 255, 0.6)' },
@@ -298,44 +348,42 @@ function loadInstrumentsForCurve() {
   const displayInstruments: DisplayInstrument[] = [];
 
   for (const rateInst of rateData.value.instruments) {
-    const id = buildInstrumentId(rateInst.type, rateInst.tenor, currency);
+    // Handle event type instruments from rate input file
+    if (rateInst.type === 'event') {
+      const eventDate = new Date(rateInst.event_date || '');
+      const tenorYears = (eventDate.getTime() - referenceDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
 
-    displayInstruments.push({
-      id,
-      type: rateInst.type,
-      tenor: rateInst.tenor,
-      tenorYears: rateInst.tenor_years,
-      rate: rateInst.rate,
-      originalRate: rateInst.rate,
-      enabled: defaultEnabledIds.has(id), // Only enable if in curve config
-    });
-  }
+      // Skip past events
+      if (tenorYears < 0) continue;
 
-  // Add EVENT instruments from instruments config
-  if (instrumentsConfig.value && selectedCurve.value.instruments) {
-    const curveInstrumentIds = new Set(selectedCurve.value.instruments);
+      const id = rateInst.id || '';
+      // Only include if in curve definition
+      if (!defaultEnabledIds.has(id)) continue;
 
-    for (const instConfig of instrumentsConfig.value.instruments) {
-      // Only include EVENT instruments that are in the curve definition
-      if (instConfig.tenor === 'EVENT' && curveInstrumentIds.has(instConfig.id)) {
-        // Calculate tenor years from event date
-        const eventDate = new Date(instConfig.eventDate || '');
-        const tenorYears = (eventDate.getTime() - referenceDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+      displayInstruments.push({
+        id,
+        type: 'event',
+        tenor: 'EVENT',
+        tenorYears,
+        rate: rateInst.expected_rate_spike || 0,
+        originalRate: rateInst.expected_rate_spike || 0,
+        enabled: true,
+        eventDate: rateInst.event_date,
+      });
+    } else {
+      // Handle regular instruments (deposit, ois, fra, etc.)
+      const tenor = rateInst.tenor || '';
+      const id = buildInstrumentId(rateInst.type, tenor, currency);
 
-        // Skip past events
-        if (tenorYears < 0) continue;
-
-        displayInstruments.push({
-          id: instConfig.id,
-          type: 'event',
-          tenor: 'EVENT',
-          tenorYears,
-          rate: 0, // Events don't have rates, they represent jump dates
-          originalRate: 0,
-          enabled: true,
-          eventDate: instConfig.eventDate,
-        });
-      }
+      displayInstruments.push({
+        id,
+        type: rateInst.type,
+        tenor,
+        tenorYears: rateInst.tenor_years || 0,
+        rate: rateInst.rate || 0,
+        originalRate: rateInst.rate || 0,
+        enabled: defaultEnabledIds.has(id),
+      });
     }
   }
 
@@ -476,6 +524,11 @@ function updateRate(index: number, value: string) {
   instruments.value[index].rate = parseFloat(value) / 100;
 }
 
+function updateSpike(index: number, value: string) {
+  // Convert basis points to decimal (e.g., -25bp = -0.0025)
+  instruments.value[index].rate = parseFloat(value) / 10000;
+}
+
 function toggleEnabled(index: number) {
   instruments.value[index].enabled = !instruments.value[index].enabled;
 }
@@ -608,12 +661,22 @@ onUnmounted(() => {
                 @change="toggleEnabled(idx)"
               >
               <span class="flex-1 font-mono text-xs text-[var(--text-secondary)] truncate" :title="inst.id">{{ inst.id }}</span>
-              <!-- Event instruments show date instead of rate -->
-              <span
-                v-if="inst.type === 'event'"
-                class="px-1.5 py-0.5 text-xs rounded bg-amber-500/20 text-amber-400 font-mono"
-                :title="'Event Date'"
-              >{{ inst.eventDate }}</span>
+              <!-- Event instruments show date and expected spike input -->
+              <template v-if="inst.type === 'event'">
+                <span
+                  class="px-1.5 py-0.5 text-xs rounded bg-amber-500/20 text-amber-400 font-mono"
+                  :title="'Event Date'"
+                >{{ inst.eventDate }}</span>
+                <input
+                  type="number"
+                  :value="(inst.rate * 10000).toFixed(0)"
+                  step="1"
+                  class="w-14 px-1.5 py-0.5 text-right text-xs rounded bg-amber-500/10 border border-amber-500/30 text-amber-400"
+                  title="Expected rate spike in basis points"
+                  @change="updateSpike(idx, ($event.target as HTMLInputElement).value)"
+                >
+                <span class="text-xs text-amber-400/60">bp</span>
+              </template>
               <!-- Regular instruments show rate input -->
               <input
                 v-else
@@ -706,6 +769,15 @@ onUnmounted(() => {
                 @click="chartType = 'zero_rate'"
               >
                 Zero Rate
+              </button>
+              <button
+                :class="[
+                  'px-3 py-1.5 text-xs rounded-lg transition-colors',
+                  chartType === 'forward_rate' ? 'bg-emerald-500 text-white' : 'bg-[var(--surface)] text-[var(--text-secondary)]'
+                ]"
+                @click="chartType = 'forward_rate'"
+              >
+                Forward Rate
               </button>
               <button
                 :class="[

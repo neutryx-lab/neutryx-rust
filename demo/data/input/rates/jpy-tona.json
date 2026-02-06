@@ -154,6 +154,62 @@
       "tenor_years": 30.0,
       "rate": 0.0235,
       "frequency": "annual"
+    },
+    {
+      "type": "event",
+      "id": "BOJ-2026-02",
+      "event_date": "2026-03-14",
+      "expected_rate_spike": 0.001,
+      "description": "BOJ Meeting - 10bp hike expected"
+    },
+    {
+      "type": "event",
+      "id": "BOJ-2026-03",
+      "event_date": "2026-05-01",
+      "expected_rate_spike": 0,
+      "description": "BOJ Meeting - hold expected"
+    },
+    {
+      "type": "event",
+      "id": "BOJ-2026-04",
+      "event_date": "2026-06-19",
+      "expected_rate_spike": 0.001,
+      "description": "BOJ Meeting - 10bp hike expected"
+    },
+    {
+      "type": "event",
+      "id": "BOJ-2026-05",
+      "event_date": "2026-07-31",
+      "expected_rate_spike": 0,
+      "description": "BOJ Meeting - hold expected"
+    },
+    {
+      "type": "event",
+      "id": "BOJ-2026-06",
+      "event_date": "2026-09-18",
+      "expected_rate_spike": 0.001,
+      "description": "BOJ Meeting - 10bp hike expected"
+    },
+    {
+      "type": "event",
+      "id": "BOJ-2026-07",
+      "event_date": "2026-10-30",
+      "expected_rate_spike": 0,
+      "description": "BOJ Meeting - hold expected"
+    },
+    {
+      "type": "event",
+      "id": "BOJ-2026-08",
+      "event_date": "2026-12-18",
+      "expected_rate_spike": 0.001,
+      "description": "BOJ Meeting - 10bp hike expected"
+    },
+    {
+      "type": "event",
+      "id": "JPY-TOY-2026",
+      "event_date": "2026-12-31",
+      "expected_rate_spike": 0.0003,
+      "description": "Year-end turn - liquidity premium"
     }
   ]
 }
