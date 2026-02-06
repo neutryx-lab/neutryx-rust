@@ -277,7 +277,9 @@ function buildInstrumentId(type: string, tenor: string, currency: string): strin
     'swap': 'Swap',
   };
   const typeLabel = typeMap[type] || type.toUpperCase();
-  return `${currency}-${typeLabel}-${tenor}`;
+  // Normalize tenor: "O/N" -> "ON" to match curve config format
+  const normalizedTenor = tenor === 'O/N' ? 'ON' : tenor;
+  return `${currency}-${typeLabel}-${normalizedTenor}`;
 }
 
 function loadInstrumentsForCurve() {
@@ -289,7 +291,10 @@ function loadInstrumentsForCurve() {
   const currency = rateData.value.currency;
   const referenceDate = new Date(rateData.value.reference_date);
 
-  // Build display instruments from rate data - all enabled by default
+  // Get the set of instrument IDs that should be enabled by default (from curve config)
+  const defaultEnabledIds = new Set(selectedCurve.value.instruments || []);
+
+  // Build display instruments from rate data
   const displayInstruments: DisplayInstrument[] = [];
 
   for (const rateInst of rateData.value.instruments) {
@@ -302,7 +307,7 @@ function loadInstrumentsForCurve() {
       tenorYears: rateInst.tenor_years,
       rate: rateInst.rate,
       originalRate: rateInst.rate,
-      enabled: true, // All instruments enabled by default
+      enabled: defaultEnabledIds.has(id), // Only enable if in curve config
     });
   }
 
@@ -409,8 +414,8 @@ async function buildCurve() {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Build failed');
+      const errorData = await response.json();
+      throw new Error(errorData.error || errorData.message || 'Build failed');
     }
 
     buildResult.value = await response.json();
