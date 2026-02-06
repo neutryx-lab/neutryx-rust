@@ -209,6 +209,10 @@ impl MarketQuote {
     }
 }
 
+/// Type alias for backward compatibility.
+#[deprecated(since = "0.2.0", note = "Use MarketQuote instead")]
+pub type MarketRate = MarketQuote;
+
 #[cfg(test)]
 mod tests {
     use super::*;

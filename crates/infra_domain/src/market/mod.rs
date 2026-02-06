@@ -71,10 +71,16 @@ pub use core::{CompoundingMethod, Currency, CurrencyPair, RateType};
 pub use index::{FxFixingSource, FxIndex, FxIndexMetadata, IndexMetadata, RateIndex};
 pub use index::{SwapIndex, SwapIndexMetadata};
 
-// Quote types
-pub use quote::{MarketRate, MarketRateError, MarketRateSet, QuoteType, RateId};
-pub use quote::{RateValidator, StandardRateValidator};
+// Quote types (new preferred names)
+pub use quote::{MarketQuote, MarketQuoteError, MarketQuoteSet, QuoteId, QuoteType};
+pub use quote::{QuoteValidator, StandardQuoteValidator};
 pub use quote::{StrikeType, VolQuoteType};
+
+// Quote types (deprecated aliases for backward compatibility)
+#[allow(deprecated)]
+pub use quote::{MarketRate, MarketRateError, MarketRateSet, RateId};
+#[allow(deprecated)]
+pub use quote::{RateValidator, StandardRateValidator};
 
 // Data sources
 pub use source::{DataSource, InstrumentMapper, SourcePriority, StandardInstrumentMapper};

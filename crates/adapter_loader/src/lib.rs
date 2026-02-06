@@ -42,6 +42,7 @@ mod error;
 #[cfg(feature = "curve-builder")]
 mod instrument_parser;
 mod json_loader;
+mod ticker_loader;
 mod vol_surface_loader;
 
 pub use csa::{CsaTerms, NettingSet};
@@ -56,6 +57,7 @@ pub use json_loader::{
     CsaLoader, CurveData, CurvePoint, FxSpotData, JsonLoader, MarketData, MarketLoader,
     TradeLoader, VolPoint, VolSurfaceData,
 };
+pub use ticker_loader::{TickerMappingEntry, TickerMappingLoader};
 pub use vol_surface_loader::{
     parse_expiry_string, parse_fra_tenor, parse_tenor_string, CapFloorVolCsvRow, QuoteTypeJson,
     StrikeValue, SwaptionVolCsvRow, TenorValue, VolQuoteJson, VolQuoteSetJson, VolSurfaceLoader,
@@ -65,6 +67,6 @@ pub use vol_surface_loader::{
 pub mod prelude {
     pub use crate::{
         CsaLoader, CsaTerms, CsvLoader, JsonLoader, LoaderError, MarketData, MarketLoader,
-        NettingSet, TradeLoader,
+        NettingSet, TickerMappingLoader, TradeLoader,
     };
 }

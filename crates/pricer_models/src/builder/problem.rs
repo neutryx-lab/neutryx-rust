@@ -360,6 +360,77 @@ where
         Ok(jacobian)
     }
 
+    /// Validate the quality of a Jacobian matrix.
+    ///
+    /// Checks for numerical issues including:
+    /// - NaN values (indicates computation failure)
+    /// - Inf values (indicates overflow)
+    /// - Near-zero diagonal elements (indicates singularity)
+    ///
+    /// # Requirement: 5.3
+    ///
+    /// # Arguments
+    ///
+    /// * `jacobian` - The Jacobian matrix to validate
+    ///
+    /// # Returns
+    ///
+    /// * `JacobianQuality` - Classification of the matrix quality
+    pub fn validate_jacobian_quality(
+        &self,
+        jacobian: &DMatrix<T>,
+    ) -> super::error::JacobianQuality {
+        use super::error::JacobianQuality;
+
+        let nrows = jacobian.nrows();
+        let ncols = jacobian.ncols();
+        let zero_threshold = from_f64::<T>(1e-14);
+
+        // Check for NaN
+        for &val in jacobian.iter() {
+            if val.is_nan() {
+                return JacobianQuality::poor("NaN detected in Jacobian");
+            }
+        }
+
+        // Check for Inf
+        for &val in jacobian.iter() {
+            if val.is_infinite() {
+                return JacobianQuality::poor("Inf detected in Jacobian");
+            }
+        }
+
+        // Check diagonal elements for near-zero values (square matrices only)
+        if nrows == ncols {
+            for i in 0..nrows {
+                let diag_val = jacobian[(i, i)];
+                if diag_val.abs() < zero_threshold {
+                    return JacobianQuality::warning("Near-zero diagonal element detected");
+                }
+            }
+        }
+
+        JacobianQuality::good()
+    }
+
+    /// Validate Jacobian quality and get full diagnostics.
+    ///
+    /// # Requirement: 5.3, 5.5
+    ///
+    /// # Arguments
+    ///
+    /// * `jacobian` - The Jacobian matrix to validate
+    ///
+    /// # Returns
+    ///
+    /// * Tuple of (JacobianQuality, NumericalDiagnostics)
+    pub fn validate_jacobian_with_diagnostics(
+        &self,
+        jacobian: &DMatrix<T>,
+    ) -> (super::error::JacobianQuality, super::error::NumericalDiagnostics<T>) {
+        super::error::validate_jacobian_dmatrix(jacobian, from_f64(1e-14))
+    }
+
     /// Create an initial guess for log discount factors.
     ///
     /// Uses a flat 3% rate assumption: log(DF(t)) = -0.03 * t

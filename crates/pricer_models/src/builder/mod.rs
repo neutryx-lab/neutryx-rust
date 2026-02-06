@@ -82,7 +82,15 @@ pub use engine::{
     CalibrationEngine, CalibrationEngineConfig, CalibrationResult, GlobalCalibrationEngine,
     SequentialCalibrationEngine,
 };
-pub use error::{CalibrationError, IftError};
+pub use error::{
+    CalibrationError, IftError, JacobianQuality, NumericalDiagnostics, RegularisationType,
+    validate_jacobian_matrix,
+};
+#[cfg(feature = "global-bootstrap")]
+pub use error::{
+    apply_tikhonov_regularisation, estimate_condition_number, should_apply_regularisation,
+    validate_jacobian_dmatrix,
+};
 pub use grid::CalibrationGrid;
 pub use instrument::CalibrationInstrument;
 #[cfg(feature = "global-bootstrap")]

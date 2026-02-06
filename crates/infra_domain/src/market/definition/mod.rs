@@ -39,17 +39,22 @@
 //! ## Vol Surface Definition
 //!
 //! ```
-//! use infra_domain::market::definition::{CalibrationModel, StrikeAxisType};
+//! use infra_domain::market::definition::{VolSurfaceDefinition, CalibrationModel, StrikeAxisType};
 //!
-//! let model = CalibrationModel::Sabr;
-//! assert!(model.is_enabled());
-//! assert_eq!(model.parameter_count(), 4);
+//! let vol_surface = VolSurfaceDefinition::new(
+//!     "USD-SOFR-Swaption-Vol",
+//!     vec!["USD-SOFR-1Y1Y-ATM".to_string()],
+//! )
+//! .with_model(CalibrationModel::Sabr)
+//! .with_strike_axis(StrikeAxisType::Delta);
+//!
+//! assert_eq!(vol_surface.name, "USD-SOFR-Swaption-Vol");
 //! ```
 
 mod curve;
+mod index;
 mod instrument;
 mod jump_pillar;
-mod rate_index;
 mod vol_surface;
 
 // Curve definitions
@@ -59,12 +64,15 @@ pub use curve::{CalibrationMethod, CurveDefError, CurveDefinition, Interpolation
 pub use jump_pillar::{JumpPillar, JumpPillarBuilder};
 
 // Vol surface definitions
-pub use vol_surface::{CalibrationModel, StrikeAxisType};
+pub use vol_surface::{
+    CalibrationModel, StrikeAxisType, StrikeInterpolation, TimeInterpolation, VolSurfaceDefError,
+    VolSurfaceDefinition,
+};
 
 // Instrument definitions
 pub use instrument::{
     InstrumentConventions, InstrumentDefError, InstrumentDefinition, InstrumentTemplate,
 };
 
-// Rate index definitions
-pub use rate_index::{IndexConventions, RateIndexDefError, RateIndexDefinition};
+// Index definitions (rate, FX, etc.)
+pub use index::{IndexConventions, RateIndexDefError, RateIndexDefinition};

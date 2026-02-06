@@ -32,35 +32,35 @@
 
 ## Phase 2: Enzyme AD Jacobian 統合
 
-- [ ] 2. Enzyme AD による Jacobian 計算機能
+- [x] 2. Enzyme AD による Jacobian 計算機能
 
-- [ ] 2.1 残差関数の微分可能カーネル実装
+- [x] 2.1 残差関数の微分可能カーネル実装
   - autodiff マクロによる残差計算カーネルの定義
   - reverse-mode 微分のためのカーネルシグネチャ設計
   - enzyme-ad feature gate による条件付きコンパイル
   - _Requirements: 1.1, 1.3_
 
-- [ ] 2.2 Enzyme Jacobian 計算とフォールバック機構
+- [x] 2.2 Enzyme Jacobian 計算とフォールバック機構
   - 残差カーネルを用いた完全 Jacobian 行列の計算
   - 計算失敗時の有限差分法への自動フォールバック
   - フォールバック発生時の警告ログ出力
   - 計算結果メタデータ（使用メソッド、計算時間、フォールバック有無）の記録
   - _Requirements: 1.1, 1.4_
 
-- [ ] 2.3 CalibrationProblem への Enzyme Jacobian 統合
+- [x] 2.3 CalibrationProblem への Enzyme Jacobian 統合
   - JacobianMethod::AutomaticDifferentiation の完全実装
   - enzyme-ad 有効時のデフォルト Jacobian メソッド設定
   - 既存の有限差分・中央差分メソッドとの統合
   - _Requirements: 1.1, 1.3_
 
-- [ ] 2.4 (P) 補間レイヤーの微分可能実装
+- [x] 2.4 (P) 補間レイヤーの微分可能実装
   - Flat, Linear, LogLinear 補間の autodiff 互換インターフェース
   - discount_factor_with_gradient メソッドの追加
   - LogLinear 補間の解析的微分（∂DF(t)/∂DF_i）実装
   - AD dual numbers の補間レイヤー伝播確認
   - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-- [ ] 2.5 Enzyme Jacobian の単体・統合テスト
+- [x] 2.5 Enzyme Jacobian の単体・統合テスト
   - Enzyme 計算と解析微分の 1e-12 相対誤差以内の検証
   - フォールバック機構の動作確認テスト
   - 各補間メソッドでの Jacobian 計算正確性テスト

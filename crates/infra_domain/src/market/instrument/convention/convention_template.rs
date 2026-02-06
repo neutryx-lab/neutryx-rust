@@ -30,6 +30,7 @@ use std::collections::HashMap;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "serde")]
 use serde_json::Value;
 
 /// Default values for a currency, used to reduce repetition in convention definitions.
